@@ -19,4 +19,9 @@ describe("filtersFromParams", () => {
     expect((await filtersFromParams(new URLSearchParams(""))).line).toBeUndefined();
     expect((await filtersFromParams(new URLSearchParams("line="))).line).toBeUndefined();
   });
+
+  it("reads the reported-only filter the explorer writes as fb=open", async () => {
+    expect((await filtersFromParams(new URLSearchParams("fb=open"))).reports).toBe("open");
+    expect((await filtersFromParams(new URLSearchParams("fb=closed"))).reports).toBeUndefined();
+  });
 });

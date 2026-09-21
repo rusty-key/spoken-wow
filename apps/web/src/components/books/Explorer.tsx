@@ -433,6 +433,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
         onQuerySubmit={submitQuery}
         onChange={updateFilters}
         onClearAll={() => replaceQuery(new URLSearchParams())}
+        canTriage={canRegenerate}
       />
 
       {/* A line id has no dropdown to sit in - it arrives by link from /reports - so

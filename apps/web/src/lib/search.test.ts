@@ -530,3 +530,23 @@ describe("search by line id", () => {
     expect(all({ line: "q:0:nonexistent" })).toEqual([]);
   });
 });
+
+describe("reported lines", () => {
+  const reported = (lineId: string, open: number) => ({
+    overrides: new Map(),
+    reports: new Map([[lineId, open]]),
+  });
+
+  it("narrows to lines carrying an open report", () => {
+    const found = matchingLines(corpus, store, { reports: "open" }, reported("q:123:complete", 2));
+    expect(found.map((l) => l.lineId)).toEqual(["q:123:complete"]);
+  });
+
+  it("drops a line whose reports are all resolved", () => {
+    expect(matchingLines(corpus, store, { reports: "open" }, reported("q:123:complete", 0))).toEqual([]);
+  });
+
+  it("matches nothing when the counts were never fetched, rather than everything", () => {
+    expect(matchingLines(corpus, store, { reports: "open" })).toEqual([]);
+  });
+});

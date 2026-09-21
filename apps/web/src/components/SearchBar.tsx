@@ -20,6 +20,8 @@ type Props = {
   onQuery: (value: string) => void;
   onFilters: (next: Partial<LineFilters>) => void;
   onClearAll: () => void;
+  /** Editor and up: the ones who act on reports, so the ones who filter by them. */
+  canTriage: boolean;
 };
 
 /** Corpus values, which label themselves. */
@@ -35,7 +37,7 @@ const SCOPE_OPTIONS: ChipOption[] = [
 ];
 
 const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
-  { query, filters, facets, onQuery, onFilters, onClearAll },
+  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage },
   ref,
 ) {
   const active = activeFilterCount({ ...filters, q: query });
@@ -208,6 +210,20 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
             ignored only
           </Label>
         </div>
+        {/* Triagers only, as in the zones and books bars: the count on a row is public, but
+            a list of what people have complained about is a worklist. */}
+        {canTriage && (
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <Checkbox
+              id="reported-only"
+              checked={filters.reports === "open"}
+              onCheckedChange={(value) => onFilters({ reports: value === true ? "open" : undefined })}
+            />
+            <Label htmlFor="reported-only" className="text-muted-foreground text-sm">
+              reported only
+            </Label>
+          </div>
+        )}
         {/* Phrased as showing rather than hiding: the box is unticked by default, and an
             unticked "hide progress text" would claim the opposite of what is happening. */}
         <div className="flex items-center gap-2 whitespace-nowrap">

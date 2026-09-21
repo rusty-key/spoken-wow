@@ -68,6 +68,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.ignored) params.set("ignored", "1");
   if (filters.outdated) params.set("outdated", "1");
   if (filters.dirty) params.set("dirty", "1");
+  if (filters.reports) params.set("fb", filters.reports);
   if (filters.generatedBefore) params.set("before", filters.generatedBefore);
   if (filters.generatedAfter) params.set("after", filters.generatedAfter);
   return params;
@@ -111,6 +112,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       ignored: params.get("ignored") === "1",
       outdated: params.get("outdated") === "1",
       dirty: params.get("dirty") === "1",
+      reports: params.get("fb") === "open" ? "open" : undefined,
       generatedBefore: params.get("before") ?? undefined,
       generatedAfter: params.get("after") ?? undefined,
     }),
@@ -226,6 +228,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),
         ...("outdated" in next ? { outdated: next.outdated ? "1" : undefined } : {}),
         ...("dirty" in next ? { dirty: next.dirty ? "1" : undefined } : {}),
+        ...("reports" in next ? { fb: next.reports } : {}),
         ...("ignored" in next ? { ignored: next.ignored ? "1" : undefined } : {}),
         ...("generatedBefore" in next ? { before: next.generatedBefore } : {}),
         ...("generatedAfter" in next ? { after: next.generatedAfter } : {}),
@@ -689,6 +692,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         onQuery={setQuery}
         onFilters={updateFilters}
         onClearAll={clearAll}
+        canTriage={showRegenerate}
       />
 
       {/* No dropdown to sit in: a line id arrives by link from /reports, so without this

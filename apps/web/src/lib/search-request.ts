@@ -47,6 +47,7 @@ export async function filtersFromParams(params: URLSearchParams): Promise<LineFi
     ignored: params.get("ignored") === "1",
     outdated: params.get("outdated") === "1",
     dirty: params.get("dirty") === "1",
+    reports: oneOf(params.get("fb"), ["open"] as const),
     // Kept as the raw day. dayStart is what decides whether it is a date, so there is one
     // definition of that rather than one here and another in the filter.
     generatedBefore: params.get("before") || undefined,

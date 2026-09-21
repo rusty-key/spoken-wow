@@ -79,6 +79,11 @@ export type LineFilters = {
    */
   dirty?: boolean;
   /**
+   * 'open' selects lines carrying at least one unresolved report. A value rather than a
+   * boolean, and `fb` in the URL, to match the zones and books filters it mirrors.
+   */
+  reports?: "open";
+  /**
    * Bounds on when the live take was generated, as "YYYY-MM-DD". Both include the whole of
    * the day they name, which is what picking a day off a calendar means.
    *
@@ -353,6 +358,7 @@ export function matchingLines(
     outdated = false,
     dirty = false,
     ignored = false,
+    reports,
     generatedBefore,
     generatedAfter,
   }: LineFilters = {},
@@ -362,6 +368,7 @@ export function matchingLines(
     stale,
     dirty: dirtyOf,
     ignores,
+    reports: reportsOf,
   }: SearchContext = NO_CONTEXT,
 ): CorpusLine[] {
   const query = q.trim();
@@ -405,6 +412,9 @@ export function matchingLines(
   // Absent `dirty` means nobody asked, so nothing matches rather than everything - the
   // argument the line above makes, for the same reason.
   if (dirty) lines = lines.filter((line) => dirtyOf?.has(audioRelPath(line)) ?? false);
+  // Absent counts mean the database was not reached, and "which lines are reported?" has
+  // the same honest answer without the data as the two above: none.
+  if (reports === "open") lines = lines.filter((line) => (reportsOf?.get(line.lineId) ?? 0) > 0);
   // A restoration is not a rewrite: it puts a stripped stage direction back and changes no
   // words, so it does not belong in a list of lines someone rewrote by hand.
   if (overridden) {
