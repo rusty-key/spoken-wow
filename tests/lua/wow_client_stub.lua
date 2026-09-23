@@ -951,7 +951,7 @@ function M.LoadSpoken(addonDirectory)
         "UI/MinimalPlayer", "UI/MinimapButton",
         -- Real LibDeflate, not a hand-faked stub library: Contribute:Encode's round trip through
         -- actual compression is the point of testing it at all.
-        "UI/Options", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather" }) do
+        "UI/Options", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather", "TaintReport" }) do
         dofile(addonDirectory .. file .. ".lua")
     end
     local env = _G.SpokenEnv

@@ -200,6 +200,10 @@ function Addon:Enable()
             Options:Open()
         elseif command == "share" and Gather then
             Spoken:ShowGatherInstructions()
+        elseif command == "taint" and TaintReport then
+            TaintReport:Show()
+        elseif (command == "taint on" or command == "taint off") and TaintReport then
+            TaintReport:SetLogging(command == "taint on")
         elseif command == "reset" then
             PlayerFrame:Reset()
         elseif command == "diagnostics" then
@@ -211,7 +215,7 @@ function Addon:Enable()
             for _, line in ipairs(PlayerFrame:Describe()) do print("  " .. line) end
             for _, err in ipairs(Callbacks.errors) do print("  callback error: " .. err) end
         else
-            print("Spoken: /spoken play | stop | skip | options | reset | diagnostics")
+            print("Spoken: /spoken play | stop | skip | options | reset | diagnostics | taint [on|off]")
         end
     end
 end

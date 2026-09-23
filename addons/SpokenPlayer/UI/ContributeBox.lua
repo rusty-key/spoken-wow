@@ -201,6 +201,13 @@ local function ShowProse(text, choice)
     box.frame:Show()
 end
 
+--- Any text to copy, under a hint of the caller's own. The taint report uses the box too: it
+--- is the one multi-line copy box there is.
+function Spoken:ShowCopyText(text, hint)
+    ShowPayload(text, "", false)
+    box.hint:SetText(hint)
+end
+
 --- How to send what was gathered. Also what "How to send them" in the settings and
 --- /spoken share open, so the steps are never only in a window the player closed.
 function Spoken:ShowGatherInstructions()

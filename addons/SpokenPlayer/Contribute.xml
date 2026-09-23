@@ -4,8 +4,11 @@
         clients are private servers, where contributing is off for now, and the 1.12 client's
         Lua 5.0 cannot even parse these files (they use the length operator). Left out of
         addon.xml so those clients never load them: no Contribute table, so no button.
+        TaintReport.lua rides along for the same reason: it is written for the newer Lua,
+        and it reads what the Blizzard clients report when they block an addon.
     -->
     <Include file="UI\ContributeBox.lua"/>
     <Include file="Contribute.lua"/>
     <Include file="Gather.lua"/>
+    <Include file="TaintReport.lua"/>
 </Ui>

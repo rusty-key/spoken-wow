@@ -72,4 +72,9 @@ L = {
     OPT_NO_SETTINGS_API = "open Game Menu -> Options -> AddOns -> Spoken Player, or type /spoken options",
     OPT_COPY_HINT_LINK = "Copy this and open it in your browser:",
     OPT_COPY_HINT_PASTE = "Press Ctrl+C, then paste it at:",
+    -- The client's "blocked from an action only available to the Blizzard UI" popup, explained.
+    TAINT_NOTICE = "Spoken: the game blocked %1$s from calling %2$s. Type /spoken taint to copy a report for the bug tracker.",
+    TAINT_COPY_HINT = "Press Ctrl+C, then paste it into the bug report:",
+    TAINT_LOG_ON = "Spoken: the game's taint log is on. Reproduce the problem, exit the game, then attach Logs\\taint.log from your game folder to the bug report. /spoken taint off turns it off again.",
+    TAINT_LOG_OFF = "Spoken: the game's taint log is off.",
 }
