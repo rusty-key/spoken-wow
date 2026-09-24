@@ -1,7 +1,7 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
-import { withLang, type Lang } from "@/lib/lang";
+import { langName, withLang, type Lang } from "@/lib/lang";
 import { Check, Pencil, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -11,7 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { EffectiveLexicon } from "@/lib/generation/dictionary";
-import { fishUse, type FishUse } from "@/lib/generation/fish-lexicon";
+import { fishReadsPhonemes, fishUse, type FishUse } from "@/lib/generation/fish-lexicon";
+import type { Provider } from "@/lib/generation/providers";
 import { PREVIEW_MODES, type PreviewMode } from "@/lib/generation/preview-modes";
 import type { CacheState } from "@/lib/generation/preview";
 import { Toaster, useToast } from "@/components/ui/toast";
@@ -74,23 +75,19 @@ const SECTIONS = [
   { letter: "B", what: "book pages", href: (q: string) => booksHref({ q, field: "text" }) },
 ] as const;
 
-// Starts as a respelling, not IPA. Anyone who can write IPA can switch in one click, and
-// everyone else would otherwise meet an empty box they have no way to fill.
+// Both fields open, because either or both may be filled: the IPA for whoever can write it,
+// the respelling for whoever cannot, and for fish.audio outside English, which reads no IPA.
+// A field left empty is dropped by validation rather than stored.
 const BLANK: LexiconEntry = {
   grapheme: "",
+  ipa: "",
   alias: "",
   confidence: "check",
 };
 
-/**
- * Which input the form should show.
- *
- * Read from which key is PRESENT rather than from which is non-empty, so a half-typed
- * respelling does not flip the form back to IPA between keystrokes.
- */
-function formKind(entry: LexiconEntry): "ipa" | "alias" {
-  return entry.ipa !== undefined ? "ipa" : "alias";
-}
+/** The widths the header and every row share, so the columns line up. */
+const IPA_WIDTH = "w-44";
+const RESPELLING_WIDTH = "w-36";
 
 function key(entry: LexiconEntry): string {
   return entry.grapheme.toLowerCase();
@@ -214,6 +211,7 @@ function usePreview(onCached: (grapheme: string, mode: PreviewMode) => void) {
 export default function LexiconEditor(props: {
   initial: EffectiveLexicon;
   modelId: string;
+  provider: Provider;
   initialCache: Record<string, CacheState>;
 }) {
   // A shell, because useToast has to find a provider above the component that calls it and
@@ -228,11 +226,14 @@ export default function LexiconEditor(props: {
 function Editor({
   initial,
   modelId,
+  provider,
   initialCache,
 }: {
   initial: EffectiveLexicon;
   /** The model generation actually uses, which decides whether any of this takes effect. */
   modelId: string;
+  /** The generator this viewer speaks this language with, which decides which column counts. */
+  provider: Provider;
   /** Which previews already exist, resolved on the server. See previewCache. */
   initialCache: Record<string, CacheState>;
 }) {
@@ -268,6 +269,11 @@ function Editor({
 
   const dirty = !same(draft, saved.entries);
 
+  // fish.audio in a language it reads no phonemes in: only the respelling reaches the audio,
+  // and the page has to say so, or an IPA column full of careful work reads as if it counted.
+  const respellingOnly = provider === "fish" && !fishReadsPhonemes(lang);
+  const unrespelled = draft.filter((entry) => !entry.alias?.trim()).length;
+
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return draft
@@ -277,7 +283,7 @@ function Editor({
         if (ok === "yes" && !confirmed) return false;
         if (ok === "no" && confirmed) return false;
         if (!needle) return true;
-        return [entry.grapheme, entry.ipa ?? entry.alias ?? "", entry.note ?? ""]
+        return [entry.grapheme, entry.ipa ?? "", entry.alias ?? "", entry.note ?? ""]
           .join(" ")
           .toLowerCase()
           .includes(needle);
@@ -437,6 +443,18 @@ function Editor({
         onRetry={() => void send("POST")}
       />
 
+      {respellingOnly && (
+        <Banner tone="info">
+          <span>
+            You generate {langName(lang)} with fish.audio, which reads no IPA outside English: it
+            speaks the <strong>Respelling</strong> column, and the IPA is never sent.{" "}
+            {unrespelled > 0
+              ? `${unrespelled} ${unrespelled === 1 ? "entry has" : "entries have"} no respelling, so fish.audio says ${unrespelled === 1 ? "it" : "them"} unaided.`
+              : "Every entry has one."}
+          </span>
+        </Banner>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={query}
@@ -483,7 +501,20 @@ function Editor({
           </span>
           <span className="flex flex-1 gap-3 overflow-hidden">
             <span className="w-40 shrink-0">Written</span>
-            <span className="w-52 shrink-0">Sound</span>
+            <span
+              className={cn(IPA_WIDTH, "shrink-0", respellingOnly && "text-muted-foreground/50")}
+              title={respellingOnly ? "ElevenLabs only: fish.audio reads no IPA in this language." : undefined}
+            >
+              IPA{respellingOnly && " · ElevenLabs"}
+            </span>
+            <span
+              className={cn(RESPELLING_WIDTH, "shrink-0", respellingOnly && "text-primary")}
+              title={respellingOnly ? "What fish.audio speaks in this language." : undefined}
+            >
+              Respelling{respellingOnly && " · fish"}
+            </span>
+            {/* Over each row's FishBadge, which is the same width. */}
+            <span className="w-24 shrink-0">fish.audio</span>
             <span className="truncate">Note</span>
           </span>
           <span className="shrink-0">Edit · find · hear · re-roll</span>
@@ -509,6 +540,7 @@ function Editor({
               entry={entry}
               index={index}
               lang={lang}
+              respellingOnly={respellingOnly}
               editing={editing === index}
               cached={cache[entry.grapheme] ?? EMPTY_CACHE}
               preview={preview}
@@ -574,7 +606,7 @@ function SyncBanner({
 }: {
   saved: Saved;
   modelId: string;
-  /** How many entries are IPA, and so depend on the model honouring phoneme rules. */
+  /** How many entries reach ElevenLabs as IPA, and so depend on the model honouring phoneme rules. */
   phonemes: number;
   busy: boolean;
   onRetry: () => void;
@@ -588,8 +620,8 @@ function SyncBanner({
         <span>
           Generation uses <code>{modelId}</code>, which ignores phoneme rules — only{" "}
           <code>eleven_v3</code> and <code>eleven_flash_v2</code> honour them. {phonemes} entries
-          written in IPA are skipped; the respelled ones still apply. Switch the model on Voices,
-          or respell those entries.
+          with IPA are skipped, even those that also have a respelling, since ElevenLabs is sent
+          the IPA; entries with only a respelling still apply. Switch the model on Voices.
         </span>
       </Banner>
     );
@@ -671,15 +703,23 @@ function SyncBanner({
   );
 }
 
-function Banner({ tone, children }: { tone: "warn" | "error"; children: React.ReactNode }) {
+function Banner({
+  tone,
+  children,
+}: {
+  tone: "info" | "warn" | "error";
+  children: React.ReactNode;
+}) {
   return (
     <div
-      role="alert"
+      // "info" is a standing fact about the page rather than something that went wrong, so it
+      // is not announced as an alert.
+      role={tone === "info" ? "status" : "alert"}
       className={cn(
         "flex flex-wrap items-center gap-3 rounded-md border px-3 py-2 text-sm",
-        tone === "warn"
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-          : "border-destructive/40 bg-destructive/10 text-destructive",
+        tone === "info" && "border-primary/30 bg-primary/5",
+        tone === "warn" && "border-amber-500/40 bg-amber-500/10 text-amber-300",
+        tone === "error" && "border-destructive/40 bg-destructive/10 text-destructive",
       )}
     >
       {children}
@@ -739,6 +779,7 @@ function Row({
   entry,
   index,
   lang,
+  respellingOnly,
   editing,
   cached,
   preview,
@@ -751,6 +792,8 @@ function Row({
   entry: LexiconEntry;
   index: number;
   lang: Lang;
+  /** Whether the viewer's generator here reads the respelling alone. See Editor. */
+  respellingOnly: boolean;
   editing: boolean;
   cached: CacheState;
   preview: ReturnType<typeof usePreview>;
@@ -760,8 +803,7 @@ function Row({
   onRemove: () => void;
   onConfirm: (confirmed: boolean) => void;
 }) {
-  const playable = Boolean(entry.grapheme.trim() && (entry.ipa ?? entry.alias ?? "").trim());
-  const ipa = formKind(entry) === "ipa";
+  const playable = Boolean(entry.grapheme.trim() && (entry.ipa?.trim() || entry.alias?.trim()));
 
   return (
     <div
@@ -791,60 +833,46 @@ function Row({
             className={cn("w-40 shrink-0", FIELD)}
             autoFocus
           />
-          <div className="flex w-52 shrink-0 items-center gap-1">
-            {/* The slashes are decoration inside the field, not content: IPA is written
-                between them everywhere else, and the validator rejects a rule that actually
-                contains one. Rendering them here says which notation is in force without
-                putting a character in the value. */}
-            {ipa ? (
-              <div className="border-input focus-within:border-ring dark:bg-input/30 flex h-7 flex-1 items-center gap-0.5 rounded-lg border px-2 text-sm">
-                <span aria-hidden className="text-muted-foreground/60 select-none">
-                  /
-                </span>
-                <input
-                  value={entry.ipa ?? ""}
-                  onChange={(event) => onChange({ ipa: event.target.value })}
-                  placeholder="ˈnoʊmɹəɡæn"
-                  aria-label="IPA"
-                  className="placeholder:text-muted-foreground/45 w-full min-w-0 flex-1 bg-transparent outline-none"
-                />
-                <span aria-hidden className="text-muted-foreground/60 select-none">
-                  /
-                </span>
-              </div>
-            ) : (
-              <Input
-                value={entry.alias ?? ""}
-                onChange={(event) => onChange({ alias: event.target.value })}
-                placeholder="nomeregan"
-                aria-label="Respelling"
-                title="Respell it as it should be said — “nomeregan”, not “NOME-reh-gan”."
-                className={cn("flex-1", FIELD)}
-              />
+          {/* The slashes are decoration inside the field, not content: IPA is written between
+              them everywhere else, and the validator rejects a rule that actually contains
+              one. */}
+          <div
+            className={cn(
+              "border-input focus-within:border-ring dark:bg-input/30 flex h-7 shrink-0 items-center gap-0.5 rounded-lg border px-2 text-sm",
+              IPA_WIDTH,
             )}
-            {/* Switching clears the other field rather than keeping it, because an entry
-                holding both is one ElevenLabs would resolve arbitrarily. */}
-            <Button
-              size="icon"
-              variant={ipa ? "secondary" : "ghost"}
-              aria-pressed={ipa}
-              className="size-7 shrink-0 text-sm"
-              title={
-                ipa
-                  ? "Writing IPA. Only eleven_v3 and eleven_flash_v2 honour it — click for a respelling."
-                  : "Respelling it as it should be said. Click to write IPA instead."
-              }
-              aria-label={ipa ? "Switch to a respelling" : "Switch to IPA"}
-              onClick={() =>
-                onChange(ipa ? { ipa: undefined, alias: "" } : { alias: undefined, ipa: "" })
-              }
-            >
-              {/* Struck through while off, so the button says which notation is in force on
-                  its own - an unpressed ghost button and a pressed one are a shade apart, and
-                  a shade is not enough to tell IPA from a respelling at a glance. */}
-              <span className={cn(!ipa && "line-through decoration-2")}>ʒ</span>
-            </Button>
+            title={
+              respellingOnly
+                ? "ElevenLabs only: fish.audio reads no IPA in this language."
+                : "Exact. ElevenLabs uses it over the respelling; only eleven_v3 and eleven_flash_v2 honour it."
+            }
+          >
+            <span aria-hidden className="text-muted-foreground/60 select-none">
+              /
+            </span>
+            <input
+              value={entry.ipa ?? ""}
+              onChange={(event) => onChange({ ipa: event.target.value })}
+              placeholder="ˈnoʊmɹəɡæn"
+              aria-label="IPA"
+              className="placeholder:text-muted-foreground/45 w-full min-w-0 flex-1 bg-transparent outline-none"
+            />
+            <span aria-hidden className="text-muted-foreground/60 select-none">
+              /
+            </span>
           </div>
+          <Input
+            value={entry.alias ?? ""}
+            onChange={(event) => onChange({ alias: event.target.value })}
+            placeholder="nomeregan"
+            aria-label="Respelling"
+            title={
+              respellingOnly
+                ? "What fish.audio speaks in this language. Respell it as it should be said — “nomeregan”, not “NOME-reh-gan”."
+                : "Respell it as it should be said — “nomeregan”, not “NOME-reh-gan”. Used where the IPA cannot be."
+            }
+            className={cn(RESPELLING_WIDTH, "shrink-0", FIELD)}
+          />
           <Input
             value={entry.note ?? ""}
             onChange={(event) => onChange({ note: event.target.value })}
@@ -859,8 +887,17 @@ function Row({
           <span className="w-40 shrink-0 truncate text-sm font-medium">
             {entry.grapheme || <span className="text-muted-foreground">(new entry)</span>}
           </span>
-          <span className="text-primary w-52 shrink-0 truncate text-sm">
-            {entry.alias ? `“${entry.alias}”` : `/${entry.ipa}/`}
+          <span
+            className={cn(
+              IPA_WIDTH,
+              "shrink-0 truncate text-sm",
+              respellingOnly ? "text-muted-foreground/50" : "text-primary",
+            )}
+          >
+            {entry.ipa ? `/${entry.ipa}/` : <span className="text-muted-foreground/40">—</span>}
+          </span>
+          <span className={cn(RESPELLING_WIDTH, "text-primary shrink-0 truncate text-sm")}>
+            {entry.alias ? `“${entry.alias}”` : <span className="text-muted-foreground/40">—</span>}
           </span>
           <FishBadge use={fishUse(entry, lang)} />
           <span className="truncate text-xs">{entry.note}</span>

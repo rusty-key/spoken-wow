@@ -9,7 +9,11 @@
  *
  *   ipa    English only, converted to ARPAbet and written as a phoneme tag. fish.audio has
  *          phoneme control for English, Chinese and Japanese only, and IPA for none of them.
- *   alias  every language, substituted as it is written.
+ *          Anywhere else a phoneme tag is worse than nothing: measured on s2.1-pro-free in
+ *          Russian, IPA and ARPAbet tags alike came back as seconds of invented syllables per
+ *          name. So outside English the IPA is dropped, never sent.
+ *   alias  every language, substituted as it is written. The fallback for an English entry
+ *          whose IPA does not convert, and the only thing used anywhere else.
  *
  * Free of server imports, because the lexicon editor shows which entries fish.audio uses.
  *
@@ -27,20 +31,30 @@ export type FishRule = { grapheme: string; replacement: string };
 /** How fish.audio will use an entry, which the lexicon editor shows beside it. */
 export type FishUse = "phoneme" | "respelling" | "unused";
 
+/** Whether fish.audio reads phoneme tags in `lang`: English only, as far as this app goes. */
+export function fishReadsPhonemes(lang: Lang): boolean {
+  return lang === BASE_LANG;
+}
+
+/** The ARPAbet fish.audio would be sent for an entry, or null when it gets none. */
+function arpabetFor(entry: LexiconEntry, lang: Lang): string | null {
+  return fishReadsPhonemes(lang) && entry.ipa ? ipaToArpabet(entry.ipa) : null;
+}
+
 export function fishUse(entry: LexiconEntry, lang: Lang): FishUse {
-  if (entry.alias) return "respelling";
-  return lang === BASE_LANG && entry.ipa && ipaToArpabet(entry.ipa) ? "phoneme" : "unused";
+  // The phoneme first, when there is one: it is exact, where a respelling is a guess.
+  if (arpabetFor(entry, lang)) return "phoneme";
+  return entry.alias ? "respelling" : "unused";
 }
 
 /** The entries fish.audio can use in `lang`, as replacements. */
 export function fishRules(entries: LexiconEntry[], lang: Lang): FishRule[] {
   return entries.flatMap((entry): FishRule[] => {
-    if (entry.alias) return [{ grapheme: entry.grapheme, replacement: entry.alias }];
-    if (lang !== BASE_LANG || !entry.ipa) return [];
-    const arpabet = ipaToArpabet(entry.ipa);
-    return arpabet
-      ? [{ grapheme: entry.grapheme, replacement: `<|phoneme_start|>${arpabet}<|phoneme_end|>` }]
-      : [];
+    const arpabet = arpabetFor(entry, lang);
+    if (arpabet) {
+      return [{ grapheme: entry.grapheme, replacement: `<|phoneme_start|>${arpabet}<|phoneme_end|>` }];
+    }
+    return entry.alias ? [{ grapheme: entry.grapheme, replacement: entry.alias }] : [];
   });
 }
 

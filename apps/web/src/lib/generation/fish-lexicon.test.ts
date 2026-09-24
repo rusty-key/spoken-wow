@@ -58,4 +58,33 @@ describe("another language", () => {
     expect(fishUse(ENTRIES[0], "deDE")).toBe("unused");
     expect(fishUse(ENTRIES[5], "deDE")).toBe("respelling");
   });
+
+  // Measured on s2.1-pro-free in Russian: IPA and ARPAbet inside phoneme tags both came back
+  // as several seconds of invented syllables per name. Nothing but a respelling may reach it.
+  it("never sends a phoneme tag, even for IPA that would convert", () => {
+    const rules = fishRules([{ grapheme: "Thrall", ipa: "θɹɔl", confidence: "high" }], "ruRU");
+    expect(rules).toEqual([]);
+    expect(applyFishLexicon("Thrall", rules)).toBe("Thrall");
+  });
+
+  it("uses the respelling of an entry carrying both", () => {
+    const both: LexiconEntry = { grapheme: "Утер", ipa: "ˈutʲɪr", alias: "У́тер", confidence: "check" };
+    expect(fishUse(both, "ruRU")).toBe("respelling");
+    expect(applyFishLexicon("Утер ждёт.", fishRules([both], "ruRU"))).toBe("У́тер ждёт.");
+  });
+});
+
+describe("an entry carrying both, in English", () => {
+  const both: LexiconEntry = { grapheme: "Thrall", ipa: "θɹɔl", alias: "thrawl", confidence: "high" };
+  const loch: LexiconEntry = { grapheme: "Loch", ipa: "lɔx", alias: "lock", confidence: "check" };
+
+  it("speaks the IPA as a phoneme tag when it converts", () => {
+    expect(fishUse(both, "enUS")).toBe("phoneme");
+    expect(applyFishLexicon("Thrall", fishRules([both], "enUS"))).toBe(phoneme("TH R AO1 L"));
+  });
+
+  it("falls back to the respelling when the IPA does not convert", () => {
+    expect(fishUse(loch, "enUS")).toBe("respelling");
+    expect(applyFishLexicon("Loch Modan", fishRules([loch], "enUS"))).toBe("lock Modan");
+  });
 });

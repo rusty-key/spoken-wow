@@ -34,7 +34,7 @@ import {
 
 import { graphemeCasings } from "./casings";
 import { logSoundChanges, soundChanges } from "./dirty";
-import { toRules, type DictionaryRule, type LexiconEntry } from "./lexicon";
+import { kindOf, toRules, type DictionaryRule, type LexiconEntry } from "./lexicon";
 
 export type LexiconSync = "synced" | "pending" | "never";
 
@@ -322,7 +322,7 @@ export async function sync(
   // case-insensitive - see toRules. The language's own text, since that is what is spoken.
   const rules = toRules(
     entries,
-    await graphemeCasings(entries.filter((e) => !e.alias).map((e) => e.grapheme), lang),
+    await graphemeCasings(entries.filter((e) => kindOf(e) === "ipa").map((e) => e.grapheme), lang),
   );
 
   // English's dictionary is named by the environment, because ../wow-lore pins it too;
