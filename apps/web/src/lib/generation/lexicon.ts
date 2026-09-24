@@ -12,9 +12,11 @@
  *   alias  a respelling. Approximate, because it is only as good as the reader's guess at
  *          the new spelling, but honoured by every model.
  *
- * Both kinds can sit in one dictionary, so a lexicon does not have to choose. What it must
- * not do is carry both for one name: ElevenLabs would apply one of them and nothing here
- * could say which.
+ * An entry may carry both, because the two providers can read different things. ElevenLabs
+ * takes one rule per word, so it gets the IPA whenever there is one and the respelling only
+ * otherwise - which rule it holds is always knowable from the entry. fish.audio reads IPA in
+ * English alone (converted to ARPAbet) and elsewhere only the respelling: see fish-lexicon.
+ * Writing both is how one entry serves both.
  */
 
 export const CONFIDENCES = ["high", "check"] as const;
@@ -30,7 +32,7 @@ export function honoursPhonemes(modelId: string): boolean {
 export type LexiconEntry = {
   /** The word as the corpus writes it. Matched case-insensitively, so one spelling suffices. */
   grapheme: string;
-  /** Exact pronunciation, for anyone who can write IPA. Exactly one of ipa and alias. */
+  /** Exact pronunciation, for anyone who can write IPA. At least one of ipa and alias. */
   ipa?: string;
   /**
    * A respelling ElevenLabs reads in place of the name, for anyone who cannot.
@@ -44,9 +46,12 @@ export type LexiconEntry = {
   note?: string;
 };
 
-/** Which kind of rule an entry will become. */
+/**
+ * Which kind of rule an entry becomes on ElevenLabs: the IPA when there is one, since it is
+ * exact, and the respelling otherwise.
+ */
 export function kindOf(entry: LexiconEntry): "ipa" | "alias" {
-  return entry.alias ? "alias" : "ipa";
+  return entry.ipa ? "ipa" : "alias";
 }
 
 export class LexiconError extends Error {}
@@ -88,14 +93,14 @@ export function toRules(
   casings: Record<string, string[]> = {},
 ): DictionaryRule[] {
   return entries.flatMap((entry): DictionaryRule[] => {
-    if (entry.alias) {
+    if (kindOf(entry) === "alias") {
       return [
         {
           string_to_replace: entry.grapheme,
           case_sensitive: false,
           word_boundaries: true,
           type: "alias",
-          alias: entry.alias,
+          alias: entry.alias!,
         },
       ];
     }
@@ -172,16 +177,10 @@ export function validateEntry(input: unknown, index: number): LexiconEntry {
     throw new LexiconError(`${where}: "${grapheme}" contains a space, which never matches`);
   }
 
-  // Exactly one, never both. ElevenLabs would apply one of a phoneme and an alias rule for
-  // the same word and nothing on the editor page could say which, so an entry carrying both
-  // is an entry whose pronunciation is unknowable.
+  // At least one. Both is fine: each provider reads the one it can, and kindOf says which
+  // ElevenLabs gets.
   const ipa = optional(raw, "ipa");
   const alias = optional(raw, "alias");
-  if (ipa && alias) {
-    throw new LexiconError(
-      `${where}: "${grapheme}" has both IPA and a respelling; give it one or the other`,
-    );
-  }
   if (!ipa && !alias) {
     throw new LexiconError(`${where}: "${grapheme}" needs either IPA or a respelling`);
   }

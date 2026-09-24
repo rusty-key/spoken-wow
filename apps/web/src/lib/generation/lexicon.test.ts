@@ -122,9 +122,22 @@ describe("respelled entries", () => {
     expect(kindOf(validateEntry(RESPELLED, 0))).toBe("alias");
   });
 
-  // ElevenLabs would apply one of the two and nothing on the editor page could say which.
-  it("rejects an entry carrying both", () => {
-    expect(() => validateEntry({ ...RESPELLED, ipa: "ˈnoʊmɹəɡæn" }, 0)).toThrow(/one or the other/);
+  // Each provider reads the one it can: ElevenLabs the IPA, fish.audio outside English the
+  // respelling. So the pair is one entry, not a conflict.
+  it("accepts an entry carrying both, and gives ElevenLabs the IPA", () => {
+    const both = validateEntry({ ...RESPELLED, ipa: "ˈnoʊmɹəɡæn" }, 0);
+    expect(both).toEqual({ ...RESPELLED, ipa: "ˈnoʊmɹəɡæn" });
+    expect(kindOf(both)).toBe("ipa");
+    expect(toRules([both])).toEqual([
+      {
+        string_to_replace: "Gnomeregan",
+        type: "phoneme",
+        phoneme: "ˈnoʊmɹəɡæn",
+        alphabet: "ipa",
+        case_sensitive: true,
+        word_boundaries: true,
+      },
+    ]);
   });
 
   it("rejects an entry carrying neither", () => {

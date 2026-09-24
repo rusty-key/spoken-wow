@@ -22,7 +22,7 @@
 import { db } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
-import { kindOf, type LexiconEntry } from "./lexicon";
+import type { LexiconEntry } from "./lexicon";
 import type { Source } from "@/lib/sections";
 
 /**
@@ -205,9 +205,14 @@ export function soundChanges(previous: LexiconEntry[], next: LexiconEntry[]): So
   return changes;
 }
 
-/** Everything about an entry that an ear can tell apart, as one comparable string. */
+/**
+ * Everything about an entry that an ear can tell apart, as one comparable string.
+ *
+ * Both fields, not only the one ElevenLabs uses: fish.audio speaks the respelling outside
+ * English, so a respelling edit on an entry that also has IPA still changes some takes.
+ */
 function sound(entry: LexiconEntry): string {
-  return `${kindOf(entry)}:${entry.alias ?? entry.ipa ?? ""}`;
+  return JSON.stringify([entry.ipa ?? "", entry.alias ?? ""]);
 }
 
 /**

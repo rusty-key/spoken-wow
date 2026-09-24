@@ -12,7 +12,7 @@ import { readLexicon } from "@/lib/generation/dictionary";
 import { previewCache, voicePicker } from "@/lib/generation/preview";
 import { generationStatus } from "@/lib/generation/status";
 import { can } from "@/lib/permissions";
-import { readGenerationSettings, speakingConfig } from "@/lib/generation/preference";
+import { readPreference, speakingConfig } from "@/lib/generation/preference";
 
 export const metadata: Metadata = { title: "Pronunciation · Spoken" };
 
@@ -37,7 +37,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
   const [lexicon, preference, status] = await Promise.all([
     readLexicon(lang),
-    readGenerationSettings(session.user.id),
+    readPreference(session.user.id, lang),
     generationStatus(apiKey ? { apiKey } : {}, lang),
   ]);
   // This editor's own ElevenLabs settings, which are what a preview is spoken with and what
@@ -58,13 +58,20 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     <main className="mx-auto max-w-6xl px-5 pt-6 pb-36">
       <h1 className="text-xl font-semibold">Pronunciation</h1>
       <p className="text-muted-foreground mt-1 mb-5 text-sm">
-        How ElevenLabs should say the names the corpus uses. Each entry becomes a phoneme rule
-        in a pronunciation dictionary, matched case-insensitively at word boundaries, and every
-        line generated afterwards is spoken with it. Only names a plain reader gets wrong belong
-        here — a rule for a name it already handles can only make that name worse.
+        How the names the corpus uses should be said. Each entry becomes a rule in a
+        pronunciation dictionary, matched case-insensitively at word boundaries, and every line
+        generated afterwards is spoken with it: ElevenLabs takes the IPA when an entry has one
+        and the respelling otherwise, and fish.audio takes the IPA in English only. Only names a
+        plain reader gets wrong belong here — a rule for a name it already handles can only make
+        that name worse.
       </p>
 
-      <LexiconEditor initial={lexicon} modelId={config.modelId} initialCache={cached} />
+      <LexiconEditor
+        initial={lexicon}
+        modelId={config.modelId}
+        provider={preference.provider}
+        initialCache={cached}
+      />
     </main>
   );
 }
