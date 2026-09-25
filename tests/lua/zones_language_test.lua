@@ -70,5 +70,28 @@ local envelope = Z:CaptureContribution(1537, nil)
 Expect("D. the locale is the client's", envelope:match("\nlocale=enUS\n") ~= nil, true)
 Expect("D. ...and the language narration plays in goes beside it", envelope:match("\npack=deDE\n") ~= nil, true)
 
+---------------------------------------------------------------- E. the preference follows the client
+local function InstallOn(locale, db)
+    stub.SetLocale(locale)
+    _G.SpokenZonesDB = db
+    _G.SpokenZonesAudioPacks = {}
+    return H.LoadZones(ZONES)
+end
+
+Z = InstallOn("esES", { language = "esES" })
+Expect("E. a stored choice is honored on the client it matches", Z:GetLanguagePreference(), "esES")
+Z = InstallOn("frFR", { language = "esES" })
+Expect("E. a Spanish choice does not pin a French client", Z:GetLanguagePreference(), nil)
+
+Z = InstallOn("esES", {})
+Z:SetLanguage("enUS")
+Expect("E. choosing stores per client", _G.SpokenZonesDB.languageByLocale.esES, "enUS")
+Expect("E. choosing clears the legacy global", _G.SpokenZonesDB.language, nil)
+local savedDB = _G.SpokenZonesDB
+Z = InstallOn("esES", savedDB)
+Expect("E. the choice sticks on the same client", Z:GetLanguagePreference(), "enUS")
+Z = InstallOn("frFR", savedDB)
+Expect("E. ...but a French client follows itself", Z:GetLanguagePreference(), nil)
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll zones language tests passed")

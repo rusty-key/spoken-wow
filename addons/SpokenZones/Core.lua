@@ -53,7 +53,10 @@ local defaults = {
 	-- a pack they may never install. See Audio.lua.
 	-- `language` likewise: nil means "follow the client locale", which is not the
 	-- same answer as "enUS" -- a player who never chose should start reading their
-	-- own language the day it ships, and one who picked English should not.
+	-- own language the day it ships, and one who picked English should not. The
+	-- choice is per client (SpokenZonesDB.languageByLocale): SavedVariables are
+	-- shared across clients, and one global would pin a French client to the
+	-- Spanish picked on the Spanish one. See Language.lua.
 	debug = false,
 	-- `hide` and `minimapPos` are intentionally absent: LibDBIcon owns those keys
 	-- inside SpokenZonesDB and writes them itself. See UI/MinimapButton.lua.
