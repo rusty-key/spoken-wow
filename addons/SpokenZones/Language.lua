@@ -124,11 +124,28 @@ end
 -- Selection
 --------------------------------------------------------------------------------
 
--- The stored preference, or nil for "follow the client". The two are not the
--- same: a player who never chose should start reading German the day German
--- ships, while one who explicitly picked English must keep English.
+-- The stored preference for this client, or nil for "follow the client". The
+-- two are not the same: a player who never chose should start reading German
+-- the day German ships, while one who explicitly picked English must keep
+-- English -- on that client. SavedVariables are shared across clients, so the
+-- preference is keyed by client locale: a single global would pin a French
+-- client to the Spanish somebody picked on the Spanish one. Each client
+-- remembers its own choice and follows itself by default.
 function SpokenZones:GetLanguagePreference()
-	local pref = SpokenZonesDB and SpokenZonesDB.language
+	local db = SpokenZonesDB
+	if not db then
+		return nil
+	end
+	local perClient = db.languageByLocale
+	local pref = type(perClient) == "table" and perClient[self.clientLocale] or nil
+	if pref == nil then
+		-- Single preference from before choices were per client. Honored only
+		-- where it already matches this client: a stored Spanish belongs to
+		-- the Spanish client, and a French client must not inherit it.
+		if db.language == self.clientLocale then
+			pref = db.language
+		end
+	end
 	return type(pref) == "string" and byCode[pref] and pref or nil
 end
 
@@ -198,8 +215,9 @@ function SpokenZones:GetLanguageName(code)
 	return locale.native or locale.name
 end
 
--- Stores the preference. Returns false when the language is not selectable, so
--- the caller can say why rather than storing a choice that resolves to English.
+-- Stores the preference for this client. Returns false when the language is not
+-- selectable, so the caller can say why rather than storing a choice that
+-- resolves to English.
 --
 -- Takes effect on /reload. Nothing here fakes a live switch: the tables for a
 -- language that was not active at load were never built, and pretending
@@ -208,7 +226,9 @@ function SpokenZones:SetLanguage(code)
 	if code ~= nil and not self:IsLanguageSelectable(code) then
 		return false
 	end
-	SpokenZonesDB.language = code
+	SpokenZonesDB.languageByLocale = SpokenZonesDB.languageByLocale or {}
+	SpokenZonesDB.languageByLocale[self.clientLocale] = code
+	SpokenZonesDB.language = nil
 	return true
 end
 
