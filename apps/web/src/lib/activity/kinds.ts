@@ -25,7 +25,9 @@ export type ActivityDetail = {
     batchId?: string;
   };
   "take.restored": { version: number; from?: number | null };
-  "take.acked": Record<string, never>;
+  /** `groupId` when the take was one of several cleared in one click; the page folds it there. */
+  "take.acked": { groupId?: string };
+  "marks.cleared": { groupId: string; count: number };
   "batch.queued": { batchId: string; label?: string | null; count: number };
   "batch.stopped": { batchId?: string; label?: string | null; reason?: string | null; cancelled?: number };
 
@@ -72,6 +74,15 @@ export type ActivityDetail = {
   "contribution.resolved": { status: string; key?: string };
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };
+
+  // Accounts, through better-auth's admin plugin rather than this app's routes. Every
+  // language's, so a global admin's alone to read: see `global` in store.ts.
+  /** `role` as set-role received it: one role, or several joined with ", ". */
+  "user.role_changed": { role: string };
+  "user.banned": { banReason?: string; banExpiresIn?: number };
+  "user.unbanned": Record<string, never>;
+  "user.removed": Record<string, never>;
+  "user.impersonated": Record<string, never>;
 };
 
 export type ActivityKind = keyof ActivityDetail;
@@ -90,6 +101,7 @@ export function isCategory(value: unknown): value is Category {
 const CATEGORY_OF: Record<string, Category> = {
   take: "audio",
   batch: "audio",
+  marks: "audio",
   text: "text",
   name: "text",
   lexicon: "text",
@@ -104,6 +116,7 @@ const CATEGORY_OF: Record<string, Category> = {
   language: "admin",
   contribution: "admin",
   report: "admin",
+  user: "admin",
 };
 
 export function categoryOf(kind: string): Category | null {

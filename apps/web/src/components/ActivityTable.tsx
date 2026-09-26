@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePendingPush } from "@/components/usePendingPush";
 import { CATEGORIES, categoryOf, type Category } from "@/lib/activity/kinds";
-import type { ActivityRow } from "@/lib/activity/store";
+import type { ActivityRow, Group } from "@/lib/activity/store";
 import { usd } from "@/lib/generation/money";
 import { isProvider, PROVIDER_NAME } from "@/lib/generation/providers";
 import { localeHref, withLang } from "@/lib/lang";
@@ -105,7 +105,12 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         quote: null,
       };
     case "take.acked":
-      return { what: "marked the audio fine after a pronunciation change", quote: null };
+      return { what: "marked the audio fine after a pronunciation change", quote: row.lineId ? null : row.subject };
+    case "marks.cleared":
+      return {
+        what: `marked ${num(d.count)?.toLocaleString() ?? "?"} files fine after a pronunciation change`,
+        quote: null,
+      };
     case "batch.queued":
       return {
         what: `queued ${num(d.count)?.toLocaleString() ?? "?"} lines for regeneration`,
@@ -186,6 +191,20 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: `changed a contribution's ${str(d.field) ?? "details"}`, quote: null };
     case "report.resolved":
       return { what: `marked a report ${str(d.status) ?? "resolved"}`, quote: str(d.category) };
+    case "user.role_changed":
+      return { what: `made ${row.subjectName ?? "a removed user"} ${str(d.role) ?? "?"}`, quote: null };
+    case "user.banned":
+      return { what: `banned ${row.subjectName ?? "a removed user"}`, quote: str(d.banReason) };
+    case "user.unbanned":
+      return { what: `unbanned ${row.subjectName ?? "a removed user"}`, quote: null };
+    case "user.removed":
+      return { what: "removed a user", quote: null };
+    case "user.impersonated":
+      return { what: `signed in as ${row.subjectName ?? "a removed user"}`, quote: null };
+    // A kind this page does not know: one a newer release wrote before a rollback to this
+    // one. Shown by its name rather than breaking the page.
+    default:
+      return { what: String(row.kind), quote: null };
   }
 }
 
@@ -194,9 +213,25 @@ function target(row: ActivityRow): { href: string; label: string } | null {
   if (row.source && row.lineId) return { href: explorerHref(row.source, row.lineId), label: row.lineId };
   if (categoryOf(row.kind) === "voices") return row.subject ? { href: "/voices", label: row.subject } : null;
   if (row.kind.startsWith("lexicon.") && row.subject) return { href: lexiconHref(row.subject), label: "Pronunciation" };
-  if (row.kind.startsWith("grant.")) return { href: "/admin", label: "Users" };
+  if (row.kind.startsWith("grant.") || row.kind.startsWith("user.")) return { href: "/admin", label: "Users" };
   if (row.kind.startsWith("report.")) return { href: "/reports?view=all", label: `report ${row.subject}` };
   if (row.kind.startsWith("contribution.")) return { href: "/contributions", label: `contribution ${row.subject}` };
+  return null;
+}
+
+/**
+ * The rows a row opens onto, if it folds any: a queue batch's takes, or the files one clear
+ * of marks covered. `count` is what the server counted for the page's day range.
+ */
+function groupOf(row: ActivityRow): { kind: Group; id: string; count: number; noun: [string, string] } | null {
+  if (row.kind === "batch.queued") {
+    const id = str(row.detail.batchId);
+    return id ? { kind: "batch", id, count: row.takes ?? 0, noun: ["take", "takes"] } : null;
+  }
+  if (row.kind === "marks.cleared") {
+    const id = str(row.detail.groupId);
+    return id ? { kind: "marks", id, count: num(row.detail.count) ?? 0, noun: ["file", "files"] } : null;
+  }
   return null;
 }
 
@@ -252,7 +287,9 @@ export default function ActivityTable({
   const [pressed, setPressed] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
   const loading = useRef(new Set<string>());
-  const [batches, setBatches] = useState<Record<string, ActivityRow[] | "failed">>({});
+  // Keyed by group and day range: the same batch lists different takes under another range.
+  const [groups, setGroups] = useState<Record<string, ActivityRow[] | "failed">>({});
+  const rangeKey = `${filter.from ?? ""}:${filter.to ?? ""}`;
 
   useEffect(() => {
     if (pressed === 0) return;
@@ -289,18 +326,22 @@ export default function ActivityTable({
     push(localeHref(lang, `/activity${params.size ? `?${params}` : ""}`));
   }
 
-  async function toggleBatch(row: ActivityRow) {
-    const batchId = str(row.detail.batchId);
-    if (!batchId) return;
+  async function toggleGroup(row: ActivityRow) {
+    const group = groupOf(row);
+    if (!group) return;
+    const key = `${group.kind}:${group.id}:${rangeKey}`;
     const opening = open !== row.id;
     setOpen(opening ? row.id : null);
     // A failed load is tried again on the next open; one still in flight is not.
-    if (!opening || Array.isArray(batches[batchId]) || loading.current.has(batchId)) return;
-    loading.current.add(batchId);
-    const response = await fetch(withLang(lang, `/api/activity/batch?id=${batchId}`)).catch(() => null);
+    if (!opening || Array.isArray(groups[key]) || loading.current.has(key)) return;
+    loading.current.add(key);
+    const params = new URLSearchParams({ id: group.id, kind: group.kind });
+    if (filter.from) params.set("from", filter.from);
+    if (filter.to) params.set("to", filter.to);
+    const response = await fetch(withLang(lang, `/api/activity/batch?${params}`)).catch(() => null);
     const takes = response?.ok ? ((await response.json()) as { takes: ActivityRow[] }).takes : null;
-    loading.current.delete(batchId);
-    setBatches((current) => ({ ...current, [batchId]: takes ?? "failed" }));
+    loading.current.delete(key);
+    setGroups((current) => ({ ...current, [key]: takes ?? "failed" }));
   }
 
   // Day headings between rows, so a column of bare clock times can be read.
@@ -363,8 +404,8 @@ export default function ActivityTable({
               const { what, quote } = describe(row);
               const link = target(row);
               const takes = takesOf(row);
-              const batchId = row.kind === "batch.queued" ? str(row.detail.batchId) : null;
-              const expanded = batchId !== null && open === row.id;
+              const group = groupOf(row);
+              const expanded = group !== null && open === row.id;
 
               out.push(
                 <tr key={row.id} className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5">
@@ -402,32 +443,32 @@ export default function ActivityTable({
                     {takes.map((take) => (
                       <PlayTake key={take.version} take={take} onPlay={play} />
                     ))}
-                    {batchId && (row.takes ?? 0) > 0 && (
+                    {group && group.count > 0 && (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-7 px-2"
                         aria-expanded={expanded}
-                        onClick={() => void toggleBatch(row)}
+                        onClick={() => void toggleGroup(row)}
                       >
                         {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                        {row.takes!.toLocaleString()} {row.takes === 1 ? "take" : "takes"}
+                        {group.count.toLocaleString()} {group.noun[group.count === 1 ? 0 : 1]}
                       </Button>
                     )}
                   </td>
                 </tr>,
               );
 
-              if (expanded && batchId) {
-                const inner = batches[batchId];
+              if (expanded && group) {
+                const inner = groups[`${group.kind}:${group.id}:${rangeKey}`];
                 out.push(
                   <tr key={`${row.id}-takes`}>
                     <td />
                     <td colSpan={3} className="border-b pb-2">
                       {inner === undefined ? (
-                        <p className="text-muted-foreground py-2 text-xs">Loading takes…</p>
+                        <p className="text-muted-foreground py-2 text-xs">Loading {group.noun[1]}…</p>
                       ) : inner === "failed" ? (
-                        <p className="text-destructive py-2 text-xs">Could not load this batch's takes.</p>
+                        <p className="text-destructive py-2 text-xs">Could not load these {group.noun[1]}.</p>
                       ) : (
                         <ul className="max-h-80 overflow-y-auto text-xs">
                           {inner.map((take) => (

@@ -19,6 +19,8 @@
  * postdates the change -- but the app never decides that audio nobody has listened to is
  * fine, because deciding that is the whole content of the mark.
  */
+import { randomUUID } from "node:crypto";
+
 import { recordActivities } from "@/lib/activity/store";
 import { db } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
@@ -156,7 +158,14 @@ export async function loadDirtyContext(
   };
 }
 
-/** Say that these takes are fine as they stand. Idempotent; a second clear moves the date. */
+/**
+ * Say that these takes are fine as they stand. Idempotent; a second clear moves the date.
+ *
+ * Several files are one click, logged as one "marks.cleared" row with every file's row
+ * grouped under it for the page to fold (migration 0053). The marks and their log rows are
+ * one transaction: a click's row lost while its files' rows landed would hide those files
+ * from the log for good, so a failed log write fails the clear rather than being swallowed.
+ */
 export async function acknowledge(
   source: Source,
   files: string[],
@@ -164,17 +173,41 @@ export async function acknowledge(
   lang: Lang = BASE_LANG,
 ): Promise<void> {
   if (!files.length) return;
-  await db().query(
-    `insert into "take_ack" ("source", "lang", "file", "ackedAt", "ackedBy")
-     select $1, $4, unnest($2::text[]), now(), $3
-     on conflict ("source", "lang", "file") do update set
-       "ackedAt" = excluded."ackedAt",
-       "ackedBy" = excluded."ackedBy"`,
-    [source, files, userId, lang],
-  );
-  await recordActivities(
-    files.map((file) => ({ kind: "take.acked" as const, lang, source, subject: file, actorId: userId, detail: {} })),
-  );
+  const groupId = files.length > 1 ? randomUUID() : null;
+  const client = await db().connect();
+  try {
+    await client.query("begin");
+    await client.query(
+      `insert into "take_ack" ("source", "lang", "file", "ackedAt", "ackedBy")
+       select $1, $4, unnest($2::text[]), now(), $3
+       on conflict ("source", "lang", "file") do update set
+         "ackedAt" = excluded."ackedAt",
+         "ackedBy" = excluded."ackedBy"`,
+      [source, files, userId, lang],
+    );
+    await recordActivities(
+      [
+        ...(groupId
+          ? [{ kind: "marks.cleared" as const, lang, source, actorId: userId, detail: { groupId, count: files.length } }]
+          : []),
+        ...files.map((file) => ({
+          kind: "take.acked" as const,
+          lang,
+          source,
+          subject: file,
+          actorId: userId,
+          detail: groupId ? { groupId } : {},
+        })),
+      ],
+      client,
+    );
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

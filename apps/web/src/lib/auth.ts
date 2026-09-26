@@ -9,6 +9,7 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { admin as adminPlugin } from "better-auth/plugins";
 
+import { recordAuthEvent } from "./activity/auth-events";
 import { db } from "./db";
 import { ac, roles } from "./permissions";
 
@@ -45,4 +46,9 @@ export const auth = betterAuth({
     // Lets server actions and route handlers set the session cookie. Must stay last.
     nextCookies(),
   ],
+  // Role changes, bans, removals and impersonation reach the activity log from here: they
+  // are the admin plugin's endpoints, not this app's, so no store of ours sees them.
+  hooks: {
+    after: recordAuthEvent,
+  },
 });
