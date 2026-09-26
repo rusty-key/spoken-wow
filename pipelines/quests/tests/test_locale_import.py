@@ -64,9 +64,9 @@ class TestExtractedLines:
         [line] = extracted_lines([row(loc_text="Danke, $N.")])
         assert (line["generatable"], line["skipReason"]) == (False, "invalid-chars")
 
-    def test_progress_text_is_never_voiced_in_any_language(self):
+    def test_progress_text_is_voiced_in_every_language(self):
         [line] = extracted_lines([row(source="progress", loc_text="Noch nicht?")])
-        assert line["skipReason"] == "progress"
+        assert (line["generatable"], line["skipReason"]) == (True, None)
 
 
 class TestExtractedNames:

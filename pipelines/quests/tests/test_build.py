@@ -16,7 +16,7 @@ CORPUS = {
         {"lineId": "q:7:progress", "source": "progress", "questId": 7,
          "questTitle": "Growling Gut", "npcId": 288, "npcName": "Jitters",
          "npcType": "creature", "fileName": "7-progress",
-         "originalText": "Not yet.", "generatable": False},
+         "originalText": "Not yet.", "generatable": True},
         {"lineId": "g:abc123", "source": "gossip", "questId": None, "questTitle": None,
          "npcId": 68, "npcName": "Stormwind City Guard", "npcType": "creature",
          "fileName": "abc123", "originalText": 'Move along, "citizen".',
@@ -87,9 +87,9 @@ def test_quest_id_lookup_is_keyed_by_source_then_title():
     assert table["complete"]["Growling Gut"] == 5
 
 
-def test_quest_id_lookup_omits_progress():
-    """Progress text is never voiced, so an entry for it would resolve to silence."""
-    assert "progress" not in _tables()["quest_id_lookups"]
+def test_quest_id_lookup_includes_progress():
+    """Progress text is voiced, so the addon can resolve its quest like any other line."""
+    assert "progress" in _tables()["quest_id_lookups"]
 
 
 def test_prune_collapses_unambiguous_titles_to_a_bare_id():

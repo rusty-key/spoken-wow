@@ -54,12 +54,8 @@ describe("isVoiceable", () => {
     expect(isVoiceable({ skipReason: "invalid-chars" }, "Hello $2113w. <He waves.>")).toBe(false);
   });
 
-  it("still refuses progress text whatever its brackets", () => {
-    expect(isVoiceable({ skipReason: "progress" }, "<He waits.>")).toBe(false);
-  });
-
-  it("never rescues progress text, which is skipped by policy rather than by damage", () => {
-    expect(isVoiceable({ skipReason: "progress" }, "perfectly ordinary text")).toBe(false);
+  it("voices progress text, which is skipped by nothing but damage", () => {
+    expect(isVoiceable({ skipReason: null }, "Did you find it yet?")).toBe(true);
   });
 
   it("still refuses a clean line that an override has broken", () => {

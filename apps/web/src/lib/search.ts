@@ -47,10 +47,9 @@ export type LineFilters = {
   /**
    * Whether to include progress text, which is hidden unless asked for.
    *
-   * 3,093 lines - 17.7% of the corpus - that no code path will ever voice: the generator
-   * refuses them before the request (tts_cli/tts_utils.py) and so does regeneration
-   * (lib/text-gate.ts). Showing them by default pads every search with results nobody can
-   * act on, so absent means hidden and this is how you ask for them back.
+   * 3,093 lines - 17.7% of the corpus. They were hidden when nothing voiced them; they are
+   * voiced now, and stay hidden by default only as a view choice. Absent means hidden and
+   * this is how you ask for them back.
    *
    * Widening rather than narrowing, which is why activeFilterCount ignores it.
    */
@@ -305,7 +304,7 @@ function matches(line: CorpusLine, q: string, filter: Filter): boolean {
  * A gap: a line the generator would voice, with no live take.
  *
  * Same definition as missing_lines (tts_cli/store.py) - lines the generator never voices
- * (progress text, unresolved template tokens) are expected absences, not gaps.
+ * (unresolved template tokens) are expected absences, not gaps.
  */
 export function isGap(
   line: CorpusLine,

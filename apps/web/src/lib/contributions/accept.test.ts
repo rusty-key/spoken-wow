@@ -225,13 +225,13 @@ describe("resolveContribution: quests accept", () => {
     expect(await lineIsInExplorer(outcome.contribution)).toBe(true);
   });
 
-  it("keeps a progress line but never voices it, as the extract marks its own", async () => {
+  it("voices a progress line like any other", async () => {
     await speaker(npcId, "orc", "female", "standard");
     const id = await questContribution({ event: "progress" });
     expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
 
     expect(await linesFor(questLineId(questId, "progress"))).toEqual([
-      { origin: "contributed", generatable: false, skipReason: "progress" },
+      { origin: "contributed", generatable: true, skipReason: null },
     ]);
   });
 

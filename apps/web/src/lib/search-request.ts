@@ -43,8 +43,8 @@ export async function filtersFromParams(params: URLSearchParams): Promise<LineFi
     includeProgress: params.get("progress") === "1",
     line: params.get("line") || undefined,
     overridden: params.get("overridden") === "1",
-    // Absent means hidden, like progress text: the useful default view is the corpus minus
-    // the lines nobody will ever voice.
+    // Absent means hidden: the useful default view is the corpus minus the lines nobody will
+    // ever voice.
     ignored: params.get("ignored") === "1",
     dirty: params.get("dirty") === "1",
     reports: oneOf(params.get("fb"), ["open"] as const),

@@ -239,9 +239,6 @@ async function insertLine(
   identity: LineIdentity,
   template: string,
 ): Promise<void> {
-  // A progress line is kept but never voiced, as the extract marks its own (skipReason
-  // "progress"): the game plays no audio for that panel.
-  const generatable = identity.source !== "progress";
   await client.query(
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
@@ -250,7 +247,7 @@ async function insertLine(
      values ($1, 0, $2, 1, true, 'contributed', $3, $4, $5, null, $6, $7, $8, $9, $10, $11, $12)`,
     [
       identity.lineId, BASE_LANG, identity.source, identity.questId, identity.questTitle,
-      identity.fileName, spokenFromTemplate(template), template, generatable, generatable ? null : "progress",
+      identity.fileName, spokenFromTemplate(template), template, true, null,
       userId, `contribution #${contributionId}`,
     ],
   );
@@ -307,9 +304,7 @@ async function acceptTranslation(
     if (seen.has(key)) continue;
     seen.add(key);
     // Per variant: its $N is spoken in the form the variant's player gender takes.
-    const skipReason = skipReasonFor(
-      identity.source, text, contribution.locale as Lang, line.playerGender,
-    );
+    const skipReason = skipReasonFor(text, contribution.locale as Lang, line.playerGender);
     await client.query(
       `insert into "quest_line"
          ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
