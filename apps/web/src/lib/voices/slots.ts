@@ -29,8 +29,7 @@ export type VoiceSlot = {
  * Alphabetical rather than busiest-first: at fifty-odd voices the list is something you
  * navigate to find one row, and the flavors of a race-gender then sit together.
  *
- * Only generatable lines count: progress text and lines with unresolved template tokens are
- * never voiced. The narrator also reads the stage directions inside other NPCs' lines
+ * Only generatable lines count: lines with unresolved template tokens are never voiced. The narrator also reads the stage directions inside other NPCs' lines
  * (generation/narration.ts), so those count towards it as well as the lines it speaks itself.
  */
 export async function voiceSlots(): Promise<VoiceSlot[]> {

@@ -137,10 +137,10 @@ export async function saveQuestText(args: {
     );
 
     // Whether the line can be voiced is decided from the text now being written, by the
-    // same rules the English uses: progress text never is, and a stray bracket or a token
+    // same rules the English uses: a stray bracket or a token
     // this language has no word for would be read aloud. Its $N does have one
     // (player-words.ts), in the form the line's player gender takes.
-    const skipReason = skipReasonFor(english.source, text, args.lang, english.playerGender);
+    const skipReason = skipReasonFor(text, args.lang, english.playerGender);
 
     // Structure from the row being replaced, or from the English one for a first
     // translation; localeText from the replaced row only, since the English has none.

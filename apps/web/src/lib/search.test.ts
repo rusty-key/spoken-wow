@@ -154,7 +154,7 @@ describe("field filters", () => {
     const narrated = asShipped({ narration: true });
     expect(narrated.length).toBeGreaterThan(0);
     expect(narrated.some((l) => !l.generatable)).toBe(true);
-    expect(narrated.every((l) => l.voiceable || l.source === "progress")).toBe(true);
+    expect(narrated.every((l) => l.voiceable)).toBe(true);
   });
 
   it("narrows to lines a narrator would read", () => {
@@ -167,7 +167,7 @@ describe("field filters", () => {
   });
 
   it("hides progress text unless asked for", () => {
-    // 3,096 of the corpus's 17,564 lines, and no code path will ever voice one.
+    // 3,096 of the corpus's 17,564 lines. Hidden as a view default, not because they are silent.
     expect(asShipped().every((l) => l.source !== "progress")).toBe(true);
     expect(asShipped()).toHaveLength(14468);
     expect(all()).toHaveLength(17564);
@@ -184,10 +184,15 @@ describe("field filters", () => {
 
 describe("gaps", () => {
   it("ignores lines the generator never voices", () => {
-    // Progress text is deliberately never synthesized, so its absence is not a gap.
-    const progress = corpus.lines.find((l) => l.source === "progress")!;
-    expect(progress.generatable).toBe(false);
-    expect(isGap(progress, store)).toBe(false);
+    // A leftover template token would be read aloud, so its absence is not a gap.
+    const broken = corpus.lines.find((l) => l.skipReason === "invalid-chars" && l.text.includes("$"))!;
+    expect(isGap(broken, store)).toBe(false);
+  });
+
+  it("counts progress text with no audio as a gap", () => {
+    const progress = corpus.lines.find((l) => l.source === "progress" && l.generatable)!;
+    expect(progress.skipReason).toBeNull();
+    expect(isGap(progress, store)).toBe(true);
   });
 
   it("state missing returns only voiceable lines with no audio", () => {
@@ -311,7 +316,7 @@ describe("overrides", () => {
 
   it("counts as current only voiced audio outside the stale set", () => {
     const [fresh, outdated] = corpus.lines
-      .filter((l) => l.source !== "progress")
+      .filter((l) => l.generatable)
       .slice(0, 2)
       .map(audioRelPath);
     const voiced = new Set([fresh, outdated]);
@@ -376,15 +381,6 @@ describe("overrides", () => {
     const jobs = batchJobs([broken], context.overrides);
     expect(jobs).toHaveLength(1);
     expect(jobs[0].characters).toBe("Thrall grunts.".length);
-  });
-
-  it("never rescues progress text, which is skipped by policy", () => {
-    const progress = corpus.lines.find((l) => l.source === "progress")!;
-    const file = `quests/${progress.fileName}.mp3`;
-    const context = rewrite(file, "perfectly ordinary text");
-
-    expect(isGap(progress, store, context.overrides)).toBe(false);
-    expect(batchJobs([progress], context.overrides)).toHaveLength(0);
   });
 
   it("prices the text that will be sent, not the text the corpus holds", () => {

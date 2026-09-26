@@ -391,16 +391,16 @@ holds the corpus, accounts and roles, every take and which one is live, the pron
 lexicon, hand-written line overrides and the regeneration queue; the only thing on disk is
 each take's audio, in `audio-history/`. A line with no live take shows as a gap.
 
-**Progress text is hidden by default.** Those 3,093 lines — 17.7% of the corpus — are never
-voiced by any code path, so leaving them in every result padded the list with rows nobody can
-act on. **Show progress text** brings them back, and `?progress=1` says the same thing in a
+**Progress text is hidden by default.** Those 3,093 lines are 17.7% of the corpus. They were
+hidden when nothing voiced them; they are generated like any other line now (migration 0053),
+and the default is kept only as a view choice. **Show progress text** brings them back, and `?progress=1` says the same thing in a
 URL; absence means hidden, so a bare link is the useful view. Choosing `progress` in the
 source filter also counts as asking for them, since otherwise that choice would return
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
 them, and clearing filters returns it to hidden.
 
-Lines with no audio are marked. `no audio` is a real gap; `progress` and `invalid-chars`
-are lines the generator deliberately never voices.
+Lines with no audio are marked. `no audio` is a real gap; `invalid-chars` lines are ones the
+generator never voices until their text is rewritten.
 
 A translation keeps Blizzard's `$N`, `$C` and `$R` in its stored text, and they are not what
 makes it `invalid-chars`: `apps/web/src/lib/player-words.ts` speaks them as the language's
@@ -597,8 +597,7 @@ substitutes to a fixed word. For those a collaborator rewrites what the line *sa
 explorer marks it **rewritten**. An override changes the spoken text only: the filename and
 every addon lookup key derive from the original text, so a rewrite can never rename a file or
 make the addon miss it. It also reopens the `invalid-chars` gate — stripping a `$` or a `<>`
-makes an otherwise unvoiceable line voiceable — while `progress` lines stay skipped, because
-that is policy rather than a text defect.
+makes an otherwise unvoiceable line voiceable.
 
 **Audio made before a fix says so.** Every take records a hash of the exact string sent to
 ElevenLabs, so a line whose text has since changed — by a rewrite, a pronunciation rule or a
@@ -861,8 +860,8 @@ version on top; it is also what `corpus_db.py`'s import leaves alone when it rep
 extracted speaker, and it numbers from 1,000,000 so a re-import never meets it. The corpus
 wins where it already has the line: a quest moment is matched by quest id and moment alone
 (the tables carry some only as `:m`/`:f` variants), and a gossip line it already has gains the
-contributing NPC as one more speaker instead of a copy. Progress lines are kept, marked
-`progress` and never voiced, as the extract marks its own. Once written, a contribution cannot
+contributing NPC as one more speaker instead of a copy. Progress lines are voiced like the
+rest. Once written, a contribution cannot
 be moved back to new or rejected; ignoring the line in the explorer is how to back out.
 
 #### Who is speaking

@@ -24,7 +24,7 @@ ROWS = [
      "player_gender": None, "cleanedText": "Hello there.",
      "text": "Hello there.", "original_text": "Hello there.",
      "templateText_race_gender_hash": "deadbeef"},
-    # progress text is never synthesized
+    # progress text, voiced like any other line
     {"quest": "7", "source": "progress", "quest_title": "Growling Gut", "name": "Jitters",
      "type": "creature", "id": 288, "race": "human", "gender": "male",
      "voice_name": "human-male-standard", "flavor": "standard",
@@ -83,7 +83,8 @@ def test_marks_lines_the_generator_skips():
     by_id = {l["lineId"]: l for l in corpus["lines"]}
     assert by_id["q:5:accept"]["generatable"] is True
     assert by_id["q:5:accept"]["skipReason"] is None
-    assert by_id["q:7:progress"]["skipReason"] == "progress"
+    assert by_id["q:7:progress"]["generatable"] is True
+    assert by_id["q:7:progress"]["skipReason"] is None
     assert by_id["q:9:accept"]["skipReason"] == "invalid-chars"
 
 

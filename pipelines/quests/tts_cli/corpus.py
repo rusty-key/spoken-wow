@@ -38,11 +38,9 @@ def spawn_key(entity_type: str, entity_id) -> str:
 def _skip_reason(row):
     """Why the generator would not synthesize this row, or None.
 
-    Mirrors TTSProcessor.process_row (tts_cli/tts_utils.py:175-187): progress text is
-    deliberately never voiced, and unresolved template tokens would be read aloud.
+    Unresolved template tokens would be read aloud. Progress text is voiced like any other
+    line; whether a pack ships it is a separate decision.
     """
-    if row["source"] == "progress":
-        return "progress"
     if any(c in row["cleanedText"] for c in INVALID_CHARS):
         return "invalid-chars"
     return None

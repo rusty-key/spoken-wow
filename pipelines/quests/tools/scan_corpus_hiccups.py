@@ -26,8 +26,8 @@ are. So findings carry `grapheme` and the web app decides coverage when it loads
 the CSV's `in_lexicon` column reports what the *seeded* lexicon covered, which is a
 reading aid and nothing more.
 
-Only generatable lines are scanned - progress text and lines holding $ < > are already
-excluded upstream by tts_cli.corpus, so flagging them would be noise.
+Only generatable lines are scanned - lines holding $ < > are already excluded upstream by
+tts_cli.corpus, so flagging them would be noise.
 
 Needs `wordfreq` and macOS's /usr/share/dict. Run from the repo root:
 
@@ -197,7 +197,7 @@ for lid, note in [("q:1155:accept", 'line text is literally "x"'),
                   ("q:3646:accept", "line text is a single newline"),
                   ("q:257:complete", "$Nama name gag becomes 'adventurerama'"),
                   ("q:258:accept", "$Nath name gag becomes 'adventurerath'"),
-                  ("q:258:progress", "$Nah name gag becomes 'adventurerah' (already skipped: progress)")]:
+                  ("q:258:progress", "$Nah name gag becomes 'adventurerah'")]:
     add("bug-degenerate-line", lid, 1, 1, note, [lid])
 
 rows.sort(key=lambda r: (r["priority"], -r["occurrences"], r["category"]))

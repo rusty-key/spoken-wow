@@ -44,9 +44,7 @@ export function hasInvalidChars(text: string): boolean {
 /**
  * Whether a line would be voiced, given the text that would be sent.
  *
- * `progress` is skipped by policy - quest-in-progress text is deliberately never voiced - so
- * it is read off the corpus's own skipReason and no override can reach it. `invalid-chars` is
- * a property of the text, so it is re-decided here rather than trusted from the corpus: that
+ * `invalid-chars` is a property of the text, so it is re-decided here rather than trusted from the corpus: that
  * is what lets an override rescue the 99 lines the extractor had to give up on.
  *
  * `untranslated` is a language with no text for the line: what the row carries is the
@@ -57,7 +55,7 @@ export function isVoiceable(
   line: { skipReason: string | null; lang?: Lang; playerGender?: "m" | "f" | null },
   effectiveText: string,
 ): boolean {
-  if (line.skipReason === "progress" || line.skipReason === "untranslated") return false;
+  if (line.skipReason === "untranslated") return false;
   // Judged on what would be sent: a translation's $N is spoken as its language's word
   // (player-words.ts), so it is not what stops the line.
   const spoken = speakPlayerTokens(effectiveText, line.lang ?? BASE_LANG, line.playerGender ?? null);
@@ -71,11 +69,9 @@ export function isVoiceable(
  * isVoiceable asks it.
  */
 export function skipReasonFor(
-  source: string,
   text: string,
   lang: Lang = BASE_LANG,
   playerGender: "m" | "f" | null = null,
-): "progress" | "invalid-chars" | null {
-  if (source === "progress") return "progress";
+): "invalid-chars" | null {
   return hasInvalidChars(speakPlayerTokens(text, lang, playerGender)) ? "invalid-chars" : null;
 }

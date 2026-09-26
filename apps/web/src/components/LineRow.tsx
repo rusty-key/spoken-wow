@@ -34,8 +34,8 @@ import { wowheadEntityUrl, wowheadQuestUrl } from "@/lib/wowhead";
  */
 function absence(line: ResultLine): { kind: "gap" | "skip"; label: string } | null {
   if (line.hasAudio) return null;
-  // An unvoiceable line is an expected absence, not a gap: progress text is never voiced,
-  // and text with unresolved $ / <> tokens would be read aloud verbatim.
+  // An unvoiceable line is an expected absence, not a gap: text with unresolved $ / <> tokens
+  // would be read aloud verbatim, and an untranslated line has nothing to voice.
   if (!line.voiceable) {
     return { kind: "skip", label: line.skipReason ?? "not voiced" };
   }
