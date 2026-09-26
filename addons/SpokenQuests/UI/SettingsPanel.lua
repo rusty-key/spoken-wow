@@ -101,6 +101,32 @@ function SettingsPanel:Setup()
         function() return audio().OGThrall end,
         function(value) audio().OGThrall = value end)
 
+    -- The same two choices, labelled the same way, as SpokenBooks' panel: a player who
+    -- sets the voice language in one looks for it in the same place in the other.
+    layout:Section(L.OPT_SECTION_LANGUAGE)
+    local voices, fallbacks = { Language.AUTO }, { "none" }
+    for _, locale in ipairs(Language.LOCALES) do
+        table.insert(voices, locale.code)
+        table.insert(fallbacks, locale.code)
+    end
+    layout:Dropdown(L.OPT_VOICE_LANGUAGE, L.OPT_VOICE_LANGUAGE_TIP,
+        voices,
+        function() return audio().VoiceLanguage or Language.AUTO end,
+        function(code) audio().VoiceLanguage = code end,
+        nil,
+        function(code)
+            if code == Language.AUTO then
+                return format(L.OPT_LANG_AUTO_FMT, Language:GetNativeName(Language:GetClientLanguage()))
+            end
+            return Language:GetNativeName(code)
+        end)
+    layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, L.OPT_FALLBACK_LANGUAGE_TIP,
+        fallbacks,
+        function() return audio().FallbackLanguage or Language.BASE end,
+        function(code) audio().FallbackLanguage = code end,
+        nil,
+        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Language:GetNativeName(code) end)
+
     -- The packs, inline. This used to be a branch of the options tree behind a button,
     -- which is two clicks and a second window to answer "is my audio installed".
     layout:Section(L.OPT_SECTION_PACKS)

@@ -112,12 +112,12 @@ Expect("E. with no fallback, a missing line is silent", Resolve(VO, 2), nil)
 Expect("E. ...while the selected language still answers", (Resolve(VO, 1)), "PortuguesePack")
 
 ---------------------------------------------------------------- F. an explicit choice outranks the client
--- A player on a Portuguese client who picked English keeps English; Follow Client does not.
+-- A player on a Portuguese client who picked English keeps English; Auto does not.
 VO = Install(PACKS, "ptBR")
 VO.Addon.db.profile.Audio.VoiceLanguage = "enUS"
 Expect("F. an explicit selection is honoured over the client locale", (Resolve(VO, 1)), "EnglishPack")
 VO.Addon.db.profile.Audio.VoiceLanguage = "auto"
-Expect("F. ...and Follow Client goes back to the client's own", (Resolve(VO, 1)), "PortuguesePack")
+Expect("F. ...and Auto goes back to the client's own", (Resolve(VO, 1)), "PortuguesePack")
 VO = Install(PACKS, "enUS")
 VO.Addon.db.profile.Audio.VoiceLanguage = "ptBR"
 Expect("F. a language may be chosen the client does not run in", (Resolve(VO, 1)), "PortuguesePack")
@@ -139,7 +139,7 @@ local gossipPack, gossipSound = ResolveGossip(VO, GOSSIP_TEXT)
 Expect("G. gossip plays on the install that exists today", gossipPack, "EnglishPack")
 Expect("G. ...resolved through the pack's own hash", gossipSound.fileName, GOSSIP_HASH)
 
--- A German client with English packs: Follow Client selects German, no pack holds it, and
+-- A German client with English packs: Auto selects German, no pack holds it, and
 -- the English tables are the only ones there are. This is every EU player today; it must
 -- keep playing the English clip rather than go quiet.
 VO = Install({ { folder = "EnglishPack", lines = { [GOSSIP_HASH] = 4.0 }, gossip = EN_GOSSIP } }, "deDE")

@@ -45,7 +45,7 @@ end
 local names = {}
 for _, heading in ipairs(headings) do table.insert(names, heading.text) end
 Expect("the settings are grouped into sections", table.concat(names, "|"),
-    "Dialogue|Sound packs|Troubleshooting|Profile")
+    "Dialogue|Language|Sound packs|Troubleshooting|Profile")
 
 local function Distinct(values)
     local seen, count = {}, 0
@@ -156,6 +156,25 @@ for _, child in ipairs(SettingsPanel.panel.content.children) do
 end
 Expect("the profile dropdown shows the one in use", profile and profile.dropdownText, "Default")
 Expect("...and switching is possible", stub.PickDropdown(profile, "Default"), true)
+
+---------------------------------------------------------------- the language choices
+-- On the panel, as in SpokenBooks, rather than only in the /spq window; Auto is named with
+-- the language it follows, the same way all three addons name it.
+local function Dropdown(label)
+    for _, child in ipairs(SettingsPanel.panel.content.children) do
+        if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == label then return child end
+    end
+end
+local voice, fallback = Dropdown("Voice language"), Dropdown("Fallback language")
+Expect("the voice language is chosen on the panel", voice ~= nil, true)
+Expect("...Auto by default, named with the client's language", voice and voice.dropdownText, "Auto (English)")
+Expect("...and a language can be picked", stub.PickDropdown(voice, "Deutsch"), true)
+Expect("...which is stored", VO.Addon.db.profile.Audio.VoiceLanguage, "deDE")
+Expect("...and going back to Auto is possible", stub.PickDropdown(voice, "Auto (English)"), true)
+Expect("...storing Auto, not a language", VO.Addon.db.profile.Audio.VoiceLanguage, "auto")
+Expect("the fallback language is chosen on the panel", fallback and fallback.dropdownText, "English")
+Expect("...and can be switched off", stub.PickDropdown(fallback, "None (stay silent)"), true)
+Expect("...which is stored", VO.Addon.db.profile.Audio.FallbackLanguage, "none")
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests options tests passed")
