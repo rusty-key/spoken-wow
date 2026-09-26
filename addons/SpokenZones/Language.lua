@@ -149,16 +149,23 @@ function SpokenZones:IsLanguageSelectable(code)
 	return self:IsLanguageReady(code) or self:IsPreviewingLanguage()
 end
 
+-- What Auto reads: the client's own language once it is finished, English until
+-- then. Options names it beside Auto, so a player can see what they will get
+-- without having to pick it -- and picking it would pin them to it.
+function SpokenZones:GetAutoLanguage()
+	local client = self.clientLocale
+	if byCode[client] and self:IsLanguageReady(client) and self:CanRenderLanguage(client) then
+		return client
+	end
+	return BASE
+end
+
 local function resolve()
 	local pref = SpokenZones:GetLanguagePreference()
 	if pref and SpokenZones:IsLanguageSelectable(pref) then
 		return pref
 	end
-	local client = SpokenZones.clientLocale
-	if byCode[client] and SpokenZones:IsLanguageReady(client) and SpokenZones:CanRenderLanguage(client) then
-		return client
-	end
-	return BASE
+	return SpokenZones:GetAutoLanguage()
 end
 
 -- Resolved once, at load, and never recomputed: the generated data files consult
@@ -198,8 +205,10 @@ function SpokenZones:GetLanguageName(code)
 	return locale.native or locale.name
 end
 
--- Stores the preference. Returns false when the language is not selectable, so
--- the caller can say why rather than storing a choice that resolves to English.
+-- Stores the preference, or nil for Auto. Returns false when the language is not
+-- selectable, so the caller can say why rather than storing a choice that resolves
+-- to English. A language picked here is kept on every client, whatever language it
+-- runs in; Auto is the one choice that follows the client.
 --
 -- Takes effect on /reload. Nothing here fakes a live switch: the tables for a
 -- language that was not active at load were never built, and pretending

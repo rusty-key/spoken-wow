@@ -760,6 +760,7 @@ local function CmdAudioPack(arg)
 end
 
 -- `/spz lang` lists the languages that can be read; `/spz lang <code>` switches;
+-- `/spz lang auto` goes back to following the client;
 -- `/spz lang <code> force` and `/spz lang off` turn the preview override on and
 -- off. The override exists so an unfinished translation can be looked at in the
 -- game rather than only in the explorer, and it is deliberately not in Options:
@@ -770,6 +771,13 @@ local function CmdLanguage(arg)
 	if code == "off" then
 		SpokenZones:SetLanguagePreview(false)
 		SpokenZones:Print("language preview off -- /reload to go back to a finished language")
+		return
+	end
+
+	if code == "auto" then
+		SpokenZones:SetLanguage(nil)
+		SpokenZones:Print("language set to auto (%s) -- |cffffcc00/reload to apply|r",
+			SpokenZones:GetAutoLanguage())
 		return
 	end
 
@@ -832,10 +840,10 @@ local function CmdLanguage(arg)
 		)
 	end
 	if SpokenZones:GetLanguagePreference() == nil then
-		SpokenZones:Print("  following the client (%s)", SpokenZones.clientLocale)
+		SpokenZones:Print("  auto (%s) -- follows the client", SpokenZones:GetAutoLanguage())
 	end
 	if #selectable > 1 then
-		SpokenZones:Print("  /spz lang <code> to switch")
+		SpokenZones:Print("  /spz lang <code> to switch, /spz lang auto to follow the client")
 	end
 end
 

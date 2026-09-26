@@ -162,11 +162,14 @@ function SpokenZones:SetupOptions()
 	-- know that half a translation is missing, and would report the English that shows
 	-- through as a bug; /spz lang <code> force is how an unfinished one gets looked at.
 	local langNote
+	-- Auto stores no language at all, so it keeps following the client: switch the
+	-- game to French and it reads French. Every other entry pins its language.
+	local AUTO = {}
 	local function DescribeLanguage()
 		local available = SpokenZones:GetSelectableLanguages()
 		-- The chosen language, which is not always the one on screen: a switch only takes
 		-- effect on the next load.
-		local chosen = SpokenZones:GetLanguagePreference() or SpokenZones:GetLanguage()
+		local chosen = SpokenZones:GetLanguagePreference() or SpokenZones:GetAutoLanguage()
 		if #available < 2 then
 			langNote:SetText(L.OPT_LANG_ONLY_ENGLISH)
 		elseif chosen ~= SpokenZones:GetLanguage() then
@@ -176,24 +179,39 @@ function SpokenZones:SetupOptions()
 		end
 	end
 	layout:Dropdown(L.OPT_LANGUAGE, L.OPT_LANGUAGE_TIP,
-		function() return SpokenZones:GetSelectableLanguages() end,
 		function()
-			local chosen = SpokenZones:GetLanguagePreference() or SpokenZones:GetLanguage()
+			local values = { AUTO }
+			for _, locale in ipairs(SpokenZones:GetSelectableLanguages()) do
+				table.insert(values, locale)
+			end
+			return values
+		end,
+		function()
+			local chosen = SpokenZones:GetLanguagePreference()
 			for _, locale in ipairs(SpokenZones:GetSelectableLanguages()) do
 				if locale.code == chosen then
 					return locale
 				end
 			end
+			return AUTO
 		end,
 		function(locale)
-			if SpokenZones:SetLanguage(locale.code) then
+			local code = locale ~= AUTO and locale.code or nil
+			if SpokenZones:SetLanguage(code) then
 				-- Said before the reload rather than after: the failure to avoid is a
 				-- player switching, seeing English, and concluding it did not work.
-				SpokenZones:Print(string.format(L.OPT_LANG_SET_FMT, SpokenZones:GetLanguageName(locale.code)))
+				SpokenZones:Print(string.format(L.OPT_LANG_SET_FMT,
+					SpokenZones:GetLanguageName(code or SpokenZones:GetAutoLanguage())))
 			end
 		end,
 		function() DescribeLanguage() end,
-		function(locale) return locale and SpokenZones:GetLanguageName(locale.code) or SpokenZones:GetLanguageName(nil) end)
+		function(locale)
+			-- Named with what it reads now, since that changes with the client.
+			if locale == AUTO then
+				return string.format(L.OPT_LANG_AUTO_FMT, SpokenZones:GetLanguageName(SpokenZones:GetAutoLanguage()))
+			end
+			return locale and SpokenZones:GetLanguageName(locale.code) or SpokenZones:GetLanguageName(nil)
+		end)
 	langNote = layout:Note("", 460, 32)
 	DescribeLanguage()
 
