@@ -64,7 +64,10 @@ target_curseforge() { case "$1" in books) echo "1701514";; audio) pack_field cur
 # entry in https://addons.wago.io/developers. They are also in each page's frontmatter under
 # publishers/, which is where scripts/descriptions.mjs checks them -- kept here as well so
 # that this script needs no YAML parser to know where to upload.
-target_wago()       { case "$1" in books) echo "qGYZnRNg";; audio) pack_field wago;; esac; }
+# A sound pack is never uploaded to Wago, whatever its page says: Wago answers 413 to a file
+# that size (scripts/lib/wago.sh). The page keeps its `wago:` id for the description pasted
+# there, which sends players to the GitHub release.
+target_wago()       { case "$1" in books) echo "qGYZnRNg";; esac; }
 target_addon()      { case "$1" in books) echo "SpokenBooks";; audio) pack_field folder;; esac; }
 target_zip()        { target_addon "$1"; }
 # The project's slug. Used for the link printed after an upload, so a wrong one here is a
@@ -348,7 +351,7 @@ for target in "${targets[@]}"; do
   # stores reject files for different reasons -- CurseForge has a body-size ceiling the packs
   # have already met -- and a file one store refuses is still a file the other should have.
   if store_has wago && [[ -z "$(target_wago "$target")" ]]; then
-    echo "  wago:      no Wago project for $target -- skipped (its players use the GitHub release)"
+    echo "  wago:      no Wago upload for $target -- skipped (its players use the GitHub release)"
   elif store_has wago; then
     if [[ -n "$dry_run" ]]; then
       echo "  wago:      project $(target_wago "$target") -- dry run, not uploading"

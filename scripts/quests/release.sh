@@ -105,11 +105,13 @@ esac; }
 # entry in https://addons.wago.io/developers, and also in each page's frontmatter under
 # publishers/ where scripts/descriptions.mjs checks it. Case matters -- QN53yXKB is not
 # qn53yxkb, and a mistyped id is a 404 in the middle of a release.
+# A sound pack is never uploaded to Wago, whatever its page says: Wago answers 413 to a file
+# that size (scripts/lib/wago.sh). The page keeps its `wago:` id for the description pasted
+# there, which sends players to the GitHub release.
 target_wago() { case "$1" in
   spoken)         echo "QN53yXKB";;
   player)         echo "aN0XPlNj";;
   audio-all)      echo "ANzkpD64";;
-  audio-alliance|audio-horde|audio-shared|audio-gossip) pack_field "$1" wago;;
 esac; }
 # The slug each project is published under, the same on both stores. Used for the link printed
 # after an upload, and for the Wago upload's own log line.
@@ -467,16 +469,11 @@ upload_target() {
     fi
   fi
 
-  # The Wago upload, after the CurseForge one and not conditional on it: the stores refuse
-  # files for different reasons -- the complete pack is over CurseForge's body-size ceiling
-  # and uploads to Wago fine -- and a file one store will not take is still a file the other
-  # should have. A failure here fails the target, which the caller collects like any other.
-  #
-  # A language's page may carry no Wago id yet -- creating that project is a manual step, same
-  # as CurseForge's -- and skips rather than fails, since its players still get the file from
-  # CurseForge and the GitHub release.
+  # The Wago upload, after the CurseForge one and not conditional on it: a file one store will
+  # not take is still a file the other should have. A failure here fails the target, which the
+  # caller collects like any other. Only the addons go to Wago; target_wago names no pack.
   if store_has wago && [[ -z "$(target_wago "$target")" ]]; then
-    echo "  wago:      no Wago project for $target -- skipped (its players use CurseForge and GitHub)"
+    echo "  wago:      no Wago upload for $target -- skipped (its players use CurseForge and GitHub)"
   elif store_has wago; then
     if [[ -n "$dry_run" ]]; then
       echo "  wago:      project $(target_wago "$target") -- dry run, not uploading"
