@@ -26,7 +26,7 @@ local FRAME_STRATAS =
 local function LanguageValues(firstKey, firstLabel)
     local values = { [firstKey] = firstLabel }
     for _, locale in ipairs(Language.LOCALES) do
-        values[locale.code] = locale.name
+        values[locale.code] = Language:GetNativeName(locale.code)
     end
     return values
 end
@@ -100,7 +100,7 @@ local GeneralTab =
                     desc = L.OPT_VOICE_LANGUAGE_TIP,
                     values = function()
                         return LanguageValues(Language.AUTO,
-                            format(L.OPT_FOLLOW_CLIENT_FMT, Language:GetName(Language:GetClientLanguage())))
+                            format(L.OPT_LANG_AUTO_FMT, Language:GetNativeName(Language:GetClientLanguage())))
                     end,
                     get = function(info) return Addon.db.profile.Audio.VoiceLanguage end,
                     set = function(info, value)

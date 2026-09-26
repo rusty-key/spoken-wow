@@ -69,8 +69,10 @@ end
 --- tests. Contribute.lua needs the real GetPlayerMapID, GetLoreWithFallback, GetSubzoneLore,
 --- GetLore and IsPending, all of which live in Core.lua, so this loads that too, and the
 --- language and pack answers it sends, from Language.lua and Audio.lua.
-function M.LoadZones(addonDirectory)
-    local SpokenZones = {}
+--- `seed` is the addon table as it stands before Language.lua runs, for what the
+--- generated data would have put there first (SpokenZones.Languages).
+function M.LoadZones(addonDirectory, seed)
+    local SpokenZones = seed or {}
     for _, file in ipairs({ "Language", "Core", "Audio", "Contribute" }) do
         local chunk = assert(loadfile(addonDirectory .. file .. ".lua"))
         chunk("SpokenZones", SpokenZones)
@@ -125,6 +127,7 @@ function M.NewZoneLore()
     function Z:GetAudioPackLabel() return "none" end
     function Z:GetSelectableLanguages() return { { code = "enUS", name = "English" } } end
     function Z:GetLanguagePreference() return nil end
+    function Z:GetAutoLanguage() return "enUS" end
     function Z:GetLocaleInfo() return { name = "English" } end
     function Z:GetLanguageName(code) return code and Z.L["LANG_" .. code] or "Automatic" end
     function Z:RedrawPanel() end

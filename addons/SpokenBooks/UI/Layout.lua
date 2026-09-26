@@ -320,7 +320,9 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
         end
     end)
     if UIDropDownMenu_SetWidth then
-        UIDropDownMenu_SetWidth(menu, 200)
+        -- Wide enough for "Automático (Español (América Latina))", the longest
+        -- language label any of the addons shows.
+        UIDropDownMenu_SetWidth(menu, 260)
     end
     menu:SetScript("OnShow", Sync)
     Tooltip(menu, label, tooltip)

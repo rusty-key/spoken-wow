@@ -83,5 +83,40 @@ Expect("E. two packs in one language are told apart by bitrate", Z:GetAudioPackL
 Expect("E. ...both of them", Z:GetAudioPackLabel(RETIRED), "English (64 kbps)")
 Expect("E. a language with one pack still needs no bitrate", Z:GetAudioPackLabel(GERMAN), "Deutsch")
 
+---------------------------------------------------------------- F. Auto follows the client, a pick does not
+-- One SavedVariables file read by the same install switched between game languages. Auto
+-- is stored as no language at all, so it answers each client with its own; anything the
+-- player picked stays picked, whichever language the game runs in.
+local READY = { { code = "enUS", ready = true }, { code = "esES", ready = true },
+    { code = "frFR", ready = true } }
+local function InstallOn(locale, db)
+    stub.SetLocale(locale)
+    _G.SpokenZonesDB = db
+    _G.SpokenZonesAudioPacks = {}
+    return H.LoadZones(ZONES, { Languages = READY })
+end
+
+local saved = {}
+Z = InstallOn("esES", saved)
+Expect("F. Auto is the default", Z:GetLanguagePreference(), nil)
+Expect("F. ...and reads the client's language", Z:GetLanguage(), "esES")
+Z = InstallOn("frFR", saved)
+Expect("F. the same saved choice on a French client reads French", Z:GetLanguage(), "frFR")
+Expect("F. ...and names it as what Auto reads", Z:GetAutoLanguage(), "frFR")
+Z = InstallOn("koKR", saved)
+Expect("F. a client whose translation is not finished reads English", Z:GetLanguage(), "enUS")
+Expect("F. ...and Auto says so", Z:GetAutoLanguage(), "enUS")
+
+Z = InstallOn("esES", saved)
+Z:SetLanguage("esES")
+Z = InstallOn("frFR", saved)
+Expect("F. a language picked on one client stays on another", Z:GetLanguage(), "esES")
+Expect("F. ...while Auto still names the client's own", Z:GetAutoLanguage(), "frFR")
+Z:SetLanguage(nil)
+Z = InstallOn("frFR", saved)
+Expect("F. going back to Auto follows the client again", Z:GetLanguage(), "frFR")
+
+stub.SetLocale("enUS")
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll zones language tests passed")

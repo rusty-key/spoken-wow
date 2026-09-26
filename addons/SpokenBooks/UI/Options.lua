@@ -86,7 +86,7 @@ function SpokenBooks:SetupOptions()
 	layout:Dropdown(L.OPT_VOICE_LANGUAGE, L.OPT_VOICE_LANGUAGE_TIP,
 		voices, Get("voiceLanguage"), Set("voiceLanguage"), nil, function(code)
 			if code == SpokenBooks.AUTO_LANGUAGE then
-				return L.OPT_FOLLOW_CLIENT_FMT:format(
+				return L.OPT_LANG_AUTO_FMT:format(
 					SpokenBooks:GetLanguageName(SpokenBooks:GetClientLanguage()))
 			end
 			return SpokenBooks:GetLanguageName(code)
