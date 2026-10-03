@@ -334,6 +334,9 @@ local defaults = {
 
 local lastGossipOptions
 local selectedGossipOption
+-- Set by picking any option, even one whose label could not be found: a page reached that way
+-- was asked for, so how often the NPC's greetings play is no reason to keep it quiet.
+local gossipOptionPicked
 local currentQuestSoundData
 local currentGossipSoundData
 
@@ -954,6 +957,7 @@ function Addon:OnInitialize()
 
     if C_GossipInfo and C_GossipInfo.SelectOption then
         hooksecurefunc(C_GossipInfo, "SelectOption", function(optionID)
+            gossipOptionPicked = true
             if lastGossipOptions then
                 for _, info in ipairs(lastGossipOptions) do
                     if info.gossipOptionID == optionID then
@@ -966,6 +970,7 @@ function Addon:OnInitialize()
         end)
     elseif SelectGossipOption then
         hooksecurefunc("SelectGossipOption", function(index)
+            gossipOptionPicked = true
             if lastGossipOptions then
                 selectedGossipOption = lastGossipOptions[1 + (index - 1) * 2]
                 lastGossipOptions = nil
@@ -1118,11 +1123,19 @@ function Addon:QUEST_COMPLETE()
     Player:Enqueue(soundData)
 end
 
-function Addon:ShouldPlayGossip(guid, text, manual)
+---@param followsOption boolean? the page was reached by picking one of the NPC's options
+function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
     local npcKey = guid or "unknown"
 
     -- Asked for by name, so having heard it before does not stand in the way.
     if manual then
+        return true, npcKey
+    end
+
+    -- Once per NPC is about the greeting an NPC opens with. A guard's directions are a page the
+    -- player picked an option to reach, and keying them on the NPC kept every one of them quiet
+    -- once the greeting had played. Never still means no gossip at all.
+    if followsOption and self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Never then
         return true, npcKey
     end
 
@@ -1166,7 +1179,10 @@ function Addon:MuteGreetingAhead(event)
         if not guid and not speaker.name then
             return
         end
-        if not self:ShouldPlayGossip(guid, nil, false) or not DataModules:HasGossipFor(speaker) then
+        -- NoteGossipPage has not run yet this early, so the pick is read before it is consumed.
+        local followsOption = event == "GOSSIP_SHOW" and gossipOptionPicked
+        if not self:ShouldPlayGossip(guid, nil, false, followsOption)
+            or not DataModules:HasGossipFor(speaker) then
             return
         end
     elseif QUEST_EVENTS[event] then
@@ -1222,18 +1238,22 @@ local shownGossipTitle
 -- Which page that was. The direct event and the frame's OnShow can both deliver one page,
 -- and the second must not overwrite the label the first took.
 local shownGossipKey
+-- Whether that page was reached by picking an option, which ShouldPlayGossip needs to know.
+local shownGossipFollowsOption
 
 --- A fresh gossip page: note which option led here and what the page offers next, whether or
 --- not it is read. With autoplay off it is not, and the next page's label would otherwise be
 --- looked up in this page's predecessor's options.
 function NoteGossipPage()
     local pageKey = tostring(Utils:GetNPCGUID() or Utils:GetNPCName()) .. ":" .. tostring(GetGossipText())
-    if not selectedGossipOption and pageKey == shownGossipKey then
+    if not gossipOptionPicked and pageKey == shownGossipKey then
         return
     end
     shownGossipKey = pageKey
     shownGossipTitle = selectedGossipOption and format([["%s"]], selectedGossipOption)
+    shownGossipFollowsOption = gossipOptionPicked
     selectedGossipOption = nil
+    gossipOptionPicked = nil
     lastGossipOptions = nil
     if C_GossipInfo and C_GossipInfo.GetOptions then
         lastGossipOptions = C_GossipInfo.GetOptions()
@@ -1252,7 +1272,7 @@ function Addon:GOSSIP_SHOW(event, manual)
         return
     end
 
-    local play, npcKey = self:ShouldPlayGossip(guid, gossipText, manual)
+    local play, npcKey = self:ShouldPlayGossip(guid, gossipText, manual, shownGossipFollowsOption)
     if not play then
         return
     end
@@ -1288,6 +1308,8 @@ function Addon:GOSSIP_CLOSED()
     currentGossipSoundData = nil
 
     selectedGossipOption = nil
+    gossipOptionPicked = nil
     shownGossipTitle = nil
     shownGossipKey = nil
+    shownGossipFollowsOption = nil
 end

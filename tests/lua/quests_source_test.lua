@@ -168,6 +168,15 @@ VO.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true
 stub.ShowGossip("Greetings, traveller.")
 Open(VO, "GOSSIP_SHOW")
 Expect("gossip the frequency rule will skip keeps its greeting", world.cvars.Sound_EnableDialog, "1")
+-- A page the player picked an option to reach is read whatever the frequency, so the mute is
+-- taken for it as for any line that is going to be read.
+stub.ShowGossip("Greetings, traveller.", { "Where is the inn?" })
+stub.SelectGossipOption("Where is the inn?")
+stub.ShowGossip("You are standing in it.")
+Open(VO, "GOSSIP_SHOW")
+Expect("a page reached by an option mutes dialog, greeting heard or not", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(3)
+Spoken:StopAll()
 VO.Addon.db.char.hasSeenGossipForNPC = {}   -- saved too
 
 VO, env, Spoken = MuteBoot()
