@@ -1,36 +1,87 @@
--- SpokenZones -- the play/stop button shown next to a lore description.
+-- SpokenZones -- the play/pause button shown next to a lore description.
 --
 -- A factory in the same shape as SpokenZones:CreateTextView: anchor the returned
 -- button yourself, then call SetTarget whenever the panel's content changes.
 --
--- Deliberately a text button rather than an icon. Icon paths cannot be verified
--- without launching the client, and a texture that does not exist on 11509 draws
--- nothing at all -- an invisible button is a worse failure than a plain one. This
--- is the same trade the hand-rolled scrollbar in UI/TextView.lua makes.
+-- The player's own round button (Spoken:CreateRoundButton), the one its subtitle shows, so the
+-- two are one button: Play to start the story, Pause while it is read, Play again to resume it,
+-- as the subtitle's does. Report sits beside it (SpokenZones:CreateReportIcon).
 
 local ADDON_NAME, SpokenZones = ...
 
 local L = SpokenZones.L
 
-local BUTTON_WIDTH = 58
-local BUTTON_HEIGHT = 20
+local ROUND_SIZE = 24
+-- Our own copies, not paths into SpokenPlayer: OwnRound only draws when the player is missing,
+-- and a missing texture draws as solid green.
+local RING = [[Interface\AddOns\SpokenZones\Textures\SettingsButton]]
+local PORTRAIT_ATLAS = [[Interface\AddOns\SpokenZones\Textures\PortraitFrameAtlas]]
+local PORTRAIT_ATLAS_SIZE = 512
+local BUG = [[Interface\HelpFrame\HelpIcon-Bug]]
 
 local AudioButton = {}
 
--- Room the button's end caps take either side of its label.
-local LABEL_PADDING = 24
+--------------------------------------------------------------------------------
+-- The round button
+--------------------------------------------------------------------------------
 
---- Widen a text button to fit the widest label it will ever show, never below minWidth.
---- Measured once over every label rather than on each SetText, so a button that flips
---- between Play and Stop keeps one width instead of jumping as it changes. The widths
---- above were sized to the English labels; a translated one can be twice as long.
-function SpokenZones:FitButtonToLabels(button, minWidth, labels)
-	local widest = 0
-	for _, label in ipairs(labels) do
-		button:SetText(label)
-		widest = math.max(widest, button:GetTextWidth())
+-- The same button drawn here, for a client without the player: there is nothing to play then,
+-- but Report still has a story to report on.
+local function OwnRound(parent, kind, icon)
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(ROUND_SIZE, ROUND_SIZE)
+	local ring = button:CreateTexture(nil, "BACKGROUND")
+	ring:SetTexture(RING)
+	ring:SetPoint("TOPLEFT", button, "TOPLEFT", -3, 3)
+	ring:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 3, -3)
+	local glyph = button:CreateTexture(nil, "ARTWORK")
+	glyph:SetAlpha(0.85)
+	button.ring, button.glyph = ring, glyph
+	button:HookScript("OnEnter", function() glyph:SetAlpha(1) end)
+	button:HookScript("OnLeave", function() glyph:SetAlpha(0.85) end)
+	if kind == "play" then
+		glyph:SetPoint("CENTER")
+		glyph:SetSize(12, 12)
+		glyph:SetTexture(PORTRAIT_ATLAS)
+		function button:SetPlaying(playing)
+			local left = playing and 93 or 0
+			glyph:SetTexCoord(left / PORTRAIT_ATLAS_SIZE, (left + 93) / PORTRAIT_ATLAS_SIZE,
+				419 / PORTRAIT_ATLAS_SIZE, 512 / PORTRAIT_ATLAS_SIZE)
+			self.playing = playing and true or false
+		end
+		button:SetPlaying(false)
+	else
+		if kind == "icon" and icon then
+			-- Filling the ring's dark middle, cut round, as the player's own is (Actions.RoundPicture).
+			glyph:SetPoint("TOPLEFT", button, "TOPLEFT", 3, -3)
+			glyph:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
+			glyph:SetTexture(icon)
+			glyph:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+			local mask = button.CreateMaskTexture and glyph.AddMaskTexture and button:CreateMaskTexture()
+			if type(mask) == "table" then
+				mask:SetTexture([[Interface\CharacterFrame\TempPortraitAlphaMask]], "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+				mask:SetAllPoints(glyph)
+				glyph:AddMaskTexture(mask)
+			elseif SetPortraitToTexture then
+				SetPortraitToTexture(glyph, icon)
+			end
+			-- No vignette over it, as the player's has: that art is the player's, absent here.
+		else
+			glyph:SetPoint("TOPLEFT", button, "TOPLEFT", 4, -4)
+			glyph:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -4, 4)
+			glyph:SetTexture(BUG)
+		end
 	end
-	button:SetWidth(math.max(minWidth, widest + LABEL_PADDING))
+	return button
+end
+
+--- The player's round button: `kind` "play", "report", or "icon" with the texture `icon`.
+function SpokenZones:CreateRoundButton(parent, kind, icon)
+	local Spoken = _G.Spoken
+	if Spoken and Spoken.CreateRoundButton then
+		return Spoken:CreateRoundButton(parent, kind, nil, icon)
+	end
+	return OwnRound(parent, kind, icon)
 end
 
 --------------------------------------------------------------------------------
@@ -57,12 +108,8 @@ function AudioButton:Refresh()
 	end
 
 	self:Show()
-
-	if SpokenZones:IsPlayingLore(self.mapID, self.areaKey) then
-		self:SetText(L.STOP)
-	else
-		self:SetText(L.PLAY)
-	end
+	-- Pause while this story is being read; Play before it starts and while it is paused.
+	self:SetPlaying(SpokenZones:IsPlayingLore(self.mapID, self.areaKey))
 end
 
 --------------------------------------------------------------------------------
@@ -70,33 +117,41 @@ end
 --------------------------------------------------------------------------------
 
 function SpokenZones:CreateAudioButton(parent)
-	local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-	button:SetHeight(BUTTON_HEIGHT)
-	SpokenZones:FitButtonToLabels(button, BUTTON_WIDTH, { L.PLAY, L.STOP })
-	button:SetText(L.PLAY)
+	local button = SpokenZones:CreateRoundButton(parent, "play")
 	button:Hide()
 
 	button.SetTarget = AudioButton.SetTarget
 	button.Refresh = AudioButton.Refresh
 
+	-- This story speaking, or at the head of the queue and paused: pause or resume it, as the
+	-- subtitle's button does. Anything else, including this story at the head unstarted because
+	-- a gate holds it (combat, a cinematic): start it. Toggling then would pause the whole queue.
 	button:SetScript("OnClick", function(self)
 		if not self.mapID then
 			return
 		end
-		SpokenZones:ToggleLore(self.mapID, self.areaKey)
+		if SpokenZones:IsPlayingLore(self.mapID, self.areaKey)
+			or (SpokenZones:IsLoreAtHead(self.mapID, self.areaKey) and SpokenZones:IsPaused()) then
+			if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON) end
+			_G.Spoken:TogglePause()
+		else
+			SpokenZones:PlayLore(self.mapID, self.areaKey)
+		end
 	end)
 
-	button:SetScript("OnEnter", function(self)
+	button:HookScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		if SpokenZones:IsPlayingLore(self.mapID, self.areaKey) then
-			GameTooltip:SetText(L.AUDIO_STOP_TIP)
+		if self.playing then
+			GameTooltip:SetText(L.PAUSE)
+			GameTooltip:AddLine(L.PAUSE_TOOLTIP, 1, 0.8, 0.2, true)
 		else
-			GameTooltip:SetText(L.AUDIO_READ_TIP)
+			GameTooltip:SetText(L.PLAY)
+			GameTooltip:AddLine(L.AUDIO_READ_TIP, 1, 0.8, 0.2, true)
 		end
 		GameTooltip:Show()
 	end)
 
-	button:SetScript("OnLeave", function()
+	button:HookScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
 

@@ -100,9 +100,12 @@ function SoundUtils:PlaySound(clip, channel)
 end
 
 ---@param clip { handle: number? }
-function SoundUtils:StopSound(clip)
+--- `fadeMs`, where given, fades the voice out over that many milliseconds rather than cutting
+--- it: the client's StopSound takes one. The legacy clients stop their own way (Compat.lua),
+--- which takes no fade.
+function SoundUtils:StopSound(clip, fadeMs)
     if clip.handle then
-        StopSound(clip.handle)
+        if fadeMs then StopSound(clip.handle, fadeMs) else StopSound(clip.handle) end
     end
     clip.handle = nil
 end

@@ -220,6 +220,14 @@ function SpokenZones:SetupAudio()
 		-- Durations come from a generated lookup and are exact; upstream's larger gap
 		-- absorbs durations that are not.
 		interClipGap = 0.25,
+		-- What Spoken's settings show on this part's card: which voice packs are installed.
+		packs = function()
+			local names = {}
+			for _, pack in ipairs(SpokenZones:GetAudioPacks()) do
+				table.insert(names, pack.addon or SpokenZones:GetAudioPackLabel(pack))
+			end
+			return names
+		end,
 	})
 
 	-- Switchable from the player's settings, named there by this addon. The quests addon
@@ -231,6 +239,15 @@ function SpokenZones:SetupAudio()
 	Spoken:RegisterCallback("AUDIO_CHANGED", function()
 		SpokenZones:NotifyAudioChanged()
 	end)
+
+	-- Switched off or on in Spoken's settings: the map panel follows, and the lore window goes.
+	if Spoken.RegisterCallback then
+		Spoken:RegisterCallback("PART_SWITCHED", function(key, on)
+			if key ~= "zones" then return end
+			if SpokenZones.RefreshPanel then SpokenZones:RefreshPanel() end
+			if not on and SpokenZones.HideLoreWindow then SpokenZones:HideLoreWindow() end
+		end)
+	end
 
 	Spoken.Minimap:AddEntry("zones", { id = "lore", text = L.MENU_LORE_WINDOW, order = 1,
 		onClick = function() SpokenZones:ToggleLoreWindow() end })
@@ -484,8 +501,7 @@ local ACTIONS = {
 		id = "report",
 		-- An icon in the corner rather than a word beside the line. The bug icon postdates
 		-- the three legacy clients, where the texture is missing and the button
-		-- would be a blank square; `text` is what they draw instead. The addon's own
-		-- CreateReportButton still builds the labelled one the lore window uses.
+		-- would be a blank square; `text` is what they draw instead.
 		icon = [[Interface\HelpFrame\HelpIcon-Bug]],
 		label = L.OPT_REPORT_PROBLEM,
 		text = "R",
@@ -614,6 +630,13 @@ function SpokenZones:IsPlayingLore(mapID, areaKey)
 		return true
 	end
 	return head.mapID == mapID and head.areaKey == areaKey
+end
+
+--- This story at the head of the queue, whether speaking or paused: what the Play button
+--- pauses and resumes rather than starting again.
+function SpokenZones:IsLoreAtHead(mapID, areaKey)
+	local head = OurHead()
+	return head ~= nil and head.mapID == mapID and head.areaKey == areaKey
 end
 
 function SpokenZones:IsPaused()

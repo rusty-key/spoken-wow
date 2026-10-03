@@ -71,6 +71,11 @@ function SpokenBooks:RefreshPlayButton()
 	if not button then
 		return
 	end
+	-- Switched off in Spoken's settings, the part puts nothing on the book.
+	if Spoken and Spoken.IsPartOn and not Spoken:IsPartOn("books") then
+		button:Hide()
+		return
+	end
 
 	local pageId = self:PageOnScreen()
 	if pageId and self:HasAudio(pageId) then

@@ -20,7 +20,7 @@
 LUA ?= $(shell command -v luajit || command -v lua5.1)
 
 .PHONY: help test test-player contribute-fixtures lint package-all \
-        package-spoken-all release-spoken-all release-spoken-all-dry \
+        package-spoken-all package-spoken-bundle release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
         character-models \
         audio-release audio-release-dry
@@ -55,6 +55,12 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/quest_followup_test.lua
 	@$(LUA) tests/lua/easter_egg_test.lua
 	@$(LUA) tests/lua/sound_utils_test.lua
+	@$(LUA) tests/lua/other_sounds_test.lua
+	@$(LUA) tests/lua/parts_test.lua
+	@$(LUA) tests/lua/settings_ux_test.lua
+	@$(LUA) tests/lua/settings_art_test.lua
+	@$(LUA) tests/lua/settings_fit_test.lua
+	@$(LUA) tests/lua/settings_audit_test.lua
 	@$(LUA) tests/lua/queue_test.lua
 	@$(LUA) tests/lua/sources_test.lua
 	@$(LUA) tests/lua/api_contract_test.lua
@@ -73,6 +79,9 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/player_required_test.lua
 	@$(LUA) tests/lua/duplicate_player_test.lua
 	@$(LUA) tests/lua/zones_options_test.lua
+	@$(LUA) tests/lua/zones_lore_ui_test.lua
+	@$(LUA) tests/lua/subtitle_pages_test.lua
+	@$(LUA) tests/lua/defaults_test.lua
 	@$(LUA) tests/lua/quests_options_test.lua
 	@$(LUA) tests/lua/books_source_test.lua
 	@$(LUA) tests/lua/books_options_test.lua
@@ -166,6 +175,11 @@ package-all: ## Build every addon zip: the player, quests, zones
 	@./scripts/spoken/package.sh
 	@$(MAKE) --no-print-directory -f make/quests.mk package
 	@$(MAKE) --no-print-directory -f make/zones.mk  package
+
+# Spoken (Bundled): the player and its three modules in one zip, for a hand install or a site
+# that cannot fetch dependencies. No audio; scripts/spoken/package-bundle.sh says why.
+package-spoken-bundle: ## Zip Spoken (Bundled), the player and its modules, without the sound packs
+	@./scripts/spoken/package-bundle.sh
 
 # Spoken Everything: Quests, Zones, Books AI Voiceover, CurseForge project `spoken`: a few kilobytes naming every Spoken addon
 # and English sound pack as required dependencies, so the CurseForge app installs the lot.

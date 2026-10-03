@@ -20,8 +20,6 @@ end
 --- Deliberate, so it works with autoplay off: that is the whole point of the setting, and a
 --- command that respected it would leave no way to start narration.
 ---
---- Shared with the player's menu entry rather than inlined in the slash command, because a
---- reason only one of the two printed would make the other look broken.
 function SpokenBooks:ReadOrExplain()
 	if self:ReadCurrent() > 0 then
 		return
@@ -62,6 +60,30 @@ local function Status()
 	end
 end
 
+--- What /spb status prints, for the settings' Show Diagnostics.
+function SpokenBooks:ShowStatus()
+	Status()
+end
+
+--- A page every installed pack has, played the way a real one is, to check it can be heard.
+function SpokenBooks:PlayTestLine()
+	for _, pack in ipairs(self:GetAudioPacks()) do
+		local pageId = next(pack.pages)
+		if pageId then
+			-- One page, queued as a real one plays: not PlayFrom, which marks the book read and
+			-- with Read Whole Book on lines up the rest of it.
+			local clip = self.source and self:ClipFor(pageId)
+			if clip and self.source:Enqueue(clip) then
+				Print("playing a test page")
+			else
+				Print("|cffffcc00the test page could not be queued|r")
+			end
+			return
+		end
+	end
+	Print(self:DescribeMissingAudio())
+end
+
 _G.SLASH_SPOKENBOOKS1 = "/spokenbooks"
 _G.SLASH_SPOKENBOOKS2 = "/spb"
 SlashCmdList["SPOKENBOOKS"] = function(msg)
@@ -99,7 +121,9 @@ SlashCmdList["SPOKENBOOKS"] = function(msg)
 		Print("stopped")
 	elseif cmd == "status" then
 		Status()
+	elseif cmd == "debug" then
+		Toggle("debug", "explaining in chat why a page was or was not read")
 	else
-		Print("/spb read | stop | autoplay | whole | once | gather | forget | settings | status")
+		Print("/spb read | stop | autoplay | whole | once | gather | forget | settings | status | debug")
 	end
 end

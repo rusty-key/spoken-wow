@@ -21,10 +21,10 @@ Open the map and the lore of the zone you're looking at appears beside it. Click
 
 ## What it does
 
-- **World map panel** — the current zone's lore beside the map. Dock it left or right, resize it, set the font size.
+- **Zone Lore** — the current zone's story in a panel of its own beside the map, on the quest log's parchment. Resize it, set the font size, or close it until the map is next opened.
 - **Subzone lore** — click any named area on the map to read about it.
 - **Hover preview** — point at a subzone for the first lines in a tooltip, without disturbing the panel.
-- **Lore window** — browse zones without opening the map, from the minimap button or `/spz window`.
+- **Lore of Azeroth** — browse every story without opening the map: Azeroth, its two continents, their zones and each zone's areas, with a search box. From the minimap button, `/spz window`, or the button on Zone Lore.
 - **Narration** — a play button beside the lore; what is being read, and what is waiting, shows in the Spoken player with Read and Report beside it.
 - **Autoplay** — walking into an area you've never discovered narrates it once, tracked per character. Already explored the world? A setting narrates those areas too, still once each.
 - **Works on non-English clients** — subzone lore is found by the name your client reports, so a German, French, Spanish, Portuguese, Russian, Korean or Chinese client reaches it too. The lore text itself is English for now.

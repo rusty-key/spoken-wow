@@ -268,6 +268,19 @@ end
 VO = Install(PACKS, "ptBR")
 Expect("J. reporting a Portuguese clip files it in Portuguese", ReportFor(VO, 1), "ptBR")
 Expect("J. reporting a fallback clip files it in English", ReportFor(VO, 2), "enUS")
+do
+    -- With the quest window already shut, as it is by the time a subtitle's Report is clicked:
+    -- the clip says which line it was.
+    local _, clip = Resolve(VO, 1)
+    VO.Player:Prepare(clip)
+    local target
+    VO.ReportButton.CurrentTarget = function() return nil end
+    VO.ReportButton.ShowLink = function(_, t) target = t end
+    for _, action in ipairs(clip.present.actions) do
+        if action.id == "report" then action.onClick(clip) end
+    end
+    Expect("J. a report needs no quest window open: the clip names its line", target, "quest/1/accept")
+end
 
 ---------------------------------------------------------------- K. a language no client runs in
 -- Italian: a pack may declare it and a player may choose it, but GetLocale() never says it,

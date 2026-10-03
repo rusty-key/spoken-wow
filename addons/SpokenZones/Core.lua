@@ -29,8 +29,8 @@ SpokenZones.zoneChangedCallbacks = {}
 
 local defaults = {
 	showMapPanel = true,
-	panelSide = "RIGHT",
-	panelWidth = 300,
+	-- Wide enough that a zone's name fits on one line beside the header's round buttons.
+	panelWidth = 360,
 	fontSize = 12,
 	showHoverPreview = true,
 	showMinimapButton = true,
@@ -98,6 +98,13 @@ local function InitConfig()
 		end
 	end
 
+	-- The panel was 300 wide by default, too narrow for most zones' names beside the header's
+	-- buttons. Whoever still has that width gets the new one, once.
+	if not SpokenZonesDB.panelWidened then
+		if SpokenZonesDB.panelWidth == 300 then SpokenZonesDB.panelWidth = defaults.panelWidth end
+		SpokenZonesDB.panelWidened = true
+	end
+
 	-- `audioPack` was a folder name back when there was only one language to
 	-- choose a pack for; it is now one folder name per content language. The type
 	-- check makes this idempotent, which is why no stored schema version is needed.
@@ -123,6 +130,15 @@ end
 
 function SpokenZones:Set(key, value)
 	SpokenZonesDB[key] = value
+end
+
+--- Every setting back to its default. The language chosen and the record of places already
+--- narrated are not settings in that sense, and stay.
+function SpokenZones:ResetOptions()
+	if SpokenZonesDB == nil then return end
+	for key, value in pairs(defaults) do
+		SpokenZonesDB[key] = value
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -759,6 +775,34 @@ local function CmdAudioPack(arg)
 	end
 end
 
+--- What the settings' Show Diagnostics prints: the voice packs, and how reading is set up.
+function SpokenZones:ShowDiagnostics()
+	CmdAudioPack(nil)
+	local stories = 0
+	for _ in pairs(SpokenZones.Zones or {}) do stories = stories + 1 end
+	SpokenZones:Print("voice %s, read on discovery %s, %d zones with stories, language %s",
+		SpokenZones:IsVoiceEnabled() and "on" or "off", SpokenZones:Get("autoplay") and "on" or "off",
+		stories, tostring(SpokenZones:GetLanguage()))
+end
+
+--- A story played the way a real one is, to check it can be heard: the one for where the
+--- player stands, or else the first one the voice pack has.
+function SpokenZones:PlayTestLine()
+	if not SpokenZones:IsVoiceEnabled() then
+		SpokenZones:Print("|cffffcc00Read Stories Aloud is off|r")
+		return
+	end
+	local mapID, key = CurrentAudioTarget()
+	if mapID and SpokenZones:PlayLore(mapID, key) then return end
+	local ids = {}
+	for id in pairs(SpokenZones.Zones or {}) do table.insert(ids, id) end
+	table.sort(ids)
+	for _, id in ipairs(ids) do
+		if SpokenZones:PlayLore(id, nil) then return end
+	end
+	SpokenZones:Print("|cffffcc00no story could be played -- is the voice pack installed?|r")
+end
+
 -- `/spz lang` lists the languages that can be read; `/spz lang <code>` switches;
 -- `/spz lang auto` goes back to following the client;
 -- `/spz lang <code> force` and `/spz lang off` turn the preview override on and
@@ -875,7 +919,7 @@ SlashCmdList["SPOKENZONES"] = function(msg)
 	elseif cmd == "panel" then
 		local enabled = not SpokenZones:Get("showMapPanel")
 		SpokenZones:Set("showMapPanel", enabled)
-		SpokenZones:Print("world map panel %s", enabled and "enabled" or "disabled")
+		SpokenZones:Print(enabled and SpokenZones.L.PANEL_SHOWN or SpokenZones.L.PANEL_HIDDEN)
 		Dispatch(SpokenZones.mapChangedCallbacks, SpokenZones:GetDisplayedMapID())
 	elseif cmd == "options" or cmd == "config" or cmd == "opt" then
 		if SpokenZones.OpenOptions then

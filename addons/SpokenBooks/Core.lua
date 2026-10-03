@@ -36,11 +36,24 @@ local defaults = {
 	-- Off, because a reader who has not asked for it should hear a book whenever they open
 	-- it. On, a book is narrated the first time it is opened and stays quiet after that.
 	readOnce = false,
+	-- As Quests' Stop When Window Closes: off, a book carries on being read after it is shut.
+	stopOnClose = false,
+	-- Why a page was or was not read, in chat (/spb debug).
+	debug = false,
 	-- Follow the client, and fall back on English: every pack that exists today is English,
 	-- so a player with the pack they already have hears what they heard before.
 	voiceLanguage = "auto",
 	fallbackLanguage = "enUS",
 }
+
+--- Every setting back to its default. What this character has heard is not a setting, and
+--- stays: Forget is the button for that.
+function SpokenBooks:ResetOptions()
+	if not SpokenBooksDB then return end
+	for key, value in pairs(defaults) do
+		SpokenBooksDB[key] = value
+	end
+end
 
 function SpokenBooks:InitDB()
 	SpokenBooksDB = SpokenBooksDB or {}
@@ -145,6 +158,12 @@ function SpokenBooks:SetupSource()
 		-- Durations come from a generated lookup and are exact, so the gap only has to
 		-- separate two pages of prose rather than absorb a bad measurement.
 		interClipGap = 0.35,
+		-- What Spoken's settings show on this part's card: which voice packs are installed.
+		packs = function()
+			local names = {}
+			for _, pack in ipairs(SpokenBooks:GetAudioPacks()) do table.insert(names, pack.title or pack.addon) end
+			return names
+		end,
 	})
 
 	-- Switchable from the player's settings, named there by this addon. The other two
@@ -159,14 +178,16 @@ function SpokenBooks:SetupSource()
 		Spoken:RegisterBullet("book", [[Interface\AddOns\SpokenPlayer\Textures\Book]], 14)
 	end
 
-	-- What puts this addon in the player's menu beside the other two. There is one minimap
-	-- button for all of Spoken and it lists what each source contributed, so a source that
-	-- contributes no entry is absent from that menu however correctly it registered --
-	-- indistinguishable, to a reader, from an addon that did not load.
-	--
+	-- Switched off or on in Spoken's settings: the Play button on the page follows.
+	if Spoken.RegisterCallback then
+		Spoken:RegisterCallback("PART_SWITCHED", function(key)
+			if key == "books" then SpokenBooks:RefreshPlayButton() end
+		end)
+	end
+
 	if Spoken.Minimap then
-		Spoken.Minimap:AddEntry("books", { id = "Read", text = L.MENU_READ_BOOK, order = 1,
-			onClick = function() SpokenBooks:ReadOrExplain() end })
+		-- No "read this book" entry: it only did anything with a book already open, and an
+		-- open book has its own Play button.
 		Spoken.Minimap:AddEntry("books", { id = "Options", text = L.MENU_BOOK_SETTINGS,
 			order = 2, onClick = function() SpokenBooks:OpenOptions() end })
 	end

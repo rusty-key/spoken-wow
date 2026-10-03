@@ -686,6 +686,8 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
             button:Hide()
         end
         table.wipe(self.displayedButtons)
+        -- Switched off, the part puts nothing on the log.
+        if not Addon:IsPartOn() then return end
 
         for row in QuestScrollFrame.titleFramePool:EnumerateActive() do
             local questID = row.questID
@@ -740,10 +742,37 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
     end)
 
     -- The details view is a second place a quest is read from, and the list's buttons cannot
-    -- follow it there: a frame has one parent. One button, rebound to whichever quest the
-    -- panel is showing, in the corner opposite its Back button.
+    -- follow it there: a frame has one parent. Play, Report and Contribute, rebound to whichever
+    -- quest the panel is showing, in the corner opposite its Back button.
     if QuestMapFrame and QuestMapFrame.DetailsFrame and QuestMapFrame_ShowQuestDetails then
+        -- This quest's accept line in the queue, whoever queued it: autoplay, the log's own button
+        -- or this one. Found again each time, since a rebind or a reopened panel starts afresh.
+        local function QueuedLine(questID)
+            for _, clip in ipairs(Player:Queued()) do
+                if clip.questID == questID and clip.event == Enums.SoundEvent.QuestAccept then return clip end
+            end
+        end
+        -- Play's state off the player itself: Pause while this quest's line is the one speaking,
+        -- Play before it starts and while it is paused, as the subtitle's button shows.
+        local function SetRoundPlaying(button)
+            local clip = button.soundData or QueuedLine(button.questID)
+            button:SetPlaying(clip ~= nil and Spoken:GetNowPlaying() == clip and not Spoken:IsPaused())
+        end
+        -- The tooltip says what a click does now.
+        local function PlayTooltip(button)
+            GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+            GameTooltip:SetText(button.playing and L.OPT_PAUSE or L.OPT_PLAY)
+            GameTooltip:AddLine(button.playing and L.OPT_PAUSE_TIP or L.OPT_PLAY_TIP, 1, 0.8, 0.2, true)
+            GameTooltip:Show()
+        end
+
         function QuestOverlayUI:UpdateDetailsPlayButton()
+            if not Addon:IsPartOn() then
+                if self.detailsPlayButton then self.detailsPlayButton:Hide() end
+                if self.detailsReportButton then self.detailsReportButton:Hide() end
+                if self.detailsContributeButton then self.detailsContributeButton:Hide() end
+                return
+            end
             local details = QuestMapFrame.DetailsFrame
             local questID = details.questID or
                 (C_QuestLog and C_QuestLog.GetSelectedQuest and C_QuestLog.GetSelectedQuest())
@@ -751,72 +780,145 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
                 return
             end
 
+            -- The player draws the round buttons (Spoken:CreateRoundButton); without it there is
+            -- nothing to play.
+            if not (Spoken and Spoken.CreateRoundButton) then
+                return
+            end
             if not self.detailsPlayButton then
-                -- A button that says what it does, rather than the list's small icon: there is
-                -- room for words here, and nothing beside it to read them off.
+                -- Play and Report as the lore window and the map's lore panel have them: the
+                -- player's own round buttons, 24 across and 4 apart, Report in the corner.
+                -- Level with the Back button: its inset and vertical offset on the same strip
+                -- keep them on one line whatever the client sizes them to.
                 --
                 -- Under the panel's own header strip, which is what the Back button hangs
                 -- off: a button parented to the details frame itself draws its artwork
                 -- beneath the border art and arrives as a floating label with no button
-                -- behind it. Named too, since UIPanelButtonTemplate names its pieces after
-                -- its parent and an unnamed one leaves those substitutions unresolved.
+                -- behind it. Detached, because the details panel is open
+                -- (Utils:CreateDetachedFrame).
                 local header = details.BackFrame or details
-                -- Detached, because the details panel is open (Utils:CreateDetachedFrame).
-                local playButton = Utils:CreateDetachedFrame("Button", "SpokenQuestsDetailsPlayButton", header,
-                    "UIPanelButtonTemplate")
-                playButton:SetFrameLevel(header:GetFrameLevel() + 2)
-
-                -- Mirrored off the Back button rather than measured against the corner: it is
-                -- anchored to the same strip, and taking its size and its vertical offset from
-                -- it is what keeps the two on one line whatever the client sizes them to.
                 local backButton = header.BackButton
-                playButton:SetSize(backButton and backButton:GetWidth() or 90,
-                    backButton and backButton:GetHeight() or 22)
                 local _, _, _, backInset, backOffset = backButton and backButton:GetPoint(1)
-                playButton:SetPoint("RIGHT", header, "RIGHT", -(backInset or 11), backOffset or 4)
-                playButton.setPlayState = function(button, isPlaying)
-                    if button.contributing then
-                        button:SetText(L.OPT_CONTRIBUTE)
-                    else
-                        button:SetText(isPlaying and L.OPT_STOP or L.OPT_PLAY)
-                    end
-                end
+                local report = Spoken:CreateRoundButton(header, "report")
+                report:SetFrameLevel(header:GetFrameLevel() + 2)
+                report:SetPoint("RIGHT", header, "RIGHT", -(backInset or 11), backOffset or 4)
+
+                local playButton = Spoken:CreateRoundButton(header, "play", "SpokenQuestsDetailsPlayButton")
+                playButton:SetFrameLevel(header:GetFrameLevel() + 2)
+                playButton:SetPoint("RIGHT", report, "LEFT", -4, 0)
+                playButton.setPlayState = SetRoundPlaying
                 self.detailsPlayButton = playButton
+                -- Paused or resumed from the subtitle or the windows, the glyph follows.
+                if Spoken.RegisterCallback then
+                    Spoken:RegisterCallback("AUDIO_CHANGED", function()
+                        QuestOverlayUI:SetPlayButtonState(playButton)
+                    end)
+                end
+
+                -- With no line to play, the pair gives way to Contribute, in words: no glyph
+                -- says it. In the corner where Report sits. Named, since UIPanelButtonTemplate
+                -- names its pieces after its parent.
+                local contributeButton = Utils:CreateDetachedFrame("Button", "SpokenQuestsDetailsContributeButton",
+                    header, "UIPanelButtonTemplate")
+                contributeButton:SetFrameLevel(header:GetFrameLevel() + 2)
+                contributeButton:SetHeight(20)
+                contributeButton:SetText(L.OPT_CONTRIBUTE)
+                contributeButton:SetWidth(math.max(58, (contributeButton:GetTextWidth() or 0) + 24))
+                contributeButton:SetPoint("RIGHT", header, "RIGHT", -(backInset or 11), backOffset or 4)
+                contributeButton:SetScript("OnLeave", function()
+                    if GameTooltip then GameTooltip:Hide() end
+                end)
+                contributeButton:Hide()
+                self.detailsContributeButton = contributeButton
+
+                -- Report: the game's bug in the player's round button, for a wrong reading
+                -- of this quest.
+                report:SetScript("OnClick", function(button)
+                    local target = ReportButton:TargetForQuest(button.questID, Enums.SoundEvent.QuestAccept)
+                    -- The language the line plays in, which PrepareSound records, as the player's
+                    -- Report passes it: a fallback line is an English take under another language.
+                    local sound = { event = Enums.SoundEvent.QuestAccept, questID = button.questID }
+                    local language = DataModules:PrepareSound(sound) and sound.language or nil
+                    if target then ReportButton:ShowLink(target, language) end
+                end)
+                report:HookScript("OnEnter", function(button)
+                    GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+                    GameTooltip:SetText(L.OPT_REPORT_PROBLEM)
+                    GameTooltip:AddLine(L.OPT_REPORT_QUEST_TIP, 1, 0.8, 0.2, true)
+                    GameTooltip:Show()
+                end)
+                report:HookScript("OnLeave", function()
+                    GameTooltip:Hide()
+                end)
+                self.detailsReportButton = report
             end
             local playButton = self.detailsPlayButton
+            local report = self.detailsReportButton
+            local contributeButton = self.detailsContributeButton
+            report.questID = questID
 
-            -- Rebound rather than kept: this button stood for a different quest a moment ago.
-            playButton.soundData = nil
+            -- Rebound rather than kept: this button stood for a different quest a moment ago. A line
+            -- of this quest's already queued is the one it stands for, whoever queued it.
+            playButton.questID = questID
             self:BindPlayButton(playButton, questID, self:GetQuestTitle(questID))
+            playButton.soundData = QueuedLine(questID)
+            -- This quest's line speaking or paused mid-line: pause or resume it, as the subtitle's
+            -- button does. Waiting behind another line: leave it queued. Otherwise: queue it.
+            local bound = playButton:GetScript("OnClick")
+            -- Named arguments, not varargs: this file also loads on 1.12, whose Lua 5.0 cannot
+            -- parse `...` as an expression, and one parse error loses the whole file.
+            playButton:SetScript("OnClick", function(button, mouse, down)
+                local clip = button.soundData or QueuedLine(button.questID)
+                if clip and Spoken:GetNowPlaying() == clip then
+                    if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON) end
+                    Spoken:TogglePause()
+                elseif not clip and bound then
+                    bound(button, mouse, down)
+                end
+                QuestOverlayUI:SetPlayButtonState(button)
+                if GameTooltip:GetOwner() == button then PlayTooltip(button) end
+            end)
+            playButton:SetScript("OnEnter", function(button)
+                if button:IsEnabled() then button.glyph:SetAlpha(1) end
+                PlayTooltip(button)
+            end)
+            playButton:SetScript("OnLeave", function(button)
+                if button:IsEnabled() then button.glyph:SetAlpha(0.85) end
+                GameTooltip:Hide()
+            end)
 
-            -- No sound: the same button offers Contribute instead of greying out, where this
-            -- client can contribute at all (Contribute:CanOfferFromLog).
+            -- No sound: Contribute in the pair's place, where this client can contribute at all
+            -- (Contribute:CanOfferFromLog); otherwise Play greyed out and nothing to report.
             local contribute = rawget(VoiceOver, "Contribute")
-            playButton.contributing = nil
-            playButton:SetScript("OnEnter", nil)
-            playButton:SetScript("OnLeave", nil)
+            contributeButton:Hide()
             if DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID }) then
                 playButton:Enable()
+                playButton:Show()
+                report:Show()
             elseif contribute and contribute.CanOfferFromLog and contribute:CanOfferFromLog() then
+                playButton:Hide()
+                report:Hide()
                 local title = self:GetQuestTitle(questID)
-                playButton.contributing = true
-                playButton:SetScript("OnClick", function()
+                contributeButton:SetScript("OnClick", function()
                     contribute:ShowFromLog(questID, title)
                 end)
-                playButton:SetScript("OnEnter", function(button)
+                contributeButton:SetScript("OnEnter", function(button)
                     contribute:ShowTooltip(button)
                 end)
-                playButton:SetScript("OnLeave", function()
-                    if GameTooltip then
-                        GameTooltip:Hide()
-                    end
-                end)
-                playButton:Enable()
+                contributeButton:Show()
             else
                 playButton:Disable()
+                playButton:Show()
+                report:Hide()
+            end
+            -- Play in Report's corner while Report is hidden, rather than beside an empty space.
+            playButton:ClearAllPoints()
+            if report:IsShown() then
+                playButton:SetPoint("RIGHT", report, "LEFT", -4, 0)
+            else
+                playButton:SetPoint("RIGHT", report, "RIGHT", 0, 0)
             end
             self:SetPlayButtonState(playButton)
-            playButton:Show()
         end
 
         hooksecurefunc("QuestMapFrame_ShowQuestDetails", function()

@@ -1,5 +1,11 @@
 setfenv(1, SpokenEnv)
 
+-- The frame's settings, or their defaults once AceDB has stripped them: it removes a subtable
+-- that holds only defaults at logout, and the frame goes on updating while the UI is torn down.
+local function FrameConfig()
+    return Addon.db.profile.Frame or Defaults.profile.Frame
+end
+
 -- The player: who is speaking, what is waiting, and the controls for both.
 --
 -- ZoneLore's SoundQueueUI.lua is the base -- itself VoiceOverRedux's with the domain
@@ -78,7 +84,7 @@ function PlayerFrame:InitDisplay()
     self.frame:SetClampedToScreen(true)
     -- Placed from the saved layout instead; the client's cache would only fight it.
     self.frame:SetUserPlaced(false)
-    self.frame:SetFrameStrata(Addon.db.profile.Frame.FrameStrata)
+    self.frame:SetFrameStrata(FrameConfig().FrameStrata)
     self.frame:Hide()
 
     self.frame.background = self.frame:CreateTexture(nil, "BACKGROUND")
@@ -249,7 +255,7 @@ function PlayerFrame:InitMover()
     self.frame.mover.background:SetPoint("CENTER")
     self.frame.mover.background:SetSize(32, 32)
     self.frame.mover:HookScript("OnEnter", function(button)
-        if Addon.db.profile.Frame.LockFrame then return end
+        if FrameConfig().LockFrame then return end
         SetCursor([[Interface\Cursor\UI-Cursor-Move]])
         GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
         GameTooltip:SetText(L.QUEUE_TITLE)
@@ -258,11 +264,11 @@ function PlayerFrame:InitMover()
     end)
     self.frame.mover:HookScript("OnLeave", function() SetCursor(nil); GameTooltip_Hide() end)
     self.frame.mover:HookScript("OnMouseDown", function()
-        if Addon.db.profile.Frame.LockFrame then return end
+        if FrameConfig().LockFrame then return end
         self.frame:StartMoving()
     end)
     self.frame.mover:HookScript("OnMouseUp", function()
-        if Addon.db.profile.Frame.LockFrame then return end
+        if FrameConfig().LockFrame then return end
         self.frame:StopMovingOrSizing()
         self:SaveLayout()
     end)
@@ -275,7 +281,7 @@ function PlayerFrame:RefreshConfig()
         return
     end
     MinimalPlayer:SetVisible(false, true)
-    local cfg = Addon.db.profile.Frame
+    local cfg = FrameConfig()
     if cfg.HidePortrait then
         if self.frame.portrait:IsShown() then
             self.frame:SetWidth(self.frame:GetWidth() - PORTRAIT_SIZE)
@@ -320,7 +326,7 @@ end
 
 function PlayerFrame:LayoutCaptions()
     if MinimalPlayer:IsEnabled() then return end
-    local hidePortrait = Addon.db.profile.Frame.HidePortrait
+    local hidePortrait = FrameConfig().HidePortrait
     local left = hidePortrait and 20 or PORTRAIT_SIZE + 15
     local height = Transcript:HeightForClip(SoundQueue:GetCurrentSound())
     Transcript:Dock(self.frame, self.frame, "TOPLEFT", left, -PORTRAIT_SIZE - 4,
@@ -432,10 +438,12 @@ end
 function PlayerFrame:Update()
     if not self.frame then return end
     if MinimalPlayer:IsEnabled() then MinimalPlayer:Update(); return end
-    self.frame:SetShown(not Addon.db.profile.Frame.HideFrame and not SoundQueue:IsEmpty())
+    -- Hidden, not torn down, while subtitles stand in for it: going back finds it as it was.
+    self.frame:SetShown(not FrameConfig().HideFrame and Addon:PlayerStyle() == "classic"
+        and not SoundQueue:IsEmpty())
     if not self.frame:IsShown() then return end
 
-    self:SetResizeBounds(Addon.db.profile.Frame.HidePortrait and 100 or PORTRAIT_SIZE + 100)
+    self:SetResizeBounds(FrameConfig().HidePortrait and 100 or PORTRAIT_SIZE + 100)
 
     self.frame.miniPause:Update()
     self.frame.portrait.pause:Update()
@@ -518,7 +526,7 @@ function PlayerFrame:Describe()
 end
 
 function PlayerFrame:SaveLayout()
-    local width = self.frame:GetWidth() + (Addon.db.profile.Frame.HidePortrait and PORTRAIT_SIZE or 0)
+    local width = self.frame:GetWidth() + (FrameConfig().HidePortrait and PORTRAIT_SIZE or 0)
     Addon:SaveLayout("Player", self.frame, width)
 end
 
@@ -530,6 +538,6 @@ function PlayerFrame:Reset()
     if not self.frame then return end
     self.frame:Reset()
     -- Reset's width has the portrait in it, and RefreshConfig only takes it off on a change.
-    if Addon.db.profile.Frame.HidePortrait then self.frame:SetWidth(self.frame:GetWidth() - PORTRAIT_SIZE) end
+    if FrameConfig().HidePortrait then self.frame:SetWidth(self.frame:GetWidth() - PORTRAIT_SIZE) end
     self:RefreshConfig()
 end

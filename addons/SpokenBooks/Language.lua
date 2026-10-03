@@ -84,7 +84,9 @@ end
 
 --- The language the player wants to hear, resolved: "auto" becomes the client's.
 function SpokenBooks:GetVoiceLanguage()
-	local stored = SpokenBooksDB and SpokenBooksDB.voiceLanguage
+	-- The one choice on Spoken's page for every module, once made; this addon's own until then.
+	local shared = Spoken and Spoken.GetLanguageChoice and Spoken:GetLanguageChoice()
+	local stored = shared or (SpokenBooksDB and SpokenBooksDB.voiceLanguage)
 	if stored == nil or stored == self.AUTO_LANGUAGE or not byCode[stored] then
 		return self:GetClientLanguage()
 	end
@@ -94,7 +96,13 @@ end
 --- The language to try when the voice language has no clip for a page. Nil means none: the
 --- page is silent rather than read in a language nobody asked for.
 function SpokenBooks:GetFallbackLanguage()
-	local stored = SpokenBooksDB and SpokenBooksDB.fallbackLanguage
+	-- Called on its own: an `and` chain would keep only the first of its two answers.
+	local shared
+	if Spoken and Spoken.GetLanguageChoice then
+		local _
+		_, shared = Spoken:GetLanguageChoice()
+	end
+	local stored = shared or (SpokenBooksDB and SpokenBooksDB.fallbackLanguage)
 	if stored == nil then
 		return self.BASE_LANGUAGE
 	end

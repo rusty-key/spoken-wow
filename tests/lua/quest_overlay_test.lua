@@ -149,23 +149,35 @@ Expect("a greyed out button plays nothing", table.getn(played), before)
 QuestMapFrame_ShowQuestDetails(748)
 local detailsButton = VO.QuestOverlayUI.detailsPlayButton
 Expect("the details view has a play button", detailsButton ~= nil, true)
-Expect("...on the side opposite Back", detailsButton and detailsButton.anchor.point, "RIGHT")
-Expect("...on Back's own line", detailsButton and detailsButton.anchor.y, 4)
+local detailsReport = VO.QuestOverlayUI.detailsReportButton
+Expect("...on the side opposite Back, Report on its right", detailsButton and detailsButton.anchor.point
+    .. " " .. tostring(detailsButton.anchor.relativeTo == detailsReport), "RIGHT true")
+Expect("...4 apart, as the subtitle spaces its round buttons", detailsButton.anchor.x, -4)
+Expect("...on Back's own line", detailsReport and detailsReport.anchor.y, 4)
+Expect("...both the subtitle's round button, 24 across", detailsButton.width .. " " .. detailsReport.width, "24 24")
 Expect("...on the panel's own header strip, where the Back button hangs",
     detailsButton and detailsButton:GetParent() == QuestMapFrame.DetailsFrame.BackFrame, true)
 Expect("...lit for a quest with a line", detailsButton and detailsButton:IsEnabled(), true)
-Expect("...saying what it does in words", detailsButton and detailsButton:GetText(), "Play")
+Expect("...showing Play", detailsButton and detailsButton.playing, false)
+Expect("...shown for a quest with a line", detailsReport and detailsReport:IsShown(), true)
+Expect("...and bound to it", detailsReport and detailsReport.questID, 748)
 
 before = table.getn(played)
 detailsButton:Click()
-Expect("...and offers to stop it once it is reading", detailsButton:GetText(), "Stop")
+Expect("...and Pause once it is reading, as the subtitle's button", detailsButton.playing, true)
+detailsButton:Click()
+Expect("clicked while it reads, it pauses the line rather than dropping it",
+    tostring(_G.Spoken:IsPaused()) .. " " .. tostring(detailsButton.playing), "true false")
+detailsButton:Click()
+Expect("...and clicked again, resumes it", tostring(_G.Spoken:IsPaused()) .. " " .. tostring(detailsButton.playing), "false true")
 stub.Advance(3)
-Expect("clicking it reads the same line", table.getn(played), before + 1)
-Expect("...and offers to play again once it has finished", detailsButton:GetText(), "Play")
+Expect("clicking it reads the same line", table.getn(played) > before, true)
+Expect("...and Play again once it has finished", detailsButton.playing, false)
 
 -- One button, rebound: showing another quest's details must not read the last one.
 QuestMapFrame_ShowQuestDetails(96130)
 Expect("a quest with no line greys the same button", detailsButton:IsEnabled(), false)
+Expect("...and hides Report, there being no reading to report", detailsReport:IsShown(), false)
 before = table.getn(played)
 detailsButton:Click()
 stub.Advance(3)
@@ -198,12 +210,15 @@ if contribute then
     Expect("...but no NPC, which the log does not know", envelope:match("\nnpc=") == nil, true)
 end
 
--- The details view says Contribute on the same button instead of greying out.
+-- The details view offers Contribute in the pair's place instead of greying out.
 QuestMapFrame_ShowQuestDetails(96130)
-Expect("the details button offers Contribute for a quest with no line", detailsButton:GetText(), "Contribute")
-Expect("...lit", detailsButton:IsEnabled(), true)
+local contributeButton = VO.QuestOverlayUI.detailsContributeButton
+Expect("the details view offers Contribute for a quest with no line", contributeButton:IsShown()
+    and contributeButton:GetText(), "Contribute")
+Expect("...in place of Play and Report", detailsButton:IsShown() or detailsReport:IsShown(), false)
 QuestMapFrame_ShowQuestDetails(748)
-Expect("...and says Play again for a quest with one", detailsButton:GetText(), "Play")
+Expect("...and Play and Report come back for a quest with one", detailsButton:IsShown() and detailsReport:IsShown()
+    and not contributeButton:IsShown(), true)
 
 _G.CreateFrame = createFrame
 Expect("no frame was created with a parent inside the open quest log", #parentedInLog, 0)

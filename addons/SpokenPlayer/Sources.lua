@@ -22,6 +22,7 @@ SourceMethods.__index = SourceMethods
 ---@field testBeforeQueue? boolean
 ---@field onQueueEnter? fun()
 ---@field onQueueEmpty? fun()
+---@field packs? fun():string[] -- the voice packs this source found installed, by name
 
 ---@param key string
 ---@param info SpokenSourceInfo
@@ -41,6 +42,13 @@ function Sources:Register(key, info)
         testBeforeQueue = info.testBeforeQueue,
         onQueueEnter = info.onQueueEnter,
         onQueueEmpty = info.onQueueEmpty,
+        packs = info.packs,
+        -- A part whose voices come in parts counts and names them itself (Options:PartVoice).
+        packCount = info.packCount,
+        packNames = info.packNames,
+        -- A part's settings kept in AceDB profiles: a function returning its AceDB object, so
+        -- Spoken's own Profiles section switches it with the player's (Options:ProfileDBs).
+        profiles = info.profiles,
         gates = {},
     }, SourceMethods)
     self.byKey[key] = source
@@ -57,6 +65,26 @@ end
 
 function Sources:Get(key)
     return self.byKey[key]
+end
+
+--- Whether the player has switched this part of Spoken off in the settings. Off, the addon
+--- stays installed and loaded and nothing it sends is played. The player's own switch, not the
+--- client's addon list: current clients keep enabling and disabling an addon for their own UI
+--- and refuse it to addons (see the pcall around DisableAddOn in SpokenQuests' VoiceOver.lua),
+--- and this one needs no reload either.
+function Sources:IsTurnedOff(source)
+    local parts = Addon.db and Addon.db.profile.Parts
+    return parts ~= nil and source ~= nil and parts[source.key] == false
+end
+
+function Sources:SetTurnedOff(key, off)
+    -- Not `off and false or nil`, which is nil either way.
+    if off then Addon.db.profile.Parts[key] = false else Addon.db.profile.Parts[key] = nil end
+    local source = self.byKey[key]
+    -- What it already queued goes too: switching a part off mid-line should silence it.
+    if off and source then SoundQueue:RemoveSource(source) end
+    -- And the part takes its own buttons off the game's frames, or puts them back.
+    Callbacks:Fire("PART_SWITCHED", key, not off)
 end
 
 --- Iterates `key, source` in `order`.

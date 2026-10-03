@@ -1,0 +1,10 @@
+<Bindings>
+    <!--
+        Keys for the queue, under a Spoken heading in the game's key bindings. With subtitles
+        only, or voice only, there is no window to click, and these are what is left. They go
+        through the slash command, which is the public way in and already does each of these.
+    -->
+    <Binding name="SPOKEN_PLAYPAUSE" header="SPOKEN">SlashCmdList.SPOKEN("play")</Binding>
+    <Binding name="SPOKEN_SKIP">SlashCmdList.SPOKEN("skip")</Binding>
+    <Binding name="SPOKEN_STOP">SlashCmdList.SPOKEN("stop")</Binding>
+</Bindings>

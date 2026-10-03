@@ -2,8 +2,16 @@
 
 Spoken can show quest dialogue, NPC dialogue, zone lore and book pages inside the
 player. Compact captions show one or two lines; expanded captions show eight.
-The captions follow the recording and highlight two adjacent words in gold.
-They move, resize and scale with the player in both layouts.
+The captions follow the recording: with **Type Words Out** on (the default) the
+words appear as the voice reaches them, and with **Highlight Words** on (off by
+default) two adjacent words are lit in gold. They move, resize and scale with
+the player in both window layouts.
+
+The **Subtitles Only** narrator style shows the words without a window instead,
+low in the middle of the screen, four lines at a time, typed in a little ahead
+of the voice. It lights no words: with the timing an estimate, a word lit as it
+is typed in front of the reader shows every miss. `/spoken player subtitle`
+switches to it.
 
 ![Quest captions in the WoW Forever player](captions.png)
 
@@ -17,12 +25,13 @@ visually. The expanded view and zone/book captions still need an in-game visual 
 - The small **+** button expands captions to eight lines. **−** restores your
   compact line setting. The player grows downward and keeps the unit icon in place.
 - `/spoken transcript 1` sets one compact line; `/spoken transcript 2` sets two.
-- `/spoken options` has settings for line count, font size, highlighting and
-  automatic following.
+- `/spoken options` has settings for line count, font size, highlighting, typing
+  out, automatic following, and the subtitles' size and background.
 - Scroll over the captions to read other pages. Click the text to follow the
   recording again. Right-click opens the player menu, or settings in the
   original layout.
-- `/spoken transcript reset` restores the caption defaults.
+- `/spoken transcript reset` restores the caption and subtitle defaults and
+  moves the subtitles back to where they start.
 
 Pausing freezes the text. Resuming restarts it with the recording. Skipping
 shows the next clip's text, and a clip without text hides the captions.

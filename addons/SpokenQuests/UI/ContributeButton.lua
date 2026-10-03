@@ -127,6 +127,10 @@ function ContributeButton:Refresh()
     if not button then
         return
     end
+    if not Addon:IsPartOn() then
+        button:Hide()
+        return
+    end
 
     if not Contribute:HasGap() then
         button:Hide()

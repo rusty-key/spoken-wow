@@ -6,6 +6,7 @@
     <Include file="Callbacks.lua"/>
     <Include file="SoundQueue.lua"/>
     <Include file="Sources.lua"/>
+    <Include file="OtherSounds.lua"/>
     <Include file="Strings.lua"/>
     <Include file="Locale\deDE.lua"/>
     <Include file="Locale\esES.lua"/>
@@ -23,6 +24,7 @@
     <Include file="UI\MinimalPlayer.lua"/>
     <Include file="UI\MinimapButton.lua"/>
     <Include file="UI\Options.lua"/>
+    <Include file="UI\Welcome.lua"/>
     <Include file="API.lua"/>
 
     <Include file="Compat.lua"/>

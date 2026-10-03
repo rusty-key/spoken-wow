@@ -208,13 +208,22 @@ function Transcript:Render()
             neighbor = highlighted - 1
         end
     end
-    local key = format("%d:%d:%d:%d", self.page, highlighted or 0, neighbor or 0, LineCount())
+    -- Typed out, as the subtitle is: the words up to the one being read, the rest still to
+    -- come. Nothing before the voice starts; the whole line once it has finished.
+    local typedTo
+    -- Only with a length to time it by: a clip with none shows its whole line, as before.
+    if cfg.Typewriter and progress then
+        if inSpeech then typedTo = self.activeWord
+        elseif not (progress and progress >= 1) then typedTo = 0 end
+    end
+    local key = format("%d:%d:%d:%d:%d", self.page, highlighted or 0, neighbor or 0, LineCount(), typedTo or -1)
     if self.renderedKey == key then return end
     self.renderedKey = key
     for row, label in ipairs(self.labels) do
         local line = row <= LineCount() and self.lines[(self.page - 1) * LineCount() + row]
         local parts = {}
         for _, piece in ipairs(line or {}) do
+            if typedTo and piece.word > typedTo then break end
             parts[#parts + 1] = piece.prefix .. ((piece.word == highlighted or piece.word == neighbor)
                 and HIGHLIGHT .. piece.text .. "|r" or piece.text)
         end
@@ -246,7 +255,8 @@ end
 -- The player owns position, scale, border and controls. This module owns only
 -- the caption text and its reading position.
 function Transcript:HeightForClip(clip)
-    if not Config().Enabled or not clip or self:TextFor(clip) == "" then return 0 end
+    -- Subtitles stand apart from the player, which then keeps its compact height.
+    if not Config().Enabled or Addon:PlayerStyle() == "subtitle" or not clip or self:TextFor(clip) == "" then return 0 end
     return LineCount() * ((Config().FontSize or 16) + GAP)
 end
 
@@ -286,12 +296,20 @@ end
 function Transcript:Update()
     if not self.frame then return end
     self:Render()
-    self.frame:SetShown(Config().Enabled and self.clip ~= nil and self.text ~= "")
+    self.frame:SetShown(Config().Enabled and Addon:PlayerStyle() ~= "subtitle" and self.clip ~= nil and self.text ~= "")
+    Subtitle:Update()
 end
 
 function Transcript:Reset()
     local cfg = Config()
-    cfg.Lines, cfg.FontSize, cfg.AutoScroll, cfg.HighlightWord = 2, 16, true, true
+    -- Back to the defaults a first install has (Core.lua). The style stays, as Enabled does: it
+    -- is the choice of where captions go, not a tweak.
+    local defaults = Defaults.profile.Transcript
+    for _, key in ipairs({ "Lines", "FontSize", "AutoScroll", "HighlightWord", "Typewriter", "TypewriterBy",
+        "SubtitleShadow", "SubtitleScale" }) do
+        cfg[key] = defaults[key]
+    end
+    Subtitle:Reset()
     Addon:Layout().CaptionsExpanded = false
     self.manualScroll = false
     self:RefreshConfig()
@@ -394,7 +412,7 @@ function Transcript:Initialize()
 end
 
 function Transcript:Describe()
-    return format("transcript=%s visible=%s lines=%d page=%d/%d word=%s estimated=true",
+    return format("transcript=%s visible=%s lines=%d page=%d/%d word=%s estimated=true; %s",
         tostring(Config().Enabled), tostring(self.frame and self.frame:IsVisible()),
-        LineCount(), self.page or 1, self:PageCount(), tostring(self.activeWord))
+        LineCount(), self.page or 1, self:PageCount(), tostring(self.activeWord), Subtitle:Describe())
 end
