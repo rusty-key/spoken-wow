@@ -34,6 +34,7 @@ local world = {
     -- the older quest tests read it unchanged; the channel of the nth play is beside it.
     playedChannels = {},
     stopped = {},      -- handles StopSound was asked to stop, in order
+    kitSounds = {},    -- every PlaySound, as {kit, channel}: UI clicks and the item cue
     music = {},        -- paths PlayMusic was given, in order (the 2.4.3/3.3.5 path)
     missing = {},      -- paths PlaySoundFile refuses, as a set
     cvars = {},        -- overrides; anything unset reads as "1"
@@ -490,8 +491,10 @@ _G.GameTooltip = Widget("Frame", "GameTooltip")
 function _G.GameTooltip_Hide() end
 function _G.MouseIsOver() return false end
 function _G.SetCursor() end
-function _G.PlaySound() end
-_G.SOUNDKIT = { U_CHAT_SCROLL_BUTTON = 1115 }
+function _G.PlaySound(kit, channel)
+    table.insert(world.kitSounds, { kit = kit, channel = channel })
+end
+_G.SOUNDKIT = { U_CHAT_SCROLL_BUTTON = 1115, IG_QUEST_LOG_CLOSE = 845 }
 _G.HIGHLIGHT_FONT_COLOR = { r = 1, g = 1, b = 1 }
 _G.NORMAL_FONT_COLOR = { r = 1, g = 0.82, b = 0 }
 _G.GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
@@ -1046,7 +1049,7 @@ end
 
 --- Reset every piece of sound state a test can observe.
 function M.ResetSound()
-    for _, key in ipairs({ "played", "playedChannels", "stopped", "music", "missing", "cvars", "cvarLog" }) do
+    for _, key in ipairs({ "played", "playedChannels", "stopped", "kitSounds", "music", "missing", "cvars", "cvarLog" }) do
         world[key] = {}
     end
 end

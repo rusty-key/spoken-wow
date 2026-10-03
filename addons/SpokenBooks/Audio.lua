@@ -97,6 +97,8 @@ function SpokenBooks:ClipFor(pageId)
 					-- here would reset the Play button mid-sentence.
 					length = (entry.len and entry.len > 0) and entry.len or nil,
 					pageId = pageId,
+					-- One book is one item to the player: no cue between its pages.
+					group = "book:" .. tostring(place.book),
 					-- What the report is filed under: a fallback page is an English take even
 					-- under a German selection, and its report is about that.
 					language = language,

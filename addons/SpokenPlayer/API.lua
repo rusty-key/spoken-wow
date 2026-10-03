@@ -48,6 +48,7 @@ end
 --     length   = 3.4,                         -- seconds; the client cannot report this
 --     delay    = nil,                         -- silence before; only 2.4.3/3.3.5 set it
 --     priority = "normal" | "low",            -- low yields at the door; gossip is low
+--     group    = "book:123",                  -- optional; clips of one item, no cue between
 --     present  = {
 --       header   = "Eagan Peltskinner",       -- NPC name | zone name | book title
 --       label    = "Wolves Across the Border",-- quest title | subzone | page label

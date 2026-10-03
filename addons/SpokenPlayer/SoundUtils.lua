@@ -99,6 +99,13 @@ function SoundUtils:PlaySound(clip, channel)
     return willPlay, handle
 end
 
+--- The game's own quest-log-close sound, played between two items in the queue. A kit
+--- sound rather than a file we ship: it is one every player already reads as "done".
+---@param channel string
+function SoundUtils:PlayCue(channel)
+    PlaySound(SOUNDKIT.IG_QUEST_LOG_CLOSE, channel)
+end
+
 ---@param clip { handle: number? }
 function SoundUtils:StopSound(clip)
     if clip.handle then

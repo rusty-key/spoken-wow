@@ -136,6 +136,10 @@ local function Build(canvas)
             end)
     end
 
+    layout:Checkbox(L.OPT_CUE_BETWEEN, L.OPT_CUE_BETWEEN_TIP,
+        function() return audio().CueBetweenItems end,
+        function(v) audio().CueBetweenItems = v end)
+
     -- 2.4.3 and 3.3.5 only, and absent from the saved variables anywhere else. These had
     -- no rows at all until recently: the settings existed and could only be reached by
     -- editing the saved variables by hand.
