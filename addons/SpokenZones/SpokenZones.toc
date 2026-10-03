@@ -92,7 +92,7 @@ UI/TextView.lua
 UI/CopyLink.lua
 UI/AudioButton.lua
 UI/ReportButton.lua
-UI/Skin.lua
+UI/LorePage.lua
 UI/MapPanel.lua
 UI/SubzoneClick.lua
 UI/HoverPreview.lua

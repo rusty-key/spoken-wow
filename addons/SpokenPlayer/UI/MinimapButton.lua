@@ -42,7 +42,8 @@ function Minimap:BuildMenu()
         if not entry.visible or entry.visible() then table.insert(menu, entry) end
     end
     for key, source in Sources:Iterate() do
-        for _, entry in ipairs(self.entries[key] or {}) do
+        -- A part switched off has no entries: it is off.
+        for _, entry in ipairs(Sources:IsTurnedOff(source) and {} or self.entries[key] or {}) do
             if not entry.visible or entry.visible() then
                 entry.sourceTitle = source.title
                 table.insert(menu, entry)

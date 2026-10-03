@@ -12,21 +12,15 @@ local ADDON_NAME, SpokenZones = ...
 
 local L = SpokenZones.L
 
-local INDENT = 20
+-- The game's settings list sets its rows 25 in from the canvas's left.
+local INDENT = 25
+-- The voice pack this addon is made for, and where to get it.
+local AUDIO_ADDON = "SpokenZonesAudio"
+local AUDIO_URL = "https://www.curseforge.com/wow/addons/spoken-zones-audio"
+-- Where a problem that is not about one story is reported: the site the addons share.
+local REPORT_URL = "https://spoken.rusty.one"
 
 local panel, category
-
---------------------------------------------------------------------------------
--- Widgets
---------------------------------------------------------------------------------
-
-local function MakeHeading(parent, text, x, y, template)
-	local fs = parent:CreateFontString(nil, "ARTWORK", template or "GameFontNormalLarge")
-	fs:SetPoint("TOPLEFT", x, y)
-	fs:SetJustifyH("LEFT")
-	fs:SetText(text)
-	return fs
-end
 
 --------------------------------------------------------------------------------
 -- Apply helpers
@@ -70,92 +64,92 @@ function SpokenZones:SetupOptions()
 	local content = scroller.child
 	panel.content = content
 
-	MakeHeading(content, "Spoken Zones", INDENT, -16)
-	local layout = SpokenLayout.New(content, INDENT, -42)
-	layout:Note(L.OPT_NOTE)
+	local layout = SpokenLayout.New(content, INDENT, -16)
+	panel.layout = layout
+	layout:Header(L.OPT_PAGE_TITLE, L.OPT_NOTE, nil, [[Interface\Icons\INV_Misc_Map_01]])
+	local refresh = function() layout:Refresh() end
+
+	-- The part's own switch first, as on Spoken's page: off, everything under it is greyed
+	-- out and says why, rather than looking live and doing nothing.
+	local switch
+	local function PartOn() return not (Spoken and Spoken.IsPartOn) or Spoken:IsPartOn("zones") end
+	-- Its own entry, nested under Spoken in the game's settings list and headed as the game's
+	-- pages are, with its switch first: the page is there whether the part is on or not. The
+	-- part's card on Spoken's page turns it on and off too.
+	if Spoken and Spoken.SettingsStyle and Spoken:SettingsStyle() == "pages" then
+		layout:HideHeader()
+		layout:Intro([[Interface\Icons\INV_Misc_Map_01]], L.OPT_PAGE_TITLE)
+		switch = layout:Checkbox(L.OPT_PART_SWITCH, L.OPT_PART_SWITCH_TIP, PartOn,
+			function(value) Spoken:SetPartOn("zones", value) end, refresh)
+	else
+		-- A player too old to nest pages: how this part stands -- on or off, and its voice
+		-- packs -- before any setting, worded as on its card on Spoken's page.
+		if Spoken and Spoken.PartStatus then
+			layout:Status(function() return Spoken:PartStatus("zones") end)
+		end
+		if Spoken and Spoken.IsPartOn then
+			switch = layout:Checkbox(L.OPT_PART_SWITCH, L.OPT_PART_SWITCH_TIP, PartOn,
+				function(value) Spoken:SetPartOn("zones", value) end, refresh)
+		end
+	end
 
 	-- Every row's position, and the spacing between them, comes from UI/Layout.lua -- the
 	-- file every Spoken addon carries a copy of, so the three panels read alike.
 	local function Get(key) return function() return SpokenZones:Get(key) end end
 	local function Set(key) return function(value) SpokenZones:Set(key, value) end end
 
-	layout:Section(L.OPT_SECTION_MAP)
-	layout:Checkbox(L.OPT_MAP_PANEL,
-		L.OPT_MAP_PANEL_TIP,
-		Get("showMapPanel"), Set("showMapPanel"), RedrawPanel)
-	layout:Checkbox(L.OPT_HOVER,
-		L.OPT_HOVER_TIP,
-		Get("showHoverPreview"), Set("showHoverPreview"))
-	-- Stored as a string ("LEFT"/"RIGHT") rather than a boolean, so it reads and writes
-	-- its own way rather than through Get/Set above.
-	layout:Checkbox(L.OPT_PANEL_LEFT, nil,
-		function() return SpokenZones:Get("panelSide") == "LEFT" end,
-		function(value) SpokenZones:Set("panelSide", value and "LEFT" or "RIGHT") end,
-		RedrawPanel)
-	layout:Slider(L.OPT_PANEL_WIDTH, 220, 520, 10,
-		Get("panelWidth"), Set("panelWidth"), RedrawPanel, SpokenLayout.Number)
-	layout:Slider(L.OPT_FONT_SIZE, 9, 20, 1,
-		Get("fontSize"), Set("fontSize"), RedrawEverything, SpokenLayout.Number)
-
-	layout:Section(L.OPT_SECTION_MINIMAP)
-	layout:Checkbox(L.OPT_MINIMAP_BUTTON,
-		L.OPT_MINIMAP_BUTTON_TIP,
-		Get("showMinimapButton"), Set("showMinimapButton"), function()
-			-- The checkbox has already written the option, so sync rather than
-			-- toggle; ApplyMinimapButton also keeps `hide` in step for LibDBIcon.
-			if SpokenZones.ApplyMinimapButton then
-				SpokenZones:ApplyMinimapButton()
-			end
-		end)
-
+	-- Reading aloud first, as the quests and readables pages start with when to read: it is
+	-- what most players install this for. The map after, then the lore window.
 	layout:Section(L.OPT_SECTION_NARRATION)
+	-- The voice itself: off, the stories are text only, and nothing below can read them.
+	local voiced = Get("voiceEnabled")
 	layout:Checkbox(L.OPT_PLAY_BUTTON,
 		L.OPT_PLAY_BUTTON_TIP,
-		Get("voiceEnabled"), Set("voiceEnabled"), function()
+		voiced, Set("voiceEnabled"), function()
 			SpokenZones:StopLore()
 			SpokenZones:NotifyAudioChanged()
+			layout:Refresh()
 		end)
-	layout:Checkbox(L.OPT_AUTOPLAY,
+	local discovery = layout:Checkbox(L.OPT_AUTOPLAY,
 		L.OPT_AUTOPLAY_TIP,
 		Get("autoplay"), Set("autoplay"), function()
 			if not SpokenZones:Get("autoplay") then
 				SpokenZones:StopLore()
 			end
+			layout:Refresh()
 		end)
+	layout:Requires(discovery, voiced, L.REASON_VOICE)
+	-- Indented and greyed with autoplay off: both only shape what autoplay reads.
+	local discovering = Get("autoplay")
 	layout:Indent()
-	layout:Checkbox(L.OPT_AUTOPLAY_SUB,
+	local smaller = layout:Checkbox(L.OPT_AUTOPLAY_SUB,
 		L.OPT_AUTOPLAY_SUB_TIP,
 		Get("autoplaySubzones"), Set("autoplaySubzones"))
-	layout:Checkbox(L.OPT_AUTOPLAY_EXPLORED,
+	local before = layout:Checkbox(L.OPT_AUTOPLAY_EXPLORED,
 		L.OPT_AUTOPLAY_EXPLORED_TIP,
 		Get("autoplayExplored"), Set("autoplayExplored"))
+	for _, row in ipairs({ smaller, before }) do
+		layout:Requires(row, voiced, L.REASON_VOICE)
+		layout:Requires(row, discovering, L.REASON_DISCOVERY)
+	end
 	layout:Outdent()
-	-- The list is read when the menu opens rather than captured here: packs cannot be
-	-- installed mid-session, but a player who disables one in the AddOns list and reloads
-	-- should not find this offering it.
-	local packNote
-	local function PackLabel(pack)
-		return pack and SpokenZones:GetAudioPackLabel(pack) or L.OPT_PACK_NONE_INSTALLED
-	end
-	local function DescribePacks()
-		local packs = SpokenZones:GetAudioPacks()
-		local active = SpokenZones:GetActiveAudioPack()
-		if #packs == 0 then
-			packNote:SetText(L.OPT_PACK_NONE)
-		elseif #packs > 1 then
-			packNote:SetText(string.format(L.OPT_PACK_MULTI_FMT, active.addon, #packs))
-		else
-			packNote:SetText(active.addon)
-		end
-	end
-	layout:Dropdown(L.OPT_SOUND_PACK, L.OPT_SOUND_PACK_TIP,
-		function() return SpokenZones:GetAudioPacks() end,
-		function() return SpokenZones:GetActiveAudioPack() end,
-		function(pack) SpokenZones:SetActiveAudioPack(pack.addon) end,
-		function() DescribePacks() end,
-		PackLabel)
-	packNote = layout:Note("", 460, 32)
-	DescribePacks()
+	layout:Section(L.OPT_SECTION_MAP)
+	layout:Checkbox(L.OPT_MAP_PANEL,
+		L.OPT_MAP_PANEL_TIP,
+		Get("showMapPanel"), Set("showMapPanel"), function() RedrawPanel(); layout:Refresh() end)
+	local besideMap = Get("showMapPanel")
+	layout:Checkbox(L.OPT_HOVER,
+		L.OPT_HOVER_TIP,
+		Get("showHoverPreview"), Set("showHoverPreview"))
+	layout:Requires(layout:Slider(L.OPT_PANEL_WIDTH, 220, 520, 10,
+		Get("panelWidth"), Set("panelWidth"), RedrawPanel, SpokenLayout.Number, L.OPT_PANEL_WIDTH_TIP),
+		besideMap, L.REASON_MAP_PANEL)
+	layout:Slider(L.OPT_FONT_SIZE, 9, 20, 1,
+		Get("fontSize"), Set("fontSize"), RedrawEverything, SpokenLayout.Number, L.OPT_FONT_SIZE_TIP)
+
+	-- The lore window: every zone's stories to browse, which nothing else on the page leads to.
+	layout:Section(L.OPT_SECTION_LORE)
+	layout:Button(L.MENU_LORE_WINDOW, 200, function() SpokenZones:ToggleLoreWindow() end, L.OPT_LORE_WINDOW_TIP)
 
 	layout:Section(L.OPT_SECTION_LANGUAGE)
 	-- Only finished languages are offered. A player choosing from a list has no way to
@@ -178,7 +172,7 @@ function SpokenZones:SetupOptions()
 			langNote:SetText(string.format(L.OPT_LANG_COUNT_FMT, #available))
 		end
 	end
-	layout:Dropdown(L.OPT_LANGUAGE, L.OPT_LANGUAGE_TIP,
+	local langMenu = layout:Dropdown(L.OPT_LANGUAGE, L.OPT_LANGUAGE_TIP,
 		function()
 			local values = { AUTO }
 			for _, locale in ipairs(SpokenZones:GetSelectableLanguages()) do
@@ -198,10 +192,11 @@ function SpokenZones:SetupOptions()
 		function(locale)
 			local code = locale ~= AUTO and locale.code or nil
 			if SpokenZones:SetLanguage(code) then
-				-- Said before the reload rather than after: the failure to avoid is a
-				-- player switching, seeing English, and concluding it did not work.
-				SpokenZones:Print(string.format(L.OPT_LANG_SET_FMT,
-					SpokenZones:GetLanguageName(code or SpokenZones:GetAutoLanguage())))
+				-- Asked at once rather than left to a line in chat: the failure to avoid is
+				-- a player switching, seeing English, and concluding it did not work.
+				SpokenLayout.AskReload(string.format(L.OPT_LANG_SET_FMT,
+					SpokenZones:GetLanguageName(code or SpokenZones:GetAutoLanguage())),
+					L.OPT_RELOAD_NOW, L.OPT_LATER)
 			end
 		end,
 		function() DescribeLanguage() end,
@@ -214,36 +209,99 @@ function SpokenZones:SetupOptions()
 		end)
 	langNote = layout:Note("", 460, 32)
 	DescribeLanguage()
+	-- A menu with one language in it chooses nothing: the section waits for a second one.
+	local function Choice() return #SpokenZones:GetSelectableLanguages() > 1 end
+	layout:ShowWhen(langMenu, Choice)
+	layout:ShowWhen(langNote, Choice)
+
+	-- What this character has heard, as on the other pages: forgotten, every place is new again.
+	layout:Section(L.OPT_SECTION_HISTORY)
+	layout:Button(L.OPT_FORGET_PLACES, 200, function()
+		if SpokenZones.ForgetAutoplayHistory then SpokenZones:ForgetAutoplayHistory() end
+		SpokenZones:Print(L.OPT_FORGET_PLACES_DONE)
+	end, L.OPT_FORGET_PLACES_TIP)
+
+	-- Every voice pack, a row each, as on the quests page: its version where it is installed,
+	-- and where it is not, a button with the address to get it. With more than one installed,
+	-- which of them reads.
+	layout:Section(L.OPT_SECTION_PACKS)
+	local GetMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+	local function PackRow(addon, name)
+		layout:Download(string.format(L.OPT_PACK_NAME_FMT, name), function()
+			for _, pack in ipairs(SpokenZones:GetAudioPacks()) do
+				if pack.addon == addon then
+					return "ok", (GetMeta and GetMeta(addon, "Version")) or L.OPT_PACK_INSTALLED
+				end
+			end
+		end, L.OPT_DOWNLOAD, function()
+			SpokenZones:ShowCopyLink(AUDIO_URL, L.OPT_DOWNLOAD_ADDRESS)
+		end, L.OPT_DOWNLOAD_TIP)
+	end
+	PackRow(AUDIO_ADDON, L.OPT_PACK_OFFICIAL)
+	local installed = SpokenZones:GetAudioPacks()
+	for _, pack in ipairs(installed) do
+		if pack.addon ~= AUDIO_ADDON then
+			PackRow(pack.addon, SpokenZones:GetAudioPackLabel(pack))
+		end
+	end
+	if #installed > 1 then
+		layout:Dropdown(L.OPT_SOUND_PACK, L.OPT_SOUND_PACK_TIP,
+			function() return SpokenZones:GetAudioPacks() end,
+			function() return SpokenZones:GetActiveAudioPack() end,
+			function(pack) SpokenZones:SetActiveAudioPack(pack.addon) end,
+			nil,
+			function(pack) return pack and SpokenZones:GetAudioPackLabel(pack) or L.OPT_PACK_NONE_INSTALLED end)
+	end
 
 	layout:Section(L.OPT_SECTION_TROUBLE)
-	layout:Checkbox(L.OPT_DEBUG_MAP_CLICK,
-		L.OPT_DEBUG_MAP_CLICK_TIP,
-		Get("debug"), Set("debug"))
-
-	-- Its own section rather than part of Troubleshooting, and not only because the
-	-- checkbox above already uses the word "report": the per-line Report buttons
-	-- cover a bad line, and this covers everything that belongs to no line at all --
-	-- the addon erroring, the voice being wrong throughout, the site itself.
-	layout:Section(L.OPT_SECTION_FEEDBACK)
-	layout:Button(L.OPT_REPORT_PROBLEM, 220, function()
-		SpokenZones:ShowCopyLink(SpokenZones.SITE_URL,
-			L.OPT_REPORT_ADDRESS)
-	end)
-	layout:Note(L.OPT_REPORT_NOTE, 460, 40)
+	-- The same three as every module's page: a story to check the sound with, what is
+	-- installed, and where to report the rest.
+	layout:Columns(2)
+	layout:Button(L.OPT_TEST_LINE, 200, function() SpokenZones:PlayTestLine() end, L.OPT_TEST_LINE_TIP)
+	layout:Button(L.OPT_DIAGNOSTICS, 200, function() SpokenZones:ShowDiagnostics() end, L.OPT_DIAGNOSTICS_TIP)
+	layout:Columns(nil)
+	-- The per-story Report buttons cover a bad story; this covers everything that belongs to
+	-- none -- the addon erroring, the voice wrong throughout, the site.
+	layout:Button(L.OPT_REPORT_PROBLEM, 200, function()
+		SpokenZones:ShowCopyLink(REPORT_URL, L.OPT_REPORT_ADDRESS)
+	end, L.OPT_REPORT_NOTE)
+	-- Every page ends the same way, as Spoken's does: one section, last, to start over.
+	layout:StartOver(L.OPT_SECTION_START_OVER, L.OPT_RESET_PAGE, function()
+		SpokenLayout.Confirm(L.OPT_RESET_PAGE_CONFIRM, L.OPT_RESET, L.OPT_CANCEL, function()
+			SpokenZones:ResetOptions()
+			RedrawEverything()
+			layout:Refresh()
+		end)
+	end, L.OPT_RESET_PAGE_TIP)
+	-- Switched off, the module is off: everything on its page greys out but its own switch.
+	layout:RequiresAll(PartOn, L.REASON_PART_OFF, switch)
+	layout:Refresh()
+	content:SetScript("OnShow", refresh)
 
 	-- Derived rather than written as a number: a hardcoded height is a number nobody
 	-- updates when a row is added, and the failure it produces is the one this scroller
 	-- exists to fix -- a section you cannot reach.
 	scroller:SetContentHeight(layout:Height() + 40)
 
-	category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken Zones")
-	Settings.RegisterAddOnCategory(category)
+	-- Under Spoken's own entry when the player can nest it, beside the other parts' pages;
+	-- a top-level entry of its own otherwise, as when the player is not installed.
+	local page = Spoken and Spoken.AddSettingsPage
+		and Spoken:AddSettingsPage(panel, L.OPT_PAGE_TITLE, 3, layout, scroller)
+	if page then
+		SpokenZones.optionsPage = page
+	else
+		category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken Zones")
+		Settings.RegisterAddOnCategory(category)
+	end
 
 	SpokenZones.optionsPanel = panel
 	SpokenZones.optionsCategory = category
 end
 
 function SpokenZones:OpenOptions()
+	-- Nested under Spoken's entry: Spoken opens this page.
+	if self.optionsPage and self.optionsPage.Open and self.optionsPage.Open() then return end
+	local category = category or (self.optionsPage and self.optionsPage.category)
 	if not category or not (Settings and Settings.OpenToCategory) then
 		SpokenZones:Print("open Game Menu -> Options -> AddOns -> Spoken Zones")
 		return

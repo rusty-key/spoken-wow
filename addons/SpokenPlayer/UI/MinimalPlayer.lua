@@ -68,7 +68,7 @@ local function BelongsTo(frame, root)
 end
 
 function MinimalPlayer:IsEnabled()
-    return Addon.db and Config().MinimalPlayer and not Version.IsAnyLegacy
+    return Addon.db and Addon:PlayerStyle() == "minimal"
 end
 
 function MinimalPlayer:HideTooltip()
@@ -630,6 +630,13 @@ function MinimalPlayer:RefreshConfig(original)
     self.trim:SetVertexColor(r, g, b)
     self.ring:SetVertexColor(r, g, b)
     if cfg.LockFrame then frame:StopMovingOrSizing(); self.sizing = false end
+    -- Locked, clicks on the window pass through to the game, as the subtitle's do; its buttons
+    -- still take theirs, and the header still opens the menu. Where the client cannot tell a
+    -- click from the pointer passing over, the window keeps both.
+    if frame.SetMouseClickEnabled and frame.SetMouseMotionEnabled then
+        frame:SetMouseMotionEnabled(true)
+        frame:SetMouseClickEnabled(not cfg.LockFrame)
+    end
     self:Update()
 end
 

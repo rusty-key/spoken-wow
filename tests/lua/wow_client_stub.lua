@@ -1011,19 +1011,21 @@ libs["AceDB-3.0"] = {
 --- Loads exactly what its addon.xml and then Contribute.xml list, in order (a Blizzard-client
 --- .toc's order), then initialises the saved variables the way ADDON_LOADED would.
 function M.LoadSpoken(addonDirectory)
-    for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources",
-        "Strings", "UI/Layout", "UI/Transcript", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/PlayerFrame",
+    for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "OtherSounds",
+        "Strings", "UI/Layout", "UI/Transcript", "UI/Subtitle", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/PlayerFrame",
         "UI/MinimalPlayer", "UI/MinimapButton",
         -- Real LibDeflate, not a hand-faked stub library: Contribute:Encode's round trip through
         -- actual compression is the point of testing it at all.
-        "UI/Options", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather" }) do
+        "UI/Options", "UI/Welcome", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather" }) do
         dofile(addonDirectory .. file .. ".lua")
     end
     local env = _G.SpokenEnv
     env.Addon:InitDB()
-    -- These suites exercise the original layout. The Minimal Classic layout,
-    -- including switching back to this one, has its own UI/timer fixture.
+    -- These suites exercise the original layout, not the subtitles a first install shows
+    -- (defaults_test pins those). The Minimal Classic layout, including switching back to
+    -- this one, has its own UI/timer fixture.
     env.Addon.db.profile.Frame.MinimalPlayer = false
+    env.Addon.db.profile.Frame.SubtitlePlayer = false
     return env
 end
 

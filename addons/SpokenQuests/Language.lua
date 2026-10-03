@@ -131,7 +131,9 @@ end
 --- The language the player wants to hear, resolved. `auto` becomes the client's locale.
 ---@return string code
 function Language:GetVoiceLanguage()
-    local stored = Addon and Addon.db and Addon.db.profile.Audio.VoiceLanguage
+    -- The one choice on Spoken's page for every module, once made; this addon's own until then.
+    local shared = Spoken and Spoken.GetLanguageChoice and Spoken:GetLanguageChoice()
+    local stored = shared or (Addon and Addon.db and Addon.db.profile.Audio.VoiceLanguage)
     if stored == nil or stored == self.AUTO or not byCode[stored] then
         return self:GetClientLanguage()
     end
@@ -142,7 +144,13 @@ end
 --- "no fallback": the line is silent rather than spoken in a language nobody asked for.
 ---@return string|nil code
 function Language:GetFallbackLanguage()
-    local stored = Addon and Addon.db and Addon.db.profile.Audio.FallbackLanguage
+    -- Called on its own: an `and` chain would keep only the first of its two answers.
+    local shared
+    if Spoken and Spoken.GetLanguageChoice then
+        local _
+        _, shared = Spoken:GetLanguageChoice()
+    end
+    local stored = shared or (Addon and Addon.db and Addon.db.profile.Audio.FallbackLanguage)
     if stored == nil then
         return self.BASE
     end

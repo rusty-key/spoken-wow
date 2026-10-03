@@ -156,7 +156,8 @@ local REPORT = {
             1, 0.8, 0.2, true)
     end,
     onClick = function(clip)
-        local target = ReportButton:CurrentTarget()
+        -- The line itself first: by the time Report is clicked the quest window may be shut.
+        local target = ReportButton:TargetForClip(clip) or ReportButton:CurrentTarget()
         if target then
             -- The language the clip was spoken in, which PrepareSound recorded: a fallback line
             -- is an English take even under a German selection, and its report is about that.
@@ -293,6 +294,42 @@ function Player:Setup()
         interClipGap = 0.55,
         -- Play-and-stop the file before admitting it, as the queue always did here.
         testBeforeQueue = true,
+        -- Its settings follow the profile chosen in Spoken's own settings.
+        profiles = function() return Addon.db end,
+        -- What Spoken's settings show on this part's card: which voice packs are installed.
+        packs = function()
+            local names = {}
+            for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
+            return names
+        end,
+        -- The voices come in parts -- Alliance, Horde and the rest, or All of them in one -- so
+        -- Spoken shows how many of the parts are here out of how many there are. All counts as
+        -- every part.
+        packCount = function()
+            local total, have, all = 0, 0, false
+            for _, module in DataModules:GetAvailableModules() do
+                if module.AddonName ~= "SpokenQuestsAudioAll" then total = total + 1 end
+            end
+            for _, module in DataModules:GetPresentModules() do
+                if module.AddonName == "SpokenQuestsAudioAll" then
+                    all = true
+                else
+                    have = have + 1
+                end
+            end
+            if total == 0 then total = math.max(have, 1) end
+            if all then have = total end
+            return math.min(have, total), total
+        end,
+        -- ...and which, by name, for the top of this part's page.
+        packNames = function()
+            local names = {}
+            for _, module in DataModules:GetPresentModules() do
+                if module.AddonName == "SpokenQuestsAudioAll" then return { DataModules:GetPackLabel(module) } end
+                table.insert(names, DataModules:GetPackLabel(module))
+            end
+            return names
+        end,
     })
 
     -- What the watcher reads to know whether an event reached the speaker.
@@ -319,8 +356,24 @@ function Player:Setup()
     Spoken:RegisterBullet("quest-complete", TEXTURES .. "SoundQueueBulletComplete", 14)
     Spoken:RegisterBullet("gossip",         TEXTURES .. "SoundQueueBulletGossip", 14)
 
-    Spoken.Minimap:AddEntry("quests", { id = "Read", text = L.OPT_MINIMAP_READ, order = 1,
-        onClick = function() Addon:ReadVisibleQuest("minimap") end })
+    -- Switched off or on in Spoken's settings: the buttons on the log and the dialog follow.
+    if Spoken.RegisterCallback then
+        Spoken:RegisterCallback("PART_SWITCHED", function(key)
+            if key ~= "quests" then return end
+            -- Each only where this client loads it.
+            local overlay, dialog, contribute = rawget(VoiceOver, "QuestOverlayUI"),
+                rawget(VoiceOver, "DialogPlayButton"), rawget(VoiceOver, "ContributeButton")
+            if overlay then
+                if overlay.Update and (QuestLogFrame or QuestScrollFrame) then overlay:Update() end
+                if overlay.UpdateDetailsPlayButton then overlay:UpdateDetailsPlayButton() end
+            end
+            if dialog and dialog.Refresh then dialog:Refresh() end
+            if contribute and contribute.Refresh then contribute:Refresh() end
+        end)
+    end
+
+    -- No "read visible quest" entry: it only did anything with a quest window already open,
+    -- and an open quest window has its own Play button.
     Spoken.Minimap:AddEntry("quests", { id = "Options", text = L.OPT_MINIMAP_SETTINGS, order = 2,
         onClick = function() Options:OpenSettings() end })
     if Spoken.AddSettingsLink then

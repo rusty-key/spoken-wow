@@ -17,6 +17,7 @@ load('Core.lua')
 lua.execute('''
 SpokenEnv.Addon.db={profile=SpokenEnv.Defaults.profile,char={IsPaused=false},global={}}
 SpokenEnv.Addon.db.profile.Audio.AutoToggleDialog=false
+SpokenEnv.Addon.db.profile.Frame.SubtitlePlayer=false -- the small window, not the subtitles a first install shows
 SpokenEnv.SoundUtils={
   WhyInaudible=function() end, IsMutedByPlayer=function() return false end,
   PlaySound=function(_,clip) clip.handle=clip.id;return true end,
@@ -24,7 +25,7 @@ SpokenEnv.SoundUtils={
 }
 SpokenEnv.Options={Open=function() end}
 ''')
-for name in ['Callbacks.lua','SoundQueue.lua','Sources.lua','Strings.lua','UI/Transcript.lua','UI/Portrait.lua','UI/StaticPortrait.lua','UI/Actions.lua','UI/PlayerFrame.lua','UI/MinimalPlayer.lua','API.lua']: load(name)
+for name in ['Callbacks.lua','SoundQueue.lua','Sources.lua','Strings.lua','UI/Transcript.lua','UI/Subtitle.lua','UI/Portrait.lua','UI/StaticPortrait.lua','UI/Actions.lua','UI/PlayerFrame.lua','UI/MinimalPlayer.lua','API.lua']: load(name)
 lua.execute('''
 local E=SpokenEnv
 local P,Q,A=E.MinimalPlayer,E.SoundQueue,E.Addon

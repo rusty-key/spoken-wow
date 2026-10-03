@@ -72,6 +72,14 @@ function ReportButton:TargetForGUID(guid)
     return format("npc/%d", id)
 end
 
+--- The line a clip is, from what the clip carries: its quest and event, or the NPC who said
+--- it. Unlike CurrentTarget this needs no window open -- the subtitle and the windows keep
+--- playing, and offering Report, after the quest frame has closed.
+function ReportButton:TargetForClip(clip)
+    if not clip then return nil end
+    return self:TargetForQuest(clip.questID, clip.event) or self:TargetForGUID(clip.unitGUID)
+end
+
 --- What the player is looking at, preferring the quest they can see over the NPC showing it.
 function ReportButton:CurrentTarget()
     local event

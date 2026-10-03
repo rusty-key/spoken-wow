@@ -218,6 +218,12 @@ function Addon:InvokeQuestHandler(event, source, manual)
     return true
 end
 
+--- Whether the player has this part of Spoken switched on (Spoken's settings). Off, none of
+--- its buttons show on the game's frames.
+function Addon:IsPartOn()
+    return not (Spoken and Spoken.IsPartOn) or Spoken:IsPartOn("quests")
+end
+
 function Addon:IsAutoplayOn()
     return self.db.profile.Audio.Autoplay ~= false
 end

@@ -48,7 +48,7 @@ local function OnTooltipShow(tooltip)
 	end
 
 	tooltip:AddLine(" ")
-	tooltip:AddLine("|cff66bbffLeft-click|r open the lore window", 0.7, 0.7, 0.7)
+	tooltip:AddLine(SpokenZones.L.MINIMAP_LEFT_CLICK:format(SpokenZones.L.MENU_LORE_WINDOW), 0.7, 0.7, 0.7)
 	tooltip:AddLine("|cff66bbffRight-click|r open settings", 0.7, 0.7, 0.7)
 end
 

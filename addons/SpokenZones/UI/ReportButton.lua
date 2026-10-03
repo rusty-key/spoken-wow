@@ -1,8 +1,9 @@
--- SpokenZones -- the "Report" button shown beside a lore description.
+-- SpokenZones -- the Report button shown beside a lore description, and the Contribute button
+-- shown where a place has none.
 --
 -- A factory in the same shape as SpokenZones:CreateAudioButton: anchor the returned
 -- button yourself, then call SetTarget whenever the panel's content changes.
--- Text rather than an icon, for the reason UI/AudioButton.lua gives.
+-- The player's round button with the game's bug in it, as the subtitle shows Report.
 --
 -- Unlike the play button it does not care whether the line has audio. Play hides
 -- with no clip because there is nothing to play; lore text can be wrong whether
@@ -13,7 +14,6 @@ local ADDON_NAME, SpokenZones = ...
 
 local L = SpokenZones.L
 
-local BUTTON_WIDTH = 58
 local BUTTON_HEIGHT = 20
 local CONTRIBUTE_WIDTH = 100
 
@@ -43,10 +43,13 @@ end
 -- Construction
 --------------------------------------------------------------------------------
 
-function SpokenZones:CreateReportButton(parent)
-	local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-	button:SetHeight(BUTTON_HEIGHT)
-	SpokenZones:FitButtonToLabels(button, BUTTON_WIDTH, { L.REPORT_BUTTON })
+--- Report as the game's bug icon, the one the player's windows show: a small round button in the
+--- page's header, because Report is a rare click that should not compete with Play.
+function SpokenZones:CreateReportIcon(parent)
+	-- The player's round button, as its windows and subtitle show Report: the ring round the
+	-- edge, the bug inside, brighter under the pointer.
+	local button = SpokenZones:CreateRoundButton(parent, "report")
+	local glyph = button.glyph
 	button:Hide()
 
 	button.SetTarget = ReportButton.SetTarget
@@ -54,23 +57,19 @@ function SpokenZones:CreateReportButton(parent)
 
 	button:SetScript("OnClick", function(self)
 		local url = SpokenZones:ReportURL(self.mapID, self.areaKey)
-		if not url then
-			return
-		end
-		SpokenZones:ShowCopyLink(url, L.OPT_REPORT_LINE_ADDRESS)
+		if url then SpokenZones:ShowCopyLink(url, L.OPT_REPORT_LINE_ADDRESS) end
 	end)
-
 	button:SetScript("OnEnter", function(self)
+		glyph:SetAlpha(1)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText(L.OPT_REPORT_PROBLEM)
 		GameTooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
 		GameTooltip:Show()
 	end)
-
 	button:SetScript("OnLeave", function()
+		glyph:SetAlpha(0.85)
 		GameTooltip:Hide()
 	end)
-
 	return button
 end
 
@@ -78,9 +77,9 @@ end
 -- The "no lore here" button
 --------------------------------------------------------------------------------
 
--- The Contribute button, in the panel's body under "nobody has written its lore yet" rather
--- than on the footer: every place is already known, and what is missing is the lore itself,
--- so the offer belongs beside the words that say so. Pointed at a place with SetTarget; hidden
+-- The Contribute button, in the page's body under "nobody has written its lore yet" rather
+-- than in the header beside Report: every place is already known, and what is missing is the
+-- lore itself, so the offer belongs beside the words that say so. Pointed at a place with SetTarget; hidden
 -- with no target, or where this client cannot contribute (SpokenZones:CanContribute).
 function SpokenZones:CreateContributeButton(parent)
 	local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")

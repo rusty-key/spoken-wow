@@ -1,6 +1,6 @@
 setfenv(1, VoiceOver)
 
--- The Play/Stop button on the Blizzard quest and gossip frames, for a player who turned
+-- The Listen/Stop button on the Blizzard quest and gossip frames, for a player who turned
 -- autoplay off. "Do not start by yourself" must not mean "give me no way to start it", and /spq read is
 -- not a way most players will find -- the reason SpokenBooks/UI/PlayButton.lua exists too.
 --
@@ -134,7 +134,7 @@ function DialogPlayButton:Refresh()
     end
     self.line = nil
 
-    if Addon:IsAutoplayOn() then
+    if Addon:IsAutoplayOn() or not Addon:IsPartOn() then
         button:Hide()
         return
     end
@@ -152,10 +152,10 @@ function DialogPlayButton:Refresh()
     button:Show()
 end
 
---- Play or Stop, for the line already found. All a clip starting or stopping can change.
+--- Listen or Stop, for the line already found. All a clip starting or stopping can change.
 function DialogPlayButton:Relabel()
     if self.line then
-        self.button:SetText(QueuedClipFor(self.line) and L.OPT_STOP or L.OPT_PLAY)
+        self.button:SetText(QueuedClipFor(self.line) and L.OPT_STOP or L.OPT_LISTEN)
     end
 end
 
@@ -182,8 +182,8 @@ function DialogPlayButton:Setup()
 
     local button = CreateFrame("Button", nil, UIParent, "UIPanelButtonTemplate")
     button:SetHeight(BUTTON_HEIGHT)
-    FitToLabels(button, { L.OPT_PLAY, L.OPT_STOP })
-    button:SetText(L.OPT_PLAY)
+    FitToLabels(button, { L.OPT_LISTEN, L.OPT_STOP })
+    button:SetText(L.OPT_LISTEN)
     if button.SetFrameStrata then
         button:SetFrameStrata("DIALOG")
     end

@@ -142,7 +142,9 @@ function Widget:GetOwner() return self.owner end
 function Widget:SetBackdrop(v) self.backdrop=v end
 function Widget:StartMoving() self.moving=true end
 function Widget:StopMovingOrSizing() self.moving=false end
-for _,method in ipairs({'SetFrameStrata','SetClampedToScreen','SetMovable','SetResizable',
+function Widget:SetFrameStrata(v) self.strata=v end
+function Widget:GetFrameStrata() return self.strata or 'MEDIUM' end
+for _,method in ipairs({'SetClampedToScreen','SetMovable','SetResizable',
     'SetBackdropColor','SetBackdropBorderColor','EnableMouse','RegisterForDrag','RegisterForClicks',
     'SetJustifyH','SetJustifyV','SetSpacing','StartSizing','SetClipsChildren','EnableMouseWheel',
     'SetColorTexture','RegisterEvent','SetUserPlaced','SetTexCoord','SetVertexColor',

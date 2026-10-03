@@ -112,8 +112,8 @@ function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalT
 end
 
 --- Play or stop, read off the button's own sound data rather than the quest log's table:
---- the details view has a button that belongs to no quest in particular. A button that says
---- so in words rather than in a texture carries its own `setPlayState`.
+--- the details view has a button that belongs to no quest in particular. A button drawn its
+--- own way (the details view's round one) carries its own `setPlayState`.
 function QuestOverlayUI:SetPlayButtonState(playButton)
     local isPlaying = playButton.soundData and Player:Contains(playButton.soundData) or false
     if playButton.setPlayState then
@@ -172,8 +172,9 @@ function QuestOverlayUI:BindPlayButton(playButton, questID, soundTitle)
             QuestOverlayUI:SetPlayButtonState(self)
 
             soundData.stopCallback = function()
+                -- Only if the button still stands for this line: it may have been rebound since.
+                if self.soundData == soundData then self.soundData = nil end
                 QuestOverlayUI:SetPlayButtonState(self)
-                self.soundData = nil
             end
         else
             Player:Remove(soundData)
@@ -200,6 +201,11 @@ function QuestOverlayUI:Update()
     -- Hide all buttons in displayedButtons
     for _, button in pairs(self.displayedButtons) do
         button:Hide()
+    end
+    -- Switched off, the part puts nothing on the log.
+    if not Addon:IsPartOn() then
+        table.wipe(self.displayedButtons)
+        return
     end
 
     if numEntries == 0 then

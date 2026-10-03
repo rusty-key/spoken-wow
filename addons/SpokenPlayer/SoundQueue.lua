@@ -481,6 +481,9 @@ function SoundQueue:Add(clip, source, front)
     if not clip then
         return nil, "no clip"
     end
+    if Sources:IsTurnedOff(source) then
+        return nil, L.PART_TURNED_OFF
+    end
 
     local inaudible = SoundUtils:WhyInaudible(source:GetChannel())
     if inaudible and not SoundUtils:IsMutedByPlayer(source:GetChannel()) then
@@ -545,6 +548,10 @@ function SoundQueue:PlayNow(clip, source)
     if not clip then
         return false
     end
+    -- A reason, so a Play button clicked by hand says why nothing happened.
+    if Sources:IsTurnedOff(source) then
+        return false, L.PART_TURNED_OFF
+    end
 
     local inaudible = SoundUtils:WhyInaudible(source:GetChannel())
     if inaudible and not SoundUtils:IsMutedByPlayer(source:GetChannel()) then
@@ -588,6 +595,9 @@ end
 -- a sound and nothing in between: there is no seek, and no way to ask how far into a
 -- clip playback has reached. The tooltip says so rather than letting the player find
 -- out forty seconds in.
+-- How long a paused voice takes to fade out.
+local PAUSE_FADE_MS = 400
+
 function SoundQueue:PauseQueue()
     if self:IsPaused() then
         return false
@@ -596,7 +606,8 @@ function SoundQueue:PauseQueue()
 
     local head = self:GetCurrentSound()
     if head and self:CanBePaused() then
-        SoundUtils:StopSound(head)
+        -- Faded out, not cut: a pause is the player stepping away, not an interruption.
+        SoundUtils:StopSound(head, PAUSE_FADE_MS)
         if head.nextSoundTimer then
             Addon:CancelTimer(head.nextSoundTimer)
             head.nextSoundTimer = nil

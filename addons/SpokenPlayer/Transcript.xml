@@ -5,4 +5,7 @@
         1.12\Transcript.lua instead: the same table with captions switched off.
     -->
     <Include file="UI\Transcript.lua"/>
+    <Include file="UI\Subtitle.lua"/>
+    <!-- Search needs the settings canvas, which 1.12 has not got, and is Lua 5.1 too. -->
+    <Include file="UI\Search.lua"/>
 </Ui>

@@ -27,7 +27,7 @@ One pack holds everything: Alliance quests, Horde quests, the quests both sides 
 
 Install **Spoken Quests** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_ptBR`) — Spoken Quests finds packs by folder name.
 
-Spoken Quests speaks in your client's language by default. To hear Portuguese on another client, pick it under **Voice Language** in the Spoken Quests settings; **Fallback Language** decides what plays for a line this pack does not hold.
+Spoken Quests speaks in your client's language by default. To hear Portuguese on another client, pick it under **Voice Language** on Spoken's settings page; **Fallback Language** decides what plays for a line this pack does not hold.
 
 ## Compatibility
 

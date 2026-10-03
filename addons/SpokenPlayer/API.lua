@@ -146,6 +146,60 @@ function Spoken:RefreshPlayer()
     PlayerFrame:Update()
 end
 
+--- A feature addon's settings page, shown under Spoken's own in the game's settings as `name`,
+--- listed in `order` (Quests 1, Readables 2, Zones 3). Pass the page's SpokenLayout and its
+--- scroller to make its rows searchable from Home. Returns a table whose `category` is
+--- filled in once the page is registered, for Settings.OpenToCategory; nil where the client
+--- cannot nest pages, in which case the addon registers a top-level page as before.
+function Spoken:AddSettingsPage(panel, name, order, layout, scroller)
+    return Options:AddPage(panel, name, order, layout, scroller)
+end
+
+--- Whether a part of Spoken is switched on in the settings (Sources:IsTurnedOff), for the
+--- switch each feature addon puts at the top of its own page. `key` is its source key.
+function Spoken:IsPartOn(key)
+    return not Sources:IsTurnedOff(Sources:Get(key) or { key = key })
+end
+
+--- How a part stands, as a state ("ok", "warn", "off") and the words for it: not installed,
+--- switched off, or how many voice packs it found. For the line at the top of its own page.
+function Spoken:PartStatus(key)
+    return Options:PartStatus(key)
+end
+
+--- A module's voice packs, as its card and its page show them: how many of them it has
+--- (PartVoice, "Voice Pack ... 2/4"), and which, by name (PartVoiceNames). Each returns a kind,
+--- the words, the value and the value's kind.
+function Spoken:PartVoice(key)
+    return Options:PartVoice(key)
+end
+
+function Spoken:PartVoiceNames(key)
+    return Options:PartVoiceNames(key)
+end
+
+--- How Spoken's settings are laid out: "pages", each page an entry nested under Spoken in the
+--- game's settings list, on a client with the settings canvas; nil without one.
+function Spoken:SettingsStyle()
+    if not (Settings and Settings.RegisterCanvasLayoutCategory) then return nil end
+    return "pages"
+end
+
+--- The voice language and the fallback the player chose for every module, as stored: "auto"
+--- or a language code, and a language code or "none". Either is nil while the player has not
+--- chosen it here, and the module then keeps its own.
+function Spoken:GetLanguageChoice()
+    local language = Addon.db and Addon.db.profile.Language
+    if not language then return nil, nil end
+    return language.Voice, language.Fallback
+end
+
+function Spoken:SetPartOn(key, on)
+    Sources:SetTurnedOff(key, not on)
+    -- Home lists the same switch.
+    Options:UpdateRows()
+end
+
 --- A button on the player's panel that opens a feature addon's own settings, for the
 --- addons whose panel cannot be nested.
 function Spoken:AddSettingsLink(text, onClick)
@@ -214,6 +268,14 @@ end
 
 function Spoken:TogglePause()
     return SoundQueue:TogglePauseQueue()
+end
+
+--- The player's round button, the same one its subtitle shows, for a feature addon's own
+--- window: `kind` "play" (Play's glyph; `button:SetPlaying(on)` shows Pause while a line
+--- speaks), "report" (the bug), or "icon" (the texture `icon`, cut round). Anchor it and give
+--- it OnClick yourself.
+function Spoken:CreateRoundButton(parent, kind, name, icon)
+    return Actions.NewRound(parent, kind, name, icon)
 end
 
 --- End the head; the backlog runs.

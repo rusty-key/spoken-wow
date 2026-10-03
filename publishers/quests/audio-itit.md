@@ -26,7 +26,7 @@ The Italian text is the **QuestIT** community translation, which keeps growing; 
 
 Install **Spoken Quests** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_itIT`) — Spoken Quests finds packs by folder name.
 
-No game client runs in Italian, so Spoken Quests never picks this pack on its own: choose **Italian** under **Voice Language** in the Spoken Quests settings. **Fallback Language** decides what plays for a line this pack does not hold.
+No game client runs in Italian, so Spoken Quests never picks this pack on its own: choose **Italian** under **Voice Language** on Spoken's settings page. **Fallback Language** decides what plays for a line this pack does not hold.
 
 ## Compatibility
 

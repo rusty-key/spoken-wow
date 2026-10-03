@@ -322,15 +322,17 @@ end
 ---@param known string?
 ---@return boolean
 function DataModules:IsOlderContent(installed, known)
+    -- Lua 5.0 safe, as this file loads on 1.12: no `#`, no string methods, gfind there.
+    local gmatch = string.gmatch or string.gfind
     local function parts(version)
-        if type(version) ~= "string" or not version:match("^%d+[%d.]*$") then return nil end
+        if type(version) ~= "string" or not string.find(version, "^%d+[%d.]*$") then return nil end
         local out = {}
-        for n in version:gmatch("%d+") do out[#out + 1] = tonumber(n) end
+        for n in gmatch(version, "%d+") do table.insert(out, tonumber(n)) end
         return out
     end
     local a, b = parts(installed), parts(known)
     if not a or not b then return false end
-    for i = 1, math.max(#a, #b) do
+    for i = 1, math.max(table.getn(a), table.getn(b)) do
         local x, y = a[i] or 0, b[i] or 0
         if x ~= y then return x < y end
     end
