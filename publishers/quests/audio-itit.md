@@ -30,7 +30,7 @@ No game client runs in Italian, so Spoken Quests never picks this pack on its ow
 
 ## Compatibility
 
-Built for **Classic Era 1.15.9**, with a Spoken Quests newer than 2.2.1 — the first to offer Italian.
+Built for **Classic Era 1.15.9**, with Spoken Quests 2.2.2 or later — the first to offer Italian.
 
 ## Support
 

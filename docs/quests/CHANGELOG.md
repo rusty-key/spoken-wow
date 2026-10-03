@@ -6,6 +6,14 @@ The player and the sound pack are versioned independently — the pack moves whe
 rebuilt, the player when its Lua changes — so a section belongs to whichever of the two
 carries that version. The heading says which.
 
+## 2.2.2 — player
+
+- **Italian** joins **Voice Language**, for the new Italian sound pack. No game client runs
+  in Italian, so Auto never picks it: choose it yourself. While you listen in Italian,
+  Spoken Quests offers no contributions.
+- The newer settings - quest follow-ups, Report a problem, the gossip buttons - are
+  translated into every client language.
+
 ## 2.2.1 — player
 
 - Gossip quest lines play on Forever build 70170 again. That build reports a different
@@ -54,6 +62,18 @@ by players with Contribute, and 1,275 of them have a voice in these packs: 464 q
   language.
 - No longer tells you to update a sound pack that is newer than it knows about. Installing the
   2.1.0 packs under an older Spoken Quests offered an "update" back to 2.0.0.
+
+## 0.0.1 — quests-audio-itIT — 2026-10-04
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Italian sound pack**, `SpokenQuestsAudio_itIT`: every quest and gossip line
+  Spoken Quests has an Italian take for, in one pack for both factions. The text is the
+  **QuestIT** community translation. It installs beside the English packs rather than over
+  them. No game client runs in Italian, so pick it yourself under **Voice Language**.
+  Needs Spoken Quests 2.2.2 or later.
+  **Partial**: it voices the quests QuestIT has translated so far. Set **Fallback Language**
+  to English to hear the rest.
 
 ## 0.0.3 — quests-audio-deDE — 2026-10-02
 

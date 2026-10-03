@@ -10,7 +10,7 @@
 ## Notes-koKR: Spoken 플레이어로 퀘스트와 잡담 대사를 소리내어 읽습니다. 이전 이름은 VoiceOver Redux. 최신 Classic 클라이언트에서 퀘스트와 잡담 음성을 복원합니다.
 ## Notes-zhCN: 通过 Spoken 播放器朗读任务和闲聊对话。前身为 VoiceOver Redux。 在当前的经典怀旧服客户端上恢复任务和闲聊语音。
 ## Notes-zhTW: 透過 Spoken 播放器朗讀任務和閒聊對話。前身為 VoiceOver Redux。 在當前的經典客戶端上恢復任務和閒聊語音。
-## Version: 2.2.1
+## Version: 2.2.2
 ## IconTexture: Interface\AddOns\SpokenQuests\icon.tga
 ## SavedVariables: SpokenQuestsDB
 ## OptionalDeps: SpokenPlayer, VoiceOverRedux
