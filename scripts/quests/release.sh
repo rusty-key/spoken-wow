@@ -192,6 +192,21 @@ target_dependencies() { case "$1" in
   audio-*)   echo "spoken-player";;
 esac; }
 
+# Optional dependencies: the English quest pack's other pieces. A player who installs Horde is
+# offered Alliance, Shared and Gossip beside it, but nothing installs them unasked: each piece
+# plays on its own, and a Horde player has no use for the Alliance lines. Only audio-all, the
+# meta addon, requires all four. A language's pack is one piece and names none.
+target_optional_dependencies() {
+  english || return 0
+  case "$1" in
+    audio-alliance|audio-horde|audio-shared|audio-gossip)
+      local piece
+      for piece in audio-alliance audio-horde audio-shared audio-gossip; do
+        [[ "$piece" == "$1" ]] || echo "spoken-quests-$piece"
+      done;;
+  esac
+}
+
 # THE META ADDON GOES LAST. It names the four packs as dependencies, and CurseForge resolves
 # those at upload time, so anything about them that has to be true - the project existing and
 # being approved, above all - is truest after they have just been uploaded. It costs nothing to
@@ -378,7 +393,7 @@ uploaded=()
 upload_target() {
   local target="$1"
   local project zip_name version zip_path kind changelog size metadata response status file_id
-  local dependencies
+  local dependencies optional
 
   project="$(target_curseforge "$target")"
   zip_name="$(target_zip_name "$target")"
@@ -423,24 +438,28 @@ upload_target() {
     # backticks and newlines, and hand-escaping that into JSON is how a release ends up with a
     # mangled changelog nobody notices for a month.
     dependencies="$(target_dependencies "$target")"
+    optional="$(target_optional_dependencies "$target")"
     metadata="$(node -e '
-      const [changelog, releaseType, gameVersionIds, displayName, dependencies] =
+      const [changelog, releaseType, gameVersionIds, displayName, dependencies, optional] =
         process.argv.slice(1);
-      const slugs = dependencies.trim().split(/\s+/).filter(Boolean);
+      const slugs = (list) => list.trim().split(/\s+/).filter(Boolean);
+      const projects = [
+        ...slugs(dependencies).map((slug) => ({ slug, type: "requiredDependency" })),
+        ...slugs(optional).map((slug) => ({ slug, type: "optionalDependency" })),
+      ];
       process.stdout.write(JSON.stringify({
         changelog,
         changelogType: "markdown",
         displayName,
         gameVersions: gameVersionIds.trim().split(/\s+/).map(Number),
         releaseType,
-        ...(slugs.length ? {
-          relations: { projects: slugs.map((slug) => ({ slug, type: "requiredDependency" })) },
-        } : {}),
+        ...(projects.length ? { relations: { projects } } : {}),
       }));
-    ' "$changelog" "$RELEASE_TYPE" "$game_version_ids" "$zip_name $version" "$dependencies")"
+    ' "$changelog" "$RELEASE_TYPE" "$game_version_ids" "$zip_name $version" "$dependencies" "$optional")"
 
     echo "  curse:     project $project, clients $GAME_VERSION_ERA $GAME_VERSION_ANNIVERSARY $GAME_VERSION_FOREVER"
     [[ -n "$dependencies" ]] && echo "  requires:  $(echo $dependencies)"
+    [[ -n "$optional" ]] && echo "  optional:  $(echo $optional)"
 
     if [[ -n "$dry_run" ]]; then
       echo "  dry run -- not uploading to CurseForge"
