@@ -1,14 +1,12 @@
 # CLAUDE.md
 
-See **[AGENTS.md](AGENTS.md)** for repo-wide conventions and the rules that
-are load-bearing.
+Read **[AGENTS.md](AGENTS.md)**: layout, branches, checks and the rules that are load-bearing.
 
-See **[README.md](README.md)** for what the project is and how the addons,
-the sites and the pipelines fit together.
+Before touching a section, read its guide:
 
-Each project keeps its own detailed guidance, and all are worth reading
-before touching that side:
+- quests: `docs/quests/CLAUDE.md`
+- zones: `docs/zones/AGENTS.md`
+- books: `docs/books/AGENTS.md`
 
-- `docs/quests/CLAUDE.md` and `docs/quests/README.md`
-- `docs/zones/CLAUDE.md` and `docs/zones/README.md`
-- `docs/books/AGENTS.md` and `docs/books/README.md`
+Each section's `README.md` beside its guide is the detailed prose reference. Check it before
+inferring behaviour from code.

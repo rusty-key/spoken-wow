@@ -1,154 +1,42 @@
-# Working agreements for agents
+# AGENTS.md: zones
 
-## Scope
+The root `AGENTS.md` applies, including its credit, data and versioning rules. This file covers
+only the zones section. `docs/zones/README.md` is the detailed reference.
 
-Deliver what was asked, at the scope intended. Make routine judgment calls
-yourself, and check in only when different readings of the request would lead to
-materially different work. If the request seems mistaken or a better approach
-exists, say so in a sentence and continue with the task as asked rather than
-quietly narrowing, widening, or transforming it. Finish the whole task, and stop
-short of actions clearly beyond it.
+## Generated files
 
-Scope expansion is expensive here specifically:
+Fix the source and regenerate. Never hand-edit the output.
 
-- **Nothing in this repository can spend ElevenLabs credits.** Voicing a line
-  happens on the droplet, through the site. `generate.mjs` reports on lines and
-  cannot cut one; keep it that way, and do not reintroduce a generation flag as a
-  convenience.
-- `make zones-sync` is destructive (table replacement). Confirm before running it. Data
-  only ever comes home from production: audio through `make zones-pull-live` (the live
-  takes, after a sync) or `make zones-pull-history` (every take), neither of which ever
-  deletes, and there is no push for either. `make zones-full-release` chains sync,
-  pull-live, package-audio and the uploads, asking before it uploads.
-- The take archive is the only audio. `addons/SpokenZonesAudio/Sounds/` is assembled from
-  the live takes by `make zones-sounds` before a build and is not a store; never treat a
-  file there as the record.
-- `addons/Spoken_Zones/Data/*.lua` and `addons/SpokenZonesAudio/Data/Sounds.lua` are
-  generated. Fix the source, not the output. For lore text that source is the
-  `lore_line` table -- edit it through the explorer, or re-scrape, then
-  `make zones-lore-export` and commit the diff.
-- Regenerating lore or voicelines because it seemed related to a UI fix is scope
-  expansion, not thoroughness.
+- `addons/Spoken_Zones/Data/<lang>/*.lua` comes from the `lore_line` table. Edit lore through
+  the site or re-scrape, run `make zones-lore-export`, and commit the diff.
+  `make zones-lore-check` confirms the files match the database.
+- `addons/Spoken_Zones/Data/Languages.lua` and `Data/Pictures.lua` come from their own build
+  tools.
+- `addons/SpokenZonesAudio/Data/Sounds.lua` is the pack's lookup table.
+- `addons/SpokenZonesAudio/Sounds/` (enUS) and `build/zones/<lang>/` are assembled by
+  `make zones-sounds` from the live takes. They are not a store.
+
+`pipelines/zones/tools/generate.mjs` reports on lines and cannot voice one. Keep it that way.
 
 ## Checks
 
-Run these when the change touches what they cover:
-
 ```sh
-make zones-check          # validate + lint, the pre-package gate
+make zones-check          # validate + lint + locale-check, the pre-package gate
 make zones-validate-audio # manifest, files on disk and lookup table agree
 ```
 
-Those are the verification. Do not add extra self-review passes on top, and do
-not re-check work you have already checked — it costs tokens and finds nothing.
+## Packs and releases
 
-## Versions and the changelog
-
-A change that reaches players bumps the `## Version:` of every addon it affects
-and writes that version's section of `CHANGELOG.md`, in the same PR as the change.
-Not as a follow-up, and not left to whoever releases.
-
-**Bump only what the PR actually changes.** `addons/Spoken_Zones/Spoken_Zones.toc` and
-`addons/SpokenZonesAudio/SpokenZonesAudio.toc` carry their own versions and
-`scripts/release.sh` reads each independently, so they are free to diverge. The
-one rule binding them is compatibility: ZoneLore reads any pack sharing its
-**major** version, and says so in chat rather than going silent when handed one
-it cannot. So a change to the addon alone bumps the addon alone. Re-cutting a
-790 MB sound pack because a Lua file moved is not thoroughness, it is a
-four-hour upload.
-
-**There is no "Unreleased" heading.** `changelog_for()` in `scripts/release.sh`
-finds the `## <version>` section matching the .toc and *exits* if there is not
-one — the release notes on CurseForge and the notes in the repository are the
-same text by construction, which is the point. A heading the tooling cannot find
-is a release that fails at the upload step, long after the PR that caused it.
-Write the real version heading, dated.
-
-Pre-1.0, most things are a patch bump. Reserve the minor for a change to what the
-addon *is* — a new surface, a new kind of content, something that changes the
-answer to "what does this do". Adding a control to screens that already exist is
-a patch bump, however much work it was; the number is for players judging whether
-to update, not a record of effort. If a change is invisible to them — tooling,
-the explorer, CI, this file — it bumps nothing and writes nothing.
-
-What goes in a section is what someone who has the old version would want to
-know: the capability, and what it replaces. The existing entries are the model.
-Anything requiring a matching pack version says so.
-
-## Code comments
-
-- Explain the *why*, never the *what*. The code already says what it does; a
-  comment carries the reasoning, intent, or context behind it.
-- Never comment obvious code. Noise is worse than silence.
-- Prefer readable code to a comment. If a comment is needed to explain unclear
-  code, fix the naming, the function size, or the logic first.
-- Never leave commented-out code. Delete it; git remembers.
-- Be concise. One clear sentence beats a paragraph, and skip filler like "this
-  function basically just".
-- Keep comments in sync with the code they sit on. A stale comment is a bug.
-- Write for a competent developer with no prior context: they understand code,
-  they do not know your decisions.
-- Use full sentences in block comments, and no private jargon.
-
-The `Makefile` is the model — its targets are commented with the failure each
-one exists to prevent. Read that comment before changing a target.
-
-## Delegation
-
-Delegate only for large tasks that are genuinely independent and parallelizable,
-such as a wide multi-file investigation. Do not delegate work you can finish in a
-handful of tool calls, and do not use subagents to double-check your own work. If
-one subagent can do it, use one.
-
-Most work here is a direct edit. A sweep across all nine
-`addons/Spoken_Zones/UI/*.lua` files may warrant an agent; a two-file change does not.
-
-## Communication
-
-Keep responses focused and concise. Keep caveats short and spend the response on
-the main answer. Explain at a high level unless depth was asked for.
-
-Say in one sentence what you are about to do before the first tool call. While
-working, speak up only when you find something important or change direction.
-When you finish, lead with the outcome — the first sentence answers what happened
-or what you found, detail after.
-
-Correct an earlier statement only when the error would change the user's code,
-conclusions, or decisions. State the correction plainly and move on. For slips
-that change nothing, just fix them.
-
-## Written documents
-
-Match a document's length to what the task needs. Cover the substance; skip
-filler sections, redundant summaries, and boilerplate.
-
-`README.md`, `CHANGELOG.md`, and the two player-facing `addon/*/README.md` files
-are what the world reads — the addon READMEs are the store descriptions, the same
-body that goes to CurseForge and to Wago.
-They are prose, with headings that state a decision ("Port 5433, not 5432",
-"Characters are not credits") and a paragraph on why. Match that. A new section
-is warranted by a decision worth recording, not by space to fill.
-
-## Pull request descriptions
-
-A description is written for the person reviewing it and for whoever finds the
-branch in a year. Prose, not a form.
-
-- **Title states the outcome**, as a sentence: "Make the explorer's filters
-  legible, clearable, and answerable by date", not "filter updates".
-- **Open with the problem**, not a summary heading. What was wrong, and what
-  followed from it. Then what this changes.
-- **Headings say something.** "What is deliberately different from the original
-  design", "The bug the chips introduced" — not "Changes" and "Testing".
-- **Record the decisions, including the rejected ones.** Why this approach and
-  not the obvious one; what is load-bearing and what breaks without it; what was
-  found along the way that the plan never mentioned.
-- **Numbers where they prove something** — real counts from a real run, in a
-  table if it is more than a couple. Cite code as `path/file.lua:12`.
-- **Verification is a section, and it is honest.** Say what you ran and what it
-  reported. Say plainly what you did *not* check — "not looked at in-game" is
-  information the reviewer needs, not an admission to bury.
-- **Notes for review** at the end: what deserves the reviewer's eyes, known
-  divergences, deliberate non-fixes, and anything that must land together.
-
-Length follows the change. A one-line fix gets a paragraph.
+- The `Spoken_Zones` module ships inside Spoken and follows Spoken's version
+  (see root `AGENTS.md`).
+- `SpokenZonesAudio` versions on its own, and its notes go in `docs/zones/CHANGELOG.md` under
+  `## <version> — audio`. Language packs use `## <version> — zones-audio-<lang>`.
+  `changelog_for()` in `scripts/zones/release.sh` matches on version and kind, and exits on a
+  missing or duplicate section.
+- Do not re-cut a pack for an addon-only change. A pack upload takes hours.
+- The addon accepts a pack whose `Sounds.lua` `version` equals `PACK_FORMAT` in
+  `addons/Spoken_Zones/Audio.lua`. That is a format number, unrelated to either `.toc` version.
+  Bump it only when the pack's data shape changes.
+- `make zones-full-release` chains sync, pull-live, package-audio and the upload, and asks
+  before uploading. `scripts/zones/release.sh` now uploads only the pack and the retired
+  SpokenZones project's tombstone.
