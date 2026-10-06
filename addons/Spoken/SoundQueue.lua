@@ -377,7 +377,7 @@ function SoundQueue:MuteGameDialogueAhead(speakingOn)
         -- held by a gate, or paused since -- may not speak for a long while, and must not
         -- keep the game's dialogue silent until it does.
         local head = self:GetCurrentSound()
-        if not (head and head.nextSoundTimer and not head.keepsGameDialogue) then
+        if not (head and head.nextSoundTimer) then
             self:MuteGameDialogue(nil)
         end
     end, MUTE_AHEAD_SECONDS)
@@ -408,9 +408,7 @@ function SoundQueue:PlaySound(clip)
         return
     end
 
-    -- Gossip plays alongside the NPC's own voice, so it also lifts a mute left by the line before
-    -- it or taken ahead of a quest.
-    self:MuteGameDialogue(not clip.keepsGameDialogue and channel or nil)
+    self:MuteGameDialogue(channel)
 
     if clip.startCallback then
         clip.startCallback(clip)

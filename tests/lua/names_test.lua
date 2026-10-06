@@ -87,6 +87,14 @@ popup.dialog.OnHide(shown)
 Expect("...and centred again for the next addon's popup", justify, "CENTER")
 popup.dialog.OnAccept()
 Expect("...and reloads when taken up on it", stub.reloads, reloads + 1)
+-- Under the gamepad UI a popup an addon opens hangs the client on close (#165): the chat line
+-- says it alone.
+stub.disabledAddOns, stub.popups = {}, {}
+SetCVar("InputDeviceInterfaceStyle", "1")
+env.Addon:RetireOldFolders()
+Expect("under the gamepad UI, old folders are still switched off", table.getn(stub.disabledAddOns), 6)
+Expect("...with no popup", table.getn(stub.popups), 0)
+SetCVar("InputDeviceInterfaceStyle", "0")
 loaded = {}
 stub.disabledAddOns, stub.popups = {}, {}
 env.Addon:RetireOldFolders()

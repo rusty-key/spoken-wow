@@ -6,7 +6,7 @@ section: books
 lang: enUS
 slug: spoken-books-audio
 name: Spoken Books Audio
-summary: The narration for Spoken Books: books, letters and notes read aloud. Data only — install it beside Spoken Books.
+summary: The narration for Spoken Player's Books module: books, letters and notes read aloud. Data only — install it beside Spoken Player.
 categories:
   - Audio & Video
   - Miscellaneous
@@ -15,17 +15,17 @@ license: MIT
 addonReadme: addons/SpokenBooksAudio/README.md
 ---
 
-Narrated books, letters and notes for **[Spoken Books](https://www.curseforge.com/wow/addons/spoken-books)**. This addon is data only — it does nothing on its own.
+Narrated books, letters and notes for **[Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)**'s Books module. This addon is data only — it does nothing on its own.
 
 One clip per page, covering every readable book, letter, note and plaque in the world that can be spoken at all.
 
 ## Installing
 
 <!-- only:wago -->
-**This pack is not installable from Wago.** At 452 MB it is over the upload limit here, so the file lives in its [GitHub release](https://github.com/rusty-key/spoken-wow/releases?q=books-audio), and on CurseForge. Unzip it into `Interface/AddOns`, beside Spoken Books.
+**This pack is not installable from Wago.** At 452 MB it is over the upload limit here, so the file lives in its [GitHub release](https://github.com/rusty-key/spoken-wow/releases?q=books-audio), and on CurseForge. Unzip it into `Interface/AddOns`, beside Spoken Player.
 <!-- /only -->
 <!-- only:curseforge -->
-Install this beside Spoken Books; your addon manager will offer it.
+Install this beside Spoken Player.
 <!-- /only -->
 
 There is one version of the audio — one folder, and one answer to "which do I install".

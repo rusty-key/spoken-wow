@@ -405,9 +405,12 @@ local function Build(canvas)
         InWindowText(layout:Slider(L.TRANSCRIPT_LINES, 1, 2, 1,
             function() return transcript().Lines end,
             function(v) transcript().Lines = v end, refreshTranscript, Layout.Number, L.TRANSCRIPT_LINES_TIP))
-        InWindowText(layout:Checkbox(L.TRANSCRIPT_AUTO, L.TRANSCRIPT_AUTO_TIP,
-            function() return transcript().AutoScroll end,
-            function(v) transcript().AutoScroll = v; Transcript.manualScroll = false end, refreshTranscript))
+        local SCROLL_LABELS = { line = L.TRANSCRIPT_SCROLL_LINE, page = L.TRANSCRIPT_SCROLL_PAGE,
+            off = L.TRANSCRIPT_SCROLL_OFF }
+        InWindowText(layout:Dropdown(L.TRANSCRIPT_SCROLL, L.TRANSCRIPT_SCROLL_TIP, { "line", "page", "off" },
+            function() return Transcript:ScrollMode() end,
+            function(v) transcript().ScrollMode = v; Transcript.manualScroll = false end, refreshTranscript,
+            function(v) return SCROLL_LABELS[v] or v end))
 
         layout:Section(L.OPT_SUBTITLE_TITLE)
         local function ForSubtitles(row)

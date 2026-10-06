@@ -8,7 +8,7 @@ pack: shared
 github: false
 slug: spoken-quests-audio-shared
 name: Spoken Quests Audio: Shared Quests
-summary: Quest dialogue both factions can hear, voiced. Install alongside the Alliance or Horde pack. Needs Spoken Quests.
+summary: Quest dialogue both factions can hear, voiced. Install alongside the Alliance or Horde pack. Needs Spoken Player.
 categories:
   - Audio & Video
   - Roleplay
@@ -20,7 +20,7 @@ Voiced dialogue for the quests **both factions** can take. Neutral hubs like Boo
 
 **Everyone wants this pack**, and on its own it is only part of the story. Pair it with your side, and with the player:
 
-1. **[Spoken Quests](https://www.curseforge.com/wow/addons/spoken-quests)** — the player. Without it no pack plays.
+1. **[Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)** — the player. Without it no pack plays.
 2. **[Spoken Quests Audio: Alliance](https://www.curseforge.com/wow/addons/spoken-quests-audio-alliance)** or **[(Horde)](https://www.curseforge.com/wow/addons/spoken-quests-audio-horde)** — whichever side your character is on.
 
 ## The packs

@@ -7,7 +7,7 @@ pack: all
 version: 0.0.3
 slug: spoken-quests-audio-dede
 name: Spoken Quests Audio: German
-summary: Every quest and gossip line for Spoken Quests, voiced in German. One pack, both factions. Needs Spoken Quests.
+summary: Every quest and gossip line for Spoken Player, voiced in German. One pack, both factions. Needs Spoken Player.
 categories:
   - Audio & Video
   - Roleplay
@@ -15,7 +15,7 @@ categories:
 license: MIT
 ---
 
-Voiced quest dialogue for **[Spoken Quests](https://www.curseforge.com/wow/addons/spoken-quests)**, in German. This addon is data only — it does nothing on its own.
+Voiced quest dialogue for **[Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)**'s Quests module, in German. This addon is data only — it does nothing on its own.
 
 **Experimental.** This is a first cut, numbered 0.x until it has been listened through: expect lines to be re-recorded, and report the ones that sound wrong.
 
@@ -23,13 +23,13 @@ One pack holds everything: Alliance quests, Horde quests, the quests both sides 
 
 ## Installing
 
-Install **Spoken Quests** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_deDE`) — Spoken Quests finds packs by folder name.
+Install **Spoken Player** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_deDE`) — Spoken finds packs by folder name.
 
 Spoken Quests speaks in your client's language by default. To hear German on another client, pick it under **Voice Language** on Spoken's settings page; **Fallback Language** decides what plays for a line this pack does not hold.
 
 ## Compatibility
 
-Built for **Classic Era 1.15.9**, with Spoken Quests 2.1.1 or later.
+Built for **Classic Era 1.15.9**, with Spoken Player 3.0.0 or later.
 
 ## Support
 

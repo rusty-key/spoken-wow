@@ -216,6 +216,19 @@ search.hooks.OnTextChanged[1](search)
 Z:SetupMapPanel()
 local panel = Z.panel
 Expect("the story beside the map wears the quest log's frame", panel ~= nil, true)
+-- Beside the map, not in it: the Forever client's gamepad UI takes the open map's buttons into
+-- its own navigation, and closing the map is then blocked.
+Expect("...and is not the map's", panel.parent, UIParent)
+Expect("...nor is the button that reopens it", _G.SpokenZonesPanelToggle.parent, UIParent)
+Z:RefreshPanel()
+Expect("...so nothing shows it while the map is closed", panel:IsShown(), false)
+WorldMapFrame:Show()
+Z:RefreshPanel()
+Expect("...and it shows with the map", panel:IsShown(), true)
+WorldMapFrame:Hide()
+for _, hook in ipairs(WorldMapFrame.hooks.OnHide or {}) do hook(WorldMapFrame) end
+Expect("...and goes with it", panel:IsShown(), false)
+WorldMapFrame:Show()
 Z:RefreshPanel()
 local mapPage = panel.page
 Expect("...round the quest details' parchment", mapPage.parchment, "QuestDetailsBackgrounds")

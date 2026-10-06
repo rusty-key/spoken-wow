@@ -72,6 +72,49 @@ Expect("the zones addon raises it too", Shown() ~= nil, true)
 Expect("...naming itself", Shown() and Shown().text,
     "|cffffd200Spoken|r is required to use Spoken Zones.")
 
+---------------------------------------------------------------- the gamepad UI
+-- A popup an addon opens there taints the gamepad's bindings, and closing it hangs the client
+-- (#165): the same words go to chat instead.
+local function Said(text)
+    for _, line in ipairs(stub.chat) do
+        if string.find(line, text, 1, true) then return true end
+    end
+    return false
+end
+Login({ PACK, DISABLED })
+SetCVar("InputDeviceInterfaceStyle", "1")
+VO = stub.LoadQuestsAlone(QUESTS)
+VO.Addon:OnInitialize()
+Expect("under the gamepad UI, the quests addon raises no dialog", VO.Addon:PromptForPlayer() and Shown(), nil)
+Expect("...and says it in chat", Said("|cffffd200Spoken|r is required to use Spoken Quests. Enable it in the AddOns list and reload."), true)
+Expect("...once", VO.Addon:PromptForPlayer(), false)
+
+Login({ PACK, DISABLED })
+SetCVar("InputDeviceInterfaceStyle", "1")
+Z = stub.LoadZones(ZONES, H.NewZoneLore())
+Z:SetupAudio()
+Expect("the zones addon raises none either", Z:PromptForPlayer() and Shown(), nil)
+Expect("...and says it in chat", Z.printed[#Z.printed], "|cffffd200Spoken|r is required to use Spoken Zones. Enable it in the AddOns list and reload.")
+
+-- No sound pack at all: the quests addon's other login popup.
+local function NoPacks()
+    for _, popup in ipairs(stub.popups) do
+        if popup.key == "VOICEOVER_NO_REGISTERED_DATA_MODULES" then return popup.dialog end
+    end
+end
+Login({ DISABLED })
+VO = stub.LoadQuestsAlone(QUESTS)
+VO.Addon:OnInitialize()
+VO.Addon:ShowMissingDataModulePopup()
+Expect("with no sound pack, a dialog says so", NoPacks() and string.find(NoPacks().text, "No usable sound packs", 1, true) ~= nil, true)
+Login({ DISABLED })
+SetCVar("InputDeviceInterfaceStyle", "1")
+VO = stub.LoadQuestsAlone(QUESTS)
+VO.Addon:OnInitialize()
+VO.Addon:ShowMissingDataModulePopup()
+Expect("...under the gamepad UI, no dialog", NoPacks(), nil)
+Expect("...but a line in chat", Said("No usable sound packs were loaded."), true)
+
 ---------------------------------------------------------------- not installed at all
 -- Nothing to enable, so nothing to click. The addon's own line in chat already says it.
 Login({ PACK })

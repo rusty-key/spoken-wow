@@ -86,13 +86,12 @@ target_slug()       { case "$1" in zones) echo "spoken-zones";; audio) pack_fiel
 # a .toc for both clients, so both are filed against both. Files uploaded
 # before that are Era-only and stay filed as they were -- a file offered to a
 # client it cannot load on is worse than one that is simply absent there.
-# Required dependencies by CurseForge slug. The addon needs the player it speaks through, and
-# the pack needs the addon: it is data, inert without something to read it, and a manager that
-# installs it alone leaves a player several hundred megabytes heavier and no louder.
-#
-# It also makes the pair upgrade together, which is what lets a pack register itself under one
-# name only - see the ONE REGISTRY note in tools/voice/build-lookup.mjs.
-target_dependencies()  { case "$1" in zones) echo "spoken-player";; audio) echo "spoken-zones";; esac; }
+# Required dependencies by CurseForge slug. The pack needs the module that reads it: it is
+# data, inert without it, and a manager that installs it alone leaves a player several hundred
+# megabytes heavier and no louder. Since 3.0.0 the module ships inside spoken-player, so that
+# is what the pack names; spoken-zones is retired, and its last file is the tombstone the
+# addon target uploads, which needs spoken-player too.
+target_dependencies()  { case "$1" in zones) echo "spoken-player";; audio) echo "spoken-player";; esac; }
 target_game_versions() { echo "$GAME_VERSION_ERA $GAME_VERSION_ANNIVERSARY $GAME_VERSION_FOREVER"; }
 
 dry_run=""
@@ -208,7 +207,7 @@ changelog_for() {
     // Restated from isLanguageHeading in scripts/lib/packs.mjs, because this is a node -e
     // string and cannot import it -- keep the two in step.
     const language = /^## \S+ — [a-z]+(?:-[a-z]+)+-[a-z]{2}[A-Z]{2}(?:\s|$)/;
-    const matches = (l) => l.startsWith(`## ${version}`) && !language.test(l) &&
+    const matches = (l) => `${l} `.startsWith(`## ${version} `) && !language.test(l) &&
       /—\s*audio\b/.test(l) === (target === "audio");
     const start = lines.findIndex(matches);
     if (start === -1) {

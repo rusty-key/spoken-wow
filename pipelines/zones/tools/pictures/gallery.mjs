@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// Downloads every picture on each zone's and area's warcraft.wiki.gg page into a folder per
-// place, to choose from by eye: <out>/<Zone>/<Place>/<wiki file name>. The picture fetch.mjs chose
-// is prefixed "[picked] ". Only icons, animations and pictures under MIN_WIDTH wide are left out.
-// A choice goes into choices.json as { "<manifest id>": "File:<wiki file name>" }.
+// Downloads every picture on each zone's and area's warcraft.wiki.gg pages into a folder per
+// place, to choose from by eye: the page the lore cites (often "<Zone> (Classic)") and the main
+// page, which carries far more (concept art, every expansion's screenshots):
+// <out>/<Zone>/<Place>/<wiki file name>. The picture fetch.mjs chose is prefixed "[picked] ".
+// Only icons, animations and pictures under MIN_WIDTH wide are left out. This is browsing
+// material only: what ships is the reviewed Azeroth/... tree prepare.py reads.
 //
 // Usage: node tools/pictures/gallery.mjs [out]   (default: ~/Desktop/Zone picture choices)
 
@@ -12,7 +14,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CACHE, ROOT, USER_AGENT, THROTTLE_MS, sleep, readJson } from "../lib/wiki.mjs";
+import { CACHE, ROOT, USER_AGENT, THROTTLE_MS, sleep, readJson, stripClassicSuffix } from "../lib/wiki.mjs";
 import { entries, pageImages, imageInfo } from "./fetch.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -28,8 +30,13 @@ async function main() {
   const zones = await readFile(join(ROOT, "addons/Spoken_Zones/Data/enUS/Zones.lua"), "utf8");
   const zoneName = new Map([...zones.matchAll(/\[(\d+)\] = \{\s*\n\s*name = "([^"]+)"/g)].map((m) => [Number(m[1]), m[2]]));
 
-  const pages = await pageImages([...new Set(all.map((e) => e.title))]);
-  const pictureFile = (f) => /\.(jpe?g|png|webp)$/i.test(f) && !/(^File:.*_\d\d\.png$|icon)/i.test(f);
+  // The main page beside the Classic one the lore cites: "Arathi Highlands (Classic)" has 41
+  // pictures, "Arathi Highlands" 137.
+  const titles = (e) => [e.title, stripClassicSuffix(e.title)];
+  const pages = await pageImages([...new Set(all.flatMap(titles))]);
+  const imagesOf = (e) => [...new Set(titles(e).flatMap((t) => pages.get(t)?.images || []))];
+  // Logos (WoW Classic's, Warcraft III's) sit on many place pages and are never a picture of one.
+  const pictureFile = (f) => /\.(jpe?g|png|webp)$/i.test(f) && !/(^File:.*_\d\d\.png$|icon|logo)/i.test(f);
   const files = [...new Set([...pages.values()].flatMap((p) => p.images.filter(pictureFile)))];
   console.log(`${files.length} pictures on ${pages.size} pages`);
   const info = await imageInfo(files);
@@ -37,13 +44,13 @@ async function main() {
   await mkdir(STORE, { recursive: true });
   let fetched = 0, placed = 0;
   for (const e of all) {
-    const page = pages.get(e.title);
-    if (!page) continue;
+    const images = imagesOf(e);
+    if (!images.length) continue;
     const zone = safe(zoneName.get(e.parent) || String(e.parent));
-    const place = e.id.startsWith("zone-") ? `${zone} (the zone)` : safe(e.title.replace(/ \(Classic\)$/, ""));
+    const place = e.id.startsWith("zone-") ? `${zone} (the zone)` : safe(stripClassicSuffix(e.title));
     const dir = join(OUT, zone, place);
     const picked = manifest[e.id]?.file;
-    for (const file of page.images.filter(pictureFile)) {
+    for (const file of images.filter(pictureFile)) {
       const i = info.get(file);
       if (!i || i.width < MIN_WIDTH) continue;
       const name = safe(file.replace(/^File:/, ""));

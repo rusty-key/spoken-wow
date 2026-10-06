@@ -1,94 +1,91 @@
-# CLAUDE.md
+# CLAUDE.md: quests
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+The root `AGENTS.md` applies. This file covers only the quests section. `docs/quests/README.md`
+is the detailed reference: check it before inferring behaviour from code, and update it when
+behaviour changes.
 
-Repo-wide conventions (code style, comment discipline) live in the root `AGENTS.md` and
-`docs/quests/AGENTS.md` — read them too. The root `AGENTS.md` also owns the repo-wide
-layout and the frozen-deployment rules; this file is the quests half only.
+## What it is
 
-## What the quests half is
-
-Four things, spread across the shared tree:
-
-1. **`pipelines/quests/tts_cli/` + `pipelines/quests/cli-main.py`** — the Python pipeline that turns the vmangos world DB into a committed corpus and builds the addon data module. It makes no audio; the site does.
-2. **`apps/web/`** — the Next.js explorer (deployed to a DigitalOcean droplet) for browsing the corpus, playing lines, and regenerating audio. It is one site with a quests section, a zones section and a books section, shared with the zones half. Postgres holds the corpus, every take and which one is live, accounts, roles, the lexicon and the regeneration queue; the only thing on disk is each take's audio.
-4. **`addons/Spoken_Quests/`** — the addon this project ships, zipped by `make quests-package`. A fork of the above, adapting the removed global addon-management APIs to `C_AddOns` and the gossip APIs to `C_GossipInfo` so the player runs on Classic Era 1.15.9. It was `AI_VoiceOver_Continued`, then `VoiceOverRedux`, and is `SpokenQuests` as of 2.0.0; the sound packs it loads are `SpokenQuestsAudio*`, formerly `VoiceOverReduxAudio*` and `AI_VoiceOverData_Vanilla`. `VoiceOver.lua` disables upstream's players (`AI_VoiceOver`, `AI_VoiceOver_Continued`) when it finds them running - by AceAddon name for the session, by folder name for the next login. A folder that registered no player is not a duplicate, whatever its name. This project's own old folder, `VoiceOverRedux`, is no longer shipped even as an empty placeholder; Spoken finds it at login (`OLD_FOLDERS` in `addons/Spoken/Core.lua`) and asks the player to delete it. Every player starts with fresh settings, so nothing is read from `VoiceOverDB`. Packs are found by a TOC key rather than by name, so an old pack still loads: `X-SpokenQuests-DataModule-Version` is read first and `X-VoiceOver-DataModule-Version` is the fallback every shipped pack (and every pack built for upstream) carries. Newly built packs write both. **Two zip shapes**: one archive with four flavor-suffixed TOCs for Blizzard's clients, which pick by suffix, and one apiece for the 1.12/2.4.3/3.3.5 legacy clients, which predate suffix support and read `Spoken_Quests.toc` and nothing else. Each legacy zip carries that client's vendored Ace3 from `addons/Spoken_Quests/<client>/` and none of the others - the root `Libs/AceTimer-3.0` binds `C_Timer.After` while loading, which is an error there. `Version.lua` and the legacy branches of `Compatibility.lua` were never removed, so the runtime already covered those clients; what they needed was packaging, plus quest events (the 10 Hz `GetQuestID` watcher cannot start on a client whose `GetQuestID` is the fuzzy substitute in `Compatibility.lua`, so legacy dispatches `QUEST_DETAIL`/`QUEST_PROGRESS`/`QUEST_COMPLETE` directly). CurseForge has no game version for those clients, so `.github/workflows/release-addons.yaml` publishes all four zips to a GitHub release on a `v*.*.*` tag; `scripts/quests/release.sh` still sends only the Blizzard zip to CurseForge. The packs are the same files everywhere: their `## Interface: 100000, 11509, 20506, 16001` names every client they ship for after a 100000 the legacy clients read alone, and `DataModules` force-loads them past the version check. That check covers "out of date" only; Forever (since build 70170) calls an Interface it does not list incompatible, which nothing overrides, so a new client's number must join the line.
-
-**The commands are `/spokenquests`, `/spq` and `/spqread`.** The pre-rename `/vo` and `/voread` are not registered any more - `Options.lua` names the AceConfig commands and `VoiceOver.lua` registers the standalone read command. Retiring them was deliberate: an alias that still worked would keep the old name alive in macros and in what players tell each other.
-
-`docs/quests/README.md` is unusually detailed and is the primary prose reference — check it before inferring behaviour from code, and update it when behaviour changes.
+- `pipelines/quests/` (`tts_cli/`, `cli-main.py`): the Python pipeline. It builds the corpus
+  and the addon's data modules and packs. It makes no audio; the site does.
+- `apps/web/` quests section: browsing the corpus, regeneration, triage, reports.
+- `addons/Spoken_Quests/`: a module of Spoken that ships inside `Spoken-<v>.zip`.
+  Its commands are `/spokenquests`, `/spq` and `/spqread`.
+- Sound packs `SpokenQuestsAudio{Alliance,Horde,Shared,Gossip}`, plus the `All` meta addon,
+  which depends on those four and `spoken-player`. Language packs are
+  `SpokenQuestsAudio_<lang>` (`LOCALE=xx`). Pack metadata, CurseForge and Wago ids live in
+  `publishers/quests/audio-*.md` and are read by `scripts/lib/packs.mjs`.
 
 ## Commands
 
-Python (from `pipelines/quests/`, with `.venv` active — the root `make test` expects that venv at `pipelines/quests/.venv`):
+From `pipelines/quests/` with `.venv` active:
 
-```bash
-pip install -r requirements.txt          # everyday path, pure Python
-pip install -r requirements-dev.txt      # + pytest, wordfreq
-pip install -r requirements-extract.txt  # + pandas/numpy/PyMySQL, corpus refresh only
-pytest                                   # all tests
-pytest tests/test_build.py::test_name    # one test
+```sh
+pip install -r requirements-dev.txt      # + requirements-extract.txt only for MySQL work
+pytest                                   # or tests/test_build.py::test_name
 python cli-main.py --help
 ```
 
-Addon (from repo root, needs `luajit`):
+From `apps/web/`, or `pnpm --filter @spoken/web <script>` at the root: `pnpm dev`,
+`pnpm typecheck`, `pnpm test [file]`.
 
-```bash
-make test-player                         # every addon's Lua tests, quest dispatch included
-```
+Web tests run against a real Postgres. `DATABASE_URL` comes from the environment, then the
+root `.env`, then `apps/web/.env.local`. Migrate with `deploy/web/bin/migrate.sh "$PWD/apps/web"`
+and seed with `python cli-main.py import-corpus`. `fileParallelism` is off because queue
+claiming is global.
 
-Web (from `apps/web/`, or `pnpm --filter @spoken/web <script>` from the root):
+## Packs and releases
 
-```bash
-pnpm install
-pnpm dev            # http://localhost:3000
-pnpm typecheck      # tsc --noEmit — CI gate
-pnpm test           # vitest run
-pnpm test src/lib/generation/queue.test.ts   # one file
-pnpm build
-```
-
-`make test` and `make lint` at the root run all of it — both webs, the Python pipeline, the addons, and the checks CI gates on.
-
-Several web tests (`history.test.ts`, `queue.test.ts`, anything touching versions) run against a **real Postgres** — the invariants they protect live in schema constraints. `DATABASE_URL` comes from a real env var, the repo root's `.env` or `apps/web/.env.local` (see `apps/web/vitest.config.ts`); apply migrations with `deploy/web/bin/migrate.sh "$PWD/apps/web"`, the same script the droplet and CI use. `fileParallelism` is off because queue claiming is global.
-
-**The pack ships in five pieces.** 600 MB is more than CurseForge takes in one upload (a 564 MB zip is a Cloudflare `413`) and more than a player wants, so one staged store is built into `SpokenQuestsAudio{Alliance,Horde,Shared,Gossip}` - which partition the audio exactly (2,644 + 2,251 + 2,552 + 3,742 = 11,189 files). Each is its own addon folder *and* its own CurseForge project, never two files on one project, because addon managers install a project's newest file and would move a player off the pack they chose. `pipelines/quests/tts_cli/factions.py` owns the split and `build --pack` applies it; every pack carries the full lookup tables, since a lookup entry whose audio is absent simply finds no length and stays quiet. The sides come from `pipelines/quests/corpus/factions.json` (`make quests-factions`, `pipelines/quests/tools/export_factions.py`), committed beside the corpus so building needs no database: `RequiredRaces` is nearly useless in vanilla, and the questgiver's faction template is what actually classifies a quest. The player's `DataModules.availableModules` lists all five but advertises them only to somebody with no pack at all.
-
-**`All` is a meta addon, not a pack.** One folder with every line cannot be uploaded (577 MB is a Cloudflare `413`), so project 1660196 ships `scripts/quests/package-meta.sh`'s few-kilobyte stub declaring the other four as required dependencies - sent as `relations` in the upload metadata, which is per file and needs no web UI. It must never carry either generation of the `DataModule-Version` key, or the player counts it as an installed pack and stops advertising the real ones. `make quests-package-audio PACKS=all` still builds the complete folder locally.
-
-**`make quests-package-audio-complete` builds `SpokenQuestsAudioComplete`** - every line in one folder at `ogg-q0-44k`, ~1.3 GB, never a CurseForge release (far over the ceiling) and hosted on the site. It is the one build using `MODULE_NAME`/`TITLE` to name a module outright rather than by pack suffix. `quests-push-complete` publishes it as `SpokenQuestsAudioComplete-latest.zip` into `/srv/spoken/shared/downloads/`, which is the one target in `make/quests.mk` writing to the new site's tree rather than the frozen one; the pre-rename URL is not kept alive. **The shipping packs are `SpokenQuestsAudio*`** (folder) / "Spoken Quests Audio: X" (title), `ogg-q0-44k`, ~300 MB a pack, five CurseForge projects. A second set at `ogg-q-1-22k` shipped under `VoiceOverReduxAudio*` until the rename and is retired: those projects stay published and nothing uploads to them. `MODULE` and `TITLE_FAMILY` in `scripts/quests/package-audio.sh` are what name a set of packs; `pipelines/quests/tts_cli/factions.py:pack_title` composes a title from a family and a pack label. A set of packs per project rather than two files on one, since a manager installs a project's newest file and would move a player between formats - the reason there were two, and the reason the retired projects are not reused. **A pack folder can be renamed** - nothing stores a path built from one, `DataModules` composes it from `METADATA.AddonName` at play time - but `availableModules` in `DataModules.lua` must move with it, since `EnumerateAddons` keys `presentModules` by folder name.
-
-Every addon carries its own `icon.tga` and a `## IconTexture:` line naming its own folder - the AddOns-list icon, absent which the client draws a red question mark. Two marks, both in `pipelines/quests/assets/icon/`: the player ships `spoken-player.tga`, Spoken Quests and the five packs `spoken-quests.tga`, so the two do not look like one addon listed twice. Committed as uncompressed TGA (`make quests-icon`, which runs `pipelines/quests/tools/make_icon.py`, since ffmpeg's targa encoder writes RLE) so building needs no ffmpeg. The minimap button wears the player mark too, as `addons/Spoken/Textures/MinimapButton.blp` - `make quests-icon` builds it from the same 512px render with `tools/make_minimap_icon.py`, cropping the shield frame away because LibDBIcon already draws a round one around a 17-pixel icon. BLP rather than TGA there: the AddOns list takes either, a texture a frame loads does not.
-
-Releases go to CurseForge **and Wago** through `scripts/quests/release.sh` (`make quests-release-dry` / `make quests-release`): it uploads what is already in `dist/` and never builds, needs `CURSEFORGE_TOKEN` and `WAGO_TOKEN` in the repo root's `.env`, and files against Era 1.15.9, the 2.5.6 Anniversary client and the 1.60.1 Forever client. `--store=curseforge` / `--store=wago` narrows it to one store, for a release that half-landed. The five sound packs go to CurseForge alone: each is ~300 MB and Wago's version endpoint answers 413 before it sees the body, and Wago takes no `relations` either, so on that store the All project is a stub whose page says in words what to install. CurseForge project ids live in `target_curseforge()` - Spoken Player `1700375`, Spoken Quests `1655859`, All `1660196`, Alliance `1660197`, Horde `1660198`, Shared `1660199`, Gossip `1660202`; an empty id fails that target rather than uploading a Horde pack over the Alliance project. The Wago ids sit beside them in `target_wago()`, and in each page's frontmatter under `publishers/`. The five ids the retired `VoiceOverReduxAudio*` packs used are deliberately absent from that function, since an id left in it is an id something eventually uploads to. **One target failing no longer stops the rest** - failures are collected and the run exits non-zero at the end - because six targets fail independently. The player's version comes from its committed `.toc`, the pack's from the module last built in `dist/` (it has no committed TOC), and each looks up its own section in `CHANGELOG.md`.
-
-Audio store and droplet plumbing are all in `make/quests.mk` (`make quests-help`; every target is reachable from the root as `make quests-<target>`): `push`/`pull` for `pipelines/quests/audio/`, `pull-voices`/`pull-history` for the irreplaceable directories, `releases`/`rollback`/`ssh-check` for the droplet. Do not merge it with `make/zones.mk` - they collide on a dozen target names. Every target is heavily commented with the failure it exists to prevent — read the comment before changing one.
+- `make quests-full-release VERSION=…` is the end-to-end pack release: sync, pull live takes,
+  build, upload. `package-audio` refuses to run until local data matches the droplet's
+  (`check-synced`), and `make quests-sync` is destructive.
+- `pipelines/quests/tts_cli/factions.py` owns the four-way split, using the committed
+  `corpus/factions.json`. Every pack carries the full lookup tables.
+- A pack ships one audio format, `ogg-q0-44k`; `store.py:audio_extension` refuses a store
+  holding two.
+- The meta addon must never carry a `DataModule-Version` key. If it does, the player counts it
+  as an installed pack and stops offering the real ones.
+- `scripts/quests/release.sh` uploads what is already in `dist/` and never builds. Its targets
+  are `spoken` (the bundle, to `spoken-player`), `player` (the retired SpokenQuests tombstone),
+  the four packs and `audio-all`. A failing target does not stop the rest.
+- Legacy 1.12/2.4.3/3.3.5 zips are built only from a `quests/vX` tag and published only on
+  GitHub. Each carries Spoken and that client's vendored Ace3.
+- Packs list every client in `## Interface:` (`tts_cli/build.py`). Forever rejects an Interface
+  it does not list, so a new client's number must be added there.
 
 ## Architecture
 
-**The corpus is the hinge.** `pipelines/quests/corpus/corpus.json.gz` (committed, 17.5k lines) is written by `pipelines/quests/tts_cli/corpus.py` from MySQL and read by everything else. Producing audio, building the module and running the web app never touch a database. Extraction is deliberately generous (spawn positions are captured though little reads them) because standing the world DB back up is the expensive mistake.
+**The corpus is Postgres `quest_line`.** `corpus/corpus.json.gz` is a committed export of it
+(`make quests-export-corpus`). The Python CLI and the pack build read that file and never a
+database. MySQL (vmangos) is touched only by the rare extract and import targets.
 
-**Filenames are load-bearing and derived in exactly one place.** `pipelines/quests/tts_cli/naming.py` owns both `fileName` (`{questID}-{accept|complete}`, `md5(text+race+gender)` or a follow-up's `{broadcastTextID}-{voice}`, optional `m-`/`f-` prefix) and `lineId` (`q:…` / `g:…` / `f:…`). The addon resolves sounds through a generated lookup table, so a name off by one character plays silence. `apps/web/src/lib/audio.ts` is the TypeScript twin of `subfolder_from_line_id`. Do not derive filenames anywhere else.
+**Filenames come from `tts_cli/naming.py` alone.** `apps/web/src/lib/audio.ts` mirrors its
+subfolder rule. The addon finds a sound through a generated lookup table, so a filename that
+is off by one character plays silence.
 
-**Voices are `race-gender-flavor`.** The flavor is which of a race-gender's several NPC voice sets an NPC actually uses; `pipelines/quests/tts_cli/flavors.py` recovers it from SoundEntries names and the corpus carries the result. The roster is hand-kept in `apps/web/src/lib/voices/voices.ts`, not derived from the corpus: `/voices`, the triage selects and the explorer filters all read it, so a new race or voice set exists before its first line. `voices.test.ts` fails on a corpus voice missing from it and accepting a contribution refuses one. It is also the whitelist that keeps a voice name safe as a path segment.
+**Voices are `race-gender-flavor`.** The roster is hand-kept in `apps/web/src/lib/voices/voices.ts`,
+not derived from the corpus. It is also the whitelist that keeps a voice name safe as a path
+segment, and `voices.test.ts` fails on a corpus voice it lacks.
 
-**A job is a file, not a line.** ~1,076 mp3s are shared by several NPCs, so regeneration replaces a file and every line pointing at it hears the change. The queue is keyed on the file for this reason.
+**A job is a file, not a line.** Over a thousand files are shared by several NPCs, so
+regenerating one changes every line that points at it. The queue is keyed on the file.
 
-**The archive is the only audio, and only the site writes it.** Every take is one file in `audio-history/`, written once by `apps/web/src/lib/takes/commit.ts` and never changed; which take is live is `take.isCurrent`, and a restore moves that flag and touches no file. The site plays the live take's archived file. `audio/` is not a store: `make quests-sounds` (`scripts/audio/sounds.mjs`) assembles it from the live takes before every pack build. `audio-history/`, `voice/samples/` and `audio-previews/` are gitignored and live in `shared/` on the droplet, surviving deploys and rollbacks; `make quests-pull-history` brings the archive home, and nothing sends audio back. Some of the archive is audio this project cannot reproduce; never prune it. There is no other generator: the Python CLI's `synthesize` is retired.
+**The queue** lives in `apps/web/src/lib/generation/`. `leader.ts` elects one pm2 worker with
+a Postgres advisory lock, and `queue.ts` is the only module that knows the column names. There
+are two providers, ElevenLabs and fish.audio (`providers.ts`). `db.ts` explains why
+`POOL_MAX` is 30.
 
-**The regeneration queue** lives in `apps/web/src/lib/generation/`. `boot.ts` starts it; `leader.ts` picks one pm2 worker via a session-scoped Postgres advisory lock (same namespace as the per-file locks in `lock.ts`); `worker.ts` drains with a concurrency budget derived from the plan tier; `queue.ts` is the only module that knows the column names. `apps/web/src/lib/db.ts` explains why `POOL_MAX` is 30 — the queue holds two clients per in-flight job.
+**Reports never queue jobs.** `POST /api/reports` is the only unauthenticated write in the
+app. A job spends credits, so a collaborator reads the report and queues the file by hand.
 
-**Migrations are forward-only and additive.** `deploy/web/bin/activate.sh` migrates *before* the symlink swap, and rollback restores code without un-applying schema, so a release must run against the schema of the release after it.
+**Ignored lines** (`line_ignore`) are keyed on `lineId`, not on the file, because a dead line
+can share a file with a live one. `make quests-export-ignores` writes `corpus/ignored.json`
+for the pack build.
 
-**A report is a claim, not a job, and can be filed from either side.** The explorer's rows carry a flag button opening `ReportDialog` - the same `ReportForm` the landing page shows, addressed by `apps/web/src/lib/reports/line-target.ts`, which writes the addon's address format so both routes land in one triage list. It sits outside the collaborator gate deliberately: reporting is what somebody who cannot sign in has. The addon's Report button builds the same address — `/r/quest/{id}/{accept|progress|complete}` or `/r/npc/{id}` — from what the client can see rather than from anything the data module resolved, since a module that failed to load is the failure most worth reporting. The player copies it, opens it, and fills in a form; `POST /api/reports` is the only unauthenticated write in the app, defended by a honeypot, a Postgres-backed limit of ten per hour per `x-real-ip`, and closed-set validation. `line_report` is separate from `line_issue` because one is a human's claim about audio and the other a scan's finding about text. Nothing connects a report to the regeneration queue: a job spends ElevenLabs credits, so a collaborator reads the report and queues the file by hand.
+**Stage directions:** a capitalised `<…>` span is read by the narrator. A lowercase one is a
+sound the NPC makes and becomes an ElevenLabs `[tag]`. `staleFiles` must apply the same
+transforms in the same order, or every tagged take reads as outdated.
 
-**The shipped module is transcoded, the masters are not.** `make quests-package-audio` runs `quests-sounds`, then `scripts/quests/package-audio.sh` stages a transcoded copy of `audio/` and hands it to `build --store`, so there is still one definition of what a module contains. The store stays 128 kbps mp3; the packs ship **Ogg Vorbis at 44.1 kHz** (`ogg-q0-44k`), 3.2 GB down to ~1.3 GB, and `make quests-package-audio-complete` builds the same audio as one folder. `ogg-q-1-22k` is the retired downsample, still selectable for measurement. Encoding is `oggenc`, because Homebrew's ffmpeg has no libvorbis. **A pack ships one format**: `GetSoundPath` writes a single extension, so `pipelines/quests/tts_cli/store.py:audio_extension` refuses a store holding two and `build` writes the paths the staged store implies. The 80 kbps gate in `pipelines/quests/tools/plan_transcode.py` therefore only decides anything for an mp3 target. The cache in `audio-transcoded/<profile>/` is keyed on the master's md5 (mtime would be wrong: `audio/` is assembled afresh before every build), and the length table is computed after the copy so it describes the files that ship. `docs/quests/docs/pack-size.md` measures every encode and the dead ends.
-
-**Some lines are ignored outright.** `line_ignore` (migration 0017) records lines nobody will ever voice - the 35 war-effort tallies whose `$2113w` is a live server counter, and Blizzard's test quest 1 - keyed on `lineId` rather than the file, because a dead line can share an mp3 with a live one. The web app hides them from every search unless `ignored=1`, refuses to regenerate one, and `make quests-export-ignores` exports the table to the committed `pipelines/quests/corpus/ignored.json` for the pack build: `pipelines/quests/tts_cli/ignores.py` reads it, and `build` drops both the audio and the lookup entries. `ignored_files` names a file only when *every* line addressing it is ignored - excluding one otherwise would strand the line that still needs it.
-
-**Reachability is not extracted.** `pipelines/quests/tts_cli/corpus.py` applies no patch filter, but vmangos gates `quest_template` (`patch <= P`), the four questgiver relation tables (`P BETWEEN patch_min AND patch_max`) and the spawn tables the same way - so the corpus holds quests a 1.12 server never hands out. `pipelines/quests/tts_cli/reachability.py` encodes those three gates and is tested against fixtures; `pipelines/quests/tools/scan_unreachable_quests.py` feeds it from MySQL and prints a report. Findings are leads, never actions: the spawn gate flags Alterac Valley quests whose givers the battleground scripts spawn. `--gossip` asks the same of a speaker rather than a quest and is noisier still - 47 NPCs, all script-spawned so far. `docs/quests/docs/unreachable-quest-candidates.md` is the independent second source, from Questie's blacklist.
-
-**Stage directions are narrated, and only by the web app.** Blizzard writes `<Advisor Belgrum opens the note.>` inside the NPC's own quest text. A *capitalised* bracketed span is a stage direction and is read by `narrator-male`; a *lowercase* one is a sound the NPC makes (`<hic>`, `<cough>`) and is rewritten by `audioTags` into ElevenLabs' `[hic]` tag syntax, which `eleven_v3` performs in the NPC's own voice — no narrator says "hic". Capitalisation separates all 90 spans in the corpus with no exceptions — do not also require a full stop, which misclassifies `Motega shrugs his shoulder`. The tag rewrite runs on the whole line before `segments`, so it reaches the single-voice path too, and `staleFiles` applies the same two transforms in the same order or every tagged take reads as outdated. This means `apps/web/src/lib/text-gate.ts` is no longer a mirror of `INVALID_CHARS` in `pipelines/quests/tts_cli/corpus.py`: the web app voices 62 lines the CLI still refuses. That is the second deliberate divergence between the two generators, alongside the pronunciation dictionary.
-
-**Generation settings have two layers.** `pipelines/quests/voice/generation.json` + `pipelines/quests/voice/pronunciation.json` are what the Python CLI reads and ship inside each release; the database rows edited at `/voices` override them for the web app. The lexicon has no file layer at all — it lives only in Postgres (seeded by `0008`), and the Python CLI sends no pronunciation dictionary, which is the one place the two generators diverge.
-
+**Generation settings have two layers.** `voice/generation.json` and `voice/pronunciation.json`
+are file defaults. The rows edited at `/voices` override them for the site. The lexicon exists
+only in Postgres.

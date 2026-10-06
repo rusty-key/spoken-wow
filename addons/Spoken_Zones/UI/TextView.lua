@@ -32,8 +32,9 @@ local TOP_SCALE = .5
 -- The text's room above and below, so at rest it is clear of both fades.
 local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 -- Pictures are 2:1 and capped at PICTURE_MOST, so the wide lore window shows them only a little
--- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through.
-local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA = 400, 10, 0.95
+-- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
+-- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
+local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
 
 local TextView = {}
 TextView.__index = TextView
@@ -426,9 +427,9 @@ function TextView:SetText(str)
 		local h = math.floor(w / 2)
 		self.picture:SetSize(w, h)
 		self.picture:ClearAllPoints()
-		self.picture:SetPoint("TOP", self.child, "TOP", 0, -PAD_TOP)
+		self.picture:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT))
 		self.picture:Show()
-		pictureRoom = h + PICTURE_GAP
+		pictureRoom = h + PICTURE_GAP - PICTURE_LIFT
 	else
 		self.picture:Hide()
 	end

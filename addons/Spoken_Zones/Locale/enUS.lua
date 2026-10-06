@@ -166,6 +166,7 @@ L.LORE_WINDOW_EMPTY = "Choose a place on the left to read its story. A zone's nu
 -- The window browses every place; the panel beside the map tells the zone it shows.
 L.LORE_WINDOW_TITLE = "Lore of Azeroth"
 L.LORE_PANEL_TITLE = "Zone Lore"
+L.MAP_PANEL_EXPAND = "Show Zone Lore"
 L.PANEL_SHOWN = "Zone Lore beside the map: on"
 L.PANEL_HIDDEN = "Zone Lore beside the map: off"
 L.MINIMAP_LEFT_CLICK = "|cff66bbffLeft-click|r %1$s"

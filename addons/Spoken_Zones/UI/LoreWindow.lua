@@ -21,14 +21,29 @@ local Art = SpokenZones.Art
 
 local WINDOW_WIDTH = 880
 local WINDOW_HEIGHT = 600
+local WINDOW_MIN_WIDTH = 560
+local WINDOW_MIN_HEIGHT = 360
 local LIST_WIDTH = 270
 local ZONE_ROW = 24
 local AREA_ROW = 20
 local DEPTH_STEP = 14         -- each level in, under the one it belongs to
 local SCROLL_STEP = 60
+local GRABBER_SIZE = 16
 local ICON = [[Interface\Icons\INV_Misc_Map_01]]
 
+local GRABBER_UP = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]]
+local GRABBER_DOWN = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down]]
+local GRABBER_HIGHLIGHT = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight]]
+
+local SMALLER_UP = [[Interface\Buttons\UI-Panel-SmallerButton-Up]]
+local SMALLER_DOWN = [[Interface\Buttons\UI-Panel-SmallerButton-Down]]
+local BIGGER_UP = [[Interface\Buttons\UI-Panel-BiggerButton-Up]]
+local BIGGER_DOWN = [[Interface\Buttons\UI-Panel-BiggerButton-Down]]
+local PANEL_HI = [[Interface\Buttons\UI-Panel-MinimizeButton-Highlight]]
+
 local window, listScroll, listChild, searchBox, page
+local resizer, minimizeButton, minimizeFrame
+local minimized = false
 local rows = {}
 local expandedZone = nil
 -- Azeroth and its continents start open, so the zones show; each opens and closes on its own.
@@ -41,6 +56,8 @@ local sortedZoneIDs = nil
 local zonesOfContinent = {}
 local sortedSubzoneKeys = {}
 local filter = ""
+
+local SetMinimized
 
 --------------------------------------------------------------------------------
 -- Data ordering
@@ -386,6 +403,7 @@ local function OnRowClick(self)
 	else
 		selection = { mapID = row.mapID, key = row.key }
 	end
+	SetMinimized(false)
 	SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
 	SpokenZones:RefreshLoreWindow()
 end
@@ -537,6 +555,115 @@ end
 -- Construction
 --------------------------------------------------------------------------------
 
+-- The list inset's margins inside the window, left and right.
+local function ListMargins()
+	if window and window.templated then
+		return 6, 6
+	end
+	return 14, 12
+end
+
+-- Collapsed, the window is just the list, at the width it has beside the text: only the height
+-- resizes, so collapsing never reflows the rows.
+local function CollapsedWidth()
+	local left, right = ListMargins()
+	return LIST_WIDTH + left + right
+end
+
+local function ScreenMaxWidth()
+	return math.floor((UIParent:GetWidth() or 1920) * 0.95)
+end
+
+local function ScreenMaxHeight()
+	return math.floor((UIParent:GetHeight() or 1080) * 0.95)
+end
+
+local function ApplyResizeBounds()
+	local maxW = minimized and CollapsedWidth() or ScreenMaxWidth()
+	local maxH = ScreenMaxHeight()
+	local minW = minimized and CollapsedWidth() or WINDOW_MIN_WIDTH
+	local minH = WINDOW_MIN_HEIGHT
+	if window.SetResizeBounds then
+		window:SetResizeBounds(minW, minH, maxW, maxH)
+	else
+		window:SetMinResize(minW, minH)
+		window:SetMaxResize(maxW, maxH)
+	end
+end
+
+-- StartSizing does not hold the opposite corner still. Anchored at CENTER, that corner moves
+-- away from the cursor every frame and the size runs to its bound.
+local function PinTopLeft()
+	local left, top = window:GetLeft(), window:GetTop()
+	if not left or not top then
+		return
+	end
+	window:ClearAllPoints()
+	window:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+end
+
+-- Saved sizes are clamped on the way in: a size persisted by the runaway would otherwise
+-- reopen at the bound for good.
+local function SavedSize(key, min, max, fallback)
+	local saved = SpokenZones:Get(key)
+	if type(saved) ~= "number" or saved < min then
+		return fallback
+	end
+	return math.min(saved, max)
+end
+
+local function ExpandedWidth()
+	return SavedSize("loreWindowWidth", WINDOW_MIN_WIDTH, ScreenMaxWidth(), WINDOW_WIDTH)
+end
+
+local function SavedHeight()
+	return SavedSize("loreWindowHeight", WINDOW_MIN_HEIGHT, ScreenMaxHeight(), WINDOW_HEIGHT)
+end
+
+local function SaveWindowSize()
+	if not window then
+		return
+	end
+	local width, height = window:GetSize()
+	if not width or not height or width <= 0 or height <= 0 then
+		return
+	end
+	SpokenZones:Set("loreWindowHeight", math.floor(height + 0.5))
+	if not minimized then
+		SpokenZones:Set("loreWindowWidth", math.floor(width + 0.5))
+	end
+end
+
+local function SetCollapseArrow()
+	if minimizeFrame then
+		minimizeFrame.MaximizeButton:SetShown(minimized)
+		minimizeFrame.MinimizeButton:SetShown(not minimized)
+		return
+	end
+	if not minimizeButton then
+		return
+	end
+	if minimized then
+		minimizeButton:SetNormalTexture(BIGGER_UP)
+		minimizeButton:SetPushedTexture(BIGGER_DOWN)
+	else
+		minimizeButton:SetNormalTexture(SMALLER_UP)
+		minimizeButton:SetPushedTexture(SMALLER_DOWN)
+	end
+end
+
+SetMinimized = function(want)
+	if not window or want == minimized then
+		return
+	end
+	minimized = want
+	ApplyResizeBounds()
+	PinTopLeft()
+	window:SetWidth(minimized and CollapsedWidth() or ExpandedWidth())
+	window.pageInset:SetShown(not minimized)
+	SetCollapseArrow()
+end
+
 -- The game's portrait frame where the client has it: its border, title bar, portrait and close
 -- button. The plain dialog box this window used to be where it does not.
 local function NewWindow()
@@ -558,24 +685,28 @@ local function NewWindow()
 	title:SetPoint("TOP", frame, "TOP", 0, -14)
 	title:SetText(L.LORE_WINDOW_TITLE)
 	local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-	close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
+	close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -8)
 	close:SetScript("OnClick", function() frame:Hide() end)
+	frame.CloseButton = close
 	return frame
 end
 
 local function BuildWindow()
 	window = NewWindow()
-	window:SetSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+	window:SetSize(ExpandedWidth(), SavedHeight())
 	window:SetPoint("CENTER")
 	window:SetFrameStrata("HIGH")
 	window:SetToplevel(true)
 	window:EnableMouse(true)
 	window:SetMovable(true)
+	window:SetResizable(true)
 	window:SetClampedToScreen(true)
 	window:RegisterForDrag("LeftButton")
 	window:SetScript("OnDragStart", window.StartMoving)
 	window:SetScript("OnDragStop", window.StopMovingOrSizing)
 	window:SetScript("OnShow", function()
+		-- The screen may have changed size since the bounds were last set.
+		ApplyResizeBounds()
 		if PlaySound and SOUNDKIT and SOUNDKIT.IG_SPELLBOOK_OPEN then PlaySound(SOUNDKIT.IG_SPELLBOOK_OPEN) end
 	end)
 	window:SetScript("OnHide", function()
@@ -583,10 +714,50 @@ local function BuildWindow()
 	end)
 	window:Hide()
 
+	local close = type(window.CloseButton) == "table" and window.CloseButton
+	if close then
+		local buttonSize = math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
+		close:SetSize(buttonSize, buttonSize)
+		close:ClearAllPoints()
+		if window.templated then
+			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -6, -1)
+		else
+			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -8)
+		end
+
+		local ok, mm = pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
+		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
+			minimizeFrame = mm
+			mm:ClearAllPoints()
+			mm:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			mm:SetFrameLevel(close:GetFrameLevel())
+			mm.MinimizeButton:SetSize(buttonSize, buttonSize)
+			mm.MaximizeButton:SetSize(buttonSize, buttonSize)
+			mm.MinimizeButton:SetScript("OnClick", function()
+				SetMinimized(true)
+			end)
+			mm.MaximizeButton:SetScript("OnClick", function()
+				SetMinimized(false)
+				SpokenZones:RefreshLoreWindow()
+			end)
+		else
+			minimizeButton = CreateFrame("Button", nil, window)
+			minimizeButton:SetSize(buttonSize, buttonSize)
+			minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			minimizeButton:SetFrameLevel(close:GetFrameLevel())
+			minimizeButton:SetHighlightTexture(PANEL_HI)
+			minimizeButton:SetScript("OnClick", function()
+				SetMinimized(not minimized)
+				if not minimized then SpokenZones:RefreshLoreWindow() end
+			end)
+		end
+		SetCollapseArrow()
+	end
+
 	-- Inside the frame's border and under its title bar; a templated frame's portrait takes the
 	-- top-left corner, so the search box starts to its right.
 	local top = window.templated and -24 or -36
-	local left = window.templated and 6 or 14
+	local left, right = ListMargins()
 
 	-- The places: an inset down the left, the game's own, with the search box over it.
 	searchBox = CreateFrame("EditBox", nil, window, "SearchBoxTemplate")
@@ -636,7 +807,7 @@ local function BuildWindow()
 	local okPage, pageInset = pcall(CreateFrame, "Frame", nil, window, "InsetFrameTemplate")
 	if not okPage or not pageInset then pageInset = CreateFrame("Frame", nil, window) end
 	pageInset:SetPoint("TOPLEFT", inset, "TOPRIGHT", 6, 38)
-	pageInset:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", window.templated and -6 or -12, window.templated and 6 or 12)
+	pageInset:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -right, window.templated and 6 or 12)
 	window.pageInset = pageInset
 	local holder = CreateFrame("Frame", nil, pageInset)
 	holder:SetPoint("TOPLEFT", pageInset, "TOPLEFT", 3, -3)
@@ -647,6 +818,40 @@ local function BuildWindow()
 		pageInset.NineSlice:SetFrameLevel(holder:GetFrameLevel() + 5)
 	end
 	window.page = page
+
+	resizer = CreateFrame("Button", nil, window)
+	resizer:SetPoint("BOTTOMRIGHT", -2, 2)
+	resizer:SetSize(GRABBER_SIZE, GRABBER_SIZE)
+	resizer:SetNormalTexture(GRABBER_UP)
+	resizer:SetPushedTexture(GRABBER_DOWN)
+	resizer:SetHighlightTexture(GRABBER_HIGHLIGHT)
+	resizer:SetFrameLevel(window:GetFrameLevel() + 5)
+	resizer:SetScript("OnEnter", function()
+		SetCursor([[Interface\Cursor\UI-Cursor-SizeRight]])
+	end)
+	resizer:SetScript("OnLeave", function()
+		SetCursor(nil)
+	end)
+	resizer:SetScript("OnMouseDown", function(_, button)
+		if button ~= "LeftButton" then
+			return
+		end
+		local highlight = resizer:GetHighlightTexture()
+		if highlight then
+			highlight:Hide()
+		end
+		PinTopLeft()
+		window:StartSizing("BOTTOMRIGHT")
+	end)
+	resizer:SetScript("OnMouseUp", function()
+		local highlight = resizer:GetHighlightTexture()
+		if highlight then
+			highlight:Show()
+		end
+		window:StopMovingOrSizing()
+		SaveWindowSize()
+		SetCursor(nil)
+	end)
 
 	-- Toggling "Hide Contribute Buttons" in Spoken's settings fires no game event.
 	if _G.Spoken and Spoken.RegisterCallback then
@@ -723,6 +928,8 @@ function SpokenZones:ShowLoreFor(mapID, areaKey)
 	selection = { mapID = mapID, key = areaKey }
 	if searchBox and searchBox:GetText() ~= "" then searchBox:SetText("") end
 	window:Show()
+	-- Asked for an entry, so show it: a window closed collapsed would reopen as the bare list.
+	SetMinimized(false)
 	SpokenZones:RefreshLoreWindow(true)
 end
 

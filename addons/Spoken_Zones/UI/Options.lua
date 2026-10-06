@@ -136,7 +136,8 @@ function SpokenZones:SetupOptions()
 	layout:Section(L.OPT_SECTION_MAP)
 	layout:Checkbox(L.OPT_MAP_PANEL,
 		L.OPT_MAP_PANEL_TIP,
-		Get("showMapPanel"), Set("showMapPanel"), function() RedrawPanel(); layout:Refresh() end)
+		Get("showMapPanel"), function(value) SpokenZones:SetMapPanelShown(value) end,
+		function() RedrawPanel(); layout:Refresh() end)
 	local besideMap = Get("showMapPanel")
 	layout:Checkbox(L.OPT_HOVER,
 		L.OPT_HOVER_TIP,

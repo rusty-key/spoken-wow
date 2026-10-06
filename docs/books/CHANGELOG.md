@@ -3,6 +3,16 @@
 Notable changes to Spoken Books and its sound pack. An addon update can use an
 existing compatible sound pack unless the release notes say otherwise.
 
+## 3.0.0 — 2026-10-05
+
+- **Spoken Books is now part of Spoken**, and this download no longer carries the addon. It
+  leaves a `SpokenBooks` folder that never loads, listed greyed out as "Spoken Books (now in
+  Spoken)".
+- **Install [Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)** instead: it
+  has Books inside, in the `Spoken_Books` folder, along with everything new in Spoken 3.0.0. Then
+  uninstall this download and delete the `SpokenBooks` folder from `Interface\AddOns`. This
+  download gets no further updates.
+
 ## 3.0.0-beta.4 — 2026-10-05
 
 - **Spoken Books is now part of Spoken**, and this download no longer carries the addon. It

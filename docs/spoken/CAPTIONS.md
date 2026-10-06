@@ -26,13 +26,29 @@ visually. The expanded view and zone/book captions still need an in-game visual 
   compact line setting. The player grows downward and keeps the unit icon in place.
 - `/spoken transcript 1` sets one compact line; `/spoken transcript 2` sets two.
 - `/spoken options` has settings for line count, font size, highlighting, typing
-  out, automatic following, and the subtitles' size and background.
-- Scroll over the captions to read other pages. Click the text to follow the
-  recording again. Right-click opens the player menu, or settings in the
-  original layout. With **Type Words Out** on, a page the voice has not reached
-  yet shows blank lines until it does; turn the setting off to read ahead.
+  out, **Auto-Scroll** (below), and the subtitles' size and background.
+- Scroll over the captions to read back or ahead; they hold there. Click the
+  text to follow the recording again. Right-click opens the player menu, or
+  settings in the original layout. With **Type Words Out** on, a line the voice
+  has not reached yet shows blank until it does; turn the setting off to read ahead.
 - `/spoken transcript reset` restores the caption and subtitle defaults and
   moves the subtitles back to where they start.
+
+## Auto-Scroll
+
+How the captions in the window follow the voice:
+
+| Mode | Behaviour |
+|---|---|
+| **Line by Line** (default) | The text glides up a line at a time as the voice reaches each line, about a quarter of a second per line, so there is no jump. The line being read is on the last row with **Type Words Out** on (below), and in the middle with it off, as synced-lyrics players (Apple Music, Spotify) keep the sung line. |
+| **Page by Page** | A whole page turns when the voice reaches its end, as the captions always did. Closest to broadcast pop-on captions, which read best when the text should not move while it is read. |
+| **Off** | The text holds still; the wheel moves it. Clicking the captions turns following back on, line by line. |
+
+With **Type Words Out** on, the lines below the voice are still blank, so Line by Line keeps the
+line being read on the last row instead, with what has been read above it, as roll-up
+broadcast captions do. The glide needs the client to clip the captions' frame (`SetClipsChildren`); where it cannot, the text steps a
+line at a time. `Transcript:GetScroll` and `Transcript:ScrollTo` let a player draw its own
+scrollbar. Subtitles Only pages on its own and is not affected.
 
 Stopping freezes the text. Replay restarts it with the recording. Skipping
 shows the next clip's text, and a clip without text hides the captions.

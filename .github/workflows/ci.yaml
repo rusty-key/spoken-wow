@@ -1,20 +1,81 @@
 name: CI
 
-# Path-filtered so a Lua change does not wait on a Postgres service, and a corpus edit
-# does not rebuild both apps. The deploy workflows re-run the checks that gate a release;
-# this one is what a pull request sees.
+# Each job runs only when something it reads changed, so a site change does not wait on the
+# Lua harness and an addon change does not start Postgres. The filter lives in a job rather
+# than in `on: paths`: all four jobs are required checks, and a workflow skipped by `paths`
+# reports nothing, which leaves the PR waiting forever. A job skipped by `if` reports success.
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, develop]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      addons: ${{ steps.filter.outputs.addons }}
+      quests: ${{ steps.filter.outputs.quests }}
+      web: ${{ steps.filter.outputs.web }}
+      zones: ${{ steps.filter.outputs.zones }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # Each list is what its job reads, not only where its code lives. Every list names
+          # this file, so a change to CI runs all of it.
+          filters: |
+            addons:
+              - .github/workflows/ci.yaml
+              - Makefile
+              - addons/**
+              - tests/**
+            quests:
+              - .github/workflows/ci.yaml
+              - pipelines/quests/**
+              # test_package.py runs the packaging scripts over the real addon folders.
+              - addons/**
+              - scripts/**
+            web:
+              - .github/workflows/ci.yaml
+              - apps/web/**
+              # The site bundles the zones and books pipelines and pipelines/lib, and CI seeds
+              # its database from the quests corpus through the Python importer.
+              - pipelines/**
+              - deploy/web/**
+              # Pack metadata (scripts/lib/packs.mjs reads publishers/) and the envelopes the
+              # Lua harness writes for the contribution tests.
+              - scripts/lib/**
+              - publishers/**
+              - tests/fixtures/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+            zones:
+              - .github/workflows/ci.yaml
+              - pipelines/zones/**
+              - pipelines/lib/**
+              - addons/Spoken_Zones/**
+              # descriptions --check compares publishers/ with the READMEs generated from it.
+              - publishers/**
+              - addons/*/README.md
+              - scripts/descriptions.mjs
+              - scripts/lib/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+
   addons:
     name: Addons (Lua)
+    needs: changes
+    if: needs.changes.outputs.addons == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -25,6 +86,8 @@ jobs:
 
   quests-python:
     name: Quests pipeline (Python)
+    needs: changes
+    if: needs.changes.outputs.quests == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,6 +107,8 @@ jobs:
 
   web:
     name: Web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -84,6 +149,8 @@ jobs:
 
   zones-pipeline:
     name: Zones pipeline
+    needs: changes
+    if: needs.changes.outputs.zones == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

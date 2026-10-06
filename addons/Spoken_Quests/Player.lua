@@ -202,8 +202,6 @@ function Player:Prepare(soundData)
     soundData.key = soundData.fileName
     soundData.path = soundData.filePath
     soundData.priority = gossip and "low" or "normal"
-    -- Gossip plays alongside the NPC's own voice; only quest text silences it.
-    soundData.keepsGameDialogue = gossip or nil
     soundData.present = {
         header = soundData.name or "",
         label = soundData.title or (event == Enums.SoundEvent.QuestGreeting and L.OPT_GREETING or (gossip and L.OPT_PACK_GOSSIP or "")),

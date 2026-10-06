@@ -364,7 +364,10 @@ function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitSex() return world.unitSex end
 function _G.UnitCreatureType() return world.creatureType end
-function _G.GetCVar(key) return world.cvars[key] or "1" end
+-- The mouse UI unless a test turns the gamepad's on: read as "1", every popup an addon raises
+-- unasked would go to chat instead.
+local CVAR_DEFAULTS = { InputDeviceInterfaceStyle = "0" }
+function _G.GetCVar(key) return world.cvars[key] or CVAR_DEFAULTS[key] or "1" end
 function _G.SetCVar(key, value)
     world.cvars[key] = tostring(value)
     table.insert(world.cvarLog, { key, tostring(value) })
@@ -518,7 +521,8 @@ _G.Settings = M.modernSettings
 M.SetClient("20506")
 
 -- What the zones addon's playback and autoplay files reach for.
-_G.DEFAULT_CHAT_FRAME = { AddMessage = function() end }
+M.chat = {}
+_G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, text) table.insert(M.chat, text) end }
 world.inCombat = false
 function _G.UnitAffectingCombat() return world.inCombat end
 function _G.GetSubZoneText() return world.subZone or "" end
@@ -823,6 +827,7 @@ end
 
 function M.ResetUIActions()
     for i = #M.popups, 1, -1 do M.popups[i] = nil end
+    for i = #M.chat, 1, -1 do M.chat[i] = nil end
     for i = #M.enabledAddOns, 1, -1 do M.enabledAddOns[i] = nil end
     for i = #M.disabledAddOns, 1, -1 do M.disabledAddOns[i] = nil end
     M.reloads = 0

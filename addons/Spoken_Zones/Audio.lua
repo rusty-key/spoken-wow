@@ -167,6 +167,15 @@ local function ListNames(names)
 	return text
 end
 
+-- The Forever client's gamepad UI takes over every popup as it opens, inside the code that
+-- opened it. Opened by an addon, that taints the gamepad's bindings: the next close is blocked,
+-- and the "blocked from an action" dialog it raises hangs the client (#165). There the dialog is
+-- a line in chat instead. pcall, because 1.12 raises on a CVar it has never heard of.
+local function IsGamepadUI()
+	local ok, style = pcall(GetCVar, "InputDeviceInterfaceStyle")
+	return ok and style == "1"
+end
+
 --- Raise the dialog, if the player is installed and disabled and nobody has raised it yet.
 --- Returns whether this call was the one that raised it.
 function SpokenZones:PromptForPlayer()
@@ -190,6 +199,10 @@ function SpokenZones:PromptForPlayer()
 	end
 
 	_G.SpokenPlayerPrompted = true
+	if IsGamepadUI() then
+		SpokenZones:Print("|cffffd200Spoken|r is required to use %s. Enable it in the AddOns list and reload.", ListNames(names))
+		return true
+	end
 	StaticPopupDialogs[PLAYER_DIALOG] =
 	{
 		text = string.format("|cffffd200Spoken|r is required to use %s.", ListNames(names)),

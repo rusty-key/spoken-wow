@@ -1,5 +1,3 @@
-<!-- GENERATED from publishers/zones/spoken-zones.md by scripts/descriptions.mjs. Do not edit by hand. -->
-
 **Zone lore on the world map, for WoW Classic Era.** One of [Spoken](https://www.curseforge.com/wow/addons/spoken-player)'s modules: it comes in Spoken's download, beside Spoken Quests and Spoken Books, and narrates through it.
 
 Open the map and the lore of the zone you're looking at appears beside it. Click a named subzone and you get that place's story instead. Optionally, it's read aloud.
@@ -10,7 +8,7 @@ Open the map and the lore of the zone you're looking at appears beside it. Click
 
 ## What it does
 
-- **Zone Lore** — the current zone's story in a panel of its own beside the map, on the quest log's parchment. Resize it, set the font size, or close it until the map is next opened.
+- **Zone Lore** — the current zone's story in a panel of its own beside the map, on the quest log's parchment. Resize it, set the font size, or close it; it stays closed until you reopen it with the map button on the map's edge.
 - **Subzone lore** — click any named area on the map to read about it.
 - **Hover preview** — point at a subzone for the first lines in a tooltip, without disturbing the panel.
 - **Lore of Azeroth** — browse every story without opening the map: Azeroth, its two continents, their zones and each zone's areas, with a search box. From the minimap button, `/spz window`, or the button on Zone Lore.

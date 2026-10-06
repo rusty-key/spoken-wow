@@ -161,6 +161,21 @@ local function GetVisibleQuestEvent()
     return lastQuestEvent
 end
 
+-- The Forever client's gamepad UI takes over every popup as it opens, inside the code that
+-- opened it. Opened by an addon, that taints the gamepad's bindings: the next close is blocked,
+-- and the "blocked from an action" dialog it raises hangs the client (#165). What this addon
+-- would pop up unasked goes to chat there instead. A copy of Spoken's own (Core.lua), because
+-- the player may be the addon that is missing. pcall, because 1.12 raises on a CVar it has never
+-- heard of.
+local function IsGamepadUI()
+    local ok, style = pcall(GetCVar, "InputDeviceInterfaceStyle")
+    return ok and style == "1"
+end
+
+local function Say(text)
+    DEFAULT_CHAT_FRAME:AddMessage("|cff66bbffSpoken Quests:|r " .. text)
+end
+
 function Addon:ShowMissingDataModulePopup()
     if DataModules:HasRegisteredModules() then
         return
@@ -174,9 +189,14 @@ function Addon:ShowMissingDataModulePopup()
         end
     end
     local details = next(loadDetails) and ("|n|nDetected but not loaded:|n" .. table.concat(loadDetails, "|n")) or ""
+    local text = [[No usable sound packs were loaded.|n|nKeep a sound pack installed beside this addon - "Spoken Quests Audio", or the older "AI_VoiceOverData_Vanilla". Run "/spq diagnostics" for details.]] .. details
+    if IsGamepadUI() then
+        Say(text)
+        return
+    end
     StaticPopupDialogs["VOICEOVER_NO_REGISTERED_DATA_MODULES"] =
     {
-        text = [[Spoken Quests|n|nNo usable sound packs were loaded.|n|nKeep a sound pack installed beside this addon - "Spoken Quests Audio", or the older "AI_VoiceOverData_Vanilla". Run "/spq diagnostics" for details.]] .. details,
+        text = "Spoken Quests|n|n" .. text,
         button1 = OKAY,
         timeout = 0,
         whileDead = 1,
@@ -410,6 +430,10 @@ function Addon:PromptForPlayer()
     end
 
     _G.SpokenPlayerPrompted = true
+    if IsGamepadUI() then
+        Say(format("|cffffd200Spoken|r is required to use %s. Enable it in the AddOns list and reload.", ListNames(names)))
+        return true
+    end
     StaticPopupDialogs[PLAYER_DIALOG] =
     {
         text = format("|cffffd200Spoken|r is required to use %s.", ListNames(names)),
@@ -1129,8 +1153,18 @@ function Addon:MuteGreetingAhead(event)
         or not Spoken.MuteGameDialogueAhead then
         return
     end
-    -- Only quest text silences the NPC; a gossip greeting keeps its voice.
-    if QUEST_EVENTS[event] then
+    if event == "GOSSIP_SHOW" or event == "QUEST_GREETING" then
+        -- The page text is not to be trusted yet (see the deferred read), so this asks only
+        -- whether any pack voices this speaker at all.
+        local guid = Utils:GetNPCGUID()
+        local speaker = { unitGUID = guid, name = Utils:GetNPCName(), unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }
+        if not guid and not speaker.name then
+            return
+        end
+        if not self:ShouldPlayGossip(guid, nil, false) or not DataModules:HasGossipFor(speaker) then
+            return
+        end
+    elseif QUEST_EVENTS[event] then
         -- The quest ID can still be the previous quest's this early; the worst that costs is
         -- one greeting muted for nothing, or one cut off as it was before.
         local questID = QuestIDFor(event)

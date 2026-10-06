@@ -123,23 +123,6 @@ Expect("a line speaking mutes the game's dialogue, once faded", GetCVar("Sound_E
 _G.Spoken:StopAll()
 Expect("...and the empty queue restores it", GetCVar("Sound_EnableDialog"), "1")
 
--- A gossip line after a muting one gives the NPC its voice back as it starts.
-quests:Enqueue(H.Clip({ length = 2 }))
-quests:Enqueue(H.Clip({ length = 5, keepsGameDialogue = true }))
-stub.Advance(0.6)
-Expect("a quest line mutes the game's dialogue", GetCVar("Sound_EnableDialog"), "0")
-stub.Advance(2)
-Expect("...and the gossip line after it lifts the mute", GetCVar("Sound_EnableDialog"), "1")
-_G.Spoken:StopAll()
-
--- A mute taken ahead of a quest does not hold over a gossip line speaking meanwhile.
-_G.Spoken:MuteGameDialogueAhead(quests)
-quests:Enqueue(H.Clip({ length = 5, keepsGameDialogue = true }))
-Expect("a gossip line lifts a mute taken ahead", GetCVar("Sound_EnableDialog"), "1")
-stub.Advance(1.6)
-Expect("...and the mute ahead does not come back", GetCVar("Sound_EnableDialog"), "1")
-_G.Spoken:StopAll()
-
 -- Speaking on Dialog ourselves: muting it would mute the line.
 env, quests, zones = H.Fresh(stub, SPOKEN)
 env.Addon.db.profile.Audio.AutoToggleDialog = true

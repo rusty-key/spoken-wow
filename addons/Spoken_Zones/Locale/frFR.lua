@@ -140,6 +140,7 @@ L.OPT_LORE_WINDOW_TIP = "Le récit de chaque zone et sous-zone, à parcourir et 
 L.OPEN_IN_LORE_TIP = "Le récit de ce lieu dans les Récits d'Azeroth, avec ceux de toutes les autres zones et sous-zones."
 L.LORE_WINDOW_TITLE = "Récits d'Azeroth"
 L.LORE_PANEL_TITLE = "Récit de la zone"
+L.MAP_PANEL_EXPAND = "Afficher le récit de la zone"
 L.PANEL_SHOWN = "Récit à côté de la carte : activé"
 L.PANEL_HIDDEN = "Récit à côté de la carte : désactivé"
 L.MINIMAP_LEFT_CLICK = "|cff66bbffClic gauche|r : %1$s"

@@ -78,12 +78,12 @@ target_zip()        { target_addon "$1"; }
 # dead link and nothing worse -- unlike the slugs in target_dependencies(), which
 # CurseForge resolves at upload time.
 target_slug()       { case "$1" in books) echo "spoken-books";; audio) pack_field slug;; esac; }
-# Required dependencies by CurseForge slug. The addon needs the player it speaks through,
-# and the pack needs the addon: it is data, inert without something to read it, and a
-# manager that installs it alone leaves a player several hundred megabytes heavier and no
-# louder. It also makes the pair upgrade together, which is what lets the pack register
-# itself under one name only.
-target_dependencies() { case "$1" in books) echo "spoken-player";; audio) echo "spoken-books";; esac; }
+# Required dependencies by CurseForge slug. The pack needs the module that reads it: it is
+# data, inert without it, and a manager that installs it alone leaves a player several hundred
+# megabytes heavier and no louder. Since 3.0.0 the module ships inside spoken-player, so that
+# is what the pack names; spoken-books is retired, and its last file is the tombstone the
+# addon target uploads, which needs spoken-player too.
+target_dependencies() { case "$1" in books) echo "spoken-player";; audio) echo "spoken-player";; esac; }
 target_game_versions() { echo "$GAME_VERSION_ERA $GAME_VERSION_ANNIVERSARY $GAME_VERSION_FOREVER"; }
 
 dry_run=""
@@ -193,7 +193,7 @@ changelog_for() {
     // Restated from isLanguageHeading in scripts/lib/packs.mjs, because this is a node -e
     // string and cannot import it -- keep the two in step.
     const language = /^## \S+ — [a-z]+(?:-[a-z]+)+-[a-z]{2}[A-Z]{2}(?:\s|$)/;
-    const start = lines.findIndex((l) => l.startsWith(`## ${version}`) && !language.test(l));
+    const start = lines.findIndex((l) => `${l} `.startsWith(`## ${version} `) && !language.test(l));
     if (start === -1) {
       console.error(`no "## ${version}" section in ${path}`);
       process.exit(1);

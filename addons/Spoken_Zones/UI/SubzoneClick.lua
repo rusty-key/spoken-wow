@@ -12,7 +12,7 @@ local ADDON_NAME, SpokenZones = ...
 -- the time OnMouseUp fires, so compare positions instead.
 local DRAG_TOLERANCE = 0.01
 
-local downX, downY
+local downX, downY, downMap
 
 local function HandleClick(x, y)
 	local mapID = WorldMapFrame.mapID
@@ -67,6 +67,7 @@ function SpokenZones:SetupSubzoneClicks()
 	container:HookScript("OnMouseDown", function(self, button)
 		if button == "LeftButton" then
 			downX, downY = self:GetNormalizedCursorPosition()
+			downMap = WorldMapFrame.mapID
 		end
 	end)
 
@@ -75,13 +76,18 @@ function SpokenZones:SetupSubzoneClicks()
 			return
 		end
 		if not SpokenZones:IsPartOn() then
-			downX, downY = nil, nil
+			downX, downY, downMap = nil, nil, nil
 			return
 		end
 
-		local startX, startY = downX, downY
-		downX, downY = nil, nil
+		local startX, startY, startMap = downX, downY, downMap
+		downX, downY, downMap = nil, nil, nil
 		if not startX then
+			return
+		end
+		-- A click on a continent that opened a zone (Mulgore from Kalimdor) has already moved the
+		-- map when this runs: it chose the zone, not the area now under the cursor on its map.
+		if WorldMapFrame.mapID ~= startMap then
 			return
 		end
 

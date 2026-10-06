@@ -119,6 +119,10 @@ function M.NewZoneLore()
     Z.Subzones = { [1411] = { ["valley of trials"] = { name = "Valley of Trials" } } }
     function Z:Get(key) return cfg[key] end
     function Z:Set(key, value) cfg[key] = value end
+    function Z:SetMapPanelShown(shown)
+        cfg.showMapPanel = shown
+        if shown then cfg.mapPanelCollapsed = false end
+    end
     function Z:IsPartOn() return not (Spoken and Spoken.IsPartOn) or Spoken:IsPartOn("zones") end
     function Z:GetMapName(id) return ({ [1411] = "Durotar", [1426] = "Dun Morogh" })[id] end
     function Z:GetLanguage() return "enUS" end

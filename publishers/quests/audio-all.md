@@ -7,7 +7,7 @@ lang: enUS
 pack: all
 slug: spoken-quests-audio-all
 name: Spoken Quests Audio: All
-summary: Every quest and gossip line, voiced. The whole pack in one install. Needs Spoken Quests.
+summary: Every quest and gossip line, voiced. The whole pack in one install. Needs Spoken Player.
 categories:
   - Audio & Video
   - Roleplay
@@ -22,7 +22,7 @@ license: MIT
 **This project does nothing on Wago.** It is a few kilobytes that names the four sound packs as required dependencies, which only CurseForge resolves — Wago's uploads carry no dependency list, so nothing is fetched for you here. Take all four as one download from [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio) instead, and unzip it into `Interface/AddOns`: it holds the same four folders CurseForge installs. It is over a gigabyte, which is why it is not here.
 <!-- /only -->
 
-You still need the player: [Spoken Quests](https://www.curseforge.com/wow/addons/spoken-quests). That addon speaks the lines, the packs are the lines, and neither does anything alone.
+You still need the player: [Spoken Player](https://www.curseforge.com/wow/addons/spoken-player). That addon speaks the lines, the packs are the lines, and neither does anything alone.
 
 ## The packs
 

@@ -174,18 +174,22 @@ target_version() {
 #
 # By slug, which is why the slugs are read off the live projects rather than guessed - see
 # publishers/README.md. A slug that no longer resolves is a dependency silently not installed.
+#
+# Since 3.0.0 the module that reads a pack ships inside spoken-player, so the packs and the meta
+# addons name spoken-player and never spoken-quests, spoken-zones or spoken-books: those
+# projects are retired, and their last file is a tombstone that would only add a dead folder.
 target_dependencies() { case "$1" in
   player)    echo "spoken-player";;
-  audio-all) echo "spoken-quests spoken-quests-audio-alliance spoken-quests-audio-horde \
+  audio-all) echo "spoken-player spoken-quests-audio-alliance spoken-quests-audio-horde \
                    spoken-quests-audio-shared spoken-quests-audio-gossip";;
   # Everything English, for one-click installs (scripts/spoken/package-meta.sh). The four quest
   # packs are named here as well as through audio-all, so a manager that does not follow a
   # dependency's own dependencies still installs them.
-  spoken-all) echo "spoken-player spoken-quests spoken-quests-audio-all \
+  spoken-all) echo "spoken-player spoken-quests-audio-all \
                     spoken-quests-audio-alliance spoken-quests-audio-horde \
                     spoken-quests-audio-shared spoken-quests-audio-gossip \
-                    spoken-zones spoken-zones-audio spoken-books spoken-books-audio";;
-  audio-*)   echo "spoken-quests";;
+                    spoken-zones-audio spoken-books-audio";;
+  audio-*)   echo "spoken-player";;
 esac; }
 
 # THE META ADDON GOES LAST. It names the four packs as dependencies, and CurseForge resolves
@@ -339,7 +343,7 @@ changelog_for() {
     // Restated from isLanguageHeading in scripts/lib/packs.mjs, because this is a node -e
     // string and cannot import it -- keep the two in step.
     const language = /^## \S+ — [a-z]+(?:-[a-z]+)+-[a-z]{2}[A-Z]{2}(?:\s|$)/;
-    const matches = (l) => l.startsWith(`## ${version}`) && !language.test(l) &&
+    const matches = (l) => `${l} `.startsWith(`## ${version} `) && !language.test(l) &&
       (kind === "spoken" || kind === "spoken-all" ? true : kind === "player" ? /player/i.test(l) : /pack|audio/i.test(l));
     const start = lines.findIndex(matches);
     if (start === -1) {

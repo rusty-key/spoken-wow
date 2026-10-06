@@ -1,7 +1,7 @@
 ## Interface: 100007, 16001
 ## Title: |cff888888Spoken Player (now Spoken)|r
 ## Notes: Spoken Player is now Spoken. This folder never loads and is safe to delete.
-## Version: 3.0.0-beta.4
+## Version: 3.1.0
 ## Group: Spoken
 ## LoadOnDemand: 1
 # A tombstone, with no Lua. Spoken Player became Spoken in 3.0.0, and unzipping a release adds

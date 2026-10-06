@@ -6,6 +6,16 @@ The player and the sound pack are versioned independently — the pack moves whe
 rebuilt, the player when its Lua changes — so a section belongs to whichever of the two
 carries that version. The heading says which.
 
+## 3.0.0 — player — 2026-10-05
+
+- **Spoken Quests is now part of Spoken**, and this download no longer carries the addon. It
+  leaves a `SpokenQuests` folder that never loads, listed greyed out as "Spoken Quests (now in
+  Spoken)".
+- **Install [Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)** instead: it
+  has Quests inside, in the `Spoken_Quests` folder, along with everything new in Spoken 3.0.0. Then
+  uninstall this download and delete the `SpokenQuests` folder from `Interface\AddOns`. This
+  download gets no further updates.
+
 ## 3.0.0-beta.4 — player — 2026-10-05
 
 - **Spoken Quests is now part of Spoken**, and this download no longer carries the addon. It

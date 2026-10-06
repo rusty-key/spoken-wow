@@ -205,14 +205,15 @@ end
 VO, env, Spoken = MuteBoot()
 stub.ShowGossip("Greetings, traveller.")
 Open(VO, "GOSSIP_SHOW")
--- A trainer or a guard greeting the player up close keeps their own voice: only quest text
--- silences it.
-Expect("a voiced NPC's gossip opening leaves the NPC's own voice on", world.cvars.Sound_EnableDialog, "1")
+Expect("a voiced NPC's gossip opening starts the mute before its line is queued", Spoken:GetQueueSize(), 0)
 stub.Advance(0.2)
-Expect("...the gossip line is then read", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, GREETING_HASH)
-stub.Advance(1)
-Expect("...alongside the NPC's voice, never muting it", world.cvars.Sound_EnableDialog, "1")
+Expect("...the line is then read", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, GREETING_HASH)
+stub.Advance(0.4)
+Expect("...and the NPC's voice is muted once faded", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(2)
+Expect("...past the mute's own deadline too", world.cvars.Sound_EnableDialog, "0")
 Spoken:StopAll()
+Expect("...and the empty queue restores it", world.cvars.Sound_EnableDialog, "1")
 
 VO, env, Spoken = MuteBoot()
 world.npcGUID = "Creature-0-0-0-0-9999-0"
