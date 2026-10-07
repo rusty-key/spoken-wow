@@ -86,8 +86,8 @@ local function AreaOf(info, mapID, layer)
 		for j = 1, SAMPLES do
 			local px = (r.left + (r.right - r.left) * (i - 0.5) / SAMPLES) * scaleX
 			local py = (r.top + (r.bottom - r.top) * (j - 0.5) / SAMPLES) * scaleY
-			local kind, name = SpokenZones:ResolveAt(mapID, px / layer.layerWidth, py / layer.layerHeight)
-			if kind == "subzone" and name then
+			local name = SpokenZones:AreaAt(mapID, px / layer.layerWidth, py / layer.layerHeight)
+			if name then
 				votes[name] = (votes[name] or 0) + 1
 				if votes[name] > most then
 					best, most = name, votes[name]
@@ -124,8 +124,9 @@ local function Target()
 	if not x or not y then
 		return nil
 	end
-	local kind, name, entry = SpokenZones:ResolveAt(mapID, x, y)
-	if kind ~= "subzone" or not entry then
+	-- As the click finds it (SpokenZones:AreaAt), so what lights up is what a click opens.
+	local name, entry = SpokenZones:AreaAt(mapID, x, y)
+	if not entry then
 		return nil
 	end
 	local layer = ArtLayer(mapID)

@@ -28,17 +28,17 @@ WorldMapFrame.IsCanvasMouseFocus = function() return overCanvas end
 WorldMapFrame.ScrollContainer = { GetNormalizedCursorPosition = function() return cursor[1], cursor[2] end }
 local function Point(px, py) cursor[1], cursor[2] = px / 1002, py / 668 end
 
--- The areas a click resolves, as SpokenZones:ResolveAt does: Razor Hill in the left of the small
+-- The areas a click opens, as SpokenZones:AreaAt finds them: Razor Hill in the left of the small
 -- rectangle (its overlay's rectangle reaches past it), the Valley of Trials in the rest of the
 -- big one, and an area with no story beyond.
 local Z = {}
 function Z:IsPartOn() return true end
 function Z:IsZoneMap(mapID) return mapID == 1411 end
-function Z:ResolveAt(_, x, y)
+function Z:AreaAt(_, x, y)
     local px, py = x * 1002, y * 668
-    if px >= 200 and px <= 265 and py >= 100 and py <= 180 then return "subzone", "Razor Hill", { name = "Razor Hill" } end
-    if px >= 100 and px <= 400 and py >= 50 and py <= 250 then return "subzone", "Valley of Trials", { name = "Valley" } end
-    return "subzone", "Kolkar Crag", nil
+    if px >= 200 and px <= 265 and py >= 100 and py <= 180 then return "Razor Hill", { name = "Razor Hill" } end
+    if px >= 100 and px <= 400 and py >= 50 and py <= 250 then return "Valley of Trials", { name = "Valley" } end
+    return "Kolkar Crag", nil
 end
 assert(loadfile(ZONES .. "UI/MapHighlight.lua"))("SpokenZones", Z)
 Z:SetupMapHighlight()

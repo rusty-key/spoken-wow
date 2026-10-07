@@ -84,6 +84,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/zones_lore_ui_test.lua
 	@$(LUA) tests/lua/zones_map_click_test.lua
 	@$(LUA) tests/lua/zones_map_highlight_test.lua
+	@$(LUA) tests/lua/zones_area_at_test.lua
 	@$(LUA) tests/lua/zones_discovery_test.lua
 	@$(LUA) tests/lua/subtitle_pages_test.lua
 	@$(LUA) tests/lua/defaults_test.lua
@@ -103,6 +104,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/zones_contribute_test.lua
 	@$(LUA) tests/lua/zones_language_test.lua
 	@$(LUA) tests/lua/zones_each_place_once_test.lua
+	@$(LUA) tests/lua/zones_city_test.lua
 	@$(LUA) tests/lua/minimap_compartment_test.lua
 
 # Rewrite the envelope fixtures the TypeScript reader is tested against. A diff here is the

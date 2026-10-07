@@ -26,7 +26,8 @@ local function HandleClick(x, y)
 		return
 	end
 
-	local areaName = SpokenZones:GetAreaNameAt(mapID, x, y)
+	-- The highlight lights what this finds (SpokenZones:AreaAt), so a lit area is one a click opens.
+	local areaName, entry, key, city = SpokenZones:AreaAt(mapID, x, y)
 	local debug = SpokenZones:Get("debug")
 
 	if not areaName then
@@ -36,8 +37,6 @@ local function HandleClick(x, y)
 		return
 	end
 
-	local entry, key = SpokenZones:GetSubzoneLore(mapID, areaName)
-
 	if debug then
 		SpokenZones:Print(
 			'area "%s" -> key "%s" -> %s',
@@ -45,6 +44,13 @@ local function HandleClick(x, y)
 			tostring(key),
 			entry and "found" or "|cffffcc00no lore|r"
 		)
+	end
+
+	-- A city inside the zone (Stormwind City on Elwynn Forest's map) is a map of its own: the click
+	-- opens it, as one on a zone opens the zone from its continent, and the panel tells its story.
+	if city then
+		if WorldMapFrame.SetMapID then WorldMapFrame:SetMapID(city) end
+		return
 	end
 
 	if entry then
