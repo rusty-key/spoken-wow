@@ -47,6 +47,21 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Olá, $Nama.", "ptBR")).toBe("Olá, $Nama.");
   });
 
+  it("reads deDE's $u as the gender branch $g is", () => {
+    // q:87288:accept and q:98321:accept, as the client sent them.
+    expect(speakPlayerTokens("Seid gegrüßt, $uReisender:Reisende;.", "deDE")).toBe("Seid gegrüßt, Reisender.");
+    expect(speakPlayerTokens("Ihr seid $uEin:Eine:r; $R.", "deDE", "f")).toBe("Ihr seid Eine Reisende.");
+    expect(speakPlayerTokens("Hola, $uamigo:amiga;.", "esES")).toBe("Hola, $uamigo:amiga;.");
+  });
+
+  it("speaks deDE's genitive s glued to $N or $C, and no other glued letter", () => {
+    expect(speakPlayerTokens("Die Legion $Ns wartet.", "deDE")).toBe("Die Legion Abenteurers wartet.");
+    expect(speakPlayerTokens("dass $cs wie", "deDE", "f")).toBe("dass Abenteurerin wie");
+    expect(speakPlayerTokens("$Rs", "deDE")).toBe("$Rs");
+    expect(speakPlayerTokens("$Nse", "deDE")).toBe("$Nse");
+    expect(speakPlayerTokens("Merci, $Ns.", "frFR")).toBe("Merci, $Ns.");
+  });
+
   it("speaks English's own word, for the book pages that still carry tokens", () => {
     expect(speakPlayerTokens("$N, bring me my hammer, $gBrother:Sister;.", "enUS")).toBe(
       "Adventurer, bring me my hammer, Brother.",

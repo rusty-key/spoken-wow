@@ -58,6 +58,7 @@ import {
 } from "@/lib/contributions/query";
 import { SOURCES } from "@/lib/contributions/envelope";
 import type { Contribution } from "@/lib/contributions/store";
+import { textHints } from "@/lib/contributions/text-hints";
 // Both are computed server-side (npcSummaryFrom pulls in corpus.ts's flavorsFor) -- `import
 // type` erases the whole thing at compile time, so none of that follows the type in here. The
 // same split existing.ts's `existing` prop already draws.
@@ -945,6 +946,15 @@ const ContributionTableRow = memo(function ContributionTableRow({
         <td className="pr-3 text-xs whitespace-nowrap">{row.count}</td>
 
         <td className="max-w-md pr-3">
+          {/* Outside the details: a line that will never be voiced is what a moderator
+              must see before accepting, not after opening every row. */}
+          {row.text
+            ? textHints(row.text, row.locale).map((hint) => (
+                <p key={hint} className="text-destructive text-xs">
+                  {hint}
+                </p>
+              ))
+            : null}
           {/* Collapsed by default: a full quest's dialogue in an open cell is the
               "table stops being a scan" failure this markup exists to avoid. */}
           <details>
