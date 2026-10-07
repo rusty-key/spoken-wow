@@ -235,7 +235,7 @@ function SpokenBooks:OpenOptions()
 	if self.optionsPage and self.optionsPage.Open and self.optionsPage.Open() then return end
 	local category = category or (self.optionsPage and self.optionsPage.category)
 	if not (SpokenLayout and SpokenLayout.OpenCategory(category)) then
-		self:Print(self.optionsPage and "open Game Menu -> Options -> AddOns -> Spoken -> Books"
+		self:Print(self.optionsPage and "open Game Menu -> Options -> AddOns -> Spoken -> " .. L.OPT_PAGE_TITLE
 			or "open Game Menu -> Options -> AddOns -> Spoken Books")
 	end
 end

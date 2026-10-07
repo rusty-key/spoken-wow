@@ -33,7 +33,7 @@ L.REPORT_LINE_TIP = "Mala lectura, nombre mal pronunciado, texto que no coincide
 L.REPORT_LINE_ADDRESS = "Copia esta dirección y ábrela en tu navegador para informar de un problema con esta página."
 L.NO_LINE = "Sin línea para esta página"
 L.NO_LINE_TIP = "Envía el texto de tu propio cliente para que se añada."
-L.MENU_BOOK_SETTINGS = "Configuración de Libros"
+L.MENU_BOOK_SETTINGS = "Configuración de Escritos"
 L.OPT_SECTION_LANGUAGE = "Idioma"
 L.OPT_VOICE_LANGUAGE = "Idioma de las voces"
 L.OPT_VOICE_LANGUAGE_TIP = "En qué idioma lee la voz. Automático usa el idioma de tu juego. Un idioma solo se oye si su paquete de voces está instalado."
@@ -42,13 +42,13 @@ L.OPT_FALLBACK_LANGUAGE = "Si falta una página"
 L.OPT_FALLBACK_LANGUAGE_TIP = "Qué leer cuando el paquete de voces de tu idioma no tiene grabada una página: la misma página en otro idioma, o nada."
 L.OPT_FALLBACK_NONE = "Silencio"
 L.OPT_NO_PACK_AUDIO = "El paquete de voces instalado aún no tiene narración para esta página."
-L.OPT_NO_PACK_INSTALLED = "No hay ningún paquete de voces de Libros instalado."
+L.OPT_NO_PACK_INSTALLED = "No hay ningún paquete de voces de Escritos instalado."
 L.OPT_PAGE_COUNT_FMT = "Página %1$d de %2$d"
 
 -- Added in the settings, subtitles and Zone Lore release.
 
 -- Settings page: module switch
-L.OPT_PAGE_TITLE = "Libros"
+L.OPT_PAGE_TITLE = "Escritos"
 L.OPT_PART_SWITCH = "Activar módulo"
 L.OPT_PART_SWITCH_TIP = "Activa o desactiva la lectura de libros, cartas, notas y placas. Desactivado, el módulo sigue instalado pero no lee nada. El mismo interruptor está en la página Spoken."
 L.REASON_PART_OFF = "Activa «Activar módulo», arriba en esta página, para usar esto."
@@ -59,7 +59,7 @@ L.OPT_STOP_ON_CLOSE_TIP = "Detiene la voz en cuanto cierras el libro, la carta o
 -- Voice packs
 L.OPT_SECTION_PACKS = "Paquetes de voces"
 L.OPT_PACK_NAME_FMT = "Paquete (%1$s)"
-L.OPT_PACK_OFFICIAL = "Libros"
+L.OPT_PACK_OFFICIAL = "Escritos"
 L.OPT_PACK_INSTALLED = "Instalado"
 L.OPT_DOWNLOAD = "Descargar"
 L.OPT_DOWNLOAD_TIP = "Muestra la dirección para copiarla en tu navegador."
@@ -77,9 +77,9 @@ L.OPT_REPORT_ADDRESS = "Copia esta dirección en tu navegador para contarnos el 
 
 -- Starting over
 L.OPT_SECTION_START_OVER = "Empezar de cero"
-L.OPT_RESET_PAGE = "Restablecer configuración de Libros"
+L.OPT_RESET_PAGE = "Restablecer configuración de Escritos"
 L.OPT_RESET_PAGE_TIP = "Devuelve todos los ajustes de esta página a su valor predeterminado. Se conserva lo que ha oído este personaje."
-L.OPT_RESET_PAGE_CONFIRM = "¿Restablecer todos los ajustes de Libros a su valor predeterminado?"
+L.OPT_RESET_PAGE_CONFIRM = "¿Restablecer todos los ajustes de Escritos a su valor predeterminado?"
 L.OPT_RESET = "Restablecer"
 L.OPT_CANCEL = "Cancelar"
 

@@ -140,7 +140,7 @@ B:StopReading()
 _G.SpokenBooksAudioPacks = {}
 Expect("no pack means no clips", B:ClipFor(261), nil)
 Expect("...and a message that names the download rather than blaming the page",
-    B:DescribeMissingAudio(), "No Books voice pack is installed.")
+    B:DescribeMissingAudio(), "No Writings voice pack is installed.")
 
 print(Failures() == 0 and "All books playlist tests passed" or (Failures() .. " failed"))
 os.exit(Failures() == 0 and 0 or 1)

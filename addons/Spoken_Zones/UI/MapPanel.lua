@@ -24,8 +24,8 @@ local ICON_SIZE = 40
 local BORDER_SIZE = 74
 -- How far the button's left edge tucks under the map's frame, so it reads as attached to it.
 local TOGGLE_TUCK = 2
--- Azeroth's Compendium's portrait, so the button reads as the way back to the same lore.
-local TOGGLE_ICON = [[Interface\Icons\INV_Misc_Map_01]]
+-- Place Lore's map, so the button reads as the way back to it.
+local TOGGLE_ICON = [[Interface\Icons\INV_Misc_Map02]]
 
 --------------------------------------------------------------------------------
 -- Construction

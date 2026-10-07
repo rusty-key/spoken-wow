@@ -231,7 +231,7 @@ function SpokenZones:SetupAudio()
 	end
 
 	self.source = Spoken:RegisterSource("zones", {
-		title = "Spoken Zones",
+		title = L.OPT_PAGE_TITLE,
 		addon = ADDON_NAME,
 		order = 2,
 		-- How many clips may wait behind the one speaking. Discoveries arrive in

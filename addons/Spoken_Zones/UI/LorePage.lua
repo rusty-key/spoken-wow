@@ -317,7 +317,7 @@ function SpokenZones:CreateLorePage(parent, style)
 		local mark = frame:CreateTexture(nil, "BORDER")
 		mark:SetSize(96, 96)
 		mark:SetPoint("CENTER", frame, "CENTER", 0, 40)
-		mark:SetTexture([[Interface\Icons\INV_Misc_Map_01]])
+		mark:SetTexture([[Interface\Icons\INV_Misc_Map02]])
 		mark:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 		if mark.SetDesaturated then mark:SetDesaturated(true) end
 		mark:SetAlpha(0.18)

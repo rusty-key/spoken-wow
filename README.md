@@ -82,7 +82,7 @@ Quests module's settings together. Each module has a page of its own.
 **Quests.** The quest log's details have Play and Report, the same round buttons the
 subtitle uses; a quest with no recording offers Contribute in their place.
 
-**Zones.** *Zone Lore* sits beside the world map, in a panel of its own, with the story of
+**Zones.** *Place Lore* sits beside the world map, in a panel of its own, with the story of
 the zone or area the map shows on the quest log's parchment, and Play, Report and a button
 that opens it in *Lore of Azeroth*. That window, from the minimap menu or `/spz window`,
 browses every story: Azeroth, its two continents, their zones and each zone's areas, with a

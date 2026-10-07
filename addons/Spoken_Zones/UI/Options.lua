@@ -66,7 +66,7 @@ function SpokenZones:SetupOptions()
 
 	local layout = SpokenLayout.New(content, INDENT, -16)
 	panel.layout = layout
-	layout:Header(L.OPT_PAGE_TITLE, L.OPT_NOTE, nil, [[Interface\Icons\INV_Misc_Map_01]])
+	layout:Header(L.OPT_PAGE_TITLE, L.OPT_NOTE, nil, [[Interface\Icons\INV_Misc_Map02]])
 	local refresh = function() layout:Refresh() end
 
 	-- The part's own switch first, as on Spoken's page: off, everything under it is greyed
@@ -78,7 +78,7 @@ function SpokenZones:SetupOptions()
 	-- part's card on Spoken's page turns it on and off too.
 	if Spoken and Spoken.SettingsStyle and Spoken:SettingsStyle() == "pages" then
 		layout:HideHeader()
-		layout:Intro([[Interface\Icons\INV_Misc_Map_01]], L.OPT_PAGE_TITLE)
+		layout:Intro([[Interface\Icons\INV_Misc_Map02]], L.OPT_PAGE_TITLE)
 		switch = layout:Checkbox(L.OPT_PART_SWITCH, L.OPT_PART_SWITCH_TIP, PartOn,
 			function(value) Spoken:SetPartOn("zones", value) end, refresh)
 	else

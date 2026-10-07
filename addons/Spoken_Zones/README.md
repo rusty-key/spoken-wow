@@ -8,7 +8,7 @@ Open the map and the lore of the zone you're looking at appears beside it. Click
 
 ## What it does
 
-- **Zone Lore** — the current zone's story in a panel of its own beside the map, on the quest log's parchment. Resize it, set the font size, or close it; it stays closed until you reopen it with the map button on the map's edge.
+- **Place Lore** — the current zone's story in a panel of its own beside the map, on the quest log's parchment. Resize it, set the font size, or close it; it stays closed until you reopen it with the map button on the map's edge.
 - **Subzone lore** — click any named area on the map to read about it.
 - **Hover preview** — point at a subzone for the first lines in a tooltip, without disturbing the panel.
 - **Lore of Azeroth** — browse every story without opening the map: Azeroth, its two continents, their zones and each zone's areas, with a search box. From the minimap button, `/spz window`, or the button on Zone Lore.

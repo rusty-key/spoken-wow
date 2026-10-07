@@ -317,7 +317,7 @@ function Player:Setup()
     end
 
     self.source = Spoken:RegisterSource("quests", {
-        title = "Spoken Quests",
+        title = L.OPT_PAGE_TITLE,
         addon = AddonFolder,
         order = 1,
         -- Upstream's figure: quest durations come from a lookup that has drifted across

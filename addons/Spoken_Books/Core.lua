@@ -186,7 +186,7 @@ function SpokenBooks:SetupSource()
 	self.compatible = true
 
 	self.source = Spoken:RegisterSource("books", {
-		title = "Spoken Books",
+		title = L.OPT_PAGE_TITLE,
 		addon = ADDON_NAME,
 		order = 3,
 		-- NO LIMIT, unlike the zones source, and the difference is what the limit is for.

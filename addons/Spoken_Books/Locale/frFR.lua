@@ -32,7 +32,7 @@ L.REPORT_LINE_TIP = "Mauvaise lecture, nom mal prononcé, un texte qui ne corres
 L.REPORT_LINE_ADDRESS = "Copiez cette adresse et ouvrez-la dans votre navigateur pour signaler un problème avec cette page."
 L.NO_LINE = "Aucune réplique pour cette page"
 L.NO_LINE_TIP = "Envoyez le texte de votre propre client pour l'ajouter."
-L.MENU_BOOK_SETTINGS = "Paramètres des Livres"
+L.MENU_BOOK_SETTINGS = "Paramètres des Écrits"
 L.OPT_SECTION_LANGUAGE = "Langue"
 L.OPT_VOICE_LANGUAGE = "Langue de la voix"
 L.OPT_VOICE_LANGUAGE_TIP = "La langue dans laquelle la voix lit. Auto utilise la langue de votre jeu. Une langue ne s'entend que si son pack de voix est installé."
@@ -41,11 +41,11 @@ L.OPT_FALLBACK_LANGUAGE = "Si une page manque"
 L.OPT_FALLBACK_LANGUAGE_TIP = "Ce qu'il faut lire quand le pack de voix dans votre langue n'a pas d'enregistrement d'une page : la même page dans une autre langue, ou rien."
 L.OPT_FALLBACK_NONE = "Rester silencieux"
 L.OPT_NO_PACK_AUDIO = "Le pack de voix installé n'a pas encore de narration pour cette page."
-L.OPT_NO_PACK_INSTALLED = "Aucun pack de voix Livres n'est installé."
+L.OPT_NO_PACK_INSTALLED = "Aucun pack de voix Écrits n'est installé."
 L.OPT_PAGE_COUNT_FMT = "Page %1$d sur %2$d"
 
 -- Settings page
-L.OPT_PAGE_TITLE = "Livres"
+L.OPT_PAGE_TITLE = "Écrits"
 L.OPT_PART_SWITCH = "Activer le module"
 L.OPT_PART_SWITCH_TIP = "Active ou désactive la lecture des livres, lettres, notes et plaques. Désactivé, le module reste installé mais ne lit rien. Le même interrupteur se trouve sur la page Spoken."
 L.REASON_PART_OFF = "Activez l'option Activer le module en haut de cette page pour utiliser ceci."
@@ -56,7 +56,7 @@ L.OPT_STOP_ON_CLOSE_TIP = "Arrête la voix dès que vous fermez le livre, la let
 -- Voice packs
 L.OPT_SECTION_PACKS = "Packs de voix"
 L.OPT_PACK_NAME_FMT = "Pack de voix (%1$s)"
-L.OPT_PACK_OFFICIAL = "Livres"
+L.OPT_PACK_OFFICIAL = "Écrits"
 L.OPT_PACK_INSTALLED = "Installé"
 L.OPT_DOWNLOAD = "Télécharger"
 L.OPT_DOWNLOAD_TIP = "Affiche l'adresse à copier dans votre navigateur."
@@ -74,9 +74,9 @@ L.OPT_REPORT_ADDRESS = "Copiez cette adresse dans votre navigateur pour nous sig
 
 -- Starting over
 L.OPT_SECTION_START_OVER = "Réinitialisation"
-L.OPT_RESET_PAGE = "Réinitialiser les paramètres du module Livres"
+L.OPT_RESET_PAGE = "Réinitialiser les paramètres du module Écrits"
 L.OPT_RESET_PAGE_TIP = "Remet chaque paramètre de cette page à sa valeur par défaut. Ce que ce personnage a entendu est conservé."
-L.OPT_RESET_PAGE_CONFIRM = "Remettre chaque paramètre du module Livres à sa valeur par défaut ?"
+L.OPT_RESET_PAGE_CONFIRM = "Remettre chaque paramètre du module Écrits à sa valeur par défaut ?"
 L.OPT_RESET = "Réinitialiser"
 L.OPT_CANCEL = "Annuler"
 

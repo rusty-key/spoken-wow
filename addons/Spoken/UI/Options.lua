@@ -49,7 +49,7 @@ local PARTS = {
     { key = "books", label = L.OPT_PART_BOOKS, text = L.OPT_PART_BOOKS_TEXT, tip = L.OPT_PART_BOOKS_TIP,
         icon = [[Interface\Icons\INV_Misc_Book_09]], order = 2 },
     { key = "zones", label = L.OPT_PART_ZONES, text = L.OPT_PART_ZONES_TEXT, tip = L.OPT_PART_ZONES_TIP,
-        icon = [[Interface\Icons\INV_Misc_Map_01]], order = 3 },
+        icon = [[Interface\Icons\INV_Misc_Map02]], order = 3 },
 }
 
 -- Sketches of the four ways of showing a line, in flat colour, for their tiles: a portrait

@@ -33,7 +33,7 @@ Q:RemoveAllSoundsFromQueue()
 -- A feature addon may build its settings page before Spoken's own entry exists. The page
 -- waits, then is nested under it in its order rather than in the order the addons loaded.
 stub.settingsCategories = {}
-local zonesPage = _G.Spoken:AddSettingsPage(CreateFrame("Frame"), "Zones", 3)
+local zonesPage = _G.Spoken:AddSettingsPage(CreateFrame("Frame"), "Places", 3)
 local questsPage = _G.Spoken:AddSettingsPage(CreateFrame("Frame"), "Quests", 1)
 Expect("a page asked for before Spoken's own entry waits for it", questsPage.category, nil)
 
@@ -48,19 +48,19 @@ local function Listed()
     end
     return table.concat(names, "|")
 end
-Expect("...then is nested under it, in its own order", Listed(), "Spoken|Spoken>Quests|Spoken>Zones")
-local readables = _G.Spoken:AddSettingsPage(CreateFrame("Frame"), "Books", 2)
+Expect("...then is nested under it, in its own order", Listed(), "Spoken|Spoken>Quests|Spoken>Places")
+local readables = _G.Spoken:AddSettingsPage(CreateFrame("Frame"), "Writings", 2)
 Expect("a page asked for afterwards is nested at once", readables.category and readables.category.parent.name, "Spoken")
 Expect("opening a page opens its own entry", readables.Open(), true)
 local labels = {}
 for _, text in ipairs(stub.LabelsUnder(_G.SpokenOptionsPanel)) do labels[text] = true end
 Expect("the parts have a section of their own", labels["Modules"], true)
 Expect("an installed part is named for what it reads", labels["Quests"], true)
-Expect("...and so is the other", labels["Zones"], true)
-Expect("a part not installed still has its card", labels["Books"], true)
+Expect("...and so is the other: Zones is Places", labels["Places"], true)
+Expect("a part not installed still has its card: Books is Writings", labels["Writings"], true)
 local readablesCard
 for _, child in ipairs(_G.SpokenOptionsPanel.content.children) do
-    if child.layoutCard and child.layoutCard.title == "Books" then readablesCard = child end
+    if child.layoutCard and child.layoutCard.title == "Writings" then readablesCard = child end
 end
 Expect("...which says why it cannot be turned on", readablesCard and readablesCard.layoutReason, env.L.REASON_NOT_INSTALLED)
 -- Installed here, with no voice pack found: the card says what is missing.
