@@ -13,8 +13,9 @@ import { speakPlayerTokens } from "@/lib/player-words";
 
 // Up to the next space, so a lost `;` names the branch rather than the rest of the line.
 const LEFTOVER = /\$\S{0,30}/g;
-// Not "!", "?" or ":": French spaces before those.
-const GAP = /\S {2,}\S| [.,]/;
+// Not "!", "?" or ":": French spaces before those. Not " ...": German spaces before an
+// ellipsis ("Hm ... vielleicht"). The no-break space is what Wowhead leaves in an empty branch.
+const GAP = /\S[ \u00a0]{2,}\S|[ \u00a0][.,](?!\.)/;
 
 export function textHints(text: string, locale: string): string[] {
   const spoken = speakPlayerTokens(text, clientLang(locale) ?? BASE_LANG);

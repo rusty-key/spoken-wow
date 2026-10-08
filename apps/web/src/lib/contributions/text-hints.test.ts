@@ -23,6 +23,12 @@ describe("textHints", () => {
     expect(textHints("…danken kann, . Ich habe  gefunden.", "deDE")).toEqual([
       "gap before punctuation — a gender branch may be missing",
     ]);
+    // q:92881:complete, its branch left as a no-break space.
+    expect(textHints("die\u00a0 wie Ihr sie bieten kann.", "deDE")).toEqual([
+      "gap before punctuation — a gender branch may be missing",
+    ]);
     expect(textHints("Vraiment ? Allez !", "frFR")).toEqual([]);
+    // q:92110:accept: an ellipsis, not a gap.
+    expect(textHints("Hm ... vielleicht Murlocaugen?", "deDE")).toEqual([]);
   });
 });
