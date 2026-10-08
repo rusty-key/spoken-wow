@@ -264,12 +264,13 @@ creature_data AS (
         ct.entry as id,
         ct.name,
         cgm.text_id,
-        cdie.DisplaySexID,
+        IFNULL(cdie.DisplaySexID, 0) as DisplaySexID,
         cdie.DisplayRaceID,
-        cs.npc_sound_name
+        IF(cdie.ID IS NULL, NULL, cs.npc_sound_name) as npc_sound_name,
+        IF(cdie.ID IS NULL, cdi.ModelID, NULL) as ModelID
     FROM creature_template ct
         JOIN db_CreatureDisplayInfo cdi ON ct.display_id1 = cdi.ID
-        JOIN db_CreatureDisplayInfoExtra cdie ON cdi.ExtendedDisplayInfoID = cdie.ID
+        LEFT JOIN db_CreatureDisplayInfoExtra cdie ON cdi.ExtendedDisplayInfoID = cdie.ID
         LEFT JOIN creature_sounds cs ON cs.entry = ct.entry
         LEFT JOIN collected_gossip_menus cgm ON cgm.base_menu_id = ct.gossip_menu_id
 ),
@@ -313,17 +314,18 @@ SELECT
     END as "text",
     0 as broadcast_text_id,
     cdie.DisplayRaceID,
-    cdie.DisplaySexID,
-    cs.npc_sound_name,
+    IFNULL(cdie.DisplaySexID, 0) as DisplaySexID,
+    IF(cdie.ID IS NULL, NULL, cs.npc_sound_name) as npc_sound_name,
     ct.name,
     'creature' as type,
-    qr.creature_id as id
+    qr.creature_id as id,
+    IF(cdie.ID IS NULL, cdi.ModelID, NULL) as ModelID
 FROM
     creature_quest_relations qr
 JOIN quest_template qt ON qr.quest = qt.entry
 JOIN creature_template ct ON qr.creature_id = ct.entry
 JOIN db_CreatureDisplayInfo cdi ON ct.display_id1 = cdi.ID
-JOIN db_CreatureDisplayInfoExtra cdie ON cdi.ExtendedDisplayInfoID = cdie.ID
+LEFT JOIN db_CreatureDisplayInfoExtra cdie ON cdi.ExtendedDisplayInfoID = cdie.ID
 LEFT JOIN creature_sounds cs ON cs.entry = ct.entry
 WHERE
     (
@@ -351,7 +353,8 @@ SELECT
     NULL as npc_sound_name,
     gt.name,
     'gameobject' as type,
-    qr.gameobject_id as id
+    qr.gameobject_id as id,
+    NULL as ModelID
 FROM
     gameobject_quest_relations qr
 JOIN quest_template qt ON qr.quest = qt.entry
@@ -378,7 +381,8 @@ SELECT
     NULL as npc_sound_name,
     it.name,
     'item' as type,
-    qr.item_id as id
+    qr.item_id as id,
+    NULL as ModelID
 FROM
     item_quest_relations qr
 JOIN quest_template qt ON qr.quest = qt.entry
@@ -403,7 +407,8 @@ SELECT
     creature_data.npc_sound_name,
     creature_data.name,
     'creature' as type,
-    creature_data.id
+    creature_data.id,
+    creature_data.ModelID
 FROM creature_data
     CROSS JOIN numbers
     JOIN npc_text nt ON nt.ID = creature_data.text_id
@@ -437,7 +442,8 @@ SELECT
     NULL as npc_sound_name,
     gameobject_data.name,
     'gameobject' as type,
-    gameobject_data.id
+    gameobject_data.id,
+    NULL as ModelID
 FROM gameobject_data
     CROSS JOIN numbers
     JOIN npc_text nt ON nt.ID = gameobject_data.text_id
@@ -471,7 +477,8 @@ SELECT
     creature_data.npc_sound_name,
     creature_data.name,
     'creature' as type,
-    creature_data.id
+    creature_data.id,
+    creature_data.ModelID
 FROM creature_data
     JOIN quest_greeting qg ON qg.entry=creature_data.id AND type=0
 
@@ -490,7 +497,8 @@ SELECT
     NULL AS npc_sound_name,
     gameobject_data.name,
     'gameobject' as type,
-    gameobject_data.id
+    gameobject_data.id,
+    NULL as ModelID
 FROM gameobject_data
     JOIN quest_greeting qg ON qg.entry=gameobject_data.id AND type=1
 
@@ -538,6 +546,7 @@ SELECT
     name,
     ALL_DATA.type,
     id,
+    ModelID,
     text as original_text,
     NULLIF(lq.title_loc{lang}, '') as loc_title,
     NULLIF({localized_text}, '') as loc_text,
@@ -557,6 +566,7 @@ SELECT
     name,
     type,
     id,
+    ModelID,
     text as original_text
 FROM ALL_DATA
         '''
@@ -573,6 +583,7 @@ SELECT
     IFNULL(NULLIF({localized_name}, ''), name) as name,
     ALL_DATA.type,
     id,
+    ModelID,
     text as original_text
 FROM ALL_DATA
 {localized_joins}'''
