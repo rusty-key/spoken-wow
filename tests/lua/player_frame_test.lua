@@ -85,6 +85,10 @@ Expect("the header is the clip's", F.frame.container.name:GetText(), "Eagan Pelt
 Expect("the first row is the clip's label", F.frame.container.buttons[1].textWidget:GetText(), "Wolves Across the Border")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 Expect("hidden again when the queue empties", F.frame:IsShown(), false)
+quests:Enqueue(H.Clip({ key = "b:1", present = { header = "A Letter Home", portrait = { kind = "none" } } }))
+Expect("a line with no label is named by its header, never by its key",
+    F.frame.container.buttons[1].textWidget:GetText(), "A Letter Home")
+env.SoundQueue:RemoveAllSoundsFromQueue()
 
 env.Addon:SetPlayerStyle("none")
 quests:Enqueue(H.Clip())

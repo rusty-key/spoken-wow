@@ -38,6 +38,9 @@ local defaults = {
 	readOnce = false,
 	-- As Quests' Stop When Window Closes: off, a book carries on being read after it is shut.
 	stopOnClose = false,
+	-- Off: a reader may still be reading along when the voice ends. On, the book shuts after its
+	-- last page has been heard, which also gives back the interface DialogueUI's book view hides.
+	closeWhenRead = false,
 	-- Why a page was or was not read, in chat (/spb debug).
 	debug = false,
 	-- Follow the client, and fall back on English: every pack that exists today is English,

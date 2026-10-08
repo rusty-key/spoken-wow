@@ -55,6 +55,8 @@ L.REASON_PART_OFF = "Activa «Activar módulo», arriba en esta página, para us
 L.REASON_AUTOPLAY = "Activa «Leer automáticamente» para usar esto."
 L.OPT_STOP_ON_CLOSE = "Detener al cerrar el libro"
 L.OPT_STOP_ON_CLOSE_TIP = "Detiene la voz en cuanto cierras el libro, la carta o la placa. Desactivado, sigue leyendo después de cerrarlo."
+L.OPT_CLOSE_WHEN_READ = "Cerrar el libro al terminar"
+L.OPT_CLOSE_WHEN_READ_TIP = "Cierra el libro, la carta o la placa en cuanto se ha leído en voz alta su última página. Con DialogueUI, también vuelve la interfaz que oculta."
 
 -- Voice packs
 L.OPT_SECTION_PACKS = "Paquetes de voces"

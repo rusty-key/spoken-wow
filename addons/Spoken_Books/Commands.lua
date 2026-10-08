@@ -107,6 +107,8 @@ SlashCmdList["SPOKENBOOKS"] = function(msg)
 		Toggle("readWholeBook", "reading the whole book")
 	elseif cmd == "once" then
 		Toggle("readOnce", "reading each book only once")
+	elseif cmd == "close" then
+		Toggle("closeWhenRead", "closing the book once it has been read")
 	elseif cmd == "gather" then
 		if SpokenBooks:GatherAvailable() then
 			Spoken.Gather:SetEnabled(not Spoken.Gather:IsEnabled())
@@ -141,6 +143,6 @@ SlashCmdList["SPOKENBOOKS"] = function(msg)
 	elseif cmd == "debug" then
 		Toggle("debug", "explaining in chat why a page was or was not read")
 	else
-		Print("/spb read | stop | autoplay | whole | once | gather | forget | compendium | settings | status | debug")
+		Print("/spb read | stop | autoplay | whole | once | close | gather | forget | compendium | settings | status | debug")
 	end
 end

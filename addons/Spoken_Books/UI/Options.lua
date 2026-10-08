@@ -108,6 +108,9 @@ function SpokenBooks:SetupOptions()
 	layout:Checkbox(L.OPT_STOP_ON_CLOSE,
 		L.OPT_STOP_ON_CLOSE_TIP,
 		Get("stopOnClose"), Set("stopOnClose"))
+	layout:Checkbox(L.OPT_CLOSE_WHEN_READ,
+		L.OPT_CLOSE_WHEN_READ_TIP,
+		Get("closeWhenRead"), Set("closeWhenRead"))
 
 	-- The voice language is set once for every module, on Spoken's page. Here only where the
 	-- player is too old to have that setting.

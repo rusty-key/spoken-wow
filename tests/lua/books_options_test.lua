@@ -55,7 +55,7 @@ end
 
 Expect("every section is there", table.concat(headings, "|"),
     "When to Read|Language|Reading History|Voice Packs|Fix a Problem|Start Over")
-Expect("every switch has a row", table.getn(checkboxes), 4)
+Expect("every switch has a row", table.getn(checkboxes), 5)
 local function Button(text)
     for _, button in ipairs(buttons) do if button.text == text then return button end end
 end
@@ -95,6 +95,14 @@ Expect("...which is indented under it", once.text.anchor.x > autoplay.text.ancho
 autoplay:SetChecked(true)
 autoplay.scripts.OnClick(autoplay)
 Expect("ticking it again brings Read Only Once back", once.enabled, true)
+
+local close = Labelled("Close Book When Done Reading")
+Expect("Close Book When Done Reading is on the panel, defaulting off", close and close.checked, false)
+close:SetChecked(true)
+close.scripts.OnClick(close)
+Expect("...and ticking it is the same as /spb close", SpokenBooksSettings.closeWhenRead, true)
+close:SetChecked(false)
+close.scripts.OnClick(close)
 
 ---------------------------------------------------------------- the gather switch stays in the player's settings
 -- The switch is the player's alone: quests and books both feed the one store, so a

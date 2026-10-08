@@ -96,6 +96,30 @@ function SpokenBooks:OnTextClosed()
 	end
 end
 
+--- A page was heard to its end. With Close Book When Done Reading on, the book shuts once
+--- nothing of it is left to hear and it is still the one open. A later page with a voice keeps
+--- it open: with Read Whole Book off, the reader is about to turn to it. CloseItemText reaches
+--- DialogueUI's book view too, through the ITEM_TEXT_CLOSED every book window listens to.
+function SpokenBooks:OnPageFinished(clip)
+	if not (SpokenBooksSettings and SpokenBooksSettings.closeWhenRead) then
+		return
+	end
+	local book = self:PlaceOf(clip.pageId)
+	if not book or self:PlaceOf(self.lastPage) ~= book or self:IsNarrating(book) then
+		return
+	end
+	local later = self:PagesFrom(clip.pageId)
+	for i = 2, #later do
+		if self:HasAudio(later[i]) then
+			return
+		end
+	end
+	self:Explain("closing the book: its last page has been read")
+	if CloseItemText then
+		CloseItemText()
+	end
+end
+
 frame:SetScript("OnEvent", function(_, event, arg1)
 	-- 1.12's frames call OnEvent with the event in the global `event` rather than as an
 	-- argument, and its payload in `arg1` the same way. Reading through whichever exists is

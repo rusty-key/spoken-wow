@@ -12,6 +12,7 @@ The tablets in a dungeon, the ledgers in a town hall, the note on a corpse, the 
 - **Autoplay, on by default** — opening a book is already a deliberate act. Turn it off and nothing starts by itself.
 - **A Play button on the book itself** — beside the window, whenever there is something to hear. It is how you read a book with autoplay off, and it turns into Stop while that book is being read.
 - **Or hear each book only once** — turn it on and a book you have already heard is not read to you again. What you have read is remembered per character, so an alt walking into the same library hears it fresh, and a button in the settings forgets it all if you want the library back.
+- **Or have the book close itself** — turn on *Close Book When Done Reading* and a book, letter or plaque shuts once its last page has been read to you. With DialogueUI's book view, which hides your interface while a book is open, that gives the interface back without pressing X.
 
 ## Narration needs the sound pack
 
@@ -41,6 +42,7 @@ Game Menu → Options → AddOns → **Spoken Books**, or the Spoken minimap but
 /spb autoplay    read a book as soon as it opens (on by default)
 /spb whole       read the whole book, or only the page on screen
 /spb once        read each book only once (off by default)
+/spb close       close the book once it has been read (off by default)
 /spb forget      forget what this character has read, so it is all new again
 /spb settings    open the panel
 /spb status      what is known, what is narrated, and which pack is doing it

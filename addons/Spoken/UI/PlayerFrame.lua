@@ -403,7 +403,7 @@ function PlayerFrame:CreateRow(i)
 
         -- A held clip says why; otherwise narration waiting out a pull looks exactly like
         -- narration that failed.
-        local text = clip.present and clip.present.label or clip.key
+        local text = clip.present and (clip.present.label or clip.present.header) or clip.key
         local held = SoundQueue:GetHeldReason(clip)
         if held then
             text = format("%s |cff888888(%s)|r", text, held)

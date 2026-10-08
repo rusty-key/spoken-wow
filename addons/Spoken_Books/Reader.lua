@@ -75,23 +75,31 @@ function SpokenBooks:PageOnScreen()
 		if type(pack.index) == "table" and self:PackLanguage(pack) == client then
 			local found = Find(pack, title, number, checksum)
 			if found then
-				self:RememberPageText(found, client, text)
+				self:RememberPageText(found, client, text, title)
 				return found
 			end
 		end
 	end
 	local found = Find(data, title, number, checksum)
-	if found then self:RememberPageText(found, self.BASE_LANGUAGE, text) end
+	if found then self:RememberPageText(found, self.BASE_LANGUAGE, text, title) end
 	return found
 end
 
 -- Older translated packs have an index but no caption text. Remember only pages
 -- identified as books, in the language of the matching index, for those packs.
-function SpokenBooks:RememberPageText(pageId, language, text)
+-- The title is the book's, so the pages queued after this one carry it too: the corpus has
+-- only the English one.
+function SpokenBooks:RememberPageText(pageId, language, text, title)
 	self.pageText = self.pageText or {}
 	self.pageText[language] = self.pageText[language] or {}
 	self.pageText[language][pageId] = text:gsub("\r\n?", "\n"):gsub("%$[Bb]", "\n")
 		:gsub("<[^>]+>", " "):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+	local book = self:PlaceOf(pageId)
+	if book and type(title) == "string" and title ~= "" then
+		self.bookTitle = self.bookTitle or {}
+		self.bookTitle[language] = self.bookTitle[language] or {}
+		self.bookTitle[language][book] = title
+	end
 end
 
 --- Where a page sits: its book and its number. Nil for a page the lookup does not carry.
