@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.2.0-alpha.1 — 2026-10-08
 
 - **Spoken Developer, a module of its own, with a debug log to send with a report.** Installed and
   turned on (in Spoken > Developer, the welcome window or `/spoken log on`), it notes every line

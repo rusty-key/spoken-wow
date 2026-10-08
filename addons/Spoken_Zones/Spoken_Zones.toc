@@ -10,7 +10,7 @@
 ## Notes-koKR: Spoken으로 월드맵의 지역과 하위 지역 전승을 소리내어 읽습니다.
 ## Notes-zhCN: 在世界地图上通过 Spoken 朗读区域和次级区域传说。
 ## Notes-zhTW: 在世界地圖上透過 Spoken 朗讀區域和次級區域傳說。
-## Version: 3.1.0
+## Version: 3.2.0-alpha.1
 ## Author: rusty
 ## SavedVariables: SpokenZonesSettings
 ## SavedVariablesPerCharacter: SpokenZonesCharacter

@@ -10,7 +10,7 @@
 ## Notes-koKR: 모든 Spoken 애드온이 말하는 음성 플레이어, 하나의 대기열, 하나의 창, 하나의 미니맵 버튼.
 ## Notes-zhCN: 所有 Spoken 插件共用的语音播放器，一个队列、一个窗口、一个小地图按钮。
 ## Notes-zhTW: 所有 Spoken 插件共用的語音播放器，一個佇列、一個視窗、一個小地圖按鈕。
-## Version: 3.1.0
+## Version: 3.2.0-alpha.1
 ## IconTexture: Interface\AddOns\Spoken\icon.tga
 ## SavedVariables: SpokenSettings
 ## OptionalDeps: DialogueUI

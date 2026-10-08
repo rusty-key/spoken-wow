@@ -37,7 +37,7 @@ Expect("a Report button can still be right-clicked", pcall(Fire, report, "OnMous
 ---------------------------------------------------------------- diagnostics, as lines
 local lines = Spoken:Diagnostics()
 Expect("the diagnostics start with what /spoken diagnostics says",
-    lines[1] and lines[1]:find("^Spoken " .. Spoken.ADDON_VERSION) ~= nil, true)
+    lines[1] and lines[1]:find("Spoken " .. Spoken.ADDON_VERSION, 1, true) == 1, true)
 local function Has(list, text)
     for _, line in ipairs(list) do if line:find(text, 1, true) then return true end end
     return false
