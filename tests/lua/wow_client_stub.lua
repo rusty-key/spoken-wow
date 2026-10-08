@@ -579,6 +579,7 @@ function M.ShowGossip(text, options)
     world.gossipOptions = options
     world.panels.GossipFrame = true
 end
+local function GossipOptionID(i) return 1000 + i end
 --- The namespaced gossip API. SetClient hands it to the clients that have one.
 M.gossipAPI = {
     GetText = function() return world.gossipText or "" end,
@@ -587,7 +588,7 @@ M.gossipAPI = {
     GetOptions = function()
         local infos = {}
         for i, name in ipairs(world.gossipOptions or {}) do
-            infos[i] = { name = name, gossipOptionID = 1000 + i }
+            infos[i] = { name = name, gossipOptionID = GossipOptionID(i) }
         end
         return infos
     end,
@@ -609,7 +610,7 @@ function M.SelectGossipOption(name)
     for i, option in ipairs(world.gossipOptions or {}) do
         if option == name then
             if _G.C_GossipInfo then
-                _G.C_GossipInfo.SelectOption(1000 + i)
+                _G.C_GossipInfo.SelectOption(GossipOptionID(i))
             else
                 _G.SelectGossipOption(i)
             end

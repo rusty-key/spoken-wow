@@ -13,17 +13,7 @@ local QUESTS = here .. "/../../addons/Spoken_Quests/"
 local SPOKEN = here .. "/../../addons/Spoken/"
 
 local world = stub.world
-local failures = 0
-
-local function Expect(scenario, actual, expected)
-    if actual == expected then
-        print(string.format("ok   %s", scenario))
-    else
-        failures = failures + 1
-        print(string.format("FAIL %s\n     expected: %s\n     actual:   %s", scenario,
-            tostring(expected), tostring(actual)))
-    end
-end
+local Expect, Failures = require("queue_helpers").Expecter(print)
 
 local GREETING = "Well met. How can I help?"
 local BANK = "Where is the bank?"
@@ -112,8 +102,8 @@ for _, client in ipairs({ "11509", "1.12" }) do
     Leave()
 end
 
-if failures > 0 then
-    print(string.format("\n%d scenario(s) failed", failures))
+if Failures() > 0 then
+    print(string.format("\n%d scenario(s) failed", Failures()))
     os.exit(1)
 end
 print("\nall scenarios passed")
