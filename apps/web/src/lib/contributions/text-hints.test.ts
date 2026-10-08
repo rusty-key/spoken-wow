@@ -16,16 +16,26 @@ describe("textHints", () => {
     expect(textHints("Ein $gAlchimist:Alchimistin in der Stadt", "deDE")).toEqual([
       "unspoken token $gAlchimist:Alchimistin — won't be voiced",
     ]);
+    expect(textHints("Ein $gAlchimist:Alchimistin in der Stadt. Geht; schnell.", "deDE")).toEqual([
+      "unspoken token $gAlchimist:Alchimistin — won't be voiced",
+    ]);
   });
 
   it("flags the gap a gender branch resolved to nothing leaves", () => {
     // q:92703:complete.
+    expect(textHints("…danken kann, . Ich habe gefunden.", "deDE")).toEqual([
+      "gap before punctuation — a gender branch may be missing",
+    ]);
+    expect(textHints("Ich habe  gefunden.", "deDE")).toEqual([
+      "double space — a gender branch may be missing",
+    ]);
     expect(textHints("…danken kann, . Ich habe  gefunden.", "deDE")).toEqual([
       "gap before punctuation — a gender branch may be missing",
+      "double space — a gender branch may be missing",
     ]);
     // q:92881:complete, its branch left as a no-break space.
     expect(textHints("die\u00a0 wie Ihr sie bieten kann.", "deDE")).toEqual([
-      "gap before punctuation — a gender branch may be missing",
+      "double space — a gender branch may be missing",
     ]);
     expect(textHints("Vraiment ? Allez !", "frFR")).toEqual([]);
     // q:92110:accept: an ellipsis, not a gap.

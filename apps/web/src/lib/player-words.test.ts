@@ -54,6 +54,15 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Hola, $uamigo:amiga;.", "esES")).toBe("Hola, $uamigo:amiga;.");
   });
 
+  it("leaves a branch whose ; is lost, rather than reading on to a later sentence's ;", () => {
+    // q:97963:accept, its `;` lost: the next `;` would end the female branch and drop the
+    // words between unheard.
+    const line = "Ein $gAlchimist:Alchimistin in der Stadt. Geht; schnell.";
+    expect(speakPlayerTokens(line, "deDE")).toBe("Ein $gAlchimist:Alchimistin in der Stadt. Geht; schnell.");
+    expect(speakPlayerTokens("Ein $uHeld:Heldin! Ja; gut.", "deDE")).toBe("Ein $uHeld:Heldin! Ja; gut.");
+    expect(speakPlayerTokens("Un $gami:amie\n\nVenez; vite.", "frFR")).toBe("Un $gami:amie\n\nVenez; vite.");
+  });
+
   it("speaks deDE's genitive s glued to $N or $C, and no other glued letter", () => {
     expect(speakPlayerTokens("Die Legion $Ns wartet.", "deDE")).toBe("Die Legion Abenteurers wartet.");
     expect(speakPlayerTokens("dass $cs wie", "deDE", "f")).toBe("dass Abenteurerin wie");

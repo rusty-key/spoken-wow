@@ -66,10 +66,11 @@ const TOKEN = /\$([NnCcRr])(?!\p{L})/gu;
 const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
 // $gmale:female; and ruRU's $gmale:female:c; whose third field names the token the
 // adjective agrees with. The import resolves the two-field form already; the three-field
-// form slips past its pattern and arrives here.
-const GENDER = /\$[Gg]\s*([^:;]+?)\s*:\s*([^:;]+?)\s*(?::[^:;]*)?;/g;
+// form slips past its pattern and arrives here. No branch ends a sentence: one whose `;` was
+// lost would otherwise run on to a later sentence's `;` and drop the words between unheard.
+const GENDER = /\$[Gg]\s*([^:;.!?…\n]+?)\s*:\s*([^:;.!?…\n]+?)\s*(?::[^:;.!?…\n]*)?;/g;
 // deDE's own templates, the Forever quests' above all, also write the branch as $u.
-const GENDER_DE = /\$[GgUu]\s*([^:;]+?)\s*:\s*([^:;]+?)\s*(?::[^:;]*)?;/g;
+const GENDER_DE = /\$[GgUu]\s*([^:;.!?…\n]+?)\s*:\s*([^:;.!?…\n]+?)\s*(?::[^:;.!?…\n]*)?;/g;
 // Whatever may stand between a sentence's end and its first word: space, a line break, an
 // opening quote or Spanish's inverted marks.
 const SENTENCE_START = /(?:^|[.!?…。！？]|\n)[\s"'«„“¡¿]*$/u;
