@@ -133,26 +133,33 @@ update "npc" set "race" = 'creature', "gender" = null
 
 -- Every NPC a speaker names that nobody has answered for: the values its lines were written
 -- with, as a guess, so a reader of npc alone keeps the voice the speaker rows gave, and an admin
--- finds it among the unconfirmed. English rows first, then the most common answer.
-with spoken as (
-  select distinct on (s."npcType", s."npcId")
-         s."npcType", s."npcId",
-         case when s."race" = 'narrator' then
-           case when s."npcType" in ('gameobject', 'item') then s."npcType" else 'creature' end
-         else s."race" end as "race",
-         case when s."race" = 'narrator' then null else s."gender" end as "gender",
-         s."flavor"
-    from (select "npcType", "npcId", "race", "gender", "flavor",
-                 bool_or("lang" = 'enUS') as "en", count(*) as "n"
-            from "quest_line_speaker"
-           where "race" is not null and "race" <> ''
-           group by 1, 2, 3, 4, 5) s
-   order by s."npcType", s."npcId", s."en" desc, s."n" desc, s."flavor"
-)
-insert into "npc" ("npcKind", "npcId", "race", "gender", "flavor", "provenance", "confirmed")
-select "npcType", "npcId", "race", "gender", "flavor", 'client', false from spoken
-on conflict ("npcKind", "npcId") do update
-  set "race" = excluded."race", "gender" = excluded."gender", "flavor" = excluded."flavor",
-      "provenance" = 'client', "confirmed" = false, "updatedAt" = now()
-  -- A moderator's "no race" is an answer; only an NPC nobody answered takes the speakers'.
-  where "npc"."provenance" = 'none';
+-- finds it among the unconfirmed. English rows first, then the most common answer. A function,
+-- because import-corpus (tts_cli/corpus_db.py) writes speakers and npc rows afresh and needs the
+-- same answer after it.
+create or replace function "npc_from_speakers"() returns void
+language sql as $$
+  with spoken as (
+    select distinct on (s."npcType", s."npcId")
+           s."npcType", s."npcId",
+           case when s."race" = 'narrator' then
+             case when s."npcType" in ('gameobject', 'item') then s."npcType" else 'creature' end
+           else s."race" end as "race",
+           case when s."race" = 'narrator' then null else s."gender" end as "gender",
+           s."flavor"
+      from (select "npcType", "npcId", "race", "gender", "flavor",
+                   bool_or("lang" = 'enUS') as "en", count(*) as "n"
+              from "quest_line_speaker"
+             where "race" is not null and "race" <> ''
+             group by 1, 2, 3, 4, 5) s
+     order by s."npcType", s."npcId", s."en" desc, s."n" desc, s."flavor"
+  )
+  insert into "npc" ("npcKind", "npcId", "race", "gender", "flavor", "provenance", "confirmed")
+  select "npcType", "npcId", "race", "gender", "flavor", 'client', false from spoken
+  on conflict ("npcKind", "npcId") do update
+    set "race" = excluded."race", "gender" = excluded."gender", "flavor" = excluded."flavor",
+        "provenance" = 'client', "confirmed" = false, "updatedAt" = now()
+    -- A moderator's "no race" is an answer; only an NPC nobody answered takes the speakers'.
+    where "npc"."provenance" = 'none'
+$$;
+
+select "npc_from_speakers"();

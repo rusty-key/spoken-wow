@@ -180,31 +180,33 @@ def npc_answers(npcs) -> list:
 
 
 def _import_types(cur, npcs):
-    """Every type, gender and voice the file's NPCs name that the site has none of yet, so the
+    """Every type, flavor and voice the file's NPCs name that the site has none of yet, so the
     npc rows have somewhere to stand -- the file is an export of a site an admin may have
-    added types to. Insert-only: what the site already says about a type stays as it is.
-    A model slot is a voice by pattern and never a type."""
+    added types to. Insert-only, and a voice is assigned only to a type or a flavor this import
+    added: a flavorless NPC's voice is its line's, made in some flavor, and assigning it to
+    the bare race-gender would voice every flavorless NPC of it. A model slot is a voice by
+    pattern and never a type."""
     for npc in retyped(npcs):
         race, gender, flavor, voice = npc["race"], npc["gender"], npc["flavor"], npc.get("voice")
         if not race or is_model_voice(race):
             continue
         cur.execute("""insert into "race" ("key") values (%s) on conflict do nothing""", (race,))
+        new_race = cur.rowcount > 0
         if gender:
             cur.execute("""insert into "gender" ("race", "gender") values (%s, %s)
                            on conflict do nothing""", (race, gender))
-        if not voice or is_model_voice(voice):
-            continue
-        cur.execute("""select voice_for(%s, %s, %s)""", (race, gender, flavor))
-        if cur.fetchone()[0]:
-            continue
-        cur.execute("""insert into "voice" ("name", "race", "gender") values (%s, %s, %s)
-                       on conflict do nothing""", (voice, race, gender or ""))
+        new_flavor = False
         if flavor:
             cur.execute("""insert into "flavor" ("race", "gender", "flavor") values (%s, %s, %s)
                            on conflict do nothing""", (race, gender, flavor))
+            new_flavor = cur.rowcount > 0
+        if not (new_race or new_flavor) or not voice or is_model_voice(voice):
+            continue
+        cur.execute("""insert into "voice" ("name", "race", "gender") values (%s, %s, %s)
+                       on conflict do nothing""", (voice, race, gender or ""))
         cur.execute("""insert into "voice_assignment" ("race", "gender", "flavor", "voice")
                        values (%s, %s, %s, %s) on conflict do nothing""",
-                    (race, gender, flavor, voice))
+                    (race, gender, flavor if new_flavor else None, voice))
 
 
 def _import_npcs(cur, npc_rows):
@@ -415,6 +417,8 @@ def import_corpus(path, verbose=True):
             if "npcs" in corpus:
                 _import_types(cur, corpus["npcs"])
                 kept_npcs = _import_npcs(cur, npc_rows)
+                # The site reads an NPC's voice from npc alone (apps/web migration 0071).
+                cur.execute("""select "npc_from_speakers"()""")
 
             # Only from a marked file: in an older one, the rows that would match are the
             # contributed speakers' own round-tripped copies, skipped above or not.
