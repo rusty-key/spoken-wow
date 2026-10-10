@@ -77,9 +77,10 @@ end
 
 local function Name(L, label) return (L.OPT_PACK_NAME_FMT:gsub("%%1%$s", label)) end
 local english, L = Shown("enUS")
-Expect("an English client is offered English's packs, then one it has that the list does not know",
+-- Not the Gossip pack: what NPCs say is the gossip module's, on its own page.
+Expect("an English client is offered English's quest packs, then one it has that the list does not know",
     table.concat(english, "|"), table.concat({ Name(L, L.OPT_PACK_ALL), Name(L, L.OPT_PACK_ALLIANCE), Name(L, L.OPT_PACK_HORDE),
-        Name(L, L.OPT_PACK_SHARED), Name(L, L.OPT_PACK_GOSSIP), Name(L, "TestPack") }, "|"))
+        Name(L, L.OPT_PACK_SHARED), Name(L, "TestPack") }, "|"))
 local spanish, ES = Shown("esES")
 Expect("a Spanish client is offered the Spanish pack first", spanish[1], Name(ES, "Español (España)"))
 -- Not English's to get, though English is what it falls back on: on an esMX client its five rows
@@ -88,8 +89,9 @@ Expect("...then only the pack it has installed, not English's to get", table.con
     Name(ES, "TestPack"))
 -- But a language with no pack of its own is heard in English, the fallback: that is the pack to get.
 local chinese, CN = Shown("zhCN")
-Expect("a Chinese client, with no Chinese pack, is offered English's packs, its fallback",
+-- The Gossip pack is the gossip module's, on its own page.
+Expect("a Chinese client, with no Chinese pack, is offered English's quest packs, its fallback",
     table.concat(chinese, "|"), table.concat({ Name(CN, CN.OPT_PACK_ALL), Name(CN, CN.OPT_PACK_ALLIANCE),
-        Name(CN, CN.OPT_PACK_HORDE), Name(CN, CN.OPT_PACK_SHARED), Name(CN, CN.OPT_PACK_GOSSIP), Name(CN, "TestPack") }, "|"))
+        Name(CN, CN.OPT_PACK_HORDE), Name(CN, CN.OPT_PACK_SHARED), Name(CN, "TestPack") }, "|"))
 
 if Failures() > 0 then stub.print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

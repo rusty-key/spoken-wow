@@ -87,17 +87,15 @@ Expect("a missing trailing part counts as zero", D:IsOlderContent("2.1", "2.1.0"
 Expect("a version that is not numbers is never out of date", D:IsOlderContent("dev", "2.1.0"), false)
 Expect("...nor is a missing one", D:IsOlderContent(nil, "2.1.0"), false)
 
---- Install one shipping pack at a version, and collect what the options offer for it.
+--- Install one shipping pack at a version, and collect what the dialogue core offers for it.
 local function Offered(version)
     stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
     stub.SetAddOns({ { folder = "SpokenQuestsAudioShared",
         meta = { Title = "Spoken Quests Audio: Shared Quests", Version = version, [NEW .. "Version"] = "1" } } })
     local vo = stub.LoadQuests(QUESTS, SPOKEN)
-    local offered = {}
-    vo.Options = setmetatable({
-        AddAvailableDataModule = function(_, module, _, update) offered[module.AddonName] = update end,
-    }, { __index = function() return function() end end })
     vo.DataModules:EnumerateAddons(false)
+    local offered = {}
+    for _, offer in vo.DataModules:GetOfferedModules() do offered[offer.module.AddonName] = offer.update end
     return offered, vo.DataModules
 end
 local known

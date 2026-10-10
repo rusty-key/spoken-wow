@@ -668,12 +668,16 @@ Q:RemoveAllSoundsFromQueue()
 Check(#E.Callbacks.errors==0,table.concat(E.Callbacks.errors,'\n'))
 
 -- Exercise the actual quest adapter and log-text helper, including reward text.
+-- The dialogue core Spoken carries, then the quests module on top of it.
+dofile(addons .. 'Spoken/Dialogue/Environment.lua')
 dofile(addons .. 'Spoken_Quests/Environment.lua')
 -- Player.lua names its report action at load time, so it needs the string table.
 dofile(addons .. 'Spoken_Quests/Strings.lua')
 VoiceOver.Version=E.Version
-dofile(addons .. 'Spoken_Quests/Enums.lua')
-dofile(addons .. 'Spoken_Quests/Contribute.lua')
+dofile(addons .. 'Spoken/Dialogue/Enums.lua')
+dofile(addons .. 'Spoken/Dialogue/Contribute.lua')
+-- The speaker's portrait and the Report action Player.lua hands the player.
+dofile(addons .. 'Spoken/Dialogue/Present.lua')
 dofile(addons .. 'Spoken_Quests/Player.lua')
 local V=VoiceOver
 C_QuestLog={GetLogIndexForQuestID=function(id) return id==33 and 7 or nil end}

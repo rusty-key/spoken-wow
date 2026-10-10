@@ -1,0 +1,38 @@
+## Interface: 100007, 16001
+## Title: Spoken Gossip
+## Notes: What NPCs say when you talk to them, read aloud through Spoken.
+## Notes-deDE: Was NPCs sagen, wenn du mit ihnen sprichst, vorgelesen durch Spoken.
+## Notes-esES: Lo que dicen los PNJ cuando hablas con ellos, leído en voz alta a través de Spoken.
+## Notes-esMX: Lo que dicen los PNJ cuando hablas con ellos, leído en voz alta a través de Spoken.
+## Notes-frFR: Ce que disent les PNJ quand vous leur parlez, lu à voix haute grâce à Spoken.
+## Notes-ptBR: O que os PNJs dizem quando você fala com eles, lido em voz alta através do Spoken.
+## Notes-ruRU: То, что говорят НИП, когда вы с ними разговариваете, озвученное через Spoken.
+## Notes-koKR: NPC에게 말을 걸 때 NPC가 하는 말을 Spoken으로 소리내어 읽습니다.
+## Notes-zhCN: 通过 Spoken 朗读与 NPC 交谈时他们说的话。
+## Notes-zhTW: 透過 Spoken 朗讀和 NPC 交談時對方說的話。
+## Version: 3.3.0
+## IconTexture: Interface\Icons\UI_Chat
+## SavedVariables: SpokenGossipSettings
+## OptionalDeps: Spoken
+# Spoken is the player this addon speaks through: optional, so a hand-installed copy
+# without it loads and says what is missing; addon managers install it from the
+# CurseForge dependency.
+## Group: Spoken
+## X-Part-Of: Spoken
+
+embeds.xml
+addon.xml
+# Gossip text for the client's own locale only: each file is ~2 MB of Lua, and a guard inside
+# one returns only after the client has parsed it. AllowLoadTextLocale is a per-file directive
+# from 11.1.5. The classic and legacy .toc files load Gossip\Gossip.xml instead: every locale,
+# each guarded.
+Gossip\Aliases.lua
+Gossip\deDE.lua [AllowLoadTextLocale deDE]
+Gossip\esES.lua [AllowLoadTextLocale esES]
+Gossip\esMX.lua [AllowLoadTextLocale esMX]
+Gossip\frFR.lua [AllowLoadTextLocale frFR]
+Gossip\koKR.lua [AllowLoadTextLocale koKR]
+Gossip\ptBR.lua [AllowLoadTextLocale ptBR]
+Gossip\ruRU.lua [AllowLoadTextLocale ruRU]
+Gossip\zhCN.lua [AllowLoadTextLocale zhCN]
+Gossip\zhTW.lua [AllowLoadTextLocale zhTW]

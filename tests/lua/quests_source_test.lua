@@ -1,5 +1,5 @@
--- The quests addon speaking through the player: what a quest or gossip line becomes, the
--- gossip rule expressed as priority, the dialog-channel toggle on the source hooks, the
+-- The quests addon speaking through the player, beside the gossip module as a player has them:
+-- what a quest or gossip line becomes, the gossip rule expressed as priority across the two, the dialog-channel toggle on the source hooks, the
 -- disengage and abandon removals, the easter egg, and the quest-log overlay's play/stop.
 -- Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -12,7 +12,8 @@ local QUESTS = here .. "/../../addons/Spoken_Quests/"
 local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
-local BOOK = [[Interface\AddOns\Spoken_Quests\Textures\Book]]
+-- The dialogue core's, shared with the gossip module (Present.lua).
+local BOOK = [[Interface\AddOns\Spoken\Textures\Book]]
 
 local lookup = {}
 for _, q in ipairs({ 101, 102, 103 }) do
@@ -23,6 +24,10 @@ end
 local GREETING_HASH = "9fdeb82237b72e8801030487901e690f"
 lookup[GREETING_HASH] = 3
 
+-- The gossip module of the boot in hand: what NPCs say is its to read.
+local G
+local GOSSIP = here .. "/../../addons/Spoken_Gossip/"
+
 local function Boot()
     stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
     stub.ldbObjects = {}; stub.dbIcons = {}
@@ -31,6 +36,8 @@ local function Boot()
     world.questID = 0; stub.ShowPanel(nil); world.gossipText = nil; world.greetingText = nil
     local VO, env = stub.LoadQuests(QUESTS, SPOKEN)
     VO.Addon:OnInitialize()
+    G = stub.LoadGossip(GOSSIP, SPOKEN, true)
+    G.Addon:OnInitialize()
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = lookup,
         GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
@@ -122,7 +129,7 @@ world.npcGUID = "Creature-0-0-0-0-1234-0"; world.playerMapID = nil
 ---------------------------------------------------------------- gossip yields at the door
 VO, env, Spoken = Boot()
 world.gossipText = "Greetings, traveller."
-VO.Addon:GOSSIP_SHOW()
+G.Addon:GOSSIP_SHOW()
 local gossip = Spoken:GetCurrent()
 Expect("GOSSIP_SHOW queues the greeting", gossip and gossip.fileName, GREETING_HASH)
 Expect("...as low priority", gossip.priority, "low")
@@ -134,8 +141,8 @@ Expect("...and queues behind it", Spoken:GetQueue()[2].fileName, "102-accept")
 Spoken:StopAll()
 world.questID = 103
 VO.Addon:QUEST_DETAIL()
-VO.Addon.db.char.hasSeenGossipForNPC = {}
-VO.Addon:GOSSIP_SHOW()
+G.Addon.db.char.hasSeenGossipForNPC = {}
+G.Addon:GOSSIP_SHOW()
 Expect("gossip is refused while a quest line is queued", Spoken:GetQueueSize(), 1)
 Expect("...and the stage says so", VO.Debug.runtime.stage, "queue-outranked")
 
@@ -189,9 +196,10 @@ Expect("...and the empty queue restores it", world.cvars.Sound_EnableDialog, "1"
 -- the mute is taken in the frame the dialog opens.
 -- The dialog opening as the client delivers it: to this boot's event frames only, since
 -- every earlier boot's frames are still registered with the stub.
-local function Open(VO, event)
-    for _, frame in ipairs({ VO.Addon.questEventRecorderFrame, VO.Addon.directEventFrame }) do
-        if frame.events[event] then
+-- `module` is the addon whose window it is: quests, or gossip (G).
+local function Open(module, event)
+    for _, frame in ipairs({ module.Addon.questEventRecorderFrame or false, module.Addon.directEventFrame }) do
+        if frame and frame.events[event] then
             frame.scripts.OnEvent(frame, event)
         end
     end
@@ -205,7 +213,7 @@ local function MuteBoot(autoToggle)
 end
 VO, env, Spoken = MuteBoot()
 stub.ShowGossip("Greetings, traveller.")
-Open(VO, "GOSSIP_SHOW")
+Open(G, "GOSSIP_SHOW")
 Expect("a voiced NPC's gossip opening mutes it before its line is queued", Spoken:GetQueueSize() == 0 and world.cvars.Sound_EnableDialog, "0")
 stub.Advance(0.2)
 Expect("...the line is then read", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, GREETING_HASH)
@@ -219,35 +227,43 @@ Expect("...and the empty queue restores it", world.cvars.Sound_EnableDialog, "1"
 VO, env, Spoken = MuteBoot()
 world.npcGUID = "Creature-0-0-0-0-9999-0"
 stub.ShowGossip("Well met.")
-Open(VO, "GOSSIP_SHOW")
+Open(G, "GOSSIP_SHOW")
 Expect("an NPC no pack voices keeps its greeting", world.cvars.Sound_EnableDialog, "1")
 
 VO, env, Spoken = MuteBoot()
-VO.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true
+G.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true
 stub.ShowGossip("Greetings, traveller.")
-Open(VO, "GOSSIP_SHOW")
+Open(G, "GOSSIP_SHOW")
 Expect("gossip the frequency rule will skip keeps its greeting", world.cvars.Sound_EnableDialog, "1")
 -- A page the player picked an option to reach is read whatever the frequency, so the mute is
 -- taken for it as for any line that is going to be read.
 stub.ShowGossip("Greetings, traveller.", { "Where is the inn?" })
 stub.SelectGossipOption("Where is the inn?")
 stub.ShowGossip("You are standing in it.")
-Open(VO, "GOSSIP_SHOW")
+Open(G, "GOSSIP_SHOW")
 Expect("a page reached by an option mutes dialog, greeting heard or not", world.cvars.Sound_EnableDialog, "0")
 stub.Advance(3)
 Spoken:StopAll()
-VO.Addon.db.char.hasSeenGossipForNPC = {}   -- saved too
+G.Addon.db.char.hasSeenGossipForNPC = {}   -- saved too
+
+VO, env, Spoken = MuteBoot()
+G.Addon.db.profile.Audio.GossipFrequency = G.Enums.GossipFrequency.Never
+stub.ShowGossip("Greetings, traveller.")
+Open(G, "GOSSIP_SHOW")
+Expect("with NPC Greetings at Never nothing is muted", world.cvars.Sound_EnableDialog, "1")
+-- Saved with the profile, which the next boot reads.
+G.Addon.db.profile.Audio.GossipFrequency = G.Enums.GossipFrequency.OncePerNPC
 
 VO, env, Spoken = MuteBoot()
 VO.Addon:SetAutoplay(false)
 stub.ShowGossip("Greetings, traveller.")
-Open(VO, "GOSSIP_SHOW")
-Expect("with autoplay off nothing is muted", world.cvars.Sound_EnableDialog, "1")
-VO.Addon:SetAutoplay(true)   -- saved with the profile, which the next boot reads
+Open(G, "GOSSIP_SHOW")
+Expect("the quests module's autoplay off leaves gossip's mute alone", world.cvars.Sound_EnableDialog, "0")
+VO.Addon:SetAutoplay(true)
 
 VO, env, Spoken = MuteBoot(false)
 stub.ShowGossip("Greetings, traveller.")
-Open(VO, "GOSSIP_SHOW")
+Open(G, "GOSSIP_SHOW")
 Expect("with the mute setting off nothing is muted", world.cvars.Sound_EnableDialog, "1")
 
 VO, env, Spoken = MuteBoot()
@@ -279,11 +295,11 @@ Expect("...and leaves it otherwise", Spoken:GetQueueSize(), 1)
 
 ---------------------------------------------------------------- the easter egg
 VO, env, Spoken = Boot()
-VO.Addon.db.profile.Audio.OGThrall = true
+G.Addon.db.profile.Audio.OGThrall = true
 world.gossipText = "Greetings, traveller."
-VO.Addon:GOSSIP_SHOW()
+G.Addon:GOSSIP_SHOW()
 Expect("the easter egg swaps the path before the player sees it", Spoken:GetCurrent().path,
-    [[Interface\AddOns\Spoken_Quests\Sounds\og-thrall.mp3]])
+    [[Interface\AddOns\Spoken_Gossip\Sounds\og-thrall.mp3]])
 Expect("...and the length", Spoken:GetCurrent().length, 33.802375)
 
 ---------------------------------------------------------------- the quest-log overlay
@@ -301,9 +317,9 @@ Expect("...and the stage says so", VO.Debug.runtime.stage, "data-lookup-failed")
 VO, env, Spoken = Boot()
 local labels = {}
 for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(labels, entry.text) end
-Expect("the quests addon adds its entries to the one button", table.concat(labels, "|"),
-    "Stop or Replay|Stop All|Settings|Quests Settings")
-Expect("...and registers no button of its own", stub.ldbObjects.SpokenQuests, nil)
+Expect("the quests and gossip addons add their entries to the one button", table.concat(labels, "|"),
+    "Stop or Replay|Stop All|Settings|Quests Settings|Gossip Settings")
+Expect("...and register no button of their own", stub.ldbObjects.SpokenQuests == nil and stub.ldbObjects.SpokenGossip == nil, true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests source tests passed")

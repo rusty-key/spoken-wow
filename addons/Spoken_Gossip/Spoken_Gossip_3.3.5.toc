@@ -1,0 +1,22 @@
+## Interface: 30300
+## Title: Spoken Gossip
+## Notes: What NPCs say when you talk to them, read aloud through Spoken.
+## Notes-deDE: Was NPCs sagen, wenn du mit ihnen sprichst, vorgelesen durch Spoken.
+## Notes-esES: Lo que dicen los PNJ cuando hablas con ellos, leído en voz alta a través de Spoken.
+## Notes-esMX: Lo que dicen los PNJ cuando hablas con ellos, leído en voz alta a través de Spoken.
+## Notes-frFR: Ce que disent les PNJ quand vous leur parlez, lu à voix haute grâce à Spoken.
+## Notes-ptBR: O que os PNJs dizem quando você fala com eles, lido em voz alta através do Spoken.
+## Notes-ruRU: То, что говорят НИП, когда вы с ними разговариваете, озвученное через Spoken.
+## Notes-koKR: NPC에게 말을 걸 때 NPC가 하는 말을 Spoken으로 소리내어 읽습니다.
+## Notes-zhCN: 通过 Spoken 朗读与 NPC 交谈时他们说的话。
+## Notes-zhTW: 透過 Spoken 朗讀和 NPC 交談時對方說的話。
+## Version: 3.3.0
+## SavedVariables: SpokenGossipSettings
+## Dependencies: Spoken
+# This client installs by hand from a zip that bundles the player, so the dependency is
+# hard here where the Blizzard-client .toc files keep it optional.
+## X-Part-Of: Spoken
+
+3.3.5\embeds.xml
+addon.xml
+Gossip\Gossip.xml

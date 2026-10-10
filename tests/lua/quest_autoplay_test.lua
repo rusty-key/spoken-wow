@@ -1,5 +1,6 @@
--- Turning autoplay off: opening a quest dialog, a greeting or gossip reads nothing by itself,
--- and the Play button on the window is how the player starts it instead. Run with `make test-player`.
+-- Turning autoplay off: opening a quest dialog reads nothing by itself, and the Play button on
+-- the window is how the player starts it instead. Greetings and gossip are the gossip module's,
+-- which has no autoplay of its own (gossip_frequency_test.lua). Run with `make test-player`.
 --
 -- Both dispatch routes are covered, because the setting has to hold on each: the 10 Hz
 -- watcher a Blizzard client reads quests through, and the direct events a legacy
@@ -75,19 +76,6 @@ local function Open(questID, panel, event)
     stub.Advance(3)
 end
 
-local function OpenGossip(text)
-    stub.ShowGossip(text)
-    stub.FireEvent("GOSSIP_SHOW")
-    stub.Advance(1)
-end
-
-local function CloseGossip()
-    stub.HidePanels()
-    stub.FireEvent("GOSSIP_CLOSED")
-    stub.Advance(10)
-    _G.Spoken:StopAll()
-end
-
 local function Close()
     world.questID = 0
     stub.ShowPanel(nil)
@@ -106,11 +94,6 @@ for _, client in ipairs({ "11509", "1.12" }) do
     Expect(client .. ": autoplay on, an offer reads itself", Played(played), "101-accept")
     Expect(client .. ": autoplay on, the dialog has no Play button", button:IsShown(), false)
     Close()
-
-    OpenGossip("We stand ready.")
-    Expect(client .. ": autoplay on, gossip reads itself", Played(played), "gossip-hash")
-    Expect(client .. ": autoplay on, the gossip window has no Play button", button:IsShown(), false)
-    CloseGossip()
 
     VO.Addon:SetAutoplay(false)
 
@@ -131,6 +114,17 @@ for _, client in ipairs({ "11509", "1.12" }) do
     Close()
     Expect(client .. ": closing the dialog hides the button", button:IsShown(), false)
 
+    -- The quest window's back button turns the offer into the giver's greeting, in the same
+    -- window, which stays open: the greeting is the gossip module's.
+    Open(101, "QuestFrameDetailPanel", "QUEST_DETAIL")
+    Expect(client .. ": autoplay off, the offer shows Listen", button:IsShown(), true)
+    world.questID = 0
+    stub.ShowPanel("QuestFrameGreetingPanel")
+    stub.FireEvent("QUEST_GREETING")
+    stub.Advance(1)
+    Expect(client .. ": ...and going back to the greeting takes it off", button:IsShown(), false)
+    Close()
+
     Open(101, "QuestFrameRewardPanel", "QUEST_COMPLETE")
     Expect(client .. ": autoplay off, a turn-in reads nothing", Played(played), "(nothing)")
     button:Click()
@@ -142,38 +136,6 @@ for _, client in ipairs({ "11509", "1.12" }) do
     Open(202, "QuestFrameDetailPanel", "QUEST_DETAIL")
     Expect(client .. ": a quest with no line shows no Play button", button:IsShown(), false)
     Close()
-
-    -- Gossip already heard once from this NPC: the Once per NPC default would hold it back
-    -- from autoplay, but Play is the player asking for it.
-    OpenGossip("We stand ready.")
-    Expect(client .. ": autoplay off, gossip reads nothing", Played(played), "(nothing)")
-    Expect(client .. ": autoplay off, the gossip window shows Play", button:IsShown(), true)
-    Expect(client .. ": ...placed on the gossip frame", button.anchor and button.anchor.relativeTo,
-        _G.GossipFrame)
-    button:Click()
-    stub.Advance(0.2)
-    Expect(client .. ": Play reads gossip already heard", Played(played), "gossip-hash")
-    Expect(client .. ": ...and the button becomes Stop", button:GetText(), "Stop")
-    CloseGossip()
-    Expect(client .. ": closing gossip hides the button", button:IsShown(), false)
-
-    VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
-    world.questID = 0
-    stub.ShowPanel("QuestFrameGreetingPanel")
-    stub.FireEvent("QUEST_GREETING")
-    stub.Advance(1)
-    Expect(client .. ": autoplay off, a greeting reads nothing, even set to Always", Played(played), "(nothing)")
-    button:Click()
-    stub.Advance(0.2)
-    Expect(client .. ": Play reads the greeting", Played(played), "greeting-hash")
-    Close()
-
-    -- /spq read is the other way in, and reads gossip too now.
-    OpenGossip("We stand ready.")
-    VO.Addon:ReadVisibleQuest("/spq read")
-    stub.Advance(0.2)
-    Expect(client .. ": /spq read reads gossip with autoplay off", Played(played), "gossip-hash")
-    CloseGossip()
 
     -- An auto-accept addon closes the dialog in the frame it opened. The snapshot that
     -- replays it is automatic playback too, and must be held back with the rest.

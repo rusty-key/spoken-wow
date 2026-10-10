@@ -230,7 +230,7 @@ function SpokenBooks:SetupOptions()
 	-- Under Spoken's own entry when the player can nest it, named as DialogueUI names the
 	-- same things; a top-level entry of its own otherwise.
 	local page = Spoken and Spoken.AddSettingsPage
-		and Spoken:AddSettingsPage(panel, L.OPT_PAGE_TITLE, 2, layout, scroller)
+		and Spoken:AddSettingsPage(panel, L.OPT_PAGE_TITLE, 3, layout, scroller)
 	if page then
 		SpokenBooks.optionsPage = page
 	else

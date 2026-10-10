@@ -1120,8 +1120,8 @@ BroadcastText row, and Forever lines no source had yet.
 
 #### Gossip text for every client, and one moment under several names
 
-The addon carries every line's gossip text for each client locale but English,
-`addons/Spoken_Quests/Gossip/<lang>.lua`, each returning before it builds anything on a client
+The gossip module carries every line's gossip text for each client locale but English,
+`addons/Spoken_Gossip/Gossip/<lang>.lua`, each returning before it builds anything on a client
 in another locale, and asks it before any pack's tables. It lives in the addon, not the packs,
 for the giver names' reason: the text follows the client and the voice is any language, so a
 German client with English or Portuguese packs finds its line the same way. Each file is about

@@ -29,7 +29,9 @@
     <Include file="UI\Options.lua"/>
     <Include file="UI\DialogueUIOptions.lua"/>
     <Include file="UI\Welcome.lua"/>
+    <Include file="GreetingFirst.lua"/>
     <Include file="API.lua"/>
 
     <Include file="Compat.lua"/>
+    <Include file="Dialogue\Dialogue.xml"/>
 </Ui>

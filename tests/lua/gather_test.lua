@@ -46,7 +46,7 @@ Expect("Clear forgets everything", Gather:Count(), 0)
 Gather:SetEnabled(false)
 
 ------------------------------------------------------------------------------- quests
-dofile(QUESTS .. "UI/ContributeButton.lua")
+dofile(SPOKEN .. "Dialogue/ContributeButton.lua")
 VoiceOver.Addon:OnInitialize()
 stub.Advance(2)
 

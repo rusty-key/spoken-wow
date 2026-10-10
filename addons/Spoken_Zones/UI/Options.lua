@@ -322,7 +322,7 @@ function SpokenZones:SetupOptions()
 	-- Under Spoken's own entry when the player can nest it, beside the other parts' pages;
 	-- a top-level entry of its own otherwise, as when the player is not installed.
 	local page = Spoken and Spoken.AddSettingsPage
-		and Spoken:AddSettingsPage(panel, L.OPT_PAGE_TITLE, 3, layout, scroller)
+		and Spoken:AddSettingsPage(panel, L.OPT_PAGE_TITLE, 4, layout, scroller)
 	if page then
 		SpokenZones.optionsPage = page
 	else

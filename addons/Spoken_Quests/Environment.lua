@@ -1,37 +1,22 @@
 --[[
-Use the addon's private table as an isolated environment.
-By using { __index = _G } metatable we're allowing all global lookups to transparently fallback to the game-wide
-globals table, while the private table itself will act as a thin layer on top of the game-wide globals table,
-allowing us to have our own global variables isolated from the rest of the game.
+This addon runs in the dialogue core's environment, the VoiceOver table Spoken creates in
+Dialogue/Environment.lua: the voice packs, languages and sound events it reads lines with are
+there, shared with the gossip module. Its own files add to that table.
 
-This accomplishes several goals:
-1. Prevents addon-specific "globals" from leaking to game-wide global namespace _G
-2. Optionally retains the ability to access these "globals" via the only exposed global variable "VoiceOver"
-3. Allows us to make overrides for WoW API's global functions and variables without actually touching
-   the real global namespace, making these overrides visible only to this addon.
-   This will be useful mainly for adding backwards-compatibility with older WoW clients.
+Without the core (Spoken missing, switched off, or too old to have one) the addon loads nothing
+but PlayerRequired.lua: every other file starts with
 
-setfenv(1, VoiceOver) must be added to every .lua file to allow it to work within this environment,
-and this Environment file must be loaded before all others
+    if not (VoiceOver and VoiceOver.SpokenDialogue) then return end
+
+before its setfenv(1, VoiceOver).
 ]]
-
--- THE GLOBAL STAYS VoiceOver, whatever the addon is called. It is not a leftover: every sound
--- pack calls into the player through it, and those calls are Lua baked into files already on
--- players' disks -- `if not VoiceOver or not VoiceOver.DataModules then return end` and
--- `VoiceOver.DataModules:Register(...)`, from tts_cli/build.py. A rebuilt pack could follow a
--- rename; a pack built for upstream AI VoiceOver could not, and DataModules deliberately keeps
--- reading those. Renaming this would make every pack this project did not build inert forever.
---
--- The DataModule TOC key is being renamed, and is not a counter-example: a key is data, so
--- both spellings can be looked for. A call target is not -- the pack names the symbol.
 local _G = getfenv(0)
-local previousEnvironment = rawget(_G, "VoiceOver")
+local core = rawget(_G, "VoiceOver")
+if not (core and rawget(core, "SpokenDialogue")) then
+    return
+end
 
-VoiceOver = setmetatable({
-    _G = _G,
-    AddonFolder = "Spoken_Quests",
-    -- What /spq diagnostics prints. A literal because this file loads before the addon has any
-    -- metadata API; scripts/package.sh refuses to build when it disagrees with the .toc.
-    AddonVersion = "3.3.0",
-    PreviousEnvironment = previousEnvironment,
-}, { __index = _G })
+core.AddonFolder = "Spoken_Quests"
+-- What /spq diagnostics prints. A literal because this file loads before the addon has any
+-- metadata API; scripts/package.sh refuses to build when it disagrees with the .toc.
+core.AddonVersion = "3.3.0"

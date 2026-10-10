@@ -53,6 +53,9 @@ Defaults = {
             -- clip is the one being talked over. Not on clients without the channel, where
             -- Compat.lua interrupts the bark a different way.
             AutoToggleDialog = (Version.IsLegacyVanilla or Version:IsRetailOrAboveLegacyVersion(60100)) or false,
+            -- On, an NPC's own greeting is heard and the lines read off its window wait for it
+            -- (GreetingFirst.lua); off, Silence NPC Voices cuts it where a pack has one.
+            GreetingFirst = false,
             -- A short sound in the pause between one line and the next (#142): at a quest hub a hand-in
             -- and the next pickup otherwise run together, often in the same NPC's voice.
             -- Off by default, as the queue has always played without it.
@@ -455,6 +458,29 @@ function Addon:RetireOldFolders()
     end
 end
 
+--- Game Greeting First was the quests module's setting. On each character's first login it comes
+--- over from that character's quests profile, once those settings have loaded. It cannot check
+--- for "unset" here: AceDB copies its defaults in, so unset reads as false.
+function Addon:TakeGreetingFirstFromQuests()
+    local db = self.db
+    if not db or db.char.greetingFromQuests then
+        return
+    end
+    db.char.greetingFromQuests = true
+    local quests = rawget(_G, "SpokenQuestsSettings")
+    if type(quests) ~= "table" or type(quests.profiles) ~= "table" then
+        return
+    end
+    -- The profile AceDB gives the character there: its own key unless it chose another.
+    local charKey = db.keys and db.keys.char
+    local name = charKey and (type(quests.profileKeys) == "table" and quests.profileKeys[charKey] or charKey)
+    local profile = name and quests.profiles[name]
+    local audio = type(profile) == "table" and profile.Audio
+    if type(audio) == "table" and audio.GreetingFirst == true then
+        db.profile.Audio.GreetingFirst = true
+    end
+end
+
 -- AceDB needs the saved variable to exist, which is only true once the client has loaded
 -- this addon's file. 1.12 hands an OnEvent handler nothing and sets the globals `event`
 -- and `arg1` instead, hence the fallback.
@@ -466,6 +492,7 @@ loader:SetScript("OnEvent", function(_, ev, name)
     if ev == "ADDON_LOADED" and (name or arg1) == AddonFolder then
         Addon:InitDB()
     elseif ev == "PLAYER_LOGIN" then
+        Addon:TakeGreetingFirstFromQuests()
         Addon:Enable()
         Addon:RetireOldFolders()
         WatchPausedQueue()

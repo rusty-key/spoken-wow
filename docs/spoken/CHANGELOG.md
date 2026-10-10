@@ -20,6 +20,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   *([svengabr](https://github.com/svengabr))*
 - **Spoken Zones no longer raises a Lua error on chat messages the game keeps hidden from addons**,
   as in a dungeon group. *([svengabr](https://github.com/svengabr))*
+- **What NPCs say is its own module, Spoken Gossip, with its own switch and settings page.**
+  Your gossip settings carry over from Spoken Quests. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.2.0 — 2026-10-08
 

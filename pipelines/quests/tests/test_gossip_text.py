@@ -117,12 +117,13 @@ def test_gossip_xml_loads_every_file(tmp_path):
     assert '<Script file="Aliases.lua"/>' in xml
 
 
-ADDON = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../addons/Spoken_Quests"))
-FOREVER = ("Spoken_Quests.toc", "Spoken_Quests_Mainline.toc")
+ADDON = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../addons/Spoken_Gossip"))
+QUESTS = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../addons/Spoken_Quests"))
+FOREVER = ("Spoken_Gossip.toc", "Spoken_Gossip_Mainline.toc")
 
 
-def toc(name):
-    with open(os.path.join(ADDON, name), encoding="utf-8") as f:
+def toc(name, addon=ADDON):
+    with open(os.path.join(addon, name), encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 
@@ -140,4 +141,11 @@ def test_forever_loads_only_its_own_locale_and_the_rest_load_every_one():
         else:
             assert "Gossip\\Gossip.xml" in lines, name
     with open(os.path.join(ADDON, "addon.xml"), encoding="utf-8") as f:
-        assert "Gossip" not in f.read()
+        assert "Gossip\\" not in f.read()
+
+
+def test_the_quests_module_loads_no_gossip_text():
+    # The gossip module reads gossip; a second copy would cost every client its parse again.
+    for path in glob.glob(os.path.join(QUESTS, "*.toc")):
+        lines = toc(os.path.basename(path), QUESTS)
+        assert not [line for line in lines if line.startswith("Gossip\\")], path

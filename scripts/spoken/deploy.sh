@@ -23,7 +23,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WOW="/Applications/World of Warcraft"
 # Every folder Spoken's zip installs. scripts/spoken/package.sh is the source of truth; keep
 # this in step with its folder list.
-NAMES=(Spoken SpokenContributions SpokenPlayer Spoken_Quests Spoken_Books Spoken_Zones)
+NAMES=(Spoken SpokenContributions SpokenPlayer Spoken_Quests Spoken_Gossip Spoken_Books Spoken_Zones)
 
 CLIENTS=(era anniversary forever)
 client_flavour() { case "$1" in

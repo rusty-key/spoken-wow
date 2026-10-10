@@ -1,15 +1,15 @@
 ## Interface: 20400
 ## Title: Spoken Quests
-## Notes: Quest and gossip dialogue read aloud through Spoken. Restores quest and gossip voiceovers on the 2.4.3 client.
-## Notes-deDE: Quest- und Gesprächsdialoge, vorgelesen durch Spoken. Stellt die Quest- und Gesprächs-Vertonungen auf 2.4.3-Servern wieder her.
-## Notes-esES: Diálogos de misiones y charlas leídos en voz alta a través de Spoken. Restaura las voces de misiones y charlas en servidores 2.4.3.
-## Notes-esMX: Diálogos de misiones y charlas leídos en voz alta a través de Spoken. Restaura las voces de misiones y charlas en servidores 2.4.3.
-## Notes-frFR: Dialogues de quêtes et de discussions lus à voix haute grâce à Spoken. Restaure les voix des quêtes et discussions sur les serveurs 2.4.3.
-## Notes-ptBR: Diálogos de missões e conversas lidos em voz alta através do Spoken. Restaura as vozes de missões e conversas em servidores 2.4.3.
-## Notes-ruRU: Диалоги заданий и разговоров, озвученные через Spoken. Возвращает озвучку заданий и разговоров на серверах 2.4.3.
-## Notes-koKR: Spoken으로 퀘스트와 잡담 대사를 소리내어 읽습니다. 2.4.3 서버에서 퀘스트와 잡담 음성을 복원합니다.
-## Notes-zhCN: 通过 Spoken 朗读任务和闲聊对话。在2.4.3 服务器上恢复任务和闲聊语音。
-## Notes-zhTW: 透過 Spoken 朗讀任務和閒聊對話。在2.4.3 伺服器上恢復任務和閒聊語音。
+## Notes: Quest dialogue read aloud through Spoken. Restores quest voiceovers on supported clients.
+## Notes-deDE: Questdialoge, vorgelesen durch Spoken. Stellt die Quest-Vertonungen auf unterstützten Clients wieder her.
+## Notes-esES: Diálogos de misiones leídos en voz alta a través de Spoken. Restaura las voces de misiones en clientes compatibles.
+## Notes-esMX: Diálogos de misiones leídos en voz alta a través de Spoken. Restaura las voces de misiones en clientes compatibles.
+## Notes-frFR: Dialogues de quêtes lus à voix haute grâce à Spoken. Restaure les voix des quêtes sur les clients pris en charge.
+## Notes-ptBR: Diálogos de missões lidos em voz alta através do Spoken. Restaura as vozes de missões em clientes suportados.
+## Notes-ruRU: Диалоги заданий, озвученные через Spoken. Возвращает озвучку заданий на поддерживаемых клиентах.
+## Notes-koKR: Spoken으로 퀘스트 대사를 소리내어 읽습니다. 지원되는 클라이언트에서 퀘스트 음성을 복원합니다.
+## Notes-zhCN: 通过 Spoken 朗读任务对话。在受支持的客户端上恢复任务语音。
+## Notes-zhTW: 透過 Spoken 朗讀任務對話。在受支援的客戶端上恢復任務語音。
 ## Version: 3.3.0
 ## SavedVariables: SpokenQuestsSettings
 ## Dependencies: Spoken
@@ -20,4 +20,3 @@
 
 2.4.3\embeds.xml
 addon.xml
-Gossip\Gossip.xml

@@ -94,7 +94,7 @@ world.questText = "Kill six of them.\nThen come back."
 -- Addon:OnInitialize the same way ReportButton's popup is, and kept in sync by its own event
 -- frame (registered in Setup, not a timer) -- stub.FireEvent is what lets a test trigger a
 -- refresh the way the real events VoiceOver.lua already registers would.
-dofile(QUESTS .. "UI/ContributeButton.lua")
+dofile(SPOKEN .. "Dialogue/ContributeButton.lua")
 VoiceOver.Addon:OnInitialize()
 -- Wait out the deferred data module load OnInitialize schedules, as the other quests tests do.
 stub.Advance(2)
@@ -150,7 +150,7 @@ Expect("...in from the frame's right edge as far as the details Play is from its
 Expect("...by its top right corner", button.anchor and button.anchor.point, "TOPRIGHT")
 
 button:GetScript("OnEnter")(button)
-Expect("the tooltip says the quest is missing", GameTooltip.text, "Spoken Quests doesn't have this quest")
+Expect("the tooltip says the quest is missing", GameTooltip.text, "Spoken doesn't have this quest")
 _G.QuestFrameCloseButton = nil
 stub.HidePanels()
 
@@ -160,7 +160,7 @@ stub.FireEvent("GOSSIP_SHOW")
 Expect("the button appears on gossip too", button:IsShown(), true)
 Expect("...in the gossip frame's top right corner", button.anchor and button.anchor.relativeTo == _G.GossipFrame, true)
 button:GetScript("OnEnter")(button)
-Expect("...saying the line is missing", GameTooltip.text, "Spoken Quests doesn't have this line")
+Expect("...saying the line is missing", GameTooltip.text, "Spoken doesn't have this line")
 
 ---------------------------------------------------------------- the closing gossip frame
 -- CloseGossip fires GOSSIP_CLOSED, which refreshes the button, and on a real client the

@@ -42,7 +42,7 @@ fi
 # UI/Layout.lua is byte-identical across every Spoken addon and the packaged copy has to
 # stay that way; pipelines/quests/tests/test_package.py enforces it on the tree, and this
 # catches a staging copy that somehow diverged from it.
-for other in Spoken Spoken_Quests Spoken_Zones Spoken_Books; do
+for other in Spoken Spoken_Quests Spoken_Gossip Spoken_Zones Spoken_Books; do
   peer="$REPO/addons/$other/UI/Layout.lua"
   [ -f "$peer" ] || continue
   cmp -s "$SRC/UI/Layout.lua" "$peer" || {

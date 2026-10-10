@@ -31,6 +31,7 @@ HEADER = """\
 -- {lang} names of the quest givers the quest log's play buttons can name. The dialog asks
 -- the live unit for its name, in the client's language; the quest log has no unit and
 -- used the pack's English names. See pipelines/quests/tts_cli/giver_names.py.
+if not (VoiceOver and VoiceOver.SpokenDialogue) then return end
 setfenv(1, VoiceOver)
 
 if GetLocale() ~= "{lang}" then

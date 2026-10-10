@@ -1,3 +1,4 @@
+if not (VoiceOver and VoiceOver.SpokenDialogue) then return end
 setfenv(1, VoiceOver)
 
 -- Interface strings for the Spoken Quests options and quest-window buttons, and the
@@ -9,12 +10,12 @@ setfenv(1, VoiceOver)
 --
 --   Options.lua            General and sound-pack tabs of the options window
 --   UI/SettingsPanel.lua   the same settings on the interface-settings canvas
---   UI/DialogPlayButton.lua  Play/Stop button on quest and gossip windows
---   Compatibility.lua      Play/Stop button on the quest-log details panel
---   UI/ContributeButton.lua  Contribute button on quest and gossip windows
---   Contribute.lua         Contribute button tooltip
---   ReportButton.lua       the copy-link dialog for reporting a line
+--   UI/DialogPlayButton.lua  why the quest window did not read itself
+--   Compatibility.lua      Play/Stop, Contribute and Report on the quest-log details panel
 --   Player.lua             minimap menu entries and player settings link
+--
+-- What the gossip module shows too -- the windows' Listen and Contribute buttons, the Report
+-- action and its dialog -- is the dialogue core's, in Spoken's strings (DIALOGUE_*).
 --
 -- FORMAT ARGUMENTS ARE POSITIONAL (%1$s, %2$d), even where there is only one and
 -- the position is obvious. Word order is the thing a translator most often has to
@@ -32,15 +33,9 @@ L = {}
 L.OPT_GROUP_GENERAL = "General"
 L.OPT_GROUP_AUDIO = "Audio"
 L.OPT_AUTOPLAY = "Read Dialogue When It Opens"
-L.OPT_AUTOPLAY_TIP = "Quests, greetings and gossip. Off, nothing is read until you press Listen on the window or type /spq read."
-L.OPT_GREETING_FREQ = "NPC Greeting Playback Frequency"
-L.OPT_GREETING_FREQ_TIP = "Controls how often Spoken Quests will play NPC greeting dialog. The Once options are remembered for this character across NPC revisits and logins."
-L.OPT_GREETING_ALWAYS = "Always"
-L.OPT_GREETING_ONCE_QUEST = "Once per Quest NPC (per character)"
-L.OPT_GREETING_ONCE_NPC = "Once per NPC (per character)"
-L.OPT_GREETING_NEVER = "Never"
+L.OPT_AUTOPLAY_TIP = "Quest windows. Off, nothing is read until you press Listen on the window or type /spq read."
 L.OPT_SYNC_WINDOW = "Sync Dialog to Window State"
-L.OPT_SYNC_WINDOW_TIP = "Narration will automatically stop when the gossip/quest window is closed."
+L.OPT_SYNC_WINDOW_TIP = "Narration will automatically stop when the quest window is closed."
 L.OPT_SECTION_LANGUAGE = "Language"
 L.OPT_VOICE_LANGUAGE = "Voice Language"
 L.OPT_VOICE_LANGUAGE_TIP = "Which language the voices speak. Auto uses your game's language. A language is only heard if its voice pack is installed."
@@ -50,8 +45,6 @@ L.OPT_FALLBACK_LANGUAGE_TIP = "What to play when the voice pack in your language
 L.OPT_FALLBACK_NONE = "Stay Silent"
 L.OPT_FOLLOWUP = "Experimental: Enable Quest Follow-ups"
 L.OPT_FOLLOWUP_TIP = "Some NPCs speak in chat after you accept or turn in a quest. Only lines your own quest set off are read, never another player's."
-L.OPT_OG_THRALL = "Original Thrall Speech"
-L.OPT_OG_THRALL_TIP = "Plays the original AI VoiceOver recording of Thrall's \"All members of the Horde are equal in my eyes\" speech instead of this addon's."
 L.OPT_GROUP_DEBUG = "Debugging Tools"
 L.OPT_DEBUG = "Enable Debug Messages"
 L.OPT_DEBUG_TIP = "Enables printing of some \"useful\" debug messages to the chat window."
@@ -119,29 +112,15 @@ L.OPT_CMD_OPTIONS_DESC = "Opens or closes the options window"
 -- Interface-settings canvas
 --------------------------------------------------------------------------------
 
-L.OPT_PANEL_NOTE = "Voices for quest givers and the NPCs you talk to. Volume, language, the window and subtitles are on the Spoken page, since they cover every module."
+L.OPT_PANEL_NOTE = "Voices for quest givers. Volume, language, the window and subtitles are on the Spoken page, since they cover every module."
 L.OPT_SECTION_DIALOGUE = "When to Read"
 L.OPT_PANEL_AUTOPLAY = "Read Automatically"
-L.OPT_PANEL_AUTOPLAY_TIP = "Reads quests and conversations as soon as their window opens. Off, nothing starts by itself: press Listen on the window, or type /spq read."
-L.OPT_PANEL_GREETINGS = "NPC Greetings"
-L.OPT_PANEL_GREETINGS_TIP = "How often to read what an NPC says when you start talking to them. \"Once\" is remembered for this character, even after you log out."
-L.OPT_GREETING_LABEL_ALWAYS = "Every Time"
-L.OPT_GREETING_LABEL_ONCE_QUEST = "Once per NPC with Quests"
-L.OPT_GREETING_LABEL_ONCE_NPC = "Once per NPC"
-L.OPT_GREETING_LABEL_NEVER = "Never"
+L.OPT_PANEL_AUTOPLAY_TIP = "Reads quests as soon as their window opens. Off, nothing starts by itself: press Listen on the window, or type /spq read."
 L.OPT_PANEL_STOP_ON_CLOSE = "Stop When Window Closes"
-L.OPT_PANEL_STOP_ON_CLOSE_TIP = "Stops the voice as soon as you close the quest or conversation window."
-L.OPT_PANEL_GAME_GREETING_FIRST = "Game Greeting First"
-L.OPT_PANEL_GAME_GREETING_FIRST_TIP = "Plays the NPC's own greeting from the game first, then Spoken reads its greeting or quest. Off, Silence NPC Voices cuts the game's greeting where a voice pack has one. To tell the greeting from other sounds, Spoken keeps the game's Dialog volume below 100% and 1% away from the other volume sliders."
-L.QUEUE_HELD_GREETING = "Waiting for the NPC to finish speaking."
-L.GREETING_DIALOG_APART = "Spoken: Dialog volume set to %d%%, apart from the other volume sliders, so Game Greeting First can tell when an NPC has finished speaking."
+L.OPT_PANEL_STOP_ON_CLOSE_TIP = "Stops the voice as soon as you close the quest window."
 L.OPT_PANEL_FOLLOWUP = "Follow-up Lines"
 L.OPT_PANEL_FOLLOWUP_TIP = L.OPT_FOLLOWUP_TIP
 L.OPT_SECTION_PACKS = "Voice Packs"
-L.OPT_SECTION_HISTORY = "Reading History"
-L.OPT_FORGET_GREETINGS = "Forget Greetings Heard"
-L.OPT_FORGET_GREETINGS_TIP = "Clears this character's list of NPCs whose greeting it has heard, so each greets you again. Only matters while NPC Greetings is set to read once."
-L.OPT_FORGET_GREETINGS_DONE = "This character's list of greetings heard is cleared."
 L.OPT_NO_PACK = "|cffff8080No voice pack installed.|r Nothing is read aloud without one."
 L.OPT_COPY_ADDRESS_FMT = "Shows the address to copy into your web browser: %1$s"
 L.OPT_SECTION_TROUBLE = "Fix a Problem"
@@ -170,21 +149,10 @@ L.OPT_DOWNLOAD = "Download"
 
 L.OPT_PLAY = "Play"
 -- The quest window's worded button, where a word has to say what it does.
-L.OPT_LISTEN = "Listen"
 L.OPT_PLAY_TIP = "Hear this quest read aloud."
 -- The window's Stop removes the line; the quest log's Stop (OPT_STOP_TIP) keeps it for Replay.
-L.OPT_DIALOG_STOP_TIP = "Stop reading"
-L.OPT_READ_TIP = "Read this aloud"
-L.OPT_GREETING = "Greeting"
 L.OPT_AUTOPLAY_OFF_TIP = "Read Automatically is turned off on the Quests page of the Spoken settings."
 L.OPT_CONTRIBUTE = "Contribute"
--- Beside the Report icon on DialogueUI's window, for a line no pack has.
-L.OPT_CONTRIBUTE_NO_VO = "No voice-over playing? Contribute!"
-L.OPT_REPORT = "Report"
-L.OPT_CONTRIBUTE_TIP_LINE = "Spoken Quests doesn't have this line"
-L.OPT_CONTRIBUTE_TIP_QUEST = "Spoken Quests doesn't have this quest"
-L.OPT_CONTRIBUTE_TIP_SHARE = "Contribute your data by sharing data from your client"
-L.OPT_REPORT_COPY = "Spoken Quests|n|nCopy this address and open it in your web browser."
 
 --------------------------------------------------------------------------------
 -- Minimap menu and player settings link
@@ -196,7 +164,7 @@ L.OPT_MINIMAP_SETTINGS = "Quests Settings"
 L.OPT_PAGE_TITLE = "Quests"
 
 L.OPT_PART_SWITCH = "Enable Module"
-L.OPT_PART_SWITCH_TIP = "Turns quest and conversation voices on or off. Off, the module stays installed but reads nothing. The same switch is on the Spoken page."
+L.OPT_PART_SWITCH_TIP = "Turns quest voices on or off. Off, the module stays installed but reads nothing. The same switch is on the Spoken page."
 L.REASON_PART_OFF = "Turn on Enable Module at the top of this page to use this."
 L.REASON_AUTOPLAY = "Turn on Read Automatically to use this."
 L.OPT_RESET_PROFILE_CONFIRM = "Reset every Quests setting in the profile in use to its default?"
@@ -225,7 +193,3 @@ L.OPT_DUI_UNKNOWN = "This version of DialogueUI is not recognised."
 L.REASON_DUI_CAPTIONS = "Turn on Mark the Words Being Read to use this."
 
 L.OPT_SECTION_START_OVER = "Start Over"
-L.OPT_REPORT_LINE_TIP = "Get a link to report a wrong reading or a mispronounced name."
-L.OPT_REPORT_NO_LINE = "This client cannot tell which line that was, so there is no address to report."
-L.OPT_STOP_GOSSIP = "Stop Gossip"
-L.OPT_NEXT_GOSSIP = "Next Gossip"

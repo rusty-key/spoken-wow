@@ -1,6 +1,7 @@
 -- Game Greeting First: the NPC's own greeting is not cut as its window opens, and what Spoken
 -- reads off that window waits until the greeting has been spoken. The greeting is found among the
 -- game's sounds by its volume (Master x Dialog); where it cannot be, the line waits 1.5 seconds.
+-- A setting of Spoken's (GreetingFirst.lua), for every source that reads NPCs; quests here.
 -- Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
@@ -54,7 +55,7 @@ _G.SpokenEnv.Addon.db.profile.Audio.AutoToggleDialog = true
 -- The other sliders stay where they are set: lowered under a line, they would not be the levels
 -- Dialog is compared with.
 _G.SpokenEnv.Addon.db.profile.Audio.LowerOthers.Enabled = false
-VO.Addon.db.profile.Audio.GreetingFirst = true
+_G.SpokenEnv.Addon.db.profile.Audio.GreetingFirst = true
 world.npcName, world.npcGUID = "Skorn Whitecloud", "Creature-0-0-0-0-3052-0"
 world.title, world.questText = "Test Quest", "Go."
 for cvar, value in pairs({ Sound_MasterVolume = "1", Sound_DialogVolume = "0.8", Sound_SFXVolume = "1",
@@ -90,7 +91,7 @@ stub.Advance(0.8)
 local clip = Spoken:GetCurrent()
 Expect("the quest's line is queued", clip and clip.fileName, "101-accept")
 Expect("...and waits while the NPC speaks", Played(), false)
-Expect("...saying why", clip and Spoken:GetHeldReason(clip), VO.L.QUEUE_HELD_GREETING)
+Expect("...saying why", clip and Spoken:GetHeldReason(clip), _G.SpokenEnv.L.QUEUE_HELD_GREETING)
 stub.Advance(0.5)
 Expect("it starts once the greeting is over", Played(), true)
 Expect("...and fades the NPC out rather than cutting it", GetCVar("Sound_EnableDialog"), "1")
@@ -128,14 +129,14 @@ stub.Advance(0.5)
 Expect("...then starts", Played(), true)
 Close()
 world.cvars.Sound_DialogVolume = "1"
-VO.GreetingFirst:SetDialogApart()
+_G.SpokenEnv.GreetingFirst:SetDialogApart()
 Expect("...and does so as the setting is turned on too", world.cvars.Sound_DialogVolume, "0.99")
 -- 100% is Master's own level: a sound on the Master channel plays at Master x 1, as the voice would.
 world.cvars.Sound_DialogVolume, world.cvars.Sound_SFXVolume = "1", "0.7"
-VO.GreetingFirst:SetDialogApart()
+_G.SpokenEnv.GreetingFirst:SetDialogApart()
 Expect("Dialog at 100% is moved to 99% though no other slider is there", world.cvars.Sound_DialogVolume, "0.99")
 world.cvars.Sound_DialogVolume = "0.8"
-VO.GreetingFirst:SetDialogApart()
+_G.SpokenEnv.GreetingFirst:SetDialogApart()
 Expect("...and at 80%, apart from them all, it is left alone", world.cvars.Sound_DialogVolume, "0.8")
 world.cvars.Sound_SFXVolume = "1"
 world.cvars.Sound_DialogVolume = "0.8"
@@ -149,7 +150,7 @@ Close()
 world.cvars.Sound_EnableDialog = "1"
 
 -- Off, the quest window silences the NPC as it opens, and the line cuts the NPC.
-VO.Addon.db.profile.Audio.GreetingFirst = false
+_G.SpokenEnv.Addon.db.profile.Audio.GreetingFirst = false
 OpenQuest(1.2)
 Expect("turned off, the quest window silences the NPC as it opens", GetCVar("Sound_EnableDialog"), "0")
 Close()

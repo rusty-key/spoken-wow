@@ -8,4 +8,7 @@
     <Include file="UI\ContributeBox.lua"/>
     <Include file="Contribute.lua"/>
     <Include file="Gather.lua"/>
+    <!-- The dialogue core's, for the quest and gossip windows (Dialogue/Dialogue.xml). -->
+    <Include file="Dialogue\Contribute.lua"/>
+    <Include file="Dialogue\ContributeButton.lua"/>
 </Ui>

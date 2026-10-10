@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds Spoken's zip for Blizzard's clients: Spoken itself and its modules, Quests, Books
-# and Zones, in one download.
+# Builds Spoken's zip for Blizzard's clients: Spoken itself and its modules, Quests, Gossip,
+# Books and Zones, in one download.
 #
 #   ./scripts/spoken/package.sh                 # dist/Spoken-<version>.zip
 #   ALLOW_DIRTY=1 ./scripts/spoken/package.sh   # build from an uncommitted tree
@@ -10,9 +10,10 @@
 # folder. The sound packs stay separate downloads: 280-452 MB each, one per language.
 #
 # There are no legacy-client zips of Spoken: those clients have no addon manager, so the quests
-# addon's 1.12/2.4.3/3.3.5 zips carry Spoken inside them (scripts/quests/package.sh).
+# addon's 1.12/2.4.3/3.3.5 zips carry Spoken and the gossip module inside them
+# (scripts/quests/package.sh).
 #
-# The modules' folders are Spoken_Quests, Spoken_Books and Spoken_Zones. Their old names,
+# The modules' folders are Spoken_Quests, Spoken_Gossip, Spoken_Books and Spoken_Zones. Their old names,
 # SpokenQuests and the rest, belong to the retired CurseForge projects, and this zip carries no
 # tombstone under them: two projects shipping one folder is what the rename exists to stop. The
 # retired projects' last releases carry those (scripts/spoken/package-retired.sh).
@@ -96,6 +97,7 @@ done
 module_packager() {
   case "$1" in
     Spoken_Quests) echo "$REPO/scripts/quests/package.sh" ;;
+    Spoken_Gossip) echo "$REPO/scripts/gossip/package.sh" ;;
     Spoken_Books) echo "$REPO/scripts/books/package.sh" ;;
     Spoken_Zones) echo "$REPO/scripts/zones/package.sh" ;;
   esac
@@ -103,7 +105,7 @@ module_packager() {
 modules_dist="$(mktemp -d)"
 trap 'rm -rf "$staging" "$modules_dist"' EXIT
 folders=("$NAME" "$STORE" "$TOMBSTONE")
-for module in Spoken_Quests Spoken_Books Spoken_Zones; do
+for module in Spoken_Quests Spoken_Gossip Spoken_Books Spoken_Zones; do
   module_version="$(sed -n 's/^## Version:[[:space:]]*//p' "$REPO/addons/$module/$module.toc" | head -1 | tr -d '
 ')"
   DIST="$modules_dist" "$(module_packager "$module")" >/dev/null

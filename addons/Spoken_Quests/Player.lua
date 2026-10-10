@@ -1,3 +1,4 @@
+if not (VoiceOver and VoiceOver.SpokenDialogue) then return end
 setfenv(1, VoiceOver)
 
 -- This addon speaking through the Spoken player. The queue, the frame, the minimap
@@ -10,14 +11,13 @@ setfenv(1, VoiceOver)
 Player = { source = nil }
 
 local TEXTURES = format([[Interface\AddOns\%s\Textures\]], AddonFolder)
-local BOOK = TEXTURES .. "Book"
+-- The English pack of what NPCs say, which is the gossip module's (Spoken_Gossip).
+local GOSSIP_PACK = "SpokenQuestsAudioGossip"
 
 local BULLETS = {
     [Enums.SoundEvent.QuestAccept]   = "quest-accept",
     [Enums.SoundEvent.QuestProgress] = "quest-progress",
     [Enums.SoundEvent.QuestComplete] = "quest-complete",
-    [Enums.SoundEvent.QuestGreeting] = "gossip",
-    [Enums.SoundEvent.Gossip]        = "gossip",
     [Enums.SoundEvent.QuestFollowup] = "quest-complete",
 }
 
@@ -57,141 +57,17 @@ function Player:Current()
     return nil
 end
 
-local function GossipClips()
-    local list = {}
-    for _, clip in ipairs(Player:Queued()) do
-        if Enums.SoundEvent:IsGossipEvent(clip.event) then
-            table.insert(list, clip)
-        end
-    end
-    return list
-end
-
 --------------------------------------------------------------------------------
 -- Presentation
 --------------------------------------------------------------------------------
 
--- The creature to draw, or nil for the book. The book for Items, GameObjects, players,
--- a missing GUID, and 2.4.3, which cannot show an arbitrary creature -- what
--- ShouldShowBookFor used to decide inside the frame, decided here instead and handed
--- over as a fallback.
-local function CreatureFor(soundData)
-    if soundData.unitIsObjectOrItem or Version.IsLegacyBurningCrusade then
-        return nil
-    end
-    local guid = soundData.unitGUID
-    if guid and Utils.GetGUIDType and Utils.GetIDFromGUID then
-        return Utils:GetCreatureIDFromGUID(guid)
-    end
-    -- 1.12 has no GUIDs; the pooled model shows the "npc" unit and this is only what
-    -- tells one clip's portrait from the next.
-    if Version.IsLegacyVanilla then
-        return soundData.questID or soundData.name
-    end
-    return nil
-end
+-- The speaker's portrait and the Report action are the dialogue core's (Present.lua).
 
--- A line from something faceless shows the item that starts the quest, else a posted notice.
-local NOTICE = [[Interface\Icons\INV_Misc_Note_01]]
-local ICON_CROP = { 0.08, 0.92, 0.08, 0.92 }
-local function Faceless(soundData)
-    local icon, crop
-    if Spoken and Spoken.QuestItemIcon then icon, crop = Spoken:QuestItemIcon(soundData.questID) end
-    return { kind = "texture", texture = icon or NOTICE, texCoord = crop or ICON_CROP }
-end
-
-local function PortraitFor(soundData)
-    if soundData.unitIsObjectOrItem then return Faceless(soundData) end
-    return {
-        kind = "model",
-        creatureID = CreatureFor(soundData),
-        animation = 60,
-        fallback = { kind = "texture", texture = BOOK },
-    }
-end
-
--- The Stop Gossip control, anchored to the header as it always was. The one place the
--- domain-agnostic frame is asked to host something quest-shaped.
-local STOP_GOSSIP = {
-    id = "stopGossip",
-    anchor = "header",
-    visible = function() return getn(GossipClips()) > 0 end,
-    create = function(parent)
-        local button = CreateFrame("Button", nil, parent)
-        button:SetSize(32, 32)
-        function button:SetGossipCount(gossipCount)
-            local texture = gossipCount > 1 and (TEXTURES .. "StopGossipMore") or (TEXTURES .. "StopGossip")
-            self:SetShown(gossipCount > 0)
-            self:SetHighlightTexture(texture, "ADD")
-            self:SetNormalTexture(texture)
-            self:SetPushedTexture(texture)
-            self.tooltip = gossipCount > 1 and L.OPT_NEXT_GOSSIP or L.OPT_STOP_GOSSIP
-            if GameTooltip:GetOwner() == self then
-                GameTooltip:SetText(self.tooltip)
-                GameTooltip:Show()
-            end
-        end
-        button:SetGossipCount(0)
-        button:GetHighlightTexture():SetAlpha(0.5)
-        button:GetPushedTexture():SetAlpha(0.5)
-        button:HookScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_NONE")
-            GameTooltip:SetPoint("LEFT", self, "RIGHT")
-            GameTooltip:SetText(self.tooltip)
-            GameTooltip:Show()
-        end)
-        button:HookScript("OnLeave", GameTooltip_Hide)
-        button:HookScript("OnClick", function()
-            PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
-            local head = Player:Current()
-            if head and Enums.SoundEvent:IsGossipEvent(head.event) then
-                Player:Remove(head)
-            else
-                for _, clip in ipairs(GossipClips()) do
-                    Player:Remove(clip)
-                end
-            end
-        end)
-        return button
-    end,
-    onClipChanged = function(clip, button)
-        button:SetGossipCount(getn(GossipClips()))
-    end,
-}
-
-local REPORT = {
-    id = "report",
-    -- An icon in the corner rather than a word beside the line: the label never changed,
-    -- and the strip it used to sit in pushed the queue up to make room for it. The bug
-    -- icon postdates the three legacy clients, where the texture is missing and
-    -- the button would be a blank square; `text` is what they draw instead.
-    icon = [[Interface\HelpFrame\HelpIcon-Bug]],
-    label = L.OPT_REPORT_PROBLEM,
-    text = "R",
-    anchor = "topright",
-    tooltip = function(tooltip)
-        tooltip:SetText(L.OPT_REPORT_PROBLEM)
-        tooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
-    end,
-    onClick = function(clip)
-        -- The line itself first: by the time Report is clicked the quest window may be shut.
-        local target = ReportButton:TargetForClip(clip) or ReportButton:CurrentTarget()
-        if target then
-            -- The language the clip was spoken in, which PrepareSound recorded: a fallback line
-            -- is an English take even under a German selection, and its report is about that.
-            ReportButton:ShowLink(target, clip.language)
-        else
-            StaticPopup_Show("VOICEOVER_ERROR", L.OPT_REPORT_NO_LINE)
-        end
-    end,
-}
-
-local ACTIONS = { REPORT, STOP_GOSSIP }
+local ACTIONS = { Present.REPORT }
 
 --- Turn a prepared SoundData into a clip, in place.
 function Player:Prepare(soundData)
     local event = soundData.event
-    local gossip = Enums.SoundEvent:IsGossipEvent(event)
     -- Log replay clips have no dialog snapshot. Resolve only their acceptance text;
     -- the log's description must never stand in for a reward or progress speech.
     if event == Enums.SoundEvent.QuestAccept and (not soundData.text or soundData.text == "")
@@ -201,16 +77,17 @@ function Player:Prepare(soundData)
     end
     soundData.key = soundData.fileName
     soundData.path = soundData.filePath
-    soundData.priority = gossip and "low" or "normal"
-    -- Cut, so none of the NPC's greeting is heard under the line. With Game Greeting First the NPC
-    -- has had its say, so a greeting the wait fell short of fades instead.
-    soundData.cutsGameDialogue = not (GreetingFirst and GreetingFirst:IsOn())
+    -- Ahead of gossip, which the gossip module queues at "low": a greeting yields to the quest.
+    soundData.priority = "normal"
+    -- Read while the NPC's window is open: its voice is cut as the line starts, not faded, so
+    -- none of its greeting is heard under the line (faded instead under Game Greeting First,
+    -- SoundQueue.lua).
+    soundData.cutsGameDialogue = true
     soundData.present = {
         header = soundData.name or "",
-        label = soundData.title or (event == Enums.SoundEvent.QuestGreeting and L.OPT_GREETING or (gossip and L.OPT_PACK_GOSSIP or "")),
+        label = soundData.title or "",
         bullet = BULLETS[event],
-        tint = gossip and { 1, 1, 1 } or nil,
-        portrait = PortraitFor(soundData),
+        portrait = Present:Portrait(soundData),
         actions = ACTIONS,
     }
     return soundData
@@ -403,12 +280,18 @@ function Player:Setup()
         interClipGap = 0.55,
         -- Play-and-stop the file before admitting it, as the queue always did here.
         testBeforeQueue = true,
+        -- Read off an NPC's window: under Game Greeting First its lines wait for the NPC's own
+        -- greeting (Spoken's GreetingFirst.lua).
+        waitsForGreeting = true,
         -- Its settings follow the profile chosen in Spoken's own settings.
         profiles = function() return Addon.db end,
-        -- What Spoken's settings show on this part's card: which voice packs are installed.
+        -- What Spoken's settings show on this part's card: which voice packs are installed. Not
+        -- the Gossip pack, which holds no quest: it is on the gossip module's card.
         packs = function()
             local names = {}
-            for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
+            for _, module in DataModules:GetPresentModules() do
+                if module.AddonName ~= GOSSIP_PACK then table.insert(names, module.Title) end
+            end
             return names
         end,
     })
@@ -427,16 +310,12 @@ function Player:Setup()
         Debug:Record("playing", format("Playing %s", clip.path or clip.fileName or "voiceover"))
     end)
 
-    -- Switchable from the player's settings, named there by this addon. The zones addon
-    -- declares the same id, so one setting covers whichever is speaking.
-    if Spoken.RegisterOptionalAction then
-        Spoken:RegisterOptionalAction("report", L.OPT_REPORT)
-    end
+    -- The Report action and its dialogs, shared with the gossip module.
+    Present:Setup()
 
     Spoken:RegisterBullet("quest-accept",   TEXTURES .. "SoundQueueBulletAccept", 14)
     Spoken:RegisterBullet("quest-progress", TEXTURES .. "SoundQueueBulletProgress", 14)
     Spoken:RegisterBullet("quest-complete", TEXTURES .. "SoundQueueBulletComplete", 14)
-    Spoken:RegisterBullet("gossip",         TEXTURES .. "SoundQueueBulletGossip", 14)
 
     -- Switched off or on in Spoken's settings: the buttons on the log and the dialog follow.
     if Spoken.RegisterCallback then

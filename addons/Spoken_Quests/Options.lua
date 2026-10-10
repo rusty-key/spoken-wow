@@ -1,3 +1,4 @@
+if not (VoiceOver and VoiceOver.SpokenDialogue) then return end
 setfenv(1, VoiceOver)
 Options = { }
 
@@ -49,28 +50,6 @@ local GeneralTab =
                     desc = L.OPT_AUTOPLAY_TIP,
                     get = function(info) return Addon:IsAutoplayOn() end,
                     set = function(info, value) Addon:SetAutoplay(value) end,
-                },
-                LineBreak1 = { type = "description", name = "", order = 2 },
-                GossipFrequency = {
-                    type = "select",
-                    width = 1.1,
-                    order = 3,
-                    -- It decides which greetings autoplay reads, so with autoplay off it has
-                    -- nothing to decide.
-                    disabled = function(info) return not Addon:IsAutoplayOn() end,
-                    name = L.OPT_GREETING_FREQ,
-                    desc = L.OPT_GREETING_FREQ_TIP,
-                    values = {
-                        [Enums.GossipFrequency.Always] = L.OPT_GREETING_ALWAYS,
-                        [Enums.GossipFrequency.OncePerQuestNPC] = L.OPT_GREETING_ONCE_QUEST,
-                        [Enums.GossipFrequency.OncePerNPC] = L.OPT_GREETING_ONCE_NPC,
-                        [Enums.GossipFrequency.Never] = L.OPT_GREETING_NEVER,
-                    },
-                    get = function(info) return Addon.db.profile.Audio.GossipFrequency end,
-                    set = function(info, value)
-                        Addon.db.profile.Audio.GossipFrequency = value
-                        Player:RefreshConfig()
-                    end,
                 },
                 LineBreak2 = { type = "description", name = "", order = 5 },
                 ToggleSyncToWindowState = {
@@ -126,17 +105,6 @@ local GeneralTab =
                     get = function(info) return Addon.db.profile.Audio.FallbackLanguage end,
                     set = function(info, value)
                         Addon.db.profile.Audio.FallbackLanguage = value
-                    end,
-                },
-                OGThrall = {
-                    type = "toggle",
-                    order = 8,
-                    width = 2,
-                    name = L.OPT_OG_THRALL,
-                    desc = L.OPT_OG_THRALL_TIP,
-                    get = function(info) return Addon.db.profile.Audio.OGThrall end,
-                    set = function(info, value)
-                        Addon.db.profile.Audio.OGThrall = value
                     end,
                 },
             }
@@ -244,7 +212,7 @@ local SlashCommands = {
             dropdownHidden = true,
             func = function(info)
                 if not Addon:ReadVisibleQuest("/spq read") then
-                    print("|cFFFF4040Spoken Quests: no visible quest detail, progress, reward, greeting, or gossip panel was found.|r")
+                    print("|cFFFF4040Spoken Quests: no visible quest detail, progress or reward panel was found.|r")
                 end
             end
         },
@@ -434,8 +402,6 @@ function Options:PrintDiagnostics()
             print(format("Playback: channel=%s, paused=%s, queue=%d, player=%s", channel,
                 tostring(Spoken and Spoken:IsPaused()), Spoken and Spoken:GetQueueSize() or 0,
                 Spoken and Spoken.ADDON_VERSION or "missing"))
-            print("NPC greetings: " ..
-                (Enums.GossipFrequency:GetName(Addon.db.profile.Audio.GossipFrequency) or "unknown"))
             print(format("Sound CVars: all=%s, master=%s, SFX=%s/%s, dialog=%s/%s",
                 tostring(GetCVar("Sound_EnableAllSound")), tostring(GetCVar("Sound_MasterVolume")),
                 tostring(GetCVar("Sound_EnableSFX")), tostring(GetCVar("Sound_SFXVolume")),
@@ -470,10 +436,10 @@ function Options:PrintDiagnostics()
             if Addon.optionsInitializationError then
                 print("Options startup warning: " .. Addon.optionsInitializationError)
             end
-            if Addon.dataModulesPending then
+            if DataModules:IsPending() then
                 print("Data startup: loading is deferred until one second after entering the world")
-            elseif Addon.dataModulesDeferredError then
-                print("Data startup warning: " .. Addon.dataModulesDeferredError)
+            elseif DataModules.loadError then
+                print("Data startup warning: " .. DataModules.loadError)
             end
             if Options.initializationErrors then
                 for _, warning in ipairs(Options.initializationErrors) do
@@ -484,6 +450,13 @@ end
 
 function Options:Initialize()
     self.initializationErrors = {}
+    -- The packs the dialogue core found, whichever module started it.
+    for order, module in DataModules:GetPresentModules() do
+        pcall(self.AddDataModule, self, module, order)
+    end
+    for _, offered in DataModules:GetOfferedModules() do
+        pcall(self.AddAvailableDataModule, self, offered.module, offered.order, offered.update)
+    end
     local function RunOptionalStep(name, callback)
         local succeeded, result = pcall(callback)
         if succeeded then

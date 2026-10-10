@@ -120,7 +120,7 @@ upload time, so it goes after the things it depends on.
 The slugs are what the pages and the addon link to, so they are read off the live projects
 rather than guessed. They were all changed when the projects were renamed; the old ones redirect, but a redirect is not something to
 depend on, and CurseForge resolves a `relations` slug at upload time. `scripts/quests/release.sh`
-carries the same slugs in `target_dependencies()`, `Spoken_Quests/DataModules.lua` the same URLs,
+carries the same slugs in `target_dependencies()`, `Spoken/Dialogue/DataModules.lua` the same URLs,
 and `.github/workflows/release-addons.yaml` the same links, so a slug that changes has to change
 in all four. The project names are the addons' `## Title` too - `tts_cli/factions.py:pack_title` -
 so a player sees the same name in the AddOns list as on the site.

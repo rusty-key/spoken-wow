@@ -75,7 +75,7 @@ gvn.add_argument("--out-dir", required=True, help="e.g. ../../addons/Spoken_Ques
 gst = subparsers.add_parser(
     "export-gossip-text",
     help="Every client locale's gossip text and the moments' aliases -> the addon's Gossip/.")
-gst.add_argument("--out-dir", required=True, help="e.g. ../../addons/Spoken_Quests/Gossip")
+gst.add_argument("--out-dir", required=True, help="e.g. ../../addons/Spoken_Gossip/Gossip")
 gst.add_argument("--aliases", default=DEFAULT_ALIASES_PATH,
                  help="Where the pack build reads the aliases from")
 

@@ -153,8 +153,7 @@ local ShowLogMenu = Spoken.ShowLogMenu
 Spoken.ShowLogMenu = function(_, anchor) menuFor = anchor end
 -- The stub loads the files the TOC lists for the oldest client; this one is loaded by hand, as
 -- quests_contribute_test does.
-local QUESTS = here .. "/../../addons/Spoken_Quests/"
-dofile(QUESTS .. "UI/ContributeButton.lua")
+dofile(here .. "/../../addons/Spoken/Dialogue/ContributeButton.lua")
 local button = VO.ContributeButton:Setup()
 Expect("the quest window's Contribute is hooked", button and button.offersLogMenu, true)
 local function RightClick(b, mouse)

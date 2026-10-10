@@ -1,3 +1,4 @@
+if not (VoiceOver and VoiceOver.SpokenDialogue) then return end
 setfenv(1, VoiceOver)
 
 -- The addon's face in the interface settings: one canvas panel of sections, laid out by
@@ -19,20 +20,6 @@ local INDENT = 25
 -- Where a problem that is not about one line is reported: the site the addons share.
 local REPORT_URL = "https://spoken.rusty.one"
 local panel, category
-
--- The enum is stored as a number and read as a name. Ordered, because a cycle button
--- steps through them in the order the list is written.
-local GOSSIP_ORDER = { "Always", "OncePerQuestNPC", "OncePerNPC", "Never" }
-local GOSSIP_LABELS = {
-    Always = L.OPT_GREETING_LABEL_ALWAYS,
-    OncePerQuestNPC = L.OPT_GREETING_LABEL_ONCE_QUEST,
-    OncePerNPC = L.OPT_GREETING_LABEL_ONCE_NPC,
-    Never = L.OPT_GREETING_LABEL_NEVER,
-}
-
-local function GossipName()
-    return Enums.GossipFrequency:GetName(Addon.db.profile.Audio.GossipFrequency) or "Always"
-end
 
 function SettingsPanel:Setup()
     if panel or not (Settings and Settings.RegisterCanvasLayoutCategory) then
@@ -82,32 +69,10 @@ function SettingsPanel:Setup()
         function() return Addon:IsAutoplayOn() end,
         function(value) Addon:SetAutoplay(value) end,
         refresh)
-    -- Indented under autoplay and greyed out with it off: the frequency only decides which
-    -- greetings autoplay reads, and a live control that does nothing reads as broken.
-    layout:Indent()
-    local greetings = layout:Dropdown(L.OPT_PANEL_GREETINGS, L.OPT_PANEL_GREETINGS_TIP,
-        GOSSIP_ORDER,
-        GossipName,
-        function(name)
-            Addon.db.profile.Audio.GossipFrequency = Enums.GossipFrequency[name]
-        end,
-        nil,
-        function(name) return GOSSIP_LABELS[name] or name end)
-    layout:Outdent()
-    layout:Requires(greetings, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE,
         L.OPT_PANEL_STOP_ON_CLOSE_TIP,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end)
-    -- Only what autoplay reads waits for the greeting, so with it off this does nothing.
-    local greetingFirst = layout:Checkbox(L.OPT_PANEL_GAME_GREETING_FIRST,
-        L.OPT_PANEL_GAME_GREETING_FIRST_TIP,
-        function() return audio().GreetingFirst end,
-        function(value)
-            audio().GreetingFirst = value
-            if value then GreetingFirst:SetDialogApart() end
-        end)
-    layout:Requires(greetingFirst, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     -- The two rarely wanted, apart from the everyday choices above.
     layout:Section(L.OPT_SECTION_EXTRAS)
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP,
@@ -117,10 +82,6 @@ function SettingsPanel:Setup()
     -- Follow-up lines are queued only by autoplay (Followup.lua), so with it off this one
     -- does nothing either: greyed, and saying why.
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
-    layout:Checkbox(L.OPT_OG_THRALL,
-        L.OPT_OG_THRALL_TIP,
-        function() return audio().OGThrall end,
-        function(value) audio().OGThrall = value end)
 
     -- Only with DialogueUI installed: on Spoken's DialogueUI page, or here with a Spoken too old
     -- to have that page.
@@ -162,19 +123,13 @@ function SettingsPanel:Setup()
             function(code) return code == "none" and L.OPT_FALLBACK_NONE or Language:GetNativeName(code) end)
     end
 
-    -- What this character has heard, as on the other pages: forgotten, every NPC greets again.
-    layout:Section(L.OPT_SECTION_HISTORY)
-    layout:Button(L.OPT_FORGET_GREETINGS, 200, function()
-        local char = Addon.db and Addon.db.char
-        if char then char.hasSeenGossipForNPC = {} end
-        print("|cFF00CCFFSpoken Quests:|r " .. L.OPT_FORGET_GREETINGS_DONE)
-    end, L.OPT_FORGET_GREETINGS_TIP)
-
     -- Every pack, a row each, installed or not: its version where it is installed, and where
     -- it is not, a button with the address to get it -- the game cannot open a link, so the
     -- button hands over one to copy. All holds the other four, which then say so.
     layout:Section(L.OPT_SECTION_PACKS)
     local ALL = "SpokenQuestsAudioAll"
+    -- What NPCs say is the gossip module's, its English pack on that module's page.
+    local GOSSIP_PACK = "SpokenQuestsAudioGossip"
     local function Present(name)
         for _, module in DataModules:GetPresentModules() do
             if module.AddonName == name then return module end
@@ -185,7 +140,7 @@ function SettingsPanel:Setup()
     if present == 0 then
         layout:Note(L.OPT_NO_PACK, nil, 16)
     end
-    local listed = {}
+    local listed = { [GOSSIP_PACK] = true }
     -- The packs to get are the voice language's; any pack installed is listed too. Not the
     -- fallback's to get: on an esMX client English's five rows buried the one that mattered. But
     -- a voice language with no pack of its own (zhCN, zhTW) is heard in the fallback's, so those
@@ -220,7 +175,9 @@ function SettingsPanel:Setup()
     end
     -- English's, split by faction, where English is the voice or the pack is installed.
     for _, module in DataModules:GetAvailableModules() do
-        layout:ShowWhen(PackRow(module), function() return Wanted(Language.BASE, module.AddonName) end)
+        if module.AddonName ~= GOSSIP_PACK then
+            layout:ShowWhen(PackRow(module), function() return Wanted(Language.BASE, module.AddonName) end)
+        end
     end
     -- A pack the list does not know, as another language's, after the ones it does.
     for _, module in DataModules:GetPresentModules() do

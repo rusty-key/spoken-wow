@@ -33,6 +33,10 @@
 # they agree now that the rename has shipped, and stay separate because the staging copy
 # is what lets the zips be assembled from more than one tree.
 #
+# THE LEGACY ZIPS ALSO CARRY THE GOSSIP MODULE, Spoken_Gossip, pruned for the client as the player
+# is. It read gossip as part of this addon until it became a module of its own, and on these
+# clients this zip is the one download: quests and gossip, as before the split.
+#
 # THE LEGACY ZIPS ALSO CARRY TWO TOMBSTONES. The folder was SpokenQuests until 3.0.0-beta.3
 # (addons/SpokenQuests/SpokenQuests.toc says why it moved), and Spoken was SpokenPlayer before
 # 3.0.0. Unzipping over an older install adds the new folders without removing the old ones, so
@@ -45,6 +49,8 @@ NAME="${NAME:-Spoken_Quests}"
 SRC="$REPO/$ADDON"
 PLAYER_SRC="$REPO/addons/Spoken"
 PLAYER="Spoken"
+GOSSIP_SRC="$REPO/addons/Spoken_Gossip"
+GOSSIP="Spoken_Gossip"
 # The tombstones the legacy zips carry beside the module and the player they bundle: the old
 # player's folder, and this module's own before the rename.
 TOMBSTONE="SpokenPlayer"
@@ -177,6 +183,11 @@ for pair in "${CLIENTS[@]}"; do
   # packaging tests assert the zip's copy is byte-identical to that tree.
   stage_tree "$staging/$client" "$PLAYER_SRC" "$PLAYER"
   prune_for_client "$staging/$client/$PLAYER" "$PLAYER" "$PLAYER_SRC" "$variant"
+  # The gossip module, pruned the same way and as hard a dependent of the player.
+  stage_tree "$staging/$client" "$GOSSIP_SRC" "$GOSSIP"
+  prune_for_client "$staging/$client/$GOSSIP" "$GOSSIP" "$GOSSIP_SRC" "$variant"
+  grep -q '^## Dependencies: Spoken$' "$staging/$client/$GOSSIP/$GOSSIP.toc" || {
+    echo "error: ${GOSSIP}_${variant}.toc must declare '## Dependencies: Spoken'" >&2; exit 1; }
   # And the tombstones, over the one .toc this client reads from each old folder.
   mkdir -p "$staging/$client/$TOMBSTONE" "$staging/$client/$OLD_NAME"
   tombstone_toc "$REPO/addons/$TOMBSTONE/$TOMBSTONE.toc" "$PLAYER_SRC/${PLAYER}_$variant.toc" \
@@ -186,7 +197,7 @@ for pair in "${CLIENTS[@]}"; do
 
   zip_path="$DIST/$NAME-WoW_$client-$version.zip"
   rm -f "$zip_path"
-  (cd "$staging/$client" && zip -r -q -X "$zip_path" "$NAME" "$PLAYER" "$TOMBSTONE" "$OLD_NAME" \
+  (cd "$staging/$client" && zip -r -q -X "$zip_path" "$NAME" "$PLAYER" "$GOSSIP" "$TOMBSTONE" "$OLD_NAME" \
     -x '*.DS_Store' '*/.git/*' '*.bak' '*.orig')
 
   files="$(unzip -Z1 "$zip_path" | grep -cv '/$')"

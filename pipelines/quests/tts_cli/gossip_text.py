@@ -42,7 +42,9 @@ HEADER = """\
 -- {lang} gossip text for every line, pointing at the file each line is named after, so a
 -- client in {lang} finds gossip whatever language its packs speak. See
 -- pipelines/quests/tts_cli/gossip_text.py.
-setfenv(1, VoiceOver)
+if not SpokenGossipEnv then return end
+-- DataModules, in Spoken's dialogue core, looks it up there.
+setfenv(1, SpokenGossipEnv.Core)
 
 if GetLocale() ~= "{lang}" then
     return
@@ -55,7 +57,9 @@ ALIASES_HEADER = """\
 --
 -- The other files a gossip line's moment is recorded under: same BroadcastText id, same
 -- voice. Tried after the line's own file. See pipelines/quests/tts_cli/gossip_text.py.
-setfenv(1, VoiceOver)
+if not SpokenGossipEnv then return end
+-- DataModules, in Spoken's dialogue core, looks it up there.
+setfenv(1, SpokenGossipEnv.Core)
 
 """
 

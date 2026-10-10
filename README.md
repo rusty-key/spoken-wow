@@ -15,7 +15,8 @@ folder. The voice packs are separate downloads.
 | Folder | Addon | Voices | Voice packs |
 |---|---|---|---|
 | `Spoken` | **Spoken** | nothing itself: it plays every module's lines | — |
-| `Spoken_Quests` | **Spoken Quests** | quest dialogue and NPC gossip | [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-quests-audio-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-quests-audio-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-quests-audio-shared) · [Gossip](https://www.curseforge.com/wow/addons/spoken-quests-audio-gossip) — or all in one from [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio) |
+| `Spoken_Quests` | **Spoken Quests** | quest dialogue | [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-quests-audio-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-quests-audio-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-quests-audio-shared) — or all in one from [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio) |
+| `Spoken_Gossip` | **Spoken Gossip** | what NPCs say when you talk to them | [Gossip](https://www.curseforge.com/wow/addons/spoken-quests-audio-gossip), or the quests' [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all); each language's quests pack holds its gossip too |
 | `Spoken_Books` | **Spoken Books** | books, letters and other in-world texts | [CurseForge](https://www.curseforge.com/wow/addons/spoken-books-audio) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=books-audio) |
 | `Spoken_Zones` | **Spoken Zones** | zone and subzone lore | [CurseForge](https://www.curseforge.com/wow/addons/spoken-zones-audio) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=zones-audio) |
 

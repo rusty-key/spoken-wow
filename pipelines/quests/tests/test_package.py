@@ -7,7 +7,9 @@ client has never had - and neither shows up until somebody launches that client.
 
 One more thing is pinned: the legacy zips carry Spoken itself, because those clients have no
 addon manager to install a dependency, and what they carry must be byte-identical to Spoken's
-own tree. Spoken's own zip carries its modules: one download with everything in it.
+own tree. They carry the gossip module the same way: it was part of this addon, and these zips
+are the one download there. Spoken's own zip carries its modules: one download with everything
+in it.
 
 And the tombstones: a folder an older release installed, overwritten with .toc files that never
 load. SpokenPlayer travels with every zip carrying Spoken; SpokenQuests, SpokenZones and
@@ -25,10 +27,13 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 SCRIPT = os.path.join(REPO, "scripts", "quests", "package.sh")
 PLAYER_SCRIPT = os.path.join(REPO, "scripts", "spoken", "package.sh")
 RETIRED_SCRIPT = os.path.join(REPO, "scripts", "spoken", "package-retired.sh")
+GOSSIP_SCRIPT = os.path.join(REPO, "scripts", "gossip", "package.sh")
 ADDON_DIR = os.path.join(REPO, "addons", "Spoken_Quests")
 PLAYER_DIR = os.path.join(REPO, "addons", "Spoken")
+GOSSIP_DIR = os.path.join(REPO, "addons", "Spoken_Gossip")
 NAME = "Spoken_Quests"
 PLAYER = "Spoken"
+GOSSIP = "Spoken_Gossip"
 #: The folder Spoken had before 3.0.0, which every zip carrying Spoken overwrites with a tombstone.
 TOMBSTONE = "SpokenPlayer"
 #: This module's folder before 3.0.0-beta.3, which the legacy zips overwrite with a tombstone.
@@ -86,6 +91,13 @@ def built(tmp_path_factory):
 def player_built(tmp_path_factory):
     dist = tmp_path_factory.mktemp("dist-player")
     run(PLAYER_SCRIPT, dist)
+    return read_zips(dist)
+
+
+@pytest.fixture(scope="module")
+def gossip_built(tmp_path_factory):
+    dist = tmp_path_factory.mktemp("dist-gossip")
+    run(GOSSIP_SCRIPT, dist)
     return read_zips(dist)
 
 
@@ -151,22 +163,52 @@ def test_a_legacy_zip_bundles_the_player_with_a_hard_dependency(built, client, i
     assert "## OptionalDeps: Spoken" not in files[f"{NAME}/{NAME}.toc"].decode()
 
 
+@pytest.mark.parametrize("folder,directory", [(PLAYER, PLAYER_DIR), (GOSSIP, GOSSIP_DIR)])
 @pytest.mark.parametrize("client", sorted(LEGACY_CLIENTS))
-def test_the_bundled_player_is_byte_identical_to_its_tree(built, client):
+def test_the_bundled_player_is_byte_identical_to_its_tree(built, client, folder, directory):
     # The one source tree, staged at build time: there is no committed second copy that
-    # could drift. Everything under Spoken/ in the zip equals the repo file, except the
-    # per-client Libs pruning and the .toc swap the packaging is for.
+    # could drift. Everything under Spoken/ (and Spoken_Gossip/) in the zip equals the repo file,
+    # except the per-client Libs pruning and the .toc swap the packaging is for.
     names, files = legacy(built, client)
-    bundled = [n for n in names if n.startswith(f"{PLAYER}/") and not n.endswith("/")]
+    bundled = [n for n in names if n.startswith(f"{folder}/") and not n.endswith("/")]
     assert bundled, names
     for name in bundled:
-        relative = name[len(PLAYER) + 1:]
-        if relative == f"{PLAYER}.toc":
-            source = os.path.join(PLAYER_DIR, f"{PLAYER}_{client}.toc")
+        relative = name[len(folder) + 1:]
+        if relative == f"{folder}.toc":
+            source = os.path.join(directory, f"{folder}_{client}.toc")
         else:
-            source = os.path.join(PLAYER_DIR, relative)
+            source = os.path.join(directory, relative)
         with open(source, "rb") as handle:
             assert files[name] == handle.read(), name
+
+
+@pytest.mark.parametrize("client,interface", sorted(LEGACY_CLIENTS.items()))
+def test_a_legacy_zip_bundles_the_gossip_module_for_that_client(built, client, interface):
+    # Gossip was read by this addon until it became a module: on these clients the quests zip
+    # still brings it, with the one .toc the client reads and only that client's Ace3.
+    names, files = legacy(built, client)
+    tocs = tocs_in(files, GOSSIP)
+    assert list(tocs) == [f"{GOSSIP}/{GOSSIP}.toc"], names
+    assert tocs[f"{GOSSIP}/{GOSSIP}.toc"].startswith(f"## Interface: {interface}")
+    assert "## Dependencies: Spoken" in tocs[f"{GOSSIP}/{GOSSIP}.toc"]
+    assert any(name.startswith(f"{GOSSIP}/{client}/Libs/") for name in names)
+    for other in LEGACY_CLIENTS:
+        if other != client:
+            assert not any(name.startswith(f"{GOSSIP}/{other}/") for name in names)
+    assert not any(name.startswith(f"{GOSSIP}/Libs/") for name in names)
+
+
+def test_the_gossip_zip_carries_every_flavor_and_no_legacy_client(gossip_built):
+    version = version_of(GOSSIP_DIR, GOSSIP)
+    assert set(gossip_built) == {f"{GOSSIP}-{version}.zip"}
+    names, files = gossip_built[f"{GOSSIP}-{version}.zip"]
+    tocs = tocs_in(files, GOSSIP)
+    assert sorted(tocs) == sorted(f"{GOSSIP}/{GOSSIP}{suffix}.toc" for suffix in
+                                  ("", "_Mainline", "_TBC", "_Vanilla", "_Wrath"))
+    for client in LEGACY_CLIENTS:
+        assert not any(name.startswith(f"{GOSSIP}/{client}/") for name in names)
+    assert {name.split("/", 1)[0] for name in names} == {GOSSIP}
+    assert "## OptionalDeps: Spoken" in tocs[f"{GOSSIP}/{GOSSIP}.toc"]
 
 
 def test_the_blizzard_zip_carries_every_flavor_and_no_legacy_client(built):
@@ -188,7 +230,7 @@ def test_every_zip_unpacks_into_the_addons_folder(built):
     # folder the client reads: the addon, or Spoken and the tombstones, which the legacy zips bundle.
     for name, (names, _) in built.items():
         roots = {entry.split("/", 1)[0] for entry in names}
-        assert roots <= {NAME, PLAYER, TOMBSTONE, OLD_NAME}, (name, roots)
+        assert roots <= {NAME, PLAYER, GOSSIP, TOMBSTONE, OLD_NAME}, (name, roots)
 
 
 def assert_tombstone(files, expected, folder=TOMBSTONE):
@@ -231,12 +273,13 @@ def test_spoken_ships_with_its_modules_for_blizzard_clients(player_built):
     for client in LEGACY_CLIENTS:
         assert not any(name.startswith(f"{PLAYER}/{client}/") for name in names)
     # Spoken, the folder whose only job is to name the gathered-lines file
-    # (addons/SpokenContributions/SpokenContributions.toc): one .toc, no Lua, and the three
+    # (addons/SpokenContributions/SpokenContributions.toc): one .toc, no Lua, and the four
     # modules: one download with everything in it.
     # No tombstone for the modules' old folders, which belong to the retired projects: two
     # projects shipping one folder is what the rename exists to stop.
     assert {entry.split("/", 1)[0] for entry in names} == {PLAYER, "SpokenContributions", TOMBSTONE,
-                                                          "Spoken_Quests", "Spoken_Books", "Spoken_Zones"}
+                                                          "Spoken_Quests", "Spoken_Gossip", "Spoken_Books",
+                                                          "Spoken_Zones"}
     assert [name for name in names if name.startswith("SpokenContributions/") and not name.endswith("/")] \
         == ["SpokenContributions/SpokenContributions.toc"]
     # Every .toc name the old player's folder had on these clients, so an unzip over it leaves
@@ -269,7 +312,7 @@ def test_the_shared_layout_is_the_same_file_in_every_addon():
     # it is only safe while the copies agree, which nothing but this enforces.
     import hashlib
     copies = {}
-    for addon in ("Spoken", "Spoken_Quests", "Spoken_Zones", "Spoken_Books", "Spoken_Developer"):
+    for addon in ("Spoken", "Spoken_Quests", "Spoken_Gossip", "Spoken_Zones", "Spoken_Books", "Spoken_Developer"):
         path = os.path.join(REPO, "addons", addon, "UI", "Layout.lua")
         assert os.path.isfile(path), f"{addon} is missing its copy of UI/Layout.lua"
         with open(path, "rb") as handle:

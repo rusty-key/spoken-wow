@@ -20,6 +20,7 @@ SourceMethods.__index = SourceMethods
 ---@field channel? fun():string
 ---@field admit? fun(clip, queue):boolean, string?
 ---@field testBeforeQueue? boolean
+---@field waitsForGreeting? boolean -- reads NPCs: its lines wait for Game Greeting First
 ---@field onQueueEnter? fun()
 ---@field onQueueEmpty? fun()
 ---@field packs? fun():string[] -- the voice packs this source found installed, by name
@@ -40,6 +41,9 @@ function Sources:Register(key, info)
         channel = info.channel,
         admit = info.admit,
         testBeforeQueue = info.testBeforeQueue,
+        -- Its lines are read off an NPC's window, and wait for the NPC's own greeting under
+        -- Game Greeting First (GreetingFirst.lua).
+        waitsForGreeting = info.waitsForGreeting,
         onQueueEnter = info.onQueueEnter,
         onQueueEmpty = info.onQueueEmpty,
         packs = info.packs,

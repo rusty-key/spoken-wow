@@ -199,7 +199,7 @@ env.Addon:SetPlayerStyle("subtitle"); Options:UpdateRows()
 local found = Search:Find("subtitle size")
 Expect("search finds a setting by its name", found[1] and found[1].entry.label, "Subtitle Size")
 Expect("...on the page it is on", found[1] and found[1].page.name, L.OPT_HOME_TITLE)
-found = Search:Find("greetings")
+found = Search:Find("automatically")
 Expect("search reaches the pages under Spoken too", found[1] and found[1].page.name, "Quests")
 Expect("a word from a tooltip is enough", Search:Find("footsteps")[1] and Search:Find("footsteps")[1].entry.label, "Effects")
 Expect("every word must match", #Search:Find("subtitle footsteps"), 0)
@@ -221,11 +221,11 @@ for _, query in ipairs({ L.OPT_PART_BOOKS, L.OPT_STYLE_NONE }) do
 end
 env.Addon:SetPlayerStyle("minimal"); Options:UpdateRows()
 
-Search.box:SetText("greetings"); Search.box.handlers.OnTextChanged(Search.box)
+Search.box:SetText("automatically"); Search.box.handlers.OnTextChanged(Search.box)
 Expect("typing lists the results", Search.results:IsShown(), true)
 Search.box:SetText("zzzz"); Search.box.handlers.OnTextChanged(Search.box)
 Expect("...and says so when nothing matches", Search.rows[1].text.text:find(L.SEARCH_NONE, 1, true) ~= nil, true)
-Search.box:SetText("greetings"); Search.box.handlers.OnTextChanged(Search.box)
+Search.box:SetText("automatically"); Search.box.handlers.OnTextChanged(Search.box)
 Search.box.handlers.OnEnterPressed(Search.box)
 local last = opened[#opened]
 Expect("Enter opens the first result's own page", type(last) == "table" and last.name or last, "Quests")
@@ -284,7 +284,8 @@ env.Addon.db.global.Welcomed = nil
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(2.1)
 Expect("the welcome opens at the first login after it ships", Welcome.frame and Welcome.frame:IsShown(), true)
-Expect("it offers the parts as a list, as Home does", #Welcome.modules, 3)
+-- Quests, Gossip, Books and Zones.
+Expect("it offers the parts as a list, as Home does", #Welcome.modules, 4)
 Expect("...under its header, the paragraph saying what the window is for",
     Welcome.layout.intro.text ~= nil and Welcome.layout.intro.text.text, L.WELCOME_INTRO)
 Expect("...which the settings pages, like the game's own, do without", home.intro.text, nil)

@@ -115,7 +115,7 @@ local function CodesIn(path)
     for code in string.gmatch(block, 'code = "(%a+)"') do table.insert(codes, code) end
     return table.concat(codes, " ")
 end
-Expect("Spoken's languages are Quests', in the same order", Codes(env.LANGUAGES), CodesIn(QUESTS .. "Language.lua"))
+Expect("Spoken's languages are the dialogue core's, in the same order", Codes(env.LANGUAGES), CodesIn(SPOKEN .. "Dialogue/Language.lua"))
 Expect("...and Books'", Codes(env.LANGUAGES), CodesIn(ADDONS .. "Spoken_Books/Language.lua"))
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

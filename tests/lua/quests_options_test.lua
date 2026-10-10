@@ -49,7 +49,7 @@ end
 local names = {}
 for _, heading in ipairs(headings) do table.insert(names, heading.text) end
 Expect("the settings are grouped into sections", table.concat(names, "|"),
-    "When to Read|Extras|Reading History|Voice Packs|Fix a Problem")
+    "When to Read|Extras|Voice Packs|Fix a Problem")
 
 local function Distinct(values)
     local seen, count = {}, 0
@@ -84,21 +84,15 @@ end
 Expect("every section heading the same distance below the section above", Distinct(headingGaps), 1)
 
 ---------------------------------------------------------------- the rows write the settings
--- A dropdown rather than a button that cycles: four named choices, and a player should be
--- able to see them and pick one rather than click through them.
+-- How often NPCs greet is the gossip module's page now (gossip_options_test.lua).
 local db = VO.Addon.db.profile
-db.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
-local greetings
-for _, child in ipairs(SettingsPanel.panel.content.children) do
-    if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == "NPC Greetings" then
-        greetings = child
+local function Labelled(label)
+    for _, child in ipairs(SettingsPanel.panel.content.children) do
+        if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == label then return child end
     end
 end
-Expect("the greeting frequency is a dropdown", greetings ~= nil, true)
-greetings:GetScript("OnShow")(greetings)
-Expect("...showing the setting when the panel opens", greetings.dropdownText, "Every Time")
+Expect("the greeting frequency is not on the Quests page", Labelled("NPC Greetings"), nil)
 
--- Autoplay is what reads greetings, so the frequency sits under it and goes grey without it.
 local autoplay
 for _, child in ipairs(SettingsPanel.panel.content.children) do
     if type(child.text) == "table" and child.text.text == "Read Automatically" then
@@ -106,41 +100,18 @@ for _, child in ipairs(SettingsPanel.panel.content.children) do
     end
 end
 Expect("autoplay is a checkbox on the panel", autoplay ~= nil, true)
--- The labels carry the indent; every control stays in the one column the page shares.
-Expect("...with the greeting frequency indented under it",
-    greetings.layoutLabel.anchor.x > autoplay.text.anchor.x, true)
-Expect("...live while autoplay is on", greetings.dropdownDisabled or false, false)
-autoplay:SetChecked(false)
-autoplay:GetScript("OnClick")(autoplay)
-Expect("unticking autoplay turns it off", db.Audio.Autoplay, false)
-Expect("...and greys the greeting frequency out", greetings.dropdownDisabled, true)
--- Follow-up lines are queued by autoplay alone (Followup.lua), so they grey out with it too.
+-- Follow-up lines are queued by autoplay alone (Followup.lua), so they grey out with it.
 local followup
 for _, child in ipairs(SettingsPanel.panel.content.children) do
     if type(child.text) == "table" and child.text.text == "Follow-up Lines" then followup = child end
 end
-Expect("...and Follow-up Lines, saying why", followup and followup.layoutReason, VO.L.REASON_AUTOPLAY)
+autoplay:SetChecked(false)
+autoplay:GetScript("OnClick")(autoplay)
+Expect("unticking autoplay turns it off", db.Audio.Autoplay, false)
+Expect("...and greys Follow-up Lines out, saying why", followup and followup.layoutReason, VO.L.REASON_AUTOPLAY)
 autoplay:SetChecked(true)
 autoplay:GetScript("OnClick")(autoplay)
-Expect("ticking it again brings the frequency back", greetings.dropdownDisabled, false)
-Expect("...and Follow-up Lines", followup and followup.layoutReason, nil)
-
-local entries = stub.OpenDropdown(greetings)
-local offered = {}
-for _, entry in ipairs(entries) do table.insert(offered, entry.text) end
-Expect("...offering every choice at once", table.concat(offered, "|"),
-    "Every Time|Once per NPC with Quests|Once per NPC|Never")
-Expect("...with the current one ticked", entries[1].checked, true)
-
-Expect("picking one is possible", stub.PickDropdown(greetings, "Once per NPC"), true)
-Expect("...and stores the number the addon reads", db.Audio.GossipFrequency,
-    VO.Enums.GossipFrequency.OncePerNPC)
-Expect("...and relabels", greetings.dropdownText, "Once per NPC")
--- Picking again from a different value: what the control shows and what it compares have
--- to be the same thing, or it can never find where in the list it is.
-Expect("picking a second time works too", stub.PickDropdown(greetings, "Never"), true)
-Expect("...and stores that", db.Audio.GossipFrequency, VO.Enums.GossipFrequency.Never)
-Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[4].checked, true)
+Expect("ticking it again brings Follow-up Lines back", followup and followup.layoutReason, nil)
 
 ---------------------------------------------------------------- the gather switch stays in the player's settings
 -- The switch is the player's alone: quests and books both feed the one store, so a

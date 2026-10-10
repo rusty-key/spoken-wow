@@ -228,7 +228,7 @@ Expect("...and gets no Contribute", VO.QuestOverlayUI.questContributeButtons[748
 
 if contribute then
     contribute:GetScript("OnEnter")(contribute)
-    Expect("the tooltip says what is missing", GameTooltip.text, "Spoken Quests doesn't have this quest")
+    Expect("the tooltip says what is missing", GameTooltip.text, "Spoken doesn't have this quest")
     contribute:Click()
     local box = Spoken.ContributeBox
     Expect("clicking it opens the contribute box", box and box.frame:IsShown(), true)

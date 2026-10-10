@@ -4,6 +4,10 @@ setfenv(1, VoiceOver)
 -- and captions with it. This file shows them on DialogueUI's window instead: its text marks
 -- the words being read, and the player, a Play button and the Contribute button sit on it.
 --
+-- A page's line is read by the module that reads it outside DialogueUI: a quest window's by this
+-- addon, gossip and a quest-giver's greeting by the gossip module (Spoken_Gossip), which hands
+-- this file its reader where it is installed (ReaderFor).
+--
 -- DUIQuestFrame, its fontStringPool and its Handle* methods are DialogueUI internals, not an
 -- API: Recognised checks them once at setup and the module stands down if any is missing.
 --
@@ -47,6 +51,62 @@ local QUEST_EVENTS = { detail = "QUEST_DETAIL", progress = "QUEST_PROGRESS", com
 
 local function Config()
     return Addon.db.profile.DialogueUI
+end
+
+-- Who reads a page's line: GetVisibleLine(event), ExpectedLine(event, textIsCurrent),
+-- ReadNow(event, source) at once ahead of the queue, QueuedClipFor(line), Remove(clip), source()
+-- the player source its lines carry, and `autoplay` where it has a Read Automatically switch.
+local QUESTS = {
+    GetVisibleLine = function(event) return Addon:GetVisibleLine(event) end,
+    ExpectedLine = function(event, textIsCurrent) return Addon:ExpectedLine(event, textIsCurrent) end,
+    ReadNow = function(event, source)
+        Player.playNow = true
+        local ok, err = pcall(Addon.InvokeQuestHandler, Addon, event, source, true)
+        Player.playNow = nil
+        return ok, err
+    end,
+    QueuedClipFor = function(line) return Player:QueuedClipFor(line) end,
+    Remove = function(clip) Player:Remove(clip) end,
+    source = function() return Player.source end,
+    autoplay = {
+        IsOn = function() return Addon:IsAutoplayOn() end,
+        Set = function(on) Addon:SetAutoplay(on) end,
+    },
+}
+local SPEECH = { GOSSIP_SHOW = true, QUEST_GREETING = true }
+
+--- The gossip module's reader, where it is installed (Spoken_Gossip/DialogueUI.lua).
+local function GossipReader()
+    local env = rawget(_G, "SpokenGossipEnv")
+    return env and rawget(env, "DialogueUIReader")
+end
+
+--- The reader of `event`'s page, or nil where no module installed reads it.
+local function ReaderFor(event)
+    if SPEECH[event] then
+        return GossipReader()
+    end
+    return event and QUESTS or nil
+end
+
+--- The line `event`'s page would read, asked of the module that reads it, or nil: for the
+--- Report button on DialogueUI's window (the dialogue core's ContributeButton.lua).
+function Bridge:LineFor(event)
+    local reader = ReaderFor(event)
+    return reader and reader.GetVisibleLine(event) or nil
+end
+
+--- Whether `clip` is a line one of the dialogue modules read off a window, as against a zone's
+--- story or a book's page, which never match DialogueUI's text.
+local function IsDialogueClip(clip)
+    if not clip then
+        return false
+    end
+    if clip.source == Player.source then
+        return true
+    end
+    local gossip = GossipReader()
+    return gossip ~= nil and clip.source == gossip.source()
 end
 
 local function IsLoaded(name)
@@ -377,8 +437,8 @@ local function Tick()
     end
     local caption = Spoken:GetCaption()
     local clip = caption and caption.clip
-    -- This addon's lines only: a zone's or a book's never match DialogueUI's text anyway.
-    if clip and clip.source == Player.source then
+    -- A quest's or an NPC's line only: a zone's or a book's never match DialogueUI's text anyway.
+    if IsDialogueClip(clip) then
         if clip ~= state.clip then
             -- Put back and drawn again in this one call: nothing shows in between.
             Restore()
@@ -403,7 +463,7 @@ local function Tick()
     -- A line is about to be queued for this page: its words wait blank, unless another part's
     -- line (a zone's lore, a book page) is playing, which the quest's waits behind.
     local pending = state.pending
-    local otherPart = clip ~= nil and clip.source ~= Player.source
+    local otherPart = clip ~= nil and not IsDialogueClip(clip)
     if pending and not otherPart and GetTime() < pending.untilTime then
         if not pending.span then
             pending.map, pending.span = Bridge.Align(pending.words, state.paragraphs)
@@ -425,14 +485,15 @@ end
 function Bridge.Expect(handler)
     state.pending = nil
     local event = EVENTS[handler]
-    if not (event and Config().Captions and Spoken.GetCaptionOptions and Addon.ExpectedLine) then
+    local reader = ReaderFor(event)
+    if not (reader and Config().Captions and Spoken.GetCaptionOptions) then
         return
     end
     local _, typewriter = Spoken:GetCaptionOptions()
     if not typewriter then
         return
     end
-    local ok, text = pcall(Addon.ExpectedLine, Addon, event, true)
+    local ok, text = pcall(reader.ExpectedLine, event, true)
     local words = ok and type(text) == "string" and Spoken:SplitCaption(text)
     if words and table.getn(words) > 0 then
         state.pending = { event = event, words = words, untilTime = GetTime() + HOLD }
@@ -530,12 +591,11 @@ end
 
 --- Read the page's line now, in front of whatever speaks (Player:PlayPreparedNow).
 local function PlayLine(source)
-    if not (line and lineEvent) then
+    local reader = ReaderFor(lineEvent)
+    if not (line and reader) then
         return
     end
-    Player.playNow = true
-    local ok, err = pcall(Addon.InvokeQuestHandler, Addon, lineEvent, source, true)
-    Player.playNow = nil
+    local ok, err = reader.ReadNow(lineEvent, source)
     if not ok then
         Debug:Record("dialogueui-play-error", tostring(err))
     end
@@ -543,17 +603,19 @@ end
 
 --- Take the page's line out of the queue, speaking or waiting.
 local function StopLine()
-    local clip = line and Player:QueuedClipFor(line)
+    local reader = ReaderFor(lineEvent)
+    local clip = line and reader and reader.QueuedClipFor(line)
     if clip then
-        Player:Remove(clip)
+        reader.Remove(clip)
     end
 end
 
 --- The line for `event`'s page, or none, with the setting off or no pack voicing it.
 local function LookForLine(event)
     line, lineEvent = nil, nil
-    if event and Config().PlayButton then
-        local ok, found = pcall(Addon.GetVisibleLine, Addon, event)
+    local reader = ReaderFor(event)
+    if reader and Config().PlayButton then
+        local ok, found = pcall(reader.GetVisibleLine, event)
         if ok and found then
             line, lineEvent = found, event
         end
@@ -586,12 +648,17 @@ local function ShowPlayTooltip(button)
         or GameTooltip
     local speaking = line ~= nil and IsSpeaking(line)
     tooltip:SetOwner(button, "ANCHOR_RIGHT")
-    tooltip:SetText(speaking and L.OPT_STOP or L.OPT_LISTEN)
-    tooltip:AddLine(speaking and L.OPT_DIALOG_STOP_TIP or L.OPT_READ_TIP, 1, 1, 1, true)
-    local on = Addon:IsAutoplayOn()
-    tooltip:AddDoubleLine(L.OPT_PANEL_AUTOPLAY, on and L.OPT_DUI_ON or L.OPT_DUI_OFF, 1, 1, 1,
-        on and 0.1 or 1, on and 1 or 0.125, on and 0.1 or 0.125)
-    tooltip:AddLine(L.OPT_DUI_PLAY_RIGHT_CLICK, 1, 0.82, 0, true)
+    tooltip:SetText(speaking and SpokenEnv.L.DIALOGUE_STOP or SpokenEnv.L.DIALOGUE_LISTEN)
+    tooltip:AddLine(speaking and SpokenEnv.L.DIALOGUE_STOP_TIP or SpokenEnv.L.DIALOGUE_READ_TIP, 1, 1, 1, true)
+    -- Read Automatically is the quests module's; gossip goes by NPC Greetings, on its own page.
+    local reader = ReaderFor(lineEvent)
+    local autoplay = reader and reader.autoplay
+    if autoplay then
+        local on = autoplay.IsOn()
+        tooltip:AddDoubleLine(L.OPT_PANEL_AUTOPLAY, on and L.OPT_DUI_ON or L.OPT_DUI_OFF, 1, 1, 1,
+            on and 0.1 or 1, on and 1 or 0.125, on and 0.1 or 0.125)
+        tooltip:AddLine(L.OPT_DUI_PLAY_RIGHT_CLICK, 1, 0.82, 0, true)
+    end
     tooltip:Show()
     button.tooltip = tooltip
 end
@@ -621,8 +688,11 @@ local function PlayButton()
     local ok, anim = pcall(button.CreateAnimationGroup, button, nil, "DUISpeakerAnimationTemplate")
     button.anim = ok and anim or nil
     button:SetScript("OnClick", function(_, mouse)
+        local reader = ReaderFor(lineEvent)
         if mouse == "RightButton" then
-            Addon:SetAutoplay(not Addon:IsAutoplayOn())
+            if reader and reader.autoplay then
+                reader.autoplay.Set(not reader.autoplay.IsOn())
+            end
         elseif line and IsSpeaking(line) then
             StopLine()
         else
