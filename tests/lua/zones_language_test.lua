@@ -150,11 +150,19 @@ Z = InstallItalian("itIT", {})
 Expect("G. a client claiming Italian still reads English on Auto", Z:GetAutoLanguage(), "enUS")
 
 ---------------------------------------------------------------- H. what the client's font draws
--- Another script is offered only where every font file the page uses draws it.
-local fontHas = {   -- Cyrillic's lead bytes, by the file that draws them
-    ["Fonts\\FRIZQT__.TTF"] = { [208] = true, [209] = true },
-    ["Fonts\\QUEST.TTF"] = { [208] = true, [209] = true },
+-- Another script is offered where the page's font files draw it, or the client's own font for that
+-- script does.
+local HANGUL, HAN, CYRILLIC = { [234] = true, [235] = true, [236] = true, [237] = true },
+    { [228] = true, [229] = true, [230] = true, [231] = true, [232] = true, [233] = true },
+    { [208] = true, [209] = true }
+local fontHas = {   -- the lead bytes each file draws
+    ["Fonts\\FRIZQT__.TTF"] = CYRILLIC,
+    ["Fonts\\QUEST.TTF"] = CYRILLIC,
     ["Fonts\\LATIN.TTF"] = {},
+    ["Fonts\\FRIZQT___CYR.TTF"] = CYRILLIC,
+    ["Fonts\\2002.TTF"] = HANGUL,
+    ["Fonts\\ARKai_T.ttf"] = HAN,
+    ["Fonts\\blei00d.TTF"] = HAN,
 }
 local realParent = _G.UIParent.CreateFontString
 local realHighlight, realQuest = _G.GameFontHighlight, _G.QuestFont
@@ -177,20 +185,54 @@ _G.UIParent.CreateFontString = function()
     end
     return fs
 end
+-- As a string, so code without FontFor fails these checks rather than stopping the file.
+local function Font(fontObject, code) return tostring(Z.FontFor and Z:FontFor(fontObject, code)) end
 Faces("Fonts\\FRIZQT__.TTF", "Fonts\\QUEST.TTF")
 Z = InstallOn("deDE", nil)
 Z.drawable = {}
 Expect("H. a German client whose font has Cyrillic offers Russian", Z:CanRenderLanguage("ruRU"), true)
-Expect("H. ...but not Korean, which it cannot draw", Z:CanRenderLanguage("koKR"), false)
-Expect("H. ...nor Chinese", Z:CanRenderLanguage("zhCN"), false)
+Expect("H. ...written in that font", Font(_G.GameFontHighlight, "ruRU"), "Fonts\\FRIZQT__.TTF")
+Expect("H. it offers Korean, which its font cannot draw, in the client's Korean font",
+    tostring(Z:CanRenderLanguage("koKR")) .. " " .. Font(_G.GameFontHighlight, "koKR"),
+    "true Fonts\\2002.TTF")
+Expect("H. ...and Chinese in its Chinese fonts", Font(_G.QuestFont, "zhCN") .. " "
+    .. Font(_G.QuestFont, "zhTW"), "Fonts\\ARKai_T.ttf Fonts\\blei00d.TTF")
 Expect("H. a Latin language needs no asking", Z:CanRenderLanguage("frFR"), true)
+Expect("H. ...and keeps the page's font", Font(_G.GameFontHighlight, "frFR"), "Fonts\\FRIZQT__.TTF")
+
+-- The captions set a font file too: a clip of Korean lore on a German client names the one to use.
+local realNormal = _G.GameFontNormal
+_G.GameFontNormal = { GetFont = function() return "Fonts\\FRIZQT__.TTF", 12 end }
+local KOREAN = Pack("SpokenZonesAudio_koKR", "koKR", {})
+KOREAN.zones[MAP] = { file = "ko-durotar", len = 5 }
+local GERMAN_ZONE = Pack("SpokenZonesAudio_deDE", "deDE", {})
+GERMAN_ZONE.zones[MAP] = { file = "de-durotar", len = 5 }
+local function Lore(pack)
+    stub.SetLocale("deDE")
+    _G.SpokenZonesSettings = { language = pack.language }
+    _G.SpokenZonesAudioPacks = { [pack.addon] = pack }
+    Z = H.LoadZones(ZONES, { Languages = { { code = "enUS", ready = true }, { code = "deDE", ready = true },
+        { code = "koKR", ready = true } } })
+    local clip = Z:NewLoreSound(MAP, nil)
+    return clip and clip.present
+end
+local korean = Lore(KOREAN)
+Expect("H. Korean lore on a German client is captioned in the client's Korean font",
+    tostring(korean and korean.font), "Fonts\\2002.TTF")
+local german = Lore(GERMAN_ZONE)
+Expect("H. ...German lore names no font, so the window's own is kept",
+    tostring(german ~= nil) .. " " .. tostring(german and german.font), "true nil")
+_G.GameFontNormal = realNormal
+
 Faces("Fonts\\LATIN.TTF", "Fonts\\QUEST.TTF")
-Z.drawable = {}
-Expect("H. a font file without Cyrillic offers no Russian, whatever its object falls back to",
-    Z:CanRenderLanguage("ruRU"), false)
-Faces("Fonts\\FRIZQT__.TTF", "Fonts\\LATIN.TTF")
-Z.drawable = {}
-Expect("H. ...nor where only the parchment page's file lacks it", Z:CanRenderLanguage("ruRU"), false)
+Z.drawable, Z.fonts = {}, {}
+Expect("H. a font file without Cyrillic writes Russian in the client's Cyrillic font",
+    tostring(Z:CanRenderLanguage("ruRU")) .. " " .. Font(_G.GameFontHighlight, "ruRU"),
+    "true Fonts\\FRIZQT___CYR.TTF")
+fontHas["Fonts\\2002.TTF"] = {}
+Z.drawable, Z.fonts = {}, {}
+Expect("H. a client whose Korean font cannot draw Korean does not offer it",
+    Z:CanRenderLanguage("koKR"), false)
 _G.UIParent.CreateFontString = realParent
 _G.GameFontHighlight, _G.QuestFont = realHighlight, realQuest
 

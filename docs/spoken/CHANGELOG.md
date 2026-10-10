@@ -12,6 +12,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Fixed: Books and Zones said "Not installed" in Spoken's module list after login**, and a
   module's settings page could show it switched off after it was switched on from Spoken's page.
   *([Nucabe](https://github.com/Nucabe))*
+- **Zone Lore offers Korean, Chinese and Russian on every client.** The lore and its captions are
+  written in the game's own fonts for those languages. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.2.0 — 2026-10-08
 

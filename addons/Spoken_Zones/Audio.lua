@@ -557,6 +557,10 @@ function SpokenZones:NewLoreSound(mapID, areaKey)
 	local entries = data and (areaKey and data.subzones or data.zones)
 	local entry = entries and entries[mapID]
 	if areaKey then entry = entry and entry[areaKey] end
+	-- Captions set a font file, which has none of the font object's fallbacks: lore in a script
+	-- the client's file cannot draw names the file that can. Otherwise the window's own is kept.
+	local font = self.FontFor and self:FontFor(GameFontNormal, language)
+	if font == GameFontNormal:GetFont() then font = nil end
 	return {
 		key = areaKey and ("s:" .. mapID .. ":" .. areaKey) or ("z:" .. mapID),
 		path = path,
@@ -572,6 +576,7 @@ function SpokenZones:NewLoreSound(mapID, areaKey)
 			header = self:GetMapName(mapID) or label,
 			label = label,
 			transcript = entry and entry.full,
+			font = font,
 			bullet = "zone",
 			portrait = self:Portrait(mapID),
 			actions = ACTIONS,

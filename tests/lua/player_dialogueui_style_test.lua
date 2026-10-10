@@ -110,6 +110,18 @@ Expect("the words are docked in the window", T.frame:GetParent(), Skin.frame)
 Expect("...filling its body", Skin.lines > 8, true)
 Expect("...with labels enough for them and the line sliding in", #T.labels >= Skin.lines + 1, true)
 Expect("...in DialogueUI's font", T.style.font, "Interface/AddOns/DialogueUI/Fonts/frizqt__.ttf")
+local function RecordFaces()
+    for _, label in ipairs(T.labels) do label.SetFont = function(self, face) self.face = face end end
+    T.measure.SetFont = function(self, face) self.face = face end
+end
+RecordFaces()
+T:SetClip({ text = "Korean lore.", present = { font = "Fonts\\2002.TTF" } })
+Expect("a line that names its own font is written and measured in it, over DialogueUI's",
+    tostring(T.labels[1].face) .. " " .. tostring(T.measure.face), "Fonts\\2002.TTF Fonts\\2002.TTF")
+T:SetClip({ text = "A quest." })
+Expect("...and the next line without one in DialogueUI's again", tostring(T.labels[1].face),
+    "Interface/AddOns/DialogueUI/Fonts/frizqt__.ttf")
+T:SetClip(nil)
 Expect("...and the parchment's red highlight", T.style.highlight, RED)
 Expect("the expand button has no place on a fixed page", T.expand:IsShown(), false)
 

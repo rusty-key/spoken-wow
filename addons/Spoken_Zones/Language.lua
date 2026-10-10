@@ -111,8 +111,8 @@ function SpokenZones:IsLanguageReady(code)
 end
 
 -- A missing glyph draws as nothing or as a box, so `text` is measured against as many private-use
--- characters, which no font has: the same width means none of it drew. The page pins font files,
--- which lack the font object's fallbacks, so the text must draw in each of them.
+-- characters, which no font has: the same width means none of it drew. The pages set font files,
+-- which lack the font object's fallbacks, so the text must draw in the file itself.
 local probe
 local function draws(text, path)
 	probe:SetFont(path, 12, "")
@@ -128,33 +128,59 @@ local function draws(text, path)
 	return width > 0 and math.abs(width - missing) > 0.5
 end
 
-function SpokenZones:FontDraws(text)
-	if not (UIParent and UIParent.CreateFontString) then
+function SpokenZones:FontDraws(text, path)
+	if not (path and UIParent and UIParent.CreateFontString) then
 		return false
 	end
 	if not probe then
 		probe = UIParent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
 		probe:Hide()
 	end
-	local tried = false
-	for _, fontObject in ipairs({ _G.GameFontHighlight, _G.QuestFont }) do
-		local path = fontObject and fontObject.GetFont and fontObject:GetFont()
-		if path then
-			tried = true
-			if not draws(text, path) then
-				return false
-			end
-		end
-	end
-	return tried
+	return draws(text, path)
 end
 
--- Whether this client's fonts can draw this language. The lore panel takes its
--- font from GameFontHighlight (see UI/TextView.lua), which is the *client's*
--- font, so Chinese lore on a German client is a screen of boxes -- a bug report
--- that looks like corrupted data. English is always allowed: it is what the addon
--- falls back to when nothing else can be selected, and every client can draw it.
--- Another script is tested once a session by drawing the language's own name.
+-- The fonts every client ships for the other scripts, which the game's font objects fall back to
+-- and a page that sets a file has to name itself.
+local SCRIPT_FONTS = {
+	cyrillic = "Fonts\\FRIZQT___CYR.TTF",
+	korean = "Fonts\\2002.TTF",
+	simplifiedchinese = "Fonts\\ARKai_T.ttf",
+	traditionalchinese = "Fonts\\blei00d.TTF",
+}
+
+--- The font file to write `code` (the lore's language by default) in where a page uses
+--- `fontObject`: the object's own file where it draws that script, else the client's font for the
+--- script. Nil where neither draws it.
+function SpokenZones:FontFor(fontObject, code)
+	local path = fontObject and fontObject.GetFont and fontObject:GetFont()
+	local locale = byCode[code or self:GetLanguage()]
+	if not path or not locale or locale.script == "latin" then
+		return path
+	end
+	local client = byCode[self.clientLocale]
+	if client ~= nil and client.script == locale.script then
+		return path
+	end
+	self.fonts = self.fonts or {}
+	local key = path .. "|" .. locale.code
+	if self.fonts[key] == nil then
+		local stock = SCRIPT_FONTS[locale.script]
+		if self:FontDraws(locale.native, path) then
+			self.fonts[key] = path
+		elseif stock and self:FontDraws(locale.native, stock) then
+			self.fonts[key] = stock
+		else
+			self.fonts[key] = false
+		end
+	end
+	return self.fonts[key] or nil
+end
+
+-- Whether this client's fonts can draw this language: in the pages' own font files where they
+-- have its script, else in the client's font for it (FontFor). Without either, Chinese lore on a
+-- German client is a screen of boxes, a bug report that looks like corrupted data. English is
+-- always allowed: it is what the addon falls back to, and every client can draw it. Another
+-- script is tested once a session by drawing the language's own name.
 function SpokenZones:CanRenderLanguage(code)
 	if code == BASE then
 		return true
@@ -172,7 +198,14 @@ function SpokenZones:CanRenderLanguage(code)
 	end
 	self.drawable = self.drawable or {}
 	if self.drawable[code] == nil then
-		self.drawable[code] = self:FontDraws(locale.native)
+		local tried, drawn = false, true
+		for _, fontObject in ipairs({ _G.GameFontHighlight, _G.QuestFont }) do
+			if fontObject and fontObject.GetFont and fontObject:GetFont() then
+				tried = true
+				drawn = drawn and self:FontFor(fontObject, code) ~= nil
+			end
+		end
+		self.drawable[code] = tried and drawn
 	end
 	return self.drawable[code]
 end

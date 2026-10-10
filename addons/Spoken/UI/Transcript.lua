@@ -46,6 +46,11 @@ end
 local function LineGap()
     return Transcript.style and Transcript.style.lineGap or GAP
 end
+-- A clip's own font comes first: lore in a script the client's font file cannot draw carries one.
+local function Face(clip)
+    local own = clip and clip.present and clip.present.font
+    return own or Transcript.style and Transcript.style.font or GameFontNormal:GetFont()
+end
 local function CharacterCount(text)
     local _, count = text:gsub(UTF8_CHAR, "")
     return math.max(1, count)
@@ -189,6 +194,7 @@ function Transcript:SetClip(clip)
     self.top, self.topTarget = 1, 1
     self:Tokenize()
     if not self.frame then return end
+    if Face(clip) ~= self.face then self:ApplyFace() end
     self:Reflow()
 end
 
@@ -563,7 +569,6 @@ function Transcript:RefreshConfig()
     if not self.frame then return end
     local size = FontSize()
     local style = self.style or {}
-    local face = style.font or GameFontNormal:GetFont()
     local color = style.color or { .88, .84, .76 }
     local glyph = [[Interface\Buttons\UI-]] .. (Expanded() and "Minus" or "Plus")
     self.expand:SetNormalTexture(glyph .. "Button-Up")
@@ -572,9 +577,8 @@ function Transcript:RefreshConfig()
     -- A skin's page may be taller than the expanded eight lines; one label more than the
     -- page, for the line sliding in mid-glide.
     for row = #self.labels + 1, LineCount() + 1 do self.labels[row] = Label(self.frame) end
-    self.measure:SetFont(face, size, "")
+    self:ApplyFace()
     for row, label in ipairs(self.labels) do
-        label:SetFont(face, size, "")
         label:SetTextColor(color[1], color[2], color[3])
         label:SetShadowColor(0, 0, 0, style.shadow == false and 0 or 1)
         label:SetHeight(size + LineGap())
@@ -582,6 +586,13 @@ function Transcript:RefreshConfig()
     if PlayerFrame.frame then PlayerFrame:Update() end
     self:Reflow()
     self:Update()
+end
+
+function Transcript:ApplyFace()
+    local face, size = Face(self.clip), FontSize()
+    self.face = face
+    self.measure:SetFont(face, size, "")
+    for _, label in ipairs(self.labels) do label:SetFont(face, size, "") end
 end
 
 function Label(parent)

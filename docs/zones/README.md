@@ -408,9 +408,11 @@ how much of the lore and how many interface strings exist and whether an alias
 table is present. `ready` is lore complete plus an alias table; interface strings
 are counted but not required, since they fall back to English per key and an
 English options panel over a German corpus is worth shipping. The switcher only
-offers languages that are ready **and** whose script the client can draw — `UI/TextView.lua` takes
-its font from `GameFontHighlight`, which is the client's font, so Chinese lore on
-a German client is a screen of boxes.
+offers languages that are ready **and** whose script the client can draw. The lore pages and
+Spoken's captions set font files, which lack the font objects' fallbacks, so where the client's
+file has no glyphs for the lore's script, `FontFor` (`Language.lua`) picks the font the client
+ships for it: `2002.TTF` for Korean, `ARKai_T.ttf` and `blei00d.TTF` for Chinese,
+`FRIZQT___CYR.TTF` for Cyrillic. A language that neither draws is not offered.
 
 A player who never chose reads their client's language the day it becomes ready;
 one who picked English keeps English. That is why the stored preference is absent

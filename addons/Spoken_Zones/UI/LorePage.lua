@@ -245,7 +245,9 @@ function SpokenZones:CreateLorePage(parent, style)
 
 	-- The quest log's title face, as a quest's name is written on its page: larger on the book's.
 	local title = frame:CreateFontString(nil, "ARTWORK", Art.Font("QuestTitleFont", "GameFontNormalLarge"))
-	local face = _G.QuestTitleFont and _G.QuestTitleFont.GetFont and _G.QuestTitleFont:GetFont()
+	-- In the lore's language, as the place's name is.
+	local face = SpokenZones.FontFor and SpokenZones:FontFor(_G.QuestTitleFont)
+		or (_G.QuestTitleFont and _G.QuestTitleFont.GetFont and _G.QuestTitleFont:GetFont())
 	if face then title:SetFont(face, titleSize, "") end
 	title:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -inset.top)
 	title:SetJustifyH("LEFT")
