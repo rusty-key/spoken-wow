@@ -19,6 +19,7 @@ const { historyDirOf } = await import("@/lib/takes/adapters");
 const historyDir = (file: string) => historyDirOf("quests", file);
 const { archiveName } = await import("@/lib/takes/bytes");
 const { listTakes } = await import("@/lib/takes/store");
+const { corpus } = await import("@/lib/quests/catalogue");
 const { regenerateLine } = await import("./regenerate");
 const { elevenLabsSpeaker } = await import("./speakers/elevenlabs");
 const { defaultElevenLabs } = await import("./preference");
@@ -288,9 +289,11 @@ describe("a line several NPCs share", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.sharedWith).toBe(5);
+    // Everyone else speaking the line in its voice: a giver of another voice speaks its own.
+    const speakers = (await corpus()).lines.filter((line) => line.lineId === SHARED).length;
+    expect(result.sharedWith).toBe(speakers - 1);
 
-    // zlib.crc32("233"), the lowest of the six.
+    // zlib.crc32("233"), the lowest of them.
     const { default: zlib } = await import("node:zlib");
     expect(result.seed).toBe(zlib.crc32("233"));
     expect((calls.find((c) => c.url.includes("text-to-speech"))!.body as { seed: number }).seed).toBe(

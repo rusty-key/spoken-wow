@@ -16,7 +16,7 @@ from tqdm import tqdm
 from tts_cli.ignores import ignored_files
 from tts_cli.length_table import write_sound_length_table_lua
 from tts_cli.naming import (FOLLOWUP, followup_stem_from_line_id, gossip_hash_from_line_id,
-                            subfolder_from_line_id)
+                            moment_of, split_voice, subfolder_from_line_id, variant_file_name)
 from tts_cli.store import SUBFOLDERS, audio_extension, stored_files
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
@@ -164,9 +164,14 @@ def build_tables(corpus: dict, ignored=()) -> dict:
     names = {"creature": {}, "gameobject": {}, "item": {}}
     quest_ids = {}
     followup = {}
+    # A quest moment's file in the voice an NPC speaks it in, where that is not the moment's
+    # own (tts_cli/voice_files.py): keyed by the moment's file and the giver, since the addon
+    # names a quest's file from its id and event and knows who is giving it.
+    quest_files = {"creature": {}, "gameobject": {}}
 
     for line in corpus["lines"]:
-        if line["lineId"] in ignored:
+        base_id, voice = split_voice(line["lineId"])
+        if base_id in ignored:
             continue
 
         kind = line["npcType"]
@@ -188,8 +193,10 @@ def build_tables(corpus: dict, ignored=()) -> dict:
             # The bare hash: the addon adds the gender prefix when resolving.
             digest = gossip_hash_from_line_id(line["lineId"])
             gossip_by_id[kind].setdefault(line["npcId"], {})[text] = digest
+            # Same-named NPCs of different voices share one entry here, so it names the line's
+            # own file, never a voice's that only some of them speak.
             gossip_by_name[kind].setdefault(
-                escape_lua_string(line["npcName"]), {})[text] = digest
+                escape_lua_string(line["npcName"]), {})[text] = gossip_hash_from_line_id(base_id)
             continue
 
         # Progress text is never voiced, so an entry would resolve to silence.
@@ -198,6 +205,10 @@ def build_tables(corpus: dict, ignored=()) -> dict:
 
         if line["source"] == "accept" and kind in questlog:
             questlog[kind][line["questId"]] = line["npcId"]
+
+        if voice and kind in quest_files:
+            stem = f'{line["questId"]}-{line["source"]}'
+            quest_files[kind].setdefault(stem, {})[line["npcId"]] = variant_file_name(stem, voice)
 
         quest_ids.setdefault(line["source"], {}) \
                  .setdefault(escape_lua_string(line["questTitle"]), {}) \
@@ -218,6 +229,8 @@ def build_tables(corpus: dict, ignored=()) -> dict:
         "object_name_lookups": ("ObjectNameLookupByObjectID", names["gameobject"]),
         "item_name_lookups": ("ItemNameLookupByItemID", names["item"]),
         "followup_lookups": ("FollowupLookup", followup),
+        "npc_quest_file_lookups": ("QuestFileLookupByNPCID", quest_files["creature"]),
+        "object_quest_file_lookups": ("QuestFileLookupByObjectID", quest_files["gameobject"]),
     }
 
 
@@ -235,21 +248,24 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
     """One client locale's gossip tables, as {output filename: (lua table name, data)}.
 
     Keyed by the locale's text and pointing at the English line's hash, which names the
-    file in every pack. A row is joined to the corpus on (lineId, originalText) -- the
-    English text is what a translated row is anchored to -- so it takes its speakers from
-    the corpus, and a row whose English has since changed is dropped.
+    file in every pack. A row is joined to the corpus on its moment and originalText -- the
+    English text is what a translated row is anchored to, and the language's own text may
+    make one line of English's two or two of its one -- so it takes its speakers from the
+    corpus, and a row whose English has since changed is dropped.
     """
     texts = {}
     for row in rows:
-        texts.setdefault((row["lineId"], row["originalText"]), []).append(row["localeText"])
+        texts.setdefault((moment_of(row["lineId"]), row["originalText"]), []).append(row["localeText"])
     tables = {kind: {} for kind in LOCALE_TABLES}
     for line in corpus["lines"]:
-        if line["source"] != "gossip" or line["lineId"] in ignored:
+        # A line in another voice has the words of the line it is a voice of.
+        base_id = split_voice(line["lineId"])[0]
+        if line["source"] != "gossip" or base_id in ignored:
             continue
         kind = line["npcType"]
         if kind not in tables:
             continue
-        for text in texts.get((line["lineId"], line["originalText"]), ()):
+        for text in texts.get((moment_of(base_id), line["originalText"]), ()):
             tables[kind].setdefault(line["npcId"], {})[escape_lua_string(text)] = \
                 gossip_hash_from_line_id(line["lineId"])
     return {filename: (table_name, tables[kind])

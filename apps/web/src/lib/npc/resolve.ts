@@ -14,14 +14,15 @@
  * An NPC that answers to none of them resolves to no race, which is a normal outcome rather
  * than a failure: the corpus already carries `narrator-male` for things that are not a race.
  */
-import { defaultFlavorFor, npcVoiceFromCorpus } from "@/lib/quests/catalogue";
+import type { Lang } from "@/lib/lang";
+import { defaultFlavorFor } from "@/lib/quests/catalogue";
 
 import { voiceFromDisplays } from "./display-voices";
 import { raceForModel } from "./models";
 import { INT32_MAX } from "./npc";
 import { getResolution, NPC_KINDS, upsertResolution, type NpcKind, type NpcResolution } from "./store";
 
-// The three integer columns npc_resolution and contribution both ultimately feed from an
+// The three integer columns npc and contribution both ultimately feed from an
 // unauthenticated envelope: an id this large is still "a digit run ending at a space" as far
 // as checkEnvelope is concerned, but Postgres's `integer` tops out at 2147483647, and a value
 // past that 500s every reader of the row (the triage page's Promise.all, the export's
@@ -46,7 +47,7 @@ const DIGITS = /^\d+$/;
 // npcId, modelFileId and sex all land in an `integer` column (migration 0030), and all three
 // come straight from an unauthenticated envelope: checkEnvelope only requires a digit run, with
 // no magnitude bound. Past 2147483647 Postgres rejects the insert, but that only protects the
-// npc_resolution row -- the contribution itself already stored, permanently, with the
+// npc row -- the contribution itself already stored, permanently, with the
 // oversized value in its meta. Bounding here, before either column is ever written, is what
 // keeps a single out-of-range paste from turning into a row that 500s every reader of it: the
 // triage page's Promise.all (page.tsx) and the export's unnest($::int[]) (export/route.ts) both
@@ -102,7 +103,8 @@ export function observedFrom(meta: Record<string, string>): Observed {
   };
 }
 
-export async function resolveNpc(observed: Observed): Promise<NpcResolution | null> {
+/** `lang` is the language of the client that observed the NPC, and so of its name. */
+export async function resolveNpc(observed: Observed, lang: Lang | null): Promise<NpcResolution | null> {
   const { npcKind, npcId } = observed;
   // `npcId === null`, not a truthiness check: id 0 is a real id and must not be mistaken for
   // "no npc at all". A kind-less envelope (see observedFrom) also fails here since npcKind is
@@ -116,16 +118,18 @@ export async function resolveNpc(observed: Observed): Promise<NpcResolution | nu
   const existing = await getResolution(npcKind, npcId);
   // The store's upsert already ranks provenance and would refuse a lower-ranked write on its
   // own, so this is not what keeps a moderator's answer safe -- it is here so a moderator-owned
-  // NPC skips the corpus scan and the write entirely, rather than doing both to arrive back
-  // where it started.
+  // NPC skips the write entirely, rather than arriving back where it started.
   if (existing?.provenance === "moderator") return existing;
 
-  const corpus = await npcVoiceFromCorpus(npcKind, npcId);
+  // The extract's answer is the npc table's `corpus` row (migration 0070). Only extracted NPCs
+  // have one: an NPC a contribution named was answered from its own resolution at the time, and
+  // reading that back as the corpus would confirm a guess. Its name is in entity_name already.
+  const corpus = existing?.provenance === "corpus" && existing.race && existing.gender ? existing : null;
   if (corpus) {
     return upsertResolution({
       npcKind,
       npcId,
-      npcName: corpus.npcName,
+      npcName: null,
       race: corpus.race,
       gender: corpus.gender,
       flavor: corpus.flavor,
@@ -157,7 +161,8 @@ export async function resolveNpc(observed: Observed): Promise<NpcResolution | nu
     return upsertResolution({
       npcKind,
       npcId,
-      npcName: observed.npcName,
+      npcName: lang ? observed.npcName : null,
+      nameLang: lang ?? undefined,
       ...fromDisplays.voice,
       provenance: "display",
       confirmed: true,
@@ -193,7 +198,8 @@ export async function resolveNpc(observed: Observed): Promise<NpcResolution | nu
   return upsertResolution({
     npcKind,
     npcId,
-    npcName: observed.npcName,
+    npcName: lang ? observed.npcName : null,
+    nameLang: lang ?? undefined,
     race: fromModel?.race ?? null,
     gender: fromModel?.gender ?? null,
     flavor,

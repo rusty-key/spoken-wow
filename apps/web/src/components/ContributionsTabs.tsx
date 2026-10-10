@@ -1,49 +1,51 @@
-import Link from "next/link";
-
+import { SECTIONS, type Section } from "@/lib/contributions/query";
 import { localeHref, type Lang } from "@/lib/lang";
-import { cn } from "@/lib/utils";
 
-const TABS = [
-  { key: "contributions", label: "Contributions", href: "/contributions" },
-  { key: "corrections", label: "Corrections", href: "/contributions/corrections" },
-  { key: "npcs", label: "NPCs", href: "/contributions/npcs" },
+import { LinkTabs } from "@/components/StatusTabs";
+
+const SECTION_LABELS: Record<Section, string> = {
+  quests: "Quests",
+  gossip: "Gossip",
+  books: "Books",
+  zones: "Zones",
+};
+
+const QUEST_VIEWS = [
+  { key: "contributions", label: "Contributions", href: "/contributions/quests" },
+  { key: "corrections", label: "Corrections", href: "/contributions/quests/corrections" },
 ] as const;
 
+type View = (typeof QUEST_VIEWS)[number]["key"];
+
 /**
- * The views of /contributions: the triage queue of missing lines, the corrections to lines the
- * corpus already has, and every NPC they have named. Links, not
- * client state -- each is its own page with its own gate, and the NPC tab is left out for
- * somebody that page would 404 for. Styled as VoicesTabs's own tab strip.
+ * The sections of /contributions, and under Quests its two views: lines the corpus lacks and
+ * corrections to lines it has, which only quests can have. Links, not client state: each is
+ * its own page with its own gate.
  */
 export default function ContributionsTabs({
   lang,
-  active,
-  showNpcs,
+  section,
+  view,
 }: {
   lang: Lang;
-  active: (typeof TABS)[number]["key"];
-  showNpcs: boolean;
+  section: Section;
+  view?: View;
 }) {
-  const tabs = TABS.filter((tab) => tab.key !== "npcs" || showNpcs);
-  if (tabs.length < 2) return null;
-
+  const sections = SECTIONS.map((key) => ({
+    key,
+    label: SECTION_LABELS[key],
+    href: `/contributions/${key}`,
+  }));
   return (
-    <nav aria-label="Contributions" className="mb-4 flex gap-1 border-b">
-      {tabs.map((tab) => (
-        <Link
-          key={tab.key}
-          href={localeHref(lang, tab.href)}
-          aria-current={tab.key === active ? "page" : undefined}
-          className={cn(
-            "-mb-px border-b-2 px-3 py-2 text-sm",
-            tab.key === active
-              ? "border-foreground font-medium"
-              : "text-muted-foreground hover:text-foreground border-transparent",
-          )}
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
+    <>
+      <LinkTabs label="Contributions" tabs={localised(lang, sections)} active={section} />
+      {section === "quests" ? (
+        <LinkTabs label="Quests" tabs={localised(lang, QUEST_VIEWS)} active={view ?? "contributions"} />
+      ) : null}
+    </>
   );
+}
+
+function localised(lang: Lang, tabs: readonly { key: string; label: string; href: string }[]) {
+  return tabs.map((tab) => ({ value: tab.key, label: tab.label, href: localeHref(lang, tab.href) }));
 }

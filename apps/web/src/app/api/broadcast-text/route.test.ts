@@ -10,6 +10,9 @@ import { closeDb, db } from "@/lib/db";
 const USER = `test-broadcast-${Math.random().toString(36).slice(2, 10)}`;
 const session = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock("@/lib/session", () => ({ currentSession: async () => session.current }));
+// Relinking reads and writes every line; it has its own test (lib/broadcast/relink.test.ts).
+const relink = vi.hoisted(() => vi.fn(async () => ({ linked: 0, merges: [] })));
+vi.mock("@/lib/broadcast/relink", () => ({ relinkGossip: relink }));
 
 import { POST } from "./route";
 
@@ -79,6 +82,7 @@ describe("POST /api/broadcast-text", () => {
     expect(await row("deDE", base)).toEqual({
       text: "Willkommen, $n.", text1: "", build: 70291, observations: 1,
     });
+    expect(relink).toHaveBeenLastCalledWith({ lang: "deDE" });
   });
 
   it("lets a newer build's text replace an older one, and never the other way", async () => {

@@ -85,7 +85,8 @@ for toc in "$SRC"/*.toc; do
   missing=()
   while IFS= read -r entry; do
     [ -f "$SRC/$(printf '%s' "$entry" | tr '\\' '/')" ] || missing+=("$entry")
-  done < <(sed -e 's/#.*//' -e 's/[[:space:]]*$//' "$toc" | grep -E '\.(lua|xml)$' || true)
+  # A trailing load directive ("Gossip\deDE.lua [AllowLoadTextLocale deDE]") is not the path.
+  done < <(sed -E -e 's/#.*//' -e 's/[[:space:]]*(\[[^]]*\])?[[:space:]]*$//' "$toc" | grep -E '\.(lua|xml)$' || true)
 
   # A version that drifts between variants is invisible until it ships, and it did drift: the
   # legacy TOCs still said 1.0.0 when the rest said 1.1.1.

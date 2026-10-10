@@ -1,29 +1,31 @@
 "use client";
 
 /**
- * /contributions/npcs: every NPC on file, one row each, with the triage table's own speaker
+ * /npcs: every NPC on file, one row each, with the triage table's own speaker
  * controls. `initial` is NpcSummary, built server-side (npcSummaryFrom), so nothing from
- * npc_resolution beyond what is rendered crosses into the client.
+ * the npc table beyond what is rendered crosses into the client.
  */
 import { SearchIcon } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
+import { LiteButton } from "@/components/LiteControls";
 import { useLang } from "@/components/LangProvider";
 import SpeakerCell, { type SpeakerAnswer } from "@/components/SpeakerCell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import Pagination from "@/components/Pagination";
-import { summaryFromResolution, type FlavorScope } from "@/lib/contributions/speaker";
+import { summaryFromResolution } from "@/lib/contributions/speaker";
+import { Roster, type RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
-import { isProvenance, PROVENANCES, type NpcKind, type Provenance } from "@/lib/npc/npc";
+import { isProvenance, PROVENANCES, type NpcRowKind, type Provenance } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
 import { wowheadEntityUrl, wowheadForeverUrl } from "@/lib/wowhead";
 
-function key(npcKind: NpcKind | null, npcId: number): string {
+function key(npcKind: NpcRowKind | null, npcId: number): string {
   return `${npcKind}:${npcId}`;
 }
 
@@ -75,15 +77,66 @@ function progressOf(npc: NpcSummary): Progress {
   return npc.doubtful ? "doubtful" : "finished";
 }
 
+/** A voice answer, or a name: the route saves each on its own. */
+type Answer = SpeakerAnswer & { npcName?: string };
+
+/** An NPC's name with a moderator's Edit, which saves over whatever named it. */
+function NameCell({
+  name,
+  busy,
+  onSave,
+}: {
+  name: string | null;
+  busy: boolean;
+  onSave: (name: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  if (draft === null) {
+    return (
+      <div className="flex items-center gap-1">
+        <span>{name ?? <span className="text-muted-foreground">unnamed</span>}</span>
+        <LiteButton variant="ghost" className="h-5 px-1.5 py-0 text-xs" onClick={() => setDraft(name ?? "")}>
+          Edit
+        </LiteButton>
+      </div>
+    );
+  }
+  const trimmed = draft.trim();
+  return (
+    <form
+      className="flex items-center gap-1"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (trimmed && trimmed !== name) onSave(trimmed);
+        setDraft(null);
+      }}
+    >
+      <input
+        aria-label="NPC name"
+        autoFocus
+        maxLength={200}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => event.key === "Escape" && setDraft(null)}
+        className="border-input bg-background h-7 w-44 rounded-md border px-2"
+      />
+      <LiteButton type="submit" variant="outline" className="h-7 px-2 text-xs" disabled={busy || !trimmed}>
+        Save
+      </LiteButton>
+    </form>
+  );
+}
+
 export default function NpcEditor({
   initial,
-  flavorScopes,
+  roster: rosterData,
 }: {
   initial: NpcSummary[];
-  /** facets().flavorScopes, for SpeakerCell's flavor select. */
-  flavorScopes: FlavorScope[];
+  /** The roster, for SpeakerCell's selects. */
+  roster: RosterData;
 }) {
   const lang = useLang();
+  const roster = useMemo(() => new Roster(rosterData), [rosterData]);
   const pathname = usePathname();
   const params = useSearchParams();
   // The filters live in the URL, so a reload or a shared link keeps the view. Written with
@@ -119,10 +172,10 @@ export default function NpcEditor({
 
   /** One answer, posted and taken into `saved`. True when it landed. */
   const post = useCallback(
-    async (npc: NpcSummary, answer: SpeakerAnswer): Promise<boolean> => {
-      // Every row here came from npc_resolution, so npcKind is never null and the route's
+    async (npc: NpcSummary, answer: Answer): Promise<boolean> => {
+      // Every row here came from the npc table, so npcKind is never null and the route's
       // required kind is always the row's own.
-      const response = await fetch("/api/contributions/npc", {
+      const response = await fetch("/api/npcs", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...answer, npcKind: npc.npcKind, npcId: npc.npcId }),
@@ -131,15 +184,15 @@ export default function NpcEditor({
       const { resolution } = (await response.json()) as { resolution: NpcResolution };
       setSaved((current) => ({
         ...current,
-        [key(npc.npcKind, npc.npcId)]: summaryFromResolution(resolution, flavorScopes),
+        [key(npc.npcKind, npc.npcId)]: summaryFromResolution(resolution, roster),
       }));
       return true;
     },
-    [flavorScopes],
+    [roster],
   );
 
   const save = useCallback(
-    async (npc: NpcSummary, answer: SpeakerAnswer) => {
+    async (npc: NpcSummary, answer: Answer) => {
       const k = key(npc.npcKind, npc.npcId);
       setBusy(k);
       setFailed(null);
@@ -206,7 +259,8 @@ export default function NpcEditor({
   const selectedRows = shown.filter((npc) => selected.has(key(npc.npcKind, npc.npcId)));
   // A bulk save keeps each row's own answer, so a row without a race and gender has nothing to
   // keep -- saving it would file "this NPC has no race" as a decision nobody made.
-  const savable = selectedRows.filter((npc) => npc.race && npc.gender);
+  // A genderless type is a whole answer without one.
+  const savable = selectedRows.filter((npc) => npc.race && (npc.gender || roster.isGenderless(npc.race)));
   const allTicked = shown.length > 0 && selectedRows.length === shown.length;
   const toggle = (k: string, on: boolean) =>
     setSelected((current) => {
@@ -349,13 +403,20 @@ export default function NpcEditor({
                       wf↗
                     </a>
                   </td>
-                  <td className="pr-3 text-xs">{npc.npcName ?? <span className="text-muted-foreground">unnamed</span>}</td>
+                  <td className="pr-3 text-xs">
+                    <NameCell
+                      key={npc.npcName ?? ""}
+                      name={npc.npcName}
+                      busy={busy === k || bulk !== null}
+                      onSave={(npcName) => void save(npc, { npcName })}
+                    />
+                  </td>
                   <td className="pr-3 text-xs">
                     <SpeakerCell
                       // Remount on a save, so the form's own state starts from the new answer.
                       key={`${npc.provenance}:${npc.race}:${npc.gender}:${npc.flavor}:${npc.doubtful}`}
                       npc={npc}
-                      flavorScopes={flavorScopes}
+                      roster={roster}
                       readOnly={false}
                       busy={busy === k || bulk !== null}
                       onSave={(answer) => void save(npc, answer)}

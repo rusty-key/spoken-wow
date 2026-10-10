@@ -83,6 +83,13 @@ class TTSProcessor:
         df['templateText_race_gender'] = df['original_text'] + df['race'] + df['gender']
         df['templateText_race_gender_hash'] = df['templateText_race_gender'].apply(get_hash)
 
+        # The NPC's own flavor, from its greeting sounds alone: what the npc table holds. None
+        # where the game says nothing, and then the NPC's lines wait for somebody to give it
+        # one. `flavor` below is the one its line's file was named and agreed in.
+        df['npc_flavor'] = [
+            flavor_from_sound_name(name, f"{race}-{gender}")
+            for name, race, gender in zip(df['npc_sound_name'], df['race'], df['gender'])
+        ]
         df['flavor'] = self.resolve_flavors(df)
         df['voice_name'] = [
             voice_name(race, gender, flavor)

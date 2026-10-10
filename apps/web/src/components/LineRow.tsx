@@ -146,6 +146,13 @@ type Props = {
   onRestored: (file: string, version: number) => void;
   /** False in the gossip explorer, where no line has a quest. */
   showQuest: boolean;
+  /** True in the gossip explorer: the BroadcastText ids each line speaks. */
+  showBroadcast: boolean;
+  /**
+   * Rows of one line and speaker (its player-gender wordings) share the speaker cells: the
+   * first row spans this many rows, and the rest pass 0 and leave those cells out.
+   */
+  groupSpan: number;
   /** Narrow the search to this line's NPC, or to its quest. */
   onNarrowToNpc: (line: ResultLine) => void;
   onNarrowToQuest: (line: ResultLine) => void;
@@ -198,10 +205,13 @@ export default function LineRow({
   onRestored,
   onNarrowToNpc,
   showQuest,
+  showBroadcast,
+  groupSpan,
   onNarrowToQuest,
   onClearDirty,
 }: Props) {
   const missing = absence(line);
+  const spanned = groupSpan > 0;
   const [expanded, setExpanded] = useState(false);
   const lang = useLang();
 
@@ -232,24 +242,26 @@ export default function LineRow({
         current && "bg-muted",
       )}
     >
-      <td className="px-2 py-2">
-        <button
-          className="hover:text-foreground block max-w-full truncate text-left underline-offset-2 hover:underline"
-          title={`Show only ${line.npcName}`}
-          onClick={() => onNarrowToNpc(line)}
-        >
-          <Untranslated missing={line.missing?.npcName}>{line.npcName}</Untranslated>
-        </button>
-        {onRename && (
-          <RenameButton label={`Name ${line.npcName}`} onClick={() => onRename(line, "npc")} />
-        )}
-        <span className="text-muted-foreground block truncate text-xs">
-          {line.npcType} {line.npcId} <WowheadLink href={wowheadEntityUrl(line.npcType, line.npcId)} />
-        </span>
-      </td>
+      {spanned && (
+        <td rowSpan={groupSpan} className="px-2 py-2">
+          <button
+            className="hover:text-foreground block max-w-full truncate text-left underline-offset-2 hover:underline"
+            title={`Show only ${line.npcName}`}
+            onClick={() => onNarrowToNpc(line)}
+          >
+            <Untranslated missing={line.missing?.npcName}>{line.npcName}</Untranslated>
+          </button>
+          {onRename && (
+            <RenameButton label={`Name ${line.npcName}`} onClick={() => onRename(line, "npc")} />
+          )}
+          <span className="text-muted-foreground block truncate text-xs">
+            {line.npcType} {line.npcId} <WowheadLink href={wowheadEntityUrl(line.npcType, line.npcId)} />
+          </span>
+        </td>
+      )}
 
-      {showQuest && (
-        <td className="px-2 py-2">
+      {spanned && showQuest && (
+        <td rowSpan={groupSpan} className="px-2 py-2">
           {line.questId === null ? (
             <span className="text-muted-foreground">—</span>
           ) : (
@@ -285,15 +297,49 @@ export default function LineRow({
         </td>
       )}
 
+      {spanned && showBroadcast && (
+        <td rowSpan={groupSpan} className="px-2 py-2 text-xs tabular-nums">
+          {line.broadcast?.length ? (
+            line.broadcast.map(({ id, matchedBy }) => (
+              <span
+                key={id}
+                className={"block " + (matchedBy === "text" ? "text-muted-foreground" : "")}
+                title={
+                  matchedBy === "text"
+                    ? "Matched by English text: one of the ids that read this way"
+                    : "The world database names this id for an NPC saying this text"
+                }
+              >
+                {id}
+              </span>
+            ))
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+          {line.moment?.map((sibling) => (
+            <a
+              key={sibling}
+              href={localeHref(lang, `/gossip?line=${encodeURIComponent(sibling)}`)}
+              className="text-muted-foreground block truncate underline-offset-2 hover:underline"
+              title={`Same moment: ${sibling}, the same id in the same voice, kept as a line of its own`}
+            >
+              same moment
+            </a>
+          ))}
+        </td>
+      )}
+
       {/* The voice slot is spelled race-gender-flavor, so this column is all three at once.
           The flavor is what distinguishes the two or three voices a race-gender has, so it
           belongs beside them rather than in a column of its own. */}
-      <td className="text-muted-foreground px-2 py-2">
-        <span className="block truncate">{line.race}</span>
-        <span className="block truncate text-xs">
-          {line.flavor ? `${line.gender} · ${line.flavor}` : line.gender}
-        </span>
-      </td>
+      {spanned && (
+        <td rowSpan={groupSpan} className="text-muted-foreground px-2 py-2">
+          <span className="block truncate">{line.race}</span>
+          <span className="block truncate text-xs">
+            {line.flavor ? `${line.gender} · ${line.flavor}` : line.gender}
+          </span>
+        </td>
+      )}
 
       {/* The text is plain markup rather than the label of a button, which is what makes it
           selectable: text inside a <button> cannot reliably be dragged over and copied. That
@@ -318,6 +364,15 @@ export default function LineRow({
             <PlayIcon className="size-3.5" />
           </button>
           <SourceMark source={line.source} />
+          {/* A $g line is split per player gender, and the two rows differ by a word. */}
+          {line.playerGender && (
+            <span
+              className="text-muted-foreground mt-px w-3 shrink-0 text-center text-xs"
+              title={`To ${line.playerGender === "m" ? "male" : "female"} player`}
+            >
+              {line.playerGender === "m" ? "M" : "F"}
+            </span>
+          )}
           {/* The override, when there is one: this cell shows what the line says out loud,
               and after a rewrite that is no longer what the corpus holds. */}
           <span className={cn("min-w-0 flex-1 whitespace-pre-wrap", !expanded && "line-clamp-2")}>
@@ -334,7 +389,10 @@ export default function LineRow({
                 // ?status=accepted -- page.tsx defaults to status=new, and a contributed
                 // line's own contribution is by definition accepted, so a bare /contributions
                 // link would land on a queue that never shows the row it points at.
-                href={localeHref(lang, `/contributions?status=accepted#contribution-${line.contributionId}`)}
+                href={localeHref(
+                  lang,
+                  `/contributions/${line.source === "gossip" ? "gossip" : "quests"}?status=accepted#contribution-${line.contributionId}`,
+                )}
                 onClick={(event) => event.stopPropagation()}
                 title="Accepted from a player's contribution"
                 className="text-muted-foreground hover:text-foreground underline underline-offset-2"

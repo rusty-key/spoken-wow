@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## 3.3.0 — 2026-10-09
+
+- **Each quest giver is heard in its own voice.** A quest several NPCs give is recorded once per
+  voice among them, and Spoken plays the one for the NPC you are talking to. Until a pack has
+  that voice, the quest plays as before.
+
 ## 3.2.0 — 2026-10-08
 
 - **Lore of Azeroth is now Azeroth's Compendium, with a Books tab.** The Zones tab lists each

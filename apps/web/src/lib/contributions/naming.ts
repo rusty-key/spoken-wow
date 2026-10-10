@@ -9,9 +9,9 @@
  * implementations of one frozen format, pinned together by tests on both sides rather than
  * shared code, because one is Python and the other TypeScript.
  *
- * No player-gender branch: naming.py's `:{m|f}` suffix exists for a template the game expands
- * differently per player gender, and a contribution carries no such variant -- the client
- * already picked one side of any `$G` (see the accept.ts docstring).
+ * naming.py's `:{m|f}` suffix exists for a text that branches on the player's gender (`$G`).
+ * Each language decides it from its own text (playerGenderForms), so one moment can be a
+ * plain line in one language and two in another.
  */
 import { createHash } from "node:crypto";
 
@@ -38,6 +38,30 @@ export function answersQuestMoment(lineId: string, momentId: string): boolean {
   return lineId === momentId || lineId.startsWith(`${momentId}:`);
 }
 
+/** A line id without its `:m`/`:f` player-gender suffix: the moment its forms share in every language. */
+export function momentOf(lineId: string): string {
+  return lineId.replace(/:[mf]$/, "");
+}
+
+/** momentOf in SQL, for a `lineId` column. */
+export function momentSql(column: string): string {
+  return `regexp_replace(${column}, ':[mf]$', '')`;
+}
+
+/**
+ * The lines a language's text makes of a moment: one, or one per player gender where the text
+ * branches on `$G`. The plain form is what an ungendered language plays to every player; the
+ * addon tries the player's `m-`/`f-` file first and falls back to the plain one.
+ */
+export function playerGenderForms(
+  moment: string,
+  fileName: string,
+  gendered: boolean,
+): { lineId: string; fileName: string; playerGender: "m" | "f" | null }[] {
+  if (!gendered) return [{ lineId: moment, fileName, playerGender: null }];
+  return (["m", "f"] as const).map((g) => ({ lineId: `${moment}:${g}`, fileName: `${g}-${fileName}`, playerGender: g }));
+}
+
 /**
  * answersQuestMoment in SQL, for a `lineId` column and a moment expression. Three exact ids
  * rather than a `like` prefix, so Postgres can look them up in quest_line's lineId indexes.
@@ -59,13 +83,38 @@ export function gossipFileName(hash: string): string {
   return hash;
 }
 
+/** broadcast_gossip_stem: a gossip line minted from its BroadcastText id and whole voice. */
+export function broadcastGossipStem(broadcastTextId: number, voice: string): string {
+  return `b${broadcastTextId}-${voice}`;
+}
+
+/** localized_gossip_stem: a gossip line minted in a language with neither English nor an id. */
+export function localizedGossipStem(lang: string, textHash: string): string {
+  return `${lang}-${textHash}`;
+}
+
+/** gossip_stem_rank: 0 broadcast, 1 English hash, 2 localized; the order one moment's stems are preferred in. */
+export function gossipStemRank(stem: string): 0 | 1 | 2 {
+  if (stem.startsWith("b") && stem.includes("-")) return 0;
+  return stem.includes("-") ? 2 : 1;
+}
+
 /**
- * The ElevenLabs voice name for a race, gender and flavor -- mirrors flavors.py's voice_name,
- * not naming.py, but kept beside it: the same "this side must agree with the Python" rule
- * applies, just to a name tts_cli/voices.py resolves rather than a file the addon looks up.
+ * A line in one more voice than its file was made in, and that voice's file: naming.py's
+ * variant_line_id and variant_file_name. The plain id keeps the voice its file was made in.
  */
-export function voiceNameFor(race: string, gender: string, flavor: string | null): string {
-  return flavor ? `${race}-${gender}-${flavor}` : `${race}-${gender}`;
+export function variantLineId(lineId: string, voice: string): string {
+  return `${lineId}~${voice}`;
+}
+
+export function variantFileName(fileName: string, voice: string): string {
+  return `${fileName}-${voice}`;
+}
+
+/** The line a voice's line is of: naming.py's split_voice. Text and ignores are the line's. */
+export function baseLineId(lineId: string): string {
+  const at = lineId.indexOf("~");
+  return at < 0 ? lineId : lineId.slice(0, at);
 }
 
 export type LineIdentity = {

@@ -1,7 +1,7 @@
 ## Interface: 100007, 16001
 ## Title: |cff888888Spoken Quests (now in Spoken)|r
 ## Notes: Spoken Quests is now part of Spoken, in the Spoken_Quests folder. This folder never loads and is safe to delete.
-## Version: 3.2.0
+## Version: 3.3.0
 ## Group: Spoken
 ## LoadOnDemand: 1
 # A tombstone, with no Lua. Spoken Quests shipped in this folder until 3.0.0-beta.3, which moved

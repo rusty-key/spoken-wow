@@ -33,6 +33,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { archiveOf } from "../lib/archives.mjs";
+import { NAMED_QUESTS_SQL, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -73,30 +74,34 @@ if (!database) {
   process.exit(1);
 }
 
+function psql(sql) {
+  return execFileSync(
+    "psql",
+    [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-f", "-"],
+    { input: sql, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  )
+    .split("\n")
+    .filter(Boolean);
+}
+
 // file <tab> archiveFile, for every live take. A quests file carries its extension and the
 // other two do not; the archive directory is the file without it either way.
-const listing = execFileSync(
-  "psql",
-  [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-f", "-"],
-  {
-    input: `select "file", coalesce("archiveFile", '') from "take"
-             where "source" = :'source' and "lang" = :'lang' and "isCurrent"
-             order by "file"`,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-  },
-);
+const listing = psql(`select "file", coalesce("archiveFile", '') from "take"
+                       where "source" = :'source' and "lang" = :'lang' and "isCurrent"
+                       order by "file"`);
 
 // The archive path of a live take: the take's own directory -- its file without the
 // extension -- holding the archive file. Blank when the take's clip was never kept.
-const live = listing
-  .split("\n")
-  .filter(Boolean)
-  .map((row) => {
-    const [file, name] = row.split("\t");
-    const stem = file.replace(/\.mp3$/, "");
-    return { file, stem, archived: name ? join(prefix, stem, name) : "" };
-  });
+const takes = listing.map((row) => {
+  const [file, name] = row.split("\t");
+  const stem = file.replace(/\.mp3$/, "");
+  return { file, stem, archived: name ? join(prefix, stem, name) : "" };
+});
+
+// Quests carry only the audio a current line names (relevant.mjs).
+const relevant = section === "quests" ? namedBy(psql(NAMED_QUESTS_SQL)) : () => true;
+const live = takes.filter((take) => relevant(take.stem));
+const unnamed = takes.length - live.length;
 
 if (list) {
   for (const take of live) if (take.archived) console.log(take.archived);
@@ -141,6 +146,7 @@ for (const { file, stem, archived } of live) {
 }
 
 console.log(`${section}: ${copied} clips in ${paths.out.slice(ROOT.length + 1)}`);
+if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file`);
 if (gone.length) {
   // Known, and not this machine's fault: the take's clip was not kept before the archive
   // was the record. The line ships without audio, the same as one never generated.

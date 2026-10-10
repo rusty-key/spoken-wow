@@ -47,6 +47,11 @@ ROWS = [
      "templateText_race_gender_hash": "abc123"},
 ]
 
+# The NPC's own flavor, which preprocess_dataframe reads off its greeting sounds alongside the
+# line's agreed one.
+for _row in ROWS:
+    _row.setdefault("npc_flavor", _row["flavor"])
+
 SPAWNS = [
     ("creature", 288, 0, -9465.5, 74.0),
     ("creature", 288, 0, -9000.0, 100.0),   # same NPC, second spawn
@@ -173,3 +178,19 @@ def test_a_follow_up_speaker_with_no_humanoid_display_is_voiced_by_its_model():
         "voice": "model-29", "fileName": "3475-model-29", "generatable": False,
         "skipReason": "no-voice"}
     assert corpus["lines"][0]["race"] == "human"
+
+
+def test_lists_each_npc_once_with_its_own_flavor_in_kind_then_id_order():
+    rows = [dict(row) for row in COLLIDING_ROWS]
+    rows[3]["npc_flavor"] = None  # the guard: the game names no flavor for it
+    rows[4]["npc_flavor"] = None  # the poster: narrators have none
+    corpus = build_corpus(pd.DataFrame(rows), SPAWNS)
+    assert corpus["npcs"] == [
+        {"npcType": "creature", "npcId": 68, "race": "human", "gender": "male", "flavor": None,
+         "provenance": "corpus", "voice": "human-male-standard"},
+        {"npcType": "creature", "npcId": 288, "race": "human", "gender": "male",
+         "flavor": "standard", "provenance": "corpus", "voice": "human-male-standard"},
+        # A billboard is a gameobject, which the narrator reads.
+        {"npcType": "gameobject", "npcId": 68, "race": "gameobject", "gender": None,
+         "flavor": None, "provenance": "corpus", "voice": "narrator-male"},
+    ]

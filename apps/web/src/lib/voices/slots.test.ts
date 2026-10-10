@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import { isVoiceSlot, slots } from "./slots";
-import { VOICE_NAMES } from "./voices";
+import { loadRoster } from "./roster-store";
 
 describe("slots", () => {
   it("lists the roster", async () => {
     const names = (await slots()).map((s) => s.name);
     expect(names).toContain("orc-male-shady");
     expect(names).toContain("narrator-male");
-    // Every name must be the race-gender[-flavor] shape tts_cli/voices.py matches on, or the
-    // Python side will not find the voice we create. The flavor is optional: narrator-male
-    // is a pseudo-race for gameobjects with no NPC voice sets to choose between.
-    // A placeholder flavor may be a voice set's id (voices.ts), hence the digits.
-    for (const name of names) expect(name).toMatch(/^[a-z]+-(male|female)(-[a-z0-9]+)?$/);
+    // A name becomes a path segment: dash-joined lowercase words and digits, as migration 0071's
+    // voice table checks. A genderless type's voice has no gender in its name.
+    for (const name of names) expect(name).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 
   it("offers a voice the corpus does not speak yet, so it can be cloned first", async () => {
@@ -25,9 +23,9 @@ describe("slots", () => {
     expect((await slots()).map((s) => s.name)).not.toContain("skybourneelf-female");
   });
 
-  it("is exactly the roster in voices.ts", async () => {
+  it("is exactly the roster's voices", async () => {
     const names = (await slots()).map((s) => s.name);
-    expect([...names].sort()).toEqual([...VOICE_NAMES].sort());
+    expect([...names].sort()).toEqual([...(await loadRoster()).voiceNames].sort());
   });
 
   it("orders alphabetically", async () => {

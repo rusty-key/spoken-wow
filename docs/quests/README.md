@@ -352,6 +352,30 @@ carries them, once per language; the faction packs and every English pack are bu
 before. A language with no imported text (`make import-locale LOCALE=esMX`) still builds, with
 a warning, and its gossip is matched against the English text.
 
+#### A line for each player gender, where a language's text needs it
+
+A language's own text decides whether a moment is one line or two. Where it branches on the
+player's gender (`$G`) the moment is `:m` and `:f`, in files `m-…` and `f-…`;
+otherwise it is one plain line, for every player, whatever English does. German can say one
+thing where English says "lad" and "lass", and French can need two forms where English has one.
+The import (`tts_cli/locale_import.py`), accept and the explorer's text editor all follow the
+rule. A plain line made from a split English line is read beside English's male side.
+
+A player's client has already picked one side of any `$G`, so a contribution is one plain line.
+A moderator splits it by writing the `$G` back in the explorer: the plain line stops being
+current and `:m` and `:f` take its place, both holding the template. Edited without a `$G`, a
+side of a split moment changes alone; putting the plain version back undoes the split. English
+is not split here: its shape is the extract's.
+
+The forms of one moment are linked by its id without the suffix. Each takes the moment's
+speakers, and the explorer shows a language its own lines, or English's while it has none. An
+import that would reshape a moment retires the lines of the old shape, unless somebody edited
+the moment here. The addon tries the player's `m-`/`f-` file before the plain one, so a pack
+carries only the audio a current line names, or a voice of it (`scripts/audio/relevant.mjs`):
+an old shape's takes stay live but would otherwise still play. A moment split or joined is
+silent in that language until its new files are generated. Ignoring a line ignores every form
+of its file.
+
 A language's pack is built from its whole store, not from the English corpus, so a take of a
 quest line only that language has (see "When there is no line at all") ships with the rest.
 The addon finds a quest sound by its file name alone. A language split into faction packs would need
@@ -628,10 +652,11 @@ Like the lexicon, overrides live only in the database, and the Python CLI does n
 
 `/voices` is admin-only. It lists every voice on the roster — alphabetically, so a
 race-gender's flavors sit together — with the lines and NPCs each one carries, and marks which
-exist in the ElevenLabs account. The roster is `apps/web/src/lib/voices/voices.ts`: every
-race-gender and its flavors, written down by hand, and read by the triage selects and the
-explorer filters too. A voice listed there has a slot before any line uses it, so it can be
-cloned before its first line is accepted. The corpus only supplies the counts; a test fails on
+exist in the ElevenLabs account. The roster is in the database (migration 0071): every type an
+NPC can be, its genders and flavors, and the voice each combination is read by, edited by an
+admin on the Types tab of `/npcs` and read by the triage selects and the explorer filters too.
+A voice there has a slot before any line uses it, so it can be cloned before its first line is
+accepted. The corpus only supplies the counts; a test fails on
 a corpus line whose voice is not on the roster, and accepting a contribution refuses one. The
 Skybourne elves have the game's two voice sets per gender, named by their NPCSounds id
 (`skybourneelf-male-3776`) until they have better names.
@@ -641,7 +666,9 @@ Expanding one shows the clips it would be cloned from: upload, play back, delete
 material in `voice/seed-clips/<race-gender>/<flavor>/`, which is the shape of its name — no
 mapping table to keep in sync when a flavor is added. A slot with no flavor seeds from the files
 directly in `<race-gender>/`, as `bloodelf-female` does: the one voice the roster gives
-them. `narrator-male` has nothing to seed from, which is expected: it is not a race.
+them. `narrator-male` has nothing to seed from, which is expected: it is a voice, not a type.
+It reads the `gameobject`, `item` and `creature` types, which is how a quest started from a
+billboard says it was a gameobject and is still read by the narrator.
 
 Merging is there because the practical source is one-second greeting clips.
 ElevenLabs treats combined length as what decides clone quality — one to two minutes is the
@@ -897,29 +924,51 @@ client knows which words those were — so a contributed line is a template like
 one: stored as `originalText`, spoken as `Adventurer`/`Traveler` by the extract's own table,
 and hashed on the template when it is gossip. Class and race are swapped wherever they occur as
 whole words, so a warrior's "a warrior's discipline" arrives as "a `$c`'s discipline"; that
-false positive is accepted over voicing one player's class at everyone. The speaker row is the mark, not the line's origin, because an edit puts an `edited`
-version on top; it is also what `corpus_db.py`'s import leaves alone when it replaces every
-extracted speaker, and it numbers from 1,000,000 so a re-import never meets it. The corpus
+false positive is accepted over voicing one player's class at everyone. The contribution's id on its speaker row, or its note on the first
+version of a line it wrote without one, is the mark, not the line's origin, because an edit
+puts an `edited` version on top. A contributed speaker is what `corpus_db.py`'s import leaves
+alone when it replaces every extracted speaker, and it numbers from 1,000,000 so a re-import
+never meets it. The corpus
 wins where it already has the line: a quest moment is matched by quest id and moment alone
 (the tables carry some only as `:m`/`:f` variants), and a gossip line it already has gains the
 contributing NPC as one more speaker instead of a copy. Progress lines are kept, marked
 `progress` and never voiced, as the extract marks its own. Once written, a contribution cannot
 be moved back to new or rejected; ignoring the line in the explorer is how to back out.
 
-A quest row sent from a client in another language is that language's text of the moment. If
-English has the moment, accepting writes its translation: a `quest_line` row in the language,
-with its structure copied from the English one and no speaker of its own. If English does not,
-the line is written as the language's own: a `quest_line` and a `quest_line_speaker` row, both
-under the language, the line's text kept with its `$N`, `$C` and `$R` as a translation's is.
-Nothing has to be sent in English first. Its id and file are the quest's and the moment's, the
-same in every language, so it is voiced into the file English would use. The language's
-explorer lists it, and the English one does not. When English sends the moment later, English's line
-and speakers become the skeleton, and the language's row becomes its translation, with the
-same id, file and takes. The translated explorer shows the English template from the
-English row itself, so the native row's own `originalText` never stands in for it. Who speaks it is answered by a moderator with `regenerate` in the
-contribution's language. The answer is about the NPC (`npc_resolution`), so it holds for
-every language. A gossip row in another language is still refused: its id is a hash of
-English text the client never shows.
+A quest row is accepted the same way whatever language its client was in. A line is the
+language's own `quest_line` row; who speaks it is a fact about the world, so a speaker row any
+language wrote voices the line in every language. Accepting a quest moment writes the
+language's row and a `quest_line_speaker` row only when the moment has no speaker in any
+language yet. Only then does it need the NPC's race and gender answered. Its id
+and file are the quest's and the moment's, the same in every language, so nothing has to be
+sent in English first, and English sending the moment later writes English's row under the
+same id and file, voiced by the speaker already there. In another language the line keeps its
+`$N`, `$C` and `$R`, as a translation's does.
+
+The catalogues read speakers the same way (`catalogue.ts`'s `SPEAKERS`, and `export_corpus`):
+a line's English speakers where it has any, otherwise those a language wrote, each NPC once.
+A language's explorer lists its own rows, plus English's lines it has no text for, marked
+untranslated; English is joined only to show what a line says in English. Who speaks is
+answered by a moderator with `regenerate` in the contribution's language. The answer is about
+the NPC (`npc`), so it holds for every language.
+
+A gossip row, in any language, is matched in three steps (`apps/web/src/lib/contributions/gossip.ts`):
+
+1. **By its words:** a line the language already has with the same text, case and spacing
+   aside, spoken by the same race and gender. English asks the catalogue, as it always has; another
+   language asks its own rows' `localeText`.
+2. **By BroadcastText:** the lowest id whose text in the language reads the same, in the form the
+   NPC's sex shows (`text` for male, `text1` for female, either side of a `$g` branch), then a
+   line of that id (`gossip_broadcast`) in the same race and gender. A line named after its id
+   must also have the same flavor.
+3. **Otherwise a new line:** `g:b{id}-{voice}` when the id is known, else `g:{md5}` in English
+   and `g:{lang}-{md5}` in another language.
+
+What a match writes depends on what the line has. If it already has a row in the language,
+the NPC becomes one more speaker, unless it already is one. If it only has English, the
+language gets a translation of it. If it has no English, an English row makes it an English
+line under the same id, and another language's row is written as that language's own. The id
+a line was found or made by is recorded in `gossip_broadcast` as `text`.
 
 #### Who is speaking
 
@@ -989,8 +1038,36 @@ the contribution meant, and that pick is stored on the contribution (`contributi
 migration 0033), never in `meta`, which stays what the client sent. From then on every reader
 treats the row as if its envelope had carried the kind.
 
-The answer is stored once per NPC, keyed on the kind *and* the id for that same reason, so one
-correction fixes every line that NPC speaks. `npc_resolution` also keeps what the client
+The answer is stored once per NPC in `npc` (migration 0070), keyed on the kind *and* the id for
+that same reason, and every line reads its voice from it: a speaker row names the NPC, and a
+line speaks in its speakers' race and gender and the flavor most of their NPCs have, as the
+extract has always agreed one file on one voice. So one correction fixes every line that NPC
+speaks, the extract's included, and their audio goes stale. The extract's own answers are the
+`corpus` rows, which `import-corpus` writes from the corpus file's `npcs`: race and gender from
+the display, and flavor from the NPC's greeting sounds. Where the game names none, as for
+Cairne Bloodhoof's hand-made display, the import gives the race-gender's default ("standard",
+or its busiest flavor) and marks the answer doubtful; the export writes it back without one.
+Such an NPC keeps the voice its lines were made in and is listed under Doubtful on
+`/npcs`, which lists every NPC, for an admin to confirm or change. Migration 0071 gave every
+speaker's NPC an answer from its speaker rows; one with no type has no voice, and its lines wait.
+`import-corpus` never replaces a moderator's answer unless a moderator marked it doubtful, even
+with a moderator answer from the file, and lists every answer it kept over a different one.
+Names are per language, in `entity_name`. A moderator can rename an NPC there, in the language their
+rights are checked in (English unless the request names another), and the import leaves an
+edited English name alone.
+
+Every line several NPCs speak is spoken in each one's own voice. The file already made keeps
+the voice it was made in, the one its speakers were written with; each other voice among them
+is a line of its own, `{lineId}~{voice}` in a file `{fileName}-{voice}` (`naming.py`), listed
+in the explorer and generated like any line. Changing an NPC's voice moves it to its new
+voice's line. A pack points a giver at its voice's file only once that file has audio in the
+store (`tts_cli/voice_files.py`). A quest giver is found through `QuestFileLookupByNPCID` and
+`QuestFileLookupByObjectID`, and the addon falls back to the moment's own file when no
+installed pack has it; a greeting's speaker and a follow-up's are looked up per NPC already, so
+their tables simply name the speaker's own file. The greeting tables keyed by NPC name, used when
+the addon has no id, name the line's own file, since same-named NPCs can differ in voice. Progress text is never voiced and never split.
+
+`npc` also keeps what the client
 reported even when a moderator overrules it — evidence about the NPC is worth more than the
 guess it produced — along with the client build, since model ids are per-build data.
 
@@ -1000,16 +1077,23 @@ at least as high as what is already there. A submission carrying less informatio
 erase one carrying more — the case that matters is a player on an older addon, whose envelope
 has no model at all, submitting for an NPC somebody else already resolved.
 
-`corpus` means an *extracted* speaker: `npcVoiceFromCorpus` skips the speakers accepted
-contributions wrote. Those carry the NPC's own resolution at the time it was accepted, often a
+`corpus` means an *extracted* speaker: only the corpus import writes `corpus` rows, never the
+speakers accepted contributions wrote. Those carry the NPC's own resolution at the time it was accepted, often a
 `client` guess, and reading one back as `corpus` confirmed the guess and let it outrank the game's
 own appearance data. Migration 0058 demoted the 71 rows that had been confirmed that way.
 
 `/contributions` shows the result with its provenance and says plainly which rows are guesses;
-the override there writes `moderator` and is collaborator-only, like everything else that
-changes a row. A new race or voice set is added to the roster in
-`apps/web/src/lib/voices/voices.ts`: that puts it in the triage selects and gives it a slot on
-`/voices`, marked as not existing in the account until it is cloned.
+answering who speaks a row there, like everything on `/npcs`, is a global admin's alone, since
+it picks the voice in every language, and everyone else sees "Missing NPC", "Missing type" or
+the answer. A new type, gender or flavor is added on `/npcs` → Types, with a voice of its own
+or an existing one (a treant could be read by the narrator): that puts it in the selects and
+gives a new voice a slot on `/voices`, marked as not existing in the account until it is cloned.
+`import-corpus` adds any type the file names that the database lacks, and never changes one it
+has. A first gender for a genderless type, or a first flavor for a race-gender read by one
+bare voice, splits a voice NPCs may already speak with, so the Types tab asks first: map it to
+the new combination (its files and takes stay valid, and the type's NPCs move there) or throw
+it away (the new combination gets a new voice; the old one and its takes stay on file unused,
+and the NPCs wait for an answer).
 
 `/contributions/game-data`, unlinked and collaborator-only, resolves NPCs from a game client
 instead of by hand. It lists chat commands that make the client ask its server about every
@@ -1037,7 +1121,55 @@ refused.
 A row's text is replaced only by one from the same or a newer client build, because a hotfix
 edits a row in place and keeps its id. One text can sit under several ids ("What are you
 looking for?" is 4857, 5907 and 6788); they read alike, so whichever matches is as good as the
-others. Nothing reads these tables yet: matching gossip by id is the next step.
+others.
+
+`gossip_broadcast` (migration 0067) names the ids each gossip line speaks, one set per line for
+every language. `matchedBy` says how it was found: `extract` when the world database names the
+id for the line's NPC, `text` when the line's English text equals the id's English text, which
+is how Forever's greetings get one. A one-off filled both tables in October 2026: `broadcast_text`
+with vmangos's rows in English and its eight locales (no ptBR) as build 5875, and with
+[EG Link](https://github.com/JIVESCORP/eg-link-output-wowf)'s English Forever rows; then 3,572
+gossip lines by extract and 178 by text. The 508 left are quest greetings, which have no
+BroadcastText row, and Forever lines no source had yet.
+
+#### Gossip text for every client, and one moment under several names
+
+The addon carries every line's gossip text for each client locale but English,
+`addons/Spoken_Quests/Gossip/<lang>.lua`, each returning before it builds anything on a client
+in another locale, and asks it before any pack's tables. It lives in the addon, not the packs,
+for the giver names' reason: the text follows the client and the voice is any language, so a
+German client with English or Portuguese packs finds its line the same way. Each file is about
+2 MiB of Lua, and a guard returns only after the client has parsed the file, so Forever's `.toc`
+files list each one with `[AllowLoadTextLocale <lang>]` (a per-file directive from 11.1.5) and
+the client loads only its own. The classic and legacy `.toc` files load `Gossip/Gossip.xml`,
+which lists all nine (about 14 MiB, 2 MiB of it ever built).
+`make quests-export-gossip-text` writes them (`tts_cli/gossip_text.py`) from three sources: a
+translation row while it translates the line's current English, the line's own text when it has
+no English, and `broadcast_text` in that language for each id the line has, in the form the
+speaker's sex shows. Rerun it after an `import-locale`, a cache upload or a relink.
+
+New gossip lines get two more id forms (`tts_cli/naming.py`), for lines with no English to hash:
+`g:b{broadcastTextId}-{voice}` when the id is known as the line is made, else
+`g:{lang}-{md5(text + race + gender)}`. A moment is the lines sharing an id and a race and
+gender, and when it has several, `Gossip/Aliases.lua` lists each one's siblings. The addon
+tries a line's own file and then its aliases, within each language, so a take in the chosen
+language under a sibling's name beats the fallback language under the line's own. Lines are
+linked this way and never renamed.
+
+The packs' own `generated/<lang>/` copies keep loading, for players on an older addon, and the
+addon's text outranks them.
+
+**Relinking** (`apps/web/src/lib/broadcast/relink.ts`) upgrades lines as ids arrive. Every cache
+upload runs it for its language. It gives a line with no id the lowest id that reads the same in
+one of its languages, then merges duplicates: two lines of one id with the same speakers that
+read the same in every language both have, which is what a moment minted twice before its id
+was known looks like. The line kept is the one named by id, then English, then a language's own,
+then the older. It takes the other's languages it lacks. The other's rows stop being current, and
+`gossip_merge` (migration 0068) records where it went. Its file is never renamed: it becomes an
+alias of the line kept, so its takes still play, `corpus/gossip_aliases.json` tells the pack build
+to ship them, and a link to it shows the line kept. Lines of one moment that read differently
+stay apart, and the explorer's Broadcast column links each to the others as "same moment". To run
+it over every line, use `apps/web/scripts/relink-gossip.mts`; `--dry-run` lists what it would merge.
 
 ## Addon Install
 

@@ -60,6 +60,9 @@ None of this is the project's to license, and the MIT grant does not reach it.
 - **Italian quest, gossip and book text** comes from QuestIT, an Italian community
   translation by Drakanast whose addon code is MIT-licensed; the quest text it translates
   is Blizzard's. `pipelines/quests/tools/import_questit.py` imports it.
+- **BroadcastText rows from the Forever beta** (the `broadcast_text` table) partly come from
+  [EG Link output](https://github.com/JIVESCORP/eg-link-output-wowf) by JIVESCORP, published
+  under **CC BY 4.0**; the text itself is Blizzard's.
 - Text submitted through `/contribute` is game text as well: a player's client is showing it and
   they are sending a copy. It sits on the same footing as the corpus above, and the same terms
   apply to it.

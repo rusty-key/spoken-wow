@@ -1,7 +1,8 @@
 /**
  * entity_name, written from the site: a translator naming a quest, an NPC, a book's owner
  * or a place in their language. The only module here that writes the table; the catalogues
- * read it, and English is kept in step by trigger (migration 0036), never written here.
+ * read it, and English is kept in step by trigger (migration 0036), written here only by a
+ * moderator's override.
  */
 import "server-only";
 
@@ -44,6 +45,9 @@ export async function nameHistory(kind: NameKind, entityId: string, lang: Lang):
 /**
  * Name a thing in a language. Only something with an English name can be named, which is
  * what keeps a typo in an id from becoming a row nothing will ever show.
+ *
+ * `anyLanguage` is a moderator's override of an NPC they are looking at: English too, and no
+ * English name needed. An edited English name is one the import's trigger leaves alone.
  */
 export async function saveName(args: {
   kind: NameKind;
@@ -53,8 +57,9 @@ export async function saveName(args: {
   note?: string | null;
   editedBy: string;
   expectedVersion?: number | null;
+  anyLanguage?: boolean;
 }): Promise<NameVersion> {
-  if (args.lang === BASE_LANG) {
+  if (args.lang === BASE_LANG && !args.anyLanguage) {
     throw new Error("English names come from the corpus, not from here");
   }
   const name = args.name.trim();
@@ -63,12 +68,14 @@ export async function saveName(args: {
   const client = await db().connect();
   try {
     await client.query("begin");
-    const { rows: english } = await client.query(
-      `select 1 from "entity_name"
-        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
-      [args.kind, args.entityId, BASE_LANG],
-    );
-    if (!english[0]) throw new NameMissing(`${args.kind} ${args.entityId} has no English name`);
+    if (!args.anyLanguage) {
+      const { rows: english } = await client.query(
+        `select 1 from "entity_name"
+          where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
+        [args.kind, args.entityId, BASE_LANG],
+      );
+      if (!english[0]) throw new NameMissing(`${args.kind} ${args.entityId} has no English name`);
+    }
 
     const { rows: currentRows } = await client.query<Row>(
       `select "version", "isCurrent", "origin", "name", "editedBy", "note", "createdAt"

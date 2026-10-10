@@ -56,6 +56,14 @@ def test_stems_are_extension_free_so_they_match_a_transcoded_store():
     assert pack_stems(CORPUS, SIDES, "gossip") == {"gossip/abc123"}
 
 
+def test_a_gossip_file_s_aliases_ship_beside_it():
+    # The addon plays an alias when the file itself has no take, so the alias must be there.
+    aliases = {"abc123": ["b6029-orc-male"]}
+    assert pack_stems(CORPUS, SIDES, "gossip", aliases) == {
+        "gossip/abc123", "gossip/b6029-orc-male", "gossip/m-b6029-orc-male", "gossip/f-b6029-orc-male"}
+    assert pack_stems(CORPUS, SIDES, "alliance", aliases) == {"quests/5-accept"}
+
+
 def test_the_all_pack_is_every_stem():
     assert pack_stems(CORPUS, SIDES, "all") == {
         "quests/5-accept", "quests/7-accept", "quests/9-accept", "gossip/abc123"}

@@ -14,6 +14,7 @@
  */
 import { recordActivity } from "../activity/store";
 import { db } from "../db";
+import { baseLineId } from "../contributions/naming";
 import { BASE_LANG, type Lang } from "../lang";
 
 export type LineIgnore = {
@@ -93,6 +94,8 @@ export async function writeIgnore(
 ): Promise<LineIgnore> {
   const trimmed = reason.trim();
   if (!trimmed) throw new Error("an ignore needs a reason: a decision nobody can revisit is a bug");
+  // Ignoring one voice of a line ignores the line, as the pack build reads it.
+  lineId = baseLineId(lineId);
 
   const { rows } = await db().query<IgnoreRow>(
     `insert into "line_ignore" ("lineId", "lang", "reason", "createdBy")
@@ -124,6 +127,7 @@ export async function clearIgnore(
   lang: Lang | null,
   by: string | null,
 ): Promise<boolean> {
+  lineId = baseLineId(lineId);
   const { rowCount } = await db().query(
     `delete from "line_ignore" where "lineId" = $1 and "lang" is not distinct from $2`,
     [lineId, lang],

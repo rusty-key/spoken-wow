@@ -298,7 +298,6 @@ export async function countRecentContributions(ip: string, withinMs: number): Pr
 /** Each sortable column's own name, spelled out rather than interpolated from the caller's string. */
 const SORT_EXPRESSIONS: Record<SortColumn, string> = {
   filed: `"createdAt"`,
-  source: `"source"`,
   count: `"count"`,
 };
 
@@ -316,12 +315,14 @@ export async function listContributions(
   status: ContributionStatus | "all",
   locale?: string,
   sort: ContributionSort = DEFAULT_SORT,
+  source?: EnvelopeSource,
 ): Promise<Contribution[]> {
   const { rows } = await db().query<Contribution>(
     `select ${COLUMNS} from "contribution"
       where ($1 = 'all' or "status" = $1) and ($2::text is null or "locale" = $2)
+        and ($3::text is null or "source" = $3)
       order by ${orderBy(sort)}`,
-    [status, locale ?? null],
+    [status, locale ?? null, source ?? null],
   );
   return rows;
 }

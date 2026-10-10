@@ -69,7 +69,7 @@ afterEach(async () => {
   await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
   await db().query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
   // The observed-npc test resolves npc 9123 into a row this database does not otherwise carry.
-  await db().query(`delete from "npc_resolution" where "npcId" = $1`, [9123]);
+  await db().query(`delete from "npc" where "npcId" = $1`, [9123]);
   // Nothing to clean up for the overflow test's npc id: the whole point of the fix is that no
   // row is ever written for it, and "npcId" is `integer`, so comparing it against a literal
   // this large would itself fail to cast.
@@ -166,7 +166,7 @@ describe("POST /api/contributions", () => {
       provenance: string;
       confirmed: boolean;
       build: string;
-    }>(`select "race", "flavor", "provenance", "confirmed", "build" from "npc_resolution" where "npcId" = $1`, [
+    }>(`select "race", "flavor", "provenance", "confirmed", "build" from "npc" where "npcId" = $1`, [
       9123,
     ]);
     expect(rows[0]).toMatchObject({

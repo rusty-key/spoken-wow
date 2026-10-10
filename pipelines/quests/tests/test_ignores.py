@@ -40,7 +40,8 @@ def test_a_file_is_ignored_only_when_every_line_addressing_it_is(tmp_path):
     assert ignored_files(CORPUS, ignored) == []
 
     ignored["g:tally-twin"] = "war-effort tally"
-    assert ignored_files(CORPUS, ignored) == ["gossip/tally.mp3"]
+    assert ignored_files(CORPUS, ignored) == ["gossip/f-tally.mp3", "gossip/m-tally.mp3",
+                                              "gossip/tally.mp3"]
 
 
 def test_gendered_variants_are_separate_files(tmp_path):
@@ -56,4 +57,12 @@ def test_an_unknown_line_id_names_no_file(tmp_path):
 
 def test_files_come_back_sorted(tmp_path):
     ignored = {"q:5:accept": "broken", "g:shared:m": "broken"}
-    assert ignored_files(CORPUS, ignored) == ["gossip/m-shared.mp3", "quests/5-accept.mp3"]
+    assert ignored_files(CORPUS, ignored) == ["gossip/m-shared.mp3", "quests/5-accept.mp3",
+                                              "quests/f-5-accept.mp3", "quests/m-5-accept.mp3"]
+
+
+def test_a_moments_file_goes_in_every_form_a_language_may_give_it(tmp_path):
+    # A language's own text may make English's two lines one, or its one line two.
+    assert "gossip/shared.mp3" not in ignored_files(CORPUS, {"g:shared:m": "broken"})
+    assert ignored_files(CORPUS, {"g:shared:m": "broken", "g:shared:f": "broken"}) == [
+        "gossip/f-shared.mp3", "gossip/m-shared.mp3", "gossip/shared.mp3"]

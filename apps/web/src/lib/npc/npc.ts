@@ -15,6 +15,11 @@
 export const NPC_KINDS = ["creature", "gameobject"] as const;
 export type NpcKind = (typeof NPC_KINDS)[number];
 
+// What an npc row can be: an item starts quests too, and has a type an admin answers for (it is
+// read by a voice like anyone). Never what a client's envelope names, so NPC_KINDS stays apart.
+export const NPC_ROW_KINDS = [...NPC_KINDS, "item"] as const;
+export type NpcRowKind = (typeof NPC_ROW_KINDS)[number];
+
 // The ceiling of the `integer` columns an NPC id lands in (migrations 0030 and 0048). Past it
 // Postgres refuses the insert, so every path that takes an id from outside checks it first.
 export const INT32_MAX = 2147483647;

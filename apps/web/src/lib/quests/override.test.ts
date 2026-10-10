@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_OVERRIDE_LENGTH, OverrideError, validateOverride } from "./override";
+import { MAX_OVERRIDE_LENGTH, OverrideError, overrideOf, validateOverride, type LineOverride } from "./override";
 
 const VALID = { file: "quests/1155-accept.mp3", lineId: "q:1155:accept", text: "  A crystal fragment.  " };
 
@@ -32,5 +32,28 @@ describe("validateOverride", () => {
     expect(() => validateOverride({ ...VALID, file: "" })).toThrow(/file is required/);
     expect(() => validateOverride({ ...VALID, lineId: "" })).toThrow(/lineId is required/);
     expect(() => validateOverride(null)).toThrow(OverrideError);
+  });
+});
+
+describe("overrideOf", () => {
+  const override = (file: string): LineOverride => ({ file, lineId: "q:5:accept", text: "Fixed.", updatedAt: "", updatedBy: null });
+  const overrides = new Map([["quests/5-accept.mp3", override("quests/5-accept.mp3")]]);
+
+  it("gives a voice's file its line's override", () => {
+    expect(overrideOf(overrides, "quests/5-accept.mp3")?.text).toBe("Fixed.");
+    expect(overrideOf(overrides, "quests/5-accept-human-male-warrior.mp3")?.text).toBe("Fixed.");
+  });
+
+  it("prefers an override saved against the voice's own file", () => {
+    const own = new Map(overrides).set("quests/5-accept-human-male-warrior.mp3", { ...override("x"), text: "Own." });
+    expect(overrideOf(own, "quests/5-accept-human-male-warrior.mp3")?.text).toBe("Own.");
+  });
+
+  it("gives the file of a voice an admin added its line's override", () => {
+    expect(overrideOf(overrides, "quests/5-accept-treant.mp3")?.text).toBe("Fixed.");
+  });
+
+  it("finds nothing for another line's file", () => {
+    expect(overrideOf(overrides, "quests/6-accept-human-male-warrior.mp3")).toBeUndefined();
   });
 });

@@ -10,7 +10,7 @@
 ## Notes-koKR: Spoken으로 퀘스트와 잡담 대사를 소리내어 읽습니다. 3.3.5 서버에서 퀘스트와 잡담 음성을 복원합니다.
 ## Notes-zhCN: 通过 Spoken 朗读任务和闲聊对话。在3.3.5 服务器上恢复任务和闲聊语音。
 ## Notes-zhTW: 透過 Spoken 朗讀任務和閒聊對話。在3.3.5 伺服器上恢復任務和閒聊語音。
-## Version: 3.2.0
+## Version: 3.3.0
 ## SavedVariables: SpokenQuestsSettings
 ## Dependencies: Spoken
 # This client installs by hand from a zip that bundles the player, so the dependency is
@@ -20,3 +20,4 @@
 
 3.3.5\embeds.xml
 addon.xml
+Gossip\Gossip.xml

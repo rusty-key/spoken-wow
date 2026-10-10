@@ -5,14 +5,14 @@
  * Needs DATABASE_URL, migrations applied and the corpus imported:
  *   deploy/web/bin/migrate.sh "$PWD/apps/web" && make quests-import-corpus
  */
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { CorpusLine } from "@/lib/corpus";
 
 const { closeDb, db, query } = await import("@/lib/db");
 const { corpus } = await import("./catalogue");
+const { keepLanguage } = await import("./keep-language");
 
-// A language nothing else in the suite writes, so these rows cannot meet another test's.
 const LANG = "koKR";
 
 type Line = {
@@ -35,16 +35,18 @@ beforeAll(async () => {
        join "quest_line_speaker" s
          on s."lineId" = l."lineId" and s."variant" = l."variant" and s."lang" = l."lang"
       where l."lang" = 'enUS' and l."isCurrent" and l."questId" is not null and l."generatable"
+        and not exists (select 1 from "quest_line" k where k."lineId" = l."lineId" and k."lang" = $1)
+        and not exists (select 1 from "entity_name" n
+                         where n."lang" = $1 and ((n."kind" = 'quest' and n."entityId" = l."questId"::text)
+                            or (n."kind" = s."npcType" and n."entityId" = s."npcId"::text)))
       order by l."lineId" limit 1`,
+    [LANG],
   );
   if (!rows[0]) throw new Error("translated.test.ts needs the corpus imported: make quests-import-corpus");
   line = rows[0];
 });
 
-afterEach(async () => {
-  await db().query(`delete from "quest_line" where "lang" = $1`, [LANG]);
-  await db().query(`delete from "entity_name" where "lang" = $1`, [LANG]);
-});
+keepLanguage(LANG);
 
 afterAll(closeDb);
 

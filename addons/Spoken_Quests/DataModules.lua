@@ -67,6 +67,8 @@ local LOAD_ALL_MODULES = true
 ---@field ObjectNameLookupByObjectID table<number, string> Maps GameObject ID to GameObject name
 ---@field ItemNameLookupByItemID table<number, string> Maps Item ID to Item name
 ---@field SoundLengthLookupByFileName table<string, number> Maps sound filenames to their duration in seconds
+---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
+---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 
 ---@class AvailableDataModule
 ---@field AddonName string Addon name
@@ -451,19 +453,27 @@ local function TextLookup(module, name)
     return module[name], module.LookupLocale or module.METADATA.Language
 end
 
+--- A table of `prefix`ByNPCID or `prefix`ByObjectID for the giver a GUID names, and its id.
+---@param prefix string
+---@param unitGUID string
+---@return string|nil table
+---@return number|nil id
+local function GiverLookupKey(prefix, unitGUID)
+    local type = Utils:GetGUIDType(unitGUID)
+    if Enums.GUID:IsCreature(type) then
+        return prefix .. "ByNPCID", Utils:GetIDFromGUID(unitGUID)
+    elseif type == Enums.GUID.GameObject then
+        return prefix .. "ByObjectID", Utils:GetIDFromGUID(unitGUID)
+    end
+end
+
 --- The gossip table a speaker is filed under, and its key there.
 ---@param soundData { unitGUID: string?, name: string?, unitIsObjectOrItem: boolean? }
 ---@return string|nil table
 ---@return any npc
 local function GossipLookupKey(soundData)
     if soundData.unitGUID then
-        local type = Utils:GetGUIDType(soundData.unitGUID)
-        if Enums.GUID:IsCreature(type) then
-            return "GossipLookupByNPCID", Utils:GetIDFromGUID(soundData.unitGUID)
-        elseif type == Enums.GUID.GameObject then
-            return "GossipLookupByObjectID", Utils:GetIDFromGUID(soundData.unitGUID)
-        end
-        return
+        return GiverLookupKey("GossipLookup", soundData.unitGUID)
     end
     return soundData.unitIsObjectOrItem and "GossipLookupByObjectName" or "GossipLookupByNPCName",
         soundData.name and (replaceDoubleQuotes(soundData.name))
@@ -478,6 +488,9 @@ function DataModules:HasGossipFor(soundData)
     local table, npc = GossipLookupKey(soundData)
     if not table or npc == nil then
         return false
+    end
+    if GossipText and GossipText[table] and GossipText[table][npc] then
+        return true
     end
     for _, module in self:GetModules() do
         local data = TextLookup(module, table)
@@ -508,8 +521,17 @@ function DataModules:GetNPCGossipTextHash(soundData)
     -- Only when no pack in the client's locale knows this NPC are the rest searched. That is
     -- what every non-English client has always done with English packs, and it mostly works:
     -- most NPCs have a single line, and the fuzzy match lands on it whatever it is shown in.
+    --
+    -- GossipText (Gossip/<locale>.lua, built only on a client in that locale) is this addon's
+    -- own copy of every line's text in the client's locale, so it is asked before any pack's.
     local client = Language:GetClientLanguage()
     local function collect(inClientLocale)
+        local own = inClientLocale and GossipText and GossipText[table]
+        if own and own[npc] then
+            for text, hash in pairs(own[npc]) do
+                text_entries[text] = hash
+            end
+        end
         for _, module in self:GetModules() do
             local data, locale = TextLookup(module, table)
             if data and (locale == client) == inClientLocale then
@@ -688,6 +710,35 @@ setmetatable(getFileNameForEvent,
         end
     })
 
+--- The file a quest line is in, in the voice of the NPC or object giving it, where that is
+--- not the line's own: one quest given by NPCs of different voices is a file per voice.
+---@param soundData SoundData Its fileName the quest line's own, as getFileNameForEvent names it
+---@return string|nil
+function DataModules:GetQuestFileForGiver(soundData)
+    if not Enums.SoundEvent:IsQuestEvent(soundData.event) or not soundData.unitGUID then
+        return
+    end
+    local name, id = GiverLookupKey("QuestFileLookup", soundData.unitGUID)
+    if not name then
+        return
+    end
+    for _, module in self:GetModules() do
+        local byGiver = module[name] and module[name][soundData.fileName]
+        if byGiver and byGiver[id] then
+            return byGiver[id]
+        end
+    end
+end
+
+--- A greeting's table names its speaker's own voice's file, `{hash}-{voice}`: the line's own
+--- file is the hash, tried in each language before the next.
+---@param fileName string
+---@return string|nil
+local function GreetingOfVoice(fileName)
+    local _, _, hash = string.find(fileName, "^(" .. string.rep("%x", 32) .. ")%-")
+    return hash
+end
+
 ---@param soundData SoundData
 ---@return boolean found Whether the sound is found and can be played
 --- Whether a pack has the line, filling in its file, length and pack if so. When not, the second
@@ -707,9 +758,16 @@ function DataModules:PrepareSound(soundData)
         return false, "no file name for it (no quest ID, or a greeting no pack's text matches)"
     end
 
-    if self:ResolveSoundFile(soundData) then
+    -- A quest given by NPCs of different voices is a file per voice: this giver's own first,
+    -- then the line's, in each language before the next, so a voice no pack in the player's
+    -- language has yet plays the line in that language rather than the voice in another.
+    local own = self:GetQuestFileForGiver(soundData)
+    local line = soundData.fileName
+    soundData.fileName = own or line
+    if self:ResolveSoundFile(soundData, own and line or GreetingOfVoice(line)) then
         return true
     end
+    soundData.fileName = line
 
     -- No pack holds the line - but an easter egg for it ships with the player itself.
     if EasterEggs:Apply(soundData) then
@@ -721,9 +779,11 @@ end
 --- Find the pack holding `soundData.fileName` and fill in the path, length and language.
 --- Split from PrepareSound for a caller that already knows the file it wants rather than
 --- the line - Followup.lua, whose packs name a follow-up line's file in FollowupLookup.
+--- `instead`, where given, is the file to try in each language when that one is missing there.
 ---@param soundData SoundData
+---@param instead string|nil
 ---@return boolean found
-function DataModules:ResolveSoundFile(soundData)
+function DataModules:ResolveSoundFile(soundData, instead)
     -- Language before priority. A pack that holds the line in the language the player
     -- asked for answers it even if a higher-priority pack holds the same line in another
     -- language; only when no pack in the selected language has it does the fallback
@@ -733,31 +793,47 @@ function DataModules:ResolveSoundFile(soundData)
     --
     -- Gossip falls back like any other line. Its file is named for a hash of the English
     -- text in every language a pack is built in, so the fallback pack holds the same name.
+    --
+    -- A gossip line may be one moment with lines recorded under other names (GossipAliases:
+    -- the same BroadcastText id and voice, minted before anything tied them). Those are asked
+    -- after the line's own name, within each language, so a take in the chosen language under
+    -- a sibling's name beats the fallback language under the line's own.
     local languages = Language:ResolutionOrder()
 
-    local wantedFileName = soundData.fileName
-    local playerGenderedFileName = DataModules:AddPlayerGenderToFilename(wantedFileName)
+    local candidates = {}
+    for _, name in ipairs({ soundData.fileName, instead }) do
+        table.insert(candidates, name)
+        local aliases = GossipAliases and GossipAliases[name]
+        if aliases then
+            for _, alias in ipairs(aliases) do
+                table.insert(candidates, alias)
+            end
+        end
+    end
     for _, language in ipairs(languages) do
-        for _, module in self:GetModules() do
-            local data = module.SoundLengthLookupByFileName
-            if data and module.METADATA.Language == language then
-                local fileName = wantedFileName
-                local length = data[playerGenderedFileName]
-                if length then
-                    fileName = playerGenderedFileName
-                else
-                    length = data[wantedFileName]
-                end
-                if length then
-                    soundData.fileName = fileName
-                    soundData.filePath = format([[Interface\AddOns\%s\%s]], module.METADATA.AddonName,
-                        module.GetSoundPath and module:GetSoundPath(fileName, soundData.event) or
-                        fileName)
-                    soundData.length = length
-                    soundData.module = module
-                    soundData.language = language
-                    EasterEggs:Apply(soundData)
-                    return true
+        for _, wantedFileName in ipairs(candidates) do
+            local playerGenderedFileName = DataModules:AddPlayerGenderToFilename(wantedFileName)
+            for _, module in self:GetModules() do
+                local data = module.SoundLengthLookupByFileName
+                if data and module.METADATA.Language == language then
+                    local fileName = wantedFileName
+                    local length = data[playerGenderedFileName]
+                    if length then
+                        fileName = playerGenderedFileName
+                    else
+                        length = data[wantedFileName]
+                    end
+                    if length then
+                        soundData.fileName = fileName
+                        soundData.filePath = format([[Interface\AddOns\%s\%s]], module.METADATA.AddonName,
+                            module.GetSoundPath and module:GetSoundPath(fileName, soundData.event) or
+                            fileName)
+                        soundData.length = length
+                        soundData.module = module
+                        soundData.language = language
+                        EasterEggs:Apply(soundData)
+                        return true
+                    end
                 end
             end
         end

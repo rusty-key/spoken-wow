@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { recordActivity } from "@/lib/activity/store";
+import { broadcastStatuses } from "@/lib/broadcast/store";
 import { corpus } from "@/lib/quests/catalogue";
 import { isSource, type Source } from "@/lib/sections";
 import {
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
   }
 
   let filters = await filtersFromParams(new URLSearchParams(body.filters));
-  const [catalogue, { voiced, context }, recordings] = await Promise.all([
+  const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([
     corpus(lang),
     // Behind `regenerate`, which is working in the language, so the model and author
     // filters narrow the batch exactly as they narrowed the page it was quoted from.
@@ -93,9 +94,11 @@ export async function POST(request: NextRequest) {
     // And the recorded filter, as /api/quests/search/lines narrowed the quote: without the
     // recordings "not recorded" would queue every line and "recorded" none.
     filters.recorded ? recordingsFor("quests", lang) : undefined,
+    // And the broadcast-id filter: without the statuses it matches nothing.
+    filters.broadcast ? broadcastStatuses() : undefined,
   ]);
   if (!recordings) filters = { ...filters, recorded: undefined };
-  const lines = matchingLines(catalogue, voiced, filters, { ...context, recordings });
+  const lines = matchingLines(catalogue, voiced, filters, { ...context, recordings, broadcast });
   // The same overrides the estimate was built from, so what is queued is what was quoted.
   const jobs = batchJobs(lines, context.overrides);
 

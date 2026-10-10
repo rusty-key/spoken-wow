@@ -8,6 +8,7 @@
 import { lineStates } from "@/lib/contributions/known";
 import { createContribution } from "@/lib/contributions/store";
 import type { Submission } from "@/lib/contributions/contributions";
+import { isLang } from "@/lib/lang";
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 
 /**
@@ -68,7 +69,7 @@ export async function storeSubmission(
   if (resolved?.has(key)) return;
   resolved?.add(key);
   try {
-    await resolveNpc(observed);
+    await resolveNpc(observed, isLang(submission.locale) ? submission.locale : null);
   } catch (error) {
     console.error("contribution stored but npc resolution failed", error);
   }

@@ -70,7 +70,7 @@ function correctionsHref(filters: Filters): string {
   if (filters.stage !== "all") params.set("stage", filters.stage);
   if (filters.q.trim()) params.set("q", filters.q.trim());
   if (filters.searchIn !== "any") params.set("filter", filters.searchIn);
-  return `/contributions/corrections?${params}`;
+  return `/contributions/quests/corrections?${params}`;
 }
 
 function when(at: string): string {

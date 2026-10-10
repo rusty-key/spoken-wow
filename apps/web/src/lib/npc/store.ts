@@ -1,25 +1,29 @@
 /**
- * The only module that knows the npc_resolution table's column names, as
- * lib/contributions/store.ts is for contributions.
+ * The only module that knows the npc table's column names, as lib/contributions/store.ts is for
+ * contributions. One row per NPC, read for every line it speaks (migration 0070); its name is
+ * per language, in entity_name.
  *
  * Every read and write takes the kind as well as the id. The pair is the key, because the two
  * id spaces overlap and a bare id would merge a Stormwind City Guard with a Wanted Poster.
  */
 import { db } from "@/lib/db";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { saveName } from "@/lib/names/store";
 
 // Defined in npc.ts, which is free of node imports -- see its own docstring for why that
 // split exists (ContributionTable.tsx, a client component, needs PROVENANCES as a value, and
 // importing one out of a module that reaches for `@/lib/db` fails the client build). Imported
 // (not just re-exported) so this file can still use them as it always did, and re-exported so
 // every existing import of these from this module keeps working unchanged.
-import { NPC_KINDS, PROVENANCES, isProvenance, type NpcKind, type Provenance } from "./npc";
+import { NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance, type NpcKind, type NpcRowKind, type Provenance } from "./npc";
 
-export { NPC_KINDS, PROVENANCES, isProvenance };
-export type { NpcKind, Provenance };
+export { NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance };
+export type { NpcKind, NpcRowKind, Provenance };
 
 export type NpcResolution = {
-  npcKind: NpcKind;
+  npcKind: NpcRowKind;
   npcId: number;
+  /** English where English names it, otherwise whichever language does. */
   npcName: string | null;
   race: string | null;
   gender: string | null;
@@ -37,13 +41,18 @@ export type NpcResolution = {
   updatedAt: string;
 };
 
-const COLUMNS = `"npcKind", "npcId", "npcName", "race", "gender", "flavor", "provenance",
-                 "confirmed", "doubtful", "modelFileId", "sex", "creatureType", "build", "note",
-                 "resolvedBy", "updatedAt"::text`;
+/** The language an NPC's shown name is in: English where English names it. */
+const NAME = `(select e."name" from "entity_name" e
+                where e."kind" = n."npcKind" and e."entityId" = n."npcId"::text and e."isCurrent"
+                order by e."lang" <> '${BASE_LANG}', e."lang" limit 1)`;
 
-export async function getResolution(kind: NpcKind, npcId: number): Promise<NpcResolution | null> {
+const COLUMNS = `n."npcKind", n."npcId", ${NAME} as "npcName", n."race", n."gender", n."flavor",
+                 n."provenance", n."confirmed", n."doubtful", n."modelFileId", n."sex",
+                 n."creatureType", n."build", n."note", n."resolvedBy", n."updatedAt"::text`;
+
+export async function getResolution(kind: NpcRowKind, npcId: number): Promise<NpcResolution | null> {
   const { rows } = await db().query<NpcResolution>(
-    `select ${COLUMNS} from "npc_resolution" where "npcKind" = $1 and "npcId" = $2`,
+    `select ${COLUMNS} from "npc" n where n."npcKind" = $1 and n."npcId" = $2`,
     [kind, npcId],
   );
   return rows[0] ?? null;
@@ -55,47 +64,32 @@ export async function getResolution(kind: NpcKind, npcId: number): Promise<NpcRe
 // sits between them, because it is the game's own voice set for the appearance the player saw
 // and so beats a model guess, but the corpus is the older authority for every NPC it carries;
 // `client` outranks `none` because a mapped model id is still an observation where a bare
-// envelope is none at all. This CASE is inlined into the upsert's `where` twice
-// (once for the stored row, once for the incoming one) so the comparison lives in the one
-// place both sides of a write pass through, rather than in whichever caller happens to be last.
-//
-// This list and the npc_resolution_provenance_check constraint in the migration must change
-// together: a provenance added to one and not the other either can never be written (rejected
-// by the constraint) or falls through to `else` here. The `else` is -1, one below `none`'s own
-// 0, on purpose -- an unranked value must not tie `none`, or it would silently win every write
-// over an unresolved row while still losing every write to anything already resolved, and only
-// the second half of that would ever be noticed. Ranked strictly below everything, a forgotten
-// rank can never land at all, so store.test.ts's PROVENANCES-driven test (every real provenance
-// must beat a `none` row) goes red immediately, naming the value, instead of shipping quietly.
-function provenanceRank(column: string): string {
-  return `case ${column}
-    when 'moderator' then 4
-    when 'corpus' then 3
-    when 'display' then 2
-    when 'client' then 1
-    when 'none' then 0
-    else -1
-  end`;
-}
+// envelope is none at all. The ranks are npc_provenance_rank (migration 0070), which must change
+// with the npc_provenance_check constraint.
 
+/**
+ * `nameLang` is the language `npcName` is in, English unless said otherwise: a contribution's
+ * NPC is named in the client's language, and saving that as English would show it on every
+ * English page.
+ */
 export async function upsertResolution(
-  input: Omit<NpcResolution, "updatedAt">,
+  input: Omit<NpcResolution, "updatedAt"> & { nameLang?: Lang },
 ): Promise<NpcResolution> {
   // The `where` compares ranks rather than special-casing `moderator`: without it, a `none`
   // write from an older addon that sends no model at all would wipe a `client` or `corpus`
   // row's race back to null, and `client` would freely overwrite `corpus`'s exact answer.
   // Equal rank still updates (`>=`), so a fresh corpus read can refresh a name and a second
-  // moderator edit still lands. A skipped update returns no row -- `do update ... where` makes
+  // moderator edit still lands. An answer identical to the stored one is skipped, so it leaves
+  // updatedAt, and with it every catalogue's stamp, alone. A skipped update returns no row -- `do update ... where` makes
   // the row a no-op, not a match failure -- so the read-back below is what keeps this
   // function's return type honest in that case.
-  const { rows } = await db().query<NpcResolution>(
-    `insert into "npc_resolution"
-       ("npcKind", "npcId", "npcName", "race", "gender", "flavor", "provenance", "confirmed",
+  await db().query(
+    `insert into "npc" as n
+       ("npcKind", "npcId", "race", "gender", "flavor", "provenance", "confirmed",
         "doubtful", "modelFileId", "sex", "creatureType", "build", "note", "resolvedBy")
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      on conflict ("npcKind", "npcId") do update
-       set "npcName" = excluded."npcName",
-           "race" = excluded."race",
+       set "race" = excluded."race",
            "gender" = excluded."gender",
            "flavor" = excluded."flavor",
            "provenance" = excluded."provenance",
@@ -108,25 +102,51 @@ export async function upsertResolution(
            "note" = excluded."note",
            "resolvedBy" = excluded."resolvedBy",
            "updatedAt" = now()
-       where ${provenanceRank(`"npc_resolution"."provenance"`)}
-             <= ${provenanceRank(`excluded."provenance"`)}
-     returning ${COLUMNS}`,
+       where "npc_provenance_rank"(n."provenance") <= "npc_provenance_rank"(excluded."provenance")
+         and (n."race", n."gender", n."flavor", n."provenance", n."confirmed", n."doubtful",
+              n."modelFileId", n."sex", n."creatureType", n."build", n."note", n."resolvedBy")
+             is distinct from
+             (excluded."race", excluded."gender", excluded."flavor", excluded."provenance",
+              excluded."confirmed", excluded."doubtful", excluded."modelFileId", excluded."sex",
+              excluded."creatureType", excluded."build", excluded."note", excluded."resolvedBy")`,
     [
-      input.npcKind, input.npcId, input.npcName, input.race, input.gender, input.flavor,
+      input.npcKind, input.npcId, input.race, input.gender, input.flavor,
       input.provenance, input.confirmed, input.doubtful, input.modelFileId, input.sex, input.creatureType,
       input.build, input.note, input.resolvedBy,
     ],
   );
-  if (rows[0]) return rows[0];
-
-  // The `where` above turned the write into a no-op, which means the row on disk already
-  // outranks this submission -- hand that back rather than undefined, so a caller that ignores
-  // the possibility still gets a real NpcResolution.
-  const existing = await getResolution(input.npcKind, input.npcId);
-  if (!existing) {
-    throw new Error(`upsertResolution: no-op update left no row for ${input.npcKind}/${input.npcId}`);
+  if (input.npcName?.trim()) {
+    await nameIfUnnamed(input.npcKind, input.npcId, input.npcName.trim(), input.nameLang ?? BASE_LANG);
   }
-  return existing;
+
+  // Read back either way: a write the `where` turned into a no-op means the row on disk
+  // outranks this submission or already is it, and that row is the answer.
+  const stored = await getResolution(input.npcKind, input.npcId);
+  if (!stored) throw new Error(`upsertResolution: no row for ${input.npcKind}/${input.npcId}`);
+  return stored;
+}
+
+/**
+ * A moderator's name for an NPC, over whatever is there, in `lang`: the language their rights
+ * were checked in, English included.
+ */
+export async function renameNpc(kind: NpcRowKind, npcId: number, name: string, editedBy: string, lang: Lang): Promise<void> {
+  await saveName({ kind, entityId: String(npcId), lang, name, editedBy, anyLanguage: true });
+}
+
+/**
+ * An NPC's name as a contribution gave it, where its language has no name yet.
+ * As 'contributed', so the extract's own name, when it comes, promotes over it.
+ */
+async function nameIfUnnamed(kind: NpcRowKind, npcId: number, name: string, lang: Lang): Promise<void> {
+  await db().query(
+    `insert into "entity_name" ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name")
+     select $1, $2, $4, 1, true, 'contributed', $3
+      where not exists (select 1 from "entity_name"
+                         where "kind" = $1 and "entityId" = $2 and "lang" = $4)
+     on conflict do nothing`,
+    [kind, String(npcId), name, lang],
+  );
 }
 
 /**
@@ -144,7 +164,7 @@ export async function getResolutionsById(npcIds: number[]): Promise<Map<number, 
   if (npcIds.length === 0) return new Map();
 
   const { rows } = await db().query<NpcResolution>(
-    `select ${COLUMNS} from "npc_resolution" where "npcId" = any($1::int[])`,
+    `select ${COLUMNS} from "npc" n where n."npcId" = any($1::int[]) and n."npcKind" <> 'item'`,
     [npcIds],
   );
   const grouped = new Map<number, NpcResolution[]>();
@@ -157,7 +177,7 @@ export async function getResolutionsById(npcIds: number[]): Promise<Map<number, 
 }
 
 /** The map key getResolutions returns rows under -- the same pair getResolution takes, joined. */
-export function resolutionKey(npcKind: NpcKind, npcId: number): string {
+export function resolutionKey(npcKind: NpcRowKind, npcId: number): string {
   return `${npcKind}:${npcId}`;
 }
 
@@ -175,10 +195,10 @@ export async function getResolutions(
   if (keys.length === 0) return new Map();
 
   const { rows } = await db().query<NpcResolution>(
-    `select ${COLUMNS} from "npc_resolution" r
+    `select ${COLUMNS} from "npc" n
       where exists (
         select 1 from unnest($1::text[], $2::int[]) as pairs("npcKind", "npcId")
-         where r."npcKind" = pairs."npcKind" and r."npcId" = pairs."npcId"
+         where n."npcKind" = pairs."npcKind" and n."npcId" = pairs."npcId"
       )`,
     [keys.map((key) => key.npcKind), keys.map((key) => key.npcId)],
   );
@@ -186,13 +206,12 @@ export async function getResolutions(
 }
 
 /**
- * Every NPC on file, for /contributions/npcs. Every row here came from a contribution naming the
- * NPC (resolveNpc at intake or at triage) or a moderator answering one, so this is "every NPC
- * the contributions have named".
+ * Every NPC on file, for /npcs: every one the extract carries and every one a contribution
+ * named, items included -- an item starts quests, and its type picks who reads them.
  */
 export async function listResolutions(): Promise<NpcResolution[]> {
   const { rows } = await db().query<NpcResolution>(
-    `select ${COLUMNS} from "npc_resolution" order by "npcId", "npcKind"`,
+    `select ${COLUMNS} from "npc" n order by n."npcId", n."npcKind"`,
   );
   return rows;
 }
@@ -204,9 +223,9 @@ export async function listResolutions(): Promise<NpcResolution[]> {
  */
 export async function listUnconfirmed(kind: NpcKind): Promise<NpcResolution[]> {
   const { rows } = await db().query<NpcResolution>(
-    `select ${COLUMNS} from "npc_resolution"
-      where "confirmed" = false and "npcKind" = $1
-      order by "npcId"`,
+    `select ${COLUMNS} from "npc" n
+      where n."confirmed" = false and n."npcKind" = $1
+      order by n."npcId"`,
     [kind],
   );
   return rows;

@@ -5,6 +5,7 @@
  * Signed-in only, unlike a contribution: these rows decide which line a text in another
  * language belongs to, so whoever sent them has to be someone we can ask.
  */
+import { relinkGossip } from "@/lib/broadcast/relink";
 import { recordUpload, sameAsEnglish, uniqueById, type BroadcastRow } from "@/lib/broadcast/store";
 import { BASE_LANG, isClientLang, isLang } from "@/lib/lang";
 import { currentSession } from "@/lib/session";
@@ -54,5 +55,9 @@ export async function POST(request: Request) {
     }
   }
 
-  return Response.json(await recordUpload(session.user.id, lang, build, texts));
+  const recorded = await recordUpload(session.user.id, lang, build, texts);
+  // New texts can name lines that had no id, and so tie a moment minted twice. The upload is
+  // already stored, so a relink that fails is left to the next one.
+  await relinkGossip({ lang }).catch((error) => console.error("relink after a cache upload failed", error));
+  return Response.json(recorded);
 }

@@ -60,7 +60,7 @@ reproduced. Never prune those.
 (`make/droplet.mk`) locally and from the `DO_*` secrets in CI.
 
 **Ids and filenames are frozen.** `q:{questID}:{accept|progress|complete}`, `g:{md5}`,
-`f:{broadcastTextID}:{voice}` (each with an optional `:m`/`:f` suffix), `z:{mapID}`,
+`g:b{broadcastTextID}-{voice}`, `g:{lang}-{md5}`, `f:{broadcastTextID}:{voice}` (each with an optional `:m`/`:f` suffix), `z:{mapID}`,
 `s:{mapID}:{key}`, `b:{pageTextID}`, and the paths derived from them. Renaming one re-ships a
 pack every player has downloaded and orphans the take history. Each is derived in exactly one
 place: `pipelines/quests/tts_cli/naming.py` (mirrored by

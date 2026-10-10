@@ -36,7 +36,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tts_cli.corpus import _skip_reason  # noqa: E402
-from tts_cli.locale_import import clean_localized, decide, import_locale  # noqa: E402
+from tts_cli.locale_import import clean_localized, decide, import_locale, own_lines  # noqa: E402
 from tts_cli.questit import (FIELDS, Hasher, load, match_by_hash, match_quest_line,  # noqa: E402
                              speak_npc_gender)
 
@@ -76,16 +76,18 @@ def translated_lines(data: dict, hasher: Hasher, rows: list[tuple]) -> tuple[lis
         counts[f"{source} {outcome}"] += 1
         if italian is None:
             continue
-        text = speak_npc_gender(clean_localized(italian, player_gender), npc_gender)
-        reason = _skip_reason({"source": source, "cleanedText": text, "voice_name": voice})
-        lines.append({
-            "lineId": line_id,
-            "originalText": original,
-            "text": text,
-            "localeText": None,
-            "generatable": reason is None,
-            "skipReason": reason,
-        })
+        for own_id, _, text in own_lines(
+                line_id, player_gender, italian,
+                lambda gender: speak_npc_gender(clean_localized(italian, gender), npc_gender)):
+            reason = _skip_reason({"source": source, "cleanedText": text, "voice_name": voice})
+            lines.append({
+                "lineId": own_id,
+                "originalText": original,
+                "text": text,
+                "localeText": None,
+                "generatable": reason is None,
+                "skipReason": reason,
+            })
     return lines, counts
 
 

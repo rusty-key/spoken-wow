@@ -21,6 +21,7 @@ import { spokenHash } from "../generation/spoken-hash";
 import { directionFor } from "../generation/narration";
 import { SHAPE } from "../generation/speakers/shape";
 import { currentConfig } from "../generation/settings";
+import { overrideOf } from "./override";
 import { readOverrides } from "./overrides";
 import type { Provider } from "../generation/providers";
 
@@ -67,7 +68,7 @@ export async function staleFiles(
     if (!row.spokenHash) continue;
     const line = lines.get(row.file);
     if (!line) continue;
-    const text = overrides.get(row.file)?.text ?? line.text;
+    const text = overrideOf(overrides, row.file)?.text ?? line.text;
     // Same three transforms regenerate.ts applies, in the same order: the hash is of the
     // string that was sent, so a take of "[hic]" must be compared against "[hic]" and not
     // "<hic>", and a dwarf take made with its accent direction against that same direction -

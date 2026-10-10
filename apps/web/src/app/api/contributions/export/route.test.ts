@@ -38,7 +38,7 @@ afterEach(async () => {
     [ip],
   );
   await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
-  await db().query(`delete from "npc_resolution" where "npcId" = $1`, [npcId]);
+  await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
 });
 
 afterAll(async () => {

@@ -10,7 +10,7 @@
 ## Notes-koKR: Spoken으로 퀘스트와 잡담 대사를 소리내어 읽습니다. 지원되는 클라이언트에서 퀘스트와 잡담 음성을 복원합니다.
 ## Notes-zhCN: 通过 Spoken 朗读任务和闲聊对话。在受支持的客户端上恢复任务和闲聊语音。
 ## Notes-zhTW: 透過 Spoken 朗讀任務和閒聊對話。在受支援的客戶端上恢復任務和閒聊語音。
-## Version: 3.2.0
+## Version: 3.3.0
 ## IconTexture: Interface\AddOns\Spoken_Quests\icon.tga
 ## SavedVariables: SpokenQuestsSettings
 ## OptionalDeps: Spoken, DialogueUI
@@ -25,3 +25,17 @@
 embeds.xml
 addon.xml
 Contribute.xml
+# Gossip text for the client's own locale only: each file is ~2 MB of Lua, and a guard inside
+# one returns only after the client has parsed it. AllowLoadTextLocale is a per-file directive
+# from 11.1.5. The classic and legacy .toc files load Gossip\Gossip.xml instead: every locale,
+# each guarded.
+Gossip\Aliases.lua
+Gossip\deDE.lua [AllowLoadTextLocale deDE]
+Gossip\esES.lua [AllowLoadTextLocale esES]
+Gossip\esMX.lua [AllowLoadTextLocale esMX]
+Gossip\frFR.lua [AllowLoadTextLocale frFR]
+Gossip\koKR.lua [AllowLoadTextLocale koKR]
+Gossip\ptBR.lua [AllowLoadTextLocale ptBR]
+Gossip\ruRU.lua [AllowLoadTextLocale ruRU]
+Gossip\zhCN.lua [AllowLoadTextLocale zhCN]
+Gossip\zhTW.lua [AllowLoadTextLocale zhTW]

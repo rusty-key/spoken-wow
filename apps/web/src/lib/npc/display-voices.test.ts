@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
+
+import { closeDb, db } from "@/lib/db";
 
 import { modelForDisplay, voiceForDisplay, voiceFromDisplays } from "./display-voices";
 
@@ -25,6 +27,28 @@ describe("voiceForDisplay", () => {
     expect(await voiceForDisplay(136967)).toMatchObject({
       voice: { race: "skybourneelf", gender: "male", flavor: "3776" },
     });
+  });
+
+  it("answers no flavor only while a voice reads the race-gender without one", async () => {
+    // 4730: a blood elf woman, no voice set named.
+    expect(await voiceForDisplay(4730)).toMatchObject({ voice: { race: "bloodelf", gender: "female", flavor: null } });
+    // As the Types tab maps bloodelf-female into a first flavor: the voice stays, read by the flavor.
+    await db().query(`insert into "flavor" ("race", "gender", "flavor") values ('bloodelf', 'female', 'testnoble')`);
+    await db().query(
+      `update "voice_assignment" set "flavor" = 'testnoble'
+        where "race" = 'bloodelf' and "gender" = 'female' and "flavor" is null`,
+    );
+    try {
+      expect(await voiceForDisplay(4730)).toMatchObject({
+        voice: { race: "bloodelf", gender: "female", flavor: "testnoble" },
+      });
+    } finally {
+      await db().query(
+        `update "voice_assignment" set "flavor" = null
+          where "race" = 'bloodelf' and "gender" = 'female' and "flavor" = 'testnoble'`,
+      );
+      await db().query(`delete from "flavor" where "flavor" = 'testnoble'`);
+    }
   });
 
   it("answers nothing, with a reason, for an appearance it has no record of", async () => {
@@ -73,3 +97,5 @@ describe("voiceFromDisplays", () => {
     expect(await voiceFromDisplays([999_999_999], 122055)).toBe(null);
   });
 });
+
+afterAll(closeDb);

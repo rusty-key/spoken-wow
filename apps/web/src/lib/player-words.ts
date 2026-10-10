@@ -76,6 +76,11 @@ const GENDER_DE = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
 // opening quote or Spanish's inverted marks.
 const SENTENCE_START = /(?:^|[.!?…。！？]|\n)[\s"'«„“¡¿]*$/u;
 
+/** Whether a text branches on the player's gender, and so is two lines rather than one. */
+export function branchesOnPlayerGender(text: string): boolean {
+  return new RegExp(GENDER.source).test(text);
+}
+
 /** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
 export function speakPlayerTokens(
   text: string,

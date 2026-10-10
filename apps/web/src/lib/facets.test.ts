@@ -2,28 +2,31 @@ import { describe, expect, it } from "vitest";
 
 import { corpus as catalogue } from "./quests/catalogue";
 import { facets as readFacets } from "./facets";
-import { isModelVoice, RACES, VOICE_NAMES, VOICES } from "./voices/voices";
+import { loadRoster } from "./voices/roster-store";
+import { isModelVoice } from "./voices/voices";
 
 const corpus = await catalogue();
 const facets = await readFacets();
+const roster = await loadRoster();
 
 describe("facets", () => {
   it("offers every value the corpus actually uses", () => {
     // voices.test.ts keeps the corpus inside the roster; this is the filter bar's side of it.
-    // Except a model slot's lines: no voice is chosen for one yet, so it is left off the
-    // roster and out of the filters on purpose (voices.ts isModelVoice).
+    // Except a line with no voice chosen yet -- a model slot's (voices.ts isModelVoice), or one
+    // whose NPC the game gives no flavor (migration 0070) -- which is off the roster on purpose.
     for (const line of corpus.lines) {
-      if (isModelVoice(line.voice)) continue;
+      if (!roster.isVoice(line.voice) || isModelVoice(line.voice) || !line.race) continue;
       expect(facets.races).toContain(line.race);
-      expect(facets.genders).toContain(line.gender);
+      // A genderless type's lines have none to offer.
+      if (line.gender) expect(facets.genders).toContain(line.gender);
       expect(facets.voices).toContain(line.voice);
       if (line.flavor) expect(facets.flavors).toContain(line.flavor);
     }
   });
 
   it("offers the roster, including voices no line uses yet", () => {
-    expect(facets.races).toEqual([...RACES]);
-    expect(facets.voices).toEqual([...VOICE_NAMES].sort((a, b) => a.localeCompare(b)));
+    expect(facets.races).toEqual(roster.races);
+    expect(facets.voices).toEqual(roster.voiceNames);
     // So the voice and flavor filters can reach the slots /voices shows for it.
     expect(facets.voices).toContain("skybourneelf-female-3774");
     expect(facets.flavorScopes).toContainEqual({ race: "skybourneelf", gender: "female", flavor: "3774" });
@@ -49,7 +52,7 @@ describe("facets", () => {
     });
 
     it("pairs nothing the roster does not", () => {
-      const keys = new Set(VOICES.filter((v) => v.flavor).map((v) => `${v.race}-${v.gender}-${v.flavor}`));
+      const keys = new Set(roster.data.flavors.map((v) => `${v.race}-${v.gender ?? ""}-${v.flavor}`));
       expect(facets.flavorScopes).toHaveLength(keys.size);
       for (const scope of facets.flavorScopes) {
         expect(keys).toContain(`${scope.race}-${scope.gender}-${scope.flavor}`);

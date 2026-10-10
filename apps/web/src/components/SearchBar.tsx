@@ -5,6 +5,7 @@ import { forwardRef, useCallback, useMemo } from "react";
 import DateChip from "@/components/DateChip";
 import { MadeByChips } from "@/components/MadeBy";
 import RecordedChip from "@/components/RecordedChip";
+import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
 import type { MadeByFacets } from "@/lib/takes/made-by";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ type Props = {
   madeBy?: MadeByFacets;
   /** The viewer records here, so the search answers whether each line is recorded. */
   recordable?: boolean;
+  /** The gossip explorer: lines can be narrowed by how their BroadcastText ids were found. */
+  broadcastable?: boolean;
 };
 
 /** Corpus values, which label themselves. */
@@ -54,7 +57,7 @@ const SCOPE_OPTIONS: ChipOption[] = [
 ];
 
 const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
-  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable },
+  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable, broadcastable },
   ref,
 ) {
   const active = activeFilterCount({ ...filters, q: query });
@@ -180,6 +183,14 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
         )}
         {recordable && (
           <RecordedChip value={filters.recorded} onChange={(recorded) => onFilters({ recorded })} />
+        )}
+        {broadcastable && (
+          <FilterChip
+            label="broadcast id"
+            value={filters.broadcast}
+            options={BROADCAST_OPTIONS}
+            onChange={(broadcast) => onFilters({ broadcast: broadcast as BroadcastStatus | undefined })}
+          />
         )}
 
         <div className="flex items-center gap-2 whitespace-nowrap">

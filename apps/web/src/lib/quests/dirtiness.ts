@@ -16,6 +16,7 @@ import { fileIndex } from "../audio";
 import { db } from "../db";
 import { dirtyFiles, loadDirtyContext } from "../generation/dirty";
 import { sentText } from "../generation/files";
+import { overrideOf } from "./override";
 import { readOverrides } from "./overrides";
 
 /**
@@ -60,7 +61,7 @@ export async function dirtyQuestFiles(
   for (const row of rows) {
     const line = lines.get(row.file);
     if (!line) continue;
-    const text = overrides.get(row.file)?.text ?? line.text;
+    const text = overrideOf(overrides, row.file)?.text ?? line.text;
     takes.push({
       file: row.file,
       // The regex rules, as regenerate.ts applies them: a rule that rewrites a name before

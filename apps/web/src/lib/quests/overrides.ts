@@ -8,7 +8,7 @@
 import { recordActivity } from "../activity/store";
 import { BASE_LANG, type Lang } from "../lang";
 import { db } from "../db";
-import type { LineOverride } from "./override";
+import { overrideOf, type LineOverride } from "./override";
 
 type OverrideRow = {
   file: string;
@@ -147,5 +147,5 @@ export function effectiveText(
   file: string,
   overrides: Map<string, LineOverride>,
 ): string {
-  return overrides.get(file)?.text ?? line.text;
+  return overrideOf(overrides, file)?.text ?? line.text;
 }

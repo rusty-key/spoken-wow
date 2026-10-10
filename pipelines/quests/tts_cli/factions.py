@@ -21,6 +21,7 @@ a staged store holds ogg where the corpus names mp3.
 """
 import json
 import os
+import re
 
 from tts_cli.naming import subfolder_from_line_id
 
@@ -83,11 +84,15 @@ def stem_of_line(line: dict) -> str:
     return f'{subfolder_from_line_id(line["lineId"])}/{line["fileName"]}'
 
 
-def pack_stems(corpus: dict, sides: dict, pack: str) -> set:
+def pack_stems(corpus: dict, sides: dict, pack: str, aliases: dict = None) -> set:
     """Every store-relative stem a pack contains.
 
     A file addressed by lines in two packs is shared, not duplicated and not dropped: being
     generous costs a player megabytes, and being strict costs them a line that never plays.
+
+    `aliases` is GossipAliases ({stem: [stems]}, tts_cli/gossip_text.py): a gossip file's
+    aliases ship beside it, since the addon plays one when the file itself has no take, and a
+    merged line's file is only reachable that way.
     """
     if pack not in PACKS:
         raise ValueError(f"unknown pack '{pack}' (expected: {', '.join(PACKS)})")
@@ -99,6 +104,12 @@ def pack_stems(corpus: dict, sides: dict, pack: str) -> set:
         if packs_by_stem.setdefault(stem, found) != found:
             packs_by_stem[stem] = "shared"
 
-    if pack == "all":
-        return set(packs_by_stem)
-    return {stem for stem, found in packs_by_stem.items() if found == pack}
+    stems = set(packs_by_stem) if pack == "all" else \
+        {stem for stem, found in packs_by_stem.items() if found == pack}
+    for stem in list(stems):
+        folder, name = stem.split("/", 1)
+        if folder != "gossip":
+            continue
+        for alias in (aliases or {}).get(re.sub(r"^[mf]-", "", name), ()):
+            stems.update(f"gossip/{prefix}{alias}" for prefix in ("", "m-", "f-"))
+    return stems

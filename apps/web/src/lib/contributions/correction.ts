@@ -14,7 +14,7 @@
  * translation's version carries it in its note. line_override has no column for it.
  *
  * The English text is the template made spoken (tokens.ts), as accept.ts writes a contributed
- * line; another language keeps its $N, $C and $R, as acceptTranslation does, for player-words.ts
+ * line; another language keeps its $N, $C and $R, as accept does, for player-words.ts
  * to speak in that language.
  *
  * Not one transaction with the status flip: the two writers own theirs, and both are

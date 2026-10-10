@@ -46,3 +46,31 @@ def test_an_older_file_skips_the_round_tripped_copy_of_a_contributed_speaker():
         lines, CONTRIBUTIONS_MARKED - 1, set(), {speaker_key(row("q:2:accept", 20))})
     assert extracted == [row("q:1:accept", 10)]
     assert skipped == 1
+
+
+def npc(npc_id, race, gender, flavor, npc_type="creature"):
+    return {"npcType": npc_type, "npcId": npc_id, "race": race, "gender": gender, "flavor": flavor}
+
+
+def test_an_npc_the_game_names_no_flavor_for_gets_its_race_genders_default_marked_doubtful():
+    from tts_cli.corpus_db import npc_answers
+    rows = npc_answers([npc(1, "human", "male", "standard"), npc(2, "human", "male", "official"),
+                        npc(3, "human", "male", None), npc(4, "tauren", "male", "warrior"),
+                        npc(5, "tauren", "male", None), npc(6, "narrator", "male", None, "gameobject")])
+    assert rows == [
+        ("creature", 1, "human", "male", "standard", "corpus", False),
+        ("creature", 2, "human", "male", "official", "corpus", False),
+        ("creature", 3, "human", "male", "standard", "corpus", True),
+        ("creature", 4, "tauren", "male", "warrior", "corpus", False),
+        # No standard voice for the race-gender: its busiest.
+        ("creature", 5, "tauren", "male", "warrior", "corpus", True),
+        # An older file's narrated gameobject is a gameobject, with no gender and no flavor.
+        ("gameobject", 6, "gameobject", None, None, "corpus", False),
+    ]
+
+
+def test_only_the_extracts_own_flavorless_answer_gets_the_default():
+    from tts_cli.corpus_db import npc_answers
+    rows = npc_answers([npc(1, "human", "male", "standard"),
+                        dict(npc(2, "human", "male", None), provenance="moderator")])
+    assert rows[1] == ("creature", 2, "human", "male", None, "moderator", False)

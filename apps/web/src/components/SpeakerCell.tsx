@@ -2,8 +2,7 @@
 
 /**
  * Who voices an NPC, and the controls that answer it -- shared by the triage table
- * (ContributionTable) and the NPC editor (NpcEditor), which both write through
- * api/contributions/npc.
+ * (ContributionTable) and the NPC editor (NpcEditor), which both write through api/npcs.
  */
 import { useState } from "react";
 
@@ -11,9 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { LiteButton, LiteCheckbox } from "@/components/LiteControls";
 // `import type`: triage.ts is server-only (it pulls in corpus.ts), see ContributionTable.
 import type { NpcSummary } from "@/lib/contributions/triage";
-import { flavorOptionsFor, type FlavorScope } from "@/lib/contributions/speaker";
+import { flavorOptionsFor } from "@/lib/contributions/speaker";
 import { NPC_KINDS, type NpcKind, type Provenance } from "@/lib/npc/npc";
-import { GENDERS, gendersOf, RACES, type Gender } from "@/lib/voices/voices";
+import type { Gender, Roster } from "@/lib/voices/roster";
+import { GENDERS } from "@/lib/voices/voices";
 
 /** What a saved answer posts: see SpeakerCell's own docstring for why every key is optional. */
 export type SpeakerAnswer = Partial<{
@@ -45,7 +45,7 @@ export function ProvenanceBadge({ provenance }: { provenance: Provenance }) {
 
 /**
  * A moderator's answer they are not sure of (migration 0054): voiced like any other, flagged so
- * /contributions/npcs can find it again for a second look.
+ * /npcs can find it again for a second look.
  */
 function DoubtBadge() {
   return (
@@ -59,11 +59,11 @@ function DoubtBadge() {
   );
 }
 
-/** "race-gender-flavor", or as much of it as is known -- a moderator can fill in the rest. */
+/** "type-gender-flavor", or as much of it as is known -- an admin can fill in the rest. */
 function speaker(npc: NpcSummary): string {
-  // A known race-gender with no flavor is a whole answer -- the voice is bare race-gender
-  // (voiceNameFor) -- not a flavor still to be decided.
-  if (npc.race && npc.gender && !npc.flavor) return `${npc.race}-${npc.gender}`;
+  // A type with no flavor is a whole answer -- one voice reads it -- not a flavor still to be
+  // decided; nor is a genderless type's missing gender.
+  if (npc.race) return [npc.race, npc.gender, npc.flavor].filter(Boolean).join("-");
   return [npc.race, npc.gender, npc.flavor].map((part) => part ?? "?").join("-");
 }
 
@@ -98,10 +98,10 @@ function speakerNote(npc: NpcSummary): string | null {
  *
  *   - confirmed: plain text; a moderator's own answer adds an Edit that reopens the form.
  *   - unconfirmed, race and gender known ("client"): race-gender as text, a flavor select
- *     narrowed to flavorsFor(race, gender) -- npc.flavorOptions, computed server-side.
+ *     narrowed to the roster's flavors for them -- npc.flavorOptions, computed server-side.
  *   - unconfirmed, nothing known ("none"): race and gender selects from the voiced list
- *     (lib/voices/voices.ts), gender narrowed to the chosen race, and a flavor select that fills
- *     in from flavorScopes once both are chosen.
+ *     (the roster), gender narrowed to the chosen type and hidden for a genderless one, and a
+ *     flavor select that fills in once both are chosen.
  *
  * Saving never resends a field the moderator didn't touch: the route's own orExisting is what
  * makes that safe, and doing it here too is what lets "this is a tauren male" (no flavor
@@ -110,13 +110,14 @@ function speakerNote(npc: NpcSummary): string | null {
  */
 export default function SpeakerCell({
   npc,
-  flavorScopes,
+  roster,
   readOnly,
   busy,
   onSave,
 }: {
   npc: NpcSummary;
-  flavorScopes: FlavorScope[];
+  /** The table's one Roster, not one per row. */
+  roster: Roster;
   readOnly: boolean;
   busy: boolean;
   onSave: (answer: SpeakerAnswer) => void;
@@ -134,17 +135,17 @@ export default function SpeakerCell({
   // stray click away from silently overwriting a considered "no race" with an empty save.
   const [editing, setEditing] = useState(false);
 
-  // Read-only too for somebody api/contributions/npc would refuse: the answer as it stands,
-  // with no form that could only end in a 403.
-  if (npc.provenance === "corpus" || readOnly) {
-    // The corpus is the exact answer, taken from the same display data the game itself uses --
-    // there is nothing for a moderator to decide, and unlike a `moderator` row (below) there is
-    // no "edit" affordance either: overriding the corpus's own answer would need to be a
-    // deliberate act (e.g. direct SQL), not an accident of a form this table always shows.
+  // An NPC the game gives a race and gender but no flavor (the extract's corpus row) has no
+  // voice until somebody picks one, so it opens on the flavor select, as a guess does.
+  const needsFlavor = Boolean(npc.race && !npc.flavor && npc.flavorOptions.length > 0);
+
+  // Read-only for somebody api/contributions/npc would refuse: the answer as it stands, with no
+  // form that could only end in a 403.
+  if (readOnly) {
     return (
       <div>
         <div className="flex items-center gap-1 whitespace-nowrap">
-          <span>{speaker(npc)}</span>
+          {npc.race ? <span>{speaker(npc)}</span> : <span className="text-muted-foreground">Missing type</span>}
           <ProvenanceBadge provenance={npc.provenance} />
           {npc.doubtful ? <DoubtBadge /> : null}
         </div>
@@ -153,11 +154,11 @@ export default function SpeakerCell({
     );
   }
 
-  if (npc.confirmed && !editing) {
-    // A moderator's own settled answer, or a `display` one (the other `confirmed` provenances --
-    // migrations 0031 and 0055). A display answer can still be wrong when the addon's rolls
-    // missed the appearance the player saw, so it keeps this Edit rather than the corpus's
-    // read-only view. Shown plainly like the corpus, but with a small edit control that reopens the form
+  if (npc.confirmed && !editing && !needsFlavor) {
+    // A settled answer: the corpus's, a moderator's or a `display` one (migrations 0031 and
+    // 0055). Each can still be wrong -- the extract reads a display, and the addon's rolls can
+    // miss the appearance the player saw -- and an answer here voices every line the NPC
+    // speaks, so each keeps an Edit. Shown plainly like the corpus, but with a small edit control that reopens the form
     // below, preselected with the current values via the same useState initialisers above. The
     // store already lets a moderator write over a moderator row -- upsertResolution's `where`
     // compares ranks with `<=`, so an equal rank still updates (store.test.ts's "lets a
@@ -188,21 +189,22 @@ export default function SpeakerCell({
   // may want to correct any of the three, not just the flavor. So does a guess the moderator
   // has said is wrong (its own Edit, below): the model the client reported is only a guess,
   // and a guessed bloodelf can be a human captain.
-  const known = npc.provenance === "client" && !editing;
+  const known = (npc.provenance === "client" || needsFlavor) && !editing;
   // The "nothing known" state's own flavor options: flavorScopes is the whole corpus, so this
   // narrows to whatever race and gender were just picked, the same shape flavorOptions already
   // is for the "client" state -- npc.flavorOptions answers for the race-gender on file, not
   // the one being picked.
   const flavorOptions = known
     ? npc.flavorOptions
-    : flavorOptionsFor(race, gender, flavorScopes);
+    : flavorOptionsFor(race, gender, roster);
+  const genderless = Boolean(race) && roster.isGenderless(race);
 
   return (
     <div className="flex flex-col gap-1 py-1">
       <div className="flex flex-wrap items-center gap-1">
         {known ? (
           <span className="font-mono">
-            {npc.race}-{npc.gender}
+            {[npc.race, npc.gender].filter(Boolean).join("-")}
             {flavorOptions.length > 0 ? "-" : null}
           </span>
         ) : (
@@ -229,39 +231,41 @@ export default function SpeakerCell({
               value={race}
               onChange={(event) => {
                 setRace(event.target.value);
-                // A gender the new race is not voiced in would post a pair nothing can speak.
-                if (event.target.value && !gendersOf(event.target.value).includes(gender as Gender)) setGender("");
+                // A gender the new type does not have would post a pair nothing can speak.
+                if (event.target.value && !roster.gendersOf(event.target.value).includes(gender as Gender)) setGender("");
                 setFlavor("");
               }}
               className="h-7 rounded border bg-transparent text-xs"
             >
-              <option value="">race?</option>
-              {RACES.map((option) => (
+              <option value="">type?</option>
+              {roster.races.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
-            <select
-              value={gender}
-              onChange={(event) => {
-                setGender(event.target.value);
-                setFlavor("");
-              }}
-              className="h-7 rounded border bg-transparent text-xs"
-            >
-              <option value="">gender?</option>
-              {(race ? gendersOf(race) : GENDERS).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            {genderless ? null : (
+              <select
+                value={gender}
+                onChange={(event) => {
+                  setGender(event.target.value);
+                  setFlavor("");
+                }}
+                className="h-7 rounded border bg-transparent text-xs"
+              >
+                <option value="">gender?</option>
+                {(race ? roster.gendersOf(race) : GENDERS).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            )}
           </>
         )}
         {/* A race-gender with no flavors in the corpus yet (bloodelf, skybourneelf) is voiced as
             bare race-gender, so there is nothing to pick and the answer saves without one. */}
-        {(known || (race && gender)) && flavorOptions.length > 0 ? (
+        {(known || (race && (gender || genderless))) && flavorOptions.length > 0 ? (
           <select
             value={flavor}
             onChange={(event) => setFlavor(event.target.value)}

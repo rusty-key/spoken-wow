@@ -3,14 +3,15 @@
  * can be unit tested without spinning up the page's own database calls -- the same reason
  * lib/npc/resolve.ts's observedFrom is a free function rather than inlined where it's used.
  *
- * npcSummaryFrom pulls in the quests catalogue (flavorsFor), so this file is not node-free the way
+ * npcSummaryFrom reads the roster store (roster-store.ts), so this file is not node-free the way
  * envelope.ts/contributions.ts are -- ContributionTable.tsx only ever takes NpcSummary/
  * QuestSummary as `import type`, which TypeScript erases entirely, so the client bundle never
  * sees this module's own imports.
  */
 import { BASE_LANG } from "@/lib/lang";
-import { flavorsFor } from "@/lib/quests/catalogue";
-import type { NpcKind, NpcResolution, Provenance } from "@/lib/npc/store";
+import { flavorOptionsFor } from "@/lib/contributions/speaker";
+import { loadRoster } from "@/lib/voices/roster-store";
+import type { NpcKind, NpcResolution, NpcRowKind, Provenance } from "@/lib/npc/store";
 import { isQuestStage, type QuestStage } from "./query";
 
 /** `stage` is null only for stored meta whose `event` is not one the addon sends. */
@@ -71,7 +72,7 @@ export type NpcSummary = {
    * kind by hand is a reviewed human decision, not the silent auto-guess resolve.ts declines to
    * make at intake.
    */
-  npcKind: NpcKind | null;
+  npcKind: NpcRowKind | null;
   npcId: number;
   npcName: string | null;
   race: string | null;
@@ -109,7 +110,7 @@ export type IdOnlyLookup = {
 const RANK: Record<Provenance, number> = { moderator: 4, corpus: 3, display: 2, client: 1, none: 0 };
 
 /**
- * Who a kind-less contribution's NPC is, from every npc_resolution row sharing its id.
+ * Who a kind-less contribution's NPC is, from every npc row sharing its id.
  *
  * A kind-less envelope names an id that may exist as both a creature and a gameobject. When the
  * rows that say anything (every provenance but `none`) agree on race, gender and flavor, that
@@ -142,7 +143,7 @@ export function idOnlyResolution(rows: NpcResolution[] | undefined): IdOnlyLooku
 
 /**
  * One row's NPC/Speaker column content, from what the envelope itself observed and whatever
- * npc_resolution row (if any) already answers for that (kind, id).
+ * npc row (if any) already answers for that (kind, id).
  *
  * The resolution's own `npcKind` wins over the observation's: a resolution can only exist when
  * some envelope -- this one or an earlier one for the same NPC -- carried a kind, which makes it
@@ -169,7 +170,7 @@ export async function npcSummaryFrom(
     confirmed: resolution?.confirmed ?? false,
     doubtful: resolution?.doubtful ?? false,
     flavorOptions:
-      resolution?.race && resolution?.gender ? await flavorsFor(resolution.race, resolution.gender) : [],
+      flavorOptionsFor(resolution?.race ?? null, resolution?.gender ?? null, await loadRoster()),
     conflict: conflict.map(({ npcKind, race, gender, flavor, provenance, doubtful }) => ({
       npcKind,
       race,

@@ -81,12 +81,12 @@ async function momentTexts(pairs: { locale: string; moment: string }[]): Promise
 async function greetingTexts(pairs: { locale: string; npcId: number }[]): Promise<Map<string, string[]>> {
   const found = new Map<string, string[]>();
   if (pairs.length === 0) return found;
-  // Speakers are kept once, in English, for every language's version of the line.
+  // A line's speakers voice it in every language, whichever language wrote them.
   const { rows } = await db().query<{ locale: string; npcId: number; text: string }>(
     `select distinct m."locale", m."npcId",
             coalesce(case when l."lang" = $3 then l."originalText" else l."localeText" end, l."text") as "text"
        from unnest($1::text[], $2::int[]) as m ("locale", "npcId")
-       join "quest_line_speaker" s on s."npcId" = m."npcId" and s."lang" = $3
+       join "quest_line_speaker" s on s."npcId" = m."npcId"
        join "quest_line" l
          on l."lineId" = s."lineId" and l."variant" = s."variant"
         and l."lang" = m."locale" and l."isCurrent" and l."source" = 'gossip'`,
