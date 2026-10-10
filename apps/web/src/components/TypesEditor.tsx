@@ -2,24 +2,27 @@
 
 /**
  * The Types tab of /npcs: every type an NPC can be, its genders and flavors, and the voice each
- * combination is read with. Every edit posts to api/types, which answers with the whole roster,
- * and the tab redraws from that rather than from what it sent. An edit that would split a voice
- * NPCs speak with comes back as a question, asked next to the control that made it.
+ * combination is read with, one table row per combination. Every edit posts to api/types, which
+ * answers with the whole roster, and the tab redraws from that rather than from what it sent. An
+ * edit that would split a voice NPCs speak with comes back as a question, asked next to the
+ * control that made it.
  */
-import { useMemo, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { LiteButton, LiteCheckbox } from "@/components/LiteControls";
 import { useLang } from "@/components/LangProvider";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Roster, newVoiceName, type Gender, type RosterData } from "@/lib/voices/roster";
 
 const GENDERS: Gender[] = ["female", "male"];
 /** The voice select's value for "a voice of the combination's own". */
 const NEW_VOICE = "";
 
-type Combination = { race: string; gender: Gender | null; flavor: string | null };
-
 type Choice = { voice: string; into: string; npcs: number; lines: number };
+type Send = (at: string, body: Record<string, unknown>) => Promise<boolean>;
+type Refusal = (at: string) => ReactNode;
 
 export default function TypesEditor({ initial }: { initial: RosterData }) {
   const lang = useLang();
@@ -31,7 +34,7 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
   /** An edit waiting on what becomes of the voice it splits. */
   const [pending, setPending] = useState<{ at: string; body: Record<string, unknown>; choice: Choice } | null>(null);
 
-  async function send(at: string, body: Record<string, unknown>): Promise<boolean> {
+  const send: Send = async (at, body) => {
     setBusy(true);
     setError(null);
     setPending(null);
@@ -54,13 +57,13 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
     }
     setData(answer.roster);
     return true;
-  }
+  };
 
-  const refusal = (at: string) => {
+  const refusal: Refusal = (at) => {
     if (pending?.at === at) {
       const { choice, body } = pending;
       return (
-        <span className="flex flex-wrap items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+        <div className="flex flex-wrap items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
           {choice.voice} reads {plural(choice.npcs, "NPC")} and {plural(choice.lines, "line")}.
           <LiteButton
             className="h-6 px-1.5 text-xs"
@@ -81,66 +84,47 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
           <LiteButton variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setPending(null)}>
             Cancel
           </LiteButton>
-        </span>
+        </div>
       );
     }
-    return error?.at === at ? <span className="text-destructive text-xs">{error.message}</span> : null;
+    return error?.at === at ? <div className="text-destructive text-xs">{error.message}</div> : null;
   };
 
   return (
     <div className="flex flex-col gap-4 text-sm">
-      <AddType busy={busy} refusal={refusal("add")} onAdd={(body) => send("add", { action: "add-type", ...body })} />
-      <table className="w-full border-collapse">
+      <AddType busy={busy} refusal={refusal("add")} send={send} />
+      <table className="w-fit border-collapse">
         <thead className="text-muted-foreground text-left text-xs">
           <tr>
-            <th className="py-1 pr-3 font-normal">Type</th>
-            <th className="py-1 pr-3 font-normal">Label</th>
-            <th className="py-1 pr-3 font-normal">Read by</th>
+            <th className="px-3 py-1 font-normal">Type</th>
+            <th className="px-3 py-1 font-normal">Gender</th>
+            <th className="px-3 py-1 font-normal">Flavor</th>
+            <th className="px-3 py-1 font-normal">Read by</th>
           </tr>
         </thead>
-        <tbody>
-          {data.races.map((race) => (
-            <TypeRow
-              key={race.key}
-              race={race}
-              roster={roster}
-              busy={busy}
-              refusal={refusal}
-              send={send}
-            />
-          ))}
-        </tbody>
+        {data.races.map((race) => (
+          <TypeRows key={race.key} race={race} roster={roster} busy={busy} refusal={refusal} send={send} />
+        ))}
       </table>
     </div>
   );
 }
 
-function AddType({
-  busy,
-  refusal,
-  onAdd,
-}: {
-  busy: boolean;
-  refusal: React.ReactNode;
-  onAdd: (body: { key: string; label: string; genders: Gender[] }) => Promise<boolean>;
-}) {
+function AddType({ busy, refusal, send }: { busy: boolean; refusal: ReactNode; send: Send }) {
   const [key, setKey] = useState("");
-  const [label, setLabel] = useState("");
   const [genders, setGenders] = useState<Gender[]>([]);
   return (
     <form
       className="flex flex-wrap items-center gap-2"
       onSubmit={async (event) => {
         event.preventDefault();
-        if (await onAdd({ key: key.trim(), label, genders })) {
+        if (await send("add", { action: "add-type", key: key.trim(), genders })) {
           setKey("");
-          setLabel("");
           setGenders([]);
         }
       }}
     >
-      <Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key, e.g. treant" className="h-7 w-40 text-xs" />
-      <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="label" className="h-7 w-40 text-xs" />
+      <Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="new type, e.g. treant" className="h-7 w-44 text-xs" />
       {GENDERS.map((gender) => (
         <label key={gender} className="flex items-center gap-1 text-xs">
           <LiteCheckbox
@@ -161,7 +145,12 @@ function AddType({
   );
 }
 
-function TypeRow({
+/**
+ * One type as a run of rows: a row per flavor (or one for a gender read by a bare voice), a row
+ * per gender to add a flavor from, and a last row to add a gender from. The type and each gender
+ * span the rows that are theirs.
+ */
+function TypeRows({
   race,
   roster,
   busy,
@@ -171,168 +160,239 @@ function TypeRow({
   race: RosterData["races"][number];
   roster: Roster;
   busy: boolean;
-  refusal: (at: string) => React.ReactNode;
-  send: (at: string, body: Record<string, unknown>) => Promise<boolean>;
+  refusal: Refusal;
+  send: Send;
 }) {
-  const [label, setLabel] = useState(race.label ?? "");
-  const [flavor, setFlavor] = useState<Record<string, string>>({});
   const at = (what: string) => `${race.key}:${what}`;
-  // The type alone when it has no gender, else each gender; each with its flavors under it.
-  const groups: (Gender | null)[] = race.genders.length ? race.genders : [null];
+  const groups = (race.genders.length ? race.genders : [null]).map((gender) => ({
+    gender,
+    flavors: roster.flavorsOf(race.key, gender),
+  }));
+  // A gender's own rows: its flavors, or its bare voice, then the row to add a flavor from.
+  const rowsOf = (flavors: string[]) => Math.max(flavors.length, 1) + 1;
+  const missing = GENDERS.filter((g) => !race.genders.includes(g));
+  const total = groups.reduce((sum, { flavors }) => sum + rowsOf(flavors), 0) + (missing.length ? 1 : 0);
+  const cell = "py-1 px-3 align-top";
 
-  return (
-    <tr className="border-t align-top">
-      <td className="py-2 pr-3 font-mono">
-        {race.key}
-        <div className="mt-1 flex flex-wrap gap-1">
-          {GENDERS.filter((g) => !race.genders.includes(g)).map((g) => (
-            <LiteButton
-              key={g}
-              variant="ghost"
-              className="h-6 px-1.5 text-xs"
-              disabled={busy}
-              onClick={() => void send(at("gender"), { action: "add-gender", race: race.key, gender: g })}
-            >
-              + {g}
-            </LiteButton>
-          ))}
-          <LiteButton
-            variant="ghost"
-            className="h-6 px-1.5 text-xs"
-            disabled={busy}
-            onClick={() => void send(at("delete"), { action: "delete-type", key: race.key })}
-          >
-            Delete
-          </LiteButton>
-        </div>
-        {refusal(at("gender"))}
-        {refusal(at("delete"))}
+  const rows: ReactNode[] = [];
+  groups.forEach(({ gender, flavors }, index) => {
+    const group = gender ?? "";
+    const typeCell =
+      index === 0 ? (
+        <td rowSpan={total} className={`${cell} border-r font-mono`}>
+          <div className="flex items-center gap-1">
+            {race.key}
+            <TrashButton
+              title={`Delete ${race.key}`}
+              busy={busy}
+              onClick={() => void send(at("delete"), { action: "delete-type", key: race.key })}
+            />
+          </div>
+          {refusal(at("delete"))}
+        </td>
+      ) : null;
+    const genderCell = (
+      <td rowSpan={rowsOf(flavors)} className={`${cell} border-r`}>
+        {gender ?? <span className="text-muted-foreground">—</span>}
       </td>
-      <td className="py-2 pr-3">
-        <Input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={() => {
-            if (label !== (race.label ?? "")) void send(at("label"), { action: "label-type", key: race.key, label });
-          }}
-          className="h-7 w-36 text-xs"
-        />
-        {refusal(at("label"))}
-      </td>
-      <td className="py-2 pr-3">
-        <div className="flex flex-col gap-2">
-          {groups.map((gender) => {
-            const group = gender ?? "";
-            const flavors = roster.flavorsOf(race.key, gender);
-            return (
-              <div key={group} className="flex flex-col gap-1">
-                {/* Read by its flavors or by one bare voice, never both: no bare row beside flavors. */}
-                {flavors.length ? (
-                  <span className="text-muted-foreground w-28 text-xs">{gender ?? "any"}</span>
-                ) : (
-                <VoiceRow
-                  combination={{ race: race.key, gender, flavor: null }}
-                  roster={roster}
+    );
+
+    if (flavors.length) {
+      flavors.forEach((flavor, n) => {
+        const key = at(`voice:${group}:${flavor}`);
+        rows.push(
+          <tr key={key} className={n === 0 ? "border-t" : ""}>
+            {n === 0 ? typeCell : null}
+            {n === 0 ? genderCell : null}
+            <td className={cell}>
+              <div className="flex items-center gap-1">
+                {flavor}
+                <TrashButton
+                  title={`Delete ${flavor}`}
                   busy={busy}
-                  refusal={refusal(at(`voice:${group}:`))}
-                  onPick={(voice) =>
-                    void send(at(`voice:${group}:`), { action: "assign-voice", race: race.key, gender, flavor: null, voice })
-                  }
+                  onClick={() => void send(key, { action: "delete-flavor", race: race.key, gender, flavor })}
                 />
-                )}
-                {flavors.map((f) => (
-                  <VoiceRow
-                    key={f}
-                    combination={{ race: race.key, gender, flavor: f }}
-                    roster={roster}
-                    busy={busy}
-                    refusal={refusal(at(`voice:${group}:${f}`))}
-                    onPick={(voice) =>
-                      void send(at(`voice:${group}:${f}`), { action: "assign-voice", race: race.key, gender, flavor: f, voice })
-                    }
-                    onDelete={() =>
-                      void send(at(`voice:${group}:${f}`), { action: "delete-flavor", race: race.key, gender, flavor: f })
-                    }
-                  />
-                ))}
-                <form
-                  className="flex items-center gap-1 pl-4"
-                  onSubmit={async (event) => {
-                    event.preventDefault();
-                    const name = (flavor[group] ?? "").trim();
-                    if (await send(at(`flavor:${group}`), { action: "add-flavor", race: race.key, gender, flavor: name })) {
-                      setFlavor((current) => ({ ...current, [group]: "" }));
-                    }
-                  }}
-                >
-                  <Input
-                    value={flavor[group] ?? ""}
-                    onChange={(e) => setFlavor((current) => ({ ...current, [group]: e.target.value }))}
-                    placeholder="new flavor"
-                    className="h-6 w-28 text-xs"
-                  />
-                  <LiteButton type="submit" variant="ghost" className="h-6 px-1.5 text-xs" disabled={busy || !(flavor[group] ?? "").trim()}>
-                    Add
-                  </LiteButton>
-                  {refusal(at(`flavor:${group}`))}
-                </form>
               </div>
-            );
-          })}
-        </div>
-      </td>
-    </tr>
+            </td>
+            <td className={cell}>
+              <VoiceSelect
+                race={race.key}
+                gender={gender}
+                flavor={flavor}
+                roster={roster}
+                busy={busy}
+                onPick={(voice) => void send(key, { action: "assign-voice", race: race.key, gender, flavor, voice })}
+              />
+              {refusal(key)}
+            </td>
+          </tr>,
+        );
+      });
+    } else {
+      const key = at(`voice:${group}:`);
+      rows.push(
+        <tr key={key} className="border-t">
+          {typeCell}
+          {genderCell}
+          <td className={cell}>
+            <span className="text-muted-foreground">—</span>
+          </td>
+          <td className={cell}>
+            <VoiceSelect
+              race={race.key}
+              gender={gender}
+              flavor={null}
+              roster={roster}
+              busy={busy}
+              onPick={(voice) => void send(key, { action: "assign-voice", race: race.key, gender, flavor: null, voice })}
+            />
+            {refusal(key)}
+          </td>
+        </tr>,
+      );
+    }
+
+    rows.push(
+      <tr key={at(`flavor:${group}`)}>
+        <td className={cell}>
+          <AddFlavor race={race.key} gender={gender} busy={busy} refusal={refusal} send={send} />
+        </td>
+        <td className={cell} />
+      </tr>,
+    );
+  });
+
+  if (missing.length) {
+    rows.push(
+      <tr key={at("gender")}>
+        <td className={`${cell} border-r`}>
+          <div className="flex flex-wrap gap-1">
+            {missing.map((g) => (
+              <LiteButton
+                key={g}
+                variant="ghost"
+                className="h-6 gap-0.5 px-1.5 text-xs"
+                disabled={busy}
+                onClick={() => void send(at("gender"), { action: "add-gender", race: race.key, gender: g })}
+              >
+                <Plus className="size-3" />
+                {g}
+              </LiteButton>
+            ))}
+          </div>
+          {refusal(at("gender"))}
+        </td>
+        <td className={cell} />
+        <td className={cell} />
+      </tr>,
+    );
+  }
+
+  return <tbody>{rows}</tbody>;
+}
+
+/** The button that opens a flavor form for one gender of a type, or for a type with none. */
+function AddFlavor({
+  race,
+  gender,
+  busy,
+  refusal,
+  send,
+}: {
+  race: string;
+  gender: Gender | null;
+  busy: boolean;
+  refusal: Refusal;
+  send: Send;
+}) {
+  const [open, setOpen] = useState(false);
+  const [flavor, setFlavor] = useState("");
+  const at = `${race}:flavor:${gender ?? ""}`;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <LiteButton variant="ghost" className="h-6 gap-0.5 px-1.5 text-xs" disabled={busy}>
+          <Plus className="size-3" />
+          flavor
+        </LiteButton>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="flex w-72 flex-col gap-2 p-2">
+        <form
+          className="flex items-center gap-1"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (await send(at, { action: "add-flavor", race, gender, flavor: flavor.trim() })) {
+              setFlavor("");
+              setOpen(false);
+            }
+          }}
+        >
+          <Input
+            autoFocus
+            value={flavor}
+            onChange={(e) => setFlavor(e.target.value)}
+            placeholder={`flavor of ${[race, gender].filter(Boolean).join(" ")}`}
+            className="h-7 text-xs"
+          />
+          <LiteButton type="submit" className="h-7 px-2 text-xs" disabled={busy || !flavor.trim()}>
+            Add
+          </LiteButton>
+        </form>
+        {refusal(at)}
+      </PopoverContent>
+    </Popover>
   );
 }
 
-/** One combination and the voice that reads it, or none yet. */
-function VoiceRow({
-  combination,
+function TrashButton({ title, busy, onClick }: { title: string; busy: boolean; onClick: () => void }) {
+  return (
+    <LiteButton
+      variant="ghost"
+      className="text-destructive hover:text-destructive h-6 w-6 p-0"
+      disabled={busy}
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+    >
+      <Trash2 className="size-3.5" />
+    </LiteButton>
+  );
+}
+
+/** The voice one combination is read with, or none yet. */
+function VoiceSelect({
+  race,
+  gender,
+  flavor,
   roster,
   busy,
-  refusal,
   onPick,
-  onDelete,
 }: {
-  combination: Combination;
+  race: string;
+  gender: Gender | null;
+  flavor: string | null;
   roster: Roster;
   busy: boolean;
-  refusal: React.ReactNode;
   onPick: (voice: string | null) => void;
-  onDelete?: () => void;
 }) {
-  const { race, gender, flavor } = combination;
   // Only its own assignment, not one it falls back to: a flavor read by its type's voice says so.
-  const own = roster.data.assignments.find(
-    (a) => a.race === race && a.gender === gender && a.flavor === flavor,
-  )?.voice;
+  const own = roster.data.assignments.find((a) => a.race === race && a.gender === gender && a.flavor === flavor)?.voice;
   const inherited = own ? null : roster.voiceFor(race, gender, flavor);
-  const name = [gender, flavor].filter(Boolean).join(" ") || "any";
-
   return (
-    <div className={`flex flex-wrap items-center gap-1 ${flavor ? "pl-4" : ""}`}>
-      <span className="text-muted-foreground w-28 text-xs">{name}</span>
-      <select
-        value={own ?? "-"}
-        disabled={busy}
-        onChange={(event) => onPick(event.target.value === NEW_VOICE ? null : event.target.value)}
-        className="h-7 rounded border bg-transparent text-xs"
-      >
-        {own ? null : <option value="-">{inherited ? `as ${inherited}` : "no voice"}</option>}
-        <option value={NEW_VOICE}>new voice: {newVoiceName(race, gender, flavor)}</option>
-        {roster.voiceNames.map((voice) => (
-          <option key={voice} value={voice}>
-            {voice}
-          </option>
-        ))}
-      </select>
-      {onDelete ? (
-        <LiteButton variant="ghost" className="h-6 px-1.5 text-xs" disabled={busy} onClick={onDelete}>
-          Delete
-        </LiteButton>
-      ) : null}
-      {refusal}
-    </div>
+    <select
+      value={own ?? "-"}
+      disabled={busy}
+      onChange={(event) => onPick(event.target.value === NEW_VOICE ? null : event.target.value)}
+      className="h-7 rounded border bg-transparent text-xs"
+    >
+      {own ? null : <option value="-">{inherited ? `as ${inherited}` : "no voice"}</option>}
+      <option value={NEW_VOICE}>new voice: {newVoiceName(race, gender, flavor)}</option>
+      {roster.voiceNames.map((voice) => (
+        <option key={voice} value={voice}>
+          {voice}
+        </option>
+      ))}
+    </select>
   );
 }
 
