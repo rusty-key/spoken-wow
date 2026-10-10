@@ -43,9 +43,15 @@ export async function voiceForDisplay(displayId: number): Promise<DisplayVoice> 
   const [modelFileId, npcSoundsId, setVoice] = entry;
   const roster = await loadRoster();
 
-  if (setVoice && roster.isVoice(setVoice)) {
-    const [race, gender, flavor] = setVoice.split("-");
-    return { voice: { race, gender: gender as Gender, flavor }, exact: true, reason: `voice set ${setVoice}` };
+  // Which voice reads the combination, not whether a voice of that name exists: one mapped into
+  // a flavor keeps its name, and reads only the flavor.
+  const [setRace, setGender, setFlavor] = setVoice?.split("-") ?? [];
+  if (setVoice && roster.voiceFor(setRace, setGender, setFlavor ?? null) === setVoice) {
+    return {
+      voice: { race: setRace, gender: setGender as Gender, flavor: setFlavor ?? null },
+      exact: true,
+      reason: `voice set ${setVoice}`,
+    };
   }
 
   const byId = npcSoundsId ? roster.data.flavors.find((f) => f.flavor === String(npcSoundsId) && f.gender) : undefined;
@@ -61,7 +67,7 @@ export async function voiceForDisplay(displayId: number): Promise<DisplayVoice> 
   const { race, gender } = model;
   const bare = `${race}-${gender}`;
   const unmatched = setVoice ? `, ${setVoice} is not on the roster` : "";
-  if (roster.isVoice(bare)) {
+  if (roster.voiceFor(race, gender, null)) {
     return { voice: { race, gender, flavor: null }, exact: !setVoice, reason: `${bare} model${unmatched}` };
   }
   if (roster.flavorsOf(race, gender).length) {
