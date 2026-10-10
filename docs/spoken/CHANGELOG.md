@@ -11,6 +11,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   DialogueUI is the narrator style, and every style's settings come in the same order: Size and
   Position, Look, Words. Show Sample Subtitle is gone, as Preview shows every style.
   *([Nucabe](https://github.com/Nucabe))*
+- **Subtitles get the windows' settings, and the windows type by letter.** Subtitles gain Show Name
+  and Title, Highlight Words, Auto-Scroll line by line or page by page, Text Size and Hide Portrait.
+  Type By sets whether a window types out words or letters. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.2.0 — 2026-10-08
 

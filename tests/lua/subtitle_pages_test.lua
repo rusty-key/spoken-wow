@@ -88,5 +88,79 @@ Expect("...none longer than four lines", Most(pages, function(page) return #Subt
 Expect("...losing no words", Words(table.concat(pages, " ")), Words(rambling))
 cfg.SubtitleSentences = 3
 
+-- Show Name and Title off (issue #288): the words alone, as a film's subtitles, from the top.
+if not Subtitle.frame then Subtitle:Build() end
+-- Heights the stub's text cannot measure.
+Subtitle.measure.GetStringHeight = function() return 16 end
+Subtitle.title.GetStringHeight = function() return 18 end
+Subtitle:Layout(short)
+local named = Subtitle.lines[1].anchor.y
+cfg.SubtitleName = false
+Subtitle:Layout(short)
+Expect("with Show Name and Title off the row over the words is hidden", Subtitle.nameRow and Subtitle.nameRow:IsShown(), false)
+Expect("...and the words start at the top, where the row was", Subtitle.lines[1].anchor.y .. " " .. tostring(named < -12),
+    "-12 true")
+cfg.SubtitleName = true
+Subtitle:Layout(short)
+Expect("...on again, the row is back over them", tostring(Subtitle.nameRow and Subtitle.nameRow:IsShown()) .. " " .. Subtitle.lines[1].anchor.y,
+    "true " .. named)
+
+-- Each setting the subtitle is laid out with, changed under the sample, shows on it at once, as
+-- the settings page changes it: not at the next line or page.
+local frame = _G.SpokenEnv.Addon.db.profile.Frame
+-- The measure follows Text Size here: 7 a character at the quest font's 12, more as it grows.
+_G.QuestFont = _G.QuestFont or CreateFrame("Frame"):CreateFontString()
+Subtitle.measure.SetFont = function(self, _, size) self.fontSize = size end
+Subtitle.measure.GetStringWidth = function(self)
+    return #tostring(self.text or "") * 7 * (self.fontSize or 12) / 12
+end
+local saved = { FontSize = cfg.FontSize, Lines = cfg.Lines, SubtitleScroll = cfg.SubtitleScroll,
+    SubtitleProgress = cfg.SubtitleProgress }
+Subtitle:ShowSample(true)
+Expect("the sample is up, the row over its words", Subtitle.sample ~= nil and Subtitle.nameRow
+    and Subtitle.nameRow:IsShown() and Subtitle.picture:IsShown(), true)
+cfg.SubtitleName = false
+Subtitle:Update()
+Expect("Show Name and Title off: the sample's row goes", Subtitle.nameRow and Subtitle.nameRow:IsShown(), false)
+cfg.SubtitleName = true
+Subtitle:Update()
+Expect("...on: it is back", Subtitle.nameRow and Subtitle.nameRow:IsShown(), true)
+frame.HidePortrait = true
+Subtitle:Update()
+Expect("Hide Portrait: the sample's picture goes", Subtitle.picture:IsShown(), false)
+frame.HidePortrait = false
+Subtitle:Update()
+Expect("...off: it is back", Subtitle.picture:IsShown(), true)
+local rows = #Subtitle.rows
+cfg.SubtitleScroll = "line"
+Subtitle:Update()
+Expect("Auto-Scroll line by line: a line's room over and under the words",
+    tostring(Subtitle.words and Subtitle.words.height),
+    tostring(Subtitle.lineStep and ((Subtitle.shownRows or 0) + 2) * Subtitle.lineStep - 2))
+cfg.Lines = 1
+Subtitle:Update()
+Expect("Lines Shown: the sample shows that many", tostring(rows > 1) .. " " .. tostring(Subtitle.shownRows), "true 1")
+cfg.Lines, cfg.SubtitleScroll = saved.Lines, saved.SubtitleScroll
+Subtitle:Update()
+Expect("...page by page again: every row of the page", Subtitle.shownRows, rows)
+cfg.FontSize = 40
+Subtitle:Update()
+Expect("Text Size: the sample's words wrap at the new size", #Subtitle.rows > rows, true)
+Expect("...and are paged at it, no page past four lines", #Subtitle.pages > 1 and #Subtitle.rows <= 4, true)
+cfg.FontSize = saved.FontSize
+Subtitle:Update()
+Expect("...back to its size, one page again", tostring(#Subtitle.pages) .. " " .. #Subtitle.rows, "1 " .. rows)
+cfg.SubtitleSentences = 1
+Subtitle:Update()
+Expect("Sentences at Once: the sample paged a sentence at a time", #Subtitle.pages, 3)
+cfg.SubtitleSentences = 3
+Subtitle:Update()
+cfg.SubtitleProgress = false
+Subtitle:Update()
+Expect("Show Progress off: the sample's progress line goes", Subtitle.progressShown, false)
+cfg.SubtitleProgress = saved.SubtitleProgress
+Subtitle:Update()
+Subtitle:ShowSample(false)
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll subtitle page tests passed")

@@ -50,6 +50,15 @@ local function CharacterCount(text)
     local _, count = text:gsub(UTF8_CHAR, "")
     return math.max(1, count)
 end
+-- The first `count` characters of `text`.
+local function Prefix(text, count)
+    local parts = {}
+    for char in text:gmatch(UTF8_CHAR) do
+        if #parts >= count then break end
+        parts[#parts + 1] = char
+    end
+    return table.concat(parts)
+end
 -- Trailing punctuation lengthens a word's share of the recording.
 local STOPS = { ["."] = 0.7, ["!"] = 0.7, ["?"] = 0.7, ["。"] = 0.7, ["！"] = 0.7, ["？"] = 0.7,
     [","] = 0.35, [";"] = 0.35, [":"] = 0.35, ["，"] = 0.35, ["、"] = 0.35, ["；"] = 0.35, ["："] = 0.35 }
@@ -383,14 +392,22 @@ function Transcript:Render()
     end
     -- Typed out, as the subtitle is: the words up to the one being read, the rest still to
     -- come. Nothing before the voice starts; the whole line once it has finished.
-    local typedTo
+    local typedTo, typedPiece, typedChars
     -- Only with a length to time it by: a clip with none shows its whole line, as before.
     if cfg.Typewriter and progress then
-        if inSpeech then typedTo = self.activeWord
+        if inSpeech then
+            typedTo = self.activeWord
+            -- By letter, as the subtitle types: the piece being read only as far as the voice is.
+            if (cfg.TypewriterBy or "letter") == "letter" and segment then
+                local share = (progress * self.totalWeight - segment.start) / math.max(1e-6, segment.finish - segment.start)
+                typedPiece = segment.index
+                typedChars = math.max(1, math.ceil(Clamp(share, 0, 1) * CharacterCount(segment.text)))
+            end
         elseif not (progress and progress >= 1) then typedTo = 0 end
     end
     local first = math.floor(self.top)
-    local key = format("%d:%d:%d:%d:%d", first, highlighted or 0, neighbor or 0, n, typedTo or -1)
+    local key = format("%d:%d:%d:%d:%d:%d:%d", first, highlighted or 0, neighbor or 0, n, typedTo or -1,
+        typedPiece or 0, typedChars or 0)
     if self.renderedKey ~= key then
         self.renderedKey = key
         local color = self.style and self.style.highlight or HIGHLIGHT
@@ -400,8 +417,10 @@ function Transcript:Render()
             local parts = {}
             for _, piece in ipairs(line or {}) do
                 if typedTo and piece.word > typedTo then break end
+                if typedPiece and piece.index > typedPiece then break end
+                local text = piece.index == typedPiece and Prefix(piece.text, typedChars) or piece.text
                 parts[#parts + 1] = piece.prefix .. ((piece.word == highlighted or piece.word == neighbor)
-                    and color .. piece.text .. "|r" or piece.text)
+                    and color .. text .. "|r" or text)
             end
             label:SetText(table.concat(parts))
         end

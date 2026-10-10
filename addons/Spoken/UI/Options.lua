@@ -381,17 +381,25 @@ local function Build(canvas)
         ForSubtitles(layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
             function() return transcript().SubtitleShadow end,
             function(v) transcript().SubtitleShadow = v end, refreshSubtitle, nil, L.TRANSCRIPT_SHADOW_TIP))
+        -- The row over the words, which a player wanting a film's subtitles turns off (issue #288).
+        Only(layout:Checkbox(L.OPT_SUBTITLE_NAME, L.OPT_SUBTITLE_NAME_TIP,
+            function() return transcript().SubtitleName ~= false end,
+            function(v) transcript().SubtitleName = v end, refreshSubtitle), Subtitles)
     end
     if captions then
-        ForSubtitles(layout:Checkbox(L.OPT_SUBTITLE_PROGRESS, L.OPT_SUBTITLE_PROGRESS_TIP,
+        -- The subtitle's and the DialogueUI window's progress line.
+        local progress = layout:Checkbox(L.OPT_SUBTITLE_PROGRESS, L.OPT_SUBTITLE_PROGRESS_TIP,
             function() return transcript().SubtitleProgress ~= false end,
-            function(v) transcript().SubtitleProgress = v end, refreshSubtitle))
+            function(v) transcript().SubtitleProgress = v end, function() refreshSubtitle(); refresh() end)
+        Only(progress, function() return Subtitles() or DUI() end)
+        Requires(progress, function() return not Subtitles() or Words() end, L.REASON_WORDS)
     end
     -- Hiding the portrait and hiding a button are one kind of choice, so they sit together. Not
     -- for the DialogueUI window, whose header has the face's socket built in.
     Only(layout:Checkbox(L.OPT_HIDE_PORTRAIT, L.OPT_HIDE_PORTRAIT_TIP,
-        function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end, refresh),
-        function() return InWindow() and not DUI() end)
+        function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end,
+        function() refresh(); if Subtitle then Subtitle:Update() end end),
+        function() return (InWindow() and not DUI()) or Subtitles() end)
     -- The small window's metal and every round button's ring: offered whatever the style.
     if Version.IsCamelot then
         layout:Checkbox(L.OPT_BRONZE_TINT, L.OPT_BRONZE_TINT_TIP,
@@ -423,16 +431,25 @@ local function Build(canvas)
             Requires(row, Words, L.REASON_WORDS)
             return row
         end
-        InWindowText(layout:Slider(L.TRANSCRIPT_SIZE, 12, 26, 1,
+        local size = layout:Slider(L.TRANSCRIPT_SIZE, 12, 26, 1,
             function() return transcript().FontSize end,
-            function(v) transcript().FontSize = v end, refreshTranscript, Layout.Number, L.TRANSCRIPT_SIZE_TIP))
-        -- How much shows at once: lines in a window, sentences in a subtitle.
-        InWindowText(layout:Slider(L.TRANSCRIPT_LINES, 1, 2, 1,
+            function(v) transcript().FontSize = v end, function() refreshTranscript(); refreshSubtitle() end,
+            Layout.Number, L.TRANSCRIPT_SIZE_TIP)
+        Only(size, function() return InWindow() or Subtitles() end)
+        Requires(size, Words, L.REASON_WORDS)
+        -- How much shows at once: lines in a window and in a subtitle that scrolls line by line,
+        -- sentences in one that turns pages.
+        local function Rolling() return transcript().SubtitleScroll == "line" end
+        local lines = layout:Slider(L.TRANSCRIPT_LINES, 1, 2, 1,
             function() return transcript().Lines end,
-            function(v) transcript().Lines = v end, refreshTranscript, Layout.Number, L.TRANSCRIPT_LINES_TIP))
-        ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
+            function(v) transcript().Lines = v end, function() refreshTranscript(); refreshSubtitle() end,
+            Layout.Number, L.TRANSCRIPT_LINES_TIP)
+        Only(lines, function() return InWindow() or (Subtitles() and Rolling()) end)
+        Requires(lines, Words, L.REASON_WORDS)
+        Only(ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
             function() return transcript().SubtitleSentences or 3 end,
-            function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number, L.OPT_SUBTITLE_SENTENCES_TIP))
+            function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number, L.OPT_SUBTITLE_SENTENCES_TIP)),
+            function() return not Rolling() end)
         local fit = DialogueUIOptions:FitRow(layout, ForDUI, refresh)
         if fit then Requires(fit, Words, L.REASON_WORDS) end
         local SCROLL_LABELS = { line = L.TRANSCRIPT_SCROLL_LINE, page = L.TRANSCRIPT_SCROLL_PAGE,
@@ -441,27 +458,34 @@ local function Build(canvas)
             function() return Transcript:ScrollMode() end,
             function(v) transcript().ScrollMode = v; Transcript.manualScroll = false end, refreshTranscript,
             function(v) return SCROLL_LABELS[v] or v end))
-        -- The word being read lit: the windows only. The subtitles type their words at their
-        -- own pace, where an estimated word timing would show every miss. With DialogueUI
-        -- installed, also for the quest text Spoken Quests marks there, under any style.
+        -- The subtitle's own: line by line through a window of Lines Shown, or pages of whole
+        -- sentences. It cannot be scrolled by hand, so it has no Off.
+        ForSubtitles(layout:Dropdown(L.TRANSCRIPT_SCROLL, L.OPT_SUBTITLE_SCROLL_TIP, { "line", "page" },
+            function() return transcript().SubtitleScroll or "page" end,
+            function(v) transcript().SubtitleScroll = v end, function() refreshSubtitle(); Options:UpdateRows() end,
+            function(v) return SCROLL_LABELS[v] or v end))
+        -- The word being read lit. The subtitle lights it only while it shows its words whole:
+        -- typed at their own pace, an estimated word timing would show every miss. With
+        -- DialogueUI installed, also for the quest text Spoken Quests marks there, under any style.
         local highlight = layout:Checkbox(L.TRANSCRIPT_HIGHLIGHT, L.TRANSCRIPT_HIGHLIGHT_TIP,
             function() return transcript().HighlightWord end,
             function(v) transcript().HighlightWord = v end, refreshTranscript)
-        Only(highlight, function() return InWindow() or DialogueUITheme:Available() end)
+        Only(highlight, function() return InWindow() or Subtitles() or DialogueUITheme:Available() end)
         Requires(highlight, Words, L.REASON_WORDS)
+        Requires(highlight, function() return not (Subtitles() and transcript().Typewriter) end, L.REASON_UNTYPED)
         local typewriter = layout:Checkbox(L.TRANSCRIPT_TYPEWRITER, L.TRANSCRIPT_TYPEWRITER_TIP,
             function() return transcript().Typewriter end,
             function(v) transcript().Typewriter = v end, refreshTranscript)
         Only(typewriter, Shown)
         Requires(typewriter, Words, L.REASON_WORDS)
-        -- How the subtitles type, under it: letter by letter, or whole words.
+        -- How the words are typed, under it: letter by letter, or whole words.
         layout:Indent()
         local by = layout:Dropdown(L.TRANSCRIPT_TYPEWRITER_BY, L.TRANSCRIPT_TYPEWRITER_BY_TIP, { "word", "letter" },
             function() return transcript().TypewriterBy or "letter" end,
             function(v) transcript().TypewriterBy = v end, refreshTranscript,
             function(v) return v == "letter" and L.TRANSCRIPT_BY_LETTER or L.TRANSCRIPT_BY_WORD end)
         layout:Outdent()
-        Only(by, Subtitles)
+        Only(by, Shown)
         Requires(by, function() return Words() and transcript().Typewriter end, L.REASON_TYPEWRITER)
     end
 

@@ -434,6 +434,16 @@ cfg.Typewriter=true; T:Update(); Settle()
 Check(T.topTarget==ActiveLine()-7,'typed out, the line being read is the last of eight')
 local typed=Captions()
 Check(not typed:find('\n\n') and typed:sub(-1)~='\n','with no blank row under it')
+do
+    -- Type By, as the subtitle has it: by letter, the word being read only as far as the voice is.
+    local by=cfg.TypewriterBy
+    cfg.TypewriterBy='word'; T.renderedKey=nil; T:Render()
+    local whole=Plain(Captions())
+    cfg.TypewriterBy='letter'; T.renderedKey=nil; T:Render()
+    local letters=Plain(Captions())
+    Check(#letters<=#whole and whole:find(letters,1,true)==1,'by letter the window types the word being read as far as the voice has got')
+    cfg.TypewriterBy=by; T.renderedKey=nil; T:Render()
+end
 cfg.Typewriter=false
 cfg.ScrollMode='line'; T:Update()
 T.frame:Fire('OnMouseWheel',1)
@@ -521,7 +531,7 @@ end
 local partial=Typed()
 Check(partial~='' and partial~=line and line:find(partial,1,true)==1,'the typewriter has revealed the start of the line')
 Check(cfg.TypewriterBy=='letter','by default it types letter by letter')
-Check(cfg.HighlightWord and not SubtitleLit(),'the subtitle lights no word, even with Highlight Words on: only the windows do')
+Check(cfg.HighlightWord and not SubtitleLit(),'typing, the subtitle lights no word, even with Highlight Words on: an estimate typed in front of the reader shows every miss')
 do
     cfg.TypewriterBy='word'; S.revealed=nil; S:Render()
     local byWord=Typed()
@@ -541,6 +551,10 @@ Play(9.7)
 Check(Typed()==line,'the whole line is typed before the voice finishes')
 cfg.Typewriter=false; T:RefreshConfig()
 Check(Typed()==line,'without the typewriter the whole line shows at once')
+Check(SubtitleLit(),'...lighting the word being read, as the windows do')
+cfg.HighlightWord=false; S.revealed=nil; S:Render()
+Check(not SubtitleLit() and Typed()==line,'...unless Highlight Words is off')
+cfg.HighlightWord=true; S.revealed=nil; S:Render()
 cfg.Typewriter=true; T:RefreshConfig()
 -- The corner Report icon the windows have, beside the subtitle, and gone with the setting
 -- that hides it from the windows.
@@ -750,6 +764,70 @@ do
     cfg.SubtitleSentences=1; S:Update(); Play(.1)
     Check(#S.rows==1 and S.pageSentences==1,'set to one, the line on screen is paged again a sentence at a time')
     cfg.SubtitleSentences=3; S:Update()
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+end
+-- Auto-Scroll line by line: a window of Lines Shown that the words glide up through as the
+-- voice reads them, the line leaving fading out and the one coming in fading in.
+do
+    local style=E.Addon.db.profile.Frame.Style
+    E.Addon:SetPlayerStyle('subtitle'); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+    local before,lines=cfg.SubtitleScroll,cfg.Lines
+    cfg.SubtitleScroll='line'; cfg.Lines=2
+    local rolling=('A long line of words that keeps on going for a while. '):rep(8)
+    Q:RemoveAllSoundsFromQueue(); Play(1)
+    source:Enqueue(Clip('roll',rolling,40)); Play(1)
+    Check(#S.rows>2 and S.shownRows==2 and #S.pages==1,'line by line the whole line is one page, two of its lines on show')
+    local shown=0
+    for _,line in ipairs(S.lines) do if line:IsShown() then shown=shown+1 end end
+    Check(shown==2 and S.rollTop==1,'...from its first line')
+    Play(20)
+    Check(S.rollTarget>1 and S.rollTop==S.rollTarget,'...gliding on to keep the line being read at the foot')
+    local _,_,_,_,clipY=S.words:GetPoint(1)
+    Check(math.abs((S.wordsTop+clipY)-S.lineStep)<1e-6 and math.abs(S.words:GetHeight()-(S.shownRows*S.lineStep-2+2*S.lineStep))<1e-6,
+        "...a line's room over and under them, where a line gliding out or in fades to nothing before the edge")
+    local rollingTop,rollingHeight=S.wordsTop,S.rowsHeight
+    S.rollTop=S.rollTarget-.25; S:PlaceLines()
+    local first=math.floor(S.rollTop)
+    Check(math.abs(S.lines[first]:GetAlpha()-.25)<1e-6 and math.abs(S.lines[first+2]:GetAlpha()-.75)<1e-6
+        and S.lines[first+1]:GetAlpha()==1,'mid-glide the line leaving fades out and the one coming in fades in')
+    cfg.SubtitleScroll='page'; S:Layout(rolling)
+    Check(S.wordsTop==rollingTop and S.rowsHeight-(S.shownRows-2)*S.lineStep==rollingHeight,
+        '...its room reaching over the gaps to the name and the progress line: the words where they are page by page')
+    cfg.SubtitleScroll,cfg.Lines=before,lines
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+end
+-- What the windows have, the subtitle has too: Hide Portrait, Text Size, and buttons that say when
+-- a line cannot be stopped.
+do
+    local style=E.Addon.db.profile.Frame.Style
+    E.Addon:SetPlayerStyle('subtitle'); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+    source:Enqueue(Clip('parity','A line to show the subtitle with.',20)); Play(1)
+    local frameCfg=E.Addon.db.profile.Frame
+    frameCfg.HidePortrait=true; S:Update(); S:Fit()
+    local _,_,_,titleX=S.title:GetPoint(1)
+    Check(not S.picture:IsShown() and titleX==math.floor(S.rowLeft+.5),'Hide Portrait leaves the picture out, the name where it was')
+    frameCfg.HidePortrait=false; S:Update(); S:Fit()
+    Check(S.picture:IsShown(),'...and brings it back')
+    local quest=QuestFont
+    QuestFont={GetFont=function() return 'quest.ttf',13 end}
+    cfg.FontSize=24; S.revealed=nil; S:Layout(S.pages[S.page].text)
+    Check(S.lines[1].fontSize==math.floor(13*24/16+.5) and S.measure.fontSize==S.lines[1].fontSize,
+        'Text Size sizes the words, and what they are measured by, from the quest text at 16')
+    cfg.FontSize=16; S:Layout(S.pages[S.page].text)
+    QuestFont=quest
+    local CanBePaused=Q.CanBePaused
+    for _,button in ipairs({S.pause,S.skip}) do
+        button.Enable=function(b) b.enabled=true end
+        button.Disable=function(b) b.enabled=false end
+    end
+    Q.CanBePaused=function() return false end
+    S:UpdatePause()
+    Check(S.pause:GetAlpha()==.4 and S.pause.enabled==false and S.skip:GetAlpha()==.4 and S.skip.enabled==false,
+        'a line the client cannot stop leaves its buttons faint and still')
+    Q.CanBePaused=CanBePaused; S:UpdatePause()
+    Check(S.pause:GetAlpha()==1 and S.pause.enabled==true,'...and live again with one it can')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
 end
