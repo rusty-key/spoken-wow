@@ -68,7 +68,7 @@ const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
 // adjective agrees with. The import resolves the two-field form already; the three-field
 // form slips past its pattern and arrives here. No branch ends a sentence: one whose `;` was
 // lost would otherwise run on to a later sentence's `;` and drop the words between unheard.
-const BRANCH = String.raw`\s*([^:;.!?…\n]+?)\s*:\s*([^:;.!?…\n]+?)\s*(?::[^:;.!?…\n]*)?;`;
+const BRANCH = String.raw`\s*([^:;.!?…。！？\n]+?)\s*:\s*([^:;.!?…。！？\n]+?)\s*(?::[^:;.!?…。！？\n]*)?;`;
 const GENDER = new RegExp(String.raw`\$[Gg]` + BRANCH, "g");
 // deDE's own templates, the Forever quests' above all, also write the branch as $u.
 const GENDER_DE = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");

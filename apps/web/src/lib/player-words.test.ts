@@ -61,6 +61,7 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens(line, "deDE")).toBe("Ein $gAlchimist:Alchimistin in der Stadt. Geht; schnell.");
     expect(speakPlayerTokens("Ein $uHeld:Heldin! Ja; gut.", "deDE")).toBe("Ein $uHeld:Heldin! Ja; gut.");
     expect(speakPlayerTokens("Un $gami:amie\n\nVenez; vite.", "frFR")).toBe("Un $gami:amie\n\nVenez; vite.");
+    expect(speakPlayerTokens("一位$g勇士:女勇士。快去;吧。", "zhCN")).toBe("一位$g勇士:女勇士。快去;吧。");
   });
 
   it("speaks deDE's genitive s glued to $N or $C, and no other glued letter", () => {
