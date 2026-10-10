@@ -428,8 +428,8 @@ translator rewrites it. German's genitive `s` is the one exception: `$Ns` and `$
 `Abenteurers`, or `Abenteurerin` on the female variant. A branch never spans a sentence's end,
 so one whose `;` was lost stays in as a token instead of swallowing the text up to a later `;`.
 Contributions triage shows any token still left after this, and a gap before `.` or `,` or a
-double space where a gender branch came through empty, above the row's text, so a line that
-would never be voiced is seen before it is accepted.
+mid-sentence double space where a gender branch came through empty, above the row's text, so a
+line that would never be voiced is seen before it is accepted.
 Doing this at send time rather than in the rows covers every way a
 translation arrives — the dump, the ptBR import, QuestIT's Italian, a player's contribution, a translator's edit
 — and lets a word be changed later without rewriting any of them; the changed word then marks

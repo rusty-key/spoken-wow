@@ -6,6 +6,7 @@ describe("textHints", () => {
   it("is empty for a line the gate voices", () => {
     expect(textHints("Seid gegrüßt, $uReisender:Reisende;. Die Legion $Ns wartet.", "deDE")).toEqual([]);
     expect(textHints("Thanks, $N.", "enGB")).toEqual([]);
+    expect(textHints("Well done, $N!$B$BNow go.", "enUS")).toEqual([]);
   });
 
   it("names a token the gate cannot speak", () => {
@@ -18,6 +19,9 @@ describe("textHints", () => {
     ]);
     expect(textHints("Ein $gAlchimist:Alchimistin in der Stadt. Geht; schnell.", "deDE")).toEqual([
       "unspoken token $gAlchimist:Alchimistin — won't be voiced",
+    ]);
+    expect(textHints("Ein $gHeld:Heldin, sagt man. Ein $gHeld:Heldin, wirklich.", "deDE")).toEqual([
+      "unspoken token $gHeld:Heldin, — won't be voiced",
     ]);
   });
 
@@ -40,5 +44,8 @@ describe("textHints", () => {
     expect(textHints("Vraiment ? Allez !", "frFR")).toEqual([]);
     // q:92110:accept: an ellipsis, not a gap.
     expect(textHints("Hm ... vielleicht Murlocaugen?", "deDE")).toEqual([]);
+    expect(textHints("Hmm. . .it says here. . . for the", "enUS")).toEqual([]);
+    // Blizzard's own spacing after a sentence's end.
+    expect(textHints("You've been busy!  I can't wait.  Go.", "enUS")).toEqual([]);
   });
 });
