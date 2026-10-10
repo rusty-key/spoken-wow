@@ -1,4 +1,3 @@
-/** Client-safe: the zone list is the explorers' filter options. */
 import { ZONE_REGIONS, zoneAt } from "@tools/lib/zone-at.mjs";
 
 import { npcKey } from "../corpus";
