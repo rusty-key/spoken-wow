@@ -51,6 +51,7 @@ VO.DataModules:Register("TestPack", {
 stub.Advance(2)
 local Spoken = _G.Spoken
 _G.SpokenEnv.Addon.db.profile.Audio.AutoToggleDialog = true
+_G.SpokenEnv.Addon.db.profile.Audio.SoundChannel = "Master"
 -- The other sliders stay where they are set: lowered under a line, they would not be the levels
 -- Dialog is compared with.
 _G.SpokenEnv.Addon.db.profile.Audio.LowerOthers.Enabled = false

@@ -155,7 +155,7 @@ function OtherSounds:Sync()
             Addon:CancelTimer(self.settleTimer)
             self.settleTimer = nil
         end
-        local voice = head.source and head.source:GetChannel() or "Master"
+        local voice = head.source and head.source:GetChannel() or Addon.db.profile.Audio.SoundChannel
         -- Also when the volumes are on their way back up: a line that starts then turns
         -- them down again from wherever the fade had reached.
         if not self.lowered or self.restoring or voice ~= self.voice then self:Lower(voice) end

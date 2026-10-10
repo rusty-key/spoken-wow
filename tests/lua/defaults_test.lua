@@ -28,7 +28,7 @@ Expect("...letter by letter", D.Transcript.TypewriterBy, "letter")
 Expect("no action hidden: Report shows", next(D.Frame.HiddenActions), nil)
 Expect("subtitle size 100%", D.Transcript.SubtitleScale, 1)
 Expect("background darkness 60%", D.Transcript.SubtitleShadow, 0.6)
-Expect("there is no setting for the voices' channel: they play on Master", D.Audio.SoundChannel, nil)
+Expect("the volume follows Master", D.Audio.SoundChannel, "Master")
 Expect("NPC voices silenced while a line plays", D.Audio.AutoToggleDialog, true)
 Expect("other sounds turned down", D.Audio.LowerOthers.Enabled, true)
 Expect("...music to 30%, ambience 40%, effects 60%",

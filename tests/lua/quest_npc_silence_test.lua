@@ -19,6 +19,7 @@ VO.DataModules:Register("TestPack", {
 })
 stub.Advance(2)
 _G.SpokenEnv.Addon.db.profile.Audio.AutoToggleDialog = true
+_G.SpokenEnv.Addon.db.profile.Audio.SoundChannel = "Master"
 stub.world.npcName, stub.world.npcGUID = "Marshal", "Creature-0-0-0-0-12345-0"
 
 local quests = { available = 0, active = 0 }

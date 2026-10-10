@@ -52,7 +52,7 @@ local subtitlesTop = typing.layoutY
 env.Addon:SetPlayerStyle("minimal"); Options:UpdateRows()
 Expect("choosing the window brings its settings back", Shown(size), true)
 Expect("...and hides the subtitles'", Shown(typing), false)
-Expect("the rows below move up into the space", Row(home, "Silence NPC Voices").layoutY > -100000, true)
+Expect("the rows below move up into the space", Row(home, "Volume Follows").layoutY > -100000, true)
 env.Addon:SetPlayerStyle("subtitle"); Options:UpdateRows()
 Expect("...and back down when subtitles return", typing.layoutY, subtitlesTop)
 
@@ -72,8 +72,33 @@ local music = Row(home, "Music")
 env.Addon.db.profile.Audio.LowerOthers.Enabled = false; Options:UpdateRows()
 Expect("the music level waits for its switch", music.layoutReason, L.REASON_LOWER)
 env.Addon.db.profile.Audio.LowerOthers.Enabled = true
-Options:UpdateRows()
-Expect("...and is offered with it on", music.layoutReason, nil)
+env.Addon.db.profile.Audio.SoundChannel = "Music"; Options:UpdateRows()
+Expect("...and is never offered while the voices play through music", music.layoutReason, L.REASON_VOICE_CHANNEL)
+env.Addon.db.profile.Audio.SoundChannel = "Master"; Options:UpdateRows()
+Expect("...but is with them on Master", music.layoutReason, nil)
+
+-- Any channel may be chosen; on Dialog a warning under it says what stops working.
+local function WarningShown()
+    for _, item in ipairs(home.items) do
+        for _, row in ipairs(item.rows or {}) do
+            if row.control.GetText and row.control:GetText() == L.OPT_CHANNEL_DIALOG_WARN then return row.shown == true end
+        end
+    end
+    return false
+end
+Expect("no warning on Master", WarningShown(), false)
+env.Addon.db.profile.Audio.SoundChannel = "Dialog"; Options:UpdateRows()
+Expect("Dialog can be chosen, with a warning under it", WarningShown(), true)
+env.Addon.db.profile.Audio.SoundChannel = "Master"; Options:UpdateRows()
+Expect("...which goes with Master again", WarningShown(), false)
+
+-- On Dialog, Silence NPC Voices would silence Spoken's voices too, so the queue never mutes it.
+local silence = Row(home, "Silence NPC Voices")
+Expect("Silence NPC Voices is offered on Master", silence.layoutReason, nil)
+env.Addon.db.profile.Audio.SoundChannel = "Dialog"; Options:UpdateRows()
+Expect("...and greyed on Dialog, saying why", silence.layoutReason, L.REASON_DIALOG_CHANNEL)
+env.Addon.db.profile.Audio.SoundChannel = "Master"; Options:UpdateRows()
+Expect("...and offered again on Master", silence.layoutReason, nil)
 
 ---------------------------------------------------------------- voice only
 -- Nothing on screen is a way of showing lines like the other three, not a switch apart.

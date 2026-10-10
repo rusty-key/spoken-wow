@@ -102,14 +102,13 @@ function Sources:Iterate()
     end
 end
 
---- The channel a clip from this source plays on: its own if it names one, else Master. There is
---- no setting for it: on Dialog, Silence NPC Voices would silence Spoken's voices with the NPCs',
---- and Game Greeting First could not tell them from an NPC's. A string, as PlaySoundFile takes.
+--- The channel a clip from this source plays on: its own if it names one, else the
+--- player's setting. Strings throughout, because that is what PlaySoundFile takes.
 function SourceMethods:GetChannel()
     if self.channel then
         return self.channel()
     end
-    return "Master"
+    return Addon.db.profile.Audio.SoundChannel
 end
 
 -- A line the queue would not take, in the debug log: the refusals that fire no CLIP_DROPPED
