@@ -20,8 +20,8 @@ import { Roster, newVoiceName, type Gender, type RosterData } from "@/lib/voices
 const GENDERS: Gender[] = ["female", "male"];
 
 /**
- * Edit controls stay out of sight until their rows are hovered, as a long table of them reads
- * as noise otherwise; a focused or open one stays visible for the keyboard.
+ * Delete controls stay out of sight until their rows are hovered, as a column of red reads as
+ * noise otherwise; a focused one stays visible for the keyboard.
  */
 const ON_TYPE_HOVER =
   "opacity-0 group-hover/type:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100";
@@ -109,6 +109,7 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
             <th className="px-3 py-1 font-normal">Gender</th>
             <th className="px-3 py-1 font-normal">Flavor</th>
             <th className="px-3 py-1 font-normal">Read by</th>
+            <th className="px-3 py-1 font-normal">Add</th>
           </tr>
         </thead>
         {data.races.map((race) => (
@@ -155,9 +156,9 @@ function AddType({ busy, refusal, send }: { busy: boolean; refusal: ReactNode; s
 }
 
 /**
- * One type as a run of rows: a row per flavor (or one for a gender read by a bare voice), a row
- * per gender to add a flavor from, and a last row to add a gender from. The type and each gender
- * span the rows that are theirs.
+ * One type as a run of rows: a row per flavor, or one for a gender read by a bare voice. The type
+ * spans all of them; each gender, and the cell to add its flavors from, spans its own. The type's
+ * missing genders are added from its first such cell.
  */
 function TypeRows({
   race,
@@ -177,10 +178,10 @@ function TypeRows({
     gender,
     flavors: roster.flavorsOf(race.key, gender),
   }));
-  // A gender's own rows: its flavors, or its bare voice, then the row to add a flavor from.
-  const rowsOf = (flavors: string[]) => Math.max(flavors.length, 1) + 1;
+  // A gender's own rows: its flavors, or its bare voice.
+  const rowsOf = (flavors: string[]) => Math.max(flavors.length, 1);
   const missing = GENDERS.filter((g) => !race.genders.includes(g));
-  const total = groups.reduce((sum, { flavors }) => sum + rowsOf(flavors), 0) + (missing.length ? 1 : 0);
+  const total = groups.reduce((sum, { flavors }) => sum + rowsOf(flavors), 0);
   const cell = "py-1 px-3 align-top";
 
   const rows: ReactNode[] = [];
@@ -204,6 +205,28 @@ function TypeRows({
     const genderCell = (
       <td rowSpan={rowsOf(flavors)} className={`${cell} border-r`}>
         {gender ?? <span className="text-muted-foreground">—</span>}
+      </td>
+    );
+    const addCell = (
+      <td rowSpan={rowsOf(flavors)} className={`${cell} border-l`}>
+        <div className="flex flex-wrap gap-1">
+          <AddFlavor race={race.key} gender={gender} busy={busy} refusal={refusal} send={send} />
+          {index === 0
+            ? missing.map((g) => (
+                <LiteButton
+                  key={g}
+                  variant="ghost"
+                  className="h-6 gap-1 px-1.5 text-xs leading-none"
+                  disabled={busy}
+                  onClick={() => void send(at("gender"), { action: "add-gender", race: race.key, gender: g })}
+                >
+                  <Plus className="size-3 shrink-0" />
+                  {g}
+                </LiteButton>
+              ))
+            : null}
+        </div>
+        {index === 0 ? refusal(at("gender")) : null}
       </td>
     );
 
@@ -236,6 +259,7 @@ function TypeRows({
               />
               {refusal(key)}
             </td>
+            {n === 0 ? addCell : null}
           </tr>,
         );
       });
@@ -259,45 +283,12 @@ function TypeRows({
             />
             {refusal(key)}
           </td>
+          {addCell}
         </tr>,
       );
     }
 
-    rows.push(
-      <tr key={at(`flavor:${group}`)}>
-        <td className={cell}>
-          <AddFlavor race={race.key} gender={gender} busy={busy} refusal={refusal} send={send} />
-        </td>
-        <td className={cell} />
-      </tr>,
-    );
   });
-
-  if (missing.length) {
-    rows.push(
-      <tr key={at("gender")}>
-        <td className={`${cell} border-r`}>
-          <div className="flex flex-wrap gap-1">
-            {missing.map((g) => (
-              <LiteButton
-                key={g}
-                variant="ghost"
-                className={`h-6 gap-1 px-1.5 text-xs leading-none ${ON_TYPE_HOVER}`}
-                disabled={busy}
-                onClick={() => void send(at("gender"), { action: "add-gender", race: race.key, gender: g })}
-              >
-                <Plus className="size-3 shrink-0" />
-                {g}
-              </LiteButton>
-            ))}
-          </div>
-          {refusal(at("gender"))}
-        </td>
-        <td className={cell} />
-        <td className={cell} />
-      </tr>,
-    );
-  }
 
   return <tbody className="group/type">{rows}</tbody>;
 }
@@ -322,7 +313,7 @@ function AddFlavor({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <LiteButton variant="ghost" className={`h-6 gap-1 px-1.5 text-xs leading-none ${ON_TYPE_HOVER}`} disabled={busy}>
+        <LiteButton variant="ghost" className="h-6 gap-1 px-1.5 text-xs leading-none" disabled={busy}>
           <Plus className="size-3 shrink-0" />
           flavor
         </LiteButton>
