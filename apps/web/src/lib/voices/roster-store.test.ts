@@ -2,7 +2,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { invalidateRoster, loadRoster } from "./roster-store";
+import { loadRoster } from "./roster-store";
 
 const KEY = `t${Math.floor(Math.random() * 1e9)}`;
 
@@ -19,10 +19,13 @@ describe("loadRoster", () => {
     expect(roster.gendersOf("orc")).toEqual(["female", "male"]);
   });
 
-  it("sees a new type once invalidated", async () => {
+  it("keeps one roster while nothing moves", async () => {
+    expect(await loadRoster()).toBe(await loadRoster());
+  });
+
+  it("sees a type added behind its back", async () => {
     await loadRoster();
     await db().query(`insert into "race" ("key") values ($1)`, [KEY]);
-    invalidateRoster();
     expect((await loadRoster()).hasRace(KEY)).toBe(true);
   });
 });

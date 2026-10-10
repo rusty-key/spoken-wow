@@ -1,4 +1,4 @@
-import { SECTIONS, type Section as ContributionSection } from "@/lib/contributions/query";
+import { SECTIONS, type Section } from "@/lib/contributions/query";
 import { localeHref, type Lang } from "@/lib/lang";
 
 import { LinkTabs } from "@/components/StatusTabs";
@@ -15,7 +15,6 @@ const QUEST_VIEWS = [
   { key: "corrections", label: "Corrections", href: "/contributions/quests/corrections" },
 ] as const;
 
-type Section = ContributionSection;
 type View = (typeof QUEST_VIEWS)[number]["key"];
 
 /**

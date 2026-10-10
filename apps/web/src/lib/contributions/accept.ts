@@ -235,7 +235,7 @@ async function speakerFor(
   }
   // A line in no voice would be unvoiceable and unfindable: giving the NPC's type a voice is
   // the fix, not accepting the line anyway.
-  if (!speaker.voice || !(await loadRoster()).isVoice(speaker.voice)) {
+  if (!speaker.voice) {
     return {
       ok: false,
       reason: "needs-speaker",

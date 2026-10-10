@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { corpus } from "@/lib/quests/catalogue";
 
 import { loadRoster } from "./roster-store";
-import { isModelVoice, voiceName } from "./voices";
+import { isModelVoice } from "./voices";
 
 describe("the roster", () => {
   // The roster is what /voices, the filters and the triage selects offer, so a corpus line
@@ -35,13 +35,5 @@ describe("the roster", () => {
     for (const name of ["model-", "model-29-male", "model-../x", "orc-model-29"]) {
       expect(roster.isVoice(name), name).toBe(false);
     }
-  });
-});
-
-describe("voiceName", () => {
-  it("names a model slot by itself, as flavors.py's voice_name does", () => {
-    expect(voiceName({ race: "model-29", gender: "male", flavor: null })).toBe("model-29");
-    expect(voiceName({ race: "tauren", gender: "male", flavor: "warrior" })).toBe("tauren-male-warrior");
-    expect(voiceName({ race: "narrator", gender: "male", flavor: null })).toBe("narrator-male");
   });
 });

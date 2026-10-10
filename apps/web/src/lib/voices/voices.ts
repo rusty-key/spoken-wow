@@ -11,7 +11,7 @@
  */
 export type Gender = "male" | "female";
 
-export type Voice = { race: string; gender: Gender; flavor: string | null };
+export const GENDERS: readonly Gender[] = ["female", "male"];
 
 /**
  * A voice keyed by a creature's model rather than a race: `model-{ModelID}`.
@@ -30,11 +30,4 @@ const MODEL_VOICE = /^model-\d+$/;
 
 export function isModelVoice(name: string): boolean {
   return MODEL_VOICE.test(name);
-}
-
-/** The voice's name: `race-gender-flavor`, `race-gender` with no flavor, or a model slot. */
-export function voiceName(voice: Voice): string {
-  // A model slot's gender is only what the corpus schema needs, so it is not in the name.
-  if (isModelVoice(voice.race)) return voice.race;
-  return voice.flavor ? `${voice.race}-${voice.gender}-${voice.flavor}` : `${voice.race}-${voice.gender}`;
 }

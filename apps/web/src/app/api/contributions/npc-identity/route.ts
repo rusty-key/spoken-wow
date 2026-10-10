@@ -10,7 +10,7 @@
  * its type at once. Admin only, as ../npc is: who speaks a line decides its voice in every
  * language.
  */
-import { requireAdminSession } from "@/lib/admin-guard";
+import { requireAdminSession } from "@/lib/generation/authz";
 import { contributionLocale, observationMeta, setContributionNpc } from "@/lib/contributions/store";
 import { isLang } from "@/lib/lang";
 import { INT32_MAX, NPC_KINDS, type NpcKind } from "@/lib/npc/npc";

@@ -11,11 +11,10 @@
 -- moves. No foreign key from npc to race: npc holds model-{id} slots, which are a pattern and
 -- not rows, and client guesses with a gender and no race. The writers validate instead.
 --
--- Additive: voices.ts ROSTER and the speaker columns stay, for the previous release.
+-- Additive: the speaker columns stay, and the previous release's code keeps its own ROSTER.
 
 create table if not exists "race" (
   "key"       text primary key check ("key" ~ '^[a-z0-9]+$'),
-  "label"     text,
   "createdAt" timestamptz not null default now()
 );
 
@@ -30,14 +29,12 @@ create table if not exists "flavor" (
   "race"   text not null references "race" ("key"),
   "gender" text,
   "flavor" text not null check ("flavor" ~ '^[a-z0-9]+$'),
-  "label"  text,
   foreign key ("race", "gender") references "gender" ("race", "gender")
 );
 create unique index if not exists "flavor_key_idx" on "flavor" ("race", coalesce("gender", ''), "flavor");
 
 create table if not exists "voice" (
   "name"      text primary key check ("name" ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
-  "label"     text,
   "race"      text not null,
   "gender"    text not null default '',
   "createdAt" timestamptz not null default now()
@@ -107,8 +104,7 @@ insert into "voice_assignment" ("race", "gender", "flavor", "voice")
 -- The narrator reads, but is nobody: a voice and no type.
 insert into "voice" ("name", "race", "gender") values ('narrator-male', 'narrator', 'male')
   on conflict do nothing;
-insert into "race" ("key", "label") values
-  ('gameobject', 'Gameobject'), ('item', 'Item'), ('creature', 'Creature')
+insert into "race" ("key") values ('gameobject'), ('item'), ('creature')
   on conflict do nothing;
 insert into "voice_assignment" ("race", "gender", "flavor", "voice") values
   ('gameobject', null, null, 'narrator-male'), ('item', null, null, 'narrator-male'),

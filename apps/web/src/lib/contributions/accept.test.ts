@@ -13,7 +13,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, db } from "@/lib/db";
 import { BASE_LANG } from "@/lib/lang";
 import { upsertResolution } from "@/lib/npc/store";
-import { invalidateRoster } from "@/lib/voices/roster-store";
 import { corpus, lineIndex } from "@/lib/quests/catalogue";
 import { isGap, matchingLines, NO_CONTEXT } from "@/lib/search";
 
@@ -371,7 +370,6 @@ describe("resolveContribution: quests accept", () => {
     await db().query(`insert into "race" ("key") values ($1)`, [type]);
     await db().query(`insert into "voice" ("name", "race", "gender") values ($1, $1, '')`, [type]);
     await db().query(`insert into "voice_assignment" ("race", "voice") values ($1, $1)`, [type]);
-    invalidateRoster();
     try {
       await speaker(npcId, type, null);
       const text = "Creak. The old wood remembers you.";
@@ -388,7 +386,6 @@ describe("resolveContribution: quests accept", () => {
       await db().query(`delete from "voice_assignment" where "race" = $1`, [type]);
       await db().query(`delete from "voice" where "name" = $1`, [type]);
       await db().query(`delete from "race" where "key" = $1`, [type]);
-      invalidateRoster();
     }
   });
 

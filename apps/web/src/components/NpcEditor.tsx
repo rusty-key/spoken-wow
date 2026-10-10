@@ -259,7 +259,8 @@ export default function NpcEditor({
   const selectedRows = shown.filter((npc) => selected.has(key(npc.npcKind, npc.npcId)));
   // A bulk save keeps each row's own answer, so a row without a race and gender has nothing to
   // keep -- saving it would file "this NPC has no race" as a decision nobody made.
-  const savable = selectedRows.filter((npc) => npc.race && npc.gender);
+  // A genderless type is a whole answer without one.
+  const savable = selectedRows.filter((npc) => npc.race && (npc.gender || roster.isGenderless(npc.race)));
   const allTicked = shown.length > 0 && selectedRows.length === shown.length;
   const toggle = (k: string, on: boolean) =>
     setSelected((current) => {
@@ -415,7 +416,7 @@ export default function NpcEditor({
                       // Remount on a save, so the form's own state starts from the new answer.
                       key={`${npc.provenance}:${npc.race}:${npc.gender}:${npc.flavor}:${npc.doubtful}`}
                       npc={npc}
-                      roster={rosterData}
+                      roster={roster}
                       readOnly={false}
                       busy={busy === k || bulk !== null}
                       onSave={(answer) => void save(npc, answer)}

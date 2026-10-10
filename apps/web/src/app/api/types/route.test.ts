@@ -11,7 +11,7 @@ import { loadRoster } from "@/lib/voices/roster-store";
 const ACTOR = "test-types-route";
 let admin = true;
 
-vi.mock("@/lib/admin-guard", () => ({
+vi.mock("@/lib/generation/authz", () => ({
   requireAdmin: async () =>
     admin
       ? { lang: "enUS", session: { user: { id: ACTOR } }, denied: null }
@@ -63,10 +63,10 @@ describe("POST /api/types", () => {
   });
 
   it("adds a genderless type read by its own new voice, and answers with the roster", async () => {
-    const response = await POST(post({ action: "add-type", key: KEY, label: "Treant", genders: [] }));
+    const response = await POST(post({ action: "add-type", key: KEY, genders: [] }));
     expect(response.status).toBe(200);
     const { roster } = await response.json();
-    expect(roster.races).toContainEqual({ key: KEY, label: "Treant", genders: [] });
+    expect(roster.races).toContainEqual({ key: KEY, genders: [] });
     expect((await loadRoster()).voiceFor(KEY, null, null)).toBe(KEY);
   });
 
@@ -101,12 +101,6 @@ describe("POST /api/types", () => {
     await POST(post({ action: "add-type", key: KEY, genders: [] }));
     const response = await POST(post({ action: "assign-voice", race: KEY, gender: null, flavor: null, voice: "nosuch-voice" }));
     expect(response.status).toBe(400);
-  });
-
-  it("relabels a type", async () => {
-    await POST(post({ action: "add-type", key: KEY, genders: [] }));
-    expect((await POST(post({ action: "label-type", key: KEY, label: "Ancient" }))).status).toBe(200);
-    expect((await loadRoster()).data.races.find((r) => r.key === KEY)?.label).toBe("Ancient");
   });
 
   it("deletes a type nothing has, leaving its voice", async () => {

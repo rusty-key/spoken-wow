@@ -4,22 +4,22 @@ import { newVoiceName, Roster, type RosterData } from "./roster";
 
 const DATA: RosterData = {
   races: [
-    { key: "orc", label: null, genders: ["female", "male"] },
-    { key: "bloodelf", label: null, genders: ["female"] },
-    { key: "gameobject", label: "Gameobject", genders: [] },
-    { key: "treant", label: null, genders: [] },
+    { key: "orc", genders: ["female", "male"] },
+    { key: "bloodelf", genders: ["female"] },
+    { key: "gameobject", genders: [] },
+    { key: "treant", genders: [] },
   ],
   flavors: [
-    { race: "orc", gender: "male", flavor: "shady", label: null },
-    { race: "orc", gender: "male", flavor: "guard", label: null },
-    { race: "treant", gender: null, flavor: "ancient", label: null },
+    { race: "orc", gender: "male", flavor: "shady" },
+    { race: "orc", gender: "male", flavor: "guard" },
+    { race: "treant", gender: null, flavor: "ancient" },
   ],
   voices: [
-    { name: "orc-male-shady", label: null, race: "orc", gender: "male" },
-    { name: "orc-male-guard", label: null, race: "orc", gender: "male" },
-    { name: "bloodelf-female", label: null, race: "bloodelf", gender: "female" },
-    { name: "narrator-male", label: null, race: "narrator", gender: "male" },
-    { name: "treant", label: null, race: "treant", gender: "" },
+    { name: "orc-male-shady", race: "orc", gender: "male" },
+    { name: "orc-male-guard", race: "orc", gender: "male" },
+    { name: "bloodelf-female", race: "bloodelf", gender: "female" },
+    { name: "narrator-male", race: "narrator", gender: "male" },
+    { name: "treant", race: "treant", gender: "" },
   ],
   assignments: [
     { race: "orc", gender: "male", flavor: "shady", voice: "orc-male-shady" },

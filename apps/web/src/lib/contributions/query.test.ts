@@ -109,13 +109,13 @@ describe("bucketOf", () => {
   const moment = { source: "quests" as const, locale: "enUS", quest, hasSpeaker: false };
   const roster = new Roster({
     races: [
-      { key: "tauren", label: null, genders: ["male"] },
-      { key: "gameobject", label: null, genders: [] },
+      { key: "tauren", genders: ["male"] },
+      { key: "gameobject", genders: [] },
     ],
-    flavors: [{ race: "tauren", gender: "male", flavor: "warrior", label: null }],
+    flavors: [{ race: "tauren", gender: "male", flavor: "warrior" }],
     voices: [
-      { name: "tauren-male-warrior", label: null, race: "tauren", gender: "male" },
-      { name: "narrator-male", label: null, race: "narrator", gender: "male" },
+      { name: "tauren-male-warrior", race: "tauren", gender: "male" },
+      { name: "narrator-male", race: "narrator", gender: "male" },
     ],
     assignments: [
       { race: "tauren", gender: "male", flavor: "warrior", voice: "tauren-male-warrior" },

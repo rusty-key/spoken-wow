@@ -6,29 +6,22 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
 
+const set = (race: string, gender: string, ...flavors: (string | null)[]) =>
+  flavors.map((flavor): [string, string, string | null] => [race, gender, flavor]);
+
 /** voices.ts ROSTER on the day migration 0071 replaced it, narrator-male aside. */
 const ROSTER: [string, string, string | null][] = [
-  ["bloodelf", "female", null], ["bloodelf", "male", null],
-  ...(["guard", "maternal", "young"].map((f) => ["dwarf", "female", f]) as [string, string, string][]),
-  ...(["grim", "guard", "standard"].map((f) => ["dwarf", "male", f]) as [string, string, string][]),
-  ...(["happy", "nerdy", "standard"].map((f) => ["gnome", "female", f]) as [string, string, string][]),
-  ...(["standard", "young", "zany"].map((f) => ["gnome", "male", f]) as [string, string, string][]),
-  ["goblin", "female", "zany"],
-  ...(["gruff", "guard", "zany"].map((f) => ["goblin", "male", f]) as [string, string, string][]),
-  ...(["official", "standard", "warrior"].map((f) => ["human", "female", f]) as [string, string, string][]),
-  ...(["official", "standard", "warrior"].map((f) => ["human", "male", f]) as [string, string, string][]),
-  ...(["priestess", "sentinel", "standard"].map((f) => ["nightelf", "female", f]) as [string, string, string][]),
-  ...(["official", "standard", "warrior"].map((f) => ["nightelf", "male", f]) as [string, string, string][]),
-  ...(["shaman", "standard", "warrior"].map((f) => ["orc", "female", f]) as [string, string, string][]),
-  ...(["guard", "shady", "standard"].map((f) => ["orc", "male", f]) as [string, string, string][]),
-  ...(["magic", "standard", "warrior"].map((f) => ["scourge", "female", f]) as [string, string, string][]),
-  ...(["dark", "standard", "warrior"].map((f) => ["scourge", "male", f]) as [string, string, string][]),
-  ["skybourneelf", "female", "3773"], ["skybourneelf", "female", "3774"],
-  ["skybourneelf", "male", "3776"], ["skybourneelf", "male", "3775"],
-  ...(["official", "shaman", "standard"].map((f) => ["tauren", "female", f]) as [string, string, string][]),
-  ...(["elder", "shaman", "warrior"].map((f) => ["tauren", "male", f]) as [string, string, string][]),
-  ...(["laidback", "old", "standard"].map((f) => ["troll", "female", f]) as [string, string, string][]),
-  ...(["dark", "shaman", "standard"].map((f) => ["troll", "male", f]) as [string, string, string][]),
+  ...set("bloodelf", "female", null), ...set("bloodelf", "male", null),
+  ...set("dwarf", "female", "guard", "maternal", "young"), ...set("dwarf", "male", "grim", "guard", "standard"),
+  ...set("gnome", "female", "happy", "nerdy", "standard"), ...set("gnome", "male", "standard", "young", "zany"),
+  ...set("goblin", "female", "zany"), ...set("goblin", "male", "gruff", "guard", "zany"),
+  ...set("human", "female", "official", "standard", "warrior"), ...set("human", "male", "official", "standard", "warrior"),
+  ...set("nightelf", "female", "priestess", "sentinel", "standard"), ...set("nightelf", "male", "official", "standard", "warrior"),
+  ...set("orc", "female", "shaman", "standard", "warrior"), ...set("orc", "male", "guard", "shady", "standard"),
+  ...set("scourge", "female", "magic", "standard", "warrior"), ...set("scourge", "male", "dark", "standard", "warrior"),
+  ...set("skybourneelf", "female", "3773", "3774"), ...set("skybourneelf", "male", "3776", "3775"),
+  ...set("tauren", "female", "official", "shaman", "standard"), ...set("tauren", "male", "elder", "shaman", "warrior"),
+  ...set("troll", "female", "laidback", "old", "standard"), ...set("troll", "male", "dark", "shaman", "standard"),
 ];
 
 afterAll(closeDb);

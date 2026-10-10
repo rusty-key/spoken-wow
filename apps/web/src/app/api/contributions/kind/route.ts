@@ -10,7 +10,7 @@
  * Admin only, as every answer about who speaks a contribution is (../npc, ../npc-identity): the
  * NPC it picks decides the line's voice in every language.
  */
-import { requireAdminSession } from "@/lib/admin-guard";
+import { requireAdminSession } from "@/lib/generation/authz";
 import { setContributionNpcKind } from "@/lib/contributions/store";
 import { NPC_KINDS, type NpcKind } from "@/lib/npc/npc";
 

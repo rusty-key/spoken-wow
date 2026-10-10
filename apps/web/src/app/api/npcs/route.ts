@@ -20,11 +20,10 @@
  * check is satisfied by "moderator" whether or not the row is confirmed.
  */
 import { recordActivity } from "@/lib/activity/store";
-import { requireAdmin } from "@/lib/admin-guard";
+import { requireAdmin } from "@/lib/generation/authz";
 import { INT32_MAX } from "@/lib/npc/npc";
 import { getResolution, NPC_ROW_KINDS, renameNpc, resolutionKey, upsertResolution, type NpcRowKind } from "@/lib/npc/store";
-import { Roster } from "@/lib/voices/roster";
-import { rosterData } from "@/lib/voices/roster-store";
+import { loadRoster } from "@/lib/voices/roster-store";
 
 export const dynamic = "force-dynamic";
 
@@ -78,8 +77,7 @@ export async function POST(request: Request) {
   const flavor = orExisting(body.flavor, existing?.flavor ?? null, 64);
   // Before the rename, so a refused answer changes nothing.
   if (answersVoice) {
-    // Uncached: a type the other worker just added must be answerable at once.
-    const refusal = new Roster(await rosterData()).isAnswer(race, gender, flavor);
+    const refusal = (await loadRoster()).isAnswer(race, gender, flavor);
     if (refusal) return Response.json({ error: refusal }, { status: 400 });
   }
 

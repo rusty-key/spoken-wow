@@ -1,7 +1,7 @@
 /**
  * An admin's edits to the types an NPC can be (the Types tab of /npcs): add a type with or
- * without genders, give it a gender or a flavor, relabel or delete it, and choose the voice
- * each combination is read with.
+ * without genders, give it a gender or a flavor, delete it, and choose the voice each
+ * combination is read with.
  *
  * One route, an `action` per edit, because every edit answers with the whole roster: the tab
  * redraws from what is stored, not from what it hoped to store. A first gender or flavor for a
@@ -9,8 +9,8 @@
  * `discard` (types-store.ts NeedsChoice).
  */
 import { recordActivity } from "@/lib/activity/store";
-import { requireAdmin } from "@/lib/admin-guard";
-import { rosterData } from "@/lib/voices/roster-store";
+import { requireAdmin } from "@/lib/generation/authz";
+import { loadRoster } from "@/lib/voices/roster-store";
 import {
   addFlavor,
   addGender,
@@ -18,7 +18,6 @@ import {
   assignVoice,
   deleteFlavor,
   deleteType,
-  labelType,
   NeedsChoice,
   TypesError,
 } from "@/lib/voices/types-store";
@@ -26,11 +25,10 @@ import {
 export const dynamic = "force-dynamic";
 
 const ACTIONS: Record<string, (body: Record<string, unknown>) => Promise<void>> = {
-  "add-type": (b) => addType(b.key, b.label, b.genders),
-  "label-type": (b) => labelType(b.key, b.label),
+  "add-type": (b) => addType(b.key, b.genders),
   "delete-type": (b) => deleteType(b.key),
   "add-gender": (b) => addGender(b.race, b.gender, b.existing),
-  "add-flavor": (b) => addFlavor(b.race, b.gender, b.flavor, b.label, b.existing),
+  "add-flavor": (b) => addFlavor(b.race, b.gender, b.flavor, b.existing),
   "delete-flavor": (b) => deleteFlavor(b.race, b.gender, b.flavor),
   "assign-voice": (b) => assignVoice(b.race, b.gender, b.flavor, b.voice),
 };
@@ -60,7 +58,7 @@ export async function POST(request: Request) {
     subject: String(body.key ?? body.race ?? ""),
     detail: { action: String(body.action), gender: str(body.gender), flavor: str(body.flavor), voice: str(body.voice), existing: str(body.existing) },
   });
-  return Response.json({ roster: await rosterData() });
+  return Response.json({ roster: (await loadRoster()).data });
 }
 
 function str(value: unknown): string | null {

@@ -2,15 +2,14 @@
  * An admin's edits to the roster (migration 0071): the types an NPC can be, their genders and
  * flavors, and the voice each combination is read with. The only writer of those tables.
  *
- * A refusal is a TypesError whose message is shown to the admin as it stands. Every write drops
- * this process's roster cache once it has committed.
+ * A refusal is a TypesError whose message is shown to the admin as it stands.
  */
 import type { PoolClient } from "pg";
 
 import { db } from "@/lib/db";
 
 import { newVoiceName, type Gender } from "./roster";
-import { invalidateRoster } from "./roster-store";
+import { GENDERS } from "./voices";
 
 export class TypesError extends Error {}
 
@@ -59,7 +58,6 @@ async function ownVoice(client: PoolClient, race: string, g: Gender | null, flav
 }
 
 const KEY = /^[a-z0-9]+$/;
-const GENDERS: readonly string[] = ["male", "female"];
 
 function key(value: unknown): string {
   if (typeof value !== "string" || !KEY.test(value)) throw new TypesError("Keys are lowercase letters and digits");
@@ -67,12 +65,13 @@ function key(value: unknown): string {
 }
 
 function gender(value: unknown): Gender {
-  if (typeof value !== "string" || !GENDERS.includes(value)) throw new TypesError("A gender is male or female");
+  if (!GENDERS.includes(value as Gender)) throw new TypesError("A gender is male or female");
   return value as Gender;
 }
 
-function label(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim().slice(0, 100) : null;
+/** A field that may be left out: absent, null and "" are all "none". */
+function optional<T>(value: unknown, parse: (value: unknown) => T): T | null {
+  return value === undefined || value === null || value === "" ? null : parse(value);
 }
 
 async function inTransaction(work: (client: PoolClient) => Promise<void>): Promise<void> {
@@ -87,7 +86,6 @@ async function inTransaction(work: (client: PoolClient) => Promise<void>): Promi
   } finally {
     client.release();
   }
-  invalidateRoster();
 }
 
 async function exists(client: PoolClient, sql: string, params: unknown[]): Promise<boolean> {
@@ -129,27 +127,19 @@ async function assign(
   return name;
 }
 
-export async function addType(rawKey: unknown, rawLabel: unknown, rawGenders: unknown): Promise<void> {
+export async function addType(rawKey: unknown, rawGenders: unknown): Promise<void> {
   const race = key(rawKey);
   const genders = [...new Set((Array.isArray(rawGenders) ? rawGenders : []).map(gender))];
   await inTransaction(async (client) => {
     if (await exists(client, `select 1 from "race" where "key" = $1`, [race])) {
       throw new TypesError(`${race} is a type already`);
     }
-    await client.query(`insert into "race" ("key", "label") values ($1, $2)`, [race, label(rawLabel)]);
+    await client.query(`insert into "race" ("key") values ($1)`, [race]);
     for (const g of genders) {
       await client.query(`insert into "gender" ("race", "gender") values ($1, $2)`, [race, g]);
       await assign(client, race, g, null, null);
     }
     if (!genders.length) await assign(client, race, null, null, null);
-  });
-}
-
-export async function labelType(rawKey: unknown, rawLabel: unknown): Promise<void> {
-  const race = key(rawKey);
-  await inTransaction(async (client) => {
-    await requireType(client, race);
-    await client.query(`update "race" set "label" = $2 where "key" = $1`, [race, label(rawLabel)]);
   });
 }
 
@@ -204,11 +194,10 @@ export async function addFlavor(
   rawRace: unknown,
   rawGender: unknown,
   rawFlavor: unknown,
-  rawLabel: unknown,
   rawExisting?: unknown,
 ): Promise<void> {
   const race = key(rawRace);
-  const g = rawGender === null || rawGender === "" || rawGender === undefined ? null : gender(rawGender);
+  const g = optional(rawGender, gender);
   const flavor = key(rawFlavor);
   const choice = existing(rawExisting);
   await inTransaction(async (client) => {
@@ -227,9 +216,7 @@ export async function addFlavor(
     const use = voice ? await inUse(client, race, g, true) : { npcs: 0, lines: 0 };
     if (voice && use.npcs > 0 && !choice) throw new NeedsChoice({ voice, into: flavor, ...use });
 
-    await client.query(`insert into "flavor" ("race", "gender", "flavor", "label") values ($1, $2, $3, $4)`, [
-      race, g, flavor, label(rawLabel),
-    ]);
+    await client.query(`insert into "flavor" ("race", "gender", "flavor") values ($1, $2, $3)`, [race, g, flavor]);
     if (voice && choice === "map") {
       await client.query(
         `update "voice_assignment" set "flavor" = $3
@@ -257,7 +244,7 @@ export async function addFlavor(
 /** Only while no NPC has it. Its voice stays: it may have takes. */
 export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlavor: unknown): Promise<void> {
   const race = key(rawRace);
-  const g = rawGender === null || rawGender === "" || rawGender === undefined ? null : gender(rawGender);
+  const g = optional(rawGender, gender);
   const flavor = key(rawFlavor);
   await inTransaction(async (client) => {
     if (await exists(client, `select 1 from "npc" where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3 limit 1`, [race, g, flavor])) {
@@ -276,8 +263,8 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
 /** `voice` null: a new voice of the combination's own. */
 export async function assignVoice(rawRace: unknown, rawGender: unknown, rawFlavor: unknown, rawVoice: unknown): Promise<void> {
   const race = key(rawRace);
-  const g = rawGender === null || rawGender === "" || rawGender === undefined ? null : gender(rawGender);
-  const flavor = rawFlavor === null || rawFlavor === "" || rawFlavor === undefined ? null : key(rawFlavor);
+  const g = optional(rawGender, gender);
+  const flavor = optional(rawFlavor, key);
   const voice = typeof rawVoice === "string" && rawVoice ? rawVoice : null;
   await inTransaction(async (client) => {
     await requireType(client, race);

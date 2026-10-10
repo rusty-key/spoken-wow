@@ -186,8 +186,11 @@ def _import_types(cur, npcs):
     added: a flavorless NPC's voice is its line's, made in some flavor, and assigning it to
     the bare race-gender would voice every flavorless NPC of it. A model slot is a voice by
     pattern and never a type."""
+    # A few dozen combinations among thousands of NPCs: each once, with the first NPC's voice.
+    combinations = {}
     for npc in retyped(npcs):
-        race, gender, flavor, voice = npc["race"], npc["gender"], npc["flavor"], npc.get("voice")
+        combinations.setdefault((npc["race"], npc["gender"], npc["flavor"]), npc.get("voice"))
+    for (race, gender, flavor), voice in combinations.items():
         if not race or is_model_voice(race):
             continue
         cur.execute("""insert into "race" ("key") values (%s) on conflict do nothing""", (race,))

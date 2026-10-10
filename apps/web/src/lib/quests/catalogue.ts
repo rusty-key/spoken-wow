@@ -30,8 +30,8 @@ import { nameStamp, versionStamp } from "@/lib/stamp";
 import type { Corpus, CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
-import { newVoiceName, Roster, type Gender } from "@/lib/voices/roster";
-import { loadRoster, rosterData } from "@/lib/voices/roster-store";
+import { newVoiceName, type Roster } from "@/lib/voices/roster";
+import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
 
 
 /**
@@ -68,16 +68,11 @@ export function isCorpusEmpty(error: unknown): boolean {
 /**
  * Speakers have no live flag, so their max id and count are the whole stamp; an NPC's answer is
  * updated in place, so its latest write is. Both voice every catalogue, and so does the roster
- * (migration 0071), which an admin edits without touching either: its few dozen assignments are
- * hashed whole, with the counts of the voices and flavors they can name.
+ * (migration 0071), which an admin edits without touching either.
  */
 const SPEAKER_STAMP = `(select coalesce(max("id"), 0) || ':' || count(*) from "quest_line_speaker") || '/' ||
   (select coalesce(max("updatedAt")::text, '') || ':' || count(*) from "npc") || '/' ||
-  (select md5(coalesce(string_agg(k, ',' order by k), ''))
-     from (select a."race" || ':' || coalesce(a."gender", '') || ':' || coalesce(a."flavor", '') ||
-                  ':' || a."voice" as k
-             from "voice_assignment" a) assignments) || ':' ||
-  (select count(*) from "voice") || ':' || (select count(*) from "flavor")`;
+  ${ROSTER_STAMP}`;
 
 async function stampOf(lang: Lang): Promise<string> {
   // Speakers and NPCs are every language's, so every catalogue moves when any of them do, and so
@@ -169,15 +164,6 @@ type Speaking = {
   skipReason: string | null;
 };
 
-/**
- * The roster as it stands, not as this worker cached it: a build happens because the stamp moved,
- * and if the roster moved it, a cached copy from the other worker's edit would memoise the
- * catalogue in the old voices until the next unrelated write.
- */
-async function freshRoster(): Promise<Roster> {
-  return new Roster(await rosterData());
-}
-
 function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: string })[] {
   const written = new Map<string, string>();
   const lineOf = (row: T) => `${row.lineId}|${row.variant}`;
@@ -193,7 +179,7 @@ function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: st
     // A combination no voice reads yet still gets its own line, named as its voice would be.
     const voice =
       roster.voiceFor(row.race, row.gender || null, row.flavor) ??
-      newVoiceName(row.race, (row.gender || null) as Gender | null, row.flavor);
+      newVoiceName(row.race, row.gender, row.flavor);
     if (!OWN_VOICE_SOURCES.has(row.source) || voice === written.get(lineOf(row))) return { ...row, voice };
     return {
       ...row,
@@ -252,7 +238,7 @@ async function build(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty(lang);
 
-  return voiced(rows, await freshRoster()).map(({ writtenVoice: _written, ...row }) => ({
+  return voiced(rows, await loadRoster()).map(({ writtenVoice: _written, ...row }) => ({
     ...row,
     npcType: row.npcType as CorpusLine["npcType"],
     source: row.source as CorpusLine["source"],
@@ -341,7 +327,7 @@ async function buildTranslated(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty();
 
-  return voiced(rows, await freshRoster()).map((raw) => {
+  return voiced(rows, await loadRoster()).map((raw) => {
     const { textMissing, titleMissing, nameMissing, native, englishTitle, englishName, writtenVoice: _written, ...row } = raw;
     return {
       ...row,
@@ -414,23 +400,9 @@ export async function defaultFlavorFor(race: string, gender: string): Promise<st
   // A race-gender the corpus has no flavored line for yet falls back to the roster's first.
   return (
     (await flavorDefaults()).get(`${race}-${gender}`) ??
-    (await loadRoster()).flavorsOf(race, gender as Gender)[0] ??
+    (await loadRoster()).flavorsOf(race, gender)[0] ??
     null
   );
-}
-
-/**
- * Every flavor a race-gender's voice actually has, for the triage table's flavor picker.
- *
- * A moderator confirming a client-provenance row (race and gender known, flavor only guessed)
- * must be offered exactly the voice sets tts_cli can generate for that race-gender -- goblin
- * female has only "zany"; tauren male has no "standard" at all (defaultFlavorFor's own flagship
- * case) but does have elder/shaman/warrior. Anything wider would let a moderator pick a voice
- * name that produces no file.
- */
-export async function flavorsFor(race: string, gender: string): Promise<string[]> {
-  // The roster, not the corpus, so a race-gender offers its voice sets before its first line.
-  return (await loadRoster()).flavorsOf(race, (gender || null) as Gender | null);
 }
 
 const flavorTalliesKey = Symbol.for("spoken.quests-flavor-tallies");

@@ -42,7 +42,6 @@ import {
   type BookMatch,
   type NpcSummary,
 } from "@/lib/contributions/triage";
-import { facets } from "@/lib/facets";
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import { getResolutions, getResolutionsById, resolutionKey, type NpcKind } from "@/lib/npc/store";
 import { BASE_LANG, isClientLang, isLang, langName, type Lang } from "@/lib/lang";
@@ -343,7 +342,6 @@ export default async function Page({
     place: placeOf(row),
   }));
 
-  const facetValues = await facets();
 
   return (
     <main className="pt-6 pb-24">
@@ -379,7 +377,7 @@ export default async function Page({
           searchIn={searchIn}
           existing={existing}
           books={books}
-          roster={facetValues.roster}
+          roster={roster.data}
           // What api/contributions/npc asks, so the speaker controls are offered only to
           // somebody it will answer. Who an NPC is decides its voice in every language, so it
           // is the global admin's alone; everyone else sees where it stands.

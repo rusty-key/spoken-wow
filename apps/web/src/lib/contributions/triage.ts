@@ -3,13 +3,14 @@
  * can be unit tested without spinning up the page's own database calls -- the same reason
  * lib/npc/resolve.ts's observedFrom is a free function rather than inlined where it's used.
  *
- * npcSummaryFrom pulls in the quests catalogue (flavorsFor), so this file is not node-free the way
+ * npcSummaryFrom reads the roster store (roster-store.ts), so this file is not node-free the way
  * envelope.ts/contributions.ts are -- ContributionTable.tsx only ever takes NpcSummary/
  * QuestSummary as `import type`, which TypeScript erases entirely, so the client bundle never
  * sees this module's own imports.
  */
 import { BASE_LANG } from "@/lib/lang";
-import { flavorsFor } from "@/lib/quests/catalogue";
+import { flavorOptionsFor } from "@/lib/contributions/speaker";
+import { loadRoster } from "@/lib/voices/roster-store";
 import type { NpcKind, NpcResolution, NpcRowKind, Provenance } from "@/lib/npc/store";
 import { isQuestStage, type QuestStage } from "./query";
 
@@ -169,7 +170,7 @@ export async function npcSummaryFrom(
     confirmed: resolution?.confirmed ?? false,
     doubtful: resolution?.doubtful ?? false,
     flavorOptions:
-      resolution?.race ? await flavorsFor(resolution.race, resolution.gender ?? "") : [],
+      flavorOptionsFor(resolution?.race ?? null, resolution?.gender ?? null, await loadRoster()),
     conflict: conflict.map(({ npcKind, race, gender, flavor, provenance, doubtful }) => ({
       npcKind,
       race,

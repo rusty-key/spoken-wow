@@ -4,7 +4,7 @@
  * Who voices an NPC, and the controls that answer it -- shared by the triage table
  * (ContributionTable) and the NPC editor (NpcEditor), which both write through api/npcs.
  */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { LiteButton, LiteCheckbox } from "@/components/LiteControls";
@@ -12,9 +12,8 @@ import { LiteButton, LiteCheckbox } from "@/components/LiteControls";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { flavorOptionsFor } from "@/lib/contributions/speaker";
 import { NPC_KINDS, type NpcKind, type Provenance } from "@/lib/npc/npc";
-import { Roster, type Gender, type RosterData } from "@/lib/voices/roster";
-
-const GENDERS: Gender[] = ["female", "male"];
+import type { Gender, Roster } from "@/lib/voices/roster";
+import { GENDERS } from "@/lib/voices/voices";
 
 /** What a saved answer posts: see SpeakerCell's own docstring for why every key is optional. */
 export type SpeakerAnswer = Partial<{
@@ -99,7 +98,7 @@ function speakerNote(npc: NpcSummary): string | null {
  *
  *   - confirmed: plain text; a moderator's own answer adds an Edit that reopens the form.
  *   - unconfirmed, race and gender known ("client"): race-gender as text, a flavor select
- *     narrowed to flavorsFor(race, gender) -- npc.flavorOptions, computed server-side.
+ *     narrowed to the roster's flavors for them -- npc.flavorOptions, computed server-side.
  *   - unconfirmed, nothing known ("none"): race and gender selects from the voiced list
  *     (the roster), gender narrowed to the chosen type and hidden for a genderless one, and a
  *     flavor select that fills in once both are chosen.
@@ -111,18 +110,18 @@ function speakerNote(npc: NpcSummary): string | null {
  */
 export default function SpeakerCell({
   npc,
-  roster: rosterData,
+  roster,
   readOnly,
   busy,
   onSave,
 }: {
   npc: NpcSummary;
-  roster: RosterData;
+  /** The table's one Roster, not one per row. */
+  roster: Roster;
   readOnly: boolean;
   busy: boolean;
   onSave: (answer: SpeakerAnswer) => void;
 }) {
-  const roster = useMemo(() => new Roster(rosterData), [rosterData]);
   const [race, setRace] = useState(npc.race ?? "");
   const [gender, setGender] = useState(npc.gender ?? "");
   const [flavor, setFlavor] = useState(npc.flavor ?? "");

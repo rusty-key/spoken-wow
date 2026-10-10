@@ -17,8 +17,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Roster, newVoiceName, type Gender, type RosterData } from "@/lib/voices/roster";
-
-const GENDERS: Gender[] = ["female", "male"];
+import type { NeedsChoice } from "@/lib/voices/types-store";
+import { GENDERS } from "@/lib/voices/voices";
 
 /** Every button on the tab, so a row of them reads as one set. */
 const BUTTON = "h-7 gap-1 px-2 text-xs";
@@ -38,7 +38,7 @@ const VOICED_OPTIONS: ChipOption[] = [
   { value: "no", label: "has no voice" },
 ];
 
-type Choice = { voice: string; into: string; npcs: number; lines: number };
+type Choice = NeedsChoice["choice"];
 type Send = (at: string, body: Record<string, unknown>) => Promise<boolean>;
 type Refusal = (at: string) => ReactNode;
 type Group = { gender: Gender | null; flavors: (string | null)[] };

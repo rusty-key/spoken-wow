@@ -18,7 +18,7 @@ const RESOLVER = "test-contributions-npc-route";
 const asked: string[] = [];
 let admin = true;
 
-vi.mock("@/lib/admin-guard", () => ({
+vi.mock("@/lib/generation/authz", () => ({
   requireAdmin: async (request: Request) => {
     const lang = new URL(request.url).searchParams.get("lang") || "enUS";
     asked.push(lang);
@@ -249,7 +249,9 @@ describe("POST /api/npcs", () => {
   });
 
   it("refuses a kind it does not know", async () => {
-    expect((await POST(post({ npcKind: "item", npcId, race: "tauren" }))).status).toBe(400);
+    const response = await POST(post({ npcKind: "spell", npcId, race: "tauren", gender: "male" }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "unknown kind" });
   });
 
   it("refuses a negative id", async () => {

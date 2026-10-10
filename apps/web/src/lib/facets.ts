@@ -10,8 +10,9 @@
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so
  * their lists live next to the type in lib/search.ts.
  */
-import type { RosterData } from "./voices/roster";
+import type { Roster } from "./voices/roster";
 import { loadRoster } from "./voices/roster-store";
+import { GENDERS } from "./voices/voices";
 
 export type Facets = {
   races: string[];
@@ -27,21 +28,26 @@ export type Facets = {
    * so a partial selection (a race with no gender) narrows by the same filter.
    */
   flavorScopes: { race: string; gender: string; flavor: string }[];
-  /** The whole roster, for the controls that answer who an NPC is. */
-  roster: RosterData;
 };
 
 const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
 
+/** Per roster: /api/search asks on every request, and the roster is one instance until it moves. */
+const built = new WeakMap<Roster, Facets>();
+
 export async function facets(): Promise<Facets> {
   const roster = await loadRoster();
-  return {
-    races: roster.races,
-    genders: ["female", "male"],
-    flavors: sorted(roster.data.flavors.map((flavor) => flavor.flavor)),
-    voices: roster.voiceNames,
-    // A genderless type's flavors match a race with no gender chosen.
-    flavorScopes: roster.flavorScopes().map((scope) => ({ ...scope, gender: scope.gender ?? "" })),
-    roster: roster.data,
-  };
+  let value = built.get(roster);
+  if (!value) {
+    value = {
+      races: roster.races,
+      genders: [...GENDERS],
+      flavors: sorted(roster.data.flavors.map((flavor) => flavor.flavor)),
+      voices: roster.voiceNames,
+      // A genderless type's flavors match a race with no gender chosen.
+      flavorScopes: roster.flavorScopes().map((scope) => ({ ...scope, gender: scope.gender ?? "" })),
+    };
+    built.set(roster, value);
+  }
+  return value;
 }

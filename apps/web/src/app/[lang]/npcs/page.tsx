@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import NpcEditor from "@/components/NpcEditor";
 import { LinkTabs } from "@/components/StatusTabs";
 import TypesEditor from "@/components/TypesEditor";
 import { Contained, Wide } from "@/components/Width";
-import { auth } from "@/lib/auth";
 import { summaryFromResolution } from "@/lib/contributions/speaker";
 import { localeHref } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { listResolutions } from "@/lib/npc/store";
 import { isAdmin } from "@/lib/permissions";
-import { Roster } from "@/lib/voices/roster";
-import { rosterData } from "@/lib/voices/roster-store";
+import { currentSession } from "@/lib/session";
+import { loadRoster } from "@/lib/voices/roster-store";
 
 export const metadata: Metadata = { title: "NPCs · Spoken" };
 
@@ -32,11 +30,11 @@ export default async function Page({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const lang = await pageLang(params);
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
 
   const tab = (await searchParams).tab === "types" ? "types" : "npcs";
-  const data = await rosterData();
+  const roster = await loadRoster();
 
   return (
     <main className="pt-6 pb-24">
@@ -57,11 +55,11 @@ export default async function Page({
           ]}
         />
         {tab === "types" ? (
-          <TypesEditor initial={data} />
+          <TypesEditor initial={roster.data} />
         ) : (
           <NpcEditor
-            initial={(await listResolutions()).map((row) => summaryFromResolution(row, new Roster(data)))}
-            roster={data}
+            initial={(await listResolutions()).map((row) => summaryFromResolution(row, roster))}
+            roster={roster.data}
           />
         )}
       </Wide>

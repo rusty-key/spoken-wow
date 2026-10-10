@@ -38,8 +38,7 @@ export function bucketOf(
   if (row.source !== "quests") return "ready";
   if (row.quest !== "gossip" && row.hasSpeaker) return "ready";
   if (!npc || npc.conflict.length > 0) return "blocked";
-  const voice = roster.voiceFor(npc.race, npc.gender, npc.flavor);
-  return voice && roster.isVoice(voice) ? "ready" : "blocked";
+  return roster.voiceFor(npc.race, npc.gender, npc.flavor) ? "ready" : "blocked";
 }
 
 export type ClientFilter = ClientFamily | "all";

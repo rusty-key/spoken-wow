@@ -11,7 +11,7 @@ import { closeDb, db } from "@/lib/db";
 let admin = false;
 const resolved: unknown[] = [];
 
-vi.mock("@/lib/admin-guard", () => ({
+vi.mock("@/lib/generation/authz", () => ({
   requireAdminSession: async () =>
     admin
       ? { session: { user: { id: "test" } }, denied: null }

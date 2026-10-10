@@ -61,7 +61,7 @@ import {
   type StageFilter,
 } from "@/lib/contributions/query";
 import type { Contribution } from "@/lib/contributions/store";
-// Both are computed server-side (npcSummaryFrom pulls in corpus.ts's flavorsFor) -- `import
+// Both are computed server-side (npcSummaryFrom reads the roster store) -- `import
 // type` erases the whole thing at compile time, so none of that follows the type in here. The
 // same split existing.ts's `existing` prop already draws.
 import type { BookMatch, BookSummary, NpcConflictOption, NpcSummary, QuestSummary } from "@/lib/contributions/triage";
@@ -727,7 +727,7 @@ export default function ContributionTable({
                   refusal={refusals[row.id]}
                   lineCreated={lineCreated.has(row.id)}
                   canAnswerNpc={canAnswerNpc}
-                  roster={rosterData}
+                  roster={roster}
                   lang={lang}
                   onToggle={toggle}
                   onResolve={resolve}
@@ -811,7 +811,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
   /** "Add to explorer" worked on this row this session. */
   lineCreated: boolean;
   canAnswerNpc: boolean;
-  roster: RosterData;
+  roster: Roster;
   lang: Lang;
   onToggle: (id: number, on: boolean) => void;
   onResolve: (id: number, next: ContributionStatus) => Promise<void>;
@@ -894,14 +894,16 @@ const ContributionTableRow = memo(function ContributionTableRow({
                     wh↗
                   </a>
                 </div>
-                {npc.conflict.length > 0 && !canAnswerNpc ? (
-                  <span className="text-muted-foreground">NPC unclear</span>
-                ) : npc.conflict.length > 0 ? (
-                  <NpcConflict
-                    npc={npc}
-                    busy={npcBusy}
-                    onPick={(option) => void onPickConflict(row.id, npc, option)}
-                  />
+                {npc.conflict.length > 0 ? (
+                  canAnswerNpc ? (
+                    <NpcConflict
+                      npc={npc}
+                      busy={npcBusy}
+                      onPick={(option) => void onPickConflict(row.id, npc, option)}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">NPC unclear</span>
+                  )
                 ) : (
                   <SpeakerCell
                     npc={npc}

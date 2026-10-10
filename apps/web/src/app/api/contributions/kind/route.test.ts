@@ -10,7 +10,7 @@ import { closeDb, db } from "@/lib/db";
 /** Whether the mocked viewer is a global admin. */
 let admin = false;
 
-vi.mock("@/lib/admin-guard", () => ({
+vi.mock("@/lib/generation/authz", () => ({
   requireAdminSession: async () =>
     admin
       ? { session: { user: { id: "test" } }, denied: null }
