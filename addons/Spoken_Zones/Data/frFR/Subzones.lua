@@ -88,12 +88,6 @@ local subzones = {
 			full = "La combe des Kolkar est une gorge escarpée du sud de Durotar, qui doit son nom aux centaures Kolkar qui la tiennent.\n\nC'est d'ici que le seigneur de guerre Kolkanis rassembla les siens pour un unique et ambitieux dessein : frapper au cœur de la Durotar orque, de la vallée des Épreuves et du village de Sen'jin jusqu'à Tranchecolline, et même jusqu'aux portes d'Orgrimmar.",
 			source = "https://warcraft.wiki.gg/wiki/Kolkar_Crag",
 		},
-		["orgrimmar"] = {
-			name = "Orgrimmar",
-			short = "Orgrimmar s'éleva dans les années qui suivirent le mont Hyjal, lorsque le chef de guerre Thrall mena son peuple jusqu'à une côte désolée de Kalimdor.",
-			full = "Orgrimmar s'éleva dans les années qui suivirent le mont Hyjal, lorsque le chef de guerre Thrall mena son peuple jusqu'à une côte désolée de Kalimdor. Il nomma la contrée Durotar en l'honneur de son père, et la cité qu'il y éleva, il la nomma Orgrimmar, en l'honneur d'Orgrim Marteau du Destin, l'ami et mentor qui l'avait façonné. Elle fut bâtie rapidement, mais non sans soin : murailles robustes, portes massives, hautes tours, et les montagnes dans son dos taillées pour faire partie de la forteresse elle-même, de sorte que la terre montait la garde sur la cité.\n\nLa Horde qui la bâtit n'était plus la Horde qui avait jadis embrasé le monde. La malédiction démoniaque brisée, le peuple de Thrall se détourna de la conquête pour se tourner vers la survie, et Orgrimmar fut élevée autant par d'autres que par les orcs : gobelins, taurens et trolls Darkspear travaillèrent à leurs côtés, et le Mok'Nathal Rexxar prêta main-forte à l'ouvrage. Centaures, harpies, lézards-tonnerre, kobolds et hurans mirent tous à l'épreuve la jeune cité durant ses premières années, mais elle tint bon et devint la demeure non seulement des orcs, mais aussi des trolls, des taurens et, avec le temps, des Réprouvés nouvellement accueillis au sein de la Horde.\n\nLe vent lui-même n'est pas un ami ici : les vents tranchants balaient les vallées avec assez de force pour arracher les toits des bâtiments construits sans soin.",
-			source = "https://warcraft.wiki.gg/wiki/Orgrimmar",
-		},
 		["razor hill"] = {
 			name = "Tranchecolline",
 			short = "Tranchecolline se dresse là où se rejoignent les routes de Durotar. Au sud, le chemin mène au village de Sen'jin et à la vallée des Épreuves ; au nord s'étend Orgrimmar ; à l'ouest, la route franchit le fleuve vers les Tarides et se poursuit jusqu'à la Croisée.",
@@ -258,12 +252,6 @@ local subzones = {
 			short = "Le lac Taureau-de-pierre entoure le village Bloodhoof sur trois côtés, long fer à cheval d'eau fraîche. Ses eaux regorgent de poissons, et l'on y lance des lignes durant de longues heures paisibles.",
 			full = "Le lac Taureau-de-pierre entoure le village Bloodhoof sur trois côtés, long fer à cheval d'eau fraîche. Ses eaux regorgent de poissons, et l'on y lance des lignes durant de longues heures paisibles. Là où le lac se resserre, un pont enjambe le passage, portant la route qui relie le village Bloodhoof à Thunder Bluff.",
 			source = "https://warcraft.wiki.gg/wiki/Stonebull_Lake",
-		},
-		["thunder bluff"] = {
-			name = "Thunder Bluff",
-			short = "Thunder Bluff se dresse sur quatre plateaux balayés par les vents au-dessus des prairies de Mulgore, accessible seulement par des ascenseurs de corde et de bois de facture taurène, ou par de longues passerelles tendues entre les hauteurs.",
-			full = "Thunder Bluff se dresse sur quatre plateaux balayés par les vents au-dessus des prairies de Mulgore, accessible seulement par des ascenseurs de corde et de bois de facture taurène, ou par de longues passerelles tendues entre les hauteurs. Tentes, longues maisons et totems peints couronnent chaque sommet. Pendant des générations, les taurens errèrent en peuple nomade, harcelés sans relâche par les centaures qui parcouraient Kalimdor. C'est Cairne Bloodhoof, chef de la tribu Bloodhoof, qui mit fin à cet exil. Lorsque le chef de guerre Thrall et sa nouvelle Horde arrivèrent à Mulgore pendant la troisième guerre, leur force s'unit à celle de Cairne, et ensemble ils brisèrent les centaures et conquirent enfin les prairies pour les taurens. Sur les plateaux, Cairne éleva un refuge ouvert à toutes les tribus dispersées, et avec le temps ces tribus se plièrent à son autorité comme un seul peuple, en désaccord parfois sur la voie à suivre, mais jamais sur sa sagesse à les guider.\n\nLes falaises portent encore le poids de cette fondation dans leurs hauteurs et leurs passerelles, dans les tentes des tribus rassemblées sous le toit d'un seul chef.",
-			source = "https://warcraft.wiki.gg/wiki/Thunder_Bluff",
 		},
 		["thunderhorn water well"] = {
 			name = "Puits Thunderhorn",
@@ -931,12 +919,6 @@ local subzones = {
 			full = "Juste au nord du Monastère écarlate s'étend une terre que la peste n'a jamais touchée. Des haies vertes y poussent, et une fontaine y coule, claire plutôt que stagnante, contrairement au reste des clairières de Tirisfal. La Croisade écarlate l'entretient, gardant en vie cette petite terrasse comme la preuve que quelque chose de pur peut encore subsister au milieu de la flétrissure.",
 			source = "https://warcraft.wiki.gg/wiki/Terrace_of_Repose",
 		},
-		["undercity"] = {
-			name = "Undercity",
-			short = "Bien avant que les Réprouvés ne se l'approprient, l'Undercity avait un nom et une fonction. Loin sous le palais de Lordaeron s'étendaient les antiques cryptes de ses morts royaux, ses cachots, ses égouts.",
-			full = "Bien avant que les Réprouvés ne se l'approprient, l'Undercity avait un nom et une fonction. Loin sous le palais de Lordaeron s'étendaient les antiques cryptes de ses morts royaux, ses cachots, ses égouts. Elle n'était destinée qu'aux prisonniers et aux cadavres, mais les plus pauvres du peuple de Lordaeron s'entassaient malgré tout dans ces ténèbres, et les rafles des gardes pour les en chasser ne duraient jamais.\n\nLorsque l'emprise du roi-liche sur ses créatures se relâcha, Sylvanas Windrunner rompit avec le Fléau, emmenant les morts-vivants qui avaient conservé leur esprit, et se retourna contre Arthas, le prince déchu qui avait fait d'elle ce qu'elle était. Elle l'attira dans un piège au sein du royaume en ruine ; il s'échappa avec l'aide de Kel'Thuzad et s'enfuit vers le nord pour devenir lui-même le roi-liche. Sylvanas et ses fidèles, restés maîtres du terrain, se nommèrent les Réprouvés et revendiquèrent les cryptes sous la capitale dévastée, achevant la forteresse que le Fléau avait commencée.\n\nCe qui se dresse aujourd'hui est un labyrinthe conçu pour la défense : des rivières de fange toxique courent dans chaque avenue, et l'air est chargé de vapeurs que les vivants peinent à respirer. Pour les Réprouvés, c'est un abri dans un monde qui les pourchasse encore.",
-			source = "https://warcraft.wiki.gg/wiki/Undercity",
-		},
 		["venomweb vale"] = {
 			name = "Vallée de Tissevenin",
 			short = "La vallée de Tissevenin était jadis verte, peuplée de cerfs et de lapins, avant de devenir ce qu'elle est aujourd'hui : une vallée envahie d'araignées venimeuses, menées par la rare et mortelle Sri'skulk, dont les toiles ont remplacé l'herbe et donné son nom à la vallée.",
@@ -1152,12 +1134,6 @@ local subzones = {
 			short = "Le camp de bûcherons de la Crête du nord se trouve au nord des Maleterres de l'ouest, près de Hearthglen, ses collines mises à nu par les coupes de bois de la Croisade écarlate.",
 			full = "Le camp de bûcherons de la Crête du nord se trouve au nord des Maleterres de l'ouest, près de Hearthglen, ses collines mises à nu par les coupes de bois de la Croisade écarlate. La Croisade exploite la scierie pour son bois, une ressource que l'Alliance comme la Horde ont des raisons de vouloir gâcher.\n\nAvant la troisième guerre, la scierie appartenait à la famille de Nathaniel Dumah, qui travailla la terre jusqu'à ce que la guerre et la peste l'en chassent. La famille de Mickey Levine y travailla aussi autrefois.",
 			source = "https://warcraft.wiki.gg/wiki/Northridge_Lumber_Camp",
-		},
-		["plaguemist ravine"] = {
-			name = "Ravin de Pestebrume",
-			short = "Un ravin s'enfonce vers le nord en direction de Caer Darrow ; son entrée se trouve dans les bois, de l'autre côté de la montagne. Rien ne vit dans ce passage.",
-			full = "Un ravin s'enfonce vers le nord en direction de Caer Darrow ; son entrée se trouve dans les bois, de l'autre côté de la montagne. Rien ne vit dans ce passage. Aucun oiseau ne le traverse, aucune bête ne gîte dans sa roche.\n\nUne brume y flotte, maladive et incongrue, qui souille ce seul chemin. C'est pourquoi le lieu porte aujourd'hui le nom qui est le sien : Pestebrume, un nom donné tout récemment à cause de la brume qui le distingue.",
-			source = "https://warcraft.wiki.gg/wiki/Plaguemist_Ravine",
 		},
 		["ruins of andorhal"] = {
 			name = "Ruines d'Andorhal",
@@ -1375,12 +1351,6 @@ local subzones = {
 	},
 	-- Contreforts d'Hillsbrad: 29 subzones
 	[1424] = {
-		["alterac mountains"] = {
-			name = "Montagnes d'Alterac",
-			short = "La pluie ne cesse jamais tout à fait de tomber sur ces sommets, et le ciel au-dessus d'eux est toujours gris. Ces montagnes couronnaient jadis la cité-État d'Alterac, qui dominait une grande partie des terres du nord, et abritaient en outre Dalaran.",
-			full = "La pluie ne cesse jamais tout à fait de tomber sur ces sommets, et le ciel au-dessus d'eux est toujours gris. Ces montagnes couronnaient jadis la cité-État d'Alterac, qui dominait une grande partie des terres du nord, et abritaient en outre Dalaran. L'une et l'autre ont disparu, et ce qu'il en reste explique pourquoi si peu osent s'aventurer jusqu'ici.\n\nÀ la fin de la deuxième guerre, l'Alliance de Lordaeron apprit que les seigneurs d'Alterac avaient traité en secret avec la Horde, et envoya une armée dans ces montagnes frapper les traîtres jusque dans leur propre foyer. La cité tomba, son peuple fut dispersé ou emprisonné, et sa lignée ne retrouva jamais son trône. Un prince plus tardif de cette maison déchue, Aliden Perenolde, s'éleva plutôt en seigneur des brigands, rassemblant les proscrits et les vindicatifs au sein du Syndicat, une compagnie de voleurs qui tient toujours Strahnbrad et parcourt ces pentes dans l'espoir de reconquérir ce que sa famille a perdu.\n\nAujourd'hui, les ruines de la cité d'Alterac appartiennent aux ogres Cassecrête, et le Syndicat tient une bonne partie de ce que les ogres ne tiennent pas.",
-			source = "https://warcraft.wiki.gg/wiki/Alterac_Mountains_(Classic)",
-		},
 		["azurelode mine"] = {
 			name = "Mine d'Azurelode",
 			short = "La mine d'Azurelode se trouve dans la partie sud-ouest des contreforts d'Hillsbrad ; sa colline faisait jadis partie de Gilnéas, avant que le mur de Greymane ne s'élève et ne coupe le royaume du monde.",
@@ -1404,12 +1374,6 @@ local subzones = {
 			short = "Le bastion Cassecrête s'élève près des ruines d'Alterac, une grotte creusée dans un tertre de terre.",
 			full = "Le bastion Cassecrête s'élève près des ruines d'Alterac, une grotte creusée dans un tertre de terre. Tout autour, les ogres Cassecrête ont dressé leurs campements, nombreux et brutaux, tenant les pentes qui dominent la cité en ruine en contrebas.",
 			source = "https://warcraft.wiki.gg/wiki/Crushridge_Hold",
-		},
-		["dandreds fold"] = {
-			name = "Clos de Dandred",
-			short = "Une petite ferme et un manoir se dressent à la lisière ouest des Hauteurs, là où la terre rejoint le Rivage brumeux et où un port s'ouvre sur le lac Lordamere.",
-			full = "Une petite ferme et un manoir se dressent à la lisière ouest des Hauteurs, là où la terre rejoint le Rivage brumeux et où un port s'ouvre sur le lac Lordamere.\n\nC'est ici que vivait Aliden, et avec lui sa maîtresse Elysa. Elle portait un collier qui avait jadis appartenu à Taretha Foxton. Quand Aliden fut tué, Elysa céda aussitôt le collier, craignant qu'on lui fasse du mal si elle le gardait.",
-			source = "https://warcraft.wiki.gg/wiki/Dandred's_Fold",
 		},
 		["darrow hill"] = {
 			name = "Colline de Darrow",
@@ -1465,12 +1429,6 @@ local subzones = {
 			full = "Les champs d'Hillsbrad s'étendent, fertiles et cultivés, à l'ouest des contreforts d'Hillsbrad, nourrissant Southshore ainsi que la ville d'Hillsbrad. Vergers de pommiers, carrés de citrouilles et bétail en pâture couvrent la contrée, et les habitants de la ville travaillent toujours à la mine d'Azurelode.\n\nAu début de la deuxième guerre, Doomhammer tourna ses armées contre Hillsbrad et la fit détruire de manière atroce, pour servir d'avertissement aux royaumes humains. Elle fut reconstruite après la guerre et reste peuplée aujourd'hui, l'un des rares recoins de l'ancien Lordaeron qui ne fut ni laissé en ruine ni englouti par la Croisade écarlate ; ses gardes portent encore le tabard de leur royaume, et le magistrat Burnside gouverne depuis l'hôtel de ville avec le conseil d'Hillsbrad et le greffier Horrace Whitesteed à ses côtés.\n\nAujourd'hui, les champs sont de nouveau menacés, cette fois par les forces de la grande exécutrice Darthalia à Moulin-de-Tarren. Paysans et fermiers subissent les raids, mais beaucoup ripostent contre les morts-vivants en tendant leurs propres embuscades, armés par le forgeron Verringtan et ses apprentis.",
 			source = "https://warcraft.wiki.gg/wiki/Hillsbrad_Fields",
 		},
-		["lordamere lake"] = {
-			name = "Lac Lordamere",
-			short = "Le lac Lordamere s'étend à l'ombre des royaumes qui peuplaient jadis ses rives.",
-			full = "Le lac Lordamere s'étend à l'ombre des royaumes qui peuplaient jadis ses rives. Lordaeron s'élevait sur sa rive nord, et c'est très probablement de cette grande cité, elle-même nommée d'après le vieux Lordain, que le lac tient son nom. Dalaran et Alterac, elles aussi, prospéraient autour de ses eaux au temps où l'Alliance de Lordaeron unissait les royaumes humains.\n\nCette époque est révolue, et ce qui en reste est une frontière. Le lac s'étend désormais entre les possessions réprouvées des clairières de Tirisfal et de la forêt des Pins argentés d'un côté, et les montagnes d'Alterac disputées de l'autre, séparant les morts des vivants.\n\nEn son cœur se trouve l'île de Fenris, dont le donjon est tenu par des agents du Fléau, que les Réprouvés y harcèlent. À l'est, les îles de l'Aube ont été envahies par les murlocs Ailerons noirs, qui les revendiquent comme les leurs.\n\nQuelque temps après la troisième guerre, dame Vashj et ses nagas se retirèrent dans ces eaux, fuyant la ruine de Dalaran.",
-			source = "https://warcraft.wiki.gg/wiki/Lordamere_Lake",
-		},
 		["misty shore"] = {
 			name = "Rivage brumeux",
 			short = "Le Rivage brumeux longe le lac Lordamere, entre le Clos de Dandred et Dalaran. Des tortues se meuvent lentement dans ses hauts-fonds.",
@@ -1494,12 +1452,6 @@ local subzones = {
 			short = "Le manoir de Ravenholdt se tient à l'écart du monde, et c'est voulu.",
 			full = "Le manoir de Ravenholdt se tient à l'écart du monde, et c'est voulu. On ne l'atteint que par un sentier étroit et tortueux qui monte depuis un plateau au nord-ouest du donjon de Durnholde, serpentant à travers les montagnes et une petite grotte avant de déboucher sur le domaine ; le manoir n'est pas un lieu sur lequel on tombe par hasard. Les étrangers n'y sont pas les bienvenus, et ceux qui servent le seigneur Jorach Ravenholdt veillent à ce qu'il en soit ainsi.\n\nLe manoir est sa propriété, coiffé de toits orange à l'ancienne mode d'Alterac, dont le royaume tenait cette terre avant la première guerre.\n\nDepuis, le Syndicat erre dans cette partie des hautes terres, et Ravenholdt s'est dressé contre ce fléau derrière son sentier caché et ses portes gardées.",
 			source = "https://warcraft.wiki.gg/wiki/Ravenholdt_Manor",
-		},
-		["ruins of alterac"] = {
-			name = "Ruines d'Alterac",
-			short = "Des murs brisés escaladent les pentes des montagnes d'Alterac là où se dressait jadis une cité, avec son palais à demi debout, son église et son hôtel de ville effondrés sur eux-mêmes, et sa porte bâtie à la manière de celle de Stormwind.",
-			full = "Des murs brisés escaladent les pentes des montagnes d'Alterac là où se dressait jadis une cité, avec son palais à demi debout, son église et son hôtel de ville effondrés sur eux-mêmes, et sa porte bâtie à la manière de celle de Stormwind.\n\nSa ruine vint de son propre roi. Pendant la deuxième guerre, le roi Aiden Perenolde trahit les siens, liant son sort à la Horde orque contre ses frères humains. On trouva des soldats d'Alterac combattant aux côtés des orcs, et un camp de prisonniers près de la cité détenait des citoyens de Dalaran. Lorsque la vérité éclata, les autres royaumes humains marchèrent sur Alterac en représailles. Le peuple s'enfuit ou fut chassé de ses foyers, et le roi Terenas Menethil II de Lordaeron plaça la cité sous la loi martiale, déposant Perenolde et le jetant aux fers.\n\nLa cité ne se releva jamais. Les ogres Cassecrête, menés par Mug'thol, s'installèrent dans les rues et le palais vides, tandis que les restes épars de l'ancien peuple d'Alterac tenaient les villages alentour. Des chariots à viande renversés gisent encore près du rempart nord et de la porte, et les cimetières à l'intérieur comme au-delà des murs, la ferme ensevelie sous la neige et les balistes fracassées parmi les décombres demeurent tels qu'on les a laissés.",
-			source = "https://warcraft.wiki.gg/wiki/Ruins_of_Alterac",
 		},
 		["slaughter hollow"] = {
 			name = "Creux du massacre",
@@ -1536,12 +1488,6 @@ local subzones = {
 			short = "Le roi Thoradin éleva ce mur pour contenir les trolls amani, au temps où Strom était jeune et où Arathor venait tout juste de conquérir la contrée pour l'humanité.",
 			full = "Le roi Thoradin éleva ce mur pour contenir les trolls amani, au temps où Strom était jeune et où Arathor venait tout juste de conquérir la contrée pour l'humanité. Des générations durant, il se dressa en sentinelle inébranlable, une ligne qu'aucune horde trolle ne pouvait franchir.\n\nDes siècles plus tard, il est toujours debout, mais gravement endommagé, ses pierres brisées et sa longue veille réduite à l'état de ruine.",
 			source = "https://warcraft.wiki.gg/wiki/Thoradin's_Wall",
-		},
-		["uplands"] = {
-			name = "Les Hauteurs",
-			short = "Les Hauteurs nourrissaient jadis un royaume. Leurs collines étaient le grenier d'Alterac, blé et pâturages pour l'ancienne nation.",
-			full = "Les Hauteurs nourrissaient jadis un royaume. Leurs collines étaient le grenier d'Alterac, blé et pâturages pour l'ancienne nation.\n\nCette nation s'est brisée. Les Hauteurs ne sont passées à aucune couronne, mais au Syndicat, qui ne tient nulle part dans les montagnes aussi fermement qu'ici. Le baron Vardus commande parmi leurs camps, seigneur des terres restantes d'un royaume brisé.\n\nDans les confins les plus occidentaux se dresse le Clos de Dandred, un nom qui a survécu à ce qu'il a jamais pu signifier.",
-			source = "https://warcraft.wiki.gg/wiki/Uplands",
 		},
 		["western strand"] = {
 			name = "Rivage occidental",
@@ -1758,12 +1704,6 @@ local subzones = {
 			short = "Au sud du lac du Lit d'Helm, la base d'Ironband sert de point d'appui aux nains Sombrefer, qui attaquent quiconque s'en approche trop. Le lieu appartenait jadis à Sturgy Ironband, avant de tomber aux mains des Sombrefer.",
 			full = "Au sud du lac du Lit d'Helm, la base d'Ironband sert de point d'appui aux nains Sombrefer, qui attaquent quiconque s'en approche trop. Le lieu appartenait jadis à Sturgy Ironband, avant de tomber aux mains des Sombrefer.",
 			source = "https://warcraft.wiki.gg/wiki/Ironband's_Compound",
-		},
-		["ironforge"] = {
-			name = "Ironforge",
-			short = "Dans les profondes voûtes sous la montagne d'Ironforge, au nord de Dun Morogh, les nains ont établi leur capitale depuis l'époque où leurs ancêtres sortirent d'Uldaman et se tournèrent vers l'ouest.",
-			full = "Dans les profondes voûtes sous la montagne d'Ironforge, au nord de Dun Morogh, les nains ont établi leur capitale depuis l'époque où leurs ancêtres sortirent d'Uldaman et se tournèrent vers l'ouest. C'est le plus ancien foyer de leur peuple, bâti autour de la Grande Forge, et le siège du royaume de Khaz Modan sous le règne du roi Magni Bronzebeard.\n\nLa cité est une forteresse autant qu'une capitale, taillée en anneaux concentriques qui s'enfoncent plus profondément dans la roche à mesure que l'on descend, ses passages étroits, ses salles vastes et résonnantes. Contrairement aux cités des humains et des elfes de la nuit, Ironforge est tout entière une caverne, sol et plafond de pierre taillée. Des feux brûlent dans chaque âtre, et les salles résonnent de coups de marteau, de rires et de marchandages, car les nains n'ont jamais été un peuple silencieux, même sous terre.\n\nLes gnomes, chassés des ruines de leur propre cité, ont trouvé refuge entre les murs d'Ironforge, où le roi Magni leur a accordé un quartier bien à eux, dans lequel ils travaillent et échafaudent leurs plans.",
-			source = "https://warcraft.wiki.gg/wiki/Ironforge",
 		},
 		["kharanos"] = {
 			name = "Kharanos",
@@ -2080,12 +2020,6 @@ local subzones = {
 			full = "La ferme des Stonefield se trouve dans le sud de la forêt d'Elwynn, exploitée par la famille Stonefield, qui entretient une âpre rivalité avec les Maclure voisins. Pourtant, un enfant de chaque maison est tombé amoureux, défiant la vieille rancune entre leurs familles. Certains espèrent que cette idylle pourrait réussir là où des années de querelles ont échoué, et réparer ce que la discorde a brisé.",
 			source = "https://warcraft.wiki.gg/wiki/Stonefield_Farm",
 		},
-		["stormwind city"] = {
-			name = "Cité de Stormwind",
-			short = "Stormwind se releva en pierre blanche après que la Horde orque l'eut incendiée, rebâtie par la guilde des Maçons sous le jeune roi Varian.",
-			full = "Stormwind se releva en pierre blanche après que la Horde orque l'eut incendiée, rebâtie par la guilde des Maçons sous le jeune roi Varian. Mais lorsque les coffres de la couronne furent vidés par les dettes de guerre, et que la noblesse refusa à la guilde ses salaires, la protestation du maître de guilde Edwin VanCleef reçut pour réponse la dissolution de la guilde. Des émeutes suivirent, et dans le chaos la reine Tiffin Wrynn fut tuée. La colère de Varian chassa les maçons en exil dans la Marche de l'Ouest, où ils devinrent la Confrérie défias, tandis que derrière le trône, une conseillère nommée Katrana Prestor montait discrètement le roi contre la guilde à ses propres fins, se servant de la politique et de la sorcellerie pour le manœuvrer au fil des années qui suivirent.",
-			source = "https://warcraft.wiki.gg/wiki/Stormwind_City",
-		},
 		["thunder falls"] = {
 			name = "Chutes du Tonnerre",
 			short = "Le sentier qui monte depuis la cascade du lac Miroir grimpe, raide et étroit, dans les montagnes avant de déboucher sur les Chutes du Tonnerre, un ravin qui se distingue des autres de la forêt d'Elwynn par ses chutes d'eau à ses deux extrémités.",
@@ -2322,12 +2256,6 @@ local subzones = {
 			short = "La Mine du Ru d'argent regorgeait jadis d'argent, et pendant des générations les nains d'Ironforge tirèrent richesse de ses filons.",
 			full = "La Mine du Ru d'argent regorgeait jadis d'argent, et pendant des générations les nains d'Ironforge tirèrent richesse de ses filons. Lorsque le minerai s'épuisa, la Ligue des Mineurs transforma les tunnels en dépôt plutôt que de les abandonner.\n\nLa mine recèle encore une chose qui vaut d'être prise : les gemmes chargées de la faille, que l'on ne trouve nulle part ailleurs, prisées pour la confection des robes de mage.\n\nMais les nains ne tiennent plus ces tunnels. Des kobolds rats des tunnels ont envahi la mine, cherchant à s'approprier ses dernières ressources.",
 			source = "https://warcraft.wiki.gg/wiki/Silver_Stream_Mine",
-		},
-		["south gate outpost"] = {
-			name = "Avant-poste de la porte Sud",
-			short = "L'Avant-poste de la porte Sud se trouve là où le col se resserre entre Dun Morogh et le Loch Modan, un goulet de pierre tenu par des montagnards nains.",
-			full = "L'Avant-poste de la porte Sud se trouve là où le col se resserre entre Dun Morogh et le Loch Modan, un goulet de pierre tenu par des montagnards nains. Leur tâche est plus paisible que celle de leurs frères de la porte Nord : ils ont repoussé la faune qui pressait jadis le col, et la route qui le traverse reste ouverte et sûre pour ceux qui se rendent à Thelsamar ou en reviennent.",
-			source = "https://warcraft.wiki.gg/wiki/South_Gate_Outpost",
 		},
 		["south gate pass"] = {
 			name = "Passage de la porte Sud",
@@ -3055,12 +2983,6 @@ local subzones = {
 			full = "La Faille se trouve au nord-ouest de Dolanaar, repaire de furbolgs Pins-tordus corrompus menés par Ursal le Mutileur. Ils tendent des embuscades aux voyageurs sur la route de Darnassus et retiennent captif à l'intérieur un groupe de druides endormis. La prêtresse de la lune Amara et ses gardes du corps surveillent la route près de l'entrée.",
 			source = "https://warcraft.wiki.gg/wiki/Cleft",
 		},
-		["darnassus"] = {
-			name = "Darnassus",
-			short = "Les elfes de la nuit bâtirent Darnassus après la troisième guerre, lorsque leur longue immortalité leur fit défaut. Beaucoup ne purent supporter le poids soudain du vieillissement et de la fragilité.",
-			full = "Les elfes de la nuit bâtirent Darnassus après la troisième guerre, lorsque leur longue immortalité leur fit défaut. Beaucoup ne purent supporter le poids soudain du vieillissement et de la fragilité. Un groupe de druides endeuillés résolut de planter un nouvel Arbre-Monde afin de restaurer leur lien avec le monde éternel. Malfurion Hurlorage ayant disparu, Fandral Staghelm endossa le manteau d'archidruide et mena l'entreprise. L'arbre qu'ils firent pousser, Teldrassil, s'éleva au large de la côte jusqu'à ce que sa couronne perce les nuages, et parmi ses ramures les elfes de la nuit fondèrent leur cité en témoignage de la survie de leur peuple.\n\nDarnassus s'ouvre sur le ciel, contrairement aux cités closes et fortifiées des humains et des nains. Elle est bâtie autour d'un vaste lac, dont les rives sont reliées par de gracieux ponts, et ses allées sont tapissées de feuilles mortes. Le temple de la Lune s'élève au-dessus des arbres, siège de la grande prêtresse Tyrande Whisperwind et de ses Sœurs d'Elune. La cité demeure ce pour quoi elle fut bâtie : un refuge paisible, et le monument d'un peuple qui apprend à vivre avec la mortalité.",
-			source = "https://warcraft.wiki.gg/wiki/Darnassus",
-		},
 		["dolanaar"] = {
 			name = "Dolanaar",
 			short = "Dolanaar se trouve dans le centre-est de Teldrassil, au sud-ouest de Sombrevallon, ses racines et ses ponts de corde tissés dans le grand arbre lui-même.",
@@ -3343,12 +3265,6 @@ local subzones = {
 			full = "Une tour et une unique salle d'elfes de la nuit se dressent ici en silence, abritant une poignée de défenseurs et, chose des plus étranges pour Orneval, deux humains parmi les elfes : Feero Ironhand et Delgren le Purificateur, les seuls de leur espèce à ce poste.\n\nIls sont peu nombreux, car la corruption qui se répand parmi les furbolgs voisins détourne des bras qui pourraient autrement monter la garde ici, laissant les défenseurs du poste en sous-effectif.",
 			source = "https://warcraft.wiki.gg/wiki/Maestra's_Post",
 		},
-		["morshan rampart"] = {
-			name = "Le Rempart de Mor'shan",
-			short = "Le Rempart de Mor'shan se dresse là où la Route de l'or quitte les Tarides vers le nord, bâti pour résister à la poussée de l'Alliance dans la région depuis Orneval, au nord.",
-			full = "Le Rempart de Mor'shan se dresse là où la Route de l'or quitte les Tarides vers le nord, bâti pour résister à la poussée de l'Alliance dans la région depuis Orneval, au nord. C'est un ouvrage rudimentaire, élevé pour la guerre : terrassements et tours de guet destinés à tenir une ligne et à lancer des raids vers le nord contre la ville elfe d'Astranaar.",
-			source = "https://warcraft.wiki.gg/wiki/Mor'shan_Rampart",
-		},
 		["mystral lake"] = {
 			name = "Lac Mystral",
 			short = "Les eaux du lac Mystral étaient jadis gardées par des esprits fidèles aux elfes de la nuit, liés au lac en tant que gardiens.",
@@ -3549,12 +3465,6 @@ local subzones = {
 			short = "Les Salines s'étendent à la lisière sud-est des Mille pointes, là où la terre s'étire, plate et nue, jusqu'à la frontière de Tanaris.",
 			full = "Les Salines s'étendent à la lisière sud-est des Mille pointes, là où la terre s'étire, plate et nue, jusqu'à la frontière de Tanaris. Rien n'y pousse. Le sol n'est que sel durci par le soleil, où ne vivent que basilics, scorpides, tortues et vautours. C'était jadis le fond d'un lac : la coque naufragée d'un voilier gît encore à demi enfouie dans le nord des Salines, un navire échoué loin de toute eau, preuve de ce qu'était ce lieu avant de se dessécher en sel et en terre craquelée.\n\nCette platitude attira gobelins et gnomes, des deux bords de leur longue rivalité. Ils y élevèrent la Piste des mirages et rivalisèrent pour construire des machines plus rapides les unes que les autres. Les engins tenaient rarement le coup. Des cratères grêlent les Salines là où des moteurs ont mal tourné, et les épaves de bolides ratés gisent éparpillées sur le sel, laissées à cuire là où elles sont tombées.",
 			source = "https://warcraft.wiki.gg/wiki/Shimmering_Flats",
-		},
-		["south seas"] = {
-			name = "Mers du sud",
-			short = "Les eaux au sud des continents connus s'ouvrent sur une vaste étendue de la Grande mer. Zandalar s'élève de ces eaux, antique berceau de l'empire troll.",
-			full = "Les eaux au sud des continents connus s'ouvrent sur une vaste étendue de la Grande mer. Zandalar s'élève de ces eaux, antique berceau de l'empire troll. Kezan se trouve aussi parmi elles, une île volcanique dont le peuple se tient à l'écart des puissances du continent.",
-			source = "https://warcraft.wiki.gg/wiki/South_Seas",
 		},
 		["splithoof crag"] = {
 			name = "Combe du Sabot fendu",

@@ -51,6 +51,12 @@ None of this is the project's to license, and the MIT grant does not reach it.
   which article each line came from.
 - **Book, letter and in-world text** for SpokenBooks comes from the same vmangos
   extraction as the quest corpus, and is likewise Blizzard's.
+- **Where each readable is** (`addons/Spoken_Books/Data/Places.lua`): the spawns, loot, quests
+  and vendors that place a book, letter or plaque, and the names of the creatures, quests and
+  objects involved, are read from a [TrinityCore](https://github.com/TrinityCore/TrinityCore)
+  world database (the one the Forever repack ships), another community reconstruction of
+  Blizzard's content; the zone each spawn stands in is worked out against the client's own map
+  tables, from [wago.tools](https://wago.tools). `pipelines/books/tools/places.mjs` is what reads both.
 - **Italian quest, gossip and book text** comes from QuestIT, an Italian community
   translation by Drakanast whose addon code is MIT-licensed; the quest text it translates
   is Blizzard's. `pipelines/quests/tools/import_questit.py` imports it.

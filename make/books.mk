@@ -16,7 +16,7 @@
 # MYSQL_PASSWORD turns this into an access-denied error that reads like a missing dump.
 
 .DEFAULT_GOAL := help
-.PHONY: help db extract import export lookup deploy deploy-copy status remove \
+.PHONY: help db extract import export places lookup deploy deploy-copy status remove \
         import-locale pull-history pull-live pull-recorded package-acted acted sounds sync check-synced package package-audio release-dry release release-wago release-curse \
         release-audio-dry release-audio icon test \
         full-release
@@ -45,6 +45,11 @@ import-locale: ## locales_page_text -> book_line + entity_name (LOCALE=deDE; nee
 
 export: ## book_line -> addons/Spoken_Books/Data/Books.lua (needs DATABASE_URL)
 	@node $(PIPELINE)/tools/export.mjs
+
+# Where each readable is, for Azeroth's Compendium. A TrinityCore world DB (the Forever repack's
+# by default; PLACES_MYSQL_* in .env) and the client's map tables from wago.tools.
+places: ## world DB + client maps -> addons/Spoken_Books/Data/Places.lua
+	@node $(PIPELINE)/tools/places.mjs
 
 lookup: ## take -> the pack's Data/Sounds.lua (LOCALE=xx: into build/books/xx; needs DATABASE_URL)
 	@node $(PIPELINE)/tools/build-lookup.mjs --lang=$(or $(LOCALE),enUS)

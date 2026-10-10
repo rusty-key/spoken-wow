@@ -20,6 +20,9 @@ setfenv(1, VoiceOver)
 -- Hidden rather than disabled when there is nothing to send, for PlayButton.lua's reason,
 -- unchanged: a greyed-out button on every quest and every NPC this client has no line for is
 -- a permanent invitation to wonder what's broken; an absent one says there is nothing to do.
+--
+-- DialogueUI hides UIParent while its window is open, so that window gets a corner of its own
+-- under its Decline button: a faint Report icon, or for a line no pack has, a Contribute link.
 
 local BUTTON_HEIGHT = 20
 local BUTTON_WIDTH = 90
@@ -27,6 +30,23 @@ local GAP = 2
 -- From the close button's bottom edge down into the middle of the strip under the title bar.
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
+-- Fallback margins under and beside DialogueUI's footer buttons: its bottom (36) and side (26)
+-- paddings at its default size (1.1).
+local DUI_FOOTER_MARGIN = 40
+local DUI_SIDE_MARGIN = 29
+local DUI_LINK_HEIGHT = 16
+-- The Report icon stays faint until hovered, since a bug is the rare case. Icon and words are
+-- smaller than DialogueUI's to fit above the curl of the parchment's foot.
+local DUI_ICON = 16
+local DUI_TEXT_SCALE = 0.9
+local DUI_REPORT_ALPHA = 0.4
+-- Hung just under the footer buttons, not centred in the margin: its lower half is the
+-- parchment's curled edge.
+local DUI_ICON_GAP = 4
+-- The red of DialogueUI's Accept button art (Art/Theme_*/OptionBackground-Common.png), lifted
+-- on the dark theme, where the art's (135, 27, 26) is too dark to read as small text on black.
+local DUI_RED_ON_LIGHT = { 0.467, 0.161, 0.078 }
+local DUI_RED_ON_DARK = { 0.85, 0.22, 0.2 }
 
 -- The events that flip a quest or gossip panel on or off, on every client generation this
 -- addon targets -- not a timer. VoiceOver.lua's own OnInitialize already pays for
@@ -117,6 +137,155 @@ function ContributeButton:PositionAtCorner(frame, close)
     return true
 end
 
+local function OnClick()
+    Contribute:Show()
+end
+
+local function OnEnter(self)
+    Contribute:ShowTooltip(self, ContributeButton.gossip)
+end
+
+local function OnLeave()
+    if GameTooltip then
+        GameTooltip:Hide()
+    end
+end
+
+--- Report what DialogueUI's window shows, in the language its line would be heard in.
+function ContributeButton:ReportFromDialogueUI()
+    local target = ReportButton:CurrentTarget()
+    if not target then
+        return
+    end
+    local ok, line = pcall(Addon.GetVisibleLine, Addon, Utils:DialogueUIPage())
+    ReportButton:ShowLink(target, ok and line and line.language or nil)
+end
+
+--- The game's tooltip is a child of UIParent, which DialogueUI hides, so its window gets its
+--- own, scaled to the size the game's would be.
+function ContributeButton:DialogueUITooltip(frame)
+    local tooltip = self.tooltip
+    if not tooltip then
+        tooltip = CreateFrame("GameTooltip", "SpokenQuestsDialogueUITooltip", frame, "GameTooltipTemplate")
+        tooltip:SetFrameStrata("TOOLTIP")
+        self.tooltip = tooltip
+    end
+    tooltip:SetScale(UIParent:GetEffectiveScale() / frame:GetEffectiveScale())
+    return tooltip
+end
+
+--- The icon and words are children of the window, so they show while DialogueUI hides UIParent
+--- and close with it. Nil with a player too old to draw the icon.
+function ContributeButton:DialogueUICorner(frame)
+    local corner = self.corner
+    if corner then
+        return corner
+    end
+    if not (_G.Spoken and Spoken.CreateRoundButton) then
+        return nil
+    end
+    local icon = Spoken:CreateRoundButton(frame, "report")
+    icon:SetFrameStrata("FULLSCREEN")
+    icon:SetSize(DUI_ICON, DUI_ICON)
+    local link = CreateFrame("Button", nil, frame)
+    link:SetFrameStrata("FULLSCREEN")
+    link:SetHeight(DUI_LINK_HEIGHT)
+    link:SetPoint("RIGHT", icon, "LEFT", -4, 0)
+    local label = link:CreateFontString(nil, "OVERLAY")
+    label:SetFontObject(_G.DUIFont_QuestType_Left or GameFontNormalSmall)
+    label:SetPoint("RIGHT", link, "RIGHT", 0, 0)
+    label:SetText(L.OPT_CONTRIBUTE_NO_VO)
+    if label.SetTextScale then
+        label:SetTextScale(DUI_TEXT_SCALE)
+    end
+    link.label = label
+    corner = { icon = icon, link = link }
+
+    local function Click()
+        if corner.missing then
+            Contribute:Show()
+        else
+            ContributeButton:ReportFromDialogueUI()
+        end
+    end
+    local function Enter(owner)
+        icon:SetAlpha(1)
+        local tooltip = ContributeButton:DialogueUITooltip(frame)
+        if corner.missing then
+            Contribute:ShowTooltip(owner, ContributeButton.gossip, tooltip)
+        else
+            tooltip:SetOwner(owner, "ANCHOR_RIGHT")
+            tooltip:SetText(L.OPT_REPORT_PROBLEM)
+            tooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
+            tooltip:Show()
+        end
+    end
+    local function Leave()
+        icon:SetAlpha(corner.missing and 1 or DUI_REPORT_ALPHA)
+        if ContributeButton.tooltip then
+            ContributeButton.tooltip:Hide()
+        end
+    end
+    -- Hooked on the icon to keep its own hover glow; the words have none to keep.
+    icon:SetScript("OnClick", Click)
+    icon:HookScript("OnEnter", Enter)
+    icon:HookScript("OnLeave", Leave)
+    link:SetScript("OnClick", Click)
+    link:SetScript("OnEnter", Enter)
+    link:SetScript("OnLeave", Leave)
+    icon:Hide()
+    link:Hide()
+    self.corner = corner
+    return corner
+end
+
+--- Show the corner under DialogueUI's Decline (or Goodbye) button, right-aligned with it: the
+--- faint Report icon, or with `missing`, the icon in full and the words to contribute.
+function ContributeButton:ShowOnDialogueUI(frame, missing)
+    local corner = self:DialogueUICorner(frame)
+    if not corner then
+        return
+    end
+    local icon, link = corner.icon, corner.link
+    corner.missing = missing and true or false
+    local red = Utils:DialogueUIThemeID() == 2 and DUI_RED_ON_DARK or DUI_RED_ON_LIGHT
+    link.label:SetTextColor(red[1], red[2], red[3])
+    -- Sized to the words, since DialogueUI's font size setting changes them.
+    link:SetWidth((link.label:GetStringWidth() or 0) + 2)
+    -- Measured from the footer button, since DialogueUI's window size setting changes the margins.
+    local below, beside = DUI_FOOTER_MARGIN, DUI_SIDE_MARGIN
+    local footer = frame.ExitButton
+    if type(footer) == "table" and footer.GetBottom and frame.GetBottom then
+        local bottom, frameBottom = footer:GetBottom(), frame:GetBottom()
+        if type(bottom) == "number" and type(frameBottom) == "number" and bottom > frameBottom then
+            below = bottom - frameBottom
+        end
+        local right, frameRight = footer:GetRight(), frame:GetRight()
+        if type(right) == "number" and type(frameRight) == "number" and frameRight > right then
+            beside = frameRight - right
+        end
+    end
+    icon:ClearAllPoints()
+    icon:SetPoint("RIGHT", frame, "BOTTOMRIGHT", -beside, below - DUI_ICON_GAP - DUI_ICON / 2)
+    icon:SetAlpha(corner.missing and 1 or DUI_REPORT_ALPHA)
+    icon:Show()
+    if corner.missing then
+        link:Show()
+    else
+        link:Hide()
+    end
+end
+
+function ContributeButton:HideOnDialogueUI()
+    if self.tooltip then
+        self.tooltip:Hide()
+    end
+    if self.corner then
+        self.corner.icon:Hide()
+        self.corner.link:Hide()
+    end
+end
+
 --- Show, hide and place the button for whatever is on screen now. Parented to UIParent, not
 --- to QuestFrame or GossipFrame: whichever of those two is relevant is the one hidden while
 --- the other is up, and a child cannot be visible while its ancestor is not. Positioning
@@ -129,8 +298,19 @@ function ContributeButton:Refresh()
     end
     if not Addon:IsPartOn() then
         button:Hide()
+        self:HideOnDialogueUI()
         return
     end
+
+    -- DialogueUI's window: the corner is there on every page, Report or Contribute.
+    local page = Utils:DialogueUIPage()
+    if page then
+        button:Hide()
+        self.gossip = page == "GOSSIP_SHOW"
+        self:ShowOnDialogueUI(_G.DUIQuestFrame, Contribute:HasGap())
+        return
+    end
+    self:HideOnDialogueUI()
 
     if not Contribute:HasGap() then
         button:Hide()
@@ -179,17 +359,10 @@ function ContributeButton:Setup()
     end
     button:Hide()
 
-    button:SetScript("OnClick", function()
-        Contribute:Show()
-    end)
-    button:SetScript("OnEnter", function(self)
-        Contribute:ShowTooltip(self, ContributeButton.gossip)
-    end)
-    button:SetScript("OnLeave", function()
-        if GameTooltip then
-            GameTooltip:Hide()
-        end
-    end)
+    button:SetScript("OnClick", OnClick)
+    button:SetScript("OnEnter", OnEnter)
+    button:SetScript("OnLeave", OnLeave)
+    Contribute:OfferLogMenu(button)
 
     self.button = button
 

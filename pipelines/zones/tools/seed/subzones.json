@@ -4,6 +4,12 @@
     "Subzones are enumerated from 'Category:<name> subzones' on warcraft.wiki.gg;",
     "set `category` to override that, and `exclude` to drop specific pages.",
     "",
+    "A category also lists places that are not areas of its zone: a city that is a zone",
+    "of its own (Orgrimmar in Durotar), or an area of a neighbour (Ruins of Alterac in",
+    "Hillsbrad). Those are excluded, so each place has one line, under the zone the",
+    "client puts it in. Passages that join two places (Deeprun Tram, a city's gates)",
+    "stay at both ends.",
+    "",
     "Covers all 46 Classic Era zone maps. Azeroth (947), Kalimdor (1414) and",
     "Eastern Kingdoms (1415) are deliberately absent: they are not Zone-type maps,",
     "a click on them is Blizzard's own navigation, and UI/SubzoneClick.lua ignores",
@@ -22,10 +28,16 @@
   ],
   "zones": {
     "1411": {
-      "name": "Durotar"
+      "name": "Durotar",
+      "exclude": [
+        "Orgrimmar"
+      ]
     },
     "1412": {
-      "name": "Mulgore"
+      "name": "Mulgore",
+      "exclude": [
+        "Thunder Bluff"
+      ]
     },
     "1413": {
       "name": "The Barrens",
@@ -44,26 +56,42 @@
       "name": "Blasted Lands"
     },
     "1420": {
-      "name": "Tirisfal Glades"
+      "name": "Tirisfal Glades",
+      "exclude": [
+        "Undercity"
+      ]
     },
     "1421": {
       "name": "Silverpine Forest"
     },
     "1422": {
-      "name": "Western Plaguelands"
+      "name": "Western Plaguelands",
+      "exclude": [
+        "Plaguemist Ravine"
+      ]
     },
     "1423": {
       "name": "Eastern Plaguelands"
     },
     "1424": {
-      "name": "Hillsbrad Foothills"
+      "name": "Hillsbrad Foothills",
+      "exclude": [
+        "Alterac Mountains",
+        "Dandred's Fold",
+        "Lordamere Lake",
+        "Ruins of Alterac",
+        "Uplands"
+      ]
     },
     "1425": {
       "name": "The Hinterlands",
       "category": "Hinterlands subzones"
     },
     "1426": {
-      "name": "Dun Morogh"
+      "name": "Dun Morogh",
+      "exclude": [
+        "Ironforge"
+      ]
     },
     "1427": {
       "name": "Searing Gorge"
@@ -72,7 +100,10 @@
       "name": "Burning Steppes"
     },
     "1429": {
-      "name": "Elwynn Forest"
+      "name": "Elwynn Forest",
+      "exclude": [
+        "Stormwind City"
+      ]
     },
     "1430": {
       "name": "Deadwind Pass"
@@ -81,7 +112,10 @@
       "name": "Duskwood"
     },
     "1432": {
-      "name": "Loch Modan"
+      "name": "Loch Modan",
+      "exclude": [
+        "South Gate Outpost"
+      ]
     },
     "1433": {
       "name": "Redridge Mountains"
@@ -99,16 +133,25 @@
       "name": "Wetlands"
     },
     "1438": {
-      "name": "Teldrassil"
+      "name": "Teldrassil",
+      "exclude": [
+        "Darnassus"
+      ]
     },
     "1439": {
       "name": "Darkshore"
     },
     "1440": {
-      "name": "Ashenvale"
+      "name": "Ashenvale",
+      "exclude": [
+        "Mor'shan Rampart"
+      ]
     },
     "1441": {
-      "name": "Thousand Needles"
+      "name": "Thousand Needles",
+      "exclude": [
+        "South Seas"
+      ]
     },
     "1442": {
       "name": "Stonetalon Mountains"

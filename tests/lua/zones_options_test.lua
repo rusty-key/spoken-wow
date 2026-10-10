@@ -41,7 +41,7 @@ Expect("every section is there", table.getn(headings), 7)
 local names = {}
 for _, heading in ipairs(headings) do table.insert(names, heading.text) end
 Expect("...in order", table.concat(names, "|"),
-    "When to Read|World Map|Lore of Azeroth|Reading History|Voice Packs|Fix a Problem|Start Over")
+    "When to Read|World Map|Azeroth's Compendium|Reading History|Voice Packs|Fix a Problem|Start Over")
 Expect("the language waits while English is the only one: a menu of one chooses nothing",
     table.concat(hidden, "|"), "Language")
 Expect("and every setting", table.getn(rows) >= 13, true)

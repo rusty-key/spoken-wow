@@ -20,12 +20,11 @@ local pendingLinks = {}
 -- Spoken addon carries a copy of, so the three panels read alike.
 local Layout = SpokenLayout
 
-local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog" }
-
--- The three ways of showing a line, by the name Addon:PlayerStyle gives each.
+-- The ways of showing a line, by the name Addon:PlayerStyle gives each.
 local STYLE_LABELS = {
     minimal = L.OPT_STYLE_MINIMAL,
     classic = L.OPT_STYLE_CLASSIC,
+    dialogueui = L.OPT_STYLE_DIALOGUEUI,
     subtitle = L.OPT_STYLE_SUBTITLE,
     none = L.OPT_STYLE_NONE,
 }
@@ -49,11 +48,12 @@ local PARTS = {
     { key = "books", label = L.OPT_PART_BOOKS, text = L.OPT_PART_BOOKS_TEXT, tip = L.OPT_PART_BOOKS_TIP,
         icon = [[Interface\Icons\INV_Misc_Book_09]], order = 2 },
     { key = "zones", label = L.OPT_PART_ZONES, text = L.OPT_PART_ZONES_TEXT, tip = L.OPT_PART_ZONES_TIP,
-        icon = [[Interface\Icons\INV_Misc_Map_01]], order = 3 },
+        icon = [[Interface\Icons\INV_Misc_Map02]], order = 3 },
 }
 
--- Sketches of the four ways of showing a line, in flat colour, for their tiles: a portrait
--- in gold, words as pale bars, a window as a darker box. Sized for four tiles to a row.
+-- Sketches of the ways of showing a line, in flat colour, for their tiles: a portrait in
+-- gold, words as pale bars, a window as a darker box. Sized for four tiles to a row, and
+-- narrow enough for a fifth.
 local SKETCHES = {
     minimal = function(art)
         local R, w = Layout.Rect, art.width
@@ -75,6 +75,21 @@ local SKETCHES = {
         R(art, x + 41, 36, 40, 2, 0.48, 0.58, 0.65, 0.8)
         R(art, x + 41, 42, 34, 2, 0.48, 0.58, 0.65, 0.6)
     end,
+    -- Parchment, a header strip with the face at its left and the title past it, the words
+    -- in dark ink, a slim scrollbar beside them.
+    dialogueui = function(art)
+        local R, w = Layout.Rect, art.width
+        local x = (w - 60) / 2
+        R(art, x, 6, 60, 48, 0.78, 0.68, 0.5, 1)
+        R(art, x + 3, 9, 54, 12, 0.45, 0.36, 0.24, 1)
+        R(art, x + 5, 10, 10, 10, 0.75, 0.6, 0.3, 1)
+        R(art, x + 18, 14, 26, 3, 0.95, 0.88, 0.7, 0.9)
+        R(art, x + 6, 26, 44, 2, 0.19, 0.17, 0.13, 0.85)
+        R(art, x + 6, 32, 40, 2, 0.19, 0.17, 0.13, 0.85)
+        R(art, x + 6, 38, 30, 2, 0.19, 0.17, 0.13, 0.85)
+        R(art, x + 53, 26, 2, 14, 0.5, 0.36, 0.24, 0.8)
+        R(art, x + 6, 47, 48, 1, 0.5, 0.36, 0.24, 0.8)
+    end,
     subtitle = function(art)
         local R, w = Layout.Rect, art.width
         R(art, (w - 32) / 2, 30, 32, 3, 1, 0.82, 0, 0.9)
@@ -94,12 +109,14 @@ local SKETCHES = {
 local STYLE_TEXTS = {
     minimal = L.OPT_STYLE_MINIMAL_TEXT,
     classic = L.OPT_STYLE_CLASSIC_TEXT,
+    dialogueui = L.OPT_STYLE_DIALOGUEUI_TEXT,
     subtitle = L.OPT_STYLE_SUBTITLE_TEXT,
     none = L.OPT_STYLE_NONE_TEXT,
 }
 local STYLE_TIPS = {
     minimal = L.WELCOME_STYLE_MINIMAL_TIP,
     classic = L.WELCOME_STYLE_CLASSIC_TIP,
+    dialogueui = L.WELCOME_STYLE_DIALOGUEUI_TIP,
     subtitle = L.WELCOME_STYLE_SUBTITLE_TIP,
     none = L.WELCOME_STYLE_NONE_TIP,
 }
@@ -126,7 +143,7 @@ function Options:Preview(style)
     PlayerFrame:RefreshConfig()
     Transcript:RefreshConfig()
     if Subtitle then Subtitle:ShowSample(style == "subtitle") end
-    PlayerFrame:ShowSample(style == "minimal" or style == "classic")
+    PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui")
 end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
@@ -198,19 +215,10 @@ function Options:Styles()
     if not Transcript.unavailable then table.insert(styles, "subtitle") end
     if not Version.IsAnyLegacy then table.insert(styles, "minimal") end
     table.insert(styles, "classic")
+    if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end
     table.insert(styles, "none")
     return styles
 end
-
--- Display labels for the values above, which stay English internally: the stored
--- channel name is what playback passes to the sound API.
-local CHANNEL_LABELS = {
-    Master = L.OPT_CHANNEL_MASTER,
-    SFX = L.OPT_CHANNEL_SFX,
-    Music = L.OPT_CHANNEL_MUSIC,
-    Ambience = L.OPT_CHANNEL_AMBIENCE,
-    Dialog = L.OPT_CHANNEL_DIALOG,
-}
 
 local function Build(canvas)
     panel = CreateFrame("Frame", "SpokenOptionsPanel", UIParent)
@@ -233,7 +241,10 @@ local function Build(canvas)
     local transcript = function() return Addon.db.profile.Transcript end
     local mm = function() return Addon.db.profile.Minimap.LibDBIcon end
     local function Style() return Addon:PlayerStyle() end
-    local function InWindow() local style = Style(); return style == "minimal" or style == "classic" end
+    local function InWindow()
+        local style = Style()
+        return style == "minimal" or style == "classic" or style == "dialogueui"
+    end
     local function Small() return Style() == "minimal" end
     local function Subtitles() return Style() == "subtitle" end
     local function Words() return transcript().Enabled end
@@ -264,13 +275,12 @@ local function Build(canvas)
     end
 
     -- What Spoken reads, first: it decides which of the pages under this one matter. On the
-    -- settings canvas, a card each, side by side, with what is installed said on the card;
-    -- the legacy window is too narrow for three, and keeps a switch per row.
-    -- A card each, with no box round them: the cards are boxes themselves.
+    -- settings canvas, a list with a row each, saying what is installed; the legacy window
+    -- keeps a plain switch per row. No box round the list: it is a box itself.
     layout:Section(L.OPT_PARTS_TITLE, canvas)
     panel.parts = {}
     local known = {}
-    local cards = {}
+    local modules = {}
     for _, part in ipairs(PARTS) do
         known[part.key] = true
         local key, order = part.key, part.order
@@ -278,11 +288,10 @@ local function Build(canvas)
         local function Write(v) Sources:SetTurnedOff(key, not v) end
         local function Missing() if not Sources:Get(key) then return L.REASON_NOT_INSTALLED end end
         if canvas then
-            -- Under its words, how many of its voice packs it has; along its foot, a button to
-            -- its page, whenever the module is installed: switched off, its page is still there,
-            -- with its own Enable switch for exactly that. Whether it is on, its checkbox and its
-            -- card say.
-            table.insert(cards, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
+            -- Beside its words, how many of its voice packs it has, then a button to its page,
+            -- whenever the module is installed: switched off, its page is still there, with its
+            -- own Enable switch for exactly that. Whether it is on, its checkbox and its row say.
+            table.insert(modules, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
                 read = On, write = Write, apply = function() Options:UpdateRows() end, disabled = Missing,
                 status = function() return Options:PartVoice(key) end,
                 hint = function(on) return on and L.OPT_PART_CLICK_OFF or L.OPT_PART_CLICK_ON end,
@@ -295,7 +304,7 @@ local function Build(canvas)
             Requires(row, function() return Sources:Get(key) ~= nil end, L.REASON_NOT_INSTALLED)
         end
     end
-    if canvas then layout:Cards(cards) end
+    if canvas then layout:List(modules) end
     -- An addon outside the three that speaks through the player still gets its switch.
     for key, source in Sources:Iterate() do
         if not known[key] then
@@ -306,7 +315,7 @@ local function Build(canvas)
     end
 
     -- The choice every other display row depends on, then the two that apply whichever way
-    -- lines are shown. On the canvas the choice is a row of pictures, a section of its own.
+    -- lines are shown. On the canvas the choice is a list with a picture each, a section of its own.
     local styles = Options:Styles()
     -- Pictures on the canvas, where the three look different enough that a sketch says more
     -- than a name; a dropdown in the legacy window, which has room for neither.
@@ -318,14 +327,16 @@ local function Build(canvas)
                 tooltip = STYLE_TIPS[style], art = SKETCHES[style] })
         end
         Options:PreviewButton(layout)
-        layout:Tiles(tiles, Style, function(v) Addon:SetPlayerStyle(v) end,
+        layout:Choices(tiles, Style, function(v) Addon:SetPlayerStyle(v) end,
             function()
                 PlayerFrame:RefreshConfig(); refreshTranscript()
                 Options:StyleChosen()
             end,
             { choose = L.STYLE_CHOOSE })
+        layout:Group(L.OPT_NARRATOR_SETTINGS)
         layout:Section(L.OPT_SHOW_TITLE)
     else
+        layout:Group(L.OPT_NARRATOR_SETTINGS)
         layout:Section(L.OPT_SHOW_TITLE)
         layout:Dropdown(L.OPT_PLAYER_STYLE, L.OPT_PLAYER_STYLE_TIP, styles, Style,
             function(v) Addon:SetPlayerStyle(v) end,
@@ -338,11 +349,12 @@ local function Build(canvas)
             function() return transcript().Enabled end,
             function(v) Transcript:SetEnabled(v) end, function() Options:UpdateRows() end), Shown)
         -- The word being read lit: the windows only. The subtitles type their words at their
-        -- own pace, where an estimated word timing would show every miss.
+        -- own pace, where an estimated word timing would show every miss. With DialogueUI
+        -- installed, also for the quest text Spoken Quests marks there, under any style.
         local highlight = layout:Checkbox(L.TRANSCRIPT_HIGHLIGHT, L.TRANSCRIPT_HIGHLIGHT_TIP,
             function() return transcript().HighlightWord end,
             function(v) transcript().HighlightWord = v end, refreshTranscript)
-        Only(highlight, InWindow)
+        Only(highlight, function() return InWindow() or DialogueUITheme:Available() end)
         Requires(highlight, Words, L.REASON_WORDS)
         local typewriter = layout:Checkbox(L.TRANSCRIPT_TYPEWRITER, L.TRANSCRIPT_TYPEWRITER_TIP,
             function() return transcript().Typewriter end,
@@ -370,6 +382,11 @@ local function Build(canvas)
     Only(layout:Slider(L.OPT_SCALE, 0.5, 2, 0.05,
         function() return cfg().FrameScale end, function(v) cfg().FrameScale = v end, refresh,
         nil, L.OPT_SCALE_TIP), InWindow)
+    -- The DialogueUI window's own settings, its theme first, live on the DialogueUI page.
+    if canvas then
+        Only(layout:Button(L.OPT_DUI_OPEN_PAGE, 200, function() DialogueUIOptions:Open() end),
+            function() return Style() == "dialogueui" end)
+    end
     Only(layout:Checkbox(L.OPT_HIDE_PORTRAIT, L.OPT_HIDE_PORTRAIT_TIP,
         function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end, refresh),
         InWindow)
@@ -438,6 +455,39 @@ local function Build(canvas)
         end, L.SUBTITLE_SAMPLE_TIP), Subtitles)
     end
 
+    -- The narrator style's settings end here; what follows is Spoken's whatever the style.
+    layout:EndGroup()
+
+    -- Azeroth's Compendium, after the narrator style's settings: the window Zones and Books each
+    -- add a tab to, opened here and from the minimap menu, with each tab's Unlock switch. The tabs
+    -- register once the world is up, after this page is built, so the rows ask for them each time
+    -- they are drawn; with neither part installed the section has nothing showing and hides.
+    local function Compendium() return _G.SpokenCompendium end
+    local function Tab(key)
+        local compendium = Compendium()
+        return compendium and compendium.Tab and compendium:Tab(key)
+    end
+    layout:Section(L.OPT_COMPENDIUM_TITLE)
+    local open = layout:Button(L.OPT_COMPENDIUM_OPEN, 200, function()
+        local compendium = Compendium()
+        if compendium and compendium.Toggle then compendium:Toggle() end
+    end, L.OPT_COMPENDIUM_OPEN_TIP)
+    Only(open, function() local compendium = Compendium(); return compendium ~= nil and compendium.Toggle ~= nil end)
+    Requires(open, function()
+        local compendium = Compendium()
+        return compendium ~= nil and compendium.Available ~= nil and compendium:Available()
+    end, L.REASON_COMPENDIUM_OFF)
+    for _, unlock in ipairs({
+        { tab = "places", part = "zones", label = L.OPT_UNLOCK_PLACES, tip = L.OPT_UNLOCK_PLACES_TIP, module = L.OPT_PART_ZONES },
+        { tab = "readables", part = "books", label = L.OPT_UNLOCK_WRITINGS, tip = L.OPT_UNLOCK_WRITINGS_TIP, module = L.OPT_PART_BOOKS },
+    }) do
+        local row = layout:Checkbox(unlock.label, unlock.tip,
+            function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil and tab.unlock.get() end,
+            function(v) local tab = Tab(unlock.tab); if tab and tab.unlock then tab.unlock.set(v) end end)
+        Only(row, function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil end)
+        Requires(row, function() return Spoken:IsPartOn(unlock.part) end, format(L.REASON_MODULE_OFF_FMT, unlock.module))
+    end
+
     -- Everything about how a line is played, whichever addon queued it: the two feature
     -- addons each used to carry their own channel control, and a player with both
     -- installed had two settings for one thing.
@@ -477,12 +527,6 @@ local function Build(canvas)
         function(code) return code == "none" and L.OPT_FALLBACK_NONE or Native(code) end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
-    layout:Dropdown(L.OPT_CHANNEL, L.OPT_CHANNEL_TIP, CHANNELS,
-        function() return audio().SoundChannel end,
-        function(v) audio().SoundChannel = v end,
-        -- The handle belongs to the old channel, so a line already speaking cannot move.
-        function() SoundQueue:RemoveAllSoundsFromQueue(); Options:UpdateRows() end,
-        function(channel) return CHANNEL_LABELS[channel] or channel end)
     if audio().AutoToggleDialog ~= nil then
         layout:Checkbox(L.OPT_MUTE_DIALOGUE,
             Version.IsLegacyVanilla and L.OPT_MUTE_DIALOGUE_TIP_VANILLA or L.OPT_MUTE_DIALOGUE_TIP,
@@ -498,6 +542,9 @@ local function Build(canvas)
     layout:Slider(L.OPT_LINE_GAP, 0, 5, 0.25,
         function() return audio().LineGap or 0 end, function(v) audio().LineGap = v end,
         nil, Layout.Seconds, L.OPT_LINE_GAP_TIP)
+    layout:Checkbox(L.OPT_CUE_BETWEEN, L.OPT_CUE_BETWEEN_TIP,
+        function() return audio().CueBetweenLines end,
+        function(v) audio().CueBetweenLines = v end)
     if OtherSounds:IsAvailable() then
         local lower = function() return audio().LowerOthers end
         local apply = function() OtherSounds:RefreshConfig(); Options:UpdateRows() end
@@ -515,8 +562,6 @@ local function Build(canvas)
                 function() return lower()[channel] end, function(v) lower()[channel] = v end, apply,
                 nil, row[3])
             Requires(slider, function() return lower().Enabled end, L.REASON_LOWER)
-            -- Never lowered while it carries the voices.
-            Requires(slider, function() return audio().SoundChannel ~= channel end, L.REASON_VOICE_CHANNEL)
             if channel == "Dialog" then
                 -- With the game's dialogue silenced outright, there is no level to set.
                 Requires(slider, function() return not audio().AutoToggleDialog end, L.REASON_DIALOG_MUTED)
@@ -658,6 +703,12 @@ local function Build(canvas)
     -- Every setting back, from the header's Defaults as the game's pages have it.
     layout:StartOver(L.OPT_START_OVER_TITLE, L.OPT_RESET_ALL, function()
         Layout.Confirm(L.OPT_RESET_ALL_CONFIRM, L.OPT_RESET_AND_RELOAD, L.CANCEL, function()
+            -- The Unlock switches are on this page but kept with each part's settings, which
+            -- ResetProfile does not reach, and each part's own Reset skips them.
+            for _, key in ipairs({ "places", "readables" }) do
+                local tab = Tab(key)
+                if tab and tab.unlock then tab.unlock.set(false) end
+            end
             Addon.db:ResetProfile()
             Addon.db.global.Layout = nil
             ReloadUI()
@@ -720,24 +771,15 @@ function Options:PackCount(source)
     return getn(packs)
 end
 
---- Whether a module has its voices, apart from whether it is enabled: "Voice Pack", and how
---- many of its packs are installed out of how many there are, as 2/4. A module whose voices come
---- in parts counts them itself (`packCount`); otherwise its packs are one pack, there or not.
---- Nothing for a module that is not installed.
+--- Whether a module has its voices, apart from whether it is enabled: "Voice Packs" and how many
+--- of its packs are installed, in any language. Not out of how many there are: a player needs
+--- their own language's, not all of them. Nothing for a module that is not installed.
 function Options:PartVoice(key)
     local source = Sources:Get(key)
     if not source then return nil end
-    local have, total
-    if source.packCount then
-        local ok, a, b = pcall(source.packCount)
-        if ok then have, total = a, b end
-    end
-    if not total then
-        local count = self:PackCount(source)
-        if not count then return nil end
-        have, total = count > 0 and 1 or 0, 1
-    end
-    return have == 0 and "muted" or "neutral", L.PART_VOICE, format(L.PART_VOICE_COUNT_FMT, have, total)
+    local have = self:PackCount(source)
+    if not have then return nil end
+    return have == 0 and "muted" or "neutral", L.PART_VOICE, tostring(have)
 end
 
 --- Every AceDB object a profile choice applies to: the player's, then each installed part's
@@ -856,7 +898,7 @@ function Options:OpenPage(order)
             if page.order == order then category = page.category end
         end
         if not category then return false end
-        Layout.OpenCategory(category)
+        Layout.OpenCategory(category, L.OPT_OPEN_COMBAT)
         return true
     end
     return false
@@ -912,6 +954,8 @@ function Options:Setup()
     -- Rows come and go with the way lines are shown; the window or scroller follows what is left.
     panel.layout.onResize = function() FitWindow() end
     self:UpdateRows()
+    -- Built with this page; registered last, after every part's.
+    if canvas and DialogueUIOptions then DialogueUIOptions:Setup() end
     if canvas then
         -- Spoken's entry in the game's settings, and each feature addon's page an entry nested
         -- under it (Options:RegisterPage).
@@ -984,7 +1028,7 @@ end
 
 function Options:Open()
     if self.category and Settings and Settings.OpenToCategory then
-        Layout.OpenCategory(self.category)
+        Layout.OpenCategory(self.category, L.OPT_OPEN_COMBAT)
     elseif panel then
         panel:SetShown(not panel:IsShown())
     else

@@ -3,7 +3,7 @@ curseforge: 1723282
 release: books-audio-esMX
 section: books
 lang: esMX
-version: 2.0.0
+version: 2.0.1
 slug: spoken-books-audio-esmx
 name: Spoken Books Audio: Spanish (AL)
 summary: The Latin American Spanish narration for Spoken Player's Books module: books, letters and notes read aloud in Spanish (AL).

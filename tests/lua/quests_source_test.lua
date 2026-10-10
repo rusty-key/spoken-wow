@@ -144,9 +144,10 @@ VO, env, Spoken = Boot()
 VO.Addon.db.profile.Audio.AutoToggleDialog = true
 world.questID = 101
 VO.Addon:QUEST_DETAIL()
-Expect("the first quest clip fades the NPC's voice rather than cutting it", world.cvars.Sound_EnableDialog ~= "0", true)
+-- Cut, not faded: the line is read off the NPC's open window, and none of its greeting is heard.
+Expect("the first quest clip cuts the NPC's voice as it starts", world.cvars.Sound_EnableDialog, "0")
 stub.Advance(0.6)
-Expect("...then mutes the dialog channel", world.cvars.Sound_EnableDialog, "0")
+Expect("...and keeps the dialog channel muted", world.cvars.Sound_EnableDialog, "0")
 Spoken:StopAll()
 Expect("...and the last leaving restores it", world.cvars.Sound_EnableDialog, "1")
 
@@ -205,11 +206,11 @@ end
 VO, env, Spoken = MuteBoot()
 stub.ShowGossip("Greetings, traveller.")
 Open(VO, "GOSSIP_SHOW")
-Expect("a voiced NPC's gossip opening starts the mute before its line is queued", Spoken:GetQueueSize(), 0)
+Expect("a voiced NPC's gossip opening mutes it before its line is queued", Spoken:GetQueueSize() == 0 and world.cvars.Sound_EnableDialog, "0")
 stub.Advance(0.2)
 Expect("...the line is then read", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, GREETING_HASH)
 stub.Advance(0.4)
-Expect("...and the NPC's voice is muted once faded", world.cvars.Sound_EnableDialog, "0")
+Expect("...under the NPC's voice, still muted", world.cvars.Sound_EnableDialog, "0")
 stub.Advance(2)
 Expect("...past the mute's own deadline too", world.cvars.Sound_EnableDialog, "0")
 Spoken:StopAll()
@@ -226,6 +227,15 @@ VO.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true
 stub.ShowGossip("Greetings, traveller.")
 Open(VO, "GOSSIP_SHOW")
 Expect("gossip the frequency rule will skip keeps its greeting", world.cvars.Sound_EnableDialog, "1")
+-- A page the player picked an option to reach is read whatever the frequency, so the mute is
+-- taken for it as for any line that is going to be read.
+stub.ShowGossip("Greetings, traveller.", { "Where is the inn?" })
+stub.SelectGossipOption("Where is the inn?")
+stub.ShowGossip("You are standing in it.")
+Open(VO, "GOSSIP_SHOW")
+Expect("a page reached by an option mutes dialog, greeting heard or not", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(3)
+Spoken:StopAll()
 VO.Addon.db.char.hasSeenGossipForNPC = {}   -- saved too
 
 VO, env, Spoken = MuteBoot()
@@ -244,10 +254,9 @@ VO, env, Spoken = MuteBoot()
 world.questID = 101
 stub.ShowPanel("QuestFrameDetailPanel")
 Open(VO, "QUEST_DETAIL")
-Expect("a quest dialog opening starts fading the NPC's voice out", world.cvars.Sound_EnableDialog, "1")
-stub.Advance(0.6)
-Expect("...and mutes it once faded", world.cvars.Sound_EnableDialog, "0")
-stub.Advance(0.4)
+-- Cut, not faded: a fade lets the first half-second of the greeting through.
+Expect("a quest dialog opening cuts the NPC's voice at once", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(1.0)
 Expect("...and its line is read under the mute", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, "101-accept")
 Expect("...still muted", world.cvars.Sound_EnableDialog, "0")
 

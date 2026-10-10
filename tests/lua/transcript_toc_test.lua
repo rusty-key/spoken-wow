@@ -30,7 +30,7 @@ Expect("addon.xml, which every client loads, carries no caption file",
 
 local defined = {}
 for name in Read(PLAYER .. "1.12/Transcript.lua"):gmatch("function Transcript:(%w+)") do defined[name] = true end
-local callers = { "Core.lua", "UI/PlayerFrame.lua", "UI/MinimalPlayer.lua", "UI/Options.lua" }
+local callers = { "Core.lua", "UI/PlayerFrame.lua", "UI/MinimalPlayer.lua", "UI/DialogueUIPlayer.lua", "UI/Options.lua" }
 for _, file in ipairs(callers) do
     for name in Read(PLAYER .. file):gmatch("Transcript:(%w+)%(") do
         Expect("the 1.12 stub defines Transcript:" .. name .. " (" .. file .. ")", defined[name], true)

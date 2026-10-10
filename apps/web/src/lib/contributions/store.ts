@@ -222,15 +222,22 @@ export async function createContribution(
   },
 ): Promise<void> {
   // Returns nothing, as createReport does: the sender cannot read their submission back.
+  // A copy from somebody signed in or named is recorded beside the count (migration 0065).
   await db().query(
-    `insert into "contribution"
-       ("source", "key", "locale", "build", "text", "meta", "raw", "dedup",
-        "body", "name", "email", "userId", "ip")
-     values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13)
-     on conflict ("dedup") do update
-       set "count" = "contribution"."count" + 1,
-           ${FILL_NPC_SET},
-           "updatedAt" = now()`,
+    `with "stored" as (
+       insert into "contribution"
+         ("source", "key", "locale", "build", "text", "meta", "raw", "dedup",
+          "body", "name", "email", "userId", "ip")
+       values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13)
+       on conflict ("dedup") do update
+         set "count" = "contribution"."count" + 1,
+             ${FILL_NPC_SET},
+             "updatedAt" = now()
+       returning "id"
+     )
+     insert into "contribution_sender" ("contributionId", "userId", "name")
+     select "id", $12::text, $10::text from "stored"
+      where $12::text is not null or $10::text is not null`,
     [
       input.source,
       input.key,
@@ -247,6 +254,28 @@ export async function createContribution(
       input.ip,
     ],
   );
+}
+
+/** Signed-in senders appear under their account's name. Never an email. */
+export async function contributionSenders(
+  id: number,
+): Promise<{ senders: { name: string; count: number }[]; anonymous: number } | null> {
+  const { rows: found } = await db().query<{ count: number }>(
+    `select "count" from "contribution" where "id" = $1`,
+    [id],
+  );
+  if (found.length === 0) return null;
+  const { rows } = await db().query<{ name: string; count: number }>(
+    `select coalesce(u."name", s."name", 'deleted account') as "name", count(*)::int as "count"
+       from "contribution_sender" s
+       left join "user" u on u."id" = s."userId"
+      where s."contributionId" = $1
+      group by s."userId", coalesce(u."name", s."name", 'deleted account')
+      order by count(*) desc, min(s."createdAt")`,
+    [id],
+  );
+  const named = rows.reduce((sum, row) => sum + row.count, 0);
+  return { senders: rows, anonymous: Math.max(0, found[0].count - named) };
 }
 
 export async function recordContributionHit(ip: string | null): Promise<void> {
@@ -271,7 +300,6 @@ const SORT_EXPRESSIONS: Record<SortColumn, string> = {
   filed: `"createdAt"`,
   source: `"source"`,
   count: `"count"`,
-  status: `"status"`,
 };
 
 /** Ties fall back to most sent, then newest, then id -- the default order, made total so a page cut is stable. */

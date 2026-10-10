@@ -6,6 +6,7 @@
     <Include file="Callbacks.lua"/>
     <Include file="SoundQueue.lua"/>
     <Include file="Sources.lua"/>
+    <Include file="Developer.lua"/>
     <Include file="OtherSounds.lua"/>
     <Include file="Strings.lua"/>
     <Include file="Locale\deDE.lua"/>
@@ -17,13 +18,16 @@
     <Include file="Locale\zhCN.lua"/>
     <Include file="Locale\zhTW.lua"/>
     <Include file="UI\Layout.lua"/>
+    <Include file="UI\DialogueUITheme.lua"/>
     <Include file="UI\Portrait.lua"/>
     <Include file="UI\StaticPortrait.lua"/>
     <Include file="UI\Actions.lua"/>
     <Include file="UI\PlayerFrame.lua"/>
     <Include file="UI\MinimalPlayer.lua"/>
+    <Include file="UI\DialogueUIPlayer.lua"/>
     <Include file="UI\MinimapButton.lua"/>
     <Include file="UI\Options.lua"/>
+    <Include file="UI\DialogueUIOptions.lua"/>
     <Include file="UI\Welcome.lua"/>
     <Include file="API.lua"/>
 

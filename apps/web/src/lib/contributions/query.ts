@@ -10,8 +10,9 @@
  */
 import type { ClientFamily } from "./client";
 import type { ContributionStatus } from "./contributions";
-import type { EnvelopeSource } from "./envelope";
+import { isEnvelopeSource, type EnvelopeSource } from "./envelope";
 import type { Provenance } from "../npc/npc";
+import type { Filter } from "../search";
 import type { QuestSummary } from "./triage";
 
 /**
@@ -51,7 +52,24 @@ export function isSpeakerSentinel(value: unknown): value is typeof NEEDS_DECISIO
 
 export type ClientFilter = ClientFamily | "all";
 
-export type SourceFilter = EnvelopeSource | "all";
+/**
+ * An envelope source, or gossip: the quests rows tied to no quest, which the site shows as a
+ * section of their own although the addon still files them as quests.
+ */
+export type SourceFilter = EnvelopeSource | "gossip" | "all";
+
+export function isSourceFilter(value: unknown): value is SourceFilter {
+  return isEnvelopeSource(value) || value === "gossip" || value === "all";
+}
+
+/** The section a row is listed under, as the Source column and dropdown name it. */
+export function sectionOf(row: { source: EnvelopeSource }, quest: QuestSummary | null): EnvelopeSource | "gossip" {
+  return quest === "gossip" ? "gossip" : row.source;
+}
+
+export function matchesSource(section: EnvelopeSource | "gossip", filter: SourceFilter): boolean {
+  return filter === "all" || section === filter;
+}
 
 /**
  * The quest panel a quests row was read off, as the addon's `event` field names it (SpokenQuests'
@@ -65,11 +83,10 @@ export function isQuestStage(value: unknown): value is QuestStage {
   return QUEST_STAGES.includes(value as QuestStage);
 }
 
-/** A quest stage, or "gossip" for the quests rows tied to no quest at all. */
-export type StageFilter = QuestStage | "gossip" | "all";
+export type StageFilter = QuestStage | "all";
 
 export function isStageFilter(value: unknown): value is StageFilter {
-  return isQuestStage(value) || value === "gossip" || value === "all";
+  return isQuestStage(value) || value === "all";
 }
 
 /**
@@ -79,8 +96,7 @@ export function isStageFilter(value: unknown): value is StageFilter {
  */
 export function matchesStage(quest: QuestSummary | null, filter: StageFilter): boolean {
   if (filter === "all") return true;
-  if (quest === null) return false;
-  if (quest === "gossip") return filter === "gossip";
+  if (quest === null || quest === "gossip") return false;
   return quest.stage === filter;
 }
 
@@ -90,7 +106,7 @@ export function matchesStage(quest: QuestSummary | null, filter: StageFilter): b
  * out per row after the query, and paging a list sorted on them would mean resolving every row
  * in the queue first.
  */
-export const SORT_COLUMNS = ["filed", "source", "count", "status"] as const;
+export const SORT_COLUMNS = ["filed", "source", "count"] as const;
 
 export type SortColumn = (typeof SORT_COLUMNS)[number];
 
@@ -120,7 +136,6 @@ const FIRST_DIRECTION: Record<SortColumn, SortDirection> = {
   filed: "desc",
   source: "asc",
   count: "desc",
-  status: "asc",
 };
 
 /** A header click: the column already sorted on flips, any other starts in its own direction. */
@@ -136,21 +151,27 @@ export function sortOf(column: unknown, direction: unknown): ContributionSort {
 }
 
 export type ContributionFilters = {
-  status: ContributionStatus | "all";
+  status: ContributionStatus;
   provenance: SpeakerFilter;
   client: ClientFilter;
   source: SourceFilter;
   stage: StageFilter;
   sort: ContributionSort;
+  /** Absent or blank searches nothing. */
+  q?: string;
+  /** Which field `q` is matched in; absent is "any". */
+  searchIn?: Filter;
 };
 
 export type FilterChange = {
-  status?: ContributionStatus | "all";
+  status?: ContributionStatus;
   provenance?: SpeakerFilter;
   client?: ClientFilter;
   source?: SourceFilter;
   stage?: StageFilter;
   sort?: ContributionSort;
+  q?: string;
+  searchIn?: Filter;
 };
 
 /**
@@ -158,20 +179,22 @@ export type FilterChange = {
  *
  * A key present in `next` always wins, even set to `undefined` -- FilterChip's own way of
  * saying "reset to any", which this maps back to "all". A key simply absent from `next` (the
- * dimensions that did not change) is the only case that falls back to `current`. `sort` is not
- * a filter and has no "all": unset, it goes back to DEFAULT_SORT.
+ * dimensions that did not change) is the only case that falls back to `current`. `sort` and
+ * `status` have no "all": unset, they go back to DEFAULT_SORT and the new rows' tab.
  */
 export function nextContributionFilters(
   current: ContributionFilters,
   next: FilterChange,
 ): ContributionFilters {
   return {
-    status: "status" in next ? (next.status ?? "all") : current.status,
+    status: "status" in next ? (next.status ?? "new") : current.status,
     provenance: "provenance" in next ? (next.provenance ?? "all") : current.provenance,
     client: "client" in next ? (next.client ?? "all") : current.client,
     source: "source" in next ? (next.source ?? "all") : current.source,
     stage: "stage" in next ? (next.stage ?? "all") : current.stage,
     sort: "sort" in next ? (next.sort ?? DEFAULT_SORT) : current.sort,
+    q: "q" in next ? next.q : current.q,
+    searchIn: "searchIn" in next ? next.searchIn : current.searchIn,
   };
 }
 
@@ -200,6 +223,8 @@ export function contributionsHref(current: ContributionFilters, next: FilterChan
     source: filters.source,
     stage: filters.stage,
   });
+  if (filters.q?.trim()) params.set("q", filters.q.trim());
+  if (filters.searchIn && filters.searchIn !== "any") params.set("filter", filters.searchIn);
   if (filters.sort.column !== DEFAULT_SORT.column || filters.sort.direction !== DEFAULT_SORT.direction) {
     params.set("sort", filters.sort.column);
     params.set("dir", filters.sort.direction);
@@ -222,4 +247,40 @@ export function matchesSpeaker(provenance: Provenance | undefined, filter: Speak
   if (provenance === undefined) return false;
   if (filter === NEEDS_DECISION) return provenance === "client" || provenance === "none";
   return provenance === filter;
+}
+
+export function isSearchIn(value: unknown): value is Filter {
+  return value === "any" || value === "npc" || value === "quest" || value === "text";
+}
+
+/**
+ * A bare number is an NPC or quest id, never a substring, so "240" finds that NPC rather than
+ * every line mentioning 240 gold. Words match the NPC's name, the quest's title or the text.
+ */
+export function matchesSearch(
+  row: { text: string | null; npc: { npcId: number; npcName: string | null } | undefined; quest: QuestSummary | null },
+  q: string,
+  filter: Filter = "any",
+): boolean {
+  const query = q.trim();
+  if (!query) return true;
+  const needle = query.toLowerCase();
+  const textHit = (row.text ?? "").toLowerCase().includes(needle);
+  if (filter === "text") return textHit;
+
+  const quest = row.quest === null || row.quest === "gossip" ? null : row.quest;
+  const asNumber = /^\d+$/.test(query) ? Number(query) : null;
+  if (asNumber !== null) {
+    const npcHit = row.npc?.npcId === asNumber;
+    const questHit = quest?.questId === asNumber;
+    if (filter === "npc") return npcHit;
+    if (filter === "quest") return questHit;
+    return npcHit || questHit;
+  }
+
+  const npcHit = (row.npc?.npcName ?? "").toLowerCase().includes(needle);
+  const questHit = (quest?.title ?? "").toLowerCase().includes(needle);
+  if (filter === "npc") return npcHit;
+  if (filter === "quest") return questHit;
+  return npcHit || questHit || textHit;
 }

@@ -44,14 +44,23 @@ local defaults = {
 	-- so a player with the pack they already have hears what they heard before.
 	voiceLanguage = "auto",
 	fallbackLanguage = "enUS",
+	-- Azeroth's Compendium (UI/Readables.lua): every readable openable, found or not; and the
+	-- list leaving out those not found.
+	unlockUnfound = false,
+	compendiumFoundOnly = false,
+	compendiumVoicedOnly = false,
+	-- On, its tree is zones then types; off, the types alone.
+	compendiumByZone = true,
 }
 
 --- Every setting back to its default. What this character has heard is not a setting, and
 --- stays: Forget is the button for that.
 function SpokenBooks:ResetOptions()
 	if not SpokenBooksSettings then return end
+	-- Unlock Unfound Books is on Spoken's page where Spoken is installed, and not this one's.
+	local elsewhere = Spoken and Spoken.ShowsCompendium and { unlockUnfound = true } or {}
 	for key, value in pairs(defaults) do
-		SpokenBooksSettings[key] = value
+		if not elsewhere[key] then SpokenBooksSettings[key] = value end
 	end
 end
 
@@ -68,8 +77,25 @@ function SpokenBooks:InitDB()
 	-- a particular character did. An alt walking into the same library hears it fresh.
 	SpokenBooksCharacter = SpokenBooksCharacter or {}
 	SpokenBooksCharacter.read = SpokenBooksCharacter.read or {}
+	-- Opened, heard or not: what Azeroth's Compendium counts as found. Kept apart from `read`,
+	-- which Read Only Once goes by, so opening a book with autoplay off does not stop it being
+	-- read the next time, and Play in the Compendium does not find one. A character from before
+	-- `found` was kept had only `read` to say what it opened, so that is carried over once.
+	if not SpokenBooksCharacter.found then
+		SpokenBooksCharacter.found = {}
+		for book in pairs(SpokenBooksCharacter.read) do SpokenBooksCharacter.found[book] = true end
+	end
 
 	return SpokenBooksSettings
+end
+
+--- A setting by name, for the files carried from Spoken Zones (UI/TextView.lua asks the words'
+--- size): Zones' own where it is installed, so the two tabs of the Compendium read alike.
+function SpokenBooks:Get(key)
+	if key == "fontSize" then
+		return (SpokenZonesSettings and SpokenZonesSettings.fontSize) or 12
+	end
+	return SpokenBooksSettings and SpokenBooksSettings[key]
 end
 
 --- Whether this character has already been read `book` -- the book key from PlaceOf, not a
@@ -92,6 +118,24 @@ function SpokenBooks:MarkBookRead(book)
 		return
 	end
 	SpokenBooksCharacter.read[book] = true
+end
+
+--- Remember that this character has opened `book`, whether or not it was read aloud.
+function SpokenBooks:MarkBookFound(book)
+	if not book or not SpokenBooksCharacter then
+		return
+	end
+	SpokenBooksCharacter.found = SpokenBooksCharacter.found or {}
+	SpokenBooksCharacter.found[book] = true
+end
+
+--- Whether this character has found `book`: opened it in the world. Hearing it from the
+--- Compendium does not count.
+function SpokenBooks:IsBookFound(book)
+	if not book or not SpokenBooksCharacter then
+		return false
+	end
+	return (SpokenBooksCharacter.found and SpokenBooksCharacter.found[book]) == true
 end
 
 --- Forget everything this character has heard, and say how much that was. What `/spb forget`
@@ -164,8 +208,6 @@ function SpokenBooks:SetupSource()
 		-- Durations come from a generated lookup and are exact, so the gap only has to
 		-- separate two pages of prose rather than absorb a bad measurement.
 		interClipGap = 0.35,
-		-- A book's pages read on as one text: no pause between lines between them.
-		continuous = true,
 		-- What Spoken's settings show on this part's card: which voice packs are installed.
 		packs = function()
 			local names = {}
@@ -186,10 +228,13 @@ function SpokenBooks:SetupSource()
 		Spoken:RegisterBullet("book", [[Interface\AddOns\Spoken\Textures\Book]], 14)
 	end
 
-	-- Switched off or on in Spoken's settings: the Play button on the page follows.
+	-- Switched off or on in Spoken's settings: the Play button on the page follows, and so does the
+	-- Compendium's Books tab.
 	if Spoken.RegisterCallback then
 		Spoken:RegisterCallback("PART_SWITCHED", function(key)
-			if key == "books" then SpokenBooks:RefreshPlayButton() end
+			if key ~= "books" then return end
+			SpokenBooks:RefreshPlayButton()
+			if SpokenCompendium and SpokenCompendium.Relayout then SpokenCompendium:Relayout() end
 		end)
 	end
 

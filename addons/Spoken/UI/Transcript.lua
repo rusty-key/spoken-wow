@@ -19,7 +19,9 @@ end
 local function Expanded()
     return Addon.db and Addon:Layout().CaptionsExpanded or false
 end
+local Label
 local function LineCount()
+    if Transcript.style and Transcript.style.lines then return Transcript.style.lines end
     if Expanded() then return EXPANDED_LINES end
     return Config().Lines == 1 and 1 or 2
 end
@@ -38,6 +40,12 @@ local function PageOf(line)
 end
 -- The glide's time constant, in seconds: it is 95% of the way there in three of these.
 local GLIDE = 0.09
+local function FontSize()
+    return Transcript.style and Transcript.style.size or Config().FontSize or 16
+end
+local function LineGap()
+    return Transcript.style and Transcript.style.lineGap or GAP
+end
 local function CharacterCount(text)
     local _, count = text:gsub(UTF8_CHAR, "")
     return math.max(1, count)
@@ -127,20 +135,52 @@ function Transcript:GetProgress()
     return Clamp(self:GetElapsed() / duration, 0, 1)
 end
 
-function Transcript:Tokenize()
-    self.words, self.totalWeight = {}, 0
-    for space, run in self.text:gmatch("(%s*)(%S+)") do
+-- first/last are the word's bytes in text: SplitRun keeps every character in order, so a
+-- caller can find the word in its own copy of the text.
+local function Split(text)
+    local words, total = {}, 0
+    for at, space, run in text:gmatch("()(%s*)(%S+)") do
+        local first = at + #space
         for i, word in ipairs(SplitRun(run)) do
             local count = #word.chars
             -- Longer words get more time, with a little extra for punctuation.
             -- Normalize these weights to the known duration of this recording.
             local weight = 0.6 + count * 0.12 + PausesAfter(word.chars)
-            self.words[#self.words + 1] = { text = table.concat(word.chars), count = count,
+            local wordText = table.concat(word.chars)
+            words[#words + 1] = { text = wordText, count = count,
                 breakBefore = i == 1 and space:find("\n") ~= nil, joined = i > 1,
-                start = self.totalWeight, finish = self.totalWeight + weight }
-            self.totalWeight = self.totalWeight + weight
+                start = total, finish = total + weight,
+                first = first, last = first + #wordText - 1 }
+            first = first + #wordText
+            total = total + weight
         end
     end
+    return words, total
+end
+
+function Transcript:Split(text)
+    return Split(text)
+end
+
+function Transcript:Tokenize()
+    self.words, self.totalWeight = Split(self.text)
+end
+
+function Transcript:IsSpeaking(progress)
+    return self.hasStarted and self:AudioElapsed() >= 0 and progress ~= nil and progress < 1
+end
+
+--- The word being read at progress, as ActiveSegment finds it but without the layout, so it
+--- answers while the captions are hidden and not laid out.
+function Transcript:WordAt(progress)
+    local words = self.words
+    if not progress or not words or #words == 0 then return nil end
+    local target, low, high = progress * self.totalWeight, 1, #words
+    while low < high do
+        local mid = math.floor((low + high) / 2)
+        if words[mid].finish <= target then low = mid + 1 else high = mid end
+    end
+    return low
 end
 
 function Transcript:SetClip(clip)
@@ -196,7 +236,9 @@ end
 
 function Transcript:Reflow()
     if not self.measure or not self.labels then return end
-    local available = math.max(1, self.frame:GetWidth() - BUTTON_SIZE - GAP)
+    local button = self.expand:IsShown() and BUTTON_SIZE + GAP or 0
+    local available = math.max(1, self.frame:GetWidth() - button)
+    local paragraphs = self.style and self.style.paragraphs
     local width = math.max(1, available - 2) -- Leave room for glyph rounding.
     self.lines, self.segments = {}, {}
     local line, lineText
@@ -209,8 +251,11 @@ function Transcript:Reflow()
         local chars = 0
         for pi, text in ipairs(pieces) do
             local prefix = line and #line > 0 and not word.joined and " " or ""
-            if not line or (pi == 1 and word.breakBefore and #line > 0)
-                or pi > 1 or self:TextWidth(lineText .. prefix .. text) > width then
+            local paragraph = pi == 1 and word.breakBefore and line and #line > 0
+            if not line or paragraph or pi > 1 or self:TextWidth(lineText .. prefix .. text) > width then
+                -- An empty line, about DialogueUI's paragraph gap, so the text still moves a
+                -- line at a time.
+                if paragraph and paragraphs then NewLine() end
                 NewLine()
                 prefix = ""
             end
@@ -313,16 +358,19 @@ function Transcript:Render()
     if mode == "page" or not self:CanGlide() or math.abs(self.topTarget - (self.top or 1)) > n then
         self.top = self.topTarget
     end
-    local inSpeech = self.hasStarted and self:AudioElapsed() >= 0 and progress and progress < 1
+    local inSpeech = self:IsSpeaking(progress)
     local active = inSpeech and segment and segment.index or nil
     self.activeWord = active and segment.word or nil
     local highlighted = cfg.HighlightWord and self.activeWord or nil
     local neighbor
     if highlighted then
-        local firstLine = self.topTarget
-        local first = self.lines[firstLine]
-        local last = self.lines[math.min(#self.lines, firstLine + n - 1)]
-        local firstWord, lastWord = first[1].word, last[#last].word
+        -- The words at the page's two ends, past any empty line between paragraphs.
+        local firstLine, lastLine = self.topTarget, math.min(#self.lines, self.topTarget + n - 1)
+        while firstLine < lastLine and #self.lines[firstLine] == 0 do firstLine = firstLine + 1 end
+        while lastLine > firstLine and #self.lines[lastLine] == 0 do lastLine = lastLine - 1 end
+        local first, last = self.lines[firstLine], self.lines[lastLine]
+        local firstWord = first and first[1] and first[1].word or 0
+        local lastWord = last and last[#last] and last[#last].word or 0
         if highlighted < firstWord or highlighted > lastWord then
             highlighted = nil -- Manually reading a different page.
         elseif highlighted < lastWord then
@@ -345,6 +393,7 @@ function Transcript:Render()
     local key = format("%d:%d:%d:%d:%d", first, highlighted or 0, neighbor or 0, n, typedTo or -1)
     if self.renderedKey ~= key then
         self.renderedKey = key
+        local color = self.style and self.style.highlight or HIGHLIGHT
         -- One row past the page, for the line sliding in under it mid-glide.
         for row, label in ipairs(self.labels) do
             local line = row <= n + 1 and self.lines[first + row - 1]
@@ -352,7 +401,7 @@ function Transcript:Render()
             for _, piece in ipairs(line or {}) do
                 if typedTo and piece.word > typedTo then break end
                 parts[#parts + 1] = piece.prefix .. ((piece.word == highlighted or piece.word == neighbor)
-                    and HIGHLIGHT .. piece.text .. "|r" or piece.text)
+                    and color .. piece.text .. "|r" or piece.text)
             end
             label:SetText(table.concat(parts))
         end
@@ -365,7 +414,7 @@ function Transcript:Place()
     local top = self.top or 1
     local first = math.floor(top)
     local fraction = top - first
-    local step = (Config().FontSize or 16) + GAP
+    local step = FontSize() + LineGap()
     local n = LineCount()
     local placed = format("%.4f:%d:%d:%d", top, step, n, #(self.lines or {}))
     if self.placedKey == placed then return end
@@ -485,23 +534,54 @@ function Transcript:SetEnabled(enabled)
     self:Update()
 end
 
+local function SameStyle(a, b)
+    if a == b then return true end
+    if not a or not b then return false end
+    if a.font ~= b.font or a.shadow ~= b.shadow or a.highlight ~= b.highlight or a.lines ~= b.lines
+        or a.size ~= b.size or a.lineGap ~= b.lineGap or a.paragraphs ~= b.paragraphs then return false end
+    local ca, cb = a.color or {}, b.color or {}
+    return ca[1] == cb[1] and ca[2] == cb[2] and ca[3] == cb[3]
+end
+
+--- How a skin wants the captions drawn, or nil for the player's own look:
+---   { font = face?, size = n?, lineGap = n?, paragraphs = true?, color = { r, g, b }?,
+---     shadow = false?, highlight = "|cff..."?, lines = n? }
+--- `paragraphs` puts an empty line between paragraphs. `lines` fixes the page size and hides
+--- the expand button, so the account-wide expanded flag is not changed under the skin's panel.
+function Transcript:SetStyle(style)
+    -- Compared by content: a skin hands over a fresh table on every refresh.
+    if SameStyle(self.style, style) then return end
+    self.style = style
+    self.renderedKey = nil
+    self:RefreshConfig()
+end
+
 function Transcript:RefreshConfig()
     if not self.frame then return end
-    local size = Config().FontSize or 16
+    local size = FontSize()
+    local style = self.style or {}
+    local face = style.font or GameFontNormal:GetFont()
+    local color = style.color or { .88, .84, .76 }
     local glyph = [[Interface\Buttons\UI-]] .. (Expanded() and "Minus" or "Plus")
     self.expand:SetNormalTexture(glyph .. "Button-Up")
     self.expand:SetPushedTexture(glyph .. "Button-Down")
-    self.measure:SetFont(GameFontNormal:GetFont(), size, "")
+    self.expand:SetShown(style.lines == nil)
+    -- A skin's page may be taller than the expanded eight lines; one label more than the
+    -- page, for the line sliding in mid-glide.
+    for row = #self.labels + 1, LineCount() + 1 do self.labels[row] = Label(self.frame) end
+    self.measure:SetFont(face, size, "")
     for row, label in ipairs(self.labels) do
-        label:SetFont(GameFontNormal:GetFont(), size, "")
-        label:SetHeight(size + GAP)
+        label:SetFont(face, size, "")
+        label:SetTextColor(color[1], color[2], color[3])
+        label:SetShadowColor(0, 0, 0, style.shadow == false and 0 or 1)
+        label:SetHeight(size + LineGap())
     end
     if PlayerFrame.frame then PlayerFrame:Update() end
     self:Reflow()
     self:Update()
 end
 
-local function Label(parent)
+function Label(parent)
     local label = parent:CreateFontString(nil, "OVERLAY")
     label:SetFont(GameFontNormal:GetFont(), 16, "")
     label:SetTextColor(.88, .84, .76)
@@ -521,7 +601,12 @@ function Transcript:Initialize()
     frame:Hide()
     frame:EnableMouseWheel(true)
     frame:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    frame:SetScript("OnMouseWheel", function(_, delta) self:TurnPage(delta) end)
+    -- The frame it is docked in may take the wheel first (the DialogueUI panel, with Ctrl).
+    frame:SetScript("OnMouseWheel", function(_, delta)
+        local owner = frame:GetParent()
+        if owner and owner.spokenWheel and owner.spokenWheel(delta) then return end
+        self:TurnPage(delta)
+    end)
     frame:SetScript("OnClick", function(_, button)
         if button == "RightButton" then
             if MinimalPlayer:IsEnabled() then MinimalPlayer:ToggleMenu()

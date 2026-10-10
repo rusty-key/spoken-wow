@@ -96,6 +96,27 @@ local PORTRAIT_ATLAS = [[Interface\AddOns\Spoken\Textures\PortraitFrameAtlas]]
 local PORTRAIT_ATLAS_SIZE = 512
 local BUG = [[Interface\HelpFrame\HelpIcon-Bug]]
 
+--- A Report button's right-click: the debug log's menu, where the Spoken_Developer module is
+--- installed (Developer.lua). Hooked on mouse-up rather than set as the click, so whatever the
+--- caller gives the button as OnClick keeps the left button, and a caller that sets OnClick after
+--- this does not undo it. `isReport(button)`, optional, says whether the button reports right
+--- now: the windows' action buttons are reused for other actions.
+function Actions.OfferLogMenu(button, isReport)
+    if button.offersLogMenu then return end
+    button.offersLogMenu = true
+    button:HookScript("OnMouseUp", function(self, mouse)
+        if mouse ~= "RightButton" or (isReport and not isReport(self)) then return end
+        if GameTooltip:GetOwner() == self then GameTooltip_Hide() end
+        Developer:ShowMenu(self)
+    end)
+end
+
+--- The line a Report button's tooltip ends with, where the menu exists.
+function Actions.AddLogMenuHint(tooltip)
+    local hint = Developer:MenuHint()
+    if hint then tooltip:AddLine(hint, 0.6, 0.6, 0.6, true) end
+end
+
 --- The subtitle's round button, the one every window shows: 24 across, the player's ring,
 --- `glyphSize` square glyph centred in it (or reaching the rim with none). Made without a parent
 --- and given one after, which a button on the open quest log needs (taint), and which costs the
@@ -201,6 +222,7 @@ function Actions.NewRound(parent, kind, name, icon)
         return button
     end
     button.glyph:SetTexture(BUG)
+    Actions.OfferLogMenu(button)
     return button
 end
 
@@ -236,10 +258,12 @@ local function NewButton(frame, action)
             if self.action and self.action.tooltip then
                 GameTooltip:SetOwner(self, "ANCHOR_LEFT")
                 self.action.tooltip(GameTooltip)
+                if self.action.id == "report" then Actions.AddLogMenuHint(GameTooltip) end
                 GameTooltip:Show()
             end
         end)
         button:HookScript("OnLeave", function() GameTooltip_Hide() end)
+        Actions.OfferLogMenu(button, function(self) return self.action and self.action.id == "report" end)
     else
         button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
         button:SetScript("OnClick", function(self)

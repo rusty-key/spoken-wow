@@ -7,7 +7,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 const { closeDb, db, query } = await import("@/lib/db");
-const { questTextHistory, restoreQuestText, saveQuestText, QuestTextConflict } = await import("./text");
+const { questTextHistory, restoreQuestText, saveQuestText, QuestTextConflict, QuestTextMissing } = await import("./text");
 const { saveName, nameHistory } = await import("@/lib/names/store");
 const { clearIgnore, readIgnores, writeIgnore } = await import("./ignores");
 
@@ -129,6 +129,36 @@ describe("a later translation", () => {
     await expect(
       saveQuestText({ lineId: english.lineId, variant: english.variant, lang: "enUS", text: "x", editedBy: userId }),
     ).rejects.toThrow(/line_override/);
+  });
+});
+
+describe("a line English does not have", () => {
+  const NATIVE = "q:0:native-test";
+
+  it("is refused while the language has no line either", async () => {
+    await expect(
+      saveQuestText({ lineId: NATIVE, variant: 0, lang: LANG, text: "Salve.", editedBy: userId }),
+    ).rejects.toBeInstanceOf(QuestTextMissing);
+  });
+
+  it("versions from the language's own row", async () => {
+    // No English row for the id at all.
+    await db().query(
+      `insert into "quest_line"
+         ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
+          "fileName", "text", "originalText", "localeText", "generatable")
+       values ($1, 0, $2, 1, true, 'contributed', 'accept', 0, '0-accept', 'Salve.', 'Salve.', 'Salve.', true)`,
+      [NATIVE, LANG],
+    );
+    const saved = await saveQuestText({ lineId: NATIVE, variant: 0, lang: LANG, text: "Salve, $N.", editedBy: userId });
+    expect(saved).toMatchObject({ version: 2, isCurrent: true, origin: "edited" });
+
+    const rows = await query<{ fileName: string; source: string; localeText: string; generatable: boolean }>(
+      `select "fileName", "source", "localeText", "generatable" from "quest_line"
+        where "lineId" = $1 and "lang" = $2 and "isCurrent"`,
+      [NATIVE, LANG],
+    );
+    expect(rows[0]).toEqual({ fileName: "0-accept", source: "accept", localeText: "Salve.", generatable: true });
   });
 });
 

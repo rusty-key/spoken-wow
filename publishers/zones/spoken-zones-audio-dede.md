@@ -3,7 +3,7 @@ curseforge: 1713131
 release: zones-audio-deDE
 section: zones
 lang: deDE
-version: 2.0.0
+version: 2.1.0
 slug: spoken-zones-audio-dede
 name: Spoken Zones Audio: German
 summary: The German narration for Spoken Player's Zones module: every zone and subzone read aloud in German.

@@ -144,6 +144,8 @@ type Props = {
   /** Open the report dialog. Everyone gets this, signed in or not. */
   onReport: (line: ResultLine) => void;
   onRestored: (file: string, version: number) => void;
+  /** False in the gossip explorer, where no line has a quest. */
+  showQuest: boolean;
   /** Narrow the search to this line's NPC, or to its quest. */
   onNarrowToNpc: (line: ResultLine) => void;
   onNarrowToQuest: (line: ResultLine) => void;
@@ -195,6 +197,7 @@ export default function LineRow({
   onReport,
   onRestored,
   onNarrowToNpc,
+  showQuest,
   onNarrowToQuest,
   onClearDirty,
 }: Props) {
@@ -245,40 +248,42 @@ export default function LineRow({
         </span>
       </td>
 
-      <td className="px-2 py-2">
-        {line.questId === null ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <>
-            <button
-              className="hover:text-foreground block max-w-full truncate text-left underline-offset-2 hover:underline"
-              title={`Show only quest ${line.questId}`}
-              onClick={() => onNarrowToQuest(line)}
-            >
-              <Untranslated missing={line.missing?.questTitle}>
-                {line.questTitle ?? `quest ${line.questId}`}
-              </Untranslated>
-            </button>
-            {onRename && (
-              <RenameButton
-                label={`Name quest ${line.questId}`}
-                onClick={() => onRename(line, "quest")}
-              />
-            )}
-            {/* "after quest" on a follow-up line: the title alone would read as though the
-                line were part of the quest's dialog, when it is what the NPC says once that
-                dialog has closed. */}
-            <span className="text-muted-foreground block truncate text-xs">
-              {line.source === "followup" ? (
-                <span title={FOLLOWUP_LABEL}>after quest</span>
-              ) : (
-                "quest"
-              )}{" "}
-              {line.questId} <WowheadLink href={wowheadQuestUrl(line.questId)} />
-            </span>
-          </>
-        )}
-      </td>
+      {showQuest && (
+        <td className="px-2 py-2">
+          {line.questId === null ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
+            <>
+              <button
+                className="hover:text-foreground block max-w-full truncate text-left underline-offset-2 hover:underline"
+                title={`Show only quest ${line.questId}`}
+                onClick={() => onNarrowToQuest(line)}
+              >
+                <Untranslated missing={line.missing?.questTitle}>
+                  {line.questTitle ?? `quest ${line.questId}`}
+                </Untranslated>
+              </button>
+              {onRename && (
+                <RenameButton
+                  label={`Name quest ${line.questId}`}
+                  onClick={() => onRename(line, "quest")}
+                />
+              )}
+              {/* "after quest" on a follow-up line: the title alone would read as though the
+                  line were part of the quest's dialog, when it is what the NPC says once that
+                  dialog has closed. */}
+              <span className="text-muted-foreground block truncate text-xs">
+                {line.source === "followup" ? (
+                  <span title={FOLLOWUP_LABEL}>after quest</span>
+                ) : (
+                  "quest"
+                )}{" "}
+                {line.questId} <WowheadLink href={wowheadQuestUrl(line.questId)} />
+              </span>
+            </>
+          )}
+        </td>
+      )}
 
       {/* The voice slot is spelled race-gender-flavor, so this column is all three at once.
           The flavor is what distinguishes the two or three voices a race-gender has, so it

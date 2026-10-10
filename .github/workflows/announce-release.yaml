@@ -1,6 +1,8 @@
 name: Announce release
 
-# Posts a published release to the Discord #announcements channel.
+# Posts a published release to the Discord #announcements channel, and for a language's sound
+# pack, replaces the pinned "Audio packs" post in that language's channel
+# (scripts/lib/language-post.mjs).
 #
 # Fires on `published`, not `created`: release-addons.yaml makes drafts with GITHUB_TOKEN,
 # which could not trigger this workflow anyway, so an addon is announced the moment a human
@@ -64,3 +66,38 @@ jobs:
                          + (if $d == "" then {} else { description: $d } end)],
                 allowed_mentions: { parse: [] } }
           ' announcement.json | curl -fsS -H 'Content-Type: application/json' -d @- "$WEBHOOK"
+
+  language-channel:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    # A language's three packs are usually released minutes apart. Run side by side, each
+    # would find no post yet and pin its own. GitHub keeps only one pending run per group, so
+    # the middle of three shows as cancelled; nothing is lost, as the last run reads every release.
+    concurrency:
+      group: language-channel
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            publishers
+            scripts/lib
+            pipelines/lib
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Replace the language channel's pinned post
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          # Optional until DISCORD_BOT_TOKEN is set: #announcements does not depend on it.
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "::warning::DISCORD_BOT_TOKEN is not set; no language channel post"
+            exit 0
+          fi
+          node scripts/lib/language-post.mjs "$TAG"

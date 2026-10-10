@@ -26,6 +26,7 @@ import { BASE_LANG } from "@/lib/lang";
 
 import { sameLine } from "./compare";
 import type { ContributionStatus, Submission } from "./contributions";
+import { answersQuestMomentSql } from "./naming";
 
 export type LineState =
   | { kind: "missing" }
@@ -62,7 +63,7 @@ async function momentTexts(pairs: { locale: string; moment: string }[]): Promise
        from unnest($1::text[], $2::text[]) as m ("locale", "moment")
        join "quest_line" l
          on l."lang" = m."locale" and l."isCurrent"
-        and (l."lineId" = m."moment" or l."lineId" like m."moment" || ':%')
+        and ${answersQuestMomentSql(`l."lineId"`, `m."moment"`)}
       order by l."lineId", l."variant"`,
     [pairs.map((p) => p.locale), pairs.map((p) => p.moment), BASE_LANG],
   );

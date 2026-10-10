@@ -35,12 +35,14 @@ local defaults = {
 	loreWindowWidth = 880,
 	loreWindowHeight = 600,
 	fontSize = 12,
-	showHoverPreview = true,
 	showPictures = true,
+	-- Off, so Azeroth's Compendium opens only the places this character has found (Discovery.lua).
+	showUndiscovered = false,
+	-- Azeroth's Compendium's Discovered Only, under its list: off, so every place is listed.
+	loreDiscoveredOnly = false,
+	loreVoicedOnly = false,
 	showMinimapButton = true,
 	voiceEnabled = true,
-	-- Dialog so narration rides the player's dialog volume slider rather than
-	-- competing with it. See Audio.lua for the channels PlaySoundFile accepts.
 	autoplay = true,
 	autoplaySubzones = true,
 	-- Off, because it replaces the client's own record of what a character has
@@ -132,8 +134,10 @@ end
 --- narrated are not settings in that sense, and stay.
 function SpokenZones:ResetOptions()
 	if SpokenZonesSettings == nil then return end
+	-- Unlock Undiscovered Zones is on Spoken's page where Spoken is installed, and not this one's.
+	local elsewhere = Spoken and Spoken.ShowsCompendium and { showUndiscovered = true } or {}
 	for key, value in pairs(defaults) do
-		SpokenZonesSettings[key] = value
+		if not elsewhere[key] then SpokenZonesSettings[key] = value end
 	end
 	-- Applied as the checkboxes apply them, not only written: a hidden minimap button comes
 	-- back, and the play buttons follow the voice being on again.
@@ -364,38 +368,51 @@ function SpokenZones:GetAreaNameAt(mapID, x, y)
 	return nil
 end
 
--- What the cursor is over, at a normalised canvas position on the map `mapID`.
--- Shared by the click handler and the hover preview so both agree.
---
--- Returns kind ("zone"|"subzone"), display name, lore entry, and the resolved
--- uiMapID for the "zone" case. Returns nil when nothing is resolvable.
-function SpokenZones:ResolveAt(mapID, x, y)
+--- The city inside the zone `mapID` that the area `areaName` is, if it is one, and its story. Each
+--- city is a map of its own under its continent in the game's map tree (Stormwind City under the
+--- Eastern Kingdoms, not Elwynn Forest), so on its zone's map the game reports it only by its area
+--- name, and the zone no longer lists it as one of its own areas (SpokenZones.CityIn, the lore
+--- window's). Matched by the city map's name in the client's language, or its story's.
+function SpokenZones:CityAt(mapID, areaName)
+	if not (mapID and areaName and self.CityIn) then
+		return nil
+	end
+	local wanted = string.lower(areaName)
+	for city, zone in pairs(self.CityIn) do
+		if zone == mapID then
+			local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(city)
+			local entry = self:GetLore(city)
+			if (info and info.name and string.lower(info.name) == wanted)
+				or (entry and entry.name and string.lower(entry.name) == wanted) then
+				return city, entry
+			end
+		end
+	end
+	return nil
+end
+
+--- The area at a normalised canvas position on the zone map `mapID`: the name the game gives it,
+--- and the zone's story for that name and its key; or, for a city inside the zone, the city's own
+--- story and its map (name, entry, nil, cityMapID). The click (UI/SubzoneClick.lua) and the map
+--- highlight (UI/MapHighlight.lua) both ask this, so what lights up under the pointer is what a
+--- click there opens.
+function SpokenZones:AreaAt(mapID, x, y)
 	if not mapID or not x or not y then
 		return nil
 	end
-
-	-- A child *map* under the cursor: a zone on a continent map, or a dungeon
-	-- entrance on a zone map. Prefer this when we actually have lore for it.
-	local childInfo = C_Map.GetMapInfoAtPosition(mapID, x, y)
-	if childInfo and childInfo.mapID and childInfo.mapID ~= mapID then
-		local entry = self:GetLore(childInfo.mapID)
-		if entry then
-			return "zone", childInfo.name or entry.name, entry, childInfo.mapID
-		end
-	end
-
-	-- Otherwise fall back to the area (subzone) name, which has no uiMapID.
 	local areaName = self:GetAreaNameAt(mapID, x, y)
-	if areaName then
-		local entry = self:GetSubzoneLore(mapID, areaName)
-		if entry then
-			return "subzone", areaName, entry, nil
-		end
-		-- Name but no lore: still useful to the caller for debug reporting.
-		return "subzone", areaName, nil, nil
+	if not areaName then
+		return nil
 	end
-
-	return nil
+	local entry, key = self:GetSubzoneLore(mapID, areaName)
+	if entry then
+		return areaName, entry, key
+	end
+	local city, cityEntry = self:CityAt(mapID, areaName)
+	if city and cityEntry then
+		return areaName, cityEntry, nil, city
+	end
+	return areaName
 end
 
 function SpokenZones:SelectSubzone(mapID, areaName, entry)
@@ -464,8 +481,11 @@ local function SetupHooks()
 	if SpokenZones.SetupSubzoneClicks then
 		SpokenZones:SetupSubzoneClicks()
 	end
-	if SpokenZones.SetupHoverPreview then
-		SpokenZones:SetupHoverPreview()
+	if SpokenZones.SetupMapHighlight then
+		SpokenZones:SetupMapHighlight()
+	end
+	if SpokenZones.SetupDiscovery then
+		SpokenZones:SetupDiscovery()
 	end
 	if SpokenZones.SetupLoreWindow then
 		SpokenZones:SetupLoreWindow()
@@ -894,7 +914,7 @@ local function CmdHelp()
 	local L = SpokenZones.L
 	SpokenZones:Print(L.CMD_HEADING)
 	for _, key in ipairs({
-		"CMD_STATUS", "CMD_OPTIONS", "CMD_WINDOW", "CMD_PANEL", "CMD_HOVER",
+		"CMD_STATUS", "CMD_OPTIONS", "CMD_WINDOW", "CMD_PANEL",
 		"CMD_PLAY", "CMD_STOP", "CMD_VOICE", "CMD_AUTOPLAY", "CMD_AUDIO",
 		"CMD_LANG", "CMD_DISCOVER", "CMD_FORGET", "CMD_MINIMAP",
 		"CMD_DEBUG", "CMD_VERIFY", "CMD_DUMP",
@@ -933,13 +953,6 @@ SlashCmdList["SPOKENZONES"] = function(msg)
 			local enabled = SpokenZones:ToggleMinimapButton()
 			SpokenZones:Print("minimap button %s", enabled and "shown" or "hidden")
 		end
-	elseif cmd == "hover" then
-		local enabled = not SpokenZones:Get("showHoverPreview")
-		SpokenZones:Set("showHoverPreview", enabled)
-		if not enabled and SpokenZones.HideHoverPreview then
-			SpokenZones.HideHoverPreview()
-		end
-		SpokenZones:Print("hover preview %s", enabled and "enabled" or "disabled")
 	elseif cmd == "play" then
 		CmdPlay()
 	elseif cmd == "stop" then
@@ -982,6 +995,10 @@ SlashCmdList["SPOKENZONES"] = function(msg)
 		end
 		SpokenZones:Print('simulating discovery of "%s"', tostring(areaName))
 		SpokenZones:OnAreaDiscovered(areaName)
+	elseif cmd == "found" then
+		-- What Azeroth's Compendium counts as found for this character, and why: for finding a place
+		-- counted found that should not be.
+		if SpokenZones.PrintFound then SpokenZones:PrintFound() end
 	elseif cmd == "debug" then
 		local enabled = not SpokenZones:Get("debug")
 		SpokenZones:Set("debug", enabled)

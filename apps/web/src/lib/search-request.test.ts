@@ -25,6 +25,12 @@ describe("filtersFromParams", () => {
     expect((await filtersFromParams(new URLSearchParams("fb=closed"))).reports).toBeUndefined();
   });
 
+  it("reads which explorer is asking, and nothing else as one", async () => {
+    expect((await filtersFromParams(new URLSearchParams("kind=gossip"))).kind).toBe("gossip");
+    expect((await filtersFromParams(new URLSearchParams("kind=quests"))).kind).toBe("quests");
+    expect((await filtersFromParams(new URLSearchParams("kind=zones"))).kind).toBeUndefined();
+  });
+
   it("reads the follow-up source by its value, not by the label the dropdown shows", async () => {
     // SOURCE_LABELS spells it "follow-up" for people; the URL carries the corpus value, and a
     // hyphenated one would fall outside SOURCES and silently unfilter the search.

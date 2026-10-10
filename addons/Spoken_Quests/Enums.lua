@@ -34,16 +34,6 @@ Enums.GossipFrequency =
     Never = 4,
 }
 
----@enum SoundChannel
-Enums.SoundChannel =
-{
-    Master = 1,
-    SFX = 2,
-    Music = 3,
-    Ambience = 4,
-    Dialog = 5,
-}
-
 ---@enum GUID
 Enums.GUID =
 {

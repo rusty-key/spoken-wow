@@ -71,7 +71,7 @@ end
 
 -- What the client does when it draws the list.
 -- Only the minimal player draws a face from the giver's appearance, so only it is primed for.
-SpokenEnv.Addon.db.profile.Frame.MinimalPlayer = true
+SpokenEnv.Addon.db.profile.Frame.Style = "minimal"
 local setCreatures = stub.SetCreatureCount()
 QuestLogQuests_Update()
 -- Asked while the list is read, so the portrait has the giver's appearance by the click.

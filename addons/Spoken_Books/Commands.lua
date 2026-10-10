@@ -125,6 +125,12 @@ SlashCmdList["SPOKENBOOKS"] = function(msg)
 		else
 			Print("no settings panel on this client -- type /spb for the commands")
 		end
+	elseif cmd == "compendium" or cmd == "readables" then
+		if SpokenBooks.ShowReadables then
+			SpokenBooks:ShowReadables()
+		else
+			Print("no Compendium on this client")
+		end
 	elseif cmd == "read" or cmd == "play" then
 		SpokenBooks:ReadOrExplain()
 	elseif cmd == "stop" then
@@ -135,6 +141,6 @@ SlashCmdList["SPOKENBOOKS"] = function(msg)
 	elseif cmd == "debug" then
 		Toggle("debug", "explaining in chat why a page was or was not read")
 	else
-		Print("/spb read | stop | autoplay | whole | once | gather | forget | settings | status | debug")
+		Print("/spb read | stop | autoplay | whole | once | gather | forget | compendium | settings | status | debug")
 	end
 end

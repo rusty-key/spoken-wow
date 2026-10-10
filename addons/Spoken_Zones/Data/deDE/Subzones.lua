@@ -88,12 +88,6 @@ local subzones = {
 			full = "Die Kolkarklippe ist eine zerklüftete Schlucht im Süden Durotars, benannt nach den Kolkarzentauren, die sie halten.\n\nVon hier aus versammelte Kriegsherr Kolkanis seinesgleichen für einen einzigen, ehrgeizigen Plan: das Herz des orcischen Durotar zu treffen, vom Tal der Prüfungen und Sen'jin bis zum Klingenhügel und selbst den Toren von Orgrimmar.",
 			source = "https://warcraft.wiki.gg/wiki/Kolkar_Crag",
 		},
-		["orgrimmar"] = {
-			name = "Orgrimmar",
-			short = "Orgrimmar erhob sich in den Jahren nach der Schlacht am Berg Hyjal, als Kriegshäuptling Thrall sein Volk an eine öde Küste Kalimdors führte.",
-			full = "Orgrimmar erhob sich in den Jahren nach der Schlacht am Berg Hyjal, als Kriegshäuptling Thrall sein Volk an eine öde Küste Kalimdors führte. Er nannte das Land nach seinem Vater Durotar, und die Stadt, die er dort errichtete, nannte er Orgrimmar, nach Orgrim Schicksalshammer, dem Freund und Mentor, der ihn geformt hatte. Sie wurde schnell, aber nicht nachlässig erbaut: dicke Mauern, gewaltige Tore, hohe Türme, und die Berge in ihrem Rücken wurden ausgehöhlt, um Teil der Festung selbst zu werden, sodass das Land über die Stadt wachte.\n\nDie Horde, die sie erbaute, war nicht die Horde, die einst brennend über die Welt hinweggefegt war. Nachdem der dämonische Fluch gebrochen war, wandte sich Thralls Volk von der Eroberung dem Überleben zu, und Orgrimmar wurde ebenso sehr von anderen wie von Orcs erbaut – Goblins, Tauren und Darkspeartrolle arbeiteten an ihrer Seite, und der Mok'Nathal Rexxar legte bei dem Werk mit Hand an. Zentauren, Harpyien, Donnerechsen, Kobolde und Stacheleber stellten die junge Stadt in ihren ersten Jahren auf die Probe, doch sie hielt stand und wurde nicht nur den Orcs zur Heimat, sondern auch Trollen, Tauren und schließlich den Verlassenen, die neu in der Horde willkommen geheißen wurden.\n\nSelbst der Wind ist hier kein Freund: Die Klingenwinde fegen mit solcher Wucht durch die Täler, dass sie die Dächer von Gebäuden reißen, die ohne Sorgfalt errichtet wurden.",
-			source = "https://warcraft.wiki.gg/wiki/Orgrimmar",
-		},
 		["razor hill"] = {
 			name = "Klingenhügel",
 			short = "Der Klingenhügel liegt dort, wo sich die Straßen Durotars treffen. Nach Süden führt der Weg nach Sen'jin und zum Tal der Prüfungen; im Norden liegt Orgrimmar; im Westen überquert die Straße den Fluss in Richtung Brachland und weiter nach Crossroads.",
@@ -258,12 +252,6 @@ local subzones = {
 			short = "Der Stonebullsee umschließt Bloodhoof auf drei Seiten, ein langes Hufeisen aus kühlem Wasser. Sein Wasser wimmelt von Fischen, und viele stille Stunden lang werden Angelschnüre hineingeworfen.",
 			full = "Der Stonebullsee umschließt Bloodhoof auf drei Seiten, ein langes Hufeisen aus kühlem Wasser. Sein Wasser wimmelt von Fischen, und viele stille Stunden lang werden Angelschnüre hineingeworfen. Wo der See schmaler wird, überspannt eine Brücke die Enge und trägt die Straße, die Bloodhoof mit Thunder Bluff verbindet.",
 			source = "https://warcraft.wiki.gg/wiki/Stonebull_Lake",
-		},
-		["thunder bluff"] = {
-			name = "Thunder Bluff",
-			short = "Thunder Bluff erhebt sich auf vier windgepeitschten Tafelbergen über dem Grasland von Mulgore, erreichbar nur über Aufzüge aus Seil und Holz, von Tauren gefertigt, oder über lange Brücken, die zwischen den Anhöhen gespannt sind.",
-			full = "Thunder Bluff erhebt sich auf vier windgepeitschten Tafelbergen über dem Grasland von Mulgore, erreichbar nur über Aufzüge aus Seil und Holz, von Tauren gefertigt, oder über lange Brücken, die zwischen den Anhöhen gespannt sind. Zelte, Langhäuser und bemalte Totems krönen jeden Gipfel. Über Generationen zogen die Tauren als Nomadenvolk umher, rastlos gehetzt von den Zentauren, die durch Kalimdor streiften. Es war Cairne Bloodhoof, Häuptling des Stammes der Bloodhoof, der dieses Exil beendete. Als Kriegshäuptling Thrall und seine Neue Horde während des Dritten Krieges nach Mulgore kamen, vereinte sich ihre Stärke mit der Cairnes, und gemeinsam zerschlugen sie die Zentauren und gewannen das Grasland endlich für die Tauren. Auf den Tafelbergen errichtete Cairne eine Zuflucht für jeden versprengten Stamm, und mit der Zeit beugten sich diese Stämme seiner Herrschaft als ein einziges Volk, zuweilen uneins über den weiteren Weg, doch nie über seine Weisheit, sie zu führen.\n\nDie Klippen tragen noch immer das Gewicht jener Gründung in ihren Anhöhen und Brücken, in den Zelten der Stämme, die sich unter dem Dach eines einzigen Häuptlings versammelt haben.",
-			source = "https://warcraft.wiki.gg/wiki/Thunder_Bluff",
 		},
 		["thunderhorn water well"] = {
 			name = "Wasserbrunnen von Thunderhorn",
@@ -931,12 +919,6 @@ local subzones = {
 			full = "Gleich nördlich des Scharlachroten Klosters liegt ein Stück Land, das die Seuche nie berührt hat. Grüne Hecken wachsen hier, und ein Brunnen fließt klar statt brackig, anders als im Rest von Tirisfal. Der Scharlachrote Kreuzzug pflegt ihn und hält diese kleine Terrasse am Leben, als Beweis dafür, dass inmitten der Fäulnis noch etwas Reines bestehen kann.",
 			source = "https://warcraft.wiki.gg/wiki/Terrace_of_Repose",
 		},
-		["undercity"] = {
-			name = "Undercity",
-			short = "Lange bevor die Verlassenen sie sich zu eigen machten, hatte Undercity einen Namen und einen Zweck. Tief unter dem Palast von Lordaeron verliefen die uralten Grüfte seiner königlichen Toten, seine Kerker, seine Kanäle.",
-			full = "Lange bevor die Verlassenen sie sich zu eigen machten, hatte Undercity einen Namen und einen Zweck. Tief unter dem Palast von Lordaeron verliefen die uralten Grüfte seiner königlichen Toten, seine Kerker, seine Kanäle. Sie waren nur für Gefangene und Leichen gedacht, doch die Ärmsten von Lordaerons Volk drängten sich dennoch hinab in die Dunkelheit, und die Razzien der Wachen, die sie vertreiben sollten, hatten nie lange Bestand.\n\nAls der Griff des Lichkönigs um seine Schöpfungen nachließ, brach Sylvanas Windrunner mit jenen Untoten, die ihren Verstand bewahrt hatten, von der Geißel los und wandte sich gegen Arthas, den gefallenen Prinzen, der sie zu dem gemacht hatte, was sie war. Sie lockte ihn im zerstörten Königreich in eine Falle; er entkam mit Kel'Thuzads Hilfe und floh nach Norden, um selbst zum Lichkönig zu werden. Sylvanas und ihre Anhänger, als Herren des Feldes zurückgeblieben, nannten sich die Verlassenen und beanspruchten die Grüfte unter der zerstörten Hauptstadt, wo sie die Festung vollendeten, die die Geißel begonnen hatte.\n\nWas heute dort steht, ist ein zur Verteidigung erbautes Labyrinth: Ströme giftigen Schlamms fließen durch jede Straße, und die Luft ist so dick von Dämpfen, dass die Lebenden kaum atmen können. Für die Verlassenen ist es ein Zufluchtsort in einer Welt, die sie noch immer jagt.",
-			source = "https://warcraft.wiki.gg/wiki/Undercity",
-		},
 		["venomweb vale"] = {
 			name = "Giftwebertal",
 			short = "Das Giftwebertal war einst grün und voller Rehe und Kaninchen, bevor es wurde, was es heute ist: ein Tal, überrannt von Giftspinnen, angeführt von der seltenen und tödlichen Sri'skulk, deren Netze das Gras ersetzt und dem Tal seinen Namen gegeben haben.",
@@ -1152,12 +1134,6 @@ local subzones = {
 			short = "Das Holzlager Northridge liegt im Norden der Westlichen Pestländer nahe Hearthglen, seine Hänge kahl geschlagen vom Holzeinschlag des Scharlachroten Kreuzzugs.",
 			full = "Das Holzlager Northridge liegt im Norden der Westlichen Pestländer nahe Hearthglen, seine Hänge kahl geschlagen vom Holzeinschlag des Scharlachroten Kreuzzugs. Der Kreuzzug betreibt die Mühle für sein Bauholz, einen Nachschub, den Allianz wie Horde gleichermaßen gern verdorben sähen.\n\nVor dem Dritten Krieg gehörte die Mühle der Familie von Nathaniel Dumah, die das Land bewirtschaftete, bis Krieg und Seuche sie vertrieben. Auch die Familie von Mickey Levine arbeitete einst hier.",
 			source = "https://warcraft.wiki.gg/wiki/Northridge_Lumber_Camp",
-		},
-		["plaguemist ravine"] = {
-			name = "Seuchennebelklamm",
-			short = "Eine Klamm zieht sich nach Norden in Richtung Caer Darrow, ihr Eingang liegt in den Wäldern auf der anderen Seite des Berges. Nichts lebt in dem Durchgang.",
-			full = "Eine Klamm zieht sich nach Norden in Richtung Caer Darrow, ihr Eingang liegt in den Wäldern auf der anderen Seite des Berges. Nichts lebt in dem Durchgang. Keine Vögel überqueren ihn, keine Tiere hausen in seinem Fels.\n\nEin Nebel hängt darin, kränklich und fehl am Platz, der diesen einen Pfad verpestet. Deshalb trägt der Ort den Namen, den er heute hat: Seuchennebel, erst kürzlich vergeben, wegen des Nebels, der ihn von allem anderen abhebt.",
-			source = "https://warcraft.wiki.gg/wiki/Plaguemist_Ravine",
 		},
 		["ruins of andorhal"] = {
 			name = "Die Ruinen von Andorhal",
@@ -1375,12 +1351,6 @@ local subzones = {
 	},
 	-- Vorgebirge von Hillsbrad: 29 subzones
 	[1424] = {
-		["alterac mountains"] = {
-			name = "Alteracgebirge",
-			short = "Auf diesen Gipfeln hört der Regen nie ganz auf, und der Himmel über ihnen ist stets grau. Einst krönten die Berge den Stadtstaat Alterac, der über weite Teile der Nordlande herrschte und zudem Dalaran Schutz bot.",
-			full = "Auf diesen Gipfeln hört der Regen nie ganz auf, und der Himmel über ihnen ist stets grau. Einst krönten die Berge den Stadtstaat Alterac, der über weite Teile der Nordlande herrschte und zudem Dalaran Schutz bot. Beide sind nun vergangen, und was übrig ist, erklärt, warum sich so wenige hier hinaufwagen.\n\nAls der Zweite Krieg endete, erfuhr die Allianz von Lordaeron, dass Alteracs Fürsten insgeheim mit der Horde paktiert hatten, und schickte ein Heer in diese Berge, um die Verräter an ihrem eigenen Herd zu treffen. Die Stadt fiel, ihr Volk wurde zerstreut oder eingekerkert, und ihr Geschlecht gewann seinen Thron nie zurück. Ein späterer Prinz dieses gefallenen Hauses, Aliden Perenolde, erhob sich stattdessen als Banditenfürst und sammelte die Ausgestoßenen und Rachsüchtigen im Syndikat, einer Bande von Schurken, die noch immer Strahnbrad hält und diese Hänge durchstreift, um zurückzuerobern, was seine Familie verloren hat.\n\nHeute gehören die Ruinen von Alterac den Crushridge-Ogern, und das Syndikat hält vieles von dem, was die Oger nicht besitzen.",
-			source = "https://warcraft.wiki.gg/wiki/Alterac_Mountains_(Classic)",
-		},
 		["azurelode mine"] = {
 			name = "Der Azurschacht",
 			short = "Der Azurschacht liegt im Südwesten des Vorgebirges von Hillsbrad, und sein Hügel zählte einst zu Gilneas, bevor sich der Greymane-Wall erhob und das Königreich von der Welt abschnitt.",
@@ -1404,12 +1374,6 @@ local subzones = {
 			short = "Die Crushridgehöhle erhebt sich nahe den Ruinen von Alterac, eine Höhle, in einen Erdhügel gegraben.",
 			full = "Die Crushridgehöhle erhebt sich nahe den Ruinen von Alterac, eine Höhle, in einen Erdhügel gegraben. Ringsum haben die Crushridge-Oger ihre Lager errichtet, zahlreich und von roher Gemütsart, und halten die Hänge über der zerstörten Stadt darunter.",
 			source = "https://warcraft.wiki.gg/wiki/Crushridge_Hold",
-		},
-		["dandreds fold"] = {
-			name = "Dandreds Senke",
-			short = "Ein kleiner Hof mit Herrenhaus steht am westlichen Rand des Oberlands, wo der Boden auf das Nebelufer trifft und sich ein Hafen zum Lordameresee öffnet.",
-			full = "Ein kleiner Hof mit Herrenhaus steht am westlichen Rand des Oberlands, wo der Boden auf das Nebelufer trifft und sich ein Hafen zum Lordameresee öffnet.\n\nHier lebte Aliden und mit ihm seine Geliebte Elysa. Sie trug eine Halskette, die einst Taretha Foxton gehört hatte. Als Aliden getötet wurde, gab Elysa die Halskette sofort heraus, aus Angst, man würde ihr etwas antun, wenn sie sie behielte.",
-			source = "https://warcraft.wiki.gg/wiki/Dandred's_Fold",
 		},
 		["darrow hill"] = {
 			name = "Darrow Hill",
@@ -1465,12 +1429,6 @@ local subzones = {
 			full = "Die Felder von Hillsbrad liegen fruchtbar und bestellt im Westen des Vorgebirges von Hillsbrad und ernähren Southshore und obendrein die Stadt Hillsbrad. Apfelgärten, Kürbisfelder und weidendes Vieh bedecken das Land, und im Azurschacht arbeiten noch immer die Bewohner der Stadt.\n\nFrüh im Zweiten Krieg wandte Schicksalshammer seine Heere gegen Hillsbrad und ließ es in einem grausigen Schauspiel zerstören, das den Königreichen der Menschen als Warnung dienen sollte. Nach dem Krieg wurde es wiederaufgebaut und ist noch immer bewohnt, einer der wenigen Winkel des einstigen Lordaeron, der weder in Trümmern liegt noch vom Scharlachroten Kreuzzug verschlungen wurde; seine Wachen tragen noch immer den Wappenrock ihres Königreichs, und Magistrat Burnside regiert vom Rathaus aus, mit dem Rat von Hillsbrad und dem Schreiber Horrace Whitesteed an seiner Seite.\n\nNun sind die Felder erneut bedroht, von den Streitkräften der Hochexekutorin Darthalia in Tarrens Mühle. Bauern und Landarbeiter ertragen die Überfälle, doch viele schlagen in eigenen Hinterhalten gegen die Untoten zurück, bewaffnet vom Schmied Verringtan und seinen Lehrlingen.",
 			source = "https://warcraft.wiki.gg/wiki/Hillsbrad_Fields",
 		},
-		["lordamere lake"] = {
-			name = "Der Lordameresee",
-			short = "Der Lordameresee breitet sich im Schatten von Königreichen aus, die einst an seinen Ufern zu Hause waren.",
-			full = "Der Lordameresee breitet sich im Schatten von Königreichen aus, die einst an seinen Ufern zu Hause waren. Lordaeron erhob sich an seinem Nordrand, und sehr wahrscheinlich verdankt der See seinen Namen dieser großen Stadt, die ihrerseits nach dem alten Lordain benannt war. Auch Dalaran und Alterac blühten rund um seine Gewässer in den Tagen, als die Allianz von Lordaeron die Königreiche der Menschen vereinte.\n\nDieses Zeitalter ist vergangen, und was bleibt, ist eine Grenze. Der See liegt nun zwischen den Gebieten der Verlassenen in Tirisfal und im Silberwald und dem umkämpften Alteracgebirge und trennt die Toten von den Lebenden.\n\nIn seinem Herzen liegt die Insel Fenris, deren Burg Agenten der Geißel halten, die dort von den Verlassenen bedrängt werden. Östlich davon wurden die Morgeninseln von den Finsterflossenmurlocs überrannt, die sie als die ihren beanspruchen.\n\nEinige Zeit nach dem Dritten Krieg zogen sich Lady Vashj und ihre Naga in diese Gewässer zurück, auf der Flucht vor dem Untergang Dalarans.",
-			source = "https://warcraft.wiki.gg/wiki/Lordamere_Lake",
-		},
 		["misty shore"] = {
 			name = "Nebelufer",
 			short = "Das Nebelufer erstreckt sich entlang des Lordameresees zwischen Dandreds Senke und Dalaran. Schildkröten bewegen sich langsam durch seine Untiefen.",
@@ -1494,12 +1452,6 @@ local subzones = {
 			short = "Das Ravenholdt-Anwesen liegt mit Absicht abseits der Welt.",
 			full = "Das Ravenholdt-Anwesen liegt mit Absicht abseits der Welt. Nur über einen schmalen, gewundenen Pfad erreichbar, der von einer Hochebene nordwestlich von Burg Durnholde hinaufsteigt und sich durch die Berge und eine kleine Höhle windet, bevor er sich auf das Gelände öffnet, ist das Anwesen kein Ort, über den man zufällig stolpert. Fremde sind hier nicht willkommen, und jene, die Lord Jorach Ravenholdt dienen, sorgen dafür, dass es so bleibt.\n\nDas Anwesen ist sein Eigentum, mit orangefarbenen Dächern nach der alten Art von Alterac, dessen Königreich dieses Land vor dem Ersten Krieg hielt.\n\nIn den Jahren seither ist das Syndikat durch diesen Teil des Hochlands gezogen, und Ravenholdt hat sich dieser Plage von seinem verborgenen Pfad und seinen bewachten Toren aus entgegengestellt.",
 			source = "https://warcraft.wiki.gg/wiki/Ravenholdt_Manor",
-		},
-		["ruins of alterac"] = {
-			name = "Die Ruinen von Alterac",
-			short = "Zerbrochene Mauern ziehen sich die Hänge des Alteracgebirges hinauf, wo einst eine Stadt stand, ihr Palast halb stehend, ihre Kirche und ihr Rathaus in sich zusammengestürzt, ihr Tor nach dem Vorbild jenes von Stormwind erbaut.",
-			full = "Zerbrochene Mauern ziehen sich die Hänge des Alteracgebirges hinauf, wo einst eine Stadt stand, ihr Palast halb stehend, ihre Kirche und ihr Rathaus in sich zusammengestürzt, ihr Tor nach dem Vorbild jenes von Stormwind erbaut.\n\nIhr Untergang kam von ihrem eigenen König. Während des Zweiten Krieges wurde König Aiden Perenolde zum Verräter und schlug sich auf die Seite der Horde der Orcs gegen seine menschlichen Brüder. Man fand Soldaten aus Alterac an der Seite der Orcs kämpfend, und ein Gefangenenlager nahe der Stadt hielt Bürger Dalarans fest. Als die Wahrheit ans Licht kam, zogen die anderen Königreiche der Menschen zur Vergeltung gegen Alterac. Das Volk floh oder wurde aus seinen Häusern vertrieben, und König Terenas Menethil II. von Lordaeron verhängte das Kriegsrecht über die Stadt, stürzte Perenolde und legte ihn in Ketten.\n\nDie Stadt erhob sich nie wieder. Crushridge-Oger unter der Führung von Mug'thol ließen sich in den leeren Straßen und im Palast nieder, während die verstreuten Überreste des alten Volkes von Alterac die umliegenden Dörfer hielten. Zerstörte Fleischkarren liegen noch immer nahe dem nördlichen Wall und dem Tor, und die Friedhöfe innerhalb und außerhalb der Mauern, der schneebedeckte Hof und die zerschmetterten Balliste im Schutt sind geblieben, wie man sie zurückließ.",
-			source = "https://warcraft.wiki.gg/wiki/Ruins_of_Alterac",
 		},
 		["slaughter hollow"] = {
 			name = "Slaughter Hollow",
@@ -1536,12 +1488,6 @@ local subzones = {
 			short = "König Thoradin errichtete diese Mauer, um die Amanitrolle zurückzuhalten, in den Tagen, als Strom noch jung war und Arathor das Land eben erst für die Menschheit beansprucht hatte.",
 			full = "König Thoradin errichtete diese Mauer, um die Amanitrolle zurückzuhalten, in den Tagen, als Strom noch jung war und Arathor das Land eben erst für die Menschheit beansprucht hatte. Über Generationen stand sie als standhafter Wächter, eine Linie, die keine Trollhorde überschreiten konnte.\n\nJahrhunderte später steht sie noch immer, doch schwer beschädigt, ihre Steine zerbrochen und ihre lange Wacht zur Ruine verkommen.",
 			source = "https://warcraft.wiki.gg/wiki/Thoradin's_Wall",
-		},
-		["uplands"] = {
-			name = "Das Oberland",
-			short = "Das Oberland ernährte einst ein Königreich. Seine Hügel waren die Kornkammer Alteracs, Getreide und Weideland für die alte Nation.",
-			full = "Das Oberland ernährte einst ein Königreich. Seine Hügel waren die Kornkammer Alteracs, Getreide und Weideland für die alte Nation.\n\nDiese Nation zerbrach. Das Oberland fiel an keine Krone, sondern an das Syndikat, das nirgendwo in den Bergen fester Fuß gefasst hat als hier. Baron Vardus gebietet über ihre Lager hier, Herr über das übrig gebliebene Land eines zerbrochenen Königreichs.\n\nIm äußersten Westen liegt Dandreds Senke, ein Name, der überdauert hat, was immer er einst bedeutete.",
-			source = "https://warcraft.wiki.gg/wiki/Uplands",
 		},
 		["western strand"] = {
 			name = "Weststrand",
@@ -1758,12 +1704,6 @@ local subzones = {
 			short = "Südlich des Helmsbedsees steht Ironbands Truppenlager als Stützpunkt der Dunkeleisenzwerge, die jeden angreifen, der zu nahe kommt. Der Ort gehörte einst Sturgy Ironband, bevor er in die Hände der Dunkeleisenzwerge fiel.",
 			full = "Südlich des Helmsbedsees steht Ironbands Truppenlager als Stützpunkt der Dunkeleisenzwerge, die jeden angreifen, der zu nahe kommt. Der Ort gehörte einst Sturgy Ironband, bevor er in die Hände der Dunkeleisenzwerge fiel.",
 			source = "https://warcraft.wiki.gg/wiki/Ironband's_Compound",
-		},
-		["ironforge"] = {
-			name = "Ironforge",
-			short = "In den tiefen Gewölben unter dem Berg Ironforge im Norden von Dun Morogh haben die Zwerge ihre Hauptstadt, seit ihre Ahnen zum ersten Mal aus Uldaman heraufgruben und sich nach Westen wandten.",
-			full = "In den tiefen Gewölben unter dem Berg Ironforge im Norden von Dun Morogh haben die Zwerge ihre Hauptstadt, seit ihre Ahnen zum ersten Mal aus Uldaman heraufgruben und sich nach Westen wandten. Sie ist die älteste Heimat ihres Volkes, erbaut um die Große Schmiede, und sie ist der Sitz des Königreichs Khaz Modan unter der Herrschaft von König Magni Bronzebeard.\n\nDie Stadt ist ebenso Festung wie Hauptstadt, in konzentrischen Ringen gehauen, die umso tiefer in den Fels sinken, je weiter man hinabsteigt, ihre Gänge schmal, ihre Kammern gewaltig und voller Widerhall. Anders als die Städte der Menschen und Nachtelfen ist Ironforge ganz und gar eine Höhle, Boden wie Decke aus gehauenem Stein. In jedem Herd brennt ein Feuer, und die Hallen hallen wider von Hämmern, Gelächter und Handel, denn die Zwerge waren nie ein stilles Volk, nicht einmal unter der Erde.\n\nGnome aus den Ruinen ihrer eigenen Stadt haben innerhalb der Mauern von Ironforge Zuflucht gefunden und durch König Magnis Gunst ein eigenes Viertel erhalten, wo sie in einem Bezirk arbeiten und planen, den sie sich zu eigen gemacht haben.",
-			source = "https://warcraft.wiki.gg/wiki/Ironforge",
 		},
 		["kharanos"] = {
 			name = "Kharanos",
@@ -2080,12 +2020,6 @@ local subzones = {
 			full = "Der Hof der Stonefields liegt im Süden des Waldes von Elwynn, bewirtschaftet von der Familie Stonefield, die eine erbitterte Rivalität mit den nahen Maclures pflegt. Doch ein Kind aus jedem Haus hat sich verliebt, dem alten Groll zwischen ihren Familien zum Trotz. Manche hoffen, diese Liebe könne gelingen, wo Jahre des Streits nie Erfolg hatten, und heilen, was die Fehde zerbrochen hat.",
 			source = "https://warcraft.wiki.gg/wiki/Stonefield_Farm",
 		},
-		["stormwind city"] = {
-			name = "Stormwind",
-			short = "Stormwind erhob sich in weißem Stein, nachdem die Horde der Orcs es niedergebrannt hatte, wiedererrichtet von der Steinmetzgilde unter dem jungen König Varian.",
-			full = "Stormwind erhob sich in weißem Stein, nachdem die Horde der Orcs es niedergebrannt hatte, wiedererrichtet von der Steinmetzgilde unter dem jungen König Varian. Doch als die Kassen der Krone durch Kriegsschulden erschöpft waren und der Adel der Gilde ihren Lohn verweigerte, wurde der Protest von Gildenmeister Edwin VanCleef mit der Auflösung der Gilde beantwortet. Es folgten Aufstände, und im Chaos wurde Königin Tiffin Wrynn getötet. Varians Zorn trieb die Steinmetze ins Exil nach Westfall, wo sie zur Defiasbruderschaft wurden – während hinter dem Thron eine Beraterin namens Katrana Prestor im Stillen den König für ihre eigenen Zwecke gegen die Gilde aufbrachte und ihn in den Jahren seither mit Politik und Zauberei ausmanövrierte.",
-			source = "https://warcraft.wiki.gg/wiki/Stormwind_City",
-		},
 		["thunder falls"] = {
 			name = "Donnerfälle",
 			short = "Der Pfad vom Wasserfall des Spiegelsees steigt steil und schmal in die Berge hinauf, bevor er sich auf die Donnerfälle öffnet, eine Schlucht, die sich von anderen im Wald von Elwynn dadurch unterscheidet, dass an beiden Enden Wasser herabstürzt.",
@@ -2322,12 +2256,6 @@ local subzones = {
 			short = "Die Silberbachmine war einst reich an Silber, und über Generationen schöpften die Zwerge von Ironforge Reichtum aus ihren Adern.",
 			full = "Die Silberbachmine war einst reich an Silber, und über Generationen schöpften die Zwerge von Ironforge Reichtum aus ihren Adern. Als das Erz versiegte, machte die Bergarbeiterliga die Stollen zu einem Vorratslager, statt sie aufzugeben.\n\nDie Mine birgt noch immer etwas, das sich zu holen lohnt: aufgeladene Rissedelsteine, die nirgendwo sonst zu finden sind und für die Herstellung von Magierroben begehrt sind.\n\nDoch die Zwerge halten diese Stollen nicht mehr. Kobolde der Tunnelratten haben die Mine überrannt, um sich ihre verbliebenen Schätze zu sichern.",
 			source = "https://warcraft.wiki.gg/wiki/Silver_Stream_Mine",
-		},
-		["south gate outpost"] = {
-			name = "Südtoraußenposten",
-			short = "Der Südtoraußenposten liegt dort, wo sich der Pass zwischen Dun Morogh und Loch Modan verengt, ein steinerner Engpass, den zwergische Gebirgsjäger halten.",
-			full = "Der Südtoraußenposten liegt dort, wo sich der Pass zwischen Dun Morogh und Loch Modan verengt, ein steinerner Engpass, den zwergische Gebirgsjäger halten. Ihre Arbeit ist ruhiger als die ihrer Verwandten am Nordtor: Sie haben die Tiere zurückgedrängt, die einst den Pass bedrängten, und die Straße hindurch bleibt offen und sicher für jene, die nach Thelsamar oder von dort kommen.",
-			source = "https://warcraft.wiki.gg/wiki/South_Gate_Outpost",
 		},
 		["south gate pass"] = {
 			name = "Südtorpass",
@@ -3055,12 +2983,6 @@ local subzones = {
 			full = "Die Kluft liegt nordwestlich von Dolanaar, ein Bau verderbter Furbolgs der Knarzklauen unter der Führung von Ursal dem Raufer. Sie überfallen Reisende auf der Straße nach Darnassus und halten darin eine Gruppe schlafender Druiden gefangen. Mondpriesterin Amara und ihre Leibwächter halten nahe dem Eingang Wacht an der Straße.",
 			source = "https://warcraft.wiki.gg/wiki/Cleft",
 		},
-		["darnassus"] = {
-			name = "Darnassus",
-			short = "Die Nachtelfen erbauten Darnassus nach dem Dritten Krieg, als ihre lange Unsterblichkeit sie verlassen hatte. Viele konnten die plötzliche Last von Alter und Gebrechlichkeit nicht ertragen.",
-			full = "Die Nachtelfen erbauten Darnassus nach dem Dritten Krieg, als ihre lange Unsterblichkeit sie verlassen hatte. Viele konnten die plötzliche Last von Alter und Gebrechlichkeit nicht ertragen. Eine Anzahl trauernder Druiden beschloss, einen neuen Weltenbaum zu pflanzen, um ihr Band mit der ewigen Welt wiederherzustellen. Da Malfurion Sturmgrimm verschollen war, übernahm Fandral Staghelm den Mantel des Erzdruiden und führte das Unterfangen an. Der Baum, den sie wachsen ließen, Teldrassil, erhob sich vor der Küste, bis seine Krone die Wolken durchbrach, und in seinen Ästen gründeten die Nachtelfen ihre Stadt als Zeugnis für das Überleben ihres Volkes.\n\nDarnassus liegt offen zum Himmel, anders als die engen, ummauerten Städte der Menschen und Zwerge. Es ist um einen weiten See herum erbaut, dessen Ufer von anmutigen Brücken verbunden werden, und seine Wege sind mit gefallenem Laub bedeckt. Der Tempel des Mondes erhebt sich über die Bäume als Sitz der Hohepriesterin Tyrande Whisperwind und ihrer Schwestern der Elune. Die Stadt ist geblieben, wozu sie erbaut wurde: eine friedvolle Zuflucht und ein Denkmal für ein Volk, das lernt, mit der Sterblichkeit zu leben.",
-			source = "https://warcraft.wiki.gg/wiki/Darnassus",
-		},
 		["dolanaar"] = {
 			name = "Dolanaar",
 			short = "Dolanaar liegt im mittleren Osten von Teldrassil, südwestlich von Shadowglen, seine Wurzeln und Seilbrücken in den großen Baum selbst eingewoben.",
@@ -3343,12 +3265,6 @@ local subzones = {
 			full = "Ein Turm und eine einzelne Halle der Nachtelfen stehen still hier und beherbergen eine Handvoll Verteidiger und, am seltsamsten für Eschental, zwei Menschen unter den Elfen: Feero Ironhand und Delgren den Läuterer, die einzigen ihrer Art an diesem Posten.\n\nIhre Zahl ist gering, denn die Verderbnis, die sich unter den nahen Furbolgs ausbreitet, zieht Hände ab, die sonst hier Wache halten könnten, und lässt die Verteidiger des Postens dünn gesät zurück.",
 			source = "https://warcraft.wiki.gg/wiki/Maestra's_Post",
 		},
-		["morshan rampart"] = {
-			name = "Der Mor'shan-Schutzwall",
-			short = "Der Mor'shan-Schutzwall steht dort, wo die Goldstraße nach Norden aus dem Brachland führt, errichtet, um dem Vorstoß der Allianz aus Eschental im Norden in die Region standzuhalten.",
-			full = "Der Mor'shan-Schutzwall steht dort, wo die Goldstraße nach Norden aus dem Brachland führt, errichtet, um dem Vorstoß der Allianz aus Eschental im Norden in die Region standzuhalten. Er ist ein grobes Bauwerk, für den Krieg errichtet: Erdwälle und Wachtürme, die eine Linie halten und Überfälle nach Norden gegen die Nachtelfenstadt Astranaar ermöglichen sollen.",
-			source = "https://warcraft.wiki.gg/wiki/Mor'shan_Rampart",
-		},
 		["mystral lake"] = {
 			name = "Mystralsee",
 			short = "Das Wasser des Mystralsees wurde einst von Geistern gehütet, die den Nachtelfen treu ergeben und als seine Wächter an den See gebunden waren.",
@@ -3549,12 +3465,6 @@ local subzones = {
 			short = "Die Schimmernde Ebene liegt am südöstlichen Rand von Tausend Nadeln, wo das Land flach und kahl bis zur Grenze von Tanaris reicht.",
 			full = "Die Schimmernde Ebene liegt am südöstlichen Rand von Tausend Nadeln, wo das Land flach und kahl bis zur Grenze von Tanaris reicht. Nichts wächst hier. Der Boden ist hart gebackenes Salz, Heimat nur von Basilisken, Skorpiden, Schildkröten und Geiern. Einst war dies der Grund eines Sees – der zerstörte Rumpf eines Segelschiffs liegt noch immer halb vergraben in der nördlichen Ebene, ein Schiff, gestrandet fern von jedem Wasser, Beweis dafür, was dieser Ort einst war, bevor er zu Salz und rissiger Erde vertrocknete.\n\nDiese Flachheit lockte Goblins und Gnome von den entgegengesetzten Seiten ihrer langen Rivalität an. Sie errichteten hier die Illusionenrennbahn und wetteiferten darum, Maschinen zu bauen, die schneller waren als die des anderen. Die Apparate hielten selten zusammen. Krater übersäen die Ebene, wo Motoren versagten, und die Trümmer gescheiterter Rennwagen liegen über das Salz verstreut, dort zum Backen zurückgelassen, wo sie fielen.",
 			source = "https://warcraft.wiki.gg/wiki/Shimmering_Flats",
-		},
-		["south seas"] = {
-			name = "Die südlichen Meere",
-			short = "Die Gewässer südlich der bekannten Kontinente öffnen sich zu einem weiten Teil des Großen Meeres. Zandalar erhebt sich aus diesen Wassern, die uralte Heimat des Trollreichs.",
-			full = "Die Gewässer südlich der bekannten Kontinente öffnen sich zu einem weiten Teil des Großen Meeres. Zandalar erhebt sich aus diesen Wassern, die uralte Heimat des Trollreichs. Auch Kezan liegt in ihnen, eine Vulkaninsel, deren Volk sich von den Mächten des Festlands fernhält.",
-			source = "https://warcraft.wiki.gg/wiki/South_Seas",
 		},
 		["splithoof crag"] = {
 			name = "Spalthufklippe",

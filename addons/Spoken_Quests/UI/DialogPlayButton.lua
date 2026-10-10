@@ -114,16 +114,6 @@ function DialogPlayButton:Position(frameName)
     end
 end
 
---- The queued clip reading the dialog's line, or nil. Matched by file rather than by the
---- SoundData the handler built, so a line started from the quest log counts too.
-local function QueuedClipFor(line)
-    for _, clip in ipairs(Player:Queued()) do
-        if clip.fileName == line.fileName then
-            return clip
-        end
-    end
-end
-
 --- Show, hide and label the button for whatever is on screen now. Hidden rather than
 --- disabled for a quest with no line, for ContributeButton.lua's reason: a greyed-out button
 --- invites the player to wonder what is broken.
@@ -155,7 +145,7 @@ end
 --- Listen or Stop, for the line already found. All a clip starting or stopping can change.
 function DialogPlayButton:Relabel()
     if self.line then
-        self.button:SetText(QueuedClipFor(self.line) and L.OPT_STOP or L.OPT_LISTEN)
+        self.button:SetText(Player:QueuedClipFor(self.line) and L.OPT_STOP or L.OPT_LISTEN)
     end
 end
 
@@ -164,7 +154,7 @@ function DialogPlayButton:OnClick()
     if not self.line then
         return
     end
-    local clip = QueuedClipFor(self.line)
+    local clip = Player:QueuedClipFor(self.line)
     -- The label follows from the CLIP_ callbacks either of these fires.
     if clip then
         Player:Remove(clip)

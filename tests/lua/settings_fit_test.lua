@@ -69,7 +69,7 @@ QuestsPanel:Setup()
 local B = {}
 for _, file in ipairs({ "Locale/enUS", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU",
     "Locale/koKR", "Locale/zhCN", "Locale/zhTW", "Checksum", "Core", "Language", "Reader", "Audio", "Playlist",
-    "UI/Layout", "UI/Options", "Events", "Commands" }) do
+    "UI/Layout", "UI/TextView", "UI/Compendium", "UI/Readables", "UI/Options", "Events", "Commands" }) do
     assert(loadfile(BOOKS .. file .. ".lua"))("Spoken_Books", B)
 end
 B:InitDB(); B:SetupOptions()
@@ -78,13 +78,26 @@ for _, file in ipairs({ "UI/Layout", "UI/Options" }) do
     assert(loadfile(ZONES .. file .. ".lua"))("Spoken_Zones", Z)
 end
 Z:SetupOptions()
+-- The Spoken_Developer module and its page.
+local Dev = stub.LoadDeveloper(here .. "/../../addons/Spoken_Developer/")
+Dev:SetupOptions()
+-- The DialogueUI page registers once the world is up, after Books' page (registered above).
+env.DialogueUIOptions:Register()
+local entries = {}
+for _, category in ipairs(stub.settingsCategories) do
+    if category.parent then table.insert(entries, category.name) end
+end
+Expect("the DialogueUI page is the last entry under Spoken, after Books' late one",
+    entries[table.getn(entries)], env.L.OPT_STYLE_DIALOGUEUI)
 
 local Layout = _G.SpokenLayout
 local pages = { { name = "General", layout = _G.SpokenOptionsPanel.layout } }
 for _, page in ipairs(env.Options.pages or {}) do
     table.insert(pages, { name = page.name, layout = page.layout })
 end
-Expect("General and the three parts' pages are all here", #pages, 4)
+-- The DialogueUI page (the stub reports every addon loaded) and the Developer page, which the
+-- Spoken_Developer module adds.
+Expect("General, the three parts' pages, the DialogueUI page and the Developer page are all here", #pages, 6)
 
 local BOX = Layout.BOX_MARGIN
 local function Label(row)

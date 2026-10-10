@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   }
   const source = body.source;
 
-  if (typeof body.file !== "string" || !(await isAddressableFile(source, body.file))) {
+  if (typeof body.file !== "string" || !(await isAddressableFile(source, body.file, lang))) {
     return Response.json({ error: "unknown file" }, { status: 404 });
   }
   if (typeof body.version !== "number" || !Number.isInteger(body.version) || body.version < 1) {

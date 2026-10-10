@@ -524,6 +524,124 @@ describe("resolveContribution: a translation", () => {
     expect(await nameIn("quest", questId)).toHaveLength(1);
     expect(await nameIn("creature", npcId)).toEqual([]);
   });
+
+  describe("of a line English does not have", { timeout: 20_000 }, () => {
+    const momentId = () => questLineId(questId, "accept");
+    const PORTUGUESE = "Traga-me seis peles de lobo, $C.";
+
+    function native(text = PORTUGUESE): Promise<number> {
+      return translation(String(questId), "accept", text, {
+        title: "Uma Missão de Teste",
+        kind: "creature",
+        npc: `${npcId} Orador de Teste`,
+      });
+    }
+
+    async function rowsIn(lang: string) {
+      const { rows } = await db().query(
+        `select "lineId", "variant", "origin", "fileName", "text", "originalText", "localeText",
+                "generatable", "skipReason"
+           from "quest_line" where "lineId" = $1 and "lang" = $2`,
+        [momentId(), lang],
+      );
+      return rows;
+    }
+
+    async function accepted(id: number): Promise<Contribution> {
+      const outcome = await resolveContribution(id, "accepted", RESOLVER);
+      expect(outcome.ok).toBe(true);
+      if (!outcome.ok) throw new Error("refused");
+      return outcome.contribution;
+    }
+
+    it("writes it as the language's own line, with who speaks it", async () => {
+      await speaker(npcId, "tauren", "male", "warrior");
+      const contribution = await accepted(await native());
+
+      expect(await rowsIn(LOCALE)).toEqual([
+        {
+          lineId: momentId(),
+          variant: 0,
+          origin: "contributed",
+          fileName: questFileName(questId, "accept"),
+          text: PORTUGUESE,
+          originalText: PORTUGUESE,
+          localeText: PORTUGUESE,
+          generatable: true,
+          skipReason: null,
+        },
+      ]);
+      expect(await rowsIn(BASE_LANG)).toEqual([]);
+      const { rows: speakers } = await db().query(
+        `select "lineId", "lang", "voice" from "quest_line_speaker" where "contributionId" = $1`,
+        [contribution.id],
+      );
+      expect(speakers).toEqual([{ lineId: momentId(), lang: LOCALE, voice: "tauren-male-warrior" }]);
+      expect(await lineIsInExplorer(contribution)).toBe(true);
+    });
+
+    it("lists it in the language and not in English", async () => {
+      await speaker(npcId, "tauren", "male", "warrior");
+      await accepted(await native());
+
+      const listed = (await corpus(LOCALE)).lines.filter((line) => line.lineId === momentId());
+      expect(listed).toEqual([
+        expect.objectContaining({
+          text: PORTUGUESE,
+          questTitle: "Uma Missão de Teste",
+          npcName: "Orador de Teste",
+          voice: "tauren-male-warrior",
+          generatable: true,
+        }),
+      ]);
+      expect(listed[0].english).toBeUndefined();
+      expect(listed[0].missing).toBeUndefined();
+      expect((await corpus(BASE_LANG)).lines.some((line) => line.lineId === momentId())).toBe(false);
+    });
+
+    it("refuses one whose speaker nobody has answered, and writes nothing", async () => {
+      const outcome = await resolveContribution(await native(), "accepted", RESOLVER);
+      expect(outcome).toMatchObject({ ok: false, reason: "needs-speaker" });
+      expect(await rowsIn(LOCALE)).toEqual([]);
+    });
+
+    it("takes a second contribution of the moment as the same line", async () => {
+      await speaker(npcId, "tauren", "male", "warrior");
+      await accepted(await native());
+      const second = await accepted(await native("Outro texto."));
+
+      expect((await rowsIn(LOCALE)).map((row) => row.text)).toEqual([PORTUGUESE]);
+      expect(await speakersOf(second.id)).toEqual([]);
+      expect(await lineIsInExplorer(second)).toBe(true);
+    });
+
+    it("becomes the translation of the English line once English sends it", async () => {
+      await speaker(npcId, "tauren", "male", "warrior");
+      await accepted(await native());
+      await englishLine();
+
+      const listed = (await corpus(LOCALE)).lines.filter((line) => line.lineId === momentId());
+      expect(listed).toHaveLength(1);
+      expect(listed[0]).toMatchObject({
+        text: PORTUGUESE,
+        originalText: "Bring me six wolf pelts, druid.",
+        english: { questTitle: "A Test Quest" },
+      });
+      expect(listed[0].missing?.text).toBeFalsy();
+    });
+
+    it("translates English that landed after the catalogue was read", async () => {
+      await speaker(npcId, "tauren", "male", "warrior");
+      const before = (await corpus()).lines;
+      await englishLine();
+      const id = await native();
+
+      const outcome = await resolveContribution(id, "accepted", RESOLVER, before);
+      expect(outcome.ok).toBe(true);
+      expect(await speakersOf(id)).toEqual([]);
+      expect((await rowsIn(LOCALE)).map((row) => row.originalText)).toEqual(["Bring me six wolf pelts, druid."]);
+    });
+  });
 });
 
 describe("resolveContribution: a book page in another language", () => {

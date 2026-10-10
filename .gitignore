@@ -43,6 +43,9 @@ superpowers/
 # samples if lost, but a take records the clip's hash, so a re-cut is a different reference.
 /pipelines/quests/voice/references/
 
+# NPC voice lines kept locally while working on voices. Audio never goes in git.
+/pipelines/quests/voice/npc-lines/
+
 # Every take of every line, pulled from the droplet: the only quests audio there is. Some of
 # it predates this project's ability to reproduce it - back it up too.
 /pipelines/quests/audio-history/
@@ -74,6 +77,9 @@ superpowers/
 
 # Raw MediaWiki API responses. Regenerate with `node pipelines/zones/tools/scrape.mjs`.
 /pipelines/zones/tools/cache/
+
+# The client's map tables from wago.tools, for `make books-places`.
+/pipelines/books/tools/cache/
 
 # The pack's clips, assembled from the take archive by `make zones-sounds`.
 # No trailing slash: a test client is pointed at this pack by symlinking its audio in,

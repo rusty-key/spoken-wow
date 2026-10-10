@@ -403,6 +403,7 @@ function Options:RunSelfTest()
                 questID = 3441,
                 name = "Spoken Quests self-test",
                 title = "Spoken Quests self-test",
+                origin = "/spq test",
             }
             if not DataModules:PrepareSound(soundData) then
                 Debug:Record("self-test-data-failed", "The Vanilla Data module did not provide the known 3441-accept test sound")
@@ -462,6 +463,9 @@ function Options:PrintDiagnostics()
                 for _, warning in ipairs(Addon.eventBridgeErrors) do
                     print("Bridge warning: " .. warning)
                 end
+            end
+            if DialogueUIBridge and DialogueUIBridge.Describe then
+                print(DialogueUIBridge:Describe())
             end
             if Addon.optionsInitializationError then
                 print("Options startup warning: " .. Addon.optionsInitializationError)

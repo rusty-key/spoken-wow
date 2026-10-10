@@ -66,7 +66,7 @@ function SpokenZones:SetupOptions()
 
 	local layout = SpokenLayout.New(content, INDENT, -16)
 	panel.layout = layout
-	layout:Header(L.OPT_PAGE_TITLE, L.OPT_NOTE, nil, [[Interface\Icons\INV_Misc_Map_01]])
+	layout:Header(L.OPT_PAGE_TITLE, L.OPT_NOTE, nil, [[Interface\Icons\INV_Misc_Map02]])
 	local refresh = function() layout:Refresh() end
 
 	-- The part's own switch first, as on Spoken's page: off, everything under it is greyed
@@ -78,7 +78,7 @@ function SpokenZones:SetupOptions()
 	-- part's card on Spoken's page turns it on and off too.
 	if Spoken and Spoken.SettingsStyle and Spoken:SettingsStyle() == "pages" then
 		layout:HideHeader()
-		layout:Intro([[Interface\Icons\INV_Misc_Map_01]], L.OPT_PAGE_TITLE)
+		layout:Intro([[Interface\Icons\INV_Misc_Map02]], L.OPT_PAGE_TITLE)
 		switch = layout:Checkbox(L.OPT_PART_SWITCH, L.OPT_PART_SWITCH_TIP, PartOn,
 			function(value) Spoken:SetPartOn("zones", value) end, refresh)
 	else
@@ -139,9 +139,6 @@ function SpokenZones:SetupOptions()
 		Get("showMapPanel"), function(value) SpokenZones:SetMapPanelShown(value) end,
 		function() RedrawPanel(); layout:Refresh() end)
 	local besideMap = Get("showMapPanel")
-	layout:Checkbox(L.OPT_HOVER,
-		L.OPT_HOVER_TIP,
-		Get("showHoverPreview"), Set("showHoverPreview"))
 	layout:Checkbox(L.OPT_PICTURES,
 		L.OPT_PICTURES_TIP,
 		Get("showPictures"), Set("showPictures"), RedrawEverything)
@@ -151,9 +148,15 @@ function SpokenZones:SetupOptions()
 	layout:Slider(L.OPT_FONT_SIZE, 9, 20, 1,
 		Get("fontSize"), Set("fontSize"), RedrawEverything, SpokenLayout.Number, L.OPT_FONT_SIZE_TIP)
 
-	-- The lore window: every zone's stories to browse, which nothing else on the page leads to.
-	layout:Section(L.OPT_SECTION_LORE)
-	layout:Button(L.MENU_LORE_WINDOW, 200, function() SpokenZones:ToggleLoreWindow() end, L.OPT_LORE_WINDOW_TIP)
+	-- Azeroth's Compendium: opened, and its places unlocked, from Spoken's page where Spoken is
+	-- installed (Spoken:ShowsCompendium), with the other tabs'. Here only without it.
+	if not (Spoken and Spoken.ShowsCompendium) then
+		layout:Section(L.OPT_SECTION_LORE)
+		layout:Button(L.MENU_LORE_WINDOW, 200, function() SpokenZones:ToggleLoreWindow() end, L.OPT_LORE_WINDOW_TIP)
+		layout:Checkbox(L.OPT_SHOW_UNDISCOVERED,
+			L.OPT_SHOW_UNDISCOVERED_TIP,
+			Get("showUndiscovered"), Set("showUndiscovered"), RedrawEverything)
+	end
 
 	layout:Section(L.OPT_SECTION_LANGUAGE)
 	-- Only finished languages are offered. A player choosing from a list has no way to
@@ -229,9 +232,20 @@ function SpokenZones:SetupOptions()
 	-- which of them reads.
 	layout:Section(L.OPT_SECTION_PACKS)
 	local GetMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-	-- The language the lore is read in is fixed at load; English is what a missing story falls back to.
-	local function Wanted(code)
-		return code == SpokenZones:GetLanguage() or code == "enUS"
+	-- The packs to get are those of the language the lore is read in (fixed at load); any pack
+	-- installed is listed too. Not English's to get on another language's client, unless that
+	-- language has no pack of its own (itIT): a missing story falls back to English.
+	local function Installed(addon)
+		for _, pack in ipairs(SpokenZones:GetAudioPacks()) do
+			if pack.addon == addon then return true end
+		end
+		return false
+	end
+	local function Wanted(code, addon)
+		local lang = SpokenZones:GetLanguage()
+		if code == lang or Installed(addon) then return true end
+		local own = lang == "enUS" or (Spoken and Spoken.VoicePack and Spoken:VoicePack("zones", lang))
+		return not own and code == "enUS"
 	end
 	-- The packs for what the player will hear, each language's shown while that language is wanted.
 	local listed = {}
@@ -251,10 +265,10 @@ function SpokenZones:SetupOptions()
 		local folder, url = Spoken and Spoken.VoicePack and Spoken:VoicePack("zones", locale.code)
 		if folder then
 			local code = locale.code
-			layout:ShowWhen(PackRow(folder, SpokenZones:GetLanguageName(code), url), function() return Wanted(code) end)
+			layout:ShowWhen(PackRow(folder, SpokenZones:GetLanguageName(code), url), function() return Wanted(code, folder) end)
 		end
 	end
-	layout:ShowWhen(PackRow(AUDIO_ADDON, L.OPT_PACK_OFFICIAL), function() return Wanted("enUS") end)
+	layout:ShowWhen(PackRow(AUDIO_ADDON, L.OPT_PACK_OFFICIAL), function() return Wanted("enUS", AUDIO_ADDON) end)
 	local installed = SpokenZones:GetAudioPacks()
 	-- A pack the list does not know, after the ones it does.
 	for _, pack in ipairs(installed) do

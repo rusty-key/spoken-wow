@@ -130,6 +130,20 @@ def test_a_pack_ships_only_the_audio_it_was_given(tmp_path):
     assert report["audioFiles"] == 1
 
 
+def test_a_whole_store_pack_ships_a_take_the_english_corpus_does_not_name(tmp_path):
+    # A language's pack is the whole store (include=None), and a quest line only that
+    # language has is in no English corpus. The addon finds a quest sound by its file name
+    # alone, so the file and its length entry are all it needs.
+    store = _store(tmp_path, "quests/5-accept.ogg", "quests/77-accept.ogg")
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    sounds = tmp_path / "dist" / "Mod" / "generated" / "sounds"
+    assert (sounds / "quests" / "77-accept.ogg").exists()
+    assert "77-accept" in _sound_length_table(tmp_path)
+    assert report["audioFiles"] == 2
+
+
 def test_a_pack_still_drops_ignored_audio(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
 

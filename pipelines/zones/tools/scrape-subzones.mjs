@@ -131,7 +131,8 @@ async function main() {
     }
 
     const candidates = members.filter(looksLikeAPlace);
-    const excluded = new Set(meta.exclude || []);
+    // By key rather than by title, so "Uplands" also drops a page titled "The Uplands".
+    const excluded = new Set((meta.exclude || []).map(normaliseKey));
     let skippedFiltered = 0;
     let skippedZoneDup = 0;
     let skippedNotInEra = 0;
@@ -139,7 +140,7 @@ async function main() {
     const entries = new Map();
 
     for (const title of candidates) {
-      if (excluded.has(title)) continue;
+      if (excluded.has(normaliseKey(title))) continue;
 
       // Key on the bare wiki title. Aliases add extra keys for client names that
       // do not normalise onto it. Any key the Era client cannot report is

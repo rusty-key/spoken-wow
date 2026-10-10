@@ -11,18 +11,22 @@ Welcome = {}
 
 local Layout = SpokenLayout
 local WIDTH = 760
--- The settings page's own margins, measured from the inside of its frame, on every side here:
--- the page's name 24 in and 35 under the top, its cards and sections 44 in, from the left and
--- the right alike, and the buttons 35 above the bottom.
+-- The settings page's own margins, measured from the inside of its frame: the page's name 24 in,
+-- its lists and sections 44 in, from the left and the right alike. Above the name and under the
+-- buttons 22 rather than the page's 35, so the two lists, four modules and five styles, fit a
+-- 768-high screen.
 local BORDER = 7        -- the frame's edge, inside which the margins are measured
 local BAR = 19          -- the frame's title bar
 local TITLE_X = BORDER + 24
 local CONTENT_X = BORDER + 44
-local TOP_MARGIN, BOTTOM_MARGIN = 35, 35
+local TOP_MARGIN, BOTTOM_MARGIN = 22, 22
 local NAME_Y = 22       -- the page's name, under the page's top: the layout's header puts it there
 local FOOTER_GAP = 20   -- between the last row of tiles and the footer's divider
 local RULE_GAP = 16     -- between the footer's divider and its buttons
 local BUTTON_WIDTH, BUTTON_HEIGHT = 160, 22   -- the game's red panel button
+-- A second switch, above the one beside the buttons. As tall as a switch, so the two do not
+-- overlap, and no taller: the window had 25 to spare before running off a 768-high screen.
+local CHECK_ROW, CHECK_SIZE = 24, 24
 local FOOTER = FOOTER_GAP + 1 + RULE_GAP + BUTTON_HEIGHT + BORDER + BOTTOM_MARGIN
 
 local function Refresh()
@@ -68,6 +72,25 @@ local function Button(frame, label, onClick)
     return button
 end
 
+-- A switch in the footer, its label beside it and what it does in its tooltip, `y` above the
+-- window's bottom.
+local function FooterCheck(page, frame, y, label, tip, write)
+    local check = Layout.NewCheck(page, CHECK_SIZE)
+    check:SetPoint("LEFT", frame, "BOTTOMLEFT", CONTENT_X, y)
+    check.label = page:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    check.label:SetPoint("LEFT", check, "RIGHT", 8, 0)
+    check.label:SetText(label)
+    check:SetScript("OnClick", function(button) write(button:GetChecked() and true or false) end)
+    check:SetScript("OnEnter", function(button)
+        GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+        GameTooltip:SetText(label, 1, 1, 1)
+        GameTooltip:AddLine(tip, nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    check:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return check
+end
+
 function Welcome:Build()
     local frame = Window()
     self.frame = frame
@@ -102,18 +125,21 @@ function Welcome:Build()
     layout.titleX = TITLE_X
     -- Its name, words and questions across the middle: a window that opens unasked, read top down.
     layout.centred = true
+    -- Its lists across its width, not from where a settings row's label starts, and compact, so
+    -- every module fits with the window on a small screen.
+    layout.boxLeft, layout.boxRight = 0, 0
+    layout.compactList = true
     self.page, self.layout = page, layout
     -- Headed as the settings' pages are, with a name, and then what the window is for: unlike
     -- a settings page, it opens unasked, and has to say what it is.
     layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.WELCOME_TITLE, L.WELCOME_INTRO)
 
-    -- What Spoken reads: the modules, a click turning each on or off, their tags saying whether
-    -- each is enabled and has its voices, as on General.
+    -- What Spoken reads: the modules' list, as on General, a click turning each on or off.
     layout:Section(L.WELCOME_PARTS, true)
-    local cards = {}
+    local modules = {}
     for _, part in ipairs(Options.PARTS) do
         local key = part.key
-        table.insert(cards, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
+        table.insert(modules, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
             read = function() return Spoken:IsPartOn(key) end,
             write = function(v) Sources:SetTurnedOff(key, not v) end,
             apply = function() Options:UpdateRows(); layout:Refresh() end,
@@ -121,29 +147,34 @@ function Welcome:Build()
             status = function() return Options:PartVoice(key) end,
             hint = function(on) return on and L.OPT_PART_CLICK_OFF or L.OPT_PART_CLICK_ON end })
     end
-    self.cards = layout:Cards(cards)
+    self.modules = layout:List(modules)
 
-    -- How lines appear: the same sketches as General. Choosing subtitles shows one, so it can
-    -- be seen and dragged into place now.
+    -- How lines appear: the same list as Spoken's settings page, a sketch on each row. Choosing
+    -- subtitles shows one, so it can be seen and dragged into place now.
     layout:Section(L.WELCOME_SHOW, true)
-    -- Preview mode, centred between the question and the styles it shows, as far from each.
+    -- Preview mode, at the end of the question's line, as on Spoken's settings page.
     self.preview = Options:PreviewButton(layout)
-    local tiles = {}
+    local styles = {}
     for _, style in ipairs(Options:Styles()) do
-        table.insert(tiles, { value = style, title = Options.STYLE_LABELS[style], text = Options.STYLE_TEXTS[style],
+        table.insert(styles, { value = style, title = Options.STYLE_LABELS[style], text = Options.STYLE_TEXTS[style],
             tooltip = Options.STYLE_TIPS[style], art = Options.SKETCHES[style] })
     end
-    self.tiles = layout:Tiles(tiles, function() return Addon:PlayerStyle() end,
+    self.styles = layout:Choices(styles, function() return Addon:PlayerStyle() end,
         function(v) Addon:SetPlayerStyle(v) end,
         function()
             Refresh()
             Options:StyleChosen()
         end, { choose = L.STYLE_CHOOSE })
 
-    -- The footer: the header's divider again, as wide and as centred, then the one switch more
-    -- on the left and the two ways out on the right.
+    -- The footer: the header's divider again, as wide and as centred, then the switches on the
+    -- left and the two ways out on the right: Lower Other Sounds where the client has it, and the
+    -- debug log where the Spoken_Developer module is installed, beside the buttons, the other
+    -- stacked above it.
+    local lowerShown = OtherSounds:IsAvailable()
+    local logShown = Developer.provider ~= nil
+    local extra = (lowerShown and logShown) and CHECK_ROW or 0
     local rule = Layout.Rule(page)
-    local ruleY = BORDER + BOTTOM_MARGIN + BUTTON_HEIGHT + RULE_GAP
+    local ruleY = BORDER + BOTTOM_MARGIN + BUTTON_HEIGHT + RULE_GAP + extra
     rule:SetPoint("BOTTOM", frame, "BOTTOM", 0, ruleY)
     if not rule.layoutAtlas then rule:SetWidth(WIDTH - TITLE_X * 2) end
     self.rule = rule
@@ -157,37 +188,35 @@ function Welcome:Build()
     all:SetPoint("RIGHT", done, "LEFT", -10, 0)
     self.done, self.all = done, all
 
-    -- Along the bottom beside the buttons rather than in a section of its own: a third section
-    -- would make the window taller than the screen at the default UI scale. Its tooltip says
-    -- what it does.
-    if OtherSounds:IsAvailable() then
-        local lower = Layout.NewCheck(page, 28)
-        lower:SetPoint("LEFT", frame, "BOTTOMLEFT", CONTENT_X, BORDER + BOTTOM_MARGIN + BUTTON_HEIGHT / 2)
-        lower.label = page:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        lower.label:SetPoint("LEFT", lower, "RIGHT", 8, 0)
-        lower.label:SetText(L.OPT_LOWER_OTHERS)
-        lower:SetScript("OnClick", function(button)
-            Addon.db.profile.Audio.LowerOthers.Enabled = button:GetChecked() and true or false
-            OtherSounds:RefreshConfig()
-            Options:UpdateRows()
-        end)
-        lower:SetScript("OnEnter", function(button)
-            GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-            GameTooltip:SetText(L.OPT_LOWER_OTHERS, 1, 1, 1)
-            GameTooltip:AddLine(L.WELCOME_LOWER_TIP, nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        lower:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        self.lower = lower
+    -- Along the bottom beside the buttons rather than in sections of their own: a third section
+    -- would make the window taller than the screen at the default UI scale. Their tooltips say
+    -- what they do. Stacked, not side by side: two labels and the buttons do not fit one row
+    -- in German.
+    local bottomY = BORDER + BOTTOM_MARGIN + BUTTON_HEIGHT / 2
+    if lowerShown then
+        self.lower = FooterCheck(page, frame, bottomY + extra, L.OPT_LOWER_OTHERS, L.WELCOME_LOWER_TIP,
+            function(on)
+                Addon.db.profile.Audio.LowerOthers.Enabled = on
+                OtherSounds:RefreshConfig()
+                Options:UpdateRows()
+            end)
+    end
+    -- The debug log is offered here, off: a player who turns it on now has a log to send with
+    -- the first report, rather than being asked to turn it on and wait for it to happen again.
+    -- Its words are the module's.
+    if logShown then
+        self.log = FooterCheck(page, frame, bottomY, Developer:Call("SwitchLabel") or "",
+            Developer:Call("SwitchTip") or "", function(on) Developer:Call("SetLogOn", on) end)
     end
 
-    frame:SetHeight(BAR + TOP_MARGIN - NAME_Y + layout:Height() + Layout.BOX_MARGIN + FOOTER)
+    frame:SetHeight(BAR + TOP_MARGIN - NAME_Y + layout:Height() + Layout.BOX_MARGIN + FOOTER + extra)
 end
 
 --- Show what is chosen now, and for each part whether it is installed.
 function Welcome:Sync()
     if self.layout then self.layout:Refresh() end
     if self.lower then self.lower:SetChecked(Addon.db.profile.Audio.LowerOthers.Enabled and true or false) end
+    if self.log then self.log:SetChecked(Developer:IsLogOn()) end
 end
 
 function Welcome:Show()

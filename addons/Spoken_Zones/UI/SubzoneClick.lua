@@ -26,7 +26,8 @@ local function HandleClick(x, y)
 		return
 	end
 
-	local areaName = SpokenZones:GetAreaNameAt(mapID, x, y)
+	-- The highlight lights what this finds (SpokenZones:AreaAt), so a lit area is one a click opens.
+	local areaName, entry, key, city = SpokenZones:AreaAt(mapID, x, y)
 	local debug = SpokenZones:Get("debug")
 
 	if not areaName then
@@ -35,8 +36,6 @@ local function HandleClick(x, y)
 		end
 		return
 	end
-
-	local entry, key = SpokenZones:GetSubzoneLore(mapID, areaName)
 
 	if debug then
 		SpokenZones:Print(
@@ -47,13 +46,22 @@ local function HandleClick(x, y)
 		)
 	end
 
-	if entry then
+	if not entry then
+		return
+	end
+	-- Clicked, so explored: found, whatever the map's samples say (Discovery.lua).
+	if key and SpokenZones.MarkFound then SpokenZones:MarkFound(mapID, key) end
+	-- A city inside the zone (Stormwind City on Elwynn Forest's map) is a map of its own: the click
+	-- opens it, as one on a zone opens the zone from its continent, and the panel tells its story.
+	if city then
+		if WorldMapFrame.SetMapID then WorldMapFrame:SetMapID(city) end
+	else
 		SpokenZones:SelectSubzone(mapID, areaName, entry)
-		-- Closed beside the map, the panel opens on the area clicked: the click asked for its story.
-		-- Not where the player turned the panel off in the settings.
-		if SpokenZones:Get("showMapPanel") and SpokenZones:Get("mapPanelCollapsed") then
-			SpokenZones:SetMapPanelCollapsed(false)
-		end
+	end
+	-- Closed beside the map, the panel opens on what was clicked: the click asked for its story.
+	-- Not where the player turned the panel off in the settings.
+	if SpokenZones:Get("showMapPanel") and SpokenZones:Get("mapPanelCollapsed") then
+		SpokenZones:SetMapPanelCollapsed(false)
 	end
 end
 

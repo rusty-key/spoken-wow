@@ -37,16 +37,12 @@ function Sources:Register(key, info)
         queueLimit = info.queueLimit,
         -- 0.55 is upstream's figure; it absorbs a duration that is slightly short.
         interClipGap = info.interClipGap or 0.55,
-        -- Pages of one book read on: no LineGap between them.
-        continuous = info.continuous,
         channel = info.channel,
         admit = info.admit,
         testBeforeQueue = info.testBeforeQueue,
         onQueueEnter = info.onQueueEnter,
         onQueueEmpty = info.onQueueEmpty,
         packs = info.packs,
-        -- A part whose voices come in parts counts them itself (Options:PartVoice).
-        packCount = info.packCount,
         -- A part's settings kept in AceDB profiles: a function returning its AceDB object, so
         -- Spoken's own Profiles section switches it with the player's (Options:ProfileDBs).
         profiles = info.profiles,
@@ -106,21 +102,32 @@ function Sources:Iterate()
     end
 end
 
---- The channel a clip from this source plays on: its own if it names one, else the
---- player's setting. Strings throughout, because that is what PlaySoundFile takes.
+--- The channel a clip from this source plays on: its own if it names one, else Master. There is
+--- no setting for it: on Dialog, Silence NPC Voices would silence Spoken's voices with the NPCs',
+--- and Game Greeting First could not tell them from an NPC's. A string, as PlaySoundFile takes.
 function SourceMethods:GetChannel()
     if self.channel then
         return self.channel()
     end
-    return Addon.db.profile.Audio.SoundChannel
+    return "Master"
+end
+
+-- A line the queue would not take, in the debug log: the refusals that fire no CLIP_DROPPED
+-- (a duplicate, a file the probe did not find, a muted channel, a part turned off) are otherwise
+-- seen nowhere.
+local function Noted(clip, how, result, why)
+    if not result and why and Developer then
+        Developer:Log("player", "%s refused %s: %s", how, Developer.Describe(clip), tostring(why))
+    end
+    return result, why
 end
 
 function SourceMethods:Enqueue(clip)
-    return SoundQueue:Add(clip, self, false)
+    return Noted(clip, "queue", SoundQueue:Add(clip, self, false))
 end
 
 function SourceMethods:PlayNow(clip)
-    return SoundQueue:PlayNow(clip, self)
+    return Noted(clip, "play now", SoundQueue:PlayNow(clip, self))
 end
 
 function SourceMethods:Remove(clip)
@@ -141,6 +148,12 @@ end
 --- kept, to replay from the start once the gate opens. Returns whether it was cut off.
 function SourceMethods:RecheckGates()
     return SoundQueue:RecheckGates(self)
+end
+
+--- One of this source's gates has opened: start what it held now, rather than at the next
+--- retry, up to a second later.
+function SourceMethods:Retry()
+    SoundQueue:Advance()
 end
 
 ---@return boolean audible

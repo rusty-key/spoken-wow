@@ -44,6 +44,8 @@ function SoundUtils:MuteChannel(channel, muted, fadeOut)
         return
     end
     mutedByPlayer[channel] = muted or nil
+    -- Why an NPC was or was not heard over a line, in the debug log.
+    if Developer then Developer:Log("player", "%s channel %s", channel, muted and "muted" or "restored") end
     if channel == "Dialog" then EndFade() end
     if muted and fadeOut and channel == "Dialog" and Addon and Addon.ScheduleRepeatingTimer then
         local volume = tonumber(GetCVar("Sound_DialogVolume")) or 1
@@ -133,6 +135,13 @@ function SoundUtils:PlaySound(clip, channel)
     local willPlay, handle = PlaySoundFile(clip.path, channel)
     clip.handle = handle
     return willPlay, handle
+end
+
+--- The game's own quest-log-close sound, played between two items in the queue. A kit
+--- sound rather than a file we ship: it is one every player already reads as "done".
+---@param channel string
+function SoundUtils:PlayCue(channel)
+    PlaySound(SOUNDKIT.IG_QUEST_LOG_CLOSE, channel)
 end
 
 ---@param clip { handle: number? }

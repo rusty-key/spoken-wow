@@ -47,7 +47,6 @@ As of 0.3.0 every line is recorded with a new narrator, and NPC and place names 
 /spz options      open the settings panel
 /spz window       open the browsable lore window
 /spz panel        toggle the world map panel
-/spz hover        toggle the hover preview tooltip
 /spz play         read the current lore aloud
 /spz voice        toggle narration on or off
 /spz audio        list sound packs, or switch between them

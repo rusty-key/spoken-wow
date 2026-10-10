@@ -118,8 +118,8 @@ end
 
 -- The spellbook's ink: its headings and its words, dark brown on the parchment.
 Art.INK = { RGB(_G.SPELLBOOK_FONT_COLOR, 0.25, 0.16, 0.08) }
--- A caption a little lighter than the ink, and a link a little redder.
-Art.FADED = { Art.INK[1] + 0.18, Art.INK[2] + 0.14, Art.INK[3] + 0.1 }
+-- A link a little redder. Every word is in the ink: a lighter one for captions and for a place
+-- with no story read as greyed out, and was hard to make out on the parchment.
 Art.LINK = { 0.5, 0.12, 0.04 }
 
 local function Ink(fontString, color, alpha)
@@ -217,16 +217,19 @@ function SpokenZones:CreateLorePage(parent, style)
 	local play = SpokenZones:CreateAudioButton(frame)
 	page.play = play
 
-	-- Beside the map, a third: this place in Lore of Azeroth, with the window's own map icon in
-	-- the same ring. The window has it open already, so not there.
+	-- Beside the map, a third: this place in Azeroth's Compendium, with the window's own tome in the
+	-- same ring. The window has it open already, so not there.
 	if style ~= "book" then
-		local open = SpokenZones:CreateRoundButton(frame, "icon", [[Interface\Icons\INV_Misc_Map_01]])
+		local icon = SpokenCompendium and SpokenCompendium.ICON or [[Interface\Icons\INV_Misc_Book_11]]
+		local open = SpokenZones:CreateRoundButton(frame, "icon", icon)
+		-- The tome is a dark picture already: the ring's vignette at full strength left it black.
+		if type(open.vignette) == "table" and open.vignette.SetAlpha then open.vignette:SetAlpha(0.35) end
 		open:SetScript("OnClick", function(self)
 			if self.mapID then SpokenZones:ShowLoreFor(self.mapID, self.areaKey) end
 		end)
 		open:HookScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-			GameTooltip:SetText(L.MENU_LORE_WINDOW)
+			GameTooltip:SetText(L.OPEN_IN_COMPENDIUM)
 			GameTooltip:AddLine(L.OPEN_IN_LORE_TIP, 1, 0.8, 0.2, true)
 			GameTooltip:Show()
 		end)
@@ -263,7 +266,7 @@ function SpokenZones:CreateLorePage(parent, style)
 	sub.text:SetAllPoints()
 	sub.text:SetJustifyH("LEFT")
 	sub:SetScript("OnClick", function(self) if self.onClick then self.onClick() end end)
-	sub:SetScript("OnEnter", function(self) if self.onClick then Ink(self.text, Art.INK) end end)
+	sub:SetScript("OnEnter", function(self) if self.onClick then Ink(self.text, Art.LINK) end end)
 	sub:SetScript("OnLeave", function(self) page:PaintSubtitle() end)
 	page.sub = sub
 
@@ -314,7 +317,7 @@ function SpokenZones:CreateLorePage(parent, style)
 		local mark = frame:CreateTexture(nil, "BORDER")
 		mark:SetSize(96, 96)
 		mark:SetPoint("CENTER", frame, "CENTER", 0, 40)
-		mark:SetTexture([[Interface\Icons\INV_Misc_Map_01]])
+		mark:SetTexture([[Interface\Icons\INV_Misc_Map02]])
 		mark:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 		if mark.SetDesaturated then mark:SetDesaturated(true) end
 		mark:SetAlpha(0.18)
@@ -351,12 +354,12 @@ function Page:PlaceButtons()
 end
 
 function Page:PaintSubtitle()
-	Ink(self.sub.text, Art.FADED)
+	Ink(self.sub.text, Art.INK)
 end
 
 --- What the page shows: entry = { title, subtitle, onSubtitle = fn?, text, missing = bool,
 --- audio = { mapID, key }?, report = { mapID, key }?, contribute = { mapID, subzone }?,
---- empty = bool }. A missing story is said in the faded ink, with Contribute under it.
+--- empty = bool }. A missing story is said with Contribute under it.
 function Page:Show(entry)
 	self.title:SetText(entry.title or "")
 	self.sub.text:SetText(entry.subtitle or "")
@@ -366,9 +369,8 @@ function Page:Show(entry)
 	if entry.onSubtitle then self.sub:Enable() else self.sub:Disable() end
 	self:PaintSubtitle()
 
-	-- Told to the view rather than painted on its text, which a re-wrap would repaint in full ink.
-	local color = (entry.missing or entry.empty) and Art.FADED or Art.INK
-	self.body:SetColor(color[1], color[2], color[3])
+	-- Told to the view rather than painted on its text, which a re-wrap would repaint.
+	self.body:SetColor(Art.INK[1], Art.INK[2], Art.INK[3])
 	local picture, mask
 	if entry.audio then picture, mask = SpokenZones:Picture(entry.audio[1], entry.audio[2]) end
 	self.body:SetPicture(picture, mask)

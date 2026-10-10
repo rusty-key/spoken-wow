@@ -38,6 +38,14 @@ export function answersQuestMoment(lineId: string, momentId: string): boolean {
   return lineId === momentId || lineId.startsWith(`${momentId}:`);
 }
 
+/**
+ * answersQuestMoment in SQL, for a `lineId` column and a moment expression. Three exact ids
+ * rather than a `like` prefix, so Postgres can look them up in quest_line's lineId indexes.
+ */
+export function answersQuestMomentSql(column: string, moment: string): string {
+  return `${column} = any(array[${moment}, ${moment} || ':m', ${moment} || ':f'])`;
+}
+
 export function questFileName(questId: number, event: QuestEvent): string {
   return `${questId}-${event}`;
 }

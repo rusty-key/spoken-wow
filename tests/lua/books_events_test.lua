@@ -74,19 +74,24 @@ Expect("...but forgets the page, because there is no page on screen", B.lastPage
 -- Stopped by hand, which closing the frame above no longer does: this section is about what
 -- mail queues, not about the book still being read behind it.
 B:StopReading()
+SpokenBooksCharacter.found = {}
 stub.ShowPage({ title = "A letter", number = 1, text = REGISTRY_1, creator = "Somebody" })
 stub.FireEvent("ITEM_TEXT_READY")
 Expect("mail queues nothing", #QueuedPages(), 0)
 Expect("...and is not remembered as a page", B.lastPage, nil)
+Expect("...nor found", next(SpokenBooksCharacter.found), nil)
 stub.ClosePage()
 stub.FireEvent("ITEM_TEXT_CLOSED")
 
 ---------------------------------------------------------------- autoplay off
 SpokenBooksSettings.autoplay = false
+SpokenBooksCharacter.found, SpokenBooksCharacter.read = {}, {}
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_1 })
 stub.FireEvent("ITEM_TEXT_READY")
 Expect("with autoplay off nothing speaks by itself", #QueuedPages(), 0)
 Expect("...but the page is remembered, so it can be read on request", B.lastPage, 261)
+Expect("...and the book counts as found, opened though not heard", B:IsBookFound(B:PlaceOf(261)), true)
+Expect("...without counting as read, which Read Only Once goes by", B:HasReadBook(B:PlaceOf(261)), false)
 
 B:ReadCurrent()
 Expect("asking for it reads it anyway", #QueuedPages(), 3)

@@ -52,7 +52,7 @@ end
 local lastQuestEvent
 
 -- Defined with the handlers below, and asked by functions above them.
-local ResolveQuestID, NoteGossipPage
+local ResolveQuestID, NoteGossipPage, GossipPageFollowsOption
 
 -- The quest globals as they stood when the client fired a quest event. An addon that
 -- accepts or turns in the quest from its own handler - Leatrix Plus, and the auto-turn-in
@@ -217,9 +217,26 @@ function Addon:InvokeQuestHandler(event, source, manual)
         Debug:Record("autoplay-off", format("Not reading %s: autoplay is off", event))
         return false
     end
+    -- Read while DialogueUI's window is still appearing, the voice would run ahead of the words
+    -- it marks, so autoplay waits for the window.
+    local bridge = not manual and rawget(VoiceOver, "DialogueUIBridge")
+    if bridge and bridge.Defer and bridge:Defer(event, function()
+        self:InvokeQuestHandler(event, source, manual)
+    end) then
+        Debug:Record("dialogueui-wait", format("Waiting for DialogueUI's window to read %s", event))
+        return true
+    end
 
     Debug:Record("quest-dispatch", format("Dispatching %s through %s", event, source or "manual reader"))
+    -- Where the lines this queues come from, for the debug log (Player:Enqueue keeps it on each).
+    Player.origin = Player:Origin(event, source, manual)
     local succeeded, errorMessage = pcall(handler, self, event, manual)
+    Player.origin = nil
+    -- The bridge keeps the page blank for this read's line; it shows the page at once if none came.
+    if bridge and bridge.Read then
+        local stage = Debug.runtime.stage
+        bridge:Read(event, succeeded and (stage == "queued" or stage == "queue-paused" or stage == "playing"))
+    end
     if not succeeded then
         Debug:Record("handler-error", format("%s failed: %s", event, tostring(errorMessage)))
         local errorHandler = geterrorhandler and geterrorhandler()
@@ -267,10 +284,13 @@ local SPEECH_EVENTS = {
 
 --- The line the open dialog would read, resolved against the packs, or nil when no dialog
 --- is open or no pack has its line. Asked without reading anything. The second value is
---- the client event it stands for.
+--- the client event it stands for. A caller that already knows the event passes it: under
+--- DialogueUI the event is the only record of which panel is up, and DialogueUI hears it
+--- before this addon's recorder does.
+---@param event string?
 ---@return SoundData?, string?
-function Addon:GetVisibleLine()
-    local event = GetVisibleDialogueEvent()
+function Addon:GetVisibleLine(event)
+    event = event or GetVisibleDialogueEvent()
     local quest = event and QUEST_EVENTS[event]
     local speech = event and SPEECH_EVENTS[event]
     local probe
@@ -328,6 +348,9 @@ local defaults = {
             -- live here. They describe how anything is played rather than what this addon
             -- reads, so they are Spoken's settings now.
             StopAudioOnDisengage = false,
+            -- On, the NPC's own greeting is heard and what Spoken reads waits for it
+            -- (GreetingFirst.lua); off, Silence NPC Voices cuts it where a pack has one.
+            GreetingFirst = false,
             -- Off, no quest dialog, greeting or gossip reads itself: nothing plays until
             -- the Play button on the window is pressed (UI/DialogPlayButton.lua) or
             -- /spq read is typed. GossipFrequency then has nothing to decide.
@@ -343,6 +366,17 @@ local defaults = {
             VoiceLanguage = "auto",
             FallbackLanguage = "enUS",
         },
+        -- These do nothing without the DialogueUI addon.
+        DialogueUI = {
+            -- Typed out, lit, or both, by Spoken's Type Words Out and Highlight Words.
+            Captions = true,
+            AutoScroll = true,
+            -- Off by default: DialogueUI hides the rest of the interface on purpose, and its marked text
+            -- already shows the words.
+            ShowPlayer = false,
+            -- Shown whether or not DialogueUI's Text To Speech is on.
+            PlayButton = true,
+        },
         DebugEnabled = false,
     },
     char = {
@@ -351,8 +385,12 @@ local defaults = {
     }
 }
 
+Addon.DialogueUIDefaults = defaults.profile.DialogueUI
+
 local lastGossipOptions
 local selectedGossipOption
+-- Set by picking any option, even one whose label could not be found.
+local gossipOptionPicked
 local currentQuestSoundData
 local currentGossipSoundData
 
@@ -466,6 +504,7 @@ function Addon:OnInitialize()
 
     RequirePlayer("Spoken Quests")
     Player:Setup()
+    GreetingFirst:Setup()
     -- The copy-link popup behind the Report button. Guarded because a failure to build a
     -- dialog must not stop playback initializing.
     local reportButtonReady, reportButtonError = pcall(ReportButton.Initialize, ReportButton)
@@ -496,6 +535,17 @@ function Addon:OnInitialize()
     end)
     if not dialogPlayButtonReady then
         Debug:Record("dialog-play-button-error", tostring(dialogPlayButtonError))
+    end
+
+    -- Guarded: DialogueUI is someone else's addon, and a change there must not take narration
+    -- down with it.
+    local dialogueUIReady, dialogueUIError = pcall(function()
+        if DialogueUIBridge and DialogueUIBridge.Setup then
+            DialogueUIBridge:Setup()
+        end
+    end)
+    if not dialogueUIReady then
+        Debug:Record("dialogueui-error", tostring(dialogueUIError))
     end
 
     -- The lines NPCs say after a quest. Guarded the same way: a failed hook here must not
@@ -583,6 +633,7 @@ function Addon:OnInitialize()
     local function PollAutomaticQuest()
         local state = self.autoQuestState
         if self.dataModulesPending then
+            Debug:Note("watcher", "pending", "quest watcher waits: the voice packs are still loading")
             return
         end
         if not self:IsAutoplayOn() then
@@ -590,6 +641,12 @@ function Addon:OnInitialize()
             -- dropped too, so turning autoplay back on does not replay a dialog long closed.
             questSnapshot = nil
             ResetCandidate(state)
+            -- Said once for each quest opened meanwhile, which is the question a player asks.
+            local open = GetQuestID and GetQuestID() or 0
+            if open and open ~= 0 then
+                Debug:Note("watcher", "off:" .. tostring(open),
+                    "quest %s open, not read: Read Automatically is off", tostring(open))
+            end
             return
         end
         local questCallSucceeded, questID = pcall(function()
@@ -949,6 +1006,7 @@ function Addon:OnInitialize()
 
     if C_GossipInfo and C_GossipInfo.SelectOption then
         hooksecurefunc(C_GossipInfo, "SelectOption", function(optionID)
+            gossipOptionPicked = true
             if lastGossipOptions then
                 for _, info in ipairs(lastGossipOptions) do
                     if info.gossipOptionID == optionID then
@@ -961,6 +1019,7 @@ function Addon:OnInitialize()
         end)
     elseif SelectGossipOption then
         hooksecurefunc("SelectGossipOption", function(index)
+            gossipOptionPicked = true
             if lastGossipOptions then
                 selectedGossipOption = lastGossipOptions[1 + (index - 1) * 2]
                 lastGossipOptions = nil
@@ -1113,7 +1172,8 @@ function Addon:QUEST_COMPLETE()
     Player:Enqueue(soundData)
 end
 
-function Addon:ShouldPlayGossip(guid, text, manual)
+---@param followsOption boolean? the page was reached by picking one of the NPC's options
+function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
     local npcKey = guid or "unknown"
 
     -- Asked for by name, so having heard it before does not stand in the way.
@@ -1121,20 +1181,31 @@ function Addon:ShouldPlayGossip(guid, text, manual)
         return true, npcKey
     end
 
+    -- Once per NPC is about the greeting an NPC opens with. A guard's directions are a page the
+    -- player picked an option to reach, and keying them on the NPC kept every one of them quiet
+    -- once the greeting had played. Never still means no gossip at all.
+    if followsOption and self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Never then
+        return true, npcKey
+    end
+
     local gossipSeenForNPC = self.db.char.hasSeenGossipForNPC[npcKey]
 
+    -- Asked again for the same NPC while its window stays open; the log says it once.
     if self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerQuestNPC then
         local numActiveQuests = GetNumGossipActiveQuests()
         local numAvailableQuests = GetNumGossipAvailableQuests()
         local npcHasQuests = (numActiveQuests > 0 or numAvailableQuests > 0)
         if npcHasQuests and gossipSeenForNPC then
+            Debug:Note("gossip", npcKey .. ":quest-npc", "greeting of %s not read: an NPC with quests, heard before (NPC Greetings: once per quest NPC)", npcKey)
             return
         end
     elseif self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerNPC then
         if gossipSeenForNPC then
+            Debug:Note("gossip", npcKey .. ":once", "greeting of %s not read: heard before (NPC Greetings: once per NPC)", npcKey)
             return
         end
     elseif self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.Never then
+        Debug:Note("gossip", "never", "greetings not read: NPC Greetings is set to never")
         return
     end
 
@@ -1149,35 +1220,67 @@ end
 --- will be read for keeps its greeting: that is what the lookups below are for.
 ---@param event string
 function Addon:MuteGreetingAhead(event)
-    if not self:IsAutoplayOn() or self.dataModulesPending or not Player.source
-        or not Spoken.MuteGameDialogueAhead then
+    if not Spoken.MuteGameDialogueAhead or not self:IsAutoplayOn() or self.dataModulesPending
+        or not Player.source then
         return
     end
-    if event == "GOSSIP_SHOW" or event == "QUEST_GREETING" then
+    local quest = QUEST_EVENTS[event]
+    if not (SPEECH_EVENTS[event] or quest) then
+        return
+    end
+    -- Game Greeting First: nothing is cut, and the line waits for the greeting instead.
+    if GreetingFirst:IsOn() then
+        GreetingFirst:Open()
+        return
+    end
+    -- Silenced only where a pack reads the line; any other NPC keeps its greeting. A quest whose
+    -- ID is not known yet is muted too: its greeting starts now, and with no line the mute lifts.
+    local questID = quest and QuestIDFor(event)
+    if (quest and (not questID or questID == 0)) or self:ExpectedLine(event) then
+        Spoken:MuteGameDialogueAhead(Player.source)
+    end
+end
+
+--- The text autoplay will read for the dialog that just opened, or nil. Asked before the line is
+--- queued; `textIsCurrent` when the page is drawn, to check its own line, not just the speaker.
+---@param event string
+---@param textIsCurrent boolean?
+---@return string?
+function Addon:ExpectedLine(event, textIsCurrent)
+    if not self:IsAutoplayOn() or self.dataModulesPending or not Player.source then
+        return nil
+    end
+    local speech, quest = SPEECH_EVENTS[event], QUEST_EVENTS[event]
+    if speech then
         -- The page text is not to be trusted yet (see the deferred read), so this asks only
         -- whether any pack voices this speaker at all.
         local guid = Utils:GetNPCGUID()
         local speaker = { unitGUID = guid, name = Utils:GetNPCName(), unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }
         if not guid and not speaker.name then
-            return
+            return nil
         end
-        if not self:ShouldPlayGossip(guid, nil, false) or not DataModules:HasGossipFor(speaker) then
-            return
+        local followsOption = event == "GOSSIP_SHOW" and GossipPageFollowsOption(textIsCurrent)
+        if not self:ShouldPlayGossip(guid, nil, false, followsOption)
+            or not DataModules:HasGossipFor(speaker) then
+            return nil
         end
-    elseif QUEST_EVENTS[event] then
+        if textIsCurrent and not self:GetVisibleLine(event) then
+            return nil
+        end
+        return speech.text() or ""
+    elseif quest then
         -- The quest ID can still be the previous quest's this early; the worst that costs is
         -- one greeting muted for nothing, or one cut off as it was before.
         local questID = QuestIDFor(event)
         if not questID or questID == 0 then
-            return
+            return nil
         end
-        if not DataModules:PrepareSound({ event = QUEST_EVENTS[event].sound, questID = questID }) then
-            return
+        if not DataModules:PrepareSound({ event = quest.sound, questID = questID }) then
+            return nil
         end
-    else
-        return
+        return quest.text() or ""
     end
-    Spoken:MuteGameDialogueAhead(Player.source)
+    return nil
 end
 
 function Addon:QUEST_GREETING(event, manual)
@@ -1217,18 +1320,36 @@ local shownGossipTitle
 -- Which page that was. The direct event and the frame's OnShow can both deliver one page,
 -- and the second must not overwrite the label the first took.
 local shownGossipKey
+-- Whether that page was reached by picking an option, which ShouldPlayGossip needs to know.
+local shownGossipFollowsOption
 
 --- A fresh gossip page: note which option led here and what the page offers next, whether or
 --- not it is read. With autoplay off it is not, and the next page's label would otherwise be
 --- looked up in this page's predecessor's options.
+local function GossipPageKey()
+    return tostring(Utils:GetNPCGUID() or Utils:GetNPCName()) .. ":" .. tostring(GetGossipText())
+end
+
+--- Whether the gossip page on screen was reached by picking an option. Before NoteGossipPage
+--- the pick is still pending; after it, the page it noted carries it. DialogueUI can draw the
+--- page on either side of that, so a drawn page (`textIsCurrent`) checks both.
+function GossipPageFollowsOption(textIsCurrent)
+    if gossipOptionPicked then
+        return true
+    end
+    return textIsCurrent and shownGossipFollowsOption and shownGossipKey == GossipPageKey() or false
+end
+
 function NoteGossipPage()
-    local pageKey = tostring(Utils:GetNPCGUID() or Utils:GetNPCName()) .. ":" .. tostring(GetGossipText())
-    if not selectedGossipOption and pageKey == shownGossipKey then
+    local pageKey = GossipPageKey()
+    if not gossipOptionPicked and pageKey == shownGossipKey then
         return
     end
     shownGossipKey = pageKey
     shownGossipTitle = selectedGossipOption and format([["%s"]], selectedGossipOption)
+    shownGossipFollowsOption = gossipOptionPicked
     selectedGossipOption = nil
+    gossipOptionPicked = nil
     lastGossipOptions = nil
     if C_GossipInfo and C_GossipInfo.GetOptions then
         lastGossipOptions = C_GossipInfo.GetOptions()
@@ -1247,7 +1368,7 @@ function Addon:GOSSIP_SHOW(event, manual)
         return
     end
 
-    local play, npcKey = self:ShouldPlayGossip(guid, gossipText, manual)
+    local play, npcKey = self:ShouldPlayGossip(guid, gossipText, manual, shownGossipFollowsOption)
     if not play then
         return
     end
@@ -1283,6 +1404,8 @@ function Addon:GOSSIP_CLOSED()
     currentGossipSoundData = nil
 
     selectedGossipOption = nil
+    gossipOptionPicked = nil
     shownGossipTitle = nil
     shownGossipKey = nil
+    shownGossipFollowsOption = nil
 end

@@ -4,13 +4,12 @@
  * The triage list for pasted envelopes.
  *
  * A table for the same reason ReportTable is one: triage is a scan down a column, and the
- * submitted text -- which can run to a full quest's worth of dialogue -- sits behind a
- * `<details>` so a long paste does not push every row after it off the screen (the reasoning
- * CATEGORY_COLUMN gives in lib/reports/reports.ts for the same shape of problem).
+ * submitted text -- which can run to a full quest's worth of dialogue -- is clamped to two
+ * lines until opened, so a long paste does not push every row after it off the screen.
  *
- * Never renders `ip`, `name` or `email`: reports/ReportTable shows a reporter's own name
- * because they gave it to have their report followed up on, but a contribution's identifying
- * fields exist only for abuse response, not for triage to read. `body` -- the optional
+ * Never renders `ip` or `email`, which exist only for abuse response. Who sent a row -- the
+ * names senders chose to show -- is fetched only when its count is pressed, never carried on
+ * every row. `body` -- the optional
  * complaint -- is different: it's the one field a player filled in specifically to be read,
  * so it is rendered below, deliberately included in the Row this component accepts.
  *
@@ -22,24 +21,29 @@
  */
 import { useLang } from "@/components/LangProvider";
 import { localeHref, type Lang } from "@/lib/lang";
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useState } from "react";
 
+import { CLIENT_CHIP_OPTIONS, SEARCH_IN_OPTIONS } from "@/components/contribution-chips";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
 import SpeakerCell, { ProvenanceBadge, type SpeakerAnswer } from "@/components/SpeakerCell";
-import { LiteButton, LiteCheckbox } from "@/components/LiteControls";
+import { ACCEPT_TONE, LiteButton, LiteCheckbox, REJECT_TONE } from "@/components/LiteControls";
 import { Refreshing } from "@/components/Loading";
+import SendersButton from "@/components/SendersButton";
+import StatusTabs from "@/components/StatusTabs";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useSearchBox } from "@/components/useSearchBox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   RESOLVE_MANY_MAX,
   type ContributionStatus,
   type ResolveManyResult,
 } from "@/lib/contributions/contributions";
-import { CLIENT_FAMILIES, CLIENT_FAMILY_LABELS, type ClientSummary } from "@/lib/contributions/client";
+import type { ClientSummary } from "@/lib/contributions/client";
 import { flavorOptionsFor, summaryFromResolution, type FlavorScope } from "@/lib/contributions/speaker";
 import {
   contributionsHref,
@@ -47,6 +51,7 @@ import {
   NEEDS_DECISION,
   QUEST_STAGES,
   nextSort,
+  sectionOf,
   type ClientFilter,
   type ContributionSort,
   type FilterChange,
@@ -56,7 +61,6 @@ import {
   type SpeakerFilter,
   type StageFilter,
 } from "@/lib/contributions/query";
-import { SOURCES } from "@/lib/contributions/envelope";
 import type { Contribution } from "@/lib/contributions/store";
 import { textHints } from "@/lib/contributions/text-hints";
 // Both are computed server-side (npcSummaryFrom pulls in corpus.ts's flavorsFor) -- `import
@@ -67,6 +71,7 @@ import type { BookMatch, BookSummary, NpcConflictOption, NpcSummary, QuestSummar
 // (values, not just types) out of it would drag Postgres's own node built-ins into this bundle.
 import { NPC_KINDS, PROVENANCES, type NpcKind, type Provenance } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
+import type { Filter } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { wowheadEntityUrl, wowheadForeverUrl, wowheadQuestUrl } from "@/lib/wowhead";
 
@@ -103,13 +108,14 @@ function bookOption(book: BookChoice): string {
   return `${book.title} #${book.bookId}`;
 }
 
-const SOURCE_LABELS: Record<Contribution["source"], string> = {
+const SOURCE_LABELS: Record<Contribution["source"] | "gossip", string> = {
   quests: "Quests",
+  gossip: "Gossip",
   zones: "Zones",
   books: "Books",
 };
 
-const SOURCE_CHIP_OPTIONS: ChipOption[] = SOURCES.map((option) => ({
+const SOURCE_CHIP_OPTIONS: ChipOption[] = (["quests", "gossip", "zones", "books"] as const).map((option) => ({
   value: option,
   label: SOURCE_LABELS[option],
 }));
@@ -120,10 +126,10 @@ const STAGE_LABELS: Record<QuestStage, string> = {
   complete: "Complete",
 };
 
-const STAGE_CHIP_OPTIONS: ChipOption[] = [
-  ...QUEST_STAGES.map((option) => ({ value: option, label: STAGE_LABELS[option] })),
-  { value: "gossip", label: "Gossip" },
-];
+const STAGE_CHIP_OPTIONS: ChipOption[] = QUEST_STAGES.map((option) => ({
+  value: option,
+  label: STAGE_LABELS[option],
+}));
 
 const STATUS_LABELS: Record<ContributionStatus, string> = {
   new: "New",
@@ -131,11 +137,6 @@ const STATUS_LABELS: Record<ContributionStatus, string> = {
   rejected: "Rejected",
 };
 
-const STATUS_OPTIONS: readonly ContributionStatus[] = ["new", "accepted", "rejected"];
-const STATUS_CHIP_OPTIONS: ChipOption[] = STATUS_OPTIONS.map((option) => ({
-  value: option,
-  label: STATUS_LABELS[option],
-}));
 
 const PROVENANCE_LABELS: Record<Provenance, string> = {
   corpus: "Corpus",
@@ -156,11 +157,6 @@ const SPEAKER_CHIP_OPTIONS: ChipOption[] = [
   ...PROVENANCES.map((option) => ({ value: option, label: PROVENANCE_LABELS[option] })),
   { value: MISSING, label: "Missing" },
 ];
-
-const CLIENT_CHIP_OPTIONS: ChipOption[] = CLIENT_FAMILIES.map((option) => ({
-  value: option,
-  label: CLIENT_FAMILY_LABELS[option],
-}));
 
 /**
  * A column header that orders the queue: a click sorts on it, a second click flips it. The
@@ -222,6 +218,8 @@ export default function ContributionTable({
   source,
   stage,
   sort,
+  q,
+  searchIn,
   existing,
   books,
   flavorScopes,
@@ -233,12 +231,14 @@ export default function ContributionTable({
   matching: { id: number; status: ContributionStatus }[];
   page: number;
   pages: number;
-  status: ContributionStatus | "all";
+  status: ContributionStatus;
   provenance: SpeakerFilter;
   client: ClientFilter;
   source: SourceFilter;
   stage: StageFilter;
   sort: ContributionSort;
+  q: string;
+  searchIn: Filter;
   /** id -> corpus text, present only where the row's key resolves to something on file. */
   existing: Record<number, string>;
   /** The English books, for matching a translated page to one. Empty when no row here needs it. */
@@ -254,7 +254,7 @@ export default function ContributionTable({
 
   /**
    * What this session resolved, overlaid on the server's rows -- the same shape ReportTable
-   * uses and for the same reason: the status dropdown below is a navigation, so seeding state
+   * uses and for the same reason: the status tabs above are a navigation, so seeding state
    * from `initial` once would leave a resolved row sitting in a queue it no longer belongs to
    * until the next reload.
    */
@@ -293,7 +293,7 @@ export default function ContributionTable({
       answer: SpeakerAnswer,
     ) => {
       setNpcBusy(contributionId);
-      const response = await fetch("/api/contributions/npc", {
+      const response = await fetch(`/api/contributions/npc?lang=${lang}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         // A kind-less row's moderator-chosen kind wins over the row's own null. `??` rather than
@@ -322,7 +322,7 @@ export default function ContributionTable({
         [overrideKey(resolution.npcKind, resolution.npcId)]: summary,
       }));
     },
-    [flavorScopes],
+    [flavorScopes, lang],
   );
 
   /**
@@ -507,10 +507,7 @@ export default function ContributionTable({
     [landed, router],
   );
 
-  const rows = initial.filter((row) => {
-    const current = resolved[row.id] ?? row.status;
-    return status === "all" || current === status;
-  });
+  const rows = initial.filter((row) => (resolved[row.id] ?? row.status) === status);
 
   // Only rows still on screen count: a selected row a bulk reject just moved out of this view
   // must not be accepted by the next click on a button that no longer shows it.
@@ -544,21 +541,36 @@ export default function ContributionTable({
    * ReportTable.tsx's own `go`; the mapping itself is contributionsHref, pulled out to
    * lib/contributions/query.ts so it can be tested without rendering FilterChip or this table.
    */
+  const filters = { status, provenance, client, source, stage, sort, q, searchIn };
   function go(next: FilterChange, toPage = 1) {
-    push(localeHref(lang, contributionsHref({ status, provenance, client, source, stage, sort }, next, toPage)));
+    push(localeHref(lang, contributionsHref(filters, next, toPage)));
   }
+
+  const [query, setQuery] = useSearchBox(q, (next) => go({ q: next }));
 
   return (
     <>
-      {/* Dropdowns, the same control the explorers filter with -- matching ReportTable.
-          Status/Speaker being one dropdown each, rather than a row of link pills, is what makes
-          "New / Accepted / Rejected / All" and the six speaker pills fit without crowding. */}
+      <StatusTabs
+        active={status}
+        onGo={push}
+        hrefFor={(next) =>
+          localeHref(lang, contributionsHref(filters, { status: next }))
+        }
+      />
       <nav className="mb-4 flex flex-wrap items-center gap-2">
+        <Input
+          type="search"
+          value={query}
+          placeholder="NPC, quest, or what they sent…"
+          aria-label="Search"
+          className="h-8 min-w-0 basis-64"
+          onChange={(event) => setQuery(event.target.value)}
+        />
         <FilterChip
-          label="status"
-          value={status === "all" ? undefined : status}
-          options={STATUS_CHIP_OPTIONS}
-          onChange={(next) => go({ status: next as ContributionStatus | undefined })}
+          label="search in"
+          value={searchIn === "any" ? undefined : searchIn}
+          options={SEARCH_IN_OPTIONS}
+          onChange={(next) => go({ searchIn: (next ?? "any") as Filter })}
         />
         <FilterChip
           label="speaker"
@@ -603,6 +615,8 @@ export default function ContributionTable({
                   </span>
                   <Button
                     size="sm"
+                    variant="outline"
+                    className={ACCEPT_TONE}
                     onClick={() => {
                       setConfirmAll(false);
                       void resolveMany(shownToAccept, "accepted");
@@ -618,6 +632,7 @@ export default function ContributionTable({
                 <Button
                   size="sm"
                   variant="outline"
+                  className={ACCEPT_TONE}
                   disabled={shownToAccept.length === 0}
                   onClick={() => setConfirmAll(true)}
                 >
@@ -630,6 +645,7 @@ export default function ContributionTable({
                   <Button
                     size="sm"
                     variant="outline"
+                    className={ACCEPT_TONE}
                     disabled={selectedToAccept.length === 0}
                     onClick={() => void resolveMany(selectedToAccept, "accepted")}
                   >
@@ -638,6 +654,7 @@ export default function ContributionTable({
                   <Button
                     size="sm"
                     variant="outline"
+                    className={REJECT_TONE}
                     disabled={selectedToReject.length === 0}
                     onClick={() => void resolveMany(selectedToReject, "rejected")}
                   >
@@ -685,9 +702,6 @@ export default function ContributionTable({
                 Count
               </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">What they sent</th>
-              <SortHeader column="status" sort={sort} onSort={(column) => go({ sort: nextSort(sort, column) })}>
-                Status
-              </SortHeader>
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>
@@ -806,6 +820,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
 }) {
   // A written page is one-way (accept.ts), so its match is no longer the moderator's to move.
   const pageWritten = current === "accepted" && (row.hasLine || lineCreated);
+  const [expanded, setExpanded] = useState(false);
   return (
     // Top-aligned, not middle: the NPC/Speaker cell below can grow to a whole form's
       // height (race/gender/flavor selects), and centring every other
@@ -815,6 +830,13 @@ const ContributionTableRow = memo(function ContributionTableRow({
         // Anchor, not just a key: an accepted quests row's line carries a link back
         // here (LineRow.tsx's "contributed" badge), and this is what it jumps to.
         id={`contribution-${row.id}`}
+        onClick={(event) => {
+          // A click on one of the row's controls is that control's, and one ending a drag over
+          // the text is somebody copying it: neither should fold the row out from under them.
+          if ((event.target as HTMLElement).closest("button, a, input, select, textarea, label, form")) return;
+          if (!window.getSelection()?.isCollapsed) return;
+          setExpanded((open) => !open);
+        }}
         className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5"
       >
         <td className="pr-2">
@@ -835,7 +857,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
               columns are what a moderator scans now (finding 1), but the key is still
               worth having for a zones/books row, where neither column applies. */}
           <Badge variant="outline" className="py-0 leading-5" title={row.key}>
-            {SOURCE_LABELS[row.source]}
+            {SOURCE_LABELS[sectionOf(row, row.quest)]}
           </Badge>
         </td>
 
@@ -943,11 +965,11 @@ const ContributionTableRow = memo(function ContributionTableRow({
           </div>
         </td>
 
-        <td className="pr-3 text-xs whitespace-nowrap">{row.count}</td>
+        <td className="pr-3 text-xs whitespace-nowrap"><SendersButton id={row.id} count={row.count} /></td>
 
         <td className="max-w-md pr-3">
-          {/* Outside the details: a line that will never be voiced is what a moderator
-              must see before accepting, not after opening every row. */}
+          {/* Above the clamped text: a line that will never be voiced is what a moderator
+              must see before accepting, not after expanding every row. */}
           {row.text
             ? textHints(row.text, row.locale).map((hint) => (
                 <p key={hint} className="text-destructive text-xs">
@@ -955,49 +977,50 @@ const ContributionTableRow = memo(function ContributionTableRow({
                 </p>
               ))
             : null}
-          {/* Collapsed by default: a full quest's dialogue in an open cell is the
-              "table stops being a scan" failure this markup exists to avoid. */}
-          <details>
-            <summary className="text-muted-foreground cursor-pointer text-xs">
-              {row.text ? `${row.text.length} chars` : "no text"}
-              {found !== undefined ? " · corpus already has this key" : ""}
-              {row.body ? " · note attached" : ""}
-            </summary>
-            <p className="mt-1 whitespace-pre-wrap">{row.text ?? "(no text sent)"}</p>
-            {row.body ? (
-              // The optional complaint: collected on the form, stored as `body`, and
-              // until now rendered nowhere -- a player who explained what was wrong
-              // had that reach no one. Shown here rather than its own column because
-              // most rows won't have one and a column that's usually empty is a scan
-              // slower than the details cell it would sit next to.
-              <div className="mt-2 rounded border p-2">
-                <p className="text-muted-foreground text-xs font-medium">
-                  What they said was wrong:
-                </p>
-                <p className="mt-1 whitespace-pre-wrap">{row.body}</p>
-              </div>
-            ) : null}
-            {found !== undefined ? (
-              // A "missing" key the corpus already answers to is a corpus bug, not
-              // an absent line -- shown beside the submitted text so that reading is
-              // a glance, not a second lookup.
-              <div className="bg-muted/40 mt-2 rounded p-2">
-                <p className="text-muted-foreground text-xs font-medium">
-                  Already on file:
-                </p>
-                <p className="mt-1 whitespace-pre-wrap">{found}</p>
-              </div>
-            ) : null}
-          </details>
+          <div className="flex items-start gap-1">
+            <p className={cn("min-w-0 flex-1 whitespace-pre-wrap", !expanded && "line-clamp-2")}>
+              {row.text ?? <span className="text-muted-foreground">(no text sent)</span>}
+            </p>
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-label={expanded ? "Collapse this text" : "Show the whole text"}
+              title={expanded ? "Collapse" : "Show the whole text"}
+              onClick={() => setExpanded((open) => !open)}
+              className="text-muted-foreground hover:text-foreground mt-px shrink-0 cursor-pointer rounded-sm p-0.5"
+            >
+              <ChevronDownIcon className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+            </button>
+          </div>
+          {!expanded && (found !== undefined || row.body) ? (
+            <p className="text-muted-foreground text-xs">
+              {[found !== undefined && "corpus already has this key", row.body && "note attached"]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
+          {expanded && row.body ? (
+            // The optional complaint: the one field a player filled in to be read.
+            <div className="mt-2 rounded border p-2">
+              <p className="text-muted-foreground text-xs font-medium">What they said was wrong:</p>
+              <p className="mt-1 whitespace-pre-wrap">{row.body}</p>
+            </div>
+          ) : null}
+          {expanded && found !== undefined ? (
+            // A "missing" key the corpus already answers to is a corpus bug, not an absent
+            // line -- shown beside the submitted text so that reading is a glance.
+            <div className="bg-muted/40 mt-2 rounded p-2">
+              <p className="text-muted-foreground text-xs font-medium">Already on file:</p>
+              <p className="mt-1 whitespace-pre-wrap">{found}</p>
+            </div>
+          ) : null}
         </td>
-
-        <td className="pr-3 text-xs whitespace-nowrap">{STATUS_LABELS[current]}</td>
 
         <td>
           <div className="flex items-center justify-end gap-1">
             {current !== "accepted" ? (
               <LiteButton
-                variant="outline"
+                variant="accept"
                 disabled={busy || locked}
                 onClick={() => void onResolve(row.id, "accepted")}
               >
@@ -1010,7 +1033,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
               // back to the same POST, still gated by resolveContribution's own rules
               // (needs-speaker, collision, one-way).
               <LiteButton
-                variant="outline"
+                variant="accept"
                 disabled={busy || locked}
                 onClick={() => void onResolve(row.id, "accepted")}
               >
@@ -1019,7 +1042,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
             ) : null}
             {current !== "rejected" ? (
               <LiteButton
-                variant="outline"
+                variant="reject"
                 disabled={busy || locked}
                 onClick={() => void onResolve(row.id, "rejected")}
               >

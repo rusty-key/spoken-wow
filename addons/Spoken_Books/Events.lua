@@ -45,6 +45,8 @@ function SpokenBooks:OnTextReady()
 	end
 
 	self.lastPage = pageId
+	-- Found the moment it is open, whatever autoplay says.
+	self:MarkBookFound(self:PlaceOf(pageId))
 
 	if not SpokenBooksSettings or SpokenBooksSettings.autoplay == false then
 		-- The reader turned autoplay off, so nothing starts by itself -- but the page is
@@ -137,6 +139,10 @@ frame:SetScript("OnEvent", function(_, event, arg1)
 		-- build once the world is up.
 		if SpokenBooks.SetupOptions then
 			SpokenBooks:SetupOptions()
+		end
+		-- The readables' tab in Azeroth's Compendium, built the first time it is opened.
+		if SpokenBooks.SetupReadables then
+			SpokenBooks:SetupReadables()
 		end
 	end
 end)

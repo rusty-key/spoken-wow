@@ -2,6 +2,71 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## 3.2.0 — 2026-10-08
+
+- **Lore of Azeroth is now Azeroth's Compendium, with a Books tab.** The Zones tab lists each
+  place once, with cities inside their zone, and greys out the places you have not discovered,
+  with a padlock and a found / total count. The Books tab lists every book, letter, note and
+  plaque, by zone or by type, each found once you open it. A filter menu beside the search shows
+  only what you found or only what is voiced. Open it, and unlock it, from Spoken's settings page
+  or the minimap menu. *([Nucabe](https://github.com/Nucabe))*
+- **The place under the cursor lights up on a zone map**, and what lights up is what a click
+  opens. Clicking a city on its zone's map opens the city, and clicking an area with a story
+  opens Zone Lore when it is closed. *([Nucabe](https://github.com/Nucabe))*
+- **DialogueUI support.** With the DialogueUI addon installed, quest text in its window types
+  out and highlights the words as the voice reads them, long text scrolls to follow the voice,
+  and DialogueUI's own Play button plays the voice-over. A new DialogueUI narrator style draws
+  Spoken's window in DialogueUI's art, and can follow its parchment or dark theme. Spoken's
+  window or subtitles can stay visible over DialogueUI. Report a problem and Contribute work in
+  DialogueUI's window. Its settings are on one page, Spoken > DialogueUI, shown only when
+  DialogueUI is installed. *([earlsinclairdino](https://github.com/earlsinclairdino))*
+- **NPC voices are cut, not faded, the moment their window opens**, and quest windows are
+  silenced before the game says which quest it is. Skip now fades the line out, as Stop does.
+  *([Nucabe](https://github.com/Nucabe))*
+- **Game Greeting First**, a new setting, off by default: the NPC finishes its greeting, then
+  Spoken speaks. To tell the greeting apart, Spoken keeps the Dialog volume 1% away from the
+  other sliders. Thanks to AstroOat for the idea. *([Nucabe](https://github.com/Nucabe))*
+- **Spoken always plays through Master Volume.** Volume Follows is removed: on Dialog,
+  silencing NPCs silenced Spoken too. *([Nucabe](https://github.com/Nucabe))*
+- **Left-click on Spoken's minimap button opens the settings, right-click the menu.** A profile
+  that changed the clicks keeps its own, and the tooltip says which click does what.
+  *([Nucabe](https://github.com/Nucabe))*
+- **The settings page counts the voice packs you have.** A module's card shows how many voice
+  packs it has installed. The voice pack lists offer the packs in the language you hear, plus
+  any you already have, rather than every English pack too. The narrator style's settings sit in
+  a box of their own. *([Nucabe](https://github.com/Nucabe))*
+- A Quests voice pack switched off in the AddOns list stays off: it is no longer loaded, played
+  or counted. *([Nucabe](https://github.com/Nucabe))*
+- Zone Lore beside the map fades with it as you walk again, and the button that reopens it is a
+  side tab, like the game's own panels, where the client has one.
+  *([Nucabe](https://github.com/Nucabe))*
+- Zone Lore has pictures for 16 more places in Kalimdor, and Darrowmere Lake and Three Corners
+  show the places as they were in Classic. *([Nucabe](https://github.com/Nucabe))*
+- On Forever, Bronze Border also colours the round buttons, such as Play and Report, and shows
+  with every narrator style. *([Nucabe](https://github.com/Nucabe))*
+- Turning the Spoken button off in the addon compartment stays off after a reload.
+  *([RomainDel59](https://github.com/RomainDel59))*
+- Opening the settings in combat, which the game does not allow, now says so instead of doing
+  nothing. *([earlsinclairdino](https://github.com/earlsinclairdino))*
+- **Spoken Developer, a module of its own, with a debug log to send with a report.** Installed and
+  turned on (in Spoken > Developer, the welcome window or `/spoken log on`), it notes every line
+  queued, started, stopped, dropped or refused, with the time and the reason, and the
+  diagnostics. Right-click any Report or Contribute button to copy it with the diagnostics, or to
+  write it for an AI agent on your computer (a snapshot of the moment, then a reload so the game
+  saves the file). On once installed, and can be turned off; Spoken without it is unchanged. See
+  [DEBUG-LOG.md](DEBUG-LOG.md). *([earlsinclairdino](https://github.com/earlsinclairdino))*
+- For feature addons: `Spoken:Log`, `AddDiagnostics`, `AddDeveloperSettings`, `AddLogSource`
+  and the rest, all doing nothing without the module.
+- **A sound between queued lines, if you want one** (Sound > Sound Between Lines). At a quest hub
+  a hand-in and the next pickup, often in the same NPC's voice, no longer run together: when a
+  line finishes and another is waiting, the game's quest-log-close sound plays halfway through
+  the pause before the next. Off by default, and never between the pages of one book.
+- Pause Between Lines only runs when another line is waiting. After the last line Spoken is
+  done as soon as the voice ends, so its window closes and the game's NPC voices come back
+  without the extra wait.
+- With greetings set to Once per NPC, what an NPC says after you pick one of its options plays
+  again, like a guard's directions. Only the greeting it opens with is held back.
+
 ## 3.1.0 — 2026-10-06
 
 - **Auto-Scroll for the window's captions.** It replaces Turn Pages Automatically and has three

@@ -78,6 +78,7 @@ function QuestOverlayUI:ContributeButtonFor(questID, title)
                 GameTooltip:Hide()
             end
         end)
+        contribute:OfferLogMenu(button)
         self.questContributeButtons[questID] = button
     end
     button:SetScript("OnClick", function()
@@ -160,7 +161,9 @@ function QuestOverlayUI:BindPlayButton(playButton, questID, soundTitle)
                 questID = questID,
                 name = id and DataModules:GetObjectName(type, id) or "Unknown Name",
                 title = soundTitle,
-                unitGUID = id and Enums.GUID:CanHaveID(type) and Utils:MakeGUID(type, id) or nil
+                unitGUID = id and Enums.GUID:CanHaveID(type) and Utils:MakeGUID(type, id) or nil,
+                -- For the debug log: which screen queued it.
+                origin = "the quest log's Play button",
             }
         end
 

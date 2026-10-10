@@ -76,7 +76,10 @@ end
 --- A page the installed pack has no clip for is skipped rather than queued silent: the
 --- player would otherwise hold a clip with no sound for its whole length, which reads as
 --- the addon having stopped working.
-function SpokenBooks:PlayFrom(pageId)
+---
+--- `browsing`: played from the Compendium, which is not meeting the book in the world, so Read
+--- Only Once still lets it read itself the first time it is opened there.
+function SpokenBooks:PlayFrom(pageId, browsing)
 	local source = self.source
 	if not source then
 		return 0
@@ -97,15 +100,15 @@ function SpokenBooks:PlayFrom(pageId)
 	-- whether autoplay queued it or the reader pressed play. Recorded even with readOnce
 	-- off, so turning the setting on remembers what was heard before rather than starting
 	-- from a blank slate.
-	if queued > 0 then
+	if queued > 0 and not browsing then
 		self:MarkBookRead(self:PlaceOf(pageId))
 	end
 
 	return queued
 end
 
---- The page on screen changed. Keep the queue pointed at it.
-function SpokenBooks:SyncTo(pageId)
+--- The page on screen changed. Keep the queue pointed at it. `browsing` as PlayFrom's.
+function SpokenBooks:SyncTo(pageId, browsing)
 	if not pageId then
 		return 0
 	end
@@ -121,7 +124,7 @@ function SpokenBooks:SyncTo(pageId)
 	if self.source then
 		self.source:StopAll()
 	end
-	return self:PlayFrom(pageId)
+	return self:PlayFrom(pageId, browsing)
 end
 
 --- Stop this source, and only this source: the queue may be carrying a quest line that has

@@ -36,6 +36,13 @@ local function IsFrameVisible(frame)
     return frame:IsShown()
 end
 
+local PAGE_EVENTS =
+{
+    QUEST_DETAIL = Enums.SoundEvent.QuestAccept,
+    QUEST_PROGRESS = Enums.SoundEvent.QuestProgress,
+    QUEST_COMPLETE = Enums.SoundEvent.QuestComplete,
+}
+
 local EVENT_PATHS =
 {
     [Enums.SoundEvent.QuestAccept] = "accept",
@@ -89,6 +96,9 @@ function ReportButton:CurrentTarget()
         event = Enums.SoundEvent.QuestProgress
     elseif IsFrameVisible(QuestFrameDetailPanel) then
         event = Enums.SoundEvent.QuestAccept
+    else
+        local page = Utils:DialogueUIPage()
+        event = page and PAGE_EVENTS[page]
     end
 
     local target = event and self:TargetForQuest(GetQuestID and GetQuestID(), event)
@@ -118,16 +128,25 @@ function ReportButton:Link(target, language)
     return format("%s/r/%s", SITE_URL, target)
 end
 
-function ReportButton:ShowLink(target, language)
-    shownLink = self:Link(target, language)
+--- DialogueUI hides UIParent and the game's popups with it, so under its window the address
+--- goes to Spoken's copy box, which shows over that window.
+local function ShowCopy(url)
+    if Utils:DialogueUIPage() and Spoken and Spoken.ShowContribution then
+        Spoken:ShowContribution(url, nil, true)
+        return
+    end
+    shownLink = url
     StaticPopup_Show(COPY_DIALOG)
+end
+
+function ReportButton:ShowLink(target, language)
+    ShowCopy(self:Link(target, language))
 end
 
 --- The same popup, for an address that is not a report: the settings panel offers one per
 --- sound pack, since the game cannot open a link and a player has to copy it out.
 function ReportButton:ShowAddress(url)
-    shownLink = url
-    StaticPopup_Show(COPY_DIALOG)
+    ShowCopy(url)
 end
 
 function ReportButton:Initialize()

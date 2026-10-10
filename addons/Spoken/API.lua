@@ -20,7 +20,7 @@ end
 
 ---@param key string  "quests" | "zones" | "books"
 ---@param info SpokenSourceInfo
----@return table source  Carries Enqueue, PlayNow, Remove, StopAll, AddGate, RecheckGates,
+---@return table source  Carries Enqueue, PlayNow, Remove, StopAll, AddGate, RecheckGates, Retry,
 ---                      CanPlay, SetQueueLimit and SetInterClipGap.
 function Spoken:RegisterSource(key, info)
     return Sources:Register(key, info)
@@ -48,6 +48,7 @@ end
 --     length   = 3.4,                         -- seconds; the client cannot report this
 --     delay    = nil,                         -- silence before; only 2.4.3/3.3.5 set it
 --     priority = "normal" | "low",            -- low yields at the door; gossip is low
+--     group    = "book:123",                  -- optional; clips of one item, no pause or cue between
 --     present  = {
 --       header   = "Eagan Peltskinner",       -- NPC name | zone name | book title
 --       label    = "Wolves Across the Border",-- quest title | subzone | page label
@@ -95,11 +96,17 @@ function Spoken:GetPortraitRenderer(kind)
     return Renderers[kind]
 end
 
---- Ask the client about a creature whose portrait may soon be drawn, so the minimal player
---- has its face by then rather than the book while the client fetches it. A no-op in the
---- other layout, which draws a 3D model and needs nothing ahead of time.
+--- Ask the client about a creature whose portrait may soon be drawn, so the small and the
+--- DialogueUI windows show its face, not the book. A no-op in the large window (a 3D model).
 function Spoken:PrimePortrait(creatureID)
-    if MinimalPlayer and MinimalPlayer:IsEnabled() then StaticPortrait:Prime(creatureID) end
+    local skin = PlayerFrame.Skin and PlayerFrame:Skin()
+    if skin and StaticPortrait then StaticPortrait:Prime(creatureID) end
+end
+
+--- How lines are shown: "subtitle", "none", "minimal", "classic" or "dialogueui".
+--- Additive: guard on the field.
+function Spoken:GetPlayerStyle()
+    return Addon:PlayerStyle()
 end
 
 --------------------------------------------------------------------------------
@@ -126,8 +133,24 @@ end
 
 --- The player window, for a feature addon that must anchor something to it.
 function Spoken:GetPlayerFrame()
-    if MinimalPlayer:IsEnabled() then return MinimalPlayer.frame end
-    return PlayerFrame.frame
+    local skin = PlayerFrame:Skin()
+    return skin and skin.frame or PlayerFrame.frame
+end
+
+--- Show the player over another frame, or back where it was with nil. For a host that hides
+--- UIParent, as DialogueUI does: the windows and subtitles keep their place on screen and stay
+--- draggable, and the subtitles pass clicks through to the host. Additive: guard on the field.
+function Spoken:SetPlayerHost(frame)
+    Addon:SetPlayerHost(frame)
+end
+
+--- Add a feature addon's rows to Spoken's DialogueUI page. build(layout) runs once, when the
+--- page is built: it adds a section and rows to the SpokenLayout, and may return a function
+--- that resets them for the page's Defaults button. Never called without DialogueUI or nested
+--- settings pages. Additive: guard on the field; without it, keep the rows on the addon's own
+--- page, still only with DialogueUI installed.
+function Spoken:AddDialogueUISettings(build)
+    DialogueUIOptions:Add(build)
 end
 
 --- The Settings category, so a feature addon can nest its panel under it with
@@ -315,6 +338,12 @@ function Spoken:SetPartOn(key, on)
     Options:UpdateRows()
 end
 
+--- Whether Spoken's page and minimap menu open Azeroth's Compendium and hold its Unlock switches,
+--- so the parts leave theirs off their own pages.
+function Spoken:ShowsCompendium()
+    return true
+end
+
 --- A button on the player's panel that opens a feature addon's own settings, for the
 --- addons whose panel cannot be nested.
 function Spoken:AddSettingsLink(text, onClick)
@@ -423,6 +452,52 @@ function Spoken:AddGate(fn)
 end
 
 --------------------------------------------------------------------------------
+-- Captions, for an addon that shows the line being read somewhere else
+--------------------------------------------------------------------------------
+--
+-- Additive, so guard on the field: `if Spoken.GetCaption then`. Both answer nil on 1.12,
+-- which has no captions. The timing is the captions' own estimate (a recording has no word
+-- timestamps), so another view marks the same word they would.
+
+local caption = {}
+
+--- The speaking clip's caption, kept current even while the captions are hidden or off:
+---   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter }
+--- words[i] = { text, start, finish, first, last, joined }: start/finish are the word's share
+--- of the recording, in units of totalWeight; first/last its bytes in the clip's text.
+--- progress is nil for a clip with no length; activeWord is set only while speaking.
+--- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
+--- Show Words off). Read-only, and the same table on every call. nil without a clip.
+function Spoken:GetCaption()
+    if Transcript.unavailable or not Transcript.clip or not Transcript.words then return nil end
+    -- Not read from what the captions last drew: they update only while shown, and
+    -- DialogueUI hides them with UIParent.
+    local progress = Transcript:GetProgress()
+    caption.clip, caption.words, caption.totalWeight = Transcript.clip, Transcript.words, Transcript.totalWeight
+    caption.progress = progress
+    caption.speaking = Transcript:IsSpeaking(progress) and true or false
+    caption.activeWord = caption.speaking and Transcript:WordAt(progress) or nil
+    caption.highlight, caption.typewriter = self:GetCaptionOptions()
+    return caption
+end
+
+--- Highlight Words and Type Words Out as GetCaption gives them, with or without a clip, for a
+--- view that prepares a line before it plays. Both false on 1.12 and with Show Words off.
+function Spoken:GetCaptionOptions()
+    local cfg = Addon:Profile("Transcript")
+    if Transcript.unavailable or not cfg.Enabled then return false, false end
+    return cfg.HighlightWord and true or false, cfg.Typewriter and true or false
+end
+
+--- Split text into words as the captions do (a Chinese character is a word), each with its
+--- bytes in text as first/last, so the caller can find GetCaption's word in its own copy of
+--- the line. Escape sequences are not removed.
+function Spoken:SplitCaption(text)
+    if Transcript.unavailable or type(text) ~= "string" then return nil end
+    return Transcript:Split(text)
+end
+
+--------------------------------------------------------------------------------
 -- Callbacks
 --------------------------------------------------------------------------------
 --
@@ -485,4 +560,101 @@ function Spoken:EnumerateAddonsWithKey(tocKey)
             end
         end
     end
+end
+
+--------------------------------------------------------------------------------
+-- Developer tools: the Spoken_Developer module (Developer.lua)
+--------------------------------------------------------------------------------
+--
+-- Spoken keeps no log and draws no Developer page: the Spoken_Developer module does, and
+-- registers here. Without it, every call below does nothing and answers nil or false. Additive,
+-- so API_VERSION does not move: guard on the field.
+
+--- For the module: hand Spoken the functions it calls (see Developer.lua).
+function Spoken:RegisterDeveloper(provider)
+    Developer:Register(provider)
+end
+
+--- Whether the module is installed, and with it the debug log.
+function Spoken:HasLog()
+    return Developer.provider ~= nil
+end
+
+--- One line in the debug log, while it is on. `message` is a format string when arguments
+--- follow (four at most: format a longer line yourself); `category` a short word of your own.
+function Spoken:Log(category, message, a, b, c, d)
+    Developer:Log(category, message, a, b, c, d)
+end
+
+function Spoken:IsLogOn()
+    return Developer:IsLogOn()
+end
+
+function Spoken:SetLogOn(on)
+    Developer:Call("SetLogOn", on and true or false)
+end
+
+--- The last `count` lines, oldest first; all of them without a count. A copy; empty without the
+--- module.
+function Spoken:LogLines(count)
+    return Developer:Call("Lines", count) or {}
+end
+
+--- Empty the log and every log handed in, then start it again with a session line; `how` says why.
+function Spoken:ClearLog(how)
+    Developer:Call("Clear", how)
+end
+
+--- The log and the logs handed in, merged on one timeline in a box to copy from. Returns how
+--- many lines it shows; `count` keeps the newest.
+function Spoken:ShowLog(count)
+    return Developer:Call("Show", count)
+end
+
+--- Logs to read beside this one, such as other computers' that an addon collected. `list()`
+--- returns { { name, lines, offset }, ... }: lines as the log writes them, on their own clock,
+--- `offset` the seconds that put them on this one. `clear()`, optional, drops them when the log
+--- is cleared.
+function Spoken:AddLogSource(list, clear)
+    Developer:Call("AddSource", list, clear)
+end
+
+--- The debug log's menu (copy it, copy it for an AI agent), where a Report button is
+--- right-clicked. Spoken's own Report buttons, and every one made with CreateRoundButton, open it
+--- by themselves.
+function Spoken:ShowLogMenu(anchor)
+    return Developer:ShowMenu(anchor)
+end
+
+--- The line a Report button's tooltip adds about its right-click, or nil without the module.
+function Spoken:LogMenuHint()
+    return Developer:MenuHint()
+end
+
+--- Rows of a feature addon's own on the Developer page (Spoken > Developer): tools for trying it
+--- out, which a player never needs. build(layout) is called once, when the page is built, with
+--- the page's SpokenLayout, and may return a function that puts its rows back to their defaults
+--- for the page's Defaults button. Kept until the module builds its page; nothing shows without it.
+function Spoken:AddDeveloperSettings(build)
+    Developer:AddSettings(build)
+end
+
+--- For the module: every section handed in so far, in order.
+function Spoken:GetDeveloperSettings()
+    local list = {}
+    for _, build in ipairs(Developer.settings) do table.insert(list, build) end
+    return list
+end
+
+--- A feature addon's diagnostics, for the debug log and its copies: fn(detailed) returns a list of
+--- lines, what its own diagnostics command says, and with `detailed` what an AI agent reading the
+--- log needs besides.
+function Spoken:AddDiagnostics(name, fn)
+    Developer:AddDiagnostics(name, fn)
+end
+
+--- What `/spoken diagnostics` says, then each feature addon's diagnostics, as lines; with
+--- `detailed`, the state of the client, the narrator, the sound settings and the queue too.
+function Spoken:Diagnostics(detailed)
+    return Developer:Diagnostics(detailed)
 end

@@ -95,6 +95,8 @@ const ADDONS: Addon[] = [
  */
 const EXPLORERS = [
   { href: "/quests", icon: "/icons/quests.svg", title: "Quests" },
+  // Quests' icon until gossip has its own addon, and with it its own art.
+  { href: "/gossip", icon: "/icons/quests.svg", title: "Gossip" },
   { href: "/zones", icon: "/icons/zones.svg", title: "Zones" },
   { href: "/books", icon: "/icons/books.svg", title: "Books" },
 ];

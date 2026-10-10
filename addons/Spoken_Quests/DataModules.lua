@@ -32,7 +32,12 @@ end
 local function ModuleNumber(addon, suffix)
     return tonumber(ModuleMeta(addon, suffix) or "")
 end
-local FORCE_ENABLE_DISABLED_MODULES = true
+--- Whether the player switched the addon off in the AddOns list for this character. Not
+--- GetAddOnEnableState: given a name rather than a GUID, C_AddOns answers for all characters.
+local function SwitchedOff(addon)
+    local _, _, _, loadable, reason = GetAddOnInfo(addon)
+    return not loadable and reason == "DISABLED"
+end
 local LOAD_ALL_MODULES = true
 
 ---@class DataModuleMetadata
@@ -253,10 +258,9 @@ function DataModules:EnumerateAddons(loadModules)
     assert(GetNumAddOns and GetAddOnMetadata and GetAddOnInfo,
         "No compatible AddOn-management API was found (expected C_AddOns on current clients)")
 
-    local playerName = UnitName("player")
     for i = 1, GetNumAddOns() do
         local moduleVersion = ModuleNumber(i, "Version")
-        if moduleVersion and (FORCE_ENABLE_DISABLED_MODULES or GetAddOnEnableState(playerName, i) ~= 0) then
+        if moduleVersion and not SwitchedOff(i) then
             local name = GetAddOnInfo(i)
             local mapsString = ModuleMeta(i, "Maps")
             local maps = {}
@@ -354,7 +358,6 @@ end
 -- These cvars can be nil, so have to store the fact of them being changed in a separate variable.
 local prev_checkAddonVersion, changed_checkAddonVersion
 local prev_lastAddonVersion, changed_lastAddonVersion -- Added in 5.x
-local addonWasDisabled = {}
 local function EnableOutOfDate(addon)
     if not changed_checkAddonVersion then
         prev_checkAddonVersion = GetCVar("checkAddonVersion")
@@ -366,11 +369,6 @@ local function EnableOutOfDate(addon)
         SetCVar("lastAddonVersion", Version.Interface)
         changed_lastAddonVersion = true
     end
-
-    addonWasDisabled[addon] = GetAddOnEnableState(UnitName("player"), addon) == 0
-    if FORCE_ENABLE_DISABLED_MODULES and addonWasDisabled[addon] then
-        EnableAddOn(addon)
-    end
 end
 local function RestoreOutOfDate(addon)
     if changed_checkAddonVersion then
@@ -381,11 +379,6 @@ local function RestoreOutOfDate(addon)
         SetCVar("lastAddonVersion", prev_lastAddonVersion)
         changed_lastAddonVersion = nil
     end
-
-    if FORCE_ENABLE_DISABLED_MODULES and addonWasDisabled[addon] then
-        DisableAddOn(addon)
-    end
-    addonWasDisabled[addon] = nil
 end
 
 ---@param module DataModuleMetadata
@@ -697,11 +690,21 @@ setmetatable(getFileNameForEvent,
 
 ---@param soundData SoundData
 ---@return boolean found Whether the sound is found and can be played
+--- Whether a pack has the line, filling in its file, length and pack if so. When not, the second
+--- value says why, for the debug log.
 function DataModules:PrepareSound(soundData)
+    -- Spoken > Developer: a quest line answered as one no pack has, before any pack is asked,
+    -- so everything that asks here -- autoplay, the Play buttons, the Contribute button --
+    -- sees the voice-over missing, as it would be.
+    if Debug.IsMockingMissingVoice and Debug:IsMockingMissingVoice()
+        and Enums.SoundEvent:IsQuestEvent(soundData.event) then
+        return false, "Mock Missing Voice Over is on (Spoken > Developer)"
+    end
+
     soundData.fileName = getFileNameForEvent[soundData.event](soundData)
 
     if soundData.fileName == nil then
-        return false
+        return false, "no file name for it (no quest ID, or a greeting no pack's text matches)"
     end
 
     if self:ResolveSoundFile(soundData) then
@@ -709,7 +712,10 @@ function DataModules:PrepareSound(soundData)
     end
 
     -- No pack holds the line - but an easter egg for it ships with the player itself.
-    return EasterEggs:Apply(soundData)
+    if EasterEggs:Apply(soundData) then
+        return true
+    end
+    return false, format("no pack loaded has %s", tostring(soundData.fileName))
 end
 
 --- Find the pack holding `soundData.fileName` and fill in the path, length and language.

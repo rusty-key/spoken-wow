@@ -228,7 +228,8 @@ if not Version.IsAnyLegacy then
     watcher:SetScript("OnEvent", function(_, event, unit)
         local refreshGUID = (event == "UNIT_PORTRAIT_UPDATE" or event == "UNIT_MODEL_CHANGED") and unit and UnitGUID(unit)
         for _, clip in ipairs(SoundQueue.sounds) do StaticPortrait:Capture(clip, refreshGUID) end
-        if MinimalPlayer and MinimalPlayer:HasClip() then MinimalPlayer:ConfigurePortrait() end
+        local skin = PlayerFrame.Skin and PlayerFrame:Skin()
+        if skin and skin:HasClip() then skin:ConfigurePortrait() end
         if Subtitle and Subtitle.wanted and Subtitle.clip then Subtitle:ConfigurePicture(Subtitle.clip) end
     end)
     StaticPortrait.watcher = watcher

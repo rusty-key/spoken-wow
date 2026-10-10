@@ -43,6 +43,17 @@ for _, file in ipairs({ "UI/Layout", "UI/Options" }) do
     assert(loadfile(ZONES .. file .. ".lua"))("Spoken_Zones", Z)
 end
 Z:SetupOptions()
+-- Azeroth's Compendium, with the two tabs Spoken's page shows an Unlock switch for: stand-ins
+-- that keep the switch, as Places' and Writings' real tabs keep it in their settings.
+assert(loadfile(ZONES .. "UI/Compendium.lua"))("Spoken_Zones", Z)
+local unlocked = {}
+for _, key in ipairs({ "places", "readables" }) do
+    SpokenCompendium:Register(key, { label = key, order = 1, build = function() end, open = function() end,
+        unlock = { get = function() return unlocked[key] == true end, set = function(v) unlocked[key] = v end } })
+end
+-- The Spoken_Developer module and its page.
+local Dev = stub.LoadDeveloper(here .. "/../../addons/Spoken_Developer/")
+Dev:SetupOptions()
 
 
 -- What the test's stand-ins lack and the real addons have: the zones addon here is a stand-in
@@ -70,11 +81,15 @@ do
     end
 end
 
+-- The DialogueUI page is registered once the world is up.
+env.DialogueUIOptions:Register()
 local pages = { { name = "Spoken", layout = _G.SpokenOptionsPanel.layout } }
 for _, page in ipairs(env.Options.pages or {}) do
     table.insert(pages, { name = page.name, layout = page.layout })
 end
-Expect("Spoken and the three modules' pages are all here", #pages, 4)
+-- The DialogueUI page (the stub reports every addon loaded) and the Developer page, which the
+-- Spoken_Developer module adds.
+Expect("Spoken, the three modules' pages, the DialogueUI page and the Developer page are all here", #pages, 6)
 
 local function Controls(layout)
     local list = {}
@@ -193,5 +208,13 @@ for _, key in ipairs({ "quests", "books", "zones" }) do
     env.Options:UpdateRows()
     page.layout:Refresh()
 end
+
+---------------------------------------------------------------- Reset All and the Unlock switches
+-- Kept with each part's settings, so Spoken's profile reset would not reach them.
+unlocked.places, unlocked.readables = true, true
+local reset = _G.SpokenOptionsPanel.layout.defaults
+reset.scripts.OnClick(reset)
+stub.popups[#stub.popups].dialog.OnAccept()
+Expect("Reset All turns both Unlock switches off", (unlocked.places or unlocked.readables) and true or false, false)
 
 os.exit(Failures() == 0 and 0 or 1)

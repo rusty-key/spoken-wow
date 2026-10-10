@@ -3,7 +3,7 @@ curseforge: 1723279
 release: books-audio-deDE
 section: books
 lang: deDE
-version: 2.0.0
+version: 2.1.0
 slug: spoken-books-audio-dede
 name: Spoken Books Audio: German
 summary: The German narration for Spoken Player's Books module: books, letters and notes read aloud in German.

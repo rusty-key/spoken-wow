@@ -141,6 +141,15 @@ describe("field filters", () => {
     expect(all({ npcType: "item" }).every((l) => l.npcType === "item")).toBe(true);
   });
 
+  it("splits gossip from everything tied to a quest", () => {
+    const gossip = all({ kind: "gossip" });
+    const quests = all({ kind: "quests" });
+    expect(gossip.length).toBeGreaterThan(0);
+    expect(gossip.every((l) => l.source === "gossip")).toBe(true);
+    expect(quests.some((l) => l.source === "gossip")).toBe(false);
+    expect(gossip.length + quests.length).toBe(all().length);
+  });
+
   it("combines with a query", () => {
     const lines = all({ q: "dughan", filter: "npc", source: "gossip" });
     expect(lines.length).toBeGreaterThan(0);

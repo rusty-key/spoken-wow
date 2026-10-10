@@ -55,6 +55,10 @@ WARMTH = 0.12
 # pixels (the game draws it at about two thirds of its size, so a grain of one pixel vanished);
 # then how much shallower the left edge's fraying is.
 GRAIN, GRAIN_SIZE, LEFT_SHALLOWER = 0.08, 1.5, 0.5
+# Where the band with the most detail is not the place: the band to keep instead, "top" or
+# "bottom" of a picture taller than 2:1 ("left" or "right" of a wider one). Cragpool Lake's middle
+# is bare cliff; its bottom has the shore and the fish.
+CROPS = {"1442-cragpool-lake": "bottom"}
 
 
 def seeded(name):
@@ -127,11 +131,20 @@ def save_mask(mask, path):
     save_blp(Image.fromarray((mask * 255).astype(np.uint8), "L"), path, alpha=True)
 
 
-def crop(im):
+def crop(im, place=None):
     """A 2:1 banner, cut where the picture has the most in it: the band with the most detail
     (edges), so a screenshot that is half empty sky is cut lower, around the place. Nudged toward
-    the middle, where two bands are near alike."""
+    the middle, where two bands are near alike. `place` set by hand in CROPS is cut there."""
     w, h = im.size
+    side = CROPS.get(place)
+    if side:
+        if w / h <= 2:
+            ch = int(w / 2)
+            top = 0 if side == "top" else h - ch
+            return im.crop((0, top, w, top + ch))
+        cw = int(h * 2)
+        left = 0 if side == "left" else w - cw
+        return im.crop((left, 0, left + cw, h))
     small = np.asarray(im.convert("L").resize((256, max(1, int(256 * h / w))), Image.BILINEAR)).astype(np.float64)
     detail = np.hypot(ndimage.sobel(small, 0), ndimage.sobel(small, 1))
     tall = w / h <= 2
@@ -155,10 +168,10 @@ def crop(im):
     return im.crop((left, 0, left + cw, h))
 
 
-def prepare(im, mask):
+def prepare(im, mask, place=None):
     """The banner at the shipped size, warmed a touch toward the parchment, and thinning to the
     paper where the paint runs out at the edges (the mask's fading band)."""
-    img = np.asarray(crop(im).resize((W, H), Image.LANCZOS)).astype(np.float64) / 255.0
+    img = np.asarray(crop(im, place).resize((W, H), Image.LANCZOS)).astype(np.float64) / 255.0
     img = img * (1 - WARMTH + WARMTH * PARCHMENT / PARCHMENT.max())
     # The paper's grain: fine noise and a coarser mottle under it, as the parchment has.
     rng = seeded("grain")
@@ -497,7 +510,7 @@ def main():
             shared[same] = chosen
             out = os.path.join(OUT, p["id"] + ".blp")
             if args.force or not os.path.exists(out) or baked.get(p["id"]) != chosen["mask"]:
-                save_blp(prepare(Image.open(p["path"]).convert("RGB"), masks[chosen["mask"] - 1]), out)
+                save_blp(prepare(Image.open(p["path"]).convert("RGB"), masks[chosen["mask"] - 1], p["id"]), out)
                 written += 1
         md5 = p["old"] and hashlib.md5(open(p["old"], "rb").read()).hexdigest()
         placed.append({**p, **chosen, "source": by_hand.get(p["id"]) or sources.get(md5)})

@@ -13,8 +13,8 @@ tooling that produces both.
 
 ## What ships
 
-**`ZoneLore`** — the addon. World map side panel, subzone lore on click, hover
-preview, standalone lore window, minimap button, options panel, narration
+**`ZoneLore`** — the addon. World map side panel, subzone lore on click, the area under the
+cursor lit up as clickable, standalone lore window, minimap button, options panel, narration
 playback with floating controls, and autoplay on area discovery. 49 zones and
 1304 subzones of text are bundled; nothing is fetched at runtime.
 
@@ -65,7 +65,7 @@ addons/Spoken_Zones/          the addon itself (this is what WoW loads)
   UI/AudioButton.lua     the Play/Stop button shown on a description
   UI/MapPanel.lua        the world map side panel
   UI/SubzoneClick.lua    resolves a map click to a subzone
-  UI/HoverPreview.lua    lore tooltip while hovering the map
+  UI/MapHighlight.lua    lights up the area under the cursor on a zone map
   UI/LoreWindow.lua      standalone browsable lore window
   UI/MinimapButton.lua   LibDBIcon minimap button
   UI/PlaybackBar.lua     floating controls, shown only while narrating
@@ -456,8 +456,7 @@ make zones-lore-export LOCALE=deDE && make languages       # into the addon; rea
 
 The sheet lists every line the Era client can report — `lineId`, where it is, the
 place's name as that language's client shows it, and the English text — and two
-columns to fill: `full` (blank means not translated, skipped) and an optional `short`
-for the hover preview. Whatever is already translated comes
+columns to fill: `full` (blank means not translated, skipped) and an optional `short`. Whatever is already translated comes
 back filled in, so the sheet is also the review copy, and re-uploading it unchanged
 records nothing.
 
@@ -578,34 +577,13 @@ a report filed from a German page counts against the German line, and `/deDE/fee
 is the German triage list. Both APIs take `lang` and default it to English, so links
 and forms that predate the axis still land where they always did.
 
-## Hover preview
+## Map highlight
 
-Hovering a zone on a continent map, or a subzone on a zone map, shows that place's
-`short` lore in a tooltip at the cursor. `/spz hover` toggles it.
-
-It deliberately shows nothing when there is no lore for what is under the cursor,
-and nothing for the zone you are already looking at, since the panel is showing
-that already.
-
-### Why a tooltip and not the map's area label
-
-The original plan was to replace the area-label data provider's `OnUpdate` and
-pass lore as the label's `description`, which is the mechanism `Leatrix_Maps` uses
-for zone levels and fishing skill. That was abandoned on purpose: only one addon
-can own that script, `ZoneLore` sorts after `Leatrix_Maps` so it would load second
-and win, and winning would silently disable a feature of an addon already
-installed here. A "conflict guard" in that design is really just choosing which
-addon loses.
-
-A separate tooltip shares no state, cannot conflict, and has far more room for
-prose than the area label's single small description line. The cost is that it
-looks less native than text under the map's big centred zone name.
-
-The driver is a frame parented to `WorldMapFrame`, so its `OnUpdate` only runs
-while the map is open, throttled to 100ms. It uses its own tooltip rather than
-`GameTooltip` because map pins own `GameTooltip` while hovered, and it suppresses
-itself when `WorldMapFrame:IsCanvasMouseFocus()` is false -- that is exactly when
-the cursor is over a pin and Blizzard's tooltip should be the only one showing.
+On a zone map, the area under the cursor lights up when a click there would open its story in
+the panel, as the continent map lights the zone under the cursor. The highlight is the area's
+own exploration overlay drawn again over the map in additive blend; only explored areas have
+one, which are also the only ones a click resolves. There is no tooltip: the panel tells the
+story once the area is clicked.
 
 ## Minimap button and lore window
 
@@ -1373,8 +1351,7 @@ Leatrix_Plus, Leatrix_Sounds, Syndicator and Baganator all use it.
 `InterfaceOptions_AddCategory` is the legacy-only path and is deliberately not
 used.
 
-Exposed: map panel on/off, panel side, panel width, font size, hover preview
-on/off, minimap button on/off, narration on/off, autoplay on/off, autoplay for
+Exposed: map panel on/off, panel side, panel width, font size, minimap button on/off, narration on/off, autoplay on/off, autoplay for
 subzones on/off, the playback controls on/off, the narration sound channel, and the
 debug area-name reporting. Everything applies immediately -- no reload -- via
 `ZoneLore:ApplyPanelOptions()`.
@@ -1449,7 +1426,6 @@ here:     node tools/seed-from-dump.mjs           # report differences
 /spz panel                   toggle the world map panel
 /spz options                 open the settings panel
 /spz window                  open the browsable lore window
-/spz hover                   toggle the hover preview tooltip
 /spz play                    narrate the lore for where you are standing
 /spz stop                    stop the narration
 /spz voice                   turn narration on or off
@@ -1478,8 +1454,7 @@ maximize the map, then close and reopen it. The panel hides while the map is
 maximized by design.
 
 Also test with `Leatrix_Maps` both enabled and disabled — it manipulates the same
-`WorldMapFrame` and contends for the same area-label script the hover preview
-uses.
+`WorldMapFrame`, and the map highlight draws on the same canvas.
 
 ## Releasing
 

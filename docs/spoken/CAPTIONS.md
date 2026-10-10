@@ -85,6 +85,20 @@ using the same plain text conversion as narration. The current English export
 was regenerated from the public `/api/books/search?lang=enUS` catalogue on
 2026-09-27; page IDs, book order and lookup checksums are unchanged.
 
+The DialogueUI window draws the captions in DialogueUI's font, size and colours, with an
+empty line between paragraphs, at the player's Text Size and Lines Shown like the other
+windows. See
+[`PLAYER-STYLES.md`](PLAYER-STYLES.md).
+
+## Captions in another window
+
+`Spoken:GetCaption()` returns the clip, the words and the reading position the captions use,
+and whether **Highlight Words** and **Type Words Out** are on. It stays current while the
+captions are hidden or turned off. `Spoken:SplitCaption(text)` splits any text the way the
+captions do, and records where each word sits in that text. With the two, another addon can
+mark the same words in its own copy of the line. Spoken Quests does this inside DialogueUI's
+window: see [`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md).
+
 ## Checks
 
 Run from the repository root:

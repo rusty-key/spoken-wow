@@ -79,6 +79,15 @@ existing compatible sound pack unless the release notes say otherwise.
   Chinese pages read aloud from the game's own text. It plays on a zhTW client, and installs beside
   the English pack rather than over it. Needs Spoken Books 2.1.0 or later.
 
+## 2.1.0 — books-audio-deDE — 2026-10-08
+
+- **Every page re-recorded** with ElevenLabs' newer voice model: all 1143 pages replaced.
+  Install over the previous version.
+
+## 2.0.1 — books-audio-esMX — 2026-10-08
+
+- 319 pages re-recorded. Install over the previous version.
+
 ## 2.0.0 — books-audio-deDE — 2026-09-27
 
 - **The first German sound pack**, `SpokenBooksAudio_deDE`: 1143 pages read aloud from

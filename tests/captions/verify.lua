@@ -24,7 +24,6 @@ function Timer:ScheduleRepeatingTimer(fn, delay)
     local id=self:ScheduleTimer(fn,delay); timers[id].interval=delay; return id
 end
 function Timer:CancelTimer(id) timers[id]=nil end
-function Timer:TimeLeft(id) return timers[id] and timers[id].at-clock or 0 end
 LibStub=function(name)
     if name=='AceTimer-3.0' then
         return { Embed=function(_,obj) for k,v in pairs(Timer) do obj[k]=v end; return obj end }
@@ -41,8 +40,10 @@ dofile(addons .. 'Spoken/Core.lua')
 dofile(addons .. 'Spoken/Callbacks.lua')
 dofile(addons .. 'Spoken/SoundQueue.lua')
 dofile(addons .. 'Spoken/Sources.lua')
+dofile(addons .. 'Spoken/Developer.lua')
 dofile(addons .. 'Spoken/Strings.lua')
 dofile(addons .. 'Spoken/UI/Layout.lua')
+dofile(addons .. 'Spoken/UI/DialogueUITheme.lua')
 dofile(addons .. 'Spoken/UI/Transcript.lua')
 -- The status bar art the subtitle's progress bar is framed with, as a modern client describes it.
 C_Texture=C_Texture or {}
@@ -65,11 +66,12 @@ E.Portrait={Configure=function(_,frame) frame.active='mock-model' end}
 dofile(addons .. 'Spoken/UI/Actions.lua')
 dofile(addons .. 'Spoken/UI/PlayerFrame.lua')
 dofile(addons .. 'Spoken/UI/MinimalPlayer.lua')
+dofile(addons .. 'Spoken/UI/DialogueUIPlayer.lua')
 E.Minimap={Setup=function() end}; E.Options={Setup=function() end}
 -- The windows first, with the word lit: the subtitles a first install shows are switched to
 -- below, and the defaults themselves are pinned in defaults_test.
 E.Addon:InitDB()
-E.Addon.db.profile.Frame.SubtitlePlayer=false
+E.Addon.db.profile.Frame.Style='minimal'
 E.Addon.db.profile.Audio.LineGap=0
 E.Addon.db.profile.Transcript.HighlightWord=true
 E.Addon:Enable()
@@ -185,9 +187,7 @@ Check(Captions()=='|cffffd100Second|r |cffffd100quest|r text','current and next 
 Advance(19)
 Check(Captions()=='Second |cffffd100quest|r |cffffd100text|r','the last visible word keeps its previous neighbor highlighted')
 Advance(1.25)
-Check(T.frame:IsShown() and HighlightCount()==0,'highlight ends during the inter-clip gap')
-Advance(1)
-Check(Q:IsEmpty() and not T.frame:IsShown(),'normal completion hides captions')
+Check(Q:IsEmpty() and not T.frame:IsShown(),'normal completion hides captions as the last voice ends')
 Check(Captions()=='' and T.activeWord==nil,'queue exhaustion clears stale dialogue and highlighting')
 
 -- Chinese has no spaces: each character is a word, punctuation stays with
@@ -321,9 +321,9 @@ Check(not M.portrait:IsShown() and math.abs(T.frame:GetLeft()-M.content:GetLeft(
 frameCfg.HidePortrait=false; frameCfg.FrameScale=1.1; E.PlayerFrame:RefreshConfig()
 Check(T.frame:GetEffectiveScale()==M.frame:GetEffectiveScale(),'captions inherit the player scale')
 Check(M.portrait:IsShown() and T.frame:GetLeft()>M.portrait:GetLeft(),'restored portrait remains beside the caption text')
-frameCfg.HideFrame=true; E.PlayerFrame:RefreshConfig()
+frameCfg.Style='none'; E.PlayerFrame:RefreshConfig()
 Check(not T.frame:IsVisible() and Q:IsPlaying(),'hiding the player hides its captions while audio continues')
-frameCfg.HideFrame=false; E.PlayerFrame:RefreshConfig()
+frameCfg.Style='minimal'; E.PlayerFrame:RefreshConfig()
 Check(T.frame:IsVisible(),'showing the player restores its attached captions')
 local movedTop=M.frame:GetTop()
 T:SetEnabled(false)
@@ -341,7 +341,7 @@ Check(not M.frame.moving and not M.resizer:IsShown(),'the player lock controls t
 frameCfg.LockFrame=false; E.PlayerFrame:RefreshConfig(); M.header:Fire('OnDragStart')
 Check(M.frame.moving,'the existing header still moves the whole player')
 M.header:Fire('OnDragStop')
-frameCfg.MinimalPlayer=false; E.PlayerFrame:RefreshConfig()
+frameCfg.Style='classic'; E.PlayerFrame:RefreshConfig()
 local original=E.PlayerFrame.frame
 Check(T.frame:GetParent()==original and original:IsShown() and not M.frame:IsShown(),'switching skins attaches captions to the original player')
 Check(T.frame:GetTop()<original.portrait:GetBottom(),'original-skin captions stay below portrait and action controls')
@@ -355,7 +355,7 @@ local previousWidth=T.frame:GetWidth()
 original:SetWidth(620)
 Check(T.frame:GetWidth()>previousWidth,'resizing the original player reflows the attached text')
 CheckLayout()
-frameCfg.MinimalPlayer=true; frameCfg.FrameScale=.7; E.PlayerFrame:RefreshConfig()
+frameCfg.Style='minimal'; frameCfg.FrameScale=.7; E.PlayerFrame:RefreshConfig()
 Check(T.frame:GetParent()==M.frame and not original:IsShown(),'switching back restores attachment to the portrait player')
 for _,point in ipairs({'TOPLEFT','CENTER','BOTTOM'}) do
     M.frame:ClearAllPoints(); M.frame:SetPoint(point,UIParent,point,0,200)
@@ -648,7 +648,7 @@ S:ShowSample(true); S:ShowSample(false); Play(.6)
 Check(not S.frame:IsShown(),'hiding the sample hides the subtitle')
 
 SlashCmdList.SPOKEN('player minimal')
-Check(E.Addon:PlayerStyle()=='minimal' and frameCfg.MinimalPlayer,'the slash command picks the small window')
+Check(E.Addon:PlayerStyle()=='minimal' and frameCfg.Style=='minimal','the slash command picks the small window')
 source:Enqueue(Clip('back',line,10))
 Check(T.frame:IsShown() and not S.frame:IsShown() and M.frame:IsShown() and M.frame:GetHeight()>98,
     'the words return to the small window')
@@ -658,7 +658,6 @@ Check(E.PlayerFrame.frame:IsShown() and not M.frame:IsShown() and T.frame:GetPar
 SlashCmdList.SPOKEN('player subtitle')
 Check(S.frame:IsShown() and not T.frame:IsShown() and not E.PlayerFrame.frame:IsShown(),
     'switching to subtitles mid-line hides the window and shows the line')
-Check(not frameCfg.MinimalPlayer,'the large window is still remembered as the window chosen')
 E.Addon:SetPlayerStyle('minimal'); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
 Q:RemoveAllSoundsFromQueue()
 Check(#E.Callbacks.errors==0,table.concat(E.Callbacks.errors,'\n'))

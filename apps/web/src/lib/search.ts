@@ -15,7 +15,7 @@ import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { audioRelPath } from "./audio";
 import { hasNarration, restoresOnlyNarration } from "./generation/narration";
-import type { NpcType, Source } from "./line-fields";
+import { kindOf, type Kind, type NpcType, type Source } from "./line-fields";
 import type { LineIgnore } from "./quests/ignores";
 import type { LineOverride } from "./quests/override";
 import type { AudioState } from "./audio-state";
@@ -42,6 +42,8 @@ export type LineFilters = {
   gender?: string;
   flavor?: string;
   voice?: string;
+  /** Which explorer is asking: gossip, or everything tied to a quest. Absent means both. */
+  kind?: Kind;
   source?: Source;
   npcType?: NpcType;
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
@@ -386,6 +388,7 @@ export function matchingLines(
     gender,
     flavor,
     voice,
+    kind,
     source,
     npcType,
     includeProgress = false,
@@ -429,6 +432,7 @@ export function matchingLines(
   if (gender) lines = lines.filter((line) => line.gender === gender);
   if (flavor) lines = lines.filter((line) => line.flavor === flavor);
   if (voice) lines = lines.filter((line) => line.voice === voice);
+  if (kind) lines = lines.filter((line) => kindOf(line.source) === kind);
   if (source) lines = lines.filter((line) => line.source === source);
   // After the source filter and not before it, so asking for progress explicitly still works:
   // `source=progress` alone would otherwise return nothing at all.

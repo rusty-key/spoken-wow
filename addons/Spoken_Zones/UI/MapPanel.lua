@@ -41,8 +41,10 @@ local ICON_SIZE = 40
 local BORDER_SIZE = 74
 -- How far the button's left edge tucks under the map's frame, so it reads as attached to it.
 local TOGGLE_TUCK = 2
--- Lore of Azeroth's portrait, so the button reads as the way back to the same lore.
-local TOGGLE_ICON = [[Interface\Icons\INV_Misc_Map_01]]
+-- Zone Lore's map, so the button reads as the way back to it.
+local TOGGLE_ICON = [[Interface\Icons\INV_Misc_Map02]]
+-- Where the side tab sits down the map's right edge, as the character frame's first one does.
+local SIDE_TAB_TOP = 30
 
 --------------------------------------------------------------------------------
 -- Construction
@@ -129,6 +131,27 @@ end
 -- The way back to a folded panel has to live on the map, not on the panel it reopens. Folding it
 -- needs nothing more than the panel's own close button.
 local function BuildToggle()
+	-- A side tab down the map's right edge, as the game's new panels have them (the character
+	-- frame's, LargeSideTabButtonTemplate): its own tooltip, press and sound. The action slot's ring
+	-- where the client has not got it. Placed with the panel (Place): in the map, or beside it under
+	-- the gamepad UI.
+	local ok, tab = pcall(CreateFrame, "Frame", "SpokenZonesPanelToggle", UIParent, "LargeSideTabButtonTemplate")
+	if ok and tab and type(tab.Icon) == "table" and tab.Icon.SetTexture and tab.SetCustomOnMouseUpHandler then
+		toggle = tab
+		toggle.fillToInterior = true
+		toggle.tooltipText = L.MAP_PANEL_EXPAND
+		toggle.Icon:SetTexture(TOGGLE_ICON)
+		-- Never shown chosen: it only ever opens. SetChecked also fits the icon to the tab's inside.
+		if toggle.SetChecked then toggle:SetChecked(false) end
+		toggle:SetCustomOnMouseUpHandler(function() SpokenZones:SetMapPanelCollapsed(false) end)
+		toggle:EnableMouse(true)
+		toggle:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", 0, -SIDE_TAB_TOP)
+		toggle:SetScript("OnHide", function(self)
+			if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+		end)
+		toggle:Hide()
+		return
+	end
 	toggle = CreateFrame("Button", "SpokenZonesPanelToggle", UIParent)
 	toggle:SetSize(ICON_SIZE, ICON_SIZE)
 	local icon = toggle:CreateTexture(nil, "ARTWORK")
@@ -275,16 +298,21 @@ local function Refresh(mapID)
 		-- Prefer the name the client reported, which is what the player sees on the map ("The
 		-- Bulwark"), over the wiki page title ("Bulwark").
 		local name = selected.areaName or selected.entry.name or ""
-		-- Audio, the report link and Lore of Azeroth are keyed by the canonical form, not the name
+		-- Audio, the report link and Azeroth's Compendium are keyed by the canonical form, not the name
 		-- the client reported. Resolve, not Normalise: on a localized client the reported name
 		-- reaches the corpus key only through the alias table, and normalising a non-Latin name
 		-- yields nil -- which would silently retarget the buttons at the zone's lore.
 		local key = SpokenZones:ResolveAreaKey(selected.areaName)
 		local line = SpokenZones:PlaceLine(mapID, key or name)
 		local back = function() SpokenZones:ClearSubzone() end
+		-- Not found yet: named, and no more, as Azeroth's Compendium has it.
+		if SpokenZones.IsLocked and SpokenZones:IsLocked(mapID, key) then
+			page:Show({ title = name, subtitle = line, onSubtitle = back, text = L.NOT_DISCOVERED, missing = true })
+			return
+		end
 		if SpokenZones:IsPending(selected.entry) then
 			-- Named, listed, and honest about the rest: nothing to play and nothing written to
-			-- report on. Lore of Azeroth lists it all the same, so Open goes to its row there.
+			-- report on. Azeroth's Compendium lists it all the same, so Open goes to its row there.
 			page:Show({ title = name, subtitle = line, onSubtitle = back, text = L.LORE_NOT_WRITTEN:format(name),
 				missing = true, contribute = { mapID, name }, lore = { mapID, key } })
 			return
@@ -312,6 +340,10 @@ local function Refresh(mapID)
 		local up
 		caption, up = SpokenZones:PlaceLine(mapID)
 		if up and WorldMapFrame.SetMapID then onCaption = function() WorldMapFrame:SetMapID(up) end end
+	end
+	if SpokenZones.IsLocked and SpokenZones:IsLocked(foundOn) then
+		page:Show({ title = zoneName, subtitle = caption, onSubtitle = onCaption, text = L.NOT_DISCOVERED, missing = true })
+		return
 	end
 	if SpokenZones:IsPending(entry) then
 		page:Show({ title = zoneName, subtitle = caption, onSubtitle = onCaption,

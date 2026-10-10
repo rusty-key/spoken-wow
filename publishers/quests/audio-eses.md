@@ -4,7 +4,7 @@ release: quests-audio-esES
 section: quests
 lang: esES
 pack: all
-version: 0.0.3
+version: 0.0.4
 slug: spoken-quests-audio-eses
 name: Spoken Quests Audio: Spanish (EU)
 summary: Every quest and gossip line for Spoken Player, voiced in European Spanish. One pack, both factions. Needs Spoken Player.

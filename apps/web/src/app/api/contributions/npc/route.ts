@@ -3,7 +3,9 @@
  *
  * A sibling of the public POST rather than a verb on it, for the reason
  * api/reports/resolve/route.ts gives: that path is open to the whole internet and this one must
- * never be. English regenerate, as the other moderator routes.
+ * never be. Regenerate in the page's language (`?lang=`, English when absent): a line only
+ * another language has is voiced once that language's moderator says who speaks it, and what
+ * they answer is the NPC's race and gender, the same in every language.
  *
  * Writes through to the NPC rather than the contribution, so one correction fixes every line
  * that NPC speaks -- which is the point of keying the table the way it is keyed.
@@ -17,8 +19,7 @@
  * check is satisfied by "moderator" whether or not the row is confirmed.
  */
 import { recordActivity } from "@/lib/activity/store";
-import { requireRegenerate } from "@/lib/generation/authz";
-import { BASE_LANG } from "@/lib/lang";
+import { requireIn } from "@/lib/generation/authz";
 import { INT32_MAX } from "@/lib/npc/npc";
 import { getResolution, NPC_KINDS, resolutionKey, upsertResolution, type NpcKind } from "@/lib/npc/store";
 
@@ -30,7 +31,7 @@ export const dynamic = "force-dynamic";
 // fail the same way.
 
 export async function POST(request: Request) {
-  const { session, denied } = await requireRegenerate();
+  const { lang, session, denied } = await requireIn(request, "regenerate");
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -84,11 +85,10 @@ export async function POST(request: Request) {
     resolvedBy: session.user.id,
   });
   // Here rather than in upsertResolution, which intake calls too: only a person's answer is an
-  // act. English, because the moderator routes are English's and the answer holds for every
-  // language's lines.
+  // act. Logged under the language it was answered from, though it holds for every language.
   await recordActivity({
     kind: "npc.resolved",
-    lang: BASE_LANG,
+    lang,
     actorId: session.user.id,
     subject: resolutionKey(npcKind, npcId),
     detail: {

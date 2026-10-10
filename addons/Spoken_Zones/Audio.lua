@@ -43,17 +43,6 @@ local L = SpokenZones.L
 -- an unknown layout plays silence and reports nothing.
 local PACK_FORMAT = 1
 
--- PlaySoundFile only accepts these. An unknown name makes the call fail outright,
--- so a saved variable carrying a stale channel falls back rather than going silent.
-local CHANNELS = {
-	Master = true,
-	SFX = true,
-	Music = true,
-	Ambience = true,
-	Dialog = true,
-}
-local DEFAULT_CHANNEL = "Dialog"
-
 -- Playback state lives in the Spoken player. The clip being spoken is the head of
 -- its queue, so there is one place to ask what is happening rather than a `current`,
 -- a `paused` shadow copy and a staleness token that have to agree with each other.
@@ -261,17 +250,21 @@ function SpokenZones:SetupAudio()
 		SpokenZones:NotifyAudioChanged()
 	end)
 
-	-- Switched off or on in Spoken's settings: the map panel follows, and the lore window goes.
+	-- Switched off or on in Spoken's settings: the map panel follows, and so does the Compendium's
+	-- Zones tab.
 	if Spoken.RegisterCallback then
-		Spoken:RegisterCallback("PART_SWITCHED", function(key, on)
+		Spoken:RegisterCallback("PART_SWITCHED", function(key)
 			if key ~= "zones" then return end
 			if SpokenZones.RefreshPanel then SpokenZones:RefreshPanel() end
-			if not on and SpokenZones.HideLoreWindow then SpokenZones:HideLoreWindow() end
+			if SpokenCompendium and SpokenCompendium.Relayout then SpokenCompendium:Relayout() end
 		end)
 	end
 
-	Spoken.Minimap:AddEntry("zones", { id = "lore", text = L.MENU_LORE_WINDOW, order = 1,
-		onClick = function() SpokenZones:ToggleLoreWindow() end })
+	-- The Compendium is in Spoken's own part of the menu where Spoken has one.
+	if not Spoken.ShowsCompendium then
+		Spoken.Minimap:AddEntry("zones", { id = "lore", text = L.MENU_LORE_WINDOW, order = 1,
+			onClick = function() SpokenZones:ToggleLoreWindow() end })
+	end
 	Spoken.Minimap:AddEntry("zones", { id = "settings", text = L.MENU_ZONE_SETTINGS, order = 2,
 		onClick = function() SpokenZones:OpenOptions() end })
 	if Spoken.AddSettingsLink then

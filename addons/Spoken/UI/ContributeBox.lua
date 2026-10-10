@@ -162,9 +162,39 @@ local function GameFolder()
     return "<your game folder>"
 end
 
+-- The window the box shows over (Spoken:SetContributeHost), or nil.
+local host
+
+-- Above a player hosted there, which sits at FULLSCREEN. The anchor stays on UIParent, so a
+-- box still open when the host closes stays where it was.
+local function Place()
+    if not box then return end
+    local frame = box.frame
+    if host then
+        frame:SetParent(host)
+        frame:SetScale(UIParent:GetEffectiveScale() / host:GetEffectiveScale())
+        frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    else
+        frame:SetParent(UIParent)
+        frame:SetScale(1)
+        frame:SetFrameStrata("DIALOG")
+    end
+end
+
 local function EnsureBox()
-    box = box or Build()
+    if not box then
+        box = Build()
+        Place()
+    end
     Spoken.ContributeBox = box
+end
+
+--- Show the box over another window, or back on UIParent with nil: for a dialog window that
+--- hides UIParent, as DialogueUI's does. Additive: guard on the field.
+function Spoken:SetContributeHost(frame)
+    if host == frame then return end
+    host = frame
+    Place()
 end
 
 local function ShowPayload(payload, address, isLink)

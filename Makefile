@@ -51,6 +51,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@[ -n "$(LUA)" ] || { echo "No luajit found: brew install luajit"; exit 1; }
 	@$(LUA) tests/lua/quest_dispatch_test.lua
 	@$(LUA) tests/lua/quest_autoplay_test.lua
+	@$(LUA) tests/lua/gossip_frequency_test.lua
 	@$(LUA) tests/lua/quest_overlay_test.lua
 	@$(LUA) tests/lua/quest_followup_test.lua
 	@$(LUA) tests/lua/easter_egg_test.lua
@@ -62,6 +63,9 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@for lang in enUS deDE esES frFR ptBR ruRU koKR zhCN zhTW; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
 	@$(LUA) tests/lua/settings_audit_test.lua
 	@$(LUA) tests/lua/queue_test.lua
+	@$(LUA) tests/lua/developer_hooks_test.lua
+	@$(LUA) tests/lua/developer_log_test.lua
+	@$(LUA) tests/lua/quests_log_test.lua
 	@$(LUA) tests/lua/sources_test.lua
 	@$(LUA) tests/lua/api_contract_test.lua
 	@$(LUA) tests/lua/contribute_envelope_test.lua
@@ -70,11 +74,14 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/contribute_box_test.lua
 	@$(LUA) tests/lua/quests_contribute_test.lua
 	@$(LUA) tests/lua/player_frame_test.lua
+	@$(LUA) tests/lua/player_dialogueui_style_test.lua
 	@$(LUA) tests/captions/verify.lua
 	@$(LUA) tests/lua/zones_source_test.lua
 	@$(LUA) tests/lua/zones_flight_test.lua
 	@$(LUA) tests/lua/zones_pending_test.lua
 	@$(LUA) tests/lua/quests_source_test.lua
+	@$(LUA) tests/lua/quest_npc_silence_test.lua
+	@$(LUA) tests/lua/quest_greeting_first_test.lua
 	@$(LUA) tests/lua/data_modules_test.lua
 	@$(LUA) tests/lua/quests_language_test.lua
 	@$(LUA) tests/lua/player_required_test.lua
@@ -83,22 +90,30 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/zones_test_line_test.lua
 	@$(LUA) tests/lua/zones_lore_ui_test.lua
 	@$(LUA) tests/lua/zones_map_click_test.lua
+	@$(LUA) tests/lua/zones_map_highlight_test.lua
+	@$(LUA) tests/lua/zones_area_at_test.lua
+	@$(LUA) tests/lua/zones_discovery_test.lua
 	@$(LUA) tests/lua/subtitle_pages_test.lua
 	@$(LUA) tests/lua/defaults_test.lua
 	@$(LUA) tests/lua/scroll_mode_upgrade_test.lua
+	@$(LUA) tests/lua/style_upgrade_test.lua
 	@$(LUA) tests/lua/names_test.lua
 	@$(LUA) tests/lua/packs_test.lua
 	@$(LUA) tests/lua/quests_options_test.lua
+	@$(LUA) tests/lua/quests_dialogueui_test.lua
 	@$(LUA) tests/lua/books_source_test.lua
 	@$(LUA) tests/lua/books_options_test.lua
 	@$(LUA) tests/lua/books_reader_test.lua
 	@$(LUA) tests/lua/books_playlist_test.lua
 	@$(LUA) tests/lua/books_events_test.lua
 	@$(LUA) tests/lua/books_contribute_test.lua
+	@$(LUA) tests/lua/books_readables_test.lua
 	@$(LUA) tests/lua/books_language_test.lua
 	@$(LUA) tests/lua/gather_test.lua
 	@$(LUA) tests/lua/zones_contribute_test.lua
 	@$(LUA) tests/lua/zones_language_test.lua
+	@$(LUA) tests/lua/zones_each_place_once_test.lua
+	@$(LUA) tests/lua/zones_city_test.lua
 	@$(LUA) tests/lua/minimap_compartment_test.lua
 	@$(LUA) tests/lua/bronze_rings_test.lua
 

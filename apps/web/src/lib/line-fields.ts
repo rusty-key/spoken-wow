@@ -30,3 +30,15 @@ export const SOURCE_LABELS: Record<Source, string> = {
   gossip: "gossip",
   followup: "follow-up",
 };
+
+/**
+ * The two explorers the quests corpus is shown in. Gossip is an NPC talking with no quest
+ * behind it, and is being split from quests entirely; every other source hangs off a quest.
+ */
+export const KINDS = ["quests", "gossip"] as const;
+
+export type Kind = (typeof KINDS)[number];
+
+export function kindOf(source: Source): Kind {
+  return source === "gossip" ? "gossip" : "quests";
+}

@@ -269,9 +269,24 @@ def test_the_shared_layout_is_the_same_file_in_every_addon():
     # it is only safe while the copies agree, which nothing but this enforces.
     import hashlib
     copies = {}
-    for addon in ("Spoken", "Spoken_Quests", "Spoken_Zones", "Spoken_Books"):
+    for addon in ("Spoken", "Spoken_Quests", "Spoken_Zones", "Spoken_Books", "Spoken_Developer"):
         path = os.path.join(REPO, "addons", addon, "UI", "Layout.lua")
         assert os.path.isfile(path), f"{addon} is missing its copy of UI/Layout.lua"
         with open(path, "rb") as handle:
             copies[addon] = hashlib.sha256(handle.read()).hexdigest()
     assert len(set(copies.values())) == 1, f"UI/Layout.lua differs between addons: {copies}"
+
+
+def test_the_compendium_files_are_the_same_in_every_addon_that_carries_them():
+    # Azeroth's Compendium (UI/Compendium.lua) and the text view its pages scroll in
+    # (UI/TextView.lua) are carried by Spoken Zones and Spoken Books for the reason UI/Layout.lua
+    # is: either installs on its own, and both together share one window.
+    import hashlib
+    for name in ("Compendium.lua", "TextView.lua"):
+        copies = {}
+        for addon in ("Spoken_Zones", "Spoken_Books"):
+            path = os.path.join(REPO, "addons", addon, "UI", name)
+            assert os.path.isfile(path), f"{addon} is missing its copy of UI/{name}"
+            with open(path, "rb") as handle:
+                copies[addon] = hashlib.sha256(handle.read()).hexdigest()
+        assert len(set(copies.values())) == 1, f"UI/{name} differs between addons: {copies}"

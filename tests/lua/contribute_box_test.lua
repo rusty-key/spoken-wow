@@ -40,4 +40,16 @@ Expect("the box holds the link itself", box.editBox:GetText(), link)
 Expect("...with the link-specific hint", box.hint:GetText(), "Copy this and open it in your browser:")
 Expect("...and no redundant address line, since the link already carries it", box.address:GetText(), "")
 
+------------------------------------------------------------------------------- over a host
+-- A dialog window that hides UIParent (DialogueUI's) would hide the box with it, so a feature
+-- addon puts it over that window while it is open.
+local host = stub.Widget("Frame")
+host.GetEffectiveScale = function() return 0.5 end
+Spoken:SetContributeHost(host)
+Expect("the box sits on the host", box.frame:GetParent(), host)
+Expect("...the same size on screen", box.frame:GetScale(), 2)
+Spoken:SetContributeHost(nil)
+Expect("nil puts it back on UIParent", box.frame:GetParent(), _G.UIParent)
+Expect("...at its own size", box.frame:GetScale(), 1)
+
 os.exit(Failures() == 0 and 0 or 1)

@@ -16,14 +16,14 @@ export default async function Page() {
       <Contained>
         <h1 className="text-xl font-semibold">Quest dialogue</h1>
         <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Browse and play every quest and gossip voiceline, and what NPCs say after a quest,
-          or search by NPC, quest, or what the line says. Read-only: nothing here writes to the corpus, the audio store, or your
-          game install.
+          Browse and play every quest voiceline, and what NPCs say after a quest, or search by
+          NPC, quest, or what the line says. Read-only: nothing here writes to the corpus, the
+          audio store, or your game install.
         </p>
       </Contained>
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
-        <Explorer facets={await facets()} />
+        <Explorer facets={await facets()} kind="quests" />
       </Suspense>
     </main>
   );

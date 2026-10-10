@@ -19,7 +19,7 @@ local D = env.Defaults.profile
 
 ---------------------------------------------------------------- the player
 Expect("every module on", next(D.Parts), nil)
-Expect("Subtitles Only", D.Frame.SubtitlePlayer, true)
+Expect("Subtitles Only", D.Frame.Style, "subtitle")
 Expect("...listed first among the narrator styles", env.Options:Styles()[1], "subtitle")
 Expect("Show Words on", D.Transcript.Enabled, true)
 Expect("Highlight Word off", D.Transcript.HighlightWord, false)
@@ -28,7 +28,7 @@ Expect("...letter by letter", D.Transcript.TypewriterBy, "letter")
 Expect("no action hidden: Report shows", next(D.Frame.HiddenActions), nil)
 Expect("subtitle size 100%", D.Transcript.SubtitleScale, 1)
 Expect("background darkness 60%", D.Transcript.SubtitleShadow, 0.6)
-Expect("the volume follows Master", D.Audio.SoundChannel, "Master")
+Expect("there is no setting for the voices' channel: they play on Master", D.Audio.SoundChannel, nil)
 Expect("NPC voices silenced while a line plays", D.Audio.AutoToggleDialog, true)
 Expect("other sounds turned down", D.Audio.LowerOthers.Enabled, true)
 Expect("...music to 30%, ambience 40%, effects 60%",

@@ -202,6 +202,9 @@ function Player:Prepare(soundData)
     soundData.key = soundData.fileName
     soundData.path = soundData.filePath
     soundData.priority = gossip and "low" or "normal"
+    -- Cut, so none of the NPC's greeting is heard under the line. With Game Greeting First the NPC
+    -- has had its say, so a greeting the wait fell short of fades instead.
+    soundData.cutsGameDialogue = not (GreetingFirst and GreetingFirst:IsOn())
     soundData.present = {
         header = soundData.name or "",
         label = soundData.title or (event == Enums.SoundEvent.QuestGreeting and L.OPT_GREETING or (gossip and L.OPT_PACK_GOSSIP or "")),
@@ -217,21 +220,49 @@ end
 -- Queueing
 --------------------------------------------------------------------------------
 
+-- The windows a dispatched event stands for, as the debug log names them.
+local WINDOWS = {
+    QUEST_DETAIL = "the NPC's quest window (the offer)",
+    QUEST_PROGRESS = "the NPC's quest window (progress)",
+    QUEST_COMPLETE = "the NPC's quest window (the reward)",
+    QUEST_GREETING = "the NPC's greeting window",
+    GOSSIP_SHOW = "the NPC's gossip window",
+}
+
+--- Where a line comes from, as the debug log says it: the window an event stands for, and
+--- whether it was read automatically or asked for (`source`: the Play button, /spq read, ...).
+function Player:Origin(event, source, manual)
+    local window = WINDOWS[event] or tostring(event)
+    if manual then
+        return window .. ", asked for with " .. tostring(source or "a reader")
+    end
+    return window .. ", read automatically (" .. tostring(source or "event") .. ")"
+end
+
+--- What a line says of where it came from, on the `queued` stage: the debug log's reader asks
+--- which screen queued what.
+local function From(soundData)
+    if soundData and soundData.origin then return ", from " .. soundData.origin end
+    return ""
+end
+
 --- Resolve a line through the packs and hand it to the player. Records the stage the
 --- 10 Hz watcher keys on, as the queue used to.
 ---@param soundData SoundData
 ---@return boolean queued
 function Player:Enqueue(soundData)
+    if not soundData.origin then soundData.origin = self.origin end
     if not self.source then
         Debug:Record("player-missing", "The Spoken player addon is not installed")
         return false
     end
 
-    if not DataModules:PrepareSound(soundData) then
-        Debug:Record("data-lookup-failed", format("No sound entry for event %s, quest ID %s, title %q, language %s",
+    local found, why = DataModules:PrepareSound(soundData)
+    if not found then
+        Debug:Record("data-lookup-failed", format("No sound entry for event %s, quest ID %s, title %q, language %s: %s",
             Enums.SoundEvent:GetName(soundData.event) or tostring(soundData.event),
             tostring(soundData.questID or "none"), soundData.title or soundData.name or "",
-            table.concat(Language:ResolutionOrder(), " then ")))
+            table.concat(Language:ResolutionOrder(), " then "), tostring(why)))
         return false
     end
 
@@ -243,13 +274,16 @@ end
 ---@param soundData SoundData
 ---@return boolean queued
 function Player:PlayNow(soundData)
+    if not soundData.origin then soundData.origin = self.origin end
     if not self.source then
         Debug:Record("player-missing", "The Spoken player addon is not installed")
         return false
     end
-    if not DataModules:PrepareSound(soundData) then
-        Debug:Record("data-lookup-failed", format("No sound entry for event %s, quest ID %s",
-            Enums.SoundEvent:GetName(soundData.event) or tostring(soundData.event), tostring(soundData.questID or "none")))
+    local found, why = DataModules:PrepareSound(soundData)
+    if not found then
+        Debug:Record("data-lookup-failed", format("No sound entry for event %s, quest ID %s: %s",
+            Enums.SoundEvent:GetName(soundData.event) or tostring(soundData.event), tostring(soundData.questID or "none"),
+            tostring(why)))
         return false
     end
     self:Prepare(soundData)
@@ -267,11 +301,14 @@ function Player:EnqueuePrepared(soundData)
     end
 
     self:Prepare(soundData)
+    if self.playNow then
+        return self:PlayPreparedNow(soundData)
+    end
     local added, reason = self.source:Enqueue(soundData)
     if not added then
         if reason == "duplicate" then
             -- Already in the queue is, for the watcher's purposes, queued.
-            Debug:Record("queued", format("Already queued: %s", soundData.fileName))
+            Debug:Record("queued", format("Already queued: %s%s", soundData.fileName, From(soundData)))
         elseif reason == "missing" then
             Debug:Record("file-playback-failed", format([[The data entry exists, but PlaySoundFile rejected "%s" from module "%s"]],
                 soundData.filePath, soundData.module.METADATA.AddonName))
@@ -287,6 +324,47 @@ function Player:EnqueuePrepared(soundData)
         Debug:Record("queue-paused", "The voiceover is queued, but playback is stopped; run /spq play")
     end
     return true
+end
+
+--- Plays a line asked for by a dialog's Play button at once, ahead of the queue, and skips what
+--- was speaking rather than replaying it. Callers set `Player.playNow` around the read.
+---@param soundData SoundData
+---@return boolean playing
+function Player:PlayPreparedNow(soundData)
+    local interrupted = Spoken.GetCurrent and Spoken:GetCurrent()
+    if interrupted and interrupted.key == soundData.key then
+        interrupted = nil
+    end
+    -- The player's PlayNow queues behind a line already speaking, so that line stops first.
+    local stopped = interrupted ~= nil and Spoken.Pause ~= nil and not Spoken:IsPaused() and Spoken:Pause()
+    local playing, reason = self.source:PlayNow(soundData)
+    if not playing then
+        Debug:Record("sound-disabled", reason or "refused")
+        if stopped and Spoken.Resume then
+            Spoken:Resume()
+        end
+        return false
+    end
+    if interrupted then
+        for _, clip in ipairs(Spoken:GetQueue()) do
+            if clip == interrupted then
+                Debug:Record("skipped", format("Skipped %s for the line asked for", tostring(interrupted.key)))
+                self.source:Remove(interrupted)
+                break
+            end
+        end
+    end
+    return true
+end
+
+--- The queued clip reading the dialog's line, or nil. Matched by file rather than by the
+--- SoundData the handler built, so a line started from the quest log counts too.
+function Player:QueuedClipFor(line)
+    for _, clip in ipairs(self:Queued()) do
+        if clip.fileName == line.fileName then
+            return clip
+        end
+    end
 end
 
 function Player:Remove(soundData)
@@ -333,31 +411,13 @@ function Player:Setup()
             for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
             return names
         end,
-        -- The voices come in parts -- Alliance, Horde and the rest, or All of them in one -- so
-        -- Spoken shows how many of the parts are here out of how many there are. All counts as
-        -- every part.
-        packCount = function()
-            local total, have, all = 0, 0, false
-            for _, module in DataModules:GetAvailableModules() do
-                if module.AddonName ~= "SpokenQuestsAudioAll" then total = total + 1 end
-            end
-            for _, module in DataModules:GetPresentModules() do
-                if module.AddonName == "SpokenQuestsAudioAll" then
-                    all = true
-                else
-                    have = have + 1
-                end
-            end
-            if total == 0 then total = math.max(have, 1) end
-            if all then have = total end
-            return math.min(have, total), total
-        end,
     })
 
     -- What the watcher reads to know whether an event reached the speaker.
     Spoken:RegisterCallback("CLIP_QUEUED", function(clip)
         if clip.source == Player.source then
-            Debug:Record("queued", format("Queued %s (%s)", clip.title or clip.name or clip.fileName, clip.path))
+            Debug:Record("queued", format("Queued %s (%s)%s", clip.title or clip.name or clip.fileName, clip.path,
+                From(clip)))
         end
     end)
     Spoken:RegisterCallback("CLIP_STARTED", function(clip)

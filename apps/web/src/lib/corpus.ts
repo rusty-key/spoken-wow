@@ -58,7 +58,10 @@ export type CorpusLine = {
    * language's word (player-words.ts), so the gate has to know which. Absent means English.
    */
   lang?: Lang;
-  /** The English names, for a translator to work from. Absent when reading English. */
+  /**
+   * The English names, for a translator to work from. Absent when reading English, and on a
+   * line only this language has.
+   */
   english?: { questTitle: string | null; npcName: string };
 };
 

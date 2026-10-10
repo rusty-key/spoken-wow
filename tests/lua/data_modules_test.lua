@@ -58,6 +58,19 @@ VO = Enumerate({ [NEW .. "Version"] = "1" })
 local ok = pcall(function() VO.DataModules:Register("TestPack", { GetSoundPath = function() end }) end)
 Expect("a new-key pack can register its data", ok, true)
 
+---------------------------------------------------------------- switched off in the AddOns list
+stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
+stub.SetAddOns({
+    { folder = "OnPack", meta = { [OLD .. "Version"] = "1", Title = "OnPack", Version = "1.2.1" } },
+    { folder = "OffPack", loadable = false, reason = "DISABLED",
+        meta = { [OLD .. "Version"] = "1", Title = "OffPack", Version = "1.2.1" } },
+})
+VO = stub.LoadQuests(QUESTS, SPOKEN)
+VO.DataModules:EnumerateAddons(false)
+Expect("a pack switched off in the AddOns list is not found", VO.DataModules.presentModules["OffPack"], nil)
+Expect("...while one switched on is", VO.DataModules.presentModules["OnPack"] ~= nil, true)
+Expect("...and nothing was switched on to load it", #stub.enabledAddOns, 0)
+
 ---------------------------------------------------------------- not a pack at all
 VO, found = Enumerate({ Title = "Some other addon" })
 Expect("an addon carrying neither key is not a pack", found, nil)

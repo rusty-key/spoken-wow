@@ -95,7 +95,7 @@ function M.NewZoneLore()
     local cfg = { voiceEnabled = true, autoplay = true, autoplaySubzones = true,
         autoplayExplored = false, debug = false,
         -- What the options panel reads, as well as what the playback files do.
-        showMapPanel = true, showHoverPreview = true, panelSide = "RIGHT",
+        showMapPanel = true, panelSide = "RIGHT",
         panelWidth = 320, fontSize = 12, showMinimapButton = true }
     local Z = { printed = {}, heard = {}, zoneChanged = {}, clientLocale = "enUS" }
     -- The addon's real English strings, so a label a file reads (a minimap entry, a button,

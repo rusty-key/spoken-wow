@@ -99,6 +99,15 @@ function SettingsPanel:Setup()
         L.OPT_PANEL_STOP_ON_CLOSE_TIP,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end)
+    -- Only what autoplay reads waits for the greeting, so with it off this does nothing.
+    local greetingFirst = layout:Checkbox(L.OPT_PANEL_GAME_GREETING_FIRST,
+        L.OPT_PANEL_GAME_GREETING_FIRST_TIP,
+        function() return audio().GreetingFirst end,
+        function(value)
+            audio().GreetingFirst = value
+            if value then GreetingFirst:SetDialogApart() end
+        end)
+    layout:Requires(greetingFirst, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     -- The two rarely wanted, apart from the everyday choices above.
     layout:Section(L.OPT_SECTION_EXTRAS)
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP,
@@ -112,6 +121,18 @@ function SettingsPanel:Setup()
         L.OPT_OG_THRALL_TIP,
         function() return audio().OGThrall end,
         function(value) audio().OGThrall = value end)
+
+    -- Only with DialogueUI installed: on Spoken's DialogueUI page, or here with a Spoken too old
+    -- to have that page.
+    if DialogueUIBridge and DialogueUIBridge.Problem and IsAddOnLoaded and IsAddOnLoaded("DialogueUI") then
+        if Spoken and Spoken.AddDialogueUISettings then
+            Spoken:AddDialogueUISettings(function(page)
+                return SettingsPanel:DialogueUIRows(page, L.OPT_PAGE_TITLE)
+            end)
+        else
+            self:DialogueUIRows(layout, L.OPT_SECTION_DIALOGUEUI, L.OPT_DUI_NOTE)
+        end
+    end
 
     -- The voice language is set once for every module, on Spoken's page. Here only where the
     -- player is too old to have that setting.
@@ -165,11 +186,16 @@ function SettingsPanel:Setup()
         layout:Note(L.OPT_NO_PACK, nil, 16)
     end
     local listed = {}
-    -- The packs for what the player will hear: the voice language's, then the fallback's. Each
-    -- language's row is built whatever is chosen and shown while that language is wanted, so a
-    -- change of language on Spoken's page shows at once.
-    local function Wanted(code)
-        return code == Language:GetVoiceLanguage() or code == Language:GetFallbackLanguage()
+    -- The packs to get are the voice language's; any pack installed is listed too. Not the
+    -- fallback's to get: on an esMX client English's five rows buried the one that mattered. But
+    -- a voice language with no pack of its own (zhCN, zhTW) is heard in the fallback's, so those
+    -- are the ones to get there. Each row is built whatever is chosen and shown while it is
+    -- wanted, so a change of language on Spoken's page shows at once.
+    local function Wanted(code, addon)
+        local voice = Language:GetVoiceLanguage()
+        if code == voice or Present(addon) ~= nil then return true end
+        local own = voice == Language.BASE or (Spoken and Spoken.VoicePack and Spoken:VoicePack("quests", voice))
+        return not own and code == Language:GetFallbackLanguage()
     end
     local function PackRow(module, label)
         listed[module.AddonName] = true
@@ -189,12 +215,12 @@ function SettingsPanel:Setup()
         if folder then
             local code = locale.code
             layout:ShowWhen(PackRow({ AddonName = folder, URL = url }, Language:GetNativeName(code)),
-                function() return Wanted(code) end)
+                function() return Wanted(code, folder) end)
         end
     end
-    -- English's, split by faction, where English is wanted: the fallback a player hears by default.
+    -- English's, split by faction, where English is the voice or the pack is installed.
     for _, module in DataModules:GetAvailableModules() do
-        layout:ShowWhen(PackRow(module), function() return Wanted(Language.BASE) end)
+        layout:ShowWhen(PackRow(module), function() return Wanted(Language.BASE, module.AddonName) end)
     end
     -- A pack the list does not know, as another language's, after the ones it does.
     for _, module in DataModules:GetPresentModules() do
@@ -246,6 +272,38 @@ function SettingsPanel:Setup()
         Settings.RegisterAddOnCategory(category)
     end
     self.panel, self.category = panel, category
+end
+
+--- Adds the DialogueUI rows to `layout` under `title`. Returns what resets them, for the
+--- Defaults button of Spoken's DialogueUI page.
+function SettingsPanel:DialogueUIRows(layout, title, note)
+    layout:Section(title)
+    if note then layout:Note(note, nil, 32) end
+    local dui = function() return Addon.db.profile.DialogueUI end
+    local function Box(key, label, tip)
+        local row = layout:Checkbox(label, tip,
+            function() return dui()[key] end,
+            function(value) dui()[key] = value end,
+            function() DialogueUIBridge:Refresh(); layout:Refresh() end)
+        -- Problem answers the first of these that holds, so exactly one condition fails
+        -- and the row names it. DialogueUI missing is not among them: then there are no rows.
+        for _, reason in ipairs({ L.OPT_DUI_NO_PLAYER, L.OPT_DUI_UNKNOWN, L.OPT_DUI_OLD_PLAYER }) do
+            layout:Requires(row, function() return DialogueUIBridge:Problem(key) ~= reason end, reason)
+        end
+        return row
+    end
+    Box("Captions", L.OPT_DUI_CAPTIONS, L.OPT_DUI_CAPTIONS_TIP)
+    -- Scrolling follows the marked words, so it waits on them.
+    layout:Indent()
+    layout:Requires(Box("AutoScroll", L.OPT_DUI_AUTOSCROLL, L.OPT_DUI_AUTOSCROLL_TIP),
+        function() return dui().Captions end, L.REASON_DUI_CAPTIONS)
+    layout:Outdent()
+    Box("ShowPlayer", L.OPT_DUI_SHOW_PLAYER, L.OPT_DUI_SHOW_PLAYER_TIP)
+    Box("PlayButton", L.OPT_DUI_PLAY_BUTTON, L.OPT_DUI_PLAY_BUTTON_TIP)
+    return function()
+        for key, value in pairs(Addon.DialogueUIDefaults) do dui()[key] = value end
+        DialogueUIBridge:Refresh()
+    end
 end
 
 function SettingsPanel:Open()

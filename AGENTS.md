@@ -98,9 +98,8 @@ Tooling, the site, CI and docs bump nothing.
 - The checks above are the verification. Do not stack extra self-review passes or use
   subagents to re-check finished work.
 - PR descriptions are prose for the reviewer and for whoever finds the branch in a year. The
-  title states the outcome. Open with the problem, record the decisions you rejected, and
-  include an honest verification section that says what you did not check (for example,
-  "not looked at in-game").
+  title states the outcome. Open with the problem, and include an honest verification section
+  that says what you did not check (for example, "not looked at in-game").
 
 ## Comments
 

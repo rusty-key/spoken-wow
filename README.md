@@ -48,8 +48,8 @@ player is asked to delete them.
 
 ## What players see
 
-**Narrator styles.** Spoken shows a line in one of four ways, chosen on the Spoken
-settings page or in the welcome window on first login:
+**Narrator styles.** Spoken shows a line in one of four ways, five with DialogueUI, chosen
+on the Spoken settings page or in the welcome window on first login:
 
 - **Subtitles Only**, the default on the modern clients: the speaker's name and the words
   low in the middle of the screen over a soft shadow, at most four lines at a time. A longer
@@ -61,6 +61,9 @@ settings page or in the welcome window on first login:
   [`docs/minimal-classic/`](docs/minimal-classic/README.md).
 - **Large Window**: the original layout, with the lines waiting to play next. The 1.12,
   2.4.3 and 3.3.5 clients start in this one; 2.4.3 and 3.3.5 can switch to Subtitles Only.
+- **DialogueUI**, offered only with the [DialogueUI](https://www.curseforge.com/wow/addons/dialogueui)
+  addon installed: a smaller twin of its quest window, in its own parchment or dark art. See
+  [`docs/spoken/PLAYER-STYLES.md`](docs/spoken/PLAYER-STYLES.md).
 - **Voice Only**: nothing on screen.
 
 The windows can show the words as caption lines too, with the words being read lit in gold

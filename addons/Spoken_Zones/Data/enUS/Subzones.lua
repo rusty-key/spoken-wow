@@ -88,12 +88,6 @@ local subzones = {
 			full = "Kolkar Crag is a craggy gorge in southern Durotar, named for the Kolkar centaurs who hold it.\n\nFrom here Warlord Kolkanis gathered his kind for a single, ambitious plan: to strike at the heart of orcish Durotar, from the Valley of Trials and Sen'jin Village to Razor Hill and even the gates of Orgrimmar itself.",
 			source = "https://warcraft.wiki.gg/wiki/Kolkar_Crag",
 		},
-		["orgrimmar"] = {
-			name = "Orgrimmar",
-			short = "Orgrimmar rose in the years after Mount Hyjal, when Warchief Thrall led his people to a desolate coast of Kalimdor.",
-			full = "Orgrimmar rose in the years after Mount Hyjal, when Warchief Thrall led his people to a desolate coast of Kalimdor. He named the land Durotar for his father, and the city he raised there he named Orgrimmar, for Orgrim Doomhammer, the friend and mentor who had shaped him. It was built quickly but not carelessly: stout walls, massive gates, tall towers, with the mountains at its back carved into to form part of the fortress itself, so that the land stood guard over the city.\n\nThe Horde that built it was not the Horde that had once burned across the world. The demonic curse broken, Thrall's people turned from conquest toward survival, and Orgrimmar was raised as much by others as by orcs -- goblins, tauren, and Darkspear trolls labored alongside them, and the Mok'Nathal Rexxar lent his hand to the work. Centaur, harpies, thunder lizards, kobolds, and quilboar all tested the young city in its first years, but it endured, and became home not only to orcs but to trolls, tauren, and, in time, the Forsaken newly welcomed into the Horde.\n\nThe wind itself is no friend here: the razor-winds sweep through the valleys with enough force to tear the roofs from buildings raised without care.",
-			source = "https://warcraft.wiki.gg/wiki/Orgrimmar",
-		},
 		["razor hill"] = {
 			name = "Razor Hill",
 			short = "Razor Hill stands where the roads of Durotar meet. South, the way runs toward Sen'jin Village and the Valley of Trials; north lies Orgrimmar; west the road crosses the river toward the Barrens and on to the Crossroads.",
@@ -286,12 +280,6 @@ local subzones = {
 			short = "Stonebull Lake curls around Bloodhoof Village on three sides, a long horseshoe of cool water. Its waters run thick with fish, and lines are cast into it through many quiet hours.",
 			full = "Stonebull Lake curls around Bloodhoof Village on three sides, a long horseshoe of cool water. Its waters run thick with fish, and lines are cast into it through many quiet hours. Where the lake narrows, a bridge spans the gap, carrying the road that links Bloodhoof Village to Thunder Bluff.",
 			source = "https://warcraft.wiki.gg/wiki/Stonebull_Lake",
-		},
-		["thunder bluff"] = {
-			name = "Thunder Bluff",
-			short = "Thunder Bluff rises on four windswept mesas above the grasslands of Mulgore, reached only by rope-and-wood elevators of tauren make, or by long bridges strung between the rises.",
-			full = "Thunder Bluff rises on four windswept mesas above the grasslands of Mulgore, reached only by rope-and-wood elevators of tauren make, or by long bridges strung between the rises. Tents, longhouses, and painted totems crown each summit. For generations the tauren wandered as a nomadic people, harried without rest by the centaur who ranged across Kalimdor. It was Cairne Bloodhoof, chieftain of the Bloodhoof tribe, who ended that exile. When Warchief Thrall and his New Horde came to Mulgore during the Third War, their strength joined Cairne's own and together they broke the centaur and won the grasslands for the tauren at last. Upon the mesas Cairne raised a refuge open to every scattered tribe, and in time those tribes bent to his rule as one people, disagreeing sometimes on the path ahead but never on his wisdom to lead them.\n\nThe bluffs still bear the weight of that founding in their rises and bridges, in the tents of tribes gathered under one chieftain's roof.",
-			source = "https://warcraft.wiki.gg/wiki/Thunder_Bluff",
 		},
 		["thunderhorn water well"] = {
 			name = "Thunderhorn Water Well",
@@ -987,12 +975,6 @@ local subzones = {
 			full = "Just north of the Scarlet Monastery lies ground the plague has never touched. Green hedges grow here, and a fountain runs clear rather than stagnant, unlike the rest of Tirisfal Glades. The Scarlet Crusade tends it, keeping this small terrace alive as proof that something clean can still endure amid the blight.",
 			source = "https://warcraft.wiki.gg/wiki/Terrace_of_Repose",
 		},
-		["undercity"] = {
-			name = "Undercity",
-			short = "Long before the Forsaken made it their own, the Undercity had a name and a purpose. Far beneath the palace of Lordaeron ran the ancient crypts of its royal dead, its dungeons, its sewers.",
-			full = "Long before the Forsaken made it their own, the Undercity had a name and a purpose. Far beneath the palace of Lordaeron ran the ancient crypts of its royal dead, its dungeons, its sewers. It was meant only for prisoners and corpses, but the poorest of Lordaeron's people crowded down into the dark anyway, and the guards' sweeps to clear them out never held.\n\nWhen the Lich King's grip on his creations slipped, Sylvanas Windrunner broke from the Scourge with those undead who had kept their minds, and turned on Arthas, the fallen prince who had made her what she was. She lured him into a trap in the ruined kingdom; he escaped with Kel'Thuzad's help and fled north to become the Lich King himself. Sylvanas and her followers, left masters of the field, named themselves the Forsaken and claimed the crypts beneath the wrecked capital, finishing the stronghold the Scourge had begun.\n\nWhat stands now is a maze built for defense: rivers of poisonous sludge running through every avenue, the air thick with fumes the living can barely stand to breathe. For the Forsaken it is shelter in a world that still hunts them.",
-			source = "https://warcraft.wiki.gg/wiki/Undercity",
-		},
 		["venomweb vale"] = {
 			name = "Venomweb Vale",
 			short = "Venomweb Vale was once green, thick with deer and rabbit, before it became what it is now: a valley overrun with poisonous spiders, led by the rare and deadly Sri'skulk, whose webs have replaced the grass and given the vale its name.",
@@ -1216,12 +1198,6 @@ local subzones = {
 			full = "Northridge Lumber Camp lies in the northern Western Plaguelands near Hearthglen, its hillsides stripped bare by the Scarlet Crusade's timber cutting. The Crusade works the mill for its lumber, a supply both Alliance and Horde have reason to see spoiled.\n\nBefore the Third War, the mill belonged to the family of Nathaniel Dumah, who worked the land until war and plague drove them out. Mickey Levine's family also labored here once.",
 			source = "https://warcraft.wiki.gg/wiki/Northridge_Lumber_Camp",
 		},
-		["plaguemist ravine"] = {
-			name = "Plaguemist Ravine",
-			short = "A ravine cuts north toward Caer Darrow, its entrance found within the woods on the other side of the mountain. Nothing lives in the passage.",
-			full = "A ravine cuts north toward Caer Darrow, its entrance found within the woods on the other side of the mountain. Nothing lives in the passage. No birds cross it, no beasts den in its rock.\n\nA mist hangs in it, sickly and out of place, fouling this one path. It is why the place carries the name it does now: Plaguemist, given only recently for the mist that sets it apart.",
-			source = "https://warcraft.wiki.gg/wiki/Plaguemist_Ravine",
-		},
 		["ruins of andorhal"] = {
 			name = "Ruins of Andorhal",
 			short = "Andorhal lies in ruin at the heart of the Western Plaguelands, its houses broken and spread across open ground.",
@@ -1438,12 +1414,6 @@ local subzones = {
 	},
 	-- Hillsbrad Foothills: 29 subzones
 	[1424] = {
-		["alterac mountains"] = {
-			name = "Alterac Mountains",
-			short = "Rain never quite stops falling on these peaks, and the sky above them is always grey. Once the mountains crowned the city-state of Alterac, which held dominion over much of the northlands, and sheltered Dalaran besides.",
-			full = "Rain never quite stops falling on these peaks, and the sky above them is always grey. Once the mountains crowned the city-state of Alterac, which held dominion over much of the northlands, and sheltered Dalaran besides. Both are gone now, and what is left explains why so few dare climb here.\n\nWhen the Second War ended, the Alliance of Lordaeron learned that Alterac's lords had dealt with the Horde in secret, and marched an army into these mountains to strike the traitors at their own hearth. The city fell, its people scattered or imprisoned, and its bloodline never recovered its throne. A later prince of that fallen house, Aliden Perenolde, rose instead as a bandit lord, gathering the outcast and the vengeful into the Syndicate, a company of rogues who still hold Strahnbrad and range across these slopes seeking to reclaim what his family lost.\n\nToday the ruins of Alterac City belong to the Crushridge ogres, and the Syndicate holds much of what the ogres do not.",
-			source = "https://warcraft.wiki.gg/wiki/Alterac_Mountains_(Classic)",
-		},
 		["azurelode mine"] = {
 			name = "Azurelode Mine",
 			short = "Azurelode Mine lies in the southwestern reach of Hillsbrad Foothills, its hill once counted part of Gilneas before the Greymane Wall rose and cut the kingdom off from the world.",
@@ -1467,12 +1437,6 @@ local subzones = {
 			short = "Crushridge Hold rises near the Ruins of Alterac, a cave hollowed into an earthen mound.",
 			full = "Crushridge Hold rises near the Ruins of Alterac, a cave hollowed into an earthen mound. Around it the Crushridge ogres have raised their encampments, thick in number and brutish in temper, holding the slopes above the ruined city below.",
 			source = "https://warcraft.wiki.gg/wiki/Crushridge_Hold",
-		},
-		["dandreds fold"] = {
-			name = "Dandred's Fold",
-			short = "A small farm and manor stands at the western edge of the Uplands, where the ground meets the Misty Shore and a harbor opens onto Lordamere Lake.",
-			full = "A small farm and manor stands at the western edge of the Uplands, where the ground meets the Misty Shore and a harbor opens onto Lordamere Lake.\n\nHere lived Aliden, and with him his mistress Elysa. She wore a necklace that had once belonged to Taretha Foxton. When Aliden was killed, Elysa gave up the necklace at once, fearing she would be harmed for keeping it.",
-			source = "https://warcraft.wiki.gg/wiki/Dandred's_Fold",
 		},
 		["darrow hill"] = {
 			name = "Darrow Hill",
@@ -1528,12 +1492,6 @@ local subzones = {
 			full = "Hillsbrad Fields lie fertile and cultivated across the western Hillsbrad Foothills, feeding Southshore and the town of Hillsbrad besides. Apple orchards, pumpkin patches, and grazing cattle cover the land, and the Azurelode Mine still sees work from the people of the town.\n\nEarly in the Second War, Doomhammer turned his armies against Hillsbrad and had it destroyed in a gruesome display meant to serve as a warning to the human kingdoms. It was rebuilt after the war, and stands populated still, one of the few corners of former Lordaeron that was not left in ruin nor swallowed by the Scarlet Crusade; its guards yet wear the tabard of their kingdom, and Magistrate Burnside governs from the town hall with the Council of Hillsbrad and the clerk Horrace Whitesteed at his side.\n\nNow the fields lie under threat again, from High Executor Darthalia's forces at Tarren Mill. Peasants and farmers bear the raids, but many strike back at the undead in ambushes of their own, armed by the blacksmith Verringtan and his apprentices.",
 			source = "https://warcraft.wiki.gg/wiki/Hillsbrad_Fields",
 		},
-		["lordamere lake"] = {
-			name = "Lordamere Lake",
-			short = "Lordamere Lake spreads beneath the shadow of kingdoms that once called its shores home.",
-			full = "Lordamere Lake spreads beneath the shadow of kingdoms that once called its shores home. Lordaeron rose on its northern edge, and it is very likely from that great city, itself named for old Lordain, that the lake took its name. Dalaran and Alterac, too, stood prosperous around its waters in the days when the Alliance of Lordaeron bound the human kingdoms together.\n\nThat age is gone, and what remains is a border. The lake now lies between the Forsaken holdings of Tirisfal Glades and Silverpine Forest and the contested Alterac Mountains, separating the dead from the living.\n\nAt its heart sits Fenris Isle, its keep held by agents of the Scourge, who are harried there by the Forsaken. East of it, the Dawning Isles have been overrun by the Vile Fin murlocs, who claim them as their own.\n\nSome time after the Third War, Lady Vashj and her naga withdrew to these waters, fleeing the ruin of Dalaran.",
-			source = "https://warcraft.wiki.gg/wiki/Lordamere_Lake",
-		},
 		["misty shore"] = {
 			name = "Misty Shore",
 			short = "The Misty Shore runs along Lordamere Lake, between Dandred's Fold and Dalaran. Turtles move slowly through its shallows.",
@@ -1557,12 +1515,6 @@ local subzones = {
 			short = "Ravenholdt Manor sits apart from the world by design.",
 			full = "Ravenholdt Manor sits apart from the world by design. Reached only by a narrow, twisting path that climbs from a plateau northwest of Durnholde Keep, winding through the mountains and a small cave before it opens onto the grounds, the manor is not a place one stumbles upon. Outsiders are not welcome here, and those who serve Lord Jorach Ravenholdt keep it that way.\n\nThe manor is his property, orange-roofed in the old fashion of Alterac, whose kingdom once held this land before the First War.\n\nIn the years since, the Syndicate has wandered this part of the highlands, and Ravenholdt has stood against that affliction from behind its hidden path and guarded gates.",
 			source = "https://warcraft.wiki.gg/wiki/Ravenholdt_Manor",
-		},
-		["ruins of alterac"] = {
-			name = "Ruins of Alterac",
-			short = "Broken walls climb the slopes of the Alterac Mountains where a city once stood, its palace half-standing, its church and town hall fallen in on themselves, its gate built in the fashion of Stormwind's own.",
-			full = "Broken walls climb the slopes of the Alterac Mountains where a city once stood, its palace half-standing, its church and town hall fallen in on themselves, its gate built in the fashion of Stormwind's own.\n\nIts ruin came from its own king. During the Second War, King Aiden Perenolde turned traitor, casting his lot with the Orcish Horde against his fellow humans. Alteraci soldiers were found fighting alongside the orcs, and a prison camp near the city held captive citizens of Dalaran. When the truth came out, the other human kingdoms marched on Alterac in retaliation. The people fled or were driven from their homes, and King Terenas Menethil II of Lordaeron declared the city under martial law, casting Perenolde down and throwing him into chains.\n\nThe city never rose again. Crushridge ogres, led by Mug'thol, settled into the empty streets and palace, while the scattered remnants of the old Alteraci people held the outlying villages beyond. Wrecked meat wagons still lie near the northern rampart and the gate, and the graveyards within and beyond the walls, the snow-buried farm, and shattered ballistae among the rubble remain as they were left.",
-			source = "https://warcraft.wiki.gg/wiki/Ruins_of_Alterac",
 		},
 		["slaughter hollow"] = {
 			name = "Slaughter Hollow",
@@ -1599,12 +1551,6 @@ local subzones = {
 			short = "King Thoradin raised this wall to hold back the Amani trolls, in the days when Strom stood young and Arathor had only just claimed the land for humanity.",
 			full = "King Thoradin raised this wall to hold back the Amani trolls, in the days when Strom stood young and Arathor had only just claimed the land for humanity. For generations it stood a stalwart sentinel, a line no troll horde could cross.\n\nCenturies on, it still stands, but heavily damaged, its stones broken and its long watch reduced to ruin.",
 			source = "https://warcraft.wiki.gg/wiki/Thoradin's_Wall",
-		},
-		["uplands"] = {
-			name = "Uplands",
-			short = "The Uplands once fed a kingdom. Its hills were the bread basket of Alterac, grain and pasture for the old nation.",
-			full = "The Uplands once fed a kingdom. Its hills were the bread basket of Alterac, grain and pasture for the old nation.\n\nThat nation broke. The Uplands passed to no crown, but to the Syndicate, who hold nowhere in the mountains more firmly. Baron Vardus commands among their camps here, lord of a broken kingdom's leftover land.\n\nIn the westernmost reaches stands Dandred's Fold, a name that has outlasted whatever it once meant.",
-			source = "https://warcraft.wiki.gg/wiki/Uplands",
 		},
 		["western strand"] = {
 			name = "Western Strand",
@@ -1828,12 +1774,6 @@ local subzones = {
 			short = "South of Helm's Bed Lake, Ironband's Compound stands as a foothold for Dark Iron dwarves, who strike at anyone who strays too near. The place once belonged to Sturgy Ironband, before it fell into Dark Iron hands.",
 			full = "South of Helm's Bed Lake, Ironband's Compound stands as a foothold for Dark Iron dwarves, who strike at anyone who strays too near. The place once belonged to Sturgy Ironband, before it fell into Dark Iron hands.",
 			source = "https://warcraft.wiki.gg/wiki/Ironband's_Compound",
-		},
-		["ironforge"] = {
-			name = "Ironforge",
-			short = "In the deep vaults beneath Ironforge Mountain in northern Dun Morogh, the dwarves have kept their capital since the days their ancestors first delved from Uldaman and turned west.",
-			full = "In the deep vaults beneath Ironforge Mountain in northern Dun Morogh, the dwarves have kept their capital since the days their ancestors first delved from Uldaman and turned west. It is the oldest home of their people, built around the Great Forge, and it stands as the seat of the Kingdom of Khaz Modan under the rule of King Magni Bronzebeard.\n\nThe city is a fortress as much as a capital, cut in concentric rings that sink deeper into the rock the further one descends, its passageways narrow, its chambers vast and echoing. Unlike the cities of the humans and night elves, Ironforge is wholly a cavern, floor and ceiling alike hewn stone. Fires burn in every hearth, and the halls are loud with hammers, laughter, and trade, for the dwarves have never been a quiet people even underground.\n\nGnomes from the ruins of their own city have found shelter within Ironforge's walls, given a quarter of their own by King Magni's grant, where they labor and plan in a district they have made their own.",
-			source = "https://warcraft.wiki.gg/wiki/Ironforge",
 		},
 		["ironforge submarine facility"] = {
 			pending = true,
@@ -2171,12 +2111,6 @@ local subzones = {
 			full = "Stonefield Farm lies in southern Elwynn Forest, worked by the Stonefield family, who share a bitter rivalry with the nearby Maclures. Yet a child of each house has fallen in love, defying the old grudge between their families. Some hope that romance might succeed where years of quarreling never could, and mend what the feud has broken.",
 			source = "https://warcraft.wiki.gg/wiki/Stonefield_Farm",
 		},
-		["stormwind city"] = {
-			name = "Stormwind City",
-			short = "Stormwind rose in white stone after the Orcish Horde had burned it, raised by the Stonemasons' Guild under young King Varian.",
-			full = "Stormwind rose in white stone after the Orcish Horde had burned it, raised by the Stonemasons' Guild under young King Varian. But when the crown's coffers ran dry from war debts, and the nobility refused the guild its wages, Guildmaster Edwin VanCleef's protest was answered with the guild's dissolution. Riots followed, and in the chaos Queen Tiffin Wrynn was killed. Varian's wrath drove the stonemasons into exile in Westfall, where they became the Defias Brotherhood -- while behind the throne, a councilor named Katrana Prestor quietly turned king against guild for her own ends, using politics and sorcery to outmaneuver him in the years since.",
-			source = "https://warcraft.wiki.gg/wiki/Stormwind_City",
-		},
 		["thunder falls"] = {
 			name = "Thunder Falls",
 			short = "The path up from Mirror Lake's waterfall climbs steep and narrow into the mountains before opening onto Thunder Falls, a ravine unlike others in Elwynn Forest for having falling water at both ends.",
@@ -2413,12 +2347,6 @@ local subzones = {
 			short = "The Silver Stream Mine once ran deep with silver, and for generations the dwarves of Ironforge drew wealth from its veins.",
 			full = "The Silver Stream Mine once ran deep with silver, and for generations the dwarves of Ironforge drew wealth from its veins. When the ore ran dry, the Miners' League turned the tunnels into a storage depot rather than abandon them.\n\nThe mine still holds one thing worth taking: Charged Rift Gems, found nowhere else, prized for the making of mage robes.\n\nBut the dwarves no longer hold these tunnels. Tunnel Rat kobolds have overrun the mine, seeking its remaining resources for themselves.",
 			source = "https://warcraft.wiki.gg/wiki/Silver_Stream_Mine",
-		},
-		["south gate outpost"] = {
-			name = "South Gate Outpost",
-			short = "South Gate Outpost sits where the pass narrows between Dun Morogh and Loch Modan, a chokepoint of stone held by dwarven mountaineers.",
-			full = "South Gate Outpost sits where the pass narrows between Dun Morogh and Loch Modan, a chokepoint of stone held by dwarven mountaineers. Theirs is quieter work than that of their kin at North Gate: they have driven back the wildlife that once pressed on the pass, and the road through it stays open and safe for those making their way to or from Thelsamar.",
-			source = "https://warcraft.wiki.gg/wiki/South_Gate_Outpost",
 		},
 		["south gate pass"] = {
 			name = "South Gate Pass",
@@ -3167,12 +3095,6 @@ local subzones = {
 			full = "The Cleft lies northwest of Dolanaar, a den of corrupted Gnarlpine furbolgs led by Ursal the Mauler. They ambush travelers on the road to Darnassus and hold a group of slumbering druids captive within. Moon Priestess Amara and her bodyguards keep watch on the road near the entrance.",
 			source = "https://warcraft.wiki.gg/wiki/Cleft",
 		},
-		["darnassus"] = {
-			name = "Darnassus",
-			short = "The night elves built Darnassus after the Third War, when their long immortality had failed them. Many could not bear the sudden weight of aging and frailty.",
-			full = "The night elves built Darnassus after the Third War, when their long immortality had failed them. Many could not bear the sudden weight of aging and frailty. A number of grieving druids resolved to plant a new World Tree to restore their bond with the eternal world. With Malfurion Stormrage gone missing, Fandral Staghelm took up the mantle of Archdruid and led the effort. The tree they raised, Teldrassil, rose off the coast until its crown broke above the clouds, and among its boughs the night elves founded their city as a testament to their people's survival.\n\nDarnassus stands open to the sky, unlike the close, walled cities of the humans and dwarves. It is built around a broad lake, its shores joined by graceful bridges, its pathways carpeted in fallen leaves. The Temple of the Moon rises above the trees as the seat of High Priestess Tyrande Whisperwind and her Sisters of Elune. The city remains what it was built to be: a tranquil refuge, and a monument to a people learning to live with mortality.",
-			source = "https://warcraft.wiki.gg/wiki/Darnassus",
-		},
 		["dolanaar"] = {
 			name = "Dolanaar",
 			short = "Dolanaar stands in the central-eastern reaches of Teldrassil, southwest of Shadowglen, its roots and rope-bridges woven into the great tree itself.",
@@ -3455,12 +3377,6 @@ local subzones = {
 			full = "A tower and a single night elven hall stand quiet here, holding a handful of defenders and, strangest of all for Ashenvale, two humans among the elves: Feero Ironhand and Delgren the Purifier, the only ones of their kind at this post.\n\nTheir numbers are few, for the corruption spreading through the nearby furbolgs draws off hands that might otherwise stand watch here, leaving the post's defenders stretched thin.",
 			source = "https://warcraft.wiki.gg/wiki/Maestra's_Post",
 		},
-		["morshan rampart"] = {
-			name = "Mor'shan Rampart",
-			short = "The Mor'shan Rampart stands where the Gold Road runs north out of the Barrens, built to withstand the Alliance push into the region from Ashenvale to the north.",
-			full = "The Mor'shan Rampart stands where the Gold Road runs north out of the Barrens, built to withstand the Alliance push into the region from Ashenvale to the north. It is a rough thing, raised for war: earthworks and watch towers meant to hold a line, and to launch raids north against the night elven town of Astranaar.",
-			source = "https://warcraft.wiki.gg/wiki/Mor'shan_Rampart",
-		},
 		["mystral lake"] = {
 			name = "Mystral Lake",
 			short = "The water of Mystral Lake was once kept by spirits loyal to the night elves, bound to the lake as its wardens.",
@@ -3668,12 +3584,6 @@ local subzones = {
 			short = "The Shimmering Flats lie at the southeastern edge of Thousand Needles, where the land runs flat and bare to the border with Tanaris.",
 			full = "The Shimmering Flats lie at the southeastern edge of Thousand Needles, where the land runs flat and bare to the border with Tanaris. Nothing grows here. The ground is hard-baked salt, home only to basilisks, scorpids, turtles, and vultures. Once this was the bottom of a lake -- the wrecked hull of a sailing vessel still sits half-buried in the northern flats, a ship stranded far from any water, proof of what this place used to be before it dried to salt and cracked earth.\n\nThat flatness drew goblins and gnomes from opposite sides of their long rivalry. They raised the Mirage Raceway here and raced to build machines faster than one another's. The contraptions rarely held together. Craters pock the flats where engines went wrong, and the wreckage of failed racers lies scattered across the salt, left to bake where it fell.",
 			source = "https://warcraft.wiki.gg/wiki/Shimmering_Flats",
-		},
-		["south seas"] = {
-			name = "South Seas",
-			short = "The waters south of the known continents open into a wide stretch of the Great Sea. Zandalar rises from these waters, ancient home of the troll empire.",
-			full = "The waters south of the known continents open into a wide stretch of the Great Sea. Zandalar rises from these waters, ancient home of the troll empire. Kezan lies among them too, a volcanic island holding its own people apart from the mainland powers.",
-			source = "https://warcraft.wiki.gg/wiki/South_Seas",
 		},
 		["splithoof crag"] = {
 			name = "Splithoof Crag",
@@ -5212,13 +5122,6 @@ local subzones = {
 			full = "",
 			source = "",
 		},
-		["mount hyjal"] = {
-			pending = true,
-			name = "Mount Hyjal",
-			short = "",
-			full = "",
-			source = "",
-		},
 		["mournings rest"] = {
 			pending = true,
 			name = "Mourning's Rest",
@@ -5439,26 +5342,12 @@ local subzones = {
 			full = "",
 			source = "",
 		},
-		["zephras isle"] = {
-			pending = true,
-			name = "Zephras Isle",
-			short = "",
-			full = "",
-			source = "",
-		},
 	},
 	-- Darkspear Islands: 3 subzones
 	[2524] = {
 		["abandoned tower"] = {
 			pending = true,
 			name = "Abandoned Tower",
-			short = "",
-			full = "",
-			source = "",
-		},
-		["darkspear islands"] = {
-			pending = true,
-			name = "Darkspear Islands",
 			short = "",
 			full = "",
 			source = "",
@@ -5539,13 +5428,6 @@ local subzones = {
 		["powderfuse port"] = {
 			pending = true,
 			name = "Powderfuse Port",
-			short = "",
-			full = "",
-			source = "",
-		},
-		["riverglades"] = {
-			pending = true,
-			name = "Riverglades",
 			short = "",
 			full = "",
 			source = "",
@@ -5640,13 +5522,6 @@ local subzones = {
 		["outcast hideaway"] = {
 			pending = true,
 			name = "Outcast Hideaway",
-			short = "",
-			full = "",
-			source = "",
-		},
-		["shendralas"] = {
-			pending = true,
-			name = "Shen'dralas",
 			short = "",
 			full = "",
 			source = "",

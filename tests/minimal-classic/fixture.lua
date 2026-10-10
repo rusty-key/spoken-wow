@@ -156,7 +156,6 @@ function timerMethods:ScheduleRepeatingTimer(fn,delay)
     local id=self:ScheduleTimer(fn,delay);timers[id].interval=delay;return id
 end
 function timerMethods:CancelTimer(id) timers[id]=nil end
-function timerMethods:TimeLeft(id) assert(timers[id],'invalid timer');return math.max(0,timers[id].due-clock) end
 function LibStub() return {Embed=function(_,object) for key,fn in pairs(timerMethods) do object[key]=fn end;return object end} end
 function Advance(seconds)
     clock=clock+seconds

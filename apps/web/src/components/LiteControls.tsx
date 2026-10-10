@@ -14,9 +14,22 @@ const BASE =
   "inline-flex h-7 shrink-0 items-center rounded-md px-2.5 text-[0.8rem] font-medium whitespace-nowrap " +
   "hover:bg-muted focus-visible:ring-ring/50 outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-50";
 
+/**
+ * Tinted so accept and reject can be told apart down a column without reading them. Hover and
+ * dark states are spelled out because ui/button's outline variant would otherwise win.
+ */
+export const ACCEPT_TONE =
+  "border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:text-emerald-700 " +
+  "dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400";
+export const REJECT_TONE =
+  "border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive " +
+  "dark:border-destructive/40 dark:bg-destructive/15 dark:hover:bg-destructive/25";
+
 const VARIANTS = {
   outline: "border-border bg-background border",
   ghost: "",
+  accept: ACCEPT_TONE,
+  reject: REJECT_TONE,
 } as const;
 
 export function LiteButton({

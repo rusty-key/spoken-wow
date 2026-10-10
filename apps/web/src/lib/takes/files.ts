@@ -13,11 +13,18 @@ import { fileIndex } from "@/lib/audio";
 import { addressableFiles as booksFiles } from "@/lib/books/audio";
 
 import { addressableFiles as zonesFiles } from "@/lib/zones/audio";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 
-/** Zones and books name a file without its extension; their addressable sets carry one. */
-export async function isAddressableFile(source: Source, file: string): Promise<boolean> {
-  if (source === "quests") return (await fileIndex()).has(file);
+/**
+ * Zones and books name a file without its extension; their addressable sets carry one. A
+ * quests file is English's, or one only the language has. English first: nearly every file is
+ * one, and its catalogue is the cheaper of the two to keep current.
+ */
+export async function isAddressableFile(source: Source, file: string, lang: Lang = BASE_LANG): Promise<boolean> {
+  if (source === "quests") {
+    return (await fileIndex()).has(file) || (lang !== BASE_LANG && (await fileIndex(lang)).has(file));
+  }
   const files = source === "zones" ? await zonesFiles() : await booksFiles();
   return files.has(`${file}.mp3`);
 }

@@ -10,7 +10,7 @@
 ## Notes-koKR: Spoken으로 책, 편지, 메모를 소리내어 읽습니다.
 ## Notes-zhCN: 通过 Spoken 朗读书籍、信件和笔记。
 ## Notes-zhTW: 透過 Spoken 朗讀書籍、信件和筆記。
-## Version: 3.1.0
+## Version: 3.2.0
 ## Author: rusty
 ## SavedVariables: SpokenBooksSettings
 ## SavedVariablesPerCharacter: SpokenBooksCharacter
@@ -29,6 +29,7 @@
 
 Checksum.lua
 Data/Books.lua
+Data/Places.lua
 Locale/enUS.lua
 Locale/deDE.lua
 Locale/esES.lua
@@ -48,6 +49,9 @@ UI/Layout.lua
 UI/Options.lua
 UI/PlayButton.lua
 UI/CopyLink.lua
+UI/TextView.lua
+UI/Compendium.lua
+UI/Readables.lua
 Events.lua
 Commands.lua
 

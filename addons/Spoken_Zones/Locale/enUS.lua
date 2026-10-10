@@ -57,6 +57,7 @@ L.NO_LORE_FOR = "No lore recorded for %1$s yet."
 -- A place the client has that the corpus knows about but nobody has written. Distinct
 -- from NO_LORE_FOR, which is what an unknown place gets: this one we know exists.
 L.LORE_NOT_WRITTEN = "%1$s is on the map, but nobody has written its lore yet."
+L.NOT_DISCOVERED = "You have not discovered this place yet."
 
 --------------------------------------------------------------------------------
 -- Slash commands
@@ -65,9 +66,8 @@ L.LORE_NOT_WRITTEN = "%1$s is on the map, but nobody has written its lore yet."
 L.CMD_HEADING = "commands (/spokenzones, or /spz):"
 L.CMD_STATUS = "  /spz            -- status for the current zone and area"
 L.CMD_OPTIONS = "  /spz options    -- open the settings panel"
-L.CMD_WINDOW = "  /spz window     -- open Lore of Azeroth"
+L.CMD_WINDOW = "  /spz window     -- open Azeroth's Compendium"
 L.CMD_PANEL = "  /spz panel      -- show or hide Zone Lore beside the map"
-L.CMD_HOVER = "  /spz hover      -- turn Story on Hover on or off"
 L.CMD_PLAY = "  /spz play       -- read the current lore aloud"
 L.CMD_STOP = "  /spz stop       -- stop the narration"
 L.CMD_VOICE = "  /spz voice      -- toggle narration on or off"
@@ -89,15 +89,13 @@ L.OPT_NOTE = "Stories about the zones and areas you visit, read aloud and shown 
 L.OPT_SECTION_MAP = "World Map"
 L.OPT_MAP_PANEL = "Zone Lore Beside Map"
 L.OPT_MAP_PANEL_TIP = "Shows Zone Lore, the story of the zone or area you are looking at, beside the world map. Hidden while the map fills the screen."
-L.OPT_HOVER = "Story on Hover"
-L.OPT_HOVER_TIP = "Shows an area's story when you point at it: a zone on a continent map, or a smaller area on a zone map. Not shown while you point at a map pin."
 L.OPT_PICTURES = "Show Pictures"
 L.OPT_PICTURES_TIP = "Shows a picture of the place above its story."
 L.OPT_PANEL_WIDTH = "Zone Lore Width"
 L.OPT_FONT_SIZE = "Text Size"
 L.OPT_SECTION_NARRATION = "When to Read"
 L.OPT_PLAY_BUTTON = "Read Stories Aloud"
-L.OPT_PLAY_BUTTON_TIP = "Reads the stories aloud: when you discover a place, and from the Play button beside each story in Zone Lore and Lore of Azeroth. Off, the stories still show, as text only."
+L.OPT_PLAY_BUTTON_TIP = "Reads the stories aloud: when you discover a place, and from the Play button beside each story in Zone Lore and Azeroth's Compendium. Off, the stories still show, as text only."
 L.REASON_VOICE = "Turn on Read Stories Aloud to use this."
 L.OPT_AUTOPLAY = "Read on Discovery"
 L.OPT_AUTOPLAY_TIP = "Reads an area's story the moment the game says you discovered it, such as \"Discovered Durotar\". The game does this once per place for each character."
@@ -140,10 +138,12 @@ L.OPT_REPORT_LINE_ADDRESS = "Copy this address and open it in your browser to re
 -- Player menu entries
 --------------------------------------------------------------------------------
 
-L.MENU_LORE_WINDOW = "Open Lore of Azeroth"
-L.OPEN_IN_LORE_TIP = "This place's story in Lore of Azeroth, beside every other zone and area's."
-L.OPT_SECTION_LORE = "Lore of Azeroth"
-L.OPT_LORE_WINDOW_TIP = "Every zone and area's story, to browse and listen to wherever you are."
+L.MENU_LORE_WINDOW = "Open Azeroth's Compendium"
+L.OPEN_IN_LORE_TIP = "This place's story in Azeroth's Compendium, beside every other zone and area's."
+L.OPT_SECTION_LORE = "Azeroth's Compendium"
+L.OPT_LORE_WINDOW_TIP = "Every zone and area's story, to browse and listen to wherever you are. Zones and areas you have not discovered yet are greyed out."
+L.OPT_SHOW_UNDISCOVERED = "Unlock Undiscovered Zones"
+L.OPT_SHOW_UNDISCOVERED_TIP = "Lets you open every zone and area, including those you have not discovered yet. When off, they are greyed out."
 L.MENU_ZONE_SETTINGS = "Zones Settings"
 
 --------------------------------------------------------------------------------
@@ -164,13 +164,16 @@ L.CONTINENT_COUNT_FMT = "%1$d continents"
 L.CONTINENT_COUNT_ONE = "1 continent"
 L.LORE_WINDOW_EMPTY = "Choose a place on the left to read its story. A zone's number is how many smaller areas it has; click it to see them."
 -- The window browses every place; the panel beside the map tells the zone it shows.
-L.LORE_WINDOW_TITLE = "Lore of Azeroth"
+L.LORE_WINDOW_TITLE = "Azeroth's Compendium"
+L.COMPENDIUM_PLACES = "Zones"
 L.LORE_PANEL_TITLE = "Zone Lore"
 L.MAP_PANEL_EXPAND = "Show Zone Lore"
 L.PANEL_SHOWN = "Zone Lore beside the map: on"
 L.PANEL_HIDDEN = "Zone Lore beside the map: off"
 L.MINIMAP_LEFT_CLICK = "|cff66bbffLeft-click|r %1$s"
 L.LORE_SEARCH = "Search places"
+L.LORE_DISCOVERED_ONLY = "Discovered Only"
+L.LORE_VOICED_ONLY = "Voiced Only"
 L.LORE_SEARCH_NONE = "No place matches."
 L.LORE_PICK = "Every place's story"
 L.MAP_LORE_FOR_FMT = "lore for %1$s"
@@ -190,7 +193,7 @@ L.REASON_PART_OFF = "Turn on Enable Module at the top of this page to use this."
 L.REASON_DISCOVERY = "Turn on Read on Discovery to use this."
 L.REASON_MAP_PANEL = "Turn on Zone Lore Beside Map to use this."
 L.OPT_PANEL_WIDTH_TIP = "How wide Zone Lore is beside the map."
-L.OPT_FONT_SIZE_TIP = "How big the words of the stories are, in Zone Lore and Lore of Azeroth."
+L.OPT_FONT_SIZE_TIP = "How big the words of the stories are, in Zone Lore and Azeroth's Compendium."
 L.OPT_RESET_PAGE = "Reset Zones Settings"
 L.OPT_RESET_PAGE_TIP = "Puts this page's settings back to their defaults. Also turns /spz debug off, shows the minimap button again (when Spoken isn't installed) and stops previewing unfinished translations. The story language, the voice pack chosen under Reads With and the list of places already read are kept."
 L.OPT_RESET_PAGE_CONFIRM = "Reset every Zones setting to its default?"
@@ -204,5 +207,7 @@ L.OPT_SECTION_START_OVER = "Start Over"
 
 -- The page under Spoken in the game's settings.
 L.OPT_PAGE_TITLE = "Zones"
+
+L.OPEN_IN_COMPENDIUM = "Open in Azeroth's Compendium"
 
 SpokenZones:RegisterStrings("enUS", L)

@@ -15,6 +15,7 @@ import SpeakerCell, { type SpeakerAnswer } from "@/components/SpeakerCell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import Pagination from "@/components/Pagination";
 import { summaryFromResolution, type FlavorScope } from "@/lib/contributions/speaker";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
@@ -39,6 +40,8 @@ const SPEAKER_CHIP_OPTIONS: ChipOption[] = PROVENANCES.map((option) => ({
   value: option,
   label: PROVENANCE_LABELS[option],
 }));
+
+const PAGE_SIZE = 100;
 
 const PROGRESSES = ["unfinished", "doubtful", "finished"] as const;
 type Progress = (typeof PROGRESSES)[number];
@@ -96,6 +99,8 @@ export default function NpcEditor({
       const search = new URLSearchParams(params.toString());
       if (value) search.set(name, value);
       else search.delete(name);
+      // A narrower view starts again from its first page: the one it was on may not exist.
+      if (name !== "page") search.delete("page");
       const next = search.toString();
       window.history.replaceState(null, "", next ? `${pathname}?${next}` : pathname);
     },
@@ -185,13 +190,24 @@ export default function NpcEditor({
       .filter((npc) => !progress || progressOf(npc) === progress);
   }, [initial, saved, query, provenance, progress]);
 
+  // A page at a time: every row is a SpeakerCell with its own selects, and all of them at once
+  // made the first load and every tick slow.
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const page = Math.min(Math.max(1, Math.floor(Number(params.get("page")) || 1)), pages);
+  const shown = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // The pager sits under the table, so the next page would otherwise open at its last row.
+  const goToPage = (next: number) => {
+    setParam("page", next > 1 ? String(next) : undefined);
+    window.scrollTo({ top: 0 });
+  };
+
   // Only rows still on screen count, as in the triage table: a ticked row a filter now hides
   // must not be saved by a button that no longer shows it.
-  const selectedRows = rows.filter((npc) => selected.has(key(npc.npcKind, npc.npcId)));
+  const selectedRows = shown.filter((npc) => selected.has(key(npc.npcKind, npc.npcId)));
   // A bulk save keeps each row's own answer, so a row without a race and gender has nothing to
   // keep -- saving it would file "this NPC has no race" as a decision nobody made.
   const savable = selectedRows.filter((npc) => npc.race && npc.gender);
-  const allTicked = rows.length > 0 && selectedRows.length === rows.length;
+  const allTicked = shown.length > 0 && selectedRows.length === shown.length;
   const toggle = (k: string, on: boolean) =>
     setSelected((current) => {
       const next = new Set(current);
@@ -284,7 +300,7 @@ export default function NpcEditor({
                   checked={allTicked ? true : selectedRows.length > 0 ? "indeterminate" : false}
                   disabled={bulk !== null}
                   onCheckedChange={(on) =>
-                    setSelected(on === true ? new Set(rows.map((npc) => key(npc.npcKind, npc.npcId))) : new Set())
+                    setSelected(on === true ? new Set(shown.map((npc) => key(npc.npcKind, npc.npcId))) : new Set())
                   }
                 />
               </th>
@@ -295,7 +311,7 @@ export default function NpcEditor({
             </tr>
           </thead>
           <tbody>
-            {rows.map((npc) => {
+            {shown.map((npc) => {
               const k = key(npc.npcKind, npc.npcId);
               return (
                 <tr key={k} className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5">
@@ -364,6 +380,7 @@ export default function NpcEditor({
           </tbody>
         </table>
       )}
+      <Pagination page={page} pageCount={pages} onPage={goToPage} />
     </>
   );
 }

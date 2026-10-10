@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   if (!isSource(source)) {
     return Response.json({ error: "source must be quests, zones or books" }, { status: 400 });
   }
-  if (!file || !(await isAddressableFile(source, file))) {
+  if (!file || !(await isAddressableFile(source, file, lang))) {
     return Response.json({ error: "unknown file" }, { status: 404 });
   }
 

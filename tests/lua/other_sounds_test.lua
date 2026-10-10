@@ -90,15 +90,6 @@ Expect("switching it off mid-line brings the sound back at once", Near(Volume("M
 Q:RemoveAllSoundsFromQueue(); stub.Advance(3)
 lower.Enabled = true
 
----------------------------------------------------------------- the voice's own channel
-audio.SoundChannel = "Music"
-quests:Enqueue(H.Clip({ length = 5 }))
-stub.Advance(1.5)
-Expect("the channel the voices play on is never turned down", Near(Volume("Music"), 0.8), true)
-Expect("...while the others are", Near(Volume("Ambience"), 0.25), true)
-Q:RemoveAllSoundsFromQueue(); stub.Advance(3)
-audio.SoundChannel = "Master"
-
 ---------------------------------------------------------------- the session ending mid-line
 env.Addon.db.global.LoweredVolumes = { Music = 0.9 }
 world.cvars.Sound_MusicVolume = "0.2"

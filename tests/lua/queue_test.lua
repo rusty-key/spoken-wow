@@ -194,6 +194,18 @@ quests:Enqueue(first); quests:Enqueue(second)
 Q:PauseQueue()
 Q:Skip()
 Expect("Skip on a stopped queue plays the next line", Q:IsPaused() == false and world.played[2], second.path)
+-- The last line skipped mid-word fades out, as Stop does, rather than cutting off.
+Fresh()
+quests:Enqueue(H.Clip({ length = 5 }))
+world.lastStopFade = nil
+Q:Skip()
+Expect("Skip fades the last line out", world.lastStopFade, 400)
+-- With a line after it, the skipped one is cut: a fade would talk over the next.
+Fresh()
+quests:Enqueue(H.Clip({ length = 5 })); quests:Enqueue(H.Clip())
+world.lastStopFade = 0
+Q:Skip()
+Expect("Skip cuts a line another follows", world.lastStopFade, nil)
 
 ---------------------------------------------------------------- the pause between lines
 Fresh()
@@ -215,12 +227,35 @@ Q:PauseQueue()
 Expect("Stop in the pause ends the line that has spoken", Q:IsPaused() and Q:GetCurrentSound() == b, true)
 Q:ResumeQueue()
 Expect("...and Replay plays the next one", Q:IsPlaying(b) and #world.played, 2)
+-- Only a line waiting gets the pause: the last one ends with its voice.
 Fresh()
 env.Addon.db.profile.Audio.LineGap = 1
 quests:Enqueue(H.Clip())
+stub.Advance(1)
+Expect("no pause after the last line", Q:IsEmpty() and rec:Has("QUEUE_EMPTY"), true)
+local late = H.Clip()
+quests:Enqueue(late)
+Expect("...so a line arriving then plays at once", world.played[2], late.path)
+-- Decided as the voice ends: a line queued during it still gets its pause.
+Fresh()
+env.Addon.db.profile.Audio.LineGap = 1
+quests:Enqueue(H.Clip())
+stub.Advance(0.5)
+quests:Enqueue(H.Clip())
 stub.Advance(1.5)
-Q:PauseQueue()
-Expect("Stop in the pause after the last line leaves nothing stopped", Q:IsEmpty() and not Q:IsPaused(), true)
+Expect("a line queued while the last speaks waits out the pause", #world.played, 1)
+stub.Advance(0.6)
+Expect("...then plays", #world.played, 2)
+Fresh()
+env.Addon.db.profile.Audio.LineGap = 1
+quests:Enqueue(H.Clip({ group = "book:1" })); quests:Enqueue(H.Clip({ group = "book:1" }))
+quests:Enqueue(H.Clip({ group = "book:2" }))
+stub.Advance(1.6)
+Expect("pages of one book read on without the pause", #world.played, 2)
+stub.Advance(1.6)
+Expect("...another book's page waits for it", #world.played, 2)
+stub.Advance(1)
+Expect("...then plays", #world.played, 3)
 env.Addon.db.profile.Audio.LineGap = 0
 
 ---------------------------------------------------------------- PlayNow past the backlog cap
@@ -281,6 +316,104 @@ local probed = env.Sources:Register("probed", { title = "Probed", addon = "Spoke
 local p = H.Clip()
 Expect("a probed source admits a file that exists", probed:Enqueue(p) ~= nil, true)
 Expect("...probing it on the source's channel", world.playedChannels[1], "Master")
+
+---------------------------------------------------------------- the cue between lines (#142)
+local function Cues()
+    local n = 0
+    for _, s in ipairs(world.kitSounds) do
+        if s.kit == _G.SOUNDKIT.IG_QUEST_LOG_CLOSE then n = n + 1 end
+    end
+    return n
+end
+
+local function FreshCued()
+    Fresh()
+    env.Addon.db.profile.Audio.CueBetweenLines = true
+end
+
+-- A clip speaks for 1s; the quests gap after it is 0.55s, so the cue falls at 1.275s.
+Fresh()
+quests:Enqueue(H.Clip()); quests:Enqueue(H.Clip())
+stub.Advance(1.55)
+Expect("off by default: no cue", Cues(), 0)
+Expect("...and the next line starts straight after the gap", #world.played, 2)
+
+FreshCued()
+local first, second = H.Clip(), H.Clip()
+quests:Enqueue(first); quests:Enqueue(second)
+Expect("no cue before the first line", Cues(), 0)
+stub.Advance(1.2)
+Expect("no cue as the voice ends", Cues(), 0)
+stub.Advance(0.1)
+Expect("a cue halfway through the pause before a waiting line", Cues(), 1)
+Expect("...on the channel the next line speaks on", (world.kitSounds[1] or {}).channel, "Master")
+Expect("...and the next line waits for the pause to end", #world.played, 1)
+stub.Advance(0.3)
+Expect("...which it takes no longer for the cue", world.played[2], second.path)
+stub.Advance(1.55)
+Expect("no cue after the last line", Cues(), 1)
+
+FreshCued()
+env.Addon.db.profile.Audio.LineGap = 1
+quests:Enqueue(H.Clip()); quests:Enqueue(H.Clip())
+stub.Advance(1.7)
+Expect("Pause Between Lines moves the cue to the middle of the longer pause", Cues(), 0)
+stub.Advance(0.1)
+Expect("...at 1.775s", Cues(), 1)
+env.Addon.db.profile.Audio.LineGap = 0
+
+FreshCued()
+quests:Enqueue(H.Clip())
+stub.Advance(1.55)
+stub.Advance(5)
+quests:Enqueue(H.Clip())
+Expect("a line after the queue drained gets no cue", Cues(), 0)
+Expect("...and plays at once", #world.played, 2)
+
+FreshCued()
+quests:Enqueue(H.Clip({ group = "book:1" })); quests:Enqueue(H.Clip({ group = "book:1" }))
+quests:Enqueue(H.Clip({ group = "book:2" }))
+stub.Advance(1.55)
+Expect("pages of one book: no cue", Cues(), 0)
+Expect("...the next page follows after the gap", #world.played, 2)
+stub.Advance(1.55)
+Expect("a different book gets the cue", Cues(), 1)
+
+FreshCued()
+quests:Enqueue(H.Clip()); quests:Enqueue(H.Clip())
+Q:Skip()
+stub.Advance(0.5)
+Expect("skipping moves on without a cue", Cues(), 0)
+Expect("...straight to the next line", #world.played, 2)
+
+FreshCued()
+quests:Enqueue(H.Clip()); quests:Enqueue(H.Clip())
+stub.Advance(1.1)
+Q:PauseQueue()
+stub.Advance(2)
+Expect("stopping in the pause cancels the cue", Cues(), 0)
+Expect("...and holds the next line", #world.played, 1)
+Q:ResumeQueue()
+Expect("...which Replay starts without one", #world.played == 2 and Cues() == 0, true)
+
+FreshCued()
+local waiting = H.Clip()
+quests:Enqueue(H.Clip()); quests:Enqueue(waiting)
+stub.Advance(1.1)
+Q:RemoveSoundFromQueue(waiting)
+stub.Advance(0.5)
+Expect("no cue once the waiting line is taken away", Cues(), 0)
+Expect("...and the queue ends", Q:IsEmpty(), true)
+
+FreshCued()
+local gateHeld = true
+zones:AddGate(function() return gateHeld and "in combat" or nil end)
+quests:Enqueue(H.Clip()); zones:Enqueue(H.Clip())
+stub.Advance(1.55)
+Expect("no pause or cue before a line a gate holds", Cues() == 0 and Q:GetCurrentSound().source == zones, true)
+gateHeld = false
+stub.Advance(1)
+Expect("...it plays once released, with no cue", Cues() == 0 and #world.played == 2, true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll queue tests passed")

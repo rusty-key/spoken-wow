@@ -98,6 +98,10 @@ describe("explorerHref", () => {
     expect(explorerHref("books", "b:261:1")).toBe("/books?line=b%3A261%3A1");
   });
 
+  it("sends a gossip line to the gossip explorer", () => {
+    expect(explorerHref("quests", "g:0123abcd")).toBe("/gossip?line=g%3A0123abcd");
+  });
+
   it("names the param each explorer reads, so the link is not a bare section", () => {
     // The three filter vocabularies are three modules; a link that used a name only one
     // of them reads would render the whole corpus and report no error at all.
@@ -112,7 +116,7 @@ describe("targetExplorerHref", () => {
   it("narrows quests by the id its address names", () => {
     // The gossip case: a report with no line id, whose address is the whole NPC. A bare
     // number is an id lookup in quests search, so this lands on that creature's lines.
-    expect(targetExplorerHref("quests", "npc/10136")).toBe("/quests?q=10136&filter=npc");
+    expect(targetExplorerHref("quests", "npc/10136")).toBe("/gossip?q=10136&filter=npc");
     expect(targetExplorerHref("quests", "quest/84/accept")).toBe("/quests?q=84&filter=quest");
   });
 

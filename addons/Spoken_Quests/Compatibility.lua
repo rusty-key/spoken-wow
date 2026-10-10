@@ -853,6 +853,9 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
                     GameTooltip:SetOwner(button, "ANCHOR_LEFT")
                     GameTooltip:SetText(L.OPT_REPORT_PROBLEM)
                     GameTooltip:AddLine(L.OPT_REPORT_QUEST_TIP, 1, 0.8, 0.2, true)
+                    -- Its right-click opens the debug log's menu, where Spoken Developer is installed.
+                    local hint = Spoken and Spoken.LogMenuHint and Spoken:LogMenuHint()
+                    if hint then GameTooltip:AddLine(hint, 0.6, 0.6, 0.6, true) end
                     GameTooltip:Show()
                 end)
                 report:HookScript("OnLeave", function()
@@ -922,6 +925,7 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
                 contributeButton:SetScript("OnEnter", function(button)
                     contribute:ShowTooltip(button)
                 end)
+                if contribute.OfferLogMenu then contribute:OfferLogMenu(contributeButton) end
                 contributeButton:Show()
             else
                 playButton:Disable()

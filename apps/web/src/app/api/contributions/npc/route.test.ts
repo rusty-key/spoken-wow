@@ -13,8 +13,15 @@ import { getResolution, upsertResolution } from "@/lib/npc/store";
 /** resolvedBy has a foreign key, so resolving needs a user that exists. */
 const RESOLVER = "test-contributions-npc-route";
 
+/** What the route asked the guard for, as `capability@lang`. */
+const asked: string[] = [];
+
 vi.mock("@/lib/generation/authz", () => ({
-  requireRegenerate: async () => ({ session: { user: { id: RESOLVER } }, denied: null }),
+  requireIn: async (request: Request, capability: string) => {
+    const lang = new URL(request.url).searchParams.get("lang") || "enUS";
+    asked.push(`${capability}@${lang}`);
+    return { lang, session: { user: { id: RESOLVER } }, denied: null };
+  },
 }));
 
 import { POST } from "./route";
@@ -43,8 +50,8 @@ afterAll(async () => {
   await closeDb();
 });
 
-function post(body: unknown): Request {
-  return new Request("https://example.com/api/contributions/npc", {
+function post(body: unknown, lang?: string): Request {
+  return new Request(`https://example.com/api/contributions/npc${lang ? `?lang=${lang}` : ""}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -72,6 +79,19 @@ describe("POST /api/contributions/npc", () => {
       [`creature:${npcId}`],
     );
     expect(logged).toEqual([{ lang: "enUS", detail: expect.objectContaining({ flavor: "grim" }) }]);
+  });
+
+  it("answers for the page's language, which may be any of them", async () => {
+    // A line only Portuguese has is voiced once Portuguese's moderator says who speaks it.
+    asked.length = 0;
+    const response = await POST(post({ npcKind: "creature", npcId, race: "tauren", gender: "male" }, "ptBR"));
+    expect(response.status).toBe(200);
+    expect(asked).toEqual(["regenerate@ptBR"]);
+    const { rows: logged } = await db().query(
+      `select "lang" from "activity" where "kind" = 'npc.resolved' and "subject" = $1`,
+      [`creature:${npcId}`],
+    );
+    expect(logged).toEqual([{ lang: "ptBR" }]);
   });
 
   it("saves a doubtful answer as confirmed, and a later save without the flag clears it", async () => {

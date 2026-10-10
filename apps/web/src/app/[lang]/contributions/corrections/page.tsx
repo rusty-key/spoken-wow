@@ -5,11 +5,20 @@ import { notFound } from "next/navigation";
 import ContributionsTabs from "@/components/ContributionsTabs";
 import CorrectionTable, { type CorrectionRow } from "@/components/CorrectionTable";
 import { auth } from "@/lib/auth";
-import { clientOf } from "@/lib/contributions/client";
+import { clientOf, isClientFamily } from "@/lib/contributions/client";
 import { readable } from "@/lib/contributions/compare";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
 import { lineStates, tabOf } from "@/lib/contributions/known";
-import { listContributions } from "@/lib/contributions/store";
+import {
+  isQuestStage,
+  isSearchIn,
+  matchesSearch,
+  matchesStage,
+  type ClientFilter,
+  type StageFilter,
+} from "@/lib/contributions/query";
+import { listContributions, observationMeta } from "@/lib/contributions/store";
+import { observedFrom } from "@/lib/npc/resolve";
 import { questFor } from "@/lib/contributions/triage";
 import { viewerOf } from "@/lib/grants/store";
 import { BASE_LANG } from "@/lib/lang";
@@ -36,21 +45,25 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; client?: string; stage?: string; q?: string; filter?: string }>;
 }) {
   const lang = await pageLang(params);
   const session = await auth.api.getSession({ headers: await headers() });
   const viewer = await viewerOf(session);
   if (!session || !can(viewer, "edit", lang)) notFound();
 
-  const { status: rawStatus } = await searchParams;
-  const status: ContributionStatus | "all" = isStatus(rawStatus)
-    ? rawStatus
-    : rawStatus === "all"
-      ? "all"
-      : "new";
+  const { status: rawStatus, client: rawClient, stage: rawStage, q: rawQ, filter: rawFilter } = await searchParams;
+  const status: ContributionStatus = isStatus(rawStatus) ? rawStatus : "new";
+  // Forever by default: nearly every envelope comes from it.
+  const client: ClientFilter = isClientFamily(rawClient) ? rawClient : rawClient === "all" ? "all" : "forever";
+  // Gossip has no quest moment to correct, so only the three panels are offered.
+  const stage: StageFilter = isQuestStage(rawStage) ? rawStage : "all";
+  const q = typeof rawQ === "string" ? rawQ.trim() : "";
+  const searchIn = isSearchIn(rawFilter) ? rawFilter : "any";
 
-  const listed = (await listContributions(status, lang)).filter((row) => row.source === "quests");
+  const listed = (await listContributions(status, lang)).filter(
+    (row) => row.source === "quests" && (client === "all" || clientOf(row.build).family === client),
+  );
   const states = await lineStates(listed);
 
   // Only what crosses into the client component, as page.tsx's ContributionRow projection says.
@@ -58,6 +71,12 @@ export default async function Page({
     const state = states[index];
     if (state.kind !== "changed" || tabOf(row.status, state) !== "corrections") return [];
     const quest = questFor(row);
+    if (!matchesStage(quest, stage)) return [];
+    const observed = observedFrom(observationMeta(row));
+    const npc = observed.npcId === null ? null : { npcId: observed.npcId, npcName: observed.npcName };
+    const before = readable(state.current);
+    // Either side can hold the words somebody remembers: the corpus's or the player's.
+    if (!matchesSearch({ text: `${row.text ?? ""}\n${before}`, npc: npc ?? undefined, quest }, q, searchIn)) return [];
     return [
       {
         id: row.id,
@@ -68,7 +87,8 @@ export default async function Page({
         count: row.count,
         createdAt: row.createdAt,
         status: row.status,
-        before: readable(state.current),
+        npc,
+        before,
         after: row.text ?? "",
         body: row.body,
       },
@@ -91,7 +111,7 @@ export default async function Page({
         />
       </Contained>
       <Wide>
-        <CorrectionTable initial={rows} status={status} />
+        <CorrectionTable initial={rows} status={status} client={client} stage={stage} q={q} searchIn={searchIn} />
       </Wide>
     </main>
   );

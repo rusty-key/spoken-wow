@@ -50,9 +50,10 @@ local UTF8_CHAR = "[%z\1-\127\194-\244][\128-\191]*"
 local function Config()
     return Addon:Profile("Transcript")
 end
--- The player's lock covers this frame too: locked, it is click-through.
+-- The player's lock covers this frame too: locked, it is click-through. So does hosting:
+-- the clicks belong to the host's window.
 local function Locked()
-    return Addon:Profile("Frame").LockFrame
+    return Addon:IsFrameLocked() or Addon.playerHost ~= nil
 end
 -- Whether the pointer is over a shown frame.
 local function Over(frame)
@@ -247,6 +248,8 @@ function Subtitle:Build()
     -- Low, under every panel: the map, the quest log or Lore of Azeroth opened over a line in
     -- progress covers the words, rather than the words lying across the window.
     frame:SetFrameStrata("LOW")
+    -- The strata Addon:ApplyHost restores when the host lets go.
+    frame.spokenBaseStrata = "LOW"
     frame:SetClampedToScreen(true)
     -- Dragged by hand rather than with StartMoving, which would let it wander sideways: the
     -- subtitle always sits on the screen's centre line, and only its height is the player's.
@@ -502,7 +505,9 @@ function Subtitle:Top()
 end
 
 function Subtitle:Place(top)
-    local scale = self.frame:GetScale() or 1
+    -- The size the player chose, not the frame's scale: over a host that scale makes up for
+    -- the host's, and the offset is counted in the effective scale, which hosting keeps.
+    local scale = self.frame.spokenBaseScale or self.frame:GetScale() or 1
     self.frame:ClearAllPoints()
     self.frame:SetPoint("TOP", UIParent, "BOTTOM", 0, (top or self:Top()) / scale)
 end
@@ -510,9 +515,10 @@ end
 --- Follow the cursor up or down from where the drag began, kept on the screen.
 function Subtitle:DragTo()
     local from = self.dragFrom
+    if Locked() then return end
     local _, y = GetCursorPosition()
     local top = from.top + (y - from.cursor) / UIParent:GetEffectiveScale()
-    local height = self.frame:GetHeight() * self.frame:GetScale()
+    local height = self.frame:GetHeight() * (self.frame.spokenBaseScale or self.frame:GetScale())
     top = math.max(height, math.min(UIParent:GetHeight(), top))
     Addon:Layout().Subtitle = { top = top }
     self:Place(top)
@@ -755,8 +761,11 @@ function Subtitle:Update()
     self:Mouse()
     local scale = Config().SubtitleScale or 1
     -- Within a hair: the client keeps the scale as a float, and the setting is a double.
-    if math.abs((self.frame:GetScale() or 1) - scale) > .001 then
+    if math.abs((self.frame.spokenBaseScale or 0) - scale) > .001 then
+        self.frame.spokenBaseScale = scale
         self.frame:SetScale(scale)
+        -- Built or resized while hosted: onto the host, scaled to match.
+        Addon:ApplyHost(self.frame)
         self:Place()
     end
     local clip = speaking and Transcript.clip or self.sample
@@ -882,9 +891,11 @@ function Subtitle:BuildControls()
         if report.action and report.action.tooltip then
             GameTooltip:SetOwner(report, "ANCHOR_TOP")
             report.action.tooltip(GameTooltip)
+            Actions.AddLogMenuHint(GameTooltip)
             GameTooltip:Show()
         end
     end)
+    Actions.OfferLogMenu(report)
     report:Hide()
     self.reportButton = report
 end

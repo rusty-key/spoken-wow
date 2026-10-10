@@ -254,7 +254,7 @@ function PlayerFrame:InitMover()
     self.frame.mover.background:SetPoint("CENTER")
     self.frame.mover.background:SetSize(32, 32)
     self.frame.mover:HookScript("OnEnter", function(button)
-        if FrameConfig().LockFrame then return end
+        if Addon:IsFrameLocked() then return end
         SetCursor([[Interface\Cursor\UI-Cursor-Move]])
         GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
         GameTooltip:SetText(L.QUEUE_TITLE)
@@ -263,25 +263,37 @@ function PlayerFrame:InitMover()
     end)
     self.frame.mover:HookScript("OnLeave", function() SetCursor(nil); GameTooltip_Hide() end)
     self.frame.mover:HookScript("OnMouseDown", function()
-        if FrameConfig().LockFrame then return end
+        if Addon:IsFrameLocked() then return end
         self.frame:StartMoving()
     end)
     self.frame.mover:HookScript("OnMouseUp", function()
-        if FrameConfig().LockFrame then return end
+        if Addon:IsFrameLocked() then return end
         self.frame:StopMovingOrSizing()
         self:SaveLayout()
     end)
 end
 
+--- The skin drawing the queue in place of this window, or nil when this window does.
+function PlayerFrame:Skin()
+    if MinimalPlayer:IsEnabled() then return MinimalPlayer end
+    if DialogueUIPlayer and DialogueUIPlayer:IsEnabled() then return DialogueUIPlayer end
+    return nil
+end
+
 function PlayerFrame:RefreshConfig()
     -- Bronze Border tints every round button, whichever way lines are shown.
     Actions.RefreshRings()
-    if MinimalPlayer:IsEnabled() then
+    local skin = self:Skin()
+    -- Each skin dresses the captions its own way; the others' look must not stay on them.
+    if skin ~= DialogueUIPlayer then Transcript:SetStyle(nil) end
+    for _, other in ipairs({ MinimalPlayer, DialogueUIPlayer }) do
+        if other ~= skin then other:SetVisible(false, true) end
+    end
+    if skin then
         self.frame:Hide()
-        MinimalPlayer:RefreshConfig(self)
+        skin:RefreshConfig(self)
         return
     end
-    MinimalPlayer:SetVisible(false, true)
     local cfg = FrameConfig()
     if cfg.HidePortrait then
         if self.frame.portrait:IsShown() then
@@ -311,10 +323,11 @@ function PlayerFrame:RefreshConfig()
         self.frame.mover:SetPoint("CENTER", self.frame.portrait.border, "BOTTOMLEFT", 5, 6)
     end
 
-    self.frame.mover:SetShown(not cfg.LockFrame)
-    self.frame.resizer:SetShown(not cfg.LockFrame)
+    self.frame.mover:SetShown(not Addon:IsFrameLocked())
+    self.frame.resizer:SetShown(not Addon:IsFrameLocked())
     self.frame:SetScale(cfg.FrameScale)
     self.frame:SetFrameStrata(cfg.FrameStrata)
+    Addon:ApplyHost(self.frame)
     self:Update()
 end
 
@@ -326,7 +339,7 @@ function PlayerFrame:SetResizeBounds(minWidth)
 end
 
 function PlayerFrame:LayoutCaptions()
-    if MinimalPlayer:IsEnabled() then return end
+    if self:Skin() then return end
     local hidePortrait = FrameConfig().HidePortrait
     local left = hidePortrait and 20 or PORTRAIT_SIZE + 15
     local height = Transcript:HeightForClip(SoundQueue:GetCurrentSound())
@@ -461,10 +474,11 @@ end
 
 function PlayerFrame:Update()
     if not self.frame then return end
-    if MinimalPlayer:IsEnabled() then MinimalPlayer:Update(); return end
+    local skin = self:Skin()
+    if skin then skin:Update(); return end
     -- Hidden, not torn down, while subtitles stand in for it: going back finds it as it was.
     local head = self:Current()
-    self.frame:SetShown(not FrameConfig().HideFrame and Addon:DisplayStyle() == "classic" and head ~= nil)
+    self.frame:SetShown(Addon:DisplayStyle() == "classic" and head ~= nil)
     if not self.frame:IsShown() then return end
 
     self:SetResizeBounds(FrameConfig().HidePortrait and 100 or PORTRAIT_SIZE + 100)
@@ -518,6 +532,7 @@ function PlayerFrame:Describe()
     local lines = {}
     local function Say(text) table.insert(lines, text) end
     Say(MinimalPlayer:Describe())
+    if DialogueUIPlayer then Say(DialogueUIPlayer:Describe()) end
     if not self.frame then
         Say("no frame built")
         return lines
@@ -556,7 +571,8 @@ end
 --- Back to the default spot and width, forgetting the saved ones, for a frame dragged
 --- off-screen or sized past use.
 function PlayerFrame:Reset()
-    if MinimalPlayer:IsEnabled() then MinimalPlayer:Reset(); return end
+    local skin = self:Skin()
+    if skin then skin:Reset(); return end
     Addon:Layout().Player = nil
     if not self.frame then return end
     self.frame:Reset()

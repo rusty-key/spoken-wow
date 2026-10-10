@@ -10,13 +10,14 @@
 ## Notes-koKR: Spoken으로 퀘스트와 잡담 대사를 소리내어 읽습니다. 지원되는 Classic 클라이언트에서 퀘스트와 잡담 음성을 복원합니다.
 ## Notes-zhCN: 通过 Spoken 朗读任务和闲聊对话。在受支持的经典怀旧服客户端上恢复任务和闲聊语音。
 ## Notes-zhTW: 透過 Spoken 朗讀任務和閒聊對話。在受支援的經典客戶端上恢復任務和閒聊語音。
-## Version: 3.1.0
+## Version: 3.2.0
 ## IconTexture: Interface\AddOns\Spoken_Quests\icon.tga
 ## SavedVariables: SpokenQuestsSettings
-## OptionalDeps: Spoken
+## OptionalDeps: Spoken, DialogueUI
 # Spoken is the player this addon speaks through: optional, so a hand-installed copy
 # without it loads and says what is missing; addon managers install it from the
 # CurseForge dependency.
+# DialogueUI, when installed, loads first so its window exists to be hooked: UI/DialogueUIBridge.lua.
 ## Group: Spoken
 ## X-Part-Of: Spoken
 ## X-VoiceOver-Player: 1

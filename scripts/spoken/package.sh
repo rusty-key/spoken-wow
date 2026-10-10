@@ -16,6 +16,9 @@
 # SpokenQuests and the rest, belong to the retired CurseForge projects, and this zip carries no
 # tombstone under them: two projects shipping one folder is what the rename exists to stop. The
 # retired projects' last releases carry those (scripts/spoken/package-retired.sh).
+#
+# Spoken_Developer (the debug log and the Developer page) is not in this zip: it is a download of
+# its own (scripts/developer/package.sh), for whoever tries Spoken out or is asked for a log.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
