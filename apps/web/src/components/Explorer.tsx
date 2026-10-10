@@ -126,7 +126,7 @@ export default function Explorer({ facets, kind }: { facets: Facets; kind: Kind 
       voice: params.get("voice") ?? undefined,
       source: (params.get("source") as LineFilters["source"]) ?? undefined,
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
-      zone: params.get("zone") ? Number(params.get("zone")) : undefined,
+      zone: Number(params.get("zone")) || undefined,
       includeProgress: params.get("progress") === "1",
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
