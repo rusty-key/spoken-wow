@@ -90,7 +90,7 @@ describe("defaultFlavorFor", () => {
     expect(await defaultFlavorFor("murloc", "male")).toBe(null);
   });
 
-  it("falls back to the busiest set voices.ts declares for a race-gender with no lines", async () => {
+  it("falls back to the roster's first flavor for a race-gender with no lines", async () => {
     expect(await defaultFlavorFor("skybourneelf", "female")).toBe("3773");
   });
 });
