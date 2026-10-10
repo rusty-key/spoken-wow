@@ -173,7 +173,13 @@ export async function addGender(rawRace: unknown, rawGender: unknown, rawExistin
       await assign(client, race, g, null, null);
       return;
     }
-    const voice = await ownVoice(client, race, null, null);
+    // Every voice the type is read by without a gender, its flavors' included: one mapped into a
+    // flavor leaves no bare voice behind, and its NPCs would lose it as surely.
+    const { rows } = await client.query<{ voice: string }>(
+      `select distinct "voice" from "voice_assignment" where "race" = $1 and "gender" is null order by 1`,
+      [race],
+    );
+    const voice = rows.map((row) => row.voice).join(", ") || null;
     const use = await inUse(client, race, null, false);
     if (voice && use.npcs > 0 && !choice) throw new NeedsChoice({ voice, into: g, ...use });
     if (voice && choice === "map") {

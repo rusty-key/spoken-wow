@@ -191,6 +191,22 @@ describe("POST /api/types", () => {
     });
   });
 
+  it("asks before a first gender splits a genderless type read only through its flavors", async () => {
+    await POST(post({ action: "add-type", key: KEY, genders: [] }));
+    await npcOf(KEY);
+    // The type's own voice goes to its flavor, so no bare voice is left to notice.
+    await POST(post({ action: "add-flavor", race: KEY, gender: null, flavor: "old", existing: "map" }));
+    expect(await answer()).toEqual({ gender: null, flavor: "old" });
+
+    const asked = await POST(post({ action: "add-gender", race: KEY, gender: "male" }));
+    expect(asked.status).toBe(409);
+    expect((await loadRoster()).voiceFor(KEY, null, "old")).toBe(KEY);
+
+    await POST(post({ action: "add-gender", race: KEY, gender: "male", existing: "map" }));
+    expect((await loadRoster()).voiceFor(KEY, "male", "old")).toBe(KEY);
+    expect(await answer()).toEqual({ gender: "male", flavor: "old" });
+  });
+
   it("asks nothing when no NPC has the type", async () => {
     await POST(post({ action: "add-type", key: KEY, genders: [] }));
     expect((await POST(post({ action: "add-gender", race: KEY, gender: "male" }))).status).toBe(200);
