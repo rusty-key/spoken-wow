@@ -46,6 +46,7 @@ import { facets } from "@/lib/facets";
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import { getResolutions, getResolutionsById, resolutionKey, type NpcKind } from "@/lib/npc/store";
 import { BASE_LANG, isClientLang, isLang, langName, type Lang } from "@/lib/lang";
+import { loadRoster } from "@/lib/voices/roster-store";
 import { can } from "@/lib/permissions";
 import { lineByPath } from "@/lib/zones/catalogue";
 import { Contained, Wide } from "@/components/Width";
@@ -293,9 +294,10 @@ export default async function Page({
 
   // Counted after the other filters, so each tab's count matches what it shows.
   const hasSpeaker = await momentHasSpeaker(filtered);
+  const roster = await loadRoster();
   const bucketCounts: Record<Bucket, number> = { ready: 0, blocked: 0 };
   const matching = filtered.filter((row) => {
-    const own = bucketOf({ ...row, quest: questFor(row), hasSpeaker: hasSpeaker.has(row.id) }, npcs[row.id] ?? null);
+    const own = bucketOf({ ...row, quest: questFor(row), hasSpeaker: hasSpeaker.has(row.id) }, npcs[row.id] ?? null, roster);
     bucketCounts[own]++;
     return status !== "new" || own === bucket;
   });
@@ -379,7 +381,7 @@ export default async function Page({
           searchIn={searchIn}
           existing={existing}
           books={books}
-          flavorScopes={facetValues.flavorScopes}
+          roster={facetValues.roster}
           // What api/contributions/npc asks, so the speaker controls are offered only to
           // somebody it will answer. An NPC's race and gender decide its voice in every
           // language, so that stays narrower than triaging this language's text.

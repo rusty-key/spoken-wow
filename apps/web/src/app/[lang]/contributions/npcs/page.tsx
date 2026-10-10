@@ -12,6 +12,7 @@ import { BASE_LANG } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { listResolutions } from "@/lib/npc/store";
 import { can } from "@/lib/permissions";
+import { Roster } from "@/lib/voices/roster";
 import { Contained, Wide } from "@/components/Width";
 
 export const metadata: Metadata = { title: "NPCs · Spoken" };
@@ -32,8 +33,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session || !can(await viewerOf(session), "regenerate", BASE_LANG)) notFound();
 
-  const { flavorScopes } = await facets();
-  const npcs = (await listResolutions()).map((row) => summaryFromResolution(row, flavorScopes));
+  const { roster } = await facets();
+  const npcs = (await listResolutions()).map((row) => summaryFromResolution(row, new Roster(roster)));
 
   return (
     <main className="pt-6 pb-24">
@@ -46,7 +47,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
       </Contained>
       <Wide>
         <ContributionsTabs lang={lang} section="npcs" showNpcs />
-        <NpcEditor initial={npcs} flavorScopes={flavorScopes} />
+        <NpcEditor initial={npcs} roster={roster} />
       </Wide>
     </main>
   );

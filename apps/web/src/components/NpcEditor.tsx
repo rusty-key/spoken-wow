@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import Pagination from "@/components/Pagination";
-import { summaryFromResolution, type FlavorScope } from "@/lib/contributions/speaker";
+import { summaryFromResolution } from "@/lib/contributions/speaker";
+import { Roster, type RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
 import { isProvenance, PROVENANCES, type NpcKind, type Provenance } from "@/lib/npc/npc";
@@ -128,13 +129,14 @@ function NameCell({
 
 export default function NpcEditor({
   initial,
-  flavorScopes,
+  roster: rosterData,
 }: {
   initial: NpcSummary[];
-  /** facets().flavorScopes, for SpeakerCell's flavor select. */
-  flavorScopes: FlavorScope[];
+  /** The roster, for SpeakerCell's selects. */
+  roster: RosterData;
 }) {
   const lang = useLang();
+  const roster = useMemo(() => new Roster(rosterData), [rosterData]);
   const pathname = usePathname();
   const params = useSearchParams();
   // The filters live in the URL, so a reload or a shared link keeps the view. Written with
@@ -182,11 +184,11 @@ export default function NpcEditor({
       const { resolution } = (await response.json()) as { resolution: NpcResolution };
       setSaved((current) => ({
         ...current,
-        [key(npc.npcKind, npc.npcId)]: summaryFromResolution(resolution, flavorScopes),
+        [key(npc.npcKind, npc.npcId)]: summaryFromResolution(resolution, roster),
       }));
       return true;
     },
-    [flavorScopes],
+    [roster],
   );
 
   const save = useCallback(
@@ -413,7 +415,7 @@ export default function NpcEditor({
                       // Remount on a save, so the form's own state starts from the new answer.
                       key={`${npc.provenance}:${npc.race}:${npc.gender}:${npc.flavor}:${npc.doubtful}`}
                       npc={npc}
-                      flavorScopes={flavorScopes}
+                      roster={rosterData}
                       readOnly={false}
                       busy={busy === k || bulk !== null}
                       onSave={(answer) => void save(npc, answer)}

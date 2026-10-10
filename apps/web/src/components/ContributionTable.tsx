@@ -23,7 +23,7 @@ import { useLang } from "@/components/LangProvider";
 import { localeHref, type Lang } from "@/lib/lang";
 import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { CLIENT_CHIP_OPTIONS, SEARCH_IN_OPTIONS } from "@/components/contribution-chips";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
@@ -43,7 +43,8 @@ import {
   type ResolveManyResult,
 } from "@/lib/contributions/contributions";
 import type { ClientSummary } from "@/lib/contributions/client";
-import { flavorOptionsFor, summaryFromResolution, type FlavorScope } from "@/lib/contributions/speaker";
+import { flavorOptionsFor, summaryFromResolution } from "@/lib/contributions/speaker";
+import { Roster, type RosterData } from "@/lib/voices/roster";
 import {
   bucketOf,
   contributionsHref,
@@ -192,7 +193,7 @@ export default function ContributionTable({
   searchIn,
   existing,
   books,
-  flavorScopes,
+  roster: rosterData,
   canAnswerNpc,
 }: {
   /** This page's rows. */
@@ -216,14 +217,15 @@ export default function ContributionTable({
   existing: Record<number, string>;
   /** The English books, for matching a translated page to one. Empty when no row here needs it. */
   books: BookChoice[];
-  /** facets().flavorScopes -- what lets that state's flavor select narrow to whatever race-gender was just chosen, without a round trip. */
-  flavorScopes: FlavorScope[];
+  /** facets().roster -- what lets the speaker selects narrow to whatever type was just chosen, without a round trip. */
+  roster: RosterData;
   /** Whether the viewer may set an NPC's race, gender and flavor; if not, they are shown only. */
   canAnswerNpc: boolean;
 }) {
   const { pending, push } = usePendingPush();
   const router = useRouter();
   const lang = useLang();
+  const roster = useMemo(() => new Roster(rosterData), [rosterData]);
 
   /**
    * What this session resolved, overlaid on the server's rows -- the same shape ReportTable
@@ -288,14 +290,14 @@ export default function ContributionTable({
       // A saved answer is always "settled" (provenance "moderator" is always confirmed --
       // migration 0031), so nothing here ever renders the flavor select again to need
       // flavorOptions -- computed anyway so the type stays honest rather than lying with `[]`.
-      const summary = summaryFromResolution(resolution, flavorScopes);
+      const summary = summaryFromResolution(resolution, roster);
       setNpcOverrides((current) => ({
         ...current,
         [contributionKey(contributionId)]: summary,
         [overrideKey(resolution.npcKind, resolution.npcId)]: summary,
       }));
     },
-    [flavorScopes, lang],
+    [roster, lang],
   );
 
   /**
@@ -322,12 +324,12 @@ export default function ContributionTable({
           provenance: option.provenance,
           confirmed: option.provenance === "corpus" || option.provenance === "display" || option.provenance === "moderator",
           doubtful: option.doubtful,
-          flavorOptions: flavorOptionsFor(option.race, option.gender, flavorScopes),
+          flavorOptions: flavorOptionsFor(option.race, option.gender, roster),
           conflict: [],
         },
       }));
     },
-    [flavorScopes],
+    [roster],
   );
 
   /**
@@ -358,10 +360,10 @@ export default function ContributionTable({
         router.refresh();
         return;
       }
-      const summary = summaryFromResolution(body.resolution, flavorScopes);
+      const summary = summaryFromResolution(body.resolution, roster);
       setNpcOverrides((current) => ({ ...current, [contributionKey(contributionId)]: summary }));
     },
-    [flavorScopes, router],
+    [roster, router],
   );
 
   /**
@@ -504,7 +506,7 @@ export default function ContributionTable({
     .map((row) => row.id);
   // A row with no speaker would only come back refused.
   const selectedToAccept = changeable(
-    selectedRows.filter((row) => bucketOf(row, npcOf(row)) === "ready"),
+    selectedRows.filter((row) => bucketOf(row, npcOf(row), roster) === "ready"),
     "accepted",
   );
   const selectedToReject = changeable(selectedRows, "rejected");
@@ -704,7 +706,7 @@ export default function ContributionTable({
           <tbody>
             {rows.map((row) => {
               const npc = npcOf(row);
-              const now = bucketOf(row, npc);
+              const now = bucketOf(row, npc, roster);
               const book =
                 row.book && row.id in bookOverrides ? { ...row.book, match: bookOverrides[row.id] } : row.book;
               return (
@@ -724,7 +726,7 @@ export default function ContributionTable({
                   refusal={refusals[row.id]}
                   lineCreated={lineCreated.has(row.id)}
                   canAnswerNpc={canAnswerNpc}
-                  flavorScopes={flavorScopes}
+                  roster={rosterData}
                   lang={lang}
                   onToggle={toggle}
                   onResolve={resolve}
@@ -776,7 +778,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
   refusal,
   lineCreated,
   canAnswerNpc,
-  flavorScopes,
+  roster,
   lang,
   onToggle,
   onResolve,
@@ -808,7 +810,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
   /** "Add to explorer" worked on this row this session. */
   lineCreated: boolean;
   canAnswerNpc: boolean;
-  flavorScopes: FlavorScope[];
+  roster: RosterData;
   lang: Lang;
   onToggle: (id: number, on: boolean) => void;
   onResolve: (id: number, next: ContributionStatus) => Promise<void>;
@@ -900,7 +902,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
                 ) : (
                   <SpeakerCell
                     npc={npc}
-                    flavorScopes={flavorScopes}
+                    roster={roster}
                     readOnly={!canAnswerNpc}
                     busy={npcBusy}
                     onSave={(answer) => void onOverrideNpc(row.id, npc, answer)}

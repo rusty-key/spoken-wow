@@ -169,7 +169,7 @@ export async function npcSummaryFrom(
     confirmed: resolution?.confirmed ?? false,
     doubtful: resolution?.doubtful ?? false,
     flavorOptions:
-      resolution?.race && resolution?.gender ? await flavorsFor(resolution.race, resolution.gender) : [],
+      resolution?.race ? await flavorsFor(resolution.race, resolution.gender ?? "") : [],
     conflict: conflict.map(({ npcKind, race, gender, flavor, provenance, doubtful }) => ({
       npcKind,
       race,

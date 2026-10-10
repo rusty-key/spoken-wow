@@ -414,7 +414,7 @@ export async function defaultFlavorFor(race: string, gender: string): Promise<st
  */
 export async function flavorsFor(race: string, gender: string): Promise<string[]> {
   // The roster, not the corpus, so a race-gender offers its voice sets before its first line.
-  return (await loadRoster()).flavorsOf(race, gender as Gender);
+  return (await loadRoster()).flavorsOf(race, (gender || null) as Gender | null);
 }
 
 const flavorTalliesKey = Symbol.for("spoken.quests-flavor-tallies");

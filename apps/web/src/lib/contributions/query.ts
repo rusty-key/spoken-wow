@@ -11,15 +11,15 @@
 import type { ClientFamily } from "./client";
 import type { ContributionStatus } from "./contributions";
 import type { EnvelopeSource } from "./envelope";
-import { isVoice, voiceNameFor } from "../voices/voices";
+import type { Roster } from "../voices/roster";
 import type { Filter } from "../search";
 import type { QuestSummary } from "./triage";
 
 /**
  * Whether a row of the New tab can be accepted as it stands, the same in every language:
  * - a quest moment that already has a speaker, in any language, needs nothing more;
- * - any other quests row needs a speaker whose race and gender are on file, whoever set them,
- *   in a voice the roster has (accept.ts's speakerFor);
+ * - any other quests row needs a speaker whose type, gender and flavor a voice reads, whoever
+ *   set them (accept.ts's speakerFor);
  * - zones and books rows have no speaker to check.
  */
 export const BUCKETS = ["ready", "blocked"] as const;
@@ -33,11 +33,13 @@ export function isBucket(value: unknown): value is Bucket {
 export function bucketOf(
   row: { source: EnvelopeSource; locale: string; quest: QuestSummary | null; hasSpeaker: boolean },
   npc: { race: string | null; gender: string | null; flavor: string | null; conflict: readonly unknown[] } | null,
+  roster: Roster,
 ): Bucket {
   if (row.source !== "quests") return "ready";
   if (row.quest !== "gossip" && row.hasSpeaker) return "ready";
-  if (!npc || npc.conflict.length > 0 || !npc.race || !npc.gender) return "blocked";
-  return isVoice(voiceNameFor(npc.race, npc.gender, npc.flavor)) ? "ready" : "blocked";
+  if (!npc || npc.conflict.length > 0) return "blocked";
+  const voice = roster.voiceFor(npc.race, npc.gender, npc.flavor);
+  return voice && roster.isVoice(voice) ? "ready" : "blocked";
 }
 
 export type ClientFilter = ClientFamily | "all";

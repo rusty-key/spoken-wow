@@ -44,7 +44,8 @@ import type { CorpusLine } from "@/lib/corpus";
 import { isGeneratable } from "@/lib/books/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
 import { corpus } from "@/lib/quests/catalogue";
-import { isVoice, voiceNameFor } from "@/lib/voices/voices";
+import type { Roster } from "@/lib/voices/roster";
+import { loadRoster } from "@/lib/voices/roster-store";
 
 import type { ContributionStatus } from "./contributions";
 import {
@@ -77,6 +78,11 @@ export type ResolveRefusal =
 
 export type ResolveOutcome = { ok: true; contribution: Contribution } | ResolveRefusal;
 
+/**
+ * Who speaks a contribution's line. `race` and `gender` are the ones its voice's files are named
+ * by (migration 0071's voice table), not the NPC's type: a gameobject's greeting hashes and
+ * matches as the narrator's, as every one the extract wrote does.
+ */
 type Speaker = {
   npcId: number;
   npcName: string | null;
@@ -84,6 +90,8 @@ type Speaker = {
   race: string;
   gender: string;
   flavor: string | null;
+  /** "" while no voice reads the NPC's type, which speakerFor refuses. */
+  voice: string;
 };
 
 /**
@@ -139,15 +147,19 @@ async function resolvedSpeaker(
     resolution = lookup.resolution;
   }
 
-  if (!resolution?.race || !resolution?.gender) return null;
+  if (!resolution?.race) return null;
 
+  const roster = await loadRoster();
+  const voice = roster.voiceFor(resolution.race, resolution.gender, resolution.flavor);
+  const family = voice ? roster.familyOf(voice) : null;
   return {
     npcId: observed.npcId,
     npcName: resolution.npcName ?? observed.npcName,
     npcType: resolution.npcKind,
-    race: resolution.race,
-    gender: resolution.gender,
+    race: family?.race ?? resolution.race,
+    gender: family?.gender ?? resolution.gender ?? "",
     flavor: resolution.flavor,
+    voice: voice ?? "",
   };
 }
 
@@ -182,7 +194,7 @@ function gossipTextKey(race: string, gender: string, text: string): string {
   return `${race}|${gender}|${text}`;
 }
 
-function indexOf(lines: readonly CorpusLine[]): CorpusIndex {
+function indexOf(lines: readonly CorpusLine[], roster: Roster): CorpusIndex {
   let index = corpusIndexes.get(lines);
   if (index) return index;
   index = { byPrefix: new Map(), gossipByText: new Map(), position: new Map() };
@@ -192,7 +204,9 @@ function indexOf(lines: readonly CorpusLine[]): CorpusIndex {
     for (let end = parts.length; end >= 2; end--) pushTo(index.byPrefix, parts.slice(0, end).join(":"), line);
     if (parts.length < 2) pushTo(index.byPrefix, parts[0], line);
     if (line.source === "gossip") {
-      pushTo(index.gossipByText, gossipTextKey(line.race, line.gender, normaliseText(line.originalText)), line);
+      // By the names its voice's files hash by, as a contribution's speaker is.
+      const family = roster.familyOf(line.voice) ?? { race: line.race, gender: line.gender };
+      pushTo(index.gossipByText, gossipTextKey(family.race, family.gender, normaliseText(line.originalText)), line);
     }
   }
   corpusIndexes.set(lines, index);
@@ -218,15 +232,14 @@ async function speakerFor(
       message: "Set the speaker first -- a line needs a voice.",
     };
   }
-  // The roster is what /voices, the filters and the triage selects offer, so a line in a voice
-  // outside it -- a client guess naming a race nobody has added -- would be unvoiceable and
-  // unfindable. Adding the voice to voices.ts is the fix, not accepting the line anyway.
-  const voice = voiceNameFor(speaker.race, speaker.gender, speaker.flavor);
-  if (!isVoice(voice)) {
+  // A line in no voice would be unvoiceable and unfindable: giving the NPC's type a voice is
+  // the fix, not accepting the line anyway.
+  if (!speaker.voice || !(await loadRoster()).isVoice(speaker.voice)) {
     return {
       ok: false,
       reason: "needs-speaker",
-      message: `${voice} isn't a voice yet -- pick another speaker, or add it to voices.ts.`,
+      // With no voice, race and gender are still the NPC's own (resolvedSpeaker).
+      message: `No voice reads ${[speaker.race, speaker.gender, speaker.flavor].filter(Boolean).join("-")} yet -- give it one under NPCs → Types.`,
     };
   }
   return { ok: true, speaker };
@@ -259,7 +272,7 @@ async function prepareLine(
   // submission.ts) strips, so a verbatim duplicate of one of them hashes differently.
   // Whichever of the two comes first in the catalogue, as a scan for either would find.
   const text = contribution.text;
-  const index = indexOf(lines);
+  const index = indexOf(lines, await loadRoster());
   const byId = (index.byPrefix.get(identity.lineId) ?? []).find(
     (l) => l.source === "gossip" && baseLineId(l.lineId) === identity.lineId,
   );
@@ -441,7 +454,7 @@ async function insertSpeaker(
     [
       lineId, variant, lang, CONTRIBUTED_ORD_FLOOR, speaker.npcType, speaker.npcId,
       speaker.npcName ?? `npc ${speaker.npcId}`, speaker.race, speaker.gender, speaker.flavor,
-      voiceNameFor(speaker.race, speaker.gender, speaker.flavor), contributionId,
+      speaker.voice, contributionId,
     ],
   );
 }
