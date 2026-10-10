@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { speakPlayerTokens } from "./player-words";
+import { branchesOnPlayerGender, speakPlayerTokens } from "./player-words";
 import { isVoiceable, skipReasonFor } from "./text-gate";
 
 describe("speakPlayerTokens", () => {
@@ -80,6 +80,15 @@ describe("speakPlayerTokens", () => {
 
   it("leaves a token it has no word for", () => {
     expect(speakPlayerTokens("$2113w Kisten", "deDE")).toBe("$2113w Kisten");
+  });
+});
+
+describe("branchesOnPlayerGender", () => {
+  it("splits a deDE line on $u as on $g, and no other language's", () => {
+    expect(branchesOnPlayerGender("Willkommen, $uReisender:Reisende;.", "deDE")).toBe(true);
+    expect(branchesOnPlayerGender("Willkommen, $gReisender:Reisende;.", "deDE")).toBe(true);
+    expect(branchesOnPlayerGender("Bienvenue, $uvoyageur:voyageuse;.", "frFR")).toBe(false);
+    expect(branchesOnPlayerGender("Willkommen, $N.", "deDE")).toBe(false);
   });
 });
 

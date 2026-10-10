@@ -76,9 +76,11 @@ const GENDER_DE = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
 // opening quote or Spanish's inverted marks.
 const SENTENCE_START = /(?:^|[.!?…。！？]|\n)[\s"'«„“¡¿]*$/u;
 
-/** Whether a text branches on the player's gender, and so is two lines rather than one. */
-export function branchesOnPlayerGender(text: string): boolean {
-  return new RegExp(GENDER.source).test(text);
+const genderIn = (lang: Lang) => (lang === "deDE" ? GENDER_DE : GENDER);
+
+/** Whether a text branches on the player's gender in `lang`, and so is two lines rather than one. */
+export function branchesOnPlayerGender(text: string, lang: Lang): boolean {
+  return new RegExp(genderIn(lang).source).test(text);
 }
 
 /** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
@@ -95,7 +97,7 @@ export function speakPlayerTokens(
       ? word[0].toUpperCase() + word.slice(1)
       : word;
 
-  let spoken = text.replace(lang === "deDE" ? GENDER_DE : GENDER, (_, male: string, female: string) =>
+  let spoken = text.replace(genderIn(lang), (_, male: string, female: string) =>
     playerGender === "f" ? female : male,
   );
   const genitive = words.nameGenitive;
