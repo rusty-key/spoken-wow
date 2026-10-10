@@ -53,6 +53,10 @@ end
 --       header   = "Eagan Peltskinner",       -- NPC name | zone name | book title
 --       label    = "Wolves Across the Border",-- quest title | subzone | page label
 --       transcript = "Full dialogue text",   -- optional; falls back to clip.text
+--       timings  = { 0, .42, .61, ... },      -- optional; when each word of the transcript starts,
+--                                             -- in seconds, one per word as SplitCaption cuts it
+--                                             -- with escape sequences (|n, colors, links,
+--                                             -- |T icons) removed
 --       bullet   = "quest-accept",            -- a RegisterBullet id
 --       tint     = { r, g, b },               -- optional row tint
 --       portrait = { kind = "model", creatureID = 196 }
@@ -456,15 +460,16 @@ end
 --------------------------------------------------------------------------------
 --
 -- Additive, so guard on the field: `if Spoken.GetCaption then`. Both answer nil on 1.12,
--- which has no captions. The timing is the captions' own estimate (a recording has no word
--- timestamps), so another view marks the same word they would.
+-- which has no captions. The timing is the captions' own: the clip's present.timings when it
+-- brings them, an estimate otherwise, so another view marks the same word they would.
 
 local caption = {}
 
 --- The speaking clip's caption, kept current even while the captions are hidden or off:
----   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter }
+---   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter, timed }
 --- words[i] = { text, start, finish, first, last, joined }: start/finish are the word's share
---- of the recording, in units of totalWeight; first/last its bytes in the clip's text.
+--- of the recording, in units of totalWeight; first/last its bytes in the clip's text. timed is
+--- true when they come from the clip's present.timings, and totalWeight is then its length.
 --- progress is nil for a clip with no length; activeWord is set only while speaking.
 --- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
 --- Show Words off). Read-only, and the same table on every call. nil without a clip.
@@ -477,6 +482,7 @@ function Spoken:GetCaption()
     caption.progress = progress
     caption.speaking = Transcript:IsSpeaking(progress) and true or false
     caption.activeWord = caption.speaking and Transcript:WordAt(progress) or nil
+    caption.timed = Transcript.timed and true or false
     caption.highlight, caption.typewriter = self:GetCaptionOptions()
     return caption
 end
