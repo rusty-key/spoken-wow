@@ -1,5 +1,5 @@
 /**
- * Which NPC a kind-less contribution meant, answered by whoever edits its language.
+ * Which NPC a kind-less contribution meant, answered by an admin.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -7,18 +7,16 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
 
-/** Every language the mocked viewer may edit; the route's gate asks about exactly one. */
-const editable = new Set<string>();
-const asked: { capability: string; lang: string }[] = [];
+/** Whether the mocked viewer is a global admin. */
+let admin = false;
 
-vi.mock("@/lib/generation/authz", () => ({
-  requireCapability: async (capability: string, lang: string) => {
-    asked.push({ capability, lang });
-    return capability === "edit" && editable.has(lang)
+vi.mock("@/lib/admin-guard", () => ({
+  requireAdminSession: async () =>
+    admin
       ? { session: { user: { id: "test" } }, denied: null }
-      : { session: null, denied: Response.json({ error: "not allowed" }, { status: 403 }) };
-  },
+      : { session: null, denied: Response.json({ error: "not allowed" }, { status: 403 }) },
 }));
+
 
 // Mocked to assert the row's shape. A real insert would not fail the test -- recordActivity
 // swallows its own errors outside a transaction -- but the session's "test" user does not
@@ -32,8 +30,7 @@ import { POST } from "./route";
 const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 
 afterEach(async () => {
-  editable.clear();
-  asked.length = 0;
+  admin = false;
   recordActivity.mockClear();
   await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
 });
@@ -60,12 +57,11 @@ function post(body: unknown): Request {
 }
 
 describe("POST /api/contributions/kind", () => {
-  it("lets whoever edits the row's language answer it", async () => {
+  it("lets an admin answer it, logged under the row's language", async () => {
     const id = await kindless("ptBR");
-    editable.add("ptBR");
+    admin = true;
     const response = await POST(post({ id, npcKind: "creature" }));
     expect(response.status).toBe(200);
-    expect(asked).toEqual([{ capability: "edit", lang: "ptBR" }]);
     const { rows } = await db().query(`select "npcKind" from "contribution" where "id" = $1`, [id]);
     expect(rows[0].npcKind).toBe("creature");
     expect(recordActivity).toHaveBeenCalledWith(
@@ -79,14 +75,12 @@ describe("POST /api/contributions/kind", () => {
     );
   });
 
-  it("refuses somebody who edits another language only", async () => {
+  it("refuses anyone but an admin, whatever languages they edit", async () => {
     const id = await kindless("ptBR");
-    editable.add("enUS");
     expect((await POST(post({ id, npcKind: "creature" }))).status).toBe(403);
   });
 
-  it("asks about English for an id that is not there, and says nothing more to a stranger", async () => {
+  it("says nothing to a stranger about an id that is not there", async () => {
     expect((await POST(post({ id: 999_999_999, npcKind: "creature" }))).status).toBe(403);
-    expect(asked).toEqual([{ capability: "edit", lang: "enUS" }]);
   });
 });

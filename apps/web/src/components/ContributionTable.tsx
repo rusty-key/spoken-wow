@@ -894,7 +894,9 @@ const ContributionTableRow = memo(function ContributionTableRow({
                     wh↗
                   </a>
                 </div>
-                {npc.conflict.length > 0 ? (
+                {npc.conflict.length > 0 && !canAnswerNpc ? (
+                  <span className="text-muted-foreground">NPC unclear</span>
+                ) : npc.conflict.length > 0 ? (
                   <NpcConflict
                     npc={npc}
                     busy={npcBusy}
@@ -910,9 +912,11 @@ const ContributionTableRow = memo(function ContributionTableRow({
                   />
                 )}
               </div>
-            ) : (
-              // No NPC named at all: whoever triages it can say who speaks it.
+            ) : canAnswerNpc ? (
+              // No NPC named at all: an admin can say who speaks it.
               <MissingNpcForm busy={npcBusy} onSave={(answer) => void onNameNpc(row.id, answer)} />
+            ) : (
+              <span className="text-muted-foreground">Missing NPC</span>
             )}
           </td>
         ) : null}

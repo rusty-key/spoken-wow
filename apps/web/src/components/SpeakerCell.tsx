@@ -146,7 +146,7 @@ export default function SpeakerCell({
     return (
       <div>
         <div className="flex items-center gap-1 whitespace-nowrap">
-          <span>{speaker(npc)}</span>
+          {npc.race ? <span>{speaker(npc)}</span> : <span className="text-muted-foreground">Missing type</span>}
           <ProvenanceBadge provenance={npc.provenance} />
           {npc.doubtful ? <DoubtBadge /> : null}
         </div>

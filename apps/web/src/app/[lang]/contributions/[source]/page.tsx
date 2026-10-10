@@ -47,7 +47,7 @@ import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import { getResolutions, getResolutionsById, resolutionKey, type NpcKind } from "@/lib/npc/store";
 import { BASE_LANG, isClientLang, isLang, langName, type Lang } from "@/lib/lang";
 import { loadRoster } from "@/lib/voices/roster-store";
-import { can } from "@/lib/permissions";
+import { can, isAdmin } from "@/lib/permissions";
 import { lineByPath } from "@/lib/zones/catalogue";
 import { Contained, Wide } from "@/components/Width";
 
@@ -381,9 +381,9 @@ export default async function Page({
           books={books}
           roster={facetValues.roster}
           // What api/contributions/npc asks, so the speaker controls are offered only to
-          // somebody it will answer. An NPC's race and gender decide its voice in every
-          // language, so that stays narrower than triaging this language's text.
-          canAnswerNpc={can(viewer, "regenerate", lang)}
+          // somebody it will answer. Who an NPC is decides its voice in every language, so it
+          // is the global admin's alone; everyone else sees where it stands.
+          canAnswerNpc={isAdmin(session.user.role)}
         />
       </Wide>
     </main>
