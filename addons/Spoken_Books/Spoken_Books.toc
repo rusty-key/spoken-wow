@@ -52,6 +52,7 @@ UI/CopyLink.lua
 UI/TextView.lua
 UI/Compendium.lua
 UI/Readables.lua
+UI/DialogueUIBook.lua
 Events.lua
 Commands.lua
 

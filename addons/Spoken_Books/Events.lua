@@ -159,6 +159,10 @@ frame:SetScript("OnEvent", function(_, event, arg1)
 		if SpokenBooks.SetupPlayButton then
 			SpokenBooks:SetupPlayButton()
 		end
+		-- Spoken's controls on DialogueUI's book view, where both are here.
+		if SpokenBooks.SetupDialogueUIBook then
+			SpokenBooks:SetupDialogueUIBook()
+		end
 		-- The panel is registered here rather than at ADDON_LOADED because the Settings API
 		-- is what the client offers late, and because a panel nobody opens costs nothing to
 		-- build once the world is up.
