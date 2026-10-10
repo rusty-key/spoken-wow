@@ -192,18 +192,11 @@ function SpokenBooks:SetupSource()
 		title = "Spoken Books",
 		addon = ADDON_NAME,
 		order = 3,
-		-- NO LIMIT, unlike the zones source, and the difference is what the limit is for.
-		-- Zone lore arrives in bursts nobody asked for -- crossing a cluster of small
-		-- subzones queues narration about places the player has already left -- so it caps
-		-- the backlog and drops the oldest. A book is the opposite: a bounded sequence
-		-- somebody deliberately opened, whose pages are only meaningful in order. Capped at
-		-- one, queueing a four-page book keeps the first page and the last and silently
-		-- discards the middle, which is how this was found.
-		--
-		-- Nothing accumulates regardless, even though closing the book no longer stops this
-		-- source: turning to -- or opening -- a page that is not already queued rebuilds this
-		-- source's queue from there, so what waits behind the voice is one book and never a
-		-- session's worth of them.
+		-- No limit, unlike the zones source. Zone lore arrives in bursts nobody asked for --
+		-- crossing a cluster of small subzones queues narration about places the player has
+		-- already left -- so it caps the backlog and drops the oldest. A readable is one the
+		-- player opened, and each queues after the one being read: they pile up on purpose, a
+		-- gravestone read on the way waiting for the book, and a cap would drop what was opened.
 		queueLimit = nil,
 		-- Durations come from a generated lookup and are exact, so the gap only has to
 		-- separate two pages of prose rather than absorb a bad measurement.

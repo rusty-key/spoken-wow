@@ -142,10 +142,15 @@ disagreement makes every page unfindable, silently.
 a creator is skipped, and so is anything shown while `MailFrame` is open — which catches
 the mail that has no creator, like a returned letter.
 
-**A book is queued whole.** Opening page one queues to the end, so a journal reads on while
-you turn pages; turning to a queued page changes nothing, and turning elsewhere rebuilds
-from there. The source has no queue limit, unlike zones: a cap trims the oldest waiting
-clip, which on a four-page book keeps the first page and the last and discards the middle.
+**A book is one line in the queue.** Opening a book queues the page on screen, and each page
+puts the next at the head as it finishes, so a journal reads on while you turn pages, the
+queue counts it once and Skip skips the rest of it. Between its pages there is only the
+source's own gap, not Pause Between Lines or the cue. Turning to the page being read or one
+still to come changes nothing; turning back starts the book again from there.
+
+**Readables pile up on purpose.** One opened while another is read queues after it: a
+gravestone read on the way waits for the book. The source has no queue limit, unlike zones,
+whose cap drops the oldest waiting clip and here would drop what the player opened.
 
 **Two saved-variable tables, on purpose.** `SpokenBooksSettings` is account-wide and holds the
 three switches — autoplay, whole-book, read-once. `SpokenBooksCharacter` is per character and

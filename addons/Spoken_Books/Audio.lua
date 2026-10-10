@@ -49,6 +49,28 @@ function SpokenBooks:PagePicture()
 	return { kind = "texture", texture = BOOK_TEXTURE }
 end
 
+-- What a readable can be (Data/Places.lua's `type`), in the order the Compendium lists them,
+-- and the keys of its names: `one` of it, over its line in the queue, and `all`, the Compendium's.
+SpokenBooks.TYPES = { "book", "letter", "note", "scroll", "tablet", "plaque", "grave", "exhibit", "other" }
+SpokenBooks.TYPE_NAMES = {
+	book = { one = "READABLE_BOOK", all = "TYPE_BOOK" },
+	letter = { one = "READABLE_LETTER", all = "TYPE_LETTER" },
+	note = { one = "READABLE_NOTE", all = "TYPE_NOTE" },
+	scroll = { one = "READABLE_SCROLL", all = "TYPE_SCROLL" },
+	tablet = { one = "READABLE_TABLET", all = "TYPE_TABLET" },
+	plaque = { one = "READABLE_PLAQUE", all = "TYPE_PLAQUE" },
+	grave = { one = "READABLE_GRAVE", all = "TYPE_GRAVE" },
+	exhibit = { one = "READABLE_EXHIBIT", all = "TYPE_EXHIBIT" },
+	other = { one = "READABLE_OTHER", all = "TYPE_OTHER" },
+}
+
+--- What `book` is (a book, a letter, a gravestone...), as the Compendium sorts it.
+function SpokenBooks:KindOf(book)
+	local places = _G.SpokenBooksPlaces and SpokenBooksPlaces.books
+	local place = places and places[book]
+	return L[(self.TYPE_NAMES[place and place.type] or self.TYPE_NAMES.other).one]
+end
+
 --- Every installed pack this version can read, newest format first.
 function SpokenBooks:GetAudioPacks()
 	local packs = {}
@@ -125,19 +147,15 @@ function SpokenBooks:ClipFor(pageId)
 					-- here would reset the Play button mid-sentence.
 					length = (entry.len and entry.len > 0) and entry.len or nil,
 					pageId = pageId,
-					-- One book is one item to the player: its pages read on, with no pause or cue between.
-					group = "book:" .. tostring(place.book),
 					-- What the report is filed under: a fallback page is an English take even
 					-- under a German selection, and its report is about that.
 					language = language,
 					present = {
-						header = book and book.title or "",
+						-- What it is over its name, as a speaker over a quest's title: the
+						-- book is one line, whatever page of it this is.
+						header = self:KindOf(place.book),
 						transcript = text,
-						-- Only where there is more than one page: "page 1 of 1" is noise on a
-						-- letter, which is most of this corpus.
-						label = (book and #book.pages > 1)
-							and format(L.OPT_PAGE_COUNT_FMT, place.number, #book.pages)
-							or nil,
+						label = book and book.title or nil,
 						bullet = "book",
 						portrait = self:PagePicture(),
 						actions = ACTIONS,

@@ -44,6 +44,7 @@ local B = LoadBooks()
 B:InitDB()
 B:SetupSource()
 dofile(BOOKS .. "Data/Books.lua")
+dofile(BOOKS .. "Data/Places.lua")
 
 --- The books clips in the player's queue, in order, by page id.
 local function QueuedPages()
@@ -64,6 +65,12 @@ local function Same(list, expected)
     return true
 end
 
+--- The pages still to come of `book`, the registry by default.
+local function Coming(book)
+    local entry = (B.following or {})[book or 261]
+    return entry and entry.pages or {}
+end
+
 ---------------------------------------------------------------- the clip
 local clip = B:ClipFor(261)
 Expect("a page has a clip when the pack carries it", clip ~= nil, true)
@@ -74,13 +81,10 @@ Expect("...carrying the recorded duration", clip.length, 30.5)
 Expect("...carrying the first page's saved captions", clip.present.transcript,
     SpokenBooksData.pages[261].text)
 Expect("...with readable text even before opening the book", #clip.present.transcript > 0, true)
-Expect("...titled with the book", clip.present.header, "Hillsbrad Town Registry")
-Expect("...and numbered, because this book has more than one page", clip.present.label, "Page 1 of 4")
+Expect("...under what it is, as the Compendium sorts it, as a speaker over a quest", clip.present.header, "Book")
+Expect("...named by the book, whatever page of it this is: the book is one line", clip.present.label,
+    "Hillsbrad Town Registry")
 Expect("a page the pack does not carry has no clip", B:ClipFor(263), nil)
--- The group is what keeps the cue between items out of a book, and every way a page is
--- queued builds its clip here.
-Expect("pages of one book share a group", B:ClipFor(262).group, clip.group)
-Expect("...which another book's page does not", B:ClipFor(2810).group ~= clip.group, true)
 
 ---------------------------------------------------------------- reporting a bad reading
 local report = clip.present.actions and clip.present.actions[1]
@@ -106,37 +110,82 @@ Expect("...saying what the address is for",
 ---------------------------------------------------------------- reading a book
 Expect("a book lists the pages from here on", Same(B:PagesFrom(262), { 262, 263, 265 }), true)
 
-B:PlayFrom(261)
-Expect("opening page 1 queues the whole book, skipping the page with no clip",
-    Same(QueuedPages(), { 261, 262, 265 }), true)
+Expect("opening page 1 reads the whole book, skipping the page with no clip", B:PlayFrom(261), 3)
+Expect("...the book one line in the queue: its first page", Same(QueuedPages(), { 261 }), true)
+Expect("...the rest to follow it", Same(Coming(), { 262, 265 }), true)
 
 ---------------------------------------------------------------- turning pages
-local before = #QueuedPages()
-Expect("turning to a page already queued changes nothing", B:SyncTo(262), 0)
-Expect("...and leaves the queue alone", #QueuedPages(), before)
+Expect("turning to a page still to come changes nothing", B:SyncTo(262), 0)
+Expect("...and leaves the queue alone", Same(QueuedPages(), { 261 }), true)
 Expect("...and leaves the current clip's captions on its own page",
     Spoken:GetQueue()[1].present.transcript, SpokenBooksData.pages[261].text)
-Expect("the next queued page already carries its own captions",
-    Spoken:GetQueue()[2].present.transcript, SpokenBooksData.pages[262].text)
+Expect("the next page carries its own captions", B:ClipFor(262).present.transcript, SpokenBooksData.pages[262].text)
+Expect("turning to the last page also changes nothing", B:SyncTo(265), 0)
 
-Expect("turning to the last queued page also changes nothing", B:SyncTo(265), 0)
+---------------------------------------------------------------- a page finishing
+local audio = env.Addon.db.profile.Audio
 
--- Opening a different book: nothing queued covers it, so this source's queue is dropped
--- and rebuilt from the new page rather than narrating on through the old book.
+--- How many times the cue between lines has played.
+local function Cues()
+    local n = 0
+    for _, s in ipairs(stub.world.kitSounds) do
+        if s.kit == _G.SOUNDKIT.IG_QUEST_LOG_CLOSE then n = n + 1 end
+    end
+    return n
+end
+
+-- Page 261 speaks for 30.5s; the book's gap after it is the source's 0.35s.
+stub.Advance(30.8)
+Expect("a page finishing: the next page waits the book's gap after the voice, even with nothing else queued",
+    Same(QueuedPages(), { 261 }), true)
+stub.Advance(0.1)
+Expect("...then starts at the head, still one line", Same(QueuedPages(), { 262 }), true)
+Expect("...speaking", stub.world.played[#stub.world.played], B:ClipFor(262).path)
+Expect("...what follows it shorter by that page", Same(Coming(), { 265 }), true)
+Spoken:Skip()
+Expect("Skip skips the rest of the book", #QueuedPages() .. " " .. tostring((B.following or {})[261]), "0 nil")
+B:PlayFrom(261)
+
+-- Another readable opened while a book is read waits behind it: the book reads on to its end.
 B:SyncTo(2810)
-Expect("opening another book rebuilds the queue from there", Same(QueuedPages(), { 2810 }), true)
+Expect("opening another readable while the book is read queues it after: it waits for the book",
+    Same(QueuedPages(), { 261, 2810 }), true)
+Expect("...the book still to follow on", Same(Coming(), { 262, 265 }), true)
+-- The readable waiting must not turn the book's pages into separate lines.
+local cues, lineGap, cueBetween = Cues(), audio.LineGap, audio.CueBetweenLines
+audio.LineGap, audio.CueBetweenLines = 1, true
+stub.Advance(30.8)
+Expect("with a readable waiting, the next page still waits only the book's gap",
+    Same(QueuedPages(), { 261, 2810 }), true)
+stub.Advance(0.1)
+Expect("...then starts ahead of the readable", Same(QueuedPages(), { 262, 2810 }), true)
+stub.Advance(1)
+Expect("...with no cue between the pages", Cues() - cues, 0)
+audio.LineGap, audio.CueBetweenLines = lineGap, cueBetween
+-- Turned back to a page of the book being read that is not coming: the book starts again from
+-- there, in the queue's order: after what waits.
+B:StopReading()
+B:PlayFrom(262)
+B:SyncTo(2810)
+B:SyncTo(261)
+Expect("turning back in the book being read starts it again from there, after what waits",
+    Same(QueuedPages(), { 2810, 261 }) and Same(Coming(), { 262, 265 }), true)
 
 ---------------------------------------------------------------- stopping by hand
+-- A book's Stop: that book goes, the readable waiting with it stays.
+B:StopReading(261)
+Expect("stopping one book drops it and what was to follow, the other readable still waiting",
+    Same(QueuedPages(), { 2810 }) and #Coming() == 0, true)
 -- What `/spb stop` reaches. Closing the frame does not come here: a book carries on being
 -- read after it is shut.
 B:StopReading()
-Expect("stopping drops this source's narration", #QueuedPages(), 0)
+Expect("stopping with no book named drops every readable", #QueuedPages(), 0)
 
 ---------------------------------------------------------------- reading one page only
 SpokenBooksSettings.readWholeBook = false
 B:PlayFrom(261)
 Expect("with whole-book reading off, only the page on screen is queued",
-    Same(QueuedPages(), { 261 }), true)
+    Same(QueuedPages(), { 261 }) and #Coming() == 0, true)
 SpokenBooksSettings.readWholeBook = true
 B:StopReading()
 

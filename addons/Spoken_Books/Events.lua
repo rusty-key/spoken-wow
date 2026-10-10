@@ -90,9 +90,10 @@ end
 --- one. That is what keeps `/spb read` with no book open a no-op rather than a re-reading of
 --- whatever was last closed.
 function SpokenBooks:OnTextClosed()
+	local book = self:PlaceOf(self.lastPage)
 	self.lastPage = nil
-	if SpokenBooksSettings and SpokenBooksSettings.stopOnClose then
-		self:StopReading()
+	if book and SpokenBooksSettings and SpokenBooksSettings.stopOnClose then
+		self:StopReading(book)
 	end
 end
 

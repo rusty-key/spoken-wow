@@ -50,16 +50,29 @@ local function QueuedPages()
     return pages
 end
 
+--- The registry's pages still to come.
+local function Coming()
+    local entry = (B.following or {})[261]
+    return entry and entry.pages or {}
+end
+
+--- How many pages are being read: the one queued, and the rest of its book to follow it.
+local function Reading()
+    return #QueuedPages() + #Coming()
+end
+
 ---------------------------------------------------------------- opening a book
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_1, hasNext = true })
 stub.FireEvent("ITEM_TEXT_READY")
-Expect("opening a book queues it", #QueuedPages(), 3)
+Expect("opening a book queues it, as one line", #QueuedPages(), 1)
 Expect("...starting at the page on screen", QueuedPages()[1], 261)
+Expect("...its other pages to follow", #Coming(), 2)
 
 ---------------------------------------------------------------- turning a page
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 2, text = REGISTRY_2, hasNext = true })
 stub.FireEvent("ITEM_TEXT_READY")
-Expect("turning to a queued page does not restart the book", #QueuedPages(), 3)
+Expect("turning to a page still to come does not restart the book", tostring(QueuedPages()[1]) .. " " .. #Coming(),
+    "261 2")
 Expect("...and remembers where the reader is", B.lastPage, 262)
 
 ---------------------------------------------------------------- closing it
@@ -67,7 +80,7 @@ Expect("...and remembers where the reader is", B.lastPage, 262)
 -- what the client actually does and what makes `/spb read` afterwards a no-op.
 stub.ClosePage()
 stub.FireEvent("ITEM_TEXT_CLOSED")
-Expect("closing the book does not stop narration", #QueuedPages(), 3)
+Expect("closing the book does not stop narration", Reading(), 3)
 Expect("...but forgets the page, because there is no page on screen", B.lastPage, nil)
 
 ---------------------------------------------------------------- mail, through the events
@@ -94,7 +107,7 @@ Expect("...and the book counts as found, opened though not heard", B:IsBookFound
 Expect("...without counting as read, which Read Only Once goes by", B:HasReadBook(B:PlaceOf(261)), false)
 
 B:ReadCurrent()
-Expect("asking for it reads it anyway", #QueuedPages(), 3)
+Expect("asking for it reads it anyway", Reading(), 3)
 B:StopReading()
 SpokenBooksSettings.autoplay = true
 
@@ -126,6 +139,10 @@ do
     SlashCmdList["SPOKENBOOKS"]("read")
     Expect("...and on a stopped one, that Spoken is stopped", said and said:find("Spoken is stopped") ~= nil, true)
     Spoken:Resume()
+    stub.ShowPage({ title = "Hillsbrad Town Registry", number = 2, text = REGISTRY_2, hasNext = true })
+    stub.FireEvent("ITEM_TEXT_READY")
+    SlashCmdList["SPOKENBOOKS"]("read")
+    Expect("...and on a page of it still to come, that it is coming", said and said:find("still to come") ~= nil, true)
     B:StopReading()
     stub.ClosePage()
     stub.FireEvent("ITEM_TEXT_CLOSED")
@@ -141,12 +158,12 @@ local REGISTRY = B:PlaceOf(261)
 -- Opened at page 2, so page 1 is a page of this book the queue does not cover.
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 2, text = REGISTRY_2, hasNext = true })
 stub.FireEvent("ITEM_TEXT_READY")
-Expect("a book this character has not read is read", #QueuedPages(), 2)
+Expect("a book this character has not read is read", Reading(), 2)
 Expect("...and counts as read from the moment it starts", SpokenBooksCharacter.read[REGISTRY], true)
 
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_1, hasNext = true })
 stub.FireEvent("ITEM_TEXT_READY")
-Expect("turning back inside the book being read still follows the reader", #QueuedPages(), 3)
+Expect("turning back inside the book being read still follows the reader", Reading(), 3)
 
 -- Stopped and opened again, which is the case the setting exists for.
 B:StopReading()
@@ -157,12 +174,12 @@ stub.FireEvent("ITEM_TEXT_READY")
 Expect("a book already read is not read again", #QueuedPages(), 0)
 
 B:ReadCurrent()
-Expect("...but asking for it still reads it", #QueuedPages(), 3)
+Expect("...but asking for it still reads it", Reading(), 3)
 
 B:StopReading()
 Expect("forgetting the record empties it", B:ForgetRead() >= 1, true)
 stub.FireEvent("ITEM_TEXT_READY")
-Expect("...so the same book is read again", #QueuedPages(), 3)
+Expect("...so the same book is read again", Reading(), 3)
 SpokenBooksSettings.readOnce = false
 
 ---------------------------------------------------------------- the button on the book frame
@@ -202,7 +219,7 @@ Expect("pressing it stops the book", #QueuedPages(), 0)
 Expect("...and offers to start it again", button:GetText(), "Play")
 
 button.scripts.OnClick(button)
-Expect("pressing it again reads the book", #QueuedPages(), 3)
+Expect("pressing it again reads the book", Reading(), 3)
 Expect("...whatever autoplay and read-once say", button:GetText(), "Stop")
 
 -- Mail is not a book, and a button on a letter would be an invitation to read somebody's

@@ -122,15 +122,19 @@ Expect("the scroller is told how tall the content grew", content.height > 0, tru
 ---------------------------------------------------------------- closing a book, and saying why
 do
     local stopped = false
-    local stopReading = B.StopReading
-    B.StopReading = function() stopped = true end
+    local stopReading, placeOf = B.StopReading, B.PlaceOf
+    B.StopReading = function(_, book) stopped = book end
+    B.PlaceOf = function(_, pageId) return pageId and 261 end
     SpokenBooksSettings.stopOnClose = false
+    B.lastPage = 262
     B:OnTextClosed()
     Expect("a closed book reads on by default", stopped, false)
     SpokenBooksSettings.stopOnClose = true
+    B.lastPage = 262
     B:OnTextClosed()
-    Expect("...and stops when Stop When Book Closes is on", stopped, true)
-    B.StopReading = stopReading
+    Expect("...and with Stop When Book Closes on, that book stops, not the readables waiting after it",
+        stopped, 261)
+    B.StopReading, B.PlaceOf = stopReading, placeOf
     SpokenBooksSettings.stopOnClose = false
 
     local said = {}

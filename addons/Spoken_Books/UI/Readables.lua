@@ -26,11 +26,8 @@ local continentOpen = { [1414] = true, [1415] = true }
 local groupOpen = { wide = false, unknown = false }
 local typeOpen = {}
 local zoneTypeShut = {}       -- ["mapID:type"] = true: a zone's Books, Notes and the rest, closed
--- What a readable is, in the order the tree lists them (Data/Places.lua's `type`).
-local TYPES = { "book", "letter", "note", "scroll", "tablet", "plaque", "grave", "exhibit", "other" }
-local TYPE_LABEL = { book = "TYPE_BOOK", letter = "TYPE_LETTER", note = "TYPE_NOTE", scroll = "TYPE_SCROLL",
-	tablet = "TYPE_TABLET", plaque = "TYPE_PLAQUE", grave = "TYPE_GRAVE", exhibit = "TYPE_EXHIBIT", other = "TYPE_OTHER" }
-local function TypeLabel(type) return L[TYPE_LABEL[type] or "TYPE_OTHER"] end
+local TYPES, TYPE_NAMES = SpokenBooks.TYPES, SpokenBooks.TYPE_NAMES
+local function TypeLabel(type) return L[(TYPE_NAMES[type] or TYPE_NAMES.other).all] end
 local filter = ""
 
 --------------------------------------------------------------------------------
@@ -66,7 +63,7 @@ local function Index()
 		local place = places[id]
 		if place or not _G.SpokenBooksPlaces then
 			index.all[id] = true
-			local type = place and TYPE_LABEL[place.type] and place.type or "other"
+			local type = place and TYPE_NAMES[place.type] and place.type or "other"
 			index.types[type] = index.types[type] or {}
 			table.insert(index.types[type], id)
 			if place and place.wide then
@@ -342,7 +339,7 @@ local PLAY = {
 	playing = function(id) return SpokenBooks:IsNarrating(id) end,
 	-- Browsing: heard here is not heard in the world (Read Only Once), nor found.
 	start = function(id) SpokenBooks:SyncTo(Books()[id].pages[1], true) end,
-	stop = function() SpokenBooks:StopReading() end,
+	stop = function(id) SpokenBooks:StopReading(id) end,
 }
 
 -- How a carried readable is had, one line each: "Dropped by Defias Messenger (Westfall)".
@@ -427,7 +424,7 @@ local function ShowEntry()
 		page:Show({ title = TypeLabel(selection.type), subtitle = Count(Tally(set)), text = L.READABLES_PICK })
 		return
 	end
-	if selection.group and selection.mapID and TYPE_LABEL[selection.group] then
+	if selection.group and selection.mapID and TYPE_NAMES[selection.group] then
 		for _, id in ipairs((Index().zones[selection.mapID] or {})[selection.group] or {}) do set[id] = true end
 		page:Show({ title = TypeLabel(selection.group), subtitle = MapName(selection.mapID) .. " · " .. Count(Tally(set)),
 			text = L.READABLES_PICK })

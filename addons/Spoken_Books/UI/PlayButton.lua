@@ -149,9 +149,9 @@ function SpokenBooks:SetupPlayButton()
 			return
 		end
 
-		local pageId = SpokenBooks:PageOnScreen()
-		if pageId and SpokenBooks:IsNarrating(SpokenBooks:PlaceOf(pageId)) then
-			SpokenBooks:StopReading()
+		local book = SpokenBooks:PlaceOf(SpokenBooks:PageOnScreen())
+		if book and SpokenBooks:IsNarrating(book) then
+			SpokenBooks:StopReading(book)
 		else
 			-- The same call `/spb read` makes, so a page with no clip explains itself here
 			-- exactly as it does in the chat frame.

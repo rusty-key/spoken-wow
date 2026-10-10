@@ -43,7 +43,6 @@ L.OPT_FALLBACK_LANGUAGE_TIP = "Qué leer cuando el paquete de voces de tu idioma
 L.OPT_FALLBACK_NONE = "Silencio"
 L.OPT_NO_PACK_AUDIO = "El paquete de voces instalado aún no tiene narración para esta página."
 L.OPT_NO_PACK_INSTALLED = "No hay ningún paquete de voces de Libros instalado."
-L.OPT_PAGE_COUNT_FMT = "Página %1$d de %2$d"
 
 -- Added in the settings, subtitles and Zone Lore release.
 
@@ -101,6 +100,16 @@ L.TYPE_PLAQUE = "Placas y carteles"
 L.TYPE_GRAVE = "Lápidas"
 L.TYPE_EXHIBIT = "Piezas de museo"
 L.TYPE_OTHER = "Otros"
+-- One readable of each kind, over its name in the windows and the subtitle.
+L.READABLE_BOOK = "Libro"
+L.READABLE_LETTER = "Carta"
+L.READABLE_NOTE = "Nota"
+L.READABLE_SCROLL = "Pergamino"
+L.READABLE_TABLET = "Tablilla"
+L.READABLE_PLAQUE = "Placa"
+L.READABLE_GRAVE = "Lápida"
+L.READABLE_EXHIBIT = "Pieza de museo"
+L.READABLE_OTHER = "Escrito"
 L.READABLES_BY_ZONE = "Por zona"
 L.READABLES_BY_TYPE = "Por tipo"
 L.GROUP_WIDE = "Por todo Azeroth"

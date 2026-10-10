@@ -35,6 +35,7 @@ setfenv(1, SpokenEnv)
 ---@field delay? number       Silence before the clip. Only the 2.4.3/3.3.5 path sets it.
 ---@field priority? string    "normal" (default) or "low".
 ---@field group? string       Clips of one item, e.g. a book's pages. No pause or cue between them.
+---@field continues? boolean  Its next part is put in as it ends (source:Continue). No pause or cue after it.
 ---@field present table       See API.lua.
 ---@field addedCallback? fun(clip)
 ---@field startCallback? fun(clip)
@@ -417,18 +418,19 @@ end
 
 -- `clip`'s voice has ended. The pause after it, and the cue halfway through that pause, only
 -- separate it from a line that will play next: the last line ends with its voice, and one a
--- gate holds waits out the gate, which separates it well enough.
+-- gate holds waits out the gate, which separates it well enough. A clip that continues is
+-- followed by its own next part, which is not in the queue yet, so what waits now is not next.
 local function AfterSpoken(clip)
     local function Finish()
         SoundQueue:RemoveSoundFromQueue(clip, true)
     end
     local _, nextClip = FirstPlayable(2)
-    if not nextClip then
+    if not nextClip and not clip.continues then
         Finish()
         return
     end
     local audio = Addon.db.profile.Audio
-    local sameItem = SameItem(clip, nextClip)
+    local sameItem = clip.continues or SameItem(clip, nextClip)
     local gap = (clip.source.interClipGap or 0) + (sameItem and 0 or audio.LineGap or 0)
     if gap <= 0 then
         Finish()
