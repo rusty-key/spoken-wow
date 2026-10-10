@@ -30,8 +30,8 @@ import { nameStamp, versionStamp } from "@/lib/stamp";
 import type { Corpus, CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
-import { newVoiceName, type Gender, type Roster } from "@/lib/voices/roster";
-import { loadRoster } from "@/lib/voices/roster-store";
+import { newVoiceName, Roster, type Gender } from "@/lib/voices/roster";
+import { loadRoster, rosterData } from "@/lib/voices/roster-store";
 
 
 /**
@@ -67,10 +67,17 @@ export function isCorpusEmpty(error: unknown): boolean {
 
 /**
  * Speakers have no live flag, so their max id and count are the whole stamp; an NPC's answer is
- * updated in place, so its latest write is. Both voice every catalogue.
+ * updated in place, so its latest write is. Both voice every catalogue, and so does the roster
+ * (migration 0071), which an admin edits without touching either: its few dozen assignments are
+ * hashed whole, with the counts of the voices and flavors they can name.
  */
 const SPEAKER_STAMP = `(select coalesce(max("id"), 0) || ':' || count(*) from "quest_line_speaker") || '/' ||
-  (select coalesce(max("updatedAt")::text, '') || ':' || count(*) from "npc")`;
+  (select coalesce(max("updatedAt")::text, '') || ':' || count(*) from "npc") || '/' ||
+  (select md5(coalesce(string_agg(k, ',' order by k), ''))
+     from (select a."race" || ':' || coalesce(a."gender", '') || ':' || coalesce(a."flavor", '') ||
+                  ':' || a."voice" as k
+             from "voice_assignment" a) assignments) || ':' ||
+  (select count(*) from "voice") || ':' || (select count(*) from "flavor")`;
 
 async function stampOf(lang: Lang): Promise<string> {
   // Speakers and NPCs are every language's, so every catalogue moves when any of them do, and so
@@ -162,6 +169,15 @@ type Speaking = {
   skipReason: string | null;
 };
 
+/**
+ * The roster as it stands, not as this worker cached it: a build happens because the stamp moved,
+ * and if the roster moved it, a cached copy from the other worker's edit would memoise the
+ * catalogue in the old voices until the next unrelated write.
+ */
+async function freshRoster(): Promise<Roster> {
+  return new Roster(await rosterData());
+}
+
 function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: string })[] {
   const written = new Map<string, string>();
   const lineOf = (row: T) => `${row.lineId}|${row.variant}`;
@@ -236,7 +252,7 @@ async function build(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty(lang);
 
-  return voiced(rows, await loadRoster()).map(({ writtenVoice: _written, ...row }) => ({
+  return voiced(rows, await freshRoster()).map(({ writtenVoice: _written, ...row }) => ({
     ...row,
     npcType: row.npcType as CorpusLine["npcType"],
     source: row.source as CorpusLine["source"],
@@ -325,7 +341,7 @@ async function buildTranslated(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty();
 
-  return voiced(rows, await loadRoster()).map((raw) => {
+  return voiced(rows, await freshRoster()).map((raw) => {
     const { textMissing, titleMissing, nameMissing, native, englishTitle, englishName, writtenVoice: _written, ...row } = raw;
     return {
       ...row,

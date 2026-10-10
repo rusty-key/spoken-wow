@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 import { closeDb, db } from "@/lib/db";
 import { getResolution, upsertResolution } from "@/lib/npc/store";
+import { loadRoster } from "@/lib/voices/roster-store";
 
 /** resolvedBy has a foreign key, so resolving needs a user that exists. */
 const RESOLVER = "test-contributions-npc-route";
@@ -89,6 +90,20 @@ describe("POST /api/npcs", () => {
   it("refuses a flavor its type and gender are not voiced in", async () => {
     const response = await POST(post({ npcKind: "creature", npcId, race: "tauren", gender: "male", flavor: "grim" }));
     expect(response.status).toBe(400);
+  });
+
+  it("takes a type another worker added a moment ago", async () => {
+    const type = `t${npcId}`;
+    await loadRoster();
+    // Straight into the tables, as the other pm2 worker's api/types would: this one's cache is not told.
+    await db().query(`insert into "race" ("key") values ($1)`, [type]);
+    try {
+      const response = await POST(post({ npcKind: "creature", npcId, race: type, gender: "" }));
+      expect(response.status).toBe(200);
+    } finally {
+      await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
+      await db().query(`delete from "race" where "key" = $1`, [type]);
+    }
   });
 
   it("stores a genderless type with no gender", async () => {

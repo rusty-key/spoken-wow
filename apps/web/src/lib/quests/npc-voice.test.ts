@@ -120,6 +120,25 @@ describe("a quest moment's voice", WHOLE_CORPUS, () => {
     expect(await spoken()).toEqual([`${lineId} ${questId}-accept orc-female-standard (no-voice)`]);
   });
 
+  it("speaks in a voice given to its NPC's type, with nothing else written", async () => {
+    const type = `t${questId}`;
+    await line([{ npcId: npcIds[0], race: type, gender: "male", flavor: null }]);
+    await db().query(`insert into "race" ("key") values ($1)`, [type]);
+    await npc(npcIds[0], { race: type, gender: null, flavor: null, provenance: "moderator" });
+    try {
+      expect(await spoken()).toEqual([`${lineId}~${type} ${questId}-accept-${type} ${type} (no-voice)`]);
+      // As the Types tab does it, which writes no speaker and no npc row.
+      await db().query(`insert into "voice" ("name", "race", "gender") values ($1, $1, '')`, [type]);
+      await db().query(`insert into "voice_assignment" ("race", "voice") values ($1, $1)`, [type]);
+      expect(await spoken()).toEqual([`${lineId}~${type} ${questId}-accept-${type} ${type}`]);
+    } finally {
+      await db().query(`delete from "npc" where "npcId" = $1`, [npcIds[0]]);
+      await db().query(`delete from "voice_assignment" where "race" = $1`, [type]);
+      await db().query(`delete from "voice" where "name" = $1`, [type]);
+      await db().query(`delete from "race" where "key" = $1`, [type]);
+    }
+  });
+
   it("keeps the narrator's file for an NPC of a generic type the narrator reads", async () => {
     await line([{ npcId: npcIds[0], race: "narrator", gender: "male", flavor: null }]);
     await npc(npcIds[0], { race: "creature", gender: null, flavor: null, provenance: "moderator" });
