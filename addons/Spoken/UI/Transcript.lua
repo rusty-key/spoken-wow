@@ -1,7 +1,8 @@
 setfenv(1, SpokenEnv)
 
 -- Use the text captured with each queued clip, never the currently open dialog.
--- Recordings have durations, not word timestamps; the highlight is an estimate.
+-- Recordings have durations, not word timestamps; the highlight is an estimate unless the clip
+-- brings its own (present.timings).
 Transcript = { elapsed = 0, manualScroll = false }
 
 local GAP = 4
@@ -162,8 +163,29 @@ function Transcript:Split(text)
     return Split(text)
 end
 
+-- present.timings: when each word starts, in seconds into the recording, one per word as Split
+-- cuts the text. Anything else (a count that disagrees, a time going backwards or past the end)
+-- is ignored for the estimate, since words drifting a little beat words lit at random.
+local function ApplyTimings(words, timings, length)
+    if type(timings) ~= "table" or #words == 0 or #timings ~= #words or not length or length <= 0 then
+        return false
+    end
+    for i, at in ipairs(timings) do
+        if type(at) ~= "number" or at < (timings[i - 1] or 0) or at > length then return false end
+    end
+    for i, word in ipairs(words) do
+        word.start, word.finish = timings[i], timings[i + 1] or length
+    end
+    return true
+end
+
 function Transcript:Tokenize()
     self.words, self.totalWeight = Split(self.text)
+    local clip = self.clip
+    local length = clip and tonumber(clip.length)
+    -- Timed, a word's share is its own seconds, so progress times length finds it.
+    self.timed = ApplyTimings(self.words, clip and clip.present and clip.present.timings, length)
+    if self.timed then self.totalWeight = length end
 end
 
 function Transcript:IsSpeaking(progress)
@@ -663,8 +685,8 @@ function Transcript:Initialize()
 end
 
 function Transcript:Describe()
-    return format("transcript=%s visible=%s lines=%d scroll=%s top=%.2f/%d page=%d/%d word=%s estimated=true; %s",
+    return format("transcript=%s visible=%s lines=%d scroll=%s top=%.2f/%d page=%d/%d word=%s estimated=%s; %s",
         tostring(Config().Enabled), tostring(self.frame and self.frame:IsVisible()),
         LineCount(), Mode(), self.top or 1, self:MaxTop(), self:Page(), self:PageCount(),
-        tostring(self.activeWord), Subtitle:Describe())
+        tostring(self.activeWord), tostring(not self.timed), Subtitle:Describe())
 end

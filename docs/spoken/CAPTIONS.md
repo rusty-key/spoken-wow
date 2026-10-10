@@ -67,6 +67,14 @@ estimated from word length, punctuation and the total duration. Two neighboring
 words are highlighted to give the estimate some room. At the end of a page,
 the previous word stays highlighted instead of advancing the page early.
 
+A source that knows when each word is spoken passes `clip.present.timings`: one
+start time per word, in seconds from the start of the recording, in the order
+`Spoken:SplitCaption` cuts the transcript into words. The captions then follow
+those times instead of the estimate, `Spoken:GetCaption()` reports them with
+`timed = true`, and Subtitles Only turns each page when the voice reaches its first
+word. A list whose length does not match the words, or whose times go backwards
+or past the recording's length, is ignored and the estimate is used.
+
 Captions use the text captured when a quest or gossip clip was queued. Quest
 log replays can use the quest description. A completion recording never uses
 the acceptance text as a substitute. Different quest wording and pauses in a
