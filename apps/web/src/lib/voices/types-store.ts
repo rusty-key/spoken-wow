@@ -14,6 +14,50 @@ import { invalidateRoster } from "./roster-store";
 
 export class TypesError extends Error {}
 
+/**
+ * A first gender for a genderless type, or a first flavor for a race-gender read by a bare voice,
+ * splits a voice NPCs already speak with. Which of the new combinations takes it over -- `map`,
+ * its files and takes with it -- or whether it goes unused (`discard`) is the admin's to say, so
+ * nothing is written until they have.
+ */
+export class NeedsChoice extends Error {
+  constructor(readonly choice: { voice: string; into: string; npcs: number; lines: number }) {
+    super(`${choice.voice} reads ${choice.npcs} NPCs and ${choice.lines} lines: map it to ${choice.into}, or throw it away`);
+  }
+}
+
+export type Existing = "map" | "discard";
+
+function existing(value: unknown): Existing | null {
+  return value === "map" || value === "discard" ? value : null;
+}
+
+/** NPCs of a type, gender and flavor (null meaning none), and the lines they speak. */
+async function inUse(
+  client: PoolClient,
+  race: string,
+  g: Gender | null,
+  flavorIsNull: boolean,
+): Promise<{ npcs: number; lines: number }> {
+  const { rows } = await client.query<{ npcs: number; lines: number }>(
+    `select count(distinct (n."npcKind", n."npcId"))::int as "npcs", count(distinct s."lineId")::int as "lines"
+       from "npc" n
+       left join "quest_line_speaker" s on s."npcType" = n."npcKind" and s."npcId" = n."npcId"
+      where n."race" = $1 and n."gender" is not distinct from $2 and ($3 = false or n."flavor" is null)`,
+    [race, g, flavorIsNull],
+  );
+  return rows[0];
+}
+
+async function ownVoice(client: PoolClient, race: string, g: Gender | null, flavor: string | null): Promise<string | null> {
+  const { rows } = await client.query<{ voice: string }>(
+    `select "voice" from "voice_assignment"
+      where "race" = $1 and "gender" is not distinct from $2 and "flavor" is not distinct from $3`,
+    [race, g, flavor],
+  );
+  return rows[0]?.voice ?? null;
+}
+
 const KEY = /^[a-z0-9]+$/;
 const GENDERS: readonly string[] = ["male", "female"];
 
@@ -124,26 +168,49 @@ export async function deleteType(rawKey: unknown): Promise<void> {
   });
 }
 
-export async function addGender(rawRace: unknown, rawGender: unknown): Promise<void> {
+export async function addGender(rawRace: unknown, rawGender: unknown, rawExisting?: unknown): Promise<void> {
   const race = key(rawRace);
   const g = gender(rawGender);
+  const choice = existing(rawExisting);
   await inTransaction(async (client) => {
     await requireType(client, race);
-    const gendered = await exists(client, `select 1 from "gender" where "race" = $1`, [race]);
-    // A genderless type's NPCs have no gender; one with a gender would need every one answered again.
-    if (!gendered && (await exists(client, `select 1 from "npc" where "race" = $1 limit 1`, [race]))) {
-      throw new TypesError(`NPCs are ${race} with no gender: it cannot gain one now`);
+    if (await exists(client, `select 1 from "gender" where "race" = $1 and "gender" = $2`, [race, g])) {
+      throw new TypesError(`${race} has ${g} already`);
     }
-    if (!gendered) await client.query(`delete from "voice_assignment" where "race" = $1 and "gender" is null`, [race]);
-    await client.query(`insert into "gender" ("race", "gender") values ($1, $2) on conflict do nothing`, [race, g]);
+    const gendered = await exists(client, `select 1 from "gender" where "race" = $1`, [race]);
+    await client.query(`insert into "gender" ("race", "gender") values ($1, $2)`, [race, g]);
+    if (gendered) {
+      await assign(client, race, g, null, null);
+      return;
+    }
+    const voice = await ownVoice(client, race, null, null);
+    const use = await inUse(client, race, null, false);
+    if (voice && use.npcs > 0 && !choice) throw new NeedsChoice({ voice, into: g, ...use });
+    if (voice && choice === "map") {
+      // The voice, its flavors and its NPCs become the gender's: their files keep their names.
+      await client.query(`update "voice_assignment" set "gender" = $2 where "race" = $1 and "gender" is null`, [race, g]);
+      await client.query(`update "flavor" set "gender" = $2 where "race" = $1 and "gender" is null`, [race, g]);
+      await client.query(`update "npc" set "gender" = $2, "updatedAt" = now() where "race" = $1 and "gender" is null`, [race, g]);
+      return;
+    }
+    // Unused from here: the voice and its takes stay on file, nothing reads with them.
+    await client.query(`delete from "voice_assignment" where "race" = $1 and "gender" is null`, [race]);
+    await client.query(`delete from "flavor" where "race" = $1 and "gender" is null`, [race]);
     await assign(client, race, g, null, null);
   });
 }
 
-export async function addFlavor(rawRace: unknown, rawGender: unknown, rawFlavor: unknown, rawLabel: unknown): Promise<void> {
+export async function addFlavor(
+  rawRace: unknown,
+  rawGender: unknown,
+  rawFlavor: unknown,
+  rawLabel: unknown,
+  rawExisting?: unknown,
+): Promise<void> {
   const race = key(rawRace);
   const g = rawGender === null || rawGender === "" || rawGender === undefined ? null : gender(rawGender);
   const flavor = key(rawFlavor);
+  const choice = existing(rawExisting);
   await inTransaction(async (client) => {
     await requireType(client, race);
     const gendered = await exists(client, `select 1 from "gender" where "race" = $1`, [race]);
@@ -155,9 +222,34 @@ export async function addFlavor(rawRace: unknown, rawGender: unknown, rawFlavor:
     if (await exists(client, `select 1 from "flavor" where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3`, [race, g, flavor])) {
       throw new TypesError(`${flavor} is a flavor of ${race} already`);
     }
+    const first = !(await exists(client, `select 1 from "flavor" where "race" = $1 and "gender" is not distinct from $2`, [race, g]));
+    const voice = first ? await ownVoice(client, race, g, null) : null;
+    const use = voice ? await inUse(client, race, g, true) : { npcs: 0, lines: 0 };
+    if (voice && use.npcs > 0 && !choice) throw new NeedsChoice({ voice, into: flavor, ...use });
+
     await client.query(`insert into "flavor" ("race", "gender", "flavor", "label") values ($1, $2, $3, $4)`, [
       race, g, flavor, label(rawLabel),
     ]);
+    if (voice && choice === "map") {
+      await client.query(
+        `update "voice_assignment" set "flavor" = $3
+          where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null`,
+        [race, g, flavor],
+      );
+      await client.query(
+        `update "npc" set "flavor" = $3, "updatedAt" = now()
+          where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null`,
+        [race, g, flavor],
+      );
+      return;
+    }
+    // A race-gender is read by its flavors or by one bare voice, never both.
+    if (voice) {
+      await client.query(
+        `delete from "voice_assignment" where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null`,
+        [race, g],
+      );
+    }
     await assign(client, race, g, flavor, null);
   });
 }

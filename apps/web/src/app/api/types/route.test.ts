@@ -72,10 +72,12 @@ describe("POST /api/types", () => {
 
   it("adds a gendered type with a voice per gender, and a flavor with its own", async () => {
     await POST(post({ action: "add-type", key: KEY, genders: ["male"] }));
+    expect((await loadRoster()).voiceFor(KEY, "male", null)).toBe(`${KEY}-male`);
     const response = await POST(post({ action: "add-flavor", race: KEY, gender: "male", flavor: "old" }));
     expect(response.status).toBe(200);
     const roster = await loadRoster();
-    expect(roster.voiceFor(KEY, "male", null)).toBe(`${KEY}-male`);
+    // Nothing spoke the bare voice, so the flavor replaces it unasked.
+    expect(roster.voiceFor(KEY, "male", null)).toBeNull();
     expect(roster.voiceFor(KEY, "male", "old")).toBe(`${KEY}-male-old`);
     expect(roster.familyOf(`${KEY}-male-old`)).toEqual({ race: KEY, gender: "male" });
   });
@@ -148,14 +150,92 @@ describe("POST /api/types", () => {
     expect((await POST(post({ action: "add-type", key: KEY, genders: [] }))).status).toBe(400);
   });
 
-  it("refuses a gender for a type that has none", async () => {
-    await POST(post({ action: "add-type", key: KEY, genders: [] }));
+  async function npcOf(race: string, gender: string | null = null, flavor: string | null = null) {
     await db().query(
-      `insert into "npc" ("npcKind", "npcId", "race", "provenance", "confirmed") values ('creature', $1, $2, 'moderator', true)`,
-      [npcId, KEY],
+      `insert into "npc" ("npcKind", "npcId", "race", "gender", "flavor", "provenance", "confirmed")
+       values ('creature', $1, $2, $3, $4, 'moderator', true)`,
+      [npcId, race, gender, flavor],
     );
-    // Its NPCs have no gender: giving the type one would leave every one of them unvoiced.
+  }
+
+  async function answer() {
+    const { rows } = await db().query(`select "gender", "flavor" from "npc" where "npcId" = $1`, [npcId]);
+    return rows[0];
+  }
+
+  describe("a first gender for a genderless type in use", () => {
+    it("asks what becomes of the voice that reads it, and changes nothing", async () => {
+      await POST(post({ action: "add-type", key: KEY, genders: [] }));
+      await npcOf(KEY);
+      const response = await POST(post({ action: "add-gender", race: KEY, gender: "male" }));
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({ choice: { voice: KEY, into: "male", npcs: 1 } });
+      expect((await loadRoster()).isGenderless(KEY)).toBe(true);
+    });
+
+    it("maps the voice, its takes with it, to the new gender, and moves the type's NPCs there", async () => {
+      await POST(post({ action: "add-type", key: KEY, genders: [] }));
+      await npcOf(KEY);
+      const response = await POST(post({ action: "add-gender", race: KEY, gender: "male", existing: "map" }));
+      expect(response.status).toBe(200);
+      const roster = await loadRoster();
+      expect(roster.voiceFor(KEY, "male", null)).toBe(KEY);
+      expect(roster.voiceFor(KEY, null, null)).toBeNull();
+      expect(await answer()).toEqual({ gender: "male", flavor: null });
+    });
+
+    it("throws the voice away: a new one for the gender, the old one kept but unused, the NPCs unanswered", async () => {
+      await POST(post({ action: "add-type", key: KEY, genders: [] }));
+      await npcOf(KEY);
+      const response = await POST(post({ action: "add-gender", race: KEY, gender: "male", existing: "discard" }));
+      expect(response.status).toBe(200);
+      const roster = await loadRoster();
+      expect(roster.voiceFor(KEY, "male", null)).toBe(`${KEY}-male`);
+      expect(roster.voiceFor(KEY, null, null)).toBeNull();
+      expect(roster.isVoice(KEY)).toBe(true);
+      expect(await answer()).toEqual({ gender: null, flavor: null });
+    });
+  });
+
+  it("asks nothing when no NPC has the type", async () => {
+    await POST(post({ action: "add-type", key: KEY, genders: [] }));
+    expect((await POST(post({ action: "add-gender", race: KEY, gender: "male" }))).status).toBe(200);
+    expect((await loadRoster()).voiceFor(KEY, "male", null)).toBe(`${KEY}-male`);
+  });
+
+  it("refuses a gender the type has already", async () => {
+    await POST(post({ action: "add-type", key: KEY, genders: ["male"] }));
     expect((await POST(post({ action: "add-gender", race: KEY, gender: "male" }))).status).toBe(400);
+  });
+
+  describe("a first flavor for a race-gender read by a bare voice", () => {
+    it("asks first", async () => {
+      await POST(post({ action: "add-type", key: KEY, genders: ["male"] }));
+      await npcOf(KEY, "male");
+      const response = await POST(post({ action: "add-flavor", race: KEY, gender: "male", flavor: "old" }));
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({ choice: { voice: `${KEY}-male`, into: "old", npcs: 1 } });
+    });
+
+    it("maps the bare voice to the flavor, and the NPCs with it", async () => {
+      await POST(post({ action: "add-type", key: KEY, genders: ["male"] }));
+      await npcOf(KEY, "male");
+      await POST(post({ action: "add-flavor", race: KEY, gender: "male", flavor: "old", existing: "map" }));
+      const roster = await loadRoster();
+      expect(roster.voiceFor(KEY, "male", "old")).toBe(`${KEY}-male`);
+      expect(roster.voiceFor(KEY, "male", null)).toBeNull();
+      expect(await answer()).toEqual({ gender: "male", flavor: "old" });
+    });
+
+    it("throws the bare voice away", async () => {
+      await POST(post({ action: "add-type", key: KEY, genders: ["male"] }));
+      await npcOf(KEY, "male");
+      await POST(post({ action: "add-flavor", race: KEY, gender: "male", flavor: "old", existing: "discard" }));
+      const roster = await loadRoster();
+      expect(roster.voiceFor(KEY, "male", "old")).toBe(`${KEY}-male-old`);
+      expect(roster.voiceFor(KEY, "male", null)).toBeNull();
+      expect(await answer()).toEqual({ gender: "male", flavor: null });
+    });
   });
 
   it("logs each change", async () => {

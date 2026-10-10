@@ -1082,7 +1082,11 @@ the answer. A new type, gender or flavor is added on `/npcs` → Types, with a v
 or an existing one (a treant could be read by the narrator): that puts it in the selects and
 gives a new voice a slot on `/voices`, marked as not existing in the account until it is cloned.
 `import-corpus` adds any type the file names that the database lacks, and never changes one it
-has.
+has. A first gender for a genderless type, or a first flavor for a race-gender read by one
+bare voice, splits a voice NPCs may already speak with, so the Types tab asks first: map it to
+the new combination (its files and takes stay valid, and the type's NPCs move there) or throw
+it away (the new combination gets a new voice; the old one and its takes stay on file unused,
+and the NPCs wait for an answer).
 
 `/contributions/game-data`, unlinked and collaborator-only, resolves NPCs from a game client
 instead of by hand. It lists chat commands that make the client ask its server about every

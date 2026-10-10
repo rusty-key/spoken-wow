@@ -4,7 +4,9 @@
  * each combination is read with.
  *
  * One route, an `action` per edit, because every edit answers with the whole roster: the tab
- * redraws from what is stored, not from what it hoped to store.
+ * redraws from what is stored, not from what it hoped to store. A first gender or flavor for a
+ * voice NPCs speak with answers 409 with what it would split, until `existing` says `map` or
+ * `discard` (types-store.ts NeedsChoice).
  */
 import { recordActivity } from "@/lib/activity/store";
 import { requireAdmin } from "@/lib/admin-guard";
@@ -17,6 +19,7 @@ import {
   deleteFlavor,
   deleteType,
   labelType,
+  NeedsChoice,
   TypesError,
 } from "@/lib/voices/types-store";
 
@@ -26,8 +29,8 @@ const ACTIONS: Record<string, (body: Record<string, unknown>) => Promise<void>> 
   "add-type": (b) => addType(b.key, b.label, b.genders),
   "label-type": (b) => labelType(b.key, b.label),
   "delete-type": (b) => deleteType(b.key),
-  "add-gender": (b) => addGender(b.race, b.gender),
-  "add-flavor": (b) => addFlavor(b.race, b.gender, b.flavor, b.label),
+  "add-gender": (b) => addGender(b.race, b.gender, b.existing),
+  "add-flavor": (b) => addFlavor(b.race, b.gender, b.flavor, b.label, b.existing),
   "delete-flavor": (b) => deleteFlavor(b.race, b.gender, b.flavor),
   "assign-voice": (b) => assignVoice(b.race, b.gender, b.flavor, b.voice),
 };
@@ -43,6 +46,9 @@ export async function POST(request: Request) {
   try {
     await action(body);
   } catch (error) {
+    if (error instanceof NeedsChoice) {
+      return Response.json({ error: error.message, choice: error.choice }, { status: 409 });
+    }
     if (error instanceof TypesError) return Response.json({ error: error.message }, { status: 400 });
     throw error;
   }
@@ -52,7 +58,7 @@ export async function POST(request: Request) {
     lang,
     actorId: session.user.id,
     subject: String(body.key ?? body.race ?? ""),
-    detail: { action: String(body.action), gender: str(body.gender), flavor: str(body.flavor), voice: str(body.voice) },
+    detail: { action: String(body.action), gender: str(body.gender), flavor: str(body.flavor), voice: str(body.voice), existing: str(body.existing) },
   });
   return Response.json({ roster: await rosterData() });
 }

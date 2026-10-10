@@ -82,7 +82,14 @@ export type ActivityDetail = {
     flavor?: string | null;
     doubtful?: boolean;
   };
-  "type.changed": { action: string; gender?: string | null; flavor?: string | null; voice?: string | null };
+  "type.changed": {
+    action: string;
+    gender?: string | null;
+    flavor?: string | null;
+    voice?: string | null;
+    /** For a split voice: whether the new combination took it over or it went unused. */
+    existing?: string | null;
+  };
 
   // Admin.
   "grant.added": { capability: Capability };

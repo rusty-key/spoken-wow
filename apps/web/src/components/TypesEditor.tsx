@@ -3,7 +3,8 @@
 /**
  * The Types tab of /npcs: every type an NPC can be, its genders and flavors, and the voice each
  * combination is read with. Every edit posts to api/types, which answers with the whole roster,
- * and the tab redraws from that rather than from what it sent.
+ * and the tab redraws from that rather than from what it sent. An edit that would split a voice
+ * NPCs speak with comes back as a question, asked next to the control that made it.
  */
 import { useMemo, useState } from "react";
 
@@ -18,6 +19,8 @@ const NEW_VOICE = "";
 
 type Combination = { race: string; gender: Gender | null; flavor: string | null };
 
+type Choice = { voice: string; into: string; npcs: number; lines: number };
+
 export default function TypesEditor({ initial }: { initial: RosterData }) {
   const lang = useLang();
   const [data, setData] = useState(initial);
@@ -25,17 +28,26 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
   const [busy, setBusy] = useState(false);
   /** The last refusal, and which control it answers. */
   const [error, setError] = useState<{ at: string; message: string } | null>(null);
+  /** An edit waiting on what becomes of the voice it splits. */
+  const [pending, setPending] = useState<{ at: string; body: Record<string, unknown>; choice: Choice } | null>(null);
 
   async function send(at: string, body: Record<string, unknown>): Promise<boolean> {
     setBusy(true);
     setError(null);
+    setPending(null);
     const response = await fetch(`/api/types?lang=${lang}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }).catch(() => null);
     setBusy(false);
-    const answer = (await response?.json().catch(() => null)) as { roster?: RosterData; error?: string } | null;
+    const answer = (await response?.json().catch(() => null)) as
+      | { roster?: RosterData; error?: string; choice?: Choice }
+      | null;
+    if (response?.status === 409 && answer?.choice) {
+      setPending({ at, body, choice: answer.choice });
+      return false;
+    }
     if (!response?.ok || !answer?.roster) {
       setError({ at, message: answer?.error ?? "Not saved" });
       return false;
@@ -44,8 +56,36 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
     return true;
   }
 
-  const refusal = (at: string) =>
-    error?.at === at ? <span className="text-destructive text-xs">{error.message}</span> : null;
+  const refusal = (at: string) => {
+    if (pending?.at === at) {
+      const { choice, body } = pending;
+      return (
+        <span className="flex flex-wrap items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+          {choice.voice} reads {choice.npcs} NPCs and {choice.lines} lines.
+          <LiteButton
+            className="h-6 px-1.5 text-xs"
+            disabled={busy}
+            onClick={() => void send(at, { ...body, existing: "map" })}
+            title={`${choice.into} takes ${choice.voice} over, its takes too, and the NPCs move to ${choice.into}`}
+          >
+            Map to {choice.into}
+          </LiteButton>
+          <LiteButton
+            className="h-6 px-1.5 text-xs"
+            disabled={busy}
+            onClick={() => void send(at, { ...body, existing: "discard" })}
+            title={`${choice.into} gets a new voice; ${choice.voice} and its takes stay on file unused, and the NPCs wait for an answer`}
+          >
+            Throw away
+          </LiteButton>
+          <LiteButton variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setPending(null)}>
+            Cancel
+          </LiteButton>
+        </span>
+      );
+    }
+    return error?.at === at ? <span className="text-destructive text-xs">{error.message}</span> : null;
+  };
 
   return (
     <div className="flex flex-col gap-4 text-sm">
