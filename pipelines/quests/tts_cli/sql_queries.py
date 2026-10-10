@@ -607,11 +607,11 @@ def query_creature_voices(connection, entries) -> dict:
     one entry is a creature whose display changed between content patches, which is a row
     apiece there too.
 
-    Where that query's inner join to CreatureDisplayInfoExtra drops a creature - no humanoid
-    race to voice it in - this one keeps it, with DisplayRaceID None and its display's ModelID,
-    because follow-up lines are voiced by model there (followup.corpus_rows), and only for a
-    creature with no humanoid variant at all (followup.creature_voices). A creature whose
-    display is not in db_CreatureDisplayInfo still has no entry.
+    A creature with no CreatureDisplayInfoExtra row - no humanoid race to voice it in - comes
+    back with DisplayRaceID None and its display's ModelID, because it is voiced by its model
+    (followup.corpus_rows), and only where it has no humanoid variant at all
+    (followup.creature_voices). A creature whose display is not in db_CreatureDisplayInfo
+    still has no entry.
     """
     if not entries:
         return {}

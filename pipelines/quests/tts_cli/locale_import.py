@@ -257,7 +257,7 @@ def extract_and_import(lang: str) -> Counter:
     print(f"  reading {lang} from the vmangos dump...", file=sys.stderr, flush=True)
     number = language_code_to_language_number(lang)
     # Follow-up and model-voiced rows too: a translation is anchored to its English row, and
-    # without it would count as a line with no English line.
+    # without that row it would count as a line with no English line.
     df = extraction_rows(query_dataframe_for_all_quests_and_gossip(number, raw=True),
                          query_followup_dataframe(number, raw=True))
     rows = TTSProcessor.preprocess_dataframe(TTSProcessor.__new__(TTSProcessor), df)

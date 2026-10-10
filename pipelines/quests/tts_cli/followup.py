@@ -295,7 +295,7 @@ def corpus_rows(result, creatures) -> list:
     Several entries for one creature are its patch variants and each is a row, as for quest
     rows. A creature missing from it - its display is not in the dump at all - gets no row.
 
-    Unlike quest rows, a creature with no humanoid display is kept: DisplayRaceID is None and
+    As for quest rows, a creature with no humanoid display is kept: DisplayRaceID is None and
     ModelID names the voice instead (flavors.model_voice), since a follow-up line is often the
     only thing a Broken, a robot or a ghost says and leaving it out left the addon with nothing
     to play. Such a row reads as male - DisplaySexID 0, the male text - because the display
