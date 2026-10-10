@@ -117,31 +117,46 @@ env.Options:UpdateRows()
 local main, Page = _G.SpokenOptionsPanel.layout, env.DialogueUIOptions
 main:Refresh()
 local function Shown(layout, label, tooltip) local row = Row(layout, label, tooltip); return row ~= nil and row:IsShown() end
-Expect("Spoken's page points to the DialogueUI page", Shown(main, env.L.OPT_DUI_OPEN_PAGE), true)
-Expect("the DialogueUI page waits for the world to be up", Page.page, nil)
+local function Live(label, tooltip) local row = Row(main, label, tooltip); return row ~= nil and row:IsShown() and row.layoutReason == nil end
 stub.FireEvent("PLAYER_ENTERING_WORLD"); stub.Advance(0.1)
-Expect("...then is listed after every part's page", Page.page and Page.page.order, 1000)
-Expect("...under DialogueUI's name", Page.page and Page.page.name, env.L.OPT_STYLE_DIALOGUEUI)
+local listed = false
+for _, page in ipairs(env.Options.pages or {}) do
+    if page.name == env.L.OPT_STYLE_DIALOGUEUI then listed = true end
+end
+Expect("the DialogueUI settings are on Spoken's page, with no page of their own", listed, false)
 Expect("the window's size is the player's Window Size", Shown(main, env.L.OPT_SCALE, env.L.OPT_SCALE_TIP), true)
 Expect("...its words' size and lines theirs", Shown(main, env.L.TRANSCRIPT_SIZE, env.L.TRANSCRIPT_SIZE_TIP)
     and Shown(main, env.L.TRANSCRIPT_LINES), true)
 Expect("...and how the words scroll too", Shown(main, env.L.TRANSCRIPT_SCROLL), true)
-local page = Page.layout
-page:Refresh()
-local function Live(label, tooltip) local row = Row(page, label, tooltip); return row ~= nil and row.layoutReason == nil end
-Expect("the page has the window's theme", Live(env.L.OPT_DUI_FOLLOW_THEME), true)
+Expect("beside them, the window's theme", Live(env.L.OPT_DUI_FOLLOW_THEME), true)
 Expect("...and Fit to the Words", Live(env.L.OPT_DUI_FIT_TEXT), true)
-Expect("...but nothing Spoken's page has already", Row(page, env.L.OPT_SCALE) == nil
-    and Row(page, env.L.TRANSCRIPT_SIZE) == nil and Row(page, env.L.TRANSCRIPT_LINES) == nil, true)
-Expect("the theme waits on not following DialogueUI's", Row(page, env.L.OPT_DUI_THEME).layoutReason, env.L.REASON_DUI_FOLLOW)
+-- A note is not indexed by label: found by what it says.
+local function NoteShown(text)
+    for _, item in ipairs(main.items) do
+        for _, row in ipairs(item.rows or {}) do
+            if row.control.text == text then return row.shown == true end
+        end
+    end
+    return false
+end
+Expect("...and the wheel's shortcuts", NoteShown(env.L.DUI_WHEEL_HINT), true)
+Expect("no Hide Portrait for it: its header has the face's socket built in", Shown(main, env.L.OPT_HIDE_PORTRAIT), false)
+env.Addon.db.profile.Frame.HidePortrait = true
+Skin:ConfigurePortrait()
+Expect("...so the face stays with Hide Portrait set for another style", Skin.portrait:IsShown(), true)
+env.Addon.db.profile.Frame.HidePortrait = false
+Skin:ConfigurePortrait()
+Expect("the theme waits on not following DialogueUI's", Row(main, env.L.OPT_DUI_THEME).layoutReason, env.L.REASON_DUI_FOLLOW)
 env.Addon:SetPlayerStyle("minimal")
-page:Refresh()
-Expect("with another style chosen they wait on this one, saying where to choose it",
-    Row(page, env.L.OPT_DUI_FIT_TEXT).layoutReason, env.L.REASON_DUI_STYLE)
+main:Refresh()
+Expect("with another style chosen they are not shown", Shown(main, env.L.OPT_DUI_FIT_TEXT)
+    or Shown(main, env.L.OPT_DUI_FOLLOW_THEME) or NoteShown(env.L.DUI_WHEEL_HINT), false)
+Expect("...and the small window has Hide Portrait", Shown(main, env.L.OPT_HIDE_PORTRAIT), true)
 env.Addon:SetPlayerStyle("dialogueui")
+main:Refresh()
 env.Addon.db.profile.Frame.DialogueUI.FitText = false
 Page:Reset()
-Expect("the page's Defaults puts the window's settings back", env.Addon.db.profile.Frame.DialogueUI.FitText, true)
+Expect("Start Over puts the window's settings back", env.Addon.db.profile.Frame.DialogueUI.FitText, true)
 
 ---------------------------------------------------------------- folded or open
 Skin:SetExpanded(false)
@@ -264,11 +279,11 @@ local function Look(row)
         if region.text == env.L.DUI_WHEEL_HINT then noted = true end
     end
 end
-for _, item in ipairs(page.items or {}) do
+for _, item in ipairs(main.items or {}) do
     Look(item)
     for _, row in ipairs(item.rows or {}) do Look(row) end
 end
-Expect("...and the DialogueUI page says them too", noted, true)
+Expect("...and Spoken's page says them too", noted, true)
 Spoken:StopAll()
 env.PlayerFrame:RefreshConfig()
 

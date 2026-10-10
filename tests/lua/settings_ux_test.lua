@@ -46,7 +46,8 @@ env.Addon:SetPlayerStyle("subtitle"); Options:UpdateRows()
 local size = Row(home, "Window Size")
 local typing = Row(home, "Subtitle Size")
 Expect("a window setting is hidden once subtitles replace the window", Shown(size), false)
-Expect("...and so is its section, with nothing left in it", Box(L.OPT_WINDOW_TITLE).shown, false)
+Expect("...its part, Size and Position, kept: every style has the same three", Box(L.OPT_PLACE_TITLE).shown
+    and Box(L.OPT_LOOK_TITLE).shown and Box(L.OPT_TEXT_TITLE).shown, true)
 Expect("the subtitle settings appear with subtitles chosen", Shown(typing), true)
 local subtitlesTop = typing.layoutY
 env.Addon:SetPlayerStyle("minimal"); Options:UpdateRows()

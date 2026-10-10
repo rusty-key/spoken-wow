@@ -334,20 +334,113 @@ local function Build(canvas)
             end,
             { choose = L.STYLE_CHOOSE })
         layout:Group(L.OPT_NARRATOR_SETTINGS)
-        layout:Section(L.OPT_SHOW_TITLE)
     else
         layout:Group(L.OPT_NARRATOR_SETTINGS)
-        layout:Section(L.OPT_SHOW_TITLE)
+    end
+    -- The same three parts whatever the style, each style's rows in the same places: where it
+    -- sits and how large, how it looks, and its words. A row the chosen style has no use for is
+    -- hidden. Without captions (1.12's Transcript is a stub) the words' rows are not built.
+    local captions = not Transcript.unavailable
+    local function DUI() return Style() == "dialogueui" end
+    local function ForDUI(row) return Only(row, DUI) end
+    -- The subtitle's own: redrawing it is enough, on every step of a drag, without the captions'
+    -- full refresh and every row's.
+    local refreshSubtitle = function() Subtitle:Update() end
+    local function ForSubtitles(row)
+        Only(row, Subtitles)
+        Requires(row, Words, L.REASON_WORDS)
+        return row
+    end
+
+    layout:Section(L.OPT_PLACE_TITLE)
+    if not canvas then
         layout:Dropdown(L.OPT_PLAYER_STYLE, L.OPT_PLAYER_STYLE_TIP, styles, Style,
             function(v) Addon:SetPlayerStyle(v) end,
             function() PlayerFrame:RefreshConfig(); refreshTranscript() end,
             function(v) return STYLE_LABELS[v] or v end)
     end
-    -- No captions on 1.12: its Transcript is a stub (see 1.12\Transcript.lua).
-    if not Transcript.unavailable then
+    Only(layout:Slider(L.OPT_SCALE, 0.5, 2, 0.05,
+        function() return cfg().FrameScale end, function(v) cfg().FrameScale = v end, refresh,
+        nil, L.OPT_SCALE_TIP), InWindow)
+    if captions then
+        ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SIZE, 0.6, 1.6, 0.05,
+            function() return transcript().SubtitleScale end,
+            function(v) transcript().SubtitleScale = v end, refreshSubtitle, nil, L.OPT_SUBTITLE_SIZE_TIP))
+    end
+    Only(layout:Checkbox(L.OPT_LOCK_FRAME, L.OPT_LOCK_FRAME_TIP,
+        function() return cfg().LockFrame end, function(v) cfg().LockFrame = v end, refresh), Shown)
+    Only(layout:Button(L.OPT_RESET, 160, function()
+        PlayerFrame:Reset()
+        if Subtitle then Subtitle:Reset() end
+    end, L.OPT_RESET_TIP), Shown)
+    DialogueUIOptions:WheelNote(layout, ForDUI)
+
+    layout:Section(L.OPT_LOOK_TITLE)
+    DialogueUIOptions:ThemeRows(layout, ForDUI, refresh)
+    if captions then
+        ForSubtitles(layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
+            function() return transcript().SubtitleShadow end,
+            function(v) transcript().SubtitleShadow = v end, refreshSubtitle, nil, L.TRANSCRIPT_SHADOW_TIP))
+    end
+    if captions then
+        ForSubtitles(layout:Checkbox(L.OPT_SUBTITLE_PROGRESS, L.OPT_SUBTITLE_PROGRESS_TIP,
+            function() return transcript().SubtitleProgress ~= false end,
+            function(v) transcript().SubtitleProgress = v end, refreshSubtitle))
+    end
+    -- Hiding the portrait and hiding a button are one kind of choice, so they sit together. Not
+    -- for the DialogueUI window, whose header has the face's socket built in.
+    Only(layout:Checkbox(L.OPT_HIDE_PORTRAIT, L.OPT_HIDE_PORTRAIT_TIP,
+        function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end, refresh),
+        function() return InWindow() and not DUI() end)
+    -- The small window's metal and every round button's ring: offered whatever the style.
+    if Version.IsCamelot then
+        layout:Checkbox(L.OPT_BRONZE_TINT, L.OPT_BRONZE_TINT_TIP,
+            function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
+    end
+    -- One row per action an addon declared optional, named by that addon. The player is
+    -- not told what any of them do. The subtitle shows the corner icon too, so the row is
+    -- there with subtitles as well as with a window.
+    for _, optional in ipairs(Actions.optional) do
+        Only(layout:Checkbox(format(L.OPT_HIDE_ACTION, optional.label), L.OPT_HIDE_ACTION_TIP,
+            function() return cfg().HiddenActions[optional.id] end,
+            function(v) cfg().HiddenActions[optional.id] = v or nil end, function()
+                refresh()
+                if Subtitle then Subtitle:Update() end
+            end),
+            function() return InWindow() or Subtitles() end)
+    end
+    -- No "hide the window" switch: nothing on screen at all is Voice Only, a way of showing
+    -- lines like the others, chosen with them above.
+
+    if captions then
+        -- Show Words first: everything under it waits on it.
+        layout:Section(L.OPT_TEXT_TITLE)
         Only(layout:Checkbox(L.TRANSCRIPT_SHOW, L.TRANSCRIPT_SHOW_TIP,
             function() return transcript().Enabled end,
             function(v) Transcript:SetEnabled(v) end, function() Options:UpdateRows() end), Shown)
+        local function InWindowText(row)
+            Only(row, InWindow)
+            Requires(row, Words, L.REASON_WORDS)
+            return row
+        end
+        InWindowText(layout:Slider(L.TRANSCRIPT_SIZE, 12, 26, 1,
+            function() return transcript().FontSize end,
+            function(v) transcript().FontSize = v end, refreshTranscript, Layout.Number, L.TRANSCRIPT_SIZE_TIP))
+        -- How much shows at once: lines in a window, sentences in a subtitle.
+        InWindowText(layout:Slider(L.TRANSCRIPT_LINES, 1, 2, 1,
+            function() return transcript().Lines end,
+            function(v) transcript().Lines = v end, refreshTranscript, Layout.Number, L.TRANSCRIPT_LINES_TIP))
+        ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
+            function() return transcript().SubtitleSentences or 3 end,
+            function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number, L.OPT_SUBTITLE_SENTENCES_TIP))
+        local fit = DialogueUIOptions:FitRow(layout, ForDUI, refresh)
+        if fit then Requires(fit, Words, L.REASON_WORDS) end
+        local SCROLL_LABELS = { line = L.TRANSCRIPT_SCROLL_LINE, page = L.TRANSCRIPT_SCROLL_PAGE,
+            off = L.TRANSCRIPT_SCROLL_OFF }
+        InWindowText(layout:Dropdown(L.TRANSCRIPT_SCROLL, L.TRANSCRIPT_SCROLL_TIP, { "line", "page", "off" },
+            function() return Transcript:ScrollMode() end,
+            function(v) transcript().ScrollMode = v; Transcript.manualScroll = false end, refreshTranscript,
+            function(v) return SCROLL_LABELS[v] or v end))
         -- The word being read lit: the windows only. The subtitles type their words at their
         -- own pace, where an estimated word timing would show every miss. With DialogueUI
         -- installed, also for the quest text Spoken Quests marks there, under any style.
@@ -371,89 +464,9 @@ local function Build(canvas)
         Only(by, Subtitles)
         Requires(by, function() return Words() and transcript().Typewriter end, L.REASON_TYPEWRITER)
     end
-    Only(layout:Checkbox(L.OPT_LOCK_FRAME, L.OPT_LOCK_FRAME_TIP,
-        function() return cfg().LockFrame end, function(v) cfg().LockFrame = v end, refresh), Shown)
-    Only(layout:Button(L.OPT_RESET, 160, function()
-        PlayerFrame:Reset()
-        if Subtitle then Subtitle:Reset() end
-    end, L.OPT_RESET_TIP), Shown)
 
-    layout:Section(L.OPT_WINDOW_TITLE)
-    Only(layout:Slider(L.OPT_SCALE, 0.5, 2, 0.05,
-        function() return cfg().FrameScale end, function(v) cfg().FrameScale = v end, refresh,
-        nil, L.OPT_SCALE_TIP), InWindow)
-    -- The DialogueUI window's own settings, its theme first, live on the DialogueUI page.
-    if canvas then
-        Only(layout:Button(L.OPT_DUI_OPEN_PAGE, 200, function() DialogueUIOptions:Open() end),
-            function() return Style() == "dialogueui" end)
-    end
-    Only(layout:Checkbox(L.OPT_HIDE_PORTRAIT, L.OPT_HIDE_PORTRAIT_TIP,
-        function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end, refresh),
-        InWindow)
-    -- The small window's metal and every round button's ring: offered whatever the style.
-    if Version.IsCamelot then
-        layout:Checkbox(L.OPT_BRONZE_TINT, L.OPT_BRONZE_TINT_TIP,
-            function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
-    end
-    -- One row per action an addon declared optional, named by that addon. The player is
-    -- not told what any of them do. The subtitle shows the corner icon too, so the row is
-    -- there with subtitles as well as with a window.
-    for _, optional in ipairs(Actions.optional) do
-        Only(layout:Checkbox(format(L.OPT_HIDE_ACTION, optional.label), L.OPT_HIDE_ACTION_TIP,
-            function() return cfg().HiddenActions[optional.id] end,
-            function(v) cfg().HiddenActions[optional.id] = v or nil end, function()
-                refresh()
-                if Subtitle then Subtitle:Update() end
-            end),
-            function() return InWindow() or Subtitles() end)
-    end
-    -- No "hide the window" switch: nothing on screen at all is Voice Only, a way of showing
-    -- lines like the others, chosen with them above.
-
-    if not Transcript.unavailable then
-        layout:Section(L.OPT_TEXT_TITLE)
-        local function InWindowText(row)
-            Only(row, InWindow)
-            Requires(row, Words, L.REASON_WORDS)
-        end
-        InWindowText(layout:Slider(L.TRANSCRIPT_SIZE, 12, 26, 1,
-            function() return transcript().FontSize end,
-            function(v) transcript().FontSize = v end, refreshTranscript, Layout.Number, L.TRANSCRIPT_SIZE_TIP))
-        InWindowText(layout:Slider(L.TRANSCRIPT_LINES, 1, 2, 1,
-            function() return transcript().Lines end,
-            function(v) transcript().Lines = v end, refreshTranscript, Layout.Number, L.TRANSCRIPT_LINES_TIP))
-        local SCROLL_LABELS = { line = L.TRANSCRIPT_SCROLL_LINE, page = L.TRANSCRIPT_SCROLL_PAGE,
-            off = L.TRANSCRIPT_SCROLL_OFF }
-        InWindowText(layout:Dropdown(L.TRANSCRIPT_SCROLL, L.TRANSCRIPT_SCROLL_TIP, { "line", "page", "off" },
-            function() return Transcript:ScrollMode() end,
-            function(v) transcript().ScrollMode = v; Transcript.manualScroll = false end, refreshTranscript,
-            function(v) return SCROLL_LABELS[v] or v end))
-
-        layout:Section(L.OPT_SUBTITLE_TITLE)
-        local function ForSubtitles(row)
-            Only(row, Subtitles)
-            Requires(row, Words, L.REASON_WORDS)
-        end
-        -- These two are the subtitle's alone: redrawing it is enough, on every step of a drag,
-        -- without the captions' full refresh and every row's.
-        local refreshSubtitle = function() Subtitle:Update() end
-        ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SIZE, 0.6, 1.6, 0.05,
-            function() return transcript().SubtitleScale end,
-            function(v) transcript().SubtitleScale = v end, refreshSubtitle, nil, L.OPT_SUBTITLE_SIZE_TIP))
-        ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
-            function() return transcript().SubtitleSentences or 3 end,
-            function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number, L.OPT_SUBTITLE_SENTENCES_TIP))
-        ForSubtitles(layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
-            function() return transcript().SubtitleShadow end,
-            function(v) transcript().SubtitleShadow = v end, refreshSubtitle, nil, L.TRANSCRIPT_SHADOW_TIP))
-        ForSubtitles(layout:Checkbox(L.OPT_SUBTITLE_PROGRESS, L.OPT_SUBTITLE_PROGRESS_TIP,
-            function() return transcript().SubtitleProgress ~= false end,
-            function(v) transcript().SubtitleProgress = v end, refreshSubtitle))
-        panel.sampleButton = Only(layout:Button(L.SUBTITLE_SAMPLE_SHOW, 200, function()
-            Subtitle:ShowSample(not Subtitle:IsShowingSample())
-            Options:UpdateRows()
-        end, L.SUBTITLE_SAMPLE_TIP), Subtitles)
-    end
+    -- What the feature addons do in DialogueUI's own window, whatever the style.
+    DialogueUIOptions:Place(layout)
 
     -- The narrator style's settings end here; what follows is Spoken's whatever the style.
     layout:EndGroup()
@@ -709,6 +722,8 @@ local function Build(canvas)
                 local tab = Tab(key)
                 if tab and tab.unlock then tab.unlock.set(false) end
             end
+            -- The feature addons' DialogueUI rows are kept in their own settings too.
+            DialogueUIOptions:Reset()
             Addon.db:ResetProfile()
             Addon.db.global.Layout = nil
             ReloadUI()
@@ -742,10 +757,6 @@ function Options:UpdateRows()
     for _, row in ipairs(panel.parts or {}) do
         local installed = Sources:Get(row.partKey) ~= nil
         row.text:SetText(installed and row.partLabel or format(L.OPT_PART_MISSING, row.partLabel))
-    end
-    local sample = panel.sampleButton
-    if sample then
-        sample:SetText(Subtitle:IsShowingSample() and L.SUBTITLE_SAMPLE_HIDE or L.SUBTITLE_SAMPLE_SHOW)
     end
 end
 
@@ -954,8 +965,6 @@ function Options:Setup()
     -- Rows come and go with the way lines are shown; the window or scroller follows what is left.
     panel.layout.onResize = function() FitWindow() end
     self:UpdateRows()
-    -- Built with this page; registered last, after every part's.
-    if canvas and DialogueUIOptions then DialogueUIOptions:Setup() end
     if canvas then
         -- Spoken's entry in the game's settings, and each feature addon's page an entry nested
         -- under it (Options:RegisterPage).

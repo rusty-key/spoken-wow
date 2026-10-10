@@ -496,8 +496,8 @@ function Skin:Dress()
         highlight = colors.highlight, lines = self.lines })
 end
 
+-- Always shown, Hide Portrait or not: the header's socket is drawn for it and would sit empty.
 function Skin:ConfigurePortrait()
-    if Config().HidePortrait then self.portrait:Hide(); return end
     self.portrait:Show()
     if not StaticPortrait:Configure(self.viewport, self.clip) then Portrait:Configure(self.viewport, self.clip) end
     local viewport = self.viewport

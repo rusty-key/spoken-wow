@@ -41,10 +41,11 @@ brings back what was hidden, inside DialogueUI's window:
   gathering saved nothing.
 
 All but **Show Spoken over DialogueUI** are on by default: DialogueUI's window, marked as the
-line plays, already shows the words. They sit in the Quests section of Spoken's **DialogueUI** page
-(Spoken > DialogueUI), beside the DialogueUI narrator style's settings, added there through
-`Spoken:AddDialogueUISettings`; that page's Defaults button resets them too. With a Spoken too
-old to have that page, they are a **DialogueUI** section of the Quests page instead. Without
+line plays, already shows the words. They sit in a Quests section on Spoken's page, last among
+the narrator style's settings, added there through `Spoken:AddDialogueUISettings`, and show under
+every narrator style, since DialogueUI's window is there whichever one is chosen. Spoken's Start
+Over resets them too. With a Spoken too old to have that place, they are a **DialogueUI** section
+of the Quests page instead. Without
 DialogueUI installed there are none anywhere. When something else they need is missing they
 are greyed out with the reason in their tooltip.
 `/spq diagnostics` prints one `DialogueUI:` line with the same answer.

@@ -7,6 +7,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Each quest giver is heard in its own voice.** A quest several NPCs give is recorded once per
   voice among them, and Spoken plays the one for the NPC you are talking to. Until a pack has
   that voice, the quest plays as before.
+- **The DialogueUI settings are on Spoken's page, with the other narrator styles'.** They show when
+  DialogueUI is the narrator style, and every style's settings come in the same order: Size and
+  Position, Look, Words. Show Sample Subtitle is gone, as Preview shows every style.
+  *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.2.0 — 2026-10-08
 

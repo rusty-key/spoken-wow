@@ -493,8 +493,9 @@ end
 
 local labels = PanelLabels("11509")
 -- "Up next" is the queue window's own title. As a settings heading it named nothing. In the
--- narrator style's settings the window's rows are under a small "Window" title.
-Expect("the window settings are under a small Window title in the narrator style's settings", labels["Window"], true)
+-- narrator style's settings the rows are in three parts under small titles, the same for every style.
+Expect("the narrator style's settings are in three parts under small titles",
+    tostring(labels["Size and Position"] and labels["Look"] and labels["Words"]), "true")
 Expect("...nor the queue's title", labels["Up next"], nil)
 -- The scale slider was built with no height and no orientation, so it drew nothing: the
 -- setting sat on the panel invisible, with a gap where it should have been. The zones

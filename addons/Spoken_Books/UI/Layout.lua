@@ -16,7 +16,7 @@
 -- they are built and placed by Reflow, top to bottom. Placing them all in one pass is what lets
 -- a row be hidden (ShowWhen) and everything under it close up, rather than leaving a hole.
 
-local VERSION = 61
+local VERSION = 62
 
 -- LibStub's contract, for LibStub's reason: several addons load this file and the newest
 -- copy must win, whichever of them the client happens to load last.
@@ -308,6 +308,20 @@ function Layout:Columns(count)
     return self
 end
 
+-- An item onto the page: at the end, or, while Fill runs, where its Keep stands.
+local function AddItem(layout, item)
+    local keep = layout.filling
+    if keep then
+        for index, other in ipairs(layout.items) do
+            if other == keep then
+                table.insert(layout.items, index, item)
+                return
+            end
+        end
+    end
+    table.insert(layout.items, item)
+end
+
 -- A row, recorded: how tall it is, what it holds, and `place(top, x)`, which puts it there.
 -- `control` is the frame its layoutY is kept on. Rows on one line of columns share `line`.
 function Layout:AddRow(height, control, regions, place)
@@ -329,7 +343,7 @@ function Layout:AddRow(height, control, regions, place)
     if self.current then
         table.insert(self.current.rows, row)
     else
-        table.insert(self.items, row)
+        AddItem(self, row)
     end
     control.layoutRow = row
     self.dirty = true
@@ -474,6 +488,8 @@ function Layout:Reflow()
                 group.bottom = y
                 started = true
             end
+        elseif item.kind == "keep" then
+            -- Where Fill puts later sections; it takes no room itself.
         else
             if loose then
                 y = EndLoose(loose, y)
@@ -676,7 +692,7 @@ function Layout:Section(text, plain)
         if small then small:Hide() end
         if section.divider then section.divider:Hide() end
     end
-    table.insert(self.items, section)
+    AddItem(self, section)
     if self.group then table.insert(self.group.sections, section) end
     self.current = section
     self.empty = false
@@ -711,7 +727,7 @@ function Layout:Group(title)
     fs.layoutHeading, fs.layoutHeight = true, SECTION_HEIGHT
     fs:Hide()
     local group = { kind = "group", text = title, heading = fs, sections = {} }
-    table.insert(self.items, group)
+    AddItem(self, group)
     self.group, self.current = group, nil
     self.dirty = true
     return fs
@@ -721,10 +737,34 @@ end
 function Layout:EndGroup()
     self:Columns(nil)
     if self.group then
-        table.insert(self.items, { kind = "groupEnd", group = self.group })
+        AddItem(self, { kind = "groupEnd", group = self.group })
     end
     self.group, self.current = nil, nil
     self.dirty = true
+end
+
+--- A place on the page for sections added later, by another addon after the page was built:
+--- Fill puts them there, in the order they come, inside the group this stands in.
+function Layout:Keep()
+    self:Columns(nil)
+    local keep = { kind = "keep", group = self.group, x = self.x }
+    table.insert(self.items, keep)
+    self.current = nil
+    return keep
+end
+
+--- Run build(layout) with the sections and rows it adds going in at `keep`, then carry on where
+--- the page was. Hands back what build did; an error in it is raised again once the page is back.
+function Layout:Fill(keep, build)
+    local group, current, section, x, filling = self.group, self.current, self.section, self.x, self.filling
+    self:Columns(nil)
+    self.group, self.current, self.x, self.filling = keep.group, nil, keep.x, keep
+    local ok, result = pcall(build, self)
+    self:Columns(nil)
+    self.group, self.current, self.section, self.x, self.filling = group, current, section, x, filling
+    self.dirty = true
+    if not ok then error(result, 0) end
+    return result
 end
 
 -- A row's hover: the game's HoverBackground, white at a tenth, from 10 left of the row to 5 short

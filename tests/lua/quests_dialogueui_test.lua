@@ -677,17 +677,38 @@ local panel = stub.LoadQuestsPanel(QUESTS, VO)
 panel:Setup()
 local Page = env.DialogueUIOptions
 local layout = Page.layout
-Expect("Spoken built its DialogueUI page", layout ~= nil, true)
+Expect("Spoken's page keeps a place for them", layout == _G.SpokenOptionsPanel.layout and Page.keep ~= nil, true)
 local function Row(label)
     for _, entry in ipairs(layout.entries) do
         if entry.label == label then return entry.frame end
     end
 end
 local captions, scroll = Row(VO.L.OPT_DUI_CAPTIONS), Row(VO.L.OPT_DUI_AUTOSCROLL)
-Expect("the panel has nothing that changes DialogueUI's own settings", table.getn(layout.entries) > 0
+Expect("nothing there changes DialogueUI's own settings", table.getn(layout.entries) > 0
     and Row("Turn On Text To Speech") == nil, true)
-Expect("the panel has the DialogueUI options", captions ~= nil and Row(VO.L.OPT_DUI_SHOW_PLAYER) ~= nil
+Expect("the place has the DialogueUI options", captions ~= nil and Row(VO.L.OPT_DUI_SHOW_PLAYER) ~= nil
     and Row(VO.L.OPT_DUI_PLAY_BUTTON) ~= nil and scroll ~= nil, true)
+-- Among the narrator style's settings, last; the page's later sections (the languages, the
+-- sound) under them.
+-- The style as the page reads it: DialogueUI's art is not here to make the style available.
+local playerStyle, chosen = env.Addon.PlayerStyle, "dialogueui"
+env.Addon.PlayerStyle = function() return chosen end
+layout:Refresh()
+local narrator, language
+for _, item in ipairs(layout.items) do
+    if item.kind == "group" and item.text == env.L.OPT_NARRATOR_SETTINGS then narrator = item end
+    if item.kind == "section" and item.text == env.L.OPT_LANGUAGE_TITLE then language = item end
+end
+Expect("...among the narrator style's settings, last", captions:IsShown()
+    and narrator ~= nil and captions.layoutY < narrator.heading.layoutY
+    and language ~= nil and language.top < captions.layoutY, true)
+-- They change DialogueUI's quest window, which is there whatever the narrator style.
+for _, style in ipairs({ "subtitle", "minimal", "classic", "none" }) do
+    chosen = style
+    layout:Refresh()
+    Expect("...and with the " .. style .. " style too", captions:IsShown() and Row(VO.L.OPT_DUI_PLAY_BUTTON):IsShown(), true)
+end
+chosen = "dialogueui"
 layout:Refresh()
 Expect("...live while DialogueUI is loaded", captions and captions.layoutReason, nil)
 loaded = false
@@ -717,7 +738,7 @@ for _, entry in ipairs(panel.panel.layout.entries) do
 end
 dui.Captions, dui.PlayButton = false, false
 Page:Reset()
-Expect("the DialogueUI page's Defaults puts them back", dui.Captions and dui.PlayButton, true)
+Expect("Spoken's Start Over puts them back", dui.Captions and dui.PlayButton, true)
 Expect("diagnostics describe it", string.find(Bridge:Describe(), "words=true", 1, true) ~= nil, true)
 local readRow
 for _, entry in ipairs(panel.panel.layout.entries) do
@@ -728,6 +749,8 @@ panel.panel.layout:Refresh()
 Expect("the Quests page's Read Automatically stays live with DialogueUI's Auto Play on",
     readRow ~= nil and readRow.layoutReason, nil)
 _G.DialogueUI_DB = nil
+
+env.Addon.PlayerStyle = playerStyle
 
 if Failures() > 0 then
     print(string.format("\n%d DialogueUI test(s) failed", Failures()))

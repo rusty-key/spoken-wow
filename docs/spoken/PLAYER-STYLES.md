@@ -70,16 +70,14 @@ It follows the player's own settings on Spoken's page, as the other windows do:
   left corner where it was, and show the new value in a tooltip. The words and the queue pass
   a Ctrl wheel on to the panel (`frame.spokenWheel`) and scroll as before without it.
 
-What only this window has is on its own page, **Spoken > DialogueUI**, built only with
-DialogueUI installed (`addons/Spoken/UI/DialogueUIOptions.lua`). It is always the last entry
-under Spoken: it is registered a frame after `PLAYER_ENTERING_WORLD`, once every module's page
-is in (Spoken Books registers its own at that event). Spoken's page shows a **DialogueUI
-Settings** button while this style is chosen. The page holds the rows below, and a section
-from each module that registered one with `Spoken:AddDialogueUISettings(build)`: Spoken Quests
-puts its DialogueUI switches there (see
-[`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md)). Its Defaults button puts
-all of them back. The window's rows are greyed, saying where to choose the style, while
-another narrator style is chosen.
+What only this window has is on Spoken's page, among the other styles' settings, built only
+with DialogueUI installed (`addons/Spoken/UI/DialogueUIOptions.lua`) and shown while this style
+is chosen: the wheel note under Size and Position, the theme under Look and Fit to the Words
+under Words. Last among the narrator style's settings comes a section from each module that
+registered one with `Spoken:AddDialogueUISettings(build)`, shown under every style since it
+changes DialogueUI's own window: Spoken Quests puts its DialogueUI switches there (see
+[`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md)). Spoken's Start Over puts
+all of them back.
 
 - **Follow DialogueUI's Theme** (on): parchment or dark, whichever DialogueUI is set to,
   switching the moment DialogueUI does. Off, **Theme** picks one for good.
