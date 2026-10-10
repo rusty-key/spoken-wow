@@ -457,8 +457,11 @@ function PlayerFrame:ShowSample(shown)
         key = "sample", length = 0,
         source = { key = "sample", gates = {}, interClipGap = 0 },
         present = { header = L.SAMPLE_SPEAKER, label = L.SAMPLE_LINE,
+            -- Words for the captions to show, as the subtitle's sample has.
+            transcript = L.SUBTITLE_SAMPLE_TEXT,
             portrait = { kind = "texture", texture = [[Interface\AddOns\Spoken\icon.tga]] } },
     } or nil
+    Transcript:Sync()
     self:Update()
 end
 

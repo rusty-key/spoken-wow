@@ -691,14 +691,14 @@ GetQuestLogQuestText=function() error('client API unavailable') end
 local unavailable={event=V.Enums.SoundEvent.QuestAccept,questID=33,fileName='accept'}
 Check(pcall(V.Player.Prepare,V.Player,unavailable),'missing log APIs do not break playback')
 -- A zone's own story names the zone once: centred on the picture and the name, with no dot, and
--- "(paused)" straight after the name.
+-- "(paused)" after a dot of its own, as the waiting count has, the dot fading with it.
 do
     local zone={key='z',path='z',length=5,text='A zone.',present={header='Durotar',label='Durotar'}}
     S:Prepare(zone,'A zone.'); S.shownPaused=false; S:Layout('A zone.')
     local plain=S:RowWidth(false)
-    Check(not S.dot:IsShown() and S.label:GetText()=='' and plain==36+8+S.title:GetStringWidth()
+    Check(S.dot:GetAlpha()==0 and S.label:GetText()=='' and plain==36+8+S.title:GetStringWidth()
         and S.rowWant==-plain/2,"a zone's story names it once, centred, with no dot")
-    Check(select(2,S.pausedLabel:GetPoint(1))==S.title,'...and (paused) follows its name')
+    Check(select(2,S.pausedLabel:GetPoint(1))==S.dot,'...and (paused) follows a dot after its name, as the count does')
 end
 -- Report goes with the subtitle as it fades out after the last line, not ahead of it.
 do

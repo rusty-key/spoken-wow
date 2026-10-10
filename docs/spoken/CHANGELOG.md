@@ -20,6 +20,12 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   *([svengabr](https://github.com/svengabr))*
 - **Spoken Zones no longer raises a Lua error on chat messages the game keeps hidden from addons**,
   as in a dungeon group. *([svengabr](https://github.com/svengabr))*
+- **Captions fade at their edges as they glide.** The line leaving at the top fades out and the
+  line coming in at the bottom fades in, where they were cut off at the edge.
+  *([Nucabe](https://github.com/Nucabe))*
+- **With the DialogueUI narrator style, Spoken's small window takes DialogueUI's look.** When a
+  dialog closes on a line still playing, the window slides out of it, with Stop, Skip and Report in
+  its header and a place's picture over its words. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.2.0 — 2026-10-08
 

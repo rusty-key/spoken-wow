@@ -195,6 +195,12 @@ local function Widget(kind, name)
     function w:GetRight() return self.width end
     function w:SetAlpha(v) self.alpha = v end
     function w:GetAlpha() return self.alpha end
+    -- Drawn as one image, and parts that take no alpha from their parent: read back by the
+    -- DialogueUI window's tests.
+    function w:SetIsFrameBuffer(v) self.frameBuffer = v and true or false end
+    function w:IsFrameBuffer() return self.frameBuffer or false end
+    function w:SetIgnoreParentAlpha(v) self.ignoreParentAlpha = v and true or false end
+    function w:IsIgnoringParentAlpha() return self.ignoreParentAlpha or false end
     function w:SetID(v) self.id = v end
     function w:GetID() return self.id end
     function w:SetParent(p) self.parent = p end

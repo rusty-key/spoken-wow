@@ -387,9 +387,10 @@ local function Build(canvas)
         Only(layout:Button(L.OPT_DUI_OPEN_PAGE, 200, function() DialogueUIOptions:Open() end),
             function() return Style() == "dialogueui" end)
     end
+    -- DialogueUI's window always shows its face, in its header's socket.
     Only(layout:Checkbox(L.OPT_HIDE_PORTRAIT, L.OPT_HIDE_PORTRAIT_TIP,
         function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end, refresh),
-        InWindow)
+        function() return InWindow() and Style() ~= "dialogueui" end)
     -- The small window's metal and every round button's ring: offered whatever the style.
     if Version.IsCamelot then
         layout:Checkbox(L.OPT_BRONZE_TINT, L.OPT_BRONZE_TINT_TIP,

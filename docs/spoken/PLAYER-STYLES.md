@@ -20,25 +20,23 @@ missing, and the setting is kept, so the window comes back with DialogueUI.
 
 ## The window
 
-A tall parchment, or dark, panel in DialogueUI's proportions:
+A parchment, or dark, panel in DialogueUI's proportions, showing only the line playing:
 
 - the speaker's face in the socket of DialogueUI's header strip;
-- the line's title beside it in DialogueUI's title type, with the speaker's name small above;
-- the words filling the body, in DialogueUI's paragraph font, with an empty line between
-  paragraphs;
-- the waiting lines under them;
-- Stop (Replay once stopped) and Stop All along the foot with the line's own actions, the Report icon faint
-  at the row's end.
+- the line's title beside it in DialogueUI's title type, with the speaker's name small above,
+  and after the title "(Stopped)" while the line is stopped and the count of the lines waiting;
+- Stop (Replay once stopped), Skip and the line's own actions, Report among them, at the
+  header's right end;
+- a place's picture over the words, as Place Lore draws it;
+- Lines Shown of the words, in DialogueUI's paragraph font, with an empty line between
+  paragraphs, and the progress line under them.
 
-A scrollbar appears beside the words when the line runs past the page. It follows the
-caption **Auto-Scroll** mode, by line. Hover the face to stop or replay, as in the Small
-Window. The cross in the corner skips to the next line. Right-click opens the settings.
-It opens where DialogueUI puts its own window: the same top, centred on the same spot, on
-the side DialogueUI's Frame Orientation chooses, so a line that plays on after the dialog
-closes stays where the dialog was. It follows DialogueUI there until it is dragged, or sized
-from its corner. Drag anywhere to move it; it then keeps its own saved place, apart from the
-other windows'. Reset puts it back where DialogueUI's window is. Sizing it with Ctrl and the
-wheel is not a move: it keeps following DialogueUI, or keeps its top-left corner once dragged.
+There is no scrollbar: the words follow the caption **Auto-Scroll** mode, and the wheel
+scrolls them. Right-click opens the settings. When DialogueUI's window closes on a line that
+plays on, this one slides and shrinks out of it to the screen's top left, or to where it was
+dragged. Drag anywhere to move it; it then keeps its own saved place, apart from the other
+windows'. Reset puts it back at the top left. Sizing it with Ctrl and the wheel is not a
+move: it keeps its top-left corner.
 
 Nothing is source-specific. A zone's lore or a book page plays in it as a quest line does:
 the book for a face, the book's or the zone's name as the speaker, the page or the subzone as
@@ -57,18 +55,14 @@ It follows the player's own settings on Spoken's page, as the other windows do:
   (0.35 of the text size) and paragraph gap. At the default Window Size (70%) it is 65% of
   DialogueUI's window; the size scales from there.
 - **Text Size** sets the words against DialogueUI's: at the default 16 they are DialogueUI's
-  size, at 24 half as large again. The line spacing follows the text; the header, queue rows
-  and buttons stay with the panel.
-- **Lines Shown** and the expand state: the plus or minus button beside the close cross opens
-  the panel to its size or folds it to Lines Shown (1 or 2). It is the same expand state the
-  other windows' captions share (`CaptionsExpanded`), so it opens folded by default and
-  opening it opens theirs. Expanded, the handle in the bottom-right corner drags the panel
-  taller or shorter. Hold **Shift** as you start the drag to change its width too, from 60%
-  to twice DialogueUI's. The size is kept until **Reset Position**.
+  size, at 24 half as large again. The line spacing follows the text; the header and buttons
+  stay with the panel.
+- **Lines Shown**: the panel shows 1 or 2 lines of the words. It has no expand button and no
+  resize handle, and the other windows' expand state (`CaptionsExpanded`) does not change it.
 - **Mouse wheel**: Ctrl and the wheel over the panel step Window Size by 5%; Ctrl, Shift and
   the wheel step Text Size by 1. Both stay within those sliders' ranges, keep the panel's top
-  left corner where it was, and show the new value in a tooltip. The words and the queue pass
-  a Ctrl wheel on to the panel (`frame.spokenWheel`) and scroll as before without it.
+  left corner where it was, and show the new value in a tooltip. The words pass a Ctrl wheel
+  on to the panel (`frame.spokenWheel`) and scroll as before without it.
 
 What only this window has is on its own page, **Spoken > DialogueUI**, built only with
 DialogueUI installed (`addons/Spoken/UI/DialogueUIOptions.lua`). It is always the last entry
@@ -83,9 +77,8 @@ another narrator style is chosen.
 
 - **Follow DialogueUI's Theme** (on): parchment or dark, whichever DialogueUI is set to,
   switching the moment DialogueUI does. Off, **Theme** picks one for good.
-- **Fit to the Words** (on): the panel is only as tall as the line's words need, its size
-  (expanded) or Lines Shown (folded) being the most it grows to; a long line still fills it
-  and scrolls. Off, the panel always opens at its full size.
+- **Fit to the Words** (on): the panel is only as tall as the line's words need, Lines Shown
+  being the most it grows to; a long line scrolls. Off, it always shows Lines Shown.
 
 The highlight on the words being read is deep red on parchment and gold on dark, the same
 pair Spoken Quests lights DialogueUI's own text with.

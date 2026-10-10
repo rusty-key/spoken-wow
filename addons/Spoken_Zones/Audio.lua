@@ -538,6 +538,18 @@ local ACTIONS = {
 	}
 }
 
+--- How wide Place Lore draws a picture beside the map, in the screen's pixels: its text column
+--- (the panel less its margins and scroll bar, TextView's 400 at most), at the map's scale. A
+--- window showing the picture over a line's words draws it this large too.
+function SpokenZones:PicturePixels()
+	local panel = self.Get and tonumber(self:Get("panelWidth")) or 360
+	local width = math.min(400, panel - 66)
+	local map, scale = _G.WorldMapFrame, nil
+	if map and map.GetEffectiveScale then scale = map:GetEffectiveScale() end
+	if not (type(scale) == "number" and scale > 0) then scale = UIParent:GetEffectiveScale() end
+	return width * scale
+end
+
 -- A Spoken clip for a lore entry, or nil when the installed pack cannot narrate it.
 -- One factory so that every route to a clip -- a click, a slash command, a
 -- discovery -- produces the same shape.
@@ -552,6 +564,9 @@ function SpokenZones:NewLoreSound(mapID, areaKey)
 	end
 
 	local label = self:GetAudioLabel(mapID, areaKey)
+	-- The place's picture and its frayed edge, for a window that shows one over the words.
+	local picture, mask
+	if self.Picture then picture, mask = self:Picture(mapID, areaKey) end
 	local language = pack.language or "enUS"
 	local data = self.CaptionLore and self.CaptionLore[language]
 	local entries = data and (areaKey and data.subzones or data.zones)
@@ -574,6 +589,7 @@ function SpokenZones:NewLoreSound(mapID, areaKey)
 			transcript = entry and entry.full,
 			bullet = "zone",
 			portrait = self:Portrait(mapID),
+			picture = picture and { file = picture, mask = mask, pixels = self:PicturePixels() } or nil,
 			actions = ACTIONS,
 		},
 		-- Recorded when the clip starts rather than when it is queued, so that

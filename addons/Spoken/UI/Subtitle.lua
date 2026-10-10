@@ -30,16 +30,8 @@ local TEXTURES = [[Interface\AddOns\Spoken\Textures\]]
 local PAGE_OUT, PAGE_IN = .18, .28
 local PAUSED_FADE = .25
 local PICTURE, PICTURE_GAP, LABEL_GAP = 36, 8, 6
--- The progress line follows Spoken Subtitles' layout and spark, framed as the game frames a status
--- bar (UIWidgetTemplateStatusBar). Without that art, Spoken Subtitles' own hairline.
-local PROGRESS_SHARE, PROGRESS_HEIGHT = 0.45, 7
-local PROGRESS_LINE = [[Interface\AddOns\Spoken\Textures\SubtitleLine]]
-local SPARK = [[Interface\CastingBar\UI-CastingBar-Spark]]
--- Called through the global environment: the client looks up Vector2DMixin in the caller's
--- environment, and from SpokenEnv it fails with "unable to find mixin or metatable".
-local AtlasInfo = setfenv(function(name)
-    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) or nil
-end, _G)
+-- The progress line (Actions.ProgressBar) spans this share of the band.
+local PROGRESS_SHARE = 0.45
 local SIZE_EASE = 10
 -- The controls shown on hover: the windows' round pause button, skip, and Report.
 local CONTROL_SIZE, CONTROL_GAP = 24, 4
@@ -338,74 +330,11 @@ end
 
 --- `self.track` is the frame the fill runs along; `self.fillRoom`, how far in from each end it runs.
 function Subtitle:BuildProgress()
-    local frame = self.frame
-    local track = CreateFrame("Frame", nil, frame)
-    local fill = track:CreateTexture(nil, "ARTWORK")
-    local left, right, middle = AtlasInfo("widgetstatusbar-borderleft"), AtlasInfo("widgetstatusbar-borderright"),
-        AtlasInfo("widgetstatusbar-bordercenter")
-    local yellow = AtlasInfo("widgetstatusbar-fill-yellow")
-    self.fillRoom = 0
-    local framed = left and right and middle and yellow and fill.SetAtlas
-        and tonumber(middle.height) and tonumber(left.width) and tonumber(right.width) and true or false
-    if framed then
-        local ok, err = pcall(self.FrameProgress, self, track, fill, left, right, middle, yellow)
-        if not ok then
-            framed = false
-            if geterrorhandler then geterrorhandler()(err) end
-        end
-    end
-    if not framed then
-        self.fillRoom = 0
-        local back = track:CreateTexture(nil, "BACKGROUND")
-        back:SetAllPoints()
-        if back.SetColorTexture then back:SetColorTexture(0, 0, 0, 0.5) end
-        track:SetHeight(1.5)
-        fill:SetTexture(PROGRESS_LINE)
-        fill:SetHeight(1.5)
-        self.progressHeight = 2
-    end
-    fill:SetPoint("LEFT", track, "LEFT", self.fillRoom, 0)
+    local bar = Actions.ProgressBar(self.frame)
     -- Hung from the background's foot, so the bar follows it as it eases.
-    track:SetPoint("BOTTOM", self.shadow, "BOTTOM", 0, BOTTOM_PAD)
-    local spark = track:CreateTexture(nil, "OVERLAY", nil, 1)
-    spark:SetTexture(SPARK)
-    if spark.SetBlendMode then spark:SetBlendMode("ADD") end
-    -- Taller than the bar, so its glow reaches past the frame.
-    spark:SetSize(12, framed and self.progressHeight + 9 or 14)
-    spark:SetPoint("CENTER", fill, "RIGHT")
-    self.track, self.fill, self.spark = track, fill, spark
-end
-
-function Subtitle:FrameProgress(track, fill, left, right, middle, yellow)
-    do
-        -- As the cards' meter lays the art out: the fill 8 inside the border's ends and 2 short of
-        -- the background's, the border's own 31 rows scaled to PROGRESS_HEIGHT.
-        local k = PROGRESS_HEIGHT / (middle.height > 0 and middle.height or 31)
-        track:SetHeight(PROGRESS_HEIGHT)
-        local function Piece(atlas, layer, width)
-            local texture = track:CreateTexture(nil, layer)
-            texture:SetAtlas(atlas)
-            texture:SetHeight(PROGRESS_HEIGHT)
-            if width then texture:SetWidth(width * k) end
-            return texture
-        end
-        local l = Piece("widgetstatusbar-borderleft", "OVERLAY", left.width)
-        local r = Piece("widgetstatusbar-borderright", "OVERLAY", right.width)
-        local m = Piece("widgetstatusbar-bordercenter", "OVERLAY")
-        l:SetPoint("LEFT", track, "LEFT", 0, 0)
-        r:SetPoint("RIGHT", track, "RIGHT", 0, 0)
-        m:SetPoint("LEFT", l, "RIGHT", 0, 0)
-        m:SetPoint("RIGHT", r, "LEFT", 0, 0)
-        self.fillRoom = 8 * k
-        local back = track:CreateTexture(nil, "BACKGROUND")
-        if AtlasInfo("widgetstatusbar-bgcenter") then back:SetAtlas("widgetstatusbar-bgcenter")
-        elseif back.SetColorTexture then back:SetColorTexture(0, 0, 0, 0.6) end
-        back:SetPoint("TOPLEFT", track, "TOPLEFT", self.fillRoom - 2 * k, -2 * k)
-        back:SetPoint("BOTTOMRIGHT", track, "BOTTOMRIGHT", -(self.fillRoom - 2 * k), 2 * k)
-        fill:SetAtlas("widgetstatusbar-fill-yellow")
-        fill:SetHeight(math.min(tonumber(yellow.height) or 15, middle.height - 4) * k)
-        self.progressHeight = PROGRESS_HEIGHT
-    end
+    bar.track:SetPoint("BOTTOM", self.shadow, "BOTTOM", 0, BOTTOM_PAD)
+    self.track, self.fill, self.spark = bar.track, bar.fill, bar.spark
+    self.fillRoom, self.progressHeight = bar.room, bar.height
 end
 
 function Subtitle:BuildPicture()
@@ -468,7 +397,9 @@ function Subtitle:RowWidth(paused)
         self.label:SetWidth(math.max(1, label))
         return start + lead + (paused and (self.pausedLabel:GetStringWidth() or 0) or label) + more
     end
-    return start + (paused and LABEL_GAP + (self.pausedLabel:GetStringWidth() or 0) or 0) + more
+    -- With no label, Stopped follows a dot of its own, as the count does.
+    local dot = LABEL_GAP + (self.dot:GetStringWidth() or 0) + LABEL_GAP
+    return start + (paused and dot + (self.pausedLabel:GetStringWidth() or 0) or 0) + more
 end
 
 function Subtitle:PlaceRow(left)
@@ -483,7 +414,7 @@ function Subtitle:PlaceRow(left)
     self.label:ClearAllPoints()
     self.label:SetPoint("LEFT", self.dot, "RIGHT", LABEL_GAP, 0)
     self.pausedLabel:ClearAllPoints()
-    self.pausedLabel:SetPoint("LEFT", self.labelText and self.dot or self.title, "RIGHT", LABEL_GAP, 0)
+    self.pausedLabel:SetPoint("LEFT", self.dot, "RIGHT", LABEL_GAP, 0)
     local last = self.shownPaused and self.pausedLabel or (self.labelText and self.label or self.title)
     local shown = (self.waiting or 0) > 0
     self.moreDot:SetShown(shown)
@@ -649,7 +580,8 @@ function Subtitle:Prepare(clip, text)
     self:SetWaiting(self:Waiting())
     self.title:SetText(title)
     self.label:SetText(label or "")
-    self.dot:SetShown(label ~= nil)
+    -- With no label the dot is Stopped's, fading with it.
+    self.dot:SetAlpha(label and 1 or self.pausedAlpha or 0)
     self:ConfigurePicture(clip)
     -- A clip with no usable length still pages and types, at LoreTeller's reading pace.
     local duration = tonumber(clip.length)
@@ -856,27 +788,9 @@ function Subtitle:BuildControls()
     self.pause = pause
     self:UpdatePause()
 
-    -- Skip, as the windows' queue offers: the play glyph against a bar, the usual "next" mark.
-    local skip = RoundButton(controls, 10)
+    -- Skip, as the windows' queue offers it (Actions.SkipButton).
+    local skip = Actions.SkipButton(controls)
     skip:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
-    skip.glyph:SetTexture(TEXTURES .. "PortraitFrameAtlas")
-    skip.glyph:SetTexCoord(0, 93 / PORTRAIT_ATLAS_SIZE, 419 / PORTRAIT_ATLAS_SIZE, 1)
-    skip.glyph:ClearAllPoints()
-    skip.glyph:SetPoint("CENTER", -2, 0)
-    skip.bar = skip:CreateTexture(nil, "ARTWORK")
-    skip.bar:SetSize(2, 9)
-    skip.bar:SetPoint("LEFT", skip.glyph, "RIGHT", 0, 0)
-    if skip.bar.SetColorTexture then skip.bar:SetColorTexture(1, 0.82, 0, 0.85) end
-    skip:SetScript("OnClick", function()
-        SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
-        SoundQueue:Skip()
-    end)
-    skip:SetScript("OnEnter", function()
-        skip.glyph:SetAlpha(1)
-        GameTooltip:SetOwner(skip, "ANCHOR_TOP")
-        GameTooltip:SetText(L.BIND_SKIP)
-        GameTooltip:Show()
-    end)
     self.skip = skip
 
     -- Report, in the same ring, with the action's own bug icon: what the windows show in their
@@ -1032,6 +946,7 @@ function Subtitle:Animate(elapsed)
             or math.max(0, self.pausedAlpha - step)
         self.pausedLabel:SetAlpha(self.pausedAlpha)
         self.label:SetAlpha(1 - self.pausedAlpha)
+        if not self.labelText then self.dot:SetAlpha(self.pausedAlpha) end
     end
     if self.rowWant and self.rowLeft and self.rowLeft ~= self.rowWant then
         local k = math.min(1, elapsed * SIZE_EASE)

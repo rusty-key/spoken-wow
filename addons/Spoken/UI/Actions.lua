@@ -14,6 +14,8 @@ setfenv(1, SpokenEnv)
 -- it now stands beside.
 Actions = {}
 
+local function Clamp01(n) return math.max(0, math.min(1, tonumber(n) or 0)) end
+
 local ACTION_WIDTH = 70
 local ACTION_HEIGHT = 18
 -- Big enough to aim at and to read as a bug rather than a smudge.
@@ -163,6 +165,119 @@ end
 function Actions.SetPlayGlyph(button, state)
     Actions.Glyph(button.glyph, state)
     button.state, button.playing = state, state == "stop"
+end
+
+--- Skip, as the windows' queue offers it: the round button with the play glyph against a bar,
+--- the usual "next" mark. The subtitle's controls and the DialogueUI window's header show it.
+function Actions.SkipButton(parent)
+    local skip = Actions.RoundButton(parent, 10)
+    skip.glyph:SetTexture(PORTRAIT_ATLAS)
+    skip.glyph:SetTexCoord(0, 93 / PORTRAIT_ATLAS_SIZE, 419 / PORTRAIT_ATLAS_SIZE, 1)
+    skip.glyph:ClearAllPoints()
+    skip.glyph:SetPoint("CENTER", -2, 0)
+    skip.bar = skip:CreateTexture(nil, "ARTWORK")
+    skip.bar:SetSize(2, 9)
+    skip.bar:SetPoint("LEFT", skip.glyph, "RIGHT", 0, 0)
+    if skip.bar.SetColorTexture then skip.bar:SetColorTexture(1, 0.82, 0, 0.85) end
+    skip:SetScript("OnClick", function()
+        SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
+        SoundQueue:Skip()
+    end)
+    skip:SetScript("OnEnter", function()
+        skip.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(skip, "ANCHOR_TOP")
+        GameTooltip:SetText(L.BIND_SKIP)
+        GameTooltip:Show()
+    end)
+    return skip
+end
+
+-- The progress line the subtitle and the DialogueUI window draw: Spoken Subtitles' layout and
+-- spark, framed as the game frames a status bar (UIWidgetTemplateStatusBar). Without that art,
+-- Spoken Subtitles' own hairline.
+local PROGRESS_HEIGHT = 7
+local PROGRESS_LINE = [[Interface\AddOns\Spoken\Textures\SubtitleLine]]
+local SPARK = [[Interface\CastingBar\UI-CastingBar-Spark]]
+-- Called through the global environment: the client looks up Vector2DMixin in the caller's
+-- environment, and from SpokenEnv it fails with "unable to find mixin or metatable".
+local AtlasInfo = setfenv(function(name)
+    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) or nil
+end, _G)
+
+local function FrameProgress(bar, left, right, middle, yellow)
+    local track, fill = bar.track, bar.fill
+    -- As the cards' meter lays the art out: the fill 8 inside the border's ends and 2 short of
+    -- the background's, the border's own 31 rows scaled to PROGRESS_HEIGHT.
+    local k = PROGRESS_HEIGHT / (middle.height > 0 and middle.height or 31)
+    track:SetHeight(PROGRESS_HEIGHT)
+    local function Piece(atlas, layer, width)
+        local texture = track:CreateTexture(nil, layer)
+        texture:SetAtlas(atlas)
+        texture:SetHeight(PROGRESS_HEIGHT)
+        if width then texture:SetWidth(width * k) end
+        return texture
+    end
+    local l = Piece("widgetstatusbar-borderleft", "OVERLAY", left.width)
+    local r = Piece("widgetstatusbar-borderright", "OVERLAY", right.width)
+    local m = Piece("widgetstatusbar-bordercenter", "OVERLAY")
+    l:SetPoint("LEFT", track, "LEFT", 0, 0)
+    r:SetPoint("RIGHT", track, "RIGHT", 0, 0)
+    m:SetPoint("LEFT", l, "RIGHT", 0, 0)
+    m:SetPoint("RIGHT", r, "LEFT", 0, 0)
+    bar.room = 8 * k
+    local back = track:CreateTexture(nil, "BACKGROUND")
+    if AtlasInfo("widgetstatusbar-bgcenter") then back:SetAtlas("widgetstatusbar-bgcenter")
+    elseif back.SetColorTexture then back:SetColorTexture(0, 0, 0, 0.6) end
+    back:SetPoint("TOPLEFT", track, "TOPLEFT", bar.room - 2 * k, -2 * k)
+    back:SetPoint("BOTTOMRIGHT", track, "BOTTOMRIGHT", -(bar.room - 2 * k), 2 * k)
+    fill:SetAtlas("widgetstatusbar-fill-yellow")
+    fill:SetHeight(math.min(tonumber(yellow.height) or 15, middle.height - 4) * k)
+    bar.height = PROGRESS_HEIGHT
+end
+
+--- A progress line on `parent`: `track`, the frame to size and place; `fill`, running along it
+--- `room` in from each end; `spark` at the fill's end; `height`, how tall it is drawn. Art that
+--- fails to build leaves the hairline, and its error goes to the error handler.
+function Actions.ProgressBar(parent)
+    local track = CreateFrame("Frame", nil, parent)
+    local bar = { track = track, fill = track:CreateTexture(nil, "ARTWORK"), room = 0 }
+    local left, right, middle = AtlasInfo("widgetstatusbar-borderleft"), AtlasInfo("widgetstatusbar-borderright"),
+        AtlasInfo("widgetstatusbar-bordercenter")
+    local yellow = AtlasInfo("widgetstatusbar-fill-yellow")
+    local framed = left and right and middle and yellow and bar.fill.SetAtlas
+        and tonumber(middle.height) and tonumber(left.width) and tonumber(right.width) and true or false
+    if framed then
+        local ok, err = pcall(FrameProgress, bar, left, right, middle, yellow)
+        if not ok then
+            framed = false
+            if geterrorhandler then geterrorhandler()(err) end
+        end
+    end
+    if not framed then
+        bar.room = 0
+        local back = track:CreateTexture(nil, "BACKGROUND")
+        back:SetAllPoints()
+        if back.SetColorTexture then back:SetColorTexture(0, 0, 0, 0.5) end
+        track:SetHeight(1.5)
+        bar.fill:SetTexture(PROGRESS_LINE)
+        bar.fill:SetHeight(1.5)
+        bar.height = 2
+    end
+    bar.fill:SetPoint("LEFT", track, "LEFT", bar.room, 0)
+    local spark = track:CreateTexture(nil, "OVERLAY", nil, 1)
+    spark:SetTexture(SPARK)
+    if spark.SetBlendMode then spark:SetBlendMode("ADD") end
+    -- Taller than the bar, so its glow reaches past the frame.
+    spark:SetSize(12, framed and bar.height + 9 or 14)
+    spark:SetPoint("CENTER", bar.fill, "RIGHT")
+    bar.spark = spark
+    return bar
+end
+
+--- Fills `share` (0 to 1) of a ProgressBar.
+function Actions.SetProgress(bar, share)
+    local room = math.max(0, (bar.track:GetWidth() or 0) - 2 * bar.room)
+    bar.fill:SetWidth(math.max(0.01, room * Clamp01(share)))
 end
 
 local PORTRAIT_MASK = [[Interface\CharacterFrame\TempPortraitAlphaMask]]

@@ -64,6 +64,14 @@ local sub = Z:NewLoreSound(1411, "valley of trials")
 Expect("a subzone clip keeps the frozen line id", sub.key, "s:1411:valley of trials")
 Expect("...header is the zone, label the subzone", sub.present.header .. " / " .. sub.present.label, "Durotar / Valley of Trials")
 Expect("no pack entry, no clip", Z:NewLoreSound(1426, nil), nil)
+Expect("a place with no picture sends none", zone.present.picture, nil)
+Z.Picture = function(_, mapID, key) if mapID == 1411 and not key then return "Pictures/1411", "Pictures/Mask3" end end
+local pictured = Z:NewLoreSound(1411, nil)
+Expect("...one with a picture sends it and its frayed edge, for a window to show",
+    pictured.present.picture and (pictured.present.picture.file .. " " .. pictured.present.picture.mask), "Pictures/1411 Pictures/Mask3")
+Expect("...and how large Place Lore draws it beside the map, its panel less its margins",
+    pictured.present.picture.pixels, (Z:Get("panelWidth") - 66) * UIParent:GetEffectiveScale())
+Z.Picture = nil
 
 ---------------------------------------------------------------- playing through the player
 env, Z = Boot(); Spoken = _G.Spoken
