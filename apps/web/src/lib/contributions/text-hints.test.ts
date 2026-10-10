@@ -23,6 +23,8 @@ describe("textHints", () => {
     expect(textHints("Ein $gHeld:Heldin, sagt man. Ein $gHeld:Heldin, wirklich.", "deDE")).toEqual([
       "unspoken token $gHeld:Heldin, — won't be voiced",
     ]);
+    expect(textHints("Bringt mir 5 <Federn.", "deDE")).toEqual(["unspeakable < or > — won't be voiced"]);
+    expect(textHints("<Er nickt.> Gut, $N.", "deDE")).toEqual([]);
   });
 
   it("flags the gap a gender branch resolved to nothing leaves", () => {
@@ -47,5 +49,8 @@ describe("textHints", () => {
     expect(textHints("Hmm. . .it says here. . . for the", "enUS")).toEqual([]);
     // Blizzard's own spacing after a sentence's end.
     expect(textHints("You've been busy!  I can't wait.  Go.", "enUS")).toEqual([]);
+    // q:299:complete and q:12:accept.
+    expect(textHints('"Chained Beneath the Land."  This is the', "enUS")).toEqual([]);
+    expect(textHints("but one goal:  To defend", "enUS")).toEqual([]);
   });
 });

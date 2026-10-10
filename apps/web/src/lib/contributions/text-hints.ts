@@ -20,17 +20,23 @@ const LEFTOVER = /\$\S{0,30}/g;
 const SPACED_ELLIPSIS = /\.(?:[ \u00a0]?\.){2,}/g;
 // Not "!", "?" or ":": French spaces before those.
 const GAP = /[ \u00a0][.,]/;
-// Not after a sentence's end: Blizzard's own text double-spaces there, in a third of the
-// English lines. The no-break space is what Wowhead leaves in an empty branch.
-const DOUBLE_SPACE = /[^\s.!?…][ \u00a0]{2,}\S/;
+// Not after a sentence's end, its closing quote or a colon: Blizzard's own text double-spaces
+// there, in a third of the English lines. The no-break space is what Wowhead leaves in an
+// empty branch.
+const DOUBLE_SPACE = /(?<=[^\s.!?…:])(?<![.!?…]["'“”»])[ \u00a0]{2,}\S/;
 
 export function textHints(text: string, locale: string): string[] {
   const lang = clientLang(locale) ?? BASE_LANG;
-  // Spoken as the accepted line will be: English through the extract's table, which also
-  // turns $B into a line break, any other language through its own words.
-  const spoken = lang === BASE_LANG ? spokenFromTemplate(text) : speakPlayerTokens(text, lang);
-  const leftovers = hasInvalidChars(spoken) ? (spoken.match(LEFTOVER) ?? []) : [];
-  const hints = new Set(leftovers.map((token) => `unspoken token ${token} — won't be voiced`));
+  // Spoken as the gate will speak the accepted line: English is stored through the extract's
+  // table, which also turns $B into a line break.
+  const spoken = speakPlayerTokens(lang === BASE_LANG ? spokenFromTemplate(text) : text, lang);
+  const hints = new Set<string>();
+  if (hasInvalidChars(spoken)) {
+    const leftovers = spoken.match(LEFTOVER) ?? [];
+    for (const token of leftovers) hints.add(`unspoken token ${token} — won't be voiced`);
+    // An unbalanced bracket refuses the line as surely as a token does.
+    if (!leftovers.length) hints.add("unspeakable < or > — won't be voiced");
+  }
   if (GAP.test(text.replace(SPACED_ELLIPSIS, "…"))) hints.add("gap before punctuation — a gender branch may be missing");
   if (DOUBLE_SPACE.test(text)) hints.add("double space — a gender branch may be missing");
   return [...hints];
