@@ -2,7 +2,8 @@
  * The values the filter dropdowns can offer.
  *
  * The roster in lib/voices/voices.ts, so a voice added there is filterable before any line
- * uses it, and the filters, /voices and the triage selects always offer the same set.
+ * uses it, and the filters, /voices and the triage selects always offer the same set. Zones
+ * come from the committed zone-regions seed, so a zone with no line yet is still offered.
  *
  * Being closed sets also makes them a whitelist, which is what lets /api/search take these
  * straight from a query string.
