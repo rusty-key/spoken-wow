@@ -82,6 +82,7 @@ export type ActivityDetail = {
     flavor?: string | null;
     doubtful?: boolean;
   };
+  "type.changed": { action: string; gender?: string | null; flavor?: string | null; voice?: string | null };
 
   // Admin.
   "grant.added": { capability: Capability };
