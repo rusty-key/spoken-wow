@@ -37,7 +37,6 @@ export const INVALID_CHARS = "$<>";
  */
 const DIRECTION = /<[^<>]*>/g;
 
-/** What the gate judges: the text without its voiced directions. */
 export function withoutDirections(text: string): string {
   return text.replace(DIRECTION, "");
 }
