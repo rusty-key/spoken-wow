@@ -139,7 +139,9 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
           className="h-8 max-w-xs text-sm"
         />
         <FilterChip label="voice" value={voiced} options={VOICED_OPTIONS} onChange={setVoiced} />
-        <AddType busy={busy} refusal={refusal} send={send} />
+      </div>
+      <div>
+        <AddType at="add-top" busy={busy} refusal={refusal} send={send} />
       </div>
       <table className="w-fit border-collapse">
         <thead className="text-muted-foreground text-left text-xs">
@@ -164,11 +166,15 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
         ))}
       </table>
       {shown.length === 0 ? <p className="text-muted-foreground text-xs">Nothing matches.</p> : null}
+      {/* Again below a table long enough to scroll the first one away. */}
+      <div>
+        <AddType at="add-bottom" busy={busy} refusal={refusal} send={send} />
+      </div>
     </div>
   );
 }
 
-function AddType({ busy, refusal, send }: { busy: boolean; refusal: Refusal; send: Send }) {
+function AddType({ at, busy, refusal, send }: { at: string; busy: boolean; refusal: Refusal; send: Send }) {
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState("");
   const [genders, setGenders] = useState<Gender[]>([]);
@@ -185,7 +191,7 @@ function AddType({ busy, refusal, send }: { busy: boolean; refusal: Refusal; sen
           className="flex flex-col gap-2"
           onSubmit={async (event) => {
             event.preventDefault();
-            if (await send("add", { action: "add-type", key: key.trim(), genders })) {
+            if (await send(at, { action: "add-type", key: key.trim(), genders })) {
               setKey("");
               setGenders([]);
               setOpen(false);
@@ -219,7 +225,7 @@ function AddType({ busy, refusal, send }: { busy: boolean; refusal: Refusal; sen
           </div>
           <p className="text-muted-foreground text-xs">No gender ticked: a type without one, like a treant.</p>
         </form>
-        {refusal("add")}
+        {refusal(at)}
       </PopoverContent>
     </Popover>
   );
@@ -406,7 +412,8 @@ function TrashButton({
 }) {
   return (
     <LiteButton
-      className={`text-destructive hover:text-destructive size-7 justify-center p-0 ${reveal}`}
+      variant="ghost"
+      className={`text-destructive hover:text-destructive size-6 justify-center p-0 ${reveal}`}
       disabled={busy}
       title={title}
       aria-label={title}
