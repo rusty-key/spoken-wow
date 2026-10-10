@@ -411,6 +411,7 @@ function PlayerFrame:CreateRow(i)
         self.textWidget:ClearAllPoints()
         self.textWidget:SetPoint("LEFT", 16 + 5, 0)
         self.textWidget:SetText(text)
+        Addon:ClipFont(self.textWidget, clip)
         self:SetWidth(math.min(WidthOf(self:GetParent()), 16 + 5 + self.textWidget:GetWidth() + 1))
         self.textWidget:SetPoint("RIGHT")
 
@@ -500,6 +501,7 @@ function PlayerFrame:Update()
     for i, clip in ipairs(SoundQueue:IsEmpty() and { head } or SoundQueue.sounds) do
         if i == 1 then
             self.frame.container.name:SetText(clip.present and clip.present.header or "")
+            Addon:ClipFont(self.frame.container.name, clip)
         end
         lastRow = lastRow + 1
         local row = self.frame.container.buttons[lastRow] or self:CreateRow(lastRow)

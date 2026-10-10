@@ -290,6 +290,23 @@ Expect("a waiting line gets a row", Skin.rows[1] and Skin.rows[1]:IsShown(), tru
 Expect("...reading its label", Skin.rows[1].text:GetText(), "Second")
 Spoken:StopAll()
 
+-- A clip that names its own face (present.font) keeps it while the window is resized, which
+-- repaints every string in the theme's face.
+local function Faced(text) -- keeps the face it is given, as the client's font strings do
+    local face = "Fonts\\FRIZQT__.TTF"
+    function text:SetFont(f) face = f; return true end
+    function text:GetFont() return face, 12 end
+end
+local NOTO = [[Interface\AddOns\Pack\NotoSerif.ttf]]
+Faced(Skin.name); Faced(Skin.title.text); Faced(Skin.rows[1].text)
+quests:Enqueue(H.Clip({ present = { header = "Příliš", label = "Žluťoučký", font = NOTO, portrait = { kind = "none" } } }))
+quests:Enqueue(H.Clip({ present = { header = "Kůň", label = "Úpěl", font = NOTO, portrait = { kind = "none" } } }))
+local function Faces() return Skin.name:GetFont() .. "|" .. Skin.title.text:GetFont() .. "|" .. Skin.rows[1].text:GetFont() end
+Expect("a clip naming its own face is drawn in it", Faces(), NOTO .. "|" .. NOTO .. "|" .. NOTO)
+Skin.sizing = true; Skin:Layout(); Skin.sizing = false
+Expect("...and keeps it while the window is resized", Faces(), NOTO .. "|" .. NOTO .. "|" .. NOTO)
+Spoken:StopAll()
+
 -- A book page and a zone's lore, queued as Spoken_Books and Spoken_Zones queue them.
 local books = env.Sources:Register("books", { title = "Books", addon = "Spoken_Books", order = 3 })
 books:Enqueue({ key = "b:1", path = "b1.mp3", length = 6, present = { header = "A Letter Home", transcript = "Dear mother, the war goes well.",

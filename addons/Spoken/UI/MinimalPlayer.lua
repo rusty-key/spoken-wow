@@ -482,6 +482,7 @@ function MinimalPlayer:UpdateControls()
     self.bar:SetStatusBarColor(paused and .48 or .86, paused and .44 or .67, paused and .32 or .14)
     local held = not paused and not playing and SoundQueue:GetHeldReason(self.clip)
     self.title.text:SetText(held and format("%s |cffaaaa88(%s)|r", Label(self.clip), held) or Label(self.clip))
+    Addon:ClipFont(self.title.text, self.clip)
     self.menuPlay.text:SetText(paused and L.REPLAY or L.STOP)
     self.menuQueue.text:SetText(format("%s (%d)", L.QUEUE_TITLE, Waiting()))
     for _, button in ipairs({ self.menuPlay, self.menuSkip, self.menuStop }) do
@@ -540,6 +541,7 @@ function MinimalPlayer:LayoutQueue()
             button = button or self:CreateQueueRow(index)
             button.clip = SoundQueue.sounds[index + self.offset + 1]
             button.text:SetText(HeldLabel(button.clip))
+            Addon:ClipFont(button.text, button.clip)
             ShowRemove(button, false)
             button:Show()
         elseif button then button:Hide(); button.clip = nil end
@@ -660,6 +662,7 @@ function MinimalPlayer:Update()
     end
     self:SetVisible(true)
     self.name:SetText(clip.present and clip.present.header or "")
+    Addon:ClipFont(self.name, clip)
     self:ConfigurePortrait()
     self:ConfigureActions()
     self:LayoutQueue()

@@ -550,6 +550,7 @@ function Subtitle:Layout(text)
         widest = math.max(widest, width)
         self.rows[index] = { text = wrapped, count = Characters(wrapped) }
         local line = self:Line(index)
+        Addon:ClipFont(line, self.clip)
         line:SetWidth(width + 2)
         line:ClearAllPoints()
         line:SetPoint("TOP", self.frame, "TOP", 0,
@@ -647,6 +648,8 @@ function Subtitle:Prepare(clip, text)
     -- the count already in, rather than sliding as if lines had just been added.
     self.rowLeft, self.share = nil, 0
     self:SetWaiting(self:Waiting())
+    -- The measure too: pages are cut by the width of the text in the face it is drawn in.
+    for _, text in ipairs({ self.title, self.label, self.measure }) do Addon:ClipFont(text, clip) end
     self.title:SetText(title)
     self.label:SetText(label or "")
     self.dot:SetShown(label ~= nil)
