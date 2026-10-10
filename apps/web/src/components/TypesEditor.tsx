@@ -61,7 +61,7 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
       const { choice, body } = pending;
       return (
         <span className="flex flex-wrap items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-          {choice.voice} reads {choice.npcs} NPCs and {choice.lines} lines.
+          {choice.voice} reads {plural(choice.npcs, "NPC")} and {plural(choice.lines, "line")}.
           <LiteButton
             className="h-6 px-1.5 text-xs"
             disabled={busy}
@@ -223,8 +223,13 @@ function TypeRow({
         <div className="flex flex-col gap-2">
           {groups.map((gender) => {
             const group = gender ?? "";
+            const flavors = roster.flavorsOf(race.key, gender);
             return (
               <div key={group} className="flex flex-col gap-1">
+                {/* Read by its flavors or by one bare voice, never both: no bare row beside flavors. */}
+                {flavors.length ? (
+                  <span className="text-muted-foreground w-28 text-xs">{gender ?? "any"}</span>
+                ) : (
                 <VoiceRow
                   combination={{ race: race.key, gender, flavor: null }}
                   roster={roster}
@@ -234,7 +239,8 @@ function TypeRow({
                     void send(at(`voice:${group}:`), { action: "assign-voice", race: race.key, gender, flavor: null, voice })
                   }
                 />
-                {roster.flavorsOf(race.key, gender).map((f) => (
+                )}
+                {flavors.map((f) => (
                   <VoiceRow
                     key={f}
                     combination={{ race: race.key, gender, flavor: f }}
@@ -328,4 +334,8 @@ function VoiceRow({
       {refusal}
     </div>
   );
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

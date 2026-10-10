@@ -22,7 +22,7 @@ export class TypesError extends Error {}
  */
 export class NeedsChoice extends Error {
   constructor(readonly choice: { voice: string; into: string; npcs: number; lines: number }) {
-    super(`${choice.voice} reads ${choice.npcs} NPCs and ${choice.lines} lines: map it to ${choice.into}, or throw it away`);
+    super(`${choice.voice} is in use: map it to ${choice.into}, or throw it away`);
   }
 }
 
