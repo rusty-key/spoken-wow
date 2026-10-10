@@ -89,7 +89,8 @@ An NPC with no humanoid display - Shael'dryn, the OOX robots, Kum'isha - has no 
 pick a voice by, so it is voiced by the model it is drawn with: `model-{ModelID}`, shared by
 every NPC on that model. Its quest, gossip and follow-up lines are in the corpus, marked
 `no-voice` until a voice is chosen for the model. Its quest and gossip rows come after the
-follow-up rows, so every row before them keeps its place (`ord`). A patch variant of the same NPC with a humanoid display wins.
+follow-up rows, so every row before them keeps its place (`ord`). A patch variant of the same
+NPC with a humanoid display wins.
 
 The whole set is listed on `/voices`, which is also the easiest way to build it — see
 "Managing voices". The clips to build them from sit in
