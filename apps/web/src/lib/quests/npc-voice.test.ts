@@ -113,11 +113,18 @@ describe("a quest moment's voice", WHOLE_CORPUS, () => {
     ]);
   });
 
-  it("keeps the speaker's own voice when nothing is known about its NPC", async () => {
+  it("cannot be voiced while its NPC has no type, whatever its speaker row says", async () => {
     await line([{ npcId: npcIds[0], race: "orc", gender: "female", flavor: "standard" }]);
     await npc(npcIds[0], { race: null, gender: null, flavor: null, provenance: "none" });
 
-    expect(await spoken()).toEqual([`${lineId} ${questId}-accept orc-female-standard`]);
+    expect(await spoken()).toEqual([`${lineId} ${questId}-accept orc-female-standard (no-voice)`]);
+  });
+
+  it("keeps the narrator's file for an NPC of a generic type the narrator reads", async () => {
+    await line([{ npcId: npcIds[0], race: "narrator", gender: "male", flavor: null }]);
+    await npc(npcIds[0], { race: "creature", gender: null, flavor: null, provenance: "moderator" });
+
+    expect(await spoken()).toEqual([`${lineId} ${questId}-accept narrator-male`]);
   });
 });
 

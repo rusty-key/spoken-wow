@@ -21,7 +21,8 @@
 import "server-only";
 
 import { defaultFlavorFor } from "@/lib/quests/catalogue";
-import { flavorsOf, isVoice, VOICES, type Gender } from "@/lib/voices/voices";
+import { loadRoster } from "@/lib/voices/roster-store";
+import type { Gender } from "@/lib/voices/voices";
 
 import table from "./display-voices.json";
 import { raceForModel } from "./models";
@@ -40,14 +41,18 @@ export async function voiceForDisplay(displayId: number): Promise<DisplayVoice> 
     return { voice: null, exact: false, reason: `appearance ${displayId} has no model or voice set on file` };
   }
   const [modelFileId, npcSoundsId, setVoice] = entry;
+  const roster = await loadRoster();
 
-  if (setVoice && isVoice(setVoice)) {
+  if (setVoice && roster.isVoice(setVoice)) {
     const [race, gender, flavor] = setVoice.split("-");
     return { voice: { race, gender: gender as Gender, flavor }, exact: true, reason: `voice set ${setVoice}` };
   }
 
-  const byId = npcSoundsId ? VOICES.find((voice) => voice.flavor === String(npcSoundsId)) : undefined;
-  if (byId) return { voice: byId, exact: true, reason: `voice set ${npcSoundsId}` };
+  const byId = npcSoundsId ? roster.data.flavors.find((f) => f.flavor === String(npcSoundsId) && f.gender) : undefined;
+  if (byId) {
+    const voice = { race: byId.race, gender: byId.gender as Gender, flavor: byId.flavor };
+    return { voice, exact: true, reason: `voice set ${npcSoundsId}` };
+  }
 
   const model = raceForModel(modelFileId);
   if (!model) {
@@ -56,10 +61,10 @@ export async function voiceForDisplay(displayId: number): Promise<DisplayVoice> 
   const { race, gender } = model;
   const bare = `${race}-${gender}`;
   const unmatched = setVoice ? `, ${setVoice} is not on the roster` : "";
-  if (isVoice(bare)) {
+  if (roster.isVoice(bare)) {
     return { voice: { race, gender, flavor: null }, exact: !setVoice, reason: `${bare} model${unmatched}` };
   }
-  if (flavorsOf(race, gender).length) {
+  if (roster.flavorsOf(race, gender).length) {
     const flavor = await defaultFlavorFor(race, gender);
     return { voice: { race, gender, flavor }, exact: false, reason: `${bare} model, default flavor${unmatched}` };
   }

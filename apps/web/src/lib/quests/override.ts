@@ -8,7 +8,6 @@
  * the file and what the addon matches on - see the header of migration 0012.
  */
 import { INVALID_CHARS, hasInvalidChars } from "../text-gate";
-import { VOICE_NAMES } from "../voices/voices";
 
 export type LineOverride = {
   file: string;
@@ -53,17 +52,25 @@ export function validateOverride(input: unknown): { file: string; lineId: string
   return { file: file.trim(), lineId: lineId.trim(), text: trimmed };
 }
 
-// Longest first, so a voice is never mistaken for the tail of a longer one.
-const BY_LENGTH = [...VOICE_NAMES].sort((a, b) => b.length - a.length);
+/** A voice's name as migration 0071's voice table allows it, or a model slot's. */
+const VOICE_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /**
  * A file's override, or for a voice's file (`{file}-{voice}`, naming.ts variantFileName) its
  * line's: a voice's line shares its line's text, and an override is saved against the line's file.
+ *
+ * The shortest stem with an override wins, which is the longest voice: a voice is never
+ * mistaken for the tail of a longer one. By shape rather than by the roster, so a voice an
+ * admin adds needs no reload here and every caller stays synchronous.
  */
 export function overrideOf(overrides: Map<string, LineOverride>, file: string): LineOverride | undefined {
   const own = overrides.get(file);
   if (own) return own;
   const stem = file.replace(/\.mp3$/, "");
-  const voice = BY_LENGTH.find((name) => stem.endsWith(`-${name}`));
-  return voice ? overrides.get(`${stem.slice(0, -voice.length - 1)}.mp3`) : undefined;
+  for (let at = stem.indexOf("-"); at > 0; at = stem.indexOf("-", at + 1)) {
+    if (!VOICE_SHAPE.test(stem.slice(at + 1))) continue;
+    const line = overrides.get(`${stem.slice(0, at)}.mp3`);
+    if (line) return line;
+  }
+  return undefined;
 }

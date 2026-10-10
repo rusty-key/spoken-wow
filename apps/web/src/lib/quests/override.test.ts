@@ -49,6 +49,10 @@ describe("overrideOf", () => {
     expect(overrideOf(own, "quests/5-accept-human-male-warrior.mp3")?.text).toBe("Own.");
   });
 
+  it("gives the file of a voice an admin added its line's override", () => {
+    expect(overrideOf(overrides, "quests/5-accept-treant.mp3")?.text).toBe("Fixed.");
+  });
+
   it("finds nothing for another line's file", () => {
     expect(overrideOf(overrides, "quests/6-accept-human-male-warrior.mp3")).toBeUndefined();
   });
