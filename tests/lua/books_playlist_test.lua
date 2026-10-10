@@ -88,8 +88,8 @@ Expect("...named by the book, whatever page of it this is: the book is one line"
     "Hillsbrad Town Registry")
 Expect("a page the pack does not carry has no clip", B:ClipFor(263), nil)
 local letter = B:ClipFor(15)
-Expect("a one-page letter is titled with its book", letter.present.header, "William's Shipment")
-Expect("...and has no page count", letter.present.label, nil)
+Expect("a one-page letter is named by its book, under what the Compendium calls it",
+    letter.present.label .. "|" .. letter.present.header, "William's Shipment|Writing")
 
 ---------------------------------------------------------------- reporting a bad reading
 local report = clip.present.actions and clip.present.actions[1]

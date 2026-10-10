@@ -266,8 +266,6 @@ L = {
     DIALOGUE_CONTRIBUTE_TIP_QUEST = "Spoken doesn't have this quest",
     DIALOGUE_CONTRIBUTE_TIP_SHARE = "Contribute your data by sharing data from your client",
     DIALOGUE_CONTRIBUTE = "Contribute",
-    -- Beside the Report icon on DialogueUI's window, for a line no pack has.
-    DIALOGUE_CONTRIBUTE_NO_VO = "No voice-over playing? Contribute!",
     DIALOGUE_STOP_TIP = "Stop reading",
     DIALOGUE_LISTEN = "Listen",
     DIALOGUE_READ_TIP = "Read this aloud",

@@ -79,12 +79,12 @@ B = Install({ ENGLISH }, "deDE")
 stub.ShowPage({ title = "Stadtregister", number = 1, text = GERMAN_TEXT })
 Expect("D. without a German pack a German page is not recognised", B:PageOnScreen(), nil)
 B = Install({ ENGLISH, INDEXED }, "deDE")
-Expect("D. before it is opened, a German page is titled as the corpus is", B:ClipFor(PAGE).present.header, "Registry")
+Expect("D. before it is opened, a German page is titled as the corpus is", B:ClipFor(PAGE).present.label, "Registry")
 stub.ShowPage({ title = "Stadtregister", number = 1, text = GERMAN_TEXT })
 Expect("D. with one, it is found by the German title and words", B:PageOnScreen(), PAGE)
-Expect("D. ...and then titled as the client shows it", B:ClipFor(PAGE).present.header, "Stadtregister")
+Expect("D. ...and then titled as the client shows it", B:ClipFor(PAGE).present.label, "Stadtregister")
 Expect("D. ...while its English fallback page keeps the English title",
-    B:ClipFor(ONLY_ENGLISH).present.header, "Registry")
+    B:ClipFor(ONLY_ENGLISH).present.label, "Registry")
 Expect("D. older translated packs can caption the page opened in the client",
     B:ClipFor(PAGE).present.transcript, GERMAN_TEXT)
 Expect("D. a fallback page uses English captions rather than the open German page",

@@ -169,8 +169,8 @@ end
 
 --- Skip, as the windows' queue offers it: the round button with the play glyph against a bar,
 --- the usual "next" mark. The subtitle's controls and the DialogueUI window's header show it.
-function Actions.SkipButton(parent)
-    local skip = Actions.RoundButton(parent, 10)
+function Actions.SkipButton(parent, name)
+    local skip = Actions.RoundButton(parent, 10, name)
     skip.glyph:SetTexture(PORTRAIT_ATLAS)
     skip.glyph:SetTexCoord(0, 93 / PORTRAIT_ATLAS_SIZE, 419 / PORTRAIT_ATLAS_SIZE, 1)
     skip.glyph:ClearAllPoints()
@@ -311,8 +311,20 @@ function Actions.RoundPicture(button, icon)
     button.vignette = vignette
 end
 
---- The round Play and Report buttons, as feature addons ask for them (Spoken:CreateRoundButton),
---- and "icon", with `icon` in the ring, cut round to sit inside it.
+-- Greyed while disabled, as a button with nothing to play or skip.
+local function Greys(button)
+    local function Paint(self, on)
+        for _, texture in ipairs({ self.glyph, self.bar }) do
+            if texture.SetDesaturated then texture:SetDesaturated(not on) end
+            texture:SetAlpha(on and 0.85 or 0.4)
+        end
+    end
+    button:HookScript("OnDisable", function(self) Paint(self, false) end)
+    button:HookScript("OnEnable", function(self) Paint(self, true) end)
+end
+
+--- The round Play, Skip and Report buttons, as feature addons ask for them
+--- (Spoken:CreateRoundButton), and "icon", with `icon` in the ring, cut round to sit inside it.
 function Actions.NewRound(parent, kind, name, icon)
     if kind == "play" then
         local button = Actions.RoundButton(parent, 12, name)
@@ -320,15 +332,12 @@ function Actions.NewRound(parent, kind, name, icon)
         --- "play", "stop" or "replay".
         function button:SetState(state) Actions.SetPlayGlyph(self, state) end
         function button:SetPlaying(playing) Actions.SetPlayGlyph(self, playing and "stop" or "play") end
-        -- Greyed, as a button with nothing to play.
-        button:HookScript("OnDisable", function(self)
-            if self.glyph.SetDesaturated then self.glyph:SetDesaturated(true) end
-            self.glyph:SetAlpha(0.4)
-        end)
-        button:HookScript("OnEnable", function(self)
-            if self.glyph.SetDesaturated then self.glyph:SetDesaturated(false) end
-            self.glyph:SetAlpha(0.85)
-        end)
+        Greys(button)
+        return button
+    end
+    if kind == "skip" then
+        local button = Actions.SkipButton(parent, name)
+        Greys(button)
         return button
     end
     local button = Actions.RoundButton(parent, nil, name)

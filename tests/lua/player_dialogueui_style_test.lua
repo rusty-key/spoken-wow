@@ -272,7 +272,7 @@ local books = env.Sources:Register("books", { title = "Books", addon = "Spoken_B
 books:Enqueue({ key = "b:1", path = "b1.mp3", length = 6, present = { header = "A Letter Home", transcript = "Dear mother, the war goes well.",
     bullet = "book", portrait = { kind = "texture", texture = [[Interface\AddOns\Spoken\Textures\Book]] } } })
 Expect("a book page shows the window", Skin.wanted, true)
-Expect("...titled by the book", Skin.name:GetText(), "A Letter Home")
+Expect("...titled by the book, said once: the line is named by it too", Skin.name:GetText(), "")
 Expect("...and named by it when it has no page label, never by its key", Skin.title.text:GetText(), "A Letter Home")
 Expect("...the book for a face", Skin.viewport.active, "texture")
 Expect("...badged as a book, as the subtitle badges it", tostring(Skin.badge:IsShown()) .. " " .. tostring(Skin.badge.texture),

@@ -884,13 +884,15 @@ that loads it (the 1.12 client's Lua 5.0 could not parse it anyway). A player wh
 Spoken Player settings, one switch for the quests, books and zones buttons alike; each addon
 asks `Spoken:AreContributeButtonsHidden()` in its gap check and refreshes on the player's
 `CONTRIBUTE_SETTINGS_CHANGED` callback, since toggling it fires no game event.
-With DialogueUI, which never shows the game's quest and gossip frames, its window carries a
-Report icon under its Decline button instead, faint on every page and in full beside
-**No voice-over playing? Contribute!** when a line is missing (see
-[`DIALOGUEUI-BRIDGE.md`](DIALOGUEUI-BRIDGE.md)). **Hide Report Buttons**, in the same settings,
-takes away the faint icon with every other Report button, the quest log's included; each addon
-asks `Spoken:AreReportButtonsHidden()` and redraws on the player's `REPORT_SETTINGS_CHANGED`
-callback. The icon beside the Contribute words stays.
+With DialogueUI, which never shows the game's quest and gossip frames, the Report icon goes
+in Spoken Quests' row of controls on the window's title line instead, right of Play and Skip
+and left of a close button, the window's text moved down to make room. It reports on every
+page and contributes where a line is missing. The words in that window are marked as they are
+read through `Spoken:WordMarks()`, the captions' matching kept in Spoken (see
+[`DIALOGUEUI-BRIDGE.md`](DIALOGUEUI-BRIDGE.md)).
+**Hide Report Buttons**, in the same settings, takes the icon away with every other Report button,
+the quest log's included, except where it contributes; each addon asks
+`Spoken:AreReportButtonsHidden()` and redraws on the player's `REPORT_SETTINGS_CHANGED` callback.
 
 Clicking it opens the same copy box `ReportButton.lua` uses, holding a plain-text envelope
 instead of an address: the addon, the build, the locale, the quest or NPC, and the text

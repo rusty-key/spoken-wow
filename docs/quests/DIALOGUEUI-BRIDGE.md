@@ -14,33 +14,38 @@ brings back what was hidden, inside DialogueUI's window:
   moves to another paragraph.
 - **Show Spoken over DialogueUI.** The window or the subtitles stay on screen in the place they
   were left, with their controls. They can't be dragged until DialogueUI closes.
-- **Play button on DialogueUI.** Spoken Quests draws a Play button of its own in the top-left
-  corner of DialogueUI's window, in DialogueUI's art and where DialogueUI puts its
-  text-to-speech button, on every quest and gossip page it has a recording for. It is there
-  whether or not DialogueUI's Text To Speech is on (DialogueUI has it off by default, and
-  draws its own button only with it on). Left-click plays the line, or stops it while it
-  speaks; right-click turns Spoken Quests' **Read Automatically** on or off, as a right-click
-  on DialogueUI's button turns its Auto Play. The sound waves move while the line sounds. On a
-  page with no recording it is not there, and DialogueUI's own button, if shown, is in view.
+- **Spoken's controls on the title line.** At the top right of DialogueUI's window, on the line
+  of its quest title, sit the player's round Play, Skip and Report buttons and, right of them, a
+  close button in the art of DialogueUI's book view (the paper's on the parchment theme, the
+  stone's on the dark one). The buttons are as large on screen as Place Lore draws them (24 at
+  UIParent's scale, whatever DialogueUI's size setting), and the row is in the same place on
+  every quest and gossip page. DialogueUI's Copy Text button, or a translator's, goes just left
+  of the row. To make room, the text moves down: on a quest page DialogueUI's header and text
+  move so the title's top is 36 under the row, and on a gossip page, which has no header, its
+  text and the line over it move so the text starts 36 under it. The text's scroll height
+  shrinks by as much. The close button closes the window as Escape does.
+- **Play button on DialogueUI.** Play is there whether or not DialogueUI's Text To Speech is on
+  (DialogueUI has it off by default, and draws its own button only with it on). Left-click
+  plays the page's line, or stops it while it speaks, when the button shows Stop; on a quest
+  page, right-click turns Spoken Quests' **Read Automatically** on or off, as a right-click on
+  DialogueUI's button turns its Auto Play. On a page with no recording it is greyed and keeps
+  its place. With the setting off it is gone, and DialogueUI's own button, if shown, is in
+  view again. Skip skips whatever speaks and is greyed while nothing does.
 - **DialogueUI's settings are left alone.** Nothing here changes DialogueUI's Text To Speech or
   its Auto Play. Spoken Quests still registers as DialogueUI's voiceover provider, so where the
   player has DialogueUI's Text To Speech on, its button and hotkey play the recording too.
   Whether a line reads by itself is decided by **Read Automatically** alone; DialogueUI's Auto
   Play has no say over Spoken Quests' lines.
-- **Report a problem, or contribute a missing line.** Just under DialogueUI's Decline (or
-  Goodbye) button, right-aligned with it and clear of the parchment's curled foot, sits the
-  player's round Report icon (16 px), faint (40 %)
-  as in the DialogueUI narrator style, on every quest and gossip page unless Spoken's
-  **Hide Report Buttons** is on: it opens the report
-  address for the page, the quest's or the NPC's. For a quest or gossip line no pack has, the
-  same icon is in full, with **No voice-over playing? Contribute!** beside it, in DialogueUI's
-  small serif and the red of DialogueUI's Accept button (sampled from its art; on the dark
-  theme lifted so small text reads on black); either then does what the game's Contribute
-  button does. Both copy boxes show over the window. No setting of its own on this page, only
-  Spoken's **Hide Report Buttons** and **Hide Contribute Buttons**, one for each half: the
-  Contribute button was missing under DialogueUI
+- **Report a problem, or contribute a missing line.** Report is the rightmost button of the
+  row, on every quest and gossip page: it opens the report address for the page, the quest's or
+  the NPC's. For a quest or gossip line no pack has, the same icon does what the game's
+  Contribute button does, and its tooltip says so. Both copy boxes show over the window.
+  Spoken's **Hide Report Buttons** takes it away, except where it contributes; there is no
+  setting of its own here: the Contribute button was missing under DialogueUI
   ([rusty-key/spoken-wow#246](https://github.com/rusty-key/spoken-wow/issues/246)), and
-  gathering saved nothing.
+  gathering saved nothing. With a Spoken Quests too old to have the row, the icon sits small
+  and faint (40 %) under DialogueUI's Decline (or Goodbye) button, right-aligned with it, in
+  full where it contributes.
 
 All but **Show Spoken over DialogueUI** are on by default: DialogueUI's window, marked as the
 line plays, already shows the words. They sit in the Quests section of Spoken's **DialogueUI** page
@@ -72,7 +77,10 @@ settings panel says that DialogueUI's version isn't recognised.
 is worked out on every call rather than read from the captions, which stop updating while
 DialogueUI hides their window. Each line of DialogueUI's text is split with
 `Spoken:SplitCaption()`, the same splitter the captions use, so Chinese is matched character
-by character. The caption's words are then matched in order against DialogueUI's words:
+by character. The matching and marking below are Spoken's (`UI/WordMarks.lua`), reached through
+`Spoken:WordMarks()`, so another window's text can be marked the same way; with a Spoken too old
+to have it, the marking settings are greyed. The caption's words are matched in order against
+DialogueUI's words:
 
 - A match may skip a few words. This covers the NPC name DialogueUI can put in front of the
   text, and a hint above it.
@@ -127,11 +135,12 @@ quest panels and gossip frame, which DialogueUI never shows. `Bridge:Page()` giv
 dialog event of the page DialogueUI's window shows instead, from DialogueUI's
 `DUIQuestFrame.handler` (the page builder it last ran). `Contribute.lua` falls back on it to
 read the quest or gossip text, so gathering works as well. `UI/ContributeButton.lua` then
-puts its Report and Contribute corner on DialogueUI's window, as children of the window since
-DialogueUI hides UIParent, and
-the bridge refreshes it as pages are built and as the window opens and closes. The margins
-under and beside the footer buttons are measured from DialogueUI's `ExitButton` each time,
-since DialogueUI's window size setting changes them. Their tooltip is one of the game's make
+puts its Report icon on DialogueUI's window, a child of the window since DialogueUI hides
+UIParent, and the bridge refreshes it as pages are built and as the window opens and closes.
+The bridge sets `ContributeButton.dialogueUISlot`, which takes the icon into the row of
+controls; left unset, the icon goes under the footer buttons, its margins measured from
+DialogueUI's `ExitButton` each time, since DialogueUI's window size setting changes them. Its
+tooltip is one of the game's make
 (`GameTooltipTemplate`) on the window, scaled to the game's, since the game's own is a child of
 UIParent too. `ReportButton.lua` reads the quest page
 from `Bridge:Page()` too, and while a page is up shows its address in Spoken's copy box rather
@@ -139,16 +148,31 @@ than the game's popup, which is a child of UIParent. While the window is open, t
 to `Spoken:SetContributeHost`, which puts Spoken's copy box over it. A box still open when the
 window closes goes back to UIParent and stays up.
 
-**Play button.** DialogueUI creates its own button only when its Text To Speech setting turns
-on, and has no public way to show it, so the bridge builds one: a child of `DUIQuestFrame`,
-24 px at its top-left inset of 8, drawn from DialogueUI's `Art/Theme_Shared/TTSButton.png` in
-the cell of DialogueUI's theme (told from the colour of `DUIFont_QuestType_Left`, as the
-Contribute corner tells it), with DialogueUI's `DUISpeakerAnimationTemplate` for the waves where
-it exists. It is shown from the page hooks, the window opening, and every half second while the
+**The row of controls.** DialogueUI creates its own Play button only when its Text To Speech
+setting turns on, and has no public way to show it, so the bridge builds a row of the player's
+round buttons (`Spoken:CreateRoundButton`, "play" and "skip", plus the Report icon) in a holder
+that is a child of `DUIQuestFrame`. The close button is cut from DialogueUI's
+`Art/Book/TextureKit-Parchment.png` or `-Metal.png`, by DialogueUI's theme (told from the colour
+of `DUIFont_QuestType_Left`), 64 of the art's pixels across at 0.5333 each times DialogueUI's
+size (its header's width over 358), 26 of them in from the right edge. Its middle, and the
+row's, is 36 + 12 under the window's top at UIParent's scale. The row is laid out right to left
+from the close button, 4 apart, and DialogueUI's `CopyTextButton` (else its
+`TranslatorButton`) is anchored left of it whenever DialogueUI lays them out.
+
+To make room, the bridge hooks DialogueUI's `UseQuestLayout`, `UpdateQuestTitle` and
+`UpdateFrameSize` and moves things after each: on a quest page `FrontFrame.Header` and the
+`ScrollFrame`'s top move down by however much puts the title's top 36 under the row (the title
+sits 2 over the middle of the 51-tall header, 28 under the window's top, all times DialogueUI's
+size), and on a gossip page the `ScrollFrame`'s top and `FrontFrame.HeaderDivider` move from 42
+to 36 under the row. Each time `scrollViewHeight`, the height DialogueUI works its scroll range
+out from, is set from `scrollFrameBaseHeight` as DialogueUI sets it (less 40 times its size on a
+quest page) and less the same shift, so it matches the shorter view.
+
+The row is drawn from the page hooks, the window opening, and every half second while the
 window is open, since a quest's ID can arrive after its page is drawn and the packs load after
-login. Where DialogueUI's own button is shown under it, it is set transparent while Spoken's
-stands there and given back its alpha when Spoken's goes. The tooltip is the window's own
-GameTooltip (`ContributeButton:DialogueUITooltip`), since the game's is hidden with UIParent.
+login. Where DialogueUI's own button is shown, it is set transparent while Spoken's Play stands
+in for it and given back its alpha when Play goes. The tooltips are the window's own GameTooltip
+(`ContributeButton:DialogueUITooltip`), since the game's is hidden with UIParent.
 
 DialogueUI hears the client's quest event before Spoken Quests' recorder does. So the line is
 resolved from the page DialogueUI shows, through `Addon:GetVisibleLine(event)`, rather than from

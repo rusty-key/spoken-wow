@@ -423,9 +423,10 @@ function Spoken:TogglePause()
 end
 
 --- The player's round button, the same one its subtitle shows, for a feature addon's own
---- window: `kind` "play" (Play's glyph; `button:SetPlaying(on)` shows Pause while a line
---- speaks), "report" (the bug), or "icon" (the texture `icon`, cut round). Anchor it and give
---- it OnClick yourself.
+--- window: `kind` "play" (Play's glyph; `button:SetPlaying(on)` shows Stop while a line
+--- speaks), "skip" (Skip's glyph; a click skips the line speaking, so it needs no OnClick),
+--- "report" (the bug), or "icon" (the texture `icon`, cut round). Anchor it and give it OnClick
+--- yourself. Play and Skip grey out while disabled.
 function Spoken:CreateRoundButton(parent, kind, name, icon)
     return Actions.NewRound(parent, kind, name, icon)
 end
@@ -496,6 +497,14 @@ function Spoken:GetCaptionOptions()
     local cfg = Addon:Profile("Transcript")
     if Transcript.unavailable or not cfg.Enabled then return false, false end
     return cfg.HighlightWord and true or false, cfg.Typewriter and true or false
+end
+
+--- Finding the line being read in another window's text and marking it there, as the captions
+--- do (UI/WordMarks.lua): Align a caption's words to the window's paragraphs, Pick the pair to
+--- light, Cut how far to type, Want what a paragraph shows. Nil on the 1.12 client, which has no
+--- captions.
+function Spoken:WordMarks()
+    return rawget(SpokenEnv, "WordMarks")
 end
 
 --- Split text into words as the captions do (a Chinese character is a word), each with its

@@ -28,15 +28,6 @@ end
 -- A page can be built again (an item reward resolving, QUEST_DETAIL firing twice).
 local HANDLERS = { "HandleQuestDetail", "HandleQuestProgress", "HandleQuestComplete",
     "HandleQuestGreeting", "HandleGossip" }
--- How many words of DialogueUI's text a caption word may skip to find its match: the NPC
--- name DialogueUI can put in front of the text, a hint, a word that differs.
-local LOOKAHEAD = 6
--- Below this share of the caption's words found, the window shows something else (an earlier
--- page, another NPC's gossip) and nothing is marked.
-local MIN_SHARE = 0.6
--- Gold reads on DialogueUI's dark theme but not on its tan parchment, where a deep red does.
-local ON_DARK = "|cffffd100"
-local ON_LIGHT = "|cff9c1a1a"
 local TICK = 0.05
 -- Spoken Quests reads a dialog a moment after DialogueUI draws it, so typed-out words the line
 -- will read stay blank for up to this long; shown whole until the voice began, they flashed.
@@ -139,7 +130,8 @@ function Bridge:Problem(feature)
         return L.OPT_DUI_NO_PLAYER
     elseif not Recognised() then
         return L.OPT_DUI_UNKNOWN
-    elseif (feature == "Captions" or feature == "AutoScroll") and not (Spoken.GetCaption and Spoken.SplitCaption) then
+    elseif (feature == "Captions" or feature == "AutoScroll")
+        and not (Spoken.GetCaption and Spoken.SplitCaption and Spoken.WordMarks) then
         return L.OPT_DUI_OLD_PLAYER
     elseif feature == "ShowPlayer" and not Spoken.SetPlayerHost then
         return L.OPT_DUI_OLD_PLAYER
@@ -150,154 +142,13 @@ end
 -- Matching the caption to the window
 --------------------------------------------------------------------------------
 
---- A word as compared: lower case, without ASCII punctuation. nil for all punctuation, or for
---- an escape sequence (a link, a colour): only DialogueUI's copy has those, and they must
---- never be split.
-function Bridge.Key(text)
-    if string.find(text, "|", 1, true) then
-        return nil
-    end
-    local key = string.gsub(string.lower(text), "%p", "")
-    if key == "" then
-        return nil
-    end
-    return key
-end
-
---- Mark the words inside a hyperlink (|H...|h[name]|h): the name's inner words carry no
---- escape of their own, and lighting one, or typing up to it, would split the link.
-function Bridge.MarkLinks(text, words)
-    local from = 1
-    while true do
-        local s, e = string.find(text, "|H.-|h.-|h", from)
-        if not s then
-            return words
-        end
-        for _, word in ipairs(words) do
-            if word.last >= s and word.first <= e then
-                word.inLink = true
-            end
-        end
-        from = e + 1
-    end
-end
-
---- Match the caption's words to the paragraphs' from paragraph `first` on. Each caption word
---- is looked for a few words past the last match; the first only within paragraph `first`.
---- Returns map[i] = { p = paragraph, w = word } for the words found, how many were found,
---- and how many could have been.
-function Bridge.AlignFrom(words, paragraphs, first)
-    local tokens = {}
-    local firstEnd = 0
-    for p = first, table.getn(paragraphs) do
-        for w, word in ipairs(paragraphs[p].words) do
-            table.insert(tokens, { p = p, w = w, key = not word.inLink and Bridge.Key(word.text) or nil })
-        end
-        if p == first then
-            firstEnd = table.getn(tokens)
-        end
-    end
-    local map, found, counted, nextToken = {}, 0, 0, 1
-    local total = table.getn(tokens)
-    for i, word in ipairs(words) do
-        local key = Bridge.Key(word.text)
-        if key then
-            counted = counted + 1
-            local last = math.min(total, found == 0 and firstEnd + LOOKAHEAD or nextToken + LOOKAHEAD)
-            for t = nextToken, last do
-                if tokens[t].key == key then
-                    map[i] = tokens[t]
-                    found = found + 1
-                    nextToken = t + 1
-                    break
-                end
-            end
-        end
-    end
-    return map, found, counted
-end
-
---- The best match over every starting paragraph, or nil when none is good enough. DialogueUI
---- can keep earlier gossip and a hint above the text, so the later start wins a tie. The
---- second value is the span of paragraphs matched, { first, last }: only those are typed out.
-function Bridge.Align(words, paragraphs)
-    local bestMap, bestFound, bestCounted = nil, 0, 0
-    for first = 1, table.getn(paragraphs) do
-        local map, found, counted = Bridge.AlignFrom(words, paragraphs, first)
-        if found > 0 and found >= bestFound then
-            bestMap, bestFound, bestCounted = map, found, counted
-        end
-    end
-    if not bestMap or bestFound < math.min(3, bestCounted) or bestFound < bestCounted * MIN_SHARE then
-        return nil
-    end
-    local span
-    for _, at in pairs(bestMap) do
-        if not span then
-            span = { first = at.p, last = at.p }
-        else
-            span.first, span.last = math.min(span.first, at.p), math.max(span.last, at.p)
-        end
-    end
-    return bestMap, span
-end
-
---- The pair to light for caption word `index`: that word, or the last one before it the
---- window has, and its neighbour in the same paragraph: the next word, or at a paragraph's
---- end the one before, as the captions keep the last pair lit at a page boundary.
-function Bridge.Pick(map, index)
-    if not index then
-        return nil
-    end
-    local lit = index
-    while lit > 0 and not map[lit] do
-        lit = lit - 1
-    end
-    if lit == 0 then
-        return nil
-    end
-    local at = map[lit]
-    local after, before = map[lit + 1], map[lit - 1]
-    if after and after.p == at.p then
-        return lit, lit + 1
-    elseif before and before.p == at.p then
-        return lit, lit - 1
-    end
-    return lit
-end
-
---- How far the text is typed out: the paragraph the voice is in and the last byte of it
---- shown, or nil for all of it (finished, or a clip with no length to time it by). A caption
---- word the window lacks types up to the last one before it that it has.
-function Bridge.Cut(caption, map, span, paragraphs)
-    if not caption.typewriter or not caption.progress or caption.progress >= 1 then
-        return nil
-    end
-    local index = caption.speaking and caption.activeWord or 0
-    while index > 0 and not map[index] do
-        index = index - 1
-    end
-    if index == 0 then
-        return span.first, 0
-    end
-    local at = map[index]
-    return at.p, paragraphs[at.p].words[at.w].last
-end
-
---- `text` with the words at `spans` (sorted by position) wrapped in `color`.
-function Bridge.Wrap(text, spans, color)
-    local parts, from = {}, 1
-    for _, span in ipairs(spans) do
-        table.insert(parts, string.sub(text, from, span.first - 1))
-        table.insert(parts, color .. string.sub(text, span.first, span.last) .. "|r")
-        from = span.last + 1
-    end
-    table.insert(parts, string.sub(text, from))
-    return table.concat(parts)
-end
-
-function Bridge.ColorFor(r, g, b)
-    return Utils:IsBright(r, g, b) and ON_DARK or ON_LIGHT
+-- Spoken's (UI/WordMarks.lua), shared with Spoken Books' book view: finding the caption's words in
+-- the window's paragraphs, the pair to light, how far to type. Nil from a player too old to have
+-- it, which Problem reports.
+local Marks = _G.Spoken and Spoken.WordMarks and Spoken:WordMarks()
+if Marks then
+    Bridge.Key, Bridge.MarkLinks, Bridge.AlignFrom, Bridge.Align = Marks.Key, Marks.MarkLinks, Marks.AlignFrom, Marks.Align
+    Bridge.Pick, Bridge.Cut, Bridge.Wrap, Bridge.ColorFor = Marks.Pick, Marks.Cut, Marks.Wrap, Marks.ColorFor
 end
 
 --------------------------------------------------------------------------------
@@ -540,11 +391,15 @@ function Bridge:Page()
     end
 end
 
+-- Puts the Report icon in the row of controls on the title line (below).
+local SlotReport
+
 --- The Contribute button follows the window: it opens, closes and changes page with no
 --- event the button hears in time, since DialogueUI builds the page before showing it.
 local function RefreshContribute()
     local button = rawget(VoiceOver, "ContributeButton")
     if button and button.Refresh then
+        button.dialogueUISlot = SlotReport
         button:Refresh()
     end
 end
@@ -558,17 +413,20 @@ local function HostContributeBox(host)
 end
 
 --------------------------------------------------------------------------------
--- The Play button
+-- The controls at the top right
 --------------------------------------------------------------------------------
 --
 -- DialogueUI draws a Play button only while its Text To Speech is on, which is off by default
--- and read only at load, so this file draws its own in the same corner. Read Automatically,
--- never DialogueUI's Auto Play, decides whether a line reads on its own.
+-- and read only at load. This file puts the player's own round buttons at the window's top
+-- right instead, beside a close button, as on DialogueUI's book view: Play (Stop while the
+-- page's line speaks), Skip, and Report (ContributeButton's icon, handed over through its
+-- dialogueUISlot).
+-- Read Automatically, never DialogueUI's Auto Play, decides whether a line reads on its own.
 
--- A 64-wide cell per theme (1 parchment, 2 dark): the speaker on top, its three waves below.
-local PLAY_ART = "Interface/AddOns/DialogueUI/Art/Theme_Shared/TTSButton.png"
-local PLAY_SIZE, PLAY_ICON, PLAY_ALPHA, PLAY_INSET = 24, 16, 0.6, 8
--- How often the button looks again for the page's line while the window is open: a quest's ID
+local ROUND, ROUND_GAP = 24, 4
+-- DialogueUI's own speaker button, as it draws it.
+local THEIRS_ALPHA = 0.6
+-- How often the row looks again for the page's line while the window is open: a quest's ID
 -- can arrive a moment after its page is drawn, and the packs load after login.
 local LOOK_EVERY = 0.5
 
@@ -579,7 +437,9 @@ local AUTOPLAY_DELAY = 0.5
 -- When DialogueUI's autoplay will call playFile. It asks the delay (getAutoPlayDelay) just
 -- before it waits, and a click on its button never does, which is how the two are told apart.
 local autoplayAt
-local playButton
+-- { frame, play, skip }, built the first time the window shows a page; `report` is
+-- ContributeButton's icon once it is handed over.
+local row, report
 
 --- Whether `soundData` is the line at the head of the player's queue, and not stopped there:
 --- the line Stop acts on. A line stopped at the head is one to play again.
@@ -622,30 +482,16 @@ local function LookForLine(event)
     end
 end
 
-local function SetPlayTheme(button)
-    local x = (Utils:DialogueUIThemeID() - 1) * 0.125
-    button.Icon:SetTexCoord(x, 64 / 512 + x, 0, 0.5)
-    button.Wave1:SetTexCoord(x, 16 / 512 + x, 0.5, 1)
-    button.Wave2:SetTexCoord(16 / 512 + x, 40 / 512 + x, 0.5, 1)
-    button.Wave3:SetTexCoord(40 / 512 + x, 64 / 512 + x, 0.5, 1)
-end
-
-local function Wave(button, key, width, anchor, x)
-    local wave = button:CreateTexture(nil, "OVERLAY")
-    wave:SetSize(width, PLAY_ICON)
-    wave:SetPoint("LEFT", anchor, "RIGHT", x, 0)
-    wave:SetTexture(PLAY_ART)
-    wave:Hide()
-    button[key] = wave
-    return wave
-end
-
---- What a click does now, and Read Automatically, which a right-click switches. On a tooltip of
---- the window's own (the game's is a child of UIParent, which DialogueUI hides).
-local function ShowPlayTooltip(button)
+--- The window's own tooltip: the game's is a child of UIParent, which DialogueUI hides.
+local function Tooltip()
     local contribute = rawget(VoiceOver, "ContributeButton")
-    local tooltip = contribute and contribute.DialogueUITooltip and contribute:DialogueUITooltip(DUIQuestFrame)
+    return contribute and contribute.DialogueUITooltip and contribute:DialogueUITooltip(DUIQuestFrame)
         or GameTooltip
+end
+
+--- What a click on Play does now, and Read Automatically, which a right-click switches.
+local function ShowPlayTooltip(button)
+    local tooltip = Tooltip()
     local speaking = line ~= nil and IsSpeaking(line)
     tooltip:SetOwner(button, "ANCHOR_RIGHT")
     tooltip:SetText(speaking and SpokenEnv.L.DIALOGUE_STOP or SpokenEnv.L.DIALOGUE_LISTEN)
@@ -663,31 +509,26 @@ local function ShowPlayTooltip(button)
     button.tooltip = tooltip
 end
 
---- The button, built the first time a page has a line: a child of the window, so it shows
---- while DialogueUI hides UIParent and closes with the window, and drawn above it, over
---- DialogueUI's own button where that one is shown.
-local function PlayButton()
-    if playButton then
-        return playButton
+local function HideTooltip(button)
+    if button.tooltip then
+        button.tooltip:Hide()
+    end
+end
+
+--- Play and Skip in a row on the window: children of it, so they show while DialogueUI hides
+--- UIParent and close with it, and drawn above it.
+local function Row()
+    if row then
+        return row
     end
     local frame = DUIQuestFrame
-    local button = CreateFrame("Button", nil, frame)
-    button:SetSize(PLAY_SIZE, PLAY_SIZE)
-    button:SetPoint("TOPLEFT", frame, "TOPLEFT", PLAY_INSET, -PLAY_INSET)
-    button:SetFrameStrata("FULLSCREEN")
-    button:SetAlpha(PLAY_ALPHA)
-    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    button.Icon = button:CreateTexture(nil, "OVERLAY")
-    button.Icon:SetSize(PLAY_ICON, PLAY_ICON)
-    button.Icon:SetPoint("CENTER", button, "CENTER", 0, 0)
-    button.Icon:SetTexture(PLAY_ART)
-    local wave1 = Wave(button, "Wave1", PLAY_ICON * 0.25, button, -8)
-    local wave2 = Wave(button, "Wave2", PLAY_ICON * 0.375, wave1, -3)
-    Wave(button, "Wave3", PLAY_ICON * 0.375, wave2, -4)
-    -- DialogueUI's own animation of the waves where it has it; still waves where it does not.
-    local ok, anim = pcall(button.CreateAnimationGroup, button, nil, "DUISpeakerAnimationTemplate")
-    button.anim = ok and anim or nil
-    button:SetScript("OnClick", function(_, mouse)
+    local holder = CreateFrame("Frame", nil, frame)
+    holder:SetFrameStrata("FULLSCREEN")
+    holder:SetSize(ROUND, ROUND)
+    local play = Spoken:CreateRoundButton(holder, "play")
+    play:SetFrameStrata("FULLSCREEN")
+    play:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    play:SetScript("OnClick", function(_, mouse)
         local reader = ReaderFor(lineEvent)
         if mouse == "RightButton" then
             if reader and reader.autoplay then
@@ -699,31 +540,210 @@ local function PlayButton()
             PlayLine("Spoken's Play button on DialogueUI")
         end
         Bridge:DrawPlayButton()
-        if button.tooltip and button.tooltip:IsShown() then
-            ShowPlayTooltip(button)
+        if play.tooltip and play.tooltip:IsShown() then
+            ShowPlayTooltip(play)
         end
     end)
-    button:SetScript("OnEnter", function()
-        button:SetAlpha(1)
-        ShowPlayTooltip(button)
-    end)
-    button:SetScript("OnLeave", function()
-        button:SetAlpha(PLAY_ALPHA)
-        if button.tooltip then
-            button.tooltip:Hide()
-        end
-    end)
-    button:Hide()
-    playButton = button
-    return button
+    -- Skips by itself.
+    local skip = Spoken:CreateRoundButton(holder, "skip")
+    skip:SetFrameStrata("FULLSCREEN")
+    local function ShowSkipTooltip()
+        local tooltip = Tooltip()
+        tooltip:SetOwner(skip, "ANCHOR_RIGHT")
+        tooltip:SetText(SpokenEnv.L.BIND_SKIP)
+        tooltip:Show()
+        skip.tooltip = tooltip
+    end
+    -- Brighter under the pointer as the ring's own hover has it, and the tooltip on the window's.
+    for button, Show in pairs({ [play] = ShowPlayTooltip, [skip] = ShowSkipTooltip }) do
+        button:SetScript("OnEnter", function(self)
+            if self:IsEnabled() then self.glyph:SetAlpha(1) end
+            Show(self)
+        end)
+        button:SetScript("OnLeave", function(self)
+            if self:IsEnabled() then self.glyph:SetAlpha(0.85) end
+            HideTooltip(self)
+        end)
+    end
+    holder:Hide()
+    row = { frame = holder, play = play, skip = skip }
+    return row
 end
 
---- DialogueUI's own button, kept out of sight while this one stands in its place, and given
---- back as DialogueUI leaves it when this one goes.
+--------------------------------------------------------------------------------
+-- A close button, as DialogueUI's book view has
+--------------------------------------------------------------------------------
+--
+-- The book view's own close button, in its art: the paper's on DialogueUI's parchment theme, the
+-- stone's on its dark one; at the window's top right as on the book, 64 of the book art's pixels
+-- across and 26 in, drawn at 0.5333 of a pixel to DialogueUI's size, as the book view draws it.
+-- Its middle halfway between the window's top and its header's, so it stands as far from the
+-- title as from the edge, and in the same place on a gossip page, which has no header to show.
+
+local BOOK_ART = "Interface/AddOns/DialogueUI/Art/Book/TextureKit-"
+local CLOSE_SIZE, CLOSE_INSET, ART_PIXEL = 64, 26, 0.53333
+local close
+
+--- DialogueUI's size setting, as its header strip is drawn at it (358 across at 1).
+local function Multiplier()
+    local front = type(DUIQuestFrame.FrontFrame) == "table" and DUIQuestFrame.FrontFrame
+    local header = front and type(front.Header) == "table" and front.Header
+    local width = header and tonumber(header:GetWidth())
+    return width and width > 0 and width / 358 or 1
+end
+
+local function CloseButton()
+    if close then
+        return close
+    end
+    local frame = DUIQuestFrame
+    close = CreateFrame("Button", nil, frame)
+    close:SetFrameStrata("FULLSCREEN")
+    close.texture = close:CreateTexture(nil, "ARTWORK")
+    close.texture:SetAllPoints()
+    close.texture:SetTexCoord(768 / 1024, 832 / 1024, 1488 / 2048, 1552 / 2048)
+    close.highlight = close:CreateTexture(nil, "HIGHLIGHT")
+    close.highlight:SetAllPoints()
+    close.highlight:SetTexCoord(832 / 1024, 896 / 1024, 1488 / 2048, 1552 / 2048)
+    -- As Escape closes it: DialogueUI's own way out.
+    close:SetScript("OnClick", function()
+        if type(frame.HideUI) == "function" then frame:HideUI() else frame:Hide() end
+    end)
+    return close
+end
+
+-- Room above the controls' line and below it, in UIParent's units, as the buttons' 24 are. The
+-- line sits that far under the window's top on every page; DialogueUI's quest title, or a gossip
+-- page's text, moves down to start that far under it.
+local LINE_ROOM = 36
+-- Where DialogueUI puts its header (28 under the window's top at its size, 51 tall, its title
+-- centred 2 over its middle), its text on a quest page (68 under the top), and on a gossip page,
+-- which has no header, its text and the line over it (42, at any size).
+local HEADER_TOP, HEADER_HEIGHT, TITLE_LIFT = 28, 51, 2
+local QUEST_TEXT_TOP, GOSSIP_TEXT_TOP = 68, 42
+
+local function PlaceClose()
+    local frame = DUIQuestFrame
+    local button = CloseButton()
+    local file = BOOK_ART .. (Utils:DialogueUIThemeID() == 2 and "Metal.png" or "Parchment.png")
+    if button.file ~= file then
+        button.file = file
+        button.texture:SetTexture(file)
+        button.highlight:SetTexture(file)
+    end
+    local pixel = ART_PIXEL * Multiplier()
+    button:SetSize(CLOSE_SIZE * pixel, CLOSE_SIZE * pixel)
+    local scale = UIParent:GetEffectiveScale() / math.max(0.01, frame:GetEffectiveScale() or 1)
+    local middle = -(LINE_ROOM + ROUND / 2) * scale
+    if button.middle ~= middle or button.pixel ~= pixel then
+        button.middle, button.pixel = middle, pixel
+        button:ClearAllPoints()
+        button:SetPoint("RIGHT", frame, "TOPRIGHT", -CLOSE_INSET * pixel, middle)
+    end
+    button:Show()
+end
+
+--- DialogueUI's header and text moved down so the quest title's top, or a gossip page's text's,
+--- is LINE_ROOM under the controls' line, as the book view's title is; the text's height, which
+--- DialogueUI scrolls by, shorter by as much. Measured from the title, not the portrait beside
+--- it. Run after DialogueUI lays a page out (UseQuestLayout), sets its title or resizes.
+local function Lower()
+    local frame = DUIQuestFrame
+    local front = type(frame.FrontFrame) == "table" and frame.FrontFrame
+    local header = front and type(front.Header) == "table" and front.Header
+    local scroll = type(frame.ScrollFrame) == "table" and frame.ScrollFrame
+    if not (header and scroll) then
+        return
+    end
+    local size = Multiplier()
+    local scale = UIParent:GetEffectiveScale() / math.max(0.01, frame:GetEffectiveScale() or 1)
+    local below = (2 * LINE_ROOM + ROUND) * scale
+    local title = type(header.Title) == "table" and header.Title
+    local titleInset = (HEADER_HEIGHT / 2 - TITLE_LIFT) * size - (title and tonumber(title:GetHeight()) or 0) / 2
+    local shift = math.max(0, below - titleInset - HEADER_TOP * size)
+    header:SetPoint("TOP", front, "TOP", 0, -(HEADER_TOP * size + shift))
+    local base = tonumber(frame.scrollFrameBaseHeight)
+    if frame.questLayout then
+        scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(QUEST_TEXT_TOP * size + shift))
+        if base then frame.scrollViewHeight = base - 40 * size - shift end
+    else
+        shift = math.max(0, below - GOSSIP_TEXT_TOP)
+        scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(GOSSIP_TEXT_TOP + shift))
+        if base then frame.scrollViewHeight = base - shift end
+        if type(front.HeaderDivider) == "table" then
+            front.HeaderDivider:SetPoint("CENTER", front, "TOP", 0, -(GOSSIP_TEXT_TOP + shift))
+        end
+    end
+end
+
+--- Lay the row out right to left from the close button, on its middle: Report, Skip, Play, as
+--- large on screen as Place Lore draws them (24 at UIParent's scale, whatever DialogueUI's own
+--- size), in the same place on every page. DialogueUI's buttons in that corner (Copy Text, the
+--- translator's) go left of it.
+local placedKey
+local function PlaceRow(force)
+    local frame = DUIQuestFrame
+    local scale = UIParent:GetEffectiveScale() / math.max(0.01, frame:GetEffectiveScale() or 1)
+    local list = {}
+    if report and report:IsShown() then
+        table.insert(list, report)
+    end
+    table.insert(list, row.skip)
+    if row.play:IsShown() then
+        table.insert(list, row.play)
+    end
+    local holder = row.frame
+    local key = table.concat({ #list, format("%.3f", scale) }, " ")
+    if key ~= placedKey or force then
+        placedKey = key
+        holder:SetSize((#list * ROUND + (#list - 1) * ROUND_GAP) * scale, ROUND * scale)
+        local right
+        for _, button in ipairs(list) do
+            button:SetScale(scale)
+            button:SetSize(ROUND, ROUND)
+            button:ClearAllPoints()
+            if right then
+                button:SetPoint("RIGHT", right, "LEFT", -ROUND_GAP, 0)
+            else
+                button:SetPoint("RIGHT", holder, "RIGHT", 0, 0)
+            end
+            right = button
+        end
+        holder:ClearAllPoints()
+        holder:SetPoint("RIGHT", CloseButton(), "LEFT", -ROUND_GAP, 0)
+    end
+    -- DialogueUI's first button there (Copy Text, else the translator's) left of the row, on its
+    -- middle; the other keeps its place left of that one. Again whenever DialogueUI lays them out.
+    local first
+    for _, key in ipairs({ "TranslatorButton", "CopyTextButton" }) do
+        local widget = frame[key]
+        if type(widget) == "table" and widget.IsShown and widget:IsShown() then
+            first = widget
+        end
+    end
+    if first and select(2, first:GetPoint(1)) ~= holder then
+        first:ClearAllPoints()
+        first:SetPoint("RIGHT", holder, "LEFT", -ROUND_GAP, 0)
+    end
+end
+
+--- ContributeButton's slot: its Report icon joins the row.
+function SlotReport(icon)
+    if not _G.DUIQuestFrame then
+        return false
+    end
+    report = icon
+    Row()
+    PlaceRow(true)
+    return true
+end
+
+--- DialogueUI's own button, kept out of sight while this row stands in for it, and given back
+--- as DialogueUI leaves it when Play goes.
 local covering = false
 local function CoverTheirs(cover)
     local theirs = _G.DUIQuestFrame and DUIQuestFrame.TTSButton
-    if type(theirs) ~= "table" or not theirs.SetAlpha or theirs == playButton then
+    if type(theirs) ~= "table" or not theirs.SetAlpha then
         covering = false
         return
     end
@@ -733,54 +753,55 @@ local function CoverTheirs(cover)
         end
         covering = true
     elseif covering then
-        theirs:SetAlpha(PLAY_ALPHA)
+        theirs:SetAlpha(THEIRS_ALPHA)
         covering = false
     end
 end
 
---- Show the button while the page has a line, and draw it sounding while that line does.
---- Run as a page is built, as the window opens, and on the driver's tick.
-function Bridge:DrawPlayButton()
-    local show = line ~= nil and self:Page() ~= nil
-    if not show then
-        CoverTheirs(false)
-        if playButton and playButton:IsShown() then
-            playButton:Hide()
-            if playButton.tooltip and playButton.tooltip:IsShown() then
-                playButton.tooltip:Hide()
-            end
-        end
-        return
-    end
-    local button = PlayButton()
-    if not button:IsShown() then
-        SetPlayTheme(button)
-        button:Show()
-    end
-    CoverTheirs(true)
-    local now = Spoken.GetNowPlaying and Spoken:GetNowPlaying()
-    local sounding = now ~= nil and now.fileName == line.fileName and true or false
-    if sounding ~= button.sounding then
-        button.sounding = sounding
-        for _, key in ipairs({ "Wave1", "Wave2", "Wave3" }) do
-            button[key]:SetShown(sounding)
-        end
-        if button.anim then
-            if sounding then button.anim:Play() else button.anim:Stop() end
-        end
+local function SetEnabled(button, on)
+    if (button:IsEnabled() and true or false) ~= on then
+        if on then button:Enable() else button:Disable() end
     end
 end
 
---- Look again for the page's line and redraw the button: `event` is the page just built, or
---- the page the window shows.
+--- Show the row while the window shows a page: Play with the Play Button setting on, greyed
+--- with no line to read and Stop while that line speaks; Skip greyed with nothing speaking.
+--- Run as a page is built, as the window opens, and on the driver's tick.
+function Bridge:DrawPlayButton()
+    if self:Page() == nil then
+        CoverTheirs(false)
+        if row and row.frame:IsShown() then
+            row.frame:Hide()
+            HideTooltip(row.play)
+            HideTooltip(row.skip)
+        end
+        return
+    end
+    PlaceClose()
+    local r = Row()
+    r.frame:Show()
+    local on = Config().PlayButton and true or false
+    r.play:SetShown(on)
+    CoverTheirs(on)
+    SetEnabled(r.play, line ~= nil)
+    local state = line ~= nil and IsSpeaking(line) and "stop" or "play"
+    if r.play.state ~= state then
+        r.play:SetState(state)
+    end
+    SetEnabled(r.skip, Spoken.GetCurrent ~= nil and Spoken:GetCurrent() ~= nil)
+    PlaceRow()
+end
+
+--- Look again for the page's line and redraw the row: `event` is the page just built, or the
+--- page the window shows.
 function Bridge:RefreshPlayButton(event)
     LookForLine(event or self:Page())
     self:DrawPlayButton()
 end
 
---- The button as a test or /spq diagnostics sees it.
+--- The row as a test or /spq diagnostics sees it: Play, the page's line, the row, the close button.
 function Bridge:PlayButtonState()
-    return playButton, line
+    return row and row.play, line, row, close
 end
 
 --------------------------------------------------------------------------------
@@ -899,6 +920,17 @@ function Bridge:Hook()
     local frame = DUIQuestFrame
     -- Asked once: the player's API cannot change within a session.
     canMark = not self:Problem("Captions")
+    -- Room for the controls' line, laid out again as DialogueUI lays a page out, sets its title
+    -- (which may take two lines) or resizes.
+    for _, name in ipairs({ "UseQuestLayout", "UpdateQuestTitle", "UpdateFrameSize" }) do
+        if type(frame[name]) == "function" then
+            hooksecurefunc(frame, name, Lower)
+        end
+    end
+    local contribute = rawget(VoiceOver, "ContributeButton")
+    if contribute then
+        contribute.dialogueUISlot = SlotReport
+    end
     for _, name in ipairs(HANDLERS) do
         local handler = name
         hooksecurefunc(frame, handler, function()
@@ -999,6 +1031,6 @@ function Bridge:Describe()
     local cfg = Config()
     return format("DialogueUI: %s; words=%s scroll=%s player=%s play=%s button=%s provider=%s", tostring(self.status),
         tostring(cfg.Captions), tostring(cfg.AutoScroll), tostring(cfg.ShowPlayer),
-        tostring(cfg.PlayButton), playButton and playButton:IsShown() and "shown" or "hidden",
+        tostring(cfg.PlayButton), row and row.frame:IsShown() and row.play:IsShown() and "shown" or "hidden",
         tostring(self.provider == true))
 end
