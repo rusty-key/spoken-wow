@@ -152,6 +152,12 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           onChange={(npcType) => onFilters({ npcType: npcType as LineFilters["npcType"] })}
         />
         <FilterChip
+          label="zone"
+          value={filters.zone === undefined ? undefined : String(filters.zone)}
+          options={facets.zones.map((zone) => ({ value: String(zone.uiMapID), label: zone.name }))}
+          onChange={(zone) => onFilters({ zone: zone ? Number(zone) : undefined })}
+        />
+        <FilterChip
           label="audio"
           value={filters.state}
           options={AUDIO_STATE_OPTIONS}

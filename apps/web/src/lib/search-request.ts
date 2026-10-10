@@ -17,6 +17,11 @@ import type { Filter, LineFilters } from "./search";
 
 const FILTERS: Filter[] = ["any", "npc", "quest", "text"];
 
+function zoneOf(value: string | null, zones: readonly { uiMapID: number }[]): number | undefined {
+  const id = Number(value);
+  return value && zones.some((zone) => zone.uiMapID === id) ? id : undefined;
+}
+
 function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
   return value && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
 }
@@ -26,7 +31,7 @@ function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T
  * is a question with a current answer rather than a constant baked into the release.
  */
 export async function filtersFromParams(params: URLSearchParams): Promise<LineFilters> {
-  const { races, genders, flavors, voices } = await facets();
+  const { races, genders, flavors, voices, zones } = await facets();
 
   return {
     q: params.get("q") ?? "",
@@ -39,6 +44,7 @@ export async function filtersFromParams(params: URLSearchParams): Promise<LineFi
     kind: oneOf(params.get("kind"), KINDS),
     source: oneOf(params.get("source"), SOURCES),
     npcType: oneOf(params.get("type"), NPC_TYPES),
+    zone: zoneOf(params.get("zone"), zones),
     narration: params.get("narration") === "1",
     // Absent means hidden, so the default state needs no parameter and a bare URL is the
     // useful view rather than the padded one.

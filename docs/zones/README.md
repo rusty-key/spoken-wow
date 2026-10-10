@@ -101,6 +101,9 @@ pipelines/zones/tools/
   seed/subzones.json     which parent zones to scrape subzones for
   seed/overrides.json    hand-written zone lore that beats the scraped text
   seed/area-names.json   every corpus place's name per client language, from AreaTable
+  seed/zone-regions.json each zone map's world rectangle and explored-area overlays
+  fetch-zone-regions.mjs client map tables -> seed/zone-regions.json
+  lib/zone-at.mjs        the zone a world point stands in, for the explorers' zone filter
   lore/import.mjs        seed the lore_line table from the committed Lua
   lore/export.mjs        write the addon's Lua data files from lore_line
   lore/import-names.mjs  seed/area-names.json -> entity_name, the site's place names

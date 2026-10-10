@@ -72,6 +72,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.kind) params.set("kind", filters.kind);
   if (filters.source) params.set("source", filters.source);
   if (filters.npcType) params.set("type", filters.npcType);
+  if (filters.zone !== undefined) params.set("zone", String(filters.zone));
   if (filters.includeProgress) params.set("progress", "1");
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
@@ -125,6 +126,7 @@ export default function Explorer({ facets, kind }: { facets: Facets; kind: Kind 
       voice: params.get("voice") ?? undefined,
       source: (params.get("source") as LineFilters["source"]) ?? undefined,
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
+      zone: Number(params.get("zone")) || undefined,
       includeProgress: params.get("progress") === "1",
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
@@ -286,6 +288,7 @@ export default function Explorer({ facets, kind }: { facets: Facets; kind: Kind 
         ...("voice" in next ? { voice: next.voice } : {}),
         ...("source" in next ? { source: next.source } : {}),
         ...("npcType" in next ? { type: next.npcType } : {}),
+        ...("zone" in next ? { zone: next.zone } : {}),
         ...("narration" in next ? { narration: next.narration ? "1" : undefined } : {}),
         ...("includeProgress" in next
           ? { progress: next.includeProgress ? "1" : undefined }
