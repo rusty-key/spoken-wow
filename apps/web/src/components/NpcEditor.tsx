@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /contributions/npcs: every NPC on file, one row each, with the triage table's own speaker
+ * /npcs: every NPC on file, one row each, with the triage table's own speaker
  * controls. `initial` is NpcSummary, built server-side (npcSummaryFrom), so nothing from
  * the npc table beyond what is rendered crosses into the client.
  */
@@ -21,11 +21,11 @@ import { summaryFromResolution } from "@/lib/contributions/speaker";
 import { Roster, type RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
-import { isProvenance, PROVENANCES, type NpcKind, type Provenance } from "@/lib/npc/npc";
+import { isProvenance, PROVENANCES, type NpcRowKind, type Provenance } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
 import { wowheadEntityUrl, wowheadForeverUrl } from "@/lib/wowhead";
 
-function key(npcKind: NpcKind | null, npcId: number): string {
+function key(npcKind: NpcRowKind | null, npcId: number): string {
   return `${npcKind}:${npcId}`;
 }
 
@@ -175,7 +175,7 @@ export default function NpcEditor({
     async (npc: NpcSummary, answer: Answer): Promise<boolean> => {
       // Every row here came from the npc table, so npcKind is never null and the route's
       // required kind is always the row's own.
-      const response = await fetch("/api/contributions/npc", {
+      const response = await fetch("/api/npcs", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...answer, npcKind: npc.npcKind, npcId: npc.npcId }),

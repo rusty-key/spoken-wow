@@ -8,7 +8,6 @@ const SECTION_LABELS: Record<Section, string> = {
   gossip: "Gossip",
   books: "Books",
   zones: "Zones",
-  npcs: "NPCs",
 };
 
 const QUEST_VIEWS = [
@@ -16,26 +15,24 @@ const QUEST_VIEWS = [
   { key: "corrections", label: "Corrections", href: "/contributions/quests/corrections" },
 ] as const;
 
-type Section = ContributionSection | "npcs";
+type Section = ContributionSection;
 type View = (typeof QUEST_VIEWS)[number]["key"];
 
 /**
  * The sections of /contributions, and under Quests its two views: lines the corpus lacks and
  * corrections to lines it has, which only quests can have. Links, not client state: each is
- * its own page with its own gate, and NPCs is left out for somebody that page would 404 for.
+ * its own page with its own gate.
  */
 export default function ContributionsTabs({
   lang,
   section,
   view,
-  showNpcs,
 }: {
   lang: Lang;
   section: Section;
   view?: View;
-  showNpcs: boolean;
 }) {
-  const sections = [...SECTIONS, ...(showNpcs ? (["npcs"] as const) : [])].map((key) => ({
+  const sections = SECTIONS.map((key) => ({
     key,
     label: SECTION_LABELS[key],
     href: `/contributions/${key}`,

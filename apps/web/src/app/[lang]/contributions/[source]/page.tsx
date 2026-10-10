@@ -239,7 +239,6 @@ export default async function Page({
             lang={lang}
             section={source}
             view="contributions"
-            showNpcs={can(viewer, "regenerate", BASE_LANG)}
           />
         </Contained>
       </main>
@@ -361,7 +360,6 @@ export default async function Page({
           lang={lang}
           section={source}
           view="contributions"
-          showNpcs={can(viewer, "regenerate", BASE_LANG)}
         />
         <ContributionTable
           initial={rows}

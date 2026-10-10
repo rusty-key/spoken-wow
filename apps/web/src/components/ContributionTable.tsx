@@ -67,7 +67,7 @@ import type { Contribution } from "@/lib/contributions/store";
 import type { BookMatch, BookSummary, NpcConflictOption, NpcSummary, QuestSummary } from "@/lib/contributions/triage";
 // From npc.ts, not npc/store.ts: store.ts imports @/lib/db, and pulling NPC_KINDS
 // (values, not just types) out of it would drag Postgres's own node built-ins into this bundle.
-import { NPC_KINDS, type NpcKind } from "@/lib/npc/npc";
+import { NPC_KINDS, type NpcKind, type NpcRowKind } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
 import type { Filter } from "@/lib/search";
 import { cn } from "@/lib/utils";
@@ -307,7 +307,8 @@ export default function ContributionTable({
   const pickConflict = useCallback(
     async (contributionId: number, npc: NpcSummary, option: NpcConflictOption) => {
       setNpcBusy(contributionId);
-      const ok = await recordKind(contributionId, option.npcKind);
+      // Conflicts are between a creature and a gameobject: getResolutionsById reads no items.
+      const ok = await recordKind(contributionId, option.npcKind as NpcKind);
       setNpcBusy(null);
       if (!ok) {
         setRefusals(withRefusal(contributionId));
@@ -1311,7 +1312,7 @@ function NpcConflict({
 }
 
 /** npcOverrides' key for an NPC's own answer, shared by every row that NPC speaks. */
-function overrideKey(npcKind: NpcKind, npcId: number): string {
+function overrideKey(npcKind: NpcRowKind, npcId: number): string {
   return `npc:${npcKind}:${npcId}`;
 }
 

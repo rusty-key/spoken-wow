@@ -37,6 +37,7 @@ import {
   getResolutionsById,
   resolutionKey,
   type NpcKind,
+  type NpcRowKind,
   type NpcResolution,
 } from "@/lib/npc/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
@@ -86,7 +87,7 @@ export type ResolveOutcome = { ok: true; contribution: Contribution } | ResolveR
 type Speaker = {
   npcId: number;
   npcName: string | null;
-  npcType: NpcKind;
+  npcType: NpcRowKind;
   race: string;
   gender: string;
   flavor: string | null;

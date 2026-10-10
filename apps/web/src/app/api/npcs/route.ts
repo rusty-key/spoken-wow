@@ -22,7 +22,7 @@
 import { recordActivity } from "@/lib/activity/store";
 import { requireAdmin } from "@/lib/admin-guard";
 import { INT32_MAX } from "@/lib/npc/npc";
-import { getResolution, NPC_KINDS, renameNpc, resolutionKey, upsertResolution, type NpcKind } from "@/lib/npc/store";
+import { getResolution, NPC_ROW_KINDS, renameNpc, resolutionKey, upsertResolution, type NpcRowKind } from "@/lib/npc/store";
 import { loadRoster } from "@/lib/voices/roster-store";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
-  const npcKind = (NPC_KINDS as readonly string[]).includes(body.npcKind as string)
-    ? (body.npcKind as NpcKind)
+  const npcKind = (NPC_ROW_KINDS as readonly string[]).includes(body.npcKind as string)
+    ? (body.npcKind as NpcRowKind)
     : null;
   const npcId = Number(body.npcId);
   if (!npcKind) return Response.json({ error: "unknown kind" }, { status: 400 });

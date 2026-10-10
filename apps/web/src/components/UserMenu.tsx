@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { signOut, useSession } from "@/lib/auth-client";
-import { langsWhere } from "@/lib/permissions";
+import { isAdmin, langsWhere } from "@/lib/permissions";
 
 /**
  * What every visitor gets, signed in or not: the explorers, and the page an addon's
@@ -82,6 +82,8 @@ export default function UserMenu() {
     may("configure") && { href: "/lexicon", label: "Pronunciation" },
     may("edit") && { href: "/reports", label: "Reports" },
     may("edit") && { href: "/contributions", label: "Contributions" },
+    // Who every NPC is holds in every language, so it is the global admin's alone.
+    isAdmin(role) && { href: "/npcs", label: "NPCs" },
     // Who did what in this language: for whoever answers for the grants in it.
     may("admin") && { href: "/activity", label: "Activity" },
     // Any language the viewer looks after, not the page's alone: /admin shows them all, and

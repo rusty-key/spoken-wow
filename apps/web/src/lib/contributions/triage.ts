@@ -10,7 +10,7 @@
  */
 import { BASE_LANG } from "@/lib/lang";
 import { flavorsFor } from "@/lib/quests/catalogue";
-import type { NpcKind, NpcResolution, Provenance } from "@/lib/npc/store";
+import type { NpcKind, NpcResolution, NpcRowKind, Provenance } from "@/lib/npc/store";
 import { isQuestStage, type QuestStage } from "./query";
 
 /** `stage` is null only for stored meta whose `event` is not one the addon sends. */
@@ -71,7 +71,7 @@ export type NpcSummary = {
    * kind by hand is a reviewed human decision, not the silent auto-guess resolve.ts declines to
    * make at intake.
    */
-  npcKind: NpcKind | null;
+  npcKind: NpcRowKind | null;
   npcId: number;
   npcName: string | null;
   race: string | null;
