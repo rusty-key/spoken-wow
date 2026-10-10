@@ -143,6 +143,22 @@ _G.Spoken:SetPartOn("quests", true); Options:UpdateRows(); quests:Refresh()
 Expect("switching it back on wakes the page", autoplay.layoutReason, nil)
 Expect("...and its titles", Group(quests, VO.L.OPT_SECTION_DIALOGUE).greyed, false)
 
+---------------------------------------------------------------- under the page's divider
+-- The first row on a page stands as far under the divider as the section's title after it stands
+-- under it: 25, on Spoken's page (the search box) and on a module's (its Enable Module). The rows
+-- start 2 under the divider.
+do
+    local search, modules
+    for _, item in ipairs(home.items) do
+        if item.kind == "row" and not search then search = item.control end
+        if item.kind ~= "row" and item.kind ~= "intro" and item.heading and not modules then modules = item.heading end
+    end
+    local above = 2 - search.layoutY
+    local below = (search.layoutY - search.layoutHeight) - (modules.layoutY - 16)
+    Expect("the search box is as far under the divider as Modules' title is under it", above .. " " .. below, "25 25")
+    Expect("...and a module's Enable switch as far", 2 - Row(quests, VO.L.OPT_PART_SWITCH).layoutY, 25)
+end
+
 ---------------------------------------------------------------- a page already showing follows its settings
 -- The client fires no OnShow for a page already on screen, so a setting changed under it -- the
 -- page's Defaults, a profile switched or copied -- is read again by Refresh.
@@ -159,11 +175,11 @@ do
     env.Addon.db.profile.Frame.FrameScale = before; home:Refresh()
 end
 
----------------------------------------------------------------- a module's card leads to its page
+---------------------------------------------------------------- a module's row leads to its page
 do
     local card = Row(home, L.OPT_PART_QUESTS)
     _G.Spoken:SetPartOn("quests", false); Options:UpdateRows()
-    Expect("a module switched off still opens its page from its card: the page has its own switch",
+    Expect("a module switched off still opens its page from its row: the page has its own switch",
         card.button and card.button.enabled, true)
     _G.Spoken:SetPartOn("quests", true); Options:UpdateRows()
 end
@@ -187,16 +203,20 @@ Expect("search reaches the pages under Spoken too", found[1] and found[1].page.n
 Expect("a word from a tooltip is enough", Search:Find("footsteps")[1] and Search:Find("footsteps")[1].entry.label, "Effects")
 Expect("every word must match", #Search:Find("subtitle footsteps"), 0)
 Expect("case and spacing do not matter", Search:Find("  SUBTITLE   size ")[1].entry.label, "Subtitle Size")
--- Each card in a row of cards has the row's place, not only the first: Books, the second
--- module, and Voice Only, the last style, are found where their rows are.
-for _, query in ipairs({ L.OPT_PART_BOOKS, L.OPT_STYLE_NONE }) do
-    local hit
+local function Hit(query)
     for _, result in ipairs(Search:Find(query)) do
-        if result.entry.label == query then hit = result.entry.frame end
+        if result.entry.label == query then return result.entry.frame end
     end
-    local first = hit and hit.layoutRow and hit.layoutRow.control
-    Expect("search lands on " .. query .. " where its row of cards is",
-        hit ~= nil and hit ~= first and hit.layoutY ~= nil and hit.layoutY == first.layoutY, true)
+end
+-- A module or a style is found on its own row of its list, not at the list's top: Books, after
+-- Quests, and Voice Only, the last style.
+for _, query in ipairs({ L.OPT_PART_BOOKS, L.OPT_STYLE_NONE }) do
+    local hit = Hit(query)
+    local list = hit and hit.layoutRow and hit.layoutRow.control
+    local index
+    for i, row in ipairs(list and list.layoutRows or {}) do if row == hit then index = i end end
+    Expect("search lands on " .. query .. " on its own row of its list",
+        index ~= nil and index > 1 and hit.layoutY == list.layoutY - 4 - (index - 1) * hit.height, true)
 end
 env.Addon:SetPlayerStyle("minimal"); Options:UpdateRows()
 
@@ -263,23 +283,23 @@ env.Addon.db.global.Welcomed = nil
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(2.1)
 Expect("the welcome opens at the first login after it ships", Welcome.frame and Welcome.frame:IsShown(), true)
-Expect("it offers the parts as cards, as Home does", #Welcome.cards, 3)
+Expect("it offers the parts as a list, as Home does", #Welcome.modules, 3)
 Expect("...under its header, the paragraph saying what the window is for",
     Welcome.layout.intro.text ~= nil and Welcome.layout.intro.text.text, L.WELCOME_INTRO)
 Expect("...which the settings pages, like the game's own, do without", home.intro.text, nil)
-Expect("...and the ways of showing lines as tiles", #Welcome.tiles >= 3, true)
+Expect("...and the ways of showing lines as a list, as Spoken's settings page has them", #Welcome.styles >= 3, true)
 local subtitles
-for _, tile in ipairs(Welcome.tiles) do if tile.layoutTile.value == "subtitle" then subtitles = tile end end
+for _, row in ipairs(Welcome.styles) do if row.layoutTile.value == "subtitle" then subtitles = row end end
 subtitles.scripts.OnClick(subtitles)
 Expect("a choice applies at once", env.Addon:PlayerStyle(), "subtitle")
 Expect("...and only one way of showing lines is picked", (function()
     local picked = 0
-    for _, tile in ipairs(Welcome.tiles) do if tile.layoutSelected then picked = picked + 1 end end
+    for _, row in ipairs(Welcome.styles) do if row.layoutSelected then picked = picked + 1 end end
     return picked
 end)(), 1)
-local quests = Welcome.cards[1]
+local quests = Welcome.modules[1]
 quests.scripts.OnClick(quests)
-Expect("a card turns its part off", env.Sources:IsTurnedOff(env.Sources:Get("quests") or { key = "quests" }), true)
+Expect("a click on its row turns its part off", env.Sources:IsTurnedOff(env.Sources:Get("quests") or { key = "quests" }), true)
 quests.scripts.OnClick(quests)
 Expect("...and on again", env.Sources:IsTurnedOff(env.Sources:Get("quests") or { key = "quests" }), false)
 Expect("choosing subtitles only chooses them", env.Subtitle:IsShowingSample(), false)

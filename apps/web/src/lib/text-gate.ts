@@ -37,8 +37,12 @@ export const INVALID_CHARS = "$<>";
  */
 const DIRECTION = /<[^<>]*>/g;
 
+export function withoutDirections(text: string): string {
+  return text.replace(DIRECTION, "");
+}
+
 export function hasInvalidChars(text: string): boolean {
-  const spoken = text.replace(DIRECTION, "");
+  const spoken = withoutDirections(text);
   return [...INVALID_CHARS].some((c) => spoken.includes(c));
 }
 

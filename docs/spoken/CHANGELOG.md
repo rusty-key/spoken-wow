@@ -70,6 +70,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - Pause Between Lines only runs when another line is waiting. After the last line Spoken is
   done as soon as the voice ends, so its window closes and the game's NPC voices come back
   without the extra wait.
+- With greetings set to Once per NPC, what an NPC says after you pick one of its options plays
+  again, like a guard's directions. Only the greeting it opens with is held back.
 
 ## 3.1.0 — 2026-10-06
 

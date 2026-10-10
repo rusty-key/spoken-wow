@@ -57,13 +57,15 @@ for _, text in ipairs(stub.LabelsUnder(_G.SpokenOptionsPanel)) do labels[text] =
 Expect("the parts have a section of their own", labels["Modules"], true)
 Expect("an installed part is named for what it reads", labels["Quests"], true)
 Expect("...and so is the other", labels["Zones"], true)
-Expect("a part not installed still has its card", labels["Books"], true)
+Expect("a part not installed still has its row", labels["Books"], true)
 local readablesCard
 for _, child in ipairs(_G.SpokenOptionsPanel.content.children) do
-    if child.layoutCard and child.layoutCard.title == "Books" then readablesCard = child end
+    for _, row in ipairs(child.layoutRows or {}) do
+        if row.layoutCard and row.layoutCard.title == "Books" then readablesCard = row end
+    end
 end
 Expect("...which says why it cannot be turned on", readablesCard and readablesCard.layoutReason, env.L.REASON_NOT_INSTALLED)
--- Installed here, with no voice pack found: the card says what is missing.
+-- Installed here, with no voice pack found: the row says what is missing.
 Expect("an installed part says how many of its voice packs it has", labels[env.L.PART_VOICE], true)
 Expect("...as a number, not out of how many there are", select(3, env.Options:PartVoice("quests")), "0")
 -- A part switched off is off everywhere: its entries leave the minimap menu, and it is told,

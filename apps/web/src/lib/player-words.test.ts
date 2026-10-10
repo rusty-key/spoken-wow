@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { speakPlayerTokens } from "./player-words";
+import { branchesOnPlayerGender, speakPlayerTokens } from "./player-words";
 import { isVoiceable, skipReasonFor } from "./text-gate";
 
 describe("speakPlayerTokens", () => {
@@ -47,6 +47,31 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Olá, $Nama.", "ptBR")).toBe("Olá, $Nama.");
   });
 
+  it("reads deDE's $u as the gender branch $g is", () => {
+    // q:87288:accept and q:98321:accept, as the client sent them.
+    expect(speakPlayerTokens("Seid gegrüßt, $uReisender:Reisende;.", "deDE")).toBe("Seid gegrüßt, Reisender.");
+    expect(speakPlayerTokens("Ihr seid $uEin:Eine:r; $R.", "deDE", "f")).toBe("Ihr seid Eine Reisende.");
+    expect(speakPlayerTokens("Hola, $uamigo:amiga;.", "esES")).toBe("Hola, $uamigo:amiga;.");
+  });
+
+  it("leaves a branch whose ; is lost, rather than reading on to a later sentence's ;", () => {
+    // q:97963:accept, its `;` lost: the next `;` would end the female branch and drop the
+    // words between unheard.
+    const line = "Ein $gAlchimist:Alchimistin in der Stadt. Geht; schnell.";
+    expect(speakPlayerTokens(line, "deDE")).toBe("Ein $gAlchimist:Alchimistin in der Stadt. Geht; schnell.");
+    expect(speakPlayerTokens("Ein $uHeld:Heldin! Ja; gut.", "deDE")).toBe("Ein $uHeld:Heldin! Ja; gut.");
+    expect(speakPlayerTokens("Un $gami:amie\n\nVenez; vite.", "frFR")).toBe("Un $gami:amie\n\nVenez; vite.");
+    expect(speakPlayerTokens("一位$g勇士:女勇士。快去;吧。", "zhCN")).toBe("一位$g勇士:女勇士。快去;吧。");
+  });
+
+  it("speaks deDE's genitive s glued to $N or $C, and no other glued letter", () => {
+    expect(speakPlayerTokens("Die Legion $Ns wartet.", "deDE")).toBe("Die Legion Abenteurers wartet.");
+    expect(speakPlayerTokens("dass $cs wie", "deDE", "f")).toBe("dass Abenteurerin wie");
+    expect(speakPlayerTokens("$Rs", "deDE")).toBe("$Rs");
+    expect(speakPlayerTokens("$Nse", "deDE")).toBe("$Nse");
+    expect(speakPlayerTokens("Merci, $Ns.", "frFR")).toBe("Merci, $Ns.");
+  });
+
   it("speaks English's own word, for the book pages that still carry tokens", () => {
     expect(speakPlayerTokens("$N, bring me my hammer, $gBrother:Sister;.", "enUS")).toBe(
       "Adventurer, bring me my hammer, Brother.",
@@ -55,6 +80,15 @@ describe("speakPlayerTokens", () => {
 
   it("leaves a token it has no word for", () => {
     expect(speakPlayerTokens("$2113w Kisten", "deDE")).toBe("$2113w Kisten");
+  });
+});
+
+describe("branchesOnPlayerGender", () => {
+  it("splits a deDE line on $u as on $g, and no other language's", () => {
+    expect(branchesOnPlayerGender("Willkommen, $uReisender:Reisende;.", "deDE")).toBe(true);
+    expect(branchesOnPlayerGender("Willkommen, $gReisender:Reisende;.", "deDE")).toBe(true);
+    expect(branchesOnPlayerGender("Bienvenue, $uvoyageur:voyageuse;.", "frFR")).toBe(false);
+    expect(branchesOnPlayerGender("Willkommen, $N.", "deDE")).toBe(false);
   });
 });
 

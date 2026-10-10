@@ -557,7 +557,7 @@ async function englishOriginals(client: PoolClient, momentId: string): Promise<M
  */
 async function ownRows(client: PoolClient, identity: LineIdentity, text: string, lang: Lang): Promise<MomentRow[]> {
   const originals = lang === BASE_LANG ? new Map<string, string>() : await englishOriginals(client, identity.lineId);
-  return playerGenderForms(identity.lineId, identity.fileName, branchesOnPlayerGender(text)).map((form) => ({
+  return playerGenderForms(identity.lineId, identity.fileName, branchesOnPlayerGender(text, lang)).map((form) => ({
     ...form,
     source: identity.source,
     questId: identity.questId,

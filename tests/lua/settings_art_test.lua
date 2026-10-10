@@ -15,6 +15,7 @@ _G.UISpecialFrames = _G.UISpecialFrames or {}
 
 -- The atlases the game's settings draw with (wow-ui-source, forever).
 local ATLASES = { ["checkbox-minimal"] = 1, ["checkmark-minimal"] = 1, ["checkmark-minimal-disabled"] = 1,
+    ["options_frame_child"] = 1,
     ["Options_HorizontalDivider"] = 1, ["minimal-scrollbar-track-top"] = 1, ["!minimal-scrollbar-track-middle"] = 1,
     ["minimal-scrollbar-track-bottom"] = 1, ["minimal-scrollbar-small-thumb-top"] = 1,
     ["minimal-scrollbar-small-thumb-middle"] = 1, ["minimal-scrollbar-small-thumb-bottom"] = 1 }
@@ -104,10 +105,12 @@ local function Module(name)
         button = "Settings", onButton = function() modules.opened = name end,
         buttonEnabled = function() return modules[name] end }
 end
-local cards = layout:Cards({ Module("on"), Module("off") })
+local rows = layout:List({ Module("on"), Module("off") })
 local function Art(sketch) Layout.Rect(sketch, 0, 0, 10, 10, 1, 0.82, 0, 1) end
 local tiles = layout:Tiles({ { value = "x", title = "X", text = "", art = Art }, { value = "y", title = "Y", text = "", art = Art } },
     function() return state.style end, function(v) state.style = v end, nil, { active = "Active", choose = "Use this." })
+local choices = layout:Choices({ { value = "x", title = "X", text = "", art = Art }, { value = "y", title = "Y", text = "", art = Art } },
+    function() return state.style end, function(v) state.style = v end, nil, { choose = "Use this." })
 layout:Refresh()
 
 local middle = layout.left + math.floor(layout:Width() / 2)
@@ -172,56 +175,101 @@ Expect("a button is the game's red panel button", button.template, "UIPanelButto
 Expect("...200 wide and 22 tall, where a setting's name starts", button.width .. "x" .. button.height .. " "
     .. (button.anchor.x - layout.left), "200x22 37")
 ---------------------------------------------------------------- modules
-Expect("a module card is drawn in the game's tooltip border", cards[1].backdrop and cards[1].backdrop.edgeFile,
-    [[Interface\Tooltips\UI-Tooltip-Border]])
-Expect("...gold round one that is on", cards[1].backdropBorderColor[1] .. "," .. cards[1].backdropBorderColor[2], "1,0.82")
-Expect("...grey round one that is off", cards[2].backdropBorderColor[1], 0.45)
-Expect("an enabled module stands at full strength, under a faint wash", cards[1].alpha == 1
-    and cards[1].layoutWash.shown ~= false, true)
-Expect("one switched off stands back at lower opacity", cards[2].alpha < 1 and cards[2].layoutWash.shown == false, true)
-cards[2].scripts.OnEnter(cards[2])
-Expect("...coming forward under the pointer", cards[2].alpha > 0.55 and cards[2].layoutWash.shown ~= false, true)
-Expect("...whose tooltip says what a click will do", cards[2].layoutHint, "Click to turn it on.")
-cards[2].scripts.OnLeave(cards[2])
-Expect("a module has the page's checkbox in its corner, ticked while it is on", cards[1].check.checked, true)
-Expect("...and not while it is off", cards[2].check.checked, false)
-Expect("...the game's settings checkbox", cards[1].check.checkedTexture.atlas, "checkmark-minimal")
-Expect("...inside the card, its top level with its icon's, where its words end", cards[1].check.anchor.point .. " "
-    .. cards[1].check.anchor.x .. " " .. cards[1].check.anchor.y, "TOPRIGHT -12 -12")
+local list = rows[1].parent
+Expect("the modules are one list, in the bronze frame the game's nameplate preview sits in",
+    list.layoutFrame and list.layoutFrame.atlas .. " " .. tostring(list.backdrop), "options_frame_child nil")
+Expect("...from where a section's title starts to 14 short of the rows' right, as every box on a page",
+    (list.anchor.x - layout.left) .. " " .. (layout.left + layout:Width() - (list.anchor.x + list.width)), "7 14")
+Expect("a row each, inside the border", rows[1].anchor.relativeTo == list and rows[1].anchor.x .. " " .. rows[1].anchor.y, "4 -4")
+Expect("...one under the other, as wide as the list inside its border",
+    rows[2].anchor.y .. " " .. rows[2].width, (-4 - rows[1].height) .. " " .. (list.width - 8))
+Expect("...every row the same height", rows[1].height, rows[2].height)
+Expect("...the list as tall as its rows", list.height, rows[1].height * 2 + 8)
+Expect("...a faint line between them, and none above the first", #list.lines, 1)
+Expect("an enabled module stands at full strength", rows[1].alpha, 1)
+Expect("...a gold light behind it, and no bar down its edge", tostring(rows[1].layoutLight.shown) .. " "
+    .. tostring(rows[1].layoutAccent), "true nil")
+Expect("one switched off stands back at lower opacity, with no light", rows[2].alpha < 1
+    and rows[2].layoutLight.shown == false, true)
+rows[2].scripts.OnEnter(rows[2])
+Expect("...coming forward under the pointer", rows[2].alpha > 0.55 and rows[2].layoutWash.shown ~= false, true)
+Expect("...whose tooltip says what a click will do", rows[2].layoutHint, "Click to turn it on.")
+rows[2].scripts.OnLeave(rows[2])
+Expect("...and settles back after", rows[2].layoutWash.shown, false)
+rows[1].scripts.OnEnter(rows[1])
+Expect("an enabled module lights up under the pointer too", rows[1].layoutOver and rows[1].layoutWash.shown, true)
+rows[1].scripts.OnLeave(rows[1])
+Expect("a module has the page's checkbox, ticked while it is on", rows[1].check.checked, true)
+Expect("...and not while it is off", rows[2].check.checked, false)
+Expect("...the game's settings checkbox", rows[1].check.checkedTexture.atlas, "checkmark-minimal")
+Expect("...at the row's right end, in the middle of its height", rows[1].check.anchor.point .. " "
+    .. rows[1].check.anchor.x .. " " .. rows[1].check.anchor.y, "RIGHT -12 0")
 Expect("a chosen style's tick on its sketch, in the top right corner",
     tiles[1].check.anchor.relativeTo == tiles[1].screen and tiles[1].check.anchor.point .. " "
     .. tiles[1].check.anchor.x .. " " .. tiles[1].check.anchor.y, "TOPRIGHT -6 -6")
-Expect("its voice packs counted on the dropdown's face", cards[1].status.message .. " " .. cards[1].status.value, "Voice Pack 1/1")
-Expect("...no Enabled or Disabled tag", cards[1].tags, nil)
-Expect("its icon in the input field's frame, at the card's top left",
-    cards[1].frame.width .. "x" .. cards[1].frame.height, "44x44")
-Expect("...reaching its rim", cards[1].icon.width, 38)
-cards[1].scripts.OnEnter(cards[1])
-Expect("an enabled module comes up under the pointer too", cards[1].layoutOver and cards[1].layoutWash.alpha, 1)
-cards[1].scripts.OnLeave(cards[1])
-Expect("...and settles back after", cards[1].layoutWash.alpha, 0.5)
-Expect("its button the height of every button: the game's red panel button", cards[1].button.height, 22)
-Expect("a module card has a button to its page", cards[1].button ~= nil and cards[1].button.text, "Settings")
-cards[1].button.scripts.OnClick(cards[1].button)
+Expect("its button left of the checkbox", rows[1].button.anchor.relativeTo, rows[1].check)
+Expect("its voice packs left of the button, the number over what it counts",
+    rows[1].status.anchor.relativeTo == rows[1].button and rows[1].status.count.text .. " " .. rows[1].status.caption.text,
+    "1/1 Voice Pack")
+Expect("...the number level with the module's name, what it counts level with its words",
+    rows[1].status.count.anchor.point .. " " .. tostring(rows[1].status.caption.anchor.relativeTo == rows[1].status.count)
+    .. " " .. tostring(rows[1].status.height == rows[1].words.height), "TOPRIGHT true true")
+Expect("its icon in the input field's frame, at the row's left", rows[1].frame.width .. "x" .. rows[1].frame.height, "40x40")
+Expect("...reaching its rim", rows[1].icon.width, 34)
+Expect("...in from the row's edge as its checkbox is", rows[1].frame.anchor.point .. " " .. rows[1].frame.anchor.x, "LEFT 12")
+do
+    -- Compact, as the welcome window has it: a smaller icon, the row shorter by as much and its
+    -- room above and below.
+    local open = CreateFrame("Frame")
+    open.children = {}
+    function open:GetWidth() return 640 end
+    local small = Layout.New(open, 25, -16)
+    small.compactList = true
+    local compact = small:List({ Module("on"), Module("off") })
+    small:Refresh()
+    Expect("a compact list's icons are smaller", compact[1].frame.width .. "x" .. compact[1].frame.height, "32x32")
+    Expect("...its rows shorter", compact[1].height, rows[1].height - 8 - 4)
+end
+Expect("its name over its words, between the icon and its voice packs",
+    rows[1].name.anchor.relativeTo == rows[1].words and rows[1].text.anchor.relativeTo == rows[1].name
+    and rows[1].words.anchor.relativeTo, rows[1].status)
+Expect("its button the height of every button: the game's red panel button", rows[1].button.height, 22)
+Expect("...the same width on every row, so they line up", rows[1].button.width, rows[2].button.width)
+Expect("a module has a button to its page", rows[1].button ~= nil and rows[1].button.text, "Settings")
+rows[1].button.scripts.OnClick(rows[1].button)
 Expect("...which opens it", modules.opened, "on")
-Expect("...and does nothing while the module is off", cards[2].button.enabled, false)
-Expect("its icon sits in the frame a narrator style's sketch has", cards[1].icon.parent, cards[1].frame)
-Expect("its name under its icon, across the card's full width, so it is not cut short",
-    cards[1].name.anchor.relativeTo == cards[1] and cards[1].name.anchor.x, -12)
-Expect("...its words under its name, as a narrator style's are", cards[1].text.anchor.relativeTo == cards[1].name
-    and tiles[1].text.anchor.relativeTo == tiles[1].name and cards[1].text.anchor.y == tiles[1].text.anchor.y, true)
+Expect("...and does nothing while the module is off", rows[2].button.enabled, false)
 local before = #played
-cards[2].scripts.OnClick(cards[2])
-Expect("a click on a module turns it on", modules.off, true)
+rows[2].scripts.OnClick(rows[2])
+Expect("a click on a module's row turns it on", modules.off, true)
 Expect("...with the checkbox's sound, as the game's settings make", played[before + 1], 856)
-Expect("...and its card comes forward", cards[2].alpha, 1)
-cards[2].scripts.OnClick(cards[2])
-Expect("a module switched off is not live: its name and icon grey out", cards[2].layoutChecked, false)
-Expect("each module is a card of its own, side by side", cards[1].anchor.y == cards[2].anchor.y
-    and cards[2].anchor.x > cards[1].anchor.x + cards[1].width, true)
-Expect("...the row as wide as the rows: the first card on their left edge", cards[1].anchor.x, layout.left)
+Expect("...and its row comes forward", rows[2].alpha, 1)
+rows[2].scripts.OnClick(rows[2])
+Expect("a module switched off is not live: its name and icon grey out", rows[2].layoutChecked, false)
 
 ---------------------------------------------------------------- narrator styles
+local styles = choices[1].parent
+Expect("the narrator's styles are a list as the modules are, as wide", styles.width .. " " .. tostring(styles.lines ~= nil),
+    list.width .. " true")
+Expect("...a row each, every one as tall", choices[1].height, choices[2].height)
+Expect("...each style's sketch in a dark screen at its left", choices[1].screen.anchor.point .. " "
+    .. choices[1].screen.anchor.x .. " " .. choices[1].screen.width .. "x" .. choices[1].screen.height, "LEFT 12 72x40")
+Expect("...as tall as a module's icon, so a style's row is as tall as a module's",
+    choices[1].screen.height .. " " .. choices[1].height, rows[1].frame.height .. " " .. rows[1].height)
+Expect("...scaled to fit it", choices[1].sketch.scale < 1, true)
+Expect("...its name and words between it and the tick", choices[1].words.anchor.relativeTo, choices[1].check)
+Expect("the chosen style stands at full strength, in gold, its light behind it", choices[1].alpha == 1
+    and choices[1].layoutSelected and choices[1].layoutLight.shown ~= false, true)
+Expect("...ticked at the row's right end, where a module's checkbox is", choices[1].check.checked
+    and choices[1].check.anchor.point .. " " .. choices[1].check.anchor.x, "RIGHT -12")
+Expect("the others stand back, with no light and no box at all", choices[2].alpha < 1
+    and choices[2].layoutLight.shown == false and choices[2].check.shown, false)
+Expect("...their sketches grey", choices[2].sketch.layoutGrey, true)
+Expect("...and say a click picks them", choices[2].layoutHint, "Use this.")
+choices[2].scripts.OnClick(choices[2])
+Expect("a click on a style's row chooses it", state.style .. " " .. tostring(choices[2].layoutSelected)
+    .. " " .. tostring(choices[1].layoutSelected), "y true false")
+choices[1].scripts.OnClick(choices[1])
 Expect("the chosen style stands at full strength", tiles[1].alpha == 1 and tiles[1].layoutWash.shown ~= false, true)
 Expect("...its name in gold", tiles[1].layoutSelected, true)
 Expect("the others stand back, in the same border", tiles[2].alpha < 1
@@ -294,11 +342,58 @@ local function Within(frame)
 end
 Expect("three narrator styles on one line", three[3].anchor.y == three[1].anchor.y, true)
 Expect("...every one inside the boxes' width", Within(three[1]) and Within(three[3]), true)
+Expect("...the last ending where the rows do, whatever the others' whole pixels leave over",
+    three[3].anchor.x + three[3].width, layout.left + layout:Width())
 Expect("...each sketch scaled to fit its screen, no smaller than it need be", three[1].sketch.scale <= 1
     and three[1].sketch.scale > 0.9, true)
-Expect("modules keep to one line", cards[1].anchor.y == cards[2].anchor.y, true)
+Expect("the modules' list narrows with the page", rows[1].parent.width, layout:Width() - 7 - 14)
 Expect("two buttons too wide for the box share it instead of running out", Inside(send) and Inside(clear), true)
 Expect("...still side by side", send.anchor.y == clear.anchor.y, true)
+
+---------------------------------------------------------------- a group
+do
+    local open = CreateFrame("Frame")
+    open.children = {}
+    function open:GetWidth() return 640 end
+    -- The client's white font, which the stub does not define.
+    _G.GameFontHighlight = _G.GameFontHighlight or {}
+    local grouped = Layout.New(open, 25, -16)
+    grouped:Group("Settings")
+    grouped:Section("Display")
+    grouped:Checkbox("Show Words", "tip", function() return true end, function() end)
+    grouped:Section("Window")
+    grouped:Checkbox("Lock Position", "tip", function() return true end, function() end)
+    grouped:EndGroup()
+    grouped:Refresh()
+    local group, display, window = grouped.items[1], grouped.items[2], grouped.items[3]
+    Expect("a group has a title, as a section has, and no box", group.heading.text .. " " .. tostring(group.box),
+        "Settings nil")
+    -- Each read guarded, so a layout without small titles or their lines fails these checks
+    -- rather than stopping the file.
+    local small, line, first = window.small, window.divider, display.small
+    Expect("its sections have small titles, not a section's large one",
+        tostring(display.heading) .. " " .. tostring(first and first.text) .. " " .. tostring(small and small.text),
+        "nil Display Window")
+    Expect("...in the game's white", tostring(small and (small.fontObject or small.font)), "GameFontHighlight")
+    Expect("...where the rows' labels start", small and first and ((small.anchor.x - grouped.left) .. " "
+        .. (first.anchor.x - grouped.left)) or "no small titles", "37 37")
+    Expect("...their names still what search files their rows under", grouped.entries[1].section, "Display")
+    Expect("a line runs on from each title, the first's too",
+        tostring(display.divider ~= nil and display.divider.shown ~= false) .. " "
+        .. tostring(line ~= nil and line.shown ~= false), "true true")
+    Expect("...one thin, faint bronze line, not the header's divider",
+        line and (tostring(line.layoutAtlas) .. " " .. line.height .. " "
+        .. table.concat(line.layoutColor or {}, ",") .. " " .. tostring(line.alpha)) or "no line",
+        "nil 1 0.55,0.4,0.24 0.5")
+    Expect("...from 8 after the title to where the boxes end",
+        line and small and ((line.anchor.x - (small.anchor.x + small:GetStringWidth())) .. " "
+        .. (line.anchor.x + line.width)) or "no line",
+        "8 " .. (grouped.left + grouped:Width() - 14))
+    Expect("...through the title's middle", line and small and (small.anchor.y - line.anchor.y) or "no line", 6)
+    Expect("the title 16 under the rows above it, and its rows 10 under it",
+        small and ((display.bottom - small.anchor.y) .. " " .. (small.anchor.y - 14 - window.top)) or "no small title",
+        "16 10")
+end
 
 ---------------------------------------------------------------- sections have no divider
 do
@@ -313,10 +408,5 @@ do
     Expect("a section has its title and no rule under it, as the game's do", plain.items[1].rule, nil)
 end
 
----------------------------------------------------------------- the voice pack count
-Expect("a module's voice packs are a line, its count on the right and no bar under it",
-    cards[1].status.count.text .. " " .. tostring(cards[1].status.bar), "1/1 nil")
-Expect("...grey with the module off, as its icon is", cards[2].status.layoutGreyed, true)
-Expect("...and in colour with it on", cards[1].status.layoutGreyed, false)
 
 os.exit(Failures() == 0 and 0 or 1)

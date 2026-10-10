@@ -11,14 +11,15 @@ Welcome = {}
 
 local Layout = SpokenLayout
 local WIDTH = 760
--- The settings page's own margins, measured from the inside of its frame, on every side here:
--- the page's name 24 in and 35 under the top, its cards and sections 44 in, from the left and
--- the right alike, and the buttons 35 above the bottom.
+-- The settings page's own margins, measured from the inside of its frame: the page's name 24 in,
+-- its lists and sections 44 in, from the left and the right alike. Above the name and under the
+-- buttons 22 rather than the page's 35, so the two lists, four modules and five styles, fit a
+-- 768-high screen.
 local BORDER = 7        -- the frame's edge, inside which the margins are measured
 local BAR = 19          -- the frame's title bar
 local TITLE_X = BORDER + 24
 local CONTENT_X = BORDER + 44
-local TOP_MARGIN, BOTTOM_MARGIN = 35, 35
+local TOP_MARGIN, BOTTOM_MARGIN = 22, 22
 local NAME_Y = 22       -- the page's name, under the page's top: the layout's header puts it there
 local FOOTER_GAP = 20   -- between the last row of tiles and the footer's divider
 local RULE_GAP = 16     -- between the footer's divider and its buttons
@@ -124,18 +125,21 @@ function Welcome:Build()
     layout.titleX = TITLE_X
     -- Its name, words and questions across the middle: a window that opens unasked, read top down.
     layout.centred = true
+    -- Its lists across its width, not from where a settings row's label starts, and compact, so
+    -- every module fits with the window on a small screen.
+    layout.boxLeft, layout.boxRight = 0, 0
+    layout.compactList = true
     self.page, self.layout = page, layout
     -- Headed as the settings' pages are, with a name, and then what the window is for: unlike
     -- a settings page, it opens unasked, and has to say what it is.
     layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.WELCOME_TITLE, L.WELCOME_INTRO)
 
-    -- What Spoken reads: the modules, a click turning each on or off, their tags saying whether
-    -- each is enabled and has its voices, as on General.
+    -- What Spoken reads: the modules' list, as on General, a click turning each on or off.
     layout:Section(L.WELCOME_PARTS, true)
-    local cards = {}
+    local modules = {}
     for _, part in ipairs(Options.PARTS) do
         local key = part.key
-        table.insert(cards, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
+        table.insert(modules, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
             read = function() return Spoken:IsPartOn(key) end,
             write = function(v) Sources:SetTurnedOff(key, not v) end,
             apply = function() Options:UpdateRows(); layout:Refresh() end,
@@ -143,19 +147,19 @@ function Welcome:Build()
             status = function() return Options:PartVoice(key) end,
             hint = function(on) return on and L.OPT_PART_CLICK_OFF or L.OPT_PART_CLICK_ON end })
     end
-    self.cards = layout:Cards(cards)
+    self.modules = layout:List(modules)
 
-    -- How lines appear: the same sketches as General. Choosing subtitles shows one, so it can
-    -- be seen and dragged into place now.
+    -- How lines appear: the same list as Spoken's settings page, a sketch on each row. Choosing
+    -- subtitles shows one, so it can be seen and dragged into place now.
     layout:Section(L.WELCOME_SHOW, true)
-    -- Preview mode, centred between the question and the styles it shows, as far from each.
+    -- Preview mode, at the end of the question's line, as on Spoken's settings page.
     self.preview = Options:PreviewButton(layout)
-    local tiles = {}
+    local styles = {}
     for _, style in ipairs(Options:Styles()) do
-        table.insert(tiles, { value = style, title = Options.STYLE_LABELS[style], text = Options.STYLE_TEXTS[style],
+        table.insert(styles, { value = style, title = Options.STYLE_LABELS[style], text = Options.STYLE_TEXTS[style],
             tooltip = Options.STYLE_TIPS[style], art = Options.SKETCHES[style] })
     end
-    self.tiles = layout:Tiles(tiles, function() return Addon:PlayerStyle() end,
+    self.styles = layout:Choices(styles, function() return Addon:PlayerStyle() end,
         function(v) Addon:SetPlayerStyle(v) end,
         function()
             Refresh()
