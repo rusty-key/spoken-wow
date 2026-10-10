@@ -12,8 +12,10 @@ def line(npc_id, voice, line_id="q:109:accept", file_name="109-accept", source="
 
 
 def npc(npc_id, race, gender, flavor, provenance="corpus", npc_type="creature"):
+    # The voice the site reads the answer with (voice_for), as the export writes it.
+    voice = "-".join(part for part in (race, gender, flavor) if part) if race else None
     return {"npcType": npc_type, "npcId": npc_id, "race": race, "gender": gender,
-            "flavor": flavor, "provenance": provenance}
+            "flavor": flavor, "provenance": provenance, "voice": voice}
 
 
 CORPUS = {
@@ -32,6 +34,12 @@ CORPUS = {
         npc(5, "human", "male", "warrior"),
     ],
 }
+
+
+def test_an_npc_voice_is_the_one_its_answer_names_not_one_built_from_it():
+    corpus = {"lines": [], "npcs": [dict(npc(1, "gameobject", None, None, npc_type="gameobject"),
+                                         voice="narrator-male")]}
+    assert npc_voices(corpus) == {("gameobject", 1): "narrator-male"}
 
 
 def test_an_npc_voice_is_its_answer_and_none_where_nothing_is_known():

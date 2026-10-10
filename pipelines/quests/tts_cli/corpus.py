@@ -109,19 +109,27 @@ def build_corpus(df, spawn_rows) -> dict:
     }
 
 
+#: Kinds that are what they are, whoever reads them: a billboard is a gameobject the narrator
+#: reads, not a narrator (apps/web migration 0071).
+GENERIC_TYPES = ("gameobject", "item")
+
+
 def npcs_of(df) -> list:
-    """Each NPC once: its race and gender as its display gives them, and its own flavor, or
-    None where the game names none. In kind-then-id order, which the export reproduces."""
+    """Each NPC once: its type (its display's race, or its kind for a gameobject or an item)
+    and gender, its own flavor or None where the game names none, and the voice its lines
+    were made in. In kind-then-id order, which the export reproduces."""
     npcs = {}
     for row in df.to_dict("records"):
         key = (row["type"], int(row["id"]))
+        generic = row["type"] in GENERIC_TYPES
         npcs.setdefault(key, {
             "npcType": row["type"],
             "npcId": int(row["id"]),
-            "race": row["race"],
-            "gender": row["gender"],
+            "race": row["type"] if generic else row["race"],
+            "gender": None if generic else row["gender"],
             "flavor": row["npc_flavor"],
             "provenance": "corpus",
+            "voice": row["voice_name"],
         })
     return [npcs[key] for key in sorted(npcs)]
 

@@ -1,17 +1,17 @@
 """Which file each NPC speaks a line in, for a pack.
 
 A corpus row is a line and one NPC speaking it, written with the voice its file was made in.
-The NPC's own voice is its answer in the corpus's `npcs`, the site's npc table. Where the two
+The NPC's own voice is the one its answer in the corpus's `npcs` is read with: the site's npc
+table and voice_for (apps/web migration 0071). Where the two
 differ, the NPC speaks the line in a file of its own voice (naming.variant_file_name), which
 the site generates; until that file has audio in the store being built, the NPC keeps the
 line's own file, so nobody falls silent while a voice waits to be made.
 
 The site reads lines the same way (apps/web/src/lib/quests/catalogue.ts): a speaker whose NPC
-nobody knows anything about keeps the voice its row was written with.
+no voice reads keeps the file its row was written with.
 """
 import os
 
-from tts_cli.flavors import voice_name
 from tts_cli.naming import moment_of, subfolder_from_line_id, variant_file_name, variant_line_id
 
 #: The lines an NPC speaks in its own voice: all of them but progress text, which is never
@@ -24,10 +24,9 @@ def npc_voices(corpus: dict) -> dict:
     """(npcType, npcId) -> the voice the NPC's answer names, for every NPC with one."""
     voices = {}
     for npc in corpus.get("npcs", []):
-        if npc.get("provenance") == "none" or not npc["race"] or not npc["gender"]:
+        if npc.get("provenance") == "none" or not npc.get("voice"):
             continue
-        voices[(npc["npcType"], npc["npcId"])] = voice_name(npc["race"], npc["gender"],
-                                                            npc["flavor"])
+        voices[(npc["npcType"], npc["npcId"])] = npc["voice"]
     return voices
 
 

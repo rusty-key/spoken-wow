@@ -64,8 +64,8 @@ def test_an_npc_the_game_names_no_flavor_for_gets_its_race_genders_default_marke
         ("creature", 4, "tauren", "male", "warrior", "corpus", False),
         # No standard voice for the race-gender: its busiest.
         ("creature", 5, "tauren", "male", "warrior", "corpus", True),
-        # A race-gender with no flavors keeps none.
-        ("gameobject", 6, "narrator", "male", None, "corpus", False),
+        # An older file's narrated gameobject is a gameobject, with no gender and no flavor.
+        ("gameobject", 6, "gameobject", None, None, "corpus", False),
     ]
 
 
