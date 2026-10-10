@@ -645,10 +645,11 @@ Like the lexicon, overrides live only in the database, and the Python CLI does n
 
 `/voices` is admin-only. It lists every voice on the roster — alphabetically, so a
 race-gender's flavors sit together — with the lines and NPCs each one carries, and marks which
-exist in the ElevenLabs account. The roster is `apps/web/src/lib/voices/voices.ts`: every
-race-gender and its flavors, written down by hand, and read by the triage selects and the
-explorer filters too. A voice listed there has a slot before any line uses it, so it can be
-cloned before its first line is accepted. The corpus only supplies the counts; a test fails on
+exist in the ElevenLabs account. The roster is in the database (migration 0071): every type an
+NPC can be, its genders and flavors, and the voice each combination is read by, edited by an
+admin on the Types tab of `/npcs` and read by the triage selects and the explorer filters too.
+A voice there has a slot before any line uses it, so it can be cloned before its first line is
+accepted. The corpus only supplies the counts; a test fails on
 a corpus line whose voice is not on the roster, and accepting a contribution refuses one. The
 Skybourne elves have the game's two voice sets per gender, named by their NPCSounds id
 (`skybourneelf-male-3776`) until they have better names.
@@ -658,7 +659,9 @@ Expanding one shows the clips it would be cloned from: upload, play back, delete
 material in `voice/seed-clips/<race-gender>/<flavor>/`, which is the shape of its name — no
 mapping table to keep in sync when a flavor is added. A slot with no flavor seeds from the files
 directly in `<race-gender>/`, as `bloodelf-female` does: the one voice the roster gives
-them. `narrator-male` has nothing to seed from, which is expected: it is not a race.
+them. `narrator-male` has nothing to seed from, which is expected: it is a voice, not a type.
+It reads the `gameobject`, `item` and `creature` types, which is how a quest started from a
+billboard says it was a gameobject and is still read by the narrator.
 
 Merging is there because the practical source is one-second greeting clips.
 ElevenLabs treats combined length as what decides clone quality — one to two minutes is the
@@ -1038,8 +1041,8 @@ the display, and flavor from the NPC's greeting sounds. Where the game names non
 Cairne Bloodhoof's hand-made display, the import gives the race-gender's default ("standard",
 or its busiest flavor) and marks the answer doubtful; the export writes it back without one.
 Such an NPC keeps the voice its lines were made in and is listed under Doubtful on
-`/contributions/npcs`, which lists every NPC, for a moderator to confirm or change.
-A speaker whose NPC nobody knows anything about keeps the voice written with it.
+`/npcs`, which lists every NPC, for an admin to confirm or change. Migration 0071 gave every
+speaker's NPC an answer from its speaker rows; one with no type has no voice, and its lines wait.
 `import-corpus` never replaces a moderator's answer unless a moderator marked it doubtful, even
 with a moderator answer from the file, and lists every answer it kept over a different one.
 Names are per language, in `entity_name`. A moderator can rename an NPC there, in the language their
@@ -1073,10 +1076,17 @@ speakers accepted contributions wrote. Those carry the NPC's own resolution at t
 own appearance data. Migration 0058 demoted the 71 rows that had been confirmed that way.
 
 `/contributions` shows the result with its provenance and says plainly which rows are guesses;
-the override there writes `moderator` and is collaborator-only, like everything else that
-changes a row. A new race or voice set is added to the roster in
-`apps/web/src/lib/voices/voices.ts`: that puts it in the triage selects and gives it a slot on
-`/voices`, marked as not existing in the account until it is cloned.
+answering who speaks a row there, like everything on `/npcs`, is a global admin's alone, since
+it picks the voice in every language, and everyone else sees "Missing NPC", "Missing type" or
+the answer. A new type, gender or flavor is added on `/npcs` → Types, with a voice of its own
+or an existing one (a treant could be read by the narrator): that puts it in the selects and
+gives a new voice a slot on `/voices`, marked as not existing in the account until it is cloned.
+`import-corpus` adds any type the file names that the database lacks, and never changes one it
+has. A first gender for a genderless type, or a first flavor for a race-gender read by one
+bare voice, splits a voice NPCs may already speak with, so the Types tab asks first: map it to
+the new combination (its files and takes stay valid, and the type's NPCs move there) or throw
+it away (the new combination gets a new voice; the old one and its takes stay on file unused,
+and the NPCs wait for an answer).
 
 `/contributions/game-data`, unlinked and collaborator-only, resolves NPCs from a game client
 instead of by hand. It lists chat commands that make the client ask its server about every

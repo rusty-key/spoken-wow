@@ -30,7 +30,8 @@ import { nameStamp, versionStamp } from "@/lib/stamp";
 import type { Corpus, CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
-import { flavorsOf, isVoice, voiceNameFor } from "@/lib/voices/voices";
+import { newVoiceName, type Roster } from "@/lib/voices/roster";
+import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
 
 
 /**
@@ -66,10 +67,12 @@ export function isCorpusEmpty(error: unknown): boolean {
 
 /**
  * Speakers have no live flag, so their max id and count are the whole stamp; an NPC's answer is
- * updated in place, so its latest write is. Both voice every catalogue.
+ * updated in place, so its latest write is. Both voice every catalogue, and so does the roster
+ * (migration 0071), which an admin edits without touching either.
  */
 const SPEAKER_STAMP = `(select coalesce(max("id"), 0) || ':' || count(*) from "quest_line_speaker") || '/' ||
-  (select coalesce(max("updatedAt")::text, '') || ':' || count(*) from "npc")`;
+  (select coalesce(max("updatedAt")::text, '') || ':' || count(*) from "npc") || '/' ||
+  ${ROSTER_STAMP}`;
 
 async function stampOf(lang: Lang): Promise<string> {
   // Speakers and NPCs are every language's, so every catalogue moves when any of them do, and so
@@ -101,17 +104,17 @@ const SPEAKER_NAME = `case when r."lang" = '${BASE_LANG}' then r."npcName" else 
  * world, not about a language. The extract's English speakers where a line has any; otherwise
  * the ones a language wrote when it accepted the line first, each NPC once.
  *
- * Race, gender and flavor are the NPC's (migration 0070), so an answer given for an NPC voices
- * every line it speaks. A speaker whose NPC nobody knows anything about -- no row, or `none` --
- * keeps the values written with it, which were an answer once.
+ * Race, gender and flavor are the NPC's and nobody else's (migration 0070), so an answer given
+ * for an NPC voices every line it speaks. Migration 0071 gave every speaker's NPC an answer; one
+ * that still has no type has no voice.
  */
 function speakersBy(key: string): string {
   return `(
   select r."id", r."key", r."lineId", r."variant", r."lang", r."ord", r."npcType", r."npcId", ${SPEAKER_NAME} as "npcName",
          r."contributionId", r."voice" as "writtenVoice",
-         case when n."known" then coalesce(n."race", '') else r."race" end as "race",
-         case when n."known" then coalesce(n."gender", '') else r."gender" end as "gender",
-         case when n."known" then n."flavor" else r."flavor" end as "flavor"
+         coalesce(n."race", '') as "race",
+         coalesce(n."gender", '') as "gender",
+         n."flavor" as "flavor"
     from (
       select s.*, ${key} as "key",
              bool_or(s."lang" = '${BASE_LANG}') over (partition by ${key}, s."variant") as "hasEnglish",
@@ -124,8 +127,7 @@ function speakersBy(key: string): string {
              ) as "firstLine"
         from "quest_line_speaker" s
     ) r
-    left join (select *, "provenance" <> 'none' and "race" is not null and "gender" is not null as "known"
-                 from "npc") n
+    left join "npc" n
       on n."npcKind" = r."npcType" and n."npcId" = r."npcId"
    where case when r."hasEnglish" then r."lang" = '${BASE_LANG}' and r."lineId" = r."firstLine" else r."nth" = 1 end
 )`;
@@ -162,20 +164,29 @@ type Speaking = {
   skipReason: string | null;
 };
 
-function voiced<T extends Speaking>(rows: T[]): (T & { voice: string })[] {
+function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: string })[] {
   const written = new Map<string, string>();
   const lineOf = (row: T) => `${row.lineId}|${row.variant}`;
   for (const row of rows) if (!written.has(lineOf(row))) written.set(lineOf(row), row.writtenVoice);
 
   return rows.map((row) => {
-    const voice = voiceNameFor(row.race, row.gender, row.flavor);
+    // An NPC with no type has no voice to move to: its file stays, and nothing can make it again
+    // until somebody says who the NPC is.
+    if (!row.race) {
+      const silenced = OWN_VOICE_SOURCES.has(row.source) && row.generatable;
+      return { ...row, voice: row.writtenVoice, ...(silenced ? { generatable: false, skipReason: "no-voice" } : {}) };
+    }
+    // A combination no voice reads yet still gets its own line, named as its voice would be.
+    const voice =
+      roster.voiceFor(row.race, row.gender || null, row.flavor) ??
+      newVoiceName(row.race, row.gender, row.flavor);
     if (!OWN_VOICE_SOURCES.has(row.source) || voice === written.get(lineOf(row))) return { ...row, voice };
     return {
       ...row,
       voice,
       lineId: variantLineId(row.lineId, voice),
       fileName: variantFileName(row.fileName, voice),
-      ...(row.generatable && !isVoice(voice) ? { generatable: false, skipReason: "no-voice" } : {}),
+      ...(row.generatable && !roster.isVoice(voice) ? { generatable: false, skipReason: "no-voice" } : {}),
     };
   });
 }
@@ -227,7 +238,7 @@ async function build(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty(lang);
 
-  return voiced(rows).map(({ writtenVoice: _written, ...row }) => ({
+  return voiced(rows, await loadRoster()).map(({ writtenVoice: _written, ...row }) => ({
     ...row,
     npcType: row.npcType as CorpusLine["npcType"],
     source: row.source as CorpusLine["source"],
@@ -316,7 +327,7 @@ async function buildTranslated(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty();
 
-  return voiced(rows).map((raw) => {
+  return voiced(rows, await loadRoster()).map((raw) => {
     const { textMissing, titleMissing, nameMissing, native, englishTitle, englishName, writtenVoice: _written, ...row } = raw;
     return {
       ...row,
@@ -386,23 +397,12 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
  * the row this feeds is unconfirmed regardless.
  */
 export async function defaultFlavorFor(race: string, gender: string): Promise<string | null> {
-  // A race-gender the corpus has no flavored line for yet falls back to the roster's first
-  // flavor for it, which voices.ts lists busiest first where the corpus cannot say.
-  return (await flavorDefaults()).get(`${race}-${gender}`) ?? flavorsOf(race, gender)[0] ?? null;
-}
-
-/**
- * Every flavor a race-gender's voice actually has, for the triage table's flavor picker.
- *
- * A moderator confirming a client-provenance row (race and gender known, flavor only guessed)
- * must be offered exactly the voice sets tts_cli can generate for that race-gender -- goblin
- * female has only "zany"; tauren male has no "standard" at all (defaultFlavorFor's own flagship
- * case) but does have elder/shaman/warrior. Anything wider would let a moderator pick a voice
- * name that produces no file.
- */
-export async function flavorsFor(race: string, gender: string): Promise<string[]> {
-  // The roster, not the corpus, so a race-gender offers its voice sets before its first line.
-  return flavorsOf(race, gender).sort((a, b) => a.localeCompare(b));
+  // A race-gender the corpus has no flavored line for yet falls back to the roster's first.
+  return (
+    (await flavorDefaults()).get(`${race}-${gender}`) ??
+    (await loadRoster()).flavorsOf(race, gender)[0] ??
+    null
+  );
 }
 
 const flavorTalliesKey = Symbol.for("spoken.quests-flavor-tallies");

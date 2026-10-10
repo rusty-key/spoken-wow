@@ -1,7 +1,7 @@
 /**
  * Which voices this project needs, and what a valid voice name is.
  *
- * The set is the roster in voices.ts, so a voice exists here -- and can be given clips and
+ * The set is the roster (roster-store.ts), so a voice exists here -- and can be given clips and
  * cloned -- before the first line for it is accepted. The corpus only counts what each one
  * carries. The names are the ones tts_cli/voices.py matches on: `race-gender-flavor`, and
  * nothing else is usable, because a stock library voice's name cannot express that mapping.
@@ -12,7 +12,7 @@
 import { corpus } from "@/lib/quests/catalogue";
 import { hasNarration, NARRATOR_VOICE } from "@/lib/generation/narration";
 
-import { VOICE_NAMES } from "./voices";
+import { loadRoster } from "./roster-store";
 
 export type VoiceSlot = {
   /** e.g. "orc-male-shady" — the ElevenLabs voice name this project resolves by. */
@@ -47,7 +47,7 @@ export async function voiceSlots(): Promise<VoiceSlot[]> {
     if (line.generatable) count(line.voice, line.npcId);
   }
 
-  return VOICE_NAMES.map((name) => ({
+  return (await loadRoster()).voiceNames.map((name) => ({
     name,
     lineCount: lines.get(name) ?? 0,
     npcCount: npcs.get(name)?.size ?? 0,
@@ -55,7 +55,7 @@ export async function voiceSlots(): Promise<VoiceSlot[]> {
 }
 
 const cacheKey = Symbol.for("wow-voiceover.slots");
-type CacheHolder = { [cacheKey]?: { lines: unknown; slots: VoiceSlot[] } };
+type CacheHolder = { [cacheKey]?: { lines: unknown; roster: unknown; slots: VoiceSlot[] } };
 
 /**
  * Tied to the catalogue's own array rather than memoised forever: the counts come from the
@@ -64,10 +64,12 @@ type CacheHolder = { [cacheKey]?: { lines: unknown; slots: VoiceSlot[] } };
  */
 export async function slots(): Promise<VoiceSlot[]> {
   const lines = (await corpus()).lines;
+  // A voice an admin just added is a slot before any line speaks in it.
+  const roster = await loadRoster();
   const holder = globalThis as CacheHolder;
 
-  if (!holder[cacheKey] || holder[cacheKey].lines !== lines) {
-    holder[cacheKey] = { lines, slots: await voiceSlots() };
+  if (!holder[cacheKey] || holder[cacheKey].lines !== lines || holder[cacheKey].roster !== roster) {
+    holder[cacheKey] = { lines, roster, slots: await voiceSlots() };
   }
   return holder[cacheKey].slots;
 }
@@ -87,5 +89,5 @@ export async function isVoiceSlot(name: string): Promise<boolean> {
   // The roster alone, not isVoice: a model slot (voices.ts isModelVoice) names the voice some
   // lines are in, but nothing may be cloned, cut or uploaded for one until which voice each
   // model gets has been decided.
-  return VOICE_NAMES.includes(name);
+  return (await loadRoster()).voiceNames.includes(name);
 }

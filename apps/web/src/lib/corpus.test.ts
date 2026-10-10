@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { buildLineIndex, npcKey } from "./corpus";
-import { corpus as catalogue, defaultFlavorFor, flavorsFor, lineIndex } from "./quests/catalogue";
+import { corpus as catalogue, defaultFlavorFor, lineIndex } from "./quests/catalogue";
+import { loadRoster } from "./voices/roster-store";
+
+const flavorsFor = async (race: string, gender: string) => (await loadRoster()).flavorsOf(race, gender);
 
 describe("corpus", async () => {
   const corpus = await catalogue();
@@ -90,12 +93,12 @@ describe("defaultFlavorFor", () => {
     expect(await defaultFlavorFor("murloc", "male")).toBe(null);
   });
 
-  it("falls back to the busiest set voices.ts declares for a race-gender with no lines", async () => {
+  it("falls back to the roster's first flavor for a race-gender with no lines", async () => {
     expect(await defaultFlavorFor("skybourneelf", "female")).toBe("3773");
   });
 });
 
-describe("flavorsFor", async () => {
+describe("the roster's flavors", async () => {
   // The triage table's own flagship case: a moderator staring at a tauren male must be offered
   // exactly the voice sets that exist for one, never a name that would produce a filename
   // nothing can generate.

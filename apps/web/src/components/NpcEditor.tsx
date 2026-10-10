@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /contributions/npcs: every NPC on file, one row each, with the triage table's own speaker
+ * /npcs: every NPC on file, one row each, with the triage table's own speaker
  * controls. `initial` is NpcSummary, built server-side (npcSummaryFrom), so nothing from
  * the npc table beyond what is rendered crosses into the client.
  */
@@ -17,14 +17,15 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import Pagination from "@/components/Pagination";
-import { summaryFromResolution, type FlavorScope } from "@/lib/contributions/speaker";
+import { summaryFromResolution } from "@/lib/contributions/speaker";
+import { Roster, type RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
-import { isProvenance, PROVENANCES, type NpcKind, type Provenance } from "@/lib/npc/npc";
+import { isProvenance, PROVENANCES, type NpcRowKind, type Provenance } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
 import { wowheadEntityUrl, wowheadForeverUrl } from "@/lib/wowhead";
 
-function key(npcKind: NpcKind | null, npcId: number): string {
+function key(npcKind: NpcRowKind | null, npcId: number): string {
   return `${npcKind}:${npcId}`;
 }
 
@@ -128,13 +129,14 @@ function NameCell({
 
 export default function NpcEditor({
   initial,
-  flavorScopes,
+  roster: rosterData,
 }: {
   initial: NpcSummary[];
-  /** facets().flavorScopes, for SpeakerCell's flavor select. */
-  flavorScopes: FlavorScope[];
+  /** The roster, for SpeakerCell's selects. */
+  roster: RosterData;
 }) {
   const lang = useLang();
+  const roster = useMemo(() => new Roster(rosterData), [rosterData]);
   const pathname = usePathname();
   const params = useSearchParams();
   // The filters live in the URL, so a reload or a shared link keeps the view. Written with
@@ -173,7 +175,7 @@ export default function NpcEditor({
     async (npc: NpcSummary, answer: Answer): Promise<boolean> => {
       // Every row here came from the npc table, so npcKind is never null and the route's
       // required kind is always the row's own.
-      const response = await fetch("/api/contributions/npc", {
+      const response = await fetch("/api/npcs", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...answer, npcKind: npc.npcKind, npcId: npc.npcId }),
@@ -182,11 +184,11 @@ export default function NpcEditor({
       const { resolution } = (await response.json()) as { resolution: NpcResolution };
       setSaved((current) => ({
         ...current,
-        [key(npc.npcKind, npc.npcId)]: summaryFromResolution(resolution, flavorScopes),
+        [key(npc.npcKind, npc.npcId)]: summaryFromResolution(resolution, roster),
       }));
       return true;
     },
-    [flavorScopes],
+    [roster],
   );
 
   const save = useCallback(
@@ -257,7 +259,8 @@ export default function NpcEditor({
   const selectedRows = shown.filter((npc) => selected.has(key(npc.npcKind, npc.npcId)));
   // A bulk save keeps each row's own answer, so a row without a race and gender has nothing to
   // keep -- saving it would file "this NPC has no race" as a decision nobody made.
-  const savable = selectedRows.filter((npc) => npc.race && npc.gender);
+  // A genderless type is a whole answer without one.
+  const savable = selectedRows.filter((npc) => npc.race && (npc.gender || roster.isGenderless(npc.race)));
   const allTicked = shown.length > 0 && selectedRows.length === shown.length;
   const toggle = (k: string, on: boolean) =>
     setSelected((current) => {
@@ -413,7 +416,7 @@ export default function NpcEditor({
                       // Remount on a save, so the form's own state starts from the new answer.
                       key={`${npc.provenance}:${npc.race}:${npc.gender}:${npc.flavor}:${npc.doubtful}`}
                       npc={npc}
-                      flavorScopes={flavorScopes}
+                      roster={roster}
                       readOnly={false}
                       busy={busy === k || bulk !== null}
                       onSave={(answer) => void save(npc, answer)}

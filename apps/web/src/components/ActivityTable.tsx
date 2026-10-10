@@ -207,6 +207,11 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         what: `set who ${str(d.npcName) ?? row.subject} is`,
         quote: [str(d.race), str(d.gender), str(d.flavor)].filter(Boolean).join(" · ") || null,
       };
+    case "type.changed":
+      return {
+        what: `${str(d.action)?.replace("-", " ") ?? "changed"} ${row.subject}`,
+        quote: [str(d.gender), str(d.flavor), str(d.voice)].filter(Boolean).join(" · ") || null,
+      };
     case "grant.added":
       return { what: `gave ${row.subjectName ?? "someone"} ${grantName(d.capability)}`, quote: null };
     case "grant.removed":

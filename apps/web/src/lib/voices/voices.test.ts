@@ -2,81 +2,38 @@ import { describe, expect, it } from "vitest";
 
 import { corpus } from "@/lib/quests/catalogue";
 
-import {
-  flavorsOf,
-  GENDERS,
-  gendersOf,
-  isModelVoice,
-  isVoice,
-  RACES,
-  VOICE_NAMES,
-  VOICES,
-  voiceName,
-  voiceNameFor,
-} from "./voices";
+import { loadRoster } from "./roster-store";
+import { isModelVoice } from "./voices";
 
-describe("VOICES", () => {
+describe("the roster", () => {
   // The roster is what /voices, the filters and the triage selects offer, so a corpus line
   // outside it would be spoken in a voice nothing can find or clone.
   it("covers every voice the corpus speaks in", async () => {
+    const roster = await loadRoster();
     for (const line of (await corpus()).lines) {
-      // An NPC the game gives no flavor speaks in none until somebody picks one (migration
-      // 0070): its race-gender is on the roster, waiting.
-      const waiting = line.flavor === null && flavorsOf(line.race, line.gender).length > 0;
-      expect(isVoice(line.voice) || waiting, line.voice).toBe(true);
+      // An NPC with no type, or one the game gives no flavor, speaks in none until somebody
+      // answers for it: its line is marked no-voice and waits.
+      const waiting = line.skipReason === "no-voice";
+      expect(roster.isVoice(line.voice) || waiting, line.voice).toBe(true);
     }
   });
 
-  it("names each voice the way the corpus does", async () => {
-    for (const line of (await corpus()).lines) {
-      expect(voiceName({ race: line.race, gender: line.gender as "male" | "female", flavor: line.flavor })).toBe(line.voice);
+  it("does not mix a bare voice with flavored ones for the same race-gender", async () => {
+    const { data } = await loadRoster();
+    for (const a of data.assignments) {
+      if (a.flavor !== null) continue;
+      const flavored = data.assignments.some((b) => b.race === a.race && b.gender === a.gender && b.flavor !== null);
+      // A genderless generic type is read by one voice whatever its flavor; a race-gender is not.
+      if (a.gender !== null) expect(flavored, `${a.race}-${a.gender}`).toBe(false);
     }
   });
 
-  it("lists each voice once", () => {
-    expect(new Set(VOICE_NAMES).size).toBe(VOICE_NAMES.length);
-  });
-
-  it("names races and flavors the way a voice slot can carry them", () => {
-    // A slot name is split on dashes and becomes a path segment.
-    for (const voice of VOICES) {
-      expect(voice.race).toMatch(/^[a-z]+$/);
-      if (voice.flavor) expect(voice.flavor).toMatch(/^[a-z0-9]+$/);
-    }
-  });
-
-  it("does not mix a bare voice with flavored ones for the same race-gender", () => {
-    for (const { race, gender } of VOICES) {
-      const flavors = VOICES.filter((v) => v.race === race && v.gender === gender).map((v) => v.flavor);
-      expect(flavors.includes(null) && flavors.length > 1, `${race}-${gender}`).toBe(false);
-    }
-  });
-
-  it("accepts a model slot by its shape and keeps it off the roster", () => {
-    expect(isVoice("model-29")).toBe(true);
-    expect(isModelVoice("model-29")).toBe(true);
-    // Only digits after the prefix: the name becomes a path segment.
+  it("keeps model slots off it", async () => {
+    const roster = await loadRoster();
+    expect(roster.isVoice("model-29")).toBe(true);
+    expect(roster.voiceNames.some(isModelVoice)).toBe(false);
     for (const name of ["model-", "model-29-male", "model-../x", "orc-model-29"]) {
-      expect(isVoice(name), name).toBe(false);
+      expect(roster.isVoice(name), name).toBe(false);
     }
-    expect(VOICE_NAMES.some(isModelVoice)).toBe(false);
-    expect(voiceName({ race: "model-29", gender: "male", flavor: null })).toBe("model-29");
-  });
-
-  it("derives races, genders and flavors from the roster", () => {
-    expect(RACES).toContain("skybourneelf");
-    expect(GENDERS).toEqual(["female", "male"]);
-    expect(gendersOf("narrator")).toEqual(["male"]);
-    expect(flavorsOf("skybourneelf", "male")).toEqual(["3776", "3775"]);
-    expect(flavorsOf("narrator", "male")).toEqual([]);
-    expect(flavorsOf("murloc", "male")).toEqual([]);
-  });
-});
-
-describe("voiceNameFor", () => {
-  it("names a model slot by itself, as flavors.py's voice_name does", () => {
-    expect(voiceNameFor("model-29", "male", null)).toBe("model-29");
-    expect(voiceNameFor("tauren", "male", "warrior")).toBe("tauren-male-warrior");
-    expect(voiceNameFor("narrator", "male", null)).toBe("narrator-male");
   });
 });

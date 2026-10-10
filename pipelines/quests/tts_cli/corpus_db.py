@@ -35,8 +35,8 @@ import os
 from collections import Counter
 from datetime import datetime, timezone
 
-from tts_cli.corpus import SCHEMA_VERSION, load_corpus, write_corpus
-from tts_cli.flavors import fallback_flavors
+from tts_cli.corpus import GENERIC_TYPES, SCHEMA_VERSION, load_corpus, write_corpus
+from tts_cli.flavors import fallback_flavors, is_model_voice
 
 LANG = "enUS"
 
@@ -149,6 +149,15 @@ _REPLACES = """(case when {old}."provenance" = 'moderator'
                           <= "npc_provenance_rank"({new}."provenance") end)"""
 
 
+def retyped(npcs) -> list:
+    """An older file's narrated NPCs as their own types (apps/web migration 0071): the narrator
+    is a voice, not something an NPC is."""
+    return [{**npc, "race": npc["npcType"] if npc["npcType"] in GENERIC_TYPES else "creature",
+             "gender": None}
+            if npc["race"] == "narrator" else npc
+            for npc in npcs]
+
+
 def npc_answers(npcs) -> list:
     """The file's NPCs as npc rows, (kind, id, race, gender, flavor, provenance, doubtful).
 
@@ -158,6 +167,7 @@ def npc_answers(npcs) -> list:
     change. Only the extract's own answers: anybody else's is as they gave it. A race-gender
     with no flavors at all, as the narrator's, keeps none.
     """
+    npcs = retyped(npcs)
     defaults = fallback_flavors((f'{npc["race"]}-{npc["gender"]}', npc["flavor"]) for npc in npcs)
     rows = []
     for npc in npcs:
@@ -167,6 +177,39 @@ def npc_answers(npcs) -> list:
         rows.append((npc["npcType"], npc["npcId"], npc["race"], npc["gender"],
                      npc["flavor"] or guess, provenance, guess is not None))
     return rows
+
+
+def _import_types(cur, npcs):
+    """Every type, flavor and voice the file's NPCs name that the site has none of yet, so the
+    npc rows have somewhere to stand -- the file is an export of a site an admin may have
+    added types to. Insert-only, and a voice is assigned only to a type or a flavor this import
+    added: a flavorless NPC's voice is its line's, made in some flavor, and assigning it to
+    the bare race-gender would voice every flavorless NPC of it. A model slot is a voice by
+    pattern and never a type."""
+    # A few dozen combinations among thousands of NPCs: each once, with the first NPC's voice.
+    combinations = {}
+    for npc in retyped(npcs):
+        combinations.setdefault((npc["race"], npc["gender"], npc["flavor"]), npc.get("voice"))
+    for (race, gender, flavor), voice in combinations.items():
+        if not race or is_model_voice(race):
+            continue
+        cur.execute("""insert into "race" ("key") values (%s) on conflict do nothing""", (race,))
+        new_race = cur.rowcount > 0
+        if gender:
+            cur.execute("""insert into "gender" ("race", "gender") values (%s, %s)
+                           on conflict do nothing""", (race, gender))
+        new_flavor = False
+        if flavor:
+            cur.execute("""insert into "flavor" ("race", "gender", "flavor") values (%s, %s, %s)
+                           on conflict do nothing""", (race, gender, flavor))
+            new_flavor = cur.rowcount > 0
+        if not (new_race or new_flavor) or not voice or is_model_voice(voice):
+            continue
+        cur.execute("""insert into "voice" ("name", "race", "gender") values (%s, %s, %s)
+                       on conflict do nothing""", (voice, race, gender or ""))
+        cur.execute("""insert into "voice_assignment" ("race", "gender", "flavor", "voice")
+                       values (%s, %s, %s, %s) on conflict do nothing""",
+                    (race, gender, flavor if new_flavor else None, voice))
 
 
 def _import_npcs(cur, npc_rows):
@@ -375,7 +418,10 @@ def import_corpus(path, verbose=True):
             npc_rows = npc_answers(corpus.get("npcs", []))
             kept_npcs = []
             if "npcs" in corpus:
+                _import_types(cur, corpus["npcs"])
                 kept_npcs = _import_npcs(cur, npc_rows)
+                # The site reads an NPC's voice from npc alone (apps/web migration 0071).
+                cur.execute("""select "npc_from_speakers"()""")
 
             # Only from a marked file: in an older one, the rows that would match are the
             # contributed speakers' own round-tripped copies, skipped above or not.
@@ -525,11 +571,12 @@ def export_corpus(path, check=False, verbose=True):
 
             # Every NPC answer, in the order build_corpus writes them: a pack is voiced in
             # whatever the site answered, and a pack build reads no database.
-            # The import's default for the extract's flavorless NPC is not the file's (npc_answers).
+            # The import's default for the extract's flavorless NPC is not the file's (npc_answers),
+            # but the voice is the one it reads with, default flavor and all: the site's.
             cur.execute(
                 """select "npcKind", "npcId", "race", "gender",
                           case when "provenance" = 'corpus' and "doubtful" then null else "flavor" end,
-                          "provenance" from "npc"
+                          "provenance", voice_for("race", "gender", "flavor") from "npc"
                     order by "npcKind", "npcId" """
             )
             npc_rows = cur.fetchall()
@@ -580,8 +627,8 @@ def export_corpus(path, check=False, verbose=True):
         "spawns": spawns,
         "npcs": [
             {"npcType": kind, "npcId": npc_id, "race": race, "gender": gender, "flavor": flavor,
-             "provenance": provenance}
-            for kind, npc_id, race, gender, flavor, provenance in npc_rows
+             "provenance": provenance, "voice": voice}
+            for kind, npc_id, race, gender, flavor, provenance, voice in npc_rows
         ],
     }
 

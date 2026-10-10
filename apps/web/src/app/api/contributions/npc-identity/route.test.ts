@@ -1,6 +1,5 @@
 /**
- * Which NPC speaks a quest contribution whose envelope named none, answered by whoever edits its
- * language.
+ * Which NPC speaks a quest contribution whose envelope named none, answered by an admin.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -8,13 +7,13 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
 
-/** Every language the mocked viewer may edit; the route's gate asks about exactly one. */
-const editable = new Set<string>();
+/** Whether the mocked viewer is a global admin. */
+let admin = false;
 const resolved: unknown[] = [];
 
 vi.mock("@/lib/generation/authz", () => ({
-  requireCapability: async (capability: string, lang: string) =>
-    capability === "edit" && editable.has(lang)
+  requireAdminSession: async () =>
+    admin
       ? { session: { user: { id: "test" } }, denied: null }
       : { session: null, denied: Response.json({ error: "not allowed" }, { status: 403 }) },
 }));
@@ -40,7 +39,7 @@ import { POST } from "./route";
 const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 
 afterEach(async () => {
-  editable.clear();
+  admin = false;
   resolved.length = 0;
   recordActivity.mockClear();
   await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
@@ -70,7 +69,7 @@ function post(body: unknown): Request {
 describe("POST /api/contributions/npc-identity", () => {
   it("records the NPC and resolves it", async () => {
     const id = await contribution({});
-    editable.add("ptBR");
+    admin = true;
     const response = await POST(post({ id, npcKind: "creature", npcId: 240, npcName: " Marshal Dughan " }));
     expect(response.status).toBe(200);
     const { rows } = await db().query(`select "npcKind", "npcId", "npcName" from "contribution" where "id" = $1`, [id]);
@@ -83,7 +82,7 @@ describe("POST /api/contributions/npc-identity", () => {
 
   it("requires both the id and the name", async () => {
     const id = await contribution({});
-    editable.add("ptBR");
+    admin = true;
     expect((await POST(post({ id, npcKind: "creature", npcId: "240", npcName: "X" }))).status).toBe(400);
     expect((await POST(post({ id, npcKind: "creature", npcId: 240, npcName: "  " }))).status).toBe(400);
     expect((await POST(post({ id, npcKind: "creature", npcId: -1, npcName: "X" }))).status).toBe(400);
@@ -91,20 +90,19 @@ describe("POST /api/contributions/npc-identity", () => {
 
   it("leaves an envelope's own NPC alone", async () => {
     const id = await contribution({ npc: "12345 X", kind: "creature" });
-    editable.add("ptBR");
+    admin = true;
     expect((await POST(post({ id, npcKind: "creature", npcId: 240, npcName: "Y" }))).status).toBe(409);
     expect(resolved).toEqual([]);
   });
 
   it("leaves a row that is not a quest's alone", async () => {
     const id = await contribution({}, "zones");
-    editable.add("ptBR");
+    admin = true;
     expect((await POST(post({ id, npcKind: "creature", npcId: 240, npcName: "Y" }))).status).toBe(409);
   });
 
-  it("refuses somebody who edits another language only", async () => {
+  it("refuses anyone but an admin, whatever languages they edit", async () => {
     const id = await contribution({});
-    editable.add("enUS");
     expect((await POST(post({ id, npcKind: "creature", npcId: 240, npcName: "Y" }))).status).toBe(403);
   });
 });

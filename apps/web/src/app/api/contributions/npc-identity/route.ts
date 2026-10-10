@@ -1,5 +1,5 @@
 /**
- * A moderator's answer to "who speaks this?", for a quest contribution whose envelope named no
+ * An admin's answer to "who speaks this?", for a quest contribution whose envelope named no
  * NPC at all.
  *
  * Recorded on the contribution (store.ts's setContributionNpc), as ../kind records a kind: `meta`
@@ -7,12 +7,12 @@
  * NPC. Refused for a row whose envelope already named one -- the client's own observation stands.
  *
  * Then resolved like an envelope's own NPC at intake (resolveNpc), so one the corpus knows gets
- * its race at once. That write is the same one an anonymous envelope already causes, which is
- * why this is gated as ../kind is -- whoever may edit the row's language -- and not as ../npc.
+ * its type at once. Admin only, as ../npc is: who speaks a line decides its voice in every
+ * language.
  */
-import { requireCapability } from "@/lib/generation/authz";
+import { requireAdminSession } from "@/lib/generation/authz";
 import { contributionLocale, observationMeta, setContributionNpc } from "@/lib/contributions/store";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { isLang } from "@/lib/lang";
 import { INT32_MAX, NPC_KINDS, type NpcKind } from "@/lib/npc/npc";
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import type { NpcResolution } from "@/lib/npc/store";
@@ -39,9 +39,9 @@ export async function POST(request: Request) {
   if (!npcName) return Response.json({ error: "an NPC name is required" }, { status: 400 });
 
   // Permission before existence, as ../kind does, so a member learns nothing about which ids exist.
-  const locale = await contributionLocale(id);
-  const { session, denied } = await requireCapability("edit", isLang(locale) ? locale : BASE_LANG);
+  const { session, denied } = await requireAdminSession();
   if (denied) return denied;
+  const locale = await contributionLocale(id);
 
   const recorded = await setContributionNpc(id, { npcKind, npcId, npcName }, session.user.id);
   if (!recorded) {

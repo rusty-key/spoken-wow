@@ -15,13 +15,13 @@ import { saveName } from "@/lib/names/store";
 // importing one out of a module that reaches for `@/lib/db` fails the client build). Imported
 // (not just re-exported) so this file can still use them as it always did, and re-exported so
 // every existing import of these from this module keeps working unchanged.
-import { NPC_KINDS, PROVENANCES, isProvenance, type NpcKind, type Provenance } from "./npc";
+import { NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance, type NpcKind, type NpcRowKind, type Provenance } from "./npc";
 
-export { NPC_KINDS, PROVENANCES, isProvenance };
-export type { NpcKind, Provenance };
+export { NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance };
+export type { NpcKind, NpcRowKind, Provenance };
 
 export type NpcResolution = {
-  npcKind: NpcKind;
+  npcKind: NpcRowKind;
   npcId: number;
   /** English where English names it, otherwise whichever language does. */
   npcName: string | null;
@@ -50,7 +50,7 @@ const COLUMNS = `n."npcKind", n."npcId", ${NAME} as "npcName", n."race", n."gend
                  n."provenance", n."confirmed", n."doubtful", n."modelFileId", n."sex",
                  n."creatureType", n."build", n."note", n."resolvedBy", n."updatedAt"::text`;
 
-export async function getResolution(kind: NpcKind, npcId: number): Promise<NpcResolution | null> {
+export async function getResolution(kind: NpcRowKind, npcId: number): Promise<NpcResolution | null> {
   const { rows } = await db().query<NpcResolution>(
     `select ${COLUMNS} from "npc" n where n."npcKind" = $1 and n."npcId" = $2`,
     [kind, npcId],
@@ -130,7 +130,7 @@ export async function upsertResolution(
  * A moderator's name for an NPC, over whatever is there, in `lang`: the language their rights
  * were checked in, English included.
  */
-export async function renameNpc(kind: NpcKind, npcId: number, name: string, editedBy: string, lang: Lang): Promise<void> {
+export async function renameNpc(kind: NpcRowKind, npcId: number, name: string, editedBy: string, lang: Lang): Promise<void> {
   await saveName({ kind, entityId: String(npcId), lang, name, editedBy, anyLanguage: true });
 }
 
@@ -138,7 +138,7 @@ export async function renameNpc(kind: NpcKind, npcId: number, name: string, edit
  * An NPC's name as a contribution gave it, where its language has no name yet.
  * As 'contributed', so the extract's own name, when it comes, promotes over it.
  */
-async function nameIfUnnamed(kind: NpcKind, npcId: number, name: string, lang: Lang): Promise<void> {
+async function nameIfUnnamed(kind: NpcRowKind, npcId: number, name: string, lang: Lang): Promise<void> {
   await db().query(
     `insert into "entity_name" ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name")
      select $1, $2, $4, 1, true, 'contributed', $3
@@ -177,7 +177,7 @@ export async function getResolutionsById(npcIds: number[]): Promise<Map<number, 
 }
 
 /** The map key getResolutions returns rows under -- the same pair getResolution takes, joined. */
-export function resolutionKey(npcKind: NpcKind, npcId: number): string {
+export function resolutionKey(npcKind: NpcRowKind, npcId: number): string {
   return `${npcKind}:${npcId}`;
 }
 
@@ -206,12 +206,12 @@ export async function getResolutions(
 }
 
 /**
- * Every NPC on file, for /contributions/npcs: every one the extract carries and every one a
- * contribution named. Items are left out: they speak no greeting a race could voice.
+ * Every NPC on file, for /npcs: every one the extract carries and every one a contribution
+ * named, items included -- an item starts quests, and its type picks who reads them.
  */
 export async function listResolutions(): Promise<NpcResolution[]> {
   const { rows } = await db().query<NpcResolution>(
-    `select ${COLUMNS} from "npc" n where n."npcKind" <> 'item' order by n."npcId", n."npcKind"`,
+    `select ${COLUMNS} from "npc" n order by n."npcId", n."npcKind"`,
   );
   return rows;
 }

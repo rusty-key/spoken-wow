@@ -23,7 +23,7 @@ import { useLang } from "@/components/LangProvider";
 import { localeHref, type Lang } from "@/lib/lang";
 import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { CLIENT_CHIP_OPTIONS, SEARCH_IN_OPTIONS } from "@/components/contribution-chips";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
@@ -43,7 +43,8 @@ import {
   type ResolveManyResult,
 } from "@/lib/contributions/contributions";
 import type { ClientSummary } from "@/lib/contributions/client";
-import { flavorOptionsFor, summaryFromResolution, type FlavorScope } from "@/lib/contributions/speaker";
+import { flavorOptionsFor, summaryFromResolution } from "@/lib/contributions/speaker";
+import { Roster, type RosterData } from "@/lib/voices/roster";
 import {
   bucketOf,
   contributionsHref,
@@ -60,13 +61,13 @@ import {
   type StageFilter,
 } from "@/lib/contributions/query";
 import type { Contribution } from "@/lib/contributions/store";
-// Both are computed server-side (npcSummaryFrom pulls in corpus.ts's flavorsFor) -- `import
+// Both are computed server-side (npcSummaryFrom reads the roster store) -- `import
 // type` erases the whole thing at compile time, so none of that follows the type in here. The
 // same split existing.ts's `existing` prop already draws.
 import type { BookMatch, BookSummary, NpcConflictOption, NpcSummary, QuestSummary } from "@/lib/contributions/triage";
 // From npc.ts, not npc/store.ts: store.ts imports @/lib/db, and pulling NPC_KINDS
 // (values, not just types) out of it would drag Postgres's own node built-ins into this bundle.
-import { NPC_KINDS, type NpcKind } from "@/lib/npc/npc";
+import { NPC_KINDS, type NpcKind, type NpcRowKind } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
 import type { Filter } from "@/lib/search";
 import { cn } from "@/lib/utils";
@@ -192,7 +193,7 @@ export default function ContributionTable({
   searchIn,
   existing,
   books,
-  flavorScopes,
+  roster: rosterData,
   canAnswerNpc,
 }: {
   /** This page's rows. */
@@ -216,14 +217,15 @@ export default function ContributionTable({
   existing: Record<number, string>;
   /** The English books, for matching a translated page to one. Empty when no row here needs it. */
   books: BookChoice[];
-  /** facets().flavorScopes -- what lets that state's flavor select narrow to whatever race-gender was just chosen, without a round trip. */
-  flavorScopes: FlavorScope[];
+  /** facets().roster -- what lets the speaker selects narrow to whatever type was just chosen, without a round trip. */
+  roster: RosterData;
   /** Whether the viewer may set an NPC's race, gender and flavor; if not, they are shown only. */
   canAnswerNpc: boolean;
 }) {
   const { pending, push } = usePendingPush();
   const router = useRouter();
   const lang = useLang();
+  const roster = useMemo(() => new Roster(rosterData), [rosterData]);
 
   /**
    * What this session resolved, overlaid on the server's rows -- the same shape ReportTable
@@ -288,14 +290,14 @@ export default function ContributionTable({
       // A saved answer is always "settled" (provenance "moderator" is always confirmed --
       // migration 0031), so nothing here ever renders the flavor select again to need
       // flavorOptions -- computed anyway so the type stays honest rather than lying with `[]`.
-      const summary = summaryFromResolution(resolution, flavorScopes);
+      const summary = summaryFromResolution(resolution, roster);
       setNpcOverrides((current) => ({
         ...current,
         [contributionKey(contributionId)]: summary,
         [overrideKey(resolution.npcKind, resolution.npcId)]: summary,
       }));
     },
-    [flavorScopes, lang],
+    [roster, lang],
   );
 
   /**
@@ -305,7 +307,8 @@ export default function ContributionTable({
   const pickConflict = useCallback(
     async (contributionId: number, npc: NpcSummary, option: NpcConflictOption) => {
       setNpcBusy(contributionId);
-      const ok = await recordKind(contributionId, option.npcKind);
+      // Conflicts are between a creature and a gameobject: getResolutionsById reads no items.
+      const ok = await recordKind(contributionId, option.npcKind as NpcKind);
       setNpcBusy(null);
       if (!ok) {
         setRefusals(withRefusal(contributionId));
@@ -322,12 +325,12 @@ export default function ContributionTable({
           provenance: option.provenance,
           confirmed: option.provenance === "corpus" || option.provenance === "display" || option.provenance === "moderator",
           doubtful: option.doubtful,
-          flavorOptions: flavorOptionsFor(option.race, option.gender, flavorScopes),
+          flavorOptions: flavorOptionsFor(option.race, option.gender, roster),
           conflict: [],
         },
       }));
     },
-    [flavorScopes],
+    [roster],
   );
 
   /**
@@ -358,10 +361,10 @@ export default function ContributionTable({
         router.refresh();
         return;
       }
-      const summary = summaryFromResolution(body.resolution, flavorScopes);
+      const summary = summaryFromResolution(body.resolution, roster);
       setNpcOverrides((current) => ({ ...current, [contributionKey(contributionId)]: summary }));
     },
-    [flavorScopes, router],
+    [roster, router],
   );
 
   /**
@@ -504,7 +507,7 @@ export default function ContributionTable({
     .map((row) => row.id);
   // A row with no speaker would only come back refused.
   const selectedToAccept = changeable(
-    selectedRows.filter((row) => bucketOf(row, npcOf(row)) === "ready"),
+    selectedRows.filter((row) => bucketOf(row, npcOf(row), roster) === "ready"),
     "accepted",
   );
   const selectedToReject = changeable(selectedRows, "rejected");
@@ -704,7 +707,7 @@ export default function ContributionTable({
           <tbody>
             {rows.map((row) => {
               const npc = npcOf(row);
-              const now = bucketOf(row, npc);
+              const now = bucketOf(row, npc, roster);
               const book =
                 row.book && row.id in bookOverrides ? { ...row.book, match: bookOverrides[row.id] } : row.book;
               return (
@@ -724,7 +727,7 @@ export default function ContributionTable({
                   refusal={refusals[row.id]}
                   lineCreated={lineCreated.has(row.id)}
                   canAnswerNpc={canAnswerNpc}
-                  flavorScopes={flavorScopes}
+                  roster={roster}
                   lang={lang}
                   onToggle={toggle}
                   onResolve={resolve}
@@ -776,7 +779,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
   refusal,
   lineCreated,
   canAnswerNpc,
-  flavorScopes,
+  roster,
   lang,
   onToggle,
   onResolve,
@@ -808,7 +811,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
   /** "Add to explorer" worked on this row this session. */
   lineCreated: boolean;
   canAnswerNpc: boolean;
-  flavorScopes: FlavorScope[];
+  roster: Roster;
   lang: Lang;
   onToggle: (id: number, on: boolean) => void;
   onResolve: (id: number, next: ContributionStatus) => Promise<void>;
@@ -892,24 +895,30 @@ const ContributionTableRow = memo(function ContributionTableRow({
                   </a>
                 </div>
                 {npc.conflict.length > 0 ? (
-                  <NpcConflict
-                    npc={npc}
-                    busy={npcBusy}
-                    onPick={(option) => void onPickConflict(row.id, npc, option)}
-                  />
+                  canAnswerNpc ? (
+                    <NpcConflict
+                      npc={npc}
+                      busy={npcBusy}
+                      onPick={(option) => void onPickConflict(row.id, npc, option)}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">NPC unclear</span>
+                  )
                 ) : (
                   <SpeakerCell
                     npc={npc}
-                    flavorScopes={flavorScopes}
+                    roster={roster}
                     readOnly={!canAnswerNpc}
                     busy={npcBusy}
                     onSave={(answer) => void onOverrideNpc(row.id, npc, answer)}
                   />
                 )}
               </div>
-            ) : (
-              // No NPC named at all: whoever triages it can say who speaks it.
+            ) : canAnswerNpc ? (
+              // No NPC named at all: an admin can say who speaks it.
               <MissingNpcForm busy={npcBusy} onSave={(answer) => void onNameNpc(row.id, answer)} />
+            ) : (
+              <span className="text-muted-foreground">Missing NPC</span>
             )}
           </td>
         ) : null}
@@ -1309,7 +1318,7 @@ function NpcConflict({
 }
 
 /** npcOverrides' key for an NPC's own answer, shared by every row that NPC speaks. */
-function overrideKey(npcKind: NpcKind, npcId: number): string {
+function overrideKey(npcKind: NpcRowKind, npcId: number): string {
   return `npc:${npcKind}:${npcId}`;
 }
 

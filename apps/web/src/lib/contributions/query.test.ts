@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { Roster } from "../voices/roster";
 import { DEFAULT_SORT, bucketOf, contributionsHref, nextSort, sortOf, matchesSearch, matchesStage, nextContributionFilters, pageOf, sectionOf } from "./query";
 
 describe("nextContributionFilters", () => {
@@ -106,38 +107,57 @@ describe("bucketOf", () => {
   const npc = { race: "tauren", gender: "male", flavor: "warrior" as string | null, conflict: [] };
   const quest = { title: "A Threat Within", questId: 783, stage: "accept" as const };
   const moment = { source: "quests" as const, locale: "enUS", quest, hasSpeaker: false };
+  const roster = new Roster({
+    races: [
+      { key: "tauren", genders: ["male"] },
+      { key: "gameobject", genders: [] },
+    ],
+    flavors: [{ race: "tauren", gender: "male", flavor: "warrior" }],
+    voices: [
+      { name: "tauren-male-warrior", race: "tauren", gender: "male" },
+      { name: "narrator-male", race: "narrator", gender: "male" },
+    ],
+    assignments: [
+      { race: "tauren", gender: "male", flavor: "warrior", voice: "tauren-male-warrior" },
+      { race: "gameobject", gender: null, flavor: null, voice: "narrator-male" },
+    ],
+  });
 
   it("is ready for a quest moment that already has a speaker, in any language, with no NPC answer", () => {
-    expect(bucketOf({ ...moment, hasSpeaker: true }, null)).toBe("ready");
-    expect(bucketOf({ ...moment, locale: "deDE", hasSpeaker: true }, null)).toBe("ready");
+    expect(bucketOf({ ...moment, hasSpeaker: true }, null, roster)).toBe("ready");
+    expect(bucketOf({ ...moment, locale: "deDE", hasSpeaker: true }, null, roster)).toBe("ready");
   });
 
   it("checks the speaker of a moment with none yet, the same in every language", () => {
     for (const locale of ["enUS", "deDE"]) {
-      expect(bucketOf({ ...moment, locale }, npc)).toBe("ready");
-      expect(bucketOf({ ...moment, locale }, null)).toBe("blocked");
+      expect(bucketOf({ ...moment, locale }, npc, roster)).toBe("ready");
+      expect(bucketOf({ ...moment, locale }, null, roster)).toBe("blocked");
     }
   });
 
   it("blocks a speaker with no race or gender, a conflict, or a voice off the roster", () => {
-    expect(bucketOf(moment, { ...npc, gender: null })).toBe("blocked");
-    expect(bucketOf(moment, { ...npc, race: null })).toBe("blocked");
-    expect(bucketOf(moment, { ...npc, conflict: [{}] })).toBe("blocked");
-    expect(bucketOf(moment, { ...npc, race: "murloc" })).toBe("blocked");
+    expect(bucketOf(moment, { ...npc, gender: null }, roster)).toBe("blocked");
+    expect(bucketOf(moment, { ...npc, race: null }, roster)).toBe("blocked");
+    expect(bucketOf(moment, { ...npc, conflict: [{}] }, roster)).toBe("blocked");
+    expect(bucketOf(moment, { ...npc, race: "murloc" }, roster)).toBe("blocked");
     // tauren-male has only flavored voices, so the bare pair is not one.
-    expect(bucketOf(moment, { ...npc, flavor: null })).toBe("blocked");
+    expect(bucketOf(moment, { ...npc, flavor: null }, roster)).toBe("blocked");
+  });
+
+  it("is ready for a genderless type a voice reads", () => {
+    expect(bucketOf(moment, { race: "gameobject", gender: null, flavor: null, conflict: [] }, roster)).toBe("ready");
   });
 
   it("checks a greeting's own speaker, in any language", () => {
-    expect(bucketOf({ ...moment, quest: "gossip", hasSpeaker: true }, null)).toBe("blocked");
-    expect(bucketOf({ ...moment, quest: "gossip" }, npc)).toBe("ready");
-    expect(bucketOf({ ...moment, quest: "gossip", locale: "deDE" }, npc)).toBe("ready");
-    expect(bucketOf({ ...moment, quest: "gossip", locale: "deDE" }, { ...npc, race: null })).toBe("blocked");
+    expect(bucketOf({ ...moment, quest: "gossip", hasSpeaker: true }, null, roster)).toBe("blocked");
+    expect(bucketOf({ ...moment, quest: "gossip" }, npc, roster)).toBe("ready");
+    expect(bucketOf({ ...moment, quest: "gossip", locale: "deDE" }, npc, roster)).toBe("ready");
+    expect(bucketOf({ ...moment, quest: "gossip", locale: "deDE" }, { ...npc, race: null }, roster)).toBe("blocked");
   });
 
   it("is ready for zones and books, which name no NPC", () => {
-    expect(bucketOf({ ...moment, source: "zones", quest: null }, null)).toBe("ready");
-    expect(bucketOf({ ...moment, source: "books", quest: null, locale: "deDE" }, null)).toBe("ready");
+    expect(bucketOf({ ...moment, source: "zones", quest: null }, null, roster)).toBe("ready");
+    expect(bucketOf({ ...moment, source: "books", quest: null, locale: "deDE" }, null, roster)).toBe("ready");
   });
 });
 

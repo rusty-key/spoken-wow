@@ -187,9 +187,10 @@ def test_lists_each_npc_once_with_its_own_flavor_in_kind_then_id_order():
     corpus = build_corpus(pd.DataFrame(rows), SPAWNS)
     assert corpus["npcs"] == [
         {"npcType": "creature", "npcId": 68, "race": "human", "gender": "male", "flavor": None,
-         "provenance": "corpus"},
+         "provenance": "corpus", "voice": "human-male-standard"},
         {"npcType": "creature", "npcId": 288, "race": "human", "gender": "male",
-         "flavor": "standard", "provenance": "corpus"},
-        {"npcType": "gameobject", "npcId": 68, "race": "narrator", "gender": "male",
-         "flavor": None, "provenance": "corpus"},
+         "flavor": "standard", "provenance": "corpus", "voice": "human-male-standard"},
+        # A billboard is a gameobject, which the narrator reads.
+        {"npcType": "gameobject", "npcId": 68, "race": "gameobject", "gender": None,
+         "flavor": None, "provenance": "corpus", "voice": "narrator-male"},
     ]

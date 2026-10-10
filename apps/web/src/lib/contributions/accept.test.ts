@@ -121,7 +121,7 @@ function gossipContribution(text: string, speakerId: number): Promise<number> {
   return contribution(`npc:${speakerId}`, text, { kind: "creature", npc: `${speakerId} Test Speaker` });
 }
 
-async function speaker(id: number, race: string, gender: string, flavor: string | null = null): Promise<void> {
+async function speaker(id: number, race: string, gender: string | null, flavor: string | null = null): Promise<void> {
   await upsertResolution({
     npcKind: "creature",
     npcId: id,
@@ -190,12 +190,12 @@ describe("resolveContribution: quests accept", () => {
   });
 
   it("refuses a speaker whose voice is not on the roster", async () => {
-    // A client guess can name any race the model table knows; voices.ts decides what is voiced.
+    // A client guess can name any race the model table knows; the roster decides what is voiced.
     await speaker(npcId, "draenei", "female");
     const id = await questContribution();
     const outcome = await resolveContribution(id, "accepted", RESOLVER);
     expect(outcome).toMatchObject({ ok: false, reason: "needs-speaker" });
-    expect((outcome as { message: string }).message).toMatch(/draenei-female isn't a voice yet/);
+    expect((outcome as { message: string }).message).toMatch(/No voice reads draenei-female yet/);
   });
 
   it("refuses a quests contribution whose NPC has no resolved speaker", async () => {
@@ -337,6 +337,56 @@ describe("resolveContribution: quests accept", () => {
     const group = (await lineIndex()).get(gossipLineId(hash));
     expect(group).toHaveLength(1);
     expect(group![0]).toMatchObject({ source: "gossip", fileName: gossipFileName(hash), questId: null, contributionId: id });
+  });
+
+  it("a greeting from a generic type the narrator reads is filed under the narrator's hash", async () => {
+    await speaker(npcId, "creature", null);
+    const text = "The ground hums beneath your feet, stranger.";
+    const id = await gossipContribution(text, npcId);
+    expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
+
+    const { rows } = await db().query(
+      `select "lineId", "race", "gender", "voice" from "quest_line_speaker" where "contributionId" = $1`,
+      [id],
+    );
+    expect(rows).toEqual([
+      { lineId: gossipLineId(gossipHash(text, "narrator", "male")), race: "narrator", gender: "male", voice: "narrator-male" },
+    ]);
+  });
+
+  it("a second NPC of a generic type joins the narrator's line rather than minting another", async () => {
+    const text = "Something stirs in the roots, stranger.";
+    await speaker(npcId, "creature", null);
+    expect((await resolveContribution(await gossipContribution(text, npcId), "accepted", RESOLVER)).ok).toBe(true);
+    await speaker(npcId + 1, "creature", null);
+    const second = await gossipContribution(text, npcId + 1);
+    expect((await resolveContribution(second, "accepted", RESOLVER)).ok).toBe(true);
+
+    expect((await speakersOf(second)).map((s) => s.lineId)).toEqual([gossipLineId(gossipHash(text, "narrator", "male"))]);
+  });
+
+  it("a greeting from a genderless type an admin added is voiced by its own voice", async () => {
+    const type = `t${npcId}`;
+    await db().query(`insert into "race" ("key") values ($1)`, [type]);
+    await db().query(`insert into "voice" ("name", "race", "gender") values ($1, $1, '')`, [type]);
+    await db().query(`insert into "voice_assignment" ("race", "voice") values ($1, $1)`, [type]);
+    try {
+      await speaker(npcId, type, null);
+      const text = "Creak. The old wood remembers you.";
+      const id = await gossipContribution(text, npcId);
+      expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
+      const { rows } = await db().query(
+        `select "lineId", "race", "gender", "voice" from "quest_line_speaker" where "contributionId" = $1`,
+        [id],
+      );
+      expect(rows).toEqual([{ lineId: gossipLineId(gossipHash(text, type, "")), race: type, gender: "", voice: type }]);
+    } finally {
+      await db().query(`delete from "quest_line_speaker" where "npcId" = $1`, [npcId]);
+      await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
+      await db().query(`delete from "voice_assignment" where "race" = $1`, [type]);
+      await db().query(`delete from "voice" where "name" = $1`, [type]);
+      await db().query(`delete from "race" where "key" = $1`, [type]);
+    }
   });
 
   it("a gossip line whose only speaker moved to another voice gains a speaker on the line, not the voice", async () => {

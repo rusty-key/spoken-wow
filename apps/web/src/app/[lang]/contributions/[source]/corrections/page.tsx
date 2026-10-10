@@ -21,7 +21,6 @@ import { listContributions, observationMeta } from "@/lib/contributions/store";
 import { observedFrom } from "@/lib/npc/resolve";
 import { questFor } from "@/lib/contributions/triage";
 import { viewerOf } from "@/lib/grants/store";
-import { BASE_LANG } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { can } from "@/lib/permissions";
 import { Contained, Wide } from "@/components/Width";
@@ -112,7 +111,6 @@ export default async function Page({
           lang={lang}
           section="quests"
           view="corrections"
-          showNpcs={can(viewer, "regenerate", BASE_LANG)}
         />
         <CorrectionTable initial={rows} status={status} client={client} stage={stage} q={q} searchIn={searchIn} />
       </Wide>

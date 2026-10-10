@@ -243,10 +243,13 @@ describe("listResolutions", () => {
   it("lists every kind of an id, whatever its provenance", async () => {
     await upsertResolution(resolution());
     await upsertResolution(resolution({ npcKind: "gameobject", provenance: "moderator", confirmed: true }));
+    // An item has a type of its own now, and an admin answers it like any NPC.
+    await upsertResolution(resolution({ npcKind: "item", provenance: "moderator", confirmed: true }));
     const ours = (await listResolutions()).filter((row) => row.npcId === npcId);
     expect(ours.map((row) => [row.npcKind, row.provenance])).toEqual([
       ["creature", "client"],
       ["gameobject", "moderator"],
+      ["item", "moderator"],
     ]);
   });
 });
