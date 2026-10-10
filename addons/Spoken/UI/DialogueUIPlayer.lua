@@ -27,13 +27,36 @@ local BASE_SCALE = 0.65
 -- edge rather than the frame's. And how long it takes to get there from the dialog.
 local EDGE = 16
 local SETTLE_TIME = 0.4
--- The paper's visible edge in Parchment.png, inside its transparent margin: the top cap's first
--- opaque row of its 256 and the first opaque column of the 1024 (Brown 122 and 130, Dark 126
--- and 125; the smaller of each, so the paper never runs off the screen).
-local PAPER_TOP, PAPER_LEFT = 122 / 256, 125 / 1024
--- The bottom cap's light paper ends this share of its height over the window's foot: its rows to
--- 105 of 256 are light, the curled rim under them, and the cap is centred on the foot.
-local PAPER_FOOT = 23 / 256
+-- The art a line is drawn in (Skin:Look), as DialogueUI draws it: its quest window's parchment
+-- for quests, gossip and places; its book view's paper for books and letters, and its stone for
+-- plaques and tombstones, picked as DialogueUI picks them from the item's material. Each is a
+-- top cap, a middle that stretches and a bottom cap, rows of its file's 2048: the caps centred on
+-- the window's top and foot, the middle running on `under` rows under the bottom cap, which fades
+-- in over its first rows. Then, in the caps' 256 rows and the file's 1024 columns:
+--   paperTop: the top cap's first opaque row; paperLeft: the first opaque column (the quest
+--     parchment's: Brown 122 and 130, Dark 126 and 125, the smaller of each, so the paper never
+--     runs off the screen);
+--   foot: how far over the window's foot the bottom cap's light paper ends (the quest
+--     parchment's rows to 105 are light, the curled rim under them).
+-- The book view's paper spans columns 128 to 896, the frame's width (BOOK_PAPER).
+local BOOK_ART = "Interface/AddOns/DialogueUI/Art/Book/TextureKit-"
+local LOOKS = {
+    quest = { top = { 0, 256 }, middle = { 256, 896 }, bottom = { 896, 1152 }, under = 0,
+        paperTop = 122, paperLeft = 125, foot = 23 },
+    paper = { file = BOOK_ART .. "Parchment.png", top = { 0, 256 }, middle = { 256, 896 },
+        bottom = { 1152, 1408 }, under = 40, paperTop = 128, paperLeft = 128, foot = 8, palette = 1, book = true },
+    stone = { file = BOOK_ART .. "Metal.png", top = { 0, 256 }, middle = { 256, 896 },
+        bottom = { 1152, 1408 }, under = 40, paperTop = 123, paperLeft = 112, foot = 12, palette = 2, book = true,
+        shadow = true },
+}
+local BOOK_PAPER = 768 / 1024
+-- DialogueUI's book view: TextureKit 2 (stone) for these materials, 1 (paper) for every other
+-- (MaterialTextureKitID in DialogueUI 1.0.5's Code/Book/BookUI.lua).
+local STONE = { Stone = true, Marble = true, Silver = true, Bronze = true, Progenitor = true }
+-- In the book art: the line under its title, and the ring it draws round an item's icon, whose
+-- opening is 56 of its 96 across, where the face sits.
+local BOOK_DIVIDER = { 0, 768 / 1024, 1520 / 2048, 1552 / 2048 }
+local BOOK_RING, RING_OPENING = { 768 / 1024, 864 / 1024, 1616 / 2048, 1712 / 2048 }, 56 / 96
 -- Showing and hiding, the paper first and the rest over it (Skin:SetLevel).
 local FADE_IN, FADE_OUT = .28, .32
 -- A new line on a window already showing: its words fade in over LINE_IN, and the window eases to
@@ -47,8 +70,10 @@ local STILL, ARM_FRAMES, ARM_MOST = 0.1, 2, 0.5
 -- What follows the title, "• (Stopped)" and the waiting count "• +N": this far after it, fading
 -- over COUNT_IN, Stopped in and out as the line stops and plays, the count in as a line is added.
 local COUNT_GAP, COUNT_IN = 6, .25
--- Between the round controls in the header, as the subtitle's (Subtitle:BuildControls).
-local ROUND_GAP = 4
+-- Between the round controls in the header, as the subtitle's (Subtitle:BuildControls); and the
+-- buttons' size, which is also the least room between them and the title's end (its count or
+-- Stopped), so a long title cut short does not crowd them.
+local ROUND_GAP, ROUND_SIZE = 4, 24
 -- The words take this share of DialogueUI's column, centred in it: a narrower column than the
 -- header's and the progress line's, read more easily.
 local WORDS_SHARE = 0.9
@@ -65,9 +90,7 @@ local BASE_FONT_SIZE = 16
 local TITLE_SHARE = 0.85
 -- DialogueUI's paddings at multiplier 1.
 local PAD_H, PAD_TOP, PAD_BOTTOM = 26, 48, 36
--- Where in Parchment.png each strip is. The caps are 256 of 2048 rows each, the middle
--- the 640 between them; the dividers sit lower in the same image.
-local CAP_ROWS, MIDDLE_ROWS = 0.125, 0.3125
+-- Where in the quest parchment's file its header strip is; it sits below the caps.
 local HEADER_DIVIDER = { 0, 0.65625, 0.56640625, 0.61328125, 358, 51 }
 -- Where, of the strip's 358, the portrait socket at its left end gives way to the plain
 -- line. The socket is drawn as is; only the line past it stretches with the panel.
@@ -85,6 +108,16 @@ local function Config() return Addon:Profile("Frame") end
 
 function Skin:IsEnabled()
     return Addon.db and Addon:DisplayStyle() == "dialogueui"
+end
+
+--- The art the line is drawn in (LOOKS): Spoken Books' pages in the book view's paper, or its
+--- stone for the materials DialogueUI draws in stone; every other line in the quest parchment.
+function Skin:Look()
+    local present = self.clip and self.clip.present
+    if present and (present.material or present.bullet == "book") then
+        return STONE[present.material or ""] and LOOKS.stone or LOOKS.paper
+    end
+    return LOOKS.quest
 end
 
 function Skin:HideTooltip()
@@ -120,16 +153,20 @@ function Skin:Initialize()
     frame:SetScript("OnMouseWheel", function(_, delta) self:Wheel(delta) end)
     frame.spokenWheel = function(delta) return self:Wheel(delta) end
     frame:Hide()
-    -- DialogueUI's window closing on a line that plays on: this one takes over from it. Told by a
-    -- child of that window, as DialogueUIBridge's driver is: DialogueUI sets the window's own
-    -- OnHide with SetScript, which drops a hook.
-    local dialog = _G.DUIQuestFrame
-    if dialog then
-        self.dialog = dialog
-        self.dialogWatch = CreateFrame("Frame", nil, dialog)
-        self.dialogWatch:SetScript("OnHide", function() self:Settle(dialog) end)
-        -- Opening, it shows the line itself: this window steps aside at once (Skin:Covered).
-        self.dialogWatch:SetScript("OnShow", function() self:Update() end)
+    -- DialogueUI's quest window or its book view closing on a line that plays on: this one takes
+    -- over from it. Told by a child of each, as DialogueUIBridge's driver is: DialogueUI sets the
+    -- quest window's own OnHide with SetScript, which drops a hook.
+    self.dialogs, self.dialogWatches = {}, {}
+    for _, name in ipairs({ "DUIQuestFrame", "DUIBookFrame" }) do
+        local dialog = _G[name]
+        if type(dialog) == "table" and dialog.GetEffectiveScale then
+            local watch = CreateFrame("Frame", nil, dialog)
+            watch:SetScript("OnHide", function() self:Settle(dialog) end)
+            -- Opening, it shows the line itself: this one steps aside at once (Skin:Covered).
+            watch:SetScript("OnShow", function() self:Update() end)
+            table.insert(self.dialogs, dialog)
+            self.dialogWatches[dialog] = watch
+        end
     end
 
     -- DialogueUI's three parchment strips: caps centred on the frame's ends, the middle
@@ -143,9 +180,8 @@ function Skin:Initialize()
     self.parchments[3]:SetPoint("CENTER", frame, "BOTTOM", 0, 0)
     self.parchments[2]:SetPoint("TOPLEFT", self.parchments[1], "BOTTOMLEFT", 0, 0)
     self.parchments[2]:SetPoint("BOTTOMRIGHT", self.parchments[3], "TOPRIGHT", 0, 0)
-    self.parchments[1]:SetTexCoord(0, 1, 0, CAP_ROWS)
-    self.parchments[2]:SetTexCoord(0, 1, CAP_ROWS, CAP_ROWS + MIDDLE_ROWS)
-    self.parchments[3]:SetTexCoord(0, 1, CAP_ROWS + MIDDLE_ROWS, 2 * CAP_ROWS + MIDDLE_ROWS)
+    -- Over the middle where the book art's bottom cap fades in over it.
+    self.parchments[3]:SetDrawLayer("BACKGROUND", 0)
 
     local content = CreateFrame("Frame", nil, frame)
     self.content, frame.container = content, content
@@ -153,13 +189,13 @@ function Skin:Initialize()
     content.spokenWheel = frame.spokenWheel
     content.buttons = {}
 
-    -- DialogueUI's header strip in two pieces: the face's socket, never stretched, and the
-    -- line past it, stretched to the panel's width.
-    local socketU = HEADER_DIVIDER[1] + (HEADER_DIVIDER[2] - HEADER_DIVIDER[1]) * SOCKET_WIDTH / HEADER_DIVIDER[5]
+    -- The header strip's place, which the face and the title are set in whatever the look.
+    self.header = CreateFrame("Frame", nil, content)
+    -- In the quest parchment, DialogueUI's header strip in two pieces: the face's socket, never
+    -- stretched, and the line past it, stretched to the panel's width. In a book's, the ring
+    -- round the face and the line under the title (Skin:Layout).
     self.headerSocket = content:CreateTexture(nil, "ARTWORK")
-    self.headerSocket:SetTexCoord(HEADER_DIVIDER[1], socketU, HEADER_DIVIDER[3], HEADER_DIVIDER[4])
     self.headerDivider = content:CreateTexture(nil, "ARTWORK")
-    self.headerDivider:SetTexCoord(socketU, HEADER_DIVIDER[2], HEADER_DIVIDER[3], HEADER_DIVIDER[4])
     local host = CreateFrame("Frame", nil, content)
     self.portrait, frame.portrait = host, host
     host:SetSize(PORTRAIT, PORTRAIT)
@@ -230,8 +266,10 @@ end
 --- DialogueUI's own window open over this one, which then stays hidden: the dialog shows the line.
 --- Not while this one sits on the dialog (Show Spoken Over DialogueUI).
 function Skin:Covered()
-    local dialog = self.dialog
-    return dialog ~= nil and dialog:IsShown() and self.frame:GetParent() ~= dialog
+    for _, dialog in ipairs(self.dialogs or {}) do
+        if dialog:IsShown() and self.frame:GetParent() ~= dialog then return true end
+    end
+    return false
 end
 
 function Skin:StartDrag()
@@ -247,7 +285,9 @@ end
 function Skin:Layout()
     self:Touch()
     local frame, cfg = self.frame, Theme:Config()
-    local parchment = Theme:TexturePath() .. "Parchment.png"
+    local look = self:Look()
+    self.look = look
+    local parchment = look.file or Theme:TexturePath() .. "Parchment.png"
     -- Laid out at DialogueUI's own size, paddings and text; Window Size then scales the
     -- whole frame from BASE_SCALE.
     local scale = BASE_SCALE * (Config().FrameScale or DEFAULT_WINDOW_SIZE) / DEFAULT_WINDOW_SIZE
@@ -262,7 +302,7 @@ function Skin:Layout()
     local wordsLeft = Round((inner - wordsWidth) / 2)
     -- DialogueUI's spacing: 0.35 of the text size under each line, four of those between
     -- paragraphs, which an empty line approximates.
-    local fonts = Theme:Fonts()
+    local fonts = Theme:Fonts(look.book)
     local fontSize = fonts.paragraphSize
     local textSize = tonumber(Addon:Profile("Transcript").FontSize) or BASE_FONT_SIZE
     local captionSize = math.max(6, Round(fontSize * textSize / BASE_FONT_SIZE))
@@ -270,7 +310,8 @@ function Skin:Layout()
     local lineHeight = captionSize + lineGap
     self.fonts, self.captionSize, self.lineGap = fonts, captionSize, lineGap
 
-    -- DialogueUI's header strip thickness and its face and title placements, scaled to its column.
+    -- DialogueUI's header strip thickness and its face and title placements, scaled to its column,
+    -- whatever the look.
     local ratio = inner / HEADER_DIVIDER[5]
     local stripHeight = Round(HEADER_DIVIDER[6] * ratio)
     local face = Round(34 * ratio)
@@ -301,13 +342,20 @@ function Skin:Layout()
     -- adds none: the words keep their place.
     -- Under the progress line, as far to where the paper's light ends as the last line is over it:
     -- the 6 and the header's gap over the line, and the line's own spacing under its letters.
+    -- The caps: the quest parchment's as DialogueUI drew them; a book's as wide as its paper puts
+    -- the paper on the frame's width, 4 to 1 as in the file.
+    local capWidth, capHeight = Theme:ParchmentSize()
+    if look.book then
+        capWidth = width / BOOK_PAPER
+        capHeight = capWidth * (look.top[2] - look.top[1]) / 1024
+    end
     local barLift = 0
     if progress then
-        local _, capHeight = Theme:ParchmentSize()
         local above = 6 + math.max(0, textGap - lineGap) + lineGap
-        barLift = Round(above - (padBottom - capHeight * PAPER_FOOT))
+        local foot = capHeight * look.foot / 256
+        barLift = Round(above - (padBottom - foot))
         footerHeight = footerHeight + barLift
-        self.progressGaps = { above = above, below = padBottom + barLift - capHeight * PAPER_FOOT }
+        self.progressGaps = { above = above, below = padBottom + barLift - foot }
     end
     -- Only the line playing, in Lines Shown of its words; the title counts the lines waiting.
     local lines = Addon:Profile("Transcript").Lines == 1 and 1 or 2
@@ -326,27 +374,52 @@ function Skin:Layout()
     frame:SetSize(width, (self.settling or easing) and frame:GetHeight() or height)
     self.lines = lines
 
-    local capWidth, capHeight = Theme:ParchmentSize()
     for index = 1, 3 do self.parchments[index]:SetTexture(parchment) end
+    self.parchments[1]:SetTexCoord(0, 1, look.top[1] / 2048, look.top[2] / 2048)
+    self.parchments[2]:SetTexCoord(0, 1, look.middle[1] / 2048, look.middle[2] / 2048)
+    self.parchments[3]:SetTexCoord(0, 1, look.bottom[1] / 2048, look.bottom[2] / 2048)
     self.parchments[1]:SetSize(capWidth, capHeight)
     self.parchments[3]:SetSize(capWidth, capHeight)
+    self.parchments[2]:ClearAllPoints()
+    self.parchments[2]:SetPoint("TOPLEFT", self.parchments[1], "BOTTOMLEFT", 0, 0)
+    self.parchments[2]:SetPoint("BOTTOMRIGHT", self.parchments[3], "TOPRIGHT", 0, -capHeight * look.under / 256)
 
     local content = self.content
     content:ClearAllPoints()
     content:SetPoint("TOPLEFT", padH, -padTop)
     content:SetPoint("BOTTOMRIGHT", -padH, padBottom)
     local socket = Round(SOCKET_WIDTH * ratio)
-    self.headerSocket:ClearAllPoints()
-    self.headerSocket:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
-    self.headerSocket:SetSize(socket, stripHeight)
-    self.headerSocket:SetTexture(parchment)
-    self.headerDivider:ClearAllPoints()
-    self.headerDivider:SetPoint("TOPLEFT", self.headerSocket, "TOPRIGHT", 0, 0)
-    self.headerDivider:SetSize(math.max(1, inner - socket), stripHeight)
-    self.headerDivider:SetTexture(parchment)
+    self.header:ClearAllPoints()
+    self.header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
+    self.header:SetSize(socket, stripHeight)
     self.portrait:SetSize(face, face)
     self.portrait:ClearAllPoints()
-    self.portrait:SetPoint("CENTER", self.headerSocket, "TOPLEFT", Round(23 * ratio), -Round(23 * ratio))
+    self.portrait:SetPoint("CENTER", self.header, "TOPLEFT", Round(23 * ratio), -Round(23 * ratio))
+    self.headerSocket:SetTexture(parchment)
+    self.headerDivider:SetTexture(parchment)
+    self.headerSocket:ClearAllPoints()
+    self.headerDivider:ClearAllPoints()
+    if look.book then
+        -- The book's ring round the face, its opening the face's size, and its line under the
+        -- title where the quest strip's line ends.
+        local ring = Round(face / RING_OPENING)
+        self.headerSocket:SetTexCoord(BOOK_RING[1], BOOK_RING[2], BOOK_RING[3], BOOK_RING[4])
+        self.headerSocket:SetSize(ring, ring)
+        self.headerSocket:SetPoint("CENTER", self.portrait, "CENTER", 0, 0)
+        local lineHeightArt = math.max(1, Round(inner * 32 / 768))
+        self.headerDivider:SetTexCoord(BOOK_DIVIDER[1], BOOK_DIVIDER[2], BOOK_DIVIDER[3], BOOK_DIVIDER[4])
+        self.headerDivider:SetSize(inner, lineHeightArt)
+        self.headerDivider:SetPoint("CENTER", content, "TOP", 0,
+            -(Round(stripHeight * DIVIDER_LINE) - Round(lineHeightArt / 2)))
+    else
+        local socketU = HEADER_DIVIDER[1] + (HEADER_DIVIDER[2] - HEADER_DIVIDER[1]) * SOCKET_WIDTH / HEADER_DIVIDER[5]
+        self.headerSocket:SetTexCoord(HEADER_DIVIDER[1], socketU, HEADER_DIVIDER[3], HEADER_DIVIDER[4])
+        self.headerSocket:SetPoint("TOPLEFT", self.header, "TOPLEFT", 0, 0)
+        self.headerSocket:SetSize(socket, stripHeight)
+        self.headerDivider:SetTexCoord(socketU, HEADER_DIVIDER[2], HEADER_DIVIDER[3], HEADER_DIVIDER[4])
+        self.headerDivider:SetPoint("TOPLEFT", self.headerSocket, "TOPRIGHT", 0, 0)
+        self.headerDivider:SetSize(math.max(1, inner - socket), stripHeight)
+    end
     local badgeAt = Round(face * 0.36)
     self.badgeDisc:SetSize(Round(face * 0.42), Round(face * 0.42))
     self.badge:SetSize(Round(face * 0.3), Round(face * 0.3))
@@ -354,24 +427,24 @@ function Skin:Layout()
         part:ClearAllPoints()
         part:SetPoint("CENTER", self.portrait, "CENTER", badgeAt, -badgeAt)
     end
+    -- The round buttons as large on screen as Place Lore draws them (24, at UIParent's scale) at
+    -- the default Window Size, growing and shrinking with it from there (Skin:FitControls).
+    self.controlsRound = (Config().FrameScale or DEFAULT_WINDOW_SIZE) / DEFAULT_WINDOW_SIZE / frame.spokenBaseScale
     -- The line's title sits where DialogueUI puts its quest title, the speaker's name in its
-    -- small line above.
+    -- small line above, both stopping a button's width short of the buttons.
+    local clear = Round(ROUND_SIZE * self.controlsRound)
     self.title:ClearAllPoints()
-    self.title:SetPoint("LEFT", self.headerSocket, "LEFT", Round(53 * ratio), Round(2 * ratio))
-    self.title:SetPoint("RIGHT", self.controls, "LEFT", -6, 0)
+    self.title:SetPoint("LEFT", self.header, "LEFT", Round(53 * ratio), Round(2 * ratio))
+    self.title:SetPoint("RIGHT", self.controls, "LEFT", -clear, 0)
     self.title:SetHeight(Round(fonts.titleSize * TITLE_SHARE) + 4)
     self.name:ClearAllPoints()
     self.name:SetPoint("BOTTOMLEFT", self.title, "TOPLEFT", 0, 2)
-    self.name:SetPoint("RIGHT", self.controls, "LEFT", -6, 0)
+    self.name:SetPoint("RIGHT", self.controls, "LEFT", -clear, 0)
     self.name:SetHeight(fonts.subtitleSize + 2)
     -- Centred on the speaker's name and the line's title together: the title sits on the
     -- socket's middle, 2 up, and the name above it.
     local nameHeight = fonts.subtitleSize + 2
     local middle = stripHeight / 2 - Round(2 * ratio) - (2 + nameHeight) / 2
-    -- The round buttons as large on screen as Place Lore draws them (24, at UIParent's scale) at
-    -- the default Window Size, growing and shrinking with it from there. Its anchor's offset is
-    -- in its own scale.
-    self.controlsRound = (Config().FrameScale or DEFAULT_WINDOW_SIZE) / DEFAULT_WINDOW_SIZE / frame.spokenBaseScale
     self.controlsMiddle = middle
     self:FitControls()
 
@@ -401,12 +474,16 @@ function Skin:Layout()
 end
 
 function Skin:Dress()
-    local colors = Theme:Colors()
-    local fonts = self.fonts or Theme:Fonts()
+    local look = self.look or LOOKS.quest
+    local colors = Theme:Colors(look.palette)
+    local fonts = self.fonts or Theme:Fonts(look.book)
     local body = fonts.paragraphSize
+    -- On stone, the book view's shadow under its pale text.
+    local shadow = look.shadow and 1 or 0
     local function Paint(text, face, size, color)
         text:SetFont(face, size, "")
-        text:SetShadowColor(0, 0, 0, 0)
+        text:SetShadowColor(0, 0, 0, shadow)
+        text:SetShadowOffset(1, -1)
         text:SetTextColor(color[1], color[2], color[3])
     end
     Paint(self.name, fonts.subtitle, fonts.subtitleSize, colors.title)
@@ -419,7 +496,7 @@ function Skin:Dress()
     if self.viewport.texture then self.viewport.texture:SetVertexColor(tint[1], tint[2], tint[3]) end
     local captionSize = self.captionSize or body
     Transcript:SetStyle({ font = fonts.paragraph, size = captionSize, lineGap = self.lineGap or Round(0.35 * captionSize),
-        paragraphs = true, color = colors.paragraph, shadow = false,
+        paragraphs = true, color = colors.paragraph, shadow = look.shadow and true or false,
         highlight = colors.highlight, lines = self.lines, padTop = self.lineRoom })
 end
 
@@ -856,8 +933,9 @@ end
 function Skin:PaperOverhang()
     local cap = self.parchments and self.parchments[1]
     local paperWidth, capHeight = cap and cap:GetWidth() or 0, cap and cap:GetHeight() or 0
-    return math.max(0, (paperWidth - self.frame:GetWidth()) / 2 - PAPER_LEFT * paperWidth),
-        math.max(0, capHeight * (0.5 - PAPER_TOP))
+    local look = self.look or LOOKS.quest
+    return math.max(0, (paperWidth - self.frame:GetWidth()) / 2 - look.paperLeft / 1024 * paperWidth),
+        math.max(0, capHeight * (0.5 - look.paperTop / 256))
 end
 
 --- The screen's top left, EDGE from the paper: where the window settles when DialogueUI's
@@ -886,9 +964,9 @@ function Skin:Home()
     return EDGE * ui + left * scale, UIParent:GetHeight() * ui - EDGE * ui - top * scale
 end
 
---- DialogueUI's window closed while its line plays on: this window takes the dialog's place, size
---- and height, then shrinks to its own size and height as it moves to where it rests, DialogueUI's
---- opening in reverse. Not while it sits on the dialog (Show Spoken Over DialogueUI): it is in
+--- DialogueUI's quest window or book view closed while its line plays on: this window takes the
+--- dialog's place, size and height, then shrinks to its own size and height as it moves to where
+--- it rests, DialogueUI's opening in reverse. Not while it sits on the dialog (Show Spoken Over DialogueUI): it is in
 --- place already. Should anything fail, it is simply put where it rests.
 function Skin:Settle(dialog)
     local frame = self.frame
@@ -911,12 +989,21 @@ function Skin:StartSettle(dialog)
     local frame = self.frame
     self:Update()
     local ui = UIParent:GetEffectiveScale()
-    -- The dialog's top left, width and height in the screen's pixels, from where DialogueUI puts
-    -- it: it has no place on screen to read while it hides the interface.
-    local x, top = Theme:WindowPlace()
-    local width, height = Theme:FrameSize()
+    -- The dialog's top left, width and height in the screen's pixels. The quest window's from
+    -- where DialogueUI puts it: it has no place on screen to read while it hides the interface.
+    -- The book view's from its frame, which keeps its place as it hides: its paper is the frame.
+    local x, top, width, height
     local k = dialog:GetEffectiveScale()
-    if not (x and top and frame:GetWidth() > 0) then error("DialogueUI's window has no place") end
+    if dialog == _G.DUIQuestFrame then
+        x, top = Theme:WindowPlace()
+        width, height = Theme:FrameSize()
+    else
+        local left, bottom, w, h = dialog:GetRect()
+        if left and bottom and w and h then
+            x, top, width, height = (left + w / 2) * k / ui, (bottom + h) * k / ui, w, h
+        end
+    end
+    if not (x and top and width and frame:GetWidth() > 0) then error("DialogueUI's window has no place") end
     -- Its own scale, and the one at which it is drawn as wide as the dialog.
     local to = frame.spokenBaseScale or 1
     local from = width * k / (frame:GetWidth() * ui)

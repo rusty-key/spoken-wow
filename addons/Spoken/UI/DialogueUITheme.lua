@@ -86,8 +86,10 @@ function Theme:TexturePath()
     return ART .. (self:ThemeID() == 2 and "Theme_Dark/" or "Theme_Brown/")
 end
 
-function Theme:Colors()
-    return PALETTE[self:ThemeID()]
+--- The text colours: `palette` 1 or 2 where a look fixes it (a book's paper or stone), otherwise
+--- DialogueUI's theme's.
+function Theme:Colors(palette)
+    return PALETTE[palette or self:ThemeID()]
 end
 
 --- The face DialogueUI writes its text in, whatever font it is set to.
@@ -106,10 +108,14 @@ local function FontOf(name, size)
 end
 
 --- DialogueUI's paragraph, quest title and subtitle fonts; the sizes follow its Font Size setting.
-function Theme:Fonts()
+--- With `book`, its book view's title instead of the quest's.
+function Theme:Fonts(book)
     local fonts = {}
     fonts.paragraph, fonts.paragraphSize = FontOf("DUIFont_Quest_Paragraph", 12)
     fonts.title, fonts.titleSize = FontOf("DUIFont_Quest_Title_18", 18)
+    if book and _G.DUIFont_Book_Title then
+        fonts.title, fonts.titleSize = FontOf("DUIFont_Book_Title", 18)
+    end
     fonts.subtitle, fonts.subtitleSize = FontOf("DUIFont_QuestType_Left", 10)
     return fonts
 end

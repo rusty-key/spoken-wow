@@ -31,6 +31,16 @@ local function FakeDialogueUI()
     local font = stub.Widget("Font")
     function font:GetFont() return "Interface/AddOns/DialogueUI/Fonts/frizqt__.ttf", 14 end
     _G.DUIFont_Quest_Paragraph = font
+    -- Its book view: no parent either, drawn at 0.8, its paper the frame, 409.6 by 477.87 with
+    -- its bottom left at 200, 100. Closed until a book opens.
+    local book = stub.Widget("Frame")
+    book.GetEffectiveScale = function() return 0.8 end
+    book.GetRect = function() return 200, 100, 409.6, 477.87 end
+    book:Hide()
+    _G.DUIBookFrame = book
+    local bookTitle = stub.Widget("Font")
+    function bookTitle:GetFont() return "Interface/AddOns/DialogueUI/Fonts/TrajanPro3SemiBold.ttf", 18 end
+    _G.DUIFont_Book_Title = bookTitle
     return frame
 end
 
@@ -164,11 +174,11 @@ env.PlayerFrame:RefreshConfig()
 local function Near(a, b) return a ~= nil and b ~= nil and math.abs(a - b) < 1 end
 -- The screen's top left, 16 from the paper's visible edge: the caps reach past the frame's top
 -- and sides, the paper inside their transparent margin (122 of the cap's 256 rows, 125 of 1024
--- columns).
-local function AtTopLeft()
+-- columns; a book's stone 123 and 112).
+local function AtTopLeft(top, left)
     local anchor, base, cap = Skin.frame.anchor, Skin.frame.spokenBaseScale, Skin.parchments[1]
-    local x = 16 / base + math.max(0, (cap.width - Skin.frame:GetWidth()) / 2 - 125 / 1024 * cap.width)
-    local y = 16 / base + math.max(0, cap.height * (0.5 - 122 / 256))
+    local x = 16 / base + math.max(0, (cap.width - Skin.frame:GetWidth()) / 2 - (left or 125) / 1024 * cap.width)
+    local y = 16 / base + math.max(0, cap.height * (0.5 - (top or 122) / 256))
     return anchor ~= nil and anchor.point == "TOPLEFT" and anchor.relativePoint == "TOPLEFT"
         and Near(anchor.x, x) and Near(anchor.y, -y)
 end
@@ -370,7 +380,9 @@ Expect("...Skip in the subtitle's art", Skin.skip.bar ~= nil, true)
 Expect("...in the header at the right, beside the speaker and the line",
     Skin.controls.anchor.point == "RIGHT" and Skin.controls.anchor.relativeTo == Skin.content
     and Skin.controls.anchor.relativePoint == "TOPRIGHT" and Skin.controls.anchor.y < 0, true)
-Expect("...the line's title stopping short of them", Skin.title.anchor.relativeTo == Skin.controls, true)
+Expect("...the line's title stopping short of them by a button's width, its count or Stopped clear of them",
+    Skin.title.anchor.relativeTo == Skin.controls
+    and math.abs(Skin.title.anchor.x + 24 * Skin.controls:GetScale()) <= 0.5, true)
 Expect("...as large on screen as Place Lore's, 24 at UIParent's scale, at the default Window Size",
     math.abs(Skin.play:GetWidth() * Skin.controls:GetScale() * Skin.frame.spokenBaseScale - 24) < 0.01, true)
 do
@@ -628,7 +640,8 @@ Spoken:StopAll()
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Three", portrait = { kind = "none" } } }))
 Skin:Tick(1)
 DUI:Show()
-Skin.dialogWatch.scripts.OnShow(Skin.dialogWatch)
+local questWatch = Skin.dialogWatches and Skin.dialogWatches[DUI]
+if questWatch then questWatch.scripts.OnShow(questWatch) end
 Expect("DialogueUI's window opening hides this one at once, the dialog showing the line",
     tostring(Skin.wanted) .. " " .. tostring(Skin.frame:IsShown()), "false false")
 env.PlayerFrame:RefreshConfig()
@@ -650,7 +663,7 @@ local function CloseDialog()
     DUI.hooks = {}
     DUI:SetScript("OnHide", function() end)
     DUI:Hide()
-    local watch = Skin.dialogWatch
+    local watch = Skin.dialogWatches and Skin.dialogWatches[DUI]
     if watch and watch:GetParent() == DUI then watch.scripts.OnHide(watch) end
 end
 saved.DialogueUI = nil
@@ -690,6 +703,68 @@ Skin.frame.GetLeft, Skin.frame.GetTop = frameLeft, frameTop
 Spoken:StopAll()
 CloseDialog()
 Expect("with no line playing on, the dialog closing moves nothing", Skin.settling, nil)
+
+---------------------------------------------------------------- books and stones
+-- Spoken Books' pages, in the art DialogueUI's book view draws them in: its paper for books and
+-- letters, its stone for the materials it draws in stone. Every other line keeps the quest
+-- window's parchment.
+local BOOK = "Interface/AddOns/DialogueUI/Art/Book/TextureKit-"
+local function Page(material)
+    return H.Clip({ length = 30, present = { header = "Beyond the Dark Portal", label = "Page 1 of 4", bullet = "book",
+        material = material, transcript = "Only a few months after Nethergarde's completion.",
+        portrait = { kind = "texture", texture = [[Interface\AddOns\Spoken\Textures\Book]] } } })
+end
+local function Rows(texture) return texture.texCoord and (texture.texCoord[3] * 2048) .. "-" .. (texture.texCoord[4] * 2048) end
+books:Enqueue(Page(nil))
+Expect("a book's page is drawn in the book view's paper", Skin.parchments[1].texture .. " " .. Skin.parchments[3].texture,
+    BOOK .. "Parchment.png " .. BOOK .. "Parchment.png")
+Expect("...its top cap, the middle and its torn foot", Rows(Skin.parchments[1]) .. " " .. Rows(Skin.parchments[2]) .. " "
+    .. Rows(Skin.parchments[3]), "0-256 256-896 1152-1408")
+Expect("...the paper as wide as the window, as the book view's is its frame",
+    Near(Skin.parchments[1]:GetWidth() * 768 / 1024, Skin.frame:GetWidth()), true)
+Expect("...the middle running on under the foot, which fades in over it",
+    Skin.parchments[2].anchor and Skin.parchments[2].anchor.y < 0, true)
+Expect("...the face in the book's ring, the title over the book's line",
+    Rows(Skin.headerSocket) .. " " .. Rows(Skin.headerDivider), "1616-1712 1520-1552")
+Expect("...in the book view's title font", Skin.fonts.title, "Interface/AddOns/DialogueUI/Fonts/TrajanPro3SemiBold.ttf")
+Expect("...in dark ink", table.concat(Skin.colors.title, ","), "0.19,0.17,0.13")
+Spoken:StopAll()
+local shadowAlpha
+Skin.title.text.SetShadowColor = function(_, r, g, b, a) shadowAlpha = a end
+books:Enqueue(Page("Stone"))
+Expect("a tombstone's or plaque's in its stone", Skin.parchments[1].texture, BOOK .. "Metal.png")
+Expect("...in pale letters with a shadow under them, as the book view's", table.concat(Skin.colors.title, ",") .. " "
+    .. tostring(shadowAlpha), "0.9,0.9,0.9 1")
+Spoken:StopAll()
+quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "The Hunt Begins", portrait = { kind = "none" } } }))
+Expect("a quest's line is back in the quest window's parchment", Skin.parchments[1].texture
+    .. " " .. Rows(Skin.parchments[3]), "Interface/AddOns/DialogueUI/Art/Theme_Brown/Parchment.png 896-1152")
+Spoken:StopAll()
+
+-- The book view open: this window steps aside; closed on a page that reads on, the window takes
+-- the book's place and size and goes to the top left, as from the quest window.
+local BookView = _G.DUIBookFrame
+local bookWatch = Skin.dialogWatches and Skin.dialogWatches[BookView]
+Expect("the book view is watched, as the quest window is", bookWatch ~= nil, true)
+if bookWatch then
+    books:Enqueue(Page("Stone"))
+    Skin:Tick(1)
+    BookView:Show()
+    bookWatch.scripts.OnShow(bookWatch)
+    Expect("the book view opening hides this window, the book showing the page", Skin.frame:IsShown(), false)
+    Skin.frame.GetLeft, Skin.frame.GetTop = function() return nil end, function() return nil end
+    BookView:Hide()
+    bookWatch.scripts.OnHide(bookWatch)
+    local scale = Skin.frame.scale
+    Expect("closed on a page reading on, the window starts where the book was, as wide, in stone",
+        Near(Skin.frame.anchor.x * scale, 200 * 0.8) and Near(Skin.frame.anchor.y * scale, (100 + 477.87) * 0.8)
+        and Near(Skin.frame:GetWidth() * scale, 409.6 * 0.8) and Skin.parchments[1].texture == BOOK .. "Metal.png", true)
+    Expect("...as tall as the book", Near(Skin.frame:GetHeight() * scale, 477.87 * 0.8), true)
+    Skin:Tick(0.45)
+    Expect("...and settles at the top left, the stone's edge 16 from the screen's", AtTopLeft(123, 112) and Skin.settling == nil, true)
+    Skin.frame.GetLeft, Skin.frame.GetTop = frameLeft, frameTop
+    Spoken:StopAll()
+end
 
 Expect("diagnostics name the style", string.find(Skin:Describe(), "enabled=true", 1, true) ~= nil, true)
 Expect("...and the theme reading", string.find(env.DialogueUITheme:Describe(), "theme=1", 1, true) ~= nil, true)

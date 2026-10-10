@@ -49,6 +49,14 @@ function SpokenBooks:PagePicture()
 	return { kind = "texture", texture = BOOK_TEXTURE }
 end
 
+--- What the open page is written on (ItemTextGetMaterial: Parchment, Stone, Marble...), for
+--- Spoken's DialogueUI window to draw a stone's page in stone, as DialogueUI's book view does. Nil
+--- with nothing open.
+function SpokenBooks:PageMaterial()
+	if not self.lastPage then return nil end
+	return ItemTextGetMaterial and ItemTextGetMaterial() or nil
+end
+
 --- Every installed pack this version can read, newest format first.
 function SpokenBooks:GetAudioPacks()
 	local packs = {}
@@ -139,6 +147,7 @@ function SpokenBooks:ClipFor(pageId)
 							and format(L.OPT_PAGE_COUNT_FMT, place.number, #book.pages)
 							or nil,
 						bullet = "book",
+						material = self:PageMaterial(),
 						portrait = self:PagePicture(),
 						actions = ACTIONS,
 					},
