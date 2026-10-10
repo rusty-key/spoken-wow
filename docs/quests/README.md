@@ -87,9 +87,9 @@ it is a pseudo-race for gameobjects and items.
 
 An NPC with no humanoid display - Shael'dryn, the OOX robots, Kum'isha - has no race or sex to
 pick a voice by, so it is voiced by the model it is drawn with: `model-{ModelID}`, shared by
-every NPC on that model. Its quest, gossip and follow-up lines are in the corpus, after every
-other row so the rows before them keep their place, but marked `no-voice` until a voice is
-chosen for the model. A patch variant of the same NPC with a humanoid display wins.
+every NPC on that model. Its quest, gossip and follow-up lines are in the corpus, marked
+`no-voice` until a voice is chosen for the model. Its quest and gossip rows come after the
+follow-up rows, so every row before them keeps its place (`ord`). A patch variant of the same NPC with a humanoid display wins.
 
 The whole set is listed on `/voices`, which is also the easiest way to build it — see
 "Managing voices". The clips to build them from sit in

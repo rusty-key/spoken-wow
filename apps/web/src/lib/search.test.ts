@@ -171,7 +171,7 @@ describe("field filters", () => {
   });
 
   it("hides progress text unless asked for", () => {
-    // 3,140 of the corpus's 17,792 lines, and no code path will ever voice one.
+    // No code path will ever voice a progress line.
     expect(asShipped().every((l) => l.source !== "progress")).toBe(true);
     expect(asShipped()).toHaveLength(17259);
     expect(all()).toHaveLength(20867);
