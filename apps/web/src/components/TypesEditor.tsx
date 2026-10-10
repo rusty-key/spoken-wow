@@ -7,18 +7,27 @@
  * edit that would split a voice NPCs speak with comes back as a question, asked next to the
  * control that made it.
  */
-import { Plus, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { LiteButton, LiteCheckbox } from "@/components/LiteControls";
 import { useLang } from "@/components/LangProvider";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Roster, newVoiceName, type Gender, type RosterData } from "@/lib/voices/roster";
 
 const GENDERS: Gender[] = ["female", "male"];
-/** The voice select's value for "a voice of the combination's own". */
-const NEW_VOICE = "";
+
+/**
+ * Edit controls stay out of sight until their rows are hovered, as a long table of them reads
+ * as noise otherwise; a focused or open one stays visible for the keyboard.
+ */
+const ON_TYPE_HOVER =
+  "opacity-0 group-hover/type:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100";
+const ON_ROW_HOVER = "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100";
+/** One width for every voice picker, so the column reads straight down. */
+const PICKER_WIDTH = "w-60";
 
 type Choice = { voice: string; into: string; npcs: number; lines: number };
 type Send = (at: string, body: Record<string, unknown>) => Promise<boolean>;
@@ -185,6 +194,7 @@ function TypeRows({
             <TrashButton
               title={`Delete ${race.key}`}
               busy={busy}
+              reveal={ON_TYPE_HOVER}
               onClick={() => void send(at("delete"), { action: "delete-type", key: race.key })}
             />
           </div>
@@ -201,7 +211,7 @@ function TypeRows({
       flavors.forEach((flavor, n) => {
         const key = at(`voice:${group}:${flavor}`);
         rows.push(
-          <tr key={key} className={n === 0 ? "border-t" : ""}>
+          <tr key={key} className={`group/row ${n === 0 ? "border-t" : ""}`}>
             {n === 0 ? typeCell : null}
             {n === 0 ? genderCell : null}
             <td className={cell}>
@@ -210,6 +220,7 @@ function TypeRows({
                 <TrashButton
                   title={`Delete ${flavor}`}
                   busy={busy}
+                  reveal={ON_ROW_HOVER}
                   onClick={() => void send(key, { action: "delete-flavor", race: race.key, gender, flavor })}
                 />
               </div>
@@ -271,11 +282,11 @@ function TypeRows({
               <LiteButton
                 key={g}
                 variant="ghost"
-                className="h-6 gap-0.5 px-1.5 text-xs"
+                className={`h-6 gap-1 px-1.5 text-xs leading-none ${ON_TYPE_HOVER}`}
                 disabled={busy}
                 onClick={() => void send(at("gender"), { action: "add-gender", race: race.key, gender: g })}
               >
-                <Plus className="size-3" />
+                <Plus className="size-3 shrink-0" />
                 {g}
               </LiteButton>
             ))}
@@ -288,7 +299,7 @@ function TypeRows({
     );
   }
 
-  return <tbody>{rows}</tbody>;
+  return <tbody className="group/type">{rows}</tbody>;
 }
 
 /** The button that opens a flavor form for one gender of a type, or for a type with none. */
@@ -311,8 +322,8 @@ function AddFlavor({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <LiteButton variant="ghost" className="h-6 gap-0.5 px-1.5 text-xs" disabled={busy}>
-          <Plus className="size-3" />
+        <LiteButton variant="ghost" className={`h-6 gap-1 px-1.5 text-xs leading-none ${ON_TYPE_HOVER}`} disabled={busy}>
+          <Plus className="size-3 shrink-0" />
           flavor
         </LiteButton>
       </PopoverTrigger>
@@ -344,22 +355,32 @@ function AddFlavor({
   );
 }
 
-function TrashButton({ title, busy, onClick }: { title: string; busy: boolean; onClick: () => void }) {
+function TrashButton({
+  title,
+  busy,
+  reveal,
+  onClick,
+}: {
+  title: string;
+  busy: boolean;
+  reveal: string;
+  onClick: () => void;
+}) {
   return (
     <LiteButton
       variant="ghost"
-      className="text-destructive hover:text-destructive h-6 w-6 p-0"
+      className={`text-destructive hover:text-destructive size-6 justify-center p-0 ${reveal}`}
       disabled={busy}
       title={title}
       aria-label={title}
       onClick={onClick}
     >
-      <Trash2 className="size-3.5" />
+      <Trash2 className="size-3.5 shrink-0" />
     </LiteButton>
   );
 }
 
-/** The voice one combination is read with, or none yet. */
+/** The voice one combination is read with, or none yet, picked from a searchable list. */
 function VoiceSelect({
   race,
   gender,
@@ -375,24 +396,55 @@ function VoiceSelect({
   busy: boolean;
   onPick: (voice: string | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
   // Only its own assignment, not one it falls back to: a flavor read by its type's voice says so.
   const own = roster.data.assignments.find((a) => a.race === race && a.gender === gender && a.flavor === flavor)?.voice;
   const inherited = own ? null : roster.voiceFor(race, gender, flavor);
+  const fresh = newVoiceName(race, gender, flavor);
+  const pick = (voice: string | null) => {
+    setOpen(false);
+    if (voice !== (own ?? null)) onPick(voice);
+  };
   return (
-    <select
-      value={own ?? "-"}
-      disabled={busy}
-      onChange={(event) => onPick(event.target.value === NEW_VOICE ? null : event.target.value)}
-      className="h-7 rounded border bg-transparent text-xs"
-    >
-      {own ? null : <option value="-">{inherited ? `as ${inherited}` : "no voice"}</option>}
-      <option value={NEW_VOICE}>new voice: {newVoiceName(race, gender, flavor)}</option>
-      {roster.voiceNames.map((voice) => (
-        <option key={voice} value={voice}>
-          {voice}
-        </option>
-      ))}
-    </select>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <LiteButton
+          role="combobox"
+          aria-expanded={open}
+          disabled={busy}
+          className={`h-7 justify-between gap-2 px-2 text-xs font-normal ${PICKER_WIDTH}`}
+        >
+          <span className={`truncate ${own ? "" : "text-muted-foreground"}`}>
+            {own ?? (inherited ? `as ${inherited}` : "no voice")}
+          </span>
+          <ChevronsUpDown className="size-3.5 shrink-0 opacity-50" />
+        </LiteButton>
+      </PopoverTrigger>
+      <PopoverContent align="start" className={`p-0 ${PICKER_WIDTH}`}>
+        <Command>
+          <CommandInput placeholder="Search voices" className="h-8 text-xs" />
+          <CommandList>
+            <CommandEmpty>No voice.</CommandEmpty>
+            {roster.isVoice(fresh) ? null : (
+              <CommandGroup>
+                <CommandItem value={`new ${fresh}`} onSelect={() => pick(null)} className="text-xs">
+                  <Plus className="size-3.5" />
+                  New voice: {fresh}
+                </CommandItem>
+              </CommandGroup>
+            )}
+            <CommandGroup>
+              {roster.voiceNames.map((voice) => (
+                <CommandItem key={voice} value={voice} onSelect={() => pick(voice)} className="text-xs">
+                  <Check className={`size-3.5 ${voice === own ? "opacity-100" : "opacity-0"}`} />
+                  {voice}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
