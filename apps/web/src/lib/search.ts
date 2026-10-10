@@ -46,6 +46,8 @@ export type LineFilters = {
   kind?: Kind;
   source?: Source;
   npcType?: NpcType;
+  /** A uiMapID: lines whose speaker spawns in that zone. */
+  zone?: number;
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
   narration?: boolean;
   /**
@@ -391,6 +393,7 @@ export function matchingLines(
     kind,
     source,
     npcType,
+    zone,
     includeProgress = false,
     narration = false,
     line: lineId,
@@ -440,6 +443,7 @@ export function matchingLines(
     lines = lines.filter((line) => line.source !== "progress");
   }
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
+  if (zone !== undefined) lines = lines.filter((line) => line.zones?.includes(zone) ?? false);
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
   // which is 314 of them, and the ones most worth finding.

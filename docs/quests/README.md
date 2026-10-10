@@ -409,6 +409,16 @@ source filter also counts as asking for them, since otherwise that choice would 
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
 them, and clearing filters returns it to hidden.
 
+**The zone filter is where the speaker spawns, worked out rather than read.** No line carries
+a zone, and the server leaves its zone columns at 0, so each spawn in `quest_spawn` is placed
+by `pipelines/zones/tools/lib/zone-at.mjs` against the client's map tables, committed as
+`seed/zone-regions.json` (`node tools/fetch-zone-regions.mjs` in `pipelines/zones`). The zone
+maps overlap, so a city wins over the zone around it, then the zone owning most explored-area
+overlays under the point. It is a heuristic: around the Hillsbrad and Alterac border a few
+NPCs land in the neighbour. A dungeon counts as the zone its entrance is in, an NPC spawned
+in several zones is under each, and an item or an unspawned object is under none.
+`?zone=<uiMapID>` says the same in a URL.
+
 Lines with no audio are marked. `no audio` is a real gap; `progress` and `invalid-chars`
 are lines the generator deliberately never voices.
 

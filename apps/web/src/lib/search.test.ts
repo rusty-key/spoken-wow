@@ -141,6 +141,14 @@ describe("field filters", () => {
     expect(all({ npcType: "item" }).every((l) => l.npcType === "item")).toBe(true);
   });
 
+  it("filters by the zone the speaker spawns in", () => {
+    // Marshal Dughan stands in Goldshire, Elwynn Forest, and not in the city beside it.
+    expect(npcKeys(all({ zone: 1429 }))).toContain("creature:240");
+    expect(npcKeys(all({ zone: 1453 }))).not.toContain("creature:240");
+    // An item spawns nowhere.
+    expect(all({ zone: 1429 }).some((l) => l.npcType === "item")).toBe(false);
+  });
+
   it("splits gossip from everything tied to a quest", () => {
     const gossip = all({ kind: "gossip" });
     const quests = all({ kind: "quests" });

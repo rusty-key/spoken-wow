@@ -29,6 +29,7 @@ export function activeFilterCount(filters: LineFilters): number {
     filters.voice,
     filters.source,
     filters.npcType,
+    filters.zone,
     filters.narration || undefined,
     filters.line,
     filters.overridden || undefined,

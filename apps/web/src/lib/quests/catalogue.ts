@@ -31,6 +31,7 @@ import { npcKey, type Corpus, type CorpusLine } from "@/lib/corpus";
 import { answersQuestMomentSql } from "@/lib/contributions/naming";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { flavorsOf } from "@/lib/voices/voices";
+import { zonesBySpeaker, type Spawn } from "./zones";
 
 
 /**
@@ -229,6 +230,18 @@ async function buildTranslated(lang: Lang): Promise<CorpusLine[]> {
   });
 }
 
+/**
+ * Each line with the zones its speaker spawns in. quest_spawn is replaced in the same import
+ * as the speakers, so the speaker stamp already moves when it does.
+ */
+async function withZones(lines: CorpusLine[]): Promise<CorpusLine[]> {
+  const zones = zonesBySpeaker(await query<Spawn>(`select "npcType", "npcId", "map", "x", "y" from "quest_spawn"`));
+  return lines.map((line) => {
+    const found = zones.get(npcKey(line));
+    return found ? { ...line, zones: found } : line;
+  });
+}
+
 // One memo per language (lib/memo.ts). A single slot would be rebuilt on every request that
 // asked for a different language from the last one -- seventeen thousand rows re-read and
 // search.ts's row keys rebuilt with them.
@@ -244,7 +257,7 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
  */
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
-  return memoByLang(cacheKey, lang, stamp, async () => ({ lines: await build(lang) }));
+  return memoByLang(cacheKey, lang, stamp, async () => ({ lines: await withZones(await build(lang)) }));
 }
 
 /**

@@ -41,4 +41,10 @@ describe("filtersFromParams", () => {
       (await filtersFromParams(new URLSearchParams("source=follow-up"))).source,
     ).toBeUndefined();
   });
+
+  it("reads a zone by its uiMapID, and nothing that is not a zone", async () => {
+    expect((await filtersFromParams(new URLSearchParams("zone=1411"))).zone).toBe(1411);
+    expect((await filtersFromParams(new URLSearchParams("zone=1414"))).zone).toBeUndefined();
+    expect((await filtersFromParams(new URLSearchParams("zone=Durotar"))).zone).toBeUndefined();
+  });
 });

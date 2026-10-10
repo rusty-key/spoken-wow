@@ -10,6 +10,7 @@
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so
  * their lists live next to the type in lib/search.ts.
  */
+import { QUEST_ZONES, type QuestZone } from "./quests/zones";
 import { flavorScopes, GENDERS, RACES, VOICE_NAMES, VOICES } from "./voices/voices";
 
 export type Facets = {
@@ -26,6 +27,7 @@ export type Facets = {
    * so a partial selection (a race with no gender) narrows by the same filter.
    */
   flavorScopes: { race: string; gender: string; flavor: string }[];
+  zones: QuestZone[];
 };
 
 const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
@@ -41,6 +43,7 @@ const FACETS: Facets = {
       a.gender.localeCompare(b.gender) ||
       a.flavor.localeCompare(b.flavor),
   ),
+  zones: QUEST_ZONES,
 };
 
 /** Async because it used to be read off the corpus; kept so no caller has to change. */
