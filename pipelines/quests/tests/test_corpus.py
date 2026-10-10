@@ -173,3 +173,46 @@ def test_a_follow_up_speaker_with_no_humanoid_display_is_voiced_by_its_model():
         "voice": "model-29", "fileName": "3475-model-29", "generatable": False,
         "skipReason": "no-voice"}
     assert corpus["lines"][0]["race"] == "human"
+
+
+def _extracted(source, quest, name, entry, race, model=None, type_="creature"):
+    # A creature with no humanoid display comes back with no race and its display's model.
+    return {"source": source, "quest": quest, "name": name, "type": type_, "id": entry,
+            "DisplayRaceID": race, "DisplaySexID": 0, "ModelID": model}
+
+
+def _speakers(rows):
+    return [(r["name"], None if pd.isna(r["ModelID"]) else int(r["ModelID"]))
+            for r in rows.to_dict("records")]
+
+
+def test_a_quest_giver_with_no_humanoid_display_is_kept_after_every_other_row():
+    from tts_cli.corpus import extraction_rows
+
+    quests = pd.DataFrame([
+        _extracted("accept", 1, "Jitters", 288, 1),
+        _extracted("complete", 1024, "Shael'dryn", 3916, None, 77),
+        _extracted("accept", 2, "Wanted Poster", 50, -1, type_="gameobject"),
+    ])
+    followups = pd.DataFrame([_extracted("followup", 3481, "Kum'isha", 7363, None, 29)])
+
+    rows = extraction_rows(quests, followups)
+
+    # Existing rows keep their place: import-corpus records it as each row's `ord`.
+    assert _speakers(rows) == [
+        ("Jitters", None), ("Wanted Poster", None), ("Kum'isha", 29), ("Shael'dryn", 77)]
+
+
+def test_a_model_row_beside_a_humanoid_variant_of_the_same_npc_is_dropped():
+    # Patch variants of one NPC: the humanoid display is its voice.
+    from tts_cli.corpus import extraction_rows
+
+    quests = pd.DataFrame([
+        _extracted("accept", 1, "Belgrum", 1, 3),
+        _extracted("accept", 1, "Belgrum", 1, None, 50),
+        _extracted("accept", 1, "Wanted Poster", 1, -1, type_="gameobject"),
+    ])
+
+    rows = extraction_rows(quests, pd.DataFrame(columns=quests.columns))
+
+    assert _speakers(rows) == [("Belgrum", None), ("Wanted Poster", None)]

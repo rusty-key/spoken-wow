@@ -85,6 +85,13 @@ the game data does not answer. The corpus carries the result, so the current cor
 voices rather than one per race-gender. `narrator-male` is the exception and has no flavor:
 it is a pseudo-race for gameobjects and items.
 
+An NPC with no humanoid display - Shael'dryn, the OOX robots, Kum'isha - has no race or sex to
+pick a voice by, so it is voiced by the model it is drawn with: `model-{ModelID}`, shared by
+every NPC on that model. Its quest, gossip and follow-up lines are in the corpus, marked
+`no-voice` until a voice is chosen for the model. Its quest and gossip rows come after the
+follow-up rows, so every row before them keeps its place (`ord`). A patch variant of the same
+NPC with a humanoid display wins.
+
 The whole set is listed on `/voices`, which is also the easiest way to build it — see
 "Managing voices". The clips to build them from sit in
 `voice/seed-clips/<race-gender>/<flavor>/`, and a language other than English has its own
@@ -1252,6 +1259,7 @@ The dataframe schema before calling the `preprocess_dataframe` function consists
 | `name`        | The name of the NPC involved in the interaction               |
 | `type`        | The type of the NPC involved in the interaction ('creature', 'gameobject', or 'item') |
 | `id`          | The creature/gameobject/item ID of the NPC involved in the interaction |
+| `ModelID`     | The creature's model where its display has no humanoid race, else empty |
 
 `DisplayRaceID = -1` is used for interactions with inanimate NPCs: gameobjects, items etc. It's mapped to a voice called "narrator" in `RACE_DICT`.
 

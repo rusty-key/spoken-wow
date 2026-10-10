@@ -138,8 +138,9 @@ def model_voice(model_id) -> str:
     voice by - Kum'isha is a Broken, the OOX robots are robots - so the model it is drawn with
     names the voice instead, and every NPC on one model shares it. The slot is carried as the
     row's *race* with no flavor, and voice_name answers the race alone for it, so the corpus's
-    race-gender-flavor columns need no new one and the voice comes out bare: the file is
-    `{broadcastTextID}-model-29` (tts_cli/naming.py), frozen once shipped like every other.
+    race-gender-flavor columns need no new one and the voice comes out bare: a follow-up file is
+    `{broadcastTextID}-model-29` and a gossip hash is taken over it (tts_cli/naming.py), frozen
+    once shipped like every other.
 
     int() because the id reaches here from a DataFrame column that is NaN on every other row.
     """

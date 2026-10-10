@@ -22,6 +22,7 @@ import textwrap
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from tts_cli.corpus import extraction_rows
 from tts_cli.sql_queries import query_dataframe_for_all_quests_and_gossip
 from tts_cli.tts_utils import TTSProcessor
 
@@ -36,7 +37,8 @@ def load_lines(refresh=False):
         with open(CACHE, "rb") as f:
             return pickle.load(f)
     print("querying world DB (first run only, ~1-2 min) ...", file=sys.stderr)
-    df = query_dataframe_for_all_quests_and_gossip(0)
+    quests = query_dataframe_for_all_quests_and_gossip(0)
+    df = extraction_rows(quests, quests.iloc[0:0])
     # preprocess_dataframe only touches self for handle_gender_options, so we can skip
     # __init__ and avoid needing an ElevenLabs key just to inspect files.
     df = TTSProcessor.preprocess_dataframe(TTSProcessor.__new__(TTSProcessor), df)

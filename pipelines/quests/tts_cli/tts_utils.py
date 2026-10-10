@@ -72,9 +72,7 @@ class TTSProcessor:
     def preprocess_dataframe(self, df):
         df = df.copy() # prevent mutation on original df for safety
         df['race'] = df['DisplayRaceID'].map(RACE_DICT)
-        # A follow-up speaker with no humanoid display is voiced by its model instead
-        # (flavors.model_voice), which rides in the race column. Only follow-up rows carry
-        # ModelID, and only once corpus.extract has appended them.
+        # A speaker with no humanoid display is voiced by its model, carried in the race column.
         if 'ModelID' in df:
             df['race'] = [model_voice(model) if pd.notna(model) else race
                           for model, race in zip(df['ModelID'], df['race'])]
