@@ -10,7 +10,7 @@
  */
 import { BASE_LANG, clientLang } from "@/lib/lang";
 import { speakPlayerTokens } from "@/lib/player-words";
-import { hasInvalidChars } from "@/lib/text-gate";
+import { withoutDirections } from "@/lib/text-gate";
 
 import { spokenFromTemplate } from "./tokens";
 
@@ -30,13 +30,11 @@ export function textHints(text: string, locale: string): string[] {
   // Spoken as the gate will speak the accepted line: English is stored through the extract's
   // table, which also turns $B into a line break.
   const spoken = speakPlayerTokens(lang === BASE_LANG ? spokenFromTemplate(text) : text, lang);
+  const judged = withoutDirections(spoken);
   const hints = new Set<string>();
-  if (hasInvalidChars(spoken)) {
-    const leftovers = spoken.match(LEFTOVER) ?? [];
-    for (const token of leftovers) hints.add(`unspoken token ${token} — won't be voiced`);
-    // An unbalanced bracket refuses the line as surely as a token does.
-    if (!leftovers.length) hints.add("unspeakable < or > — won't be voiced");
-  }
+  for (const token of judged.match(LEFTOVER) ?? []) hints.add(`unspoken token ${token} — won't be voiced`);
+  // Named even beside a token: fixing only the token would still leave the line refused.
+  if (/[<>]/.test(judged)) hints.add("unspeakable < or > — won't be voiced");
   if (GAP.test(text.replace(SPACED_ELLIPSIS, "…"))) hints.add("gap before punctuation — a gender branch may be missing");
   if (DOUBLE_SPACE.test(text)) hints.add("double space — a gender branch may be missing");
   return [...hints];

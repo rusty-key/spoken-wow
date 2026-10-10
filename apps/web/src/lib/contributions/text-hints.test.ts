@@ -25,6 +25,11 @@ describe("textHints", () => {
     ]);
     expect(textHints("Bringt mir 5 <Federn.", "deDE")).toEqual(["unspeakable < or > — won't be voiced"]);
     expect(textHints("<Er nickt.> Gut, $N.", "deDE")).toEqual([]);
+    expect(textHints("Bringt mir 5 <Federn, $einen Held.", "deDE")).toEqual([
+      "unspoken token $einen — won't be voiced",
+      "unspeakable < or > — won't be voiced",
+    ]);
+    expect(textHints("Bringt <Federn. <Er gibt $5w ab.>", "deDE")).toEqual(["unspeakable < or > — won't be voiced"]);
   });
 
   it("flags the gap a gender branch resolved to nothing leaves", () => {
