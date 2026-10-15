@@ -28,11 +28,12 @@ import { query } from "@/lib/db";
 import { memoByLang } from "@/lib/memo";
 import { isSex } from "@/lib/npc/npc";
 import { nameStamp, versionStamp } from "@/lib/stamp";
-import type { Corpus, CorpusLine } from "@/lib/corpus";
+import { npcKey, type Corpus, type CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
+import { zonesBySpeaker, type Spawn } from "./zones";
 
 
 /**
@@ -364,6 +365,16 @@ async function buildTranslated(lang: Lang): Promise<CorpusLine[]> {
   });
 }
 
+// quest_spawn is replaced in the same import as the speakers, so the speaker stamp already
+// moves when it does.
+async function withZones(lines: CorpusLine[]): Promise<CorpusLine[]> {
+  const zones = zonesBySpeaker(await query<Spawn>(`select "npcType", "npcId", "map", "x", "y" from "quest_spawn"`));
+  return lines.map((line) => {
+    const found = zones.get(npcKey(line));
+    return found ? { ...line, zones: found } : line;
+  });
+}
+
 // One memo per language (lib/memo.ts). A single slot would be rebuilt on every request that
 // asked for a different language from the last one -- seventeen thousand rows re-read and
 // search.ts's row keys rebuilt with them.
@@ -379,7 +390,7 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
  */
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
-  return memoByLang(cacheKey, lang, stamp, async () => ({ lines: await build(lang) }));
+  return memoByLang(cacheKey, lang, stamp, async () => ({ lines: await withZones(await build(lang)) }));
 }
 
 /**

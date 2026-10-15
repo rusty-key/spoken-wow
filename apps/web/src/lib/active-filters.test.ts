@@ -26,6 +26,10 @@ describe("counting what is in force", () => {
     expect(activeFilterCount({ race: "human", gender: "male", voice: "human-male-official" })).toBe(3);
   });
 
+  it("counts a zone", () => {
+    expect(activeFilterCount({ zone: 1411 })).toBe(1);
+  });
+
   it("counts the booleans only when they are true", () => {
     expect(activeFilterCount({ overridden: false })).toBe(0);
     expect(activeFilterCount({ ignored: false, overridden: true })).toBe(1);

@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
 
 import { loadEnv } from "../../lib/env.mjs";
+import { INSTANCE_ZONE } from "../../zones/tools/lib/zone-at.mjs";
 import { quote } from "./lib/lua.mjs";
 
 await loadEnv("books");
@@ -41,37 +42,6 @@ const SOURCES = 6;
 const WIDE = 8;
 const LOCALES = ["deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "itIT"];
 
-// The dungeons and halls, under the zone their entrance is in.
-const INSTANCE_ZONE = {
-  33: 1421, // Shadowfang Keep: Silverpine Forest
-  34: 1453, // The Stockade: Stormwind City
-  36: 1436, // The Deadmines: Westfall
-  43: 1413, // Wailing Caverns: The Barrens
-  47: 1413, // Razorfen Kraul: The Barrens
-  48: 1440, // Blackfathom Deeps: Ashenvale
-  70: 1418, // Uldaman: Badlands
-  90: 1426, // Gnomeregan: Dun Morogh
-  109: 1435, // The Temple of Atal'Hakkar: Swamp of Sorrows
-  129: 1413, // Razorfen Downs: The Barrens
-  189: 1420, // Scarlet Monastery: Tirisfal Glades
-  209: 1446, // Zul'Farrak: Tanaris
-  229: 1427, // Blackrock Spire: Searing Gorge
-  230: 1427, // Blackrock Depths: Searing Gorge
-  249: 1445, // Onyxia's Lair: Dustwallow Marsh
-  289: 1422, // Scholomance: Western Plaguelands
-  309: 1434, // Zul'Gurub: Stranglethorn Vale
-  329: 1423, // Stratholme: Eastern Plaguelands
-  349: 1443, // Maraudon: Desolace
-  389: 1454, // Ragefire Chasm: Orgrimmar
-  409: 1427, // Molten Core: Searing Gorge
-  429: 1444, // Dire Maul: Feralas
-  449: 1453, // Champion's Hall: Stormwind City
-  450: 1454, // Hall of Legends: Orgrimmar
-  469: 1427, // Blackwing Lair: Searing Gorge
-  509: 1451, // Ruins of Ahn'Qiraj: Silithus
-  531: 1451, // Temple of Ahn'Qiraj: Silithus
-  533: 1423, // Naxxramas: Eastern Plaguelands
-};
 // Text objects the server has and never spawns, placed by hand: the nameplates in Blackrock
 // Depths' Dark Keeper vault.
 const UNSPAWNED = { "Dark Keeper Nameplate": 230 };
