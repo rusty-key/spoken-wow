@@ -197,7 +197,7 @@ Expect("...and nothing in them runs past their edges", table.concat(outside, "; 
 local cut = {}
 CutOff(Welcome.frame, cut)
 Expect(LANG .. ": no text in the welcome window is cut off", table.concat(cut, "; "), "")
-Expect("...nor does the window run off the screen at the default UI scale", Welcome.frame.height < 768, true)
+Expect("...nor does the window run off the screen at the default UI scale", Welcome.frame.height * Welcome.frame:GetScale() < 768, true)
 
 Expect("nothing went wrong in a callback", #env.Callbacks.errors, 0)
 

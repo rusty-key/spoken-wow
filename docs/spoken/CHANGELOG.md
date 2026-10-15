@@ -2,6 +2,16 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- Prevent Lua errors in the Classic narrator style when changing targets or opening
+  quest dialogue, including when the narration queue is empty.
+- Add Classic as a narrator style: a speaker portrait, playback controls and a
+  scrollable list of narration titles, an X to dismiss each entry and a Play/Pause control. It shows no subtitles or
+  dialogue text and works with quests, books and zone lore. Playing after a pause restarts
+  the current line, as WoW cannot resume a sound partway through. Show Progress is optional
+  and defaults to off for Classic independently of other styles.
+
 ## 3.4.0 — 2026-10-12
 
 - **A character is greeted by its zone only once, in its starting area.** An existing

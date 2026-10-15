@@ -768,7 +768,7 @@ Expect("...beside hiding the Contribute buttons", string.find(order,
     "Hide Contribute Buttons|Hide Report Buttons", 1, true) ~= nil, true)
 -- Nothing on screen at all is a way of showing lines, chosen with the others, not a switch
 -- among the window's settings.
-Expect("voice only is still one of the ways to show lines", _G.SpokenEnv.Options:Styles()[4], "none")
+Expect("voice only is still one of the ways to show lines", _G.SpokenEnv.Options:Styles()[#_G.SpokenEnv.Options:Styles()], "none")
 Expect("...and a narrator card of its own, a sound's bars rising and falling", labels["Voice Only"], true)
 Expect("...and there is no separate switch to hide the window", labels["Hide Window"], nil)
 Expect("the channel is chosen here", labels["Volume Follows"], true)

@@ -72,7 +72,7 @@ end
 local env = Boot()
 local Spoken = _G.Spoken
 Expect("the small window is the default window", Spoken:GetPlayerStyle(), "minimal")
-Expect("no DialogueUI tile without DialogueUI", table.concat(env.Options:Styles(), ","), "subtitle,minimal,classic,none")
+Expect("no DialogueUI tile without DialogueUI", table.concat(env.Options:Styles(), ","), "queue,subtitle,minimal,classic,none")
 SlashCmdList.SPOKEN("player dialogueui")
 Expect("the slash command says why it cannot switch", env.Addon.db.profile.Frame.Style, "minimal")
 env.Addon.db.profile.Frame.Style = "dialogueui"
@@ -94,7 +94,7 @@ local quests
 env, quests = Boot()
 Spoken = _G.Spoken
 Expect("with DialogueUI it is a fifth tile, after the large window",
-    table.concat(env.Options:Styles(), ","), "subtitle,minimal,classic,dialogueui,none")
+    table.concat(env.Options:Styles(), ","), "queue,subtitle,minimal,classic,dialogueui,none")
 Expect("...named, described and drawn", env.Options.STYLE_LABELS.dialogueui ~= nil and env.Options.STYLE_TEXTS.dialogueui ~= nil
     and env.Options.STYLE_TIPS.dialogueui ~= nil and env.Options.SKETCHES.dialogueui ~= nil, true)
 SlashCmdList.SPOKEN("player dialogueui")

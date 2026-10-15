@@ -1,67 +1,22 @@
+import { redirect } from "next/navigation";
+
 import { pageLang } from "@/lib/lang-server";
-import type { Metadata } from "next";
-import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { queryOf } from "@/lib/contributions/query";
+import { localeHref } from "@/lib/lang";
+import { isSource } from "@/lib/sections";
 
-import ReportTable from "@/components/ReportTable";
-import { auth } from "@/lib/auth";
-import { viewerOf } from "@/lib/grants/store";
-import { can } from "@/lib/permissions";
-import { isCategory, isStatus, type Category, type Status } from "@/lib/reports/reports";
-import { listReports } from "@/lib/reports/store";
-import { type Source, isSource } from "@/lib/sections";
-import { Contained, Wide } from "@/components/Width";
-
-export const metadata: Metadata = { title: "Reports · Spoken" };
-
-// What strangers filed and what people did about it; nothing here can be cached between views.
-export const dynamic = "force-dynamic";
-
+/** Quests is the section most reports are for; an old `?source=` link lands on its own tab. */
 export default async function Page({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ view?: string; source?: string; category?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const lang = await pageLang(params);
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  // 404 rather than a redirect, matching /issues and /voices: a member has no business
-  // learning the page exists, and these rows hold prose written by strangers. Per language:
-  // whoever may fix a language's text triages what is reported about it.
-  const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
-
-  const { view, source: rawSource, category: rawCategory } = await searchParams;
-  const status: Status | "all" = isStatus(view) ? view : view === "all" ? "all" : "open";
-  // Both by default: a report is a person waiting for an answer, and which corpus it is
-  // about does not change how long they have been waiting.
-  const source: Source | "all" = isSource(rawSource) ? rawSource : "all";
-  // Unknown reads as "all" rather than as a filter nothing matches, which would look like
-  // an empty queue - the same bargain every explorer's filter parser makes.
-  const category: Category | "all" = isCategory(rawCategory) ? rawCategory : "all";
-  const reports = await listReports(status, source, category, undefined, lang);
-
-  return (
-    <main className="pt-6 pb-24">
-      <Contained>
-        <h1 className="text-xl font-semibold">Reports</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          What players filed from inside the game. A report is a claim, not a verdict: read it,
-          listen to the line, and if it is right, queue the file for regeneration the usual way.
-          Nothing here starts a job on its own.
-        </p>
-      </Contained>
-      <Wide>
-        <ReportTable
-          initial={reports}
-          view={status}
-          source={source}
-          category={category}
-          canRegenerate={can(viewer, "regenerate", lang)}
-        />
-      </Wide>
-    </main>
-  );
+  const query = queryOf(await searchParams);
+  const source = query.get("source");
+  query.delete("source");
+  const section = isSource(source) ? source : "quests";
+  redirect(localeHref(lang, `/reports/${section}${query.size ? `?${query}` : ""}`));
 }

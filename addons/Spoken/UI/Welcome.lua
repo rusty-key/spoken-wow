@@ -95,7 +95,7 @@ function Welcome:Build()
     local frame = Window()
     self.frame = frame
     frame:SetWidth(WIDTH)
-    frame:SetPoint("CENTER", 0, 40)
+    frame:SetPoint("CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
@@ -210,6 +210,12 @@ function Welcome:Build()
     end
 
     frame:SetHeight(BAR + TOP_MARGIN - NAME_Y + layout:Height() + Layout.BOX_MARGIN + FOOTER + extra)
+    -- Extra narrator styles must not put Done and All Settings beyond a small screen.
+    local screenHeight = UIParent:GetHeight()
+    local screenWidth = UIParent:GetWidth()
+    if screenHeight and screenHeight > 0 and screenWidth and screenWidth > 0 then
+        frame:SetScale(math.min(1, (screenHeight - 32) / frame:GetHeight(), (screenWidth - 32) / WIDTH))
+    end
 end
 
 --- Show what is chosen now, and for each part whether it is installed.

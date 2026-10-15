@@ -44,6 +44,7 @@ import type { CorpusLine } from "@/lib/corpus";
 import { isGeneratable } from "@/lib/books/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
 import { corpus } from "@/lib/quests/catalogue";
+import { forgetIgnores, writeIgnore } from "@/lib/quests/ignores";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 
@@ -67,7 +68,7 @@ const COLUMNS = CONTRIBUTION_COLUMNS;
  * extract's own rows from 0 on every import, so contributed rows sit far above it: they never
  * collide with a re-import, and the export lists them after everything the extract carries.
  */
-const CONTRIBUTED_ORD_FLOOR = 1_000_000;
+export const CONTRIBUTED_ORD_FLOOR = 1_000_000;
 
 export type ResolveRefusal =
   | { ok: false; reason: "not-found" }
@@ -683,6 +684,23 @@ export function noteFor(contributionId: number): string {
   return `contribution #${contributionId}`;
 }
 
+/**
+ * Ignore every line a quests contribution wrote, in its language, or in every language for an
+ * English row. A line it only added a speaker to is ignored whole, whoever else speaks it.
+ */
+async function ignoreWrittenLines(client: PoolClient, contribution: Contribution, userId: string): Promise<void> {
+  const { rows } = await client.query<{ lineId: string }>(
+    `select "lineId" from "quest_line_speaker" where "contributionId" = $1
+     union
+     select "lineId" from "quest_line" where "origin" = 'contributed' and "note" = $2`,
+    [contribution.id, noteFor(contribution.id)],
+  );
+  const lang = contribution.locale === BASE_LANG || !isLang(contribution.locale) ? null : contribution.locale;
+  for (const { lineId } of rows) {
+    await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
+  }
+}
+
 /** Whether a books contribution has written a page -- the books side of contributedLineExists. */
 async function contributedPageExists(contributionId: number, client: PoolClient): Promise<boolean> {
   const { rowCount } = await client.query(
@@ -783,6 +801,9 @@ export async function resolveContribution(
   status: ContributionStatus,
   userId: string,
   corpusLines?: readonly CorpusLine[],
+  // Whether the resolver may ignore the line in the contribution's language (English meaning
+  // every language), which rejecting a written quests row does.
+  mayIgnore = false,
 ): Promise<ResolveOutcome> {
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
@@ -817,15 +838,25 @@ export async function resolveContribution(
         ? await contributedPageExists(id, client)
         : await contributedLineExists(id, client);
 
-    // One-way once written. Audio may already have been generated for the line, and the
-    // explorer's own line-ignore is how an editor backs out of a line they no longer want.
+    // A written row never goes back to new: audio may already exist for its line. Rejecting a
+    // written quests row ignores what it wrote instead, which keeps the rows and takes, so
+    // lifting the ignore in the explorer undoes it.
+    let ignored = false;
     if (written && status !== "accepted") {
-      await client.query("rollback");
-      return {
-        ok: false,
-        reason: "one-way",
-        message: "This line is already in the explorer; ignore it there instead.",
-      };
+      if (status === "rejected" && contribution.source === "quests" && mayIgnore) {
+        await ignoreWrittenLines(client, contribution, userId);
+        ignored = true;
+      } else {
+        await client.query("rollback");
+        return {
+          ok: false,
+          reason: "one-way",
+          message:
+            status === "rejected" && contribution.source === "quests"
+              ? "This line is already in the explorer; rejecting it ignores it there, which you may not do."
+              : "This line is already in the explorer; ignore it there instead.",
+        };
+      }
     }
 
     if (
@@ -871,6 +902,7 @@ export async function resolveContribution(
     );
 
     await client.query("commit");
+    if (ignored) forgetIgnores();
     return { ok: true, contribution: updated.rows[0] };
   } catch (error) {
     try {
@@ -995,6 +1027,8 @@ export async function resolveContributions(
   ids: readonly number[],
   status: ContributionStatus,
   userId: string,
+  // resolveContribution's mayIgnore, per row.
+  mayIgnore: (id: number) => boolean = () => false,
 ): Promise<Map<number, ResolveOutcome | Error>> {
   const corpusLines = status === "accepted" ? (await corpus()).lines : undefined;
   const outcomes = new Map<number, ResolveOutcome | Error>();
@@ -1003,7 +1037,7 @@ export async function resolveContributions(
     while (next < ids.length) {
       const id = ids[next++];
       try {
-        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines));
+        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id)));
       } catch (error) {
         outcomes.set(id, error instanceof Error ? error : new Error(String(error)));
       }

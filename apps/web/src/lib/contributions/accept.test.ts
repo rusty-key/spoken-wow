@@ -69,6 +69,10 @@ afterEach(async () => {
       contributionIds.map((id) => `contribution #${id}`),
     ]);
     const notes = contributionIds.map((id) => `contribution #${id}`);
+    await db().query(`delete from "line_ignore" where "reason" = any($1::text[])`, [
+      notes.map((note) => `Rejected ${note}`),
+    ]);
+    await db().query(`delete from "activity" where "kind" = 'ignore.set' and "actorId" = $1`, [RESOLVER]);
     await db().query(`delete from "book_line" where "origin" = 'contributed' and "note" = any($1::text[])`, [notes]);
     await db().query(`delete from "entity_name" where "note" = any($1::text[])`, [notes]);
     await db().query(
@@ -170,6 +174,11 @@ async function deleteTriggerNames(): Promise<void> {
       where ("kind" = 'quest' and "entityId" = $1) or ("kind" = 'creature' and "entityId" = any($2::text[]))`,
     [String(questId), [0, 1, 2].map((offset) => String(npcId + offset))],
   );
+}
+
+async function ignoresOf(lineId: string): Promise<{ lang: string | null; reason: string }[]> {
+  const { rows } = await db().query(`select "lang", "reason" from "line_ignore" where "lineId" = $1`, [lineId]);
+  return rows;
 }
 
 describe("resolveContribution: quests accept", () => {
@@ -282,17 +291,34 @@ describe("resolveContribution: quests accept", () => {
     expect(await linesFor(questLineId(questId, "accept"))).toHaveLength(1);
   });
 
-  it("refuses to move an accepted line back to new or rejected", async () => {
+  it("refuses to move an accepted line back to new, or to rejected without the right to ignore", async () => {
     await speaker(npcId, "orc", "female", "standard");
 
     const id = await questContribution();
     await resolveContribution(id, "accepted", RESOLVER);
 
-    const outcome = await resolveContribution(id, "rejected", RESOLVER);
-    expect(outcome).toMatchObject({ ok: false, reason: "one-way" });
+    expect(await resolveContribution(id, "new", RESOLVER, undefined, true)).toMatchObject({ ok: false, reason: "one-way" });
+    expect(await resolveContribution(id, "rejected", RESOLVER)).toMatchObject({ ok: false, reason: "one-way" });
 
     const { rows } = await db().query(`select "status" from "contribution" where "id" = $1`, [id]);
     expect(rows[0].status).toBe("accepted");
+    expect(await ignoresOf(questLineId(questId, "accept"))).toEqual([]);
+  });
+
+  it("rejects an accepted line by ignoring it, keeping what it wrote", async () => {
+    await speaker(npcId, "orc", "female", "standard");
+
+    const id = await questContribution();
+    await resolveContribution(id, "accepted", RESOLVER);
+
+    expect(await resolveContribution(id, "rejected", RESOLVER, undefined, true)).toMatchObject({ ok: true });
+    const { rows } = await db().query(`select "status" from "contribution" where "id" = $1`, [id]);
+    expect(rows[0].status).toBe("rejected");
+    expect(await ignoresOf(questLineId(questId, "accept"))).toEqual([
+      { lang: null, reason: `Rejected contribution #${id}` },
+    ]);
+    expect(await speakersOf(id)).toHaveLength(1);
+    expect(await linesFor(questLineId(questId, "accept"))).toHaveLength(1);
   });
 
   it("the corpus wins on a collision: marks the contribution but writes nothing", async () => {

@@ -32,6 +32,7 @@ local CHANNEL_LABELS = {
 
 -- The ways of showing a line, by the name Addon:PlayerStyle gives each.
 local STYLE_LABELS = {
+    queue = L.OPT_STYLE_QUEUE,
     minimal = L.OPT_STYLE_MINIMAL,
     classic = L.OPT_STYLE_CLASSIC,
     dialogueui = L.OPT_STYLE_DIALOGUEUI,
@@ -65,6 +66,16 @@ local PARTS = {
 -- gold, words as pale bars, a window as a darker box. Sized for four tiles to a row, and
 -- narrow enough for a fifth.
 local SKETCHES = {
+    queue = function(art)
+        local R, w = Layout.Rect, art.width
+        local x = (w - 84) / 2
+        R(art, x, 14, 84, 32, .12, .12, .12, 1)
+        R(art, x + 3, 18, 24, 24, .75, .6, .3, 1)
+        for row = 1, 3 do
+            R(art, x + 33, 17 + row * 6, 3, 3, 1, .82, 0, 1)
+            R(art, x + 40, 17 + row * 6, 36, 3, .9, .9, .9, .8)
+        end
+    end,
     minimal = function(art)
         local R, w = Layout.Rect, art.width
         local x = (w - 78) / 2
@@ -117,6 +128,7 @@ local SKETCHES = {
     end,
 }
 local STYLE_TEXTS = {
+    queue = L.OPT_STYLE_QUEUE_TEXT,
     minimal = L.OPT_STYLE_MINIMAL_TEXT,
     classic = L.OPT_STYLE_CLASSIC_TEXT,
     dialogueui = L.OPT_STYLE_DIALOGUEUI_TEXT,
@@ -124,6 +136,7 @@ local STYLE_TEXTS = {
     none = L.OPT_STYLE_NONE_TEXT,
 }
 local STYLE_TIPS = {
+    queue = L.WELCOME_STYLE_QUEUE_TIP,
     minimal = L.WELCOME_STYLE_MINIMAL_TIP,
     classic = L.WELCOME_STYLE_CLASSIC_TIP,
     dialogueui = L.WELCOME_STYLE_DIALOGUEUI_TIP,
@@ -153,7 +166,7 @@ function Options:Preview(style)
     PlayerFrame:RefreshConfig()
     Transcript:RefreshConfig()
     if Subtitle then Subtitle:ShowSample(style == "subtitle") end
-    PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui")
+    PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui" or style == "queue")
 end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
@@ -218,10 +231,11 @@ Options.PARTS, Options.SKETCHES = PARTS, SKETCHES
 Options.STYLE_LABELS, Options.STYLE_TEXTS, Options.STYLE_TIPS = STYLE_LABELS, STYLE_TEXTS, STYLE_TIPS
 
 --- The ways of showing lines this client can offer, in the order they are listed: the narrator
---- cards, and the legacy window's list. Subtitles Only first, the default; Voice Only last, its
+--- cards, and the legacy window's list. Classic first where available; Voice Only last, its
 --- card a sound's bars rising and falling, since there is nothing on screen to picture.
 function Options:Styles()
     local styles = {}
+    if not Version.IsAnyLegacy then table.insert(styles, "queue") end
     if not Transcript.unavailable then table.insert(styles, "subtitle") end
     if not Version.IsAnyLegacy then table.insert(styles, "minimal") end
     table.insert(styles, "classic")
@@ -253,10 +267,11 @@ local function Build(canvas)
     local function Style() return Addon:PlayerStyle() end
     local function InWindow()
         local style = Style()
-        return style == "minimal" or style == "classic" or style == "dialogueui"
+        return style == "minimal" or style == "classic" or style == "dialogueui" or style == "queue"
     end
     local function Small() return Style() == "minimal" end
     local function Subtitles() return Style() == "subtitle" end
+    local function TextWindow() return InWindow() and Style() ~= "queue" end
     local function Words() return transcript().Enabled end
     local refresh = function() PlayerFrame:RefreshConfig(); Options:UpdateRows() end
     local refreshTranscript = function() Transcript:RefreshConfig(); Options:UpdateRows() end
@@ -277,6 +292,7 @@ local function Build(canvas)
     local function Requires(row, applies, reason) return layout:Requires(row, applies, reason) end
     local function Only(row, applies) return layout:ShowWhen(row, applies) end
     local function Shown() return Style() ~= "none" end
+    local function TextShown() return Shown() and Style() ~= "queue" end
 
     -- Every Spoken page is searchable from here; the game's own settings search cannot see
     -- inside an addon's canvas.
@@ -399,8 +415,14 @@ local function Build(canvas)
     end
     if captions then
         local progress = layout:Checkbox(L.OPT_SUBTITLE_PROGRESS, L.OPT_SUBTITLE_PROGRESS_TIP,
-            function() return transcript().SubtitleProgress ~= false end,
-            function(v) transcript().SubtitleProgress = v end, function() refreshSubtitle(); refresh() end)
+            function()
+                if Style() == "queue" then return cfg().QueueProgress == true end
+                return transcript().SubtitleProgress ~= false
+            end,
+            function(v)
+                if Style() == "queue" then cfg().QueueProgress = v
+                else transcript().SubtitleProgress = v end
+            end, function() refreshSubtitle(); refresh() end)
         Only(progress, function() return Subtitles() or InWindow() end)
         Requires(progress, function() return not Subtitles() or Words() end, L.REASON_WORDS)
     end
@@ -452,9 +474,9 @@ local function Build(canvas)
         layout:Section(L.OPT_TEXT_TITLE)
         Only(layout:Checkbox(L.TRANSCRIPT_SHOW, Tip(L.TRANSCRIPT_SHOW_TIP, L.TRANSCRIPT_SHOW_DUI_TIP),
             function() return transcript().Enabled end,
-            function(v) Transcript:SetEnabled(v) end, function() Options:UpdateRows() end), Shown)
+            function(v) Transcript:SetEnabled(v) end, function() Options:UpdateRows() end), TextShown)
         local function InWindowText(row)
-            Only(row, InWindow)
+            Only(row, TextWindow)
             Requires(row, Words, L.REASON_WORDS)
             return row
         end
@@ -462,7 +484,7 @@ local function Build(canvas)
             function() return transcript().FontSize end,
             function(v) transcript().FontSize = v end, function() refreshTranscript(); refreshSubtitle() end,
             Layout.Number, L.TRANSCRIPT_SIZE_TIP)
-        Only(size, function() return InWindow() or Subtitles() end)
+        Only(size, function() return TextWindow() or Subtitles() end)
         Requires(size, Words, L.REASON_WORDS)
         -- How much shows at once: lines in a window or a line-by-line subtitle, sentences in a paged one.
         local function Rolling() return transcript().SubtitleScroll == "line" end
@@ -470,7 +492,7 @@ local function Build(canvas)
             function() return transcript().Lines end,
             function(v) transcript().Lines = v end, function() refreshTranscript(); refreshSubtitle() end,
             Layout.Number, L.TRANSCRIPT_LINES_TIP)
-        Only(lines, function() return (InWindow() and Style() ~= "classic") or (Subtitles() and Rolling()) end)
+        Only(lines, function() return (TextWindow() and Style() ~= "classic") or (Subtitles() and Rolling()) end)
         Requires(lines, Words, L.REASON_WORDS)
         Only(ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
             function() return transcript().SubtitleSentences or 3 end,
@@ -494,13 +516,13 @@ local function Build(canvas)
         local highlight = layout:Checkbox(L.TRANSCRIPT_HIGHLIGHT, Tip(L.TRANSCRIPT_HIGHLIGHT_TIP, L.TRANSCRIPT_DUI_TIP),
             function() return transcript().HighlightWord end,
             function(v) transcript().HighlightWord = v end, refreshTranscript)
-        Only(highlight, Shown)
+        Only(highlight, TextShown)
         Requires(highlight, Words, L.REASON_WORDS)
         Requires(highlight, function() return not (Subtitles() and transcript().Typewriter) end, L.REASON_UNTYPED)
         local typewriter = layout:Checkbox(L.TRANSCRIPT_TYPEWRITER, Tip(L.TRANSCRIPT_TYPEWRITER_TIP, L.TRANSCRIPT_DUI_TIP),
             function() return transcript().Typewriter end,
             function(v) transcript().Typewriter = v end, refreshTranscript)
-        Only(typewriter, Shown)
+        Only(typewriter, TextShown)
         Requires(typewriter, Words, L.REASON_WORDS)
         layout:Indent()
         local by = layout:Dropdown(L.TRANSCRIPT_TYPEWRITER_BY, L.TRANSCRIPT_TYPEWRITER_BY_TIP, { "word", "letter" },
@@ -508,7 +530,7 @@ local function Build(canvas)
             function(v) transcript().TypewriterBy = v end, refreshTranscript,
             function(v) return v == "letter" and L.TRANSCRIPT_BY_LETTER or L.TRANSCRIPT_BY_WORD end)
         layout:Outdent()
-        Only(by, Shown)
+        Only(by, TextShown)
         Requires(by, function() return Words() and transcript().Typewriter end, L.REASON_TYPEWRITER)
     end
 

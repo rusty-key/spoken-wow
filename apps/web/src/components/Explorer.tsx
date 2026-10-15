@@ -41,7 +41,7 @@ import {
 import { estimate as estimateBatch, LIST_RATE } from "@/lib/generation/billing";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { useCan } from "@/components/useCan";
-import { canConfigureGeneration } from "@/lib/permissions";
+import { canConfigureGeneration, isAdmin } from "@/lib/permissions";
 import { isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 import type { Filter, LineFilters, ResultLine, SearchResult } from "@/lib/search";
@@ -935,6 +935,7 @@ export default function Explorer({ facets, kind }: { facets: Facets; kind: Kind 
                   onRegenerate={regenerateLine}
                   onRestored={handleRestored}
                   onNarrowToNpc={narrowToNpc}
+                  showNpcPage={isAdmin(session?.user.role)}
                   showQuest={kind !== "gossip"}
                   showBroadcast={kind === "gossip"}
                   groupSpan={groupSpans[index]}

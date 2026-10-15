@@ -52,6 +52,8 @@ export type ActivityDetail = {
     note?: string | null;
     variant?: number;
     origin?: string;
+    /** The plain line a split by player gender stopped being current. */
+    replaces?: string[];
     /** The contribution whose text this is, for a correction accepted from the game. */
     contribution?: number;
   };

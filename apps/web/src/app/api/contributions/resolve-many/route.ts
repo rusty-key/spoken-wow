@@ -9,7 +9,7 @@
  * viewer may not edit is answered the same as one that is not there, so a batch learns no more
  * about which ids exist than the single route does.
  */
-import { requireCapability } from "@/lib/generation/authz";
+import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
 import { contributionLocales } from "@/lib/contributions/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { isStatus, RESOLVE_MANY_MAX, type ResolveManyResult } from "@/lib/contributions/contributions";
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
 
   const locales = await contributionLocales(ids);
   const allowed = new Map<Lang, boolean>();
+  const ignorable = new Set<Lang>();
   let userId: string | null = null;
   for (const locale of new Set(locales.values())) {
     const lang = isLang(locale) ? locale : BASE_LANG;
@@ -39,6 +40,8 @@ export async function POST(request: Request) {
     const { session, denied } = await requireCapability("edit", lang);
     allowed.set(lang, !denied);
     if (session) userId = session.user.id;
+    // As the single route: rejecting a written row ignores its line.
+    if (session && body.status === "rejected" && (await mayIgnoreIn(session, lang))) ignorable.add(lang);
   }
   // Nothing here the viewer may edit: answered as the single route answers it.
   if (userId === null) {
@@ -51,7 +54,10 @@ export async function POST(request: Request) {
     const locale = locales.get(id);
     return locale !== undefined && allowed.get(isLang(locale) ? locale : BASE_LANG);
   });
-  const outcomes = await resolveContributions(permitted, body.status, userId);
+  const outcomes = await resolveContributions(permitted, body.status, userId, (id) => {
+    const locale = locales.get(id);
+    return ignorable.has(locale !== undefined && isLang(locale) ? locale : BASE_LANG);
+  });
 
   const results: Record<number, ResolveManyResult> = {};
   for (const id of ids) {

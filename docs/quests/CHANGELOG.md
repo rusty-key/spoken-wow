@@ -6,6 +6,10 @@ The player and the sound pack are versioned independently — the pack moves whe
 rebuilt, the player when its Lua changes — so a section belongs to whichever of the two
 carries that version. The heading says which.
 
+## 2.3.0 — Spoken Quests Audio
+
+- New lines voiced for the Forever client.
+
 ## 3.0.0 — player — 2026-10-05
 
 - **Spoken Quests is now part of Spoken**, and this download no longer carries the addon. It

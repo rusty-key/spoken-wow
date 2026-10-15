@@ -72,7 +72,8 @@ export async function listReports(
   status: Status | "all",
   source: Source | "all" = "all",
   category: Category | "all" = "all",
-  limit = 500,
+  /** Null for every one: the triage page counts each tab, so it reads them all. */
+  limit: number | null = 500,
   lang: Lang = BASE_LANG,
 ): Promise<Report[]> {
   // One language's reports, like every other list on a page in that language: a claim about

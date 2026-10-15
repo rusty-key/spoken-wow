@@ -12,6 +12,7 @@ const RESOLVER = "test-contributions-resolve-many-route";
 
 vi.mock("@/lib/generation/authz", () => ({
   requireCapability: async () => ({ session: { user: { id: RESOLVER } }, denied: null }),
+  mayIgnoreIn: async () => false,
 }));
 
 import { RESOLVE_MANY_MAX } from "@/lib/contributions/contributions";

@@ -20,7 +20,7 @@ local D = env.Defaults.profile
 ---------------------------------------------------------------- the player
 Expect("every module on", next(D.Parts), nil)
 Expect("Subtitles Only", D.Frame.Style, "subtitle")
-Expect("...listed first among the narrator styles", env.Options:Styles()[1], "subtitle")
+Expect("Classic listed first among the narrator styles", env.Options:Styles()[1], "queue")
 Expect("Show Words on", D.Transcript.Enabled, true)
 Expect("Highlight Word off", D.Transcript.HighlightWord, false)
 Expect("Type Words Out on", D.Transcript.Typewriter, true)

@@ -953,7 +953,11 @@ wins where it already has the line: a quest moment is matched by quest id and mo
 (the tables carry some only as `:m`/`:f` variants), and a gossip line it already has gains the
 contributing NPC as one more speaker instead of a copy. Progress lines are kept, marked
 `progress` and never voiced, as the extract marks its own. Once written, a contribution cannot
-be moved back to new or rejected; ignoring the line in the explorer is how to back out.
+be moved back to new. Rejecting it ignores every line it wrote, reason `Rejected contribution
+#N`: in its language, or in every language for an English row, so it needs the same right an
+ignore does (`ignore` in the language; for English, whoever configures generation). A line it
+only added a speaker to is ignored whole. Rows, takes and audio stay, so lifting the ignore in
+the explorer brings the line back.
 
 A quest row is accepted the same way whatever language its client was in. A line is the
 language's own `quest_line` row; who speaks it is a fact about the world, so a speaker row any

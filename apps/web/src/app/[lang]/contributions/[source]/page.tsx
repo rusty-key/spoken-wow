@@ -32,6 +32,7 @@ import {
   type Bucket,
   type StageFilter,
 } from "@/lib/contributions/query";
+import { pendingCounts } from "@/lib/contributions/pending";
 import { listContributions, observationMeta, type Contribution } from "@/lib/contributions/store";
 import {
   bookFor,
@@ -277,9 +278,11 @@ export default async function Page({
   // Lines the corpus already has are not this queue's: a different text is a correction, on
   // its own tab, and the same text is nothing to triage at all (known.ts's tabOf).
   // Gossip is the quests rows tied to no quest, so the two sections read one source and split it.
-  const listed = (await listContributions(status, lang, sort, sourceOfSection(source))).filter(
-    (row) => sectionOf(row, questFor(row)) === source,
-  );
+  const [all, pending] = await Promise.all([
+    listContributions(status, lang, sort, sourceOfSection(source)),
+    pendingCounts(lang),
+  ]);
+  const listed = all.filter((row) => sectionOf(row, questFor(row)) === source);
   const states = await lineStates(listed);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
@@ -358,6 +361,7 @@ export default async function Page({
           lang={lang}
           section={source}
           view="contributions"
+          pending={pending}
         />
         <ContributionTable
           initial={rows}

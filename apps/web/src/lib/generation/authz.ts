@@ -64,6 +64,15 @@ export async function requireCapability(
   return { session, denied: null };
 }
 
+/**
+ * Whether this session may ignore a line in `lang`, the ignore route's rule: in English an
+ * ignore holds in every language, which only whoever configures generation decides.
+ */
+export async function mayIgnoreIn(session: NonNullable<Session>, lang: Lang): Promise<boolean> {
+  if (lang === BASE_LANG) return canConfigureGeneration(session.user.role);
+  return can(await viewerOf(session), "ignore", lang);
+}
+
 export async function requireConfigure(): Promise<
   { session: NonNullable<Session>; denied: null } | { session: null; denied: Response }
 > {

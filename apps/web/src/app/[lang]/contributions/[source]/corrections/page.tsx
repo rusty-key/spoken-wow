@@ -17,6 +17,7 @@ import {
   type ClientFilter,
   type StageFilter,
 } from "@/lib/contributions/query";
+import { pendingCounts } from "@/lib/contributions/pending";
 import { listContributions, observationMeta } from "@/lib/contributions/store";
 import { observedFrom } from "@/lib/npc/resolve";
 import { questFor } from "@/lib/contributions/triage";
@@ -62,9 +63,11 @@ export default async function Page({
   const q = typeof rawQ === "string" ? rawQ.trim() : "";
   const searchIn = isSearchIn(rawFilter) ? rawFilter : "any";
 
-  const listed = (await listContributions(status, lang, undefined, "quests")).filter(
-    (row) => matchesClient(clientOf(row.build).family, client),
-  );
+  const [all, pending] = await Promise.all([
+    listContributions(status, lang, undefined, "quests"),
+    pendingCounts(lang),
+  ]);
+  const listed = all.filter((row) => matchesClient(clientOf(row.build).family, client));
   const states = await lineStates(listed);
 
   // Only what crosses into the client component, as page.tsx's ContributionRow projection says.
@@ -111,6 +114,7 @@ export default async function Page({
           lang={lang}
           section="quests"
           view="corrections"
+          pending={pending}
         />
         <CorrectionTable initial={rows} status={status} client={client} stage={stage} q={q} searchIn={searchIn} />
       </Wide>

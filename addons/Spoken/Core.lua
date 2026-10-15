@@ -29,6 +29,7 @@ Defaults = {
             -- The windows' metal in the bronze the Forever client's frames wear.
             BronzeTint = true,
             MinimalWidth = 380,
+            QueueProgress = false,
             -- The small window's background: "parchment" or "dark" (the rock).
             MinimalBackground = "parchment",
             -- Per action id, for the ones an addon declared optional. Absent means shown.
@@ -301,6 +302,7 @@ function Addon:SetPlayerHost(host)
     -- RefreshConfig places only the window in use; the others must not stay on the host.
     self:ApplyHost(PlayerFrame.frame)
     self:ApplyHost(MinimalPlayer.frame)
+    if QueuePlayer then self:ApplyHost(QueuePlayer.frame) end
     if DialogueUIPlayer then self:ApplyHost(DialogueUIPlayer.frame) end
     -- The subtitles go over the host too, and pass its clicks through.
     if Subtitle and Subtitle.frame then
@@ -321,6 +323,7 @@ end
 function Addon:PlayerStyle()
     local style = self:Profile("Frame").Style
     if style == "none" or style == "classic" then return style end
+    if style == "queue" and not Version.IsAnyLegacy then return "queue" end
     if style == "subtitle" and not Transcript.unavailable then return "subtitle" end
     if style == "dialogueui" and DialogueUITheme and DialogueUITheme:Available() then return "dialogueui" end
     if Version.IsAnyLegacy then return "classic" end
@@ -373,7 +376,7 @@ function Addon:Enable()
             Addon.db.profile.Transcript.Lines = tonumber(string.sub(command, -1))
             Transcript:RefreshConfig()
         elseif command == "player minimal" or command == "player classic" or command == "player subtitle"
-            or command == "player none" or command == "player dialogueui" then
+            or command == "player none" or command == "player dialogueui" or command == "player queue" then
             local style = string.sub(command, 8)
             local problem = style == "dialogueui" and DialogueUITheme:Problem()
             if problem then
@@ -411,7 +414,7 @@ function Addon:Enable()
             print("  " .. DialogueUITheme:Describe())
             for _, err in ipairs(Callbacks.errors) do print("  callback error: " .. err) end
         else
-            print("Spoken: /spoken play | stop | skip | player [minimal|classic|dialogueui|subtitle|none] | transcript [on|off|1|2|reset] | log | options | reset | diagnostics")
+            print("Spoken: /spoken play | stop | skip | player [minimal|classic|queue|dialogueui|subtitle|none] | transcript [on|off|1|2|reset] | log | options | reset | diagnostics")
         end
     end
 end

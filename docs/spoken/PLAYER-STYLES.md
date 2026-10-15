@@ -1,4 +1,29 @@
-# The DialogueUI narrator style
+# Narrator styles
+
+## Classic
+
+Choose **Classic**, the first narrator style on Spoken's settings page and in the welcome window, or use
+`/spoken player queue`. It is available on modern clients, including Classic Era.
+
+The speaker's portrait and name sit beside playback controls and a list of narration titles.
+The current title is gold, with a playing icon while its audio plays; waiting rows have no
+numbers or markers. Each title starts with its category in parentheses, such as (Quest),
+(Book) or (Zone). NPC gossip and greetings show the NPC's name without a category prefix. Up to three entries show at once. Use the mouse wheel or the vertically stacked
+arrow buttons beside the first two rows to browse a longer queue. Their column is always
+reserved, so scrolling does not increase the window height or reduce the rows' width.
+Gold dots below the list indicate that more than three narrations are queued. Play/Pause controls the shared queue for quests, books
+and zone lore. Playing after a pause restarts the current line because WoW cannot resume
+a sound partway through. Titles can be hovered to read their full name and speaker.
+Each row has an X at its right to dismiss that narration. There is no Skip or Stop All
+control or range counter.
+
+This style never shows transcript text, regardless of Show Words. Switching styles keeps
+that preference. Show Progress is optional and off by default for Classic, with its own setting independent
+of other styles. Window Size, Hide Portrait and Lock Position still apply;
+drag the background to move it, right-click for settings, and Reset Position restores its
+default location. Its saved position is separate from the other windows.
+
+## The DialogueUI narrator style
 
 With the [DialogueUI](https://www.curseforge.com/wow/addons/dialogueui) addon installed, Spoken
 offers a fifth **Narrator Style**, **DialogueUI**: a smaller twin of DialogueUI's quest window,
@@ -12,7 +37,7 @@ adds a `dialogueui:` line with what was read from DialogueUI.
 
 The narrator style is one setting, `Frame.Style`: `"subtitle"` (Subtitles Only, the default on
 the modern clients), `"minimal"` (Small Window), `"classic"` (Large Window, the legacy clients'
-default), `"dialogueui"` or `"none"` (Voice Only). It replaces three switches, `SubtitlePlayer`,
+default), `"queue"` (Classic), `"dialogueui"` or `"none"` (Voice Only). It replaces three switches, `SubtitlePlayer`,
 `HideFrame` and `MinimalPlayer`; `Addon:InitDB` carries a profile that set them over to the
 style they showed, and removes them. `Addon:PlayerStyle()` answers what is drawn where the
 chosen style is not on offer: `"dialogueui"` is drawn as the Small Window while DialogueUI is

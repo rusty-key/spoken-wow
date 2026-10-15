@@ -108,10 +108,16 @@ export default function CorrectionTable({
   const [busy, setBusy] = useState<number | null>(null);
   const [refusals, setRefusals] = useState<Record<number, string>>({});
 
+  /** An "Accept all" run in flight, for its progress line and to hold every row's buttons still. */
+  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
+  /** What the last "Accept all" came to, until the next one starts. */
+  const [bulkOutcome, setBulkOutcome] = useState<string | null>(null);
+  /** "Accept all" asks twice: every row it accepts writes a quest line's text. */
+  const [confirmAll, setConfirmAll] = useState(false);
+
   // Accepting writes the player's text as the line's (api/contributions/correction); rejecting
   // and reopening are resolve's plain status flips.
-  const resolve = useCallback(async (id: number, next: ContributionStatus) => {
-    setBusy(id);
+  const send = useCallback(async (id: number, next: ContributionStatus): Promise<boolean> => {
     const response = await fetch(
       next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve",
       {
@@ -123,13 +129,46 @@ export default function CorrectionTable({
     if (response?.ok) {
       setResolved((current) => ({ ...current, [id]: next }));
       setRefusals(({ [id]: _, ...rest }) => rest);
-    } else {
-      const body = await response?.json().catch(() => null);
-      const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
-      setRefusals((current) => ({ ...current, [id]: message }));
+      return true;
     }
-    setBusy(null);
+    const body = await response?.json().catch(() => null);
+    const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
+    setRefusals((current) => ({ ...current, [id]: message }));
+    return false;
   }, []);
+
+  const resolve = useCallback(
+    async (id: number, next: ContributionStatus) => {
+      setBusy(id);
+      await send(id, next);
+      setBusy(null);
+    },
+    [send],
+  );
+
+  /**
+   * One accept after another, as each row's own button sends it: a refused row keeps its
+   * refusal under it and the rest carry on. Not side by side, because two corrections can
+   * name the same line and each writes its text.
+   */
+  const acceptAll = useCallback(
+    async (ids: number[]) => {
+      setBulkOutcome(null);
+      setBulk({ done: 0, total: ids.length });
+      let refused = 0;
+      for (const [index, id] of ids.entries()) {
+        if (!(await send(id, "accepted"))) refused++;
+        setBulk({ done: index + 1, total: ids.length });
+      }
+      setBulk(null);
+      setBulkOutcome(
+        `Accepted ${ids.length - refused} of ${ids.length}` + (refused > 0 ? ` -- ${refused} refused.` : "."),
+      );
+    },
+    [send],
+  );
+
+  const toAccept = initial.filter((row) => (resolved[row.id] ?? row.status) === "new").map((row) => row.id);
 
   return (
     <>
@@ -165,6 +204,39 @@ export default function CorrectionTable({
         {pending && <Refreshing />}
         <ClientSelect value={client} onChange={(next) => go({ client: next })} />
       </nav>
+
+      {status === "new" && initial.length > 0 ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+          {bulk ? (
+            <span className="text-muted-foreground">
+              Accepted: {bulk.done} of {bulk.total}…
+            </span>
+          ) : confirmAll ? (
+            <>
+              <span>
+                Accept all {toAccept.length} shown? Each writes the player&apos;s text as what its line speaks.
+              </span>
+              <LiteButton
+                variant="accept"
+                onClick={() => {
+                  setConfirmAll(false);
+                  void acceptAll(toAccept);
+                }}
+              >
+                Accept {toAccept.length}
+              </LiteButton>
+              <LiteButton variant="ghost" onClick={() => setConfirmAll(false)}>
+                Cancel
+              </LiteButton>
+            </>
+          ) : (
+            <LiteButton variant="accept" disabled={toAccept.length === 0} onClick={() => setConfirmAll(true)}>
+              Accept all ({toAccept.length})
+            </LiteButton>
+          )}
+          {bulkOutcome && !bulk ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
+        </div>
+      ) : null}
 
       {initial.length === 0 ? (
         <p className="text-muted-foreground text-sm">Nothing here.</p>
@@ -258,7 +330,7 @@ export default function CorrectionTable({
                         <>
                           <LiteButton
                             variant="accept"
-                            disabled={busy === row.id}
+                            disabled={busy === row.id || bulk !== null}
                             title="Take the player's text as what this line speaks"
                             onClick={() => void resolve(row.id, "accepted")}
                           >
@@ -266,7 +338,7 @@ export default function CorrectionTable({
                           </LiteButton>
                           <LiteButton
                             variant="reject"
-                            disabled={busy === row.id}
+                            disabled={busy === row.id || bulk !== null}
                             onClick={() => void resolve(row.id, "rejected")}
                           >
                             Reject
@@ -275,7 +347,7 @@ export default function CorrectionTable({
                       ) : (
                         <LiteButton
                           variant="ghost"
-                          disabled={busy === row.id}
+                          disabled={busy === row.id || bulk !== null}
                           onClick={() => void resolve(row.id, "new")}
                         >
                           Reopen

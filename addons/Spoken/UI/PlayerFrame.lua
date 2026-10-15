@@ -216,6 +216,7 @@ end
 
 --- The skin drawing the queue in place of this window, or nil when this window does.
 function PlayerFrame:Skin()
+    if QueuePlayer and QueuePlayer:IsEnabled() then return QueuePlayer end
     if MinimalPlayer:IsEnabled() then return MinimalPlayer end
     if DialogueUIPlayer and DialogueUIPlayer:IsEnabled() then return DialogueUIPlayer end
     return nil
@@ -276,7 +277,7 @@ function PlayerFrame:RefreshConfig()
     local skin = self:Skin()
     -- Each window dresses the captions its own way; the others' look must not stay on them.
     if skin ~= DialogueUIPlayer and not self:IsShowing() then Transcript:SetStyle(nil) end
-    for _, other in ipairs({ MinimalPlayer, DialogueUIPlayer }) do
+    for _, other in ipairs({ MinimalPlayer, DialogueUIPlayer, QueuePlayer }) do
         if other ~= skin then other:SetVisible(false, true) end
     end
     if skin then
@@ -480,6 +481,7 @@ function PlayerFrame:Describe()
     local lines = {}
     local function Say(text) table.insert(lines, text) end
     Say(MinimalPlayer:Describe())
+    if QueuePlayer then Say(QueuePlayer:Describe()) end
     if DialogueUIPlayer then Say(DialogueUIPlayer:Describe()) end
     if not self.frame then
         Say("no frame built")

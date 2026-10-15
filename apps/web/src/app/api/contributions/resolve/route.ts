@@ -5,7 +5,7 @@
  * whole internet and this one must never be. Whoever edits the language rather than an
  * admin, as on the reports side -- these are the people who already act on lines.
  */
-import { requireCapability } from "@/lib/generation/authz";
+import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
 import { contributionLocale } from "@/lib/contributions/store";
 import { BASE_LANG, isLang } from "@/lib/lang";
 import { isStatus } from "@/lib/contributions/contributions";
@@ -36,7 +36,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "unknown contribution" }, { status: 404 });
   }
 
-  const outcome = await resolveContribution(id, body.status, session.user.id);
+  // Rejecting a row already written ignores its line, so it also takes what ignoring takes.
+  const mayIgnore = body.status === "rejected" && (await mayIgnoreIn(session, lang));
+  const outcome = await resolveContribution(id, body.status, session.user.id, undefined, mayIgnore);
   if (!outcome.ok) {
     if (outcome.reason === "not-found") {
       return Response.json({ error: "unknown contribution" }, { status: 404 });

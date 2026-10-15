@@ -24,6 +24,7 @@
     <Include file="UI\Actions.lua"/>
     <Include file="UI\PlayerFrame.lua"/>
     <Include file="UI\MinimalPlayer.lua"/>
+    <Include file="UI\QueuePlayer.lua"/>
     <Include file="UI\DialogueUIPlayer.lua"/>
     <Include file="UI\MinimapButton.lua"/>
     <Include file="UI\Options.lua"/>

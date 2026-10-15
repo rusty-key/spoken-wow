@@ -18,33 +18,46 @@ import Link from "@/components/LocaleLink";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import FilterChip from "@/components/FilterChip";
+import { LiteButton } from "@/components/LiteControls";
 import { Refreshing } from "@/components/Loading";
+import Pagination from "@/components/Pagination";
 import QuestsPlayer from "@/components/Player";
 import ReportDetail from "@/components/ReportDetail";
+import SortHeader from "@/components/SortHeader";
+import { LinkTabs } from "@/components/StatusTabs";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useSearchBox } from "@/components/useSearchBox";
 import { Player as BooksPlayer } from "@/components/books/Player";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Player as ZonesPlayer } from "@/components/zones/Player";
 import { explorerHref, reportHref, targetExplorerHref } from "@/lib/links";
 import type { ResultLine as BookLine } from "@/lib/books/search";
 import { searchPath, type SourceLine } from "@/lib/reports/detail";
-import { CATEGORIES, STATUSES, CATEGORY_COLUMN, SOURCE_LABELS, STATUS_LABELS, type Category, type Report, type Status } from "@/lib/reports/reports";
-import { applyResolutions, groupByLine, type ReportGroup } from "@/lib/reports/rows";
+import {
+  reportsHref,
+  SECTIONS,
+  STATUS_VIEWS,
+  type ReportFilters,
+  type Section,
+  type StatusView,
+} from "@/lib/reports/query";
+import { CATEGORIES, CATEGORY_COLUMN, STATUS_LABELS, type Category, type Report, type Status } from "@/lib/reports/reports";
+import { applyResolutions, type ReportGroup } from "@/lib/reports/rows";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import type { ResultLine as ZoneLine } from "@/lib/zones/search";
-import { SOURCES, type Source } from "@/lib/sections";
+import type { Source } from "@/lib/sections";
 
-const STATUS_OPTIONS = STATUSES.map((status) => ({
-  value: status,
-  label: STATUS_LABELS[status],
-}));
+const SECTION_LABELS: Record<Section, string> = {
+  quests: "Quests",
+  gossip: "Gossip",
+  books: "Books",
+  zones: "Zones",
+};
 
-const SOURCE_OPTIONS = SOURCES.map((source) => ({
-  value: source,
-  label: SOURCE_LABELS[source],
-}));
+const VIEW_LABELS: Record<StatusView, string> = { ...STATUS_LABELS, all: "All" };
 
 /** The complaint dropdown's options, in the order the report form offers them. */
 const CATEGORY_OPTIONS = CATEGORIES.map((category) => ({
@@ -68,23 +81,33 @@ function lineKey(source: Source, lineId: string): string {
 }
 
 export default function ReportTable({
-  initial,
-  view,
-  source,
-  category,
+  groups: initial,
+  total,
+  page,
+  pages,
+  sectionCounts,
+  statusCounts,
+  filters,
   canRegenerate,
 }: {
-  initial: Report[];
-  view: Status | "all";
-  source: Source | "all";
-  category: Category | "all";
+  /** This page's lines, each with its reports, in the order the server sorted them. */
+  groups: ReportGroup[];
+  /** Reports matching every filter, on any page. */
+  total: number;
+  page: number;
+  pages: number;
+  /** Each section's reports under the status, complaint and search in force. */
+  sectionCounts: Record<Section, number>;
+  /** This section's reports in each status, under the complaint and search in force. */
+  statusCounts: Record<StatusView, number>;
+  filters: ReportFilters;
   /** Whether this visitor may spend credits from the panel below a row. */
   canRegenerate: boolean;
 }) {
   /**
    * What this session resolved, overlaid on the server's rows.
    *
-   * NOT a copy of `initial`: the filters above are links, so switching one is a navigation
+   * NOT a copy of `groups`: the filters above are links, so switching one is a navigation
    * that re-renders this component with new rows. Seeding state from props ignored them,
    * and the table sat unchanged until somebody reloaded the page - which is the bug this
    * shape exists to make impossible. See lib/reports/rows.ts.
@@ -200,34 +223,21 @@ export default function ReportTable({
     );
   }
 
-  /**
-   * Move one filter and keep the other two.
-   *
-   * Undefined is "every one of them", which the URL spells `all` - the same word the page
-   * parses back, so a hand-shortened link and a chip produce the same query.
-   */
-  function go(next: { view?: string; source?: string; category?: string }) {
-    const params = new URLSearchParams({
-      view: next.view ?? (("view" in next) ? "all" : view),
-      source: next.source ?? (("source" in next) ? "all" : source),
-      category: next.category ?? (("category" in next) ? "all" : category),
-    });
-    push(localeHref(lang, `/reports?${params}`));
-  }
+  /** Move one filter and keep the rest, through the URL so a narrowed queue can be shared. */
+  const hrefFor = (next: Partial<ReportFilters>, toPage = 1) => localeHref(lang, reportsHref(filters, next, toPage));
+  const go = (next: Partial<ReportFilters>, toPage = 1) => push(hrefFor(next, toPage));
+  const [query, setQuery] = useSearchBox(filters.q, (next) => go({ q: next }));
 
-  const reports = applyResolutions(initial, resolved);
-  const groups = groupByLine(reports);
+  // Grouped by the server, so a page never splits a line; only the statuses are overlaid.
+  const groups = initial.map((group) => ({ ...group, reports: applyResolutions(group.reports, resolved) }));
   const playingKey = playing ? lineKey(playing.source, playing.lineId) : null;
   const playingLine = playingKey === null ? null : (lines[playingKey] ?? null);
   const playingVersion = playingKey === null ? undefined : versions[playingKey];
 
-  /** The section, then the line: a link into the explorer narrowed to it. */
+  /** The line: a link into the explorer narrowed to it. The tab already says the section. */
   function whereCell(report: Report, count?: number) {
     return (
       <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
-        <Badge variant="outline" className="shrink-0 py-0 leading-5">
-          {SOURCE_LABELS[report.source]}
-        </Badge>
         {/* The explorer, narrowed to this line: where a triager works. A report with no
             line id - a gossip NPC whose reporter never picked one of the takes - narrows
             the explorer by its address instead. The `/r/` page the reporter saw is the
@@ -300,22 +310,17 @@ export default function ReportTable({
 
     return openIds.length ? (
       <>
-        <Button size="sm" variant="outline" disabled={disabled} onClick={() => resolve(ids, "fixed")}>
+        <LiteButton variant="accept" disabled={disabled} onClick={() => resolve(ids, "fixed")}>
           Fixed
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={disabled}
-          onClick={() => resolve(ids, "not_an_issue")}
-        >
+        </LiteButton>
+        <LiteButton variant="reject" disabled={disabled} onClick={() => resolve(ids, "not_an_issue")}>
           Not a problem
-        </Button>
+        </LiteButton>
       </>
     ) : (
-      <Button size="sm" variant="outline" disabled={disabled} onClick={() => resolve(ids, "open")}>
+      <LiteButton variant="ghost" disabled={disabled} onClick={() => resolve(ids, "open")}>
         Reopen
-      </Button>
+      </LiteButton>
     );
   }
 
@@ -412,34 +417,49 @@ export default function ReportTable({
 
   return (
     <>
-      {/* Three dropdowns, the same control the explorers filter with. Each writes its value
-          to the URL rather than to state, so a narrowed queue can be shared and reloaded and
-          the back button undoes a filter change. An idle chip means "every one of them":
-          /reports with nothing on it still opens on the open queue, which is why the status
-          chip arrives filled. */}
+      <LinkTabs
+        label="Section"
+        onGo={push}
+        active={filters.section}
+        tabs={SECTIONS.map((section) => ({
+          value: section,
+          label: `${SECTION_LABELS[section]} (${sectionCounts[section]})`,
+          href: hrefFor({ section }),
+        }))}
+      />
+      <LinkTabs
+        label="Status"
+        onGo={push}
+        active={filters.view}
+        tabs={STATUS_VIEWS.map((view) => ({
+          value: view,
+          label: `${VIEW_LABELS[view]} (${statusCounts[view]})`,
+          href: hrefFor({ view }),
+        }))}
+      />
       <nav className="mb-4 flex flex-wrap items-center gap-2">
-        <FilterChip
-          label="status"
-          value={view === "all" ? undefined : view}
-          options={STATUS_OPTIONS}
-          onChange={(next) => go({ view: next })}
-        />
-        <FilterChip
-          label="section"
-          value={source === "all" ? undefined : source}
-          options={SOURCE_OPTIONS}
-          onChange={(next) => go({ source: next })}
+        <Input
+          type="search"
+          value={query}
+          placeholder="What they said, the line or who sent it…"
+          aria-label="Search"
+          className="h-8 min-w-0 basis-64"
+          onChange={(event) => setQuery(event.target.value)}
         />
         <FilterChip
           label="complaint"
-          value={category === "all" ? undefined : category}
+          value={filters.category === "all" ? undefined : filters.category}
           options={CATEGORY_OPTIONS}
-          onChange={(next) => go({ category: next })}
+          onChange={(next) => go({ category: (next as Category | undefined) ?? "all" })}
         />
         {pending && <Refreshing />}
+        <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+          {total === 1 ? "1 report" : `${total.toLocaleString()} reports`}
+          {pages > 1 ? ` · page ${page} of ${pages}` : ""}
+        </span>
       </nav>
 
-      {reports.length === 0 ? (
+      {groups.length === 0 ? (
         <p className="text-muted-foreground text-sm">Nothing here.</p>
       ) : (
         <table
@@ -448,7 +468,13 @@ export default function ReportTable({
         >
           <thead className="text-muted-foreground text-left text-xs">
             <tr>
-              <th className="border-b py-2 pr-3 font-normal">Filed</th>
+              <SortHeader
+                column="filed"
+                sort={{ column: "filed", direction: filters.dir }}
+                onSort={() => go({ dir: filters.dir === "desc" ? "asc" : "desc" })}
+              >
+                Filed
+              </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">Where</th>
               <th className="border-b py-2 pr-3 font-normal">Complaint</th>
               <th className="border-b py-2 pr-3 font-normal">What they said</th>
@@ -504,6 +530,7 @@ export default function ReportTable({
           </tbody>
         </table>
       )}
+      <Pagination page={page} pageCount={pages} onPage={(to) => go({}, to)} />
 
       {/* The transport bar the explorers use, with the adapter of whichever section the
           playing line belongs to. Drawn only once something has been played: a bar saying

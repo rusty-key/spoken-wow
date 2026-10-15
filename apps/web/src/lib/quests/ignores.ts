@@ -12,6 +12,8 @@
  * count-and-timestamp stamp, because there are tens of these rather than thousands and pm2
  * runs two workers that must not disagree about what is hidden.
  */
+import type { PoolClient } from "pg";
+
 import { recordActivity } from "../activity/store";
 import { db } from "../db";
 import { baseLineId } from "../contributions/naming";
@@ -91,13 +93,15 @@ export async function writeIgnore(
   userId: string | null,
   // Null ignores the line in every language, which is what every ignore used to mean.
   lang: Lang | null = null,
+  // A caller's transaction, which then forgets the memo itself once it commits.
+  client?: PoolClient,
 ): Promise<LineIgnore> {
   const trimmed = reason.trim();
   if (!trimmed) throw new Error("an ignore needs a reason: a decision nobody can revisit is a bug");
   // Ignoring one voice of a line ignores the line, as the pack build reads it.
   lineId = baseLineId(lineId);
 
-  const { rows } = await db().query<IgnoreRow>(
+  const { rows } = await (client ?? db()).query<IgnoreRow>(
     `insert into "line_ignore" ("lineId", "lang", "reason", "createdBy")
      values ($1, $4, $2, $3)
      on conflict ("lineId", (coalesce("lang", ''))) do update
@@ -107,7 +111,7 @@ export async function writeIgnore(
      returning "lineId", "lang", "reason", "createdAt", "createdBy"`,
     [lineId, trimmed, userId, lang],
   );
-  forgetIgnores();
+  if (!client) forgetIgnores();
   // A null lang is an ignore in every language, and so a row every language's log shows.
   await recordActivity({
     kind: "ignore.set",
@@ -117,7 +121,7 @@ export async function writeIgnore(
     subject: lineId,
     lineId,
     detail: { reason: trimmed },
-  });
+  }, client);
   return toIgnore(rows[0]);
 }
 

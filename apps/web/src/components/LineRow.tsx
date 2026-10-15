@@ -153,6 +153,8 @@ type Props = {
    * first row spans this many rows, and the rest pass 0 and leave those cells out.
    */
   groupSpan: number;
+  /** Whether the NPC's id links to its row on /npcs, which only an admin can open. */
+  showNpcPage?: boolean;
   /** Narrow the search to this line's NPC, or to its quest. */
   onNarrowToNpc: (line: ResultLine) => void;
   onNarrowToQuest: (line: ResultLine) => void;
@@ -204,6 +206,7 @@ export default function LineRow({
   onReport,
   onRestored,
   onNarrowToNpc,
+  showNpcPage = false,
   showQuest,
   showBroadcast,
   groupSpan,
@@ -256,6 +259,19 @@ export default function LineRow({
           )}
           <span className="text-muted-foreground block truncate text-xs">
             {line.npcType} {line.npcId} <WowheadLink href={wowheadEntityUrl(line.npcType, line.npcId)} />
+            {showNpcPage && (
+              <>
+                {" "}
+                <a
+                  href={localeHref(lang, `/npcs?q=${line.npcId}`)}
+                  onClick={(event) => event.stopPropagation()}
+                  title="Open this NPC on the NPCs page"
+                  className="hover:text-foreground underline underline-offset-2"
+                >
+                  npc
+                </a>
+              </>
+            )}
           </span>
         </td>
       )}
