@@ -63,17 +63,19 @@ def test_a_gap_too_long_to_hold_is_refused():
     assert export.encode([2.0, 1.0]) is None
 
 
-def test_the_data_file_lists_each_family_and_leaves_out_weak_matches():
+def test_each_family_is_kept_and_weak_matches_are_left_out():
     rows = [
         {"family": "quests", "id": "33-accept", "matched": 0.97, "t": [0.5, 1.0]},
         {"family": "zones", "id": "1411\\zone", "matched": 0.9, "t": [0.0, 0.5]},
         {"family": "books", "id": "15", "matched": 0.5, "t": [0.0, 0.5]},
     ]
-    text, kept, skipped = export.render(rows, 0.85)
-    assert kept == {"quests": 1, "gossip": 0, "zones": 1, "books": 0}
+    kept, skipped = export.select(rows, 0.85)
+    assert kept == {"quests": {"33-accept": "AyAy"}, "gossip": {}, "zones": {"1411\\zone": "AAAy"}, "books": {}}
     assert skipped == {"unmatched": 1, "gap": 0}
+    text = export.render_lua(kept)
     assert '["33-accept"] = "AyAy",' in text
     assert '["1411\\\\zone"] = "AAAy",' in text
+    assert 'Add("gossip"' not in text
 
 
 def test_a_recording_in_another_voice_has_its_base_lines_words():
