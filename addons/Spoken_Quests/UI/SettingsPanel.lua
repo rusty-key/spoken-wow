@@ -40,13 +40,10 @@ function SettingsPanel:Setup()
     local refresh = function() layout:Refresh() end
 
     -- Its own entry, nested under Spoken in the game's settings list and headed as the game's
-    -- pages are, with the module's switch first: off, everything under it is greyed out and says
-    -- why, rather than looking live and doing nothing. The module's card on Spoken's page turns
-    -- it on and off too.
+    -- pages are. The module's card on Spoken's page turns it on and off: off, everything under
+    -- it is greyed out and says why, rather than looking live and doing nothing.
     local function PartOn() return Addon:IsPartOn() end
     layout:Intro([[Interface\Icons\INV_Scroll_03]], L.OPT_PAGE_TITLE)
-    local switch = layout:Checkbox(W.MODULE_SWITCH, nil, PartOn,
-        function(value) Spoken:SetPartOn("quests", value) end, refresh)
 
     layout:Section(W.MODULE_WHEN)
     local autoplay = layout:Checkbox(L.OPT_PANEL_AUTOPLAY, nil,
@@ -184,14 +181,14 @@ function SettingsPanel:Setup()
             end)
         end, nil, W.OPT_RESET_ALL_TIP)
     end
-    -- Switched off, the module is off: everything on its page greys out but its own switch. Read
+    -- Switched off, the module is off: everything on its page greys out. Read
     -- Automatically, Stop When Window Closes and NPC Voice Before Reading cover the Gossip window
     -- too, so they stay live while either part is on.
     local function AnyPartOn() return Addon:IsPartOn("quests") or Addon:IsPartOn("gossip") end
     layout:Requires(autoplay, AnyPartOn, W.REASON_PART_OFF)
     layout:Requires(stopOnClose, AnyPartOn, W.REASON_PART_OFF)
     layout:Requires(greetingFirst, AnyPartOn, W.REASON_PART_OFF)
-    layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch, autoplay, stopOnClose, greetingFirst)
+    layout:RequiresAll(PartOn, W.REASON_PART_OFF, autoplay, stopOnClose, greetingFirst)
 
     -- Derived rather than written down: a hardcoded height is a number nobody updates
     -- when a row is added, and the failure it produces is a section you cannot reach.

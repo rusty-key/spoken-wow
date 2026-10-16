@@ -336,8 +336,7 @@ local function Group(layout, text)
         if item.kind == "section" and item.text == text then return item end
     end
 end
-Expect("the Quests page has its module's switch, said plainly, in Spoken's words for every module",
-    Row(quests, L.MODULE_SWITCH) ~= nil and L.MODULE_SWITCH, "Enable")
+Expect("the Quests page has no switch of its own: Spoken's page holds it", Row(quests, "Enable"), nil)
 Expect("...and is headed by its name", quests.intro ~= nil and quests.intro.name.text, VO.L.OPT_PAGE_TITLE)
 Expect("...and no paragraph under it, as the game's own pages have none", quests.intro.text, nil)
 do
@@ -364,7 +363,6 @@ do
     local pack = Row(quests, "English (Horde)")
     Expect("...and a voice pack's Download button, which cannot be clicked", pack.layoutButton.enabled, false)
 end
-Expect("...but not its own switch", Row(quests, L.MODULE_SWITCH).layoutReason, nil)
 _G.Spoken:SetPartOn("quests", true); Options:UpdateRows(); quests:Refresh()
 Expect("switching it back on wakes the page", autoplay.layoutReason, nil)
 Expect("...and its titles", Group(quests, L.MODULE_WHEN).greyed, false)
@@ -421,7 +419,6 @@ do
     local above = 2 - search.layoutY
     local below = (search.layoutY - search.layoutHeight) - (modules.layoutY - 16)
     Expect("the search box is as far under the divider as Modules' title is under it", above .. " " .. below, "25 25")
-    Expect("...and a module's Enable switch as far", 2 - Row(quests, L.MODULE_SWITCH).layoutY, 25)
 end
 
 ---------------------------------------------------------------- a page already showing follows its settings
@@ -444,7 +441,7 @@ end
 do
     local card = Row(home, L.OPT_PART_QUESTS)
     _G.Spoken:SetPartOn("quests", false); Options:UpdateRows()
-    Expect("a module switched off still opens its page from its row: the page has its own switch",
+    Expect("a module switched off still opens its page from its row, which shows it greyed out",
         card.button and card.button.enabled, true)
     _G.Spoken:SetPartOn("quests", true); Options:UpdateRows()
 end

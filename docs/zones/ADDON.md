@@ -15,7 +15,7 @@ What Places adds to Spoken:
 - The Places tab of Azeroth's Compendium and a panel beside the world map ([COMPENDIUM.md](COMPENDIUM.md)).
 - A Report button on each line being read. There is no Read button of its own.
 
-The Enable switch on the Places page is Spoken's switch for the part (`Spoken:IsPartOn("zones")`).
+Places' card under What Spoken Reads on Spoken's page is the switch for the part (`Spoken:IsPartOn("zones")`).
 With it off the map panel, its side tab and the Compendium tab go away.
 
 ## Settings

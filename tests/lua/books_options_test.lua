@@ -50,8 +50,7 @@ end
 Expect("every section is there", table.concat(headings, "|"),
     "When to Read|Voice Packs|Reading History")
 local W = _G.Spoken:Words()
-Expect("every switch has a row, the module's own first", table.getn(checkboxes) .. " " .. checkboxes[1].text.text,
-    "7 " .. W.MODULE_SWITCH)
+Expect("every switch has a row, and none is the module's own: Spoken's page holds that", table.getn(checkboxes), 6)
 local function Button(text)
     for _, button in ipairs(buttons) do if button.text == text then return button end end
 end

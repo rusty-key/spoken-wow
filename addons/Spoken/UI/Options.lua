@@ -426,8 +426,8 @@ local function Build(canvas)
         local function Missing() if not Sources:Get(key) then return L.REASON_NOT_INSTALLED end end
         if canvas then
             -- Beside its words, how many of its voice packs it has, then a button to its page,
-            -- whenever the module is installed: switched off, its page is still there, with its
-            -- own Enable switch for exactly that. Whether it is on, its checkbox and its row say.
+            -- whenever the module is installed: switched off, its page is still there, greyed out.
+            -- Whether it is on, its checkbox and its row say.
             table.insert(modules, { icon = part.icon, title = part.label, text = part.text,
                 read = On, write = Write, apply = function() Options:UpdateRows() end, disabled = Missing,
                 status = function() return Options:PartVoice(key) end,

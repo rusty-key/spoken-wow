@@ -174,6 +174,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - A voice line whose word times were measured lights one word at a time in every narrator. Any other
   line keeps the estimate and its two-word highlight, and the subtitles now light the same two words
   the windows do. The times come with the English voice packs. *([Nucabe](https://github.com/Nucabe))*
+- The Quests, Gossip, Places and Readables pages no longer open with an Enable box. A module is turned
+  on and off in one place, What Spoken Reads on Spoken's page, and a page of a module that is off says
+  so. *([Nucabe](https://github.com/Nucabe))*
 
 ### Battlegrounds
 

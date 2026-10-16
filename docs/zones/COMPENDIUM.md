@@ -154,7 +154,7 @@ of Mount Hyjal (2482).
 clicked. Its title is Place Story, and a side tab on the map's edge reopens it after its close button
 folds it.
 
-- It is hidden while the map is maximised, while Spoken's Enable switch is off and while
+- It is hidden while the map is maximised, while Places is off under What Spoken Reads and while
   Show Story Beside Map is off. Under the gamepad UI it is a child of `UIParent` instead of the
   map, because the Forever client takes every button inside the open map into its own navigation.
 - `UI/SubzoneClick.lua`: a click on a zone map resolves an area through

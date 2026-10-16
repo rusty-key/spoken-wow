@@ -2,7 +2,7 @@ setfenv(1, VoiceOver)
 
 -- Gossip's page in the game's settings, under Spoken's, beside Quests': laid out by Spoken's
 -- UI/Layout.lua so the pages read alike. What an NPC says when you start talking to them is a part
--- of its own on Spoken's page, with its own switch; the settings that only it has are here. Absent
+-- of its own on Spoken's page, with its own card; the settings that only it has are here. Absent
 -- on the three legacy clients, which have no Settings API: the window and /spq are the interface
 -- there.
 
@@ -46,12 +46,10 @@ function GossipSettingsPanel:Setup()
     local audio = function() return Addon.db.profile.Audio end
     local refresh = function() layout:Refresh() end
 
-    -- The part's own switch first, as on Spoken's page: off, everything under it is greyed
-    -- out and says why, rather than looking live and doing nothing.
+    -- Spoken's page turns the part on and off: off, everything under it is greyed out and says
+    -- why, rather than looking live and doing nothing.
     local function PartOn() return Addon:IsPartOn("gossip") end
     layout:Intro(ICON, L.OPT_GOSSIP_PAGE_TITLE)
-    local switch = layout:Checkbox(W.MODULE_SWITCH, nil, PartOn,
-        function(value) Spoken:SetPartOn("gossip", value) end, refresh)
 
     -- The first two wait on Read Automatically, which is Quests' page's and covers every NPC
     -- window: they only decide what that reads, and a live control that does nothing reads as
@@ -84,8 +82,8 @@ function GossipSettingsPanel:Setup()
         return name == "OncePerNPC" or name == "OncePerQuestNPC"
     end, L.REASON_FORGET_GREETINGS)
 
-    -- Switched off, the part is off: everything on its page greys out but its own switch.
-    layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch)
+    -- Switched off, the part is off: everything on its page greys out.
+    layout:RequiresAll(PartOn, W.REASON_PART_OFF)
     content:SetScript("OnShow", function() layout:Refresh() end)
     -- Switched on or off from Spoken's page while this one was hidden: drawn again for it.
     Spoken:RegisterCallback("PART_SWITCHED", function(part) if part == "gossip" then layout:Refresh() end end)

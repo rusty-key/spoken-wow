@@ -54,24 +54,19 @@ Expect("the sections are When to Read and Reading History", table.concat(heading
 -- Voice packs, the test line and Report a Problem are on the Quests page and Spoken's, for every part.
 Expect("no voice pack rows and no test line on this page", #buttons, 1)
 
----------------------------------------------------------------- the part's own switch
-local switch = boxes[W.MODULE_SWITCH]
-Expect("the page opens with the part's switch", switch ~= nil, true)
-Expect("...on, as the part is", switch:GetChecked(), true)
+---------------------------------------------------------------- the part's switch is Spoken's page's
+Expect("the page has no switch of its own", boxes[W.MODULE_WHEN], nil)
+Expect("...the part is on", Spoken:IsPartOn("gossip"), true)
 local greetings
 for _, child in ipairs(content.children) do
     if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == L.OPT_PANEL_GREETINGS then greetings = child end
 end
 Expect("the rows under it are live", greetings.dropdownDisabled or false, false)
-switch:SetChecked(false)
-switch:GetScript("OnClick")(switch)
-Expect("clicking it turns the part off for Spoken", Spoken:IsPartOn("gossip"), false)
-Expect("...and leaves the quests part on", Spoken:IsPartOn("quests"), true)
+Spoken:SetPartOn("gossip", false)
+Expect("turning the part off from Spoken's page leaves the quests part on", Spoken:IsPartOn("quests"), true)
 Panel.panel.layout:Refresh()
-Expect("...greying what is under it, saying why", greetings.layoutReason, W.REASON_PART_OFF)
-Expect("...but not the switch itself", switch.layoutReason, nil)
-switch:SetChecked(true)
-switch:GetScript("OnClick")(switch)
+Expect("...greying what is on the page, saying why", greetings.layoutReason, W.REASON_PART_OFF)
+Spoken:SetPartOn("gossip", true)
 Expect("turning it on again makes the part read", Spoken:IsPartOn("gossip"), true)
 
 ---------------------------------------------------------------- shared rows on the Quests page

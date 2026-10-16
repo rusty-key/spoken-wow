@@ -454,7 +454,7 @@ function Spoken:GetLanguageChoice()
 end
 
 --- Spoken's words in the player's language, for what every module's settings page shares and
---- names the same way: MODULE_SWITCH, MODULE_WHEN, PART_VOICE, MODULE_TEST_LINE, TEST_LINE_TEXT, MODULE_HISTORY,
+--- names the same way: MODULE_WHEN, PART_VOICE, MODULE_TEST_LINE, TEST_LINE_TEXT, MODULE_HISTORY,
 --- MODULE_DOWNLOAD, MODULE_INSTALLED, MODULE_NOT_LOADED, MODULE_NO_PACK, MODULE_RESET,
 --- REASON_PART_OFF, OPT_RESET_ALL_TIP and CANCEL. Read, never written.
 function Spoken:Words()

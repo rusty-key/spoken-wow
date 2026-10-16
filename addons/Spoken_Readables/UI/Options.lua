@@ -54,12 +54,10 @@ function SpokenBooks:SetupOptions()
 	local layout = SpokenLayout.New(content, INDENT, -16)
 	local refresh = function() layout:Refresh() end
 
-	-- Its own entry under Spoken's, with the module's switch first: off, everything under it is
-	-- greyed out and says why, rather than looking live and doing nothing.
+	-- Its own entry under Spoken's. Spoken's page turns the module on and off: off, everything
+	-- under it is greyed out and says why, rather than looking live and doing nothing.
 	local function PartOn() return SpokenBooks:IsPartOn() end
 	layout:Intro([[Interface\Icons\INV_Misc_Book_09]], L.OPT_PAGE_TITLE)
-	local switch = layout:Checkbox(W.MODULE_SWITCH, nil, PartOn,
-		function(value) Spoken:SetPartOn("books", value) end, refresh)
 
 	local function Get(key)
 		return function() return SpokenBooks:Get(key) end
@@ -156,8 +154,8 @@ function SpokenBooks:SetupOptions()
 			if SpokenBooks.RefreshReadables then SpokenBooks:RefreshReadables() end
 		end)
 	end, nil, W.OPT_RESET_ALL_TIP)
-	-- Switched off, the module is off: everything on its page greys out but its own switch.
-	layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch)
+	-- Switched off, the module is off: everything on its page greys out.
+	layout:RequiresAll(PartOn, W.REASON_PART_OFF)
 	layout:Refresh()
 	content:SetScript("OnShow", refresh)
 	-- Switched on or off from Spoken's page while this one was hidden: drawn again for it.
