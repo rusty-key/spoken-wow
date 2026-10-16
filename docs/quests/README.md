@@ -487,7 +487,7 @@ in German. A line's female variant, which exists where the English branches on `
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
 German's own templates write, is read the same way in every language. English quest text has
 nothing left for it to replace, its words having been written in at extraction; a book page
-in any language, English included, goes through the same table (`docs/books/README.md`). A
+in any language, English included, goes through the same table (`docs/readables/README.md`). A
 token glued to a following letter (`$Nama`) is left in, so the line stays unvoiceable until a
 translator rewrites it. German's genitive `s` is the one exception: `$Ns` and `$Cs` read as
 `Abenteurers`, or `Abenteurerin` on the female variant. A branch never spans a sentence's end,

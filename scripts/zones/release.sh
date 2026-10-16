@@ -223,7 +223,7 @@ changelog_for() {
       if (lines[i].startsWith("## ")) { end = i; break; }
     }
     process.stdout.write(lines.slice(start, end).join("\n").trim());
-  ' "$REPO/docs/zones/CHANGELOG.md" "$1" "$2"
+  ' "$REPO/docs/places/CHANGELOG.md" "$1" "$2"
 }
 
 #-- preflight -------------------------------------------------------------------
@@ -284,7 +284,7 @@ for target in "${targets[@]}"; do
   fi
 
   if [[ "$target" == audio ]] && ! english; then
-    changelog="$(node "$REPO/scripts/lib/packs.mjs" changelog "$REPO/docs/zones/CHANGELOG.md" "$version" "$(pack_field release)")"
+    changelog="$(node "$REPO/scripts/lib/packs.mjs" changelog "$REPO/docs/places/CHANGELOG.md" "$version" "$(pack_field release)")"
   else
     changelog="$(changelog_for "$version" "$target")"
   fi

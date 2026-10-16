@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Repo-wide rules. Each section also has its own file, which applies on top of this one:
-`docs/quests/CLAUDE.md`, `docs/gossip/AGENTS.md`, `docs/zones/AGENTS.md` (Spoken Places), `docs/books/AGENTS.md` (Spoken Readables).
+`docs/quests/CLAUDE.md`, `docs/gossip/AGENTS.md`, `docs/places/AGENTS.md` (Spoken Places), `docs/readables/AGENTS.md` (Spoken Readables).
 Gossip, in `Spoken_Quests`, reads the `g:` lines the quests pipeline builds, so the quests guide
 covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelog and reference pages.
 

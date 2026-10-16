@@ -49,7 +49,7 @@ make lint                 # what CI gates on
 
 - The `Spoken_Places` module ships inside Spoken and follows Spoken's version
   (see root `AGENTS.md`).
-- `SpokenZonesAudio` versions on its own, and its notes go in `docs/zones/CHANGELOG.md` under
+- `SpokenZonesAudio` versions on its own, and its notes go in `docs/places/CHANGELOG.md` under
   `## <version> — audio`. Language packs use `## <version> — zones-audio-<lang>`.
   `changelog_for()` in `scripts/zones/release.sh` matches on version and kind, and exits on a
   missing or duplicate section.

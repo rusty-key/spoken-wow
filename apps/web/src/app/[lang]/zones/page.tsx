@@ -6,7 +6,7 @@ import { Explorer } from "@/components/zones/Explorer";
 import { isCorpusEmpty, zoneFacets } from "@/lib/zones/catalogue";
 import { Contained } from "@/components/Width";
 
-export const metadata: Metadata = { title: "Zones · Spoken" };
+export const metadata: Metadata = { title: "Places · Spoken" };
 
 /**
  * The zone dropdown is derived from the catalogue, so computing it here and passing it

@@ -53,8 +53,8 @@ import type { Source } from "@/lib/sections";
 
 const SECTION_LABELS: Record<Section, string> = {
   quests: "Quests",
-  books: "Books",
-  zones: "Zones",
+  books: "Readables",
+  zones: "Places",
 };
 
 const VIEW_LABELS: Record<StatusView, string> = { ...STATUS_LABELS, all: "All" };

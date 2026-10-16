@@ -113,7 +113,7 @@ make zones-full-release             # all of the above, with one question before
 
 - `zones-check-synced` compares the local zones data with the droplet's and prompts when they
   differ. `zones-package-audio` runs it first.
-- The pack's version is the `.toc`'s, and the release notes come from `docs/zones/CHANGELOG.md`.
+- The pack's version is the `.toc`'s, and the release notes come from `docs/places/CHANGELOG.md`.
   Bump the version and add its section first. A section headed `## <version> — audio` is the
   English pack's and `## <version> — zones-audio-<locale>` is a language's.
 - `zones-release-audio` uploads to CurseForge only. `zones-full-release` also runs

@@ -1,6 +1,6 @@
 # AGENTS.md: books
 
-The root `AGENTS.md` applies. This file covers only the books section. `docs/books/README.md`
+The root `AGENTS.md` applies. This file covers only the books section. `docs/readables/README.md`
 is the detailed reference.
 
 ## Players see Readables; the code says books

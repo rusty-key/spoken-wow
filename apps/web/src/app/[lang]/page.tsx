@@ -95,8 +95,8 @@ const ADDONS: Addon[] = [
  */
 const EXPLORERS = [
   { href: "/quests", icon: "/icons/quests.svg", title: "Quests" },
-  { href: "/zones", icon: "/icons/zones.svg", title: "Zones" },
-  { href: "/books", icon: "/icons/books.svg", title: "Writings" },
+  { href: "/zones", icon: "/icons/zones.svg", title: "Places" },
+  { href: "/books", icon: "/icons/books.svg", title: "Readables" },
 ];
 
 /** The languages with at least one pack, in the site's order: the table's columns. */

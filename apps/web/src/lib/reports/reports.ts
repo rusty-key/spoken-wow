@@ -25,8 +25,8 @@ export type Status = (typeof STATUSES)[number];
 
 export const SOURCE_LABELS: Record<Source, string> = {
   quests: "Quests",
-  zones: "Zones",
-  books: "Writings",
+  zones: "Places",
+  books: "Readables",
 };
 
 /** Written for a player rather than an editor: the reporter is not reading the schema. */

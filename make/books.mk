@@ -211,7 +211,7 @@ release-audio: ## Upload the sound pack (LOCALE=xx for a language's)
 # anything is uploaded. Each step is its own target and still runs alone; this is their order.
 #
 # The version is SpokenBooksAudio.toc's, so bump it and add its `## <version>` section to
-# docs/books/CHANGELOG.md first; both uploads quote that section. The pack goes to CurseForge
+# docs/readables/CHANGELOG.md first; both uploads quote that section. The pack goes to CurseForge
 # only -- Wago answers 413 to a file this size (scripts/lib/wago.sh) -- and to GitHub, which
 # is where a Wago player gets it.
 full-release: require-droplet ## Sync, pull live takes, build and upload the sound pack (LOCALE=xx for a language's)

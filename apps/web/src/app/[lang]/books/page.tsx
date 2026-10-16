@@ -6,7 +6,7 @@ import { Explorer } from "@/components/books/Explorer";
 import { bookFacets, isCorpusEmpty } from "@/lib/books/catalogue";
 import { Contained } from "@/components/Width";
 
-export const metadata: Metadata = { title: "Writings · Spoken" };
+export const metadata: Metadata = { title: "Readables · Spoken" };
 
 /**
  * The book dropdown is derived from the corpus, so computing it here and passing it down
@@ -31,7 +31,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     return (
       <main className="pt-6 pb-36">
         <Contained>
-          <h1 className="text-xl font-semibold">Writings</h1>
+          <h1 className="text-xl font-semibold">Readables</h1>
           <p className="text-muted-foreground mt-2 max-w-xl text-sm">
             The books corpus has not been loaded into this database yet, so there is nothing to
             show. It is extracted from the vmangos world database with{" "}
@@ -46,7 +46,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   return (
     <main className="pt-6 pb-36">
       <Contained>
-        <h1 className="text-xl font-semibold">Writings</h1>
+        <h1 className="text-xl font-semibold">Readables</h1>
         <p className="text-muted-foreground mt-1 mb-5 text-sm">
           Every book, letter, note and plaque the game will show you, page by page. Like quest
           dialogue and unlike zone lore, these are Blizzard&rsquo;s words: extracted from the

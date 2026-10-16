@@ -336,7 +336,7 @@ make books-release                 # needs CURSEFORGE_TOKEN
 ```
 
 The pack's version is the `## Version:` line in its `.toc`, and its release notes are the
-matching `## <version>` section of `docs/books/CHANGELOG.md` — a version with no section there
+matching `## <version>` section of `docs/readables/CHANGELOG.md` — a version with no section there
 fails before anything is sent. `make books-package` builds `Spoken_Readables` alone, for a
 `books/v<version>` tag, which `.github/workflows/release-addons.yaml` still builds. `scripts/books/release.sh` carries the two ids in
 `target_curseforge()`, and an unknown target fails on the empty id rather than defaulting, for

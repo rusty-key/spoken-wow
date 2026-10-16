@@ -63,7 +63,7 @@ clean: ## Remove build output
 #
 # None of these can spend a credit. They report on lines, build the addon's lookup
 # table and check it; cutting audio is the site's, on the droplet. See
-# docs/zones/VOICE.md, "Generating voicelines".
+# docs/places/VOICE.md, "Generating voicelines".
 #-------------------------------------------------------------------------------
 
 # Which language's takes and pack the voice targets act on: English, or LOCALE=esMX for
@@ -329,7 +329,7 @@ release-curse: ## Upload the built zips to CurseForge only (needs CURSEFORGE_TOK
 # anything is uploaded. Each step is its own target and still runs alone; this is their order.
 #
 # The version is SpokenZonesAudio.toc's, so bump it and add its `## <version> — audio` section
-# to docs/zones/CHANGELOG.md first; both uploads quote that section. The pack goes to
+# to docs/places/CHANGELOG.md first; both uploads quote that section. The pack goes to
 # CurseForge only -- Wago answers 413 to a file this size (scripts/lib/wago.sh) -- and to
 # GitHub, which is where a Wago player gets it.
 full-release: require-droplet ## Sync, pull live takes, build and upload the sound pack (LOCALE=xx for a language's)
