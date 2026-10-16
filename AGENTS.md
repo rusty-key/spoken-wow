@@ -80,7 +80,7 @@ place: `pipelines/quests/tts_cli/naming.py` (mirrored by
 rollback restores code without reverting the schema.
 
 **The `make/*.mk` files stay separate.** They share many target names, and the root `Makefile`
-dispatches `quests-*`, `zones-*`, `books-*` and `web-*` to them. Each target is commented with
+dispatches `quests-*`, `zones-*`, `books-*`, `timings-*` and `web-*` to them. Each target is commented with
 the failure it prevents; read that comment before changing one.
 
 **Shared credentials live in the repo-root `.env`** (`.env.example` lists them).

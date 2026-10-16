@@ -1,0 +1,7 @@
+# The word-time tools (pipelines/timings). WhisperX brings torch and faster-whisper; on Windows
+# install torch's CUDA build first (pip install torch --index-url https://download.pytorch.org/whl/cu121)
+# or the aligner runs on the CPU.
+whisperx
+faster-whisper
+mutagen
+pytest

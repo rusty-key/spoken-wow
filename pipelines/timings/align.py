@@ -2,10 +2,12 @@
 
     py -3 align.py --manifest manifest.jsonl --out aligned.jsonl [--family quests] [--limit 50]
 
-faster-whisper hears the recording with word timestamps and the words it heard are matched to
-the words the voice was given, so every word of the text gets a start time in seconds. A word the
-model did not hear is placed between its neighbours. Rows already in --out are skipped, so the
-run can be stopped and started again.
+Two engines. `whisperx` (the default) is forced alignment: the text the voice was given is laid
+over the recording by a wav2vec2 phoneme model, so no word is heard wrongly and the times come
+from the sound itself. `whisper` is faster-whisper: it hears the recording with word timestamps
+and the words it heard are matched to the words the voice was given. Either way every word of the
+text ends up with a start time in seconds, and a word that got none is placed between its
+neighbours. Rows already in --out are skipped, so the run can be stopped and started again.
 
 Each output row is {family, id, length, words, matched, t}: `t` has one start time per word of
 the text, cut as the addon cuts it (Spoken:CaptionWords), and `matched` is the share of the
@@ -105,6 +107,40 @@ def hear(model, path, prompt=None):
     return [(w.word, w.start, w.end) for s in segments for w in s.words], info.duration
 
 
+def load_whisperx(language="en"):
+    """The wav2vec2 alignment model for `language` (WhisperX), on the GPU where there is one."""
+    import torch
+    import whisperx
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cpu":
+        print("no GPU; using the CPU", file=sys.stderr)
+    model, metadata = whisperx.load_align_model(language_code=language, device=device)
+    return (model, metadata), device
+
+
+def heard_from_alignment(words):
+    """(word, start, end) for the words of a WhisperX alignment that got a time.
+
+    WhisperX gives every whitespace-separated word of the text it was handed, and leaves the
+    time off one it cannot place: a numeral, a symbol. Those are the ones align_words fills in.
+    """
+    return [(w["word"], w["start"], w["end"]) for w in words if "start" in w and "end" in w]
+
+
+def force_align(aligner, device, path, text):
+    """The words of `text` laid over the recording at `path`: ([(word, start, end)], length)."""
+    import whisperx
+    model, metadata = aligner
+    audio = whisperx.load_audio(path)
+    length = len(audio) / 16000
+    # One line of single-spaced words, so its words are the ones the addon cuts (caption_words).
+    line = " ".join(caption_words(text))
+    result = whisperx.align([{"text": line, "start": 0.0, "end": length}], model, metadata, audio, device,
+                            return_char_alignments=False)
+    words = [w for segment in result["segments"] for w in segment["words"]]
+    return heard_from_alignment(words), length
+
+
 def prune(out, manifest_rows):
     """Remove from --out and its shards the rows of recordings that are now a different length: a
     pack update re-cut them, so their times no longer fit."""
@@ -133,8 +169,12 @@ def main():
     parser.add_argument("--shard", help="I/N: do every Nth clip from the Ith, into --out.I; run N at once")
     parser.add_argument("--known", action="append", default=[],
                         help="a glob of earlier results to skip as done (repeatable), besides --out's")
-    parser.add_argument("--model", default="small.en", help="the faster-whisper model (default small.en)")
-    parser.add_argument("--prompt", action="store_true", help="give the model the text as its prompt")
+    parser.add_argument("--engine", choices=("whisperx", "whisper"), default="whisperx",
+                        help="whisperx: force-align the text over the recording (default); "
+                             "whisper: hear it with faster-whisper and match what it heard")
+    parser.add_argument("--language", default="en", help="the recordings' language, for WhisperX's model")
+    parser.add_argument("--model", default="small.en", help="the faster-whisper model (--engine whisper)")
+    parser.add_argument("--prompt", action="store_true", help="--engine whisper: give the model the text as its prompt")
     parser.add_argument("--retry-below", type=float, metavar="MATCHED",
                         help="only recordings whose best row in --known matched less than this; their "
                              "rows go to --out, and what --out holds is what is done")
@@ -192,13 +232,24 @@ def main():
         rows = rows[:args.limit]
     print(len(done), "done,", stale, "stale (recut since),", len(rows), "to do", flush=True)
 
-    model, device = load_model(args.model)
+    if args.engine == "whisperx":
+        model, device = load_whisperx(args.language)
+
+        def listen(row):
+            return force_align(model, device, row["audio"], row["text"])
+        label = "whisperx-" + args.language
+    else:
+        model, device = load_model(args.model)
+
+        def listen(row):
+            return hear(model, row["audio"], row["text"][:900] if args.prompt else None)
+        label = args.model
     started = time.time()
     with open(out_path, "a", encoding="utf8", newline="\n") as out:
         for n, row in enumerate(rows, 1):
             words = caption_words(row["text"])
             try:
-                heard, length = hear(model, row["audio"], row["text"][:900] if args.prompt else None)
+                heard, length = listen(row)
             except Exception as problem:
                 print("FAILED", row["family"], row["id"], str(problem)[:120], flush=True)
                 continue
@@ -208,7 +259,7 @@ def main():
                 continue
             out.write(json.dumps({"family": row["family"], "id": row["id"], "length": round(length, 3),
                                   "bytes": os.path.getsize(row["audio"]), "words": len(words),
-                                  "matched": round(matched, 3), "model": args.model, "prompt": args.prompt,
+                                  "matched": round(matched, 3), "model": label, "prompt": args.prompt,
                                   "t": times}) + "\n")
             out.flush()
             if n % 100 == 0:

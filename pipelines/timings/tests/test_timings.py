@@ -96,3 +96,18 @@ def test_a_row_is_current_while_its_recording_keeps_its_size(tmp_path):
     assert not current.unchanged({"bytes": 100, "length": 1.0}, str(clip))
     assert not current.unchanged({"bytes": 100, "length": 1.0}, str(tmp_path / "gone.mp3"))
     assert not current.unchanged({"bytes": 100, "length": 1.0}, None)
+
+
+def test_a_whisperx_alignment_keeps_the_words_that_got_a_time():
+    aligned = [{"word": "Take", "start": 0.5, "end": 0.7}, {"word": "10", "end": 0.9},
+               {"word": "bears,", "start": 1.2, "end": 1.6}]
+    assert align.heard_from_alignment(aligned) == [("Take", 0.5, 0.7), ("bears,", 1.2, 1.6)]
+
+
+def test_a_word_whisperx_could_not_place_falls_between_its_neighbours():
+    words = align.caption_words("Take 10 bears,")
+    heard = align.heard_from_alignment([{"word": "Take", "start": 0.5, "end": 0.7}, {"word": "10"},
+                                        {"word": "bears,", "start": 1.5, "end": 1.9}])
+    times, matched = align.align_words(words, heard, 3.0)
+    assert times == [0.5, 1.0, 1.5]
+    assert abs(matched - 2 / 3) < 1e-9

@@ -86,8 +86,9 @@ times lights one word in every narrator. At the end of a page, the previous word
 highlighted instead of advancing the page early.
 
 English recordings in the quest, gossip, zone and book packs have their word times measured:
-`pipelines/timings` listens to each recording (faster-whisper, word timestamps), matches what it
-heard to the words the voice was given and writes `word-times.json` (`export.py`). `pack_times.py`
+`pipelines/timings` lays the words the voice was given over each recording (WhisperX forced
+alignment; faster-whisper, which hears the words and matches them, is the other engine) and writes
+`word-times.json` (`export.py`). Its README says where the step sits among the voice builds. `pack_times.py`
 cuts that into each voice pack's own `Data/WordTimes.lua`, holding the times of the recordings in
 that pack and listed in its `.toc`. The package scripts do it when `WORD_TIMES` names the JSON
 (English packs only). The data file fills the global `SpokenWordTimes`: one string per

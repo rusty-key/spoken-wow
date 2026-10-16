@@ -32,7 +32,8 @@ help: ## Show this help
 	@printf '  make quests-<target>   see make/quests.mk  (make quests-help)\n'
 	@printf '  make zones-<target>    see make/zones.mk   (make zones-help)\n'
 	@printf '  make web-<target>      see make/web.mk     (make web-help)\n'
-	@printf '  make books-<target>    see make/books.mk   (make books-help)\n\n'
+	@printf '  make books-<target>    see make/books.mk   (make books-help)\n'
+	@printf '  make timings-<target>  see make/timings.mk (make timings-help)\n\n'
 	@printf 'Repo-wide:\n'
 	@grep -E '^[a-z-]+:.*?## ' $(firstword $(MAKEFILE_LIST)) \
 	  | sed 's/:.*## /|/' | awk -F'|' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -48,6 +49,9 @@ web-%:
 
 books-%:
 	@$(MAKE) --no-print-directory -f make/books.mk $*
+
+timings-%:
+	@$(MAKE) --no-print-directory -f make/timings.mk $*
 
 test-player: ## Run the addons' Lua tests (needs luajit)
 	@[ -n "$(LUA)" ] || { echo "No luajit found: brew install luajit"; exit 1; }
