@@ -17,6 +17,7 @@
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { audioRelPath } from "@/lib/audio";
 import type { CorpusLine } from "@/lib/corpus";
+import { listDirections } from "@/lib/npc/store";
 import { lineIndex } from "@/lib/quests/catalogue";
 import { baseLineId } from "@/lib/contributions/naming";
 import { readIgnores } from "@/lib/quests/ignores";
@@ -30,7 +31,7 @@ import { sentText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
-import { directionFor, NARRATOR_VOICE, segments, type Segment } from "./narration";
+import { directionFor, NARRATOR_VOICE, npcDirection, segments, type Segment } from "./narration";
 import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
@@ -167,7 +168,7 @@ export async function regenerateLine(
     // language is spoken with its own lexicon, which the speaker applies, and nothing else.
     const spokenText = SHAPE[speaker.provider](
       sentText(source, lang, line.playerGender),
-      directionFor(line.voice, config.raceTags),
+      directionFor(line.voice, config.raceTags, npcDirection(group, await listDirections())),
       config.raceTags,
     );
     // Lowest npcId in the group, so a file shared by many NPCs regenerates the same way

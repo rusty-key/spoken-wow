@@ -687,6 +687,14 @@ a corpus line whose voice is not on the roster, and accepting a contribution ref
 Skybourne elves have the game's two voice sets per gender, named by their NPCSounds id
 (`skybourneelf-male-3776`) until they have better names.
 
+An NPC whose voice is right but whose manner is not — "Pretty Boy" Duncan, a pirate among human
+men — takes a **direction** of its own in the Direction column of `/npcs` (migration 0074). It
+is sent after the race's and the slot's, in front of every sentence (eleven_v4 drifts back to
+the voice's own delivery after a few words, so every direction is repeated), and only on a file that no
+other NPC speaks without the same direction: a gossip line shared with every other human man
+stays theirs. Setting one marks the NPC's takes **text changed**, like any change to what is
+sent.
+
 Expanding one shows the clips it would be cloned from: upload, play back, delete, and
 **merge** a selection into one take with an adjustable pause. A slot finds its own source
 material in `voice/seed-clips/<race-gender>/<flavor>/`, which is the shape of its name — no

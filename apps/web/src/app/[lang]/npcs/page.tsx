@@ -65,6 +65,7 @@ export default async function Page({
               // The client whose guess filed the NPC; none for one only the extract names.
               client: row.build ? clientOf(row.build).family : null,
               sexes: sexes.get(resolutionKey(row.npcKind, row.npcId)) ?? [],
+              direction: row.direction ?? null,
             }))}
             roster={roster.data}
           />

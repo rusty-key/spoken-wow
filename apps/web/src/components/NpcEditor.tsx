@@ -22,6 +22,7 @@ import Pagination from "@/components/Pagination";
 import ClientSelect from "@/components/ClientSelect";
 import { clientFilterOf, DEFAULT_CLIENT_FILTER, matchesClient, type ClientFamily, type ClientFilter } from "@/lib/contributions/client";
 import { flavorOptionsFor, summaryFromResolution, summaryFromSex } from "@/lib/contributions/speaker";
+import { bareDirection } from "@/lib/generation/narration";
 import type { Roster, RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
@@ -181,6 +182,62 @@ function lookups(npcId: number, client: ClientFilter): { label: string; path: st
 
 const SEX_LABELS: Record<number, string> = { 2: "As a man", 3: "As a woman" };
 
+/**
+ * The NPC's own direction, sent after its voice's (narration.ts npcDirection): "pirate accent"
+ * for a pirate among human men. Typed bare; the route stores it bracketed.
+ */
+function DirectionCell({
+  direction,
+  busy,
+  onSave,
+}: {
+  direction: string | null;
+  busy: boolean;
+  onSave: (direction: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const bare = direction ? bareDirection(direction) : "";
+  if (draft === null) {
+    return (
+      <div className={ROW_LINE}>
+        {bare ? <span>[{bare}]</span> : null}
+        <LiteButton
+          className={ROW_BUTTON}
+          onClick={() => setDraft(bare)}
+          title="A direction sent in front of every line only this NPC speaks, after its voice's"
+        >
+          {bare ? "Edit" : "Add"}
+        </LiteButton>
+      </div>
+    );
+  }
+  const trimmed = draft.trim();
+  return (
+    <form
+      className={ROW_LINE}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (trimmed !== bare) onSave(trimmed);
+        setDraft(null);
+      }}
+    >
+      <input
+        aria-label="NPC direction"
+        autoFocus
+        maxLength={200}
+        placeholder="pirate accent"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => event.key === "Escape" && setDraft(null)}
+        className="border-input bg-background h-7 w-44 rounded-md border px-2"
+      />
+      <LiteButton type="submit" className={ROW_BUTTON} disabled={busy}>
+        {trimmed || !bare ? "Save" : "Clear"}
+      </LiteButton>
+    </form>
+  );
+}
+
 /** A creature's split by sex: each sex's answer with its own Edit, and Split or Unsplit. */
 function SexCells({
   npc,
@@ -235,10 +292,10 @@ export default function NpcEditor({
   roster: rosterData,
 }: {
   /**
-   * Each with the client family whose guess filed it, null for one only the extract names, and
-   * its sexes where it is split by sex.
+   * Each with the client family whose guess filed it, null for one only the extract names, its
+   * sexes where it is split by sex, and its own direction.
    */
-  initial: (NpcSummary & { client: ClientFamily | null; sexes: NpcSexAnswer[] })[];
+  initial: (NpcSummary & { client: ClientFamily | null; sexes: NpcSexAnswer[]; direction: string | null })[];
   /** The roster, for SpeakerCell's pickers, and grown by their "New" entries. */
   roster: RosterData;
 }) {
@@ -277,6 +334,12 @@ export default function NpcEditor({
   const [savedSexes, setSavedSexes] = useState<Record<string, NpcSexAnswer[]>>({});
   const initialSexes = useMemo(
     () => new Map(initial.filter((row) => row.sexes.length).map((row) => [key(row.npcKind, row.npcId), row.sexes])),
+    [initial],
+  );
+  /** Each direction this session saved, over the server's, keyed by NPC. */
+  const [savedDirections, setSavedDirections] = useState<Record<string, string | null>>({});
+  const initialDirections = useMemo(
+    () => new Map(initial.map((row) => [key(row.npcKind, row.npcId), row.direction])),
     [initial],
   );
   const [busy, setBusy] = useState<string | null>(null);
@@ -320,6 +383,24 @@ export default function NpcEditor({
     },
     [post],
   );
+
+  const postDirection = useCallback(async (npc: NpcSummary, direction: string) => {
+    const k = key(npc.npcKind, npc.npcId);
+    setBusy(k);
+    setFailed(null);
+    const response = await fetch("/api/npcs/direction", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ direction, npcKind: npc.npcKind, npcId: npc.npcId }),
+    }).catch(() => null);
+    setBusy(null);
+    if (!response?.ok) {
+      setFailed(k);
+      return;
+    }
+    const saved = (await response.json()) as { direction: string | null };
+    setSavedDirections((current) => ({ ...current, [k]: saved.direction }));
+  }, []);
 
   const postSex = useCallback(async (npc: NpcSummary, body: Record<string, unknown>) => {
     const k = key(npc.npcKind, npc.npcId);
@@ -507,6 +588,7 @@ export default function NpcEditor({
                 Name
               </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">Type / gender / flavor</th>
+              <th className="border-b py-2 pr-3 font-normal">Direction</th>
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>
@@ -579,6 +661,13 @@ export default function NpcEditor({
                     {failed === k ? (
                       <p className="text-destructive mt-1">That didn&apos;t go through -- try again.</p>
                     ) : null}
+                  </td>
+                  <td className="pr-3 text-xs">
+                    <DirectionCell
+                      direction={k in savedDirections ? savedDirections[k] : (initialDirections.get(k) ?? null)}
+                      busy={busy === k || bulk !== null}
+                      onSave={(direction) => void postDirection(npc, direction)}
+                    />
                   </td>
                   <td className="text-right whitespace-nowrap">
                     {lookups(npc.npcId, client).map(({ label, path, where }) => (

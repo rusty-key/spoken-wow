@@ -40,6 +40,11 @@ export type NpcResolution = {
   build: string | null;
   note: string | null;
   resolvedBy: string | null;
+  /**
+   * Bracketed, sent in front of every line only this NPC speaks (migration 0074). Every read
+   * carries it; optional because tests build a resolution by hand.
+   */
+  direction?: string | null;
   updatedAt: string;
 };
 
@@ -50,7 +55,7 @@ const NAME = `(select e."name" from "entity_name" e
 
 const COLUMNS = `n."npcKind", n."npcId", ${NAME} as "npcName", n."race", n."gender", n."flavor",
                  n."provenance", n."confirmed", n."doubtful", n."modelFileId", n."sex",
-                 n."creatureType", n."build", n."note", n."resolvedBy", n."updatedAt"::text`;
+                 n."creatureType", n."build", n."note", n."resolvedBy", n."direction", n."updatedAt"::text`;
 
 export async function getResolution(kind: NpcRowKind, npcId: number): Promise<NpcResolution | null> {
   const { rows } = await db().query<NpcResolution>(
@@ -75,7 +80,7 @@ export async function getResolution(kind: NpcRowKind, npcId: number): Promise<Np
  * English page.
  */
 export async function upsertResolution(
-  input: Omit<NpcResolution, "updatedAt"> & { nameLang?: Lang },
+  input: Omit<NpcResolution, "updatedAt" | "direction"> & { nameLang?: Lang },
 ): Promise<NpcResolution> {
   // The `where` compares ranks rather than special-casing `moderator`: without it, a `none`
   // write from an older addon that sends no model at all would wipe a `client` or `corpus`
@@ -126,6 +131,27 @@ export async function upsertResolution(
   const stored = await getResolution(input.npcKind, input.npcId);
   if (!stored) throw new Error(`upsertResolution: no row for ${input.npcKind}/${input.npcId}`);
   return stored;
+}
+
+/**
+ * An admin's direction for one NPC, or null to clear it. Apart from upsertResolution because it
+ * is no answer to who the NPC is: no provenance outranks it, and a fresh corpus read must not
+ * clear it. Returns whether the NPC exists.
+ */
+export async function setDirection(kind: NpcRowKind, npcId: number, direction: string | null): Promise<boolean> {
+  const { rowCount } = await db().query(
+    `update "npc" set "direction" = $3, "updatedAt" = now() where "npcKind" = $1 and "npcId" = $2`,
+    [kind, npcId, direction],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/** Every NPC's direction, keyed by resolutionKey: what generation reads for each line. */
+export async function listDirections(): Promise<Map<string, string>> {
+  const { rows } = await db().query<{ npcKind: NpcRowKind; npcId: number; direction: string }>(
+    `select "npcKind", "npcId", "direction" from "npc" where "direction" is not null`,
+  );
+  return new Map(rows.map((row) => [resolutionKey(row.npcKind, row.npcId), row.direction]));
 }
 
 /**

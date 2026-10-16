@@ -190,19 +190,24 @@ export function validateRaceTags(raw: unknown): Record<string, string> {
 
   const tags: Record<string, string> = {};
   for (const [race, tag] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof tag !== "string") throw new SettingsError(`the ${race} tag must be a string`);
-    const trimmed = tag.trim();
-    if (!bareDirection(trimmed)) {
-      throw new SettingsError(`the ${race} tag is empty; remove it instead`);
-    }
-    // narration.ts splits speech from stage directions on angle brackets, so a tag carrying
-    // one would be read by the narrator rather than tagging the race it belongs to.
-    if (/[<>]/.test(trimmed)) {
-      throw new SettingsError(`the ${race} tag must not contain an angle bracket`);
-    }
-    tags[race] = storedDirection(trimmed, race);
+    tags[race] = validateDirection(tag, race);
   }
   return tags;
+}
+
+/** One direction as typed, for `key` (a race, a slot or an NPC), in its stored form. */
+export function validateDirection(tag: unknown, key: string): string {
+  if (typeof tag !== "string") throw new SettingsError(`the ${key} tag must be a string`);
+  const trimmed = tag.trim();
+  if (!bareDirection(trimmed)) {
+    throw new SettingsError(`the ${key} tag is empty; remove it instead`);
+  }
+  // narration.ts splits speech from stage directions on angle brackets, so a tag carrying
+  // one would be read by the narrator rather than tagging the speaker it belongs to.
+  if (/[<>]/.test(trimmed)) {
+    throw new SettingsError(`the ${key} tag must not contain an angle bracket`);
+  }
+  return storedDirection(trimmed, key);
 }
 
 /**

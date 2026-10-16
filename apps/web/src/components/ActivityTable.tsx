@@ -206,6 +206,10 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: `split ${str(d.npcName) ?? row.subject} into a man and a woman`, quote: null };
     case "npc.unsplit":
       return { what: `gave ${str(d.npcName) ?? row.subject} one voice again`, quote: null };
+    case "npc.direction":
+      return d.direction
+        ? { what: `set ${str(d.npcName) ?? row.subject}'s direction`, quote: str(d.direction) }
+        : { what: `cleared ${str(d.npcName) ?? row.subject}'s direction`, quote: null };
     case "npc.resolved":
       return {
         what: `set who ${str(d.npcName) ?? row.subject} is${num(d.sex) === 3 ? " as a woman" : num(d.sex) === 2 ? " as a man" : ""}`,

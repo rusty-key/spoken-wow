@@ -223,7 +223,7 @@ describe("a race with an accent tag", () => {
     if (!result.ok) return;
     const speech = calls.find((call) => call.url.includes("text-to-speech"))!;
     expect((speech.body as { text: string }).text).toBe(
-      `${LEAD_IN}[Scottish accent] Hiccup! Ho Ho!`,
+      `${LEAD_IN}[Scottish accent] Hiccup! [Scottish accent] Ho Ho!`,
     );
   });
 
@@ -236,8 +236,8 @@ describe("a race with an accent tag", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.spokenText).toBe("[Scottish accent] Hiccup! Ho Ho!");
-    expect(result.characters).toBe("[Scottish accent] Hiccup! Ho Ho!".length);
+    expect(result.spokenText).toBe("[Scottish accent] Hiccup! [Scottish accent] Ho Ho!");
+    expect(result.characters).toBe("[Scottish accent] Hiccup! [Scottish accent] Ho Ho!".length);
   });
 
   it("leaves a race with no tag exactly as it was", async () => {

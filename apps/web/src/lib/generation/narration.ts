@@ -79,10 +79,31 @@ function raceOf(voice: string): string {
  * gnome whose neutral clips eleven_v3 reads as a woman. Both rather than the slot's alone, so
  * giving one dwarf flavor a direction does not quietly drop its brogue.
  */
-export function directionFor(voice: string, tags: Record<string, string>): string | undefined {
+export function directionFor(
+  voice: string,
+  tags: Record<string, string>,
+  npc?: string,
+): string | undefined {
   const race = raceOf(voice);
-  const own = [tags[race], voice === race ? undefined : tags[voice]].filter(Boolean);
+  const own = [tags[race], voice === race ? undefined : tags[voice], npc].filter(Boolean);
   return own.length > 0 ? own.join(" ") : undefined;
+}
+
+/**
+ * The NPC direction for a file (npc.direction), after the slot's in directionFor: one NPC's
+ * accent on top of its voice's, "Pretty Boy" Duncan's pirate on a human man.
+ *
+ * Only when every NPC speaking the file has the same one. A gossip file is shared by every NPC
+ * of a voice who says the same words, and one pirate must not make that line a pirate's for
+ * all of them. `directions` is keyed as listDirections keys it, `kind:id`.
+ */
+export function npcDirection(
+  lines: { npcType: string; npcId: number }[],
+  directions: Map<string, string>,
+): string | undefined {
+  const found = new Set(lines.map((line) => directions.get(`${line.npcType}:${line.npcId}`)));
+  const [only] = found;
+  return found.size === 1 ? only : undefined;
 }
 
 /**
@@ -118,12 +139,23 @@ export function audioTags(text: string): string {
 }
 
 /**
- * The direction for a slot (see directionFor), prefixed to the words the NPC says.
+ * Where a sentence ends and the next begins: a full stop, `!` or `?`, any closing quotes or
+ * brackets, then whitespace. Not after a second dot, so "coin... [hic]" and "Adventurer...
+ * yeah" stay one sentence.
+ */
+const SENTENCE_END = /((?<!\.)[.!?]["'\u201d\u2019)\]]*)(\s+)(?=\S)/g;
+
+/**
+ * The direction for a slot (see directionFor), in front of every sentence the NPC says.
  *
  * Dwarves are the reason this exists: they are meant to have a strong Scottish brogue, and
  * an instant clone read by eleven_v3 returns something closer to RP. The model has no other
  * channel for direction - a text-to-speech request carries text, settings and a seed,
  * nothing else - so the direction has to travel inside the text.
+ *
+ * In front of every sentence, not once per line: eleven_v4 performs a direction for the first
+ * few words and then drifts back to the voice's own delivery, so a pirate was a pirate for
+ * half a sentence of a 400-character line. Every sentence pays the direction's characters again.
  *
  * Applied per stretch of speech rather than once at the front, because a line can be
  * interrupted by a stage direction that `narrator-male` reads. Tagging the whole string would
@@ -154,7 +186,7 @@ export function accentTagged(
       const own = current ? directionFor(current, raceTags) : tag;
       return DIRECTION.test(piece) || !piece.trim() || !own
         ? piece
-        : piece.replace(/^(\s*)/, `$1${own} `);
+        : piece.replace(/^(\s*)/, `$1${own} `).replace(SENTENCE_END, `$1$2${own} `);
     })
     .join("");
 }

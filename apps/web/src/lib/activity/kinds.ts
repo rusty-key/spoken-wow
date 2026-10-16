@@ -88,6 +88,7 @@ export type ActivityDetail = {
   };
   "npc.split": { npcName?: string | null };
   "npc.unsplit": { npcName?: string | null };
+  "npc.direction": { npcName?: string | null; direction?: string | null };
   "type.changed": {
     action: string;
     gender?: string | null;
