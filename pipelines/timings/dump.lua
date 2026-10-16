@@ -58,7 +58,7 @@ elseif mode == "lore" then
     }
     local env = setmetatable({}, { __index = _G })
     setfenv(chunk, env)
-    chunk("Spoken_Zones", registry)
+    chunk("Spoken_Places", registry)
     result = seen
 end
 local out = {}

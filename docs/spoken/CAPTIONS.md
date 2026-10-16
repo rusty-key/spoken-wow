@@ -87,13 +87,17 @@ highlighted instead of advancing the page early.
 
 English recordings in the quest, gossip, zone and book packs have their word times measured:
 `pipelines/timings` listens to each recording (faster-whisper, word timestamps), matches what it
-heard to the words the voice was given and writes a data file that fills the global
-`SpokenWordTimes`: one string per recording, keyed by the source that plays it and the file it
-is played from. The file is data, shipped with the voice packs and not in Spoken. The captions
-use the times for such a clip and the estimate for every other clip, every other language, a
-recording added since the times were measured, and when no file is installed. They are used only when they
-fit the words the player is shown (a quest that says the player's race in two words does not),
-and they come before a clip's own `present.timings`.
+heard to the words the voice was given and writes `word-times.json` (`export.py`). `pack_times.py`
+cuts that into each voice pack's own `Data/WordTimes.lua`, holding the times of the recordings in
+that pack and listed in its `.toc`. The package scripts do it when `WORD_TIMES` names the JSON
+(English packs only). The data file fills the global `SpokenWordTimes`: one string per
+recording, keyed by the source that plays it and the file it is played from. The times are
+data that ships with the voice packs and is not committed here or in Spoken.
+
+The captions use the times for such a clip and the estimate for every other clip, every other
+language, a recording added since the times were measured, and a pack built without them. They
+are used only when they fit the words the player is shown (a quest that says the player's race
+in two words does not), and they come before a clip's own `present.timings`.
 
 A source that knows when each word is spoken passes `clip.present.timings`: one
 start time per word, in seconds from the start of the recording, in the order

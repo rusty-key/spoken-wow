@@ -364,6 +364,12 @@ for tier in "${tiers[@]}"; do
     echo "  $hits reused, $encoded encoded, $pruned superseded entries dropped"
   fi
 
+  # The word times of English's recordings (WORD_TIMES: the word-times.json pipelines/timings/
+  # export.py wrote). A language's recordings are not the ones they were measured on.
+  if [[ -n "${WORD_TIMES:-}" ]] && english; then
+    python3 "$REPO/pipelines/timings/pack_times.py" --times "$WORD_TIMES" "$staging/$folder"
+  fi
+
   echo "zipping $folder..."
 
   (cd "$staging" && zip -r -q -X "$zip_path" "$folder" \

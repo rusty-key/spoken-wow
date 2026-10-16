@@ -15,7 +15,7 @@ import subprocess
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 CORPUS = os.path.join(REPO, "pipelines", "quests", "corpus", "corpus.json.gz")
-ZONES_DATA = os.path.join(REPO, "addons", "Spoken_Zones", "Data", "enUS")
+ZONES_DATA = os.path.join(REPO, "addons", "Spoken_Places", "Data", "enUS")
 
 # A corpus line's id says which family of file it is; follow-ups are played by the quests source.
 CORPUS_FAMILY = {"q": ("quests", "quests"), "g": ("gossip", "gossip"), "f": ("quests", "followup")}

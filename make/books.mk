@@ -139,7 +139,13 @@ package-audio: check-synced sounds lookup
 	@version=$$(sed -n 's/^## Version: //p' addons/SpokenBooksAudio/SpokenBooksAudio.toc); \
 	 zip_path="$$PWD/dist/SpokenBooksAudio-$$version.zip"; \
 	 rm -f "$$zip_path"; \
-	 (cd addons && zip -r -0 -q -X "$$zip_path" SpokenBooksAudio \
+	 root=addons; \
+	 if [ -n "$(WORD_TIMES)" ]; then \
+	   root=$$(mktemp -d); trap 'rm -rf "$$root"' EXIT; \
+	   cp -R addons/SpokenBooksAudio "$$root/"; \
+	   python3 pipelines/timings/pack_times.py --times "$(WORD_TIMES)" "$$root/SpokenBooksAudio"; \
+	 fi; \
+	 (cd "$$root" && zip -r -0 -q -X "$$zip_path" SpokenBooksAudio \
 	   -x '*.DS_Store' '*/.*'); \
 	 rm -rf dist/SpokenBooksAudio && \
 	 rsync -a --exclude '.[!.]*' addons/SpokenBooksAudio/ dist/SpokenBooksAudio/ && \

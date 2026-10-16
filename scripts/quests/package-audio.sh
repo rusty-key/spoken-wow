@@ -323,6 +323,13 @@ for pack in $PACKS; do
     --module "$module" --version "$version" --pack "$build_pack" ${title:+--module-title "$title"} \
     "${language_args[@]+"${language_args[@]}"}")
 
+  # The word times of the English recordings this pack holds, when WORD_TIMES names the
+  # word-times.json that pipelines/timings/export.py wrote. A language's recordings are not
+  # the ones they were measured on.
+  if [ -n "${WORD_TIMES:-}" ] && [ "$LANGUAGE" = enUS ]; then
+    "$PYTHON" "$REPO/pipelines/timings/pack_times.py" --times "$WORD_TIMES" "$DIST/$module"
+  fi
+
   echo "  module size: $(du -sh "$DIST/$module" | cut -f1)  (store: $(du -sh "$STORE" | cut -f1))"
 
   [ "$ZIP" = 1 ] || continue
