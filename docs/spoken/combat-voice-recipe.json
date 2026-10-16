@@ -1,0 +1,104 @@
+{
+  "status": "approved style reference",
+  "approved_take": {
+    "file": "recordings/01.wav",
+    "text": "So much for a peaceful walk.",
+    "duration_seconds": 2.04,
+    "seed": 73
+  },
+  "model": {
+    "name": "Chatterbox Nano",
+    "repository": "ResembleAI/chatterbox-nano",
+    "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
+    "package_version": "0.1.7",
+    "source_commit": "5de7a54aa4e5e2baadb0182dde554908b48b85c2"
+  },
+  "generation": {
+    "temperature": 0.5,
+    "top_p": 0.9,
+    "repetition_penalty": 1.2,
+    "seed": 73
+  },
+  "voice_reference": {
+    "file": "reference/voice.wav",
+    "source": "Blizzard native female night elf player recordings, English Classic Era",
+    "clips": [
+      {
+        "file": "reference/source-clips/NightElfFemaleHello02.ogg",
+        "seconds": 0.8504308390022676
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleHello01.ogg",
+        "seconds": 0.7575510204081632
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleHello03.ogg",
+        "seconds": 0.7938321995464852
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleHello04.ogg",
+        "seconds": 0.44553287981859413
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleThankYou01.ogg",
+        "seconds": 0.6095238095238096
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleThankYou02.ogg",
+        "seconds": 1.3960997732426303
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleThankYou03.ogg",
+        "seconds": 1.172607709750567
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleGoodbye01.ogg",
+        "seconds": 0.6681632653061225
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleGoodbye02.ogg",
+        "seconds": 1.264625850340136
+      },
+      {
+        "file": "reference/source-clips/NightElfFemaleGoodbye03.ogg",
+        "seconds": 1.1609977324263039
+      }
+    ],
+    "pause_seconds": 0.15,
+    "edge_padding_seconds": 0.08,
+    "trim_amplitude_threshold": 0.001,
+    "normalize_reference_loudness": true,
+    "reference_lufs": -27
+  },
+  "output_volume": {
+    "target_rms": 0.12552565336227417,
+    "peak_limit": 0.94,
+    "gain_rule": "min(target_rms / generated_rms, peak_limit / generated_peak)",
+    "approved_take_gain": 2.4030224185338795
+  },
+  "sha256": {
+    "recordings/01.wav": "b9f3ff460f913494244bc94d8145d382f9bef2029648b4ea56a2204ac6db271a",
+    "recordings/02.wav": "9bbb3d2c6b1ad34b511c41534ec86304d42b538d27b479ce3c7bfb3e10ec5eb9",
+    "reference/voice.wav": "377bce0e28b5f408a51e819a9476654d2f6bcdc828ecfcc44908d534731537fa",
+    "reference/source-clips/NightElfFemaleGoodbye01.ogg": "da767c25db06940fda878a226da1221a2b96b90214dc849a8220cfb208ddb0bb",
+    "reference/source-clips/NightElfFemaleGoodbye02.ogg": "aa867611f569f8a80d94c10ba275d16cecc4306fef4dc29761bebe985a17a7d0",
+    "reference/source-clips/NightElfFemaleGoodbye03.ogg": "686522ee6b3c5843aa45390dff42a47335d270ad457f8c5227aa297a16ad2d62",
+    "reference/source-clips/NightElfFemaleHello01.ogg": "633df20095921bb5efe0c35adbbb637f869cc8d9a97e139d071be41a38138d64",
+    "reference/source-clips/NightElfFemaleHello02.ogg": "0c5530d451ede133f03b11c035532621138ed9b2c2a914f053f1edd8d396ef76",
+    "reference/source-clips/NightElfFemaleHello03.ogg": "c588348d031d53e52f51b6c5033acc7d874fc65aba80f4ccbd45f38d8404d744",
+    "reference/source-clips/NightElfFemaleHello04.ogg": "ac4022d0a4a92debf71070f7782114aec48686c3a5c3cf092e1eee77372d6eed",
+    "reference/source-clips/NightElfFemaleThankYou01.ogg": "03664e7cfc438870734c4daaa11275c58e2299b237b8602effe0ca28d683cc51",
+    "reference/source-clips/NightElfFemaleThankYou02.ogg": "48cec338baad39670dabe719f903a4ceceb7ae7d2f5e590b4033e2093d9d20fe",
+    "reference/source-clips/NightElfFemaleThankYou03.ogg": "8be26937554fb6c27dc8801f951865315e21864d13aa025169959001435c4b42"
+  },
+  "artifact_directory": "pipelines/quests/audio-previews/combat-voice",
+  "pronunciation_overrides": {
+    "Elune": "e-loon"
+  },
+  "line_overrides": {
+    "02": {
+      "seed": 77,
+      "spoken_text": "e-loon, a little backup?"
+    }
+  }
+}

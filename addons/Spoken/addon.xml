@@ -8,6 +8,7 @@
     <Include file="Sources.lua"/>
     <Include file="Developer.lua"/>
     <Include file="OtherSounds.lua"/>
+    <Include file="Reactions.lua"/>
     <Include file="Strings.lua"/>
     <Include file="Locale\deDE.lua"/>
     <Include file="Locale\esES.lua"/>

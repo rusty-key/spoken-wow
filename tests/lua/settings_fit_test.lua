@@ -81,6 +81,8 @@ Z:SetupOptions()
 -- The Spoken_Developer module and its page.
 local Dev = stub.LoadDeveloper(here .. "/../../addons/Spoken_Developer/")
 Dev:SetupOptions()
+local Combat = H.LoadCombat(stub, here .. "/../../addons/Spoken_Combat/")
+Combat:SetupOptions()
 local entries = {}
 for _, category in ipairs(stub.settingsCategories) do
     if category.parent and category.name == env.L.OPT_STYLE_DIALOGUEUI then table.insert(entries, category.name) end
@@ -92,7 +94,7 @@ local pages = { { name = "General", layout = _G.SpokenOptionsPanel.layout } }
 for _, page in ipairs(env.Options.pages or {}) do
     table.insert(pages, { name = page.name, layout = page.layout })
 end
-Expect("General, the three parts' pages and the Developer page are all here", #pages, 5)
+Expect("General, the four modules and Developer pages are all here", #pages, 6)
 
 local BOX = Layout.BOX_MARGIN
 local function Label(row)

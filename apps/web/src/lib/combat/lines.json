@@ -1,0 +1,175 @@
+{
+  "keys": [
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08"
+  ],
+  "voices": [
+    {
+      "id": "human-male-player",
+      "race": "Human",
+      "sex": 2,
+      "label": "Human Male",
+      "faction": "Alliance",
+      "lines": []
+    },
+    {
+      "id": "human-female-player",
+      "race": "Human",
+      "sex": 3,
+      "label": "Human Female",
+      "faction": "Alliance",
+      "lines": []
+    },
+    {
+      "id": "dwarf-male-player",
+      "race": "Dwarf",
+      "sex": 2,
+      "label": "Dwarf Male",
+      "faction": "Alliance",
+      "lines": []
+    },
+    {
+      "id": "dwarf-female-player",
+      "race": "Dwarf",
+      "sex": 3,
+      "label": "Dwarf Female",
+      "faction": "Alliance",
+      "lines": []
+    },
+    {
+      "id": "nightelf-male-player",
+      "race": "NightElf",
+      "sex": 2,
+      "label": "Night Elf Male",
+      "faction": "Alliance",
+      "lines": []
+    },
+    {
+      "id": "nightelf-female-player",
+      "race": "NightElf",
+      "sex": 3,
+      "label": "Night Elf Female",
+      "faction": "Alliance",
+      "lines": [
+        {
+          "key": "01",
+          "text": "So much for a peaceful walk."
+        },
+        {
+          "key": "02",
+          "text": "Elune, a little backup?"
+        },
+        {
+          "key": "03",
+          "text": "You interrupted my brooding."
+        },
+        {
+          "key": "04",
+          "text": "I left my patience in Dolanaar."
+        },
+        {
+          "key": "05",
+          "text": "Another volunteer for a bad decision."
+        },
+        {
+          "key": "06",
+          "text": "Well, this escalated rather rudely."
+        },
+        {
+          "key": "07",
+          "text": "I was hoping for a quiet evening."
+        },
+        {
+          "key": "08",
+          "text": "Ten thousand years, and still no manners."
+        }
+      ]
+    },
+    {
+      "id": "gnome-male-player",
+      "race": "Gnome",
+      "sex": 2,
+      "label": "Gnome Male",
+      "faction": "Alliance",
+      "lines": []
+    },
+    {
+      "id": "gnome-female-player",
+      "race": "Gnome",
+      "sex": 3,
+      "label": "Gnome Female",
+      "faction": "Alliance",
+      "lines": []
+    },
+    {
+      "id": "orc-male-player",
+      "race": "Orc",
+      "sex": 2,
+      "label": "Orc Male",
+      "faction": "Horde",
+      "lines": []
+    },
+    {
+      "id": "orc-female-player",
+      "race": "Orc",
+      "sex": 3,
+      "label": "Orc Female",
+      "faction": "Horde",
+      "lines": []
+    },
+    {
+      "id": "undead-male-player",
+      "race": "Scourge",
+      "sex": 2,
+      "label": "Undead Male",
+      "faction": "Horde",
+      "lines": []
+    },
+    {
+      "id": "undead-female-player",
+      "race": "Scourge",
+      "sex": 3,
+      "label": "Undead Female",
+      "faction": "Horde",
+      "lines": []
+    },
+    {
+      "id": "tauren-male-player",
+      "race": "Tauren",
+      "sex": 2,
+      "label": "Tauren Male",
+      "faction": "Horde",
+      "lines": []
+    },
+    {
+      "id": "tauren-female-player",
+      "race": "Tauren",
+      "sex": 3,
+      "label": "Tauren Female",
+      "faction": "Horde",
+      "lines": []
+    },
+    {
+      "id": "troll-male-player",
+      "race": "Troll",
+      "sex": 2,
+      "label": "Troll Male",
+      "faction": "Horde",
+      "lines": []
+    },
+    {
+      "id": "troll-female-player",
+      "race": "Troll",
+      "sex": 3,
+      "label": "Troll Female",
+      "faction": "Horde",
+      "lines": []
+    }
+  ]
+}

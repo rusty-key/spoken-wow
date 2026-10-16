@@ -1,0 +1,9 @@
+## Interface: 100007, 11509, 20506, 30403, 16001
+## Title: Spoken Combat Audio
+## Notes: Character combat reactions for Spoken. Requires the Spoken Combat module.
+## Version: 0.0.1
+## Author: rusty
+## IconTexture: Interface\AddOns\Spoken\icon.tga
+## X-License: Addon code MIT. Audio supplied separately.
+
+Data/Sounds.lua

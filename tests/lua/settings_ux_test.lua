@@ -416,7 +416,7 @@ env.Addon.db.global.Welcomed = nil
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(2.1)
 Expect("the welcome opens at the first login after it ships", Welcome.frame and Welcome.frame:IsShown(), true)
-Expect("it offers the parts as a list, as Home does", #Welcome.modules, 3)
+Expect("it offers the parts as a list, as Home does", #Welcome.modules, 4)
 Expect("...under its header, the paragraph saying what the window is for",
     Welcome.layout.intro.text ~= nil and Welcome.layout.intro.text.text, L.WELCOME_INTRO)
 Expect("...which the settings pages, like the game's own, do without", home.intro.text, nil)

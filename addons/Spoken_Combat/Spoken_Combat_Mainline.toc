@@ -1,0 +1,17 @@
+## Interface: 100007, 16001
+## Title: Spoken Combat
+## Notes: Short character reactions in combat, through Spoken.
+## Version: 3.4.0
+## Author: rusty
+## Dependencies: Spoken
+## OptionalDeps: SpokenCombatAudio
+## SavedVariablesPerCharacter: SpokenCombatCharacter
+## IconTexture: Interface\AddOns\Spoken\icon.tga
+## Group: Spoken
+## X-License: MIT
+
+Core.lua
+Voices.lua
+Audio.lua
+UI/Options.lua
+Events.lua

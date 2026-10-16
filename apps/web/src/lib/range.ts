@@ -6,8 +6,8 @@
  * whole-file response works in Chrome and silently fails in Safari.
  */
 
-/** A quests file as the addon names it: {quests,gossip,followup}/<name>.mp3, nothing else. */
-const SAFE_PATH = /^(quests|gossip|followup)\/[^/\\]+\.mp3$/;
+/** A file in the quests archive, including the player's combat reactions. */
+const SAFE_PATH = /^(quests|gossip|followup|combat)\/[^/\\]+\.mp3$/;
 
 export function isSafeAudioPath(rel: string): boolean {
   return SAFE_PATH.test(rel) && !rel.includes("..");

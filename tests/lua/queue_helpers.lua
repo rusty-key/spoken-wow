@@ -16,6 +16,17 @@ function M.Fresh(stub, spokenDir)
     return env, quests, zones
 end
 
+function M.LoadCombat(stub, addonDirectory)
+    _G.SpokenCombatCharacter = nil
+    _G.SpokenCombatAudioPacks = {}
+    local combat = {}
+    for _, file in ipairs({ "Core", "Voices", "Audio", "UI/Options", "Events" }) do
+        assert(loadfile(addonDirectory .. file .. ".lua"))("Spoken_Combat", combat)
+    end
+    stub.FireEvent("ADDON_LOADED", "Spoken_Combat")
+    return combat
+end
+
 local n = 0
 --- A clip with a unique key unless one is given. `length` defaults to 1.
 function M.Clip(fields)

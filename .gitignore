@@ -10,6 +10,8 @@ RELEASE
 # Makefiles write here from the repo root; `make quests-package` and
 # `make zones-package` do not yet partition it.
 /dist/
+/addons/Spoken/Sounds/Combat/
+/addons/SpokenCombatAudio/Sounds/
 generated
 
 

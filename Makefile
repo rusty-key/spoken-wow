@@ -58,6 +58,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/easter_egg_test.lua
 	@$(LUA) tests/lua/sound_utils_test.lua
 	@$(LUA) tests/lua/other_sounds_test.lua
+	@$(LUA) tests/lua/combat_voice_test.lua
 	@$(LUA) tests/lua/parts_test.lua
 	@$(LUA) tests/lua/settings_ux_test.lua
 	@$(LUA) tests/lua/settings_legacy_test.lua
@@ -140,6 +141,7 @@ contribute-fixtures:
 test: test-player ## Everything: both webs, the Python pipeline, the addons
 	@pnpm -r test
 	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs
+	@python3 -m unittest discover -s scripts/spoken -p 'test_*.py'
 	@[ -x pipelines/quests/.venv/bin/python ] || { \
 	  echo "No venv at pipelines/quests/.venv -- see the comment above 'test' in the Makefile"; \
 	  exit 1; }

@@ -236,7 +236,10 @@ def test_spoken_ships_with_its_modules_for_blizzard_clients(player_built):
     # No tombstone for the modules' old folders, which belong to the retired projects: two
     # projects shipping one folder is what the rename exists to stop.
     assert {entry.split("/", 1)[0] for entry in names} == {PLAYER, "SpokenContributions", TOMBSTONE,
-                                                          "Spoken_Quests", "Spoken_Books", "Spoken_Zones"}
+                                                          "Spoken_Quests", "Spoken_Books", "Spoken_Zones", "Spoken_Combat"}
+    assert "Spoken_Combat/Audio.lua" in files
+    assert "Spoken_Combat/CombatVoiceData.lua" not in files
+    assert not any(name.startswith("Spoken/Sounds/Combat/") for name in names)
     assert [name for name in names if name.startswith("SpokenContributions/") and not name.endswith("/")] \
         == ["SpokenContributions/SpokenContributions.toc"]
     # Every .toc name the old player's folder had on these clients, so an unzip over it leaves

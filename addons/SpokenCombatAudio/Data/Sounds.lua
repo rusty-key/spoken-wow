@@ -1,0 +1,1 @@
+SpokenCombatAudioPacks = SpokenCombatAudioPacks or {}

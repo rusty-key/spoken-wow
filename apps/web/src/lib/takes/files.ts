@@ -10,6 +10,7 @@
 import "server-only";
 
 import { fileIndex } from "@/lib/audio";
+import { isCombatFile } from "@/lib/combat/catalogue";
 import { addressableFiles as booksFiles } from "@/lib/books/audio";
 
 import { addressableFiles as zonesFiles } from "@/lib/zones/audio";
@@ -23,6 +24,7 @@ import type { Source } from "@/lib/sections";
  */
 export async function isAddressableFile(source: Source, file: string, lang: Lang = BASE_LANG): Promise<boolean> {
   if (source === "quests") {
+    if (lang === BASE_LANG && isCombatFile(file)) return true;
     return (await fileIndex()).has(file) || (lang !== BASE_LANG && (await fileIndex(lang)).has(file));
   }
   const files = source === "zones" ? await zonesFiles() : await booksFiles();

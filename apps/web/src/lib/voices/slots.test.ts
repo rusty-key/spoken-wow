@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 
 import { isVoiceSlot, slots } from "./slots";
 import { loadRoster } from "./roster-store";
+import { COMBAT_VOICES } from "@/lib/combat/catalogue";
 
 describe("slots", () => {
   it("lists the roster", async () => {
@@ -31,9 +32,12 @@ describe("slots", () => {
     expect((await slots()).map((s) => s.name)).not.toContain("skybourneelf-female");
   });
 
-  it("is exactly the roster's voices", async () => {
+  it("includes the roster and all player combat voices", async () => {
     const names = (await slots()).map((s) => s.name);
-    expect([...names].sort()).toEqual([...(await loadRoster()).voiceNames].sort());
+    expect([...names].sort()).toEqual([...new Set([...(await loadRoster()).voiceNames, ...COMBAT_VOICES.map((voice) => voice.id)])].sort());
+    expect((await slots()).find((slot) => slot.name === "nightelf-female-player")).toEqual({
+      name: "nightelf-female-player", lineCount: 8, npcCount: 0,
+    });
   });
 
   it("orders alphabetically", async () => {

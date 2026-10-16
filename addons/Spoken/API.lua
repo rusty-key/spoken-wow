@@ -18,7 +18,7 @@ end
 -- Sources: how a feature addon joins the player. See Sources.lua for the info shape.
 --------------------------------------------------------------------------------
 
----@param key string  "quests" | "zones" | "books"
+---@param key string  "quests" | "zones" | "books" | "combat"
 ---@param info SpokenSourceInfo
 ---@return table source  Carries Enqueue, Continue, PlayNow, Remove, StopAll, AddGate, RecheckGates,
 ---                      Retry, CanPlay, SetQueueLimit and SetInterClipGap.
@@ -185,7 +185,7 @@ function Spoken:RefreshPlayer()
 end
 
 --- A feature addon's settings page, shown under Spoken's own in the game's settings as `name`,
---- listed in `order` (Quests 1, Books 2, Zones 3). Pass the page's SpokenLayout and its
+--- listed in `order` (Quests 1, Books 2, Zones 3, Combat 4). Pass the page's SpokenLayout and its
 --- scroller to make its rows searchable from Home. Returns a table whose `category` is
 --- filled in once the page is registered, for Settings.OpenToCategory; nil where the client
 --- cannot nest pages, in which case the addon registers a top-level page as before.
@@ -465,7 +465,28 @@ end
 
 --- Everything, every source, and the paused flag with it.
 function Spoken:StopAll()
+    Reactions:Stop()
     SoundQueue:RemoveAllSoundsFromQueue()
+end
+
+--- Reactions stay outside the narrator and yield immediately to queued speech.
+--- Returns false with unsupported, off, busy, missing, or an audio setting explanation.
+function Spoken:PlayReaction(source, clip)
+    return Reactions:Play(source, clip)
+end
+
+function Spoken:StopReaction(source)
+    Reactions:Stop(source)
+end
+
+function Spoken:IsReactionPlaying()
+    return Reactions.clip ~= nil
+end
+
+function Spoken:RegisterCommand(name, handler)
+    Addon.commands = Addon.commands or {}
+    assert(not Addon.commands[name], "Spoken: command already registered: " .. name)
+    Addon.commands[name] = handler
 end
 
 --- Switch a channel off on a source's behalf, e.g. Dialog while a quest line speaks.

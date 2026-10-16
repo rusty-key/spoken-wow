@@ -37,6 +37,9 @@ jobs:
               - Makefile
               - addons/**
               - tests/**
+              - scripts/spoken/**
+              - apps/web/src/lib/combat/lines.json
+              - apps/web/src/lib/combat/audio-pack.json
             quests:
               - .github/workflows/ci.yaml
               - pipelines/quests/**
@@ -83,6 +86,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y luajit
       # The stub client is Lua 5.1, which is what 1.12 through retail all run.
       - run: make test-player
+      - run: python3 -m unittest discover -s scripts/spoken -p 'test_*.py'
 
   quests-python:
     name: Quests pipeline (Python)

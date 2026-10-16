@@ -18,6 +18,7 @@ import { listReferences } from "@/lib/voices/references";
 import { listSamples, type Sample } from "@/lib/voices/samples";
 import { slots } from "@/lib/voices/slots";
 import { Contained } from "@/components/Width";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Voices · Spoken" };
 
@@ -90,6 +91,10 @@ export default async function Page({
     <main className="pt-6 pb-36">
       <Contained>
         <h1 className="mb-4 text-xl font-semibold">Voices</h1>
+        {lang === "enUS" && can(await viewerOf(session), "regenerate", lang) &&
+          <p className="mb-4 text-sm"><Link href="/enUS/combat" className="underline underline-offset-2">
+            Record and test the character combat voice
+          </Link></p>}
         <VoicesTabs
           initialTab={isProvider(tab) ? tab : preference.provider}
           active={preference.provider}

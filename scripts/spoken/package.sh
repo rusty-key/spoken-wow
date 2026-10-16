@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds Spoken's zip for Blizzard's clients: Spoken itself and its modules, Quests, Books
-# and Zones, in one download.
+# Builds Spoken's zip for Blizzard's clients: Spoken itself and its modules, Quests, Books,
+# Zones and Combat, in one download.
 #
 #   ./scripts/spoken/package.sh                 # dist/Spoken-<version>.zip
 #   ALLOW_DIRTY=1 ./scripts/spoken/package.sh   # build from an uncommitted tree
@@ -12,7 +12,7 @@
 # There are no legacy-client zips of Spoken: those clients have no addon manager, so the quests
 # addon's 1.12/2.4.3/3.3.5 zips carry Spoken inside them (scripts/quests/package.sh).
 #
-# The modules' folders are Spoken_Quests, Spoken_Books and Spoken_Zones. Their old names,
+# The modules' folders are Spoken_Quests, Spoken_Books, Spoken_Zones and Spoken_Combat. The old names,
 # SpokenQuests and the rest, belong to the retired CurseForge projects, and this zip carries no
 # tombstone under them: two projects shipping one folder is what the rename exists to stop. The
 # retired projects' last releases carry those (scripts/spoken/package-retired.sh).
@@ -38,14 +38,14 @@ version="$(sed -n 's/^## Version:[[:space:]]*//p' "$TOC" | head -1 | tr -d '\r')
 [ -n "$version" ] || { echo "error: no '## Version:' line in $TOC" >&2; exit 1; }
 
 if [ -z "${ALLOW_DIRTY:-}" ] && git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
-  if [ -n "$(git -C "$REPO" status --porcelain -- "addons/$NAME" "addons/$STORE" "addons/SpokenPlayer")" ]; then
+  if [ -n "$(git -C "$REPO" status --porcelain -- "addons/$NAME" "addons/$STORE" "addons/SpokenPlayer" "addons/Spoken_Combat")" ]; then
     echo "error: addons/$NAME/ has uncommitted changes." >&2
     echo "       Commit them, or re-run with ALLOW_DIRTY=1 to package anyway." >&2
     exit 1
   fi
 fi
 
-# Every .toc variant carries one version, and Environment.lua's literal agrees with it.
+# A mismatched version makes addon managers report a partial update.
 for toc in "$SRC"/*.toc; do
   v="$(sed -n 's/^## Version:[[:space:]]*//p' "$toc" | head -1 | tr -d '\r')"
   [ "$v" = "$version" ] || { echo "error: $(basename "$toc") says $v, $NAME.toc says $version" >&2; exit 1; }
@@ -62,13 +62,18 @@ for toc in "$SRC"/*.toc; do
   done < "$toc"
 done
 
+if [ -n "${COMBAT_RECORDINGS_ZIP:-}" ]; then
+  echo "error: install SpokenCombatAudio separately; recording overlays are no longer supported" >&2
+  exit 1
+fi
+
 mkdir -p "$DIST"
 zip_path="$DIST/$NAME-$version.zip"
 rm -f "$zip_path"
 staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 mkdir -p "$staging/$NAME"
-(cd "$SRC" && tar -cf - --exclude '.DS_Store' --exclude '*.bak' --exclude '*.orig' .) | (cd "$staging/$NAME" && tar -xf -)
+(cd "$SRC" && tar -cf - --exclude '.DS_Store' --exclude '*.bak' --exclude '*.orig' --exclude './Sounds/Combat' .) | (cd "$staging/$NAME" && tar -xf -)
 mkdir -p "$staging/$STORE"
 cp "$STORE_SRC/$STORE.toc" "$staging/$STORE/"
 store_version="$(sed -n 's/^## Version:[[:space:]]*//p' "$STORE_SRC/$STORE.toc" | head -1 | tr -d '\r')"
@@ -117,5 +122,18 @@ for module in Spoken_Quests Spoken_Books Spoken_Zones; do
   unzip -q "$module_zip" -d "$staging"
 done
 
+# Combat uses the player's libraries; its recordings ship as a separate addon.
+combat_src="$REPO/addons/Spoken_Combat"
+for toc in "$combat_src"/*.toc; do
+  v="$(sed -n 's/^## Version:[[:space:]]*//p' "$toc" | head -1 | tr -d '\r')"
+  [ "$v" = "$version" ] || { echo "error: $(basename "$toc") version differs from Spoken" >&2; exit 1; }
+  while IFS= read -r line; do
+    case "$line" in \#*|"") continue;; esac
+    f="${line//\\//}"; f="${f%"${f##*[![:space:]]}"}"
+    [ -f "$combat_src/$f" ] || { echo "error: $(basename "$toc") lists missing $f" >&2; exit 1; }
+  done < "$toc"
+done
+cp -R "$combat_src" "$staging/Spoken_Combat"
+folders+=(Spoken_Combat)
 (cd "$staging" && zip -r -q -X "$zip_path" "${folders[@]}" -x '*.DS_Store' '*/.git/*' '*.bak' '*.orig' "${excludes[@]}")
 echo "built $(basename "$zip_path")   folders: ${folders[*]}   files: $(unzip -Z1 "$zip_path" | grep -cv '/$')   size: $(du -h "$zip_path" | cut -f1)"

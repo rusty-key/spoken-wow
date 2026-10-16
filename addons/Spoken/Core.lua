@@ -358,9 +358,13 @@ function Addon:Enable()
         if command == "play" or command == "pause" or command == "" then
             SoundQueue:TogglePauseQueue()
         elseif command == "stop" then
+            Reactions:Stop()
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then
             SoundQueue:Skip()
+        elseif self.commands and self.commands[string.match(command, "^(%S+)")] then
+            local name, rest = string.match(command, "^(%S+)%s*(.*)$")
+            self.commands[name](rest)
         elseif command == "transcript" then
             Transcript:SetEnabled(not Addon.db.profile.Transcript.Enabled)
         elseif command == "transcript on" then

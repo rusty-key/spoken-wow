@@ -1,23 +1,19 @@
 /**
  * Which voices this project needs, and what a valid voice name is.
  *
- * The set is the roster (roster-store.ts), so a voice exists here -- and can be given clips and
- * cloned -- before the first line for it is accepted. The corpus only counts what each one
- * carries. The names are the ones tts_cli/voices.py matches on: `race-gender-flavor`, and
- * nothing else is usable, because a stock library voice's name cannot express that mapping.
- *
- * Being a closed set also makes it a whitelist, which is what keeps a slot name safe to use as
- * a path segment. Same reasoning as isSafeAudioPath in range.ts.
+ * Roster and player catalogue membership keep slot names safe to use as path segments.
+ * A slot can receive references before any dialogue is recorded for it.
  */
 import { corpus } from "@/lib/quests/catalogue";
 import { hasNarration, NARRATOR_VOICE } from "@/lib/generation/narration";
+import { COMBAT_VOICES } from "@/lib/combat/catalogue";
 
 import { loadRoster } from "./roster-store";
 
 export type VoiceSlot = {
   /** e.g. "orc-male-shady" — the ElevenLabs voice name this project resolves by. */
   name: string;
-  /** Corpus lines this voice would speak. */
+  /** Quest and combat lines this voice would speak. */
   lineCount: number;
   /** Distinct NPCs using it, which is the better measure of how much it carries. */
   npcCount: number;
@@ -47,7 +43,9 @@ export async function voiceSlots(): Promise<VoiceSlot[]> {
     if (line.generatable) count(line.voice, line.npcId);
   }
 
-  return (await loadRoster()).voiceNames.map((name) => ({
+  for (const voice of COMBAT_VOICES) lines.set(voice.id, (lines.get(voice.id) ?? 0) + voice.lines.length);
+  const names = new Set([...(await loadRoster()).voiceNames, ...COMBAT_VOICES.map((voice) => voice.id)]);
+  return [...names].map((name) => ({
     name,
     lineCount: lines.get(name) ?? 0,
     npcCount: npcs.get(name)?.size ?? 0,
@@ -81,13 +79,9 @@ export async function slots(): Promise<VoiceSlot[]> {
  * filesystem or ElevenLabs. Membership of a fixed set, not pattern matching: `../` and an
  * absolute path fail for the same reason `orc-mail` does.
  *
- * Asked of the roster directly rather than of slots(): the names are the same, and slots()
- * costs a corpus stamp query per call, which /voices paid once per slot and once per voice
- * in the ElevenLabs account, in series.
+ * Membership avoids the corpus query needed to count lines for slots().
  */
 export async function isVoiceSlot(name: string): Promise<boolean> {
-  // The roster alone, not isVoice: a model slot (voices.ts isModelVoice) names the voice some
-  // lines are in, but nothing may be cloned, cut or uploaded for one until which voice each
-  // model gets has been decided.
-  return (await loadRoster()).voiceNames.includes(name);
+  // Unassigned NPC model voices cannot receive references until their voices are decided.
+  return COMBAT_VOICES.some((voice) => voice.id === name) || (await loadRoster()).voiceNames.includes(name);
 }

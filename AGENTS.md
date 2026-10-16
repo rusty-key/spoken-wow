@@ -6,10 +6,11 @@ Repo-wide rules. Each section also has its own file, which applies on top of thi
 ## Layout
 
 - `addons/`: the shipped Lua.
-  - `Spoken` plays every line. `Spoken_Quests`, `Spoken_Zones` and `Spoken_Books` are its
-    modules, and `SpokenContributions` holds what players upload at /contribute. All five
+  - `Spoken` plays every line. `Spoken_Quests`, `Spoken_Zones`, `Spoken_Books` and
+    `Spoken_Combat` are its modules, and `SpokenContributions` holds what players upload at
+    /contribute. All six
     ship in one zip, `Spoken-<v>.zip` (`scripts/spoken/package.sh`).
-  - `SpokenZonesAudio` and `SpokenBooksAudio` are sound packs. The quests packs have no folder
+  - `SpokenZonesAudio`, `SpokenBooksAudio` and `SpokenCombatAudio` are sound packs. The quests packs have no folder
     here; they are built into `pipelines/quests/audio/`, which is gitignored.
   - `SpokenPlayer`, `SpokenQuests`, `SpokenZones` and `SpokenBooks` are tombstones: a `.toc`
     and no Lua, so an update replaces an old install with a folder that never loads. Never

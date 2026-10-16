@@ -7,9 +7,10 @@ describe("path safety", () => {
     expect(isSafeAudioPath("quests/123-complete.mp3")).toBe(true);
     expect(isSafeAudioPath("gossip/m-abc123.mp3")).toBe(true);
     expect(isSafeAudioPath("followup/f-4377-dwarf-male-standard.mp3")).toBe(true);
+    expect(isSafeAudioPath("combat/nightelf-female-player-01.mp3")).toBe(true);
   });
 
-  it("rejects traversal and anything outside the two subfolders", () => {
+  it("rejects traversal and anything outside the audio subfolders", () => {
     // audio/ lives outside the web root; this route must not become a file-read primitive.
     for (const bad of [
       "../../etc/passwd",
@@ -18,6 +19,9 @@ describe("path safety", () => {
       "quests/sub/dir.mp3",
       "corpus/corpus.json.gz",
       "quests/notes.txt",
+      "combat/../quests/1-accept.mp3",
+      "combat/nested/file.mp3",
+      "combat\\nightelf-female-player-01.mp3",
     ]) {
       expect(isSafeAudioPath(bad), bad).toBe(false);
     }

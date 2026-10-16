@@ -59,6 +59,8 @@ local PARTS = {
         icon = [[Interface\Icons\INV_Misc_Book_09]], order = 2 },
     { key = "zones", label = L.OPT_PART_ZONES, text = L.OPT_PART_ZONES_TEXT, tip = L.OPT_PART_ZONES_TIP,
         icon = [[Interface\Icons\INV_Misc_Map02]], order = 3 },
+    { key = "combat", label = L.OPT_PART_COMBAT, text = L.OPT_PART_COMBAT_TEXT, tip = L.OPT_PART_COMBAT_TIP,
+        icon = [[Interface\Icons\Ability_DualWield]], order = 4 },
 }
 
 -- Sketches of the ways of showing a line, in flat colour, for their tiles: a portrait in
