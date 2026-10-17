@@ -97,7 +97,7 @@ function SpokenZones:SetupOptions()
 	layout:Indent()
 	local smaller = layout:Checkbox(L.OPT_AUTOPLAY_SUB, nil,
 		Get("autoplaySubzones"), Set("autoplaySubzones"))
-	local before = layout:Checkbox(L.OPT_AUTOPLAY_EXPLORED, L.OPT_AUTOPLAY_EXPLORED_TIP,
+	local before = layout:Checkbox(L.OPT_AUTOPLAY_EXPLORED, nil,
 		Get("autoplayExplored"), Set("autoplayExplored"))
 	for _, row in ipairs({ smaller, before }) do
 		layout:Requires(row, voiced, L.REASON_VOICE)
@@ -134,7 +134,7 @@ function SpokenZones:SetupOptions()
 	-- Auto stores no language at all, so it keeps following the client: switch the game to French
 	-- and the text is French. Every other entry pins its language.
 	local AUTO = {}
-	local langMenu = layout:Dropdown(L.OPT_LANGUAGE, L.OPT_LANGUAGE_TIP,
+	local langMenu = layout:Dropdown(L.OPT_LANGUAGE, nil,
 		function()
 			local values = { AUTO }
 			for _, locale in ipairs(SpokenZones:GetSelectableLanguages()) do

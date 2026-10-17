@@ -780,7 +780,7 @@ local function Build(canvas)
         function() return audio().CueBetweenLines end,
         function(v) audio().CueBetweenLines = v end)
     if BackgroundSound:IsAvailable() then
-        layout:Checkbox(L.OPT_BACKGROUND_SOUND, L.OPT_BACKGROUND_SOUND_TIP,
+        layout:Checkbox(L.OPT_BACKGROUND_SOUND, nil,
             function() return audio().KeepTalkingInBackground end,
             function(v) audio().KeepTalkingInBackground = v end,
             function() BackgroundSound:Sync() end)
@@ -839,7 +839,7 @@ local function Build(canvas)
             end, nil, true)
             -- The opt-out the first Contribute click promises. Independent of hiding the
             -- buttons: a player who collects has no use for them, and hiding them must not stop it.
-            layout:Checkbox(L.OPT_GATHER, L.OPT_GATHER_TIP,
+            layout:Checkbox(L.OPT_GATHER, nil,
                 function() return Gather:IsEnabled() end,
                 function(v)
                     -- Choosing here is an answer to the first-click question too.

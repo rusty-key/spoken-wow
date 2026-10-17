@@ -67,7 +67,7 @@ function GossipSettingsPanel:Setup()
         refresh,
         function(name) return GOSSIP_LABELS[name] or name end)
     layout:Requires(greetings, AutoplayOn, L.REASON_AUTOPLAY_ON_QUESTS)
-    layout:Checkbox(L.OPT_OG_THRALL, L.OPT_OG_THRALL_TIP,
+    layout:Checkbox(L.OPT_OG_THRALL, nil,
         function() return audio().OGThrall end,
         function(value) audio().OGThrall = value end)
 

@@ -90,7 +90,6 @@ local GeneralTab =
                     order = 8,
                     width = 2,
                     name = L.OPT_OG_THRALL,
-                    desc = L.OPT_OG_THRALL_TIP,
                     get = function(info) return Addon.db.profile.Audio.OGThrall end,
                     set = function(info, value)
                         Addon.db.profile.Audio.OGThrall = value

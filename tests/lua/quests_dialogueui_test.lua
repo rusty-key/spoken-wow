@@ -871,14 +871,6 @@ for _, style in ipairs({ "subtitle", "minimal", "classic", "dialogueui" }) do
     layout:Refresh()
     Expect("...and is with the " .. style .. " style", showPlayer:IsShown(), true)
 end
--- Show Words, Highlight Words and Type Words Out also set how DialogueUI's quest text is marked:
--- Mark Words in DialogueUI says so, once, rather than each of them.
-local markTip
-for _, entry in ipairs(layout.entries) do
-    if entry.label == VO.L.OPT_DUI_CAPTIONS then markTip = entry.tooltip end
-end
-Expect("Mark Words in DialogueUI's tooltip points to the Words section", markTip ~= nil
-    and string.find(markTip, "as set under Words", 1, true) ~= nil, true)
 chosen = "dialogueui"
 layout:Refresh()
 Expect("...live while DialogueUI is loaded", captions and captions.layoutReason, nil)

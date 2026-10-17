@@ -453,9 +453,10 @@ Expect("search finds a setting by its name", found[1] and found[1].entry.label, 
 Expect("...on the page it is on", found[1] and found[1].page.name, L.OPT_HOME_TITLE)
 found = Search:Find("automatically")
 Expect("search reaches the pages under Spoken too", found[1] and found[1].page.name, "Quests")
-Expect("a word from a tooltip is enough", Search:Find("finish")[1] and Search:Find("finish")[1].entry.label,
-    "NPC Voice Before Reading")
-Expect("every word must match", #Search:Find("subtitle finish"), 0)
+-- A word that lives only in a tooltip still reaches the rows it explains: the links' "address".
+local viaTooltip = Labels(Search:Find("address"))
+Expect("a word from a tooltip is enough", viaTooltip["GitHub"] and viaTooltip["Wago"], true)
+Expect("every word must match", #Search:Find("subtitle address"), 0)
 Expect("case and spacing do not matter", Search:Find("  SUBTITLE   size ")[1].entry.label, "Subtitle Size")
 local function Hit(query)
     for _, result in ipairs(Search:Find(query)) do

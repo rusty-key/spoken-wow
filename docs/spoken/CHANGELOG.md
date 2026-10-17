@@ -77,6 +77,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   game's other sounds too, and puts your own value back once the last line ends, after a reload or
   at the next login. A change you make to that setting meanwhile is kept. Off by default.
   *([Nucabe](https://github.com/Nucabe))*
+- Seven settings rows no longer carry a line of description under the name: Text Language, Include
+  Places Found Before, Keep Reading in Background, Collect Missing Lines, Original Thrall Speech, Mark
+  Words in DialogueUI and NPC Voice Before Reading. *([anon1231823](https://github.com/anon1231823))*
 
 ### Battlegrounds
 
