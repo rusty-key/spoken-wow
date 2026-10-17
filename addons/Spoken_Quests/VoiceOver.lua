@@ -382,6 +382,10 @@ local defaults = {
             -- the Play button on the window is pressed (UI/DialogPlayButton.lua) or
             -- /spq read is typed. GossipFrequency then has nothing to decide.
             Autoplay = true,
+            -- Off, does nothing. On, will play quest description audio when the player
+            -- enters a quest area (blue blobs on the minimap) and when they accomplish
+            -- an objective of the quest. Only triggers once per quest per session.
+            QuestingAutoplay = false,
             OGThrall = false,
             -- On, an automatic read starts when the window closes instead of when it opens.
             ReadAfterClose = false,

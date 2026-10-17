@@ -31,6 +31,7 @@
     <Include file="VoiceOver.lua"/>
     <Include file="FollowupLines.lua"/>
     <Include file="Followup.lua"/>
+    <Include file="QuestingTriggers.lua"/>
 
     <Include file="Compatibility.lua"/>
 </Ui>

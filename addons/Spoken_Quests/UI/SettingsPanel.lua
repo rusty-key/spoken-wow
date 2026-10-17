@@ -61,6 +61,10 @@ function SettingsPanel:Setup()
         function(value) audio().FollowupLines = value end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Checkbox(L.OPT_PANEL_QUEST_PLAY,
+        L.OPT_PANEL_QUEST_PLAY_TIP,
+        function() return Addon.db.profile.Audio.QuestingAutoplay end,
+        function(value) Addon.db.profile.Audio.QuestingAutoplay = value end)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end)
