@@ -171,6 +171,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - Names and tooltips were read again in every language: a part or control has one name wherever it appears,
   tooltips that still described old behaviour say what the control does now, and the voice packs are called
   voice packs in chat and in the missing-pack messages. *([Nucabe](https://github.com/Nucabe))*
+- A voice line whose word times were measured lights one word at a time in every narrator. Any other
+  line keeps the estimate and its two-word highlight, and the subtitles now light the same two words
+  the windows do. The times come with the English voice packs. *([Nucabe](https://github.com/Nucabe))*
 
 ### Battlegrounds
 
