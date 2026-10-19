@@ -1792,6 +1792,17 @@ inset. The objective icons are how that is detected: they are pooled beside the 
 than parented to them, so the row's own icon is the 20-pixel button carrying the row's quest ID
 that is not the play button.
 
+Both logs also mark a quest a voice pack reads with the client's gossip speech bubble and a
+tooltip saying so. In the old log it follows the title and its tracking check
+(`tests/lua/quest_log_mark_test.lua`). The map-attached log's title wraps, so its last word has
+no fixed place, and the mark goes to the row's right end instead, left of the tracking checkbox
+or of the play button when "Quest objectives" has put it there (`quest_overlay_test.lua`).
+"Reads" means any of its three lines, not only the offer the Play button plays, so a quest with
+only its turn-in recorded is marked beside a greyed Play. The same `DataModules:PrepareSound`
+answers it that the quest window asks, so Mock Missing Voice Over clears the marks too. A click
+on the mark is a click on its row. Mark Voiced Quests on the Quests page (and in the `/spq`
+options window, for the legacy clients) turns it off.
+
 A quest-log play button has no NPC to ask who is speaking. The dialog names its speaker with
 `UnitName("questnpc")` in the client's own language; the log looks the giver up in the pack
 (`NPCIDLookupByQuestID` and its object and item twins) and names them from

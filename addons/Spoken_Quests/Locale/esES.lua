@@ -51,6 +51,9 @@ L.OPT_CMD_OPTIONS_DESC = "Abre la página de ajustes de este módulo"
 L.OPT_PANEL_AUTOPLAY = "Leer automáticamente"
 L.OPT_PANEL_STOP_ON_CLOSE = "Detener al cerrar la ventana"
 L.OPT_PANEL_READ_AFTER_CLOSE = "Leer al cerrar"
+L.OPT_SECTION_QUEST_LOG = "Registro de misiones"
+L.OPT_PANEL_VOICED_MARK = "Marcar misiones con voz"
+L.OPT_PANEL_VOICED_MARK_TIP = "Muestra una marca junto a cada misión del registro de misiones que un paquete de voces lee en voz alta."
 L.OPT_SECTION_TRACKER = "Seguimiento de objetivos"
 L.OPT_TRACKER_PLAY = "Mostrar botón Reproducir"
 L.QUEUE_HELD_GREETING = "Esperando a que el PNJ termine de hablar."
@@ -124,6 +127,7 @@ L.OPT_PACK_INCLUDED = "Incluido en «Todas las misiones»"
 -- Quest window buttons
 L.OPT_LISTEN = "Escuchar"
 L.OPT_PLAY_TIP = "Escucha esta misión leída en voz alta."
+L.OPT_VOICED_MARK_TIP = "Un paquete de voces lee esta misión en voz alta."
 
 -- Fixing a problem
 L.OPT_REPORT_PROBLEM = "Informar de un problema"

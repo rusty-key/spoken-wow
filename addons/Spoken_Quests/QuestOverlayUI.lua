@@ -12,7 +12,14 @@ QuestOverlayUI = {
     questContributeButtons = {},
     ---@type QuestPlayButton[]
     displayedButtons = {},
+    --- The voiced marks, one per title row of the log, keyed by the row.
+    ---@type table<Frame, Button>
+    voicedMarks = {},
 }
+
+-- The client's speech bubble, which every client has drawn in its gossip frame since 1.12.
+local VOICED_MARK_TEXTURE = [[Interface\GossipFrame\GossipGossipIcon]]
+local VOICED_MARK_SIZE = 12
 
 --- The frame a play button is created under, before `UpdatePlayButton` reparents it to the
 --- row it marks. Overridden where the quest log is not the named `QuestLogFrame` - the
@@ -279,7 +286,74 @@ function QuestOverlayUI:UpdatePlayButton(soundTitle, questID, questLogTitleFrame
     self:BindPlayButton(playButton, questID, soundTitle)
 end
 
+--- Whether a voice pack reads any of the quest's lines. `accepted` is the accept line's answer,
+--- which the caller has already asked for its Play button.
+function QuestOverlayUI:IsVoiced(questID, accepted)
+    if accepted then
+        return true
+    end
+    for _, event in ipairs({ Enums.SoundEvent.QuestProgress, Enums.SoundEvent.QuestComplete }) do
+        if DataModules:PrepareSound({ event = event, questID = questID }) then
+            return true
+        end
+    end
+    return false
+end
+
+--- The voiced mark for a title row of the log, made the first time the row needs one.
+---@return Button
+function QuestOverlayUI:VoicedMark(questLogTitleFrame)
+    local mark = self.voicedMarks[questLogTitleFrame]
+    if mark then
+        return mark
+    end
+    mark = Utils:CreateDetachedFrame("Button", nil, self:GetPlayButtonParent())
+    mark:SetWidth(VOICED_MARK_SIZE)
+    mark:SetHeight(VOICED_MARK_SIZE)
+    mark:SetNormalTexture(VOICED_MARK_TEXTURE)
+    mark:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L.OPT_VOICED_MARK_TIP, 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    mark:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    -- It sits on the row's title, so a click on it selects the quest as a click beside it would.
+    mark:SetScript("OnClick", function()
+        questLogTitleFrame:Click()
+    end)
+    self.voicedMarks[questLogTitleFrame] = mark
+    return mark
+end
+
+--- After the title and its tracking check, where the check is shown.
+function QuestOverlayUI:PlaceVoicedMark(questLogTitleFrame, normalText, questCheck)
+    local mark = self:VoicedMark(questLogTitleFrame)
+    mark:SetParent(questLogTitleFrame:GetParent())
+    mark:SetFrameLevel(questLogTitleFrame:GetFrameLevel() + 2)
+    mark:ClearAllPoints()
+    if questCheck and questCheck:IsShown() then
+        mark:SetPoint("LEFT", questCheck, "RIGHT", 0, 0)
+    elseif questCheck then
+        mark:SetPoint("LEFT", questCheck, "LEFT", 2, 0)
+    else
+        mark:SetPoint("LEFT", normalText, "LEFT", normalText:GetStringWidth() + 2, 0)
+    end
+    mark:Show()
+end
+
+--- Redrawn now, for a setting changed while the log is open.
+function QuestOverlayUI:Refresh()
+    if QuestLogFrame and QuestLogFrame:IsShown() then
+        self:Update()
+    end
+end
+
 function QuestOverlayUI:Update()
+    for _, mark in pairs(self.voicedMarks) do
+        mark:Hide()
+    end
     if not QuestLogFrame:IsShown() then
         return
     end
@@ -324,7 +398,8 @@ function QuestOverlayUI:Update()
 
             local playButton = self.questPlayButtons[questID]
             local shown = playButton
-            if DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID }) then
+            local accepted = DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID })
+            if accepted then
                 self:UpdatePlayButton(title, questID, questLogTitleFrame, normalText, questCheck)
                 playButton:Enable()
             else
@@ -345,6 +420,9 @@ function QuestOverlayUI:Update()
             shown:Show()
             if shown == playButton then
                 self:UpdatePlayButtonTexture(questID)
+            end
+            if Addon.db.profile.QuestLogMark and self:IsVoiced(questID, accepted) then
+                self:PlaceVoicedMark(questLogTitleFrame, normalText, questCheck)
             end
 
             -- Add the button to displayedButtons

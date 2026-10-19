@@ -270,8 +270,45 @@ QuestMapFrame_ShowQuestDetails(748)
 Expect("...and Play and Report come back for a quest with one", detailsButton:IsShown() and detailsReport:IsShown()
     and not contributeButton:IsShown(), true)
 
+-- The mark beside a quest a voice pack reads, at the row's right end: the title wraps, so there
+-- is no end of its text to follow.
+QuestLogQuests_Update()
+local marks = VO.QuestOverlayUI.voicedMarks
+local mark = marks[row]
+Expect("the map's quest log marks a quest a voice pack reads", mark ~= nil and mark:IsShown(), true)
+Expect("...left of the row's tracking checkbox", mark and mark.anchor.relativeTo == row.Checkbox
+    and mark.anchor.point, "RIGHT")
+local unvoiced = marks[stub.questLogRows[2]]
+Expect("...and not a quest no pack reads", unvoiced == nil or not unvoiced:IsShown(), true)
+stub.SetQuestLogPOIIcons(true)
+QuestLogQuests_Update()
+Expect("with the objective icons on, it sits left of the play button beside the checkbox",
+    mark and mark.anchor.relativeTo == buttons[748], true)
+stub.SetQuestLogPOIIcons(false)
+QuestLogQuests_Update()
+if mark then
+    mark:GetScript("OnEnter")(mark)
+    Expect("its tooltip says a voice pack reads the quest", GameTooltip.text, VO.L.OPT_VOICED_MARK_TIP)
+    VO.Addon.db.profile.QuestLogMark = false
+    VO.QuestOverlayUI:Refresh()
+    Expect("Mark Voiced Quests off takes it away at once", mark:IsShown(), false)
+    VO.Addon.db.profile.QuestLogMark = true
+    VO.QuestOverlayUI:Refresh()
+    Expect("...and on, brings it back", mark:IsShown(), true)
+end
+
 _G.CreateFrame = createFrame
 Expect("no frame was created with a parent inside the open quest log", #parentedInLog, 0)
+
+-- The setting is on the Quests page on this client too.
+stub.settingsCategories = {}
+local QuestsPanel = stub.LoadQuestsPanel(QUESTS, VO)
+QuestsPanel:Setup()
+local markRow
+for _, entry in ipairs(_G.SpokenQuestsOptionsPanel.layout.entries) do
+    if entry.label == VO.L.OPT_PANEL_VOICED_MARK then markRow = entry.frame end
+end
+Expect("Mark Voiced Quests is on the Quests page with the map's quest log", markRow ~= nil, true)
 
 if failures > 0 then
     print(string.format("\n%d check(s) failed", failures))

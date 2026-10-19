@@ -404,6 +404,8 @@ local defaults = {
         },
         -- The Play button on each quest in the objective tracker.
         TrackerPlayButton = true,
+        -- The mark beside a quest in the quest log that a voice pack reads (QuestOverlayUI.lua).
+        QuestLogMark = true,
         DebugEnabled = false,
     },
     char = {

@@ -98,6 +98,27 @@ local GeneralTab =
                 },
             }
         },
+        -- The legacy clients' one way to turn the mark off: they have no settings page.
+        QuestLog = {
+            type = "group",
+            order = 4.5,
+            inline = true,
+            name = L.OPT_SECTION_QUEST_LOG,
+            args = {
+                VoicedMark = {
+                    type = "toggle",
+                    order = 1,
+                    width = 2,
+                    name = L.OPT_PANEL_VOICED_MARK,
+                    desc = L.OPT_PANEL_VOICED_MARK_TIP,
+                    get = function(info) return Addon.db.profile.QuestLogMark end,
+                    set = function(info, value)
+                        Addon.db.profile.QuestLogMark = value
+                        QuestOverlayUI:Refresh()
+                    end,
+                },
+            },
+        },
     }
 }
 

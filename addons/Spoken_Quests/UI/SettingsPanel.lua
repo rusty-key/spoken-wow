@@ -75,6 +75,15 @@ function SettingsPanel:Setup()
         function(value) audio().ReadAfterClose = value end),
         function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
 
+    layout:Section(L.OPT_SECTION_QUEST_LOG)
+    layout:Checkbox(L.OPT_PANEL_VOICED_MARK,
+        L.OPT_PANEL_VOICED_MARK_TIP,
+        function() return Addon.db.profile.QuestLogMark end,
+        function(value)
+            Addon.db.profile.QuestLogMark = value
+            QuestOverlayUI:Refresh()
+        end)
+
     -- Only where the client has the objective tracker the button is drawn on.
     layout:Section(L.OPT_SECTION_TRACKER)
     local trackerPlay = layout:Checkbox(L.OPT_TRACKER_PLAY, nil,

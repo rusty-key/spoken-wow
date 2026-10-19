@@ -11,6 +11,7 @@ setfenv(1, VoiceOver)
 --   UI/SettingsPanel.lua   the same settings on the interface-settings canvas
 --   UI/DialogPlayButton.lua  Play/Stop button on quest and gossip windows
 --   Compatibility.lua      Play/Stop button on the quest-log details panel
+--   QuestOverlayUI.lua     the mark beside a voiced quest in the quest log
 --   UI/ContributeButton.lua  Contribute button on quest and gossip windows
 --   Contribute.lua         Contribute button tooltip
 --   ReportButton.lua       the copy-link dialog for reporting a line
@@ -90,6 +91,9 @@ L.OPT_CMD_OPTIONS_DESC = "Opens this module's settings page"
 L.OPT_PANEL_AUTOPLAY = "Read Automatically"
 L.OPT_PANEL_STOP_ON_CLOSE = "Stop When Window Closes"
 L.OPT_PANEL_READ_AFTER_CLOSE = "Read When Window Closes"
+L.OPT_SECTION_QUEST_LOG = "Quest Log"
+L.OPT_PANEL_VOICED_MARK = "Mark Voiced Quests"
+L.OPT_PANEL_VOICED_MARK_TIP = "Shows a mark beside each quest in the quest log that a voice pack reads aloud."
 L.OPT_SECTION_TRACKER = "Objective Tracker"
 L.OPT_TRACKER_PLAY = "Show Play Button"
 L.OPT_PANEL_FOLLOWUP = "Read NPC Chat After Quests"
@@ -126,6 +130,7 @@ L.OPT_PLAY = "Play"
 -- The quest window's worded button, where a word has to say what it does.
 L.OPT_LISTEN = "Listen"
 L.OPT_PLAY_TIP = "Hear this quest read aloud."
+L.OPT_VOICED_MARK_TIP = "A voice pack reads this quest aloud."
 -- The window's Stop removes the line; the quest log's Stop (OPT_STOP_TIP) keeps it for Replay.
 L.OPT_DIALOG_STOP_TIP = "Stop reading"
 L.OPT_READ_TIP = "Read this aloud"

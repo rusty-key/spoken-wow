@@ -710,11 +710,38 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
         end
     end
 
+    -- Update walks only the rows the pool has drawn, so it is safe with the map closed.
+    function QuestOverlayUI:Refresh()
+        self:Update()
+    end
+
+    -- At the row's right end: left of the tracking checkbox, or left of the play button where
+    -- "Quest objectives" has moved it there. The title wraps, so its last word has no place to
+    -- follow.
+    function QuestOverlayUI:PlaceVoicedMark(row, button)
+        local mark = self:VoicedMark(row)
+        mark:SetParent(row:GetParent())
+        mark:SetFrameLevel(row:GetFrameLevel() + 2)
+        mark:ClearAllPoints()
+        local point = button and button:GetPoint(1)
+        if point == "RIGHT" or point == "TOPRIGHT" then
+            mark:SetPoint("RIGHT", button, "LEFT", -2, 0)
+        elseif row.Checkbox then
+            mark:SetPoint("RIGHT", row.Checkbox, "LEFT", -2, 0)
+        else
+            mark:SetPoint("TOPRIGHT", row, "TOPRIGHT", -4, -4)
+        end
+        mark:Show()
+    end
+
     function QuestOverlayUI:Update()
         -- Every button, not only the ones on screen: a row released back to the pool keeps
         -- the button parented to it, and a stale button on a reused row marks the wrong quest.
         for _, button in pairs(self.displayedButtons) do
             button:Hide()
+        end
+        for _, mark in pairs(self.voicedMarks) do
+            mark:Hide()
         end
         table.wipe(self.displayedButtons)
         -- Switched off, the part puts nothing on the log.
@@ -729,7 +756,8 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
                 local playButton = self.questPlayButtons[questID]
                 local shown = playButton
 
-                if DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID }) then
+                local accepted = DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID })
+                if accepted then
                     self:UpdatePlayButton(QuestOverlayUI:GetQuestTitle(questID, row), questID, row, row.Text,
                         row.Checkbox)
                     playButton:Enable()
@@ -753,6 +781,9 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
                 shown:Show()
                 if shown == playButton then
                     self:UpdatePlayButtonTexture(questID)
+                end
+                if Addon.db.profile.QuestLogMark and self:IsVoiced(questID, accepted) then
+                    self:PlaceVoicedMark(row, shown)
                 end
                 table.insert(self.displayedButtons, shown)
             end

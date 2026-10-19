@@ -52,7 +52,7 @@ end
 local names = {}
 for _, heading in ipairs(headings) do table.insert(names, heading.text) end
 Expect("the settings are grouped into sections", table.concat(names, "|"),
-    "When to Read|Voice Packs")
+    "When to Read|Quest Log|Voice Packs")
 
 local function Distinct(values)
     local seen, count = {}, 0
