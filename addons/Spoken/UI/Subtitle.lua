@@ -656,11 +656,18 @@ end
 --- The rows as the typing has them: each holds the letters typed so far, so nothing yet to come
 --- is ever on screen. `lit` is the page's word to light, passed only while the words show whole:
 --- an estimated word timing typed in front of the reader shows every miss.
-function Subtitle:Reveal(count, lit)
-    if count == self.revealed and (lit or 0) == self.revealedLit then return end
-    self.revealed, self.revealedLit = count, lit or 0
+function Subtitle:Reveal(count, lit, neighbor)
+    local litKey = (lit or 0) .. ":" .. (neighbor or 0)
+    if count == self.revealed and litKey == self.revealedLit then return end
+    self.revealed, self.revealedLit = count, litKey
     local from, to
-    if lit then from, to = self:CharsSpan(lit) end
+    if lit then
+        from, to = self:CharsSpan(lit)
+        if neighbor then
+            local from2, to2 = self:CharsSpan(neighbor)
+            from, to = math.min(from, from2), math.max(to, to2)
+        end
+    end
     local offset = 0
     for index, row in ipairs(self.rows) do
         local text = count >= row.count and row.text or Prefix(row.text, count)
@@ -673,10 +680,29 @@ function Subtitle:Reveal(count, lit)
     end
 end
 
---- The page's word the voice is on, by its share of the page's time, while Highlight Words is on;
---- nil before the voice reaches the page and once it has read it.
+--- The page's word the voice is on, while Highlight Words is on; nil before the voice reaches the
+--- page and once it has read it. Where the clip's word times are known it is the last word to have
+--- started, alone. Otherwise it is the word the captions window would light, by the words' weights
+--- (Transcript:WordAt), and with it the neighbour that gives the estimate room: the next word, or
+--- at the page's end the one before.
 function Subtitle:LitWord(page, elapsed)
     if self.sample or not Config().HighlightWord then return nil end
+    local words = page.firstWord and Transcript.clip == self.clip and Transcript.words
+    local length = tonumber(self.clip.length)
+    if words and length and length > 0 and #(self.wordEnds or {}) == page.wordCount then
+        if elapsed >= length or elapsed < page.start then return nil end
+        local lit
+        if Transcript.timed then
+            for n = 1, page.wordCount do
+                if words[page.firstWord + n - 1].start > elapsed then break end
+                lit = n
+            end
+            return lit
+        end
+        lit = Transcript:WordAt(elapsed / length) - page.firstWord + 1
+        if lit < 1 or lit > page.wordCount then return nil end
+        return lit, (lit < page.wordCount and lit + 1) or (lit > 1 and lit - 1) or nil
+    end
     local at = (elapsed - page.start) / math.max(.5, page.length) * page.count
     if at < 0 or at >= page.count then return nil end
     for n, finish in ipairs(self.wordEnds or {}) do
@@ -730,25 +756,32 @@ function Subtitle:Prepare(clip, text)
         self.pages[index] = { text = page, count = count, start = start, length = length }
         start = start + length
     end
-    if Transcript.timed and Transcript.clip == clip and Transcript.text == text then
-        self:TimePages(Transcript.words, duration)
+    if Transcript.clip == clip and Transcript.text == text then
+        self:TimePages(Transcript.words, duration, Transcript.totalWeight)
     end
 end
 
---- With the clip's own word times, each page turns when the voice reaches its first word. A page
---- cut inside a word counts that word twice; the totals then disagree and the estimate stays.
-function Subtitle:TimePages(words, duration)
-    local starts, word = { 0 }, 1
+--- Each page turns when the voice reaches its first word, by the captions window's own timing of
+--- the words: the clip's word times where it has them, else the words' weights. A page cut inside
+--- a word counts that word twice; the totals then disagree and the pages keep their share of the
+--- characters.
+function Subtitle:TimePages(words, duration, weight)
+    local starts, firsts, counts, word = { 0 }, { 1 }, {}, 1
+    local scale = weight and weight > 0 and duration / weight or 1
     for index, page in ipairs(self.pages) do
         if index > 1 then
             if not words[word] then return end
-            starts[index] = words[word].start
+            -- Never turned in under a second, as the estimate by characters never was.
+            starts[index], firsts[index] = words[word].start * scale, word
+            if not Transcript.timed then starts[index] = math.max(1, starts[index]) end
         end
-        word = word + #Transcript:Split(page.text)
+        counts[index] = #Transcript:Split(page.text)
+        word = word + counts[index]
     end
     if word - 1 ~= #words then return end
     for index, page in ipairs(self.pages) do
         page.start, page.length = starts[index], (starts[index + 1] or duration) - starts[index]
+        page.firstWord, page.wordCount = firsts[index], counts[index]
     end
 end
 

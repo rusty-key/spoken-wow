@@ -80,9 +80,20 @@ The caption text itself follows the recording language.
 
 The sound packs have recording durations but no word timestamps. Timing is
 estimated from word length, punctuation and the total duration. Two neighboring
-words are highlighted to give the estimate some room, in the windows; the subtitles
-light one word. At the end of a page, the previous word stays highlighted instead of
-advancing the page early.
+words are highlighted to give the estimate some room, in the windows and the subtitles alike,
+and the subtitles turn their pages by the same word weights. A clip that brings its own word
+times lights one word in every narrator. At the end of a page, the previous word stays
+highlighted instead of advancing the page early.
+
+English recordings in the quest, gossip, zone and book packs have their word times measured:
+`pipelines/timings` listens to each recording (faster-whisper, word timestamps), matches what it
+heard to the words the voice was given and writes a data file that fills the global
+`SpokenWordTimes`: one string per recording, keyed by the source that plays it and the file it
+is played from. The file is data, shipped with the voice packs and not in Spoken. The captions
+use the times for such a clip and the estimate for every other clip, every other language, a
+recording added since the times were measured, and when no file is installed. They are used only when they
+fit the words the player is shown (a quest that says the player's race in two words does not),
+and they come before a clip's own `present.timings`.
 
 A source that knows when each word is spoken passes `clip.present.timings`: one
 start time per word, in seconds from the start of the recording, in the order

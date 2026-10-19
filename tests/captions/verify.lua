@@ -561,6 +561,14 @@ Check(Typed()==line,'the whole line is typed before the voice finishes')
 cfg.Typewriter=false; T:RefreshConfig()
 Check(Typed()==line,'without the typewriter the whole line shows at once')
 Check(SubtitleLit(),'...lighting the word being read, as the windows do')
+do
+    local joined,lit={},0
+    for i in ipairs(S.rows or {}) do joined[#joined+1]=RowShown(i) end
+    for run in table.concat(joined,' '):gmatch('|c%x%x%x%x%x%x%x%x(.-)|r') do
+        for _ in run:gmatch('%S+') do lit=lit+1 end
+    end
+    Check(lit==2 and S.pages[S.page].firstWord~=nil,'...and its neighbour, as the windows give an estimate room')
+end
 cfg.HighlightWord=false; S.revealed=nil; S:Render()
 Check(not SubtitleLit() and Typed()==line,'...unless Highlight Words is off')
 cfg.HighlightWord=true; S.revealed=nil; S:Render()
@@ -852,12 +860,18 @@ do
         return clip
     end
     -- Four words of one length: the estimate gives each about a second, the times a long last word.
+    -- Not typed out, so the words lit can be counted.
+    local typedBefore=cfg.Typewriter
+    cfg.Typewriter=false; T:RefreshConfig()
     source:Enqueue(Timed('t1','aaaa bbbb cccc dddd',4,{0,.2,.4,.6})); Play(1)
     Check(T.timed and T.totalWeight==4,'a clip with its word times is timed against its length')
     Check(T:WordAt(T:GetProgress())==4,'...and a second in, the voice is on the word its times say')
+    Check(HighlightCount()==1,'...and the window lights that one word, with no neighbour to give an estimate room')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     source:Enqueue(Timed('t2','aaaa bbbb cccc dddd',4,{0,.2,.4})); Play(1)
     Check(not T.timed and T:WordAt(T:GetProgress())<4,'times that do not match the words leave the estimate')
+    Check(HighlightCount()==2,'...and the pair of words that gives it room')
+    cfg.Typewriter=typedBefore; T:RefreshConfig()
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     source:Enqueue(Timed('t3','aaaa bbbb cccc dddd',4,{0,.5,.3,.6})); Play(.2)
     Check(not T.timed,'...as do times that go backwards')
@@ -879,9 +893,62 @@ do
     source:Enqueue(Timed('t4',text,words*.1+6,timings)); Play(.7)
     Check(T.timed and #S.pages==4,'a timed line is paged a sentence at a time')
     Check(math.abs(S.pages[2].start-timings[13])<1e-9,"...and its second page turns at its first word's time")
+    -- Not typed out, the word lit is the last whose time has come: here the eighth, where the
+    -- estimate over the page's five seconds would still be on the second.
+    local typing=cfg.Typewriter
+    cfg.Typewriter=false; T:RefreshConfig(); S.revealed=nil; S:Render(); Play(.05)
+    local elapsed,expected=T:AudioElapsed(),0
+    for i=1,12 do if timings[i]<=elapsed then expected=i end end
+    local joined={}
+    for i in ipairs(S.rows or {}) do joined[#joined+1]=RowShown(i) end
+    joined=table.concat(joined,' ')
+    local before=(joined:match('^(.-)|c') or ''):gsub('|r',''):gsub('^%s+',''):gsub('%s+$','')
+    local passed=0
+    for _ in before:gmatch('%S+') do passed=passed+1 end
+    Check(expected>=7 and passed==expected-1,"a timed line lights the word its times say the voice is on, not the estimate's")
+    cfg.Typewriter=typing; T:RefreshConfig()
     cfg.SubtitleSentences=3
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+end
+-- Word times measured from the recordings (the SpokenWordTimes table) are found by the clip's source and
+-- file, and win over a clip's own, which win over the estimate.
+do
+    local saved=SpokenWordTimes
+    -- Four words, 0.5 s apart from the first at 0.5: "AyAyAyAy" is four steps of 50 hundredths.
+    SpokenWordTimes={quests={m1='AyAyAyAy',m2='AyAyAy'},books={['15']='AyAyAyAy'}}
+    local function Measured(file,timings)
+        local clip=Clip('measured-'..file,'aaaa bbbb cccc dddd',4)
+        clip.fileName=file
+        clip.present.timings=timings
+        return clip
+    end
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Measured('m1')); Play(1)
+    Check(T.timed and T.words[2].start==1 and T.words[4].start==2,'a clip the data has times for is timed by them')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Measured('m1',{0,.2,.4,.6})); Play(1)
+    Check(T.timed and T.words[2].start==1,"...ahead of the clip's own times")
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Measured('m2',{0,.2,.4,.6})); Play(1)
+    Check(T.timed and T.words[2].start==.2,"times that do not fit the words give way to the clip's own")
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Measured('m2')); Play(1)
+    Check(not T.timed,'...and then to the estimate')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Measured('other')); Play(1)
+    Check(not T.timed,'a file the data has nothing for is estimated')
+    local function Of(key,path) return T:MeasuredTimes({source={key=key},path=path}) end
+    local file='Interface'..'\\'..'AddOns'..'\\'..'SpokenBooksAudio'..'\\'..'Sounds'..'\\'..'15.mp3'
+    Check(Of('books',file) and #Of('books',file)==4 and Of('books',file)[4]==2,"a page is found by its file's name under the pack's Sounds folder")
+    Check(Of('quests',file)==nil,'...under its own source only')
+    Check(Of('books','Interface/AddOns/SpokenBooksAudio/Sounds/15.mp3')~=nil,'...with either slash')
+    SpokenWordTimes={quests={bad='A!'}}
+    Check(Of('quests','x')==nil and T:MeasuredTimes({source={key='quests'},fileName='bad'})==nil,'a string that is not base 64 is ignored')
+    SpokenWordTimes=nil
+    Check(T:MeasuredTimes({source={key='quests'},fileName='m1'})==nil,'with no data file there is nothing to find')
+    SpokenWordTimes=saved
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
 end
 -- The subtitle's Auto-Scroll, line by line.
 do

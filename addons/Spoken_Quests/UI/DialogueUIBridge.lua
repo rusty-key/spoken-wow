@@ -211,7 +211,7 @@ local function Tick()
         state.pending = nil
         local lit, neighbor
         if caption.highlight then
-            lit, neighbor = Marks.Pick(state.map, caption.speaking and caption.activeWord or nil)
+            lit, neighbor = Marks.Pick(state.map, caption.speaking and caption.activeWord or nil, caption.timed)
         end
         local cutP, cutByte = Marks.Cut(caption, state.map, state.span, state.paragraphs)
         if lit ~= state.lit or neighbor ~= state.neighbor or cutP ~= state.cutP or cutByte ~= state.cutByte then

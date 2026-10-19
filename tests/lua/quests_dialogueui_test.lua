@@ -159,6 +159,8 @@ Expect("the last word of a paragraph keeps the one before it lit",
     table.concat({ Marks.Pick({ [1] = { p = 1 }, [2] = { p = 1 }, [3] = { p = 2 } }, 2) }, ","), "2,1")
 Expect("a word the window lacks lights the last one it has",
     table.concat({ Marks.Pick({ [1] = { p = 1 }, [2] = { p = 1 } }, 3) }, ","), "2,1")
+Expect("a timed caption lights the one word, with no neighbour",
+    table.concat({ Marks.Pick({ [1] = { p = 1 }, [2] = { p = 1 }, [3] = { p = 2 } }, 2, true) }, ","), "2")
 
 local paras = Paras("Farmer Test: Hello there, traveller.", "Safe roads.")
 map, span = Marks.Align(caption, paras)

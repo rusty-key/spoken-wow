@@ -126,8 +126,9 @@ end
 
 --- The pair to light for caption word `index`: that word, or the last one before it the window
 --- has, and its neighbour in the same paragraph: the next word, or at a paragraph's end the one
---- before, as the captions keep the last pair lit at a page boundary.
-function Marks.Pick(map, index)
+--- before, as the captions keep the last pair lit at a page boundary. `single` (the caption's
+--- timed) lights the one word: with the clip's own times there is no estimate to give room.
+function Marks.Pick(map, index, single)
     if not index then
         return nil
     end
@@ -137,6 +138,9 @@ function Marks.Pick(map, index)
     end
     if lit == 0 then
         return nil
+    end
+    if single then
+        return lit
     end
     local at = map[lit]
     local after, before = map[lit + 1], map[lit - 1]

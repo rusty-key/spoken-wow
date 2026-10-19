@@ -191,12 +191,40 @@ local function ApplyTimings(words, timings, length)
     return true
 end
 
+-- The times measured from the recording, from the SpokenWordTimes table when a data file has filled
+-- it (without it every clip is estimated): one string per file under the source
+-- that plays it, each word's start in hundredths of a second after the one before, as two base-64
+-- digits. Found by the clip's fileName, or the file's name under its pack's Sounds folder.
+local DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local DIGIT = {}
+for i = 1, #DIGITS do DIGIT[DIGITS:byte(i)] = i - 1 end
+
+function Transcript:MeasuredTimes(clip)
+    local source = clip and clip.source and clip.source.key
+    local files = SpokenWordTimes and source and SpokenWordTimes[source]
+    if not files then return nil end
+    local id = clip.fileName or tostring(clip.path or ""):match("[\\/]Sounds[\\/](.+)%.%w+$")
+    local packed = id and files[id]
+    if type(packed) ~= "string" then return nil end
+    local times, at = {}, 0
+    for i = 1, #packed - 1, 2 do
+        local high, low = DIGIT[packed:byte(i)], DIGIT[packed:byte(i + 1)]
+        if not (high and low) then return nil end
+        at = at + high * 64 + low
+        times[#times + 1] = at / 100
+    end
+    return times
+end
+
 function Transcript:Tokenize()
     self.words, self.totalWeight = Split(self.text)
     local clip = self.clip
     local length = clip and tonumber(clip.length)
-    -- Timed, a word's share is its own seconds, so progress times length finds it.
-    self.timed = ApplyTimings(self.words, clip and clip.present and clip.present.timings, length)
+    -- Timed, a word's share is its own seconds, so progress times length finds it. What was
+    -- measured from the recording goes first; the clip's own times, then the estimate, follow it
+    -- when those do not fit the words.
+    self.timed = ApplyTimings(self.words, self:MeasuredTimes(clip), length)
+        or ApplyTimings(self.words, clip and clip.present and clip.present.timings, length)
     if self.timed then self.totalWeight = length end
 end
 
@@ -439,6 +467,8 @@ function Transcript:Render()
             -- captions early just to show the next word.
             neighbor = highlighted - 1
         end
+        -- Its times say which word the voice is on: no neighbour to give an estimate room.
+        if self.timed then neighbor = nil end
     end
     -- Typed out, as the subtitle is: the words up to the one being read, the rest still to
     -- come. Nothing before the voice starts; the whole line once it has finished.
