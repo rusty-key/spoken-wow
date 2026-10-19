@@ -59,7 +59,7 @@ None of this is the project's to license, and the MIT grant does not reach it.
   which article each line came from.
 - **Boss and dungeon stories** (`addons/Spoken_NPCs/Data/Stories.lua`) are written from
   Blizzard's Adventure Guide text and from Warcraft Wiki (**CC BY-SA 4.0**), rewritten
-  into one voice. The file is built for the local game build and is not committed;
+  into one voice. The file is committed;
   `pipelines/zones/tools/build-boss-stories.mjs`, `boss-history.mjs` and
   `assemble-boss-stories.mjs` make it, and `apply-boss-stories.mjs` writes it. Where the guide has no text
   for a boss, the story is that boss's History section on Warcraft Wiki, kept to Classic.

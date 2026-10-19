@@ -42,8 +42,8 @@ Adventure Guide's where Forever's client has the model. Its spells are the ones 
 article, then what the database casts, then the guide's abilities that name a spell, less the passive ones and those the
 client has no name for. Bosses only Forever has, and the Classic raid bosses the wiki does not list, have what is found.
 
-`Data/Stories.lua` holds `SpokenBossStories[map][key]`, the words of a boss's story, and is empty. The
-stories are the site's data and arrive by export, as the places' do.
+`Data/Stories.lua` holds `SpokenBossStories[map][key]`, the words of a boss's story. A boss with no entry says its
+story is not written yet.
 
 ## What the sources hold
 

@@ -41,6 +41,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   its face with a skull, and holds its story where one is written. *([Nucabe](https://github.com/Nucabe))*
 - **Show Boss Abilities, on Spoken's settings page, puts each boss's spells under its story.** The spells are
   cards with the spellbook's frame. It is off by default. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's page tells its story.** 272 bosses have one, written from the Adventure Guide and Warcraft Wiki
+  and kept to Classic. *([Nucabe](https://github.com/Nucabe))*
 - **Every dungeon and raid has its own icon in the Compendium, and so do the cities, Moonglade and the
   battlegrounds.** *([Nucabe](https://github.com/Nucabe))*
 
