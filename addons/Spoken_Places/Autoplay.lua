@@ -138,7 +138,8 @@ local function HoldReason(item)
 	if not item.autoplay then
 		return nil
 	end
-	if not SpokenZones:Get("autoplay") or not SpokenZones:IsVoiceEnabled() then
+	local switch = item.flight and "flightLore" or "autoplay"
+	if not SpokenZones:Get(switch) or not SpokenZones:IsVoiceEnabled() then
 		return SpokenZones.L.QUEUE_HELD_OFF
 	end
 	if UnitAffectingCombat("player") then
@@ -182,11 +183,22 @@ local function IsAutoplayableMap(mapID)
 	return info.mapType > CONTINENT_MAP_TYPE
 end
 
+-- The zone the last flight read on the way there, kept until the player is on the ground
+-- somewhere else. A discovery or the explored sweep on landing would read it a second time.
+local flownTo = nil
+
 -- Returns whether the entry was queued, which the login greeting needs: a greeting that
--- resolved nothing must not count as having greeted.
-local function Enqueue(mapID, areaKey)
+-- resolved nothing must not count as having greeted. `flight` is the destination of a flight
+-- just taken, the one entry read in the air.
+local function Enqueue(mapID, areaKey, flight)
 	-- Skip flyover lore so it cannot queue up for landing.
-	if (UnitOnTaxi and UnitOnTaxi("player")) or (IsFlying and IsFlying()) then
+	if not flight and ((UnitOnTaxi and UnitOnTaxi("player")) or (IsFlying and IsFlying())) then
+		return false
+	end
+	if not flight and not areaKey and mapID == flownTo then
+		if SpokenZones:Get("debug") then
+			SpokenZones:Print("autoplay: %s was read on the flight here -- not queued", tostring(SpokenZones:GetMapName(mapID)))
+		end
 		return false
 	end
 
@@ -217,6 +229,8 @@ local function Enqueue(mapID, areaKey)
 	-- Marks this as something the player did not ask for, which is what the hold
 	-- above keys on and what keeps a background failure from printing.
 	item.autoplay = true
+	-- Held by its own switch rather than Read on Discovery's.
+	item.flight = flight or nil
 
 	-- The queue refuses a duplicate of its own accord: the login greeting and a
 	-- real discovery message can name the same area, and an area on a zone border
@@ -513,6 +527,185 @@ function SpokenZones:OnAreaDiscovered(areaName)
 end
 
 --------------------------------------------------------------------------------
+-- Flights
+--------------------------------------------------------------------------------
+--
+-- A flight reads the zone it lands in, once, while the player is in the air. Nothing flown
+-- over is read (Enqueue refuses it on a taxi), and the destination is not read again on
+-- landing (flownTo).
+--
+-- TakeTaxiNode gives only the node's index. Its name says where it is ("Crossroads, The
+-- Barrens"), in the client's language, as the map names are; where the name matches no zone,
+-- the node's position on its continent's map does.
+
+-- How often, and how many times, to look for the player on the taxi after taking a flight. A
+-- flight that never starts (too little money, a node out of reach) reads nothing.
+local FLIGHT_CHECK_DELAY = 0.5
+local FLIGHT_CHECKS = 20
+
+-- Bumped by every flight taken, so the checks left over from an earlier one stop.
+local takeoff = 0
+
+local function OnTaxi()
+	return UnitOnTaxi and UnitOnTaxi("player") or false
+end
+
+local function ContinentOf(mapID)
+	local hops = 0
+	while mapID and hops < 8 do
+		local info = C_Map.GetMapInfo(mapID)
+		if not info then
+			return nil
+		end
+		if info.mapType == CONTINENT_MAP_TYPE then
+			return mapID
+		end
+		mapID = info.parentMapID ~= 0 and info.parentMapID or nil
+		hops = hops + 1
+	end
+	return nil
+end
+
+-- The zone or city with lore whose name is `name`, or with `partly`, whose name starts with it
+-- ("Stranglethorn" for Stranglethorn Vale). Two answers are no answer.
+local function LoreMapNamed(name, partly)
+	local wanted = name:lower()
+	local match
+	for mapID in pairs(SpokenZones.Zones) do
+		local own = (SpokenZones:GetMapName(mapID) or ""):lower()
+		if (own == wanted or (partly and own:sub(1, #wanted) == wanted)) and IsAutoplayableMap(mapID) then
+			if match and match ~= mapID then
+				return nil
+			end
+			match = mapID
+		end
+	end
+	return match
+end
+
+-- The place first, then what it is in: "Thunder Bluff, Mulgore" lands in the city.
+local function DestinationByName(name, partly)
+	if type(name) ~= "string" then
+		return nil
+	end
+	-- The Chinese clients separate the two with a full-width comma.
+	name = name:gsub("\239\188\140", ",")
+	for part in name:gmatch("[^,]+") do
+		part = part:match("^%s*(.-)%s*$")
+		local mapID = part ~= "" and LoreMapNamed(part, partly)
+		if mapID then
+			return mapID
+		end
+	end
+	return nil
+end
+
+-- Where the node sits on its continent's map. C_TaxiMap is missing on some clients, and its
+-- positions are only trusted on a continent's map.
+local function DestinationByPosition(index)
+	if not (C_TaxiMap and C_TaxiMap.GetAllTaxiNodes and C_Map.GetMapInfoAtPosition) then
+		return nil
+	end
+	local maps = {}
+	if GetTaxiMapID then
+		local ok, id = pcall(GetTaxiMapID)
+		if ok and id then
+			table.insert(maps, id)
+		end
+	end
+	local continent = ContinentOf(SpokenZones:GetPlayerMapID())
+	if continent then
+		table.insert(maps, continent)
+	end
+	for _, uiMapID in ipairs(maps) do
+		local info = C_Map.GetMapInfo(uiMapID)
+		local ok, nodes = false, nil
+		if info and info.mapType == CONTINENT_MAP_TYPE then
+			ok, nodes = pcall(C_TaxiMap.GetAllTaxiNodes, uiMapID)
+		end
+		for _, node in ipairs(ok and type(nodes) == "table" and nodes or {}) do
+			local at = node.position
+			local x, y = at and at.x, at and at.y
+			if node.slotIndex == index and x and y and x >= 0 and x <= 1 and y >= 0 and y <= 1 then
+				local okAt, found = pcall(C_Map.GetMapInfoAtPosition, uiMapID, x, y)
+				local _, mapID = SpokenZones:GetLoreWithFallback(okAt and found and found.mapID or nil)
+				if mapID and IsAutoplayableMap(mapID) then
+					return mapID
+				end
+			end
+		end
+	end
+	return nil
+end
+
+--- The zone or city with lore that the flight to taxi node `index` lands in, or nil.
+function SpokenZones:FlightDestination(index)
+	local name = TaxiNodeName and TaxiNodeName(index)
+	return DestinationByName(name, false) or DestinationByPosition(index) or DestinationByName(name, true)
+end
+
+local function OnFlightTaken(index)
+	takeoff = takeoff + 1
+	flownTo = nil
+	local debugOn = SpokenZones:Get("debug")
+	if not SpokenZones:Get("flightLore") or not SpokenZones:IsVoiceEnabled() then
+		return
+	end
+	if TaxiNodeGetType and TaxiNodeGetType(index) ~= "REACHABLE" then
+		return
+	end
+	local mapID = SpokenZones:FlightDestination(index)
+	if debugOn then
+		SpokenZones:Print('flight to "%s" -> %s', tostring(TaxiNodeName and TaxiNodeName(index)),
+			tostring(mapID and SpokenZones:GetMapName(mapID)))
+	end
+	if not mapID then
+		return
+	end
+	-- A flight inside the zone the player is in has nothing new to tell.
+	local _, here = SpokenZones:GetLoreWithFallback(SpokenZones:GetPlayerMapID())
+	if here == mapID then
+		return
+	end
+	-- A place Azeroth's Compendium keeps locked is not read here either.
+	if SpokenZones.IsFound and SpokenZones.ShowsUndiscovered
+		and not SpokenZones:ShowsUndiscovered() and not SpokenZones:IsFound(mapID) then
+		if debugOn then
+			SpokenZones:Print("flight: %s is not discovered -- not queued", tostring(SpokenZones:GetMapName(mapID)))
+		end
+		return
+	end
+
+	local mine, checks = takeoff, 0
+	local function Check()
+		if mine ~= takeoff then
+			return
+		end
+		checks = checks + 1
+		if not UnitOnTaxi or OnTaxi() then
+			if Enqueue(mapID, nil, true) then
+				flownTo = mapID
+			end
+		elseif checks < FLIGHT_CHECKS then
+			C_Timer.After(FLIGHT_CHECK_DELAY, Check)
+		end
+	end
+	Check()
+end
+
+-- Landed and walked on into another zone: that zone's lore is the player's again.
+local function LeaveDestination()
+	if not flownTo or OnTaxi() then
+		return
+	end
+	local _, mapID = SpokenZones:GetLoreWithFallback(SpokenZones:GetPlayerMapID())
+	-- The continent, for a moment after landing, is not somewhere else.
+	if mapID and mapID ~= flownTo and IsAutoplayableMap(mapID) then
+		flownTo = nil
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Setup
 --------------------------------------------------------------------------------
 
@@ -598,8 +791,18 @@ function SpokenZones:SetupAutoplay()
 	if self.source then
 		self.source:AddGate(HoldReason)
 	end
+	self:OnZoneChanged(LeaveDestination)
 	self:OnZoneChanged(NarrateUnheard)
 	self.autoplayFrame = frame
+	-- An error here is printed rather than raised from inside the flight master's click.
+	if TakeTaxiNode and hooksecurefunc then
+		hooksecurefunc("TakeTaxiNode", function(index)
+			local ok, err = pcall(OnFlightTaken, index)
+			if not ok then
+				SpokenZones:Print("|cffff5555error|r: %s", tostring(err))
+			end
+		end)
+	end
 
 	-- Delayed because GetSubZoneText is not reliably populated the instant the
 	-- world finishes loading, and repeated because on a new character the map is not

@@ -110,9 +110,11 @@ do
         for _, entry in ipairs(layout.entries) do if entry.label == label then return entry.frame end end
     end
     local discovery = Row(Z.L.OPT_AUTOPLAY)
+    local flights = Row(Z.L.OPT_FLIGHT_LORE)
     Expect("the voice switch says what it does", Z.L.OPT_PLAY_BUTTON, "Read Stories Aloud")
     Z:Set("voiceEnabled", false); layout:Refresh()
     Expect("...and off, Read Automatically greys out, saying why", discovery and discovery.layoutReason, Z.L.REASON_VOICE)
+    Expect("...and Read Flight Destination with it", flights and flights.layoutReason, Z.L.REASON_VOICE)
     Z:Set("voiceEnabled", true); layout:Refresh()
     Expect("...and comes back with it", discovery and discovery.layoutReason, nil)
 end

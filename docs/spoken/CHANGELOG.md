@@ -18,6 +18,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   and the minimap button shows the mark at its size, centred. *([Nucabe](https://github.com/Nucabe))*
 - **Found books, quests and areas are listed in gold in the Compendium**, as the groups above them are.
   They were white, close to the grey of what is not found yet. *([Nucabe](https://github.com/Nucabe))*
+- **Taking a flight reads the zone it lands in.** While you fly, Places reads the story
+  of the zone the flight ends in. Places you fly over stay silent, and the zone is not
+  read a second time when you land. Untick Read Flight Destination, under When to Read
+  on the Places settings page, to turn it off.
+  *([Nucabe](https://github.com/Nucabe))*
 - **The Spoken Manager can send the lines Spoken collects for you.** Turn on Sharing in the
   manager, and the lines Spoken had no voice for go to the site after each logout or /reload,
   so you no longer upload the file yourself. Collected lines now also say which version of your

@@ -102,6 +102,8 @@ function SpokenZones:SetupOptions()
 		layout:Requires(row, discovering, L.REASON_DISCOVERY)
 	end
 	layout:Outdent()
+	layout:Requires(layout:Checkbox(L.OPT_FLIGHT_LORE, L.OPT_FLIGHT_LORE_TIP,
+		Get("flightLore"), Set("flightLore")), voiced, L.REASON_VOICE)
 
 	-- The stories themselves: beside the map, with their pictures, read aloud, and in which
 	-- language their text is.

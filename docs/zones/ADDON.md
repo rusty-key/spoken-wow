@@ -27,6 +27,7 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | When to Read | Read Automatically | `autoplay` | on |
 | | Include Smaller Areas | `autoplaySubzones` | on |
 | | Include Places Found Before | `autoplayExplored` | off |
+| | Read Flight Destination | `flightLore` | on |
 | Stories | Show Story Beside Map | `showMapPanel` | on |
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
@@ -167,6 +168,27 @@ The game announces a discovery once per character, and Places reads that message
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
 - The queue refuses a duplicate of a line already queued or playing.
+
+## Reading a flight's destination
+
+A flight reads the zone it lands in, once, while the player is in the air. Read Flight Destination
+(`flightLore`, on) switches it off, and it needs Read Stories Aloud. Nothing flown over is read:
+on a taxi, or on a flying mount, a discovery or a zone change queues nothing, and nothing waits
+for the landing.
+
+- `Autoplay.lua` hooks `TakeTaxiNode`, finds the zone or city at the end of the flight and queues
+  its own story (`z:{mapID}`, never an area) once `UnitOnTaxi` says the player is in the air. A
+  flight that never leaves reads nothing.
+- The destination comes from the node's name first, which the client gives as "place, zone" in
+  its own language ("Crossroads, The Barrens", "Orgrimmar, Durotar"): the place if it is a map
+  with lore of its own, such as a city, else the zone. A name that matches no map is placed by
+  its position on the continent's map (`C_TaxiMap.GetAllTaxiNodes` and
+  `C_Map.GetMapInfoAtPosition`) where the client has those, and last by the start of a zone's
+  name ("Stranglethorn" for Stranglethorn Vale).
+- A flight inside the zone the player is in reads nothing. A destination Azeroth's Compendium
+  keeps locked (not found, with Unlock Undiscovered Zones off) is not read either.
+- Once read, the zone is not queued again by the discovery message or the explored sweep on
+  landing, until the player has stood in another zone.
 
 ## Reports and contributions
 

@@ -51,6 +51,8 @@ local defaults = {
 	-- discovered with one SpokenZones keeps itself. Only a character who explored
 	-- before installing the addon needs that; see Autoplay.lua.
 	autoplayExplored = false,
+	-- A flight reads the zone it lands in (Autoplay.lua).
+	flightLore = true,
 	-- Off, so a player cannot end up reading an unfinished translation without
 	-- having asked for one (Spoken > Developer). See Language.lua.
 	languagePreview = false,
