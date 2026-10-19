@@ -525,14 +525,29 @@ function _G.CreateFrame(kind, name, parent)
     -- Kept apart from the PlayerModel above on purpose: that one is the addon's model probe,
     -- tracked as M.playerModel, and the appearance roller must never replace it.
     if kind == "DressUpModel" then
+        -- A model with nothing loaded, or a creature the client has not cached (world.unloaded),
+        -- answers with the player's own appearance (world.ownDisplay).
+        function f:SetUnit() self.display, self.touched = world.ownDisplay, true end
         function f:SetCreature(id)
-            self.creature = id
+            self.creature, self.touched = id, true
             setCreatureCount = setCreatureCount + 1
             local displays = world.creatureDisplays[id]
-            self.display = displays and displays[(setCreatureCount - 1) % #displays + 1] or nil
+            local display = displays and displays[(setCreatureCount - 1) % #displays + 1] or nil
+            -- A real model keeps answering with the creature it held until the new one loads.
+            if world.modelLags then
+                self.pending, self.pendingAt = display, world.time
+            else
+                self.display = display
+            end
         end
+        function f:ClearModel() self.creature = nil end
         function f:GetDisplayInfo()
             if world.displaysUncached then return 0 end
+            if not self.touched then return world.blankDisplay or 0 end
+            if self.creature and world.unloaded and world.unloaded[self.creature] then return world.blankDisplay or 0 end
+            if self.pending and world.time > self.pendingAt then
+                self.display, self.pending = self.pending, nil
+            end
             return self.display or 0
         end
     end

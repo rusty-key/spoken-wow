@@ -218,7 +218,11 @@ Renderers["model"] = {
         if not creatureID then return false end
         if creatureID ~= model.oldCreatureID then
             if CAN_MODEL_LOAD_CACHE then model:ClearModel() end
-            model:SetCreature(creatureID)
+            if spec.displayID and model.SetDisplayInfo then
+                model:SetDisplayInfo(spec.displayID)
+            else
+                model:SetCreature(creatureID)
+            end
             Portrait:FrameHead(model)
             model:SetModelScale(2)
             model.animation = spec.animation or 60

@@ -85,7 +85,7 @@ QuestMapFrame.DetailsFrame = CreateFrame("Frame", nil, QuestMapFrame)
 QuestMapFrame.DetailsFrame.BackFrame = CreateFrame("Frame", nil, QuestMapFrame.DetailsFrame)
 _G.QuestMapFrame_ShowQuestDetails = function(questID) QuestMapFrame.DetailsFrame.questID = questID end
 local ns = {}
-for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "UI/QuestsTab", "UI/OpenInCompendium" }) do
+for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "Data/QuestFaces", "UI/QuestsTab", "UI/OpenInCompendium" }) do
     assert(loadfile(QUESTS .. file .. ".lua"))("Spoken_Quests", ns)
 end
 -- The shipped data links each quest to the one before it in its chain: Lost Necklace, Pie for
@@ -742,6 +742,7 @@ local function Who()
     return clip and (tostring(clip.name) .. " " .. tostring(clip.unitGUID))
 end
 local function Npc(name, id) return name .. " " .. VO.Utils:MakeGUID(VO.Enums.GUID.Creature, id) end
+-- The face is from the shipped data (Data/QuestFaces.lua), not what the client answers.
 stub.world.creatureDisplays[MCBRIDE], stub.world.creatureDisplays[DUGHAN] = { 3258 }, { 1990 }
 Click("Kobold Camp Cleanup")
 -- Without DialogueUI, each part's header is the Small Window's: the face of who says it with the
@@ -766,9 +767,9 @@ Expect("without DialogueUI, no DialogueUI header on either part",
 Expect("the offer is named its description, the hand-in its completion",
     L.QUEST_PART_ACCEPT .. "|" .. L.QUEST_PART_COMPLETE, "Description|Completion")
 Expect("the offer's header: its giver's face with the offer's badge, and its giver's name",
-    Face(PartOf(L.QUEST_PART_ACCEPT)), "still 3258 " .. BADGES["quest-accept"] .. " Marshal McBride")
+    Face(PartOf(L.QUEST_PART_ACCEPT)), "still 1859 " .. BADGES["quest-accept"] .. " Marshal McBride")
 Expect("...the completion's: the face and name of the one it is handed in to, with the completion's badge",
-    Face(PartOf(L.QUEST_PART_COMPLETE)), "still 1990 " .. BADGES["quest-complete"] .. " Marshal Dughan")
+    Face(PartOf(L.QUEST_PART_COMPLETE)), "still 1985 " .. BADGES["quest-complete"] .. " Marshal Dughan")
 do
     local part = PartOf(L.QUEST_PART_ACCEPT)
     Expect("...the face 44 across, shown at the left of the heading's line", part.face:GetWidth() .. " "
@@ -898,7 +899,7 @@ handIn.scripts.OnClick(handIn)
 Expect("...and for its giver where the data names no one else", Who(), Npc("Marshal McBride", MCBRIDE))
 Tab:Refresh()
 Expect("...its header then the giver's face and name", Face(PartOf(L.QUEST_PART_COMPLETE)),
-    "still 3258 " .. BADGES["quest-complete"] .. " Marshal McBride")
+    "still 1859 " .. BADGES["quest-complete"] .. " Marshal McBride")
 -- Waiting behind another quest's line: left where it is while that speaks, played at once once it is
 -- stopped.
 Spoken:StopAll()

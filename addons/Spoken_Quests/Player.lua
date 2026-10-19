@@ -128,11 +128,18 @@ local function Faceless(soundData)
     return { kind = "texture", texture = icon or NOTICE, texCoord = crop or ICON_CROP }
 end
 
+-- The creature's appearance from the data, which the client cannot be trusted for until it has cached it.
+local function FaceFor(creature)
+    local faces = _G.SpokenQuestFaces
+    return faces and creature and faces[creature] or nil
+end
+
 local function PortraitFor(soundData)
     if soundData.unitIsObjectOrItem then return Faceless(soundData) end
     return {
         kind = "model",
         creatureID = CreatureFor(soundData),
+        displayID = FaceFor(CreatureFor(soundData)),
         animation = 60,
         fallback = { kind = "texture", texture = BOOK },
     }

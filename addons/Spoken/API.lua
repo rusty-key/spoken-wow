@@ -149,6 +149,7 @@ end
 ---
 ---   face:SetSpeaker({
 ---     creatureID   = 197,             -- the creature to draw, or nil
+---     displayID    = 4259,            -- optional; its appearance where the caller knows it, else asked of the client
 ---     guid         = "Creature-...",  -- optional; drawn from its unit while one is about
 ---     objectOrItem = false,           -- an object or an item: its `icon`, else a posted notice
 ---     icon         = [[...]],         -- optional; an object's or item's picture

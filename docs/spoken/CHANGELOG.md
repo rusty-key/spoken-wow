@@ -29,6 +29,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **A quest chain's page has the quest scroll, as a quest does, and the Classes, Professions, holiday and
   other group pages have icons of their own.** Each part of a quest's page is headed by who speaks it,
   over Description or Completion. *([Nucabe](https://github.com/Nucabe))*
+- **Quest givers show their own face.** The quest portraits in the Compendium and the narrator's quest-giver
+  face are drawn from appearances that ship with Spoken, so a creature the client has not met yet no longer
+  shows your own face or another creature's. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.5.1 — 2026-10-19
 

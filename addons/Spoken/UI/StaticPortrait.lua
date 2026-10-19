@@ -76,34 +76,106 @@ local displays, asked = {}, {}
 local RETRY_SECONDS = 0.05
 local GIVE_UP_SECONDS = 5
 
+-- A model answers GetDisplayInfo with the creature it held before until the new one has loaded,
+-- so one model asked about many creatures hands the first creature's face to the rest. Each
+-- creature waiting for its appearance has a model of its own, taken from a small pool; a model
+-- put back remembers what it last answered, and that answer is not believed on the first read
+-- after it is given a new creature.
+local POOL_MOST = 16
+local RESEND_SECONDS = 1
+local pool, holder = {}, {}
+
 local function Roller()
     if roller == nil then
-        roller = false
-        if SetPortraitTextureFromCreatureDisplayID then
-            local ok, frame = pcall(CreateFrame, "DressUpModel")
-            if ok and frame and frame.SetCreature and frame.GetDisplayInfo then
-                frame:Hide()
-                roller = frame
-            end
-        end
+        roller = SetPortraitTextureFromCreatureDisplayID and CreateFrame and true or false
     end
     return roller or nil
 end
 
+-- A model whose creature is not cached yet answers with a stand-in until the server replies: the
+-- player's own appearance, or the one a model answers with when nothing is loaded in it. Neither
+-- is any creature's. Both are read live, from a model of the player's and one never given anything.
+local probes
+local function Defaults()
+    if probes == nil then
+        probes = false
+        local ok, own = pcall(CreateFrame, "DressUpModel")
+        local blank = ok and select(2, pcall(CreateFrame, "DressUpModel"))
+        if ok and own and blank and own.SetUnit and own.GetDisplayInfo and blank.GetDisplayInfo then
+            own:Hide()
+            blank:Hide()
+            probes = { own = own, blank = blank }
+        end
+    end
+    if not probes then return nil, nil end
+    pcall(probes.own.SetUnit, probes.own, "player")
+    local function Read(model)
+        local display = model:GetDisplayInfo()
+        return type(display) == "number" and display > 0 and display or nil
+    end
+    return Read(probes.own), Read(probes.blank)
+end
+
+-- A model for `creature`: its own while it waits, else a free one, a new one under the pool's
+-- size, or the one that has waited longest.
+local function TakeModel(creature)
+    local model = holder[creature]
+    if model then return model end
+    for _, each in ipairs(pool) do
+        if not each.creature then model = each; break end
+    end
+    if not model and #pool < POOL_MOST then
+        local ok, frame = pcall(CreateFrame, "DressUpModel")
+        if not (ok and frame and frame.SetCreature and frame.GetDisplayInfo) then return end
+        frame:Hide()
+        model = frame
+        pool[#pool + 1] = model
+    end
+    if not model then
+        for _, each in ipairs(pool) do
+            if not model or each.since < model.since then model = each end
+        end
+        holder[model.creature] = nil
+    end
+    if model.ClearModel then model:ClearModel() end
+    model.creature, model.since, model.sent, model.fresh = creature, GetTime(), GetTime(), true
+    holder[creature] = model
+    model:SetCreature(creature)
+    return model
+end
+
+local function Release(model)
+    holder[model.creature] = nil
+    model.creature = nil
+end
+
 local function DisplayFor(creature)
     if displays[creature] then return displays[creature] end
-    local model = Roller()
-    if not model then return end
+    if not Roller() then return end
     local now = GetTime()
     local times = asked[creature]
-    if times and (now - times.first > GIVE_UP_SECONDS or now - times.last < RETRY_SECONDS) then return end
+    if times and (now - times.first > GIVE_UP_SECONDS or now - times.last < RETRY_SECONDS) then
+        if times and now - times.first > GIVE_UP_SECONDS and holder[creature] then Release(holder[creature]) end
+        return
+    end
     if not times then times = { first = now }; asked[creature] = times end
     times.last = now
-    model:SetCreature(creature)
+    local model = TakeModel(creature)
+    if not model then return end
     local display = model:GetDisplayInfo()
-    if display and display > 0 then
+    local own, blank = Defaults()
+    local stale = display == own or display == blank or (model.fresh and display == model.answered)
+    model.fresh = false
+    if display and display > 0 and not stale then
         displays[creature] = display
+        model.answered = display
+        Release(model)
         return display
+    end
+    -- Still nothing after a second: ask again, and take the answer of the moment for the old one.
+    if now - model.sent >= RESEND_SECONDS then
+        model.sent, model.fresh, model.answered = now, true, display
+        model:SetCreature(creature)
     end
 end
 
@@ -132,8 +204,8 @@ function StaticPortrait:Keep(entry, key, creature)
     return entry
 end
 
-function StaticPortrait:FromCreature(creature)
-    local display = DisplayFor(creature)
+function StaticPortrait:FromCreature(creature, known)
+    local display = known or DisplayFor(creature)
     if not display then return end
     local key = "creature:" .. creature
     local entry = self:Acquire(key)
@@ -174,7 +246,7 @@ function StaticPortrait:Capture(clip, refreshGUID)
         end
     end
     if cached then self.age = self.age + 1; cached.age = self.age; return cached end
-    if not guid and type(creature) == "number" then return self:FromCreature(creature) end
+    if not guid and type(creature) == "number" then return self:FromCreature(creature, spec.displayID) end
 end
 function StaticPortrait:Mask(viewport, texture)
     if not texture.AddMaskTexture then return end

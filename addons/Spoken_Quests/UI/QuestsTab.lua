@@ -1171,7 +1171,11 @@ local function FaceSpeaker(id, moment)
     local kind, speaker = Speaker(id, moment)
     local bullet = BULLETS[moment]
     if not speaker then return { bullet = bullet } end
-    if Enums.GUID:IsCreature(kind) then return { creatureID = speaker, bullet = bullet } end
+    if Enums.GUID:IsCreature(kind) then
+        -- Its appearance from the data: the client's answer for a creature it has not cached is a stand-in.
+        local faces = _G.SpokenQuestFaces
+        return { creatureID = speaker, displayID = faces and faces[speaker] or nil, bullet = bullet }
+    end
     local icon = kind == Enums.GUID.Item and Spoken.QuestItemIcon and Spoken:QuestItemIcon(id) or nil
     return { objectOrItem = true, icon = icon, bullet = bullet }
 end
