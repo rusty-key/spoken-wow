@@ -1232,6 +1232,30 @@ function Addon:MuteGreetingAhead(event)
     end
 end
 
+--- The source that will read `unit`'s greeting, for Spoken to silence the game's own before its
+--- window opens: the same question MuteGreetingAhead asks of the window, asked of the NPC.
+---@param unit string
+function Addon:GreetingSourceFor(unit)
+    -- A greeting is a gossip window's: Gossip's part, its own source.
+    if not self:IsPageOn("GOSSIP_SHOW") or not self:IsAutoplayOn() or self.dataModulesPending
+        or not Player.gossipSource or GreetingFirst:IsOn() or (Spoken.ReadsHere and not Spoken:ReadsHere()) then
+        return nil
+    end
+    local guid = UnitGUID(unit)
+    local speaker = { unitGUID = guid, name = UnitName(unit), unitIsObjectOrItem = false }
+    if not guid and not speaker.name then
+        return nil
+    end
+    if not self:ShouldPlayGossip(guid, nil, false, false) or not DataModules:HasGossipFor(speaker) then
+        return nil
+    end
+    return Player.gossipSource
+end
+
+if type(Spoken) == "table" and Spoken.AddGreetingCheck then
+    Spoken:AddGreetingCheck(function(unit) return Addon:GreetingSourceFor(unit) end)
+end
+
 --- The text autoplay will read for the dialog that just opened, or nil. Asked before the line is
 --- queued; `textIsCurrent` when the page is drawn, to check its own line, not just the speaker.
 ---@param event string

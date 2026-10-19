@@ -25,7 +25,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **The quest log marks the quests a voice pack reads.** A small speech bubble on a quest's
   row says that its offer, progress or turn-in is read aloud; its tooltip says the same. On
   Forever's map quest log it sits at the row's right end, beside the tracking checkbox. Mark
-  Voiced Quests, under Quest Log on the Quests page, turns it off.
+  Voiced Quests, under Quest Log on the Quests page, turns it off. *([Nucabe](https://github.com/Nucabe))*
+- **Silence NPC Voices no longer lets a moment of an NPC's greeting through.** The game starts
+  the greeting as the window opens, before Spoken can mute it, so now and then its first moment
+  was heard. An NPC whose greeting a pack reads is now muted while you point at or target it,
+  near enough to talk to, and gets its voice back when you move off.
   *([Nucabe](https://github.com/Nucabe))*
 - **The Spoken Manager can send the lines Spoken collects for you.** Turn on Sharing in the
   manager, and the lines Spoken had no voice for go to the site after each logout or /reload,

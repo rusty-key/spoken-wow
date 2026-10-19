@@ -63,5 +63,38 @@ Expect("...and gives its voice back when no line comes", GetCVar("Sound_EnableDi
 stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 
+-- Before the window: the game starts an NPC's greeting in the frame its window opens, before
+-- addons hear of it. An NPC whose greeting a pack reads is muted for while it is under the mouse,
+-- near enough to talk to, and gets its voice back as soon as the mouse moves off.
+do
+    local SQ = _G.SpokenEnv.SoundQueue
+    local watch = SQ.greetingWatch
+    local near, voiced = true, false
+    local checkDistance = _G.CheckInteractDistance
+    _G.CheckInteractDistance = function() return near end
+    SQ:AddGreetingCheck(function(unit) return voiced and VO.Player.gossipSource or nil end)
+    Expect("Spoken Quests asks the same of an NPC it does not voice: no greeting to read",
+        VO.Addon:GreetingSourceFor("mouseover"), nil)
+    local hasGossip = VO.DataModules.HasGossipFor
+    VO.DataModules.HasGossipFor = function() return true end
+    Expect("...and for one a pack voices, Gossip's source reads the greeting",
+        VO.Addon:GreetingSourceFor("mouseover") == VO.Player.gossipSource and VO.Player.gossipSource ~= nil, true)
+    VO.DataModules.HasGossipFor = hasGossip
+    watch.scripts.OnUpdate(watch, 0.3)
+    Expect("near an NPC no pack voices: its voice left on", GetCVar("Sound_EnableDialog"), "1")
+    voiced = true
+    watch.scripts.OnUpdate(watch, 0.3)
+    Expect("near one whose greeting a pack reads: muted before its window opens", GetCVar("Sound_EnableDialog"), "0")
+    near = false
+    watch.scripts.OnUpdate(watch, 0.3)
+    Expect("...and its voice back as soon as the mouse moves off", GetCVar("Sound_EnableDialog"), "1")
+    _G.SpokenEnv.Addon.db.profile.Audio.AutoToggleDialog = false
+    near = true
+    watch.scripts.OnUpdate(watch, 0.3)
+    Expect("with Silence NPC Voices off, nothing is muted ahead", GetCVar("Sound_EnableDialog"), "1")
+    _G.SpokenEnv.Addon.db.profile.Audio.AutoToggleDialog = true
+    _G.CheckInteractDistance = checkDistance
+end
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quest NPC silence tests passed")

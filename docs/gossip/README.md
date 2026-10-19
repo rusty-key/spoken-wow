@@ -33,6 +33,11 @@ pack calls into it.
 2. In the frame the window opens, `MuteGreetingAhead` cuts the NPC's own spoken greeting, but
    only where a pack has a line for this speaker and the settings say it will be read. Any
    other NPC keeps its own voice.
+   The game starts the greeting in that same frame, so a mute taken then can let its first moment
+   through. Spoken therefore asks the same question of the NPC under the mouse or targeted, within
+   about 10 yards (`Addon:GreetingSourceFor`, polled four times a second by `SoundQueue`), and
+   mutes before the window opens. Moving off gives the voice back. The modern clients only: the
+   legacy ones have no Dialog channel to hold.
 3. `GetNPCGossipTextHash` finds the line from the speaker and the words. It looks in the
    tables written in the client's language first (`Gossip/<lang>.lua`, then the packs'), and only
    if no pack in that language knows the NPC does it try the others. The closest match by shared

@@ -409,6 +409,74 @@ function SoundQueue:EndMuteGameDialogueAhead()
     end
 end
 
+-- The game starts an NPC's greeting in the frame its window opens, before addons hear of it, so a
+-- mute taken then lets the greeting's first moment through now and then. An NPC whose greeting a
+-- pack reads is muted for ahead of that: while it is under the mouse or targeted, near enough to
+-- talk to. Modules say which NPCs those are (SoundQueue:AddGreetingCheck).
+local greetingChecks = {}
+local HOVER_POLL = 0.25
+-- 3 is CheckInteractDistance's shortest reach that answers for any unit, about 10 yards.
+local NEAR = 3
+local hoverMuted = false
+
+--- `check(unit)` returns the source that will read `unit`'s greeting, or nil.
+function SoundQueue:AddGreetingCheck(check)
+    table.insert(greetingChecks, check)
+end
+
+local function NearNPC(unit)
+    if not UnitExists(unit) or UnitIsPlayer(unit) then return false end
+    if UnitCanAttack and UnitCanAttack("player", unit) then return false end
+    local ok, near = pcall(CheckInteractDistance, unit, NEAR)
+    return ok and near and true or false
+end
+
+-- The source that will read the greeting of the NPC under the mouse or targeted, or nil.
+local function GreetingAhead()
+    for _, unit in ipairs({ "mouseover", "target" }) do
+        if NearNPC(unit) then
+            for _, check in ipairs(greetingChecks) do
+                local ok, source = pcall(check, unit)
+                if ok and source then return source end
+            end
+        end
+    end
+    return nil
+end
+
+local function DialogOpen()
+    for _, name in ipairs({ "GossipFrame", "QuestFrame", "DUIQuestFrame" }) do
+        local frame = _G[name]
+        if type(frame) == "table" and frame.IsShown and frame:IsShown() then return true end
+    end
+    return false
+end
+
+-- On 1.12 muting is cutting every sound, and the other legacy clients have no Dialog channel to
+-- hold: there it waits for the window as before.
+if not Version.IsAnyLegacy then
+    local watch = CreateFrame("Frame")
+    SoundQueue.greetingWatch = watch
+    local waited = 0
+    watch:SetScript("OnUpdate", function(_, elapsed)
+        waited = waited + elapsed
+        if waited < HOVER_POLL then return end
+        waited = 0
+        if not greetingChecks[1] or not (Addon.db and Addon.db.profile.Audio.AutoToggleDialog) then return end
+        local source = GreetingAhead()
+        if source then
+            SoundQueue:MuteGameDialogueAhead(source:GetChannel())
+            hoverMuted = true
+        elseif hoverMuted then
+            hoverMuted = false
+            -- Moved off without talking: the game's voices come back now, unless a line of ours
+            -- speaks or a window opened, whose own mute holds.
+            local head = SoundQueue:GetCurrentSound()
+            if not (head and head.nextSoundTimer) and not DialogOpen() then SoundQueue:MuteGameDialogue(nil) end
+        end
+    end)
+end
+
 -- The channel a clip speaks on, ready for it. Whatever we muted, we cannot speak on, so it
 -- is lifted first: a clip on the very channel the last line silenced is heard.
 local function SpeakingChannel(clip)
