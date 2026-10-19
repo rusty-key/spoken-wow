@@ -23,7 +23,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         package-spoken package-spoken-all release-spoken release-spoken-dry \
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
-        character-models dungeons \
+        character-models dungeons bosses \
         audio-release audio-release-dry \
         manager-publish manager-publish-dry manager-gc manager-gc-dry
 
@@ -144,6 +144,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/zones_each_place_once_test.lua
 	@$(LUA) tests/lua/zones_city_test.lua
 	@$(LUA) tests/lua/zones_dungeons_test.lua
+	@$(LUA) tests/lua/npcs_bosses_test.lua
 	@$(LUA) tests/lua/zones_story_place_test.lua
 	@$(LUA) tests/lua/zones_area_zones_test.lua
 	@$(LUA) tests/lua/zones_forever_places_test.lua
@@ -210,6 +211,11 @@ descriptions-published: ## Record the current descriptions as pasted into the si
 # that file, then the exporters that read it.
 dungeons: ## Rebuild addons/Spoken/Data/Dungeons.lua from pipelines/lib/dungeons.json and the client's Map table
 	@node pipelines/lib/dungeons.mjs
+
+# The bosses of those dungeons and raids, from the client's DungeonEncounter table, for the bosses'
+# tab (Spoken_NPCs/Data/Bosses.lua).
+bosses: ## Rebuild addons/Spoken_NPCs/Data/Bosses.lua from the client's DungeonEncounter table
+	@node pipelines/lib/bosses.mjs
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json
 	@sed -n '2,10p' scripts/character-models.mjs | sed -e 's/^\/\/ //' -e 's/^\/\/$$//'

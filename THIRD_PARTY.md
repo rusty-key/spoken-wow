@@ -57,6 +57,12 @@ None of this is the project's to license, and the MIT grant does not reach it.
   **CC BY-SA 4.0**. Re-use of that text carries the same terms, including attribution
   and share-alike. `pipelines/zones/tools/scrape.mjs` is what fetches it and records
   which article each line came from.
+- **Boss and dungeon stories** (`addons/Spoken_NPCs/Data/Stories.lua`) are written from
+  Blizzard's Adventure Guide text and from Warcraft Wiki (**CC BY-SA 4.0**), rewritten
+  into one voice. The file is built for the local game build and is not committed;
+  `pipelines/zones/tools/build-boss-stories.mjs` and `apply-boss-stories.mjs` make it.
+  The Forever-only dungeons' stories come from the quest text in Efficient Games' EG Link output
+  (CC BY 4.0, see below), and the checks of the others use the vmangos quest corpus.
 - **Book, letter and in-world text** for Spoken_Readables comes from the same vmangos
   extraction as the quest corpus, and is likewise Blizzard's.
 - **Where each readable is** (`addons/Spoken_Readables/Data/Places.lua`): the spawns, loot, quests
@@ -100,7 +106,13 @@ None of this is the project's to license, and the MIT grant does not reach it.
   from the game's files so every client has them; the pictures for Spoken Places' lines. They are
   Blizzard's. Forever's own zones, which have no icon in the game
   (Zephras Isle, Darkspear Islands, Riverglades, Shen'dralas), have icons made for this project
-  in the same style.
+  in the same style. The cities, Moonglade, and Dalaran in `Textures/Dungeons`, have icons made for this
+  project in the same style. The battlegrounds have their icons from the retail game (the Dungeon
+  Finder's for Arathi Basin and Warsong Gulch, the Win Alterac Valley achievement's for Alterac Valley).
+- **Dungeon icons** (`addons/Spoken/Textures/Dungeons/*.tga`): the Dungeon Finder's icons of the
+  retail game (`Interface\LFGFrame\LFGIcon-*`) and Dun Morogh's zone icon (for the Hall of Thanes),
+  copied from the game's files so every client has them. They are
+  Blizzard's.
 - **Zone pictures** (`addons/Spoken_Places/Textures/Pictures/*.blp`): screenshots of the game,
   chosen by hand, mostly from each place's [Warcraft Wiki](https://warcraft.wiki.gg) page, cleaned
   up and sharpened with Gemini 3.1 Flash Image, then cropped, tinted and edged by

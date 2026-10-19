@@ -32,6 +32,15 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Quest givers show their own face.** The quest portraits in the Compendium and the narrator's quest-giver
   face are drawn from appearances that ship with Spoken, so a creature the client has not met yet no longer
   shows your own face or another creature's. *([Nucabe](https://github.com/Nucabe))*
+- **New module, Spoken NPCs, with a Bosses tab in Azeroth's Compendium.** It lists every boss of every
+  dungeon and raid, under the zones that have one, then the dungeons and their bosses. A boss is found when
+  its fight starts: one not found is greyed until you find it or turn on Unlock Unfound Bosses, and Found
+  Only hides it. Zones and dungeons count what is found. A boss's page names its dungeon and zone, shows
+  its face with a skull, and holds its story where one is written. *([Nucabe](https://github.com/Nucabe))*
+- **Show Boss Abilities, on Spoken's settings page, puts each boss's spells under its story.** The spells are
+  cards with the spellbook's frame. It is off by default. *([Nucabe](https://github.com/Nucabe))*
+- **Every dungeon and raid has its own icon in the Compendium, and so do the cities, Moonglade and the
+  battlegrounds.** *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.5.1 — 2026-10-19
 

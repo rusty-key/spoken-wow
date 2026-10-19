@@ -113,7 +113,8 @@ for _, queued in ipairs(env.SoundQueue.sounds) do if queued.questID == 103 then 
 Expect("a quest from an item shows the item's icon", fromItem and fromItem.present.portrait.texture, 134939)
 Expect("...the icon found by name too, for a book read from the bags", Spoken:BagItemIcon("Gold Pickup Schedule"), 134939)
 _G.C_Container = nil
-Expect("a city takes its zone's icon, as an area does", Spoken:ZoneIcon(1455), [[Interface\AddOns\Spoken\Textures\Zones\DunMorogh]])
+Expect("a city has an icon of its own", Spoken:ZoneIcon(1455), [[Interface\AddOns\Spoken\Textures\Zones\Ironforge]])
+Expect("...an area the icon of the zone it is in", Spoken:ZoneIcon(1426), [[Interface\AddOns\Spoken\Textures\Zones\DunMorogh]])
 Expect("...a Forever zone the icon drawn for it", Spoken:ZoneIcon(2524), [[Interface\AddOns\Spoken\Textures\Zones\DarkspearIslands]])
 Expect("...and a map with none, itself or above it, none", Spoken:ZoneIcon(9999), nil)
 _G.UnitExists = unitExists

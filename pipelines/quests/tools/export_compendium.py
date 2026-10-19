@@ -105,8 +105,9 @@ CITY_IN = {1453: 1429, 1454: 1411, 1455: 1426, 1456: 1412, 1457: 1438, 1458: 142
 # The Forever repack's extracted map files, whose AREA chunks say which area a point is in.
 MAPS_DIR = os.environ.get("COMPENDIUM_MAPS", "C:/Forever/ForeverRepack/data/maps")
 # The dungeons and raids a quest is filed under (`dungeon`): not the other instances, such as the
-# Excavation Site, an instance of the Wetlands' own story (Caitlin Grassman's quests).
-DUNGEONS = {int(m) for m in _INSTANCES["dungeons"]}
+# Excavation Site, an instance of the Wetlands' own story (Caitlin Grassman's quests). A map listed
+# under both, as the Excavation Site is for the Bosses tab, files its quests as an instance.
+DUNGEONS = {int(m) for m in _INSTANCES["dungeons"]} - {int(m) for m in _INSTANCES["instances"]}
 # The battlegrounds' maps, and the zone map of each: Alterac Valley, Warsong Gulch, Arathi Basin
 # and Forever's Darkspear Islands.
 BATTLEGROUND_ZONE = {int(m): row["zone"] for m, row in _INSTANCES["battlegrounds"].items()}

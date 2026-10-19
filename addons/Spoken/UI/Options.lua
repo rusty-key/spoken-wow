@@ -655,13 +655,22 @@ local function Build(canvas)
         { tab = "quests", part = "quests", label = L.OPT_UNLOCK_QUESTS, module = L.OPT_PART_QUESTS },
         { tab = "places", part = "zones", label = L.OPT_UNLOCK_PLACES, module = L.OPT_PART_ZONES },
         { tab = "readables", part = "books", label = L.OPT_UNLOCK_WRITINGS, module = L.OPT_PART_BOOKS },
+        -- Spoken NPCs has no part to turn off: its tab is there while the addon is.
+        { tab = "bosses", label = L.OPT_UNLOCK_BOSSES },
     }) do
         local row = layout:Checkbox(unlock.label, nil,
             function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil and tab.unlock.get() end,
             function(v) local tab = Tab(unlock.tab); if tab and tab.unlock then tab.unlock.set(v) end end)
         Only(row, function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil end)
-        Requires(row, function() return Spoken:IsPartOn(unlock.part) end, format(L.REASON_MODULE_OFF_FMT, unlock.module))
+        if unlock.part then
+            Requires(row, function() return Spoken:IsPartOn(unlock.part) end, format(L.REASON_MODULE_OFF_FMT, unlock.module))
+        end
     end
+    -- Spoken NPCs' spell cards under a boss's story; hidden until turned on.
+    local abilities = layout:Checkbox(L.OPT_SHOW_BOSS_ABILITIES, nil,
+        function() local tab = Tab("bosses"); return tab ~= nil and tab.abilities ~= nil and tab.abilities.get() end,
+        function(v) local tab = Tab("bosses"); if tab and tab.abilities then tab.abilities.set(v) end end)
+    Only(abilities, function() local tab = Tab("bosses"); return tab ~= nil and tab.abilities ~= nil end)
 
     -- Where a player goes when something is wrong, for every module at once. Each module's page
     -- keeps its own Play a Test Line, beside its voice packs. On the settings canvas it is on the
@@ -933,9 +942,10 @@ local function Build(canvas)
         Layout.Confirm(L.OPT_RESET_ALL_CONFIRM, L.OPT_RESET_AND_RELOAD, L.CANCEL, function()
             -- The Unlock switches are on this page but kept with each part's settings, which
             -- ResetProfile does not reach, and each part's own Reset skips them.
-            for _, key in ipairs({ "places", "readables", "quests" }) do
+            for _, key in ipairs({ "places", "readables", "quests", "bosses" }) do
                 local tab = Tab(key)
                 if tab and tab.unlock then tab.unlock.set(false) end
+                if tab and tab.abilities then tab.abilities.set(false) end
             end
             -- The feature addons' DialogueUI rows are kept in their own settings too.
             DialogueUIOptions:Reset()

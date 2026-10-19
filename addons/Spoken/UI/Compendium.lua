@@ -110,6 +110,7 @@ local function Atlas(texture, atlas, useAtlasSize)
 	end
 	return false
 end
+C.Atlas = Atlas
 
 -- Art the game draws on its login screens, which it does not describe by name once in the world:
 -- where it sits in its file, from the client's atlas tables (the same in Era 1.15 and 1.60).
@@ -1843,6 +1844,7 @@ end
 -- this falls back to.
 local INK = { 0.25, 0.16, 0.08 }
 if _G.SPELLBOOK_FONT_COLOR and SPELLBOOK_FONT_COLOR.GetRGB then INK = { SPELLBOOK_FONT_COLOR:GetRGB() } end
+C.INK = INK
 -- The line under the title under the pointer, where a click on it goes up a level: the places'
 -- page's link colour.
 local LINK = { 0.5, 0.12, 0.04 }
