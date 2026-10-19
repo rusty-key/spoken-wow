@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 16001
-## Title: Spoken NPCs
+## Title: |cffb48cffSpoken|r |cff6cb8ffNPCs|r
 ## Notes: The bosses of every dungeon and raid, and their stories, in Azeroth's Compendium.
 ## Notes-deDE: Die Bosse aller Dungeons und Schlachtzüge und ihre Geschichten, im Kompendium von Azeroth.
 ## Notes-esES: Los jefes de todas las mazmorras y bandas, y sus historias, en el Compendio de Azeroth.

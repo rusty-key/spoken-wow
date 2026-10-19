@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 30403, 100007, 16001
-## Title: Spoken Contributions
+## Title: |cffb48cffSpoken|r |cff6cb8ffContributions|r
 ## Notes: Where Spoken keeps the lines it gathered for you. Upload SavedVariables/SpokenContributions.lua at spoken.rusty.one/contribute.
 ## Version: 3.5.1
 ## SavedVariables: SpokenContributionsDB

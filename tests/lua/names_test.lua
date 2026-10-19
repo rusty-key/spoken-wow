@@ -22,11 +22,14 @@ local function Field(toc, name)
 end
 
 ---------------------------------------------------------------- in the AddOns list
+-- The brand word and the module's name are coloured, so the family stands out in the list.
+local BRAND = "|cffb48cffSpoken|r"
+local function Module(name) return BRAND .. " |cff6cb8ff" .. name .. "|r" end
 local ADDON_TITLES = {
-    { folder = "Spoken", title = "Spoken" },
-    { folder = "Spoken_Quests", title = "Spoken Quests" },
-    { folder = "Spoken_Readables", title = "Spoken Readables" },
-    { folder = "Spoken_Places", title = "Spoken Places" },
+    { folder = "Spoken", title = BRAND },
+    { folder = "Spoken_Quests", title = Module("Quests") },
+    { folder = "Spoken_Readables", title = Module("Readables") },
+    { folder = "Spoken_Places", title = Module("Places") },
 }
 for _, addon in ipairs(ADDON_TITLES) do
     local toc = ADDONS .. addon.folder .. "/" .. addon.folder .. ".toc"

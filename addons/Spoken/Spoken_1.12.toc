@@ -1,5 +1,5 @@
 ## Interface: 11200
-## Title: Spoken
+## Title: |cffb48cffSpoken|r
 ## Notes: The voice player every Spoken addon speaks through, for the 1.12 client.
 ## Notes-deDE: Der Voice-Player, über den jedes Spoken-AddOn spricht, für 1.12-Server.
 ## Notes-esES: El reproductor de voz a través del cual habla cada addon Spoken, para servidores 1.12.

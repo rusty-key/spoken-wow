@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 16001
-## Title: Spoken Audio: Places
+## Title: |cffb48cffSpoken|r |cff6cb8ffPlaces|r Voice Pack
 ## Notes: Narrated zone lore for Spoken Zones. Install alongside Spoken Zones.|nBeta: a proof-of-concept voice, being redesigned and re-generated.
 ## Version: 2.0.1
 ## Author: rusty

@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The AddOns list shows Spoken and each module's name in colour, with new icons.** Spoken, Conversations,
+  Places, Readables, Contributions and Developer each have a new icon, the voice packs are titled Voice Pack,
+  and the minimap button shows the mark at its size, centred. *([Nucabe](https://github.com/Nucabe))*
 - **Found books, quests and areas are listed in gold in the Compendium**, as the groups above them are.
   They were white, close to the grey of what is not found yet. *([Nucabe](https://github.com/Nucabe))*
 - **The Spoken Manager can send the lines Spoken collects for you.** Turn on Sharing in the

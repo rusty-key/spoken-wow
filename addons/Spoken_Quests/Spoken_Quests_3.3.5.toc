@@ -1,5 +1,5 @@
 ## Interface: 30300
-## Title: Spoken Quests
+## Title: |cffb48cffSpoken|r |cff6cb8ffQuests|r
 ## Notes: Quest and gossip dialogue read aloud through Spoken. Restores quest and gossip voiceovers on the 3.3.5 client.
 ## Notes-deDE: Quest- und Gesprächsdialoge, vorgelesen durch Spoken. Stellt die Quest- und Gesprächs-Vertonungen auf 3.3.5-Servern wieder her.
 ## Notes-esES: Diálogos de misiones y charlas leídos en voz alta a través de Spoken. Restaura las voces de misiones y charlas en servidores 3.3.5.

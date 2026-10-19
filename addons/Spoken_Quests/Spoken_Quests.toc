@@ -1,5 +1,5 @@
 ## Interface: 100007, 16001
-## Title: Spoken Quests
+## Title: |cffb48cffSpoken|r |cff6cb8ffQuests|r
 ## Notes: Quest and gossip dialogue read aloud through Spoken. Restores quest and gossip voiceovers on supported clients.
 ## Notes-deDE: Quest- und Gesprächsdialoge, vorgelesen durch Spoken. Stellt die Quest- und Gesprächs-Vertonungen auf unterstützten Clients wieder her.
 ## Notes-esES: Diálogos de misiones y charlas leídos en voz alta a través de Spoken. Restaura las voces de misiones y charlas en clientes compatibles.
