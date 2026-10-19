@@ -57,6 +57,17 @@ local EVENT_NAMES = { winterveil = "EVENT_WINTER_VEIL", harvestfestival = "EVENT
 local function EventLabel(key) return EVENT_NAMES[key] and L[EVENT_NAMES[key]] or key end
 local TYPES, TYPE_NAMES = SpokenBooks.TYPES, SpokenBooks.TYPE_NAMES
 local function TypeLabel(type) return L[(TYPE_NAMES[type] or TYPE_NAMES.other).all] end
+
+-- A kind of writing's portrait: its icon, and the small training book for a badge.
+local TYPE_ICONS = {
+	book = "INV_Misc_Book_09", journal = "INV_Misc_Book_11", letter = "INV_Letter_15", note = "INV_Misc_Note_01",
+	scroll = "INV_Scroll_03", tablet = "INV_Misc_StoneTablet_11", plaque = "INV_Misc_Note_06",
+	grave = "INV_Misc_Bone_HumanSkull_01", exhibit = "INV_Misc_Statue_01", picture = "INV_Misc_Map_01",
+	other = "INV_Misc_QuestionMark",
+}
+local function TypeIcon(type)
+	return { objectOrItem = true, icon = [[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other), bullet = "book" }
+end
 local filter = ""
 
 --------------------------------------------------------------------------------
@@ -374,6 +385,17 @@ local function AsLeft(named, build)
 	local rows = build()
 	asLeft = before
 	return rows
+end
+
+-- A readable's pages joined, "" where none has words.
+local function Words(id)
+	local words = {}
+	local data = SpokenBooks:Data()
+	for _, pageId in ipairs(Books()[id].pages) do
+		local text = data.pages[pageId] and data.pages[pageId].text
+		if text and text ~= "" then table.insert(words, text) end
+	end
+	return table.concat(words, "\n\n")
 end
 
 -- A readable's row, or nil where it is not listed. `whole`: what holds it was named by the search.
@@ -749,27 +771,6 @@ local REPORT = {
 	tip = L.REPORT_LINE_TIP,
 }
 
--- How a carried readable is had, one line each: "Dropped by Defias Messenger (Westfall)".
-local HOW = {
-	["drop"] = "FROM_DROP", ["pickpocket"] = "FROM_PICKPOCKET", ["quest start"] = "FROM_QUEST_START",
-	["quest reward"] = "FROM_QUEST_REWARD", ["quest"] = "FROM_QUEST", ["mail"] = "FROM_MAIL",
-	["object"] = "FROM_OBJECT", ["container"] = "FROM_CONTAINER", ["fishing"] = "FROM_FISHING", ["vendor"] = "FROM_VENDOR",
-}
-
-local function LocalName(index)
-	local names = _G.SpokenBooksPlaces and SpokenBooksPlaces.names
-	local name = names and names[index]
-	if not name then return nil end
-	local locale = GetLocale and GetLocale() or "enUS"
-	return name[locale] or name[1]
-end
-
-local function ZoneList(zones)
-	local names = {}
-	for _, mapID in ipairs(zones or {}) do table.insert(names, MapName(mapID)) end
-	return table.concat(names, ", ")
-end
-
 -- Where a readable is, under its title: its first two zones, and how many more. One line: a book
 -- shelved in seven zones would be cut short mid-name.
 local function InZones(zones)
@@ -778,26 +779,6 @@ local function InZones(zones)
 	local line = L.READABLES_IN_FMT:format(table.concat(names, ", "))
 	if #zones > 2 then line = line .. L.READABLES_MORE_FMT:format(#zones - 2) end
 	return line
-end
-
--- How a readable is had, in a part of its own at the top of its page: each source, with the zone
--- it is in.
-local function Sources(place)
-	local lines = {}
-	for _, from in ipairs(place.from or {}) do
-		local key = HOW[from[1]]
-		if key and L[key] then
-			local name = from[2] and LocalName(from[2])
-			local line = name and L[key]:format(name) or (from[1] == "fishing" and L[key] or nil)
-			if line then
-				local zones = {}
-				for i = 3, #from do table.insert(zones, from[i]) end
-				if #zones > 0 then line = L.FROM_IN_ZONES:format(line, ZoneList(zones)) end
-				table.insert(lines, line)
-			end
-		end
-	end
-	return lines
 end
 
 local function Count(found, total)
@@ -861,25 +842,12 @@ local function ShowEntry()
 			where = L.GROUP_UNKNOWN
 		end
 		if not Found(id) and not Unlocked() then
-			page:Show({ title = Name(id), subtitle = where, text = L.READABLE_NOT_FOUND })
+			page:Show({ title = Name(id), subtitle = where, text = L.READABLE_NOT_FOUND, icon = TypeIcon(Index().typeOf[id]) })
 			return
 		end
-		local words = {}
-		local data = SpokenBooks:Data()
-		for _, pageId in ipairs(Books()[id].pages) do
-			local text = data.pages[pageId] and data.pages[pageId].text
-			if text and text ~= "" then table.insert(words, text) end
-		end
-		-- How it is had, in a part of its own above the words, which follow under no heading.
-		local sources = Sources(place)
-		if #sources > 0 then
-			page:Show({ title = Name(id), subtitle = where, target = id, parts = {
-				{ heading = L.READABLE_SOURCES, text = table.concat(sources, "\n") },
-				{ text = table.concat(words, "\n\n") },
-			} })
-		else
-			page:Show({ title = Name(id), subtitle = where, text = table.concat(words, "\n\n"), target = id })
-		end
+		local words = Words(id)
+		page:Show({ title = Name(id), subtitle = where, text = words, target = id,
+			icon = TypeIcon(Index().typeOf[id]) })
 		return
 	end
 	-- A zone, a continent, a group, a type: where it is and what it holds. A kind of writing across
@@ -887,7 +855,8 @@ local function ShowEntry()
 	local set = {}
 	if selection.type and not selection.group then
 		for _, id in ipairs(Index().types[selection.type] or {}) do set[id] = true end
-		page:Show({ title = TypeLabel(selection.type), subtitle = Count(Tally(set)), text = L.READABLES_PICK })
+		page:Show({ title = TypeLabel(selection.type), subtitle = Count(Tally(set)), text = L.READABLES_PICK,
+			icon = TypeIcon(selection.type) })
 		return
 	end
 	if selection.group and selection.mapID and TYPE_NAMES[selection.group] then
@@ -896,13 +865,14 @@ local function ShowEntry()
 			byType, where = (Index().dungeons[selection.mapID] or {})[selection.dungeon], DungeonName(selection.dungeon)
 		end
 		for _, id in ipairs((byType or {})[selection.group] or {}) do set[id] = true end
-		page:Show({ title = TypeLabel(selection.group), subtitle = InAndCount(where, Tally(set)), text = L.READABLES_PICK })
+		page:Show({ title = TypeLabel(selection.group), subtitle = InAndCount(where, Tally(set)), text = L.READABLES_PICK,
+			icon = TypeIcon(selection.group) })
 		return
 	end
 	if selection.dungeon then
 		DungeonReadables(selection.mapID, selection.dungeon, set)
 		page:Show({ title = DungeonName(selection.dungeon), subtitle = InAndCount(MapName(selection.mapID), Tally(set)),
-			text = L.READABLES_PICK,
+			text = L.READABLES_PICK, icon = C.PlaceIcon(nil, selection.dungeon),
 			picture = C.PlacePicture({ mapID = selection.mapID, dungeon = selection.dungeon }) })
 		return
 	end
@@ -917,7 +887,7 @@ local function ShowEntry()
 		for _, id in ipairs(Index()[selection.group]) do
 			if Index().typeOf[id] == selection.type then set[id] = true end
 		end
-		page:Show({ title = TypeLabel(selection.type),
+		page:Show({ title = TypeLabel(selection.type), icon = TypeIcon(selection.type),
 			subtitle = L[GROUP_LABEL[selection.group]] .. " · " .. Count(Tally(set)), text = L.READABLES_PICK })
 		return
 	end
@@ -947,7 +917,7 @@ local function ShowEntry()
 		ReadablesIn(selection.mapID, set)
 	end
 	page:Show({ title = MapName(selection.mapID), subtitle = InAndCount(MapName(Above(selection.mapID)), Tally(set)),
-		text = L.READABLES_PICK,
+		text = L.READABLES_PICK, icon = C.PlaceIcon(selection.mapID),
 		picture = C.PlacePicture({ mapID = selection.mapID }) })
 end
 

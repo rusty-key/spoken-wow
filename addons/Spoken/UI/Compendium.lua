@@ -635,7 +635,9 @@ local PLUS_OFF = [[Interface\Buttons\UI-PlusButton-Disabled]]
 local READY = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local ACTIVE = [[Interface\GossipFrame\ActiveQuestIcon]]
 -- A card's badge where it has no painting of its own: a map.
-local MAP_ICON = [[Interface\Icons\INV_Misc_Map_01]]
+-- What stands in for a picture that is not there yet: the question mark, drawn like any other, so a
+-- page and a line always have their portrait.
+local UNKNOWN_ICON = [[Interface\Icons\INV_Misc_QuestionMark]]
 local CHECK = "questlog-icon-checkmark-yellow"
 -- One size for every tick in the column down the list's right, on cards and lines alike.
 local TICK_WIDTH, TICK_HEIGHT = 15, 13
@@ -1348,7 +1350,7 @@ local function DrawCard(row, item, indent, width)
 	local middle = -26
 	local centre = indent + CARD_PAD + side / 2
 	local none = item.none or item.locked
-	local icon = item.icon or MAP_ICON
+	local icon = item.icon or UNKNOWN_ICON
 	do
 		local inset = 3 -- the frame's own rim
 		local crop = item.iconCrop or ICON_CROP
@@ -1530,6 +1532,10 @@ end
 --- Build the items again and draw them. Returns the items.
 function List:Render()
 	local items = self.opts.build()
+	-- A place is a line like a chain or a type, with its numbers: its picture is on its page.
+	for _, item in ipairs(items) do
+		if item.style == "card" then item.style = "group" end
+	end
 	local onlyFound = self.opts.onlyGet and self.opts.onlyGet()
 	local width = (self.child:GetWidth() or (LIST_WIDTH - 8)) - LIST_LEFT - LIST_RIGHT
 	local y = LIST_TOP
@@ -1804,6 +1810,7 @@ end
 -- so every tab is on the same paper as the places; the game's own atlas where the client has it;
 -- a plain colour where neither.
 local ZONES_ART = "Interface\\AddOns\\Spoken_Places\\Textures\\Art\\"
+local FACE_GAP, FACE_SIZE = 10, 50
 -- One ink for every word on the page: a lighter one for the line under the title and for a page
 -- with nothing chosen read as greyed out, and was hard to make out on the parchment.
 -- The spellbook's own, as the places' page has it: the game's colour is darker than the brown
@@ -1906,14 +1913,14 @@ local SPELLBOOK_PAGE = { file = ZONES_ART .. "spellbook-Page-Right-C60", coords 
 ---
 --- `look`, where given, changes the page's art from the spellbook's for the Compendium:
 --- { art = { file, coords } the parchment; top, right, the heading's room from the page's top and
---- its right edge; titleSize; oneLine, a title cut short rather than wrapped; backplate = { full,
+--- its right edge; titleSize; backplate = { full,
 --- height } }. Spoken Places' page beside the map is the quest log's details page this way.
 function C.NewPage(parent, addon, play, report, look)
 	look = look or {}
 	local top, right = look.top or TOP, look.right or RIGHT
 	local titleSize = look.titleSize or 26
 	local self = setmetatable({ playing = play, reporting = report, top = top, right = right,
-		titleSize = titleSize, extra = {} }, Page)
+		titleSize = titleSize, extra = {}, shift = 0 }, Page)
 	local frame = CreateFrame("Frame", nil, parent)
 	frame:SetAllPoints()
 	self.frame = frame
@@ -1971,11 +1978,9 @@ function C.NewPage(parent, addon, play, report, look)
 	title:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -top)
 	title:SetPoint("RIGHT", frame, "RIGHT", -right - 34, 0)
 	title:SetJustifyH("LEFT")
-	-- One line where the page is narrow, cut short with an ellipsis; elsewhere it wraps.
-	if look.oneLine then
-		if title.SetWordWrap then title:SetWordWrap(false) end
-		if title.SetMaxLines then title:SetMaxLines(1) end
-	end
+	-- One line, cut short with an ellipsis: a long title never wraps over the line under it.
+	if title.SetWordWrap then title:SetWordWrap(false) end
+	if title.SetMaxLines then title:SetMaxLines(1) end
 	-- Its shadow is the quest log's: the font's own, which Ink would take away.
 	title:SetTextColor(INK[1], INK[2], INK[3])
 	self.title = title
@@ -2084,6 +2089,24 @@ function C.NewPage(parent, addon, play, report, look)
 	return self
 end
 
+--- The portrait of a place's page (`icon` of Page:Show): a dungeon's or a zone's picture, with the
+--- world for a badge; the question mark where there is no picture yet.
+function C.PlaceIcon(mapID, dungeon)
+	local icon, crop
+	if dungeon and Spoken and Spoken.DungeonIcon then
+		icon, crop = Spoken:DungeonIcon(dungeon)
+	elseif mapID and Spoken and Spoken.ZoneIcon then
+		icon, crop = Spoken:ZoneIcon(mapID)
+	end
+	if not icon then return C.UnknownIcon("zone") end
+	return { objectOrItem = true, icon = icon, iconCrop = crop, bullet = "zone" }
+end
+
+--- The portrait of a page or a line whose picture does not exist yet: the question mark, with `bullet`'s badge.
+function C.UnknownIcon(bullet)
+	return { objectOrItem = true, icon = UNKNOWN_ICON, bullet = bullet }
+end
+
 --- A round button of the caller's on the heading's line, left of Report and Play, shown or hidden
 --- by the caller: Open in Azeroth's Compendium on Spoken Places' page beside the map.
 function Page:AddButton(button)
@@ -2130,16 +2153,37 @@ function Page:RefreshPlay()
 		end
 	end
 	self.title:ClearAllPoints()
-	self.title:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -self.top)
+	self.title:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD + self.shift, -self.top)
 	self.title:SetPoint("RIGHT", previous or self.frame, previous and "LEFT" or "RIGHT", previous and -10 or -self.right, 0)
 end
 
 --- entry = { title, subtitle, onSubtitle, text, target = what Play and Report act on, or nil for
---- none, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
+--- none, icon = what the round portrait at the left of the title shows (the speaker table of
+--- Spoken:CreateSpeakerFace: a picture and its small badge), picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
 --- of `text`: words in parts, each under its heading with its own buttons (TextView:SetParts) }.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's
 --- area story returns to its zone's with it); without it the line is plain words.
 function Page:Show(entry)
+	local face
+	if entry.icon then
+		if self.headFace == nil then
+			local ok, made = false, nil
+			if _G.Spoken and Spoken.CreateSpeakerFace then ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE) end
+			self.headFace = ok and made or false
+		end
+		face = self.headFace or nil
+		if face then face:SetSpeaker(entry.icon) end
+	end
+	if self.face and self.face ~= face then self.face:Hide() end
+	self.face = face
+	self.shift = face and ((face:GetWidth() or 0) + FACE_GAP) or 0
+	if face then
+		face:ClearAllPoints()
+		face:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -(self.top - 4))
+		face:Show()
+	end
+	-- The divider stays where the page's edge is, under the face.
+	self.divider:SetPoint("TOPLEFT", self.sub, "BOTTOMLEFT", -6 - self.shift, -10)
 	self.title:SetText(entry.title or "")
 	self.sub.text:SetText(entry.subtitle or "")
 	-- No line under the title takes no room: the divider closes up under it.

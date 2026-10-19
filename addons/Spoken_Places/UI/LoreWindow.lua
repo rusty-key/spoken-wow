@@ -639,7 +639,7 @@ local function ShowEntry()
 		-- Where it sits: a zone's or a continent's line counts what is found in it, as every card's
 		-- page does.
 		page:Show({ title = entry and (entry.name or key) or ZoneName(mapID), subtitle = SpokenZones:PlaceLine(mapID, key),
-			text = L.NOT_DISCOVERED })
+			text = L.NOT_DISCOVERED, icon = SpokenCompendium.PlaceIcon(key and SpokenZones:AreaZone(mapID, key) or mapID) })
 		return
 	end
 	if key then
@@ -648,13 +648,13 @@ local function ShowEntry()
 			local name = entry.name or key
 			local line = SpokenZones:PlaceLine(mapID, key)
 			if SpokenZones:IsPending(entry) then
-				page:Show({ title = name, subtitle = line,
+				page:Show({ title = name, subtitle = line, icon = SpokenCompendium.PlaceIcon(SpokenZones:AreaZone(mapID, key)),
 					text = L.LORE_NOT_WRITTEN:format(name), contribute = { mapID, name } })
 				return
 			end
 			-- Rows are keyed by the canonical form already, so this needs no normalising --
 			-- unlike the map panel, which starts from the name the client reports.
-			page:Show({ title = name, subtitle = line,
+			page:Show({ title = name, subtitle = line, icon = SpokenCompendium.PlaceIcon(SpokenZones:AreaZone(mapID, key)),
 				text = entry.full or entry.short or "", audio = { mapID, key }, report = { mapID, key } })
 			return
 		end
@@ -665,11 +665,11 @@ local function ShowEntry()
 	local subtitle = SpokenZones:PlaceLine(mapID)
 	if not entry or SpokenZones:IsPending(entry) then
 		page:Show({ title = name, subtitle = subtitle, text = L.LORE_NOT_WRITTEN:format(name),
-			contribute = { mapID, nil } })
+			contribute = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 		return
 	end
 	page:Show({ title = name, subtitle = subtitle, text = entry.full or entry.short or "",
-		audio = { mapID, nil }, report = { mapID, nil } })
+		audio = { mapID, nil }, report = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 end
 
 --- The line under a place's name: where it sits and what its card or banner counts. An area sits in

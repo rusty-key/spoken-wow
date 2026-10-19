@@ -144,14 +144,14 @@ Expect("standing in a battleground, the tab lands on it, under the Battlegrounds
     page.title.text .. "|" .. Shown(), "Darkspear Islands|Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|"
     .. "Sen'jin Village|Valley of Trials|" .. L.OTHER_LANDS .. "|" .. L.BATTLEGROUNDS .. "|Darkspear Islands|Warsong Gulch")
 Expect("...a banner", RowFor(L.BATTLEGROUNDS).row.style, "banner")
-Expect("...one hung under a continent not counted there, one on none not under Other Lands: each banner counts its own zones' cards",
+Expect("...one hung under a continent not counted there, one on none not under Other Lands: each banner counts its own zones' lines",
     RowFor("Kalimdor").row.total .. "|" .. RowFor(L.OTHER_LANDS).row.total, RowFor("Durotar").row.total .. "|0")
 playerMap = 1411
 _G.SpokenCompendium:Hide()
 Z:ToggleLoreWindow()
 Shown()
 RowFor(L.BATTLEGROUNDS).scripts.OnClick(RowFor(L.BATTLEGROUNDS))
-Expect("...closed by a click, its cards gone", Shown():find("Warsong Gulch", 1, true), nil)
+Expect("...closed by a click, its lines gone", Shown():find("Warsong Gulch", 1, true), nil)
 Expect("...chosen, its page naming it, in Azeroth with no count where its zones have no areas, and asking for one",
     page.title.text .. "|" .. page.sub.text.text .. "|" .. page.body.text.text,
     L.BATTLEGROUNDS .. "|" .. L.IN_ZONE_FMT:format("Azeroth") .. "|" .. L.ZONES_PICK)
@@ -168,8 +168,8 @@ Expect("a zone on neither continent is under a banner of its own after them, clo
     .. "|" .. L.BATTLEGROUNDS)
 Expect("...a banner", RowFor(L.OTHER_LANDS).row.style, "banner")
 RowFor(L.OTHER_LANDS).scripts.OnClick(RowFor(L.OTHER_LANDS))
-Expect("...opened, its card inside it", Shown():match("|" .. L.OTHER_LANDS .. "|Zephras Isle|" .. L.BATTLEGROUNDS .. "$") ~= nil
-    and RowFor("Zephras Isle").row.style, "card")
+Expect("...opened, its zone a line inside it", Shown():match("|" .. L.OTHER_LANDS .. "|Zephras Isle|" .. L.BATTLEGROUNDS .. "$") ~= nil
+    and RowFor("Zephras Isle").row.style, "group")
 Expect("...chosen, its page naming it, in Azeroth, and asking for one",
     page.title.text .. "|" .. page.sub.text.text .. "|" .. page.body.text.text,
     L.OTHER_LANDS .. "|" .. L.IN_ZONE_FMT:format("Azeroth") .. "|" .. L.ZONES_PICK)
@@ -177,16 +177,18 @@ Expect("...the banner the chosen row", RowFor(L.OTHER_LANDS).selected, true)
 Z.Subzones[2521] = { cove = { name = "Hidden Cove", full = "A cove." } }
 found["2521/cove"] = true
 Z:RefreshLoreWindow()
-Expect("...and what its zones' cards count, where they have areas", page.sub.text.text,
+Expect("...and what its zones' lines count, where they have areas", page.sub.text.text,
     L.IN_ZONE_FMT:format("Azeroth") .. " · " .. L.DISCOVERED_FMT:format(1, 1))
 Z.Subzones[2521], found["2521/cove"] = nil, nil
 Shown()
 RowFor(L.OTHER_LANDS).scripts.OnClick(RowFor(L.OTHER_LANDS))
-Expect("...closed again, the card gone", Shown():find("Zephras Isle", 1, true), nil)
+Expect("...closed again, the line gone", Shown():find("Zephras Isle", 1, true), nil)
 RowFor(L.OTHER_LANDS).scripts.OnClick(RowFor(L.OTHER_LANDS))
 Shown()
 RowFor("Zephras Isle").scripts.OnClick(RowFor("Zephras Isle"))
 Expect("the zone chosen, its own story", page.title.text, "Zephras Isle")
+Expect("...its page with the zone's round portrait left of the title, the zone badge on it",
+    page.headFace ~= nil and page.headFace.speaker.bullet == "zone" and page.shift > 0, true)
 Shown()
 Expect("...the banner no longer the chosen row", RowFor(L.OTHER_LANDS).selected, false)
 

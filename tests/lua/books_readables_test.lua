@@ -139,7 +139,9 @@ local function Reopen(map)
     B:ShowReadables()
 end
 Expect("opened, the tab lands on the player's zone", panel.page.title.text, "Westfall")
-Expect("...its card open on the kinds of writing in it, each closed", RowFor("Westfall").row.open
+Expect("...its page has the zone's round portrait left of the title, with the zone badge",
+    panel.page.headFace ~= nil and panel.page.headFace.speaker.bullet == "zone" and panel.page.shift > 0, true)
+Expect("...its line open on the kinds of writing in it, each closed", RowFor("Westfall").row.open
     and Has(Shown(), L.TYPE_LETTER) and not Has(Shown(), "A Dusty Unsent Letter"), true)
 Reopen(1453)
 Expect("...reopened elsewhere, on the zone the player stands in now", panel.page.title.text, "Stormwind City")
@@ -204,6 +206,7 @@ do
         panel.page.title.text, FirstKindIn(1436))
     Expect("...its banner in the list", RowFor(panel.page.title.text) ~= nil
         and RowFor(panel.page.title.text).row.kind, "type")
+    Expect("...its page with the book badge by the title", panel.page.headFace.speaker.bullet == "book" and panel.page.shift > 0, true)
     Reopen(9003)
     Expect("...where their zone holds none, on the first kind", panel.page.title.text, L.TYPE_BOOK)
     SpokenBooksSettings.compendiumByZone = nil
@@ -230,16 +233,13 @@ local list = Shown()
 Expect("the list is laid out as the places': a banner for each continent, no Azeroth above them",
     RowFor("Eastern Kingdoms") ~= nil and RowFor("Eastern Kingdoms").row.style == "banner" and not Has(list, "Azeroth"), true)
 Expect("...its name as it is", RowFor("Eastern Kingdoms").label.text, "Eastern Kingdoms")
-Expect("...a card under it for each zone", Has(list, "Elwynn Forest") and Has(list, "Westfall")
-    and RowFor("Elwynn Forest").row.style == "card" and RowFor("Elwynn Forest").row.nest, 0)
+Expect("...a line under it for each zone, with no picture or bar", Has(list, "Elwynn Forest") and Has(list, "Westfall")
+    and RowFor("Elwynn Forest").row.style == "group" and RowFor("Elwynn Forest").row.nest, 0)
 Expect("...a city inside the zone around it, not beside it", Has(list, "Stormwind City"), false)
 Expect("...the readables after the continents, a banner each: those found across Azeroth and those of no known origin",
     RowFor(L.GROUP_WIDE).row.style == "banner" and RowFor(L.GROUP_UNKNOWN).row.style, "banner")
 Expect("...each zone's card counting what is found out of all, its city's included",
     RowFor("Elwynn Forest").count.text:match("^1/%d+ • %d+%%$") ~= nil, true)
-Expect("...its badge the zone's painting in the collections window's gold frame", RowFor("Elwynn Forest").icon.texture
-    == _G.Spoken:ZoneIcon(1429) and RowFor("Elwynn Forest").iconFrame:IsShown() and RowFor("Elwynn Forest").iconFrame.atlas,
-    "collections-itemborder-collected")
 Expect("...and the seasonal events' readables, in a group of their own before them",
     Has(list, L.GROUP_EVENTS) and list:find(L.GROUP_EVENTS, 1, true) < list:find(L.GROUP_WIDE, 1, true), true)
 Click(L.GROUP_EVENTS)
@@ -297,8 +297,8 @@ Expect("Other Lands then Battlegrounds, each a banner, after the continents and 
 Expect("...closed at first", Has(list, "Zephras Isle") or Has(list, "Alterac Valley"), false)
 Expect("...a battleground hung under a continent not listed under it", Has(list, "Warsong Gulch"), false)
 Click(L.GROUP_LANDS)
-Expect("Other Lands opens on a card for each zone on no continent", RowFor("Zephras Isle") ~= nil
-    and RowFor("Zephras Isle").row.style == "card" and RowFor("Zephras Isle").row.nest, 0)
+Expect("Other Lands opens on a line for each zone on no continent", RowFor("Zephras Isle") ~= nil
+    and RowFor("Zephras Isle").row.style == "group" and RowFor("Zephras Isle").row.nest, 0)
 Expect("...its page its name, in Azeroth as a continent is, what is found of it, and the words to choose one",
     panel.page.title.text .. "|" .. panel.page.sub.text.text .. "|" .. panel.page.body.text.text,
     L.GROUP_LANDS .. "|" .. L.READABLES_IN_FMT:format("Azeroth") .. " · " .. L.FOUND_FMT:format(0, 1) .. "|" .. L.READABLES_PICK)
@@ -380,17 +380,16 @@ do
     Expect("a zone with several dungeons: a Dungeons and Raids line after the city, before its kinds of writing",
         RowFor(L.GROUP_DUNGEONS) ~= nil and RowFor(L.GROUP_DUNGEONS).row.style == "group"
         and RowFor(L.GROUP_DUNGEONS).row.nest == 1 and At(list, L.GROUP_DUNGEONS) < At(list, L.TYPE_PLAQUE), true)
-    Expect("...closed at first, without the toggle's badge", RowFor(L.GROUP_DUNGEONS).row.open == false
-        and not Has(list, "Hollow Vault") and not RowFor(L.GROUP_DUNGEONS).icon:IsShown(), true)
+    Expect("...closed at first, without a picture", RowFor(L.GROUP_DUNGEONS).row.open == false
+        and not Has(list, "Hollow Vault") and not (RowFor(L.GROUP_DUNGEONS).icon and RowFor(L.GROUP_DUNGEONS).icon:IsShown()), true)
     Expect("...what is had inside them gone from the zone's own kinds", KindIn(L.TYPE_NOTE, 9004) == nil
         and KindIn(L.TYPE_TABLET, 9004) == nil and KindIn(L.TYPE_PLAQUE, 9004) ~= nil, true)
     Expect("...the zone's card counting them still", RowFor("Cragmoor").row.total, 4)
     Click(L.GROUP_DUNGEONS)
     list = Shown()
-    Expect("...opened, a card for each dungeon by name", At(list, "Ember Halls") ~= nil
-        and At(list, "Ember Halls") < At(list, "Hollow Vault") and RowFor("Hollow Vault").row.style == "card"
+    Expect("...opened, a line for each dungeon by name", At(list, "Ember Halls") ~= nil
+        and At(list, "Ember Halls") < At(list, "Hollow Vault") and RowFor("Hollow Vault").row.style == "group"
         and RowFor("Hollow Vault").row.nest, 2)
-    Expect("...its badge the Quests tab's key", RowFor("Hollow Vault").icon.texture, [[Interface\Icons\INV_Misc_Key_03]])
     Expect("...the line's page its name in the zone, with what is found of it", panel.page.title.text .. "|"
         .. panel.page.sub.text.text, L.GROUP_DUNGEONS .. "|" .. L.READABLES_IN_FMT:format("Cragmoor") .. " · "
         .. L.FOUND_FMT:format(0, 2))
@@ -411,8 +410,8 @@ do
     Expect("...the card closing on a click", Has(Shown(), "Hollow Vault") and KindIn(L.TYPE_NOTE, 9004, 9101) == nil, true)
 
     Click("Fenwatch")
-    Expect("a zone with one dungeon has its card, no line", RowFor("Sunken Crypt") ~= nil
-        and RowFor("Sunken Crypt").row.style == "card" and RowFor("Sunken Crypt").row.nest == 1
+    Expect("a zone with one dungeon has the dungeon's own line, no Dungeons and Raids line", RowFor("Sunken Crypt") ~= nil
+        and RowFor("Sunken Crypt").row.style == "group" and RowFor("Sunken Crypt").row.nest == 1
         and RowWhere(L.GROUP_DUNGEONS, function(item) return item.mapID == 9005 end) == nil, true)
     Click("Sunken Crypt")
     Press(KindIn(L.TYPE_GRAVE, 9005, 9103))
@@ -493,8 +492,8 @@ Expect("the city opens inside its zone, its readables by what they are", Has(lis
 Expect("...the city a card inside its zone's card", RowFor("Stormwind City").row.nest, 1)
 Expect("...each kind a line of the list inside the city's card, not a card", RowFor(L.TYPE_PLAQUE).row.nest == 2
     and RowFor(L.TYPE_PLAQUE).row.style, "group")
-Expect("...with its plus or minus and no badge", RowFor(L.TYPE_PLAQUE).toggle:IsShown()
-    and not RowFor(L.TYPE_PLAQUE).icon:IsShown(), true)
+Expect("...with its plus or minus and no picture", RowFor(L.TYPE_PLAQUE).toggle:IsShown()
+    and not (RowFor(L.TYPE_PLAQUE).icon and RowFor(L.TYPE_PLAQUE).icon:IsShown()), true)
 Expect("...closed, as Quests' chains start", RowFor(L.TYPE_PLAQUE).row.open or Has(list, "Kurdran Wildhammer"), false)
 Click(L.TYPE_PLAQUE)
 Expect("...its page in the place that holds it", panel.page.sub.text.text:find(L.READABLES_IN_FMT:format("Stormwind City") .. " · ", 1, true), 1)
@@ -564,13 +563,7 @@ Click(L.TYPE_LETTER)
 Click("A Dusty Unsent Letter")
 Expect("opened on a readable carried from a zone", page.title.text, "A Dusty Unsent Letter")
 Expect("...in the zone it is had in", page.sub.text.text, L.READABLES_IN_FMT:format("Westfall"))
-local parts = page.body.parts
-Expect("...how it is had in a part of its own above the words, the name and the zone",
-    parts[1].heading.text .. "|" .. parts[1].words.text,
-    L.READABLE_SOURCES .. "|" .. L.FROM_IN_ZONES:format(L.FROM_QUEST_START:format("The Legend of Stalvan"), "Westfall"))
-Expect("...its words in the next, under no heading", parts[2].heading:IsShown() == false and parts[2].words:IsShown()
-    and #parts[2].words.text > 40 and parts[2].words.text:find(L.FROM_QUEST_START:format(""), 1, true), nil)
-Expect("...set apart from the part above by room", select(5, parts[2].words:GetPoint(1)) < select(5, parts[1].words:GetPoint(1)), true)
+Expect("...its words alone, with nothing on how it is had", #page.body.text.text > 40, true)
 
 -- The search: every match, with what holds it, opened.
 local box
@@ -690,6 +683,8 @@ local hasAudio = B.HasAudio
 local alleriaPage = B:Data().books[ALLERIA].pages[1]
 B.HasAudio = function(_, page) return page == alleriaPage end
 Click("Kurdran Wildhammer")
+Expect("a readable's page has a round portrait left of the title, with the book badge",
+    panel.page.headFace.speaker.bullet == "book" and panel.page.shift > 0, true)
 choices[2].func()
 list = Shown()
 local chosen
