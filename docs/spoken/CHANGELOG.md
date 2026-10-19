@@ -26,6 +26,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Rows in the Compendium are dimmed when their voice, picture or words are missing.** A line with nothing
   inside it has no plus button, and the Unlock switches no longer grey rows that have nothing found. The
   button that shrinks the window is the size of Close. *([Nucabe](https://github.com/Nucabe))*
+- **A quest chain's page has the quest scroll, as a quest does, and the Classes, Professions, holiday and
+  other group pages have icons of their own.** Each part of a quest's page is headed by who speaks it,
+  over Description or Completion. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.5.1 — 2026-10-19
 

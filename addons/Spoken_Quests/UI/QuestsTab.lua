@@ -1201,8 +1201,10 @@ local function Parts(id)
             local name, speaker = PartName(moment), SpeakerName(Speaker(id, moment))
             local face = PartFace(moment)
             if face then face:SetSpeaker(FaceSpeaker(id, moment)) end
-            table.insert(parts, { heading = name, text = text, buttons = list, face = face,
-                caption = face and speaker or nil })
+            -- Who speaks is the heading, over which part it is: Description or Completion.
+            local who = face and speaker and speaker ~= "" and speaker or nil
+            table.insert(parts, { heading = who or name, text = text, buttons = list, face = face,
+                caption = who and name or nil })
         end
     end
     return #parts > 0 and parts or nil
@@ -1335,6 +1337,54 @@ local function QuestIcon(id)
         bullet = Completed(id) and "quest-complete" or "quest-accept" }
 end
 
+-- A chain is quests, so it has the quest's scroll: the question mark once every quest in it is done.
+local function ChainIcon(ids)
+    local done = #ids > 0
+    for _, id in ipairs(ids) do
+        if not Completed(id) then
+            done = false
+            break
+        end
+    end
+    return { objectOrItem = true, icon = [[Interface\Icons\INV_Scroll_03]], bullet = done and "quest-complete" or "quest-accept" }
+end
+
+-- The pages that are no place and no quest have an icon that fits: a class's own, a profession's, a
+-- holiday's. Each is checked against the client's files, since a texture it lacks draws solid green;
+-- one it lacks falls back to the section's icon, then to the question mark.
+local ICON_DIR = [[Interface\Icons\]]
+local SECTION_ICONS = {
+    classes = "INV_Misc_Book_09", professions = "Trade_Engineering", events = "INV_Misc_Gift_01",
+    other = "INV_Misc_Bag_08", lands = "INV_Misc_Map_01", battlegrounds = "INV_BannerPVP_02",
+}
+local SORT_ICONS = {
+    -- Classes (QuestSort).
+    [61] = "ClassIcon_Warlock", [81] = "ClassIcon_Warrior", [82] = "ClassIcon_Shaman", [141] = "ClassIcon_Paladin",
+    [161] = "ClassIcon_Mage", [162] = "ClassIcon_Rogue", [261] = "ClassIcon_Hunter", [262] = "ClassIcon_Priest",
+    [263] = "ClassIcon_Druid",
+    -- Professions.
+    [24] = "Trade_Herbalism", [101] = "Trade_Fishing", [121] = "Trade_BlackSmithing", [181] = "Trade_Alchemy",
+    [182] = "Trade_LeatherWorking", [201] = "Trade_Engineering", [264] = "Trade_Tailoring", [304] = "INV_Misc_Food_15",
+    [324] = "INV_Misc_Bandage_15", [666] = "Spell_Fire_Fire",
+    -- Holidays and events.
+    winterveil = "INV_Holiday_Christmas_Present_01", hallowsend = "INV_Misc_Bag_28_Halloween",
+    loveisintheair = "INV_Misc_Gift_02", harvestfestival = "INV_Misc_Food_15",
+}
+
+local function Present(name)
+    if not name then return nil end
+    local path = ICON_DIR .. name
+    -- A client without the lookup is trusted.
+    if _G.GetFileIDFromPath and GetFileIDFromPath(path) == nil then return nil end
+    return path
+end
+
+local function GroupIcon(sort, section)
+    local path = Present(sort and SORT_ICONS[sort]) or Present(section and SECTION_ICONS[section])
+    if not path then return C.UnknownIcon(nil) end
+    return { objectOrItem = true, icon = path }
+end
+
 local function ShowEntry()
     if not page then return end
     if not selection then
@@ -1348,7 +1398,7 @@ local function ShowEntry()
         local holder, place
         if selection.where then holder, place = HolderName(selection.where) end
         page:Show({ title = ChainLabel(selection.first or First(ids[1]), selection.nth),
-            subtitle = Line(SetOf(ids), holder, place), empty = true })
+            subtitle = Line(SetOf(ids), holder, place), empty = true, icon = ChainIcon(ids) })
         return
     end
     if selection.quest then
@@ -1374,14 +1424,16 @@ local function ShowEntry()
     if banner then
         local set = {}
         for _, mapID in ipairs(banner.zones()) do QuestsIn(mapID, set) end
-        page:Show({ title = L[banner.label], subtitle = Line(set, C.MapName(C.WORLD), true), empty = true })
+        page:Show({ title = L[banner.label], subtitle = Line(set, C.MapName(C.WORLD), true), empty = true,
+            icon = GroupIcon(nil, selection.section) })
         return
     end
     -- Classes, Professions, Holidays and Events and Other are no place: their count alone.
     if selection.section then
         for _, section in ipairs(SECTIONS) do
             if section.key == selection.section then
-                page:Show({ title = L[section.label], subtitle = Count((SectionSet(section.key))), empty = true })
+                page:Show({ title = L[section.label], subtitle = Count((SectionSet(section.key))), empty = true,
+                    icon = GroupIcon(nil, section.key) })
             end
         end
         return
@@ -1389,11 +1441,13 @@ local function ShowEntry()
     -- A sort's line, and Place Unknown's, names the section that holds it, which is no place.
     if selection.sort then
         page:Show({ title = SortName(selection.sort),
-            subtitle = Line(SetOf(Index().sorts[selection.sort]), SectionName(SectionOf(selection.sort))), empty = true })
+            subtitle = Line(SetOf(Index().sorts[selection.sort]), SectionName(SectionOf(selection.sort))), empty = true,
+            icon = GroupIcon(selection.sort, SectionOf(selection.sort)) })
         return
     end
     if selection.group == "elsewhere" then
-        page:Show({ title = L.QUESTS_ELSEWHERE, subtitle = Line(SetOf(Index().elsewhere), SectionName("other")), empty = true })
+        page:Show({ title = L.QUESTS_ELSEWHERE, subtitle = Line(SetOf(Index().elsewhere), SectionName("other")), empty = true,
+            icon = C.UnknownIcon(nil) })
         return
     end
     local set = {}
