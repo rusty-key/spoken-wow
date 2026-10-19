@@ -1588,7 +1588,7 @@ Two generated files feed it, both committed so the addon never needs a database:
   client data has a title for, is listed with `notext = true` (`served_quests`, `without_text`):
   placed, limited and linked by its client record as above, so the tab lists it with no words
   until its lines reach the corpus and an export drops the flag. Its page says so
-  (`L.QUEST_NO_WORDS_YET`, "No words yet: this quest has not been recorded."). `--no-db` makes these again on
+  (the shared "Nothing has been written for this yet." with Contribute). `--no-db` makes these again on
   every run; the hand corrections' removals are never listed.
   Last come the hand corrections, `corpus/compendium_overrides.json` (`load_overrides`,
   `apply_overrides`, `chain_names`): what neither the DB nor the client data can say, such as a

@@ -41,17 +41,12 @@ L.OPT_REPORT_LINE_ADDRESS = "Copia esta dirección y ábrela en tu navegador par
 
 L.AUDIO_READ_TIP = "Escuchar esta historia en voz alta."
 L.REPORT_BUTTON = "Informar"
-L.CONTRIBUTE_BUTTON = "Contribuir"
-L.CONTRIBUTE_BUTTON_TIP_TITLE = "Spoken Places no tiene historia para este lugar"
-L.CONTRIBUTE_BUTTON_TIP = "Contribuye describiéndolo: qué es, quién vive allí, qué pasó allí."
 L.IN_ZONE_FMT = "Ubicación: %1$s"
 L.DISCOVERED_FMT = "%1$d de %2$d descubiertas"
 
 L.QUEUE_HELD_COMBAT = "Esperando que termine el combate."
 L.QUEUE_HELD_CINEMATIC = "Esperando que termine la cinemática."
 L.QUEUE_HELD_OFF = "La narración está desactivada."
-L.NO_LORE_FOR = "Aún no hay historia registrada para %1$s."
-L.LORE_NOT_WRITTEN = "%1$s está en el mapa, pero nadie ha escrito su historia todavía."
 L.NOT_DISCOVERED = "Aún no has descubierto este lugar. Ve allí para leer su historia."
 L.MAP_LORE_FOR_FMT = "historia de %1$s"
 L.CMD_HEADING = "comandos (/spokenplaces, o /spp):"
@@ -107,8 +102,6 @@ L.LORE_SEARCH_NONE = "No hay coincidencias."
 L.OTHER_LANDS = "Otras tierras"
 L.BATTLEGROUNDS = "Campos de batalla"
 L.DUNGEONS = "Mazmorras y bandas"
-L.ZONES_PICK = "Elige a la izquierda una zona para leer su historia. Mayús-clic en un área pone su historia en la cola, tras lo que esté sonando."
-L.DUNGEONS_PICK = "Elige a la izquierda una mazmorra o banda para leer su historia. Mayús-clic en una pone su historia en la cola, tras lo que esté sonando."
 
 L.OPEN_IN_COMPENDIUM = "Abrir en el Compendio de Azeroth"
 

@@ -48,10 +48,6 @@ L.QUEUE_HELD_OFF = "Narration is turned off."
 -- order into every language. They are the reason the rule above exists.
 --------------------------------------------------------------------------------
 
-L.NO_LORE_FOR = "No story recorded for %1$s yet."
--- A place the client has that the corpus knows about but nobody has written. Distinct
--- from NO_LORE_FOR, which is what an unknown place gets: this one we know exists.
-L.LORE_NOT_WRITTEN = "%1$s is on the map, but nobody has written its story yet."
 L.NOT_DISCOVERED = "You have not discovered this place yet. Go there to read its story."
 
 --------------------------------------------------------------------------------
@@ -114,17 +110,12 @@ L.MENU_ZONE_SETTINGS = "Places Settings"
 
 L.AUDIO_READ_TIP = "Hear this story read aloud."
 L.REPORT_BUTTON = "Report"
-L.CONTRIBUTE_BUTTON = "Contribute"
-L.CONTRIBUTE_BUTTON_TIP_TITLE = "Spoken Places has no story for this place"
-L.CONTRIBUTE_BUTTON_TIP = "Contribute by describing it: what it is, who lives there, what happened there."
 L.IN_ZONE_FMT = "In %1$s"
 L.DISCOVERED_FMT = "%1$d of %2$d discovered"
 L.OTHER_LANDS = "Other Lands"
 L.BATTLEGROUNDS = "Battlegrounds"
 -- The line over a zone's dungeons' and raids' cards where it has several: the Quests tab's words.
 L.DUNGEONS = "Dungeons and Raids"
-L.ZONES_PICK = "Choose a zone on the left to read its story. Shift-click an area to queue its story after what is playing."
-L.DUNGEONS_PICK = "Choose a dungeon or raid on the left to read its story. Shift-click one to queue its story after what is playing."
 -- The window browses every place; the panel beside the map tells the zone it shows.
 L.COMPENDIUM_PLACES = "Places"
 L.LORE_PANEL_TITLE = "Place Story"

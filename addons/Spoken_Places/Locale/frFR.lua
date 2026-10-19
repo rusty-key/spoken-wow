@@ -38,17 +38,12 @@ L.OPT_REPORT_LINE_ADDRESS = "Copiez cette adresse et ouvrez-la dans votre naviga
 
 L.AUDIO_READ_TIP = "Écouter la lecture de ce récit."
 L.REPORT_BUTTON = "Signaler"
-L.CONTRIBUTE_BUTTON = "Contribuer"
-L.CONTRIBUTE_BUTTON_TIP_TITLE = "Spoken Places n'a pas de récit pour cet endroit"
-L.CONTRIBUTE_BUTTON_TIP = "Contribuez en le décrivant : ce que c'est, qui y vit, ce qui s'y est passé."
 L.IN_ZONE_FMT = "Emplacement : %1$s"
 L.DISCOVERED_FMT = "%1$d sur %2$d découvertes"
 
 L.QUEUE_HELD_COMBAT = "En attente de la fin du combat."
 L.QUEUE_HELD_CINEMATIC = "En attente de la fin de la cinématique."
 L.QUEUE_HELD_OFF = "La narration est désactivée."
-L.NO_LORE_FOR = "Aucun récit enregistré pour %1$s pour l'instant."
-L.LORE_NOT_WRITTEN = "%1$s est sur la carte, mais personne n'a encore écrit son récit."
 L.NOT_DISCOVERED = "Vous n'avez pas encore découvert ce lieu. Rendez-vous sur place pour lire son récit."
 L.MAP_LORE_FOR_FMT = "récit de %1$s"
 L.CMD_HEADING = "commandes (/spokenplaces, ou /spp) :"
@@ -102,8 +97,6 @@ L.LORE_SEARCH_NONE = "Aucun résultat."
 L.OTHER_LANDS = "Autres terres"
 L.BATTLEGROUNDS = "Champs de bataille"
 L.DUNGEONS = "Donjons et raids"
-L.ZONES_PICK = "Choisissez à gauche une zone pour lire son récit. Maj-clic sur un secteur met son récit dans la file, après ce qui est en cours de lecture."
-L.DUNGEONS_PICK = "Choisissez à gauche un donjon ou un raid pour lire son récit. Maj-clic sur l'un d'eux met son récit dans la file, après ce qui est en cours de lecture."
 
 L.OPEN_IN_COMPENDIUM = "Ouvrir dans le Compendium d'Azeroth"
 

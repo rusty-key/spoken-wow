@@ -348,6 +348,13 @@ local function Missing(mapID)
 	return not entry or SpokenZones:IsPending(entry)
 end
 
+-- A place lacking anything: its story, a recording or its picture.
+local function Lacks(mapID, key, pending)
+	if pending then return true end
+	local pictures = SpokenZones.pictures and SpokenZones.pictures[mapID]
+	return not Voiced(mapID, key) or not (pictures and pictures[key or ""])
+end
+
 -- What a zone holds, found out of all: its areas, each of its dungeons and raids, and its city as
 -- one place more with the city's own. Of what is listed: under Voiced Only, what no voice pack
 -- reads is left out of the count as it is of the rows, so the card's number is of the rows beneath
@@ -416,7 +423,8 @@ local function DungeonRows(zone, nest, whole)
 				table.insert(cards, { style = "card", kind = "dungeon", mapID = dungeon.mapID, key = dungeon.key,
 					label = dungeon.name, nest = several and nest + 1 or nest, dungeon = dungeon.dungeon,
 					icon = icon, iconCrop = iconCrop, count = 0, total = 0, ratio = 0, tick = isFound,
-					none = not isFound, missing = SpokenZones:IsPending(dungeon.entry) })
+					none = not isFound,
+					missing = Lacks(dungeon.mapID, dungeon.key, SpokenZones:IsPending(dungeon.entry)) })
 			end
 		end
 	end
@@ -462,7 +470,7 @@ local function ZoneRows(mapID, nest, whole)
 			if (filter == "" or whole or Matches(name)) and (isFound or not OnlyFound())
 				and (not OnlyVoiced() or Voiced(area.mapID, area.key)) then
 				table.insert(inside, { kind = "subzone", leaf = true, mapID = area.mapID, key = area.key, label = name,
-					nest = nest + 1, missing = SpokenZones:IsPending(area.entry),
+					nest = nest + 1, missing = Lacks(area.mapID, area.key, SpokenZones:IsPending(area.entry)),
 					locked = not Discovered(area.mapID, area.key), done = isFound and true or false })
 			end
 		end
@@ -479,7 +487,7 @@ local function ZoneRows(mapID, nest, whole)
 		ratio = total > 0 and found / total or 0, tick = total > 0 and found == total,
 		none = found == 0 and not Found(mapID),
 		open = searched and shown and #inside > 0 or not searched and shown,
-		closeKey = closeKey, asLeft = asLeft, missing = Missing(mapID) } }
+		closeKey = closeKey, asLeft = asLeft, missing = Lacks(mapID, nil, Missing(mapID)) } }
 	if shown then
 		for _, row in ipairs(inside) do table.insert(rows, row) end
 	end
@@ -623,13 +631,13 @@ end
 local function ShowEntry()
 	if selection.dungeons then
 		local zone = selection.dungeons
-		page:Show({ title = L.DUNGEONS, subtitle = InAndCount(zone, DungeonCount(zone)), text = L.DUNGEONS_PICK })
+		page:Show({ title = L.DUNGEONS, subtitle = InAndCount(zone, DungeonCount(zone)), empty = true })
 		return
 	end
 	if selection.group then
 		local group = Group(selection.group)
 		local found, total = BannerCount(group.zones())
-		page:Show({ title = group.label(), subtitle = InAndCount(WORLD, found, total), text = L.ZONES_PICK })
+		page:Show({ title = group.label(), subtitle = InAndCount(WORLD, found, total), empty = true })
 		return
 	end
 	local mapID, key = selection.mapID, selection.key
@@ -649,7 +657,7 @@ local function ShowEntry()
 			local line = SpokenZones:PlaceLine(mapID, key)
 			if SpokenZones:IsPending(entry) then
 				page:Show({ title = name, subtitle = line, icon = SpokenCompendium.PlaceIcon(SpokenZones:AreaZone(mapID, key)),
-					text = L.LORE_NOT_WRITTEN:format(name), contribute = { mapID, name } })
+					contribute = { mapID, name } })
 				return
 			end
 			-- Rows are keyed by the canonical form already, so this needs no normalising --
@@ -664,7 +672,7 @@ local function ShowEntry()
 	local name = ZoneName(mapID)
 	local subtitle = SpokenZones:PlaceLine(mapID)
 	if not entry or SpokenZones:IsPending(entry) then
-		page:Show({ title = name, subtitle = subtitle, text = L.LORE_NOT_WRITTEN:format(name),
+		page:Show({ title = name, subtitle = subtitle,
 			contribute = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 		return
 	end
@@ -809,6 +817,7 @@ local function BuildPanel(p)
 		checks = { { label = L.LORE_VOICED_ONLY, get = OnlyVoiced,
 			set = function(on) SpokenZones:Set("loreVoicedOnly", on) end } },
 		build = BuildRowList,
+		unlocked = function() return SpokenZones:Get("showUndiscovered") == true end,
 		isSelected = IsSelected,
 		onClick = OnRowClick,
 		locked = function() return L.NOT_DISCOVERED end,

@@ -1245,7 +1245,7 @@ end
 --- above, from its tree.
 function M.LoadZones(addonDirectory, SpokenZones)
     if not _G.SpokenCompendium then dofile(addonDirectory .. "../Spoken/UI/Compendium.lua") end
-    for _, file in ipairs({ "Audio", "UI/ContributeButton", "Autoplay" }) do
+    for _, file in ipairs({ "Audio", "Autoplay" }) do
         local chunk = assert(loadfile(addonDirectory .. file .. ".lua"))
         chunk("Spoken_Places", SpokenZones)
     end

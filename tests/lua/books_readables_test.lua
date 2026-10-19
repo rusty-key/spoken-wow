@@ -299,9 +299,10 @@ Expect("...a battleground hung under a continent not listed under it", Has(list,
 Click(L.GROUP_LANDS)
 Expect("Other Lands opens on a line for each zone on no continent", RowFor("Zephras Isle") ~= nil
     and RowFor("Zephras Isle").row.style == "group" and RowFor("Zephras Isle").row.nest, 0)
-Expect("...its page its name, in Azeroth as a continent is, what is found of it, and the words to choose one",
+Expect("...its page its name, in Azeroth as a continent is, what is found of it, and no words",
     panel.page.title.text .. "|" .. panel.page.sub.text.text .. "|" .. panel.page.body.text.text,
-    L.GROUP_LANDS .. "|" .. L.READABLES_IN_FMT:format("Azeroth") .. " · " .. L.FOUND_FMT:format(0, 1) .. "|" .. L.READABLES_PICK)
+    L.GROUP_LANDS .. "|" .. L.READABLES_IN_FMT:format("Azeroth") .. " · " .. L.FOUND_FMT:format(0, 1) .. "|")
+Expect("...and the mark where the words would be", panel.page.mark:IsShown(), true)
 Click(L.GROUP_LANDS)
 Expect("...and closes again", Has(Shown(), "Zephras Isle"), false)
 Click(L.GROUP_BATTLEGROUNDS)
@@ -774,10 +775,11 @@ do
     B.following[LETTER] = nil
     page.report.scripts.OnClick(page.report)
     Expect("...else its first voiced page", copied:find("/books/r/" .. first, 1, true) ~= nil, true)
-    -- Nothing recorded: no Play, and Report all the same, filing its first page.
+    -- Nothing recorded: Play greyed, and Report all the same, filing its first page.
     voiced[first], voiced[second] = nil, nil
     page:Show({ title = "A Dusty Unsent Letter", target = LETTER })
-    Expect("a readable with no recording has Report and no Play", page.report:IsShown() and not page.play:IsShown(), true)
+    Expect("a readable with no recording has Report and a greyed Play",
+        page.report:IsShown() and page.play:IsShown() and not page.play:IsEnabled(), true)
     copied = nil
     page.report.scripts.OnClick(page.report)
     Expect("...Report filing its first page", copied ~= nil and copied:find("/books/r/" .. first, 1, true) ~= nil, true)

@@ -724,7 +724,9 @@ function TextView:SetParts(parts)
 	end
 	self.partButtons = shown
 
-	self.child:SetHeight(y + PAD_BOTTOM)
+	-- The caller's own control under the last part (`extraBelow` high), told where that is.
+	if self.onPartsEnd then self.onPartsEnd(y) end
+	self.child:SetHeight(y + PAD_BOTTOM + (self.extraBelow or 0))
 	self:Settle(function() self:SetParts(parts) end)
 	self.frame:SetVerticalScroll(0)
 	self:UpdateScrollBar()

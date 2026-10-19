@@ -79,8 +79,7 @@ VO.DataModules:Register("TestPack", {
     GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
 })
 
-Expect("with nothing chosen, the page says shift-click queues a quest", page.body.text.text == L.QUESTS_PICK
-    and L.QUESTS_PICK:find("Shift-click", 1, true) ~= nil, true)
+Expect("with nothing chosen, the page has no words", page.body.text.text, "")
 Click("Elwynn Forest")
 Click("Kobold Camp Cleanup")
 local play
