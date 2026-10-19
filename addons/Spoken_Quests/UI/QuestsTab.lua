@@ -1314,6 +1314,13 @@ local function Subtitle(id)
     return Where(id)
 end
 
+-- A quest's portrait: a scroll, and the badge of its state, the exclamation mark until it is
+-- done, then the question mark.
+local function QuestIcon(id)
+    return { objectOrItem = true, icon = [[Interface\Icons\INV_Scroll_03]],
+        bullet = Completed(id) and "quest-complete" or "quest-accept" }
+end
+
 local function ShowEntry()
     if not page then return end
     if not selection then
@@ -1333,13 +1340,13 @@ local function ShowEntry()
     if selection.quest then
         local id = selection.quest
         if not Found(id) and not Unlocked() then
-            page:Show({ title = Title(id), subtitle = Subtitle(id), text = L.QUEST_NOT_FOUND })
+            page:Show({ title = Title(id), subtitle = Subtitle(id), text = L.QUEST_NOT_FOUND, icon = QuestIcon(id) })
             return
         end
         -- Play and Report on each part's heading, not the page's: each part is said at its own time.
         -- A quest Forever has that the corpus has no lines for yet says so, not that none are known.
         local record = Quests()[id]
-        page:Show({ title = Title(id), subtitle = Subtitle(id), parts = Parts(id),
+        page:Show({ title = Title(id), subtitle = Subtitle(id), parts = Parts(id), icon = QuestIcon(id),
             text = record and record.notext and L.QUEST_NO_WORDS_YET or L.QUEST_NO_TEXT })
         return
     end
@@ -1347,7 +1354,7 @@ local function ShowEntry()
         -- In the zone of its entrance, whose card holds it.
         local zone = tonumber(selection.dungeon:match("^d(%d+)"))
         local place = zone and selection.map and { mapID = zone, dungeon = selection.map } or nil
-        page:Show({ title = selection.label, subtitle = Line(SetOf(selection.ids), zone and C.MapName(zone), true), text = L.QUESTS_PICK, picture = place and C.PlacePicture(place) or nil })
+        page:Show({ title = selection.label, subtitle = Line(SetOf(selection.ids), zone and C.MapName(zone), true), text = L.QUESTS_PICK, icon = C.PlaceIcon(nil, selection.map), picture = place and C.PlacePicture(place) or nil })
         return
     end
     local banner = selection.section and ZONE_BANNERS[selection.section]
@@ -1382,7 +1389,7 @@ local function ShowEntry()
     else
         QuestsIn(selection.mapID, set)
     end
-    page:Show({ title = C.MapName(selection.mapID), subtitle = Line(set, ZoneHolderName(up), true), text = L.QUESTS_PICK, picture = C.PlacePicture({ mapID = selection.mapID }) })
+    page:Show({ title = C.MapName(selection.mapID), subtitle = Line(set, ZoneHolderName(up), true), text = L.QUESTS_PICK, icon = C.PlaceIcon(selection.mapID), picture = C.PlacePicture({ mapID = selection.mapID }) })
 end
 
 --------------------------------------------------------------------------------

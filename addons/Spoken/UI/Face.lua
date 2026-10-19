@@ -102,7 +102,7 @@ local Speaker = {}
 -- The presentation spec for a speaker, as Present:Portrait builds it for a line.
 local function SpecFor(speaker)
     if speaker.objectOrItem then
-        return { kind = "texture", texture = speaker.icon or NOTICE, texCoord = ICON_CROP }
+        return { kind = "texture", texture = speaker.icon or NOTICE, texCoord = speaker.iconCrop or ICON_CROP }
     end
     return { kind = "model", creatureID = speaker.creatureID, animation = 60,
         fallback = { kind = "texture", texture = BOOK } }

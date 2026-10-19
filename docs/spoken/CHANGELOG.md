@@ -10,6 +10,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   voice pack was playing, so the site can tell a line nobody has voiced from a pack that is out
   of date. The note Spoken shows before collecting says so.
   *([rusty-key](https://github.com/rusty-key))*
+- **Every Compendium page has a round picture beside its title, and the lists are plain lines.** A place shows its
+  picture with the world, a quest a scroll with the exclamation or question mark, a readable its kind with the
+  training book. Zones and dungeons in the lists are lines with their count, as the groups are. A title
+  is always one line. *([Nucabe](https://github.com/Nucabe))*
+- **A readable's page is its text only.** The where-to-find-it lines are gone. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.5.1 — 2026-10-19
 

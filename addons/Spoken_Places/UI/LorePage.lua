@@ -144,7 +144,7 @@ local LOG_PAGE = "QuestDetailsBackgrounds"
 local BOOK_TOP_BAND = 0.07
 -- Beside the map: the quest log's page, its heading nearer the narrower page's top and right edge,
 -- smaller and on one line, under a shorter backplate.
-local LOG_LOOK = { top = 28, right = 28, titleSize = 20, oneLine = true, backplate = { full = 300, height = 80 } }
+local LOG_LOOK = { top = 28, right = 28, titleSize = 20, backplate = { full = 300, height = 80 } }
 
 -- What Play does on a story's page: the story `target` ({ mapID, key }) where a pack reads it, Stop
 -- while it is read and Replay once stopped, as every Play of the Compendium's (SpokenCompendium.PlayState).
@@ -229,7 +229,7 @@ function Page:Show(entry)
 	local picture, mask
 	if story then picture, mask = SpokenZones:Picture(story[1], story[2]) end
 	self.page:Show({ title = entry.title, subtitle = entry.subtitle, onSubtitle = entry.onSubtitle, text = entry.text,
-		target = story, picture = picture and { file = picture, mask = mask } or nil })
+		target = story, picture = picture and { file = picture, mask = mask } or nil, icon = entry.icon })
 	local contribute = entry.contribute
 	self.contribute:SetTarget(contribute and contribute[1], contribute and contribute[2])
 	if self.open then
