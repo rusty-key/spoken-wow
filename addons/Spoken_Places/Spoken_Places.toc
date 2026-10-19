@@ -86,7 +86,6 @@ Data/zhTW/Aliases.lua
 Data/ForeverAreas.lua
 Data/AreaZones.lua
 UI/CopyLink.lua
-UI/ContributeButton.lua
 UI/LorePage.lua
 UI/MapPanel.lua
 UI/SubzoneClick.lua

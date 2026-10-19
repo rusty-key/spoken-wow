@@ -109,7 +109,7 @@ _G.hooksecurefunc = _G.hooksecurefunc or function() end
 local audio = setmetatable({}, { __index = Z })
 assert(loadfile(ZONES .. "Audio.lua"))("Spoken_Places", audio)
 Z.PlaceAbove = audio.PlaceAbove
-for _, file in ipairs({ "UI/ContributeButton", "UI/LorePage", "UI/LoreWindow", "UI/MapPanel" }) do
+for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/MapPanel" }) do
     assert(loadfile(ZONES .. file .. ".lua"))("Spoken_Places", Z)
 end
 
@@ -154,7 +154,7 @@ RowFor(L.BATTLEGROUNDS).scripts.OnClick(RowFor(L.BATTLEGROUNDS))
 Expect("...closed by a click, its lines gone", Shown():find("Warsong Gulch", 1, true), nil)
 Expect("...chosen, its page naming it, in Azeroth with no count where its zones have no areas, and asking for one",
     page.title.text .. "|" .. page.sub.text.text .. "|" .. page.body.text.text,
-    L.BATTLEGROUNDS .. "|" .. L.IN_ZONE_FMT:format("Azeroth") .. "|" .. L.ZONES_PICK)
+    L.BATTLEGROUNDS .. "|" .. L.IN_ZONE_FMT:format("Azeroth") .. "|")
 Expect("...the banner the chosen row", RowFor(L.BATTLEGROUNDS).selected, true)
 Z:ShowLoreFor(1460, nil)
 Expect("opened on a battleground, its banner opens to show it", Shown():match("|" .. L.BATTLEGROUNDS
@@ -172,7 +172,7 @@ Expect("...opened, its zone a line inside it", Shown():match("|" .. L.OTHER_LAND
     and RowFor("Zephras Isle").row.style, "group")
 Expect("...chosen, its page naming it, in Azeroth, and asking for one",
     page.title.text .. "|" .. page.sub.text.text .. "|" .. page.body.text.text,
-    L.OTHER_LANDS .. "|" .. L.IN_ZONE_FMT:format("Azeroth") .. "|" .. L.ZONES_PICK)
+    L.OTHER_LANDS .. "|" .. L.IN_ZONE_FMT:format("Azeroth") .. "|")
 Expect("...the banner the chosen row", RowFor(L.OTHER_LANDS).selected, true)
 Z.Subzones[2521] = { cove = { name = "Hidden Cove", full = "A cove." } }
 found["2521/cove"] = true

@@ -77,7 +77,7 @@ Expect("discovering it at its entrance plays the same story", clip and clip.key,
 Z = Boot()
 Z:Set("showUndiscovered", true)
 Spoken:StopAll()
-for _, file in ipairs({ "UI/ContributeButton", "UI/LorePage" }) do assert(loadfile(ZONES .. file .. ".lua"))("Spoken_Places", Z) end
+for _, file in ipairs({ "UI/LorePage" }) do assert(loadfile(ZONES .. file .. ".lua"))("Spoken_Places", Z) end
 Z.Zones[1414] = { name = "Kalimdor", full = "West." }
 Z:SetupLoreWindow()
 Z:ToggleLoreWindow()

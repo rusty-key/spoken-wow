@@ -15,6 +15,17 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   training book. Zones and dungeons in the lists are lines with their count, as the groups are. A title
   is always one line. *([Nucabe](https://github.com/Nucabe))*
 - **A readable's page is its text only.** The where-to-find-it lines are gone. *([Nucabe](https://github.com/Nucabe))*
+- **A page with nothing to read shows your faction's wax seal in its middle.** Where the client has no seal
+  it shows a faint lattice. It replaces the line telling you to choose something on the left, on the
+  Compendium's pages for continents, zones, dungeons and groups. *([Nucabe](https://github.com/Nucabe))*
+- **A page nobody has written yet says so in the same words on every tab, with Contribute under them.**
+  Quests, Places and Readables use one message, and a quest part with no words gets Contribute too.
+  *([Nucabe](https://github.com/Nucabe))*
+- **Play stays on the Compendium's pages and quest parts, greyed where nothing is recorded.** Its
+  tooltip says there is no voice for it yet. *([Nucabe](https://github.com/Nucabe))*
+- **Rows in the Compendium are dimmed when their voice, picture or words are missing.** A line with nothing
+  inside it has no plus button, and the Unlock switches no longer grey rows that have nothing found. The
+  button that shrinks the window is the size of Close. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.5.1 — 2026-10-19
 
