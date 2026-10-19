@@ -215,6 +215,7 @@ local function Widget(kind, name)
         return #tostring(self.text or "") * 7
     end
     function w:SetWordWrap(on) self.wordWrap = on and true or false end
+    function w:SetTextColor(r, g, b) self.textColor = { r, g, b } end
     function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
     function w:GetTop() return 100 end
     function w:GetBottom() return 0 end
