@@ -505,6 +505,20 @@ Expect("...a line down each open card's contents beside them, a step in from the
     and RowFor("Kurdran Wildhammer").rails[3]:IsShown() and RowFor("Kurdran Wildhammer").rails[3].anchor.x, 64.4)
 Expect("...a readable not found greyed, with the padlock", RowFor("Ranger Captain Alleria Windrunner").row.locked, true)
 Expect("...one found open to read", RowFor("Kurdran Wildhammer").row.locked, false)
+Expect("...one found with nothing to hear in a duller gold", table.concat(RowFor("Kurdran Wildhammer").label.textColor, ","), "0.84,0.71,0.31")
+Expect("...one not found grey", table.concat(RowFor("Ranger Captain Alleria Windrunner").label.textColor, ","), "0.5,0.48,0.45")
+do
+    local hasAudio, alleriaPage = B.HasAudio, B:Data().books[ALLERIA].pages[1]
+    B.HasAudio = function(_, page) return page == alleriaPage end
+    SpokenBooksCharacter.found[ALLERIA] = true
+    window:Hide()
+    B:ShowReadables()
+    Expect("...one found and voiced in gold", table.concat(RowFor("Ranger Captain Alleria Windrunner").label.textColor, ","), "1,0.82,0")
+    B.HasAudio = hasAudio
+    SpokenBooksCharacter.found[ALLERIA] = nil
+    window:Hide()
+    B:ShowReadables()
+end
 do
     local row = RowFor("Kurdran Wildhammer")
     Expect("...its name clear of the tick at the row's end", row.label.anchor.point == "RIGHT" and row.label.anchor.x, -28)
