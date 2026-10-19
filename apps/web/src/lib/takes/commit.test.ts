@@ -147,6 +147,17 @@ describe("word times", () => {
     );
     expect(rows.map((row) => row.wordTimes)).toEqual([null, null]);
   });
+
+  it("does not align a take in another language", async () => {
+    const aligner = path.join(root, "aligner-other.mjs");
+    fs.writeFileSync(aligner, `console.log(JSON.stringify({ times: "AAAy", matched: 1 }));`);
+    process.env.WORD_TIMES_ALIGNER = `node ${aligner}`;
+    await commitTake("quests", file, Buffer.from("portugues"), { lineId: "g:commit-test" }, {
+      lang: "ptBR",
+      text: "um dois",
+    });
+    expect(await timesOf()).toEqual({ wordTimes: null, wordTimesSource: null });
+  });
 });
 
 describe("the activity log", () => {

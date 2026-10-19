@@ -111,11 +111,14 @@ export async function commitTake(
   const durationSec = options.measure ? await options.measure(archived) : null;
 
   // Times from the generator win; otherwise the saved file is aligned, which never fails the take.
+  // English only: the aligner has been checked against English recordings and no other language.
   const provided = fields.wordTimes
     ? { times: fields.wordTimes, source: "provider" as const }
     : null;
   const aligned =
-    provided || !options.text ? null : await alignTake(archived, options.text, lang);
+    provided || !options.text || lang !== BASE_LANG
+      ? null
+      : await alignTake(archived, options.text, lang);
   const wordTimes = provided
     ? provided
     : aligned

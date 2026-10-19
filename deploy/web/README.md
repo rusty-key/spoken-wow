@@ -118,7 +118,7 @@ those 12 thinner. Anything that is not a whole number of at least 1 is read as 3
 
 `app.env` may also set **`WORD_TIMES_ALIGNER`**, the command that times each new take (for
 example `/srv/spoken/venv/bin/python /srv/spoken/pipelines/timings/align.py`). With it set, every
-take the generators return without word times is aligned against its text with WhisperX and the
+English take the generators return without word times is aligned against its text with WhisperX and the
 result is stored on the take (`wordTimes`). Unset, takes are saved without times, as before. The
 host needs `pip install -r pipelines/timings/requirements.txt`; on a CPU-only host each take waits
 for the model to load, so a batch runs slower. A failed alignment never fails the take.
