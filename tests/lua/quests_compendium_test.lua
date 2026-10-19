@@ -141,7 +141,7 @@ end
 -- A part's Play and Report on a quest's page, by its heading.
 local function PartButton(heading, kind)
     for _, part in ipairs(page.body.lastParts or {}) do
-        if part.heading == heading then
+        if part.caption == heading or (part.caption == nil and part.heading == heading) then
             for _, button in ipairs(part.buttons or {}) do
                 if button.kind == kind or (kind == "play" and button.moment) or (kind == "report" and not button.moment) then
                     return button
@@ -337,9 +337,12 @@ Expect("...Classes opening on a class's quests under its name, this character's 
 Expect("...a line of the list for it, a class being no place", RowFor("Mage").row.style, "group")
 Expect("...Classes' page its count alone, being no place", page.title.text == "Classes"
     and page.sub.text.text:match("^%d+ of %d+ completed$") ~= nil, true)
+Expect("...Classes' page has a portrait, as no page of the tab goes without one",
+    page.face ~= nil and page.headFace.speaker.icon ~= nil, true)
 Click("Mage")
 Expect("...a class's page naming Classes, not \"In\" it, with its count",
     page.sub.text.text:match("^Classes · %d+ of %d+ completed$") ~= nil, true)
+Expect("...a class's page has its class's icon", page.headFace.speaker.icon, [[Interface\Icons\ClassIcon_Mage]])
 Click(BINK_CHAIN)
 Expect("...a chain in a class naming the class, not \"In\" it", page.title.text .. "|" .. page.sub.text.text,
     BINK_CHAIN .. "|Mage · 0 of 2 completed")
@@ -643,6 +646,9 @@ Expect("...chosen, its page has the chain's name", page.title.text, "Lost Neckla
 Expect("...the zone it is listed in and its count", page.sub.text.text, "In Elwynn Forest · 2 of 4 completed, 1 in progress")
 Expect("...and, as a zone's page, no words", PageWords(), "")
 Expect("...nothing to play on it", page.play, nil)
+Expect("...a chain is quests: the quest's scroll with the exclamation mark badge while any is open",
+    page.headFace ~= nil and page.headFace.speaker.icon .. " " .. page.headFace.speaker.bullet,
+    [[Interface\Icons\INV_Scroll_03]] .. " quest-accept")
 completed[BACK], completed[GOLDTOOTH] = true, true
 questLog = {}
 Tab:Refresh()
@@ -741,7 +747,10 @@ Click("Kobold Camp Cleanup")
 -- Without DialogueUI, each part's header is the Small Window's: the face of who says it with the
 -- part's badge, their name over the part's name.
 local function PartOf(heading)
-    for _, part in ipairs(page.body.lastParts or {}) do if part.heading == heading then return part end end
+    -- The speaker's name is the heading and the part's name the line over it; with no speaker the part's name is the heading.
+    for _, part in ipairs(page.body.lastParts or {}) do
+        if part.caption == heading or (part.caption == nil and part.heading == heading) then return part end
+    end
 end
 local BOOK = [[Interface\AddOns\Spoken\Textures\Book]]
 local function Face(part)
@@ -749,7 +758,7 @@ local function Face(part)
     if not face then return "no face" end
     local drawn = face.still:IsShown() and "still " .. tostring(face.still.display)
         or face.viewport.texture and face.viewport.texture:IsShown() and face.viewport.texture:GetTexture() or "nothing"
-    return drawn .. " " .. tostring(face.badge:GetTexture()) .. " " .. tostring(part.caption)
+    return drawn .. " " .. tostring(face.badge:GetTexture()) .. " " .. tostring(part.caption and part.heading or nil)
 end
 local BADGES = SpokenEnv.Face.BADGES
 Expect("without DialogueUI, no DialogueUI header on either part",
@@ -765,9 +774,9 @@ do
     Expect("...the face 44 across, shown at the left of the heading's line", part.face:GetWidth() .. " "
         .. tostring(part.face:IsShown()) .. " " .. part.face.anchor.point .. " " .. part.face.anchor.x
         .. " " .. tostring(part.face.anchor.relativeTo == page.body.child), "44 true LEFT 0 true")
-    Expect("...the part's name its heading, and the caption shown over it", part.heading .. " "
+    Expect("...the speaker's name its heading, and the part's name shown over it", part.heading .. " "
         .. tostring(page.body.parts[1].caption:IsShown()) .. " " .. tostring(page.body.parts[1].caption.text),
-        L.QUEST_PART_ACCEPT .. " true Marshal McBride")
+        "Marshal McBride true " .. L.QUEST_PART_ACCEPT)
 end
 local play = PartButton(L.QUEST_PART_ACCEPT, "play")
 Expect("a voiced part has Play on its heading's line", play ~= nil and play:IsShown(), true)
@@ -927,7 +936,7 @@ do
     Click("Kobold Camp Cleanup")
     local last = page.body.lastParts[#page.body.lastParts]
     Expect("a voiced part with no words known keeps its part, saying no words are known",
-        last.heading .. "|" .. last.text, L.QUEST_PART_COMPLETE .. "|" .. L.QUEST_PART_NO_TEXT)
+        (last.caption or last.heading) .. "|" .. last.text, L.QUEST_PART_COMPLETE .. "|" .. L.QUEST_PART_NO_TEXT)
     Expect("...with Play and Report", PartButton(L.QUEST_PART_COMPLETE, "play"):IsShown()
         and PartButton(L.QUEST_PART_COMPLETE, "report"):IsShown(), true)
     local handInPlay = PartButton(L.QUEST_PART_COMPLETE, "play")
@@ -1327,13 +1336,13 @@ do
     local offer, handIn = page.body.lastParts[1], page.body.lastParts[#page.body.lastParts]
     Expect("with DialogueUI, still the Small Window's face, no DialogueUI header",
         tostring(offer.header) .. " " .. tostring(offer.face ~= nil and offer.face:IsShown()), "nil true")
-    Expect("...the giver over the client's word for the offer", offer.caption .. "|" .. offer.heading,
+    Expect("...the giver as the heading, the client's word for the offer over it", offer.heading .. "|" .. offer.caption,
         "Marshal McBride|Quest Description")
-    Expect("...the one it is handed in to over its completion", handIn.caption .. "|" .. handIn.heading,
+    Expect("...the one it is handed in to as the heading, its completion over it", handIn.heading .. "|" .. handIn.caption,
         "Marshal Dughan|" .. L.QUEST_PART_COMPLETE)
     _G.QUEST_DESCRIPTION = nil
     Tab:Refresh()
-    Expect("a client with no word for it: Spoken's", page.body.lastParts[1].heading, L.QUEST_PART_ACCEPT)
+    Expect("a client with no word for it: Spoken's", page.body.lastParts[1].caption, L.QUEST_PART_ACCEPT)
     _G.IsAddOnLoaded, _G.DialogueUI_DB, _G.DUIQuestFrame, _G.DUIFont_Quest_Paragraph = isLoaded, nil, nil, nil
 end
 
