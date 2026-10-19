@@ -111,7 +111,7 @@ def icon_source(language: str = None) -> str:
 
 TOC_HEADER = """## Interface: 100007, 11509, 20506, 16001
 ## Title: {title}
-## Notes: Contains voiceovers for content released during the Vanilla era.|n|nIt's OK for this addon to appear "disabled" or "out of date", it's compatible with any client and Spoken Quests will load it even if it's disabled or out of date.
+## Notes: Narrated quests and gossip from the Vanilla era, for Spoken Quests.|n|nIt's OK for this addon to appear "disabled" or "out of date", it's compatible with any client and Spoken Quests will load it even if it's disabled or out of date.
 ## Version: {version}
 ## IconTexture: Interface\\AddOns\\{module}\\{icon}
 ## LoadOnDemand: 1

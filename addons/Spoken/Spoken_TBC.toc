@@ -1,15 +1,15 @@
 ## Interface: 20506
 ## Title: |cffb48cffSpoken|r
-## Notes: The voice player every Spoken addon speaks through: one queue, one window, one minimap button.
-## Notes-deDE: Der Voice-Player, über den jedes Spoken-AddOn spricht, eine Warteschlange, ein Fenster, eine Minikartenschaltfläche.
-## Notes-esES: El reproductor de voz a través del cual habla cada addon Spoken, una cola, una ventana, un botón del minimapa.
-## Notes-esMX: El reproductor de voz a través del cual habla cada addon Spoken, una cola, una ventana, un botón del minimapa.
-## Notes-frFR: Le lecteur vocal par lequel chaque addon Spoken parle, une file, une fenêtre, un bouton de minicarte.
-## Notes-ptBR: O reprodutor de voz através do qual cada addon Spoken fala, uma fila, uma janela, um botão do minimapa.
-## Notes-ruRU: Голосовой проигрыватель, через который говорят все аддоны Spoken, одна очередь, одно окно, одна кнопка у миникарты.
-## Notes-koKR: 모든 Spoken 애드온이 말하는 음성 플레이어, 하나의 대기열, 하나의 창, 하나의 미니맵 버튼.
-## Notes-zhCN: 所有 Spoken 插件共用的语音播放器，一个队列、一个窗口、一个小地图按钮。
-## Notes-zhTW: 所有 Spoken 插件共用的語音播放器，一個佇列、一個視窗、一個小地圖按鈕。
+## Notes: Reads the game aloud: quests, gossip, places and readables. One queue, one narrator, one minimap button, and the settings for all of it.
+## Notes-deDE: Liest das Spiel vor: Quests, Gespräche, Orte und Lesestoff. Eine Warteschlange, ein Erzähler, ein Minimap-Button und die Einstellungen für alles.
+## Notes-esES: Lee el juego en voz alta: Misiones, Charlas, Lugares y Lecturas. Una cola, un narrador, un botón del minimapa y los ajustes de todo.
+## Notes-esMX: Lee el juego en voz alta: Misiones, Charlas, Lugares y Lecturas. Una cola, un narrador, un botón del minimapa y los ajustes de todo.
+## Notes-frFR: Lit le jeu à voix haute : Quêtes, Discussions, Lieux et Lectures. Une file, un narrateur, un bouton de minicarte et les réglages de tout.
+## Notes-ptBR: Lê o jogo em voz alta: Missões, Conversas, Lugares e Leituras. Uma fila, um narrador, um botão do minimapa e as configurações de tudo.
+## Notes-ruRU: Озвучивает игру: Задания, Разговоры, Места и Тексты. Одна очередь, один рассказчик, одна кнопка у миникарты и настройки для всего.
+## Notes-koKR: 게임을 소리 내어 읽습니다: 퀘스트, 잡담, 장소, 읽을거리. 하나의 대기열, 하나의 내레이터, 하나의 미니맵 버튼, 그리고 모든 설정.
+## Notes-zhCN: 朗读游戏内容：任务、闲聊、地点和读物。一个队列、一个旁白、一个小地图按钮，以及所有设置。
+## Notes-zhTW: 朗讀遊戲內容：任務、閒聊、地點和讀物。一個佇列、一個旁白、一個小地圖按鈕，以及所有設定。
 ## Version: 3.5.1
 ## IconTexture: Interface\AddOns\Spoken\icon.tga
 ## SavedVariables: SpokenSettings

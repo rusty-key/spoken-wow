@@ -62,6 +62,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   and kept to Classic. *([Nucabe](https://github.com/Nucabe))*
 - **Every dungeon and raid has its own icon in the Compendium, and so do the cities, Moonglade and the
   battlegrounds.** *([Nucabe](https://github.com/Nucabe))*
+- **The AddOns list says what each part reads.** Hovering Spoken now says it reads quests, gossip,
+  places and readables, with one queue, one narrator and one minimap button. The Places and
+  Readables sound packs say what they hold and that they load with the game, and the Vanilla
+  quest packs say they are narrated.
+  *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.5.1 — 2026-10-19
 

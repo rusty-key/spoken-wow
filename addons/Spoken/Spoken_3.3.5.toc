@@ -1,15 +1,15 @@
 ## Interface: 30300
 ## Title: |cffb48cffSpoken|r
-## Notes: The voice player every Spoken addon speaks through, for the 3.3.5 client.
-## Notes-deDE: Der Voice-Player, über den jedes Spoken-AddOn spricht, für 3.3.5-Server.
-## Notes-esES: El reproductor de voz a través del cual habla cada addon Spoken, para servidores 3.3.5.
-## Notes-esMX: El reproductor de voz a través del cual habla cada addon Spoken, para servidores 3.3.5.
-## Notes-frFR: Le lecteur vocal par lequel chaque addon Spoken parle, pour les serveurs 3.3.5.
-## Notes-ptBR: O reprodutor de voz através do qual cada addon Spoken fala, para servidores 3.3.5.
-## Notes-ruRU: Голосовой проигрыватель, через который говорят все аддоны Spoken, для серверов 3.3.5.
-## Notes-koKR: 모든 Spoken 애드온이 말하는 음성 플레이어, 3.3.5 서버용.
-## Notes-zhCN: 所有 Spoken 插件共用的语音播放器，适用于 3.3.5 服务器。
-## Notes-zhTW: 所有 Spoken 插件共用的語音播放器，適用於 3.3.5 伺服器。
+## Notes: Reads the game aloud: quests, gossip, places and readables, for the 3.3.5 client.
+## Notes-deDE: Liest das Spiel vor: Quests, Gespräche, Orte und Lesestoff, für 3.3.5-Server.
+## Notes-esES: Lee el juego en voz alta: Misiones, Charlas, Lugares y Lecturas, para servidores 3.3.5.
+## Notes-esMX: Lee el juego en voz alta: Misiones, Charlas, Lugares y Lecturas, para servidores 3.3.5.
+## Notes-frFR: Lit le jeu à voix haute : Quêtes, Discussions, Lieux et Lectures, pour les serveurs 3.3.5.
+## Notes-ptBR: Lê o jogo em voz alta: Missões, Conversas, Lugares e Leituras, para servidores 3.3.5.
+## Notes-ruRU: Озвучивает игру: Задания, Разговоры, Места и Тексты, для серверов 3.3.5.
+## Notes-koKR: 게임을 소리 내어 읽습니다: 퀘스트, 잡담, 장소, 읽을거리, 3.3.5 서버용.
+## Notes-zhCN: 朗读游戏内容：任务、闲聊、地点和读物，适用于 3.3.5 服务器。
+## Notes-zhTW: 朗讀遊戲內容：任務、閒聊、地點和讀物，適用於 3.3.5 伺服器。
 ## Version: 3.5.1
 ## SavedVariables: SpokenSettings
 ## X-Part-Of: Spoken
