@@ -121,7 +121,7 @@ export async function regenerateNarrated(
           leadInSec: speech.leadInSec,
           createdBy,
         },
-        { lang, measure: durationOf, batchId: options.batchId },
+        { lang, measure: durationOf, batchId: options.batchId, text: line.spoken },
       );
 
       return {

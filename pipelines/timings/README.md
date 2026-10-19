@@ -34,5 +34,9 @@ model (about 360 MB for English).
 - The caption words are the text cut at whitespace, as the addon cuts it (`Spoken:CaptionWords`);
   `align.py` hands WhisperX that one line. A word it cannot place (a numeral, a symbol) is put
   between its neighbours, and `matched` counts only the words it placed.
+- A take generated on the site is timed when it is saved: `apps/web` runs `align.py --clip` (set
+  `WORD_TIMES_ALIGNER`, see `deploy/web/README.md`) when the generator gave no times, and keeps the
+  result in `take."wordTimes"`. The packs still get their data from steps 2 to 5 above until a pack
+  build reads that column.
 - Another language needs its own aligned rows and its own pack data; `--language` picks WhisperX's
   model for it. Only English has been run.

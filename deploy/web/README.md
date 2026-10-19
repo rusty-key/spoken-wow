@@ -116,6 +116,13 @@ regeneration queues drain at once. Default 3. Each queue runs at its own key's p
 and all of them together at most 12 jobs (the database pool's limit), so raising it spreads
 those 12 thinner. Anything that is not a whole number of at least 1 is read as 3.
 
+`app.env` may also set **`WORD_TIMES_ALIGNER`**, the command that times each new take (for
+example `/srv/spoken/venv/bin/python /srv/spoken/pipelines/timings/align.py`). With it set, every
+take the generators return without word times is aligned against its text with WhisperX and the
+result is stored on the take (`wordTimes`). Unset, takes are saved without times, as before. The
+host needs `pip install -r pipelines/timings/requirements.txt`; on a CPU-only host each take waits
+for the model to load, so a batch runs slower. A failed alignment never fails the take.
+
 **There is no `ELEVENLABS_API_KEY`.** Every request that reaches ElevenLabs is spent from the
 signed-in user's own account, using a key they set on `/profile`, sealed under
 `SPOKEN_SECRET_KEY`. A route asked to spend without one answers `428 no_api_key`. The Python

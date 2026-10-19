@@ -105,6 +105,50 @@ describe("the first take of a line", () => {
   });
 });
 
+describe("word times", () => {
+  const timesOf = async () =>
+    (
+      await db().query(`select "wordTimes", "wordTimesSource" from "take" where "file" = $1`, [file])
+    ).rows[0];
+
+  afterEach(() => {
+    delete process.env.WORD_TIMES_ALIGNER;
+  });
+
+  it("keeps the times a generator returned, and does not align over them", async () => {
+    process.env.WORD_TIMES_ALIGNER = `node ${path.join(root, "missing.mjs")}`;
+    await commitTake("quests", file, Buffer.from("timed"), { lineId: "g:commit-test", wordTimes: "AAAB" }, {
+      text: "one two",
+    });
+    expect(await timesOf()).toEqual({ wordTimes: "AAAB", wordTimesSource: "provider" });
+  });
+
+  it("aligns the saved audio when the generator gave none and an aligner is set", async () => {
+    const aligner = path.join(root, "aligner.mjs");
+    fs.writeFileSync(aligner, `console.log("loading"); console.log(JSON.stringify({ times: "AAAy", matched: 1 }));`);
+    process.env.WORD_TIMES_ALIGNER = `node ${aligner}`;
+    await commitTake("quests", file, Buffer.from("aligned"), { lineId: "g:commit-test" }, {
+      text: "one two",
+    });
+    expect(await timesOf()).toEqual({ wordTimes: "AAAy", wordTimesSource: "whisperx" });
+  });
+
+  it("saves the take without times when no aligner is set or it fails", async () => {
+    await commitTake("quests", file, Buffer.from("plain"), { lineId: "g:commit-test" }, { text: "one two" });
+    expect(await timesOf()).toEqual({ wordTimes: null, wordTimesSource: null });
+
+    const failing = path.join(root, "failing.mjs");
+    fs.writeFileSync(failing, "process.exit(1);");
+    process.env.WORD_TIMES_ALIGNER = `node ${failing}`;
+    await commitTake("quests", file, Buffer.from("failed"), { lineId: "g:commit-test" }, { text: "one two" });
+    const { rows } = await db().query(
+      `select "wordTimes" from "take" where "file" = $1 order by "version"`,
+      [file],
+    );
+    expect(rows.map((row) => row.wordTimes)).toEqual([null, null]);
+  });
+});
+
 describe("the activity log", () => {
   it("records the take in the same commit, under the batch that cut it", async () => {
     await commitTake("quests", file, Buffer.from("queued"), { lineId: "g:commit-test", credits: 3 }, {

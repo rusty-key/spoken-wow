@@ -165,8 +165,9 @@ export async function regenerateLine(
     //
     // The committed pronunciation rules are English's spellings of English words; another
     // language is spoken with its own lexicon, which the speaker applies, and nothing else.
+    const plainText = sentText(source, lang, line.playerGender);
     const spokenText = SHAPE[speaker.provider](
-      sentText(source, lang, line.playerGender),
+      plainText,
       directionFor(line.voice, config.raceTags),
       config.raceTags,
     );
@@ -236,7 +237,7 @@ export async function regenerateLine(
         leadInSec: speech.leadInSec,
         createdBy,
       },
-      { lang, batchId: options.batchId },
+      { lang, batchId: options.batchId, text: plainText },
     );
 
     return {

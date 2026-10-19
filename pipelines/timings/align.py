@@ -141,6 +141,24 @@ def force_align(aligner, device, path, text):
     return heard_from_alignment(words), length
 
 
+# Below this share of words placed as written, a recording's times are not kept (export.py's cut).
+MIN_MATCHED = 0.85
+
+
+def align_clip(path, text, language="en", min_matched=MIN_MATCHED):
+    """One recording's word times as export.encode writes them, with the share matched, or None.
+
+    For a take just generated: the site calls this (`--clip`) when the generator gave no times.
+    """
+    from export import encode
+    aligner, device = load_whisperx(language)
+    heard, length = force_align(aligner, device, path, text)
+    words = caption_words(text)
+    times, matched = align_words(words, heard, length) if heard and words else (None, 0.0)
+    packed = encode(times) if times and matched >= min_matched else None
+    return (packed, matched) if packed else None
+
+
 def prune(out, manifest_rows):
     """Remove from --out and its shards the rows of recordings that are now a different length: a
     pack update re-cut them, so their times no longer fit."""
@@ -162,8 +180,12 @@ def prune(out, manifest_rows):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--manifest", required=True)
-    parser.add_argument("--out", required=True)
+    parser.add_argument("--manifest")
+    parser.add_argument("--out")
+    parser.add_argument("--clip", metavar="AUDIO",
+                        help="time this one recording (WhisperX) against the text in --text-file and print "
+                             "{times, matched} as one JSON line; exit 1 when it matched too little to keep")
+    parser.add_argument("--text-file", help="--clip: the text the voice was given, as UTF-8")
     parser.add_argument("--family", action="append", help="only these families (repeatable)")
     parser.add_argument("--limit", type=int, help="only this many clips, picked at random")
     parser.add_argument("--shard", help="I/N: do every Nth clip from the Ith, into --out.I; run N at once")
@@ -181,6 +203,18 @@ def main():
     parser.add_argument("--prune", action="store_true",
                         help="drop rows whose recording has changed length since (run with no worker going)")
     args = parser.parse_args()
+
+    if args.clip:
+        if not args.text_file:
+            parser.error("--clip needs --text-file")
+        with open(args.text_file, encoding="utf8") as handle:
+            found = align_clip(args.clip, handle.read(), args.language)
+        if not found:
+            sys.exit(1)
+        print(json.dumps({"times": found[0], "matched": round(found[1], 3)}), flush=True)
+        return
+    if not args.manifest or not args.out:
+        parser.error("--manifest and --out are required")
 
     rows = [json.loads(line) for line in open(args.manifest, encoding="utf8")]
     if args.prune:

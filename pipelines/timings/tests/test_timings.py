@@ -111,3 +111,17 @@ def test_a_word_whisperx_could_not_place_falls_between_its_neighbours():
     times, matched = align.align_words(words, heard, 3.0)
     assert times == [0.5, 1.0, 1.5]
     assert abs(matched - 2 / 3) < 1e-9
+
+
+def test_a_clip_just_generated_is_timed_into_the_packed_form(monkeypatch):
+    monkeypatch.setattr(align, "load_whisperx", lambda language="en": (None, "cpu"))
+    monkeypatch.setattr(align, "force_align", lambda aligner, device, path, text: (heard(("one", 0.5), ("two", 1.0)), 2.0))
+    packed, matched = align.align_clip("take.mp3", "one two")
+    assert export.decode(packed) == [0.5, 1.0]
+    assert matched == 1.0
+
+
+def test_a_clip_that_matched_too_little_is_not_timed(monkeypatch):
+    monkeypatch.setattr(align, "load_whisperx", lambda language="en": (None, "cpu"))
+    monkeypatch.setattr(align, "force_align", lambda aligner, device, path, text: (heard(("x", 0.1), ("y", 0.5)), 1.0))
+    assert align.align_clip("take.mp3", "one two") is None

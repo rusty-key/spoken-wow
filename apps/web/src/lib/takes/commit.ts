@@ -32,6 +32,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { historyDirOf } from "./adapters";
 import { archiveName, writeAtomic } from "./bytes";
+import { alignTake } from "./word-times";
 import type { Provider } from "@/lib/generation/providers";
 
 /** What a take was made with. Anything unknown is null, which means unknown, not unchanged. */
@@ -62,6 +63,11 @@ export type TakeFields = {
   leadIn?: boolean;
   leadInSec?: number | null;
   createdBy?: string | null;
+  /**
+   * Word times the generator itself returned, in export.py's format. When absent and the
+   * caller gave `options.text`, the saved audio is aligned instead (word-times.ts).
+   */
+  wordTimes?: string | null;
 };
 
 export type Committed = {
@@ -87,6 +93,8 @@ export async function commitTake(
     measure?: (clip: string) => Promise<number | null>;
     /** The queue batch this take was cut for, which the activity log folds it under. */
     batchId?: string;
+    /** The text the voice was given, for timing the take when the generator gave no times. */
+    text?: string;
   } = {},
 ): Promise<Committed> {
   const lang = options.lang ?? BASE_LANG;
@@ -102,6 +110,18 @@ export async function commitTake(
   await writeAtomic(archived, data);
   const durationSec = options.measure ? await options.measure(archived) : null;
 
+  // Times from the generator win; otherwise the saved file is aligned, which never fails the take.
+  const provided = fields.wordTimes
+    ? { times: fields.wordTimes, source: "provider" as const }
+    : null;
+  const aligned =
+    provided || !options.text ? null : await alignTake(archived, options.text, lang);
+  const wordTimes = provided
+    ? provided
+    : aligned
+      ? { times: aligned.times, source: "whisperx" as const }
+      : null;
+
   await insertLive({
     source,
     file,
@@ -112,6 +132,7 @@ export async function commitTake(
     durationSec,
     archiveFile,
     batchId: options.batchId,
+    wordTimes,
   });
 
   return { version: next, bytes: data.byteLength, archiveFile, durationSec };
@@ -128,6 +149,7 @@ async function insertLive(input: {
   durationSec: number | null;
   archiveFile: string;
   batchId?: string;
+  wordTimes: { times: string; source: "whisperx" | "provider" } | null;
 }): Promise<void> {
   const { source, file, lang, version, fields } = input;
   // || rather than ??: the worker passes "" for a batch whose owner's account is gone, and
@@ -156,9 +178,9 @@ async function insertLive(input: {
           "voice", "narratorVoice", "voiceId", "modelId", "seed", "outputFormat", "settings",
           "characters", "credits", "durationSec", "bytes", "spokenHash", "dictionaryId",
           "dictionaryVersion", "leadIn", "leadInSec", "createdBy", "archiveFile",
-          "provider", "costUsd")
+          "provider", "costUsd", "wordTimes", "wordTimesSource")
        values ($1, $2, $3, $4, $5, true, 'generated', $6, $7, $8, $9, $10, $11, $12::jsonb,
-               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
       [
         source,
         lang,
@@ -187,6 +209,8 @@ async function insertLive(input: {
         input.archiveFile,
         fields.provider ?? "elevenlabs",
         fields.costUsd ?? null,
+        input.wordTimes?.times ?? null,
+        input.wordTimes?.source ?? null,
       ],
     );
     await recordActivity(
