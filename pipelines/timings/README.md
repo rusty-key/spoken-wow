@@ -1,7 +1,9 @@
 # Word times
 
 When each word of a voice recording starts, so the captions light the word being said instead of
-estimating it. The times are data: they ship inside the voice packs, not in the repo or in Spoken.
+estimating it. The times are data: they ship inside the voice packs, not in Spoken. The
+current export is in the repo at `data/word-times.json` (English, aligned with WhisperX), so a package run can use it
+as it is: `WORD_TIMES=pipelines/timings/data/word-times.json`.
 
 ## Where it sits in the voice work
 
