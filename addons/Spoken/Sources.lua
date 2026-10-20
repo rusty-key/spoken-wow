@@ -40,6 +40,9 @@ function Sources:Register(key, info)
         -- Absorbs a recorded duration that is slightly short.
         interClipGap = info.interClipGap or 0.55,
         channel = info.channel,
+        -- Its lines have no recording: each shows in the narrator for its `length` and is not
+        -- refused for a sound channel that cannot be heard.
+        textOnly = info.textOnly,
         admit = info.admit,
         testBeforeQueue = info.testBeforeQueue,
         onQueueEnter = info.onQueueEnter,

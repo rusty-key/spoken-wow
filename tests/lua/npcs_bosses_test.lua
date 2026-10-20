@@ -356,4 +356,76 @@ Expect("its Defaults put Show Boss Abilities back on", SpokenNPCsSettings.showAb
 Expect("...and leave Unlock Unfound Bosses, which Spoken's page resets", SpokenNPCsSettings.unlockUnfound, true)
 Expect("...and keep the bosses this character has met", SpokenNPCsCharacter.found["36:edwin vancleef"], true)
 
+---------------------------------------------------------------- a boss's story in the narrator
+assert(loadfile(ADDONS .. "Spoken_NPCs/Story.lua"))("Spoken_NPCs", NPCs)
+NPCs:SetupStories()
+local storySource = Spoken:GetSource("bosses")
+Expect("the bosses' stories are a part of Spoken's, as words with no voice", storySource ~= nil and storySource.textOnly, true)
+_G.SpokenBossStories[36]["edwin vancleef"] = "He led the Brotherhood."
+_G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, display = 1305, spells = {} } } }
+local clip = NPCs:StoryClip(36, "edwin vancleef")
+Expect("a boss's story is a line with no recording", clip.textOnly == true and clip.path == nil, true)
+Expect("...headed by its dungeon, named for the boss", clip.present.header .. "|" .. clip.present.label, "Deadmines|Edwin VanCleef")
+Expect("...with its story and its face", clip.present.transcript .. "|" .. tostring(clip.present.portrait.creatureID),
+    "He led the Brotherhood.|639")
+Expect("...shown for six seconds at least", clip.length, 6)
+Expect("a boss with no story has no line", NPCs:StoryClip(36, "no such boss"), nil)
+
+local world = stub.world
+local Q = SpokenEnv.SoundQueue
+local function Showing() local head = Q:GetCurrentSound(); return head and head.key or "nothing" end
+local function Clear() Q:RemoveAllSoundsFromQueue(); stub.Advance(2) end
+local EDWIN = "boss:36:edwin vancleef"
+Expect("targeting is the default trigger", SpokenNPCsSettings.storyTrigger, "target")
+world.npcGUID = "Creature-0-1-2-3-639-0000ABCDEF"
+NPCs:TargetChanged()
+Expect("targeting a boss shows its story", Showing(), EDWIN)
+Expect("...noted for the character", SpokenNPCsCharacter.storiesRead["36:edwin vancleef"], true)
+Clear()
+NPCs:TargetChanged()
+Expect("...once", Showing(), "nothing")
+Expect("Forget Stories Shown counts what it forgot", NPCs:ForgetStories(), 1)
+NPCs:TargetChanged()
+Expect("...and the story shows again", Showing(), EDWIN)
+Clear(); NPCs:ForgetStories()
+world.npcGUID = "Player-1-0000ABCD"
+NPCs:TargetChanged()
+Expect("targeting a player shows nothing", Showing(), "nothing")
+world.npcGUID = "Creature-0-1-2-3-639-0000ABCDEF"
+stub.Secrets(world.npcGUID)
+NPCs:TargetChanged()
+Expect("...nor a boss whose GUID the client keeps secret", Showing(), "nothing")
+stub.Secrets()
+SpokenEnv.Addon.db.profile.Transcript.Enabled = false
+NPCs:TargetChanged()
+Expect("...nor any boss with Show Narrator off", Showing() .. "|" .. tostring(SpokenNPCsCharacter.storiesRead["36:edwin vancleef"]),
+    "nothing|nil")
+SpokenEnv.Addon.db.profile.Transcript.Enabled = true
+
+-- A boss only Forever has, with no creature id: known by its name in the dungeon the player is in.
+local instanceInfo, unitName = _G.GetInstanceInfo, _G.UnitName
+_G.GetInstanceInfo = function() return "Ruins of Lordaeron", "party", 1, "", 5, 0, false, 2999 end
+_G.UnitName = function() return "Witherfang" end
+world.npcGUID = "Creature-0-1-2-3-999999-0000ABCDEF"
+_G.SpokenBossStories[2999] = { witherfang = "It stalks the ruins above the Undercity." }
+NPCs:TargetChanged()
+Expect("a boss with no creature id is known by its name in its dungeon", Showing(), "boss:2999:witherfang")
+Clear()
+_G.GetInstanceInfo = function() return "Westfall", "none", 0, "", 0, 0, false, 0 end
+NPCs:ForgetStories()
+NPCs:TargetChanged()
+Expect("...and not outside it", Showing(), "nothing")
+_G.GetInstanceInfo, _G.UnitName = instanceInfo, unitName
+world.npcGUID = "Creature-0-1-2-3-639-0000ABCDEF"
+
+SpokenNPCsSettings.storyTrigger = "kill"
+NPCs:TargetChanged()
+Expect("with When Killed, targeting shows nothing", Showing(), "nothing")
+NPCs:EncounterEnded(edwin.id, 0)
+Expect("...nor a fight the party lost", Showing(), "nothing")
+NPCs:EncounterEnded(edwin.id, 1)
+Expect("...and killing the boss shows its story", Showing(), EDWIN)
+Clear()
+SpokenNPCsSettings.storyTrigger = "target"
+
 if Failures() > 0 then os.exit(1) end

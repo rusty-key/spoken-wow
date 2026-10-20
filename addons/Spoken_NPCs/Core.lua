@@ -11,6 +11,9 @@ local defaults = {
 	compendiumFoundOnly = false,
 	-- A boss's spell cards under its story; off, the page has the story and portrait.
 	showAbilities = true,
+	-- When a boss's story shows in Spoken's narrator: "target" when the player targets it, "kill" when
+	-- it is killed.
+	storyTrigger = "target",
 }
 
 --- The settings and what this character has met. The settings are how the tab behaves, and the
@@ -22,6 +25,8 @@ function NPCs:InitDB()
 	end
 	SpokenNPCsCharacter = SpokenNPCsCharacter or {}
 	SpokenNPCsCharacter.found = SpokenNPCsCharacter.found or {}
+	-- "map:key" of each boss whose story this character was shown in the narrator.
+	SpokenNPCsCharacter.storiesRead = SpokenNPCsCharacter.storiesRead or {}
 end
 
 --- The Bosses page's Defaults: its settings back. What this character has met is kept, and so is
@@ -47,6 +52,11 @@ local function Encounters()
 		end
 	end
 	return byEncounter
+end
+
+--- The boss { map, key } of the game's encounter `encounterID`, or nil.
+function NPCs:BossOfEncounter(encounterID)
+	return encounterID and Encounters()[encounterID] or nil
 end
 
 --- Whether this character has met the boss `key` of the dungeon `map`.

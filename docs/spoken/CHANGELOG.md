@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **A boss's story shows in the narrator when you target the boss.** It shows once per character, as words
+  with no voice. On the Bosses settings page, Show a Boss's Story picks targeting or killing it, and Forget
+  Stories Shown shows each again. *([Nucabe](https://github.com/Nucabe))*
 - **Show Spoken Over DialogueUI is gone.** While DialogueUI's window is open, Spoken's window and
   subtitles step aside, and DialogueUI's own window shows the words and the queue. *([Nucabe](https://github.com/Nucabe))*
 - **Read Greetings is Once for Quest Givers by default.** A quest giver's greeting is read once, and other

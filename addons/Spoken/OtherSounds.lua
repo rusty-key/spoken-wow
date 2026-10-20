@@ -144,13 +144,13 @@ function OtherSounds:Restore(immediately)
     self:FadeTo(self.original, Finished)
 end
 
---- Lowered while something is actually speaking, so a pause or a line held for combat lets
---- the game be heard again. Called on every queue change.
+--- Lowered while something is actually speaking, so a pause, a line held for combat or a line of
+--- words with no voice lets the game be heard. Called on every queue change.
 function OtherSounds:Sync()
     local cfg = Config()
     if not cfg then return end
     local head = SoundQueue:GetCurrentSound()
-    if cfg.Enabled and head and SoundQueue:IsPlaying() then
+    if cfg.Enabled and head and not head.textOnly and SoundQueue:IsPlaying() then
         CancelTimer(self, "settleTimer")
         local voice = head.source and head.source:GetChannel() or Sources:PlayerChannel()
         -- Also when the volumes are on their way back up: a line that starts then turns

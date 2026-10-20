@@ -20,6 +20,14 @@ tells its story, or says it is not written yet; a boss with a creature in `Data/
 story, in two columns, a card in the spellbook's way for each spell it casts, named and drawn by the client (a
 tooltip on each), while Show Boss Abilities is on (the Bosses settings page, `UI/Options.lua`; `SpokenNPCsSettings.showAbilities`, on by default).
 The search finds bosses, dungeons and zones by name.
+
+A boss's story also shows in Spoken's narrator, as words with no voice (`Story.lua`): when the player
+targets the boss (known by its creature id, or by its name in the dungeon the player is in where
+`Data/Creatures.lua` has no creature for it), or when it is killed (`ENCOUNTER_END` with success), as Show a Boss's Story on the
+Bosses page says (`SpokenNPCsSettings.storyTrigger`, targeting by default). Each story shows once per
+character (`SpokenNPCsCharacter.storiesRead`), until Forget Stories Shown. The stories are a part of
+Spoken's, "bosses", registered with `textOnly`: What Spoken Reads turns them off, and nothing is queued
+where the narrator would not show it (`Spoken:ShowsNarratorFor`, Voice Only or Show Narrator off).
 Opened, the tab lands on the dungeon the player is in, else the zone, else the continent.
 
 The Dungeons and Raids come from `addons/Spoken/Data/Dungeons.lua`, which every tab shares

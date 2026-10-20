@@ -323,6 +323,16 @@ end
 -- The page
 --------------------------------------------------------------------------------
 
+--- The boss named `name`, in the client's language or English, of the dungeon or raid the player
+--- is in: { map, key }, or nil.
+function NPCs:BossNamed(name)
+	if type(name) ~= "string" or not GetInstanceInfo then return nil end
+	local map = NotSecret((select(8, GetInstanceInfo())))
+	for _, boss in ipairs(map and Index().all[map] or {}) do
+		if Name(boss) == name or boss[1] == name then return { map = map, key = boss.key } end
+	end
+end
+
 -- Nothing to play or to report yet: a boss's story is words alone until it is voiced.
 local PLAY = { has = function() return false end, find = function() end, start = function() end, tip = "" }
 local REPORT = { has = function() return false end, open = function() end, title = "", tip = "" }
@@ -334,6 +344,37 @@ end
 -- The zone a boss is filed under: its own where the map's bosses stand in several, else the map's.
 local function BossZone(map, key)
 	return Index().bossZone[map .. ":" .. key] or Index().zoneOf[map]
+end
+
+-- How fast a story is read, in words a second, and the least time one stays in the narrator.
+local READING_SPEED, LEAST_SECONDS = 2.5, 6
+
+--- The story of the boss `key` of `map` as a line for Spoken's narrator, words with no voice; nil
+--- where it has none.
+function NPCs:StoryClip(map, key)
+	local story = Story(map, key)
+	if not story then return nil end
+	local boss
+	for _, entry in ipairs(Bosses(map)) do
+		if entry.key == key then boss = entry end
+	end
+	if not boss then return nil end
+	local _, words = story:gsub("%S+", "")
+	local known = _G.SpokenBossCreatures
+	local entry = known and known[map] and known[map][key]
+	return {
+		key = "boss:" .. map .. ":" .. key,
+		textOnly = true,
+		length = math.max(LEAST_SECONDS, words / READING_SPEED),
+		present = {
+			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
+			label = Name(boss),
+			transcript = story,
+			bullet = "boss",
+			portrait = entry and entry.display and { kind = "model", creatureID = entry.creature, displayID = entry.display }
+				or { kind = "texture", texture = [[Interface\TargetingFrame\UI-RaidTargetingIcon_8]] },
+		},
+	}
 end
 
 local function Count(found, total)

@@ -47,6 +47,12 @@ function Spoken:RegisterSource(key, info)
     return Sources:Register(key, info)
 end
 
+--- Whether the narrator would show a line of the source `key`: a narrator style that shows words,
+--- Show Narrator on, and not off for that source. A text-only line is worth queueing only then.
+function Spoken:ShowsNarratorFor(key)
+    return Addon:PlayerStyle() ~= "none" and Addon:ShowsNarrator({ source = { key = key } }) and true or false
+end
+
 function Spoken:GetSource(key)
     return Sources:Get(key)
 end
@@ -67,6 +73,7 @@ end
 --     key      = "q:33:accept",               -- caller-unique; the dedup key
 --     path     = [[Interface\AddOns\...\x.ogg]],
 --     length   = 3.4,                         -- seconds; the client cannot report this
+--     textOnly = true,                        -- optional; no path: shown in the narrator for `length`
 --     delay    = nil,                         -- silence before; only 2.4.3/3.3.5 set it
 --     priority = "normal" | "low",            -- low yields at the door; gossip is low
 --     group    = "book:123",                  -- optional; clips of one item, no pause or cue between
