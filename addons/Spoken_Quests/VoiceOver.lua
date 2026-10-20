@@ -399,9 +399,6 @@ local defaults = {
             -- Typed out, lit, or both, by Spoken's Type Words Out and Highlight Words.
             Captions = true,
             AutoScroll = true,
-            -- Off by default: DialogueUI hides the rest of the interface on purpose, and its marked text
-            -- already shows the words.
-            ShowPlayer = false,
             -- Shown whether or not DialogueUI's Text To Speech is on.
             PlayButton = true,
         },

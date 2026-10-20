@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Show Spoken Over DialogueUI is gone.** While DialogueUI's window is open, Spoken's window and
+  subtitles step aside, and DialogueUI's own window shows the words and the queue. *([Nucabe](https://github.com/Nucabe))*
 - **Read Greetings is Once for Quest Givers by default.** A quest giver's greeting is read once, and other
   NPCs greet every time. A choice you made yourself is kept. *([Nucabe](https://github.com/Nucabe))*
 - **The Compendium's minimise arrow sits in the middle of its button.** It was drawn off to one side of the
