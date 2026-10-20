@@ -44,6 +44,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   Places tab as found. The Ruins of Lordaeron, the Deadmines, Ragefire Chasm and five more could
   never be found before. Azeroth's story is back on the world map, and the Places tab lists Azeroth
   above the continents. *([Nucabe](https://github.com/Nucabe))*
+- **Ten place stories no longer tell what happens after Classic.** The Eastern Kingdoms, the Valley of
+  Heroes, Azeroth, Southpoint Tower, the South Seas, Steamwheedle Port, Northpass Tower, the Forgotten
+  Pools and Quel'Lithien Lodge lose their blood elves, draenei, Arator, Kezan, Uldum's coast, a count of
+  four continents and later zone names, in every language. *([Nucabe](https://github.com/Nucabe))*
 - **The Spoken Manager can send the lines Spoken collects for you.** Turn on Sharing in the
   manager, and the lines Spoken had no voice for go to the site after each logout or /reload,
   so you no longer upload the file yourself. Collected lines now also say which version of your
