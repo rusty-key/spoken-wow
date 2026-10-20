@@ -58,6 +58,13 @@ const FORBIDDEN = [
   /\bHorde Council\b/,
   /\bXenedar\b/,
   /\bFirelands\b/,
+  // From the 2026-10 Places audit: a later expansion's zone names, the goblins' Cataclysm
+  // island, and people first met after Classic, each found in shipped text.
+  /\bGhostlands\b/,
+  /\bNorthern Barrens\b/,
+  /\bKezan\b/,
+  /\bArator\b/,
+  /\bLor'themar\b/,
 ];
 
 const problems = [];
