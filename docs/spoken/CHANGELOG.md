@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Read Greetings is Once for Quest Givers by default.** A quest giver's greeting is read once, and other
+  NPCs greet every time. A choice you made yourself is kept. *([Nucabe](https://github.com/Nucabe))*
 - **The Compendium's minimise arrow sits in the middle of its button.** It was drawn off to one side of the
   frame the template gives it. *([Nucabe](https://github.com/Nucabe))*
 - **The AddOns list shows Spoken and each module's name in colour, with new icons.** Spoken, Conversations,
