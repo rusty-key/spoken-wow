@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The Compendium's minimise arrow sits in the middle of its button.** It was drawn off to one side of the
+  frame the template gives it. *([Nucabe](https://github.com/Nucabe))*
 - **The AddOns list shows Spoken and each module's name in colour, with new icons.** Spoken, Conversations,
   Places, Readables, Contributions and Developer each have a new icon, the voice packs are titled Voice Pack,
   and the minimap button shows the mark at its size, centred. *([Nucabe](https://github.com/Nucabe))*
