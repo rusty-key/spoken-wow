@@ -1291,7 +1291,7 @@ local subzones = {
 		["quellithien lodge"] = {
 			name = "Refugio Quel'Lithien",
 			short = "El Refugio Quel'Lithien era un campamento de los Errantes cerca de Quel'Thalas, un lugar cálido y acogedor.",
-			full = "El Refugio Quel'Lithien era un campamento de los Errantes cerca de Quel'Thalas, un lugar cálido y acogedor. Así lo recordaba Lor'themar Theron de sus propias visitas, cuando lo recibían con afecto los compatriotas que lo consideraban su hogar. El refugio albergó en otro tiempo varios documentos élficos, algunos relacionados con la familia real y con el general forestal de Lunargenta. Para la época de la Segunda Guerra, Renthar Lanzalcón dirigía allí a los cazadores.",
+			full = "El Refugio Quel'Lithien era un campamento de los Errantes cerca de Quel'Thalas, un lugar cálido y acogedor. El refugio albergó en otro tiempo varios documentos élficos, algunos relacionados con la familia real y con el general forestal de Lunargenta. Para la época de la Segunda Guerra, Renthar Lanzalcón dirigía allí a los cazadores.",
 			source = "https://warcraft.wiki.gg/wiki/Quel'Lithien_Lodge",
 		},
 		["scarlet base camp"] = {
@@ -4155,8 +4155,8 @@ local subzones = {
 		},
 		["steamwheedle port"] = {
 			name = "Puerto Bonvapor",
-			short = "Puerto Bonvapor se encuentra en la costa oriental de Tanaris, con un camino que va hacia el oeste hasta su ciudad madre, Gadgetzan, y un muelle que se extiende hacia Kezan.",
-			full = "Puerto Bonvapor se encuentra en la costa oriental de Tanaris, con un camino que va hacia el oeste hasta su ciudad madre, Gadgetzan, y un muelle que se extiende hacia Kezan. Pertenece al Cártel Bonvapor, goblins que tratan con cualquiera mientras el oro sea bueno.\n\nEntre los residentes del puerto está Yeh'kinya, cuyos tratos propiciaron el regreso de Hakkar el Cazador de Almas.",
+			short = "Puerto Bonvapor se encuentra en la costa oriental de Tanaris, con un camino que va hacia el oeste hasta su ciudad madre, Gadgetzan, y un muelle que se adentra en el mar.",
+			full = "Puerto Bonvapor se encuentra en la costa oriental de Tanaris, con un camino que va hacia el oeste hasta su ciudad madre, Gadgetzan, y un muelle que se adentra en el mar. Pertenece al Cártel Bonvapor, goblins que tratan con cualquiera mientras el oro sea bueno.\n\nEntre los residentes del puerto está Yeh'kinya, cuyos tratos propiciaron el regreso de Hakkar el Cazador de Almas.",
 			source = "https://warcraft.wiki.gg/wiki/Steamwheedle_Port",
 		},
 		["thistleshrub valley"] = {

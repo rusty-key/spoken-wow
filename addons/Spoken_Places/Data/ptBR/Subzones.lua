@@ -1291,7 +1291,7 @@ local subzones = {
 		["quellithien lodge"] = {
 			name = "Abrigo Quel'Lithien",
 			short = "O Abrigo Quel'Lithien era um acampamento dos Andarilhos perto de Quel'Thalas, um lugar de calor e acolhida.",
-			full = "O Abrigo Quel'Lithien era um acampamento dos Andarilhos perto de Quel'Thalas, um lugar de calor e acolhida. Lor'themar Theron se lembrava dele assim de suas próprias visitas, recebido calorosamente pelos compatriotas que o chamavam de lar. O abrigo guardava vários documentos élficos, alguns relativos à família real e à General-patrulheira de Luaprata. Na época da Segunda Guerra, Renthar Lança-do-gavião liderava os caçadores de lá.",
+			full = "O Abrigo Quel'Lithien era um acampamento dos Andarilhos perto de Quel'Thalas, um lugar de calor e acolhida. O abrigo guardava vários documentos élficos, alguns relativos à família real e à General-patrulheira de Luaprata. Na época da Segunda Guerra, Renthar Lança-do-gavião liderava os caçadores de lá.",
 			source = "https://warcraft.wiki.gg/wiki/Quel'Lithien_Lodge",
 		},
 		["scarlet base camp"] = {
@@ -4155,8 +4155,8 @@ local subzones = {
 		},
 		["steamwheedle port"] = {
 			name = "Porto de Bondebico",
-			short = "O Porto de Bondebico fica na costa leste de Tanaris, com uma estrada que segue para o oeste até sua cidade-mãe, Geringontzan, e um cais que se estende em direção a Kezan.",
-			full = "O Porto de Bondebico fica na costa leste de Tanaris, com uma estrada que segue para o oeste até sua cidade-mãe, Geringontzan, e um cais que se estende em direção a Kezan. Pertence ao Cartel Bondebico, goblins que negociam com qualquer um, desde que o ouro seja bom.\n\nEntre os moradores do porto está Yeh'kinya, cujos negócios contribuíram para o retorno de Hakkar, o Esfolador de Almas.",
+			short = "O Porto de Bondebico fica na costa leste de Tanaris, com uma estrada que segue para o oeste até sua cidade-mãe, Geringontzan, e um cais que avança mar adentro.",
+			full = "O Porto de Bondebico fica na costa leste de Tanaris, com uma estrada que segue para o oeste até sua cidade-mãe, Geringontzan, e um cais que avança mar adentro. Pertence ao Cartel Bondebico, goblins que negociam com qualquer um, desde que o ouro seja bom.\n\nEntre os moradores do porto está Yeh'kinya, cujos negócios contribuíram para o retorno de Hakkar, o Esfolador de Almas.",
 			source = "https://warcraft.wiki.gg/wiki/Steamwheedle_Port",
 		},
 		["thistleshrub valley"] = {
