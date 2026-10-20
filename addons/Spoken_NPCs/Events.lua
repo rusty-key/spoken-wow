@@ -18,6 +18,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 		NPCs:FoundEncounter(arg1)
 	else
 		if NPCs.SetupBosses then NPCs:SetupBosses() end
+		if NPCs.SetupOptions then NPCs:SetupOptions() end
 		self:UnregisterEvent("PLAYER_ENTERING_WORLD")
 	end
 end)

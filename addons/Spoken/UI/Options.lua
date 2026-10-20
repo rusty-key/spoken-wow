@@ -318,9 +318,9 @@ function Options:Styles()
     return styles
 end
 
--- Contribute & Report's page: last, after the modules' (Quests 1, Gossip 2, Places 3, Readables 4)
--- and Developer's (5).
-local CONTRIBUTE_ORDER = 6
+-- Contribute & Report's page: last, after the modules' (Quests 1, Gossip 2, Places 3, Readables 4,
+-- Bosses 5) and Developer's (6).
+local CONTRIBUTE_ORDER = 7
 local contribute
 
 --- Contribute & Report's own page under Spoken's, its rows added by `build(layout)`.
@@ -666,11 +666,6 @@ local function Build(canvas)
             Requires(row, function() return Spoken:IsPartOn(unlock.part) end, format(L.REASON_MODULE_OFF_FMT, unlock.module))
         end
     end
-    -- Spoken NPCs' spell cards under a boss's story; hidden until turned on.
-    local abilities = layout:Checkbox(L.OPT_SHOW_BOSS_ABILITIES, nil,
-        function() local tab = Tab("bosses"); return tab ~= nil and tab.abilities ~= nil and tab.abilities.get() end,
-        function(v) local tab = Tab("bosses"); if tab and tab.abilities then tab.abilities.set(v) end end)
-    Only(abilities, function() local tab = Tab("bosses"); return tab ~= nil and tab.abilities ~= nil end)
 
     -- Where a player goes when something is wrong, for every module at once. Each module's page
     -- keeps its own Play a Test Line, beside its voice packs. On the settings canvas it is on the
@@ -945,7 +940,6 @@ local function Build(canvas)
             for _, key in ipairs({ "places", "readables", "quests", "bosses" }) do
                 local tab = Tab(key)
                 if tab and tab.unlock then tab.unlock.set(false) end
-                if tab and tab.abilities then tab.abilities.set(false) end
             end
             -- The feature addons' DialogueUI rows are kept in their own settings too.
             DialogueUIOptions:Reset()

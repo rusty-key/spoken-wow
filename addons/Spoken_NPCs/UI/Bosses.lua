@@ -671,14 +671,6 @@ function NPCs:SetupBosses()
 		-- Come back to from another tab: where the player stands now, unless they chose here.
 		onShow = function() if selection == landed then selection = nil end end,
 		enabled = function() return Index().count > 0 end,
-		-- Show Boss Abilities, on Spoken's page.
-		abilities = {
-			get = AbilitiesShown,
-			set = function(value)
-				if SpokenNPCsSettings then SpokenNPCsSettings.showAbilities = value end
-				NPCs:RefreshBosses()
-			end,
-		},
 		-- Unlock Unfound Bosses, on Spoken's page.
 		unlock = {
 			get = function() return Unlocked() end,

@@ -35,4 +35,5 @@ Data/Bosses.lua
 Data/Creatures.lua
 Data/Stories.lua
 UI/Bosses.lua
+UI/Options.lua
 Events.lua

@@ -48,14 +48,9 @@ Z:SetupOptions()
 -- that keep the switch, as the real tabs keep it in their settings.
 dofile(here .. "/../../addons/Spoken/UI/Compendium.lua")
 local unlocked = {}
-local abilitiesShown = false
 for _, key in ipairs({ "places", "readables", "quests", "bosses" }) do
     local tab = { label = key, order = 1, build = function() end, open = function() end,
         unlock = { get = function() return unlocked[key] == true end, set = function(v) unlocked[key] = v end } }
-    -- Only the bosses tab has spell cards to show.
-    if key == "bosses" then
-        tab.abilities = { get = function() return abilitiesShown end, set = function(v) abilitiesShown = v end }
-    end
     SpokenCompendium:Register(key, tab)
 end
 -- The Spoken_Developer module and its page.
@@ -254,9 +249,9 @@ Expect("Spoken's page lists the Unlock switches in the order of the Compendium's
     table.concat(unlocks, "|"), "Unlock Unstarted Quests|Unlock Undiscovered Places|Unlock Unfound Readables|Unlock Unfound Bosses")
 local abilityRows = {}
 for _, control in ipairs(Controls(pages[1].layout)) do
-    if Name(control) == env.L.OPT_SHOW_BOSS_ABILITIES then table.insert(abilityRows, Name(control)) end
+    if Name(control) == "Show Boss Abilities" then table.insert(abilityRows, Name(control)) end
 end
-Expect("...and one Show Boss Abilities switch beside them", #abilityRows, 1)
+Expect("...and no Show Boss Abilities, which is on the Bosses page", #abilityRows, 0)
 
 ---------------------------------------------------------------- the Compendium's Text Size
 -- On Spoken's page, after Open Azeroth's Compendium, for every tab; no longer on the Zones page.
@@ -274,14 +269,12 @@ Expect("...and the Zones page has none", table.concat(onZones, "|"), "")
 
 -- Kept with each part's settings, so Spoken's profile reset would not reach them.
 unlocked.places, unlocked.readables, unlocked.quests, unlocked.bosses = true, true, true, true
-abilitiesShown = true
 -- The Text Size the Zones page had, which Spoken's reads until it is set there.
 _G.SpokenZonesSettings = { fontSize = 15 }
 local reset = _G.SpokenOptionsPanel.layout.defaults
 reset.scripts.OnClick(reset)
 stub.popups[#stub.popups].dialog.OnAccept()
 Expect("Reset All turns every Unlock switch off", (unlocked.places or unlocked.readables or unlocked.quests or unlocked.bosses) and true or false, false)
-Expect("...and hides the boss abilities again", abilitiesShown, false)
 Expect("...and puts the Compendium's Text Size back to 12, not to the Zones page's", _G.Spoken:CompendiumFontSize(), 12)
 _G.SpokenZonesSettings = nil
 

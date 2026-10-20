@@ -9,8 +9,8 @@ local defaults = {
 	-- Every boss openable, met or not (on Spoken's page); and the list leaving out those not met.
 	unlockUnfound = false,
 	compendiumFoundOnly = false,
-	-- A boss's spell cards under its story, on Spoken's page; off, the page has the story and portrait.
-	showAbilities = false,
+	-- A boss's spell cards under its story; off, the page has the story and portrait.
+	showAbilities = true,
 }
 
 --- The settings and what this character has met. The settings are how the tab behaves, and the
@@ -22,6 +22,14 @@ function NPCs:InitDB()
 	end
 	SpokenNPCsCharacter = SpokenNPCsCharacter or {}
 	SpokenNPCsCharacter.found = SpokenNPCsCharacter.found or {}
+end
+
+--- The Bosses page's Defaults: its settings back. What this character has met is kept, and so is
+--- Unlock Unfound Bosses, which is on Spoken's page and reset from there.
+function NPCs:ResetOptions()
+	for key, value in pairs(defaults) do
+		if key ~= "unlockUnfound" then SpokenNPCsSettings[key] = value end
+	end
 end
 
 local function Key(map, key)

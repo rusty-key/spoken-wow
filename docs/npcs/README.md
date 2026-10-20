@@ -18,7 +18,7 @@ Zones, dungeons and banners count bosses found out of all, with the share and th
 do; Found Only leaves out what holds none found. A found boss's page names its dungeon and zone and
 tells its story, or says it is not written yet; a boss with a creature in `Data/Creatures.lua` has its portrait at the left of its name, and under the
 story, in two columns, a card in the spellbook's way for each spell it casts, named and drawn by the client (a
-tooltip on each), once Show Boss Abilities is on (Spoken's page; `SpokenNPCsSettings.showAbilities`, off by default).
+tooltip on each), while Show Boss Abilities is on (the Bosses settings page, `UI/Options.lua`; `SpokenNPCsSettings.showAbilities`, on by default).
 The search finds bosses, dungeons and zones by name.
 Opened, the tab lands on the dungeon the player is in, else the zone, else the continent.
 

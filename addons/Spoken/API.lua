@@ -240,7 +240,7 @@ function Spoken:RefreshPlayer()
 end
 
 --- A feature addon's settings page, shown under Spoken's own in the game's settings as `name`,
---- listed in `order` (Quests 1, Gossip 2, Places 3, Readables 4). Pass the page's SpokenLayout and its
+--- listed in `order` (Quests 1, Gossip 2, Places 3, Readables 4, Bosses 5). Pass the page's SpokenLayout and its
 --- scroller to make its rows searchable from Home. Returns a table whose `category` is
 --- filled in once the page is registered, for Settings.OpenToCategory; nil where the client
 --- cannot nest pages, in which case the addon registers a top-level page as before.

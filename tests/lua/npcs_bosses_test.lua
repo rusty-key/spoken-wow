@@ -87,7 +87,7 @@ _G.C_Map = {
 _G.GetInstanceInfo = function() return "Outland", "none", 0, "", 0, 0, false, 0 end
 
 local NPCs = {}
-for _, file in ipairs({ "Locale/enUS", "Core", "UI/Bosses", "Events" }) do
+for _, file in ipairs({ "Locale/enUS", "Core", "UI/Bosses", "UI/Options", "Events" }) do
     local chunk = assert(loadfile(ADDONS .. "Spoken_NPCs/" .. file .. ".lua"))
     chunk("Spoken_NPCs", NPCs)
 end
@@ -98,6 +98,7 @@ local tab = SpokenCompendium:Tab("bosses")
 Expect("...after Setup", tab ~= nil and tab.label, "Bosses")
 Expect("...a tab of its own after the readables'", tab.order, 3)
 Expect("...with Unlock Unfound Bosses, off", tab.unlock ~= nil and tab.unlock.get(), false)
+Expect("Show Boss Abilities is on by default", SpokenNPCsSettings.showAbilities, true)
 
 local window
 local rows = {}
@@ -208,8 +209,10 @@ local SPELLS = { [3391] = { name = "Thrash", iconID = 132152 }, [5200] = { name 
 _G.C_Spell = { GetSpellInfo = function(id) return SPELLS[id] end }
 NPCs:RefreshBosses()
 Shown()
+SpokenNPCsSettings.showAbilities = false
+NPCs:RefreshBosses()
 Click("Edwin VanCleef")
-Expect("spell cards are hidden by default: the story and the portrait only",
+Expect("with Show Boss Abilities off, no spell cards: the story and the portrait only",
     (page.body.partButtons == nil or #page.body.partButtons == 0) and page.body.text.text .. "|" .. tostring(page.face:IsShown()),
     "He led the Brotherhood.|true")
 SpokenNPCsSettings.showAbilities = true
@@ -334,5 +337,23 @@ Expect("a dungeon's name lists all its bosses", Has(found, "Lady Anacondra") and
 list.opts.onSearch("")
 Expect("clearing it brings the list back", Has(Shown(), "Westfall"), true)
 
+---------------------------------------------------------------- the Bosses page in the settings
+NPCs:SetupOptions()
+local panel = NPCs.optionsPanel
+Expect("the Bosses page is built", panel ~= nil and panel.layout ~= nil, true)
+local abilitiesRow
+for _, entry in ipairs(panel.layout.entries) do
+    if entry.label == NPCs.L.OPT_SHOW_ABILITIES then abilitiesRow = entry end
+end
+Expect("...with Show Boss Abilities on it", abilitiesRow ~= nil, true)
+SpokenNPCsSettings.showAbilities = false
+SpokenNPCsSettings.unlockUnfound = true
+SpokenNPCsCharacter.found["36:edwin vancleef"] = true
+local reset = panel.layout.defaults
+reset.scripts.OnClick(reset)
+stub.popups[#stub.popups].dialog.OnAccept()
+Expect("its Defaults put Show Boss Abilities back on", SpokenNPCsSettings.showAbilities, true)
+Expect("...and leave Unlock Unfound Bosses, which Spoken's page resets", SpokenNPCsSettings.unlockUnfound, true)
+Expect("...and keep the bosses this character has met", SpokenNPCsCharacter.found["36:edwin vancleef"], true)
 
 if Failures() > 0 then os.exit(1) end
