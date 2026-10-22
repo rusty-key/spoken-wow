@@ -6,8 +6,8 @@ setfenv(1, SpokenEnv)
 -- settings window, so a player who opens the settings later recognises all of it and the window
 -- fits any screen. Each choice applies as it is made; Done only closes.
 -- Shown once per account, at the first login after it ships, and again from the button on the
--- What Spoken Reads title of Spoken's page. Only where the Settings API exists: "All Settings" opens a page the
--- legacy clients do not have.
+-- What Spoken Reads title of Spoken's page. Only where the Settings API exists: "All Settings"
+-- opens its page.
 Welcome = {}
 
 local Layout = SpokenLayout
@@ -108,7 +108,7 @@ function Welcome:Build()
     -- Seen is seen, however the window closes: Done, the X or Escape.
     frame:SetScript("OnHide", function()
         Addon.db.global.Welcomed = true
-        if Subtitle and Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
+        if Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
         if Options.previewing or Addon.previewStyle or PlayerFrame:IsShowingSample() then Options:SetPreviewing(false) end
     end)
     table.insert(UISpecialFrames, "SpokenWelcomeFrame")
@@ -252,22 +252,16 @@ function Welcome:Show()
     self.frame:Show()
 end
 
-function Welcome:IsAvailable()
-    return Settings ~= nil and Settings.RegisterCanvasLayoutCategory ~= nil
-end
-
 -- At the first login it ships to, once the world is up and everything has registered, and
 -- never in combat, where a window over the screen is the last thing anyone wants.
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
--- The upvalue, not the handler's `self`: this file loads before Compat.lua wraps CreateFrame,
--- and 1.12 and 2.4.3 hand an unwrapped handler nothing.
 events:SetScript("OnEvent", function()
     events:UnregisterEvent("PLAYER_ENTERING_WORLD")
-    if not (Addon.db and Welcome:IsAvailable()) or Addon.db.global.Welcomed then return end
+    if not Addon.db or Addon.db.global.Welcomed then return end
     local function Open()
         if InCombatLockdown and InCombatLockdown() then return end
         Welcome:Show()
     end
-    if C_Timer and C_Timer.After then C_Timer.After(2, Open) else Open() end
+    C_Timer.After(2, Open)
 end)

@@ -1,0 +1,110 @@
+[
+ {
+  "map": 2959,
+  "key": "fel ancient",
+  "creature": 246003,
+  "display": 129894,
+  "source": "Efficient Games: encounter 3299 started by 246003; creature_details 246003 Fel Ancient, display 129894."
+ },
+ {
+  "map": 2959,
+  "key": "mana devourer",
+  "creature": 246008,
+  "display": 129895,
+  "source": "Efficient Games: encounter 3300 started by 246008; creature_details 246008 Mana Devourer, display 129895. The database's Mana Devourers are retail creatures."
+ },
+ {
+  "map": 2959,
+  "key": "unstable sentinel",
+  "creature": 246017,
+  "display": 129954,
+  "source": "Efficient Games: encounter 3302 started by 246017; creature_details 246017 Unstable Sentinel, display 129954."
+ },
+ {
+  "map": 2959,
+  "key": "shade of the archmage",
+  "creature": 246020,
+  "display": 130061,
+  "source": "Efficient Games: encounter 3303 started by 246020; creature_details 246020 Shade of the Archmage, display 130061."
+ },
+ {
+  "map": 2959,
+  "key": "lyn the ignored",
+  "creature": 247032,
+  "display": 130235,
+  "source": "Efficient Games: encounter 3310 started by 247032; creature_details 247032 Lyn the Ignored, display 130235."
+ },
+ {
+  "map": 2959,
+  "key": "atrexis the grave knight",
+  "creature": 247126,
+  "display": 145787,
+  "source": "Efficient Games: encounter 3311 started by 247126; creature_details 247126 Atrexis the Grave Knight, display 145787."
+ },
+ {
+  "map": 2998,
+  "key": "saltspine",
+  "creature": 260322,
+  "display": 144209,
+  "source": "Efficient Games: encounter 3480 started by 260322; creature_details 260322 Saltspine, display 144209."
+ },
+ {
+  "map": 2998,
+  "key": "shadetooth",
+  "creature": 260325,
+  "display": 144210,
+  "source": "Efficient Games: encounter 3481 started by 260325; creature_details 260325 Shadetooth, display 144210."
+ },
+ {
+  "map": 2998,
+  "key": "relic guardian",
+  "creature": 260326,
+  "display": 144224,
+  "source": "Efficient Games: encounter 3482 started by 260326; creature_details 260326 Relic Guardian, display 144224."
+ },
+ {
+  "map": 2998,
+  "key": "highland horror",
+  "creature": 260808,
+  "display": 9010,
+  "source": "Efficient Games: creature_details 260808 Highland Horror, display 9010 (the bog beast model); the same id is the wiki's in boss-sources.json. No encounter record."
+ },
+ {
+  "map": 2875,
+  "key": "sairuh maryla",
+  "creature": 256273,
+  "display": 139544,
+  "source": "Efficient Games: creature_details 256273 Sairuh Maryla, display 139544, the id beside Kaigy Maryla's 256275. Not in the database; no encounter record."
+ },
+ {
+  "map": 36,
+  "key": "sneed",
+  "display": 7125,
+  "source": "Sneed himself (643's model) rather than his Shredder (1269), as Efficient Games' encounter 2742 and the Adventure Guide show him. The creature stays the spawned Shredder 642, so targeting it shows the story; Sneed is known by his name."
+ },
+ {
+  "map": 90,
+  "key": "grubbis",
+  "display": 144378,
+  "source": "Efficient Games: every Forever build records Grubbis (7361) with display 144378, not the database's 6533."
+ },
+ {
+  "map": 289,
+  "key": "darkmaster gandling",
+  "display": 11070,
+  "source": "The client has no display 40322 (the database's, a later model). 11070 is the model of the database's other Darkmaster Gandling (44323)."
+ },
+ {
+  "map": 533,
+  "key": "sapphiron",
+  "display": 16033,
+  "source": "The client has no display 113690 (the database's, a later model). 16033 is the model of the database's Sapphiron (1) (29991)."
+ },
+ {
+  "map": 2959,
+  "key": "arcane anomaly",
+  "creature": 245999,
+  "display": 129891,
+  "source": "Efficient Games: encounter 3298 started by 245999; creature_details 245999 Arcane Anomaly, display 129891. The database's Arcane Anomaly 16488 is Karazhan's."
+ }
+]

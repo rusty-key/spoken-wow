@@ -3,21 +3,8 @@ setfenv(1, SpokenEnv)
 -- The DialogueUI settings on Spoken's page: the window's own rows, shown only with the
 -- DialogueUI style, then, after the Words section, the rows feature addons add through
 -- Spoken:AddDialogueUISettings, shown under any style.
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout; that
--- client has no DialogueUI and returns below.
 
 DialogueUIOptions = { builders = {}, resets = {} }
-
-if Version.IsAnyLegacy then
-    function DialogueUIOptions:Add() end
-    function DialogueUIOptions:ThemeRow() end
-    function DialogueUIOptions:FitRow() end
-    function DialogueUIOptions:Place() end
-    function DialogueUIOptions:Reset() end
-    function DialogueUIOptions:WordRowsShown(style) return style ~= "none" end
-    return
-end
 
 local Page = DialogueUIOptions
 

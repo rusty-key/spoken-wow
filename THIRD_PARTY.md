@@ -8,9 +8,8 @@ and they are not interchangeable.
 
 Spoken and Spoken_Quests ship the libraries they load, because a WoW addon has
 no package manager: the client loads what is in the folder. They are unmodified copies, and are
-found under `addons/<Addon>/Libs/` — plus `addons/<Addon>/<client>/Libs/` for the 1.12, 2.4.3
-and 3.3.5 clients, which need their own build of Ace3. Spoken_Places, Spoken_Readables and
-Spoken_Developer ship none; they use Spoken's.
+found under `addons/<Addon>/Libs/`. Spoken_Places, Spoken_Readables and Spoken_Developer ship
+none; they use Spoken's.
 
 | Library | Used by | License |
 |---|---|---|
@@ -18,7 +17,6 @@ Spoken_Developer ship none; they use Spoken's.
 | CallbackHandler-1.0 | the same two | [Ace3 license](https://www.wowace.com/projects/ace3) — BSD-style, free use with attribution |
 | Ace3: AceAddon, AceConsole, AceDBOptions, AceEvent, AceGUI-3.0, AceConfig-3.0 | Spoken_Quests | [Ace3 license](https://www.wowace.com/projects/ace3) |
 | Ace3: AceDB, AceTimer | Spoken, Spoken_Quests | [Ace3 license](https://www.wowace.com/projects/ace3) |
-| Ace3: AceCore-3.0 | the 1.12 trees of Spoken and Spoken_Quests | [Ace3 license](https://www.wowace.com/projects/ace3) |
 | LibDataBroker-1.1 | Spoken | Public domain / CC0, per its project page; the copy carries a README and no license text |
 | LibDBIcon-1.0 | Spoken | Public domain, by Rabbit, per its project page; the file header states no license |
 | [LibDeflate](https://github.com/SafeteeWoW/LibDeflate) 1.0.2-release | Spoken | zlib License (`Libs/LibDeflate/LICENSE.txt`) |
@@ -57,6 +55,14 @@ None of this is the project's to license, and the MIT grant does not reach it.
   **CC BY-SA 4.0**. Re-use of that text carries the same terms, including attribution
   and share-alike. `pipelines/zones/tools/scrape.mjs` is what fetches it and records
   which article each line came from.
+- **Boss and dungeon stories** (`addons/Spoken_NPCs/Data/Stories.lua`) are written from
+  Blizzard's Adventure Guide text and from Warcraft Wiki (**CC BY-SA 4.0**), rewritten
+  into one voice. The file is committed;
+  `pipelines/zones/tools/build-boss-stories.mjs`, `boss-history.mjs` and
+  `assemble-boss-stories.mjs` make it, and `apply-boss-stories.mjs` writes it. Where the guide has no text
+  for a boss, the story is that boss's History section on Warcraft Wiki, kept to Classic.
+  The Forever-only dungeons' stories come from the quest text in Efficient Games' EG Link output
+  (CC BY 4.0, see below), and the checks of the others use the vmangos quest corpus.
 - **Book, letter and in-world text** for Spoken_Readables comes from the same vmangos
   extraction as the quest corpus, and is likewise Blizzard's.
 - **Where each readable is** (`addons/Spoken_Readables/Data/Places.lua`): the spawns, loot, quests
@@ -88,7 +94,7 @@ None of this is the project's to license, and the MIT grant does not reach it.
   at 90%); in `Spoken_Quests/Textures/` `QuestLogPlayButton`,
   `QuestLogStopButton`, `StopGossip`, `StopGossipMore` and the four `SoundQueueBullet*` files.
   `git log --follow` takes each back to the AI VoiceOver import. The game art in them is
-  Blizzard's. The 1.12 tree's `UI-Minimap-Background.blp` comes with LibDBIcon.
+  Blizzard's.
 - **Addon-list icons** (`icon.tga` in Spoken, Spoken_Quests, Spoken_Developer and
   SpokenContributions, `Textures/AddonIcon.tga` in
   Spoken_Readables, Spoken_Places and the two sound packs, and the badged copies the language
@@ -100,7 +106,13 @@ None of this is the project's to license, and the MIT grant does not reach it.
   from the game's files so every client has them; the pictures for Spoken Places' lines. They are
   Blizzard's. Forever's own zones, which have no icon in the game
   (Zephras Isle, Darkspear Islands, Riverglades, Shen'dralas), have icons made for this project
-  in the same style.
+  in the same style. The cities, Moonglade, and Dalaran in `Textures/Dungeons`, have icons made for this
+  project in the same style. The battlegrounds have their icons from the retail game (the Dungeon
+  Finder's for Arathi Basin and Warsong Gulch, the Win Alterac Valley achievement's for Alterac Valley).
+- **Dungeon icons** (`addons/Spoken/Textures/Dungeons/*.tga`): the Dungeon Finder's icons of the
+  retail game (`Interface\LFGFrame\LFGIcon-*`) and Dun Morogh's zone icon (for the Hall of Thanes),
+  copied from the game's files so every client has them. They are
+  Blizzard's.
 - **Zone pictures** (`addons/Spoken_Places/Textures/Pictures/*.blp`): screenshots of the game,
   chosen by hand, mostly from each place's [Warcraft Wiki](https://warcraft.wiki.gg) page, cleaned
   up and sharpened with Gemini 3.1 Flash Image, then cropped, tinted and edged by

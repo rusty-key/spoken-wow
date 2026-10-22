@@ -23,7 +23,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         package-spoken package-spoken-all release-spoken release-spoken-dry \
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
-        character-models dungeons \
+        character-models dungeons bosses \
         audio-release audio-release-dry \
         manager-publish manager-publish-dry manager-gc manager-gc-dry
 
@@ -67,7 +67,6 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/background_sound_test.lua
 	@$(LUA) tests/lua/parts_test.lua
 	@$(LUA) tests/lua/settings_ux_test.lua
-	@$(LUA) tests/lua/settings_legacy_test.lua
 	@$(LUA) tests/lua/settings_art_test.lua
 	@for lang in enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW itIT viVN; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
 	@$(LUA) tests/lua/settings_audit_test.lua
@@ -81,8 +80,6 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/api_contract_test.lua
 	@$(LUA) tests/lua/contribute_envelope_test.lua
 	@$(LUA) tests/lua/report_url_contract_test.lua
-	@$(LUA) tests/lua/contribute_toc_test.lua
-	@$(LUA) tests/lua/transcript_toc_test.lua
 	@$(LUA) tests/lua/interface_numbers_test.lua
 	@$(LUA) tests/lua/contribute_box_test.lua
 	@$(LUA) tests/lua/quests_contribute_test.lua
@@ -144,6 +141,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/zones_each_place_once_test.lua
 	@$(LUA) tests/lua/zones_city_test.lua
 	@$(LUA) tests/lua/zones_dungeons_test.lua
+	@$(LUA) tests/lua/npcs_bosses_test.lua
 	@$(LUA) tests/lua/zones_story_place_test.lua
 	@$(LUA) tests/lua/zones_area_zones_test.lua
 	@$(LUA) tests/lua/zones_forever_places_test.lua
@@ -210,6 +208,11 @@ descriptions-published: ## Record the current descriptions as pasted into the si
 # that file, then the exporters that read it.
 dungeons: ## Rebuild addons/Spoken/Data/Dungeons.lua from pipelines/lib/dungeons.json and the client's Map table
 	@node pipelines/lib/dungeons.mjs
+
+# The bosses of those dungeons and raids, from the client's DungeonEncounter table, for the bosses'
+# tab (Spoken_NPCs/Data/Bosses.lua).
+bosses: ## Rebuild addons/Spoken_NPCs/Data/Bosses.lua from the client's DungeonEncounter table
+	@node pipelines/lib/bosses.mjs
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json
 	@sed -n '2,10p' scripts/character-models.mjs | sed -e 's/^\/\/ //' -e 's/^\/\/$$//'

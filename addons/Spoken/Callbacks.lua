@@ -2,8 +2,7 @@ setfenv(1, SpokenEnv)
 
 -- The player's event fanout. A plain pcall-per-subscriber loop rather than
 -- CallbackHandler-1.0, on purpose: a library at the API boundary would force every
--- consumer through LibStub before it could subscribe, the vendored copies differ across
--- the legacy client trees, and this is twelve lines. Every button, the frame and the
+-- consumer through LibStub before it could subscribe, and this is twelve lines. Every button, the frame and the
 -- queue display subscribe to AUDIO_CHANGED, so the queue never calls into its display.
 Callbacks = { handlers = {}, nextId = 0, errors = {} }
 

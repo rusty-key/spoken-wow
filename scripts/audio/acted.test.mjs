@@ -51,14 +51,14 @@ test("the quests overlay is a module whose length table is its list of lines", (
 
 test("a quests overlay outranks the generated packs, and says its language", () => {
   const text = toc({ section: "quests", lang: "deDE", version: "1.0.0", credits: ["A", "B"], iface: "11509" });
-  assert.match(text, /^## Title: Spoken German Audio: Quests - Voice Actors$/m);
+  assert.match(text, /^## Title: \|cffb48cffSpoken\|r German Audio: Quests - Voice Actors$/m);
   assert.match(text, /^## X-SpokenQuests-Language: deDE$/m);
   assert.match(text, /^## X-SpokenQuests-DataModule-Priority: 200$/m);
   assert.match(text, /^## X-VoiceOver-DataModule-Priority: 200$/m);
   assert.match(text, /^## X-Spoken-Actors: A, B$/m);
   assert.match(text, /^## Author: rusty, A, B$/m);
   const english = toc({ section: "zones", lang: "enUS", version: "1.0.0", credits: ["A"], iface: "11509" });
-  assert.match(english, /^## Title: Spoken Audio: Places - Voice Actors$/m);
+  assert.match(english, /^## Title: \|cffb48cffSpoken\|r Audio: Places - Voice Actors$/m);
   assert.doesNotMatch(english, /Language/);
   assert.match(english, /^Data\/Sounds.lua$/m);
 });

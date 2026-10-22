@@ -22,8 +22,8 @@ SpokenBooks.GetAddOnMeta = GetAddOnMeta
 SpokenBooks.name = ADDON_NAME
 SpokenBooks.version = GetAddOnMeta and GetAddOnMeta(ADDON_NAME, "Version") or "dev"
 
--- The API version this addon was written against. A player bundled into a legacy-client zip
--- can lag the one an addon manager installs, and this is what lets the two disagree safely.
+-- The API version this addon was written against: what lets an older Spoken and this addon
+-- disagree safely.
 local REQUIRED_API = 1
 
 local defaults = {
@@ -263,11 +263,6 @@ function SpokenBooks:SetupSource()
 		-- open book has its own Play button.
 		Spoken.Minimap:AddEntry("books", { id = "Options", text = L.MENU_BOOK_SETTINGS,
 			order = 2, onClick = function() SpokenBooks:OpenOptions() end })
-	end
-
-	if Spoken.AddSettingsLink then
-		Spoken:AddSettingsLink(L.MENU_BOOK_SETTINGS,
-			function() SpokenBooks:OpenOptions() end)
 	end
 
 	return self.source

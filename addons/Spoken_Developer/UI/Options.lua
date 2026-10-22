@@ -19,8 +19,8 @@ local INFO_SIZE = 26
 -- The game's light blue for help, apart from the grey notes and the gold labels.
 local HELP_TITLE = { 0.45, 0.75, 1 }
 local HELP_TEXT = { 0.72, 0.85, 1 }
--- After the modules' pages (Quests 1, Gossip 2, Places 3, Readables 4).
-local ORDER = 5
+-- After the modules' pages (Quests 1, Gossip 2, Places 3, Readables 4, Bosses 5).
+local ORDER = 6
 
 local panel, layout, scroller
 local resets = {}

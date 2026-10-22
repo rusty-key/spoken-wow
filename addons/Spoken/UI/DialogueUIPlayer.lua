@@ -5,19 +5,8 @@ setfenv(1, SpokenEnv)
 --
 -- How it comes out of a closing dialog and how a dialog's page goes behind it are
 -- DialogueUITransitions.lua's.
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout; the
--- stub below is all that client runs.
 
 DialogueUIPlayer = {}
-
-if Version.IsAnyLegacy then
-    function DialogueUIPlayer:IsEnabled() return false end
-    function DialogueUIPlayer:SetVisible() end
-    function DialogueUIPlayer:HasClip() return false end
-    function DialogueUIPlayer:Describe() return "dialogueui skin: not available on this client" end
-    return
-end
 
 local Skin = DialogueUIPlayer
 local Theme = DialogueUITheme

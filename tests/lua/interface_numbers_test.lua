@@ -15,10 +15,6 @@ local CLIENTS = {
     [11509] = "Classic Era 1.15.9",
     [20506] = "Anniversary 2.5.6",
     [30403] = "Wrath Classic 3.4.3",
-    -- Retail 10.0.7, never offered; on the packs it leads the line for the 1.12, 2.4.3 and
-    -- 3.3.5 clients, which read the first number alone and refuse one below 20000.
-    [100007] = "the lead the legacy clients read",
-    [11200] = "1.12", [20400] = "2.4.3", [30300] = "3.3.5",
 }
 
 local function Read(path)
@@ -43,7 +39,7 @@ end
 
 local FOLDERS = { "Spoken", "Spoken_Quests", "Spoken_Places", "Spoken_Readables", "Spoken_Developer",
     "SpokenContributions", "SpokenZonesAudio", "SpokenBooksAudio" }
-local SUFFIXES = { "", "_Vanilla", "_TBC", "_1.12", "_2.4.3", "_3.3.5" }
+local SUFFIXES = { "", "_Vanilla", "_TBC" }
 for _, folder in ipairs(FOLDERS) do
     for _, suffix in ipairs(SUFFIXES) do
         local name = folder .. suffix .. ".toc"
@@ -76,7 +72,6 @@ for _, path in ipairs({ "pipelines/quests/tts_cli/build.py", "scripts/quests/pac
     if line then
         Check(path, line)
         packLines[#packLines + 1] = line
-        Expect(path .. " leads with the number the legacy clients read", Numbers(line)[1], 100007)
     end
 end
 for i = 2, #packLines do

@@ -27,7 +27,8 @@ SIZE = 64
 def raw_bgra(source: str, size: int = SIZE) -> bytes:
     result = subprocess.run(
         ["ffmpeg", "-nostdin", "-v", "error", "-i", source,
-         "-vf", f"scale={size}:{size}", "-pix_fmt", "bgra", "-f", "rawvideo", "-"],
+         # Lanczos keeps the frame and the mark crisp at 64 pixels; the default bicubic blurs them.
+         "-vf", f"scale={size}:{size}:flags=lanczos", "-pix_fmt", "bgra", "-f", "rawvideo", "-"],
         check=True, capture_output=True)
     expected = size * size * 4
     if len(result.stdout) != expected:

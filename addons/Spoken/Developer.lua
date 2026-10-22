@@ -15,8 +15,6 @@ setfenv(1, SpokenEnv)
 --   SwitchLabel(), SwitchTip() the welcome window's switch
 --   Command(rest)             `/spoken log <rest>`
 --   Describe()                one line for `/spoken diagnostics`
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout.
 
 Developer = { provider = nil, settings = {}, groups = {}, orders = {}, diagnostics = {} }
 

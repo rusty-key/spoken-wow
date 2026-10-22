@@ -1,8 +1,7 @@
 name: Release addons
 
-# Publishes an addon to a GitHub release, which is the only channel the 1.12, 2.4.3 and
-# 3.3.5 clients have: CurseForge offers files against Blizzard's game versions, so
-# scripts/quests/release.sh uploads the Blizzard zip there and nothing else.
+# Publishes an addon's zip to a GitHub release, beside the store uploads, for players who
+# install by hand.
 #
 # The tag prefix picks the addon, because the two version independently and always have:
 #
@@ -67,8 +66,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The packaging script and nothing else, so a release zip is the same artifact the
-      # author builds locally: which .toc a client gets, and which vendored Ace3 rides with
-      # it, are decisions that live in one place.
+      # author builds locally.
       - name: Build the zips
         run: ./${{ steps.target.outputs.script }}
 
@@ -91,9 +89,6 @@ jobs:
           download, version = os.environ["DOWNLOAD"], os.environ["VERSION"]
           variables = {
               "github_zip_download_blizz": f"{download}/Spoken_Quests-{version}.zip",
-              "github_zip_download_112": f"{download}/Spoken_Quests-WoW_1.12-{version}.zip",
-              "github_zip_download_243": f"{download}/Spoken_Quests-WoW_2.4.3-{version}.zip",
-              "github_zip_download_335": f"{download}/Spoken_Quests-WoW_3.3.5-{version}.zip",
               "curse_link_blizz": "https://www.curseforge.com/wow/addons/spoken-quests",
               # Wago carries the addons but not the packs: each pack is 300-450 MB and that
               # upload endpoint answers 413, so only the player has a second store link.

@@ -19,11 +19,9 @@ local panel, page, toggle
 -- short of 1.
 local CLEAR = 0.99
 
--- The gamepad UI, Forever's InputDeviceInterfaceStyle 1. pcall, because a client that has never
--- heard of the CVar raises on it.
+-- The gamepad UI, Forever's InputDeviceInterfaceStyle 1.
 local function IsGamepadUI()
-	local ok, style = pcall(GetCVar, "InputDeviceInterfaceStyle")
-	return ok and style == "1"
+	return GetCVar("InputDeviceInterfaceStyle") == "1"
 end
 
 -- Inside the map, unless the gamepad UI is on (NewPanel).

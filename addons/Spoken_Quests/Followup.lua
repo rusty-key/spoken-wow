@@ -380,20 +380,13 @@ function Followup:Setup()
     -- A whisper is addressed to this player alone, but is still only matched while armed:
     -- an NPC whispers the same words to everybody who takes the quest, and one armed by
     -- nothing is no evidence of which quest it followed. CHAT_MSG_RAID_BOSS_WHISPER is the
-    -- server's boss whisper; the 1.12 client has no such event, and the pcall below lets it
-    -- fail there. Both carry the same payload as a /say: text, sender, and the GUID in arg12
-    -- where the client sends one.
+    -- server's boss whisper. Both carry the same payload as a /say: text, sender, and the GUID
+    -- in arg12 where the client sends one.
     local events = { "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_WHISPER",
-        "CHAT_MSG_RAID_BOSS_WHISPER" }
-    if not Version.IsAnyLegacy then
-        table.insert(events, "QUEST_TURNED_IN")
-        table.insert(events, "QUEST_ACCEPTED")
-    end
+        "CHAT_MSG_RAID_BOSS_WHISPER", "QUEST_TURNED_IN", "QUEST_ACCEPTED" }
     for _, event in ipairs(events) do
-        pcall(frame.RegisterEvent, frame, event)
+        frame:RegisterEvent(event)
     end
-    -- Named arguments rather than ...: on 1.12 the handler is called by Compatibility.lua's
-    -- SetScript wrapper with the arg1..arg9 globals, and Lua 5.0 has no select() for varargs.
     frame:SetScript("OnEvent", function(_, event, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12)
         if event == "QUEST_TURNED_IN" then
             Followup:Arm("end", a1, TitleFor(a1))
@@ -406,21 +399,4 @@ function Followup:Setup()
         end
     end)
 
-    -- The legacy clients have neither event, but every accept and turn-in, clicked or
-    -- automated by another addon, goes through these two calls while the dialog is still up.
-    if Version.IsAnyLegacy and hooksecurefunc then
-        -- IsEnabled first: resolving the quest can mean a fuzzy search of every loaded pack.
-        pcall(hooksecurefunc, "GetQuestReward", function()
-            if Followup:IsEnabled() then
-                local questID = Addon:DialogQuestID("QUEST_COMPLETE")
-                Followup:Arm("end", questID, TitleFor(questID))
-            end
-        end)
-        pcall(hooksecurefunc, "AcceptQuest", function()
-            if Followup:IsEnabled() then
-                local questID = Addon:DialogQuestID("QUEST_DETAIL")
-                Followup:Arm("start", questID, TitleFor(questID))
-            end
-        end)
-    end
 end

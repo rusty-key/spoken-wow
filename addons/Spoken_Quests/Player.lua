@@ -100,21 +100,15 @@ end
 --------------------------------------------------------------------------------
 
 -- The creature to draw, or nil for the book. The book for Items, GameObjects, players,
--- a missing GUID, and 2.4.3, which cannot show an arbitrary creature -- what
--- ShouldShowBookFor used to decide inside the frame, decided here instead and handed
--- over as a fallback.
+-- and a missing GUID -- what ShouldShowBookFor used to decide inside the frame, decided
+-- here instead and handed over as a fallback.
 local function CreatureFor(soundData)
-    if soundData.unitIsObjectOrItem or Version.IsLegacyBurningCrusade then
+    if soundData.unitIsObjectOrItem then
         return nil
     end
     local guid = soundData.unitGUID
-    if guid and Utils.GetGUIDType and Utils.GetIDFromGUID then
+    if guid then
         return Utils:GetCreatureIDFromGUID(guid)
-    end
-    -- 1.12 has no GUIDs; the pooled model shows the "npc" unit and this is only what
-    -- tells one clip's portrait from the next.
-    if Version.IsLegacyVanilla then
-        return soundData.questID or soundData.name
     end
     return nil
 end
@@ -199,12 +193,9 @@ local STOP_GOSSIP = {
 local REPORT = {
     id = "report",
     -- An icon in the corner rather than a word beside the line: the label never changed,
-    -- and the strip it used to sit in pushed the queue up to make room for it. The bug
-    -- icon postdates the three legacy clients, where the texture is missing and
-    -- the button would be a blank square; `text` is what they draw instead.
+    -- and the strip it used to sit in pushed the queue up to make room for it.
     icon = [[Interface\HelpFrame\HelpIcon-Bug]],
     label = L.OPT_REPORT_PROBLEM,
-    text = "R",
     anchor = "topright",
     tooltip = function(tooltip)
         tooltip:SetText(L.OPT_REPORT_PROBLEM)
@@ -525,8 +516,5 @@ function Player:Setup()
         onClick = function() Options:OpenSettings() end })
     Spoken.Minimap:AddEntry("gossip", { id = "Options", text = L.OPT_GOSSIP_MINIMAP_SETTINGS, order = 2,
         onClick = function() Options:OpenGossipSettings() end })
-    if Spoken.AddSettingsLink then
-        Spoken:AddSettingsLink(L.OPT_MINIMAP_SETTINGS, function() Options:OpenSettings() end)
-    end
     return true
 end
