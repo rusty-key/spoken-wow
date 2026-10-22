@@ -6,7 +6,8 @@
 --   make quests-compendium-text
 --
 -- The game's placeholders are kept ($N, $C, $R, $G male:female; and $B): the addon fills them in
--- for the player. Where a quest's givers say different words, the words most of them say.
+-- for the player. An objective's amount ($2oa) is written in from Forever's client data (Efficient
+-- Games, CC BY 4.0). Where a quest's givers say different words, the words most of them say.
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.
 

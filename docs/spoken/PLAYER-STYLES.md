@@ -11,8 +11,7 @@ Window while DialogueUI is missing, and the setting is kept, so the window comes
 DialogueUI. The setting replaced three switches, `SubtitlePlayer`, `HideFrame` and `MinimalPlayer`;
 `Addon:InitDB` carries a profile that set them over to the style they showed, and removes them.
 
-Forever is the client this describes. The 1.12, 2.4.3 and 3.3.5 clients keep their code and get no
-new work: they have the Large Window alone, and 1.12 has no words to show.
+Forever is the client this describes.
 
 ## How the code is split
 
@@ -52,7 +51,7 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   their creature (`StaticPortrait.lua`), else the line's own picture, cut round, with the line's
   badge on a dark disc at its lower right, and the disc only under a badge. A creature the client
   has not cached shows the book until it comes. The Large Window draws a 3D model instead.
-- **Show Progress Bar**: a progress line under the words, for the subtitles and every window.
+- **Show Progress Bar**: a progress line under the words, for the subtitles and every window. Off by default.
 - **Dragging** a window or the subtitles draws it to the screen's edges and middle, and the DialogueUI
   window to its resting place too, with a gold guide line where it holds. Holding Shift drags it free.
 - **Lock Position**: the windows and the subtitles cannot be dragged or resized, and clicks on
@@ -75,8 +74,7 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   (`Addon:StopWhereNotRead`). A line you ask for with Play, a command or the Compendium is read.
 - **Preview** on Spoken's page shows the chosen style with a sample line while no line plays,
   until it is turned off.
-- With a DialogueUI dialog open, the windows step aside unless Spoken Quests' **Show Spoken Over
-  DialogueUI** hosts them on it (`Actions.DialogCovers`, `Addon:ApplyHost`).
+- With a DialogueUI dialog open, the windows step aside (`Actions.DialogCovers`).
 
 ## Settings by style
 
@@ -143,15 +141,13 @@ name over the line's title, the controls at the header's right, then Rows at Onc
 - Dragged by the panel or the name; the game's own size grabber at the lower right, shown under
   the pointer while unlocked, sets its width. It fades in and out, and out and in again from one
   line to the next.
-- Not on the 1.12, 2.4.3 and 3.3.5 clients.
 
 ## Large Window
 
 `PlayerFrame.lua`. The game's Talking Head frame where the client has its art (Spoken's own art
 elsewhere): a bigger portrait drawn as a 3D model, the speaker's name, up to three rows of the
 words, the controls at the top right where the frame has its close button, and the progress line.
-It is dragged by the ring at the portrait's lower left, and it fades as the Small Window does. It
-is the only window the 1.12, 2.4.3 and 3.3.5 clients have.
+It is dragged by the ring at the portrait's lower left, and it fades as the Small Window does.
 
 ## DialogueUI
 
@@ -225,19 +221,12 @@ Words.
 After the narrator style's settings comes a DialogueUI section from each module that registered
 one with `Spoken:AddDialogueUISettings(build)`, shown under every style since it changes
 DialogueUI's own window. Spoken Quests puts its DialogueUI switches there: Mark Words in
-DialogueUI, Keep the Words in View, Show Spoken Over DialogueUI and Listen Button on DialogueUI
+DialogueUI, Keep the Words in View and Listen Button on DialogueUI
 (see [`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md)). Reset Spoken Settings
 puts all of them back.
 
 The highlight on the words being read is deep red on parchment and gold on dark, the same pair
 Spoken Quests lights DialogueUI's own text with.
-
-### Over DialogueUI
-
-With Spoken Quests' **Show Spoken Over DialogueUI** on, whichever style is chosen is hosted on
-DialogueUI's window while it is open and comes back afterwards: see
-[`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md). The DialogueUI window keeps
-its size on screen there, as the others do.
 
 ### What it reads, and what happens if DialogueUI changes
 
@@ -265,8 +254,7 @@ Tests: `tests/lua/player_dialogueui_style_test.lua`, against a fake DialogueUI.
 
 Nothing of Spoken's on screen: the lines are only heard, and the keys still stop, replay and skip
 them. The first time a line waits behind a stop with nothing on screen to show it, Spoken says so
-in chat (`STOPPED_REMINDER`). The window and subtitle rows are hidden, and so is Show Spoken Over
-DialogueUI. With DialogueUI installed, Show Narrator, Highlight Words, Type Words Out and Type Out By
+in chat (`STOPPED_REMINDER`). The window and subtitle rows are hidden. With DialogueUI installed, Show Narrator, Highlight Words, Type Words Out and Type Out By
 still mark DialogueUI's own quest, gossip and book text (`Spoken:GetCaption`), so the page offers
 them under this style too (`DialogueUIOptions:WordRowsShown`).
 

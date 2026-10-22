@@ -82,3 +82,11 @@ export function dungeonsOf(spots, entrance) {
   for (const maps of inZone.values()) if (!maps.has(0)) out.push(...maps);
   return out.sort((a, b) => a - b);
 }
+
+// The quests Forever has: one the corpus voices or the client's QuestV2 lists. The repack's
+// quest_template also carries Cataclysm's rows (24900-29021), whose items gave readables zones
+// Forever never hands them out in. QuestV2 alone will not do: it lacks hundreds of quests the corpus
+// shows live, Stormwind Library (579) and the Fishing Flier's (8228, 8229) among them.
+export function foreverQuests(corpusLines, questV2) {
+  return new Set([...corpusLines.map((line) => Number(line.questId)), ...questV2.map((row) => Number(row.ID))].filter(Boolean));
+}

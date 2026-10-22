@@ -320,6 +320,23 @@ Expect("a continent says it is in Azeroth, and what its banner counts", Z:PlaceL
 Expect("...not counting a map this client has not got", RowFor("Somewhere Else"), nil)
 Expect("an area only Forever has is not listed on another client", RowFor("Camp Forever"), nil)
 
+-- Azeroth with a story: a banner of its own above the continents, which opens its page.
+Z.Zones[947] = { name = "Azeroth", full = "The world." }
+Z:RefreshLoreWindow()
+Expect("Azeroth with a story is a banner above the continents, not a zone of Other Lands", Shown(),
+    "Azeroth|Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|Sen'jin Village|Valley of Trials")
+Expect("...with nothing under it to open or count", RowFor("Azeroth").row.style .. "|" .. RowFor("Azeroth").count.text
+    .. "|" .. tostring(RowFor("Azeroth").toggle:IsShown()), "banner||false")
+Expect("...never locked", Z:IsLocked(947), false)
+RowFor("Azeroth").scripts.OnClick(RowFor("Azeroth"))
+Expect("a click on it shows its story", page.title.text .. ": " .. page.body.text.text, "Azeroth: The world.")
+Expect("...its line saying what it holds", page.sub.text.text, "2 continents, 3 zones")
+Expect("...read and reported as the world's", page.target[1] .. "|" .. tostring(page.target[2]), "947|nil")
+Expect("...its row lit as chosen", RowFor("Azeroth").selected, true)
+Expect("...and the continents still open below it", Shown(),
+    "Azeroth|Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|Sen'jin Village|Valley of Trials")
+Z.Zones[947] = nil
+
 RowFor("Sen'jin Village").scripts.OnClick(RowFor("Sen'jin Village"))
 Expect("a place with no story says so, as every tab does", page.body.text.text, _G.SpokenCompendium.NotWritten())
 Expect("...offers to Contribute one", page.contribute:IsShown(), true)
@@ -535,6 +552,12 @@ local displayed = Z.GetDisplayedMapID
 Z.GetDisplayedMapID = function() return 9999 end
 Z:RefreshPanel()
 Expect("...and a map with no entry at all offers nothing to open", mapPage.open:IsShown(), false)
+Z.Zones[947] = { name = "Azeroth", full = "The world." }
+Z.GetDisplayedMapID = function() return 947 end
+Z:RefreshPanel()
+Expect("the world map shows Azeroth's story, with what it holds under its name",
+    mapPage.title.text .. ": " .. mapPage.body.text.text .. "|" .. mapPage.sub.text.text, "Azeroth: The world.|2 continents, 3 zones")
+Z.Zones[947] = nil
 Z.GetDisplayedMapID = displayed
 Z:RefreshPanel()
 Z.ShowLoreFor = showLoreFor

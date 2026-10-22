@@ -224,7 +224,7 @@ export function toc({ section, lang, version, credits, iface }) {
   const title = `${audioFamily(lang)}: ${TITLES[section]} - Voice Actors`;
   const lines = [
     `## Interface: ${iface}`,
-    `## Title: ${title}`,
+    `## Title: ${title.replace(/^Spoken/, "|cffb48cffSpoken|r")}`,
     `## Notes: Lines read by voice actors, played instead of the generated narration where there is one. Voiced by ${credits.join(", ")}.`,
     `## Version: ${version}`,
     `## Author: ${["rusty", ...credits].join(", ")}`,

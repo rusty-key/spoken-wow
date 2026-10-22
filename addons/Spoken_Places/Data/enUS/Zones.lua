@@ -13,6 +13,12 @@ if not SpokenZones:ShouldLoadLanguage("enUS") then
 end
 
 local zones = {
+	[947] = {
+		name = "Azeroth",
+		short = "Ten thousand years ago the Highborne of Kalimdor, drunk on the power of the Well of Eternity, answered the call of the fallen titan Sargeras and tore open a gate for the Burning Legion.",
+		full = "Ten thousand years ago the Highborne of Kalimdor, drunk on the power of the Well of Eternity, answered the call of the fallen titan Sargeras and tore open a gate for the Burning Legion. Malfurion Stormrage and the Kaldorei resistance shattered that gate with the Dragon Soul and hurled Sargeras back into the Twisting Nether, but the Well's collapse broke the world itself. Ancient Kalimdor sank in fire and flood; ruined continents rose from the wreck, and the drowned heart of the land became the Great Sea, with the Maelstrom churning where the Well once stood.",
+		source = "https://warcraft.wiki.gg/wiki/Azeroth",
+	},
 	[1411] = {
 		name = "Durotar",
 		short = "Durotar is a cracked, red land of crags and canyons, dry and hot, sparse in water and green things.",
@@ -40,7 +46,7 @@ local zones = {
 	[1415] = {
 		name = "Eastern Kingdoms",
 		short = "The Eastern Kingdoms were not always many lands.",
-		full = "The Eastern Kingdoms were not always many lands. Once they were part of a single continent, before the Great Sundering tore the world apart and left behind the broken pieces now called Azeroth, Khaz Modan, and Lordaeron, with Quel'Thalas clinging to the north of that last shattered land, uncertain even now whether it stands as its own place or merely a corner of another.\n\nAcross these fragments the mountains of Khaz Modan and the Redridge rise like a spine through the continent's heart, and around them the old peoples endure: dwarves and gnomes in their deep halls, humans in their kingdoms, high elves and blood elves in their woods, and now the Forsaken risen where Lordaeron's people once lived. Orcs, goblins, draenei, naga, and ogres have all found their way into these lands as well, though none of them were born to it.\n\nThe scars of that first breaking are still the truth of the place. Every border here, every strait and stretch of drowned ground between one kingdom and the next, remembers that the Eastern Kingdoms were once whole, and are whole no longer.",
+		full = "The Eastern Kingdoms were not always many lands. Once they were part of a single continent, before the Great Sundering tore the world apart and left behind the broken pieces now called Azeroth, Khaz Modan, and Lordaeron, with Quel'Thalas clinging to the north of that last shattered land, uncertain even now whether it stands as its own place or merely a corner of another.\n\nAcross these fragments the mountains of Khaz Modan and the Redridge rise like a spine through the continent's heart, and around them the old peoples endure: dwarves and gnomes in their deep halls, humans in their kingdoms, high elves in their woods, and now the Forsaken risen where Lordaeron's people once lived. Orcs, goblins, naga, and ogres have all found their way into these lands as well, though none of them were born to it.\n\nThe scars of that first breaking are still the truth of the place. Every border here, every strait and stretch of drowned ground between one kingdom and the next, remembers that the Eastern Kingdoms were once whole, and are whole no longer.",
 		source = "https://warcraft.wiki.gg/wiki/Eastern_Kingdoms",
 	},
 	[1416] = {

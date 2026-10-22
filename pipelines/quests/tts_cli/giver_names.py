@@ -55,14 +55,14 @@ def givers(corpus: dict, ignored=()) -> dict:
 
     Read off the pack's own tables, so a giver is exactly one the pack can hand the quest log
     and the English is exactly the name it would show. Ids are strings, as entity_name keys
-    them.
+    them. A giver the corpus names only with a placeholder has no English name: None.
     """
     tables = build_tables(corpus, ignored)
     found = {}
     for kind, (questlog, names) in PACK_TABLES.items():
         english = tables[names][1]
         for entity_id in set(tables[questlog][1].values()):
-            found[(kind, str(entity_id))] = english[entity_id]
+            found[(kind, str(entity_id))] = english.get(entity_id)
     return found
 
 

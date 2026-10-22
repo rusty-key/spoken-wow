@@ -13,6 +13,12 @@ if not SpokenZones:ShouldLoadLanguage("deDE") then
 end
 
 local zones = {
+	[947] = {
+		name = "Azeroth",
+		short = "Vor zehntausend Jahren folgten die Hochgeborenen Kalimdors, berauscht von der Macht des Brunnens der Ewigkeit, dem Ruf des gefallenen Titanen Sargeras und rissen ein Tor für die Brennende Legion auf.",
+		full = "Vor zehntausend Jahren folgten die Hochgeborenen Kalimdors, berauscht von der Macht des Brunnens der Ewigkeit, dem Ruf des gefallenen Titanen Sargeras und rissen ein Tor für die Brennende Legion auf. Malfurion Sturmgrimm und der Widerstand der Kaldorei zerschmetterten dieses Tor mit der Drachenseele und schleuderten Sargeras zurück in den Wirbelnden Nether, doch der Zusammenbruch des Brunnens zerbrach die Welt selbst. Das alte Kalimdor versank in Feuer und Flut; zerschlagene Kontinente erhoben sich aus den Trümmern, und das ertrunkene Herz des Landes wurde zum Großen Meer, in dem der Mahlstrom dort tobt, wo einst der Brunnen lag.",
+		source = "https://warcraft.wiki.gg/wiki/Azeroth",
+	},
 	[1411] = {
 		name = "Durotar",
 		short = "Durotar ist ein zerklüftetes, rotes Land aus Felsen und Schluchten, trocken und heiß, arm an Wasser und an allem, was grünt.",
@@ -40,7 +46,7 @@ local zones = {
 	[1415] = {
 		name = "Östliche Königreiche",
 		short = "Die Östlichen Königreiche waren nicht immer viele Länder.",
-		full = "Die Östlichen Königreiche waren nicht immer viele Länder. Einst gehörten sie zu einem einzigen Kontinent, bevor die Große Teilung die Welt zerriss und die zerbrochenen Stücke zurückließ, die man heute Azeroth, Khaz Modan und Lordaeron nennt, wobei sich Quel'Thalas an den Norden jenes letzten zerschlagenen Landes klammert, bis heute ungewiss, ob es ein eigenes Land ist oder nur ein Winkel eines anderen.\n\nÜber diese Bruchstücke hinweg erheben sich die Berge von Khaz Modan und das Rotkammgebirge wie ein Rückgrat durch das Herz des Kontinents, und um sie herum überdauern die alten Völker: Zwerge und Gnome in ihren tiefen Hallen, Menschen in ihren Königreichen, Hochelfen und Blutelfen in ihren Wäldern, und nun die Verlassenen, die sich dort erhoben haben, wo einst Lordaerons Volk lebte. Auch Orcs, Goblins, Draenei, Naga und Oger haben ihren Weg in diese Lande gefunden, obwohl keiner von ihnen hier geboren wurde.\n\nDie Narben jenes ersten Bruchs sind noch immer die Wahrheit dieses Ortes. Jede Grenze hier, jede Meerenge und jeder Streifen versunkenen Landes zwischen einem Königreich und dem nächsten erinnert daran, dass die Östlichen Königreiche einst ein Ganzes waren und es nicht mehr sind.",
+		full = "Die Östlichen Königreiche waren nicht immer viele Länder. Einst gehörten sie zu einem einzigen Kontinent, bevor die Große Teilung die Welt zerriss und die zerbrochenen Stücke zurückließ, die man heute Azeroth, Khaz Modan und Lordaeron nennt, wobei sich Quel'Thalas an den Norden jenes letzten zerschlagenen Landes klammert, bis heute ungewiss, ob es ein eigenes Land ist oder nur ein Winkel eines anderen.\n\nÜber diese Bruchstücke hinweg erheben sich die Berge von Khaz Modan und das Rotkammgebirge wie ein Rückgrat durch das Herz des Kontinents, und um sie herum überdauern die alten Völker: Zwerge und Gnome in ihren tiefen Hallen, Menschen in ihren Königreichen, Hochelfen in ihren Wäldern, und nun die Verlassenen, die sich dort erhoben haben, wo einst Lordaerons Volk lebte. Auch Orcs, Goblins, Naga und Oger haben ihren Weg in diese Lande gefunden, obwohl keiner von ihnen hier geboren wurde.\n\nDie Narben jenes ersten Bruchs sind noch immer die Wahrheit dieses Ortes. Jede Grenze hier, jede Meerenge und jeder Streifen versunkenen Landes zwischen einem Königreich und dem nächsten erinnert daran, dass die Östlichen Königreiche einst ein Ganzes waren und es nicht mehr sind.",
 		source = "https://warcraft.wiki.gg/wiki/Eastern_Kingdoms",
 	},
 	[1416] = {

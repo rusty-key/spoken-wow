@@ -74,10 +74,8 @@ end
 -- addon uses, and it brings its own background, its highlight under the cursor, its
 -- closing on a click elsewhere and its toggling, none of which is worth reimplementing.
 --
--- The three legacy clients do not have it in a shape worth using -- EasyMenu does
--- not exist on 1.12 at all, and the initializer differs on the other two -- so there the
--- player draws its own list of buttons and supplies those four behaviours by hand. That
--- code exists for those clients only, and is below.
+-- Where it is missing, the player draws its own list of buttons and supplies those four
+-- behaviours by hand.
 local dropDown
 local menuCatcher
 local iconTooltip
@@ -183,8 +181,7 @@ local function ShowMenu(anchor)
 
         -- A menu is closed by clicking anywhere else, which nothing tells the frame about.
         -- A transparent button over the whole screen, shown only while the menu is, is how
-        -- that is heard on every client: GLOBAL_MOUSE_DOWN exists on none of the three
-        -- legacy ones.
+        -- that is heard.
         menuCatcher = CreateFrame("Button", "SpokenMinimapMenuCatcher", UIParent)
         menuCatcher:SetAllPoints(UIParent)
         menuCatcher:SetFrameStrata("DIALOG")
@@ -293,13 +290,10 @@ function Minimap:Setup()
             -- the next compartment open). From the compartment, wait for the close to
             -- finish and open on our own button, which neither moves nor closes.
             if minimapButton and button ~= minimapButton then
-                if C_Timer and C_Timer.After then
-                    C_Timer.After(0.05, function()
-                        Minimap:HandleClick(minimapButton, mouseButton)
-                    end)
-                    return
-                end
-                button = minimapButton
+                C_Timer.After(0.05, function()
+                    Minimap:HandleClick(minimapButton, mouseButton)
+                end)
+                return
             end
             Minimap:HandleClick(button, mouseButton)
         end,

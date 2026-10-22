@@ -61,11 +61,8 @@ B:SetupSource()
 dofile(BOOKS .. "Data/Books.lua")
 dofile(BOOKS .. "Data/Places.lua")
 local L = B.L
--- The events as the next export names them; the Scourge Invasion's left as an older export has it.
-for id, event in pairs({ [2571] = "winterveil", [2841] = "winterveil", [2787] = "harvestfestival",
-    [2790] = "harvestfestival", [2786] = "fishingextravaganza" }) do
-    SpokenBooksPlaces.books[id].event = event
-end
+-- One readable whose event the data does not name, as an older export left every one.
+SpokenBooksPlaces.books[2878].event = true
 
 -- A note on the isle, and one in Warsong Gulch: the shipped data has neither.
 local ISLE_NOTE, GULCH_NOTE = 990001, 990002
@@ -74,6 +71,11 @@ for id, place in pairs({ [ISLE_NOTE] = { "Isle Tide Tables", 9001 }, [GULCH_NOTE
     SpokenBooksData.books[id] = { title = place[1], pages = { id } }
     SpokenBooksPlaces.books[id] = { kind = "world", type = "note", zones = { place[2] } }
 end
+-- A note of no known origin: the shipped data places every readable.
+local STRAY_NOTE = 990007
+SpokenBooksData.pages[STRAY_NOTE] = { book = STRAY_NOTE, number = 1, text = "Words of a stray note." }
+SpokenBooksData.books[STRAY_NOTE] = { title = "Stray Note", pages = { STRAY_NOTE } }
+SpokenBooksPlaces.books[STRAY_NOTE] = { kind = "carried", type = "note" }
 -- Cragmoor's two dungeons and Fenwatch's one, a readable inside each, a plaque outside in Cragmoor,
 -- and an epitaph had inside Fenwatch's dungeon and outside in Cragmoor.
 SpokenDungeons.dungeons[9101] = { zone = 9004, "Hollow Vault", deDE = "Hohles Gewölbe" }
@@ -543,6 +545,19 @@ Expect("...where it is", page.sub.text.text, L.READABLES_IN_FMT:format("Stormwin
 Expect("...on one line", page.sub.text.wordWrap, false)
 Expect("...no line before its words saying it is in the world", (page.body.text.text or ""):find("In the World", 1, true), nil)
 Expect("...and its words", page.body.text.text ~= nil and #page.body.text.text > 40, true)
+-- A page that names its reader shows this character's name, class and gender word, as in the game.
+do
+    local kurdranPage = SpokenBooksData.books[KURDRAN].pages[1]
+    local words = SpokenBooksData.pages[kurdranPage].text
+    SpokenBooksData.pages[kurdranPage].text = "Greetings, $gbrother:sister;. You, $N the $c, are ready."
+    stub.world.playerName, stub.world.playerClass, stub.world.unitSex = "Torno", "Warrior", 3
+    B:ShowReadables(KURDRAN)
+    Expect("...a page's tokens filled in for this character", page.body.text.text,
+        "Greetings, sister. You, Torno the Warrior, are ready.")
+    SpokenBooksData.pages[kurdranPage].text = words
+    stub.world.playerName, stub.world.playerClass, stub.world.unitSex = nil, nil, 2
+    B:ShowReadables(KURDRAN)
+end
 -- Opened on a writing from elsewhere (Open in Azeroth's Compendium): chosen, with what holds it
 -- opened, though the zone and its kind were closed.
 Click("Stormwind City")

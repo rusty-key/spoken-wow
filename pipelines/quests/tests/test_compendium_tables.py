@@ -2,6 +2,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
 import export_compendium  # noqa: E402
@@ -101,10 +103,10 @@ def test_the_excavation_site_is_the_wetlands_not_a_dungeon():
 
 def test_the_dungeons_are_the_table_every_pipeline_shares():
     """pipelines/lib/dungeons.json, which the books' places and Spoken's Data/Dungeons.lua are
-    made from too: Forever's City of Dalaran in Alterac Mountains, Ruins of Lordaeron under the
-    Undercity."""
+    made from too: Forever's City of Dalaran in Alterac Mountains, Ruins of Lordaeron in
+    Tirisfal Glades, whose surface ruins its entrance is in."""
     assert export_compendium.INSTANCE_ZONE[2959] == 1416 and 2959 in export_compendium.DUNGEONS
-    assert export_compendium.INSTANCE_ZONE[2999] == 1458 and 2999 in export_compendium.DUNGEONS
+    assert export_compendium.INSTANCE_ZONE[2999] == 1420 and 2999 in export_compendium.DUNGEONS
     assert export_compendium.BATTLEGROUND_ZONE[2997] == 2524
 
 
@@ -153,6 +155,13 @@ def test_the_area_a_giver_stands_in_beats_the_rectangles(monkeypatch, tmp_path):
     # No tile extracted: the rectangle.
     assert maps.zone_at(0, -10567, -1170) == maps.box_at(0, -10567, -1170)
     assert area_reader(str(tmp_path / "none")) is None
+
+
+def test_the_run_with_the_db_stops_without_map_files_and_names_the_variable(monkeypatch, tmp_path):
+    monkeypatch.setattr(export_compendium, "MAPS_DIR", str(tmp_path / "none"))
+    monkeypatch.setattr(export_compendium, "area_reader", lambda directory=None: None)
+    with pytest.raises(SystemExit, match="COMPENDIUM_MAPS"):
+        export_compendium.with_db(export_compendium.parse_args([]))
 
 
 def test_a_citys_rectangle_wins_over_the_ground_around_it(monkeypatch):

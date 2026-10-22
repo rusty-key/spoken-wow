@@ -4,8 +4,8 @@ Spoken shows the words of the line it reads (quest dialogue, NPC dialogue, place
 readables' pages) in each window, and as subtitles. The Small Window and the DialogueUI window show
 Rows at Once of them, one or two rows, and the Small Window's **+** button expands them to eight;
 the Large Window shows as many rows as its box holds, up to three. The captions follow the
-recording: with **Type Words Out** on (the default) the words appear as the voice reaches them,
-and with **Highlight Words** on (off by default) two adjacent words are lit, in gold, or in deep
+recording: with **Type Words Out** on (off by default) the words appear as the voice reaches them,
+and with **Highlight Words** on (the default) two adjacent words are lit, in gold, or in deep
 red on parchment. They move, resize and scale with their window.
 
 The **Subtitles Only** narrator style shows the words without a window instead, low in the middle

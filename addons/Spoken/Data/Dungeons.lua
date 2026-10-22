@@ -39,8 +39,22 @@ SpokenDungeons = {
 		[509] = { zone = 1451, "Ruins of Ahn'Qiraj", deDE = "Ruinen von Ahn'Qiraj", esES = "Ruinas de Ahn'Qiraj", esMX = "Ruinas de Ahn'Qiraj", frFR = "Ruines d'Ahn'Qiraj", ptBR = "Ruínas de Ahn'Qiraj", ruRU = "Руины Ан'Киража", koKR = "안퀴라즈 폐허", zhCN = "安其拉废墟", zhTW = "安其拉廢墟", itIT = "Rovine di Ahn'Qiraj" },
 		[531] = { zone = 1451, "Ahn'Qiraj Temple", deDE = "Tempel von Ahn'Qiraj", esES = "Templo de Ahn'Qiraj", esMX = "Templo de Ahn'Qiraj", frFR = "Temple d'Ahn'Qiraj", ptBR = "Templo de Ahn'Qiraj", ruRU = "Храм Ан'Киража", koKR = "안퀴라즈 사원", zhCN = "安其拉神殿", zhTW = "安其拉神廟", itIT = "Tempio di Ahn'Qiraj" },
 		[533] = { zone = 1423, "Naxxramas", ruRU = "Наксрамас", koKR = "낙스라마스", zhCN = "纳克萨玛斯", zhTW = "納克薩瑪斯" },
+		[2784] = { zone = 1440, story = { 1440, "demon fall canyon" }, "Demon Fall Canyon", deDE = "Demonfall-Canyon", esES = "Barranco del Demonio", esMX = "Barranco del Demonio", frFR = "Canyon de la Malechute", ptBR = "Cânion do Demônio Caído", ruRU = "Каньон Гибели Демона", koKR = "악마벼락 협곡", zhCN = "屠魔峡谷", zhTW = "屠魔峽谷" },
+		[2856] = { zone = 1423, "Scarlet Enclave", deDE = "Scharlachrote Enklave", esES = "Enclave Escarlata", esMX = "Enclave Escarlata", frFR = "L’enclave Écarlate", ptBR = "Enclave Escarlate", ruRU = "Анклав Алого ордена", koKR = "붉은십자군 초소", zhCN = "血色领地", zhTW = "血色領區" },
+		[2875] = { zone = 1430, "Karazhan Crypts", deDE = "Karazhangruften", esES = "Criptas de Karazhan", esMX = "Criptas de Karazhan", frFR = "Cryptes de Karazhan", ptBR = "Criptas de Karazhan", ruRU = "Склепы Каражана", koKR = "카라잔 납골당", zhCN = "卡拉赞墓穴", zhTW = "卡拉贊墓穴" },
 		[2959] = { zone = 1416, story = { 1416, "dalaran" }, "City of Dalaran", deDE = "Dalaran", esES = "Ciudad de Dalaran", esMX = "Ciudad de Dalaran", frFR = "Cité de Dalaran", ptBR = "Dalaran", ruRU = "Даларан", koKR = "달라란", zhCN = "达拉然城", zhTW = "達拉然城" },
-		[2999] = { zone = 1458, story = { 1458, "ruins of lordaeron" }, "Ruins of Lordaeron", deDE = "Ruinen von Lordaeron", esES = "Ruinas de Lordaeron", esMX = "Ruinas de Lordaeron", frFR = "Ruines de Lordaeron", ptBR = "Ruínas de Lordaeron", ruRU = "Руины Лордерона", koKR = "로데론의 폐허", zhCN = "洛丹伦废墟", zhTW = "羅德隆廢墟" },
+		[2998] = { zone = 1437, story = { 1437, "excavation site wetlands" }, "Excavation Site: Wetlands", deDE = "Ausgrabungsstätte: Sumpfland", esES = "Excavación: Los Humedales", esMX = "Excavación: Los Humedales", frFR = "Excavations : les Paluns", ptBR = "Sítio de Escavação: Pantanal", ruRU = "Раскопки: Болотина", koKR = "발굴 현장: 저습지", zhCN = "挖掘场：湿地", zhTW = "挖掘場：濕地" },
+		[2999] = { zone = 1420, story = { 1420, "ruins of lordaeron" }, "Ruins of Lordaeron", deDE = "Ruinen von Lordaeron", esES = "Ruinas de Lordaeron", esMX = "Ruinas de Lordaeron", frFR = "Ruines de Lordaeron", ptBR = "Ruínas de Lordaeron", ruRU = "Руины Лордерона", koKR = "로데론의 폐허", zhCN = "洛丹伦废墟", zhTW = "羅德隆廢墟" },
 		[3065] = { zone = 1455, "The Hall of Thanes", deDE = "Die Halle der Thanen", esES = "El Salón de los Feudales", esMX = "El Salón de Señores Feudales", frFR = "La salle des Thanes", ptBR = "Salão dos Thanes", ruRU = "Чертоги танов", koKR = "영주의 전당", zhCN = "领主大厅", zhTW = "族長之廳" },
+	},
+
+	-- The maps of the world bosses, by instance map: `zone` the uiMapID of the zone they stand in. The
+	-- Bosses tab lists their bosses under the zone, with no card for the map; `bossZones`, where a map's
+	-- bosses stand in different zones, the zone of each boss by its key.
+	worldBosses = {
+		[2789] = { zone = 1419 },
+		[2791] = { zone = 1447 },
+		[2804] = { zone = 1451 },
+		[2832] = { zone = 1431, bossZones = { ["emeriss"] = 1431, ["lethon"] = 1444, ["taerar"] = 1440, ["ysondre"] = 1425 } },
 	},
 }

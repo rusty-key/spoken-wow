@@ -90,6 +90,9 @@ end
 -- Localized area name -> English corpus key, keyed by *client* locale.
 -- Populated by Data/<locale>/Aliases.lua.
 SpokenZones.Aliases = {}
+-- Localized area name -> uiMapID -> English corpus key, for a name the client gives more than
+-- one place. Only in the alias files built since the table existed.
+SpokenZones.ZoneAliases = {}
 
 --------------------------------------------------------------------------------
 -- Readiness
@@ -440,6 +443,7 @@ function SpokenZones:ShouldLoadAliases(locale)
 	return locale == self.clientLocale
 end
 
-function SpokenZones:RegisterAliases(locale, data)
+function SpokenZones:RegisterAliases(locale, data, byZone)
 	self.Aliases[locale] = data
+	self.ZoneAliases[locale] = byZone
 end

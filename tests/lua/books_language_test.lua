@@ -233,6 +233,12 @@ do
     _G.ItemTextGetItem, _G.ItemTextGetMaterial = nil, nil
 end
 
+---------------------------------------------------------------- the words a token page's clip says
+B = Install({ ENGLISH })
+SpokenBooksData.pages[PAGE].text = "Greetings, $gbrother:sister;. $N, you are ready."
+Expect("an English caption's tokens are subtitled as the clip says them",
+    B:ClipFor(PAGE).present.transcript, "Greetings, brother. Adventurer, you are ready.")
+
 stub.SetLocale("enUS")
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll books language tests passed")

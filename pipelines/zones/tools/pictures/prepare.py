@@ -506,12 +506,15 @@ def reviewed(choices):
         rel = ["Azeroth"] + [p for p in os.path.relpath(dp, world).split(os.sep) if p != "."]
         name = rel[-1]
         zone = len(rel) > 1 and zones.get(rel[-2])
-        area = zone if zone and name in areas.get(zone, {}) else None
+        # The folders carry the wiki's titles (Crossroads); the lore titles an area as the client
+        # does (The Crossroads).
+        listed = name if name in areas.get(zone, {}) else "The " + name
+        area = zone if zone and listed in areas.get(zone, {}) else None
         if name in zones and not area:
             homed.add(name)
         if name + " - new.png" in fs:
             old = next((f for f in fs if f.startswith(name + " - old")), None)
-            found.append((rel, area, {"path": os.path.join(dp, name + " - new.png"), "old": old and os.path.join(dp, old)}))
+            found.append((rel, area, listed, {"path": os.path.join(dp, name + " - new.png"), "old": old and os.path.join(dp, old)}))
 
     # A zone with a folder of its own somewhere (Eastern Kingdoms/Alterac Mountains, Riverglades)
     # makes a folder of that name inside a zone (Hillsbrad Foothills/Alterac Mountains,
@@ -519,10 +522,10 @@ def reviewed(choices):
     # City is the city.
     cities = zones.keys() - homed
     out, unknown = [], []
-    for rel, area, entry in found:
+    for rel, area, listed, entry in found:
         name = rel[-1]
         if area and name not in cities:
-            key, title = areas[area][name]
+            key, title = areas[area][listed]
             # The manifest id, as fetch.mjs entries() spells it.
             slug = re.sub(r"[^a-z0-9]+", "-", key).strip("-")
             out.append({**entry, "id": "%d-%s" % (area, slug), "parent": area, "key": key, "title": title})

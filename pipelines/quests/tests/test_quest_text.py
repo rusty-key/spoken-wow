@@ -5,7 +5,8 @@ import pytest
 
 import json
 
-from tts_cli.quest_text import in_game, left_out, lua_string, quest_text, removed_quests, render
+from tts_cli.quest_text import (fill_amounts, in_game, left_out, lua_string, objective_amounts, quest_text,
+                                removed_quests, render)
 
 
 def _line(quest, source, text, npc=288, gender=None, title="Growling Gut"):
@@ -35,6 +36,26 @@ def test_gossip_and_follow_up_lines_are_not_a_quest_s_words():
 def test_the_placeholders_are_kept_for_the_addon_to_fill():
     text = "Hello, $N the $c.$B$BMy $gbrother:sister;, a $R, needs you."
     assert quest_text({"lines": [_line(5, "accept", text)]})[5]["accept"] == text
+
+
+def test_an_objective_s_amount_is_written_in_from_the_client_s_objectives():
+    # Efficient Games' quests.enUS, as Forever's client has them: 94237 asks for 200 shot.
+    sets = {"1.60.1.70334": {"quests": {"94237": {"objectives": [{"amount": 1}, {"amount": 100}]}}},
+            "1.60.1.70338": {"quests": {"94237": {"objectives": [{"amount": 1}, {"amount": 200}]},
+                                        "94004": {"objectives": [{"amount": 1}, {"amount": 1}]}}}}
+    amounts = objective_amounts(sets)
+    assert amounts == {94237: [1, 200], 94004: [1, 1]}
+    corpus = {"lines": [_line(94237, "accept", "<The note is requesting $2oa Crafted Solid Shot.>"),
+                        _line(94004, "accept", "<The note is requesting $2oa Elixir of Ogre's Strength.>")]}
+    texts = quest_text(corpus, amounts=amounts)
+    assert texts[94237]["accept"] == "<The note is requesting 200 Crafted Solid Shot.>"
+    assert texts[94004]["accept"] == "<The note is requesting 1 Elixir of Ogre's Strength.>"
+
+
+def test_an_amount_not_known_keeps_its_token():
+    assert fill_amounts("requesting $2oa shot", None) == "requesting $2oa shot"
+    assert fill_amounts("requesting $3oa shot", [1, 200]) == "requesting $3oa shot"
+    assert quest_text({"lines": [_line(5, "accept", "Bring $2oa.")]})[5]["accept"] == "Bring $2oa."
 
 
 def test_a_gendered_pair_is_one_text():

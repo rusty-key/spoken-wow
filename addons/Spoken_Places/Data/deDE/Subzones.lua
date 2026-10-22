@@ -20,7 +20,7 @@ if not SpokenZones:ShouldLoadLanguage("deDE") then
 end
 
 local subzones = {
-	-- Durotar: 27 subzones
+	-- Durotar: 26 subzones
 	[1411] = {
 		["bladefist bay"] = {
 			name = "Messerbucht",
@@ -157,7 +157,7 @@ local subzones = {
 		["thunder ridge"] = {
 			name = "Donnergrat",
 			short = "Der Donnergrat ist eine Schlucht im Nordwesten Durotars, südwestlich von Orgrimmar. Er birgt einen Wald uralter Bäume, die im Einklang mit den Donnerechsen wuchsen, die zwischen ihnen hausen.",
-			full = "Der Donnergrat ist eine Schlucht im Nordwesten Durotars, südwestlich von Orgrimmar. Er birgt einen Wald uralter Bäume, die im Einklang mit den Donnerechsen wuchsen, die zwischen ihnen hausen.\n\nDer Einklang zerbrach, als ein menschlicher Holzfällerbetrieb begann, den Grat seiner Bäume zu berauben, und die Echsen in den Wahnsinn trieb. Rexxar, ausgesandt, um Schimmerkraut für Drek'Thar zu sammeln, bemerkte die Veränderung an den Tieren und brachte die Kunde zurück nach Orgrimmar. Er und Drek'Thar kehrten gemeinsam zurück, fanden den Holzfällerbetrieb und waren gezwungen, die wahnsinnigen Echsen zu töten, um eine Katastrophe abzuwenden, doch Rexxar sammelte danach ihre Eier, damit Drek'Thar sie untersuchen konnte.\n\nJaina Prachtmeer, von Thrall ausgesandt, um herauszufinden, was den Grat noch heimgesucht hatte, stellte fest, dass seine Bäume durch dämonische Magie gefällt worden waren, das Werk der Burning Blade, die die Region ins Wanken bringen wollte. Eine kleine Gruppe ihrer Kultisten unter der Führung von Fizzle Darkclaw schlug dort ihr Lager auf, um weiteres Chaos zu säen, und Orgnil Soulscar verlangte Fizzles Tod und seine Klaue als Beweis dafür.",
+			full = "Der Donnergrat ist eine Schlucht im Nordwesten Durotars, südwestlich von Orgrimmar. Er birgt einen Wald uralter Bäume, die im Einklang mit den Donnerechsen wuchsen, die zwischen ihnen hausen.\n\nDer Einklang zerbrach, als ein menschlicher Holzfällerbetrieb begann, den Grat seiner Bäume zu berauben, und die Echsen in den Wahnsinn trieb. Rexxar, ausgesandt, um Schimmerkraut für Drek'Thar zu sammeln, bemerkte die Veränderung an den Tieren und brachte die Kunde zurück nach Orgrimmar. Er und Drek'Thar kehrten gemeinsam zurück, fanden den Holzfällerbetrieb und waren gezwungen, die wahnsinnigen Echsen zu töten, um eine Katastrophe abzuwenden, doch Rexxar sammelte danach ihre Eier, damit Drek'Thar sie untersuchen konnte.\n\nJaina Prachtmeer, von Thrall ausgesandt, um herauszufinden, was den Grat noch heimgesucht hatte, stellte fest, dass seine Bäume durch dämonische Magie gefällt worden waren, das Werk der Burning Blade, die die Region ins Wanken bringen wollte. Eine kleine Gruppe ihrer Kultisten unter der Führung von Fizzle Dunkelsturm schlug dort ihr Lager auf, um weiteres Chaos zu säen, und Orgnil Soulscar verlangte Fizzles Tod und seine Klaue als Beweis dafür.",
 			source = "https://warcraft.wiki.gg/wiki/Thunder_Ridge",
 		},
 		["tiragarde keep"] = {
@@ -179,7 +179,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Valley_of_Trials",
 		},
 	},
-	-- Mulgore: 18 subzones
+	-- Mulgore: 17 subzones
 	[1412] = {
 		["baeldun digsite"] = {
 			name = "Grabungsstätte von Bael'dun",
@@ -366,8 +366,8 @@ local subzones = {
 		},
 		["forgotten pools"] = {
 			name = "Die vergessenen Teiche",
-			short = "Die vergessenen Teiche liegen nördlich der westlichen Straße aus Crossroads, die nördlichste der Oasen, die über das nördliche Brachland verstreut sind.",
-			full = "Die vergessenen Teiche liegen nördlich der westlichen Straße aus Crossroads, die nördlichste der Oasen, die über das nördliche Brachland verstreut sind. Ihre Ufer bleiben grün, gesäumt von Beladenen Pilzen, die nirgendwo sonst zu finden sind, und ihr Wasser birgt Deviatfische, die keinem anderen Fang im Brachland gleichen.\n\nKolkarzentauren streifen am Ufer entlang, neben den Schildkröten und Tieren, die dort Zuflucht suchen.",
+			short = "Die vergessenen Teiche liegen nördlich der westlichen Straße aus Crossroads, die nördlichste der Oasen, die über den Norden des Brachlands verstreut sind.",
+			full = "Die vergessenen Teiche liegen nördlich der westlichen Straße aus Crossroads, die nördlichste der Oasen, die über den Norden des Brachlands verstreut sind. Ihre Ufer bleiben grün, gesäumt von Beladenen Pilzen, die nirgendwo sonst zu finden sind, und ihr Wasser birgt Deviatfische, die keinem anderen Fang im Brachland gleichen.\n\nKolkarzentauren streifen am Ufer entlang, neben den Schildkröten und Tieren, die dort Zuflucht suchen.",
 			source = "https://warcraft.wiki.gg/wiki/Forgotten_Pools",
 		},
 		["fray island"] = {
@@ -773,7 +773,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Tainted_Scar",
 		},
 	},
-	-- Tirisfal: 28 subzones
+	-- Tirisfal: 27 subzones
 	[1420] = {
 		["agamand family crypt"] = {
 			name = "Gruft der Familie Agamand",
@@ -1073,7 +1073,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Valgan's_Field",
 		},
 	},
-	-- Westliche Pestländer: 18 subzones
+	-- Westliche Pestländer: 17 subzones
 	[1422] = {
 		["bulwark"] = {
 			name = "Das Bollwerk",
@@ -1266,8 +1266,8 @@ local subzones = {
 		},
 		["northpass tower"] = {
 			name = "Nordpassturm",
-			short = "Der Nordpassturm ist der nördlichste der Wachtürme in den Östlichen Pestländern und markiert die Straße zu den Geisterlanden von Quel'Thalas.",
-			full = "Der Nordpassturm ist der nördlichste der Wachtürme in den Östlichen Pestländern und markiert die Straße zu den Geisterlanden von Quel'Thalas. Die Geißel fegte durch Lordaeron, und der Turm trägt ihre Narben noch immer.",
+			short = "Der Nordpassturm ist der nördlichste der Wachtürme in den Östlichen Pestländern und markiert die Straße nach Quel'Thalas.",
+			full = "Der Nordpassturm ist der nördlichste der Wachtürme in den Östlichen Pestländern und markiert die Straße nach Quel'Thalas. Die Geißel fegte durch Lordaeron, und der Turm trägt ihre Narben noch immer.",
 			source = "https://warcraft.wiki.gg/wiki/Northpass_Tower",
 		},
 		["noxious glade"] = {
@@ -1290,8 +1290,8 @@ local subzones = {
 		},
 		["quellithien lodge"] = {
 			name = "Quel'Lithien-Lodge",
-			short = "Die Quel'Lithien-Lodge war ein Lager der Weitschreiter nahe Quel'Thalas, ein Ort der Wärme und Gastfreundschaft. Lor'themar Theron erinnerte sich von seinen eigenen Besuchen daran, herzlich begrüßt von Gefährten, die ihn ihr Zuhause nannten.",
-			full = "Die Quel'Lithien-Lodge war ein Lager der Weitschreiter nahe Quel'Thalas, ein Ort der Wärme und Gastfreundschaft. Lor'themar Theron erinnerte sich von seinen eigenen Besuchen daran, herzlich begrüßt von Gefährten, die ihn ihr Zuhause nannten. Die Lodge beherbergte einst eine Reihe elfischer Dokumente, manche davon über die Königsfamilie und den Waldläufergeneral von Silbermond. Zur Zeit des Zweiten Krieges führte Renthar Hawkspear die Jäger dort an.",
+			short = "Die Quel'Lithien-Lodge war ein Lager der Weitschreiter nahe Quel'Thalas, ein Ort der Wärme und Gastfreundschaft.",
+			full = "Die Quel'Lithien-Lodge war ein Lager der Weitschreiter nahe Quel'Thalas, ein Ort der Wärme und Gastfreundschaft. Die Lodge beherbergte einst eine Reihe elfischer Dokumente, manche davon über die Königsfamilie und den Waldläufergeneral von Silbermond. Zur Zeit des Zweiten Krieges führte Renthar Hawkspear die Jäger dort an.",
 			source = "https://warcraft.wiki.gg/wiki/Quel'Lithien_Lodge",
 		},
 		["scarlet base camp"] = {
@@ -1349,7 +1349,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Zul'Mashar",
 		},
 	},
-	-- Vorgebirge von Hillsbrad: 29 subzones
+	-- Vorgebirge von Hillsbrad: 24 subzones
 	[1424] = {
 		["azurelode mine"] = {
 			name = "Der Azurschacht",
@@ -1468,7 +1468,7 @@ local subzones = {
 		["southpoint tower"] = {
 			name = "Southpoint-Turm",
 			short = "Der Southpoint-Turm steht am äußersten Westrand des Vorgebirges von Hillsbrad, gleich südlich der Straße, die weiter in den Silberwald führt.",
-			full = "Der Southpoint-Turm steht am äußersten Westrand des Vorgebirges von Hillsbrad, gleich südlich der Straße, die weiter in den Silberwald führt. Das Mauerwerk ist alt und rissig, ein dem Verfall überlassener Späherposten, doch der Turm selbst wurde in den Kämpfen, die hier tobten, nie zu Fall gebracht. In der Nähe steht unmarkiert ein weiterer Turm zwischen Tarrens Mühle und Southshore, ebenfalls verschont von der Zerstörung, die über den Rest des Vorgebirges hinwegfegte.",
+			full = "Der Southpoint-Turm steht am äußersten Westrand des Vorgebirges von Hillsbrad, gleich südlich der Straße, die weiter in den Silberwald führt. Das Mauerwerk ist alt und rissig, ein dem Verfall überlassener Späherposten, doch der Turm selbst wurde in den Kämpfen, die hier tobten, nie zu Fall gebracht.",
 			source = "https://warcraft.wiki.gg/wiki/Southpoint_Tower",
 		},
 		["strahnbrad"] = {
@@ -1619,7 +1619,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Zun'watha",
 		},
 	},
-	-- Dun Morogh: 25 subzones
+	-- Dun Morogh: 24 subzones
 	[1426] = {
 		["amberstill ranch"] = {
 			name = "Amberstill-Ranch",
@@ -1904,7 +1904,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Terror_Wing_Path",
 		},
 	},
-	-- Wald von Elwynn: 23 subzones
+	-- Wald von Elwynn: 22 subzones
 	[1429] = {
 		["brackwell pumpkin patch"] = {
 			name = "Brackwells Kürbisbeet",
@@ -2201,7 +2201,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Yorgen_Farmstead",
 		},
 	},
-	-- Loch Modan: 16 subzones
+	-- Loch Modan: 15 subzones
 	[1432] = {
 		["algaz station"] = {
 			name = "Station Algaz",
@@ -2548,7 +2548,7 @@ local subzones = {
 		["south seas"] = {
 			name = "Die südlichen Meere",
 			short = "Die südlichen Meere füllen das Wasser zwischen den bekannten Kontinenten, ein Teil des Großen Meeres. Zandalar erhebt sich aus diesen Wassern, die uralte Heimat des Trollreichs.",
-			full = "Die südlichen Meere füllen das Wasser zwischen den bekannten Kontinenten, ein Teil des Großen Meeres. Zandalar erhebt sich aus diesen Wassern, die uralte Heimat des Trollreichs. Auch Kezan liegt in ihnen, eine Vulkaninsel, deren Volk sich von den Mächten des Festlands fernhält. Näher am Schlingendorntal wird das Meer tückisch mit Riffen und kleinen Inseln, manche nicht mehr als eine Sandbank, andere mit Ruinen, deren Erbauer verschwunden sind. Die südlichen Meere erstrecken sich entlang der Grenzen des Schlingendorntals, von Tanaris und von Uldum.",
+			full = "Die südlichen Meere füllen das Wasser zwischen den bekannten Kontinenten, ein Teil des Großen Meeres. Zandalar erhebt sich aus diesen Wassern, die uralte Heimat des Trollreichs. Näher am Schlingendorntal wird das Meer tückisch mit Riffen und kleinen Inseln, manche nicht mehr als eine Sandbank, andere mit Ruinen, deren Erbauer verschwunden sind. Die südlichen Meere erstrecken sich entlang der Grenzen des Schlingendorntals und von Tanaris.",
 			source = "https://warcraft.wiki.gg/wiki/South_Seas",
 		},
 		["southern savage coast"] = {
@@ -2957,7 +2957,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Whelgar's_Excavation_Site",
 		},
 	},
-	-- Teldrassil: 17 subzones
+	-- Teldrassil: 16 subzones
 	[1438] = {
 		["aldrassil"] = {
 			name = "Aldrassil",
@@ -3149,7 +3149,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Wildbend_River",
 		},
 	},
-	-- Eschental: 41 subzones
+	-- Eschental: 40 subzones
 	[1440] = {
 		["astranaar"] = {
 			name = "Astranaar",
@@ -3392,7 +3392,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Zoram'gar_Outpost",
 		},
 	},
-	-- Tausend Nadeln: 20 subzones
+	-- Tausend Nadeln: 19 subzones
 	[1441] = {
 		["camp ethok"] = {
 			name = "Camp E'thok",
@@ -4138,7 +4138,7 @@ local subzones = {
 		["south seas"] = {
 			name = "Die südlichen Meere",
 			short = "Die Gewässer südlich der bekannten Kontinente öffnen sich zu einem weiten Teil des Großen Meeres und tragen Strömungen an Inseln vorbei, deren Namen vor allem Seeleuten bekannt sind.",
-			full = "Die Gewässer südlich der bekannten Kontinente öffnen sich zu einem weiten Teil des Großen Meeres und tragen Strömungen an Inseln vorbei, deren Namen vor allem Seeleuten bekannt sind. Zandalar erhebt sich aus diesen Wassern, die uralte Heimat des Trollreichs. Auch Kezan liegt in ihnen, eine Vulkaninsel, deren Volk sich von den Mächten des Festlands fernhält.\n\nNäher am Schlingendorntal wird das Meer tückisch mit Riffen und verborgenen Buchten, die Art von Gewässern, in denen ein Kapitän entweder jeden Felsen beim Namen kennt oder sein Schiff verliert. Kleine Inseln sprenkeln diesen Abschnitt, manche nicht mehr als eine Sandbank, andere mit Ruinen, deren Erbauer längst unter den Wellen verschwunden sind.\n\nWas dieses Meer nennenswert macht, ist weniger eine einzelne Schlacht, die auf ihm geschlagen wurde, als die Dinge, die es verschlungen und halb wieder preisgegeben hat: versunkene Tempel, ertrunkene Küsten, Ruinen, die man bei Ebbe durch klares Wasser erblickt. Es ist ein Meer der Ränder und Zwischenorte, das sich entlang der Grenzen des Schlingendorntals, von Tanaris und von Uldum erstreckt und an die Küsten, die es trennt, trägt, was immer die Gezeiten bringen wollen.",
+			full = "Die Gewässer südlich der bekannten Kontinente öffnen sich zu einem weiten Teil des Großen Meeres und tragen Strömungen an Inseln vorbei, deren Namen vor allem Seeleuten bekannt sind. Zandalar erhebt sich aus diesen Wassern, die uralte Heimat des Trollreichs.\n\nNäher am Schlingendorntal wird das Meer tückisch mit Riffen und verborgenen Buchten, die Art von Gewässern, in denen ein Kapitän entweder jeden Felsen beim Namen kennt oder sein Schiff verliert. Kleine Inseln sprenkeln diesen Abschnitt, manche nicht mehr als eine Sandbank, andere mit Ruinen, deren Erbauer längst unter den Wellen verschwunden sind.\n\nWas dieses Meer nennenswert macht, ist weniger eine einzelne Schlacht, die auf ihm geschlagen wurde, als die Dinge, die es verschlungen und halb wieder preisgegeben hat: versunkene Tempel, ertrunkene Küsten, Ruinen, die man bei Ebbe durch klares Wasser erblickt. Es ist ein Meer der Ränder und Zwischenorte, das sich entlang der Grenzen des Schlingendorntals und von Tanaris erstreckt und an die Küsten, die es trennt, trägt, was immer die Gezeiten bringen wollen.",
 			source = "https://warcraft.wiki.gg/wiki/South_Seas",
 		},
 		["southbreak shore"] = {
@@ -4155,8 +4155,8 @@ local subzones = {
 		},
 		["steamwheedle port"] = {
 			name = "Steamwheedle",
-			short = "Der Hafen von Steamwheedle liegt an der Ostküste von Tanaris, eine Straße führt nach Westen zu seiner Mutterstadt Gadgetzan, und ein Anleger reicht in Richtung Kezan hinaus.",
-			full = "Der Hafen von Steamwheedle liegt an der Ostküste von Tanaris, eine Straße führt nach Westen zu seiner Mutterstadt Gadgetzan, und ein Anleger reicht in Richtung Kezan hinaus. Er gehört dem Steamwheedle-Kartell, Goblins, die mit jedem Geschäfte machen, solange das Gold stimmt.\n\nUnter den Bewohnern des Hafens ist Yeh'kinya, dessen Machenschaften die Rückkehr von Hakkar dem Seelenschinder in Gang setzten.",
+			short = "Der Hafen von Steamwheedle liegt an der Ostküste von Tanaris, eine Straße führt nach Westen zu seiner Mutterstadt Gadgetzan, und ein Anleger reicht aufs Meer hinaus.",
+			full = "Der Hafen von Steamwheedle liegt an der Ostküste von Tanaris, eine Straße führt nach Westen zu seiner Mutterstadt Gadgetzan, und ein Anleger reicht aufs Meer hinaus. Er gehört dem Steamwheedle-Kartell, Goblins, die mit jedem Geschäfte machen, solange das Gold stimmt.\n\nUnter den Bewohnern des Hafens ist Yeh'kinya, dessen Machenschaften die Rückkehr von Hakkar dem Seelenschinder in Gang setzten.",
 			source = "https://warcraft.wiki.gg/wiki/Steamwheedle_Port",
 		},
 		["thistleshrub valley"] = {
@@ -4807,7 +4807,7 @@ local subzones = {
 		["valley of heroes"] = {
 			name = "Das Tal der Helden",
 			short = "Eine Brücke aus hellem Stein trägt jeden Reisenden über den Graben vor dem Südtor von Stormwind in ein grünes Tal, gesäumt von Statuen, die ebenso sehr aus Trauer wie zum Ruhm errichtet wurden.",
-			full = "Eine Brücke aus hellem Stein trägt jeden Reisenden über den Graben vor dem Südtor von Stormwind in ein grünes Tal, gesäumt von Statuen, die ebenso sehr aus Trauer wie zum Ruhm errichtet wurden.\n\nNach dem Zweiten Krieg, als Stormwind aus seinen Trümmern wiederaufgebaut wurde, ehrte die Stadt jene, die die Expedition der Allianz durch das Dunkle Portal führten, um es von der anderen Seite zu versiegeln. Kurdran Wildhammer und Erzmagier Khadgar stehen links der Straße; Truppenkommandant Danath Trollbann und Waldläuferhauptmann Alleria Windläufer rechts; und am Ende der Straße, wo sie sich gabelt, um in die eigentliche Stadt zu führen, steht General Turalyon, der sie alle anführte. Keiner der fünf kehrte je zurück.\n\nJahre später wurde Arator, der Sohn von Alleria und Turalyon, zu einer Zeremonie ins Tal gebracht, auf den Schultern eines Ritters der Silbernen Hand getragen. Er blickte zu dem steinernen Abbild seiner Mutter auf, einem Gesicht, an das er keine Erinnerung hatte. Etwas von ihr erreichte ihn dort, denn der Junge lächelte und streckte die Hand nach der Statue aus. Während er heranwuchs, sollte er immer wieder zurückkehren, um vor ihrem Gesicht zu stehen und zu wissen, ohne sich an sie zu erinnern, dass sie ihn geliebt hatte.",
+			full = "Eine Brücke aus hellem Stein trägt jeden Reisenden über den Graben vor dem Südtor von Stormwind in ein grünes Tal, gesäumt von Statuen, die ebenso sehr aus Trauer wie zum Ruhm errichtet wurden.\n\nNach dem Zweiten Krieg, als Stormwind aus seinen Trümmern wiederaufgebaut wurde, ehrte die Stadt jene, die die Expedition der Allianz durch das Dunkle Portal führten, um es von der anderen Seite zu versiegeln. Kurdran Wildhammer und Erzmagier Khadgar stehen links der Straße; Truppenkommandant Danath Trollbann und Waldläuferhauptmann Alleria Windläufer rechts; und am Ende der Straße, wo sie sich gabelt, um in die eigentliche Stadt zu führen, steht General Turalyon, der sie alle anführte. Keiner der fünf kehrte je zurück.",
 			source = "https://warcraft.wiki.gg/wiki/Valley_of_Heroes",
 		},
 	},

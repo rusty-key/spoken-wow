@@ -150,8 +150,7 @@ function MinimalPlayer:Initialize(original)
     self.resizer = CreateFrame("Button", nil, frame)
     self.resizer:SetSize(12, 12)
     self.resizer:SetPoint("BOTTOMRIGHT", -5, 12)
-    -- The client's own, as Azeroth's Compendium's. The Small Window is not offered on the legacy
-    -- clients.
+    -- The client's own, as Azeroth's Compendium's.
     self.resizer:SetNormalTexture([[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]])
     self.resizer:SetAlpha(0)
     self.resizer:SetScript("OnMouseDown", function(_, button)

@@ -10,16 +10,9 @@ setfenv(1, VoiceOver)
 -- Marks go into the paragraph's own text: colour codes take no width and a left-aligned
 -- prefix wraps as the whole did, so nothing moves. The original text goes back when the line
 -- ends, because DialogueUI reads it for its own text-to-speech.
---
--- Parses as Lua 5.0 (no #, no %) because addon.xml is shared with the 1.12 client.
 
 DialogueUIBridge = { status = "waiting" }
 local Bridge = DialogueUIBridge
-
-if Version.IsAnyLegacy then
-    Bridge.status = "legacy client"
-    return
-end
 
 -- A page can be built again (an item reward resolving, QUEST_DETAIL firing twice).
 local HANDLERS = { "HandleQuestDetail", "HandleQuestProgress", "HandleQuestComplete",
@@ -72,8 +65,6 @@ function Bridge:Problem(feature)
         return L.OPT_DUI_UNKNOWN
     elseif (feature == "Captions" or feature == "AutoScroll")
         and not (Spoken.GetCaption and Spoken.SplitCaption and Spoken.WordMarks) then
-        return L.OPT_DUI_OLD_PLAYER
-    elseif feature == "ShowPlayer" and not Spoken.SetPlayerHost then
         return L.OPT_DUI_OLD_PLAYER
     end
 end
@@ -265,25 +256,6 @@ end
 function Bridge:Read(event, queued)
     if not queued and state.pending and state.pending.event == event then
         state.pending = nil
-    end
-end
-
---------------------------------------------------------------------------------
--- The player over the window
---------------------------------------------------------------------------------
-
-local hosting = false
-
---- Put the player on DialogueUI's window while it is open and the setting is on; back on
---- UIParent otherwise.
-function Bridge:UpdatePlayerHost()
-    if not (_G.Spoken and Spoken.SetPlayerHost and self.driver) then
-        return
-    end
-    local want = self.driver:IsVisible() and Config().ShowPlayer and true or false
-    if want ~= hosting then
-        hosting = want
-        Spoken:SetPlayerHost(want and DUIQuestFrame or nil)
     end
 end
 
@@ -840,7 +812,6 @@ function Bridge:Hook()
         end
     end)
     driver:SetScript("OnShow", function()
-        self:UpdatePlayerHost()
         HostContributeBox(frame)
         self:RefreshPlayButton()
         RefreshContribute()
@@ -850,7 +821,6 @@ function Bridge:Hook()
         state.pending = nil
         -- Closed before it showed in full: the player walked on, and the line is not read.
         waiting = nil
-        self:UpdatePlayerHost()
         HostContributeBox(nil)
         self:DrawPlayButton()
         RefreshContribute()
@@ -894,14 +864,13 @@ function Bridge:Refresh()
         Restore()
     end
     self:RefreshPlayButton()
-    self:UpdatePlayerHost()
 end
 
 --- One line for /spq diagnostics.
 function Bridge:Describe()
     local cfg = Config()
-    return format("DialogueUI: %s; words=%s scroll=%s player=%s play=%s button=%s provider=%s", tostring(self.status),
-        tostring(cfg.Captions), tostring(cfg.AutoScroll), tostring(cfg.ShowPlayer),
+    return format("DialogueUI: %s; words=%s scroll=%s play=%s button=%s provider=%s", tostring(self.status),
+        tostring(cfg.Captions), tostring(cfg.AutoScroll),
         tostring(cfg.PlayButton), row and row.frame:IsShown() and row.play:IsShown() and "shown" or "hidden",
         tostring(self.provider == true))
 end

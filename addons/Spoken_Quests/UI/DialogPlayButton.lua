@@ -8,13 +8,11 @@ setfenv(1, VoiceOver)
 -- dialog has settled, and the Spoken player frame is where it is stopped.
 --
 -- A TEXT button, not an icon, for PlayButton.lua's reason: an icon path cannot be verified
--- without launching the client, and a texture missing on a legacy client draws
--- nothing at all.
+-- without launching the client, and a missing texture draws nothing at all.
 --
 -- IN THE CORNER UI/ContributeButton.lua uses, under the close button, on whichever of the two
 -- frames is up. The two buttons never want it at once: Contribute is shown only for a line the
--- packs do not have, and this only for one they do. Contribute.xml is not loaded on the legacy clients, so the placement is
--- copied here rather than borrowed from it.
+-- packs do not have, and this only for one they do.
 --
 -- Not drawn under a replacement dialog addon: DialogueUI hides QuestFrame and GossipFrame, and
 -- a button parented to UIParent would float over nothing. /spq read still works there.
@@ -27,8 +25,7 @@ local GAP = 2
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
 
--- The events that change which panel is up, ContributeButton.lua's seven. Ignored as
--- arguments, for its reason: 1.12 hands OnEvent none.
+-- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
     "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING",
     "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_FINISHED",

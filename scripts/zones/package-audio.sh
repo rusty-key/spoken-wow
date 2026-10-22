@@ -261,7 +261,7 @@ for tier in "${tiers[@]}"; do
   # installed, which the client answers with no icon at all rather than an error.
   sed -i.bak \
     -e "s|^## IconTexture:.*|## IconTexture: Interface\\\\AddOns\\\\$folder\\\\Textures\\\\AddonIcon.tga|" \
-    -e "s|^## Title:.*|## Title: $title|" \
+    -e "s~^## Title:.*~## Title: ${title/#Spoken/|cffb48cffSpoken|r}~" \
     -e "s|^## Version:.*|## Version: $version|" \
     -e "s|^## X-SpokenZones-Quality:.*|## X-SpokenZones-Quality: $tier|" \
     -e "s|^## X-SpokenZones-Bitrate:.*|## X-SpokenZones-Bitrate: $bitrate|" \

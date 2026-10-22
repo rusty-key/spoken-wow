@@ -2,9 +2,6 @@
 -- greetings after the first time, and nothing past it. A guard's directions are a page the player
 -- picked an option to reach, and they went quiet along with the greeting (issue #166).
 -- Run with `make test-player`.
---
--- Both gossip APIs are covered, because picking an option is noticed through a hook on each:
--- C_GossipInfo.SelectOption on Blizzard's clients and SelectGossipOption on the 1.12 one.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -30,7 +27,6 @@ local function Boot(client)
     local VO = stub.LoadQuests(QUESTS, SPOKEN)
     dofile(QUESTS .. "UI/DialogPlayButton.lua")
     VO.Addon:OnInitialize()
-    -- By id and by name: the 1.12 client has no GUID for the lookup to key on.
     local gossip = { [GREETING] = "greeting-hash", [DIRECTIONS] = "directions-hash", [OTHER] = "other-hash" }
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = { ["greeting-hash"] = 1, ["directions-hash"] = 1, ["other-hash"] = 1,
@@ -77,12 +73,13 @@ local function Leave()
     _G.Spoken:StopAll()
 end
 
-for _, client in ipairs({ "11509", "1.12" }) do
+for _, client in ipairs({ "11509", "16001" }) do
     local VO, played = Boot(client)
     local Frequency = VO.Enums.GossipFrequency
 
-    Expect(client .. ": Once per Greeting is the default", VO.Addon.db.profile.Audio.GossipFrequency,
-        Frequency.OncePerNPC)
+    Expect(client .. ": Once for Quest Givers is the default", VO.Addon.db.profile.Audio.GossipFrequency,
+        Frequency.OncePerQuestNPC)
+    VO.Addon.db.profile.Audio.GossipFrequency = Frequency.OncePerNPC
 
     -- An NPC marked heard before greetings were told apart counts as never heard.
     VO.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true

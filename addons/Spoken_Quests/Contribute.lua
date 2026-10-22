@@ -24,7 +24,7 @@ Contribute = {}
 
 local function GUIDType()
     local guid = Utils:GetNPCGUID()
-    if not guid or not Utils.GetGUIDType then
+    if not guid then
         return nil
     end
     local ok, guidType = pcall(Utils.GetGUIDType, Utils, guid)
@@ -106,8 +106,8 @@ end
 -- One frame, made once, with no parent and never shown: an unshown model draws nothing, and
 -- this client has hung its GPU on model rendering before.
 local DISPLAY_ROLLS = 32
--- nil until first asked for; false once this client turned out not to have what it takes
--- (the 1.12-3.3.5 clients have no GetDisplayInfo), so it is never asked again.
+-- nil until first asked for; false once this client turned out not to have what it takes,
+-- so it is never asked again.
 local displayRoller
 -- npcId -> the appearance ids as the envelope carries them. Only ever set to a real answer: a
 -- creature the client has not cached yet answers 0 to every roll, and the next capture, after
@@ -366,9 +366,8 @@ function Contribute:Capture()
     -- The creature id is required rather than merely included. A gossip contribution is keyed on
     -- it and nothing else -- there is no quest id to fall back on -- so an envelope without one
     -- is refused on arrival, and offering a button that leads to a refusal is worse than
-    -- offering none. Two ways to arrive here without an id: the frame closing under us, where
-    -- the words are still readable and the unit is already gone, and the 1.12 client, which has
-    -- no UnitGUID and so can never name the creature.
+    -- offering none. The way to arrive here without an id is the frame closing under us, where
+    -- the words are still readable and the unit is already gone.
     local gossip = GossipOnScreen()
     if gossip and gossip ~= "" and NPCID() then
         -- Detemplated before the key is taken too, so the same line gathered on two
@@ -664,10 +663,9 @@ end
 --- Right-click opens Spoken's debug log menu, as Report's does, where the Spoken Developer module
 --- is installed: a Contribute button is up exactly when a line did not play, which is when the log
 --- says why. Hooked on mouse-up rather than set as the click, so the button's own OnClick, set
---- again each time it stands for another quest, keeps the left button. No HookScript on 1.12,
---- where the module does not run anyway.
+--- again each time it stands for another quest, keeps the left button.
 function Contribute:OfferLogMenu(button)
-    if not button or button.offersLogMenu or not button.HookScript then
+    if not button or button.offersLogMenu then
         return
     end
     button.offersLogMenu = true
@@ -689,7 +687,7 @@ local function Offer(envelope, key)
     -- What the first-click choice gathers if the player takes it. Only for a line with a key:
     -- a quest log entry has no NPC in front of it, so it is sent but never kept.
     local gather = key and { key = key, envelope = envelope } or nil
-    -- Encode is absent on an older Spoken a legacy-client zip can still bundle; Link
+    -- Encode is absent on an older Spoken; Link
     -- returns nil for that or for an oversized result. Either way, the two-copy fallback still
     -- works, which is the whole point of shipping it alongside the link instead of replacing it.
     local link = Spoken.Contribute.Encode and Spoken.Contribute:Link(address, envelope)

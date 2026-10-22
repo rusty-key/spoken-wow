@@ -13,8 +13,6 @@ brings back what was hidden, inside DialogueUI's window:
   gold on DialogueUI's dark theme and deep red on its parchment theme, where gold is hard to read.
 - **Keep the words in view.** Long text scrolls to the paragraph being read whenever reading
   moves to another paragraph.
-- **Show Spoken over DialogueUI.** The window or the subtitles stay on screen in the place they
-  were left, with their controls. They can't be dragged until DialogueUI closes.
 - **Spoken's controls on the title line.** At the top right of DialogueUI's window, on the line
   of its quest title, sit the player's round Play, Skip and Report buttons and, right of them, a
   close button in the art of DialogueUI's book view (the paper's on the parchment theme, the
@@ -48,12 +46,12 @@ brings back what was hidden, inside DialogueUI's window:
   faint (40 %) under DialogueUI's Decline (or Goodbye) button, right-aligned with it, in full
   where it contributes.
 
-All but **Show Spoken over DialogueUI** are on by default: DialogueUI's window, marked as the
-line plays, already shows the words. They sit in a DialogueUI section on Spoken's page, after
-the narrator style's settings, added there through `Spoken:AddDialogueUISettings`, and show under
-every narrator style, since DialogueUI's window is there whichever one is chosen. **Show Spoken
-over DialogueUI** is the exception: with Voice Only there is no window or subtitle to keep on
-screen, so it is not shown. **Reset Spoken Settings** on that page resets them too. Without
+All are on by default. They sit in a DialogueUI section on Spoken's page, after the narrator
+style's settings, added there through `Spoken:AddDialogueUISettings`, and show under every
+narrator style, since DialogueUI's window is there whichever one is chosen. **Reset Spoken
+Settings** on that page resets them too. Spoken's own window and subtitles stay off DialogueUI's
+window: DialogueUI hides the rest of the interface while it is open, and its own window, marked as
+the line plays, shows the words. Without
 DialogueUI installed there are none. When something else they need is missing they are greyed
 out with the reason in their tooltip.
 `/spq diagnostics` prints one `DialogueUI:` line with the same answer.
@@ -124,16 +122,6 @@ ahead of the words it marks. So an automatic read of the page DialogueUI is show
 in `Bridge:Defer` (asked by `Addon:InvokeQuestHandler`), until the window and its text are at
 full opacity, for at most 1.5 s, and is dropped if the window closes first. A read the player
 asks for, and a dialog DialogueUI is not showing, read at once.
-
-**Hosting the player.** This uses `Spoken:SetPlayerHost(DUIQuestFrame)`:
-
-- The window and the subtitles are reparented with their anchors kept and their scale
-  adjusted, so they keep their exact place on screen.
-- Their strata is raised above the window. The subtitles pass clicks through to it.
-- The windows can still be dragged: their effective scale and UIParent anchor are kept, so a
-  place saved over the window is the same place without it. The subtitles are click-through.
-
-`Spoken:SetPlayerHost(nil)` puts all of it back, the subtitles' own low strata included.
 
 **Contribute button.** Spoken Quests decides there is a line to contribute from the game's
 quest panels and gossip frame, which DialogueUI never shows. `Bridge:Page()` gives the

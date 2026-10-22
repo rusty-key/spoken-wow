@@ -3,6 +3,7 @@
 #
 #   ./scripts/zones/package.sh              # dist/Spoken_Places-<version>.zip
 #   ALLOW_DIRTY=1 ./scripts/zones/package.sh  # build from an uncommitted tree
+#   ADDON=addons/Spoken_NPCs NAME=Spoken_NPCs ./scripts/zones/package.sh  # Spoken NPCs, packed the same way
 #
 # The version comes from `## Version:` in the .toc, so bumping the addon and
 # naming the zip stay one edit rather than two.

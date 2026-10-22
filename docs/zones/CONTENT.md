@@ -20,10 +20,13 @@ An area with a wiki page. The wiki lists an area under `Category:<Zone> subzones
 4. If the page is long, rewrite it with Claude first (`rewrite-lore.mjs`, which spends credits).
 5. Run `make zones-check`, then the voice steps below if the place should be read aloud.
 
-An area the client has and the wiki does not. The export keeps any place in the AreaTable seeds
-(`seed/era-areas.json`, `seed/camelot-areas.json`) as a `pending = true` entry with empty text, so the
-tab lists it and says it is not written yet. Someone writes it on the site, which records it as
-`edited`. Contribute on a pending place sends the player's description to the site.
+An area the client has and the wiki does not. It needs a row on the site with origin
+`discovered` and empty text. The export ships such a row as a `pending = true` entry, so the tab
+lists it and says it is not written yet. The export does not create these rows: the ones on the
+site came from one client sweep, and the AreaTable seeds (`seed/era-areas.json`,
+`seed/camelot-areas.json`) only decide which of the site's rows a client can name and so ship.
+Someone writes the place on the site, which records it as `edited`. Contribute on a pending place
+sends the player's description to the site.
 
 A zone. Add its uiMapID and wiki title to `seed/zones.json` and add it to `seed/subzones.json`. With
 `DATABASE_URL` set, run `scrape.mjs --only <uiMapID>` and `scrape-subzones.mjs --zone <uiMapID>`, then

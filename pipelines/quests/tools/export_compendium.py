@@ -80,7 +80,7 @@ WAGO_CACHE = os.path.join(ROOT, "pipelines", "lib", "cache", "wago")
 # Forever's client (wago.tools' wow_classic_beta), and Classic Era's: the builds wago.mjs pins
 # (tests/test_compendium_tables.py holds them equal). With Era's alone, Forever's own zones and
 # sorts resolve to nothing, even where the DB names them.
-BUILD = "1.60.1.70338"
+BUILD = "1.60.1.70450"
 ERA_BUILD = "1.15.9.69109"
 # Efficient Games' Forever data: what players' Forever clients recorded, per client build (EG Link,
 # CC BY 4.0, credited in THIRD_PARTY.md), at one commit of their repository: it grows every day,
@@ -105,8 +105,9 @@ CITY_IN = {1453: 1429, 1454: 1411, 1455: 1426, 1456: 1412, 1457: 1438, 1458: 142
 # The Forever repack's extracted map files, whose AREA chunks say which area a point is in.
 MAPS_DIR = os.environ.get("COMPENDIUM_MAPS", "C:/Forever/ForeverRepack/data/maps")
 # The dungeons and raids a quest is filed under (`dungeon`): not the other instances, such as the
-# Excavation Site, an instance of the Wetlands' own story (Caitlin Grassman's quests).
-DUNGEONS = {int(m) for m in _INSTANCES["dungeons"]}
+# Excavation Site, an instance of the Wetlands' own story (Caitlin Grassman's quests). A map listed
+# under both, as the Excavation Site is for the Bosses tab, files its quests as an instance.
+DUNGEONS = {int(m) for m in _INSTANCES["dungeons"]} - {int(m) for m in _INSTANCES["instances"]}
 # The battlegrounds' maps, and the zone map of each: Alterac Valley, Warsong Gulch, Arathi Basin
 # and Forever's Darkspear Islands.
 BATTLEGROUND_ZONE = {int(m): row["zone"] for m, row in _INSTANCES["battlegrounds"].items()}
@@ -1043,10 +1044,13 @@ def connect(args):
 
 
 def with_db(args):
+    # The run that reads the DB places every giver, and the rectangles overlap along every border:
+    # a giver at a zone's edge fell into its neighbour (A Sealed Crate in Durotar).
+    area_at = area_reader()
+    if not area_at:
+        raise SystemExit(f"no map files at {MAPS_DIR}: set COMPENDIUM_MAPS to the repack's data/maps folder")
     quests, givers, spawns = corpus_quests()
-    maps = Maps(area_at=area_reader())
-    if not maps.area_at:
-        print(f"no map files at {MAPS_DIR} (COMPENDIUM_MAPS): givers are placed by zone rectangles")
+    maps = Maps(area_at=area_at)
     db = connect(args)
     ids = sorted(quests)
     marks = ",".join(["%s"] * len(ids))

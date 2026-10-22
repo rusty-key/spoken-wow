@@ -44,21 +44,12 @@ function QuestOverlayUI:CreatePlayButton(questID)
     self.questPlayButtons[questID] = self:MakePlayButton()
 end
 
---- Contribute.lua, or nil where it is not loaded: the legacy clients leave it out
---- (Contribute.xml), and this file runs on them too. rawget, so a global of the same name from
---- some other addon is never mistaken for it.
-local function ContributeModule()
-    return rawget(VoiceOver, "Contribute")
-end
-
 --- The Contribute button for a quest the log has no sound for, sitting where its Play would,
---- or nil when this client cannot offer one (no Contribute.lua, buttons hidden, or no sound
---- pack at all -- see Contribute:CanOfferFromLog). The client's own plus icon, the same size as
+--- or nil when this client cannot offer one (buttons hidden, or no sound pack at all -- see Contribute:CanOfferFromLog). The client's own plus icon, the same size as
 --- Play: the row has room for an icon and not for a word, and the tooltip says what it does.
 ---@return Button?
 function QuestOverlayUI:ContributeButtonFor(questID, title)
-    local contribute = ContributeModule()
-    if not (contribute and contribute.CanOfferFromLog and contribute:CanOfferFromLog()) then
+    if not Contribute:CanOfferFromLog() then
         return nil
     end
     local button = self.questContributeButtons[questID]
@@ -71,18 +62,18 @@ function QuestOverlayUI:ContributeButtonFor(questID, title)
         button:SetPushedTexture("Interface\\Buttons\\UI-PlusButton-Down")
         button:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
         button:SetScript("OnEnter", function(self)
-            contribute:ShowTooltip(self)
+            Contribute:ShowTooltip(self)
         end)
         button:SetScript("OnLeave", function()
             if GameTooltip then
                 GameTooltip:Hide()
             end
         end)
-        contribute:OfferLogMenu(button)
+        Contribute:OfferLogMenu(button)
         self.questContributeButtons[questID] = button
     end
     button:SetScript("OnClick", function()
-        contribute:ShowFromLog(questID, title)
+        Contribute:ShowFromLog(questID, title)
     end)
     return button
 end
@@ -245,8 +236,6 @@ function QuestOverlayUI:AddStopReplay(playButton, questID)
         Spoken:RegisterCallback("AUDIO_CHANGED", function() QuestOverlayUI:RefreshStates() end)
     end
     local bound = playButton:GetScript("OnClick")
-    -- Named arguments, not varargs: this file also loads on 1.12, whose Lua 5.0 cannot parse `...`
-    -- as an expression, and one parse error loses the whole file.
     playButton:SetScript("OnClick", function(button, mouse, down)
         -- Looked up each click, never the copy kept when the button was bound: a line that has since
         -- finished is no longer in the queue, and holding on to it left the button dead.

@@ -91,7 +91,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install luajit
         run: sudo apt-get update && sudo apt-get install -y luajit
-      # The stub client is Lua 5.1, which is what 1.12 through retail all run.
+      # The stub client is Lua 5.1, which is what every supported client runs.
       - run: make test-player
       # No "--" inside an XML comment and every comment closed: one stray "--" makes the client
       # load none of the files that .xml lists. globSync needs Node 22 or later.
@@ -188,4 +188,5 @@ jobs:
       - run: node scripts/descriptions.mjs --check
       - run: node pipelines/zones/tools/locale/check-strings.mjs
       - run: pnpm --filter @spoken/books-pipeline test
+      - run: pnpm --filter @spoken/zones-pipeline test
       - run: node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs

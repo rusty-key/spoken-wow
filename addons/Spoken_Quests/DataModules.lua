@@ -240,7 +240,8 @@ function DataModules:GetPackLabel(module)
     if label then
         return label
     end
-    local title = module and module.Title or ""
+    -- Without the colour Spoken's name is drawn in.
+    local title = string.gsub(module and module.Title or "", "|c%x%x%x%x%x%x%x%x(.-)|r", "%1")
     -- "Spoken German Audio: Quests - Horde", or a pack built before that, "Spoken Quests Audio: Horde".
     title = string.gsub(title, "^Spoken [^:]*Audio: ", "")
     return (string.gsub(title, "VoiceOver Data %- ", ""))
@@ -354,12 +355,10 @@ end
 ---@param known string?
 ---@return boolean
 function DataModules:IsOlderContent(installed, known)
-    -- Lua 5.0 safe, as this file loads on 1.12: no `#`, no string methods, gfind there.
-    local gmatch = string.gmatch or string.gfind
     local function parts(version)
         if type(version) ~= "string" or not string.find(version, "^%d+[%d.]*$") then return nil end
         local out = {}
-        for n in gmatch(version, "%d+") do table.insert(out, tonumber(n)) end
+        for n in string.gmatch(version, "%d+") do table.insert(out, tonumber(n)) end
         return out
     end
     local a, b = parts(installed), parts(known)
@@ -381,31 +380,23 @@ function DataModules:LoadPresentModules()
 end
 
 -- We deliberately use a high ##Interface version in TOC to ensure that all clients will load it.
--- Otherwise pre-classic-rerelease clients will refuse to load addons with version < 20000.
 -- Here we temporarily enable "Load out of date AddOns" to load the module, and restore the user's setting afterwards.
 -- These cvars can be nil, so have to store the fact of them being changed in a separate variable.
-local prev_checkAddonVersion, changed_checkAddonVersion
-local prev_lastAddonVersion, changed_lastAddonVersion -- Added in 5.x
-local function EnableOutOfDate(addon)
-    if not changed_checkAddonVersion then
+local prev_checkAddonVersion, prev_lastAddonVersion, changed
+local function EnableOutOfDate()
+    if not changed then
         prev_checkAddonVersion = GetCVar("checkAddonVersion")
-        SetCVar("checkAddonVersion", 0)
-        changed_checkAddonVersion = true
-    end
-    if not changed_lastAddonVersion and Version:IsRetailOrAboveLegacyVersion(50000) then
         prev_lastAddonVersion = GetCVar("lastAddonVersion")
+        SetCVar("checkAddonVersion", 0)
         SetCVar("lastAddonVersion", Version.Interface)
-        changed_lastAddonVersion = true
+        changed = true
     end
 end
-local function RestoreOutOfDate(addon)
-    if changed_checkAddonVersion then
+local function RestoreOutOfDate()
+    if changed then
         SetCVar("checkAddonVersion", prev_checkAddonVersion)
-        changed_checkAddonVersion = nil
-    end
-    if changed_lastAddonVersion and Version:IsRetailOrAboveLegacyVersion(50000) then
         SetCVar("lastAddonVersion", prev_lastAddonVersion)
-        changed_lastAddonVersion = nil
+        changed = nil
     end
 end
 
@@ -424,9 +415,9 @@ function DataModules:LoadModule(module)
         return false, self.loadErrors[module.AddonName]
     end
 
-    EnableOutOfDate(module.AddonName)
+    EnableOutOfDate()
     local callSucceeded, loaded, reason = pcall(LoadAddOn, module.AddonName)
-    RestoreOutOfDate(module.AddonName)
+    RestoreOutOfDate()
 
     if not callSucceeded then
         reason = tostring(loaded)
@@ -449,9 +440,9 @@ function DataModules:GetModuleLoadError(name)
 end
 
 function DataModules:GetModuleAddOnInfo(module)
-    EnableOutOfDate(module.AddonName)
+    EnableOutOfDate()
     local name, title, notes, loadable, reason = GetAddOnInfo(module.AddonName)
-    RestoreOutOfDate(module.AddonName)
+    RestoreOutOfDate()
     return name, title, notes, loadable, reason
 end
 
@@ -543,10 +534,87 @@ end
 -- other variants (another profession's or faction's) mostly score under 0.6.
 local GOSSIP_MATCH_FLOOR = 0.7
 
---- A line's words as they are compared: lower case, ASCII punctuation as spaces. Bytes past
---- ASCII are kept, so another alphabet's words compare whole.
+-- Lua 5.0 safe from here to Words, as this file loads on 1.12: no `#`, no hex numbers,
+-- string.byte one byte at a time, gfind there.
+
+--- The code point of a three-byte UTF-8 character, else nil.
+local function CodePoint3(char)
+    local a = string.byte(char, 1)
+    if string.len(char) == 3 and a >= 224 and a <= 239 then
+        return (a - 224) * 4096 + (string.byte(char, 2) - 128) * 64 + (string.byte(char, 3) - 128)
+    end
+end
+
+--- Chinese writes no spaces, so a sentence would be one word that only an exact key equals.
+--- Each pair of neighbouring characters is compared as a word instead. Korean words carry their
+--- particles, and pairs of syllables match a reworded line more often than whole words do.
+--- Kana U+3040-30FF, Han U+3400-4DBF, U+4E00-9FFF and U+F900-FAFF, Hangul U+AC00-D7A3.
+local function IsPaired(cp)
+    return cp and ((cp >= 12352 and cp <= 12543) or (cp >= 13312 and cp <= 19903)
+        or (cp >= 19968 and cp <= 40959) or (cp >= 63744 and cp <= 64255)
+        or (cp >= 44032 and cp <= 55203))
+end
+
+--- Punctuation that separates words in that text: general U+2000-206F, CJK U+3000-303F, and
+--- the full-width forms that are not letters or digits.
+local function IsWidePunctuation(cp)
+    return cp and ((cp >= 8192 and cp <= 8303) or (cp >= 12288 and cp <= 12351)
+        or (cp >= 65281 and cp <= 65295) or (cp >= 65306 and cp <= 65312)
+        or (cp >= 65339 and cp <= 65344) or (cp >= 65371 and cp <= 65381))
+end
+
+local function CharacterPairs(text)
+    local words, word, run = {}, "", {}
+    local function EndWord()
+        if word ~= "" then
+            table.insert(words, word)
+            word = ""
+        end
+    end
+    local function EndRun()
+        local n = table.getn(run)
+        if n == 1 then
+            table.insert(words, run[1])
+        end
+        for i = 2, n do
+            table.insert(words, run[i - 1] .. run[i])
+        end
+        run = {}
+    end
+    local gmatch = string.gmatch or string.gfind
+    for char in gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do
+        local cp = CodePoint3(char)
+        if IsPaired(cp) then
+            EndWord()
+            table.insert(run, char)
+        else
+            EndRun()
+            if char == " " or char == "\t" or char == "\n" or char == "\r" or IsWidePunctuation(cp) then
+                EndWord()
+            else
+                word = word .. char
+            end
+        end
+    end
+    EndWord()
+    EndRun()
+    return table.concat(words, " ")
+end
+
+--- A line's words as they are compared: lower case, ASCII punctuation as spaces. French text
+--- shows a typographic apostrophe and no-break spaces where the keys may have the plain ones.
+--- Other bytes past ASCII are kept, so another alphabet's words compare whole. ASCII text comes
+--- out as it always has.
 local function Words(text)
-    return (string.gsub(string.lower(text), "%p", " "))
+    text = string.lower(text)
+    text = string.gsub(text, "\226\128\153", "'")
+    text = string.gsub(text, "\194\160", " ")
+    text = string.gsub(text, "\226\128\175", " ")
+    text = string.gsub(text, "%p", " ")
+    if string.find(text, "[\227-\239]") then
+        return CharacterPairs(text)
+    end
+    return text
 end
 
 --- The keys still hold the server's tokens ($N, $g...), so each is filled in for this player
@@ -610,12 +678,24 @@ function DataModules:GetNPCGossipTextHash(soundData)
     if next(text_entries) ~= nil then
         return MatchShown(text, text_entries)
     end
-    -- Only when no pack in the client's locale knows this NPC are the rest searched. That is
-    -- what every non-English client has always done with English packs, and it mostly works:
-    -- most NPCs have a single line, and the fuzzy match lands on it whatever it is shown in.
+    -- Only when no pack in the client's locale knows this NPC are the rest searched. Their words
+    -- cannot match the screen's, so an NPC with a single line (its aliases count as that line)
+    -- plays it whatever it is shown in. Among several, the best score is noise and would pick
+    -- any of them: one must clear the floor, which another language's words do not, and the
+    -- window offers Contribute instead.
     CollectTexts(table, npc, false, text_entries)
-    local best_result = FuzzySearchBestKeys(text, text_entries)
-    return best_result and best_result.value
+    local file, same
+    for _, each in pairs(text_entries) do
+        if not file then
+            file, same = each, { [each] = true }
+            for _, alias in ipairs(GossipAliases and GossipAliases[each] or {}) do
+                same[alias] = true
+            end
+        elseif not same[each] then
+            return MatchShown(text, text_entries)
+        end
+    end
+    return file
 end
 
 local function getFirstNWords(text, n)

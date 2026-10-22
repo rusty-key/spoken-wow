@@ -834,3 +834,4 @@ terms.
 | zone-2524 | Darkspear Islands | unknown, added by hand |
 | zone-2548 | Riverglades | unknown, added by hand |
 | zone-2652 | Shen'dralas | unknown, added by hand |
+| zone-947 | Azeroth | [Azeroth from Space.jpg](https://warcraft.wiki.gg/wiki/File:Azeroth_from_Space.jpg) |

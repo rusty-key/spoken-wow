@@ -11,7 +11,7 @@ modules add to it, so there is one copy of each piece:
 | `addons/Spoken/UI/TextView.lua` | The scrolling, wrapping text with its scroll bar and edge fade, and the picture above the words (`SetPicture`). The words are drawn at Text Size. |
 | `addons/Spoken/UI/Face.lua` | The round face on the player windows, and the badge for a line's kind (`zone` uses the world map icon). |
 
-`Compendium.lua` also holds what every tab lays places out by: `C.WORLD` (947, the continents' parent, with no page of its own), `C.CONTINENTS`
+`Compendium.lua` also holds what every tab lays places out by: `C.WORLD` (947, Azeroth, the continents' parent), `C.CONTINENTS`
 (Kalimdor 1414 and the Eastern Kingdoms 1415), `C.CITY_IN`, `C.BATTLEGROUNDS`, `C.ContinentOf`,
 `C.OpenAround`, `C.OpenZone` and `C.PlayerZone`. The other tabs show a place's picture through
 `C.PlacePicture`.
@@ -27,7 +27,9 @@ has a button that opens the place in the tab.
 
 ## The list
 
-A banner for each continent, Kalimdor and the Eastern Kingdoms, then two more banners:
+First Azeroth's banner, which opens the world's story. Nothing is listed or counted under it, and it is
+never locked: the line under its name says how many continents and zones the tab holds. Then a banner
+for each continent, Kalimdor and the Eastern Kingdoms, then two more banners:
 
 - Other Lands, for zones on no continent the client knows (Forever's Zephras Isle).
 - Battlegrounds, for the maps in `C.BATTLEGROUNDS` that have an entry in the data, wherever the
@@ -67,7 +69,9 @@ Everything else the tab does is in `UI/LoreWindow.lua`.
   covers everything explored before the addon was installed.
 - The character has stood in it since. Small places and a city's districts have no overlay, so
   every zone change records where the character is (`SpokenZonesCharacter.visited`), and a click on
-  the map that resolves an area marks it.
+  the map that resolves an area marks it. Entering a dungeon or raid marks its card, whatever the
+  reading settings say: the client has no map for the player inside, so this is the only way most
+  dungeon cards are found.
 
 A zone is found when it or any of its areas is. A city is also found when its name is explored on
 the zone around it. A continent is found only through its zones. `/spp found` lists what is counted
@@ -132,8 +136,8 @@ node pipelines/lib/dungeons.mjs --check
 The table lists 29 dungeons and raids, and 18 have a `story`. The rest (Stormwind Stockade,
 Razorfen Kraul, Blackrock Spire, Blackrock Depths, Maraudon, the Molten Core, Blackwing Lair, both
 Ahn'Qiraj instances, Naxxramas and the Hall of Thanes) have no area story, so no line. Forever's City
-of Dalaran is the `dalaran` area of Alterac Mountains, and its Ruins of Lordaeron the Undercity's
-`ruins of lordaeron`. Run `make dungeons`, then the Quests and Readables exporters, after editing
+of Dalaran is the `dalaran` area of Alterac Mountains, and its Ruins of Lordaeron Tirisfal Glades'
+`ruins of lordaeron`, the surface ruins its entrance is in. Run `make dungeons`, then the Quests and Readables exporters, after editing
 the JSON. `tests/lua/zones_dungeons_test.lua` checks the table against the stories and the Quests
 data.
 

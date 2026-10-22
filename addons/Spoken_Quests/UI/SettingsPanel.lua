@@ -3,9 +3,8 @@ setfenv(1, VoiceOver)
 -- The module's page in the game's settings, under Spoken's: laid out by Spoken's UI/Layout.lua so
 -- the pages read alike.
 --
--- The AceConfig table is not replaced. It still backs every `/spq` command, and on the three
--- legacy clients, which have no Settings API at all, it fills the window OpenConfigWindow shows:
--- there the window and the slash commands are the whole interface, as they have always been.
+-- The AceConfig table is not replaced. It still backs every `/spq` command and fills the window
+-- OpenConfigWindow shows.
 
 SettingsPanel = {}
 
@@ -21,7 +20,7 @@ end
 local panel
 
 function SettingsPanel:Setup()
-    if panel or not (Settings and Settings.RegisterCanvasLayoutCategory) then
+    if panel then
         return
     end
     panel = CreateFrame("Frame", "SpokenQuestsOptionsPanel", UIParent)
@@ -227,11 +226,6 @@ function SettingsPanel:DialogueUIRows(layout)
     layout:Requires(Box("AutoScroll", L.OPT_DUI_AUTOSCROLL, nil),
         function() return dui().Captions end, L.REASON_DUI_CAPTIONS)
     layout:Outdent()
-    local showPlayer = Box("ShowPlayer", L.OPT_DUI_SHOW_PLAYER, nil)
-    -- It keeps Spoken's window or subtitles on screen, and Voice Only has neither.
-    if Spoken and Spoken.GetPlayerStyle then
-        layout:ShowWhen(showPlayer, function() return Spoken:GetPlayerStyle() ~= "none" end)
-    end
     Box("PlayButton", L.OPT_DUI_PLAY_BUTTON, nil)
     return function()
         for key, value in pairs(Addon.DialogueUIDefaults) do dui()[key] = value end

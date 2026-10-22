@@ -399,10 +399,11 @@ local function EachText(id, each)
 	return false
 end
 
--- A readable's pages joined, "" where none has words.
+-- A readable's pages joined, "" where none has words. The tokens filled in for this character,
+-- as the page shows them in the game.
 local function Words(id)
 	local words = {}
-	EachText(id, function(text) table.insert(words, text) end)
+	EachText(id, function(text) table.insert(words, SpokenBooks:FillPlayerTokens(text)) end)
 	return table.concat(words, "\n\n")
 end
 

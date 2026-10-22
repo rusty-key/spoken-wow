@@ -76,7 +76,7 @@ local function Scan(mapID)
 							exploredNames[name] = exploredNames[name] or mapID
 							result.zone = true
 							result.why.zone = result.why.zone or ("explored on its map: " .. name)
-							local key = SpokenZones:ResolveAreaKey(name)
+							local key = SpokenZones:ResolveAreaKey(name, mapID)
 							if key then result.keys[key] = true end
 						end
 					end

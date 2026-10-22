@@ -32,8 +32,8 @@ const LATER = /(mists|pandaria|draenor|\bwod\b|legion|\bbfa\b|battle for azeroth
 // it left as they were (UNCHANGED, by uiMapID), where its screenshots show the Classic place.
 const CATACLYSM = /(cataclysm|cata\d|\bcata\b|post-?cata)/i;
 const UNCHANGED = new Set([1412, 1438, 1429, 1430, 1449, 1450, 1452, 1455, 1456, 1457, 1458]);
-// The continents have no picture: their pages carry maps, not views of a place.
-const NO_PICTURE = new Set(["zone-1414", "zone-1415"]);
+// Azeroth and the continents have no picture: their pages carry maps, not views of a place.
+const NO_PICTURE = new Set(["zone-947", "zone-1414", "zone-1415"]);
 // A picture chosen by hand after looking (choices.json beside this script): the wiki file to use
 // for a place, or null for none.
 const CHOICES = join(HERE, "choices.json");
@@ -150,6 +150,24 @@ export async function imageInfo(files) {
   return info;
 }
 
+/** A wiki file's picture in cache/pictures/raw/, downloaded once: { raw: its name there, or null
+ * where the wiki refused it, fetched: whether it was downloaded now }. Named for the wiki file, so a
+ * page that comes to choose another picture downloads it. */
+export async function downloadRaw(file, url) {
+  const ext = (url.match(/\.(jpe?g|png|webp)(?:$|\?)/i)?.[1] || "jpg").toLowerCase();
+  const raw = `${file.replace(/^File:/, "").replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9]+/g, "_")}.${ext}`;
+  const path = join(RAW, raw);
+  if (existsSync(path)) return { raw, fetched: false };
+  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+  await sleep(THROTTLE_MS);
+  if (!res.ok) {
+    console.warn(`\n  ${res.status} ${url}`);
+    return { raw: null, fetched: false };
+  }
+  await writeFile(path, Buffer.from(await res.arrayBuffer()));
+  return { raw, fetched: true };
+}
+
 async function main() {
   const all = await entries();
   const old = existsSync(MANIFEST) ? await readJson(MANIFEST) : { pictures: {} };
@@ -190,16 +208,9 @@ async function main() {
   let fetched = 0;
   for (const [id, p] of Object.entries(pictures)) {
     if (!p.file) continue;
-    const ext = (p.url.match(/\.(jpe?g|png|webp)(?:$|\?)/i)?.[1] || "jpg").toLowerCase();
-    // Named for the wiki file, so a page that comes to choose another picture downloads it.
-    p.raw = `${p.file.replace(/^File:/, "").replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9]+/g, "_")}.${ext}`;
-    const path = join(RAW, p.raw);
-    if (existsSync(path)) continue;
-    const res = await fetch(p.url, { headers: { "User-Agent": USER_AGENT } });
-    await sleep(THROTTLE_MS);
-    if (!res.ok) { console.warn(`\n  ${res.status} ${p.url}`); delete p.raw; continue; }
-    await writeFile(path, Buffer.from(await res.arrayBuffer()));
-    process.stdout.write(`\r  downloaded ${++fetched}`);
+    const got = await downloadRaw(p.file, p.url);
+    if (got.raw) p.raw = got.raw;
+    if (got.fetched) process.stdout.write(`\r  downloaded ${++fetched}`);
   }
   process.stdout.write("\n");
 

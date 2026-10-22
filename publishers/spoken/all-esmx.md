@@ -31,6 +31,6 @@ The quest dialogue comes as three packs, one per faction plus the quests both si
 
 ## Language
 
-Spoken speaks in your client's language by default. To hear Latin American Spanish on another client, pick it under **Voice Language** on Spoken's settings page; **Fallback Language** decides what plays for a line the Latin American Spanish packs do not hold.
+Spoken speaks in your client's language by default. To hear Latin American Spanish on another client, pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line the Latin American Spanish packs do not hold.
 
 English has its own set: [Spoken: English](https://www.curseforge.com/wow/addons/spoken-english).

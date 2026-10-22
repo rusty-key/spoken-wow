@@ -76,3 +76,13 @@ def test_names_xml_loads_exactly_the_files_written(tmp_path):
 
     assert '<Script file="deDE.lua"/>' in text and '<Script file="ruRU.lua"/>' in text
     assert text.count("<Script") == 2
+
+
+def test_a_giver_named_only_by_a_placeholder_has_no_english_name():
+    corpus = {"lines": [line("accept", "gameobject", 649051, "null", 95999)]}
+
+    found = givers(corpus)
+    assert found == {("gameobject", "649051"): None}
+    # A language that has a name for it writes it: there is no English to fall back on.
+    assert localized_names(found, {("gameobject", "649051"): "Kiste"}) == {
+        "creature": {}, "gameobject": {649051: "Kiste"}, "item": {}}

@@ -48,10 +48,6 @@ local function Visible(frame)
     return type(frame) == "table" and frame.IsVisible ~= nil and frame:IsVisible() and true or false
 end
 
-local function After(seconds, fn)
-    if C_Timer and C_Timer.After then C_Timer.After(seconds, fn) end
-end
-
 --------------------------------------------------------------------------------
 -- The quest giver's window
 --------------------------------------------------------------------------------
@@ -108,7 +104,7 @@ local function SetupGiver()
         Refresh()
         -- Again a moment later: a Classic quest event can arrive before GetQuestID changes, and
         -- Listen and Contribute settle then too.
-        After(0.25, Refresh)
+        C_Timer.After(0.25, Refresh)
     end)
     frame:HookScript("OnHide", Refresh)
     for _, owner in ipairs({ VO.DialogPlayButton, VO.ContributeButton }) do

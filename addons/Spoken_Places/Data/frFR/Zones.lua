@@ -13,6 +13,12 @@ if not SpokenZones:ShouldLoadLanguage("frFR") then
 end
 
 local zones = {
+	[947] = {
+		name = "Azeroth",
+		short = "Il y a dix mille ans, les Bien-nés de Kalimdor, enivrés par la puissance du Puits d'éternité, répondirent à l'appel du titan déchu Sargeras et ouvrirent un passage à la Légion ardente.",
+		full = "Il y a dix mille ans, les Bien-nés de Kalimdor, enivrés par la puissance du Puits d'éternité, répondirent à l'appel du titan déchu Sargeras et ouvrirent un passage à la Légion ardente. Malfurion Hurlorage et la résistance kaldorei brisèrent ce passage grâce à l'Âme des dragons et rejetèrent Sargeras dans le Néant distordu, mais l'effondrement du Puits brisa le monde lui-même. L'antique Kalimdor sombra dans le feu et les flots ; des continents en ruine surgirent du naufrage, et le cœur englouti des terres devint la Grande mer, où le Maelström tourbillonne là où se dressait autrefois le Puits.",
+		source = "https://warcraft.wiki.gg/wiki/Azeroth",
+	},
 	[1411] = {
 		name = "Durotar",
 		short = "Durotar est une terre rouge et crevassée, faite d'escarpements et de canyons, sèche et brûlante, pauvre en eau comme en verdure.",
@@ -40,7 +46,7 @@ local zones = {
 	[1415] = {
 		name = "Royaumes de l'est",
 		short = "Les Royaumes de l'est n'ont pas toujours été plusieurs terres.",
-		full = "Les Royaumes de l'est n'ont pas toujours été plusieurs terres. Ils faisaient jadis partie d'un seul continent, avant que la Grande fracture ne déchire le monde et ne laisse derrière elle les fragments brisés que l'on nomme aujourd'hui Azeroth, Khaz Modan et Lordaeron, Quel'Thalas s'accrochant au nord de cette dernière terre morcelée, sans que l'on sache encore aujourd'hui si elle forme un lieu à part entière ou un simple recoin d'une autre.\n\nÀ travers ces fragments, les montagnes de Khaz Modan et les Carmines se dressent comme une échine au cœur du continent, et autour d'elles subsistent les peuples anciens : les nains et les gnomes dans leurs salles profondes, les humains dans leurs royaumes, les hauts-elfes et les elfes de sang dans leurs forêts, et désormais les Réprouvés, relevés là où vivait autrefois le peuple de Lordaeron. Orcs, gobelins, draeneï, nagas et ogres ont eux aussi trouvé le chemin de ces terres, bien qu'aucun d'eux n'y soit né.\n\nLes cicatrices de cette première fracture restent la vérité de ces lieux. Chaque frontière, chaque détroit, chaque étendue de terre engloutie entre un royaume et le suivant se souvient que les Royaumes de l'est furent jadis un tout, et qu'ils ne le sont plus.",
+		full = "Les Royaumes de l'est n'ont pas toujours été plusieurs terres. Ils faisaient jadis partie d'un seul continent, avant que la Grande fracture ne déchire le monde et ne laisse derrière elle les fragments brisés que l'on nomme aujourd'hui Azeroth, Khaz Modan et Lordaeron, Quel'Thalas s'accrochant au nord de cette dernière terre morcelée, sans que l'on sache encore aujourd'hui si elle forme un lieu à part entière ou un simple recoin d'une autre.\n\nÀ travers ces fragments, les montagnes de Khaz Modan et les Carmines se dressent comme une échine au cœur du continent, et autour d'elles subsistent les peuples anciens : les nains et les gnomes dans leurs salles profondes, les humains dans leurs royaumes, les hauts-elfes dans leurs forêts, et désormais les Réprouvés, relevés là où vivait autrefois le peuple de Lordaeron. Orcs, gobelins, nagas et ogres ont eux aussi trouvé le chemin de ces terres, bien qu'aucun d'eux n'y soit né.\n\nLes cicatrices de cette première fracture restent la vérité de ces lieux. Chaque frontière, chaque détroit, chaque étendue de terre engloutie entre un royaume et le suivant se souvient que les Royaumes de l'est furent jadis un tout, et qu'ils ne le sont plus.",
 		source = "https://warcraft.wiki.gg/wiki/Eastern_Kingdoms",
 	},
 	[1416] = {

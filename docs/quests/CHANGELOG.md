@@ -13,6 +13,10 @@ carries that version. The heading says which.
   language. Their folders keep their names, so nothing needs reinstalling.
 - Packs carry a file per race and sex for NPCs drawn as more than one, alongside the per-sex
   files older versions of Spoken read.
+- **Speakers are named without their title**, such as "<Skinner>", in the quest log and the
+  Compendium, and never as "null". Quests the Compendium does not list, and offers with no
+  words, no longer ship audio.
+  *([Nucabe](https://github.com/Nucabe))*
 
 ## 1.0.1 — quests-audio-alliance-deDE — 2026-10-20
 

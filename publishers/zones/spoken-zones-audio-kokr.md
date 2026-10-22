@@ -17,13 +17,13 @@ manager: true
 
 Narrated zone lore for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Places module, in Korean. This addon is data only — it does nothing on its own.
 
-It plays while Spoken Places is showing its lore in **Korean**, and never under another language's text. It installs beside the English pack, **[Spoken Audio: Places](https://www.curseforge.com/wow/addons/spoken-audio-places)**, rather than replacing it, so a player who switches languages keeps the narration for both.
+Spoken Places plays it when Spoken's **Voice Language** is Korean. It installs beside the English pack, **[Spoken Audio: Places](https://www.curseforge.com/wow/addons/spoken-audio-places)**, rather than replacing it, so a player who switches languages keeps the narration for both.
 
 ## Installing
 
 Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenZonesAudio_koKR`) — Spoken finds packs by folder name.
 
-Spoken Places reads your client's language when it has lore in it, and `/spp lang koKR` picks Korean on any client.
+Voice Language follows your client's language until you choose one, so to hear Korean on another client, pick it on Spoken's settings page. A place this pack has no narration for is read in the language set under **If a Voice Is Missing**, English unless you change it.
 
 ## Compatibility
 

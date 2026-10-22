@@ -11,7 +11,7 @@ Developer.Box = Box
 local frame
 
 local function Build()
-	frame = CreateFrame("Frame", "SpokenDeveloperLogBox", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	frame = CreateFrame("Frame", "SpokenDeveloperLogBox", UIParent, "BackdropTemplate")
 	frame:SetSize(780, 480)
 	frame:SetPoint("CENTER")
 	frame:SetFrameStrata("DIALOG")

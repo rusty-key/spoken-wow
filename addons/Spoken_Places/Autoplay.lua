@@ -331,6 +331,54 @@ local function NarrateUnheard()
 end
 
 --------------------------------------------------------------------------------
+-- Entering a dungeon or raid
+--------------------------------------------------------------------------------
+--
+-- Inside an instance the client has no map for the player (no dungeon or raid map has a
+-- UiMapAssignment row) and announces no discovery, so neither route above ever reaches one. The
+-- instance's own map is asked instead, and Spoken's Data/Dungeons.lua names the area whose story
+-- is its card. Once per character, by the heard record: an instance can be entered any number of
+-- times, and its story may already have been read at an outdoor area of the same name.
+
+-- The story { mapID, key } of the dungeon or raid the player is in, or nil.
+local function InstanceStory()
+	if not (IsInInstance and GetInstanceInfo) then
+		return nil
+	end
+	local inside, kind = IsInInstance()
+	if not inside or kind == "pvp" or kind == "arena" then
+		return nil
+	end
+	local map = NotSecret((select(8, GetInstanceInfo())))
+	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
+	local dungeon = map and dungeons and dungeons[map]
+	return dungeon and dungeon.story
+end
+
+local function ReadInstance()
+	local story = InstanceStory()
+	if not story then
+		return
+	end
+	local mapID, key = story[1], story[2]
+	-- Found whatever the reading settings say: inside, the card has no other way to count.
+	if SpokenZones.MarkFound then
+		SpokenZones:MarkFound(mapID, key)
+	end
+	if not SpokenZones:Get("autoplay") or not SpokenZones:Get("autoplaySubzones") or not SpokenZones:IsVoiceEnabled() then
+		return
+	end
+	local entry = SpokenZones.Subzones[mapID] and SpokenZones.Subzones[mapID][key]
+	if not entry or SpokenZones:IsPending(entry) or SpokenZones:HasHeard(mapID, key) then
+		return
+	end
+	if SpokenZones:Get("debug") then
+		SpokenZones:Print("entered instance -> %s/%s -- queued", tostring(mapID), key)
+	end
+	Enqueue(mapID, key)
+end
+
+--------------------------------------------------------------------------------
 -- The one discovery that cannot be placed
 --------------------------------------------------------------------------------
 --
@@ -576,10 +624,16 @@ function SpokenZones:SetupAutoplay()
 	for event in pairs(CINEMATIC_EVENTS) do
 		frame:RegisterEvent(event)
 	end
+	-- Every loading screen, an instance's included. Core's own frame stops listening after login.
+	frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	frame:SetScript("OnEvent", function(_, event, ...)
 		if CINEMATIC_EVENTS[event] then
 			OnCinematicStart()
+			return
+		end
+		if event == "PLAYER_ENTERING_WORLD" then
+			ReadInstance()
 			return
 		end
 		local message = TextFrom(...)
@@ -599,6 +653,7 @@ function SpokenZones:SetupAutoplay()
 		self.source:AddGate(HoldReason)
 	end
 	self:OnZoneChanged(NarrateUnheard)
+	self:OnZoneChanged(ReadInstance)
 	self.autoplayFrame = frame
 
 	-- Delayed because GetSubZoneText is not reliably populated the instant the
@@ -629,6 +684,9 @@ function SpokenZones:SetupAutoplay()
 		end
 	end
 	C_Timer.After(LOGIN_SEED_DELAY, seed)
+	-- This runs inside the login's loading screen, which the frame above was too late to hear: a
+	-- login or /reload inside an instance is read from here.
+	C_Timer.After(LOGIN_SEED_DELAY, ReadInstance)
 end
 
 -- Reports whether the client defined the strings this feature is built on, so a

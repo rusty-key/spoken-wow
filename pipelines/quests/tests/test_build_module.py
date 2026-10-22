@@ -144,6 +144,22 @@ def test_a_whole_store_pack_ships_a_take_the_english_corpus_does_not_name(tmp_pa
     assert report["audioFiles"] == 2
 
 
+def test_a_line_with_no_words_ships_no_audio_but_keeps_its_giver(tmp_path):
+    corpus = {"lines": CORPUS["lines"] + [
+        {"lineId": "q:3646:accept", "source": "accept", "questId": 3646,
+         "questTitle": "Membership Card Renewal", "npcId": 8738, "npcName": "Vazario Linkgrease",
+         "npcType": "creature", "fileName": "3646-accept", "originalText": "\n",
+         "generatable": True}]}
+    store = _store(tmp_path, "quests/5-accept.ogg", "quests/3646-accept.ogg")
+
+    report = build_module(corpus, store, str(tmp_path / "dist"), "Mod")
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    assert not (generated / "sounds" / "quests" / "3646-accept.ogg").exists()
+    assert report["audioFiles"] == 1
+    assert "[3646] = 8738" in (generated / "questlog_npc_lookups.lua").read_text(encoding="utf-8")
+
+
 def test_a_pack_still_drops_ignored_audio(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
 
@@ -163,19 +179,18 @@ def test_the_toc_title_says_which_pack_this_is(tmp_path):
                  title="Spoken Audio: Quests - Horde")
 
     with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
-        assert "## Title: Spoken Audio: Quests - Horde\n" in f.read()
+        assert "## Title: |cffb48cffSpoken|r Audio: Quests - Horde\n" in f.read()
 
 
 def test_the_toc_names_the_forever_client(tmp_path):
     # Forever marks a pack whose Interface it does not list incompatible, which the player's
     # checkAddonVersion switch cannot override, so every client the packs ship for is named.
-    # 100007 leads for the legacy clients, which read one number.
     store = _store(tmp_path, "quests/5-accept.ogg")
 
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
 
     with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
-        assert f.read().startswith("## Interface: 100007, 11509, 20506, 16001\n")
+        assert f.read().startswith("## Interface: 11509, 20506, 16001\n")
 
 
 def test_the_pack_ships_an_icon_the_toc_points_at(tmp_path):

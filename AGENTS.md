@@ -63,6 +63,16 @@ running one. `sounds` directories are assembled from the live takes before a bui
 never the record. Audio stays out of git; `.gitignore` says which directories cannot be
 reproduced. Never prune those.
 
+**The database is the source of truth; committed data files are exports of it.** Text and
+structure live in Postgres (`quest_line`, `book_page`/`book_line`, `lore_line` and the rest), and
+the site edits them. `corpus.json.gz`, `Books.lua`, the Places `Zones.lua`/`Subzones.lua` and
+every file headed "AUTO-GENERATED" come out of a database or a generator through a make target.
+Never edit one by hand, merge rows into one, or fill one from the site's public API: the next
+export overwrites the change, and until then the repo and the site disagree. Fix a wrong line
+in the database and export it again, and fix a wrong file in its generator. If you cannot reach
+the database, change only code, tests and hand-kept inputs (the section guides list them), and
+say in the PR which database change and which export are needed.
+
 **The droplet is never named in the tree.** Host, user and key come from the environment
 (`make/droplet.mk`) locally and from the `DO_*` secrets in CI.
 

@@ -1074,9 +1074,10 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     """
     from tts_cli.giver_names import (KINDS, givers, localized_names, write_giver_names,
                                    write_names_xml)
-    from tts_cli.ignores import ignored_line_ids
+    from tts_cli.ignores import load_pack_ignored
 
-    found = givers(load_corpus(corpus_path), ignored_line_ids())
+    corpus = load_corpus(corpus_path)
+    found = givers(corpus, load_pack_ignored(corpus))
     conn = connect()
     try:
         with conn, conn.cursor() as cur:

@@ -14079,6 +14079,33 @@
         "File:War Quarter.jpg"
       ],
       "raw": "Canals.jpg"
+    },
+    "zone-947": {
+      "parent": 947,
+      "title": "Azeroth",
+      "file": null,
+      "others": [
+        "File:Azeroth from Space.jpg",
+        "File:Ancient Kalimdor.png",
+        "File:Azeroth by Carbot.jpg",
+        "File:Azeroth by pickwick.jpg",
+        "File:Azeroth from Argus.jpg",
+        "File:Black Empire Kalimdor.jpeg",
+        "File:CThunPreHistory.jpg",
+        "File:EarlyWoWworld.jpg",
+        "File:Echoes of Azeroth - Worldsoul imperiled.png",
+        "File:Explorer'sGuildClassroom.jpg",
+        "File:Fel Hammer.jpg",
+        "File:Hall of Communion 5.jpg",
+        "File:Joseph Lacroix Azeroth transition unused.jpg",
+        "File:Mother and Child Moons.jpg",
+        "File:Night Elf Empire.jpg",
+        "File:Ordered Azeroth.jpg",
+        "File:Otherislands.jpg",
+        "File:Secrets of Ulduar by Raneman.jpg",
+        "File:World of warcraft.jpg",
+        "File:Wrathion, the Black Emperor.jpg"
+      ]
     }
   }
 }

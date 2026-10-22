@@ -23,7 +23,7 @@ One clip per page, read from the game's own Spanish text. It installs beside the
 
 Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenBooksAudio_esES`).
 
-Spoken Readables reads in your client's language, so this pack plays on a Spanish (EU) client (esES). A page it does not hold is read in English instead.
+Spoken Readables plays it when Spoken's **Voice Language** is Spanish (EU). Voice Language follows your client's language until you choose one, so to hear Spanish (EU) on another client, pick it on Spoken's settings page. A page this pack has no narration for is read in the language set under **If a Voice Is Missing**, English unless you change it.
 
 ## Compatibility
 

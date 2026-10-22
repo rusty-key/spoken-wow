@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { cannotBeHad, dungeonsOf, isTemplateCopy, typeOf } from "./places.mjs";
+import { cannotBeHad, dungeonsOf, foreverQuests, isTemplateCopy, typeOf } from "./places.mjs";
 
 test("a difficulty or test copy of a creature is not a source", () => {
   assert.equal(isTemplateCopy("Alliance Sentinel (1)"), true);
@@ -103,4 +103,10 @@ test("a readable had in a dungeon and outside it in the same zone is the zone's"
   assert.deepEqual(dungeonsOf(new Set([-70, 1418]), entrance), []);
   assert.deepEqual(dungeonsOf(new Set([1418, -70, -289]), entrance), [289]);
   assert.deepEqual(dungeonsOf(new Set([1453, 1429]), entrance), []);
+});
+
+test("a quest is Forever's when the corpus voices it or the client's QuestV2 lists it", () => {
+  const quests = foreverQuests([{ questId: 579 }, { questId: null }, {}], [{ ID: "417" }, { ID: "1124" }]);
+  assert.deepEqual([...quests].sort((a, b) => a - b), [417, 579, 1124]);
+  assert.equal(quests.has(26855), false);
 });

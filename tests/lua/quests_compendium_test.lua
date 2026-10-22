@@ -463,6 +463,12 @@ Expect("...all its words, the hand-in too, though it is not completed",
 Expect("...its words filled for the player: the word for his sex", words:find("Hello, good sir!", 1, true) ~= nil, true)
 Expect("...and his name", words:find("Thanks for the candles, Tester,", 1, true) ~= nil, true)
 Expect("...and a line break for $B", words:find("moment?\n\nMy brother", 1, true) ~= nil, true)
+Expect("...$c and $r his class and race in lower case, as the client writes them, $C and $R capitalised",
+    Tab:Fill("Go, young $c. A $r like you; $C of the $R."), "Go, young mage. A human like you; Mage of the Human.")
+stub.SetLocale("deDE")
+Expect("...and in German capitalised either way, nouns keeping their capital",
+    Tab:Fill("young $c, $r"), "young Mage, Human")
+stub.SetLocale("enUS")
 stub.world.unitSex = 3
 Tab:Refresh()
 Expect("...and for hers", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)

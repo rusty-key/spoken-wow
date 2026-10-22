@@ -17,7 +17,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { zonesLua, subzonesLua } from "../lib/loredata.mjs";
-import { loadClientAreas } from "../lib/era.mjs";
+import { loadClientAreas, loadClientNames } from "../lib/era.mjs";
 import { BASE_LOCALE, CODES } from "../lib/locales.mjs";
 import { readJson, ROOT } from "../lib/wiki.mjs";
 import { emitZones, emitSubzones } from "./lua.mjs";
@@ -66,6 +66,11 @@ async function main() {
     console.log(`leaving ${twice.length} line(s) behind: Forever's spelling of a place kept under another key`);
   }
 
+  // An area is titled as the client names it (The Crossroads), not as the wiki titles its page.
+  const clientName = await loadClientNames();
+  const areaName = (row) => (row.kind === "subzone" && clientName.get(row.key)) || row.name;
+  for (const row of rows) row.name = areaName(row);
+
   // A 'discovered' row is a place the client has and nobody has written about yet. It
   // ships anyway, with empty text and a `pending` marker, because a place the player can
   // stand in and see named on the map is worth listing even before anyone has described
@@ -96,8 +101,15 @@ async function main() {
     const names = await readNames(lang);
     const translated = (await readCurrent(lang))
       .filter((row) => written.has(row.lineId) && row.full.trim() && row.short.trim())
-      .map((row) => ({ ...row, name: names.get(row.lineId) || row.name }));
-    if (translated.length) corpora.push({ lang, rows: translated });
+      .map((row) => ({ ...row, name: names.get(row.lineId) || areaName(row) }));
+    // A language ships as a pair of files or not at all: one with no zones or no areas
+    // written yet would leave a file with nothing in it, which writeCorpus refuses.
+    const kinds = new Set(translated.map((row) => row.kind));
+    if (kinds.has("zone") && kinds.has("subzone")) {
+      corpora.push({ lang, rows: translated });
+    } else if (translated.length) {
+      console.log(`skipping ${lang}: ${translated.length} line(s), but no ${kinds.has("zone") ? "areas" : "zones"} yet`);
+    }
   }
 
   const stale = [];

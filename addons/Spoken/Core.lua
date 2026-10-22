@@ -1,8 +1,7 @@
 setfenv(1, SpokenEnv)
 
 -- What the queue and the windows reach timers and settings through. A plain table with AceTimer
--- embedded, not an AceAddon: the player has no options table to register, and every client from
--- 1.12 up can embed AceTimer into anything.
+-- embedded, not an AceAddon: the player has no options table to register.
 Addon = LibStub("AceTimer-3.0"):Embed({})
 
 -- What feature addons register through API.lua and the UI reads back.
@@ -27,8 +26,8 @@ Defaults = {
             FrameStrata = "HIGH",
             HidePortrait = false,
             -- "subtitle", "minimal" (Small Window), "classic" (Large Window), "dialogueui" or
-            -- "none" (the voice alone). Legacy clients start in the window they always had.
-            Style = Version.IsAnyLegacy and "classic" or "subtitle",
+            -- "none" (the voice alone).
+            Style = "subtitle",
             -- The windows' metal in the bronze the Forever client's frames wear.
             BronzeTint = true,
             -- The small window's background: "parchment" or "dark" (the rock).
@@ -56,9 +55,8 @@ Defaults = {
             LineGap = 1,
             -- The client speaks its own NPC barks on the Dialog channel, over the top of a
             -- line being read. Muting it while we speak belongs to the player: any addon's
-            -- clip is the one being talked over. Not on clients without the channel, where
-            -- Compat.lua interrupts the bark a different way.
-            AutoToggleDialog = (Version.IsLegacyVanilla or Version:IsRetailOrAboveLegacyVersion(60100)) or false,
+            -- clip is the one being talked over.
+            AutoToggleDialog = true,
             -- Off, nothing is queued in a battleground or arena (Addon:ReadsHere).
             ReadInBattlegrounds = true,
             -- A short sound in the pause between one line and the next (#142): at a quest hub a hand-in
@@ -66,9 +64,8 @@ Defaults = {
             -- Off by default, as the queue has always played without it.
             CueBetweenLines = false,
             -- The other channels turned down while a line is spoken (OtherSounds.lua), each to
-            -- this share of the player's own volume, for the length of a line. Not on the legacy
-            -- clients, where speech itself goes out on the music channel.
-            LowerOthers = (not Version.IsAnyLegacy or nil) and {
+            -- this share of the player's own volume, for the length of a line.
+            LowerOthers = {
                 Enabled = true,
                 Music = 0.3,
                 Ambience = 0.4,
@@ -76,20 +73,8 @@ Defaults = {
                 Dialog = 1,
             },
             -- The game's Sound in Background turned on while a line speaks (BackgroundSound.lua).
-            -- Off, as it plays the game's other sounds in the background too. Not on the legacy clients.
-            KeepTalkingInBackground = (not Version.IsAnyLegacy or nil) and false,
-            -- 2.4.3 and 3.3.5 only. Those clients cannot stop a sound once started, so the
-            -- player routes speech through the music channel, which can be stopped. This
-            -- moved here from the quests addon because it is how the *player* plays on those
-            -- clients, whichever addon queued the line.
-            LegacyMusicChannel = (Version.IsLegacyWrath or Version.IsLegacyBurningCrusade or nil) and {
-                Enabled = true,
-                Volume = 1,
-                FadeOutMusic = 0.5,
-            },
-            -- 2.4.3 and 3.3.5 with HD model patches: which set the portrait's animation
-            -- durations are looked up in.
-            LegacyHDModels = (Version.IsLegacyWrath or Version.IsLegacyBurningCrusade or nil) and false,
+            -- Off, as it plays the game's other sounds in the background too.
+            KeepTalkingInBackground = false,
         },
         -- Parts of Spoken switched off in the settings, by source key, as false. Absent means on.
         -- See Sources:IsTurnedOff for why this is the player's switch and not the client's.
@@ -106,14 +91,14 @@ Defaults = {
             -- How the captions follow the voice: "line", "page" or "off".
             ScrollMode = "line",
             Lines = 2,
-            HighlightWord = false,
+            HighlightWord = true,
             FontSize = 16,
             -- The subtitle player's own (UI/Subtitle.lua).
-            Typewriter = true,
+            Typewriter = false,
             -- "letter": each word typed in; "word": each word appears whole.
             TypewriterBy = "letter",
             SubtitleShadow = 0.6,
-            SubtitleProgress = true,
+            SubtitleProgress = false,
             SubtitleName = true,
             SubtitleScroll = "page",
             SubtitleScale = 1,
@@ -162,8 +147,7 @@ function Addon:InitDB()
         if type(frame) == "table" and frame.Style == nil
             and (frame.SubtitlePlayer ~= nil or frame.HideFrame ~= nil or frame.MinimalPlayer ~= nil) then
             local subtitles = frame.SubtitlePlayer
-            if subtitles == nil then subtitles = not Version.IsAnyLegacy end
-            if subtitles then frame.Style = "subtitle"
+            if subtitles ~= false then frame.Style = "subtitle"
             elseif frame.HideFrame then frame.Style = "none"
             elseif frame.MinimalPlayer == false then frame.Style = "classic"
             else frame.Style = "minimal" end
@@ -241,7 +225,7 @@ function Addon:ApplyProfile()
     if not self.enabled then return end
     if PlayerFrame and PlayerFrame.RefreshConfig then PlayerFrame:RefreshConfig() end
     if Transcript and Transcript.RefreshConfig then Transcript:RefreshConfig() end
-    if Subtitle and Subtitle.Update then Subtitle:Update() end
+    Subtitle:Update()
     -- Hands LibDBIcon the new profile's table: it keeps the one it was given.
     if Minimap and Minimap.Refresh then Minimap:Refresh() end
     if OtherSounds and OtherSounds.IsAvailable and OtherSounds:IsAvailable() then OtherSounds:RefreshConfig() end
@@ -384,7 +368,7 @@ function Addon:SetPlayerHost(host)
     self:ApplyHost(MinimalPlayer.frame)
     if DialogueUIPlayer then self:ApplyHost(DialogueUIPlayer.frame) end
     -- The subtitles go over the host too, and pass its clicks through.
-    if Subtitle and Subtitle.frame then
+    if Subtitle.frame then
         self:ApplyHost(Subtitle.frame)
         Subtitle:Mouse()
     end
@@ -404,15 +388,13 @@ function Addon:DisplayStyle()
     return self.previewStyle or self:PlayerStyle()
 end
 
---- The chosen style, or a fallback where it is not on offer: no Small Window on legacy
---- clients, no DialogueUI window without DialogueUI, no subtitles on 1.12. The setting is
---- kept, so installing DialogueUI later brings its window back.
+--- The chosen style, or a fallback where it is not on offer: no DialogueUI window without
+--- DialogueUI. The setting is kept, so installing DialogueUI later brings its window back.
 function Addon:PlayerStyle()
     local style = self:Profile("Frame").Style
     if style == "none" or style == "classic" then return style end
-    if style == "subtitle" and not Transcript.unavailable then return "subtitle" end
+    if style == "subtitle" then return "subtitle" end
     if style == "dialogueui" and DialogueUITheme and DialogueUITheme:Available() then return "dialogueui" end
-    if Version.IsAnyLegacy then return "classic" end
     return "minimal"
 end
 
@@ -478,10 +460,8 @@ local function RegisterSlashCommand()
             { "/sp diagnostics", L.OPT_DIAGNOSTICS },
             { "/sp settings", L.SETTINGS },
         }
-        if Gather then
-            table.insert(lines, { "/sp collect", L.OPT_GATHER })
-            table.insert(lines, { "/sp send", L.OPT_GATHER_SHARE })
-        end
+        table.insert(lines, { "/sp collect", L.OPT_GATHER })
+        table.insert(lines, { "/sp send", L.OPT_GATHER_SHARE })
         if Developer.provider then table.insert(lines, { "/sp log", "Spoken Developer" }) end
         print("|cff66bbffSpoken|r")
         for _, line in ipairs(lines) do print("  " .. line[1] .. ": " .. line[2]) end
@@ -572,10 +552,9 @@ end
 -- The Forever client's gamepad UI takes over every popup as it opens, inside the code that
 -- opened it. Opened by an addon, that taints the gamepad's bindings: the next close is blocked,
 -- and the "blocked from an action" dialog it raises hangs the client (#165). There the chat line
--- says it alone. pcall, because 1.12 raises on a CVar it has never heard of.
+-- says it alone.
 function Addon:IsGamepadUI()
-    local ok, style = pcall(GetCVar, "InputDeviceInterfaceStyle")
-    return ok and style == "1"
+    return GetCVar("InputDeviceInterfaceStyle") == "1"
 end
 
 -- Folders an older release installed, which nothing ships any more: Spoken's own before it was
@@ -680,15 +659,13 @@ function Addon:TakeVoiceLanguageFromQuests()
 end
 
 -- AceDB needs the saved variable to exist, which is only true once the client has loaded
--- this addon's file. 1.12 hands an OnEvent handler nothing and sets the globals `event`
--- and `arg1` instead, hence the fallback.
+-- this addon's file.
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function(_, ev, name)
-    ev = ev or event
-    if ev == "ADDON_LOADED" and (name or arg1) == AddonFolder then
+    if ev == "ADDON_LOADED" and name == AddonFolder then
         Addon:InitDB()
     elseif ev == "PLAYER_ENTERING_WORLD" then
         Addon:StopWhereNotRead()

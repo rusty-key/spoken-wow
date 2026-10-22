@@ -44,6 +44,23 @@ Expect("the locale is the client's", envelope:match("\nlocale=enUS\n") ~= nil, t
 Expect("...and the packs' language goes beside it", envelope:match("\npack=enUS\n") ~= nil, true)
 Expect("...with the version of the pack speaking it, or none", envelope:match("\npackVersion=[^\n]+\n") ~= nil, true)
 
+-- The client writes the reader's name, class and race into a page: they go back as tokens, so
+-- no character's name reaches the site and every character's copy is one page.
+stub.world.playerName, stub.world.playerClass, stub.world.playerRace = "Valaas Dawnsight", "Warrior", "Night Elf"
+local NAMED = "Greetings, Valaas. Valaas Dawnsight, a Warrior of the Night Elf people, reads Valaaswood.\n\nWritten for this test alone."
+stub.ShowPage({ title = "Ledger of Nothing", number = 3, text = NAMED })
+local TEMPLATE = "Greetings, $N. $N, a $C of the $R people, reads Valaaswood.\n\nWritten for this test alone."
+local named = B:CaptureContribution()
+Expect("a page's name, class and race go back as tokens", named:find(TEMPLATE, 1, true) ~= nil, true)
+Expect("...and no name goes with it", named:find("Valaas ", 1, true) or named:find("Dawnsight", 1, true), nil)
+Expect("...keyed on the page with its tokens", named:match("\npage=" .. B:ChecksumOf(TEMPLATE) .. "\n") ~= nil, true)
+-- A report on a page that names the reader sends it with the token too.
+stub.ShowPage({ title = "Proof of Deed", number = 1, text = "This proof of deed is to verify that Valaas Dawnsight slew Margol the Rager, scourge of the searing gorge.\n\nThe Ironforge museum recognizes this achievement and thanks the bearer for their generous contribution.\n\n-Head Curator Thorius Stonetender" })
+local report = B:ReportContext(1231)
+Expect("a report on a page with the reader's name in it sends the token",
+    report ~= nil and report:find("verify that $N slew", 1, true) ~= nil and report:find("Valaas", 1, true) == nil, true)
+stub.world.playerName, stub.world.playerClass, stub.world.playerRace = nil, nil, nil
+
 -- A page the corpus already has is not a gap: the complaint there is a report, not a payload.
 local REGISTRY_1 = "Hillsbrad Town Registry\n\nWe the people of Hillsbrad do solemny swear our faith and devotion to the Alliance maintained by the great monarchs, King Magni Bronzebeard of Ironforge and King Anduin Wrynn of Stormwind.\n\nHerein lies the town registry for purposes of governing this fair city in the foothills of the great Alterac Mountains as well as serving as a record of those who have paid their taxes to their Kings and to the great almighty Alliance."
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_1 })

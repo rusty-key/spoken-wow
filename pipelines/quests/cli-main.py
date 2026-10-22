@@ -22,7 +22,7 @@ from tts_cli.corpus import DEFAULT_CORPUS_PATH, load_corpus
 from tts_cli.factions import (DEFAULT_FACTIONS_PATH, PACKS, load_sides, pack_stems,
                               pack_title)
 from tts_cli.gossip_text import DEFAULT_ALIASES_PATH, load_aliases
-from tts_cli.ignores import DEFAULT_IGNORED_PATH, load_ignored
+from tts_cli.ignores import DEFAULT_IGNORED_PATH, DEFAULT_OVERRIDES_PATH, load_pack_ignored
 from tts_cli.locale_text import load_locale_text
 from tts_cli.store import DEFAULT_STORE_DIR
 
@@ -97,6 +97,8 @@ bld.add_argument("--dist", default=DEFAULT_DIST_DIR)
 bld.add_argument("--module", default=DEFAULT_MODULE_NAME)
 bld.add_argument("--version", default="1.0.1")
 bld.add_argument("--ignored", default=DEFAULT_IGNORED_PATH)
+bld.add_argument("--overrides", default=DEFAULT_OVERRIDES_PATH,
+                 help="the Compendium's hand corrections: a quest they remove ships no audio")
 bld.add_argument("--pack", default="all", choices=PACKS,
                  help="which slice of the audio to ship (default: all)")
 bld.add_argument("--factions", default=DEFAULT_FACTIONS_PATH)
@@ -208,7 +210,8 @@ elif args.mode == "build":
         pack_stems(corpus, load_sides(args.factions), args.pack, load_aliases(args.aliases))
     report = build_module(corpus, args.store, args.dist,
                           args.module, args.version, progress=True,
-                          ignored=load_ignored(args.ignored), include=include,
+                          ignored=load_pack_ignored(corpus, args.ignored, args.overrides),
+                          include=include,
                           title=args.module_title or pack_title(args.pack),
                           language=args.language, locale_text=locale_text)
     print(f"\nbuilt {report['moduleDir']}")

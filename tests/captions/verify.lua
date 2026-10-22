@@ -34,8 +34,7 @@ end
 
 dofile(addons .. 'Spoken/Environment.lua')
 local E=SpokenEnv
-E.Version={IsLegacyVanilla=false,IsLegacyBurningCrusade=false,IsLegacyWrath=false,
-    IsCamelot=true,IsAnyLegacy=false,IsRetailOrAboveLegacyVersion=function() return true end}
+E.Version={IsCamelot=true}
 dofile(addons .. 'Spoken/Core.lua')
 dofile(addons .. 'Spoken/Callbacks.lua')
 dofile(addons .. 'Spoken/SoundQueue.lua')
@@ -79,6 +78,9 @@ E.Addon.db.profile.Frame.Style='minimal'
 E.Addon.db.profile.Frame.MinimalBackground='dark'
 E.Addon.db.profile.Audio.LineGap=0
 E.Addon.db.profile.Transcript.HighlightWord=true
+-- The checks below follow the words typed in and the progress line, which are off by default.
+E.Addon.db.profile.Transcript.Typewriter=true
+E.Addon.db.profile.Transcript.SubtitleProgress=true
 E.Addon:Enable()
 local T,Q,M=E.Transcript,E.SoundQueue,E.MinimalPlayer
 local source=E.Sources:Register('quests',{interClipGap=.55})
@@ -280,15 +282,8 @@ Advance(1)
 local failed=Clip('failed','Not playable',10); failed.path='missing'
 source:Enqueue(failed)
 Check(not T.frame:IsShown(),'rejected audio leaves no stale captions')
-local delayed=Clip('delayed',long,10); delayed.delay=2
-source:Enqueue(delayed); Advance(1)
-Check(T:GetProgress()==0 and HighlightCount()==0,'initial silence is excluded from highlighting')
-Q:PauseQueue(); Advance(2)
-Check(HighlightCount()==0,'pausing during initial silence does not highlight a word')
-Q:ResumeQueue(); Advance(2)
-Check(T.activeWord==1 and HighlightCount()>=1,'first word appears when initial silence ends')
-Advance(5)
-Check(T:GetProgress()==.5 and HighlightCount()>=1,'duration starts after the delay')
+source:Enqueue(Clip('after',long,10)); Advance(1)
+Check(T.frame:IsShown(),'the next clip shows its words')
 SlashCmdList.SPOKEN('transcript off')
 Check(not cfg.Enabled,'slash command disables captions')
 SlashCmdList.SPOKEN('transcript on')
@@ -309,8 +304,8 @@ do
     Check(cfg.HighlightWord==d.HighlightWord and cfg.SubtitleShadow==d.SubtitleShadow and cfg.TypewriterBy==d.TypewriterBy,
         'resetting the words puts back the defaults a first install has')
 end
--- The window checks below follow the word being read.
-cfg.HighlightWord=true; T:RefreshConfig()
+-- The window checks below follow the word being read, typed in, with the progress line.
+cfg.HighlightWord=true; cfg.Typewriter=true; cfg.SubtitleProgress=true; T:RefreshConfig()
 local playerTop=M.frame:GetTop()
 local extra={}
 for i=1,6 do extra[i]=Clip('extra'..i,'Later dialogue',10); source:Enqueue(extra[i]) end

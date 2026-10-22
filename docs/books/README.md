@@ -166,8 +166,10 @@ it is showing. Title, page number and a checksum of the text; then the checksum 
 where no other page shares it, or in `Data/Variants.lua`; then the words with the layout
 ignored (`PageByWords`: every run of whitespace one space, an aside's brackets dropped), for a
 server that breaks a page's lines or spaces its sentences differently, by title and number
-first and then where no other page has the same words; then nothing. Nothing is the right last
-answer: the alternative is reading the wrong page's words aloud.
+first and then where no other page has the same words; then, for a page the client filled with
+the reader's name, class or gender word, its words against the captions that hold a token,
+where exactly one fits; then nothing. Nothing is the right last answer: the alternative is
+reading the wrong page's words aloud.
 
 **`Data/Variants.lua` holds the pages a server words differently.** `make books-variants`
 (`pipelines/books/tools/variants.mjs`) reads every chain the Forever world DB can show, as
@@ -239,8 +241,7 @@ place all of this identically, so one anchor covers three clients.
 The cost is that a full page's last line runs under the button; the alternative was
 colliding with one of Blizzard's controls on page two of every book.
 
-**Every clip carries a Report action**, the bug icon the quests and zones clips use, falling
-back to an "R" on the three legacy clients where that texture does not exist. The
+**Every clip carries a Report action**, the bug icon the quests and zones clips use. The
 client cannot open a browser or post anywhere, so pressing it raises a popup holding one
 selectable address — `UI/CopyLink.lua`, the same shape the Places addon carries, and not
 shared with it because two addons cannot own one StaticPopup id.
@@ -291,7 +292,10 @@ every book, letter, note, scroll, tablet, plaque, gravestone, exhibit and pictur
 reads, found or not, with the words of each on the right, on the spellbook's parchment, to read
 and to listen to wherever you are. Which readables exist and where they are comes from
 `Data/Places.lua` (`pipelines/books/tools/places.mjs`); what this character has found, from
-`SpokenBooksCharacter` (`Core.lua`); the words, from `Data/Books.lua`.
+`SpokenBooksCharacter` (`Core.lua`); the words, from `Data/Books.lua`. `make books-places` reads
+the repack's world DB (`PLACES_MYSQL_*`) and its map files (`PLACES_MAPS`, the repack's `data/maps`
+folder; it stops without them). A quest places a readable only when the quests corpus or the
+client's QuestV2 has it: the repack also carries Cataclysm's quest rows.
 
 **The list.** A banner for each continent, Kalimdor and the Eastern Kingdoms, each opening and
 closing on its own. Under a continent each zone is a line (its name, and how many of its readables are

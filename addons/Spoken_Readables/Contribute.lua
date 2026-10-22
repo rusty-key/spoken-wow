@@ -1,14 +1,15 @@
 -- A page this corpus does not carry, as something that can be sent.
 --
--- The gap is the same one Reader.lua's PageOnScreen answers with nil: a page whose checksum
--- no lookup holds. On a 1.12-derived corpus that is every post-vanilla book, every locale but
+-- The gap is the same one Reader.lua's PageOnScreen answers with nil: a page no lookup
+-- finds. On a 1.12-derived corpus that is every post-vanilla book, every locale but
 -- one, and custom text a server added itself.
 --
 -- MAIL NEVER LEAVES THE CLIENT. IsMail is already how the reader refuses to narrate a letter,
 -- and the reason is stronger here: a letter is a player's own words to another player, and
 -- this is the one path in the addon that would put them on a server of ours.
 --
--- `page` is the client-side checksum, not a pageTextID. The frozen id `b:{pageTextID}` names a
+-- `page` is the client-side checksum, of the page with the reader's name, class and race put
+-- back as tokens, not a pageTextID. The frozen id `b:{pageTextID}` names a
 -- page the corpus has; a page it has never seen has no id to be named by, and gets one only if
 -- triage accepts it.
 
@@ -32,6 +33,80 @@ local function BaseFields(self)
 	}
 end
 
+-- A letter, a digit, or any byte of a multi-byte UTF-8 character.
+local function IsWordByte(b)
+	return b ~= nil and (b >= 128 or (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122))
+end
+
+--- Every whole-word occurrence of `word` in `text` replaced by `token`. A plain find, as the
+--- word is the player's own name and no pattern; whole words, so "Mist" leaves "Mistwood".
+local function ReplaceWord(text, word, token)
+	local out, pos = {}, 1
+	while true do
+		local first, last = string.find(text, word, pos, true)
+		if not first then
+			break
+		end
+		if IsWordByte(string.byte(text, first - 1)) or IsWordByte(string.byte(text, last + 1)) then
+			out[#out + 1] = string.sub(text, pos, last)
+		else
+			out[#out + 1] = string.sub(text, pos, first - 1)
+			out[#out + 1] = token
+		end
+		pos = last + 1
+	end
+	out[#out + 1] = string.sub(text, pos)
+	return table.concat(out)
+end
+
+--- The page with this character's name, class and race put back as the game's tokens, as
+--- Spoken_Quests/Contribute.lua's Detemplate does for quest text. The client writes them into
+--- a page, and a page sent as it was shown would carry the player's name to the site. $G
+--- cannot be undone: the other side of the branch is not on screen.
+function SpokenBooks:Detemplate(text)
+	local swaps = {}
+	local function add(word, token)
+		if type(word) == "string" and word ~= "" then
+			swaps[#swaps + 1] = { word, token }
+		end
+	end
+	local function addCased(word, upper, lower)
+		add(word, upper)
+		if type(word) == "string" and string.lower(word) ~= word then
+			add(string.lower(word), lower)
+		end
+	end
+
+	local name = UnitName and UnitName("player")
+	add(name, "$N")
+	-- A name with a surname is greeted by one part of it.
+	if type(name) == "string" then
+		for part in string.gmatch(name, "%S+") do
+			if part ~= name then
+				add(part, "$N")
+			end
+		end
+	end
+	if UnitClass then
+		local localized, classFile = UnitClass("player")
+		addCased(localized, "$C", "$c")
+		-- A locale that names a class by gender may write the other form.
+		for _, names in ipairs({ _G.LOCALIZED_CLASS_NAMES_MALE or {}, _G.LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
+			addCased(classFile and names[classFile], "$C", "$c")
+		end
+	end
+	if UnitRace then
+		addCased((UnitRace("player")), "$R", "$r")
+	end
+
+	-- Longest first, so "Night Elf" goes as one race before a shorter word inside it.
+	table.sort(swaps, function(a, b) return string.len(a[1]) > string.len(b[1]) end)
+	for _, pair in ipairs(swaps) do
+		text = ReplaceWord(text, pair[1], pair[2])
+	end
+	return text
+end
+
 --- The envelope for the page on screen, or nil when there is nothing to send.
 function SpokenBooks:CaptureContribution()
 	if self:IsMail() then
@@ -42,9 +117,11 @@ function SpokenBooks:CaptureContribution()
 	if type(text) ~= "string" or text == "" then
 		return nil
 	end
+	text = self:Detemplate(text)
 
 	-- Once: the page field and Gather's key are the same checksum, and it is a pass over the
-	-- whole page each time.
+	-- whole page each time. Taken with the tokens back, so every character's copy of a page
+	-- is one page.
 	local sum = self:ChecksumOf(text)
 	local fields = BaseFields(self)
 	fields[#fields + 1] = { "page", sum }
@@ -76,7 +153,7 @@ function SpokenBooks:ReportContext(pageId)
 		local kept = self.pageText and self.pageText[self:GetClientLanguage()]
 		text = kept and kept[pageId]
 	end
-	return Spoken.Contribute:Envelope("books", fields, text)
+	return Spoken.Contribute:Envelope("books", fields, type(text) == "string" and self:Detemplate(text) or text)
 end
 
 --- The report address for a page, with its context in the fragment. The bare address in the
@@ -138,7 +215,7 @@ function SpokenBooks:ShowContribution()
 	end
 	local gather = { key = key, envelope = envelope }
 	local address = format("%s/contribute", Spoken.SITE_URL)
-	-- Encode is absent on an older Spoken a legacy-client zip can still bundle; Link
+	-- Encode is absent on an older Spoken; Link
 	-- returns nil for that or for an oversized result, and the two-copy fallback still works.
 	local link = Spoken.Contribute.Encode and Spoken.Contribute:Link(address, envelope)
 	if link then

@@ -268,6 +268,10 @@ for (const lang of languages) {
 const base = corpora.get(BASE_LOCALE);
 const baseKeys = new Set(base ? base.subKeys : []);
 const baseZones = new Set(base ? base.zoneIDs : []);
+const baseStories = new Set();
+for (const [, mapID, body] of (base ? base.subSrc : "").matchAll(/^\t\[(\d+)\] = \{$([\s\S]*?)^\t\},?$/gm)) {
+  for (const [, key] of body.matchAll(/^\t\t\["([^"]*)"\] = \{$/gm)) baseStories.add(`${mapID}/${key}`);
+}
 
 for (const [lang, corpus] of corpora) {
   if (lang === BASE_LOCALE) continue;
@@ -304,7 +308,10 @@ for (const lang of languages) {
   if (!src.includes(`if not SpokenZones:ShouldLoadAliases("${lang}") then`)) {
     note(`${label}: missing the ShouldLoadAliases("${lang}") guard -- would load on every client`);
   }
-  if (!src.includes(`SpokenZones:RegisterAliases("${lang}", aliases)`)) {
+  if (
+    !src.includes(`SpokenZones:RegisterAliases("${lang}", aliases)`) &&
+    !src.includes(`SpokenZones:RegisterAliases("${lang}", aliases, byZone)`)
+  ) {
     note(`${label}: missing the RegisterAliases call -- the table would never be reachable`);
   }
 
@@ -316,6 +323,15 @@ for (const lang of languages) {
   for (const target of targets) {
     if (!baseKeys.has(target)) {
       note(`${label}: alias points at "${target}", which no English subzone uses`);
+    }
+  }
+  // A name told apart by zone: each key must be a story kept under that zone, or the player
+  // there gets no story where the flat table would have given one.
+  for (const [, cells] of src.matchAll(/^\t\["(?:[^"\\]|\\.)*"\] = \{ (.*) \},$/gm)) {
+    for (const [, mapID, key] of cells.matchAll(/\[(\d+)\] = "([^"]*)"/g)) {
+      if (!baseStories.has(`${mapID}/${key}`)) {
+        note(`${label}: "${key}" under ${mapID} is told apart by zone, but no English story is kept there`);
+      }
     }
   }
   aliasCounts.set(lang, new Set(targets).size);

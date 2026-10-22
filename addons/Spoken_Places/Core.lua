@@ -289,9 +289,27 @@ end
 -- Falls through to the normalised name when there is no alias. That covers an
 -- English client, and every place whose name Blizzard left in English -- which
 -- is around one subzone in eight for German.
-function SpokenZones:ResolveAreaKey(name)
+--
+-- A name the client gives more than one place is told apart by `mapID`, the map
+-- the name was reported on: Spanish names Thunder Bluff's Spirit Rise and
+-- Forever's Rise of Spirits both "Alto de los Espíritus". Without `mapID`, or in
+-- an alias file built before it had that table, the flat table answers alone.
+function SpokenZones:ResolveAreaKey(name, mapID)
 	if type(name) ~= "string" then
 		return nil
+	end
+	local byZone = mapID and self.ZoneAliases and self.ZoneAliases[self.clientLocale]
+	local shared = byZone and byZone[name]
+	if shared then
+		if shared[mapID] then
+			return shared[mapID]
+		end
+		-- Found on another map than its story's (Data/AreaZones.lua, a dungeon's entrance).
+		for storyMapID, key in pairs(shared) do
+			if self:StoryPlace(mapID, key) == storyMapID then
+				return key
+			end
+		end
 	end
 	local aliases = self.Aliases[self.clientLocale]
 	local aliased = aliases and aliases[name]
@@ -473,7 +491,7 @@ end
 -- (SpokenZones:StoryPlace). The key is returned even on a miss so /spp debug can report what
 -- failed to match.
 function SpokenZones:GetSubzoneLore(parentMapID, areaName)
-	local key = self:ResolveAreaKey(areaName)
+	local key = self:ResolveAreaKey(areaName, parentMapID)
 	if not key then
 		return nil, nil
 	end

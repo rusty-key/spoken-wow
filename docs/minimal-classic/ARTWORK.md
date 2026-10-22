@@ -16,7 +16,7 @@ See the repository's [third-party notice](../../THIRD_PARTY.md).
   and centered; the portrait background and mask complete the circular framing.
 - Book and zone badges use the client's own `GossipFrame\TrainerGossipIcon`
   and `WorldMap\UI-World-Icon` (`addons/Spoken/UI/Face.lua`). A place story's portrait is its zone's icon, one of
-  the 46 bundled in `addons/Spoken/Textures/Zones/` (`Spoken:ZoneIcon`), which the
+  the 57 bundled in `addons/Spoken/Textures/Zones/` (`Spoken:ZoneIcon`), which the
   Compendium's zone rows show too; [THIRD_PARTY.md](../../THIRD_PARTY.md) says
   where they come from.
 - Runtime textures are power-of-two RGBA TGA files. Fonts and remaining

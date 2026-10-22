@@ -1,5 +1,5 @@
 {
-  "about": "The instances the Compendium places things in, by their map (the client's Map ID). Read by pipelines/quests/tools/export_compendium.py and pipelines/books/tools/places.mjs, which file a dungeon's quests and writings under the zone of its entrance, and by pipelines/lib/dungeons.mjs, which writes addons/Spoken/Data/Dungeons.lua with the names in every language from the client's Map table. `zone` is the uiMapID of the zone the entrance is in. `story` is the Zones area whose story is the dungeon's card on the Zones tab ([uiMapID, key] in Spoken_Places' Subzones.lua), absent where no area tells it. `instances` are instance maps that are no dungeon, filed as the zone of their entrance (the PvP halls; the Excavation Site is an instance of the Wetlands' own story), and `battlegrounds` each battleground's map with its zone map.",
+  "about": "The instances the Compendium places things in, by their map (the client's Map ID). Read by pipelines/quests/tools/export_compendium.py and pipelines/books/tools/places.mjs, which file a dungeon's quests and writings under the zone of its entrance, and by pipelines/lib/dungeons.mjs, which writes addons/Spoken/Data/Dungeons.lua with the names in every language from the client's Map table. `zone` is the uiMapID of the zone the entrance is in. `story` is the Zones area whose story is the dungeon's card on the Zones tab ([uiMapID, key] in Spoken_Places' Subzones.lua), absent where no area tells it. `worldBosses` are the maps of the world bosses (Kazzak, Azuregos, Thaunderaan, the Emerald Dragons): the Bosses tab lists their bosses straight under the zone, with no card for the map. `instances` are instance maps that are no dungeon, filed as the zone of their entrance (the PvP halls; the Excavation Site is an instance of the Wetlands' own story), and `battlegrounds` each battleground's map with its zone map.",
   "dungeons": {
     "33": { "name": "Shadowfang Keep", "zone": 1421, "story": [1421, "shadowfang keep"] },
     "34": { "name": "Stormwind Stockade", "zone": 1453 },
@@ -28,8 +28,18 @@
     "531": { "name": "Ahn'Qiraj Temple", "zone": 1451 },
     "533": { "name": "Naxxramas", "zone": 1423 },
     "2959": { "name": "City of Dalaran", "zone": 1416, "story": [1416, "dalaran"] },
-    "2999": { "name": "Ruins of Lordaeron", "zone": 1458, "story": [1458, "ruins of lordaeron"] },
-    "3065": { "name": "The Hall of Thanes", "zone": 1455 }
+    "2999": { "name": "Ruins of Lordaeron", "zone": 1420, "story": [1420, "ruins of lordaeron"] },
+    "3065": { "name": "The Hall of Thanes", "zone": 1455 },
+    "2784": { "name": "Demon Fall Canyon", "zone": 1440, "story": [1440, "demon fall canyon"] },
+    "2856": { "name": "Scarlet Enclave", "zone": 1423 },
+    "2875": { "name": "Karazhan Crypts", "zone": 1430 },
+    "2998": { "name": "Excavation Site: Wetlands", "zone": 1437, "story": [1437, "excavation site wetlands"] }
+  },
+  "worldBosses": {
+    "2789": { "name": "The Tainted Scar", "zone": 1419 },
+    "2791": { "name": "Storm Cliffs", "zone": 1447 },
+    "2804": { "name": "The Crystal Vale", "zone": 1451 },
+    "2832": { "name": "Nightmare Grove", "zone": 1431, "bossZones": { "emeriss": 1431, "lethon": 1444, "taerar": 1440, "ysondre": 1425 } }
   },
   "instances": {
     "449": { "name": "Champion's Hall", "zone": 1453 },

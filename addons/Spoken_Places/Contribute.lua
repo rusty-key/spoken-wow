@@ -79,7 +79,7 @@ function SpokenZones:ShowContribution(mapID, subzone)
         return
     end
     local address = format("%s/contribute", Spoken.SITE_URL)
-    -- Encode is absent on an older Spoken a legacy-client zip can still bundle; Link
+    -- Encode is absent on an older Spoken; Link
     -- returns nil for that or for an oversized result, and the two-copy fallback still works.
     local link = Spoken.Contribute.Encode and Spoken.Contribute:Link(address, envelope)
     if link then

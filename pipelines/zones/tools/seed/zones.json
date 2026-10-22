@@ -6,6 +6,7 @@
     "file from a client dump with `node tools/seed-from-dump.mjs`."
   ],
 
+  "947":  { "name": "Azeroth",              "wiki": "Azeroth" },
   "1414": { "name": "Kalimdor" },
   "1415": { "name": "Eastern Kingdoms" },
 

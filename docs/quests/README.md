@@ -150,36 +150,23 @@ make quests-package-meta                 # the "install everything" addon
 make quests-package-audio PACKS=all      # every line in one folder, when trying an encode change
 make quests-package-audio VERSION=1.4.0  # the version written into each pack's .toc
 ENCODE=copy make quests-package-audio    # the masters untouched, to hear what is being given up
-make quests-package                      # Spoken_Quests alone: one Blizzard zip, one per legacy client
+make quests-package                      # Spoken_Quests alone
 ```
 
 Players of Blizzard's clients get Spoken_Quests inside `Spoken-<v>.zip`, which
 `make package-spoken` builds (`scripts/spoken/package.sh`; its notes are in
-`docs/spoken/CHANGELOG.md`). `make quests-package` builds the module alone, for the legacy
-clients below. It takes its version from `## Version:` in `Spoken_Quests.toc` and produces four
-zips. It refuses to build from an uncommitted tree — `ALLOW_DIRTY=1` overrides while testing —
-and refuses when a variant `.toc` or `Environment.lua` names a different version, which is drift
-nothing else notices until it ships.
+`docs/spoken/CHANGELOG.md`). `make quests-package` builds the module alone. It takes its
+version from `## Version:` in `Spoken_Quests.toc`. It refuses to build from an uncommitted tree
+— `ALLOW_DIRTY=1` overrides while testing — and refuses when a variant `.toc` or
+`Environment.lua` names a different version, which is drift nothing else notices until it ships.
 
-**One zip for Blizzard's clients, one apiece for the legacy ones.** Blizzard's clients
-pick a `.toc` by flavor suffix (`_Vanilla`, `_TBC`, else the unsuffixed one, which Forever reads),
-so a single archive serves them all and the client chooses. The 1.12, 2.4.3 and 3.3.5 clients
-predate suffix support: each reads `Spoken_Quests.toc` and nothing else, and each wants a
-different file under that one name, so each needs an archive of its own. Each also loads its own
-vendored Ace3 from `Spoken_Quests/<client>/`, because the root `Libs/AceTimer-3.0` binds
-`C_Timer.After` while loading and would error there. A legacy zip therefore carries one `.toc`,
-one Ace3 and Spoken (those clients have no addon manager to fetch a dependency), and neither
-of the other two clients' directories.
-
-CurseForge has no game version to file those zips against, so they are published to a GitHub
-release: tag `quests/v<version>` and `.github/workflows/release-addons.yaml` checks the tag
-against `## Version:`, runs this same script, and attaches all four zips. The workflow ignores a
-bare `v<version>` tag.
+**One zip for every client.** The clients pick a `.toc` by flavor suffix (`_Vanilla`, `_TBC`,
+else the unsuffixed one, which Forever reads), so a single archive serves them all and the
+client chooses.
 
 The sound packs are the same files on every client. Their
-`## Interface: 100007, 11509, 20506, 16001` names Era, Anniversary and Forever, as the zones and
-books packs do, after a 100007 for the 1.12/2.4.3/3.3.5 clients, which read the first number
-alone and refuse one below 20000. `DataModules` sets `checkAddonVersion` to 0 around
+`## Interface: 11509, 20506, 16001` names Era, Anniversary and Forever, as the zones and
+books packs do. `DataModules` sets `checkAddonVersion` to 0 around
 `LoadAddOn` so a client that considers a pack out of date loads it anyway. That switch reaches "out of date" and nothing else: the Forever client marks an
 Interface it does not list as incompatible (since build 70170), which no setting overrides, so
 every client a pack is filed against has to be on the line. Packs up to quests 2.2.0 carried
@@ -896,9 +883,10 @@ where the decision carries a reason.
 
 The Compendium reads the same list. `tts_cli/quest_text.py` `left_out` is the one rule for which
 quests it lists and has words for: Blizzard's debris (quest 1, `<NYI>` titles), a quest every
-line of which is ignored, and the `remove` entries of `corpus/compendium_overrides.json`. Those
-23 removals are the Compendium's alone until `line_ignore` holds their lines; once it does, the
-packs drop their clips too and the entries can go.
+line of which is ignored, and the `remove` entries of `corpus/compendium_overrides.json`. The
+packs follow the same rule: `build` treats every offer, progress and hand-in line of a quest left
+out as ignored (`ignores.pack_ignored`), so its audio and its quest-log giver leave the pack with
+its page. Follow-up lines, said in chat, are not touched.
 
 ### Reporting a line
 
@@ -975,9 +963,7 @@ Blizzard quest or gossip window, exactly when there is text on screen and nothin
 play. The quest log offers the same thing where a quest's Play would be: a small plus icon
 in the list, and the details view's Play reading **Contribute**. A contribution from the log
 carries the quest's own description as its accept text and `from=log`, but no NPC — the log
-does not say who gave the quest. It exists on the Blizzard clients only: contributing is off for now on the 1.12, 2.4.3
-and 3.3.5 clients, and their `.toc` files leave out the `Contribute.xml`
-that loads it (the 1.12 client's Lua 5.0 could not parse it anyway). A player who does not want it turns it off with **Hide Contribute Buttons** in the Contribute
+does not say who gave the quest. A player who does not want it turns it off with **Hide Contribute Buttons** in the Contribute
 section of Spoken's settings, one switch for the buttons of every module; each module
 asks `Spoken:AreContributeButtonsHidden()` in its gap check and refreshes on the player's
 `CONTRIBUTE_SETTINGS_CHANGED` callback, since toggling it fires no game event.
@@ -1090,7 +1076,7 @@ holds that instead, 81 character models across 32 races, and maps `122055` to
 model table only ever needs the race and the gender an id names, never the path itself. The
 table lives on the site deliberately: a race added upstream, or an id that turns out to mean
 something else, is corrected in one deploy, while a table shipped inside the addon waits for
-every player to take an update, and the legacy-client players install their zips by hand.
+every player to take an update.
 
 `resolveNpc` then answers in order, stopping at the first that knows:
 
@@ -1343,7 +1329,7 @@ for the giver names' reason: the text follows the client and the voice is any la
 German client with English or Portuguese packs finds its line the same way. Each file is about
 2 MiB of Lua, and a guard returns only after the client has parsed the file, so Forever's `.toc`
 files list each one with `[AllowLoadTextLocale <lang>]` (a per-file directive from 11.1.5) and
-the client loads only its own. The classic and legacy `.toc` files load `Gossip/Gossip.xml`,
+the client loads only its own. The classic `.toc` files load `Gossip/Gossip.xml`,
 which lists all nine (about 14 MiB, 2 MiB of it ever built).
 `make quests-export-gossip-text` writes them (`tts_cli/gossip_text.py`) from three sources: a
 translation row while it translates the line's current English, the line's own text when it has
@@ -1463,9 +1449,7 @@ and `Followup.lua` reads them. A quest script that hands off to a `generic_scrip
 and spoken by whoever the hand-off ran it as - Thrall after For The Horde!, the Scarlet
 Cavaliers after Scarlet Subterfuge; `pipelines/quests/tts_cli/followup.py` has the rules. That chat reaches everybody near the NPC, and in a capital the
 same turn-in happens every few seconds, so nothing is listened for until **this** player
-triggers it: `QUEST_TURNED_IN`/`QUEST_ACCEPTED` on Blizzard's clients, and on 1.12/2.4.3/3.3.5
-(which have neither event) a hook on `GetQuestReward`/`AcceptQuest`, which run while the dialog
-still says which quest it is. The quest's lines stay armed for their longest delay plus ten
+triggers it: `QUEST_TURNED_IN`/`QUEST_ACCEPTED`. The quest's lines stay armed for their longest delay plus ten
 seconds. On an English client a message must then equal a line once `$n`, `$r`, `$c` and `$g…;`
 are filled in for the local player - so a line naming the player cannot match somebody
 else's turn-in - and come from the line's speaker when the chat event carries a GUID. Other
@@ -1510,16 +1494,16 @@ the quest.
 Azeroth's Compendium is Spoken's window (`addons/Spoken/UI/Compendium.lua`, its pages scrolling
 in Spoken's `UI/TextView.lua`). `UI/QuestsTab.lua` adds a Quests tab to it once the world is up,
 first, before Places and Readables; it needs Spoken and no other module. `Compendium.xml` loads
-the tab and its data from the `.toc` files of the clients the window runs on (Forever, Classic
-Era and TBC Anniversary), not on the legacy clients.
+the tab and its data from every `.toc` file (Forever, Classic Era and TBC Anniversary).
 
 Two generated files feed it, both committed so the addon never needs a database:
 
 - `Data/Compendium.lua` (`make quests-compendium`, `tools/export_compendium.py`): every corpus
   quest with its English title, its zone as uiMapIDs (the quest log's zone, a dungeon counting as
   the zone of its entrance, else where its giver stands: the area the repack's map files put the
-  spawn in, `COMPENDIUM_MAPS`, as the books' places have it, else the smallest zone rectangle
-  around it, and a city's rectangle over the ground around it), or the QuestSort of a class, profession
+  spawn in, `COMPENDIUM_MAPS` (the repack's `data/maps` folder; the run with the DB stops
+  without it, `--no-db` uses the rectangles), as the books' places have it, else the smallest zone
+  rectangle where no tile was extracted, and a city's rectangle over the ground around it), or the QuestSort of a class, profession
   or season with its name in every language, and the races and classes allowed to take it. Areas,
   zones and sorts are read from Forever's client tables (build 1.60.1.70338 on wago.tools, pinned
   in `pipelines/lib/wago.mjs` and cached in `pipelines/lib/cache/wago/` for every pipeline), which
@@ -1608,7 +1592,10 @@ Two generated files feed it, both committed so the addon never needs a database:
   since the last run with the database takes effect; the chain entries apply to the quests added.
 - `Data/QuestText.lua` (`make quests-compendium-text`, `tools/export_quest_text.py`, rules in
   `tts_cli/quest_text.py`): each quest's accept and complete text (its progress only where it has neither, as its accept), the corpus's
-  `originalText` with `$N`, `$C`, `$R`, `$G male:female;` and `$B` kept. A gendered pair is one
+  `originalText` with `$N`, `$C`, `$R`, `$G male:female;` and `$B` kept (the addon writes `$c` and
+  `$r` in lower case, as the client does, save on a German client). An objective's amount, a
+  Craftsman's Writ's `$2oa`, is written in from Efficient Games' objectives (the same cache as
+  `Data/Compendium.lua`'s; `--without-efficient-games` leaves it). A gendered pair is one
   text; where givers' texts differ, the one most of the moment's lines have, ties to the first in
   the corpus; ignored lines, and the quests the hand corrections `remove`, are left out. About 2.8 MB, parsed at every login on those clients.
 
@@ -1775,7 +1762,7 @@ snapshot is discarded.
 `tests/lua/quest_overlay_test.lua` covers the other thing the quest UI owes a player: the play
 button beside each quest in the quest log. There are two quest logs to draw it in. The old one
 is a named frame with numbered title rows (`QuestLogTitle1`…), redrawn through `QuestLog_Update`
-— what Classic Era and the legacy clients have, and what `QuestOverlayUI` was written
+— what Classic Era has, and what `QuestOverlayUI` was written
 against. The Forever client reports itself as mainline and draws the modern map-attached log
 instead: no `QuestLogFrame`, no `QuestLog_Update`, no `GetQuestLogTitle`, and rows that come
 out of `QuestScrollFrame.titleFramePool` with no names at all. `Compatibility.lua` therefore

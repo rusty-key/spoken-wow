@@ -35,3 +35,38 @@ export async function loadClientAreas() {
   for (const name of [...era.names, ...camelot.names]) keys.add(normaliseKey(name));
   return { builds: [era.build, camelot.build], keys };
 }
+
+/**
+ * Key -> the name the client shows for that area, Forever's spelling first, then Era's. The lore's
+ * names are wiki titles, which drop the client's leading "The" (The Crossroads). A key that one
+ * client spells two ways is left out, so the lore keeps its own name there.
+ *
+ * @param {string[]} foreverNames
+ * @param {string[]} eraNames
+ * @returns {Map<string, string>}
+ */
+export function clientNames(foreverNames, eraNames) {
+  const names = new Map();
+  const seen = new Set();
+  for (const list of [foreverNames, eraNames]) {
+    const byKey = new Map();
+    for (const raw of list) {
+      const name = raw.trim();
+      const key = normaliseKey(name);
+      if (!key || seen.has(key)) continue;
+      if (!byKey.has(key)) byKey.set(key, new Set());
+      byKey.get(key).add(name);
+    }
+    for (const [key, spellings] of byKey) {
+      seen.add(key);
+      if (spellings.size === 1) names.set(key, [...spellings][0]);
+    }
+  }
+  return names;
+}
+
+/** clientNames over the two committed seeds. */
+export async function loadClientNames() {
+  const [era, camelot] = await Promise.all([readJson(SEED), readJson(CAMELOT_SEED)]);
+  return clientNames(camelot.names, era.names);
+}

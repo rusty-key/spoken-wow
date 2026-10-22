@@ -5,8 +5,9 @@
 -- WorldMapFrame, so it works with the map closed.
 --
 -- The window, its list and its rows are the Compendium's; this is what goes in them. On the left,
--- a banner for each continent, a line under it for each of its zones (how many of its places are
--- found, and the share), and under an opened zone its city's line, one level in, with its own areas,
+-- Azeroth's banner, which opens its page, then a banner for each continent, a line under it for
+-- each of its zones (how many of its places are found, and the share), and under an opened zone its
+-- city's line, one level in, with its own areas,
 -- then a line for each of its dungeons and raids (under a Dungeons and Raids line where it has
 -- several), then the zone's areas as rows; after the continents, a banner for the zones on none
 -- (Other Lands) and one for the battlegrounds. On the right, the story on the spellbook's
@@ -73,15 +74,15 @@ local function UnknownHere(mapID)
 	return C_Map.GetMapInfo(mapID) == nil
 end
 
---- Every zone with a story, alphabetical: everything in the data but its continents and maps this
---- client has not got.
+--- Every zone with a story, alphabetical: everything in the data but Azeroth, its continents and
+--- maps this client has not got.
 local function ZoneIDs()
 	if sortedZoneIDs then
 		return sortedZoneIDs
 	end
 	sortedZoneIDs = {}
 	for mapID in pairs(SpokenZones.Zones) do
-		if not IsContinent(mapID) and not UnknownHere(mapID) then
+		if mapID ~= WORLD and not IsContinent(mapID) and not UnknownHere(mapID) then
 			table.insert(sortedZoneIDs, mapID)
 		end
 	end
@@ -159,7 +160,7 @@ end
 local function Reveal(mapID)
 	if IsContinent(mapID) then
 		continentOpen[mapID] = true
-	else
+	elseif mapID ~= WORLD then
 		C.OpenAround(mapID, continentOpen, groupOpen)
 	end
 end
@@ -301,10 +302,10 @@ local function Discovered(mapID, key)
 end
 
 --- Whether a place's story is locked for this character: not found yet, with Unlock Undiscovered
---- Zones off. A continent is found through its zones. The page and the map's
+--- Zones off. A continent is found through its zones; Azeroth always is. The page and the map's
 --- panel say so in its place rather than tell its story; the list still opens its banner or line.
 function SpokenZones:IsLocked(mapID, key)
-	if self:ShowsUndiscovered() then return false end
+	if self:ShowsUndiscovered() or mapID == WORLD then return false end
 	if not key and IsContinent(mapID) then
 		for _, zone in ipairs(ZonesOf(mapID)) do
 			if self:IsFound(zone) then return false end
@@ -514,6 +515,14 @@ local function BuildRowList()
 	local function Add(rows) for _, row in ipairs(rows) do table.insert(list, row) end end
 	local searching = filter ~= ""
 
+	-- Azeroth first, a banner as its continents are, with nothing under it to open or count: a click
+	-- shows its page. Never locked, so Discovered Only keeps it.
+	if SpokenZones.Zones[WORLD] then
+		local name = ZoneName(WORLD)
+		if (not searching or Matches(name)) and (not OnlyVoiced() or Voiced(WORLD)) then
+			table.insert(list, { style = "banner", kind = "world", mapID = WORLD, label = name, missing = Missing(WORLD) })
+		end
+	end
 	for _, continent in ipairs(Continents()) do
 		local name = ZoneName(continent)
 		local found, total, listed, anyFound = BannerCount(ZonesOf(continent))
@@ -597,7 +606,7 @@ end
 -- chosen.
 local function LandOnPlayer()
 	local current = CurrentZoneID()
-	if not current or IsContinent(current) then
+	if not current or current == WORLD or IsContinent(current) then
 		local continent = current and IsContinent(current) and current or PlayerContinent()
 		if continent then Reveal(continent) end
 		selection = continent and { mapID = continent, key = nil } or nil
@@ -682,11 +691,17 @@ local function ShowEntry()
 		audio = { mapID, nil }, report = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 end
 
+local function Count(n, many, one) return n == 1 and one or string.format(many, n) end
+
 --- The line under a place's name: where it sits and what its line or banner counts. An area sits in
 --- the zone it is listed in (SpokenZones:AreaZone): a dungeon's entrance's, Strahnbrad's Alterac
---- Mountains.
+--- Mountains. Azeroth sits in nothing, so its line says what it holds.
 function SpokenZones:PlaceLine(mapID, key)
 	if key then return string.format(L.IN_ZONE_FMT, ZoneName(self:AreaZone(mapID, key))) end
+	if mapID == WORLD then
+		return Count(#Continents(), L.CONTINENT_COUNT_FMT, L.CONTINENT_COUNT_ONE) .. ", "
+			.. Count(#ZoneIDs(), L.ZONE_COUNT_FMT, L.ZONE_COUNT_ONE)
+	end
 	local parent = self:PlaceAbove(mapID)
 	if IsContinent(mapID) then
 		local found, total = BannerCount(ZonesOf(mapID))
@@ -757,7 +772,7 @@ local function Holder(chosen)
 	if chosen.dungeons then return { mapID = chosen.dungeons } end
 	local mapID, key = chosen.mapID, chosen.key
 	if key then return { mapID = SpokenZones:DungeonOf(mapID, key) or SpokenZones:AreaZone(mapID, key) } end
-	if not mapID or IsContinent(mapID) then return nil end
+	if not mapID or mapID == WORLD or IsContinent(mapID) then return nil end
 	if CITY_IN[mapID] then return { mapID = CITY_IN[mapID] } end
 	if IS_BATTLEGROUND[mapID] then return { group = "battlegrounds" } end
 	local continent = ContinentOf(mapID)

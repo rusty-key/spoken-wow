@@ -33,8 +33,8 @@ const SAVED = "Spoken_Places.lua";
 
 const write = argv.includes("--write");
 
-// Map types worth having lore for. World (Azeroth has no page), Dungeon, Micro and Orphan are skipped.
-const WANTED = new Set(["Continent", "Zone"]);
+// Map types worth having lore for. Dungeon/Micro/Orphan are skipped.
+const WANTED = new Set(["World", "Continent", "Zone"]);
 
 async function findSavedVariables() {
   const wtf = WTF_FOLDERS.find((dir) => existsSync(dir));
@@ -100,7 +100,7 @@ console.log(`reading ${svPath}`);
 
 const maps = parseDump(await readFile(svPath, "utf8"));
 const wanted = maps.filter((m) => WANTED.has(m.mapTypeName));
-console.log(`dump contains ${maps.length} maps, ${wanted.length} of type Continent/Zone`);
+console.log(`dump contains ${maps.length} maps, ${wanted.length} of type World/Continent/Zone`);
 
 const seedRaw = JSON.parse(await readFile(SEED, "utf8"));
 const comment = seedRaw._comment;

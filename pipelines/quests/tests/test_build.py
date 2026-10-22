@@ -308,3 +308,56 @@ def test_a_wording_s_giver_of_another_voice_finds_its_own_file():
 
 def test_an_ignored_wording_leaves_one_and_no_table():
     assert "20-accept" not in _wording_tables(ignored={"q:20:accept:w1"})["quest_wording_lookups"]
+
+
+def _speaker(npc_id, name, contribution=None, quest_id=40, kind="creature"):
+    line = {"lineId": f"q:{quest_id}:accept", "source": "accept", "questId": quest_id,
+            "questTitle": "T", "npcId": npc_id, "npcName": name, "npcType": kind,
+            "fileName": f"{quest_id}-accept", "originalText": "Words.", "generatable": True}
+    if contribution is not None:
+        line["contributionId"] = contribution
+    return line
+
+
+def _names(*lines, table="npc_name_lookups"):
+    return _wording_tables({"lines": list(lines)})[table]
+
+
+def test_an_extracted_name_beats_a_contributed_one_in_either_order():
+    # A contribution names the NPC as the contributor's client did, Russian or German, and
+    # the quest log showed that name to English players.
+    assert _names(_speaker(1, "Sam Sarsaparilla"), _speaker(1, "Sam R", 7, 41))[1] == "Sam Sarsaparilla"
+    assert _names(_speaker(1, "Sam R", 7, 41), _speaker(1, "Sam Sarsaparilla"))[1] == "Sam Sarsaparilla"
+
+
+def test_a_contributed_name_stands_where_there_is_no_other():
+    assert _names(_speaker(1, "Todeswache Kristof", 7))[1] == "Todeswache Kristof"
+
+
+def test_among_names_of_one_kind_the_last_stands():
+    assert _names(_speaker(1, "Vaelan"), _speaker(1, "Acride", None, 41))[1] == "Acride"
+
+
+def test_a_subname_is_not_part_of_the_name():
+    greeting = {"lineId": "g:ab12", "source": "gossip", "questId": None, "questTitle": None,
+                "npcId": 1, "npcName": "Ishlee Breezewhisper <Skinner>", "npcType": "creature",
+                "fileName": "ab12", "originalText": "Hides?", "generatable": True,
+                "contributionId": 7}
+    tables = _wording_tables({"lines": [greeting]})
+
+    assert tables["npc_name_lookups"][1] == "Ishlee Breezewhisper"
+    # The game names the unit without it, so a key that kept it would never match.
+    assert tables["npc_name_gossip_file_lookups"] == {"Ishlee Breezewhisper": {"Hides?": "ab12"}}
+
+
+def test_a_placeholder_is_never_a_name():
+    assert 1 not in _names(_speaker(1, "null", 7, kind="gameobject"), table="object_name_lookups")
+    assert _names(_speaker(1, "npc 1", 7), _speaker(1, "Raan Wildwind", 7, 41))[1] == "Raan Wildwind"
+    assert _names(_speaker(1, "Raan Wildwind", 7), _speaker(1, "npc 1", 7, 41))[1] == "Raan Wildwind"
+    assert _names(_speaker(1, "Keg", None, 40, "gameobject"),
+                  _speaker(1, "Doodad_BeerKeg101", None, 41, "gameobject"),
+                  table="object_name_lookups")[1] == "Keg"
+
+
+def test_a_name_with_digits_or_a_dash_is_a_name():
+    assert _names(_speaker(1, "Homing Robot OOX-17/TN"))[1] == "Homing Robot OOX-17/TN"

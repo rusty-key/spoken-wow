@@ -1,4 +1,4 @@
-// A TrinityCore world DB + the client's map tables -> addons/Spoken_Readables/Data/Places.lua.
+// A TrinityCore world DB + the client's map tables + the quests corpus -> addons/Spoken_Readables/Data/Places.lua.
 //
 // Where each readable is, for Azeroth's Compendium: those standing in the world (a plaque, a
 // book on a shelf) in the zones their objects are spawned in, and those carried (a letter, a
@@ -27,6 +27,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 
 import mysql from "mysql2/promise";
 
@@ -34,12 +35,13 @@ import { instanceZones, loadDungeons } from "../../lib/dungeons.mjs";
 import { loadEnv } from "../../lib/env.mjs";
 import { FOREVER_BUILD, wagoTable } from "../../lib/wago.mjs";
 import { areaReader } from "./lib/area.mjs";
-import { cannotBeHad, dungeonsOf, isTemplateCopy, typeOf } from "./lib/places.mjs";
+import { cannotBeHad, dungeonsOf, foreverQuests, isTemplateCopy, typeOf } from "./lib/places.mjs";
 
 await loadEnv("books");
 
 const BOOKS = fileURLToPath(new URL("../../../addons/Spoken_Readables/Data/Books.lua", import.meta.url));
 const OUT = fileURLToPath(new URL("../../../addons/Spoken_Readables/Data/Places.lua", import.meta.url));
+const CORPUS = fileURLToPath(new URL("../../quests/corpus/corpus.json.gz", import.meta.url));
 // Forever's client, not Era's: Era's 1.15.9 also carries Season of Discovery and anniversary
 // items, and one that shares a vanilla page id lent that book its sources and zones.
 const BUILD = process.env.PLACES_BUILD ?? FOREVER_BUILD;
@@ -51,13 +53,19 @@ const WIDE = 8;
 // place Alterac Valley's Rock of Durotan. Only the dungeons and raids are a readable's `dungeons`;
 // another instance (a battleground, a PvP hall) stays its zone's.
 const INSTANCE_ZONE = instanceZones();
-const DUNGEONS = loadDungeons().dungeons;
+// A map under `instances` too (the Excavation Site) is its zone's, as the quests' exporter files it.
+const { dungeons: ALL_DUNGEONS, instances: NOT_DUNGEONS } = loadDungeons();
+const DUNGEONS = Object.fromEntries(Object.entries(ALL_DUNGEONS).filter(([map]) => !NOT_DUNGEONS[map]));
 // A spawn inside a dungeon is placed at -map until the file is written, so a readable's zones
 // still say which of them it is had in only from inside one.
 const placeOf = (z) => (z < 0 ? INSTANCE_ZONE[-z] : z);
 // Text objects the server has and never spawns, placed by hand: the nameplates in Blackrock
 // Depths' Dark Keeper vault.
 const UNSPAWNED = { "Dark Keeper Nameplate": 230 };
+// Text objects that place no readable, by entry: the Undercity's "Book" (678602) opens the Libram
+// of Rumination's second page, and would make that Libram, dropped across Azeroth, a book on an
+// Undercity shelf.
+const NOT_PLACING = new Set([678602]);
 // Sources the world DB cannot see, by book id: an item a spell or a machine makes, a quest whose
 // giver it does not spawn. Each names a quest or an object, checked against the world DB, and
 // the zones, where the object's spawns do not give them.
@@ -71,6 +79,7 @@ const SOURCES_BY_HAND = {
   1194: [{ how: "object", object: 142696 }], // 3005-D
   2671: [{ how: "quest start", quest: 7636, zones: [1448] }], // Petrified Bark: Vartrus the Ancient, Felwood
   2859: [{ how: "quest reward", quest: 8996, zones: [1427] }], // Brazier of Invocation: Bodley, Blackrock Mountain
+  2786: [{ how: "quest reward", quest: 8228, zones: [1455] }], // Fishing Tournament!: Barrus, Ironforge, whom the DB does not spawn
 };
 // The seasonal events' readables, had only while the event runs, by event: the Compendium lists
 // them under Holidays and Events, a line for each event. Their NPCs are spawned by the event, and
@@ -178,6 +187,12 @@ function boxAt(map, x, y) {
   return best?.zone;
 }
 
+// ---------------------------------------------------------------- the quests Forever has
+
+const corpusLines = JSON.parse(gunzipSync(await readFile(CORPUS)).toString("utf8")).lines;
+const FOREVER_QUESTS = foreverQuests(corpusLines, await table("QuestV2"));
+const notForever = new Set();
+
 // ---------------------------------------------------------------- what each is (lib/places.mjs)
 
 const iconPath = new Map((await table("ManifestInterfaceData")).map((r) => [Number(r.ID), (r.FilePath + r.FileName).toLowerCase()]));
@@ -232,7 +247,7 @@ async function spawnZones(spawnTable, ids) {
 try {
   // Standing in the world: text objects whose page is a readable's.
   const texts = (await q("SELECT entry, name, Data0 AS page FROM gameobject_template WHERE type = 9"))
-    .filter((r) => pageBook.has(Number(r.page)));
+    .filter((r) => pageBook.has(Number(r.page)) && !NOT_PLACING.has(Number(r.entry)));
   const textZones = await spawnZones("gameobject", texts.map((r) => Number(r.entry)));
   for (const r of texts) {
     const book = pageBook.get(Number(r.page));
@@ -329,6 +344,9 @@ try {
     for (const r of await q("SELECT ID, RewardMailTemplateID AS t FROM quest_template_addon WHERE RewardMailTemplateID IN (?)", [list([...mail.keys()])])) {
       if (!questItems.has(Number(r.ID))) questItems.set(Number(r.ID), []);
       questItems.get(Number(r.ID)).push([mail.get(Number(r.t)), "mail"]);
+    }
+    for (const quest of questItems.keys()) {
+      if (!FOREVER_QUESTS.has(quest)) { questItems.delete(quest); notForever.add(quest); }
     }
     const quests = [...questItems.keys()];
     for (const r of await q("SELECT ID, QuestSortID FROM quest_template WHERE ID IN (?)", [list(quests)])) questSort.set(Number(r.ID), Number(r.QuestSortID));
@@ -449,4 +467,5 @@ console.log(`${counts.world} in the world, ${counts.carried} carried (${counts.w
 console.log(`${counts.inDungeon} in dungeons: ` + [...counts.dungeons].sort((a, b) => a[0] - b[0])
   .map(([d, n]) => `${n} in ${DUNGEONS[d].name}`).join(", "));
 console.log(Object.entries(counts.types).map(([t, n]) => `${n} ${t}`).join(", "));
+console.log(`${notForever.size} quests left out as not Forever's: ${[...notForever].sort((a, b) => a - b).join(", ")}`);
 console.log(`wrote ${OUT}`);

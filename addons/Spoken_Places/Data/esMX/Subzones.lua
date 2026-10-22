@@ -20,7 +20,7 @@ if not SpokenZones:ShouldLoadLanguage("esMX") then
 end
 
 local subzones = {
-	-- Durotar: 27 subzones
+	-- Durotar: 26 subzones
 	[1411] = {
 		["bladefist bay"] = {
 			name = "Bahía de Garrafilada",
@@ -31,7 +31,7 @@ local subzones = {
 		["burning blade coven"] = {
 			name = "Aquelarre del Filo Ardiente",
 			short = "Las montañas que cierran el borde norte del Valle de los Retos no albergaban antes nada peor que piedra y sombra.",
-			full = "Las montañas que cierran el borde norte del Valle de los Retos no albergaban antes nada peor que piedra y sombra. Ahora la boca de una cueva vomita diablillos y demonios menores sobre el valle, y se dice que cosas más poderosas acechan más adentro, en las cavernas abandonadas que hay más allá, entre ellas miembros del propio Filo Ardiente. Se dice que un brujo llamado Yarrog Baneshadow gobierna lo que habita en su interior.\n\nAntes de que llegaran los demonios, un supervisor llamado Thazz'ril entró en esas cavernas para buscar minerales. Al terminar dejó allí su pico, y ahí sigue todavía.\n\nPara los orcos y trols que demuestran su valía en el Valle de los Retos, el Aquelarre se ha convertido en la prueba final antes de dejar atrás el valle.",
+			full = "Las montañas que cierran el borde norte del Valle de los Retos no albergaban antes nada peor que piedra y sombra. Ahora la boca de una cueva vomita diablillos y demonios menores sobre el valle, y se dice que cosas más poderosas acechan más adentro, en las cavernas abandonadas que hay más allá, entre ellas miembros del propio Filo Ardiente. Se dice que un brujo llamado Yarrog Sombrarruina gobierna lo que habita en su interior.\n\nAntes de que llegaran los demonios, un supervisor llamado Thazz'ril entró en esas cavernas para buscar minerales. Al terminar dejó allí su pico, y ahí sigue todavía.\n\nPara los orcos y trols que demuestran su valía en el Valle de los Retos, el Aquelarre se ha convertido en la prueba final antes de dejar atrás el valle.",
 			source = "https://warcraft.wiki.gg/wiki/Burning_Blade_Coven",
 		},
 		["darkspear strand"] = {
@@ -102,8 +102,8 @@ local subzones = {
 		},
 		["razormane grounds"] = {
 			name = "Tierras Crines de Acero",
-			short = "Los huesos de animales descarnados cubren las Tierras Crines de Acero, y las zarzas brotan de las montañas rojas que se alzan encima. Aquí, los jabaespines Crines de Acero avanzan desde Los Baldíos hacia Durotar, y los orcos luchan por defender el límite de su patria.",
-			full = "Los huesos de animales descarnados cubren las Tierras Crines de Acero, y las zarzas brotan de las montañas rojas que se alzan encima. Aquí, los jabaespines Crines de Acero avanzan desde Los Baldíos hacia Durotar, y los orcos luchan por defender el límite de su patria. Por cada jabaespín abatido, dos más salen arrastrándose de los matorrales para ocupar su lugar. El campamento de la tribu responde ante el geoseñor Mottle, mientras que el capitán Flat Tusk comanda a la guardia de batalla que resiste frente a los orcos.",
+			short = "Los huesos de animales descarnados cubren las Tierras Crines de Acero, y las zarzas brotan de las montañas rojas que se alzan encima.",
+			full = "Los huesos de animales descarnados cubren las Tierras Crines de Acero, y las zarzas brotan de las montañas rojas que se alzan encima. Aquí, los jabaespines Crines de Acero avanzan desde Los Baldíos hacia Durotar, y los orcos luchan por defender el límite de su patria. Por cada jabaespín abatido, dos más salen arrastrándose de los matorrales para ocupar su lugar. El campamento de la tribu responde ante el geoseñor Motas, mientras que el capitán Colmillo Plano comanda a la guardia de batalla que resiste frente a los orcos.",
 			source = "https://warcraft.wiki.gg/wiki/Razormane_Grounds",
 		},
 		["razorwind canyon"] = {
@@ -157,7 +157,7 @@ local subzones = {
 		["thunder ridge"] = {
 			name = "Monte del Trueno",
 			short = "El Monte del Trueno es un desfiladero en el noroeste de Durotar, al suroeste de Orgrimmar. Alberga un bosque de árboles antiguos que crecieron en armonía con los truenagartos que tienen sus guaridas entre ellos.",
-			full = "El Monte del Trueno es un desfiladero en el noroeste de Durotar, al suroeste de Orgrimmar. Alberga un bosque de árboles antiguos que crecieron en armonía con los truenagartos que tienen sus guaridas entre ellos.\n\nLa armonía se rompió cuando una explotación maderera humana comenzó a despojar la cresta de sus árboles, enloqueciendo a los lagartos. Rexxar, enviado a recoger cardaluz para Drek'Thar, notó el cambio en las bestias y llevó la noticia a Orgrimmar. Él y Drek'Thar regresaron juntos, encontraron la explotación maderera y se vieron obligados a acabar con los lagartos enloquecidos para evitar un desastre, aunque después Rexxar recogió sus huevos para que Drek'Thar los estudiara.\n\nJaina Valiente, enviada por Thrall para averiguar qué más había perturbado la cresta, descubrió que sus árboles habían sido talados mediante magia demoníaca, obra del Filo Ardiente, que buscaba desestabilizar la región. Un pequeño grupo de sus cultistas, dirigido por Fizzle Darkclaw, acampó allí para sembrar más caos, y Orgnil Escaralma pidió la muerte de Fizzle y su garra como prueba de ello.",
+			full = "El Monte del Trueno es un desfiladero en el noroeste de Durotar, al suroeste de Orgrimmar. Alberga un bosque de árboles antiguos que crecieron en armonía con los truenagartos que tienen sus guaridas entre ellos.\n\nLa armonía se rompió cuando una explotación maderera humana comenzó a despojar la cresta de sus árboles, enloqueciendo a los lagartos. Rexxar, enviado a recoger cardaluz para Drek'Thar, notó el cambio en las bestias y llevó la noticia a Orgrimmar. Él y Drek'Thar regresaron juntos, encontraron la explotación maderera y se vieron obligados a acabar con los lagartos enloquecidos para evitar un desastre, aunque después Rexxar recogió sus huevos para que Drek'Thar los estudiara.\n\nJaina Valiente, enviada por Thrall para averiguar qué más había perturbado la cresta, descubrió que sus árboles habían sido talados mediante magia demoníaca, obra del Filo Ardiente, que buscaba desestabilizar la región. Un pequeño grupo de sus cultistas, dirigido por Fizzle Tormenta Oscura, acampó allí para sembrar más caos, y Orgnil Escaralma pidió la muerte de Fizzle y su garra como prueba de ello.",
 			source = "https://warcraft.wiki.gg/wiki/Thunder_Ridge",
 		},
 		["tiragarde keep"] = {
@@ -179,7 +179,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Valley_of_Trials",
 		},
 	},
-	-- Mulgore: 18 subzones
+	-- Mulgore: 17 subzones
 	[1412] = {
 		["baeldun digsite"] = {
 			name = "Excavación de Bael'dun",
@@ -262,7 +262,7 @@ local subzones = {
 		["venture co mine"] = {
 			name = "Mina Ventura y Cía.",
 			short = "La mina se adentra en los acantilados orientales de Mulgore y tiene tres entradas: la puerta principal a pie, una pared del acantilado y un pequeño campamento maderero más allá.",
-			full = "La mina se adentra en los acantilados orientales de Mulgore y tiene tres entradas: la puerta principal a pie, una pared del acantilado y un pequeño campamento maderero más allá. No tiene por qué estar allí. Los tauren negaron a Ventura y Cía. los derechos de explotación minera en su patria, y la compañía simplemente empezó a excavar de todos modos, con el supervisor Saltatuercas al frente de la operación y la junta asesora del magnate Razdunk presionándolo para expandirse aún más hacia la madera, enviando nuevas trituradoras y materiales para un aserradero que se alimentara de los árboles de Mulgore.\n\nLos tauren no dejaron pasar la intrusión. Los batidores encontraron una caravana de suministros mineros que avanzaba escoltada por la orilla norte del Lago Toro de Piedra, cayeron sobre ella y quemaron cuanto pudieron, dejando atrás los restos en la creencia de que el fuego había arruinado todo lo que valía la pena llevarse. No fue así. Más tarde se vio a recuperadores de Ventura y Cía. rebuscando entre las cenizas y recogiendo lo que las llamas habían perdonado.\n\nAquel descubrimiento señaló la mina como objetivo de represalias, una advertencia dirigida a la operación de Saltatuercas por la negativa de la compañía a dejar en paz las tierras tauren.",
+			full = "La mina se adentra en los acantilados orientales de Mulgore y tiene tres entradas: la puerta principal a pie, una pared del acantilado y un pequeño campamento maderero más allá. No tiene por qué estar allí. Los tauren negaron a Ventura y Cía. los derechos de explotación minera en su patria, y la compañía simplemente empezó a excavar de todos modos, con el supervisor Saltatuercas al frente de la operación y la junta asesora del mogul Razdunk presionándolo para expandirse aún más hacia la madera, enviando nuevas trituradoras y materiales para un aserradero que se alimentara de los árboles de Mulgore.\n\nLos tauren no dejaron pasar la intrusión. Los batidores encontraron una caravana de suministros mineros que avanzaba escoltada por la orilla norte del Lago Toro de Piedra, cayeron sobre ella y quemaron cuanto pudieron, dejando atrás los restos en la creencia de que el fuego había arruinado todo lo que valía la pena llevarse. No fue así. Más tarde se vio a recuperadores de Ventura y Cía. rebuscando entre las cenizas y recogiendo lo que las llamas habían perdonado.\n\nAquel descubrimiento señaló la mina como objetivo de represalias, una advertencia dirigida a la operación de Saltatuercas por la negativa de la compañía a dejar en paz las tierras tauren.",
 			source = "https://warcraft.wiki.gg/wiki/Venture_Co._Mine",
 		},
 		["wildmane water well"] = {
@@ -289,7 +289,7 @@ local subzones = {
 		["agamagor"] = {
 			name = "Agama'gor",
 			short = "Agama'gor se encuentra al norte del camino que va hacia el oeste desde el Campamento Taurajo, una madriguera de espinos reclamada por los jabaespines Erizapúas.",
-			full = "Agama'gor se encuentra al norte del camino que va hacia el oeste desde el Campamento Taurajo, una madriguera de espinos reclamada por los jabaespines Erizapúas. Sus muertos dejan fragmentos de sangre seca, objetos que el exiliado Mangletooth valora mucho y por los que ofrece a cambio sus propios y extraños favores.",
+			full = "Agama'gor se encuentra al norte del camino que va hacia el oeste desde el Campamento Taurajo, una madriguera de espinos reclamada por los jabaespines Erizapúas. Sus muertos dejan fragmentos de sangre seca, objetos que el exiliado Quebrantadientes valora mucho y por los que ofrece a cambio sus propios y extraños favores.",
 			source = "https://warcraft.wiki.gg/wiki/Agama'gor",
 		},
 		["bael modan"] = {
@@ -433,7 +433,7 @@ local subzones = {
 		["sludge fen"] = {
 			name = "El Fangal",
 			short = "El Pantano de Lodo no siempre fue una herida en la tierra. Antaño albergaba un estanque de agua azul cristalina, antes de que llegara Ventura y Cía. y levantara una plataforma petrolera sobre él.",
-			full = "El Pantano de Lodo no siempre fue una herida en la tierra. Antaño albergaba un estanque de agua azul cristalina, antes de que llegara Ventura y Cía. y levantara una plataforma petrolera sobre él. Lo que queda ahora es un lodazal de residuos industriales, explotado bajo la mirada de un supervisor goblin que responde de la operación ante la compañía.\n\nLa plataforma ha atraído rivales tanto como ha contaminado el agua. El Gremio de Manitas de Trinquete, presionado por el director Riddlevox para igualar las nuevas trituradoras de Ventura y Cía., dejó de intentar superarlas en construcción y decidió, en cambio, robar el diseño sin más. El goblin Petardol envió a Wizzlecrank a apoderarse de una de las máquinas del pantano y llevarla a Trinquete. Wizzlecrank solo logró subirse a la trituradora antes de descubrir que no tenía llave para moverla, y se quedó atrapado en territorio enemigo hasta que llegó el rescate y la máquina pudo sacarse caminando delante de las narices de los trabajadores de la compañía.",
+			full = "El Pantano de Lodo no siempre fue una herida en la tierra. Antaño albergaba un estanque de agua azul cristalina, antes de que llegara Ventura y Cía. y levantara una plataforma petrolera sobre él. Lo que queda ahora es un lodazal de residuos industriales, explotado bajo la mirada de un supervisor goblin que responde de la operación ante la compañía.\n\nLa plataforma ha atraído rivales tanto como ha contaminado el agua. El Gremio de Manitas de Trinquete, presionado por el director Riddlevox para igualar las nuevas trituradoras de Ventura y Cía., dejó de intentar superarlas en construcción y decidió, en cambio, robar el diseño sin más. El goblin Petardol envió a Rabiaire a apoderarse de una de las máquinas del pantano y llevarla a Trinquete. Rabiaire solo logró subirse a la trituradora antes de descubrir que no tenía llave para moverla, y se quedó atrapado en territorio enemigo hasta que llegó el rescate y la máquina pudo sacarse caminando delante de las narices de los trabajadores de la compañía.",
 			source = "https://warcraft.wiki.gg/wiki/Sludge_Fen",
 		},
 		["southern gold road"] = {
@@ -511,7 +511,7 @@ local subzones = {
 		["boulderfist hall"] = {
 			name = "Sala Puño de Roca",
 			short = "La Sala Puño de Roca se encuentra en el sur de las Tierras Altas de Arathi, cerca del Puente Thandol y del Poblado Secacorteza: un montículo de piedra fortificado por manos de ogro.",
-			full = "La Sala Puño de Roca se encuentra en el sur de las Tierras Altas de Arathi, cerca del Puente Thandol y del Poblado Secacorteza: un montículo de piedra fortificado por manos de ogro. En la cueva más grande de su interior gobierna Kor'gresh Coldrage, jefe del clan Puño de Roca.\n\nDesde entonces, los ogros se han extendido por las colinas circundantes y han reforzado aún más sus defensas.",
+			full = "La Sala Puño de Roca se encuentra en el sur de las Tierras Altas de Arathi, cerca del Puente Thandol y del Poblado Secacorteza: un montículo de piedra fortificado por manos de ogro. En la cueva más grande de su interior gobierna Kor'gresh Ira Helada, jefe del clan Puño de Roca.\n\nDesde entonces, los ogros se han extendido por las colinas circundantes y han reforzado aún más sus defensas.",
 			source = "https://warcraft.wiki.gg/wiki/Boulderfist_Hall",
 		},
 		["bouldergor"] = {
@@ -552,8 +552,8 @@ local subzones = {
 		},
 		["drowned reef"] = {
 			name = "El Arrecife Hundido",
-			short = "Bajo la bahía frente a la costa sur de las Tierras Altas de Arathi yace una ciudad élfica hundida, antigua y en ruinas. Ya no está vacía: los nagas Espinada la han reclamado, gobernados por el príncipe Nazjak.",
-			full = "Bajo la bahía frente a la costa sur de las Tierras Altas de Arathi yace una ciudad élfica hundida, antigua y en ruinas. Ya no está vacía: los nagas Espinada la han reclamado, gobernados por el príncipe Nazjak.\n\nEl arrecife que hay encima se ha tragado muchos barcos, entre ellos El Capricho y el Espíritu de Argénteos. Se dice que los Espinada pueden cambiar las mareas mismas de la bahía, y atraen hacia las rocas a las tripulaciones que creen haber encontrado un puerto seguro en la Cala de Faldir.",
+			short = "Bajo la bahía frente a la costa sur de las Tierras Altas de Arathi yace una ciudad élfica hundida, antigua y en ruinas. Ya no está vacía: los nagas Espinadaga la han reclamado, gobernados por el príncipe Nazjak.",
+			full = "Bajo la bahía frente a la costa sur de las Tierras Altas de Arathi yace una ciudad élfica hundida, antigua y en ruinas. Ya no está vacía: los nagas Espinadaga la han reclamado, gobernados por el príncipe Nazjak.\n\nEl arrecife que hay encima se ha tragado muchos barcos, entre ellos El Capricho y el Espíritu de Argénteos. Se dice que los Espinadaga pueden cambiar las mareas mismas de la bahía, y atraen hacia las rocas a las tripulaciones que creen haber encontrado un puerto seguro en la Cala de Faldir.",
 			source = "https://warcraft.wiki.gg/wiki/Drowned_Reef",
 		},
 		["drywhisker gorge"] = {
@@ -565,7 +565,7 @@ local subzones = {
 		["faldirs cove"] = {
 			name = "Cala de Faldir",
 			short = "La Cala de Faldir debe su nombre a Faldir, de quien se dice que marcó este lugar cuando él y sus seguidores partieron.",
-			full = "La Cala de Faldir debe su nombre a Faldir, de quien se dice que marcó este lugar cuando él y sus seguidores partieron.\n\nMucho después, los asaltantes Aguasnegras llegaron en busca de un tesoro élfico que, según se decía, yacía en las aguas cercanas. Los capitanes Tripacero y O'Breen llevaron tres barcos a la cala, pero una extraña marea se alzó contra ellos, provocada por los nagas que custodiaban unas ruinas hundidas bajo el arrecife, y dos de los tres barcos se hundieron. Solo El Heraldo llegó a la orilla, y su tripulación quedó atrapada en la bahía, sin poder marcharse hasta que los nagas fueron expulsados y se recuperaron los cuadernos de bitácora de los naufragios de abajo.\n\nMás tarde, dos ingenieros gnomos, el doctor Draxlegauge y el profesor Fiseltor, construyeron un aparato para buscar las gemas élficas que, según se decía, estaban calcificadas en las piedras del Arrecife Hundido.\n\nLa cala aún lleva las cicatrices de aquella historia anegada: arrecife, naufragio y ruina, que hablan de barcos que jamás debieron hundirse y de un tesoro que el mar no ha devuelto.",
+			full = "La Cala de Faldir debe su nombre a Faldir, de quien se dice que marcó este lugar cuando él y sus seguidores partieron.\n\nMucho después, los asaltantes Aguasnegras llegaron en busca de un tesoro élfico que, según se decía, yacía en las aguas cercanas. Los capitanes Tripacero y O'Breen llevaron tres barcos a la cala, pero una extraña marea se alzó contra ellos, provocada por los nagas que custodiaban unas ruinas hundidas bajo el arrecife, y dos de los tres barcos se hundieron. Sola la Presagista llegó a la orilla, y su tripulación quedó atrapada en la bahía, sin poder marcharse hasta que los nagas fueron expulsados y se recuperaron los cuadernos de bitácora de los naufragios de abajo.\n\nMás tarde, dos ingenieros gnomos, el doctor Draxlegauge y el profesor Fiseltor, construyeron un aparato para buscar las gemas élficas que, según se decía, estaban calcificadas en las piedras del Arrecife Hundido.\n\nLa cala aún lleva las cicatrices de aquella historia anegada: arrecife, naufragio y ruina, que hablan de barcos que jamás debieron hundirse y de un tesoro que el mar no ha devuelto.",
 			source = "https://warcraft.wiki.gg/wiki/Faldir's_Cove",
 		},
 		["goshek farm"] = {
@@ -618,8 +618,8 @@ local subzones = {
 		},
 		["witherbark village"] = {
 			name = "Poblado Secacorteza",
-			short = "El Poblado Secacorteza rodea un pequeño lago en el sureste de las Tierras Altas de Arathi, hogar de los trols de la tribu Secacorteza. Detrás del poblado se encuentra una gran caverna donde suelen estar los líderes de la tribu.",
-			full = "El Poblado Secacorteza rodea un pequeño lago en el sureste de las Tierras Altas de Arathi, hogar de los trols de la tribu Secacorteza. Detrás del poblado se encuentra una gran caverna donde suelen estar los líderes de la tribu.\n\nLos Secacorteza han hecho causa común con los ogros Puño de Roca cercanos, una alianza dirigida contra Stromgarde y Sentencia. Juntos, trols y ogros ocupan una parte de la propia Stromgarde, arrebatada a sus antiguos amos.\n\nEsa fuerza ha convertido a los Secacorteza en un pueblo marcado, perseguido tanto por la Alianza como por la Horda, que deseaban verlos desaparecer. Entre quienes se opusieron a ese ajuste de cuentas, Nimar el Asesino fue considerado el más peligroso, un guerrero que al morir se llevó consigo a muchos de sus enemigos.",
+			short = "El Poblado Secacorteza rodea un pequeño lago en el sureste de las Tierras Altas de Arathi, hogar de los trols de la tribu Secacorteza.",
+			full = "El Poblado Secacorteza rodea un pequeño lago en el sureste de las Tierras Altas de Arathi, hogar de los trols de la tribu Secacorteza. Detrás del poblado se encuentra una gran caverna donde suelen estar los líderes de la tribu.\n\nLos Secacorteza han hecho causa común con los ogros Puño de Roca cercanos, una alianza dirigida contra Stromgarde y Sentencia. Juntos, trols y ogros ocupan una parte de la propia Stromgarde, arrebatada a sus antiguos amos.\n\nEsa fuerza ha convertido a los Secacorteza en un pueblo marcado, perseguido tanto por la Alianza como por la Horda, que deseaban verlos desaparecer. Entre quienes se opusieron a ese ajuste de cuentas, Nimar el Destripador fue considerado el más peligroso, un guerrero que al morir se llevó consigo a muchos de sus enemigos.",
 			source = "https://warcraft.wiki.gg/wiki/Witherbark_Village",
 		},
 	},
@@ -773,7 +773,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Tainted_Scar",
 		},
 	},
-	-- Claros de Tirisfal: 28 subzones
+	-- Claros de Tirisfal: 27 subzones
 	[1420] = {
 		["agamand family crypt"] = {
 			name = "Cripta de la Familia Agamand",
@@ -1056,8 +1056,8 @@ local subzones = {
 		},
 		["skittering dark"] = {
 			name = "Penumbra de las Celerácnidas",
-			short = "La mina conocida como la Oscuridad Correteante ha sido reclamada por las arañas Skitterweb, cuyas telarañas cubren vigas rotas y herramientas oxidadas.",
-			full = "La mina conocida como la Oscuridad Correteante ha sido reclamada por las arañas Skitterweb, cuyas telarañas cubren vigas rotas y herramientas oxidadas. En lo más profundo se oculta la matriarca Skitterweb, una araña que ha crecido hasta volverse monstruosa y que gobierna el enjambre desde una oscuridad que nunca abandona. Afuera, la rara Krethis la Tejesombras acecha a veces sola entre las rocas.\n\nEl suelo está sembrado de capullos que envuelven a huargen, huargos y osos, además de orcos arrastrados desde un naufragio en la costa, al oeste.",
+			short = "La mina conocida como Penumbra de las Celerácnidas ha sido reclamada por las arañas Corretela, cuyas telarañas cubren vigas rotas y herramientas oxidadas.",
+			full = "La mina conocida como Penumbra de las Celerácnidas ha sido reclamada por las arañas Corretela, cuyas telarañas cubren vigas rotas y herramientas oxidadas. En lo más profundo se oculta la matriarca Corretela, una araña que ha crecido hasta volverse monstruosa y que gobierna el enjambre desde una oscuridad que nunca abandona. Afuera, la rara Krethis Tejeumbra acecha a veces sola entre las rocas.\n\nEl suelo está sembrado de capullos que envuelven a huargen, huargos y osos, además de orcos arrastrados desde un naufragio en la costa, al oeste.",
 			source = "https://warcraft.wiki.gg/wiki/Skittering_Dark",
 		},
 		["south tides run"] = {
@@ -1073,7 +1073,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Valgan's_Field",
 		},
 	},
-	-- Tierras de la Peste del Oeste: 18 subzones
+	-- Tierras de la Peste del Oeste: 17 subzones
 	[1422] = {
 		["bulwark"] = {
 			name = "El Baluarte",
@@ -1108,13 +1108,13 @@ local subzones = {
 		["felstone field"] = {
 			name = "Campo de Piedramácula",
 			short = "El Campo de Piedramácula alimentó en otro tiempo a los vivos. Eso terminó cuando la Plaga llegó y no permitió que volviera a ser una granja.",
-			full = "El Campo de Piedramácula alimentó en otro tiempo a los vivos. Eso terminó cuando la Plaga llegó y no permitió que volviera a ser una granja.\n\nEn el corazón del campo, la Plaga colocó un gran caldero que no ha dejado de trabajar desde entonces. De él brota vapor sin pausa, cargado de enfermedad. El señor del caldero Bilemaw lo custodia, con hechiceros esqueléticos, desolladores esqueléticos y necrófagos babeantes a su lado, para que nada vivo pueda acercarse y salir limpio.\n\nEn la esquina noreste aún se alza la vieja casa, y Janice Piedra Mácula sigue allí, rondando la tierra que antes daba las cosechas de su familia.",
+			full = "El Campo de Piedramácula alimentó en otro tiempo a los vivos. Eso terminó cuando la Plaga llegó y no permitió que volviera a ser una granja.\n\nEn el corazón del campo, la Plaga colocó un gran caldero que no ha dejado de trabajar desde entonces. De él brota vapor sin pausa, cargado de enfermedad. El señor del caldero Garravil lo custodia, con hechiceros esqueléticos, desolladores esqueléticos y necrófagos babeantes a su lado, para que nada vivo pueda acercarse y salir limpio.\n\nEn la esquina noreste aún se alza la vieja casa, y Janice Piedra Mácula sigue allí, rondando la tierra que antes daba las cosechas de su familia.",
 			source = "https://warcraft.wiki.gg/wiki/Felstone_Field",
 		},
 		["gahrrons withering"] = {
 			name = "Gangrena de Gahrron",
 			short = "La granja del extremo oriental de las Tierras de la Peste del Oeste perteneció en otro tiempo a Del Gahrron, y en sus mejores días se la conocía como el Renacer de Gahrron, un lugar de siembra y crecimiento.",
-			full = "La granja del extremo oriental de las Tierras de la Peste del Oeste perteneció en otro tiempo a Del Gahrron, y en sus mejores días se la conocía como el Renacer de Gahrron, un lugar de siembra y crecimiento. Ahora allí no crece nada. La Plaga se apoderó de los campos y colocó un gran caldero en su centro, y el caldero nunca deja de trabajar, escupiendo al aire un vapor cargado de enfermedad hasta que el propio suelo parece enfermar. El señor del caldero Soulwrath lo custodia junto con otros oficiales de la Plaga, y los vapores han despertado cosas que no deberían caminar: visiones inquietantes que flotan entre las hileras en ruinas, muertes lastimeras y espectros hambrientos que no responden ante más amo que su hambre.",
+			full = "La granja del extremo oriental de las Tierras de la Peste del Oeste perteneció en otro tiempo a Del Gahrron, y en sus mejores días se la conocía como el Renacer de Gahrron, un lugar de siembra y crecimiento. Ahora allí no crece nada. La Plaga se apoderó de los campos y colocó un gran caldero en su centro, y el caldero nunca deja de trabajar, escupiendo al aire un vapor cargado de enfermedad hasta que el propio suelo parece enfermar. El señor del caldero Iralma lo custodia junto con otros oficiales de la Plaga, y los vapores han despertado cosas que no deberían caminar: visiones inquietantes que flotan entre las hileras en ruinas, muertes lastimeras y espectros hambrientos que no responden ante más amo que su hambre.",
 			source = "https://warcraft.wiki.gg/wiki/Gahrron's_Withering",
 		},
 		["hearthglen"] = {
@@ -1162,7 +1162,7 @@ local subzones = {
 		["uthers tomb"] = {
 			name = "Tumba de Uther",
 			short = "La Tumba de Uther se alza en la Colina de las Penas, el único lugar de las Tierras de la Peste del Oeste donde la Luz aún resiste frente a la agonía de la tierra.",
-			full = "La Tumba de Uther se alza en la Colina de las Penas, el único lugar de las Tierras de la Peste del Oeste donde la Luz aún resiste frente a la agonía de la tierra.\n\nUther el Iluminado defendió en otro tiempo Andorhal contra la Plaga, junto al sabio Truthbearer y a Ballador el Brillante, con los Caballeros de la Mano de Plata a sus espaldas. Fue Arthas Menethil quien puso fin a aquella resistencia, al lanzar su ejército de no-muertos contra la ciudad y abatir a Truthbearer, a Ballador y al propio Uther.\n\nLo que Arthas dejó atrás, lo recogieron los propios soldados de Uther. Llevaron su cuerpo al sur de las ruinas de Andorhal y levantaron una tumba sobre él. Su lápida lo muestra tal como era en vida, con un tomo de la Luz en una mano y su martillo de guerra en la otra, y con unas palabras grabadas en lengua común en la piedra que hay delante.\n\nEl sumo sacerdote Thel'danis aún cuida la tumba, como su custodio y guardián. La sepultura es sagrada para quienes siguen la Luz, uno de los pocos lugares de las Tierras de la Peste donde esa devoción todavía significa algo.",
+			full = "La Tumba de Uther se alza en la Colina de las Penas, el único lugar de las Tierras de la Peste del Oeste donde la Luz aún resiste frente a la agonía de la tierra.\n\nUther el Iluminado defendió en otro tiempo Andorhal contra la Plaga, junto al Sage Portaverdad y a Ballador el Brillante, con los Caballeros de la Mano de Plata a sus espaldas. Fue Arthas Menethil quien puso fin a aquella resistencia, al lanzar su ejército de no-muertos contra la ciudad y abatir a Truthbearer, a Ballador y al propio Uther.\n\nLo que Arthas dejó atrás, lo recogieron los propios soldados de Uther. Llevaron su cuerpo al sur de las ruinas de Andorhal y levantaron una tumba sobre él. Su lápida lo muestra tal como era en vida, con un tomo de la Luz en una mano y su martillo de guerra en la otra, y con unas palabras grabadas en lengua común en la piedra que hay delante.\n\nEl sumo sacerdote Thel'danis aún cuida la tumba, como su custodio y guardián. La sepultura es sagrada para quienes siguen la Luz, uno de los pocos lugares de las Tierras de la Peste donde esa devoción todavía significa algo.",
 			source = "https://warcraft.wiki.gg/wiki/Uther's_Tomb",
 		},
 		["weeping cave"] = {
@@ -1255,7 +1255,7 @@ local subzones = {
 		["mazraalor"] = {
 			name = "Mazra'Alor",
 			short = "En el corazón de Zul'Mashar se alza Mazra'Alor, un zigurat de piedra apilada que domina las tierras en ruinas que lo rodean.",
-			full = "En el corazón de Zul'Mashar se alza Mazra'Alor, un zigurat de piedra apilada que domina las tierras en ruinas que lo rodean. La tribu Mossflayer aún lo ocupa, y sus cazadores de las sombras vigilan desde sus alturas el asentamiento trol que hay debajo.",
+			full = "En el corazón de Zul'Mashar se alza Mazra'Alor, un zigurat de piedra apilada que domina las tierras en ruinas que lo rodean. La tribu Fustamusgo aún lo ocupa, y sus cazadores de las sombras vigilan desde sus alturas el asentamiento trol que hay debajo.",
 			source = "https://warcraft.wiki.gg/wiki/Mazra'Alor",
 		},
 		["northdale"] = {
@@ -1266,8 +1266,8 @@ local subzones = {
 		},
 		["northpass tower"] = {
 			name = "Torre del Paso Norte",
-			short = "La Torre del Paso Norte es la más septentrional de las torres de vigilancia de las Tierras de la Peste del Este, y señala el camino hacia las Tierras Fantasma de Quel'Thalas.",
-			full = "La Torre del Paso Norte es la más septentrional de las torres de vigilancia de las Tierras de la Peste del Este, y señala el camino hacia las Tierras Fantasma de Quel'Thalas. La Plaga arrasó Lordaeron, y la torre aún lleva sus cicatrices.",
+			short = "La Torre del Paso Norte es la más septentrional de las torres de vigilancia de las Tierras de la Peste del Este, y señala el camino hacia Quel'Thalas.",
+			full = "La Torre del Paso Norte es la más septentrional de las torres de vigilancia de las Tierras de la Peste del Este, y señala el camino hacia Quel'Thalas. La Plaga arrasó Lordaeron, y la torre aún lleva sus cicatrices.",
 			source = "https://warcraft.wiki.gg/wiki/Northpass_Tower",
 		},
 		["noxious glade"] = {
@@ -1290,8 +1290,8 @@ local subzones = {
 		},
 		["quellithien lodge"] = {
 			name = "Refugio Quel'Lithien",
-			short = "El Refugio Quel'Lithien era un campamento de los Errantes cerca de Quel'Thalas, un lugar cálido y acogedor. Así lo recordaba Lor'themar Theron de sus propias visitas, cuando lo recibían con afecto los compatriotas que lo consideraban su hogar.",
-			full = "El Refugio Quel'Lithien era un campamento de los Errantes cerca de Quel'Thalas, un lugar cálido y acogedor. Así lo recordaba Lor'themar Theron de sus propias visitas, cuando lo recibían con afecto los compatriotas que lo consideraban su hogar. El refugio albergó en otro tiempo varios documentos élficos, algunos relacionados con la familia real y con el general forestal de Lunargenta. Para la época de la Segunda Guerra, Renthar Hawkspear dirigía allí a los cazadores.",
+			short = "El Refugio Quel'Lithien era un campamento de los Errantes cerca de Quel'Thalas, un lugar cálido y acogedor.",
+			full = "El Refugio Quel'Lithien era un campamento de los Errantes cerca de Quel'Thalas, un lugar cálido y acogedor. Así lo recordaba Lor'themar Theron de sus propias visitas, cuando lo recibían con afecto los compatriotas que lo consideraban su hogar. El refugio albergó en otro tiempo varios documentos élficos, algunos relacionados con la familia real y con el general forestal de Lunargenta. Para la época de la Segunda Guerra, Renthar Lanzalcón dirigía allí a los cazadores.",
 			source = "https://warcraft.wiki.gg/wiki/Quel'Lithien_Lodge",
 		},
 		["scarlet base camp"] = {
@@ -1344,12 +1344,12 @@ local subzones = {
 		},
 		["zulmashar"] = {
 			name = "Zul'Mashar",
-			short = "Zul'Mashar fue en otro tiempo la capital de la tribu Mossflayer, trols del bosque del noreste de las Tierras de la Peste del Este.",
-			full = "Zul'Mashar fue en otro tiempo la capital de la tribu Mossflayer, trols del bosque del noreste de las Tierras de la Peste del Este. Las largas guerras contra los humanos de Lordaeron dejaron las tierras de la tribu en desorden, y la peste de la no-muerte que siguió trajo una ruina aún más profunda. La ciudad que antes gobernaba aquí es ahora una sombra de su antigua gloria.\n\nSu zigurat, Mazra'Alor, aún se alza en el corazón de la ciudad, ahora en manos del señor de la guerra Thresh'jin y de Zul'Brin Warpbranch. Pero la propia gente de los Mossflayer está siendo transformada en secreto por la peste, y Zul'Mashar corre el peligro de convertirse en nada más que un bastión de los no-muertos.",
+			short = "Zul'Mashar fue en otro tiempo la capital de la tribu Fustamusgo, trols del bosque del noreste de las Tierras de la Peste del Este.",
+			full = "Zul'Mashar fue en otro tiempo la capital de la tribu Fustamusgo, trols del bosque del noreste de las Tierras de la Peste del Este. Las largas guerras contra los humanos de Lordaeron dejaron las tierras de la tribu en desorden, y la peste de la no-muerte que siguió trajo una ruina aún más profunda. La ciudad que antes gobernaba aquí es ahora una sombra de su antigua gloria.\n\nSu zigurat, Mazra'Alor, aún se alza en el corazón de la ciudad, ahora en manos del señor de la guerra Thresh'jin y de Ramurdimbre Zul'Brin. Pero la propia gente de los Mossflayer está siendo transformada en secreto por la peste, y Zul'Mashar corre el peligro de convertirse en nada más que un bastión de los no-muertos.",
 			source = "https://warcraft.wiki.gg/wiki/Zul'Mashar",
 		},
 	},
-	-- Laderas de Trabalomas: 29 subzones
+	-- Laderas de Trabalomas: 24 subzones
 	[1424] = {
 		["azurelode mine"] = {
 			name = "Mina Azur",
@@ -1426,7 +1426,7 @@ local subzones = {
 		["hillsbrad fields"] = {
 			name = "Campos de Trabalomas",
 			short = "Los Campos de Trabalomas se extienden fértiles y cultivados por el oeste de las Laderas de Trabalomas, y alimentan a Costasur y, además, al pueblo de Trabalomas.",
-			full = "Los Campos de Trabalomas se extienden fértiles y cultivados por el oeste de las Laderas de Trabalomas, y alimentan a Costasur y, además, al pueblo de Trabalomas. Huertos de manzanos, campos de calabazas y ganado que pasta cubren la tierra, y la gente del pueblo aún trabaja la Mina Azur.\n\nAl comienzo de la Segunda Guerra, Martillo Maldito dirigió sus ejércitos contra Trabalomas y ordenó destruirla en un espectáculo atroz que debía servir de advertencia a los reinos humanos. Fue reconstruida después de la guerra y sigue habitada, uno de los pocos rincones del antiguo Lordaeron que no quedó en ruinas ni fue absorbido por la Cruzada Escarlata; sus guardias aún visten el tabardo de su reino, y el magistrado Ladoquemado gobierna desde el ayuntamiento con el Consejo de Trabalomas y el escribano Horrace Whitesteed a su lado.\n\nAhora los campos vuelven a estar amenazados, esta vez por las fuerzas de la suma ejecutora Darthalia en el Molino Tarren. Campesinos y granjeros soportan los ataques, pero muchos devuelven el golpe a los no-muertos con emboscadas propias, armados por el herrero Verringtan y sus aprendices.",
+			full = "Los Campos de Trabalomas se extienden fértiles y cultivados por el oeste de las Laderas de Trabalomas, y alimentan a Costasur y, además, al pueblo de Trabalomas. Huertos de manzanos, campos de calabazas y ganado que pasta cubren la tierra, y la gente del pueblo aún trabaja la Mina Azur.\n\nAl comienzo de la Segunda Guerra, Martillo Maldito dirigió sus ejércitos contra Trabalomas y ordenó destruirla en un espectáculo atroz que debía servir de advertencia a los reinos humanos. Fue reconstruida después de la guerra y sigue habitada, uno de los pocos rincones del antiguo Lordaeron que no quedó en ruinas ni fue absorbido por la Cruzada Escarlata; sus guardias aún visten el tabardo de su reino, y el magistrado Ladoquemado gobierna desde el ayuntamiento con el Consejo de Trabalomas y el escribano Horracio Corzalbal a su lado.\n\nAhora los campos vuelven a estar amenazados, esta vez por las fuerzas de la suma ejecutora Darthalia en el Molino Tarren. Campesinos y granjeros soportan los ataques, pero muchos devuelven el golpe a los no-muertos con emboscadas propias, armados por el herrero Verringtan y sus aprendices.",
 			source = "https://warcraft.wiki.gg/wiki/Hillsbrad_Fields",
 		},
 		["misty shore"] = {
@@ -1468,7 +1468,7 @@ local subzones = {
 		["southpoint tower"] = {
 			name = "Torre Austral",
 			short = "La Torre Austral se alza en el extremo occidental de las Laderas de Trabalomas, justo al sur del camino que continúa hacia el Bosque de Argénteos.",
-			full = "La Torre Austral se alza en el extremo occidental de las Laderas de Trabalomas, justo al sur del camino que continúa hacia el Bosque de Argénteos. La mampostería es vieja y está agrietada, un puesto de exploración abandonado a la ruina, aunque la torre en sí nunca fue derribada en los combates que pasaron por aquí. Cerca, sin nombre, otra torre se alza entre el Molino Tarren y Costasur, también a salvo de la destrucción que arrasó el resto de las laderas.",
+			full = "La Torre Austral se alza en el extremo occidental de las Laderas de Trabalomas, justo al sur del camino que continúa hacia el Bosque de Argénteos. La mampostería es vieja y está agrietada, un puesto de exploración abandonado a la ruina, aunque la torre en sí nunca fue derribada en los combates que pasaron por aquí.",
 			source = "https://warcraft.wiki.gg/wiki/Southpoint_Tower",
 		},
 		["strahnbrad"] = {
@@ -1543,7 +1543,7 @@ local subzones = {
 		["jinthaalor"] = {
 			name = "Jintha'Alor",
 			short = "Jintha'Alor se alza en terrazas sobre las Tierras del Interior, y entre las ciudades de los trols del bosque solo Zul'Aman la supera en tamaño.",
-			full = "Jintha'Alor se alza en terrazas sobre las Tierras del Interior, y entre las ciudades de los trols del bosque solo Zul'Aman la supera en tamaño. Se levantó en los días del Imperio Amani y lleva el nombre de Jintha, uno de los antiguos líderes de los Amani.\n\nLa ciudad pertenece a la tribu Vilrama, que ha convertido sus alturas en una fortaleza de sacrificio. La sacerdotisa vil Hexx gobierna allí al servicio de Hakkar el Desollador de Almas, y los Vilrama cazan sin piedad a la tribu Sañadiente, más débil, para saciar el hambre de su dios. El anciano Colmillopartido de los Sañadiente fue capturado en una de esas incursiones y aún permanece cautivo dentro de la ciudad; su capitán de la guardia, el cazador Malkhor, fue capturado en el mismo ataque y ejecutado, y sus restos fueron arrojados a los lobos y a los lodos que se guardan dentro de los muros.\n\nEl clan Martillo Salvaje y la tribu Sañadiente, unidos por un agravio común contra los Vilrama, han sitiado juntos la ciudad para poner fin a sus incursiones y vengar a sus muertos.",
+			full = "Jintha'Alor se alza en terrazas sobre las Tierras del Interior, y entre las ciudades de los trols del bosque solo Zul'Aman la supera en tamaño. Se levantó en los días del Imperio Amani y lleva el nombre de Jintha, uno de los antiguos líderes de los Amani.\n\nLa ciudad pertenece a la tribu Vilrama, que ha convertido sus alturas en una fortaleza de sacrificio. La sacerdotisa vil Hexx gobierna allí al servicio de Hakkar el Cazador de Almas, y los Vilrama cazan sin piedad a la tribu Sañadiente, más débil, para saciar el hambre de su dios. El anciano Colmillopartido de los Sañadiente fue capturado en una de esas incursiones y aún permanece cautivo dentro de la ciudad; su capitán de la guardia, el cazador Malkhor, fue capturado en el mismo ataque y ejecutado, y sus restos fueron arrojados a los lobos y a los lodos que se guardan dentro de los muros.\n\nEl clan Martillo Salvaje y la tribu Sañadiente, unidos por un agravio común contra los Vilrama, han sitiado juntos la ciudad para poner fin a sus incursiones y vengar a sus muertos.",
 			source = "https://warcraft.wiki.gg/wiki/Jintha'Alor",
 		},
 		["overlook cliffs"] = {
@@ -1572,8 +1572,8 @@ local subzones = {
 		},
 		["seradane"] = {
 			name = "Seradane",
-			short = "En el noreste de las Tierras del Interior se encuentra Seradane, donde un gran portal circular se abre al Sueño Esmeralda. El bosque pertenece al Vuelo Verde, que acude a custodiar el umbral que su especie considera sagrado.",
-			full = "En el noreste de las Tierras del Interior se encuentra Seradane, donde un gran portal circular se abre al Sueño Esmeralda. El bosque pertenece al Vuelo Verde, que acude a custodiar el umbral que su especie considera sagrado. Los dracos Rothos y Dreamtracker establecieron su hogar entre estos árboles.\n\nLa mayoría de quienes guardan el bosque son dracónidos, nacidos del poder del vuelo. Se mueven en grupos de tres, un oráculo verdantino flanqueado por guardarramas y celadores de los árboles, y patrullan los senderos enmarañados en una vigilancia permanente sobre el camino hacia el Sueño.",
+			short = "En el noreste de las Tierras del Interior se encuentra Seradane, donde un gran portal circular se abre al Sueño Esmeralda.",
+			full = "En el noreste de las Tierras del Interior se encuentra Seradane, donde un gran portal circular se abre al Sueño Esmeralda. El bosque pertenece al Vuelo Verde, que acude a custodiar el umbral que su especie considera sagrado. Los dracos Rothos y Rastreasueños establecieron su hogar entre estos árboles.\n\nLa mayoría de quienes guardan el bosque son dracónidos, nacidos del poder del vuelo. Se mueven en grupos de tres, un oráculo verdantino flanqueado por guardarramas y celadores de los árboles, y patrullan los senderos enmarañados en una vigilancia permanente sobre el camino hacia el Sueño.",
 			source = "https://warcraft.wiki.gg/wiki/Seradane",
 		},
 		["shadraalor"] = {
@@ -1615,11 +1615,11 @@ local subzones = {
 		["zunwatha"] = {
 			name = "Zun'watha",
 			short = "Las piedras de Zun'watha dieron refugio en otro tiempo, y aún lo dan, a los trols Secacorteza de las Tierras del Interior.",
-			full = "Las piedras de Zun'watha dieron refugio en otro tiempo, y aún lo dan, a los trols Secacorteza de las Tierras del Interior. Entre las ruinas que dejaron en pie, de vez en cuando se ve a un Zul'arek hatefowler, que camina por donde todavía habitan los Secacorteza.",
+			full = "Las piedras de Zun'watha dieron refugio en otro tiempo, y aún lo dan, a los trols Secacorteza de las Tierras del Interior. Entre las ruinas que dejaron en pie, de vez en cuando se ve a un Matagallinas Zul'arek, que camina por donde todavía habitan los Secacorteza.",
 			source = "https://warcraft.wiki.gg/wiki/Zun'watha",
 		},
 	},
-	-- Dun Morogh: 25 subzones
+	-- Dun Morogh: 24 subzones
 	[1426] = {
 		["amberstill ranch"] = {
 			name = "Granja de Semperámbar",
@@ -1648,7 +1648,7 @@ local subzones = {
 		["coldridge pass"] = {
 			name = "Desfiladero de Crestanevada",
 			short = "El Desfiladero de Crestanevada es la estrecha salida del Valle de Crestanevada, el último tramo que un enano debe cruzar antes de llegar a Kharanos y a los caminos más amplios de Dun Morogh.",
-			full = "El Desfiladero de Crestanevada es la estrecha salida del Valle de Crestanevada, el último tramo que un enano debe cruzar antes de llegar a Kharanos y a los caminos más amplios de Dun Morogh. Los troggs han invadido el paso, y a los viajeros solo les quedan dos opciones: atravesarlo tan rápido como les permitan las piernas o abrirse un camino sangriento entre los invasores.\n\nFendrig Redbeard condujo en una ocasión a otros doce mineros al paso para investigar la infestación. En lo más profundo, quedó atrapado bajo un derrumbe de piedras. Los demás volvieron para desenterrarlo, pero el esfuerzo hizo que el paso se derrumbara sobre ellos. Murieron doce mineros. Solo Fendrig, sacado de entre los escombros, sobrevivió.",
+			full = "El Desfiladero de Crestanevada es la estrecha salida del Valle de Crestanevada, el último tramo que un enano debe cruzar antes de llegar a Kharanos y a los caminos más amplios de Dun Morogh. Los troggs han invadido el paso, y a los viajeros solo les quedan dos opciones: atravesarlo tan rápido como les permitan las piernas o abrirse un camino sangriento entre los invasores.\n\nFendrig Barbarroja condujo en una ocasión a otros doce mineros al paso para investigar la infestación. En lo más profundo, quedó atrapado bajo un derrumbe de piedras. Los demás volvieron para desenterrarlo, pero el esfuerzo hizo que el paso se derrumbara sobre ellos. Murieron doce mineros. Solo Fendrig, sacado de entre los escombros, sobrevivió.",
 			source = "https://warcraft.wiki.gg/wiki/Coldridge_Pass",
 		},
 		["coldridge valley"] = {
@@ -1696,7 +1696,7 @@ local subzones = {
 		["iceflow lake"] = {
 			name = "Lago Glacial",
 			short = "El Lago Glacial se congela por completo con el frío de Dun Morogh, pero los enanos de Las Birras mantienen un agujero abierto en el hielo para sacar agua dulce y peces de debajo de la superficie helada.",
-			full = "El Lago Glacial se congela por completo con el frío de Dun Morogh, pero los enanos de Las Birras mantienen un agujero abierto en el hielo para sacar agua dulce y peces de debajo de la superficie helada.\n\nHacia el centro del lago se alzan un par de islas que es mejor dejar en paz. Una manada de lobos hambrientos las ha reclamado, al mando de un huargo llamado Timber, y su presencia mantiene las islas vacías de todo salvo de las bestias que las ocupan.",
+			full = "El Lago Glacial se congela por completo con el frío de Dun Morogh, pero los enanos de Las Birras mantienen un agujero abierto en el hielo para sacar agua dulce y peces de debajo de la superficie helada.\n\nHacia el centro del lago se alzan un par de islas que es mejor dejar en paz. Una manada de lobos hambrientos las ha reclamado, al mando de un huargo llamado Gris, y su presencia mantiene las islas vacías de todo salvo de las bestias que las ocupan.",
 			source = "https://warcraft.wiki.gg/wiki/Iceflow_Lake",
 		},
 		["ironbands compound"] = {
@@ -1708,7 +1708,7 @@ local subzones = {
 		["kharanos"] = {
 			name = "Kharanos",
 			short = "Kharanos se encuentra entre los picos montañosos de Dun Morogh, con sus calles rodeadas de tierras salvajes invernales que nunca permiten que su gente se ablande.",
-			full = "Kharanos se encuentra entre los picos montañosos de Dun Morogh, con sus calles rodeadas de tierras salvajes invernales que nunca permiten que su gente se ablande. En su corazón arde una forja, un taller gnomo traquetea sin descanso y la Destilería Cebatruenos sirve algunas de las mejores cervezas que pueden encontrarse en cualquier parte, pero el pueblo nunca ha podido descansar tranquilo en su encanto. Al oeste hay una caverna llena de wendigos, y al noroeste los trols Peloescarcha ocupan Monte Luz, desde donde vigilan el pueblo.\n\nEsa vigilancia se convirtió una vez en guerra, cuando un trol Peloescarcha gigante cayó sobre Kharanos y estuvo a punto de acabar con todos los enanos que vivían allí. Donde los defensores del pueblo flaquearon, un enano no lo hizo. Lazlo Grindwidget se enfrentó al trol y lo derribó él solo, y por ello el pueblo lo proclamó héroe, un título que lo acompaña desde entonces por unas calles que recuerdan lo cerca que estuvieron de quedar en silencio.",
+			full = "Kharanos se encuentra entre los picos montañosos de Dun Morogh, con sus calles rodeadas de tierras salvajes invernales que nunca permiten que su gente se ablande. En su corazón arde una forja, un taller gnomo traquetea sin descanso y la Destilería Cebatruenos sirve algunas de las mejores cervezas que pueden encontrarse en cualquier parte, pero el pueblo nunca ha podido descansar tranquilo en su encanto. Al oeste hay una caverna llena de wendigos, y al noroeste los trols Peloescarcha ocupan Monte Luz, desde donde vigilan el pueblo.\n\nEsa vigilancia se convirtió una vez en guerra, cuando un trol Peloescarcha gigante cayó sobre Kharanos y estuvo a punto de acabar con todos los enanos que vivían allí. Donde los defensores del pueblo flaquearon, un enano no lo hizo. Lazlo Rompetrastos se enfrentó al trol y lo derribó él solo, y por ello el pueblo lo proclamó héroe, un título que lo acompaña desde entonces por unas calles que recuerdan lo cerca que estuvieron de quedar en silencio.",
 			source = "https://warcraft.wiki.gg/wiki/Kharanos",
 		},
 		["misty pine refuge"] = {
@@ -1819,13 +1819,13 @@ local subzones = {
 		["stonewrought pass"] = {
 			name = "Paso de Fraguapiedra",
 			short = "El túnel conocido como el Paso de Fraguapiedra atraviesa las montañas y une la Garganta de Fuego con el Valle de los Reyes en Loch Modan, en el extremo norte del Valle Polvofuego.",
-			full = "El túnel conocido como el Paso de Fraguapiedra atraviesa las montañas y une la Garganta de Fuego con el Valle de los Reyes en Loch Modan, en el extremo norte del Valle Polvofuego. Es obra de Franclorn Forjador, que también levantó la Presa de las Tres Cabezas y buena parte de la cantería enana de los Reinos del Este.\n\nEl montaraz Guijarro mantiene cerrada la puerta de Loch Modan, y cierra el paso a todos salvo a quienes han demostrado su valía contra Margol el Rabioso.",
+			full = "El túnel conocido como el Paso de Fraguapiedra atraviesa las montañas y une la Garganta de Fuego con el Valle de los Reyes en Loch Modan, en el extremo norte del Valle Polvofuego. Es obra de Franclorn Forjador, que también levantó la Presa de las Tres Cabezas y buena parte de la cantería enana de los Reinos del Este.\n\nEl montaraz Guijarro mantiene cerrada la puerta de Loch Modan, y cierra el paso a todos salvo a quienes han demostrado su valía contra Margol la Furibunda.",
 			source = "https://warcraft.wiki.gg/wiki/Stonewrought_Pass",
 		},
 		["tanner camp"] = {
 			name = "Base de Peleteros",
-			short = "Sarah Peletera, maestra de la peletería elemental, tiene una tienda solitaria en la Garganta de Fuego. Detrás de ella, un largo pasaje se adentra serpenteando en la montaña y termina donde aguarda el truenagarto Margol el Rabioso.",
-			full = "Sarah Peletera, maestra de la peletería elemental, tiene una tienda solitaria en la Garganta de Fuego. Detrás de ella, un largo pasaje se adentra serpenteando en la montaña y termina donde aguarda el truenagarto Margol el Rabioso.",
+			short = "Sarah Peletera, maestra de la peletería elemental, tiene una tienda solitaria en la Garganta de Fuego.",
+			full = "Sarah Peletera, maestra de la peletería elemental, tiene una tienda solitaria en la Garganta de Fuego. Detrás de ella, un largo pasaje se adentra serpenteando en la montaña y termina donde aguarda el truenagarto Margol la Furibunda.",
 			source = "https://warcraft.wiki.gg/wiki/Tanner_Camp",
 		},
 		["thorium point"] = {
@@ -1881,8 +1881,8 @@ local subzones = {
 		},
 		["pillar of ash"] = {
 			name = "El Pilar de Ceniza",
-			short = "Una alta torre de piedra calcinada se alza en el extremo oriental de la Choza Diente Negro, con la superficie ennegrecida como si el propio fuego hubiera trepado por ella y se hubiera detenido.",
-			full = "Una alta torre de piedra calcinada se alza en el extremo oriental de la Choza Diente Negro, con la superficie ennegrecida como si el propio fuego hubiera trepado por ella y se hubiera detenido. Nada crece a su alrededor, y nada más se alza tan alto aquí.",
+			short = "Una alta torre de piedra calcinada se alza en el extremo oriental de Cobertizo Diente Negro, con la superficie ennegrecida como si el propio fuego hubiera trepado por ella y se hubiera detenido.",
+			full = "Una alta torre de piedra calcinada se alza en el extremo oriental de Cobertizo Diente Negro, con la superficie ennegrecida como si el propio fuego hubiera trepado por ella y se hubiera detenido. Nada crece a su alrededor, y nada más se alza tan alto aquí.",
 			source = "https://warcraft.wiki.gg/wiki/Pillar_of_Ash",
 		},
 		["ruins of thaurissan"] = {
@@ -1904,7 +1904,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Terror_Wing_Path",
 		},
 	},
-	-- Bosque de Elwynn: 23 subzones
+	-- Bosque de Elwynn: 22 subzones
 	[1429] = {
 		["brackwell pumpkin patch"] = {
 			name = "Plantación de Calabazas de Brackwell",
@@ -2166,8 +2166,8 @@ local subzones = {
 		},
 		["rolands doom"] = {
 			name = "Condena de Roland",
-			short = "La Condena de Roland es una mina en el sureste del Bosque del Ocaso, al este del Huerto Podrido.",
-			full = "La Condena de Roland es una mina en el sureste del Bosque del Ocaso, al este del Huerto Podrido. La sacerdotisa elfa de la noche Velinde Cantoestelar llevó la Guadaña de Elune a estas colinas antes de desaparecer, y la reliquia se perdió en la mina. El hombre llamado Alterio la encontró allí, y su hallazgo atrajo a más huargen sobre el Bosque del Ocaso y Villa Oscura.\n\nAhora la mina pertenece a Gutspill y Nefaru, de la manada Penumbría, cuyos huargen merodean hasta el Huerto Podrido.",
+			short = "La Condena de Roland es una mina en el sureste del Bosque del Ocaso, al este del Vergel Pútrido.",
+			full = "La Condena de Roland es una mina en el sureste del Bosque del Ocaso, al este del Vergel Pútrido. La sacerdotisa elfa de la noche Velinde Cantoestelar llevó la Guadaña de Elune a estas colinas antes de desaparecer, y la reliquia se perdió en la mina. El hombre llamado Alterio la encontró allí, y su hallazgo atrajo a más huargen sobre el Bosque del Ocaso y Villa Oscura.\n\nAhora la mina pertenece a Agallas y Nefaru, de la manada Penumbría, cuyos huargen merodean hasta el Vergel Pútrido.",
 			source = "https://warcraft.wiki.gg/wiki/Roland's_Doom",
 		},
 		["rotting orchard"] = {
@@ -2179,7 +2179,7 @@ local subzones = {
 		["tranquil gardens cemetery"] = {
 			name = "Cementerio del Jardín Sereno",
 			short = "El Cementerio del Jardín Sereno se encuentra al sureste de Villa Oscura, y su nombre es ahora una broma amarga.",
-			full = "El Cementerio del Jardín Sereno se encuentra al sureste de Villa Oscura, y su nombre es ahora una broma amarga. Los muertos de aquí no descansan, aunque son más débiles que los no-muertos que se encuentran en otras partes del Bosque del Ocaso, y vagan entre las lápidas y la iglesia en ruinas del centro del cementerio. El Necrófago Demente ronda este terreno, a veces dentro de la iglesia destrozada, a veces entre las tumbas. Justo al norte se alza la casa de la Ciega Mary.",
+			full = "El Cementerio del Jardín Sereno se encuentra al sureste de Villa Oscura, y su nombre es ahora una broma amarga. Los muertos de aquí no descansan, aunque son más débiles que los no-muertos que se encuentran en otras partes del Bosque del Ocaso, y vagan entre las lápidas y la iglesia en ruinas del centro del cementerio. El Necrófago Demente ronda este terreno, a veces dentro de la iglesia destrozada, a veces entre las tumbas. Justo al norte se alza la casa de Mary la Ciega.",
 			source = "https://warcraft.wiki.gg/wiki/Tranquil_Gardens_Cemetery",
 		},
 		["twilight grove"] = {
@@ -2201,7 +2201,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Yorgen_Farmstead",
 		},
 	},
-	-- Loch Modan: 16 subzones
+	-- Loch Modan: 15 subzones
 	[1432] = {
 		["algaz station"] = {
 			name = "Estación de Algaz",
@@ -2224,7 +2224,7 @@ local subzones = {
 		["grizzlepaw ridge"] = {
 			name = "Fuerte Zarpagris",
 			short = "El Fuerte Zarpagris se alza al sur de Thelsamar, lleno de osos que han hecho suyas las alturas.",
-			full = "El Fuerte Zarpagris se alza al sur de Thelsamar, lleno de osos que han hecho suyas las alturas. El principal de ellos es el Viejo Tiznado, un oso de tamaño y temperamento temibles, que baja de su guarida hasta el fondo del valle, siempre dispuesto a abalanzarse sobre cualquiera que tenga la mala suerte de irritarlo.\n\nGorick Guzzledraught también vive en la cresta.",
+			full = "El Fuerte Zarpagris se alza al sur de Thelsamar, lleno de osos que han hecho suyas las alturas. El principal de ellos es el Viejo Tiznado, un oso de tamaño y temperamento temibles, que baja de su guarida hasta el fondo del valle, siempre dispuesto a abalanzarse sobre cualquiera que tenga la mala suerte de irritarlo.\n\nGorick Agriojarabe también vive en la cresta.",
 			source = "https://warcraft.wiki.gg/wiki/Grizzlepaw_Ridge",
 		},
 		["ironbands excavation site"] = {
@@ -2352,8 +2352,8 @@ local subzones = {
 		},
 		["rethban caverns"] = {
 			name = "Cavernas de Rethban",
-			short = "Las Cavernas de Rethban se adentran en el noroeste de las Montañas Crestagrana. Los gnolls ocupan los túneles, dirigidos por el astuto Ardo Dirtpaw, y acumulan la mena de Rethban arrancada a la piedra.",
-			full = "Las Cavernas de Rethban se adentran en el noroeste de las Montañas Crestagrana. Los gnolls ocupan los túneles, dirigidos por el astuto Ardo Dirtpaw, y acumulan la mena de Rethban arrancada a la piedra. Puede que las cavernas deban su nombre a un hombre llamado Bart Rethban, aunque poco más se recuerda de él.",
+			short = "Las Cavernas de Rethban se adentran en el noroeste de las Montañas Crestagrana. Los gnolls ocupan los túneles, dirigidos por el astuto Ardo Patasoez, y acumulan la mena de Rethban arrancada a la piedra.",
+			full = "Las Cavernas de Rethban se adentran en el noroeste de las Montañas Crestagrana. Los gnolls ocupan los túneles, dirigidos por el astuto Ardo Patasoez, y acumulan la mena de Rethban arrancada a la piedra. Puede que las cavernas deban su nombre a un hombre llamado Bart Rethban, aunque poco más se recuerda de él.",
 			source = "https://warcraft.wiki.gg/wiki/Rethban_Caverns",
 		},
 		["stonewatch"] = {
@@ -2458,13 +2458,13 @@ local subzones = {
 		["janeiros point"] = {
 			name = "Cayo de Janeiro",
 			short = "El Cayo de Janeiro es una pequeña isla frente a Bahía del Botín, señalada por un gran goblin de piedra con los brazos abiertos, levantado como faro para dar la bienvenida a los barcos que llegan al puerto.",
-			full = "El Cayo de Janeiro es una pequeña isla frente a Bahía del Botín, señalada por un gran goblin de piedra con los brazos abiertos, levantado como faro para dar la bienvenida a los barcos que llegan al puerto. Hoy nadie recuerda a quién representa. El gigante marino Mok'rash el Rajador ha establecido su morada en la isla.",
+			full = "El Cayo de Janeiro es una pequeña isla frente a Bahía del Botín, señalada por un gran goblin de piedra con los brazos abiertos, levantado como faro para dar la bienvenida a los barcos que llegan al puerto. Hoy nadie recuerda a quién representa. El gigante marino Mok'rash el Acuchillador ha establecido su morada en la isla.",
 			source = "https://warcraft.wiki.gg/wiki/Janeiro's_Point",
 		},
 		["kalai ruins"] = {
 			name = "Ruinas de Kal'ai",
 			short = "Las Ruinas de Kal'ai yacen medio engullidas por el mar en la Vega de Tuercespina, antigua cantería trol desgastada por la marea y el tiempo.",
-			full = "Las Ruinas de Kal'ai yacen medio engullidas por el mar en la Vega de Tuercespina, antigua cantería trol desgastada por la marea y el tiempo. La tribu de múrlocs Murkgill anida ahora entre las columnas caídas, tras reclamar como suyos los salones anegados.",
+			full = "Las Ruinas de Kal'ai yacen medio engullidas por el mar en la Vega de Tuercespina, antigua cantería trol desgastada por la marea y el tiempo. La tribu de múrlocs Ancaniebla anida ahora entre las columnas caídas, tras reclamar como suyos los salones anegados.",
 			source = "https://warcraft.wiki.gg/wiki/Kal'ai_Ruins",
 		},
 		["kurzens compound"] = {
@@ -2524,7 +2524,7 @@ local subzones = {
 		["ruins of jubuwal"] = {
 			name = "Ruinas de Jubuwal",
 			short = "Las Ruinas de Jubuwal se encuentran al este de la Arena Gurubashi, un antiguo asentamiento trol ocupado ahora por necrófagos, nagas y trols al servicio de Zanzil el Desterrado.",
-			full = "Las Ruinas de Jubuwal se encuentran al este de la Arena Gurubashi, un antiguo asentamiento trol ocupado ahora por necrófagos, nagas y trols al servicio de Zanzil el Desterrado. Entre ellos se esconden Jon-Jon el Cuervo y Maury \"Pie Zambo\" Wilkins, hombres que huyeron a esa lúgubre compañía para escapar de las deudas que tenían con el despiadado MacKinley \"Lobo de Mar\".",
+			full = "Las Ruinas de Jubuwal se encuentran al este de la Arena Gurubashi, un antiguo asentamiento trol ocupado ahora por necrófagos, nagas y trols al servicio de Zanzil el Desterrado. Entre ellos se esconden Jon-Jon el Cuervo y Maury \"Patapalo\" Wilkins, hombres que huyeron a esa lúgubre compañía para escapar de las deudas que tenían con el despiadado MacKinley \"Lobo de Mar\".",
 			source = "https://warcraft.wiki.gg/wiki/Ruins_of_Jubuwal",
 		},
 		["ruins of zulkunda"] = {
@@ -2548,7 +2548,7 @@ local subzones = {
 		["south seas"] = {
 			name = "Mares del Sur",
 			short = "Los Mares del Sur ocupan las aguas entre los continentes conocidos, una parte del Mare Magnum. De estas aguas surge Zandalar, antiguo hogar del imperio trol.",
-			full = "Los Mares del Sur ocupan las aguas entre los continentes conocidos, una parte del Mare Magnum. De estas aguas surge Zandalar, antiguo hogar del imperio trol. Entre ellas se encuentra también Kezan, una isla volcánica cuyo pueblo se mantiene apartado de las potencias del continente. Más cerca de la Vega de Tuercespina, el mar se vuelve traicionero, con arrecifes e islotes, algunos no más que un banco de arena, otros con ruinas cuyos constructores ya no existen. Los Mares del Sur bañan las fronteras de Tuercespina, Tanaris y Uldum.",
+			full = "Los Mares del Sur ocupan las aguas entre los continentes conocidos, una parte del Mare Magnum. De estas aguas surge Zandalar, antiguo hogar del imperio trol. Más cerca de la Vega de Tuercespina, el mar se vuelve traicionero, con arrecifes e islotes, algunos no más que un banco de arena, otros con ruinas cuyos constructores ya no existen. Los Mares del Sur bañan las fronteras de Tuercespina y Tanaris.",
 			source = "https://warcraft.wiki.gg/wiki/South_Seas",
 		},
 		["southern savage coast"] = {
@@ -2602,7 +2602,7 @@ local subzones = {
 		["yojamba isle"] = {
 			name = "Isla Yojamba",
 			short = "En estas pequeñas islas frente a la costa noroeste de Tuercespina, cerca de la frontera con los Páramos de Poniente, la tribu Zandalar se enfrentó a un dios enloquecido.",
-			full = "En estas pequeñas islas frente a la costa noroeste de Tuercespina, cerca de la frontera con los Páramos de Poniente, la tribu Zandalar se enfrentó a un dios enloquecido.\n\nHakkar el Desollador de Almas había convertido Zul'Gurub en un lugar de sangre y locura, y los zandalari sabían que no podían enfrentarse solos a él. Así que vinieron a la Isla Yojamba y pidieron tanto a la Alianza como a la Horda que dejaran de lado su guerra el tiempo suficiente para ayudarlos a destruirlo. Era una tribu antigua y orgullosa que confiaba a extraños el destino de su ciudad tocada por los dioses.",
+			full = "En estas pequeñas islas frente a la costa noroeste de Tuercespina, cerca de la frontera con los Páramos de Poniente, la tribu Zandalar se enfrentó a un dios enloquecido.\n\nHakkar el Cazador de Almas había convertido Zul'Gurub en un lugar de sangre y locura, y los zandalari sabían que no podían enfrentarse solos a él. Así que vinieron a la Isla Yojamba y pidieron tanto a la Alianza como a la Horda que dejaran de lado su guerra el tiempo suficiente para ayudarlos a destruirlo. Era una tribu antigua y orgullosa que confiaba a extraños el destino de su ciudad tocada por los dioses.",
 			source = "https://warcraft.wiki.gg/wiki/Yojamba_Isle",
 		},
 		["ziatajai ruins"] = {
@@ -2614,7 +2614,7 @@ local subzones = {
 		["zulgurub"] = {
 			name = "Zul'Gurub",
 			short = "Zul'Gurub se alza de la selva en el noreste de la Vega de Tuercespina, con sus terrazas e ídolos cubiertos de vegetación pero todavía en pie: una ciudad templo que fue en otro tiempo el corazón palpitante de un imperio.",
-			full = "Zul'Gurub se alza de la selva en el noreste de la Vega de Tuercespina, con sus terrazas e ídolos cubiertos de vegetación pero todavía en pie: una ciudad templo que fue en otro tiempo el corazón palpitante de un imperio. Hace miles de años fue la capital del Imperio Gurubashi, sede de todas las tribus de trols de la selva ligadas a él. Ahora solo pertenece a la tribu Gurubashi que queda, y la selva que la rodea no se siente vacía.\n\nEl imperio se desgarró cuando un círculo de sacerdotes llamados los Atal'ai invocó al avatar de un antiguo dios de la sangre, Hakkar el Desollador de Almas, y fue desterrado por ello. Descubrieron que Hakkar solo podía adoptar forma física en un lugar: la propia capital antigua de los Gurubashi. Es aquí donde Jin'do el Maleficiador ha esclavizado a varios sumos sacerdotes de los Gurubashi y los ha doblegado para la tarea de traer a Hakkar al mundo. Los campeones enviados a detenerlo, cada uno ligado a un dios primigenio, han caído en cambio bajo el dominio de Hakkar, y ahora su poder alimenta precisamente aquello que vinieron a destruir.",
+			full = "Zul'Gurub se alza de la selva en el noreste de la Vega de Tuercespina, con sus terrazas e ídolos cubiertos de vegetación pero todavía en pie: una ciudad templo que fue en otro tiempo el corazón palpitante de un imperio. Hace miles de años fue la capital del Imperio Gurubashi, sede de todas las tribus de trols de la selva ligadas a él. Ahora solo pertenece a la tribu Gurubashi que queda, y la selva que la rodea no se siente vacía.\n\nEl imperio se desgarró cuando un círculo de sacerdotes llamados los Atal'ai invocó al avatar de un antiguo dios de la sangre, Hakkar el Cazador de Almas, y fue desterrado por ello. Descubrieron que Hakkar solo podía adoptar forma física en un lugar: la propia capital antigua de los Gurubashi. Es aquí donde Jin'do el Aojador ha esclavizado a varios sumos sacerdotes de los Gurubashi y los ha doblegado para la tarea de traer a Hakkar al mundo. Los campeones enviados a detenerlo, cada uno ligado a un dios primigenio, han caído en cambio bajo el dominio de Hakkar, y ahora su poder alimenta precisamente aquello que vinieron a destruir.",
 			source = "https://warcraft.wiki.gg/wiki/Zul'Gurub",
 		},
 		["zuuldaia ruins"] = {
@@ -2658,8 +2658,8 @@ local subzones = {
 		},
 		["misty valley"] = {
 			name = "Valle Brumoso",
-			short = "La niebla flota baja sobre este rincón del Pantano de las Penas, tan espesa que se traga el sonido. En lo profundo de una cueva al fondo del valle habitaba el Señor del Fango, una fuerza elemental.",
-			full = "La niebla flota baja sobre este rincón del Pantano de las Penas, tan espesa que se traga el sonido. En lo profundo de una cueva al fondo del valle habitaba el Señor del Fango, una fuerza elemental.",
+			short = "La niebla flota baja sobre este rincón del Pantano de las Penas, tan espesa que se traga el sonido. En lo profundo de una cueva al fondo del valle habitaba el Señor del Lodo, una fuerza elemental.",
+			full = "La niebla flota baja sobre este rincón del Pantano de las Penas, tan espesa que se traga el sonido. En lo profundo de una cueva al fondo del valle habitaba el Señor del Lodo, una fuerza elemental.",
 			source = "https://warcraft.wiki.gg/wiki/Misty_Valley",
 		},
 		["pool of tears"] = {
@@ -2776,7 +2776,7 @@ local subzones = {
 		["longshore"] = {
 			name = "Playa Larga",
 			short = "La costa de los Páramos de Poniente se extiende larga y vacía, una de las playas más amplias de Azeroth.",
-			full = "La costa de los Páramos de Poniente se extiende larga y vacía, una de las playas más amplias de Azeroth. Los múrlocs la recorren en cantidades imposibles de contener, y entre ellos nada el Old Murk-Eye, una criatura a la que la gente de mar de la costa ha aprendido a temer y a nombrar. Más allá de las rompientes yacen los restos de barcos que nunca llegaron a puerto, entre ellos destructores élficos, entregados a la marea.\n\nEn el extremo suroeste de la playa se encuentra la granja de Daphne Fontana. La Hermandad Defias vino a por ella más de una vez con la intención de quemarla, como quemó tantas otras cosas en los Páramos de Poniente. La noticia de sus problemas llegó a Duthorian Rall, que envió a aspirantes a Caballeros de la Mano de Plata a la costa para vigilar su tierra, y la defendieron.",
+			full = "La costa de los Páramos de Poniente se extiende larga y vacía, una de las playas más amplias de Azeroth. Los múrlocs la recorren en cantidades imposibles de contener, y entre ellos nada el Viejo Ojosombrío, una criatura a la que la gente de mar de la costa ha aprendido a temer y a nombrar. Más allá de las rompientes yacen los restos de barcos que nunca llegaron a puerto, entre ellos destructores élficos, entregados a la marea.\n\nEn el extremo suroeste de la playa se encuentra la granja de Daphne Fontana. La Hermandad Defias vino a por ella más de una vez con la intención de quemarla, como quemó tantas otras cosas en los Páramos de Poniente. La noticia de sus problemas llegó a Duthorian Rall, que envió a aspirantes a Caballeros de la Mano de Plata a la costa para vigilar su tierra, y la defendieron.",
 			source = "https://warcraft.wiki.gg/wiki/Longshore",
 		},
 		["molsen farm"] = {
@@ -2812,7 +2812,7 @@ local subzones = {
 		["westfall lighthouse"] = {
 			name = "Faro de Poniente",
 			short = "El faro se alza en el extremo sur de los Páramos de Poniente, y su haz aún gira sobre el agua por las noches, aunque la mano que lo mantiene pertenece ahora a un hombre muerto.",
-			full = "El faro se alza en el extremo sur de los Páramos de Poniente, y su haz aún gira sobre el agua por las noches, aunque la mano que lo mantiene pertenece ahora a un hombre muerto.\n\nUna familia cuidaba en otro tiempo la llama, hasta que el múrloc Old Murk-Eye salió del oleaje y la ahuyentó aterrorizada. Regresaron y volvieron a encender la luz, pero el Old Murk-Eye volvió, y esta vez trajo consigo a los múrlocs de la costa en un asalto al faro. La familia no sobrevivió. Grayson vio cómo morían ante él, sin poder impedirlo, y es su fantasma el que mantiene ahora la luz, montando guardia fuera de la torre sin que quede nadie para relevarlo.",
+			full = "El faro se alza en el extremo sur de los Páramos de Poniente, y su haz aún gira sobre el agua por las noches, aunque la mano que lo mantiene pertenece ahora a un hombre muerto.\n\nUna familia cuidaba en otro tiempo la llama, hasta que el múrloc Viejo Ojosombrío salió del oleaje y la ahuyentó aterrorizada. Regresaron y volvieron a encender la luz, pero el Viejo Ojosombrío volvió, y esta vez trajo consigo a los múrlocs de la costa en un asalto al faro. La familia no sobrevivió. Grayson vio cómo morían ante él, sin poder impedirlo, y es su fantasma el que mantiene ahora la luz, montando guardia fuera de la torre sin que quede nadie para relevarlo.",
 			source = "https://warcraft.wiki.gg/wiki/Westfall_Lighthouse",
 		},
 	},
@@ -2821,7 +2821,7 @@ local subzones = {
 		["angerfang encampment"] = {
 			name = "Campamento Dentellada",
 			short = "El Campamento Dentellada se extiende por el centro de Los Humedales; es el mayor campamento que el clan Faucedraco tiene en la región y el hogar de los orcos Dentellada.",
-			full = "El Campamento Dentellada se extiende por el centro de Los Humedales; es el mayor campamento que el clan Faucedraco tiene en la región y el hogar de los orcos Dentellada.\n\nBajo el mando de Nek'rosh Skullcrusher, hijo de Nekros Skullcrusher, el campamento se ha convertido en una base de operaciones donde se concentran catapultas destinadas a un asalto al Puerto de Menethil. La amenaza es tan real que el capitán Puñorrecio ha jurado ver muerto a Nek'rosh y arrancados los estandartes de guerra del clan antes de que las catapultas se pongan en marcha.",
+			full = "El Campamento Dentellada se extiende por el centro de Los Humedales; es el mayor campamento que el clan Faucedraco tiene en la región y el hogar de los orcos Dentellada.\n\nBajo el mando de Nek'rosh Machacacraneos, hijo de Nekros Machacacraneos, el campamento se ha convertido en una base de operaciones donde se concentran catapultas destinadas a un asalto al Puerto de Menethil. La amenaza es tan real que el capitán Puñorrecio ha jurado ver muerto a Nek'rosh y arrancados los estandartes de guerra del clan antes de que las catapultas se pongan en marcha.",
 			source = "https://warcraft.wiki.gg/wiki/Angerfang_Encampment",
 		},
 		["baradin bay"] = {
@@ -2892,14 +2892,14 @@ local subzones = {
 		},
 		["lost fleet"] = {
 			name = "La Flota Perdida",
-			short = "Los restos del Dueña de las Olas y de El Intrépido yacen en el fondo de la Bahía de Baradin, frente a la costa norte del Pantano Branquiazul.",
-			full = "Los restos del Dueña de las Olas y de El Intrépido yacen en el fondo de la Bahía de Baradin, frente a la costa norte del Pantano Branquiazul.\n\nFormaban parte de la Tercera Flota de Kul Tiras, comandada por Derek Valiente, hijo mayor del lord almirante Daelin Valiente, durante la Segunda Guerra. En la batalla de Crestfall, dragones rojos esclavizados por el clan Faucedraco cayeron del cielo e incendiaron la flota. Derek subió a la cofa para advertir a su padre del peligro. Un dragón lo mató allí antes de que la advertencia sirviera de algo, y su barco se hundió con el resto de la flota poco después. Solo sobrevivió un hombre, el contramaestre Fistimos, del Dueña de las Olas.\n\nLos muertos no permanecieron en silencio. En lo profundo de la bodega de El Intrépido, su comandante, el capitán Halyndor, había escondido por codicia un orbe ennegrecido: el Ojo maldito de Paleth. Años después, su maldición alcanzó a la tripulación hundida y la ató a la no-muerte. Solo el primer oficial Snellig conservó la razón, y su fantasma todavía recorre la orilla cercana.",
+			short = "Los restos de la Dueña de las Olas y de El Intrépido yacen en el fondo de la Bahía de Baradin, frente a la costa norte del Pantano Branquiazul.",
+			full = "Los restos de la Dueña de las Olas y de El Intrépido yacen en el fondo de la Bahía de Baradin, frente a la costa norte del Pantano Branquiazul.\n\nFormaban parte de la Tercera Flota de Kul Tiras, comandada por Derek Valiente, hijo mayor del lord almirante Daelin Valiente, durante la Segunda Guerra. En la batalla de Catacresta, dragones rojos esclavizados por el clan Faucedraco cayeron del cielo e incendiaron la flota. Derek subió a la cofa para advertir a su padre del peligro. Un dragón lo mató allí antes de que la advertencia sirviera de algo, y su barco se hundió con el resto de la flota poco después. Solo sobrevivió un hombre, el contramaestre Fistimos, de la Dueña de las Olas.\n\nLos muertos no permanecieron en silencio. En lo profundo de la bodega de El Intrépido, su comandante, el capitán Halyndor, había escondido por codicia un orbe ennegrecido: el Ojo maldito de Paleth. Años después, su maldición alcanzó a la tripulación hundida y la ató a la no-muerte. Solo el primer oficial Snellig conservó la razón, y su fantasma todavía recorre la orilla cercana.",
 			source = "https://warcraft.wiki.gg/wiki/Lost_Fleet",
 		},
 		["menethil bay"] = {
 			name = "Bahía de Menethil",
 			short = "La Bahía de Menethil se encuentra entre el puerto y los acantilados de Dun Morogh, encajada en la ensenada de la Bahía de Baradin.",
-			full = "La Bahía de Menethil se encuentra entre el puerto y los acantilados de Dun Morogh, encajada en la ensenada de la Bahía de Baradin.\n\nCerca de la entrada de la bahía descansan los restos del Flying Osprey, con su casco roto asentado en el agua.",
+			full = "La Bahía de Menethil se encuentra entre el puerto y los acantilados de Dun Morogh, encajada en la ensenada de la Bahía de Baradin.\n\nCerca de la entrada de la bahía descansan los restos del Halcón Volador, con su casco roto asentado en el agua.",
 			source = "https://warcraft.wiki.gg/wiki/Menethil_Bay",
 		},
 		["menethil harbor"] = {
@@ -2935,7 +2935,7 @@ local subzones = {
 		["sundown marsh"] = {
 			name = "Pantano del Ocaso",
 			short = "En lo profundo del noroeste de Los Humedales se encuentra el Pantano del Ocaso, lleno de crocoliscos, gnolls, raptores, bestias del pantano y cienos que mantienen alejados a la mayoría de los viajeros.",
-			full = "En lo profundo del noroeste de Los Humedales se encuentra el Pantano del Ocaso, lleno de crocoliscos, gnolls, raptores, bestias del pantano y cienos que mantienen alejados a la mayoría de los viajeros. En su centro se alza la Estación Swiftgear, una pequeña vivienda de piedra con un molino de viento, donde Fradd Swiftgear y Wenna Silkbeard han establecido su hogar. La pareja comercia con lo que da el pantano: objetos extraños sacados del lodo y recetas que rara vez se encuentran en otros lugares.",
+			full = "En lo profundo del noroeste de Los Humedales se encuentra el Pantano del Ocaso, lleno de crocoliscos, gnolls, raptores, bestias del pantano y cienos que mantienen alejados a la mayoría de los viajeros. En su centro se alza la Estación Cambioveloz, una pequeña vivienda de piedra con un molino de viento, donde Fradd Cambioveloz y Wenna Barbasedosa han establecido su hogar. La pareja comercia con lo que da el pantano: objetos extraños sacados del lodo y recetas que rara vez se encuentran en otros lugares.",
 			source = "https://warcraft.wiki.gg/wiki/Sundown_Marsh",
 		},
 		["thandol span"] = {
@@ -2957,7 +2957,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Whelgar's_Excavation_Site",
 		},
 	},
-	-- Teldrassil: 17 subzones
+	-- Teldrassil: 16 subzones
 	[1438] = {
 		["aldrassil"] = {
 			name = "Aldrassil",
@@ -3066,8 +3066,8 @@ local subzones = {
 		},
 		["auberdine"] = {
 			name = "Auberdine",
-			short = "Auberdine se alza donde el Gran Cataclismo quebró la tierra, en una costa que se tragó las grandes ciudades del antiguo Imperio kaldorei. Todos los asentamientos que se han intentado en Costa Oscura desde entonces han fracasado, salvo este pueblo junto al Mar de la Bruma.",
-			full = "Auberdine se alza donde el Gran Cataclismo quebró la tierra, en una costa que se tragó las grandes ciudades del antiguo Imperio kaldorei. Todos los asentamientos que se han intentado en Costa Oscura desde entonces han fracasado, salvo este pueblo junto al Mar de la Bruma.\n\nHa crecido de manera distinta al resto de la sociedad de los elfos de la noche. Su puerto atrae barcos y comerciantes de los Reinos del Este, y sus calles están llenas de enanos, gnomos, humanos e incluso altos elfos, de modo que Auberdine está más iluminada de lo que un pueblo de elfos de la noche tendría motivos para estar, y sus letreros están escritos en dos lenguas por consideración a los forasteros. Darnassus la mira por encima del hombro por ello. Broll Bearmantle, que visitó el pueblo en una ocasión, considera a sus habitantes poco más que marginados e inadaptados, y las centinelas destacadas aquí se mantienen apartadas de la gente a la que protegen. Sin embargo, Shandris Plumaluna, que estuvo destinada aquí, lo recuerda como un lugar lleno de risas.\n\nCerca del faro, los restos de un barco que comandó en otro tiempo la elfa Elura todavía marcan las rocas; su cargamento de mena de elunita se perdió cuando se hundió.",
+			short = "Auberdine se alza donde el Gran Cataclismo quebró la tierra, en una costa que se tragó las grandes ciudades del antiguo Imperio kaldorei.",
+			full = "Auberdine se alza donde el Gran Cataclismo quebró la tierra, en una costa que se tragó las grandes ciudades del antiguo Imperio kaldorei. Todos los asentamientos que se han intentado en Costa Oscura desde entonces han fracasado, salvo este pueblo junto al Mar de la Bruma.\n\nHa crecido de manera distinta al resto de la sociedad de los elfos de la noche. Su puerto atrae barcos y comerciantes de los Reinos del Este, y sus calles están llenas de enanos, gnomos, humanos e incluso altos elfos, de modo que Auberdine está más iluminada de lo que un pueblo de elfos de la noche tendría motivos para estar, y sus letreros están escritos en dos lenguas por consideración a los forasteros. Darnassus la mira por encima del hombro por ello. Broll Manto de Oso, que visitó el pueblo en una ocasión, considera a sus habitantes poco más que marginados e inadaptados, y las centinelas destacadas aquí se mantienen apartadas de la gente a la que protegen. Sin embargo, Shandris Plumaluna, que estuvo destinada aquí, lo recuerda como un lugar lleno de risas.\n\nCerca del faro, los restos de un barco que comandó en otro tiempo la elfa Elura todavía marcan las rocas; su cargamento de mena de elunita se perdió cuando se hundió.",
 			source = "https://warcraft.wiki.gg/wiki/Auberdine",
 		},
 		["bashalaran"] = {
@@ -3090,8 +3090,8 @@ local subzones = {
 		},
 		["cliffspring river"] = {
 			name = "Río Fonroca",
-			short = "El Río Fonroca fluye desde el Salto de Fonroca hasta el mar, en el norte de Costa Oscura. Sus aguas están contaminadas por los nagas Stormscale, y la fauna que bebe de él a menudo enferma.",
-			full = "El Río Fonroca fluye desde el Salto de Fonroca hasta el mar, en el norte de Costa Oscura. Sus aguas están contaminadas por los nagas Stormscale, y la fauna que bebe de él a menudo enferma.",
+			short = "El Río Fonroca fluye desde el Salto de Fonroca hasta el mar, en el norte de Costa Oscura. Sus aguas están contaminadas por los nagas Escama Tormentosa, y la fauna que bebe de él a menudo enferma.",
+			full = "El Río Fonroca fluye desde el Salto de Fonroca hasta el mar, en el norte de Costa Oscura. Sus aguas están contaminadas por los nagas Escama Tormentosa, y la fauna que bebe de él a menudo enferma.",
 			source = "https://warcraft.wiki.gg/wiki/Cliffspring_River",
 		},
 		["grove of the ancients"] = {
@@ -3109,7 +3109,7 @@ local subzones = {
 		["masters glaive"] = {
 			name = "La Espada del Maestro",
 			short = "En el suroeste de Costa Oscura yace un cráneo colosal, medio engullido por la tierra, con una guja de adamantita todavía clavada en el hueso.",
-			full = "En el suroeste de Costa Oscura yace un cráneo colosal, medio engullido por la tierra, con una guja de adamantita todavía clavada en el hueso. Era Soggoth el Reptante, un heraldo de los dioses antiguos, y la hoja se llama la Guja del Maestro.\n\nLas tablillas descubiertas en la Excavación de Tripirrem contaron lo que ocurrió aquí. Los titanes habían enviado a veinte gigantes de piedra contra Soggoth, y la batalla que siguió fue tan terrible que solo uno de ellos vivió para ver su final: Kronn, el más grande de los veinte. Cuando los tentáculos de Soggoth se cerraron a su alrededor, Kronn no luchó por liberarse. Se dejó arrastrar hacia dentro, cada vez más cerca del cráneo de la criatura, hasta estar lo bastante cerca para golpear. El golpe que mató a Soggoth se asestó desde dentro de su propio abrazo, y la espada que quedó enterrada en su cráneo tomó el nombre de aquella victoria.\n\nDesde entonces, el Martillo Crepuscular ha reclamado el lugar y excava en los restos de Soggoth, esforzándose por deshacer lo que logró la espada de Kronn y devolver al mundo al heraldo del dios antiguo.",
+			full = "En el suroeste de Costa Oscura yace un cráneo colosal, medio engullido por la tierra, con una guja de adamantita todavía clavada en el hueso. Era Soggoth el Serpenteante, un heraldo de los dioses antiguos, y la hoja se llama la Guja del Maestro.\n\nLas tablillas descubiertas en la Excavación de Tripirrem contaron lo que ocurrió aquí. Los titanes habían enviado a veinte gigantes de piedra contra Soggoth, y la batalla que siguió fue tan terrible que solo uno de ellos vivió para ver su final: Kronn, el más grande de los veinte. Cuando los tentáculos de Soggoth se cerraron a su alrededor, Kronn no luchó por liberarse. Se dejó arrastrar hacia dentro, cada vez más cerca del cráneo de la criatura, hasta estar lo bastante cerca para golpear. El golpe que mató a Soggoth se asestó desde dentro de su propio abrazo, y la espada que quedó enterrada en su cráneo tomó el nombre de aquella victoria.\n\nDesde entonces, el Martillo Crepuscular ha reclamado el lugar y excava en los restos de Soggoth, esforzándose por deshacer lo que logró la espada de Kronn y devolver al mundo al heraldo del dios antiguo.",
 			source = "https://warcraft.wiki.gg/wiki/Master's_Glaive",
 		},
 		["mists edge"] = {
@@ -3121,7 +3121,7 @@ local subzones = {
 		["remtravels excavation"] = {
 			name = "Excavación de Tripirrem",
 			short = "El prospector Tripirrem dio su nombre a esta excavación de Costa Oscura.",
-			full = "El prospector Tripirrem dio su nombre a esta excavación de Costa Oscura. Mientras excavaba encontró un fósil distinto de cualquier otro, que vibraba con propiedades místicas, pero el despistado prospector ha perdido desde entonces la pista de dónde lo dejó.\n\nLa propia excavación se ha vuelto peligrosa: los troggs Gravelflint han reclamado sus túneles, y enormes gólems, desenterrados por las excavaciones, se agitan ahora en su interior.",
+			full = "El prospector Tripirrem dio su nombre a esta excavación de Costa Oscura. Mientras excavaba encontró un fósil distinto de cualquier otro, que vibraba con propiedades místicas, pero el despistado prospector ha perdido desde entonces la pista de dónde lo dejó.\n\nLa propia excavación se ha vuelto peligrosa: los troggs Gravacal han reclamado sus túneles, y enormes gólems, desenterrados por las excavaciones, se agitan ahora en su interior.",
 			source = "https://warcraft.wiki.gg/wiki/Remtravel's_Excavation",
 		},
 		["ruins of mathystra"] = {
@@ -3149,7 +3149,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Wildbend_River",
 		},
 	},
-	-- Vallefresno: 41 subzones
+	-- Vallefresno: 40 subzones
 	[1440] = {
 		["astranaar"] = {
 			name = "Astranaar",
@@ -3166,7 +3166,7 @@ local subzones = {
 		["blackfathom deeps"] = {
 			name = "Cavernas de Brazanegra",
 			short = "Bajo la Ensenada de Zoram, donde la antigua ciudad de Zoram se hundió en el mar, se encuentran los salones anegados de Lathar'Lazal, que en otro tiempo fue un templo a Elune.",
-			full = "Bajo la Ensenada de Zoram, donde la antigua ciudad de Zoram se hundió en el mar, se encuentran los salones anegados de Lathar'Lazal, que en otro tiempo fue un templo a Elune. Se creía que el Gran Cataclismo lo había destruido por completo, y durante milenios lo guardó el océano.\n\nEntonces llegó el Martillo Crepuscular, atraído por susurros y sueños inmundos hasta las cavernas acuáticas en que se había convertido el templo. El culto sacrificó a innumerables inocentes en aquellas profundidades, y fue recompensado con una misión: alimentar y proteger a una criatura muy querida de los dioses antiguos, la monstruosa hidra Aku'mai la Devoradora, hasta el día en que sea liberada sobre el mundo. Ahora el lugar se llama Brazanegra, y el nombre le queda bien.",
+			full = "Bajo la Ensenada de Zoram, donde la antigua ciudad de Zoram se hundió en el mar, se encuentran los salones anegados de Lathar'Lazal, que en otro tiempo fue un templo a Elune. Se creía que el Gran Cataclismo lo había destruido por completo, y durante milenios lo guardó el océano.\n\nEntonces llegó el Martillo Crepuscular, atraído por susurros y sueños inmundos hasta las cavernas acuáticas en que se había convertido el templo. El culto sacrificó a innumerables inocentes en aquellas profundidades, y fue recompensado con una misión: alimentar y proteger a una criatura muy querida de los dioses antiguos, la monstruosa hidra Aku'mai el Devorador, hasta el día en que sea liberada sobre el mundo. Ahora el lugar se llama Brazanegra, y el nombre le queda bien.",
 			source = "https://warcraft.wiki.gg/wiki/Blackfathom_Deeps",
 		},
 		["bloodtooth camp"] = {
@@ -3178,7 +3178,7 @@ local subzones = {
 		["bough shadow"] = {
 			name = "Talloumbrío",
 			short = "Más allá de Canción del Bosque, donde los árboles de Vallefresno crecen espesos y viejos, Talloumbrío alberga uno de los portales al Sueño Esmeralda.",
-			full = "Más allá de Canción del Bosque, donde los árboles de Vallefresno crecen espesos y viejos, Talloumbrío alberga uno de los portales al Sueño Esmeralda.\n\nLo custodia el Vuelo Verde. Los dracos Phantim y Dreamstalker vigilan el paso, y los dracónidos recorren los bosques circundantes en patrullas de tres, un oráculo esmeraldino flanqueado por guardarramas y celadores de los árboles, pisando una y otra vez el mismo terreno en su larga vigilia.",
+			full = "Más allá de Canción del Bosque, donde los árboles de Vallefresno crecen espesos y viejos, Talloumbrío alberga uno de los portales al Sueño Esmeralda.\n\nLo custodia el Vuelo Verde. Los dracos Phantim y Asaltasueños vigilan el paso, y los dracónidos recorren los bosques circundantes en patrullas de tres, un oráculo esmeraldino flanqueado por guardarramas y celadores de los árboles, pisando una y otra vez el mismo terreno en su larga vigilia.",
 			source = "https://warcraft.wiki.gg/wiki/Bough_Shadow",
 		},
 		["demon fall canyon"] = {
@@ -3196,7 +3196,7 @@ local subzones = {
 		["dordanil barrow den"] = {
 			name = "El Túmulo de Dor'danil",
 			short = "El Túmulo de Dor'danil ha sido durante mucho tiempo un lugar de descanso para los druidas elfos de la noche, que duermen allí con el cuerpo mientras sus espíritus vagan libres.",
-			full = "El Túmulo de Dor'danil ha sido durante mucho tiempo un lugar de descanso para los druidas elfos de la noche, que duermen allí con el cuerpo mientras sus espíritus vagan libres. Fueron los Renegados quienes pusieron su atención en los durmientes y separaron a los druidas de sus espíritus errantes. El experimento no los mató. Los volvió locos.\n\nAhora el túmulo ya no alberga durmientes tranquilos. Asesinos Renegados se mueven por él sin ser vistos, mientras las almas enfurecidas de los druidas separados se enfurecen por el montículo sin ningún lugar al que regresar. Entre ellas permanecen tres espíritus más fuertes que el resto: Uthil Mooncall, Mavoris Quiebranubes y Taneel Darkwood.",
+			full = "El Túmulo de Dor'danil ha sido durante mucho tiempo un lugar de descanso para los druidas elfos de la noche, que duermen allí con el cuerpo mientras sus espíritus vagan libres. Fueron los Renegados quienes pusieron su atención en los durmientes y separaron a los druidas de sus espíritus errantes. El experimento no los mató. Los volvió locos.\n\nAhora el túmulo ya no alberga durmientes tranquilos. Asesinos Renegados se mueven por él sin ser vistos, mientras las almas enfurecidas de los druidas separados se enfurecen por el montículo sin ningún lugar al que regresar. Entre ellas permanecen tres espíritus más fuertes que el resto: Uthil Llamaluna, Mavoris Quiebranubes y Taneel Leñoscuro.",
 			source = "https://warcraft.wiki.gg/wiki/Dor'Danil_Barrow_Den",
 		},
 		["falfarren river"] = {
@@ -3231,14 +3231,14 @@ local subzones = {
 		},
 		["greenpaw village"] = {
 			name = "Poblado Zarpaverde",
-			short = "El Poblado Zarpaverde es el hogar de la tribu Maderiza, fúrbolgs dirigidos por el jefe Murgut y el chamán Oakpaw. Los hombres oso de aquí están corrompidos.",
-			full = "El Poblado Zarpaverde es el hogar de la tribu Maderiza, fúrbolgs dirigidos por el jefe Murgut y el chamán Oakpaw. Los hombres oso de aquí están corrompidos.",
+			short = "El Poblado Zarpaverde es el hogar de la tribu Maderiza, fúrbolgs dirigidos por el jefe Murgut y el chamán Pataroble. Los hombres oso de aquí están corrompidos.",
+			full = "El Poblado Zarpaverde es el hogar de la tribu Maderiza, fúrbolgs dirigidos por el jefe Murgut y el chamán Pataroble. Los hombres oso de aquí están corrompidos.",
 			source = "https://warcraft.wiki.gg/wiki/Greenpaw_Village",
 		},
 		["howling vale"] = {
 			name = "Vega del Aullido",
 			short = "Una cueva se abre al valle donde se alza el Santuario de Mel'Thandris, cuya piedra lleva grabada una antigua inscripción de alabanza a Elune y, encima, en darnassiano: la verdad es una luz que guía.",
-			full = "Una cueva se abre al valle donde se alza el Santuario de Mel'Thandris, cuya piedra lleva grabada una antigua inscripción de alabanza a Elune y, encima, en darnassiano: la verdad es una luz que guía.\n\nEl santuario lo levantó la madre de Velinde Cantoestelar en honor a Mel'Thandris, a quien se había confiado la Guadaña de Elune. Cuando Mel'Thandris murió, la guadaña quedó aquí, oculta dentro del santuario. Permaneció olvidada hasta que Velinde, tras encontrar en Darnassus un libro que relataba la historia, llegó al valle y la desenterró ella misma.\n\nCon el tiempo, el santuario quedó en ruinas, y una tribu de huargen llamada Terrowulf lo invadió e hizo de la cueva su guarida. Sus aullidos, que resuenan por la piedra, le dieron al valle el nombre que lleva hoy.",
+			full = "Una cueva se abre al valle donde se alza el Santuario de Mel'Thandris, cuya piedra lleva grabada una antigua inscripción de alabanza a Elune y, encima, en darnassiano: la verdad es una luz que guía.\n\nEl santuario lo levantó la madre de Velinde Cantoestelar en honor a Mel'Thandris, a quien se había confiado la Guadaña de Elune. Cuando Mel'Thandris murió, la guadaña quedó aquí, oculta dentro del santuario. Permaneció olvidada hasta que Velinde, tras encontrar en Darnassus un libro que relataba la historia, llegó al valle y la desenterró ella misma.\n\nCon el tiempo, el santuario quedó en ruinas, y una tribu de huargen llamada Luporror lo invadió e hizo de la cueva su guarida. Sus aullidos, que resuenan por la piedra, le dieron al valle el nombre que lleva hoy.",
 			source = "https://warcraft.wiki.gg/wiki/Howling_Vale",
 		},
 		["iris lake"] = {
@@ -3268,13 +3268,13 @@ local subzones = {
 		["mystral lake"] = {
 			name = "Lago Mystral",
 			short = "El agua del Lago Mystral la custodiaban en otro tiempo espíritus leales a los elfos de la noche, atados al lago como sus guardianes.",
-			full = "El agua del Lago Mystral la custodiaban en otro tiempo espíritus leales a los elfos de la noche, atados al lago como sus guardianes. Sarilus Foulborne los volvió contra ellos, corrompiendo a los elementales hasta que le obedecieron a él en lugar de a los elfos a los que antes servían. Lo que aguarda ahora en el lago no es lo que fue.",
+			full = "El agua del Lago Mystral la custodiaban en otro tiempo espíritus leales a los elfos de la noche, atados al lago como sus guardianes. Sarilus Fuenteviciosa los volvió contra ellos, corrompiendo a los elementales hasta que le obedecieron a él en lugar de a los elfos a los que antes servían. Lo que aguarda ahora en el lago no es lo que fue.",
 			source = "https://warcraft.wiki.gg/wiki/Mystral_Lake",
 		},
 		["night run"] = {
 			name = "Senda de la Noche",
 			short = "La Senda de la Noche se encuentra en un saliente que se adentra en la tierra, con acantilados demasiado escarpados para escalarlos, de modo que un viajero debe seguir el Falfarren casi hasta las aguas de Xavian antes de girar al oeste, o bien encontrar la estrecha cornisa al norte de la Algaba.",
-			full = "La Senda de la Noche se encuentra en un saliente que se adentra en la tierra, con acantilados demasiado escarpados para escalarlos, de modo que un viajero debe seguir el Falfarren casi hasta las aguas de Xavian antes de girar al oeste, o bien encontrar la estrecha cornisa al norte de la Algaba. Una vez dentro, hay poco que encontrar: solo unos pilares rotos dispersos y restos de cantería en ruinas, la más pequeña y pobre de las tres fortalezas de sátiros de Vallefresno, empequeñecida tanto por Xavian como por Satyrnaar. Los sátiros Felmusk que se refugian entre estas ruinas apenas necesitan muros cuando la propia tierra los protege. Entre los escombros yace una de las gemas de alma del Culto de la Facción Oscura, con el que los Felmusk están aliados.",
+			full = "La Senda de la Noche se encuentra en un saliente que se adentra en la tierra, con acantilados demasiado escarpados para escalarlos, de modo que un viajero debe seguir el Falfarren casi hasta las aguas de Xavian antes de girar al oeste, o bien encontrar la estrecha cornisa al norte de la Algaba. Una vez dentro, hay poco que encontrar: solo unos pilares rotos dispersos y restos de cantería en ruinas, la más pequeña y pobre de las tres fortalezas de sátiros de Vallefresno, empequeñecida tanto por Xavian como por Satyrnaar. Los sátiros Putredor que se refugian entre estas ruinas apenas necesitan muros cuando la propia tierra los protege. Entre los escombros yace una de las gemas de alma del Culto de la Facción Oscura, con el que los Putredor están aliados.",
 			source = "https://warcraft.wiki.gg/wiki/Night_Run",
 		},
 		["nightsong woods"] = {
@@ -3286,7 +3286,7 @@ local subzones = {
 		["raynewood retreat"] = {
 			name = "Refugio de la Algaba",
 			short = "En lo alto de las ramas del Gran Árbol que da nombre a este lugar se esconde Ordanus, un guardián de la arboleda y uno de los hijos mayores de Cenarius.",
-			full = "En lo alto de las ramas del Gran Árbol que da nombre a este lugar se esconde Ordanus, un guardián de la arboleda y uno de los hijos mayores de Cenarius. Vino aquí para ocultarse del Consejo de la Sombra, cuyos agentes lo habían señalado para morir. La principal de ellos era Braelyn Firehand, que convirtió su muerte en su único propósito y envió asesinos contra él. Ordanus sobrevivió al atentado y aún permanece oculto en las altas ramas del árbol.\n\nDebajo de él, protectores cenarion, dragones intermitentes y las hermanas sonrientes vigilan desde el puesto, custodiando el sendero norte que lleva a las tierras arruinadas de Frondavil.",
+			full = "En lo alto de las ramas del Gran Árbol que da nombre a este lugar se esconde Ordanus, un guardián de la arboleda y uno de los hijos mayores de Cenarius. Vino aquí para ocultarse del Consejo de la Sombra, cuyos agentes lo habían señalado para morir. La principal de ellos era Braelyn Manofuego, que convirtió su muerte en su único propósito y envió asesinos contra él. Ordanus sobrevivió al atentado y aún permanece oculto en las altas ramas del árbol.\n\nDebajo de él, protectores cenarion, dragones intermitentes y las hermanas sonrientes vigilan desde el puesto, custodiando el sendero norte que lleva a las tierras arruinadas de Frondavil.",
 			source = "https://warcraft.wiki.gg/wiki/Raynewood_Retreat",
 		},
 		["ruins of ordilaran"] = {
@@ -3382,7 +3382,7 @@ local subzones = {
 		["zoram strand"] = {
 			name = "La Ensenada de Zoram",
 			short = "Las olas de la Ensenada de Zoram rompen sobre lo que antes fue una ciudad.",
-			full = "Las olas de la Ensenada de Zoram rompen sobre lo que antes fue una ciudad. Antes de que el mundo se desgarrara en el Gran Cataclismo, aquí se alzaba Zoram, un pueblo de los elfos de la noche, y cuando el mar se alzó para reclamar su parte del mundo destrozado, Zoram se hundió con él. Ya no queda nada sobre el agua salvo el nombre.\n\nLo que recorre hoy la ensenada no son elfos, sino nagas. Han tomado la orilla como propia, y los restos esparcidos por la arena, barcos rotos y cuerpos de criaturas marinas varadas, muestran hasta qué punto la costa ha pasado a sus manos. Entre las rocas y las cavidades anegadas cercanas se encuentran las Cavernas de Brazanegra, hundidas en la tierra como Zoram se hundió en el mar.\n\nLa Horda tiene aquí un pequeño punto de apoyo, la Avanzada de Zoram'gar, más por necesidad que por elección, y se ha desgastado combatiendo a los nagas Wrathtail, que le disputan cada palmo de la ensenada. Esos mismos nagas cayeron sobre Talen, lo que dejó a la avanzada con enemigos presionando desde más de una dirección. Es un tramo de costa duro, húmedo y disputado, reclamado por un imperio que se ahogó y ocupado ahora por criaturas nacidas del mar que se lo tragó.",
+			full = "Las olas de la Ensenada de Zoram rompen sobre lo que antes fue una ciudad. Antes de que el mundo se desgarrara en el Gran Cataclismo, aquí se alzaba Zoram, un pueblo de los elfos de la noche, y cuando el mar se alzó para reclamar su parte del mundo destrozado, Zoram se hundió con él. Ya no queda nada sobre el agua salvo el nombre.\n\nLo que recorre hoy la ensenada no son elfos, sino nagas. Han tomado la orilla como propia, y los restos esparcidos por la arena, barcos rotos y cuerpos de criaturas marinas varadas, muestran hasta qué punto la costa ha pasado a sus manos. Entre las rocas y las cavidades anegadas cercanas se encuentran las Cavernas de Brazanegra, hundidas en la tierra como Zoram se hundió en el mar.\n\nLa Horda tiene aquí un pequeño punto de apoyo, la Avanzada de Zoram'gar, más por necesidad que por elección, y se ha desgastado combatiendo a los nagas Colafuria, que le disputan cada palmo de la ensenada. Esos mismos nagas cayeron sobre Talen, lo que dejó a la avanzada con enemigos presionando desde más de una dirección. Es un tramo de costa duro, húmedo y disputado, reclamado por un imperio que se ahogó y ocupado ahora por criaturas nacidas del mar que se lo tragó.",
 			source = "https://warcraft.wiki.gg/wiki/Zoram_Strand",
 		},
 		["zoramgar outpost"] = {
@@ -3392,7 +3392,7 @@ local subzones = {
 			source = "https://warcraft.wiki.gg/wiki/Zoram'gar_Outpost",
 		},
 	},
-	-- Las Mil Agujas: 20 subzones
+	-- Las Mil Agujas: 19 subzones
 	[1441] = {
 		["camp ethok"] = {
 			name = "Campamento E'thok",
@@ -3403,7 +3403,7 @@ local subzones = {
 		["darkcloud pinnacle"] = {
 			name = "Cumbre de la Nube Negra",
 			short = "La Cumbre de la Nube Negra se alza sobre tres pequeñas mesetas al este del Gran Elevador, con sus cimas unidas por puentes de cuerda tendidos sobre el vacío.",
-			full = "La Cumbre de la Nube Negra se alza sobre tres pequeñas mesetas al este del Gran Elevador, con sus cimas unidas por puentes de cuerda tendidos sobre el vacío. Solo dos caminos llevan arriba, ambos bien custodiados: una pendiente natural que cruza una cuarta meseta o un puente que llega desde Zahúrda Rajacieno.\n\nLos tauren Tótem Siniestro ocupan estas alturas, dirigidos por Arnak Tótem Siniestro y Harb Foulmountain. Tras los puentes vigilados, los dos líderes mantienen una correspondencia secreta con algún poder oscuro cuya identidad se desconoce. No se habla abiertamente de lo que pasa entre ellos, pero el cuidado con que se han aislado las mesetas muestra lo celosamente que se guarda ese secreto.",
+			full = "La Cumbre de la Nube Negra se alza sobre tres pequeñas mesetas al este del Gran Elevador, con sus cimas unidas por puentes de cuerda tendidos sobre el vacío. Solo dos caminos llevan arriba, ambos bien custodiados: una pendiente natural que cruza una cuarta meseta o un puente que llega desde Zahúrda Rajacieno.\n\nLos tauren Tótem Siniestro ocupan estas alturas, dirigidos por Arnak Tótem Siniestro y Harb Monte Fétido. Tras los puentes vigilados, los dos líderes mantienen una correspondencia secreta con algún poder oscuro cuya identidad se desconoce. No se habla abiertamente de lo que pasa entre ellos, pero el cuidado con que se han aislado las mesetas muestra lo celosamente que se guarda ese secreto.",
 			source = "https://warcraft.wiki.gg/wiki/Darkcloud_Pinnacle",
 		},
 		["freewind post"] = {
@@ -3544,7 +3544,7 @@ local subzones = {
 		["cragpool lake"] = {
 			name = "Lago del Peñasco",
 			short = "El Lago del Peñasco se encuentra bajo la gran estructura de madera que Ventura y Cía. levantó sobre el Risco Cortaviento. Gerenzo Silbillave vigila la operación desde este lugar.",
-			full = "El Lago del Peñasco se encuentra bajo la gran estructura de madera que Ventura y Cía. levantó sobre el Risco Cortaviento. Gerenzo Silbillave vigila la operación desde este lugar.\n\nEl propio lago está vedado, reclamado por Cragjaw, un pez que se ha vuelto monstruoso en sus aguas quietas.",
+			full = "El Lago del Peñasco se encuentra bajo la gran estructura de madera que Ventura y Cía. levantó sobre el Risco Cortaviento. Gerenzo Silbillave vigila la operación desde este lugar.\n\nEl propio lago está vedado, reclamado por Peñamandíbula, un pez que se ha vuelto monstruoso en sus aguas quietas.",
 			source = "https://warcraft.wiki.gg/wiki/Cragpool_Lake",
 		},
 		["greatwood vale"] = {
@@ -3673,7 +3673,7 @@ local subzones = {
 		["mannoroc coven"] = {
 			name = "Aquelarre Mannoroc",
 			short = "Entre las ruinas de los elfos de la noche que yacen destrozadas por Desolace, un lugar lleva un nombre que ningún viajero pronuncia a la ligera.",
-			full = "Entre las ruinas de los elfos de la noche que yacen destrozadas por Desolace, un lugar lleva un nombre que ningún viajero pronuncia a la ligera. El Aquelarre Mannoroc toma su nombre de Mannoroth, el temido señor del foso, y la tierra de aquí lo recuerda. La tierra ya estaba muerta mucho antes de que llegaran los demonios, pero la magia vil la ha arrasado aún más, hasta que el propio aire está cargado de corrupción y un manto mortal cae sobre cualquiera que se adentre en él.\n\nLos cultistas del Filo Ardiente abrieron el camino: desgarraron varios portales en el mundo para invocar a través de ellos a los sirvientes de la Legión Ardiente, infernales, súcubos, canes manáfagos y guardias viles que ahora merodean por las ruinas. Lord Azrethoc comanda a estos demonios, mientras que el brujo orco Jugkar Grim'rod se alza entre ellos como la voz del propio Filo Ardiente en el aquelarre. Juntos han formado la mayor concentración de demonios de todo el centro de Kalimdor, prueba de que el plan de los cultistas ha tenido un éxito que va mucho más allá de una simple advertencia.",
+			full = "Entre las ruinas de los elfos de la noche que yacen destrozadas por Desolace, un lugar lleva un nombre que ningún viajero pronuncia a la ligera. El Aquelarre Mannoroc toma su nombre de Mannoroth, el temido señor del foso, y la tierra de aquí lo recuerda. La tierra ya estaba muerta mucho antes de que llegaran los demonios, pero la magia vil la ha arrasado aún más, hasta que el propio aire está cargado de corrupción y un manto mortal cae sobre cualquiera que se adentre en él.\n\nLos cultistas del Filo Ardiente abrieron el camino: desgarraron varios portales en el mundo para invocar a través de ellos a los sirvientes de la Legión Ardiente, infernales, súcubos, canes manáfagos y guardias viles que ahora merodean por las ruinas. Lord Azrethoc comanda a estos demonios, mientras que el brujo orco Jugkar Lug'vara se alza entre ellos como la voz del propio Filo Ardiente en el aquelarre. Juntos han formado la mayor concentración de demonios de todo el centro de Kalimdor, prueba de que el plan de los cultistas ha tenido un éxito que va mucho más allá de una simple advertencia.",
 			source = "https://warcraft.wiki.gg/wiki/Mannoroc_Coven",
 		},
 		["nijels point"] = {
@@ -3691,7 +3691,7 @@ local subzones = {
 		["sargeron"] = {
 			name = "Sargeron",
 			short = "La ciudad que se alzaba aquí llevó en otro tiempo un nombre de los elfos de la noche, perdido desde que la Guerra de los Ancestros desgarró el mundo.",
-			full = "La ciudad que se alzaba aquí llevó en otro tiempo un nombre de los elfos de la noche, perdido desde que la Guerra de los Ancestros desgarró el mundo. Lo que queda es una ruina, a la que ahora los sátiros Hatefury que habitan allí llaman Sargeron, en honor a su amo demoníaco, Sargeras.\n\nLas ruinas albergaron en otro tiempo tres lugares sagrados de Elune: su catedral, su templo y su santuario. Las reliquias de aquella fe más antigua todavía yacen entre las piedras: el Brasero de Elune, su Doncella, su Copa y la Antigua Piedra Rúnica del Vórtice.",
+			full = "La ciudad que se alzaba aquí llevó en otro tiempo un nombre de los elfos de la noche, perdido desde que la Guerra de los Ancestros desgarró el mundo. Lo que queda es una ruina, a la que ahora los sátiros Odio Feroz que habitan allí llaman Sargeron, en honor a su amo demoníaco, Sargeras.\n\nLas ruinas albergaron en otro tiempo tres lugares sagrados de Elune: su catedral, su templo y su santuario. Las reliquias de aquella fe más antigua todavía yacen entre las piedras: el Brasero de Elune, su Doncella, su Copa y la Antigua Piedra Rúnica del Vórtice.",
 			source = "https://warcraft.wiki.gg/wiki/Sargeron",
 		},
 		["sartheris strand"] = {
@@ -4138,7 +4138,7 @@ local subzones = {
 		["south seas"] = {
 			name = "Mares del Sur",
 			short = "Las aguas al sur de los continentes conocidos se abren a una amplia extensión del Mare Magnum, con corrientes que pasan junto a islas cuyos nombres conocen sobre todo los marineros.",
-			full = "Las aguas al sur de los continentes conocidos se abren a una amplia extensión del Mare Magnum, con corrientes que pasan junto a islas cuyos nombres conocen sobre todo los marineros. De estas aguas surge Zandalar, antiguo hogar del imperio trol. Entre ellas se encuentra también Kezan, una isla volcánica cuyo pueblo se mantiene apartado de las potencias del continente.\n\nMás cerca de la Vega de Tuercespina, el mar se vuelve traicionero, con arrecifes y calas ocultas, el tipo de aguas donde un capitán o conoce cada roca por su nombre o pierde el barco. Pequeñas islas salpican este tramo, algunas no más que un banco de arena, otras con ruinas cuyos constructores desaparecieron hace mucho bajo las olas.\n\nLo que hace que este mar merezca un nombre no es tanto una batalla concreta librada en él como lo que se ha tragado y ha vuelto a revelar a medias: templos hundidos, costas anegadas, ruinas vislumbradas a través del agua clara con la marea baja. Es un mar de bordes y lugares intermedios, que recorre las fronteras de Tuercespina, Tanaris y Uldum, y que lleva lo que las mareas decidan traer a las costas que separa.",
+			full = "Las aguas al sur de los continentes conocidos se abren a una amplia extensión del Mare Magnum, con corrientes que pasan junto a islas cuyos nombres conocen sobre todo los marineros. De estas aguas surge Zandalar, antiguo hogar del imperio trol.\n\nMás cerca de la Vega de Tuercespina, el mar se vuelve traicionero, con arrecifes y calas ocultas, el tipo de aguas donde un capitán o conoce cada roca por su nombre o pierde el barco. Pequeñas islas salpican este tramo, algunas no más que un banco de arena, otras con ruinas cuyos constructores desaparecieron hace mucho bajo las olas.\n\nLo que hace que este mar merezca un nombre no es tanto una batalla concreta librada en él como lo que se ha tragado y ha vuelto a revelar a medias: templos hundidos, costas anegadas, ruinas vislumbradas a través del agua clara con la marea baja. Es un mar de bordes y lugares intermedios, que recorre las fronteras de Tuercespina y Tanaris, y que lleva lo que las mareas decidan traer a las costas que separa.",
 			source = "https://warcraft.wiki.gg/wiki/South_Seas",
 		},
 		["southbreak shore"] = {
@@ -4156,7 +4156,7 @@ local subzones = {
 		["steamwheedle port"] = {
 			name = "Puerto Bonvapor",
 			short = "Puerto Bonvapor se encuentra en la costa oriental de Tanaris, con un camino que va hacia el oeste hasta su ciudad madre, Gadgetzan, y un muelle que se extiende hacia Kezan.",
-			full = "Puerto Bonvapor se encuentra en la costa oriental de Tanaris, con un camino que va hacia el oeste hasta su ciudad madre, Gadgetzan, y un muelle que se extiende hacia Kezan. Pertenece al Cártel Bonvapor, goblins que tratan con cualquiera mientras el oro sea bueno.\n\nEntre los residentes del puerto está Yeh'kinya, cuyos tratos propiciaron el regreso de Hakkar el Desollador de Almas.",
+			full = "Puerto Bonvapor se encuentra en la costa oriental de Tanaris, con un camino que va hacia el oeste hasta su ciudad madre, Gadgetzan, y un muelle que se extiende hacia Kezan. Pertenece al Cártel Bonvapor, goblins que tratan con cualquiera mientras el oro sea bueno.\n\nEntre los residentes del puerto está Yeh'kinya, cuyos tratos propiciaron el regreso de Hakkar el Cazador de Almas.",
 			source = "https://warcraft.wiki.gg/wiki/Steamwheedle_Port",
 		},
 		["thistleshrub valley"] = {
@@ -4173,8 +4173,8 @@ local subzones = {
 		},
 		["valley of the watchers"] = {
 			name = "Valle de los Vigías",
-			short = "El Valle de los Vigías protege el sur de Tanaris, donde una gran puerta se alza impenetrable frente a Uldum. Los gigantes de montaña, los machacadunas, recorren el lugar como sus vigilantes.",
-			full = "El Valle de los Vigías protege el sur de Tanaris, donde una gran puerta se alza impenetrable frente a Uldum. Los gigantes de montaña, los machacadunas, recorren el lugar como sus vigilantes.",
+			short = "El Valle de los Vigías protege el sur de Tanaris, donde una gran puerta se alza impenetrable frente a Uldum. Los gigantes de montaña, los Quebrantadores de las dunas, recorren el lugar como sus vigilantes.",
+			full = "El Valle de los Vigías protege el sur de Tanaris, donde una gran puerta se alza impenetrable frente a Uldum. Los gigantes de montaña, los Quebrantadores de las dunas, recorren el lugar como sus vigilantes.",
 			source = "https://warcraft.wiki.gg/wiki/Valley_of_the_Watchers",
 		},
 		["waterspring field"] = {
@@ -4273,7 +4273,7 @@ local subzones = {
 		["ruined reaches"] = {
 			name = "Las Ruinas",
 			short = "La costa sur de Azshara muestra su ruina sin disimulo. Acantilados y playas se rompen en ensenadas, y el agua oculta bajíos que han atrapado más cascos de los que cualquier marinero querría contar.",
-			full = "La costa sur de Azshara muestra su ruina sin disimulo. Acantilados y playas se rompen en ensenadas, y el agua oculta bajíos que han atrapado más cascos de los que cualquier marinero querría contar. Barcos naufragados yacen medio enterrados en la arena junto a ruinas más antiguas y extrañas cuyos constructores ya no existen. Múrlocs, hidras y makrura rondan la orilla, e incluso quienes conocen la costa la recorren con cuidado.\n\nEn las orillas occidentales, sobre la playa, se alza un edificio gnomo en una colina, al que solo se llega por un empinado sendero desde el interior. Blimo y Jubie Gadgetspring han establecido aquí su hogar y su negocio. Arriba, en sus aposentos privados, hay una tercera cama. Nadie sabe a quién pertenece, ni si alguien duerme en ella.",
+			full = "La costa sur de Azshara muestra su ruina sin disimulo. Acantilados y playas se rompen en ensenadas, y el agua oculta bajíos que han atrapado más cascos de los que cualquier marinero querría contar. Barcos naufragados yacen medio enterrados en la arena junto a ruinas más antiguas y extrañas cuyos constructores ya no existen. Múrlocs, hidras y makrura rondan la orilla, e incluso quienes conocen la costa la recorren con cuidado.\n\nEn las orillas occidentales, sobre la playa, se alza un edificio gnomo en una colina, al que solo se llega por un empinado sendero desde el interior. Blimo y Jubie Cacharretio han establecido aquí su hogar y su negocio. Arriba, en sus aposentos privados, hay una tercera cama. Nadie sabe a quién pertenece, ni si alguien duerme en ella.",
 			source = "https://warcraft.wiki.gg/wiki/Ruined_Reaches",
 		},
 		["ruins of eldarath"] = {
@@ -4339,7 +4339,7 @@ local subzones = {
 		["thalassian base camp"] = {
 			name = "Campamento Base Thalassiano",
 			short = "La colina sobre los campamentos Legashi pertenece a los elfos de sangre, con sus laderas divididas en pequeños puestos fortificados bajo el mando de la magus Rimtori.",
-			full = "La colina sobre los campamentos Legashi pertenece a los elfos de sangre, con sus laderas divididas en pequeños puestos fortificados bajo el mando de la magus Rimtori. Ella cerró un trato con la Horda y prometió una parte de todo lo que desenterrara su expedición a cambio de oro y acero para protegerla. El trato no se cumplió. Rimtori se quedó con los fondos y no devolvió nada, y la noticia de la traición se ha extendido hasta el punto de que se dice que a ella y a sus seguidores se les debe una venganza de la misma medida.\n\nLa propia Rimtori rara vez está en el campamento, entregada a explorar Azshara bajo una guardia elegida por ella, y deja al magister Hawkhelm defendiendo la colina en su ausencia. Lo que ambos buscan en realidad no es oro. En una de las crestas del campamento hay un tomo kaldorei de invocación, algo capaz de traer demonios al mundo, y su presencia allí revela la expedición por lo que es: no una búsqueda de tesoros, sino algo más oscuro disfrazado de ella.",
+			full = "La colina sobre los campamentos Legashi pertenece a los elfos de sangre, con sus laderas divididas en pequeños puestos fortificados bajo el mando de la magus Rimtori. Ella cerró un trato con la Horda y prometió una parte de todo lo que desenterrara su expedición a cambio de oro y acero para protegerla. El trato no se cumplió. Rimtori se quedó con los fondos y no devolvió nada, y la noticia de la traición se ha extendido hasta el punto de que se dice que a ella y a sus seguidores se les debe una venganza de la misma medida.\n\nLa propia Rimtori rara vez está en el campamento, entregada a explorar Azshara bajo una guardia elegida por ella, y deja al magistral Yelmalcón defendiendo la colina en su ausencia. Lo que ambos buscan en realidad no es oro. En una de las crestas del campamento hay un tomo kaldorei de invocación, algo capaz de traer demonios al mundo, y su presencia allí revela la expedición por lo que es: no una búsqueda de tesoros, sino algo más oscuro disfrazado de ella.",
 			source = "https://warcraft.wiki.gg/wiki/Thalassian_Base_Camp",
 		},
 		["tower of eldara"] = {
@@ -4443,8 +4443,8 @@ local subzones = {
 		},
 		["shadow hold"] = {
 			name = "Guarida Sombría",
-			short = "Bajo Jaedenar, en el oeste de Frondavil, se extiende un laberinto que en otro tiempo fue un túmulo de los elfos de la noche. El Consejo de la Sombra lo reclamó hace mucho, y ahora los brujos y sus familiares demoníacos recorren sus túneles.",
-			full = "Bajo Jaedenar, en el oeste de Frondavil, se extiende un laberinto que en otro tiempo fue un túmulo de los elfos de la noche. El Consejo de la Sombra lo reclamó hace mucho, y ahora los brujos y sus familiares demoníacos recorren sus túneles. El príncipe sátiro Xavalis y el señor del terror lord Pesadilla habitan ambos en su interior.\n\nEl paladín Trey Forjaluz y la elfa de la noche Arko'narin Starshade se adentraron en Frondavil en busca de señales de la obra del Consejo de la Sombra. Los cultistas los capturaron a ambos y los enjaularon dentro de la Guarida Sombría. Trey murió allí torturado, y sus captores retorcieron y corrompieron su espíritu. Arko'narin sigue enjaulada en las profundidades, vigilada por sus torturadores, esperando un rescate que aún no ha llegado.",
+			short = "Bajo Jaedenar, en el oeste de Frondavil, se extiende un laberinto que en otro tiempo fue un túmulo de los elfos de la noche.",
+			full = "Bajo Jaedenar, en el oeste de Frondavil, se extiende un laberinto que en otro tiempo fue un túmulo de los elfos de la noche. El Consejo de la Sombra lo reclamó hace mucho, y ahora los brujos y sus familiares demoníacos recorren sus túneles. El príncipe sátiro Xavalis y el señor del terror lord Pesadilla habitan ambos en su interior.\n\nEl paladín Trey Forjaluz y la elfa de la noche Arko'narin Sombraestelar se adentraron en Frondavil en busca de señales de la obra del Consejo de la Sombra. Los cultistas los capturaron a ambos y los enjaularon dentro de la Guarida Sombría. Trey murió allí torturado, y sus captores retorcieron y corrompieron su espíritu. Arko'narin sigue enjaulada en las profundidades, vigilada por sus torturadores, esperando un rescate que aún no ha llegado.",
 			source = "https://warcraft.wiki.gg/wiki/Shadow_Hold",
 		},
 		["shatter scar vale"] = {
@@ -4744,7 +4744,7 @@ local subzones = {
 		["mazthoril"] = {
 			name = "Mazthoril",
 			short = "En lo profundo del hielo de Cuna del Invierno, cerca del Lago Kel'Theril, la caverna de Mazthoril se abre bajo la tierra, fría, vasta y cargada de magia.",
-			full = "En lo profundo del hielo de Cuna del Invierno, cerca del Lago Kel'Theril, la caverna de Mazthoril se abre bajo la tierra, fría, vasta y cargada de magia. Aquí habita una prole de dragones azules leales a Malygos, y aquí su matriarca mantiene su vigilia solitaria.\n\nHaleh rara vez adopta una forma que el mundo llamaría verdadera, y solo se muestra como una alta elfa de pie en el punto más alto de la caverna, al que se llega a través de una runa de paso grabada en el suelo, muy abajo. Pocos que no sean de su propia especie llegan a ver su rostro.\n\nA su alrededor ha dispuesto una guardia digna de su vida retirada. Cuatro poderosos dracos responden solo ante ella. Spellmaw recorre un circuito lento e ininterrumpido por un tercio de las zonas bajas de Cuna del Invierno, mientras Manaclaw y Scryer vigilan las runas al fondo de la caverna como centinelas ante una puerta cerrada.",
+			full = "En lo profundo del hielo de Cuna del Invierno, cerca del Lago Kel'Theril, la caverna de Mazthoril se abre bajo la tierra, fría, vasta y cargada de magia. Aquí habita una prole de dragones azules leales a Malygos, y aquí su matriarca mantiene su vigilia solitaria.\n\nHaleh rara vez adopta una forma que el mundo llamaría verdadera, y solo se muestra como una alta elfa de pie en el punto más alto de la caverna, al que se llega a través de una runa de paso grabada en el suelo, muy abajo. Pocos que no sean de su propia especie llegan a ver su rostro.\n\nA su alrededor ha dispuesto una guardia digna de su vida retirada. Cuatro poderosos dracos responden solo ante ella. Hechifauces recorre un circuito lento e ininterrumpido por un tercio de las zonas bajas de Cuna del Invierno, mientras Zarpamaná y Arúspice vigilan las runas al fondo de la caverna como centinelas ante una puerta cerrada.",
 			source = "https://warcraft.wiki.gg/wiki/Mazthoril",
 		},
 		["moon horror den"] = {
@@ -4807,7 +4807,7 @@ local subzones = {
 		["valley of heroes"] = {
 			name = "Valle de los Héroes",
 			short = "Un puente de piedra clara lleva a todo viajero sobre el foso que hay ante la puerta sur de Ventormenta, hasta un valle verde flanqueado por estatuas levantadas tanto por el dolor como por la gloria.",
-			full = "Un puente de piedra clara lleva a todo viajero sobre el foso que hay ante la puerta sur de Ventormenta, hasta un valle verde flanqueado por estatuas levantadas tanto por el dolor como por la gloria.\n\nDespués de la Segunda Guerra, cuando Ventormenta se reconstruyó de sus ruinas, la ciudad honró a quienes dirigieron la Expedición de la Alianza a través del Portal Oscuro para sellarlo desde el otro lado. Kurdran Martillo Salvaje y el archimago Khadgar se alzan a la izquierda del camino; el comandante de fuerzas Danath Aterratrols y la capitana forestal Alleria Brisaveloz, a la derecha; y al final del camino, donde se bifurca para entrar en la ciudad propiamente dicha, se alza el general Turalyon, que los dirigió a todos. Ninguno de los cinco regresó jamás.\n\nAños después, Arator, el hijo de Alleria y Turalyon, fue llevado a una ceremonia en el valle, a hombros de un Caballero de la Mano de Plata. Alzó la vista hacia la imagen de piedra de su madre, un rostro del que no guardaba recuerdo. Algo de ella llegó hasta él allí, pues el niño sonrió y tendió la mano hacia la estatua. Volvería una y otra vez a medida que crecía, para detenerse ante su rostro y saber, sin recordarla, que ella lo había amado.",
+			full = "Un puente de piedra clara lleva a todo viajero sobre el foso que hay ante la puerta sur de Ventormenta, hasta un valle verde flanqueado por estatuas levantadas tanto por el dolor como por la gloria.\n\nDespués de la Segunda Guerra, cuando Ventormenta se reconstruyó de sus ruinas, la ciudad honró a quienes dirigieron la Expedición de la Alianza a través del Portal Oscuro para sellarlo desde el otro lado. Kurdran Martillo Salvaje y el archimago Khadgar se alzan a la izquierda del camino; el comandante de fuerzas Danath Aterratrols y la capitana forestal Alleria Brisaveloz, a la derecha; y al final del camino, donde se bifurca para entrar en la ciudad propiamente dicha, se alza el general Turalyon, que los dirigió a todos. Ninguno de los cinco regresó jamás.",
 			source = "https://warcraft.wiki.gg/wiki/Valley_of_Heroes",
 		},
 	},

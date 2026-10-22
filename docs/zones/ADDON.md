@@ -166,6 +166,12 @@ The game announces a discovery once per character, and Places reads that message
   `SpokenZonesCharacter` makes it happen once, and `/spp forget` clears it.
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
+- Entering a dungeon or raid reads its story, once per character (`heard`), with Read
+  Automatically and Include Smaller Areas on. Inside an instance the client gives no map for the
+  player and announces no discovery, so on every loading screen, zone change and two seconds
+  after login Places asks for the instance's map (`select(8, GetInstanceInfo())`) and reads the
+  area `story` that `addons/Spoken/Data/Dungeons.lua` names for it. Battlegrounds and arenas are
+  not asked. An instance with no `story` reads nothing.
 - The queue refuses a duplicate of a line already queued or playing.
 
 ## Reports and contributions

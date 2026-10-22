@@ -8,6 +8,9 @@
 local _, SpokenZones = ...
 
 SpokenZones.pictures = {
+	[947] = {
+		[""] = { "zone-947", 17 },
+	},
 	[1411] = {
 		[""] = { "zone-1411", 28 },
 		["bladefist bay"] = { "1411-bladefist-bay", 1 },

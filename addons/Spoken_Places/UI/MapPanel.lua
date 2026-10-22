@@ -19,11 +19,9 @@ local panel, page, toggle
 -- short of 1.
 local CLEAR = 0.99
 
--- The gamepad UI, Forever's InputDeviceInterfaceStyle 1. pcall, because a client that has never
--- heard of the CVar raises on it.
+-- The gamepad UI, Forever's InputDeviceInterfaceStyle 1.
 local function IsGamepadUI()
-	local ok, style = pcall(GetCVar, "InputDeviceInterfaceStyle")
-	return ok and style == "1"
+	return GetCVar("InputDeviceInterfaceStyle") == "1"
 end
 
 -- Inside the map, unless the gamepad UI is on (NewPanel).
@@ -347,7 +345,7 @@ local function Refresh(mapID)
 		-- the client reported. Resolve, not Normalise: on a localized client the reported name
 		-- reaches the corpus key only through the alias table, and normalising a non-Latin name
 		-- yields nil -- which would silently retarget the buttons at the zone's lore.
-		local key = SpokenZones:ResolveAreaKey(selected.areaName)
+		local key = SpokenZones:ResolveAreaKey(selected.areaName, mapID)
 		-- An area is told where its story is kept: Razorfen Downs, clicked on The Barrens' map,
 		-- under Thousand Needles, and Strahnbrad, clicked on Alterac Mountains', under Hillsbrad.
 		local story = SpokenZones:StoryPlace(mapID, key)

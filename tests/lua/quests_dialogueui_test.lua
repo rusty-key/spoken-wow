@@ -652,26 +652,15 @@ DUI.handler = nil
 ---------------------------------------------------------------- the player over the window
 local frame = env.PlayerFrame.frame
 driver.scripts.OnShow(driver)
-Expect("by default the player is left out of DialogueUI's window", frame:GetParent(), _G.UIParent)
+Expect("the player is left out of DialogueUI's window", frame:GetParent(), _G.UIParent)
 Expect("...and can still be dragged", env.Addon:IsFrameLocked(), false)
+dui.ShowPlayer = true
 driver:Hide()
 driver.scripts.OnHide(driver)
 driver:Show()
-dui.ShowPlayer = true
 driver.scripts.OnShow(driver)
-Expect("turned on, while DialogueUI is open the player sits on its window", frame:GetParent(), DUI)
-Expect("...the same size on screen", frame:GetScale(), env.Addon.db.profile.Frame.FrameScale / 0.8)
-Expect("...and can still be dragged there", env.Addon:IsFrameLocked(), false)
-driver:Hide()
-driver.scripts.OnHide(driver)
-Expect("when it closes the player goes back to UIParent", frame:GetParent(), _G.UIParent)
-Expect("...at its own size", frame:GetScale(), env.Addon.db.profile.Frame.FrameScale)
-Expect("...and can be dragged again", env.Addon:IsFrameLocked(), false)
-driver:Show()
-dui.ShowPlayer = false
-driver.scripts.OnShow(driver)
-Expect("with the setting off the player is left alone", frame:GetParent(), _G.UIParent)
-dui.ShowPlayer = true
+Expect("...even with Show Spoken Over DialogueUI left on from an older version", frame:GetParent(), _G.UIParent)
+dui.ShowPlayer = nil
 driver:Hide()
 driver.scripts.OnHide(driver)
 
@@ -697,17 +686,13 @@ subtitle.SetFrameStrata = function(_, value) strata = value end
 local anchor = subtitle.anchor and subtitle.anchor.y
 driver:Show()
 driver.scripts.OnShow(driver)
-Expect("while DialogueUI is open the subtitles sit on its window", subtitle:GetParent(), DUI)
-Expect("...the same size on screen", subtitle:GetScale(), (words.SubtitleScale or 1) / 0.8)
-Expect("...above it", strata, "FULLSCREEN")
+Expect("while DialogueUI is open the subtitles stay on UIParent, which DialogueUI hides", subtitle:GetParent(), _G.UIParent)
+Expect("...at their own size", subtitle:GetScale(), words.SubtitleScale or 1)
 Expect("...in the same place", subtitle.anchor and subtitle.anchor.y, anchor)
 Subtitle:Update()
-Expect("...and stay there as they update", subtitle:GetParent(), DUI)
+Expect("...and stay there as they update", subtitle:GetParent(), _G.UIParent)
 driver:Hide()
 driver.scripts.OnHide(driver)
-Expect("when it closes they go back to UIParent", subtitle:GetParent(), _G.UIParent)
-Expect("...at their own size", subtitle:GetScale(), words.SubtitleScale or 1)
-Expect("...and their own strata, under the game's panels", strata, "LOW")
 Spoken:StopAll()
 env.Addon:SetPlayerStyle("classic")
 driver:Show()
@@ -842,8 +827,9 @@ end
 local captions, scroll = Row(VO.L.OPT_DUI_CAPTIONS), Row(VO.L.OPT_DUI_AUTOSCROLL)
 Expect("nothing there changes DialogueUI's own settings", table.getn(layout.entries) > 0
     and Row("Turn On Text To Speech") == nil, true)
-Expect("the place has the DialogueUI options", captions ~= nil and Row(VO.L.OPT_DUI_SHOW_PLAYER) ~= nil
+Expect("the place has the DialogueUI options", captions ~= nil
     and Row(VO.L.OPT_DUI_PLAY_BUTTON) ~= nil and scroll ~= nil, true)
+Expect("...and no Show Spoken Over DialogueUI", Row("Show Spoken Over DialogueUI"), nil)
 -- The style as the page reads it: DialogueUI's art is not here to make the style available.
 local playerStyle, chosen = env.Addon.PlayerStyle, "dialogueui"
 env.Addon.PlayerStyle = function() return chosen end
@@ -862,14 +848,6 @@ for _, style in ipairs({ "subtitle", "minimal", "classic", "none" }) do
     chosen = style
     layout:Refresh()
     Expect("...and with the " .. style .. " style too", captions:IsShown() and Row(VO.L.OPT_DUI_PLAY_BUTTON):IsShown(), true)
-end
--- Show Spoken Over DialogueUI keeps the window or the subtitles on screen; Voice Only has neither.
-local showPlayer = Row(VO.L.OPT_DUI_SHOW_PLAYER)
-Expect("Show Spoken Over DialogueUI is not offered with Voice Only", showPlayer:IsShown(), false)
-for _, style in ipairs({ "subtitle", "minimal", "classic", "dialogueui" }) do
-    chosen = style
-    layout:Refresh()
-    Expect("...and is with the " .. style .. " style", showPlayer:IsShown(), true)
 end
 -- Show Words, Highlight Words and Type Words Out also set how DialogueUI's quest text is marked:
 -- Mark Words in DialogueUI says so, once, rather than each of them.

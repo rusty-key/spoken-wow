@@ -147,7 +147,7 @@ release_target() {
   folder="$(field "$section" "$lang" "$pack" folder)"
   release="$(field "$section" "$lang" "$pack" release)"
   title="$(field "$section" "$lang" "$pack" name)"
-  needs="spoken-$section"
+  needs="spoken"
   changelog_file="$REPO/docs/$section/CHANGELOG.md"
 
   echo

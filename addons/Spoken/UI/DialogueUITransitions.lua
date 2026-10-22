@@ -3,11 +3,6 @@ setfenv(1, SpokenEnv)
 -- The DialogueUI window's moves to and from DialogueUI's own dialogs (DialogueUIPlayer.lua is the
 -- window): settling out of a dialog that closes on its line, the dialog's words fading before it
 -- closes, and a page the dialog queued going behind the window.
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout; that client
--- has no DialogueUI window and returns below.
-
-if Version.IsAnyLegacy then return end
 
 local Skin = DialogueUIPlayer
 local Theme = DialogueUITheme
@@ -93,6 +88,8 @@ function Skin:WatchDialogs()
     self.dialogs, self.dialogWatches = {}, {}
     -- Which lines each dialog queued (Skin:StartSession), so the one closing knows its own.
     self.queuedAt, self.sessions = setmetatable({}, { __mode = "k" }), {}
+    -- The lines its earlier pages queued, while the quest window stays open from page to page.
+    self.earlier = {}
     for _, name in ipairs({ "DUIQuestFrame", "DUIBookFrame" }) do
         local dialog = _G[name]
         if type(dialog) == "table" and dialog.GetEffectiveScale then
@@ -105,6 +102,7 @@ function Skin:WatchDialogs()
             end)
             -- Opening, it shows the line itself: this one steps aside at once (Skin:Covered).
             watch:SetScript("OnShow", function()
+                self.earlier[dialog] = nil
                 self:StartSession(dialog)
                 self:Update()
             end)
@@ -137,7 +135,10 @@ function Skin:WatchDialogs()
                     -- Another page in the quest window, still open (the gossip back after a quest
                     -- is accepted): its lines are this page's, so closing on a giver's second quest
                     -- sends its page behind the first's line.
-                    if dialog == _G.DUIQuestFrame and dialog:IsShown() then self:StartSession(dialog) end
+                    if dialog == _G.DUIQuestFrame and dialog:IsShown() then
+                        self:KeepEarlier(dialog)
+                        self:StartSession(dialog)
+                    end
                 end
             end
             self.sessions[dialog] = setmetatable({}, { __mode = "k" })
@@ -171,8 +172,10 @@ function Skin:Settle(dialog)
     self:StopTuck()
     self.tuckWaiting = nil
     self:StopLanding()
-    -- Coming back as it is: a fade under way goes on, and Update hands it the line.
-    if not self:Owns(dialog) then
+    -- Coming back as it is: a fade under way goes on, and Update hands it the line. Not for a line
+    -- an earlier page of this dialog queued (the greeting before a quest): this window never
+    -- showed it, so it settles out of the dialog with it, the later pages' lines counted after it.
+    if not self:Owns(dialog) and not self:OwnedEarlier(dialog) then
         local queued = self:QueuedBy(dialog)
         self:Update()
         if queued then
@@ -533,6 +536,20 @@ end
 --- Whether `dialog` queued the line playing: closing on it, this window takes the dialog's place.
 function Skin:Owns(dialog)
     local lines = self.sessions and self.sessions[dialog]
+    local clip = PlayerFrame:Current()
+    return lines ~= nil and clip ~= nil and lines[clip] == true
+end
+
+--- The page's lines kept as the quest window turns to another page.
+function Skin:KeepEarlier(dialog)
+    local earlier = self.earlier[dialog] or setmetatable({}, { __mode = "k" })
+    for clip in pairs(self.sessions[dialog] or {}) do earlier[clip] = true end
+    self.earlier[dialog] = earlier
+end
+
+--- Whether an earlier page of `dialog`, still open since, queued the line playing.
+function Skin:OwnedEarlier(dialog)
+    local lines = self.earlier and self.earlier[dialog]
     local clip = PlayerFrame:Current()
     return lines ~= nil and clip ~= nil and lines[clip] == true
 end

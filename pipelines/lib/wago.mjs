@@ -17,7 +17,9 @@ import { fileURLToPath } from "node:url";
 // Classic Era's client, which other clients' players still run.
 export const ERA_BUILD = "1.15.9.69109";
 // World of Warcraft Forever's client (wago.tools' wow_classic_beta).
-export const FOREVER_BUILD = "1.60.1.70338";
+export const FOREVER_BUILD = "1.60.1.70450";
+// Retail's, whose Adventure Guide (the Journal tables) the boss tools read.
+export const RETAIL_BUILD = "12.1.5.70448";
 
 export const CACHE = fileURLToPath(new URL("./cache/wago/", import.meta.url));
 

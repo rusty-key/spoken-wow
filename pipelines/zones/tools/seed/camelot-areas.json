@@ -6,7 +6,7 @@
     "place either one can name is a place worth having a line for.",
     "Regenerate with:  node tools/fetch-era-areas.mjs --forever"
   ],
-  "build": "1.60.1.70338",
+  "build": "1.60.1.70450",
   "names": [
     "***On Map Dungeon***",
     "Abandoned Tower",
@@ -408,6 +408,7 @@
     "Honor's Stand UNUSED",
     "Horde Landing",
     "Hunter Rise",
+    "Hyjal Crater",
     "Ice Thistle Hills",
     "Iceblood Garrison",
     "Iceblood Graveyard",
@@ -820,6 +821,7 @@
     "Summit of Eternity",
     "Sun Rock Retreat",
     "Sundown Marsh",
+    "Sunken Hollow",
     "Sunken Temple",
     "Sunnyglade",
     "Swamp of Sorrows",
