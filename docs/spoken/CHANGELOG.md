@@ -4,6 +4,13 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Spoken's windows follow EllesmereUI's look.** With EllesmereUI installed and its EllesmereUI Style
+  in use, the Small and Large Window and the welcome and contribution windows take its dark windows
+  and its font in white, and Spoken's settings pages its thin scroll bars. Portraits are round
+  in a thin grey edge, and Spoken's round buttons, on the subtitles and the quest windows too, are its
+  square ones. The DialogueUI window keeps DialogueUI's look, and under EllesmereUI's other looks
+  nothing changes; its own settings turn this off for Spoken, under Window Skins > Third-Party Addons.
+  *([Nucabe](https://github.com/Nucabe))*
 - **Bosses whose fight the game may not announce are found when you target them.** Baron Aquanis, Lord
   Kazzak, Azuregos, Prince Thunderaan and the four Emerald Dragons could stay locked after you fought them.
   Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again. Blackfathom Deeps and

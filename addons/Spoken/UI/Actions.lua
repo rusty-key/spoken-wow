@@ -95,7 +95,27 @@ function Actions.RoundIcon(button, icon)
     button:HookScript("OnEnter", function() if button:IsEnabled() then glyph:SetAlpha(1) end end)
     button:HookScript("OnLeave", function() if button:IsEnabled() then glyph:SetAlpha(GLYPH_ALPHA) end end)
     button.ring, button.glyph = ring, glyph
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, button) end) end
     return button
+end
+
+-- Whether `button` keeps its ring in EllesmereUI's look: on the DialogueUI window and DialogueUI's
+-- own windows, which keep DialogueUI's look.
+local function KeepsRound(button)
+    local frame = button
+    while frame do
+        if frame.spokenRound == true or frame == _G.DUIQuestFrame or frame == _G.DUIBookFrame then return true end
+        frame = frame.GetParent and frame:GetParent() or nil
+    end
+    return false
+end
+
+--- A round button as one of EllesmereUI's square buttons, its glyph or picture kept, square too.
+function Actions.Square(skin, button)
+    if button.squared or KeepsRound(button) then return end
+    button.squared = true
+    if button.mask and button.glyph.RemoveMaskTexture then button.glyph:RemoveMaskTexture(button.mask) end
+    skin.Button(button, { "glyph", "bar" })
 end
 
 -- Big enough to aim at and to read as a bug rather than a smudge; and the gap between a row of them.
@@ -620,6 +640,8 @@ function Actions.RoundPicture(button, icon)
     glyph:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
     glyph:SetTexture(icon)
     glyph:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- Already one of EllesmereUI's square buttons (Actions.Square): the picture stays square.
+    if button.squared then return end
     local mask = button.CreateMaskTexture and glyph.AddMaskTexture and button:CreateMaskTexture()
     if type(mask) == "table" then
         mask:SetTexture(PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")

@@ -24,6 +24,9 @@ local LOOKS = {
     parchment = { name = { .19, .17, .13 }, title = { .19, .17, .13 }, tail = { .50, .36, .24 }, shadow = 0,
         words = { color = { .19, .17, .13 }, shadow = false, highlight = "|cff9c1a1a" } },
     dark = { name = { 1, .82, 0 }, title = { .88, .84, .76 }, tail = { .62, .58, .46 }, shadow = 1 },
+    -- EllesmereUI's shell: white, as its windows write their names.
+    ellesmere = { name = { 1, 1, 1 }, title = { .85, .85, .85 }, tail = { .6, .6, .6 }, shadow = 1,
+        words = { color = { .9, .9, .9 } } },
 }
 -- Shipped with Spoken: the Classic clients list the retail parchment atlases without their art,
 -- so those draw nothing.
@@ -140,6 +143,7 @@ function MinimalPlayer:Initialize(original)
     self.held = Font(self.title, 12, .62, .58, .46)
     self.held:Hide()
     self.tail = Actions.Tail(self.stopped, self.count, self.held)
+    for _, text in ipairs({ self.name, self.title.text, self.stopped, self.count, self.held }) do Ellesmere:Refont(text) end
 
     self.progress = Actions.ProgressBar(content)
 
@@ -192,6 +196,7 @@ function MinimalPlayer:BuildMenu()
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
     menu:SetBackdropColor(.07, .065, .05, .98)
     menu:SetBackdropBorderColor(MENU_EDGE[1], MENU_EDGE[2], MENU_EDGE[3], 1)
+    Ellesmere:When(function(skin) skin.Panel(menu) end)
     menu:Hide()
     table.insert(UISpecialFrames, "SpokenMinimalPlayerMenu")
     menu:RegisterEvent("GLOBAL_MOUSE_DOWN")
@@ -330,8 +335,10 @@ end
 
 --- Paints the panel's background, and the text in colours that read on it.
 function MinimalPlayer:Dress()
-    local dark = Config().MinimalBackground == "dark"
-    local look = dark and LOOKS.dark or LOOKS.parchment
+    -- EllesmereUI's shell is dark whichever background is chosen; a shell that failed left Spoken's.
+    local shell = self.panel.spokenEllesmere == true
+    local dark = Config().MinimalBackground == "dark" or shell
+    local look = shell and LOOKS.ellesmere or dark and LOOKS.dark or LOOKS.parchment
     local paper = self.paper
     self.dark = dark
     if dark then
@@ -401,7 +408,9 @@ function MinimalPlayer:Layout()
     self.panel:ClearAllPoints()
     -- The panel starts behind the portrait's centre and is centred on it vertically,
     -- so its left corners sit beneath the opaque disc and the text gets even margins.
-    self.panel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", cfg.HidePortrait and 0 or 44, -6)
+    -- In EllesmereUI's look the whole frame: its shell's edge, drawn above the portrait, ran down
+    -- the portrait's middle from the panel's left side.
+    self.panel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", (cfg.HidePortrait or Ellesmere:On()) and 0 or 44, -6)
     self.panel:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", 0, 10)
     self.resizer:SetShown(not Addon:IsFrameLocked())
     self.layingOut = false
@@ -444,10 +453,26 @@ function MinimalPlayer:RefreshConfig(original)
     local bronze = Actions.Bronze()
     local r, g, b = 1, 1, 1
     if bronze then r, g, b = bronze[1], bronze[2], bronze[3] end
-    self.panel:SetBackdropBorderColor(r, g, b)
+    if self.panel.spokenEllesmere ~= true then self.panel:SetBackdropBorderColor(r, g, b) end
     Actions.TintProgress(self.progress, r, g, b)
     local edge = bronze or MENU_EDGE
-    self.menu:SetBackdropBorderColor(edge[1], edge[2], edge[3], 1)
+    -- EllesmereUI's panel in its look: the stock border stays faded.
+    if not Ellesmere:On() then self.menu:SetBackdropBorderColor(edge[1], edge[2], edge[3], 1) end
+    Ellesmere:Dress(self.panel)
+    -- Every refresh, not only the first: a style switch drew the stock border and paper again. Only
+    -- once the shell is on: a shell that failed leaves Spoken's own.
+    if self.panel.spokenEllesmere == true then
+        Ellesmere:Try(function()
+            if self.panel.SetBackdrop then self.panel:SetBackdrop(nil) end
+            self.paper:SetAlpha(0)
+            -- The portrait over the shell's edge, which EllesmereUI draws 6 levels over the panel:
+            -- under it, the edge drew across the picture.
+            local level = self.panel:GetFrameLevel() + 7
+            self.portrait:SetFrameLevel(level)
+            self.portrait.viewport:SetFrameLevel(level + 1)
+            self.portrait.chrome:SetFrameLevel(level + 9)
+        end)
+    end
     self:Dress()
     if Addon:IsFrameLocked() then frame:StopMovingOrSizing(); self.sizing = false end
     -- Locked, clicks on the window pass through to the game, as the subtitle's do; the header

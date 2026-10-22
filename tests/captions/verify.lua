@@ -67,6 +67,7 @@ dofile(addons .. 'Spoken/UI/Snap.lua')
 dofile(addons .. 'Spoken/UI/Face.lua')
 dofile(addons .. 'Spoken/UI/PlayerFrame.lua')
 dofile(addons .. 'Spoken/UI/MinimalPlayer.lua')
+dofile(addons .. 'Spoken/UI/Ellesmere.lua')
 dofile(addons .. 'Spoken/UI/DialogueUIPlayer.lua')
 dofile(addons .. 'Spoken/UI/DialogueUITransitions.lua')
 E.Minimap={Setup=function() end}; E.Options={Setup=function() end}

@@ -297,6 +297,8 @@ function Skin:Initialize()
     if self.frame then return end
     local frame = CreateFrame("Frame", "SpokenDialogueUIPlayerFrame", UIParent)
     self.frame = frame
+    -- DialogueUI's look, not EllesmereUI's (Actions.Square).
+    frame.spokenRound = true
     frame.spokenBaseScale = 1
     frame:SetSize(300, 400)
     -- RefreshConfig re-runs PlaceDefault until the player drags it.

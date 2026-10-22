@@ -96,6 +96,11 @@ end
 function Welcome:Build()
     local frame = Window()
     self.frame = frame
+    Ellesmere:When(function(skin)
+        skin.Shell(frame)
+        local close = frame.ClosePanelButton or frame.CloseButton
+        if type(close) == "table" then skin.CloseButton(close) end
+    end)
     frame:SetWidth(WIDTH)
     frame:SetPoint("CENTER", 0, 40)
     frame:SetFrameStrata("DIALOG")
