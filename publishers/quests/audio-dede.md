@@ -3,7 +3,7 @@ release: quests-audio-deDE
 section: quests
 lang: deDE
 pack: all
-version: 1.0.0
+version: 1.0.1
 slug: spoken-quests-audio-dede
 name: Spoken Quests Audio: German
 summary: Every quest and gossip line for Spoken, voiced in German. One pack, both factions. Needs Spoken.

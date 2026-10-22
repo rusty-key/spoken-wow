@@ -3,9 +3,8 @@ setfenv(1, VoiceOver)
 -- The module's page in the game's settings, under Spoken's: laid out by Spoken's UI/Layout.lua so
 -- the pages read alike.
 --
--- The AceConfig table is not replaced. It still backs every `/spq` command, and on the three
--- legacy clients, which have no Settings API at all, it fills the window OpenConfigWindow shows:
--- there the window and the slash commands are the whole interface, as they have always been.
+-- The AceConfig table is not replaced. It still backs every `/spq` command and fills the window
+-- OpenConfigWindow shows.
 
 SettingsPanel = {}
 
@@ -21,7 +20,7 @@ end
 local panel
 
 function SettingsPanel:Setup()
-    if panel or not (Settings and Settings.RegisterCanvasLayoutCategory) then
+    if panel then
         return
     end
     panel = CreateFrame("Frame", "SpokenQuestsOptionsPanel", UIParent)

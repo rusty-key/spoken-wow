@@ -10,16 +10,9 @@ setfenv(1, VoiceOver)
 -- Marks go into the paragraph's own text: colour codes take no width and a left-aligned
 -- prefix wraps as the whole did, so nothing moves. The original text goes back when the line
 -- ends, because DialogueUI reads it for its own text-to-speech.
---
--- Parses as Lua 5.0 (no #, no %) because addon.xml is shared with the 1.12 client.
 
 DialogueUIBridge = { status = "waiting" }
 local Bridge = DialogueUIBridge
-
-if Version.IsAnyLegacy then
-    Bridge.status = "legacy client"
-    return
-end
 
 -- A page can be built again (an item reward resolving, QUEST_DETAIL firing twice).
 local HANDLERS = { "HandleQuestDetail", "HandleQuestProgress", "HandleQuestComplete",

@@ -115,11 +115,4 @@ end)(), true)
 
 Expect("nothing went wrong in a callback", #env.Callbacks.errors, 0)
 
----------------------------------------------------------------- the legacy clients
-stub.SetClient("3.3.5")
-stub.ResetSound(); stub.ResetTimers()
-_G.SpokenSettings = nil
-env = stub.LoadSpoken(SPOKEN)
-Expect("not offered on the legacy clients", env.BackgroundSound:IsAvailable(), false)
-
 os.exit(Failures() == 0 and 0 or 1)

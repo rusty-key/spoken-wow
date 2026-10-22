@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 16001
-## Title: Spoken Audio: Readables
+## Title: |cffb48cffSpoken|r Audio: Readables
 ## Notes: Narrated books, letters, notes and plaques for Spoken's Readables module. Install alongside Spoken.
 ## Version: 2.2.0
 ## Author: rusty

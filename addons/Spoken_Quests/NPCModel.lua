@@ -215,16 +215,14 @@ function NPCModel:Prime(guid, unit)
     -- Whoever asked may never refresh again -- a target with no dialog after, or a dialog
     -- closed on a creature whose bodies keep its load from being abandoned -- so the load
     -- polls itself and is settled within two seconds even if OnModelLoaded never fires.
-    if C_Timer and C_Timer.After then
-        local serial = loadSerial
-        local function Poll()
-            if loadSerial == serial and loadingGUID == guid then
-                PollLoadingGUID(guid)
-            end
+    local serial = loadSerial
+    local function Poll()
+        if loadSerial == serial and loadingGUID == guid then
+            PollLoadingGUID(guid)
         end
-        pcall(C_Timer.After, 1, Poll)
-        pcall(C_Timer.After, 2, Poll)
     end
+    C_Timer.After(1, Poll)
+    C_Timer.After(2, Poll)
 end
 
 --- What the model probe has cached for the NPC on screen, reading it directly as a last

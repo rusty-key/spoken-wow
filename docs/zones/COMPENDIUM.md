@@ -7,7 +7,7 @@ modules add to it, so there is one copy of each piece:
 
 | File | What it holds |
 | --- | --- |
-| `addons/Spoken/UI/Compendium.lua` | The window (movable, resizable, closes on Escape, folds down to the list), the list (`C.NewList`: search box, filter menu, banners, cards, rows), the page (`C.NewPage`: title, line under it, Play, Report, words, picture), `C:Register` for a tab. |
+| `addons/Spoken/UI/Compendium.lua` | The window (movable, resizable, closes on Escape, folds down to the list), the list (`C.NewList`: search box, filter menu, banners, groups, rows), the page (`C.NewPage`: title, line under it, Play, Report, words, picture), `C:Register` for a tab. |
 | `addons/Spoken/UI/TextView.lua` | The scrolling, wrapping text with its scroll bar and edge fade, and the picture above the words (`SetPicture`). The words are drawn at Text Size. |
 | `addons/Spoken/UI/Face.lua` | The round face on the player windows, and the badge for a line's kind (`zone` uses the world map icon). |
 
@@ -34,18 +34,18 @@ A banner for each continent, Kalimdor and the Eastern Kingdoms, then two more ba
   client files their maps. On the current data that is Darkspear Islands, which has no story yet.
 
 Each banner lists only places that are in the data on this client. Under a continent, each zone is a
-card with its icon (`Spoken:ZoneIcon`), name, places found out of all, and a bar. A zone's places are its areas,
+line with its name and places found out of all; its icon (`Spoken:ZoneIcon`) is on its page. A zone's places are its areas,
 its dungeons and raids, and its city (Stormwind City in Elwynn Forest, Orgrimmar in Durotar,
 Ironforge in Dun Morogh, Thunder Bluff in Mulgore, Darnassus in Teldrassil, the Undercity in
 Tirisfal Glades), which counts as one place with its own areas.
 
-- A click on a banner or a card chooses it and opens or closes it. Several stay open together, and
+- A click on a banner or a zone chooses it and opens or closes it. Several stay open together, and
   what is open lasts for the session and is not saved.
-- An open zone shows its city's card first, then a Dungeons and Raids line where it has several
-  (a card each under it, or a single card where it has one), then its areas as rows with a tick on
+- An open zone shows its city's line first, then a Dungeons and Raids line where it has several
+  (a line each under it, or a single line where it has one), then its areas as rows with a tick on
   each one found.
-- A search matches names only. It opens every card with a match inside. A search that names a zone
-  or a city lists all its areas, and one that names a banner lists its zones' cards as the player
+- A search matches names only. It opens every zone with a match inside. A search that names a zone
+  or a city lists all its areas, and one that names a banner lists its zones as the player
   left them.
 - The filter menu holds Discovered Only and Voiced Only. Voiced Only leaves out what no
   installed voice pack reads and counts only what it lists. A zone stays while an area, dungeon or
@@ -76,15 +76,15 @@ world map or the tab opening, or the game reporting exploration.
 
 ## Undiscovered places
 
-The tab does what the Quests and Readables tabs do. Banners and cards list and open whether or not
-anything in them is found, and a card with nothing found is greyed. An area not yet found is a row
+The tab does what the Quests and Readables tabs do. Banners and zones list and open whether or not
+anything in them is found, and a zone with nothing found is greyed. An area not yet found is a row
 greyed with a padlock, listed by name, and it does not open. The page of a place not found (opened
 from the map panel or a link) says `You have not discovered this place yet. Go there to read its
 story.` under its name and line. `SpokenZones:IsLocked` decides, and `QueueLore` refuses a locked
 place.
 
 Unlock Undiscovered Places (`showUndiscovered`) opens every area and tells every story. The counts
-and greyed cards still say what this character has found. Discovered Only leaves out zones with
+and greyed zones still say what this character has found. Discovered Only leaves out zones with
 nothing found and areas not found.
 
 ## Areas listed in another zone
@@ -131,7 +131,7 @@ node pipelines/lib/dungeons.mjs --check
 
 The table lists 29 dungeons and raids, and 18 have a `story`. The rest (Stormwind Stockade,
 Razorfen Kraul, Blackrock Spire, Blackrock Depths, Maraudon, the Molten Core, Blackwing Lair, both
-Ahn'Qiraj instances, Naxxramas and the Hall of Thanes) have no area story, so no card. Forever's City
+Ahn'Qiraj instances, Naxxramas and the Hall of Thanes) have no area story, so no line. Forever's City
 of Dalaran is the `dalaran` area of Alterac Mountains, and its Ruins of Lordaeron the Undercity's
 `ruins of lordaeron`. Run `make dungeons`, then the Quests and Readables exporters, after editing
 the JSON. `tests/lua/zones_dungeons_test.lua` checks the table against the stories and the Quests

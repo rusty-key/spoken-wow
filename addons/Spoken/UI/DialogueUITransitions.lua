@@ -3,11 +3,6 @@ setfenv(1, SpokenEnv)
 -- The DialogueUI window's moves to and from DialogueUI's own dialogs (DialogueUIPlayer.lua is the
 -- window): settling out of a dialog that closes on its line, the dialog's words fading before it
 -- closes, and a page the dialog queued going behind the window.
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout; that client
--- has no DialogueUI window and returns below.
-
-if Version.IsAnyLegacy then return end
 
 local Skin = DialogueUIPlayer
 local Theme = DialogueUITheme

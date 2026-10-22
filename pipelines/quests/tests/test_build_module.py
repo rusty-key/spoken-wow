@@ -163,19 +163,18 @@ def test_the_toc_title_says_which_pack_this_is(tmp_path):
                  title="Spoken Audio: Quests - Horde")
 
     with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
-        assert "## Title: Spoken Audio: Quests - Horde\n" in f.read()
+        assert "## Title: |cffb48cffSpoken|r Audio: Quests - Horde\n" in f.read()
 
 
 def test_the_toc_names_the_forever_client(tmp_path):
     # Forever marks a pack whose Interface it does not list incompatible, which the player's
     # checkAddonVersion switch cannot override, so every client the packs ship for is named.
-    # 100007 leads for the legacy clients, which read one number.
     store = _store(tmp_path, "quests/5-accept.ogg")
 
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
 
     with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
-        assert f.read().startswith("## Interface: 100007, 11509, 20506, 16001\n")
+        assert f.read().startswith("## Interface: 11509, 20506, 16001\n")
 
 
 def test_the_pack_ships_an_icon_the_toc_points_at(tmp_path):

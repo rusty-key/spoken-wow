@@ -3,7 +3,7 @@ curseforge: 1723279
 release: books-audio-deDE
 section: books
 lang: deDE
-version: 2.1.0
+version: 2.1.1
 slug: spoken-german-audio-readables
 name: Spoken German Audio: Readables
 summary: The German narration for Spoken's Readables module: books, letters and notes read aloud in German.

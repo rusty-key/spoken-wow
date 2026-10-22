@@ -3,7 +3,7 @@ curseforge: 1711067
 release: zones-audio-esMX
 section: zones
 lang: esMX
-version: 1.0.1
+version: 1.0.2
 slug: spoken-spanish-al-audio-places
 name: Spoken Spanish (AL) Audio: Places
 summary: The Latin American Spanish narration for Spoken's Places module: every zone and subzone read aloud in Spanish (AL).

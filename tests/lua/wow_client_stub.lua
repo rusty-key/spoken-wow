@@ -35,7 +35,6 @@ local world = {
     playedChannels = {},
     stopped = {},      -- handles StopSound was asked to stop, in order
     kitSounds = {},    -- every PlaySound, as {kit, channel}: UI clicks and the item cue
-    music = {},        -- paths PlayMusic was given, in order (the 2.4.3/3.3.5 path)
     missing = {},      -- paths PlaySoundFile refuses, as a set
     cvars = {},        -- overrides; anything unset reads as "1"
     cvarLog = {},      -- every SetCVar, as {key, value}, so a toggle can be asserted
@@ -95,7 +94,7 @@ end
 --- The game's secret values: in an instance or in combat the Forever client hands addons some
 --- values that their code cannot index, compare or join (#357). M.Secrets(a, b, ...) marks those
 --- values secret, issecretvalue answers for them, and indexing a marked string throws, as the
---- client's does. M.Secrets() with nothing ends it: no issecretvalue, as on a legacy client.
+--- client's does. M.Secrets() with nothing ends it: no issecretvalue, as outside Forever.
 --- Returns its first value, so a test can mark one where it hands it over.
 local secret = {}
 local stringIndex = getmetatable("").__index
@@ -215,6 +214,7 @@ local function Widget(kind, name)
         return #tostring(self.text or "") * 7
     end
     function w:SetWordWrap(on) self.wordWrap = on and true or false end
+    function w:SetTextColor(r, g, b) self.textColor = { r, g, b } end
     function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
     function w:GetTop() return 100 end
     function w:GetBottom() return 0 end
@@ -294,27 +294,15 @@ local function Widget(kind, name)
     end
     function w:SetCreature(idv) self.creature = idv; self.model = "creature/" .. tostring(idv) end
     function w:ClearModel() self.creature = nil; self.model = nil end
-    -- Only the one this client has. Model:GetModel returned a path and was removed; the
-    -- current clients answer GetModelFileID instead, and asking the wrong one is an error
-    -- rather than a nil -- which is what the catch-all below would otherwise hide.
-    if not M.absentAPI.GetModel then
-        function w:GetModel() return self.model end
-    end
-    if not M.absentAPI.GetModelFileID then
-        function w:GetModelFileID() return self.creature and 119940 or nil end
-    end
+    -- Model:GetModel returned a path and was removed; asking for it is an error rather than a
+    -- nil, which is what absentAPI keeps the catch-all below from hiding.
+    function w:GetModelFileID() return self.creature and 119940 or nil end
     function w:GetOwner() return self.owner end
     function w:SetOwner(o) self.owner = o end
     function w:Click()
-        -- 1.12 hands a script no arguments and sets the globals `this` and `arg1` instead,
-        -- which is what Compat.lua's SetScript wrapper reads. Both are set here so a click
-        -- reaches the same handler on every client.
-        local previousThis, previousArg = _G.this, _G.arg1
-        _G.this, _G.arg1 = self, "LeftButton"
         local fn = self.enabled ~= false and self.scripts.OnClick
         if fn then fn(self, "LeftButton") end
         for _, h in ipairs(self.hooks.OnClick or {}) do h(self, "LeftButton") end
-        _G.this, _G.arg1 = previousThis, previousArg
     end
     setmetatable(w, { __index = function(_, k)
         -- A method this client does not have stays missing. Everything else a real widget
@@ -383,35 +371,25 @@ end
 
 local _G = _G
 
--- The Forever client by default, the one Spoken is made on. SetClient() swaps in another:
--- the legacy ones have no WOW_PROJECT_ID, and 1.12 reports no interface version at all,
--- which is exactly what Version.lua keys on.
+-- The Forever client by default, the one Spoken is made on. SetClient() swaps in another.
 local CLIENTS = {
     ["20506"] = { "2.5.6", "60000", 20506, 5 },
     -- Forever: vanilla content on the modern engine, with a project id of its own, and the
     -- client whose quest log is the modern map-attached one rather than the named QuestLogFrame.
     ["16001"] = { "1.60.1", "70338", 16001, 18 },
     ["11509"] = { "1.15.9", "69109", 11509, 2 },
-    ["1.12"]  = { "1.12.1", "5875", nil, nil },
-    ["2.4.3"] = { "2.4.3", "8606", 20400, nil },
-    ["3.3.5"] = { "3.3.5", "12340", 30300, nil },
 }
 function M.SetClient(label)
     local c = assert(CLIENTS[label], "unknown client " .. tostring(label))
     _G.GetBuildInfo = function() return c[1], c[2], "Jan 1 2026", c[3] end
     _G.WOW_PROJECT_ID = c[4]
-    if c[4] == nil then _G.Settings = nil else _G.Settings = M.modernSettings end
-    _G.C_GossipInfo = c[4] ~= nil and M.gossipAPI or nil
-    -- The legacy clients have no context-menu API worth using either, which is
-    -- what makes the player draw its own menu there.
-    -- Model frames answered GetModel on the legacy clients and answer
-    -- GetModelFileID on the current ones. Neither client has both.
-    M.absentAPI.GetModel = c[4] ~= nil or nil
-    M.absentAPI.GetModelFileID = c[4] == nil or nil
-    -- Guarded: SetClient runs once as this file loads, before the menu API below exists.
-    if M.SetMenuAPI then
-        M.SetMenuAPI(c[4] ~= nil)
-    end
+    _G.Settings = M.modernSettings
+    _G.C_GossipInfo = M.gossipAPI
+    -- Model frames answer GetModelFileID; GetModel was removed.
+    M.absentAPI.GetModel = true
+    -- Back, after a test that took it away. Guarded: SetClient runs once as this file loads,
+    -- before the menu API below exists.
+    if M.SetMenuAPI then M.SetMenuAPI(true) end
 end
 _G.UIParent = MakeFrame("UIParent")
 _G.WOW_PROJECT_CLASSIC = 2
@@ -451,8 +429,6 @@ function _G.PlaySoundFile(path, channel)
     return true, #world.played
 end
 function _G.StopSound(handle, fadeMs) table.insert(world.stopped, handle); world.lastStopFade = fadeMs end
-function _G.PlayMusic(path) table.insert(world.music, path) end
-function _G.StopMusic() table.insert(world.music, false) end
 -- How many frames CreateFrame has built, across every name and kind: a model probe built
 -- once and reused shows up here as one, however many times the code that reuses it runs.
 local frameCount = 0
@@ -525,14 +501,29 @@ function _G.CreateFrame(kind, name, parent)
     -- Kept apart from the PlayerModel above on purpose: that one is the addon's model probe,
     -- tracked as M.playerModel, and the appearance roller must never replace it.
     if kind == "DressUpModel" then
+        -- A model with nothing loaded, or a creature the client has not cached (world.unloaded),
+        -- answers with the player's own appearance (world.ownDisplay).
+        function f:SetUnit() self.display, self.touched = world.ownDisplay, true end
         function f:SetCreature(id)
-            self.creature = id
+            self.creature, self.touched = id, true
             setCreatureCount = setCreatureCount + 1
             local displays = world.creatureDisplays[id]
-            self.display = displays and displays[(setCreatureCount - 1) % #displays + 1] or nil
+            local display = displays and displays[(setCreatureCount - 1) % #displays + 1] or nil
+            -- A real model keeps answering with the creature it held until the new one loads.
+            if world.modelLags then
+                self.pending, self.pendingAt = display, world.time
+            else
+                self.display = display
+            end
         end
+        function f:ClearModel() self.creature = nil end
         function f:GetDisplayInfo()
             if world.displaysUncached then return 0 end
+            if not self.touched then return world.blankDisplay or 0 end
+            if self.creature and world.unloaded and world.unloaded[self.creature] then return world.blankDisplay or 0 end
+            if self.pending and world.time > self.pendingAt then
+                self.display, self.pending = self.pending, nil
+            end
             return self.display or 0
         end
     end
@@ -584,7 +575,7 @@ _G.HIGHLIGHT_FONT_COLOR = { r = 1, g = 1, b = 1 }
 _G.NORMAL_FONT_COLOR = { r = 1, g = 0.82, b = 0 }
 _G.GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
 _G.UIDropDownMenu_Initialize = nil
--- The Settings API as 11509 exposes it; SetClient("1.12") removes it.
+-- The Settings API as 11509 exposes it.
 M.settingsCategories = {}
 M.modernSettings = {
     RegisterCanvasLayoutCategory = function(frame, name) local c = { frame = frame, name = name, GetID = function() return name end }; table.insert(M.settingsCategories, c); return c end,
@@ -787,6 +778,11 @@ function _G.strsplit(sep, str, limit)
     end
     return unpack(out)
 end
+-- The client's own string helpers, which stock Lua lacks.
+function string.trim(str) return (str:gsub("^%s+", ""):gsub("%s+$", "")) end
+function _G.wipe(t) for k in pairs(t) do t[k] = nil end return t end
+table.wipe = _G.wipe
+
 -- The client's string.format takes positional arguments (%1$s), which translations use to
 -- put words in their own order; stock Lua's does not. Reordered here, then formatted plainly.
 -- Replaced on the string table itself, so ("..."):format and the format global get it too.
@@ -853,7 +849,7 @@ _G.DropDownList1 = Frame("DropDownList1")
 _G.DropDownList1:Hide()
 local menuAPI = {}
 
---- Present the context-menu API, or take it away as a legacy client does.
+--- Present the context-menu API, or take it away as a client without it does.
 function M.SetMenuAPI(present)
     for name, fn in pairs(menuAPI) do
         _G[name] = present and fn or nil
@@ -926,7 +922,7 @@ end
 -- The gossip frame's Goodbye button, reachable the way current Blizzard clients (Classic Era,
 -- Anniversary, and Mainline) expose it: nested under a parentKey rather than a separate
 -- global. See UI/ContributeButton.lua's GossipGoodbyeButton for why a plain global is also
--- tried and why neither is assumed to exist on the three original legacy clients.
+-- tried.
 _G.GossipFrame.GreetingPanel = Frame("GossipFrameGreetingPanel")
 _G.GossipFrame.GreetingPanel.GoodbyeButton = Frame("GossipFrameGreetingPanelGoodbyeButton")
 
@@ -1245,7 +1241,7 @@ end
 --- above, from its tree.
 function M.LoadZones(addonDirectory, SpokenZones)
     if not _G.SpokenCompendium then dofile(addonDirectory .. "../Spoken/UI/Compendium.lua") end
-    for _, file in ipairs({ "Audio", "UI/ContributeButton", "Autoplay" }) do
+    for _, file in ipairs({ "Audio", "Autoplay" }) do
         local chunk = assert(loadfile(addonDirectory .. file .. ".lua"))
         chunk("Spoken_Places", SpokenZones)
     end
@@ -1254,7 +1250,7 @@ end
 
 --- Reset every piece of sound state a test can observe.
 function M.ResetSound()
-    for _, key in ipairs({ "played", "playedChannels", "stopped", "kitSounds", "music", "missing", "cvars", "cvarLog" }) do
+    for _, key in ipairs({ "played", "playedChannels", "stopped", "kitSounds", "missing", "cvars", "cvarLog" }) do
         world[key] = {}
     end
 end

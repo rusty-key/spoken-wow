@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 16001
-## Title: Spoken Places
+## Title: |cffb48cffSpoken|r |cff6cb8ffPlaces|r
 ## Notes: Zone and subzone lore on the world map, read aloud through Spoken.
 ## Notes-deDE: Geschichten zu Zonen und Gebieten auf der Weltkarte, vorgelesen durch Spoken.
 ## Notes-esES: Historia de zonas y subzonas en el mapa del mundo, leída en voz alta a través de Spoken.
@@ -86,7 +86,6 @@ Data/zhTW/Aliases.lua
 Data/ForeverAreas.lua
 Data/AreaZones.lua
 UI/CopyLink.lua
-UI/ContributeButton.lua
 UI/LorePage.lua
 UI/MapPanel.lua
 UI/SubzoneClick.lua

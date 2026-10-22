@@ -4,7 +4,7 @@ release: quests-audio-horde-deDE
 section: quests
 lang: deDE
 pack: horde
-version: 1.0.0
+version: 1.0.1
 github: false
 slug: spoken-german-audio-quests-horde
 name: Spoken German Audio: Quests - Horde

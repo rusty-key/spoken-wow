@@ -33,10 +33,6 @@ function SpokenBooks:SetupOptions()
 		return
 	end
 
-	if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then
-		self:Print("|cffffcc00Settings API missing; options panel unavailable (use /spr)|r")
-		return
-	end
 	-- The words every module's page shares, kept in Spoken.
 	local W = Spoken:Words()
 

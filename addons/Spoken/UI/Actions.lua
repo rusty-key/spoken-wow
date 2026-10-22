@@ -3,7 +3,7 @@ setfenv(1, SpokenEnv)
 -- The buttons the speaking clip's presentation brings beside a window's own Stop or Replay and
 -- Skip: every module's Report. The player lays them out and knows nothing about what they do.
 --
---   action = { id, icon, text = "R", -- what a legacy client draws instead of the icon
+--   action = { id, icon,
 --              tooltip = fun(GameTooltip), label = L.OPT_REPORT_PROBLEM?, -- its name in a menu
 --              visible = fun():boolean, onClick = fun(clip), anchor = "header" | "topright"?,
 --              create = fun(parent):Button?, onClipChanged = fun(clip, button)? }
@@ -15,14 +15,6 @@ Actions = {}
 local function Clamp01(n) return math.max(0, math.min(1, tonumber(n) or 0)) end
 
 local ART = [[Interface\AddOns\Spoken\Textures\]]
-local named = 0
-
---- Whether an action's icon can be drawn. The art these use lives in folders that postdate
---- the three legacy clients, where the texture is simply missing and the button
---- would be a blank square; an action carrying a `text` says what to put there instead.
-local function CanDrawIcon()
-    return not Version.IsAnyLegacy
-end
 
 -- Actions an addon has declared optional, in the order declared: { id, label }. The player
 -- offers a setting for each, named by the addon, and never learns what the action does.
@@ -516,7 +508,7 @@ local AtlasInfo = setfenv(function(name)
     return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) or nil
 end, _G)
 
---- Whether the client has the atlas `name`; the legacy clients have none.
+--- Whether the client has the atlas `name`.
 function Actions.HasAtlas(name)
     return AtlasInfo(name) ~= nil
 end
@@ -849,23 +841,13 @@ local function NewButton(frame, action)
     if action.create then
         button = action.create(frame)
     else
-        if CanDrawIcon() then
-            -- No template: a button that is only a texture wants none of
-            -- UIPanelButtonTemplate's furniture.
-            -- The player's round button, the same Report the subtitle shows.
-            button = CreateFrame("Button", nil, frame)
-            button:SetSize(ROUND_SIZE, ROUND_SIZE)
-            Actions.RoundIcon(button, action.icon)
-            button.showsIcon = true
-        else
-            -- Named, because 1.12's UIPanelButtonTemplate names its label "$parentText"
-            -- and an unnamed button leaves that substitution with nothing to resolve.
-            named = named + 1
-            button = CreateFrame("Button", "SpokenActionButton" .. named, frame,
-                "UIPanelButtonTemplate")
-            button:SetSize(ROUND_SIZE + 8, ROUND_SIZE + 4)
-            button:SetText(action.text or "?")
-        end
+        -- No template: a button that is only a texture wants none of
+        -- UIPanelButtonTemplate's furniture.
+        -- The player's round button, the same Report the subtitle shows.
+        button = CreateFrame("Button", nil, frame)
+        button:SetSize(ROUND_SIZE, ROUND_SIZE)
+        Actions.RoundIcon(button, action.icon)
+        button.showsIcon = true
         button:SetScript("OnClick", function(self)
             if self.action and self.action.onClick then
                 self.action.onClick(frame.actions.clip)
@@ -976,7 +958,7 @@ end
 --- the windows over it or not.
 function Actions.WatchDialogs(fn)
     local function Later()
-        if C_Timer and C_Timer.After then C_Timer.After(0, fn) else fn() end
+        C_Timer.After(0, fn)
     end
     for _, name in ipairs({ "DUIQuestFrame", "DUIBookFrame" }) do
         local dialog = _G[name]

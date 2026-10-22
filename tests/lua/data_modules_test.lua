@@ -119,6 +119,9 @@ Expect("a language's pack is labelled by what it holds",
     "Quests - Horde")
 Expect("...and so is a pack built under the old title",
     DM:GetPackLabel({ AddonName = "SpokenQuestsAudioHorde_deDE", Title = "Spoken Quests Audio: Horde" }), "Horde")
+Expect("...and so is a pack whose title is coloured",
+    DM:GetPackLabel({ AddonName = "SpokenQuestsAudioHorde_deDE", Title = "|cffb48cffSpoken|r German Audio: Quests - Horde" }),
+    "Quests - Horde")
 
 stub.ResetAddOns()
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

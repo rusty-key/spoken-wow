@@ -1,8 +1,7 @@
 <Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
     <!--
         Azeroth's Compendium, the window every module's tab shares, the dungeons its tabs list
-        and the text view its pages scroll in. Listed only by the Blizzard-client .toc files: the modules with tabs run on no
-        other client, and the 1.12 client's Lua 5.0 cannot parse these files.
+        and the text view its pages scroll in.
     -->
     <Include file="Data\Dungeons.lua"/>
     <Include file="UI\TextView.lua"/>

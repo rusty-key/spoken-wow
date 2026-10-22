@@ -40,6 +40,7 @@ local MODULES = {
     { name = "Quests", base = "Spoken_Quests/Strings.lua", dir = "Spoken_Quests/Locale/" },
     { name = "Zones", base = "Spoken_Places/Locale/enUS.lua", dir = "Spoken_Places/Locale/" },
     { name = "Writings", base = "Spoken_Readables/Locale/enUS.lua", dir = "Spoken_Readables/Locale/" },
+    { name = "NPCs", base = "Spoken_NPCs/Locale/enUS.lua", dir = "Spoken_NPCs/Locale/", min = 5 },
     -- TITLE is the addon's name, the same in every language.
     { name = "Developer", base = "Spoken_Developer/Locale/enUS.lua", dir = "Spoken_Developer/Locale/", same = { TITLE = true } },
 }
@@ -48,7 +49,7 @@ for _, module in ipairs(MODULES) do
     local english = Strings(ADDONS .. module.base, module.table)
     local count = 0
     for _ in pairs(english or {}) do count = count + 1 end
-    Expect(module.name .. ": the English strings are found", count > 20, true)
+    Expect(module.name .. ": the English strings are found", count > (module.min or 20), true)
     for _, code in ipairs(CODES) do
         local own = Strings(ADDONS .. module.dir .. code .. ".lua")
         local missing, extra, args = {}, {}, {}

@@ -3,27 +3,26 @@
 -- completed, or in its quest log, which is marked in progress on its row and its page. Until then
 -- it is greyed and does not open, unless Unlock Unstarted Quests is on.
 --
--- The list is the Compendium's banners, cards and lines. Banners are for continents and types:
+-- The list is the Compendium's banners and lines. Banners are for continents and types:
 -- one for each continent, Other Lands for the zones on no continent, Battlegrounds, then the
--- sections Classes, Professions, Holidays and Events and Other. Cards are for places alone: a
--- zone, its city, a dungeon. Everything else is a line of the list with what it holds under it: a
--- class, profession, holiday or other kind of quest and Place Unknown in a section's banner, a
--- zone's Dungeons and Raids where it has several (a card for each dungeon under it; a zone with
--- one has that dungeon's card), and a chain, the quests that follow one another (`prev` in the
+-- sections Classes, Professions, Holidays and Events and Other. Everything else is a line of the
+-- list with what it holds under it: a place, a class, profession, holiday or other kind of quest
+-- and Place Unknown in a section's banner, a zone's Dungeons and Raids where it has several (a line for each dungeon under it; a zone with
+-- one has that dungeon's line), and a chain, the quests that follow one another (`prev` in the
 -- data), with the same name in every zone it crosses. The rest are the leaves, a row each.
--- Every card and banner counts its quests completed out of all and those in progress; Voiced Only
+-- Every line and banner counts its quests completed out of all and those in progress; Voiced Only
 -- leaves the quests no voice pack has out of the counts as it does out of the list.
 --
 -- The page shows what is chosen. A quest's is its title, where it is and its words, its offer and
 -- its hand-in each under the face and name of who says it, with Play where a voice pack has it,
 -- or L.QUEST_NOT_FOUND where it does not open. Its hand-in waits until
--- it is completed, unless Unlock Unstarted Quests is on. A banner's, card's or line's is its name,
--- what holds it and its count on one line, and L.QUESTS_PICK, the quests being on the left to
+-- it is completed, unless Unlock Unstarted Quests is on. A banner's or line's is its name,
+-- what holds it and its count on one line, and an empty page with its mark, the quests being on the left to
 -- choose. A place is "In" its holder; a section, a class, profession or event and Place Unknown
 -- are no place and are named as they are. The sections have nothing above them: their line is the
 -- count.
 --
--- A search lists what matches under what holds it. Where it matches the name of a banner, a card
+-- A search lists what matches under what holds it. Where it matches the name of a banner, a line
 -- or a chain, everything inside that one is listed.
 --
 -- On a client in another language, the words and title each quest's window showed are kept for
@@ -45,7 +44,7 @@ local list, page
 local selection          -- { quest = id } | { mapID = id } | { sort = id } | { group = "elsewhere" }
                          -- | { chain = key, ids = { id... }, first = id, where = key } | nil
 local landed             -- the selection made for the player, where they stood; any other they chose
-local openZones = {}     -- [mapID] = true: a zone's or city's card, opened
+local openZones = {}     -- [mapID] = true: a zone's or city's line, opened
 local continentOpen = { [1414] = true, [1415] = true }
 local groupOpen = {}
 local sectionOpen = {}
@@ -123,7 +122,7 @@ local function OnlyFound()
 end
 
 -- Voiced Only, after Started Only in the filter menu: the quests no installed voice pack has a part
--- of are left out, and with them any card or banner left with nothing.
+-- of are left out, and with them any line or banner left with nothing.
 local function OnlyVoiced()
     return Global().VoicedOnly == true
 end
@@ -289,12 +288,12 @@ local function Whole(named, build)
     return rows
 end
 
--- Set while the cards under a banner whose name the search matches are built: each is listed,
+-- Set while the lines under a banner whose name the search matches are built: each is listed,
 -- closed or open as the player left it, and opens and closes on a click as it does unsearched. A
 -- continent's every quest at once would be too long a list to read.
 local asLeft = false
 
--- Whether a search opens the cards being built.
+-- Whether a search opens the lines being built.
 local function Searched()
     return filter ~= "" and not asLeft
 end
@@ -302,26 +301,26 @@ end
 -- What a search opened and the player closed again with a click, by row; a new search opens all.
 local searchClosed = {}
 
--- A card's rows: the card, and what it holds unless the player closed it during this search.
-local function Rows(card, inside, key)
-    card.closeKey = key
+-- A line's rows: the line, and what it holds unless the player closed it during this search.
+local function Rows(head, inside, key)
+    head.closeKey = key
     if Searched() and searchClosed[key] then
-        card.open = false
-        return { card }
+        head.open = false
+        return { head }
     end
-    local rows = { card }
+    local rows = { head }
     for _, row in ipairs(inside) do table.insert(rows, row) end
     return rows
 end
 
--- While a search opens everything it finds, a click on an open card closes it, and opens it again.
+-- While a search opens everything it finds, a click on an open line closes it, and opens it again.
 local function SearchFold(row)
     if filter == "" or row.asLeft or not row.closeKey then return false end
     searchClosed[row.closeKey] = not searchClosed[row.closeKey] or nil
     return true
 end
 
--- As Whole, for a banner: its cards listed, each as the player left it.
+-- As Whole, for a banner: its lines listed, each as the player left it.
 local function AsLeft(named, build)
     local before = asLeft
     asLeft = before or named
@@ -331,7 +330,7 @@ local function AsLeft(named, build)
 end
 
 -- Whether this client has heard of a map: Era's has not of Forever's Zephras Isle and Darkspear
--- Islands, whose cards would lead nowhere.
+-- Islands, whose lines would lead nowhere.
 local function Known(mapID)
     return not (C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(mapID) == nil)
 end
@@ -458,7 +457,7 @@ local function Tally(set)
     return found, total, going
 end
 
--- Whether a card or banner counting `found` of `total` is left out: Started Only with none
+-- Whether a line or banner counting `found` of `total` is left out: Started Only with none
 -- started, or Voiced Only with none voiced.
 local function Unlisted(found, total)
     return (OnlyFound() and found == 0) or (OnlyVoiced() and total == 0)
@@ -576,7 +575,8 @@ local chainOpen = {}
 
 local function QuestRow(id, nest)
     return { kind = "quest", leaf = true, quest = id, label = Title(id, filter == ""),
-        nest = nest, locked = not Found(id) and not Unlocked(), going = InProgress(id), done = Completed(id) }
+        nest = nest, locked = not Found(id) and not Unlocked(), going = InProgress(id), done = Completed(id),
+        missing = not QuestsTab:HasWords(id) or not AnyVoiced(id) }
 end
 
 local function Shows(id)
@@ -585,23 +585,13 @@ local function Shows(id)
         and (not Filtering() or Matches(Title(id)) or Matches(english))
 end
 
--- A card's or a line's numbers: the completed (a card's share and its bar) out of all, and how
--- many more are in progress. A card's badge: a zone's painting, a dungeon's key. A line has none.
-local function Card(item, found, total, going)
+-- A line counts its completed quests; those under way are counted apart.
+local function Counted(item, found, total, going)
     local done = found - going
-    -- Places are cards: zones, cities, dungeons. A kind of quest (a class, a profession, a holiday,
-    -- a zone's several dungeons) and a chain are lines of the list, what they hold under them.
-    local place = item.kind == "zone" or item.kind == "dungeon" or (item.kind == "dungeons" and item.place)
-    item.style = place and "card" or "group"
+    item.style = "group"
     -- `found`, completed or under way, is what opens: a chain with one quest started has that to show.
     item.count, item.total, item.goingCount, item.found = done, total, going, found
     item.asLeft = asLeft
-    if item.kind == "zone" then
-        if Spoken and Spoken.ZoneIcon then item.icon, item.iconCrop = Spoken:ZoneIcon(item.mapID) end
-    elseif (item.kind == "dungeons" or item.kind == "dungeon") and Spoken and Spoken.DungeonIcon then
-        item.icon, item.iconCrop = Spoken:DungeonIcon(item.dungeon)
-    end
-    item.ratio = total > 0 and done / total or 0
     item.tick = total > 0 and done == total
     item.none = found == 0
     return item
@@ -624,7 +614,7 @@ local function ChainRows(where, first, ids, nest, nth)
         return out
     end)
     if Filtering() and #inside == 0 then return {} end
-    return Rows(Card({ kind = "chain", key = key, ids = ids, first = first, nth = nth, label = label, nest = nest,
+    return Rows(Counted({ kind = "chain", key = key, ids = ids, first = first, nth = nth, label = label, nest = nest,
         where = where, open = #inside > 0 }, found, total, going), inside, "c" .. key)
 end
 
@@ -715,8 +705,8 @@ end
 
 local dungeonOpen = {}
 
--- A zone's dungeons' and raids' quests: the dungeon's card where the zone has one, else a line,
--- Dungeons and Raids, with a card for each dungeon under it (Blackrock Mountain's four, in Searing
+-- A zone's dungeons' and raids' quests: the dungeon's line where the zone has one, else a line,
+-- Dungeons and Raids, with a line for each dungeon under it (Blackrock Mountain's four, in Searing
 -- Gorge).
 local function DungeonRows(mapID, byDungeon, nest)
     local all, dungeons = {}, {}
@@ -750,7 +740,7 @@ local function DungeonRows(mapID, byDungeon, nest)
                 return rows
             end)
             if not Unlisted(f, t) and not (Filtering() and #leaves == 0) then
-                for _, row in ipairs(Rows(Card({ kind = "dungeon", key = dkey, dungeon = dungeon, ids = ids, label = name,
+                for _, row in ipairs(Rows(Counted({ kind = "dungeon", key = dkey, dungeon = dungeon, ids = ids, label = name,
                     nest = nest + 1, open = #leaves > 0 }, f, t, g), leaves, "d" .. dkey)) do
                     table.insert(out, row)
                 end
@@ -759,13 +749,13 @@ local function DungeonRows(mapID, byDungeon, nest)
         return out
     end)
     if Filtering() and #inside == 0 then return {} end
-    return Rows(Card({ kind = "dungeons", key = key, ids = all, label = label, nest = nest, place = #dungeons == 1,
+    return Rows(Counted({ kind = "dungeons", key = key, ids = all, label = label, nest = nest,
         dungeon = #dungeons == 1 and dungeons[1] or nil,
         open = #inside > 0 }, found, total, going), inside, "d" .. key)
 end
 
--- A zone's card, and under it when it is open its city's card, its dungeons' and raids' card or
--- line, its chains' lines and its quests. A city's card opens on its own, and shows only while its
+-- A zone's line, and under it when it is open its city's line, its dungeons' and raids' line or
+-- line, its chains' lines and its quests. A city's line opens on its own, and shows only while its
 -- zone is open.
 local function ZoneRows(mapID, nest)
     local found, total, going = Tally(QuestsIn(mapID))
@@ -785,7 +775,7 @@ local function ZoneRows(mapID, nest)
         return out
     end)
     if Filtering() and #inside == 0 then return {} end
-    return Rows(Card({ kind = "zone", mapID = mapID, label = C.MapName(mapID), nest = nest,
+    return Rows(Counted({ kind = "zone", mapID = mapID, label = C.MapName(mapID), nest = nest,
         open = (open or Searched()) and #inside > 0 }, found, total, going), inside, "z" .. mapID)
 end
 
@@ -800,7 +790,7 @@ local function GroupRows(kind, key, label, ids)
         return out
     end)
     if Filtering() and #leaves == 0 then return {} end
-    return Rows(Card({ kind = kind, key = key, label = label, nest = 0, open = #leaves > 0 },
+    return Rows(Counted({ kind = kind, key = key, label = label, nest = 0, open = #leaves > 0 },
         found, total, going), leaves, "g" .. key)
 end
 
@@ -851,7 +841,7 @@ local function Continents()
     return out
 end
 
--- A banner holding a card for each of `zones`, opened and chosen as the sections' are.
+-- A banner holding a line for each of `zones`, opened and chosen as the sections' are.
 local function ZoneBanner(key, label, zones)
     local set = {}
     for _, mapID in ipairs(zones) do QuestsIn(mapID, set) end
@@ -880,7 +870,7 @@ local ZONE_BANNERS = {
     battlegrounds = { label = "QUESTS_SECTION_BATTLEGROUNDS", zones = function() return Battlegrounds() end },
 }
 
--- A banner for each continent, its zones' cards inside; the zones on none under a banner of their
+-- A banner for each continent, its zones' lines inside; the zones on none under a banner of their
 -- own; the battlegrounds' banner; then a banner for each section.
 local function BuildRows()
     local out = {}
@@ -962,22 +952,25 @@ local function Generalise(text, english)
     return text
 end
 
--- Each moment's words: those kept in this client's language, else the English. Kept words
--- filled for the other sex are not used where the English has a word for each.
--- One part's words, in the client's language where its window was seen, or nil.
-local function PartText(id, moment)
+-- Each moment's words as stored: those kept in this client's language, else the English, or nil.
+-- Kept words filled for the other sex are not used where the English has a word for each.
+local function Stored(id, moment)
     local english = English(id)
     local kept = Kept()
     kept = kept and kept[id]
-    local text
     local own = kept and kept[moment]
-    if type(own) == "table" and own.text and not (own.sex ~= Sex() and (english[moment] or ""):find("%$[Gg]")) then
+    local text = english[moment]
+    if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
         text = own.text
     end
-    text = text or english[moment]
-    if text and text ~= "" then return QuestsTab:Fill(text) end
+    if text and text ~= "" then return text end
 end
 
+-- One part's words, in the client's language where its window was seen, or nil.
+local function PartText(id, moment)
+    local text = Stored(id, moment)
+    return text and QuestsTab:Fill(text)
+end
 
 --- Keep what the open quest window shows, in this client's language.
 function QuestsTab:Keep(moment, text, title)
@@ -1021,6 +1014,12 @@ end
 -- Unstarted Quests on, where the player chose to see everything.
 local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
+end
+
+-- Whether the page has words to show: the offer's, or the hand-in's where it shows. Looks at the
+-- stored text only, so a row can ask it on every render.
+function QuestsTab:HasWords(id)
+    return Stored(id, "accept") ~= nil or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
 end
 
 -- Who says one moment of a quest: the hand-in is said by the one it is handed
@@ -1158,7 +1157,9 @@ local function FaceSpeaker(id, moment)
     local kind, speaker = Speaker(id, moment)
     local bullet = BULLETS[moment]
     if not speaker then return { bullet = bullet } end
-    if Enums.GUID:IsCreature(kind) then return { creatureID = speaker, bullet = bullet } end
+    if Enums.GUID:IsCreature(kind) then
+        return { creatureID = speaker, displayID = VO.Player:QuestFace(speaker), bullet = bullet }
+    end
     local icon = kind == Enums.GUID.Item and Spoken.QuestItemIcon and Spoken:QuestItemIcon(id) or nil
     return { objectOrItem = true, icon = icon, bullet = bullet }
 end
@@ -1180,15 +1181,18 @@ local function Parts(id)
             if buttons then
                 buttons.play.questID, buttons.report.questID = id, id
                 buttons.report:SetShown(not reportsHidden)
-                buttons.play:SetShown(voiced)
+                buttons.play:Show()
+                if voiced then buttons.play:Enable() else buttons.play:Disable() end
                 PaintPartPlay(buttons.play)
                 list = { buttons.report, buttons.play }
             end
             local name, speaker = PartName(moment), SpeakerName(Speaker(id, moment))
             local face = PartFace(moment)
             if face then face:SetSpeaker(FaceSpeaker(id, moment)) end
-            table.insert(parts, { heading = name, text = text, buttons = list, face = face,
-                caption = face and speaker or nil })
+            -- Who speaks is the heading, over which part it is: Description or Completion.
+            local who = face and speaker and speaker ~= "" and speaker or nil
+            table.insert(parts, { heading = who or name, text = text, buttons = list, face = face,
+                caption = who and name or nil })
         end
     end
     return #parts > 0 and parts or nil
@@ -1258,7 +1262,7 @@ local function Holder(chosen)
         local mapID, dungeon = where:match("^d(%d+):(%d+)$")
         if mapID then
             mapID, dungeon = tonumber(mapID), tonumber(dungeon)
-            -- A zone with one dungeon has that dungeon's card under the zone's own key (DungeonRows).
+            -- A zone with one dungeon has that dungeon's line under the zone's own key (DungeonRows).
             local _, byDungeon = ZoneParts(mapID)
             local several = next(byDungeon, next(byDungeon)) ~= nil
             local key = several and DungeonKey(mapID, dungeon) or DungeonKey(mapID)
@@ -1281,7 +1285,7 @@ local function Holder(chosen)
     return { section = "lands" }
 end
 
--- The name of what holds a zone's card: its continent, the zone around a city, Other Lands or
+-- The name of what holds a zone's line: its continent, the zone around a city, Other Lands or
 -- Battlegrounds; the world for a continent.
 local function ZoneHolderName(up)
     if not up then return C.MapName(C.WORLD) end
@@ -1314,10 +1318,67 @@ local function Subtitle(id)
     return Where(id)
 end
 
+-- The quest's scroll, with the question mark badge where `done`, else the exclamation mark.
+local function ScrollIcon(done)
+    return { objectOrItem = true, icon = [[Interface\Icons\INV_Scroll_03]], bullet = done and BULLETS.complete or BULLETS.accept }
+end
+
+local function QuestIcon(id)
+    return ScrollIcon(Completed(id))
+end
+
+-- A chain is quests, so it has the quest's scroll: the question mark badge once every quest in it is done.
+local function ChainIcon(ids)
+    local done = #ids > 0
+    for _, id in ipairs(ids) do
+        if not Completed(id) then
+            done = false
+            break
+        end
+    end
+    return ScrollIcon(done)
+end
+
+-- The pages that are no place and no quest have an icon that fits: a class's own, a profession's, a
+-- holiday's. Each is checked against the client's files, since a texture it lacks draws solid green;
+-- one it lacks falls back to the section's icon, then to the question mark.
+local ICON_DIR = [[Interface\Icons\]]
+local SECTION_ICONS = {
+    classes = "INV_Misc_Book_09", professions = "Trade_Engineering", events = "INV_Misc_Gift_01",
+    other = "INV_Misc_Bag_08", lands = "INV_Misc_Map_01", battlegrounds = "INV_BannerPVP_02",
+}
+local SORT_ICONS = {
+    -- Classes (QuestSort).
+    [61] = "ClassIcon_Warlock", [81] = "ClassIcon_Warrior", [82] = "ClassIcon_Shaman", [141] = "ClassIcon_Paladin",
+    [161] = "ClassIcon_Mage", [162] = "ClassIcon_Rogue", [261] = "ClassIcon_Hunter", [262] = "ClassIcon_Priest",
+    [263] = "ClassIcon_Druid",
+    -- Professions.
+    [24] = "Trade_Herbalism", [101] = "Trade_Fishing", [121] = "Trade_BlackSmithing", [181] = "Trade_Alchemy",
+    [182] = "Trade_LeatherWorking", [201] = "Trade_Engineering", [264] = "Trade_Tailoring", [304] = "INV_Misc_Food_15",
+    [324] = "INV_Misc_Bandage_15", [666] = "Spell_Fire_Fire",
+    -- Holidays and events.
+    winterveil = "INV_Holiday_Christmas_Present_01", hallowsend = "INV_Misc_Bag_28_Halloween",
+    loveisintheair = "INV_Misc_Gift_02", harvestfestival = "INV_Misc_Food_15",
+}
+
+local function Present(name)
+    if not name then return nil end
+    local path = ICON_DIR .. name
+    -- A client without the lookup is trusted.
+    if _G.GetFileIDFromPath and GetFileIDFromPath(path) == nil then return nil end
+    return path
+end
+
+local function GroupIcon(sort, section)
+    local path = Present(sort and SORT_ICONS[sort]) or Present(section and SECTION_ICONS[section])
+    if not path then return C.UnknownIcon(nil) end
+    return { objectOrItem = true, icon = path }
+end
+
 local function ShowEntry()
     if not page then return end
     if not selection then
-        page:Show({ title = L.COMPENDIUM_QUESTS, subtitle = Count(Index().all), text = L.QUESTS_PICK })
+        page:Show({ title = L.COMPENDIUM_QUESTS, subtitle = Count(Index().all) })
         return
     end
     local up = Holder(selection)
@@ -1327,41 +1388,42 @@ local function ShowEntry()
         local holder, place
         if selection.where then holder, place = HolderName(selection.where) end
         page:Show({ title = ChainLabel(selection.first or First(ids[1]), selection.nth),
-            subtitle = Line(SetOf(ids), holder, place), text = L.QUESTS_PICK })
+            subtitle = Line(SetOf(ids), holder, place), icon = ChainIcon(ids) })
         return
     end
     if selection.quest then
         local id = selection.quest
         if not Found(id) and not Unlocked() then
-            page:Show({ title = Title(id), subtitle = Subtitle(id), text = L.QUEST_NOT_FOUND })
+            page:Show({ title = Title(id), subtitle = Subtitle(id), text = L.QUEST_NOT_FOUND, icon = QuestIcon(id) })
             return
         end
         -- Play and Report on each part's heading, not the page's: each part is said at its own time.
-        -- A quest Forever has that the corpus has no lines for yet says so, not that none are known.
-        local record = Quests()[id]
-        page:Show({ title = Title(id), subtitle = Subtitle(id), parts = Parts(id),
-            text = record and record.notext and L.QUEST_NO_WORDS_YET or L.QUEST_NO_TEXT })
+        local parts = Parts(id)
+        page:Show({ title = Title(id), subtitle = Subtitle(id), parts = parts, icon = QuestIcon(id),
+            unwritten = not QuestsTab:HasWords(id) })
         return
     end
     if selection.dungeon then
-        -- In the zone of its entrance, whose card holds it.
+        -- In the zone of its entrance, whose line holds it.
         local zone = tonumber(selection.dungeon:match("^d(%d+)"))
         local place = zone and selection.map and { mapID = zone, dungeon = selection.map } or nil
-        page:Show({ title = selection.label, subtitle = Line(SetOf(selection.ids), zone and C.MapName(zone), true), text = L.QUESTS_PICK, picture = place and C.PlacePicture(place) or nil })
+        page:Show({ title = selection.label, subtitle = Line(SetOf(selection.ids), zone and C.MapName(zone), true), icon = C.PlaceIcon(zone, selection.map), picture = place and C.PlacePicture(place) or nil })
         return
     end
     local banner = selection.section and ZONE_BANNERS[selection.section]
     if banner then
         local set = {}
         for _, mapID in ipairs(banner.zones()) do QuestsIn(mapID, set) end
-        page:Show({ title = L[banner.label], subtitle = Line(set, C.MapName(C.WORLD), true), text = L.QUESTS_PICK })
+        page:Show({ title = L[banner.label], subtitle = Line(set, C.MapName(C.WORLD), true),
+            icon = GroupIcon(nil, selection.section) })
         return
     end
     -- Classes, Professions, Holidays and Events and Other are no place: their count alone.
     if selection.section then
         for _, section in ipairs(SECTIONS) do
             if section.key == selection.section then
-                page:Show({ title = L[section.label], subtitle = Count((SectionSet(section.key))), text = L.QUESTS_PICK })
+                page:Show({ title = L[section.label], subtitle = Count((SectionSet(section.key))),
+                    icon = GroupIcon(nil, section.key) })
             end
         end
         return
@@ -1369,11 +1431,13 @@ local function ShowEntry()
     -- A sort's line, and Place Unknown's, names the section that holds it, which is no place.
     if selection.sort then
         page:Show({ title = SortName(selection.sort),
-            subtitle = Line(SetOf(Index().sorts[selection.sort]), SectionName(SectionOf(selection.sort))), text = L.QUESTS_PICK })
+            subtitle = Line(SetOf(Index().sorts[selection.sort]), SectionName(SectionOf(selection.sort))),
+            icon = GroupIcon(selection.sort, SectionOf(selection.sort)) })
         return
     end
     if selection.group == "elsewhere" then
-        page:Show({ title = L.QUESTS_ELSEWHERE, subtitle = Line(SetOf(Index().elsewhere), SectionName("other")), text = L.QUESTS_PICK })
+        page:Show({ title = L.QUESTS_ELSEWHERE, subtitle = Line(SetOf(Index().elsewhere), SectionName("other")),
+            icon = C.UnknownIcon(nil) })
         return
     end
     local set = {}
@@ -1382,7 +1446,7 @@ local function ShowEntry()
     else
         QuestsIn(selection.mapID, set)
     end
-    page:Show({ title = C.MapName(selection.mapID), subtitle = Line(set, ZoneHolderName(up), true), text = L.QUESTS_PICK, picture = C.PlacePicture({ mapID = selection.mapID }) })
+    page:Show({ title = C.MapName(selection.mapID), subtitle = Line(set, ZoneHolderName(up), true), icon = C.PlaceIcon(selection.mapID), picture = C.PlacePicture({ mapID = selection.mapID }) })
 end
 
 --------------------------------------------------------------------------------
@@ -1415,7 +1479,7 @@ local function OnClick(row)
         continentOpen[row.mapID] = not continentOpen[row.mapID]
         selection = { mapID = row.mapID }
     else
-        -- A zone's or city's card opens and closes alone.
+        -- A zone's or city's line opens and closes alone.
         openZones[row.mapID] = not openZones[row.mapID] or nil
         selection = { mapID = row.mapID }
     end
@@ -1427,7 +1491,7 @@ local function PlayerZone()
     return C.PlayerZone(function(map) return Index().zones[map] ~= nil end)
 end
 
--- Open what holds a zone's card, and the card.
+-- Open what holds a zone's line, and the line.
 local function OpenAround(zone) C.OpenAround(zone, continentOpen, sectionOpen) end
 local function OpenZone(zone) C.OpenZone(zone, openZones) end
 
@@ -1528,6 +1592,7 @@ local function Build(panel)
         isSelected = IsSelected,
         onClick = OnClick,
         locked = function() return C.LockedReason("OPT_UNLOCK_QUESTS") end,
+        hint = function(item) return item.kind == "quest" and L.QUESTS_SHIFT_QUEUE or nil end,
         onHidden = OnHidden,
         onSearch = function(text)
             filter = text

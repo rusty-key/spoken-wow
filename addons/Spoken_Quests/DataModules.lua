@@ -240,7 +240,8 @@ function DataModules:GetPackLabel(module)
     if label then
         return label
     end
-    local title = module and module.Title or ""
+    -- Without the colour Spoken's name is drawn in.
+    local title = string.gsub(module and module.Title or "", "|c%x%x%x%x%x%x%x%x(.-)|r", "%1")
     -- "Spoken German Audio: Quests - Horde", or a pack built before that, "Spoken Quests Audio: Horde".
     title = string.gsub(title, "^Spoken [^:]*Audio: ", "")
     return (string.gsub(title, "VoiceOver Data %- ", ""))
@@ -354,12 +355,10 @@ end
 ---@param known string?
 ---@return boolean
 function DataModules:IsOlderContent(installed, known)
-    -- Lua 5.0 safe, as this file loads on 1.12: no `#`, no string methods, gfind there.
-    local gmatch = string.gmatch or string.gfind
     local function parts(version)
         if type(version) ~= "string" or not string.find(version, "^%d+[%d.]*$") then return nil end
         local out = {}
-        for n in gmatch(version, "%d+") do table.insert(out, tonumber(n)) end
+        for n in string.gmatch(version, "%d+") do table.insert(out, tonumber(n)) end
         return out
     end
     local a, b = parts(installed), parts(known)
@@ -381,31 +380,23 @@ function DataModules:LoadPresentModules()
 end
 
 -- We deliberately use a high ##Interface version in TOC to ensure that all clients will load it.
--- Otherwise pre-classic-rerelease clients will refuse to load addons with version < 20000.
 -- Here we temporarily enable "Load out of date AddOns" to load the module, and restore the user's setting afterwards.
 -- These cvars can be nil, so have to store the fact of them being changed in a separate variable.
-local prev_checkAddonVersion, changed_checkAddonVersion
-local prev_lastAddonVersion, changed_lastAddonVersion -- Added in 5.x
-local function EnableOutOfDate(addon)
-    if not changed_checkAddonVersion then
+local prev_checkAddonVersion, prev_lastAddonVersion, changed
+local function EnableOutOfDate()
+    if not changed then
         prev_checkAddonVersion = GetCVar("checkAddonVersion")
-        SetCVar("checkAddonVersion", 0)
-        changed_checkAddonVersion = true
-    end
-    if not changed_lastAddonVersion and Version:IsRetailOrAboveLegacyVersion(50000) then
         prev_lastAddonVersion = GetCVar("lastAddonVersion")
+        SetCVar("checkAddonVersion", 0)
         SetCVar("lastAddonVersion", Version.Interface)
-        changed_lastAddonVersion = true
+        changed = true
     end
 end
-local function RestoreOutOfDate(addon)
-    if changed_checkAddonVersion then
+local function RestoreOutOfDate()
+    if changed then
         SetCVar("checkAddonVersion", prev_checkAddonVersion)
-        changed_checkAddonVersion = nil
-    end
-    if changed_lastAddonVersion and Version:IsRetailOrAboveLegacyVersion(50000) then
         SetCVar("lastAddonVersion", prev_lastAddonVersion)
-        changed_lastAddonVersion = nil
+        changed = nil
     end
 end
 
@@ -424,9 +415,9 @@ function DataModules:LoadModule(module)
         return false, self.loadErrors[module.AddonName]
     end
 
-    EnableOutOfDate(module.AddonName)
+    EnableOutOfDate()
     local callSucceeded, loaded, reason = pcall(LoadAddOn, module.AddonName)
-    RestoreOutOfDate(module.AddonName)
+    RestoreOutOfDate()
 
     if not callSucceeded then
         reason = tostring(loaded)
@@ -449,9 +440,9 @@ function DataModules:GetModuleLoadError(name)
 end
 
 function DataModules:GetModuleAddOnInfo(module)
-    EnableOutOfDate(module.AddonName)
+    EnableOutOfDate()
     local name, title, notes, loadable, reason = GetAddOnInfo(module.AddonName)
-    RestoreOutOfDate(module.AddonName)
+    RestoreOutOfDate()
     return name, title, notes, loadable, reason
 end
 

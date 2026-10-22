@@ -14,6 +14,90 @@ carries that version. The heading says which.
 - Packs carry a file per race and sex for NPCs drawn as more than one, alongside the per-sex
   files older versions of Spoken read.
 
+## 1.0.1 — quests-audio-alliance-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Quests - Alliance** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 20 more lines voiced and 18 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-horde-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Quests - Horde** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 54 more lines voiced and 1205 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-shared-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Quests - Shared** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 66 more lines voiced and 238 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-gossip-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Gossip** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 355 more lines voiced and 1051 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-deDE — 2026-10-20
+
+- 712 more lines voiced and 2538 re-recorded: 13820 files in all. Install over the previous version.
+
+## 0.0.6 — quests-audio-alliance-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Quests - Alliance** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 70 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-horde-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Quests - Horde** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 49 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-shared-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Quests - Shared** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 31 more lines voiced and 9 re-recorded. Install over the previous version.
+
+## 0.0.6 — quests-audio-gossip-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Gossip** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 852 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-esES — 2026-10-20
+
+- 1146 more lines voiced and 9 re-recorded: 12727 files in all. Install over the previous version.
+
+## 0.0.6 — quests-audio-alliance-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Quests - Alliance** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 15 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-horde-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Quests - Horde** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 22 more lines voiced and 1 re-recorded. Install over the previous version.
+
+## 0.0.6 — quests-audio-shared-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Quests - Shared** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 14 more lines voiced and 5 re-recorded. Install over the previous version.
+
+## 0.0.6 — quests-audio-gossip-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Gossip** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 352 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-esMX — 2026-10-20
+
+- 535 more lines voiced and 8 re-recorded: 12327 files in all. Install over the previous version.
+
 ## 2.4.0 — Spoken Quests Audio — 2026-10-17
 
 - **The sound packs are renamed** in the AddOns list: Spoken Audio: Quests - Horde, Quests -

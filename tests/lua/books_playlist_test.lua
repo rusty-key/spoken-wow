@@ -106,7 +106,6 @@ local report = clip.present.actions and clip.present.actions[1]
 Expect("every clip carries a report action", report and report.id, "report")
 Expect("...drawn as the bug icon the other addons use", report and report.icon,
     [[Interface\HelpFrame\HelpIcon-Bug]])
-Expect("...with a letter for the clients whose art predates it", report and report.text, "R")
 
 -- Built from the page id alone, which docs/books/AGENTS.md freezes as b:{pageTextID}. That
 -- is what lets the addon address a page with no per-page table and nothing to escape.

@@ -19,7 +19,7 @@ local function Boot(client)
     return env, quests
 end
 
-local REPORT = { id = "report", icon = "Interface/HelpFrame/HelpIcon-Bug", text = "R", anchor = "topright",
+local REPORT = { id = "report", icon = "Interface/HelpFrame/HelpIcon-Bug", anchor = "topright",
     label = "Report a problem" }
 local function Line(label, header, actions)
     return H.Clip({ length = 30, present = { header = header or "Grull", label = label,

@@ -213,10 +213,6 @@ function SpokenZones:CreateLorePage(parent, style)
 		page.open = open
 	end
 
-	-- Under the sentence that says a place has no story yet, so it reads as the answer to it.
-	local contribute = SpokenZones:CreateContributeButton(inner.body.child)
-	contribute:SetPoint("TOPLEFT", inner.body.text, "BOTTOMLEFT", 0, -12)
-	page.contribute = contribute
 	return page
 end
 
@@ -228,10 +224,12 @@ function Page:Show(entry)
 	local story = entry.audio or entry.report
 	local picture, mask
 	if story then picture, mask = SpokenZones:Picture(story[1], story[2]) end
-	self.page:Show({ title = entry.title, subtitle = entry.subtitle, onSubtitle = entry.onSubtitle, text = entry.text,
-		target = story, picture = picture and { file = picture, mask = mask } or nil })
 	local contribute = entry.contribute
-	self.contribute:SetTarget(contribute and contribute[1], contribute and contribute[2])
+	self.page:Show({ title = entry.title, subtitle = entry.subtitle, onSubtitle = entry.onSubtitle, text = entry.text,
+		target = story, picture = picture and { file = picture, mask = mask } or nil, icon = entry.icon,
+		unwritten = contribute and function()
+			if SpokenZones:CanContribute() then SpokenZones:ShowContribution(contribute[1], contribute[2]) end
+		end or nil })
 	if self.open then
 		local lore = entry.lore
 		self.open.mapID, self.open.areaKey = lore and lore[1], lore and lore[2]

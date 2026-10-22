@@ -15,6 +15,18 @@ section with no kind in its heading is the addon's. A language's pack numbers it
   reads them, and a language's is Spoken German Audio: Places and so on. Their folders keep their
   names, so nothing needs reinstalling.
 
+## 2.0.2 — zones-audio-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Places** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 1 narration re-recorded: Ashenvale. Install over the previous version.
+
+## 1.0.2 — zones-audio-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Places** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 753 of the 840 narrations re-recorded. Install over the previous version.
+
 ## 3.0.0 — 2026-10-05
 
 - **Spoken Zones is now part of Spoken**, and this download no longer carries the addon. It

@@ -23,10 +23,8 @@ local LABEL_PADDING = 24      -- room a button's end caps take either side of it
 local box
 
 local function Build()
-    -- "BackdropTemplate" is what carries SetBackdrop on the modern clients, where the mixin
-    -- moved out of the base frame; it is simply an unknown template name on the legacy ones,
-    -- which still answer SetBackdrop themselves. UI/PlayerFrame.lua and the zones lore window
-    -- both pass it for the same reason.
+    -- "BackdropTemplate" is what carries SetBackdrop, the mixin having moved out of the base
+    -- frame. UI/PlayerFrame.lua and the zones lore window both pass it for the same reason.
     local frame = CreateFrame("Frame", "SpokenContributeBox", UIParent, "BackdropTemplate")
     frame:SetWidth(WIDTH)
     frame:SetHeight(HEIGHT)
@@ -239,8 +237,7 @@ function Spoken:ShowGatherInstructions()
 end
 
 --- Show something ready to copy: a contribute link, or (isLink falsy) the raw envelope plus
---- the address to paste it into -- the fallback an older bundled player still gets, since a
---- legacy-client zip can carry a Spoken that predates Encode/Link entirely.
+--- the address to paste it into, where no link could be made.
 ---
 --- `gather`, when a feature addon passes it, is the line on screen as Gather keeps it:
 --- { key = ..., envelope = ... }. On the first click ever, it turns the box into a choice
@@ -252,7 +249,7 @@ function Spoken:ShowContribution(payload, address, isLink, gather)
         return false
     end
 
-    if type(gather) == "table" and Gather and not Gather:IsIntroduced() then
+    if type(gather) == "table" and not Gather:IsIntroduced() then
         ShowProse(L.CONTRIBUTE_INTRO, true)
         box.justThis:SetScript("OnClick", function()
             Gather:SetIntroduced()

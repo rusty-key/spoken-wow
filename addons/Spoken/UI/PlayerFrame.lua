@@ -7,8 +7,7 @@ end
 
 -- The large window, the "classic" narrator style: the game's Talking Head frame as
 -- TalkingHeadUI.xml lays it out, with Spoken's round controls where it has its close button.
--- Clients without its atlases draw Spoken's own art in the same places. Loads on 1.12 too, so
--- Lua 5.0 syntax throughout.
+-- Clients without its atlases draw Spoken's own art in the same places.
 --
 -- Refreshed through the player's AUDIO_CHANGED callback rather than by the queue
 -- calling this file, which is what keeps SoundQueue.lua free of any dependency on it.
@@ -306,8 +305,7 @@ end
 local function Left() return FrameConfig().HidePortrait and BARE_LEFT or NAME_X end
 
 --- The lines of words that fit between the name and the progress line, up to MOST_LINES, and a
---- line's height; no lines where the line has no words to show (Show Narrator off, none written, or
---- 1.12, which has no captions).
+--- line's height; no lines where the line has no words to show (Show Narrator off or none written).
 function PlayerFrame:WordLines(clip)
     local lineHeight = (Addon:Profile("Transcript").FontSize or 16) + 4
     if Transcript:HeightForClip(clip) <= 0 then return 0, lineHeight end
