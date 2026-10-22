@@ -40,6 +40,13 @@ local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 -- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
 -- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
 local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
+-- A clean picture (TextView:SetCleanPictures) loses this share of each side: past it no pixel of
+-- any shipped picture is thinned toward the parchment by more than 1%, measured from the shipped
+-- masks with prepare.py's thinning (the worst, Mask14, needs 0.172: 44 of 256 rows). The same share
+-- off every side keeps it 2:1.
+local PICTURE_CROP = 0.175
+-- More room above and below a clean picture, in its box on a dark page, than the frayed one's.
+local CLEAN_ROOM = 9
 -- A part's heading (SetParts): the title's face, larger than the words and darker, on a line as
 -- tall as its round buttons; the words HEAD_GAP under it, PART_GAP between one part and the next.
 -- In near-black, as the quest frame's own headings on parchment are, set apart by room alone.
@@ -81,6 +88,7 @@ end
 -- The file `fontObject`'s words are written in: where the view's owner reads a language other than
 -- the client's (only Places does, SpokenPlaces:FontFor), one that draws its script.
 local function FontFile(view, fontObject)
+	fontObject = view.faceObject or fontObject
 	local owner = view.owner
 	return owner and owner.FontFor and owner:FontFor(fontObject)
 		or (fontObject and fontObject.GetFont and fontObject:GetFont())
@@ -218,6 +226,10 @@ local function BuildScrollBar(view, parent)
 	-- a dark page and the page's own ink on parchment (TextView:SetThumbColor).
 	function view:PaintThumb()
 		local strong = self.dragging or over
+		if self.flatThumb then
+			self.flatThumb:SetColorTexture(1, 1, 1, strong and 0.5 or 0.3)
+			return
+		end
 		if pieces then
 			for _, piece in ipairs(pieces) do piece:SetAlpha(strong and 1 or 0.8) end
 		else
@@ -278,6 +290,13 @@ local function BuildScrollBar(view, parent)
 
 	view.bar = bar
 	view.thumb = thumb
+	local ellesmere = SpokenEnv and SpokenEnv.Ellesmere
+	if ellesmere then
+		ellesmere:When(function()
+			view.flatThumb = ellesmere:FlatBar(bar, thumb)
+			view:PaintThumb()
+		end)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -321,6 +340,7 @@ local function BuildFade(view, parent)
 	end
 	local function Edge(edge, outward)
 		local solid = Strip()
+		solid.fadeEdge = edge
 		solid:SetHeight(SOLID + EDGE_OUT)
 		solid:SetPoint(edge .. "LEFT", view.frame, edge .. "LEFT", 0, outward * EDGE_OUT)
 		solid:SetPoint(edge .. "RIGHT", view.frame, edge .. "RIGHT", right, outward * EDGE_OUT)
@@ -330,6 +350,7 @@ local function BuildFade(view, parent)
 		for i = #FADE_STEPS, 1, -1 do
 			local step = FADE_STEPS[i]
 			local ramp = Strip()
+			ramp.fadeEdge = edge
 			ramp:SetHeight(edge == "TOP" and step[1] * TOP_SCALE or step[1])
 			ramp:SetPoint(edge .. "LEFT", previous, far .. "LEFT", 0, 0)
 			ramp:SetPoint(edge .. "RIGHT", previous, far .. "RIGHT", 0, 0)
@@ -358,7 +379,19 @@ function TextView:SetFadeSource(under, file, coords)
 	self:PaintFade()
 end
 
+--- The fade in a colour for each edge, { r, g, b }: the backdrop's there, on a page with no
+--- picture of its own under the words (EllesmereUI's look).
+function TextView:SetFadeColors(top, bottom)
+	self.fadeSource = { colors = { TOP = top, BOTTOM = bottom } }
+	self:PaintFade()
+end
+
 local function PaintStrip(strip, source)
+	if source.colors then
+		local c = source.colors[strip.fadeEdge or "TOP"]
+		strip:SetColorTexture(c[1], c[2], c[3], 1)
+		return true
+	end
 	local under = source.under
 	local left, top = under:GetLeft(), under:GetTop()
 	local width, height = under:GetWidth(), under:GetHeight()
@@ -507,15 +540,20 @@ function TextView:SetText(str)
 	self.text:ClearAllPoints()
 	if self.pictureFile and width > 0 then
 		local w = math.min(width, PICTURE_MOST)
+		-- A clean picture shows only its middle: drawn smaller by as much, so each of its pixels
+		-- is as large on screen as on the parchment, not blurred by stretching.
+		if self.cleanPictures then w = math.floor(w * (1 - 2 * PICTURE_CROP)) end
 		local h = math.floor(w / 2)
 		self.picture:SetSize(w, h)
 		self.picture:ClearAllPoints()
-		self.picture:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT))
+		local room = self.cleanPictures and CLEAN_ROOM or 0
+		self.picture:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT + room))
 		self.picture:Show()
-		pictureRoom = h + PICTURE_GAP - PICTURE_LIFT
+		pictureRoom = h + PICTURE_GAP - PICTURE_LIFT + 2 * room
 	else
 		self.picture:Hide()
 	end
+	if self.pictureEdge then self.pictureEdge:SetShown(self.picture:IsShown()) end
 	self.text:SetPoint("TOPLEFT", self.child, "TOPLEFT", 0, -(PAD_TOP + pictureRoom))
 
 	-- Painted here, not once after SetText: a re-wrap (OnSizeChanged) comes back through this, and
@@ -611,6 +649,7 @@ function TextView:SetParts(parts)
 	self.text:SetText("")
 	self.text:Hide()
 	self.picture:Hide()
+	if self.pictureEdge then self.pictureEdge:Hide() end
 	self.parts = self.parts or {}
 
 	local width = (self.frame:GetWidth() or 0) - self:BarRoom()
@@ -668,7 +707,8 @@ function TextView:SetParts(parts)
 			end
 			local font = _G.QuestTitleFont and FontFile(self, _G.QuestTitleFont) or titleFace
 			if font then slot.heading:SetFont(font, math.min(FontSize() + HEAD_SIZE, HEAD_MOST), "") end
-			slot.heading:SetTextColor(HEAD_INK[1], HEAD_INK[2], HEAD_INK[3])
+			local head = self.headInk or HEAD_INK
+			slot.heading:SetTextColor(head[1], head[2], head[3])
 			slot.heading:SetShadowColor(0, 0, 0, 0)
 			slot.heading:SetText(part.heading or "")
 			local caption = part.caption ~= "" and part.caption or nil
@@ -757,17 +797,64 @@ end
 --- A picture above the text from the next SetText on: `file` a texture, `mask` the one fraying its
 --- edge. nil for none.
 function TextView:SetPicture(file, mask)
-	self.pictureFile = file
+	self.pictureFile, self.pictureMaskFile = file, mask
 	if not file then return end
 	self.picture:SetTexture(file)
-	if self.pictureMask then
-		self.pictureMask:SetTexture(mask or [[Interface\Buttons\WHITE8X8]], "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	local crop = self.cleanPictures and PICTURE_CROP or 0
+	self.picture:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
+	local maskTexture = self.pictureMask
+	if maskTexture then
+		-- A clean picture has no mask at all: a white 8 by 8 mask stretched over it and clamped to
+		-- black shaded its outer half-texel, some 16 px in from each side, dark.
+		local masked = not self.cleanPictures
+		if masked ~= (self.pictureMasked ~= false) and self.picture.RemoveMaskTexture then
+			if masked then self.picture:AddMaskTexture(maskTexture) else self.picture:RemoveMaskTexture(maskTexture) end
+			self.pictureMasked = masked
+		end
+		maskTexture:SetTexture(mask or [[Interface\Buttons\WHITE8X8]], "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	end
+end
+
+--- Pictures with straight edges, from now on: no frayed mask, the painted edge cut off, and a
+--- 1 px edge in `edge` ({ r, g, b, a }) round them where given.
+function TextView:SetCleanPictures(on, edge)
+	self.cleanPictures = on and true or nil
+	if on and edge and not self.pictureEdge then
+		local frame = CreateFrame("Frame", nil, self.child)
+		frame:SetAllPoints(self.picture)
+		for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+			local line = frame:CreateTexture(nil, "OVERLAY")
+			line:SetColorTexture(edge[1], edge[2], edge[3], edge[4] or 1)
+			if side == "TOP" or side == "BOTTOM" then
+				line:SetHeight(SpokenLayout.Pixels(frame, 1, 1))
+				line:SetPoint(side .. "LEFT", frame, side .. "LEFT", 0, 0)
+				line:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", 0, 0)
+			else
+				line:SetWidth(SpokenLayout.Pixels(frame, 1, 1))
+				line:SetPoint("TOP" .. side, frame, "TOP" .. side, 0, 0)
+				line:SetPoint("BOTTOM" .. side, frame, "BOTTOM" .. side, 0, 0)
+			end
+		end
+		frame:SetShown(self.picture:IsShown())
+		self.pictureEdge = frame
+	end
+	if self.pictureFile then self:SetPicture(self.pictureFile, self.pictureMaskFile) end
 end
 
 --- Dark words for a parchment page, without the shadow that smudges them there.
 function TextView:SetInk(r, g, b)
 	self.ink = r and { r, g, b } or nil
+end
+
+--- The parts' headings' colour in place of their near-black; nil goes back to it.
+function TextView:SetHeadInk(r, g, b)
+	self.headInk = r and { r, g, b } or nil
+end
+
+--- `fontObject`'s font in place of the quest text's and the game's for the words, the captions and
+--- the headings; nil goes back to those.
+function TextView:SetFace(fontObject)
+	self.faceObject = fontObject
 end
 
 --- The words' colour, kept across re-wraps; nil goes back to the ink, or the font's own.

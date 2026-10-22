@@ -1397,5 +1397,23 @@ Expect("...chosen, the list's own light full with its gold edge", plainCard.sele
     and plainCard.wash.alpha == 1 and plainCard.edge:IsShown(), true)
 _G.C_Texture = { GetAtlasInfo = stub.ListAtlas }
 
+---------------------------------------------------------------- the page in EllesmereUI's look
+-- A quest's page as EllesmereUI's look dresses it (what its login callback runs for every page): no
+-- parchment, the window's backdrop behind it, the title and the parts' headings white.
+do
+    local skin = { GetAccentColor = function() return 0.05, 0.82, 0.62 end,
+        GetPanelColor = function() return 0.08, 0.08, 0.08, 0.92 end,
+        GetFont = function() return [[Fonts\EUI.ttf]], "" end, Button = function() end, WhiteButtonLabel = function() end }
+    local colour
+    page.title.SetTextColor = function(_, r, g, b) colour = r .. " " .. g .. " " .. b end
+    page:Darken(skin)
+    Tab:Refresh()
+    Expect("a quest's page in EllesmereUI's look has no parchment, its title white",
+        page.bg:GetAlpha() .. " " .. tostring(colour), "0 1 1 1")
+    Expect("...its parts' headings white, its words light, fading into the backdrop's colour",
+        table.concat(page.body.headInk, " ") .. " | " .. table.concat(page.body.ink, " ") .. " | "
+        .. table.concat(page.body.fadeSource.colors.TOP, " "), "1 1 1 | 0.9 0.9 0.9 | 0.094 0.082 0.069")
+end
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests compendium tests passed")

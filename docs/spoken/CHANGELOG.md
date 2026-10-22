@@ -11,6 +11,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   square ones. The DialogueUI window keeps DialogueUI's look, and under EllesmereUI's other looks
   nothing changes; its own settings turn this off for Spoken, under Window Skins > Third-Party Addons.
   *([Nucabe](https://github.com/Nucabe))*
+- **Azeroth's Compendium and the story beside the map follow it too.** In EllesmereUI's look they go
+  dark with no parchment: white words in its font, a thin line for each divider, flat boxes for the
+  list's headings and the tabs, and place pictures with straight edges in a thin border.
+  *([Nucabe](https://github.com/Nucabe))*
 - **Bosses whose fight the game may not announce are found when you target them.** Baron Aquanis, Lord
   Kazzak, Azuregos, Prince Thunderaan and the four Emerald Dragons could stay locked after you fought them.
   Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again. Blackfathom Deeps and
