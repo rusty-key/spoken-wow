@@ -63,8 +63,8 @@ Spoken's own page. Gossip adds no saved variable.
   it did before Gossip had a page. Read Greetings waits on it, and says so. So does NPC Voice
   Before Reading, on the same page: the NPC's own greeting plays first, for quest windows and
   gossip windows.
-- On Gossip's page, Read Greetings: Every Time, Once for Quest Givers, Once per Greeting (the
-  default, saved as `OncePerNPC`) or Never. The once-per settings remember each text an NPC greets
+- On Gossip's page, Read Greetings: Every Time, Once for Quest Givers (the default), Once per
+  Greeting (saved as `OncePerNPC`) or Never. The once-per settings remember each text an NPC greets
   with, so an NPC with several greetings reads each new one once. Once for Quest Givers holds
   back a repeat only where the NPC has quests. At Never nothing reads itself and the NPC windows
   show a Listen button.

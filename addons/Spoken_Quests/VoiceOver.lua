@@ -348,13 +348,9 @@ local defaults = {
     profile = {
         -- The frame, the minimap button and the paused flag are the Spoken player's settings now.
         Audio = {
-            -- Once per greeting rather than once per quest NPC, which upstream defaulted to:
-            -- that setting only silences a repeat where the NPC has a quest, so every
-            -- innkeeper, vendor and flight master said the same line on every visit --
-            -- the greeting a player hears most often is exactly the one it did not
-            -- remember. The saved name OncePerNPC dates from when only the NPC was
-            -- remembered. A profile that stored a choice of its own keeps it.
-            GossipFrequency = Enums.GossipFrequency.OncePerNPC,
+            -- A quest giver's greeting is read once; other NPCs greet every time. A profile
+            -- that stored a choice of its own keeps it.
+            GossipFrequency = Enums.GossipFrequency.OncePerQuestNPC,
             -- The sound channel and the muting of the client's own NPC dialogue used to
             -- live here. They describe how anything is played rather than what this addon
             -- reads, so they are Spoken's settings now.

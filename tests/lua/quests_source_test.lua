@@ -235,6 +235,7 @@ Open(VO, "GOSSIP_SHOW")
 Expect("an NPC no pack voices keeps its greeting", world.cvars.Sound_EnableDialog, "1")
 
 VO, env, Spoken = MuteBoot()
+VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerNPC
 VO.Addon:MarkGreetingHeard(world.npcGUID, "Greetings, traveller.")
 stub.ShowGossip("Greetings, traveller.")
 Open(VO, "GOSSIP_SHOW")

@@ -77,8 +77,9 @@ for _, client in ipairs({ "11509", "16001" }) do
     local VO, played = Boot(client)
     local Frequency = VO.Enums.GossipFrequency
 
-    Expect(client .. ": Once per Greeting is the default", VO.Addon.db.profile.Audio.GossipFrequency,
-        Frequency.OncePerNPC)
+    Expect(client .. ": Once for Quest Givers is the default", VO.Addon.db.profile.Audio.GossipFrequency,
+        Frequency.OncePerQuestNPC)
+    VO.Addon.db.profile.Audio.GossipFrequency = Frequency.OncePerNPC
 
     -- An NPC marked heard before greetings were told apart counts as never heard.
     VO.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true
