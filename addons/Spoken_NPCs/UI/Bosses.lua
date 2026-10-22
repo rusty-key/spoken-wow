@@ -461,6 +461,13 @@ local function Card(position)
 	end
 	local name, sub = Line(NAME_SIZE), Line(SUB_SIZE)
 	card.icon, card.name, card.sub, card.plate, card.glow = icon, name, sub, plate, glow
+	-- In EllesmereUI's look: no plate behind the name, and the name and the line under it white in
+	-- its font at their own sizes. The icon keeps the game's gold frame and its glow under the pointer.
+	C.Ellesmere(function()
+		card.flat = true
+		plate:SetAlpha(0)
+	end)
+	for _, line in ipairs({ name, sub }) do SpokenEnv.Ellesmere:Refont(line, true) end
 	function card:SetLines(title, subtitle)
 		name:SetText(title)
 		sub:SetText(subtitle or "")
@@ -478,7 +485,7 @@ local function Card(position)
 	end
 	button:SetScript("OnEnter", function()
 		local self = card
-		self.plate:SetAlpha(PLATE_HOVER)
+		self.plate:SetAlpha(self.flat and 0 or PLATE_HOVER)
 		self.glow:Show()
 		if self.spell and GameTooltip and GameTooltip.SetSpellByID then
 			GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
@@ -488,7 +495,7 @@ local function Card(position)
 	end)
 	button:SetScript("OnLeave", function()
 		local self = card
-		self.plate:SetAlpha(PLATE_REST)
+		self.plate:SetAlpha(self.flat and 0 or PLATE_REST)
 		self.glow:Hide()
 		if GameTooltip then GameTooltip:Hide() end
 	end)

@@ -102,6 +102,10 @@ Expect("...none has a model the client is known to lack", table.concat(lacked, "
 
 ---------------------------------------------------------------- the list
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+-- EllesmereUI loaded, as its skinning API meets Spoken: the callback it would run at login is kept
+-- for the section on its look, at the end. Until it runs, everything is as in the stock look.
+local ellesmereCallback
+_G.EllesmereUI = { RegisterSkin = function(_, fn) ellesmereCallback = fn end, RenderedLook = function() return "eui" end }
 stub.LoadSpoken(here .. "/../../addons/Spoken/").Addon:Enable()
 _G.C_Texture = { GetAtlasInfo = function(name) return stub.ListAtlas(name) end }
 _G.SPELLBOOK_FONT_COLOR = { GetRGB = function() return 0.24, 0.15, 0.07 end }
@@ -570,4 +574,79 @@ _G.GetInstanceInfo = instanceInfo
 Expect("a world boss is met when targeted in the open world, as at its pull", tostring(NPCs:IsBossFound(2789, "lord kazzak")) .. "|"
     .. tostring(NPCs:FoundEncounter(Listed(2789, "lord kazzak").ids[1])), "true|false")
 
+---------------------------------------------------------------- the spell cards in EllesmereUI's look
+-- No plate behind a spell's name, the name and the line under it white in EllesmereUI's font; the
+-- icon keeps its gold frame and its glow under the pointer.
+do
+    _G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, display = 1305, spells = { 3391 } } } }
+    _G.C_Spell.GetSpellSubtext = function(id) return id == 3391 and "Rank 1" or nil end
+    Click("Edwin VanCleef")
+    local card = page.body.partButtons and page.body.partButtons[1]
+    Expect("a spell card in the stock look keeps its plate", card and card.plate:GetAlpha(), 0.3)
+    local seen = {}
+    local function Watch(line, key)
+        if not line then return end
+        line.SetTextColor = function(_, r, g, b) seen[key] = (seen[key] or "") .. r .. " " .. g .. " " .. b end
+        line.SetFont = function(_, file) seen[key .. "Face"] = file end
+    end
+    Watch(card and card.name, "name"); Watch(card and card.sub, "sub")
+    local title
+    page.title.SetTextColor = function(_, r, g, b) title = r .. " " .. g .. " " .. b end
+    local skin = { GetAccentColor = function() return 0.05, 0.82, 0.62 end, GetPanelColor = function() return 0.08, 0.08, 0.08, 0.92 end,
+        GetFont = function() return [[Fonts\EUI.ttf]], "" end }
+    for _, kind in ipairs({ "Shell", "Panel", "CloseButton", "Button", "Tab", "Inset", "EditBox", "Font", "White", "WhiteButtonLabel" }) do
+        skin[kind] = function() end
+    end
+    ellesmereCallback(skin)
+    Expect("...in EllesmereUI's look no plate behind its name", tostring(card and card.flat) .. " " .. tostring(card and card.plate:GetAlpha()), "true 0")
+    Expect("...its name and the line under it white in EllesmereUI's font",
+        tostring(seen.name) .. " " .. tostring(seen.nameFace) .. " | " .. tostring(seen.sub) .. " " .. tostring(seen.subFace),
+        [[1 1 1 Fonts\EUI.ttf | 1 1 1 Fonts\EUI.ttf]])
+    local button
+    for _, child in ipairs(card and card.children or {}) do
+        if child.scripts and child.scripts.OnEnter then button = child end
+    end
+    if button then
+        button.scripts.OnEnter(button)
+        local over, glow = card.plate:GetAlpha(), card.glow:IsShown()
+        button.scripts.OnLeave(button)
+        Expect("...under the pointer its glow, but no plate coming back", tostring(glow) .. " " .. over
+            .. " " .. card.plate:GetAlpha(), "true 0 0")
+    else
+        Expect("...under the pointer its glow, but no plate coming back", "no icon button", "an icon button")
+    end
+    Expect("the boss's page in the look: no parchment, the title white", page.bg:GetAlpha() .. " " .. tostring(title), "0 1 1 1")
+
+    -- Cards built after the look is on take it as they are built; on a client whose script
+    -- EllesmereUI's font has not, the game's font stays.
+    local getLocale, createFrame = _G.GetLocale, _G.CreateFrame
+    _G.GetLocale = function() return "ruRU" end
+    -- The card's lines as the client keeps their font and colour.
+    local fonts = {}
+    _G.CreateFrame = function(...)
+        local frame = createFrame(...)
+        local createFontString = frame.CreateFontString
+        function frame:CreateFontString(...)
+            local line = createFontString(self, ...)
+            function line:SetFont(file) fonts[self] = file end
+            function line:SetTextColor(r, g, b) self.colour = r .. " " .. g .. " " .. b end
+            return line
+        end
+        return frame
+    end
+    -- A third spell: the page has only ever needed two cards, so its card is new.
+    SPELLS[1766] = { name = "Kick", iconID = 132219 }
+    _G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, display = 1305, spells = { 3391, 5200, 1766 } } } }
+    Click("Edwin VanCleef")
+    _G.CreateFrame, _G.GetLocale = createFrame, getLocale
+    local later = page.body.partButtons and page.body.partButtons[3]
+    Expect("a card built after the look is on has no plate", tostring(later and later.flat) .. " " .. tostring(later and later.plate:GetAlpha()), "true 0")
+    Expect("...on a Russian client its name white in the game's font, not EllesmereUI's",
+        tostring(later and later.name.colour) .. " " .. tostring(later and fonts[later.name] ~= [[Fonts\EUI.ttf]] and fonts[later.name] ~= nil),
+        "1 1 1 true")
+    _G.SpokenBossCreatures = {}
+    _G.C_Spell.GetSpellSubtext = nil
+end
+
+_G.EllesmereUI = nil
 if Failures() > 0 then os.exit(1) end

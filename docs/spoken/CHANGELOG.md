@@ -15,6 +15,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   dark with no parchment: white words in its font, a thin line for each divider, flat boxes for the
   list's headings and the tabs, and place pictures with straight edges in a thin border.
   *([Nucabe](https://github.com/Nucabe))*
+- **The Bosses tab's spell cards follow EllesmereUI's look too.** In it a spell card has no plate behind
+  its name, and the name and the line under it are white in EllesmereUI's font; the icon keeps its gold
+  frame and its glow under the pointer. *([Nucabe](https://github.com/Nucabe))*
 - **Bosses whose fight the game may not announce are found when you target them.** Baron Aquanis, Lord
   Kazzak, Azuregos, Prince Thunderaan and the four Emerald Dragons could stay locked after you fought them.
   Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again. Blackfathom Deeps and
