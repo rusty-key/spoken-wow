@@ -5,17 +5,17 @@
 -- WorldMapFrame, so it works with the map closed.
 --
 -- The window, its list and its rows are the Compendium's; this is what goes in them. On the left,
--- a banner for each continent, a card under it for each of its zones (how many of its places are
--- found, with a bar), and under an opened zone its city's card, one level in, with its own areas,
--- then a card for each of its dungeons and raids (under a Dungeons and Raids line where it has
+-- a banner for each continent, a line under it for each of its zones (how many of its places are
+-- found, and the share), and under an opened zone its city's line, one level in, with its own areas,
+-- then a line for each of its dungeons and raids (under a Dungeons and Raids line where it has
 -- several), then the zone's areas as rows; after the continents, a banner for the zones on none
 -- (Other Lands) and one for the battlegrounds. On the right, the story on the spellbook's
 -- parchment (UI/LorePage.lua).
 --
--- Each zone's and city's card opens and closes on its own click, and stays as the player left it
--- for the session. A zone's areas are rows only while its card is open, so the list holds what
--- the player opened. A search opens every card with a match in it instead: one naming a zone or
--- a city lists all its areas, and one naming a banner lists its cards as the player left them.
+-- Each zone's and city's line opens and closes on its own click, and stays as the player left it
+-- for the session. A zone's areas are rows only while its line is open, so the list holds what
+-- the player opened. A search opens every line with a match in it instead: one naming a zone or
+-- a city lists all its areas, and one naming a banner lists its lines as the player left them.
 
 local _, SpokenZones = ...
 
@@ -25,7 +25,7 @@ local NotSecret = Spoken and Spoken.NotSecret or function(value) return value en
 local L = SpokenZones.L
 
 local panel, list, page
--- The zones' and cities' cards open, by mapID: a city's keeps its state while its zone is closed.
+-- The zones' and cities' lines open, by mapID: a city's keeps its state while its zone is closed.
 local openZones = {}
 -- The zones whose Dungeons and Raids line is open, by mapID.
 local dungeonsOpen = {}
@@ -167,7 +167,7 @@ end
 local function OpenZone(mapID) C.OpenZone(mapID, openZones) end
 
 --- Open what holds the place `mapID`, or its area `key`: a dungeon's entrance zone and the line its
---- card is under, any other area's zone, the one the client puts it in (SpokenZones:AreaZone).
+--- line is under, any other area's zone, the one the client puts it in (SpokenZones:AreaZone).
 local function OpenPlace(mapID, key)
 	local entrance = SpokenZones:DungeonOf(mapID, key)
 	if entrance then
@@ -190,7 +190,7 @@ local function OnForever()
 end
 
 -- The areas that are dungeons and raids (SpokenZones.Dungeons, from Spoken's Data/Dungeons.lua), by
--- where their story is kept: the zone of the entrance, whose card lists them, and the instance's map.
+-- where their story is kept: the zone of the entrance, whose line lists them, and the instance's map.
 local dungeonAt, dungeonsFrom = {}, nil
 local function DungeonIndex()
 	if dungeonsFrom ~= SpokenZones.Dungeons then
@@ -205,7 +205,7 @@ local function DungeonIndex()
 	return dungeonAt
 end
 
---- For a dungeon's or a raid's area, the zone of its entrance, whose card lists it, and the
+--- For a dungeon's or a raid's area, the zone of its entrance, whose line lists it, and the
 --- instance's map; nil for any other area.
 function SpokenZones:DungeonOf(mapID, key)
 	local at = key and DungeonIndex()[mapID]
@@ -232,7 +232,7 @@ end
 
 -- A zone's areas listed as rows, by name, each { mapID = the map its story is kept under, key =,
 -- entry = }: those the client puts in the zone (SpokenZones:AreasIn), not its dungeons and raids,
--- which are cards.
+-- which are lines.
 local function Areas(mapID)
 	local own = SpokenZones.Subzones[mapID]
 	if own and sortedAreas[mapID] then return sortedAreas[mapID] end
@@ -265,12 +265,12 @@ local function Named(label, whole)
 	return whole or (filter ~= "" and Matches(label))
 end
 
--- Set while the cards under a banner whose name the search matches are built: each is listed,
+-- Set while the lines under a banner whose name the search matches are built: each is listed,
 -- closed or open as the player left it, and opens and closes on a click as it does unsearched. A
 -- continent's every area at once would be too long a list to read.
 local asLeft = false
 
--- What a search opened and the player closed again with a click, by card; a new search opens all.
+-- What a search opened and the player closed again with a click, by line; a new search opens all.
 local searchClosed = {}
 
 -- The rows `build` returns, built with asLeft set where `named`.
@@ -302,7 +302,7 @@ end
 
 --- Whether a place's story is locked for this character: not found yet, with Unlock Undiscovered
 --- Zones off. A continent is found through its zones. The page and the map's
---- panel say so in its place rather than tell its story; the list still opens its banner or card.
+--- panel say so in its place rather than tell its story; the list still opens its banner or line.
 function SpokenZones:IsLocked(mapID, key)
 	if self:ShowsUndiscovered() then return false end
 	if not key and IsContinent(mapID) then
@@ -325,8 +325,14 @@ local function OnlyVoiced()
 	return SpokenZones:Get("loreVoicedOnly") == true
 end
 
+-- Asked of every row on every render: kept until the next render, when a pack may have come or gone.
+local voiced = {}
 local function Voiced(mapID, key)
-	return SpokenZones.HasAudio ~= nil and SpokenZones:HasAudio(mapID, key) and true or false
+	local at = mapID .. ":" .. (key or "")
+	if voiced[at] == nil then
+		voiced[at] = SpokenZones.HasAudio ~= nil and SpokenZones:HasAudio(mapID, key) and true or false
+	end
+	return voiced[at]
 end
 
 local function AnyVoiced(mapID)
@@ -348,9 +354,16 @@ local function Missing(mapID)
 	return not entry or SpokenZones:IsPending(entry)
 end
 
+-- A place lacking anything: its story, a recording or its picture.
+local function Lacks(mapID, key, pending)
+	if pending then return true end
+	local pictures = SpokenZones.pictures and SpokenZones.pictures[mapID]
+	return not Voiced(mapID, key) or not (pictures and pictures[key or ""])
+end
+
 -- What a zone holds, found out of all: its areas, each of its dungeons and raids, and its city as
 -- one place more with the city's own. Of what is listed: under Voiced Only, what no voice pack
--- reads is left out of the count as it is of the rows, so the card's number is of the rows beneath
+-- reads is left out of the count as it is of the rows, so the line's number is of the rows beneath
 -- it. Its page counts the same.
 local function Places(mapID)
 	local found, total = 0, 0
@@ -377,7 +390,7 @@ local function Places(mapID)
 end
 
 -- Whether nothing in a zone is found, the zone itself, its areas, dungeons and city included: its
--- card is then greyed and Discovered Only leaves it out, as a card with nothing found or started in
+-- line is then greyed and Discovered Only leaves it out, as a line with nothing found or started in
 -- it is on the Quests and Readables tabs.
 local function NothingFound(mapID)
 	return not Found(mapID) and (Places(mapID)) == 0
@@ -395,51 +408,46 @@ local function DungeonCount(zone)
 	return found, total
 end
 
--- A zone's dungeons and raids, as the Quests tab files their quests: one a card of its own, several
--- a Dungeons and Raids line with a card for each under it. A card's story is its area's, ticked once
--- found and greyed until then; the line counts its dungeons found out of all as a zone's card counts
--- its places, opens and closes as a zone's card does, and its page counts them too. A search lists
--- the cards that match, or all of them where it names what holds them (`whole`).
+-- A zone's dungeons and raids: one a line of its own, several under a Dungeons and Raids line that
+-- counts them. A dungeon's story is its area's, so nothing opens under its line. A search lists the
+-- dungeons that match, or all of them where it names what holds them (`whole`).
 local function DungeonRows(zone, nest, whole)
 	local listed = DungeonsIn(zone)
 	if #listed == 0 then return {} end
 	local several = #listed > 1
 	if several then whole = Named(L.DUNGEONS, whole) end
-	local cards = {}
+	local dungeonRows = {}
 	local found, total = DungeonCount(zone)
 	for _, dungeon in ipairs(listed) do
 		local isFound = Found(dungeon.mapID, dungeon.key) and true or false
 		if not OnlyVoiced() or Voiced(dungeon.mapID, dungeon.key) then
 			if (isFound or not OnlyFound()) and (filter == "" or whole or Matches(dungeon.name)) then
-				local icon, iconCrop
-				if Spoken and Spoken.DungeonIcon then icon, iconCrop = Spoken:DungeonIcon(dungeon.dungeon) end
-				table.insert(cards, { style = "card", kind = "dungeon", mapID = dungeon.mapID, key = dungeon.key,
-					label = dungeon.name, nest = several and nest + 1 or nest, dungeon = dungeon.dungeon,
-					icon = icon, iconCrop = iconCrop, count = 0, total = 0, ratio = 0, tick = isFound,
-					none = not isFound, missing = SpokenZones:IsPending(dungeon.entry) })
+				table.insert(dungeonRows, { leaf = true, kind = "dungeon", mapID = dungeon.mapID, key = dungeon.key,
+					label = dungeon.name, nest = several and nest + 1 or nest, done = isFound,
+					missing = Lacks(dungeon.mapID, dungeon.key, not isFound or SpokenZones:IsPending(dungeon.entry)) })
 			end
 		end
 	end
-	if #cards == 0 then return {} end
-	if not several then return cards end
+	if #dungeonRows == 0 then return {} end
+	if not several then return dungeonRows end
 	local closeKey = "d" .. zone
 	local shown
 	if filter ~= "" and not asLeft then shown = not searchClosed[closeKey] else shown = dungeonsOpen[zone] == true end
 	local rows = { { style = "group", kind = "dungeons", zone = zone, label = L.DUNGEONS, nest = nest,
-		count = found, total = total, ratio = total > 0 and found / total or 0, tick = total > 0 and found == total,
+		count = found, total = total, tick = total > 0 and found == total,
 		none = found == 0, open = shown, closeKey = closeKey, asLeft = asLeft } }
 	if shown then
-		for _, card in ipairs(cards) do table.insert(rows, card) end
+		for _, row in ipairs(dungeonRows) do table.insert(rows, row) end
 	end
 	return rows
 end
 
--- One zone's card, and under it when it is open its city's card (a zone of its own, with
--- its own areas), its dungeons' and raids' cards and its areas' rows. A search opens every card
+-- One zone's line, and under it when it is open its city's line (a zone of its own, with
+-- its own areas), its dungeons' and raids' lines and its areas' rows. A search opens every line
 -- with a match inside and lists the areas that match, or all of them where it names the zone or a
--- card around it (`whole`); a card it opened closes and opens again on a click. Nothing when
--- neither the zone nor anything inside matches the search. A city's card opens on its own, and
--- shows only while its zone is open. A zone not yet discovered is greyed, as a card with none found
+-- line around it (`whole`); a line it opened closes and opens again on a click. Nothing when
+-- neither the zone nor anything inside matches the search. A city's line opens on its own, and
+-- shows only while its zone is open. A zone not yet discovered is greyed, as a line with none found
 -- is on the other tabs, and opens all the same: its areas are listed, those not found locked.
 local function ZoneRows(mapID, nest, whole)
 	if OnlyFound() and NothingFound(mapID) then return {} end
@@ -462,32 +470,28 @@ local function ZoneRows(mapID, nest, whole)
 			if (filter == "" or whole or Matches(name)) and (isFound or not OnlyFound())
 				and (not OnlyVoiced() or Voiced(area.mapID, area.key)) then
 				table.insert(inside, { kind = "subzone", leaf = true, mapID = area.mapID, key = area.key, label = name,
-					nest = nest + 1, missing = SpokenZones:IsPending(area.entry),
+					nest = nest + 1, missing = Lacks(area.mapID, area.key, SpokenZones:IsPending(area.entry)),
 					locked = not Discovered(area.mapID, area.key), done = isFound and true or false })
 			end
 		end
 	end
 	if filter ~= "" and not whole and #inside == 0 then return {} end
-	-- Closed with a click during this search: the card alone.
+	-- Closed with a click during this search: the line alone.
 	local shown
 	if searched then shown = not searchClosed[closeKey] else shown = open end
-	-- With no areas of its own (Thunder Bluff), nothing to count: no line, share or bar.
-	local icon, iconCrop
-	if Spoken and Spoken.ZoneIcon then icon, iconCrop = Spoken:ZoneIcon(mapID) end
-	local rows = { { style = "card", kind = "zone", mapID = mapID, label = zoneName, nest = nest,
-		count = found, total = total, icon = icon, iconCrop = iconCrop,
-		ratio = total > 0 and found / total or 0, tick = total > 0 and found == total,
+	local rows = { { style = "group", kind = "zone", mapID = mapID, label = zoneName, nest = nest,
+		count = found, total = total, tick = total > 0 and found == total,
 		none = found == 0 and not Found(mapID),
 		open = searched and shown and #inside > 0 or not searched and shown,
-		closeKey = closeKey, asLeft = asLeft, missing = Missing(mapID) } }
+		closeKey = closeKey, asLeft = asLeft, missing = Lacks(mapID, nil, Missing(mapID)) } }
 	if shown then
 		for _, row in ipairs(inside) do table.insert(rows, row) end
 	end
 	return rows
 end
 
--- What a banner counts: the places its zones' cards count, found out of all, of the cards Discovered
--- Only and Voiced Only list. Also how many cards it lists, and whether any of its zones is found,
+-- What a banner counts: the places its zones' lines count, found out of all, of the lines Discovered
+-- Only and Voiced Only list. Also how many lines it lists, and whether any of its zones is found,
 -- listed or not, without which Discovered Only leaves it out.
 local function BannerCount(zones)
 	local found, total, listed, anyFound = 0, 0, 0, false
@@ -502,9 +506,10 @@ local function BannerCount(zones)
 	return found, total, listed, anyFound
 end
 
--- The list: a banner for each continent, its zones' cards under it, and the opened zones'
+-- The list: a banner for each continent, its zones' lines under it, and the opened zones'
 -- areas. While searching, every match a click could reach, with what holds it opened to show it.
 local function BuildRowList()
+	voiced = {}
 	local list = {}
 	local function Add(rows) for _, row in ipairs(rows) do table.insert(list, row) end end
 	local searching = filter ~= ""
@@ -516,7 +521,7 @@ local function BuildRowList()
 		-- Only leaves it out. Found through its zones alone: finding Brill finds the Eastern Kingdoms.
 		local unfound = not anyFound
 		-- A closed continent's zones are never shown, and its count comes from ZonesOf: only a
-		-- search, which can open it, needs them built. Named by the search, its every zone's card is
+		-- search, which can open it, needs them built. Named by the search, its every zone's line is
 		-- listed as the player left it.
 		local zones = {}
 		local named = searching and Matches(name)
@@ -605,14 +610,14 @@ local function LandOnPlayer()
 		subEntry, subKey, storyMapID = SpokenZones:GetSubzoneLore(current, subZone)
 	end
 	-- In an area whose story is kept under another zone (Razorfen Downs' entrance, Strahnbrad), its
-	-- card or row is chosen, by its story's keys.
+	-- line or row is chosen, by its story's keys.
 	if subEntry then current = storyMapID end
 	OpenPlace(current, subEntry and subKey or nil)
 	selection = { mapID = current, key = subEntry and subKey or nil }
 	landed = selection
 end
 
--- Where a place sits, and what its card or banner counts found out of all, as "1 of 7
+-- Where a place sits, and what its line or banner counts found out of all, as "1 of 7
 -- discovered"; no count where there is nothing to count.
 local function InAndCount(where, found, total)
 	local line = string.format(L.IN_ZONE_FMT, ZoneName(where))
@@ -620,26 +625,31 @@ local function InAndCount(where, found, total)
 	return line
 end
 
+-- An area's portrait: a dungeon's key for a dungeon's, else its zone's.
+local function AreaIcon(mapID, key)
+	return SpokenCompendium.PlaceIcon(SpokenZones:AreaZone(mapID, key), select(2, SpokenZones:DungeonOf(mapID, key)))
+end
+
 local function ShowEntry()
 	if selection.dungeons then
 		local zone = selection.dungeons
-		page:Show({ title = L.DUNGEONS, subtitle = InAndCount(zone, DungeonCount(zone)), text = L.DUNGEONS_PICK })
+		page:Show({ title = L.DUNGEONS, subtitle = InAndCount(zone, DungeonCount(zone)) })
 		return
 	end
 	if selection.group then
 		local group = Group(selection.group)
 		local found, total = BannerCount(group.zones())
-		page:Show({ title = group.label(), subtitle = InAndCount(WORLD, found, total), text = L.ZONES_PICK })
+		page:Show({ title = group.label(), subtitle = InAndCount(WORLD, found, total) })
 		return
 	end
 	local mapID, key = selection.mapID, selection.key
 	-- Chosen from elsewhere (the map's panel), a place not found yet: named, and no more.
 	if SpokenZones:IsLocked(mapID, key) then
 		local entry = key and SpokenZones.Subzones[mapID] and SpokenZones.Subzones[mapID][key]
-		-- Where it sits: a zone's or a continent's line counts what is found in it, as every card's
+		-- Where it sits: a zone's or a continent's line counts what is found in it, as every line's
 		-- page does.
 		page:Show({ title = entry and (entry.name or key) or ZoneName(mapID), subtitle = SpokenZones:PlaceLine(mapID, key),
-			text = L.NOT_DISCOVERED })
+			text = L.NOT_DISCOVERED, icon = key and AreaIcon(mapID, key) or SpokenCompendium.PlaceIcon(mapID) })
 		return
 	end
 	if key then
@@ -648,13 +658,13 @@ local function ShowEntry()
 			local name = entry.name or key
 			local line = SpokenZones:PlaceLine(mapID, key)
 			if SpokenZones:IsPending(entry) then
-				page:Show({ title = name, subtitle = line,
-					text = L.LORE_NOT_WRITTEN:format(name), contribute = { mapID, name } })
+				page:Show({ title = name, subtitle = line, icon = AreaIcon(mapID, key),
+					contribute = { mapID, name } })
 				return
 			end
 			-- Rows are keyed by the canonical form already, so this needs no normalising --
 			-- unlike the map panel, which starts from the name the client reports.
-			page:Show({ title = name, subtitle = line,
+			page:Show({ title = name, subtitle = line, icon = AreaIcon(mapID, key),
 				text = entry.full or entry.short or "", audio = { mapID, key }, report = { mapID, key } })
 			return
 		end
@@ -664,15 +674,15 @@ local function ShowEntry()
 	local name = ZoneName(mapID)
 	local subtitle = SpokenZones:PlaceLine(mapID)
 	if not entry or SpokenZones:IsPending(entry) then
-		page:Show({ title = name, subtitle = subtitle, text = L.LORE_NOT_WRITTEN:format(name),
-			contribute = { mapID, nil } })
+		page:Show({ title = name, subtitle = subtitle,
+			contribute = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 		return
 	end
 	page:Show({ title = name, subtitle = subtitle, text = entry.full or entry.short or "",
-		audio = { mapID, nil }, report = { mapID, nil } })
+		audio = { mapID, nil }, report = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 end
 
---- The line under a place's name: where it sits and what its card or banner counts. An area sits in
+--- The line under a place's name: where it sits and what its line or banner counts. An area sits in
 --- the zone it is listed in (SpokenZones:AreaZone): a dungeon's entrance's, Strahnbrad's Alterac
 --- Mountains.
 function SpokenZones:PlaceLine(mapID, key)
@@ -717,7 +727,7 @@ local function OnRowClick(row)
 		if filter == "" then continentOpen[row.mapID] = not continentOpen[row.mapID] end
 		selection = { mapID = row.mapID, key = nil }
 	elseif row.kind == "zone" then
-		-- Clicking a zone or a city both chooses it and opens or closes its card alone: one the
+		-- Clicking a zone or a city both chooses it and opens or closes its line alone: one the
 		-- search opened for this search only, one under a banner it named as unsearched.
 		if filter ~= "" and not row.asLeft then
 			searchClosed[row.closeKey] = not searchClosed[row.closeKey] or nil
@@ -726,7 +736,7 @@ local function OnRowClick(row)
 		end
 		selection = { mapID = row.mapID, key = nil }
 	elseif row.kind == "dungeons" then
-		-- Opens or closes the cards under it, as a zone's card does, and chooses its page.
+		-- Opens or closes the lines under it, as a zone's line does, and chooses its page.
 		if filter ~= "" and not row.asLeft then
 			searchClosed[row.closeKey] = not searchClosed[row.closeKey] or nil
 		else

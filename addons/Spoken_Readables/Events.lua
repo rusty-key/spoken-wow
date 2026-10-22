@@ -119,13 +119,7 @@ function SpokenBooks:OnPageFinished(clip)
 	CloseItemText()
 end
 
-frame:SetScript("OnEvent", function(_, event, arg1)
-	-- 1.12's frames call OnEvent with the event in the global `event` rather than as an
-	-- argument, and its payload in `arg1` the same way. Reading through whichever exists is
-	-- what the other two addons do. The frame itself is the upvalue rather than the first
-	-- argument, which 1.12 passes in the global `this` and not at all.
-	local name = event or _G.event
-	local payload = arg1 or _G.arg1
+frame:SetScript("OnEvent", function(_, name, payload)
 	if name == "ITEM_TEXT_READY" then
 		SpokenBooks:OnTextReady()
 		-- Guarded: Contribute.lua is absent where contributing is off.

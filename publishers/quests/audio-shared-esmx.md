@@ -4,7 +4,7 @@ release: quests-audio-shared-esMX
 section: quests
 lang: esMX
 pack: shared
-version: 0.0.5
+version: 0.0.6
 github: false
 slug: spoken-spanish-al-audio-quests-shared
 name: Spoken Spanish (AL) Audio: Quests - Shared

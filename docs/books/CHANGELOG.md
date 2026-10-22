@@ -11,6 +11,24 @@ existing compatible sound pack unless the release notes say otherwise.
 - **The sound packs are called Spoken Audio: Readables** in the AddOns list, after the module that
   reads them, and a language's is Spoken German Audio: Readables and so on. Their folders keep their names, so nothing needs reinstalling. *([Nucabe](https://github.com/Nucabe))*
 
+## 2.1.1 — books-audio-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Readables** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 4 more pages voiced and 17 re-recorded. Install over the previous version.
+
+## 2.0.1 — books-audio-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Readables** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 33 more pages voiced and 407 re-recorded. Install over the previous version.
+
+## 2.0.2 — books-audio-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Readables** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 56 more pages voiced and 44 re-recorded. Install over the previous version.
+
 ## 2.2.0 — Spoken Audio: Readables — 2026-10-18
 
 - **The sound pack is called Spoken Audio: Readables** in the AddOns list, after the module that

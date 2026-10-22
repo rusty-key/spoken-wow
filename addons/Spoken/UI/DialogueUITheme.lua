@@ -3,19 +3,8 @@ setfenv(1, SpokenEnv)
 -- DialogueUI's theme code is private, so this is the one file that knows its saved variables,
 -- window and font object names. Each is checked before use; Available answers false rather
 -- than raising.
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout; the
--- stub below is all that client runs.
 
 DialogueUITheme = {}
-
-if Version.IsAnyLegacy then
-    function DialogueUITheme:Available() return false end
-    function DialogueUITheme:Problem() return L.OPT_STYLE_DUI_MISSING end
-    function DialogueUITheme:Watch() end
-    function DialogueUITheme:Describe() return "dialogueui: not available on this client" end
-    return
-end
 
 local Theme = DialogueUITheme
 local ART = "Interface/AddOns/DialogueUI/Art/"

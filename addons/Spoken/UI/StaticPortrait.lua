@@ -7,11 +7,9 @@ setfenv(1, SpokenEnv)
 StaticPortrait = { cache = {}, count = 0, age = 0 }
 local ART = [[Interface\AddOns\Spoken\Textures\]]
 local UNITS = { "npc", "target", "mouseover", "focus" }
--- An object's or an item's GUID, in the modern form or the hex one of 2.4.3 to 5.4.8 (0xF11...
--- objects, 0x4... items). Anything else, a creature's hex GUID included, may have a face.
+-- An object's or an item's GUID. Anything else may have a face.
 local function Faceless(guid)
     return string.find(guid, "^GameObject%-") or string.find(guid, "^Item%-")
-        or string.find(guid, "^0x[Ff]11") or string.find(guid, "^0x4")
 end
 local function Identity(clip)
     local spec = clip and clip.present and clip.present.portrait
@@ -24,10 +22,7 @@ local function Identity(clip)
     if guid and Faceless(guid) then return end
     return spec, guid, spec.creatureID
 end
-local function CreatureID(guid)
-    if not guid then return end
-    return tonumber(string.match(guid, "^Creature%-%d+%-%d+%-%d+%-%d+%-(%d+)%-"))
-end
+local CreatureID = Spoken.CreatureID
 function StaticPortrait:InQueue(entry)
     for _, clip in ipairs(SoundQueue.sounds) do
         local spec, guid, creature = Identity(clip)
@@ -62,12 +57,8 @@ end
 -- and SetPortraitTextureFromCreatureDisplayID draws that as a unit-frame portrait. A face met
 -- later through a real unit is newer and wins over this one.
 --
--- One model, never parented and never shown: a shown model draws a 3D scene every frame,
--- and this client has hung its GPU on model rendering before. nil until first asked for;
--- false on a client without what it takes, so it is never asked again.
-local roller
 -- Creature id -> the appearance it answered with, kept so a face does not change between
--- clips. A creature the client has not cached answers 0 until its server replies to the
+-- clips. A creature the client has not cached answers a stand-in until its server replies to the
 -- query SetCreature sent, so the face's window asks again every few frames (Resolved)
 -- rather than waiting for a timer; one that never replies keeps the book. `asked` holds when
 -- a creature was first and last asked: the watcher below captures on every mouseover, and
@@ -76,34 +67,111 @@ local displays, asked = {}, {}
 local RETRY_SECONDS = 0.05
 local GIVE_UP_SECONDS = 5
 
-local function Roller()
-    if roller == nil then
-        roller = false
-        if SetPortraitTextureFromCreatureDisplayID then
-            local ok, frame = pcall(CreateFrame, "DressUpModel")
-            if ok and frame and frame.SetCreature and frame.GetDisplayInfo then
-                frame:Hide()
-                roller = frame
-            end
+-- A model answers GetDisplayInfo with the creature it held before until the new one has loaded,
+-- so one model asked about many creatures hands the first creature's face to the rest. Each
+-- creature waiting for its appearance has a model of its own, taken from a small pool; a model
+-- put back remembers what it last answered, and that answer is not believed on the first read
+-- after it is given a new creature. The models are never parented and never shown: a shown model
+-- draws a 3D scene every frame, and this client has hung its GPU on model rendering before.
+local POOL_MOST = 16
+local RESEND_SECONDS = 1
+local pool, holder = {}, {}
+
+-- A hidden model, or nil on a client that cannot make one.
+local function NewModel()
+    local ok, frame = pcall(CreateFrame, "DressUpModel")
+    if not (ok and frame and frame.GetDisplayInfo) then return nil end
+    frame:Hide()
+    return frame
+end
+
+-- A model whose creature is not cached yet answers with a stand-in until the server replies: the
+-- player's own appearance, or the one a model answers with when nothing is loaded in it. Neither
+-- is any creature's. Both are read live, from a model of the player's and one never given anything.
+local probes
+local function Defaults()
+    if probes == nil then
+        probes = false
+        local own, blank = NewModel(), NewModel()
+        if own and blank and own.SetUnit then
+            probes = { own = own, blank = blank }
         end
     end
-    return roller or nil
+    if not probes then return nil, nil end
+    -- Read once a frame, however many creatures wait: the player's model is loaded again to read it.
+    local now = GetTime()
+    if probes.at ~= now then
+        pcall(probes.own.SetUnit, probes.own, "player")
+        local function Read(model)
+            local display = model:GetDisplayInfo()
+            return type(display) == "number" and display > 0 and display or nil
+        end
+        probes.at, probes.ownDisplay, probes.blankDisplay = now, Read(probes.own), Read(probes.blank)
+    end
+    return probes.ownDisplay, probes.blankDisplay
+end
+
+-- A model for `creature`: its own while it waits, else a free one, a new one under the pool's
+-- size, or the one that has waited longest.
+local function TakeModel(creature)
+    local model = holder[creature]
+    if model then return model end
+    for _, each in ipairs(pool) do
+        if not each.creature then model = each; break end
+    end
+    if not model and #pool < POOL_MOST then
+        local frame = NewModel()
+        if not (frame and frame.SetCreature) then return end
+        model = frame
+        pool[#pool + 1] = model
+    end
+    if not model then
+        for _, each in ipairs(pool) do
+            if not model or each.since < model.since then model = each end
+        end
+        holder[model.creature] = nil
+    end
+    if model.ClearModel then model:ClearModel() end
+    model.creature, model.since, model.sent, model.fresh = creature, GetTime(), GetTime(), true
+    holder[creature] = model
+    model:SetCreature(creature)
+    return model
+end
+
+local function Release(model)
+    holder[model.creature] = nil
+    model.creature = nil
 end
 
 local function DisplayFor(creature)
     if displays[creature] then return displays[creature] end
-    local model = Roller()
-    if not model then return end
+    if not (SetPortraitTextureFromCreatureDisplayID and CreateFrame) then return end
     local now = GetTime()
     local times = asked[creature]
-    if times and (now - times.first > GIVE_UP_SECONDS or now - times.last < RETRY_SECONDS) then return end
+    if times and (now - times.first > GIVE_UP_SECONDS or now - times.last < RETRY_SECONDS) then
+        if now - times.first > GIVE_UP_SECONDS and holder[creature] then Release(holder[creature]) end
+        return
+    end
     if not times then times = { first = now }; asked[creature] = times end
     times.last = now
-    model:SetCreature(creature)
+    local model = TakeModel(creature)
+    if not model then return end
     local display = model:GetDisplayInfo()
-    if display and display > 0 then
+    local answered = type(display) == "number" and display > 0
+    local own, blank
+    if answered then own, blank = Defaults() end
+    local stale = display == own or display == blank or (model.fresh and display == model.answered)
+    model.fresh = false
+    if answered and not stale then
         displays[creature] = display
+        model.answered = display
+        Release(model)
         return display
+    end
+    -- Still nothing after a second: ask again, and take the answer of the moment for the old one.
+    if now - model.sent >= RESEND_SECONDS then
+        model.sent, model.fresh, model.answered = now, true, display
+        model:SetCreature(creature)
     end
 end
 
@@ -132,8 +200,8 @@ function StaticPortrait:Keep(entry, key, creature)
     return entry
 end
 
-function StaticPortrait:FromCreature(creature)
-    local display = DisplayFor(creature)
+function StaticPortrait:FromCreature(creature, known)
+    local display = known or DisplayFor(creature)
     if not display then return end
     local key = "creature:" .. creature
     local entry = self:Acquire(key)
@@ -174,7 +242,7 @@ function StaticPortrait:Capture(clip, refreshGUID)
         end
     end
     if cached then self.age = self.age + 1; cached.age = self.age; return cached end
-    if not guid and type(creature) == "number" then return self:FromCreature(creature) end
+    if not guid and type(creature) == "number" then return self:FromCreature(creature, spec.displayID) end
 end
 function StaticPortrait:Mask(viewport, texture)
     if not texture.AddMaskTexture then return end
@@ -230,19 +298,17 @@ function StaticPortrait:Configure(viewport, clip)
     return true
 end
 
-if not Version.IsAnyLegacy then
-    Callbacks:Register("CLIP_QUEUED", function(clip) StaticPortrait:Capture(clip) end)
-    local watcher = CreateFrame("Frame")
-    for _, event in ipairs({ "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "GOSSIP_SHOW",
-        "QUEST_DETAIL", "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED" }) do watcher:RegisterEvent(event) end
-    watcher:SetScript("OnEvent", function(_, event, unit)
-        unit = NotSecret(unit)
-        local refreshGUID = (event == "UNIT_PORTRAIT_UPDATE" or event == "UNIT_MODEL_CHANGED") and unit
-            and NotSecret(UnitGUID(unit))
-        for _, clip in ipairs(SoundQueue.sounds) do StaticPortrait:Capture(clip, refreshGUID) end
-        local skin = PlayerFrame.Skin and PlayerFrame:Skin()
-        if skin and skin:HasClip() then skin:ConfigurePortrait() end
-        if Subtitle and Subtitle.wanted and Subtitle.clip then Subtitle:ConfigurePicture(Subtitle.clip) end
-    end)
-    StaticPortrait.watcher = watcher
-end
+Callbacks:Register("CLIP_QUEUED", function(clip) StaticPortrait:Capture(clip) end)
+local watcher = CreateFrame("Frame")
+for _, event in ipairs({ "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "GOSSIP_SHOW",
+    "QUEST_DETAIL", "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED" }) do watcher:RegisterEvent(event) end
+watcher:SetScript("OnEvent", function(_, event, unit)
+    unit = NotSecret(unit)
+    local refreshGUID = (event == "UNIT_PORTRAIT_UPDATE" or event == "UNIT_MODEL_CHANGED") and unit
+        and NotSecret(UnitGUID(unit))
+    for _, clip in ipairs(SoundQueue.sounds) do StaticPortrait:Capture(clip, refreshGUID) end
+    local skin = PlayerFrame.Skin and PlayerFrame:Skin()
+    if skin and skin:HasClip() then skin:ConfigurePortrait() end
+    if Subtitle.wanted and Subtitle.clip then Subtitle:ConfigurePicture(Subtitle.clip) end
+end)
+StaticPortrait.watcher = watcher

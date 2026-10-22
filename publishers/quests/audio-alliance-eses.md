@@ -4,7 +4,7 @@ release: quests-audio-alliance-esES
 section: quests
 lang: esES
 pack: alliance
-version: 0.0.5
+version: 0.0.6
 github: false
 slug: spoken-spanish-eu-audio-quests-alliance
 name: Spoken Spanish (EU) Audio: Quests - Alliance

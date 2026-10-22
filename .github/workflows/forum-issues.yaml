@@ -1,0 +1,69 @@
+name: Discord to issues
+
+# Each post in the Discord forum #bugs-and-ideas becomes a GitHub issue, and so does any message a
+# moderator reacts to with 🐛 in another channel. When the issue is closed the post or message is
+# told, and a post is tagged Fixed or Not planned (scripts/lib/forum-issues.mjs).
+#
+# Discord tells nobody when a post is made or a reaction added, so both are looked for every 15
+# minutes. A closed issue is reported the moment it closes.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  forum:
+    if: ${{ github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'from-discord') }}
+    runs-on: ubuntu-latest
+    # Two filing runs side by side would each see a new post without an issue and file it twice.
+    # A closed issue has a group of its own: GitHub keeps one pending run per group, and a
+    # waiting report must not be dropped for a filing run.
+    concurrency:
+      group: forum-issues-${{ github.event.issue.number || 'file' }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            publishers
+            scripts/lib
+            pipelines/lib
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: File new posts, or tell a post its issue closed
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "::warning::DISCORD_BOT_TOKEN is not set; the forum is not read"
+            exit 0
+          fi
+          if [ -n "$ISSUE" ]; then
+            node scripts/lib/forum-issues.mjs closed "$ISSUE"
+          else
+            node scripts/lib/forum-issues.mjs file
+          fi
+
+      # Its own step, so a failure filing forum posts does not stop the 🐛 messages, or the reverse.
+      - name: File messages marked with 🐛
+        if: ${{ always() && github.event_name != 'issues' }}
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            exit 0
+          fi
+          node scripts/lib/forum-issues.mjs reactions

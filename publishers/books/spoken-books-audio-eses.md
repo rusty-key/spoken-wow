@@ -3,7 +3,7 @@ curseforge: 1723280
 release: books-audio-esES
 section: books
 lang: esES
-version: 2.0.0
+version: 2.0.1
 slug: spoken-spanish-eu-audio-readables
 name: Spoken Spanish (EU) Audio: Readables
 summary: The European Spanish narration for Spoken's Readables module: books, letters and notes read aloud in Spanish (EU).

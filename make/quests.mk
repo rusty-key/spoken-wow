@@ -145,12 +145,10 @@ acted: pull-recorded package-acted ## Pull the recordings and build the voice-ac
 # the player touch no voiceline, and the sound pack is three orders of magnitude larger.
 #
 # `package` takes its version from `## Version:` in Spoken_Quests.toc, so bumping the addon
-# and naming the zips stay one edit. It refuses to build from an uncommitted tree, because a
+# and naming the zip stay one edit. It refuses to build from an uncommitted tree, because a
 # zip nobody can trace back to a commit is a zip nobody can rebuild - ALLOW_DIRTY=1 to
-# override while testing. Four zips come out: one for Blizzard's clients, which pick a .toc by
-# flavor suffix, and one apiece for 1.12, 2.4.3 and 3.3.5, which read Spoken_Quests.toc and
-# nothing else and each need their own vendored Ace3 in it. Only the first goes to CurseForge;
-# the GitHub release workflow publishes all four.
+# override while testing. One zip comes out, and every client picks its .toc from it by
+# flavor suffix.
 #
 # `package-audio` builds the store into four packs - Alliance, Horde, the quests both sides
 # share, and gossip - zips each, and bundles the four into one zip for GitHub. Ogg Vorbis at the full 44.1 kHz,
@@ -188,7 +186,7 @@ icon: ## Rebuild the addons' icon.tga and the minimap BLP from pipelines/quests/
 	@echo "==> copied into addons/Spoken/, addons/Spoken_Quests/, addons/Spoken_Developer/ and addons/SpokenContributions/"
 	@python3 pipelines/quests/tools/make_minimap_icon.py pipelines/quests/assets/icon/spoken-player-512.png addons/Spoken/Textures/MinimapButton.blp
 
-package: ## Zip the player addon into dist/: one Blizzard zip, one per legacy client
+package: ## Zip the quests addon into dist/
 	@./scripts/quests/package.sh
 
 # Languages no client runs in (pipelines/lib/locales.mjs, `client: false`). Their packs carry

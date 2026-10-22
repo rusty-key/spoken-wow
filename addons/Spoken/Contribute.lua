@@ -3,8 +3,8 @@ setfenv(1, SpokenEnv)
 -- The format a contribution leaves the game in.
 --
 -- Plain text, not serialised and not compressed. An envelope is a few kilobytes, and
--- LibDeflate plus LibSerialize would be two vendored libraries and a pure-Lua inflate on a
--- 1.12 client to save bytes nobody pays for. It also lets the player read what they are about
+-- LibDeflate plus LibSerialize would be two vendored libraries and a pure-Lua inflate to save
+-- bytes nobody pays for. It also lets the player read what they are about
 -- to send, which matters when the payload is their own client's text.
 --
 -- THE READER IS apps/web/src/lib/contributions/envelope.ts AND THE TWO MUST AGREE. Fixtures

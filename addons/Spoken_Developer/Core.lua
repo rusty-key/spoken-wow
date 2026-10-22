@@ -6,8 +6,7 @@
 -- feature addons write with Spoken:Log here. Without this module those calls do nothing.
 --
 -- Client targets: Classic Era 1.15.9 (11509), Anniversary 2.5.6 (20506) and Forever 1.60
--- (16001). Not the legacy 1.12/2.4.3/3.3.5 clients: their zips carry Spoken inside the quests
--- addon and nothing of this.
+-- (16001).
 
 local ADDON_NAME, Developer = ...
 

@@ -55,10 +55,10 @@ end
 --- number their ids apart (creature 68 is a guard, object 68 a poster), so each has its own
 --- address.
 ---
---- Guarded twice over: Utils:GetIDFromGUID is absent on 1.12 and asserts on a GUID carrying no
---- id, and an error thrown here would land on a player who only wanted to complain about audio.
+--- Guarded: Utils:GetIDFromGUID asserts on a GUID carrying no id, and an error thrown here would
+--- land on a player who only wanted to complain about audio.
 function ReportButton:TargetForGUID(guid)
-    if not guid or not Utils.GetGUIDType or not Utils.GetIDFromGUID then
+    if not guid then
         return nil
     end
 
@@ -106,9 +106,7 @@ function ReportButton:CurrentTarget()
     return self:TargetForGUID(Utils:GetNPCGUID())
 end
 
--- The address the popup is currently showing. Held here rather than passed to
--- StaticPopup_Show, whose `data` argument and the dialog/data handler signature both postdate
--- the legacy clients: there the popup would open with an empty box.
+-- The address the popup is currently showing.
 local shownLink
 
 --- The report address for `target`, filed under `language`.
@@ -143,10 +141,8 @@ function ReportButton:ShowLink(target, clip)
         ShowCopy(url)
         return
     end
-    -- Absent on the legacy clients, whose toc never loads Contribute.xml.
-    local contribute = rawget(VoiceOver, "Contribute")
     Spoken:ShowReport(url, function()
-        return contribute and contribute:ReportContext(clip)
+        return Contribute:ReportContext(clip)
     end)
 end
 

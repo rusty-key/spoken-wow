@@ -17,8 +17,7 @@ artwork. The window fades in and out, and from one line to the next.
 Nothing is installed separately: it is part of the player's zip. Choose it as
 the narrator style on Spoken's settings page, in the welcome window, or with
 `/sp player minimal`; `/sp player classic` gives the original layout (Large
-Window), `subtitle` the subtitles and `none` the voice alone. The 1.12, 2.4.3
-and 3.3.5 clients have no Small Window.
+Window), `subtitle` the subtitles and `none` the voice alone.
 
 In-game validation used the 2.0.4-based layout in the modern Classic beta
 client; the port onto 2.1.0 is checked with the offline suites. Other modern

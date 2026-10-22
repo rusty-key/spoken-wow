@@ -133,12 +133,4 @@ Expect("...with every other channel", Near(Volume("Ambience"), 0.5) and Near(Vol
 Expect("...though the settings were stripped to nothing", env.Addon.db.profile.Audio, nil)
 Expect("...and nothing went wrong in a callback", #env.Callbacks.errors, 0)
 
----------------------------------------------------------------- the legacy clients
--- 2.4.3 and 3.3.5 speak through the music channel itself.
-stub.SetClient("3.3.5")
-stub.ResetSound(); stub.ResetTimers()
-_G.SpokenSettings = nil
-env = stub.LoadSpoken(SPOKEN)
-Expect("not offered where speech goes out on the music channel", env.OtherSounds:IsAvailable(), false)
-
 os.exit(Failures() == 0 and 0 or 1)

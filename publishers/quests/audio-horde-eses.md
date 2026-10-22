@@ -4,7 +4,7 @@ release: quests-audio-horde-esES
 section: quests
 lang: esES
 pack: horde
-version: 0.0.5
+version: 0.0.6
 github: false
 slug: spoken-spanish-eu-audio-quests-horde
 name: Spoken Spanish (EU) Audio: Quests - Horde

@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { channelName, languageOf, latestReleases, postText } from "./language-post.mjs";
+import {
+  channelName, isLanguageChannel, isNamed, languageOf, latestReleases, oldPosts, postText,
+} from "./language-post.mjs";
 
 const url = (tag) => `https://github.com/o/r/releases/tag/${tag}`;
 const release = (tag, extra = {}) => ({ tag_name: tag, html_url: url(tag), draft: false, prerelease: false, ...extra });
@@ -14,6 +16,24 @@ const packs = [
   { section: "zones", lang: "enUS", release: "zones-audio", github: true },
   { section: "quests", lang: "enUS", release: "quests-audio-horde", github: false },
 ];
+
+test("a channel is found by its name, with or without an emoji and a bar in front", () => {
+  assert.ok(isNamed({ name: "feedback-de-de" }, "feedback-de-de"));
+  assert.ok(isNamed({ name: "🇩🇪｜feedback-de-de" }, "feedback-de-de"));
+  assert.ok(!isNamed({ name: "old-feedback-de-de" }, "feedback-de-de"));
+  assert.ok(!isNamed({ name: "🇦🇹｜feedback-de-de-at" }, "feedback-de-de"));
+});
+
+test("a language's channel is named in its own words, or with its feedback name", () => {
+  assert.ok(isLanguageChannel({ name: "💬｜deutsch" }, "deDE"));
+  assert.ok(isLanguageChannel({ name: "💬｜español-latam" }, "esMX"));
+  assert.ok(isLanguageChannel({ name: "💬｜繁體中文" }, "zhTW"));
+  assert.ok(isLanguageChannel({ name: "english" }, "enUS"));
+  assert.ok(isLanguageChannel({ name: "💬｜feedback-de-de" }, "deDE"));
+  assert.ok(!isLanguageChannel({ name: "💬｜español" }, "esMX"));
+  assert.ok(!isLanguageChannel({ name: "💬｜español-latam" }, "esES"));
+  assert.ok(!isLanguageChannel({ name: "deutsch-talk" }, "deDE"));
+});
 
 test("channel names follow the code in lower case", () => {
   assert.equal(channelName("deDE"), "feedback-de-de");
@@ -52,4 +72,15 @@ test("a tag resolves to its language's GitHub packs; English and addons are skip
   assert.deepEqual(de.packs.map((p) => p.release).sort(), ["books-audio-deDE", "quests-audio-deDE", "zones-audio-deDE"]);
   assert.ok(languageOf("zones-audio/v2.2.1", packs).skip);
   assert.ok(languageOf("spoken/v3.1.0", packs).skip);
+});
+
+test("a new post replaces any bot's pinned post, but no person's and no other pin", () => {
+  const pin = (id, bot, content) => ({ id, author: { bot }, content });
+  const old = oldPosts([
+    pin("1", true, "Audio packs:\n- Quests: a"),
+    pin("2", true, "Audio packs:\n- Zones: b"),
+    pin("3", false, "Audio packs: which one do I need?"),
+    pin("4", true, "Welcome to the channel"),
+  ]);
+  assert.deepEqual(old.map((m) => m.id), ["1", "2"]);
 });

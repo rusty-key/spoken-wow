@@ -268,18 +268,24 @@ export { splitSections, loreSections, LORE_SECTIONS } from "./sections.mjs";
 export function buildFromSections(plaintext, { maxChars = 2200 } = {}) {
   const { lead, kept } = loreSections(plaintext);
   const parts = [lead, ...kept.map((s) => s.text)].filter(Boolean);
+  return capParagraphs(parts.flatMap((part) => part.split(/\n+/)).map((p) => p.trim()).filter(Boolean), maxChars);
+}
 
+// The paragraphs joined by blank lines, as many from the first as fit in maxChars (the first always).
+export function capParagraphs(paragraphs, maxChars) {
   let out = "";
-  for (const part of parts) {
-    for (const para of part.split(/\n+/)) {
-      const trimmed = para.trim();
-      if (!trimmed) continue;
-      if (out && out.length + trimmed.length + 2 > maxChars) return out;
-      out = out ? out + "\n\n" + trimmed : trimmed;
-    }
+  for (const para of paragraphs) {
+    if (out && out.length + para.length + 2 > maxChars) break;
+    out = out ? out + "\n\n" + para : para;
   }
   return out;
 }
+
+// The titles a creature's article may have, most likely first.
+export const creatureTitles = (name) => [name, `${name} (boss)`, `${name} (NPC)`];
+
+// Whether an article is a disambiguation page, from its opening.
+export const isDisambiguation = (text) => /may refer to|can refer to|disambiguation/i.test(text.slice(0, 300));
 
 // All page members of a category, following continuation.
 export async function fetchCategoryMembers(category, opts = {}) {

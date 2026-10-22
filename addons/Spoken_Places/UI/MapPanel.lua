@@ -19,11 +19,9 @@ local panel, page, toggle
 -- short of 1.
 local CLEAR = 0.99
 
--- The gamepad UI, Forever's InputDeviceInterfaceStyle 1. pcall, because a client that has never
--- heard of the CVar raises on it.
+-- The gamepad UI, Forever's InputDeviceInterfaceStyle 1.
 local function IsGamepadUI()
-	local ok, style = pcall(GetCVar, "InputDeviceInterfaceStyle")
-	return ok and style == "1"
+	return GetCVar("InputDeviceInterfaceStyle") == "1"
 end
 
 -- Inside the map, unless the gamepad UI is on (NewPanel).
@@ -362,7 +360,7 @@ local function Refresh(mapID)
 		if SpokenZones:IsPending(selected.entry) then
 			-- Named, listed, and honest about the rest: nothing to play and nothing written to
 			-- report on. Azeroth's Compendium lists it all the same, so Open goes to its row there.
-			page:Show({ title = name, subtitle = line, onSubtitle = back, text = L.LORE_NOT_WRITTEN:format(name),
+			page:Show({ title = name, subtitle = line, onSubtitle = back,
 				contribute = { story, name }, lore = { story, key } })
 			return
 		end
@@ -375,7 +373,7 @@ local function Refresh(mapID)
 	-- No Open here: a map with no entry at all, not even a pending one, has no row in Lore of
 	-- Azeroth to open on.
 	if not entry then
-		page:Show({ title = zoneName, text = L.NO_LORE_FOR:format(zoneName),
+		page:Show({ title = zoneName,
 			contribute = { mapID, nil } })
 		return
 	end
@@ -394,7 +392,6 @@ local function Refresh(mapID)
 	end
 	if SpokenZones:IsPending(entry) then
 		page:Show({ title = zoneName, subtitle = caption,
-			text = L.LORE_NOT_WRITTEN:format(SpokenZones:GetMapName(foundOn) or zoneName),
 			contribute = { foundOn, nil }, lore = { foundOn, nil } })
 		return
 	end

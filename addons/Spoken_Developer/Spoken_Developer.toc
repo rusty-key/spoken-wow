@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 16001
-## Title: Spoken Developer
+## Title: |cffb48cffSpoken|r |cff6cb8ffDeveloper|r
 ## Notes: Tools for trying Spoken out: a debug log to send with a report, and the Developer page.
 ## Notes-deDE: Werkzeuge zum Ausprobieren von Spoken: ein Debug-Protokoll für Meldungen und die Entwickler-Seite.
 ## Notes-esES: Herramientas para probar Spoken: un registro de depuración para enviar con un informe y la página de desarrollador.

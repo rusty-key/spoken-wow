@@ -4,7 +4,7 @@ release: quests-audio-shared-esES
 section: quests
 lang: esES
 pack: shared
-version: 0.0.5
+version: 0.0.6
 github: false
 slug: spoken-spanish-eu-audio-quests-shared
 name: Spoken Spanish (EU) Audio: Quests - Shared

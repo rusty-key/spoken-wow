@@ -6,6 +6,7 @@
     -->
     <Include file="Data\Compendium.lua"/>
     <Include file="Data\QuestText.lua"/>
+    <Include file="Data\QuestFaces.lua"/>
     <Include file="UI\QuestsTab.lua"/>
     <Include file="UI\OpenInCompendium.lua"/>
 </Ui>

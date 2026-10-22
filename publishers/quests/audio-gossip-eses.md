@@ -4,7 +4,7 @@ release: quests-audio-gossip-esES
 section: quests
 lang: esES
 pack: gossip
-version: 0.0.5
+version: 0.0.6
 github: false
 slug: spoken-spanish-eu-audio-gossip
 name: Spoken Spanish (EU) Audio: Gossip

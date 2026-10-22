@@ -59,7 +59,7 @@ addons/Spoken_Places/
   Textures/Pictures/     the place pictures, 32 edge masks and CREDITS.md
   Textures/Art/          the spellbook and quest log art the page is drawn with
   UI/                    LoreWindow (the tab), LorePage, MapPanel, SubzoneClick, MapHighlight,
-                         Options, ContributeButton, CopyLink
+                         Options, CopyLink
 addons/Spoken/UI/        Compendium.lua, TextView.lua, Face.lua: shared with the other modules
 addons/Spoken/Data/Dungeons.lua   the dungeon and raid table every tab reads (generated)
 pipelines/zones/tools/   scrapers, the lore store and exporter, locale tools, pictures, voice

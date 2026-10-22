@@ -4,7 +4,7 @@ release: quests-audio-shared-deDE
 section: quests
 lang: deDE
 pack: shared
-version: 1.0.0
+version: 1.0.1
 github: false
 slug: spoken-german-audio-quests-shared
 name: Spoken German Audio: Quests - Shared

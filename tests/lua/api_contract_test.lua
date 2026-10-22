@@ -45,7 +45,7 @@ local METHODS = {
     -- packs
     "EnumerateAddonsWithKey",
     -- frame, settings
-    "GetPlayerFrame", "GetSettingsCategory", "OpenSettings", "AddSettingsLink", "RefreshPlayer",
+    "GetPlayerFrame", "GetSettingsCategory", "OpenSettings", "RefreshPlayer",
     "GetPlayerStyle", "SetPlayerHost", "AddDialogueUISettings",
     -- Azeroth's Compendium's Text Size, which Zones, Books and Quests draw their words at
     "CompendiumFontSize", "SetCompendiumFontSize",
@@ -163,6 +163,37 @@ do
     face.scripts.OnUpdate(face, 1)
     Expect("...and its still once the client has it", Drawn(), "still 1990")
     Expect("...then asking no more", face.scripts.OnUpdate, nil)
+
+    -- A model answers with the creature it held until the new one loads: each creature's face is its own.
+    world.modelLags = true
+    world.creatureDisplays[301], world.creatureDisplays[302], world.creatureDisplays[303] = { 4001 }, { 4002 }, { 4003 }
+    local primed = {}
+    for _, id in ipairs({ 301, 302, 303 }) do primed[#primed + 1] = tostring((E.StaticPortrait:Prime(id))) end
+    world.time = world.time + 1
+    for _, id in ipairs({ 301, 302, 303 }) do primed[#primed + 1] = tostring((E.StaticPortrait:Prime(id))) end
+    world.modelLags = false
+    Expect("creatures asked together keep their own appearances while the client loads them",
+        table.concat(primed, " "), "nil nil nil 4001 4002 4003")
+
+    -- A creature the client has not cached shows a stand-in face until the server replies: not a face.
+    world.blankDisplay = 5555
+    world.time = world.time + 0.1 -- the stand-ins are read once a frame
+    world.creatureDisplays[311], world.creatureDisplays[312] = { 4011 }, { 4012 }
+    world.unloaded = { [311] = true }
+    local own = {}
+    for _, id in ipairs({ 311, 312 }) do own[#own + 1] = tostring((E.StaticPortrait:Prime(id))) end
+    world.time = world.time + 0.1
+    own[#own + 1] = tostring((E.StaticPortrait:Prime(311)))
+    world.unloaded = nil
+    world.time = world.time + 1.1
+    own[#own + 1] = tostring((E.StaticPortrait:Prime(311)))
+    world.blankDisplay, world.unloaded = 5555, { [321] = true }
+    local shipped = E.StaticPortrait:FromCreature(321, 4321)
+    world.blankDisplay, world.unloaded = nil, nil
+    Expect("a creature with a shipped appearance is drawn from it, whatever the client has cached",
+        shipped and shipped.texture.display, 4321)
+    Expect("an uncached creature takes the default face for no creature's, and its own once cached",
+        table.concat(own, " "), "nil 4012 nil 4011")
 
     world.displaysUncached = true
     face:SetSpeaker({ creatureID = 6 })

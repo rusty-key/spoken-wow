@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 16001
-## Title: Spoken Readables
+## Title: |cffb48cffSpoken|r |cff6cb8ffReadables|r
 ## Notes: Books, letters, notes and plaques read aloud through Spoken.
 ## Notes-deDE: Bücher, Briefe, Notizen und Tafeln werden über Spoken vorgelesen.
 ## Notes-esES: Libros, cartas, notas y placas leídos en voz alta a través de Spoken.

@@ -38,8 +38,6 @@ end
 -- what /spq diagnostics calls the last runtime stage, and in the log they read as the whole story
 -- of a quest window, from the event to the line queued or the reason it was not. Note covers the
 -- decisions that record no stage. Nothing happens without the module, or while its log is off.
---
--- Parsed by the 1.12 client too, so Lua 5.0 syntax: no `#`, no `...`, no string methods.
 
 local function Log(message, a, b, c, d)
     if Spoken and Spoken.Log then Spoken:Log("quests", message, a, b, c, d) end

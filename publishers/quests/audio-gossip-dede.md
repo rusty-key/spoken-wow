@@ -4,7 +4,7 @@ release: quests-audio-gossip-deDE
 section: quests
 lang: deDE
 pack: gossip
-version: 1.0.0
+version: 1.0.1
 github: false
 slug: spoken-german-audio-gossip
 name: Spoken German Audio: Gossip
