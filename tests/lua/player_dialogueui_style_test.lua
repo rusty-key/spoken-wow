@@ -46,8 +46,8 @@ local function FakeDialogueUI()
     return frame
 end
 
-local function Boot(client)
-    stub.SetClient(client or "16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+local function Boot()
+    stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
     stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
     _G.UISpecialFrames = _G.UISpecialFrames or {}
     -- A screen, for the window to take DialogueUI's share of; the stub's is a thumbnail.
@@ -84,10 +84,6 @@ Expect("...with the reason to hand", env.DialogueUITheme:Problem(), env.L.OPT_ST
 Expect("no DialogueUI window is built for it", env.DialogueUIPlayer.frame, nil)
 Expect("Voice Only offers no word rows without DialogueUI: nothing would show the words",
     env.DialogueUIOptions:WordRowsShown("none"), false)
-
-env = Boot("1.12")
-Expect("the legacy client has the large window and nothing else", Spoken:GetPlayerStyle(), "classic")
-Expect("...and no DialogueUI reading", env.DialogueUITheme:Available(), false)
 
 ---------------------------------------------------------------- the window, with DialogueUI
 loaded = true
@@ -497,7 +493,7 @@ Expect("...and not once it may play", Skin.held:IsShown(), false)
 ---------------------------------------------------------------- its controls, the subtitle's
 Spoken:StopAll()
 -- Offering Report in the corner, as Quests' lines do.
-local REPORT = { id = "report", icon = "Interface/HelpFrame/HelpIcon-Bug", text = "R", anchor = "topright" }
+local REPORT = { id = "report", icon = "Interface/HelpFrame/HelpIcon-Bug", anchor = "topright" }
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "One", portrait = { kind = "none" },
     actions = { REPORT } } }))
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Two", portrait = { kind = "none" } } }))

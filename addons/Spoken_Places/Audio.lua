@@ -164,9 +164,6 @@ function SpokenZones:SetupAudio()
 	end
 	Spoken.Minimap:AddEntry("zones", { id = "settings", text = L.MENU_ZONE_SETTINGS, order = 2,
 		onClick = function() SpokenZones:OpenOptions() end })
-	if Spoken.AddSettingsLink then
-		Spoken:AddSettingsLink(L.MENU_ZONE_SETTINGS, function() SpokenZones:OpenOptions() end)
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -437,12 +434,9 @@ end
 local ACTIONS = {
 	{
 		id = "report",
-		-- An icon in the corner rather than a word beside the line. The bug icon postdates
-		-- the three legacy clients, where the texture is missing and the button
-		-- would be a blank square; `text` is what they draw instead.
+		-- An icon in the corner rather than a word beside the line.
 		icon = [[Interface\HelpFrame\HelpIcon-Bug]],
 		label = L.OPT_REPORT_PROBLEM,
-		text = "R",
 		anchor = "topright",
 		tooltip = function(tooltip)
 			tooltip:SetText(L.OPT_REPORT_PROBLEM)

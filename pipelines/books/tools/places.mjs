@@ -51,7 +51,9 @@ const WIDE = 8;
 // place Alterac Valley's Rock of Durotan. Only the dungeons and raids are a readable's `dungeons`;
 // another instance (a battleground, a PvP hall) stays its zone's.
 const INSTANCE_ZONE = instanceZones();
-const DUNGEONS = loadDungeons().dungeons;
+// A map under `instances` too (the Excavation Site) is its zone's, as the quests' exporter files it.
+const { dungeons: ALL_DUNGEONS, instances: NOT_DUNGEONS } = loadDungeons();
+const DUNGEONS = Object.fromEntries(Object.entries(ALL_DUNGEONS).filter(([map]) => !NOT_DUNGEONS[map]));
 // A spawn inside a dungeon is placed at -map until the file is written, so a readable's zones
 // still say which of them it is had in only from inside one.
 const placeOf = (z) => (z < 0 ? INSTANCE_ZONE[-z] : z);

@@ -25,7 +25,7 @@ end
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 local env = stub.LoadSpoken(SPOKEN)
 local NotSecret = _G.Spoken.NotSecret
-Expect("without issecretvalue, as on a legacy client, a value is itself", NotSecret("Guard"), "Guard")
+Expect("without issecretvalue, a value is itself", NotSecret("Guard"), "Guard")
 stub.Secrets("Guard")
 Expect("a secret reads as nil", NotSecret("Guard"), nil)
 Expect("...and any other value as itself", NotSecret("Thrall"), "Thrall")

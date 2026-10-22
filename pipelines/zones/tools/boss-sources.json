@@ -1,0 +1,2653 @@
+[
+ {
+  "map": 33,
+  "key": "rethilgore",
+  "wikiTitle": "Rethilgore (Classic)",
+  "npcIds": [
+   3914
+  ],
+  "abilityTitle": "Rethilgore (Classic)"
+ },
+ {
+  "map": 33,
+  "key": "razorclaw the butcher",
+  "wikiTitle": "Razorclaw the Butcher (Classic)",
+  "npcIds": [
+   3886
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 33,
+  "key": "baron silverlaine",
+  "wikiTitle": "Baron Silverlaine (Classic)",
+  "npcIds": [
+   3887
+  ],
+  "abilityTitle": "Baron Silverlaine (Classic)"
+ },
+ {
+  "map": 33,
+  "key": "commander springvale",
+  "wikiTitle": "Commander Springvale (Classic)",
+  "npcIds": [
+   4278
+  ],
+  "abilityTitle": "Commander Springvale (Classic)"
+ },
+ {
+  "map": 33,
+  "key": "odo the blindwatcher",
+  "wikiTitle": "Odo the Blindwatcher (Classic)",
+  "npcIds": [
+   4279
+  ],
+  "abilityTitle": "Odo the Blindwatcher (Classic)"
+ },
+ {
+  "map": 33,
+  "key": "fenrus the devourer",
+  "wikiTitle": "Fenrus the Devourer",
+  "npcIds": [
+   4274
+  ],
+  "abilityTitle": "Fenrus the Devourer"
+ },
+ {
+  "map": 33,
+  "key": "wolf master nandos",
+  "wikiTitle": "Wolf Master Nandos (Classic)",
+  "npcIds": [
+   3927
+  ],
+  "abilityTitle": "Wolf Master Nandos (Classic)"
+ },
+ {
+  "map": 33,
+  "key": "archmage arugal",
+  "wikiTitle": "Archmage Arugal",
+  "npcIds": [
+   4275
+  ],
+  "abilityTitle": "Archmage Arugal (tactics)"
+ },
+ {
+  "map": 34,
+  "key": "targorr the dread",
+  "wikiTitle": "Targorr the Dread",
+  "npcIds": [
+   1696
+  ],
+  "abilityTitle": "Targorr the Dread"
+ },
+ {
+  "map": 34,
+  "key": "kam deepfury",
+  "wikiTitle": "Kam Deepfury",
+  "npcIds": [
+   1666
+  ],
+  "abilityTitle": "Kam Deepfury"
+ },
+ {
+  "map": 34,
+  "key": "hamhock",
+  "wikiTitle": "Hamhock",
+  "npcIds": [
+   1717
+  ],
+  "abilityTitle": "Hamhock"
+ },
+ {
+  "map": 34,
+  "key": "dextren ward",
+  "wikiTitle": "Dextren Ward",
+  "npcIds": [
+   1663
+  ],
+  "abilityTitle": "Dextren Ward"
+ },
+ {
+  "map": 34,
+  "key": "bazil thredd",
+  "wikiTitle": "Bazil Thredd",
+  "npcIds": [
+   1716
+  ],
+  "abilityTitle": "Bazil Thredd"
+ },
+ {
+  "map": 36,
+  "key": "rhahkzor",
+  "wikiTitle": "Rhahk'Zor",
+  "npcIds": [
+   644
+  ],
+  "abilityTitle": "Rhahk'Zor"
+ },
+ {
+  "map": 36,
+  "key": "sneed",
+  "wikiTitle": "Sneed",
+  "npcIds": [
+   643,
+   642
+  ],
+  "abilityTitle": "Sneed"
+ },
+ {
+  "map": 36,
+  "key": "miner johnson",
+  "wikiTitle": "Miner Johnson",
+  "npcIds": [
+   3586
+  ],
+  "abilityTitle": "Miner Johnson"
+ },
+ {
+  "map": 36,
+  "key": "gilnid",
+  "wikiTitle": "Gilnid",
+  "npcIds": [
+   1763
+  ],
+  "abilityTitle": "Gilnid"
+ },
+ {
+  "map": 36,
+  "key": "captain greenskin",
+  "wikiTitle": "Captain Greenskin",
+  "npcIds": [
+   647
+  ],
+  "abilityTitle": "Captain Greenskin"
+ },
+ {
+  "map": 36,
+  "key": "mr smite",
+  "wikiTitle": "Mr. Smite",
+  "npcIds": [
+   646
+  ],
+  "abilityTitle": "Mr. Smite"
+ },
+ {
+  "map": 36,
+  "key": "cookie",
+  "wikiTitle": "Cookie",
+  "npcIds": [
+   645
+  ],
+  "abilityTitle": "Cookie"
+ },
+ {
+  "map": 36,
+  "key": "edwin vancleef",
+  "wikiTitle": "Edwin VanCleef",
+  "npcIds": [
+   639
+  ],
+  "abilityTitle": "Edwin VanCleef (tactics)"
+ },
+ {
+  "map": 43,
+  "key": "lady anacondra",
+  "wikiTitle": "Lady Anacondra",
+  "npcIds": [
+   3671
+  ],
+  "abilityTitle": "Lady Anacondra"
+ },
+ {
+  "map": 43,
+  "key": "lord cobrahn",
+  "wikiTitle": "Lord Cobrahn",
+  "npcIds": [
+   3669
+  ],
+  "abilityTitle": "Lord Cobrahn"
+ },
+ {
+  "map": 43,
+  "key": "kresh",
+  "wikiTitle": "Kresh",
+  "npcIds": [
+   3653
+  ],
+  "abilityTitle": "Kresh"
+ },
+ {
+  "map": 43,
+  "key": "lord pythas",
+  "wikiTitle": "Lord Pythas",
+  "npcIds": [
+   3670
+  ],
+  "abilityTitle": "Lord Pythas"
+ },
+ {
+  "map": 43,
+  "key": "skum",
+  "wikiTitle": "Skum",
+  "npcIds": [
+   3674
+  ],
+  "abilityTitle": "Skum"
+ },
+ {
+  "map": 43,
+  "key": "lord serpentis",
+  "wikiTitle": "Lord Serpentis",
+  "npcIds": [
+   3673
+  ],
+  "abilityTitle": "Lord Serpentis"
+ },
+ {
+  "map": 43,
+  "key": "verdan the everliving",
+  "wikiTitle": "Verdan the Everliving",
+  "npcIds": [
+   5775
+  ],
+  "abilityTitle": "Verdan the Everliving"
+ },
+ {
+  "map": 43,
+  "key": "mutanus the devourer",
+  "wikiTitle": "Mutanus the Devourer",
+  "npcIds": [
+   3654
+  ],
+  "abilityTitle": "Mutanus the Devourer"
+ },
+ {
+  "map": 47,
+  "key": "roogug",
+  "wikiTitle": "Roogug",
+  "npcIds": [
+   6168,
+   74948
+  ],
+  "abilityTitle": "Roogug (Classic)"
+ },
+ {
+  "map": 47,
+  "key": "aggem thorncurse",
+  "wikiTitle": "Aggem Thorncurse (Classic)",
+  "npcIds": [
+   4424,
+   75149
+  ],
+  "abilityTitle": "Aggem Thorncurse (Classic)"
+ },
+ {
+  "map": 47,
+  "key": "death speaker jargba",
+  "wikiTitle": "Death Speaker Jargba (Classic)",
+  "npcIds": [
+   4428,
+   75152
+  ],
+  "abilityTitle": "Death Speaker Jargba (Classic)"
+ },
+ {
+  "map": 47,
+  "key": "overlord ramtusk",
+  "wikiTitle": "Overlord Ramtusk",
+  "npcIds": [
+   4420,
+   74462
+  ],
+  "abilityTitle": "Overlord Ramtusk"
+ },
+ {
+  "map": 47,
+  "key": "agathelos the raging",
+  "wikiTitle": "Agathelos the Raging",
+  "npcIds": [
+   4422,
+   75245
+  ],
+  "abilityTitle": "Agathelos the Raging"
+ },
+ {
+  "map": 47,
+  "key": "charlga razorflank",
+  "wikiTitle": "Charlga Razorflank",
+  "npcIds": [
+   4421
+  ],
+  "abilityTitle": "Charlga Razorflank (Classic)"
+ },
+ {
+  "map": 48,
+  "key": "baron aquanis",
+  "wikiTitle": "Baron Aquanis",
+  "npcIds": [
+   12876
+  ],
+  "abilityTitle": "Baron Aquanis"
+ },
+ {
+  "map": 48,
+  "key": "ghamoo ra",
+  "wikiTitle": "Ghamoo-ra (Classic)",
+  "npcIds": [
+   4887
+  ],
+  "abilityTitle": "Ghamoo-ra (Classic)"
+ },
+ {
+  "map": 48,
+  "key": "lady sarevess",
+  "wikiTitle": "Lady Sarevess",
+  "npcIds": [
+   4831,
+   76005
+  ],
+  "abilityTitle": "Lady Sarevess"
+ },
+ {
+  "map": 48,
+  "key": "gelihast",
+  "wikiTitle": "Gelihast",
+  "npcIds": [
+   6243
+  ],
+  "abilityTitle": "Gelihast"
+ },
+ {
+  "map": 48,
+  "key": "lorgus jett",
+  "wikiTitle": "Lorgus Jett",
+  "npcIds": [
+   12902
+  ],
+  "abilityTitle": "Lorgus Jett"
+ },
+ {
+  "map": 48,
+  "key": "twilight lord kelris",
+  "wikiTitle": "Twilight Lord Kelris",
+  "npcIds": [
+   4832
+  ],
+  "abilityTitle": "Twilight Lord Kelris"
+ },
+ {
+  "map": 48,
+  "key": "akumai",
+  "wikiTitle": "Aku'mai (Classic)",
+  "npcIds": [
+   4829
+  ],
+  "abilityTitle": "Aku'mai (Classic)"
+ },
+ {
+  "map": 48,
+  "key": "old serrakis",
+  "wikiTitle": "Old Serra'kis",
+  "npcIds": [
+   4830
+  ],
+  "abilityTitle": "Old Serra'kis"
+ },
+ {
+  "map": 70,
+  "key": "revelosh",
+  "wikiTitle": "Revelosh",
+  "npcIds": [
+   6910
+  ],
+  "abilityTitle": "Revelosh"
+ },
+ {
+  "map": 70,
+  "key": "the lost dwarves",
+  "wikiTitle": "The Lost Dwarves (tactics)",
+  "npcIds": [
+   6906,
+   6907,
+   6908
+  ],
+  "abilityTitle": "The Lost Dwarves (tactics)"
+ },
+ {
+  "map": 70,
+  "key": "ironaya",
+  "wikiTitle": "Ironaya",
+  "npcIds": [
+   7228
+  ],
+  "abilityTitle": "Ironaya"
+ },
+ {
+  "map": 70,
+  "key": "obsidian sentinel",
+  "wikiTitle": "Obsidian Sentinel",
+  "npcIds": [
+   7023
+  ],
+  "abilityTitle": "Obsidian Sentinel"
+ },
+ {
+  "map": 70,
+  "key": "ancient stone keeper",
+  "wikiTitle": "Ancient Stone Keeper",
+  "npcIds": [
+   7206
+  ],
+  "abilityTitle": "Ancient Stone Keeper"
+ },
+ {
+  "map": 70,
+  "key": "galgann firehammer",
+  "wikiTitle": "Galgann Firehammer",
+  "npcIds": [
+   7291
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 70,
+  "key": "grimlok",
+  "wikiTitle": "Grimlok",
+  "npcIds": [
+   4854
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 70,
+  "key": "archaedas",
+  "wikiTitle": "Archaedas (tactics)",
+  "npcIds": [
+   2748
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 90,
+  "key": "grubbis",
+  "wikiTitle": "Grubbis",
+  "npcIds": [
+   7361
+  ],
+  "abilityTitle": "Grubbis"
+ },
+ {
+  "map": 90,
+  "key": "viscous fallout",
+  "wikiTitle": "Viscous Fallout",
+  "npcIds": [
+   7079
+  ],
+  "abilityTitle": "Viscous Fallout"
+ },
+ {
+  "map": 90,
+  "key": "crowd pummeler 9 60",
+  "wikiTitle": "Crowd Pummeler 9-60",
+  "npcIds": [
+   6229
+  ],
+  "abilityTitle": "Crowd Pummeler 9-60"
+ },
+ {
+  "map": 90,
+  "key": "electrocutioner 6000",
+  "wikiTitle": "Electrocutioner 6000",
+  "npcIds": [
+   6235
+  ],
+  "abilityTitle": "Electrocutioner 6000"
+ },
+ {
+  "map": 90,
+  "key": "mekgineer thermaplugg",
+  "wikiTitle": "Sicco Thermaplugg",
+  "npcIds": [
+   7800
+  ],
+  "abilityTitle": "Mekgineer Thermaplugg (tactics)"
+ },
+ {
+  "map": 109,
+  "key": "atalalarion",
+  "wikiTitle": "Atal'alarion",
+  "npcIds": [
+   8580
+  ],
+  "abilityTitle": "Atal'alarion"
+ },
+ {
+  "map": 109,
+  "key": "avatar of hakkar",
+  "wikiTitle": "Hakkar the Soulflayer",
+  "npcIds": [
+   8443
+  ],
+  "abilityTitle": "Avatar of Hakkar"
+ },
+ {
+  "map": 109,
+  "key": "shade of eranikus",
+  "wikiTitle": "Eranikus",
+  "npcIds": [
+   5709
+  ],
+  "abilityTitle": "Shade of Eranikus"
+ },
+ {
+  "map": 109,
+  "key": "hazzas",
+  "wikiTitle": "Hazzas",
+  "npcIds": [
+   5722
+  ],
+  "abilityTitle": "Morphaz"
+ },
+ {
+  "map": 109,
+  "key": "morphaz",
+  "wikiTitle": "Morphaz",
+  "npcIds": [
+   5719
+  ],
+  "abilityTitle": "Morphaz"
+ },
+ {
+  "map": 109,
+  "key": "weaver",
+  "wikiTitle": "Weaver",
+  "npcIds": [
+   5720
+  ],
+  "abilityTitle": "Morphaz"
+ },
+ {
+  "map": 109,
+  "key": "dreamscythe",
+  "wikiTitle": "Dreamscythe",
+  "npcIds": [
+   5721
+  ],
+  "abilityTitle": "Dreamscythe"
+ },
+ {
+  "map": 109,
+  "key": "jammalan the prophet",
+  "wikiTitle": "Jammal'an the Prophet",
+  "npcIds": [
+   5710
+  ],
+  "abilityTitle": "Jammal'an the Prophet"
+ },
+ {
+  "map": 129,
+  "key": "tutenkash",
+  "wikiTitle": "Tuten'kash",
+  "npcIds": [
+   7355
+  ],
+  "abilityTitle": "Tuten'kash"
+ },
+ {
+  "map": 129,
+  "key": "plaguemaw the rotting",
+  "wikiTitle": "Plaguemaw the Rotting",
+  "npcIds": [
+   7356
+  ],
+  "abilityTitle": "Plaguemaw the Rotting"
+ },
+ {
+  "map": 129,
+  "key": "mordresh fire eye",
+  "wikiTitle": "Mordresh Fire Eye (Classic)",
+  "npcIds": [
+   7357
+  ],
+  "abilityTitle": "Mordresh Fire Eye (Classic)"
+ },
+ {
+  "map": 129,
+  "key": "ragglesnout",
+  "wikiTitle": "Ragglesnout",
+  "npcIds": [
+   7354
+  ],
+  "abilityTitle": "Ragglesnout"
+ },
+ {
+  "map": 129,
+  "key": "glutton",
+  "wikiTitle": "Glutton",
+  "npcIds": [
+   8567
+  ],
+  "abilityTitle": "Glutton"
+ },
+ {
+  "map": 129,
+  "key": "amnennar the coldbringer",
+  "wikiTitle": "Amnennar the Coldbringer (Classic)",
+  "npcIds": [
+   7358
+  ],
+  "abilityTitle": "Amnennar the Coldbringer (Classic)"
+ },
+ {
+  "map": 189,
+  "key": "interrogator vishas",
+  "wikiTitle": "Interrogator Vishas",
+  "npcIds": [
+   3983
+  ],
+  "abilityTitle": "Interrogator Vishas"
+ },
+ {
+  "map": 189,
+  "key": "bloodmage thalnos",
+  "wikiTitle": "Bloodmage Thalnos",
+  "npcIds": [
+   4543
+  ],
+  "abilityTitle": "Bloodmage Thalnos"
+ },
+ {
+  "map": 189,
+  "key": "houndmaster loksey",
+  "wikiTitle": "Houndmaster Loksey",
+  "npcIds": [
+   3974
+  ],
+  "abilityTitle": "Houndmaster Loksey (tactics)"
+ },
+ {
+  "map": 189,
+  "key": "arcanist doan",
+  "wikiTitle": "Arcanist Doan",
+  "npcIds": [
+   6487
+  ],
+  "abilityTitle": "Arcanist Doan"
+ },
+ {
+  "map": 189,
+  "key": "herod",
+  "wikiTitle": "Herod",
+  "npcIds": [
+   3975
+  ],
+  "abilityTitle": "Herod"
+ },
+ {
+  "map": 189,
+  "key": "high inquisitor fairbanks",
+  "wikiTitle": "High Inquisitor Fairbanks",
+  "npcIds": [
+   4542
+  ],
+  "abilityTitle": "High Inquisitor Fairbanks"
+ },
+ {
+  "map": 189,
+  "key": "high inquisitor whitemane",
+  "wikiTitle": "Sally Whitemane",
+  "npcIds": [
+   3977
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 209,
+  "key": "hydromancer velratha",
+  "wikiTitle": "Hydromancer Velratha",
+  "npcIds": [
+   7795
+  ],
+  "abilityTitle": "Hydromancer Velratha"
+ },
+ {
+  "map": 209,
+  "key": "gahzrilla",
+  "wikiTitle": "Gahz'rilla",
+  "npcIds": [
+   7273
+  ],
+  "abilityTitle": "Gahz'rilla"
+ },
+ {
+  "map": 209,
+  "key": "antusul",
+  "wikiTitle": "Antu'sul",
+  "npcIds": [
+   8127
+  ],
+  "abilityTitle": "Antu'sul"
+ },
+ {
+  "map": 209,
+  "key": "theka the martyr",
+  "wikiTitle": "Theka the Martyr",
+  "npcIds": [
+   7272
+  ],
+  "abilityTitle": "Theka the Martyr"
+ },
+ {
+  "map": 209,
+  "key": "witch doctor zumrah",
+  "wikiTitle": "Witch Doctor Zum'rah",
+  "npcIds": [
+   7271
+  ],
+  "abilityTitle": "Witch Doctor Zum'rah"
+ },
+ {
+  "map": 209,
+  "key": "nekrum gutchewer",
+  "wikiTitle": "Nekrum Gutchewer",
+  "npcIds": [
+   7796
+  ],
+  "abilityTitle": "Nekrum Gutchewer"
+ },
+ {
+  "map": 209,
+  "key": "shadowpriest sezzziz",
+  "wikiTitle": "Shadowpriest Sezz'ziz",
+  "npcIds": [
+   7275
+  ],
+  "abilityTitle": "Shadowpriest Sezz'ziz"
+ },
+ {
+  "map": 209,
+  "key": "chief ukorz sandscalp",
+  "wikiTitle": "Chief Ukorz Sandscalp",
+  "npcIds": [
+   7267
+  ],
+  "abilityTitle": "Chief Ukorz Sandscalp"
+ },
+ {
+  "map": 229,
+  "key": "highlord omokk",
+  "wikiTitle": "Highlord Omokk",
+  "npcIds": [
+   9196
+  ],
+  "abilityTitle": "Highlord Omokk"
+ },
+ {
+  "map": 229,
+  "key": "shadow hunter voshgajin",
+  "wikiTitle": "Shadow Hunter Vosh'gajin",
+  "npcIds": [
+   9236
+  ],
+  "abilityTitle": "Shadow Hunter Vosh'gajin"
+ },
+ {
+  "map": 229,
+  "key": "war master voone",
+  "wikiTitle": "War Master Voone",
+  "npcIds": [
+   9237
+  ],
+  "abilityTitle": "War Master Voone"
+ },
+ {
+  "map": 229,
+  "key": "mother smolderweb",
+  "wikiTitle": "Mother Smolderweb",
+  "npcIds": [
+   10596
+  ],
+  "abilityTitle": "Mother Smolderweb"
+ },
+ {
+  "map": 229,
+  "key": "urok doomhowl",
+  "wikiTitle": "Urok Doomhowl",
+  "npcIds": [
+   10584
+  ],
+  "abilityTitle": "Urok Doomhowl"
+ },
+ {
+  "map": 229,
+  "key": "quartermaster zigris",
+  "wikiTitle": "Quartermaster Zigris",
+  "npcIds": [
+   9736
+  ],
+  "abilityTitle": "Quartermaster Zigris"
+ },
+ {
+  "map": 229,
+  "key": "halycon",
+  "wikiTitle": "Halycon",
+  "npcIds": [
+   10220
+  ],
+  "abilityTitle": "Halycon"
+ },
+ {
+  "map": 229,
+  "key": "gizrul the slavener",
+  "wikiTitle": "Gizrul the Slavener",
+  "npcIds": [
+   10268
+  ],
+  "abilityTitle": "Gizrul the Slavener"
+ },
+ {
+  "map": 229,
+  "key": "overlord wyrmthalak",
+  "wikiTitle": "Overlord Wyrmthalak",
+  "npcIds": [
+   9568
+  ],
+  "abilityTitle": "Overlord Wyrmthalak"
+ },
+ {
+  "map": 229,
+  "key": "pyroguard emberseer",
+  "wikiTitle": "Pyroguard Emberseer",
+  "npcIds": [
+   9816
+  ],
+  "abilityTitle": "Pyroguard Emberseer"
+ },
+ {
+  "map": 229,
+  "key": "warchief rend blackhand",
+  "wikiTitle": "Dal'rend Blackhand",
+  "npcIds": [
+   10429
+  ],
+  "abilityTitle": "Rend Blackhand (tactics)"
+ },
+ {
+  "map": 229,
+  "key": "the beast",
+  "wikiTitle": "The Beast",
+  "npcIds": [
+   10430
+  ],
+  "abilityTitle": "The Beast"
+ },
+ {
+  "map": 229,
+  "key": "general drakkisath",
+  "wikiTitle": "General Drakkisath",
+  "npcIds": [
+   10363
+  ],
+  "abilityTitle": "General Drakkisath"
+ },
+ {
+  "map": 229,
+  "key": "lord valthalak",
+  "wikiTitle": "Lord Valthalak",
+  "npcIds": [
+   16042
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 249,
+  "key": "onyxia",
+  "wikiTitle": "Onyxia",
+  "npcIds": [
+   10184
+  ],
+  "abilityTitle": "Onyxia (Classic)"
+ },
+ {
+  "map": 230,
+  "key": "high interrogator gerstahn",
+  "wikiTitle": "High Interrogator Gerstahn",
+  "npcIds": [
+   9018
+  ],
+  "abilityTitle": "High Interrogator Gerstahn"
+ },
+ {
+  "map": 230,
+  "key": "lord roccor",
+  "wikiTitle": "Lord Roccor",
+  "npcIds": [
+   9025
+  ],
+  "abilityTitle": "Lord Roccor"
+ },
+ {
+  "map": 230,
+  "key": "houndmaster grebmar",
+  "wikiTitle": "Houndmaster Grebmar",
+  "npcIds": [
+   9319
+  ],
+  "abilityTitle": "Houndmaster Grebmar"
+ },
+ {
+  "map": 230,
+  "key": "ring of law",
+  "wikiTitle": "Ring of Law",
+  "npcIds": [
+   10096
+  ],
+  "abilityTitle": "Ring of Law"
+ },
+ {
+  "map": 230,
+  "key": "pyromancer loregrain",
+  "wikiTitle": "Pyromancer Loregrain",
+  "npcIds": [
+   9024
+  ],
+  "abilityTitle": "Pyromancer Loregrain"
+ },
+ {
+  "map": 230,
+  "key": "lord incendius",
+  "wikiTitle": "Lord Incendius",
+  "npcIds": [
+   9017
+  ],
+  "abilityTitle": "Lord Incendius"
+ },
+ {
+  "map": 230,
+  "key": "warder stilgiss",
+  "wikiTitle": "Warder Stilgiss",
+  "npcIds": [
+   9041
+  ],
+  "abilityTitle": "Warder Stilgiss"
+ },
+ {
+  "map": 230,
+  "key": "fineous darkvire",
+  "wikiTitle": "Fineous Darkvire",
+  "npcIds": [
+   9056
+  ],
+  "abilityTitle": "Fineous Darkvire"
+ },
+ {
+  "map": 230,
+  "key": "baelgar",
+  "wikiTitle": "Bael'Gar",
+  "npcIds": [
+   9016
+  ],
+  "abilityTitle": "Bael'Gar"
+ },
+ {
+  "map": 230,
+  "key": "general angerforge",
+  "wikiTitle": "General Angerforge",
+  "npcIds": [
+   9033
+  ],
+  "abilityTitle": "General Angerforge"
+ },
+ {
+  "map": 230,
+  "key": "golem lord argelmach",
+  "wikiTitle": "Golem Lord Argelmach",
+  "npcIds": [
+   8983
+  ],
+  "abilityTitle": "Golem Lord Argelmach"
+ },
+ {
+  "map": 230,
+  "key": "hurley blackbreath",
+  "wikiTitle": "Hurley Blackbreath",
+  "npcIds": [
+   9537
+  ],
+  "abilityTitle": "Hurley Blackbreath"
+ },
+ {
+  "map": 230,
+  "key": "phalanx",
+  "wikiTitle": "Phalanx (golem)",
+  "npcIds": [
+   9502
+  ],
+  "abilityTitle": "Phalanx (golem)"
+ },
+ {
+  "map": 230,
+  "key": "ambassador flamelash",
+  "wikiTitle": "Ambassador Flamelash",
+  "npcIds": [
+   9156
+  ],
+  "abilityTitle": "Ambassador Flamelash"
+ },
+ {
+  "map": 230,
+  "key": "the seven",
+  "wikiTitle": "The Seven",
+  "npcIds": [
+   9034,
+   9035,
+   9036,
+   9037,
+   9038,
+   9039,
+   9040
+  ],
+  "abilityTitle": "The Seven"
+ },
+ {
+  "map": 230,
+  "key": "magmus",
+  "wikiTitle": "Magmus",
+  "npcIds": [
+   9938
+  ],
+  "abilityTitle": "Magmus"
+ },
+ {
+  "map": 230,
+  "key": "princess moira bronzebeard",
+  "wikiTitle": "Moira Thaurissan",
+  "npcIds": [
+   8929
+  ],
+  "abilityTitle": "Princess Moira Bronzebeard (tactics)"
+ },
+ {
+  "map": 230,
+  "key": "emperor dagran thaurissan",
+  "wikiTitle": "Dagran Thaurissan",
+  "npcIds": [
+   9019
+  ],
+  "abilityTitle": "Dagran Thaurissan"
+ },
+ {
+  "map": 289,
+  "key": "kirtonos",
+  "wikiTitle": "Kirtonos the Herald",
+  "npcIds": [
+   10506
+  ],
+  "abilityTitle": "Kirtonos the Herald"
+ },
+ {
+  "map": 289,
+  "key": "jandice barov",
+  "wikiTitle": "Jandice Barov (Classic)",
+  "npcIds": [
+   10503
+  ],
+  "abilityTitle": "Jandice Barov (Classic)"
+ },
+ {
+  "map": 289,
+  "key": "rattlegore",
+  "wikiTitle": "Rattlegore (Classic)",
+  "npcIds": [
+   11622
+  ],
+  "abilityTitle": "Rattlegore (Classic)"
+ },
+ {
+  "map": 289,
+  "key": "marduk blackpool",
+  "wikiTitle": "Marduk Blackpool",
+  "npcIds": [
+   10433
+  ],
+  "abilityTitle": "Marduk Blackpool"
+ },
+ {
+  "map": 289,
+  "key": "vectus",
+  "wikiTitle": "Vectus",
+  "npcIds": [
+   10432
+  ],
+  "abilityTitle": "Vectus"
+ },
+ {
+  "map": 289,
+  "key": "kormok",
+  "wikiTitle": "Kormok",
+  "npcIds": [
+   16118
+  ],
+  "abilityTitle": "Kormok"
+ },
+ {
+  "map": 289,
+  "key": "ras frostwhisperer",
+  "wikiTitle": "Ras Frostwhisper",
+  "npcIds": [
+   10508
+  ],
+  "abilityTitle": "Ras Frostwhisper"
+ },
+ {
+  "map": 289,
+  "key": "instructor malicia",
+  "wikiTitle": "Instructor Malicia (Classic)",
+  "npcIds": [
+   10505
+  ],
+  "abilityTitle": "Instructor Malicia (Classic)"
+ },
+ {
+  "map": 289,
+  "key": "doctor theolen krastinov",
+  "wikiTitle": "Doctor Theolen Krastinov (Classic)",
+  "npcIds": [
+   11261
+  ],
+  "abilityTitle": "Doctor Theolen Krastinov (Classic)"
+ },
+ {
+  "map": 289,
+  "key": "lorekeeper polkelt",
+  "wikiTitle": "Lorekeeper Polkelt",
+  "npcIds": [
+   10901
+  ],
+  "abilityTitle": "Lorekeeper Polkelt"
+ },
+ {
+  "map": 289,
+  "key": "the ravenian",
+  "wikiTitle": "The Ravenian (Classic)",
+  "npcIds": [
+   10507
+  ],
+  "abilityTitle": "The Ravenian (Classic)"
+ },
+ {
+  "map": 289,
+  "key": "lord alexei barov",
+  "wikiTitle": "Lord Alexei Barov",
+  "npcIds": [
+   10504
+  ],
+  "abilityTitle": "Lord Alexei Barov"
+ },
+ {
+  "map": 289,
+  "key": "lady illucia barov",
+  "wikiTitle": "Lady Illucia Barov",
+  "npcIds": [
+   10502
+  ],
+  "abilityTitle": "Lady Illucia Barov"
+ },
+ {
+  "map": 289,
+  "key": "darkmaster gandling",
+  "wikiTitle": "Darkmaster Gandling (Classic)",
+  "npcIds": [
+   1853
+  ],
+  "abilityTitle": "Darkmaster Gandling (Classic)"
+ },
+ {
+  "map": 309,
+  "key": "high priestess jeklik",
+  "wikiTitle": "High Priestess Jeklik",
+  "npcIds": [
+   14517
+  ],
+  "abilityTitle": "High Priestess Jeklik (tactics)"
+ },
+ {
+  "map": 309,
+  "key": "high priest venoxis",
+  "wikiTitle": "High Priest Venoxis (Classic)",
+  "npcIds": [
+   14507
+  ],
+  "abilityTitle": "High Priest Venoxis (Classic)"
+ },
+ {
+  "map": 309,
+  "key": "high priestess marli",
+  "wikiTitle": "High Priestess Mar'li (Classic)",
+  "npcIds": [
+   14510
+  ],
+  "abilityTitle": "High Priestess Mar'li (Classic)"
+ },
+ {
+  "map": 309,
+  "key": "bloodlord mandokir",
+  "wikiTitle": "Bloodlord Mandokir (Classic)",
+  "npcIds": [
+   11382
+  ],
+  "abilityTitle": "Bloodlord Mandokir (Classic)"
+ },
+ {
+  "map": 309,
+  "key": "edge of madness",
+  "wikiTitle": "Edge of Madness",
+  "npcIds": [
+   15082,
+   15084,
+   15083,
+   15085
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 309,
+  "key": "high priest thekal",
+  "wikiTitle": "High Priest Thekal",
+  "npcIds": [
+   14509
+  ],
+  "abilityTitle": "High Priest Thekal"
+ },
+ {
+  "map": 309,
+  "key": "gahzranka",
+  "wikiTitle": "Gahz'ranka",
+  "npcIds": [
+   15114
+  ],
+  "abilityTitle": "Gahz'ranka"
+ },
+ {
+  "map": 309,
+  "key": "high priestess arlokk",
+  "wikiTitle": "High Priestess Arlokk",
+  "npcIds": [
+   14515
+  ],
+  "abilityTitle": "High Priestess Arlokk"
+ },
+ {
+  "map": 309,
+  "key": "jindo the hexxer",
+  "wikiTitle": "Jin'do the Hexxer",
+  "npcIds": [
+   11380
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 309,
+  "key": "hakkar",
+  "wikiTitle": "Hakkar the Soulflayer",
+  "npcIds": [
+   14834
+  ],
+  "abilityTitle": "Hakkar (tactics)"
+ },
+ {
+  "map": 329,
+  "key": "hearthsinger forresten",
+  "wikiTitle": "Hearthsinger Forresten",
+  "npcIds": [
+   10558
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "timmy the cruel",
+  "wikiTitle": "Timmy the Cruel",
+  "npcIds": [
+   10808
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "malor the zealous",
+  "wikiTitle": "Malor the Zealous",
+  "npcIds": [
+   11032
+  ],
+  "abilityTitle": "Malor the Zealous"
+ },
+ {
+  "map": 329,
+  "key": "cannon master willey",
+  "wikiTitle": "Cannon Master Willey",
+  "npcIds": [
+   10997
+  ],
+  "abilityTitle": "Cannon Master Willey"
+ },
+ {
+  "map": 329,
+  "key": "archivist galford",
+  "wikiTitle": "Archivist Galford",
+  "npcIds": [
+   10811
+  ],
+  "abilityTitle": "Archivist Galford"
+ },
+ {
+  "map": 329,
+  "key": "balnazzar",
+  "wikiTitle": "Balnazzar (Classic)",
+  "npcIds": [
+   10812,
+   10813
+  ],
+  "abilityTitle": "Balnazzar (Classic)"
+ },
+ {
+  "map": 329,
+  "key": "the unforgiven",
+  "wikiTitle": "The Unforgiven",
+  "npcIds": [
+   10516
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "baroness anastari",
+  "wikiTitle": "Baroness Anastari",
+  "npcIds": [
+   10436
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "nerubenkan",
+  "wikiTitle": "Nerub'enkan",
+  "npcIds": [
+   10437
+  ],
+  "abilityTitle": "Nerub'enkan"
+ },
+ {
+  "map": 329,
+  "key": "maleki the pallid",
+  "wikiTitle": "Maleki the Pallid",
+  "npcIds": [
+   10438
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "magistrate barthilas",
+  "wikiTitle": "Magistrate Barthilas",
+  "npcIds": [
+   10435
+  ],
+  "abilityTitle": "Magistrate Barthilas"
+ },
+ {
+  "map": 329,
+  "key": "ramstein the gorger",
+  "wikiTitle": "Ramstein the Gorger",
+  "npcIds": [
+   10439
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "baron rivendare",
+  "wikiTitle": "Baron Rivendare",
+  "npcIds": [
+   10440
+  ],
+  "abilityTitle": "Baron Rivendare (Classic)"
+ },
+ {
+  "map": 329,
+  "key": "black guard swordsmith",
+  "wikiTitle": "Black Guard Swordsmith",
+  "npcIds": [
+   11121
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "crimson hammersmith",
+  "wikiTitle": "Crimson Hammersmith",
+  "npcIds": [
+   11120
+  ],
+  "abilityTitle": "Crimson Hammersmith"
+ },
+ {
+  "map": 329,
+  "key": "ezra grimm",
+  "wikiTitle": "Ezra Grimm",
+  "npcIds": [
+   11058
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "postmaster malown",
+  "wikiTitle": "Postmaster Malown",
+  "npcIds": [
+   11143
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 329,
+  "key": "skul",
+  "wikiTitle": "Skul",
+  "npcIds": [
+   10393
+  ],
+  "abilityTitle": "Skul"
+ },
+ {
+  "map": 329,
+  "key": "stonespine",
+  "wikiTitle": "Stonespine",
+  "npcIds": [
+   10809
+  ],
+  "abilityTitle": "Stonespine"
+ },
+ {
+  "map": 349,
+  "key": "noxxion",
+  "wikiTitle": "Noxxion",
+  "npcIds": [
+   13282
+  ],
+  "abilityTitle": "Noxxion"
+ },
+ {
+  "map": 349,
+  "key": "razorlash",
+  "wikiTitle": "Razorlash",
+  "npcIds": [
+   12258
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 349,
+  "key": "tinkerer gizlock",
+  "wikiTitle": "Tinkerer Gizlock",
+  "npcIds": [
+   13601
+  ],
+  "abilityTitle": "Tinkerer Gizlock"
+ },
+ {
+  "map": 349,
+  "key": "lord vyletongue",
+  "wikiTitle": "Lord Vyletongue",
+  "npcIds": [
+   12236
+  ],
+  "abilityTitle": "Lord Vyletongue"
+ },
+ {
+  "map": 349,
+  "key": "celebras the cursed",
+  "wikiTitle": "Celebras",
+  "npcIds": [
+   12225,
+   13716
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 349,
+  "key": "landslide",
+  "wikiTitle": "Landslide (mountain giant)",
+  "npcIds": [
+   12203
+  ],
+  "abilityTitle": "Landslide (mountain giant)"
+ },
+ {
+  "map": 349,
+  "key": "rotgrip",
+  "wikiTitle": "Rotgrip",
+  "npcIds": [
+   13596
+  ],
+  "abilityTitle": "Rotgrip"
+ },
+ {
+  "map": 349,
+  "key": "princess theradras",
+  "wikiTitle": "Theradras",
+  "npcIds": [
+   12201
+  ],
+  "abilityTitle": "Princess Theradras (tactics)"
+ },
+ {
+  "map": 389,
+  "key": "oggleflint",
+  "wikiTitle": "Oggleflint",
+  "npcIds": [
+   11517
+  ],
+  "abilityTitle": "Oggleflint"
+ },
+ {
+  "map": 389,
+  "key": "taragaman the hungerer",
+  "wikiTitle": "Taragaman the Hungerer",
+  "npcIds": [
+   11520
+  ],
+  "abilityTitle": "Taragaman the Hungerer"
+ },
+ {
+  "map": 389,
+  "key": "jergosh the invoker",
+  "wikiTitle": "Jergosh the Invoker (Classic)",
+  "npcIds": [
+   11518
+  ],
+  "abilityTitle": "Jergosh the Invoker (Classic)"
+ },
+ {
+  "map": 389,
+  "key": "bazzalan",
+  "wikiTitle": "Bazzalan",
+  "npcIds": [
+   11519
+  ],
+  "abilityTitle": "Bazzalan"
+ },
+ {
+  "map": 409,
+  "key": "lucifron",
+  "wikiTitle": "Lucifron",
+  "npcIds": [
+   12118
+  ],
+  "abilityTitle": "Lucifron"
+ },
+ {
+  "map": 409,
+  "key": "magmadar",
+  "wikiTitle": "Magmadar",
+  "npcIds": [
+   11982
+  ],
+  "abilityTitle": "Magmadar"
+ },
+ {
+  "map": 409,
+  "key": "gehennas",
+  "wikiTitle": "Gehennas",
+  "npcIds": [
+   12259
+  ],
+  "abilityTitle": "Gehennas"
+ },
+ {
+  "map": 409,
+  "key": "garr",
+  "wikiTitle": "Garr",
+  "npcIds": [
+   12057
+  ],
+  "abilityTitle": "Garr"
+ },
+ {
+  "map": 409,
+  "key": "shazzrah",
+  "wikiTitle": "Shazzrah",
+  "npcIds": [
+   12264
+  ],
+  "abilityTitle": "Shazzrah"
+ },
+ {
+  "map": 409,
+  "key": "baron geddon",
+  "wikiTitle": "Baron Geddon",
+  "npcIds": [
+   12056
+  ],
+  "abilityTitle": "Baron Geddon"
+ },
+ {
+  "map": 409,
+  "key": "sulfuron harbinger",
+  "wikiTitle": "Sulfuron Harbinger",
+  "npcIds": [
+   12098
+  ],
+  "abilityTitle": "Sulfuron Harbinger"
+ },
+ {
+  "map": 409,
+  "key": "golemagg the incinerator",
+  "wikiTitle": "Golemagg the Incinerator",
+  "npcIds": [
+   11988
+  ],
+  "abilityTitle": "Golemagg the Incinerator"
+ },
+ {
+  "map": 409,
+  "key": "majordomo executus",
+  "wikiTitle": "Majordomo Executus",
+  "npcIds": [
+   12018
+  ],
+  "abilityTitle": "Majordomo Executus"
+ },
+ {
+  "map": 409,
+  "key": "ragnaros",
+  "wikiTitle": "Ragnaros",
+  "npcIds": [
+   11502
+  ],
+  "abilityTitle": "Ragnaros (tactics)"
+ },
+ {
+  "map": 469,
+  "key": "razorgore the untamed",
+  "wikiTitle": "Razorgore the Untamed",
+  "npcIds": [
+   12435
+  ],
+  "abilityTitle": "Razorgore the Untamed"
+ },
+ {
+  "map": 469,
+  "key": "vaelastrasz the corrupt",
+  "wikiTitle": "Vaelastrasz",
+  "npcIds": [
+   13020
+  ],
+  "abilityTitle": "Vaelastrasz the Corrupt"
+ },
+ {
+  "map": 469,
+  "key": "broodlord lashlayer",
+  "wikiTitle": "Broodlord Lashlayer",
+  "npcIds": [
+   12017
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 469,
+  "key": "firemaw",
+  "wikiTitle": "Firemaw",
+  "npcIds": [
+   11983
+  ],
+  "abilityTitle": "Firemaw"
+ },
+ {
+  "map": 469,
+  "key": "ebonroc",
+  "wikiTitle": "Ebonroc",
+  "npcIds": [
+   14601
+  ],
+  "abilityTitle": "Ebonroc"
+ },
+ {
+  "map": 469,
+  "key": "flamegor",
+  "wikiTitle": "Flamegor",
+  "npcIds": [
+   11981
+  ],
+  "abilityTitle": "Flamegor"
+ },
+ {
+  "map": 469,
+  "key": "chromaggus",
+  "wikiTitle": "Chromaggus",
+  "npcIds": [
+   14020
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 469,
+  "key": "nefarian",
+  "wikiTitle": "Nefarian",
+  "npcIds": [
+   11583
+  ],
+  "abilityTitle": "Nefarian (tactics)"
+ },
+ {
+  "map": 509,
+  "key": "kurinnaxx",
+  "wikiTitle": "Kurinnaxx",
+  "npcIds": [
+   15348
+  ],
+  "abilityTitle": "Kurinnaxx"
+ },
+ {
+  "map": 509,
+  "key": "general rajaxx",
+  "wikiTitle": "General Rajaxx",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 509,
+  "key": "moam",
+  "wikiTitle": "Moam",
+  "npcIds": [
+   15340
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 509,
+  "key": "buru the gorger",
+  "wikiTitle": "Buru the Gorger",
+  "npcIds": [
+   15370
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 509,
+  "key": "ayamiss the hunter",
+  "wikiTitle": "Ayamiss the Hunter",
+  "npcIds": [
+   15369
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 509,
+  "key": "ossirian the unscarred",
+  "wikiTitle": "Ossirian the Unscarred",
+  "npcIds": [
+   15339
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 429,
+  "key": "zevrim thornhoof",
+  "wikiTitle": "Zevrim Thornhoof",
+  "npcIds": [
+   11490
+  ],
+  "abilityTitle": "Zevrim Thornhoof"
+ },
+ {
+  "map": 429,
+  "key": "hydrospawn",
+  "wikiTitle": "Hydrospawn",
+  "npcIds": [
+   13280
+  ],
+  "abilityTitle": "Hydrospawn"
+ },
+ {
+  "map": 429,
+  "key": "lethtendris",
+  "wikiTitle": "Lethtendris",
+  "npcIds": [
+   14327
+  ],
+  "abilityTitle": "Lethtendris"
+ },
+ {
+  "map": 429,
+  "key": "pusillin",
+  "wikiTitle": "Pusillin",
+  "npcIds": [
+   14354
+  ],
+  "abilityTitle": "Pusillin"
+ },
+ {
+  "map": 429,
+  "key": "alzzin the wildshaper",
+  "wikiTitle": "Alzzin the Wildshaper",
+  "npcIds": [
+   11492
+  ],
+  "abilityTitle": "Alzzin the Wildshaper"
+ },
+ {
+  "map": 429,
+  "key": "tendris warpwood",
+  "wikiTitle": "Tendris Warpwood",
+  "npcIds": [
+   11489
+  ],
+  "abilityTitle": "Tendris Warpwood"
+ },
+ {
+  "map": 429,
+  "key": "illyanna ravenoak",
+  "wikiTitle": "Illyanna Ravenoak",
+  "npcIds": [
+   11488
+  ],
+  "abilityTitle": "Illyanna Ravenoak"
+ },
+ {
+  "map": 429,
+  "key": "magister kalendris",
+  "wikiTitle": "Magister Kalendris",
+  "npcIds": [
+   11487
+  ],
+  "abilityTitle": "Magister Kalendris"
+ },
+ {
+  "map": 429,
+  "key": "immolthar",
+  "wikiTitle": "Immol'thar",
+  "npcIds": [
+   11496
+  ],
+  "abilityTitle": "Immol'thar"
+ },
+ {
+  "map": 429,
+  "key": "prince tortheldrin",
+  "wikiTitle": "Prince Tortheldrin",
+  "npcIds": [
+   11486
+  ],
+  "abilityTitle": "Prince Tortheldrin"
+ },
+ {
+  "map": 429,
+  "key": "guard moldar",
+  "wikiTitle": "Guard Mol'dar",
+  "npcIds": [
+   14326
+  ],
+  "abilityTitle": "Guard Mol'dar"
+ },
+ {
+  "map": 429,
+  "key": "stomper kreeg",
+  "wikiTitle": "Stomper Kreeg",
+  "npcIds": [
+   14322
+  ],
+  "abilityTitle": "Stomper Kreeg"
+ },
+ {
+  "map": 429,
+  "key": "guard fengus",
+  "wikiTitle": "Guard Fengus",
+  "npcIds": [
+   14321
+  ],
+  "abilityTitle": "Guard Fengus"
+ },
+ {
+  "map": 429,
+  "key": "guard slipkik",
+  "wikiTitle": "Guard Slip'kik",
+  "npcIds": [
+   14323
+  ],
+  "abilityTitle": "Guard Slip'kik"
+ },
+ {
+  "map": 429,
+  "key": "captain kromcrush",
+  "wikiTitle": "Captain Kromcrush",
+  "npcIds": [
+   14325
+  ],
+  "abilityTitle": "Captain Kromcrush"
+ },
+ {
+  "map": 429,
+  "key": "chorush the observer",
+  "wikiTitle": "Cho'Rush the Observer",
+  "npcIds": [
+   14324
+  ],
+  "abilityTitle": "Cho'Rush the Observer"
+ },
+ {
+  "map": 429,
+  "key": "king gordok",
+  "wikiTitle": "King Gordok",
+  "npcIds": [
+   11501
+  ],
+  "abilityTitle": "King Gordok"
+ },
+ {
+  "map": 429,
+  "key": "lord helnurath",
+  "wikiTitle": "Lord Hel'nurath",
+  "npcIds": [
+   14506
+  ],
+  "abilityTitle": "Lord Hel'nurath (tactics)"
+ },
+ {
+  "map": 429,
+  "key": "tsuzee",
+  "wikiTitle": "Tsu'zee",
+  "npcIds": [
+   11467
+  ],
+  "abilityTitle": "Tsu'zee"
+ },
+ {
+  "map": 531,
+  "key": "the prophet skeram",
+  "wikiTitle": "The Prophet Skeram",
+  "npcIds": [
+   15263
+  ],
+  "abilityTitle": "The Prophet Skeram"
+ },
+ {
+  "map": 531,
+  "key": "silithid royalty",
+  "wikiTitle": "Silithid Royalty",
+  "npcIds": [
+   15511,
+   15543,
+   15544
+  ],
+  "abilityTitle": "Lord Kri"
+ },
+ {
+  "map": 531,
+  "key": "battleguard sartura",
+  "wikiTitle": "Battleguard Sartura",
+  "npcIds": [
+   15516
+  ],
+  "abilityTitle": "Battleguard Sartura"
+ },
+ {
+  "map": 531,
+  "key": "fankriss the unyielding",
+  "wikiTitle": "Fankriss the Unyielding",
+  "npcIds": [
+   15510
+  ],
+  "abilityTitle": "Fankriss the Unyielding"
+ },
+ {
+  "map": 531,
+  "key": "viscidus",
+  "wikiTitle": "Viscidus",
+  "npcIds": [
+   15299
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 531,
+  "key": "princess huhuran",
+  "wikiTitle": "Princess Huhuran",
+  "npcIds": [
+   15509
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 531,
+  "key": "twin emperors",
+  "wikiTitle": "Twin Emperors",
+  "npcIds": [
+   15276,
+   15275
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 531,
+  "key": "ouro",
+  "wikiTitle": "Ouro",
+  "npcIds": [
+   15517
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 531,
+  "key": "cthun",
+  "wikiTitle": "C'Thun",
+  "npcIds": [
+   15589,
+   15727
+  ],
+  "abilityTitle": "C'Thun (tactics)"
+ },
+ {
+  "map": 533,
+  "key": "anubrekhan",
+  "wikiTitle": "Anub'Rekhan",
+  "npcIds": [
+   15956
+  ],
+  "abilityTitle": "Anub'Rekhan (Classic)"
+ },
+ {
+  "map": 533,
+  "key": "grand widow faerlina",
+  "wikiTitle": "Grand Widow Faerlina",
+  "npcIds": [
+   15953
+  ],
+  "abilityTitle": "Grand Widow Faerlina (Classic)"
+ },
+ {
+  "map": 533,
+  "key": "maexxna",
+  "wikiTitle": "Maexxna",
+  "npcIds": [
+   15952
+  ],
+  "abilityTitle": "Maexxna"
+ },
+ {
+  "map": 533,
+  "key": "noth the plaguebringer",
+  "wikiTitle": "Noth the Plaguebringer (Classic)",
+  "npcIds": [
+   15954
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 533,
+  "key": "heigan the unclean",
+  "wikiTitle": "Heigan the Unclean",
+  "npcIds": [
+   15936
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 533,
+  "key": "loatheb",
+  "wikiTitle": "Loatheb",
+  "npcIds": [
+   16011
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 533,
+  "key": "instructor razuvious",
+  "wikiTitle": "Instructor Razuvious",
+  "npcIds": [
+   16061
+  ],
+  "abilityTitle": "Instructor Razuvious (Classic)"
+ },
+ {
+  "map": 533,
+  "key": "gothik the harvester",
+  "wikiTitle": "Gothik the Harvester",
+  "npcIds": [
+   16060
+  ],
+  "abilityTitle": "Gothik the Harvester (Classic)"
+ },
+ {
+  "map": 533,
+  "key": "the four horsemen",
+  "wikiTitle": "Four Horsemen",
+  "npcIds": [
+   16062,
+   16063,
+   16064,
+   16065
+  ],
+  "abilityTitle": "Four Horsemen (Classic)"
+ },
+ {
+  "map": 533,
+  "key": "patchwerk",
+  "wikiTitle": "Patchwerk",
+  "npcIds": [
+   16028
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 533,
+  "key": "grobbulus",
+  "wikiTitle": "Grobbulus",
+  "npcIds": [
+   15931
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 533,
+  "key": "gluth",
+  "wikiTitle": "Gluth",
+  "npcIds": [
+   15932
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 533,
+  "key": "thaddius",
+  "wikiTitle": "Thaddius",
+  "npcIds": [
+   15928
+  ],
+  "abilityTitle": "Thaddius (Classic)"
+ },
+ {
+  "map": 533,
+  "key": "sapphiron",
+  "wikiTitle": "Sapphiron",
+  "npcIds": [
+   15989
+  ],
+  "abilityTitle": "Sapphiron (Classic)"
+ },
+ {
+  "map": 533,
+  "key": "kelthuzad",
+  "wikiTitle": "Kel'Thuzad",
+  "npcIds": [
+   15990
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2784,
+  "key": "grimroot",
+  "wikiTitle": "Grimroot",
+  "npcIds": [
+   226923
+  ],
+  "abilityTitle": "Grimroot"
+ },
+ {
+  "map": 2784,
+  "key": "destructors wraith",
+  "wikiTitle": "The Destructor's Wraith",
+  "npcIds": [
+   228022
+  ],
+  "abilityTitle": "The Destructor's Wraith"
+ },
+ {
+  "map": 2784,
+  "key": "zilbagob",
+  "wikiTitle": "Zilbagob",
+  "npcIds": [],
+  "abilityTitle": "Zilbagob"
+ },
+ {
+  "map": 2784,
+  "key": "pyranis",
+  "wikiTitle": "Pyranis",
+  "npcIds": [
+   227140
+  ],
+  "abilityTitle": "Pyranis"
+ },
+ {
+  "map": 2784,
+  "key": "diathorus the seeker",
+  "wikiTitle": "Diathorus the Seeker (Season of Discovery)",
+  "npcIds": [
+   227019
+  ],
+  "noNameMatch": true,
+  "abilityTitle": "Diathorus the Seeker (Season of Discovery)"
+ },
+ {
+  "map": 2784,
+  "key": "hellscreams phantom",
+  "wikiTitle": "Hellscream's Phantom",
+  "npcIds": [
+   227028
+  ],
+  "abilityTitle": "Hellscream's Phantom"
+ },
+ {
+  "map": 2784,
+  "key": "azgaloth",
+  "wikiTitle": "Azgaloth",
+  "npcIds": [],
+  "abilityTitle": "Azgaloth"
+ },
+ {
+  "map": 2789,
+  "key": "lord kazzak",
+  "wikiTitle": "Kazzak",
+  "npcIds": [
+   230302,
+   12397
+  ],
+  "abilityTitle": "Lord Kazzak (tactics)"
+ },
+ {
+  "map": 2791,
+  "key": "azuregos",
+  "wikiTitle": "Azuregos",
+  "npcIds": [
+   6109
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2804,
+  "key": "prince thunderaan",
+  "wikiTitle": "Thunderaan",
+  "npcIds": [
+   231494
+  ],
+  "abilityTitle": "Prince Thunderaan (Season of Discovery)"
+ },
+ {
+  "map": 2832,
+  "key": "emeriss",
+  "wikiTitle": "Emeriss",
+  "npcIds": [
+   234880,
+   14889
+  ],
+  "abilityTitle": "Emeriss (Season of Discovery)"
+ },
+ {
+  "map": 2832,
+  "key": "lethon",
+  "wikiTitle": "Lethon",
+  "npcIds": [
+   235180,
+   14888
+  ],
+  "abilityTitle": "Lethon (Season of Discovery)"
+ },
+ {
+  "map": 2832,
+  "key": "taerar",
+  "wikiTitle": "Taerar",
+  "npcIds": [
+   235197,
+   14890
+  ],
+  "abilityTitle": "Taerar (Season of Discovery)"
+ },
+ {
+  "map": 2832,
+  "key": "ysondre",
+  "wikiTitle": "Ysondre",
+  "npcIds": [
+   235232,
+   14887
+  ],
+  "abilityTitle": "Ysondre (Season of Discovery)"
+ },
+ {
+  "map": 2856,
+  "key": "balnazzar",
+  "wikiTitle": "Balnazzar",
+  "npcIds": [
+   240811
+  ],
+  "noNameMatch": true,
+  "abilityTitle": null
+ },
+ {
+  "map": 2856,
+  "key": "beatrix",
+  "wikiTitle": "Beatrix",
+  "npcIds": [
+   240812
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2856,
+  "key": "beastmaster",
+  "wikiTitle": "Alexei the Beastlord",
+  "npcIds": [
+   240794
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2856,
+  "key": "solistrasza",
+  "wikiTitle": "Solistrasza",
+  "npcIds": [
+   238954,
+   243269
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2856,
+  "key": "mason",
+  "wikiTitle": "Mason the Echo",
+  "npcIds": [
+   241021
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2856,
+  "key": "reborn council",
+  "wikiTitle": "Reborn Council",
+  "npcIds": [
+   240810,
+   242828,
+   240809
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2856,
+  "key": "lillian voss",
+  "wikiTitle": "Lillian Voss (Season of Discovery)",
+  "npcIds": [
+   243021
+  ],
+  "abilityTitle": "Lillian Voss (Season of Discovery)"
+ },
+ {
+  "map": 2856,
+  "key": "caldoran",
+  "wikiTitle": "Baelin Caldoran",
+  "npcIds": [
+   241006,
+   241518,
+   241772
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2875,
+  "key": "harbinger of sin",
+  "wikiTitle": "Harbinger of Sin",
+  "npcIds": [
+   237964
+  ],
+  "abilityTitle": "Harbinger of Sin"
+ },
+ {
+  "map": 2875,
+  "key": "creeping malison",
+  "wikiTitle": "Creeping Malison",
+  "npcIds": [
+   238024
+  ],
+  "abilityTitle": "Creeping Malison"
+ },
+ {
+  "map": 2875,
+  "key": "dark rider",
+  "wikiTitle": "Dark Rider (Karazhan Crypts)",
+  "npcIds": [
+   238055,
+   238499
+  ],
+  "abilityTitle": "Dark Rider (Karazhan Crypts)"
+ },
+ {
+  "map": 2875,
+  "key": "kharon",
+  "wikiTitle": "Kharon",
+  "npcIds": [
+   237439,
+   237374
+  ],
+  "abilityTitle": "Kharon"
+ },
+ {
+  "map": 2875,
+  "key": "unkomon",
+  "wikiTitle": "Unk'omon",
+  "npcIds": [
+   238678
+  ],
+  "abilityTitle": "Unk'omon"
+ },
+ {
+  "map": 2875,
+  "key": "hans and greta",
+  "wikiTitle": "Opera of Malediction",
+  "npcIds": [],
+  "abilityTitle": "Opera of Malediction"
+ },
+ {
+  "map": 2875,
+  "key": "the ugly goblin",
+  "wikiTitle": "Opera of Malediction",
+  "npcIds": [],
+  "abilityTitle": "Opera of Malediction"
+ },
+ {
+  "map": 2875,
+  "key": "kaigy maryla",
+  "wikiTitle": "Kaigy Maryla",
+  "npcIds": [
+   238233,
+   256275
+  ],
+  "abilityTitle": "The Failed Apprentice"
+ },
+ {
+  "map": 2875,
+  "key": "sairuh maryla",
+  "wikiTitle": "The Failed Apprentice",
+  "npcIds": [
+   238213
+  ],
+  "abilityTitle": "The Failed Apprentice"
+ },
+ {
+  "map": 2875,
+  "key": "barian maryla",
+  "wikiTitle": "The Failed Apprentice",
+  "npcIds": [
+   238234
+  ],
+  "abilityTitle": "The Failed Apprentice"
+ },
+ {
+  "map": 2959,
+  "key": "arcane anomaly",
+  "wikiTitle": "City of Dalaran",
+  "npcIds": [],
+  "noNameMatch": true,
+  "abilityTitle": null
+ },
+ {
+  "map": 2959,
+  "key": "fel ancient",
+  "wikiTitle": null,
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2959,
+  "key": "mana devourer",
+  "wikiTitle": "City of Dalaran",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2959,
+  "key": "mana elemental",
+  "wikiTitle": "City of Dalaran",
+  "npcIds": [],
+  "noNameMatch": true,
+  "abilityTitle": null
+ },
+ {
+  "map": 2959,
+  "key": "unstable sentinel",
+  "wikiTitle": "City of Dalaran",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2959,
+  "key": "shade of the archmage",
+  "wikiTitle": "City of Dalaran",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2959,
+  "key": "lyn the ignored",
+  "wikiTitle": null,
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2959,
+  "key": "atrexis the grave knight",
+  "wikiTitle": "City of Dalaran",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2998,
+  "key": "saltspine",
+  "wikiTitle": null,
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2998,
+  "key": "shadetooth",
+  "wikiTitle": null,
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2998,
+  "key": "highland horror",
+  "wikiTitle": "Highland Horror",
+  "npcIds": [
+   260808
+  ],
+  "abilityTitle": "Highland Horror"
+ },
+ {
+  "map": 2998,
+  "key": "relic guardian",
+  "wikiTitle": "Excavation Site: Wetlands",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2999,
+  "key": "witherfang",
+  "wikiTitle": "The New Plague (Ruins of Lordaeron)",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2999,
+  "key": "the abandoned",
+  "wikiTitle": "Ruins of Lordaeron",
+  "npcIds": [
+   250631
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2999,
+  "key": "the butcher",
+  "wikiTitle": "Othmar Garithos",
+  "npcIds": [
+   250660
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 2999,
+  "key": "rathmael",
+  "wikiTitle": "The Wrath of Rath'mael",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2999,
+  "key": "lordaeron captain",
+  "wikiTitle": null,
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2999,
+  "key": "viktor the vile",
+  "wikiTitle": "Ruins of Lordaeron (instance)",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 2999,
+  "key": "bjork",
+  "wikiTitle": "Ruins of Lordaeron (instance)",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 3065,
+  "key": "faldrim anvilmar",
+  "wikiTitle": "Hall of Thanes (instance)",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 3065,
+  "key": "infurnus",
+  "wikiTitle": "Hall of Thanes (instance)",
+  "npcIds": [
+   261316
+  ],
+  "abilityTitle": null
+ },
+ {
+  "map": 3065,
+  "key": "plunder",
+  "wikiTitle": "Hall of Thanes (instance)",
+  "npcIds": [],
+  "abilityTitle": null
+ },
+ {
+  "map": 3065,
+  "key": "durgen dirgehammer",
+  "wikiTitle": "Hall of Thanes (instance)",
+  "npcIds": [],
+  "abilityTitle": null
+ }
+]

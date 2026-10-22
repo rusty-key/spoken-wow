@@ -36,7 +36,7 @@ cp "$REPO/dist/descriptions/$slug.md" "$staging/$folder/README.md"
 cp "$WORK/Data/Sounds.lua" "$staging/$folder/Data/Sounds.lua"
 rsync -a --exclude '.DS_Store' "$WORK/Sounds/" "$staging/$folder/Sounds/"
 sed -i.bak \
-  -e "s|^## Title:.*|## Title: $title|" \
+  -e "s~^## Title:.*~## Title: ${title/#Spoken/|cffb48cffSpoken|r}~" \
   -e "s|^## Version:.*|## Version: $version|" \
   -e "s|^## IconTexture:.*|## IconTexture: Interface\\\\AddOns\\\\$folder\\\\Textures\\\\AddonIcon.tga|" \
   "$staging/$folder/$folder.toc"

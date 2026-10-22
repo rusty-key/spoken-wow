@@ -270,8 +270,8 @@ Expect("opened on a dungeon, its entrance's zone and its line open", Shown(),
 Expect("...the dungeon's line chosen", RowFor("Razorfen Downs").selected, true)
 Expect("...its page with the dungeon's round portrait left of the title, the zone badge on it",
     page.headFace ~= nil and page.headFace.speaker.bullet == "zone" and page.shift > 0, true)
-Expect("...the dungeon's key, as the other tabs show it, not its zone's picture", page.headFace.speaker.icon,
-    [[Interface\Icons\INV_Misc_Key_03]])
+Expect("...the dungeon's own icon, as the other tabs show it, not its zone's picture", page.headFace.speaker.icon,
+    [[Interface\AddOns\Spoken\Textures\Dungeons\RazorfenDowns]])
 showAll = false
 Z:RefreshLoreWindow()
 Expect("...not discovered, its page says so, in The Barrens", page.sub.text.text .. "|" .. page.body.text.text,

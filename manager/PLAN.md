@@ -55,8 +55,7 @@ installs on Classic Era (`_classic_era_`) and Anniversary (`_anniversary_`). Tho
 flavor folder (Retail, Classic, PTRs, betas) is not listed; adding one by hand is refused with
 "Spoken runs on WoW: Forever, Classic Era and Anniversary. <folder> is not one of them.", and a
 saved game of such a flavor from an earlier run is dropped on load (nothing on disk is touched).
-The service keeps a cheap refusal as a second check. The 1.12, 2.4.3 and 3.3.5 clients have no Blizzard folders and
-are out of scope: they take Spoken Quests' own zips from Releases.
+The service keeps a cheap refusal as a second check.
 
 ## Community voice packs
 

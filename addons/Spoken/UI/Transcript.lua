@@ -132,7 +132,7 @@ end
 
 function Transcript:AudioElapsed()
     if self.startedAt and self.clip and SoundQueue:IsPlaying(self.clip) then
-        return GetTime() - self.startedAt - (self.clip.delay or 0)
+        return GetTime() - self.startedAt
     end
     return self.elapsed or 0
 end
@@ -259,7 +259,7 @@ end
 function Transcript:Started(clip)
     if not self.held and HeldFor(self, clip) then self.held = true end
     if self.held then self.heldStart = { clip = clip, at = GetTime() }; return end
-    self.elapsed, self.startedAt = -(clip.delay or 0), GetTime()
+    self.elapsed, self.startedAt = 0, GetTime()
     self:SetClip(clip)
     self.hasStarted = true
     -- CLIP_STARTED precedes installation of the queue's timer. AUDIO_CHANGED
@@ -280,9 +280,9 @@ function Transcript:Sync()
         self.elapsed, self.startedAt = 0, nil
         self:SetClip(current)
     elseif self.startedAt and not SoundQueue:IsPlaying(current) then
-        -- Pausing stops the sound. Keep its position, including any initial
-        -- delay. Resume starts the file over and fires CLIP_STARTED again.
-        self.elapsed = GetTime() - self.startedAt - (current and current.delay or 0)
+        -- Pausing stops the sound. Keep its position. Resume starts the file over and fires
+        -- CLIP_STARTED again.
+        self.elapsed = GetTime() - self.startedAt
         self.startedAt = nil
     end
     self:Update()

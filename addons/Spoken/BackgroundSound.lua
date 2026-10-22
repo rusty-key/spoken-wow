@@ -13,8 +13,7 @@ BackgroundSound = {}
 local CVAR = "Sound_EnableSoundWhenGameIsInBG"
 
 local function Read()
-    local ok, value = pcall(GetCVar, CVAR)
-    if ok then return value end
+    return GetCVar(CVAR)
 end
 
 local function On(value) return tonumber(value) == 1 end
@@ -25,9 +24,9 @@ local function Wanted()
     return audio and audio.KeepTalkingInBackground
 end
 
---- Not on the legacy clients, and only where the client has the setting.
+--- Only where the client has the setting.
 function BackgroundSound:IsAvailable()
-    return not Version.IsAnyLegacy and Wanted() ~= nil and Read() ~= nil
+    return Wanted() ~= nil and Read() ~= nil
 end
 
 -- The player's value from before Spoken turned the setting on, or nil while Spoken has not.
@@ -101,12 +100,11 @@ events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_LOGOUT")
 events:RegisterEvent("CVAR_UPDATE")
 events:SetScript("OnEvent", function(_, event, name)
-    event = event or _G.event
     if event == "PLAYER_LOGOUT" then
         if Addon.db then BackgroundSound:PutBack() end
     elseif event == "CVAR_UPDATE" then
         BackgroundSound:OnCVarUpdate(name)
-    elseif Addon.db and not Version.IsAnyLegacy then
+    elseif Addon.db then
         BackgroundSound:RestoreLeftover()
     end
 end)

@@ -4,6 +4,18 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The 1.12, 2.4.3 and 3.3.5 clients are no longer supported.** Spoken runs on WoW: Forever, Classic Era
+  and TBC Anniversary.
+  *([rusty-key](https://github.com/rusty-key))*
+- **More bosses in the Bosses tab show their face.** The bosses of the Ruins of Lordaeron, the Hall of Thanes,
+  the City of Dalaran and the Excavation Site: Wetlands, and two of the Marylas in the Karazhan Crypts, have their
+  portrait. Sneed, Grubbis, Darkmaster Gandling, Sapphiron and Dalaran's Arcane Anomaly show the right one, a boss
+  with no known face shows the question mark instead of an empty portrait, and targeting Balnazzar in Stratholme no
+  longer shows the Scarlet Enclave's story. Five bosses take the name the game gives them: The Baron, Magmatus,
+  Kirtonos the Herald, Ras Frostwhisper and C'Thun. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's story shows in the narrator when you target the boss.** It shows once per character, as words
+  with no voice. On the Bosses settings page, Show a Boss's Story picks targeting or killing it, and Forget
+  Stories Shown shows each again. *([Nucabe](https://github.com/Nucabe))*
 - **Found books, quests and areas are listed in gold in the Compendium**, as the groups above them are.
   They were white, close to the grey of what is not found yet. *([Nucabe](https://github.com/Nucabe))*
 - **Quest givers show their own face.** The quest portraits in the Compendium and the narrator's quest-giver
@@ -12,6 +24,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **The Compendium's Quests tab has the words of every quest the voice packs read.** 315 quests that were
   voiced but missing or listed without words now have their offer and hand-in text, Craftsman's Writs are
   filed under their profession, and quest text no longer names other players. *([Nucabe](https://github.com/Nucabe))*
+- **The Compendium's minimise arrow sits in the middle of its button.** It was drawn off to one side of the
+  frame the template gives it. *([Nucabe](https://github.com/Nucabe))*
+- **The AddOns list shows Spoken and each module's name in colour, with new icons.** Spoken, Quests,
+  Places, Readables, Contributions and Developer each have a new icon, the voice packs show Spoken in
+  colour too, and the minimap button shows the mark at its size, centred. *([Nucabe](https://github.com/Nucabe))*
 - **The Spoken Manager can send the lines Spoken collects for you.** Turn on Sharing in the
   manager, and the lines Spoken had no voice for go to the site after each logout or /reload,
   so you no longer upload the file yourself. Collected lines now also say which version of your
@@ -37,6 +54,17 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **A quest chain's page has the quest scroll, as a quest does, and the Classes, Professions, holiday and
   other group pages have icons of their own.** Each part of a quest's page is headed by who speaks it,
   over Description or Completion. *([Nucabe](https://github.com/Nucabe))*
+- **New module, Spoken NPCs, with a Bosses tab in Azeroth's Compendium.** It lists every boss of every
+  dungeon and raid, under the zones that have one, then the dungeons and their bosses. A boss is found when
+  its fight starts: one not found is greyed until you find it or turn on Unlock Unfound Bosses, and Found
+  Only hides it. Zones and dungeons count what is found. A boss's page names its dungeon and zone, shows
+  its face with a skull, and holds its story where one is written. *([Nucabe](https://github.com/Nucabe))*
+- **Show Boss Abilities, on the new Bosses settings page, puts each boss's spells under its story.** The spells
+  are cards with the spellbook's frame. It is on by default. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's page tells its story.** 272 bosses have one, written from the Adventure Guide and Warcraft Wiki
+  and kept to Classic. *([Nucabe](https://github.com/Nucabe))*
+- **Every dungeon and raid has its own icon in the Compendium, and so do the cities, Moonglade and the
+  battlegrounds.** *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.5.1 — 2026-10-19
 

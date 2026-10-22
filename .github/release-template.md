@@ -1,19 +1,12 @@
 ## Download
 
 ### Spoken Quests
-The zips carry Spoken too.
 
 | Client | GitHub Direct Link | Addon stores |
 | ----- | ------------------ | ---------- |
 | Forever and the other Blizzard clients | [GitHub ZIP Download]({{ github_zip_download_blizz }}) | [Curse]({{ curse_link_blizz }}) · [Wago]({{ wago_link_blizz }}) |
-| 1.12.1 (build 5875) | [GitHub ZIP Download]({{ github_zip_download_112 }}) | - |
-| 2.4.3 (build 8606) | [GitHub ZIP Download]({{ github_zip_download_243 }}) | - |
-| 3.3.5 (build 12340) | [GitHub ZIP Download]({{ github_zip_download_335 }}) | - |
 
-One zip serves every Blizzard client — it carries a `.toc` per flavor and the client picks.
-The three legacy clients read `Spoken_Quests.toc` and nothing else, so each has a zip
-of its own, carrying the vendored Ace3 that client needs. Only Forever gets new work; the
-legacy zips are kept as they are.
+One zip serves every client — it carries a `.toc` per flavor and the client picks.
 
 ### Sound packs
 The audio ships separately and does not change with the addon. Install the pack for your side
@@ -32,18 +25,6 @@ client marks it out of date.
 
 ## Instructions
 
-### Blizzard clients
 - Install the [**addon**]({{ curse_link_blizz }}) and the packs with your addon manager, or
   unzip them into `Interface/AddOns`.
 
-### 1.12.1 (build 5875)
-- Unzip the [**1.12 zip**]({{ github_zip_download_112 }}) and your packs into
-  `Interface/AddOns`.
-
-### 2.4.3 (build 8606)
-- Unzip the [**2.4.3 zip**]({{ github_zip_download_243 }}) and your packs into
-  `Interface/AddOns`.
-
-### 3.3.5 (build 12340)
-- Unzip the [**3.3.5 zip**]({{ github_zip_download_335 }}) and your packs into
-  `Interface/AddOns`.

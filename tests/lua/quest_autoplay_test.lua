@@ -1,9 +1,5 @@
 -- Turning autoplay off: opening a quest dialog, a greeting or gossip reads nothing by itself,
 -- and the Play button on the window is how the player starts it instead. Run with `make test-player`.
---
--- Both dispatch routes are covered, because the setting has to hold on each: the 10 Hz
--- watcher a Blizzard client reads quests through, and the direct events a legacy
--- client reads them through (VoiceOver.lua's directEvents says why the two differ).
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -33,7 +29,6 @@ local function Boot(client)
     local VO = stub.LoadQuests(QUESTS, SPOKEN)
     dofile(QUESTS .. "UI/DialogPlayButton.lua")
     VO.Addon:OnInitialize()
-    -- By id and by name: the 1.12 client has no GUID for the lookup to key on.
     local gossip = { ["We stand ready."] = "gossip-hash", ["Welcome, traveller."] = "greeting-hash" }
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = { ["101-accept"] = 1, ["101-complete"] = 1,
@@ -96,7 +91,7 @@ local function Close()
     _G.Spoken:StopAll()
 end
 
-for _, client in ipairs({ "16001", "1.12" }) do
+for _, client in ipairs({ "16001", "11509" }) do
     local VO, played = Boot(client)
     local button = VO.DialogPlayButton.button
 

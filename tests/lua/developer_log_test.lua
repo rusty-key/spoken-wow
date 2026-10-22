@@ -308,7 +308,7 @@ local page
 for _, entry in ipairs(env.Options.pages or {}) do
     if entry.name == Dev.L.OPT_DEVELOPER then page = entry end
 end
-Expect("...nested under Spoken's, last", page and page.order, 5)
+Expect("...nested under Spoken's, after the Bosses page", page and page.order, 6)
 local function Row(label)
     for _, item in ipairs(Dev.optionsPanel.layout.items) do
         if item.kind == "section" then

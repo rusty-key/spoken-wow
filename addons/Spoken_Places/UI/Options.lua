@@ -46,10 +46,6 @@ function SpokenZones:SetupOptions()
 		return
 	end
 
-	if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then
-		SpokenZones:Print("|cffffcc00Settings API missing; options panel unavailable (use /spp help)|r")
-		return
-	end
 	-- The words every module's page shares, kept in Spoken.
 	local W = Spoken:Words()
 

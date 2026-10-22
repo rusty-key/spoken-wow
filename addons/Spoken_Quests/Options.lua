@@ -101,9 +101,6 @@ local GeneralTab =
     }
 }
 
--- The 2.4.3/3.3.5 music-channel and HD-model settings are the Spoken player's now.
-local LegacyWrathTab = nil
-
 ---@type AceConfigOptionsTable
 local DataModulesTab =
 {
@@ -204,7 +201,6 @@ Options.table = {
     childGroups = "tab",
     args = {
         General = GeneralTab,
-        LegacyWrath = LegacyWrathTab,
         DataModules = DataModulesTab,
         Profiles = nil, -- Filled in Options:OnInitialize, order is implicitly 100
 
@@ -323,9 +319,8 @@ function Options:RunSelfTest()
                 return
             end
 
-            -- Through the player, the route every real line takes: on 2.4.3 and 3.3.5
-            -- that means the music channel, and a self-test that went another way would
-            -- answer a question nobody asked.
+            -- Through the player, the route every real line takes: a self-test that went
+            -- another way would answer a question nobody asked.
             local channel = Player.source and Player.source:GetChannel() or "unknown"
             if Player:Enqueue(soundData, true) then
                 Debug:Record("self-test-playing", format("Self-test queued on %s: %s", channel, soundData.filePath))
@@ -339,8 +334,7 @@ end
 --- What to paste into a bug report: the client, the sound settings, and what loaded.
 function Options:PrintDiagnostics()
             print(format("|cFF00CCFFSpoken Quests %s|r - client %s, interface %d",
-                AddonVersion, Version.Client or "unknown", Version.Interface or 0))
-            print("AddOn API: " .. (C_AddOns and "C_AddOns compatibility layer" or "legacy globals"))
+                AddonVersion, Version.Client, Version.Interface))
 
             local channel = Player.source and Player.source:GetChannel() or "unknown"
             print(format("Playback: channel=%s, paused=%s, queue=%d, player=%s", channel,
@@ -411,17 +405,12 @@ function Options:Initialize()
 
     -- Create options table
     Debug:Print("Registering options table...", "Options")
-    local AceConfig = LibStub("AceConfig-3.0")
-    if Addon.RegisterOptionsTable then
-        -- Embedded version for 1.12
-        AceConfig = Addon
-    end
     RunOptionalStep("AceConfig slash registration", function()
         -- A table, not a string: AceConfig registers each as a slash command for the same
         -- options table. The pre-rename "vo" is not among them: the addon answers to one
         -- name, and a command that still worked would keep the retired one alive in macros
         -- and in what players tell each other.
-        AceConfig:RegisterOptionsTable("SpokenQuests", self.table, { "spokenquests", "spq" })
+        LibStub("AceConfig-3.0"):RegisterOptionsTable("SpokenQuests", self.table, { "spokenquests", "spq" })
     end)
     RunOptionalStep("settings panel", function()
         -- One canvas panel of sections rather than a Blizzard category per group. The
@@ -466,7 +455,7 @@ end
 
 function Options:OpenConfigWindow()
     if not self.frame then
-        print("|cFFFF4040Spoken Quests: the legacy options window is unavailable on this client. " ..
+        print("|cFFFF4040Spoken Quests: the options window is unavailable on this client. " ..
             "Quest narration and slash commands remain active.|r")
         return
     end
