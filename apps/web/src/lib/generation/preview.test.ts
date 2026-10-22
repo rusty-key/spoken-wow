@@ -237,10 +237,10 @@ describe("renderPreview", () => {
   function elevenlabs() {
     const fetchImpl = vi.fn(
       async () =>
-        new Response(MP3, {
-          status: 200,
-          headers: { "content-type": "audio/mpeg", "character-cost": "17" },
-        }),
+        Response.json(
+          { audio_base64: MP3.toString("base64"), alignment: null },
+          { headers: { "character-cost": "17" } },
+        ),
     );
     return {
       calls: fetchImpl,

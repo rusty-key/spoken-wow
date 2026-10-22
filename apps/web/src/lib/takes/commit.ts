@@ -62,6 +62,8 @@ export type TakeFields = {
   leadIn?: boolean;
   leadInSec?: number | null;
   createdBy?: string | null;
+  /** One start per word the addon shows, in seconds (lib/generation/word-times.ts). */
+  wordTimes?: number[] | null;
 };
 
 export type Committed = {
@@ -156,9 +158,9 @@ async function insertLive(input: {
           "voice", "narratorVoice", "voiceId", "modelId", "seed", "outputFormat", "settings",
           "characters", "credits", "durationSec", "bytes", "spokenHash", "dictionaryId",
           "dictionaryVersion", "leadIn", "leadInSec", "createdBy", "archiveFile",
-          "provider", "costUsd")
+          "provider", "costUsd", "wordTimes")
        values ($1, $2, $3, $4, $5, true, 'generated', $6, $7, $8, $9, $10, $11, $12::jsonb,
-               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
       [
         source,
         lang,
@@ -187,6 +189,7 @@ async function insertLive(input: {
         input.archiveFile,
         fields.provider ?? "elevenlabs",
         fields.costUsd ?? null,
+        fields.wordTimes ?? null,
       ],
     );
     await recordActivity(

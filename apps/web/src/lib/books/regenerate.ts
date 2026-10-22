@@ -49,7 +49,7 @@ export async function regenerateBookLine(
 
   return regenerateNarrated(
     "books",
-    { lineId: page.id, file: page.file, spoken: page.spoken, hash: page.hash },
+    { lineId: page.id, file: page.file, spoken: page.spoken, shown: page.text, hash: page.hash },
     createdBy,
     { ...options, lang },
   );
