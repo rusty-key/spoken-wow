@@ -358,31 +358,25 @@ local function BuildChrome()
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -8)
 		end
 
-		local ok, mm = not IS_ERA and pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
+		local ok, mm = pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
 		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
 			minimizeFrame = mm
+			-- The same size as Close and on its top edge: the frame's own size and the buttons' anchors
+			-- are the template's, which left the arrow larger than Close and above the title bar.
 			mm:ClearAllPoints()
 			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
-				arrow:SetSize(eraButtonSize, eraButtonSize)
+				arrow:SetSize(buttonSize, buttonSize)
 				arrow:ClearAllPoints()
 				arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
 			end
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
 		else
-			if IS_ERA then
-				local made, button = pcall(CreateFrame, "Button", nil, window, "UIPanelCloseButtonNoScripts")
-				minimizeButton = made and button or CreateFrame("Button", nil, window)
-				minimizeButton:SetSize(eraButtonSize, eraButtonSize)
-				minimizeButton:SetPoint("RIGHT", close, "LEFT", 12, 0)
-				window.MinimizeButton = minimizeButton
-			else
-				minimizeButton = CreateFrame("Button", nil, window)
-				minimizeButton:SetSize(buttonSize, buttonSize)
-				minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
-			end
+			minimizeButton = CreateFrame("Button", nil, window)
+			minimizeButton:SetSize(buttonSize, buttonSize)
+			minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
 			minimizeButton:SetFrameLevel(close:GetFrameLevel())
 			minimizeButton:SetHighlightTexture(PANEL_HI)
 			minimizeButton:SetScript("OnClick", function() SetMinimized(not minimized) end)
