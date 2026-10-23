@@ -378,14 +378,12 @@ local function BuildChrome()
 		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
 			minimizeFrame = mm
 			mm:ClearAllPoints()
-			mm:SetSize(buttonSize, buttonSize)
 			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
 				arrow:SetSize(buttonSize, buttonSize)
 				arrow:ClearAllPoints()
 				arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
-				if not IS_ERA then FillButtonArt(arrow) end
 			end
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
