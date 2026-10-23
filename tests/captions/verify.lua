@@ -60,7 +60,7 @@ E.SoundUtils={WhyInaudible=function() end,IsMutedByPlayer=function() return fals
     MuteChannel=function() end,TestSound=function() return true end,
     PlaySound=function(_,clip) if clip.path=='missing' then return false end; clip.handle=1; return true end,
     StopSound=function(_,clip) clip.handle=nil end}
-E.StaticPortrait={Configure=function() return false end,Resolved=function() return false end}
+E.StaticPortrait={Configure=function() return false end,Release=function() end,Resolved=function() return false end}
 E.Portrait={Configure=function(_,frame) frame.active='mock-model' end}
 dofile(addons .. 'Spoken/UI/Actions.lua')
 dofile(addons .. 'Spoken/UI/Snap.lua')

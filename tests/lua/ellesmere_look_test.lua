@@ -26,9 +26,16 @@ local function Boot(look)
     eui.skin = { GetAccentColor = function() return 0.05, 0.82, 0.62 end,
         GetPanelColor = function() return 0.08, 0.08, 0.08, 0.92 end,
         GetFont = function() return [[Interface\AddOns\EllesmereUI\media\fonts\Expressway.ttf]], "" end }
-    for _, kind in ipairs({ "Shell", "Panel", "CloseButton", "Button", "Tab", "Inset", "EditBox", "Font", "White" }) do
+    for _, kind in ipairs({ "Shell", "Panel", "CloseButton", "Button", "WhiteButtonLabel", "Tab", "Inset", "EditBox", "Font", "White" }) do
         eui.skin[kind] = function(frame, opts)
-            table.insert(eui.calls, { kind = kind, frame = frame, opts = opts })
+            local call = { kind = kind, frame = frame, opts = opts }
+            -- EllesmereUI reads the keys it is told to keep when it is called, so what the frame has by
+            -- then is what it keeps.
+            if kind == "Button" and opts then
+                call.kept = {}
+                for _, key in ipairs(opts) do if frame[key] then table.insert(call.kept, key) end end
+            end
+            table.insert(eui.calls, call)
             if eui.fail then error("no backdrop") end
         end
     end
@@ -130,10 +137,28 @@ look:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "One", 
 env.Transcript:ApplyFont()
 Expect("...and its words, the player's Text Size kept", tostring(env.Transcript.face) .. " "
     .. tostring(env.Transcript.faceSize), EUI_FONT .. " " .. tostring(env.Addon:Profile("Transcript").FontSize or 16))
+-- The DialogueUI window keeps DialogueUI's look: its words in the font the skin gives them.
+env.Addon.previewStyle = "dialogueui"
+env.Transcript:ApplyFont()
+local dialogueUIFace = env.Transcript.face
+env.Addon.previewStyle = nil
+env.Transcript:ApplyFont()
+Expect("...but not on the DialogueUI window, whose words keep their own font",
+    tostring(dialogueUIFace ~= EUI_FONT) .. " " .. tostring(env.Transcript.face == EUI_FONT), "true true")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 Expect("...its Stop and Skip square EllesmereUI buttons, their glyphs kept",
     tostring(M.play.squared) .. " " .. tostring(M.skip.squared) .. " "
-    .. table.concat(Dressed(eui, "Button", M.skip).opts, ","), "true true glyph,bar")
+    .. table.concat(Dressed(eui, "Button", M.skip).kept, ","), "true true glyph,bar")
+-- Round buttons on the DialogueUI window stay round; the same button elsewhere squares.
+env.DialogueUIPlayer:Initialize()
+local onDialogueUI = env.Actions.RoundButton(env.DialogueUIPlayer.frame, 12)
+local elsewhere = env.Actions.RoundButton(UIParent, 12)
+Expect("...a round button on the DialogueUI window keeps its ring, one elsewhere squares",
+    tostring(onDialogueUI.squared) .. " " .. tostring(elsewhere.squared), "nil true")
+-- A Skip button built after the callback ran, as the windows' others are, squares with its bar kept.
+local later = env.Actions.SkipButton(UIParent)
+Expect("...and a Skip button made after login keeps its bar too",
+    table.concat(Dressed(eui, "Button", later).kept, ","), "glyph,bar")
 Expect("...its portrait flat: no gold ring, no art behind it, cut round in a 1 px edge",
     tostring(M.portrait.squared) .. " " .. M.ring:GetAlpha() .. " " .. M.portrait.background:GetAlpha() .. " "
     .. tostring(M.portrait.round) .. " " .. tostring(M.viewport.squareMask), "true 0 0 true false")
@@ -186,11 +211,17 @@ do
         return configure(self, viewport, clip, ...)
     end
     env.StaticPortrait.Configure = function(...) static = static + 1; return staticConfigure(...) end
+    -- The face of the speaker before is still on the portrait.
+    local before = P.frame.portrait:CreateTexture()
+    before:Show()
+    P.frame.portrait.active, P.frame.portrait.activeFrame = "static", before
     local speaker = env.Sources:Register("speaker", { title = "Speaker", addon = "Spoken_Quests", order = 8 })
     speaker:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Two", transcript = "Words.",
         portrait = { kind = "model", creatureID = 3188 } } }))
     P:Update()
     Expect("...a speaker with no captured face shown by the 3D model, not the book", static .. " " .. tostring(model > 0), "0 true")
+    Expect("...the face of the speaker before let go, not shown under it",
+        tostring(before:IsShown()) .. " " .. tostring(P.frame.portrait.active), "false model")
     env.Portrait.Configure, env.StaticPortrait.Configure = configure, staticConfigure
     env.SoundQueue:RemoveAllSoundsFromQueue()
 end
@@ -288,6 +319,11 @@ for _, call in ipairs(eui.calls) do
 end
 Expect("the contribution window takes the shell, without the title strip, and its two buttons EllesmereUI's",
     tostring(boxShell ~= nil) .. " " .. tostring(boxShell and boxShell.opts.noTopBar) .. " " .. buttons, "true true 2")
+local whites = 0
+for _, call in ipairs(eui.calls) do
+    if call.kind == "WhiteButtonLabel" and call.frame:GetParent() == box then whites = whites + 1 end
+end
+Expect("...their labels white, not the game's gold", whites, 2)
 
 -- Parchment or Dark does nothing on the shell, so the row goes.
 env.Addon:SetPlayerStyle("minimal")
@@ -332,6 +368,19 @@ Expect("a shell that fails is said in chat and the window carries on",
 Expect("...keeping Spoken's own backdrop, paper and ink: no window left with no background",
     tostring(env.MinimalPlayer.panel.spokenEllesmere) .. " " .. tostring(cleared) .. " " .. env.MinimalPlayer.paper:GetAlpha()
     .. " " .. tostring(env.MinimalPlayer.name.colour), "false false 1 " .. INK)
+do
+    -- Its own art kept, the panel keeps its place behind the portrait's middle too.
+    local left
+    local panel = env.MinimalPlayer.panel
+    local setPoint = panel.SetPoint
+    panel.SetPoint = function(self, point, rel, relPoint, x, ...)
+        if point == "TOPLEFT" then left = x end
+        return setPoint(self, point, rel, relPoint, x, ...)
+    end
+    env.MinimalPlayer:Layout()
+    panel.SetPoint = setPoint
+    Expect("...and starts behind the portrait's middle, not at the frame's edge", left, 44)
+end
 
 ---------------------------------------------------------------- EllesmereUI not loaded
 env, eui = Boot("absent")

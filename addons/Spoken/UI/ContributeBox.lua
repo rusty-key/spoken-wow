@@ -134,8 +134,10 @@ local function Build()
     Ellesmere:When(function(skin)
         skin.Shell(frame, { noTopBar = true })
         skin.CloseButton(close)
-        skin.Button(justThis)
-        skin.Button(gather)
+        for _, button in ipairs({ justThis, gather }) do
+            skin.Button(button)
+            skin.WhiteButtonLabel(button)
+        end
     end)
 
     return { frame = frame, editBox = editBox, address = address, title = title, hint = hint,

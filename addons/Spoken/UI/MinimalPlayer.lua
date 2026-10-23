@@ -408,9 +408,9 @@ function MinimalPlayer:Layout()
     self.panel:ClearAllPoints()
     -- The panel starts behind the portrait's centre and is centred on it vertically,
     -- so its left corners sit beneath the opaque disc and the text gets even margins.
-    -- In EllesmereUI's look the whole frame: its shell's edge, drawn above the portrait, ran down
-    -- the portrait's middle from the panel's left side.
-    self.panel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", (cfg.HidePortrait or Ellesmere:On()) and 0 or 44, -6)
+    -- In EllesmereUI's shell the whole frame: its edge, drawn above the portrait, would run down the
+    -- portrait's middle from the panel's left side.
+    self.panel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", (cfg.HidePortrait or self.panel.spokenEllesmere == true) and 0 or 44, -6)
     self.panel:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", 0, 10)
     self.resizer:SetShown(not Addon:IsFrameLocked())
     self.layingOut = false
@@ -459,14 +459,14 @@ function MinimalPlayer:RefreshConfig(original)
     -- EllesmereUI's panel in its look: the stock border stays faded.
     if not Ellesmere:On() then self.menu:SetBackdropBorderColor(edge[1], edge[2], edge[3], 1) end
     Ellesmere:Dress(self.panel)
-    -- Every refresh, not only the first: a style switch drew the stock border and paper again. Only
-    -- once the shell is on: a shell that failed leaves Spoken's own.
+    -- Every refresh: a style switch draws the stock border and paper again. Only once the shell is
+    -- on: a shell that failed leaves Spoken's own.
     if self.panel.spokenEllesmere == true then
         Ellesmere:Try(function()
             if self.panel.SetBackdrop then self.panel:SetBackdrop(nil) end
             self.paper:SetAlpha(0)
             -- The portrait over the shell's edge, which EllesmereUI draws 6 levels over the panel:
-            -- under it, the edge drew across the picture.
+            -- under it, the edge would draw across the picture.
             local level = self.panel:GetFrameLevel() + 7
             self.portrait:SetFrameLevel(level)
             self.portrait.viewport:SetFrameLevel(level + 1)

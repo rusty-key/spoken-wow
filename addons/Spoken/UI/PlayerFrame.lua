@@ -492,11 +492,13 @@ function PlayerFrame:Update()
     self.frame.container.name:SetText((header and header ~= "") and header or Label(head))
     Addon:ClipFont(self.frame.container.name, head)
 
-    -- In EllesmereUI's look the speaker's captured face where there is one, as the Small Window
-    -- draws it: a face can be cut round, a 3D model cannot. Without one, the 3D model as ever, not
-    -- the book StaticPortrait stands in with.
-    if not (Ellesmere:On() and StaticPortrait:Capture(head) and StaticPortrait:Configure(self.frame.portrait, head)) then
-        Portrait:Configure(self.frame.portrait, head)
+    -- In EllesmereUI's look the speaker's captured face where there is one: a face can be cut round,
+    -- a 3D model cannot. Without one, the 3D model as ever, not the book StaticPortrait stands in with.
+    local portrait = self.frame.portrait
+    if not (Ellesmere:On() and StaticPortrait:Capture(head) and StaticPortrait:Configure(portrait, head)) then
+        -- The face of the speaker before is let go: Portrait does not know it.
+        StaticPortrait:Release(portrait)
+        Portrait:Configure(portrait, head)
     end
     self:FitPortrait()
     self:ConfigureActions(head)
@@ -505,14 +507,13 @@ function PlayerFrame:Update()
     self:UpdateProgress()
 end
 
---- In EllesmereUI's look the portrait round whatever it shows, but a 3D model, which no mask cuts
---- (Face.Fit).
+--- In EllesmereUI's look the portrait round whatever it shows, but a 3D model, which no mask cuts.
 function PlayerFrame:FitPortrait()
     local portrait = self.frame and self.frame.portrait
     if not (portrait and portrait.box) then return end
     local round = portrait.active ~= "model"
     Ellesmere.Shape(portrait.box, portrait.disc, round)
-    -- A picture cut round as the captured face is (StaticPortrait:Mask).
+    -- A picture cut round as the captured face is.
     if round and portrait.active == "texture" and portrait.texture then StaticPortrait:Mask(portrait, portrait.texture) end
 end
 
