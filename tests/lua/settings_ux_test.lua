@@ -284,11 +284,24 @@ end
 
 ---------------------------------------------------------------- keys
 local bindings = assert(io.open(SPOKEN .. "Bindings.xml")):read("*a")
+-- The client titles a category with the string global it names, else with the name itself
+-- (GetBindingCategoryName in Blizzard_SettingsDefinitions_Frame/Keybindings.lua).
+local function CategoryTitle(cat)
+    local loc = _G[cat]
+    if type(loc) == "string" then return loc end
+    return cat
+end
 for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_COMPENDIUM" }) do
-    Expect(name .. " is a key binding", bindings:find('name="' .. name .. '"', 1, true) ~= nil, true)
+    local element
+    for tag in bindings:gmatch("<Binding%s[^>]*>") do
+        if tag:find('name="' .. name .. '"', 1, true) then element = tag end
+    end
+    -- A binding with no category is filed under Other, among every other addon's.
+    local category = element and element:match('category="([^"]*)"')
+    Expect(name .. " is a key binding in the key bindings' own section titled Spoken",
+        category and CategoryTitle(category), "Spoken")
     Expect("...named in the game's key bindings list", type(_G["BINDING_NAME_" .. name]), "string")
 end
-Expect("...under a Spoken heading", _G.BINDING_HEADER_SPOKEN, "Spoken")
 Expect("the keys section sets the Compendium's key too", Row(home, L.BIND_COMPENDIUM) ~= nil, true)
 
 ---------------------------------------------------------------- /sp in the settings' words

@@ -325,10 +325,12 @@ function SoundQueue:RemoveSource(source)
 end
 
 --- End the head and let the backlog run. A stopped queue plays again: skipping is asking for
---- the next line.
+--- the next line. With no line, or one that cannot be stopped, nothing changes.
 function SoundQueue:Skip()
+    local head = self:GetCurrentSound()
+    if not head or not self:CanBePaused() then return false end
     self:SetPaused(false)
-    return self:RemoveSoundFromQueue(self:GetCurrentSound())
+    return self:RemoveSoundFromQueue(head)
 end
 
 --------------------------------------------------------------------------------

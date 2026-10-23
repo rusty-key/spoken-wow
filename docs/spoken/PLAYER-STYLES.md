@@ -139,8 +139,9 @@ name over the line's title, the controls at the header's right, then Rows at Onc
 - **Theme**: Parchment, with dark words (the default), or Dark, with light words. In EllesmereUI's
   look the row is hidden: its window is dark whichever is chosen.
 - **Hide Portrait** leaves the face out.
-- Right-click opens a menu: Stop or Replay, Skip Line, Stop All, Open Azeroth's Compendium,
-  Settings, and the line's actions that name themselves.
+- Right-click on the face, the name, the title or the panel opens a menu: Stop or Replay, Skip
+  Line, Stop All, Open Azeroth's Compendium, Settings, and the line's actions that name themselves.
+  On the words, right-click skips the line and Shift-right-click opens the menu.
 - Dragged by the panel or the name; the game's own size grabber at the lower right, shown under
   the pointer while unlocked, sets its width. It fades in and out, and out and in again from one
   line to the next.
@@ -173,7 +174,8 @@ A parchment, or dark, panel in DialogueUI's proportions, showing only the line p
   paragraphs, and the progress line under them.
 
 There is no scrollbar: the words follow the **Auto-Scroll** mode, and the wheel scrolls them.
-Right-click opens the settings. Drag anywhere to move it; it then keeps its own saved place, apart
+Right-click opens the settings; on the words, right-click skips the line and Shift-right-click
+opens the settings. Drag anywhere to move it; it then keeps its own saved place, apart
 from the other windows'. Unmoved, or after Reset Positions, it rests at the screen's top left, out
 of the next dialog's way. Sizing it with Ctrl and the wheel is not a move: it keeps its top-left
 corner.

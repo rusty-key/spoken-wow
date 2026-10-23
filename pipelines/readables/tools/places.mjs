@@ -95,12 +95,14 @@ const EVENTS = new Map([
 // Readables nothing in the DB places, placed by hand where the wiki has them.
 const ZONES_BY_HAND = {
   124: [1434], // Green Hills of Stranglethorn: the cover of Hemet Nesingwary's book, whose pages are found in Stranglethorn Vale
+  11007: [1454], // Advisor Nazgrel's Instructions: Nazgrel hands it over in Grommash Hold, by gossip
 };
 // Types no title, icon or first page gives away, by book id: read off the words or the wiki.
 const TYPE_BY_HAND = {
   15: "letter", // William's Shipment: "Hello Morgan, ..."
   29: "note", // Crate of Horseshoes: "A note is attached to the crate."
   58: "tablet", 62: "tablet", 285: "tablet", 324: "tablet", // the Troll Legends, from stone tablets
+  358: "tablet", 359: "tablet", // The Lay and The Fall of Ameth'Aran, tablets in Darkshore's ruins
   73: "journal", // Book from Sven's Farm: Stalvan's diary
   153: "book", 161: "book", 169: "book", 177: "book", // Green Hills chapters, bound
   336: "letter", // Cloth Request: "To the Schneiders, ..."
@@ -113,6 +115,8 @@ const TYPE_BY_HAND = {
   2514: "note", // Brock's List: a list of students
   2807: "journal", // Decoded Tablet Transcription: a diary, "Day 1..."
   2838: "letter", // From the Desk of Lord Victor Nefarius: "To Whom It May Concern, ..."
+  10322: "note", // Bloody Note: three pages, which would make it a book
+  11007: "letter", // Advisor Nazgrel's Instructions: "Elf, As a guest of the Horde, ..."
   // The soldiers' letters from the Scourge invasion, and the reports the Keeper of the Rolls
   // mails back for them.
   2882: "letter", 2883: "letter", 2884: "letter",
@@ -245,8 +249,9 @@ async function spawnZones(spawnTable, ids) {
 }
 
 try {
-  // Standing in the world: text objects whose page is a readable's.
-  const texts = (await q("SELECT entry, name, Data0 AS page FROM gameobject_template WHERE type = 9"))
+  // Standing in the world: text objects, and goobers that open a page when used, whose page is a
+  // readable's.
+  const texts = (await q("SELECT entry, name, IF(type = 9, Data0, Data7) AS page FROM gameobject_template WHERE type = 9 OR (type = 10 AND Data7 > 0)"))
     .filter((r) => pageBook.has(Number(r.page)) && !NOT_PLACING.has(Number(r.entry)));
   const textZones = await spawnZones("gameobject", texts.map((r) => Number(r.entry)));
   for (const r of texts) {

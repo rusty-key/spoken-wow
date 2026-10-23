@@ -25,11 +25,12 @@
   --faint: #6f7178;
 
   /* Colour */
-  --blue: #0074e0;
-  --blue-hover: #1a86f0;
-  --blue-press: #0063c0;
-  --accent: #148eff;
-  --focus: #7cbcff;
+  --cta: #ebc166;
+  --cta-hover: #f7d27a;
+  --cta-press: #d9a93d;
+  --cta-ink: #16171d;
+  --accent: #f0c25a;
+  --focus: #fff1c4;
   --green: #5fcf4f;
   --yellow: #f5b335;
   --red: #f0605d;
@@ -126,7 +127,7 @@ code {
 }
 
 ::selection {
-  background: rgba(20, 142, 255, 0.35);
+  background: rgba(240, 194, 90, 0.35);
 }
 
 .sr-only {
@@ -525,8 +526,8 @@ svg.is-spinning {
 }
 
 .banner-info {
-  background: rgba(20, 142, 255, 0.14);
-  color: #8cc8ff;
+  background: rgba(240, 194, 90, 0.14);
+  color: var(--accent);
 }
 
 /* ---------- Main and its faded key art ---------- */
@@ -698,15 +699,16 @@ svg.is-spinning {
 }
 
 .btn-primary {
-  background: var(--blue);
+  background: var(--cta);
+  color: var(--cta-ink);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--blue-hover);
+  background: var(--cta-hover);
 }
 
 .btn-primary:active:not(:disabled) {
-  background: var(--blue-press);
+  background: var(--cta-press);
 }
 
 .btn-primary:disabled {
@@ -770,14 +772,15 @@ svg.is-spinning {
   width: 44px;
   height: 44px;
   padding: 0;
-  background: var(--blue);
-  border-left: 1px solid rgba(255, 255, 255, 0.28);
+  background: var(--cta);
+  color: var(--cta-ink);
+  border-left: 1px solid rgba(22, 23, 29, 0.28);
   border-radius: 0 var(--radius-s) var(--radius-s) 0;
 }
 
 .install-row .menu-button:hover,
 .install-row .menu-button[aria-expanded='true'] {
-  background: var(--blue-hover);
+  background: var(--cta-hover);
 }
 
 .btn-play:disabled + .menu .menu-button {
@@ -1070,7 +1073,7 @@ svg.is-spinning {
   top: 2px;
   width: 5px;
   height: 10px;
-  border: solid #fff;
+  border: solid var(--cta-ink);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(0);
   transition: transform 0.1s;
@@ -1283,8 +1286,8 @@ svg.is-spinning {
 }
 
 .badge-info {
-  background: rgba(20, 142, 255, 0.16);
-  color: #7cbcff;
+  background: rgba(240, 194, 90, 0.16);
+  color: var(--accent);
 }
 
 .badge-muted {
@@ -1676,13 +1679,13 @@ svg.is-spinning {
 .jobbar-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--blue);
+  background: var(--cta);
   transition: width 0.25s linear;
 }
 
 .jobbar-track.is-indeterminate .jobbar-fill {
   width: 100% !important;
-  background: linear-gradient(100deg, rgba(0, 116, 224, 0.4) 0 30%, var(--blue) 50%, rgba(0, 116, 224, 0.4) 70% 100%);
+  background: linear-gradient(100deg, rgba(235, 193, 102, 0.4) 0 30%, var(--cta) 50%, rgba(235, 193, 102, 0.4) 70% 100%);
   background-size: 220% 100%;
   animation: sweep 1.3s linear infinite;
 }

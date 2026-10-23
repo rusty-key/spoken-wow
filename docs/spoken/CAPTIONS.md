@@ -37,7 +37,9 @@ an in-game visual check.
 - Scroll over the captions in a window to read back or ahead; they hold there. Click the
   text to follow the recording again. With Ctrl held the wheel changes Window Size instead (Subtitle
   Size over the subtitles), and with Ctrl and Shift Word Size; with Lock Position on it does
-  neither. Right-click opens the Small Window's menu, or the settings over the other windows. With
+  neither. Right-click the text to skip the line whose words it shows, as Skip does; a right-drag
+  begun on it skips nothing. Shift-right-click opens the Small Window's menu, or the settings over
+  the other windows. With
   **Type Words Out** on, a row the voice has not reached yet shows blank until it does; turn
   the setting off to read ahead. The subtitles cannot be scrolled by hand.
 - `/sp transcript reset` restores the caption and subtitle defaults and
