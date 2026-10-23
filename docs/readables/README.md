@@ -330,7 +330,7 @@ Spoken's `Data/Dungeons.lua`). A continent's banner counts each readable once, s
 be less than the sum of its zones'.
 
 **What the list keeps.** The search box looks in names only: a search naming a place lists
-everything under it, a title lists itself under its place. The filter menu has Found Only and Voiced
+everything under it, a title lists itself under its place. The filter menu has Found Only (on by default) and Voiced
 Only, which leave out what has nothing found or voiced and take it from the counts, By Zone (the
 default) or By Type, and the window's Unlock Unfound Readables, which makes every one readable
 here. Without it a readable not found yet is greyed with a padlock, and its page says to open it in

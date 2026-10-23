@@ -151,6 +151,19 @@ Expect("...after Setup", tab ~= nil and tab.label, "Bosses")
 Expect("...a tab of its own after the readables'", tab.order, 3)
 Expect("...with Unlock Unfound Bosses, off", tab.unlock ~= nil and tab.unlock.get(), false)
 Expect("Show Boss Abilities is on by default", SpokenNPCsSettings.showAbilities, true)
+Expect("Found Only is on in a fresh profile", SpokenNPCsSettings.compendiumFoundOnly, true)
+Expect("Unlock Unfound Bosses is off in a fresh profile", SpokenNPCsSettings.unlockUnfound, false)
+SpokenNPCsSettings.compendiumFoundOnly = false
+NPCs:InitDB()
+Expect("...and an explicit off stays off through the next start", SpokenNPCsSettings.compendiumFoundOnly, false)
+-- A table an earlier version saved, with the off every start stored then.
+SpokenNPCsSettings.foundOnlyDefaultOn = nil
+NPCs:InitDB()
+Expect("...an off stored before it was on by default is turned on once", SpokenNPCsSettings.compendiumFoundOnly, true)
+SpokenNPCsSettings.compendiumFoundOnly = false
+NPCs:InitDB()
+Expect("...and turned off again, it stays off", SpokenNPCsSettings.compendiumFoundOnly, false)
+-- The tests below are about the unfiltered list, so Found Only stays off.
 
 local window
 local rows = {}
@@ -204,6 +217,17 @@ Expect("...with the zone's round portrait left of the title, the zone badge on i
 Expect("...a line with what is met out of all and the share, no picture or bar",
     RowFor("Westfall").row.style .. "|" .. RowFor("Westfall").count.text, "group|0/" .. westfall .. " • 0%")
 Expect("...the continent's banner counts them too", RowFor("Kalimdor").count.text:match("^0/%d+$") ~= nil, true)
+
+-- With Found Only on and no boss met there, the tab does not land on a line the list leaves out.
+SpokenNPCsSettings.compendiumFoundOnly = true
+NPCs:ShowBosses()
+Shown()
+Expect("with Found Only on and none met in Westfall, the tab does not land on its line",
+    RowFor("Westfall") == nil and page.title.text ~= "Westfall", true)
+SpokenNPCsSettings.compendiumFoundOnly = false
+NPCs:ShowBosses()
+Shown()
+Expect("...and off, it lands on Westfall again", RowFor("Westfall") ~= nil and RowFor("Westfall").selected, true)
 
 Click("Westfall")
 Expect("a click on an open zone's line closes it", Has(Shown(), "Deadmines"), false)

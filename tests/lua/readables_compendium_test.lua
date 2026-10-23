@@ -57,6 +57,16 @@ for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader",
     assert(loadfile(READABLES .. file .. ".lua"))("Spoken_Readables", B)
 end
 B:InitDB()
+Expect("Found Only is on in a fresh profile", SpokenReadablesSettings.compendiumFoundOnly, true)
+Expect("Unlock Unfound Readables is off in a fresh profile", SpokenReadablesSettings.unlockUnfound, false)
+SpokenReadablesSettings.compendiumFoundOnly = false
+B:InitDB()
+Expect("...and an explicit off stays off", SpokenReadablesSettings.compendiumFoundOnly, false)
+SpokenReadablesSettings.foundOnlyDefaultOn = nil
+B:InitDB()
+Expect("an off stored before it was on by default is turned on once", SpokenReadablesSettings.compendiumFoundOnly, true)
+SpokenReadablesSettings.compendiumFoundOnly = false
+-- The tests below are about the unfiltered list, so Found Only stays off.
 B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
@@ -216,7 +226,7 @@ do
     Reopen(1426)
     Expect("Found Only, where the player's zone holds nothing found, the tab lands on their continent's banner",
         panel.page.title.text .. " " .. tostring(RowFor("Dun Morogh") == nil), "Eastern Kingdoms true")
-    SpokenReadablesSettings.compendiumFoundOnly = nil
+    SpokenReadablesSettings.compendiumFoundOnly = false
     Reopen(9003)
 end
 -- Left open by the landing inside Hollow Vault: closed, so the list starts folded.

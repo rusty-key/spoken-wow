@@ -194,7 +194,7 @@ do
     defaults.scripts.OnClick(defaults)
     stub.popups[#stub.popups].dialog.OnAccept()
     local filters = VO.Addon.db.global.Compendium
-    Expect("Defaults turns Started Only and Voiced Only off and redraws an open Quests tab",
+    Expect("Defaults clears the choice of Started Only (unset reads as on) and Voiced Only and redraws an open Quests tab",
         tostring(filters.FoundOnly) .. "|" .. tostring(filters.VoicedOnly) .. "|" .. redrawn, "nil|nil|1")
     Expect("...leaving Unlock Unstarted Quests, which is Spoken's page's", filters.UnlockUnfound, true)
     VO.QuestsTab, VO.Addon.db.global.Compendium = nil, nil

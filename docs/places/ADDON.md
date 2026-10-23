@@ -43,7 +43,7 @@ default). Spoken's Language section holds Voice Language and If a Voice Is Missi
 Spoken Reads section holds Read in Battlegrounds. Under Spoken's Developer page are Places Debug
 Messages (`debug`) and Offer Unfinished Translations (`languagePreview`).
 
-Three settings have no row. `loreDiscoveredOnly` and `loreVoicedOnly` are the tab's filter menu,
+Three settings have no row. `loreDiscoveredOnly` (on by default) and `loreVoicedOnly` (off) are the tab's filter menu,
 `mapPanelCollapsed` is the panel's close button and side tab, and `audioPack` is `/spp audio`.
 
 ### Where they are saved

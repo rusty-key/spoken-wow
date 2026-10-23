@@ -118,7 +118,7 @@ local function Unlocked()
 end
 
 local function OnlyFound()
-    return Global().FoundOnly == true
+    return Global().FoundOnly ~= false
 end
 
 -- Voiced Only, after Started Only in the filter menu: the quests no installed voice pack has a part

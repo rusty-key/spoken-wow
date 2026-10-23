@@ -816,7 +816,7 @@ showAll = false
 -- Discovered Only, in the filter menu beside the search box, leaves the places not found out of it.
 local function Only() return stub.OpenDropdown(window.filterMenu)[1] end
 Expect("the filter menu holds Discovered Only, a checkbox", Only().text == Z.L.LORE_DISCOVERED_ONLY and Only().isNotRadio, true)
-Expect("...which starts off", Only().checked and true or false, false)
+Expect("...which is off here, the mock's settings having no default", Only().checked and true or false, false)
 Expect("...and nothing is left under the list", window.discoveredOnly, nil)
 -- A viewport shorter than the three lines left, so the list has somewhere to scroll.
 listBar.frame:SetHeight(60)

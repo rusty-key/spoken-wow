@@ -51,6 +51,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   both the progress and the reward lines, where before some or all of them were skipped. This holds
   while the addon leaves the quest's data in place for Spoken; a quest it clears first is not read.
   A quest you decline reads as it did. *([Nucabe](https://github.com/Nucabe))*
+- **The Compendium's Started Only, Discovered Only and Found Only start on**, so it lists what the
+  character has started, discovered or found. They are on once for everyone after this update, and
+  turning one off keeps it off. The Unlock switches (Unstarted Quests, Undiscovered Places, Unfound
+  Readables, Unfound Bosses) start off, as before. *([Nucabe](https://github.com/Nucabe))*
 - **Spoken's keys have their own Spoken category in Key Bindings**, instead of sitting under
   Other. *([Jayshua83](https://github.com/Jayshua83))* *([Nucabe](https://github.com/Nucabe))*
 - **A right-click on a window's words skips the line**, in the Small Window, the Large Window and the

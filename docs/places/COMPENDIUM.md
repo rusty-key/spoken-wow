@@ -49,7 +49,7 @@ Tirisfal Glades), which counts as one place with its own areas.
 - A search matches names only. It opens every zone with a match inside. A search that names a zone
   or a city lists all its areas, and one that names a banner lists its zones as the player
   left them.
-- The filter menu holds Discovered Only and Voiced Only. Voiced Only leaves out what no
+- The filter menu holds Discovered Only (on by default) and Voiced Only. Voiced Only leaves out what no
   installed voice pack reads and counts only what it lists. A zone stays while an area, dungeon or
   city in it has a voice.
 - A shift-click on an area or dungeon queues its story behind what is playing.
@@ -88,7 +88,7 @@ story.` under its name and line. `SpokenPlaces:IsLocked` decides, and `QueueLore
 place.
 
 Unlock Undiscovered Places (`showUndiscovered`) opens every area and tells every story. The counts
-and greyed zones still say what this character has found. Discovered Only leaves out zones with
+and greyed zones still say what this character has found. Discovered Only, on by default, leaves out zones with
 nothing found and areas not found.
 
 ## Areas listed in another zone

@@ -598,16 +598,17 @@ end
 local function OpenAround(zone) C.OpenAround(zone, continentOpen, bannerOpen) end
 
 -- Choose where the player stands: the line of the dungeon they are in, opened, else their zone's
--- if it has a dungeon, else their continent's banner.
+-- if it has a dungeon, else their continent's banner. Never a line Found Only leaves out: the tab
+-- would show a page for no row.
 local function LandOnPlayer()
 	local map, zone = PlayerDungeon()
-	if map then
+	if map and (not OnlyFound() or TallyOf(map, zone) > 0) then
 		selection = { mapID = zone, dungeon = map }
 		openZones[zone], dungeonOpen[zone .. ":" .. map] = true, true
 		OpenAround(zone)
 	else
 		local here = C.PlayerZone(function(candidate) return Index().zones[CITY_IN[candidate] or candidate] ~= nil end)
-		if here then
+		if here and (not OnlyFound() or Tally({ CITY_IN[here] or here }) > 0) then
 			zone = CITY_IN[here] or here
 			selection = { mapID = zone }
 			openZones[zone] = true

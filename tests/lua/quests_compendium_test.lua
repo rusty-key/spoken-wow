@@ -134,6 +134,16 @@ stub.world.playerMapID = 9999
 Tab:Open()
 local panel = Tab.panel
 local page = panel.page
+local function StartedOnlyTicked() return stub.OpenDropdown(panel.filterMenu)[1].checked and true or false end
+Expect("Started Only is on for a profile that never set it", StartedOnlyTicked(), true)
+Expect("Unlock Unstarted Quests is off for a profile that never set it", VO.Addon.db.global.Compendium.UnlockUnfound == true, false)
+VO.Addon.db.global.Compendium.FoundOnly = false
+Expect("...and an explicit off stays off", StartedOnlyTicked(), false)
+VO.Addon.db.global.Compendium.FoundOnly = nil
+Expect("...and a nil reads as on again", StartedOnlyTicked(), true)
+-- The rest is about the unfiltered list, quests not started included.
+VO.Addon.db.global.Compendium.FoundOnly = false
+Tab:Refresh()
 -- A page's words as one string: a quest's parts each under its heading, as one block reads.
 local function PageWords()
     local parts = page.body.lastParts

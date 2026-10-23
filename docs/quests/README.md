@@ -1631,7 +1631,7 @@ after where it is on its page; zone and group counts include it, and a page's co
 are in progress. The list follows the log while it is open (`QUEST_LOG_UPDATE`,
 `QUEST_ACCEPTED`, `QUEST_REMOVED`, drawn again once a burst is over and only when the log's
 quests changed). The rest are locked unless Unlock Unstarted Quests is on, which Spoken's page
-shows in its Compendium section. The filter menu holds Started Only and Voiced Only, which leaves
+shows in its Compendium section. The filter menu holds Started Only, on until it is turned off (`FoundOnly` unset reads as on; the setting is the account's), and Voiced Only, which leaves
 out the quests no voice pack has the offer or the hand-in of, with any line or banner left with nothing, and counts
 only what it lists. That switch and both filters are kept in
 `SpokenQuestsSettings.global.Compendium`.

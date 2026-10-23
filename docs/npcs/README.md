@@ -18,7 +18,7 @@ encounter in Forever is also found when the player targets it (`onTarget`, from 
 once the player can attack it (Ribbly and Plugger are townsfolk until a quest or a theft turns them).
 One not found is greyed with a padlock and its page says so, until Unlock Unfound Bosses is on (Spoken's page; `SpokenNPCsSettings`).
 Zones, dungeons and banners count bosses found out of all, with the share and the bar, as the other tabs
-do; Found Only leaves out what holds none found. A found boss's page names its dungeon and zone and
+do; Found Only, on by default, leaves out what holds none found. A found boss's page names its dungeon and zone and
 tells its story, or says it is not written yet; a boss with a creature in `Data/Creatures.lua` has its portrait at the left of its name, and under the
 story, in two columns, a card in the spellbook's way for each spell it casts, named and drawn by the client (a
 tooltip on each), while Show Boss Abilities is on (the Bosses settings page, `UI/Options.lua`; `SpokenNPCsSettings.showAbilities`, on by default).

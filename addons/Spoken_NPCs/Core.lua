@@ -11,7 +11,7 @@ NPCs.ICON = [[Interface\Icons\INV_Misc_Head_Dragon_01]]
 local defaults = {
 	-- Every boss openable, met or not (on Spoken's page); and the list leaving out those not met.
 	unlockUnfound = false,
-	compendiumFoundOnly = false,
+	compendiumFoundOnly = true,
 	-- A boss's spell cards under its story; off, the page has the story and portrait.
 	showAbilities = true,
 	-- When a boss's story shows in Spoken's narrator: "target" when the player targets it, "kill" when
@@ -25,6 +25,12 @@ function NPCs:InitDB()
 	SpokenNPCsSettings = SpokenNPCsSettings or {}
 	for key, value in pairs(defaults) do
 		if SpokenNPCsSettings[key] == nil then SpokenNPCsSettings[key] = value end
+	end
+	-- Found Only was off by default, and every start stored that off: turned on once. A choice made
+	-- after that is kept.
+	if not SpokenNPCsSettings.foundOnlyDefaultOn then
+		SpokenNPCsSettings.foundOnlyDefaultOn = true
+		SpokenNPCsSettings.compendiumFoundOnly = true
 	end
 	SpokenNPCsCharacter = SpokenNPCsCharacter or {}
 	SpokenNPCsCharacter.found = SpokenNPCsCharacter.found or {}
