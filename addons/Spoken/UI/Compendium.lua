@@ -2280,18 +2280,20 @@ end
 C.Ellesmere(function(skin)
 	if not skin.OnLooksChanged then return end
 	skin.OnLooksChanged(function()
-		local accent = { skin.GetAccentColor() }
-		EDGE_INK = { accent[1], accent[2], accent[3], 0.9 }
-		for _, list in ipairs(lists) do
-			for _, row in ipairs(list.rows) do
-				row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
+		SpokenEnv.Ellesmere:Try(function()
+			local accent = { skin.GetAccentColor() }
+			EDGE_INK = { accent[1], accent[2], accent[3], 0.9 }
+			for _, list in ipairs(lists) do
+				for _, row in ipairs(list.rows) do
+					if row.edge then row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4]) end
+				end
 			end
-		end
-		for _, page in ipairs(pages) do page.link = accent[1] and accent or LIGHT_TITLE end
-		flatTabs = { skin.GetPanelColor() }
-		for _, tab in ipairs(tabButtons or {}) do
-			if tab.flat then tab.flat.backing:SetColorTexture(flatTabs[1] or 0.08, flatTabs[2] or 0.08, flatTabs[3] or 0.08, 1) end
-		end
+			for _, page in ipairs(pages) do page.link = accent[1] and accent or LIGHT_TITLE end
+			flatTabs = { skin.GetPanelColor() }
+			for _, tab in ipairs(tabButtons or {}) do
+				if tab.flat then tab.flat.backing:SetColorTexture(flatTabs[1] or 0.08, flatTabs[2] or 0.08, flatTabs[3] or 0.08, 1) end
+			end
+		end)
 	end)
 end)
 
