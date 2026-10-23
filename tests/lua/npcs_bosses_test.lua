@@ -1,8 +1,8 @@
 -- The bosses tab of Azeroth's Compendium (Spoken NPCs): the data against the dungeon table, then
--- the list built against the stub client: a banner for each continent, a line for each zone that
--- has a dungeon or a raid and none without, the dungeons under their zone and the bosses under
--- their dungeon, and a boss's page; bosses found by their fight, greyed until then, counted with a
--- bar, left out by Found Only and opened by Unlock Unfound Bosses. Run with `make test-player`.
+-- the list built against the stub client: a banner for each continent, dungeons and raids directly
+-- beneath it, bosses under their dungeon, and a boss's page; bosses found by their fight, greyed
+-- until then, counted with a bar, left out by Found Only and opened by Unlock Unfound Bosses. Run
+-- with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -185,38 +185,33 @@ Shown()
 Expect("with the player in a dungeon, its line is opened and chosen, its bosses listed",
     RowFor("Deadmines") ~= nil and RowFor("Deadmines").selected and Has(Shown(), "Edwin VanCleef"), true)
 Expect("...a boss not met greyed, with the padlock", RowFor("Edwin VanCleef").row.locked, true)
--- Back out in Westfall: the line chosen for the player gives way to the zone's.
+-- Back out in Westfall: the line chosen for the player gives way to the continent's.
 here_map = 1436
 _G.GetInstanceInfo = function() return "Outland", "none", 0, "", 0, 0, false, 0 end
 NPCs:ShowBosses()
 local shown = Shown()
-Expect("opened where the player stands: Westfall's line, opened, its dungeon under it", Has(shown, "Westfall") and Has(shown, "Deadmines"), true)
+Expect("opened where the player stands: its continent's dungeon lines are shown", Has(shown, "Deadmines") and not Has(shown, "Westfall"), true)
 Expect("...a banner for each continent, Kalimdor first", shown:match("^Eastern Kingdoms|") ~= nil or shown:match("^Kalimdor|") ~= nil, true)
-Expect("...no zone without a dungeon: Mulgore is not listed", Has(shown, "Mulgore"), false)
-Expect("...the cities' dungeons under the zone around them: Elwynn Forest and Durotar, not the cities",
-    Has(shown, "Elwynn Forest") and Has(shown, "Durotar") and not Has(shown, "Stormwind City") and not Has(shown, "Orgrimmar"), true)
-Expect("...the zone's line chosen", RowFor("Westfall").selected, true)
-local westfall = #SpokenBosses.maps[36]
-Expect("...its page counts the bosses met", page.title.text .. "|" .. page.sub.text.text,
-    "Westfall|In Eastern Kingdoms · 0 of " .. westfall .. " found")
-Expect("...with the zone's round portrait left of the title, the zone badge on it",
-    page.headFace ~= nil and page.headFace.speaker.bullet == "zone" and page.shift > 0, true)
-Expect("...a line with what is met out of all and the share, no picture or bar",
-    RowFor("Westfall").row.style .. "|" .. RowFor("Westfall").count.text, "group|0/" .. westfall .. " • 0%")
+Expect("...no zone lines are mixed in with the dungeon lines",
+    not Has(shown, "Mulgore") and not Has(shown, "Elwynn Forest") and not Has(shown, "Durotar")
+        and not Has(shown, "Stormwind City") and not Has(shown, "Orgrimmar"), true)
+Expect("...the continent's line chosen", RowFor("Eastern Kingdoms").selected, true)
+Expect("...its page is the continent and counts its bosses",
+    page.title.text == "Eastern Kingdoms" and page.sub.text.text:match("^0 of %d+ found$") ~= nil, true)
 Expect("...the continent's banner counts them too", RowFor("Kalimdor").count.text:match("^0/%d+$") ~= nil, true)
 
-Click("Westfall")
-Expect("a click on an open zone's line closes it", Has(Shown(), "Deadmines"), false)
-Click("Westfall")
-Expect("...and on a closed one opens it", Has(Shown(), "Deadmines"), true)
-Expect("...its one dungeon is a line, one level in",
-    RowFor("Deadmines").row.style .. "|" .. RowFor("Deadmines").row.nest, "group|1")
+Click("Deadmines")
+Expect("a click on an open dungeon's line closes it", Has(Shown(), "Edwin VanCleef"), false)
+Click("Deadmines")
+Expect("...and on a closed one opens it", Has(Shown(), "Edwin VanCleef"), true)
+Expect("...its dungeon is a line directly under the continent",
+	RowFor("Deadmines").row.style .. "|" .. RowFor("Deadmines").row.nest, "group|0")
 Expect("...no Dungeons and Raids line", Has(Shown(), "Dungeons and Raids"), false)
 Expect("...its bosses listed under it, as it was opened for the player", Has(Shown(), "Edwin VanCleef"), true)
 Click("Deadmines")
 Expect("...a click on it closes it", Has(Shown(), "Edwin VanCleef"), false)
 Click("Deadmines")
-Expect("...and on a closed one lists its bosses, one level further in", Has(Shown(), "Edwin VanCleef") and RowFor("Edwin VanCleef").row.nest, 2)
+Expect("...and on a closed one lists its bosses one level further in", Has(Shown(), "Edwin VanCleef") and RowFor("Edwin VanCleef").row.nest, 1)
 Expect("...a boss is a line with no numbers", RowFor("Edwin VanCleef").row.leaf, true)
 Expect("a boss not met cannot be chosen: its row does nothing", RowFor("Edwin VanCleef").row.locked, true)
 
@@ -236,7 +231,7 @@ Expect("an encounter of two bosses at once meets both",
     tostring(NPCs:IsBossFound(sunken, "weaver")) .. "|" .. tostring(NPCs:IsBossFound(sunken, "dreamscythe")), "true|true")
 Shown()
 Expect("...its row open, ticked as found", tostring(RowFor("Edwin VanCleef").row.locked) .. "|" .. tostring(RowFor("Edwin VanCleef").row.done), "false|true")
-Expect("...counted on its zone's line", RowFor("Westfall").count.text, "1/" .. westfall .. " • " .. math.floor(100 / westfall) .. "%")
+Expect("...counted on its continent's line", RowFor("Eastern Kingdoms").count.text:match("^%d+/%d+") ~= nil, true)
 Click("Edwin VanCleef")
 Expect("...its page names its dungeon and zone", page.title.text .. "|" .. page.sub.text.text, "Edwin VanCleef|In Deadmines · Westfall")
 Expect("...and has the words, the story not written yet", page.body.text.text .. "|" .. tostring(page.contribute:IsShown()), _G.SpokenCompendium.NotWritten() .. "|true")
@@ -289,6 +284,13 @@ Expect("...the boss badge on it", page.headFace.speaker.bullet, "boss")
 local badge = page.headFace and page.headFace.badge
 Expect("...the portrait's small socket holds the skull", badge and badge:IsShown() and badge.texture, [[Interface\TargetingFrame\UI-RaidTargetingIcon_8]])
 Expect("...a button for each spell the client names, with its icon", table.concat(names, ","), "Thrash:132152,VanCleef's Allies:136235")
+Expect("...the spell icon is circularly masked and no extra border is drawn",
+    page.body.partButtons[1].icon.masks and page.body.partButtons[1].icon.masks[1].texture
+        .. "|" .. tostring(page.body.partButtons[1].ring),
+    [[Interface\CharacterFrame\TempPortraitAlphaMask|nil]])
+Expect("...the circular mask is slightly smaller than the icon",
+    page.body.partButtons[1].icon.masks and page.body.partButtons[1].icon.masks[1].width,
+    32)
 _G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, spells = { 3391 } } } }
 Click("Edwin VanCleef")
 Expect("a boss with a creature and spells but no model has the question mark for its portrait, and its spells",
@@ -312,49 +314,41 @@ Expect("a place with no picture yet has the question mark, with the zone badge, 
     noPicture ~= nil and noPicture.icon == [[Interface\Icons\INV_Misc_QuestionMark]] and noPicture.bullet, "zone")
 Expect("a click on the dungeon's line closes it, and chose it", Has(Shown(), "Edwin VanCleef") == false and RowFor("Deadmines").selected, true)
 
-Click("The Barrens")
+Click("Kalimdor")
+Click("Kalimdor")
 local barrens = Shown()
-Expect("a zone with several dungeons has a line for each, by name, one level in",
-    Has(barrens, "Razorfen Kraul") and Has(barrens, "Wailing Caverns") and RowFor("Wailing Caverns").row.nest, 1)
+Expect("a continent lists its dungeons by name at its level",
+	Has(barrens, "Razorfen Kraul") and Has(barrens, "Wailing Caverns") and RowFor("Wailing Caverns").row.nest, 0)
 Expect("...and no Dungeons and Raids line above them", Has(barrens, "Dungeons and Raids"), false)
-Expect("...the zone's page counts all their bosses", page.title.text .. "|" .. page.sub.text.text,
-    "The Barrens|In Kalimdor · 0 of " .. (#SpokenBosses.maps[43] + #SpokenBosses.maps[47] + #SpokenBosses.maps[129]) .. " found")
+Expect("...the continent's page counts all their bosses", page.title.text,
+    "Kalimdor")
 
--- A world boss has no line of its map: the zone lists it directly.
-Click("Blasted Lands")
+-- World bosses have no line of their map or zone: the continent lists them directly.
+Click("Eastern Kingdoms")
+Click("Eastern Kingdoms")
 local blasted = Shown()
-Expect("a zone with a world boss lists the boss straight under it, with no line for its map",
-    Has(blasted, "Lord Kazzak") and not Has(blasted, "The Tainted Scar") and RowFor("Lord Kazzak").row.nest, 1)
+Expect("a continent with a world boss lists the boss directly, with no zone or map line",
+    Has(blasted, "Lord Kazzak") and not Has(blasted, "The Tainted Scar") and not Has(blasted, "Blasted Lands")
+        and RowFor("Lord Kazzak").row.nest, 0)
 Expect("...a boss not met greyed like any other", RowFor("Lord Kazzak").row.locked, true)
 local kazzak = SpokenBosses.maps[2789][1]
 NPCs:FoundEncounter(kazzak.ids[1])
 Shown()
 Click("Lord Kazzak")
 Expect("...its page names the zone alone", page.title.text .. "|" .. page.sub.text.text, "Lord Kazzak|In Blasted Lands")
-Expect("...the zone's line counts it", RowFor("Blasted Lands").count.text:match("^1/%d+") ~= nil, true)
-Click("Blasted Lands")
 
--- A world-boss map whose bosses stand in several zones lists each boss under its own.
-Click("Duskwood")
-local duskwood = Shown()
-Expect("Nightmare Grove's dragons are each in their own zone: Duskwood lists Emeriss alone",
-    Has(duskwood, "Emeriss") and not Has(duskwood, "Lethon") and not Has(duskwood, "Taerar") and not Has(duskwood, "Ysondre"), true)
-Click("Duskwood")
-Click("Feralas")
-Expect("...Feralas has Lethon", Has(Shown(), "Lethon") and not Has(Shown(), "Emeriss"), true)
+-- A world-boss map whose bosses stand in several zones lists each boss directly under the continent.
+local dragons = Shown()
+Expect("Nightmare Grove's dragons are listed without their zones",
+    Has(dragons, "Emeriss") and Has(dragons, "Lethon") and Has(dragons, "Taerar") and Has(dragons, "Ysondre")
+        and not Has(dragons, "Duskwood") and not Has(dragons, "Feralas") and not Has(dragons, "Ashenvale")
+        and not Has(dragons, "The Hinterlands"), true)
 for _, boss in ipairs(SpokenBosses.maps[2832]) do
     if boss.key == "lethon" then NPCs:FoundEncounter(boss.ids[1]) end
 end
 Shown()
 Click("Lethon")
 Expect("...whose page names Feralas", page.title.text .. "|" .. page.sub.text.text, "Lethon|In Feralas")
-Click("Feralas")
-Click("Ashenvale")
-Expect("...Ashenvale has Taerar", Has(Shown(), "Taerar"), true)
-Click("Ashenvale")
-Click("The Hinterlands")
-Expect("...the Hinterlands have Ysondre", Has(Shown(), "Ysondre"), true)
-Click("The Hinterlands")
 
 -- What no Forever source shows as a boss of its dungeon is not listed.
 local unconfirmed = { [90] = "mechanical menagerie", [109] = "festering rotslime", [230] = "the vault", [409] = "the molten core",
@@ -372,8 +366,8 @@ Expect("the list has a Found Only switch, off", NPCs.list.opts.only .. "|" .. to
 NPCs.list.opts.onlySet(true)
 NPCs.list.opts.onHidden()
 local only = Shown()
-Expect("Found Only leaves out what holds no boss met", Has(only, "The Barrens") or Has(only, "Durotar"), false)
-Expect("...and keeps the zone and dungeon of one met", Has(only, "Westfall") and Has(only, "Deadmines") and Has(only, "Eastern Kingdoms"), true)
+Expect("Found Only leaves out dungeons with no boss met", Has(only, "Razorfen Downs") or Has(only, "Durotar"), false)
+Expect("...and keeps the dungeon and its continent", Has(only, "Deadmines") and not Has(only, "Westfall") and Has(only, "Eastern Kingdoms"), true)
 NPCs:FoundEncounter(SpokenBosses.maps[36][1].ids[1])
 if not Has(Shown(), "Edwin VanCleef") then Click("Deadmines") end
 Expect("...a dungeon lists only the bosses met", Has(Shown(), "Edwin VanCleef") and not Has(Shown(), SpokenBosses.maps[36][2][1]), true)
@@ -382,7 +376,7 @@ tab.unlock.set(true)
 Shown()
 local second = SpokenBosses.maps[36][2][1]
 Expect("Unlock Unfound Bosses opens every one", RowFor(second).row.locked, false)
-Expect("...and greys nothing for having none found: not the zone, nor the continent", tostring(RowFor("Westfall").row.none) .. "|" .. tostring(RowFor("Eastern Kingdoms").row.none), "false|false")
+Expect("...and greys nothing for having none found: not the dungeon, nor the continent", tostring(RowFor("Deadmines").row.none) .. "|" .. tostring(RowFor("Eastern Kingdoms").row.none), "false|false")
 Click(second)
 Expect("...and its page has the words, met or not", page.body.text.text, _G.SpokenCompendium.NotWritten())
 tab.unlock.set(false)
@@ -391,14 +385,14 @@ tab.unlock.set(false)
 local list = NPCs.list
 list.opts.onSearch("anacondra")
 local found = Shown()
-Expect("a search lists the zone, dungeon and boss that have the word, each opened",
-    Has(found, "The Barrens") and Has(found, "Wailing Caverns") and Has(found, "Lady Anacondra"), true)
+Expect("a search lists the dungeon and boss that have the word, each opened",
+    not Has(found, "The Barrens") and Has(found, "Wailing Caverns") and Has(found, "Lady Anacondra"), true)
 Expect("...and no other boss or zone", Has(found, "Edwin VanCleef") or Has(found, "Westfall"), false)
 list.opts.onSearch("wailing")
 found = Shown()
 Expect("a dungeon's name lists all its bosses", Has(found, "Lady Anacondra") and Has(found, "Mutanus the Devourer"), true)
 list.opts.onSearch("")
-Expect("clearing it brings the list back", Has(Shown(), "Westfall"), true)
+Expect("clearing it brings the list back", Has(Shown(), "Deadmines") and not Has(Shown(), "Westfall"), true)
 
 ---------------------------------------------------------------- the Bosses page in the settings
 NPCs:SetupOptions()

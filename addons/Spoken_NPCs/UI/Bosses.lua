@@ -2,19 +2,20 @@
 -- dungeon and raid, with the instance it is in and its story.
 --
 -- The list is laid out as the places' (Spoken Places' tab): a banner for each continent, a line for
--- each of its zones that has a dungeon or a raid (a zone with none is not listed, and no area is),
--- in an opened zone the line of each dungeon or raid whose entrance is there, and in an opened
--- dungeon its bosses; a world boss (Lord Kazzak) is listed straight under its zone, with no line of its own. After the continents, Other Lands' banner for the zones on none. Which bosses
--- a dungeon has comes from Data/Bosses.lua, and their stories from Data/Stories.lua, where there is
--- one. A boss not met yet is listed greyed, with a padlock, and its page says so, until Unlock
--- Unfound Bosses (Spoken's page) is on; Found Only leaves out what holds none met. A search lists
--- the bosses, dungeons and zones whose name has the words, each opened.
+-- each of its dungeons or raids, and in an opened dungeon its bosses. World bosses have no line of
+-- their own and are listed straight under their continent. After the continents, Other Lands' banner
+-- lists the dungeons on none. Which bosses a dungeon has comes from Data/Bosses.lua, and their
+-- stories from Data/Stories.lua, where there is one. A boss not met yet is listed greyed, with a
+-- padlock, and its page says so, until Unlock Unfound Bosses (Spoken's page) is on; Found Only
+-- leaves out what holds none met. A search lists the bosses and dungeons whose name has the words,
+-- each opened.
 
 local _, NPCs = ...
 
 local L = NPCs.L
 
 local C = SpokenCompendium
+local VERSION = SpokenEnv and SpokenEnv.Version
 local CONTINENTS, CITY_IN = C.CONTINENTS, C.CITY_IN
 local MapName, ContinentOf = C.MapName, C.ContinentOf
 local Dungeon, DungeonName = C.Dungeon, C.DungeonName
@@ -23,7 +24,6 @@ local list, page
 local selection          -- { boss = true, map = map, key = key } | { mapID = zone, dungeon = map }
                          -- | { mapID = zone or continent } | { lands = true } | nil
 local landed             -- the selection made for the player, where they stood; any other they chose
-local openZones = {}     -- [zone] = true: a zone's line, opened
 local dungeonOpen = {}   -- ["zone:map"] = true: a dungeon's line, opened
 local continentOpen = { [1414] = true, [1415] = true }
 local bannerOpen = {}    -- .lands = true: Other Lands' banner, opened
@@ -43,11 +43,11 @@ local index
 -- dungeons filed under the zone around it; zoneOf[map] = zone; world[map] = true for the map of
 -- a world boss, which has no line of its own; all[map] = every boss of the map, whatever zone it stands in
 -- (the map of world bosses in different zones lists each under its own, `bossZone["map:key"]`);
--- byKey["map:key"] = the boss; count = every boss listed. on[continent or "lands"] and
--- maps[zone], the sorted lines, are kept once worked out.
+-- byKey["map:key"] = the boss; count = every boss listed. on[continent or "lands"], the sorted
+-- zones, are kept once worked out.
 local function Index()
 	if index then return index end
-	index = { zones = {}, zoneOf = {}, world = {}, all = {}, bossZone = {}, byKey = {}, on = {}, maps = {}, count = 0 }
+	index = { zones = {}, zoneOf = {}, world = {}, all = {}, bossZone = {}, byKey = {}, on = {}, count = 0 }
 	local maps = _G.SpokenBosses and SpokenBosses.maps or {}
 	local worlds = _G.SpokenDungeons and SpokenDungeons.worldBosses or {}
 	for map, bosses in pairs(maps) do
@@ -133,15 +133,6 @@ local function ZonesOn(continent)
 	return out
 end
 
-local function Maps(zone)
-	if Index().maps[zone] then return Index().maps[zone] end
-	local out = {}
-	for map in pairs(Index().zones[zone] or {}) do table.insert(out, map) end
-	table.sort(out, ByDungeonName)
-	Index().maps[zone] = out
-	return out
-end
-
 -- Bosses met of one dungeon's, or, given `zone`, of those of its map that stand in that zone.
 local function TallyOf(map, zone)
 	zone = zone or Index().zoneOf[map]
@@ -197,7 +188,7 @@ end
 -- The rows
 --------------------------------------------------------------------------------
 
--- A zone's or a dungeon's line, with the bosses met out of those it holds.
+-- A dungeon's line, with the bosses met out of those it holds.
 local function Group(item, found, total)
 	item.style = "group"
 	item.count, item.total = found, total
@@ -234,47 +225,62 @@ local function DungeonRows(zone, map, nest, whole)
 				missing = (met or Unlocked()) and not Complete(map, boss.key) })
 		end
 	end
-	-- A world boss has no line of its own: its lines stand directly under the zone.
+	-- A world boss has no line of its own: its lines stand directly under the continent.
 	if world then return inside end
 	if filter ~= "" and #inside == 0 then return {} end
 	return Holding(Group({ kind = "dungeon", mapID = zone, dungeon = map, label = name, nest = nest, open = open },
 		found, total), inside, open)
 end
 
--- A zone's dungeons and raids, a line for each.
-local function DungeonsIn(zone, nest, whole)
+-- The dungeon maps whose entrance is filed under a continent, by dungeon name. World bosses are
+-- omitted here because one map can have bosses filed under several zones.
+local function DungeonsOn(continent)
+	local out = {}
+	for map, zone in pairs(Index().zoneOf) do
+		if not Index().world[map] and ((continent and ContinentOf(zone) == continent)
+			or (not continent and not ContinentOf(zone))) then
+			table.insert(out, { map = map, zone = zone })
+		end
+	end
+	table.sort(out, function(a, b) return ByDungeonName(a.map, b.map) end)
+	return out
+end
+
+-- The rows directly under a continent: dungeon/raid lines followed by world-boss lines. A world
+-- boss is emitted once for each zone in which it stands, so multi-zone world-boss maps retain their
+-- existing zone-specific boss lists without putting those zones in the panel.
+local function RowsOn(continent, nest, whole)
 	local rows = {}
-	for _, map in ipairs(Maps(zone)) do
-		for _, row in ipairs(DungeonRows(zone, map, nest, whole)) do table.insert(rows, row) end
+	for _, entry in ipairs(DungeonsOn(continent)) do
+		for _, row in ipairs(DungeonRows(entry.zone, entry.map, nest, whole)) do table.insert(rows, row) end
+	end
+	local worlds = {}
+	for _, zone in ipairs(ZonesOn(continent)) do
+		for map in pairs(Index().zones[zone] or {}) do
+			if Index().world[map] then table.insert(worlds, { map = map, zone = zone }) end
+		end
+	end
+	table.sort(worlds, function(a, b)
+		if ByDungeonName(a.map, b.map) then return true end
+		if ByDungeonName(b.map, a.map) then return false end
+		return a.zone < b.zone
+	end)
+	for _, entry in ipairs(worlds) do
+		for _, row in ipairs(DungeonRows(entry.zone, entry.map, nest, whole)) do table.insert(rows, row) end
 	end
 	return rows
 end
 
--- A zone's line and, opened (or a search finds something in it), its dungeons and raids.
-local function ZoneRows(zone, nest, whole)
-	local name = MapName(zone)
-	whole = whole or (filter ~= "" and Matches(name))
-	local found, total = Tally({ zone })
-	if OnlyFound() and found == 0 then return {} end
-	local open = openZones[zone] == true or filter ~= ""
-	local inside = open and DungeonsIn(zone, nest + 1, whole) or {}
-	if filter ~= "" and #inside == 0 then return {} end
-	return Holding(Group({ kind = "zone", mapID = zone, label = name, nest = nest, open = open },
-		found, total), inside, open)
-end
-
--- A banner and, opened (or a search finds something under it), a line for each of `zones`.
-local function Banner(item, zones, opened)
+-- A banner and, opened (or a search finds something under it), a line for each dungeon or raid.
+local function Banner(item, continent, opened)
 	local whole = filter ~= "" and Matches(item.label)
 	local open = filter ~= "" or opened == true
 	local rows = {}
 	if open then
-		for _, zone in ipairs(zones) do
-			for _, row in ipairs(ZoneRows(zone, 0, whole)) do table.insert(rows, row) end
-		end
+		rows = RowsOn(continent, 0, whole)
 	end
 	if filter ~= "" and #rows == 0 then return {} end
-	local found, total = Tally(zones)
+	local found, total = Tally(ZonesOn(continent))
 	if OnlyFound() and found == 0 then return {} end
 	Group(item, found, total).style = "banner"
 	item.open = open and #rows > 0
@@ -285,21 +291,20 @@ local function BuildRows()
 	local out = {}
 	local continents = {}
 	for _, continent in ipairs(CONTINENTS) do
-		local zones = ZonesOn(continent)
-		if #zones > 0 then
-			table.insert(continents, { continent = continent, zones = zones, label = MapName(continent) })
+		if #ZonesOn(continent) > 0 then
+			table.insert(continents, { continent = continent, label = MapName(continent) })
 		end
 	end
 	table.sort(continents, function(a, b) return a.label < b.label end)
 	for _, entry in ipairs(continents) do
 		for _, row in ipairs(Banner({ kind = "continent", mapID = entry.continent, label = entry.label },
-			entry.zones, continentOpen[entry.continent])) do
+			entry.continent, continentOpen[entry.continent])) do
 			table.insert(out, row)
 		end
 	end
 	local lands = ZonesOn(nil)
 	if #lands > 0 then
-		for _, row in ipairs(Banner({ kind = "lands", label = L.GROUP_LANDS }, lands, bannerOpen.lands)) do
+		for _, row in ipairs(Banner({ kind = "lands", label = L.GROUP_LANDS }, nil, bannerOpen.lands)) do
 			table.insert(out, row)
 		end
 	end
@@ -429,14 +434,19 @@ local function Card(position)
 	local mask = card.CreateMaskTexture and card:CreateMaskTexture()
 	if type(mask) == "table" and icon.AddMaskTexture then
 		if not C.Atlas(mask, ICON_MASK) then mask:SetTexture(MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE") end
-		mask:SetSize(ICON, ICON)
+		-- Leave a small margin so the mask trims any square pixels at the icon's corners.
+		mask:SetSize(ICON - 4, ICON - 4)
 		mask:SetPoint("CENTER", icon, "CENTER")
 		icon:AddMaskTexture(mask)
 	end
-	local frame = card:CreateTexture(nil, "OVERLAY", nil, 1)
-	if C.Atlas(frame, FRAME) then
-		frame:SetPoint("TOPLEFT", button, "TOPLEFT", -11, 1)
-		frame:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -7)
+	-- Era has no extra border; Forever keeps the spellbook's own frame.
+	local era = VERSION and VERSION.IsRetailVanilla and not VERSION.IsCamelot
+	if not era then
+		local frame = card:CreateTexture(nil, "OVERLAY", nil, 1)
+		if C.Atlas(frame, FRAME) then
+			frame:SetPoint("TOPLEFT", button, "TOPLEFT", -11, 1)
+			frame:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -7)
+		end
 	end
 	local glow = card:CreateTexture(nil, "OVERLAY", nil, 2)
 	if C.Atlas(glow, FRAME_HOVER) then glow:SetAllPoints(button) end
@@ -597,25 +607,18 @@ end
 
 local function OpenAround(zone) C.OpenAround(zone, continentOpen, bannerOpen) end
 
--- Choose where the player stands: the line of the dungeon they are in, opened, else their zone's
--- if it has a dungeon, else their continent's banner.
+-- Choose where the player stands: the line of the dungeon they are in, opened, else their
+-- continent's banner.
 local function LandOnPlayer()
 	local map, zone = PlayerDungeon()
 	if map then
 		selection = { mapID = zone, dungeon = map }
-		openZones[zone], dungeonOpen[zone .. ":" .. map] = true, true
+		dungeonOpen[zone .. ":" .. map] = true
 		OpenAround(zone)
 	else
-		local here = C.PlayerZone(function(candidate) return Index().zones[CITY_IN[candidate] or candidate] ~= nil end)
-		if here then
-			zone = CITY_IN[here] or here
-			selection = { mapID = zone }
-			openZones[zone] = true
-			OpenAround(zone)
-		else
-			local continent = C.PlayerContinent(Continents())
-			selection = continent and { mapID = continent } or nil
-		end
+		local continent = C.PlayerContinent(Continents())
+		selection = continent and { mapID = continent } or nil
+		if continent then continentOpen[continent] = true end
 	end
 	landed = selection
 end
@@ -635,7 +638,6 @@ local function OnClick(row)
 		if not searching then dungeonOpen[key] = not dungeonOpen[key] or nil end
 		selection = { mapID = row.mapID, dungeon = row.dungeon }
 	else
-		if not searching then openZones[row.mapID] = not openZones[row.mapID] or nil end
 		selection = { mapID = row.mapID }
 	end
 	NPCs:RefreshBosses()

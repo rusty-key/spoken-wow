@@ -256,6 +256,7 @@ local function Widget(kind, name)
     function w:SetGradient(orientation, from, to) self.gradient = { orientation = orientation, from = from, to = to } end
     function w:GetAtlas() return self.atlas end
     function w:SetTexCoord(...) self.texCoord = { ... } end
+    function w:AddMaskTexture(mask) self.masks = self.masks or {}; table.insert(self.masks, mask) end
     -- Recorded: a greyed badge or toggle is all that says nothing is found or opens.
     function w:SetDesaturated(v) self.desaturated = v and true or false end
     function w:IsDesaturated() return self.desaturated or false end
