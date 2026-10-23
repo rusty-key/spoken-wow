@@ -279,6 +279,17 @@ local function SetCollapseArrow()
 	if not minimizeButton then
 		return
 	end
+	local function FillEraArt(button)
+		-- SetNormalTexture creates a texture layer, but on Era that layer keeps the old
+		-- 16px intrinsic size instead of following the 32px button. Keep this correction
+		-- on the direct Era button only; Forever uses Blizzard's template art unchanged.
+		for _, texture in ipairs({ button:GetNormalTexture(), button:GetPushedTexture() }) do
+			if texture and texture.ClearAllPoints and texture.SetAllPoints then
+				texture:ClearAllPoints()
+				texture:SetAllPoints(button)
+			end
+		end
+	end
 	if minimized then
 		minimizeButton:SetNormalTexture(BIGGER_UP)
 		minimizeButton:SetPushedTexture(BIGGER_DOWN)
@@ -286,6 +297,7 @@ local function SetCollapseArrow()
 		minimizeButton:SetNormalTexture(SMALLER_UP)
 		minimizeButton:SetPushedTexture(SMALLER_DOWN)
 	end
+	if IS_ERA then FillEraArt(minimizeButton) end
 end
 
 -- Folded down to the list: the page goes, and only the height resizes, so folding never reflows
