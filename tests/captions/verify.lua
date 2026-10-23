@@ -336,8 +336,10 @@ M.fader:Step(1)
 Check(M.frame:IsShown() and math.abs(M.frame:GetTop()-movedTop)<.001,'Show Narrator on brings the player back where it was')
 T:TurnPage(-1); T.frame:Fire('OnClick','LeftButton')
 Check(not T.manualScroll,'clicking the caption text resumes following')
+local hadShift=IsShiftKeyDown; IsShiftKeyDown=function() return true end
 T.frame:Fire('OnClick','RightButton')
-Check(M.menu:IsShown(),'right-clicking captions opens the existing player menu')
+IsShiftKeyDown=hadShift
+Check(M.menu:IsShown(),'Shift-right-clicking captions opens the existing player menu')
 M.menu:Hide()
 GetCursorPosition=GetCursorPosition or function() return 0,0 end
 frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig(); M:StartDrag()

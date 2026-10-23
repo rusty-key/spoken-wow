@@ -36,8 +36,9 @@ local STYLE_LABELS = {
     none = L.OPT_STYLE_NONE,
 }
 
--- The game's key bindings list these under a Spoken heading (Bindings.xml). Set here, after
--- the locale files, so the names are in the player's language.
+-- The game's key bindings list these in a Spoken category (Bindings.xml). The category is
+-- the name of a string global the client shows as its title. Set here, after the locale
+-- files, so the names are in the player's language.
 _G.BINDING_HEADER_SPOKEN = "Spoken"
 _G.BINDING_NAME_SPOKEN_PLAYPAUSE = L.BIND_PLAYPAUSE
 _G.BINDING_NAME_SPOKEN_SKIP = L.BIND_SKIP

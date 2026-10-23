@@ -32,7 +32,8 @@ flavors have not been visually verified.
 | Skip button | Skip the line |
 | Report button | Report a problem with the line, where its module offers it |
 | "• +N" after the title | How many lines wait behind this one; point at it for the list |
-| Right-click portrait, speaker, title or panel | Playback menu and source actions |
+| Right-click portrait, speaker, title or panel outside the words | Playback menu and source actions |
+| Right-click the words | Skip the line; with Shift, the playback menu |
 | Drag speaker name or panel | Move the unlocked player |
 | Hover collapsed player | Reveal the resize grip |
 | Ctrl and the mouse wheel | Window Size; with Shift too, Text Size (not while locked) |

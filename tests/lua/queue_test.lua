@@ -206,6 +206,19 @@ quests:Enqueue(H.Clip({ length = 5 })); quests:Enqueue(H.Clip())
 world.lastStopFade = 0
 Q:Skip()
 Expect("Skip cuts a line another follows", world.lastStopFade, nil)
+-- A line that cannot be stopped is not skipped, and the queue stays as stopped as it was.
+Fresh()
+local stuck = H.Clip({ length = 5 })
+quests:Enqueue(stuck); quests:Enqueue(H.Clip())
+stuck.handle = nil
+Q:SetPaused(true)
+Expect("Skip leaves a line that cannot be stopped, and the Stopped flag, alone",
+    tostring(Q:Skip()) .. " " .. tostring(Q:GetCurrentSound() == stuck) .. " " .. tostring(Q:IsPaused()), "false true true")
+Q:SetPaused(false)
+Fresh()
+Q:SetPaused(true)
+Expect("...as with no line at all", tostring(Q:Skip()) .. " " .. tostring(Q:IsPaused()), "false true")
+Q:SetPaused(false)
 
 ---------------------------------------------------------------- the pause between lines
 Fresh()
