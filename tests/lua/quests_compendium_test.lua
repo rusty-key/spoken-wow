@@ -99,6 +99,8 @@ local shipped = SpokenQuestsCompendium.quests
 local linked = shipped[PIE].prev == NECKLACE and shipped[BACK].prev == PIE and shipped[GOLDTOOTH].prev == BACK
 -- Speak with Ruga, the breadcrumb Brutal Armor's chain starts with, names it after that quest.
 local namedByHand = shipped[1823] and shipped[1823].name == 1838
+local ERA_FOREVER_QUEST = 10000
+shipped[ERA_FOREVER_QUEST] = { "Forever quest in an Era zone", zones = { 1429 } }
 -- Zephras Isle's story, which both sides take: every High Order Skyborne starts there.
 local zephrasOpen = true
 for _, id in ipairs({ 92517, 92528, 92529, 92550, 92640, 92642, 92643, 92644, 92645, 92880, 92881, 92947,
@@ -130,6 +132,7 @@ local C = _G.SpokenCompendium
 Expect("no tab before the world is up", C:Tab("quests"), nil)
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 Expect("the quests are a tab of Azeroth's Compendium once it is", C:Tab("quests") ~= nil and C:Tab("quests").label, L.COMPENDIUM_QUESTS)
+Expect("Era does not list Forever quests", Tab:Lists(ERA_FOREVER_QUEST), false)
 -- A map with no quests and nothing above it.
 stub.world.playerMapID = 9999
 Tab:Open()
@@ -372,12 +375,12 @@ local leftovers, reused = Leftovers()
 Expect("a row drawn as a banner and reused for a line or a quest keeps none of the banner's parts", leftovers, "")
 Expect("...as rows were, once the list changed under them", reused > 0, true)
 Click("Professions")
-Expect("Professions holds Camping, whose quests are Camping 101 for one profession or another", Has(Shown(), "Camping"), true)
+Expect("Era leaves out Forever's Camping quests", Has(Shown(), "Camping"), false)
 Click("Professions")
 Click("Other")
 list = Shown()
 Expect("Other holds the Commendation Signets' hand-ins, the Argent Dawn's and the library books, under those names",
-    Has(list, "Commendation Signets") and Has(list, "Argent Dawn") and Has(list, "Library Books")
+    Has(list, "Commendation Signets") and Has(list, "Argent Dawn") and not Has(list, "Library Books")
     and not Has(list, "Reputation"), true)
 Expect("...and no Place Unknown: CLUCK!, its last quest, is in Westfall and Tirisfal Glades, where its feed is sold",
     tostring(Has(list, L.QUESTS_ELSEWHERE)) .. "|" .. table.concat(SpokenQuestsCompendium.quests[3861].zones, ","), "false|1436,1420")
@@ -387,21 +390,13 @@ Expect("a continent's page is in Azeroth, with its count", page.title.text == "K
     and page.sub.text.text:match("^In Azeroth · %d+ of %d+ completed$") ~= nil, true)
 Click("Kalimdor")
 
--- Zephras Isle is on no continent: under a banner of its own after them, closed with it. The
--- battlegrounds are under a banner of their own, Alterac Valley too, though the client hangs it in
--- Hillsbrad Foothills.
+-- Forever's Zephras Isle has no Era quests, so only the battlegrounds remain under the lands
+-- banner. Alterac Valley is still there, though the client hangs it in Hillsbrad Foothills.
 list = Shown()
 Expect("the zones on no continent a banner after the continents, then the battlegrounds' banner",
-    list:find("|" .. L.QUESTS_SECTION_LANDS .. "|Battlegrounds|Classes|", 1, true) ~= nil
-    and RowFor(L.QUESTS_SECTION_LANDS).row.style, "banner")
+    list:find("|Battlegrounds|Classes|", 1, true) ~= nil
+    and RowFor(L.QUESTS_SECTION_LANDS) == nil, true)
 Expect("...closed, Zephras Isle not shown", Has(list, "Zephras Isle"), false)
-Click(L.QUESTS_SECTION_LANDS)
-Expect("...opened, Zephras Isle a line inside it", RowFor("Zephras Isle") ~= nil and RowFor("Zephras Isle").row.style == "group"
-    and RowFor("Zephras Isle").row.nest, 0)
-Expect("...its page in Azeroth, as a continent's, counting their quests", page.title.text == L.QUESTS_SECTION_LANDS
-    and page.sub.text.text:match("^In Azeroth · 0 of %d+ completed$") ~= nil, true)
-Click(L.QUESTS_SECTION_LANDS)
-Expect("...and closed again", Has(Shown(), "Zephras Isle"), false)
 list = Shown()
 Expect("...the battlegrounds a banner", RowFor("Battlegrounds").row.style, "banner")
 Expect("...no battleground among its continent's zones", Has(list, "Alterac Valley"), false)
