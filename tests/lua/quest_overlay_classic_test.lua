@@ -23,7 +23,7 @@ end
 _G.QuestLog_Update = function() end
 
 -- Simulate Leatrix being loaded while its QuestLog_Update hook is installed after Spoken's normal
--- hook.  The compatibility hook is deliberately deferred, matching the live addon load order.
+-- hook.  The overlay must remain correct without a second Leatrix-specific refresh.
 _G.IsAddOnLoaded = function(name) return name == "Leatrix_Plus" end
 
 local VO = stub.LoadQuestsOverlay(here .. "/../../addons/Spoken_Quests/", here .. "/../../addons/Spoken/")
@@ -58,11 +58,9 @@ end
 hooksecurefunc("QuestLog_Update", function()
     QuestLogTitle1NormalText:SetText("  [10] A Classic Quest")
 end)
--- Run the deferred compatibility hook after Leatrix's hook exists.
-stub.Advance(0.1)
 QuestLog_Update()
 
-Expect("Leatrix's title rewrite is followed by a Spoken refresh", updates, 2)
+Expect("Leatrix's title rewrite does not need a second Spoken refresh", updates, 1)
 local button = VO.QuestOverlayUI.questPlayButtons[748]
 Expect("Era quest keeps its Play button", button ~= nil and button:IsShown(), true)
 Expect("Era quest Play button is enabled", button and button:IsEnabled(), true)
