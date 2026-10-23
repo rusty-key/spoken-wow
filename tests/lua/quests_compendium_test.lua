@@ -798,6 +798,9 @@ local function Face(part)
     return drawn .. " " .. tostring(face.badge:GetTexture()) .. " " .. tostring(part.caption and part.heading or nil)
 end
 local BADGES = SpokenEnv.Face.BADGES
+Expect("a zone portrait uses the client's world-map badge", BADGES.zone,
+    SpokenEnv.Version.IsRetailVanilla and [[Interface\WorldMap\WorldMap-Icon]]
+        or [[Interface\WorldMap\UI-World-Icon]])
 Expect("without DialogueUI, no DialogueUI header on either part",
     tostring(PartOf(L.QUEST_PART_ACCEPT).header) .. " " .. tostring(PartOf(L.QUEST_PART_COMPLETE).header), "nil nil")
 Expect("the offer is named its description, the hand-in its completion",
