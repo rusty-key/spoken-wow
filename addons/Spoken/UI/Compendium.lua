@@ -473,6 +473,29 @@ local function FootColour()
 	return 0, 0, 0
 end
 
+-- The template's own label hidden for good in EllesmereUI's look, its text kept so the template still
+-- sizes the tab: its font objects (normal, under the pointer, disabled) see-through, and the label
+-- itself, whichever the template keeps (tab.Text or the button's), faded. Under the pointer the
+-- template's highlight font brought it back in gold over Spoken's.
+local mutedFont
+local function MuteLabel(tab)
+	if not mutedFont and CreateFont and GameFontNormalSmall then
+		mutedFont = CreateFont("SpokenTabMutedFont")
+		local file, size = GameFontNormalSmall:GetFont()
+		if file then mutedFont:SetFont(file, size or 10, "") end
+		mutedFont:SetTextColor(0, 0, 0, 0)
+		mutedFont:SetShadowColor(0, 0, 0, 0)
+	end
+	if mutedFont then
+		for _, setter in ipairs({ "SetNormalFontObject", "SetHighlightFontObject", "SetDisabledFontObject" }) do
+			if tab[setter] then tab[setter](tab, mutedFont) end
+		end
+	end
+	for _, text in pairs({ tab.Text or false, tab.GetFontString and tab:GetFontString() or false }) do
+		if type(text) == "table" and text.SetAlpha and text ~= (tab.flat and tab.flat.label) then text:SetAlpha(0) end
+	end
+end
+
 -- A tab as a box in EllesmereUI's look, its own art hidden whichever pieces the template shows.
 local function FlatTab(tab)
 	if tab.flat then return end
@@ -511,11 +534,17 @@ local function FlatTab(tab)
 	local _, size = (type(text) == "table" and text.GetFont) and text:GetFont()
 	local file = face or (GameFontNormalSmall and GameFontNormalSmall:GetFont())
 	if file then label:SetFont(file, size or 10, "") end
-	if type(text) == "table" and text.SetAlpha then text:SetAlpha(0) end
 	flat.label = label
-	tab:HookScript("OnEnter", function() if not tab.selected then label:SetTextColor(0.85, 0.85, 0.85) end end)
-	tab:HookScript("OnLeave", function() if not tab.selected then label:SetTextColor(0.6, 0.6, 0.6) end end)
 	tab.flat = flat
+	MuteLabel(tab)
+	tab:HookScript("OnEnter", function()
+		MuteLabel(tab)
+		if not tab.selected then label:SetTextColor(0.85, 0.85, 0.85) end
+	end)
+	tab:HookScript("OnLeave", function()
+		MuteLabel(tab)
+		if not tab.selected then label:SetTextColor(0.6, 0.6, 0.6) end
+	end)
 end
 
 -- The chosen tab's text white and its box joined to the window, reaching a little lower than the
@@ -557,6 +586,8 @@ local function PaintFlatTab(tab, selected)
 	-- None for a hidden tab: the window with one part on has no tabs, and its one tab is chosen.
 	plate:SetShown(selected and tab:IsShown())
 	tab:SetFrameLevel(window:GetFrameLevel() + (selected and 8 or 1))
+	-- After the template's select or deselect, which sets its fonts again.
+	MuteLabel(tab)
 	local label = flat.label
 	label:SetText(tab:GetText() or "")
 	if selected then label:SetTextColor(1, 1, 1) else label:SetTextColor(0.6, 0.6, 0.6) end

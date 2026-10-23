@@ -1023,6 +1023,22 @@ do
         for _, hook in ipairs(other.hooks and other.hooks.OnLeave or {}) do hook(other) end
         Expect("...another tab's label lighter under the pointer and dim again after, never the game's gold",
             tostring(over) .. " | " .. tostring(colour), "0.85 0.85 0.85 | 0.60 0.60 0.60")
+        -- The template's own label, which its highlight brings back under the pointer and its select
+        -- and deselect set again: hidden after each, Spoken's the only one.
+        local template = other:CreateFontString()
+        other.Text = template
+        local shown = {}
+        template:SetAlpha(1)
+        for _, hook in ipairs(other.hooks and other.hooks.OnEnter or {}) do hook(other) end
+        shown[#shown + 1] = template:GetAlpha()
+        template:SetAlpha(1)
+        for _, hook in ipairs(other.hooks and other.hooks.OnLeave or {}) do hook(other) end
+        shown[#shown + 1] = template:GetAlpha()
+        template:SetAlpha(1)
+        _G.SpokenCompendium:Select("places")
+        shown[#shown + 1] = template:GetAlpha()
+        Expect("...the template's own label hidden under the pointer, after it and after a select",
+            table.concat(shown, " ") .. " " .. tostring(other.flat.label:GetAlpha()), "0 0 0 1")
     end
     do
         -- A part switched off while a later tab is chosen: the window has one part on, so no tabs.
