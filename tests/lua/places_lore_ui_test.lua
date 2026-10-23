@@ -120,11 +120,12 @@ Expect("built at login, hidden, and not made the tab the window first opens on",
     tostring(window ~= nil) .. "|" .. tostring(compendium:IsShown()) .. "|" .. tostring(_G.SpokenCompendium:Active()), "true|false|nil")
 Expect("the places are a tab of Azeroth's Compendium, the game's portrait frame", compendium.template, "PortraitFrameTemplate")
 Expect("...titled, with the Compendium's tome in its portrait", compendium.title .. "|" .. tostring(compendium.portrait),
-    SpokenEnv.L.OPT_COMPENDIUM_TITLE .. "|5341597")
+    SpokenEnv.L.OPT_COMPENDIUM_TITLE .. "|Interface\\Icons\\INV_Misc_Book_11")
 Expect("...closed by Escape", _G.UISpecialFrames[#_G.UISpecialFrames], "SpokenCompendiumWindow")
 local page = window.page
 Expect("its story is on the spellbook's parchment", page.parchment, "spellbook-Page-Right-C60")
-Expect("...in an inset of its own, as the list is, so their borders part them", window.pageInset.template, "InsetFrameTemplate")
+Expect("...in an inset of its own, as the list is, so their borders part them", window.pageInset.template,
+    SpokenEnv.Version.IsRetailVanilla and "BackdropTemplate" or "InsetFrameTemplate")
 Expect("...with no credit line on the page", page.credit, nil)
 Expect("Report is the player's round button, the ring round the bug", page.report.ring ~= nil and page.report.glyph ~= nil, true)
 Expect("...under the spellbook's divider", page.divider.atlas or page.divider.layoutAtlas or true, true)
