@@ -132,7 +132,7 @@ Expect("...the Era close button uses the Classic portrait-frame rail", close:Get
 Expect("...the Era minimize button is the same size and sits directly beside Close",
     minimize:GetWidth() .. "x" .. minimize:GetHeight() .. "|" .. minimizePoint .. "|"
     .. tostring(minimizeRelative == close) .. "|" .. minimizeRelativePoint .. "|" .. minimizeX .. "," .. minimizeY,
-    "32x32|RIGHT|true|LEFT|0,0")
+    "32x32|RIGHT|true|LEFT|12,0")
 Expect("...closed by Escape", _G.UISpecialFrames[#_G.UISpecialFrames], "SpokenCompendiumWindow")
 local page = window.page
 Expect("its story is on the spellbook's parchment", page.parchment, "spellbook-Page-Right-C60")

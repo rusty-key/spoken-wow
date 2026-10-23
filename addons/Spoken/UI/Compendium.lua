@@ -376,7 +376,9 @@ local function BuildChrome()
 		else
 			minimizeButton = CreateFrame("Button", nil, window)
 			minimizeButton:SetSize(buttonSize, buttonSize)
-			minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			-- Classic's World Map uses this 12px overlap so the smaller-button art sits in the
+			-- title bar beside Close instead of leaving a visible gap between the two controls.
+			minimizeButton:SetPoint("RIGHT", close, "LEFT", IS_ERA and 12 or 0, 0)
 			window.MinimizeButton = minimizeButton
 			minimizeButton:SetFrameLevel(close:GetFrameLevel())
 			minimizeButton:SetHighlightTexture(PANEL_HI)
