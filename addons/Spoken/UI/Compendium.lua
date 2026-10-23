@@ -268,8 +268,8 @@ end
 local FOLD_GLYPH, UNFOLD_GLYPH = "UI-QuestTrackerButton-Secondary-Collapse", "UI-QuestTrackerButton-Secondary-Expand"
 
 -- The world map's fold buttons against its close button, which EllesmereUI leaves where the game puts
--- them: their frame's anchor and size, the buttons' size and the close button's. Nil where the client
--- has no such map.
+-- them: the fold's anchor, the buttons' size and the close button's anchor and size. Nil where the client
+-- has no such map, or has not laid it out yet: a frame never shown reads 0 across.
 local function MapFold()
 	local border = _G.WorldMapFrame and type(WorldMapFrame.BorderFrame) == "table" and WorldMapFrame.BorderFrame
 	local mm = border and border.MaximizeMinimizeFrame
@@ -278,51 +278,48 @@ local function MapFold()
 	local point, relativeTo, relativePoint, x, y = mm:GetPoint(1)
 	if relativeTo ~= close then return nil end
 	local button = type(mm.MinimizeButton) == "table" and mm.MinimizeButton or mm
+	if (close:GetWidth() or 0) <= 0 or (close:GetHeight() or 0) <= 0 or (button:GetWidth() or 0) <= 0
+		or (button:GetHeight() or 0) <= 0 then
+		return nil
+	end
+	-- Where the map puts its close button on its frame, where it is anchored to it.
+	local closePoint, closeRelative, closeRelativePoint, closeX, closeY
+	if type(close.GetPoint) == "function" then
+		closePoint, closeRelative, closeRelativePoint, closeX, closeY = close:GetPoint(1)
+		if closeRelative ~= border then closePoint = nil end
+	end
 	return { point = point, relativePoint = relativePoint, x = x or 0, y = y or 0,
-		width = mm:GetWidth(), height = mm:GetHeight(), buttonWidth = button:GetWidth(), buttonHeight = button:GetHeight(),
+		closePoint = closePoint, closeRelativePoint = closeRelativePoint, closeX = closeX or 0, closeY = closeY or 0,
+		buttonWidth = button:GetWidth(), buttonHeight = button:GetHeight(),
 		closeWidth = close:GetWidth(), closeHeight = close:GetHeight() }
 end
 
--- The template's red arrow art, emptied and faded: emptying alone leaves the template's atlas drawn
--- on the Forever client.
-local function FadeFold(button)
-	for _, setter in ipairs({ "SetNormalTexture", "SetPushedTexture", "SetHighlightTexture", "SetDisabledTexture" }) do
-		if button[setter] then button[setter](button, "") end
-	end
-	for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
-		local texture = button[getter] and button[getter](button)
-		if type(texture) == "table" and texture.SetAlpha and not texture.spokenGlyph then texture:SetAlpha(0) end
-	end
-	for _, region in ipairs({ button:GetRegions() }) do
-		if not region.spokenGlyph and region.SetAlpha
-			and not (region.GetObjectType and region:GetObjectType() == "FontString") then
-			region:SetAlpha(0)
-		end
-	end
-end
-local function FlatFold(button)
-	if not (HasAtlas(FOLD_GLYPH) and HasAtlas(UNFOLD_GLYPH)) then return end
-	FadeFold(button)
-	if button.flatGlyph then return end
-	-- Faded again whenever it shows: the template's mixin sets its look as the window folds.
-	button:HookScript("OnShow", FadeFold)
+-- EllesmereUI's look has a fold button of its own: a plain button with the quest tracker's arrow on
+-- it, the game's template hidden. The template draws its red art again as the window folds and shows,
+-- and the arrow drawn over it could be lost with it. Nil where the client has not got the arrows.
+local flatFold
+local function FlatFold(parent, close)
+	if not (HasAtlas(FOLD_GLYPH) and HasAtlas(UNFOLD_GLYPH)) then return nil end
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(close:GetWidth(), close:GetHeight())
+	button:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
+	button:SetFrameLevel(close:GetFrameLevel() + 1)
 	local glyph = button:CreateTexture(nil, "OVERLAY")
-	glyph.spokenGlyph = true
 	glyph:SetSize(16, 16)
 	glyph:SetPoint("CENTER", button, "CENTER", -2, 0)
 	if glyph.SetDesaturated then glyph:SetDesaturated(true) end
 	glyph:SetVertexColor(1, 1, 1, 0.75)
 	button.flatGlyph = glyph
-	button:HookScript("OnEnter", function() glyph:SetVertexColor(1, 1, 1, 1) end)
-	button:HookScript("OnLeave", function() glyph:SetVertexColor(1, 1, 1, 0.75) end)
+	button:SetScript("OnEnter", function() glyph:SetVertexColor(1, 1, 1, 1) end)
+	button:SetScript("OnLeave", function() glyph:SetVertexColor(1, 1, 1, 0.75) end)
+	return button
 end
 local function FoldGlyph(button, fold)
-	local glyph = button.flatGlyph
-	if not glyph then return end
-	glyph:SetAtlas(fold and FOLD_GLYPH or UNFOLD_GLYPH, false)
+	button.flatGlyph:SetAtlas(fold and FOLD_GLYPH or UNFOLD_GLYPH, false)
 end
 
 local function SetCollapseArrow()
+	if flatFold then FoldGlyph(flatFold, not minimized) end
 	if minimizeFrame then
 		minimizeFrame.MaximizeButton:SetShown(minimized)
 		minimizeFrame.MinimizeButton:SetShown(not minimized)
@@ -337,10 +334,6 @@ local function SetCollapseArrow()
 	else
 		minimizeButton:SetNormalTexture(SMALLER_UP)
 		minimizeButton:SetPushedTexture(SMALLER_DOWN)
-	end
-	if minimizeButton.flatGlyph then
-		FlatFold(minimizeButton)
-		FoldGlyph(minimizeButton, not minimized)
 	end
 end
 
@@ -706,25 +699,29 @@ local function BuildWindow()
 		-- Fold and unfold as the world map's beside its close button: the same sizes and place. The map
 		-- may not be built yet, so the fit is tried again each time the window opens until it lands.
 		local close = type(built.CloseButton) == "table" and built.CloseButton
-		local folds = minimizeFrame and { { minimizeFrame.MinimizeButton, true }, { minimizeFrame.MaximizeButton, false } }
-			or minimizeButton and { { minimizeButton, not minimized } } or {}
-		local dressed = #folds > 0
-		for _, fold in ipairs(folds) do
-			FlatFold(fold[1])
-			FoldGlyph(fold[1], fold[2])
-			dressed = dressed and fold[1].flatGlyph ~= nil
+		local template = minimizeFrame or minimizeButton
+		if close and template then
+			flatFold = FlatFold(built, close)
+			if flatFold then
+				flatFold:SetScript("OnClick", function() SetMinimized(not minimized) end)
+				-- The game's own buttons stay out of sight.
+				template:Hide()
+				FoldGlyph(flatFold, not minimized)
+			end
 		end
-		local holder = minimizeFrame or minimizeButton
 		local function FitFolds()
 			local map = MapFold()
-			if not (map and close and holder) then return false end
+			if not (map and close) then return false end
 			close:SetSize(map.closeWidth, map.closeHeight)
-			-- Buttons the client's arrows did not dress keep the game's size and place.
-			if not dressed then return true end
-			for _, fold in ipairs(folds) do fold[1]:SetSize(map.buttonWidth, map.buttonHeight) end
-			holder:ClearAllPoints()
-			holder:SetPoint(map.point, close, map.relativePoint, map.x, map.y)
-			if minimizeFrame then minimizeFrame:SetSize(map.width, map.height) end
+			if map.closePoint then
+				close:ClearAllPoints()
+				close:SetPoint(map.closePoint, built, map.closeRelativePoint, map.closeX, map.closeY)
+			end
+			if flatFold then
+				flatFold:SetSize(map.buttonWidth, map.buttonHeight)
+				flatFold:ClearAllPoints()
+				flatFold:SetPoint(map.point, close, map.relativePoint, map.x, map.y)
+			end
 			return true
 		end
 		if not FitFolds() then
