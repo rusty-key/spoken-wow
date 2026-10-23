@@ -27,6 +27,7 @@ local createFrame = _G.CreateFrame
 _G.CreateFrame = function(kind, name, parent, template)
     local frame = createFrame(kind, name, parent, template)
     if template == "PortraitFrameTemplate" then
+        function frame:SetResizable(resizable) self.resizable = resizable end
         function frame:SetTitle(text) self.title = text end
         function frame:SetPortraitToAsset(path) self.portrait = path end
         frame.CloseButton = createFrame("Button", nil, frame)
@@ -122,6 +123,19 @@ Expect("the places are a tab of Azeroth's Compendium, the game's portrait frame"
 Expect("...titled, with the Compendium's tome in its portrait", compendium.title .. "|" .. tostring(compendium.portrait),
     SpokenEnv.L.OPT_COMPENDIUM_TITLE .. "|5341597")
 Expect("...closed by Escape", _G.UISpecialFrames[#_G.UISpecialFrames], "SpokenCompendiumWindow")
+Expect("...which the player does not resize", tostring(compendium.resizable), "nil")
+do
+    local width, height = UIParent:GetWidth(), UIParent:GetHeight()
+    UIParent:SetSize(1920, 1080)
+    compendium.scripts.OnShow(compendium)
+    Expect("...920 by 600 on a screen that has room", compendium:GetWidth() .. "x" .. compendium:GetHeight(), "920x600")
+    UIParent:SetSize(800, 500)
+    compendium.scripts.OnShow(compendium)
+    Expect("...smaller on a smaller screen when it opens, never narrower than the list and a page",
+        compendium:GetWidth() .. "x" .. compendium:GetHeight(), "760x475")
+    UIParent:SetSize(width, height)
+    compendium.scripts.OnShow(compendium)
+end
 local page = window.page
 Expect("its story is on the spellbook's parchment", page.parchment, "spellbook-Page-Right-C60")
 Expect("...in an inset of its own, as the list is, so their borders part them", window.pageInset.template, "InsetFrameTemplate")

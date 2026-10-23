@@ -7,7 +7,7 @@ modules add to it, so there is one copy of each piece:
 
 | File | What it holds |
 | --- | --- |
-| `addons/Spoken/UI/Compendium.lua` | The window (movable, resizable, closes on Escape, folds down to the list), the list (`C.NewList`: search box, filter menu, banners, groups, rows), the page (`C.NewPage`: title, line under it, Play, Report, words, picture), `C:Register` for a tab. |
+| `addons/Spoken/UI/Compendium.lua` | The window (movable, one size, closes on Escape, folds down to the list), the list (`C.NewList`: search box, filter menu, banners, groups, rows), the page (`C.NewPage`: title, line under it, Play, Report, words, picture), `C:Register` for a tab. |
 | `addons/Spoken/UI/TextView.lua` | The scrolling, wrapping text with its scroll bar and edge fade, and the picture above the words (`SetPicture`). The words are drawn at Text Size. |
 | `addons/Spoken/UI/Face.lua` | The round face on the player windows, and the badge for a line's kind (`zone` uses the world map icon). |
 

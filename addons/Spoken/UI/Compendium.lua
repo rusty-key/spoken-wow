@@ -2,7 +2,7 @@
 -- the quests (Spoken Quests), the places (Spoken Places), the writings (Spoken Readables) -- each a
 -- list on the left and a page on the right.
 --
--- Spoken's, so every module's tab shares one window. The window is the game's portrait frame, resizable from its corner
+-- Spoken's, so every module's tab shares one window. The window is the game's portrait frame, of one size
 -- and folding down to the list. The list is a search box over an inset of rows, with the tab's
 -- switches (Started Only, Discovered Only, Found Only and the like) in the filter menu beside the
 -- search. Its rows are drawn in the game's own art: the objective tracker's campaign bar across
@@ -20,8 +20,7 @@
 -- (SpokenCompendium:Toggle opens the window from there and from the minimap menu). Shared
 -- with the tabs too: the zones' tree (C.MapName, C.ContinentOf, C.CITY_IN, C.BATTLEGROUNDS and
 -- C.OpenAround, C.OpenZone, C.PlayerZone, C.PlayerContinent to open it where the player stands),
--- the page's inset (C.PageHolder) and the parchment page (C.NewPage). The window's size is kept in
--- Spoken's settings.
+-- the page's inset (C.PageHolder) and the parchment page (C.NewPage).
 --
 -- Not under setfenv(1, SpokenEnv): the frames are built here, and the client's mixins are looked
 -- up in the calling function's environment.
@@ -31,7 +30,6 @@ SpokenCompendium = C
 
 local WINDOW_WIDTH = 920
 local WINDOW_HEIGHT = 600
-local WINDOW_MIN_HEIGHT = 360
 -- Room for the longest zone name in any language (Portuguese's Cordilheira das Torres de
 -- Pedra) beside its count, found out of all and the share: 27/27 • 100%.
 local LIST_WIDTH = 345
@@ -65,7 +63,6 @@ local UNDER_BANNER_IN = 20.4
 local BANNER_RAIL_X = 16.4
 local LIST_TOP, LIST_FOOT = 6, 8
 local SCROLL_STEP = 60
-local GRABBER_SIZE = 16
 local FILTER_ROOM = 26       -- what the search box gives up for the filter menu's arrow beside it
 local NAME = "SpokenCompendiumWindow"
 -- The window's portrait: a tome from the game, the Compendium's own rather than any one part's.
@@ -73,9 +70,6 @@ local NAME = "SpokenCompendiumWindow"
 local ICON = 5341597
 C.ICON = ICON
 
-local GRABBER_UP = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]]
-local GRABBER_DOWN = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down]]
-local GRABBER_HIGHLIGHT = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight]]
 local SMALLER_UP = [[Interface\Buttons\UI-Panel-SmallerButton-Up]]
 local SMALLER_DOWN = [[Interface\Buttons\UI-Panel-SmallerButton-Down]]
 local BIGGER_UP = [[Interface\Buttons\UI-Panel-BiggerButton-Up]]
@@ -137,7 +131,7 @@ local active
 -- then the window opens on the first tab (C:Toggle), not on whichever a part opened it on last.
 local picked = false
 local minimized = false
-local resizer, minimizeButton, minimizeFrame
+local minimizeButton, minimizeFrame
 
 local function Ordered()
 	local list = {}
@@ -151,13 +145,6 @@ local function Ordered()
 	end)
 	return list
 end
-
--- Spoken's settings, where the window's size is kept: nil before they have loaded.
-local function Profile()
-	local addon = SpokenEnv and SpokenEnv.Addon
-	return addon and addon.db and addon.db.profile
-end
-local SIZE_KEYS = { width = "CompendiumWidth", height = "CompendiumHeight" }
 
 -- The list's margins inside the window, left and right, and how far below its top the tab's
 -- content starts: a templated frame's portrait takes the top-left corner.
@@ -177,11 +164,6 @@ local function CollapsedWidth()
 	return LIST_WIDTH + left + right
 end
 
-local function MinWidth()
-	local left, right = C.Margins()
-	return LIST_WIDTH + left + right + PAGE_MIN_WIDTH
-end
-
 local function ScreenMaxWidth()
 	return math.floor((UIParent:GetWidth() or 1920) * 0.95)
 end
@@ -190,19 +172,7 @@ local function ScreenMaxHeight()
 	return math.floor((UIParent:GetHeight() or 1080) * 0.95)
 end
 
-local function ApplyResizeBounds()
-	local maxW = minimized and CollapsedWidth() or ScreenMaxWidth()
-	local minW = minimized and CollapsedWidth() or MinWidth()
-	if window.SetResizeBounds then
-		window:SetResizeBounds(minW, WINDOW_MIN_HEIGHT, maxW, ScreenMaxHeight())
-	else
-		window:SetMinResize(minW, WINDOW_MIN_HEIGHT)
-		window:SetMaxResize(maxW, ScreenMaxHeight())
-	end
-end
-
--- StartSizing does not hold the opposite corner still. Anchored at CENTER, that corner moves
--- away from the cursor every frame and the size runs to its bound.
+-- Folding keeps the top-left corner still: anchored at CENTER, both sides would move.
 local function PinTopLeft()
 	local left, top = window:GetLeft(), window:GetTop()
 	if not left or not top then
@@ -212,35 +182,15 @@ local function PinTopLeft()
 	window:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
 end
 
--- Saved sizes are clamped on the way in: a size persisted by the runaway would otherwise
--- reopen at the bound for good.
-local function SavedSize(key, min, max, fallback)
-	local profile = Profile()
-	local saved = profile and profile[SIZE_KEYS[key]]
-	if type(saved) ~= "number" or saved < min then
-		return fallback
-	end
-	return math.min(saved, max)
-end
-
+-- The window's size is fixed: the player does not resize it. Smaller where the screen is, but never
+-- narrower than the list and the narrowest page beside it.
 local function ExpandedWidth()
-	return SavedSize("width", MinWidth(), ScreenMaxWidth(), WINDOW_WIDTH)
+	local left, right = C.Margins()
+	return math.max(LIST_WIDTH + left + right + PAGE_MIN_WIDTH, math.min(WINDOW_WIDTH, ScreenMaxWidth()))
 end
 
-local function SavedHeight()
-	return SavedSize("height", WINDOW_MIN_HEIGHT, ScreenMaxHeight(), WINDOW_HEIGHT)
-end
-
-local function SaveWindowSize()
-	local profile = Profile()
-	local width, height = window:GetSize()
-	if not profile or not width or not height or width <= 0 or height <= 0 then
-		return
-	end
-	profile[SIZE_KEYS.height] = math.floor(height + 0.5)
-	if not minimized then
-		profile[SIZE_KEYS.width] = math.floor(width + 0.5)
-	end
+local function WindowHeight()
+	return math.min(WINDOW_HEIGHT, ScreenMaxHeight())
 end
 
 local function SetCollapseArrow()
@@ -261,7 +211,7 @@ local function SetCollapseArrow()
 	end
 end
 
--- Folded down to the list: the page goes, and only the height resizes, so folding never reflows
+-- Folded down to the list: the page goes and the list keeps its width, so folding never reflows
 -- the rows.
 local function ShowPages()
 	for _, tab in pairs(C.tabs) do
@@ -274,7 +224,6 @@ local function SetMinimized(want)
 		return
 	end
 	minimized = want
-	ApplyResizeBounds()
 	PinTopLeft()
 	window:SetWidth(minimized and CollapsedWidth() or ExpandedWidth())
 	ShowPages()
@@ -353,32 +302,6 @@ local function BuildChrome()
 		end
 		SetCollapseArrow()
 	end
-
-	resizer = CreateFrame("Button", nil, window)
-	resizer:SetPoint("BOTTOMRIGHT", -2, 2)
-	resizer:SetSize(GRABBER_SIZE, GRABBER_SIZE)
-	resizer:SetNormalTexture(GRABBER_UP)
-	resizer:SetPushedTexture(GRABBER_DOWN)
-	resizer:SetHighlightTexture(GRABBER_HIGHLIGHT)
-	resizer:SetFrameLevel(window:GetFrameLevel() + 5)
-	resizer:SetScript("OnEnter", function() SetCursor([[Interface\Cursor\UI-Cursor-SizeRight]]) end)
-	resizer:SetScript("OnLeave", function() SetCursor(nil) end)
-	resizer:SetScript("OnMouseDown", function(_, button)
-		if button ~= "LeftButton" then
-			return
-		end
-		local highlight = resizer:GetHighlightTexture()
-		if highlight then highlight:Hide() end
-		PinTopLeft()
-		window:StartSizing("BOTTOMRIGHT")
-	end)
-	resizer:SetScript("OnMouseUp", function()
-		local highlight = resizer:GetHighlightTexture()
-		if highlight then highlight:Show() end
-		window:StopMovingOrSizing()
-		SaveWindowSize()
-		SetCursor(nil)
-	end)
 end
 
 -- The tabs along the window's foot, as the character sheet has them; none with only one.
@@ -453,20 +376,19 @@ end
 local function BuildWindow()
 	local L = SpokenEnv and SpokenEnv.L
 	window = NewWindow(L and L.OPT_COMPENDIUM_TITLE or "", ICON)
-	window:SetSize(ExpandedWidth(), SavedHeight())
+	window:SetSize(ExpandedWidth(), WindowHeight())
 	window:SetPoint("CENTER")
 	window:SetFrameStrata("HIGH")
 	window:SetToplevel(true)
 	window:EnableMouse(true)
 	window:SetMovable(true)
-	window:SetResizable(true)
 	window:SetClampedToScreen(true)
 	window:RegisterForDrag("LeftButton")
 	window:SetScript("OnDragStart", window.StartMoving)
 	window:SetScript("OnDragStop", window.StopMovingOrSizing)
 	window:SetScript("OnShow", function()
-		-- The screen may have changed size since the bounds were last set.
-		ApplyResizeBounds()
+		-- The screen or the UI scale may have changed since the window was last open.
+		window:SetSize(minimized and CollapsedWidth() or ExpandedWidth(), WindowHeight())
 		local tab = active and C.tabs[active]
 		if tab and tab.onShow then tab.onShow(tab.panel) end
 		if PlaySound and SOUNDKIT and SOUNDKIT.IG_SPELLBOOK_OPEN then PlaySound(SOUNDKIT.IG_SPELLBOOK_OPEN) end

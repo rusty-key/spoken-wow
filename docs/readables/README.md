@@ -285,7 +285,7 @@ click ever also offers Spoken's **Collect Missing Lines**, which keeps such page
 ### The Readables tab
 
 Azeroth's Compendium (Spoken's `UI/Compendium.lua`, shared with the Quests and Places tabs) is a
-movable window that closes on Escape, resizes from its corner and folds down to its list. The
+movable window that closes on Escape and folds down to its list. The
 Readables tab (`UI/Readables.lua`, key `readables`) lists
 every book, letter, note, scroll, tablet, plaque, gravestone, exhibit and picture Spoken Readables
 reads, found or not, with the words of each on the right, on the spellbook's parchment, to read
