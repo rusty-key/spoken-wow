@@ -500,8 +500,8 @@ Expect("...a completed one the quest log's gold tick", RowFor("Kobold Camp Clean
     and (RowFor("Kobold Camp Cleanup").status.texture or RowFor("Kobold Camp Cleanup").status.atlas)
         .. " " .. RowFor("Kobold Camp Cleanup").label.text,
     TICK .. " Kobold Camp Cleanup")
-Expect("...15 by 13, as every tick in the list is", RowFor("Kobold Camp Cleanup").status.width .. "x"
-    .. RowFor("Kobold Camp Cleanup").status.height, "15x13")
+Expect("...14 by 14, as every Era tick in the list is", RowFor("Kobold Camp Cleanup").status.width .. "x"
+    .. RowFor("Kobold Camp Cleanup").status.height, "14x14")
 Expect("...and its zone's line counts it in progress, apart from the completed",
     RowFor("Elwynn Forest").count.text:match("ActiveQuestIcon.-|t1 +1/%d+ • ") ~= nil, true)
 RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
@@ -694,7 +694,7 @@ Expect("a chain all completed gets the gold tick after its numbers, no share", C
     and ChainRow("Lost Necklace").count.text, "4/4")
 Expect("...the quest log's gold tick, where a single quest's goes", ChainRow("Lost Necklace").row.tick
     and (ChainRow("Lost Necklace").status.texture or ChainRow("Lost Necklace").status.atlas), TICK)
-Expect("...at the same size", ChainRow("Lost Necklace").status.width .. "x" .. ChainRow("Lost Necklace").status.height, "15x13")
+Expect("...at the same size", ChainRow("Lost Necklace").status.width .. "x" .. ChainRow("Lost Necklace").status.height, "14x14")
 ClickChain("Lost Necklace")
 Expect("...and closes again", Has(Shown(), "Pie for Billy"), false)
 Tab:Open(PIE)

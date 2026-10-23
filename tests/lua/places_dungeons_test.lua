@@ -125,12 +125,19 @@ Z.Subzones = {
         highperch = { name = "Highperch", full = "Wyverns." } },
     [1436] = { deadmines = { name = "Deadmines", full = "The Defias' mine." }, moonbrook = { name = "Moonbrook", full = "A town." } },
 }
+Z.Subzones[9999] = { ["era-only dungeon"] = { name = "Era-only Dungeon", full = "Not on Forever." } }
 Z.Dungeons = {
     [1413] = { { mapID = 1413, key = "wailing caverns", dungeon = 43 }, { mapID = 1441, key = "razorfen downs", dungeon = 129 } },
     [1436] = { { mapID = 1436, key = "deadmines", dungeon = 36 } },
     [1454] = { { mapID = 1454, key = "ragefire chasm", dungeon = 389 } },
     [1411] = { { mapID = 1411, key = "skull rock", dungeon = 1 } },
 }
+table.insert(Z.Dungeons[1413], { mapID = 9999, key = "era-only dungeon", dungeon = 999 })
+local getMapInfo = _G.C_Map.GetMapInfo
+_G.C_Map.GetMapInfo = function(id)
+    if id == 9999 then return nil end
+    return getMapInfo(id)
+end
 function Z:GetLore(mapID) return self.Zones[mapID] end
 function Z:IsPending(entry) return entry and entry.pending or false end
 function Z:GetLoreWithFallback(mapID) return self.Zones[mapID], mapID end
@@ -188,6 +195,7 @@ end
 local function Click(label) local row = RowFor(label); row.scripts.OnClick(row); return Shown() end
 
 Z:ToggleLoreWindow()
+Expect("Forever hides a dungeon whose story map it does not have", RowFor("Era-only Dungeon"), nil)
 Expect("opened on Westfall, its dungeon a line of its own before its areas", Shown(),
     "Eastern Kingdoms|Westfall|Deadmines|Moonbrook|Kalimdor|The Barrens|Durotar|Thousand Needles")
 
