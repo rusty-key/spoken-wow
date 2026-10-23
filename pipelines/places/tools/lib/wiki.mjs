@@ -225,7 +225,7 @@ function cachePath(key) {
 }
 
 // Fetch any API query with on-disk caching. `key` names the cache entry.
-export async function cachedQuery(query, key, { refresh = false } = {}) {
+async function cachedQuery(query, key, { refresh = false } = {}) {
   const path = cachePath(key);
   if (!refresh && existsSync(path)) {
     return { json: JSON.parse(await readFile(path, "utf8")), cached: true };
