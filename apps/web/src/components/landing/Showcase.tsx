@@ -5,6 +5,9 @@ import { useState } from "react";
 
 import Link from "@/components/LocaleLink";
 
+import VoicePlayer, { VoicePlaceholder } from "./VoicePlayer";
+import { VOICES } from "./voices";
+
 type Part = {
   id: string;
   title: string;
@@ -76,11 +79,13 @@ const PARTS: Part[] = [
 
 /**
  * The parts of Spoken as a list on the left and a stage on the right. The stage is a polite live
- * region, so a screen reader hears the part that was picked.
+ * region, so a screen reader hears the part that was picked. Only the picked part's player
+ * is mounted, and its audio downloads when played.
  */
 export default function Showcase() {
   const [index, setIndex] = useState(0);
   const part = PARTS[index];
+  const voices = VOICES[part.id];
 
   return (
     <div className="bn-showcase">
@@ -97,6 +102,13 @@ export default function Showcase() {
         ))}
       </ul>
       <div className="bn-stage-part">
+        <div className="bn-stage-art">
+          {voices ? (
+            <VoicePlayer key={part.id} voices={voices} label={part.title.toLowerCase()} />
+          ) : (
+            <VoicePlaceholder icon={part.icon} name={part.title} text="Boss stories show as words in the narrator for now. Their voices come later." />
+          )}
+        </div>
         <div className="bn-stage-body" aria-live="polite">
           <p>{part.summary}</p>
           <ul>

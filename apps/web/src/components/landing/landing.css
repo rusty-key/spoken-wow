@@ -1850,6 +1850,275 @@ html:has(.bn) {
 
 
 
+/* Showcase: the player (or its placeholder) on top, text below on the panel */
+.bn-stage-art {
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+.bn-voice {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  padding: 32px 40px;
+}
+.bn-voice-picks-wrap {
+  position: relative;
+}
+.bn-voice-picks {
+  display: flex;
+  gap: 8px;
+  /* the padding holds the focus ring, which the scroller would clip; the margin cancels it */
+  margin: -4px;
+  padding: 4px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+}
+.bn-voice-picks::-webkit-scrollbar {
+  display: none;
+}
+.bn-voice-picks li {
+  flex: none;
+}
+.bn-voice-picks-wrap[data-end="true"] .bn-voice-picks {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent);
+}
+.bn-voice-picks-wrap[data-start="true"] .bn-voice-picks {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px);
+  mask-image: linear-gradient(90deg, transparent, #000 64px);
+}
+.bn-voice-picks-wrap[data-start="true"][data-end="true"] .bn-voice-picks {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent);
+}
+.bn-voice-arrow {
+  position: absolute;
+  top: 4px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--btn);
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, background 0.15s;
+}
+.bn-voice-arrow:hover {
+  background: var(--btn-hover);
+}
+.bn-voice-arrow:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.bn-voice-prev {
+  left: 4px;
+}
+.bn-voice-next {
+  right: 4px;
+}
+.bn-voice-picks-wrap[data-start="true"] .bn-voice-prev,
+.bn-voice-picks-wrap[data-end="true"] .bn-voice-next {
+  opacity: 1;
+  pointer-events: auto;
+}
+.bn-voice-picks button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 16px 4px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text-2);
+  font: 700 14px/20px var(--bn-body), sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bn-voice-picks button:hover {
+  background: var(--btn);
+  color: var(--text);
+}
+.bn-voice-picks button[aria-pressed="true"] {
+  background: var(--btn);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  color: var(--text);
+}
+.bn-voice-picks img {
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+.bn-voice-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.bn-voice-head img {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+.bn-voice-head p {
+  display: grid;
+  margin: 0;
+}
+.bn-voice-head b {
+  color: var(--text);
+  font-size: 20px;
+  line-height: 28px;
+}
+.bn-voice-head span {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.bn-voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.bn-voice-play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cta);
+  color: var(--cta-ink);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bn-voice-play:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.bn-voice-play:hover {
+  background: var(--cta-hover);
+}
+.bn-voice-play:active {
+  background: var(--cta-press);
+}
+.bn-voice-play:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+.bn-voice-wave {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+}
+.bn-voice-seek {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.bn-voice-seek:focus-visible + .bn-wave {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.bn-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+}
+.bn-wave i {
+  flex: 1;
+  min-width: 1px;
+  border-radius: 1px;
+  background: #5b5d66;
+}
+.bn-wave i.on {
+  background: var(--accent);
+}
+.bn-voice-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 14px;
+  line-height: 20px;
+}
+.bn-voice-time {
+  flex: none;
+  min-width: 80px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.bn-voice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+/* Two lines always, so every card is the same size; longer text scrolls */
+.bn-voice-text {
+  position: relative;
+  height: 56px;
+  margin: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 28px;
+}
+.bn-voice-text::-webkit-scrollbar {
+  display: none;
+}
+.bn-voice-text .said {
+  color: var(--text);
+}
+.bn-voice-text .now {
+  color: var(--gold-mid);
+}
+@media (max-width: 720px) {
+  .bn-voice {
+    padding: 24px;
+  }
+  .bn-voice-card {
+    gap: 16px;
+    padding: 16px;
+  }
+  .bn-voice-bar {
+    gap: 12px;
+  }
+  .bn-voice-time {
+    display: none;
+  }
+  .bn-voice-picks button {
+    min-height: 44px;
+  }
+  .bn-voice-arrow {
+    width: 44px;
+    height: 44px;
+    top: 0;
+  }
+}
+
 /* Narrator bar follows the words */
 .bn-line-bar i {
   transition: width 0.24s linear;

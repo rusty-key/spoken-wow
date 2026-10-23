@@ -152,6 +152,20 @@ None of this is the project's to license, and the MIT grant does not reach it.
   Scroll and book were exported from the Forever client with wow.export; the other three come from
   [Warcraft Wiki](https://warcraft.wiki.gg), which hosts them as File:Ui_chat.png,
   File:Inv_misc_map02.png and File:Inv_misc_head_dragon_01.png.
+  The Places player's icon (`icons/zone-badlands.png`) is the game's Badlands zone icon, exported
+  with wow.export, and so are the Durotar, Mulgore and Arathi Highlands zone icons
+  (`icons/zone-*.png`), all set in the same frame as the others. The Quests and Gossip players
+  show the game's race and sex icons (`icons/voice-*.png`: Achievement_Character_ Dwarf_Male,
+  Human_Female, Human_Male, NightElf_Female, Orc_Male and Tauren_Female) and the Readables players
+  the item icons of their kind (`icons/game-letter.png`, `game-tablet.png`, `game-journal.png`:
+  INV_Letter_15, INV_Misc_StoneTablet_11, INV_Misc_Book_11). They are Blizzard's, taken from
+  [Warcraft Wiki](https://warcraft.wiki.gg), where each is File:<name>.png in lower case.
+- **The players under "What Spoken voices"** (`apps/web/public/landing/voice/*.mp3`, and the text,
+  waveform peaks and word times in `src/components/landing/voices.ts`) are sixteen lines from the
+  voice packs, re-encoded: four quest lines, four gossip lines, four place stories and four
+  writings. The text, and the NPC, quest and place names, are Blizzard's (names from the quest
+  corpus), the audio is Spoken's generated audio (see "The generated audio" below), and the word
+  times come from the project's alignment of that audio. The reviewer decides whether they ship.
 - **The front page's key art** (`apps/web/public/landing/hero.jpg`, `art-era.jpg`,
   `art-anniversary.jpg`) is Blizzard Entertainment's, resized and compressed from the copies on
   warcraft.wiki.gg. `hero.jpg` is the WoW: Forever key art by Alex Horley, `art-era.jpg` is the left
