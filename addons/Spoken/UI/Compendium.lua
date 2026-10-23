@@ -288,6 +288,14 @@ local function SetCollapseArrow()
 	end
 end
 
+local function FillButtonArt(button)
+	if not button or not button.GetNormalTexture then return end
+	for _, texture in ipairs({ button:GetNormalTexture(), button.GetPushedTexture and button:GetPushedTexture(),
+		button.GetHighlightTexture and button:GetHighlightTexture() }) do
+		if texture and texture.SetAllPoints then texture:SetAllPoints(button) end
+	end
+end
+
 -- Folded down to the list: the page goes, and only the height resizes, so folding never reflows
 -- the rows.
 local function ShowPages()
@@ -372,6 +380,7 @@ local function BuildChrome()
 				arrow:SetSize(buttonSize, buttonSize)
 				arrow:ClearAllPoints()
 				arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
+				if not IS_ERA then FillButtonArt(arrow) end
 			end
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
