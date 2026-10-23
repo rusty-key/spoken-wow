@@ -72,7 +72,6 @@ end
 
 -- A box's edge: a dark grey, as EllesmereUI's own borders are; its API gives no border colour.
 local EDGE = { 0.2, 0.2, 0.2, 1 }
-Ellesmere.EDGE = EDGE
 -- The dark collar between a picture and its edge, as EllesmereUI's square button draws one round the
 -- icon Spoken puts in it: 2 screen pixels in the panel's colour.
 local COLLAR = 2

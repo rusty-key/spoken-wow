@@ -501,8 +501,7 @@ local function FlatTab(tab)
 	end
 	local highlight = tab.GetHighlightTexture and tab:GetHighlightTexture()
 	if type(highlight) == "table" and highlight.SetAlpha then highlight:SetAlpha(0) end
-	local edge = SpokenEnv.Ellesmere.EDGE
-	local flat = { backing = tab:CreateTexture(nil, "BACKGROUND", nil, -8), edges = {} }
+	local flat = { backing = tab:CreateTexture(nil, "BACKGROUND", nil, -8) }
 	-- The chosen tab's fill: black, one piece with the window's dark foot, opaque as the window is, and
 	-- its cover over the window's bottom edge along the tab, which EllesmereUI draws as one piece and
 	-- cannot be split. On a sibling over the window's edge and under the tab, since a child would draw
@@ -516,11 +515,9 @@ local function FlatTab(tab)
 	plate.cover:SetColorTexture(0, 0, 0, 1)
 	flat.plate = plate
 	flat.backing:SetColorTexture(flatTabs[1] or 0.08, flatTabs[2] or 0.08, flatTabs[3] or 0.08, 1)
-	for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-		local line = tab:CreateTexture(nil, "BORDER")
-		line:SetColorTexture(edge[1], edge[2], edge[3], edge[4])
-		flat.edges[side] = line
-	end
+	-- Round the backing, so they follow it down on the chosen tab.
+	local edges = SpokenEnv.Ellesmere:Edges(tab, flat.backing, SpokenLayout.Pixels(tab, 1, 1), 0)
+	flat.edges = { TOP = edges[1], BOTTOM = edges[2], LEFT = edges[3], RIGHT = edges[4] }
 	-- Its own label, as EllesmereUI's tabs have, the template's hidden: under the pointer the template
 	-- swaps its label's font object, which would bring the game's gold back.
 	local text = tab.Text or (tab.GetFontString and tab:GetFontString())
@@ -548,24 +545,11 @@ end
 -- others; the others' text dimmer and their box shut along the top.
 local function PaintFlatTab(tab, selected)
 	local flat = tab.flat
-	local backing, edges = flat.backing, flat.edges
+	local backing = flat.backing
 	backing:ClearAllPoints()
 	backing:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, 0)
 	backing:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", 0, selected and -TAB_DROP or 0)
-	local pixel = SpokenLayout.Pixels(tab, 1, 1)
-	for side, line in pairs(edges) do
-		line:ClearAllPoints()
-		if side == "TOP" or side == "BOTTOM" then
-			line:SetHeight(pixel)
-			line:SetPoint(side .. "LEFT", backing, side .. "LEFT", 0, 0)
-			line:SetPoint(side .. "RIGHT", backing, side .. "RIGHT", 0, 0)
-		else
-			line:SetWidth(pixel)
-			line:SetPoint("TOP" .. side, backing, "TOP" .. side, 0, 0)
-			line:SetPoint("BOTTOM" .. side, backing, "BOTTOM" .. side, 0, 0)
-		end
-	end
-	edges.TOP:SetShown(not selected)
+	flat.edges.TOP:SetShown(not selected)
 	backing:SetAlpha(selected and 0 or 1)
 	local plate = flat.plate
 	plate:ClearAllPoints()
