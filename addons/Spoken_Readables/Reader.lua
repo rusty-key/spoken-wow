@@ -252,6 +252,10 @@ function SpokenReadables:PackPageText(pageId, language)
 		if entry and type(entry.text) == "string" and entry.text ~= "" then
 			return entry.text
 		end
+		local text = self:PackLanguage(pack) == language and pack.texts and pack.texts[pageId]
+		if type(text) == "string" and text ~= "" then
+			return text
+		end
 	end
 	return nil
 end

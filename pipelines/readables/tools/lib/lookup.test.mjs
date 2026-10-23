@@ -107,6 +107,14 @@ test("a corrected page is still found by the wording the client shows", () => {
   assert.ok(lua.includes(`[${pageChecksum("Texto original.")}] = 15`));
 });
 
+test("a translated page without a voice clip still carries its Compendium text", () => {
+  const lua = packLua("esMX", [], localeEntries([
+    { pageId: "15", numeric: true, bookId: "15", pageNumber: 1, ownerKind: "object", ownerIds: [],
+      inEnglish: true, texts: ["Página traducida."] },
+  ], []));
+  assert.match(lua, /texts = \{\n\s+\[15\] = "Página traducida\.",/);
+});
+
 test("an absorbed page keeps the file its take was cut to under the real numeric id", () => {
   const lua = packLua("esMX", [{ pageId: 38, file: "n1b2c", durationSec: 2.5 }]);
   assert.match(lua, /\[38\] = \{ file = "n1b2c", len = /);

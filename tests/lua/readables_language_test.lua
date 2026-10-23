@@ -19,7 +19,7 @@ local function Install(packs, locale)
     for _, pack in ipairs(packs) do
         _G.SpokenReadablesAudioPacks[pack.addon] = { version = 1, addon = pack.addon,
             language = pack.language, pages = pack.pages, index = pack.index, loose = pack.loose,
-            extraIndex = pack.extraIndex, extraLoose = pack.extraLoose, places = pack.places,
+            extraIndex = pack.extraIndex, extraLoose = pack.extraLoose, texts = pack.texts, places = pack.places,
             books = pack.books }
     end
     _G.SpokenReadablesData = {
@@ -148,6 +148,10 @@ SpokenReadablesSettings.voiceLanguage = "enUS"
 Expect("E. ...and the German pack's words caption the English voice on a German client",
     tostring(B:ClipFor(PAGE).language) .. " " .. tostring(B:ClipFor(PAGE).present.transcript),
     "enUS Gespeicherte deutsche Seite.")
+B = Install({ ENGLISH, { addon = "SpokenReadablesAudio_deDE", language = "deDE", pages = {},
+    texts = { [PAGE] = "Gespeicherte deutsche Seite ohne Aufnahme." } } }, "deDE")
+Expect("E. an indexed page without a recording still supplies localized Compendium text",
+    B:ClientPageText(PAGE), "Gespeicherte deutsche Seite ohne Aufnahme.")
 B = Install({ ENGLISH, GERMAN }, "enUS")
 SpokenReadablesAudioPacks.SpokenReadablesAudio_deDE.pages = { [PAGE] = {
     file = "15", len = 2, text = "Gespeicherte deutsche Seite." } }

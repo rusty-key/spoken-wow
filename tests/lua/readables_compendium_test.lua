@@ -551,10 +551,10 @@ do
     local packs, locale, kept, titles = _G.SpokenReadablesAudioPacks, _G.GetLocale, B.pageText, B.bookTitle
     _G.GetLocale = function() return "esES" end
     _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio_esES = { version = 1, language = "esES",
-        pages = { [first] = { file = tostring(first), len = 2, text = "Palabras de Kurdran." } },
+        pages = {}, texts = { [first] = "Palabras de Kurdran." },
         index = { ["Saludo de Kurdran"] = { [1] = { x = first } } } } }
     B:ShowReadables(KURDRAN)
-    Expect("...on a Spanish client, a page a Spanish pack has words for is in Spanish",
+    Expect("...on a Spanish client, an unvoiced page a Spanish pack has words for is in Spanish",
         page.body.text.text:sub(1, 20), "Palabras de Kurdran.")
     Expect("...under the title the pack's index gives it", page.title.text, "Saludo de Kurdran")
     _G.SpokenReadablesAudioPacks = {}
