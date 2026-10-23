@@ -364,7 +364,7 @@ local function BuildChrome()
 			-- The same size as Close and on its top edge: the frame's own size and the buttons' anchors
 			-- are the template's, which left the arrow larger than Close and above the title bar.
 			mm:ClearAllPoints()
-			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
+			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", IS_ERA and 12 or 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
 				arrow:SetSize(buttonSize, buttonSize)

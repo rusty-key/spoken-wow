@@ -132,11 +132,15 @@ for _, child in ipairs(compendium.children or {}) do
 end
 local minimize = minimizeFrame and minimizeFrame.MinimizeButton
 local closePoint, closeRelative, closeRelativePoint, closeX, closeY = close:GetPoint()
+local minimizeFramePoint, minimizeFrameRelative, minimizeFrameRelativePoint, minimizeFrameX, minimizeFrameY = minimizeFrame:GetPoint()
 local minimizePoint, minimizeRelative, minimizeRelativePoint, minimizeX, minimizeY = minimize:GetPoint()
 Expect("...the Era close button uses the Classic portrait-frame rail", close:GetWidth() .. "x" .. close:GetHeight()
     .. "|" .. closePoint .. "|" .. tostring(closeRelative == compendium) .. "|" .. closeRelativePoint
     .. "|" .. closeX .. "," .. closeY, "32x32|TOPRIGHT|true|TOPRIGHT|4,5")
-Expect("...the minimize button keeps master's template placement",
+Expect("...the Era minimize frame moves beside Close",
+    minimizeFramePoint .. "|" .. tostring(minimizeFrameRelative == close) .. "|" .. minimizeFrameRelativePoint .. "|"
+    .. minimizeFrameX .. "," .. minimizeFrameY, "TOPRIGHT|true|TOPLEFT|12,0")
+Expect("...the minimize button keeps master's template child placement",
     minimize:GetWidth() .. "x" .. minimize:GetHeight() .. "|" .. minimizePoint .. "|"
     .. tostring(minimizeRelative == minimizeFrame) .. "|" .. minimizeRelativePoint .. "|" .. minimizeX .. "," .. minimizeY,
     "30x30|CENTER|true|CENTER|0,0")
