@@ -241,7 +241,8 @@ local function DungeonsIn(zone)
 	local list = {}
 	for _, dungeon in ipairs(SpokenPlaces.Dungeons and SpokenPlaces.Dungeons[zone] or {}) do
 		local entry = SpokenPlaces.Subzones[dungeon.mapID] and SpokenPlaces.Subzones[dungeon.mapID][dungeon.key]
-		if entry and HasMap(dungeon.mapID) then
+		if entry and HasMap(dungeon.mapID)
+			and (not Spoken or not Spoken.IsDungeonOnClient or Spoken:IsDungeonOnClient(dungeon.dungeon)) then
 			table.insert(list, { mapID = dungeon.mapID, key = dungeon.key, name = entry.name or dungeon.key, entry = entry,
 				dungeon = dungeon.dungeon })
 		end

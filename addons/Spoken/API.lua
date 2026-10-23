@@ -8,6 +8,20 @@ setfenv(1, SpokenEnv)
 Spoken.API_VERSION = 1
 Spoken.ADDON_VERSION = AddonVersion
 
+-- The shared dungeon data contains instances from every Classic-era client. Era's vanilla
+-- instances end at map 533; 2784 is the first Season of Discovery/Forever instance in the
+-- generated table. Anniversary uses the same Classic project flag but has its own client maps.
+local FIRST_NON_ERA_DUNGEON = 2784
+
+--- Whether the client can have the dungeon instance map `map`.
+---
+--- The Era client does not expose the instance maps of Season of Discovery or Forever through
+--- C_Map, so callers must apply the client boundary to shared Compendium data themselves.
+function Spoken:IsDungeonOnClient(map)
+    local era = Version and Version.IsRetailVanilla and not Version.IsCamelot
+    return not era or type(map) ~= "number" or map < FIRST_NON_ERA_DUNGEON
+end
+
 -- The site every module's report, contribute and help links point at. The old hosts
 -- (voiceover.rusty.one, lore.rusty.one) keep redirecting, so changing this breaks no copy
 -- already installed.

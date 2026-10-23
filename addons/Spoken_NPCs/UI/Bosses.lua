@@ -45,15 +45,11 @@ local index
 -- (the map of world bosses in different zones lists each under its own, `bossZone["map:key"]`);
 -- byKey["map:key"] = the boss; count = every boss listed. on[continent or "lands"] and
 -- maps[zone], the sorted lines, are kept once worked out.
-local IS_ERA = SpokenEnv and SpokenEnv.Version and SpokenEnv.Version.IsRetailVanilla
--- The generated dungeon table is ordered by instance-map ID: 2784 is the first Forever-only
--- dungeon, while Era's vanilla dungeons and raids end at 533.
-local FIRST_FOREVER_DUNGEON = 2784
 
 local function ClientHasMap(map)
-	-- Spoken NPCs shares its boss data between clients. Era does not expose its dungeon instance
-	-- maps through C_Map, so use the generated table's client boundary instead of querying it.
-	return not IS_ERA or map < FIRST_FOREVER_DUNGEON
+	-- Spoken NPCs shares its boss data between clients. The shared API knows which instances this
+	-- client can actually have, including Season of Discovery's instances on Era.
+	return not Spoken or not Spoken.IsDungeonOnClient or Spoken:IsDungeonOnClient(map)
 end
 
 local function Index()

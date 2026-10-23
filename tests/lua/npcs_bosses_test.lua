@@ -188,6 +188,9 @@ Shown()
 Expect("with the player in a dungeon, its line is opened and chosen, its bosses listed",
     RowFor("Deadmines") ~= nil and RowFor("Deadmines").selected and Has(Shown(), "Edwin VanCleef"), true)
 Expect("Era leaves out Forever-only dungeons from the bosses tab", Has(Shown(), "The Hall of Thanes"), false)
+Expect("Era leaves out Demon Fall Canyon", Has(Shown(), "Demon Fall Canyon"), false)
+Expect("Era leaves out Scarlet Enclave", Has(Shown(), "Scarlet Enclave"), false)
+Expect("Era leaves out Karazhan Crypts", Has(Shown(), "Karazhan Crypts"), false)
 Expect("...a boss not met greyed, with the padlock", RowFor("Edwin VanCleef").row.locked, true)
 -- Back out in Westfall: the line chosen for the player gives way to the zone's.
 here_map = 1436
