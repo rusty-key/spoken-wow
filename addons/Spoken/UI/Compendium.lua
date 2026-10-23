@@ -2249,7 +2249,7 @@ function Page:Darken(skin)
 	body:SetThumbColor(self.ink[1], self.ink[2], self.ink[3])
 	body:SetHeadInk(LIGHT_TITLE[1], LIGHT_TITLE[2], LIGHT_TITLE[3])
 	body:SetFadeColors(BackdropAt(skin, "TOP"), BackdropAt(skin, "BOTTOM"))
-	body:SetCleanPictures(true, SpokenEnv and SpokenEnv.Ellesmere and SpokenEnv.Ellesmere.EDGE)
+	body:SetCleanPictures(true, true)
 	skin.Button(self.contribute)
 	-- White, as EllesmereUI writes the rest of the page.
 	skin.WhiteButtonLabel(self.contribute)

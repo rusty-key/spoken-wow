@@ -42,8 +42,7 @@ local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
 -- A clean picture (TextView:SetCleanPictures) loses this share of each side: past it no pixel of
 -- any shipped picture is thinned toward the parchment by more than 1%, measured from the shipped
--- masks with prepare.py's thinning (the worst, Mask14, needs 0.172: 44 of 256 rows). The same share
--- off every side keeps it 2:1.
+-- masks (the worst, Mask14, needs 0.172: 44 of 256 rows). The same share off every side keeps it 2:1.
 local PICTURE_CROP = 0.175
 -- More room above and below a clean picture, in its box on a dark page, than the frayed one's.
 local CLEAN_ROOM = 9
@@ -290,12 +289,8 @@ local function BuildScrollBar(view, parent)
 
 	view.bar = bar
 	view.thumb = thumb
-	local ellesmere = SpokenEnv and SpokenEnv.Ellesmere
-	if ellesmere then
-		ellesmere:When(function()
-			view.flatThumb = ellesmere:FlatBar(bar, thumb)
-			view:PaintThumb()
-		end)
+	if SpokenLayout.dressScrollBar then
+		SpokenLayout.dressScrollBar(bar, thumb, function(strip) view.flatThumb = strip; view:PaintThumb() end)
 	end
 end
 
@@ -805,7 +800,7 @@ function TextView:SetPicture(file, mask)
 	local maskTexture = self.pictureMask
 	if maskTexture then
 		-- A clean picture has no mask at all: a white 8 by 8 mask stretched over it and clamped to
-		-- black shaded its outer half-texel, some 16 px in from each side, dark.
+		-- black would shade its outer half-texel, some 16 px in from each side, dark.
 		local masked = not self.cleanPictures
 		if masked ~= (self.pictureMasked ~= false) and self.picture.RemoveMaskTexture then
 			if masked then self.picture:AddMaskTexture(maskTexture) else self.picture:RemoveMaskTexture(maskTexture) end
@@ -816,25 +811,13 @@ function TextView:SetPicture(file, mask)
 end
 
 --- Pictures with straight edges, from now on: no frayed mask, the painted edge cut off, and a
---- 1 px edge in `edge` ({ r, g, b, a }) round them where given.
-function TextView:SetCleanPictures(on, edge)
+--- 1 px edge in EllesmereUI's grey round them with `edged`, which needs its look on.
+function TextView:SetCleanPictures(on, edged)
 	self.cleanPictures = on and true or nil
-	if on and edge and not self.pictureEdge then
+	if on and edged and not self.pictureEdge then
 		local frame = CreateFrame("Frame", nil, self.child)
 		frame:SetAllPoints(self.picture)
-		for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-			local line = frame:CreateTexture(nil, "OVERLAY")
-			line:SetColorTexture(edge[1], edge[2], edge[3], edge[4] or 1)
-			if side == "TOP" or side == "BOTTOM" then
-				line:SetHeight(SpokenLayout.Pixels(frame, 1, 1))
-				line:SetPoint(side .. "LEFT", frame, side .. "LEFT", 0, 0)
-				line:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", 0, 0)
-			else
-				line:SetWidth(SpokenLayout.Pixels(frame, 1, 1))
-				line:SetPoint("TOP" .. side, frame, "TOP" .. side, 0, 0)
-				line:SetPoint("BOTTOM" .. side, frame, "BOTTOM" .. side, 0, 0)
-			end
-		end
+		SpokenEnv.Ellesmere:Edges(frame, frame, SpokenLayout.Pixels(frame, 1, 1), 0)
 		frame:SetShown(self.picture:IsShown())
 		self.pictureEdge = frame
 	end

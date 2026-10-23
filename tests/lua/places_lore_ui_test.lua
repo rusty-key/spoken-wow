@@ -128,7 +128,10 @@ _G.hooksecurefunc = _G.hooksecurefunc or function() end
 local audio = setmetatable({}, { __index = Z })
 assert(loadfile(PLACES .. "Audio.lua"))("Spoken_Places", audio)
 Z.PlaceAbove = audio.PlaceAbove
+-- Layout is loaded again for this suite; Spoken's hook into its scroll bars stays.
+local dressScrollBar = SpokenLayout.dressScrollBar
 dofile(here .. "/../../addons/Spoken/UI/Layout.lua")
+SpokenLayout.dressScrollBar = dressScrollBar
 for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/MapPanel" }) do
     assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z)
 end

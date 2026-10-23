@@ -77,22 +77,9 @@ Ellesmere.EDGE = EDGE
 -- icon Spoken puts in it: 2 screen pixels in the panel's colour.
 local COLLAR = 2
 
---- A flat square box round `frame`, once: a backing in EllesmereUI's panel colour under it and a
---- 1 px edge, the edge drawn on `over` (a frame above what `frame` shows) where given. With `outside`
---- the edge is outside `frame`, past a dark collar, so it never covers what `frame` shows. Returns it.
-function Ellesmere:Box(skin, frame, over, outside)
-    if frame.spokenBox then return frame.spokenBox end
-    local r, g, b, a = skin.GetPanelColor()
-    local host, edges = over or frame, {}
-    -- One screen pixel, at whatever scale the frame is drawn; outside, a collar inside the edge.
-    local pixel = SpokenLayout.Pixels(host, 1, 1)
-    local collar = outside and SpokenLayout.Pixels(host, COLLAR, 1) or 0
-    local out = outside and (collar + pixel) or 0
-    -- On `frame` itself, under what it shows, out to the edge: the collar.
-    local backing = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
-    backing:SetColorTexture(r or 0.08, g or 0.08, b or 0.08, a or 0.92)
-    backing:SetPoint("TOPLEFT", frame, "TOPLEFT", -collar, collar)
-    backing:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", collar, -collar)
+--- A 1 px edge of `pixel` round `frame`, `out` outside it, four textures drawn on `host`. Returns them.
+function Ellesmere:Edges(host, frame, pixel, out)
+    local edges = {}
     for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
         local edge = host:CreateTexture(nil, "OVERLAY", nil, 7)
         edge:SetColorTexture(EDGE[1], EDGE[2], EDGE[3], EDGE[4])
@@ -109,7 +96,26 @@ function Ellesmere:Box(skin, frame, over, outside)
         end
         table.insert(edges, edge)
     end
-    frame.spokenBox = { backing = backing, edges = edges }
+    return edges
+end
+
+--- A flat square box round `frame`, once: a backing in EllesmereUI's panel colour under it and a
+--- 1 px edge, the edge drawn on `over` (a frame above what `frame` shows) where given. With `outside`
+--- the edge is outside `frame`, past a dark collar, so it never covers what `frame` shows. Returns it.
+function Ellesmere:Box(skin, frame, over, outside)
+    if frame.spokenBox then return frame.spokenBox end
+    local r, g, b, a = skin.GetPanelColor()
+    local host = over or frame
+    -- One screen pixel, at whatever scale the frame is drawn; outside, a collar inside the edge.
+    local pixel = SpokenLayout.Pixels(host, 1, 1)
+    local collar = outside and SpokenLayout.Pixels(host, COLLAR, 1) or 0
+    local out = outside and (collar + pixel) or 0
+    -- On `frame` itself, under what it shows, out to the edge: the collar.
+    local backing = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+    backing:SetColorTexture(r or 0.08, g or 0.08, b or 0.08, a or 0.92)
+    backing:SetPoint("TOPLEFT", frame, "TOPLEFT", -collar, collar)
+    backing:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", collar, -collar)
+    frame.spokenBox = { backing = backing, edges = self:Edges(host, frame, pixel, out) }
     return frame.spokenBox
 end
 
