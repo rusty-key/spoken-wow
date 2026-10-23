@@ -472,9 +472,10 @@ local function PaintTabs()
 	if not tabButtons then return end
 	for _, button in ipairs(tabButtons) do
 		local selected = button.key == active
-		if PanelTemplates_SelectTab and PanelTemplates_DeselectTab then
-			if selected then pcall(PanelTemplates_SelectTab, button) else pcall(PanelTemplates_DeselectTab, button) end
-		elseif button.LockHighlight then
+		-- Keep the tab's normal frame when selected. PanelTemplates_SelectTab swaps to the
+		-- client's active-tab art, which changes the visible tab size on Era; a locked highlight
+		-- gives the same selected feedback without changing the tab's dimensions.
+		if button.LockHighlight and button.UnlockHighlight then
 			if selected then button:LockHighlight() else button:UnlockHighlight() end
 		end
 		button.selected = selected

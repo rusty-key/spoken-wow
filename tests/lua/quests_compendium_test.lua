@@ -1145,12 +1145,18 @@ Expect("Quests is the first tab", _G.SpokenCompendiumWindowTab1:GetText(), L.COM
 Expect("...Places and Readables after it", _G.SpokenCompendiumWindowTab2:GetText() .. "|" .. _G.SpokenCompendiumWindowTab3:GetText(),
     "Places|Readables")
 Expect("...and the window has its title", C.window.title, SpokenEnv.L.OPT_COMPENDIUM_TITLE)
+local tab1, tab2 = _G.SpokenCompendiumWindowTab1, _G.SpokenCompendiumWindowTab2
+local tabSizes = tab1:GetWidth() .. "x" .. tab1:GetHeight() .. "|" .. tab2:GetWidth() .. "x" .. tab2:GetHeight()
 -- Opened from the minimap menu, on the first tab until the player has chosen one with the tabs.
 C:Select("readables")
 C:Hide()
 C:Toggle()
 Expect("the window opened from the minimap opens on Quests, whichever tab a part showed last", C:IsOpen("quests"), true)
 _G.SpokenCompendiumWindowTab2.scripts.OnClick(_G.SpokenCompendiumWindowTab2)
+Expect("clicking a tab highlights it without swapping its frame", tostring(tab2.highlightLocked) .. "|"
+    .. tostring(tab1.highlightLocked), "true|false")
+Expect("...and leaves the neighbouring tabs the same size", tabSizes,
+    tab1:GetWidth() .. "x" .. tab1:GetHeight() .. "|" .. tab2:GetWidth() .. "x" .. tab2:GetHeight())
 C:Hide()
 C:Toggle()
 Expect("...and once the player has chosen a tab, on that one", C:IsOpen("places"), true)
