@@ -714,22 +714,34 @@ local function BuildWindow()
 		for _, part in ipairs({ built.PortraitContainer, built.portrait, built.PortraitButton }) do
 			if type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
 		end
-		-- Fold and unfold as the world map's beside its close button: the same sizes and place.
+		-- Fold and unfold as the world map's beside its close button: the same sizes and place. The map
+		-- may not be built yet, so the fit is tried again each time the window opens until it lands.
 		local close = type(built.CloseButton) == "table" and built.CloseButton
 		local folds = minimizeFrame and { { minimizeFrame.MinimizeButton, true }, { minimizeFrame.MaximizeButton, false } }
 			or minimizeButton and { { minimizeButton, not minimized } } or {}
-		local map = MapFold()
-		if map and close then close:SetSize(map.closeWidth, map.closeHeight) end
+		local dressed = #folds > 0
 		for _, fold in ipairs(folds) do
 			FlatFold(fold[1])
 			FoldGlyph(fold[1], fold[2])
-			if map then fold[1]:SetSize(map.buttonWidth, map.buttonHeight) end
+			dressed = dressed and fold[1].flatGlyph ~= nil
 		end
 		local holder = minimizeFrame or minimizeButton
-		if map and holder and close then
+		local function FitFolds()
+			local map = MapFold()
+			if not (map and close and holder) then return false end
+			close:SetSize(map.closeWidth, map.closeHeight)
+			-- Buttons the client's arrows did not dress keep the game's size and place.
+			if not dressed then return true end
+			for _, fold in ipairs(folds) do fold[1]:SetSize(map.buttonWidth, map.buttonHeight) end
 			holder:ClearAllPoints()
 			holder:SetPoint(map.point, close, map.relativePoint, map.x, map.y)
 			if minimizeFrame then minimizeFrame:SetSize(map.width, map.height) end
+			return true
+		end
+		if not FitFolds() then
+			built:HookScript("OnShow", function(self)
+				if not self.spokenFoldsFitted then self.spokenFoldsFitted = FitFolds() end
+			end)
 		end
 	end)
 	if UISpecialFrames then table.insert(UISpecialFrames, NAME) end -- close on Escape
@@ -1482,7 +1494,7 @@ local function DrawBanner(row, item, onlyFound)
 	row.label:SetFontObject("GameFontNormal")
 	if listFont then listFont(row.label); listFont(row.count) end
 	-- Both on the box's middle line, by their own middle.
-	if row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
+	if flatBanners and row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
 	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, flatBanners and 0 or -1)
 	row.label:SetPoint("RIGHT", locked and row.lock or row.count, "LEFT", -8, 0)
 	if item.locked then Tint(row.label, LOCKED_INK) else Tint(row.label, NAME_INK) end
