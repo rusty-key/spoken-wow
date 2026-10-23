@@ -73,21 +73,27 @@ end
 -- A box's edge: a dark grey, as EllesmereUI's own borders are; its API gives no border colour.
 local EDGE = { 0.2, 0.2, 0.2, 1 }
 Ellesmere.EDGE = EDGE
+-- The dark collar between a picture and its edge, as EllesmereUI's square button draws one round the
+-- icon Spoken puts in it (Actions.RoundPicture: the icon 3 in from the button's side, inside the
+-- button's 1 px border): 2 screen pixels in the panel's colour.
+local COLLAR = 2
 
 --- A flat square box round `frame`, once: a backing in EllesmereUI's panel colour under it and a
---- 1 px edge, the edge drawn on `over` (a frame above what `frame` shows) where given, and with
---- `outside` just outside `frame`, so it never covers what `frame` shows. Returns it.
+--- 1 px edge, the edge drawn on `over` (a frame above what `frame` shows) where given. With `outside`
+--- the edge is outside `frame`, past a dark collar, so it never covers what `frame` shows. Returns it.
 function Ellesmere:Box(skin, frame, over, outside)
     if frame.spokenBox then return frame.spokenBox end
     local r, g, b, a = skin.GetPanelColor()
-    local out = outside and 1 or 0
     local host, edges = over or frame, {}
-    -- On `frame` itself, under what it shows.
+    -- One screen pixel, at whatever scale the frame is drawn; outside, a collar inside the edge.
+    local pixel = SpokenLayout.Pixels(host, 1, 1)
+    local collar = outside and SpokenLayout.Pixels(host, COLLAR, 1) or 0
+    local out = outside and (collar + pixel) or 0
+    -- On `frame` itself, under what it shows, out to the edge: the collar.
     local backing = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
     backing:SetColorTexture(r or 0.08, g or 0.08, b or 0.08, a or 0.92)
-    backing:SetAllPoints(frame)
-    -- One screen pixel, at whatever scale the frame is drawn.
-    local pixel = SpokenLayout.Pixels(host, 1, 1)
+    backing:SetPoint("TOPLEFT", frame, "TOPLEFT", -collar, collar)
+    backing:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", collar, -collar)
     for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
         local edge = host:CreateTexture(nil, "OVERLAY", nil, 7)
         edge:SetColorTexture(EDGE[1], EDGE[2], EDGE[3], EDGE[4])
@@ -112,8 +118,8 @@ end
 local DISC = [[Interface\AddOns\Spoken\Textures\MinimalPortraitMask]]
 
 --- A round box for `region` (a face, cut round by the same disc), once, drawn on `host`, a frame under
---- what `region` shows: a dark disc behind the face and a grey disc 1 px larger all round behind
---- that, which shows as the 1 px edge round the face. Returns it.
+--- what `region` shows: a dark disc behind the face, a collar wider, and a grey disc 1 px larger all
+--- round behind that, which shows as the 1 px edge round the collar. Returns it.
 function Ellesmere:Disc(skin, host, region)
     if region.spokenDisc then return region.spokenDisc end
     local r, g, b = skin.GetPanelColor()
@@ -130,7 +136,9 @@ function Ellesmere:Disc(skin, host, region)
         end
         return disc
     end
-    region.spokenDisc = { edge = Disc(EDGE, 1, 6), backing = Disc({ r or 0.08, g or 0.08, b or 0.08 }, 0, 7) }
+    -- The dark disc a collar wider than the face, the grey one a pixel wider still.
+    local pixel, collar = SpokenLayout.Pixels(host, 1, 1), SpokenLayout.Pixels(host, COLLAR, 1)
+    region.spokenDisc = { edge = Disc(EDGE, collar + pixel, 6), backing = Disc({ r or 0.08, g or 0.08, b or 0.08 }, collar, 7) }
     return region.spokenDisc
 end
 

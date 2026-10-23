@@ -140,7 +140,11 @@ Expect("...its portrait flat: no gold ring, no art behind it, cut round in a 1 p
 env.Face.SetBadge(M.portrait, "quest-accept")
 Expect("...no badge at its corner, its glyphs being round, nor the socket for one",
     tostring(M.badge:IsShown()) .. " " .. tostring(M.badgeBackground:IsShown()), "false false")
-Expect("...its edge just outside the face, not over it", M.viewport.spokenBox.edges[1].anchor.y, 1)
+-- As EllesmereUI's square button sets an icon in its border: a 2 px dark collar, then the 1 px edge.
+Expect("...its square box's edge outside the face past a dark collar, not over it",
+    M.viewport.spokenBox.edges[1].anchor.y .. " " .. M.viewport.spokenBox.backing.anchor.x, "3 2")
+Expect("...its round one too: the dark disc a collar wider than the face, the grey edge a pixel past it",
+    M.portrait.disc.backing.anchor.x .. " " .. M.portrait.disc.edge.anchor.x, "2 3")
 do
     local left
     local setPoint = M.panel.SetPoint
