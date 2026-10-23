@@ -644,6 +644,20 @@ do
     Expect("...on a Russian client its name white in the game's font, not EllesmereUI's",
         tostring(later and later.name.colour) .. " " .. tostring(later and fonts[later.name] ~= [[Fonts\EUI.ttf]] and fonts[later.name] ~= nil),
         "1 1 1 true")
+
+    -- A Spoken without its EllesmereUI module, as after a partial update: the card is as in the stock look.
+    local ellesmere = SpokenEnv.Ellesmere
+    SpokenEnv.Ellesmere = nil
+    SPELLS[1767] = { name = "Gouge", iconID = 132155 }
+    _G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, display = 1305, spells = { 3391, 5200, 1766, 1767 } } } }
+    Shown()
+    local chosen
+    for _, row in ipairs(rows) do if row.selected then chosen = row end end
+    local ok = pcall(function() chosen.scripts.OnClick(chosen) end)
+    SpokenEnv.Ellesmere = ellesmere
+    local fourth = page.body.partButtons and page.body.partButtons[4]
+    Expect("a card built where Spoken has no EllesmereUI module is drawn as in the stock look",
+        tostring(ok) .. " " .. tostring(fourth and fourth.flat) .. " " .. tostring(fourth and fourth.plate:GetAlpha()), "true nil 0.3")
     _G.SpokenBossCreatures = {}
     _G.C_Spell.GetSpellSubtext = nil
 end

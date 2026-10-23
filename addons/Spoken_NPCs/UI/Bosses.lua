@@ -466,8 +466,8 @@ local function Card(position)
 	C.Ellesmere(function()
 		card.flat = true
 		plate:SetAlpha(0)
+		for _, line in ipairs({ name, sub }) do SpokenEnv.Ellesmere:Refont(line, true) end
 	end)
-	for _, line in ipairs({ name, sub }) do SpokenEnv.Ellesmere:Refont(line, true) end
 	function card:SetLines(title, subtitle)
 		name:SetText(title)
 		sub:SetText(subtitle or "")
