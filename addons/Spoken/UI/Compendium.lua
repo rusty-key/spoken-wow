@@ -1463,9 +1463,12 @@ local function DrawBanner(row, item, onlyFound)
 	row.toggle:ClearAllPoints()
 	-- The plus or minus as far in from the banner's edge as it is from its top and its foot, all
 	-- measured from the banner's gold line, whose middle is 1.5 under the row's.
-	-- The campaign bar's gold line sits under the row's middle; a flat box has its middle.
+	-- The campaign bar's gold line sits under the row's middle; a flat box has its middle. The quest
+	-- log's minus and plus draw their bar 1.5 above their picture's middle (measured in game: the
+	-- minus 1.5 px over the box's middle, the name and the count on it), so the sign alone drops.
 	local drop = flatBanners and 0 or BANNER_DROP
-	row.toggle:SetPoint("LEFT", row, "LEFT", BANNER_IN, -drop)
+	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or BANNER_DROP
+	row.toggle:SetPoint("LEFT", row, "LEFT", BANNER_IN, -sign)
 	Toggle(row, item, onlyFound)
 	local locked = item.locked and row.hasLock
 	-- The numbers and padlock in the column the lines' numbers end in.
@@ -1478,6 +1481,8 @@ local function DrawBanner(row, item, onlyFound)
 	row.count:SetText(item.total and item.total > 0 and (Number(item.count) .. "/" .. Number(item.total)) or "")
 	row.label:SetFontObject("GameFontNormal")
 	if listFont then listFont(row.label); listFont(row.count) end
+	-- Both on the box's middle line, by their own middle.
+	if row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
 	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, flatBanners and 0 or -1)
 	row.label:SetPoint("RIGHT", locked and row.lock or row.count, "LEFT", -8, 0)
 	if item.locked then Tint(row.label, LOCKED_INK) else Tint(row.label, NAME_INK) end

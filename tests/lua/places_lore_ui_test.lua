@@ -972,9 +972,17 @@ do
     Expect("...its banners flat boxes, not the campaign bar",
         tostring(banner and banner.bannerArt) .. " " .. tostring(banner and banner.bannerLeft:IsShown()) .. " "
         .. tostring(banner and banner.headMiddle:IsShown()), "false true false")
-    Expect("...their name, sign and count in the box's middle",
-        math.abs(banner.label.anchor.y) .. " " .. math.abs(banner.toggle.anchor.y) .. " " .. math.abs(banner.count.anchor.y),
-        "0 0 0")
+    -- The name and the count by their own middle on the box's middle line; the quest log's minus
+    -- 1.5 lower, its bar being drawn that far above its picture's middle.
+    for _, part in ipairs({ banner.label, banner.count }) do
+        function part:SetJustifyV(justify) self.justifyV = justify end
+    end
+    Z:ShowLoreFor(1411, nil)
+    Expect("...their name and count on the box's middle by their own middles, the minus's bar on it",
+        banner.label.anchor.point .. ">" .. banner.label.anchor.relativePoint .. " " .. banner.label.anchor.y .. " "
+        .. tostring(banner.label.justifyV) .. " | " .. banner.count.anchor.point .. " " .. banner.count.anchor.y .. " "
+        .. tostring(banner.count.justifyV) .. " | " .. banner.toggle.anchor.point .. " " .. banner.toggle.anchor.y,
+        "RIGHT>LEFT 0 MIDDLE | RIGHT 0 MIDDLE | LEFT -1.5")
     -- A line reaches up through the gap above its row, 4 at most (under a banner), to the foot of the
     -- box above, and no further: inside it, it crossed the box's edge or the group's plus or minus.
     local railed, reach = 0, 0
