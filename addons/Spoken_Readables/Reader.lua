@@ -13,7 +13,11 @@
 --                                          corpus's; only for checksums no other page shares
 --   3. words around the tokens          -- for a page the client filled with the reader's
 --                                          name, class or gender word; only where one fits
---   4. nothing                          -- silently, because the alternative is reading the
+--   4. the item or object that opened   -- for a server that lays out or words a page
+--      it, and the page number             differently; Opener.lua says what was clicked
+--   5. title + page number + most of    -- the same, where the client said nothing; the words
+--      the words                           keep a different book of the same name out
+--   6. nothing                          -- silently, because the alternative is reading the
 --                                          wrong page's words aloud
 
 local ADDON_NAME, SpokenReadables = ...
@@ -184,6 +188,98 @@ function SpokenReadables:SaidTokens(text)
 	end))
 end
 
+--- The page at `number` in a book, or nil where the book is shorter.
+local function PageAt(data, bookId, number)
+	local book = data.books and data.books[bookId]
+	for _, pageId in ipairs(book and book.pages or {}) do
+		local place = data.pages[pageId]
+		if place and place.number == number then
+			return pageId
+		end
+	end
+end
+
+--- The page the item or object that opened the frame holds at `number`. Refused where the
+--- title on screen is another corpus book's: the candidate was something touched before the
+--- click, not what was clicked.
+function SpokenReadables:OwnerPageOf(title, number)
+	local data = self:Data()
+	local owners = data and data.owners
+	if not owners then
+		return nil
+	end
+	for _, opener in ipairs(self.openedBy or {}) do
+		local bookId = owners[opener.kind] and owners[opener.kind][opener.id]
+		local book = bookId and data.books[bookId]
+		local pageId = book and PageAt(data, bookId, number)
+		if pageId and (not title or title == book.title or not (data.index and data.index[title])) then
+			return pageId
+		end
+	end
+end
+
+--- A page's words as a set, in lower case: letters and digits, and bytes past ASCII so any
+--- script keeps its letters. Its count beside it.
+local function Words(text)
+	local words, count = {}, 0
+	text = string.gsub(string.lower(text), "%$[bB]", " ")
+	for word in string.gmatch(text, "[%w\128-\255]+") do
+		if not words[word] then
+			words[word] = true
+			count = count + 1
+		end
+	end
+	return words, count
+end
+
+-- The share of words two texts must have in common to be one page. A page laid out differently
+-- has them all; a reworded sentence or two keeps most; a different book of the same name
+-- shares little beyond "the" and "of".
+local SAME_WORDS = 0.6
+
+--- How much of two texts is the same words: those both have, over the larger count.
+local function Overlap(a, aCount, b, bCount)
+	if aCount == 0 or bCount == 0 then
+		return 0
+	end
+	local shared = 0
+	for word in pairs(a) do
+		if b[word] then shared = shared + 1 end
+	end
+	return shared / math.max(aCount, bCount)
+end
+
+--- The corpus page with this title and number whose words are mostly the ones on screen. A
+--- title and number alone do not name a page: the server may hold a book of the same name the
+--- corpus does not, as "Proof of Deed" is many bosses' deeds. Nil where none is close enough;
+--- of several, the closest, and the lower id on a tie.
+function SpokenReadables:TitlePageOf(title, number, text)
+	local data = self:Data()
+	local byTitle = title and data and data.index and data.index[title]
+	local byNumber = byTitle and byTitle[number]
+	if not byNumber then
+		return nil
+	end
+	local hasNext = ItemTextHasNextPage and NotSecret(ItemTextHasNextPage())
+	local screen, screenCount = Words(text)
+	local best, bestScore
+	for _, pageId in pairs(byNumber) do
+		local place = data.pages[pageId]
+		local book = place and data.books[place.book]
+		-- A book that ends here while the screen offers a next page, or the reverse, is
+		-- another book.
+		local fits = book and (hasNext == nil or hasNext == (number < #book.pages))
+		if fits and type(place.text) == "string" then
+			local score = Overlap(screen, screenCount, Words(place.text))
+			if score >= SAME_WORDS and (not best or score > bestScore
+				or (score == bestScore and type(pageId) == type(best) and pageId < best)) then
+				best, bestScore = pageId, score
+			end
+		end
+	end
+	return best
+end
+
 --- The page id the client is showing, or nil.
 function SpokenReadables:PageOnScreen()
 	local data = self:Data()
@@ -224,6 +320,19 @@ function SpokenReadables:PageOnScreen()
 		end
 	end
 	local found = FindAny(data) or self:TokenPageOf(text)
+	if found then
+		self:RememberPageText(found, self.BASE_LANGUAGE, text, title)
+		return found
+	end
+
+	-- What the reader clicked: right whatever the text, in the client's own language.
+	found = self:OwnerPageOf(title, number)
+	if found then
+		self:RememberPageText(found, client, text, title)
+		return found
+	end
+
+	found = self:TitlePageOf(title, number, text)
 	if found then self:RememberPageText(found, self.BASE_LANGUAGE, text, title) end
 	return found
 end

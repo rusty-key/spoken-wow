@@ -17,6 +17,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **The Places tab sorts names without a leading "The".** The Barrens is listed under B and
   The Crossroads under C, among the zones, areas and dungeons, as you would look for them. The
   names still read in full. *([rusty-key](https://github.com/rusty-key))*
+- **Readables that Forever lays out or words differently are read.** A page whose line breaks,
+  spacing or a few words differ from Spoken's copy was silent and never counted as found. It is
+  now recognised by the item or object you opened it from, or by its title and most of its words,
+  and plays Spoken's recording. *([rusty-key](https://github.com/rusty-key))*
 - **Readables in the Compendium are filed where Forever has them.** Archmage Khadgar's plaque is
   under Alterac Mountains as well as Stormwind, Holidays and Events has a line for each event, the
   Green Hills of Stranglethorn cover is under Stranglethorn Vale, and Hildelve's Journal and

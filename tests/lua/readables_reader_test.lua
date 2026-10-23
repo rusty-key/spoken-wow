@@ -12,7 +12,7 @@ local Expect, Failures = H.Expecter(print)
 
 local function LoadReadables()
     local SpokenReadables = {}
-    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader", "Audio" }) do
+    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Opener", "Reader", "Audio" }) do
         local chunk = assert(loadfile(READABLES .. file .. ".lua"))
         chunk("Spoken_Readables", SpokenReadables)
     end
@@ -81,6 +81,60 @@ Expect("an empty page is not a page", B:PageOnScreen(), nil)
 local PTERADON = "This intact pteradon skeleton was recovered from the remote Un'Goro Crater. Based on the skeletal structure, it is clear that this specific genus has not yet been encountered. This skeleton could have been preserved for any number of centuries beneath the region's rich soil."
 stub.ShowPage({ title = "Pteradon Skeleton", number = 1, text = PTERADON })
 Expect("two books with the same words resolve to the lower", B:PageOnScreen(), 1756)
+
+---------------------------------------------------------------- the same page, laid out or worded differently
+-- A server that breaks the lines elsewhere, or rewords a sentence, misses every checksum.
+local REGISTRY_RELAID = string.gsub(REGISTRY_1, "\n\n", " ")
+stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_RELAID, hasNext = true })
+Expect("a page laid out differently is found by its title, number and words", B:PageOnScreen(), 261)
+
+local REGISTRY_REWORDED = string.gsub(REGISTRY_1, "solemny swear our faith and devotion", "solemnly pledge our loyalty")
+stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_REWORDED, hasNext = true })
+Expect("...and one with a sentence reworded", B:PageOnScreen(), 261)
+
+stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_RELAID, hasNext = false })
+Expect("...but not where the screen ends a book the corpus goes on with", B:PageOnScreen(), nil)
+
+stub.ShowPage({ title = "Proof of Deed", number = 1, text = "This proof of deed is to verify that Torno slew Onyxia, the Black Dragonflight's broodmother." })
+Expect("a book of the same name with other words is not the corpus's", B:PageOnScreen(), nil)
+
+---------------------------------------------------------------- what opened the frame
+-- The Registry is item 3657. An item names its book whatever the words on screen say.
+B:NoteOpener("item", 3657)
+B:OnTextBegin()
+stub.ShowPage({ title = "Hillsbrad Town Registry", number = 2, text = "Words the corpus never had.", hasNext = true })
+Expect("the item that opened the frame names the page at this number", B:PageOnScreen(), 262)
+stub.ShowPage({ title = "Registre de Hautebrande", number = 3, text = "Des mots en français.", hasNext = true })
+Expect("...under a title the corpus does not know", B:PageOnScreen(), 263)
+stub.ShowPage({ title = "Hillsbrad Town Registry", number = 9, text = "Words the corpus never had." })
+Expect("...but not past the end of its book", B:PageOnScreen(), nil)
+stub.ShowPage({ title = "Proof of Deed", number = 1, text = "Words the corpus never had." })
+Expect("...nor under another corpus book's title: that item was not what was clicked", B:PageOnScreen(), nil)
+B:OnOpenerClosed()
+stub.ShowPage({ title = "Hillsbrad Town Registry", number = 2, text = "Words the corpus never had.", hasNext = true })
+Expect("closing the frame forgets what opened it", B:PageOnScreen(), nil)
+
+world.time = 100
+B:NoteOpener("item", 3657)
+world.time = 111
+B:OnTextBegin()
+Expect("a use older than ten seconds is not what opened the frame", #B.openedBy, 0)
+
+world.time = 200
+B:NoteSoftInteract("GameObject-0-4170-0-6-175685-00002A5B1C")
+B:NoteOpener("item", 3657)
+world.time = 201
+B:NoteOpener("object", B:ObjectEntryOf("GameObject-0-4170-0-6-175685-00002A5B1C"))
+world.time = 202
+B:OnTextBegin()
+Expect("the most recent use comes first", B.openedBy[1].kind, "object")
+Expect("...then the older one", B.openedBy[2].kind, "item")
+Expect("...then the interact key's target, however old", B.openedBy[3].id, 175685)
+Expect("an object's entry is read from its GUID", B:ObjectEntryOf("GameObject-0-4170-0-6-175685-00002A5B1C"), 175685)
+Expect("...and a creature's is not an object's", B:ObjectEntryOf("Creature-0-4170-0-6-3657-00002A5B1C"), nil)
+B:NoteSoftInteract(nil)
+B:OnOpenerClosed()
+world.time = 0
 
 ---------------------------------------------------------------- pages the client fills in
 -- The client writes the reader's name, class and gender word into a page, while the index is

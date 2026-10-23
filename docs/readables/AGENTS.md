@@ -43,7 +43,8 @@ window returns an object under every name it ever had. `page_text` has no patch 
 (`addons/Spoken_Readables/Checksum.lua`) over UTF-8 bytes, using only multiply, add and modulo.
 Changing `CHECKSUM_MODULUS` or `CHECKSUM_FACTOR` means re-exporting the data module, whose lookup
 tables are keyed on the result. A title and a page number do not identify a page: two different
-objects are both named "A Dusty Tome".
+objects are both named "A Dusty Tome". The reader's title fallback (`TitlePageOf`) also needs
+most of the words to match, so never relax it to title and number alone.
 
 ## One page is one entry
 

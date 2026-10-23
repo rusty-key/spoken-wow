@@ -123,7 +123,34 @@ export function canBeHad(entries) {
 }
 
 /**
- * @param entries corpus rows: pageId, bookId, pageNumber, pageCount, title, text
+ * `owners = {...}`: item and object id -> the book it opens. An id that opens more than one
+ * book is left out, as `loose` leaves out a shared checksum.
+ *
+ * @param entries corpus rows with ownerKind ("item", "object" or null) and ownerIds
+ */
+export function ownersLua(entries) {
+  const owners = { item: new Map(), object: new Map() };
+  for (const entry of entries) {
+    const byId = owners[entry.ownerKind];
+    for (const id of byId ? entry.ownerIds ?? [] : []) {
+      byId.set(id, byId.has(id) && byId.get(id) !== entry.bookId ? null : entry.bookId);
+    }
+  }
+  const lines = ["\towners = {"];
+  for (const kind of ["item", "object"]) {
+    lines.push(`\t\t${kind} = {`);
+    for (const [id, bookId] of [...owners[kind].entries()].sort(([a], [b]) => a - b)) {
+      if (bookId !== null) lines.push(`\t\t\t[${id}] = ${luaId(bookId)},`);
+    }
+    lines.push("\t\t},");
+  }
+  lines.push("\t},");
+  return lines;
+}
+
+/**
+ * @param entries corpus rows: pageId, bookId, pageNumber, pageCount, title, text, and
+ *   optionally ownerKind and ownerIds
  */
 export function booksLua(entries) {
   // Sorted throughout, so re-exporting an unchanged corpus produces an identical file and a
@@ -149,6 +176,6 @@ export function booksLua(entries) {
     lines.push(`\t\t[${bookId}] = { title = ${quote(book.title)}, pages = { ${book.pages.join(", ")} } },`);
   }
 
-  lines.push("\t},", "}", "");
+  lines.push("\t},", "", ...ownersLua(sorted), "}", "");
   return lines.join("\n");
 }

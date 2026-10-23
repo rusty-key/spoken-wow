@@ -174,8 +174,21 @@ three.
 it is showing. Title, page number and a checksum of the text; then the checksum alone,
 where no other page shares it; then, for a page the client filled with the reader's name,
 class or gender word, its words against the captions that hold a token, where exactly one
-fits; then nothing. Nothing is the right last answer: the alternative is reading the wrong
-page's words aloud.
+fits. Then two steps for a server that lays out or words a page differently from the corpus:
+
+- **What opened the frame.** `Opener.lua` notes the item used from the bags
+  (`C_Container.UseContainerItem`), the object a tooltip was last on and the interact key's
+  object. `Books.lua`'s `owners` maps the id to its book, and the page number picks the page.
+  Refused where the book has no page at that number, or where the title on screen is another
+  corpus book's, which means the id was something touched before the click.
+- **Title, page number and most of the words.** At least 60% of the distinct words in common,
+  and the client's next-page arrow agreeing with where the book ends. The words are the guard:
+  the server may hold a book of the same name that the corpus lacks ("Proof of Deed" is many
+  bosses' deeds).
+
+Either way the clip is the corpus page's, so a page the server rewords plays the corpus's words.
+Then nothing. Nothing is the right last answer: the alternative is reading the wrong page's
+words aloud.
 
 **The checksum is the load-bearing part.** `pipelines/readables/tools/lib/naming.mjs` and
 `addons/Spoken_Readables/Checksum.lua` must produce the same number for the same text, over

@@ -105,3 +105,21 @@ test("a minted page is written as a quoted key", () => {
   assert.ok(lines.some((line) => line.includes('= "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11"')));
   assert.equal(lines[0], "\textraIndex = {");
 });
+
+test("an item or object names the book it opens", () => {
+  const lua = booksLua([
+    { ...entries[0], ownerKind: "item", ownerIds: [2794] },
+    { ...entries[1], ownerKind: "item", ownerIds: [2794] },
+    { ...entries[2], ownerKind: "object", ownerIds: [175732, 175733] },
+  ]);
+  assert.match(lua, /item = \{\n\t\t\t\[2794\] = 10,\n\t\t\}/);
+  assert.match(lua, /object = \{\n\t\t\t\[175732\] = 20,\n\t\t\t\[175733\] = 20,\n\t\t\}/);
+});
+
+test("an id that opens two books names neither", () => {
+  const lua = booksLua([
+    { ...entries[0], ownerKind: "object", ownerIds: [1] },
+    { ...entries[2], ownerKind: "object", ownerIds: [1, 2] },
+  ]);
+  assert.match(lua, /object = \{\n\t\t\t\[2\] = 20,\n\t\t\}/);
+});
