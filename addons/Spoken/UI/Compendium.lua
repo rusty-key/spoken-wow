@@ -84,6 +84,7 @@ local SMALLER_DOWN = [[Interface\Buttons\UI-Panel-SmallerButton-Down]]
 local BIGGER_UP = [[Interface\Buttons\UI-Panel-BiggerButton-Up]]
 local BIGGER_DOWN = [[Interface\Buttons\UI-Panel-BiggerButton-Down]]
 local PANEL_HI = [[Interface\Buttons\UI-Panel-MinimizeButton-Highlight]]
+local ERA_TAB_HIGHLIGHT = [[Interface\PaperDollInfoFrame\UI-Character-Tab-RealHighlight]]
 
 --------------------------------------------------------------------------------
 -- Art with a way out
@@ -431,6 +432,17 @@ local function NewTab(index, label)
 	end
 	tab:SetID(index)
 	tab:SetText(label)
+	if IS_ERA and tab.SetHighlightTexture then
+		-- Era's modern tab template has a highlight layer, but its atlas-backed selected art is
+		-- missing on this client. Use the old tab glow and keep it inside the button's own bounds.
+		tab:SetHighlightTexture(ERA_TAB_HIGHLIGHT, "ADD")
+		local highlight = tab.GetHighlightTexture and tab:GetHighlightTexture()
+		if highlight and highlight.ClearAllPoints then
+			highlight:ClearAllPoints()
+			highlight:SetPoint("TOPLEFT", tab, "TOPLEFT", 3, 5)
+			highlight:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -3, 0)
+		end
+	end
 	if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
 	return tab
 end
@@ -474,10 +486,15 @@ local function PaintTabs()
 	if not tabButtons then return end
 	for _, button in ipairs(tabButtons) do
 		local selected = button.key == active
-		-- Keep the tab's normal frame when selected. PanelTemplates_SelectTab swaps to the
-		-- client's active-tab art, which changes the visible tab size on Era; a locked highlight
-		-- gives the same selected feedback without changing the tab's dimensions.
-		if button.LockHighlight and button.UnlockHighlight then
+		if IS_ERA then
+			-- Keep the tab's normal frame when selected. The contained Classic glow gives selected
+			-- feedback without swapping to Era's missing active-tab atlas or changing its dimensions.
+			if button.LockHighlight and button.UnlockHighlight then
+				if selected then button:LockHighlight() else button:UnlockHighlight() end
+			end
+		elseif PanelTemplates_SelectTab and PanelTemplates_DeselectTab then
+			if selected then pcall(PanelTemplates_SelectTab, button) else pcall(PanelTemplates_DeselectTab, button) end
+		elseif button.LockHighlight and button.UnlockHighlight then
 			if selected then button:LockHighlight() else button:UnlockHighlight() end
 		end
 		button.selected = selected
