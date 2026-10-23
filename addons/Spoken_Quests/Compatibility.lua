@@ -438,14 +438,49 @@ do
     -- The quest log's tracking checkbox, as it draws on this client (what its Play button matches).
     local BOX, SIZE = "QuestLog-icon-ticksquare", 14
     local buttons, hooked = {}, {}
+    -- Between the Play button and the button moved left of it.
+    local GAP = 5
+
+    -- The client lays a quest's own buttons (its item, a find-group button) out from the block's top
+    -- right, one left of the next, where the Play button sits. While the Play button is shown the
+    -- first of them is moved left of it, and the room is taken off the right of the title and the
+    -- objectives when the block is fetched (they are cut to the buttons' edge as they are added, which
+    -- cannot be changed afterwards). The client lays them out again on each pass, so the x each was
+    -- moved to is remembered: a second call before then does not move it twice, and putting it
+    -- back only undoes a move this made.
+    local moved = setmetatable({}, { __mode = "k" })
+    local function MakeRoom(block, room)
+        local frame = block.rightEdgeFrame
+        for _ = 1, 4 do
+            if type(frame) ~= "table" or not frame.GetPoint then return end
+            local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
+            if relativeTo == block then
+                if room and point == "TOPRIGHT" and moved[frame] ~= x then
+                    x = (x or 0) - SIZE - GAP
+                    frame:SetPoint(point, relativeTo, relativePoint, x, y)
+                    moved[frame] = x
+                elseif not room and moved[frame] and moved[frame] == x then
+                    frame:SetPoint(point, relativeTo, relativePoint, x + SIZE + GAP, y)
+                    moved[frame] = nil
+                end
+                return
+            end
+            frame = relativeTo
+        end
+    end
+
+    local function Wanted(questID)
+        return type(questID) == "number" and Spoken and Spoken.DressBoxButton and Addon:IsPartOn()
+            and Addon.db and Addon.db.profile.TrackerPlayButton
+            and DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID })
+    end
 
     local function Dress(block)
         local questID = block.id
         local button = buttons[block]
-        if type(questID) ~= "number" or not (Spoken and Spoken.DressBoxButton) or not Addon:IsPartOn()
-            or not (Addon.db and Addon.db.profile.TrackerPlayButton)
-            or not DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID }) then
+        if not Wanted(questID) then
             if button then button:Hide() end
+            MakeRoom(block, false)
             return
         end
         if not button then
@@ -473,6 +508,7 @@ do
         QuestOverlayUI:BindPlayButton(button, questID, C_QuestLog.GetTitleForQuestID(questID) or "",
             "the objective tracker's Play button")
         button:Show()
+        MakeRoom(block, true)
         QuestOverlayUI:SetPlayButtonState(button)
     end
 
@@ -497,6 +533,16 @@ do
             if type(module) == "table" and module.AddBlock and not hooked[name] then
                 hooked[name] = true
                 hooksecurefunc(module, "AddBlock", function(_, block) Dress(block) end)
+                if module.GetBlock then
+                    -- A block comes back reset, before any button or line is added to it.
+                    hooksecurefunc(module, "GetBlock", function(self, id, template)
+                        local byTemplate = self.usedBlocks and self.usedBlocks[template or self.blockTemplate]
+                        local block = byTemplate and byTemplate[id]
+                        if block and block.AdjustRightEdgeOffset and Wanted(id) then
+                            block:AdjustRightEdgeOffset(-SIZE - GAP)
+                        end
+                    end)
+                end
             end
         end
         Sweep()
