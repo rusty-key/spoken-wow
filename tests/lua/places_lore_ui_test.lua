@@ -30,6 +30,7 @@ _G.CreateFrame = function(kind, name, parent, template)
         function frame:SetTitle(text) self.title = text end
         function frame:SetPortraitToAsset(path) self.portrait = path end
         frame.CloseButton = createFrame("Button", nil, frame)
+        frame.CloseButton:SetSize(32, 32)
     elseif template == "MaximizeMinimizeButtonFrameTemplate" then
         frame.MinimizeButton, frame.MaximizeButton = createFrame("Button", nil, frame), createFrame("Button", nil, frame)
     end
@@ -121,6 +122,17 @@ Expect("built at login, hidden, and not made the tab the window first opens on",
 Expect("the places are a tab of Azeroth's Compendium, the game's portrait frame", compendium.template, "PortraitFrameTemplate")
 Expect("...titled, with the Compendium's tome in its portrait", compendium.title .. "|" .. tostring(compendium.portrait),
     SpokenEnv.L.OPT_COMPENDIUM_TITLE .. "|Interface\\Icons\\INV_Misc_Book_11")
+local close = compendium.CloseButton
+local minimize = compendium.MinimizeButton
+local closePoint, closeRelative, closeRelativePoint, closeX, closeY = close:GetPoint()
+local minimizePoint, minimizeRelative, minimizeRelativePoint, minimizeX, minimizeY = minimize:GetPoint()
+Expect("...the Era close button uses the Classic portrait-frame rail", close:GetWidth() .. "x" .. close:GetHeight()
+    .. "|" .. closePoint .. "|" .. tostring(closeRelative == compendium) .. "|" .. closeRelativePoint
+    .. "|" .. closeX .. "," .. closeY, "32x32|TOPRIGHT|true|TOPRIGHT|4,5")
+Expect("...the Era minimize button is the same size and sits directly beside Close",
+    minimize:GetWidth() .. "x" .. minimize:GetHeight() .. "|" .. minimizePoint .. "|"
+    .. tostring(minimizeRelative == close) .. "|" .. minimizeRelativePoint .. "|" .. minimizeX .. "," .. minimizeY,
+    "32x32|RIGHT|true|LEFT|0,0")
 Expect("...closed by Escape", _G.UISpecialFrames[#_G.UISpecialFrames], "SpokenCompendiumWindow")
 local page = window.page
 Expect("its story is on the spellbook's parchment", page.parchment, "spellbook-Page-Right-C60")

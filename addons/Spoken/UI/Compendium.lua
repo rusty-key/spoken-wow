@@ -344,10 +344,15 @@ end
 local function BuildChrome()
 	local close = type(window.CloseButton) == "table" and window.CloseButton
 	if close then
-		local buttonSize = math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
+		-- Classic's PortraitFrameTemplate supplies a 32px close button. Keep its native size and
+		-- anchor on Era: shrinking/repositioning it makes the adjacent classic control sit inside the
+		-- title bar instead of on the frame's button rail. Forever keeps its existing layout.
+		local buttonSize = IS_ERA and 32 or math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
 		close:SetSize(buttonSize, buttonSize)
 		close:ClearAllPoints()
-		if window.templated then
+		if IS_ERA then
+			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", 4, 5)
+		elseif window.templated then
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -6, -1)
 		else
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -8)
@@ -372,6 +377,7 @@ local function BuildChrome()
 			minimizeButton = CreateFrame("Button", nil, window)
 			minimizeButton:SetSize(buttonSize, buttonSize)
 			minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			window.MinimizeButton = minimizeButton
 			minimizeButton:SetFrameLevel(close:GetFrameLevel())
 			minimizeButton:SetHighlightTexture(PANEL_HI)
 			minimizeButton:SetScript("OnClick", function() SetMinimized(not minimized) end)
