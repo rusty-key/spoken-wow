@@ -78,8 +78,8 @@ function Face.Build(parent, size, level, least)
     return host
 end
 
---- The face as a flat box in EllesmereUI's look: no ring, the speaker cut square in a 1 px edge on a
---- dark backing, and the badge on a small dark square in place of the ring's socket.
+--- The face as a flat box in EllesmereUI's look: no ring and no badge (SetBadge), the speaker in a
+--- 1 px edge on a dark backing, cut round or, for a 3D model, square (Fit).
 function Face.Square(skin, face)
     if face.squared then return end
     face.squared = true
@@ -88,11 +88,6 @@ function Face.Square(skin, face)
     local viewport = face.viewport
     face.box = Ellesmere:Box(skin, viewport, face.chrome, true)
     face.disc = Ellesmere:Disc(skin, face, viewport)
-    local r, g, b = skin.GetPanelColor()
-    local badge = face.badge:GetWidth() or 12
-    face.badgeBackground:SetColorTexture(r or 0.08, g or 0.08, b or 0.08, 1)
-    face.badgeBackground:SetVertexColor(1, 1, 1, 1)
-    face.badgeBackground:SetSize(badge + 4, badge + 4)
     Face.SetBadge(face, nil)
     Face.Fit(face)
 end
@@ -111,8 +106,8 @@ function Face.Fit(face)
         Ellesmere.Shape(face.box, face.disc, round)
     end
     local static = viewport.active == "static" and viewport.activeFrame or nil
-    -- Each one there: a face built by Face.Build has no still, and a list stopping at the first
-    -- nil left a captured face unmasked after a 3D model.
+    -- Each one there: a face may have no still, and ipairs would stop at that gap and skip the
+    -- captured face.
     for _, texture in pairs({ face.still or false, viewport.texture or false, static or false }) do
         if texture then StaticPortrait:Mask(viewport, texture) end
     end

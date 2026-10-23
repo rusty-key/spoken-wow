@@ -74,8 +74,7 @@ end
 local EDGE = { 0.2, 0.2, 0.2, 1 }
 Ellesmere.EDGE = EDGE
 -- The dark collar between a picture and its edge, as EllesmereUI's square button draws one round the
--- icon Spoken puts in it (Actions.RoundPicture: the icon 3 in from the button's side, inside the
--- button's 1 px border): 2 screen pixels in the panel's colour.
+-- icon Spoken puts in it: 2 screen pixels in the panel's colour.
 local COLLAR = 2
 
 --- A flat square box round `frame`, once: a backing in EllesmereUI's panel colour under it and a

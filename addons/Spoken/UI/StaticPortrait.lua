@@ -246,8 +246,8 @@ function StaticPortrait:Capture(clip, refreshGUID)
 end
 function StaticPortrait:Mask(viewport, texture)
     if not texture.AddMaskTexture then return end
-    -- A flat face in EllesmereUI's look (Face.Square) is cut square by its viewport alone: a mask
-    -- of white clamped to black shaded its edges.
+    -- A flat face in EllesmereUI's look is cut square by its viewport alone: a mask of white
+    -- clamped to black would shade its edges.
     if viewport.squareMask then
         if texture.minimalMask then texture:RemoveMaskTexture(texture.minimalMask) end
         texture.minimalMask = nil
