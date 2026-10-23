@@ -14,9 +14,7 @@ local BADGES = {
     ["quest-complete"] = ART .. "MinimalBulletComplete",
     gossip = ART .. "MinimalBulletGossip",
     book = [[Interface\GossipFrame\TrainerGossipIcon]],
-    -- Classic Era has the legacy world-map icon; the modern asset is unavailable there.
-    zone = Version.IsRetailVanilla and [[Interface\WorldMap\WorldMap-Icon]]
-        or [[Interface\WorldMap\UI-World-Icon]],
+    zone = [[Interface\WorldMap\UI-World-Icon]],
 }
 Face.BADGES = BADGES
 -- The smallest a ring face's badge is drawn, on a face smaller than the Small Window's.

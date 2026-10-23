@@ -15,6 +15,18 @@ local Art = SpokenPlaces.Art
 
 local panel, page, toggle
 
+-- The map-side history uses the same place portrait as Azeroth's Compendium. Keeping the icon
+-- here makes the shared page draw its zone badge instead of falling back to the bare tome.
+local function PlaceIcon(mapID, key)
+	local compendium = _G.SpokenCompendium
+	if not (compendium and compendium.PlaceIcon) then return nil end
+	if key and SpokenPlaces.AreaZone then
+		local zone, dungeon = SpokenPlaces:DungeonOf(mapID, key)
+		return compendium.PlaceIcon(zone or SpokenPlaces:AreaZone(mapID, key), dungeon)
+	end
+	return compendium.PlaceIcon(mapID)
+end
+
 -- What the map's alpha is at when the player stands still. The fader's last step may stop a hair
 -- short of 1.
 local CLEAR = 0.99
@@ -354,18 +366,19 @@ local function Refresh(mapID)
 		local back = function() SpokenPlaces:ClearSubzone() end
 		-- Not found yet: named, and no more, as Azeroth's Compendium has it.
 		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(story, key) then
-			page:Show({ title = name, subtitle = line, onSubtitle = back, text = L.NOT_DISCOVERED })
+			page:Show({ title = name, subtitle = line, onSubtitle = back, text = L.NOT_DISCOVERED,
+				icon = PlaceIcon(story, key) })
 			return
 		end
 		if SpokenPlaces:IsPending(selected.entry) then
 			-- Named, listed, and honest about the rest: nothing to play and nothing written to
 			-- report on. Azeroth's Compendium lists it all the same, so Open goes to its row there.
 			page:Show({ title = name, subtitle = line, onSubtitle = back,
-				contribute = { story, name }, lore = { story, key } })
+				contribute = { story, name }, lore = { story, key }, icon = PlaceIcon(story, key) })
 			return
 		end
 		page:Show({ title = name, subtitle = line, onSubtitle = back, text = selected.entry.full or selected.entry.short or "",
-			audio = { story, key }, report = { story, key }, lore = { story, key } })
+			audio = { story, key }, report = { story, key }, lore = { story, key }, icon = PlaceIcon(story, key) })
 		return
 	end
 
@@ -374,7 +387,7 @@ local function Refresh(mapID)
 	-- Azeroth to open on.
 	if not entry then
 		page:Show({ title = zoneName,
-			contribute = { mapID, nil } })
+			contribute = { mapID, nil }, icon = PlaceIcon(mapID) })
 		return
 	end
 
@@ -387,18 +400,18 @@ local function Refresh(mapID)
 		caption = SpokenPlaces:PlaceLine(mapID)
 	end
 	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(foundOn) then
-		page:Show({ title = zoneName, subtitle = caption, text = L.NOT_DISCOVERED })
+		page:Show({ title = zoneName, subtitle = caption, text = L.NOT_DISCOVERED, icon = PlaceIcon(foundOn) })
 		return
 	end
 	if SpokenPlaces:IsPending(entry) then
 		page:Show({ title = zoneName, subtitle = caption,
-			contribute = { foundOn, nil }, lore = { foundOn, nil } })
+			contribute = { foundOn, nil }, lore = { foundOn, nil }, icon = PlaceIcon(foundOn) })
 		return
 	end
 	-- foundOn, not mapID: a dungeon showing its parent zone's text should read that same parent
 	-- zone's narration, and a report on it belongs to the line the text actually came from.
 	page:Show({ title = zoneName, subtitle = caption, text = entry.full or entry.short or "",
-		audio = { foundOn, nil }, report = { foundOn, nil }, lore = { foundOn, nil } })
+		audio = { foundOn, nil }, report = { foundOn, nil }, lore = { foundOn, nil }, icon = PlaceIcon(foundOn) })
 end
 
 function SpokenPlaces:RefreshPanel()
