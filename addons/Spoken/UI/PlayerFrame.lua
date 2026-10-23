@@ -301,6 +301,8 @@ function PlayerFrame:RefreshConfig()
         Ellesmere:Try(function(skin)
             -- White on EllesmereUI's shell, as its windows write their names.
             self.frame.container.name:SetTextColor(1, 1, 1)
+            -- The shell's own dark behind the words: ApplyArt has just drawn Spoken's box again.
+            self.frame.background:SetAlpha(0)
             -- The portrait flat: no ring or ornate frame round it, no art behind it.
             local portrait = self.frame.portrait
             portrait.border.texture:SetAlpha(0)
@@ -495,7 +497,8 @@ function PlayerFrame:Update()
     -- In EllesmereUI's look the speaker's captured face where there is one: a face can be cut round,
     -- a 3D model cannot. Without one, the 3D model as ever, not the book StaticPortrait stands in with.
     local portrait = self.frame.portrait
-    if not (Ellesmere:On() and StaticPortrait:Capture(head) and StaticPortrait:Configure(portrait, head)) then
+    local captured = Ellesmere:On() and StaticPortrait:Capture(head)
+    if not (captured and StaticPortrait:Configure(portrait, head, captured)) then
         -- The face of the speaker before is let go: Portrait does not know it.
         StaticPortrait:Release(portrait)
         Portrait:Configure(portrait, head)

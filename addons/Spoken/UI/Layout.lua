@@ -2517,8 +2517,7 @@ local function BuildScrollBar(view, parent)
         end
     end
     Look()
-    -- Drawn another way by whoever sets Layout.dressScrollBar (Spoken, in EllesmereUI's look):
-    -- `repaint` takes the strip it draws for the thumb.
+    -- A UI look draws the bar its own way; `repaint` takes the strip it draws for the thumb.
     if Layout.dressScrollBar then
         Layout.dressScrollBar(bar, thumb, function(strip) view.flatThumb = strip; Look() end)
     end
