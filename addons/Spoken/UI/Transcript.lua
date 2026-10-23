@@ -662,7 +662,9 @@ end
 --- lack. The size stays the skin's or the player's.
 function Transcript:ApplyFont()
     local present = self.clip and self.clip.present
-    local own = (self.style or {}).font or GameFontNormal:GetFont()
+    -- EllesmereUI's font in its look, but on the DialogueUI window, which keeps DialogueUI's.
+    local own = (Addon:DisplayStyle() ~= "dialogueui" and Ellesmere:Font()) or (self.style or {}).font
+        or GameFontNormal:GetFont()
     local face, size = present and present.font or own, FontSize()
     if face == self.face and size == self.faceSize then return end
     -- A face the client cannot load: false on current clients, no face reported on older ones.

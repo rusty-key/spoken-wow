@@ -27,6 +27,7 @@
     <Include file="UI\Face.lua"/>
     <Include file="UI\PlayerFrame.lua"/>
     <Include file="UI\MinimalPlayer.lua"/>
+    <Include file="UI\Ellesmere.lua"/>
     <Include file="UI\DialogueUIPlayer.lua"/>
     <Include file="UI\DialogueUITransitions.lua"/>
     <Include file="UI\MinimapButton.lua"/>

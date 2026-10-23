@@ -50,7 +50,9 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
 - **The face** (`Face.lua`): the speaker's still portrait, captured from their unit or drawn from
   their creature (`StaticPortrait.lua`), else the line's own picture, cut round, with the line's
   badge on a dark disc at its lower right, and the disc only under a badge. A creature the client
-  has not cached shows the book until it comes. The Large Window draws a 3D model instead.
+  has not cached shows the book until it comes. The Large Window draws a 3D model instead. In
+  EllesmereUI's look the face is a flat box with no ring and no badge, and the Large Window shows the
+  captured face too, where there is one.
 - **Show Progress Bar**: a progress line under the words, for the subtitles and every window. Off by default.
 - **Dragging** a window or the subtitles draws it to the screen's edges and middle, and the DialogueUI
   window to its resting place too, with a gold guide line where it holds. Holding Shift drags it free.
@@ -134,7 +136,8 @@ they do in the windows.
 name over the line's title, the controls at the header's right, then Rows at Once of the words
 (the **+** button expands them to eight, **−** goes back) and the progress line.
 
-- **Theme**: Parchment, with dark words (the default), or Dark, with light words.
+- **Theme**: Parchment, with dark words (the default), or Dark, with light words. In EllesmereUI's
+  look the row is hidden: its window is dark whichever is chosen.
 - **Hide Portrait** leaves the face out.
 - Right-click on the face, the name, the title or the panel opens a menu: Stop or Replay, Skip
   Line, Stop All, Open Azeroth's Compendium, Settings, and the line's actions that name themselves.
@@ -146,7 +149,8 @@ name over the line's title, the controls at the header's right, then Rows at Onc
 ## Large Window
 
 `PlayerFrame.lua`. The game's Talking Head frame where the client has its art (Spoken's own art
-elsewhere): a bigger portrait drawn as a 3D model, the speaker's name, up to three rows of the
+elsewhere): a bigger portrait drawn as a 3D model (in EllesmereUI's look the speaker's captured face,
+cut round, where there is one), the speaker's name, up to three rows of the
 words, the controls at the top right where the frame has its close button, and the progress line.
 It is dragged by the ring at the portrait's lower left, and it fades as the Small Window does.
 

@@ -78,8 +78,9 @@ end
 
 --- Dress `button` as the player's round buttons are -- the windows' pause, the subtitle's
 --- controls: the ring round its edge, `icon` inside it, brighter under the pointer. Sized by the
---- button, so a corner icon and a subtitle control are the same button at different sizes.
-function Actions.RoundIcon(button, icon)
+--- button, so a corner icon and a subtitle control are the same button at different sizes. With
+--- `own`, the caller squares the button in EllesmereUI's look once all its parts exist.
+function Actions.RoundIcon(button, icon, own)
     local ring = button:CreateTexture(nil, "BACKGROUND")
     ring:SetTexture(RING)
     ring:SetPoint("TOPLEFT", button, "TOPLEFT", -3, 3)
@@ -95,7 +96,27 @@ function Actions.RoundIcon(button, icon)
     button:HookScript("OnEnter", function() if button:IsEnabled() then glyph:SetAlpha(1) end end)
     button:HookScript("OnLeave", function() if button:IsEnabled() then glyph:SetAlpha(GLYPH_ALPHA) end end)
     button.ring, button.glyph = ring, glyph
+    if Ellesmere and not own then Ellesmere:When(function(skin) Actions.Square(skin, button) end) end
     return button
+end
+
+-- Whether `button` keeps its ring in EllesmereUI's look: on the DialogueUI window and DialogueUI's
+-- own windows, which keep DialogueUI's look.
+local function KeepsRound(button)
+    local frame = button
+    while frame do
+        if frame.spokenRound == true or frame == _G.DUIQuestFrame or frame == _G.DUIBookFrame then return true end
+        frame = frame.GetParent and frame:GetParent() or nil
+    end
+    return false
+end
+
+--- A round button as one of EllesmereUI's square buttons, its glyph or picture kept, square too.
+function Actions.Square(skin, button)
+    if button.squared or KeepsRound(button) then return end
+    button.squared = true
+    if button.mask and button.glyph.RemoveMaskTexture then button.glyph:RemoveMaskTexture(button.mask) end
+    skin.Button(button, { "glyph", "bar" })
 end
 
 -- Big enough to aim at and to read as a bug rather than a smudge; and the gap between a row of them.
@@ -135,12 +156,12 @@ end
 --- The subtitle's round button, the one every window shows: 24 across, the player's ring,
 --- `glyphSize` square glyph centred in it (or reaching the rim with none). Made without a parent
 --- and given one after, which a button on the open quest log needs (taint), and which costs the
---- rest nothing. `name` for a button that must be named.
-function Actions.RoundButton(parent, glyphSize, name)
+--- rest nothing. `name` for a button that must be named. `own` as for Actions.RoundIcon.
+function Actions.RoundButton(parent, glyphSize, name, own)
     local button = CreateFrame("Button", name, nil)
     button:SetParent(parent)
     button:SetSize(ROUND_SIZE, ROUND_SIZE)
-    Actions.RoundIcon(button)
+    Actions.RoundIcon(button, nil, own)
     if glyphSize then
         button.glyph:ClearAllPoints()
         button.glyph:SetPoint("CENTER")
@@ -197,7 +218,7 @@ end
 
 --- Skip: the round button with the play glyph against a bar, the usual "next" mark.
 function Actions.SkipButton(parent, name)
-    local skip = Actions.RoundButton(parent, 10, name)
+    local skip = Actions.RoundButton(parent, 10, name, true)
     Actions.Glyph(skip.glyph, "play")
     skip.glyph:ClearAllPoints()
     skip.glyph:SetPoint("CENTER", -2, 0)
@@ -206,6 +227,8 @@ function Actions.SkipButton(parent, name)
     skip.bar:SetSize(P and P(skip, 2) or 2, P and P(skip, 9) or 9)
     skip.bar:SetPoint("LEFT", skip.glyph, "RIGHT", 0, 0)
     if skip.bar.SetColorTexture then skip.bar:SetColorTexture(1, 0.82, 0, 0.85) end
+    -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, skip) end) end
     skip:SetScript("OnClick", Actions.Skip)
     skip:SetScript("OnEnter", function()
         skip.glyph:SetAlpha(1)
@@ -624,6 +647,8 @@ function Actions.RoundPicture(button, icon)
     glyph:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
     glyph:SetTexture(icon)
     glyph:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- A square button in EllesmereUI's look keeps its picture square.
+    if button.squared then return end
     local mask = button.CreateMaskTexture and glyph.AddMaskTexture and button:CreateMaskTexture()
     if type(mask) == "table" then
         mask:SetTexture(PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")

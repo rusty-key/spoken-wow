@@ -131,6 +131,14 @@ local function Build()
     frame:SetWidth(frameWidth)
     editBox:SetWidth(frameWidth - 60)
     body:SetWidth(frameWidth - 40)
+    Ellesmere:When(function(skin)
+        skin.Shell(frame, { noTopBar = true })
+        skin.CloseButton(close)
+        for _, button in ipairs({ justThis, gather }) do
+            skin.Button(button)
+            skin.WhiteButtonLabel(button)
+        end
+    end)
 
     return { frame = frame, editBox = editBox, address = address, title = title, hint = hint,
         scroll = scroll, body = body, justThis = justThis, gather = gather }

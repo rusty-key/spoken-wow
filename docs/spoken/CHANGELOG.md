@@ -4,6 +4,13 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Spoken's windows follow EllesmereUI's look.** With EllesmereUI installed and its EllesmereUI Style
+  in use, the Small and Large Window and the welcome and contribution windows take its dark windows
+  and its font in white, and Spoken's settings pages its thin scroll bars. Portraits are round
+  in a thin grey edge, and Spoken's round buttons, on the subtitles and the quest windows too, are its
+  square ones. The DialogueUI window keeps DialogueUI's look, and under EllesmereUI's other looks
+  nothing changes; its own settings turn this off for Spoken, under Window Skins > Third-Party Addons.
+  *([Nucabe](https://github.com/Nucabe))*
 - **Spoken's keys have their own Spoken category in Key Bindings**, instead of sitting under
   Other. *([Jayshua83](https://github.com/Jayshua83))* *([Nucabe](https://github.com/Nucabe))*
 - **A right-click on a window's words skips the line**, in the Small Window, the Large Window and the

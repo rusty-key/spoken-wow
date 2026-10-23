@@ -60,7 +60,7 @@ local function WordsFont()
     if not (font and font.GetFont) then return nil end
     local path, size = font:GetFont()
     if not (path and size) then return nil end
-    return path, math.max(6, math.floor(size * (tonumber(Config().FontSize) or 16) / 16 + .5))
+    return Ellesmere:Font() or path, math.max(6, math.floor(size * (tonumber(Config().FontSize) or 16) / 16 + .5))
 end
 local function Pictured() return not Addon:Profile("Frame").HidePortrait end
 -- The words' face on the measuring string, so wrapping and paging measure at Text Size.
@@ -332,6 +332,11 @@ function Subtitle:Build()
         part:SetTextColor(.62, .62, .62)
         part:SetShadowColor(0, 0, 0, 1)
         part:SetShadowOffset(1, -1)
+    end
+    -- The speaker's name white, as on EllesmereUI's windows.
+    Ellesmere:Refont(self.title, true)
+    for _, part in ipairs({ self.dot, self.label, self.pausedLabel, self.heldDot, self.held, self.moreDot, self.more }) do
+        Ellesmere:Refont(part)
     end
     self.heldDot:SetText("•")
     self.moreDot:SetText("•")
