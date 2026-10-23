@@ -123,6 +123,9 @@ _G.tinsert = _G.tinsert or table.insert
 _G.GameFontHighlight = _G.GameFontHighlight or { GetFont = function() return "font.ttf", 12 end }
 _G.hooksecurefunc = _G.hooksecurefunc or function() end
 
+-- Keep the modern stub APIs used by this test, but exercise the Classic Era map filter.
+SpokenEnv.Version.IsRetailVanilla = true
+
 local MAPS = { [947] = "Azeroth", [1414] = "Kalimdor", [1415] = "Eastern Kingdoms", [1411] = "Durotar",
     [1413] = "The Barrens", [1416] = "Alterac Mountains", [1418] = "Badlands", [1420] = "Tirisfal Glades",
     [1421] = "Silverpine Forest", [1422] = "Western Plaguelands", [1423] = "Eastern Plaguelands",
@@ -184,6 +187,7 @@ local page = NPCs.bosses.page
 Shown()
 Expect("with the player in a dungeon, its line is opened and chosen, its bosses listed",
     RowFor("Deadmines") ~= nil and RowFor("Deadmines").selected and Has(Shown(), "Edwin VanCleef"), true)
+Expect("Era leaves out Forever-only dungeons from the bosses tab", Has(Shown(), "The Hall of Thanes"), false)
 Expect("...a boss not met greyed, with the padlock", RowFor("Edwin VanCleef").row.locked, true)
 -- Back out in Westfall: the line chosen for the player gives way to the zone's.
 here_map = 1436

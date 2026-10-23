@@ -88,6 +88,12 @@ local function UnknownHere(mapID)
 	return C_Map.GetMapInfo(mapID) == nil
 end
 
+-- A dungeon's story is keyed by its own map, which may be present in the shared data but absent
+-- from this client. Do not put that dungeon in a list the player cannot reach on this client.
+local function HasMap(mapID)
+	return not (C_Map and C_Map.GetMapInfo) or C_Map.GetMapInfo(mapID) ~= nil
+end
+
 --- Every zone with a story, alphabetical: everything in the data but Azeroth, its continents and
 --- maps this client has not got.
 local function ZoneIDs()
@@ -235,7 +241,7 @@ local function DungeonsIn(zone)
 	local list = {}
 	for _, dungeon in ipairs(SpokenPlaces.Dungeons and SpokenPlaces.Dungeons[zone] or {}) do
 		local entry = SpokenPlaces.Subzones[dungeon.mapID] and SpokenPlaces.Subzones[dungeon.mapID][dungeon.key]
-		if entry then
+		if entry and HasMap(dungeon.mapID) then
 			table.insert(list, { mapID = dungeon.mapID, key = dungeon.key, name = entry.name or dungeon.key, entry = entry,
 				dungeon = dungeon.dungeon })
 		end
@@ -257,7 +263,7 @@ local function Areas(mapID)
 		-- report them: listed, they would never be found.
 		local foreverOnly = not OnForever() and SpokenPlaces.ForeverOnlyAreas and SpokenPlaces.ForeverOnlyAreas[area.mapID]
 		local dungeons = DungeonIndex()[area.mapID]
-		if not (foreverOnly and foreverOnly[area.key]) and not (dungeons and dungeons[area.key]) then
+		if HasMap(area.mapID) and not (foreverOnly and foreverOnly[area.key]) and not (dungeons and dungeons[area.key]) then
 			table.insert(list, { mapID = area.mapID, key = area.key, entry = SpokenPlaces.Subzones[area.mapID][area.key] })
 		end
 	end

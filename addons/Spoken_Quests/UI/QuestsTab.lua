@@ -39,6 +39,11 @@ VO.QuestsTab = QuestsTab
 
 local L = VO.L
 local C
+local VERSION = _G.SpokenEnv and _G.SpokenEnv.Version
+local IS_ERA = VERSION and VERSION.IsRetailVanilla
+-- The shared Compendium data contains Forever's added quests, whose IDs start above the vanilla
+-- quest range. Era has no quest data for those, even when Forever files one under an Era zone.
+local ERA_QUEST_LIMIT = 10000
 
 local list, page
 local selection          -- { quest = id } | { mapID = id } | { sort = id } | { group = "elsewhere" }
@@ -190,6 +195,10 @@ local function Allowed(quest)
         if not Has(quest.classes, class) then return false end
     end
     return true
+end
+
+local function OnThisClient(id)
+    return not IS_ERA or id < ERA_QUEST_LIMIT
 end
 
 -- What the game says this character has completed, read again on each refresh: the whole list
@@ -360,7 +369,7 @@ function Index()
     if index then return index end
     index = { zones = {}, sorts = {}, elsewhere = {}, all = {} }
     for id, quest in pairs(Quests()) do
-        if Allowed(quest) then
+        if OnThisClient(id) and Allowed(quest) then
             local zones = KnownZones(quest)
             if quest.zones and #quest.zones > 0 then
                 if #zones > 0 then index.all[id] = true end
@@ -475,7 +484,7 @@ local IN_PROGRESS_MARK = "|TInterface\\GossipFrame\\ActiveQuestIcon:0|t "
 local function Prev(id)
     local quest = Quests()[id]
     local prev = quest and quest.prev
-    return prev and Quests()[prev] and prev or nil
+    return prev and OnThisClient(prev) and Quests()[prev] and prev or nil
 end
 
 -- The quests that follow each, by id, by the quest before them.
@@ -484,7 +493,7 @@ local function Following(id)
     if not following then
         following = {}
         for after, quest in pairs(Quests()) do
-            if quest.prev then
+            if OnThisClient(after) and quest.prev and OnThisClient(quest.prev) then
                 following[quest.prev] = following[quest.prev] or {}
                 table.insert(following[quest.prev], after)
             end

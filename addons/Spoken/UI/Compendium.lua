@@ -68,9 +68,14 @@ local SCROLL_STEP = 60
 local GRABBER_SIZE = 16
 local FILTER_ROOM = 26       -- what the search box gives up for the filter menu's arrow beside it
 local NAME = "SpokenCompendiumWindow"
+local VERSION = SpokenEnv and SpokenEnv.Version
+-- Forever can report the Classic project flag while using its modern 70xxx interface. Era uses
+-- the 11xxx interface, so use that stable client boundary for the Era-only chrome changes.
+local IS_ERA = VERSION and VERSION.IsRetailVanilla and not VERSION.IsCamelot
 -- The window's portrait: a tome from the game, the Compendium's own rather than any one part's.
 -- inv_toy_booklibrary, by file id.
-local ICON = 5341597
+-- Classic Era does not have that modern file, so keep the icon that was used before it.
+local ICON = IS_ERA and [[Interface\Icons\INV_Misc_Book_11]] or 5341597
 C.ICON = ICON
 
 local GRABBER_UP = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]]
@@ -100,6 +105,28 @@ local function Atlas(texture, atlas, useAtlasSize)
 	return false
 end
 C.Atlas = Atlas
+
+-- Classic Era has the old backdrop API and the old panel textures, while Forever keeps the
+-- modern InsetFrameTemplate and its atlas art. Use only the classic art here: changing the
+-- template on Forever makes its compendium lose the textures that are already correct there.
+local ERA_INSET_BACKDROP = {
+	bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
+	edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]],
+	tile = true, tileSize = 16, edgeSize = 16,
+	insets = { left = 3, right = 3, top = 3, bottom = 3 },
+}
+
+local function NewInset(parent)
+	local template = IS_ERA and "BackdropTemplate" or "InsetFrameTemplate"
+	local ok, inset = pcall(CreateFrame, "Frame", nil, parent, template)
+	if not ok or not inset then inset = CreateFrame("Frame", nil, parent) end
+	if IS_ERA and inset.SetBackdrop then
+		inset:SetBackdrop(ERA_INSET_BACKDROP)
+		inset:SetBackdropColor(0.08, 0.06, 0.04, 1)
+		inset:SetBackdropBorderColor(0.45, 0.35, 0.22, 1)
+	end
+	return inset
+end
 
 -- Where `atlas` sits in its file, for drawing a piece of it: nil where the client has not got it,
 -- or does not say.
@@ -320,9 +347,12 @@ local function BuildChrome()
 	local close = type(window.CloseButton) == "table" and window.CloseButton
 	if close then
 		local buttonSize = math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
-		close:SetSize(buttonSize, buttonSize)
+		local eraButtonSize = IS_ERA and 32 or buttonSize
+		close:SetSize(eraButtonSize, eraButtonSize)
 		close:ClearAllPoints()
-		if window.templated then
+		if IS_ERA then
+			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", 4, 5)
+		elseif window.templated then
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -6, -1)
 		else
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -8)
@@ -334,7 +364,7 @@ local function BuildChrome()
 			-- The same size as Close and on its top edge: the frame's own size and the buttons' anchors
 			-- are the template's, which left the arrow larger than Close and above the title bar.
 			mm:ClearAllPoints()
-			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
+			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", IS_ERA and 12 or 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
 				arrow:SetSize(buttonSize, buttonSize)
@@ -384,7 +414,9 @@ end
 -- The tabs along the window's foot, as the character sheet has them; none with only one.
 local function NewTab(index, label)
 	local tab
-	for _, template in ipairs({ "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate" }) do
+	local templates = IS_ERA and { "CharacterFrameTabButtonTemplate", "PanelTabButtonTemplate" }
+		or { "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate" }
+	for _, template in ipairs(templates) do
 		local ok, button = pcall(CreateFrame, "Button", NAME .. "Tab" .. index, window, template)
 		if ok and button then
 			tab = button
@@ -441,9 +473,12 @@ local function PaintTabs()
 	if not tabButtons then return end
 	for _, button in ipairs(tabButtons) do
 		local selected = button.key == active
+		-- Era uses the Classic character tab template, whose active art is the original selected
+		-- target. Its normal and active pieces share the same dimensions, so selecting it does not
+		-- resize the tab.
 		if PanelTemplates_SelectTab and PanelTemplates_DeselectTab then
 			if selected then pcall(PanelTemplates_SelectTab, button) else pcall(PanelTemplates_DeselectTab, button) end
-		elseif button.LockHighlight then
+		elseif button.LockHighlight and button.UnlockHighlight then
 			if selected then button:LockHighlight() else button:UnlockHighlight() end
 		end
 		button.selected = selected
@@ -680,7 +715,9 @@ end
 
 -- A tick: the game's yellow check, else its ready check.
 local function Ticked(texture)
-	if Atlas(texture, CHECK) then
+	-- Era reports the modern atlas but has no backing texture for it, which renders as a green
+	-- square. Its classic ready-check texture is the visible equivalent.
+	if not IS_ERA and Atlas(texture, CHECK) then
 		texture:SetSize(TICK_WIDTH, TICK_HEIGHT)
 	else
 		texture:SetTexture(READY)
@@ -778,8 +815,7 @@ function C.NewList(panel, opts)
 	end)
 	list.searchBox = searchBox
 
-	local ok, inset = pcall(CreateFrame, "Frame", nil, panel, "InsetFrameTemplate")
-	if not ok or not inset then inset = CreateFrame("Frame", nil, panel) end
+	local inset = NewInset(panel)
 	-- The game's dark marble under the list, at its own colour.
 	if type(inset.Bg) == "table" and inset.Bg.SetTexture then
 		inset.Bg:SetTexture([[Interface\FrameGeneral\UI-Background-Marble]], "REPEAT", "REPEAT")
@@ -1099,7 +1135,9 @@ local function Toggle(row, item, onlyFound)
 	end
 	local opens = not item.locked and not (onlyFound and count == 0)
 	local atlas = opens and item.open and "questlog-icon-shrink" or "questlog-icon-expand"
-	if Atlas(row.toggle, atlas) then
+	-- Era exposes these modern atlas names even though their backing textures are not present. Using
+	-- them paints the missing-texture green square; its older button files are still available.
+	if not IS_ERA and Atlas(row.toggle, atlas) then
 		if row.toggle.SetDesaturated then row.toggle:SetDesaturated(not opens) end
 		row.toggle:SetAlpha(opens and 0.9 or 0.45)
 	else
@@ -1507,8 +1545,7 @@ end
 --- Returns the frame the page fills; `panel.pageInset` is folded away with the window.
 function C.PageHolder(panel, list)
 	local _, right = C.Margins()
-	local ok, inset = pcall(CreateFrame, "Frame", nil, panel, "InsetFrameTemplate")
-	if not ok or not inset then inset = CreateFrame("Frame", nil, panel) end
+	local inset = NewInset(panel)
 	inset:SetPoint("TOPLEFT", list.inset, "TOPRIGHT", 6, 38)
 	inset:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -right, (window and window.templated) and 6 or 12)
 	panel.pageInset = inset
