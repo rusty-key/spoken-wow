@@ -69,9 +69,9 @@ local GRABBER_SIZE = 16
 local FILTER_ROOM = 26       -- what the search box gives up for the filter menu's arrow beside it
 local NAME = "SpokenCompendiumWindow"
 local VERSION = SpokenEnv and SpokenEnv.Version
--- Forever can report the Classic project flag while still using its modern 1.6x interface. Keep
--- the Era-only chrome changes off there, even if that project flag is shared by the client.
-local IS_ERA = VERSION and VERSION.IsRetailVanilla and not VERSION.IsCamelot
+-- Forever can report the Classic project flag while using its modern 70xxx interface. Era uses
+-- the 11xxx interface, so use that stable client boundary for the Era-only chrome changes.
+local IS_ERA = VERSION and VERSION.IsRetailVanilla and (tonumber(VERSION.Interface) or 0) < 16000
 -- The window's portrait: a tome from the game, the Compendium's own rather than any one part's.
 -- inv_toy_booklibrary, by file id.
 -- Classic Era does not have that modern file, so keep the icon that was used before it.
