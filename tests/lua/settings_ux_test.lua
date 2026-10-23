@@ -191,12 +191,12 @@ do
     words.Enabled, words.Typewriter, words.SubtitleScroll = true, true, "page"
     local ROWS = {
         -- The wheel's note where Ctrl and the wheel size the window or the subtitles.
-        minimal = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, wheel note, Theme, Hide Portrait, "
+        minimal = "Window Size, Show Narrator, Quests, Gossip, Only Lines I Play, Word Size, Lock Position, wheel note, Theme, Hide Portrait, "
             .. "Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
         -- The large window's words fill the box, so no Rows at Once.
-        classic = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, Hide Portrait, Show Progress Bar, "
+        classic = "Window Size, Show Narrator, Quests, Gossip, Only Lines I Play, Word Size, Lock Position, Hide Portrait, Show Progress Bar, "
             .. "Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
-        subtitle = "Subtitle Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, subtitles' wheel note, Shadow Behind Words, "
+        subtitle = "Subtitle Size, Show Narrator, Quests, Gossip, Only Lines I Play, Word Size, Lock Position, subtitles' wheel note, Shadow Behind Words, "
             .. "Show Name and Title, Hide Portrait, Show Progress Bar, Sentences at Once, Auto-Scroll (subtitles), "
             .. "Highlight Words, Type Words Out, Type Out By",
         none = "",
@@ -211,7 +211,7 @@ do
     env.Addon.PlayerStyle = function() return chosen end
     Options:UpdateRows()
     Expect("the dialogueui style shows the rows it reads", StyleRows(),
-        "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, wheel note, Theme, Show Progress Bar, "
+        "Window Size, Show Narrator, Quests, Gossip, Only Lines I Play, Word Size, Lock Position, wheel note, Theme, Show Progress Bar, "
         .. "Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Type Words Out, Type Out By")
     chosen = "none"; Options:UpdateRows()
     Expect("voice only shows no words' rows without DialogueUI: nothing of Spoken's is on screen", StyleRows(), "")
@@ -564,7 +564,26 @@ do
     Expect("...and for none of a module turned off", env.PlayerFrame:Current(), nil)
     Expect("...though the line is still the head", env.PlayerFrame:Head(), head)
     cfg.WordsOff.quests = nil
+    -- Only Lines I Play: a line Spoken started by itself is only heard, one the player started shows.
+    cfg.OnlyAsked = true
+    Expect("only lines played by hand show: one Spoken read by itself does not", shows("zones"), false)
+    Expect("...one the player asked for does",
+        env.Addon:ShowsNarrator({ source = { key = "zones" }, asked = true }), true)
+    Expect("...and the window stands for no line read by itself", env.PlayerFrame:Current(), nil)
+    Expect("...though it is still the head", env.PlayerFrame:Head(), head)
+    head.asked = true
+    Expect("...but stands for one the player asked for", env.PlayerFrame:Current(), head)
+    cfg.WordsOff.quests = true
+    Expect("...unless its module is turned off", env.PlayerFrame:Current(), nil)
+    cfg.WordsOff.quests = nil
+    cfg.Enabled = false
+    Expect("...or Show Narrator is", env.PlayerFrame:Current(), nil)
+    cfg.Enabled = was
     queue.GetCurrentSound = real
+    env.PlayerFrame:ShowSample(true)
+    Expect("...and the welcome's sample still shows", env.PlayerFrame:Current() ~= nil, true)
+    env.PlayerFrame:ShowSample(false)
+    cfg.OnlyAsked = false
 end
 
 local Welcome = env.Welcome

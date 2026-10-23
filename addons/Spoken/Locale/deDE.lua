@@ -13,6 +13,8 @@ end
 L.PLAY = "Abspielen"
 L.TRANSCRIPT = "Text"
 L.OPT_SHOW_NARRATOR = "Erzähler anzeigen"
+L.OPT_NARRATOR_ASKED = "Nur selbst gestartete Zeilen"
+L.OPT_NARRATOR_ASKED_TIP = "Zeigt das Fenster oder die Untertitel nur für Zeilen, die du selbst startest: mit einer Schaltfläche „Abspielen“ oder im „Kompendium von Azeroth“. Zeilen, die Spoken von selbst liest, sind nur zu hören."
 L.TRANSCRIPT_EXPAND = "Text ausklappen"
 L.TRANSCRIPT_COLLAPSE = "Text einklappen"
 L.TRANSCRIPT_SCROLL = "Automatisch scrollen"

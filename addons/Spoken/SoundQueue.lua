@@ -33,6 +33,7 @@ setfenv(1, SpokenEnv)
 ---@field priority? string    "normal" (default) or "low".
 ---@field group? string       Clips of one item, e.g. a book's pages. No pause or cue between them.
 ---@field continues? boolean  Its next part is put in as it ends (source:Continue). No pause or cue after it.
+---@field asked? boolean      The player started it: source:Enqueue's asked, PlayNow. A part put in with Continue takes its line's.
 ---@field span? table         { before, total }: seconds of its item before it, and in all (SoundQueue:Share).
 ---@field present table       See API.lua.
 ---@field addedCallback? fun(clip)

@@ -13,6 +13,8 @@ end
 L.PLAY = "播放"
 L.TRANSCRIPT = "文字"
 L.OPT_SHOW_NARRATOR = "顯示旁白"
+L.OPT_NARRATOR_ASKED = "僅顯示我播放的台詞"
+L.OPT_NARRATOR_ASKED_TIP = "僅為你親自播放的台詞顯示視窗或字幕，例如用「播放」按鈕或在艾澤拉斯百科中播放。Spoken 自行朗讀的台詞只有聲音。"
 L.TRANSCRIPT_EXPAND = "展開文字"
 L.TRANSCRIPT_COLLAPSE = "收合文字"
 L.TRANSCRIPT_SCROLL = "自動捲動"

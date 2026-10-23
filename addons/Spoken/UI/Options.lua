@@ -457,6 +457,11 @@ local function Build()
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()
+    local asked = layout:Checkbox(L.OPT_NARRATOR_ASKED, L.OPT_NARRATOR_ASKED_TIP,
+        function() return transcript().OnlyAsked end,
+        function(v) transcript().OnlyAsked = v end, refreshTranscript)
+    Only(asked, Shown)
+    Requires(asked, Narrator, L.REASON_NARRATOR)
     local size = layout:Slider(L.TRANSCRIPT_SIZE, SIZES.FontSize[1], SIZES.FontSize[2], SIZES.FontSize[3],
         function() return transcript().FontSize end,
         function(v) transcript().FontSize = v end, refreshText,

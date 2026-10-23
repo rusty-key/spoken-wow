@@ -13,6 +13,8 @@ end
 L.PLAY = "Reproduzir"
 L.TRANSCRIPT = "Palavras"
 L.OPT_SHOW_NARRATOR = "Mostrar narrador"
+L.OPT_NARRATOR_ASKED = "Apenas as falas que eu iniciar"
+L.OPT_NARRATOR_ASKED_TIP = "Mostra a janela ou as legendas só para as falas que você inicia, com um botão Reproduzir ou no Compêndio de Azeroth. As falas que o Spoken lê sozinho são apenas ouvidas."
 L.TRANSCRIPT_EXPAND = "Expandir texto"
 L.TRANSCRIPT_COLLAPSE = "Recolher texto"
 L.TRANSCRIPT_SCROLL = "Rolagem automática"

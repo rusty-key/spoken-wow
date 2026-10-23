@@ -13,6 +13,8 @@ end
 L.PLAY = "재생"
 L.TRANSCRIPT = "텍스트"
 L.OPT_SHOW_NARRATOR = "내레이터 표시"
+L.OPT_NARRATOR_ASKED = "직접 재생한 대사만"
+L.OPT_NARRATOR_ASKED_TIP = "재생 버튼이나 아제로스 백과사전에서 직접 시작한 대사에만 창이나 자막을 표시합니다. Spoken이 스스로 읽는 대사는 소리로만 들립니다."
 L.TRANSCRIPT_EXPAND = "텍스트 펼치기"
 L.TRANSCRIPT_COLLAPSE = "텍스트 접기"
 L.TRANSCRIPT_SCROLL = "자동 스크롤"

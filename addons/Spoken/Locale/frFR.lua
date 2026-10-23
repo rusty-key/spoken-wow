@@ -13,6 +13,8 @@ end
 L.PLAY = "Lecture"
 L.TRANSCRIPT = "Texte"
 L.OPT_SHOW_NARRATOR = "Afficher le narrateur"
+L.OPT_NARRATOR_ASKED = "Seulement ce que je lance"
+L.OPT_NARRATOR_ASKED_TIP = "N'affiche la fenêtre ou les sous-titres que pour les répliques que vous lancez vous-même, avec un bouton Lecture ou dans le Compendium d'Azeroth. Les répliques que Spoken lit de lui-même sont seulement entendues."
 L.TRANSCRIPT_EXPAND = "Développer le texte"
 L.TRANSCRIPT_COLLAPSE = "Réduire le texte"
 L.TRANSCRIPT_SCROLL = "Défilement automatique"

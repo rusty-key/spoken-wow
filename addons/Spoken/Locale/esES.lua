@@ -14,6 +14,8 @@ end
 L.PLAY = "Reproducir"
 L.TRANSCRIPT = "Texto"
 L.OPT_SHOW_NARRATOR = "Mostrar narrador"
+L.OPT_NARRATOR_ASKED = "Solo las líneas que reproduzco"
+L.OPT_NARRATOR_ASKED_TIP = "Muestra la ventana o los subtítulos solo con las líneas que inicias tú, con un botón Reproducir o en el Compendio de Azeroth. Las líneas que Spoken lee por su cuenta solo se oyen."
 L.TRANSCRIPT_EXPAND = "Ampliar texto"
 L.TRANSCRIPT_COLLAPSE = "Reducir texto"
 L.TRANSCRIPT_SCROLL = "Desplazamiento automático"

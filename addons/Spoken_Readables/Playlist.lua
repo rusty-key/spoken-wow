@@ -96,6 +96,7 @@ local function PageEnded(clip, finished)
 		if nextClip then
 			Follow(nextClip)
 			nextClip.continues = #entry.pages > 0
+			nextClip.asked = clip.asked
 			nextClip.span = before and nextClip.length and { before = before, total = span.total } or nil
 			if Taken(SpokenReadables.source and SpokenReadables.source:Continue(nextClip), nextClip) then
 				entry.clip = nextClip

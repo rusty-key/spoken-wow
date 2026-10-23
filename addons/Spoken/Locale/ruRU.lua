@@ -13,6 +13,8 @@ end
 L.PLAY = "Слушать"
 L.TRANSCRIPT = "Текст"
 L.OPT_SHOW_NARRATOR = "Показывать рассказчика"
+L.OPT_NARRATOR_ASKED = "Только запущенные вручную"
+L.OPT_NARRATOR_ASKED_TIP = "Показывает окно или субтитры только для реплик, которые вы запускаете сами: кнопкой «Слушать» или в «Компендиуме Азерота». Реплики, которые Spoken читает сам, только звучат."
 L.TRANSCRIPT_EXPAND = "Развернуть текст"
 L.TRANSCRIPT_COLLAPSE = "Свернуть текст"
 L.TRANSCRIPT_SCROLL = "Автопрокрутка"

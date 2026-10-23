@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Show only the lines you play.** Under Show Narrator, **Only Lines I Play** keeps the window or subtitles for
+  lines you start with a Play button, the quest log or the Compendium. Lines Spoken reads on its own are only
+  heard, so it sits well beside Immersion and other quest windows. *([Aleph-Null-Zero](https://github.com/Aleph-Null-Zero))*
 - **Bosses whose fight the game may not announce are found when you target them.** Baron Aquanis, Lord
   Kazzak, Azuregos, Prince Thunderaan and the four Emerald Dragons could stay locked after you fought them.
   Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again. Blackfathom Deeps and

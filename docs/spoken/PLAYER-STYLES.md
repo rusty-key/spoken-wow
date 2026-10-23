@@ -83,14 +83,19 @@ The page builds only the rows a style reads, and greys a row whose switch is off
 
 | Style | Rows |
 | --- | --- |
-| Subtitles Only | Subtitle Size, Show Narrator, Word Size, Lock Position, Shadow Behind Words, Show Name and Title, Hide Portrait (under Show Name and Title), Show Progress Bar, Sentences at Once or Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
-| Small Window | Window Size, Show Narrator, Word Size, Lock Position, Theme, Hide Portrait, Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
-| Large Window | Window Size, Show Narrator, Word Size, Lock Position, Hide Portrait, Show Progress Bar, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
-| DialogueUI | Window Size, Show Narrator, Word Size, Lock Position, Theme, Show Progress Bar, Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
+| Subtitles Only | Subtitle Size, Show Narrator, Only Lines I Play, Word Size, Lock Position, Shadow Behind Words, Show Name and Title, Hide Portrait (under Show Name and Title), Show Progress Bar, Sentences at Once or Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
+| Small Window | Window Size, Show Narrator, Only Lines I Play, Word Size, Lock Position, Theme, Hide Portrait, Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
+| Large Window | Window Size, Show Narrator, Only Lines I Play, Word Size, Lock Position, Hide Portrait, Show Progress Bar, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
+| DialogueUI | Window Size, Show Narrator, Only Lines I Play, Word Size, Lock Position, Theme, Show Progress Bar, Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
 | Voice Only | none; with DialogueUI installed, Show Narrator, Highlight Words, Type Words Out and Type Out By |
 
 - Show Narrator off puts the window and subtitles away and greys every row about them; the voice plays on. Its
   row for each module under it does the same for that module's lines.
+- Only Lines I Play, off by default, shows only the lines you start: with a Play button, a
+  command or the Compendium (`source:Enqueue(clip, true)` and `source:PlayNow` mark the clip
+  `asked`, and a book's next page keeps its first page's mark). Lines a module starts by itself are
+  only heard, as under a module turned off (`Addon:ShowsNarrator`). It is for playing beside
+  another addon's quest window, such as Immersion, without Spoken's on top of it.
 - Highlight Words, Type Words Out and Type Out By are the rows that mark DialogueUI's own text
   too, which is why Voice Only keeps them while DialogueUI is installed.
 - Under Subtitles Only, Rows at Once shows with Auto-Scroll on Row by Row, and Sentences at Once
@@ -256,7 +261,8 @@ Nothing of Spoken's on screen: the lines are only heard, and the keys still stop
 them. The first time a line waits behind a stop with nothing on screen to show it, Spoken says so
 in chat (`STOPPED_REMINDER`). The window and subtitle rows are hidden. With DialogueUI installed, Show Narrator, Highlight Words, Type Words Out and Type Out By
 still mark DialogueUI's own quest, gossip and book text (`Spoken:GetCaption`), so the page offers
-them under this style too (`DialogueUIOptions:WordRowsShown`).
+them under this style too (`DialogueUIOptions:WordRowsShown`). To see the lines you start with Play
+and hear the rest, choose another style and turn on Only Lines I Play.
 
 ## Tests
 

@@ -133,11 +133,13 @@ local function Noted(clip, how, result, why)
 end
 
 --- `asked`: the player asked for this line (a click, a command), so it is queued even where
---- Spoken reads nothing by itself (Addon:ReadsHere).
+--- Spoken reads nothing by itself (Addon:ReadsHere), and shown with Only Lines I Play. PlayNow is
+--- always asked.
 function SourceMethods:Enqueue(clip, asked)
     if not asked and not Addon:ReadsHere() then
         return Noted(clip, "queue", nil, "Read in Battlegrounds is off")
     end
+    if asked and clip then clip.asked = true end
     return Noted(clip, "queue", SoundQueue:Add(clip, self, false))
 end
 
@@ -149,6 +151,7 @@ function SourceMethods:Continue(clip)
 end
 
 function SourceMethods:PlayNow(clip)
+    if clip then clip.asked = true end
     return Noted(clip, "play now", SoundQueue:PlayNow(clip, self))
 end
 

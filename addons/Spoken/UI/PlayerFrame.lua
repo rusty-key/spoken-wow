@@ -403,7 +403,8 @@ end
 --- real line puts it away.
 function PlayerFrame:ShowSample(shown)
     self.sample = shown and {
-        key = "sample", length = 0,
+        -- Asked, so Only Lines I Play still previews the style.
+        key = "sample", length = 0, asked = true,
         source = { key = "sample", gates = {}, interClipGap = 0 },
         present = { header = L.SAMPLE_SPEAKER, label = L.SAMPLE_LINE,
             transcript = L.SAMPLE_WINDOW_TEXT,

@@ -51,6 +51,15 @@ stub.Advance(1.55)
 Expect("onQueueEmpty fires once the last leaves", empties, 1)
 Expect("...exactly once", empties, 1)
 
+---------------------------------------------------------------- asked
+-- Only Lines I Play shows a line the player started, and no other.
+local auto, byHand, now = H.Clip(), H.Clip(), H.Clip()
+quests:Enqueue(auto); quests:Enqueue(byHand, true); quests:PlayNow(now)
+Expect("a line queued by itself is not marked asked", auto.asked, nil)
+Expect("...one the player asked for is", byHand.asked, true)
+Expect("...and so is one played now, always by hand", now.asked, true)
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
 ---------------------------------------------------------------- testBeforeQueue
 local probing = env.Sources:Register("probing", { title = "P", addon = "X", order = 5, testBeforeQueue = true })
 world.missing["absent.ogg"] = true

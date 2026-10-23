@@ -220,6 +220,9 @@ Expect("Play in the Compendium while the player is stopped plays the book at onc
     B:PlayFrom(261, true) .. " " .. tostring(Spoken:IsPaused()) .. " " .. tostring(stub.world.played[#stub.world.played]
     == B:ClipFor(261).path and #stub.world.played > playedBefore), "3 false true")
 Expect("...the rest of the book to follow it", Same(Coming(), { 262, 265 }), true)
+stub.Advance(30.9)
+Expect("...its next page asked for too, so Only Lines I Play still shows it",
+    Spoken:GetQueue()[1].pageId .. " " .. tostring(Spoken:GetQueue()[1].asked), "262 true")
 B:StopReading()
 
 ---------------------------------------------------------------- the progress bar across the book

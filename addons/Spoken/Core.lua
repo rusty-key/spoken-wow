@@ -88,6 +88,9 @@ Defaults = {
             Enabled = true,
             -- Sources whose words are not shown while Enabled, by source key; empty shows every source's.
             WordsOff = {},
+            -- Only the lines the player started are shown: beside another addon's quest window,
+            -- what Spoken reads by itself is only heard, and Play still shows what it plays.
+            OnlyAsked = false,
             -- How the captions follow the voice: "line", "page" or "off".
             ScrollMode = "line",
             Lines = 2,
@@ -396,12 +399,12 @@ function Addon:SetPlayerHost(host)
     end
 end
 
---- Whether the window or subtitles show `clip`: Show Narrator is on, and not off for the clip's module.
---- The voice plays either way.
+--- Whether the window or subtitles show `clip`: Show Narrator is on, not off for the clip's module,
+--- and, with Only Lines I Play, the player started it. The voice plays either way.
 function Addon:ShowsNarrator(clip)
     local cfg = self.db.profile.Transcript
     local key = clip and clip.source and clip.source.key
-    return cfg.Enabled and not (key and cfg.WordsOff[key])
+    return cfg.Enabled and not (key and cfg.WordsOff[key]) and not (cfg.OnlyAsked and clip and not clip.asked)
 end
 
 --- What is on screen: the chosen style, or one previewed from the welcome window or the settings
