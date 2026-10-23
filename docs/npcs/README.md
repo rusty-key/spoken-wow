@@ -59,9 +59,13 @@ encounter's (The Butcher is the game's The Baron, Infurnus its Magmatus, named s
 `boss-sources.json`, and a boss whose only match is a namesake from another dungeon is marked `noNameMatch` there.
 Where the database has no such creature at all, or Forever draws the boss with another model,
 `boss-creatures-manual.json` gives the creature and model, with the evidence for each. The bosses still without a
-creature, a portrait or a story, and why, are in [MISSING.md](MISSING.md). Its spells are the ones chosen by hand where the article lists abilities without ids (`boss-abilities-manual.json`), then the ones in the Abilities of its warcraft.wiki.gg
-article, then what the database casts, then the guide's abilities that name a spell, less the passive ones and those the
-client has no name for. Bosses only Forever has, and the Classic raid bosses the wiki does not list, have what is found.
+creature, a portrait or a story, and why, are in [MISSING.md](MISSING.md). Its spells are the ones chosen by hand (`boss-abilities-manual.json`, whose `drop`
+also takes out a source's wrong ids, an add's spells and visuals), then the boss's own lines in the Abilities of its
+warcraft.wiki.gg article (not those under another creature's name or marked for another season), then what the database
+casts (its smart scripts with the actionlists they call, and its template; for a fight of several, every member's,
+`members` in `boss-sources.json`), then what Efficient Games recorded it casting in Forever, then the guide's abilities
+that name a spell, less the passive and hidden ones and those the client has no name for. Of more than eight, the ones
+chosen by hand and the ones the database or Efficient Games has it cast are kept first.
 
 `Data/Stories.lua` holds `SpokenBossStories[map][key]`, the words of a boss's story. A boss with no entry says its
 story is not written yet.

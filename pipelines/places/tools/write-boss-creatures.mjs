@@ -3,8 +3,9 @@
 //
 //   node pipelines/places/tools/write-boss-creatures.mjs <boss_creatures.json> [--abilities <boss-abilities.json>] [--manual <boss-abilities-manual.json>] [--out <file>]
 //
-// The client's tables (wago.tools, Forever's build) drop the spells it has no name for and the
-// passive ones, and repeats of a name (the lowest id of a name stays); the first MOST by id are kept.
+// The client's tables (wago.tools, Forever's build) drop the spells it has no name for, the passive and the
+// hidden ones, and repeats of a name (the first id of a name stays). Of more than MOST, the ones chosen by hand
+// and the ones the database or Efficient Games has the boss cast are kept before the rest.
 // Where the database gives a boss no model or no spells, the Adventure Guide's (retail JournalEncounter
 // tables) fill in: its creature's model where Forever's client has that model, its abilities that name a spell.
 // boss-creatures-manual.json then sets the creature and model of the bosses the database cannot give, each
@@ -24,11 +25,16 @@ if (!input) throw new Error("usage: write-boss-creatures.mjs <boss_creatures.jso
 
 const MOST = 8;
 const PASSIVE = 0x40;
+// SpellMisc Attributes[0] "do not display": selectors and permanent auras (King Gordok's breath selection).
+const HIDDEN = 0x80;
 const rows = JSON.parse(await readFile(input, "utf8"));
 const names = new Map((await wagoTable("SpellName", { build: FOREVER_BUILD, locale: "enUS" })).map((r) => [Number(r.ID), r.Name_lang]));
 const attributes = new Map((await wagoTable("SpellMisc", { build: FOREVER_BUILD, locale: "enUS" })).map((r) => [Number(r.SpellID), Number(r.Attributes_0)]));
-const junk = /^(DNT|zz|\[|OLD|DEPRECATED|TEST|Test|\(OLD\))|\(OLD\)|\(DND\)|\(DNT\)/;
-
+// The Dire Maul guards' "Zul'Gurub Talisman PAL R1 DND" is a quest's, called from their actionlists.
+const junk = /^(DNT|zz|\[|OLD|DEPRECATED|TEST|Test|\(OLD\))|\(OLD\)|\(DND\)|\(DNT\)| DND$/;
+// Spells any creature may cast, never a boss's own ability: Dazed (a hit from behind), Battle Stance, the
+// dragons' Summon Player. Out of every boss, wherever its sources got them.
+const GENERIC = new Set([1604, 7165, 24776]);
 
 const guideEncounters = await wagoTable("JournalEncounter", { build: RETAIL_BUILD, locale: "enUS" });
 const guideCreatures = await wagoTable("JournalEncounterCreature", { build: RETAIL_BUILD, locale: "enUS" });
@@ -37,7 +43,26 @@ const models = new Set((await wagoTable("CreatureDisplayInfo", { build: FOREVER_
 const guideOf = guideFinder(guideEncounters);
 const inOrder = (list) => [...list].sort((a, b) => Number(a.OrderIndex) - Number(b.OrderIndex));
 
+// What the database has the boss cast, and what Efficient Games recorded it casting in Forever, after it.
+for (const row of rows) {
+  row.spells = [...new Set([...row.spells, ...(row.live ?? [])])];
+  row.cast = new Set(row.spells);
+}
 const have = new Map(rows.map((r) => [`${r.map}\t${r.key}`, r]));
+/** The spells of `ids` the card shows: named in the client, not junk, generic, dropped by hand, passive or hidden,
+ * and one of each name (the first id of a name stays). */
+function usable(row, ids) {
+  const seen = new Set();
+  const out = [];
+  for (const id of ids) {
+    const name = names.get(id);
+    if (!name || junk.test(name) || seen.has(name) || GENERIC.has(id) || row.drop?.has(id)) continue;
+    if ((attributes.get(id) ?? 0) & (PASSIVE | HIDDEN)) continue;
+    seen.add(name);
+    out.push(id);
+  }
+  return out;
+}
 /** The row of the boss `key` of `map`, a new empty one where there is none. */
 function rowFor(map, key) {
   let row = have.get(`${map}\t${key}`);
@@ -50,6 +75,16 @@ function rowFor(map, key) {
 }
 // A model the client does not have draws an empty portrait: none, so the guide's or the unknown boss's is drawn.
 for (const row of rows) if (row.display && !models.has(row.display)) row.display = null;
+// boss-abilities-manual.json: the spell ids chosen by hand for bosses whose article lists abilities without ids, ahead
+// of the rest, and `drop`: ids a source gives the boss that are not its own (an add's, a wrong wiki id, a visual).
+// Its drops are read first, so the guide fills a boss whose sources give it nothing the card would show. Several
+// entries of one boss add to each other.
+const manual = args.includes("--manual") ? JSON.parse(await readFile(args[args.indexOf("--manual") + 1], "utf8")) : [];
+for (const entry of manual) {
+  if (!entry.drop?.length) continue;
+  const row = rowFor(entry.map, entry.key);
+  row.drop = new Set([...(row.drop ?? []), ...entry.drop]);
+}
 let filledModels = 0;
 let filledSpells = 0;
 const bosses = await readBosses();
@@ -66,12 +101,12 @@ for (const boss of bosses) {
       filledModels++;
     }
   }
-  if (row.spells.length === 0) {
+  if (usable(row, row.spells).length === 0) {
     const spells = inOrder(guideSections.filter((s) => s.JournalEncounterID === guide.ID && s.Type === "2"))
       .map((s) => Number(s.SpellID))
       .filter(Boolean);
     if (spells.length) {
-      row.spells = spells;
+      row.spells = [...new Set([...row.spells, ...spells])];
       filledSpells++;
     }
   }
@@ -84,13 +119,12 @@ for (const entry of wiki) {
   row.spells = [...new Set([...entry.spells, ...row.spells])];
   filledWiki++;
 }
-// Spell ids chosen by hand for bosses whose article lists abilities without ids: ahead of the rest.
-const manual = args.includes("--manual") ? JSON.parse(await readFile(args[args.indexOf("--manual") + 1], "utf8")) : [];
 let filledManual = 0;
 for (const entry of manual) {
   if (!entry.spells?.length) continue;
   const row = rowFor(entry.map, entry.key);
   row.spells = [...new Set([...entry.spells, ...row.spells])];
+  row.chosen = new Set([...(row.chosen ?? []), ...entry.spells]);
   filledManual++;
 }
 // Creatures only Forever has, known from Efficient Games' records of the fight, are not in the database, and a
@@ -112,17 +146,13 @@ rows.splice(0, rows.length, ...rows.filter((r) => r.creature || r.display || r.s
 const maps = {};
 let withSpells = 0;
 for (const row of rows) {
-  const seen = new Set();
-  const spells = [];
-  for (const id of row.spells) {
-    const name = names.get(id);
-    if (!name || junk.test(name) || seen.has(name)) continue;
-    if ((attributes.get(id) ?? 0) & PASSIVE) continue;
-    seen.add(name);
-    spells.push(id);
-  }
+  const spells = usable(row, row.spells);
+  // By name: the wiki's id of a name often stands for the one the database casts.
+  const cast = new Set([...(row.cast ?? [])].map((id) => names.get(id)));
+  const sure = spells.filter((id) => row.chosen?.has(id) || cast.has(names.get(id)));
+  const kept = new Set([...sure, ...spells.filter((id) => !sure.includes(id))].slice(0, MOST));
   withSpells += spells.length > 0;
-  (maps[row.map] ??= []).push({ key: row.key, creature: row.creature, display: row.display, spells: spells.slice(0, MOST) });
+  (maps[row.map] ??= []).push({ key: row.key, creature: row.creature, display: row.display, spells: spells.filter((id) => kept.has(id)) });
 }
 
 const lines = [
@@ -131,8 +161,8 @@ const lines = [
   "--",
   "-- SpokenBossCreatures[instance map][boss key] = { creature = the boss's creature id (nil where only the guide",
   "-- knows the boss), display = its first model's display id (nil where there is none), spells = { spell ids } }:",
-  "-- its portrait, and what the database says it casts. A boss with no creature here has no portrait; one with",
-  "-- no spells has none listed. Never the whole fight: the rest is cast by code the database does not hold.",
+  "-- its portrait, and what its wiki article, the database and Efficient Games' records of Forever say it casts. A",
+  "-- boss with no creature here has no portrait; one with no spells has none listed. Never the whole fight.",
   "",
   "SpokenBossCreatures = {",
 ];

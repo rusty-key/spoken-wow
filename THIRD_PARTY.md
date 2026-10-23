@@ -83,6 +83,9 @@ None of this is the project's to license, and the MIT grant does not reach it.
   - where the world DB has none of it, where Forever's quests are filed, who may take them and which
     quest follows which (`addons/Spoken_Quests/Data/Compendium.lua`), and the amount a Craftsman's
     Writ asks for (`Data/QuestText.lua`), read by `pipelines/quests/tools/export_compendium.py`;
+  - the spells a boss's creature was recorded casting, which `pipelines/places/tools/boss_creatures.py` reads and
+    `pipelines/places/tools/write-boss-creatures.mjs` ranks into the Bosses tab's spell cards
+    (`addons/Spoken_NPCs/Data/Creatures.lua`);
   - the quest text the Forever-only dungeons' stories are written from.
 
   The text itself is Blizzard's.

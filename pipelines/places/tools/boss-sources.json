@@ -411,7 +411,11 @@
    6907,
    6908
   ],
-  "abilityTitle": "The Lost Dwarves (tactics)"
+  "abilityTitle": "The Lost Dwarves (tactics)",
+  "members": [
+   6907,
+   6908
+  ]
  },
  {
   "map": 70,
@@ -942,7 +946,12 @@
   "npcIds": [
    10096
   ],
-  "abilityTitle": "Ring of Law"
+  "abilityTitle": "Ring of Law",
+  "members": [
+   9029,
+   9030,
+   9032
+  ]
  },
  {
   "map": 230,
@@ -1047,7 +1056,15 @@
    9039,
    9040
   ],
-  "abilityTitle": "The Seven"
+  "abilityTitle": "The Seven",
+  "members": [
+   9035,
+   9036,
+   9037,
+   9038,
+   9039,
+   9040
+  ]
  },
  {
   "map": 230,
@@ -2025,7 +2042,10 @@
    15276,
    15275
   ],
-  "abilityTitle": null
+  "abilityTitle": null,
+  "members": [
+   15276
+  ]
  },
  {
   "map": 531,
@@ -2128,7 +2148,12 @@
    16064,
    16065
   ],
-  "abilityTitle": "Four Horsemen (Classic)"
+  "abilityTitle": "Four Horsemen (Classic)",
+  "members": [
+   16063,
+   16064,
+   16065
+  ]
  },
  {
   "map": 533,

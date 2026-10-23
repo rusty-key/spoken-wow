@@ -67,9 +67,9 @@
    24680,
    24683,
    24664,
-   24684
+   6524
   ],
-  "notes": "Classic pages of Gri'lek, Renataki, Wushoolay (wiki ids); Hazza'rah (Classic) has no ids, so Sleep 24664 and Chain Burn 24684 matched by name and id range (medium confidence); left out Forked Lightning, Ground Tremor, Gouge, Enrage, Thrash, Stun, Sweeping Strikes."
+  "notes": "Classic pages of Gri'lek, Renataki, Wushoolay (wiki ids); Hazza'rah (Classic) has no ids, so Sleep 24664 matched by name and id range (medium confidence); Gri'lek's Ground Tremor 6524 is from the repack; left out Chain Burn 24684, Forked Lightning, Gouge, Enrage, Thrash, Stun, Sweeping Strikes."
  },
  {
   "map": 309,
@@ -290,6 +290,234 @@
    24813,
    15847
   ],
-  "notes": "Ysondre (Classic) wowhead ids; the retail Ysondre page (Rejuvenation 80304, Wrath 43619) is not Classic; spirit spells (Curse of Thorns, Silence) left out."
+  "notes": "Ysondre (Classic) wowhead ids; the retail Ysondre page (Rejuvenation 80304, Wrath 43619) is not Classic; spirit spells (Curse of Thorns, Silence) left out. Summon Player 24776 left out: the client draws it with the question-mark icon and no description."
+ },
+ {
+  "map": 533,
+  "key": "thaddius",
+  "name": "Thaddius",
+  "spells": [],
+  "notes": "The wiki writes Chain Lightning as 28169, which is Grobbulus's Mutating Injection; his Chain Lightning 28167 comes from the database.",
+  "drop": [
+   28169
+  ]
+ },
+ {
+  "map": 469,
+  "key": "vaelastrasz the corrupt",
+  "name": "Vaelastrasz the Corrupt",
+  "spells": [
+   23462
+  ],
+  "notes": "Fire Nova is 23462; the wiki writes it as 23642, which is Corruption.",
+  "drop": [
+   23642
+  ]
+ },
+ {
+  "map": 309,
+  "key": "high priestess arlokk",
+  "name": "High Priestess Arlokk",
+  "spells": [],
+  "notes": "Aspect of Arlokk 24690 is Hakkar's spell, cast when she lives; her page lists it.",
+  "drop": [
+   24690
+  ]
+ },
+ {
+  "map": 289,
+  "key": "darkmaster gandling",
+  "name": "Darkmaster Gandling",
+  "spells": [],
+  "notes": "Christmas Darkmaster Gandling 26200 is a Winter Veil costume the database casts on spawn.",
+  "drop": [
+   26200
+  ]
+ },
+ {
+  "map": 209,
+  "key": "antusul",
+  "name": "Antu'sul",
+  "spells": [],
+  "notes": "Warder Despawn 11893 removes the summoned warders.",
+  "drop": [
+   11893
+  ]
+ },
+ {
+  "map": 229,
+  "key": "pyroguard emberseer",
+  "name": "Pyroguard Emberseer",
+  "spells": [],
+  "notes": "Freeze Anim, Emberseer Full Strength and Emberseer Growing are the visuals of the event before the fight.",
+  "drop": [
+   16245,
+   16047,
+   16048
+  ]
+ },
+ {
+  "map": 109,
+  "key": "jammalan the prophet",
+  "name": "Jammal'an the Prophet",
+  "spells": [],
+  "notes": "Green Channeling 13540 is a visual out of combat.",
+  "drop": [
+   13540
+  ]
+ },
+ {
+  "map": 43,
+  "key": "lady anacondra",
+  "name": "Lady Anacondra",
+  "spells": [],
+  "notes": "Nature Channeling 13236 is a visual out of combat.",
+  "drop": [
+   13236
+  ]
+ },
+ {
+  "map": 2804,
+  "key": "prince thunderaan",
+  "name": "Prince Thunderaan",
+  "spells": [],
+  "notes": "Tears of the Wind Seeker 23011 and Ragnaros Emerge 20568 are the visuals of his summoning.",
+  "drop": [
+   23011,
+   20568
+  ]
+ },
+ {
+  "map": 309,
+  "key": "gahzranka",
+  "name": "Gahz'ranka",
+  "spells": [],
+  "notes": "Water 22422 is the damage of Massive Geyser, which has its own card.",
+  "drop": [
+   22422
+  ]
+ },
+ {
+  "map": 429,
+  "key": "prince tortheldrin",
+  "name": "Prince Tortheldrin",
+  "spells": [],
+  "notes": "Summon 22995 has no description in the client.",
+  "drop": [
+   22995
+  ]
+ },
+ {
+  "map": 249,
+  "key": "onyxia",
+  "name": "Onyxia",
+  "spells": [],
+  "notes": "Breath 18351 and 18564 are Deep Breath stubs with no description in the client.",
+  "drop": [
+   18351,
+   18564
+  ]
+ },
+ {
+  "map": 309,
+  "key": "high priest thekal",
+  "name": "High Priest Thekal",
+  "spells": [],
+  "notes": "Resurrection Impact Visual 24171 is the visual of his resurrection.",
+  "drop": [
+   24171
+  ]
+ },
+ {
+  "map": 533,
+  "key": "the four horsemen",
+  "name": "The Four Horsemen",
+  "spells": [
+   28834,
+   28832,
+   28835,
+   28833,
+   28882,
+   28884,
+   28883,
+   28863
+  ],
+  "notes": "Four Horsemen (Classic) wiki ids: the four marks, then Mograine's Righteous Fire, Korth'azz's Meteor, Zeliek's Holy Wrath and Blaumeux's Void Zone; the shared Enrage, Shield Wall and Summon Player left out for the limit."
+ },
+ {
+  "map": 533,
+  "key": "heigan the unclean",
+  "name": "Heigan the Unclean",
+  "spells": [
+   29371,
+   29310
+  ],
+  "notes": "His page has no ability ids; Eruption 29371 and Mana Burn 29310 are the spells of his script in the repack (spell_script_names spell_heigan_eruption, classic_spell_heigan_mana_burn)."
+ },
+ {
+  "map": 309,
+  "key": "bloodlord mandokir",
+  "name": "Bloodlord Mandokir",
+  "spells": [
+   24314,
+   24316,
+   13736,
+   24312,
+   16856,
+   19134,
+   7160,
+   24318
+  ],
+  "notes": "Bloodlord Mandokir (Classic) wiki ids: Threatening Gaze, Guillotine, Whirlwind, Level Up, Mortal Strike, Intimidating Shout, Execute, Enrage; Charge and Overpower left out for the limit, Ohgan's and the Chained Spirits' spells are theirs."
+ },
+ {
+  "map": 429,
+  "key": "chorush the observer",
+  "name": "Cho'Rush the Observer",
+  "spells": [
+   16170,
+   17139,
+   22884
+  ],
+  "notes": "Cho'Rush the Observer page names Bloodlust, Power Word: Shield and Psychic Scream without ids; 16170, 17139 and 22884 are the ones the repack has him cast. Ahead of his other repack spells, which fill the limit."
+ },
+ {
+  "map": 36,
+  "key": "sneed",
+  "name": "Sneed",
+  "spells": [
+   7399,
+   3603,
+   845,
+   6713
+  ],
+  "notes": "Sneed page: Terrify, Distracting Pain and Cleave from the Classic Timewalking section (his shredder's stage), Disarm from the original fight, as the list was before the parser read only the original section."
+ },
+ {
+  "map": 309,
+  "key": "hakkar",
+  "name": "Hakkar",
+  "spells": [],
+  "notes": "Will of Hakkar 24178 left out for the limit, so the five Aspects and Blood Siphon all show.",
+  "drop": [
+   24178
+  ]
+ },
+ {
+  "map": 230,
+  "key": "plugger spazzring",
+  "name": "Plugger Spazzring",
+  "spells": [
+   12739,
+   12742,
+   13338,
+   13787
+  ],
+  "notes": "The repack database has his creature 9499 cast Shadow Bolt 12739, Immolate 12742, Curse of Tongues 13338 and Demon Armor 13787 (smart script and template spells). The wiki's Immolate 348, Curse of Tongues 1714 and Banish 710 are the player's rank 1 spells, and Banish is not among his casts.",
+  "drop": [
+   348,
+   1714,
+   710
+  ]
  }
 ]

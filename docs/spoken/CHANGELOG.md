@@ -56,6 +56,12 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   with no known face shows the question mark instead of an empty portrait, and targeting Balnazzar in Stratholme no
   longer shows the Scarlet Enclave's story. Five bosses take the name the game gives them: The Baron, Magmatus,
   Kirtonos the Herald, Ras Frostwhisper and C'Thun. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's abilities in the Bosses tab are its own.** Its adds' and pets' spells, event visuals and hidden spells
+  no longer show, and Thaddius no longer shows Grobbulus's Mutating Injection. The bosses of the City of Dalaran and
+  the Excavation Site: Wetlands show what they cast in Forever, a fight of several bosses shows every member's spells,
+  and Sapphiron, the Four Horsemen, Heigan, Hakkar, Mandokir, Mar'li and Taerar show the abilities they were missing.
+  Plugger Spazzring shows the spells he casts, and Dextren Ward and Overlord Ramtusk no longer show Battle Stance.
+  *([Nucabe](https://github.com/Nucabe))*
 - **A boss's story shows in the narrator when you target the boss.** It shows once per character, as words
   with no voice. On the Bosses settings page, Show a Boss's Story picks targeting or killing it, and Forget
   Stories Shown shows each again. *([Nucabe](https://github.com/Nucabe))*
