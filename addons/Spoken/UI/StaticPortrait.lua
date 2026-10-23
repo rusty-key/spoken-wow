@@ -270,11 +270,12 @@ function StaticPortrait:Release(viewport)
         viewport.active, viewport.activeFrame, self.activeTexture = nil, nil, nil
     end
 end
-function StaticPortrait:Configure(viewport, clip)
+-- `entry`, where given, is the clip's capture the caller has made already.
+function StaticPortrait:Configure(viewport, clip, entry)
     local spec, guid, creature = Identity(clip)
     self.waiting = nil
     if not spec then self:Release(viewport); return false end
-    local entry = self:Capture(clip)
+    entry = entry or self:Capture(clip)
     if not entry and not guid and type(creature) == "number" then self.waiting = creature end
     if entry then
         if viewport.activeFrame ~= entry.texture then

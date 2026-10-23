@@ -1191,12 +1191,12 @@ do
         -- leaves the tab.
         _G.SpokenCompendium:Register("extra", { label = "Extra", order = 5, build = function() end })
         Expect("a tab's own label is drawn at the template's size", _G.SpokenCompendiumWindowTab3.flat.label.size, 14)
-        local edge, capturing, failures = SpokenEnv.Ellesmere.EDGE, _G.print, {}
-        SpokenEnv.Ellesmere.EDGE = nil
+        local edges, capturing, failures = SpokenEnv.Ellesmere.Edges, _G.print, {}
+        SpokenEnv.Ellesmere.Edges = function() error("no edges") end
         _G.print = function(text) table.insert(failures, tostring(text)) end
         _G.SpokenCompendium:Register("broken", { label = "Broken", order = 6, build = function() end })
         _G.print = capturing
-        SpokenEnv.Ellesmere.EDGE = edge
+        SpokenEnv.Ellesmere.Edges = edges
         local broken = _G.SpokenCompendiumWindowTab4
         Expect("a tab whose look fails is said in chat and still a tab of the window",
             #failures .. " " .. tostring(broken and broken:GetText()) .. " " .. tostring(broken and broken.key), "1 Broken broken")

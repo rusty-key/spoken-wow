@@ -47,7 +47,7 @@ function Ellesmere:Font()
 end
 
 --- `fontString` in EllesmereUI's font at its own size, and white with `white`, once the windows
---- wear its look. A line's own font for its language (Addon:ClipFont) still wins.
+--- wear its look. A line's own font for its language still wins.
 function Ellesmere:Refont(fontString, white)
     self:When(function()
         local face = self:Font()
@@ -72,7 +72,6 @@ end
 
 -- A box's edge: a dark grey, as EllesmereUI's own borders are; its API gives no border colour.
 local EDGE = { 0.2, 0.2, 0.2, 1 }
-Ellesmere.EDGE = EDGE
 -- The dark collar between a picture and its edge, as EllesmereUI's square button draws one round the
 -- icon Spoken puts in it: 2 screen pixels in the panel's colour.
 local COLLAR = 2
@@ -192,6 +191,16 @@ end
 function Ellesmere:Register(eui)
     if type(eui) ~= "table" or type(eui.RegisterSkin) ~= "function" then return end
     self.registered = true
+    -- With its skinning of Spoken off the callback never comes, and what waits for it would be kept
+    -- all session: once the world is shown without it, nothing waits.
+    local watch = CreateFrame("Frame")
+    watch:RegisterEvent("PLAYER_ENTERING_WORLD")
+    watch:SetScript("OnEvent", function(frame)
+        frame:UnregisterAllEvents()
+        C_Timer.After(0, function()
+            if not Ellesmere.skin then Ellesmere.declined, Ellesmere.waiting = true, {} end
+        end)
+    end)
     eui.RegisterSkin("Spoken", function(skin)
         if not Ellesmere.OwnLook(eui) then
             Ellesmere.declined, Ellesmere.waiting = true, {}

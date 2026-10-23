@@ -78,8 +78,8 @@ function Face.Build(parent, size, level, least)
     return host
 end
 
---- The face as a flat box in EllesmereUI's look: no ring and no badge (SetBadge), the speaker in a
---- 1 px edge on a dark backing, cut round or, for a 3D model, square (Fit).
+--- The face as a flat box in EllesmereUI's look: no ring and no badge, the speaker in a 1 px edge on
+--- a dark backing, cut round or, for a 3D model, square.
 function Face.Square(skin, face)
     if face.squared then return end
     face.squared = true
