@@ -949,5 +949,113 @@ preview:Click()
 W.frame:GetScript("OnHide")(W.frame)
 Expect("closing the welcome turns preview mode off", env.Options.previewing or env.Addon.previewStyle ~= nil or F:IsShowingSample(), false)
 
+---------------------------------------------------------------- a click on the words
+-- A right-click on the words skips the line, a target larger than Skip (#606); Shift-right-click
+-- opens the window's menu or the settings.
+env, quests = Boot()
+local words = env.Transcript.frame
+local opened = 0
+env.Options.Open = function() opened = opened + 1 end
+quests:Enqueue(H.Clip({ key = "q:1:accept", present = { header = "Thrall", label = "Warchief", portrait = { kind = "none" } } }))
+quests:Enqueue(H.Clip({ key = "q:2:accept", present = { header = "Cairne", label = "Bloodhoof", portrait = { kind = "none" } } }))
+quests:Enqueue(H.Clip({ key = "q:3:accept", present = { header = "Baine", label = "Thunder Bluff", portrait = { kind = "none" } } }))
+local hadShift, shift = _G.IsShiftKeyDown, false
+_G.IsShiftKeyDown = function() return shift end
+local function Head() return opened .. " " .. env.SoundQueue:GetCurrentSound().present.header end
+shift = true
+ExpectOf("a Shift-right-click on the words opens the settings, the line playing on", function()
+    words.scripts.OnClick(words, "RightButton")
+    return Head()
+end, "1 Thrall")
+shift = false
+local clicks = #world.kitSounds
+ExpectOf("a right-click on the words skips the line", function()
+    words.scripts.OnClick(words, "RightButton")
+    return Head()
+end, "1 Cairne")
+ExpectOf("...with the Skip button's click", function()
+    local last = world.kitSounds[#world.kitSounds]
+    return tostring(#world.kitSounds - clicks) .. " " .. tostring(last and last.kit)
+end, "1 1115")
+env.Transcript:Hold()
+ExpectOf("...but not the next line while the window fades out on the skipped line's words", function()
+    words.scripts.OnClick(words, "RightButton")
+    return Head()
+end, "1 Cairne")
+env.Transcript:Release()
+local hadCursor, cursor = _G.GetCursorPosition, { 100, 100 }
+_G.GetCursorPosition = function() return cursor[1], cursor[2] end
+local function RightClick(dx, dy)
+    cursor = { 100, 100 }
+    words.scripts.OnMouseDown(words, "RightButton")
+    cursor = { 100 + dx, 100 + (dy or 0) }
+    words.scripts.OnClick(words, "RightButton")
+    return Head()
+end
+ExpectOf("...nor at the end of a right-drag begun on the words, as to turn the camera",
+    function() return RightClick(60) end, "1 Cairne")
+ExpectOf("...whichever way it travels, up and down too", function() return RightClick(0, 60) end, "1 Cairne")
+local playing = env.Transcript.clip
+env.Transcript.clip = {}
+ExpectOf("...nor a click on words that are not the line playing, though the window is not fading out", function()
+    words.scripts.OnClick(words, "RightButton")
+    return Head()
+end, "1 Cairne")
+env.Transcript.clip = playing
+ExpectOf("...where a right-click that barely moves still skips", function() return RightClick(3) end, "1 Baine")
+_G.GetCursorPosition = hadCursor
+ExpectOf("...and the words' tooltip says what each right-click does", function()
+    words.scripts.OnEnter(words)
+    return table.concat(GameTooltip.lines, "|")
+end, table.concat({ env.L.TRANSCRIPT, env.L.TRANSCRIPT_HINT, env.L.TRANSCRIPT_SETTINGS_HINT }, "|"))
+env.SoundQueue:RemoveAllSoundsFromQueue()
+env.SoundQueue:SetPaused(true)
+local beforeClicks = #world.kitSounds
+ExpectOf("...and does nothing with no line playing: no settings, still stopped, nothing queued, no click", function()
+    words.scripts.OnClick(words, "RightButton")
+    return opened .. " " .. tostring(env.SoundQueue:IsPaused()) .. " " .. env.SoundQueue:GetQueueSize()
+        .. " " .. (#world.kitSounds - beforeClicks)
+end, "1 true 0 0")
+env.SoundQueue:SetPaused(false)
+-- The Small Window: the same right-click skips; Shift-right-click opens its menu, not the settings.
+env.Addon:SetPlayerStyle("minimal")
+env.PlayerFrame:RefreshConfig()
+local M = env.MinimalPlayer
+quests:Enqueue(H.Clip({ key = "q:4:accept", present = { header = "Thrall", label = "Warchief", portrait = { kind = "none" } } }))
+quests:Enqueue(H.Clip({ key = "q:5:accept", present = { header = "Cairne", label = "Bloodhoof", portrait = { kind = "none" } } }))
+ExpectOf("in the Small Window a right-click on the words skips the line, no menu opened", function()
+    words.scripts.OnClick(words, "RightButton")
+    return Head() .. " " .. tostring(M.menu:IsShown())
+end, "1 Cairne false")
+shift = true
+ExpectOf("...and a Shift-right-click opens its menu, the line playing on", function()
+    words.scripts.OnClick(words, "RightButton")
+    return Head() .. " " .. tostring(M.menu:IsShown())
+end, "1 Cairne true")
+shift = false
+M.menu:Hide()
+ExpectOf("...and the words' tooltip names the menu there", function()
+    words.scripts.OnEnter(words)
+    return table.concat(GameTooltip.lines, "|")
+end, table.concat({ env.L.TRANSCRIPT, env.L.TRANSCRIPT_HINT, env.L.TRANSCRIPT_MENU_HINT }, "|"))
+env.SoundQueue:RemoveAllSoundsFromQueue()
+quests:Enqueue(H.Clip({ key = "q:6:accept", present = { header = "Thrall", label = "Warchief", portrait = { kind = "none" } } }))
+quests:Enqueue(H.Clip({ key = "q:7:accept", present = { header = "Cairne", label = "Bloodhoof", portrait = { kind = "none" } } }))
+local skipButton = env.Actions.SkipButton(CreateFrame("Frame"))
+local before = #world.kitSounds
+ExpectOf("the Skip button skips the line with the click's sound", function()
+    skipButton.scripts.OnClick(skipButton)
+    return Head() .. " " .. (#world.kitSounds - before)
+end, "1 Cairne 1")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+before = #world.kitSounds
+ExpectOf("...and with no line to skip makes no sound", function()
+    skipButton.scripts.OnClick(skipButton)
+    return #world.kitSounds - before
+end, 0)
+env.SoundQueue:RemoveAllSoundsFromQueue()
+env.Addon:SetPlayerStyle("classic")
+_G.IsShiftKeyDown = hadShift
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")

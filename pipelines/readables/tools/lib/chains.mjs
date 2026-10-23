@@ -97,7 +97,7 @@ export function buildBooks({ pages, owners }) {
  * `seen` is not defensive habit: a next_page loop in a dump would hang the extract with no
  * output and no error, which is the worst way to learn a dump has one.
  */
-function walk(firstPage, byEntry) {
+export function walk(firstPage, byEntry) {
   const chain = [];
   const seen = new Set();
   let entry = firstPage;
