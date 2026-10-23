@@ -270,17 +270,6 @@ local function SaveWindowSize()
 	end
 end
 
-local function FillButtonArt(button)
-	if not button or not button.GetNormalTexture then return end
-	for _, texture in ipairs({ button:GetNormalTexture(), button.GetPushedTexture and button:GetPushedTexture(),
-		button.GetHighlightTexture and button:GetHighlightTexture() }) do
-		if texture and texture.ClearAllPoints and texture.SetAllPoints then
-			texture:ClearAllPoints()
-			texture:SetAllPoints(button)
-		end
-	end
-end
-
 local function SetCollapseArrow()
 	if minimizeFrame then
 		minimizeFrame.MaximizeButton:SetShown(minimized)
@@ -297,7 +286,6 @@ local function SetCollapseArrow()
 		minimizeButton:SetNormalTexture(SMALLER_UP)
 		minimizeButton:SetPushedTexture(SMALLER_DOWN)
 	end
-	if IS_ERA then FillButtonArt(minimizeButton) end
 end
 
 -- Folded down to the list: the page goes, and only the height resizes, so folding never reflows
@@ -359,7 +347,6 @@ local function BuildChrome()
 	local close = type(window.CloseButton) == "table" and window.CloseButton
 	if close then
 		local buttonSize = math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
-		-- Only Era needs the larger classic control; Forever keeps master's size.
 		local eraButtonSize = IS_ERA and 32 or buttonSize
 		close:SetSize(eraButtonSize, eraButtonSize)
 		close:ClearAllPoints()
@@ -371,8 +358,6 @@ local function BuildChrome()
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -8)
 		end
 
-		-- Era exposes the modern wrapper but its internal button art is not laid out like the
-		-- classic close button. Use the direct classic button there; Forever keeps its template.
 		local ok, mm = not IS_ERA and pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
 		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
 			minimizeFrame = mm
@@ -388,17 +373,12 @@ local function BuildChrome()
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
 		else
 			if IS_ERA then
-				-- The Era fallback needs the classic panel button's texture anchors. A bare Button
-				-- leaves UI-Panel-SmallerButton at its intrinsic size even when the button is 32px.
 				local made, button = pcall(CreateFrame, "Button", nil, window, "UIPanelCloseButtonNoScripts")
 				minimizeButton = made and button or CreateFrame("Button", nil, window)
-				minimizeButton:SetSize(buttonSize, buttonSize)
-				-- Classic's World Map uses this 12px overlap so the smaller-button art sits in the
-				-- title bar beside Close instead of leaving a visible gap between the two controls.
+				minimizeButton:SetSize(eraButtonSize, eraButtonSize)
 				minimizeButton:SetPoint("RIGHT", close, "LEFT", 12, 0)
 				window.MinimizeButton = minimizeButton
 			else
-				-- Keep the Forever fallback exactly as master when its modern template is absent.
 				minimizeButton = CreateFrame("Button", nil, window)
 				minimizeButton:SetSize(buttonSize, buttonSize)
 				minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
