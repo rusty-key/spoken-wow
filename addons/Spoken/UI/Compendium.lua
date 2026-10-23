@@ -358,11 +358,10 @@ end
 local function BuildChrome()
 	local close = type(window.CloseButton) == "table" and window.CloseButton
 	if close then
-		-- Classic's PortraitFrameTemplate supplies a 32px close button. Keep its native size and
-		-- anchor on Era: shrinking/repositioning it makes the adjacent classic control sit inside the
-		-- title bar instead of on the frame's button rail. Forever keeps its existing layout.
-		local buttonSize = IS_ERA and 32 or math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
-		close:SetSize(buttonSize, buttonSize)
+		local buttonSize = math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
+		-- Only Era needs the larger classic control; Forever keeps master's size.
+		local eraButtonSize = IS_ERA and 32 or buttonSize
+		close:SetSize(eraButtonSize, eraButtonSize)
 		close:ClearAllPoints()
 		if IS_ERA then
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", 4, 5)
@@ -381,7 +380,7 @@ local function BuildChrome()
 			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
-				arrow:SetSize(buttonSize, buttonSize)
+				arrow:SetSize(eraButtonSize, eraButtonSize)
 				arrow:ClearAllPoints()
 				arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
 			end
