@@ -368,12 +368,10 @@ local function BuildChrome()
 			mm:ClearAllPoints()
 			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
-			if IS_ERA then
-				for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
-					arrow:SetSize(buttonSize, buttonSize)
-					arrow:ClearAllPoints()
-					arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
-				end
+			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
+				arrow:SetSize(buttonSize, buttonSize)
+				arrow:ClearAllPoints()
+				arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
 			end
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
