@@ -1,7 +1,7 @@
 # Narrator styles
 
 How Spoken shows the line it is reading is one setting, **Narrator Style** (`Frame.Style`), with
-five values: `"subtitle"` (Subtitles Only, the default on Forever), `"minimal"` (Small Window),
+five values: `"subtitle"` (Subtitles Only, the default without DialogueUI), `"minimal"` (Small Window),
 `"classic"` (Large Window), `"dialogueui"` (DialogueUI, with the DialogueUI addon installed) and
 `"none"` (Voice Only). They are tiles on Spoken's settings page and in the welcome window, in that
 order. `/sp style subtitles | small | large | dialogueui | voice` switches between them and says

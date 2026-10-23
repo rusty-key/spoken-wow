@@ -303,8 +303,8 @@ function Options:ShowDiagnostics()
 end
 
 --- The ways of showing lines this client can offer, in the order the narrator cards list them.
---- Subtitles Only first, the default; Voice Only last, its card a sound's bars rising and
---- falling, since there is nothing on screen to picture.
+--- Subtitles Only first; DialogueUI may be the default when it is installed. Voice Only last,
+--- its card a sound's bars rising and falling, since there is nothing on screen to picture.
 function Options:Styles()
     local styles = { "subtitle", "minimal", "classic" }
     if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end

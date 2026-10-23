@@ -13,7 +13,10 @@ local BROWN, DARK = "Interface/AddOns/DialogueUI/Art/Theme_Brown/", "Interface/A
 
 ---------------------------------------------------------------- a fake DialogueUI
 local loaded = false
-_G.IsAddOnLoaded = function(name) return name == "DialogueUI" and loaded end
+-- Current clients expose this through C_AddOns; Compat.lua installs Spoken's IsAddOnLoaded
+-- shim only after Core.lua has created Defaults.
+_G.IsAddOnLoaded = nil
+_G.C_AddOns = { IsAddOnLoaded = function(name) return name == "DialogueUI" and loaded end }
 local function FakeDialogueUI()
     _G.DialogueUI_DB = { Theme = 1, FrameSize = 2 }
     local frame = stub.Widget("Frame")
@@ -46,15 +49,16 @@ local function FakeDialogueUI()
     return frame
 end
 
-local function Boot()
+local function Boot(style)
     stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
     stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
     _G.UISpecialFrames = _G.UISpecialFrames or {}
     -- A screen, for the window to take DialogueUI's share of; the stub's is a thumbnail.
     _G.UIParent:SetSize(1920, 1080)
     local env = stub.LoadSpoken(SPOKEN)
-    -- LoadSpoken picks the large window for the other suites; these start from the small one.
-    env.Addon.db.profile.Frame.Style = "minimal"
+    -- LoadSpoken picks the large window for the other suites; these start from the small one
+    -- unless the test is checking the first-install default.
+    if style then env.Addon.db.profile.Frame.Style = style end
     env.Addon.db.profile.Transcript.SubtitleProgress = true
     env.Addon:Enable()
     local quests = env.Sources:Register("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
@@ -70,7 +74,7 @@ local function Row(layout, label, tooltip)
 end
 
 ---------------------------------------------------------------- without DialogueUI
-local env = Boot()
+local env = Boot("minimal")
 local Spoken = _G.Spoken
 Expect("the small window is the default window", Spoken:GetPlayerStyle(), "minimal")
 Expect("no DialogueUI tile without DialogueUI", table.concat(env.Options:Styles(), ","), "subtitle,minimal,classic,none")
@@ -90,8 +94,10 @@ Expect("Voice Only offers no word rows without DialogueUI: nothing would show th
 loaded = true
 local DUI = FakeDialogueUI()
 local quests
-env, quests = Boot()
+_G.SpokenSettings = nil
+env, quests = Boot("dialogueui")
 Spoken = _G.Spoken
+Expect("with DialogueUI a new profile defaults to its window", env.Defaults.profile.Frame.Style, "dialogueui")
 Expect("with DialogueUI it is a fifth tile, after the large window",
     table.concat(env.Options:Styles(), ","), "subtitle,minimal,classic,dialogueui,none")
 Expect("...named, described and drawn", env.Options.STYLE_LABELS.dialogueui ~= nil and env.Options.STYLE_TEXTS.dialogueui ~= nil

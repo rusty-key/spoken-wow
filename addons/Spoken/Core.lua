@@ -16,6 +16,16 @@ SIZES = {
     FontSize = { 12, 26, 1 },
 }
 
+-- Optional dependencies are loaded before this addon, so a new profile can start with the
+-- DialogueUI window when it is installed. This is called from InitDB too: Compat.lua, which
+-- supplies IsAddOnLoaded on clients that only have C_AddOns, loads after Core.lua.
+local function DefaultPlayerStyle()
+    if DialogueUITheme and DialogueUITheme.Installed and DialogueUITheme:Installed() then
+        return "dialogueui"
+    end
+    return "subtitle"
+end
+
 -- Player-wide settings only. Anything a single domain cares about -- gossip frequency,
 -- autoplay, which pack to prefer -- stays in that feature addon's own saved variables.
 Defaults = {
@@ -27,7 +37,7 @@ Defaults = {
             HidePortrait = false,
             -- "subtitle", "minimal" (Small Window), "classic" (Large Window), "dialogueui" or
             -- "none" (the voice alone).
-            Style = "subtitle",
+            Style = DefaultPlayerStyle(),
             -- The windows' metal in the bronze the Forever client's frames wear.
             BronzeTint = true,
             -- The small window's background: "parchment" or "dark" (the rock).
@@ -145,6 +155,9 @@ function Addon:InitDB()
     if self.db then
         return
     end
+    -- DialogueUITheme and the compatibility shim are available now, unlike when Core.lua was
+    -- first loaded. Existing profiles still win over this default when AceDB merges them.
+    Defaults.profile.Frame.Style = DefaultPlayerStyle()
     self.db = LibStub("AceDB-3.0"):New("SpokenSettings", Defaults)
     -- A saved AutoScroll = false predates ScrollMode: carry it over as "off", in every profile.
     for _, profile in pairs(self.db.sv and self.db.sv.profiles or {}) do
