@@ -46,12 +46,14 @@ local index
 -- byKey["map:key"] = the boss; count = every boss listed. on[continent or "lands"] and
 -- maps[zone], the sorted lines, are kept once worked out.
 local IS_ERA = SpokenEnv and SpokenEnv.Version and SpokenEnv.Version.IsRetailVanilla
+-- The generated dungeon table is ordered by instance-map ID: 2784 is the first Forever-only
+-- dungeon, while Era's vanilla dungeons and raids end at 533.
+local FIRST_FOREVER_DUNGEON = 2784
 
 local function ClientHasMap(map)
-	-- Spoken NPCs shares its boss data between clients. A dungeon that is not known by Era must
-	-- not be offered in its Bosses tab, or it can be selected even though it has no map (for
-	-- example, Forever's Hall of Thanes).
-	return not IS_ERA or not (C_Map and C_Map.GetMapInfo) or C_Map.GetMapInfo(map) ~= nil
+	-- Spoken NPCs shares its boss data between clients. Era does not expose its dungeon instance
+	-- maps through C_Map, so use the generated table's client boundary instead of querying it.
+	return not IS_ERA or map < FIRST_FOREVER_DUNGEON
 end
 
 local function Index()

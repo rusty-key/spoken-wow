@@ -136,13 +136,7 @@ local MAPS = { [947] = "Azeroth", [1414] = "Kalimdor", [1415] = "Eastern Kingdom
     [1412] = "Mulgore", [1437] = "Wetlands", [1419] = "Blasted Lands", [1431] = "Duskwood", [1425] = "The Hinterlands" }
 local here_map = 1436
 _G.C_Map = {
-    GetMapInfo = function(id)
-        if id == 3065 then return nil end -- Hall of Thanes exists in shared data, not on Era.
-        if MAPS[id] or (SpokenDungeons.dungeons[id] and id < 2784) then
-            return { name = MAPS[id] or SpokenDungeons.dungeons[id][1], mapID = id }
-        end
-        return nil
-    end,
+    GetMapInfo = function(id) return MAPS[id] and { name = MAPS[id], mapID = id } or nil end,
     GetBestMapForUnit = function() return here_map end,
 }
 _G.GetInstanceInfo = function() return "Outland", "none", 0, "", 0, 0, false, 0 end
