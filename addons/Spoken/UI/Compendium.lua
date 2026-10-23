@@ -84,7 +84,6 @@ local SMALLER_DOWN = [[Interface\Buttons\UI-Panel-SmallerButton-Down]]
 local BIGGER_UP = [[Interface\Buttons\UI-Panel-BiggerButton-Up]]
 local BIGGER_DOWN = [[Interface\Buttons\UI-Panel-BiggerButton-Down]]
 local PANEL_HI = [[Interface\Buttons\UI-Panel-MinimizeButton-Highlight]]
-local ERA_TAB_HIGHLIGHT = [[Interface\PaperDollInfoFrame\UI-Character-Tab-RealHighlight]]
 
 --------------------------------------------------------------------------------
 -- Art with a way out
@@ -418,7 +417,9 @@ end
 -- The tabs along the window's foot, as the character sheet has them; none with only one.
 local function NewTab(index, label)
 	local tab
-	for _, template in ipairs({ "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate" }) do
+	local templates = IS_ERA and { "CharacterFrameTabButtonTemplate", "PanelTabButtonTemplate" }
+		or { "PanelTabButtonTemplate", "CharacterFrameTabButtonTemplate" }
+	for _, template in ipairs(templates) do
 		local ok, button = pcall(CreateFrame, "Button", NAME .. "Tab" .. index, window, template)
 		if ok and button then
 			tab = button
@@ -432,17 +433,6 @@ local function NewTab(index, label)
 	end
 	tab:SetID(index)
 	tab:SetText(label)
-	if IS_ERA and tab.SetHighlightTexture then
-		-- Era's modern tab template has a highlight layer, but its atlas-backed selected art is
-		-- missing on this client. Use the old tab glow and keep it inside the button's own bounds.
-		tab:SetHighlightTexture(ERA_TAB_HIGHLIGHT, "ADD")
-		local highlight = tab.GetHighlightTexture and tab:GetHighlightTexture()
-		if highlight and highlight.ClearAllPoints then
-			highlight:ClearAllPoints()
-			highlight:SetPoint("TOPLEFT", tab, "TOPLEFT", 3, 5)
-			highlight:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -3, 0)
-		end
-	end
 	if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
 	return tab
 end
@@ -486,13 +476,10 @@ local function PaintTabs()
 	if not tabButtons then return end
 	for _, button in ipairs(tabButtons) do
 		local selected = button.key == active
-		if IS_ERA then
-			-- Keep the tab's normal frame when selected. The contained Classic glow gives selected
-			-- feedback without swapping to Era's missing active-tab atlas or changing its dimensions.
-			if button.LockHighlight and button.UnlockHighlight then
-				if selected then button:LockHighlight() else button:UnlockHighlight() end
-			end
-		elseif PanelTemplates_SelectTab and PanelTemplates_DeselectTab then
+		-- Era uses the Classic character tab template, whose active art is the original selected
+		-- target. Its normal and active pieces share the same dimensions, so selecting it does not
+		-- resize the tab.
+		if PanelTemplates_SelectTab and PanelTemplates_DeselectTab then
 			if selected then pcall(PanelTemplates_SelectTab, button) else pcall(PanelTemplates_DeselectTab, button) end
 		elseif button.LockHighlight and button.UnlockHighlight then
 			if selected then button:LockHighlight() else button:UnlockHighlight() end
