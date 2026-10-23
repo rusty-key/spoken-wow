@@ -115,6 +115,11 @@ env.PlayerFrame:RefreshConfig()
 OtherWindows(env)
 Expect("with EllesmereUI's skinning of Spoken off, its callback never runs and nothing changes",
     tostring(env.Ellesmere:On()) .. " " .. #eui.calls, "false 0")
+Expect("...what is built before the world is shown waits for it", #env.Ellesmere.waiting > 0, true)
+stub.FireEvent("PLAYER_ENTERING_WORLD")
+stub.Advance(0.1)
+env.Ellesmere:Refont(env.MinimalPlayer.name)
+Expect("...and once the world is shown without it, nothing waits any more", #env.Ellesmere.waiting, 0)
 
 ---------------------------------------------------------------- EllesmereUI's own look
 env, eui = Boot("eui")
@@ -238,6 +243,7 @@ Expect("...round too while it shows a picture", tostring(P.frame.portrait.disc.e
 P.frame.portrait.active = "model"
 P:FitPortrait()
 Expect("...square while it shows a 3D model", tostring(P.frame.portrait.disc.edge:IsShown()), "false")
+Expect("...without Spoken's box behind its words", P.frame.background:GetAlpha(), 0)
 Expect("...its portrait a flat box, without the ornate frame or the art behind it",
     tostring(P.frame.portrait.spokenBox ~= nil) .. " " .. P.frame.portrait.border.texture:GetAlpha() .. " "
     .. P.frame.portrait.background:GetAlpha(), "true 0 0")
