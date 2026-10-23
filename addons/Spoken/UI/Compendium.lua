@@ -270,6 +270,17 @@ local function SaveWindowSize()
 	end
 end
 
+local function FillButtonArt(button)
+	if not button or not button.GetNormalTexture then return end
+	for _, texture in ipairs({ button:GetNormalTexture(), button.GetPushedTexture and button:GetPushedTexture(),
+		button.GetHighlightTexture and button:GetHighlightTexture() }) do
+		if texture and texture.ClearAllPoints and texture.SetAllPoints then
+			texture:ClearAllPoints()
+			texture:SetAllPoints(button)
+		end
+	end
+end
+
 local function SetCollapseArrow()
 	if minimizeFrame then
 		minimizeFrame.MaximizeButton:SetShown(minimized)
@@ -279,17 +290,6 @@ local function SetCollapseArrow()
 	if not minimizeButton then
 		return
 	end
-	local function FillEraArt(button)
-		-- SetNormalTexture creates a texture layer, but on Era that layer keeps the old
-		-- 16px intrinsic size instead of following the 32px button. Keep this correction
-		-- on the direct Era button only; Forever uses Blizzard's template art unchanged.
-		for _, texture in ipairs({ button:GetNormalTexture(), button:GetPushedTexture() }) do
-			if texture and texture.ClearAllPoints and texture.SetAllPoints then
-				texture:ClearAllPoints()
-				texture:SetAllPoints(button)
-			end
-		end
-	end
 	if minimized then
 		minimizeButton:SetNormalTexture(BIGGER_UP)
 		minimizeButton:SetPushedTexture(BIGGER_DOWN)
@@ -297,7 +297,7 @@ local function SetCollapseArrow()
 		minimizeButton:SetNormalTexture(SMALLER_UP)
 		minimizeButton:SetPushedTexture(SMALLER_DOWN)
 	end
-	if IS_ERA then FillEraArt(minimizeButton) end
+	if IS_ERA then FillButtonArt(minimizeButton) end
 end
 
 -- Folded down to the list: the page goes, and only the height resizes, so folding never reflows
@@ -378,12 +378,14 @@ local function BuildChrome()
 		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
 			minimizeFrame = mm
 			mm:ClearAllPoints()
+			mm:SetSize(buttonSize, buttonSize)
 			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
 				arrow:SetSize(buttonSize, buttonSize)
 				arrow:ClearAllPoints()
 				arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
+				if not IS_ERA then FillButtonArt(arrow) end
 			end
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
