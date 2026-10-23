@@ -388,7 +388,12 @@ local function BuildChrome()
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
 		else
-			minimizeButton = CreateFrame("Button", nil, window)
+			-- The Era fallback needs the classic panel button's texture anchors. A bare Button
+			-- leaves UI-Panel-SmallerButton at its intrinsic size even when the button is 32px.
+			-- Forever keeps the plain fallback used by master if its modern template is absent.
+			local template = IS_ERA and "UIPanelCloseButtonNoScripts" or nil
+			local made, button = pcall(CreateFrame, "Button", nil, window, template)
+			minimizeButton = made and button or CreateFrame("Button", nil, window)
 			minimizeButton:SetSize(buttonSize, buttonSize)
 			-- Classic's World Map uses this 12px overlap so the smaller-button art sits in the
 			-- title bar beside Close instead of leaving a visible gap between the two controls.
