@@ -343,6 +343,12 @@ Expect("Spoken's page has no Parchment or Dark for the small window in Ellesmere
 -- state.
 do
     -- The game's portrait frame, with its close button, as PortraitFrameMixin has it; no fold template.
+    -- The quest tracker's arrows the client has.
+    local cTexture = _G.C_Texture
+    _G.C_Texture = { GetAtlasInfo = function(name)
+        return (name == "UI-QuestTrackerButton-Secondary-Collapse" or name == "UI-QuestTrackerButton-Secondary-Expand")
+            and { width = 16, height = 16 } or nil
+    end }
     local createFrame = _G.CreateFrame
     _G.CreateFrame = function(kind, name, parent, template)
         if template == "MaximizeMinimizeButtonFrameTemplate" then error("no such template") end
@@ -365,6 +371,7 @@ do
         fold.scripts.OnClick(fold)
         Expect("...and unfolded again", fold:GetNormalTexture():GetAlpha(), 0)
     end
+    _G.C_Texture = cTexture
 end
 
 ---------------------------------------------------------------- a client EllesmereUI's font does not write

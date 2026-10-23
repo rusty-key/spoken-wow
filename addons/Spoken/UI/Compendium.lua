@@ -261,31 +261,27 @@ local function SaveWindowSize()
 	end
 end
 
--- In EllesmereUI's look: a minus to fold and a plus to unfold, drawn as EllesmereUI draws its close
--- X beside them. It sets the game's "uitools-icon-close" (14 across, 2 left of the button's middle,
--- white at 75%, whole under the pointer); "uitools-icon-minus" and "uitools-icon-plus" are the same
--- atlas's cells of the same size, so the three are one family. Size, place and colour are read from
--- that X where it is found.
-local CLOSE_GLYPH, FOLD_GLYPH, UNFOLD_GLYPH = "uitools-icon-close", "uitools-icon-minus", "uitools-icon-plus"
--- EllesmereUI leaves the game's title buttons where the game puts them, so it has no gap of its own
--- between two: the fold button's centre one close button's width from the X's, and this more.
-local FOLD_GAP = 4
+-- In EllesmereUI's look the fold and unfold buttons as it draws the world map's: the game's quest
+-- tracker collapse and expand arrows, 16 across, 2 left of the button's middle, desaturated, white at
+-- 75% and whole under the pointer. Where the client has not got them, the game's own buttons stay.
+local FOLD_GLYPH, UNFOLD_GLYPH = "UI-QuestTrackerButton-Secondary-Collapse", "UI-QuestTrackerButton-Secondary-Expand"
 
--- EllesmereUI's X on the window's close button: its size, its place on the button and its colour.
-local function CloseGlyph()
-	local close = window and type(window.CloseButton) == "table" and window.CloseButton
-	local regions = close and close.GetRegions and { close:GetRegions() } or {}
-	for _, region in ipairs(regions) do
-		if region.GetAtlas and region:GetAtlas() == CLOSE_GLYPH then
-			local width = region:GetWidth()
-			local _, _, _, x, y = region:GetPoint()
-			local r, g, b, a = region:GetVertexColor()
-			return { size = (width and width > 0) and width or 14, x = x or -2, y = y or 0,
-				colour = { r or 1, g or 1, b or 1, a or 0.75 } }
-		end
-	end
-	return { size = 14, x = -2, y = 0, colour = { 1, 1, 1, 0.75 } }
+-- The world map's fold buttons against its close button, which EllesmereUI leaves where the game puts
+-- them: their frame's anchor and size, the buttons' size and the close button's. Nil where the client
+-- has no such map.
+local function MapFold()
+	local border = _G.WorldMapFrame and type(WorldMapFrame.BorderFrame) == "table" and WorldMapFrame.BorderFrame
+	local mm = border and border.MaximizeMinimizeFrame
+	local close = border and border.CloseButton
+	if type(mm) ~= "table" or type(close) ~= "table" or type(mm.GetPoint) ~= "function" then return nil end
+	local point, relativeTo, relativePoint, x, y = mm:GetPoint(1)
+	if relativeTo ~= close then return nil end
+	local button = type(mm.MinimizeButton) == "table" and mm.MinimizeButton or mm
+	return { point = point, relativePoint = relativePoint, x = x or 0, y = y or 0,
+		width = mm:GetWidth(), height = mm:GetHeight(), buttonWidth = button:GetWidth(), buttonHeight = button:GetHeight(),
+		closeWidth = close:GetWidth(), closeHeight = close:GetHeight() }
 end
+
 -- The template's red arrow art, emptied and faded as EllesmereUI's close button does both
 -- (WSkin.CloseButton): emptying alone left the template's atlas drawn on the Forever client.
 local function FadeFold(button)
@@ -304,26 +300,25 @@ local function FadeFold(button)
 	end
 end
 local function FlatFold(button)
+	if not (HasAtlas(FOLD_GLYPH) and HasAtlas(UNFOLD_GLYPH)) then return end
 	FadeFold(button)
 	if button.flatGlyph then return end
 	-- Faded again whenever it shows: the template's mixin sets its look as the window folds.
 	button:HookScript("OnShow", FadeFold)
-	local x = CloseGlyph()
-	local colour = x.colour
 	local glyph = button:CreateTexture(nil, "OVERLAY")
 	glyph.spokenGlyph = true
-	glyph:SetPoint("CENTER", button, "CENTER", x.x, x.y)
-	glyph.closeSize = x.size
+	glyph:SetSize(16, 16)
+	glyph:SetPoint("CENTER", button, "CENTER", -2, 0)
+	if glyph.SetDesaturated then glyph:SetDesaturated(true) end
+	glyph:SetVertexColor(1, 1, 1, 0.75)
 	button.flatGlyph = glyph
-	glyph:SetVertexColor(colour[1], colour[2], colour[3], colour[4])
-	button:HookScript("OnEnter", function() glyph:SetVertexColor(colour[1], colour[2], colour[3], 1) end)
-	button:HookScript("OnLeave", function() glyph:SetVertexColor(colour[1], colour[2], colour[3], colour[4]) end)
+	button:HookScript("OnEnter", function() glyph:SetVertexColor(1, 1, 1, 1) end)
+	button:HookScript("OnLeave", function() glyph:SetVertexColor(1, 1, 1, 0.75) end)
 end
 local function FoldGlyph(button, fold)
 	local glyph = button.flatGlyph
 	if not glyph then return end
-	glyph:SetAtlas(fold and FOLD_GLYPH or UNFOLD_GLYPH)
-	glyph:SetSize(glyph.closeSize, glyph.closeSize)
+	glyph:SetAtlas(fold and FOLD_GLYPH or UNFOLD_GLYPH, false)
 end
 
 local function SetCollapseArrow()
@@ -688,20 +683,22 @@ local function BuildWindow()
 		for _, part in ipairs({ built.PortraitContainer, built.portrait, built.PortraitButton }) do
 			if type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
 		end
-		-- Fold and unfold flat beside the close button, as large and on its row.
+		-- Fold and unfold as the world map's beside its close button: the same sizes and place.
 		local close = type(built.CloseButton) == "table" and built.CloseButton
 		local folds = minimizeFrame and { { minimizeFrame.MinimizeButton, true }, { minimizeFrame.MaximizeButton, false } }
 			or minimizeButton and { { minimizeButton, not minimized } } or {}
+		local map = MapFold()
+		if map and close then close:SetSize(map.closeWidth, map.closeHeight) end
 		for _, fold in ipairs(folds) do
 			FlatFold(fold[1])
 			FoldGlyph(fold[1], fold[2])
-			if close then fold[1]:SetSize(close:GetWidth(), close:GetHeight()) end
+			if map then fold[1]:SetSize(map.buttonWidth, map.buttonHeight) end
 		end
 		local holder = minimizeFrame or minimizeButton
-		if holder and close then
+		if map and holder and close then
 			holder:ClearAllPoints()
-			holder:SetPoint("RIGHT", close, "LEFT", -FOLD_GAP, 0)
-			if minimizeFrame then minimizeFrame:SetSize(close:GetWidth(), close:GetHeight()) end
+			holder:SetPoint(map.point, close, map.relativePoint, map.x, map.y)
+			if minimizeFrame then minimizeFrame:SetSize(map.width, map.height) end
 		end
 	end)
 	if UISpecialFrames then table.insert(UISpecialFrames, NAME) end -- close on Escape

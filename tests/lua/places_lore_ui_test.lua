@@ -25,7 +25,8 @@ stub.LoadSpoken(here .. "/../../addons/Spoken/").Addon:Enable()
 -- The atlases the client has, as Blizzard's own frames use them (wow-ui-source, forever).
 local ATLASES = { ["spellbook-Page-Right-C60"] = true, ["spellbook-divider"] = true, ["LFG-lock"] = true,
     ["QuestDetailsBackgrounds"] = true, ["questlog-frame"] = true, ["questlog-frame-filigree"] = true,
-    ["uitools-icon-minimize"] = true, ["uitools-icon-checkbox"] = true }
+    ["uitools-icon-minimize"] = true, ["uitools-icon-checkbox"] = true,
+    ["UI-QuestTrackerButton-Secondary-Collapse"] = true, ["UI-QuestTrackerButton-Secondary-Expand"] = true }
 _G.C_Texture = { GetAtlasInfo = function(name) return stub.ListAtlas(name) or ATLASES[name] and { width = 64, height = 11 } or nil end }
 
 -- The game's portrait frame: its title, portrait and close button, as PortraitFrameMixin has them.
@@ -894,6 +895,17 @@ do
     Expect("...the tabs the game's", tostring(_G.SpokenCompendiumWindowTab1.flat), "nil")
     Expect("...the fold button the game's, and no edge round the picture",
         tostring(foldFrame.MinimizeButton.flatGlyph) .. " " .. tostring(page.body.pictureEdge), "nil nil")
+    do
+        local border = createFrame("Frame", nil, WorldMapFrame)
+        border.CloseButton = createFrame("Button", nil, border)
+        border.CloseButton:SetSize(30, 30)
+        border.MaximizeMinimizeFrame = createFrame("Frame", nil, border)
+        border.MaximizeMinimizeFrame:SetSize(32, 32)
+        border.MaximizeMinimizeFrame:SetPoint("RIGHT", border.CloseButton, "LEFT", 10, 0)
+        border.MaximizeMinimizeFrame.MinimizeButton = createFrame("Button", nil, border.MaximizeMinimizeFrame)
+        border.MaximizeMinimizeFrame.MinimizeButton:SetSize(28, 28)
+        WorldMapFrame.BorderFrame = border
+    end
     Fire("eui")
     Expect("in EllesmereUI's own look Azeroth's Compendium takes its shell and close button",
         -- Once for each time this suite builds it.
@@ -1017,13 +1029,15 @@ do
         C:Select("places")
     end
     local fold, unfold = foldFrame.MinimizeButton.flatGlyph, foldFrame.MaximizeButton.flatGlyph
-    -- EllesmereUI's close X: the game's uitools-icon-close, 14 across, 2 left of the middle, its arms
-    -- 9 across, its strokes 1.75 (the client's PixelUtil rounds them to whole screen pixels).
-    Expect("the game's minus to fold and plus to unfold, the X's own family, at its size and place",
+    -- As EllesmereUI draws the world map's: the quest tracker's arrows, 16 across, 2 left of the middle.
+    Expect("the fold and unfold glyphs the world map's in EllesmereUI's look, at their size and place",
         tostring(fold.atlas) .. " " .. tostring(unfold.atlas) .. " " .. fold:GetWidth() .. "x" .. fold:GetHeight() .. " "
-        .. fold.anchor.x .. "," .. fold.anchor.y, "uitools-icon-minus uitools-icon-plus 15x15 -3,0")
-    Expect("...the fold button one close button's width and 4 from the X",
-        tostring(foldFrame.anchor.relativeTo == book.CloseButton) .. " " .. foldFrame.anchor.x, "true -4")
+        .. fold.anchor.point .. " " .. fold.anchor.x .. "," .. fold.anchor.y,
+        "UI-QuestTrackerButton-Secondary-Collapse UI-QuestTrackerButton-Secondary-Expand 16x16 CENTER -2,0")
+    Expect("...the buttons placed from the close button as the world map's, at their sizes",
+        tostring(foldFrame.anchor.relativeTo == book.CloseButton) .. " " .. foldFrame.anchor.point .. " "
+        .. foldFrame.anchor.relativePoint .. " " .. foldFrame.anchor.x .. " " .. foldFrame:GetWidth() .. " "
+        .. foldFrame.MinimizeButton:GetWidth() .. " " .. book.CloseButton:GetWidth(), "true RIGHT LEFT 10 32 28 30")
     do
         -- The template sets its red art again as the window folds and shows: it stays faded.
         local minimize = foldFrame.MinimizeButton
