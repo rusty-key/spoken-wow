@@ -356,10 +356,15 @@ local function BuildChrome()
 		local ok, mm = pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
 		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
 			minimizeFrame = mm
-			-- The same size as Close and on its top edge: the frame's own size and the buttons' anchors
-			-- are the template's, which left the arrow larger than Close and above the title bar.
+			-- Era's template keeps a wider wrapper than its visible arrow. Constrain it to Close and
+			-- center it beside Close; Forever's template already has the intended top-edge layout.
 			mm:ClearAllPoints()
-			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
+			if IS_ERA then
+				mm:SetSize(buttonSize, buttonSize)
+				mm:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			else
+				mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
+			end
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
 				arrow:SetSize(buttonSize, buttonSize)
