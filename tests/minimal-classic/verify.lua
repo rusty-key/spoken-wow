@@ -53,7 +53,7 @@ SpokenEnv.SoundUtils={
 }
 SpokenEnv.Options={Open=function() end}
 ]], "settings and sound stubs")
-for _, name in ipairs({ "Callbacks.lua", "SoundQueue.lua", "Sources.lua", "Strings.lua", "UI/Transcript.lua",
+for _, name in ipairs({ "Callbacks.lua", "SoundQueue.lua", "Sources.lua", "Strings.lua", "UI/Layout.lua", "UI/Transcript.lua",
     "UI/Subtitle.lua", "UI/Portrait.lua", "UI/StaticPortrait.lua", "UI/Actions.lua", "UI/Snap.lua", "UI/Face.lua", "UI/PlayerFrame.lua",
     "UI/MinimalPlayer.lua", "UI/Ellesmere.lua", "UI/DialogueUITheme.lua", "UI/DialogueUIPlayer.lua", "UI/DialogueUITransitions.lua", "API.lua" }) do
     load(name)
