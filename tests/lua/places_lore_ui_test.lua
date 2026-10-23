@@ -874,12 +874,20 @@ do
         -- The button's regions, as the client lists them.
         function button:GetRegions() return x end
     end
+    local style, accent, panelColour, looks = "eui", { 0.05, 0.82, 0.62 }, { 0.08, 0.08, 0.08 }, {}
     local skin = { Shell = Note("shell"), CloseButton = CloseX, Tab = Note("tab"), Inset = Note("inset"),
         EditBox = Note("edit"), Button = Note("button"), Panel = Note("panel"), Font = Note("font"),
-        White = Note("white"),
-        GetAccentColor = function() return 0.05, 0.82, 0.62 end,
+        White = Note("white"), WhiteButtonLabel = Note("whitelabel"),
+        GetStyle = function() return style end,
+        OnLooksChanged = function(fn) table.insert(looks, fn) end,
+        GetAccentColor = function() return accent[1], accent[2], accent[3] end,
         GetFont = function() return EUI_FONT, "" end,
-        GetPanelColor = function() return 0.08, 0.08, 0.08, 0.92 end }
+        GetPanelColor = function() return panelColour[1], panelColour[2], panelColour[3], 0.92 end }
+    -- What the look says in chat when something in it fails: none may, whatever a stub lacks.
+    local said, realPrint = {}, _G.print
+    _G.print = function(text)
+        if tostring(text):find("EllesmereUI's look", 1, true) then table.insert(said, tostring(text)) end
+    end
     local function Fire(look)
         ellesmereLook = look
         ellesmereCallback(skin)
@@ -1009,9 +1017,9 @@ do
     banner.scripts.OnLeave(banner)
     local search
     for _, child in ipairs(window.children or {}) do if child.template == "SearchBoxTemplate" then search = child end end
-    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 3), to the arrow's 24.
+    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 3), to the arrow's 26.
     Expect("the search box level with the rows, to the filter menu's arrow, with no tome over its corner",
-        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "13 314")
+        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "13 312")
     _G.SpokenCompendium:Select("places")
     local tab, other
     for i = 1, 6 do
@@ -1057,15 +1065,19 @@ do
         C:Select("places")
         C.tabs.first.enabled = function() return false end
         C:Select("places")
-        local plates, spare = 0, nil
+        local plates, spares, chosen = 0, 0, 0
         for i = 1, 6 do
             local button = _G["SpokenCompendiumWindowTab" .. i]
             if button and button.flat then
                 if button.flat.plate:IsShown() then plates = plates + 1 end
-                if not button:IsShown() and button.key == nil then spare = button end
+                if not button:IsShown() and button.key == nil then
+                    spares = spares + 1
+                    if button.selected then chosen = chosen + 1 end
+                end
             end
         end
-        Expect("with a part switched off while a later tab is chosen, the spare tab names no part", spare ~= nil, true)
+        Expect("with a part switched off while a later tab is chosen, one spare tab names no part and none is chosen",
+            spares .. " " .. chosen, "1 0")
         Expect("...and with one part on, no tabs and no chosen tab's black plate", plates, 0)
         C.tabs.first.enabled = nil
         C:Select("places")
@@ -1101,6 +1113,153 @@ do
     Expect("...and its page the white title and the plain line", mapPage.title.colour .. " " .. tostring(mapPage.bg:GetAlpha())
         .. " " .. tostring(mapPage.line ~= nil), "1.00 1.00 1.00 0 true")
     Expect("...its Open in Azeroth's Compendium square", tostring(mapPage.open and mapPage.open.squared), "true")
+    Expect("...its Contribute button flat, its label white", tostring(dressed[page.contribute]), "buttonwhitelabel")
+
+    -- A row's fonts are set once while it keeps its kind, not at every list render.
+    do
+        local labelFonts, countFonts = 0, 0
+        for _, part in ipairs({ banner.label, banner.count }) do
+            local setFontObject = part.SetFontObject
+            function part:SetFontObject(...)
+                if part == banner.label then labelFonts = labelFonts + 1 else countFonts = countFonts + 1 end
+                return setFontObject(self, ...)
+            end
+        end
+        local before = dressed[banner.label]
+        Z:ShowLoreFor(1411, nil)
+        Z:ShowLoreFor(1411, nil)
+        Expect("a list drawn again leaves its rows' fonts as they are", labelFonts .. " " .. countFonts .. " "
+            .. tostring(dressed[banner.label] == before), "0 0 true")
+    end
+
+    -- What Spoken read from EllesmereUI follows its changes in play.
+    do
+        Expect("EllesmereUI is asked to say when its look changes", #looks > 0, true)
+        accent[1], accent[2], accent[3] = 0.9, 0.2, 0.1
+        panelColour[1], panelColour[2], panelColour[3] = 0.3, 0.2, 0.1
+        for _, fn in ipairs(looks) do fn() end
+        Expect("an accent changed in play reaches the chosen row's edge and the page's links",
+            table.concat(banner.edge.color, " ") .. " | " .. table.concat(page.link, " "),
+            "0.9 0.2 0.1 0.9 | 0.9 0.2 0.1")
+        Expect("...and a panel colour the tabs' boxes", table.concat(tab.flat.backing.color, " "), "0.3 0.2 0.1 1")
+        accent[1], accent[2], accent[3] = 0.05, 0.82, 0.62
+        panelColour[1], panelColour[2], panelColour[3] = 0.08, 0.08, 0.08
+    end
+
+    -- Windows made after login, the world map not built or the client's arrows missing.
+    do
+        local create = _G.CreateFrame
+        local portraits
+        -- A tab as the template makes it: a label of its own size, whose font is kept.
+        local function Tab(frame)
+            frame.Text = { GetFont = function() return "Fonts/x.ttf", 14 end, SetAlpha = function() end }
+            local createFontString = frame.CreateFontString
+            function frame:CreateFontString(...)
+                local label = createFontString(self, ...)
+                function label:SetFont(file, size) self.file, self.size = file, size end
+                return label
+            end
+        end
+        _G.CreateFrame = function(kind, name, parent, template)
+            local frame = create(kind, name, parent, template)
+            if template == "PortraitFrameTemplate" then
+                -- A window with a button for its portrait and no container (stub.absentAPI, set below).
+                frame.PortraitContainer = nil
+                frame.PortraitButton = create("Button", nil, frame)
+                portraits = frame
+            elseif type(name) == "string" and name:find("SpokenCompendiumWindowTab", 1, true) then
+                Tab(frame)
+            end
+            return frame
+        end
+        local map = WorldMapFrame.BorderFrame
+        WorldMapFrame.BorderFrame = nil
+        stub.absentAPI.PortraitContainer = true
+        NewSession()
+        stub.absentAPI.PortraitContainer = nil
+        local made = _G.SpokenCompendium:Window()
+        Expect("a window made while the world map is not built keeps the game's buttons",
+            tostring(made.spokenFoldsFitted) .. " " .. tostring(made.CloseButton:GetWidth() == 30), "nil false")
+        Expect("...a portrait button dressed though its container is missing", portraits.PortraitButton:GetAlpha(), 0)
+        WorldMapFrame.BorderFrame = map
+        for _, hook in ipairs(made.hooks and made.hooks.OnShow or {}) do hook(made) end
+        Expect("...the map built, its next showing fits them to it",
+            tostring(made.spokenFoldsFitted) .. " " .. tostring(foldFrame.anchor.relativeTo == made.CloseButton) .. " "
+            .. made.CloseButton:GetWidth(), "true true 30")
+
+        -- Tabs made after: the label at the template's size, and a look that fails says so in chat and
+        -- leaves the tab.
+        _G.SpokenCompendium:Register("extra", { label = "Extra", order = 5, build = function() end })
+        Expect("a tab's own label is drawn at the template's size", _G.SpokenCompendiumWindowTab3.flat.label.size, 14)
+        local edge, capturing, failures = SpokenEnv.Ellesmere.EDGE, _G.print, {}
+        SpokenEnv.Ellesmere.EDGE = nil
+        _G.print = function(text) table.insert(failures, tostring(text)) end
+        _G.SpokenCompendium:Register("broken", { label = "Broken", order = 6, build = function() end })
+        _G.print = capturing
+        SpokenEnv.Ellesmere.EDGE = edge
+        local broken = _G.SpokenCompendiumWindowTab4
+        Expect("a tab whose look fails is said in chat and still a tab of the window",
+            #failures .. " " .. tostring(broken and broken:GetText()) .. " " .. tostring(broken and broken.key), "1 Broken broken")
+        _G.CreateFrame = create
+    end
+
+    -- A client without the fold arrows: the game's buttons stay, the close button is sized as the map's.
+    do
+        local collapse, expand = ATLASES["UI-QuestTrackerButton-Secondary-Collapse"], ATLASES["UI-QuestTrackerButton-Secondary-Expand"]
+        ATLASES["UI-QuestTrackerButton-Secondary-Collapse"], ATLASES["UI-QuestTrackerButton-Secondary-Expand"] = nil, nil
+        NewSession()
+        local bare = _G.SpokenCompendium:Window()
+        ATLASES["UI-QuestTrackerButton-Secondary-Collapse"], ATLASES["UI-QuestTrackerButton-Secondary-Expand"] = collapse, expand
+        Expect("a client without the arrows keeps the game's fold buttons where they are, the close button the map's size",
+            tostring(foldFrame.MinimizeButton.flatGlyph) .. " " .. tostring(foldFrame.MaximizeButton.flatGlyph) .. " "
+            .. tostring(foldFrame.anchor.x == 10) .. " " .. bare.CloseButton:GetWidth() .. " " .. tostring(bare.spokenFoldsFitted),
+            "nil nil false 30 true")
+    end
+
+    -- Each list row and title in the one font rule: EllesmereUI's where it writes the client's language.
+    local function RowsOf(frame, out)
+        for _, child in ipairs(frame.children or {}) do
+            if child.row then table.insert(out, child) end
+            RowsOf(child, out)
+        end
+        return out
+    end
+    local function Fonted(session)
+        session:ShowLoreFor(1411, nil)
+        local window = _G.SpokenCompendium:Window()
+        local rows, fonted = RowsOf(session.window, {}), 0
+        for _, row in ipairs(rows) do
+            if tostring(dressed[row.label]):find("font", 1, true) then fonted = fonted + 1 end
+        end
+        return (#rows > 0 and fonted == #rows) and "all" or fonted == 0 and "none" or "some",
+            tostring(dressed[window.TitleContainer.TitleText]):find("font", 1, true) and "font" or "plain"
+    end
+    do
+        local rows, title = Fonted(NewSession())
+        Expect("on a client EllesmereUI's font writes, the list's rows and the window's title are in it", rows .. " " .. title, "all font")
+        local getLocale = _G.GetLocale
+        _G.GetLocale = function() return "ruRU" end
+        rows, title = Fonted(NewSession())
+        _G.GetLocale = getLocale
+        Expect("...and on one it does not, in the game's font, rows and title alike", rows .. " " .. title, "none plain")
+    end
+
+    -- Its Modern style has a flat backdrop to fade the words into.
+    do
+        style = "modern"
+        local modern = NewSession()
+        modern:ShowLoreFor(1411, nil)
+        local body = modern.window.page.body
+        body:PaintFade()
+        local top
+        for _, strip in ipairs(body.strips) do
+            if strip.fadeEdge == "TOP" then top = top or strip end
+        end
+        style = "eui"
+        Expect("in EllesmereUI's Modern style the text fades into its flat backdrop", table.concat(top.color, " "), "0.067 0.067 0.067 1")
+    end
+    _G.print = realPrint
+    Expect("nothing in the look said it had failed", table.concat(said, "|"), "")
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
