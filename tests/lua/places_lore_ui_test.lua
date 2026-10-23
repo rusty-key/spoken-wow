@@ -123,23 +123,16 @@ Expect("the places are a tab of Azeroth's Compendium, the game's portrait frame"
 Expect("...titled, with the Compendium's tome in its portrait", compendium.title .. "|" .. tostring(compendium.portrait),
     SpokenEnv.L.OPT_COMPENDIUM_TITLE .. "|Interface\\Icons\\INV_Misc_Book_11")
 local close = compendium.CloseButton
-local minimizeFrame
-for _, child in ipairs(compendium.children or {}) do
-    if type(child.MinimizeButton) == "table" then
-        minimizeFrame = child
-        break
-    end
-end
-local minimize = minimizeFrame and minimizeFrame.MinimizeButton
+local minimize = compendium.MinimizeButton
 local closePoint, closeRelative, closeRelativePoint, closeX, closeY = close:GetPoint()
 local minimizePoint, minimizeRelative, minimizeRelativePoint, minimizeX, minimizeY = minimize:GetPoint()
-Expect("...the close button uses master's portrait-frame rail", close:GetWidth() .. "x" .. close:GetHeight()
+Expect("...the Era close button uses the Classic portrait-frame rail", close:GetWidth() .. "x" .. close:GetHeight()
     .. "|" .. closePoint .. "|" .. tostring(closeRelative == compendium) .. "|" .. closeRelativePoint
-    .. "|" .. closeX .. "," .. closeY, "30x30|TOPRIGHT|true|TOPRIGHT|-6,-1")
-Expect("...the minimize button uses master's template child",
+    .. "|" .. closeX .. "," .. closeY, "32x32|TOPRIGHT|true|TOPRIGHT|4,5")
+Expect("...the Era minimize button is the same size and sits directly beside Close",
     minimize:GetWidth() .. "x" .. minimize:GetHeight() .. "|" .. minimizePoint .. "|"
-    .. tostring(minimizeRelative == minimizeFrame) .. "|" .. minimizeRelativePoint .. "|" .. minimizeX .. "," .. minimizeY,
-    "30x30|CENTER|true|CENTER|0,0")
+    .. tostring(minimizeRelative == close) .. "|" .. minimizeRelativePoint .. "|" .. minimizeX .. "," .. minimizeY,
+    "32x32|RIGHT|true|LEFT|12,0")
 Expect("...closed by Escape", _G.UISpecialFrames[#_G.UISpecialFrames], "SpokenCompendiumWindow")
 local page = window.page
 Expect("its story is on the spellbook's parchment", page.parchment, "spellbook-Page-Right-C60")

@@ -347,31 +347,42 @@ local function BuildChrome()
 	local close = type(window.CloseButton) == "table" and window.CloseButton
 	if close then
 		local buttonSize = math.max((close:GetWidth() > 0 and close:GetWidth() or 32) - 2, 24)
-		close:SetSize(buttonSize, buttonSize)
+		local eraButtonSize = IS_ERA and 32 or buttonSize
+		close:SetSize(eraButtonSize, eraButtonSize)
 		close:ClearAllPoints()
-		if window.templated then
+		if IS_ERA then
+			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", 4, 5)
+		elseif window.templated then
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -6, -1)
 		else
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -8)
 		end
 
-		local ok, mm = pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
+		local ok, mm = not IS_ERA and pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
 		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
 			minimizeFrame = mm
 			mm:ClearAllPoints()
 			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
-				arrow:SetSize(buttonSize, buttonSize)
+				arrow:SetSize(eraButtonSize, eraButtonSize)
 				arrow:ClearAllPoints()
 				arrow:SetPoint("CENTER", mm, "CENTER", 0, 0)
 			end
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
 		else
-			minimizeButton = CreateFrame("Button", nil, window)
-			minimizeButton:SetSize(buttonSize, buttonSize)
-			minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			if IS_ERA then
+				local made, button = pcall(CreateFrame, "Button", nil, window, "UIPanelCloseButtonNoScripts")
+				minimizeButton = made and button or CreateFrame("Button", nil, window)
+				minimizeButton:SetSize(eraButtonSize, eraButtonSize)
+				minimizeButton:SetPoint("RIGHT", close, "LEFT", 12, 0)
+				window.MinimizeButton = minimizeButton
+			else
+				minimizeButton = CreateFrame("Button", nil, window)
+				minimizeButton:SetSize(buttonSize, buttonSize)
+				minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			end
 			minimizeButton:SetFrameLevel(close:GetFrameLevel())
 			minimizeButton:SetHighlightTexture(PANEL_HI)
 			minimizeButton:SetScript("OnClick", function() SetMinimized(not minimized) end)
