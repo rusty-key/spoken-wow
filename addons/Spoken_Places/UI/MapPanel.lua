@@ -167,6 +167,16 @@ local function BuildPanel()
 	filigree:SetPoint("TOP", rim, "TOP", 0, 1)
 	rim.filigree = filigree
 	panel.rim = rim
+	-- In EllesmereUI's look, as it draws the map beside it: its shell, and no quest log frame round
+	-- the page.
+	if SpokenCompendium and SpokenCompendium.Ellesmere then
+		SpokenCompendium.Ellesmere(function(skin)
+			skin.Shell(panel)
+			skin.CloseButton(close)
+			SpokenCompendium.EllesmereTitle(skin, panel)
+			rim:SetAlpha(0)
+		end)
+	end
 
 	SpokenPlaces.panel = panel
 end

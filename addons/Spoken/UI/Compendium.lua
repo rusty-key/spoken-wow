@@ -29,6 +29,23 @@
 local C = { tabs = {} }
 SpokenCompendium = C
 
+--- Runs `dress(skin)`, with EllesmereUI's skinning API, while Spoken's windows wear its look; never
+--- otherwise. The tabs' modules dress their own frames with it too.
+function C.Ellesmere(dress)
+	local ellesmere = SpokenEnv and SpokenEnv.Ellesmere
+	if ellesmere then ellesmere:When(dress) end
+end
+
+--- `frame`'s title in EllesmereUI's font and white, as its own windows have theirs.
+function C.EllesmereTitle(skin, frame)
+	local container = type(frame.TitleContainer) == "table" and frame.TitleContainer
+	local title = container and container.TitleText or frame.TitleText or frame.titleText
+	if type(title) ~= "table" or not title.SetTextColor then return end
+	-- In its font only where it writes the client's language, as every other text of Spoken's.
+	if SpokenEnv.Ellesmere:Font() then skin.Font(title) end
+	skin.White(title)
+end
+
 local WINDOW_WIDTH = 920
 local WINDOW_HEIGHT = 600
 local WINDOW_MIN_HEIGHT = 360
@@ -132,6 +149,8 @@ end
 --------------------------------------------------------------------------------
 
 local window, tabButtons
+-- In EllesmereUI's look, the panel colour the tabs are boxes of; nil otherwise.
+local flatTabs
 local active
 -- Whether the player has chosen a tab with the tabs along the window's foot this session: until
 -- then the window opens on the first tab (C:Toggle), not on whichever a part opened it on last.
@@ -243,6 +262,66 @@ local function SaveWindowSize()
 	end
 end
 
+-- In EllesmereUI's look the fold and unfold buttons as it draws the world map's: the game's quest
+-- tracker collapse and expand arrows, 16 across, 2 left of the button's middle, desaturated, white at
+-- 75% and whole under the pointer. Where the client has not got them, the game's own buttons stay.
+local FOLD_GLYPH, UNFOLD_GLYPH = "UI-QuestTrackerButton-Secondary-Collapse", "UI-QuestTrackerButton-Secondary-Expand"
+
+-- The world map's fold buttons against its close button, which EllesmereUI leaves where the game puts
+-- them: their frame's anchor and size, the buttons' size and the close button's. Nil where the client
+-- has no such map.
+local function MapFold()
+	local border = _G.WorldMapFrame and type(WorldMapFrame.BorderFrame) == "table" and WorldMapFrame.BorderFrame
+	local mm = border and border.MaximizeMinimizeFrame
+	local close = border and border.CloseButton
+	if type(mm) ~= "table" or type(close) ~= "table" or type(mm.GetPoint) ~= "function" then return nil end
+	local point, relativeTo, relativePoint, x, y = mm:GetPoint(1)
+	if relativeTo ~= close then return nil end
+	local button = type(mm.MinimizeButton) == "table" and mm.MinimizeButton or mm
+	return { point = point, relativePoint = relativePoint, x = x or 0, y = y or 0,
+		width = mm:GetWidth(), height = mm:GetHeight(), buttonWidth = button:GetWidth(), buttonHeight = button:GetHeight(),
+		closeWidth = close:GetWidth(), closeHeight = close:GetHeight() }
+end
+
+-- The template's red arrow art, emptied and faded: emptying alone leaves the template's atlas drawn
+-- on the Forever client.
+local function FadeFold(button)
+	for _, setter in ipairs({ "SetNormalTexture", "SetPushedTexture", "SetHighlightTexture", "SetDisabledTexture" }) do
+		if button[setter] then button[setter](button, "") end
+	end
+	for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+		local texture = button[getter] and button[getter](button)
+		if type(texture) == "table" and texture.SetAlpha and not texture.spokenGlyph then texture:SetAlpha(0) end
+	end
+	for _, region in ipairs({ button:GetRegions() }) do
+		if not region.spokenGlyph and region.SetAlpha
+			and not (region.GetObjectType and region:GetObjectType() == "FontString") then
+			region:SetAlpha(0)
+		end
+	end
+end
+local function FlatFold(button)
+	if not (HasAtlas(FOLD_GLYPH) and HasAtlas(UNFOLD_GLYPH)) then return end
+	FadeFold(button)
+	if button.flatGlyph then return end
+	-- Faded again whenever it shows: the template's mixin sets its look as the window folds.
+	button:HookScript("OnShow", FadeFold)
+	local glyph = button:CreateTexture(nil, "OVERLAY")
+	glyph.spokenGlyph = true
+	glyph:SetSize(16, 16)
+	glyph:SetPoint("CENTER", button, "CENTER", -2, 0)
+	if glyph.SetDesaturated then glyph:SetDesaturated(true) end
+	glyph:SetVertexColor(1, 1, 1, 0.75)
+	button.flatGlyph = glyph
+	button:HookScript("OnEnter", function() glyph:SetVertexColor(1, 1, 1, 1) end)
+	button:HookScript("OnLeave", function() glyph:SetVertexColor(1, 1, 1, 0.75) end)
+end
+local function FoldGlyph(button, fold)
+	local glyph = button.flatGlyph
+	if not glyph then return end
+	glyph:SetAtlas(fold and FOLD_GLYPH or UNFOLD_GLYPH, false)
+end
+
 local function SetCollapseArrow()
 	if minimizeFrame then
 		minimizeFrame.MaximizeButton:SetShown(minimized)
@@ -258,6 +337,10 @@ local function SetCollapseArrow()
 	else
 		minimizeButton:SetNormalTexture(SMALLER_UP)
 		minimizeButton:SetPushedTexture(SMALLER_DOWN)
+	end
+	if minimizeButton.flatGlyph then
+		FlatFold(minimizeButton)
+		FoldGlyph(minimizeButton, not minimized)
 	end
 end
 
@@ -381,6 +464,141 @@ local function BuildChrome()
 	end)
 end
 
+-- How much further down the chosen tab reaches than the others in EllesmereUI's look, and how far up
+-- into the window its cover over the window's bottom edge reaches.
+local TAB_DROP, TAB_COVER = 3, 1
+
+-- The template's own label hidden for good in EllesmereUI's look, its text kept so the template still
+-- sizes the tab: its font objects (normal, under the pointer, disabled) see-through, and the label
+-- itself, whichever the template keeps (tab.Text or the button's), faded. Under the pointer the
+-- template's highlight font would bring it back in gold over Spoken's.
+local mutedFont
+local function MuteLabel(tab)
+	if not mutedFont and CreateFont and GameFontNormalSmall then
+		mutedFont = CreateFont("SpokenTabMutedFont")
+		local file, size = GameFontNormalSmall:GetFont()
+		if file then mutedFont:SetFont(file, size or 10, "") end
+		mutedFont:SetTextColor(0, 0, 0, 0)
+		mutedFont:SetShadowColor(0, 0, 0, 0)
+	end
+	if mutedFont then
+		for _, setter in ipairs({ "SetNormalFontObject", "SetHighlightFontObject", "SetDisabledFontObject" }) do
+			if tab[setter] then tab[setter](tab, mutedFont) end
+		end
+	end
+	for _, text in pairs({ tab.Text or false, tab.GetFontString and tab:GetFontString() or false }) do
+		if type(text) == "table" and text.SetAlpha and text ~= (tab.flat and tab.flat.label) then text:SetAlpha(0) end
+	end
+end
+
+-- A tab as a box in EllesmereUI's look, its own art hidden whichever pieces the template shows.
+local function FlatTab(tab)
+	if tab.flat then return end
+	for _, region in ipairs({ tab:GetRegions() }) do
+		if region.SetAlpha and not (region.GetObjectType and region:GetObjectType() == "FontString") then
+			region:SetAlpha(0)
+		end
+	end
+	local highlight = tab.GetHighlightTexture and tab:GetHighlightTexture()
+	if type(highlight) == "table" and highlight.SetAlpha then highlight:SetAlpha(0) end
+	local edge = SpokenEnv.Ellesmere.EDGE
+	local flat = { backing = tab:CreateTexture(nil, "BACKGROUND", nil, -8), edges = {} }
+	-- The chosen tab's fill: black, one piece with the window's dark foot, opaque as the window is, and
+	-- its cover over the window's bottom edge along the tab, which EllesmereUI draws as one piece and
+	-- cannot be split. On a sibling over the window's edge and under the tab, since a child would draw
+	-- over its text.
+	local plate = CreateFrame("Frame", nil, window)
+	plate:Hide()
+	plate.fill = plate:CreateTexture(nil, "BACKGROUND")
+	plate.fill:SetColorTexture(0, 0, 0, 1)
+	plate.fill:SetAllPoints(plate)
+	plate.cover = plate:CreateTexture(nil, "BACKGROUND")
+	plate.cover:SetColorTexture(0, 0, 0, 1)
+	flat.plate = plate
+	flat.backing:SetColorTexture(flatTabs[1] or 0.08, flatTabs[2] or 0.08, flatTabs[3] or 0.08, 1)
+	for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+		local line = tab:CreateTexture(nil, "BORDER")
+		line:SetColorTexture(edge[1], edge[2], edge[3], edge[4])
+		flat.edges[side] = line
+	end
+	-- Its own label, as EllesmereUI's tabs have, the template's hidden: under the pointer the template
+	-- swaps its label's font object, which would bring the game's gold back.
+	local text = tab.Text or (tab.GetFontString and tab:GetFontString())
+	local label = tab:CreateFontString(nil, "OVERLAY")
+	local face = SpokenEnv.Ellesmere:Font()
+	-- The size is GetFont's second value: an and-or expression would keep only its first.
+	local size
+	if type(text) == "table" and text.GetFont then size = select(2, text:GetFont()) end
+	local file = face or (GameFontNormalSmall and GameFontNormalSmall:GetFont())
+	if file then label:SetFont(file, size or 10, "") end
+	flat.label = label
+	tab.flat = flat
+	MuteLabel(tab)
+	tab:HookScript("OnEnter", function()
+		MuteLabel(tab)
+		if not tab.selected then label:SetTextColor(0.85, 0.85, 0.85) end
+	end)
+	tab:HookScript("OnLeave", function()
+		MuteLabel(tab)
+		if not tab.selected then label:SetTextColor(0.6, 0.6, 0.6) end
+	end)
+end
+
+-- The chosen tab's text white and its box joined to the window, reaching a little lower than the
+-- others; the others' text dimmer and their box shut along the top.
+local function PaintFlatTab(tab, selected)
+	local flat = tab.flat
+	local backing, edges = flat.backing, flat.edges
+	backing:ClearAllPoints()
+	backing:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, 0)
+	backing:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", 0, selected and -TAB_DROP or 0)
+	local pixel = SpokenLayout.Pixels(tab, 1, 1)
+	for side, line in pairs(edges) do
+		line:ClearAllPoints()
+		if side == "TOP" or side == "BOTTOM" then
+			line:SetHeight(pixel)
+			line:SetPoint(side .. "LEFT", backing, side .. "LEFT", 0, 0)
+			line:SetPoint(side .. "RIGHT", backing, side .. "RIGHT", 0, 0)
+		else
+			line:SetWidth(pixel)
+			line:SetPoint("TOP" .. side, backing, "TOP" .. side, 0, 0)
+			line:SetPoint("BOTTOM" .. side, backing, "BOTTOM" .. side, 0, 0)
+		end
+	end
+	edges.TOP:SetShown(not selected)
+	backing:SetAlpha(selected and 0 or 1)
+	local plate = flat.plate
+	plate:ClearAllPoints()
+	plate:SetPoint("TOPLEFT", backing, "TOPLEFT", 0, 0)
+	plate:SetPoint("BOTTOMRIGHT", backing, "BOTTOMRIGHT", 0, 0)
+	-- Inside the side edges, so they run on up into the window's.
+	plate.cover:ClearAllPoints()
+	plate.cover:SetPoint("BOTTOMLEFT", plate, "TOPLEFT", 1, 0)
+	plate.cover:SetPoint("BOTTOMRIGHT", plate, "TOPRIGHT", -1, 0)
+	-- One screen pixel, the line EllesmereUI draws: no taller, or its top showed in the window.
+	plate.cover:SetHeight(SpokenLayout.Pixels(plate, TAB_COVER, 1))
+	-- Over the window's border, so nothing parts the chosen tab from it; the tab's text and edges
+	-- over the plate.
+	plate:SetFrameLevel(window:GetFrameLevel() + 7)
+	-- None for a hidden tab: the window with one part on has no tabs, and its one tab is chosen.
+	plate:SetShown(selected and tab:IsShown())
+	tab:SetFrameLevel(window:GetFrameLevel() + (selected and 8 or 1))
+	-- After the template's select or deselect, which sets its fonts again.
+	MuteLabel(tab)
+	local label = flat.label
+	label:SetText(tab:GetText() or "")
+	if selected then label:SetTextColor(1, 1, 1) else label:SetTextColor(0.6, 0.6, 0.6) end
+	-- In the middle of its box, which the template sets lower on the chosen tab.
+	label:ClearAllPoints()
+	label:SetPoint("CENTER", backing, "CENTER", 0, 0)
+end
+
+-- A failure in the look is said in chat and leaves the tab as the game made it, not the window
+-- without it.
+local function SafeFlatTab(tab)
+	SpokenEnv.Ellesmere:Try(function() FlatTab(tab) end)
+end
+
 -- The tabs along the window's foot, as the character sheet has them; none with only one.
 local function NewTab(index, label)
 	local tab
@@ -399,6 +617,7 @@ local function NewTab(index, label)
 	tab:SetID(index)
 	tab:SetText(label)
 	if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
+	if flatTabs then SafeFlatTab(tab) end
 	return tab
 end
 
@@ -421,10 +640,10 @@ local function LayOutTabs()
 		button.key = def.key
 		button:ClearAllPoints()
 		if i == 1 then
-			button:SetPoint("TOPLEFT", window, "BOTTOMLEFT", 12, 2)
+			button:SetPoint("TOPLEFT", window, "BOTTOMLEFT", 12, flatTabs and 0 or 2)
 		else
-			-- The character sheet's tabs overlap, each tucked under the one before.
-			local gap = button.template == "CharacterFrameTabButtonTemplate" and -15 or 3
+			-- The character sheet's tabs overlap, each tucked under the one before; boxes do not.
+			local gap = flatTabs and 2 or button.template == "CharacterFrameTabButtonTemplate" and -15 or 3
 			button:SetPoint("LEFT", tabButtons[i - 1], "RIGHT", gap, 0)
 		end
 		button:SetScript("OnClick", function(self)
@@ -434,7 +653,12 @@ local function LayOutTabs()
 		end)
 		button:SetShown(#list > 1)
 	end
-	for i = #list + 1, #tabButtons do tabButtons[i]:Hide() end
+	-- A spare tab names no part, so choosing a part never paints it chosen. Its nil key equals only the
+	-- nil `active` of a window made by C:Window before any part is chosen, and it is hidden then.
+	for i = #list + 1, #tabButtons do
+		tabButtons[i]:Hide()
+		tabButtons[i].key = nil
+	end
 end
 
 local function PaintTabs()
@@ -447,8 +671,17 @@ local function PaintTabs()
 			if selected then button:LockHighlight() else button:UnlockHighlight() end
 		end
 		button.selected = selected
+		if button.flat then PaintFlatTab(button, selected) end
 	end
 end
+
+C.Ellesmere(function(skin)
+	flatTabs = { skin.GetPanelColor() }
+	if not tabButtons then return end
+	for _, button in ipairs(tabButtons) do SafeFlatTab(button) end
+	LayOutTabs()
+	PaintTabs()
+end)
 
 local function BuildWindow()
 	local L = SpokenEnv and SpokenEnv.L
@@ -476,6 +709,46 @@ local function BuildWindow()
 	end)
 	window:Hide()
 	BuildChrome()
+	local built = window
+	C.Ellesmere(function(skin)
+		skin.Shell(built)
+		if type(built.CloseButton) == "table" then skin.CloseButton(built.CloseButton) end
+		C.EllesmereTitle(skin, built)
+		-- EllesmereUI's windows have no portrait: the tome goes, with its ring.
+		-- False for a part the window lacks: ipairs would stop at the gap and leave the rest.
+		for _, part in pairs({ built.PortraitContainer or false, built.portrait or false, built.PortraitButton or false }) do
+			if type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
+		end
+		-- Fold and unfold as the world map's beside its close button: the same sizes and place. The map
+		-- may not be built yet, so the fit is tried again each time the window opens until it lands.
+		local close = type(built.CloseButton) == "table" and built.CloseButton
+		local folds = minimizeFrame and { { minimizeFrame.MinimizeButton, true }, { minimizeFrame.MaximizeButton, false } }
+			or minimizeButton and { { minimizeButton, not minimized } } or {}
+		local dressed = #folds > 0
+		for _, fold in ipairs(folds) do
+			FlatFold(fold[1])
+			FoldGlyph(fold[1], fold[2])
+			dressed = dressed and fold[1].flatGlyph ~= nil
+		end
+		local holder = minimizeFrame or minimizeButton
+		local function FitFolds()
+			local map = MapFold()
+			if not (map and close and holder) then return false end
+			close:SetSize(map.closeWidth, map.closeHeight)
+			-- Buttons the client's arrows did not dress keep the game's size and place.
+			if not dressed then return true end
+			for _, fold in ipairs(folds) do fold[1]:SetSize(map.buttonWidth, map.buttonHeight) end
+			holder:ClearAllPoints()
+			holder:SetPoint(map.point, close, map.relativePoint, map.x, map.y)
+			if minimizeFrame then minimizeFrame:SetSize(map.width, map.height) end
+			return true
+		end
+		if not FitFolds() then
+			built:HookScript("OnShow", function(self)
+				if not self.spokenFoldsFitted then self.spokenFoldsFitted = FitFolds() end
+			end)
+		end
+	end)
 	if UISpecialFrames then table.insert(UISpecialFrames, NAME) end -- close on Escape
 	C.window = window
 end
@@ -661,6 +934,36 @@ end
 
 local NAME_INK = { 1, 0.82, 0 }
 local MISSING_INK = { 0.84, 0.71, 0.31 }
+-- The chosen row's edge.
+local EDGE_INK = { 1, 0.82, 0, 0.9 }
+-- In EllesmereUI's look: names white and the line down an open group white, as its windows draw
+-- them, the chosen row's edge in its accent, banners as flat boxes (DrawBanner) and the rows in its
+-- font, where it writes the client's language.
+local flatBanners, listFont
+-- Every list and page built, for what follows EllesmereUI's live changes (OnLooksChanged).
+local lists, pages = {}, {}
+C.Ellesmere(function(skin)
+	NAME_INK, MISSING_INK, RAIL_INK = { 1, 1, 1 }, { 0.62, 0.62, 0.62 }, { 1, 1, 1, 0.15 }
+	local r, g, b = skin.GetAccentColor()
+	EDGE_INK = { r, g, b, 0.9 }
+	flatBanners = true
+	listFont = SpokenEnv.Ellesmere:Font() and skin.Font or nil
+end)
+
+-- A row's label, and `count` where it has one, in the game's font objects for its kind and in
+-- EllesmereUI's font in its look. Set only when the row takes another kind: a search lists a few
+-- hundred rows a keystroke, and a font object does not change between them.
+local function RowFont(row, kind, label, count)
+	local key = kind .. (listFont and "+" or "")
+	if row.fontKey == key then return end
+	row.fontKey = key
+	if count then row.count:SetFontObject(count) end
+	row.label:SetFontObject(label)
+	if listFont then
+		listFont(row.label)
+		if count then listFont(row.count) end
+	end
+end
 
 -- A group's name: gold, duller for what has nothing found yet, grey where it is locked.
 local function NameInk(label, item)
@@ -718,6 +1021,12 @@ local function Light(row)
 	local style = row.row and row.row.style
 	local over, chosen = row.over and true or false, row.selected and true or false
 	local flat = style ~= "banner" or not row.bannerArt
+	-- EllesmereUI's flat light and accent edge, not the professions list's streak.
+	if flatBanners and not row.flatLight then
+		row.flatLight = true
+		row.wash:SetColorTexture(1, 1, 1, 0.08)
+		row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
+	end
 	row.wash:SetShown(flat and (over or chosen))
 	row.wash:SetAlpha(chosen and 1 or 0.55)
 	row.edge:SetShown(flat and chosen)
@@ -756,6 +1065,7 @@ List.__index = List
 --- Groups and leaves give `nest`, how many open groups hold them.
 function C.NewList(panel, opts)
 	local list = setmetatable({ panel = panel, opts = opts, rows = {}, filter = "" }, List)
+	table.insert(lists, list)
 	local left, _, top = C.Margins()
 	local filtered = opts.only ~= nil or opts.checks ~= nil or opts.arrange ~= nil
 
@@ -791,6 +1101,16 @@ function C.NewList(panel, opts)
 	inset:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", left, (window and window.templated) and 6 or 12)
 	inset:SetWidth(LIST_WIDTH)
 	list.inset = inset
+	C.Ellesmere(function(skin)
+		skin.Inset(inset)
+		skin.EditBox(searchBox)
+		-- With no tome over its corner, across the list to the filter menu's arrow.
+		searchBox:ClearAllPoints()
+		-- Level with the rows: in by the scroll frame's 4 and the rows' own LIST_LEFT.
+		local rows = 4 + LIST_LEFT
+		searchBox:SetPoint("TOPLEFT", panel, "TOPLEFT", left + rows, top - 11.5)
+		searchBox:SetWidth(LIST_WIDTH - rows - (filtered and FILTER_ROOM or 0))
+	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, inset)
 	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -4)
@@ -960,7 +1280,7 @@ function List:AcquireRow(index)
 	row.wash:Hide()
 	row.edge = row:CreateTexture(nil, "ARTWORK")
 	row.edge:SetWidth(Pixels(row, 2))
-	row.edge:SetColorTexture(1, 0.82, 0, 0.9)
+	row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
 	row.edge:Hide()
 
 	-- A plain row's tick or quest mark, before its name.
@@ -1036,7 +1356,17 @@ local function BannerParts(row)
 	row.bannerBottom:SetColorTexture(0.79, 0.63, 0.31, 0.45)
 	row.bannerBottom:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
 	row.bannerBottom:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+	-- And down each end, for a flat box.
+	row.bannerLeft = row:CreateTexture(nil, "BORDER")
+	row.bannerLeft:SetWidth(Pixels(row, 1))
+	row.bannerLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+	row.bannerLeft:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+	row.bannerRight = row:CreateTexture(nil, "BORDER")
+	row.bannerRight:SetWidth(Pixels(row, 1))
+	row.bannerRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+	row.bannerRight:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
 	row.bannerParts = { row.headLeft, row.headMiddle, row.headRight, row.bannerFill, row.bannerTop, row.bannerBottom,
+		row.bannerLeft, row.bannerRight,
 		row.glow[1], row.glow[2], row.glow[3] }
 end
 
@@ -1053,6 +1383,9 @@ end
 -- draws it on up to that group or banner. The row a line ends at fades it out: the first
 -- `goesOn` lines go on into the next row, and the banner's with `bannerGoesOn`.
 local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goesOn, bannerGoesOn)
+	-- In EllesmereUI's look a line starts at the foot of its banner's or group's box, not inside it,
+	-- where it would cross the box's edge or run into the group's plus or minus.
+	local flat = flatBanners
 	if underBanner and not row.bannerRail then
 		row.bannerRail = row:CreateTexture(nil, "BORDER")
 		row.bannerRail:SetWidth(Pixels(row, 1))
@@ -1060,7 +1393,8 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 	if row.bannerRail then
 		PaintRail(row.bannerRail, not bannerGoesOn)
 		row.bannerRail:ClearAllPoints()
-		row.bannerRail:SetPoint("TOPLEFT", row, "TOPLEFT", Pixels(row, BANNER_RAIL_X, 0), gap + (afterBanner and BANNER_FOOT or 0))
+		row.bannerRail:SetPoint("TOPLEFT", row, "TOPLEFT", Pixels(row, BANNER_RAIL_X, 0),
+			gap + ((afterBanner and not flat) and BANNER_FOOT or 0))
 		row.bannerRail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", Pixels(row, BANNER_RAIL_X, 0), 0)
 		row.bannerRail:SetShown(underBanner and true or false)
 	end
@@ -1076,7 +1410,7 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 			PaintRail(rail, i > (goesOn or 0))
 			local x = Pixels(row, (underBanner and UNDER_BANNER_IN or 0) + (i - 1) * NEST_STEP + RAIL_X, 0)
 			rail:ClearAllPoints()
-			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, i <= held and gap or gap + (foot or FOOT))
+			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, (i <= held or flat) and gap or gap + (foot or FOOT))
 			rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
 			rail:Show()
 		elseif rail then
@@ -1131,7 +1465,7 @@ end
 local function DrawBanner(row, item, onlyFound)
 	BannerParts(row)
 	local horde = UnitFactionGroup and UnitFactionGroup("player") == "Horde"
-	local spot = AtlasSpot(horde and BAR_HORDE or BAR_ALLIANCE)
+	local spot = (not flatBanners) and AtlasSpot(horde and BAR_HORDE or BAR_ALLIANCE) or nil
 	row.bannerArt = spot ~= nil
 	if spot then
 		local width = spot.width
@@ -1153,23 +1487,37 @@ local function DrawBanner(row, item, onlyFound)
 	end
 	ShowAll({ row.headLeft, row.headMiddle, row.headRight }, spot ~= nil)
 	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, spot == nil)
+	ShowAll({ row.bannerLeft, row.bannerRight }, flatBanners)
+	if flatBanners then
+		-- A faint box with a faint edge all round, as EllesmereUI's flat plates are.
+		row.bannerFill:SetColorTexture(1, 1, 1, 0.05)
+		for _, line in ipairs({ row.bannerTop, row.bannerBottom, row.bannerLeft, row.bannerRight }) do
+			line:SetColorTexture(1, 1, 1, 0.12)
+		end
+	end
 
 	row.toggle:ClearAllPoints()
 	-- The plus or minus as far in from the banner's edge as it is from its top and its foot, all
 	-- measured from the banner's gold line, whose middle is 1.5 under the row's.
-	row.toggle:SetPoint("LEFT", row, "LEFT", BANNER_IN, -BANNER_DROP)
+	-- The campaign bar's gold line sits under the row's middle; a flat box has its middle. The quest
+	-- log's minus and plus draw their bar 1.5 above their picture's middle (measured in game: the
+	-- minus 1.5 px over the box's middle, the name and the count on it), so the sign alone drops.
+	local drop = flatBanners and 0 or BANNER_DROP
+	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or BANNER_DROP
+	row.toggle:SetPoint("LEFT", row, "LEFT", BANNER_IN, -sign)
 	Toggle(row, item, onlyFound)
 	local locked = item.locked and row.hasLock
 	-- The numbers and padlock in the column the lines' numbers end in.
-	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, -BANNER_DROP)
-	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, -1)
+	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, -drop)
+	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, flatBanners and 0 or -1)
 	row.lock:SetShown(locked and true or false)
 	row.count:SetShown(not locked)
-	row.count:SetFontObject("GameFontHighlightSmall")
+	RowFont(row, "banner", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, BANNER_INK)
 	row.count:SetText(item.total and item.total > 0 and (Number(item.count) .. "/" .. Number(item.total)) or "")
-	row.label:SetFontObject("GameFontNormal")
-	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, -1)
+	-- Both on the box's middle line, by their own middle.
+	if flatBanners and row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
+	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, flatBanners and 0 or -1)
 	row.label:SetPoint("RIGHT", locked and row.lock or row.count, "LEFT", -8, 0)
 	if item.locked then Tint(row.label, LOCKED_INK) else Tint(row.label, NAME_INK) end
 	row.label:SetShadowColor(0, 0, 0, 1)
@@ -1198,7 +1546,7 @@ local function DrawGroup(row, item, indent, onlyFound)
 		row.status:SetPoint("CENTER", row, "RIGHT", edge, 0)
 	end
 	row.status:SetShown(ticked)
-	row.count:SetFontObject("GameFontHighlightSmall")
+	RowFont(row, "group", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, SHARE_INK)
 	if ticked then
 		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, 0)
@@ -1209,7 +1557,6 @@ local function DrawGroup(row, item, indent, onlyFound)
 	row.count:SetText(numbers)
 	row.count:SetShown(not locked and numbers ~= "")
 
-	row.label:SetFontObject("GameFontNormal")
 	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, 0)
 	row.label:SetPoint("RIGHT", locked and row.lock or (numbers ~= "" and row.count) or row, locked and "LEFT"
 		or (numbers ~= "" and "LEFT") or "RIGHT", -8, 0)
@@ -1240,7 +1587,7 @@ local function DrawLeaf(row, item, indent)
 	row.lock:SetShown(locked and true or false)
 	row.count:SetText("")
 	row.count:Hide()
-	row.label:SetFontObject("GameFontHighlight")
+	RowFont(row, "leaf", "GameFontHighlight")
 	row.label:SetPoint("LEFT", row, "LEFT", indent + 12, 0)
 	-- Clear of the tick, quest mark or padlock at the row's end, which reach 25.5 in.
 	row.label:SetPoint("RIGHT", row, "RIGHT", -28, 0)
@@ -1512,6 +1859,7 @@ function C.PageHolder(panel, list)
 	inset:SetPoint("TOPLEFT", list.inset, "TOPRIGHT", 6, 38)
 	inset:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -right, (window and window.templated) and 6 or 12)
 	panel.pageInset = inset
+	C.Ellesmere(function(skin) skin.Inset(inset) end)
 	local holder = CreateFrame("Frame", nil, inset)
 	holder:SetPoint("TOPLEFT", inset, "TOPLEFT", 3, -3)
 	holder:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -3, 3)
@@ -1555,6 +1903,9 @@ if _G.SPELLBOOK_FONT_COLOR and SPELLBOOK_FONT_COLOR.GetRGB then INK = { SPELLBOO
 -- The line under the title under the pointer, where a click on it goes up a level: the places'
 -- page's link colour.
 local LINK = { 0.5, 0.12, 0.04 }
+-- On EllesmereUI's dark shell in place of the parchment (Page:Darken): light words, the title and
+-- the parts' headings white, as its windows write them, and links in its accent colour.
+local LIGHT_INK, LIGHT_TITLE = { 0.9, 0.9, 0.9 }, { 1, 1, 1 }
 local PAD, TOP, RIGHT = 24, 36, 36
 -- The spellbook header's backplate behind the title, as the places' page lays it: laid out as if it
 -- started this far left of the page, and cut there.
@@ -1658,7 +2009,7 @@ function C.NewPage(parent, addon, play, report, look)
 	local top, right = look.top or TOP, look.right or RIGHT
 	local titleSize = look.titleSize or 26
 	local self = setmetatable({ playing = play, reporting = report, top = top, right = right,
-		titleSize = titleSize, extra = {}, shift = 0 }, Page)
+		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon }, Page)
 	local frame = CreateFrame("Frame", nil, parent)
 	frame:SetAllPoints()
 	self.frame = frame
@@ -1750,8 +2101,8 @@ function C.NewPage(parent, addon, play, report, look)
 	Ink(words, INK)
 	sub.text = words
 	sub:SetScript("OnClick", function(b) if b.onClick then b.onClick() end end)
-	sub:SetScript("OnEnter", function(b) if b.onClick then Ink(b.text, LINK) end end)
-	sub:SetScript("OnLeave", function(b) Ink(b.text, INK) end)
+	sub:SetScript("OnEnter", function(b) if b.onClick then Ink(b.text, self.link) end end)
+	sub:SetScript("OnLeave", function(b) Ink(b.text, self.ink) end)
 	sub:Disable()
 	self.sub = sub
 
@@ -1865,8 +2216,86 @@ function C.NewPage(parent, addon, play, report, look)
 			Spoken:RegisterCallback("AUDIO_CHANGED", function() self:RefreshPlay() end)
 		end
 	end
+	C.Ellesmere(function(skin) self:Darken(skin) end)
 	return self
 end
+
+-- EllesmereUI's window backdrop where a page's text is cut, for its fade to blend into: in its own
+-- style its texture under its 62% black wash, measured at the words' top and foot in the Compendium
+-- (920 by 600) and the Place Story panel (360 by 600), which come within 0.005 of each other; in its
+-- Modern style its flat default, #111111.
+local BACKDROP = { TOP = { 0.094, 0.082, 0.069 }, BOTTOM = { 0.071, 0.063, 0.054 } }
+local function BackdropAt(skin, edge)
+	if skin.GetStyle and skin.GetStyle() == "modern" then return { 0.067, 0.067, 0.067 } end
+	return BACKDROP[edge]
+end
+
+--- The page on EllesmereUI's dark shell: no parchment or backplate, and light words with no fade
+--- cut from the parchment. Its pictures and faces stay as they are.
+function Page:Darken(skin)
+	local accent = { skin.GetAccentColor() }
+	self.ink, self.link = LIGHT_INK, accent[1] and accent or LIGHT_TITLE
+	table.insert(pages, self)
+	-- No page of its own: the window's backdrop, the list's, shows through.
+	self.bg:SetAlpha(0)
+	if self.backplate then self.backplate:SetAlpha(0) end
+	-- EllesmereUI's font, where it writes the page's language: Spoken Places' FontFor falls back
+	-- to the client's font for another script.
+	-- Nil on a client whose script it does not write: the client's fonts stay.
+	local path = SpokenEnv and SpokenEnv.Ellesmere and SpokenEnv.Ellesmere:Font()
+	local face = path and { GetFont = function() return path, 12, "" end } or nil
+	local addon = self.addon
+	local file = path
+	if face and addon and addon.FontFor then file = addon:FontFor(face) end
+	if file then self.title:SetFont(file, self.titleSize, "") end
+	self.title:SetTextColor(LIGHT_TITLE[1], LIGHT_TITLE[2], LIGHT_TITLE[3])
+	if file then
+		local _, size = self.sub.text:GetFont()
+		self.sub.text:SetFont(file, size or 12, "")
+	end
+	Ink(self.sub.text, self.ink)
+	-- EllesmereUI's plain line in place of the spellbook's divider, where the divider stood.
+	self.divider:SetAlpha(0)
+	local line = self.frame:CreateTexture(nil, "ARTWORK")
+	line:SetColorTexture(1, 1, 1, 0.25)
+	line:SetHeight(Pixels(self.frame, 1))
+	line:SetPoint("LEFT", self.divider, "LEFT", 6, 0)
+	line:SetPoint("RIGHT", self.frame, "RIGHT", -self.right, 0)
+	self.line = line
+	local body = self.body
+	if file then body:SetFace(face) end
+	body:SetInk(self.ink[1], self.ink[2], self.ink[3])
+	body:SetColor(self.ink[1], self.ink[2], self.ink[3])
+	body:SetThumbColor(self.ink[1], self.ink[2], self.ink[3])
+	body:SetHeadInk(LIGHT_TITLE[1], LIGHT_TITLE[2], LIGHT_TITLE[3])
+	body:SetFadeColors(BackdropAt(skin, "TOP"), BackdropAt(skin, "BOTTOM"))
+	body:SetCleanPictures(true, true)
+	skin.Button(self.contribute)
+	-- White, as EllesmereUI writes the rest of the page.
+	skin.WhiteButtonLabel(self.contribute)
+end
+
+-- What was read from EllesmereUI follows its live changes: the chosen row's edge, the page links and
+-- the tabs' boxes.
+C.Ellesmere(function(skin)
+	if not skin.OnLooksChanged then return end
+	skin.OnLooksChanged(function()
+		SpokenEnv.Ellesmere:Try(function()
+			local accent = { skin.GetAccentColor() }
+			EDGE_INK = { accent[1], accent[2], accent[3], 0.9 }
+			for _, list in ipairs(lists) do
+				for _, row in ipairs(list.rows) do
+					if row.edge then row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4]) end
+				end
+			end
+			for _, page in ipairs(pages) do page.link = accent[1] and accent or LIGHT_TITLE end
+			flatTabs = { skin.GetPanelColor() }
+			for _, tab in ipairs(tabButtons or {}) do
+				if tab.flat then tab.flat.backing:SetColorTexture(flatTabs[1] or 0.08, flatTabs[2] or 0.08, flatTabs[3] or 0.08, 1) end
+			end
+		end)
+	end)
+end)
 
 --- The portrait of a place's page (`icon` of Page:Show): a dungeon's or a zone's picture, with the
 --- world for a badge; the question mark where there is no picture yet. Made once for each place.
@@ -1905,7 +2334,7 @@ function Page:PaintMark(shown)
 		mark:SetTexture(LATTICE)
 		mark:SetTexCoord(0, 1, 0, 1)
 		mark:SetSize(LATTICE_SIZE, LATTICE_SIZE)
-		mark:SetVertexColor(INK[1], INK[2], INK[3])
+		mark:SetVertexColor(self.ink[1], self.ink[2], self.ink[3])
 		mark:SetAlpha(LATTICE_ALPHA)
 	end
 end
@@ -2020,9 +2449,9 @@ function Page:Show(entry)
 	self.sub:SetHeight((entry.subtitle and entry.subtitle ~= "") and 16 or 1)
 	self.sub.onClick = entry.onSubtitle
 	if entry.onSubtitle then self.sub:Enable() else self.sub:Disable() end
-	Ink(self.sub.text, INK)
+	Ink(self.sub.text, self.ink)
 	-- Told to the view rather than painted on its text, which a re-wrap would repaint.
-	self.body:SetColor(INK[1], INK[2], INK[3])
+	self.body:SetColor(self.ink[1], self.ink[2], self.ink[3])
 	local unwritten = entry.unwritten
 	self.unwritten = (type(unwritten) == "function" and unwritten) or (unwritten and C.ContributeGeneral) or nil
 	local contribute = self.contribute

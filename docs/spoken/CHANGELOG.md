@@ -11,6 +11,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   square ones. The DialogueUI window keeps DialogueUI's look, and under EllesmereUI's other looks
   nothing changes; its own settings turn this off for Spoken, under Window Skins > Third-Party Addons.
   *([Nucabe](https://github.com/Nucabe))*
+- **Azeroth's Compendium and the story beside the map follow it too.** In EllesmereUI's look they go
+  dark with no parchment: white words in its font, a thin line for each divider, flat boxes for the
+  list's headings and the tabs, and place pictures with straight edges in a thin border.
+  *([Nucabe](https://github.com/Nucabe))*
 - **Spoken's keys have their own Spoken category in Key Bindings**, instead of sitting under
   Other. *([Jayshua83](https://github.com/Jayshua83))* *([Nucabe](https://github.com/Nucabe))*
 - **A right-click on a window's words skips the line**, in the Small Window, the Large Window and the

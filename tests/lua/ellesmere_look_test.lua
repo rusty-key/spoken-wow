@@ -1,5 +1,6 @@
 -- Spoken's windows in EllesmereUI's look: only while EllesmereUI is loaded and its own look
--- ("EllesmereUI Style") is the one the UI wears. How it looks is checked in game.
+-- ("EllesmereUI Style") is the one the UI wears. The Compendium and the story beside the map are
+-- checked in places_lore_ui_test. How it looks is checked in game.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -337,6 +338,41 @@ for _, entry in ipairs(main.entries) do
 end
 Expect("Spoken's page has no Parchment or Dark for the small window in EllesmereUI's look",
     row ~= nil and row:IsShown(), false)
+
+-- Azeroth's Compendium on a client without the fold template: its own fold button, flat in every
+-- state.
+do
+    -- The game's portrait frame, with its close button, as PortraitFrameMixin has it; no fold template.
+    -- The quest tracker's arrows the client has.
+    local cTexture = _G.C_Texture
+    _G.C_Texture = { GetAtlasInfo = function(name)
+        return (name == "UI-QuestTrackerButton-Secondary-Collapse" or name == "UI-QuestTrackerButton-Secondary-Expand")
+            and { width = 16, height = 16 } or nil
+    end }
+    local createFrame = _G.CreateFrame
+    _G.CreateFrame = function(kind, name, parent, template)
+        if template == "MaximizeMinimizeButtonFrameTemplate" then error("no such template") end
+        local frame = createFrame(kind, name, parent, template)
+        if template == "PortraitFrameTemplate" then
+            function frame:SetTitle() end
+            frame.CloseButton = createFrame("Button", nil, frame)
+        end
+        return frame
+    end
+    local window = _G.SpokenCompendium:Window()
+    _G.CreateFrame = createFrame
+    local fold
+    for _, child in ipairs(window.children or {}) do if child.flatGlyph then fold = child end end
+    Expect("the Compendium's own fold button, without the fold template, takes the flat glyph", fold ~= nil, true)
+    if fold then
+        Expect("...its arrow art faded", fold:GetNormalTexture():GetAlpha(), 0)
+        fold.scripts.OnClick(fold)
+        Expect("...and folded, the unfold arrow the game sets is faded too", fold:GetNormalTexture():GetAlpha(), 0)
+        fold.scripts.OnClick(fold)
+        Expect("...and unfolded again", fold:GetNormalTexture():GetAlpha(), 0)
+    end
+    _G.C_Texture = cTexture
+end
 
 ---------------------------------------------------------------- a client EllesmereUI's font does not write
 do
