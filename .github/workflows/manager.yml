@@ -76,6 +76,8 @@ jobs:
             files: |
               manager/release/*.AppImage
               manager/release/*.tar.gz
+              manager/release/*.deb
+              manager/release/*.rpm
               manager/release/latest-linux.yml
     steps:
       - uses: actions/checkout@v4
@@ -85,6 +87,9 @@ jobs:
           cache: npm
           cache-dependency-path: manager/package-lock.json
       - run: npm ci
+      - name: Install RPM packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
       # The macOS app icon is an Icon Composer file (build/icon.icon), which only Xcode 26's actool
       # compiles. The runner may default to an older Xcode next to a newer one.
       - name: Use Xcode 26 or newer
@@ -208,7 +213,7 @@ jobs:
           flags=""
           case "${GITHUB_REF_NAME}" in *-*) flags="--prerelease" ;; esac
           # The installers only: the update feed files and block maps go to manager-latest.
-          installers="dist/*.exe dist/*.dmg dist/*.zip dist/*.AppImage dist/*.tar.gz"
+          installers="dist/*.exe dist/*.dmg dist/*.zip dist/*.AppImage dist/*.tar.gz dist/*.deb dist/*.rpm"
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             # A re-run: the release is there already, so only its files are replaced.
             gh release upload "${GITHUB_REF_NAME}" $installers --clobber
