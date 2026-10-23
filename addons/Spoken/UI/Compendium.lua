@@ -1123,7 +1123,9 @@ local function Toggle(row, item, onlyFound)
 	end
 	local opens = not item.locked and not (onlyFound and count == 0)
 	local atlas = opens and item.open and "questlog-icon-shrink" or "questlog-icon-expand"
-	if Atlas(row.toggle, atlas) then
+	-- Era exposes these modern atlas names even though their backing textures are not present. Using
+	-- them paints the missing-texture green square; its older button files are still available.
+	if not IS_ERA and Atlas(row.toggle, atlas) then
 		if row.toggle.SetDesaturated then row.toggle:SetDesaturated(not opens) end
 		row.toggle:SetAlpha(opens and 0.9 or 0.45)
 	else
