@@ -1316,6 +1316,9 @@ end
 -- draws it on up to that group or banner. The row a line ends at fades it out: the first
 -- `goesOn` lines go on into the next row, and the banner's with `bannerGoesOn`.
 local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goesOn, bannerGoesOn)
+	-- In EllesmereUI's look a line starts at the foot of its banner's or group's box, not inside it,
+	-- where it crossed the box's edge or ran into the group's plus or minus.
+	local flat = flatBanners
 	if underBanner and not row.bannerRail then
 		row.bannerRail = row:CreateTexture(nil, "BORDER")
 		row.bannerRail:SetWidth(Pixels(row, 1))
@@ -1323,7 +1326,8 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 	if row.bannerRail then
 		PaintRail(row.bannerRail, not bannerGoesOn)
 		row.bannerRail:ClearAllPoints()
-		row.bannerRail:SetPoint("TOPLEFT", row, "TOPLEFT", Pixels(row, BANNER_RAIL_X, 0), gap + (afterBanner and BANNER_FOOT or 0))
+		row.bannerRail:SetPoint("TOPLEFT", row, "TOPLEFT", Pixels(row, BANNER_RAIL_X, 0),
+			gap + ((afterBanner and not flat) and BANNER_FOOT or 0))
 		row.bannerRail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", Pixels(row, BANNER_RAIL_X, 0), 0)
 		row.bannerRail:SetShown(underBanner and true or false)
 	end
@@ -1339,17 +1343,12 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 			PaintRail(rail, i > (goesOn or 0))
 			local x = Pixels(row, (underBanner and UNDER_BANNER_IN or 0) + (i - 1) * NEST_STEP + RAIL_X, 0)
 			rail:ClearAllPoints()
-			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, i <= held and gap or gap + (foot or FOOT))
+			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, (i <= held or flat) and gap or gap + (foot or FOOT))
 			rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
 			rail:Show()
 		elseif rail then
 			rail:Hide()
 		end
-	end
-	-- EllesmereUI's lists have no tree lines, and these ran into the plus and minus.
-	if flatBanners then
-		if row.bannerRail then row.bannerRail:Hide() end
-		for _, rail in ipairs(row.rails) do rail:Hide() end
 	end
 end
 

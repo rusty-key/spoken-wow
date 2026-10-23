@@ -51,6 +51,12 @@ _G.CreateFrame = function(kind, name, parent, template)
     function frame:CreateTexture(...)
         local texture = createTexture(self, ...)
         function texture:SetColorTexture(r, g, b, a) self.color = { r, g, b, a } end
+        -- Where its top is set from, kept: the list's lines are read back by it.
+        local setPoint = texture.SetPoint
+        function texture:SetPoint(point, relativeTo, relativePoint, x, y, ...)
+            if point == "TOPLEFT" then self.top = y end
+            return setPoint(self, point, relativeTo, relativePoint, x, y, ...)
+        end
         -- The masks on it, as the client keeps them.
         texture.masks = {}
         function texture:AddMaskTexture(mask) self.masks[mask] = true end
@@ -969,12 +975,21 @@ do
     Expect("...their name, sign and count in the box's middle",
         math.abs(banner.label.anchor.y) .. " " .. math.abs(banner.toggle.anchor.y) .. " " .. math.abs(banner.count.anchor.y),
         "0 0 0")
-    local railed = 0
+    -- A line reaches up through the gap above its row, 4 at most (under a banner), to the foot of the
+    -- box above, and no further: inside it, it crossed the box's edge or the group's plus or minus.
+    local railed, reach = 0, 0
     for _, row in ipairs(rows) do
-        for _, rail in ipairs(row.rails or {}) do if rail:IsShown() then railed = railed + 1 end end
-        if row.bannerRail and row.bannerRail:IsShown() then railed = railed + 1 end
+        local lines = { row.bannerRail }
+        for _, rail in ipairs(row.rails or {}) do table.insert(lines, rail) end
+        for _, rail in pairs(lines) do
+            if rail:IsShown() then
+                railed = railed + 1
+                reach = math.max(reach, rail.top or 0)
+            end
+        end
     end
-    Expect("...and no tree lines down the list", railed, 0)
+    Expect("...its tree lines drawn, each from the foot of the box above its row, never into it",
+        tostring(railed > 0) .. " " .. reach, "true 4")
     banner.selected = true
     banner.scripts.OnEnter(banner)
     Expect("...a chosen row lit flat, with the accent edge, no streak",
