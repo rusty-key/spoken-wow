@@ -353,18 +353,13 @@ local function BuildChrome()
 			close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -10, -8)
 		end
 
-		local ok, mm = pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
+		-- Era exposes the modern wrapper but its internal button art is not laid out like the
+		-- classic close button. Use the direct classic button there; Forever keeps its template.
+		local ok, mm = not IS_ERA and pcall(CreateFrame, "Frame", nil, window, "MaximizeMinimizeButtonFrameTemplate")
 		if ok and mm and mm.MaximizeButton and mm.MinimizeButton then
 			minimizeFrame = mm
-			-- Era's template keeps a wider wrapper than its visible arrow. Constrain it to Close and
-			-- center it beside Close; Forever's template already has the intended top-edge layout.
 			mm:ClearAllPoints()
-			if IS_ERA then
-				mm:SetSize(buttonSize, buttonSize)
-				mm:SetPoint("RIGHT", close, "LEFT", 0, 0)
-			else
-				mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
-			end
+			mm:SetPoint("TOPRIGHT", close, "TOPLEFT", 0, 0)
 			mm:SetFrameLevel(close:GetFrameLevel())
 			for _, arrow in ipairs({ mm.MinimizeButton, mm.MaximizeButton }) do
 				arrow:SetSize(buttonSize, buttonSize)
@@ -710,7 +705,9 @@ end
 
 -- A tick: the game's yellow check, else its ready check.
 local function Ticked(texture)
-	if Atlas(texture, CHECK) then
+	-- Era reports the modern atlas but has no backing texture for it, which renders as a green
+	-- square. Its classic ready-check texture is the visible equivalent.
+	if not IS_ERA and Atlas(texture, CHECK) then
 		texture:SetSize(TICK_WIDTH, TICK_HEIGHT)
 	else
 		texture:SetTexture(READY)

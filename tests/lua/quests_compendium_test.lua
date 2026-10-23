@@ -13,6 +13,7 @@ local print = stub.print
 local Expect, Failures = H.Expecter(print)
 local QUESTS = here .. "/../../addons/Spoken_Quests/"
 local SPOKEN = here .. "/../../addons/Spoken/"
+local TICK = "Interface\\RaidFrame\\ReadyCheck-Ready"
 
 stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 stub.world.questID = 0; stub.ShowPanel(nil)
@@ -496,8 +497,9 @@ Expect("a quest in the quest log opens", RowOf(CANDLES).row.locked, false)
 Expect("...its row marked in progress, the quest mark before its name", RowOf(CANDLES).status:IsShown()
     and RowOf(CANDLES).status.texture .. " " .. RowOf(CANDLES).label.text, [[Interface\GossipFrame\ActiveQuestIcon]] .. " Kobold Candles")
 Expect("...a completed one the quest log's gold tick", RowFor("Kobold Camp Cleanup").status:IsShown()
-    and RowFor("Kobold Camp Cleanup").status.atlas .. " " .. RowFor("Kobold Camp Cleanup").label.text,
-    "questlog-icon-checkmark-yellow Kobold Camp Cleanup")
+    and (RowFor("Kobold Camp Cleanup").status.texture or RowFor("Kobold Camp Cleanup").status.atlas)
+        .. " " .. RowFor("Kobold Camp Cleanup").label.text,
+    TICK .. " Kobold Camp Cleanup")
 Expect("...15 by 13, as every tick in the list is", RowFor("Kobold Camp Cleanup").status.width .. "x"
     .. RowFor("Kobold Camp Cleanup").status.height, "15x13")
 Expect("...and its zone's line counts it in progress, apart from the completed",
@@ -691,7 +693,7 @@ Tab:Refresh()
 Expect("a chain all completed gets the gold tick after its numbers, no share", ChainRow("Lost Necklace").status:IsShown()
     and ChainRow("Lost Necklace").count.text, "4/4")
 Expect("...the quest log's gold tick, where a single quest's goes", ChainRow("Lost Necklace").row.tick
-    and ChainRow("Lost Necklace").status.atlas, "questlog-icon-checkmark-yellow")
+    and (ChainRow("Lost Necklace").status.texture or ChainRow("Lost Necklace").status.atlas), TICK)
 Expect("...at the same size", ChainRow("Lost Necklace").status.width .. "x" .. ChainRow("Lost Necklace").status.height, "15x13")
 ClickChain("Lost Necklace")
 Expect("...and closes again", Has(Shown(), "Pie for Billy"), false)
