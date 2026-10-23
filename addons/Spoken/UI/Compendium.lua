@@ -71,7 +71,7 @@ local NAME = "SpokenCompendiumWindow"
 local VERSION = SpokenEnv and SpokenEnv.Version
 -- Forever can report the Classic project flag while using its modern 70xxx interface. Era uses
 -- the 11xxx interface, so use that stable client boundary for the Era-only chrome changes.
-local IS_ERA = VERSION and VERSION.IsRetailVanilla and (tonumber(VERSION.Interface) or 0) < 16000
+local IS_ERA = VERSION and VERSION.IsRetailVanilla and not VERSION.IsCamelot
 -- The window's portrait: a tome from the game, the Compendium's own rather than any one part's.
 -- inv_toy_booklibrary, by file id.
 -- Classic Era does not have that modern file, so keep the icon that was used before it.
@@ -388,17 +388,22 @@ local function BuildChrome()
 			mm.MinimizeButton:SetScript("OnClick", function() SetMinimized(true) end)
 			mm.MaximizeButton:SetScript("OnClick", function() SetMinimized(false) end)
 		else
-			-- The Era fallback needs the classic panel button's texture anchors. A bare Button
-			-- leaves UI-Panel-SmallerButton at its intrinsic size even when the button is 32px.
-			-- Forever keeps the plain fallback used by master if its modern template is absent.
-			local template = IS_ERA and "UIPanelCloseButtonNoScripts" or nil
-			local made, button = pcall(CreateFrame, "Button", nil, window, template)
-			minimizeButton = made and button or CreateFrame("Button", nil, window)
-			minimizeButton:SetSize(buttonSize, buttonSize)
-			-- Classic's World Map uses this 12px overlap so the smaller-button art sits in the
-			-- title bar beside Close instead of leaving a visible gap between the two controls.
-			minimizeButton:SetPoint("RIGHT", close, "LEFT", IS_ERA and 12 or 0, 0)
-			window.MinimizeButton = minimizeButton
+			if IS_ERA then
+				-- The Era fallback needs the classic panel button's texture anchors. A bare Button
+				-- leaves UI-Panel-SmallerButton at its intrinsic size even when the button is 32px.
+				local made, button = pcall(CreateFrame, "Button", nil, window, "UIPanelCloseButtonNoScripts")
+				minimizeButton = made and button or CreateFrame("Button", nil, window)
+				minimizeButton:SetSize(buttonSize, buttonSize)
+				-- Classic's World Map uses this 12px overlap so the smaller-button art sits in the
+				-- title bar beside Close instead of leaving a visible gap between the two controls.
+				minimizeButton:SetPoint("RIGHT", close, "LEFT", 12, 0)
+				window.MinimizeButton = minimizeButton
+			else
+				-- Keep the Forever fallback exactly as master when its modern template is absent.
+				minimizeButton = CreateFrame("Button", nil, window)
+				minimizeButton:SetSize(buttonSize, buttonSize)
+				minimizeButton:SetPoint("RIGHT", close, "LEFT", 0, 0)
+			end
 			minimizeButton:SetFrameLevel(close:GetFrameLevel())
 			minimizeButton:SetHighlightTexture(PANEL_HI)
 			minimizeButton:SetScript("OnClick", function() SetMinimized(not minimized) end)
