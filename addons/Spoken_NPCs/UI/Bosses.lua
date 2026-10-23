@@ -45,6 +45,15 @@ local index
 -- (the map of world bosses in different zones lists each under its own, `bossZone["map:key"]`);
 -- byKey["map:key"] = the boss; count = every boss listed. on[continent or "lands"] and
 -- maps[zone], the sorted lines, are kept once worked out.
+local IS_ERA = SpokenEnv and SpokenEnv.Version and SpokenEnv.Version.IsRetailVanilla
+
+local function ClientHasMap(map)
+	-- Spoken NPCs shares its boss data between clients. A dungeon that is not known by Era must
+	-- not be offered in its Bosses tab, or it can be selected even though it has no map (for
+	-- example, Forever's Hall of Thanes).
+	return not IS_ERA or not (C_Map and C_Map.GetMapInfo) or C_Map.GetMapInfo(map) ~= nil
+end
+
 local function Index()
 	if index then return index end
 	index = { zones = {}, zoneOf = {}, world = {}, all = {}, bossZone = {}, byKey = {}, on = {}, maps = {}, count = 0 }
@@ -55,25 +64,29 @@ local function Index()
 		local world = worlds[map]
 		local home = (dungeon or world) and (dungeon or world).zone
 		if home and #bosses > 0 then
-			local zone = CITY_IN[home] or home
-			if world and dungeon == nil and world.bossZones then
-				for _, boss in ipairs(bosses) do
-					local at = world.bossZones[boss.key] or home
-					at = CITY_IN[at] or at
-					index.zones[at] = index.zones[at] or {}
-					index.zones[at][map] = index.zones[at][map] or {}
-					table.insert(index.zones[at][map], boss)
-					index.bossZone[map .. ":" .. boss.key] = at
-				end
-			else
-				index.zones[zone] = index.zones[zone] or {}
-				index.zones[zone][map] = bosses
-			end
+			-- Keep the complete lookup for encounters and stories. Only the lists below are
+			-- client-visible, so a shared Forever boss entry remains usable by the module.
 			index.all[map] = bosses
 			for _, boss in ipairs(bosses) do index.byKey[map .. ":" .. boss.key] = boss end
-			index.zoneOf[map] = zone
-			index.world[map] = world ~= nil and dungeon == nil or nil
-			index.count = index.count + #bosses
+			if not dungeon or ClientHasMap(map) then
+				local zone = CITY_IN[home] or home
+				if world and dungeon == nil and world.bossZones then
+					for _, boss in ipairs(bosses) do
+						local at = world.bossZones[boss.key] or home
+						at = CITY_IN[at] or at
+						index.zones[at] = index.zones[at] or {}
+						index.zones[at][map] = index.zones[at][map] or {}
+						table.insert(index.zones[at][map], boss)
+						index.bossZone[map .. ":" .. boss.key] = at
+					end
+				else
+					index.zones[zone] = index.zones[zone] or {}
+					index.zones[zone][map] = bosses
+				end
+				index.zoneOf[map] = zone
+				index.world[map] = world ~= nil and dungeon == nil or nil
+				index.count = index.count + #bosses
+			end
 		end
 	end
 	return index

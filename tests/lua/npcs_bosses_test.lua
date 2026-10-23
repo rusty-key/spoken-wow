@@ -123,6 +123,9 @@ _G.tinsert = _G.tinsert or table.insert
 _G.GameFontHighlight = _G.GameFontHighlight or { GetFont = function() return "font.ttf", 12 end }
 _G.hooksecurefunc = _G.hooksecurefunc or function() end
 
+-- Keep the modern stub APIs used by this test, but exercise the Classic Era map filter.
+SpokenEnv.Version.IsRetailVanilla = true
+
 local MAPS = { [947] = "Azeroth", [1414] = "Kalimdor", [1415] = "Eastern Kingdoms", [1411] = "Durotar",
     [1413] = "The Barrens", [1416] = "Alterac Mountains", [1418] = "Badlands", [1420] = "Tirisfal Glades",
     [1421] = "Silverpine Forest", [1422] = "Western Plaguelands", [1423] = "Eastern Plaguelands",
@@ -133,7 +136,13 @@ local MAPS = { [947] = "Azeroth", [1414] = "Kalimdor", [1415] = "Eastern Kingdom
     [1412] = "Mulgore", [1437] = "Wetlands", [1419] = "Blasted Lands", [1431] = "Duskwood", [1425] = "The Hinterlands" }
 local here_map = 1436
 _G.C_Map = {
-    GetMapInfo = function(id) return MAPS[id] and { name = MAPS[id], mapID = id } or nil end,
+    GetMapInfo = function(id)
+        if id == 3065 then return nil end -- Hall of Thanes exists in shared data, not on Era.
+        if MAPS[id] or (SpokenDungeons.dungeons[id] and id < 2784) then
+            return { name = MAPS[id] or SpokenDungeons.dungeons[id][1], mapID = id }
+        end
+        return nil
+    end,
     GetBestMapForUnit = function() return here_map end,
 }
 _G.GetInstanceInfo = function() return "Outland", "none", 0, "", 0, 0, false, 0 end
@@ -184,6 +193,7 @@ local page = NPCs.bosses.page
 Shown()
 Expect("with the player in a dungeon, its line is opened and chosen, its bosses listed",
     RowFor("Deadmines") ~= nil and RowFor("Deadmines").selected and Has(Shown(), "Edwin VanCleef"), true)
+Expect("Era leaves out Forever-only dungeons from the bosses tab", Has(Shown(), "The Hall of Thanes"), false)
 Expect("...a boss not met greyed, with the padlock", RowFor("Edwin VanCleef").row.locked, true)
 -- Back out in Westfall: the line chosen for the player gives way to the zone's.
 here_map = 1436
