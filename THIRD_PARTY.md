@@ -140,6 +140,26 @@ None of this is the project's to license, and the MIT grant does not reach it.
   a Coffee's from [Simple Icons](https://github.com/simple-icons/simple-icons) (CC0), Wago's from
   the logo on addons.wago.io. The logos are trademarks of GitHub, Inc., Discord Inc., Overwolf
   (CurseForge), Wago and Buy Me a Coffee, used only to link to those sites.
+- **The addon logos on the front page** (`apps/web/public/landing/addons/`) are the icons that
+  DialogueUI and EllesmereUI ship in their own addon folders, and the Leatrix Plus and Leatrix
+  Maps logos (their project logos, saved by Spoken's owner), resized. They belong to those
+  addons' authors and are shown only to say Spoken works with them. The page also draws the
+  Discord, CurseForge, GitHub, Windows, Apple and Linux marks inline: the first five are from
+  Simple Icons (CC0), the Windows mark is drawn for the page; all are their owners' trademarks.
+- **The part icons under "What Spoken voices"** (`apps/web/public/landing/icons/game-*.png`) are
+  the game's own icons, as Spoken's settings page shows them: INV_Scroll_03, UI_Chat,
+  INV_Misc_Map02, INV_Misc_Book_09 and INV_Misc_Head_Dragon_01. They are Blizzard Entertainment's.
+  Scroll and book were exported from the Forever client with wow.export; the other three come from
+  [Warcraft Wiki](https://warcraft.wiki.gg), which hosts them as File:Ui_chat.png,
+  File:Inv_misc_map02.png and File:Inv_misc_head_dragon_01.png.
+- **The front page's key art** (`apps/web/public/landing/hero.jpg`, `art-era.jpg`,
+  `art-anniversary.jpg`) is Blizzard Entertainment's, resized and compressed from the copies on
+  warcraft.wiki.gg. `hero.jpg` is the WoW: Forever key art by Alex Horley, `art-era.jpg` is the left
+  part of the Classic Ragnaros wallpaper by Dmitry Prozorov, and `art-anniversary.jpg` is the
+  BC Classic Anniversary launch key art by Dmitry Prozorov. `apps/web/public/landing/games/` holds
+  the Blizzard game logos and icons shown in the "Fits the way you play" row. The reviewer
+  decides whether the art and logos ship. The page's fonts, Cinzel and Noto Sans, are under the SIL
+  Open Font License 1.1 and are loaded through `next/font`.
 - **Minimal Classic player textures** (`addons/Spoken/Textures/Minimal*.tga`)
   also derive from Blizzard UI artwork. Sources and adaptations are listed in
   [`docs/minimal-classic/ARTWORK.md`](docs/minimal-classic/ARTWORK.md).
