@@ -1,12 +1,11 @@
-"""Each boss's creature in the Forever repack's world database, and the spells it casts there.
+"""Each boss's creature in the Forever repack's world database, and its model.
 
     py -I pipelines/places/tools/boss_creatures.py [out.json]    (the repack's MySQL running, as for `make compendium`)
     node pipelines/places/tools/write-boss-creatures.mjs out.json
 
 A boss is its `creature_template` of the same name that is spawned on the boss's map; one with no such
 creature has none (the maps only Forever has hold no spawns, and a creature of the same name elsewhere
-may be a namesake). Its first model is its portrait. Spells are the ones its smart scripts cast and its template lists; the rest are
-cast by code the database does not hold, so the list is never the whole fight.
+may be a namesake). Its first model is its portrait.
 """
 import json
 import os
@@ -51,7 +50,7 @@ for map_id, key, name in bosses:
                 chosen = entry
                 break
     # The same name can be another creature (Diathorus of Season of Discovery is not the old world elite): the
-    # boss then has what the guide and the wiki list, and no portrait.
+    # boss then has the guide's model, or no portrait.
     if chosen is None and hints.get((map_id, key), {}).get("noNameMatch"):
         continue
     if chosen is None:
@@ -69,15 +68,10 @@ for map_id, key, name in bosses:
                 chosen = rows[0][0]
     if chosen is None:
         continue
-    spells = []
-    cursor.execute("SELECT DISTINCT action_param1 FROM smart_scripts WHERE source_type=0 AND entryorguid=%s AND action_type IN (11, 85)", (chosen,))
-    spells += [row[0] for row in cursor.fetchall()]
-    cursor.execute("SELECT DISTINCT Spell FROM creature_template_spell WHERE CreatureID=%s", (chosen,))
-    spells += [row[0] for row in cursor.fetchall()]
     cursor.execute("SELECT CreatureDisplayID FROM creature_template_model WHERE CreatureID=%s ORDER BY Idx LIMIT 1", (chosen,))
     model = cursor.fetchone()
-    out.append({"map": map_id, "key": key, "creature": chosen, "display": model[0] if model else None, "spells": sorted(set(spells))})
+    out.append({"map": map_id, "key": key, "creature": chosen, "display": model[0] if model else None})
 
 path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.environ.get("TEMP", "."), "boss_creatures.json")
 Path(path).write_text(json.dumps(out, indent=1), encoding="utf8")
-print(len(bosses), "bosses,", len(out), "with a creature,", sum(1 for b in out if b["spells"]), "with spells ->", path)
+print(len(bosses), "bosses,", len(out), "with a creature ->", path)

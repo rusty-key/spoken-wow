@@ -55,8 +55,6 @@ local HEAD_INK = { 0.06, 0.04, 0.02 }
 -- words' face, CAPTION_LESS smaller than the words and no smaller than CAPTION_LEAST or larger
 -- than CAPTION_MOST, CAPTION_GAP above it.
 local FACE_GAP, CAPTION_GAP, CAPTION_LESS, CAPTION_LEAST, CAPTION_MOST = 8, 2, 1, 10, 14
--- A part's cards (SetParts): frames of the caller's in a grid under the heading, CARD_GAP apart.
-local CARD_GAP, CARD_COLUMNS = 6, 3
 
 local TextView = {}
 TextView.__index = TextView
@@ -594,16 +592,13 @@ end
 --- view.child (Spoken:CreateSpeakerFace): it stands at the left of the heading's line, which is
 --- then as tall as it, with the heading right of it under its `caption`. A part with no heading,
 --- face or buttons is its words alone (a writing's words under where it is found).
---- A part may also have `cards`, frames the caller made on view.child, each as tall as it wants
---- to be: they fill the width in `columns` (3) under the heading, the words under them.
---- `parts` = { { heading, text, buttons, face, caption, cards, columns } }. Kept for re-wraps, as SetText's
+--- `parts` = { { heading, text, buttons, face, caption } }. Kept for re-wraps, as SetText's
 --- text is; SetText goes back to one block.
 function TextView:SetParts(parts)
 	local keep = {}
 	for _, part in ipairs(parts) do
 		for _, button in ipairs(part.buttons or {}) do keep[button] = true end
 		if part.face then keep[part.face] = true end
-		for _, card in ipairs(part.cards or {}) do keep[card] = true end
 	end
 	self:HideParts(keep)
 	self.lastParts = parts
@@ -712,22 +707,6 @@ function TextView:SetParts(parts)
 				Across(slot.heading, middle)
 			end
 			y = y + line + HEAD_GAP
-		end
-
-		local cards = part.cards
-		if cards and cards[1] then
-			local columns = math.max(1, part.columns or CARD_COLUMNS)
-			local across = math.max(1, (width - CARD_GAP * (columns - 1)) / columns)
-			local high = cards[1]:GetHeight() or 0
-			for index, card in ipairs(cards) do
-				local column, row = (index - 1) % columns, math.floor((index - 1) / columns)
-				card:ClearAllPoints()
-				card:SetWidth(across)
-				card:SetPoint("TOPLEFT", self.child, "TOPLEFT", column * (across + CARD_GAP), -(y + row * (high + CARD_GAP)))
-				card:Show()
-				table.insert(shown, card)
-			end
-			y = y + math.ceil(#cards / columns) * (high + CARD_GAP) - CARD_GAP
 		end
 
 		self:Paint(slot.words)

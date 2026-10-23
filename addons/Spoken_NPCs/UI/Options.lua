@@ -40,14 +40,6 @@ function NPCs:SetupOptions()
 		function(value) return value == "kill" and L.OPT_TRIGGER_KILL or L.OPT_TRIGGER_TARGET end)
 	layout:Requires(trigger, PartOn, W.REASON_PART_OFF)
 
-	layout:Section(W.OPT_COMPENDIUM_TITLE)
-	layout:Checkbox(L.OPT_SHOW_ABILITIES, nil,
-		function() return SpokenNPCsSettings ~= nil and SpokenNPCsSettings.showAbilities == true end,
-		function(value)
-			if SpokenNPCsSettings then SpokenNPCsSettings.showAbilities = value end
-			NPCs:RefreshBosses()
-		end)
-
 	-- What this character was shown: forgotten, each story shows once more.
 	layout:Section(W.MODULE_HISTORY)
 	layout:Button(L.OPT_FORGET_STORIES, 200, function()

@@ -87,10 +87,6 @@ local function Unlocked()
 	return SpokenNPCsSettings ~= nil and SpokenNPCsSettings.unlockUnfound == true
 end
 
-local function AbilitiesShown()
-	return SpokenNPCsSettings ~= nil and SpokenNPCsSettings.showAbilities == true
-end
-
 local function OnlyFound()
 	return SpokenNPCsSettings ~= nil and SpokenNPCsSettings.compendiumFoundOnly == true
 end
@@ -174,7 +170,7 @@ local function Story(map, key)
 	return type(text) == "string" and text ~= "" and text or nil
 end
 
--- What Data/Creatures.lua knows of a boss (its creature, appearance and spells), or nil.
+-- What Data/Creatures.lua knows of a boss (its creature and appearance), or nil.
 local function Creature(map, key)
 	local known = _G.SpokenBossCreatures
 	return known and known[map] and known[map][key]
@@ -377,158 +373,26 @@ local function CountLine(where, found, total)
 	return L.BOSS_IN_FMT:format(where) .. " · " .. Count(found, total)
 end
 
--- A boss's portrait, at the left of its name, and what the database says it casts, under its story
--- in two columns: a card for each spell (Data/Creatures.lua), named and drawn by the client.
-local CARD_HEIGHT, PLATE_HEIGHT, PLATE_DROP, UNKNOWN_ICON = 64, 54, 5, 134400
--- A spell as the spellbook lays it out (numbers read from its own frames): a 40 square holding the
--- icon (36, rounded by the book's mask) with the ornate frame round it, and beside it the name and,
--- under it, what the client says of the spell. Under all of it, the book's plate, faint and brighter
--- under the pointer.
-local PLATE, ICON_MASK = "spellbook-item-backplate", "spellbook-item-spellicon-mask"
-local FRAME, FRAME_HOVER = "spellbook-item-iconframe", "spellbook-item-iconframe-hover"
-local MASK = [[Interface\CharacterFrame\TempPortraitAlphaMask]]
-local PLATE_REST, PLATE_HOVER, HOVER_ALPHA = 0.3, 0.7, 0.35
-local BUTTON, ICON, EDGE, GAP = 40, 36, 14, 12
-local NAME_SIZE, SUB_SIZE, LINE_GAP = 16, 12, 2
-local cards
-
 -- The skull in the ring's small socket, where a quest's portrait has its badge.
 if Spoken and Spoken.RegisterBullet then Spoken:RegisterBullet("boss", SKULL, 16) end
-
-local function SpellLook(id)
-	if C_Spell and C_Spell.GetSpellInfo then
-		local info = C_Spell.GetSpellInfo(id)
-		if info then return info.name, info.iconID end
-	elseif GetSpellInfo then
-		local name, _, icon = GetSpellInfo(id)
-		return name, icon
-	end
-end
-
-local function Card(position)
-	cards = cards or {}
-	if cards[position] then return cards[position] end
-	if not page then return nil end
-	local card = CreateFrame("Frame", nil, page.body.child)
-	card:SetHeight(CARD_HEIGHT)
-	local plate = card:CreateTexture(nil, "BACKGROUND")
-	plate:SetPoint("LEFT", card, "LEFT", 0, -PLATE_DROP)
-	plate:SetPoint("RIGHT", card, "RIGHT", 0, -PLATE_DROP)
-	plate:SetHeight(PLATE_HEIGHT)
-	if not C.Atlas(plate, PLATE) then plate:SetColorTexture(1, 1, 1, 0.1) end
-	plate:SetAlpha(PLATE_REST)
-	-- The 40 square the icon, frame and highlight are measured from.
-	local button = CreateFrame("Frame", nil, card)
-	button:SetSize(BUTTON, BUTTON)
-	button:SetPoint("LEFT", card, "LEFT", EDGE, 0)
-	-- Only the icon answers the pointer, as in the spellbook.
-	button:EnableMouse(true)
-	local icon = card:CreateTexture(nil, "ARTWORK")
-	icon:SetSize(ICON, ICON)
-	icon:SetPoint("CENTER", button, "CENTER")
-	local mask = card.CreateMaskTexture and card:CreateMaskTexture()
-	if type(mask) == "table" and icon.AddMaskTexture then
-		if not C.Atlas(mask, ICON_MASK) then mask:SetTexture(MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE") end
-		mask:SetSize(ICON, ICON)
-		mask:SetPoint("CENTER", icon, "CENTER")
-		icon:AddMaskTexture(mask)
-	end
-	local frame = card:CreateTexture(nil, "OVERLAY", nil, 1)
-	if C.Atlas(frame, FRAME) then
-		frame:SetPoint("TOPLEFT", button, "TOPLEFT", -11, 1)
-		frame:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -7)
-	end
-	local glow = card:CreateTexture(nil, "OVERLAY", nil, 2)
-	if C.Atlas(glow, FRAME_HOVER) then glow:SetAllPoints(button) end
-	glow:SetAlpha(HOVER_ALPHA)
-	glow:Hide()
-	-- The spellbook's own lines: the name over what the client says of the spell, in its dark brown,
-	-- cut short with an ellipsis where the card is narrow.
-	local text = CreateFrame("Frame", nil, card)
-	text:SetPoint("LEFT", button, "RIGHT", GAP, 0)
-	text:SetPoint("RIGHT", card, "RIGHT", -6, 0)
-	text:SetHeight(NAME_SIZE + LINE_GAP + SUB_SIZE)
-	local function Line(size)
-		local line = text:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-		local file = _G.GameFontNormal and _G.GameFontNormal.GetFont and _G.GameFontNormal:GetFont()
-		if file then line:SetFont(file, size, "") end
-		line:SetTextColor(0.18, 0.11, 0.06, 1)
-		line:SetShadowColor(0, 0, 0, 0)
-		line:SetJustifyH("LEFT")
-		if line.SetWordWrap then line:SetWordWrap(false) end
-		if line.SetMaxLines then line:SetMaxLines(1) end
-		return line
-	end
-	local name, sub = Line(NAME_SIZE), Line(SUB_SIZE)
-	card.icon, card.name, card.sub, card.plate, card.glow = icon, name, sub, plate, glow
-	function card:SetLines(title, subtitle)
-		name:SetText(title)
-		sub:SetText(subtitle or "")
-		name:ClearAllPoints()
-		sub:ClearAllPoints()
-		if subtitle and subtitle ~= "" then
-			name:SetPoint("TOPLEFT", text, "TOPLEFT")
-			name:SetPoint("TOPRIGHT", text, "TOPRIGHT")
-			sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -LINE_GAP)
-			sub:SetPoint("TOPRIGHT", name, "BOTTOMRIGHT", 0, -LINE_GAP)
-		else
-			name:SetPoint("LEFT", text, "LEFT")
-			name:SetPoint("RIGHT", text, "RIGHT")
-		end
-	end
-	button:SetScript("OnEnter", function()
-		local self = card
-		self.plate:SetAlpha(PLATE_HOVER)
-		self.glow:Show()
-		if self.spell and GameTooltip and GameTooltip.SetSpellByID then
-			GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-			GameTooltip:SetSpellByID(self.spell)
-			GameTooltip:Show()
-		end
-	end)
-	button:SetScript("OnLeave", function()
-		local self = card
-		self.plate:SetAlpha(PLATE_REST)
-		self.glow:Hide()
-		if GameTooltip then GameTooltip:Hide() end
-	end)
-	card:Hide()
-	cards[position] = card
-	return card
-end
 
 -- One table for each picture, so the page draws a portrait again only for another one.
 local UNKNOWN = C.UnknownIcon("boss")
 local portraits = {}
 
--- A boss's portrait for the page's header and the part with its spells, either nil where there is none.
-local function Details(map, key)
+-- A boss's portrait, at the left of its name on the page's header.
+local function Portrait(map, key)
 	local entry = Creature(map, key)
-	if not (entry and (entry.creature or entry.display or (entry.spells and entry.spells[1]))) then
-		return UNKNOWN, nil
-	end
-	local spells = {}
-	for _, id in ipairs(AbilitiesShown() and entry.spells or {}) do
-		local name, icon = SpellLook(id)
-		local card = name and Card(#spells + 1)
-		if card then
-			card.spell = id
-			local sub = C_Spell and C_Spell.GetSpellSubtext and C_Spell.GetSpellSubtext(id)
-			card:SetLines(name, type(sub) == "string" and sub or nil)
-			card.icon:SetTexture(icon or UNKNOWN_ICON)
-			spells[#spells + 1] = card
-		end
-	end
 	-- A portrait only from a known appearance: asked of the client, a creature it has not met answers
 	-- with the player's own face.
-	if not entry.display then return UNKNOWN, spells[1] and { cards = spells, columns = 2 } or nil end
+	if not (entry and entry.display) then return UNKNOWN end
 	local id = map .. ":" .. key
 	local portrait = portraits[id]
 	if not (portrait and portrait.creatureID == entry.creature and portrait.displayID == entry.display) then
 		portrait = { creatureID = entry.creature, displayID = entry.display, bullet = "boss" }
 		portraits[id] = portrait
 	end
-	return portrait, spells[1] and { cards = spells, columns = 2 } or nil
+	return portrait
 end
 
 local function ShowEntry()
@@ -548,11 +412,8 @@ local function ShowEntry()
 			return
 		end
 		local story = Story(map, key)
-		local words = story or C.NotWritten()
-		local portrait, abilities = Details(map, key)
-		page:Show({ title = Name(boss), subtitle = where, icon = portrait,
-			parts = abilities and { { text = words }, abilities } or nil,
-			text = not abilities and words or nil, unwritten = story == nil })
+		page:Show({ title = Name(boss), subtitle = where, icon = Portrait(map, key),
+			text = story or C.NotWritten(), unwritten = story == nil })
 		return
 	end
 	if selection.dungeon then

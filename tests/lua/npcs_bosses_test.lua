@@ -88,7 +88,7 @@ Expect("bosses have the model Forever draws them with: Sneed himself on his spaw
 Expect("...the City of Dalaran's Arcane Anomaly is Forever's, not Karazhan's", Face(2959, "arcane anomaly"), "245999/129891")
 Expect("a boss known only by a namesake has no creature, so targeting the namesake does not show its story",
     Face(2856, "balnazzar") .. "," .. Face(2959, "mana elemental") .. "," .. tostring(owner[10813]) .. "," .. tostring(owner[16488]),
-    "nil/nil,none,nil,nil")
+    "none,none,nil,nil")
 Expect("a boss whose model the client lacks has no portrait rather than an empty one", Face(329, "crimson hammersmith"), "11120/nil")
 local LACKED = { [40322] = true, [113690] = true, [34424] = true, [34497] = true, [16216] = true }
 local lacked = {}
@@ -150,7 +150,6 @@ local tab = SpokenCompendium:Tab("bosses")
 Expect("...after Setup", tab ~= nil and tab.label, "Bosses")
 Expect("...a tab of its own after the readables'", tab.order, 3)
 Expect("...with Unlock Unfound Bosses, off", tab.unlock ~= nil and tab.unlock.get(), false)
-Expect("Show Boss Abilities is on by default", SpokenNPCsSettings.showAbilities, true)
 
 local window
 local rows = {}
@@ -261,41 +260,23 @@ _G.GetLocale = function() return "deDE" end
 Click("Edwin VanCleef")
 Expect("...in the client's language where it has one", page.body.text.text, "Er führte die Bruderschaft.")
 _G.GetLocale = function() return "enUS" end
--- A boss with a creature in Data/Creatures.lua: its story, then its portrait over its dungeon and
--- name, then a button for each spell the client names.
-_G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, display = 1305, spells = { 3391, 5200, 99999 } } } }
-local SPELLS = { [3391] = { name = "Thrash", iconID = 132152 }, [5200] = { name = "VanCleef's Allies", iconID = 136235 } }
-_G.C_Spell = { GetSpellInfo = function(id) return SPELLS[id] end }
+-- A boss with a creature in Data/Creatures.lua: its story, under its portrait over its dungeon and name.
+_G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, display = 1305 } } }
 NPCs:RefreshBosses()
 Shown()
-SpokenNPCsSettings.showAbilities = false
-NPCs:RefreshBosses()
 Click("Edwin VanCleef")
-Expect("with Show Boss Abilities off, no spell cards: the story and the portrait only",
-    (page.body.partButtons == nil or #page.body.partButtons == 0) and page.body.text.text .. "|" .. tostring(page.face:IsShown()),
-    "He led the Brotherhood.|true")
-SpokenNPCsSettings.showAbilities = true
-NPCs:RefreshBosses()
-Click("Edwin VanCleef")
-local parts = page.body.parts
-local names = {}
-for _, shown in ipairs(page.body.partButtons or {}) do
-    if shown.name then table.insert(names, shown.name:GetText() .. ":" .. tostring(shown.icon.texture)) end
-end
-Expect("a boss with a creature has its story, then its spells with no heading", parts[1].words:GetText() .. "|" .. tostring(parts[2].heading:IsShown()),
-    "He led the Brotherhood.|false")
+Expect("a boss with a creature has its story as one block", page.body.text.text, "He led the Brotherhood.")
 Expect("...and its portrait at the left of its name, the title moved right of it", page.face:IsShown() and page.shift > 0, true)
 Expect("...the boss badge on it", page.headFace.speaker.bullet, "boss")
 local badge = page.headFace and page.headFace.badge
 Expect("...the portrait's small socket holds the skull", badge and badge:IsShown() and badge.texture, [[Interface\TargetingFrame\UI-RaidTargetingIcon_8]])
-Expect("...a button for each spell the client names, with its icon", table.concat(names, ","), "Thrash:132152,VanCleef's Allies:136235")
-_G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639, spells = { 3391 } } } }
+_G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639 } } }
 Click("Edwin VanCleef")
-Expect("a boss with a creature and spells but no model has the question mark for its portrait, and its spells",
-    page.headFace.speaker.icon .. "|" .. #(page.body.partButtons or {}), [[Interface\Icons\INV_Misc_QuestionMark]] .. "|1")
+Expect("a boss with a creature but no model has the question mark for its portrait", page.headFace.speaker.icon,
+    [[Interface\Icons\INV_Misc_QuestionMark]])
 _G.SpokenBossCreatures = {}
 Click("Edwin VanCleef")
-Expect("a boss with no creature there has the words alone", (page.body.partButtons == nil or #page.body.partButtons == 0) and page.body.text.text, "He led the Brotherhood.")
+Expect("a boss with no creature there has the words alone", page.body.text.text, "He led the Brotherhood.")
 Expect("...and the portrait is still there, as the question mark, with the boss badge",
     page.face ~= nil and page.shift > 0 and page.headFace.speaker.icon == [[Interface\Icons\INV_Misc_QuestionMark]]
         and page.headFace.speaker.bullet == "boss", true)
@@ -404,18 +385,13 @@ Expect("clearing it brings the list back", Has(Shown(), "Westfall"), true)
 NPCs:SetupOptions()
 local panel = NPCs.optionsPanel
 Expect("the Bosses page is built", panel ~= nil and panel.layout ~= nil, true)
-local abilitiesRow
-for _, entry in ipairs(panel.layout.entries) do
-    if entry.label == NPCs.L.OPT_SHOW_ABILITIES then abilitiesRow = entry end
-end
-Expect("...with Show Boss Abilities on it", abilitiesRow ~= nil, true)
-SpokenNPCsSettings.showAbilities = false
+SpokenNPCsSettings.storyTrigger = "kill"
 SpokenNPCsSettings.unlockUnfound = true
 SpokenNPCsCharacter.found["36:edwin vancleef"] = true
 local reset = panel.layout.defaults
 reset.scripts.OnClick(reset)
 stub.popups[#stub.popups].dialog.OnAccept()
-Expect("its Defaults put Show Boss Abilities back on", SpokenNPCsSettings.showAbilities, true)
+Expect("its Defaults put a boss's story back on targeting it", SpokenNPCsSettings.storyTrigger, "target")
 Expect("...and leave Unlock Unfound Bosses, which Spoken's page resets", SpokenNPCsSettings.unlockUnfound, true)
 Expect("...and keep the bosses this character has met", SpokenNPCsCharacter.found["36:edwin vancleef"], true)
 

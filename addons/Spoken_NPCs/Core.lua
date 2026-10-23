@@ -12,8 +12,6 @@ local defaults = {
 	-- Every boss openable, met or not (on Spoken's page); and the list leaving out those not met.
 	unlockUnfound = false,
 	compendiumFoundOnly = false,
-	-- A boss's spell cards under its story; off, the page has the story and portrait.
-	showAbilities = true,
 	-- When a boss's story shows in Spoken's narrator: "target" when the player targets it, "kill" when
 	-- it is killed.
 	storyTrigger = "target",
