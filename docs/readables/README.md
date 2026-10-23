@@ -433,3 +433,7 @@ It is built from `book_line` and `entity_name`, so run `make readables-import-lo
 first; `readables-lookup` warns when it finds no pages. The checksum is exact: a page whose words
 on a live client differ from the world database's by one byte is not found, and is what the
 contribution button is for.
+
+The same localized lookup also carries a `texts` table for translated pages without a voice clip.
+The Compendium uses it so an unvoiced page still shows its localized title and words instead of
+falling back to the English corpus.

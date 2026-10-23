@@ -11,9 +11,10 @@
 // A language's pack also carries that language's page index. The English one, in the
 // SpokenReadables addon, is keyed on the English title and a checksum of the English words, and a
 // client in another locale shows neither: without its own index a translated page is never
-// found at all. It ships in the pack because a client in that locale is the only one it can
-// match, and a player there who wants the language installs the pack. A language no client
-// runs in carries none.
+// found at all. The pack also carries translated page text for pages without a clip, so the
+// Compendium does not fall back to English. It ships in the pack because a client in that locale
+// is the only one it can match, and a player there who wants the language installs the pack. A
+// language no client runs in carries none.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -111,6 +112,24 @@ export function packLua(lang, clips, entries = null) {
   lines.push("\t},");
 
   if (entries) {
+    // The index covers every translated page, not just pages with a recording. Keep the
+    // translated words beside it for the Compendium: a player may have found a page that has
+    // no voice clip yet, and showing the English corpus there defeats the localized index.
+    // A clip normally carries the same words, but retain the table when a clip has no text
+    // (for example an imported take) so its page does not fall back to English.
+    const clipped = new Set(clips.filter((clip) => clip.text).map((clip) => String(clip.pageId)));
+    const textEntries = [...entries.known, ...entries.extra]
+      .map((entry) => ({ ...entry, text: entry.texts?.[0] }))
+      .filter((entry) => entry.text && !clipped.has(String(entry.pageId)))
+      .sort((a, b) => compareIds(a.pageId, b.pageId));
+    if (textEntries.length > 0) {
+      lines.push("", "\ttexts = {");
+      for (const entry of textEntries) {
+        lines.push(`\t\t[${luaId(entry.pageId)}] = ${quote(spokenText(entry.text))},`);
+      }
+      lines.push("\t},");
+    }
+
     // Every translated page, not only the voiced ones: a page found is also a page the
     // addon does not ask the player to contribute, and it falls back per page to another
     // language's clip like any other.
