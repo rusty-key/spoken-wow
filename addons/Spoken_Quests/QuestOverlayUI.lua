@@ -156,6 +156,8 @@ function QuestOverlayUI:BindPlayButton(playButton, questID, soundTitle, origin)
                 unitGUID = id and Enums.GUID:CanHaveID(type) and Utils:MakeGUID(type, id) or nil,
                 -- A poster or an item has no face to draw: the line shows a notice, as the dialog's does.
                 unitIsObjectOrItem = id ~= nil and not Enums.GUID:IsCreature(type),
+                -- Global Stop must not leave a line started from the quest log blocking the next NPC.
+                questLogPlay = true,
                 -- For the debug log: which screen queued it.
                 origin = origin or "the quest log's Play button",
             }
