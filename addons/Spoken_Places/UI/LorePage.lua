@@ -154,7 +154,6 @@ local PLAY = {
 	has = function(target) return SpokenPlaces:IsVoiceEnabled() and SpokenPlaces:HasAudio(target[1], target[2]) end,
 	find = function(target) return SpokenPlaces:LoreClip(target[1], target[2]) end,
 	start = function(target) SpokenPlaces:PlayLore(target[1], target[2]) end,
-	tip = L.AUDIO_READ_TIP,
 }
 
 -- What Report does: every story, voiced or not. Lore text can be wrong whether or not anyone has
@@ -165,7 +164,6 @@ local REPORT = {
 		SpokenPlaces:ShowReport(target[1], target[2])
 	end,
 	title = L.OPT_REPORT_PROBLEM,
-	tip = L.OPT_REPORT_LINE_TIP,
 }
 
 -- The Compendium's page inside, its parts (title, sub, body, play, report, frame) read through.
@@ -206,7 +204,6 @@ function SpokenPlaces:CreateLorePage(parent, style)
 		open:HookScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			GameTooltip:SetText(L.OPEN_IN_COMPENDIUM)
-			GameTooltip:AddLine(L.OPEN_IN_LORE_TIP, 1, 0.8, 0.2, true)
 			GameTooltip:Show()
 		end)
 		open:HookScript("OnLeave", function() GameTooltip:Hide() end)

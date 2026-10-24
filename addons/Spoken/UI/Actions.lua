@@ -760,9 +760,8 @@ local DialogRow = {}
 
 --- Play, Skip and, with `report`, Report in a row on one of DialogueUI's dialogs (its quest window
 --- or its book view), as Spoken Quests and Spoken Readables put them there: children of the dialog,
---- drawn over it, so they show while DialogueUI hides UIParent and close with it. `tooltip()`
---- returns the tooltip to use on the dialog, the game's being a child of UIParent. Skip skips and
---- names itself; the caller gives Play and Report their clicks and their tooltips (Row:SetTip).
+--- drawn over it, so they show while DialogueUI hides UIParent and close with it. Skip skips and
+--- names itself; Play and Report keep their short titles without explanatory tooltip text.
 function Actions.DialogRow(dialog, tooltip, report)
     local holder = CreateFrame("Frame", nil, dialog)
     holder:SetFrameStrata("FULLSCREEN")
@@ -876,7 +875,6 @@ local function NewButton(frame, action)
             if self.action and self.action.tooltip then
                 GameTooltip:SetOwner(self, "ANCHOR_LEFT")
                 self.action.tooltip(GameTooltip)
-                if self.action.id == "report" then Actions.AddLogMenuHint(GameTooltip) end
                 GameTooltip:Show()
             end
         end)

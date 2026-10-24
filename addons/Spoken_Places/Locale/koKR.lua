@@ -31,10 +31,8 @@ L.OPT_REPORT_PROBLEM = "문제 신고"
 L.MENU_LORE_WINDOW = "아제로스 백과사전 열기"
 L.MENU_ZONE_SETTINGS = "장소 설정"
 
-L.OPT_REPORT_LINE_TIP = "잘못된 이야기, 잘못 읽은 부분이나 잘못 발음된 이름을 신고할 링크를 받습니다."
 L.OPT_REPORT_LINE_ADDRESS = "이 주소를 복사하여 브라우저에서 열어 이 항목의 문제를 신고하세요."
 
-L.AUDIO_READ_TIP = "이 이야기를 소리로 듣기"
 L.REPORT_BUTTON = "신고"
 L.IN_ZONE_FMT = "위치: %1$s"
 L.DISCOVERED_FMT = "%2$d곳 중 %1$d곳 발견"
@@ -68,7 +66,6 @@ L.REASON_VOICE = "이 기능을 쓰려면 '이야기 소리 내어 읽기'를 �
 L.OPT_FORGET_PLACES = "들은 장소 잊기"
 L.OPT_FORGET_PLACES_DONE = "이 캐릭터의 들은 장소 목록을 지웠습니다."
 L.OPT_DOWNLOAD_ADDRESS = "이 주소를 웹 브라우저에 복사해 넣어 음성 팩을 다운로드하세요."
-L.OPEN_IN_LORE_TIP = "아제로스 백과사전에서 다른 모든 지역과 세부 지역의 이야기와 함께 이곳의 이야기를 봅니다."
 L.OTHER_LANDS = "기타 지역"
 L.BATTLEGROUNDS = "전장"
 L.DUNGEONS = "던전 및 공격대"

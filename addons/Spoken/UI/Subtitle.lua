@@ -934,7 +934,6 @@ function Subtitle:BuildControls()
         if report.action and report.action.tooltip then
             GameTooltip:SetOwner(report, "ANCHOR_TOP")
             report.action.tooltip(GameTooltip)
-            Actions.AddLogMenuHint(GameTooltip)
             GameTooltip:Show()
         end
     end)

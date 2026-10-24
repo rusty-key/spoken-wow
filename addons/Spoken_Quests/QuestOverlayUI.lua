@@ -202,15 +202,12 @@ end
 --- A button's `setPlayState`, for one that stops and replays: its glyph is what the queue says its quest is doing.
 function QuestOverlayUI.FollowQueue(button) button:SetState((QuestOverlayUI:StateOf(button.questID))) end
 
--- The tooltip says what a click does now.
-local TIPS = { play = { "OPT_PLAY", "OPT_PLAY_TIP" }, stop = { "OPT_STOP", "OPT_STOP_TIP" },
-    replay = { "OPT_REPLAY", "OPT_REPLAY_TIP" } }
+-- Keep the short action name, without the explanatory tooltip line.
+local TIPS = { play = "OPT_PLAY", stop = "OPT_STOP", replay = "OPT_REPLAY" }
 
 function QuestOverlayUI:ShowPlayTip(button)
-    local tip = TIPS[button.state or "play"]
     GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-    GameTooltip:SetText(L[tip[1]])
-    GameTooltip:AddLine(L[tip[2]], 1, 0.8, 0.2, true)
+    GameTooltip:SetText(L[TIPS[button.state or "play"]])
     GameTooltip:Show()
 end
 

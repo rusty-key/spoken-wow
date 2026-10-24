@@ -537,7 +537,7 @@ Expect("...and Play turns to Stop while it speaks", play.state, "stop")
 Expect("...and Skip can skip it", skip:IsEnabled(), true)
 play.scripts.OnEnter(play)
 local tip = play.tooltip
-Expect("its tooltip says a click stops it", tip and tip.text, VO.L.OPT_STOP)
+Expect("its tooltip keeps the Play title", tip and tip.text, VO.L.OPT_STOP)
 local saysRightClick = false
 for _, text in ipairs(tip and tip.lines or {}) do
     if text == VO.L.OPT_DUI_PLAY_RIGHT_CLICK then saysRightClick = true end

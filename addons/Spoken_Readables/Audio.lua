@@ -186,7 +186,6 @@ local ACTIONS = {
 		anchor = "topright",
 		tooltip = function(tooltip)
 			tooltip:SetText(L.REPORT_PROBLEM)
-			tooltip:AddLine(L.REPORT_LINE_TIP, 1, 0.8, 0.2, true)
 		end,
 		onClick = function(clip)
 			if not clip then
