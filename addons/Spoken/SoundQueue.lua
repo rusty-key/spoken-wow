@@ -637,13 +637,25 @@ local function DropOutrankedWaiting()
     end
 end
 
-local function AnyNormalQueued()
+local function AnyNormalQueued(except)
     for _, clip in ipairs(SoundQueue.sounds) do
-        if not IsLow(clip) then
+        if clip ~= except and not IsLow(clip) then
             return true
         end
     end
     return false
+end
+
+-- A quest-log Play is kept for Replay when the player stops it, but a new dialogue should not wait
+-- behind that stopped one. Drop it only after the incoming line has passed admission, so a missing
+-- or refused line does not change what the player stopped.
+local function DropStoppedQuestLogHead()
+    local head = SoundQueue:GetCurrentSound()
+    if not (SoundQueue:IsPaused() and head and head.questLogPlay) then
+        return false
+    end
+    SoundQueue:SetPaused(false)
+    return SoundQueue:RemoveSoundFromQueue(head)
 end
 
 -- Why a line from `source` cannot be queued now, or nil: the part is switched off, or the channel
@@ -701,13 +713,22 @@ function SoundQueue:Add(clip, source, front)
         return nil, "duplicate"
     end
 
+    local stoppedQuest = self:IsPaused() and self:GetCurrentSound()
+    if not (stoppedQuest and stoppedQuest.questLogPlay) then
+        stoppedQuest = nil
+    end
+
     if IsLow(clip) then
-        if AnyNormalQueued() then
+        if AnyNormalQueued(stoppedQuest) then
             Callbacks:Fire("CLIP_DROPPED", clip, "outranked")
             return nil, "outranked"
         end
     else
         DropOutrankedWaiting()
+    end
+
+    if stoppedQuest then
+        DropStoppedQuestLogHead()
     end
 
     self.soundIdCounter = self.soundIdCounter + 1
@@ -805,6 +826,7 @@ function SoundQueue:PauseQueue()
     if self:IsPaused() then
         return false
     end
+
     self:SetPaused(true)
 
     local head = self:GetCurrentSound()

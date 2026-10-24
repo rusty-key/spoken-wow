@@ -323,17 +323,38 @@ hiddenActions.report = nil
 _G.SpokenEnv.Callbacks:Fire("REPORT_SETTINGS_CHANGED")
 Expect("...and gives it back when it is off", detailsReport:IsShown(), true)
 
-before = table.getn(played)
 detailsButton:Click()
-Expect("...and Pause once it is reading, as the subtitle's button", detailsButton.playing, true)
+Expect("...and Stop once it is reading, as the quest log's button", detailsButton.playing, true)
 detailsButton:Click()
-Expect("clicked while it reads, it pauses the line rather than dropping it",
-    tostring(_G.Spoken:IsPaused()) .. " " .. tostring(detailsButton.playing), "true false")
+Expect("clicked while it reads, it pauses the line for Replay",
+    tostring(_G.Spoken:IsPaused()) .. " " .. tostring(_G.Spoken:GetQueueSize()) .. " " .. tostring(detailsButton.playing),
+    "true 1 false")
 detailsButton:Click()
-Expect("...and clicked again, resumes it", tostring(_G.Spoken:IsPaused()) .. " " .. tostring(detailsButton.playing), "false true")
+Expect("clicking it again resumes the stopped line", tostring(_G.Spoken:IsPaused()) .. " " .. tostring(detailsButton.playing),
+    "false true")
+detailsButton:Click()
+Expect("clicking it again pauses the line for a new dialogue",
+    tostring(_G.Spoken:IsPaused()) .. " " .. tostring(_G.Spoken:GetQueueSize()), "true 1")
+local npc = _G.Spoken:RegisterSource("npc", { title = "NPC", addon = "Spoken" })
+npc:Enqueue(require("queue_helpers").Clip({ key = "npc-dialogue", path = "npc-dialogue.ogg", length = 1,
+    priority = "low" }))
+Expect("new NPC dialogue skips the stopped quest-log line and plays",
+    tostring(_G.Spoken:IsPaused()) .. " " .. _G.Spoken:GetCurrent().key, "false npc-dialogue")
 stub.Advance(3)
-Expect("clicking it reads the same line", table.getn(played) > before, true)
-Expect("...and Play again once it has finished", detailsButton.playing, false)
+Expect("...and the quest-log button is Play again once its line is gone", detailsButton.playing, false)
+
+detailsButton:Click()
+Expect("the quest-log line can be started again", detailsButton.playing, true)
+_G.Spoken:Pause()
+Expect("global Stop pauses a quest-log line for Replay",
+    tostring(_G.Spoken:IsPaused()) .. " " .. tostring(_G.Spoken:GetQueueSize()), "true 1")
+local npcAfterGlobalStop = _G.Spoken:RegisterSource("npc-after-global-stop", { title = "NPC", addon = "Spoken" })
+npcAfterGlobalStop:Enqueue(require("queue_helpers").Clip({ key = "npc-after-global-stop-dialogue",
+    path = "npc-after-global-stop-dialogue.ogg", length = 1, priority = "low" }))
+Expect("NPC dialogue skips a globally stopped quest-log line and plays",
+    tostring(_G.Spoken:IsPaused()) .. " " .. _G.Spoken:GetCurrent().key,
+    "false npc-after-global-stop-dialogue")
+stub.Advance(3)
 
 -- Queued from somewhere else -- autoplay, the log's own button -- when the details open, and
 -- finished since: Play reads the quest again rather than holding on to the finished line.
