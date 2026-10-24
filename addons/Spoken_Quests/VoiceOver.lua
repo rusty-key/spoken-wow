@@ -477,7 +477,8 @@ local defaults = {
             -- Shown whether or not DialogueUI's Text To Speech is on.
             PlayButton = true,
         },
-        -- The Play button on each quest in the objective tracker.
+        -- Whether the Play button is shown in the quest log and objective tracker.
+        QuestLogPlayButton = true,
         TrackerPlayButton = true,
         DebugEnabled = false,
     },

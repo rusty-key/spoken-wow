@@ -200,7 +200,16 @@ function QuestOverlayUI:StateOf(questID)
 end
 
 --- A button's `setPlayState`, for one that stops and replays: its glyph is what the queue says its quest is doing.
-function QuestOverlayUI.FollowQueue(button) button:SetState((QuestOverlayUI:StateOf(button.questID))) end
+function QuestOverlayUI.FollowQueue(button)
+    local state = QuestOverlayUI:StateOf(button.questID)
+    if button.SetState then
+        button:SetState(state)
+    elseif button.SetNormalTexture then
+        button.state = state
+        button:SetNormalTexture((state == "stop" or state == "replay") and
+            (TEXTURES .. "QuestLogStopButton") or (TEXTURES .. "QuestLogPlayButton"))
+    end
+end
 
 -- The tooltip says what a click does now.
 local TIPS = { play = { "OPT_PLAY", "OPT_PLAY_TIP" }, stop = { "OPT_STOP", "OPT_STOP_TIP" },
@@ -279,8 +288,8 @@ function QuestOverlayUI:Update()
     for _, button in pairs(self.displayedButtons) do
         button:Hide()
     end
-    -- Switched off, the part puts nothing on the log.
-    if not Addon:IsPartOn() then
+    -- Switched off, the part or its quest buttons puts nothing on the log.
+    if not Addon:IsPartOn() or (Addon.db and Addon.db.profile.QuestLogPlayButton == false) then
         table.wipe(self.displayedButtons)
         return
     end
