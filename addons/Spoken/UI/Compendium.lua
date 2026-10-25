@@ -921,7 +921,7 @@ local MISSING_INK = { 0.84, 0.71, 0.31 }
 -- The chosen row's edge.
 local EDGE_INK = { 1, 0.82, 0, 0.9 }
 -- In EllesmereUI's look: names white and the line down an open group white, as its windows draw
--- them, the chosen row's edge in its accent, banners as flat boxes (DrawBanner) and the rows in its
+-- them, the chosen row's edge in its accent, banners as flat boxes and the rows in its
 -- font, where it writes the client's language.
 local flatBanners, listFont
 -- Every list and page built, for what follows EllesmereUI's live changes (OnLooksChanged).
@@ -1887,7 +1887,7 @@ if _G.SPELLBOOK_FONT_COLOR and SPELLBOOK_FONT_COLOR.GetRGB then INK = { SPELLBOO
 -- The line under the title under the pointer, where a click on it goes up a level: the places'
 -- page's link colour.
 local LINK = { 0.5, 0.12, 0.04 }
--- On EllesmereUI's dark shell in place of the parchment (Page:Darken): light words, the title and
+-- On EllesmereUI's dark shell in place of the parchment: light words, the title and
 -- the parts' headings white, as its windows write them, and links in its accent colour.
 local LIGHT_INK, LIGHT_TITLE = { 0.9, 0.9, 0.9 }, { 1, 1, 1 }
 local PAD, TOP, RIGHT = 24, 36, 36

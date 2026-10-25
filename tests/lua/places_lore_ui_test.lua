@@ -898,7 +898,7 @@ do
     end
     Kept(page.title); Kept(mapPage.title)
     local book = _G.SpokenCompendium.window
-    -- Under another look EllesmereUI's callback lets every waiting window go (ellesmere_look_test):
+    -- Under another look EllesmereUI's callback lets every waiting window go:
     -- until it says its own look, the window and the panel are as in the stock look.
     Z:ShowLoreFor(1411, nil)
     Expect("until EllesmereUI says its own look is the UI's, the window and the panel keep their art",
