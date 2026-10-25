@@ -19,8 +19,11 @@ import * as namingModule from "@readables-tools/lib/naming.mjs";
 /** What would be sent to a narrator: markup gone, paragraphs flattened. */
 export const spokenText = textModule.spokenText as (text: string) => string;
 
-/** The page as the client shows it: markup gone, paragraph breaks retained. */
+/** The checksum-safe page form: markup gone, paragraph breaks retained, stored entities intact. */
 export const normaliseText = textModule.normaliseText as (text: string) => string;
+
+/** The page as the client draws it: layout retained, locale name marker removed, entities decoded. */
+export const shownText = textModule.shownText as (text: string) => string;
 
 /**
  * A page in spoken form, its book's title ahead of it unless the page already opens with it.

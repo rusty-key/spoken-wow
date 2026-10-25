@@ -1,8 +1,8 @@
 // Page text as it comes out of vmangos, and as it goes to a narrator.
 //
-// Two forms, deliberately: `normaliseText` is stored and shown, so it keeps the shape of
-// the page -- a letter's paragraphs are part of reading it. `spokenText` is what would be
-// sent to ElevenLabs, where a newline buys nothing.
+// Three forms, deliberately: `normaliseText` is the checksum-safe stored form, `shownText`
+// is what the client draws with layout retained, and `spokenText` is what would be sent to
+// ElevenLabs, where a newline buys nothing.
 //
 // No dependencies, so `node tools/extract.mjs` runs on a clone with nothing installed.
 
@@ -26,7 +26,7 @@ const LINE_BREAK = /<br(?![\w])[^>]*>|<\/(?:p|h[1-6])(?![\w])[^>]*>/gi;
 
 // Keep WoW's explicit `$B` break distinct from source newlines while signed HTML is laid out:
 // source newlines are HTML whitespace, but `$B` is a line the client actually draws.
-const PAGE_BREAK = "\u0000";
+const PAGE_BREAK = "\u0001";
 
 /**
  * The entities the signed pages carry. `&lt;` and `&gt;` stay escaped in storage: decoded,
@@ -38,8 +38,8 @@ const STORED_ENTITY = /&(amp|quot|apos|nbsp);/g;
 /**
  * Storage form: real newlines, no trailing spaces, no runs of blank lines, no markup.
  *
- * `$B` is WoW's newline token and appears in both cases in the same table, so matching
- * only the documented upper case leaves a literal "$b" in the middle of a sentence.
+ * `$B` is WoW's newline token. Plain pages turn it into a newline before line cleanup; signed
+ * pages keep it separate from HTML whitespace until the signed markup is laid out.
  *
  * A signed page (A Treatise on Military Ranks, the tombstones) is HTML in page_text. It is
  * stored as the lines the client draws, so the site shows words rather than tags. The
@@ -47,16 +47,16 @@ const STORED_ENTITY = /&(amp|quot|apos|nbsp);/g;
  * checksum still agrees; it is ASCII whitespace only on both sides for that reason.
  */
 export function normaliseText(raw) {
-  const text = String(raw ?? "")
-    .replace(/\r\n?/g, "\n")
-    .replace(/\$[Bb]/g, PAGE_BREAK)
+  const source = String(raw ?? "").replace(/\r\n?/g, "\n");
+  if (SIGNED.test(source)) return unmark(source.replace(/\$[Bb]/g, PAGE_BREAK));
+
+  return source
+    .replace(/\$[Bb]/g, "\n")
     .split("\n")
     .map((line) => line.replace(/[ \t]+$/, ""))
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  if (SIGNED.test(text)) return unmark(text);
-  return text.replaceAll(PAGE_BREAK, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /**
@@ -88,6 +88,17 @@ const ASIDE = /<([^<>]+)>/g;
  * word "nombre", so it goes, as it did before asides were read.
  */
 const NAME_PLACEHOLDER = /<nombre>/gi;
+
+/**
+ * Display form: storage layout, with the locale's name marker removed and entities drawn as
+ * characters. This is intentionally not `spokenText`: narration flattens paragraphs and must
+ * not decode an escaped tag before it has decided whether the bracketed text is an aside.
+ */
+export function shownText(text) {
+  return normaliseText(text)
+    .replace(NAME_PLACEHOLDER, "")
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITIES[name]);
+}
 
 /**
  * Narration form: one flowing paragraph, asides read.

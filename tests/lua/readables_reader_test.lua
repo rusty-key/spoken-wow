@@ -28,6 +28,24 @@ B:InitDB()
 B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 
+-- The exporter and Checksum.lua consume this same fixture. Keep the cases in one file: a
+-- normalisation change that passes Node but differs in Lua would key the next pack silently.
+local function DecodeFixture(value)
+    value = value:gsub("\\n", "\n")
+    value = value:gsub("\\r", "\r")
+    value = value:gsub("\\t", "\t")
+    value = value:gsub("\\0", "\0")
+    return value:gsub("\\\\", "\\")
+end
+local cases = assert(io.open(here .. "/../../pipelines/readables/tools/lib/normalise-cases.tsv", "r"))
+for line in cases:lines() do
+    local name, input, expected = line:match("([^\t]*)\t([^\t]*)\t(.*)")
+    Expect("shared normalisation case: " .. name, B:Normalise(DecodeFixture(input)), DecodeFixture(expected))
+end
+cases:close()
+Expect("shown text drops locale name markers and decodes entities",
+    B:ShownText("Ya no somos <nombre>.\n\n&amp; &lt;nombre&gt;"), "Ya no somos .\n\n& <nombre>")
+
 -- Two real pages of one real book: the Hillsbrad Town Registry, whose first page names the
 -- town and whose second lists its debts.
 local REGISTRY_1 = "Hillsbrad Town Registry\n\nWe the people of Hillsbrad do solemny swear our faith and devotion to the Alliance maintained by the great monarchs, King Magni Bronzebeard of Ironforge and King Anduin Wrynn of Stormwind.\n\nHerein lies the town registry for purposes of governing this fair city in the foothills of the great Alterac Mountains as well as serving as a record of those who have paid their taxes to their Kings and to the great almighty Alliance."
@@ -61,6 +79,21 @@ _G.MailFrame = nil
 ---------------------------------------------------------------- the title fallback
 stub.ShowPage({ title = "Registre de la ville", number = 1, text = REGISTRY_1 })
 Expect("a title the corpus does not know still finds the page by checksum", B:PageOnScreen(), 261)
+
+-- A title/owner fallback identifies a page only approximately. It must not replace a translated
+-- pack's known caption until the same page is matched exactly by its checksum.
+do
+    local packs, kept = _G.SpokenReadablesAudioPacks, B.pageText
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio_esES = {
+        version = 1, language = "esES", pages = { [261] = { file = "261", len = 1, text = "Texto del paquete." } },
+    } }
+    B.pageText = nil
+    B:RememberPageText(261, "esES", "Texto adivinado.", nil, false)
+    Expect("a guessed client page does not replace a pack caption", B:PageTextIn(261, "esES"), "Texto del paquete.")
+    B:RememberPageText(261, "esES", "Texto exacto.", nil, true)
+    Expect("an exact client page can replace the pack caption", B:PageTextIn(261, "esES"), "Texto exacto.")
+    _G.SpokenReadablesAudioPacks, B.pageText = packs, kept
+end
 
 ---------------------------------------------------------------- refusing to guess
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = "Words nobody wrote." })

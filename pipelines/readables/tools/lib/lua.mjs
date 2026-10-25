@@ -9,7 +9,7 @@
 
 import { pageChecksum } from "./naming.mjs";
 import { cannotBeHad } from "./places.mjs";
-import { normaliseText } from "./text.mjs";
+import { shownText } from "./text.mjs";
 
 /** Escape control bytes too: page text can contain newlines and tabs. */
 export function quote(text) {
@@ -168,7 +168,7 @@ export function booksLua(entries) {
 
   lines.push("", "\tpages = {");
   for (const entry of [...sorted].sort((a, b) => a.pageId - b.pageId)) {
-    lines.push(`\t\t[${entry.pageId}] = { book = ${entry.bookId}, number = ${entry.pageNumber}, text = ${quote(normaliseText(entry.text))} },`);
+    lines.push(`\t\t[${entry.pageId}] = { book = ${entry.bookId}, number = ${entry.pageNumber}, text = ${quote(shownText(entry.text))} },`);
   }
 
   lines.push("\t},", "", "\tbooks = {");

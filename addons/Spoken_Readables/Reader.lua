@@ -350,7 +350,7 @@ function SpokenReadables:PageOnScreen()
 			and self:PackLanguage(pack) == client then
 			local found = FindAny(pack)
 			if found then
-				self:RememberPageText(found, client, text, title)
+				self:RememberPageText(found, client, text, title, true)
 				return found, true
 			end
 		end
@@ -366,7 +366,7 @@ function SpokenReadables:PageOnScreen()
 	if not found then
 		return nil
 	end
-	self:RememberPageText(found, language, text, title)
+	self:RememberPageText(found, language, text, title, exact)
 	return found, exact
 end
 
@@ -374,12 +374,13 @@ end
 -- identified as books, in the language of the matching index, for those packs.
 -- The title is the book's, so the pages queued after this one carry it too: the corpus has
 -- only the English one.
-function SpokenReadables:RememberPageText(pageId, language, text, title)
+function SpokenReadables:RememberPageText(pageId, language, text, title, exact)
 	self.pageText = self.pageText or {}
 	self.pageText[language] = self.pageText[language] or {}
 	-- Keep the page's paragraph breaks: the Compendium shows this cached text directly, and
-	-- flattening it turns a letter or book into one uninterrupted string of words.
-	self.pageText[language][pageId] = self:Normalise(text)
+	-- flattening it turns a letter or book into one uninterrupted string of words. A fallback
+	-- title/owner match is only a placement guess; its text must not replace a pack's known text.
+	self.pageText[language][pageId] = { text = self:ShownText(text), exact = exact == true }
 	local book = self:PlaceOf(pageId)
 	if book and type(title) == "string" and title ~= "" then
 		self.bookTitle = self.bookTitle or {}
@@ -402,7 +403,8 @@ end
 --- The page as the client showed it this session in `language`, or nil.
 local function KeptText(self, pageId, language)
 	local kept = self.pageText and self.pageText[language] and self.pageText[language][pageId]
-	return type(kept) == "string" and kept ~= "" and kept or nil
+	if type(kept) ~= "table" or not kept.exact then return nil end
+	return type(kept.text) == "string" and kept.text ~= "" and kept.text or nil
 end
 
 --- A page's words in `language`: the page as the client showed it this session, else the words of
