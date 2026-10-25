@@ -147,12 +147,6 @@ function Actions.OfferLogMenu(button, isReport)
     end)
 end
 
---- The line a Report button's tooltip ends with, where the menu exists.
-function Actions.AddLogMenuHint(tooltip)
-    local hint = Developer:MenuHint()
-    if hint then tooltip:AddLine(hint, 0.6, 0.6, 0.6, true) end
-end
-
 --- The subtitle's round button, the one every window shows: 24 across, the player's ring,
 --- `glyphSize` square glyph centred in it (or reaching the rim with none). Made without a parent
 --- and given one after, which a button on the open quest log needs (taint), and which costs the
@@ -976,7 +970,6 @@ local function NewButton(frame, action)
             if self.action and self.action.tooltip then
                 GameTooltip:SetOwner(self, "ANCHOR_LEFT")
                 self.action.tooltip(GameTooltip)
-                if self.action.id == "report" then Actions.AddLogMenuHint(GameTooltip) end
                 GameTooltip:Show()
             end
         end)

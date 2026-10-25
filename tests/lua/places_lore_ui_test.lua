@@ -219,14 +219,11 @@ Z:RefreshLoreWindow()
 Expect("...and gives it back when it is off", page.report:IsShown(), true)
 _G.Spoken = spoken
 
--- Play's tooltip as every Play of the Compendium's has it: Spoken's names, and under Stop and Replay
--- Spoken's words for what they do; under Play, what is read. A click redraws it while the pointer is
--- still on the button. Report's ends with the debug log's menu hint.
+-- Play and Report tooltips: titles only.
 do
     local env, state = _G.SpokenEnv, { started = false, paused = false }
     local clip = {}
-    _G.SpokenEnv = { L = { PLAY = "Spoken Play", STOP = "Spoken Stop", REPLAY = "Spoken Replay",
-        STOP_READING_TIP = "Stops the reading.", REPLAY_READING_TIP = "Reads it again." } }
+    _G.SpokenEnv = { L = { PLAY = "Spoken Play", STOP = "Spoken Stop", REPLAY = "Spoken Replay" } }
     -- The story's line, in the queue once Play has started it, as Spoken's queue says it.
     local saved = { Z.LoreClip, Z.PlayLore }
     Z.LoreClip = function() return state.started and clip or nil end
@@ -246,14 +243,11 @@ do
         return table.concat(GameTooltip.lines or {}, "|")
     end
     page:RefreshPlay()
-    Expect("Play's tooltip: Spoken's Play, and what it reads", Tip(page.play), "Spoken Play|" .. Z.L.AUDIO_READ_TIP)
+    Expect("Play's tooltip keeps its title", Tip(page.play), "Spoken Play")
     page.play.scripts.OnClick(page.play)
-    Expect("...a click, the pointer still on it, redrawing it for Stop, in Spoken's words", Tip(page.play, true),
-        "Spoken Stop|Stops the reading.")
+    Expect("...a click still reads it", state.started, true)
     page.play.scripts.OnClick(page.play)
-    Expect("...and for Replay", Tip(page.play, true), "Spoken Replay|Reads it again.")
-    Expect("Report's tooltip ends with the debug log's menu hint", Tip(page.report),
-        Z.L.OPT_REPORT_PROBLEM .. "|" .. Z.L.OPT_REPORT_LINE_TIP .. "|Right-click: the debug log")
+    Expect("...and Report's tooltip keeps its title", Tip(page.report), Z.L.OPT_REPORT_PROBLEM)
     _G.Spoken, _G.SpokenEnv = spoken, env
     Z.LoreClip, Z.PlayLore = saved[1], saved[2]
     page:RefreshPlay()

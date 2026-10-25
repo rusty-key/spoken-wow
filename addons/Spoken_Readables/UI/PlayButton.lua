@@ -80,7 +80,6 @@ function SpokenReadables:NewOpenButton(parent, tooltip)
 		if not tip then return end
 		tip:SetOwner(self, "ANCHOR_LEFT")
 		tip:SetText(L.OPEN_IN_COMPENDIUM)
-		tip:AddLine(L.OPEN_READABLE_IN_COMPENDIUM_TIP, 1, 0.8, 0.2, true)
 		tip:Show()
 		self.tooltip = tip
 	end)

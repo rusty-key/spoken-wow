@@ -155,8 +155,8 @@ Book:Draw()
 Expect("...and turns to Stop while it reads", row.play.state, "stop")
 Expect("...Skip lit", row.skip:IsEnabled(), true)
 row.play.scripts.OnEnter(row.play)
-Expect("its tooltip is on the book view, which DialogueUI's hiding of the interface leaves up",
-    row.play.tooltip ~= nil and row.play.tooltip:GetParent() == view and row.play.tooltip.text, B.L.STOP_TIP)
+Expect("its tooltip names Stop", row.play.tooltip ~= nil and row.play.tooltip:GetParent() == view
+    and row.play.tooltip.text, B.L.STOP_TIP)
 row.play.scripts.OnLeave(row.play)
 row.report.scripts.OnClick(row.report)
 local box = Spoken.ContributeBox

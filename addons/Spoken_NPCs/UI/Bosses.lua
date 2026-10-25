@@ -318,8 +318,8 @@ end
 --------------------------------------------------------------------------------
 
 -- Nothing to play or to report yet: a boss's story is words alone until it is voiced.
-local PLAY = { has = function() return false end, find = function() end, start = function() end, tip = "" }
-local REPORT = { has = function() return false end, open = function() end, title = "", tip = "" }
+local PLAY = { has = function() return false end, find = function() end, start = function() end }
+local REPORT = { has = function() return false end, open = function() end, title = "" }
 
 local function Boss(map, key)
 	return Index().byKey[map .. ":" .. key]

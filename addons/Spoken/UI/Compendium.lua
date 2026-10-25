@@ -1956,44 +1956,28 @@ function C.PlayClick(clip, start)
 	end
 end
 
---- A Play button's tooltip for `state`, as every Play of the Compendium's has it: the state's name
---- in Spoken's words, and under it what a click does, `tip` for Play.
-function C.PlayTooltip(button, state, tip)
+local Page = {}
+Page.__index = Page
+
+--- The state's name in Spoken's words, and why the button is greyed where it is.
+function C.PlayTooltip(button, state)
 	local words = _G.SpokenEnv and _G.SpokenEnv.L
 	if not (words and GameTooltip) then return end
 	GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-	local line
+	local key = state == "stop" and "STOP" or state == "replay" and "REPLAY" or "PLAY"
+	GameTooltip:SetText(words[key])
 	if button.IsEnabled and not button:IsEnabled() then
-		GameTooltip:SetText(words.PLAY)
-		line = words.PLAY_NO_VOICE
-	elseif state == "stop" then
-		GameTooltip:SetText(words.STOP)
-		line = words.STOP_READING_TIP
-	elseif state == "replay" then
-		GameTooltip:SetText(words.REPLAY)
-		line = words.REPLAY_READING_TIP
-	else
-		GameTooltip:SetText(words.PLAY)
-		line = tip
+		GameTooltip:AddLine(words.PLAY_NO_VOICE, 1, 0.8, 0.2, true)
 	end
-	if line then GameTooltip:AddLine(line, 1, 0.8, 0.2, true) end
 	GameTooltip:Show()
 end
 
---- A Report button's tooltip: `title`, `tip` under it, and the line about its right-click where
---- the debug log's menu is installed.
-function C.ReportTooltip(button, title, tip)
+function C.ReportTooltip(button, title)
 	if not GameTooltip then return end
 	GameTooltip:SetOwner(button, "ANCHOR_LEFT")
 	GameTooltip:SetText(title or "")
-	if tip then GameTooltip:AddLine(tip, 1, 0.8, 0.2, true) end
-	local hint = _G.Spoken and Spoken.LogMenuHint and Spoken:LogMenuHint()
-	if hint then GameTooltip:AddLine(hint, 0.6, 0.6, 0.6, true) end
 	GameTooltip:Show()
 end
-
-local Page = {}
-Page.__index = Page
 
 -- The spellbook's page, its top band cut off: a band made to sit under the spellbook's own top bar.
 local SPELLBOOK_PAGE = { file = ZONES_ART .. "spellbook-Page-Right-C60", coords = { 0, 0.791016, 0.666016 * 0.07, 0.666016 } }
@@ -2001,8 +1985,8 @@ local SPELLBOOK_PAGE = { file = ZONES_ART .. "spellbook-Page-Right-C60", coords 
 --- A page of parchment filling `parent`: a title, the line under it, the divider, the words in a
 --- scrolling view (UI/TextView.lua, in `addon`'s font for its language), and Report and Play on the
 --- title's right, as the places' page has them. `play` = { has(target), find(target) -> the line in
---- the queue or nil, start(target), tip }, what Play does for whatever Show was given (C.PlayState,
---- C.PlayClick); `report` = { has(target), open(target), title, tip }, what Report does, hidden where
+--- the queue or nil, start(target) }, what Play does for whatever Show was given (C.PlayState,
+--- C.PlayClick); `report` = { has(target), open(target), title }, what Report does, hidden where
 --- it has nothing to report or the player hides Report buttons.
 ---
 --- `look`, where given, changes the page's art from the spellbook's for the Compendium:
@@ -2196,7 +2180,7 @@ function C.NewPage(parent, addon, play, report, look)
 		button:SetScript("OnClick", function()
 			if self.target ~= nil then report.open(self.target) end
 		end)
-		button:HookScript("OnEnter", function(b) C.ReportTooltip(b, report.title, report.tip) end)
+		button:HookScript("OnEnter", function(b) C.ReportTooltip(b, report.title) end)
 		button:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 		button:Hide()
 		self.report = button
@@ -2214,9 +2198,9 @@ function C.NewPage(parent, addon, play, report, look)
 			-- Looked up each click: a line that has since finished is no longer in the queue.
 			C.PlayClick(play.find(target), function() play.start(target) end)
 			self:RefreshPlay()
-			if GameTooltip and GameTooltip:GetOwner() == button then C.PlayTooltip(button, button.pageState, play.tip) end
+			if GameTooltip and GameTooltip:GetOwner() == button then C.PlayTooltip(button, button.pageState) end
 		end)
-		button:HookScript("OnEnter", function(b) C.PlayTooltip(b, b.pageState, play.tip) end)
+		button:HookScript("OnEnter", function(b) C.PlayTooltip(b, b.pageState) end)
 		button:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 		button:Hide()
 		self.play = button
