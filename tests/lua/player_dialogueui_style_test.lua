@@ -571,12 +571,12 @@ do
 end
 do
     local tall = Skin.frame:GetHeight()
-    env.Addon.db.profile.Transcript.ShowWords = false
+    env.Addon.db.profile.Transcript.HideSubtitles = true
     env.PlayerFrame:RefreshConfig(); env.Transcript:RefreshConfig()
-    Expect("Show Words off, the window stays and lists the queue in the words' place",
+    Expect("Hide Subtitles on, the window stays and lists the queue in the words' place",
         tostring(Skin.frame:IsShown()) .. " " .. tostring(env.Transcript.frame:IsShown()) .. " "
         .. tostring(env.Transcript.labels[1]:IsShown()), "true true true")
-    env.Addon.db.profile.Transcript.ShowWords = true
+    env.Addon.db.profile.Transcript.HideSubtitles = false
     env.PlayerFrame:RefreshConfig(); env.Transcript:RefreshConfig()
 end
 Skin.play.scripts.OnClick(Skin.play)

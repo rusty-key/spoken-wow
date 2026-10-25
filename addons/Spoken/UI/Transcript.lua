@@ -404,13 +404,13 @@ function Transcript:ActiveSegment(progress)
     return self.segments[low]
 end
 
--- Show Words off: the rows a window lists the queue in, as many as its words would take.
+-- Hide Subtitles on: the rows a window lists the queue in, as many as its words would take.
 local function QueueCap()
     if Expanded() then return EXPANDED_LINES end
     return Config().Lines == 1 and 1 or 2
 end
 
---- The titles a window lists in the words' place with Show Words off, up to `cap`, and their lines:
+--- The titles a window lists in the words' place with Hide Subtitles on, up to `cap`, and their lines:
 --- the line playing first, then each one waiting. The sample alone while a window previews.
 function Transcript:QueueTitles(cap)
     local queue = SoundQueue:GetQueue()
@@ -423,14 +423,14 @@ function Transcript:QueueTitles(cap)
     return titles, clips
 end
 
---- Whether a window lists the queue in place of `clip`'s words: Show Narrator shows it, Show Words
---- is off, and the style is a window.
+--- Whether a window lists the queue in place of `clip`'s words: Show Narrator shows it, Hide
+--- Subtitles is on, and the style is a window.
 function Transcript:ListsQueue(clip)
-    return clip ~= nil and Addon:ShowsNarrator(clip) and Config().ShowWords == false
+    return clip ~= nil and Addon:ShowsNarrator(clip) and Config().HideSubtitles == true
         and Addon:DisplayStyle() ~= "subtitle"
 end
 
---- The rows the queue takes with Show Words off.
+--- The rows the queue takes with Hide Subtitles on.
 function Transcript:QueueRows()
     return #self:QueueTitles()
 end
@@ -715,9 +715,9 @@ function Transcript:Reset()
     self:RefreshConfig()
 end
 
---- Whether a window shows the words of `clip`: Show Narrator shows it, and Show Words is on.
+--- Whether a window shows the words of `clip`: Show Narrator shows it, and Hide Subtitles is off.
 function Transcript:ShowsWords(clip)
-    return Addon:ShowsNarrator(clip) and Config().ShowWords ~= false
+    return Addon:ShowsNarrator(clip) and not Config().HideSubtitles
 end
 
 function Transcript:SetEnabled(enabled)

@@ -480,7 +480,7 @@ function Skin:Layout()
         local needed = self:TextLines(wordsWidth)
         if needed and needed < lines then lines = needed end
     end
-    -- Show Words off: a row for each line the queue lists in their place.
+    -- Hide Subtitles on: a row for each line the queue lists in their place.
     if Transcript:ListsQueue(self.clip) then lines = math.min(lines, math.max(1, Transcript:QueueRows())) end
     local captionHeight = lines * lineHeight
     local height = padTop + wordsTop + captionHeight + padBottom + footerHeight

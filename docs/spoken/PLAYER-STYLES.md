@@ -89,15 +89,15 @@ The page builds only the rows a style reads, and greys a row whose switch is off
 | Style | Rows |
 | --- | --- |
 | Subtitles Only | Subtitle Size, Show Narrator, Word Size, Lock Position, Shadow Behind Words, Show Name and Title, Hide Portrait (under Show Name and Title), Show Progress Bar, Sentences at Once or Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
-| Small Window | Window Size, Show Narrator, Show Words, Word Size, Lock Position, Theme, Hide Portrait, Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
-| Large Window | Window Size, Show Narrator, Show Words, Word Size, Lock Position, Hide Portrait, Show Progress Bar, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
-| DialogueUI | Window Size, Show Narrator, Show Words, Word Size, Lock Position, Theme, Show Progress Bar, Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
+| Small Window | Window Size, Show Narrator, Hide Subtitles, Word Size, Lock Position, Theme, Hide Portrait, Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
+| Large Window | Window Size, Show Narrator, Hide Subtitles, Word Size, Lock Position, Hide Portrait, Show Progress Bar, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
+| DialogueUI | Window Size, Show Narrator, Hide Subtitles, Word Size, Lock Position, Theme, Show Progress Bar, Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Type Words Out, Type Out By |
 | Voice Only | none; with DialogueUI installed, Show Narrator, Highlight Words, Type Words Out and Type Out By |
 
 - Show Narrator off puts the window and subtitles away and greys every row about them; the voice plays on. Its
   row for each module under it does the same for that module's lines.
-- Show Words (`Transcript.ShowWords`), the windows' alone, is one switch for every module. Off, a
-  window keeps its portrait, name, title, controls and progress line, and lists the queue where the
+- Hide Subtitles (`Transcript.HideSubtitles`), the windows' alone, is one switch for every module. On, a
+  window keeps its portrait, name, controls and progress line, and lists the queue where the
   words were: a title to a row, the line playing first and lit, as many rows as Rows at Once (the
   Large Window's three), the window closing up when fewer are queued. The title beside the name
   goes, the first row being it, and "+N" counts only the lines past those listed. A click on a row

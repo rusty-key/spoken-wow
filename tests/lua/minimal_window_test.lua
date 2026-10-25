@@ -101,9 +101,9 @@ do
 end
 do
     local tall = M.frame:GetHeight()
-    env.Addon.db.profile.Transcript.ShowWords = false
+    env.Addon.db.profile.Transcript.HideSubtitles = true
     env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
-    Expect("Show Words off, the window stays with its name and controls and lists the queue in the words' place",
+    Expect("Hide Subtitles on, the window stays with its name and controls and lists the queue in the words' place",
         Try(function()
             return tostring(M.frame:IsShown()) .. " " .. M.name:GetText() .. " " .. tostring(M.play:IsShown()) .. " "
                 .. tostring(T.frame:IsShown()) .. " " .. T.labels[1]:GetText():gsub("^|c%x+", "") .. " "
@@ -134,9 +134,9 @@ do
         return env.SoundQueue:GetQueueSize() .. " " .. tostring(T.queueRows[2]:IsShown()) .. " "
             .. tostring(T.labels[1]:GetText():find("One", 1, true) ~= nil) end), "1 false true")
     quests:Enqueue(Line("Two"))
-    env.Addon.db.profile.Transcript.ShowWords = true
+    env.Addon.db.profile.Transcript.HideSubtitles = false
     env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
-    Expect("...and on again, the words are back", Try(function()
+    Expect("...and off again, the words are back", Try(function()
         return tostring(T.frame:IsShown()) .. " " .. tostring(M.frame:GetHeight() == tall) end), "true true")
 end
 

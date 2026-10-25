@@ -442,7 +442,7 @@ function Actions.Speaker(clip)
     return name ~= Actions.Label(clip) and name or ""
 end
 
---- The lines waiting behind the one playing, past those a window lists with Show Words off.
+--- The lines waiting behind the one playing, past those a window lists with Hide Subtitles on.
 function Actions.Waiting()
     local listed = Transcript:ListsQueue(SoundQueue:GetCurrentSound()) and Transcript:Listed() or 1
     return math.max(0, SoundQueue:GetQueueSize() - math.max(1, listed))

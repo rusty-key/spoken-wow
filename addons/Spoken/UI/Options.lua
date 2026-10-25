@@ -399,8 +399,8 @@ local function Build()
     local function Subtitles() return Style() == "subtitle" end
     local function DUI() return Style() == "dialogueui" end
     local function Narrator() return transcript().Enabled end
-    -- Show Words is the windows' alone: the subtitles are nothing but the words.
-    local function Words() return Subtitles() or transcript().ShowWords ~= false end
+    -- Hide Subtitles is the windows' alone: the subtitles are nothing but the words.
+    local function Words() return Subtitles() or not transcript().HideSubtitles end
     -- Highlight Words and Type Words Out mark DialogueUI's own quest text too, words or none.
     local function WordsOrMarks() return Words() or DialogueUITheme:Installed() end
     local refresh = function() PlayerFrame:RefreshConfig(); Options:UpdateRows() end
@@ -501,12 +501,12 @@ local function Build()
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()
-    -- Off, a window keeps its portrait, name and controls and lists the queue in the words' place.
-    local showWords = layout:Checkbox(L.OPT_SHOW_WORDS, nil,
-        function() return transcript().ShowWords ~= false end,
-        function(v) transcript().ShowWords = v end, function() refreshText(); Options:UpdateRows() end)
-    Only(showWords, InWindow)
-    Requires(showWords, Narrator, L.REASON_NARRATOR)
+    -- On, a window keeps its portrait, name and controls and lists the queue in the words' place.
+    local hideSubtitles = layout:Checkbox(L.OPT_HIDE_SUBTITLES, nil,
+        function() return transcript().HideSubtitles == true end,
+        function(v) transcript().HideSubtitles = v end, function() refreshText(); Options:UpdateRows() end)
+    Only(hideSubtitles, InWindow)
+    Requires(hideSubtitles, Narrator, L.REASON_NARRATOR)
     local size = layout:Slider(L.TRANSCRIPT_SIZE, SIZES.FontSize[1], SIZES.FontSize[2], SIZES.FontSize[3],
         function() return transcript().FontSize end,
         function(v) transcript().FontSize = v end, refreshText,
@@ -744,7 +744,7 @@ local function Build()
     local fit = DialogueUIOptions:FitRow(layout, function(row) return Only(row, DUI) end, refresh)
     if fit then
         Requires(fit, Narrator, L.REASON_NARRATOR)
-        Requires(fit, Words, L.REASON_WORDS)
+        Requires(fit, Words, L.REASON_SUBTITLES_HIDDEN)
     end
     local SCROLL_LABELS = { line = L.TRANSCRIPT_SCROLL_LINE, page = L.TRANSCRIPT_SCROLL_PAGE,
         off = L.TRANSCRIPT_SCROLL_OFF }
@@ -754,7 +754,7 @@ local function Build()
         function(v) return SCROLL_LABELS[v] or v end)
     Only(scroll, InWindow)
     Requires(scroll, Narrator, L.REASON_NARRATOR)
-    Requires(scroll, Words, L.REASON_WORDS)
+    Requires(scroll, Words, L.REASON_SUBTITLES_HIDDEN)
     -- The subtitle's Auto-Scroll has no Off: it cannot be scrolled by hand.
     local subtitleScroll = layout:Dropdown(L.TRANSCRIPT_SCROLL, nil, { "line", "page" },
         function() return transcript().SubtitleScroll or "page" end,
@@ -770,14 +770,14 @@ local function Build()
         function(v) transcript().HighlightWord = v end, refreshTranscript)
     Only(highlight, MarksWords)
     Requires(highlight, Narrator, L.REASON_NARRATOR)
-    Requires(highlight, WordsOrMarks, L.REASON_WORDS)
+    Requires(highlight, WordsOrMarks, L.REASON_SUBTITLES_HIDDEN)
     Requires(highlight, function() return not (Subtitles() and transcript().Typewriter) end, L.REASON_UNTYPED)
     local typewriter = layout:Checkbox(L.TRANSCRIPT_TYPEWRITER, nil,
         function() return transcript().Typewriter end,
         function(v) transcript().Typewriter = v end, refreshTranscript)
     Only(typewriter, MarksWords)
     Requires(typewriter, Narrator, L.REASON_NARRATOR)
-    Requires(typewriter, WordsOrMarks, L.REASON_WORDS)
+    Requires(typewriter, WordsOrMarks, L.REASON_SUBTITLES_HIDDEN)
     layout:Indent()
     local by = layout:Dropdown(L.TRANSCRIPT_TYPEWRITER_BY, nil, { "letter", "word" },
         function() return transcript().TypewriterBy or "letter" end,
@@ -786,7 +786,7 @@ local function Build()
     layout:Outdent()
     Only(by, MarksWords)
     Requires(by, Narrator, L.REASON_NARRATOR)
-    Requires(by, WordsOrMarks, L.REASON_WORDS)
+    Requires(by, WordsOrMarks, L.REASON_SUBTITLES_HIDDEN)
     Requires(by, function() return transcript().Typewriter end, L.REASON_TYPEWRITER)
 
     -- The rows feature addons add for DialogueUI's own window, where it is installed.
