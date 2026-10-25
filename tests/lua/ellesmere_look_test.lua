@@ -1,6 +1,5 @@
 -- Spoken's windows in EllesmereUI's look: only while EllesmereUI is loaded and its own look
--- ("EllesmereUI Style") is the one the UI wears. The Compendium and the story beside the map are
--- checked in places_lore_ui_test. How it looks is checked in game.
+-- ("EllesmereUI Style") is the one the UI wears. How it looks is checked in game.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")

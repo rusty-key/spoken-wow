@@ -40,7 +40,7 @@ local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 -- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
 -- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
 local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
--- A clean picture (TextView:SetCleanPictures) loses this share of each side: past it no pixel of
+-- A clean picture, with straight edges, loses this share of each side: past it no pixel of
 -- any shipped picture is thinned toward the parchment by more than 1%, measured from the shipped
 -- masks (the worst, Mask14, needs 0.172: 44 of 256 rows). The same share off every side keeps it 2:1.
 local PICTURE_CROP = 0.175
