@@ -410,17 +410,17 @@ local function QueueCap()
     return Config().Lines == 1 and 1 or 2
 end
 
---- The titles a window lists in the words' place with Show Words off, up to `cap`: the line playing
---- first, then each one waiting. The sample alone while a window previews.
+--- The titles a window lists in the words' place with Show Words off, up to `cap`, and their lines:
+--- the line playing first, then each one waiting. The sample alone while a window previews.
 function Transcript:QueueTitles(cap)
     local queue = SoundQueue:GetQueue()
     if #queue == 0 and self.clip then queue = { self.clip } end
-    local titles = {}
+    local titles, clips = {}, {}
     for i = 1, math.min(#queue, cap or QueueCap()) do
         local present = queue[i].present or {}
-        titles[i] = present.label or present.header or queue[i].key or ""
+        titles[i], clips[i] = present.label or present.header or queue[i].key or "", queue[i]
     end
-    return titles
+    return titles, clips
 end
 
 --- Whether a window lists the queue in place of `clip`'s words: Show Narrator shows it, Show Words
@@ -435,11 +435,54 @@ function Transcript:QueueRows()
     return #self:QueueTitles()
 end
 
+--- The lines listed now, the one playing among them: the windows count only those past them.
+function Transcript:Listed()
+    return #self:QueueTitles(LineCount())
+end
+
+-- A row of the list, over its title: a click takes that line out of the queue, as Skip does the
+-- one playing.
+function Transcript:QueueRow(row)
+    self.queueRows = self.queueRows or {}
+    if self.queueRows[row] then return self.queueRows[row] end
+    local button = CreateFrame("Button", nil, self.frame)
+    button:SetFrameLevel(self.frame:GetFrameLevel() + 1)
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
+    button:SetScript("OnClick", function(_, mouse)
+        -- The right button does what it does on the words.
+        if mouse == "RightButton" then return self.frame:GetScript("OnClick")(self.frame, mouse) end
+        local clip = button.clip
+        if not clip then return end
+        if clip == SoundQueue:GetCurrentSound() then
+            Actions.Skip()
+        elseif SoundQueue:RemoveSoundFromQueue(clip) then
+            SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
+        end
+        Actions.HideTipFor(button)
+    end)
+    button:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L.BIND_SKIP)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function() Actions.HideTipFor(button) end)
+    self.queueRows[row] = button
+    return button
+end
+
+-- The rows' buttons out of the way while the words show.
+local function HideQueueRows(self)
+    for _, button in ipairs(self.queueRows or {}) do button.clip = nil; button:Hide() end
+end
+
 -- The queue's titles on the rows, the line playing lit as the word being read is.
 function Transcript:RenderQueue()
-    local titles = self:QueueTitles(LineCount())
+    local titles, clips = self:QueueTitles(LineCount())
     self.top, self.topTarget, self.activeWord = 1, 1, nil
-    local key = "queue:" .. table.concat(titles, "\n")
+    local ids = {}
+    for row, clip in ipairs(clips) do ids[row] = tostring(clip.id or clip.key) end
+    local key = "queue:" .. table.concat(titles, "\n") .. ":" .. table.concat(ids, ",")
     if self.renderedKey == key then return end
     self.renderedKey, self.placedKey = key, nil
     local color = self.style and self.style.highlight or HIGHLIGHT
@@ -453,11 +496,25 @@ function Transcript:RenderQueue()
         label:SetAlpha(1)
         label:SetShown(title ~= nil)
     end
+    for row = 1, math.max(#titles, #(self.queueRows or {})) do
+        local button = self:QueueRow(row)
+        local clip = clips[row]
+        -- The sample a window previews is not in the queue: nothing to take out.
+        button.clip = clip ~= PlayerFrame.sample and clip or nil
+        button:SetShown(button.clip ~= nil)
+        if button.clip then
+            button:ClearAllPoints()
+            button:SetPoint("TOPLEFT", self.labels[row], "TOPLEFT", 0, 0)
+            button:SetPoint("RIGHT", self.frame, "RIGHT", 0, 0)
+            button:SetHeight(step)
+        end
+    end
 end
 
 function Transcript:Render()
     if not self.labels then return end
     if self:ListsQueue(self.clip) then return self:RenderQueue() end
+    HideQueueRows(self)
     local cfg = Config()
     local progress = self:GetProgress()
     local segment = self:ActiveSegment(progress)

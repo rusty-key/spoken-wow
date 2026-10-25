@@ -108,6 +108,9 @@ do
             return tostring(M.frame:IsShown()) .. " " .. M.name:GetText() .. " " .. tostring(M.play:IsShown()) .. " "
                 .. tostring(T.frame:IsShown()) .. " " .. T.labels[1]:GetText():gsub("^|c%x+", "") .. " "
                 .. T.labels[2]:GetText() .. " " .. tostring(T.labels[3]:IsShown()) end), "true Grull true true One|r Two false")
+    env.PlayerFrame:Update()
+    Expect("...no title beside the name, nor a count of the lines listed", Try(function()
+        return "[" .. M.title.text:GetText() .. "] " .. tostring(M.count:IsShown()) end), "[] false")
     env.Addon.db.profile.Transcript.Lines = 1
     env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
     Expect("...as many as Rows at Once", Try(function()
@@ -118,9 +121,19 @@ do
     T:Update()
     Expect("...a line added waits past the rows", Try(function() return T.labels[2]:GetText() .. " "
         .. tostring(T.labels[3]:IsShown()) end), "Two false")
+    env.PlayerFrame:Update()
+    Expect("...counted past them", Try(function() return M.count:GetText() end), "• +1")
     env.SoundQueue:RemoveSoundFromQueue(env.SoundQueue:GetQueue()[2])
     T:Update()
     Expect("...and one taken out lets the next up", Try(function() return T.labels[2]:GetText() end), "Three")
+    Expect("each row stands for its line", Try(function() return T.queueRows[1].clip == env.SoundQueue:GetCurrentSound()
+        and T.queueRows[2]:IsShown() end), true)
+    T.queueRows[2].scripts.OnClick(T.queueRows[2], "LeftButton")
+    T:Update()
+    Expect("...a click takes a waiting line out, the one playing kept", Try(function()
+        return env.SoundQueue:GetQueueSize() .. " " .. tostring(T.queueRows[2]:IsShown()) .. " "
+            .. tostring(T.labels[1]:GetText():find("One", 1, true) ~= nil) end), "1 false true")
+    quests:Enqueue(Line("Two"))
     env.Addon.db.profile.Transcript.ShowWords = true
     env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
     Expect("...and on again, the words are back", Try(function()

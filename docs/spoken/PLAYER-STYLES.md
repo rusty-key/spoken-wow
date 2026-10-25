@@ -99,8 +99,10 @@ The page builds only the rows a style reads, and greys a row whose switch is off
 - Show Words (`Transcript.ShowWords`), the windows' alone, is one switch for every module. Off, a
   window keeps its portrait, name, title, controls and progress line, and lists the queue where the
   words were: a title to a row, the line playing first and lit, as many rows as Rows at Once (the
-  Large Window's three), the window closing up when fewer are queued. Word Size and Rows at Once
-  size that list. Fit Window to Words and Auto-Scroll grey out, and Highlight Words, Type Words Out
+  Large Window's three), the window closing up when fewer are queued. The title beside the name
+  goes, the first row being it, and "+N" counts only the lines past those listed. A click on a row
+  takes that line out of the queue, the one playing as Skip does. Word Size and Rows at Once size
+  that list. Fit Window to Words and Auto-Scroll grey out, and Highlight Words, Type Words Out
   and Type Out By too unless DialogueUI is installed, whose own text they still mark. Subtitles Only
   shows the words whatever it says.
 - Highlight Words, Type Words Out and Type Out By are the rows that mark DialogueUI's own text

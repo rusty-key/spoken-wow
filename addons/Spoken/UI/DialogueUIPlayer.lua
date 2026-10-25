@@ -599,7 +599,7 @@ function Skin:UpdateControls(relayout)
     if not self.clip then return end
     local paused = SoundQueue:IsPaused()
     Actions.SetPlayGlyph(self.play, Actions.HeadState())
-    self.title.text:SetText(Label(self.clip))
+    self.title.text:SetText(Actions.Title(self.clip))
     Addon:ClipFont(self.title.text, self.clip)
     -- Why it has not started (the NPC's own greeting first, a fight), as every style says.
     self.tail:SetHeld(SoundQueue:GetHeldReason(self.clip))

@@ -517,7 +517,8 @@ function PlayerFrame:Update()
     local named = speaker ~= ""
     container.name:SetText(named and speaker or Label(head))
     Addon:ClipFont(container.name, head)
-    container.label:SetShown(named)
+    -- Not beside the name while the queue is listed under it, the line playing first.
+    container.label:SetShown(named and Actions.Title(head) ~= "")
     if named then
         local label = container.label
         label:SetWidth(0)

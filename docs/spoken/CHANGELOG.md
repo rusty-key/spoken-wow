@@ -7,7 +7,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Show Words is back, for the windows.** Turn it off and the Small Window, the Large Window and the
   DialogueUI window keep the portrait, name, controls and progress line, and list what is queued
   where the words were: the line playing first, then the ones waiting, a title to a row. Rows at
-  Once sets how many. Show Narrator still hides the whole window. Subtitles Only is not affected. *([rusty-key](https://github.com/rusty-key))*
+  Once sets how many. Click a row to skip that line. Show Narrator still hides the whole window. Subtitles Only is not affected. *([rusty-key](https://github.com/rusty-key))*
 - **A boss's story shows in the narrator when you kill the boss, in dungeons too.** The Bosses page no
   longer has Show a Boss's Story: killing is the only way, because inside an instance the game hides
   which boss a target is. The world bosses, whose fight the game sends no kill for, count when they die

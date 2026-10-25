@@ -364,7 +364,7 @@ function MinimalPlayer:UpdateControls()
     if not self.clip then return end
     local paused = SoundQueue:IsPaused()
     Actions.SetPlayGlyph(self.play, Actions.HeadState())
-    self.title.text:SetText(Label(self.clip))
+    self.title.text:SetText(Actions.Title(self.clip))
     Addon:ClipFont(self.title.text, self.clip)
     self.tail:SetHeld(SoundQueue:GetHeldReason(self.clip))
     self.tail:SetStopped(paused)
