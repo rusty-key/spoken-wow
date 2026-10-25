@@ -149,8 +149,12 @@ end
 --------------------------------------------------------------------------------
 
 local window, tabButtons
--- In EllesmereUI's look, the panel colour the tabs are boxes of; nil otherwise.
+-- In EllesmereUI's look, the panel colour the tabs are boxes of, opaque; nil otherwise.
 local flatTabs
+local function TabColor(skin)
+	local r, g, b = skin.GetPanelColor()
+	return { r or 0.08, g or 0.08, b or 0.08, 1 }
+end
 local active
 -- Whether the player has chosen a tab with the tabs along the window's foot this session: until
 -- then the window opens on the first tab (C:Toggle), not on whichever a part opened it on last.
@@ -507,7 +511,7 @@ local function FlatTab(tab)
 	plate.cover = plate:CreateTexture(nil, "BACKGROUND")
 	plate.cover:SetColorTexture(0, 0, 0, 1)
 	flat.plate = plate
-	flat.backing:SetColorTexture(flatTabs[1] or 0.08, flatTabs[2] or 0.08, flatTabs[3] or 0.08, 1)
+	flat.backing:SetColorTexture(unpack(flatTabs))
 	-- Round the backing, so they follow it down on the chosen tab.
 	local edges = SpokenEnv.Ellesmere:Edges(tab, flat.backing, SpokenLayout.Pixels(tab, 1, 1), 0)
 	flat.edges = { TOP = edges[1], BOTTOM = edges[2], LEFT = edges[3], RIGHT = edges[4] }
@@ -556,10 +560,10 @@ local function PaintFlatTab(tab, selected)
 	plate.cover:SetHeight(SpokenLayout.Pixels(plate, TAB_COVER, 1))
 	-- Over the window's border, so nothing parts the chosen tab from it; the tab's text and edges
 	-- over the plate.
-	plate:SetFrameLevel(window:GetFrameLevel() + 7)
+	plate:SetFrameLevel(window:GetFrameLevel() + SpokenEnv.Ellesmere.OVER_SHELL)
 	-- None for a hidden tab: the window with one part on has no tabs, and its one tab is chosen.
 	plate:SetShown(selected and tab:IsShown())
-	tab:SetFrameLevel(window:GetFrameLevel() + (selected and 8 or 1))
+	tab:SetFrameLevel(window:GetFrameLevel() + (selected and SpokenEnv.Ellesmere.OVER_SHELL + 1 or 1))
 	-- After the template's select or deselect, which sets its fonts again.
 	MuteLabel(tab)
 	local label = flat.label
@@ -573,7 +577,7 @@ end
 -- A failure in the look is said in chat and leaves the tab as the game made it, not the window
 -- without it.
 local function SafeFlatTab(tab)
-	SpokenEnv.Ellesmere:Try(function() FlatTab(tab) end)
+	SpokenEnv.Ellesmere:When(function() FlatTab(tab) end)
 end
 
 -- The tabs along the window's foot, as the character sheet has them; none with only one.
@@ -653,7 +657,7 @@ local function PaintTabs()
 end
 
 C.Ellesmere(function(skin)
-	flatTabs = { skin.GetPanelColor() }
+	flatTabs = TabColor(skin)
 	if not tabButtons then return end
 	for _, button in ipairs(tabButtons) do SafeFlatTab(button) end
 	LayOutTabs()
@@ -2250,7 +2254,7 @@ function Page:Darken(skin)
 	body:SetThumbColor(self.ink[1], self.ink[2], self.ink[3])
 	body:SetHeadInk(LIGHT_TITLE[1], LIGHT_TITLE[2], LIGHT_TITLE[3])
 	body:SetFadeColors(BackdropAt(skin, "TOP"), BackdropAt(skin, "BOTTOM"))
-	body:SetCleanPictures(true, true)
+	body:SetCleanPictures()
 	skin.Button(self.contribute)
 	-- White, as EllesmereUI writes the rest of the page.
 	skin.WhiteButtonLabel(self.contribute)
@@ -2261,7 +2265,7 @@ end
 C.Ellesmere(function(skin)
 	if not skin.OnLooksChanged then return end
 	skin.OnLooksChanged(function()
-		SpokenEnv.Ellesmere:Try(function()
+		SpokenEnv.Ellesmere:When(function()
 			local accent = { skin.GetAccentColor() }
 			EDGE_INK = { accent[1], accent[2], accent[3], 0.9 }
 			for _, list in ipairs(lists) do
@@ -2270,9 +2274,9 @@ C.Ellesmere(function(skin)
 				end
 			end
 			for _, page in ipairs(pages) do page.link = accent[1] and accent or LIGHT_TITLE end
-			flatTabs = { skin.GetPanelColor() }
+			flatTabs = TabColor(skin)
 			for _, tab in ipairs(tabButtons or {}) do
-				if tab.flat then tab.flat.backing:SetColorTexture(flatTabs[1] or 0.08, flatTabs[2] or 0.08, flatTabs[3] or 0.08, 1) end
+				if tab.flat then tab.flat.backing:SetColorTexture(unpack(flatTabs)) end
 			end
 		end)
 	end)
