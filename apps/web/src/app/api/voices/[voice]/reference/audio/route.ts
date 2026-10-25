@@ -5,6 +5,7 @@
  */
 import fs from "node:fs";
 
+import { archive, blobKey, readsBlobs } from "@/lib/blobs/store";
 import { serveFile } from "@/lib/stream";
 import { requireVoiceViewer } from "@/lib/voices/authz";
 import { readReference, referencePath } from "@/lib/voices/references";
@@ -21,6 +22,14 @@ export async function GET(request: Request, context: Context) {
 
   const reference = await readReference(voice, lang);
   if (!reference) return new Response("no reference", { status: 404 });
+
+  if (readsBlobs()) {
+    if (!reference.sha256) return new Response("no reference clip", { status: 404 });
+    return new Response(null, {
+      status: 302,
+      headers: { Location: archive().url(blobKey("references", reference.sha256)), "Cache-Control": "private, no-cache" },
+    });
+  }
 
   const target = referencePath(voice, lang);
   let size: number;

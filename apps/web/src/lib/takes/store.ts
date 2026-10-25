@@ -19,6 +19,7 @@ import "server-only";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
+import { archive, blobKey, readsBlobs } from "@/lib/blobs/store";
 import { db, query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -214,6 +215,8 @@ export async function setLiveTake(
 export type TakeBytes =
   /** The take's clip, in its line's history directory. */
   | { kind: "file"; path: string }
+  /** The take's clip in the archive bucket, at a public address. */
+  | { kind: "blob"; url: string; sha256: string }
   /** The take exists, and nothing kept its clip. */
   | { kind: "gone" }
   /** No such take was ever recorded. */
@@ -222,6 +225,7 @@ export type TakeBytes =
 /**
  * Where one take's bytes are, from its row alone -- the live take exactly like any other.
  *
+ *   - reading from the bucket and sha256 set: that object
  *   - archiveFile set: that file in the line's history directory
  *   - not set: the take happened and its clip was not kept -- pruned by the code before
  *     this branch, consumed by its rename-to-restore, or retired somewhere this archive
@@ -235,8 +239,8 @@ export async function takePath(
   version: number,
   lang: Lang = BASE_LANG,
 ): Promise<TakeBytes> {
-  const rows = await query<Pick<Take, "archiveFile">>(
-    `select "archiveFile" from "take"
+  const rows = await query<Located>(
+    `select "archiveFile", "sha256" from "take"
       where "source" = $1 and "file" = $2 and "lang" = $3 and "version" = $4`,
     [source, file, lang, version],
   );
@@ -245,21 +249,30 @@ export async function takePath(
 
 /** The live take's bytes, the way takePath finds any take's. What the live audio routes play. */
 export async function livePath(source: Source, file: string, lang: Lang = BASE_LANG): Promise<TakeBytes> {
-  const rows = await query<Pick<Take, "archiveFile">>(
-    `select "archiveFile" from "take"
+  const rows = await query<Located>(
+    `select "archiveFile", "sha256" from "take"
       where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"`,
     [source, file, lang],
   );
   return located(source, file, lang, rows[0]);
 }
 
-function located(
-  source: Source,
-  file: string,
-  lang: Lang,
-  take: Pick<Take, "archiveFile"> | undefined,
+type Located = { archiveFile: string | null; sha256: string | null };
+
+/** A row's bytes: in the bucket when that is where audio is read from, else on the volume. */
+export function blobOrFile(
+  row: Located,
+  prefix: "takes" | "recordings",
+  dir: () => string,
 ): TakeBytes {
+  if (readsBlobs() && row.sha256) {
+    return { kind: "blob", url: archive().url(blobKey(prefix, row.sha256)), sha256: row.sha256 };
+  }
+  if (!row.archiveFile) return { kind: "gone" };
+  return { kind: "file", path: path.join(dir(), row.archiveFile) };
+}
+
+function located(source: Source, file: string, lang: Lang, take: Located | undefined): TakeBytes {
   if (!take) return { kind: "none" };
-  if (!take.archiveFile) return { kind: "gone" };
-  return { kind: "file", path: path.join(historyDirOf(source, file, lang), take.archiveFile) };
+  return blobOrFile(take, "takes", () => historyDirOf(source, file, lang));
 }

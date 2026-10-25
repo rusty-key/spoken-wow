@@ -17,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
+import { archive, blobKey, readsBlobs, sha256Of, writesBlobs } from "@/lib/blobs/store";
 import { fileIndex } from "@/lib/audio";
 import { catalogue as readablesCatalogue } from "@/lib/readables/catalogue";
 import { db, query } from "@/lib/db";
@@ -24,7 +25,7 @@ import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { recordedDirOf } from "@/lib/takes/adapters";
 import { archiveName, writeAtomic } from "@/lib/takes/bytes";
-import type { TakeBytes } from "@/lib/takes/store";
+import { blobOrFile, type TakeBytes } from "@/lib/takes/store";
 import { catalogue as placesCatalogue } from "@/lib/places/catalogue";
 
 import { can } from "@/lib/permissions";
@@ -115,12 +116,12 @@ export async function recordingsFor(source: Source, lang: Lang): Promise<Map<str
  * recording is never "gone", only there or never made.
  */
 export async function recordingPath(source: Source, lang: Lang, file: string, version: number): Promise<TakeBytes> {
-  const [row] = await query<{ archiveFile: string }>(
-    `select "archiveFile" from "recording"
+  const [row] = await query<{ archiveFile: string | null; sha256: string | null }>(
+    `select "archiveFile", "sha256" from "recording"
       where "source" = $1 and "lang" = $2 and "file" = $3 and "version" = $4`,
     [source, lang, file, version],
   );
-  return row ? { kind: "file", path: path.join(recordedDirOf(source, file, lang), row.archiveFile) } : { kind: "none" };
+  return row ? blobOrFile(row, "recordings", () => recordedDirOf(source, file, lang)) : { kind: "none" };
 }
 
 export type Upload = {
@@ -169,15 +170,23 @@ export async function commitRecording(
         where "source" = $1 and "lang" = $2 and "file" = $3`,
       [source, lang, file],
     );
-    const archiveFile = archiveName(next, upload.data, probed.format);
-    await writeAtomic(path.join(recordedDirOf(source, file, lang), archiveFile), upload.data);
+    const sha256 = sha256Of(upload.data);
+    if (writesBlobs()) {
+      const type = probed.format === "ogg" ? "audio/ogg" : "audio/mpeg";
+      await archive().put(blobKey("recordings", sha256), upload.data, type);
+    }
+    let archiveFile: string | null = null;
+    if (!readsBlobs()) {
+      archiveFile = archiveName(next, upload.data, probed.format);
+      await writeAtomic(path.join(recordedDirOf(source, file, lang), archiveFile), upload.data);
+    }
     const {
       rows: [recording],
     } = await client.query<Recording>(
       `insert into "recording"
          ("source", "lang", "file", "lineId", "version", "format", "archiveFile", "bytes",
-          "durationSec", "originalName", "credit", "createdBy")
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          "durationSec", "originalName", "credit", "createdBy", "sha256")
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        returning ${COLUMNS}`,
       [
         source,
@@ -192,6 +201,7 @@ export async function commitRecording(
         upload.originalName,
         upload.credit,
         upload.createdBy,
+        sha256,
       ],
     );
     await recordActivity(

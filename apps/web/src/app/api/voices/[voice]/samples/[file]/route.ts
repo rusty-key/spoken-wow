@@ -14,21 +14,11 @@ import fs from "node:fs";
 import { parseRange } from "@/lib/range";
 import { streamOf } from "@/lib/stream";
 import { requireVoiceManager, requireVoiceViewer } from "@/lib/voices/authz";
-import { deleteSample, isStoredSampleName, samplePath } from "@/lib/voices/samples";
+import { contentTypeOf, deleteSample, isStoredSampleName, samplePath, sampleUrl } from "@/lib/voices/samples";
 
 export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ voice: string; file: string }> };
-
-const CONTENT_TYPES: Record<string, string> = {
-  mp3: "audio/mpeg",
-  wav: "audio/wav",
-  m4a: "audio/mp4",
-  mp4: "audio/mp4",
-  ogg: "audio/ogg",
-  flac: "audio/flac",
-  webm: "audio/webm",
-};
 
 export async function GET(request: Request, context: Context) {
   const { voice, file } = await context.params;
@@ -37,6 +27,17 @@ export async function GET(request: Request, context: Context) {
   if (denied) return denied;
   const clone = cloneName(voice, lang);
   if (!isStoredSampleName(file)) return new Response("bad clip name", { status: 400 });
+
+  // In the bucket, the clip's object answers ranges itself. Clips are named by their bytes
+  // there, so the redirect can be kept as long as the clip itself could.
+  const url = await sampleUrl(clone, file);
+  if (url === null) return new Response("no such clip", { status: 404 });
+  if (url) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: url, "Cache-Control": "private, max-age=3600, immutable" },
+    });
+  }
 
   const target = await samplePath(clone, file);
   let size: number;
@@ -66,9 +67,8 @@ export async function GET(request: Request, context: Context) {
     });
   }
 
-  const extension = file.split(".").pop() ?? "";
   const headers: Record<string, string> = {
-    "Content-Type": CONTENT_TYPES[extension] ?? "application/octet-stream",
+    "Content-Type": contentTypeOf(file),
     "Accept-Ranges": "bytes",
     "Cache-Control": cacheControl,
     ETag: etag,

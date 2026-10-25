@@ -45,13 +45,23 @@ export async function serveTake(
   if (bytes.kind === "none") return new Response("no audio for this line", { status: 404 });
   if (bytes.kind === "gone") return new Response("this take's audio was not kept", { status: 404 });
 
-  const info = await stat(bytes.path).catch(() => null);
-  if (!info) return new Response("this take's audio is not on disk", { status: 404 });
-
   const scope = shared ? "public" : "private";
   const cacheControl = immutable
     ? `${scope}, max-age=31536000, immutable`
     : `${scope}, max-age=300, must-revalidate`;
+
+  // The bucket answers ranges itself, Safari's bytes=0-1 probe included, so the droplet
+  // only says where to look. The redirect is cached as the bytes were: a version's for
+  // good, a live line's for five minutes, after which it may point at a newer take.
+  if (bytes.kind === "blob") {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: bytes.url, "Cache-Control": cacheControl },
+    });
+  }
+
+  const info = await stat(bytes.path).catch(() => null);
+  if (!info) return new Response("this take's audio is not on disk", { status: 404 });
   // The archived name is unique within one language's directory. Another language's take
   // of the same file can carry the same version and, in principle, the same short hash, so
   // its tag says which language it is; English keeps the tags browsers already hold.

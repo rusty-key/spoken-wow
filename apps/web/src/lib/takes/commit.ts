@@ -14,7 +14,8 @@
  *
  * THE ORDER: the bytes first, under a name that includes their hash, then the row. A crash
  * between the two leaves a file no row names -- unreferenced and harmless -- never a row
- * whose file is missing.
+ * whose file is missing. The same holds for the bucket (lib/blobs/store.ts), where the
+ * name is the whole hash.
  *
  * The caller holds the file's lock, `${source}:${file}` (generation/lock.ts), across the
  * whole generation, so that two requests for one line cannot both spend credits. Every
@@ -25,13 +26,14 @@ import "server-only";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
+import { archive, blobKey, readsBlobs, sha256Of, writesBlobs } from "@/lib/blobs/store";
 import { db, query } from "@/lib/db";
 import type { Source } from "@/lib/sections";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { historyDirOf } from "./adapters";
-import { archiveName, writeAtomic } from "./bytes";
+import { archiveName, withLocalCopy, writeAtomic } from "./bytes";
 import type { Provider } from "@/lib/generation/providers";
 
 /** What a take was made with. Anything unknown is null, which means unknown, not unchanged. */
@@ -69,15 +71,17 @@ export type TakeFields = {
 export type Committed = {
   version: number;
   bytes: number;
-  archiveFile: string;
+  /** The file on the volume, or null once the bucket is the only store. */
+  archiveFile: string | null;
+  sha256: string;
   durationSec: number | null;
 };
 
 /**
  * Write a new take and make it live.
  *
- * `measure` reads a clip's duration, where a section records one. It is given the archived
- * file.
+ * `measure` reads a clip's duration from a file holding it: the archived one, or a temporary
+ * copy when the bucket is the only store.
  */
 export async function commitTake(
   source: Source,
@@ -99,10 +103,18 @@ export async function commitTake(
     [source, file, lang],
   );
 
-  const archiveFile = archiveName(next, data);
-  const archived = path.join(historyDirOf(source, file, lang), archiveFile);
-  await writeAtomic(archived, data);
-  const durationSec = options.measure ? await options.measure(archived) : null;
+  const sha256 = sha256Of(data);
+  if (writesBlobs()) await archive().put(blobKey("takes", sha256), data, "audio/mpeg");
+  let archiveFile: string | null = null;
+  let durationSec: number | null = null;
+  if (readsBlobs()) {
+    if (options.measure) durationSec = await withLocalCopy(data, "mp3", options.measure);
+  } else {
+    archiveFile = archiveName(next, data);
+    const archived = path.join(historyDirOf(source, file, lang), archiveFile);
+    await writeAtomic(archived, data);
+    if (options.measure) durationSec = await options.measure(archived);
+  }
 
   await insertLive({
     source,
@@ -113,10 +125,11 @@ export async function commitTake(
     bytes: data.byteLength,
     durationSec,
     archiveFile,
+    sha256,
     batchId: options.batchId,
   });
 
-  return { version: next, bytes: data.byteLength, archiveFile, durationSec };
+  return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
 }
 
 /** Insert one take and make it the only live one, in one transaction. */
@@ -128,7 +141,8 @@ async function insertLive(input: {
   fields: TakeFields;
   bytes: number;
   durationSec: number | null;
-  archiveFile: string;
+  archiveFile: string | null;
+  sha256: string;
   batchId?: string;
 }): Promise<void> {
   const { source, file, lang, version, fields } = input;
@@ -158,9 +172,9 @@ async function insertLive(input: {
           "voice", "narratorVoice", "voiceId", "modelId", "seed", "outputFormat", "settings",
           "characters", "credits", "durationSec", "bytes", "spokenHash", "dictionaryId",
           "dictionaryVersion", "leadIn", "leadInSec", "createdBy", "archiveFile",
-          "provider", "costUsd", "wordTimes")
+          "provider", "costUsd", "wordTimes", "sha256")
        values ($1, $2, $3, $4, $5, true, 'generated', $6, $7, $8, $9, $10, $11, $12::jsonb,
-               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
+               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
       [
         source,
         lang,
@@ -190,6 +204,7 @@ async function insertLive(input: {
         fields.provider ?? "elevenlabs",
         fields.costUsd ?? null,
         fields.wordTimes ?? null,
+        input.sha256,
       ],
     );
     await recordActivity(

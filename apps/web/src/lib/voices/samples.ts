@@ -17,8 +17,10 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { archive, blobKey, readsBlobs, sha256Of, writesBlobs } from "@/lib/blobs/store";
+import { query } from "@/lib/db";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
-import { writeAtomic } from "@/lib/takes/bytes";
+import { withLocalCopy, writeAtomic } from "@/lib/takes/bytes";
 import { isStoredSampleName } from "./names";
 import { isVoiceSlot } from "./slots";
 
@@ -111,6 +113,16 @@ export function storedNameFor(originalName: string): string {
 }
 
 export async function listSamples(voice: string): Promise<Sample[]> {
+  if (readsBlobs()) {
+    await voiceDir(voice);
+    const rows = await query<{ file: string; bytes: number; uploadedAt: Date }>(
+      `select "file", "bytes", "uploadedAt" from "voice_sample" where "clone" = $1
+        order by "uploadedAt", "file"`,
+      [voice],
+    );
+    return rows.map((row) => ({ ...row, uploadedAt: row.uploadedAt.toISOString() }));
+  }
+
   const dir = await voiceDir(voice);
   let names: string[];
   try {
@@ -129,23 +141,122 @@ export async function listSamples(voice: string): Promise<Sample[]> {
   return samples.sort((a, b) => a.uploadedAt.localeCompare(b.uploadedAt));
 }
 
+const CONTENT_TYPES: Record<string, string> = {
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  m4a: "audio/mp4",
+  mp4: "audio/mp4",
+  ogg: "audio/ogg",
+  flac: "audio/flac",
+  webm: "audio/webm",
+};
+
+export function contentTypeOf(file: string): string {
+  return CONTENT_TYPES[extensionOf(file)] ?? "application/octet-stream";
+}
+
 /** Write one clip, atomically, so a listing can never see a half-written upload. */
 export async function storeSample(
   voice: string,
   originalName: string,
   data: Buffer,
 ): Promise<Sample> {
-  const file = storedNameFor(originalName);
-  await writeAtomic(path.join(await voiceDir(voice), file), data);
+  return storeSampleAs(voice, storedNameFor(originalName), data);
+}
+
+/** Write one clip under a stored name already chosen. */
+export async function storeSampleAs(voice: string, file: string, data: Buffer): Promise<Sample> {
+  if (!isStoredSampleName(file)) throw new Error(`unsafe sample name ${file}`);
+  const dir = await voiceDir(voice);
+  if (writesBlobs()) {
+    const sha256 = sha256Of(data);
+    await archive().put(blobKey("samples", sha256), data, contentTypeOf(file));
+    await query(
+      `insert into "voice_sample" ("clone", "file", "sha256", "bytes") values ($1, $2, $3, $4)
+       on conflict ("clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
+      [voice, file, sha256, data.byteLength],
+    );
+  }
+  if (!readsBlobs()) await writeAtomic(path.join(dir, file), data);
 
   return { file, bytes: data.byteLength, uploadedAt: new Date().toISOString() };
 }
 
+/**
+ * Remove a clip. Its object stays in the bucket: another clip may hold the same bytes, and a
+ * clip is small.
+ */
 export async function deleteSample(voice: string, file: string): Promise<boolean> {
-  try {
-    await fs.unlink(await samplePath(voice, file));
-    return true;
-  } catch {
-    return false;
+  if (!isStoredSampleName(file)) return false;
+  await voiceDir(voice);
+  let removed = false;
+  if (writesBlobs()) {
+    const rows = await query(`delete from "voice_sample" where "clone" = $1 and "file" = $2 returning "file"`, [
+      voice,
+      file,
+    ]);
+    removed = rows.length > 0;
   }
+  if (!readsBlobs()) {
+    try {
+      await fs.unlink(await samplePath(voice, file));
+      removed = true;
+    } catch {
+      // Not on the volume. In dual mode the row decides.
+    }
+  }
+  return removed;
+}
+
+/** The object a clip is stored as, when clips are read from the bucket. */
+async function sampleSha(voice: string, file: string): Promise<string | null> {
+  const [row] = await query<{ sha256: string }>(
+    `select "sha256" from "voice_sample" where "clone" = $1 and "file" = $2`,
+    [voice, file],
+  );
+  return row?.sha256 ?? null;
+}
+
+/** One clip's bytes, or null when there is no such clip. */
+export async function readSample(voice: string, file: string): Promise<Buffer | null> {
+  if (!isStoredSampleName(file)) return null;
+  if (readsBlobs()) {
+    const sha256 = await sampleSha(voice, file);
+    return sha256 ? archive().get(blobKey("samples", sha256)) : null;
+  }
+  return fs.readFile(await samplePath(voice, file)).catch(() => null);
+}
+
+/** Where a browser plays a clip from the bucket, or null when clips are on the volume. */
+export async function sampleUrl(voice: string, file: string): Promise<string | null | undefined> {
+  if (!readsBlobs()) return undefined;
+  const sha256 = await sampleSha(voice, file);
+  return sha256 ? archive().url(blobKey("samples", sha256)) : null;
+}
+
+/**
+ * Run `use` with a file path for each clip, for ffmpeg: the clips themselves on the volume,
+ * temporary copies when they are in the bucket. Throws naming the first clip that is missing.
+ */
+export async function withSampleFiles<T>(
+  voice: string,
+  files: string[],
+  use: (paths: string[]) => Promise<T>,
+): Promise<T> {
+  if (!readsBlobs()) {
+    const paths = await Promise.all(files.map((file) => samplePath(voice, file)));
+    for (const input of paths) await fs.access(input);
+    return use(paths);
+  }
+  const loaded: Buffer[] = [];
+  for (const file of files) {
+    const data = await readSample(voice, file);
+    if (!data) throw new Error(`no such clip ${file}`);
+    loaded.push(data);
+  }
+  const run = async (index: number, paths: string[]): Promise<T> =>
+    index === loaded.length
+      ? use(paths)
+      : withLocalCopy(loaded[index], extensionOf(files[index]) || "bin", (one) => run(index + 1, [...paths, one]));
+  return run(0, []);
 }

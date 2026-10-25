@@ -14,6 +14,7 @@
  * a property of the text that will be sent. The corpus's `generatable` flag cannot answer it,
  * having been computed in Python from text that nobody could edit yet.
  */
+import { durationOf } from "@/lib/places/tools";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { audioRelPath } from "@/lib/audio";
 import type { CorpusLine } from "@/lib/corpus";
@@ -239,7 +240,9 @@ export async function regenerateLine(
         // `source`, not spokenText: the addon shows the line before its rules and directions.
         wordTimes: timesFor(source, speech.words),
       },
-      { lang, batchId: options.batchId },
+      // A clip ffprobe cannot read still commits, with no length: the pack build measures
+      // what is missing.
+      { lang, batchId: options.batchId, measure: (clip) => durationOf(clip).catch(() => null) },
     );
 
     return {

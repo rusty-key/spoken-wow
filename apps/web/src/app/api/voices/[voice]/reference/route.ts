@@ -20,7 +20,7 @@ import {
   saveReference,
   saveTranscript,
 } from "@/lib/voices/references";
-import { isStoredSampleName, samplePath } from "@/lib/voices/samples";
+import { isStoredSampleName, withSampleFiles } from "@/lib/voices/samples";
 
 export const dynamic = "force-dynamic";
 
@@ -65,17 +65,19 @@ export async function POST(request: Request, context: Context) {
   if (noKey) return noKey;
 
   try {
-    const reference = await saveReference({
-      voice,
-      lang,
-      sample,
-      // The language's own clips, where its clone's clips are (clone-name.ts).
-      sourcePath: await samplePath(cloneName(voice, lang), sample),
-      startSec,
-      endSec,
-      userId: session.user.id,
-      transcribe: (audio) => transcribe(audio, elevenLabsCode(lang), { apiKey: key }),
-    });
+    // The language's own clips, where its clone's clips are (clone-name.ts).
+    const reference = await withSampleFiles(cloneName(voice, lang), [sample], ([sourcePath]) =>
+      saveReference({
+        voice,
+        lang,
+        sample,
+        sourcePath,
+        startSec,
+        endSec,
+        userId: session.user.id,
+        transcribe: (audio) => transcribe(audio, elevenLabsCode(lang), { apiKey: key }),
+      }),
+    );
     return Response.json({ reference });
   } catch (error) {
     return Response.json(
