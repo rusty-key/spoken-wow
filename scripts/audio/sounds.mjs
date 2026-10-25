@@ -35,7 +35,7 @@ import { fileURLToPath } from "node:url";
 import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mjs";
 import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
-import { archiveOf } from "../lib/archives.mjs";
+import { archiveOf, sourceOf } from "../lib/archives.mjs";
 import { NAMED_QUESTS_SQL, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -87,20 +87,21 @@ function psql(sql) {
     .filter(Boolean);
 }
 
-// file <tab> archiveFile <tab> wordTimes, for every live take. A quests file carries its
-// extension and the other two do not; the archive directory is the file without it either way.
+// file <tab> archiveFile <tab> wordTimes <tab> sha256, for every live take. A quests file carries
+// its extension and the other two do not; the archive directory is the file without it either way.
 const listing = psql(`select "file", coalesce("archiveFile", ''),
-                             coalesce(array_to_json("wordTimes")::text, '')
+                             coalesce(array_to_json("wordTimes")::text, ''), coalesce("sha256", '')
                         from "take"
                        where "source" = :'source' and "lang" = :'lang' and "isCurrent"
                        order by "file"`);
 
-// The archive path of a live take: the take's own directory -- its file without the
-// extension -- holding the archive file. Blank when the take's clip was never kept.
+// Where a live take's bytes are under the archive root (sourceOf): its object in the bucket,
+// or the take's own directory -- its file without the extension -- holding the archive file.
+// Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
-  const [file, name, times] = row.split("\t");
+  const [file, name, times, sha256] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
-  return { file, stem, archived: name ? join(prefix, stem, name) : "", times };
+  return { file, stem, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times };
 });
 
 // Quests carry only the audio a current line names (relevant.mjs), and places only the areas the

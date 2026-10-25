@@ -111,6 +111,13 @@ pm2 environment. They are secrets, and that file is the only place they exist:
 sealed under it, and AES-GCM offers no way to re-seal a credential nothing can open. Change
 it and every collaborator pastes their key again — recoverable, but they have to be told.
 
+**The audio archive's bucket** comes from `app.env` too, once it is set up
+(`one-off/2026-10-archive-to-r2/`): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL` (its public address) and
+`SPOKEN_ARCHIVE_STORE`. That last one is `disk` until the bucket exists, `dual` while the
+backfill runs, and `r2` after: then the audio routes redirect to the bucket and the volume is
+no longer read or written (`apps/web/src/lib/blobs/store.ts`).
+
 `app.env` may also set **`QUEUE_MAX_ACTIVE`**, which is not a secret: how many people's
 regeneration queues drain at once. Default 3. Each queue runs at its own key's plan width,
 and all of them together at most 12 jobs (the database pool's limit), so raising it spreads
