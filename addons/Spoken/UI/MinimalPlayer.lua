@@ -393,14 +393,20 @@ function MinimalPlayer:Layout()
     self.layingOut = true
     local cfg = Config()
     local words = Transcript:HeightForClip(self.clip)
+    -- Listing the queue, the first row is the title: its row closes up, unless it says the line is
+    -- stopped or why it waits.
+    local titled = not Transcript:ListsQueue(self.clip) or SoundQueue:IsPaused()
+        or SoundQueue:GetHeldReason(self.clip) ~= nil
+    local wordsTop = titled and WORDS_TOP or WORDS_TOP - TITLE_HEIGHT
+    self.title:SetShown(titled)
     -- Show Progress, one setting for every window.
     local progress = Addon:Profile("Transcript").SubtitleProgress ~= false
     local width = math.max(1, self.frame:GetWidth() - (cfg.HidePortrait and NO_PORTRAIT or BESIDE_PORTRAIT) - INSET)
-    local bottom = words > 0 and WORDS_TOP + words or NAME_HEIGHT + TITLE_HEIGHT
+    local bottom = words > 0 and wordsTop + words or NAME_HEIGHT + TITLE_HEIGHT
     local barTop = bottom + PROGRESS_GAP
     if progress then bottom = barTop + self.progress.height end
     Transcript:ResizePlayer(self.frame, math.max(HEIGHT, INSET + bottom + FOOT), MinWidth(), 1000)
-    Transcript:Dock(self.frame, self.content, "TOPLEFT", 0, -WORDS_TOP, width, words)
+    Transcript:Dock(self.frame, self.content, "TOPLEFT", 0, -wordsTop, width, words)
     self.progress.track:SetShown(progress)
     self.progress.track:ClearAllPoints()
     self.progress.track:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, -barTop)

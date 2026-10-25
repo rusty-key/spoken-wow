@@ -525,8 +525,9 @@ function Subtitle:Layout(text)
     local titleHeight, widest = self:RowHeight(), self:RowWidth(self.shownPaused)
     local titleGap = titleHeight > 0 and TITLE_GAP or 0
     self.rows = {}
-    for index, wrapped in ipairs(self:Wrap(text)) do
-        local width = self:Width(wrapped)
+    -- Listing the queue, a title to a row, cut short rather than wrapped.
+    for index, wrapped in ipairs(self.listing and self.listing.titles or self:Wrap(text)) do
+        local width = math.min(self:Width(wrapped), WIDTH - PAD * 2)
         widest = math.max(widest, width)
         self.rows[index] = { text = wrapped, count = Characters(wrapped) }
         local line = self:Line(index)
@@ -539,7 +540,7 @@ function Subtitle:Layout(text)
         self.lines[index]:SetText("")
         self.lines[index]:Hide()
     end
-    self.shownRows = Rolling() and math.min(#self.rows, Shown()) or #self.rows
+    self.shownRows = (Rolling() and not self.listing) and math.min(#self.rows, Shown()) or #self.rows
     self.lineStep, self.wordsTop = lineHeight + LINE_GAP, TOP_PAD + titleHeight + titleGap
     self.rollTop, self.rollTarget = 1, 1
     local wordsHeight = self.shownRows * self.lineStep - LINE_GAP
@@ -571,6 +572,54 @@ function Subtitle:Layout(text)
         self.wordEnds[n], n = finish, n + 1
     end
     self.revealed = nil
+    self:PlaceQueueRows()
+end
+
+--- Listing the queue, a button over each row but the sample's: a click takes that line out.
+function Subtitle:PlaceQueueRows()
+    local clips = self.listing and self.listing.clips or {}
+    self.queueRows = self.queueRows or {}
+    for index = 1, math.max(#clips, #self.queueRows) do
+        local button = self.queueRows[index]
+        if not button and clips[index] then
+            button = Transcript.RowButton(self.words)
+            self.queueRows[index] = button
+        end
+        if button then
+            button.clip = not self.sample and clips[index] or nil
+            button:SetShown(button.clip ~= nil)
+            if button.clip then
+                button:ClearAllPoints()
+                button:SetPoint("TOPLEFT", self.lines[index], "TOPLEFT", -2, 0)
+                button:SetPoint("BOTTOMRIGHT", self.lines[index], "BOTTOMRIGHT", 2, 0)
+            end
+        end
+    end
+end
+
+--- What the queue lists now, Hide Subtitles on: up to Rows at Once titles, the line playing first,
+--- and a key that changes with them. Nil while the words show.
+function Subtitle:QueueList(clip)
+    if not Transcript:ListsQueue(clip) then return nil end
+    local titles, clips
+    if self.sample then
+        titles, clips = { Actions.Label(clip) }, { clip }
+    else
+        titles, clips = Transcript:QueueTitles(Shown())
+    end
+    local ids = {}
+    for index, queued in ipairs(clips) do ids[index] = tostring(queued.id or queued.key) end
+    return { titles = titles, clips = clips, key = table.concat(titles, "\n") .. ":" .. table.concat(ids, ",") }
+end
+
+--- A line added or taken out while the queue is listed: laid out again with it.
+function Subtitle:Relist()
+    if not (self.wanted and self.listing) or self.switching then return end
+    if not self.sample and Transcript.clip ~= self.clip then return end
+    local now = self:QueueList(self.clip)
+    if now and now.key == self.listing.key then return end
+    self:Prepare(self.clip, self.sample and L.SUBTITLE_SAMPLE_TEXT or Transcript.text)
+    self:Render()
 end
 
 --- The page on screen laid out again where it has scrolled to.
@@ -695,6 +744,7 @@ function Subtitle:LayoutKey()
     local _, size = WordsFont()
     return PageSentences() .. ":" .. tostring(Rolling()) .. ":" .. Shown() .. ":" .. tostring(size)
         .. ":" .. tostring(self:NameShown()) .. ":" .. tostring(Pictured()) .. ":" .. tostring(self:ProgressWanted())
+        .. ":" .. tostring(Config().HideSubtitles == true)
 end
 
 function Subtitle:Prepare(clip, text)
@@ -703,8 +753,11 @@ function Subtitle:Prepare(clip, text)
     self.clip, self.page = clip, nil
     self.pageFade, self.shadowSize = nil, nil
     for _, line in ipairs(self.lines or {}) do line:SetAlpha(1) end
+    self.listing = self:QueueList(clip)
     local title, label = Actions.Speaker(clip), Actions.Label(clip)
     if title == "" then title, label = label, nil end
+    -- The list's first row is the title.
+    if self.listing then label = nil end
     self.titleText, self.labelText, self.shownPaused = title, label, nil
     -- The waiting count as it is now, so a line that follows a skip lays its row out once, with
     -- the count already in, rather than sliding as if lines had just been added.
@@ -724,7 +777,8 @@ function Subtitle:Prepare(clip, text)
     local total = math.max(1, Characters(text))
     self.pages = {}
     local start = 0
-    for index, page in ipairs(Rolling() and { text } or self:Paginate(text)) do
+    if self.listing then text = table.concat(self.listing.titles, " ") end
+    for index, page in ipairs((Rolling() or self.listing) and { text } or self:Paginate(text)) do
         local count = Characters(page)
         local length = duration * count / total
         -- Never turned in under a second, however short the first half.
@@ -788,6 +842,10 @@ function Subtitle:Render()
         end
     end
     local page = self.pages[index]
+    if self.listing then
+        self:RevealQueue()
+        return
+    end
     if self.sample or not Config().Typewriter then
         self:Follow((elapsed - page.start) / math.max(.5, page.length) * page.count)
         self:Reveal(page.count, self:LitWord(page, elapsed))
@@ -808,6 +866,15 @@ function Subtitle:Render()
     self:Reveal(typed)
 end
 
+--- The list's titles whole, the line playing lit.
+function Subtitle:RevealQueue()
+    if self.revealed == "queue" then return end
+    self.revealed = "queue"
+    for index, row in ipairs(self.rows) do
+        self.lines[index]:SetText(index == 1 and Light(row.text, 0, row.count) or row.text)
+    end
+end
+
 --- `count` characters typed, carried on to the end of the word they stop in.
 function Subtitle:WholeWords(count)
     if count <= 0 then return 0 end
@@ -823,7 +890,7 @@ end
 -- the only sign of why nothing is being read. Not while Immersion's window shows the line.
 function Subtitle:Wanted()
     return Addon:ShowsNarrator(Transcript.clip) and Addon:DisplayStyle() == "subtitle" and Transcript.clip ~= nil
-        and Transcript.text ~= "" and not Actions.ImmersionOpen() and (Transcript.hasStarted or SoundQueue:IsPaused()
+        and (Transcript.text ~= "" or Transcript:ListsQueue(Transcript.clip)) and not Actions.ImmersionOpen() and (Transcript.hasStarted or SoundQueue:IsPaused()
         or SoundQueue:GetHeldReason(Transcript.clip) ~= nil)
 end
 
@@ -885,6 +952,7 @@ function Subtitle:Update()
     if self.wanted then
         self.revealed = nil
         self:Render()
+        self:Relist()
     end
 end
 
@@ -1014,6 +1082,7 @@ function Subtitle:Tick(elapsed)
     end
     if self.wanted and self.pages then self:Render() end
     if self.wanted and self.pages then self:CountWaiting() end
+    self:Relist()
     -- A creature the client had not cached shows the book until its face comes.
     if self.wanted and self.clip and StaticPortrait:Resolved() then self:ConfigurePicture(self.clip) end
     self:ShowProgress()
@@ -1045,7 +1114,7 @@ end
 
 --- Lines waiting behind the one on screen, shown as "+2".
 function Subtitle:Waiting()
-    if self.sample or not self.clip or Transcript.clip ~= self.clip then return 0 end
+    if self.sample or self.listing or not self.clip or Transcript.clip ~= self.clip then return 0 end
     return math.max(0, SoundQueue:GetQueueSize() - 1)
 end
 

@@ -221,6 +221,8 @@ local function Widget(kind, name)
         local _, boxes = text:gsub("\205\184", "")
         return (#text + boxes) * 7
     end
+    -- None unless a suite sets M.TextHeight: the subtitle lays its rows out by it.
+    function w:GetStringHeight() if M.TextHeight then return M.TextHeight(self) end end
     function w:SetWordWrap(on) self.wordWrap = on and true or false end
     function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
     function w:GetTop() return 100 end

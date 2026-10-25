@@ -423,11 +423,10 @@ function Transcript:QueueTitles(cap)
     return titles, clips
 end
 
---- Whether a window lists the queue in place of `clip`'s words: Show Narrator shows it, Hide
---- Subtitles is on, and the style is a window.
+--- Whether the narrator lists the queue in place of `clip`'s words: Show Narrator shows it, and
+--- Hide Subtitles is on.
 function Transcript:ListsQueue(clip)
     return clip ~= nil and Addon:ShowsNarrator(clip) and Config().HideSubtitles == true
-        and Addon:DisplayStyle() ~= "subtitle"
 end
 
 --- The rows the queue takes with Hide Subtitles on.
@@ -435,23 +434,18 @@ function Transcript:QueueRows()
     return #self:QueueTitles()
 end
 
---- The lines listed now, the one playing among them: the windows count only those past them.
-function Transcript:Listed()
-    return #self:QueueTitles(LineCount())
-end
-
--- A row of the list, over its title: a click takes that line out of the queue, as Skip does the
--- one playing.
-function Transcript:QueueRow(row)
-    self.queueRows = self.queueRows or {}
-    if self.queueRows[row] then return self.queueRows[row] end
-    local button = CreateFrame("Button", nil, self.frame)
-    button:SetFrameLevel(self.frame:GetFrameLevel() + 1)
+--- A row of the list over `parent`'s title, its line in `button.clip`: a click takes that line out
+--- of the queue, as Skip does the one playing. `right(mouse)` takes the right button, if given.
+function Transcript.RowButton(parent, right)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetFrameLevel(parent:GetFrameLevel() + 1)
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
     button:SetScript("OnClick", function(_, mouse)
-        -- The right button does what it does on the words.
-        if mouse == "RightButton" then return self.frame:GetScript("OnClick")(self.frame, mouse) end
+        if mouse == "RightButton" then
+            if right then right(mouse) end
+            return
+        end
         local clip = button.clip
         if not clip then return end
         if clip == SoundQueue:GetCurrentSound() then
@@ -467,8 +461,17 @@ function Transcript:QueueRow(row)
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function() Actions.HideTipFor(button) end)
-    self.queueRows[row] = button
     return button
+end
+
+-- A window's row: the right button does what it does on the words.
+function Transcript:QueueRow(row)
+    self.queueRows = self.queueRows or {}
+    if not self.queueRows[row] then
+        self.queueRows[row] = Transcript.RowButton(self.frame,
+            function(mouse) self.frame:GetScript("OnClick")(self.frame, mouse) end)
+    end
+    return self.queueRows[row]
 end
 
 -- The rows' buttons out of the way while the words show.
@@ -652,9 +655,10 @@ end
 -- The player owns position, scale, border and controls. This module owns only
 -- the caption text and its reading position.
 function Transcript:HeightForClip(clip)
-    if self:ListsQueue(clip) then return self:QueueRows() * ((Config().FontSize or 16) + GAP) end
     -- Subtitles stand apart from the player, which then keeps its compact height.
-    if not self:ShowsWords(clip) or Addon:DisplayStyle() == "subtitle" or not clip or self:TextFor(clip) == "" then return 0 end
+    if Addon:DisplayStyle() == "subtitle" then return 0 end
+    if self:ListsQueue(clip) then return self:QueueRows() * ((Config().FontSize or 16) + GAP) end
+    if not self:ShowsWords(clip) or not clip or self:TextFor(clip) == "" then return 0 end
     return LineCount() * ((Config().FontSize or 16) + GAP)
 end
 
@@ -694,8 +698,8 @@ end
 function Transcript:Update()
     if not self.frame or self.held then return end
     self:Render()
-    self.frame:SetShown(self:ListsQueue(self.clip) or self:ShowsWords(self.clip) and Addon:DisplayStyle() ~= "subtitle"
-        and self.clip ~= nil and self.text ~= "")
+    self.frame:SetShown(Addon:DisplayStyle() ~= "subtitle" and (self:ListsQueue(self.clip)
+        or self:ShowsWords(self.clip) and self.clip ~= nil and self.text ~= ""))
     Subtitle:Update()
 end
 

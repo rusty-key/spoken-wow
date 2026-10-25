@@ -107,7 +107,7 @@ env.Addon.db.profile.Transcript.Enabled = true; Options:UpdateRows()
 Expect("turning the switch on wakes it", typing.layoutReason, nil)
 Expect("...at full strength", typing:GetAlpha(), 1)
 do
-    -- Hide Subtitles is the windows' own: on, their words' rows wait on it; the subtitles' do not.
+    -- Hide Subtitles, under every style that shows words: on, the rows only about the words wait on it.
     local size, scroll, showWords = Row(home, L.TRANSCRIPT_SIZE), Row(home, L.TRANSCRIPT_SCROLL),
         Row(home, L.OPT_HIDE_SUBTITLES)
     env.Addon:SetPlayerStyle("minimal")
@@ -116,7 +116,9 @@ do
     Expect("...on, Auto-Scroll waits on it; Word Size sizes the queue's titles", tostring(scroll.layoutReason) .. "|"
         .. tostring(size.layoutReason), L.REASON_SUBTITLES_HIDDEN .. "|nil")
     env.Addon:SetPlayerStyle("subtitle"); Options:UpdateRows()
-    Expect("...not under Subtitles Only, which are only words", tostring(Shown(showWords)), "false")
+    Expect("...and the subtitles', their Sentences at Once waiting on it and Rows at Once sizing the list",
+        tostring(Shown(showWords)) .. " " .. tostring(Row(home, L.OPT_SUBTITLE_SENTENCES).layoutReason) .. " "
+        .. tostring(Shown(Row(home, L.TRANSCRIPT_LINES))), "true " .. L.REASON_SUBTITLES_HIDDEN .. " true")
     env.Addon.db.profile.Transcript.HideSubtitles = false; Options:UpdateRows()
 end
 do
@@ -209,7 +211,7 @@ do
         -- The large window's words fill the box, so no Rows at Once.
         classic = "Window Size, Show Narrator, Quests, Gossip, Hide Subtitles, Word Size, Lock Position, Hide Portrait, Show Progress Bar, "
             .. "Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
-        subtitle = "Subtitle Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, subtitles' wheel note, Shadow Behind Words, "
+        subtitle = "Subtitle Size, Show Narrator, Quests, Gossip, Hide Subtitles, Word Size, Lock Position, subtitles' wheel note, Shadow Behind Words, "
             .. "Show Name and Title, Hide Portrait, Show Progress Bar, Sentences at Once, Auto-Scroll (subtitles), "
             .. "Highlight Words, Type Words Out, Type Out By",
         none = "",

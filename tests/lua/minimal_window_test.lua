@@ -122,7 +122,8 @@ do
     Expect("...a line added waits past the rows", Try(function() return T.labels[2]:GetText() .. " "
         .. tostring(T.labels[3]:IsShown()) end), "Two false")
     env.PlayerFrame:Update()
-    Expect("...counted past them", Try(function() return M.count:GetText() end), "• +1")
+    Expect("...not counted, and the title's row closed up", Try(function()
+        return tostring(M.count:IsShown()) .. " " .. tostring(M.title:IsShown()) end), "false false")
     env.SoundQueue:RemoveSoundFromQueue(env.SoundQueue:GetQueue()[2])
     T:Update()
     Expect("...and one taken out lets the next up", Try(function() return T.labels[2]:GetText() end), "Three")
@@ -339,6 +340,36 @@ frame.BronzeTint = true
 env.PlayerFrame:RefreshConfig()
 Expect("on Classic Era, its own colours with Bronze Border on", Tints(), WHITE .. "|" .. WHITE .. "|" .. WHITE)
 env.SoundQueue:RemoveAllSoundsFromQueue()
+
+-- Subtitles Only with Hide Subtitles on: the speaker's row as ever, the queue where the words were.
+-- The subtitle lays its rows out by the text's height.
+stub.TextHeight = function(text) return (text.text or "") ~= "" and 14 or 0 end
+env, quests = Boot()
+env.Addon.db.profile.Frame.Style = "subtitle"
+env.Addon.db.profile.Transcript.HideSubtitles = true
+quests:Enqueue(Line("One"))
+quests:Enqueue(Line("Two"))
+quests:Enqueue(Line("Three"))
+local S = env.Subtitle
+S:Update()
+local function Rows()
+    local texts = {}
+    for index, line in ipairs(S.lines) do
+        if line:IsShown() then texts[#texts + 1] = (line:GetText():gsub("|c%x+", ""):gsub("|r", "")) end
+    end
+    return table.concat(texts, ",")
+end
+Expect("the subtitles list the queue, as many as Rows at Once", Try(Rows), "One,Two")
+Expect("...the speaker's name with no title beside it, nor a count", Try(function()
+    return S.title:GetText() .. " [" .. S.label:GetText() .. "] " .. tostring(S.more:IsShown()) end), "Grull [] false")
+S.queueRows[2].scripts.OnClick(S.queueRows[2], "LeftButton")
+S:Tick(0.01)
+Expect("...a click on a row takes its line out, the next moving up", Try(Rows), "One,Three")
+env.Addon.db.profile.Transcript.HideSubtitles = false
+S:Update()
+Expect("...and off again, the words are back", Try(function() return S.lines[1]:GetText():find("kobolds", 1, true) ~= nil end), true)
+env.SoundQueue:RemoveAllSoundsFromQueue()
+stub.TextHeight = nil
 
 if Failures() > 0 then stub.print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 stub.print("\nAll small window tests passed")

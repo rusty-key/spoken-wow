@@ -399,8 +399,7 @@ local function Build()
     local function Subtitles() return Style() == "subtitle" end
     local function DUI() return Style() == "dialogueui" end
     local function Narrator() return transcript().Enabled end
-    -- Hide Subtitles is the windows' alone: the subtitles are nothing but the words.
-    local function Words() return Subtitles() or not transcript().HideSubtitles end
+    local function Words() return not transcript().HideSubtitles end
     -- Highlight Words and Type Words Out mark DialogueUI's own quest text too, words or none.
     local function WordsOrMarks() return Words() or DialogueUITheme:Installed() end
     local refresh = function() PlayerFrame:RefreshConfig(); Options:UpdateRows() end
@@ -501,11 +500,12 @@ local function Build()
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()
-    -- On, a window keeps its portrait, name and controls and lists the queue in the words' place.
+    -- On, the window or the subtitles keep the speaker and the controls and list the queue in the
+    -- words' place.
     local hideSubtitles = layout:Checkbox(L.OPT_HIDE_SUBTITLES, nil,
         function() return transcript().HideSubtitles == true end,
         function(v) transcript().HideSubtitles = v end, function() refreshText(); Options:UpdateRows() end)
-    Only(hideSubtitles, InWindow)
+    Only(hideSubtitles, function() return InWindow() or Subtitles() end)
     Requires(hideSubtitles, Narrator, L.REASON_NARRATOR)
     local size = layout:Slider(L.TRANSCRIPT_SIZE, SIZES.FontSize[1], SIZES.FontSize[2], SIZES.FontSize[3],
         function() return transcript().FontSize end,
@@ -734,13 +734,16 @@ local function Build()
         function() return transcript().Lines end,
         function(v) transcript().Lines = v end, refreshText,
         Layout.Number)
-    Only(lines, function() return (InWindow() and Style() ~= "classic") or (Subtitles() and Rolling()) end)
+    -- Listing the queue, the subtitles take as many rows, whichever way their words would scroll.
+    Only(lines, function() return (InWindow() and Style() ~= "classic")
+        or (Subtitles() and (Rolling() or not Words())) end)
     Requires(lines, Narrator, L.REASON_NARRATOR)
     local sentences = layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
         function() return transcript().SubtitleSentences or 3 end,
         function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number)
     Only(sentences, function() return Subtitles() and not Rolling() end)
     Requires(sentences, Narrator, L.REASON_NARRATOR)
+    Requires(sentences, Words, L.REASON_SUBTITLES_HIDDEN)
     local fit = DialogueUIOptions:FitRow(layout, function(row) return Only(row, DUI) end, refresh)
     if fit then
         Requires(fit, Narrator, L.REASON_NARRATOR)
@@ -762,6 +765,7 @@ local function Build()
         function(v) return SCROLL_LABELS[v] or v end)
     Only(subtitleScroll, Subtitles)
     Requires(subtitleScroll, Narrator, L.REASON_NARRATOR)
+    Requires(subtitleScroll, Words, L.REASON_SUBTITLES_HIDDEN)
     subtitleScroll.layoutSubtitles = true
     -- The subtitle lights the word only while its words show whole: typed at their own pace, an
     -- estimated word timing would show every miss.
