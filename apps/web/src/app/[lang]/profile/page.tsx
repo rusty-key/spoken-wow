@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import ApiKeySection from "@/components/ApiKeySection";
+import VoiceStudioSection from "@/components/VoiceStudioSection";
 import Link from "@/components/LocaleLink";
 import { apiKeyStatus } from "@/lib/api-key";
 import { viewerOf } from "@/lib/grants/store";
@@ -32,9 +33,13 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const spends = spendsCredits(await viewerOf(session));
   // The status, never the key. Sent to a client component as props, so this is the shape
   // that decides what the browser can possibly learn.
-  const [status, fishStatus] = spends
-    ? await Promise.all([apiKeyStatus(session.user.id), apiKeyStatus(session.user.id, "fish")])
-    : [null, null];
+  const [status, fishStatus, voiceStudioStatus] = spends
+    ? await Promise.all([
+        apiKeyStatus(session.user.id),
+        apiKeyStatus(session.user.id, "fish"),
+        apiKeyStatus(session.user.id, "voicestudio"),
+      ])
+    : [null, null, null];
 
   return (
     <main className="pt-6 pb-36">
@@ -63,6 +68,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             </p>
             <ApiKeySection initial={status} />
             <ApiKeySection initial={fishStatus} provider="fish" />
+            <VoiceStudioSection initial={voiceStudioStatus} />
           </div>
         ) : (
           // Said rather than hidden: a member who has been told "go and regenerate that line"

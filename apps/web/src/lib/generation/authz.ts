@@ -10,7 +10,7 @@
  */
 import { headers } from "next/headers";
 
-import { readApiKey, voiceStudioApiKey, voiceStudioConfigured } from "@/lib/api-key";
+import { readApiKey } from "@/lib/api-key";
 import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
 import { readPreference } from "@/lib/generation/preference";
 import { speakerFrom } from "@/lib/generation/speakers/for";
@@ -140,25 +140,14 @@ function noKey(message: string): Response {
  * and a member who pasted one must still be refused.
  *
  * There is no fallback to a server-wide ELEVENLABS_API_KEY or fish.audio key, deliberately.
- * With one, "who paid for this line" would have no answer. VoiceStudio is the exception:
- * its local service is a deployment resource rather than a per-user provider balance, so its
- * optional OMNIVOICE_API_KEY is centrally configured and the provider is available only when
- * VOICESTUDIO_BASE_URL is set.
+ * With one, "who paid for this line" would have no answer. VoiceStudio has no balance, but
+ * the machine it runs on is the collaborator's, so it is their own connection all the same.
  */
 export async function requireApiKey(
   userId: string,
   provider: Provider = "elevenlabs",
 ): Promise<KeyGuard> {
   const name = PROVIDER_NAME[provider];
-  if (provider === "voicestudio") {
-    if (!voiceStudioConfigured()) {
-      return {
-        key: null,
-        denied: noKey("VoiceStudio is not configured on this Spoken deployment."),
-      };
-    }
-    return { key: voiceStudioApiKey(), denied: null };
-  }
   let key: string | null;
   try {
     key = await readApiKey(userId, provider);
@@ -178,7 +167,9 @@ export async function requireApiKey(
       denied: noKey(
         provider === "elevenlabs"
           ? "This spends ElevenLabs credits, and you have no key set."
-          : "This spends from your fish.audio balance, and you have no fish.audio key set.",
+          : provider === "fish"
+            ? "This spends from your fish.audio balance, and you have no fish.audio key set."
+            : "This generates with your own VoiceStudio service, and you have not connected one.",
       ),
     };
   }

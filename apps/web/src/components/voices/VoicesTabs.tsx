@@ -30,7 +30,7 @@ import PopulateDialog from "./PopulateDialog";
 const KEY_ANCHOR: Record<Provider, string> = {
   elevenlabs: "/profile#elevenlabs-key",
   fish: "/profile#fish-key",
-  voicestudio: "/profile",
+  voicestudio: "/profile#voicestudio-key",
 };
 
 type Props = {
@@ -55,7 +55,8 @@ type Props = {
   voiceStudioExisting: string[] | null;
   /** Why VoiceStudio could not be read, when it is configured. */
   voiceStudioError: string | null;
-  voiceStudioModel: string;
+  /** The model the viewer's connection asks for, when they have one that reads. */
+  voiceStudioModel: string | null;
   manager: boolean;
   /** May change this language's directions. */
   directs: boolean;
@@ -203,18 +204,13 @@ export default function VoicesTabs(props: Props) {
               Activate for {langName(lang)}
             </Button>
           )}
-          {!hasKey && tab !== "voicestudio" && (
+          {!hasKey && (
             <span className="text-muted-foreground text-xs">
-              Needs a {PROVIDER_NAME[tab]} key —{" "}
+              Needs a {PROVIDER_NAME[tab]} {tab === "voicestudio" ? "connection" : "key"} —{" "}
               <Link href={KEY_ANCHOR[tab]} className="text-foreground underline underline-offset-2">
                 add one on your profile
               </Link>
               .
-            </span>
-          )}
-          {!hasKey && tab === "voicestudio" && (
-            <span className="text-muted-foreground text-xs">
-              VoiceStudio is not configured on this Spoken deployment.
             </span>
           )}
           <span className="text-muted-foreground ml-auto text-xs tabular-nums">

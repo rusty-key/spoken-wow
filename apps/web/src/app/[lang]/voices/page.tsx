@@ -1,15 +1,16 @@
 import { cloneName } from "@/lib/voices/clone-name";
+import type { Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import VoicesTabs from "@/components/voices/VoicesTabs";
 import { apiKeyStatus, readApiKey } from "@/lib/api-key";
-import { readPreference } from "@/lib/generation/preference";
+import { readPreference, type Preference } from "@/lib/generation/preference";
 import { isProvider } from "@/lib/generation/providers";
 import { readSettings } from "@/lib/generation/settings";
 import { generationRoster } from "@/lib/generation/status";
-import { voiceStudioSpeaker } from "@/lib/generation/speakers/voicestudio";
+import { speakerFrom } from "@/lib/generation/speakers/for";
 import { viewerOf } from "@/lib/grants/store";
 import { can, canManageVoices, canViewVoices } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
@@ -65,11 +66,13 @@ export default async function Page({
   // clones only -- a slot filled in English is empty in German until German clips are cloned.
   // Without the subscription, which is the slow one of ElevenLabs' answers: VoicesTabs asks
   // for the slot count once the page is up.
-  const account = elevenKey ? await generationRoster({ apiKey: elevenKey }, lang) : null;
+  // VoiceStudio's profiles alongside, from the viewer's own service; its listing times out
+  // rather than hold the page.
+  const [account, voiceStudioAccount] = await Promise.all([
+    elevenKey ? generationRoster({ apiKey: elevenKey }, lang) : null,
+    voiceStudioKey ? voiceStudioRoster(voiceStudioKey, preference, lang) : null,
+  ]);
   const readable = account !== null && !(account.error && account.voiceIds.size === 0);
-  const voiceStudioAccount = voiceStudioStatus
-    ? await voiceStudioSpeaker({ apiKey: voiceStudioKey ?? "" }).voices(lang)
-    : null;
 
   // One readdir per slot, so the roster arrives with its clip counts already filled in
   // rather than each row fetching its own once expanded.
@@ -128,11 +131,21 @@ export default async function Page({
           accountError={account?.error ?? null}
           voiceStudioExisting={voiceStudioAccount ? [...voiceStudioAccount.ids.keys()] : null}
           voiceStudioError={voiceStudioAccount?.error ?? null}
-          voiceStudioModel={process.env.VOICESTUDIO_MODEL ?? "omnivoice"}
+          voiceStudioModel={voiceStudioAccount?.model ?? null}
           manager={canManageVoices(session.user.role)}
           directs={can(viewer, "configure", lang)}
         />
       </Contained>
     </main>
   );
+}
+
+/** The viewer's VoiceStudio profiles, or why their stored connection could not be read. */
+async function voiceStudioRoster(key: string, preference: Preference, lang: Lang) {
+  try {
+    const speaker = speakerFrom("voicestudio", key, preference);
+    return { model: speaker.modelId, ...(await speaker.voices(lang)) };
+  } catch (error) {
+    return { model: null, ids: new Map<string, string>(), error: error instanceof Error ? error.message : String(error) };
+  }
 }

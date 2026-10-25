@@ -12,7 +12,7 @@ vi.mock("../stitch", () => ({
   stitchMp3: vi.fn(async (parts: Buffer[]) => Buffer.concat(parts)),
 }));
 
-const { voiceStudioSpeaker } = await import("./voicestudio");
+const { checkVoiceStudio, voiceStudioSpeaker } = await import("./voicestudio");
 
 function audio(): Response {
   return new Response(Buffer.from("ID3voice"), { headers: { "content-type": "audio/mpeg" } });
@@ -33,15 +33,16 @@ describe("VoiceStudio speaker", () => {
     );
 
     const speaker = voiceStudioSpeaker({
-      baseUrl: "http://voice.test",
+      baseUrl: "https://voice.test",
+      model: "omnivoice",
       fetchImpl: fetchImpl as unknown as typeof globalThis.fetch,
     });
     expect([...((await speaker.voices("esMX")).ids.entries())]).toEqual([
       ["dwarf-male-grim", "es-id"],
     ]);
     expect(fetchImpl).toHaveBeenCalledWith(
-      "http://voice.test/v1/audio/voices",
-      expect.objectContaining({ headers: {} }),
+      "https://voice.test/v1/audio/voices",
+      expect.objectContaining({ headers: {}, redirect: "error" }),
     );
   });
 
@@ -49,8 +50,8 @@ describe("VoiceStudio speaker", () => {
     const fetchImpl = vi.fn(async () => audio());
     const speaker = voiceStudioSpeaker({
       apiKey: "service-key",
-      baseUrl: "http://voice.test",
-      modelId: "omnivoice",
+      baseUrl: "https://voice.test",
+      model: "omnivoice",
       fetchImpl: fetchImpl as unknown as typeof globalThis.fetch,
     });
 
@@ -63,7 +64,8 @@ describe("VoiceStudio speaker", () => {
 
     expect(result.ok).toBe(true);
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("http://voice.test/v1/audio/speech");
+    expect(url).toBe("https://voice.test/v1/audio/speech");
+    expect(init.redirect).toBe("error");
     expect(init.headers).toEqual({
       Authorization: "Bearer service-key",
       "Content-Type": "application/json",
@@ -80,7 +82,8 @@ describe("VoiceStudio speaker", () => {
   it("applies the active locale lexicon before synthesis", async () => {
     const fetchImpl = vi.fn(async () => audio());
     const speaker = voiceStudioSpeaker({
-      baseUrl: "http://voice.test",
+      baseUrl: "https://voice.test",
+      model: "omnivoice",
       fetchImpl: fetchImpl as unknown as typeof globalThis.fetch,
     });
 
@@ -97,5 +100,26 @@ describe("VoiceStudio speaker", () => {
     );
     const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toMatchObject({ input: "nomeregan está cerca." });
+  });
+
+  it("checks a connection by listing its voices, and says why one fails", async () => {
+    const connection = { baseUrl: "https://voice.test", apiKey: "k", model: "omnivoice", maxConcurrency: 1 };
+    const ok = vi.fn(async () => new Response(JSON.stringify({ voices: [] })));
+    await checkVoiceStudio(connection, ok as unknown as typeof globalThis.fetch);
+    expect(ok).toHaveBeenCalledWith(
+      "https://voice.test/v1/audio/voices",
+      expect.objectContaining({ headers: { Authorization: "Bearer k" } }),
+    );
+
+    const html = vi.fn(async () => new Response("<html>"));
+    await expect(checkVoiceStudio(connection, html as unknown as typeof globalThis.fetch)).rejects.toThrow(
+      /not one/,
+    );
+    const down = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+    await expect(checkVoiceStudio(connection, down as unknown as typeof globalThis.fetch)).rejects.toThrow(
+      /could not reach VoiceStudio/,
+    );
   });
 });
