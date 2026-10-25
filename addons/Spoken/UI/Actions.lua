@@ -171,16 +171,17 @@ function Actions.RoundButton(parent, glyphSize, name, own)
     return button
 end
 
--- A line's button shows one of three glyphs: Play for a line not yet queued, Stop while it
--- speaks, Replay once it is stopped and still at the head. Play is the portrait atlas's cell;
--- Stop and Replay are drawn in its gold, each in a 93-wide cell of a 128 canvas.
-local GLYPH_STOP = ART .. "GlyphStop"
-local GLYPH_REPLAY = ART .. "GlyphReplay"
+-- A line's button shows one of four glyphs: Play for a line a click starts, Stop while it
+-- speaks, Replay once it is stopped and still at the head, and a plus for "queue" and "queued",
+-- a line that waits or would wait behind another. Play is the portrait atlas's cell; the others
+-- are drawn in its gold, each in a 93-wide cell of a 128 canvas.
+local GLYPHS = { stop = ART .. "GlyphStop", replay = ART .. "GlyphReplay", queue = ART .. "GlyphQueue",
+    queued = ART .. "GlyphQueue" }
 local CELL = 93 / 128
 
 function Actions.Glyph(texture, state)
-    if state == "stop" or state == "replay" then
-        texture:SetTexture(state == "stop" and GLYPH_STOP or GLYPH_REPLAY)
+    if GLYPHS[state] then
+        texture:SetTexture(GLYPHS[state])
         texture:SetTexCoord(0, CELL, 0, CELL)
         return
     end
@@ -276,6 +277,74 @@ end
 local TAIL_GAP, TAIL_IN = 6, .25
 local function EaseOut(t) return 1 - (1 - t) * (1 - t) end
 
+-- A line queued while Spoken is stopped waits unheard, and a count that only fades in reads as
+-- nothing happening (#706). The count swells to PULSE_GROW its size by PULSE_PEAK, lit gold with
+-- a glow behind it, and settles back by PULSE_TIME.
+local PULSE_TIME, PULSE_PEAK, PULSE_GROW = .7, .15, 1.8
+local PULSE_GOLD = { 1, .82, 0 }
+local COUNT_GLOW = ART .. "CountGlow"
+
+local Pulse = {}
+
+--- The swell for `text`, a waiting count: a larger copy of it drawn over it, and a glow.
+function Actions.Pulse(text)
+    local parent = text:GetParent()
+    local glow = parent:CreateTexture(nil, "OVERLAY")
+    glow:SetTexture(COUNT_GLOW)
+    if glow.SetBlendMode then glow:SetBlendMode("ADD") end
+    glow:SetVertexColor(unpack(PULSE_GOLD))
+    glow:SetPoint("CENTER", text, "CENTER")
+    glow:Hide()
+    local burst = parent:CreateFontString(nil, "OVERLAY")
+    burst:SetShadowColor(0, 0, 0, 1)
+    burst:SetShadowOffset(1, -1)
+    burst:SetWordWrap(false)
+    burst:SetPoint("CENTER", text, "CENTER")
+    burst:Hide()
+    local pulse = { text = text, glow = glow, burst = burst }
+    for key, fn in pairs(Pulse) do pulse[key] = fn end
+    return pulse
+end
+
+--- From the start, in the count's font and colour as they are now.
+function Pulse:Start()
+    local font, size, flags = self.text:GetFont()
+    if not font then return end
+    self.font, self.size, self.flags = font, size or 12, flags or ""
+    local r, g, b = self.text:GetTextColor()
+    self.color = { r or 1, g or 1, b or 1 }
+    self.t = 0
+end
+
+function Pulse:Active() return self.t ~= nil end
+
+--- `elapsed` on; the count itself is hidden under the copy until it settles.
+function Pulse:Step(elapsed)
+    if not self.t then return end
+    self.t = self.t + elapsed
+    if self.t >= PULSE_TIME or not self.text:IsShown() then return self:Stop() end
+    local swell = self.t < PULSE_PEAK and EaseOut(self.t / PULSE_PEAK)
+        or 1 - EaseOut((self.t - PULSE_PEAK) / (PULSE_TIME - PULSE_PEAK))
+    local burst, color = self.burst, self.color
+    burst:SetFont(self.font, self.size * (1 + (PULSE_GROW - 1) * swell), self.flags)
+    burst:SetText(self.text:GetText())
+    burst:SetTextColor(color[1] + (PULSE_GOLD[1] - color[1]) * swell, color[2] + (PULSE_GOLD[2] - color[2]) * swell,
+        color[3] + (PULSE_GOLD[3] - color[3]) * swell)
+    burst:Show()
+    self.glow:SetSize((burst:GetStringWidth() or 0) + self.size * 3, self.size * 3.5)
+    self.glow:SetAlpha(.8 * swell)
+    self.glow:Show()
+    self.text:SetAlpha(0)
+end
+
+function Pulse:Stop()
+    if not self.t then return end
+    self.t = nil
+    self.burst:Hide()
+    self.glow:Hide()
+    self.text:SetAlpha(1)
+end
+
 local Tail = {}
 
 --- The tail for the font strings the window made: `stopped`, its text already set, `count`, and
@@ -285,6 +354,7 @@ function Actions.Tail(stopped, count, held)
     local tail = { stopped = stopped, count = count, held = held, alpha = 0, want = false, parts = {} }
     for key, fn in pairs(Tail) do tail[key] = fn end
     tail.hover = Actions.WaitingHover(count)
+    tail.pulse = Actions.Pulse(count)
     return tail
 end
 
@@ -342,10 +412,13 @@ function Tail:SetHeld(reason)
     self.held:SetText(reason and "• (" .. reason .. ")" or "")
 end
 
---- `waiting` lines behind the one playing: the count says it, fading in when it grew.
+--- `waiting` lines behind the one playing: the count says it, fading in when it grew, or
+--- swelling when it grew behind a stop. Not on its first count: that is the window opening.
 function Tail:SetCount(waiting)
     if waiting ~= self.counted then
-        if waiting > (self.counted or 0) then self.fade = 0 end
+        if waiting > (self.counted or 0) then
+            if self.counted and SoundQueue:IsPaused() then self.pulse:Start() else self.fade = 0 end
+        end
         self.counted = waiting
         self.count:SetText(waiting > 0 and "• +" .. waiting or "")
     end
@@ -378,12 +451,13 @@ function Tail:Place(text, x)
 end
 
 function Tail:Paint()
-    self.count:SetAlpha(EaseOut(self.fade and math.min(1, self.fade / TAIL_IN) or 1))
+    self.count:SetAlpha(self.pulse:Active() and 0 or EaseOut(self.fade and math.min(1, self.fade / TAIL_IN) or 1))
     self.stopped:SetAlpha(EaseOut(self.alpha))
 end
 
 --- The fades, `elapsed` on. True when Stopped has faded out and its room is to be given back.
 function Tail:Step(elapsed)
+    self.pulse:Step(elapsed)
     if self.fade then
         self.fade = self.fade + elapsed
         self:Paint()
@@ -399,6 +473,7 @@ end
 
 --- The fades at their ends at once.
 function Tail:Finish()
+    self.pulse:Stop()
     self.fade = nil
     self.alpha = self.want and 1 or 0
 end
@@ -693,7 +768,7 @@ local function Greys(button)
 end
 
 --- Dress `button` as a square Play button with the game's checkbox for a border, as the quest
---- log's rows have beside it: Play's glyph inside, `button:SetState("play" | "stop" | "replay")`.
+--- log's rows have beside it: Play's glyph inside, `button:SetState("play" | "stop" | "replay" | "queue" | "queued")`.
 --- `button:MatchBox(checkbox)` takes the checkbox's size and, where it is drawn from an atlas,
 --- that atlas, so the two read as a pair whatever the client draws its checkbox with.
 function Actions.BoxPlay(button)
@@ -759,7 +834,7 @@ function Actions.NewRound(parent, kind, name, icon)
     if kind == "play" then
         local button = Actions.RoundButton(parent, 12, name)
         Actions.SetPlayGlyph(button, "play")
-        --- "play", "stop" or "replay".
+        --- "play", "stop", "replay", "queue" or "queued".
         function button:SetState(state) Actions.SetPlayGlyph(self, state) end
         function button:SetPlaying(playing) Actions.SetPlayGlyph(self, playing and "stop" or "play") end
         Greys(button)

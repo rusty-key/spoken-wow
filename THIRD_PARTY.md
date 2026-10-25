@@ -131,9 +131,11 @@ None of this is the project's to license, and the MIT grant does not reach it.
   `SubtitleLine.tga`): the band shade and the line's gold fill from shorley's
   [Spoken Subtitles](https://github.com/shorley-gm/spoken-subtitles) (MIT), used as they are
   there.
-- **Stop and Replay glyphs** (`addons/Spoken/Textures/GlyphStop.tga`, `GlyphReplay.tga`): drawn
-  for this project in the gold of the player's play and pause glyphs; Stop is built from the
-  pause glyph's bar.
+- **Stop, Replay and Queue glyphs** (`addons/Spoken/Textures/GlyphStop.tga`, `GlyphReplay.tga`,
+  `GlyphQueue.tga`): drawn for this project in the gold of the player's play and pause glyphs; Stop
+  is built from the pause glyph's bar, and Queue's plus from Stop's gold.
+- **The waiting count's glow** (`addons/Spoken/Textures/CountGlow.tga`): a soft oval drawn for this
+  project.
 - **Link icons** (`addons/Spoken/Textures/Link*.tga`): the GitHub, Discord, CurseForge, Wago and
   Buy Me a Coffee logos, each on a square of its brand colour. GitHub's and Discord's shapes come
   from [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons), CurseForge's and Buy Me

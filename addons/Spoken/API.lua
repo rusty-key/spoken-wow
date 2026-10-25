@@ -618,7 +618,7 @@ function Spoken:CreateRoundButton(parent, kind, name, icon)
 end
 
 --- `button`, a Button the caller made, dressed as a square Play button with the game's checkbox for
---- its border (`button:SetState("play" | "stop")`, `button:MatchBox(checkbox)`): the quest log's rows.
+--- its border (`button:SetState("play" | "stop" | "replay" | "queue" | "queued")`, `button:MatchBox(checkbox)`): the quest log's rows.
 function Spoken:DressBoxButton(button)
     return Actions.BoxPlay(button)
 end

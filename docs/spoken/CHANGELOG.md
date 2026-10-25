@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **A line that arrives while Spoken is stopped shows that it waits.** The "+N" after the line's
+  title swells and glows when a line joins a stopped queue; Skip plays it. The quest log's Play
+  buttons show a plus while Spoken reads another line: a click queues the quest's line after it,
+  and the plus stays while the line waits. *([rusty-key](https://github.com/rusty-key))*
 - **The Bosses tab lists dungeons straight under their continent.** The zone lines are gone: each
   continent shows its dungeons and raids by name, then its world bosses, and the search finds bosses
   and dungeons. A dungeon's page still names its zone.
