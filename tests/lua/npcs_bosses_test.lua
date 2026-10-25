@@ -598,7 +598,7 @@ do
         skin[kind] = function() end
     end
     ellesmereCallback(skin)
-    Expect("...in EllesmereUI's look no plate behind its name", tostring(card and card.flat) .. " " .. tostring(card and card.plate:GetAlpha()), "true 0")
+    Expect("...in EllesmereUI's look no plate behind its name", tostring(card and card.plate:IsShown()), "false")
     Expect("...its name and the line under it white in EllesmereUI's font",
         tostring(seen.name) .. " " .. tostring(seen.nameFace) .. " | " .. tostring(seen.sub) .. " " .. tostring(seen.subFace),
         [[1 1 1 Fonts\EUI.ttf | 1 1 1 Fonts\EUI.ttf]])
@@ -608,10 +608,10 @@ do
     end
     if button then
         button.scripts.OnEnter(button)
-        local over, glow = card.plate:GetAlpha(), card.glow:IsShown()
+        local over, glow = card.plate:IsShown(), card.glow:IsShown()
         button.scripts.OnLeave(button)
-        Expect("...under the pointer its glow, but no plate coming back", tostring(glow) .. " " .. over
-            .. " " .. card.plate:GetAlpha(), "true 0 0")
+        Expect("...under the pointer its glow, but no plate coming back", tostring(glow) .. " " .. tostring(over)
+            .. " " .. tostring(card.plate:IsShown()), "true false false")
     else
         Expect("...under the pointer its glow, but no plate coming back", "no icon button", "an icon button")
     end
@@ -640,7 +640,7 @@ do
     Click("Edwin VanCleef")
     _G.CreateFrame, _G.GetLocale = createFrame, getLocale
     local later = page.body.partButtons and page.body.partButtons[3]
-    Expect("a card built after the look is on has no plate", tostring(later and later.flat) .. " " .. tostring(later and later.plate:GetAlpha()), "true 0")
+    Expect("a card built after the look is on has no plate", tostring(later and later.plate:IsShown()), "false")
     Expect("...on a Russian client its name white in the game's font, not EllesmereUI's",
         tostring(later and later.name.colour) .. " " .. tostring(later and fonts[later.name] ~= [[Fonts\EUI.ttf]] and fonts[later.name] ~= nil),
         "1 1 1 true")
@@ -657,7 +657,7 @@ do
     SpokenEnv.Ellesmere = ellesmere
     local fourth = page.body.partButtons and page.body.partButtons[4]
     Expect("a card built where Spoken has no EllesmereUI module is drawn as in the stock look",
-        tostring(ok) .. " " .. tostring(fourth and fourth.flat) .. " " .. tostring(fourth and fourth.plate:GetAlpha()), "true nil 0.3")
+        tostring(ok) .. " " .. tostring(fourth and fourth.plate:IsShown()) .. " " .. tostring(fourth and fourth.plate:GetAlpha()), "true true 0.3")
     _G.SpokenBossCreatures = {}
     _G.C_Spell.GetSpellSubtext = nil
 end
