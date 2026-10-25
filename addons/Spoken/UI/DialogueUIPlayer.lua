@@ -480,8 +480,8 @@ function Skin:Layout()
         local needed = self:TextLines(wordsWidth)
         if needed and needed < lines then lines = needed end
     end
-    -- Show Words off: the header and the progress line, no room for words.
-    if not Transcript:ShowsWords(self.clip) then lines = 0 end
+    -- Show Words off: a row for each line the queue lists in their place.
+    if Transcript:ListsQueue(self.clip) then lines = math.min(lines, math.max(1, Transcript:QueueRows())) end
     local captionHeight = lines * lineHeight
     local height = padTop + wordsTop + captionHeight + padBottom + footerHeight
     self.settledHeight = height
@@ -549,7 +549,7 @@ function Skin:Dress()
     if self.viewport.texture then self.viewport.texture:SetVertexColor(tint[1], tint[2], tint[3]) end
     Transcript:SetStyle({ font = fonts.paragraph, size = self.captionSize, lineGap = self.lineGap,
         paragraphs = true, color = colors.paragraph, shadow = look.shadow and true or false,
-        highlight = colors.highlight, lines = math.max(1, self.lines), padTop = self.lineRoom })
+        highlight = colors.highlight, lines = self.lines, padTop = self.lineRoom })
 end
 
 function Skin:ConfigurePortrait()
@@ -1065,6 +1065,7 @@ function Skin:Update()
     -- The line's words decide how tall the panel is (Fit to the Words): a new line, or its words
     -- arriving late. Its art too: a stone page after a paper one with as many lines is redrawn.
     local textLines = Transcript.clip == clip and Transcript.lines and #Transcript.lines or 0
+    if Transcript:ListsQueue(clip) then textLines = "queue" .. Transcript:QueueRows() end
     local picture = clip.present and clip.present.picture
     local key = textLines .. ":" .. (picture and picture.file or "")
         .. ":" .. (self:Look().file or "quest")

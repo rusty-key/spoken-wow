@@ -103,9 +103,24 @@ do
     local tall = M.frame:GetHeight()
     env.Addon.db.profile.Transcript.ShowWords = false
     env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
-    Expect("Show Words off, the window stays with its name and controls and closes up over no words", Try(function()
-        return tostring(M.frame:IsShown()) .. " " .. M.name:GetText() .. " " .. tostring(M.play:IsShown()) .. " "
-            .. tostring(T.frame:IsShown()) .. " " .. tostring(M.frame:GetHeight() < tall) end), "true Grull true false true")
+    Expect("Show Words off, the window stays with its name and controls and lists the queue in the words' place",
+        Try(function()
+            return tostring(M.frame:IsShown()) .. " " .. M.name:GetText() .. " " .. tostring(M.play:IsShown()) .. " "
+                .. tostring(T.frame:IsShown()) .. " " .. T.labels[1]:GetText():gsub("^|c%x+", "") .. " "
+                .. T.labels[2]:GetText() .. " " .. tostring(T.labels[3]:IsShown()) end), "true Grull true true One|r Two false")
+    env.Addon.db.profile.Transcript.Lines = 1
+    env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+    Expect("...as many as Rows at Once", Try(function()
+        return tostring(T.labels[2]:IsShown()) .. " " .. tostring(M.frame:GetHeight() < tall) end), "false true")
+    env.Addon.db.profile.Transcript.Lines = 2
+    env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+    quests:Enqueue(Line("Three"))
+    T:Update()
+    Expect("...a line added waits past the rows", Try(function() return T.labels[2]:GetText() .. " "
+        .. tostring(T.labels[3]:IsShown()) end), "Two false")
+    env.SoundQueue:RemoveSoundFromQueue(env.SoundQueue:GetQueue()[2])
+    T:Update()
+    Expect("...and one taken out lets the next up", Try(function() return T.labels[2]:GetText() end), "Three")
     env.Addon.db.profile.Transcript.ShowWords = true
     env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
     Expect("...and on again, the words are back", Try(function()

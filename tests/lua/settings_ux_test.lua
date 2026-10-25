@@ -108,14 +108,15 @@ Expect("turning the switch on wakes it", typing.layoutReason, nil)
 Expect("...at full strength", typing:GetAlpha(), 1)
 do
     -- Show Words is the windows' own: off, their words' rows wait on it; the subtitles' do not.
-    local size, showWords = Row(home, L.TRANSCRIPT_SIZE), Row(home, L.OPT_SHOW_WORDS)
+    local size, scroll, showWords = Row(home, L.TRANSCRIPT_SIZE), Row(home, L.TRANSCRIPT_SCROLL),
+        Row(home, L.OPT_SHOW_WORDS)
     env.Addon:SetPlayerStyle("minimal")
     env.Addon.db.profile.Transcript.ShowWords = false; Options:UpdateRows()
     Expect("Show Words is a window's row", Shown(showWords), true)
-    Expect("...off, Word Size waits on it", size.layoutReason, L.REASON_WORDS)
+    Expect("...off, Auto-Scroll waits on it; Word Size sizes the queue's titles", tostring(scroll.layoutReason) .. "|"
+        .. tostring(size.layoutReason), L.REASON_WORDS .. "|nil")
     env.Addon:SetPlayerStyle("subtitle"); Options:UpdateRows()
-    Expect("...not under Subtitles Only, which are only words", tostring(Shown(showWords)) .. " "
-        .. tostring(size.layoutReason), "false nil")
+    Expect("...not under Subtitles Only, which are only words", tostring(Shown(showWords)), "false")
     env.Addon.db.profile.Transcript.ShowWords = true; Options:UpdateRows()
 end
 do

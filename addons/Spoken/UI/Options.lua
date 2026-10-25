@@ -501,7 +501,7 @@ local function Build()
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()
-    -- Off, a window keeps its portrait, name and controls and leaves the words out.
+    -- Off, a window keeps its portrait, name and controls and lists the queue in the words' place.
     local showWords = layout:Checkbox(L.OPT_SHOW_WORDS, nil,
         function() return transcript().ShowWords ~= false end,
         function(v) transcript().ShowWords = v end, function() refreshText(); Options:UpdateRows() end)
@@ -513,7 +513,6 @@ local function Build()
         Layout.Number)
     Only(size, function() return InWindow() or Subtitles() end)
     Requires(size, Narrator, L.REASON_NARRATOR)
-    Requires(size, Words, L.REASON_WORDS)
     Only(layout:Checkbox(L.OPT_LOCK_FRAME, nil,
         function() return cfg().LockFrame end, function(v) cfg().LockFrame = v end, refresh), Shown)
     -- Nothing on the windows or the subtitles shows their wheel shortcuts.
@@ -737,7 +736,6 @@ local function Build()
         Layout.Number)
     Only(lines, function() return (InWindow() and Style() ~= "classic") or (Subtitles() and Rolling()) end)
     Requires(lines, Narrator, L.REASON_NARRATOR)
-    Requires(lines, Words, L.REASON_WORDS)
     local sentences = layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
         function() return transcript().SubtitleSentences or 3 end,
         function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number)

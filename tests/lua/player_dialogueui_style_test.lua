@@ -573,9 +573,9 @@ do
     local tall = Skin.frame:GetHeight()
     env.Addon.db.profile.Transcript.ShowWords = false
     env.PlayerFrame:RefreshConfig(); env.Transcript:RefreshConfig()
-    Expect("Show Words off, the window stays and closes up over no words",
+    Expect("Show Words off, the window stays and lists the queue in the words' place",
         tostring(Skin.frame:IsShown()) .. " " .. tostring(env.Transcript.frame:IsShown()) .. " "
-        .. tostring(Skin.frame:GetHeight() < tall), "true false true")
+        .. tostring(env.Transcript.labels[1]:IsShown()), "true true true")
     env.Addon.db.profile.Transcript.ShowWords = true
     env.PlayerFrame:RefreshConfig(); env.Transcript:RefreshConfig()
 end

@@ -31,7 +31,7 @@ an in-game visual check.
   Window and the DialogueUI window have no such button.
 - `/sp rows 1` sets Rows at Once to one row; `/sp rows 2` to two.
 - `/sp settings` opens Spoken's page. Its rows for the captions are Show Narrator, **Show Words**
-  (off, a window keeps everything but its words), Rows at Once, Word Size, Highlight Words, Type
+  (off, a window lists the queue's titles in place of the words), Rows at Once, Word Size, Highlight Words, Type
   Words Out, Type Out By and **Auto-Scroll** (below), and for the subtitles Subtitle Size, Sentences
   at Once, Shadow Behind Words, Show Name and Title, Hide Portrait and Show Progress Bar. Each style
   shows only the rows it reads.
