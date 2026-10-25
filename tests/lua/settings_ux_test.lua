@@ -107,6 +107,19 @@ env.Addon.db.profile.Transcript.Enabled = true; Options:UpdateRows()
 Expect("turning the switch on wakes it", typing.layoutReason, nil)
 Expect("...at full strength", typing:GetAlpha(), 1)
 do
+    -- Show Words is the windows' own: off, their words' rows wait on it; the subtitles' do not.
+    local size, scroll, showWords = Row(home, L.TRANSCRIPT_SIZE), Row(home, L.TRANSCRIPT_SCROLL),
+        Row(home, L.OPT_SHOW_WORDS)
+    env.Addon:SetPlayerStyle("minimal")
+    env.Addon.db.profile.Transcript.ShowWords = false; Options:UpdateRows()
+    Expect("Show Words is a window's row", Shown(showWords), true)
+    Expect("...off, Auto-Scroll waits on it; Word Size sizes the queue's titles", tostring(scroll.layoutReason) .. "|"
+        .. tostring(size.layoutReason), L.REASON_WORDS .. "|nil")
+    env.Addon:SetPlayerStyle("subtitle"); Options:UpdateRows()
+    Expect("...not under Subtitles Only, which are only words", tostring(Shown(showWords)), "false")
+    env.Addon.db.profile.Transcript.ShowWords = true; Options:UpdateRows()
+end
+do
     -- A row with nothing to say beyond its label shows no tooltip, only its band.
     local plain = _G.SpokenLayout.New(_G.CreateFrame("Frame"), 0, 0)
     local box = plain:Checkbox("Plain", nil, function() return false end, function() end)
@@ -191,10 +204,10 @@ do
     words.Enabled, words.Typewriter, words.SubtitleScroll = true, true, "page"
     local ROWS = {
         -- The wheel's note where Ctrl and the wheel size the window or the subtitles.
-        minimal = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, wheel note, Theme, Hide Portrait, "
+        minimal = "Window Size, Show Narrator, Quests, Gossip, Show Words, Word Size, Lock Position, wheel note, Theme, Hide Portrait, "
             .. "Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
         -- The large window's words fill the box, so no Rows at Once.
-        classic = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, Hide Portrait, Show Progress Bar, "
+        classic = "Window Size, Show Narrator, Quests, Gossip, Show Words, Word Size, Lock Position, Hide Portrait, Show Progress Bar, "
             .. "Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
         subtitle = "Subtitle Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, subtitles' wheel note, Shadow Behind Words, "
             .. "Show Name and Title, Hide Portrait, Show Progress Bar, Sentences at Once, Auto-Scroll (subtitles), "
@@ -211,7 +224,7 @@ do
     env.Addon.PlayerStyle = function() return chosen end
     Options:UpdateRows()
     Expect("the dialogueui style shows the rows it reads", StyleRows(),
-        "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, wheel note, Theme, Show Progress Bar, "
+        "Window Size, Show Narrator, Quests, Gossip, Show Words, Word Size, Lock Position, wheel note, Theme, Show Progress Bar, "
         .. "Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Type Words Out, Type Out By")
     chosen = "none"; Options:UpdateRows()
     Expect("voice only shows no words' rows without DialogueUI: nothing of Spoken's is on screen", StyleRows(), "")

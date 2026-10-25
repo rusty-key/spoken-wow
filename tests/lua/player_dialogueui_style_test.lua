@@ -569,6 +569,16 @@ do
     env.Addon.db.profile.Transcript.SubtitleProgress = true
     env.PlayerFrame:RefreshConfig()
 end
+do
+    local tall = Skin.frame:GetHeight()
+    env.Addon.db.profile.Transcript.ShowWords = false
+    env.PlayerFrame:RefreshConfig(); env.Transcript:RefreshConfig()
+    Expect("Show Words off, the window stays and lists the queue in the words' place",
+        tostring(Skin.frame:IsShown()) .. " " .. tostring(env.Transcript.frame:IsShown()) .. " "
+        .. tostring(env.Transcript.labels[1]:IsShown()), "true true true")
+    env.Addon.db.profile.Transcript.ShowWords = true
+    env.PlayerFrame:RefreshConfig(); env.Transcript:RefreshConfig()
+end
 Skin.play.scripts.OnClick(Skin.play)
 Expect("Stop stops the line, its glyph turning to Replay", tostring(env.SoundQueue:IsPaused()) .. " " .. tostring(Skin.play.state),
     "true replay")

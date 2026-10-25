@@ -404,8 +404,60 @@ function Transcript:ActiveSegment(progress)
     return self.segments[low]
 end
 
+-- Show Words off: the rows a window lists the queue in, as many as its words would take.
+local function QueueCap()
+    if Expanded() then return EXPANDED_LINES end
+    return Config().Lines == 1 and 1 or 2
+end
+
+--- The titles a window lists in the words' place with Show Words off, up to `cap`: the line playing
+--- first, then each one waiting. The sample alone while a window previews.
+function Transcript:QueueTitles(cap)
+    local queue = SoundQueue:GetQueue()
+    if #queue == 0 and self.clip then queue = { self.clip } end
+    local titles = {}
+    for i = 1, math.min(#queue, cap or QueueCap()) do
+        local present = queue[i].present or {}
+        titles[i] = present.label or present.header or queue[i].key or ""
+    end
+    return titles
+end
+
+--- Whether a window lists the queue in place of `clip`'s words: Show Narrator shows it, Show Words
+--- is off, and the style is a window.
+function Transcript:ListsQueue(clip)
+    return clip ~= nil and Addon:ShowsNarrator(clip) and Config().ShowWords == false
+        and Addon:DisplayStyle() ~= "subtitle"
+end
+
+--- The rows the queue takes with Show Words off.
+function Transcript:QueueRows()
+    return #self:QueueTitles()
+end
+
+-- The queue's titles on the rows, the line playing lit as the word being read is.
+function Transcript:RenderQueue()
+    local titles = self:QueueTitles(LineCount())
+    self.top, self.topTarget, self.activeWord = 1, 1, nil
+    local key = "queue:" .. table.concat(titles, "\n")
+    if self.renderedKey == key then return end
+    self.renderedKey, self.placedKey = key, nil
+    local color = self.style and self.style.highlight or HIGHLIGHT
+    local step = FontSize() + LineGap()
+    local padTop = self.style and self.style.padTop or 0
+    for row, label in ipairs(self.labels) do
+        local title = titles[row]
+        label:SetText(title and (row == 1 and color .. title .. "|r" or title) or "")
+        label:ClearAllPoints()
+        label:SetPoint("TOPLEFT", 0, -(padTop + (row - 1) * step))
+        label:SetAlpha(1)
+        label:SetShown(title ~= nil)
+    end
+end
+
 function Transcript:Render()
     if not self.labels then return end
+    if self:ListsQueue(self.clip) then return self:RenderQueue() end
     local cfg = Config()
     local progress = self:GetProgress()
     local segment = self:ActiveSegment(progress)
@@ -479,7 +531,7 @@ function Transcript:Render()
 end
 
 function Transcript:Place()
-    if not self.labels then return end
+    if not self.labels or self:ListsQueue(self.clip) then return end
     local top = self.top or 1
     local first = math.floor(top)
     local fraction = top - first
@@ -543,8 +595,9 @@ end
 -- The player owns position, scale, border and controls. This module owns only
 -- the caption text and its reading position.
 function Transcript:HeightForClip(clip)
+    if self:ListsQueue(clip) then return self:QueueRows() * ((Config().FontSize or 16) + GAP) end
     -- Subtitles stand apart from the player, which then keeps its compact height.
-    if not Addon:ShowsNarrator(clip) or Addon:DisplayStyle() == "subtitle" or not clip or self:TextFor(clip) == "" then return 0 end
+    if not self:ShowsWords(clip) or Addon:DisplayStyle() == "subtitle" or not clip or self:TextFor(clip) == "" then return 0 end
     return LineCount() * ((Config().FontSize or 16) + GAP)
 end
 
@@ -584,8 +637,8 @@ end
 function Transcript:Update()
     if not self.frame or self.held then return end
     self:Render()
-    self.frame:SetShown(Addon:ShowsNarrator(self.clip) and Addon:DisplayStyle() ~= "subtitle" and self.clip ~= nil
-        and self.text ~= "")
+    self.frame:SetShown(self:ListsQueue(self.clip) or self:ShowsWords(self.clip) and Addon:DisplayStyle() ~= "subtitle"
+        and self.clip ~= nil and self.text ~= "")
     Subtitle:Update()
 end
 
@@ -603,6 +656,11 @@ function Transcript:Reset()
     Addon:Layout().CaptionsExpanded = false
     self.manualScroll = false
     self:RefreshConfig()
+end
+
+--- Whether a window shows the words of `clip`: Show Narrator shows it, and Show Words is on.
+function Transcript:ShowsWords(clip)
+    return Addon:ShowsNarrator(clip) and Config().ShowWords ~= false
 end
 
 function Transcript:SetEnabled(enabled)
