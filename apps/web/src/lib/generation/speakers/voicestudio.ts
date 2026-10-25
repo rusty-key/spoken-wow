@@ -14,6 +14,7 @@ import type { Lang } from "@/lib/lang";
 
 import { failure, classifyUpstream } from "../errors";
 import { stitchMp3 } from "../stitch";
+import { applyVoiceStudioLexicon } from "../voicestudio-lexicon";
 import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
 
 export const VOICESTUDIO_DEFAULT_BASE_URL = "http://127.0.0.1:3900";
@@ -105,14 +106,15 @@ export function voiceStudioSpeaker(options: VoiceStudioOptions = {}): Speaker {
       return `no VoiceStudio profile for "${voice}" in this language`;
     },
 
-    async speak({ turns }: SpeakRequest): Promise<Spoken> {
+    async speak({ turns, lang }: SpeakRequest): Promise<Spoken> {
       if (turns.length === 0) {
         return { ok: false, failure: failure("bad-request", "VoiceStudio received no speech turns") };
       }
 
       const { apiKey, baseUrl, modelId, fetchImpl } = configForSpeaker;
+      const lexicon = await applyVoiceStudioLexiconToTurns(turns, lang);
       const parts: Buffer[] = [];
-      for (const turn of turns) {
+      for (const turn of lexicon.turns) {
         let response: Response;
         try {
           response = await fetchImpl(`${baseUrl}/v1/audio/speech`, {
@@ -181,9 +183,23 @@ export function voiceStudioSpeaker(options: VoiceStudioOptions = {}): Speaker {
           settings: { response_format: VOICESTUDIO_OUTPUT_FORMAT, turns: turns.length },
           outputFormat: VOICESTUDIO_OUTPUT_FORMAT,
           dictionaryId: null,
-          dictionaryVersion: null,
+          dictionaryVersion: lexicon.version,
         },
       };
     },
   };
+}
+
+async function applyVoiceStudioLexiconToTurns(
+  turns: SpeakRequest["turns"],
+  lang: Lang,
+): Promise<{ turns: SpeakRequest["turns"]; version: string | null }> {
+  let version: string | null = null;
+  const transformed = [];
+  for (const turn of turns) {
+    const applied = await applyVoiceStudioLexicon(turn.text, lang);
+    transformed.push({ ...turn, text: applied.text });
+    version = applied.version;
+  }
+  return { turns: transformed, version };
 }

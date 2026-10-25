@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("../dictionary", () => ({
+  lexiconStamp: vi.fn(async () => "test-stamp"),
+  readLexicon: vi.fn(async () => ({ entries: [{ grapheme: "Gnomeregan", alias: "nomeregan", confidence: "high" }] })),
+}));
 vi.mock("@/lib/voices/slots", () => ({
   isVoiceSlot: vi.fn(async (name: string) => name === "dwarf-male-grim"),
 }));
@@ -71,5 +75,27 @@ describe("VoiceStudio speaker", () => {
       response_format: "mp3",
       instructions: "warm",
     });
+  });
+
+  it("applies the active locale lexicon before synthesis", async () => {
+    const fetchImpl = vi.fn(async () => audio());
+    const speaker = voiceStudioSpeaker({
+      baseUrl: "http://voice.test",
+      fetchImpl: fetchImpl as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await speaker.speak({
+      turns: [{ text: "Gnomeregan está cerca.", voiceId: "profile-id" }],
+      lang: "esMX",
+      seed: null,
+      dialogue: false,
+    });
+
+    expect(result).toMatchObject({ ok: true, made: { dictionaryId: null } });
+    expect((result as { ok: true; made: { dictionaryVersion: string | null } }).made.dictionaryVersion).toMatch(
+      /^voicestudio:/,
+    );
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toMatchObject({ input: "nomeregan está cerca." });
   });
 });

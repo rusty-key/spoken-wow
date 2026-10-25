@@ -32,7 +32,10 @@ The profile name must be the Spoken voice slot name for English, for example
 1. A collaborator opens Voices, selects VoiceStudio, and activates it for the language.
 2. Spoken resolves profile names to VoiceStudio profile IDs.
 3. The queue sends each turn to `POST /v1/audio/speech` with the configured model, profile ID,
-   text, and `response_format: "mp3"`.
+   text, and `response_format: "mp3"`. Before sending, Spoken applies the active pronunciation
+   lexicon for that locale: respelling entries work for every locale, and English IPA entries
+   are lowered to OmniVoice CMU phoneme brackets. A version of the applied rules is recorded
+   with the take.
 4. Lines containing narration or voice markers are generated turn-by-turn and stitched into one
    MP3 before the take is committed.
 
