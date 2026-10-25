@@ -78,27 +78,13 @@ function QuestOverlayUI:ContributeButtonFor(questID, title)
     return button
 end
 
-local prefix
 function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalText, questCheck)
-    if not prefix then
-        local text = normalText:GetText()
-        for i = 1, 20 do
-            normalText:SetText(string.rep(" ", i))
-            if normalText:GetStringWidth() >= 24 then
-                prefix = normalText:GetText()
-                break
-            end
-        end
-        prefix = prefix or "  "
-        normalText:SetText(text)
-    end
+    -- Keep Play in the row's left margin instead of placing it on the title's first glyphs.
+    playButton:SetPoint("LEFT", questLogTitleFrame, "LEFT", 4, 0)
 
-    playButton:SetPoint("LEFT", normalText, "LEFT", 4, 0)
-
-    local formatedText = prefix .. string.trim(normalText:GetText() or "")
-
-    normalText:SetText(formatedText)
-    QuestLogDummyText:SetText(formatedText)
+    -- The button now has its own room, so leave the client's title text and indentation unchanged.
+    local text = normalText:GetText() or ""
+    QuestLogDummyText:SetText(text)
 
     questCheck:SetPoint("LEFT", normalText, "LEFT", normalText:GetStringWidth(), 0)
 end
