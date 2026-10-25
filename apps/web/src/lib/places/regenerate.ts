@@ -17,6 +17,7 @@
  * request, which left the repository with two ElevenLabs clients and put one of them in a
  * pipeline that does no generating.
  */
+import type { GenerateOptions } from "@/lib/generation/generate-options";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import "server-only";
 
@@ -25,7 +26,6 @@ import { regenerateNarrated } from "@/lib/generation/narrated";
 import type { RegenerateResult } from "@/lib/generation/regenerate";
 
 import { catalogue, type CatalogueEntry } from "./catalogue";
-import type { Speaker } from "@/lib/generation/speakers/speaker";
 
 async function entryFor(lineId: string, lang: Lang): Promise<CatalogueEntry | undefined> {
   return (await catalogue(lang)).find((candidate) => candidate.id === lineId);
@@ -39,7 +39,7 @@ async function entryFor(lineId: string, lang: Lang): Promise<CatalogueEntry | un
 export async function regenerateZoneLine(
   lineId: string,
   createdBy: string,
-  options: { speaker: Speaker; lang?: Lang; batchId?: string },
+  options: GenerateOptions,
 ): Promise<RegenerateResult> {
   const entry = await entryFor(lineId, options.lang ?? BASE_LANG);
   if (!entry) {

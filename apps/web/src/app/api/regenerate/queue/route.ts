@@ -23,8 +23,7 @@ import { corpus } from "@/lib/quests/catalogue";
 import { isSource, type Source } from "@/lib/sections";
 import {
   requireAnyRegenerate,
-  requireApiKey,
-  requireSpeaker,
+  requireQueueable,
   requireIn,
 } from "@/lib/generation/authz";
 import { createBatch, enqueue, snapshot } from "@/lib/generation/queue";
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
   //
   // The provider is fixed here too: the estimate the batch was started on was for it, and
   // switching on /voices mid-batch must not move the jobs already waiting.
-  const { provider, denied: noKey } = await requireSpeaker(session.user.id, lang);
+  const { provider, denied: noKey } = await requireQueueable(session.user.id, lang);
   if (noKey) return noKey;
 
   // Nothing starts the queue on boot - see lib/generation/boot.ts for why - so every route
@@ -112,7 +111,7 @@ export async function POST(request: NextRequest) {
   // holds one needs the fish.audio key as well, for the reason the first key is checked above.
   const pinned = provider === "fish" ? new Set<string>() : await pinnedVoices(lang);
   if (jobs.some((job) => pinned.has(job.voice))) {
-    const { denied: noFishKey } = await requireApiKey(session.user.id, "fish");
+    const { denied: noFishKey } = await requireQueueable(session.user.id, lang, "fish");
     if (noFishKey) return noFishKey;
   }
 

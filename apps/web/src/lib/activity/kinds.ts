@@ -127,6 +127,10 @@ export type ActivityDetail = {
   "user.unbanned": Record<string, never>;
   "user.removed": Record<string, never>;
   "user.impersonated": Record<string, never>;
+
+  // Generating on an author's own machine (lib/worker).
+  "worker.paired": Record<string, never>;
+  "generation.mode": { provider: string; mode: string };
 };
 
 export type ActivityKind = keyof ActivityDetail;
@@ -185,6 +189,8 @@ const CATEGORY_OF: Record<string, Category> = {
   contribution: "admin",
   report: "admin",
   user: "admin",
+  worker: "admin",
+  generation: "audio",
 };
 
 export function categoryOf(kind: string): Category | null {

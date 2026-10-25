@@ -248,6 +248,10 @@ export async function activeLanes(max: number): Promise<Lane[]> {
          from "regeneration_job"
         where "state" in ('pending', 'running')
           and "lang" not in (select "lang" from "regeneration_pause")
+          -- An author who generates on their own machine drains their own lanes.
+          and not exists (select 1 from "generation_mode" m
+                           where m."userId" = "owner" and m."provider" = "regeneration_job"."provider"
+                             and m."mode" = 'local')
         group by "owner", "provider"
      ),
      ranked as (
@@ -318,41 +322,149 @@ export async function claimNext(
   return rows[0] ?? null;
 }
 
+/**
+ * Whose claim a settlement is. A job whose lease expired is claimed again, which counts
+ * another attempt, so the attempt a claim was handed is what tells its settlement from a
+ * later claim's. A slow worker that answers after its lease ran out then settles nothing,
+ * instead of finishing a job somebody else is generating. Absent, any claim may settle it,
+ * which is what the tests that build rows by hand rely on.
+ */
+function claimed(attempt: number | undefined, at: number): string {
+  return attempt === undefined ? "" : `and "state" = 'running' and "attempts" = $${at}`;
+}
+
+/** Settle a job as done. False when the claim it was given has been overtaken. */
 export async function finishJob(
   id: string,
   result: { version: number; credits: number | null; costUsd?: number | null },
-): Promise<void> {
-  await db().query(
+  attempt?: number,
+): Promise<boolean> {
+  const params: unknown[] = [id, result.version, result.credits, result.costUsd ?? null];
+  if (attempt !== undefined) params.push(attempt);
+  const { rowCount } = await db().query(
     `update "regeneration_job"
         set "state" = 'done', "version" = $2, "credits" = $3, "costUsd" = $4,
-            "finishedAt" = now(), "leaseUntil" = null
-      where "id" = $1`,
-    [id, result.version, result.credits, result.costUsd ?? null],
+            "finishedAt" = now(), "leaseUntil" = null, "relay" = null
+      where "id" = $1 ${claimed(attempt, 5)}`,
+    params,
   );
+  return (rowCount ?? 0) > 0;
 }
 
 export async function failJob(
   id: string,
   failure: { kind: string; message: string },
-): Promise<void> {
-  await db().query(
+  attempt?: number,
+): Promise<boolean> {
+  const params: unknown[] = [id, failure.kind, failure.message];
+  if (attempt !== undefined) params.push(attempt);
+  const { rowCount } = await db().query(
     `update "regeneration_job"
         set "state" = 'failed', "errorKind" = $2, "error" = $3,
-            "finishedAt" = now(), "leaseUntil" = null
-      where "id" = $1`,
-    [id, failure.kind, failure.message],
+            "finishedAt" = now(), "leaseUntil" = null, "relay" = null
+      where "id" = $1 ${claimed(attempt, 4)}`,
+    params,
   );
+  return (rowCount ?? 0) > 0;
 }
 
-/** Put a job back, due after `delayMs`. Used only to back off a rate limit. */
-export async function retryJob(id: string, delayMs: number): Promise<void> {
-  await db().query(
+/** Put a job back, due after `delayMs`. To back off a rate limit, or to hand a claim back. */
+export async function retryJob(id: string, delayMs: number, attempt?: number): Promise<boolean> {
+  const params: unknown[] = [id, delayMs / 1000];
+  if (attempt !== undefined) params.push(attempt);
+  const { rowCount } = await db().query(
     `update "regeneration_job"
         set "state" = 'pending', "notBefore" = now() + make_interval(secs => $2),
-            "leaseUntil" = null
-      where "id" = $1`,
-    [id, delayMs / 1000],
+            "leaseUntil" = null, "relay" = null
+      where "id" = $1 ${claimed(attempt, 3)}`,
+    params,
   );
+  return (rowCount ?? 0) > 0;
+}
+
+/**
+ * Extend a claim's lease while its provider call runs. False when the claim has been
+ * overtaken or the job settled, which tells a remote worker to drop what it is doing.
+ */
+export async function renewLease(id: string, attempt: number, leaseMs: number = DEFAULT_LEASE_MS): Promise<boolean> {
+  const { rowCount } = await db().query(
+    `update "regeneration_job" set "leaseUntil" = now() + make_interval(secs => $3)
+      where "id" = $1 and "state" = 'running' and "attempts" = $2`,
+    [id, attempt, leaseMs / 1000],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/**
+ * Take the next due job of one owner's local lanes, for their Spoken Manager: the queue as
+ * claimNext reads it, limited to providers the owner generates on their own machine.
+ */
+export async function claimForOwner(
+  owner: string,
+  providers: readonly Provider[],
+  leaseMs: number = DEFAULT_LEASE_MS,
+): Promise<QueueJob | null> {
+  const { rows } = await db().query<QueueJob>(
+    `update "regeneration_job" as j set
+        "state"      = 'running',
+        "attempts"   = j."attempts" + 1,
+        "leaseUntil" = now() + make_interval(secs => $1),
+        "startedAt"  = coalesce(j."startedAt", now()),
+        "relay"      = null
+      where j."id" = (
+        select "id" from "regeneration_job" r
+         where (("state" = 'pending' and "notBefore" <= now())
+            or ("state" = 'running' and "leaseUntil" < now()))
+           and "lang" not in (select "lang" from "regeneration_pause")
+           and "owner" = $2 and "provider" = any($3::text[])
+           and exists (select 1 from "generation_mode" m
+                        where m."userId" = r."owner" and m."provider" = r."provider" and m."mode" = 'local')
+         order by "id"
+         for update skip locked
+         limit 1
+      )
+      returning j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
+                j."preview", j."characters", j."attempts", j."provider", j."owner",
+                (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId")
+                  as "createdBy"`,
+    [leaseMs / 1000, owner, providers],
+  );
+  return rows[0] ?? null;
+}
+
+/** What a relayed claim recorded about its provider requests (migration 0085). */
+export type RelayRecord = {
+  fingerprints: string[];
+  roster: { name: string; voiceId: string }[] | null;
+};
+
+export async function recordRelay(id: string, attempt: number, relay: RelayRecord): Promise<boolean> {
+  const { rowCount } = await db().query(
+    `update "regeneration_job" set "relay" = $3::jsonb
+      where "id" = $1 and "state" = 'running' and "attempts" = $2`,
+    [id, attempt, JSON.stringify(relay)],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/** A running relayed job of `owner`'s, as its claim left it, or null when it is not theirs now. */
+export async function relayedJob(
+  id: string,
+  owner: string,
+  attempt: number,
+): Promise<{ job: QueueJob; relay: RelayRecord } | null> {
+  const { rows } = await db().query<QueueJob & { relay: RelayRecord | null }>(
+    `select j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
+            j."preview", j."characters", j."attempts", j."provider", j."owner", j."relay",
+            (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId") as "createdBy"
+       from "regeneration_job" j
+      where j."id" = $1 and j."owner" = $2 and j."attempts" = $3 and j."state" = 'running'`,
+    [id, owner, attempt],
+  );
+  const row = rows[0];
+  if (!row?.relay) return null;
+  const { relay, ...job } = row;
+  return { job, relay };
 }
 
 /**

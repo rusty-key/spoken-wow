@@ -16,6 +16,7 @@
  */
 import { regenerateBookLine } from "@/lib/readables/regenerate";
 import { requireIn, requireSpeaker } from "@/lib/generation/authz";
+import { queuedForManager } from "@/lib/worker/local-line";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +24,16 @@ export async function POST(request: Request) {
   const { session, lang, denied } = await requireIn(request, "regenerate");
   if (denied) return denied;
 
-  // After the role check, never instead of it: a key is a credential, not a permission.
-  const { speaker, denied: noKey } = await requireSpeaker(session.user.id, lang);
-  if (noKey) return noKey;
-
   const body = (await request.json().catch(() => ({}))) as { lineId?: unknown };
   if (typeof body.lineId !== "string" || !body.lineId) {
     return Response.json({ error: "lineId is required", kind: "bad-request" }, { status: 400 });
   }
+
+  const queued = await queuedForManager("readables", body.lineId, session.user.id, lang);
+  if (queued) return queued;
+  // After the role check, never instead of it: a key is a credential, not a permission.
+  const { speaker, denied: noKey } = await requireSpeaker(session.user.id, lang);
+  if (noKey) return noKey;
 
   const result = await regenerateBookLine(body.lineId, session.user.id, { speaker, lang });
 

@@ -274,6 +274,15 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: "removed a user", quote: null };
     case "user.impersonated":
       return { what: `signed in as ${row.subjectName ?? "a removed user"}`, quote: null };
+    case "worker.paired":
+      return { what: "paired a Spoken Manager", quote: null };
+    case "generation.mode":
+      return {
+        what: `generates ${str(d.provider) === "fish" ? "fish.audio" : "ElevenLabs"} lines ${
+          str(d.mode) === "local" ? "on their own computer" : "on the site"
+        }`,
+        quote: null,
+      };
     // A kind this page does not know: one a newer release wrote before a rollback to this
     // one. Shown by its name rather than breaking the page.
     default:

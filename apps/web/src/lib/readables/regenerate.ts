@@ -7,6 +7,7 @@
  * lib/generation/narrated.ts, shared with places; what is here is finding a page and
  * deciding whether it can be voiced.
  */
+import type { GenerateOptions } from "@/lib/generation/generate-options";
 import "server-only";
 
 import { failure } from "@/lib/generation/errors";
@@ -16,7 +17,6 @@ import type { RegenerateResult } from "@/lib/generation/regenerate";
 import { catalogue, type BookPage } from "./catalogue";
 import { spokenText } from "./tools";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import type { Speaker } from "@/lib/generation/speakers/speaker";
 
 async function pageFor(lineId: string, lang: Lang): Promise<BookPage | undefined> {
   return (await catalogue(lang)).find((candidate) => candidate.id === lineId);
@@ -25,7 +25,7 @@ async function pageFor(lineId: string, lang: Lang): Promise<BookPage | undefined
 export async function regenerateBookLine(
   lineId: string,
   createdBy: string,
-  options: { speaker: Speaker; lang?: Lang; batchId?: string },
+  options: GenerateOptions,
 ): Promise<RegenerateResult> {
   const lang = options.lang ?? BASE_LANG;
 

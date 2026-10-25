@@ -26,13 +26,15 @@ import { BASE_LANG } from "@/lib/lang";
 import "server-only";
 
 import { commitTake } from "@/lib/takes/commit";
+import { Recorded } from "./relay";
+import type { GenerateOptions } from "./generate-options";
 import { durationOf } from "@/lib/places/tools";
 
 import { busy, failure } from "./errors";
 import { BUSY, withTakeLock } from "./lock";
 import { NARRATOR_VOICE } from "./narration";
 import type { RegenerateResult } from "./regenerate";
-import type { Speaker, Spoken } from "./speakers/speaker";
+import type { Spoken } from "./speakers/speaker";
 import { timesFor } from "./word-times";
 import type { Lang } from "@/lib/lang";
 
@@ -58,10 +60,11 @@ export async function regenerateNarrated(
   source: "places" | "readables",
   line: NarratedLine,
   createdBy: string,
-  options: { speaker: Speaker; lang?: Lang; batchId?: string },
+  options: GenerateOptions,
 ): Promise<RegenerateResult> {
   const lang = options.lang ?? BASE_LANG;
   const { speaker } = options;
+  const commit = options.commit ?? commitTake;
 
   // Each language has its own narrator, like every other voice.
   const voices = await speaker.voices(lang);
@@ -101,7 +104,7 @@ export async function regenerateNarrated(
     const { audio, credits, costUsd, made } = speech;
 
     try {
-      const committed = await commitTake(
+      const committed = await commit(
         source,
         line.file,
         audio,
@@ -150,6 +153,8 @@ export async function regenerateNarrated(
         sharedWith: 0,
       };
     } catch (error) {
+      // A recording run (relay.ts) ends at the commit, and must reach its caller as that.
+      if (error instanceof Recorded) throw error;
       return { ok: false, failure: asFailure(error) };
     }
   }, lang);

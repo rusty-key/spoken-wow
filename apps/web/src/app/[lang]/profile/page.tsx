@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import ApiKeySection from "@/components/ApiKeySection";
+import GenerationModeSection from "@/components/GenerationModeSection";
 import Link from "@/components/LocaleLink";
 import { apiKeyStatus } from "@/lib/api-key";
 import { viewerOf } from "@/lib/grants/store";
@@ -10,6 +11,8 @@ import { pageLang } from "@/lib/lang-server";
 import { spendsCredits } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { Contained } from "@/components/Width";
+import { readModes } from "@/lib/worker/mode";
+import { listTokens, normaliseCode } from "@/lib/worker/tokens";
 
 export const metadata: Metadata = { title: "Profile · Spoken" };
 
@@ -23,10 +26,21 @@ export const dynamic = "force-dynamic";
  * A redirect to /login rather than the 404 /admin and /voices give a member: every signed-in
  * user has a profile, so the only question here is who is asking, and signing in answers it.
  */
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ pair?: string | string[] }>;
+}) {
   const lang = await pageLang(params);
   const session = await currentSession();
-  if (!session) redirect(localeHref(lang, "/login"));
+  // A Spoken Manager sends its owner here to approve its pairing code; signing in keeps it.
+  const pair = (await searchParams).pair;
+  const pairCode = typeof pair === "string" && pair ? normaliseCode(pair) : null;
+  if (!session) {
+    redirect(localeHref(lang, pairCode ? `/login?next=${encodeURIComponent(`/profile?pair=${pairCode}`)}` : "/login"));
+  }
 
   const role = session.user.role;
   const spends = spendsCredits(await viewerOf(session));
@@ -35,6 +49,9 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const [status, fishStatus] = spends
     ? await Promise.all([apiKeyStatus(session.user.id), apiKeyStatus(session.user.id, "fish")])
     : [null, null];
+  const [modes, managers] = spends
+    ? await Promise.all([readModes(session.user.id), listTokens(session.user.id)])
+    : [null, []];
 
   return (
     <main className="pt-6 pb-36">
@@ -63,6 +80,9 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             </p>
             <ApiKeySection initial={status} />
             <ApiKeySection initial={fishStatus} provider="fish" />
+            {modes ? (
+              <GenerationModeSection initialModes={modes} initialManagers={managers} pairCode={pairCode} />
+            ) : null}
           </div>
         ) : (
           // Said rather than hidden: a member who has been told "go and regenerate that line"

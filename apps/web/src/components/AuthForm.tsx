@@ -30,7 +30,11 @@ const COPY = {
   },
 } as const;
 
-export default function AuthForm({ mode }: { mode: Mode }) {
+/**
+ * `next` is where to go once signed in: a path on this site and nothing else, so a link
+ * cannot send someone who has just signed in to another origin.
+ */
+export default function AuthForm({ mode, next }: { mode: Mode; next?: string | null }) {
   const router = useRouter();
   const lang = useLang();
   const copy = COPY[mode];
@@ -59,7 +63,8 @@ export default function AuthForm({ mode }: { mode: Mode }) {
 
     // refresh() re-runs the server components, so a page guarded on the server (/admin)
     // sees the new session immediately rather than on the next full load.
-    router.push(localeHref(lang, "/"));
+    const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    router.push(localeHref(lang, safe));
     router.refresh();
   }
 

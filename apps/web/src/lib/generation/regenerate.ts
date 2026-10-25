@@ -24,6 +24,7 @@ import { readIgnores } from "@/lib/quests/ignores";
 import { overrideOf } from "@/lib/quests/override";
 import { readOverrides } from "@/lib/quests/overrides";
 import { commitTake } from "@/lib/takes/commit";
+import type { GenerateOptions } from "./generate-options";
 import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 
@@ -32,7 +33,6 @@ import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
 import { directionFor, NARRATOR_VOICE, segments, type Segment } from "./narration";
-import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
 import { SHAPE } from "./speakers/shape";
@@ -81,10 +81,11 @@ async function resolve(lineId: string, lang: Lang): Promise<CorpusLine[] | null>
 export async function regenerateLine(
   lineId: string,
   createdBy: string,
-  options: { speaker: Speaker; lang?: Lang; batchId?: string },
+  options: GenerateOptions,
 ): Promise<RegenerateResult> {
   const lang = options.lang ?? BASE_LANG;
   const { speaker } = options;
+  const commit = options.commit ?? commitTake;
   const group = await resolve(lineId, lang);
   if (!group) {
     return { ok: false, failure: { ...failure("bad-request", `no line ${lineId}`), status: 404 } };
@@ -215,7 +216,7 @@ export async function regenerateLine(
 
     // Already trimmed of its lead-in by tts.ts, so the archived file and `bytes` both
     // describe the audio the addon will play.
-    const committed = await commitTake(
+    const committed = await commit(
       "quests",
       file,
       speech.audio,
