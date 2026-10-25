@@ -377,8 +377,9 @@ end
 function SpokenReadables:RememberPageText(pageId, language, text, title)
 	self.pageText = self.pageText or {}
 	self.pageText[language] = self.pageText[language] or {}
-	self.pageText[language][pageId] = text:gsub("\r\n?", "\n"):gsub("%$[Bb]", "\n")
-		:gsub("<[^>]+>", " "):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+	-- Keep the page's paragraph breaks: the Compendium shows this cached text directly, and
+	-- flattening it turns a letter or book into one uninterrupted string of words.
+	self.pageText[language][pageId] = self:Normalise(text)
 	local book = self:PlaceOf(pageId)
 	if book and type(title) == "string" and title ~= "" then
 		self.bookTitle = self.bookTitle or {}

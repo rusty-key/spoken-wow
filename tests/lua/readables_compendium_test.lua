@@ -566,10 +566,10 @@ do
         page.body.text.text:sub(1, 20), "Palabras de Kurdran.")
     Expect("...under the title the pack's index gives it", page.title.text, "Saludo de Kurdran")
     _G.SpokenReadablesAudioPacks = {}
-    B:RememberPageText(first, "esES", "Palabras vistas.", "Kurdran visto")
+    B:RememberPageText(first, "esES", "Palabras vistas.\n\nSegundo párrafo.", "Kurdran visto")
     B:ShowReadables(KURDRAN)
-    Expect("...and a page the client showed is in the words it showed", page.body.text.text:sub(1, 16),
-        "Palabras vistas.")
+    Expect("...and a page the client showed keeps its paragraph breaks", page.body.text.text,
+        "Palabras vistas.\n\nSegundo párrafo.")
     Expect("...under the title it showed", page.title.text, "Kurdran visto")
     _G.SpokenReadablesAudioPacks, _G.GetLocale, B.pageText, B.bookTitle = packs, locale, kept, titles
     B:ShowReadables(KURDRAN)

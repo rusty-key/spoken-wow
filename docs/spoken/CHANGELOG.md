@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The Compendium keeps a readable's paragraph spacing** when it shows text captured from the
+  client's page.
+  *([anon1231823](https://github.com/anon1231823))*
 - **The Bosses tab lists dungeons straight under their continent.** The zone lines are gone: each
   continent shows its dungeons and raids by name, then its world bosses, and the search finds bosses
   and dungeons. A dungeon's page still names its zone.
