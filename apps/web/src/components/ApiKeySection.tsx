@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import type { ApiKeyStatus } from "@/lib/api-key";
 import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
 
+// VoiceStudio stores a connection rather than a key: VoiceStudioSection.
 type StoredProvider = Exclude<Provider, "voicestudio">;
 
 /** What differs between the two providers' sections: the words, and where the key goes. */

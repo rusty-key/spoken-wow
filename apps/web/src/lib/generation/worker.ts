@@ -35,6 +35,7 @@ import { readGenerationSettings, type Preference } from "./preference";
 import { speakerFrom } from "./speakers/for";
 import type { Provider, Speaker } from "./speakers/speaker";
 import { PROVIDER_NAME } from "./providers";
+import { decodeConnection } from "./voicestudio-connection";
 
 /**
  * How many times a rate-limited job is retried before it is failed.
@@ -71,9 +72,9 @@ export async function currentBudget(
   provider: Provider,
   modelId: string,
 ): Promise<number> {
-  if (provider === "voicestudio") {
-    const configured = Number(process.env.VOICESTUDIO_MAX_CONCURRENCY ?? 1);
-    return clampToPool(Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : 1, POOL_MAX);
+  // What the collaborator said their own machine can take; there is no plan to read it from.
+  if (provider === "voicestudio" && apiKey) {
+    return clampToPool(decodeConnection(apiKey).maxConcurrency, POOL_MAX);
   }
   if (provider === "fish" && apiKey) return clampToPool(await fishBudget(apiKey), POOL_MAX);
   const status = await generationStatus(apiKey ? { apiKey } : {});
