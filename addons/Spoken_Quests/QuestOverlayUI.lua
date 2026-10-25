@@ -189,20 +189,25 @@ function QuestOverlayUI:QueuedLine(questID)
     end
 end
 
---- Stop while this quest's line speaks, Replay while it is stopped at the head, Play otherwise.
---- Also the line, where it is queued.
+--- Stop while this quest's line speaks, Replay while it is stopped at the head. Behind another line
+--- that goes on, "queued" where it already waits and "queue" where a click would put it there;
+--- behind a stop, Play, which plays it at once. Play otherwise. Also the line, where it is queued.
 function QuestOverlayUI:StateOf(questID)
-    local clip = self:QueuedLine(questID)
-    if not clip or Spoken:GetCurrent() ~= clip then return "play", clip end
-    if Spoken:IsPaused() then return "replay", clip end
-    if Spoken:GetNowPlaying() == clip then return "stop", clip end
+    local clip, current = self:QueuedLine(questID), Spoken:GetCurrent()
+    if clip and current == clip then
+        if Spoken:IsPaused() then return "replay", clip end
+        if Spoken:GetNowPlaying() == clip then return "stop", clip end
+        return "play", clip
+    end
+    if current and not Spoken:IsPaused() then return clip and "queued" or "queue", clip end
     return "play", clip
 end
 
 --- A button's `setPlayState`, for one that stops and replays: its glyph is what the queue says its quest is doing.
 function QuestOverlayUI.FollowQueue(button) button:SetState((QuestOverlayUI:StateOf(button.questID))) end
 
-local TIPS = { play = "OPT_PLAY", stop = "OPT_STOP", replay = "OPT_REPLAY" }
+local TIPS = { play = "OPT_PLAY", stop = "OPT_STOP", replay = "OPT_REPLAY", queue = "OPT_QUEUE",
+    queued = "OPT_QUEUED" }
 
 function QuestOverlayUI:ShowPlayTip(button)
     GameTooltip:SetOwner(button, "ANCHOR_LEFT")

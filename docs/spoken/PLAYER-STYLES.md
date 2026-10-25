@@ -47,7 +47,10 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   A story you ask for with Play does not wait. Pointing at "+N" opens a tooltip, Up Next, with
   the waiting lines in the order they will play, each with its title and who says it, at most
   twelve (`Actions.WaitingTip`). Clicking "+N" does nothing, and a click on it reaches the window
-  under it.
+  under it. A line queued while Spoken is stopped waits, as every line does, and the count says
+  so: it swells, lit gold with a glow behind it, and settles back (`Actions.Pulse`). Skip plays the
+  waiting line; Replay plays the stopped one first. A count that grows while lines play only fades
+  in.
 - **The face** (`Face.lua`): the speaker's still portrait, captured from their unit or drawn from
   their creature (`StaticPortrait.lua`), else the line's own picture, cut round, with the line's
   badge on a dark disc at its lower right, and the disc only under a badge. A creature the client

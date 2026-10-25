@@ -341,6 +341,7 @@ function Subtitle:Build()
     self.heldDot:SetText("•")
     self.moreDot:SetText("•")
     self.moreHover = Actions.WaitingHover(self.more)
+    self.morePulse = Actions.Pulse(self.more)
     self.waiting = 0
 
     -- Clips the words, so a line gliding past an edge is cut there, not drawn over the name row or
@@ -1017,6 +1018,7 @@ function Subtitle:Tick(elapsed)
     if self.wanted and self.clip and StaticPortrait:Resolved() then self:ConfigurePicture(self.clip) end
     self:ShowProgress()
     self:Animate(elapsed)
+    self.morePulse:Step(elapsed)
     self:FadeControls(elapsed)
     self:TakeWheel()
     self.poll = (self.poll or 0) + elapsed
@@ -1048,8 +1050,12 @@ function Subtitle:Waiting()
     return math.max(0, SoundQueue:GetQueueSize() - 1)
 end
 
+--- The count swells when it grew behind a stop, on the same line: a new line on screen is not one queued.
 function Subtitle:SetWaiting(waiting)
-    self.waiting = waiting
+    if waiting > (self.waiting or 0) and self.countedClip == self.clip and SoundQueue:IsPaused() then
+        self.morePulse:Start()
+    end
+    self.waiting, self.countedClip = waiting, self.clip
     self.more:SetText(waiting > 0 and ("+" .. waiting) or "")
 end
 

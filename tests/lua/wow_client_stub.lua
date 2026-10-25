@@ -287,7 +287,9 @@ local function Widget(kind, name)
     function w:IsEnabled() return self.enabled ~= false end
     function w:SetChecked(v) self.checked = v end
     function w:GetChecked() return self.checked end
-    function w:GetFont() return "Fonts\\FRIZQT__.TTF", 12 end
+    -- The font a string was set in, else the game's own: the waiting count's swell reads its size back.
+    function w:SetFont(file, size, flags) self.fontFile, self.fontSize, self.fontFlags = file, size, flags; return true end
+    function w:GetFont() return self.fontFile or "Fonts\\FRIZQT__.TTF", self.fontSize or 12, self.fontFlags end
     -- Real objects rather than the catch-all's no-op: with hooks running, the player's
     -- fade-in builds an animation group and then drives it, and a nil there is an error.
     function w:CreateAnimationGroup(n)
