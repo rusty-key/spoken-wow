@@ -5,7 +5,8 @@ setfenv(1, SpokenEnv)
 -- them (SKINNING_API.md in EllesmereUI), so none of its art or code ships here. Its API would skin
 -- them under its Blizzard Style, Classic WoW UI and WoW Forever looks too; those keep Spoken's art.
 -- The player turns it off in EllesmereUI, under Blizzard Skins+ > Window Skins > Third-Party Addons.
-Ellesmere = { waiting = {} }
+-- `waiting` holds what waits for the callback while EllesmereUI may still run it; nil once it cannot.
+Ellesmere = {}
 
 --- Whether `eui`, the EllesmereUI global, draws its own look: not a stock look, not a mix of looks
 --- (false) and not no styled module loaded (nil).
@@ -28,21 +29,15 @@ local function Run(dress, skin)
     return ok
 end
 
---- Runs `dress(skin)` now, the windows wearing EllesmereUI's look, a failure said in chat rather than
---- stopping the caller.
-function Ellesmere:Try(dress)
-    if self.skin then return Run(dress, self.skin) end
-    return false
-end
-
--- The clients whose language EllesmereUI's font writes; the others (Russian, Korean, Chinese) keep
--- the game's font, which has their script.
-local LATIN = { enUS = true, enGB = true, deDE = true, esES = true, esMX = true, frFR = true, itIT = true,
-    ptBR = true, ptPT = true }
-
 --- EllesmereUI's font while the windows wear its look and it writes the client's language; else nil.
+--- It writes Latin script only: Russian, Korean and Chinese clients keep the game's font, which has
+--- their script.
 function Ellesmere:Font()
-    if not self.skin or not LATIN[GetLocale and GetLocale() or "enUS"] then return nil end
+    if not self.skin then return nil end
+    local client = Options:ClientLanguage()
+    for _, language in ipairs(LANGUAGES) do
+        if language.code == client and language.script then return nil end
+    end
     return (self.skin.GetFont())
 end
 
@@ -65,13 +60,16 @@ end
 function Ellesmere:When(dress)
     if self.skin then
         Run(dress, self.skin)
-    elseif self.registered and not self.declined then
+    elseif self.waiting then
         table.insert(self.waiting, dress)
     end
 end
 
 -- A box's edge: a dark grey, as EllesmereUI's own borders are; its API gives no border colour.
 local EDGE = { 0.2, 0.2, 0.2, 1 }
+-- How far over a shell's frame to draw what must show over its edge, which EllesmereUI draws 6
+-- levels over it.
+Ellesmere.OVER_SHELL = 7
 Ellesmere.EDGE = EDGE
 -- The dark collar between a picture and its edge, as EllesmereUI's square button draws one round the
 -- icon Spoken puts in it: 2 screen pixels in the panel's colour.
@@ -184,7 +182,7 @@ end
 --- EllesmereUI runs the callback once, at login, and only while its skinning of Spoken is on.
 function Ellesmere:Register(eui)
     if type(eui) ~= "table" or type(eui.RegisterSkin) ~= "function" then return end
-    self.registered = true
+    self.waiting = {}
     -- With its skinning of Spoken off the callback never comes, and what waits for it would be kept
     -- all session: once the world is shown without it, nothing waits.
     local watch = CreateFrame("Frame")
@@ -192,17 +190,17 @@ function Ellesmere:Register(eui)
     watch:SetScript("OnEvent", function(frame)
         frame:UnregisterAllEvents()
         C_Timer.After(0, function()
-            if not Ellesmere.skin then Ellesmere.declined, Ellesmere.waiting = true, {} end
+            if not Ellesmere.skin then Ellesmere.waiting = nil end
         end)
     end)
     eui.RegisterSkin("Spoken", function(skin)
         if not Ellesmere.OwnLook(eui) then
-            Ellesmere.declined, Ellesmere.waiting = true, {}
+            Ellesmere.waiting = nil
             return
         end
         Ellesmere.skin = skin
-        local waiting = Ellesmere.waiting
-        Ellesmere.waiting = {}
+        local waiting = Ellesmere.waiting or {}
+        Ellesmere.waiting = nil
         for _, dress in ipairs(waiting) do Run(dress, skin) end
         if PlayerFrame.frame then PlayerFrame:RefreshConfig() end
     end)

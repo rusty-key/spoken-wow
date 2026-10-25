@@ -298,7 +298,7 @@ function PlayerFrame:RefreshConfig()
     -- Only once the shell is on, and a failure here said in chat: the window's scale, strata and
     -- host below must still be set.
     if self.frame.spokenEllesmere == true then
-        Ellesmere:Try(function(skin)
+        Ellesmere:When(function(skin)
             -- White on EllesmereUI's shell, as its windows write their names.
             self.frame.container.name:SetTextColor(1, 1, 1)
             -- The shell's own dark behind the words: ApplyArt has just drawn Spoken's box again.
@@ -310,8 +310,7 @@ function PlayerFrame:RefreshConfig()
             -- On the portrait, under what it shows, so Hide Portrait hides it too.
             portrait.disc = Ellesmere:Disc(skin, portrait, portrait)
             self:FitPortrait()
-            -- Over the shell's edge, which EllesmereUI draws 6 levels over the window.
-            local level = self.frame:GetFrameLevel() + 7
+            local level = self.frame:GetFrameLevel() + Ellesmere.OVER_SHELL
             portrait:SetFrameLevel(level)
             portrait.border:SetFrameLevel(level + 3)
         end)

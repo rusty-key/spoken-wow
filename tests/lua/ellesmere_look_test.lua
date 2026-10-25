@@ -114,11 +114,11 @@ env.PlayerFrame:RefreshConfig()
 OtherWindows(env)
 Expect("with EllesmereUI's skinning of Spoken off, its callback never runs and nothing changes",
     tostring(env.Ellesmere:On()) .. " " .. #eui.calls, "false 0")
-Expect("...what is built before the world is shown waits for it", #env.Ellesmere.waiting > 0, true)
+Expect("...what is built before the world is shown waits for it", #(env.Ellesmere.waiting or {}) > 0, true)
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(0.1)
 env.Ellesmere:Refont(env.MinimalPlayer.name)
-Expect("...and once the world is shown without it, nothing waits any more", #env.Ellesmere.waiting, 0)
+Expect("...and once the world is shown without it, nothing waits any more", env.Ellesmere.waiting, nil)
 
 ---------------------------------------------------------------- EllesmereUI's own look
 env, eui = Boot("eui")
@@ -390,13 +390,13 @@ end
 
 ---------------------------------------------------------------- EllesmereUI not loaded
 env, eui = Boot("absent")
-Expect("with EllesmereUI not loaded nothing waits for its look", #env.Ellesmere.waiting, 0)
+Expect("with EllesmereUI not loaded nothing waits for its look", env.Ellesmere.waiting, nil)
 env, eui = Boot("blizzard")
-local queued = #env.Ellesmere.waiting
+local queued = #(env.Ellesmere.waiting or {})
 eui.callback(eui.skin)
 env.Ellesmere:When(function() end)
 Expect("under another look the windows waiting for EllesmereUI's are let go, and none wait after",
-    tostring(queued > 0) .. " " .. #env.Ellesmere.waiting, "true 0")
+    tostring(queued > 0) .. " " .. tostring(env.Ellesmere.waiting), "true nil")
 
 _G.EllesmereUI = nil
 if Failures() > 0 then stub.print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

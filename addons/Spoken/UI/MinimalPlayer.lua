@@ -462,12 +462,11 @@ function MinimalPlayer:RefreshConfig(original)
     -- Every refresh: a style switch draws the stock border and paper again. Only once the shell is
     -- on: a shell that failed leaves Spoken's own.
     if self.panel.spokenEllesmere == true then
-        Ellesmere:Try(function()
+        Ellesmere:When(function()
             if self.panel.SetBackdrop then self.panel:SetBackdrop(nil) end
             self.paper:SetAlpha(0)
-            -- The portrait over the shell's edge, which EllesmereUI draws 6 levels over the panel:
-            -- under it, the edge would draw across the picture.
-            local level = self.panel:GetFrameLevel() + 7
+            -- The portrait over the shell's edge: under it, the edge would draw across the picture.
+            local level = self.panel:GetFrameLevel() + Ellesmere.OVER_SHELL
             self.portrait:SetFrameLevel(level)
             self.portrait.viewport:SetFrameLevel(level + 1)
             self.portrait.chrome:SetFrameLevel(level + 9)
