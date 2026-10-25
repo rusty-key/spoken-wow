@@ -2,7 +2,7 @@
 // server, the asset downloads and the manager's own update, plus, only when the player turned
 // Sharing on, the lines Spoken collected, sent to spoken.rusty.one (share.ts).
 import path from 'node:path'
-import { app, BrowserWindow, Menu, session, shell } from 'electron'
+import { app, BrowserWindow, Menu, safeStorage, session, shell } from 'electron'
 import { CHANNELS, type UpdaterState } from '../shared/api'
 import { windowChrome } from './chrome'
 import { isAllowedExternalUrl } from './external'
@@ -163,10 +163,29 @@ if (!app.requestSingleInstanceLock()) {
     setUpMenu()
     // A dev build can send to a local site instead (SPOKEN_SHARE_URL); a packaged one never does.
     const shareUrl = app.isPackaged ? undefined : process.env.SPOKEN_SHARE_URL
-    service = new ManagerService({ dataPath, appVersion: app.getVersion(), send: broadcast, ...(shareUrl ? { shareUrl } : {}) })
+    const siteUrl = app.isPackaged ? undefined : process.env.SPOKEN_SITE_URL
+    // The generating token and keys are kept encrypted by the system's keychain, or not at all.
+    const cipher = safeStorage.isEncryptionAvailable()
+      ? {
+          encrypt: (text: string) => safeStorage.encryptString(text).toString('base64'),
+          decrypt: (sealed: string) => safeStorage.decryptString(Buffer.from(sealed, 'base64'))
+        }
+      : undefined
+    service = new ManagerService({
+      dataPath,
+      appVersion: app.getVersion(),
+      send: broadcast,
+      ...(shareUrl ? { shareUrl } : {}),
+      ...(siteUrl ? { siteUrl } : {}),
+      ...(cipher ? { cipher } : {}),
+      openExternal: (url) => {
+        if (isAllowedExternalUrl(url)) void shell.openExternal(url)
+      }
+    })
     registerIpc(service, PAGE, () => updaterState)
     void service.init()
     service.startSharing()
+    service.startGenerating()
 
     mainWindow = createWindow()
 

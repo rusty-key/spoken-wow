@@ -8,13 +8,14 @@ import { IconChevron, IconChevronRight, IconDownload, IconGames, IconHeart, Icon
 import { useStore } from '../store'
 import { REPO_URL, S, SITE_URL } from '../strings'
 
-type Section = 'games' | 'updates' | 'downloads' | 'sharing' | 'about'
+type Section = 'games' | 'updates' | 'downloads' | 'sharing' | 'generate' | 'about'
 
 const NAV: { id: Section; label: string; icon: ReactNode }[] = [
   { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
   { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
   { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
   { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
+  { id: 'generate', label: S.settings.generate, icon: <IconRefresh size={18} /> },
   { id: 'about', label: S.settings.about, icon: <IconInfo size={18} /> }
 ]
 
@@ -41,6 +42,7 @@ export function SettingsPage(): ReactNode {
             {section === 'updates' && <UpdatesSection />}
             {section === 'downloads' && <DownloadsSection />}
             {section === 'sharing' && <SharingSection />}
+            {section === 'generate' && <GenerateSection />}
             {section === 'about' && <AboutSection />}
           </div>
         </div>
@@ -268,6 +270,118 @@ function SharingSection(): ReactNode {
       {reset && (
         <p className="status status-ok-text setting-result" role="status">
           {S.settings.resetDone}
+        </p>
+      )}
+    </section>
+  )
+}
+
+const PROVIDER_LABEL = { elevenlabs: 'ElevenLabs', fish: 'fish.audio' } as const
+
+function GenerateSection(): ReactNode {
+  const { state, actions } = useStore()
+  const g = state.generate
+  const [error, setError] = useState('')
+  const [entries, setEntries] = useState<{ elevenlabs: string; fish: string }>({ elevenlabs: '', fish: '' })
+  const run = async (work: () => Promise<void>): Promise<void> => {
+    setError('')
+    try {
+      await work()
+    } catch (e) {
+      setError(errorText(e))
+    }
+  }
+  if (!g) {
+    return (
+      <section aria-labelledby="set-generate">
+        <h2 id="set-generate" className="settings-h">
+          {S.settings.generate}
+        </h2>
+        <p className="settings-text">{S.settings.generateUnavailable}</p>
+      </section>
+    )
+  }
+  return (
+    <section aria-labelledby="set-generate">
+      <h2 id="set-generate" className="settings-h">
+        {S.settings.generate}
+      </h2>
+      <p className="settings-text">{S.settings.generateText}</p>
+
+      <p className="settings-text" role="status">
+        {g.pairedAs ? S.settings.pairedAs(g.pairedAs) : S.settings.notPaired}
+      </p>
+      {g.pairing && <p className="settings-text">{S.settings.pairingCode(g.pairing.code)}</p>}
+      <div className="setting-actions">
+        {g.pairedAs ? (
+          <button type="button" className="btn" onClick={() => void run(() => api().generateUnpair())}>
+            {S.settings.unpair}
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary" onClick={() => void run(() => api().generatePair())}>
+            {S.settings.pair}
+          </button>
+        )}
+        {g.pairing && (
+          <button type="button" className="btn" onClick={() => void api().openExternal(g.pairing!.verifyUrl)}>
+            {S.settings.openPairing}
+          </button>
+        )}
+      </div>
+
+      {(['elevenlabs', 'fish'] as const).map((provider) => (
+        <div key={provider}>
+          <span className="field-label">
+            {S.settings.keyFor(PROVIDER_LABEL[provider])}: {g.keys[provider] ? S.settings.keySet : S.settings.keyMissing} ·{' '}
+            {g.modes[provider] === 'local' ? S.settings.generatesHere : S.settings.generatesOnSite}
+          </span>
+          <form
+            className="path-line"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void run(async () => {
+                await api().generateSetKey(provider, entries[provider])
+                setEntries((prev) => ({ ...prev, [provider]: '' }))
+              })
+            }}
+          >
+            <input
+              className="input"
+              type="password"
+              autoComplete="off"
+              placeholder={S.settings.keyPlaceholder}
+              value={entries[provider]}
+              onChange={(e) => setEntries((prev) => ({ ...prev, [provider]: e.target.value }))}
+              aria-label={S.settings.keyFor(PROVIDER_LABEL[provider])}
+            />
+            <button type="submit" className="btn" disabled={entries[provider].trim() === ''}>
+              {S.settings.saveKey}
+            </button>
+            {g.keys[provider] && (
+              <button type="button" className="btn" onClick={() => void run(() => api().generateSetKey(provider, ''))}>
+                {S.settings.removeKey}
+              </button>
+            )}
+          </form>
+        </div>
+      ))}
+
+      <div className="switches">
+        <Switch
+          checked={state.settings.generating}
+          onChange={(v) => void actions.setSettings({ generating: v }).catch((e) => setError(errorText(e)))}
+          label={S.settings.generateSwitch}
+          text={S.settings.generateSwitchText}
+        />
+      </div>
+      {state.settings.generating && (
+        <p className="settings-text" role="status">
+          {g.current.length > 0 ? S.settings.generateNow(g.current.length) : S.settings.generateIdle} {S.settings.generateCounts(g.done, g.failed)}
+        </p>
+      )}
+      {(error || g.error) && (
+        <p className="text-error" role="alert">
+          {error || g.error}
         </p>
       )}
     </section>
