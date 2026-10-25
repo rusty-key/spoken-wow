@@ -370,11 +370,11 @@ do
     for _, child in ipairs(window.children or {}) do if child.flatGlyph then fold = child end end
     Expect("the Compendium's own fold button, without the fold template, takes the flat glyph", fold ~= nil, true)
     if fold then
-        Expect("...its arrow art faded", fold:GetNormalTexture():GetAlpha(), 0)
+        Expect("...the fold arrow on it", fold.flatGlyph.atlas, "UI-QuestTrackerButton-Secondary-Collapse")
         fold.scripts.OnClick(fold)
-        Expect("...and folded, the unfold arrow the game sets is faded too", fold:GetNormalTexture():GetAlpha(), 0)
+        Expect("...the unfold arrow once folded", fold.flatGlyph.atlas, "UI-QuestTrackerButton-Secondary-Expand")
         fold.scripts.OnClick(fold)
-        Expect("...and unfolded again", fold:GetNormalTexture():GetAlpha(), 0)
+        Expect("...and the fold arrow once unfolded again", fold.flatGlyph.atlas, "UI-QuestTrackerButton-Secondary-Collapse")
     end
     _G.C_Texture = cTexture
 end

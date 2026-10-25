@@ -33,6 +33,13 @@ _G.C_Texture = { GetAtlasInfo = function(name) return stub.ListAtlas(name) or AT
 local createFrame = _G.CreateFrame
 -- The window's fold and unfold buttons, as the template makes them.
 local foldFrame
+-- The fold button EllesmereUI's look gives a window: the child with the arrow on it.
+local function FoldsOf(window)
+    local folds = {}
+    for _, child in ipairs(window.children or {}) do if child.flatGlyph then table.insert(folds, child) end end
+    return folds
+end
+local function FoldOf(window) local folds = FoldsOf(window) return folds[#folds] end
 _G.CreateFrame = function(kind, name, parent, template)
     local frame = createFrame(kind, name, parent, template)
     if template == "PortraitFrameTemplate" then
@@ -911,11 +918,12 @@ do
     Expect("...the page's scroll bar Spoken's own", tostring(page.body.flatThumb), "nil")
     Expect("...the tabs the game's", tostring(_G.SpokenCompendiumWindowTab1.flat), "nil")
     Expect("...the fold button the game's, and no edge round the picture",
-        tostring(foldFrame.MinimizeButton.flatGlyph) .. " " .. tostring(page.body.pictureEdge), "nil nil")
+        tostring((FoldOf(book))) .. " " .. tostring(foldFrame:IsShown()) .. " " .. tostring(page.body.pictureEdge), "nil true nil")
     do
         local border = createFrame("Frame", nil, WorldMapFrame)
         border.CloseButton = createFrame("Button", nil, border)
         border.CloseButton:SetSize(30, 30)
+        border.CloseButton:SetPoint("TOPRIGHT", border, "TOPRIGHT", -5, -4)
         border.MaximizeMinimizeFrame = createFrame("Frame", nil, border)
         border.MaximizeMinimizeFrame:SetSize(32, 32)
         border.MaximizeMinimizeFrame:SetPoint("RIGHT", border.CloseButton, "LEFT", 10, 0)
@@ -1082,23 +1090,26 @@ do
         C.tabs.first.enabled = nil
         C:Select("places")
     end
-    local fold, unfold = foldFrame.MinimizeButton.flatGlyph, foldFrame.MaximizeButton.flatGlyph
+    local flat = FoldOf(book)
+    local glyph = flat.flatGlyph
     -- As EllesmereUI draws the world map's: the quest tracker's arrows, 16 across, 2 left of the middle.
-    Expect("the fold and unfold glyphs the world map's in EllesmereUI's look, at their size and place",
-        tostring(fold.atlas) .. " " .. tostring(unfold.atlas) .. " " .. fold:GetWidth() .. "x" .. fold:GetHeight() .. " "
-        .. fold.anchor.point .. " " .. fold.anchor.x .. "," .. fold.anchor.y,
-        "UI-QuestTrackerButton-Secondary-Collapse UI-QuestTrackerButton-Secondary-Expand 16x16 CENTER -2,0")
-    Expect("...the buttons placed from the close button as the world map's, at their sizes",
-        tostring(foldFrame.anchor.relativeTo == book.CloseButton) .. " " .. foldFrame.anchor.point .. " "
-        .. foldFrame.anchor.relativePoint .. " " .. foldFrame.anchor.x .. " " .. foldFrame:GetWidth() .. " "
-        .. foldFrame.MinimizeButton:GetWidth() .. " " .. book.CloseButton:GetWidth(), "true RIGHT LEFT 10 32 28 30")
+    Expect("the fold button the world map's arrow in EllesmereUI's look, at its size and place",
+        tostring(glyph.atlas) .. " " .. glyph:GetWidth() .. "x" .. glyph:GetHeight() .. " "
+        .. glyph.anchor.point .. " " .. glyph.anchor.x .. "," .. glyph.anchor.y,
+        "UI-QuestTrackerButton-Secondary-Collapse 16x16 CENTER -2,0")
+    Expect("...placed from the close button as the world map's, at its size",
+        tostring(flat.anchor.relativeTo == book.CloseButton) .. " " .. flat.anchor.point .. " "
+        .. flat.anchor.relativePoint .. " " .. flat.anchor.x .. " " .. flat:GetWidth() .. " " .. book.CloseButton:GetWidth(),
+        "true RIGHT LEFT 10 28 30")
+    Expect("...the close button where the map's is on its frame",
+        tostring(book.CloseButton.anchor.relativeTo == book) .. " " .. book.CloseButton.anchor.point .. " "
+        .. book.CloseButton.anchor.x .. "," .. book.CloseButton.anchor.y, "true TOPRIGHT -5,-4")
+    Expect("...the game's fold buttons out of sight", tostring(foldFrame:IsShown()), "false")
     do
-        -- The template sets its red art again as the window folds and shows: it stays faded.
-        local minimize = foldFrame.MinimizeButton
-        minimize:SetNormalTexture("RedButton-Condense")
-        minimize:GetNormalTexture():SetAlpha(1)
-        for _, hook in ipairs(minimize.hooks and minimize.hooks.OnShow or {}) do hook(minimize) end
-        Expect("...its red art faded again whenever it shows", minimize:GetNormalTexture():GetAlpha(), 0)
+        flat.scripts.OnClick(flat)
+        Expect("...folding the window shows the unfold arrow", glyph.atlas, "UI-QuestTrackerButton-Secondary-Expand")
+        flat.scripts.OnClick(flat)
+        Expect("...and unfolding it the fold arrow", glyph.atlas, "UI-QuestTrackerButton-Secondary-Collapse")
     end
     if other then
         Expect("...the chosen tab filled opaque in the window's colour at its foot, its own backing gone",
@@ -1178,14 +1189,14 @@ do
         NewSession()
         stub.absentAPI.PortraitContainer = nil
         local made = _G.SpokenCompendium:Window()
-        Expect("a window made while the world map is not built keeps the game's buttons",
+        Expect("a window made while the world map is not built keeps the game's sizes",
             tostring(made.spokenFoldsFitted) .. " " .. tostring(made.CloseButton:GetWidth() == 30), "nil false")
         Expect("...a portrait button dressed though its container is missing", portraits.PortraitButton:GetAlpha(), 0)
         WorldMapFrame.BorderFrame = map
         for _, hook in ipairs(made.hooks and made.hooks.OnShow or {}) do hook(made) end
         Expect("...the map built, its next showing fits them to it",
-            tostring(made.spokenFoldsFitted) .. " " .. tostring(foldFrame.anchor.relativeTo == made.CloseButton) .. " "
-            .. made.CloseButton:GetWidth(), "true true 30")
+            tostring(made.spokenFoldsFitted) .. " " .. tostring(FoldOf(made).anchor.relativeTo == made.CloseButton) .. " "
+            .. made.CloseButton:GetWidth() .. " " .. FoldOf(made):GetWidth(), "true true 30 28")
 
         -- Tabs made after: the label at the template's size, and a look that fails says so in chat and
         -- leaves the tab.
@@ -1203,17 +1214,33 @@ do
         _G.CreateFrame = create
     end
 
+    -- A map not laid out yet reads 0 across: nothing is copied from it, and the button keeps the close
+    -- button's size until the window is shown again.
+    do
+        local minimize = WorldMapFrame.BorderFrame.MaximizeMinimizeFrame.MinimizeButton
+        local width = minimize.GetWidth
+        minimize.GetWidth = function() return 0 end
+        NewSession()
+        local early = _G.SpokenCompendium:Window()
+        local folded = FoldOf(early)
+        Expect("a map not laid out leaves the fold button the close button's size, to be fitted later",
+            tostring(folded:GetWidth() == early.CloseButton:GetWidth() and folded:GetWidth() > 0), "true")
+        minimize.GetWidth = width
+    end
+
     -- A client without the fold arrows: the game's buttons stay, the close button is sized as the map's.
     do
         local collapse, expand = ATLASES["UI-QuestTrackerButton-Secondary-Collapse"], ATLASES["UI-QuestTrackerButton-Secondary-Expand"]
         ATLASES["UI-QuestTrackerButton-Secondary-Collapse"], ATLASES["UI-QuestTrackerButton-Secondary-Expand"] = nil, nil
+        -- The stub hands back the window made under the same name, so its folds are counted from here.
+        local before = #FoldsOf(_G.SpokenCompendium:Window())
         NewSession()
         local bare = _G.SpokenCompendium:Window()
         ATLASES["UI-QuestTrackerButton-Secondary-Collapse"], ATLASES["UI-QuestTrackerButton-Secondary-Expand"] = collapse, expand
         Expect("a client without the arrows keeps the game's fold buttons where they are, the close button the map's size",
-            tostring(foldFrame.MinimizeButton.flatGlyph) .. " " .. tostring(foldFrame.MaximizeButton.flatGlyph) .. " "
+            (#FoldsOf(bare) - before) .. " " .. tostring(foldFrame:IsShown()) .. " "
             .. tostring(foldFrame.anchor.x == 10) .. " " .. bare.CloseButton:GetWidth() .. " " .. tostring(bare.spokenFoldsFitted),
-            "nil nil false 30 true")
+            "0 true false 30 true")
     end
 
     -- Each list row and title in the one font rule: EllesmereUI's where it writes the client's language.
