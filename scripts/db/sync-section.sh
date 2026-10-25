@@ -28,7 +28,8 @@ tables=("$@")
 : "${LOCAL_DB:?LOCAL_DB is not set}"
 
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
-shared=(take recording)
+# take_encoding is each take's clip as its pack ships it (migration 0084).
+shared=(take recording take_encoding)
 
 counts="select (select count(*) from \"${tables[0]}\") || ' ${tables[0]} rows, '
                || (select count(*) from \"take\" where \"source\" = '$source_name') || ' $source_name takes, '

@@ -23,7 +23,7 @@ import path from "node:path";
 
 export type ArchiveMode = "disk" | "dual" | "r2";
 
-export type BlobPrefix = "takes" | "recordings" | "samples" | "references" | "previews" | "staging";
+export type BlobPrefix = "takes" | "recordings" | "encodings" | "samples" | "references" | "staging";
 
 export type BlobStore = {
   /** Store `data` under `key`. Writing the same key twice is harmless: the bytes are its name. */

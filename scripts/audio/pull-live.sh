@@ -60,6 +60,10 @@ mkdir -p "$archive"
 # then prints blobs/<prefix>/<sha256> for them); only the rest still need the droplet.
 if [ -n "${SPOKEN_ARCHIVE_URL:-}" ]; then
   node "$root/scripts/audio/fetch-blobs.mjs" "$archive" <"$list"
+  # And the Ogg the site encoded each quests take to at commit, into package-audio.sh's cache.
+  if [ "$section" = quests ] && [ "$what" = takes ]; then
+    node "$root/scripts/audio/fetch-encodings.mjs" --lang="$lang"
+  fi
 fi
 grep -v '^blobs/' "$list" >"$files" || true
 if [ ! -s "$files" ]; then

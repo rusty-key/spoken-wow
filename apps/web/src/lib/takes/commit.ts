@@ -34,6 +34,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { historyDirOf } from "./adapters";
 import { archiveName, withLocalCopy, writeAtomic } from "./bytes";
+import { encodeForPack } from "./encode";
 import type { Provider } from "@/lib/generation/providers";
 
 /** What a take was made with. Anything unknown is null, which means unknown, not unchanged. */
@@ -128,6 +129,8 @@ export async function commitTake(
     sha256,
     batchId: options.batchId,
   });
+  // After the row: the take is live whether or not its pack's encoding could be made.
+  await encodeForPack(source, sha256, data);
 
   return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
 }

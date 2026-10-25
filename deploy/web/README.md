@@ -118,6 +118,11 @@ it and every collaborator pastes their key again — recoverable, but they have 
 backfill runs, and `r2` after: then the audio routes redirect to the bucket and the volume is
 no longer read or written (`apps/web/src/lib/blobs/store.ts`).
 
+With the bucket in use the droplet also wants **`oggenc`** (`apt install vorbis-tools`)
+beside ffmpeg: every quests take is encoded to its pack's Ogg when it is committed
+(`apps/web/src/lib/takes/encode.ts`). Without it the take still commits and the release
+workflow (`.github/workflows/release-packs.yaml`) encodes it instead, more slowly.
+
 `app.env` may also set **`QUEUE_MAX_ACTIVE`**, which is not a secret: how many people's
 regeneration queues drain at once. Default 3. Each queue runs at its own key's plan width,
 and all of them together at most 12 jobs (the database pool's limit), so raising it spreads

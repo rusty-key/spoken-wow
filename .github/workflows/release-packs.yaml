@@ -1,0 +1,147 @@
+# A sound pack release, run here instead of on the one machine that used to hold the audio.
+#
+# Every clip is in the public archive bucket now, named by its hash (apps/web/src/lib/blobs),
+# and every quests clip's pack encoding beside it (lib/takes/encode.ts). So a runner can do
+# what `make <section>-full-release` did on a laptop: copy production's rows, fetch the live
+# clips and encodings from the bucket, build the packs, and upload them to CurseForge, GitHub
+# and the manager channel.
+#
+# By hand only, never on a push: a release is a version number and a changelog section
+# somebody decided on. A dry run builds everything and uploads nothing.
+name: Release sound packs
+
+on:
+  workflow_dispatch:
+    inputs:
+      section:
+        description: Which section's packs
+        type: choice
+        options: [quests, zones, books]
+        required: true
+      locale:
+        description: The language (enUS for English)
+        default: enUS
+        required: true
+      version:
+        description: English quests only, the version to stamp (its changelog section must exist)
+        required: false
+      manager:
+        description: Also publish to the manager channel
+        type: boolean
+        default: true
+      dry_run:
+        description: Build, and upload nothing
+        type: boolean
+        default: true
+
+# One release at a time: two would race on the manager index and on the GitHub tags.
+concurrency: release-packs
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ["5432:5432"]
+    env:
+      LOCAL_DB: postgres://postgres:postgres@localhost:5432/postgres
+      SECTION: ${{ inputs.section }}
+      LOCALE: ${{ inputs.locale }}
+      VERSION: ${{ inputs.version }}
+      SPOKEN_ARCHIVE_URL: ${{ vars.SPOKEN_ARCHIVE_URL }}
+      REMOTE_ROOT: /srv/spoken
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Quests pipeline venv, where make/quests.mk looks for it
+        working-directory: pipelines/quests
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -q -r requirements-extract.txt
+      - name: Encoders
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg vorbis-tools zip rsync
+      - run: deploy/web/bin/migrate.sh "$PWD/apps/web"
+        env:
+          DATABASE_URL: ${{ env.LOCAL_DB }}
+
+      # The same key and known_hosts the deploy uses, and only to read production's rows:
+      # the audio comes from the bucket.
+      - name: Reach production's database
+        env:
+          KEY: ${{ secrets.DO_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DO_KNOWN_HOSTS }}
+          TARGET: ${{ secrets.DO_USER }}@${{ secrets.DO_HOST }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$(printf '%s' "$KEY" | tr -d '\r')" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          echo "DROPLET=$TARGET" >> "$GITHUB_ENV"
+          echo "SSH=ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
+
+      - name: Check the bucket is configured
+        run: |
+          [ -n "$SPOKEN_ARCHIVE_URL" ] || { echo "::error::set the SPOKEN_ARCHIVE_URL repository variable"; exit 1; }
+
+      # The sync asks before it replaces local tables. This database exists for this run only.
+      - name: Production's rows
+        # Not `yes | make`: under the runner's pipefail, yes dying of SIGPIPE fails the step.
+        run: make "$SECTION-sync" < <(yes y)
+      - name: The live clips, from the bucket
+        run: make "$SECTION-pull-live" LOCALE="$LOCALE"
+      - name: Build
+        run: |
+          make "$SECTION-package-audio" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
+          if [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ]; then make quests-package-meta ${VERSION:+VERSION=$VERSION}; fi
+          ls -la dist/
+
+      - name: What would be uploaded
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
+        run: |
+          ./scripts/audio-github-release.sh --dry-run "$SECTION" "$LOCALE"
+          if [ "${{ inputs.manager }}" = true ]; then make manager-publish-dry; fi
+
+      # full-release repeats the sync, pull and build, and finds them all done; what it adds
+      # is the store uploads in the order the Makefiles keep. Its question is answered here.
+      - name: Upload to CurseForge and GitHub
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: make "$SECTION-full-release" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION} < <(yes y)
+      - name: Publish to the manager channel
+        if: ${{ !inputs.dry_run && inputs.manager }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
+        run: make manager-publish
