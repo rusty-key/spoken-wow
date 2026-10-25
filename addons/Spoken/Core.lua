@@ -88,6 +88,9 @@ Defaults = {
             Enabled = true,
             -- Sources whose words are not shown while Enabled, by source key; empty shows every source's.
             WordsOff = {},
+            -- Show Words: off, the windows keep their portrait, name and controls and leave the words
+            -- out. Subtitles Only shows them whatever this says.
+            ShowWords = true,
             -- How the captions follow the voice: "line", "page" or "off".
             ScrollMode = "line",
             Lines = 2,

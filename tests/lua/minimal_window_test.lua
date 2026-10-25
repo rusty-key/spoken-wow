@@ -99,6 +99,18 @@ do
     env.Addon.db.profile.Transcript.SubtitleProgress = true
     env.PlayerFrame:RefreshConfig()
 end
+do
+    local tall = M.frame:GetHeight()
+    env.Addon.db.profile.Transcript.ShowWords = false
+    env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+    Expect("Show Words off, the window stays with its name and controls and closes up over no words", Try(function()
+        return tostring(M.frame:IsShown()) .. " " .. M.name:GetText() .. " " .. tostring(M.play:IsShown()) .. " "
+            .. tostring(T.frame:IsShown()) .. " " .. tostring(M.frame:GetHeight() < tall) end), "true Grull true false true")
+    env.Addon.db.profile.Transcript.ShowWords = true
+    env.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+    Expect("...and on again, the words are back", Try(function()
+        return tostring(T.frame:IsShown()) .. " " .. tostring(M.frame:GetHeight() == tall) end), "true true")
+end
 
 local first = env.SoundQueue:GetCurrentSound()
 pcall(function() M.skip.scripts.OnClick(M.skip) end)

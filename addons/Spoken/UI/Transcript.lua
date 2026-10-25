@@ -544,7 +544,7 @@ end
 -- the caption text and its reading position.
 function Transcript:HeightForClip(clip)
     -- Subtitles stand apart from the player, which then keeps its compact height.
-    if not Addon:ShowsNarrator(clip) or Addon:DisplayStyle() == "subtitle" or not clip or self:TextFor(clip) == "" then return 0 end
+    if not self:ShowsWords(clip) or Addon:DisplayStyle() == "subtitle" or not clip or self:TextFor(clip) == "" then return 0 end
     return LineCount() * ((Config().FontSize or 16) + GAP)
 end
 
@@ -584,7 +584,7 @@ end
 function Transcript:Update()
     if not self.frame or self.held then return end
     self:Render()
-    self.frame:SetShown(Addon:ShowsNarrator(self.clip) and Addon:DisplayStyle() ~= "subtitle" and self.clip ~= nil
+    self.frame:SetShown(self:ShowsWords(self.clip) and Addon:DisplayStyle() ~= "subtitle" and self.clip ~= nil
         and self.text ~= "")
     Subtitle:Update()
 end
@@ -603,6 +603,11 @@ function Transcript:Reset()
     Addon:Layout().CaptionsExpanded = false
     self.manualScroll = false
     self:RefreshConfig()
+end
+
+--- Whether a window shows the words of `clip`: Show Narrator shows it, and Show Words is on.
+function Transcript:ShowsWords(clip)
+    return Addon:ShowsNarrator(clip) and Config().ShowWords ~= false
 end
 
 function Transcript:SetEnabled(enabled)

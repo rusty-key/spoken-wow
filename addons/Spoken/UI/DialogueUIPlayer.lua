@@ -480,6 +480,8 @@ function Skin:Layout()
         local needed = self:TextLines(wordsWidth)
         if needed and needed < lines then lines = needed end
     end
+    -- Show Words off: the header and the progress line, no room for words.
+    if not Transcript:ShowsWords(self.clip) then lines = 0 end
     local captionHeight = lines * lineHeight
     local height = padTop + wordsTop + captionHeight + padBottom + footerHeight
     self.settledHeight = height
@@ -547,7 +549,7 @@ function Skin:Dress()
     if self.viewport.texture then self.viewport.texture:SetVertexColor(tint[1], tint[2], tint[3]) end
     Transcript:SetStyle({ font = fonts.paragraph, size = self.captionSize, lineGap = self.lineGap,
         paragraphs = true, color = colors.paragraph, shadow = look.shadow and true or false,
-        highlight = colors.highlight, lines = self.lines, padTop = self.lineRoom })
+        highlight = colors.highlight, lines = math.max(1, self.lines), padTop = self.lineRoom })
 end
 
 function Skin:ConfigurePortrait()
