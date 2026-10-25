@@ -19,7 +19,7 @@ import { db } from "../db";
 import { sentText } from "../generation/files";
 import { spokenHash } from "../generation/spoken-hash";
 import { directionFor } from "../generation/narration";
-import { SHAPE } from "../generation/speakers/shape";
+import { SHAPE, voiceStudioFingerprint } from "../generation/speakers/shape";
 import { currentConfig } from "../generation/settings";
 import { overrideOf } from "./override";
 import { readOverrides } from "./overrides";
@@ -76,7 +76,11 @@ export async function staleFiles(
     const pronounced = sentText(text, lang, line.playerGender);
     // By the provider that made the take: what it would be sent now is its question.
     const spoken = SHAPE[row.provider](pronounced, directionFor(line.voice, raceTags), raceTags);
-    if (spokenHash(spoken) !== row.spokenHash) {
+    const fingerprint =
+      row.provider === "voicestudio"
+        ? voiceStudioFingerprint(spoken, line.voice, raceTags)
+        : spoken;
+    if (spokenHash(fingerprint) !== row.spokenHash) {
       stale.add(row.file);
     }
   }

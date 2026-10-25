@@ -10,7 +10,7 @@
  */
 import { headers } from "next/headers";
 
-import { readApiKey } from "@/lib/api-key";
+import { readApiKey, voiceStudioApiKey, voiceStudioConfigured } from "@/lib/api-key";
 import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
 import { readPreference } from "@/lib/generation/preference";
 import { speakerFrom } from "@/lib/generation/speakers/for";
@@ -139,16 +139,26 @@ function noKey(message: string): Response {
  * Run AFTER a role guard, never instead of one: a key is a credential, not a permission,
  * and a member who pasted one must still be refused.
  *
- * There is no fallback to a server-wide ELEVENLABS_API_KEY, deliberately. With one, "who
- * paid for this line" would have no answer, and granting somebody regenerate in a language
- * would quietly grant them the deployer's bill as well. fish.audio has none for the same
- * reason.
+ * There is no fallback to a server-wide ELEVENLABS_API_KEY or fish.audio key, deliberately.
+ * With one, "who paid for this line" would have no answer. VoiceStudio is the exception:
+ * its local service is a deployment resource rather than a per-user provider balance, so its
+ * optional OMNIVOICE_API_KEY is centrally configured and the provider is available only when
+ * VOICESTUDIO_BASE_URL is set.
  */
 export async function requireApiKey(
   userId: string,
   provider: Provider = "elevenlabs",
 ): Promise<KeyGuard> {
   const name = PROVIDER_NAME[provider];
+  if (provider === "voicestudio") {
+    if (!voiceStudioConfigured()) {
+      return {
+        key: null,
+        denied: noKey("VoiceStudio is not configured on this Spoken deployment."),
+      };
+    }
+    return { key: voiceStudioApiKey(), denied: null };
+  }
   let key: string | null;
   try {
     key = await readApiKey(userId, provider);

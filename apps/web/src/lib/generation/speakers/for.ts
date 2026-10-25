@@ -9,6 +9,7 @@ import "server-only";
 import type { Preference } from "../preference";
 import { elevenLabsSpeaker } from "./elevenlabs";
 import { fishSpeaker } from "./fish";
+import { voiceStudioSpeaker } from "./voicestudio";
 import type { Provider, Speaker } from "./speaker";
 
 export function speakerFrom(
@@ -16,7 +17,7 @@ export function speakerFrom(
   apiKey: string,
   preference: Pick<Preference, "elevenlabs" | "fish">,
 ): Speaker {
-  return provider === "fish"
-    ? fishSpeaker({ apiKey, settings: preference.fish })
-    : elevenLabsSpeaker({ apiKey, settings: preference.elevenlabs });
+  if (provider === "fish") return fishSpeaker({ apiKey, settings: preference.fish });
+  if (provider === "voicestudio") return voiceStudioSpeaker({ apiKey });
+  return elevenLabsSpeaker({ apiKey, settings: preference.elevenlabs });
 }

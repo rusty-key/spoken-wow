@@ -85,7 +85,7 @@ regenerating one changes every line that points at it. The queue is keyed on the
 
 **The queue** lives in `apps/web/src/lib/generation/`. `leader.ts` elects one pm2 worker with
 a Postgres advisory lock, and `queue.ts` is the only module that knows the column names. There
-are two providers, ElevenLabs and fish.audio (`providers.ts`). `apps/web/src/lib/db.ts`
+are three providers, ElevenLabs, fish.audio and VoiceStudio (`providers.ts`). `apps/web/src/lib/db.ts`
 explains why `POOL_MAX` is 30.
 
 **Reports never queue jobs.** `POST /api/reports` is the only unauthenticated write in the
@@ -96,8 +96,9 @@ can share a file with a live one. `make quests-export-ignores` writes `corpus/ig
 for the pack build.
 
 **Stage directions:** a capitalised `<…>` span is read by the narrator. A lowercase one is a
-sound the NPC makes and becomes an ElevenLabs `[tag]`. `staleFiles` must apply the same
-transforms in the same order, or every tagged take reads as outdated.
+sound the NPC makes. ElevenLabs and fish.audio receive it as an audio tag; VoiceStudio receives
+plain text and uses its request instructions field. `staleFiles` must apply the same transforms
+in the same order, or every tagged take reads as outdated.
 
 **Generation settings have two layers.** `voice/generation.json` and `voice/pronunciation.json`
 are file defaults. The rows edited at `/voices` override them for the site. The lexicon exists

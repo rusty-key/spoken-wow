@@ -100,6 +100,8 @@ type Props = {
   editing: boolean;
   /** Whether the viewer has an ElevenLabs key to clone into. */
   canClone: boolean;
+  /** VoiceStudio profiles matching these slots in the current language. */
+  voiceStudioPresent: Set<string> | null;
 };
 
 export default function VoiceSlotList({
@@ -116,6 +118,7 @@ export default function VoiceSlotList({
   directs,
   editing,
   canClone,
+  voiceStudioPresent,
 }: Props) {
   const lang = useLang();
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
@@ -403,11 +406,17 @@ export default function VoiceSlotList({
                               ) : (
                                 <span className="text-muted-foreground text-xs">no reference</span>
                               )
-                            ) : present?.has(slot.name) ? (
+                            ) : (tab === "voicestudio"
+                                ? voiceStudioPresent?.has(slot.name)
+                                : present?.has(slot.name)) ? (
                               // Before the clips: a voice adopted from the account has none.
                               <Badge variant="outline" className="text-emerald-400">
-                                in your account
+                                {tab === "voicestudio" ? "profile available" : "in your account"}
                               </Badge>
+                            ) : tab === "voicestudio" && voiceStudioPresent === null ? (
+                              <span className="text-muted-foreground text-xs">unknown</span>
+                            ) : tab === "voicestudio" ? (
+                              <span className="text-muted-foreground text-xs">profile missing</span>
                             ) : clips.length === 0 ? (
                               <span className="text-muted-foreground text-xs">no clips</span>
                             ) : present === null ? (
@@ -464,6 +473,12 @@ export default function VoiceSlotList({
                             })
                           }
                         />
+                      )}
+                      {expanded && tab === "voicestudio" && !editing && (
+                        <p className="text-muted-foreground border-t py-3 pr-3 pl-9 text-xs">
+                          VoiceStudio uses the profile named <code>{cloneName(slot.name, lang)}</code>.
+                          Create or rename that profile in VoiceStudio, then reload this page.
+                        </p>
                       )}
                     </div>
                   );

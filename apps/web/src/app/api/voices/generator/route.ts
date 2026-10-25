@@ -19,6 +19,7 @@ import {
   writeProvider,
 } from "@/lib/generation/preference";
 import { isProvider, PROVIDER_NAME, PROVIDERS } from "@/lib/generation/providers";
+import { voiceStudioConfigured } from "@/lib/api-key";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,14 @@ export async function POST(request: Request) {
     return Response.json({ error: `provider must be one of ${PROVIDERS.join(", ")}` }, { status: 400 });
   }
 
-  if (!(await apiKeyStatus(session.user.id, body.provider))) {
+  if (body.provider === "voicestudio" && !voiceStudioConfigured()) {
+    return Response.json(
+      { error: "VoiceStudio is not configured on this Spoken deployment" },
+      { status: 409 },
+    );
+  }
+
+  if (body.provider !== "voicestudio" && !(await apiKeyStatus(session.user.id, body.provider))) {
     return Response.json(
       { error: `store a ${PROVIDER_NAME[body.provider]} key before activating it` },
       { status: 409 },

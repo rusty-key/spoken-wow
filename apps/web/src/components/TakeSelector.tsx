@@ -278,6 +278,7 @@ export default function TakeSelector({
                     {take.credits !== null && ` · ${take.credits} credits`}
                     {take.costUsd !== null && ` · ${usd(take.costUsd)}`}
                     {take.provider === "fish" && " · fish.audio"}
+                    {take.provider === "voicestudio" && " · VoiceStudio"}
                   </div>
                 </div>
 

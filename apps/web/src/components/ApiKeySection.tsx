@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import type { ApiKeyStatus } from "@/lib/api-key";
 import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
 
+type StoredProvider = Exclude<Provider, "voicestudio">;
+
 /** What differs between the two providers' sections: the words, and where the key goes. */
 const COPY: Record<
-  Provider,
+  StoredProvider,
   { endpoint: string; mask: string; placeholder: string; checked: string }
 > = {
   elevenlabs: {
@@ -40,7 +42,7 @@ export default function ApiKeySection({
   provider = "elevenlabs",
 }: {
   initial: ApiKeyStatus | null;
-  provider?: Provider;
+  provider?: StoredProvider;
 }) {
   const copy = COPY[provider];
   // Re-rendered from the server after a save or a removal, because other sections of the page

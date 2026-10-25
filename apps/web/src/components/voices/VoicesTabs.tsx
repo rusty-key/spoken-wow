@@ -18,6 +18,7 @@ import type { VoiceSlot } from "@/lib/voices/slots";
 import {
   ElevenLabsSettingsForm,
   FishSettingsForm,
+  VoiceStudioSettings,
   saveSettings,
   type ElevenLabsModelOption,
   type FishModelOption,
@@ -29,6 +30,7 @@ import PopulateDialog from "./PopulateDialog";
 const KEY_ANCHOR: Record<Provider, string> = {
   elevenlabs: "/profile#elevenlabs-key",
   fish: "/profile#fish-key",
+  voicestudio: "/profile",
 };
 
 type Props = {
@@ -49,6 +51,11 @@ type Props = {
   existing: string[] | null;
   /** Why the account could not be read, when there is a key to read it with. */
   accountError: string | null;
+  /** VoiceStudio profiles matching this language's Spoken slots. */
+  voiceStudioExisting: string[] | null;
+  /** Why VoiceStudio could not be read, when it is configured. */
+  voiceStudioError: string | null;
+  voiceStudioModel: string;
   manager: boolean;
   /** May change this language's directions. */
   directs: boolean;
@@ -76,6 +83,8 @@ export default function VoicesTabs(props: Props) {
   // Held as state so a voice flips to "in your account" without a reload; the server value
   // is the account, read fresh on every page view.
   const [present, setPresent] = useState(props.existing === null ? null : new Set(props.existing));
+  const voiceStudioPresent =
+    props.voiceStudioExisting === null ? null : new Set(props.voiceStudioExisting);
   // Counted up as the dialog fills slots, so its "free" never promises room already spent.
   // Null until /api/voices/subscription answers: ElevenLabs takes a second or more to say,
   // and nothing else on the page should wait for it.
@@ -139,6 +148,9 @@ export default function VoicesTabs(props: Props) {
   const total = props.slots.length;
   const cloneable = props.slots.filter((slot) => (samples[slot.name] ?? []).length > 0);
   const created = present ? props.slots.filter((slot) => present.has(slot.name)).length : null;
+  const voiceStudioCreated = voiceStudioPresent
+    ? props.slots.filter((slot) => voiceStudioPresent.has(slot.name)).length
+    : null;
   const referenced = props.slots.filter((slot) => slot.name in references).length;
   const hasKey = props.keys[tab];
 
@@ -191,7 +203,7 @@ export default function VoicesTabs(props: Props) {
               Activate for {langName(lang)}
             </Button>
           )}
-          {!hasKey && (
+          {!hasKey && tab !== "voicestudio" && (
             <span className="text-muted-foreground text-xs">
               Needs a {PROVIDER_NAME[tab]} key —{" "}
               <Link href={KEY_ANCHOR[tab]} className="text-foreground underline underline-offset-2">
@@ -200,12 +212,21 @@ export default function VoicesTabs(props: Props) {
               .
             </span>
           )}
+          {!hasKey && tab === "voicestudio" && (
+            <span className="text-muted-foreground text-xs">
+              VoiceStudio is not configured on this Spoken deployment.
+            </span>
+          )}
           <span className="text-muted-foreground ml-auto text-xs tabular-nums">
             {tab === "elevenlabs"
               ? created === null
                 ? `${total} voices`
                 : `${created} of ${total} voices in your account`
-              : `${referenced} of ${total} voices have a reference`}
+              : tab === "fish"
+                ? `${referenced} of ${total} voices have a reference`
+                : voiceStudioCreated === null
+                  ? `${total} VoiceStudio profiles`
+                  : `${voiceStudioCreated} of ${total} VoiceStudio profiles`}
           </span>
         </div>
 
@@ -222,6 +243,14 @@ export default function VoicesTabs(props: Props) {
             Could not read your ElevenLabs account: {props.accountError}
           </div>
         )}
+        {tab === "voicestudio" && props.keys.voicestudio && props.voiceStudioError && (
+          <div
+            role="alert"
+            className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
+          >
+            Could not read VoiceStudio profiles: {props.voiceStudioError}
+          </div>
+        )}
 
         <details className="rounded-md border px-3 py-2">
           <summary className="cursor-pointer text-sm font-medium">
@@ -235,13 +264,15 @@ export default function VoicesTabs(props: Props) {
                 models={props.elevenLabsModels}
                 onSave={(elevenlabs) => save({ elevenlabs })}
               />
-            ) : (
+            ) : tab === "fish" ? (
               <FishSettingsForm
                 key={JSON.stringify(settings.fish)}
                 saved={settings.fish}
                 models={props.fishModels}
                 onSave={(fish) => save({ fish })}
               />
+            ) : (
+              <VoiceStudioSettings model={props.voiceStudioModel} />
             )}
           </div>
         </details>
@@ -278,6 +309,7 @@ export default function VoicesTabs(props: Props) {
           directs={props.directs}
           editing={editing}
           canClone={props.keys.elevenlabs}
+          voiceStudioPresent={voiceStudioPresent}
         />
       </section>
     </>

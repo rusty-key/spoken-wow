@@ -71,6 +71,10 @@ export async function currentBudget(
   provider: Provider,
   modelId: string,
 ): Promise<number> {
+  if (provider === "voicestudio") {
+    const configured = Number(process.env.VOICESTUDIO_MAX_CONCURRENCY ?? 1);
+    return clampToPool(Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : 1, POOL_MAX);
+  }
   if (provider === "fish" && apiKey) return clampToPool(await fishBudget(apiKey), POOL_MAX);
   const status = await generationStatus(apiKey ? { apiKey } : {});
   // The model the lane's owner has chosen for this provider, as it stands now: the flash and

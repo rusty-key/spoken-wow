@@ -255,3 +255,20 @@ export function FishSettingsForm({
     </div>
   );
 }
+
+/** VoiceStudio has no per-user generation knobs: model and concurrency belong to the service. */
+export function VoiceStudioSettings({ model }: { model: string }) {
+  return (
+    <div className="space-y-2 text-sm">
+      <p>
+        Uses the deployment&apos;s VoiceStudio service with model <code>{model}</code>. Voice
+        profiles must use Spoken&apos;s names: <code>race-gender-flavor</code> in English and
+        <code>race-gender-flavor@locale</code> for translated voices.
+      </p>
+      <p className="text-muted-foreground text-xs">
+        The service is configured by the site operator with <code>VOICESTUDIO_BASE_URL</code>;
+        remote services may also require <code>OMNIVOICE_API_KEY</code>.
+      </p>
+    </div>
+  );
+}

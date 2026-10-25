@@ -65,6 +65,7 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
 
   const { estimate, label } = pending;
   const pinned = pending.pinnedEstimate ?? null;
+  const local = status?.provider === "voicestudio";
   const total = (count: "lines" | "files" | "characters") => estimate[count] + (pinned?.[count] ?? 0);
   const skips = SKIP_REASONS.flatMap(([why, text]) => {
     const count = pending.skipped?.[why] ?? 0;
@@ -80,7 +81,7 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
     : subscription
       ? subscription.characterLimit - subscription.characterCount
       : null;
-  const cost = dollars ? estimate.usd : estimate.credits;
+  const cost = local ? null : dollars ? estimate.usd : estimate.credits;
   const overBudget = remaining !== null && cost !== null && cost > remaining;
   const amount = (value: number) => (dollars ? usd(value) : `${n(value)} credits`);
 
@@ -166,7 +167,12 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
           </div>
         )}
 
-        {dollars ? (
+        {local ? (
+          <p className="text-muted-foreground text-xs">
+            VoiceStudio runs on the site&apos;s configured local service, so Spoken cannot provide
+            a provider cost estimate. Each completed take is recorded in history.
+          </p>
+        ) : dollars ? (
           <p className="text-muted-foreground text-xs">
             {estimate.rate.unknown
               ? `fish.audio publishes no price for ${estimate.rate.modelId ?? "this model"}, so there is nothing to estimate from. The cost of each line is recorded as it runs.`

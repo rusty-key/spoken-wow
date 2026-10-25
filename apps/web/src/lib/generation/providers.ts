@@ -4,7 +4,7 @@
  * Free of server imports, because the profile form, the take history and the key section are
  * client components and need the names too.
  */
-export const PROVIDERS = ["elevenlabs", "fish"] as const;
+export const PROVIDERS = ["elevenlabs", "fish", "voicestudio"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
 
@@ -16,4 +16,5 @@ export function isProvider(value: unknown): value is Provider {
 export const PROVIDER_NAME: Record<Provider, string> = {
   elevenlabs: "ElevenLabs",
   fish: "fish.audio",
+  voicestudio: "VoiceStudio",
 };

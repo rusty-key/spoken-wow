@@ -26,6 +26,8 @@ export type Turn = {
   text: string;
   /** From `voices()`: whatever the provider speaks this slot with. */
   voiceId: string;
+  /** Optional provider-specific delivery direction, used by VoiceStudio's instructions field. */
+  instructions?: string;
 };
 
 export type SpeakRequest = {

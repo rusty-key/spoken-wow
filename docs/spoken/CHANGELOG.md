@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **VoiceStudio can be selected as a third voice generator.** A deployment can point Spoken at a
+  private VoiceStudio service, and collaborators can activate it per language without changing
+  their ElevenLabs or fish.audio choices.
 - **The Bosses tab lists dungeons straight under their continent.** The zone lines are gone: each
   continent shows its dungeons and raids by name, then its world bosses, and the search finds bosses
   and dungeons. A dungeon's page still names its zone.

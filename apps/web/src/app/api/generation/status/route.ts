@@ -7,12 +7,12 @@
  * along - a collaborator cannot open /voices, and "what am I about to spend, and how" should
  * not require the page that they cannot reach.
  *
- * Not refused when the caller has no key, unlike the routes that spend. This is the answer
+ * Not refused when the caller has no key or configured VoiceStudio service, unlike the routes that spend. This is the answer
  * the explorer asks for on load, and the useful answer to "what can you generate" from
  * somebody who has not been to /profile is "nothing yet, and here is why" - which is what
  * `noApiKey` carries. A 428 here would leave the page unable to say it.
  */
-import { readApiKey } from "@/lib/api-key";
+import { readApiKey, voiceStudioConfigured } from "@/lib/api-key";
 import { requireIn } from "@/lib/generation/authz";
 import { observedFishRate, observedRate } from "@/lib/generation/calibration";
 import { readPreference, speakingConfig, type Preference } from "@/lib/generation/preference";
@@ -55,6 +55,28 @@ export async function GET(request: Request) {
       rate,
       provider: "fish",
       wallet: wallet ? { credit: wallet.credit } : null,
+    });
+  }
+
+  if (preference.provider === "voicestudio") {
+    const [voices, pinned] = await Promise.all([
+      voiceStudioConfigured()
+        ? speakerFrom("voicestudio", apiKey ?? "", preference).voices(lang)
+        : Promise.resolve({
+            ids: new Map<string, string>(),
+            error: "VoiceStudio is not configured on this Spoken deployment",
+          }),
+      pinnedStatus(session.user.id, lang, preference),
+    ]);
+    return Response.json({
+      pinned,
+      voices: [...voices.ids.keys()].sort(),
+      subscription: null,
+      error: voices.error,
+      noApiKey: !voiceStudioConfigured(),
+      settings,
+      rate: { rate: 0, unknown: true, samples: 0, modelId: process.env.VOICESTUDIO_MODEL ?? "omnivoice" },
+      provider: "voicestudio",
     });
   }
 

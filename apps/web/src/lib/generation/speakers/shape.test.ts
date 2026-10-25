@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PARAGRAPH_BREAK, SHAPE } from "./shape";
+import { PARAGRAPH_BREAK, SHAPE, voiceStudioFingerprint } from "./shape";
 
 describe("how fish.audio is sent a line", () => {
   it("marks each paragraph break once, and flattens every other run of whitespace", () => {
@@ -38,5 +38,20 @@ describe("a voice marker on fish.audio", () => {
 describe("how ElevenLabs is sent a line", () => {
   it("keeps its paragraph breaks as written, so its takes do not all turn stale", () => {
     expect(SHAPE.elevenlabs("One.\n\nTwo.", undefined)).toBe("One.\n\nTwo.");
+  });
+});
+
+describe("how VoiceStudio is sent a line", () => {
+  it("keeps text plain because directions use the instructions field", () => {
+    expect(SHAPE.voicestudio("<hic> Hello.\n\nGoodbye.", "[Scottish accent]")).toBe(
+      "hic Hello.\nGoodbye.",
+    );
+  });
+
+  it("fingerprints per-turn directions separately from spoken text", () => {
+    const text = "Hello.";
+    expect(voiceStudioFingerprint(text, "dwarf-male-grim", { dwarf: "[Scottish accent]" })).not.toBe(
+      voiceStudioFingerprint(text, "dwarf-male-grim", { dwarf: "[neutral]" }),
+    );
   });
 });

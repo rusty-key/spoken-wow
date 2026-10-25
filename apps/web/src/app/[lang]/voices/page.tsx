@@ -9,6 +9,7 @@ import { readPreference } from "@/lib/generation/preference";
 import { isProvider } from "@/lib/generation/providers";
 import { readSettings } from "@/lib/generation/settings";
 import { generationRoster } from "@/lib/generation/status";
+import { voiceStudioSpeaker } from "@/lib/generation/speakers/voicestudio";
 import { viewerOf } from "@/lib/grants/store";
 import { can, canManageVoices, canViewVoices } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
@@ -43,14 +44,16 @@ export default async function Page({
   const userId = session.user.id;
 
   // The statuses, never the keys: sent to a client component as props.
-  const [all, elevenStatus, fishStatus, preference, elevenKey, settings, references] =
+  const [all, elevenStatus, fishStatus, voiceStudioStatus, preference, elevenKey, voiceStudioKey, settings, references] =
     await Promise.all([
       slots(),
       apiKeyStatus(userId),
       apiKeyStatus(userId, "fish"),
+      apiKeyStatus(userId, "voicestudio"),
       readPreference(userId, lang),
       // A row that will not open reads as none; /profile says which of the two it was.
       readApiKey(userId).catch(() => null),
+      readApiKey(userId, "voicestudio").catch(() => null),
       // The accent tags: the voices are everyone's, but how each language speaks them is its own.
       readSettings(lang),
       // Not the account's: a fish.audio reference is a row here, the same for every key.
@@ -64,6 +67,9 @@ export default async function Page({
   // for the slot count once the page is up.
   const account = elevenKey ? await generationRoster({ apiKey: elevenKey }, lang) : null;
   const readable = account !== null && !(account.error && account.voiceIds.size === 0);
+  const voiceStudioAccount = voiceStudioStatus
+    ? await voiceStudioSpeaker({ apiKey: voiceStudioKey ?? "" }).voices(lang)
+    : null;
 
   // One readdir per slot, so the roster arrives with its clip counts already filled in
   // rather than each row fetching its own once expanded.
@@ -93,7 +99,11 @@ export default async function Page({
         <VoicesTabs
           initialTab={isProvider(tab) ? tab : preference.provider}
           active={preference.provider}
-          keys={{ elevenlabs: elevenStatus !== null, fish: fishStatus !== null }}
+          keys={{
+            elevenlabs: elevenStatus !== null,
+            fish: fishStatus !== null,
+            voicestudio: voiceStudioStatus !== null,
+          }}
           settings={{ elevenlabs: preference.elevenlabs, fish: preference.fish }}
           elevenLabsModels={
             readable ? account.models.map((model) => ({ id: model.id, name: model.name })) : null
@@ -116,6 +126,9 @@ export default async function Page({
           raceTags={settings.config.raceTags}
           existing={readable ? [...account.voiceIds.keys()] : null}
           accountError={account?.error ?? null}
+          voiceStudioExisting={voiceStudioAccount ? [...voiceStudioAccount.ids.keys()] : null}
+          voiceStudioError={voiceStudioAccount?.error ?? null}
+          voiceStudioModel={process.env.VOICESTUDIO_MODEL ?? "omnivoice"}
           manager={canManageVoices(session.user.role)}
           directs={can(viewer, "configure", lang)}
         />

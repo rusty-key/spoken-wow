@@ -26,7 +26,11 @@ export type MadeByFacets = {
   authors: { id: string; name: string }[];
 };
 
-const SHORT: Record<Provider, string> = { elevenlabs: "eleven", fish: "fish" };
+const SHORT: Record<Provider, string> = {
+  elevenlabs: "eleven",
+  fish: "fish",
+  voicestudio: "voice",
+};
 
 /**
  * A model as the column names it: the provider, and the model without the prefix that
@@ -40,8 +44,10 @@ export function modelLabel(provider: Provider, modelId: string | null): string {
   const model =
     provider === "elevenlabs"
       ? modelId.replace(/^eleven_/, "")
-      : // fish names its generations s1, s2, s2.1; the letter is the family, not the model.
-        modelId.replace(/^s(?=\d)/, "");
+      : provider === "fish"
+        ? // fish names its generations s1, s2, s2.1; the letter is the family, not the model.
+          modelId.replace(/^s(?=\d)/, "")
+        : modelId;
   return `${SHORT[provider]}:${model}`;
 }
 

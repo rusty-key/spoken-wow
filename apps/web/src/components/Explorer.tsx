@@ -561,6 +561,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       // is fish.audio's key and references that decide, exactly as the server will.
       const pinned = status.pinned?.voices.includes(line.voice) ? status.pinned : null;
       const fish = pinned !== null || status.provider === "fish";
+      const voiceStudio = pinned === null && status.provider === "voicestudio";
       // Named for the generator this line goes to, not always ElevenLabs: someone on
       // fish.audio with a key and references was otherwise told to go and set up a provider
       // they do not use.
@@ -569,9 +570,13 @@ export default function Explorer({ facets }: { facets: Facets }) {
       const missing = (voice: string) =>
         fish
           ? `No fish.audio reference for "${voice}" in this language yet — cut one on /voices`
+          : voiceStudio
+            ? `No VoiceStudio profile for "${voice}" in this language — create it in VoiceStudio`
           : `No ElevenLabs voice named "${voice}" yet — create it on /voices`;
       if (pinned ? pinned.noApiKey : status.noApiKey) {
-        return `${pinned ? `${line.voice} is pinned to fish.audio: n` : "N"}o ${provider} key on your account — set one in your profile`;
+        return voiceStudio
+          ? "VoiceStudio is not configured on this Spoken deployment"
+          : `${pinned ? `${line.voice} is pinned to fish.audio: n` : "N"}o ${provider} key on your account — set one in your profile`;
       }
       if (!voices.includes(line.voice)) {
         return missing(line.voice);

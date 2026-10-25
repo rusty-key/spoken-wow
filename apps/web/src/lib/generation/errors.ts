@@ -85,6 +85,14 @@ function detailMessage(body: unknown, raw: string): string {
   if (!body || typeof body !== "object") return raw;
   const detail = (body as { detail?: unknown }).detail;
 
+  // VoiceStudio follows OpenAI's `{ error: { message } }` response shape, while ElevenLabs
+  // uses `detail`. Accepting both keeps the failure text useful without making the provider
+  // adapter duplicate the classifier.
+  const error = (body as { error?: unknown }).error;
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message;
+  }
+
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
     // FastAPI validation errors: [{ loc: [...], msg: "...", type: "..." }]

@@ -3,7 +3,7 @@
  *
  * This was a mirror of INVALID_CHARS in tts_cli/corpus.py and is no longer one. The character
  * list still matches, but the web app now voices every bracketed span - a capitalised stage
- * direction goes to a narrator, a lowercase sound becomes an ElevenLabs audio tag
+ * direction goes to a narrator, a lowercase sound becomes a provider-specific audio cue
  * (lib/generation/narration.ts) - and the Python CLI can do neither. A line the CLI calls
  * unvoiceable may therefore be voiceable here. That divergence is deliberate and joins the
  * other one CLAUDE.md records: the CLI sends no pronunciation dictionary either.
@@ -32,8 +32,8 @@ export const INVALID_CHARS = "$<>";
  *
  * Both kinds are handled by lib/generation/narration.ts before synthesis: a capitalised span is
  * a stage direction the narrator speaks, and a lowercase one is a sound the NPC makes, rewritten
- * into ElevenLabs' `[hic]` audio-tag form. Neither reaches a voice as an angle bracket, so
- * neither is damage. An unbalanced `<` still is.
+ * into the provider's audio-cue form. Neither reaches a voice as an angle bracket, so neither
+ * is damage. An unbalanced `<` still is.
  */
 const DIRECTION = /<[^<>]*>/g;
 
