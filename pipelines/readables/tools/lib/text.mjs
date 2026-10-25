@@ -24,6 +24,10 @@ const SIGNED = new RegExp(MARKUP.source, "i");
 /** Where the client breaks a line inside a signed page. */
 const LINE_BREAK = /<br(?![\w])[^>]*>|<\/(?:p|h[1-6])(?![\w])[^>]*>/gi;
 
+// Keep WoW's explicit `$B` break distinct from source newlines while signed HTML is laid out:
+// source newlines are HTML whitespace, but `$B` is a line the client actually draws.
+const PAGE_BREAK = "\u0000";
+
 /**
  * The entities the signed pages carry. `&lt;` and `&gt;` stay escaped in storage: decoded,
  * they could form a tag, and a second pass would strip it and change the checksum.
@@ -45,13 +49,14 @@ const STORED_ENTITY = /&(amp|quot|apos|nbsp);/g;
 export function normaliseText(raw) {
   const text = String(raw ?? "")
     .replace(/\r\n?/g, "\n")
-    .replace(/\$[Bb]/g, "\n")
+    .replace(/\$[Bb]/g, PAGE_BREAK)
     .split("\n")
     .map((line) => line.replace(/[ \t]+$/, ""))
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  return SIGNED.test(text) ? unmark(text) : text;
+  if (SIGNED.test(text)) return unmark(text);
+  return text.replaceAll(PAGE_BREAK, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /**
@@ -61,6 +66,7 @@ export function normaliseText(raw) {
 function unmark(text) {
   return text
     .replace(/[ \t\n\r\f\v]+/g, " ")
+    .replaceAll(PAGE_BREAK, "\n")
     .replace(LINE_BREAK, "\n")
     .replace(MARKUP, "")
     .replace(STORED_ENTITY, (_, name) => STORED_ENTITIES[name])

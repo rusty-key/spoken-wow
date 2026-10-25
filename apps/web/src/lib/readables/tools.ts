@@ -19,6 +19,9 @@ import * as namingModule from "@readables-tools/lib/naming.mjs";
 /** What would be sent to a narrator: markup gone, paragraphs flattened. */
 export const spokenText = textModule.spokenText as (text: string) => string;
 
+/** The page as the client shows it: markup gone, paragraph breaks retained. */
+export const normaliseText = textModule.normaliseText as (text: string) => string;
+
 /**
  * A page in spoken form, its book's title ahead of it unless the page already opens with it.
  * The narration only: the shown text and the addon's checksum stay the page's own words.
@@ -56,4 +59,3 @@ export const isMinted = namingModule.isMinted as (lineId: string) => boolean;
 
 /** The checksum the addon recomputes in Lua to tell two same-named books apart. */
 export const pageChecksum = namingModule.pageChecksum as (text: string) => number;
-

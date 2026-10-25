@@ -405,10 +405,13 @@ local function KeptText(self, pageId, language)
 	return type(kept) == "string" and kept ~= "" and kept or nil
 end
 
---- A page's words in `language`: the words of a pack recorded in it, else the page as the client
---- showed it this session. Nil where neither has them.
+--- A page's words in `language`: the page as the client showed it this session, else the words of
+--- a pack recorded in it. Nil where neither has them.
 function SpokenReadables:PageTextIn(pageId, language)
-	return self:PackPageText(pageId, language) or KeptText(self, pageId, language)
+	-- The page the client showed is authoritative for the Compendium: a pack made before layout
+	-- was retained can have the same words as one page-long text, while the client still has its
+	-- paragraph breaks.
+	return KeptText(self, pageId, language) or self:PackPageText(pageId, language)
 end
 
 --- A page's words in this client's language, or nil. Page by page, so a readable can be in two

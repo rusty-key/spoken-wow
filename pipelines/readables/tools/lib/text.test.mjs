@@ -43,9 +43,9 @@ test("a signed page is stored as lines, with no tags", () => {
   assert.equal(
     normaliseText(
       '<HTML>\n<BODY>\n<H1 align="center">RANKS</H1><BR/>\n<IMG src="Interface\\PvPRank14"/><BR/>\n' +
-        '<P align="right">Grand Marshal</P><BR/><BR/>\n<P>Horde &amp; Alliance</P></BR>\n</BODY>\n</HTML>',
+        '<P align="right">Grand Marshal</P><BR/><BR/>\n<P>Horde &amp; Alliance$BSecond line</P></BR>\n</BODY>\n</HTML>',
     ),
-    "RANKS\n\nGrand Marshal\n\nHorde & Alliance",
+    "RANKS\n\nGrand Marshal\n\nHorde & Alliance\nSecond line",
   );
 });
 
