@@ -16,6 +16,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { db } from "@/lib/db";
 import { open, seal, type Sealed } from "@/lib/secrets";
+import { currentSession } from "@/lib/session";
 
 const PAIRING_TTL_MINUTES = 10;
 /** No 0/O or 1/I: the code is read off one screen and typed into another. */
@@ -104,9 +105,17 @@ export async function pollPairing(poll: string): Promise<PollResult> {
   return waiting.length > 0 ? { status: "pending" } : { status: "expired" };
 }
 
-/** Whose Manager is asking, from its `Authorization: Bearer` header, or null. */
+/**
+ * Who is generating: a Manager by its `Authorization: Bearer` token, or the signed-in author's
+ * own tab on /generate. Null for anybody else.
+ *
+ * A tab is let in on its session cookie only from this site's own pages, sending JSON: a form
+ * on another site cannot send JSON without a preflight these routes never answer, and its
+ * Origin is not ours, so a cookie alone never claims or answers a line.
+ */
 export async function workerUser(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
+  if (!header) return tabUser(request);
   const match = /^Bearer\s+(spw_[A-Za-z0-9_-]{20,})$/.exec(header.trim());
   if (!match) return null;
   const { rows } = await db().query<{ userId: string }>(
@@ -140,4 +149,15 @@ export async function revokeToken(userId: string, id: string): Promise<boolean> 
     [id, userId],
   );
   return (rowCount ?? 0) > 0;
+}
+
+async function tabUser(request: Request): Promise<string | null> {
+  const origin = request.headers.get("origin");
+  const ours = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).origin : new URL(request.url).origin;
+  if (request.method !== "GET") {
+    if (origin !== ours) return null;
+    if (!(request.headers.get("content-type") ?? "").startsWith("application/json")) return null;
+  }
+  const session = await currentSession();
+  return session?.user.id ?? null;
 }

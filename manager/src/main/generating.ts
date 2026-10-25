@@ -14,10 +14,10 @@ import {
   NotPaired,
   pollPairing,
   runRound,
+  SITE_URL,
   startPairing,
   whoAmI,
-  type GenerateProvider,
-  type SiteOptions
+  type GenerateProvider
 } from './generate'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
@@ -40,8 +40,11 @@ const WIDTH = 2
 const VOICES_TTL_MS = 60_000
 const MODES_TTL_MS = 60_000
 
-export interface GeneratingOptions extends SiteOptions {
+export interface GeneratingOptions {
   dataPath: string
+  appVersion: string
+  siteUrl?: string
+  fetchImpl?: typeof fetch
   cipher: Cipher
   send: (status: GenerateStatus) => void
   openExternal: (url: string) => void
@@ -68,6 +71,16 @@ export class Generating {
       current: [],
       done: 0,
       failed: 0
+    }
+  }
+
+  /** Where the site is, and who is asking. */
+  private site(token?: string) {
+    return {
+      siteUrl: this.opts.siteUrl ?? SITE_URL,
+      userAgent: `SpokenManager/${this.opts.appVersion}`,
+      ...(this.opts.fetchImpl ? { fetchImpl: this.opts.fetchImpl } : {}),
+      ...(token ? { token } : {})
     }
   }
 
@@ -113,7 +126,7 @@ export class Generating {
     this.refreshedAt = Date.now()
     if (!this.vault.token) return this.update({ pairedAs: null })
     try {
-      const me = await whoAmI(this.opts, this.vault.token)
+      const me = await whoAmI(this.site(this.vault.token))
       const { error: _old, ...rest } = this.status
       this.status = rest
       this.update({ pairedAs: me.name ?? 'your account', modes: me.modes })
@@ -131,12 +144,12 @@ export class Generating {
 
   async pair(): Promise<void> {
     const label = `Spoken Manager on ${os.hostname().slice(0, 40)}`
-    const pairing = await startPairing(this.opts, label)
+    const pairing = await startPairing(this.site(), label)
     this.update({ pairing: { code: pairing.code, verifyUrl: pairing.verifyUrl, expiresAt: pairing.expiresAt } })
     this.opts.openExternal(pairing.verifyUrl)
     if (this.pairingPoll) clearInterval(this.pairingPoll)
     this.pairingPoll = setInterval(() => {
-      void pollPairing(this.opts, pairing.poll)
+      void pollPairing(this.site(), pairing.poll)
         .then(async (result) => {
           if (result.status === 'pending') return
           if (this.pairingPoll) clearInterval(this.pairingPoll)
@@ -218,9 +231,9 @@ export class Generating {
     if (!token || Object.keys(keys).length === 0) return this.schedule(this.opts.idleMs ?? IDLE_MS)
     try {
       const result = await runRound({
-        ...this.opts,
-        token,
+        ...this.site(token),
         keys,
+        onWarning: (message, err) => log(`Generating: ${message}:`, err),
         width: WIDTH,
         voices: () => this.elevenLabsVoices(),
         onLine: ({ job, answered }) => {
@@ -239,6 +252,12 @@ export class Generating {
         const { error: _old, ...rest } = this.status
         this.status = rest
         this.opts.send(this.status)
+      }
+      if (result.unreachable) {
+        // Offline, or a provider that will not answer: the lines went back, and waiting is
+        // all there is to do.
+        this.update({ error: `Could not reach the provider: ${result.unreachable}`, current: [] })
+        return this.schedule(this.opts.idleMs ?? FAILED_MS)
       }
       this.schedule(result.claimed > 0 ? 0 : (this.opts.idleMs ?? IDLE_MS))
     } catch (err) {

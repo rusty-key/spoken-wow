@@ -68,7 +68,6 @@ describe('a round', () => {
     const events: string[] = []
     const result = await runRound({
       siteUrl: 'https://site.test',
-      appVersion: '0.0.0',
       fetchImpl,
       token: 'spw_token',
       keys: { fish: 'fishkey' },
@@ -107,5 +106,21 @@ describe('the secrets', () => {
     expect(again.status.keys).toEqual({ elevenlabs: true, fish: false })
     again.setKey('elevenlabs', '')
     expect(again.status.keys.elevenlabs).toBe(false)
+  })
+})
+
+describe('a provider that cannot be reached', () => {
+  it('gives the line back to the site instead of answering it', async () => {
+    const job: ClaimedJob = { jobId: '9', attempt: 2, provider: 'fish', lineId: 'q:9:accept', npcName: 'N', preview: 'P', requests: [request('https://api.fish.audio/v1/tts')] }
+    const posted: string[] = []
+    const fetchImpl = (async (url: string) => {
+      if (url.startsWith('https://api.fish.audio')) throw new TypeError('Failed to fetch')
+      posted.push(url)
+      if (url.endsWith('/api/worker/claim')) return Response.json({ jobs: [job] })
+      return Response.json({ released: true })
+    }) as unknown as typeof fetch
+    const result = await runRound({ siteUrl: 'https://site.test', fetchImpl, token: 't', keys: { fish: 'k' }, width: 1, voices: async () => null })
+    expect(result).toEqual({ claimed: 1, done: 0, failed: 0, unreachable: 'Failed to fetch' })
+    expect(posted).toEqual(['https://site.test/api/worker/claim', 'https://site.test/api/worker/release'])
   })
 })

@@ -211,6 +211,16 @@ export async function answerJob(
     : { status: "failed", kind: result.failure.kind, message: result.failure.message };
 }
 
+/**
+ * Give a claim back unanswered: the worker could not reach the provider at all (offline, or a
+ * browser that may not call it). The line has cost nothing, so it waits for the next claim
+ * rather than failing.
+ */
+export async function releaseJob(owner: string, jobId: string, attempt: number): Promise<boolean> {
+  const found = await relayedJob(jobId, owner, attempt);
+  return found ? retryJob(jobId, 0, attempt) : false;
+}
+
 /** Keep a claim while its requests are in flight. False tells the Manager to drop it. */
 export async function holdJob(owner: string, jobId: string, attempt: number): Promise<boolean> {
   const found = await relayedJob(jobId, owner, attempt);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import Link from "@/components/LocaleLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PROVIDER_NAME, PROVIDERS, type Provider } from "@/lib/generation/providers";
@@ -112,6 +113,13 @@ export default function GenerationModeSection({
       </div>
 
       <div className="space-y-2">
+        <p className="text-muted-foreground text-sm">
+          No Manager?{" "}
+          <Link href="/generate" className="text-foreground underline underline-offset-2">
+            Generate in a browser tab
+          </Link>{" "}
+          instead.
+        </p>
         <h3 className="text-sm font-medium">Spoken Managers</h3>
         {managers.length === 0 ? (
           <p className="text-muted-foreground text-sm">None paired yet. Open Settings in the Spoken Manager and press Pair.</p>

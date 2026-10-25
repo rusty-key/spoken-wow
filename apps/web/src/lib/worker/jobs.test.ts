@@ -12,7 +12,7 @@ import type { Generator } from "@/lib/generation/worker";
 import { defaultPreference } from "@/lib/generation/preference";
 import { commitTake } from "@/lib/takes/commit";
 
-import { answerJob, claimJobs, holdJob } from "./jobs";
+import { answerJob, claimJobs, holdJob, releaseJob } from "./jobs";
 import { writeMode } from "./mode";
 
 const SILENT_MP3 = "//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM";
@@ -190,5 +190,15 @@ describe("relayed generation", () => {
     await writeMode(owner, "elevenlabs", "local");
     expect(await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices: [] }, options)).toEqual([]);
     expect((await job()).state).toBe("failed");
+  });
+
+  it("takes a line back unanswered, to be claimed again, when the Manager could not reach the provider", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    expect(await releaseJob("someone-else", claimed.jobId, claimed.attempt)).toBe(false);
+    expect(await releaseJob(owner, claimed.jobId, claimed.attempt)).toBe(true);
+    expect((await job()).state).toBe("pending");
+    const [again] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    expect(again.attempt).toBe(claimed.attempt + 1);
   });
 });

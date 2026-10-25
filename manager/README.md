@@ -2,10 +2,11 @@
 
 A small app for Windows, macOS and Linux that installs and updates the Spoken addon and its voice
 packs for World of Warcraft: Forever, Classic Era and Anniversary. It finds your game, shows what
-is installed and what is new, and installs, updates or removes it with one button. It has no
-account and no login. The network traffic is GitHub (the release list, Spoken and the manager's
+is installed and what is new, and installs, updates or removes it with one button. It needs no
+account; only Generating pairs it with one. The network traffic is GitHub (the release list, Spoken and the manager's
 own updates) and spoken-packs.rusty.one (the voice packs, updated file by file), plus, only when
-you turn on Sharing, spoken.rusty.one (see [Sharing](#sharing)).
+you turn on Sharing, spoken.rusty.one (see [Sharing](#sharing)). With Generating on, it also
+talks to spoken.rusty.one and to the ElevenLabs and fish.audio APIs (see [Generating](#generating)).
 
 The plan and the rules the installer follows are in [PLAN.md](PLAN.md).
 
@@ -105,3 +106,22 @@ wrote them (the text on screen, the quest or NPC, the game's version, the langua
 your voice packs) and a random id the manager made for itself, which Settings can replace. Nothing
 about your Battle.net account or your characters is in it. The site uses lines it does not have to
 add them, and counts the ones it has but your pack could not play, to know what to voice next.
+
+## Generating
+
+For people who voice lines on spoken.rusty.one. The site can generate the lines you queue there
+with your ElevenLabs or fish.audio key, or leave them to this manager, which generates them with a
+key that never leaves your computer. You choose per provider on your profile on the site: "On this
+site" or "On my computer".
+
+Settings > Generating pairs the manager with your account: press Pair, and the site opens with a
+code to approve while signed in. Then paste your keys. They are kept in `generate.json` in the data
+folder, encrypted by the system's keychain (Keychain on macOS, DPAPI on Windows, the Secret
+Service on Linux); without one the manager refuses to keep them. Turn on Generate My Queued
+Lines and leave the manager open.
+
+While it runs, the manager asks the site for your queued lines. For each one the site sends the
+request to make, without a key; the manager adds your key, sends it to ElevenLabs or fish.audio,
+and sends the audio back to the site, which keeps it. A request goes only to `api.elevenlabs.io`
+or `api.fish.audio`, whatever the site asks. Your key is never sent to the site. A line the
+manager cannot get through to the provider goes back to the queue rather than failing.
