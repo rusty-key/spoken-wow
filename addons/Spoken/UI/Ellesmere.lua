@@ -146,7 +146,6 @@ function Ellesmere:Disc(skin, host, region)
     return region.spokenDisc
 end
 
---- Shows the round or the square box, the other hidden.
 function Ellesmere.Shape(box, disc, round)
     if box then
         box.backing:SetShown(not round)
