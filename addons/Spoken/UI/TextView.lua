@@ -797,30 +797,24 @@ function TextView:SetPicture(file, mask)
 	self.picture:SetTexture(file)
 	local crop = self.cleanPictures and PICTURE_CROP or 0
 	self.picture:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
-	local maskTexture = self.pictureMask
-	if maskTexture then
-		-- A clean picture has no mask at all: a white 8 by 8 mask stretched over it and clamped to
-		-- black would shade its outer half-texel, some 16 px in from each side, dark.
-		local masked = not self.cleanPictures
-		if masked ~= (self.pictureMasked ~= false) and self.picture.RemoveMaskTexture then
-			if masked then self.picture:AddMaskTexture(maskTexture) else self.picture:RemoveMaskTexture(maskTexture) end
-			self.pictureMasked = masked
-		end
-		maskTexture:SetTexture(mask or [[Interface\Buttons\WHITE8X8]], "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	if self.pictureMask then
+		self.pictureMask:SetTexture(mask or [[Interface\Buttons\WHITE8X8]], "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	end
 end
 
 --- Pictures with straight edges, from now on: no frayed mask, the painted edge cut off, and a
---- 1 px edge in EllesmereUI's grey round them with `edged`, which needs its look on.
-function TextView:SetCleanPictures(on, edged)
-	self.cleanPictures = on and true or nil
-	if on and edged and not self.pictureEdge then
-		local frame = CreateFrame("Frame", nil, self.child)
-		frame:SetAllPoints(self.picture)
-		SpokenEnv.Ellesmere:Edges(frame, frame, SpokenLayout.Pixels(frame, 1, 1), 0)
-		frame:SetShown(self.picture:IsShown())
-		self.pictureEdge = frame
-	end
+--- 1 px edge in EllesmereUI's grey round them, which needs its look on.
+function TextView:SetCleanPictures()
+	if self.cleanPictures then return end
+	self.cleanPictures = true
+	-- No mask at all: a white 8 by 8 mask stretched over the picture and clamped to black would
+	-- shade its outer half-texel, some 16 px in from each side, dark.
+	if self.pictureMask and self.picture.RemoveMaskTexture then self.picture:RemoveMaskTexture(self.pictureMask) end
+	local frame = CreateFrame("Frame", nil, self.child)
+	frame:SetAllPoints(self.picture)
+	SpokenEnv.Ellesmere:Edges(frame, frame, SpokenLayout.Pixels(frame, 1, 1), 0)
+	frame:SetShown(self.picture:IsShown())
+	self.pictureEdge = frame
 	if self.pictureFile then self:SetPicture(self.pictureFile, self.pictureMaskFile) end
 end
 
