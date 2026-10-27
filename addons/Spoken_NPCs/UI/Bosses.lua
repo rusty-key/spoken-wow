@@ -333,7 +333,11 @@ end
 -- How fast a story is read, in words a second, and the least time one stays in the narrator.
 local READING_SPEED, LEAST_SECONDS = 2.5, 6
 
-local SKULL = [[Interface\TargetingFrame\UI-RaidTargetingIcon_8]]
+local SKULL = [[Interface\Minimap\Minimap_skull_elite]]
+
+-- The section page has no boss selected yet, so it cannot show a creature portrait. Keep its
+-- header tied to the Bosses settings page instead of falling back to the Compendium's book.
+local SECTION_ICON = { objectOrItem = true, icon = NPCs.ICON, bullet = "boss" }
 
 --- The story of the boss `key` of `map` as a line for Spoken's narrator, words with no voice; nil
 --- where it has none.
@@ -391,7 +395,7 @@ end
 local function ShowEntry()
 	if not page then return end
 	if not selection then
-		page:Show({ title = L.COMPENDIUM_BOSSES, subtitle = Count(Tally(AllZones())) })
+		page:Show({ title = L.COMPENDIUM_BOSSES, subtitle = Count(Tally(AllZones())), icon = SECTION_ICON })
 		return
 	end
 	if selection.boss then

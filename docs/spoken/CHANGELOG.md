@@ -4,8 +4,18 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **The Compendium keeps a readable's paragraph spacing** when it shows text captured from the
-  client's page.
+- **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
+  settings page and dungeon icon instead of using the generic book portrait.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Show Play Button covers the Quest Log, Blizzard's tracker and Questie's tracker.**
+  The Quest Log and Tracker suboptions are available wherever their respective buttons can appear,
+  including Era's classic quest log and default tracker.
+  *([anon1231823](https://github.com/anon1231823))*
+- **On Classic Era, the story beside the map sits against the map.** It follows the small map's
+  border, with the same narrow gap as on Forever, instead of hanging off the hidden large map's.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Show Collected Lines, in the Contribute settings, lists the lines you have collected.** Each shows
+  where it came from and the game's text, newest 200 at most; older ones are still sent.
   *([anon1231823](https://github.com/anon1231823))*
 - **The Bosses tab lists dungeons straight under their continent.** The zone lines are gone: each
   continent shows its dungeons and raids by name, then its world bosses, and the search finds bosses
@@ -13,7 +23,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   *([anon1231823](https://github.com/anon1231823))*
 - **The contribute box names TBC Anniversary's game folder.** On Anniversary it says where the
   saved variables are, under `_anniversary_`, instead of offering `_classic_era_` first.
-  *([rusty-key](https://github.com/rusty-key))*
+  *([anon1231823](https://github.com/anon1231823))*
 - **Captions follow the voice word by word.** Quest, gossip, place and book recordings made from
   now on carry when each word is spoken, so the highlighted word keeps pace with the voice instead
   of an estimate. Older recordings, and captions in another language than the voice's, are

@@ -525,12 +525,53 @@ local mapSetAlpha = WorldMapFrame.SetAlpha
 -- The quest log beside the map, shown.
 _G.QuestMapFrame = CreateFrame("Frame", "QuestMapFrame", WorldMapFrame)
 QuestMapFrame:Show()
+-- Era's windowed map shows MiniBorderFrame, with BorderFrame hidden.
+local miniBorder = CreateFrame("Frame", nil, WorldMapFrame)
+local fullBorder = CreateFrame("Frame", nil, WorldMapFrame)
+WorldMapFrame.MiniBorderFrame, WorldMapFrame.BorderFrame = miniBorder, fullBorder
+miniBorder:Show()
+fullBorder:Hide()
 Z:SetupMapPanel()
 local panel = Z.panel
 Expect("the story beside the map wears the quest log's frame", panel ~= nil, true)
 -- The game's movement fader calls the map's SetAlpha every frame; hooked, it raised errors there
 -- on the Forever client.
 Expect("...and leaves the map's SetAlpha unhooked", WorldMapFrame.SetAlpha == mapSetAlpha, true)
+Expect("...and follows Era's visible minimized-map border", panel.anchor.relativeTo, miniBorder)
+-- The panel laid out with the map open, which then closes again.
+local function Relaid()
+    WorldMapFrame:Show()
+    Z:RefreshPanel()
+    WorldMapFrame:Hide()
+end
+-- The remaining layout checks model the older stub map, which has neither named border.
+WorldMapFrame.MiniBorderFrame, WorldMapFrame.BorderFrame = nil, nil
+Relaid()
+Expect("...returns to the default map edge when no alternate map is active", panel.anchor.relativeTo, WorldMapFrame)
+-- Leatrix Maps loaded, its simple frame on. The client has no global IsAddOnLoaded: only Spoken's
+-- environment answers.
+local loadedAddon = _G.IsAddOnLoaded
+WorldMapFrame.ScrollContainer = CreateFrame("Frame", nil, WorldMapFrame)
+_G.LeaMapsDB = { SimpleMapFrame = "On" }
+_G.IsAddOnLoaded = nil
+rawset(SpokenEnv, "IsAddOnLoaded", function(name) return name == "Leatrix_Maps" or loadedAddon(name) end)
+Relaid()
+Expect("on Era, Leatrix's frame is the map's edge", panel.anchor.relativeTo ~= WorldMapFrame, true)
+Expect("...on Era with the panel against the gold border, not stepped back over the game's", panel.anchor.x, 2)
+local variant = SpokenEnv.Version.Variant
+SpokenEnv.Version.Variant = "forever"
+Relaid()
+Expect("Forever selects Leatrix's map edge too", panel.anchor.relativeTo ~= WorldMapFrame, true)
+_G.IsAddOnLoaded, _G.LeaMapsDB = loadedAddon, nil
+rawset(SpokenEnv, "IsAddOnLoaded", nil)
+Relaid()
+Expect("...and without Leatrix keeps the small gap, the default border having no clear edge there",
+    panel.anchor.x, 2)
+SpokenEnv.Version.Variant = variant
+Relaid()
+Expect("on Era without Leatrix, the panel steps back over the default border's clear edge", panel.anchor.x, -10)
+WorldMapFrame.ScrollContainer = nil
+Z:RefreshPanel()
 -- A frame drawn: the OnUpdate of whichever of the panel and its button is shown.
 local function NextFrame()
     for _, frame in ipairs({ panel, _G.SpokenPlacesPanelToggle }) do
@@ -616,7 +657,7 @@ Expect("folded, its button goes under the lowest side tab on the map's edge",
     toggle.anchor.relativeTo == guideTab and (toggle.anchor.relativePoint .. " " .. toggle.anchor.y), "BOTTOMLEFT -3")
 Z:SetMapPanelCollapsed(false)
 Expect("...and open, the panel stands clear of the widest, though not of a panel beside the map",
-    panel.anchor.x, 62)
+    panel.anchor.x, 50)
 besidePanel:Hide()
 -- The tabs are the quest log's and go with it. Closing or opening it refreshes nothing else.
 local function CloseQuestLog()
@@ -627,30 +668,30 @@ Z:SetMapPanelCollapsed(true)
 CloseQuestLog()
 Expect("with the quest log closed, the button is back on the map's edge",
     toggle.anchor.relativeTo == WorldMapFrame and toggle.anchor.relativePoint, "TOPRIGHT")
-Expect("...and the panel against the map", panel.anchor.x, 2)
+Expect("...and the panel against the map", panel.anchor.x, -10)
 QuestMapFrame:Show()
 Expect("opening the quest log puts the button back under its tabs", toggle.anchor.relativeTo == guideTab, true)
-Expect("...and the panel past them", panel.anchor.x, 62)
+Expect("...and the panel past them", panel.anchor.x, 50)
 -- The game's own tabs show and hide on their own: switching the gamepad UI off shows them under the
 -- open log, and the log checking its tabs hides them again, neither through the log's show or hide.
 -- Here one hangs lowest of all, reaching 80, and has not been laid out when first seen.
 local gameTab = SideTab(49, 29, 80)
 gameTab.unplaced, gameTab.shown = true, false
 Z:RefreshPanel()
-Expect("a side tab that is not shown moves nothing", panel.anchor.x, 62)
+Expect("a side tab that is not shown moves nothing", panel.anchor.x, 50)
 gameTab.unplaced = nil
 gameTab:Show()
 stub.Advance(0.1)
-Expect("a side tab shown by itself puts the panel past it on the next frame", panel.anchor.x, 82)
+Expect("a side tab shown by itself puts the panel past it on the next frame", panel.anchor.x, 70)
 gameTab.shown = false
 for _, hook in ipairs(gameTab.hooks.OnHide or {}) do hook(gameTab) end
 stub.Advance(0.1)
-Expect("...and hidden again, back past the others", panel.anchor.x, 62)
+Expect("...and hidden again, back past the others", panel.anchor.x, 50)
 -- Made after the quest log opened, by an addon whose hook on it ran after Spoken's.
 local lateTab = SideTab(26, 6, 70)
 lateTab:Show()
 Z:RefreshPanel()
-Expect("a side tab made later is found on the next refresh", panel.anchor.x, 72)
+Expect("a side tab made later is found on the next refresh", panel.anchor.x, 60)
 lateTab:Hide()
 CloseQuestLog()
 Z:SetMapPanelCollapsed(false)

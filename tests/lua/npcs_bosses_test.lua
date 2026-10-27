@@ -195,7 +195,7 @@ here_map = 1413
 _G.GetInstanceInfo = function() return "Deadmines", "party", 1, "", 5, 0, false, 36 end
 NPCs:ShowBosses()
 window = SpokenCompendium:Window()
-local page = NPCs.bosses.page
+page = NPCs.bosses.page
 Shown()
 Expect("with the player in a dungeon, its line is opened and chosen, its bosses listed",
     RowFor("Deadmines") ~= nil and RowFor("Deadmines").selected and Has(Shown(), "Edwin VanCleef"), true)
@@ -236,6 +236,9 @@ NPCs:ShowBosses()
 Shown()
 Expect("with Found Only on and none met in the Eastern Kingdoms, the tab does not land on its banner, which the list leaves out too",
     RowFor("Eastern Kingdoms") == nil and page.title.text ~= "Eastern Kingdoms", true)
+Expect("...the empty Bosses section uses its dragon icon", page.headFace.speaker.icon, NPCs.ICON)
+Expect("...and its small socket uses the in-game skull", page.headFace.speaker.bullet .. "|"
+    .. page.headFace.badge.texture, "boss|Interface\\Minimap\\Minimap_skull_elite")
 SpokenNPCsSettings.compendiumFoundOnly = false
 NPCs:ShowBosses()
 Shown()
@@ -306,7 +309,7 @@ Expect("a boss with a creature has its story as one block", page.body.text.text,
 Expect("...and its portrait at the left of its name, the title moved right of it", page.face:IsShown() and page.shift > 0, true)
 Expect("...the boss badge on it", page.headFace.speaker.bullet, "boss")
 local badge = page.headFace and page.headFace.badge
-Expect("...the portrait's small socket holds the skull", badge and badge:IsShown() and badge.texture, [[Interface\TargetingFrame\UI-RaidTargetingIcon_8]])
+Expect("...the portrait's small socket holds the skull", badge and badge:IsShown() and badge.texture, [[Interface\Minimap\Minimap_skull_elite]])
 _G.SpokenBossCreatures = { [36] = { ["edwin vancleef"] = { creature = 639 } } }
 Click("Edwin VanCleef")
 Expect("a boss with a creature but no model has the question mark for its portrait", page.headFace.speaker.icon,

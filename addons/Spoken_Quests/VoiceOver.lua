@@ -477,7 +477,7 @@ local defaults = {
             -- Shown whether or not DialogueUI's Text To Speech is on.
             PlayButton = true,
         },
-        -- The Play button on each quest in the objective tracker.
+        QuestLogPlayButton = true,
         TrackerPlayButton = true,
         DebugEnabled = false,
     },
@@ -1100,7 +1100,8 @@ end
 
 function Addon:RefreshConfig()
     Player:RefreshConfig()
-    if QuestOverlayUI.UpdateTrackerButtons then QuestOverlayUI.UpdateTrackerButtons() end
+    QuestOverlayUI:RefreshQuestLog()
+    QuestOverlayUI.UpdateTrackerButtons()
 end
 
 local function GossipSoundDataAdded(soundData)
