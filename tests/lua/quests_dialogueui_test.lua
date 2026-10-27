@@ -164,6 +164,9 @@ local paras = Paras("Farmer Test: Hello there, traveller.", "Safe roads.")
 map, span = Marks.Align(caption, paras)
 local function Cut(fields)
     fields.typewriter = fields.typewriter ~= false
+    fields.typewriterBy = fields.typewriterBy or "word"
+    fields.words = fields.words or caption
+    fields.totalWeight = fields.totalWeight or caption[#caption].finish
     local p, byte = Marks.Cut(fields, map, span, paras)
     return p and (p .. ":" .. byte) or "all"
 end
@@ -174,6 +177,8 @@ Expect("...into the next paragraph", Cut({ progress = 0.9, speaking = true, acti
 Expect("once it has finished, all of it", Cut({ progress = 1, speaking = false }), "all")
 Expect("a clip with no length to time it shows all of it", Cut({ speaking = false }), "all")
 Expect("with Type Words Out off, all of it", Cut({ typewriter = false, progress = 0.1, speaking = true, activeWord = 1 }), "all")
+Expect("letter mode reveals only part of the active word",
+    Cut({ typewriterBy = "letter", progress = 0.2, speaking = true, activeWord = 2 }), "1:21")
 
 ---------------------------------------------------------------- the highlight alone
 words.HighlightWord, words.Typewriter = true, false
@@ -233,7 +238,7 @@ Tick(0.4)
 Expect("...and stays blank while its line is on its way", Paragraph(1) .. "|" .. Paragraph(2), "|")
 VO.Addon:QUEST_DETAIL()
 Tick(0.1)
-Expect("the text types out as the voice reads it", Paragraph(1), "Farmer Test: Greetings,")
+Expect("the text types out as the voice reads it", Paragraph(1), "Farmer Test: G")
 Expect("...the paragraph it has not reached is blank", Paragraph(2), "")
 Expect("...and nothing is lit", Lit(), 0)
 Tick(9)

@@ -7,7 +7,8 @@ brings back what was hidden, inside DialogueUI's window:
 
 - **Mark the words being read.** DialogueUI's own quest and gossip text follows the line the
   way Spoken's captions do. Spoken's **Type Words Out** types it out as the voice reaches each
-  word, and its **Highlight Words** lights the word being read. **Mark Words in DialogueUI**
+  letter or word selected by **Type Out By**, and its **Highlight Words** lights the word being
+  read. **Mark Words in DialogueUI**
   turns the marking on or off, and which kind it is follows those two settings on Spoken's
   page. The light is
   gold on DialogueUI's dark theme and deep red on its parchment theme, where gold is hard to read.

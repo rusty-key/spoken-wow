@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Type Out By: Letter also types quest and readable text one character at a time** in the
+  DialogueUI page, instead of revealing each active word whole.
 - **Captions are in the language you read, not the voice's.** A place's story is captioned in the
   Places page's Text Language, so French text with an English voice shows French words. Books and
   letters follow your client's language the same way, whichever voice or fallback recording plays:
