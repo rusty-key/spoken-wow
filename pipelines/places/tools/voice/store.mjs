@@ -124,7 +124,7 @@ async function loadFromFile() {
 
 async function loadFromDatabase() {
   const { rows } = await db.query(
-    `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}
+    `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes"
        from "take"
       where "source" = '${SOURCE}' and "isCurrent" and "lang" = '${LANG}'`,
   );
@@ -137,6 +137,9 @@ async function loadFromDatabase() {
     // manifest has to match the file it replaces, so normalise here rather than in the
     // exporter -- that way every reader sees one shape.
     record.generatedAt = row.generatedAt.toISOString();
+    // Only where the take has them, so a manifest exported before any take was timed stays
+    // as it was.
+    if (row.wordTimes) record.wordTimes = row.wordTimes;
     manifest[row.lineId] = record;
   }
   return manifest;

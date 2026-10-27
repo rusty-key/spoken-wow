@@ -196,7 +196,7 @@ temp folder as the root of the disk. What they cannot show is the real system: s
 
 | | Windows | macOS | Linux |
 | --- | --- | --- | --- |
-| Installer | NSIS, x64 | dmg and zip, Intel and Apple silicon | AppImage and tar.gz, x64 |
+| Installer | NSIS, x64 | dmg and zip, Intel and Apple silicon | AppImage, tar.gz, deb and rpm, x64 |
 | Finds the game | registry, Battle.net list, default folders, every fixed drive | /Applications, ~/Applications, /Volumes | Wine prefixes: Wine, Lutris, Bottles, Steam (Proton), Heroic |
 | Game running | `tasklist` | `ps` | `ps`, also sees Wine's Wow.exe |
 | Manager update | by itself | a link to the download page | by itself in an AppImage, else a link |

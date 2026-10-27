@@ -8,6 +8,24 @@ setfenv(1, SpokenEnv)
 Spoken.API_VERSION = 1
 Spoken.ADDON_VERSION = AddonVersion
 
+-- The shared dungeon data is Forever's, which holds every instance of the Classic-era clients.
+-- The vanilla instances end at map 533; every later one is Season of Discovery's or Forever's own.
+local LAST_VANILLA_DUNGEON = 533
+-- Demon Fall Canyon, Scarlet Enclave and Karazhan Crypts.
+local SOD_DUNGEONS = { [2784] = true, [2856] = true, [2875] = true }
+
+--- Whether the client can have the dungeon instance map `map`.
+---
+--- The data lists instances a client may not have, and the clients without them expose no
+--- C_Map for them, so callers apply this to shared Compendium data themselves.
+function Spoken:IsDungeonOnClient(map)
+    local variant = Version and Version.Variant
+    if variant == "forever" or type(map) ~= "number" or map <= LAST_VANILLA_DUNGEON then
+        return true
+    end
+    return variant == "sod" and SOD_DUNGEONS[map] or false
+end
+
 -- The site every module's report, contribute and help links point at. The old hosts
 -- (voiceover.rusty.one, lore.rusty.one) keep redirecting, so changing this breaks no copy
 -- already installed.
@@ -86,7 +104,8 @@ end
 --                                             -- and text, for a script the game's font has no
 --                                             -- glyphs for; the player's size stays
 --       timings  = { 0, .42, .61, ... },      -- optional; when each word of the transcript starts,
---                                             -- in seconds, one per Spoken:CaptionWords(transcript)
+--                                             -- in seconds, one per Spoken:CaptionWords(transcript),
+--                                             -- or the same as one string, "0 .42 .61"
 --       bullet   = "quest-accept",            -- a RegisterBullet id
 --       tint     = { r, g, b },               -- optional row tint
 --       portrait = { kind = "model", creatureID = 196 }

@@ -41,8 +41,8 @@ local defaults = {
 	highlightOpacity = 0.35,
 	-- Off, so Azeroth's Compendium opens only the places this character has found (Discovery.lua).
 	showUndiscovered = false,
-	-- Azeroth's Compendium's Discovered Only, under its list: off, so every place is listed.
-	loreDiscoveredOnly = false,
+	-- Azeroth's Compendium's Discovered Only, in its filter menu.
+	loreDiscoveredOnly = true,
 	loreVoicedOnly = false,
 	voiceEnabled = true,
 	autoplay = true,
@@ -97,6 +97,12 @@ local function MergeDefaults()
 	if not SpokenPlacesSettings.autoplayExploredTurnedOn then
 		SpokenPlacesSettings.autoplayExplored = true
 		SpokenPlacesSettings.autoplayExploredTurnedOn = true
+	end
+	-- A Discovered Only saved off before it was on by default would read as the player's choice:
+	-- turned on once behind this marker. An off set after that is kept.
+	if not SpokenPlacesSettings.discoveredOnlyDefaultOn then
+		SpokenPlacesSettings.discoveredOnlyDefaultOn = true
+		SpokenPlacesSettings.loreDiscoveredOnly = true
 	end
 
 	SpokenPlaces.db = SpokenPlacesSettings

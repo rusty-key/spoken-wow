@@ -142,7 +142,7 @@ export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boo
         {...drop.handlers}
         className={
           "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-6 py-8 text-center text-sm transition-colors outline-none focus-visible:ring-3 " +
-          (drop.over ? "border-primary bg-muted" : "border-muted-foreground/40 hover:border-muted-foreground hover:bg-muted/50")
+          (drop.over ? "border-primary-ink bg-muted" : "border-muted-foreground/40 hover:border-muted-foreground hover:bg-muted/50")
         }
       >
         <strong>

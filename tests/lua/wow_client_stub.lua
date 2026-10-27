@@ -144,6 +144,8 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
+    function w:LockHighlight() self.highlightLocked = true end
+    function w:UnlockHighlight() self.highlightLocked = false end
     -- A secure button's attributes (Spoken Developer's /reload macro), kept to be read back.
     function w:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
     function w:GetAttribute(key) return self.attributes and self.attributes[key] end
@@ -1196,7 +1198,7 @@ function M.LoadSpoken(addonDirectory)
     for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
         "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
-        "UI/MinimalPlayer", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
+        "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
         -- Real LibDeflate, not a hand-faked stub library: Contribute:Encode's round trip through
         -- actual compression is the point of testing it at all.
         "UI/Options", "UI/DialogueUIOptions", "UI/Welcome", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather" }) do

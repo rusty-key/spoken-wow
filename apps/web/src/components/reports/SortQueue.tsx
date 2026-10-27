@@ -297,7 +297,7 @@ export default function SortQueue({
           </span>
         </div>
         <div className="bg-muted h-1 overflow-hidden rounded-full">
-          <div className="bg-primary h-full transition-[width]" style={{ width: `${(index / total) * 100}%` }} />
+          <div className="bg-primary-ink h-full transition-[width]" style={{ width: `${(index / total) * 100}%` }} />
         </div>
       </header>
 

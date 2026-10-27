@@ -43,7 +43,7 @@ default). Spoken's Language section holds Voice Language and If a Voice Is Missi
 Spoken Reads section holds Read in Battlegrounds. Under Spoken's Developer page are Places Debug
 Messages (`debug`) and Offer Unfinished Translations (`languagePreview`).
 
-Three settings have no row. `loreDiscoveredOnly` and `loreVoicedOnly` are the tab's filter menu,
+Three settings have no row. `loreDiscoveredOnly` (on by default) and `loreVoicedOnly` (off) are the tab's filter menu,
 `mapPanelCollapsed` is the panel's close button and side tab, and `audioPack` is `/spp audio`.
 
 ### Where they are saved
@@ -148,6 +148,9 @@ A pack is an addon folder with `Data/Sounds.lua`, which registers itself in
   as a folder name), else the higher bitrate.
 - Durations come from the lookup, because the client cannot report how long a file is. Spoken's
   queue needs them to know when a clip has ended.
+- An entry may carry `times`, its take's word times packed as `clip.present.timings` takes them. The captions
+  follow them only where they show the recording's own words. The field is optional, so it did
+  not change `PACK_FORMAT`.
 - No clip stands in for a missing one. A quest line used to, and players reported the lore as
   wrong.
 

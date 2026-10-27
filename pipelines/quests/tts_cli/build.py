@@ -22,7 +22,7 @@ from tts_cli.naming import (FOLLOWUP, followup_stem_from_line_id, gossip_hash_fr
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import SUBFOLDERS, audio_extension, stored_files
+from tts_cli.store import SUBFOLDERS, audio_extension, stored_files, word_times
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -515,6 +515,15 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     write_sound_length_table_lua(module_name, sounds_dir, generated_dir)
     written.append("sound_length_table.lua")
 
+    # Keyed like the length table, and only for audio this pack carries: the other packs'
+    # times would be dead weight in every one of them.
+    stored = word_times(store_dir)
+    times = {os.path.basename(stem): stored[stem]
+             for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in stored}
+    write_lua_table(os.path.join(generated_dir, "word_times_table.lua"),
+                    module_name, "WordTimesByFileName", times)
+    written.append("word_times_table.lua")
+
     shutil.copy2(icon_source(language), os.path.join(module_dir, ICON_NAME))
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
@@ -530,7 +539,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         "audioFiles": len(audio),
         "audioFormat": extension,
         "tables": sorted(written),
-        "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows},
+        "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows,
+                      "word_times_table": len(times)},
         "language": language,
     }
 

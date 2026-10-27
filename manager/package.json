@@ -6,6 +6,8 @@
   "private": true,
   "main": "./out/main/index.js",
   "author": "Spoken",
+  "homepage": "https://github.com/rusty-key/spoken-wow/tree/master/manager",
+  "desktopName": "spoken-manager",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
@@ -93,6 +95,8 @@
     },
     "linux": {
       "category": "Utility",
+      "maintainer": "Rusty Key <rusty-key@users.noreply.github.com>",
+      "syncDesktopName": true,
       "artifactName": "Spoken-Manager-${version}-linux.${ext}",
       "target": [
         {
@@ -103,6 +107,18 @@
         },
         {
           "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
           "arch": [
             "x64"
           ]

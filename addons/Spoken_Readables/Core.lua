@@ -54,7 +54,7 @@ local defaults = {
 	-- Azeroth's Compendium (UI/Readables.lua): every readable openable, found or not; and the
 	-- list leaving out those not found.
 	unlockUnfound = false,
-	compendiumFoundOnly = false,
+	compendiumFoundOnly = true,
 	compendiumVoicedOnly = false,
 	-- On, its tree is zones then types; off, the types alone.
 	compendiumByZone = true,
@@ -77,6 +77,12 @@ local function FillDefaults()
 		if SpokenReadablesSettings[key] == nil then
 			SpokenReadablesSettings[key] = value
 		end
+	end
+	-- A Found Only saved off before it was on by default would read as the player's choice: turned
+	-- on once behind this marker. An off set after that is kept.
+	if not SpokenReadablesSettings.foundOnlyDefaultOn then
+		SpokenReadablesSettings.foundOnlyDefaultOn = true
+		SpokenReadablesSettings.compendiumFoundOnly = true
 	end
 end
 

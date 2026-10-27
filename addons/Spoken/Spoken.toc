@@ -13,8 +13,9 @@
 ## Version: 3.5.1
 ## IconTexture: Interface\AddOns\Spoken\icon.tga
 ## SavedVariables: SpokenSettings
-## OptionalDeps: DialogueUI
+## OptionalDeps: DialogueUI, EllesmereUI
 # DialogueUI, when installed, loads first so the DialogueUI window can read its art and size: UI/DialogueUITheme.lua.
+# EllesmereUI loads first so Spoken can register with its skinning API.
 ## Group: Spoken
 ## X-Part-Of: Spoken
 ## X-Spoken-Player: 1

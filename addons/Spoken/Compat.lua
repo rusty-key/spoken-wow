@@ -47,14 +47,14 @@ if not MouseIsOver then
     end
 end
 
--- Forever runs the modern engine and its HD models whatever project id it answers.
-if Version.IsRetailMainline or Version.IsCamelot then
+-- Forever runs the modern engine and its HD models.
+if Version.Variant == "forever" then
     function Portrait:GetCurrentModelSet()
         return "HD"
     end
 end
 
-if Version.IsCamelot then
+if Version.Variant == "forever" then
     -- Camelot accepts SetCustomCamera and ignores it: the model keeps the default
     -- full-body framing, so the portrait showed the whole NPC standing in the box.
     -- SetPortraitZoom is the framing that client honours, and 1 is the head shot the

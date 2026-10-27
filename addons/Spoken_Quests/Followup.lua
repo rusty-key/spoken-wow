@@ -302,6 +302,7 @@ function Followup:Play(entry, message, sender, guid, npcID, asked)
         fileName = clip.fileName,
         filePath = clip.filePath,
         length = clip.length,
+        timings = clip.timings,
         module = clip.module,
         language = clip.language,
     }

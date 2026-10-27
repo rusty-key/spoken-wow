@@ -106,14 +106,33 @@ end
 --- Play or stop, read off the button's own sound data rather than the quest log's table:
 --- the details view has a button that belongs to no quest in particular. A button drawn its
 --- own way (the details view's round one) carries its own `setPlayState`.
+local function SetPlayTexture(playButton, stop)
+    playButton:SetNormalTexture(TEXTURES .. (stop and "QuestLogStopButton" or "QuestLogPlayButton"))
+end
+
 function QuestOverlayUI:SetPlayButtonState(playButton)
     local isPlaying = playButton.soundData and Player:Contains(playButton.soundData) or false
     if playButton.setPlayState then
         playButton.setPlayState(playButton, isPlaying)
         return
     end
-    local texturePath = isPlaying and (TEXTURES .. "QuestLogStopButton") or (TEXTURES .. "QuestLogPlayButton")
-    playButton:SetNormalTexture(texturePath)
+    SetPlayTexture(playButton, isPlaying)
+end
+
+function QuestOverlayUI:ShowsQuestLogButtons()
+    return Addon:IsPartOn() and (not Addon.db or Addon.db.profile.QuestLogPlayButton ~= false)
+end
+
+--- Redraws only Spoken's quest log buttons. Calling the client's own QuestLog_Update or
+--- QuestLogQuests_Update from here would taint the log's later protected actions.
+function QuestOverlayUI:RefreshQuestLog()
+    if _G.QuestLogFrame or QuestLogQuests_Update then self:Update() end
+end
+
+--- Whether a tracker shows Play on this quest: the part and the setting are on and a pack voices it.
+function QuestOverlayUI:ShowsTrackerButton(questID)
+    return Addon:IsPartOn() and (not Addon.db or Addon.db.profile.TrackerPlayButton ~= false)
+        and DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID }) and true or false
 end
 
 function QuestOverlayUI:UpdatePlayButtonTexture(questID)
@@ -200,17 +219,21 @@ function QuestOverlayUI:StateOf(questID)
 end
 
 --- A button's `setPlayState`, for one that stops and replays: its glyph is what the queue says its quest is doing.
-function QuestOverlayUI.FollowQueue(button) button:SetState((QuestOverlayUI:StateOf(button.questID))) end
+function QuestOverlayUI.FollowQueue(button)
+    local state = QuestOverlayUI:StateOf(button.questID)
+    if button.SetState then
+        button:SetState(state)
+    else
+        button.state = state
+        SetPlayTexture(button, state == "stop" or state == "replay")
+    end
+end
 
--- The tooltip says what a click does now.
-local TIPS = { play = { "OPT_PLAY", "OPT_PLAY_TIP" }, stop = { "OPT_STOP", "OPT_STOP_TIP" },
-    replay = { "OPT_REPLAY", "OPT_REPLAY_TIP" } }
+local TIPS = { play = "OPT_PLAY", stop = "OPT_STOP", replay = "OPT_REPLAY" }
 
 function QuestOverlayUI:ShowPlayTip(button)
-    local tip = TIPS[button.state or "play"]
     GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-    GameTooltip:SetText(L[tip[1]])
-    GameTooltip:AddLine(L[tip[2]], 1, 0.8, 0.2, true)
+    GameTooltip:SetText(L[TIPS[button.state or "play"]])
     GameTooltip:Show()
 end
 
@@ -279,8 +302,7 @@ function QuestOverlayUI:Update()
     for _, button in pairs(self.displayedButtons) do
         button:Hide()
     end
-    -- Switched off, the part puts nothing on the log.
-    if not Addon:IsPartOn() then
+    if not self:ShowsQuestLogButtons() then
         table.wipe(self.displayedButtons)
         return
     end

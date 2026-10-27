@@ -172,6 +172,8 @@ function Addon:InitDB()
     if self.db then
         return
     end
+    -- Not in Defaults: DialogueUITheme and Compat.lua's IsAddOnLoaded load after Core.lua.
+    if DialogueUITheme and DialogueUITheme:Available() then Defaults.profile.Frame.Style = "dialogueui" end
     -- AceDB uses the third argument only for a character missing from profileKeys, and adds it as
     -- it loads, so the keys are noted first. The client's name for the player can change between
     -- loads, so the character's key is AceDB's own.

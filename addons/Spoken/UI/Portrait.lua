@@ -60,7 +60,7 @@ local animationDurations = {
         [119376] = { [60] = 4667 },
     },
 }
-if Version.IsRetailVanilla then
+if Version.Variant == "era" or Version.Variant == "sod" then
     -- Goblin models on vanilla lack the talk animation; 0 makes
     -- them fall back to idle.
     animationDurations["Original"][119369][60] = 0

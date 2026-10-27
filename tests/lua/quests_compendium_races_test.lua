@@ -52,6 +52,8 @@ SpokenQuestsCompendium.quests = {
 
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.world.playerMapID = 1429
+-- The test is about which races see which quests, so Started Only is off: none is started.
+VO.Addon.db.global.Compendium = { FoundOnly = false }
 VO.QuestsTab:Open()
 local panel = VO.QuestsTab.panel
 

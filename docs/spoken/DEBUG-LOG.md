@@ -182,7 +182,7 @@ Additive API on `Spoken`, so `API_VERSION` stays 1: guard on the method.
 | `Spoken:AddLogSource(list, clear)` | Logs to read beside this one, such as other computers'. `list()` returns `{ { name, lines, offset }, ... }`, lines written as the log writes them, on their own clock, `offset` the seconds that put them on this one. `clear()` drops them when the log is cleared. |
 | `Spoken:AddDiagnostics(name, fn)` | `fn(detailed)` returns a list of lines: what your own diagnostics command says, and with `detailed` what an AI agent needs besides. Shown under `name` in the copies and the `diag` snapshots. |
 | `Spoken:AddDeveloperSettings(build)` | A section of your own on the Developer page; `build(layout)` adds rows to its SpokenLayout and may return a function for the page's Defaults. |
-| `Spoken:ShowLogMenu(anchor)`, `Spoken:LogMenuHint()` | The Report menu, for a Report button Spoken did not make; the line its tooltip adds. Buttons made with `Spoken:CreateRoundButton(parent, "report")` have it already. |
+| `Spoken:ShowLogMenu(anchor)`, `Spoken:LogMenuHint()` | The Report menu, for a Report button Spoken did not make; the line its tooltip can add. Buttons made with `Spoken:CreateRoundButton(parent, "report")` have it already. |
 
 The module registers with `Spoken:RegisterDeveloper(provider)`; `addons/Spoken/Developer.lua`
 lists what the provider holds.

@@ -33,6 +33,7 @@ import { BUSY, withTakeLock } from "./lock";
 import { NARRATOR_VOICE } from "./narration";
 import type { RegenerateResult } from "./regenerate";
 import type { Speaker, Spoken } from "./speakers/speaker";
+import { timesFor } from "./word-times";
 import type { Lang } from "@/lib/lang";
 
 /** What a section hands over once it has found a line and decided it can be voiced. */
@@ -42,6 +43,8 @@ export type NarratedLine = {
   file: string;
   /** The text as it will be spoken, after the pronunciation rules. */
   spoken: string;
+  /** The text as the addon shows it, which the take's word times are counted against. */
+  shown: string;
   /** The section's hash of `spoken`, which staleness compares against. */
   hash: string;
 };
@@ -120,6 +123,7 @@ export async function regenerateNarrated(
           leadIn: speech.leadIn,
           leadInSec: speech.leadInSec,
           createdBy,
+          wordTimes: timesFor(line.shown, speech.words),
         },
         { lang, measure: durationOf, batchId: options.batchId },
       );

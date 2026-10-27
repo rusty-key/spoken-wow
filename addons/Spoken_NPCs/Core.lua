@@ -11,10 +11,7 @@ NPCs.ICON = [[Interface\Icons\INV_Misc_Head_Dragon_01]]
 local defaults = {
 	-- Every boss openable, met or not (on Spoken's page); and the list leaving out those not met.
 	unlockUnfound = false,
-	compendiumFoundOnly = false,
-	-- When a boss's story shows in Spoken's narrator: "target" when the player targets it, "kill" when
-	-- it is killed.
-	storyTrigger = "target",
+	compendiumFoundOnly = true,
 }
 
 --- The settings and what this character has met. The settings are how the tab behaves, and the
@@ -23,6 +20,12 @@ function NPCs:InitDB()
 	SpokenNPCsSettings = SpokenNPCsSettings or {}
 	for key, value in pairs(defaults) do
 		if SpokenNPCsSettings[key] == nil then SpokenNPCsSettings[key] = value end
+	end
+	-- A Found Only saved off before it was on by default would read as the player's choice: turned
+	-- on once behind this marker. An off set after that is kept.
+	if not SpokenNPCsSettings.foundOnlyDefaultOn then
+		SpokenNPCsSettings.foundOnlyDefaultOn = true
+		SpokenNPCsSettings.compendiumFoundOnly = true
 	end
 	SpokenNPCsCharacter = SpokenNPCsCharacter or {}
 	SpokenNPCsCharacter.found = SpokenNPCsCharacter.found or {}
@@ -38,24 +41,24 @@ function NPCs:ResetOptions()
 	end
 end
 
-local function Key(map, key)
+--- How the boss `key` of `map` is filed in what a character has met and been told: "map:key".
+function NPCs.Key(map, key)
 	return map .. ":" .. key
 end
+local Key = NPCs.Key
 
 -- [encounter id] = { { map, key }, ... }, from Data/Bosses.lua, built on first use. A fight against
--- two bosses at once (the Weaver and Dreamscythe) is one encounter of both. onTarget["map:key"] =
--- true for a boss met when targeted, built alongside.
-local byEncounter, onTarget
+-- two bosses at once (the Weaver and Dreamscythe) is one encounter of both.
+local byEncounter
 local function Encounters()
 	if byEncounter then return byEncounter end
-	byEncounter, onTarget = {}, {}
+	byEncounter = {}
 	for map, bosses in pairs(_G.SpokenBosses and SpokenBosses.maps or {}) do
 		for _, boss in ipairs(bosses) do
 			for _, id in ipairs(boss.ids) do
 				byEncounter[id] = byEncounter[id] or {}
 				table.insert(byEncounter[id], { map = map, key = boss.key })
 			end
-			if boss.onTarget then onTarget[Key(map, boss.key)] = true end
 		end
 	end
 	return byEncounter
@@ -80,7 +83,7 @@ local function Meet(self, bosses)
 			new = true
 		end
 	end
-	-- At a boss's pull: the list is drawn again only where it is seen, and opening it draws it.
+	-- The list is drawn again only where it is seen, and opening it draws it.
 	if new and self.bosses and self.bosses:IsVisible() then self:RefreshBosses() end
 	return new
 end
@@ -92,14 +95,9 @@ function NPCs:FoundEncounter(encounterID)
 	return bosses and Meet(self, bosses) or false
 end
 
---- The player targeted the boss `key` of `map`: met where it is one whose fight may start no
---- encounter (`onTarget` in Data/Bosses.lua), once it can be fought, as the Grim Guzzler's townsfolk
---- are only after a quest or a theft turns them. Returns whether it was not met before.
-function NPCs:FoundTarget(map, key)
-	if not SpokenNPCsCharacter or self:IsBossFound(map, key) then return false end
-	Encounters()
-	if not onTarget[Key(map, key)] then return false end
-	if not (UnitCanAttack and Spoken.NotSecret(UnitCanAttack("player", "target"))) then return false end
+--- The boss `key` of `map` is met. Returns whether it was not met before.
+function NPCs:FoundBoss(map, key)
+	if not SpokenNPCsCharacter then return false end
 	return Meet(self, { { map = map, key = key } })
 end
 

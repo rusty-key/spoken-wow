@@ -52,10 +52,18 @@ quoted=$(printf '"%s", ' "${tables[@]}")
 # reference this machine cannot satisfy is left blank. Production keeps the link; this copy
 # is for building and testing.
 staging=sync_staging
+# Only the columns production has too: a migration run here before it is deployed adds a column
+# production lacks, and naming it failed the copy there while the empty result replaced every
+# local row. Such a column's rows land with its default.
 columns_of() {
+  local theirs
+  theirs=$(upstream 'psql "$DATABASE_URL" -tA -f -' <<<"select string_agg(column_name, ',')
+      from information_schema.columns where table_schema = 'public' and table_name = '$1'")
+  [ -n "$theirs" ] || { echo "error: production has no table $1" >&2; exit 1; }
   psql "$LOCAL_DB" -tAc "select string_agg(quote_ident(column_name), ', ' order by ordinal_position)
                            from information_schema.columns
-                          where table_schema = 'public' and table_name = '$1'"
+                          where table_schema = 'public' and table_name = '$1'
+                            and column_name = any(string_to_array('$theirs', ','))"
 }
 {
   echo 'begin;'

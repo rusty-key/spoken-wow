@@ -67,19 +67,6 @@ const UNCONFIRMED = {
   2959: ["mana wraith"],
 };
 
-// Bosses whose fight Forever may never announce with ENCOUNTER_START, found when the player targets them
-// too (`onTarget`): Baron Aquanis has only a Season of Discovery row, the world bosses' rows are on
-// instanced maps while Forever spawns them in the open world, and the Grim Guzzler's Ribbly and
-// Plugger are townsfolk until a quest or a theft turns them.
-const ON_TARGET = {
-  48: ["baron aquanis"],
-  230: ["ribbly screwspigot", "plugger spazzring"],
-  2789: ["lord kazzak"],
-  2791: ["azuregos"],
-  2804: ["prince thunderaan"],
-  2832: ["emeriss", "lethon", "taerar", "ysondre"],
-};
-
 // Forever's own difficulties: the client's other rows are Season of Discovery's. Forever splits one
 // dungeon's bosses over both, on one OrderIndex scale (Gnomeregan's Grubbis, difficulty 1, comes first).
 const FOREVER_DIFFICULTIES = new Set([0, 1]);
@@ -177,7 +164,6 @@ export function render(maps, names) {
         const name = names[locale]?.[boss.id];
         if (name && name !== boss.name) parts.push(`${locale} = ${quote(name)}`);
       }
-      if (boss.onTarget) parts.push("onTarget = true");
       return `\t\t\t{ ${parts.join(", ")} },`;
     });
     return `\t\t[${map}] = {\n${lines.join("\n")}\n\t\t},`;
@@ -189,8 +175,7 @@ export function render(maps, names) {
 -- the client's encounter, \`ids\` every encounter the client has for it, one for each difficulty
 -- (the ids ENCOUNTER_START gives), \`key\` the boss's English name lowercased without punctuation (how its
 -- story is filed), then its name, and in every other language where it differs (Forever
--- ${FOREVER_BUILD}, else retail ${RETAIL_BUILD}, wago.tools). \`onTarget\` marks a boss found when the player targets it, as its
--- fight may start no encounter. Regenerate with:
+-- ${FOREVER_BUILD}, else retail ${RETAIL_BUILD}, wago.tools). Regenerate with:
 --   make bosses
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.
@@ -219,13 +204,6 @@ async function main() {
   }
   const maps = {};
   for (const [map, rows] of byMap) maps[map] = bossesOf(rows).filter((boss) => !UNCONFIRMED[map]?.includes(boss.key));
-  for (const [map, keys] of Object.entries(ON_TARGET)) {
-    for (const key of keys) {
-      const boss = maps[map]?.find((b) => b.key === key);
-      if (!boss) throw new Error(`ON_TARGET names ${map} ${key}, which is not a listed boss`);
-      boss.onTarget = true;
-    }
-  }
 
   const wanted = new Set(Object.values(maps).flat().map((boss) => boss.id));
   const englishOf = new Map(english.map((row) => [Number(row.ID), row.Name_lang]));

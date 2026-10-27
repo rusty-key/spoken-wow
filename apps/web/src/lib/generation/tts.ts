@@ -23,6 +23,7 @@ import {
 import type { VoiceSettings } from "./config";
 import { classifyUpstream, failure, type Failure } from "./errors";
 import { trimLeadIn, withLeadIn } from "./leadin";
+import { wordStarts, type Alignment, type WordStart } from "./word-times";
 
 /**
  * The language a request says it is in, when the caller names none: English, the corpus
@@ -116,6 +117,12 @@ export type SpeechResult =
        * than to invent one.
        */
       credits: number | null;
+      /**
+       * Each spoken word's start in the trimmed audio, or null when ElevenLabs sent no
+       * alignment. These are the words that were sent, tags left out; ./word-times lays them
+       * onto the words the addon shows.
+       */
+      words: WordStart[] | null;
     }
   | { ok: false; failure: Failure };
 
@@ -250,20 +257,21 @@ async function requestAudio(
 
   // It earns its place: an error served with a 200 would otherwise be archived as an mp3
   // and play as silence in the game.
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.startsWith("audio/")) {
-    const raw = await response.text().catch(() => "");
+  const raw = await response.text().catch(() => "");
+  const body = timedAudio(raw);
+  if (!body) {
+    const contentType = response.headers.get("content-type") || "no content type";
     return {
       ok: false,
       failure: failure(
         "upstream",
-        `ElevenLabs answered 200 with ${contentType || "no content type"} rather than audio: ${raw.slice(0, 200)}`,
+        `ElevenLabs answered 200 with ${contentType} rather than audio: ${raw.slice(0, 200)}`,
       ),
     };
   }
 
   const credits = creditsFrom(response.headers);
-  const received = Buffer.from(await response.arrayBuffer());
+  const received = Buffer.from(body.audio_base64, "base64");
   if (received.byteLength === 0) {
     return { ok: false, failure: failure("upstream", "ElevenLabs returned an empty response") };
   }
@@ -271,7 +279,32 @@ async function requestAudio(
   // Trimmed here rather than by each caller, so what comes out of this module is always the
   // audio to keep. Never throws: a take that cannot be trimmed is still a take worth storing.
   const { audio, leadIn, leadInSec } = await trimLeadIn(received, modelId);
-  return { ok: true, audio, leadIn, leadInSec, credits };
+  // The alignment is of the audio as it arrived, so its times move with the cut.
+  const breaks = (body.voice_segments ?? []).map((segment) => segment.character_start_index);
+  const words = body.alignment
+    ? wordStarts(body.alignment, breaks).map((word) => ({
+        ...word,
+        start: word.start - (leadInSec ?? 0),
+      }))
+    : null;
+  return { ok: true, audio, leadIn, leadInSec, credits, words };
+}
+
+/** What the with-timestamps endpoints answer. */
+type TimedAudio = {
+  audio_base64: string;
+  alignment?: Alignment | null;
+  /** Dialogue only: which characters each turn spoke. */
+  voice_segments?: { character_start_index: number }[];
+};
+
+function timedAudio(raw: string): TimedAudio | null {
+  try {
+    const body = JSON.parse(raw) as Partial<TimedAudio> | null;
+    return body && typeof body.audio_base64 === "string" ? (body as TimedAudio) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function textToSpeech(
@@ -279,7 +312,7 @@ export async function textToSpeech(
   options: ElevenLabsOptions = {},
 ): Promise<SpeechResult> {
   return requestAudio(
-    `/v1/text-to-speech/${request.voiceId}`,
+    `/v1/text-to-speech/${request.voiceId}/with-timestamps`,
     buildPayload(request),
     request.modelId,
     options,
@@ -306,7 +339,7 @@ export async function textToDialogue(
     };
   }
   return requestAudio(
-    "/v1/text-to-dialogue",
+    "/v1/text-to-dialogue/with-timestamps",
     buildDialoguePayload(request),
     request.modelId,
     options,

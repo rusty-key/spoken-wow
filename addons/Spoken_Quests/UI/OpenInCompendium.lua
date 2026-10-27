@@ -33,7 +33,6 @@ function QuestsTab:NewOpenButton(parent, tooltip)
         local tip = tooltip and tooltip() or GameTooltip
         tip:SetOwner(self, "ANCHOR_LEFT")
         tip:SetText(L.OPEN_IN_COMPENDIUM)
-        tip:AddLine(L.OPEN_QUEST_IN_COMPENDIUM_TIP, 1, 0.8, 0.2, true)
         tip:Show()
         self.tooltip = tip
     end)

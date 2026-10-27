@@ -769,7 +769,6 @@ local PLAY = {
 	end,
 	-- Browsing: heard here is not heard in the world (Read Only Once), nor found.
 	start = function(id) SpokenReadables:SyncTo(FirstVoiced(id), true) end,
-	tip = L.PLAY_TIP,
 }
 
 -- The page of a readable being read: the one of it in the queue. Nil where none is.
@@ -794,7 +793,6 @@ local REPORT = {
 		if pageId then SpokenReadables:ShowReport(pageId) end
 	end,
 	title = L.REPORT_PROBLEM,
-	tip = L.REPORT_LINE_TIP,
 }
 
 -- Where a readable is, under its title: its first two zones, and how many more. One line: a book

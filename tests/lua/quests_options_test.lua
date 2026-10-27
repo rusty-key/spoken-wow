@@ -194,7 +194,7 @@ do
     defaults.scripts.OnClick(defaults)
     stub.popups[#stub.popups].dialog.OnAccept()
     local filters = VO.Addon.db.global.Compendium
-    Expect("Defaults turns Started Only and Voiced Only off and redraws an open Quests tab",
+    Expect("Defaults clears the choice of Started Only (unset reads as on) and Voiced Only and redraws an open Quests tab",
         tostring(filters.FoundOnly) .. "|" .. tostring(filters.VoicedOnly) .. "|" .. redrawn, "nil|nil|1")
     Expect("...leaving Unlock Unstarted Quests, which is Spoken's page's", filters.UnlockUnfound, true)
     VO.QuestsTab, VO.Addon.db.global.Compendium = nil, nil
@@ -261,13 +261,14 @@ end
 ---------------------------------------------------------------- the objective tracker's Play button
 -- Only where the client has the tracker, and unticked, every tracker button goes.
 do
-    _G.QuestObjectiveTracker = {}
+    -- The campaign tracker is the modern name; the settings row must not require the legacy one.
+    _G.CampaignQuestObjectiveTracker = {}
     local VO, Panel = Boot()
     Panel.panel.layout:Refresh()
     local heading, box
     for _, child in ipairs(Panel.panel.content.children) do
-        if child.layoutHeading and child.text == "Objective Tracker" then heading = child end
-        if type(child.text) == "table" and child.text.text == "Show Play Button" then box = child end
+        if child.layoutHeading and child.text == "Show Play Button" then heading = child end
+        if type(child.text) == "table" and child.text.text == "Tracker" then box = child end
     end
     Expect("a client with the tracker has its section", heading and heading:IsShown(), true)
     local swept = 0
@@ -276,7 +277,30 @@ do
     box:GetScript("OnClick")(box)
     Expect("unticking it turns the buttons off", VO.Addon.db.profile.TrackerPlayButton, false)
     Expect("...and takes away the ones drawn", swept, 1)
-    _G.QuestObjectiveTracker = nil
+    _G.CampaignQuestObjectiveTracker = nil
+end
+
+---------------------------------------------------------------- the classic quest log's Play button
+do
+    -- Era has the classic Quest Log frame, without the modern objective tracker globals.
+    _G.QuestLogFrame = {}
+    local VO, Panel = Boot()
+    Panel.panel.layout:Refresh()
+    local heading, box
+    for _, child in ipairs(Panel.panel.content.children) do
+        if child.layoutHeading and child.text == "Show Play Button" then heading = child end
+        if type(child.text) == "table" and child.text.text == "Quest Log" then box = child end
+    end
+    Expect("a classic client has the Show Play Button section", heading and heading:IsShown(), true)
+    Expect("...with a Quest Log suboption", box and box:IsShown(), true)
+    local updated = 0
+    -- Spoken's own buttons, never the client's QuestLog_Update, which would taint the log.
+    VO.QuestOverlayUI.RefreshQuestLog = function() updated = updated + 1 end
+    box:SetChecked(false)
+    box:GetScript("OnClick")(box)
+    Expect("unticking Quest Log turns its buttons off", VO.Addon.db.profile.QuestLogPlayButton, false)
+    Expect("...and redraws Spoken's quest log buttons", updated, 1)
+    _G.QuestLog_Update, _G.QuestLogFrame = nil, nil
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

@@ -28,7 +28,8 @@ const pool = new pg.Pool({ connectionString: url });
 try {
   const { rows } = await pool.query(
     `select p."pageTextId" as "pageId", p."bookId"::int as "bookId", p."pageNumber",
-            count(*) over (partition by p."bookId")::int as "pageCount", l."title", l."text"
+            count(*) over (partition by p."bookId")::int as "pageCount", l."title", l."text",
+            p."ownerKind", p."ownerIds"
        from "book_page" p
        join "book_line" l on l."lineId" = p."lineId" and l."lang" = $1 and l."isCurrent"
       where p."aliasOf" is null and p."pageTextId" is not null

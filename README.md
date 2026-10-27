@@ -46,7 +46,7 @@ login, and the player is asked to delete them.
 **Narrator styles.** Spoken shows a line in one of four ways, five with DialogueUI, chosen
 on the Spoken settings page or in the welcome window on first login:
 
-- **Subtitles Only**, the default on Forever and the other modern clients: the speaker's name
+- **Subtitles Only**, the default unless DialogueUI is installed: the speaker's name
   and the words low in the middle of the screen over a soft shadow, at most four lines at a
   time. A longer line turns its pages as the voice reaches them, one fading out before the
   next fades in. The words show whole, with the word being read lit; Type Words Out in the
@@ -93,8 +93,9 @@ compendium` or `/spp window`. It browses every quest, every place story and ever
 a search box, and plays any of them without going there. Places follows Spoken's Voice
 Language.
 
-**Defaults on a first install:** every module on; Subtitles Only; Show Narrator and Type Words
-Out on, by letters, Highlight Words off; subtitle size 100% and its shadow at 60%; the voice in
+**Defaults on a first install:** every module on; the DialogueUI window when a DialogueUI
+Spoken recognises is installed, otherwise Subtitles Only (a player who never picked a style
+follows the same rule on each login); Show Narrator and Type Words Out on, by letters, Highlight Words off; subtitle size 100% and its shadow at 60%; the voice in
 the game's language with English for a missing line; volume on Master; NPC voices silenced
 while a line plays; other sounds turned down (music 30%, ambience 40%, effects 60%); missing
 lines collected for contributing; the minimap button shown, unlocked and in the AddOns menu;

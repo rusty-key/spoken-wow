@@ -30,16 +30,6 @@ function NPCs:SetupOptions()
 
 	layout:Intro(NPCs.ICON, L.OPT_PAGE_TITLE)
 
-	-- Spoken's page turns the stories on and off: off, the rows that read them grey out and say why.
-	local function PartOn() return Spoken:IsPartOn("bosses") end
-	layout:Section(W.MODULE_WHEN)
-	local trigger = layout:Dropdown(L.OPT_STORY_TRIGGER, nil, { "target", "kill" },
-		function() return SpokenNPCsSettings and SpokenNPCsSettings.storyTrigger or "target" end,
-		function(value) if SpokenNPCsSettings then SpokenNPCsSettings.storyTrigger = value end end,
-		refresh,
-		function(value) return value == "kill" and L.OPT_TRIGGER_KILL or L.OPT_TRIGGER_TARGET end)
-	layout:Requires(trigger, PartOn, W.REASON_PART_OFF)
-
 	-- What this character was shown: forgotten, each story shows once more.
 	layout:Section(W.MODULE_HISTORY)
 	layout:Button(L.OPT_FORGET_STORIES, 200, function()

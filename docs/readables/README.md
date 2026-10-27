@@ -174,8 +174,31 @@ three.
 it is showing. Title, page number and a checksum of the text; then the checksum alone,
 where no other page shares it; then, for a page the client filled with the reader's name,
 class or gender word, its words against the captions that hold a token, where exactly one
-fits; then nothing. Nothing is the right last answer: the alternative is reading the wrong
-page's words aloud.
+fits. Then two steps for a server that lays out or words a page differently from the corpus:
+
+- **What opened the frame.** `Opener.lua` notes the item used from the bags
+  (`C_Container.UseContainerItem`), the object a tooltip was last on and the interact key's
+  object. `Books.lua`'s `owners` maps the id to its book, and the page number picks the page.
+  Refused where the book has no page at that number, or where the title on screen is another
+  corpus book's, which means the id was something touched before the click. Where the page at
+  that number shares under 60% of the words on screen and another page of the book shares
+  more, that page: Forever's Sargeras and the Betrayal skips a page, so each later page shows
+  a number early. Text in another language matches no page's words and keeps the number.
+- **Title, page number and most of the words.** At least 60% of the distinct words in common,
+  and the client's next-page arrow agreeing with where the book ends, unless 90% are in common:
+  Forever ends some chains early. Where nothing at the number is close, the numbers either side.
+  The words are the guard: the server may hold a book of the same name that the corpus lacks
+  ("Proof of Deed" is many bosses' deeds).
+
+Either way the clip is the corpus page's, so a page the server rewords plays the corpus's words.
+The words on screen are still news to the corpus, so the page stays a contribution gap.
+
+A stale candidate is not caught where the title on screen is one the corpus lacks, as in a
+client in another language: the interact key's target stays a candidate however long ago it
+was picked, and a book opened by a way `Opener.lua` does not hear (a bag addon's buttons, an
+action bar, `/use`) falls back on it.
+Then nothing. Nothing is the right last answer: the alternative is reading the wrong page's
+words aloud.
 
 **The checksum is the load-bearing part.** `pipelines/readables/tools/lib/naming.mjs` and
 `addons/Spoken_Readables/Checksum.lua` must produce the same number for the same text, over
@@ -330,7 +353,7 @@ Spoken's `Data/Dungeons.lua`). A continent's banner counts each readable once, s
 be less than the sum of its zones'.
 
 **What the list keeps.** The search box looks in names only: a search naming a place lists
-everything under it, a title lists itself under its place. The filter menu has Found Only and Voiced
+everything under it, a title lists itself under its place. The filter menu has Found Only (on by default) and Voiced
 Only, which leave out what has nothing found or voiced and take it from the counts, By Zone (the
 default) or By Type, and the window's Unlock Unfound Readables, which makes every one readable
 here. Without it a readable not found yet is greyed with a padlock, and its page says to open it in
@@ -422,6 +445,11 @@ make readables-lookup LOCALE=esMX         # build/readables/esMX/Data/Sounds.lua
 LOCALE=esMX ./scripts/readables/package-audio.sh  # dist/SpokenReadablesAudio_esMX-<v>.zip
 make readables-release-audio LOCALE=esMX  # uploads it, CurseForge only
 ```
+
+A page whose take kept its word times carries them as `times` in its `Data/Sounds.lua` entry,
+counted against the page's words as the captions show them: a first page's title, read ahead of
+its words, is left out. The captions follow them only where they show the recording's own
+words. A page without them is estimated, a first page starting its words after the title's share.
 
 The addon finds a page by its title and a checksum of its words, and a client in another
 locale shows neither in English. So a language's `Data/Sounds.lua` also carries that

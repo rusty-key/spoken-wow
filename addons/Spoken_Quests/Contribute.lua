@@ -789,12 +789,6 @@ function Contribute:ShowTooltip(owner, gossip, tooltip)
     tooltip:SetOwner(owner, "ANCHOR_RIGHT")
     tooltip:SetText(gossip and L.OPT_CONTRIBUTE_TIP_LINE or L.OPT_CONTRIBUTE_TIP_QUEST)
     tooltip:AddLine(L.OPT_CONTRIBUTE_TIP_SHARE, 1, 0.8, 0.2, true)
-    -- Its right-click opens the debug log's menu, where Spoken Developer is installed. Not on
-    -- DialogueUI's window, whose own tooltip this is and whose corner has no such menu.
-    local hint = tooltip == GameTooltip and Spoken and Spoken.LogMenuHint and Spoken:LogMenuHint()
-    if hint then
-        tooltip:AddLine(hint, 0.6, 0.6, 0.6, true)
-    end
     tooltip:Show()
 end
 

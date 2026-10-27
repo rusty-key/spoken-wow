@@ -25,7 +25,7 @@ local REGISTRY_2 = "Magistrate Rutherford Burnside\nAll debts settled.\n\nBlacks
 
 local function LoadReadables()
     local SpokenReadables = {}
-    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader", "Audio", "Playlist",
+    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Opener", "Reader", "Audio", "Playlist",
         "UI/PlayButton", "Events", "Commands" }) do
         local chunk = assert(loadfile(READABLES .. file .. ".lua"))
         chunk("Spoken_Readables", SpokenReadables)
@@ -247,6 +247,16 @@ B:StopReading()
 stub.ShowPage({ title = "A letter", number = 1, text = REGISTRY_1, creator = "Somebody" })
 stub.FireEvent("ITEM_TEXT_READY")
 Expect("no button on mail", button:IsShown(), false)
+
+---------------------------------------------------------------- what opened the frame
+stub.ClosePage()
+stub.FireEvent("ITEM_TEXT_CLOSED")
+stub.FireEvent("PLAYER_ENTERING_WORLD")
+stub.FireEvent("PLAYER_SOFT_INTERACT_CHANGED", nil, "GameObject-0-4170-0-6-175685-00002A5B1C")
+stub.FireEvent("ITEM_TEXT_BEGIN")
+Expect("the interact key's object is a candidate when the frame opens", B.openedBy and B.openedBy[1].id, 175685)
+stub.FireEvent("ITEM_TEXT_CLOSED")
+Expect("...and forgotten when it closes", B.openedBy, nil)
 
 print(Failures() == 0 and "All readables event tests passed" or (Failures() .. " failed"))
 os.exit(Failures() == 0 and 0 or 1)

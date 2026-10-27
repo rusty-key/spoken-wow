@@ -225,6 +225,12 @@ later a re-run rather than a second purchase.
 Durations stay honest for free: `build` computes the length table from the files it just
 copied, and mutagen reads a VBR mp3's Xing header and an Ogg page's granule position alike.
 
+Word times come from the take table, which `build` never reads, so `scripts/audio/sounds.mjs`
+writes the live takes' `wordTimes` into `audio/word-times.json` when it assembles the store, and
+`package-audio.sh` stages that file with the clips. `build` writes `word_times_table.lua`
+(`WordTimesByFileName`) for the clips the pack carries. A pack built without the file ships an
+empty table, and its captions are estimated.
+
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 
 **Icons.** Every addon here carries an `icon.tga` and a `## IconTexture:` line naming
@@ -1631,7 +1637,7 @@ after where it is on its page; zone and group counts include it, and a page's co
 are in progress. The list follows the log while it is open (`QUEST_LOG_UPDATE`,
 `QUEST_ACCEPTED`, `QUEST_REMOVED`, drawn again once a burst is over and only when the log's
 quests changed). The rest are locked unless Unlock Unstarted Quests is on, which Spoken's page
-shows in its Compendium section. The filter menu holds Started Only and Voiced Only, which leaves
+shows in its Compendium section. The filter menu holds Started Only, on until it is turned off (`FoundOnly` unset reads as on; the setting is the account's), and Voiced Only, which leaves
 out the quests no voice pack has the offer or the hand-in of, with any line or banner left with nothing, and counts
 only what it lists. That switch and both filters are kept in
 `SpokenQuestsSettings.global.Compendium`.
@@ -1847,6 +1853,22 @@ artwork under the border art and arrives as a floating label) and mirrored off t
 its size and its line. `QuestOverlayUI:BindPlayButton` is what both kinds of button share; a
 button that says what it does in words rather than in a texture carries a `setPlayState` of its
 own, which is what `SetPlayButtonState` calls instead of swapping the icon.
+
+Play is also on each quest in the objective tracker. The Quests page's Show Play Button section
+switches the two places apart: Quest Log (`QuestLogPlayButton`, which also takes away the log's
+Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in three shapes, so
+`Compatibility.lua` has one adapter for each, registered with `RegisterTrackerUpdater`.
+`QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
+switched and when the setting changes, and a profile change redraws the quest log and the trackers.
+Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
+each block keeps one square button at its title's right. Classic Era's tracker writes each title
+into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
+watched quest's title text to a shown line and puts the round button left of it, so a title some
+other addon rewrites gets no button. Questie draws its own tracker, and its built-in Play answers
+only the retired AI_VoiceOver addon. Each Questie title line gets a separate Spoken button left of
+its minimize button, swept after `TrackerUtils:UpdateVoiceOverPlayButtons`, the last call of
+Questie's layout. A failing adapter is logged and never raises inside the tracker's own update.
+`tests/lua/quest_tracker_adapters_test.lua` covers the Era and Questie adapters.
 
 The web suite runs against a **real Postgres**, because the invariants it protects — archive
 the current take before anything overwrites it, never hand the same file to two jobs — live in

@@ -35,6 +35,7 @@ import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
 import { SHAPE } from "./speakers/shape";
+import { timesFor } from "./word-times";
 
 export type RegenerateSuccess = {
   ok: true;
@@ -235,6 +236,8 @@ export async function regenerateLine(
         leadIn: speech.leadIn,
         leadInSec: speech.leadInSec,
         createdBy,
+        // `source`, not spokenText: the addon shows the line before its rules and directions.
+        wordTimes: timesFor(source, speech.words),
       },
       { lang, batchId: options.batchId },
     );

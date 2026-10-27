@@ -57,6 +57,16 @@ for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader",
     assert(loadfile(READABLES .. file .. ".lua"))("Spoken_Readables", B)
 end
 B:InitDB()
+Expect("Found Only is on in a fresh profile", SpokenReadablesSettings.compendiumFoundOnly, true)
+Expect("Unlock Unfound Readables is off in a fresh profile", SpokenReadablesSettings.unlockUnfound, false)
+SpokenReadablesSettings.compendiumFoundOnly = false
+B:InitDB()
+Expect("...and an explicit off stays off", SpokenReadablesSettings.compendiumFoundOnly, false)
+SpokenReadablesSettings.foundOnlyDefaultOn = nil
+B:InitDB()
+Expect("an off stored before it was on by default is turned on once", SpokenReadablesSettings.compendiumFoundOnly, true)
+SpokenReadablesSettings.compendiumFoundOnly = false
+-- The tests below are about the unfiltered list, so Found Only stays off.
 B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
@@ -216,7 +226,7 @@ do
     Reopen(1426)
     Expect("Found Only, where the player's zone holds nothing found, the tab lands on their continent's banner",
         panel.page.title.text .. " " .. tostring(RowFor("Dun Morogh") == nil), "Eastern Kingdoms true")
-    SpokenReadablesSettings.compendiumFoundOnly = nil
+    SpokenReadablesSettings.compendiumFoundOnly = false
     Reopen(9003)
 end
 -- Left open by the landing inside Hollow Vault: closed, so the list starts folded.
@@ -838,7 +848,7 @@ do
         if not voiced[p] then return nil end
         return { key = "b:" .. p, path = "page" .. p .. ".mp3", length = 5, pageId = p, present = { header = "" } }
     end
-    -- Play's tooltip, its lines as one, the pointer put on it; or as it stands, with `asIs`.
+    -- Play and Report tooltips: titles only.
     local function Tip(asIs, button)
         button = button or page.play
         if not asIs then
@@ -850,19 +860,17 @@ do
     local S = SpokenEnv.L
     local function Head() return Spoken:GetCurrent() and Spoken:GetCurrent().pageId end
     page:Show({ title = "Ranger Captain Alleria Windrunner", target = ALLERIA })
-    Expect("a readable not being read: Play, its tooltip saying what it reads", page.play.pageState .. " " .. Tip(),
-        "play " .. S.PLAY .. "|" .. L.PLAY_TIP)
+    Expect("a readable not being read: Play's tooltip keeps its title", page.play.pageState .. " " .. Tip(),
+        "play " .. S.PLAY)
     page.play.scripts.OnClick(page.play)
     Expect("...a click reads it", Spoken:GetNowPlaying() and Spoken:GetNowPlaying().pageId, alleriaPage)
-    Expect("...its tooltip, the pointer still on it, redrawn for Stop at once", Tip(true), S.STOP .. "|" .. S.STOP_READING_TIP)
-    Expect("...its Play showing Stop", page.play.pageState .. " " .. Tip(), "stop " .. S.STOP .. "|" .. S.STOP_READING_TIP)
+    Expect("...its Play showing Stop without a description", page.play.pageState .. " " .. Tip(), "stop " .. S.STOP)
     page.play.scripts.OnClick(page.play)
     Expect("...Stop stops it and keeps it at the head", tostring(Spoken:IsPaused()) .. " " .. tostring(Head()),
         "true " .. alleriaPage)
-    Expect("...showing Replay", page.play.pageState .. " " .. Tip(), "replay " .. S.REPLAY .. "|" .. S.REPLAY_READING_TIP)
+    Expect("...showing Replay without a description", page.play.pageState .. " " .. Tip(), "replay " .. S.REPLAY)
     Spoken:RegisterDeveloper({ MenuHint = function() return "Right-click: the debug log" end })
-    Expect("its Report's tooltip ends with the debug log's menu hint", Tip(false, page.report),
-        L.REPORT_PROBLEM .. "|" .. L.REPORT_LINE_TIP .. "|Right-click: the debug log")
+    Expect("its Report's tooltip keeps its title", Tip(false, page.report), L.REPORT_PROBLEM)
     Spoken:RegisterDeveloper(nil)
     page.play.scripts.OnClick(page.play)
     Expect("...Replay reads it again from the start", not Spoken:IsPaused() and Spoken:GetNowPlaying()

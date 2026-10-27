@@ -179,7 +179,7 @@ export default function RegenerationPanel({
 
         <div className="bg-muted mt-2 h-1 overflow-hidden rounded-full">
           <div
-            className="bg-primary h-full transition-[width] duration-300"
+            className="bg-primary-ink h-full transition-[width] duration-300"
             style={{ width: `${percent}%` }}
           />
         </div>

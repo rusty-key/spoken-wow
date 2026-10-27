@@ -127,6 +127,10 @@ end
 local REGISTRY_1 = "Hillsbrad Town Registry\n\nWe the people of Hillsbrad do solemny swear our faith and devotion to the Alliance maintained by the great monarchs, King Magni Bronzebeard of Ironforge and King Anduin Wrynn of Stormwind.\n\nHerein lies the town registry for purposes of governing this fair city in the foothills of the great Alterac Mountains as well as serving as a record of those who have paid their taxes to their Kings and to the great almighty Alliance."
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_1 })
 Expect("a page the corpus carries is not a gap", B:HasContributionGap(), false)
+-- One laid out its own way is found by most of its words and played, but its words are new.
+stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = string.gsub(REGISTRY_1, "\n\n", " "), hasNext = true })
+Expect("a page found by most of its words is played", B:PageOnScreen(), 261)
+Expect("...and is still a gap, for the words on screen", B:HasContributionGap(), true)
 
 -- Mail is the player's own correspondence and never leaves their client.
 stub.ShowPage({ title = "A letter", number = 1, text = UNKNOWN, creator = "Somebody" })

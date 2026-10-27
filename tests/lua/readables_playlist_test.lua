@@ -19,7 +19,7 @@ _G.SpokenReadablesAudioPacks = {
         pages = {
             [261] = { file = "261", len = 30.5 },
             [262] = { file = "262", len = 41.0 },
-            [265] = { file = "265", len = 12.25 },
+            [265] = { file = "265", len = 12.25, times = "0 .5 2" },
             -- A page of a different book entirely: what a reader jumping to another book
             -- looks like from here.
             [2810] = { file = "2810", len = 8.0 },
@@ -98,15 +98,19 @@ for i = 2, #(timings or {}) do rising = rising and timings[i] > timings[i - 1] e
 Expect("...each word after the last, all within the recording", rising and timings[#timings] < letter.length, true)
 Expect("a first page opening with its own title starts its words at once", clip.present.timings, nil)
 Expect("...and a later page, read without its title, too", B:ClipFor(262).present.timings, nil)
+Expect("a page whose take kept its word times is timed by them",
+    B:ClipFor(265).present.timings, "0 .5 2")
 -- On a German client, an English voice reads its own words and the captions are the client's: the
 -- title's share of the recording says nothing about words of another length.
 stub.SetLocale("deDE")
 _G.SpokenReadablesSettings.voiceLanguage = "enUS"
 B:RememberPageText(15, "deDE", "Ein Brief an William, der eine ganze Weile dauert.", "Williams Lieferung")
+_G.SpokenReadablesAudioPacks.SpokenReadablesAudio.pages[15].times = "0 .5 1"
 local german = B:ClipFor(15)
+_G.SpokenReadablesAudioPacks.SpokenReadablesAudio.pages[15].times = nil
 Expect("...a German client's captions of the English recording read the German page",
     german.present.transcript, "Ein Brief an William, der eine ganze Weile dauert.")
-Expect("...are not timed by the English title lead", german.present.timings, nil)
+Expect("...are timed neither by the English title lead nor by the English take's times", german.present.timings, nil)
 -- A German recording, captioned with the page as this client showed it: the client filled in the
 -- player's name, so the words are not quite the ones recorded, and are not timed.
 _G.SpokenReadablesSettings.voiceLanguage = "deDE"

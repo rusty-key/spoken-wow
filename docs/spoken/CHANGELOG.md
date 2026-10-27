@@ -4,8 +4,40 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Type Out By: Letter also types quest and readable text one character at a time** in the
-  DialogueUI page, instead of revealing each active word whole.
+- **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
+  settings page and dungeon icon instead of using the generic book portrait.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Show Play Button covers the Quest Log, Blizzard's tracker and Questie's tracker.**
+  The Quest Log and Tracker suboptions are available wherever their respective buttons can appear,
+  including Era's classic quest log and default tracker.
+  *([anon1231823](https://github.com/anon1231823))*
+- **On Classic Era, the story beside the map sits against the map.** It follows the small map's
+  border, with the same narrow gap as on Forever, instead of hanging off the hidden large map's.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Show Collected Lines, in the Contribute settings, lists the lines you have collected.** Each shows
+  where it came from and the game's text, newest 200 at most; older ones are still sent.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The Bosses tab lists dungeons straight under their continent.** The zone lines are gone: each
+  continent shows its dungeons and raids by name, then its world bosses, and the search finds bosses
+  and dungeons. A dungeon's page still names its zone.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The contribute box names TBC Anniversary's game folder.** On Anniversary it says where the
+  saved variables are, under `_anniversary_`, instead of offering `_classic_era_` first.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Captions follow the voice word by word.** Quest, gossip, place and book recordings made from
+  now on carry when each word is spoken, so the highlighted word keeps pace with the voice instead
+  of an estimate. Older recordings, and captions in another language than the voice's, are
+  estimated as before. Takes effect with sound packs released after this version.
+  *([rusty-key](https://github.com/rusty-key))*
+- **A boss's story shows in the narrator when you kill the boss, in dungeons too.** The Bosses page no
+  longer has Show a Boss's Story: killing is the only way, because inside an instance the game hides
+  which boss a target is. The world bosses, whose fight the game sends no kill for, count when they die
+  after you targeted them or saw their nameplate. A boss is also met when you kill it, so its page unlocks in the
+  Compendium even if its pull was missed. *([Nucabe](https://github.com/Nucabe))*
+- **Spoken steps aside for Immersion.** While Immersion's window shows a quest, gossip or a book,
+  Spoken's window and subtitles stay hidden, as they do for DialogueUI, and the voice plays on.
+  They come back once the window closes, for a line still playing and for one you start with Play.
+  *([Aleph-Null-Zero](https://github.com/Aleph-Null-Zero))*
 - **Captions are in the language you read, not the voice's.** A place's story is captioned in the
   Places page's Text Language, so French text with an English voice shows French words. Books and
   letters follow your client's language the same way, whichever voice or fallback recording plays:
@@ -56,11 +88,32 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   both the progress and the reward lines, where before some or all of them were skipped. This holds
   while the addon leaves the quest's data in place for Spoken; a quest it clears first is not read.
   A quest you decline reads as it did. *([Nucabe](https://github.com/Nucabe))*
+- **The Compendium's Started Only, Discovered Only and Found Only start on**, so it lists what the
+  character has started, discovered or found. They are on once for everyone after this update, and
+  turning one off keeps it off. The Unlock switches (Unstarted Quests, Undiscovered Places, Unfound
+  Readables, Unfound Bosses) start off, as before. *([Nucabe](https://github.com/Nucabe))*
 - **Spoken's keys have their own Spoken category in Key Bindings**, instead of sitting under
   Other. *([Jayshua83](https://github.com/Jayshua83))* *([Nucabe](https://github.com/Nucabe))*
 - **A right-click on a window's words skips the line**, in the Small Window, the Large Window and the
   DialogueUI window: a larger target than the Skip button. The menu and the settings that right-click
   opened there are now on Shift-right-click. *([Nucabe](https://github.com/Nucabe))*
+- **World bosses are found when they die.** Lord Kazzak, Azuregos, Prince Thunderaan and the four
+  Emerald Dragons could stay locked after you fought them.
+  Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again, locked unless Unlock
+  Unfound Bosses is on, as inside an instance the game names no boss to Spoken. Blackfathom Deeps and
+  Gnomeregan list their bosses in Forever's order, not the Season of Discovery raid's.
+  *([Nucabe](https://github.com/Nucabe))*
+- **Spoken's windows follow EllesmereUI's look.** With EllesmereUI installed and its EllesmereUI Style
+  in use, the Small and Large Window and the welcome and contribution windows take its dark windows
+  and its font in white, and Spoken's settings pages its thin scroll bars. Portraits are round
+  in a thin grey edge, and Spoken's round buttons, on the subtitles and the quest windows too, are its
+  square ones. The DialogueUI window keeps DialogueUI's look, and under EllesmereUI's other looks
+  nothing changes; its own settings turn this off for Spoken, under Window Skins > Third-Party Addons.
+  *([Nucabe](https://github.com/Nucabe))*
+- **Azeroth's Compendium and the story beside the map follow it too.** In EllesmereUI's look they go
+  dark with no parchment: white words in its font, a thin line for each divider, flat boxes for the
+  list's headings and the tabs, and place pictures with straight edges in a thin border.
+  *([Nucabe](https://github.com/Nucabe))*
 - **Bosses whose fight the game may not announce are found when you target them.** Baron Aquanis, Lord
   Kazzak, Azuregos, Prince Thunderaan and the four Emerald Dragons could stay locked after you fought them.
   Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again. Blackfathom Deeps and
@@ -77,6 +130,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **The Places tab sorts names without a leading "The".** The Barrens is listed under B and
   The Crossroads under C, among the zones, areas and dungeons, as you would look for them. The
   names still read in full. *([rusty-key](https://github.com/rusty-key))*
+- **Readables that Forever lays out or words differently are read.** A page whose line breaks,
+  spacing or a few words differ from Spoken's copy was silent and never counted as found. It is
+  now recognised by the item or object you opened it from, or by its title and most of its words,
+  and plays Spoken's recording. *([rusty-key](https://github.com/rusty-key))*
 - **Readables in the Compendium are filed where Forever has them.** Archmage Khadgar's plaque is
   under Alterac Mountains as well as Stormwind, Holidays and Events has a line for each event, the
   Green Hills of Stranglethorn cover is under Stranglethorn Vale, and Hildelve's Journal and
@@ -116,9 +173,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   with no known face shows the question mark instead of an empty portrait, and targeting Balnazzar in Stratholme no
   longer shows the Scarlet Enclave's story. Five bosses take the name the game gives them: The Baron, Magmatus,
   Kirtonos the Herald, Ras Frostwhisper and C'Thun. *([Nucabe](https://github.com/Nucabe))*
-- **A boss's story shows in the narrator when you target the boss.** It shows once per character, as words
-  with no voice. On the Bosses settings page, Show a Boss's Story picks targeting or killing it, and Forget
-  Stories Shown shows each again. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's story shows in the narrator.** It shows once per character, as words with no voice. On the
+  Bosses settings page, Forget Stories Shown shows each again. *([Nucabe](https://github.com/Nucabe))*
 - **Quest givers show their own face.** The quest portraits in the Compendium and the narrator's quest-giver
   face are drawn from appearances that ship with Spoken, so a creature the client has not met yet no longer
   shows your own face or another creature's. *([Nucabe](https://github.com/Nucabe))*

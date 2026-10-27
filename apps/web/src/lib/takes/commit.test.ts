@@ -103,6 +103,17 @@ describe("the first take of a line", () => {
       settings: { stability: 0.5 },
     });
   });
+
+  it("keeps its word times, and none when the generator gave none", async () => {
+    await take("timed", { wordTimes: [0, 0.31, 1.025] });
+    await take("untimed");
+
+    const { rows } = await db().query(
+      `select "wordTimes" from "take" where "file" = $1 order by "version"`,
+      [file],
+    );
+    expect(rows.map((row) => row.wordTimes)).toEqual([[0, 0.31, 1.025], null]);
+  });
 });
 
 describe("the activity log", () => {

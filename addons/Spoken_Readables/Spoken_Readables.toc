@@ -40,6 +40,7 @@ Locale/zhCN.lua
 Locale/zhTW.lua
 Core.lua
 Language.lua
+Opener.lua
 Reader.lua
 Contribute.lua
 Audio.lua

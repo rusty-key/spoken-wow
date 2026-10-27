@@ -13,13 +13,14 @@ Sources checked for every boss below:
   its JournalEncounter tables cannot be fetched for this build;
 - the retail Adventure Guide (12.1.5), for portraits the client also has.
 
-A boss with no creature id is still found when the player targets it in its dungeon, by its name
-(`NPCs:BossNamed`), wherever the client's name for it is the encounter's. What it lacks is its face.
+A boss with no creature id is still found and told by the game's pull and kill (`ENCOUNTER_START`,
+`BOSS_KILL`). Inside an instance the client hides a unit's name and GUID, so nothing is known from the
+target there. What it lacks is its face.
 
 ## How to fill a gap
 
-- Creature id: target the boss in game. The id is the sixth part of its GUID, which `Story.lua`
-  already reads.
+- Creature id: the sixth part of the boss's GUID. Inside an instance the client hides the GUID, so read
+  it from the database or Efficient Games' records, or from the open world for a world boss.
 - Portrait: the display Efficient Games' `creature_details` gives for that creature once a player has
   recorded the fight, or the repack's model once its database has the creature. Check that the client's
   CreatureDisplayInfo has it.
@@ -38,8 +39,8 @@ A boss with no creature id is still found when the player targets it in its dung
 | Scarlet Enclave (2856) | Balnazzar | The only Balnazzar in the database is Stratholme's (10813), whose model the client lacks. The wiki's id, 240811, is not in the database. |
 | Karazhan Crypts (2875) | Harbinger of Sin, Creeping Malison, Dark Rider, Kharon, Unk'omon, Hans and Greta, The Ugly Goblin, Barian Maryla | As for Demon Fall Canyon. The database's Dark Riders (99871 and up) are retail creatures. Efficient Games has Kaigy and Sairuh Maryla, not Barian. |
 | City of Dalaran (2959) | Mana Elemental | Efficient Games' encounter 3301 names no creature, and no build has one of that name. The database's 14689 has no spawn and wears Dire Maul's Arcane Aberration model. |
-| Ruins of Lordaeron (2999) | Lordaeron Captain | The database's 32414 is a Wrath of the Lich King creature with a model the client lacks. No captain spawned on the map matches; Captain Truman (265701) is there, but not elite. The wiki calls the boss a rare. No creature, dialogue or scripted summon in the repack names it: the boss is on Forever's live server only. Target it in game to record its creature and model. |
-| Ruins of Lordaeron (2999) | Viktor the Vile | In neither the database nor Efficient Games. No ghoul spawned on the map matches, and no dialogue or scripted summon names it: the boss is on Forever's live server only. Target it in game to record its creature and model. |
+| Ruins of Lordaeron (2999) | Lordaeron Captain | The database's 32414 is a Wrath of the Lich King creature with a model the client lacks. No captain spawned on the map matches; Captain Truman (265701) is there, but not elite. The wiki calls the boss a rare. No creature, dialogue or scripted summon in the repack names it: the boss is on Forever's live server only. The client hides an instance's units from addons, so the target cannot record them. |
+| Ruins of Lordaeron (2999) | Viktor the Vile | In neither the database nor Efficient Games. No ghoul spawned on the map matches, and no dialogue or scripted summon names it: the boss is on Forever's live server only. The client hides an instance's units from addons, so the target cannot record them. |
 
 ## A creature but no portrait (1)
 
