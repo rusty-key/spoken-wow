@@ -4,7 +4,8 @@
 // writings under the zone of its entrance. Run on its own, this writes
 // addons/Spoken/Data/Dungeons.lua, the one table the Compendium's tabs read: each dungeon's
 // zone, the Places area that tells its story,
-// and its name in every language, from Forever's client Map table (wago.mjs, cached).
+// and its name in every language, from Forever's client Map table (wago.mjs, cached), with
+// explicit source overrides where the client has no localized value.
 //
 //   node pipelines/lib/dungeons.mjs          (make dungeons)
 //   node pipelines/lib/dungeons.mjs --check  fails where the file is not what this would write
@@ -51,7 +52,7 @@ export function render(dungeons, names, worldBosses = {}) {
     if (row.story) parts.push(`story = { ${row.story[0]}, ${quote(row.story[1])} }`);
     parts.push(quote(english));
     for (const locale of LOCALES) {
-      const name = names[locale]?.[map];
+      const name = names[locale]?.[map] || row.names?.[locale];
       if (name && name !== english) parts.push(`${locale} = ${quote(name)}`);
     }
     return `\t\t[${map}] = { ${parts.join(", ")} },`;
@@ -68,7 +69,8 @@ export function render(dungeons, names, worldBosses = {}) {
 -- The dungeons and raids, by instance map, for every tab of Azeroth's Compendium: \`zone\`, the
 -- uiMapID of the zone their entrance is in, where the tabs list them; \`story\`, the Places area
 -- that tells their story ({ uiMapID, key }), absent where none does; and their name in every
--- language, from the client's Map table (Forever ${FOREVER_BUILD}, wago.tools). The quests' and the
+-- language, from the client's Map table (Forever ${FOREVER_BUILD}, wago.tools), with source overrides
+-- where the client has no localized value. The quests' and the
 -- readables' exporters file a dungeon's quests and writings by the same maps. Regenerate with:
 --   make dungeons
 --
