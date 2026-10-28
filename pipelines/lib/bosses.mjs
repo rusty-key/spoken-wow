@@ -18,6 +18,7 @@ import { FOREVER_BUILD, RETAIL_BUILD, wagoTable } from "./wago.mjs";
 
 const OUT = fileURLToPath(new URL("../../addons/Spoken_NPCs/Data/Bosses.lua", import.meta.url));
 const RENAMED = fileURLToPath(new URL("./boss-names.json", import.meta.url));
+const NAME_OVERRIDES = fileURLToPath(new URL("./boss-name-overrides.json", import.meta.url));
 
 /** A name as the tools match one to another: lowercased, letters and digits only. */
 export const flat = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -140,6 +141,23 @@ export function renameAsCreatures(maps, names, renamed) {
   }
 }
 
+/** Apply durable localized corrections keyed by the instance map and boss key. */
+export function applyNameOverrides(maps, names, overrides) {
+  for (const [reference, localized] of Object.entries(overrides)) {
+    const separator = reference.indexOf(":");
+    const map = Number(reference.slice(0, separator));
+    const key = reference.slice(separator + 1);
+    const boss = maps[map]?.find((candidate) => candidate.key === key);
+    if (!boss) throw new Error(`Name override does not match a boss: ${reference}`);
+
+    for (const [locale, name] of Object.entries(localized)) {
+      if (!LOCALES.includes(locale)) throw new Error(`Unknown locale in boss name override: ${locale}`);
+      if (locale === "enUS") boss.name = name;
+      names[locale][boss.id] = name;
+    }
+  }
+}
+
 /**
  * Forever's DungeonEncounter rows `english` named in a language from retail's rows: by the encounter's
  * id, else, for an encounter only Forever has, by its English name in retail's `retailEnglish`.
@@ -223,6 +241,7 @@ async function main() {
     }
   }
   renameAsCreatures(maps, names, JSON.parse(await readFile(RENAMED, "utf8")).renamed);
+  applyNameOverrides(maps, names, JSON.parse(await readFile(NAME_OVERRIDES, "utf8")));
   const text = render(maps, names);
   if (process.argv.includes("--check")) {
     const current = (await readFile(OUT, "utf8")).replace(/\r\n/g, "\n");

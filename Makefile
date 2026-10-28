@@ -24,6 +24,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
         character-models dungeons bosses \
+        boss-lore boss-lore-guide boss-lore-check boss-lore-translate \
         audio-release audio-release-dry \
         manager-publish manager-publish-dry manager-gc manager-gc-dry
 
@@ -220,6 +221,19 @@ dungeons: ## Rebuild addons/Spoken/Data/Dungeons.lua from pipelines/lib/dungeons
 # tab (Spoken_NPCs/Data/Bosses.lua).
 bosses: ## Rebuild addons/Spoken_NPCs/Data/Bosses.lua from the client's DungeonEncounter table
 	@node pipelines/lib/bosses.mjs
+
+boss-lore: ## Import boss stories and localized names into the website catalog
+	@node pipelines/places/tools/export-boss-lore-json.mjs
+
+boss-lore-guide: ## Import exact localized Adventure Guide matches into boss-lore translations
+	@[ -n "$(GUIDE)" ] || { echo "Usage: make boss-lore-guide GUIDE=/path/to/localized-guide.lua"; exit 1; }
+	@node pipelines/places/tools/import-boss-guide-translations.mjs "$(GUIDE)"
+
+boss-lore-check: ## Validate the generated boss-lore catalog
+	@node pipelines/places/tools/validate-boss-lore-json.mjs $(if $(COMPLETE),--complete,)
+
+boss-lore-translate: ## Translate boss lore into every supported locale (explicit network use)
+	@node pipelines/places/tools/translate-boss-lore.mjs
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json
 	@sed -n '2,10p' scripts/character-models.mjs | sed -e 's/^\/\/ //' -e 's/^\/\/$$//'

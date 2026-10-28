@@ -67,6 +67,7 @@ const PARTS: Part[] = [
   {
     id: "bosses",
     title: "Bosses",
+    href: "/bosses",
     icon: "/landing/icons/game-bosses.png",
     summary: "A boss's story shows in the narrator when you target it or when it dies.",
     facts: [
