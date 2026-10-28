@@ -371,12 +371,31 @@ function DataModules:IsOlderContent(installed, known)
     return false
 end
 
-function DataModules:LoadPresentModules()
+--- Load one present module that has not registered yet.
+---
+--- The generated sound packs contain large Lua tables. Loading every installed pack in one
+--- callback can trip the client's script-time watchdog, even though the error is reported later
+--- at an unrelated API call. The deferred loader uses this one-pack-at-a-time form so each pack
+--- gets its own timer callback.
+---@return boolean done Whether every present module has been considered
+---@return boolean? loaded Whether a module was loaded in this call
+---@return string? reason The load failure, if any
+---@return DataModuleMetadata? module The module considered in this call
+function DataModules:LoadNextPresentModule()
     for _, module in self:GetPresentModules() do
         if LOAD_ALL_MODULES and module.LoadOnDemand and not self:GetModule(module.AddonName) then
-            self:LoadModule(module)
+            local loaded, reason = self:LoadModule(module)
+            return false, loaded, reason, module
         end
     end
+    return true, self:HasRegisteredModules()
+end
+
+function DataModules:LoadPresentModules()
+    local done
+    repeat
+        done = self:LoadNextPresentModule()
+    until done
     return self:HasRegisteredModules()
 end
 
