@@ -5,13 +5,22 @@
   "33:odo the blindwatcher": {
     "esES": "Odo el Cegato"
   },
+  "33:baron silverlaine": {
+    "deDE": "Baron Silverlaine"
+  },
+  "33:commander springvale": {
+    "deDE": "Kommandant Springvale"
+  },
   "36:cookie": {
+    "deDE": "Cookie",
     "esES": "El Chef"
   },
   "36:captain greenskin": {
+    "deDE": "Captain Greenskin",
     "esES": "Capitán Verdepel"
   },
   "36:mr smite": {
+    "deDE": "Mr. Smite",
     "esES": "Sr. Golpin"
   },
   "47:death speaker jargba": {
@@ -40,6 +49,12 @@
   },
   "389:jergosh the invoker": {
     "esES": "Jergosh el Conjurador"
+  },
+  "189:high inquisitor whitemane": {
+    "deDE": "Hochinquisitorin Whitemane"
+  },
+  "189:high inquisitor fairbanks": {
+    "deDE": "High Inquisitor Fairbanks"
   },
   "429:magister kalendris": {
     "esES": "Magistral Kalendris"

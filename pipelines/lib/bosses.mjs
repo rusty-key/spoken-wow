@@ -141,7 +141,10 @@ export function renameAsCreatures(maps, names, renamed) {
   }
 }
 
-/** Apply durable localized corrections keyed by the instance map and boss key. */
+/** Apply durable localized corrections keyed by the instance map and boss key.
+ * Keep this file's overrides Classic Era-first: use the Classic client/Wowhead name where it
+ * exists, and use a later Classic/retail string only when no Classic Era localization exists.
+ */
 export function applyNameOverrides(maps, names, overrides) {
   for (const [reference, localized] of Object.entries(overrides)) {
     const separator = reference.indexOf(":");
