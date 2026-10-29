@@ -29,7 +29,7 @@
     "533": { "name": "Naxxramas", "zone": 1423 },
     "2959": { "name": "City of Dalaran", "zone": 1416, "story": [1416, "dalaran"] },
     "2999": { "name": "Ruins of Lordaeron", "zone": 1420, "story": [1420, "ruins of lordaeron"] },
-    "3065": { "name": "The Hall of Thanes", "zone": 1455, "names": { "itIT": "La Sala dei Thane" } },
+    "3065": { "name": "The Hall of Thanes", "zone": 1455 },
     "2784": { "name": "Demon Fall Canyon", "zone": 1440, "story": [1440, "demon fall canyon"] },
     "2856": { "name": "Scarlet Enclave", "zone": 1423 },
     "2875": { "name": "Karazhan Crypts", "zone": 1430 },

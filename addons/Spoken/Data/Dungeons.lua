@@ -46,7 +46,7 @@ SpokenDungeons = {
 		[2959] = { zone = 1416, story = { 1416, "dalaran" }, "City of Dalaran", deDE = "Dalaran", esES = "Ciudad de Dalaran", esMX = "Ciudad de Dalaran", frFR = "Cité de Dalaran", ptBR = "Dalaran", ruRU = "Даларан", koKR = "달라란", zhCN = "达拉然城", zhTW = "達拉然城" },
 		[2998] = { zone = 1437, story = { 1437, "excavation site wetlands" }, "Excavation Site: Wetlands", deDE = "Ausgrabungsstätte: Sumpfland", esES = "Excavación: Los Humedales", esMX = "Sitio de Excavación: Los Humedales", frFR = "Excavations : les Paluns", ptBR = "Sítio de Escavação: Pantanal", ruRU = "Раскопки: Болотина", koKR = "발굴 현장: 저습지", zhCN = "挖掘场：湿地", zhTW = "挖掘場：濕地" },
 		[2999] = { zone = 1420, story = { 1420, "ruins of lordaeron" }, "Ruins of Lordaeron", deDE = "Ruinen von Lordaeron", esES = "Ruinas de Lordaeron", esMX = "Ruinas de Lordaeron", frFR = "Ruines de Lordaeron", ptBR = "Ruínas de Lordaeron", ruRU = "Руины Лордерона", koKR = "로데론의 폐허", zhCN = "洛丹伦废墟", zhTW = "羅德隆廢墟" },
-		[3065] = { zone = 1455, "The Hall of Thanes", deDE = "Die Halle der Thanen", esES = "El Salón de los Feudales", esMX = "El Salón de Señores Feudales", frFR = "La salle des Thanes", ptBR = "Salão dos Thanes", ruRU = "Чертоги танов", koKR = "영주의 전당", zhCN = "领主大厅", zhTW = "族長之廳", itIT = "La Sala dei Thane" },
+		[3065] = { zone = 1455, "The Hall of Thanes", deDE = "Die Halle der Thanen", esES = "El Salón de los Feudales", esMX = "El Salón de Señores Feudales", frFR = "La salle des Thanes", ptBR = "Salão dos Thanes", ruRU = "Чертоги танов", koKR = "영주의 전당", zhCN = "领主大厅", zhTW = "族長之廳" },
 	},
 
 	-- The maps of the world bosses, by instance map: `zone` the uiMapID of the zone they stand in. The
