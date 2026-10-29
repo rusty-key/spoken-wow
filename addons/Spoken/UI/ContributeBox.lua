@@ -1,0 +1,367 @@
+setfenv(1, SpokenEnv)
+
+-- A frame holding one envelope, ready to copy.
+--
+-- Not a StaticPopup, which is what every other copy box in this project is (ReportButton.lua
+-- here, UI/CopyLink.lua in Readables and Places): `hasEditBox` gives one line sized for a character
+-- name, and an envelope is a few kilobytes over many lines. So this is a frame of its own with
+-- a scrolling, multi-line edit box, and it is the only one -- three addons share it, which is
+-- also why it lives in the player.
+--
+-- The text is selected on show. Making the player select it first is the difference between a
+-- payload people send and a payload people look at, and a partial selection is the failure the
+-- envelope's checksum exists to catch on the far end.
+
+local WIDTH, HEIGHT = 500, 340
+
+-- The choice's two buttons, side by side along the bottom edge.
+local CHOICE_WIDTH = 200      -- the least either is, sized to the English labels
+local CHOICE_INSET = 30       -- from the frame's side edges
+local CHOICE_GAP = 20         -- the least room kept between the two
+local LABEL_PADDING = 24      -- room a button's end caps take either side of its label
+
+-- The collected-lines window.
+local VIEW_WIDTH, VIEW_HEIGHT = 640, 480
+-- The newest this many: a full store is megabytes, more than one font string draws.
+local VIEW_MOST = 200
+
+local box
+local gatheredView
+
+local HIDDEN_FIELDS = {
+    addon = true, build = true, locale = true, pack = true, packVersion = true,
+    model = true, displays = true, sex = true, creature = true,
+}
+
+local FIELD_LABELS = {
+    quest = "Quest", event = "Event", npc = "NPC", title = "Title",
+    id = "ID", book = "Book", number = "Page",
+}
+
+local SOURCE_LABELS = { quests = "Quests", readables = "Readables", places = "Places" }
+
+local function FieldLabel(key)
+    return FIELD_LABELS[key] or key:gsub("^%l", string.upper)
+end
+
+-- The stored envelopes as a player reads them, without the technical fields.
+local function GatheredText()
+    local lines = Gather:Lines()
+    if #lines == 0 then
+        return L.GATHER_NONE
+    end
+
+    local blocks = {}
+    local first = math.max(1, #lines - VIEW_MOST + 1)
+    if first > 1 then
+        blocks[1] = format(L.GATHER_VIEW_OLDER_FMT, first - 1)
+    end
+    for index = first, #lines do
+        local source, fields, text = Contribute:Parse(lines[index].envelope)
+        local block = { format("%d. %s", index, SOURCE_LABELS[source] or source or "Collected line") }
+        if fields then
+            for _, field in ipairs(fields) do
+                if not HIDDEN_FIELDS[field[1]] and field[2] ~= "" then
+                    block[#block + 1] = format("%s: %s", FieldLabel(field[1]), field[2])
+                end
+            end
+        end
+        if text and text ~= "" then
+            block[#block + 1] = "Text:\n" .. text
+        else
+            block[#block + 1] = "(No text)"
+        end
+        blocks[#blocks + 1] = table.concat(block, "\n")
+    end
+    return table.concat(blocks, "\n\n")
+end
+
+local function NewDialog(name, width, height, titleText)
+    -- "BackdropTemplate" is what carries SetBackdrop, the mixin having moved out of the base
+    -- frame. UI/PlayerFrame.lua and the Places lore window both pass it for the same reason.
+    local frame = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
+    frame:SetWidth(width)
+    frame:SetHeight(height)
+    frame:SetPoint("CENTER")
+    if UISpecialFrames then table.insert(UISpecialFrames, name) end -- close on Escape
+    frame:SetFrameStrata("DIALOG")
+    frame:SetToplevel(true)
+    frame:EnableMouse(true)
+    frame:SetMovable(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetClampedToScreen(true)
+    -- Without this the envelope draws straight onto the world: white text over grass, which is
+    -- what the first player to see this frame reported. The same dialog art the Places lore
+    -- window uses, so the two read as one addon.
+    if frame.SetBackdrop then
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 32,
+            insets = { left = 11, right = 12, top = 12, bottom = 11 },
+        })
+    end
+    frame:Hide()
+
+    local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    title:SetPoint("TOP", frame, "TOP", 0, -16)
+    title:SetText(titleText)
+
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
+    close:SetScript("OnClick", function() frame:Hide() end)
+
+    return frame, title
+end
+
+local function Build()
+    local frame, title = NewDialog("SpokenContributeBox", WIDTH, HEIGHT, "Spoken")
+
+    -- Said once, above the box, because the box itself is a wall of key=value lines and a
+    -- player who does not know what to do with it will do nothing with it.
+    local hint = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    hint:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -34)
+    hint:SetText(L.OPT_COPY_HINT_PASTE)
+
+    local scroll = CreateFrame("ScrollFrame", "SpokenContributeBoxScroll", frame)
+    scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -56)
+    scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -32, 56)
+
+    local editBox = CreateFrame("EditBox", "SpokenContributeBoxEdit", scroll)
+    editBox:SetMultiLine(true)
+    -- The default is 255 bytes, which would truncate every envelope this frame exists for.
+    editBox:SetMaxBytes(0)
+    editBox:SetWidth(WIDTH - 60)
+    editBox:SetAutoFocus(false)
+    if editBox.SetFontObject then
+        editBox:SetFontObject(ChatFontNormal)
+    end
+    scroll:SetScrollChild(editBox)
+
+    local address = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    address:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 20)
+
+    -- Read-only in effect rather than in fact: a box that refuses input cannot be selected
+    -- with the mouse. Accept the keystroke and undo it, as the report popup does.
+    editBox:SetScript("OnTextChanged", function(self)
+        self = self or this
+        if box and box.payload and self:GetText() ~= box.payload then
+            self:SetText(box.payload)
+            self:HighlightText()
+        end
+    end)
+    editBox:SetScript("OnEscapePressed", function(self)
+        (self or this):GetParent():GetParent():Hide()
+    end)
+
+    -- The first-click choice and the gathering instructions: prose in place of the box, since
+    -- neither has anything to copy.
+    local body = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    body:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -40)
+    body:SetWidth(WIDTH - 40)
+    body:SetJustifyH("LEFT")
+    body:SetJustifyV("TOP")
+    body:Hide()
+
+    local justThis = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    justThis:SetHeight(24)
+    justThis:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", CHOICE_INSET, 20)
+    justThis:SetText(L.CONTRIBUTE_JUST_THIS)
+    justThis:Hide()
+
+    local gather = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    gather:SetHeight(24)
+    gather:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -CHOICE_INSET, 20)
+    gather:SetText(L.CONTRIBUTE_GATHER)
+    gather:Hide()
+
+    -- One width for both, fitted to the longer label, so the pair stays a matched set in
+    -- every language. A translation long enough that the two would meet widens the frame
+    -- rather than letting them overlap, and the box and the prose widen with it.
+    local choiceWidth = math.max(CHOICE_WIDTH,
+        (justThis:GetTextWidth() or 0) + LABEL_PADDING,
+        (gather:GetTextWidth() or 0) + LABEL_PADDING)
+    justThis:SetWidth(choiceWidth)
+    gather:SetWidth(choiceWidth)
+    local frameWidth = math.max(WIDTH, 2 * (choiceWidth + CHOICE_INSET) + CHOICE_GAP)
+    frame:SetWidth(frameWidth)
+    editBox:SetWidth(frameWidth - 60)
+    body:SetWidth(frameWidth - 40)
+    Ellesmere:When(function(skin)
+        skin.Shell(frame, { noTopBar = true })
+        skin.CloseButton(close)
+        for _, button in ipairs({ justThis, gather }) do
+            skin.Button(button)
+            skin.WhiteButtonLabel(button)
+        end
+    end)
+
+    return { frame = frame, editBox = editBox, address = address, title = title, hint = hint,
+        scroll = scroll, body = body, justThis = justThis, gather = gather }
+end
+
+local function BuildGatheredView()
+    local frame = NewDialog("SpokenGatheredLines", VIEW_WIDTH, VIEW_HEIGHT, L.OPT_GATHER_ROW)
+    local view = SpokenTextView.Create(frame)
+    view.frame:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -44)
+    view.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 20)
+    return { frame = frame, view = view }
+end
+
+-- Which of the box's three faces is up: the payload to copy, or prose with or without the
+-- choice under it.
+local function Face(prose, choice)
+    box.body:SetShown(prose)
+    box.hint:SetShown(not prose)
+    box.scroll:SetShown(not prose)
+    box.address:SetShown(not prose)
+    box.justThis:SetShown(choice)
+    box.gather:SetShown(choice)
+end
+
+-- The folder the saved variables live under, as far as the client can tell. Named rather
+-- than left as a placeholder because hunting for the right one of four is where a player
+-- gives up; a guess that is wrong on some install is still a better start than none.
+local function GameFolder()
+    local folders = { forever = "_classic_beta_", era = "_classic_era_", sod = "_classic_era_",
+        anniversary = "_anniversary_" }
+    return folders[Version.Variant] or "<your game folder>"
+end
+
+-- The window the box shows over (Spoken:SetContributeHost), or nil.
+local host
+
+-- Above a player hosted there, which sits at FULLSCREEN. The anchor stays on UIParent, so a
+-- box still open when the host closes stays where it was.
+local function Place()
+    if not box then return end
+    local frame = box.frame
+    if host then
+        frame:SetParent(host)
+        frame:SetScale(UIParent:GetEffectiveScale() / host:GetEffectiveScale())
+        frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    else
+        frame:SetParent(UIParent)
+        frame:SetScale(1)
+        frame:SetFrameStrata("DIALOG")
+    end
+end
+
+local function EnsureBox()
+    if not box then
+        box = Build()
+        Place()
+    end
+    Spoken.ContributeBox = box
+end
+
+--- Show the box over another window, or back on UIParent with nil: for a dialog window that
+--- hides UIParent, as DialogueUI's does. Additive: guard on the field.
+function Spoken:SetContributeHost(frame)
+    if host == frame then return end
+    host = frame
+    Place()
+end
+
+local function ShowPayload(payload, address, isLink)
+    EnsureBox()
+    Face(false, false)
+    -- Shown before the focus is asked for: a hidden edit box ignores SetFocus, so the first
+    -- time the box opened, the keyboard stayed with the game and a Cmd+C straight away copied
+    -- nothing. Only a box that was already up -- the second contribution, or "Just this one"
+    -- -- ever had it.
+    box.frame:Show()
+    box.payload = payload
+    box.editBox:SetText(payload)
+    box.editBox:SetFocus()
+    box.editBox:HighlightText()
+    if isLink then
+        -- The link already carries the address in it (https://.../contribute#e1=...), so a
+        -- second line repeating just the host would tell the player nothing the payload above
+        -- doesn't already say.
+        box.hint:SetText(L.OPT_COPY_HINT_LINK)
+        box.address:SetText("")
+    else
+        box.hint:SetText(L.OPT_COPY_HINT_PASTE)
+        box.address:SetText(address or "")
+    end
+end
+
+-- Prose in place of the payload, with or without the first-click choice under it. Nothing to
+-- copy, so no payload for OnTextChanged to restore.
+local function ShowProse(text, choice)
+    EnsureBox()
+    Face(true, choice)
+    box.payload = nil
+    box.body:SetText(text)
+    box.frame:Show()
+end
+
+--- How to send what was gathered. Also what "How to send them" in the settings and
+--- /spoken share open, so the steps are never only in a window the player closed.
+function Spoken:ShowGatherInstructions()
+    ShowProse(format(L.GATHER_INSTRUCTIONS, Gather:Count(), GameFolder()), false)
+end
+
+
+--- Show the text gathered so far in a readable, scrollable window rather than the raw envelopes.
+---@return table view
+function Spoken:ShowGatheredText()
+    gatheredView = gatheredView or BuildGatheredView()
+    gatheredView.frame:Show()
+    gatheredView.view:SetText(GatheredText())
+    return gatheredView
+end
+
+--- Redraw the collected-lines window if it is open.
+function Spoken:RefreshGatheredText()
+    if gatheredView and gatheredView.frame:IsShown() then
+        gatheredView.view:SetText(GatheredText())
+    end
+end
+
+--- Show something ready to copy: a contribute link, or (isLink falsy) the raw envelope plus
+--- the address to paste it into, where no link could be made.
+---
+--- `gather`, when a feature addon passes it, is the line on screen as Gather keeps it:
+--- { key = ..., envelope = ... }. On the first click ever, it turns the box into a choice
+--- between sending this one line and gathering in the background. Places pass none: a place's
+--- contribution is the description the player writes on the site, which nothing can gather.
+---@return boolean shown  False when there is nothing to show, so a caller can stay quiet.
+function Spoken:ShowContribution(payload, address, isLink, gather)
+    if type(payload) ~= "string" or payload == "" then
+        return false
+    end
+
+    if type(gather) == "table" and not Gather:IsIntroduced() then
+        ShowProse(L.CONTRIBUTE_INTRO, true)
+        box.justThis:SetScript("OnClick", function()
+            Gather:SetIntroduced()
+            ShowPayload(payload, address, isLink)
+        end)
+        box.gather:SetScript("OnClick", function()
+            Gather:SetIntroduced()
+            Gather:SetEnabled(true)
+            Gather:Add(gather.key, gather.envelope)
+            Spoken:ShowGatherInstructions()
+        end)
+        return true
+    end
+
+    ShowPayload(payload, address, isLink)
+    return true
+end
+
+--- A report address in the copy box, with the context `build` returns in its fragment: a link
+--- that long outgrows a StaticPopup's edit box. `build` runs guarded, and the bare address is
+--- shown when it fails, returns nothing or will not encode: a report without context is still
+--- a report.
+function Spoken:ShowReport(url, build)
+    local ok, envelope = pcall(build)
+    local link = ok and envelope and self.Contribute and self.Contribute:Link(url, envelope)
+    return self:ShowContribution(link or url, nil, true)
+end
