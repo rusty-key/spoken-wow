@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const catalog = JSON.parse(await readFile(join(ROOT, "apps/web/src/data/boss-lore.json"), "utf8"));
-const expected = ["enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN"];
+const expected = ["enUS", "deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW"];
 const ids = new Set();
 const errors = [];
 

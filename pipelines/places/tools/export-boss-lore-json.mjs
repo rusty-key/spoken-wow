@@ -16,7 +16,7 @@ const STORIES = join(ROOT, "addons/Spoken_NPCs/Data/Stories.lua");
 const BOSSES = join(ROOT, "addons/Spoken_NPCs/Data/Bosses.lua");
 const DUNGEONS = join(ROOT, "addons/Spoken/Data/Dungeons.lua");
 const OUT = join(ROOT, "apps/web/src/data/boss-lore.json");
-const LOCALES = ["enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN"];
+const LOCALES = ["enUS", "deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW"];
 
 const LUA = String.raw`
 -- With LuaJIT's -e form, the first positional path is arg[0].
@@ -25,7 +25,7 @@ dofile(storiesFile)
 dofile(bossesFile)
 dofile(dungeonsFile)
 
-local locales = { "enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN" }
+local locales = { "enUS", "deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }
 
 local function quote(value)
   value = tostring(value or "")
