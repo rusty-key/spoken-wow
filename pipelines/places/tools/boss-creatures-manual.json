@@ -89,6 +89,20 @@
   "source": "Efficient Games: every Forever build records Grubbis (7361) with display 144378, not the database's 6533."
  },
  {
+  "map": 230,
+  "key": "ribbly screwspigot",
+  "creature": 9543,
+  "display": 8667,
+  "source": "ClassicDB NPC 9543 lists Ribbly Screwspigot's model as display 8667."
+ },
+ {
+  "map": 230,
+  "key": "plugger spazzring",
+  "creature": 9499,
+  "display": 8652,
+  "source": "ClassicDB NPC 9499 lists Plugger Spazzring's model as display 8652."
+ },
+ {
   "map": 289,
   "key": "darkmaster gandling",
   "display": 11070,
