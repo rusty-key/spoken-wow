@@ -1,10 +1,4 @@
-/**
- * Where an author's queued lines are generated: on this site, with the key sealed here, or
- * by their Spoken Manager, with a key that never leaves their machine (migration 0085).
- *
- * Per provider, because the key is per provider. No row is `site`, which is how every
- * author generated before the Manager could.
- */
+/** Stored per provider, because keys are per provider. No row means `site`. */
 import "server-only";
 
 import { db } from "@/lib/db";

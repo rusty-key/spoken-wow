@@ -18,8 +18,8 @@
 # live stay on disk, and the archive only ever grows.
 #
 # A live take production has no file for fails the pull (rsync exits 23), because that
-# pack would ship silence for the line. A take with a hash is fetched from the bucket
-# instead, by fetch-blobs.mjs, when SPOKEN_ARCHIVE_URL says where it is.
+# pack would ship silence for the line. With SPOKEN_ARCHIVE_URL set, a take with a hash
+# comes from the bucket instead.
 #
 # Environment, as the Makefiles pass it (make/droplet.mk's DB_ENV, plus RSYNC):
 #   DROPLET, SSH, REMOTE_ROOT   how to reach production
@@ -56,11 +56,11 @@ node "$lister" --list --lang="$lang" "$section" >"$list"
 echo "==> $(wc -l <"$list" | tr -d ' ') live $section $lang $what"
 
 mkdir -p "$archive"
-# Rows with a hash come from the public bucket when SPOKEN_ARCHIVE_URL is set (the lister
-# then prints blobs/<prefix>/<sha256> for them); only the rest still need the droplet.
+# With SPOKEN_ARCHIVE_URL set the lister prints blobs/<prefix>/<sha256> for rows with a hash;
+# only the rest need the droplet.
 if [ -n "${SPOKEN_ARCHIVE_URL:-}" ]; then
   node "$root/scripts/audio/fetch-blobs.mjs" "$archive" <"$list"
-  # And the Ogg the site encoded each quests take to at commit, into package-audio.sh's cache.
+  # Quests takes also bring the Ogg the site encoded at commit, into package-audio.sh's cache.
   if [ "$section" = quests ] && [ "$what" = takes ]; then
     node "$root/scripts/audio/fetch-encodings.mjs" --lang="$lang"
   fi

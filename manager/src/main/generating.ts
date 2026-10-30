@@ -1,11 +1,6 @@
-// The generating loop, the pairing and the secrets it needs: what the service runs while
-// Generating is on (main/generate.ts says what one round does).
-//
-// The token and the keys are kept in generate.json, each encrypted by the system's keychain
-// (Electron's safeStorage, passed in as `cipher`). Nothing here ever sends a key to the site;
-// the window is told only whether one is set.
-//
-// No electron imports, so it can be tested the way share.ts is.
+// The token and keys are kept in generate.json, each encrypted by the system keychain
+// (`cipher`). No key is ever sent to the site; the window learns only whether one is set.
+// No electron imports, so it can be tested without Electron.
 import os from 'node:os'
 import path from 'node:path'
 import type { GenerateStatus } from '../shared/types'
@@ -223,7 +218,6 @@ export class Generating {
     // The author may switch a provider between the site and here at any time on the site.
     if (Date.now() - this.refreshedAt > MODES_TTL_MS) await this.refresh()
     const token = this.vault.token
-    // Only the providers the account generates here and this computer has a key for.
     const keys = localKeys(this.vault.keys, this.status.modes)
     if (!token || Object.keys(keys).length === 0) return this.later(IDLE_MS)
     try {

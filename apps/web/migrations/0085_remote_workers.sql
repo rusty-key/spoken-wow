@@ -1,8 +1,5 @@
--- Generation on an author's own machine (lib/generation/relay.ts, lib/worker/).
---
--- An author picks, per provider, whether their queued lines are generated here, with the key
--- sealed on the server, or by their Spoken Manager, with a key the server never sees. In
--- `local` mode the leader leaves their lanes alone and the Manager claims them.
+-- Per provider, whether an author's queued lines are generated here or by their Spoken
+-- Manager. In `local` mode the leader leaves their lanes alone and the Manager claims them.
 create table if not exists "generation_mode" (
   "userId"    text        not null references "user" ("id") on delete cascade,
   "provider"  text        not null,
@@ -11,13 +8,12 @@ create table if not exists "generation_mode" (
   primary key ("userId", "provider")
 );
 
--- What a relayed job's provider requests were, when it was claimed: their fingerprints, and
--- the ElevenLabs voices the Manager's account holds. The answer is checked against them, so a
--- line whose text changed between the claim and the answer is generated again rather than
--- committed with audio of the old text.
+-- A relayed job's request fingerprints and the Manager's ElevenLabs voices, taken at claim.
+-- The answer is checked against them, so a line whose text changed since the claim is
+-- generated again rather than committed with audio of the old text.
 alter table "regeneration_job" add column if not exists "relay" jsonb;
 
--- The Manager's credential: one row per paired install, only the token's hash kept.
+-- One row per paired Manager install; only the token's hash is kept.
 create table if not exists "worker_token" (
   "id"         uuid        primary key,
   "userId"     text        not null references "user" ("id") on delete cascade,
@@ -29,9 +25,8 @@ create table if not exists "worker_token" (
 );
 create index if not exists "worker_token_user_idx" on "worker_token" ("userId");
 
--- A pairing in progress: the Manager shows `code`, its owner approves it signed in on the
--- site, and the Manager collects the token by `pollHash`. The token waits here sealed under
--- SPOKEN_SECRET_KEY until it is collected once, then the row goes.
+-- A pairing in progress: the owner approves `code` on the site, and the Manager collects the
+-- token, sealed under SPOKEN_SECRET_KEY, once by `pollHash`, which deletes the row.
 create table if not exists "worker_pairing" (
   "code"        text        primary key,
   "pollHash"    text        not null unique,

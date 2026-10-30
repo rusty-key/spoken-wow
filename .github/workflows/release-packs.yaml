@@ -1,13 +1,5 @@
-# A sound pack release, run here instead of on the one machine that used to hold the audio.
-#
-# Every clip is in the public archive bucket now, named by its hash (apps/web/src/lib/blobs),
-# and every quests clip's pack encoding beside it (lib/takes/encode.ts). So a runner can do
-# what `make <section>-full-release` did on a laptop: copy production's rows, fetch the live
-# clips and encodings from the bucket, build the packs, and upload them to CurseForge, GitHub
-# and the manager channel.
-#
-# By hand only, never on a push: a release is a version number and a changelog section
-# somebody decided on. A dry run builds everything and uploads nothing.
+# Dispatch only, never on a push: a release is a version number and a changelog section
+# somebody decided on.
 name: Release sound packs
 
 on:
@@ -82,8 +74,7 @@ jobs:
         env:
           DATABASE_URL: ${{ env.LOCAL_DB }}
 
-      # The same key and known_hosts the deploy uses, and only to read production's rows:
-      # the audio comes from the bucket.
+      # Only reads production's rows; the audio comes from the bucket.
       - name: Reach production's database
         env:
           KEY: ${{ secrets.DO_SSH_KEY }}
@@ -127,8 +118,7 @@ jobs:
           make "$SECTION-upload-dry" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
           if [ "${{ inputs.manager }}" = true ]; then make manager-publish-dry; fi
 
-      # full-release's uploads alone: its sync would dump production again, and its pull and
-      # build would redo the steps above.
+      # Not full-release: it would sync, pull and build again.
       - name: Upload to CurseForge and GitHub
         if: ${{ !inputs.dry_run }}
         env:

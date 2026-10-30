@@ -66,7 +66,7 @@ export function busy(file: string): Failure {
   };
 }
 
-/** Whether `failure` is busy()'s: no other failure is an upstream one answered with 409. */
+/** Only busy() makes an upstream failure with status 409. */
 export function isBusy(failure: Failure): boolean {
   return failure.kind === "upstream" && failure.status === 409;
 }

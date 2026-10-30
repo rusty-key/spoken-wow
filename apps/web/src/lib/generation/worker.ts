@@ -433,18 +433,9 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
 }
 
 /**
- * Record what generating a job came to: done, backed off after a rate limit, or failed.
- *
- * The same for a job this process generated and one a Spoken Manager generated
- * (lib/worker/relay.ts), so the two cannot drift on when a job is retried.
- *
- * Wrapped because a database blip here is expensive in a way a failed generation is not: the
- * money has already been spent, and a row left `running` has its lease reclaimed five minutes
- * later and the same file generated and paid for a second time. Nothing can be done about it
- * from here beyond saying so loudly enough that the log explains the duplicate charge.
- *
- * Every write is made against the claim's attempt, so a job whose lease ran out and was
- * claimed again is settled by its newer claim only.
+ * Settles jobs this process and a Spoken Manager generated alike, so they cannot drift on
+ * retries. A database error is logged, not thrown: the money is spent, and a row left
+ * `running` is reclaimed and paid for again, so the log must explain the duplicate charge.
  */
 export async function settle(
   job: QueueJob,
@@ -466,21 +457,17 @@ export async function settle(
 
     if (kind === "rate-limit") {
       options.onRateLimit?.();
-      // A retry puts the row back to `pending`, where it would be claimed and paid for
-      // after an admin pressed Stop - and where it would flip the queue back to active, so
-      // the panel returns to "Regenerating" having just said "Stopped". Stop means stop.
+      // No retry after Stop: a pending row would be claimed and paid for, and would flip the
+      // panel back to "Regenerating".
       if (job.attempts < MAX_ATTEMPTS && !(await batchStopped(job.batchId))) {
         await retryJob(job.id, backoff(job.attempts), job.attempts);
         return;
       }
     }
 
-    // Only this job fails; the rest of its batch carries on, whatever `fatal` says. `fatal`
-    // is the browser's contract (errors.ts) and assumes a batch is one voice and one key,
-    // which a queued batch is not: a "Regenerate all" spans every NPC slot, and cancelling
-    // it for one slot with no voice takes down every line that has one. Even an
-    // account-wide failure - no credits, a revoked key - is refused before anything is
-    // billed, so letting each remaining line fail on its own costs nothing but log rows.
+    // Only this job fails, whatever `fatal` says: `fatal` assumes one voice and one key, but a
+    // queued batch spans every NPC slot. Account-wide failures are refused before billing, so
+    // each remaining line failing alone costs only log rows.
     await failJob(job.id, { kind, message }, job.attempts);
   } catch (error) {
     console.error(

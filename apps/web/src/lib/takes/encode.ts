@@ -1,16 +1,9 @@
 /**
- * A take's clip as its pack ships it, encoded when the take is committed.
+ * A take's clip as its pack ships it, encoded at commit so a release need not encode it again.
  *
- * Quests packs are mono Ogg Vorbis at oggenc -q 0 (scripts/quests/package-audio.sh's
- * ogg-q0-44k), and every release used to encode every clip again on the machine that built
- * it. The encoding is made once here instead, put in the archive bucket, and recorded in
- * `take_encoding` (migration 0084); scripts/audio/fetch-encodings.mjs lays them into the
- * build's cache, where package-audio.sh finds them already done.
- *
- * Best effort. A take is committed whether or not this works, and a build encodes whatever
- * it does not find, so a droplet without oggenc costs a slower release, not a lost take.
- * The recipe is the build's own -- ffmpeg decodes, oggenc encodes -- so a clip encoded here
- * and one encoded by the build are the same file.
+ * The recipe must match scripts/quests/package-audio.sh's ogg-q0-44k, so a clip encoded here
+ * and one encoded by the build are the same file. Best effort: a build encodes whatever
+ * scripts/audio/fetch-encodings.mjs does not find.
  */
 import "server-only";
 
@@ -26,7 +19,7 @@ import { durationOf } from "@/lib/places/tools";
 
 const QUESTS_PROFILE = "ogg-q0-44k";
 
-/** The profile a section's packs ship, or null where a pack ships the take's own bytes. */
+/** Null where a pack ships the take's own bytes. */
 function profileFor(source: Source): string | null {
   return source === "quests" ? QUESTS_PROFILE : null;
 }
@@ -45,7 +38,6 @@ function run(command: string, args: string[], input?: NodeJS.ReadableStream) {
   return { child, done };
 }
 
-/** ffmpeg decodes the mp3 to mono wav, oggenc -q 0 encodes it. */
 async function encodeOgg(master: string): Promise<{ bytes: Buffer; durationSec: number | null }> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-encode-"));
   const out = path.join(dir, "clip.ogg");
@@ -61,10 +53,7 @@ async function encodeOgg(master: string): Promise<{ bytes: Buffer; durationSec: 
 
 export type Encoding = { encodedSha256: string; bytes: number; durationSec: number | null };
 
-/**
- * Encode one committed take, read from the mp3 at `master`, for its pack, unless it already
- * is. Never throws: what went wrong is logged, and the build encodes what is missing.
- */
+/** Never throws: what went wrong is logged, and the build encodes what is missing. */
 export async function encodeForPack(source: Source, sha256: string, master: string): Promise<Encoding | null> {
   const profile = profileFor(source);
   if (!profile || !writesBlobs()) return null;

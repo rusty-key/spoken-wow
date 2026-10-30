@@ -1,20 +1,9 @@
 /**
- * A provider request sent from an author's own machine, with a key this server never holds.
- *
- * Generation is the same code wherever the audio comes from: regenerate.ts and narrated.ts
- * build the request, tts.ts and fish-tts.ts send it, trim it, stitch it and price it, and
- * commit.ts keeps it. All of them already take `fetch` as a parameter, so a relayed job is
- * that same code run twice with a different fetch:
- *
- *   1. CLAIM. Run with a fetch that records each request and answers with a moment of
- *      silence, and a commit that stops the run before anything is kept. What it recorded
- *      is exactly what the line would send, which goes to the author's Spoken Manager.
- *   2. ANSWER. The Manager sends each request with its own key and returns what came back.
- *      Run again with a fetch that answers each request from those, and the real commit.
- *
- * Each request is matched by a fingerprint of everything in it but the key. A line whose text,
- * lexicon or reference changed between the two runs builds a different request, finds no
- * answer, and is generated again rather than committed with audio of the old text.
+ * Provider requests sent from the author's machine with a key this server never holds. The
+ * generation code runs twice with a different `fetch`: the claim records each request and
+ * answers silence, stopping at commit; the answer replies from what the Manager sent back.
+ * Requests match by a fingerprint of everything but the key, so a line that changed between
+ * the runs finds no answer and is generated again rather than committed with stale audio.
  */
 import "server-only";
 
@@ -63,9 +52,8 @@ function fingerprint(request: Sent): string {
 }
 
 /**
- * A fifth of a second of silent mono mp3. What a recording run hears back, so that the
- * code after the request -- the lead-in trim, the paragraph stitch -- runs on real audio and
- * reaches the next request, as it will when the answers come.
+ * 0.2 s of silent mono mp3 for a recording run, so the lead-in trim and paragraph stitch
+ * after each request run on real audio and reach the next request.
  */
 const SILENCE = Buffer.from(
   "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAJAAAEYgBBQUFBQUFBQUFBQVlZWVlZWVlZWVlZcHBwcHBwcHBwcHCIiIiIiIiIiIiIiKCgoKCgoKCgoKCguLi4uLi4uLi4uLjQ0NDQ0NDQ0NDQ0Ojo6Ojo6Ojo6Ojo//////////////8AAAAATGF2YzYwLjMxAAAAAAAAAAAAAAAAJAPMAAAAAAAABGLZ9TL5AAAAAAD/+xDEAAPAAAGkAAAAIAAANIAAAARMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVf/7EsQpg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVf/7EMRTg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBV//sSxH0DwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQxKcDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+xLE0IPAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+xDE1gPAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7EsTVg8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7EMTWA8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
@@ -115,7 +103,7 @@ export function answeringFetch(answers: RelayedAnswer[], seen: { mismatch: boole
   }) as typeof fetch;
 }
 
-/** Thrown by the recording run's commit, which is where a recording run is over. */
+/** Thrown by the recording run's commit to end the run before anything is kept. */
 export class Recorded extends Error {
   constructor() {
     super("recorded");

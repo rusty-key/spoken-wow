@@ -202,10 +202,8 @@ export async function requireSpeaker(
 }
 
 /**
- * For queueing rather than generating: the provider a batch is queued with, and a 428 only
- * when its lines would be generated here with a key the author has not set. An author whose
- * Spoken Manager generates for them (lib/worker/mode.ts) keeps their key on their machine,
- * so there is none here to check.
+ * A 428 only when the lines would be generated here without a key. An author whose Spoken
+ * Manager generates for them keeps the key on their machine, so there is none here to check.
  */
 export async function requireQueueable(
   userId: string,

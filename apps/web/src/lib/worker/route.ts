@@ -1,7 +1,3 @@
-/**
- * What every worker route does first: find who is asking (tokens.ts workerUser, which also
- * holds a tab to this site's own JSON requests) and read the body.
- */
 import "server-only";
 
 import { workerUser } from "./tokens";

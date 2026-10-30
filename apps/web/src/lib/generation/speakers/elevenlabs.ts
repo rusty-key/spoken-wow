@@ -37,7 +37,7 @@ export const OUTPUT_FORMAT = "mp3_44100_128";
 export function elevenLabsSpeaker(
   options: ElevenLabsOptions & {
     settings: ElevenLabsSettings;
-    /** The account's clones by name, when they were listed elsewhere (lib/worker/jobs.ts). */
+    /** Clone name to voice id, when the caller has already listed the account. */
     roster?: ReadonlyMap<string, string>;
   },
 ): Speaker {

@@ -1,6 +1,6 @@
 /**
  * A Spoken Manager asks to be paired: the code it shows its owner, the secret it polls with,
- * and where the owner approves it. No session: the Manager has none yet. See lib/worker/tokens.ts.
+ * and where the owner approves it. No session: the Manager has none yet.
  */
 import { startPairing } from "@/lib/worker/tokens";
 

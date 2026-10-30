@@ -1,6 +1,6 @@
 /**
  * A Manager claims its owner's queued lines, as the provider requests to send for each.
- * Only for providers its owner generates with on their own machine. See lib/worker/jobs.ts.
+ * Only for providers its owner generates with on their own machine.
  */
 import { isProvider } from "@/lib/generation/providers";
 import { claimJobs } from "@/lib/worker/jobs";

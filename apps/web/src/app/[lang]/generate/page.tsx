@@ -13,8 +13,8 @@ export const metadata: Metadata = { title: "Generate here · Spoken" };
 export const dynamic = "force-dynamic";
 
 /**
- * Generating the author's queued lines in this tab, with keys that stay in their browser:
- * the Spoken Manager's loop (lib/worker/protocol.ts), for somebody without it.
+ * Generates the author's queued lines in this tab, for authors without the Spoken Manager.
+ * Keys stay in the browser.
  */
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);

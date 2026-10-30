@@ -216,7 +216,7 @@ full-release: require-droplet ## Sync, pull live takes, build and upload the sou
 	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
 	@$(MAKE) --no-print-directory -f make/readables.mk upload LOCALE=$(LOCALE)
 
-# full-release's last half, for a dist/ already built (release-packs.yaml builds in an earlier step).
+# For a dist/ already built: release-packs.yaml builds and uploads in separate steps.
 upload-dry: ## Show what full-release would upload from dist/ (LOCALE=xx for a language's)
 	@./scripts/readables/release.sh --dry-run --lang=$(or $(LOCALE),enUS) audio
 	@./scripts/audio-github-release.sh --dry-run readables $(or $(LOCALE),enUS)

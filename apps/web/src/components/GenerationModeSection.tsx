@@ -11,9 +11,8 @@ import type { GenerationMode as Mode } from "@/lib/worker/protocol";
 type Manager = { id: string; label: string; createdAt: string; lastUsedAt: string | null };
 
 /**
- * Where the author's queued lines are generated, per provider, and the Spoken Managers that
- * may do it for them (lib/worker). The pairing code arrives in the URL when the Manager opens
- * this page for its owner, and can be typed in otherwise.
+ * The pairing code arrives in the URL when the Manager opens this page for its owner, and can
+ * be typed in otherwise.
  */
 export default function GenerationModeSection({
   initialModes,

@@ -32,7 +32,7 @@ const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const verify = args.has("--verify");
 
-// Later names first: an older droplet config still sets the names from before the rename.
+// The first name set wins; an older droplet config sets only the zones/books names.
 const need = (...names) => {
   const value = names.map((name) => process.env[name]).find(Boolean);
   if (!value) throw new Error(`${names[0]} is not set; source shared/app.env first`);
@@ -77,7 +77,7 @@ async function put(key, data, contentType) {
   if (!res.ok) throw new Error(`PUT ${key}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
 
-// The web app's adapters (apps/web/src/lib/takes/adapters.ts) as they stood on the day.
+// A frozen copy of apps/web/src/lib/takes/adapters.ts.
 function relative(source, file) {
   return source === "quests" ? path.join(path.dirname(file), path.basename(file, ".mp3")) : file;
 }
@@ -95,7 +95,7 @@ const missing = [];
 const tally = {};
 const count = (what) => (tally[what] = (tally[what] ?? 0) + 1);
 
-/** Hash one row's file, put it, and record the hash. Four at a time. */
+// Four at a time, the size of the database pool.
 async function each(rows, work) {
   const queue = [...rows];
   await Promise.all(

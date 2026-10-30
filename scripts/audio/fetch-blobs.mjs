@@ -3,13 +3,8 @@
 //
 //   node scripts/audio/fetch-blobs.mjs <archive root> < list
 //
-// Reads the lines `sounds.mjs --list` and `acted.mjs --list` print, keeps the ones naming an
-// object (blobs/<prefix>/<sha256>), and downloads each that is not here yet from
-// SPOKEN_ARCHIVE_URL. The bucket is public and every object is named by its hash, so this
-// needs no keys, and a file already here with the right name is the right file.
-//
-// Each download is checked against its name before it is renamed into place: a pack built
-// from a truncated clip would ship it to every player.
+// Takes the blobs/<prefix>/<sha256> lines of `sounds.mjs --list` and `acted.mjs --list`. The
+// bucket is public and objects are named by hash, so this needs no keys and skips files already here.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 

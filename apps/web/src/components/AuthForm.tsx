@@ -31,8 +31,8 @@ const COPY = {
 } as const;
 
 /**
- * `next` is where to go once signed in: a path on this site and nothing else, so a link
- * cannot send someone who has just signed in to another origin.
+ * `next` must be a path on this site, so a link cannot send someone who just signed in to
+ * another origin.
  */
 export default function AuthForm({ mode, next }: { mode: Mode; next?: string | null }) {
   const router = useRouter();

@@ -1,4 +1,4 @@
-/** Where the signed-in author's queued lines are generated, per provider. See lib/worker/mode.ts. */
+/** Where the signed-in author's queued lines are generated, per provider. */
 import { recordActivity } from "@/lib/activity/store";
 import { currentSpender } from "@/lib/generation/authz";
 import { isProvider } from "@/lib/generation/providers";

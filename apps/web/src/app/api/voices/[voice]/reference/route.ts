@@ -65,7 +65,6 @@ export async function POST(request: Request, context: Context) {
   if (noKey) return noKey;
 
   try {
-    // The language's own clips, where its clone's clips are (clone-name.ts).
     const reference = await withSampleFiles(cloneName(voice, lang), [sample], ([sourcePath]) =>
       saveReference({
         voice,

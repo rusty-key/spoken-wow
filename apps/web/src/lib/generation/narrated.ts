@@ -153,7 +153,7 @@ export async function regenerateNarrated(
         sharedWith: 0,
       };
     } catch (error) {
-      // A recording run (relay.ts) ends at the commit, and must reach its caller as that.
+      // A run that only records its requests ends at the commit, and its caller must see that.
       if (error instanceof Recorded) throw error;
       return { ok: false, failure: asFailure(error) };
     }

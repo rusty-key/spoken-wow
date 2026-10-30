@@ -50,9 +50,9 @@ export async function serveTake(
     ? `${scope}, max-age=31536000, immutable`
     : `${scope}, max-age=300, must-revalidate`;
 
-  // The bucket answers ranges itself, Safari's bytes=0-1 probe included, so the droplet
-  // only says where to look. The redirect is cached as the bytes were: a version's for
-  // good, a live line's for five minutes, after which it may point at a newer take.
+  // The bucket answers ranges itself, Safari's bytes=0-1 probe included. The redirect is
+  // cached as the bytes were: a version's for good, a live line's for five minutes, after
+  // which it may point at a newer take.
   if (bytes.kind === "blob") {
     return new Response(null, {
       status: 302,

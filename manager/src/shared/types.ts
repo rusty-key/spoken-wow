@@ -175,7 +175,7 @@ export interface Settings {
   lastGameId: string
   /** Sending what Spoken collects to the site: 'unset' until the player answers the first-start question. */
   sharing: SharingChoice
-  /** Generating the author's queued lines here, with their own keys (main/generate.ts). */
+  /** Generating the author's queued lines here, with their own keys. */
   generating: boolean
 }
 
@@ -193,10 +193,7 @@ export interface SharingStatus {
   error?: string
 }
 
-/**
- * What the window shows of generating. The token and the keys stay in the main process; the
- * window learns only whether each is there.
- */
+/** The token and keys stay in the main process; the window learns only whether each is set. */
 export interface GenerateStatus {
   /** Whose account this Manager is paired with; null when it is not. */
   pairedAs: string | null

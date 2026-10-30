@@ -95,9 +95,8 @@ const listing = psql(`select "file", coalesce("archiveFile", ''),
                        where "source" = :'source' and "lang" = :'lang' and "isCurrent"
                        order by "file"`);
 
-// Where a live take's bytes are under the archive root (sourceOf): its object in the bucket,
-// or the take's own directory -- its file without the extension -- holding the archive file.
-// Blank when the take's clip was never kept.
+// A live take's archive path: its bucket object, or the take's own directory (its file without
+// the extension) holding the archive file. Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
   const [file, name, times, sha256] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");

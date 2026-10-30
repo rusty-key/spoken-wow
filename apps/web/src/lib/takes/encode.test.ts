@@ -1,7 +1,4 @@
-/**
- * The pack's encoding of a take, made at commit. Against real ffmpeg and oggenc, which is the
- * whole of what can go wrong here; skipped on a machine without them.
- */
+/** Runs real ffmpeg and oggenc, which is where this goes wrong; skipped without them. */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -25,7 +22,6 @@ const { encodeForPack } = await import("./encode");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "encode-test-"));
 
-/** `data` in a file of its own, as commitTake hands the encoder its archived take. */
 function clip(name: string, data: Buffer): string {
   const file = path.join(dir, name);
   fs.writeFileSync(file, data);

@@ -44,7 +44,7 @@ export type Reference = {
   clipHash: string;
   /** Always spoken by fish.audio in this language, whichever generator the collaborator chose. */
   pinned: boolean;
-  /** The cut clip's object in the archive bucket; null for a clip only on the volume. */
+  /** Null for a clip only on the volume. */
   sha256: string | null;
   updatedAt: string;
 };
@@ -69,10 +69,6 @@ function fromRow(row: Row): Reference {
 
 const COLUMNS = `"voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "pinned", "sha256", "updatedAt"`;
 
-/**
- * The cut clip's bytes: its object when audio is read from the bucket, else its file. Null
- * when it is missing from wherever it should be.
- */
 export async function readReferenceAudio(
   voice: string,
   lang: Lang,
@@ -85,10 +81,7 @@ export async function readReferenceAudio(
   });
 }
 
-/**
- * Where the reference's clip is played from: its object when audio is read from the bucket,
- * else its file. In r2 mode a row with no hash has no clip, whatever the volume still holds.
- */
+/** In r2 mode a row with no hash has no clip, whatever the volume still holds. */
 export function referenceClip(reference: Reference): Stored {
   return blobOrFile("references", reference.sha256, readsBlobs() ? null : referencePath(reference.voice, reference.lang));
 }

@@ -1,19 +1,12 @@
 /**
- * The audio archive as a bucket of blobs, each named by the SHA-256 of its bytes.
+ * The audio archive in R2. Keys are `<prefix>/<sha256>` of the bytes, so a retried write costs
+ * nothing and an object never changes once written.
  *
- * The droplet's block volume was the only copy of every take, and it filled with each
- * language an author added. In R2 a gigabyte costs a cent and a half a month and nothing to
- * serve, so the bytes move there and the droplet keeps only the rows.
- *
- * `SPOKEN_ARCHIVE_STORE` says where audio goes while that move is under way:
- *
- *   disk  the volume, as before. The default, so a checkout with no R2 keys still works.
- *   dual  the volume and the bucket. Reads stay on the volume until the backfill has
- *         given every old row a blob (one-off/2026-10-archive-to-r2).
+ * `SPOKEN_ARCHIVE_STORE`:
+ *   disk  the volume only. The default, so a checkout with no R2 keys still works.
+ *   dual  both. Reads stay on the volume until one-off/2026-10-archive-to-r2 has given every
+ *         old row a blob.
  *   r2    the bucket only. Audio routes redirect to its public address.
- *
- * Keys are `<prefix>/<sha256>`: the same bytes are one object however often they are put,
- * so a retried commit costs nothing and an object never changes once written.
  */
 import "server-only";
 
@@ -28,7 +21,6 @@ export type BlobPrefix = "takes" | "recordings" | "encodings" | "samples" | "ref
 export type BlobStore = {
   /** Store `data` under `key`. Writing the same key twice is harmless: the bytes are its name. */
   put(key: string, data: Buffer, contentType: string): Promise<void>;
-  /** The object's bytes, or null when there is none. */
   get(key: string): Promise<Buffer | null>;
   /** Where a browser fetches the object. */
   url(key: string): string;
@@ -43,7 +35,6 @@ export function blobKey(prefix: BlobPrefix, sha256: string): string {
   return `${prefix}/${sha256}`;
 }
 
-/** The bucket through R2's S3 API, signed with aws4fetch. */
 export function r2Blobs(env: {
   accountId: string;
   accessKeyId: string;
@@ -94,7 +85,6 @@ export function r2Blobs(env: {
   };
 }
 
-/** Objects in a Map, for tests that look at what was written. */
 export function memoryBlobs(publicUrl = "https://archive.test/"): BlobStore & {
   objects: Map<string, { data: Buffer; contentType: string }>;
 } {
@@ -123,17 +113,15 @@ export function archiveMode(): ArchiveMode {
   return mode;
 }
 
-/** Whether new audio goes to the bucket. */
 export function writesBlobs(): boolean {
   return archiveMode() !== "disk";
 }
 
-/** Whether audio is read from the bucket rather than the volume. */
 export function readsBlobs(): boolean {
   return archiveMode() === "r2";
 }
 
-/** The archive bucket. Throws in `disk` mode, where nothing should be asking for it. */
+/** Nothing in `disk` mode should ask for this. */
 export function archive(): BlobStore {
   if (override) return override.store;
   if (fromEnv) return fromEnv;
@@ -160,10 +148,7 @@ export function archive(): BlobStore {
 
 export type Kept = { sha256: string; inBucket: boolean; onDisk: boolean };
 
-/**
- * Keep `data` where the mode says: in the bucket under its hash, at `diskPath` on the volume,
- * or both. Both writes have finished when this returns, so the caller's row comes after them.
- */
+/** Both writes have finished when this returns, so the caller's row comes after them. */
 export async function keep(prefix: BlobPrefix, data: Buffer, contentType: string, diskPath: string): Promise<Kept> {
   const sha256 = sha256Of(data);
   const inBucket = writesBlobs();
@@ -175,24 +160,17 @@ export async function keep(prefix: BlobPrefix, data: Buffer, contentType: string
   return { sha256, inBucket, onDisk };
 }
 
-/** Where a row's bytes are read from, or that none were kept. */
 export type Stored =
-  /** On the volume. Whether the file is really there is for the reader to find out. */
+  /** The file may be missing; the reader finds out. */
   | { kind: "file"; path: string }
-  /** In the bucket, at a public address. */
   | { kind: "blob"; url: string }
   | { kind: "gone" };
 
-/**
- * A row's bytes: its object when audio is read from the bucket and the row has a hash, else
- * `file` on the volume, else gone.
- */
 export function blobOrFile(prefix: BlobPrefix, sha256: string | null, file: string | null): Stored {
   if (readsBlobs() && sha256) return { kind: "blob", url: archive().url(blobKey(prefix, sha256)) };
   return file ? { kind: "file", path: file } : { kind: "gone" };
 }
 
-/** Point the archive at `store` in `mode` until the returned function is called. Tests only. */
 export function useArchiveForTests(store: BlobStore, mode: ArchiveMode): () => void {
   override = { store, mode };
   return () => {

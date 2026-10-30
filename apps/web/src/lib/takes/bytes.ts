@@ -52,10 +52,7 @@ export async function writeAtomic(target: string, data: Buffer): Promise<void> {
   }
 }
 
-/**
- * Run `use` on a temporary file holding `data`, then remove it. For ffmpeg and ffprobe,
- * which read files, when the bytes have no file of their own on the volume.
- */
+/** For ffmpeg and ffprobe, which read files, when the bytes have none on the volume. */
 export async function withLocalCopy<T>(
   data: Buffer,
   ext: string,

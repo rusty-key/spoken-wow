@@ -164,7 +164,6 @@ export async function storeSample(
   return storeSampleAs(voice, storedNameFor(originalName), data);
 }
 
-/** Write one clip under a stored name already chosen. */
 export async function storeSampleAs(voice: string, file: string, data: Buffer): Promise<Sample> {
   if (!isStoredSampleName(file)) throw new Error(`unsafe sample name ${file}`);
   const dir = await voiceDir(voice);
@@ -180,10 +179,7 @@ export async function storeSampleAs(voice: string, file: string, data: Buffer): 
   return { file, bytes: data.byteLength, uploadedAt: new Date().toISOString() };
 }
 
-/**
- * Remove a clip. Its object stays in the bucket: another clip may hold the same bytes, and a
- * clip is small.
- */
+/** The object stays in the bucket: another clip may hold the same bytes. */
 export async function deleteSample(voice: string, file: string): Promise<boolean> {
   if (!isStoredSampleName(file)) return false;
   await voiceDir(voice);
@@ -206,7 +202,6 @@ export async function deleteSample(voice: string, file: string): Promise<boolean
   return removed;
 }
 
-/** The object a clip is stored as, when clips are read from the bucket. */
 async function sampleSha(voice: string, file: string): Promise<string | null> {
   const [row] = await query<{ sha256: string }>(
     `select "sha256" from "voice_sample" where "clone" = $1 and "file" = $2`,
@@ -215,7 +210,6 @@ async function sampleSha(voice: string, file: string): Promise<string | null> {
   return row?.sha256 ?? null;
 }
 
-/** One clip's bytes, or null when there is no such clip. */
 export async function readSample(voice: string, file: string): Promise<Buffer | null> {
   if (!isStoredSampleName(file)) return null;
   if (readsBlobs()) {
@@ -225,17 +219,14 @@ export async function readSample(voice: string, file: string): Promise<Buffer | 
   return fs.readFile(await samplePath(voice, file)).catch(() => null);
 }
 
-/** Where a browser plays a clip from the bucket, or null when clips are on the volume. */
+/** Undefined when clips are on the volume, null when the bucket has no such clip. */
 export async function sampleUrl(voice: string, file: string): Promise<string | null | undefined> {
   if (!readsBlobs()) return undefined;
   const sha256 = await sampleSha(voice, file);
   return sha256 ? archive().url(blobKey("samples", sha256)) : null;
 }
 
-/**
- * Run `use` with a file path for each clip, for ffmpeg: the clips themselves on the volume,
- * temporary copies when they are in the bucket. Throws naming the first clip that is missing.
- */
+/** ffmpeg reads files, so clips in the bucket are handed over as temporary copies. */
 export async function withSampleFiles<T>(
   voice: string,
   files: string[],

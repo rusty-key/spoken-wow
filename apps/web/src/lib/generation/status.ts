@@ -168,7 +168,6 @@ function inLanguage<T extends Roster>(status: T, lang: Lang): T & Pick<Generatio
   return { ...status, voices: [...voiceIds.keys()].sort(), voiceIds };
 }
 
-/** A roster's clones for one language, by slot. */
 export function voicesIn(clones: ReadonlyMap<string, string>, lang: Lang): Map<string, string> {
   const voiceIds = new Map<string, string>();
   for (const [name, id] of clones) {

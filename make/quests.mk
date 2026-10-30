@@ -291,8 +291,8 @@ endif
 # CurseForge once it has a project. English's meta addon is kilobytes and goes to both stores; a
 # language has none.
 #
-# upload-dry and upload are its last half, for a dist/ already built (release-packs.yaml builds
-# in an earlier step), so they keep the VERSION check too.
+# upload-dry and upload take a dist/ already built (release-packs.yaml runs them on their own),
+# so they check VERSION too.
 require_version = [ -n "$(VERSION)" ] || { echo "VERSION is required:  make quests-full-release VERSION=2.1.0"; exit 1; }
 
 ifneq ($(filter-out enUS,$(LOCALE)),)

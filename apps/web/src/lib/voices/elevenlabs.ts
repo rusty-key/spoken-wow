@@ -67,14 +67,13 @@ export async function listVoices(options: ElevenLabsOptions = {}): Promise<Map<s
 }
 
 /**
- * The voices named for a slot on the roster, as clone name -> voice id: listVoices' filter, for
- * an account listed elsewhere too (a Spoken Manager's, lib/worker/jobs.ts).
+ * Clone name -> voice id for the voices named for a roster slot.
  *
  * Stock voices are skipped rather than reported: their names ("Roger - Laid-Back, Casual,
  * Resonant") cannot express a race-gender mapping, so they are not candidates.
  */
 export async function slotClones(voices: { name: string; voiceId: string }[]): Promise<Map<string, string>> {
-  // The roster alone, as isVoiceSlot asks it, read once for the whole account.
+  // Read once for the whole account, not once per voice.
   const slots = new Set((await loadRoster()).voiceNames);
   const found = new Map<string, string>();
   for (const voice of voices) {

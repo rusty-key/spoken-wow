@@ -266,12 +266,11 @@ export async function activeLanes(max: number): Promise<Lane[]> {
   return rows;
 }
 
-/** A QueueJob's columns, from `regeneration_job` as `j`. */
+/** Expects `regeneration_job` aliased as `j`. */
 const JOB_COLUMNS = `j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
   j."preview", j."characters", j."attempts", j."provider", j."owner",
   (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId") as "createdBy"`;
 
-/** A job a claim may take: waiting and due, or running on a lapsed lease, and not paused. */
 const DUE = `(("state" = 'pending' and "notBefore" <= now())
             or ("state" = 'running' and "leaseUntil" < now()))
            and "lang" not in (select "lang" from "regeneration_pause")`;
@@ -328,17 +327,15 @@ export async function claimNext(
 }
 
 /**
- * Whose claim a settlement is. A job whose lease expired is claimed again, which counts
- * another attempt, so the attempt a claim was handed is what tells its settlement from a
- * later claim's. A slow worker that answers after its lease ran out then settles nothing,
- * instead of finishing a job somebody else is generating. Absent, any claim may settle it,
- * which is what the tests that build rows by hand rely on.
+ * A lapsed lease is reclaimed as a new attempt, so matching the attempt keeps a slow worker
+ * from settling a job someone else now holds. Without one any claim may settle it, which
+ * tests that build rows by hand rely on.
  */
 function claimed(attempt: number | undefined, at: number): string {
   return attempt === undefined ? "" : `and "state" = 'running' and "attempts" = $${at}`;
 }
 
-/** Settle a job as done. False when the claim it was given has been overtaken. */
+/** False when the claim has been overtaken. */
 export async function finishJob(
   id: string,
   result: { version: number; credits: number | null; costUsd?: number | null },
@@ -373,7 +370,6 @@ export async function failJob(
   return (rowCount ?? 0) > 0;
 }
 
-/** Put a job back, due after `delayMs`. To back off a rate limit, or to hand a claim back. */
 export async function retryJob(id: string, delayMs: number, attempt?: number): Promise<boolean> {
   const params: unknown[] = [id, delayMs / 1000];
   if (attempt !== undefined) params.push(attempt);
@@ -387,10 +383,7 @@ export async function retryJob(id: string, delayMs: number, attempt?: number): P
   return (rowCount ?? 0) > 0;
 }
 
-/**
- * Extend a claim's lease while its provider call runs. False when the claim has been
- * overtaken or the job settled, which tells a remote worker to drop what it is doing.
- */
+/** False when the claim has been overtaken or the job settled: a remote worker then drops it. */
 export async function renewLease(id: string, attempt: number, leaseMs: number = DEFAULT_LEASE_MS): Promise<boolean> {
   const { rowCount } = await db().query(
     `update "regeneration_job" set "leaseUntil" = now() + make_interval(secs => $3)
@@ -400,10 +393,6 @@ export async function renewLease(id: string, attempt: number, leaseMs: number = 
   return (rowCount ?? 0) > 0;
 }
 
-/**
- * Take the next due job of one owner's local lanes, for their Spoken Manager: the queue as
- * claimNext reads it, limited to providers the owner generates on their own machine.
- */
 export async function claimForOwner(
   owner: string,
   providers: readonly Provider[],
@@ -432,7 +421,6 @@ export async function claimForOwner(
   return rows[0] ?? null;
 }
 
-/** What a relayed claim recorded about its provider requests (migration 0085). */
 export type RelayRecord = {
   fingerprints: string[];
   roster: { name: string; voiceId: string }[] | null;
@@ -447,7 +435,6 @@ export async function recordRelay(id: string, attempt: number, relay: RelayRecor
   return (rowCount ?? 0) > 0;
 }
 
-/** A running relayed job of `owner`'s, as its claim left it, or null when it is not theirs now. */
 export async function relayedJob(
   id: string,
   owner: string,

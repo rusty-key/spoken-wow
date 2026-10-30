@@ -12,9 +12,8 @@ import { fishSpeaker } from "./fish";
 import type { Provider, Speaker } from "./speaker";
 
 /**
- * `relay` is for a line generated on its author's own machine (../relay.ts): the fetch every
- * provider request goes through, and the ElevenLabs voices that machine's account holds, which
- * this server cannot list without the key.
+ * `relay` is for a line generated on its author's own machine, whose ElevenLabs voices this
+ * server cannot list without the key.
  */
 export function speakerFrom(
   provider: Provider,

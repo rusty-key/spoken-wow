@@ -1,17 +1,7 @@
 /**
- * A remote worker's side of generating: what the Spoken Manager and a browser tab on
- * /generate both run. The site's side is lib/generation/relay.ts and lib/worker/jobs.ts.
- *
- * The site works out everything a line sends and hands over the requests without a key. The
- * worker sends each one to ElevenLabs or fish.audio with the author's key, which never leaves
- * their machine, and answers with what came back.
- *
- * A request goes only to the two providers' own hosts, whatever the site says: the key is
- * added here, so a request to anywhere else would hand the key to whoever named it.
- *
- * Plain fetch and Uint8Array, no Node and no server imports: the Manager bundles this file
- * (manager/electron.vite.config.ts, `@site-worker`) and the browser loads it. Its one import,
- * providers.ts, imports nothing.
+ * Requests go only to the providers' own hosts, whatever the site says: the key is added
+ * here, so any other host would receive it.
+ * No Node or server imports: the Manager bundles this file and the browser loads it.
  */
 import { PROVIDER_NAME, PROVIDERS, type Provider } from "../generation/providers";
 
@@ -148,8 +138,8 @@ export async function listElevenLabsVoices(
 const VOICES_TTL_MS = 60_000;
 
 /**
- * listElevenLabsVoices, listed again at most once a minute per key rather than once a round:
- * a clone made since shows up within the minute.
+ * Cached per key for a minute rather than listed every round, so a new clone shows up within
+ * the minute.
  */
 export function cachedVoices(
   fetchImpl?: typeof fetch,

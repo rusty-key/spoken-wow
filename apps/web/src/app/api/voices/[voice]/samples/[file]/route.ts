@@ -28,8 +28,8 @@ export async function GET(request: Request, context: Context) {
   const clone = cloneName(voice, lang);
   if (!isStoredSampleName(file)) return new Response("bad clip name", { status: 400 });
 
-  // In the bucket, the clip's object answers ranges itself. Clips are named by their bytes
-  // there, so the redirect can be kept as long as the clip itself could.
+  // The bucket answers ranges itself, and names objects by their bytes, so the redirect is
+  // cached as the clip itself would be.
   const url = await sampleUrl(clone, file);
   if (url === null) return new Response("no such clip", { status: 404 });
   if (url) {

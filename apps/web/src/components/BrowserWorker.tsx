@@ -18,7 +18,7 @@ import {
 type Keys = Partial<Record<Provider, string>>;
 type Line = { lineId: string; npcName: string; status: Answered["status"] | "running"; message?: string };
 
-/** Where keys are kept when the author asks this browser to remember them. Never sent anywhere. */
+/** localStorage key for the provider keys this browser remembers. They are never sent anywhere. */
 const STORED = "spoken.worker.keys";
 const IDLE_MS = 15_000;
 
@@ -31,12 +31,9 @@ function storedKeys(): Keys {
 }
 
 /**
- * The Spoken Manager's loop in a tab: claim the author's queued lines, send each request to the
- * provider with the key typed here, answer the site. The keys go to the provider and nowhere
- * else; the site sees only the audio that came back.
- *
- * Whether a provider answers a page at all is the provider's choice (CORS). When it does not,
- * the line goes back to the queue, the tab stops, and says to use the Manager.
+ * The keys typed here go to the provider and nowhere else; the site sees only the audio. A
+ * provider that refuses a page (CORS) gets the line given back, and the tab stops and points
+ * to the Manager.
  */
 export default function BrowserWorker({ initialModes }: { initialModes: Record<Provider, GenerationMode> }) {
   const [keys, setKeys] = useState<Keys>({});

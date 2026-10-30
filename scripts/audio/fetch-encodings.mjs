@@ -3,13 +3,8 @@
 //
 //   node scripts/audio/fetch-encodings.mjs [--lang=deDE]     (LOCAL_DB, SPOKEN_ARCHIVE_URL)
 //
-// Every quests take is encoded for its pack when it is committed (apps/web/src/lib/takes/
-// encode.ts) and recorded in take_encoding. scripts/quests/package-audio.sh keeps its encodes
-// in a cache named for the md5 of each master, and encodes only what it does not find there,
-// so filling the cache from the bucket turns a release's hour of oggenc into a download.
-//
-// Run after fetch-blobs.mjs, which brings the masters the md5s are taken of. A take with no
-// encoding, or whose master is not here, is left for package-audio.sh to encode as before.
+// package-audio.sh keys its cache on each master's md5 and encodes only what is missing, so this
+// turns a release's hour of oggenc into a download. Run after fetch-blobs.mjs brings the masters.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -21,7 +16,7 @@ import { archiveOf } from "../lib/archives.mjs";
 import { archiveBase, downloadVerified, eachParallel } from "../lib/download.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-// package-audio.sh's default profile and cache, by the same rule it names them.
+// Must match package-audio.sh's default profile and cache directory naming.
 const PROFILE = "ogg-q0-44k";
 
 export function cacheDir(lang, root = process.env.CACHE_ROOT ?? join(ROOT, "pipelines/quests/audio-transcoded")) {

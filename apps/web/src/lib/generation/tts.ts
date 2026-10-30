@@ -298,10 +298,7 @@ type TimedAudio = {
   voice_segments?: { character_start_index: number }[];
 };
 
-/**
- * What a with-timestamps endpoint answers for `audio`, unaligned and at no cost: the stand-in
- * a run recording its requests hears back (relay.ts).
- */
+/** Unaligned and at no cost: the stand-in answer a run that only records its requests hears back. */
 export function timedAudioAnswer(audio: Buffer): Response {
   const body: TimedAudio = { audio_base64: audio.toString("base64"), alignment: null };
   return Response.json(body, { headers: { "character-cost": "0" } });

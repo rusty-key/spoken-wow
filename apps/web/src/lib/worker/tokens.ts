@@ -1,14 +1,8 @@
 /**
- * The Spoken Manager's credential, and how a Manager gets one.
- *
- * A token of its own rather than a session: it reaches the worker routes and nothing else,
- * names one install, and is revoked on /profile without signing the author out anywhere.
- * Only its hash is stored.
- *
- * PAIRING is the device flow, without a client library: the Manager asks for a pairing and
- * shows its code, the author opens the site signed in and approves that code, and the
- * Manager, polling with a secret only it holds, collects the token once. The token waits
- * between the approval and the collection sealed under SPOKEN_SECRET_KEY.
+ * A Manager token reaches only the worker routes, names one install, and is revoked on /profile
+ * without signing the author out; only its hash is stored. Between approval and the Manager's
+ * one collection (polling with a secret only it holds), the token waits sealed under
+ * SPOKEN_SECRET_KEY.
  */
 import "server-only";
 
@@ -95,20 +89,15 @@ export async function pollPairing(poll: string): Promise<PollResult> {
 }
 
 /**
- * Who is generating: a Manager by its `Authorization: Bearer` token, or the signed-in author's
- * own tab on /generate. Null for anybody else.
- *
- * A tab is let in on its session cookie only from this site's own pages, sending JSON: a form
- * on another site cannot send JSON without a preflight these routes never answer, and its
- * Origin is not ours, so a cookie alone never claims or answers a line.
+ * A tab gets in on its session cookie only when sending JSON from this site's origin: a form on
+ * another site cannot send JSON without a preflight these routes never answer.
  */
 export async function workerUser(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
   if (!header) return tabUser(request);
   const match = /^Bearer\s+(spw_[A-Za-z0-9_-]{20,})$/.exec(header.trim());
   if (!match) return null;
-  // lastUsedAt is /profile's "last seen", which needs no better than five minutes: written that
-  // often rather than on each of the many requests a running Manager makes.
+  // lastUsedAt only backs /profile's "last seen", so it is written every five minutes at most.
   const { rows } = await db().query<{ userId: string }>(
     `with found as (
        select "id", "userId", "lastUsedAt" from "worker_token"

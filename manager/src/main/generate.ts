@@ -1,8 +1,5 @@
-// Generating: the author's queued lines, voiced on this machine with their own key.
-//
-// The protocol is the site's own (apps/web/src/lib/worker/protocol.ts), bundled as it is, so
-// the Manager and a browser tab on /generate send the same requests and refuse the same hosts.
-// What is the Manager's alone is where the site is.
+// The site's own worker protocol, bundled as it is, so the Manager and a /generate tab send
+// the same requests and refuse the same hosts.
 export {
   cachedVoices,
   localKeys,

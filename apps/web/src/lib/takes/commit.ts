@@ -14,8 +14,7 @@
  *
  * THE ORDER: the bytes first, under a name that includes their hash, then the row. A crash
  * between the two leaves a file no row names -- unreferenced and harmless -- never a row
- * whose file is missing. The same holds for the bucket (lib/blobs/store.ts), where the
- * name is the whole hash.
+ * whose file is missing. The same holds for the bucket, where the name is the whole hash.
  *
  * The caller holds the file's lock, `${source}:${file}` (generation/lock.ts), across the
  * whole generation, so that two requests for one line cannot both spend credits. Every
@@ -72,7 +71,7 @@ export type TakeFields = {
 export type Committed = {
   version: number;
   bytes: number;
-  /** The file on the volume, or null once the bucket is the only store. */
+  /** Null when the bucket is the only store. */
   archiveFile: string | null;
   sha256: string;
   durationSec: number | null;
@@ -81,8 +80,7 @@ export type Committed = {
 /**
  * Write a new take and make it live.
  *
- * `measure` reads a clip's duration from a file holding it: the archived one, or a temporary
- * copy when the bucket is the only store.
+ * `measure` may be handed a temporary copy that is gone once this returns.
  */
 export async function commitTake(
   source: Source,
@@ -109,8 +107,6 @@ export async function commitTake(
   const { sha256, onDisk } = await keep("takes", data, "audio/mpeg", archived);
   const archiveFile = onDisk ? name : null;
 
-  // One file serves both ffprobe and the pack's encoder: the archived one, or a temporary
-  // copy when the bucket is the only store.
   const commit = async (clip: string): Promise<Committed> => {
     const durationSec = options.measure ? await options.measure(clip) : null;
     await insertLive({
@@ -125,7 +121,7 @@ export async function commitTake(
       sha256,
       batchId: options.batchId,
     });
-    // After the row: the take is live whether or not its pack's encoding could be made.
+    // After the row, so the take is live even when its pack encoding fails.
     await encodeForPack(source, sha256, clip);
     return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
   };

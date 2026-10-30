@@ -1,6 +1,6 @@
 /**
  * A Manager answers a claimed line with what the provider sent back for each request. The
- * line is generated from those answers and committed here. See lib/worker/jobs.ts.
+ * line is generated from those answers and committed here.
  */
 import { answerJob } from "@/lib/worker/jobs";
 import type { RelayedAnswer } from "@/lib/worker/protocol";
