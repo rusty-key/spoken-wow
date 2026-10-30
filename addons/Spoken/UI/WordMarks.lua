@@ -164,16 +164,12 @@ function Marks.Cut(caption, map, span, paragraphs)
     end
     local at = map[index]
     local word = paragraphs[at.p].words[at.w]
-    local source = caption.words and caption.words[index]
-    if caption.typewriterBy == "letter" and caption.speaking and caption.activeWord == index
-        and source and caption.totalWeight then
-        local duration = math.max(1e-6, source.finish - source.start)
-        local share = (caption.progress * caption.totalWeight - source.start) / duration
-        share = math.max(0, math.min(1, share))
-        local count = math.max(1, math.ceil(share * (word.count or 1)))
+    if caption.typewriterBy == "letter" and caption.activeWord == index then
+        local source = caption.words[index]
+        local count = Transcript.TypedChars(caption.progress, caption.totalWeight, source.start, source.finish,
+            word.count)
         -- Whole characters: a cut inside a multibyte one would leave the window's text invalid.
-        local typed = Transcript.Prefix(string.sub(paragraphs[at.p].text, word.first, word.last), count)
-        return at.p, word.first + #typed - 1
+        return at.p, word.first + #Transcript.Prefix(word.text, count) - 1
     end
     return at.p, word.last
 end
@@ -212,10 +208,12 @@ function Marks.Want(para, p, span, cutP, cutByte, spans, color)
         -- Only words already typed: the neighbour past the voice is not shown yet.
         local shown, kept = string.len(want), {}
         for _, word in ipairs(spans[p]) do
-            if word.first <= shown then
+            if word.last <= shown then
+                table.insert(kept, word)
+            elseif word.first <= shown then
                 -- The active word can be only partly visible in letter mode. Keep its
                 -- highlight on the visible prefix, as the captions do.
-                table.insert(kept, { first = word.first, last = math.min(word.last, shown) })
+                table.insert(kept, { first = word.first, last = shown })
             end
         end
         table.sort(kept, function(a, b) return a.first < b.first end)

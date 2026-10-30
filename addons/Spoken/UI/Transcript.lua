@@ -62,6 +62,12 @@ function Transcript.Prefix(text, count)
     return table.concat(parts)
 end
 local Prefix = Transcript.Prefix
+--- How many of a word's `chars` characters are typed out by letter at `progress`, the word
+--- running from `start` to `finish` of `totalWeight`: at least one, all of them once it ends.
+function Transcript.TypedChars(progress, totalWeight, start, finish, chars)
+    local share = (progress * totalWeight - start) / math.max(1e-6, finish - start)
+    return math.max(1, math.ceil(Clamp(share, 0, 1) * chars))
+end
 -- Trailing punctuation lengthens a word's share of the recording.
 local STOPS = { ["."] = 0.7, ["!"] = 0.7, ["?"] = 0.7, ["。"] = 0.7, ["！"] = 0.7, ["？"] = 0.7,
     [","] = 0.35, [";"] = 0.35, [":"] = 0.35, ["，"] = 0.35, ["、"] = 0.35, ["；"] = 0.35, ["："] = 0.35 }
@@ -456,9 +462,9 @@ function Transcript:Render()
             typedTo = self.activeWord
             -- By letter, the piece being read is typed only as far as the voice has got.
             if (cfg.TypewriterBy or "letter") == "letter" and segment then
-                local share = (progress * self.totalWeight - segment.start) / math.max(1e-6, segment.finish - segment.start)
                 typedPiece = segment.index
-                typedChars = math.max(1, math.ceil(Clamp(share, 0, 1) * CharacterCount(segment.text)))
+                typedChars = Transcript.TypedChars(progress, self.totalWeight, segment.start, segment.finish,
+                    CharacterCount(segment.text))
             end
         elseif not (progress and progress >= 1) then typedTo = 0 end
     end
