@@ -78,7 +78,8 @@ All of these are checked once at login. If any is missing, the module does nothi
 settings panel says that DialogueUI's version isn't recognised.
 
 **Timing and matching.** The timing is the captions' own estimate, read through
-`Spoken:GetCaption()`, which also says whether Highlight Words and Type Words Out are on. It
+`Spoken:GetCaption()`, which also says whether Highlight Words and Type Words Out are on and
+whether to type by letter or by word. It
 is worked out on every call rather than read from the captions, which stop updating while
 DialogueUI hides their window. Each line of DialogueUI's text is split with
 `Spoken:SplitCaption()`, the same splitter the captions use, so Chinese is matched character

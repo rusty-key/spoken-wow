@@ -711,8 +711,9 @@ function Spoken:GetCaption()
     return caption
 end
 
---- Highlight Words and Type Words Out as GetCaption gives them, with or without a clip, for a
---- view that prepares a line before it plays. Both false with Show Words off.
+--- Highlight Words, Type Words Out and Type Out By as GetCaption gives them, with or without a
+--- clip, for a view that prepares a line before it plays. The first two are false with Show
+--- Words off; Type Out By is "letter" or "word" either way.
 function Spoken:GetCaptionOptions()
     local cfg = Addon:Profile("Transcript")
     local by = cfg.TypewriterBy == "word" and "word" or "letter"

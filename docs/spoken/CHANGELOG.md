@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **DialogueUI's text follows Type Out By.** With Mark Words in DialogueUI on, its quest, gossip
+  and book text types out letter by letter by default, or word by word, as the captions do.
+  *([anon1231823](https://github.com/anon1231823))*
 - **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
   settings page and dungeon icon instead of using the generic book portrait.
   *([anon1231823](https://github.com/anon1231823))*
