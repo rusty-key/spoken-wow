@@ -27,6 +27,7 @@ import {
   requireIn,
 } from "@/lib/generation/authz";
 import { createBatch, enqueue, snapshot } from "@/lib/generation/queue";
+import { placesEntry, questsEntry, readablesEntry } from "@/lib/generation/queue-entries";
 import { searchContext } from "@/lib/quests/context";
 import { batchJobs, matchingLines } from "@/lib/search";
 import { filtersFromParams, needsStale } from "@/lib/search-request";
@@ -116,18 +117,9 @@ export async function POST(request: NextRequest) {
   }
 
   const batchId = await createBatch(label, session.user.id, "quests", lang);
-  // BatchLine calls it audioPath and the queue calls it file, because a job is one mp3 on
-  // either side and only the quests corpus thinks of it as a line's audio.
   const { queued, skipped } = await enqueue(
     batchId,
-    jobs.map((job) => ({
-      lineId: job.lineId,
-      file: job.audioPath,
-      npcName: job.npcName,
-      preview: job.preview,
-      characters: job.characters,
-      provider: pinned.has(job.voice) ? "fish" : undefined,
-    })),
+    jobs.map((job) => ({ ...questsEntry(job), provider: pinned.has(job.voice) ? "fish" : undefined })),
     "quests",
     lang,
     provider,
@@ -166,16 +158,9 @@ async function queuePlaces(
 
   const wanted = new Set(lineIds as string[]);
   const jobs = (await zoneCatalogue(lang))
-    .filter((entry) => wanted.has(entry.id) && entry.spoken.trim() !== "")
-    .map((entry) => ({
-      lineId: entry.id,
-      file: entry.file,
-      // There is no NPC here. The column is a label for the progress readout, and the
-      // zone is what names a line on screen.
-      npcName: entry.zoneName,
-      preview: entry.short || entry.full.slice(0, 120),
-      characters: entry.spoken.length,
-    }));
+    .filter((entry) => wanted.has(entry.id))
+    .map(placesEntry)
+    .filter((job) => job !== null);
 
   if (jobs.length === 0) {
     return NextResponse.json(
@@ -218,16 +203,9 @@ async function queueReadables(
 
   const wanted = new Set(lineIds as string[]);
   const jobs = (await bookCatalogue(lang))
-    .filter((page) => wanted.has(page.id) && page.generatable && page.spoken.trim() !== "")
-    .map((page) => ({
-      lineId: page.id,
-      file: page.file,
-      // There is no NPC here either. The column is a label for the progress readout, and
-      // a book's title plus its page number is what names a page on screen.
-      npcName: page.pageCount > 1 ? `${page.title} (${page.pageNumber}/${page.pageCount})` : page.title,
-      preview: page.spoken.slice(0, 120),
-      characters: page.spoken.length,
-    }));
+    .filter((page) => wanted.has(page.id))
+    .map(readablesEntry)
+    .filter((job) => job !== null);
 
   if (jobs.length === 0) {
     return NextResponse.json(

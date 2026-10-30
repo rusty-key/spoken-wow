@@ -20,32 +20,16 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { parseCloneName } from "@/lib/voices/clone-name";
-import { isVoiceSlot } from "@/lib/voices/slots";
+import { KEY_HEADERS, type RelayedAnswer, type RelayedRequest } from "@/lib/worker/protocol";
 
-import type { Lang } from "@/lib/lang";
-import type { Provider } from "./speakers/speaker";
-
-/** Request headers that carry a key. Never recorded, never sent to a Manager. */
-const AUTH_HEADERS = new Set(["xi-api-key", "authorization"]);
-
-/** One provider request for a Manager to send, with the key it adds itself. */
-export type RelayedRequest = {
-  id: string;
-  provider: Provider;
-  method: string;
-  url: string;
-  headers: Record<string, string>;
-  /** Base64. */
-  body: string;
-};
-
-/** What the provider answered, or why it could not be reached. */
-export type RelayedAnswer =
-  | { id: string; status: number; contentType: string | null; characterCost: string | null; body: string }
-  | { id: string; error: string };
+import { fishAudioAnswer } from "./fish-tts";
+import type { Provider } from "./providers";
+import { timedAudioAnswer } from "./tts";
 
 type Init = { method?: string; headers?: HeadersInit; body?: BodyInit | null };
+
+/** A request as fetch was asked to send it, without its key. */
+type Sent = Omit<RelayedRequest, "id" | "body"> & { body: Buffer };
 
 function bodyBytes(body: BodyInit | null | undefined): Buffer {
   if (body === undefined || body === null) return Buffer.alloc(0);
@@ -55,25 +39,26 @@ function bodyBytes(body: BodyInit | null | undefined): Buffer {
   throw new Error("a relayed request's body must be text or bytes");
 }
 
-function plainHeaders(headers: HeadersInit | undefined): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [name, value] of new Headers(headers).entries()) {
-    if (!AUTH_HEADERS.has(name)) out[name] = value;
+function sent(input: RequestInfo | URL, init: Init): Sent {
+  const headers: Record<string, string> = {};
+  for (const [name, value] of new Headers(init.headers).entries()) {
+    if (!KEY_HEADERS.has(name)) headers[name] = value;
   }
-  return out;
-}
-
-function providerOf(url: string): Provider {
-  return new URL(url).hostname.includes("fish") ? "fish" : "elevenlabs";
+  return {
+    method: (init.method ?? "GET").toUpperCase(),
+    url: String(input instanceof Request ? input.url : input),
+    headers,
+    body: bodyBytes(init.body),
+  };
 }
 
 /** Everything in a request but the key: what decides whether an answer is its answer. */
-export function fingerprint(request: Omit<RelayedRequest, "id" | "provider">): string {
+function fingerprint(request: Sent): string {
   const headers = Object.entries(request.headers).sort(([a], [b]) => a.localeCompare(b));
   return createHash("sha256")
     .update(JSON.stringify([request.method, request.url, headers]))
     .update("\0")
-    .update(Buffer.from(request.body, "base64"))
+    .update(request.body)
     .digest("hex");
 }
 
@@ -87,29 +72,18 @@ const SILENCE = Buffer.from(
   "base64",
 );
 
-/** A fetch that records what it is asked to send and answers with silence. */
-export function recordingFetch(into: RelayedRequest[]): typeof fetch {
+/** Each provider's answer for some audio, in the shape its module reads it. */
+const ANSWER: Record<Provider, (audio: Buffer) => Response> = {
+  elevenlabs: timedAudioAnswer,
+  fish: fishAudioAnswer,
+};
+
+/** A fetch that records what it is asked to send and answers with silence, as `provider` would. */
+export function recordingFetch(into: RelayedRequest[], provider: Provider): typeof fetch {
   return (async (input: RequestInfo | URL, init: Init = {}) => {
-    const url = String(input instanceof Request ? input.url : input);
-    const method = (init.method ?? "GET").toUpperCase();
-    const request = {
-      method,
-      url,
-      headers: plainHeaders(init.headers),
-      body: bodyBytes(init.body).toString("base64"),
-    };
-    into.push({ id: fingerprint(request), provider: providerOf(url), ...request });
-    // ElevenLabs' with-timestamps endpoints answer the audio inside JSON (lib/generation/tts.ts).
-    if (new URL(url).pathname.endsWith("/with-timestamps")) {
-      return new Response(JSON.stringify({ audio_base64: SILENCE.toString("base64"), alignment: null }), {
-        status: 200,
-        headers: { "content-type": "application/json", "character-cost": "0" },
-      });
-    }
-    return new Response(new Uint8Array(SILENCE), {
-      status: 200,
-      headers: { "content-type": "audio/mpeg", "character-cost": "0" },
-    });
+    const request = sent(input, init);
+    into.push({ id: fingerprint(request), ...request, body: request.body.toString("base64") });
+    return ANSWER[provider](SILENCE);
   }) as typeof fetch;
 }
 
@@ -128,14 +102,7 @@ export class RelayMismatch extends Error {
 export function answeringFetch(answers: RelayedAnswer[], seen: { mismatch: boolean }): typeof fetch {
   const byId = new Map(answers.map((answer) => [answer.id, answer]));
   return (async (input: RequestInfo | URL, init: Init = {}) => {
-    const url = String(input instanceof Request ? input.url : input);
-    const id = fingerprint({
-      method: (init.method ?? "GET").toUpperCase(),
-      url,
-      headers: plainHeaders(init.headers),
-      body: bodyBytes(init.body).toString("base64"),
-    });
-    const answer = byId.get(id);
+    const answer = byId.get(fingerprint(sent(input, init)));
     if (!answer) {
       seen.mismatch = true;
       throw new RelayMismatch();
@@ -157,27 +124,4 @@ export class Recorded extends Error {
 
 export async function stopBeforeCommit(): Promise<never> {
   throw new Recorded();
-}
-
-/**
- * The ElevenLabs voices a Manager's account holds, as listVoices reads them
- * (lib/voices/elevenlabs.ts): clones named for a slot, by the clone's name.
- */
-export async function rosterFrom(voices: { name: string; voiceId: string }[]): Promise<Map<string, string>> {
-  const found = new Map<string, string>();
-  for (const voice of voices) {
-    const clone = parseCloneName(voice.name);
-    if (clone && (await isVoiceSlot(clone.voice))) found.set(voice.name, voice.voiceId);
-  }
-  return found;
-}
-
-/** A roster's voices for one language, by slot, as generationStatus picks them out. */
-export function voicesIn(roster: ReadonlyMap<string, string>, lang: Lang): Map<string, string> {
-  const ids = new Map<string, string>();
-  for (const [name, id] of roster) {
-    const clone = parseCloneName(name);
-    if (clone && clone.lang === lang) ids.set(clone.voice, id);
-  }
-  return ids;
 }

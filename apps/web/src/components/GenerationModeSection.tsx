@@ -6,8 +6,8 @@ import Link from "@/components/LocaleLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PROVIDER_NAME, PROVIDERS, type Provider } from "@/lib/generation/providers";
+import type { GenerationMode as Mode } from "@/lib/worker/protocol";
 
-type Mode = "site" | "local";
 type Manager = { id: string; label: string; createdAt: string; lastUsedAt: string | null };
 
 /**

@@ -12,9 +12,8 @@ import { elevenLabsCode, type Lang } from "@/lib/lang";
 import type { ElevenLabsOptions } from "@/lib/voices/elevenlabs";
 
 import { currentLocator } from "../dictionary";
-import { voicesIn } from "../relay";
 import type { ElevenLabsSettings } from "../preference";
-import { generationStatus } from "../status";
+import { generationStatus, voicesIn } from "../status";
 import { textToDialogue, textToSpeech } from "../tts";
 import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
 
@@ -38,7 +37,7 @@ export const OUTPUT_FORMAT = "mp3_44100_128";
 export function elevenLabsSpeaker(
   options: ElevenLabsOptions & {
     settings: ElevenLabsSettings;
-    /** The account's clones by name, when they were listed elsewhere (../relay.ts). */
+    /** The account's clones by name, when they were listed elsewhere (lib/worker/jobs.ts). */
     roster?: ReadonlyMap<string, string>;
   },
 ): Speaker {

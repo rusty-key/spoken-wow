@@ -10,7 +10,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import type { Provider } from "@/lib/generation/speakers/speaker";
 
-export type GenerationMode = "site" | "local";
+import type { GenerationMode } from "./protocol";
 
 export async function readModes(userId: string): Promise<Record<Provider, GenerationMode>> {
   const { rows } = await db().query<{ provider: Provider; mode: GenerationMode }>(

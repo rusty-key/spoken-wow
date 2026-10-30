@@ -211,6 +211,11 @@ async function speakOnce(
   return { ok: true, audio, bytes: Buffer.byteLength(payload.text as string, "utf8") };
 }
 
+/** What fish.audio answers for `audio`: the stand-in a run recording its requests hears back (relay.ts). */
+export function fishAudioAnswer(audio: Buffer): Response {
+  return new Response(new Uint8Array(audio), { headers: { "content-type": "audio/mpeg" } });
+}
+
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

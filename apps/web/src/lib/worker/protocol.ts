@@ -10,17 +10,28 @@
  * added here, so a request to anywhere else would hand the key to whoever named it.
  *
  * Plain fetch and Uint8Array, no Node and no server imports: the Manager bundles this file
- * (manager/electron.vite.config.ts, `@site-worker`) and the browser loads it.
+ * (manager/electron.vite.config.ts, `@site-worker`) and the browser loads it. Its one import,
+ * providers.ts, imports nothing.
  */
+import { PROVIDER_NAME, PROVIDERS, type Provider } from "../generation/providers";
 
-export type WorkerProvider = "elevenlabs" | "fish";
+export type { Provider };
+
+/** Where an author's lines for a provider are generated: on the site, or by their own worker. */
+export type GenerationMode = "site" | "local";
 
 /** The providers' API hosts, and how each is given the key. */
-const PROVIDER_HOSTS: Record<string, { provider: WorkerProvider; auth: (key: string) => Record<string, string> }> = {
+const PROVIDER_HOSTS: Record<string, { provider: Provider; auth: (key: string) => Record<string, string> }> = {
   "api.elevenlabs.io": { provider: "elevenlabs", auth: (key) => ({ "xi-api-key": key }) },
   "api.fish.audio": { provider: "fish", auth: (key) => ({ authorization: `Bearer ${key}` }) },
 };
 
+/** The request headers that carry a key, lowercased: the site never records them, and a worker never sends the site's. */
+export const KEY_HEADERS: ReadonlySet<string> = new Set(
+  Object.values(PROVIDER_HOSTS).flatMap((host) => Object.keys(host.auth("")).map((name) => name.toLowerCase())),
+);
+
+/** One provider request for a worker to send, with the key it adds itself. */
 export type RelayedRequest = {
   id: string;
   method: string;
@@ -30,6 +41,7 @@ export type RelayedRequest = {
   body: string;
 };
 
+/** What the provider answered, or why it could not be reached. */
 export type RelayedAnswer =
   | { id: string; status: number; contentType: string | null; characterCost: string | null; body: string }
   | { id: string; error: string };
@@ -37,7 +49,7 @@ export type RelayedAnswer =
 export type ClaimedJob = {
   jobId: string;
   attempt: number;
-  provider: WorkerProvider;
+  provider: Provider;
   lineId: string;
   npcName: string;
   preview: string;
@@ -68,7 +80,7 @@ export function fromBase64(text: string): Uint8Array {
 }
 
 /** The provider a request is for, from its URL alone, or null for a URL that is not one of theirs. */
-export function providerOf(url: string): WorkerProvider | null {
+export function providerOf(url: string): Provider | null {
   let u: URL;
   try {
     u = new URL(url);
@@ -79,12 +91,10 @@ export function providerOf(url: string): WorkerProvider | null {
   return PROVIDER_HOSTS[u.hostname]?.provider ?? null;
 }
 
-const PROVIDER_NAME: Record<WorkerProvider, string> = { elevenlabs: "ElevenLabs", fish: "fish.audio" };
-
 /** Sends one request with the key, and says what came back. Never throws. */
 export async function sendRequest(
   request: RelayedRequest,
-  keys: Partial<Record<WorkerProvider, string>>,
+  keys: Partial<Record<Provider, string>>,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RelayedAnswer> {
   const provider = providerOf(request.url);
@@ -97,7 +107,8 @@ export async function sendRequest(
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(request.headers)) {
     // The site never sends a key; one that came anyway is dropped rather than sent beside ours.
-    if (!["xi-api-key", "authorization", "host", "content-length"].includes(name.toLowerCase())) headers[name] = value;
+    const lower = name.toLowerCase();
+    if (!KEY_HEADERS.has(lower) && lower !== "host" && lower !== "content-length") headers[name] = value;
   }
   try {
     const res = await fetchImpl(request.url, {
@@ -132,6 +143,35 @@ export async function listElevenLabsVoices(
   return (body.voices ?? [])
     .filter((v): v is { name: string; voice_id: string } => typeof v.name === "string" && typeof v.voice_id === "string")
     .map((v) => ({ name: v.name, voiceId: v.voice_id }));
+}
+
+const VOICES_TTL_MS = 60_000;
+
+/**
+ * listElevenLabsVoices, listed again at most once a minute per key rather than once a round:
+ * a clone made since shows up within the minute.
+ */
+export function cachedVoices(
+  fetchImpl?: typeof fetch,
+): (key: string | undefined) => Promise<{ name: string; voiceId: string }[] | null> {
+  let cached: { key: string; at: number; value: { name: string; voiceId: string }[] } | null = null;
+  return async (key) => {
+    if (!key) return null;
+    if (cached?.key === key && Date.now() - cached.at < VOICES_TTL_MS) return cached.value;
+    const value = await listElevenLabsVoices(key, fetchImpl);
+    cached = { key, at: Date.now(), value };
+    return value;
+  };
+}
+
+/** The keys a worker may spend: those of the providers its author generates with on their own machine. */
+export function localKeys(
+  keys: Partial<Record<Provider, string>>,
+  modes: Record<Provider, GenerationMode>,
+): Partial<Record<Provider, string>> {
+  const usable: Partial<Record<Provider, string>> = {};
+  for (const provider of PROVIDERS) if (modes[provider] === "local" && keys[provider]) usable[provider] = keys[provider];
+  return usable;
 }
 
 // ---------------------------------------------------------------- the site
@@ -184,14 +224,14 @@ export function pollPairing(
 
 export function whoAmI(
   opts: SiteOptions,
-): Promise<{ name: string | null; modes: Record<WorkerProvider, "site" | "local"> }> {
+): Promise<{ name: string | null; modes: Record<Provider, GenerationMode> }> {
   return site(opts, "/api/worker/me");
 }
 
 // ---------------------------------------------------------------- one round
 
 export type RoundOptions = SiteOptions & {
-  keys: Partial<Record<WorkerProvider, string>>;
+  keys: Partial<Record<Provider, string>>;
   /** How many lines at once. */
   width: number;
   /** ElevenLabs' voices, listed once a minute rather than once a round. */
@@ -218,7 +258,7 @@ export type RoundResult = {
  * out only those its author set to "on my computer".
  */
 export async function runRound(opts: RoundOptions): Promise<RoundResult> {
-  const providers = (Object.keys(opts.keys) as WorkerProvider[]).filter((p) => opts.keys[p]);
+  const providers = (Object.keys(opts.keys) as Provider[]).filter((p) => opts.keys[p]);
   if (providers.length === 0) return { claimed: 0, done: 0, failed: 0 };
   const voices = providers.includes("elevenlabs") ? await opts.voices() : null;
   const { jobs } = await site<{ jobs: ClaimedJob[] }>(opts, "/api/worker/claim", { providers, max: opts.width, voices });

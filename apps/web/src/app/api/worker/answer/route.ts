@@ -2,9 +2,9 @@
  * A Manager answers a claimed line with what the provider sent back for each request. The
  * line is generated from those answers and committed here. See lib/worker/jobs.ts.
  */
-import type { RelayedAnswer } from "@/lib/generation/relay";
 import { answerJob } from "@/lib/worker/jobs";
-import { workerUser } from "@/lib/worker/tokens";
+import type { RelayedAnswer } from "@/lib/worker/protocol";
+import { isClaimRef, workerCall, type ClaimRef } from "@/lib/worker/route";
 
 export const dynamic = "force-dynamic";
 
@@ -21,17 +21,13 @@ function isAnswer(value: unknown): value is RelayedAnswer {
   );
 }
 
+function isAnswered(body: Record<string, unknown>): body is ClaimRef & { answers: RelayedAnswer[] } {
+  return Array.isArray(body.answers) && body.answers.every(isAnswer) && isClaimRef(body);
+}
+
 export async function POST(request: Request) {
-  const userId = await workerUser(request);
-  if (!userId) return Response.json({ error: "not paired" }, { status: 401 });
-  const body = (await request.json().catch(() => ({}))) as { jobId?: unknown; attempt?: unknown; answers?: unknown };
-  if (
-    typeof body.jobId !== "string" ||
-    typeof body.attempt !== "number" ||
-    !Array.isArray(body.answers) ||
-    !body.answers.every(isAnswer)
-  ) {
-    return Response.json({ error: "jobId, attempt and answers are required" }, { status: 400 });
-  }
-  return Response.json(await answerJob(userId, { jobId: body.jobId, attempt: body.attempt, answers: body.answers }));
+  const call = await workerCall(request, { check: isAnswered, required: "jobId, attempt and answers are required" });
+  if (call instanceof Response) return call;
+  const { jobId, attempt, answers } = call.body;
+  return Response.json(await answerJob(call.userId, { jobId, attempt, answers }));
 }

@@ -266,6 +266,16 @@ export async function activeLanes(max: number): Promise<Lane[]> {
   return rows;
 }
 
+/** A QueueJob's columns, from `regeneration_job` as `j`. */
+const JOB_COLUMNS = `j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
+  j."preview", j."characters", j."attempts", j."provider", j."owner",
+  (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId") as "createdBy"`;
+
+/** A job a claim may take: waiting and due, or running on a lapsed lease, and not paused. */
+const DUE = `(("state" = 'pending' and "notBefore" <= now())
+            or ("state" = 'running' and "leaseUntil" < now()))
+           and "lang" not in (select "lang" from "regeneration_pause")`;
+
 /**
  * Take the next due job, or null. Within one lane when given one.
  *
@@ -305,18 +315,13 @@ export async function claimNext(
         "startedAt"  = coalesce(j."startedAt", now())
       where j."id" = (
         select "id" from "regeneration_job"
-         where (("state" = 'pending' and "notBefore" <= now())
-            or ("state" = 'running' and "leaseUntil" < now()))
-           and "lang" not in (select "lang" from "regeneration_pause")
+         where ${DUE}
            ${inLane}
          order by "id"
          for update skip locked
          limit 1
       )
-      returning j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
-                j."preview", j."characters", j."attempts", j."provider", j."owner",
-                (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId")
-                  as "createdBy"`,
+      returning ${JOB_COLUMNS}`,
     params,
   );
   return rows[0] ?? null;
@@ -413,9 +418,7 @@ export async function claimForOwner(
         "relay"      = null
       where j."id" = (
         select "id" from "regeneration_job" r
-         where (("state" = 'pending' and "notBefore" <= now())
-            or ("state" = 'running' and "leaseUntil" < now()))
-           and "lang" not in (select "lang" from "regeneration_pause")
+         where ${DUE}
            and "owner" = $2 and "provider" = any($3::text[])
            and exists (select 1 from "generation_mode" m
                         where m."userId" = r."owner" and m."provider" = r."provider" and m."mode" = 'local')
@@ -423,10 +426,7 @@ export async function claimForOwner(
          for update skip locked
          limit 1
       )
-      returning j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
-                j."preview", j."characters", j."attempts", j."provider", j."owner",
-                (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId")
-                  as "createdBy"`,
+      returning ${JOB_COLUMNS}`,
     [leaseMs / 1000, owner, providers],
   );
   return rows[0] ?? null;
@@ -454,9 +454,7 @@ export async function relayedJob(
   attempt: number,
 ): Promise<{ job: QueueJob; relay: RelayRecord } | null> {
   const { rows } = await db().query<QueueJob & { relay: RelayRecord | null }>(
-    `select j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
-            j."preview", j."characters", j."attempts", j."provider", j."owner", j."relay",
-            (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId") as "createdBy"
+    `select ${JOB_COLUMNS}, j."relay"
        from "regeneration_job" j
       where j."id" = $1 and j."owner" = $2 and j."attempts" = $3 and j."state" = 'running'`,
     [id, owner, attempt],

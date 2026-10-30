@@ -8,7 +8,7 @@
  * and none should ever spend money.
  */
 import { parseCloneName } from "./clone-name";
-import { isVoiceSlot } from "./slots";
+import { loadRoster } from "./roster-store";
 
 export const DEFAULT_BASE_URL = "https://api.elevenlabs.io";
 
@@ -59,14 +59,27 @@ export async function listVoices(options: ElevenLabsOptions = {}): Promise<Map<s
   if (!response.ok) throw await failure(response, "listing ElevenLabs voices");
 
   const body = (await response.json()) as { voices?: { name?: string; voice_id?: string }[] };
+  return slotClones(
+    (body.voices ?? []).flatMap((voice) =>
+      voice.name && voice.voice_id ? [{ name: voice.name, voiceId: voice.voice_id }] : [],
+    ),
+  );
+}
 
+/**
+ * The voices named for a slot on the roster, as clone name -> voice id: listVoices' filter, for
+ * an account listed elsewhere too (a Spoken Manager's, lib/worker/jobs.ts).
+ *
+ * Stock voices are skipped rather than reported: their names ("Roger - Laid-Back, Casual,
+ * Resonant") cannot express a race-gender mapping, so they are not candidates.
+ */
+export async function slotClones(voices: { name: string; voiceId: string }[]): Promise<Map<string, string>> {
+  // The roster alone, as isVoiceSlot asks it, read once for the whole account.
+  const slots = new Set((await loadRoster()).voiceNames);
   const found = new Map<string, string>();
-  for (const voice of body.voices ?? []) {
-    // Stock voices are skipped rather than reported: their names ("Roger - Laid-Back,
-    // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
-    if (!voice.name || !voice.voice_id) continue;
+  for (const voice of voices) {
     const clone = parseCloneName(voice.name);
-    if (clone && (await isVoiceSlot(clone.voice))) found.set(voice.name, voice.voice_id);
+    if (clone && slots.has(clone.voice)) found.set(voice.name, voice.voiceId);
   }
   return found;
 }

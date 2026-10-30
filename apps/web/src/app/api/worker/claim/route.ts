@@ -5,15 +5,14 @@
 import { isProvider } from "@/lib/generation/providers";
 import { claimJobs } from "@/lib/worker/jobs";
 import { readModes } from "@/lib/worker/mode";
-import { workerUser } from "@/lib/worker/tokens";
+import { workerCall } from "@/lib/worker/route";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const userId = await workerUser(request);
-  if (!userId) return Response.json({ error: "not paired" }, { status: 401 });
-
-  const body = (await request.json().catch(() => ({}))) as { providers?: unknown; max?: unknown; voices?: unknown };
+  const call = await workerCall(request);
+  if (call instanceof Response) return call;
+  const { userId, body } = call;
   const modes = await readModes(userId);
   const providers = (Array.isArray(body.providers) ? body.providers : [])
     .filter(isProvider)

@@ -11,6 +11,7 @@ import "server-only";
 import { catalogue as readablesCatalogue } from "@/lib/readables/catalogue";
 import { readPreference } from "@/lib/generation/preference";
 import { createBatch, enqueue, type QueueEntry } from "@/lib/generation/queue";
+import { placesEntry, questsEntry, readablesEntry } from "@/lib/generation/queue-entries";
 import type { Provider } from "@/lib/generation/speakers/speaker";
 import type { Lang } from "@/lib/lang";
 import { lineIndex } from "@/lib/quests/catalogue";
@@ -26,26 +27,14 @@ async function entryFor(source: Source, lineId: string, lang: Lang): Promise<Que
     const group = (await lineIndex(lang)).get(lineId);
     if (!group) return null;
     const [job] = batchJobs(group, await readOverrides(lang));
-    return job
-      ? { lineId: job.lineId, file: job.audioPath, npcName: job.npcName, preview: job.preview, characters: job.characters }
-      : null;
+    return job ? questsEntry(job) : null;
   }
   if (source === "places") {
     const entry = (await placesCatalogue(lang)).find((candidate) => candidate.id === lineId);
-    return entry
-      ? {
-          lineId: entry.id,
-          file: entry.file,
-          npcName: entry.zoneName,
-          preview: entry.short || entry.full.slice(0, 120),
-          characters: entry.spoken.length,
-        }
-      : null;
+    return entry ? placesEntry(entry) : null;
   }
   const page = (await readablesCatalogue(lang)).find((candidate) => candidate.id === lineId);
-  return page
-    ? { lineId: page.id, file: page.file, npcName: page.title, preview: page.spoken.slice(0, 120), characters: page.spoken.length }
-    : null;
+  return page ? readablesEntry(page) : null;
 }
 
 /**

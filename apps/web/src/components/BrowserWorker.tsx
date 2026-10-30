@@ -6,16 +6,21 @@ import Link from "@/components/LocaleLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PROVIDER_NAME, PROVIDERS, type Provider } from "@/lib/generation/providers";
-import { listElevenLabsVoices, runRound, type Answered, type ClaimedJob } from "@/lib/worker/protocol";
+import {
+  cachedVoices,
+  localKeys,
+  runRound,
+  type Answered,
+  type ClaimedJob,
+  type GenerationMode,
+} from "@/lib/worker/protocol";
 
-type Mode = "site" | "local";
 type Keys = Partial<Record<Provider, string>>;
 type Line = { lineId: string; npcName: string; status: Answered["status"] | "running"; message?: string };
 
 /** Where keys are kept when the author asks this browser to remember them. Never sent anywhere. */
 const STORED = "spoken.worker.keys";
 const IDLE_MS = 15_000;
-const VOICES_TTL_MS = 60_000;
 
 function storedKeys(): Keys {
   try {
@@ -33,7 +38,7 @@ function storedKeys(): Keys {
  * Whether a provider answers a page at all is the provider's choice (CORS). When it does not,
  * the line goes back to the queue, the tab stops, and says to use the Manager.
  */
-export default function BrowserWorker({ initialModes }: { initialModes: Record<Provider, Mode> }) {
+export default function BrowserWorker({ initialModes }: { initialModes: Record<Provider, GenerationMode> }) {
   const [keys, setKeys] = useState<Keys>({});
   const [remember, setRemember] = useState(false);
   const [running, setRunning] = useState(false);
@@ -41,7 +46,7 @@ export default function BrowserWorker({ initialModes }: { initialModes: Record<P
   const [error, setError] = useState<string | null>(null);
   const runningRef = useRef(false);
   const keysRef = useRef<Keys>({});
-  const voicesRef = useRef<{ at: number; value: { name: string; voiceId: string }[] } | null>(null);
+  const [voices] = useState(() => cachedVoices());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -66,23 +71,14 @@ export default function BrowserWorker({ initialModes }: { initialModes: Record<P
 
   const round = useCallback(async () => {
     if (!runningRef.current) return;
-    const usable: Keys = {};
-    for (const provider of local) if (keysRef.current[provider]) usable[provider] = keysRef.current[provider];
+    const usable = localKeys(keysRef.current, initialModes);
     let wait = IDLE_MS;
     try {
       const result = await runRound({
         siteUrl: "",
         keys: usable,
         width: 1,
-        voices: async () => {
-          const key = usable.elevenlabs;
-          if (!key) return null;
-          const cached = voicesRef.current;
-          if (cached && Date.now() - cached.at < VOICES_TTL_MS) return cached.value;
-          const value = await listElevenLabsVoices(key);
-          voicesRef.current = { at: Date.now(), value };
-          return value;
-        },
+        voices: () => voices(usable.elevenlabs),
         onLine: ({ job, answered }: { job: ClaimedJob; answered?: Answered }) =>
           setLines((current) => {
             const line: Line = {
@@ -110,7 +106,7 @@ export default function BrowserWorker({ initialModes }: { initialModes: Record<P
       wait = 60_000;
     }
     if (runningRef.current) timer.current = setTimeout(() => void round(), wait);
-  }, [local]);
+  }, [initialModes, voices]);
 
   const start = () => {
     runningRef.current = true;

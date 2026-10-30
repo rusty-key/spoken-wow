@@ -10,7 +10,8 @@ import os from 'node:os'
 import path from 'node:path'
 import type { GenerateStatus } from '../shared/types'
 import {
-  listElevenLabsVoices,
+  cachedVoices,
+  localKeys,
   NotPaired,
   pollPairing,
   runRound,
@@ -37,7 +38,6 @@ const FAILED_MS = 60_000
 const POLL_MS = 3_000
 /** Lines at once. Each is one provider request at a time, inside every plan's concurrency. */
 const WIDTH = 2
-const VOICES_TTL_MS = 60_000
 const MODES_TTL_MS = 60_000
 
 export interface GeneratingOptions {
@@ -58,12 +58,13 @@ export class Generating {
   private running = false
   private timer: ReturnType<typeof setTimeout> | null = null
   private pairingPoll: ReturnType<typeof setInterval> | null = null
-  private voices: { at: number; value: { name: string; voiceId: string }[] } | null = null
+  private voices: ReturnType<typeof cachedVoices>
   /** When the site was last asked what this account generates here. */
   private refreshedAt = 0
 
   constructor(private opts: GeneratingOptions) {
     this.vault = this.load()
+    this.voices = cachedVoices(opts.fetchImpl)
     this.status = {
       pairedAs: null,
       keys: { elevenlabs: Boolean(this.vault.keys.elevenlabs), fish: Boolean(this.vault.keys.fish) },
@@ -121,14 +122,25 @@ export class Generating {
     this.opts.send(this.status)
   }
 
+  /** Drops fields from the status without telling the window; whatever follows does. */
+  private clear(...fields: ('error' | 'pairing')[]): void {
+    const status = { ...this.status }
+    for (const field of fields) delete status[field]
+    this.status = status
+  }
+
+  /** The next round after `ms`, or after the tests' wait. */
+  private later(ms: number): void {
+    this.schedule(this.opts.idleMs ?? ms)
+  }
+
   /** Asks the site who this token belongs to, and what it generates here. */
   async refresh(): Promise<void> {
     this.refreshedAt = Date.now()
     if (!this.vault.token) return this.update({ pairedAs: null })
     try {
       const me = await whoAmI(this.site(this.vault.token))
-      const { error: _old, ...rest } = this.status
-      this.status = rest
+      this.clear('error')
       this.update({ pairedAs: me.name ?? 'your account', modes: me.modes })
     } catch (err) {
       if (err instanceof NotPaired) this.forget()
@@ -154,8 +166,7 @@ export class Generating {
           if (result.status === 'pending') return
           if (this.pairingPoll) clearInterval(this.pairingPoll)
           this.pairingPoll = null
-          const { pairing: _done, ...rest } = this.status
-          this.status = rest
+          this.clear('pairing')
           if (result.status === 'approved') {
             this.vault.token = result.token
             this.save()
@@ -174,8 +185,7 @@ export class Generating {
     this.pairingPoll = null
     delete this.vault.token
     this.save()
-    const { pairing: _p, error: _e, ...rest } = this.status
-    this.status = rest
+    this.clear('pairing', 'error')
     this.update({ pairedAs: null })
   }
 
@@ -183,7 +193,6 @@ export class Generating {
     const trimmed = key.trim()
     if (trimmed) this.vault.keys[provider] = trimmed
     else delete this.vault.keys[provider]
-    if (provider === 'elevenlabs') this.voices = null
     this.save()
     this.update({ keys: { elevenlabs: Boolean(this.vault.keys.elevenlabs), fish: Boolean(this.vault.keys.fish) } })
   }
@@ -208,15 +217,6 @@ export class Generating {
     this.timer.unref?.()
   }
 
-  private async elevenLabsVoices(): Promise<{ name: string; voiceId: string }[] | null> {
-    const key = this.vault.keys.elevenlabs
-    if (!key) return null
-    if (this.voices && Date.now() - this.voices.at < VOICES_TTL_MS) return this.voices.value
-    const value = await listElevenLabsVoices(key, this.opts.fetchImpl)
-    this.voices = { at: Date.now(), value }
-    return value
-  }
-
   /** One round, then the next one scheduled: at once while there is work, later when there is none. */
   async round(): Promise<void> {
     if (!this.running) return
@@ -224,18 +224,15 @@ export class Generating {
     if (Date.now() - this.refreshedAt > MODES_TTL_MS) await this.refresh()
     const token = this.vault.token
     // Only the providers the account generates here and this computer has a key for.
-    const keys: Partial<Record<GenerateProvider, string>> = {}
-    for (const provider of ['elevenlabs', 'fish'] as const) {
-      if (this.status.modes[provider] === 'local' && this.vault.keys[provider]) keys[provider] = this.vault.keys[provider]
-    }
-    if (!token || Object.keys(keys).length === 0) return this.schedule(this.opts.idleMs ?? IDLE_MS)
+    const keys = localKeys(this.vault.keys, this.status.modes)
+    if (!token || Object.keys(keys).length === 0) return this.later(IDLE_MS)
     try {
       const result = await runRound({
         ...this.site(token),
         keys,
         onWarning: (message, err) => log(`Generating: ${message}:`, err),
         width: WIDTH,
-        voices: () => this.elevenLabsVoices(),
+        voices: () => this.voices(keys.elevenlabs),
         onLine: ({ job, answered }) => {
           const current = answered
             ? this.status.current.filter((line) => line.lineId !== job.lineId)
@@ -249,25 +246,25 @@ export class Generating {
         }
       })
       if (this.status.error) {
-        const { error: _old, ...rest } = this.status
-        this.status = rest
+        this.clear('error')
         this.opts.send(this.status)
       }
       if (result.unreachable) {
         // Offline, or a provider that will not answer: the lines went back, and waiting is
         // all there is to do.
         this.update({ error: `Could not reach the provider: ${result.unreachable}`, current: [] })
-        return this.schedule(this.opts.idleMs ?? FAILED_MS)
+        return this.later(FAILED_MS)
       }
-      this.schedule(result.claimed > 0 ? 0 : (this.opts.idleMs ?? IDLE_MS))
+      if (result.claimed > 0) this.schedule(0)
+      else this.later(IDLE_MS)
     } catch (err) {
       if (err instanceof NotPaired) {
         this.forget()
-        return this.schedule(this.opts.idleMs ?? IDLE_MS)
+        return this.later(IDLE_MS)
       }
       log('Generating: a round failed:', err)
       this.update({ error: err instanceof Error ? err.message : String(err), current: [] })
-      this.schedule(this.opts.idleMs ?? FAILED_MS)
+      this.later(FAILED_MS)
     }
   }
 

@@ -14,7 +14,7 @@ import "server-only";
 
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-import { db } from "@/lib/db";
+import { db, inTransaction } from "@/lib/db";
 import { open, seal, type Sealed } from "@/lib/secrets";
 import { currentSession } from "@/lib/session";
 
@@ -63,30 +63,19 @@ export async function approvePairing(input: string, userId: string): Promise<boo
   const pairing = await pendingPairing(input);
   if (!pairing) return false;
   const token = `spw_${randomBytes(32).toString("base64url")}`;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  return inTransaction(async (client) => {
     const { rowCount } = await client.query(
       `update "worker_pairing" set "userId" = $2, "sealedToken" = $3
         where "code" = $1 and "userId" is null and "expiresAt" > now()`,
       [pairing.code, userId, JSON.stringify(seal(token))],
     );
-    if (!rowCount) {
-      await client.query("rollback");
-      return false;
-    }
+    if (!rowCount) return false;
     await client.query(
       `insert into "worker_token" ("id", "userId", "tokenHash", "label") values ($1, $2, $3, $4)`,
       [randomUUID(), userId, hash(token), pairing.label],
     );
-    await client.query("commit");
     return true;
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export type PollResult = { status: "pending" } | { status: "expired" } | { status: "approved"; token: string };
@@ -118,10 +107,18 @@ export async function workerUser(request: Request): Promise<string | null> {
   if (!header) return tabUser(request);
   const match = /^Bearer\s+(spw_[A-Za-z0-9_-]{20,})$/.exec(header.trim());
   if (!match) return null;
+  // lastUsedAt is /profile's "last seen", which needs no better than five minutes: written that
+  // often rather than on each of the many requests a running Manager makes.
   const { rows } = await db().query<{ userId: string }>(
-    `update "worker_token" set "lastUsedAt" = now()
-      where "tokenHash" = $1 and "revokedAt" is null
-      returning "userId"`,
+    `with found as (
+       select "id", "userId", "lastUsedAt" from "worker_token"
+        where "tokenHash" = $1 and "revokedAt" is null
+     ), touched as (
+       update "worker_token" t set "lastUsedAt" = now() from found
+        where t."id" = found."id"
+          and (found."lastUsedAt" is null or found."lastUsedAt" < now() - interval '5 minutes')
+     )
+     select "userId" from found`,
     [hash(match[1])],
   );
   return rows[0]?.userId ?? null;

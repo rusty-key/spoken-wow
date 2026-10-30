@@ -164,12 +164,18 @@ export function accountSubscription(options: ElevenLabsOptions = {}): Promise<Su
 
 /** The account read once, for every language: which one is asked about is a filter. */
 function inLanguage<T extends Roster>(status: T, lang: Lang): T & Pick<GenerationStatus, "voices" | "voiceIds"> {
+  const voiceIds = voicesIn(status.clones, lang);
+  return { ...status, voices: [...voiceIds.keys()].sort(), voiceIds };
+}
+
+/** A roster's clones for one language, by slot. */
+export function voicesIn(clones: ReadonlyMap<string, string>, lang: Lang): Map<string, string> {
   const voiceIds = new Map<string, string>();
-  for (const [name, id] of status.clones) {
+  for (const [name, id] of clones) {
     const clone = parseCloneName(name);
     if (clone && clone.lang === lang) voiceIds.set(clone.voice, id);
   }
-  return { ...status, voices: [...voiceIds.keys()].sort(), voiceIds };
+  return voiceIds;
 }
 
 function account(options: ElevenLabsOptions): Omit<Entry, "at"> {
