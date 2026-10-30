@@ -10,6 +10,7 @@ setfenv(1, SpokenEnv)
 
 WordMarks = {}
 local Marks = WordMarks
+local UTF8_CHAR = "[%z\1-\127\194-\244][\128-\191]*"
 
 -- How many words of the window's text a caption word may skip to find its match: a name the
 -- window puts in front of the text, a hint, a word that differs.
@@ -148,6 +149,17 @@ function Marks.Pick(map, index)
     return lit
 end
 
+-- SetText takes bytes, but cutting in the middle of a multibyte character would leave the
+-- window's text invalid.
+local function CharacterEnd(text, first, last, count)
+    local bytes, seen = 0, 0
+    for char in string.sub(text, first, last):gmatch(UTF8_CHAR) do
+        bytes, seen = bytes + #char, seen + 1
+        if seen >= count then return first + bytes - 1 end
+    end
+    return last
+end
+
 --- How far the text is typed out: the paragraph the voice is in and the last byte of it shown,
 --- or nil for all of it (finished, or a clip with no length to time it by). A caption word the
 --- window lacks types up to the last one before it that it has.
@@ -163,7 +175,17 @@ function Marks.Cut(caption, map, span, paragraphs)
         return span.first, 0
     end
     local at = map[index]
-    return at.p, paragraphs[at.p].words[at.w].last
+    local word = paragraphs[at.p].words[at.w]
+    local source = caption.words and caption.words[index]
+    if caption.typewriterBy == "letter" and caption.speaking and caption.activeWord == index
+        and source and caption.totalWeight then
+        local duration = math.max(1e-6, source.finish - source.start)
+        local share = (caption.progress * caption.totalWeight - source.start) / duration
+        share = math.max(0, math.min(1, share))
+        local count = math.max(1, math.ceil(share * (word.count or 1)))
+        return at.p, CharacterEnd(paragraphs[at.p].text, word.first, word.last, count)
+    end
+    return at.p, word.last
 end
 
 --- `text` with the words at `spans` (sorted by position) wrapped in `color`.
@@ -200,8 +222,10 @@ function Marks.Want(para, p, span, cutP, cutByte, spans, color)
         -- Only words already typed: the neighbour past the voice is not shown yet.
         local shown, kept = string.len(want), {}
         for _, word in ipairs(spans[p]) do
-            if word.last <= shown then
-                table.insert(kept, word)
+            if word.first <= shown then
+                -- The active word can be only partly visible in letter mode. Keep its
+                -- highlight on the visible prefix, as the captions do.
+                table.insert(kept, { first = word.first, last = math.min(word.last, shown) })
             end
         end
         table.sort(kept, function(a, b) return a.first < b.first end)

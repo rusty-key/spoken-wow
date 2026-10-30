@@ -701,13 +701,15 @@ end
 local caption = {}
 
 --- The speaking clip's caption, kept current even while the captions are hidden or off:
----   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter, timed }
+---   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter,
+---     typewriterBy, timed }
 --- words[i] = { text, start, finish, first, last, joined }: start/finish are the word's share
 --- of the recording, in units of totalWeight; first/last its bytes in the clip's text. timed is
 --- true when they come from the clip's present.timings, and totalWeight is then its length.
 --- progress is nil for a clip with no length; activeWord is set only while speaking.
 --- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
---- Show Words off). Read-only, and the same table on every call. nil without a clip.
+--- Show Words off); typewriterBy is "letter" or "word". Read-only, and the same table on
+--- every call. nil without a clip.
 function Spoken:GetCaption()
     if not Transcript.clip or not Transcript.words then return nil end
     -- Not read from what the captions last drew: they update only while shown, and
@@ -718,7 +720,7 @@ function Spoken:GetCaption()
     caption.speaking = Transcript:IsSpeaking(progress) and true or false
     caption.activeWord = caption.speaking and Transcript:WordAt(progress) or nil
     caption.timed = Transcript.timed
-    caption.highlight, caption.typewriter = self:GetCaptionOptions()
+    caption.highlight, caption.typewriter, caption.typewriterBy = self:GetCaptionOptions()
     return caption
 end
 
@@ -726,8 +728,9 @@ end
 --- view that prepares a line before it plays. Both false with Show Words off.
 function Spoken:GetCaptionOptions()
     local cfg = Addon:Profile("Transcript")
-    if not cfg.Enabled then return false, false end
-    return cfg.HighlightWord and true or false, cfg.Typewriter and true or false
+    local by = cfg.TypewriterBy == "word" and "word" or "letter"
+    if not cfg.Enabled then return false, false, by end
+    return cfg.HighlightWord and true or false, cfg.Typewriter and true or false, by
 end
 
 --- Finding the line being read in another window's text and marking it there, as the captions
