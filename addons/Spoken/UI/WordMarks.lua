@@ -211,8 +211,7 @@ function Marks.Want(para, p, span, cutP, cutByte, spans, color)
             if word.last <= shown then
                 table.insert(kept, word)
             elseif word.first <= shown then
-                -- The active word can be only partly visible in letter mode. Keep its
-                -- highlight on the visible prefix, as the captions do.
+                -- By letter, the active word is partly typed: light only what is shown.
                 table.insert(kept, { first = word.first, last = shown })
             end
         end

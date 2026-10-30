@@ -62,8 +62,8 @@ function Transcript.Prefix(text, count)
     return table.concat(parts)
 end
 local Prefix = Transcript.Prefix
---- How many of a word's `chars` characters are typed out by letter at `progress`, the word
---- running from `start` to `finish` of `totalWeight`: at least one, all of them once it ends.
+--- How many of a word's `chars` characters are typed out at `progress`: at least one, all of
+--- them once the word ends.
 function Transcript.TypedChars(progress, totalWeight, start, finish, chars)
     local share = (progress * totalWeight - start) / math.max(1e-6, finish - start)
     return math.max(1, math.ceil(Clamp(share, 0, 1) * chars))
