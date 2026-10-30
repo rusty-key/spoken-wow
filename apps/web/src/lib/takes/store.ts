@@ -19,7 +19,7 @@ import "server-only";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
-import { archive, blobKey, readsBlobs } from "@/lib/blobs/store";
+import { blobOrFile, type Stored } from "@/lib/blobs/store";
 import { db, query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -213,12 +213,7 @@ export async function setLiveTake(
 
 /** Where one take's bytes are, or why there are none to read. */
 export type TakeBytes =
-  /** The take's clip, in its line's history directory. */
-  | { kind: "file"; path: string }
-  /** The take's clip in the archive bucket, at a public address. */
-  | { kind: "blob"; url: string; sha256: string }
-  /** The take exists, and nothing kept its clip. */
-  | { kind: "gone" }
+  | Stored
   /** No such take was ever recorded. */
   | { kind: "none" };
 
@@ -259,20 +254,7 @@ export async function livePath(source: Source, file: string, lang: Lang = BASE_L
 
 type Located = { archiveFile: string | null; sha256: string | null };
 
-/** A row's bytes: in the bucket when that is where audio is read from, else on the volume. */
-export function blobOrFile(
-  row: Located,
-  prefix: "takes" | "recordings",
-  dir: () => string,
-): TakeBytes {
-  if (readsBlobs() && row.sha256) {
-    return { kind: "blob", url: archive().url(blobKey(prefix, row.sha256)), sha256: row.sha256 };
-  }
-  if (!row.archiveFile) return { kind: "gone" };
-  return { kind: "file", path: path.join(dir(), row.archiveFile) };
-}
-
 function located(source: Source, file: string, lang: Lang, take: Located | undefined): TakeBytes {
   if (!take) return { kind: "none" };
-  return blobOrFile(take, "takes", () => historyDirOf(source, file, lang));
+  return blobOrFile("takes", take.sha256, take.archiveFile && path.join(historyDirOf(source, file, lang), take.archiveFile));
 }

@@ -17,15 +17,15 @@ import os from "node:os";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
-import { archive, blobKey, readsBlobs, sha256Of, writesBlobs } from "@/lib/blobs/store";
+import { blobOrFile, keep } from "@/lib/blobs/store";
 import { fileIndex } from "@/lib/audio";
 import { catalogue as readablesCatalogue } from "@/lib/readables/catalogue";
 import { db, query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { recordedDirOf } from "@/lib/takes/adapters";
-import { archiveName, writeAtomic } from "@/lib/takes/bytes";
-import { blobOrFile, type TakeBytes } from "@/lib/takes/store";
+import { archiveName } from "@/lib/takes/bytes";
+import type { TakeBytes } from "@/lib/takes/store";
 import { catalogue as placesCatalogue } from "@/lib/places/catalogue";
 
 import { can } from "@/lib/permissions";
@@ -121,7 +121,8 @@ export async function recordingPath(source: Source, lang: Lang, file: string, ve
       where "source" = $1 and "lang" = $2 and "file" = $3 and "version" = $4`,
     [source, lang, file, version],
   );
-  return row ? blobOrFile(row, "recordings", () => recordedDirOf(source, file, lang)) : { kind: "none" };
+  if (!row) return { kind: "none" };
+  return blobOrFile("recordings", row.sha256, row.archiveFile && path.join(recordedDirOf(source, file, lang), row.archiveFile));
 }
 
 export type Upload = {
@@ -170,16 +171,14 @@ export async function commitRecording(
         where "source" = $1 and "lang" = $2 and "file" = $3`,
       [source, lang, file],
     );
-    const sha256 = sha256Of(upload.data);
-    if (writesBlobs()) {
-      const type = probed.format === "ogg" ? "audio/ogg" : "audio/mpeg";
-      await archive().put(blobKey("recordings", sha256), upload.data, type);
-    }
-    let archiveFile: string | null = null;
-    if (!readsBlobs()) {
-      archiveFile = archiveName(next, upload.data, probed.format);
-      await writeAtomic(path.join(recordedDirOf(source, file, lang), archiveFile), upload.data);
-    }
+    const name = archiveName(next, upload.data, probed.format);
+    const { sha256, onDisk } = await keep(
+      "recordings",
+      upload.data,
+      probed.format === "ogg" ? "audio/ogg" : "audio/mpeg",
+      path.join(recordedDirOf(source, file, lang), name),
+    );
+    const archiveFile = onDisk ? name : null;
     const {
       rows: [recording],
     } = await client.query<Recording>(

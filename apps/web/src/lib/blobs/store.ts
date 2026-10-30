@@ -18,21 +18,18 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
+
+import { writeAtomic } from "@/lib/takes/bytes";
 
 export type ArchiveMode = "disk" | "dual" | "r2";
 
-export type BlobPrefix = "takes" | "recordings" | "encodings" | "samples" | "references" | "staging";
+export type BlobPrefix = "takes" | "recordings" | "encodings" | "samples" | "references";
 
 export type BlobStore = {
   /** Store `data` under `key`. Writing the same key twice is harmless: the bytes are its name. */
   put(key: string, data: Buffer, contentType: string): Promise<void>;
   /** The object's bytes, or null when there is none. */
   get(key: string): Promise<Buffer | null>;
-  /** The object's size, or null when there is none. */
-  head(key: string): Promise<{ bytes: number } | null>;
-  delete(key: string): Promise<void>;
   /** Where a browser fetches the object. */
   url(key: string): string;
 };
@@ -93,46 +90,7 @@ export function r2Blobs(env: {
       if (!res.ok) await fail("GET", key, res);
       return Buffer.from(await res.arrayBuffer());
     },
-    async head(key) {
-      const res = await signed(at(key), { method: "HEAD" });
-      if (res.status === 404) return null;
-      if (!res.ok) await fail("HEAD", key, res);
-      return { bytes: Number(res.headers.get("content-length") ?? 0) };
-    },
-    async delete(key) {
-      const res = await signed(at(key), { method: "DELETE" });
-      if (!res.ok && res.status !== 404) await fail("DELETE", key, res);
-    },
     url: (key) => `${publicBase}${key}`,
-  };
-}
-
-/** A directory standing in for the bucket: development without R2 keys, and the tests. */
-export function fsBlobs(root: string, publicUrl = "/blobs/"): BlobStore {
-  const at = (key: string) => {
-    const target = path.resolve(root, key);
-    if (!target.startsWith(path.resolve(root) + path.sep)) throw new Error(`unsafe key ${key}`);
-    return target;
-  };
-  return {
-    async put(key, data) {
-      const target = at(key);
-      await fs.mkdir(path.dirname(target), { recursive: true });
-      const partial = `${target}.part`;
-      await fs.writeFile(partial, data);
-      await fs.rename(partial, target);
-    },
-    async get(key) {
-      return fs.readFile(at(key)).catch(() => null);
-    },
-    async head(key) {
-      const info = await fs.stat(at(key)).catch(() => null);
-      return info ? { bytes: info.size } : null;
-    },
-    async delete(key) {
-      await fs.rm(at(key), { force: true });
-    },
-    url: (key) => `${publicUrl}${key}`,
   };
 }
 
@@ -148,13 +106,6 @@ export function memoryBlobs(publicUrl = "https://archive.test/"): BlobStore & {
     },
     async get(key) {
       return objects.get(key)?.data ?? null;
-    },
-    async head(key) {
-      const o = objects.get(key);
-      return o ? { bytes: o.data.byteLength } : null;
-    },
-    async delete(key) {
-      objects.delete(key);
     },
     url: (key) => `${publicUrl}${key}`,
   };
@@ -205,6 +156,40 @@ export function archive(): BlobStore {
     publicUrl: process.env.SPOKEN_ARCHIVE_URL!,
   });
   return fromEnv;
+}
+
+export type Kept = { sha256: string; inBucket: boolean; onDisk: boolean };
+
+/**
+ * Keep `data` where the mode says: in the bucket under its hash, at `diskPath` on the volume,
+ * or both. Both writes have finished when this returns, so the caller's row comes after them.
+ */
+export async function keep(prefix: BlobPrefix, data: Buffer, contentType: string, diskPath: string): Promise<Kept> {
+  const sha256 = sha256Of(data);
+  const inBucket = writesBlobs();
+  const onDisk = !readsBlobs();
+  await Promise.all([
+    inBucket && archive().put(blobKey(prefix, sha256), data, contentType),
+    onDisk && writeAtomic(diskPath, data),
+  ]);
+  return { sha256, inBucket, onDisk };
+}
+
+/** Where a row's bytes are read from, or that none were kept. */
+export type Stored =
+  /** On the volume. Whether the file is really there is for the reader to find out. */
+  | { kind: "file"; path: string }
+  /** In the bucket, at a public address. */
+  | { kind: "blob"; url: string }
+  | { kind: "gone" };
+
+/**
+ * A row's bytes: its object when audio is read from the bucket and the row has a hash, else
+ * `file` on the volume, else gone.
+ */
+export function blobOrFile(prefix: BlobPrefix, sha256: string | null, file: string | null): Stored {
+  if (readsBlobs() && sha256) return { kind: "blob", url: archive().url(blobKey(prefix, sha256)) };
+  return file ? { kind: "file", path: file } : { kind: "gone" };
 }
 
 /** Point the archive at `store` in `mode` until the returned function is called. Tests only. */

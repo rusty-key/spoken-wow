@@ -23,16 +23,23 @@ const { db, closeDb } = await import("@/lib/db");
 const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
 const { encodeForPack } = await import("./encode");
 
-function tone(): Buffer {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "encode-test-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "encode-test-"));
+
+/** `data` in a file of its own, as commitTake hands the encoder its archived take. */
+function clip(name: string, data: Buffer): string {
+  const file = path.join(dir, name);
+  fs.writeFileSync(file, data);
+  return file;
+}
+
+function tone(): string {
   const out = path.join(dir, "tone.mp3");
-  execFileSync("ffmpeg", ["-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=1", "-b:a", "128k", out]);
-  const data = fs.readFileSync(out);
-  fs.rmSync(dir, { recursive: true, force: true });
-  return data;
+  execFileSync("ffmpeg", ["-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=1", "-b:a", "128k", out]);
+  return out;
 }
 
 afterAll(async () => {
+  fs.rmSync(dir, { recursive: true, force: true });
   await closeDb();
 });
 
@@ -40,11 +47,11 @@ describe.skipIf(!tools)("encodeForPack", () => {
   it("encodes a quests take once, puts it in the bucket and records it", async () => {
     const bucket = memoryBlobs();
     const restore = useArchiveForTests(bucket, "dual");
-    const data = tone();
-    const sha = sha256Of(data);
+    const master = tone();
+    const sha = sha256Of(fs.readFileSync(master));
     try {
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
-      const first = await encodeForPack("quests", sha, data);
+      const first = await encodeForPack("quests", sha, master);
       expect(first).not.toBeNull();
       const object = bucket.objects.get(`encodings/${first!.encodedSha256}`);
       expect(object?.contentType).toBe("audio/ogg");
@@ -52,7 +59,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       expect(first!.durationSec).toBeCloseTo(1, 1);
 
       bucket.objects.clear();
-      expect(await encodeForPack("quests", sha, data)).toEqual(first);
+      expect(await encodeForPack("quests", sha, master)).toEqual(first);
       // Recorded, so the second commit of the same bytes encodes nothing.
       expect(bucket.objects.size).toBe(0);
     } finally {
@@ -63,15 +70,16 @@ describe.skipIf(!tools)("encodeForPack", () => {
 
   it("does nothing for a section whose packs ship the take itself, or with no bucket", async () => {
     const data = Buffer.from("not audio");
-    expect(await encodeForPack("places", sha256Of(data), data)).toBeNull();
-    expect(await encodeForPack("quests", sha256Of(data), data)).toBeNull();
+    const master = clip("not-audio.mp3", data);
+    expect(await encodeForPack("places", sha256Of(data), master)).toBeNull();
+    expect(await encodeForPack("quests", sha256Of(data), master)).toBeNull();
   });
 
   it("logs and gives up on a clip it cannot decode", async () => {
     const restore = useArchiveForTests(memoryBlobs(), "r2");
     try {
       const data = Buffer.from("not audio");
-      expect(await encodeForPack("quests", sha256Of(data), data)).toBeNull();
+      expect(await encodeForPack("quests", sha256Of(data), clip("not-audio.mp3", data))).toBeNull();
     } finally {
       restore();
     }

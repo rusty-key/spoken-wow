@@ -278,7 +278,7 @@ describe("with the archive in a bucket", () => {
     expect(measured).toEqual(["bucket only"]);
     expect(archived()).toEqual([]);
     const live = await livePath("quests", file);
-    expect(live).toEqual({ kind: "blob", url: `https://archive.test/takes/${sha}`, sha256: sha });
+    expect(live).toEqual({ kind: "blob", url: `https://archive.test/takes/${sha}` });
     expect(await takePath("quests", file, committed.version)).toEqual(live);
   });
 });

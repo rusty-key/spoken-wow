@@ -5,10 +5,9 @@
  */
 import fs from "node:fs";
 
-import { archive, blobKey, readsBlobs } from "@/lib/blobs/store";
 import { serveFile } from "@/lib/stream";
 import { requireVoiceViewer } from "@/lib/voices/authz";
-import { readReference, referencePath } from "@/lib/voices/references";
+import { readReference, referenceClip } from "@/lib/voices/references";
 
 export const dynamic = "force-dynamic";
 
@@ -23,25 +22,22 @@ export async function GET(request: Request, context: Context) {
   const reference = await readReference(voice, lang);
   if (!reference) return new Response("no reference", { status: 404 });
 
-  if (readsBlobs()) {
-    if (!reference.sha256) return new Response("no reference clip", { status: 404 });
-    return new Response(null, {
-      status: 302,
-      headers: { Location: archive().url(blobKey("references", reference.sha256)), "Cache-Control": "private, no-cache" },
-    });
+  const clip = referenceClip(reference);
+  if (clip.kind === "gone") return new Response("no reference clip", { status: 404 });
+  if (clip.kind === "blob") {
+    return new Response(null, { status: 302, headers: { Location: clip.url, "Cache-Control": "private, no-cache" } });
   }
 
-  const target = referencePath(voice, lang);
   let size: number;
   try {
-    size = fs.statSync(target).size;
+    size = fs.statSync(clip.path).size;
   } catch {
     return new Response("no reference clip", { status: 404 });
   }
 
   // Not immutable: the same URL serves whatever the slot's reference is now, and the ETag is
   // the clipHash, which changes exactly when the clip or its transcript does.
-  return serveFile(request, target, size, {
+  return serveFile(request, clip.path, size, {
     etag: `"${reference.clipHash}"`,
     cacheControl: "private, no-cache",
   });

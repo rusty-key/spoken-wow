@@ -26,14 +26,14 @@ import "server-only";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
-import { archive, blobKey, readsBlobs, sha256Of, writesBlobs } from "@/lib/blobs/store";
+import { keep } from "@/lib/blobs/store";
 import { db, query } from "@/lib/db";
 import type { Source } from "@/lib/sections";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { historyDirOf } from "./adapters";
-import { archiveName, withLocalCopy, writeAtomic } from "./bytes";
+import { archiveName, withLocalCopy } from "./bytes";
 import { encodeForPack } from "./encode";
 import type { Provider } from "@/lib/generation/providers";
 
@@ -104,35 +104,32 @@ export async function commitTake(
     [source, file, lang],
   );
 
-  const sha256 = sha256Of(data);
-  if (writesBlobs()) await archive().put(blobKey("takes", sha256), data, "audio/mpeg");
-  let archiveFile: string | null = null;
-  let durationSec: number | null = null;
-  if (readsBlobs()) {
-    if (options.measure) durationSec = await withLocalCopy(data, "mp3", options.measure);
-  } else {
-    archiveFile = archiveName(next, data);
-    const archived = path.join(historyDirOf(source, file, lang), archiveFile);
-    await writeAtomic(archived, data);
-    if (options.measure) durationSec = await options.measure(archived);
-  }
+  const name = archiveName(next, data);
+  const archived = path.join(historyDirOf(source, file, lang), name);
+  const { sha256, onDisk } = await keep("takes", data, "audio/mpeg", archived);
+  const archiveFile = onDisk ? name : null;
 
-  await insertLive({
-    source,
-    file,
-    lang,
-    version: next,
-    fields,
-    bytes: data.byteLength,
-    durationSec,
-    archiveFile,
-    sha256,
-    batchId: options.batchId,
-  });
-  // After the row: the take is live whether or not its pack's encoding could be made.
-  await encodeForPack(source, sha256, data);
-
-  return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
+  // One file serves both ffprobe and the pack's encoder: the archived one, or a temporary
+  // copy when the bucket is the only store.
+  const commit = async (clip: string): Promise<Committed> => {
+    const durationSec = options.measure ? await options.measure(clip) : null;
+    await insertLive({
+      source,
+      file,
+      lang,
+      version: next,
+      fields,
+      bytes: data.byteLength,
+      durationSec,
+      archiveFile,
+      sha256,
+      batchId: options.batchId,
+    });
+    // After the row: the take is live whether or not its pack's encoding could be made.
+    await encodeForPack(source, sha256, clip);
+    return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
+  };
+  return onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
 }
 
 /** Insert one take and make it the only live one, in one transaction. */

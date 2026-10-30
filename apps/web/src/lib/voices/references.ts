@@ -21,11 +21,10 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { recordActivity } from "@/lib/activity/store";
-import { archive, blobKey, readsBlobs, sha256Of, writesBlobs } from "@/lib/blobs/store";
+import { archive, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
 import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { VOICE_REFERENCES_DIR } from "@/lib/paths";
-import { writeAtomic } from "@/lib/takes/bytes";
 
 import { FFMPEG, ffmpegError, OUTPUT_BITRATE, OUTPUT_RATE } from "./merge";
 import { rejectWindow } from "./reference-window";
@@ -84,6 +83,14 @@ export async function readReferenceAudio(
     if (error.code === "ENOENT") return null;
     throw error;
   });
+}
+
+/**
+ * Where the reference's clip is played from: its object when audio is read from the bucket,
+ * else its file. In r2 mode a row with no hash has no clip, whatever the volume still holds.
+ */
+export function referenceClip(reference: Reference): Stored {
+  return blobOrFile("references", reference.sha256, readsBlobs() ? null : referencePath(reference.voice, reference.lang));
 }
 
 export async function readReference(voice: string, lang: Lang): Promise<Reference | null> {
@@ -254,12 +261,9 @@ export async function saveReference(input: SaveReference): Promise<Reference> {
   const transcript = (await input.transcribe(audio)).trim();
   if (!transcript) throw new Error("fish.audio heard nothing in that window");
 
-  let sha256: string | null = null;
-  if (writesBlobs()) {
-    sha256 = sha256Of(audio);
-    await archive().put(blobKey("references", sha256), audio, "audio/mpeg");
-  }
-  if (!readsBlobs()) await writeAtomic(referencePath(input.voice, input.lang), audio);
+  const kept = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang));
+  // Null unless the object exists: the backfill copies exactly the rows with no hash.
+  const sha256 = kept.inBucket ? kept.sha256 : null;
   await db().query(
     `insert into "fish_reference"
        ("voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedBy", "updatedAt", "sha256")

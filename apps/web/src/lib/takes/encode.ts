@@ -16,18 +16,18 @@ import "server-only";
 
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import { archive, blobKey, sha256Of, writesBlobs } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
 import type { Source } from "@/lib/sections";
 import { durationOf } from "@/lib/places/tools";
 
-import { withLocalCopy } from "./bytes";
-
-export const QUESTS_PROFILE = "ogg-q0-44k";
+const QUESTS_PROFILE = "ogg-q0-44k";
 
 /** The profile a section's packs ship, or null where a pack ships the take's own bytes. */
-export function profileFor(source: Source): string | null {
+function profileFor(source: Source): string | null {
   return source === "quests" ? QUESTS_PROFILE : null;
 }
 
@@ -46,19 +46,26 @@ function run(command: string, args: string[], input?: NodeJS.ReadableStream) {
 }
 
 /** ffmpeg decodes the mp3 to mono wav, oggenc -q 0 encodes it. */
-async function encodeOgg(master: string, out: string): Promise<void> {
-  const decode = run("ffmpeg", ["-nostdin", "-loglevel", "error", "-f", "mp3", "-i", master, "-ac", "1", "-f", "wav", "-"]);
-  const encode = run("oggenc", ["-Q", "-q", "0", "-o", out, "-"], decode.child.stdout!);
-  await Promise.all([decode.done, encode.done]);
+async function encodeOgg(master: string): Promise<{ bytes: Buffer; durationSec: number | null }> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-encode-"));
+  const out = path.join(dir, "clip.ogg");
+  try {
+    const decode = run("ffmpeg", ["-nostdin", "-loglevel", "error", "-f", "mp3", "-i", master, "-ac", "1", "-f", "wav", "-"]);
+    const encode = run("oggenc", ["-Q", "-q", "0", "-o", out, "-"], decode.child.stdout!);
+    await Promise.all([decode.done, encode.done]);
+    return { bytes: await fs.readFile(out), durationSec: await durationOf(out).catch(() => null) };
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
 }
 
 export type Encoding = { encodedSha256: string; bytes: number; durationSec: number | null };
 
 /**
- * Encode one committed take for its pack, unless it already is. Never throws: what went
- * wrong is logged, and the build encodes what is missing.
+ * Encode one committed take, read from the mp3 at `master`, for its pack, unless it already
+ * is. Never throws: what went wrong is logged, and the build encodes what is missing.
  */
-export async function encodeForPack(source: Source, sha256: string, data: Buffer): Promise<Encoding | null> {
+export async function encodeForPack(source: Source, sha256: string, master: string): Promise<Encoding | null> {
   const profile = profileFor(source);
   if (!profile || !writesBlobs()) return null;
   try {
@@ -69,13 +76,7 @@ export async function encodeForPack(source: Source, sha256: string, data: Buffer
     );
     if (done) return done;
 
-    const encoded = await withLocalCopy(data, "mp3", async (master) => {
-      const out = `${master}.ogg`;
-      await encodeOgg(master, out);
-      const bytes = await fs.readFile(out);
-      const durationSec = await durationOf(out).catch(() => null);
-      return { bytes, durationSec };
-    });
+    const encoded = await encodeOgg(master);
     const encodedSha256 = sha256Of(encoded.bytes);
     await archive().put(blobKey("encodings", encodedSha256), encoded.bytes, "audio/ogg");
     await query(

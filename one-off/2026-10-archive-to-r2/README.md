@@ -16,8 +16,7 @@ New audio already goes to both places in `dual` mode. This copies what was there
 ## Steps
 
 1. Create the `spoken-archive` bucket, make it public on its own domain, and add a bucket
-   lock rule on `takes/` and `recordings/` so no key can delete them. Add a lifecycle rule
-   that deletes `staging/` after a day.
+   lock rule on `takes/` and `recordings/` so no key can delete them.
 2. Add to `shared/app.env`: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
    `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL`, and `SPOKEN_ARCHIVE_STORE=dual`. Reload.
    From here on, every new clip is in both places.

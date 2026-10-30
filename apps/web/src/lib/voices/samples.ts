@@ -17,10 +17,10 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { archive, blobKey, readsBlobs, sha256Of, writesBlobs } from "@/lib/blobs/store";
+import { archive, blobKey, keep, readsBlobs, writesBlobs } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
-import { withLocalCopy, writeAtomic } from "@/lib/takes/bytes";
+import { withLocalCopy } from "@/lib/takes/bytes";
 import { isStoredSampleName } from "./names";
 import { isVoiceSlot } from "./slots";
 
@@ -168,16 +168,14 @@ export async function storeSample(
 export async function storeSampleAs(voice: string, file: string, data: Buffer): Promise<Sample> {
   if (!isStoredSampleName(file)) throw new Error(`unsafe sample name ${file}`);
   const dir = await voiceDir(voice);
-  if (writesBlobs()) {
-    const sha256 = sha256Of(data);
-    await archive().put(blobKey("samples", sha256), data, contentTypeOf(file));
+  const { sha256, inBucket } = await keep("samples", data, contentTypeOf(file), path.join(dir, file));
+  if (inBucket) {
     await query(
       `insert into "voice_sample" ("clone", "file", "sha256", "bytes") values ($1, $2, $3, $4)
        on conflict ("clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
       [voice, file, sha256, data.byteLength],
     );
   }
-  if (!readsBlobs()) await writeAtomic(path.join(dir, file), data);
 
   return { file, bytes: data.byteLength, uploadedAt: new Date().toISOString() };
 }
