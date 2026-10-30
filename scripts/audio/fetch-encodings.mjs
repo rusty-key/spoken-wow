@@ -12,12 +12,13 @@
 // encoding, or whose master is not here, is left for package-audio.sh to encode as before.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { archiveOf } from "../lib/archives.mjs";
+import { archiveBase, downloadVerified, eachParallel } from "../lib/download.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 // package-audio.sh's default profile and cache, by the same rule it names them.
@@ -27,38 +28,26 @@ export function cacheDir(lang, root = process.env.CACHE_ROOT ?? join(ROOT, "pipe
   return join(root, lang === "enUS" ? PROFILE : `${lang}-${PROFILE}`);
 }
 
-const hash = (algorithm, data) => createHash(algorithm).update(data).digest("hex");
-
 export async function fillCache(rows, { archive, cache, base, fetchImpl = fetch }) {
   const tally = { fetched: 0, cached: 0, noMaster: 0, failed: [] };
-  const queue = [...rows];
-  const worker = async () => {
-    for (let row = queue.shift(); row; row = queue.shift()) {
-      const master = join(archive, "blobs/takes", row.sha256);
-      if (!existsSync(master)) {
-        tally.noMaster++;
-        continue;
-      }
-      const target = join(cache, `${hash("md5", readFileSync(master))}.ogg`);
-      if (existsSync(target)) {
-        tally.cached++;
-        continue;
-      }
-      try {
-        const res = await fetchImpl(`${base}encodings/${row.encodedSha256}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = Buffer.from(await res.arrayBuffer());
-        if (hash("sha256", data) !== row.encodedSha256) throw new Error("bytes do not match their name");
-        await mkdir(cache, { recursive: true });
-        await writeFile(`${target}.part`, data);
-        await rename(`${target}.part`, target);
-        tally.fetched++;
-      } catch (error) {
-        tally.failed.push(`${row.encodedSha256}: ${error.message}`);
-      }
+  await eachParallel(rows, async (row) => {
+    const master = join(archive, "blobs/takes", row.sha256);
+    if (!existsSync(master)) {
+      tally.noMaster++;
+      return;
     }
-  };
-  await Promise.all(Array.from({ length: 16 }, worker));
+    const target = join(cache, `${createHash("md5").update(await readFile(master)).digest("hex")}.ogg`);
+    if (existsSync(target)) {
+      tally.cached++;
+      return;
+    }
+    try {
+      await downloadVerified(`${base}encodings/${row.encodedSha256}`, row.encodedSha256, target, fetchImpl);
+      tally.fetched++;
+    } catch (error) {
+      tally.failed.push(`${row.encodedSha256}: ${error.message}`);
+    }
+  });
   return tally;
 }
 
@@ -86,7 +75,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const tally = await fillCache(rows, {
     archive: archiveOf("quests"),
     cache: cacheDir(lang),
-    base: base.endsWith("/") ? base : `${base}/`,
+    base: archiveBase(base),
   });
   console.log(`==> encodings: ${tally.fetched} fetched, ${tally.cached} already cached, ${tally.noMaster} without a master here`);
   // Not fatal: package-audio.sh encodes whatever is missing from its cache.

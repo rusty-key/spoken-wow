@@ -10,13 +10,12 @@
 //
 // Each download is checked against its name before it is renamed into place: a pack built
 // from a truncated clip would ship it to every player.
-import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+
+import { archiveBase, downloadVerified, eachParallel } from "../lib/download.mjs";
 
 const OBJECT = /^blobs\/(takes|recordings)\/([0-9a-f]{64})$/;
-const PARALLEL = 16;
 
 export function objectsIn(lines) {
   return lines.map((line) => OBJECT.exec(line.trim())).filter(Boolean).map(([path, prefix, sha]) => ({ path, prefix, sha }));
@@ -24,27 +23,14 @@ export function objectsIn(lines) {
 
 export async function fetchObjects(objects, root, base, fetchImpl = fetch) {
   const wanted = objects.filter((object) => !existsSync(join(root, object.path)));
-  const queue = [...wanted];
   const failed = [];
-  const worker = async () => {
-    for (let object = queue.shift(); object; object = queue.shift()) {
-      const target = join(root, object.path);
-      try {
-        const res = await fetchImpl(`${base}${object.prefix}/${object.sha}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = Buffer.from(await res.arrayBuffer());
-        const got = createHash("sha256").update(data).digest("hex");
-        if (got !== object.sha) throw new Error(`got bytes hashing to ${got}`);
-        await mkdir(dirname(target), { recursive: true });
-        await writeFile(`${target}.part`, data);
-        await rename(`${target}.part`, target);
-      } catch (error) {
-        await rm(`${target}.part`, { force: true });
-        failed.push(`${object.path}: ${error.message}`);
-      }
+  await eachParallel(wanted, async (object) => {
+    try {
+      await downloadVerified(`${base}${object.prefix}/${object.sha}`, object.sha, join(root, object.path), fetchImpl);
+    } catch (error) {
+      failed.push(`${object.path}: ${error.message}`);
     }
-  };
-  await Promise.all(Array.from({ length: PARALLEL }, worker));
+  });
   return { fetched: wanted.length - failed.length, present: objects.length - wanted.length, failed };
 }
 
@@ -58,7 +44,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   let input = "";
   for await (const chunk of process.stdin) input += chunk;
   const objects = objectsIn(input.split("\n"));
-  const result = await fetchObjects(objects, root, base.endsWith("/") ? base : `${base}/`);
+  const result = await fetchObjects(objects, root, archiveBase(base));
   console.log(`==> ${result.fetched} fetched, ${result.present} already here`);
   if (result.failed.length) {
     for (const line of result.failed.slice(0, 10)) console.error(`  ${line}`);

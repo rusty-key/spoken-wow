@@ -60,7 +60,7 @@ endef
         downloads-status \
         factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
         release-dry import-corpus import-locale import-npc-bodies fill-locales import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text \
-        sync check-synced full-release
+        sync check-synced full-release upload upload-dry
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -290,29 +290,48 @@ endif
 # same four bundled into one zip to GitHub; a language's one pack goes to GitHub, and to
 # CurseForge once it has a project. English's meta addon is kilobytes and goes to both stores; a
 # language has none.
+#
+# upload-dry and upload are its last half, for a dist/ already built (release-packs.yaml builds
+# in an earlier step), so they keep the VERSION check too.
+require_version = [ -n "$(VERSION)" ] || { echo "VERSION is required:  make quests-full-release VERSION=2.1.0"; exit 1; }
+
 ifneq ($(filter-out enUS,$(LOCALE)),)
 full-release: require-droplet ## Sync, pull live takes, build and upload the packs (VERSION=2.1.0; LOCALE=xx for a language's)
 	@$(MAKE) --no-print-directory -f make/quests.mk sync
 	@$(MAKE) --no-print-directory -f make/quests.mk pull-live LOCALE=$(LOCALE)
 	@$(MAKE) --no-print-directory -f make/quests.mk package-audio LOCALE=$(LOCALE)
-	@./scripts/quests/release.sh --dry-run --store=curseforge --lang=$(LOCALE) $(PACKS_AUDIO)
-	@./scripts/audio-github-release.sh --dry-run quests $(LOCALE)
+	@$(MAKE) --no-print-directory -f make/quests.mk upload-dry LOCALE=$(LOCALE)
 	@printf 'Upload quests packs to CurseForge and GitHub? [y/N] '; \
 	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@$(MAKE) --no-print-directory -f make/quests.mk upload LOCALE=$(LOCALE)
+
+upload-dry: ## Show what full-release would upload from dist/ (VERSION=2.1.0; LOCALE=xx for a language's)
+	@./scripts/quests/release.sh --dry-run --store=curseforge --lang=$(LOCALE) $(PACKS_AUDIO)
+	@./scripts/audio-github-release.sh --dry-run quests $(LOCALE)
+
+upload: ## Upload the packs in dist/ as full-release does, building nothing (VERSION=2.1.0; LOCALE=xx for a language's)
 	@./scripts/quests/release.sh --store=curseforge --lang=$(LOCALE) $(PACKS_AUDIO)
 	@./scripts/audio-github-release.sh quests $(LOCALE)
 else
 full-release: require-droplet
-	@[ -n "$(VERSION)" ] || { echo "VERSION is required:  make quests-full-release VERSION=2.1.0"; exit 1; }
+	@$(require_version)
 	@$(MAKE) --no-print-directory -f make/quests.mk sync
 	@$(MAKE) --no-print-directory -f make/quests.mk pull-live
 	@$(MAKE) --no-print-directory -f make/quests.mk package-audio
 	@$(MAKE) --no-print-directory -f make/quests.mk package-meta
+	@$(MAKE) --no-print-directory -f make/quests.mk upload-dry
+	@printf 'Upload quests packs $(VERSION) to CurseForge and GitHub? [y/N] '; \
+	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@$(MAKE) --no-print-directory -f make/quests.mk upload
+
+upload-dry:
+	@$(require_version)
 	@./scripts/quests/release.sh --dry-run --store=curseforge $(PACKS_AUDIO)
 	@./scripts/quests/release.sh --dry-run audio-all
 	@./scripts/audio-github-release.sh --dry-run quests $(or $(LOCALE),enUS)
-	@printf 'Upload quests packs $(VERSION) to CurseForge and GitHub? [y/N] '; \
-	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+
+upload:
+	@$(require_version)
 	@./scripts/quests/release.sh --store=curseforge $(PACKS_AUDIO)
 	@./scripts/quests/release.sh audio-all
 	@./scripts/audio-github-release.sh quests $(or $(LOCALE),enUS)

@@ -16,7 +16,7 @@ on:
       section:
         description: Which section's packs
         type: choice
-        options: [quests, zones, books]
+        options: [quests, places, readables]
         required: true
       locale:
         description: The language (enUS for English)
@@ -124,17 +124,17 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
         run: |
-          ./scripts/audio-github-release.sh --dry-run "$SECTION" "$LOCALE"
+          make "$SECTION-upload-dry" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
           if [ "${{ inputs.manager }}" = true ]; then make manager-publish-dry; fi
 
-      # full-release repeats the sync, pull and build, and finds them all done; what it adds
-      # is the store uploads in the order the Makefiles keep. Its question is answered here.
+      # full-release's uploads alone: its sync would dump production again, and its pull and
+      # build would redo the steps above.
       - name: Upload to CurseForge and GitHub
         if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
-        run: make "$SECTION-full-release" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION} < <(yes y)
+        run: make "$SECTION-upload" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
       - name: Publish to the manager channel
         if: ${{ !inputs.dry_run && inputs.manager }}
         env:
