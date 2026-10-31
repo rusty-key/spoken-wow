@@ -13,6 +13,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   Readables pages list theirs. Play on a boss's page in the Compendium plays its story, and the
   boss still tells it when it falls.
   *([rusty-key](https://github.com/rusty-key))*
+- **Boss stories in your language.** Every story is now written in German, French, Spanish (EU and
+  AL), Portuguese, Russian, Korean and Chinese (Simplified and Traditional), and the Bosses page
+  shows the one for your client, English where it has none.
+  *([anon1231823](https://github.com/anon1231823))*
 - **Raid and world bosses wear the elite skull in the Compendium, dungeon bosses the plain one.**
   On Season of Discovery, Blackfathom Deeps, Gnomeregan and Sunken Temple count as raids.
   *([anon1231823](https://github.com/anon1231823))*
