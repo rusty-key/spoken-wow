@@ -281,6 +281,60 @@ stub.Advance(1)
 Expect("the first line is replayed through the real path at once", Keys(), "chat-101")
 stub.Advance(3)
 Expect("...and the next three seconds on", Keys(), "chat-101, chat-102")
+Reset()
+PACK.module.FollowupLookupByNPCSex = { [SPEAKER] = { [101] = { [2] = "chat-101", [3] = "chat-101-f" } } }
+PACK.module.SoundLengthLookupByFileName["chat-101-f"] = 2
+local npcGUID = world.npcGUID
+-- A spawn's GUID carries its server and spawn uid, which no GUID made from the id has.
+world.npcGUID = "Creature-0-5250-0-1-600-00001234AB"; world.unitSex = 3
+VO.Chatter:Simulate("")
+stub.Advance(1)
+Expect("a targeted NPC drawn as a woman replays in her own voice", Keys(), "chat-101-f")
+stub.Advance(3) -- the replay's second line, so it is not heard below
+world.npcGUID = npcGUID
+-- Units on screen by token, which neither target nor mouseover points at.
+local THUG_GUID = "Creature-0-5250-0-1-600-00005678CD"
+local units
+local function Units(list) units = list; Reset() end
+local saved = { _G.UnitGUID, _G.UnitSex, _G.UnitIsUnit, _G.UnitIsDead, _G.UnitTokenFromGUID }
+_G.UnitGUID = function(unit) return units[unit] and units[unit].guid end
+_G.UnitSex = function(unit) return units[unit] and units[unit].sex end
+_G.UnitIsDead = function(unit) return units[unit] ~= nil and units[unit].dead == true end
+_G.UnitIsUnit = function(a, b)
+    local unit = a:match("^(.-)target$")
+    return b == "player" and units[unit] ~= nil and units[unit].attacking == true
+end
+_G.UnitTokenFromGUID = function(guid)
+    for token, u in pairs(units) do if u.guid == guid then return token end end
+end
+local MAN = "Creature-0-5250-0-1-600-0000000001"
+-- Shouting as she aggroes, seen only by her nameplate.
+Units({ nameplate2 = { guid = THUG_GUID, sex = 3 } })
+Say("I sense evil brewing. . . .", THUG_GUID)
+Expect("a speaker seen only by her nameplate speaks in her own voice", Keys(), "chat-101-f")
+
+-- Forever and Classic Era send no GUID: the name and text tell the entry, a unit of it the body.
+Units({ nameplate1 = { guid = MAN, sex = 2 }, nameplate2 = { guid = THUG_GUID, sex = 3, attacking = true } })
+Say("I sense evil brewing. . . .", nil)
+Expect("with no GUID, the one of that entry attacking the player is the speaker", Keys(), "chat-101-f")
+Units({ nameplate1 = { guid = MAN, sex = 2, attacking = true }, nameplate2 = { guid = THUG_GUID, sex = 3, attacking = true } })
+Say("I sense evil brewing. . . .", nil)
+Expect("...but of two attacking, a man and a woman, neither is guessed", Keys(), "chat-101")
+Units({ nameplate1 = { guid = MAN, sex = 2 }, nameplate2 = { guid = THUG_GUID, sex = 3 } })
+Say("I sense evil brewing. . . .", nil)
+Expect("...nor of two standing by", Keys(), "chat-101")
+Units({ nameplate2 = { guid = THUG_GUID, sex = 3 } })
+Say("I sense evil brewing. . . .", nil)
+Expect("...and a lone one of that entry is the speaker", Keys(), "chat-101-f")
+Units({ target = { guid = THUG_GUID, sex = 3, dead = true } })
+Say("I sense evil brewing. . . .", nil)
+Expect("...but not a corpse", Keys(), "chat-101")
+Units({ nameplate1 = { guid = "Creature-0-5250-0-1-999-0000000002", sex = 3, attacking = true } })
+Say("I sense evil brewing. . . .", nil)
+Expect("...nor a unit of another entry, whatever its name", Keys(), "chat-101")
+_G.UnitGUID, _G.UnitSex, _G.UnitIsUnit, _G.UnitIsDead, _G.UnitTokenFromGUID = unpack(saved, 1, 5)
+world.unitSex = 2
+PACK.module.FollowupLookupByNPCSex = nil
 _G.DEFAULT_CHAT_FRAME.AddMessage = addMessage
 
 if Failures() > 0 then os.exit(1) end
