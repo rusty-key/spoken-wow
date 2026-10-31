@@ -5,13 +5,12 @@ frames with its own window. While that window is open it also hides the rest of 
 which hides Spoken's window or subtitles. `addons/Spoken_Quests/UI/DialogueUIBridge.lua`
 brings back what was hidden, inside DialogueUI's window:
 
-- **Mark the words being read.** DialogueUI's own quest and gossip text follows the line the
-  way Spoken's captions do. Spoken's **Type Words Out** types it out as the voice reaches each
-  letter or word selected by **Type Out By**, and its **Highlight Words** lights the word being
-  read. **Mark Words in DialogueUI**
-  turns the marking on or off, and which kind it is follows those two settings on Spoken's
-  page. The light is
-  gold on DialogueUI's dark theme and deep red on its parchment theme, where gold is hard to read.
+- **Mark the words being read.** DialogueUI's own quest and gossip text follows the line the way
+  Spoken's captions do. Spoken's **Type Words Out** types it out as the voice reaches each letter or
+  word selected by **Type Out By**, and its **Highlight Words** lights the word being read. **Mark
+  Words in DialogueUI** turns the marking on or off, and which kind it is follows those settings on
+  Spoken's page. The light is gold on DialogueUI's dark theme and deep red on its parchment theme,
+  where gold is hard to read.
 - **Keep the words in view.** Long text scrolls to the paragraph being read whenever reading
   moves to another paragraph.
 - **Spoken's controls on the title line.** At the top right of DialogueUI's window, on the line
@@ -78,14 +77,13 @@ All of these are checked once at login. If any is missing, the module does nothi
 settings panel says that DialogueUI's version isn't recognised.
 
 **Timing and matching.** The timing is the captions' own estimate, read through
-`Spoken:GetCaption()`, which also says whether Highlight Words and Type Words Out are on and
-whether to type by letter or by word. It
-is worked out on every call rather than read from the captions, which stop updating while
-DialogueUI hides their window. Each line of DialogueUI's text is split with
-`Spoken:SplitCaption()`, the same splitter the captions use, so Chinese is matched character
-by character. The matching and marking below are Spoken's (`UI/WordMarks.lua`), reached through
-`Spoken:WordMarks()`, so another window's text can be marked the same way. The caption's words are matched in order against
-DialogueUI's words:
+`Spoken:GetCaption()`, which also says whether Highlight Words and Type Words Out are on and whether
+to type by letter or by word. It is worked out on every call rather than read from the captions,
+which stop updating while DialogueUI hides their window. Each line of DialogueUI's text is split
+with `Spoken:SplitCaption()`, the same splitter the captions use, so Chinese is matched character by
+character. The matching and marking below are Spoken's (`UI/WordMarks.lua`), reached through
+`Spoken:WordMarks()`, so another window's text can be marked the same way. The caption's words are
+matched in order against DialogueUI's words:
 
 - A match may skip a few words. This covers the NPC name DialogueUI can put in front of the
   text, and a hint above it.

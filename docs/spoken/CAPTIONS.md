@@ -143,15 +143,15 @@ windows. See
 
 ## Captions in another window
 
-`Spoken:GetCaption()` returns the clip, the words and the reading position the captions use,
-whether **Highlight Words** and **Type Words Out** are on, and **Type Out By** (`typewriterBy`). It stays current while the
-captions are hidden or turned off. `Spoken:SplitCaption(text)` splits any text the way the
-captions do, and records where each word sits in that text. With the two, another addon can
-mark the same words in its own copy of the line. Spoken Quests does this inside DialogueUI's
-window (see [`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md)), and Spoken
-Readables in its book view. So **Show Narrator**, **Highlight Words** and **Type Words Out** apply to
-DialogueUI's own text under every narrator style, Voice Only included, when Mark Words in
-DialogueUI is on; with DialogueUI installed Spoken's page offers them under Voice Only
+`Spoken:GetCaption()` returns the clip, the words and the reading position the captions use, whether
+**Highlight Words** and **Type Words Out** are on, and **Type Out By** (`typewriterBy`). It stays
+current while the captions are hidden or turned off. `Spoken:SplitCaption(text)` splits any text the
+way the captions do, and records where each word sits in that text. With the two, another addon can
+mark the same words in its own copy of the line. Spoken Quests does this inside DialogueUI's window
+(see [`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md)), and Spoken Readables in
+its book view. So **Show Narrator**, **Highlight Words** and **Type Words Out** apply to
+DialogueUI's own text under every narrator style, Voice Only included, when Mark Words in DialogueUI
+is on; with DialogueUI installed Spoken's page offers them under Voice Only
 (`DialogueUIOptions:WordRowsShown`). **Type Out By** applies there too.
 
 ## Checks

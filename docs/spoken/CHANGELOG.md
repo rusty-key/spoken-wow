@@ -4,6 +4,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **DialogueUI's text types out letter by letter.** Type Out By now applies to DialogueUI's
+  quest, gossip and book text as it does to the captions, so it types letter by letter, the
+  default, or word by word, and Highlight Words lights only the letters typed so far.
+  *([anon1231823](https://github.com/anon1231823))*
+
 - **World Chatter voices what people say out loud in the world.** Guards, farmers and others who talk
   without a quest are matched by who says what, and the line plays when a voice pack has it, only when
   nothing else is being read. The game's chat bubble stays the only thing on screen, and lights the word

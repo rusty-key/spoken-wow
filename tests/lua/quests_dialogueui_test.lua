@@ -179,6 +179,9 @@ Expect("a clip with no length to time it shows all of it", Cut({ speaking = fals
 Expect("with Type Words Out off, all of it", Cut({ typewriter = false, progress = 0.1, speaking = true, activeWord = 1 }), "all")
 Expect("letter mode reveals only part of the active word",
     Cut({ typewriterBy = "letter", progress = 0.2, speaking = true, activeWord = 2 }), "1:21")
+Expect("...and lights only the letters typed so far",
+    Marks.Want(paras[1], 1, span, 1, 21, { [1] = { paras[1].words[3], paras[1].words[4] } }, GOLD),
+    "Farmer Test: " .. GOLD .. "Hello|r " .. GOLD .. "th|r")
 
 ---------------------------------------------------------------- the highlight alone
 words.HighlightWord, words.Typewriter = true, false
