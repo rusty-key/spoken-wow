@@ -85,7 +85,13 @@ function Chatter:OnChat(event, message, sender, guid, asked)
         return
     end
     local told = guid ~= nil and guid ~= ""
-    guid = told and guid or Utils:GetSpeakerGUIDByName(sender)
+    if not told then
+        -- Before the unit scan, so a speaker with no lines still costs one table lookup.
+        if not (sender and SpeakersNamed(sender) and Followup.ClientSpeaksExportLanguage()) then
+            return
+        end
+        guid = Utils:GetSpeakerGUIDByName(sender)
+    end
     local npcID = guid and Utils:GetCreatureIDFromGUID(guid)
     local line = npcID and self:Match(npcID, message, sender)
     -- A unit found by name may be another entry of that name than the one that spoke.

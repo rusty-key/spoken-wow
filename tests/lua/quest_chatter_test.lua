@@ -292,15 +292,8 @@ stub.Advance(1)
 Expect("a targeted NPC drawn as a woman replays in her own voice", Keys(), "chat-101-f")
 stub.Advance(3) -- the replay's second line, so it is not heard below
 world.npcGUID = npcGUID
-Reset()
--- Shouting as she aggroes: neither target nor mouseover, only her nameplate is up.
+-- Units on screen by token, which neither target nor mouseover points at.
 local THUG_GUID = "Creature-0-5250-0-1-600-00005678CD"
-_G.UnitTokenFromGUID = function(guid) return guid == THUG_GUID and "nameplate3" or nil end
-Say("I sense evil brewing. . . .", THUG_GUID)
-Expect("a speaker seen only by her nameplate speaks in her own voice", Keys(), "chat-101-f")
-_G.UnitTokenFromGUID = nil
-
--- Forever and Classic Era send no GUID: the speaker is found among the units on screen by name.
 local units = {
     nameplate1 = { guid = "Creature-0-5250-0-1-600-0000000001", sex = 2 },
     nameplate2 = { guid = THUG_GUID, sex = 3, attacking = true },
@@ -308,10 +301,7 @@ local units = {
 local unitGUID, unitName, unitSex, unitIsUnit = _G.UnitGUID, _G.UnitName, _G.UnitSex, _G.UnitIsUnit
 _G.UnitGUID = function(unit) return units[unit] and units[unit].guid end
 _G.UnitName = function(unit) return units[unit] and "Madame Test" or unitName(unit) end
-_G.UnitSex = function(unit)
-    if units[unit] then return units[unit].sex end
-    for _, u in pairs(units) do if u.guid == unit then return u.sex end end
-end
+_G.UnitSex = function(unit) return units[unit] and units[unit].sex end
 _G.UnitIsUnit = function(a, b)
     local unit = a:match("^(.-)target$")
     return b == "player" and units[unit] ~= nil and units[unit].attacking == true
@@ -319,6 +309,12 @@ end
 _G.UnitTokenFromGUID = function(guid)
     for token, u in pairs(units) do if u.guid == guid then return token end end
 end
+Reset()
+-- Shouting as she aggroes, seen only by her nameplate.
+Say("I sense evil brewing. . . .", THUG_GUID)
+Expect("a speaker seen only by her nameplate speaks in her own voice", Keys(), "chat-101-f")
+
+-- Forever and Classic Era send no GUID: the speaker is found among the units on screen by name.
 Reset()
 Say("I sense evil brewing. . . .", nil)
 Expect("with no GUID, the one of that name attacking the player is the speaker", Keys(), "chat-101-f")

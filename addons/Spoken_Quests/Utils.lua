@@ -99,11 +99,10 @@ function Utils:GetSpeakerGUIDByName(name)
     if not name or not UnitName then
         return
     end
-    local seen, first, sex, mixed = {}, nil, nil, false
+    local first, sex, mixed = nil, nil, false
     for _, unit in ipairs(SPEAKER_UNITS) do
         local guid = NotSecret(UnitGUID(unit))
-        if guid and not seen[guid] and NotSecret(UnitName(unit)) == name and not UnitIsPlayer(unit) then
-            seen[guid] = true
+        if guid and NotSecret(UnitName(unit)) == name and not UnitIsPlayer(unit) then
             if UnitIsUnit and UnitIsUnit(unit .. "target", "player") then
                 return guid
             end
