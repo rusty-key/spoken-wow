@@ -13,8 +13,9 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { query } from "@/lib/db";
+import { inTransaction, query } from "@/lib/db";
 import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
+import { forgetTeams } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
 
@@ -46,15 +47,29 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
   if (lang === BASE_LANG) throw new Error("English cannot be switched off");
   // The CTE reads the row as it was before this statement, so "was" is the previous state:
   // null for a language never switched, which languageStates treats as off.
-  const [row] = await query<{ was: boolean | null }>(
-    `with "before" as (select "enabled" from "language" where "code" = $1)
-     insert into "language" ("code", "enabled", "updatedAt", "updatedBy")
-     values ($1, $2, now(), $3)
-     on conflict ("code") do update
-        set "enabled" = excluded."enabled", "updatedAt" = now(), "updatedBy" = excluded."updatedBy"
-     returning (select "enabled" from "before") as "was"`,
-    [lang, enabled, userId],
-  );
+  // A language nobody has a team for yet goes to the English team, which is where every
+  // unmaintained language lives; handing it to a team of its own is a later, deliberate act.
+  // Same transaction, so a language is never enabled without somewhere for its work to land.
+  const row = await inTransaction(async (client) => {
+    const { rows } = await client.query<{ was: boolean | null }>(
+      `with "before" as (select "enabled" from "language" where "code" = $1)
+       insert into "language" ("code", "enabled", "updatedAt", "updatedBy")
+       values ($1, $2, now(), $3)
+       on conflict ("code") do update
+          set "enabled" = excluded."enabled", "updatedAt" = now(), "updatedBy" = excluded."updatedBy"
+       returning (select "enabled" from "before") as "was"`,
+      [lang, enabled, userId],
+    );
+    await client.query(
+      `insert into "team_language" ("teamId", "lang", "privileged")
+       select "id", $1, true from "team" where "slug" = 'english'
+          and not exists (select 1 from "team_language" where "lang" = $1 and "privileged")
+       on conflict do nothing`,
+      [lang],
+    );
+    return rows[0];
+  });
+  forgetTeams();
   if ((row?.was ?? false) === enabled) return;
   await recordActivity({ kind: "language.toggled", lang, actorId: userId, detail: { enabled } });
 }
