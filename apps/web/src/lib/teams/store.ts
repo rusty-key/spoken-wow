@@ -7,7 +7,9 @@
  *
  * Memoised for a minute in-process. The mapping changes only when a language is added or
  * handed over, which is rare, and two pm2 workers cannot share an invalidation, so a short
- * expiry is what bounds how stale the other worker can be.
+ * expiry is what bounds how stale the other worker can be. A language the memo has no team
+ * for is looked up again before it is taken to have none (ownerOf), so one switched on by
+ * the other worker resolves at once rather than a minute later.
  */
 import "server-only";
 
@@ -27,6 +29,8 @@ export class NoTeamError extends Error {
 }
 
 const TTL_MS = 60_000;
+/** How old the memo must be for a miss to read the mapping again: at most once a second. */
+const MISS_REFRESH_MS = 1_000;
 
 let cached: { at: number; langs: Promise<Map<Lang, TeamId>> } | null = null;
 
@@ -49,8 +53,20 @@ export function teamLangs(): Promise<Map<Lang, TeamId>> {
   return langs;
 }
 
-export async function teamOf(lang: Lang): Promise<TeamId> {
+/**
+ * The privileged team of `lang`, or undefined for a language nobody owns. A miss reads the
+ * mapping again once, unless the memo is fresh: the other pm2 worker may have switched the
+ * language on since this one read it, and the minute's expiry is too long to wait for that.
+ */
+async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
   const team = (await teamLangs()).get(lang);
+  if (team || !cached || Date.now() - cached.at < MISS_REFRESH_MS) return team;
+  forgetTeams();
+  return (await teamLangs()).get(lang);
+}
+
+export async function teamOf(lang: Lang): Promise<TeamId> {
+  const team = await ownerOf(lang);
   if (!team) throw new NoTeamError(lang);
   return team;
 }
@@ -81,7 +97,7 @@ export async function readAs<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: unknown[],
 ): Promise<T[]> {
-  const team = (await teamLangs()).get(lang);
+  const team = await ownerOf(lang);
   if (!team) return [];
   return queryIn<T>(team, text, params);
 }
