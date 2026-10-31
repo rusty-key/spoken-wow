@@ -370,8 +370,8 @@ function SpokenReadables:PageOnScreen()
 	return found, exact
 end
 
--- Older translated packs have an index but no caption text. Remember only pages
--- identified as books, in the language of the matching index, for those packs.
+-- The page as the client drew it, in the language of the matching index: captions and the
+-- Compendium prefer it to a pack's text when it was matched by its words (see PageTextIn).
 -- The title is the book's, so the pages queued after this one carry it too: the corpus has
 -- only the English one.
 function SpokenReadables:RememberPageText(pageId, language, text, title, exact)
@@ -400,20 +400,22 @@ function SpokenReadables:PackPageText(pageId, language)
 	return nil
 end
 
---- The page as the client showed it this session in `language`, or nil.
-local function KeptText(self, pageId, language)
+--- The page as the client showed it this session in `language`, or nil. `exactOnly` skips a page
+--- placed only by its owner or title.
+local function KeptText(self, pageId, language, exactOnly)
 	local kept = self.pageText and self.pageText[language] and self.pageText[language][pageId]
-	if type(kept) ~= "table" or not kept.exact then return nil end
+	if type(kept) ~= "table" or (exactOnly and not kept.exact) then return nil end
 	return type(kept.text) == "string" and kept.text ~= "" and kept.text or nil
 end
 
---- A page's words in `language`: the page as the client showed it this session, else the words of
---- a pack recorded in it. Nil where neither has them.
+--- A page's words in `language`: the page as the client showed it this session if matched by its
+--- words, else the words of a pack recorded in it, else the page as the client showed it however
+--- it was placed. Nil where none has them.
 function SpokenReadables:PageTextIn(pageId, language)
-	-- The page the client showed is authoritative for the Compendium: a pack made before layout
-	-- was retained can have the same words as one page-long text, while the client still has its
-	-- paragraph breaks.
-	return KeptText(self, pageId, language) or self:PackPageText(pageId, language)
+	-- An exact page beats the pack: a pack made before layout was kept has the same words as one
+	-- line, while the client still has its paragraph breaks. A guessed page must not replace a pack.
+	return KeptText(self, pageId, language, true) or self:PackPageText(pageId, language)
+		or KeptText(self, pageId, language)
 end
 
 --- A page's words in this client's language, or nil. Page by page, so a readable can be in two

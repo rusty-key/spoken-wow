@@ -5,9 +5,8 @@ existing compatible sound pack unless the release notes say otherwise.
 
 ## Unreleased
 
-- **Readable captions retain page layout and locale text.** Generated packs now decode display
-  entities and remove locale name markers, while exact client text no longer overrides a pack's
-  known caption. *([rusty-key](https://github.com/rusty-key))*
+- **Captions keep a page's line breaks.** A letter's paragraphs stay paragraphs in the caption
+  and the Compendium instead of running together. *([anon1231823](https://github.com/anon1231823))*
 - **Language packs carry pages English lacks.** A page that exists only in another language, such
   as one a player sent in, is in that language's pack with its place in its book, so Spoken finds
   and reads it. *([rusty-key](https://github.com/rusty-key))*
