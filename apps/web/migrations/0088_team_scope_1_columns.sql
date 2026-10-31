@@ -23,11 +23,15 @@
 --   * "teamId" is nullable. An insert by the previous release, or any insert outside
 --     withTeam (lib/db.ts), gets null; the contract release backfills those and makes the
 --     column not null.
---   * Its default reads the transaction-local `spoken.team` that withTeam sets, so an insert
---     inside withTeam is scoped without its SQL naming the column. '*' (ALL_TEAMS) is no one
---     team, and reads as null. current_setting is stable, not volatile.
+--   * Its default, spoken_team(), reads the transaction-local `spoken.team` that withTeam sets,
+--     so an insert inside withTeam is scoped without its SQL naming the column. '*' (ALL_TEAMS)
+--     is no one team, and reads as null. It is stable, not volatile, as current_setting is.
 --   * Every existing key stays; 0088_team_scope_3_keys.sql lists the team-first ones beside
 --     them.
+
+create function spoken_team() returns uuid language sql stable as $$
+  select nullif(nullif(current_setting('spoken.team', true), ''), '*')::uuid
+$$;
 
 do $$
 declare
@@ -41,9 +45,7 @@ begin
     'regeneration_pause', 'queue_dismissal', 'activity'
   ] loop
     execute format('alter table %I add column "teamId" uuid', t);
-    execute format(
-      $f$alter table %I alter column "teamId"
-           set default nullif(nullif(current_setting('spoken.team', true), ''), '*')::uuid$f$, t);
+    execute format('alter table %I alter column "teamId" set default spoken_team()', t);
     -- The name Postgres gives a column's `references`, so the schema is the one a single
     -- `add column ... references` would have made.
     execute format(

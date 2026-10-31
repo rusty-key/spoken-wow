@@ -15,7 +15,7 @@ import "server-only";
 import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
 import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
-import { forgetTeams } from "@/lib/teams/store";
+import { adoptLang, forgetTeams } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
 
@@ -47,8 +47,7 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
   if (lang === BASE_LANG) throw new Error("English cannot be switched off");
   // The CTE reads the row as it was before this statement, so "was" is the previous state:
   // null for a language never switched, which languageStates treats as off.
-  // A language nobody has a team for yet goes to the English team, which is where every
-  // unmaintained language lives; handing it to a team of its own is a later, deliberate act.
+  // A language nobody has a team for yet goes to the English team (adoptLang).
   // Same transaction, so a language is never enabled without somewhere for its work to land.
   const row = await inTransaction(async (client) => {
     const { rows } = await client.query<{ was: boolean | null }>(
@@ -60,13 +59,7 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
        returning (select "enabled" from "before") as "was"`,
       [lang, enabled, userId],
     );
-    await client.query(
-      `insert into "team_language" ("teamId", "lang", "privileged")
-       select "id", $1, true from "team" where "slug" = 'english'
-          and not exists (select 1 from "team_language" where "lang" = $1 and "privileged")
-       on conflict do nothing`,
-      [lang],
-    );
+    await adoptLang(client, lang);
     return rows[0];
   });
   forgetTeams();

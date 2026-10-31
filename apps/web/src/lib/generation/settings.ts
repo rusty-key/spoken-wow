@@ -16,7 +16,7 @@
 import { recordActivity } from "@/lib/activity/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { bareDirection } from "@/lib/generation/narration";
-import { asTeamOf, readAs } from "@/lib/teams/store";
+import { queryAs, readAs } from "@/lib/teams/store";
 
 import {
   isSeedStrategy,
@@ -241,7 +241,8 @@ async function upsertLanguage(
   columns: ("modelId" | "voiceSettings" | "seedStrategy" | "raceTags")[],
 ): Promise<void> {
   const set = columns.map((column) => `"${column}" = excluded."${column}"`).join(", ");
-  await asTeamOf(lang, (client) => client.query(
+  await queryAs(
+    lang,
     `insert into "generation_setting_locale"
        ("lang", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
      values ($1, $2, $3, $4, $5, now(), $6)
@@ -255,7 +256,7 @@ async function upsertLanguage(
       JSON.stringify(config.raceTags),
       updatedBy,
     ],
-  ));
+  );
 }
 
 /**
@@ -289,7 +290,8 @@ export async function writeRaceTags(
     return;
   }
   const defaults = fileDefaults().config;
-  await asTeamOf(BASE_LANG, (client) => client.query(
+  await queryAs(
+    BASE_LANG,
     `insert into "generation_setting"
        ("id", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
      values (true, $1, $2, $3, $4, now(), $5)
@@ -304,7 +306,7 @@ export async function writeRaceTags(
       JSON.stringify(tags),
       updatedBy,
     ],
-  ));
+  );
   await recordRaceTags(lang, updatedBy);
 }
 

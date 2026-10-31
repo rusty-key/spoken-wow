@@ -20,7 +20,7 @@
  * below are for. This is the only project that edits the lexicon; wow-lore reads it.
  */
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { asTeamOf, readAs } from "@/lib/teams/store";
+import { queryAs, readAs } from "@/lib/teams/store";
 import {
   addDictionaryRules,
   countLexemes,
@@ -207,7 +207,8 @@ export async function writeLexicon(
   // lexicon_change is the record nothing else in the schema keeps. See lib/generation/dirty.
   const before = (await readRow(lang))?.entries ?? [];
 
-  await asTeamOf(lang, (client) => client.query(
+  await queryAs(
+    lang,
     lang === BASE_LANG
       ? `insert into "pronunciation_lexicon" ("id", "entries", "updatedAt", "updatedBy")
          values (true, $1, now(), $2)
@@ -222,7 +223,7 @@ export async function writeLexicon(
            "updatedAt" = excluded."updatedAt",
            "updatedBy" = excluded."updatedBy"`,
     lang === BASE_LANG ? [JSON.stringify(entries), updatedBy] : [JSON.stringify(entries), updatedBy, lang],
-  ));
+  );
 
   const syncError = await sync(entries, options, lang);
   const lexicon = await readLexicon(lang);
@@ -363,14 +364,15 @@ export async function sync(
   // where clause is what makes that exact: the statement only lands while "entries" is still
   // what was uploaded, so md5 of it is the digest of these rules and no others.
   const at = rowOf(lang);
-  const { rowCount } = await asTeamOf(lang, (client) => client.query(
+  const { rowCount } = await queryAs(
+    lang,
     `update ${at.table}
         set "dictionaryId" = $2, "versionId" = $3, "syncedAt" = now(),
             "syncedDigest" = md5("entries"::text),
             "rulesSent" = $5, "rulesKept" = $6
       where ${at.where} and "entries" = $4::jsonb`,
     [lang, locator.dictionaryId, locator.versionId, JSON.stringify(entries), rules.length, kept],
-  ));
+  );
   if (rowCount === 0) {
     return "the lexicon changed while this upload was in flight; the newer save is the one to retry";
   }

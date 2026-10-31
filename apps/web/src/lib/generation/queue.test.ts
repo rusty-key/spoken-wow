@@ -11,12 +11,20 @@
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { closeDb, db } from "@/lib/db";
+import { closeDb, db, withTeam } from "@/lib/db";
 import { ownTeam } from "@/lib/teams/testing";
 import { teamOf } from "@/lib/teams/store";
 
-import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry } from "./queue";
+import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry, type QueueJob } from "./queue";
 import type { Source } from "@/lib/sections";
+
+/** Settling a claimed job, as the worker does: on a transaction as the job's team. */
+const finish = (job: QueueJob, result: Parameters<typeof finishJob>[1]) =>
+  withTeam(job.teamId, (client) => finishJob(job.id, result, client));
+const fail = (job: QueueJob, failure: Parameters<typeof failJob>[1]) =>
+  withTeam(job.teamId, (client) => failJob(job.id, failure, client));
+const retry = (job: QueueJob, delayMs: number) =>
+  withTeam(job.teamId, (client) => retryJob(job.id, delayMs, client));
 
 /** A file prefix no other run collides with, so tests share one database safely. */
 let prefix: string;
@@ -86,7 +94,7 @@ describe("enqueue", () => {
     const first = await newBatch();
     await enqueue(first, [line(1)], "quests");
     const claimed = await claimNext();
-    await finishJob(claimed!.id, { version: 1, credits: 55 });
+    await finish(claimed!, { version: 1, credits: 55 });
 
     const second = await newBatch();
     expect(await enqueue(second, [line(1)], "quests")).toEqual({ queued: 1, skipped: 0 });
@@ -241,7 +249,7 @@ describe("claimNext", () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1)], "quests");
     const claimed = await claimNext();
-    await retryJob(claimed!.id, 60_000);
+    await retry(claimed!, 60_000);
 
     expect(await claimJobOfThisRun()).toBeNull();
   });
@@ -281,7 +289,7 @@ describe("activeLanes", () => {
 
     const first = await claimNext(undefined, { owner: alice, provider: "elevenlabs" });
     expect(first!.file).toBe(`${prefix}/1.mp3`);
-    await finishJob(first!.id, { version: 1, credits: 1 });
+    await finish(first!, { version: 1, credits: 1 });
 
     // Her remaining job is newer than Bob's, so Bob, who was waiting, goes first.
     expect((await activeLanes(1))[0].owner).toBe(bob);
@@ -292,7 +300,7 @@ describe("activeLanes", () => {
     await enqueue(await newBatch("quests", alice), [line(1)], "quests");
     await enqueue(await newBatch("quests", bob), [line(2)], "quests");
     const claimed = await claimNext(undefined, { owner: alice, provider: "elevenlabs" });
-    await retryJob(claimed!.id, 60_000);
+    await retry(claimed!, 60_000);
 
     expect((await activeLanes(1))[0].owner).toBe(alice);
   });
@@ -509,9 +517,9 @@ describe("snapshot", () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1), line(2)], "quests");
     const a = await claimNext();
-    await finishJob(a!.id, { version: 1, credits: 55 });
+    await finish(a!, { version: 1, credits: 55 });
     const b = await claimNext();
-    await finishJob(b!.id, { version: 1, credits: null });
+    await finish(b!, { version: 1, credits: null });
 
     const seen = await snapshot(null);
     expect(seen.credits).toBeGreaterThanOrEqual(55);
@@ -523,7 +531,7 @@ describe("snapshot", () => {
     await enqueue(batch, [line(1)], "quests");
     const before = await snapshot(null);
     const a = await claimNext();
-    await finishJob(a!.id, { version: 1, credits: null, costUsd: 0.0042 });
+    await finish(a!, { version: 1, credits: null, costUsd: 0.0042 });
 
     const seen = await snapshot(null);
     expect(seen.costUsd - before.costUsd).toBeCloseTo(0.0042);
@@ -536,12 +544,12 @@ describe("snapshot", () => {
     await enqueue(batch, [line(1), line(2)], "quests");
 
     const a = await claimNext();
-    await finishJob(a!.id, { version: 3, credits: 55 });
+    await finish(a!, { version: 3, credits: 55 });
     const afterFirst = await snapshot(null);
     expect(afterFirst.finished.map((job) => job.id)).toContain(a!.id);
 
     const b = await claimNext();
-    await finishJob(b!.id, { version: 4, credits: 55 });
+    await finish(b!, { version: 4, credits: 55 });
     const afterSecond = await snapshot(afterFirst.cursor);
     const ids = afterSecond.finished.map((job) => job.id);
 
@@ -582,7 +590,7 @@ describe("snapshot", () => {
     const cleanBatch = await newBatch();
     await enqueue(cleanBatch, [line(2)], "quests");
     const job = await claimNext();
-    await finishJob(job!.id, { version: 1, credits: 55 });
+    await finish(job!, { version: 1, credits: 55 });
 
     expect((await snapshot(null)).latestBatch).toEqual({
       cancelled: 0,
@@ -600,8 +608,8 @@ describe("snapshot", () => {
     const bobLane = { owner: bob, provider: "elevenlabs" as const };
     await claimNext(undefined, aliceLane);
     await claimNext(undefined, bobLane);
-    await failJob((await claimNext(undefined, aliceLane))!.id, { kind: "test", message: `${prefix} alice` });
-    await failJob((await claimNext(undefined, bobLane))!.id, { kind: "test", message: `${prefix} bob` });
+    await fail((await claimNext(undefined, aliceLane))!, { kind: "test", message: `${prefix} alice` });
+    await fail((await claimNext(undefined, bobLane))!, { kind: "test", message: `${prefix} bob` });
 
     const mine = (seen: Awaited<ReturnType<typeof snapshot>>) => ({
       running: seen.running.map((job) => job.preview),
@@ -651,7 +659,7 @@ describe("snapshot", () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1)], "quests");
     const job = await claimNext();
-    await failJob(job!.id, { kind: "bad-request", message: "no line q:1:accept" });
+    await fail(job!, { kind: "bad-request", message: "no line q:1:accept" });
 
     const seen = await snapshot(null);
     expect(seen.failures).toContainEqual({
@@ -789,7 +797,7 @@ describe("dismissing finished work", () => {
     await enqueue(batch, [line(1)], "quests");
 
     const first = await claimNext();
-    await finishJob(first!.id, { version: 1, credits: 10 });
+    await finish(first!, { version: 1, credits: 10 });
 
     const before = await snapshot(null);
     expect(before.counts.done).toBeGreaterThan(0);
@@ -803,7 +811,7 @@ describe("dismissing finished work", () => {
     // Work that finishes after the dismissal is news again.
     await enqueue(batch, [line(2)], "quests");
     const second = await claimNext();
-    await finishJob(second!.id, { version: 1, credits: 10 });
+    await finish(second!, { version: 1, credits: 10 });
 
     expect((await snapshot(null)).counts.done).toBe(1);
   });
@@ -814,7 +822,7 @@ describe("dismissing finished work", () => {
     await enqueue(batch, [line(5), line(6)], "quests");
 
     const done = await claimNext();
-    await finishJob(done!.id, { version: 1, credits: 10 });
+    await finish(done!, { version: 1, credits: 10 });
     await cancelPending("stopped", { batchId: batch });
 
     // The cancelled job has the higher id, so a watermark that only counted done and failed
@@ -835,7 +843,7 @@ describe("dismissing finished work", () => {
     await enqueue(batch, [line(3)], "quests");
 
     const done = await claimNext();
-    await finishJob(done!.id, { version: 1, credits: 10 });
+    await finish(done!, { version: 1, credits: 10 });
     await enqueue(batch, [line(4)], "quests");
 
     // Dismissing the finished job must leave the pending one - and the Stop button - alone.

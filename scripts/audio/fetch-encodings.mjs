@@ -53,7 +53,7 @@ export function liveEncodings(database, lang) {
     input: `select t."sha256", e."encodedSha256" from "take" t
               join "take_encoding" e on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
              where t."source" = 'quests' and t."lang" = :'lang' and t."isCurrent"
-               and t."teamId" = (select "teamId" from "team_language" where "lang" = :'lang' and "privileged")`,
+               and t."teamId" = team_of_lang(:'lang')`,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   })

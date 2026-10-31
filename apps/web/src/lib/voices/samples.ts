@@ -18,7 +18,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
-import { asTeamOf, readAs } from "@/lib/teams/store";
+import { queryAs, readAs } from "@/lib/teams/store";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
 import { withLocalCopy } from "@/lib/takes/bytes";
 import { isStoredSampleName } from "./names";
@@ -177,12 +177,11 @@ export async function storeSampleAs(voice: string, file: string, data: Buffer): 
   const dir = await voiceDir(voice);
   const sha256 = await keep("samples", data, contentTypeOf(file), path.join(dir, file));
   if (sha256) {
-    await asTeamOf(langOf(voice), (client) =>
-      client.query(
-        `insert into "voice_sample" ("clone", "file", "sha256", "bytes") values ($1, $2, $3, $4)
-         on conflict ("clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
-        [voice, file, sha256, data.byteLength],
-      ),
+    await queryAs(
+      langOf(voice),
+      `insert into "voice_sample" ("clone", "file", "sha256", "bytes") values ($1, $2, $3, $4)
+       on conflict ("clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
+      [voice, file, sha256, data.byteLength],
     );
   }
 
@@ -195,8 +194,10 @@ export async function deleteSample(voice: string, file: string): Promise<boolean
   await voiceDir(voice);
   let removed = false;
   if (writesBlobs()) {
-    const { rowCount } = await asTeamOf(langOf(voice), (client) =>
-      client.query(`delete from "voice_sample" where "clone" = $1 and "file" = $2`, [voice, file]),
+    const { rowCount } = await queryAs(
+      langOf(voice),
+      `delete from "voice_sample" where "clone" = $1 and "file" = $2`,
+      [voice, file],
     );
     removed = (rowCount ?? 0) > 0;
   }

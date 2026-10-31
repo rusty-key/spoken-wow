@@ -32,7 +32,7 @@ import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
 import { ALL_TEAMS, queryIn, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
-import { asTeamOf, byTeam, teamLangs, type TeamId } from "@/lib/teams/store";
+import { asTeamOf, byTeam, queryAs, teamLangs, type TeamId } from "@/lib/teams/store";
 import { maxActiveFrom } from "./concurrency";
 import type { QueueLine } from "./queue-line";
 import type { Provider } from "./speakers/speaker";
@@ -177,16 +177,13 @@ export async function createBatch(
   source: Source,
   lang: Lang = BASE_LANG,
 ): Promise<string> {
-  const [{ id }] = await asTeamOf(lang, async (client) =>
-    (
-      await client.query<{ id: string }>(
-        `insert into "regeneration_batch" ("label", "createdBy", "source", "lang")
-         values ($1, $2, $3, $4) returning "id"`,
-        [label, createdBy, source, lang],
-      )
-    ).rows,
+  const { rows } = await queryAs<{ id: string }>(
+    lang,
+    `insert into "regeneration_batch" ("label", "createdBy", "source", "lang")
+     values ($1, $2, $3, $4) returning "id"`,
+    [label, createdBy, source, lang],
   );
-  return id;
+  return rows[0].id;
 }
 
 /**
@@ -339,8 +336,7 @@ export async function claimNext(
       )
       returning j."id"::text,
                 -- A job the release before teams queued has none yet: its language's.
-                coalesce(j."teamId", (select tl."teamId" from "team_language" tl
-                                        where tl."lang" = j."lang" and tl."privileged")) as "teamId",
+                coalesce(j."teamId", team_of_lang(j."lang")) as "teamId",
                 j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
                 j."preview", j."characters", j."attempts", j."provider", j."owner",
                 (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId")
@@ -350,23 +346,15 @@ export async function claimNext(
   return rows[0] ?? null;
 }
 
-/**
- * A statement on one job or batch by id: on `client` when the worker passes the transaction
- * it opened as the job's team, else as ALL_TEAMS, since an id says nothing about a team.
- */
-async function byId(client: Queryable | undefined, text: string, params: unknown[]) {
-  return client ? client.query(text, params) : withTeam(ALL_TEAMS, (own) => own.query(text, params));
-}
-
+/** The transaction the worker opened as the job's team: settling a job runs on it. */
 type Queryable = Pick<PoolClient, "query">;
 
 export async function finishJob(
   id: string,
   result: { version: number; credits: number | null; costUsd?: number | null },
-  client?: Queryable,
+  client: Queryable,
 ): Promise<void> {
-  await byId(
-    client,
+  await client.query(
     `update "regeneration_job"
         set "state" = 'done', "version" = $2, "credits" = $3, "costUsd" = $4,
             "finishedAt" = now(), "leaseUntil" = null
@@ -378,10 +366,9 @@ export async function finishJob(
 export async function failJob(
   id: string,
   failure: { kind: string; message: string },
-  client?: Queryable,
+  client: Queryable,
 ): Promise<void> {
-  await byId(
-    client,
+  await client.query(
     `update "regeneration_job"
         set "state" = 'failed', "errorKind" = $2, "error" = $3,
             "finishedAt" = now(), "leaseUntil" = null
@@ -391,9 +378,8 @@ export async function failJob(
 }
 
 /** Put a job back, due after `delayMs`. Used only to back off a rate limit. */
-export async function retryJob(id: string, delayMs: number, client?: Queryable): Promise<void> {
-  await byId(
-    client,
+export async function retryJob(id: string, delayMs: number, client: Queryable): Promise<void> {
+  await client.query(
     `update "regeneration_job"
         set "state" = 'pending', "notBefore" = now() + make_interval(secs => $2),
             "leaseUntil" = null
@@ -585,9 +571,8 @@ async function eachTeam(
  * `pending` after Stop ran would be claimed and paid for later, which is not what the person
  * who pressed it asked for.
  */
-export async function batchStopped(batchId: string, client?: Queryable): Promise<boolean> {
-  const { rows } = await byId(
-    client,
+export async function batchStopped(batchId: string, client: Queryable): Promise<boolean> {
+  const { rows } = await client.query<{ stopped: boolean }>(
     `select "stoppedAt" is not null as stopped from "regeneration_batch" where "id" = $1`,
     [batchId],
   );
@@ -639,16 +624,15 @@ type JobAggregateRow = {
  * was showing when the X was pressed. A job that finished in between stays news.
  */
 export async function dismissThrough(jobId: string, userId: string | null, lang: Lang): Promise<void> {
-  await asTeamOf(lang, (client) =>
-    client.query(
-      `insert into "queue_dismissal" ("id", "throughJobId", "dismissedBy")
-       values (true, $1, $2)
-       on conflict ("id") do update
-          set "throughJobId" = greatest("queue_dismissal"."throughJobId", excluded."throughJobId"),
-              "dismissedAt" = now(),
-              "dismissedBy" = excluded."dismissedBy"`,
-      [jobId, userId],
-    ),
+  await queryAs(
+    lang,
+    `insert into "queue_dismissal" ("id", "throughJobId", "dismissedBy")
+     values (true, $1, $2)
+     on conflict ("id") do update
+        set "throughJobId" = greatest("queue_dismissal"."throughJobId", excluded."throughJobId"),
+            "dismissedAt" = now(),
+            "dismissedBy" = excluded."dismissedBy"`,
+    [jobId, userId],
   );
 }
 

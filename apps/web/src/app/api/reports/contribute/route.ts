@@ -7,7 +7,7 @@
  * the language the text is written into: the reporter's client may be in another one.
  */
 import { requireCapability } from "@/lib/generation/authz";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import type { Submission } from "@/lib/contributions/contributions";
 import { contributeReport, reportContribution, reportSubmission } from "@/lib/reports/contribute";
 import type { Report } from "@/lib/reports/reports";
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       : undefined;
   const outcome = await contributeReport(
     found.report,
+    found.lang,
     found.submission,
     found.userId,
     body.as === "wording" ? { as: "wording" } : { pick },
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
 /** The report, its submission and who is asking, or the response that refuses them. */
 async function guarded(
   raw: unknown,
-): Promise<{ report: Report; submission: Submission; userId: string } | { denied: Response }> {
+): Promise<{ report: Report; lang: Lang; submission: Submission; userId: string } | { denied: Response }> {
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) {
     return { denied: Response.json({ error: "unknown report" }, { status: 404 }) };
@@ -64,7 +65,7 @@ async function guarded(
   const guard = await requireCapability("edit", lang ?? BASE_LANG);
   if (guard.denied) return { denied: guard.denied };
   const report = lang === null ? null : await reportById(id, lang);
-  if (!report) {
+  if (!lang || !report) {
     return { denied: Response.json({ error: "unknown report" }, { status: 404 }) };
   }
 
@@ -76,5 +77,5 @@ async function guarded(
     const { denied } = await requireCapability("edit", isLang(submission.locale) ? submission.locale : BASE_LANG);
     if (denied) return { denied };
   }
-  return { report, submission, userId: guard.session.user.id };
+  return { report, lang, submission, userId: guard.session.user.id };
 }

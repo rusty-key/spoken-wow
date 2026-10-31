@@ -7,7 +7,7 @@
  * audio, and on whose consent.
  */
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { asTeamOf, readAs } from "@/lib/teams/store";
+import { queryAs, readAs } from "@/lib/teams/store";
 
 export type VoiceClone = {
   voice: string;
@@ -49,7 +49,8 @@ export async function recordClone(clone: {
   consentNote?: string | null;
   lang?: Lang;
 }): Promise<void> {
-  await asTeamOf(clone.lang ?? BASE_LANG, (client) => client.query(
+  await queryAs(
+    clone.lang ?? BASE_LANG,
     `insert into "voice_clone"
        ("voice", "voiceId", "clonedBy", "sampleCount", "sampleBytes",
         "contributor", "contributorUrl", "consentAt", "consentNote", "lang")
@@ -78,5 +79,5 @@ export async function recordClone(clone: {
       clone.consentNote ?? null,
       clone.lang ?? BASE_LANG,
     ],
-  ));
+  );
 }

@@ -14,7 +14,7 @@ import path from "node:path";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { closeDb, db, POOL_MAX } from "@/lib/db";
+import { closeDb, db, POOL_MAX, withTeam } from "@/lib/db";
 import * as queue from "./queue";
 import { createBatch, enqueue, type QueueEntry } from "./queue";
 import { clampToPool } from "./concurrency";
@@ -650,7 +650,7 @@ describe("per-owner queues", () => {
     await seedFor(waiting, 1);
     const b = await seedFor(other, 3);
     const backedOff = await queue.claimNext(undefined, { owner: waiting, provider: "elevenlabs" });
-    await queue.retryJob(backedOff!.id, 60_000);
+    await withTeam(backedOff!.teamId, (client) => queue.retryJob(backedOff!.id, 60_000, client));
     const seen: string[] = [];
 
     const worker = startWorker(() => true, {

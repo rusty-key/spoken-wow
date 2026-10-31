@@ -21,7 +21,7 @@ import { recordActivity } from "../activity/store";
 import { ALL_TEAMS, queryIn, withTeam } from "../db";
 import { baseLineId } from "../contributions/naming";
 import { BASE_LANG, type Lang } from "../lang";
-import { teamLangs, teamOf, type TeamId } from "../teams/store";
+import { ownerOrAll, teamOf, type TeamId } from "../teams/store";
 
 export type LineIgnore = {
   lineId: string;
@@ -50,14 +50,6 @@ function toIgnore(row: IgnoreRow): LineIgnore {
   };
 }
 
-/**
- * Who a language's ignores are read as: its team. A language nobody owns has none of its own,
- * and reads across every team so that the every-language ignores still hide its lines.
- */
-async function readerOf(lang: Lang): Promise<TeamId | typeof ALL_TEAMS> {
-  return (await teamLangs()).get(lang) ?? ALL_TEAMS;
-}
-
 async function stamp(reader: TeamId | typeof ALL_TEAMS): Promise<string> {
   const rows = await queryIn<{ stamp: string | null }>(
     reader,
@@ -69,7 +61,6 @@ async function stamp(reader: TeamId | typeof ALL_TEAMS): Promise<string> {
   return rows[0]?.stamp ?? "-";
 }
 
-// Not the earlier key: a dev server reloading this module still holds that one's other shape.
 const cacheKey = Symbol.for("spoken.line-ignores.by-lang");
 /** Each language's own stamp: what it counts is what its team can see. */
 type CacheHolder = {
@@ -84,7 +75,9 @@ type CacheHolder = {
 export async function readIgnores(lang: Lang = BASE_LANG): Promise<Map<string, LineIgnore>> {
   const holder = globalThis as CacheHolder;
   const memo = (holder[cacheKey] ??= new Map());
-  const reader = await readerOf(lang);
+  // A language nobody owns has no ignores of its own, and reads across every team so that the
+  // every-language ignores still hide its lines.
+  const reader = await ownerOrAll(lang);
   const current = await stamp(reader);
   const hit = memo.get(lang);
   if (hit?.stamp === current) return hit.map;

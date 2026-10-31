@@ -156,7 +156,7 @@ begin
   if exists (select 1 from information_schema.columns
               where table_schema = '$staging' and table_name = '$table' and column_name = 'teamId') then
     update $staging."$table" s set "teamId" = coalesce(
-        (select tl."teamId" from public."team_language" tl where tl."lang" = s."lang" and tl."privileged"),
+        public.team_of_lang(s."lang"),
         (select "id" from public."team" where "slug" = 'english'))
       where s."lang" is not null;
     get diagnostics n = row_count;

@@ -10,9 +10,9 @@
  *
  * Server-side only: it writes.
  */
-import { ALL_TEAMS, db, queryIn } from "@/lib/db";
+import { db, queryIn } from "@/lib/db";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
-import { teamLangs } from "@/lib/teams/store";
+import { ownerOrAll } from "@/lib/teams/store";
 
 import type { Submission } from "./contributions";
 
@@ -78,7 +78,7 @@ export async function missingAudioRanking(packLang: string): Promise<MissingAudi
   // As the language's team, for the take "voiced" asks after; the hits themselves are shared,
   // so a language nobody owns still lists them, all unvoiced, as ALL_TEAMS.
   return queryIn<MissingAudioRow>(
-    (await teamLangs()).get(packLang as Lang) ?? ALL_TEAMS,
+    await ownerOrAll(packLang as Lang),
     `with ranked as (
        select "lineId", count(*)::int as "installs", max("lastSeen") as "lastSeen",
               array_remove(array_agg(distinct "packVersion"), null) as "packVersions"

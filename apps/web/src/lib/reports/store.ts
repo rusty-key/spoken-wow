@@ -18,7 +18,7 @@
 import { recordActivity } from "@/lib/activity/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { ALL_TEAMS, queryIn } from "@/lib/db";
-import { asTeamOf, readAs } from "@/lib/teams/store";
+import { queryAs, readAs } from "@/lib/teams/store";
 
 import type { ReportContext } from "./context";
 import { type Category, type Report, type Status } from "./reports";
@@ -50,7 +50,8 @@ export async function createReport(input: {
   // on something they cannot reach. The team comes from the language alone, so the addon's
   // anonymous report is filed with whoever looks after its language.
   const lang = input.lang ?? BASE_LANG;
-  await asTeamOf(lang, (client) => client.query(
+  await queryAs(
+    lang,
     `insert into "report"
        ("source", "lang", "lineId", "target", "category", "body", "userId", "name", "email", "ip",
         "context")
@@ -68,7 +69,7 @@ export async function createReport(input: {
       input.ip,
       input.context ? JSON.stringify(input.context) : null,
     ],
-  ));
+  );
 }
 
 export async function countRecent(ip: string, withinMs: number): Promise<number> {
@@ -127,11 +128,9 @@ export async function reportsForLine(
   );
 }
 
-/** `lang` is the report's, from reportLang; looked up here when the caller has not. */
-export async function reportById(id: number, lang?: Lang): Promise<Report | null> {
-  const of = lang ?? (await reportLang(id));
-  if (!of) return null;
-  const rows = await readAs<Report>(of, `select ${COLUMNS} from "report" where "id" = $1`, [id]);
+/** `lang` is the report's, from reportLang. */
+export async function reportById(id: number, lang: Lang): Promise<Report | null> {
+  const rows = await readAs<Report>(lang, `select ${COLUMNS} from "report" where "id" = $1`, [id]);
   return rows[0] ?? null;
 }
 
@@ -149,12 +148,11 @@ export async function setStatus(
   id: number,
   status: Status,
   userId: string,
-  lang?: Lang,
+  lang: Lang,
 ): Promise<Report | null> {
-  const of = lang ?? (await reportLang(id));
-  if (!of) return null;
   // Reopening clears the resolution rather than leaving a stale resolver on an open report.
-  const { rows } = await asTeamOf(of, (client) => client.query<Report & { lang: Lang }>(
+  const { rows } = await queryAs<Report & { lang: Lang }>(
+    lang,
     `update "report"
         set "status" = $2,
             "resolvedAt" = case when $2 = 'open' then null else now() end,
@@ -162,7 +160,7 @@ export async function setStatus(
       where "id" = $1
       returning ${COLUMNS}, "lang"`,
     [id, status, userId],
-  ));
+  );
   if (!rows[0]) return null;
   const { lang: filed, ...report } = rows[0];
   // After the update, which is one statement with no transaction to join. A reopen is logged
@@ -201,23 +199,25 @@ export async function skippedIds(userId: string, lang: Lang): Promise<Set<number
  */
 export async function skipReports(userId: string, ids: number[], lang: Lang): Promise<number> {
   if (!ids.length) return 0;
-  const { rowCount } = await asTeamOf(lang, (client) => client.query(
+  const { rowCount } = await queryAs(
+    lang,
     `insert into "report_skip" ("userId", "reportId")
      select $1, "id" from "report"
       where "id" = any($2::bigint[]) and "lang" = $3 and "status" = 'open'
      on conflict do nothing`,
     [userId, ids, lang],
-  ));
+  );
   return rowCount ?? 0;
 }
 
 /** Puts every report this person skipped in one section and language back in their queue. */
 export async function resetSkips(userId: string, source: Source, lang: Lang): Promise<number> {
-  const { rowCount } = await asTeamOf(lang, (client) => client.query(
+  const { rowCount } = await queryAs(
+    lang,
     `delete from "report_skip" s
       using "report" r
       where r."id" = s."reportId" and s."userId" = $1 and r."source" = $2 and r."lang" = $3`,
     [userId, source, lang],
-  ));
+  );
   return rowCount ?? 0;
 }

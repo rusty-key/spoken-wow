@@ -5,12 +5,11 @@
  * is spoken by up to many NPCs, so a rewrite necessarily changes what all of them say. See
  * the header of migration 0012 for why rewriting the spoken text cannot rename that file.
  *
- * Every override is English's, and so its team's: a write runs as the team of the language it
- * is given, which is English's wherever one is made today.
+ * Every override is English's, and so its team's: a write runs as English's team.
  */
 import { recordActivity } from "../activity/store";
 import { BASE_LANG, type Lang } from "../lang";
-import { asTeamOf, readAs } from "../teams/store";
+import { queryAs, readAs } from "../teams/store";
 import { overrideOf, type LineOverride } from "./override";
 
 type OverrideRow = {
@@ -78,14 +77,14 @@ export async function writeOverride(
   text: string,
   // Nullable to match the column, which is SET NULL: who rewrote a line outlives the account.
   userId: string | null,
-  lang: Lang,
   // The contribution the text came from, when it is a correction accepted from the game: the
   // table has no provenance column, so the activity log is where that is kept.
   contributionId?: number,
 ): Promise<LineOverride> {
   // "before" is read in the same statement, from the snapshot the upsert started with, so
   // the log says what this write replaced and not what a concurrent one did.
-  const { rows } = await asTeamOf(lang, (client) => client.query<OverrideRow & { before: string | null }>(
+  const { rows } = await queryAs<OverrideRow & { before: string | null }>(
+    BASE_LANG,
     `with "was" as (select "text" from "line_override" where "file" = $1)
      insert into "line_override" ("file", "lineId", "text", "updatedBy")
      values ($1, $2, $3, $4)
@@ -97,14 +96,14 @@ export async function writeOverride(
      returning "file", "lineId", "text", "updatedAt", "updatedBy",
                (select "text" from "was") as "before"`,
     [file, lineId, text, userId],
-  ));
+  );
   forgetOverrides();
   const { before, ...row } = rows[0];
   // Saving the text the line already says is not a rewrite, and would only bury real ones.
   if (before !== text) {
     await recordActivity({
       kind: "override.set",
-      lang,
+      lang: BASE_LANG,
       actorId: userId,
       source: "quests",
       subject: file,
@@ -116,18 +115,17 @@ export async function writeOverride(
 }
 
 /** `by` is who reverted it, for the activity log: the delete leaves nothing else behind. */
-export async function clearOverride(file: string, by: string | null, lang: Lang): Promise<boolean> {
-  const { rows } = await asTeamOf(lang, (client) =>
-    client.query<{ lineId: string; text: string }>(
-      `delete from "line_override" where "file" = $1 returning "lineId", "text"`,
-      [file],
-    ),
+export async function clearOverride(file: string, by: string | null): Promise<boolean> {
+  const { rows } = await queryAs<{ lineId: string; text: string }>(
+    BASE_LANG,
+    `delete from "line_override" where "file" = $1 returning "lineId", "text"`,
+    [file],
   );
   forgetOverrides();
   if (rows[0]) {
     await recordActivity({
       kind: "override.cleared",
-      lang,
+      lang: BASE_LANG,
       actorId: by,
       source: "quests",
       subject: file,

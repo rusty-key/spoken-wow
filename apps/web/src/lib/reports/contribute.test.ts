@@ -142,7 +142,7 @@ describe("contributeReport", () => {
     const submission = reportSubmission(filed);
     if (typeof submission === "string") throw new Error(submission);
 
-    const outcome = await contributeReport(filed, submission, ACCEPTER);
+    const outcome = await contributeReport(filed, "enUS", submission, ACCEPTER);
     expect(outcome.ok && [outcome.report.status, outcome.contribution.status]).toEqual(["fixed", "accepted"]);
     expect(outcome.ok && outcome.contribution.body).toBe(filed.body);
 
@@ -160,7 +160,7 @@ describe("contributeReport", () => {
     const count = async () =>
       (await db().query(`select "count" from "contribution" where "dedup" = $1`, [submission.dedup])).rows[0]?.count;
     const before = await count();
-    const outcome = await contributeReport(filed, submission, ACCEPTER);
+    const outcome = await contributeReport(filed, "enUS", submission, ACCEPTER);
     expect(outcome.ok).toBe(false);
     expect(await count()).toBe(before);
   });

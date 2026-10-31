@@ -21,6 +21,29 @@ create table "team_language" (
 
 create unique index "team_language_privileged_idx" on "team_language" ("lang") where "privileged";
 
+-- The privileged team of a language, or null for one nobody owns: the lookup every script and
+-- query that knows only a language makes, so none of them repeats team_language's columns.
+create function "team_of_lang"(text) returns uuid language sql stable as $$
+  select "teamId" from "team_language" where "lang" = $1 and "privileged"
+$$;
+
+-- Every language some per-team row names, the set no row may be left without a team for.
+create view "team_scoped_lang" as
+select "lang" from (
+  select "code" as "lang" from "language"
+  union select "lang" from "take" union select "lang" from "recording"
+  union select "lang" from "take_ack" union select "lang" from "voice_clone"
+  union select "lang" from "fish_reference" union select "lang" from "generation_setting_locale"
+  union select "lang" from "pronunciation_lexicon_locale" union select "lang" from "lexicon_change"
+  union select "lang" from "line_ignore" union select "lang" from "line_flag"
+  union select "lang" from "line_issue" union select "lang" from "report"
+  union select "lang" from "regeneration_batch" union select "lang" from "regeneration_job"
+  union select "lang" from "regeneration_pause" union select "lang" from "activity"
+  -- A sample's language is in its clone's name, 'voice@lang'; a bare name is English's.
+  union select nullif(split_part("clone", '@', 2), '') from "voice_sample"
+) l
+ where "lang" is not null;
+
 -- SEEDING. Today's boundaries are the ones the grants already draw, so the teams are the
 -- groups of languages that the same people maintain. `record` alone does not make a
 -- maintainer: a voice actor looks after nothing. English, and every language nobody
@@ -29,25 +52,12 @@ create unique index "team_language_privileged_idx" on "team_language" ("lang") w
 -- The same query, read-only, is deploy/web/bin/team-grouping.sql; run it against production
 -- before deploying to see who ends up together.
 --
--- Every language some per-team row names gets a team here, the same set 0089 later checks
--- (0089_team_contract.sql), so that no row of deploy 1 is left with a language nobody owns.
+-- Every language some per-team row names (team_scoped_lang) gets a team here, the same set
+-- 0089 later checks (0089_team_contract.sql), so that no row of deploy 1 is left with a
+-- language nobody owns.
 create temp table "team_seed" on commit drop as
 with "langs" as (
-  select "lang" from (
-    select "code" as "lang" from "language"
-    union select 'enUS'
-    union select "lang" from "take" union select "lang" from "recording"
-    union select "lang" from "take_ack" union select "lang" from "voice_clone"
-    union select "lang" from "fish_reference" union select "lang" from "generation_setting_locale"
-    union select "lang" from "pronunciation_lexicon_locale" union select "lang" from "lexicon_change"
-    union select "lang" from "line_ignore" union select "lang" from "line_flag"
-    union select "lang" from "line_issue" union select "lang" from "report"
-    union select "lang" from "regeneration_batch" union select "lang" from "regeneration_job"
-    union select "lang" from "regeneration_pause" union select "lang" from "activity"
-    -- A sample's language is in its clone's name, 'voice@lang'; a bare name is English's.
-    union select nullif(split_part("clone", '@', 2), '') from "voice_sample"
-  ) l
-   where "lang" is not null
+  select "lang" from "team_scoped_lang" union select 'enUS'
 ), "keyed" as (
   select l."lang",
          case when l."lang" = 'enUS' then '{}'::text[]

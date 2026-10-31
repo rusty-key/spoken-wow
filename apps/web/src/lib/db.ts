@@ -10,7 +10,8 @@
  */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
-import type { TeamId } from "@/lib/teams/store";
+/** A team's id, "team"."id". Defined here so withTeam need not import the teams module. */
+export type TeamId = string;
 
 /**
  * How many connections one process may hold.

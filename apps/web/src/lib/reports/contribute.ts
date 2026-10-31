@@ -33,7 +33,7 @@ import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/kno
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
 import { contributionByDedup, type Contribution } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
-import { BASE_LANG } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { readAs } from "@/lib/teams/store";
 
 import type { Report } from "./reports";
@@ -102,6 +102,8 @@ export async function reportContribution(submission: Submission): Promise<Report
  */
 export async function contributeReport(
   report: Report,
+  // The report's own, from reportLang: the submission's locale may be another.
+  lang: Lang,
   submission: Submission,
   userId: string,
   accept: CorrectionAccept = {},
@@ -136,7 +138,7 @@ export async function contributeReport(
     };
   }
 
-  const fixed = await setStatus(report.id, "fixed", userId);
+  const fixed = await setStatus(report.id, "fixed", userId, lang);
   if (!fixed) return { ok: false, reason: "not-found" };
   return { ok: true, report: fixed, contribution: outcome.contribution };
 }

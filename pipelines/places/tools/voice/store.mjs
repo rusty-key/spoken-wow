@@ -127,7 +127,7 @@ async function loadFromDatabase() {
     `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes"
        from "take"
       where "source" = '${SOURCE}' and "isCurrent" and "lang" = '${LANG}'
-        and "teamId" = (select "teamId" from "team_language" where "lang" = '${LANG}' and "privileged")`,
+        and "teamId" = team_of_lang('${LANG}')`,
   );
 
   const manifest = {};

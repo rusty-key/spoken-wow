@@ -93,7 +93,7 @@ describe("setStatus", () => {
     await createReport(submission());
     const [report] = await reportsForLine("quests", "q:1:accept");
 
-    const updated = await setStatus(report.id, "fixed", RESOLVER);
+    const updated = await setStatus(report.id, "fixed", RESOLVER, "enUS");
 
     expect(updated?.status).toBe("fixed");
     expect(updated?.resolvedAt).not.toBeNull();
@@ -104,8 +104,8 @@ describe("setStatus", () => {
     await createReport(submission());
     const [report] = await reportsForLine("quests", "q:1:accept");
 
-    await setStatus(report.id, "fixed", RESOLVER);
-    const reopened = await setStatus(report.id, "open", RESOLVER);
+    await setStatus(report.id, "fixed", RESOLVER, "enUS");
+    const reopened = await setStatus(report.id, "open", RESOLVER, "enUS");
 
     expect(reopened?.resolvedAt).toBeNull();
     expect(reopened?.resolvedBy).toBeNull();
@@ -115,14 +115,14 @@ describe("setStatus", () => {
     await createReport(submission({ body: "Minor quibble." }));
     const [report] = (await reportsForLine("quests", "q:1:accept")).filter((each) => each.body === "Minor quibble.");
 
-    expect((await setStatus(report.id, "minor", RESOLVER))?.status).toBe("minor");
+    expect((await setStatus(report.id, "minor", RESOLVER, "enUS"))?.status).toBe("minor");
     const ids = async (status: "open" | "minor") => (await listReports(status)).map((each) => each.id);
     expect(await ids("open")).not.toContain(report.id);
     expect(await ids("minor")).toContain(report.id);
   });
 
   it("returns null for an id that does not exist", async () => {
-    expect(await setStatus(2147483000, "fixed", RESOLVER)).toBeNull();
+    expect(await setStatus(2147483000, "fixed", RESOLVER, "enUS")).toBeNull();
   });
 });
 
@@ -191,7 +191,7 @@ describe("a report's team", () => {
       expect(rows).toEqual([{ teamId: french.team }]);
 
       const [report] = await reportsForLine("quests", "q:1:accept", "frFR");
-      expect((await setStatus(report.id, "fixed", RESOLVER))?.status).toBe("fixed");
+      expect((await setStatus(report.id, "fixed", RESOLVER, "frFR"))?.status).toBe("fixed");
     } finally {
       await french.restore();
     }

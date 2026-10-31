@@ -35,7 +35,6 @@ export async function rosterTeam(_lang: Lang): Promise<TeamId> {
   return teamOf(BASE_LANG);
 }
 
-// Not the earlier key: a dev server reloading this module still holds that one's other shape.
 const cacheKey = Symbol.for("spoken.roster.by-team");
 type Holder = { [cacheKey]?: Map<TeamId, { stamp: string; roster: Promise<Roster> }> };
 const holder = globalThis as Holder;

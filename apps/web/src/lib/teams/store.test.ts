@@ -1,6 +1,6 @@
 /**
  * Team resolution against a real Postgres: the language -> privileged team mapping lives in
- * the schema, and the new-language rule lives in setEnabled's SQL.
+ * the schema, and the new-language rule in adoptLang.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb, db } from "@/lib/db";
 import { setEnabled } from "@/lib/languages/store";
 
-import { allTeams, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
+import { forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
 
 const USER = `test-teams-${Math.random().toString(36).slice(2, 10)}`;
 // A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
@@ -62,7 +62,8 @@ describe("teamOf", () => {
     await setEnabled(NEW_LANG, true, USER);
     expect(await teamOf(NEW_LANG)).toBe(await englishTeam());
     expect((await teamLangs()).get(NEW_LANG)).toBe(await englishTeam());
-    expect(await allTeams()).toContain(await englishTeam());
+    const { rows } = await db().query(`select "id" from "team"`);
+    expect(rows.map((row) => row.id)).toContain(await englishTeam());
   });
 
   it("leaves the team alone when a language is toggled again", async () => {

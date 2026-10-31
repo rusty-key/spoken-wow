@@ -25,7 +25,7 @@ import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@
 import { withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { VOICE_REFERENCES_DIR } from "@/lib/paths";
-import { asTeamOf, readAs, teamOf } from "@/lib/teams/store";
+import { queryAs, readAs, teamOf } from "@/lib/teams/store";
 
 import { FFMPEG, ffmpegError, OUTPUT_BITRATE, OUTPUT_RATE } from "./merge";
 import { rejectWindow } from "./reference-window";
@@ -312,13 +312,12 @@ export async function saveTranscript(
   const audio = await readReferenceAudio(voice, lang, current.sha256).catch(() => null);
   if (!audio) return null;
 
-  const { rowCount } = await asTeamOf(lang, (client) =>
-    client.query(
-      `update "fish_reference"
-          set "transcript" = $3, "clipHash" = $4, "updatedBy" = $5, "updatedAt" = now()
-        where "voice" = $1 and "lang" = $2`,
-      [voice, lang, text, clipHash(audio, text), userId],
-    ),
+  const { rowCount } = await queryAs(
+    lang,
+    `update "fish_reference"
+        set "transcript" = $3, "clipHash" = $4, "updatedBy" = $5, "updatedAt" = now()
+      where "voice" = $1 and "lang" = $2`,
+    [voice, lang, text, clipHash(audio, text), userId],
   );
   lists.delete(lang);
   if (!rowCount) return null;
@@ -339,12 +338,11 @@ export async function savePinned(
   pinned: boolean,
   userId: string,
 ): Promise<Reference | null> {
-  const { rowCount } = await asTeamOf(lang, (client) =>
-    client.query(
-      `update "fish_reference" set "pinned" = $3, "updatedBy" = $4, "updatedAt" = now()
-        where "voice" = $1 and "lang" = $2 and "pinned" <> $3`,
-      [voice, lang, pinned, userId],
-    ),
+  const { rowCount } = await queryAs(
+    lang,
+    `update "fish_reference" set "pinned" = $3, "updatedBy" = $4, "updatedAt" = now()
+      where "voice" = $1 and "lang" = $2 and "pinned" <> $3`,
+    [voice, lang, pinned, userId],
   );
   lists.delete(lang);
   // Only on a change, so pressing it twice is not logged twice. It moves every line of the
@@ -367,8 +365,10 @@ export async function savePinned(
  * `by` is who removed it, for the activity log: the delete leaves nothing else behind.
  */
 export async function deleteReference(voice: string, lang: Lang, by: string | null): Promise<void> {
-  const { rowCount } = await asTeamOf(lang, (client) =>
-    client.query(`delete from "fish_reference" where "voice" = $1 and "lang" = $2`, [voice, lang]),
+  const { rowCount } = await queryAs(
+    lang,
+    `delete from "fish_reference" where "voice" = $1 and "lang" = $2`,
+    [voice, lang],
   );
   // The object stays: it is named by its bytes, and a re-cut of the same window reuses it.
   if (!readsBlobs()) await fs.rm(referencePath(voice, lang), { force: true });

@@ -216,7 +216,7 @@ export async function readLiveTakes(lang) {
   const { rows } = await query(
     `select "lineId", "file", "durationSec", "wordTimes", "spokenHash" from "take"
       where "source" = 'bosses' and "lang" = $1 and "isCurrent"
-        and "teamId" = (select "teamId" from "team_language" where "lang" = $1 and "privileged")`,
+        and "teamId" = team_of_lang($1)`,
     [lang],
   );
   return rows;

@@ -13,12 +13,12 @@
  */
 import "server-only";
 
-import type { PoolClient, QueryResultRow } from "pg";
+import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 
-import { query, queryIn, withTeam } from "@/lib/db";
+import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 
-export type TeamId = string;
+export type { TeamId };
 
 /** A language with no privileged team: nothing can be written for it until it has one. */
 export class NoTeamError extends Error {
@@ -71,9 +71,13 @@ export async function teamOf(lang: Lang): Promise<TeamId> {
   return team;
 }
 
-export async function allTeams(): Promise<TeamId[]> {
-  const rows = await query<{ id: TeamId }>(`select "id" from "team" order by "createdAt", "id"`);
-  return rows.map((row) => row.id);
+/**
+ * The team that owns `lang`, or ALL_TEAMS for a site-wide (null) or unowned language: for the
+ * reads and writes that must still work there rather than refuse, where ALL_TEAMS leaves the
+ * row's "teamId" null.
+ */
+export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
+  return (lang && (await ownerOf(lang))) || ALL_TEAMS;
 }
 
 /**
@@ -83,6 +87,19 @@ export async function allTeams(): Promise<TeamId[]> {
  */
 export async function asTeamOf<T>(lang: Lang, work: (client: PoolClient) => Promise<T>): Promise<T> {
   return withTeam(await teamOf(lang), work);
+}
+
+/**
+ * One statement as the team that owns `lang`, its whole result kept (rowCount is what several
+ * writes are checked by). The write twin of readAs: throws NoTeamError rather than answering
+ * nothing, as asTeamOf does.
+ */
+export async function queryAs<T extends QueryResultRow = QueryResultRow>(
+  lang: Lang,
+  text: string,
+  params?: unknown[],
+): Promise<QueryResult<T>> {
+  return asTeamOf(lang, (client) => client.query<T>(text, params));
 }
 
 /**
@@ -114,4 +131,20 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
     else grouped.set(team, [lang]);
   }
   return grouped;
+}
+
+/**
+ * Gives `lang` to the english team unless some team already owns it: where every unmaintained
+ * language lives, and handing it to a team of its own is a later, deliberate act. On the
+ * caller's client, so it can share the transaction that switches the language on. The caller
+ * forgets the memo (forgetTeams) once that commits.
+ */
+export async function adoptLang(client: ClientBase, lang: string): Promise<void> {
+  await client.query(
+    `insert into "team_language" ("teamId", "lang", "privileged")
+     select "id", $1, true from "team" where "slug" = 'english'
+        and team_of_lang($1) is null
+     on conflict do nothing`,
+    [lang],
+  );
 }

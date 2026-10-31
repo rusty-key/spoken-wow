@@ -47,9 +47,6 @@ const ENGLISH = [
   "line_override",
 ];
 
-const privileged = (lang: string) =>
-  `select "teamId" from "team_language" tl where tl."lang" = ${lang} and tl."privileged"`;
-
 const MIGRATED = `select "applied_at" from "schema_migrations"
                    where "name" = '0088_team_scope_2_backfill.sql'`;
 
@@ -82,7 +79,7 @@ async function wrong(table: string, expected: string, where = "true"): Promise<n
 
 describe("team scope", () => {
   it.each(BY_LANG)("gives %s the privileged team of its lang", async (table) => {
-    expect(await wrong(table, privileged(`t."lang"`), `t."lang" is not null`)).toBe(0);
+    expect(await wrong(table, `select team_of_lang(t."lang")`, `t."lang" is not null`)).toBe(0);
   });
 
   it.each(["line_ignore", "activity"])("leaves site-wide %s rows without a team", async (table) => {
@@ -107,7 +104,7 @@ describe("team scope", () => {
 
   it("gives voice_sample the team of its clone's language", async () => {
     const lang = `coalesce(nullif(split_part(t."clone", '@', 2), ''), 'enUS')`;
-    expect(await wrong("voice_sample", privileged(lang))).toBe(0);
+    expect(await wrong("voice_sample", `select team_of_lang(${lang})`)).toBe(0);
   });
 
   it("gives line_issue_line its issue's team", async () => {

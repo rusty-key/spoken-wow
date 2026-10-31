@@ -22,9 +22,8 @@
 import { randomUUID } from "node:crypto";
 
 import { recordActivities } from "@/lib/activity/store";
-import { queryIn } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { asTeamOf, readAs, teamOf } from "@/lib/teams/store";
+import { asTeamOf, queryAs, readAs } from "@/lib/teams/store";
 
 import { kindOf, type LexiconEntry } from "./lexicon";
 import type { Source } from "@/lib/sections";
@@ -288,8 +287,8 @@ export async function logSoundChanges(
   lang: Lang = BASE_LANG,
 ): Promise<void> {
   if (!changes.length) return;
-  await queryIn(
-    await teamOf(lang),
+  await queryAs(
+    lang,
     `insert into "lexicon_change" ("grapheme", "kind", "versionId", "changedBy", "lang")
      select "grapheme", "kind", $3, $4, $5
        from unnest($1::text[], $2::text[]) as c("grapheme", "kind")`,

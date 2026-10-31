@@ -66,16 +66,9 @@ export async function recordActivities(
     return;
   }
   try {
-    const owners = await teamLangs();
-    // Each team's acts in a transaction of its own, the every-language ones as no one team.
-    const groups = new Map<TeamId | typeof ALL_TEAMS, ActivityEvent[]>();
-    for (const event of events) {
-      const team = (event.lang && owners.get(event.lang)) || ALL_TEAMS;
-      groups.set(team, [...(groups.get(team) ?? []), event]);
-    }
-    for (const [team, group] of groups) {
-      await withTeam(team, (scoped) => scoped.query(INSERT, [rowsOf(group, owners)]));
-    }
+    // As no one team: every row names its own.
+    const rows = rowsOf(events, await teamLangs());
+    await withTeam(ALL_TEAMS, (scoped) => scoped.query(INSERT, [rows]));
   } catch (error) {
     console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
   }
