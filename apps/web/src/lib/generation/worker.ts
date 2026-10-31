@@ -15,7 +15,6 @@ import { POOL_MAX } from "@/lib/db";
 import { afterRateLimit, budgetFor, clampToPool, maxActiveFrom, pickLane } from "./concurrency";
 import {
   activeLanes,
-  batchStopped,
   claimNext,
   failJob,
   finishJob,
@@ -382,7 +381,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
           // retryJob rather than starting it is what keeps a rolling deploy's SIGTERM from
           // stranding the row for its whole five-minute lease. Losing an attempt to a
           // deploy that never actually tried the job is the fair side of that trade.
-          await retryJob(job.id, 0, job.attempts);
+          await retryJob(job.id, { delayMs: 0 }, job.attempts);
           return;
         }
 
@@ -457,10 +456,8 @@ export async function settle(
 
     if (kind === "rate-limit") {
       options.onRateLimit?.();
-      // No retry after Stop: a pending row would be claimed and paid for, and would flip the
-      // panel back to "Regenerating".
-      if (job.attempts < MAX_ATTEMPTS && !(await batchStopped(job.batchId))) {
-        await retryJob(job.id, backoff(job.attempts), job.attempts);
+      if (job.attempts < MAX_ATTEMPTS) {
+        await retryJob(job.id, { delayMs: backoff(job.attempts), because: { kind, message } }, job.attempts);
         return;
       }
     }

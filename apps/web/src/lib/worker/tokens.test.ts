@@ -1,13 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
-
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
 
-import { revokeCallingToken, workerUser } from "./tokens";
+import { approvePairing, pollPairing, revokeCallingToken, startPairing, workerUser } from "./tokens";
 
 let owner: string;
-const token = `spw_${"a".repeat(20)}${Math.random().toString(36).slice(2, 10)}`;
+let token: string;
 const call = (header?: string) => new Request("https://site.test/api/worker/unpair", { method: "POST", headers: header ? { authorization: header } : {} });
 
 beforeEach(async () => {
@@ -16,11 +14,11 @@ beforeEach(async () => {
     owner,
     `${owner}@example.invalid`,
   ]);
-  await db().query(`insert into "worker_token" ("id", "userId", "tokenHash", "label") values ($1, $2, $3, 'test')`, [
-    randomUUID(),
-    owner,
-    createHash("sha256").update(token).digest("hex"),
-  ]);
+  const pairing = await startPairing("test");
+  expect(await approvePairing(pairing.code, owner)).toBe(true);
+  const polled = await pollPairing(pairing.poll);
+  if (polled.status !== "approved") throw new Error(`pairing ended ${polled.status}`);
+  token = polled.token;
 });
 
 afterEach(async () => {

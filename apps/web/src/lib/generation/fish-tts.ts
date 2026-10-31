@@ -20,6 +20,7 @@ import { encode } from "@msgpack/msgpack";
 import { fishConfig, type FishOptions } from "@/lib/voices/fish";
 
 import { classifyFish, failure, type Failure } from "./errors";
+import { SPEECH_PATH } from "./providers";
 import { PARAGRAPH_BREAK } from "./speakers/shape";
 import { stitchMp3 } from "./stitch";
 
@@ -164,7 +165,7 @@ async function speakOnce(
 
   let response: Response;
   try {
-    response = await fetchImpl(`${baseUrl}/v1/tts`, {
+    response = await fetchImpl(`${baseUrl}${SPEECH_PATH.fish}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

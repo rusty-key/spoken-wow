@@ -26,7 +26,7 @@ import {
   requireQueueable,
   requireIn,
 } from "@/lib/generation/authz";
-import { createBatch, enqueue, snapshot } from "@/lib/generation/queue";
+import { queueBatch, snapshot } from "@/lib/generation/queue";
 import { placesEntry, questsEntry, readablesEntry } from "@/lib/generation/queue-entries";
 import { searchContext } from "@/lib/quests/context";
 import { batchJobs, matchingLines } from "@/lib/search";
@@ -116,12 +116,12 @@ export async function POST(request: NextRequest) {
     if (noFishKey) return noFishKey;
   }
 
-  const batchId = await createBatch(label, session.user.id, "quests", lang);
-  const { queued, skipped } = await enqueue(
-    batchId,
-    jobs.map((job) => ({ ...questsEntry(job), provider: pinned.has(job.voice) ? "fish" : undefined })),
+  const { batchId, queued, skipped } = await queueBatch(
+    label,
+    session.user.id,
     "quests",
     lang,
+    jobs.map((job) => ({ ...questsEntry(job), provider: pinned.has(job.voice) ? "fish" : undefined })),
     provider,
   );
   await recordQueued(batchId, label, session.user.id, "quests", lang, queued);
@@ -169,8 +169,7 @@ async function queuePlaces(
     );
   }
 
-  const batchId = await createBatch(label, userId, "places", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "places", lang, provider);
+  const { batchId, queued, skipped } = await queueBatch(label, userId, "places", lang, jobs, provider);
   await recordQueued(batchId, label, userId, "places", lang, queued);
 
   queueWorker()?.nudge();
@@ -214,8 +213,7 @@ async function queueReadables(
     );
   }
 
-  const batchId = await createBatch(label, userId, "readables", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "readables", lang, provider);
+  const { batchId, queued, skipped } = await queueBatch(label, userId, "readables", lang, jobs, provider);
   await recordQueued(batchId, label, userId, "readables", lang, queued);
 
   queueWorker()?.nudge();
@@ -225,16 +223,18 @@ async function queueReadables(
 
 /**
  * One row for the whole batch, however many lines it holds. The takes it cuts are recorded
- * as they land and folded under this row on the activity page.
+ * as they land and folded under this row on the activity page. None when every line was
+ * already queued, since no batch was kept.
  */
 async function recordQueued(
-  batchId: string,
+  batchId: string | null,
   label: string,
   actorId: string,
   source: Source,
   lang: Lang,
   count: number,
 ): Promise<void> {
+  if (!batchId) return;
   await recordActivity({
     kind: "batch.queued",
     lang,

@@ -21,6 +21,8 @@ import { writeMode } from "./mode";
 const SILENT_MP3 = "//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM";
 /** What ElevenLabs' with-timestamps endpoint answers, as the Manager passes it on. */
 const TIMED_SILENCE = Buffer.from(JSON.stringify({ audio_base64: SILENT_MP3, alignment: null })).toString("base64");
+/** An answer to a request no line sends, as for a line that changed since its claim. */
+const STALE = [{ id: "0".repeat(64), status: 200, contentType: "application/json", characterCost: "1", body: TIMED_SILENCE }];
 
 let owner: string;
 let file: string;
@@ -144,20 +146,12 @@ describe("relayed generation", () => {
     expect(rows).toEqual([{ credits: 12, createdBy: owner }]);
   });
 
-  it("puts the job back when the answer is for a request the line no longer sends", async () => {
+  it("puts the job back, without spending an attempt, when the answer is for a request the line no longer sends", async () => {
     await writeMode(owner, "elevenlabs", "local");
     const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
-    const answered = await answerJob(
-      owner,
-      {
-        jobId: claimed.jobId,
-        attempt: claimed.attempt,
-        answers: [{ id: "0".repeat(64), status: 200, contentType: "application/json", characterCost: "12", body: TIMED_SILENCE }],
-      },
-      options,
-    );
+    const answered = await answerJob(owner, { jobId: claimed.jobId, attempt: claimed.attempt, answers: STALE }, options);
     expect(answered).toEqual({ status: "changed" });
-    expect((await job()).state).toBe("pending");
+    expect(await job()).toMatchObject({ state: "pending", attempts: claimed.attempt - 1 });
     expect((await db().query(`select 1 from "take" where "file" = $1`, [file])).rows).toEqual([]);
   });
 
@@ -217,24 +211,43 @@ describe("relayed generation", () => {
 
   it("fails a line given back, or found changed, once its batch was stopped", async () => {
     await writeMode(owner, "elevenlabs", "local");
+    const stopped = (at: "now" | null) =>
+      db().query(`update "regeneration_batch" set "stoppedAt" = ${at === "now" ? "now()" : "null"} where "id" = any($1::uuid[])`, [batches]);
+
     const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
-    await db().query(`update "regeneration_batch" set "stoppedAt" = now() where "id" = any($1::uuid[])`, [batches]);
+    await stopped("now");
     expect(await releaseJob(owner, claimed.jobId, claimed.attempt)).toBe(true);
     expect((await job()).state).toBe("failed");
 
+    await stopped(null);
     await db().query(`update "regeneration_job" set "state" = 'pending', "finishedAt" = null where "file" = $1`, [file]);
     const [again] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
-    const answers = [{ id: "0".repeat(64), status: 200, contentType: "application/json", characterCost: "1", body: TIMED_SILENCE }];
-    await answerJob(owner, { jobId: again.jobId, attempt: again.attempt, answers }, options);
+    await stopped("now");
+    await answerJob(owner, { jobId: again.jobId, attempt: again.attempt, answers: STALE }, options);
     expect((await job()).state).toBe("failed");
   });
 
-  it("does not spend an attempt on a line found changed", async () => {
+  it("claims nothing from a stopped batch, a lapsed lease included", async () => {
     await writeMode(owner, "elevenlabs", "local");
     const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
-    const answers = [{ id: "0".repeat(64), status: 200, contentType: "application/json", characterCost: "1", body: TIMED_SILENCE }];
-    await answerJob(owner, { jobId: claimed.jobId, attempt: claimed.attempt, answers }, options);
-    expect((await job()).attempts).toBe(claimed.attempt - 1);
+    await db().query(`update "regeneration_job" set "leaseUntil" = now() - interval '1 second' where "id" = $1`, [claimed.jobId]);
+    await db().query(`update "regeneration_batch" set "stoppedAt" = now() where "id" = any($1::uuid[])`, [batches]);
+    expect(await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options)).toEqual([]);
+    expect((await job()).state).toBe("cancelled");
+  });
+
+  it("fails a line whose requests a worker would refuse, without handing it out", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const previous = process.env.ELEVENLABS_BASE_URL;
+    process.env.ELEVENLABS_BASE_URL = "https://elevenlabs.example";
+    try {
+      expect(await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options)).toEqual([]);
+    } finally {
+      if (previous === undefined) delete process.env.ELEVENLABS_BASE_URL;
+      else process.env.ELEVENLABS_BASE_URL = previous;
+    }
+    const { rows } = await db().query<{ state: string; error: string }>(`select "state", "error" from "regeneration_job" where "file" = $1`, [file]);
+    expect(rows[0]).toEqual({ state: "failed", error: expect.stringContaining("https://elevenlabs.example/v1/text-to-speech/voice-123/with-timestamps") });
   });
 
   it("fails a line its worker refused to send, rather than handing it out again", async () => {

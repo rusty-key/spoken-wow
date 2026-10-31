@@ -4,32 +4,41 @@
  * account, or the key itself, back to the site.
  * No Node or server imports: the Manager bundles this file and the browser loads it.
  */
-import { PROVIDER_NAME, PROVIDERS, type Provider } from "../generation/providers";
+import { PROVIDER_NAME, PROVIDERS, SPEECH_PATH, type Provider } from "../generation/providers";
 
 export type { Provider };
 
 /** Where an author's lines for a provider are generated: on the site, or by their own worker. */
 export type GenerationMode = "site" | "local";
 
-/**
- * The providers' API hosts, how each is given the key, and the only paths a worker sends there.
- * They must match what the server's generators post.
- */
-const PROVIDER_HOSTS: Record<
-  string,
-  { provider: Provider; auth: (key: string) => Record<string, string>; paths: RegExp }
-> = {
-  "api.elevenlabs.io": {
-    provider: "elevenlabs",
-    auth: (key) => ({ "xi-api-key": key }),
-    paths: /^\/v1\/(text-to-speech\/[A-Za-z0-9_-]+|text-to-dialogue)\/with-timestamps$/,
-  },
-  "api.fish.audio": { provider: "fish", auth: (key) => ({ authorization: `Bearer ${key}` }), paths: /^\/v1\/tts$/ },
-};
+type SpeechEndpoint = { provider: Provider; auth: (key: string) => Record<string, string>; paths: RegExp };
+
+/** Matches exactly these paths, a voice id being letters, digits, `_` or `-`. */
+function onlyPaths(...templates: string[]): RegExp {
+  const escape = (text: string) => text.replace(/[.*+?^$()[\]{}|\\]/g, "\\$&");
+  const alternatives = templates.map((template) => template.split("{voiceId}").map(escape).join("[A-Za-z0-9_-]+"));
+  return new RegExp(`^(?:${alternatives.join("|")})$`);
+}
+
+/** The providers' API hosts, how each is given the key, and the only paths a worker sends there. */
+const PROVIDER_HOSTS: ReadonlyMap<string, SpeechEndpoint> = new Map<string, SpeechEndpoint>([
+  [
+    "api.elevenlabs.io",
+    {
+      provider: "elevenlabs",
+      auth: (key) => ({ "xi-api-key": key }),
+      paths: onlyPaths(SPEECH_PATH.elevenlabsSpeech, SPEECH_PATH.elevenlabsDialogue),
+    },
+  ],
+  [
+    "api.fish.audio",
+    { provider: "fish", auth: (key) => ({ authorization: `Bearer ${key}` }), paths: onlyPaths(SPEECH_PATH.fish) },
+  ],
+]);
 
 /** The request headers that carry a key, lowercased: the site never records them, and a worker never sends the site's. */
 export const KEY_HEADERS: ReadonlySet<string> = new Set(
-  Object.values(PROVIDER_HOSTS).flatMap((host) => Object.keys(host.auth("")).map((name) => name.toLowerCase())),
+  [...PROVIDER_HOSTS.values()].flatMap((host) => Object.keys(host.auth("")).map((name) => name.toLowerCase())),
 );
 
 /** One provider request for a worker to send, with the key it adds itself. */
@@ -83,22 +92,22 @@ export function fromBase64(text: string): Uint8Array {
   return bytes;
 }
 
-/** The provider a request is for, from its URL alone, or null for a URL that is not one of theirs. */
-export function providerOf(url: string): Provider | null {
+/**
+ * The provider endpoint a request may be sent to, or null for anything a worker refuses: not a
+ * POST, not plain https on the default port, credentials, a query or fragment, or any path but
+ * a speech endpoint's.
+ */
+export function speechEndpoint(request: Pick<RelayedRequest, "method" | "url">): SpeechEndpoint | null {
+  if (request.method !== "POST") return null;
   let u: URL;
   try {
-    u = new URL(url);
+    u = new URL(request.url);
   } catch {
     return null;
   }
-  if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443")) return null;
-  return PROVIDER_HOSTS[u.hostname]?.provider ?? null;
-}
-
-function speechRequest(request: RelayedRequest): boolean {
-  if (request.method !== "POST" || !providerOf(request.url)) return false;
-  const u = new URL(request.url);
-  return !u.search && !u.hash && PROVIDER_HOSTS[u.hostname]!.paths.test(u.pathname);
+  if (u.protocol !== "https:" || u.port || u.username || u.password || u.search || u.hash) return null;
+  const endpoint = PROVIDER_HOSTS.get(u.hostname);
+  return endpoint?.paths.test(u.pathname) ? endpoint : null;
 }
 
 /** Sends one request with the key, and says what came back. Never throws. */
@@ -107,12 +116,12 @@ export async function sendRequest(
   keys: Partial<Record<Provider, string>>,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RelayedAnswer> {
-  const provider = providerOf(request.url);
-  if (!provider || !speechRequest(request)) {
+  const endpoint = speechEndpoint(request);
+  if (!endpoint) {
     return { id: request.id, error: `refused to send a ${request.method} request to ${request.url}`, refused: true };
   }
-  const key = keys[provider];
-  if (!key) return { id: request.id, error: `no ${PROVIDER_NAME[provider]} key here`, refused: true };
+  const key = keys[endpoint.provider];
+  if (!key) return { id: request.id, error: `no ${PROVIDER_NAME[endpoint.provider]} key here`, refused: true };
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(request.headers)) {
     // The site never sends a key; one that came anyway is dropped rather than sent beside ours.
@@ -122,7 +131,7 @@ export async function sendRequest(
   try {
     const res = await fetchImpl(request.url, {
       method: request.method,
-      headers: { ...headers, ...PROVIDER_HOSTS[new URL(request.url).hostname]!.auth(key) },
+      headers: { ...headers, ...endpoint.auth(key) },
       body: fromBase64(request.body) as BodyInit,
       signal: AbortSignal.timeout(180_000),
     });

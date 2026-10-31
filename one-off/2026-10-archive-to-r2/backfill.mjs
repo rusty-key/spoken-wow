@@ -96,11 +96,12 @@ const missing = [];
 const tally = {};
 const count = (what) => (tally[what] = (tally[what] ?? 0) + 1);
 
-// Four at a time, the size of the database pool.
-async function each(rows, work) {
+// Four at a time by default, the size of the database pool; work that only talks to the bucket
+// can go wider.
+async function each(rows, work, width = 4) {
   const queue = [...rows];
   await Promise.all(
-    Array.from({ length: 4 }, async () => {
+    Array.from({ length: width }, async () => {
       for (let row = queue.shift(); row; row = queue.shift()) await work(row);
     }),
   );
@@ -211,7 +212,7 @@ async function verifyAll() {
         bad++;
         if (bad <= 20) console.error(`${table} ${row.id}: ${row.sha256 ? `object is ${size ?? "missing"}, row says ${row.bytes}` : "no hash"}`);
       }
-    });
+    }, 32);
     console.log(`${table}: ${rows.length} rows checked`);
   }
 

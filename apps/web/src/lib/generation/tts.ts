@@ -23,6 +23,7 @@ import {
 import type { VoiceSettings } from "./config";
 import { classifyUpstream, failure, type Failure } from "./errors";
 import { trimLeadIn, withLeadIn } from "./leadin";
+import { SPEECH_PATH } from "./providers";
 import { wordStarts, type Alignment, type WordStart } from "./word-times";
 
 /**
@@ -318,7 +319,7 @@ export async function textToSpeech(
   options: ElevenLabsOptions = {},
 ): Promise<SpeechResult> {
   return requestAudio(
-    `/v1/text-to-speech/${request.voiceId}/with-timestamps`,
+    SPEECH_PATH.elevenlabsSpeech.replace("{voiceId}", request.voiceId),
     buildPayload(request),
     request.modelId,
     options,
@@ -345,7 +346,7 @@ export async function textToDialogue(
     };
   }
   return requestAudio(
-    "/v1/text-to-dialogue/with-timestamps",
+    SPEECH_PATH.elevenlabsDialogue,
     buildDialoguePayload(request),
     request.modelId,
     options,

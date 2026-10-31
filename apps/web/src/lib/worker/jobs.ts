@@ -6,13 +6,11 @@
  */
 import "server-only";
 
-import { failure, isBusy, type Failure } from "@/lib/generation/errors";
+import { failure, isBusy } from "@/lib/generation/errors";
 import { readGenerationSettings, type Preference } from "@/lib/generation/preference";
 import {
-  batchStopped,
   claimForOwner,
   failJob,
-  giveBackJob,
   recordRelay,
   relayedJob,
   renewLease,
@@ -29,6 +27,7 @@ import { regenerateBookLine } from "@/lib/readables/regenerate";
 import type { Source } from "@/lib/sections";
 import { slotClones } from "@/lib/voices/elevenlabs";
 
+import { speechEndpoint } from "./protocol";
 import type * as Wire from "./protocol";
 
 /** Stands in for the key in a run whose requests a Manager sends: never sent anywhere. */
@@ -68,15 +67,6 @@ const asFailure = (error: unknown): RegenerateResult => ({
     fatal: false,
   },
 });
-
-/**
- * Back to the queue, unless its batch was stopped: a pending row would be claimed and paid for
- * after Stop, so it fails instead. Without `retryInMs` the claim does not count as an attempt.
- */
-async function requeue(job: QueueJob, because: Failure, retryInMs?: number): Promise<boolean> {
-  if (await batchStopped(job.batchId)) return failJob(job.id, because, job.attempts);
-  return retryInMs === undefined ? giveBackJob(job.id, job.attempts) : retryJob(job.id, retryInMs, job.attempts);
-}
 
 /**
  * The claim and the answer both run through here, so the answer sends the requests the claim
@@ -131,7 +121,7 @@ async function record(
     // Ended before its commit. A file being regenerated right now is retried; an unvoiceable
     // line or missing voice settles as the leader would.
     if (!result.ok && isBusy(result.failure)) {
-      await requeue(job, result.failure, 5_000);
+      await retryJob(job.id, { delayMs: 5_000, because: result.failure }, job.attempts);
     } else {
       await settle(job, result);
     }
@@ -139,6 +129,15 @@ async function record(
   }
   if (requests.length === 0) {
     await failJob(job.id, { kind: "bad-request", message: "this line sends no request to generate" }, job.attempts);
+    return null;
+  }
+
+  // Drift between the generators and the workers' allowlist shows here, naming the request,
+  // rather than as a refusal on every worker.
+  const refused = requests.find((request) => !speechEndpoint(request));
+  if (refused) {
+    const message = `this line would send a ${refused.method} request to ${refused.url}, which workers refuse to send`;
+    await failJob(job.id, { kind: "bad-request", message }, job.attempts);
     return null;
   }
 
@@ -221,7 +220,11 @@ export async function answerJob(
   if (seen.mismatch) {
     // The line, its lexicon or its reference moved since the claim. Nothing was kept;
     // the job goes back to be claimed and recorded afresh.
-    await requeue(job, failure("upstream", "the line changed while it was being generated"));
+    await retryJob(
+      job.id,
+      { delayMs: 0, spent: false, because: failure("upstream", "the line changed while it was being generated") },
+      job.attempts,
+    );
     return { status: "changed" };
   }
   await settle(job, result);
@@ -237,7 +240,11 @@ export async function answerJob(
 export async function releaseJob(owner: string, jobId: string, attempt: number): Promise<boolean> {
   const found = await relayedJob(jobId, owner, attempt);
   if (!found) return false;
-  return requeue(found.job, failure("upstream", "the provider could not be reached"));
+  return retryJob(
+    jobId,
+    { delayMs: 0, spent: false, because: failure("upstream", "the provider could not be reached") },
+    attempt,
+  );
 }
 
 /** Keep a claim while its requests are in flight. False tells the Manager to drop it. */

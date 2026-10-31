@@ -228,7 +228,8 @@ export type QueueSnapshot = {
   through: string | null;
 };
 
-export type QueuedBatch = { batchId: string; queued: number; skipped: number };
+/** `batchId` is null when every line was already queued, so no batch was kept. */
+export type QueuedBatch = { batchId: string | null; queued: number; skipped: number };
 
 /**
  * Start a batch, or say why not.

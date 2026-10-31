@@ -20,8 +20,10 @@
  */
 import { randomUUID } from "node:crypto";
 
+import type { PoolClient } from "pg";
+
 import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
-import { db } from "@/lib/db";
+import { db, inTransaction } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { maxActiveFrom } from "./concurrency";
@@ -160,13 +162,16 @@ const RETENTION = "30 days";
 /** How many finished jobs one poll carries. Enough that a tab which slept catches up fast. */
 const FINISHED_PAGE = 500;
 
-export async function createBatch(
+type Queryable = Pick<PoolClient, "query">;
+
+async function insertBatch(
+  on: Queryable,
   label: string,
   createdBy: string | null,
   source: Source,
-  lang: Lang = BASE_LANG,
+  lang: Lang,
 ): Promise<string> {
-  const { rows } = await db().query<{ id: string }>(
+  const { rows } = await on.query<{ id: string }>(
     `insert into "regeneration_batch" ("label", "createdBy", "source", "lang")
      values ($1, $2, $3, $4) returning "id"`,
     [label, createdBy, source, lang],
@@ -174,11 +179,20 @@ export async function createBatch(
   return rows[0].id;
 }
 
-export async function dropEmptyBatch(batchId: string): Promise<void> {
+export async function createBatch(
+  label: string,
+  createdBy: string | null,
+  source: Source,
+  lang: Lang = BASE_LANG,
+): Promise<string> {
+  return insertBatch(db(), label, createdBy, source, lang);
+}
+
+// Old batches are pruned when jobs are added rather than on a schedule, because that is the
+// only path that grows the table and there is no cron on the droplet.
+async function pruneOldBatches(): Promise<void> {
   await db().query(
-    `delete from "regeneration_batch" b
-      where b."id" = $1 and not exists (select 1 from "regeneration_job" j where j."batchId" = b."id")`,
-    [batchId],
+    `delete from "regeneration_batch" where "createdAt" < now() - interval '${RETENTION}'`,
   );
 }
 
@@ -198,14 +212,42 @@ export async function enqueue(
   provider: Provider = "elevenlabs",
 ): Promise<{ queued: number; skipped: number }> {
   if (jobs.length === 0) return { queued: 0, skipped: 0 };
+  await pruneOldBatches();
+  return insertJobs(db(), batchId, jobs, source, lang, provider);
+}
 
-  // Old batches are pruned here rather than on a schedule, because this is the only path
-  // that grows the table and there is no cron on the droplet.
-  await db().query(
-    `delete from "regeneration_batch" where "createdAt" < now() - interval '${RETENTION}'`,
-  );
+/**
+ * A new batch and its jobs, kept only if at least one job landed: a batch whose every line was
+ * already queued would be an empty row that Stop and the panel then have to reason about.
+ */
+export async function queueBatch(
+  label: string,
+  createdBy: string | null,
+  source: Source,
+  lang: Lang,
+  jobs: QueueEntry[],
+  provider: Provider,
+): Promise<{ batchId: string | null; queued: number; skipped: number }> {
+  if (jobs.length === 0) return { batchId: null, queued: 0, skipped: 0 };
+  await pruneOldBatches();
+  return inTransaction(async (client) => {
+    const batchId = await insertBatch(client, label, createdBy, source, lang);
+    const counts = await insertJobs(client, batchId, jobs, source, lang, provider);
+    if (counts.queued > 0) return { batchId, ...counts };
+    await client.query(`delete from "regeneration_batch" where "id" = $1`, [batchId]);
+    return { batchId: null, ...counts };
+  });
+}
 
-  const { rowCount } = await db().query(
+async function insertJobs(
+  on: Queryable,
+  batchId: string,
+  jobs: QueueEntry[],
+  source: Source,
+  lang: Lang,
+  provider: Provider,
+): Promise<{ queued: number; skipped: number }> {
+  const { rowCount } = await on.query(
     `insert into "regeneration_job"
        ("batchId", "source", "lang", "provider", "owner", "lineId", "file", "npcName", "preview", "characters")
      select $1, $2, $8, "provider",
@@ -279,9 +321,23 @@ const JOB_COLUMNS = `j."id"::text, j."batchId", j."source", j."lang", j."lineId"
   j."preview", j."characters", j."attempts", j."provider", j."owner",
   (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId") as "createdBy"`;
 
+/** Expects `regeneration_job` aliased as `r`. */
 const DUE = `(("state" = 'pending' and "notBefore" <= now())
             or ("state" = 'running' and "leaseUntil" < now()))
-           and "lang" not in (select "lang" from "regeneration_pause")`;
+           and "lang" not in (select "lang" from "regeneration_pause")
+           and not exists (select 1 from "regeneration_batch" b
+                            where b."id" = r."batchId" and b."stoppedAt" is not null)`;
+
+/**
+ * Running rows of stopped batches whose lease lapsed: DUE never reclaims them, so a worker that
+ * died after Stop would leave its row running, and its file under the credit guard, for good.
+ * Each claim cancels them beside itself.
+ */
+const LAPSED_AFTER_STOP = `update "regeneration_job" l
+     set "state" = 'cancelled', "finishedAt" = now(), "leaseUntil" = null, "relay" = null
+   where l."state" = 'running' and l."leaseUntil" < now()
+     and exists (select 1 from "regeneration_batch" b
+                  where b."id" = l."batchId" and b."stoppedAt" is not null)`;
 
 /**
  * Take the next due job, or null. Within one lane when given one.
@@ -294,7 +350,8 @@ const DUE = `(("state" = 'pending' and "notBefore" <= now())
  * The lane is optional so that "anything due" stays expressible; the worker always passes one.
  *
  * Nothing in a paused language is due, an expired lease included: reclaiming one is a fresh
- * attempt, and a fresh attempt is the spending the pause was pressed to hold back.
+ * attempt, and a fresh attempt is the spending the pause was pressed to hold back. Nothing in
+ * a stopped batch is due either, for the same reason.
  *
  * A negative `leaseMs` is how the tests produce an already-expired lease.
  */
@@ -315,13 +372,14 @@ export async function claimNext(
     params.push(lane.owner, lane.provider);
   }
   const { rows } = await db().query<QueueJob>(
-    `update "regeneration_job" as j set
+    `with swept as (${LAPSED_AFTER_STOP})
+     update "regeneration_job" as j set
         "state"      = 'running',
         "attempts"   = j."attempts" + 1,
         "leaseUntil" = now() + make_interval(secs => $1),
         "startedAt"  = coalesce(j."startedAt", now())
       where j."id" = (
-        select "id" from "regeneration_job"
+        select "id" from "regeneration_job" r
          where ${DUE}
            ${inLane}
          order by "id"
@@ -378,31 +436,48 @@ export async function failJob(
   return (rowCount ?? 0) > 0;
 }
 
-export async function retryJob(id: string, delayMs: number, attempt?: number): Promise<boolean> {
-  const params: unknown[] = [id, delayMs / 1000];
+/**
+ * Back to pending after `delayMs`, unless the batch was stopped: a pending row would be claimed
+ * and paid for after Stop, so it fails with `because` instead, or is cancelled when there is no
+ * failure to report. The batch row is share-locked so a Stop running meanwhile either waits for
+ * this or is seen by it.
+ *
+ * `spent: false` gives the attempt back too, so going offline does not use up a rate limit's
+ * retries. Reusing the number is safe: only the claimant gives a claim back, and a lapsed
+ * lease is reclaimed as a higher attempt that a give-back never lowers.
+ */
+export async function retryJob(
+  id: string,
+  retry: { delayMs: number; spent?: boolean; because?: { kind: string; message: string } },
+  attempt?: number,
+): Promise<boolean> {
+  const params: unknown[] = [
+    id,
+    retry.delayMs / 1000,
+    retry.spent === false ? 1 : 0,
+    retry.because?.kind ?? null,
+    retry.because?.message ?? null,
+  ];
   if (attempt !== undefined) params.push(attempt);
   const { rowCount } = await db().query(
-    `update "regeneration_job"
-        set "state" = 'pending', "notBefore" = now() + make_interval(secs => $2),
-            "leaseUntil" = null, "relay" = null
-      where "id" = $1 ${claimed(attempt, 3)}`,
+    `with batch as (
+       select b."stoppedAt" is not null as stopped
+         from "regeneration_job" r join "regeneration_batch" b on b."id" = r."batchId"
+        where r."id" = $1
+          for share of b
+     )
+     update "regeneration_job" as j set
+        "state"      = case when not s.stopped then 'pending'
+                            when $4::text is null then 'cancelled' else 'failed' end,
+        "notBefore"  = case when s.stopped then j."notBefore" else now() + make_interval(secs => $2) end,
+        "attempts"   = case when s.stopped then j."attempts" else j."attempts" - $3 end,
+        "errorKind"  = case when s.stopped then $4 else j."errorKind" end,
+        "error"      = case when s.stopped then $5 else j."error" end,
+        "finishedAt" = case when s.stopped then now() else j."finishedAt" end,
+        "leaseUntil" = null, "relay" = null
+       from batch s
+      where j."id" = $1 ${claimed(attempt, 6)}`,
     params,
-  );
-  return (rowCount ?? 0) > 0;
-}
-
-/**
- * Put a claim back unspent, attempt included, so going offline does not use up a rate limit's
- * retries. Reusing the number is safe: only the claimant gives a claim back and then goes
- * quiet, and a lapsed lease is reclaimed as a higher attempt that a give-back never lowers.
- */
-export async function giveBackJob(id: string, attempt: number): Promise<boolean> {
-  const { rowCount } = await db().query(
-    `update "regeneration_job"
-        set "state" = 'pending', "notBefore" = now(), "attempts" = "attempts" - 1,
-            "leaseUntil" = null, "relay" = null
-      where "id" = $1 and "state" = 'running' and "attempts" = $2`,
-    [id, attempt],
   );
   return (rowCount ?? 0) > 0;
 }
@@ -423,7 +498,8 @@ export async function claimForOwner(
   leaseMs: number = DEFAULT_LEASE_MS,
 ): Promise<QueueJob | null> {
   const { rows } = await db().query<QueueJob>(
-    `update "regeneration_job" as j set
+    `with swept as (${LAPSED_AFTER_STOP})
+     update "regeneration_job" as j set
         "state"      = 'running',
         "attempts"   = j."attempts" + 1,
         "leaseUntil" = now() + make_interval(secs => $1),
@@ -476,11 +552,15 @@ export async function relayedJob(
   return { job, relay };
 }
 
+/** Work nobody holds: pending, or running on a lease that has lapsed. */
+const WAITING = `("state" = 'pending' or ("state" = 'running' and "leaseUntil" < now()))`;
+
 /**
  * Cancel everything still waiting, optionally within one batch or some languages.
  *
- * Running jobs are untouched: the characters are already at ElevenLabs and will be billed,
- * so discarding the audio would pay for nothing. Returns how many were cancelled.
+ * Running jobs whose lease is live are untouched: the characters are already at the provider
+ * and will be billed, so discarding the audio would pay for nothing. Returns how many were
+ * cancelled.
  *
  * `langs` is what the person pressing Stop may regenerate in: a Portuguese translator stops
  * the Portuguese queue and cannot stop anybody's English. Absent means every language,
@@ -495,39 +575,48 @@ export async function cancelPending(
 ): Promise<number> {
   const batchId = scope.batchId ?? null;
   const langs = scope.langs ?? null;
-  const { rowCount } = await db().query(
-    `update "regeneration_job" set "state" = 'cancelled', "finishedAt" = now()
-      where "state" = 'pending'
-        and ($1::uuid is null or "batchId" = $1)
-        and ($2::text[] is null or "lang" = any($2))`,
-    [batchId, langs],
-  );
 
-  // Only batches that actually lost work are stamped. Stamping every unstopped batch would
-  // put "Stopped by an admin" on ones that had already finished cleanly, and the panel reads
-  // the most recent reason it can find.
-  const { rows: stopped } = await db().query<{
-    id: string;
-    label: string;
-    source: Source;
-    lang: Lang;
-    cancelled: number;
-  }>(
+  // Every batch with unfinished work is stamped, a running job's included, so its retries fail
+  // rather than run after Stop. Stamped before the jobs are cancelled, so a retry racing this
+  // either sees the stop or is waited for and then cancelled (retryJob). Finished batches are
+  // left alone: "Stopped by an admin" on one that ended cleanly would be the reason the panel
+  // reads.
+  const { rows: stamped } = await db().query<{ id: string; label: string; source: Source; lang: Lang }>(
     `update "regeneration_batch" as b
         set "stoppedAt" = now(), "stoppedBecause" = $1
       where b."stoppedAt" is null
         and ($2::uuid is null or b."id" = $2)
         and ($3::text[] is null or b."lang" = any($3))
         and exists (select 1 from "regeneration_job" j
-                     where j."batchId" = b."id" and j."state" = 'cancelled')
-      returning b."id", b."label", b."source", b."lang",
-                (select count(*)::int from "regeneration_job" j
-                  where j."batchId" = b."id" and j."state" = 'cancelled') as "cancelled"`,
+                     where j."batchId" = b."id" and j."state" in ('pending', 'running'))
+      returning b."id", b."label", b."source", b."lang"`,
     [because, batchId, langs],
   );
-  await recordActivities(stopEvents(stopped, because, scope.by ?? null));
 
-  return rowCount ?? 0;
+  const { rows: cancelled } = await db().query<{ batchId: string; count: number }>(
+    `with cancelled as (
+       update "regeneration_job" as j
+          set "state" = 'cancelled', "finishedAt" = now(), "leaseUntil" = null, "relay" = null
+        where ${WAITING}
+          and ($1::uuid is null or j."batchId" = $1)
+          and ($2::text[] is null or j."lang" = any($2))
+          and exists (select 1 from "regeneration_batch" b
+                       where b."id" = j."batchId" and b."stoppedAt" is not null)
+        returning j."batchId"
+     )
+     select "batchId", count(*)::int as count from cancelled group by "batchId"`,
+    [batchId, langs],
+  );
+  const counts = new Map(cancelled.map((row) => [row.batchId, row.count]));
+  await recordActivities(
+    stopEvents(
+      stamped.map((batch) => ({ ...batch, cancelled: counts.get(batch.id) ?? 0 })),
+      because,
+      scope.by ?? null,
+    ),
+  );
+
+  return cancelled.reduce((sum, row) => sum + row.count, 0);
 }
 
 /**
@@ -624,21 +713,6 @@ export async function resumeQueue(langs: readonly Lang[], by: string | null): Pr
     rows.map((row) => ({ kind: "queue.resumed" as const, lang: row.lang, actorId: by, detail: {} })),
   );
   return rows.map((row) => row.lang);
-}
-
-/**
- * Whether this batch has been stopped.
- *
- * Asked by the worker before it hands a failed job back to the queue: a job put back to
- * `pending` after Stop ran would be claimed and paid for later, which is not what the person
- * who pressed it asked for.
- */
-export async function batchStopped(batchId: string): Promise<boolean> {
-  const { rows } = await db().query<{ stopped: boolean }>(
-    `select "stoppedAt" is not null as stopped from "regeneration_batch" where "id" = $1`,
-    [batchId],
-  );
-  return rows[0]?.stopped === true;
 }
 
 type JobAggregateRow = {

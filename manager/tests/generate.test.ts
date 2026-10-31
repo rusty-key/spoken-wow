@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { GenerateStatus } from '../src/shared/types'
-import { providerOf, runRound, sendRequest, type ClaimedJob } from '../src/main/generate'
+import { runRound, sendRequest, speechEndpoint, type ClaimedJob } from '../src/main/generate'
 import { Generating } from '../src/main/generating'
 import { tmpDir } from './helpers'
 
@@ -14,12 +14,14 @@ const request = (url: string, headers: Record<string, string> = {}, method = 'PO
   body: Buffer.from('{"text":"Well met."}').toString('base64')
 })
 
+const cipher = { encrypt: (t: string) => `sealed:${Buffer.from(t).toString('base64')}`, decrypt: (s: string) => Buffer.from(s.slice(7), 'base64').toString() }
+
 describe('which requests go out', () => {
   it('knows the two providers by their hosts and nothing else', () => {
-    expect(providerOf('https://api.elevenlabs.io/v1/text-to-speech/x')).toBe('elevenlabs')
-    expect(providerOf('https://api.fish.audio/v1/tts')).toBe('fish')
-    for (const bad of ['http://api.elevenlabs.io/v1', 'https://api.elevenlabs.io.evil.com/', 'https://user@api.fish.audio/', 'https://api.fish.audio:8443/', 'https://evil.com/api.elevenlabs.io']) {
-      expect(providerOf(bad)).toBeNull()
+    expect(speechEndpoint(request('https://api.elevenlabs.io/v1/text-to-speech/x/with-timestamps'))?.provider).toBe('elevenlabs')
+    expect(speechEndpoint(request('https://api.fish.audio:443/v1/tts'))?.provider).toBe('fish')
+    for (const bad of ['http://api.fish.audio/v1/tts', 'https://api.fish.audio.evil.com/v1/tts', 'https://user@api.fish.audio/v1/tts', 'https://api.fish.audio:8443/v1/tts', 'https://evil.com/api.fish.audio/v1/tts', 'https://__proto__/v1/tts', 'not a url']) {
+      expect(speechEndpoint(request(bad))).toBeNull()
     }
   })
 
@@ -120,17 +122,17 @@ describe('a line whose request fails', () => {
   const fish = (id: string) => ({ ...request('https://api.fish.audio/v1/tts'), id })
   const job: ClaimedJob = { jobId: '4', attempt: 1, provider: 'fish', lineId: 'q:4:accept', npcName: 'N', preview: 'P', requests: [fish('p1'), fish('p2'), fish('p3')] }
 
-  async function round(provider: (n: number) => Response | Promise<Response>, keys: Record<string, string> = { fish: 'k' }) {
+  async function round(provider: (n: number) => Response | Promise<Response>, claimed: ClaimedJob = job) {
     const posted: { url: string; body: { answers?: { id: string }[] } }[] = []
     let sent = 0
     const fetchImpl = (async (url: string, init?: RequestInit) => {
       if (url.startsWith('https://api.fish.audio')) return provider(++sent)
       posted.push({ url, body: JSON.parse(String(init?.body ?? '{}')) })
-      if (url.endsWith('/api/worker/claim')) return Response.json({ jobs: [job] })
+      if (url.endsWith('/api/worker/claim')) return Response.json({ jobs: [claimed] })
       if (url.endsWith('/api/worker/answer')) return Response.json({ status: 'failed', kind: 'upstream', message: 'no' })
       return Response.json({ released: true })
     }) as unknown as typeof fetch
-    const result = await runRound({ siteUrl: 'https://site.test', fetchImpl, token: 't', keys, width: 1, voices: async () => null })
+    const result = await runRound({ siteUrl: 'https://site.test', fetchImpl, token: 't', keys: { fish: 'k' }, width: 1, voices: async () => null })
     return { result, sent, posted: posted.slice(1) }
   }
 
@@ -148,27 +150,21 @@ describe('a line whose request fails', () => {
       return new Response(new Uint8Array([n]))
     })
     expect(sent).toBe(1)
-    expect(result.unreachable).toBe('Failed to fetch')
+    expect(result).toEqual({ claimed: 1, done: 0, failed: 0, unreachable: 'Failed to fetch' })
     expect(posted.map((p) => p.url)).toEqual(['https://site.test/api/worker/release'])
   })
 
   it('answers a request it refused to send, so the line fails instead of coming back forever', async () => {
-    const refusedJob: ClaimedJob = { ...job, requests: [{ ...request('https://api.fish.audio/v1/account'), id: 'x' }] }
-    const posts: string[] = []
-    const fetchImpl = (async (url: string) => {
-      posts.push(url)
-      if (url.endsWith('/api/worker/claim')) return Response.json({ jobs: [refusedJob] })
-      return Response.json({ status: 'failed', kind: 'upstream', message: 'refused' })
-    }) as unknown as typeof fetch
-    const result = await runRound({ siteUrl: 'https://site.test', fetchImpl, token: 't', keys: { fish: 'k' }, width: 1, voices: async () => null })
+    const refused: ClaimedJob = { ...job, requests: [{ ...request('https://api.fish.audio/v1/account'), id: 'x' }] }
+    const { result, sent, posted } = await round(() => new Response(new Uint8Array([1])), refused)
+    expect(sent).toBe(0)
     expect(result).toEqual({ claimed: 1, done: 0, failed: 1 })
-    expect(posts).toEqual(['https://site.test/api/worker/claim', 'https://site.test/api/worker/answer'])
+    expect(posted.map((p) => p.url)).toEqual(['https://site.test/api/worker/answer'])
+    expect(posted[0]!.body.answers).toEqual([expect.objectContaining({ id: 'x', refused: true })])
   })
 })
 
 describe('the secrets', () => {
-  const cipher = { encrypt: (t: string) => `sealed:${Buffer.from(t).toString('base64')}`, decrypt: (s: string) => Buffer.from(s.slice(7), 'base64').toString() }
-
   it('keeps keys encrypted on disk and tells the window only whether each is set', () => {
     const dataPath = tmpDir()
     const statuses: GenerateStatus[] = []
@@ -186,28 +182,10 @@ describe('the secrets', () => {
   })
 })
 
-describe('a provider that cannot be reached', () => {
-  it('gives the line back to the site instead of answering it', async () => {
-    const job: ClaimedJob = { jobId: '9', attempt: 2, provider: 'fish', lineId: 'q:9:accept', npcName: 'N', preview: 'P', requests: [request('https://api.fish.audio/v1/tts')] }
-    const posted: string[] = []
-    const fetchImpl = (async (url: string) => {
-      if (url.startsWith('https://api.fish.audio')) throw new TypeError('Failed to fetch')
-      posted.push(url)
-      if (url.endsWith('/api/worker/claim')) return Response.json({ jobs: [job] })
-      return Response.json({ released: true })
-    }) as unknown as typeof fetch
-    const result = await runRound({ siteUrl: 'https://site.test', fetchImpl, token: 't', keys: { fish: 'k' }, width: 1, voices: async () => null })
-    expect(result).toEqual({ claimed: 1, done: 0, failed: 0, unreachable: 'Failed to fetch' })
-    expect(posted).toEqual(['https://site.test/api/worker/claim', 'https://site.test/api/worker/release'])
-  })
-})
-
 describe('unpairing', () => {
-  const cipher = { encrypt: (t: string) => `sealed:${t}`, decrypt: (s: string) => s.slice(7) }
-
   function paired(fetchImpl: typeof fetch) {
     const dataPath = tmpDir()
-    fs.writeFileSync(path.join(dataPath, 'generate.json'), JSON.stringify({ token: 'sealed:spw_token', keys: {} }))
+    fs.writeFileSync(path.join(dataPath, 'generate.json'), JSON.stringify({ token: cipher.encrypt('spw_token'), keys: {} }))
     const statuses: GenerateStatus[] = []
     const generating = new Generating({ dataPath, appVersion: '0', siteUrl: 'https://site.test', fetchImpl, cipher, send: (s) => statuses.push(s), openExternal: () => undefined })
     return { generating, statuses, dataPath }
