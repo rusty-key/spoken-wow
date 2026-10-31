@@ -1,8 +1,8 @@
 /**
  * Against a real Postgres, deliberately, for the reason history.test.ts gives.
  *
- * What this module is for is an invariant the schema owns: `take_current_idx` allows
- * exactly one live take per (source, lang, file). A mocked database would test that the
+ * What this module is for is an invariant the schema owns: `take_team_current_idx` allows
+ * exactly one live take per (team, source, lang, file). A mocked database would test that the
  * code runs the statements the code runs, which is not a test -- the thing worth pinning is
  * that the pair of updates cannot leave a file with two live takes or none.
  *

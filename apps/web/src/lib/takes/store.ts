@@ -11,7 +11,7 @@
  * bytes live and how a file is named -- frozen rules, per AGENTS.md -- so that is what the
  * adapter holds, and everything else is written once here.
  *
- * Keyed on `(source, file)` because that is what `take_current_idx` is on, and because a
+ * Keyed on `(source, file)` because that is what `take_team_current_idx` is on, and because a
  * quests file is spoken by several NPCs: "restore this line" is really "restore this file".
  */
 import "server-only";
@@ -106,7 +106,7 @@ export type LiveTake = {
  * window count avoids the join too, but reads every column of every take to do it and was
  * four times slower than either half.
  *
- * Counted by file, which is what take_current_idx is on. For places and readables a file and a
+ * Counted by file, which is what take_team_current_idx is on. For places and readables a file and a
  * line are the same thing; a quests file is shared by every NPC who speaks it.
  */
 export async function liveTakes(source: Source, lang: Lang = BASE_LANG): Promise<LiveTake[]> {
@@ -153,7 +153,7 @@ export async function liveVersion(
  * Make one take the live one.
  *
  * In a transaction, because clearing the old flag and setting the new one must not half
- * apply: `take_current_idx` allows exactly one live take per file, so a half-applied pair
+ * apply: `take_team_current_idx` allows exactly one live take per file, so a half-applied pair
  * would either leave the file with none -- the export then ships nothing for that line --
  * or make the next write fail against the index, which looks like a bug in the next run
  * rather than in this one.
