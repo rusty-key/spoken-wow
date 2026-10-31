@@ -1,10 +1,10 @@
 /** Deleting a clip leaves nothing on disk, so the activity row is the only record of it. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { deleteSample, recordActivity, sampleKey } = vi.hoisted(() => ({
+const { deleteSample, recordActivity, sampleClip } = vi.hoisted(() => ({
   deleteSample: vi.fn(async () => true),
   recordActivity: vi.fn(async () => {}),
-  sampleKey: vi.fn(async (): Promise<string | null | undefined> => undefined),
+  sampleClip: vi.fn(async (): Promise<Stored> => ({ kind: "gone" })),
 }));
 
 vi.mock("@/lib/voices/authz", () => ({
@@ -15,8 +15,7 @@ vi.mock("@/lib/voices/samples", () => ({
   contentTypeOf: () => "audio/mpeg",
   deleteSample,
   isStoredSampleName: () => true,
-  samplePath: async () => "",
-  sampleKey,
+  sampleClip,
 }));
 vi.mock("@/lib/activity/store", () => ({ recordActivity }));
 vi.mock("@/lib/lang-server", () => ({
@@ -26,7 +25,7 @@ vi.mock("@/lib/lang-server", () => ({
   }),
 }));
 
-import { memoryBlobs, useArchiveForTests } from "@/lib/blobs/store";
+import { memoryBlobs, useArchiveForTests, type Stored } from "@/lib/blobs/store";
 
 import { DELETE, GET } from "./route";
 
@@ -73,7 +72,7 @@ describe("GET /api/voices/[voice]/samples/[file] in r2 mode", () => {
     const bucket = memoryBlobs();
     bucket.objects.set(key, { data: Buffer.from("clip bytes"), contentType: "audio/mpeg" });
     const restore = useArchiveForTests(bucket, "r2");
-    sampleKey.mockResolvedValueOnce(key);
+    sampleClip.mockResolvedValueOnce({ kind: "blob", key });
     try {
       const res = await play();
       expect(res.status).toBe(200);
@@ -86,7 +85,6 @@ describe("GET /api/voices/[voice]/samples/[file] in r2 mode", () => {
   });
 
   it("is a 404 for a clip the bucket has no row for", async () => {
-    sampleKey.mockResolvedValueOnce(null);
     expect((await play()).status).toBe(404);
   });
 });

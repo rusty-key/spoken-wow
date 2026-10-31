@@ -1,8 +1,5 @@
 /** A reference's cut clip, to listen to beside its transcript. */
-import fs from "node:fs";
-
-import { serveBlob } from "@/lib/blobs/serve";
-import { serveFile } from "@/lib/stream";
+import { servePrivate } from "@/lib/blobs/serve";
 import { requireVoiceViewer } from "@/lib/voices/authz";
 import { readReference, referenceClip } from "@/lib/voices/references";
 
@@ -19,22 +16,12 @@ export async function GET(request: Request, context: Context) {
   const reference = await readReference(voice, lang);
   if (!reference) return new Response("no reference", { status: 404 });
 
-  const clip = referenceClip(reference);
-  if (clip.kind === "gone") return new Response("no reference clip", { status: 404 });
-  // Through the site, not to the public bucket, whose URL would outlive the viewer's grant.
-  if (clip.kind === "blob") return serveBlob(request, clip.key, { cacheControl: "private, no-cache", contentType: "audio/mpeg" });
-
-  let size: number;
-  try {
-    size = fs.statSync(clip.path).size;
-  } catch {
-    return new Response("no reference clip", { status: 404 });
-  }
-
-  // Not immutable: the same URL serves whatever the slot's reference is now, and the ETag is
+  // Not immutable: the same URL serves whatever the slot's reference is now. A file's ETag is
   // the clipHash, which changes exactly when the clip or its transcript does.
-  return serveFile(request, clip.path, size, {
+  return servePrivate(request, referenceClip(reference), {
+    cacheControl: "no-cache",
+    contentType: "audio/mpeg",
     etag: `"${reference.clipHash}"`,
-    cacheControl: "private, no-cache",
+    missing: "no reference clip",
   });
 }

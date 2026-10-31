@@ -11,11 +11,11 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 
-import { archive, blobKey, sha256Of, writesBlobs } from "@/lib/blobs/store";
+import { archive, blobKey, sha256Of } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
 import type { Source } from "@/lib/sections";
-import { durationOf } from "@/lib/places/tools";
 
 const QUESTS_PROFILE = "ogg-q0-44k";
 
@@ -38,14 +38,11 @@ function finished(child: ChildProcess, command: string): Promise<void> {
 export type Encoders = { ffmpeg: string; oggenc: string };
 
 /**
- * ffmpeg decodes into oggenc. Every error is listened for, the pipe's two ends included: an
- * encoder that is missing or exits early leaves the decoder writing into a closed pipe, and an
- * unheard EPIPE is an uncaught exception that takes the server down. Either failing kills both.
+ * ffmpeg decodes into oggenc. The pipeline listens on both ends of the pipe: an encoder that is
+ * missing or exits early leaves the decoder writing into a closed pipe, and an unheard EPIPE is
+ * an uncaught exception that takes the server down. Either failing kills both.
  */
-export async function encodeOgg(
-  master: string,
-  tools: Encoders = { ffmpeg: "ffmpeg", oggenc: "oggenc" },
-): Promise<{ bytes: Buffer; durationSec: number | null }> {
+export async function encodeOgg(master: string, tools: Encoders = { ffmpeg: "ffmpeg", oggenc: "oggenc" }): Promise<Buffer> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-encode-"));
   const out = path.join(dir, "clip.ogg");
   const decoder = spawn(
@@ -55,13 +52,12 @@ export async function encodeOgg(
   );
   const encoder = spawn(tools.oggenc, ["-Q", "-q", "0", "-o", out, "-"], { stdio: ["pipe", "ignore", "pipe"] });
   try {
-    const piped = new Promise<never>((_, reject) => {
-      decoder.stdout!.on("error", reject);
-      encoder.stdin!.on("error", reject);
-    });
-    decoder.stdout!.pipe(encoder.stdin!);
-    await Promise.race([Promise.all([finished(decoder, tools.ffmpeg), finished(encoder, tools.oggenc)]), piped]);
-    return { bytes: await fs.readFile(out), durationSec: await durationOf(out).catch(() => null) };
+    await Promise.all([
+      pipeline(decoder.stdout!, encoder.stdin!),
+      finished(decoder, tools.ffmpeg),
+      finished(encoder, tools.oggenc),
+    ]);
+    return await fs.readFile(out);
   } catch (error) {
     decoder.kill();
     encoder.kill();
@@ -73,10 +69,18 @@ export async function encodeOgg(
 
 export type Encoding = { encodedSha256: string; bytes: number; durationSec: number | null };
 
-/** Never throws: what went wrong is logged, and the build encodes what is missing. */
-export async function encodeForPack(source: Source, sha256: string, master: string): Promise<Encoding | null> {
+/**
+ * Never throws: what went wrong is logged, and the build encodes what is missing. The duration
+ * recorded is the master's: nothing reads an encoding's own.
+ */
+export async function encodeForPack(
+  source: Source,
+  sha256: string,
+  master: string,
+  durationSec: number | null,
+): Promise<Encoding | null> {
   const profile = profileFor(source);
-  if (!profile || !writesBlobs()) return null;
+  if (!profile) return null;
   try {
     const [done] = await query<Encoding>(
       `select "encodedSha256", "bytes", "durationSec"::float8 as "durationSec" from "take_encoding"
@@ -86,14 +90,14 @@ export async function encodeForPack(source: Source, sha256: string, master: stri
     if (done) return done;
 
     const encoded = await encodeOgg(master);
-    const encodedSha256 = sha256Of(encoded.bytes);
-    await archive().put(blobKey("encodings", encodedSha256), encoded.bytes, "audio/ogg");
+    const encodedSha256 = sha256Of(encoded);
+    await archive().put(blobKey("encodings", encodedSha256), encoded, "audio/ogg");
     await query(
       `insert into "take_encoding" ("source", "sha256", "profile", "encodedSha256", "bytes", "durationSec")
        values ($1, $2, $3, $4, $5, $6) on conflict do nothing`,
-      [source, sha256, profile, encodedSha256, encoded.bytes.byteLength, encoded.durationSec],
+      [source, sha256, profile, encodedSha256, encoded.byteLength, durationSec],
     );
-    return { encodedSha256, bytes: encoded.bytes.byteLength, durationSec: encoded.durationSec };
+    return { encodedSha256, bytes: encoded.byteLength, durationSec };
   } catch (error) {
     console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
     return null;

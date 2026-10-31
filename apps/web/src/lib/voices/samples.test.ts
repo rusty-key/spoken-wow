@@ -165,10 +165,10 @@ describe("rejectUpload", () => {
 
 describe("with clips in the bucket", () => {
   it("stores, lists, reads and removes a clip without touching the volume", async () => {
-    const { storeSample, listSamples, readSample, sampleKey, deleteSample } = await load();
+    const { storeSample, listSamples, readSample, sampleClip, deleteSample } = await load();
     const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
     const { query } = await import("@/lib/db");
-    const bucket = memoryBlobs("https://archive.test/");
+    const bucket = memoryBlobs();
     const restore = useArchiveForTests(bucket, "r2");
     const clone = "orc-male-standard@deDE";
     try {
@@ -179,12 +179,12 @@ describe("with clips in the bucket", () => {
       expect(bucket.objects.get(`samples/${sha}`)?.contentType).toBe("audio/mpeg");
       expect((await listSamples(clone)).map((s) => [s.file, s.bytes])).toEqual([[stored.file, 9]]);
       expect((await readSample(clone, stored.file))?.toString()).toBe("guten tag");
-      expect(await sampleKey(clone, stored.file)).toBe(`samples/${sha}`);
+      expect(await sampleClip(clone, stored.file)).toEqual({ kind: "blob", key: `samples/${sha}` });
       expect(await fs.readdir(dir)).toEqual([]);
 
       expect(await deleteSample(clone, stored.file)).toBe(true);
       expect(await listSamples(clone)).toEqual([]);
-      expect(await sampleKey(clone, stored.file)).toBeNull();
+      expect(await sampleClip(clone, stored.file)).toEqual({ kind: "gone" });
     } finally {
       restore();
       await query(`delete from "voice_sample" where "clone" = $1`, [clone]);

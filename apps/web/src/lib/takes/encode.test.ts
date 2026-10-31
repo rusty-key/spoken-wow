@@ -47,15 +47,15 @@ describe.skipIf(!tools)("encodeForPack", () => {
     const sha = sha256Of(fs.readFileSync(master));
     try {
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
-      const first = await encodeForPack("quests", sha, master);
+      const first = await encodeForPack("quests", sha, master, 1.02);
       expect(first).not.toBeNull();
       const object = bucket.objects.get(`encodings/${first!.encodedSha256}`);
       expect(object?.contentType).toBe("audio/ogg");
       expect(object?.data.subarray(0, 4).toString()).toBe("OggS");
-      expect(first!.durationSec).toBeCloseTo(1, 1);
+      expect(first!.durationSec).toBe(1.02);
 
       bucket.objects.clear();
-      expect(await encodeForPack("quests", sha, master)).toEqual(first);
+      expect(await encodeForPack("quests", sha, master, 1.02)).toEqual(first);
       // Recorded, so the second commit of the same bytes encodes nothing.
       expect(bucket.objects.size).toBe(0);
     } finally {
@@ -64,18 +64,16 @@ describe.skipIf(!tools)("encodeForPack", () => {
     }
   });
 
-  it("does nothing for a section whose packs ship the take itself, or with no bucket", async () => {
+  it("does nothing for a section whose packs ship the take itself", async () => {
     const data = Buffer.from("not audio");
-    const master = clip("not-audio.mp3", data);
-    expect(await encodeForPack("places", sha256Of(data), master)).toBeNull();
-    expect(await encodeForPack("quests", sha256Of(data), master)).toBeNull();
+    expect(await encodeForPack("places", sha256Of(data), clip("not-audio.mp3", data), null)).toBeNull();
   });
 
   it("logs and gives up on a clip it cannot decode", async () => {
     const restore = useArchiveForTests(memoryBlobs(), "r2");
     try {
       const data = Buffer.from("not audio");
-      expect(await encodeForPack("quests", sha256Of(data), clip("not-audio.mp3", data))).toBeNull();
+      expect(await encodeForPack("quests", sha256Of(data), clip("not-audio.mp3", data), null)).toBeNull();
     } finally {
       restore();
     }

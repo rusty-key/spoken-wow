@@ -148,7 +148,7 @@ describe.skipIf(!hasFfmpeg)("a recording", () => {
     const first = await recordingPath("quests", lang, file, 1);
     if (first.kind !== "file") throw new Error(`no file for v1: ${first.kind}`);
 
-    const bucket = memoryBlobs("https://archive.test/");
+    const bucket = memoryBlobs();
     const restore = useArchiveForTests(bucket, "r2");
     try {
       await upload(ogg);
@@ -158,7 +158,7 @@ describe.skipIf(!hasFfmpeg)("a recording", () => {
       expect(row.archiveFile).toMatch(/^v2-.*\.ogg$/);
       expect(bucket.objects.get(`recordings/${sha}`)?.contentType).toBe("audio/ogg");
       expect(fs.readdirSync(path.dirname(first.path))).toEqual([path.basename(first.path)]);
-      expect(await recordingPath("quests", lang, file, 2)).toEqual({ kind: "blob", key: `recordings/${sha}`, url: `https://archive.test/recordings/${sha}` });
+      expect(await recordingPath("quests", lang, file, 2)).toEqual({ kind: "blob", key: `recordings/${sha}` });
     } finally {
       restore();
     }

@@ -25,7 +25,7 @@ import "server-only";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
-import { keep } from "@/lib/blobs/store";
+import { keep, readsBlobs } from "@/lib/blobs/store";
 import { db, query } from "@/lib/db";
 import type { Source } from "@/lib/sections";
 
@@ -105,9 +105,9 @@ export async function commitTake(
 
   const name = archiveName(next, data);
   const archived = path.join(historyDirOf(source, file, lang), name);
-  const kept = await keep("takes", data, "audio/mpeg", archived);
-  const archiveFile = kept.onDisk ? name : null;
-  const sha256 = kept.inBucket ? kept.sha256 : null;
+  const sha256 = await keep("takes", data, "audio/mpeg", archived);
+  const onDisk = !readsBlobs();
+  const archiveFile = onDisk ? name : null;
 
   const commit = async (clip: string): Promise<Committed> => {
     const durationSec = options.measure ? await options.measure(clip) : null;
@@ -125,10 +125,10 @@ export async function commitTake(
     });
     // After the row, so the take is live even when its pack encoding fails. Only for a
     // master in the bucket, which is where a build finds its encoding.
-    if (kept.inBucket) await encodeForPack(source, kept.sha256, clip);
+    if (sha256) await encodeForPack(source, sha256, clip, durationSec);
     return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
   };
-  return kept.onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
+  return onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
 }
 
 /** Insert one take and make it the only live one, in one transaction. */

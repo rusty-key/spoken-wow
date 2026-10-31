@@ -221,8 +221,8 @@ describe("a take in another language", () => {
 
     const enLive = await livePath("quests", file);
     const ptLive = await livePath("quests", file, "ptBR");
-    expect(enLive).toEqual({ kind: "file", path: path.join(history(), english.archiveFile!) });
-    expect(ptLive).toEqual({ kind: "file", path: path.join(ptHistory, portuguese.archiveFile!) });
+    expect(enLive).toEqual({ kind: "file", path: path.join(history(), english.archiveFile!), prefix: "takes" });
+    expect(ptLive).toEqual({ kind: "file", path: path.join(ptHistory, portuguese.archiveFile!), prefix: "takes" });
   });
 
   it("does not take the live flag from the English take", async () => {
@@ -254,11 +254,7 @@ describe("with the archive in a bucket", () => {
   });
 
   it("still commits from the volume when the bucket refuses, in dual mode, and leaves the hash for the backfill", async () => {
-    const bucket = memoryBlobs();
-    bucket.put = async () => {
-      throw new Error("R2 PUT: HTTP 503");
-    };
-    restore = useArchiveForTests(bucket, "dual");
+    restore = useArchiveForTests(memoryBlobs({ refusePut: true }), "dual");
 
     const committed = await take("bucket down");
     expect(committed.sha256).toBeNull();
@@ -268,11 +264,7 @@ describe("with the archive in a bucket", () => {
   });
 
   it("fails when the bucket refuses in r2 mode, where it is the only store", async () => {
-    const bucket = memoryBlobs();
-    bucket.put = async () => {
-      throw new Error("R2 PUT: HTTP 503");
-    };
-    restore = useArchiveForTests(bucket, "r2");
+    restore = useArchiveForTests(memoryBlobs({ refusePut: true }), "r2");
 
     await expect(take("bucket down")).rejects.toThrow("HTTP 503");
     expect(await listTakes("quests", file)).toEqual([]);
@@ -294,7 +286,7 @@ describe("with the archive in a bucket", () => {
   });
 
   it("writes nothing to the volume and answers with the object's address, in r2 mode", async () => {
-    const bucket = memoryBlobs("https://archive.test/");
+    const bucket = memoryBlobs();
     restore = useArchiveForTests(bucket, "r2");
 
     const measured: string[] = [];
@@ -314,7 +306,7 @@ describe("with the archive in a bucket", () => {
     expect(measured).toEqual(["bucket only"]);
     expect(archived()).toEqual([]);
     const live = await livePath("quests", file);
-    expect(live).toEqual({ kind: "blob", key: `takes/${sha}`, url: `https://archive.test/takes/${sha}` });
+    expect(live).toEqual({ kind: "blob", key: `takes/${sha}` });
     expect(await takePath("quests", file, committed.version)).toEqual(live);
   });
 });

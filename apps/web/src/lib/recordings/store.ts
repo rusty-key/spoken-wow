@@ -172,13 +172,12 @@ export async function commitRecording(
       [source, lang, file],
     );
     const name = archiveName(next, upload.data, probed.format);
-    const kept = await keep(
+    const sha256 = await keep(
       "recordings",
       upload.data,
       probed.format === "ogg" ? "audio/ogg" : "audio/mpeg",
       path.join(recordedDirOf(source, file, lang), name),
     );
-    const sha256 = kept.inBucket ? kept.sha256 : null;
     const {
       rows: [recording],
     } = await client.query<Recording>(

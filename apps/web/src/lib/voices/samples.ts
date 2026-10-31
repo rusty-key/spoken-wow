@@ -17,7 +17,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { archive, blobKey, keep, readsBlobs, writesBlobs } from "@/lib/blobs/store";
+import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
 import { withLocalCopy } from "@/lib/takes/bytes";
@@ -167,8 +167,8 @@ export async function storeSample(
 export async function storeSampleAs(voice: string, file: string, data: Buffer): Promise<Sample> {
   if (!isStoredSampleName(file)) throw new Error(`unsafe sample name ${file}`);
   const dir = await voiceDir(voice);
-  const { sha256, inBucket } = await keep("samples", data, contentTypeOf(file), path.join(dir, file));
-  if (inBucket) {
+  const sha256 = await keep("samples", data, contentTypeOf(file), path.join(dir, file));
+  if (sha256) {
     await query(
       `insert into "voice_sample" ("clone", "file", "sha256", "bytes") values ($1, $2, $3, $4)
        on conflict ("clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
@@ -214,16 +214,15 @@ export async function readSample(voice: string, file: string): Promise<Buffer | 
   if (!isStoredSampleName(file)) return null;
   if (readsBlobs()) {
     const sha256 = await sampleSha(voice, file);
-    return sha256 ? archive().get(blobKey("samples", sha256)) : null;
+    return sha256 ? blobBytes(blobKey("samples", sha256)) : null;
   }
   return fs.readFile(await samplePath(voice, file)).catch(() => null);
 }
 
-/** The clip's object. Undefined when clips are on the volume, null when the bucket has no such clip. */
-export async function sampleKey(voice: string, file: string): Promise<string | null | undefined> {
-  if (!readsBlobs()) return undefined;
-  const sha256 = await sampleSha(voice, file);
-  return sha256 ? blobKey("samples", sha256) : null;
+/** In r2 mode a clip with no row is gone, whatever the volume still holds. */
+export async function sampleClip(voice: string, file: string): Promise<Stored> {
+  if (!readsBlobs()) return blobOrFile("samples", null, await samplePath(voice, file));
+  return blobOrFile("samples", await sampleSha(voice, file), null);
 }
 
 /** ffmpeg reads files, so clips in the bucket are handed over as temporary copies. */

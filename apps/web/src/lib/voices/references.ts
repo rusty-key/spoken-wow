@@ -21,7 +21,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { recordActivity } from "@/lib/activity/store";
-import { archive, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
+import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
 import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { VOICE_REFERENCES_DIR } from "@/lib/paths";
@@ -74,7 +74,7 @@ export async function readReferenceAudio(
   lang: Lang,
   sha256: string | null,
 ): Promise<Buffer | null> {
-  if (readsBlobs()) return sha256 ? archive().get(blobKey("references", sha256)) : null;
+  if (readsBlobs()) return sha256 ? blobBytes(blobKey("references", sha256)) : null;
   return fs.readFile(referencePath(voice, lang)).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -254,9 +254,7 @@ export async function saveReference(input: SaveReference): Promise<Reference> {
   const transcript = (await input.transcribe(audio)).trim();
   if (!transcript) throw new Error("fish.audio heard nothing in that window");
 
-  const kept = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang));
-  // Null unless the object exists: the backfill copies exactly the rows with no hash.
-  const sha256 = kept.inBucket ? kept.sha256 : null;
+  const sha256 = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang));
   await db().query(
     `insert into "fish_reference"
        ("voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedBy", "updatedAt", "sha256")
