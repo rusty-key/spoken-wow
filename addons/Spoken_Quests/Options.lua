@@ -166,6 +166,16 @@ local SlashCommands = {
             get = function() return "" end,
             set = function(info, value) Followup:Simulate(value) end
         },
+        Chatter = {
+            type = "input",
+            order = 86,
+            name = L.OPT_CMD_CHATTER,
+            desc = L.OPT_CMD_CHATTER_DESC,
+            dropdownHidden = true,
+            guiHidden = true,
+            get = function() return "" end,
+            set = function(info, value) Chatter:Simulate(value) end
+        },
         Diagnostics = {
             type = "execute",
             order = 90,
@@ -417,6 +427,7 @@ function Options:Initialize()
         -- which is where profiles and the pack manager live.
         SettingsPanel:Setup()
         GossipSettingsPanel:Setup()
+        ChatterSettingsPanel:Setup()
     end)
     Debug:Print("Done!", "Options")
 

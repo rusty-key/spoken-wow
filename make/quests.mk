@@ -59,7 +59,7 @@ endef
         package-meta icon \
         downloads-status \
         factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
-        release-dry import-corpus import-locale import-npc-bodies fill-locales import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text \
+        release-dry import-corpus import-locale import-npc-bodies fill-locales import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
         sync check-synced full-release upload upload-dry
 
 help: ## Show this help
@@ -438,6 +438,11 @@ export-giver-names: ## entity_name -> addons/Spoken_Quests/Locale/Names/<lang>.l
 # (tts_cli/gossip_text.py). Rerun after an import-locale, a broadcast-text upload or a relink.
 export-gossip-text: ## quest_line, broadcast_text -> addons/Spoken_Quests/Gossip/<lang>.lua, Aliases.lua
 	@$(QUESTS_CLI) export-gossip-text --out-dir $(abspath addons/Spoken_Quests/Gossip)
+
+# What NPCs say out loud in the world, for NPC Chat to match. Committed into the addon so packaging
+# it needs no database; read from the corpus, so rerun after export-corpus.
+export-chatter-lines: ## corpus chatter lines -> addons/Spoken_Quests/ChatterLines.lua
+	@$(QUESTS_CLI) export-chatter-lines --out $(abspath addons/Spoken_Quests/ChatterLines.lua)
 
 export-ignores: ## line_ignore -> corpus/ignored.json, replacing the old ssh export
 	@$(QUESTS_CLI) export-ignores $(ARGS)

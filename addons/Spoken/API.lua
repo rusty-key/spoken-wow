@@ -80,7 +80,8 @@ end
 --- Whether the narrator would show a line of the source `key`: a narrator style that shows words,
 --- Show Narrator on, and not off for that source. A text-only line is worth queueing only then.
 function Spoken:ShowsNarratorFor(key)
-    return Addon:PlayerStyle() ~= "none" and Addon:ShowsNarrator({ source = { key = key } }) and true or false
+    return Addon:PlayerStyle() ~= "none" and Addon:ShowsNarrator({ source = Sources:Get(key) or { key = key } })
+        and true or false
 end
 
 function Spoken:GetSource(key)
@@ -274,7 +275,7 @@ function Spoken:RefreshPlayer()
 end
 
 --- A feature addon's settings page, shown under Spoken's own in the game's settings as `name`,
---- listed in `order` (Quests 1, Gossip 2, Places 3, Readables 4, Bosses 5). Pass the page's SpokenLayout and its
+--- listed in `order` (Quests 1, Gossip 2, Places 3, Readables 4, Bosses 5, NPC Chat 5.5, Developer 6, Contribute 7). Pass the page's SpokenLayout and its
 --- scroller to make its rows searchable from Home. Returns a table whose `category` is
 --- filled in once the page is registered, for Settings.OpenToCategory.
 function Spoken:AddSettingsPage(panel, name, order, layout, scroller)

@@ -11,11 +11,12 @@ behaviour changes.
 - `apps/web/` quests section: browsing the corpus, regeneration, triage, reports.
 - `addons/Spoken_Quests/`: a module of Spoken that ships inside `Spoken-<v>.zip`. It reads
   quest dialogue and is the Quests tab of Azeroth's Compendium. Its commands are
-  `/spokenquests`, `/spq` (`read`, `test`, `followup`, `diagnostics`, `options`) and `/spqread`.
-  It is two parts of Spoken, each with its own source, switch and settings page: Quests, which
-  reads a quest's text, and Gossip, which reads the greeting a quest giver opens with
-  (`QUEST_GREETING`) and the gossip page (`GOSSIP_SHOW`). `docs/gossip/AGENTS.md` is Gossip's
-  guide.
+  `/spokenquests`, `/spq` (`read`, `test`, `followup`, `chatter`, `diagnostics`, `options`) and `/spqread`.
+  It is three parts of Spoken, each with its own source, switch and settings page: Quests, which
+  reads a quest's text, Gossip, which reads the greeting a quest giver opens with
+  (`QUEST_GREETING`) and the gossip page (`GOSSIP_SHOW`), and NPC Chat, which voices what NPCs say
+  out loud in the world (`Chatter.lua`, README "What NPCs say in the world"). `docs/gossip/AGENTS.md`
+  is Gossip's guide.
 - Sound packs `SpokenQuestsAudio{Alliance,Horde,Shared,Gossip}`, plus the `All` meta addon,
   which depends on those four and `spoken`. A language other than English has one pack,
   `SpokenQuestsAudio_<lang>` (`LOCALE=xx`), holding quests and gossip together. Pack metadata,

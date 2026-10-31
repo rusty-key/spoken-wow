@@ -26,7 +26,7 @@ import json
 import os
 import re
 
-from tts_cli.naming import subfolder_from_line_id
+from tts_cli.naming import CHATTER, subfolder_from_line_id
 
 DEFAULT_FACTIONS_PATH = "corpus/factions.json"
 DEFAULT_COMPENDIUM_PATH = os.path.normpath(os.path.join(
@@ -113,8 +113,9 @@ def load_sides(path: str = DEFAULT_FACTIONS_PATH, compendium: str = DEFAULT_COMP
 
 
 def pack_of_line(line: dict, sides: dict) -> str:
-    """The pack a corpus line's audio ships in."""
-    if line["source"] == "gossip":
+    """The pack a corpus line's audio ships in. NPC chat has no quest to side with, and is an NPC
+    talking as gossip is."""
+    if line["source"] in ("gossip", CHATTER):
         return "gossip"
     return sides.get(line["questId"], "shared")
 

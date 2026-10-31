@@ -11,6 +11,7 @@ the corpus, and building a pack from audio/ once `make quests-sounds` has assemb
     export-locale-text  Postgres -> one language's gossip text   before its Gossip pack
     export-giver-names  Postgres -> the addon's translated quest-giver names   after import-locale
     export-gossip-text  Postgres -> the addon's gossip text per client locale, and aliases
+    export-chatter-lines  corpus -> the addon's NPC Chat lines             after export-corpus
     build         corpus + audio/ -> dist/<module>          per release
     install       dist/<module> -> WoW AddOns               per release
 """
@@ -87,6 +88,12 @@ gst = subparsers.add_parser(
 gst.add_argument("--out-dir", required=True, help="e.g. ../../addons/Spoken_Quests/Gossip")
 gst.add_argument("--aliases", default=DEFAULT_ALIASES_PATH,
                  help="Where the pack build reads the aliases from")
+
+chl = subparsers.add_parser(
+    "export-chatter-lines",
+    help="What NPCs say in the world (source chatter) -> the addon's ChatterLines.lua.")
+chl.add_argument("--corpus", default=DEFAULT_CORPUS_PATH)
+chl.add_argument("--out", default=None, help="default: addons/Spoken_Quests/ChatterLines.lua")
 
 bld = subparsers.add_parser(
     "build",
@@ -184,6 +191,11 @@ elif args.mode == "export-giver-names":
 elif args.mode == "export-gossip-text":
     from tts_cli.corpus_db import export_gossip_text
     export_gossip_text(args.out_dir, args.aliases)
+
+elif args.mode == "export-chatter-lines":
+    from tts_cli.chatter_lines import DEFAULT_OUT, export_chatter_lines
+    lines, speakers = export_chatter_lines(load_corpus(args.corpus), args.out or DEFAULT_OUT)
+    print(f"wrote {lines} lines across {speakers} speakers")
 
 elif args.mode == "build":
     locale_text = None

@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from tts_cli.ignores import ignored_files, wordless
 from tts_cli.length_table import write_sound_length_table_lua
-from tts_cli.naming import (FOLLOWUP, followup_stem_from_line_id, gossip_hash_from_line_id,
+from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossip_hash_from_line_id,
                             moment_of, quest_moment_stem, quest_stem_from_line_id,
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
@@ -262,8 +262,9 @@ def build_tables(corpus: dict, ignored=()) -> dict:
         # Before the quest tables, which it must stay out of: a follow-up line carries its
         # quest, but it is said in chat rather than in the quest dialog, so matching its text
         # there would answer the wrong question. The addon knows the speaker and the
-        # broadcast_text id from its own export, which is all this table is keyed on.
-        if line["source"] == FOLLOWUP:
+        # broadcast_text id from its own export, which is all this table is keyed on. NPC chat
+        # (Chatter.lua) finds its recordings in the same table.
+        if line["source"] in BROADCAST_SOURCES:
             broadcast = int(line["lineId"].split(":")[1])
             stem = followup_stem_from_line_id(line["lineId"])
             # A split NPC's follow-up is a file per body. The chat event names the speaker, but

@@ -18,6 +18,7 @@ SourceMethods.__index = SourceMethods
 ---@field order? number       -- its place on Spoken's page and the order of its settings page; never queue order
 ---@field queueLimit? number  -- clips of this source allowed behind the head; nil = unlimited
 ---@field interClipGap? number
+---@field noNarrator? boolean -- its words are shown elsewhere: the narrator never draws its lines
 ---@field channel? fun():string
 ---@field admit? fun(clip, queue):boolean, string?
 ---@field testBeforeQueue? boolean
@@ -43,6 +44,7 @@ function Sources:Register(key, info)
         -- Its lines have no recording: each shows in the narrator for its `length` and is not
         -- refused for a sound channel that cannot be heard.
         textOnly = info.textOnly,
+        noNarrator = info.noNarrator,
         admit = info.admit,
         testBeforeQueue = info.testBeforeQueue,
         onQueueEnter = info.onQueueEnter,
