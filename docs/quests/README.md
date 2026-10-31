@@ -1510,9 +1510,13 @@ export-corpus), keyed by the speaker's creature entry. `Chatter.lua` reads it. N
 the creature id in the event's GUID, so chat from a speaker with no lines costs one table lookup. The text must
 equal a line once `$n`, `$r`, `$c` and `$g...;` are filled in for the local player, so only English clients
 match: on any other the text is translated, and an NPC says more than its exported lines (lines the game
-voices, emotes, quest scripts), so not even an NPC with a single line can be told by who said it. Forever sends no GUID
-with NPC chat: there the speaker is found by the name in the event (each speaker's `name` in the export) and
-the text, English clients only, since a translated name matches nothing. A message the client hides (a
+voices, emotes, quest scripts), so not even an NPC with a single line can be told by who said it. Forever and
+Classic Era send no GUID with NPC chat. There the speaker is looked for on screen first, a unit of the event's
+name among the target, mouseover, soft target and nameplates (`Utils:GetSpeakerGUIDByName`): the one attacking
+the player, since that is who shouts on aggro, or any of them when all are one sex. Its GUID tells a split
+NPC's body or sex as an event's would. With none found, or a unit of another entry by that name, the speaker
+is found by the name in the event (each speaker's `name` in the export) and the text, English clients only,
+since a translated name matches nothing. A message the client hides (a
 dungeon's chat can come as secrets) is not matched. Read Automatically, the quest window's, does not apply:
 World Chatter's own switch is the only one.
 
@@ -1520,9 +1524,13 @@ A line that a quest's script makes the NPC say (`FollowupLines.lua` lists the sa
 played here: heard with nothing armed it is another player's quest, and the follow-up part plays it for the
 player's own.
 
-The first lines were seeded once from the Forever repack's `creature_text` (a one-off import, kept outside
-the repo): say, yell, whisper and boss whisper that the game does not voice, with a broadcast text id and a
-speaker with a spawn on the open-world maps, since in an instance the client hides the GUID. From there they are
+The first lines were seeded once from the vmangos world DB's creature AI and waypoint scripts (a one-off
+import, kept outside the repo): say, yell, whisper and boss whisper that the game does not voice, with a
+broadcast text id and a speaker with a spawn on the open-world maps, since in an instance the client hides the
+GUID. Some lines vmangos says from its C++ scripts, which no table links to a speaker (a Defias Thug's aggro
+talk); those were added by hand. Each speaker got an `npc` row of provenance `display`, so it is listed on
+`/npcs` and `make quests-import-npc-bodies` splits one drawn as several bodies: its lines are then spoken per
+body, like any split NPC's follow-up. From there they are
 edited on the site like any other line. A chat line is named as a follow-up line is, `f:{broadcastTextId}:{voice}`
 (`tts_cli/naming.py`), and shares its file and folder, so the same words in the same voice are one recording;
 its audio ships in the Gossip pack, having no quest to side with. The broadcast text id names the recording:
@@ -1541,7 +1549,8 @@ forbids (an instance's) or whose text is a secret is left alone.
 
 World Chatter is a part of Spoken of its own (`chatter`, after Bosses on Spoken's page, with a page and a switch beside
 Quests' and Gossip's). `/spq chatter [NPC id]` replays an NPC's lines three seconds apart through the same match
-and play path, the target's when no id is given, and marks a line with no recording as silent.
+and play path, the target's when no id is given (with the target's own GUID, so a split NPC plays the body on
+screen), and marks a line with no recording as silent.
 
 ### The Quests tab of Azeroth's Compendium
 

@@ -84,11 +84,12 @@ function Chatter:OnChat(event, message, sender, guid, asked)
     if not message then
         return
     end
+    local told = guid ~= nil and guid ~= ""
+    guid = told and guid or Utils:GetSpeakerGUIDByName(sender)
     local npcID = guid and Utils:GetCreatureIDFromGUID(guid)
-    local line
-    if npcID then
-        line = self:Match(npcID, message, sender)
-    else
+    local line = npcID and self:Match(npcID, message, sender)
+    -- A unit found by name may be another entry of that name than the one that spoke.
+    if not line and not told then
         npcID, line = self:MatchByName(message, sender)
     end
     if not line then
@@ -106,13 +107,14 @@ end
 
 --- `/spq chatter [NPC id]`: replay what the NPC says, three seconds apart, through the same match
 --- and play path as the real chat; the NPC of your target when none is given. A line with no
---- recording is marked, so a missing voice shows without walking to the NPC.
+--- recording is marked, so a missing voice shows without walking to the NPC. The target's own GUID
+--- goes along when it is the NPC, so a split NPC plays the body on screen.
 function Chatter:Simulate(input)
     local print = function(message) DEFAULT_CHAT_FRAME:AddMessage("|cFF00CCFFSpoken world chatter:|r " .. message) end
     local npcID = tonumber(string.match(input or "", "%d+"))
-    if not npcID and UnitExists and UnitExists("target") then
-        npcID = Utils:GetCreatureIDFromGUID(NotSecret(UnitGUID("target")))
-    end
+    local targetGUID = UnitExists and UnitExists("target") and NotSecret(UnitGUID("target"))
+    local targetID = targetGUID and Utils:GetCreatureIDFromGUID(targetGUID)
+    npcID = npcID or targetID
     if not npcID then
         print("usage: /spq chatter <NPC id>  -- or target the NPC and type /spq chatter")
         return
@@ -127,7 +129,7 @@ function Chatter:Simulate(input)
         return
     end
     local name = DataModules:GetObjectName(Enums.GUID.Creature, npcID) or "NPC"
-    local guid = Utils:MakeGUID(Enums.GUID.Creature, npcID)
+    local guid = targetID == npcID and targetGUID or Utils:MakeGUID(Enums.GUID.Creature, npcID)
     for index, line in ipairs(lines) do
         local text = Followup.Render(line.text, name)
         print(format("line %d, %s: %s%s", line.id, name, text,

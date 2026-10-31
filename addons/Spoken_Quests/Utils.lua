@@ -65,18 +65,55 @@ end
 local SEX_UNITS = { "questnpc", "npc", "target", "mouseover" }
 
 --- The sex (UnitSex: 2 male, 3 female) the unit a GUID names is drawn as, where a unit token
---- on screen still points at it: the one being talked to, the target or the mouseover.
+--- on screen still points at it: the one being talked to, the target, the mouseover, or its
+--- nameplate, which is how a creature shouting as it aggroes is usually seen.
 ---@param unitGUID string|nil
 ---@return number|nil sex
 function Utils:GetSexForGUID(unitGUID)
     if not unitGUID or not UnitSex then
         return
     end
+    local token = UnitTokenFromGUID and NotSecret(UnitTokenFromGUID(unitGUID))
+    if token then
+        return NotSecret(UnitSex(token))
+    end
     for _, unit in ipairs(SEX_UNITS) do
         if NotSecret(UnitGUID(unit)) == unitGUID then
             return NotSecret(UnitSex(unit))
         end
     end
+end
+
+local SPEAKER_UNITS = { "target", "mouseover", "softenemy", "softinteract" }
+for i = 1, 40 do
+    table.insert(SPEAKER_UNITS, "nameplate" .. i)
+end
+
+--- The GUID of the creature on screen that said something, for NPC chat that came without one
+--- (Forever and Classic Era send none): a unit of that name, the one attacking the player first,
+--- since that is who shouts on aggro. Several others are told apart only when all are one sex,
+--- the one thing the GUID is then wanted for; otherwise nil.
+---@param name string|nil
+---@return string|nil guid
+function Utils:GetSpeakerGUIDByName(name)
+    if not name or not UnitName then
+        return
+    end
+    local seen, first, sex, mixed = {}, nil, nil, false
+    for _, unit in ipairs(SPEAKER_UNITS) do
+        local guid = NotSecret(UnitGUID(unit))
+        if guid and not seen[guid] and NotSecret(UnitName(unit)) == name and not UnitIsPlayer(unit) then
+            seen[guid] = true
+            if UnitIsUnit and UnitIsUnit(unit .. "target", "player") then
+                return guid
+            end
+            local unitSex = NotSecret(UnitSex(unit))
+            first = first or guid
+            mixed = mixed or (sex ~= nil and unitSex ~= sex)
+            sex = sex or unitSex
+        end
+    end
+    return not mixed and first or nil
 end
 
 --- The body (race and sex) a GUID's creature is drawn as, read from its model: nil until the
