@@ -10,7 +10,7 @@
  */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
-/** A team's id, "team"."id". Defined here so withTeam need not import the teams module. */
+/** "team"."id". Defined here so withTeam need not import the teams module. */
 export type TeamId = string;
 
 /**
@@ -95,11 +95,8 @@ export async function inTransaction<T>(work: (client: PoolClient) => Promise<T>)
 export const ALL_TEAMS = "*";
 
 /**
- * `work` in a transaction that acts as `team`.
- *
- * The setting is transaction-local (set_config's third argument), so it cannot outlive the
- * commit or rollback and leak onto the next user of the pooled connection. Row-level security
- * policies read it.
+ * `work` in a transaction that acts as `team`. The setting is transaction-local, so it cannot
+ * leak onto the next user of the pooled connection. Row-level security policies read it.
  */
 export async function withTeam<T>(
   team: TeamId | typeof ALL_TEAMS,
@@ -112,21 +109,17 @@ export async function withTeam<T>(
 }
 
 /**
- * Act as `team` for the rest of `client`'s open transaction: withTeam for a transaction opened
- * by hand, as resolveContribution opens its own to learn its team from the row it locks.
- * Transaction-local for the same reason, so it ends with the commit or rollback.
+ * Act as `team` for the rest of `client`'s open transaction, for one opened by hand that learns
+ * its team from a row it locks. Transaction-local too, so it ends with the commit or rollback.
  */
 export async function actAs(client: Pick<PoolClient, "query">, team: TeamId | typeof ALL_TEAMS): Promise<void> {
   await client.query(`select set_config('spoken.team', $1, true)`, [team]);
 }
 
 /**
- * A filter to the rows of the team this transaction acts as, or of every team under ALL_TEAMS.
- *
- * For the tables that hold one copy per team of what every language reads -- the roster, the
- * base generation settings, the English lexicon -- where nothing else in the query picks a
- * team's row out. Row-level security draws the same line; this keeps the read right on a
- * connection it does not bind, and matches nothing outside withTeam.
+ * Rows of the team this transaction acts as, or every team under ALL_TEAMS, for the tables that
+ * keep one copy per team. Row-level security draws the same line; this keeps the read right on
+ * a connection it does not bind, and matches nothing outside withTeam.
  */
 export const TEAM_ROWS = `"teamId" in (select "id" from "team" where current_setting('spoken.team', true) in ('*', "id"::text))`;
 

@@ -4,12 +4,9 @@
  *
  * A refusal is a TypesError whose message is shown to the admin as it stands.
  *
- * The types, genders and flavors are every team's, and every team has a roster of voices and
- * assignments over them. Every edit changes every team's roster in one transaction
- * (ALL_TEAMS): its statements on voice and voice_assignment reach every team's rows, and each
- * insert writes a row per team. So no team is left with a type it cannot voice, and the rosters
- * stay the one roster they were copied from: a site owner's edit on /enUS/voices still reaches
- * every language. Phase 2 makes the voice assignments each team's own (assignVoice).
+ * The types are every team's; each team keeps its own roster over them. Every edit runs as
+ * ALL_TEAMS and writes a row per team, so no team is left with a type it cannot voice and an
+ * edit on /enUS/voices still reaches every language.
  */
 import type { PoolClient } from "pg";
 
@@ -20,7 +17,6 @@ import { GENDERS } from "./voices";
 
 export class TypesError extends Error {}
 
-/** An edit of the roster, which every team keeps a copy of: as every team. */
 function asEveryRoster<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
   return withTeam(ALL_TEAMS, work);
 }
@@ -278,10 +274,7 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
   });
 }
 
-/**
- * `voice` null: a new voice of the combination's own. In every team's roster, as the types
- * are: one team's own assignment, and the voice it creates, is phase 2's.
- */
+/** `voice` null: a new voice of the combination's own, in every team's roster. */
 export async function assignVoice(
   rawRace: unknown,
   rawGender: unknown,

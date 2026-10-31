@@ -1,26 +1,18 @@
--- Teams, the contract: every per-team row's team is required, and the tables are keyed by it.
+-- Teams contract: every per-team row's team is required, and the tables are keyed by it. The
+-- roster, base generation settings and dismissal mark become one copy per team.
 --
--- 0088 wrote the team on every row and put a team-first unique index beside each key. This
--- finishes the move: the old keys go, the team-first ones take their place, and the rows that
--- were one site-wide copy -- the roster, the base generation settings, the queue's dismissal
--- mark -- become one copy per team, so two teams can keep them apart.
---
--- NOT ADDITIVE, by design: this is deploy 2. It needs deploy 1's code (the release that
--- shipped 0088 and writes inside withTeam) to be the one running, and the code that ships with
--- it to follow: its `on conflict` targets name the team-first keys, and the old ones are gone.
--- The release before deploy 1 cannot run against this schema, so it is no rollback target.
+-- NOT ADDITIVE: deploy 2. Deploy 1's code must be running first. The old keys are gone, so the
+-- release before deploy 1 cannot run against this schema and is no rollback target.
 
--- A language some row names (team_scoped_lang) but no team owns joins the english team, as
--- switching a language on does (languages/store.ts setEnabled). 0087 gave a team to every
--- language it could see; this catches one that only a report or an ignore names, rather than
--- failing on it below.
+-- A language some row names but no team owns joins the english team, as switching it on does,
+-- rather than failing the not null below.
 insert into "team_language" ("teamId", "lang", "privileged")
 select (select "id" from "team" where "slug" = 'english'), l."lang", true
   from "team_scoped_lang" l
  where team_of_lang(l."lang") is null;
 
--- BACKFILL, as 0088 did, of whatever was written without a team while deploy 1 ran: an insert
--- that missed withTeam, or one by the release before it.
+-- BACKFILL whatever was written without a team while deploy 1 ran: an insert that missed
+-- withTeam, or one by the release before it.
 do $$
 declare
   t text;
@@ -87,7 +79,7 @@ $$;
 alter table "line_ignore" add constraint "line_ignore_team_check"
   check (("lang" is null) = ("teamId" is null));
 -- An event with no language has no team. One with a language may lack a team: activity is
--- logged for a language nobody owns rather than refused (activity/store.ts).
+-- logged for a language nobody owns rather than refused.
 alter table "activity" add constraint "activity_team_check"
   check ("lang" is not null or "teamId" is null);
 
@@ -144,9 +136,8 @@ $$;
 -- this is what keeps one per line.
 create unique index "line_ignore_site_wide_idx" on "line_ignore" ("lineId") where "teamId" is null;
 
--- EVERY TEAM ITS OWN COPY of what was English's alone and every language used. Copied from
--- the english team, so nothing a language reads changes today; from here each team edits its
--- own. The pronunciation lexicon stays English's: another language's is its _locale row.
+-- EVERY TEAM ITS OWN COPY, copied from the english team so nothing a language reads changes.
+-- The pronunciation lexicon stays English's: another language's is its _locale row.
 insert into "voice" ("teamId", "name", "race", "gender", "createdAt")
 select t."id", v."name", v."race", v."gender", v."createdAt"
   from "voice" v
@@ -185,7 +176,7 @@ alter table "voice_assignment" add constraint "voice_assignment_voice_fkey"
   foreign key ("teamId", "voice") references "voice" ("teamId", "name");
 
 -- The roster lookup reads one team's assignments: the team the caller acts as (withTeam), or
--- English's for a connection that sets none -- the corpus export, whose corpus is English.
+-- English's for a connection that sets none, such as the corpus export, whose corpus is English.
 create or replace function "voice_for"(r text, g text, f text) returns text
 language sql stable as $$
   select case when r ~ '^model-\d+$' then r else (

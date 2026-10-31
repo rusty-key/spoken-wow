@@ -185,10 +185,8 @@ module.exports = {
         // ELEVENLABS_DICTIONARY_ID.
         ...secrets,
 
-        // The app logs in as spoken_app, which row-level security binds (migration 0090), and
-        // not as the owner DATABASE_URL names: that one stays the migrations', the backups' and
-        // the scripts', which read every team. Until app.env has APP_DATABASE_URL the app keeps
-        // the owner's, which works and filters nothing.
+        // The app logs in as spoken_app, which row-level security binds, not as the owner, which
+        // reads every team. Without APP_DATABASE_URL the app keeps the owner's and filters nothing.
         ...(secrets.APP_DATABASE_URL ? { DATABASE_URL: secrets.APP_DATABASE_URL } : {}),
       },
     },

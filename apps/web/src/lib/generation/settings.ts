@@ -10,10 +10,8 @@
  * rather than the read path on purpose: a value already in the database is a fact, and
  * refusing to read it would take the settings page down exactly when it is needed to fix it.
  *
- * Every team has a generation_setting row of its own, its base: English's is the english
- * team's, and every other team's began as a copy of it (migration 0089). A language's own
- * generation_setting_locale row, when it has one, is its team's too. A language nobody has
- * configured reads its team's base, so it never needs another team's row.
+ * Every team has a base generation_setting row, and a language's own locale row is its team's
+ * too. A language nobody has configured reads its team's base, never another team's row.
  */
 import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, queryIn, TEAM_ROWS } from "@/lib/db";
@@ -92,8 +90,7 @@ function baseSettings(row: Row | undefined): EffectiveSettings {
 }
 
 /**
- * Another language's settings: its own row, or its team's base -- English's, as copied --
- * until somebody saves one.
+ * Another language's settings: its own row, or its team's base until somebody saves one.
  *
  * The base without the accent tags, though. A tag like "[Scottish accent]" is a direction
  * about how English is spoken, and a language that has not chosen its own should not start
@@ -299,8 +296,7 @@ export async function writeRaceTags(
     await recordRaceTags(lang, updatedBy);
     return;
   }
-  // Every team's base, as one: each team's began as a copy of English's (migration 0089), and
-  // until a team edits its own, an edit of English's is an edit of theirs.
+  // Every team's base, as one: each began as a copy of English's, so an edit keeps them alike.
   const defaults = fileDefaults().config;
   await queryIn(
     ALL_TEAMS,

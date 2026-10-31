@@ -18,11 +18,9 @@
  * Portuguese take of a file is a different recording from the English one, and queueing both
  * is two jobs rather than a duplicate. It is what the generator is asked to speak in.
  *
- * AND THE TEAM. Batches, jobs and pauses belong to the team that owns their language: a
- * batch is created and filled as that team, so its rows take the team from the column
- * default, and a pause holds back only its team's work in the language. What sees across
- * teams - the leader's claim, the lanes it ranks, the panel - runs as ALL_TEAMS; settling a
- * claimed job runs as its team, inside the transaction the worker opens for it.
+ * AND THE TEAM. Batches, jobs and pauses belong to their language's team and take it from the
+ * column default; a pause holds back only its team's work. The leader's claim, its lanes and the
+ * panel run as ALL_TEAMS; settling a job runs as its team, in the transaction the worker opens.
  */
 import { randomUUID } from "node:crypto";
 
@@ -238,8 +236,8 @@ export async function enqueue(
 }
 
 /**
- * A job not held back by a pause: none of its own team's in its language. Both columns are
- * required of either table (0089), so the row comparison under `not in` never meets a null.
+ * Both columns are required of either table, so the row comparison under `not in` never meets
+ * a null.
  */
 const UNPAUSED = `("teamId", "lang") not in (select "teamId", "lang" from "regeneration_pause")`;
 
@@ -620,7 +618,7 @@ type JobAggregateRow = {
  * was showing when the X was pressed. A job that finished in between stays news.
  *
  * Each team keeps its own mark. The one panel every team watches (snapshot) is cut at the
- * latest of them, so a dismissal still hides the news for everybody, as the single mark did.
+ * latest of them, so a dismissal still hides the news for everybody.
  */
 export async function dismissThrough(jobId: string, userId: string | null, lang: Lang): Promise<void> {
   await queryAs(
@@ -657,7 +655,7 @@ export async function snapshot(
     `("state" in ('pending', 'running') or ("queuedAt" > now() - interval '${WINDOW}' ` +
     `and "id" > (select through from dismissal)))`;
 
-  // As ALL_TEAMS: one panel for every team's queue, as there is one queue today.
+  // As ALL_TEAMS: one panel shows every team's queue.
   const [[row], [latestBatch]] = await Promise.all([
     queryIn<JobAggregateRow>(
       ALL_TEAMS,

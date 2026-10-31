@@ -176,8 +176,7 @@ const { asSystem, ownTeam, unowned } = await import("@/lib/teams/testing");
  * The settings row, put back after every case.
  *
  * The english team's row, and it is whatever this database generates English with. A test
- * that deleted it would silently reset the settings of whatever DATABASE_URL points at - the
- * mistake dictionary.test.ts records having made with the lexicon.
+ * that deleted it would silently reset the settings of whatever DATABASE_URL points at.
  */
 let snapshot: Record<string, unknown> | undefined;
 

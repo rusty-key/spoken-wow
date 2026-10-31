@@ -1,6 +1,6 @@
 /**
- * The types are every team's and each team keeps its own roster over them. In phase 1 every
- * edit reaches every team's roster, a voice assignment included, so the rosters stay one.
+ * The types are every team's and each team keeps its own roster over them. Every edit reaches
+ * every team's roster, a voice assignment included, so the rosters stay one.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -70,7 +70,6 @@ describe("types across teams", () => {
     expect((await loadRoster("deDE")).hasRace(KEY)).toBe(false);
   });
 
-  // Phase 2 makes an assignment its own team's alone, and this the other way round.
   it("points every team's combination at a voice, whichever team assigns it", async () => {
     await addType(KEY, ["male"]);
     await assignVoice(KEY, "male", null, "narrator-male");

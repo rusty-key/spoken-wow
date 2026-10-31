@@ -167,8 +167,6 @@ jobs:
       - run: python cli-main.py import-corpus
         working-directory: pipelines/quests
       # As the app role, which row-level security binds; postgres, a superuser, bypasses it.
-      # Migration 0090 creates the role. vitest.config.ts defaults to it too: said here so
-      # the job states what it tests as.
       - run: pnpm --filter @spoken/web test
         env:
           DATABASE_ROLE: spoken_app

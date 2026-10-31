@@ -33,10 +33,8 @@ afterAll(async () => {
 /**
  * For fixtures: as ALL_TEAMS, one statement at a time.
  *
- * The suite acts as the app role (vitest.config.ts), so a test that seeds, inspects or cleans
- * up per-team rows itself goes through row-level security like the code under test. Seeding
- * through this is what a superuser's db() did before the policies; what the code under test
- * does is still bound by them.
+ * The suite acts as the app role, so a test's own seeding, inspection and cleanup of per-team
+ * rows would meet row-level security; the code under test is still bound by it.
  */
 export const asSystem = {
   // `any` by default, as pg's own query is, so a fixture moved here keeps its untyped reads.

@@ -72,9 +72,9 @@ else
   echo "    role $DB_USER already exists; its password is whatever app.env already says"
 fi
 
-# The owner reads every team's rows -- migrations, backups, the pack builds -- and the tables
-# force row-level security on their owner too (migration 0090), so it bypasses it by
-# attribute. Only a superuser can grant that, so it is done here; 0090 refuses to run without.
+# The owner reads every team's rows for migrations, backups and pack builds, and the tables force
+# row-level security on it, so it needs BYPASSRLS. Only a superuser can grant that; 0090 refuses
+# to run without it.
 sudo -u postgres psql -q -c "alter role $DB_USER bypassrls"
 
 # The role the app logs in as, which row-level security binds. Made here because making a role

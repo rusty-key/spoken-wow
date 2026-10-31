@@ -1,13 +1,7 @@
 /**
- * The team-scope migration gives every per-team row the team that owns it. These assert what
- * must hold of whatever database it ran against, rather than inserting rows: other suites
- * share it. The insert checks roll back.
- *
- * Until the app writes inside withTeam, any suite's insert gets a null team, and some put a
- * row back after the test -- the lexicon's singleton, for one -- so a null team on a row
- * written since the migration proves nothing about it. A wrong team always does, so that is
- * what every table is held to. That the backfill reached every row is held of the tables that
- * stamp a row when it is made: a row stamped before the migration was the backfill's to fill.
+ * Asserts what must hold of whatever database the team-scope migration ran against, since other
+ * suites share it; the insert checks roll back. A test may put a row back with a null team, so
+ * every table is held to no wrong team, and only tables with a creation stamp to no missing one.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -38,10 +32,7 @@ const BY_LANG = [
   "activity",
 ];
 
-/**
- * Tables with no language of their own that are English's alone. The roster, the base
- * generation settings and the dismissal mark were too, until 0089 gave every team a copy.
- */
+/** Tables with no language of their own that are English's alone. */
 const ENGLISH = ["pronunciation_lexicon", "line_override"];
 
 const MIGRATED = `select "applied_at" from "schema_migrations"

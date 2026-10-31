@@ -4,9 +4,8 @@
  * on its next read, and an unchanged roster stays the same instance, so whatever is keyed on it
  * (slots.ts) keeps.
  *
- * Races, genders and flavors are every team's; the voices and the assignments are a team's own
- * (migration 0089), read as the team whose roster a language is voiced from: the team that owns
- * the language, or English's for one nobody owns (teamOrEnglish).
+ * Races, genders and flavors are every team's; the voices and the assignments are a team's own,
+ * read as the language's owner, or English's for a language nobody owns.
  */
 import type { PoolClient } from "pg";
 

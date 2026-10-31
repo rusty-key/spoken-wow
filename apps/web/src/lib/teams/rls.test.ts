@@ -16,7 +16,7 @@ const { liveTakes } = await import("@/lib/takes/store");
 const { listActivity, recordActivity } = await import("@/lib/activity/store");
 const { forgetTeams, teamOf } = await import("./store");
 
-/** A second team in deDE beside its privileged one, as phase 2 will allow. */
+/** A second team in deDE beside its privileged one. */
 let other: string;
 let file: string;
 
