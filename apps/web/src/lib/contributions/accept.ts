@@ -40,7 +40,7 @@ import {
   type NpcRowKind,
   type NpcResolution,
 } from "@/lib/npc/store";
-import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
 import type { CorpusLine } from "@/lib/corpus";
 import { isGeneratable, mintBookId, mintPageId } from "@/lib/readables/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
@@ -58,7 +58,7 @@ import {
 } from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
-import { teamLangs } from "@/lib/teams/store";
+import { freshOwners } from "@/lib/teams/store";
 
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
 import { sameLine } from "./compare";
@@ -963,8 +963,10 @@ export async function resolveContribution(
   mayIgnore = false,
   bookMatch?: BookMatchResult,
 ): Promise<ResolveOutcome> {
-  // Read before the client is held: a refresh of the memo needs a connection of its own.
-  const owners = await teamLangs();
+  // Read before the client is held: a refresh of the memo needs a connection of its own. Every
+  // language, since the contribution's is not known yet: one the other worker has just given a
+  // team would otherwise be logged under none.
+  const owners = await freshOwners(CODES);
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles
