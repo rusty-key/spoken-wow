@@ -1,7 +1,4 @@
-/**
- * Deleting a clip leaves nothing on disk, so the activity row is the only record of it. A clip
- * is behind a grant, so in r2 mode it is answered through the site, never redirected.
- */
+/** Deleting a clip leaves nothing on disk, so the activity row is the only record of it. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { deleteSample, recordActivity, sampleKey } = vi.hoisted(() => ({

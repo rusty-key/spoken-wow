@@ -1,8 +1,4 @@
-/**
- * A reference's cut clip, to listen to beside its transcript.
- *
- * Answered by serveFile, which the take audio routes use too, or serveBlob in r2 mode.
- */
+/** A reference's cut clip, to listen to beside its transcript. */
 import fs from "node:fs";
 
 import { serveBlob } from "@/lib/blobs/serve";

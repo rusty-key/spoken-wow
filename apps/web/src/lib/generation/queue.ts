@@ -174,7 +174,6 @@ export async function createBatch(
   return rows[0].id;
 }
 
-/** Delete a batch that never got a job, such as one whose only line was already queued. */
 export async function dropEmptyBatch(batchId: string): Promise<void> {
   await db().query(
     `delete from "regeneration_batch" b
@@ -393,11 +392,9 @@ export async function retryJob(id: string, delayMs: number, attempt?: number): P
 }
 
 /**
- * Put a claim back unspent: a remote worker could not reach the provider, or the line moved
- * before its answer. The attempt is handed back with it, so going offline does not use up the
- * retries a rate limit gets. The next claim gets the same number again, which is safe because
- * only the claimant gives a claim back and it then says nothing more for it, while a lapsed
- * lease is reclaimed as a higher attempt that a give-back never brings below the stale one.
+ * Put a claim back unspent, attempt included, so going offline does not use up a rate limit's
+ * retries. Reusing the number is safe: only the claimant gives a claim back and then goes
+ * quiet, and a lapsed lease is reclaimed as a higher attempt that a give-back never lowers.
  */
 export async function giveBackJob(id: string, attempt: number): Promise<boolean> {
   const { rowCount } = await db().query(

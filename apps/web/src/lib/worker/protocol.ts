@@ -12,8 +12,8 @@ export type { Provider };
 export type GenerationMode = "site" | "local";
 
 /**
- * The providers' API hosts, how each is given the key, and the paths a worker sends there:
- * what lib/generation/tts.ts and fish-tts.ts post, and nothing else.
+ * The providers' API hosts, how each is given the key, and the only paths a worker sends there.
+ * They must match what the server's generators post.
  */
 const PROVIDER_HOSTS: Record<
   string,
@@ -95,7 +95,6 @@ export function providerOf(url: string): Provider | null {
   return PROVIDER_HOSTS[u.hostname]?.provider ?? null;
 }
 
-/** Whether a worker sends this request: a POST to one of the speech endpoints. */
 function speechRequest(request: RelayedRequest): boolean {
   if (request.method !== "POST" || !providerOf(request.url)) return false;
   const u = new URL(request.url);
@@ -232,7 +231,7 @@ export function pollPairing(
   return site(opts, "/api/worker/pair/poll", { poll });
 }
 
-/** Revokes this Manager's token on the site. A token already revoked there counts as done. */
+/** A token already revoked on the site counts as done. */
 export async function unpair(opts: SiteOptions): Promise<void> {
   try {
     await site(opts, "/api/worker/unpair", {});

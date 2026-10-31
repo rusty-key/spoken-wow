@@ -1,4 +1,3 @@
-/** A Manager unpairing itself revokes its own token, as unpairing it on /profile does. */
 import { revokeCallingToken } from "@/lib/worker/tokens";
 
 export const dynamic = "force-dynamic";

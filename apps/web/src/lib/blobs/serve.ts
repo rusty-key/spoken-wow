@@ -1,10 +1,7 @@
 /**
- * An archive object answered through the site, for audio behind a grant: recordings, clone
- * clips and references. The bucket is public and its answers are cached for good, so a
- * redirect to it would keep working for anyone given the URL, after a revoke or a delete too.
- *
- * Range is answered the way serveFile does (lib/stream.ts), for Safari's `bytes=0-1` probe,
- * from the whole object: these clips are small, and a seek is rare.
+ * Audio behind a grant, answered through the site: a redirect to the public, cached-for-good
+ * bucket would keep working for anyone given the URL, after a revoke or a delete too. Ranges
+ * are cut from the whole object, since these clips are small.
  */
 import "server-only";
 

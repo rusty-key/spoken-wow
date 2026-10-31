@@ -70,9 +70,8 @@ const asFailure = (error: unknown): RegenerateResult => ({
 });
 
 /**
- * Back to the queue, unless its batch was stopped: then it fails as settle() fails a rate
- * limit after Stop, since a pending row would be claimed and paid for. Without `retryInMs` the
- * claim is given back unspent, not counted against the job's attempts.
+ * Back to the queue, unless its batch was stopped: a pending row would be claimed and paid for
+ * after Stop, so it fails instead. Without `retryInMs` the claim does not count as an attempt.
  */
 async function requeue(job: QueueJob, because: Failure, retryInMs?: number): Promise<boolean> {
   if (await batchStopped(job.batchId)) return failJob(job.id, because, job.attempts);

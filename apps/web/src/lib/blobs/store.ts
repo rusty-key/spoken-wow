@@ -7,7 +7,7 @@
  *   dual  both. Reads stay on the volume until one-off/2026-10-archive-to-r2 has given every
  *         old row a blob.
  *   r2    the bucket only. Audio routes redirect public takes to its public address and
- *         answer the rest themselves (serve.ts).
+ *         answer the rest themselves.
  */
 import "server-only";
 
@@ -178,7 +178,7 @@ export async function keep(prefix: BlobPrefix, data: Buffer, contentType: string
 export type Stored =
   /** The file may be missing; the reader finds out. */
   | { kind: "file"; path: string }
-  /** `url` is public: only audio anybody may hear is redirected to it (blobs/serve.ts). */
+  /** `url` is public: only audio anybody may hear is redirected to it. */
   | { kind: "blob"; key: string; url: string }
   | { kind: "gone" };
 
