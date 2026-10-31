@@ -1,21 +1,12 @@
--- Every per-team row says which team it belongs to.
+-- Every per-team row says which team it belongs to: the keys.
 --
--- Today a language's rows are its team's by implication: whoever may edit the language edits
--- them. Writing the team on the row is what lets the later phases scope reads by team (row-
--- level security reads "teamId") and let two teams keep rows for the same language apart.
+-- The last of three files (0088_team_scope_1_columns.sql says why three). CREATE INDEX holds
+-- writes to its table while it builds, never reads. Not CONCURRENTLY, because migrate.sh runs
+-- every file in a transaction.
 --
--- EXPAND ONLY. The previous release keeps running against this schema, so nothing it does
--- may fail here:
---   * "teamId" is nullable. An insert by the previous release, or any insert outside
---     withTeam (lib/db.ts), gets null; the contract release backfills those and makes the
---     column not null.
---   * Its default reads the transaction-local `spoken.team` that withTeam sets, so an insert
---     inside withTeam is scoped without its SQL naming the column. '*' (ALL_TEAMS) is no one
---     team, and reads as null.
---   * Every existing key stays. Beside each, a unique index with "teamId" first and otherwise
---     the same columns, expressions and predicate, so an `on conflict` target can switch to
---     it: Postgres picks the arbiter index by an exact match. The contract release drops the
---     old keys.
+-- Every existing key stays. Beside each, a unique index with "teamId" first and otherwise the
+-- same columns, expressions and predicate, so an `on conflict` target can switch to it:
+-- Postgres picks the arbiter index by an exact match. The contract release drops the old keys.
 --
 -- THE TEAM-FIRST UNIQUE INDEXES, for `on conflict` targets:
 --   take_team_current_idx                 ("teamId", "source", "lang", "file") where "isCurrent"
@@ -41,70 +32,6 @@
 --
 -- A table with no unique key leading with "teamId" gets a plain <table>_team_idx instead, for
 -- the policies' filter.
-
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'take', 'recording', 'take_ack', 'voice', 'voice_assignment', 'voice_clone', 'voice_sample',
-    'fish_reference', 'generation_setting', 'generation_setting_locale', 'pronunciation_lexicon',
-    'pronunciation_lexicon_locale', 'lexicon_change', 'line_override', 'line_ignore', 'line_flag',
-    'line_issue', 'line_issue_line', 'report', 'regeneration_batch', 'regeneration_job',
-    'regeneration_pause', 'queue_dismissal', 'activity'
-  ] loop
-    execute format('alter table %I add column "teamId" uuid references "team" ("id")', t);
-    execute format(
-      $f$alter table %I alter column "teamId"
-           set default nullif(nullif(current_setting('spoken.team', true), ''), '*')::uuid$f$, t);
-  end loop;
-end
-$$;
-
--- BACKFILL. A row with a language belongs to that language's privileged team. A null-lang
--- line_ignore or activity row is site-wide, and stays without a team.
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'take', 'recording', 'take_ack', 'voice_clone', 'fish_reference', 'generation_setting_locale',
-    'pronunciation_lexicon_locale', 'lexicon_change', 'line_ignore', 'line_flag', 'line_issue',
-    'report', 'regeneration_batch', 'regeneration_job', 'regeneration_pause', 'activity'
-  ] loop
-    execute format(
-      $f$update %I x set "teamId" = tl."teamId"
-           from "team_language" tl
-          where tl."lang" = x."lang" and tl."privileged"$f$, t);
-  end loop;
-end
-$$;
-
--- A sample's language is in the name of the clone it was uploaded for, 'voice@lang', and a
--- bare name is English.
-update "voice_sample" s set "teamId" = tl."teamId"
-  from "team_language" tl
- where tl."lang" = coalesce(nullif(split_part(s."clone", '@', 2), ''), 'enUS') and tl."privileged";
-
-update "line_issue_line" l set "teamId" = i."teamId"
-  from "line_issue" i
- where i."id" = l."issueId";
-
--- No language of their own. The roster, the shared generation settings and lexicon, the
--- queue's dismissal mark and the English text overrides are all English's today.
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'voice', 'voice_assignment', 'generation_setting', 'pronunciation_lexicon', 'queue_dismissal',
-    'line_override'
-  ] loop
-    execute format(
-      $f$update %I set "teamId" = (select "id" from "team" where "slug" = 'english')$f$, t);
-  end loop;
-end
-$$;
 
 -- THE TEAM-FIRST KEYS, each mirroring the key named beside it.
 create unique index "take_team_current_idx"                     -- take_current_idx
@@ -151,3 +78,21 @@ create index "queue_dismissal_team_idx"       on "queue_dismissal" ("teamId");
 create index "activity_team_idx"              on "activity" ("teamId");
 -- Its team-first key is partial, so it cannot serve a filter on every job.
 create index "regeneration_job_team_idx"      on "regeneration_job" ("teamId");
+
+-- The foreign keys 1_columns added NOT VALID. Validating reads each table under a lock that
+-- holds neither reads nor writes.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'take', 'recording', 'take_ack', 'voice', 'voice_assignment', 'voice_clone', 'voice_sample',
+    'fish_reference', 'generation_setting', 'generation_setting_locale', 'pronunciation_lexicon',
+    'pronunciation_lexicon_locale', 'lexicon_change', 'line_override', 'line_ignore', 'line_flag',
+    'line_issue', 'line_issue_line', 'report', 'regeneration_batch', 'regeneration_job',
+    'regeneration_pause', 'queue_dismissal', 'activity'
+  ] loop
+    execute format('alter table %I validate constraint %I', t, t || '_teamId_fkey');
+  end loop;
+end
+$$;

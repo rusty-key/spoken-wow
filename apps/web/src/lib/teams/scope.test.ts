@@ -51,7 +51,7 @@ const privileged = (lang: string) =>
   `select "teamId" from "team_language" tl where tl."lang" = ${lang} and tl."privileged"`;
 
 const MIGRATED = `select "applied_at" from "schema_migrations"
-                   where "name" = '0088_team_scope.sql'`;
+                   where "name" = '0088_team_scope_2_backfill.sql'`;
 
 /** Each table that records when a row was made, with that column. */
 const STAMPED: Record<string, string> = {
