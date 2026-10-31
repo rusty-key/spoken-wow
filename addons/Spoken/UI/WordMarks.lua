@@ -165,9 +165,7 @@ function Marks.Cut(caption, map, span, paragraphs)
     local at = map[index]
     local word = paragraphs[at.p].words[at.w]
     if caption.typewriterBy == "letter" and caption.activeWord == index then
-        local source = caption.words[index]
-        local count = Transcript.TypedChars(caption.progress, caption.totalWeight, source.start, source.finish,
-            word.count)
+        local count = Transcript.TypedChars(caption.progress, caption.totalWeight, caption.words[index], word.count)
         -- Whole characters: a cut inside a multibyte one would leave the window's text invalid.
         return at.p, word.first + #Transcript.Prefix(word.text, count) - 1
     end

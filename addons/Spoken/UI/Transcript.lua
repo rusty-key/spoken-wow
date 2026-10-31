@@ -62,10 +62,10 @@ function Transcript.Prefix(text, count)
     return table.concat(parts)
 end
 local Prefix = Transcript.Prefix
---- How many of a word's `chars` characters are typed out at `progress`: at least one, all of
+--- How many of `word`'s `chars` characters are typed out at `progress`: at least one, all of
 --- them once the word ends.
-function Transcript.TypedChars(progress, totalWeight, start, finish, chars)
-    local share = (progress * totalWeight - start) / math.max(1e-6, finish - start)
+function Transcript.TypedChars(progress, totalWeight, word, chars)
+    local share = (progress * totalWeight - word.start) / math.max(1e-6, word.finish - word.start)
     return math.max(1, math.ceil(Clamp(share, 0, 1) * chars))
 end
 -- Trailing punctuation lengthens a word's share of the recording.
@@ -461,10 +461,9 @@ function Transcript:Render()
         if inSpeech then
             typedTo = self.activeWord
             -- By letter, the piece being read is typed only as far as the voice has got.
-            if (cfg.TypewriterBy or "letter") == "letter" and segment then
+            if cfg.TypewriterBy ~= "word" and segment then
                 typedPiece = segment.index
-                typedChars = Transcript.TypedChars(progress, self.totalWeight, segment.start, segment.finish,
-                    CharacterCount(segment.text))
+                typedChars = Transcript.TypedChars(progress, self.totalWeight, segment, CharacterCount(segment.text))
             end
         elseif not (progress and progress >= 1) then typedTo = 0 end
     end
