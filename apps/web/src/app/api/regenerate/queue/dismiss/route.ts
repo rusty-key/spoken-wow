@@ -31,8 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "through is required" }, { status: 400 });
   }
 
-  // One watermark for the one panel until each team has a queue of its own; written as the
-  // team of the caller's first language.
+  // There is one watermark for the one panel, so it is written as the caller's first language's team.
   await dismissThrough(through, session.user.id, langs[0]);
   return NextResponse.json({ ok: true });
 }

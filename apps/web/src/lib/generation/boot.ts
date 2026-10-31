@@ -46,8 +46,7 @@ export function ensureQueueRunning(): void {
   const holder = globalThis as Holder;
   if (holder[key]) return;
 
-  // Here because this is the once-per-process start the app has (see the top of the file). A
-  // failure is logged and left: the queue must start whether or not the seeding could.
+  // A failure is logged and left: the queue must start whether or not the seeding could.
   void inTransaction(adoptEveryLang)
     .then(forgetTeams)
     .catch((error) => console.error("teams: could not give every language a team", error));

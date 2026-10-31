@@ -65,7 +65,6 @@ async function rosterData(client: PoolClient): Promise<RosterData> {
   };
 }
 
-/** The roster `lang` is voiced from. */
 export async function loadRoster(lang: Lang): Promise<Roster> {
   const team = await rosterTeam(lang);
   const [{ stamp }] = await queryIn<{ stamp: string }>(team, `select ${ROSTER_STAMP} as "stamp"`);

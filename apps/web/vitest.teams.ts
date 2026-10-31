@@ -1,10 +1,6 @@
 /**
- * Give every language a team on the test database, as production has.
- *
- * Every per-team write resolves its language's team and refuses a language with none. In
- * production the server gives every language one when it starts (adoptEveryLang); a test
- * database starts from English alone, so the suites that write German or Korean takes would
- * otherwise all refuse. Seeded the same way.
+ * Give every language a team on the test database, as the server does in production at start.
+ * A test database starts from English alone, so every per-team write in another language would refuse.
  */
 import type { TestProject } from "vitest/node";
 import { Client } from "pg";

@@ -143,7 +143,7 @@ export async function reportLang(id: number): Promise<Lang | null> {
   return rows[0]?.lang ?? null;
 }
 
-/** `lang` as for reportById. */
+/** `lang` is the report's, from reportLang. */
 export async function setStatus(
   id: number,
   status: Status,

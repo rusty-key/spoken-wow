@@ -32,8 +32,7 @@ tables=("$@")
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
 # take_encoding is each take's clip as its pack ships it.
 shared=(take recording take_encoding)
-# The shared tables that are per-team (migration 0088) and carry a lang; their "teamId" is
-# remapped to this database's teams after the copy.
+# The per-team shared tables, whose "teamId" is remapped to this database's teams after the copy.
 teamed=(take recording take_ack)
 # The shared tables with an id, which is one sequence across every section.
 serial=(take recording)
@@ -142,11 +141,8 @@ begin
 end
 \$\$;
 SQL
-  # Team ids are per database: production's uuids name no team here, so a copied "teamId"
-  # would dangle or be blanked above. Each row takes the privileged team of its own language
-  # here (a language is one team's in this phase), english's when its language has none.
-  # Rows are written with a lang in all three tables; a null-lang row (line_ignore, activity)
-  # is not copied by this sync, and would stay null.
+  # Team ids are per database, so a copied "teamId" would dangle. Each row takes its language's
+  # privileged team here, or english's when the language has none.
   for table in "${teamed[@]}"; do
     cat <<SQL
 \\echo ==> teams: remapping "teamId" of $staging."$table" to the local privileged teams

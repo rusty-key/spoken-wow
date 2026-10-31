@@ -18,7 +18,6 @@ import { GENDERS } from "./voices";
 
 export class TypesError extends Error {}
 
-/** An edit of the types, which every language is voiced with, as the roster's team. */
 async function asRoster<T>(lang: Lang, work: (client: PoolClient) => Promise<T>): Promise<T> {
   return withTeam(await rosterTeam(lang), work);
 }

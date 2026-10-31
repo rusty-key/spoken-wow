@@ -5,7 +5,7 @@
  * is spoken by up to many NPCs, so a rewrite necessarily changes what all of them say. See
  * the header of migration 0012 for why rewriting the spoken text cannot rename that file.
  *
- * Every override is English's, and so its team's: a write runs as English's team.
+ * Every override is English's, so a write runs as English's team.
  */
 import { recordActivity } from "../activity/store";
 import { BASE_LANG, type Lang } from "../lang";

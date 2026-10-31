@@ -1,9 +1,4 @@
-/**
- * Team resolution against a real Postgres: the language -> privileged team mapping lives in
- * the schema, and the new-language rule in adoptLang.
- *
- * Needs DATABASE_URL and migrations applied.
- */
+/** Needs DATABASE_URL and migrations applied. */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { recordActivity } from "@/lib/activity/store";

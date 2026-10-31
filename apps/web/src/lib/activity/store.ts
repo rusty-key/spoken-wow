@@ -35,9 +35,8 @@ export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
 };
 
 /**
- * "teamId" is written from each row rather than left to the column default: one call can
- * carry acts in several languages, and an act on every language belongs to no team, whatever
- * team the caller's transaction acts as.
+ * "teamId" comes from each row, not the column default: one call can carry acts in several
+ * languages, and an act on every language belongs to no team.
  */
 const INSERT = `insert into "activity" ("lang", "kind", "source", "subject", "lineId", "detail", "actorId", "teamId")
                 select "lang", "kind", "source", "subject", "lineId", coalesce("detail", '{}'), "actorId", "teamId"

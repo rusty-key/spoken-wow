@@ -10,7 +10,7 @@
  */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
-/** A team's id, "team"."id". Defined here so withTeam need not import the teams module. */
+/** "team"."id". Defined here so withTeam need not import the teams module. */
 export type TeamId = string;
 
 /**
@@ -95,11 +95,8 @@ export async function inTransaction<T>(work: (client: PoolClient) => Promise<T>)
 export const ALL_TEAMS = "*";
 
 /**
- * `work` in a transaction that acts as `team`.
- *
- * The setting is transaction-local (set_config's third argument), so it cannot outlive the
- * commit or rollback and leak onto the next user of the pooled connection. Row-level security
- * policies read it.
+ * `work` in a transaction that acts as `team`. The setting is transaction-local, so it cannot
+ * leak onto the next user of the pooled connection. Row-level security policies read it.
  */
 export async function withTeam<T>(
   team: TeamId | typeof ALL_TEAMS,
@@ -111,7 +108,6 @@ export async function withTeam<T>(
   });
 }
 
-/** One query, rows only, as `team`. */
 export async function queryIn<T extends QueryResultRow = QueryResultRow>(
   team: TeamId | typeof ALL_TEAMS,
   text: string,

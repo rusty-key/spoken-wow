@@ -1,15 +1,7 @@
 /**
- * Which team owns a language: `team_language`, and the only module that knows its columns.
- *
- * Every per-team table is keyed by team, and callers know a language, so this is the bridge.
- * The privileged team is the one whose members' work in the language is what ships; a
- * language has exactly one.
- *
- * Memoised for a minute in-process. The mapping changes only when a language is added or
- * handed over, which is rare, and two pm2 workers cannot share an invalidation, so a short
- * expiry is what bounds how stale the other worker can be. A language the memo has no team
- * for is looked up again before it is taken to have none (ownerOf), so one switched on by
- * the other worker resolves at once rather than a minute later.
+ * Which team owns a language, memoised for a minute. Two pm2 workers cannot share an
+ * invalidation, so the short expiry bounds how stale the other worker can be, and a miss is
+ * read again so a language the other worker just switched on resolves at once.
  */
 import "server-only";
 
@@ -20,7 +12,6 @@ import { CODES, type Lang } from "@/lib/lang";
 
 export type { TeamId };
 
-/** A language with no privileged team: nothing can be written for it until it has one. */
 export class NoTeamError extends Error {
   constructor(readonly lang: string) {
     super(`${lang} has no team`);
@@ -34,12 +25,10 @@ const MISS_REFRESH_MS = 1_000;
 
 let cached: { at: number; langs: Promise<Map<Lang, TeamId>> } | null = null;
 
-/** Drops the memo. For a write that changes the mapping, and for tests. */
 export function forgetTeams(): void {
   cached = null;
 }
 
-/** Every language that has a privileged team, with that team. */
 export function teamLangs(): Promise<Map<Lang, TeamId>> {
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
   const langs = query<{ lang: Lang; teamId: TeamId }>(
@@ -53,20 +42,11 @@ export function teamLangs(): Promise<Map<Lang, TeamId>> {
   return langs;
 }
 
-/**
- * The privileged team of `lang`, or undefined for a language nobody owns. A miss reads the
- * mapping again once, unless the memo is fresh: the other pm2 worker may have switched the
- * language on since this one read it, and the minute's expiry is too long to wait for that.
- */
 async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
   return (await freshOwners([lang])).get(lang);
 }
 
-/**
- * teamLangs, read again once when any of `langs` has no team in it, on the terms ownerOf
- * gives: for the callers that resolve many languages from one map, which would otherwise
- * drop or mis-stamp a language the other worker has just switched on.
- */
+/** teamLangs, read again once (unless the memo is fresh) when any of `langs` has no team. */
 export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   const owners = await teamLangs();
   const missing = langs.some((lang) => lang && !owners.has(lang));
@@ -81,29 +61,16 @@ export async function teamOf(lang: Lang): Promise<TeamId> {
   return team;
 }
 
-/**
- * The team that owns `lang`, or ALL_TEAMS for a site-wide (null) or unowned language: for the
- * reads and writes that must still work there rather than refuse, where ALL_TEAMS leaves the
- * row's "teamId" null.
- */
+/** For reads and writes that must work on an unowned or site-wide language; ALL_TEAMS writes a null team. */
 export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
   return (lang && (await ownerOf(lang))) || ALL_TEAMS;
 }
 
-/**
- * `work` in a transaction as the team that owns `lang`: how a write to a per-team table is
- * made, so the row takes its "teamId" from the column default. Throws NoTeamError for a
- * language nobody owns, since its work would have nowhere to land.
- */
+/** How a per-team write is made, so the row takes its "teamId" from the column default. */
 export async function asTeamOf<T>(lang: Lang, work: (client: PoolClient) => Promise<T>): Promise<T> {
   return withTeam(await teamOf(lang), work);
 }
 
-/**
- * One statement as the team that owns `lang`, its whole result kept (rowCount is what several
- * writes are checked by). The write twin of readAs: throws NoTeamError rather than answering
- * nothing, as asTeamOf does.
- */
 export async function queryAs<T extends QueryResultRow = QueryResultRow>(
   lang: Lang,
   text: string,
@@ -113,11 +80,8 @@ export async function queryAs<T extends QueryResultRow = QueryResultRow>(
 }
 
 /**
- * One read of a per-team table, as the team that owns `lang`.
- *
- * A language nobody owns answers no rows rather than throwing. Every language with takes was
- * given a team when teams arrived, so there is nothing of its to read, and an admin's early
- * look at a language never switched on keeps rendering an empty explorer as it does today.
+ * A language nobody owns answers no rows rather than throwing: every language with rows has a
+ * team, and an admin's look at a language never switched on still renders an empty explorer.
  */
 export async function readAs<T extends QueryResultRow = QueryResultRow>(
   lang: Lang,
@@ -129,7 +93,6 @@ export async function readAs<T extends QueryResultRow = QueryResultRow>(
   return queryIn<T>(team, text, params);
 }
 
-/** These languages grouped by the team that owns each, in their given order. Unowned ones are left out. */
 export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
   const owners = await freshOwners(langs);
   const grouped = new Map<TeamId, Lang[]>();
@@ -144,10 +107,8 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
 }
 
 /**
- * Gives `lang` to the english team unless some team already owns it: where every unmaintained
- * language lives, and handing it to a team of its own is a later, deliberate act. On the
- * caller's client, so it can share the transaction that switches the language on. The caller
- * forgets the memo (forgetTeams) once that commits.
+ * Gives `lang` to the english team unless a team owns it. On the caller's client, so it shares
+ * the transaction that switches the language on; the caller calls forgetTeams once that commits.
  */
 export async function adoptLang(client: ClientBase, lang: string): Promise<void> {
   await client.query(
@@ -160,13 +121,8 @@ export async function adoptLang(client: ClientBase, lang: string): Promise<void>
 }
 
 /**
- * Gives every language the site knows (CODES) that no team owns to the english team, so that
- * no language is left where a write refuses it: a player's report in it, its activity, the
- * queue's dismissal. Run once per server process when the queue starts (generation/boot.ts)
- * and when a language is switched on; the caller forgets the memo once that commits.
- *
- * Parking unowned languages on the english team is a phase-1 stopgap. Eventually a language
- * no team owns goes to a separate bucket, not English (docs/platform/TEAMS.md).
+ * Gives every known language with no team to the english team, so no write refuses one: a
+ * player's report in it, its activity, the queue's dismissal.
  */
 export async function adoptEveryLang(client: ClientBase): Promise<void> {
   for (const lang of CODES) await adoptLang(client, lang);

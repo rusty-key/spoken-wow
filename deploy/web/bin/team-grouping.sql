@@ -1,9 +1,7 @@
--- Read-only preview of the teams that migration 0087 seeds: which languages end up together,
--- and who their members are. Same grouping as the migration, nothing written.
+-- Read-only preview of the teams migration 0087 seeds, with their members. Confirm it before
+-- deploying: afterwards teams are edited, not re-seeded.
 --
 --   psql $PROD_DATABASE_URL -f deploy/web/bin/team-grouping.sql
---
--- Confirm it against the people before deploying; after deploy, teams are edited, not re-seeded.
 with "langs" as (
   select "lang" from (
     select "code" as "lang" from "language"

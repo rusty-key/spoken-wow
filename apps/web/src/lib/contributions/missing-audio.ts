@@ -75,8 +75,8 @@ const RANKING_LIMIT = 200;
 
 /** The lines of one pack language, most players first. */
 export async function missingAudioRanking(packLang: string): Promise<MissingAudioRow[]> {
-  // As the language's team, for the take "voiced" asks after; the hits themselves are shared,
-  // so a language nobody owns still lists them, all unvoiced, as ALL_TEAMS.
+  // As the language's team, for the takes "voiced" reads. The hits are shared, so a language
+  // nobody owns still lists them, all unvoiced.
   return queryIn<MissingAudioRow>(
     await ownerOrAll(packLang as Lang),
     `with ranked as (

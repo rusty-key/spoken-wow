@@ -47,8 +47,7 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
   if (lang === BASE_LANG) throw new Error("English cannot be switched off");
   // The CTE reads the row as it was before this statement, so "was" is the previous state:
   // null for a language never switched, which languageStates treats as off.
-  // Every language nobody has a team for yet goes to the English team (adoptEveryLang).
-  // Same transaction, so a language is never enabled without somewhere for its work to land.
+  // One transaction, so a language is never enabled without a team for its work to land on.
   const row = await inTransaction(async (client) => {
     const { rows } = await client.query<{ was: boolean | null }>(
       `with "before" as (select "enabled" from "language" where "code" = $1)

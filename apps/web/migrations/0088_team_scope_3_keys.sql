@@ -1,39 +1,10 @@
--- Every per-team row says which team it belongs to: the keys.
+-- Not CONCURRENTLY, because migrate.sh runs every file in a transaction. CREATE INDEX holds
+-- writes to its table while it builds, never reads.
 --
--- The last of three files (0088_team_scope_1_columns.sql says why three). CREATE INDEX holds
--- writes to its table while it builds, never reads. Not CONCURRENTLY, because migrate.sh runs
--- every file in a transaction.
---
--- Every existing key stays. Beside each, a unique index with "teamId" first and otherwise the
--- same columns, expressions and predicate, so an `on conflict` target can switch to it:
--- Postgres picks the arbiter index by an exact match. The contract release drops the old keys.
---
--- THE TEAM-FIRST UNIQUE INDEXES, for `on conflict` targets:
---   take_team_current_idx                 ("teamId", "source", "lang", "file") where "isCurrent"
---   take_ack_team_lang_idx                ("teamId", "source", "lang", "file")
---   voice_clone_team_lang_idx             ("teamId", "voice", "lang")
---   line_issue_team_lang_idx              ("teamId", "category", "item", "lang")
---   line_ignore_team_scope_idx            ("teamId", "lineId", (coalesce("lang", '')))
---   regeneration_job_team_one_per_lang_file
---                                         ("teamId", "source", "lang", "file")
---                                         where "state" in ('pending', 'running')
---   voice_assignment_team_key_idx         ("teamId", "race", (coalesce("gender", '')),
---                                          (coalesce("flavor", '')))
---   fish_reference_team_key_idx           ("teamId", "voice", "lang")
---   generation_setting_locale_team_key_idx
---                                         ("teamId", "lang")
---   pronunciation_lexicon_locale_team_key_idx
---                                         ("teamId", "lang")
---   line_flag_team_key_idx                ("teamId", "lineId", "lang")
---   line_override_team_key_idx            ("teamId", "file")
---   regeneration_pause_team_key_idx       ("teamId", "lang")
---   voice_sample_team_key_idx             ("teamId", "clone", "file")
---   voice_team_key_idx                    ("teamId", "name")
---
--- A table with no unique key leading with "teamId" gets a plain <table>_team_idx instead, for
--- the policies' filter.
+-- Every existing key stays. Beside each goes a unique index with "teamId" first and otherwise
+-- identical, because Postgres picks an `on conflict` arbiter index by exact match.
 
--- THE TEAM-FIRST KEYS, each mirroring the key named beside it.
+-- Each mirrors the key named beside it.
 create unique index "take_team_current_idx"                     -- take_current_idx
   on "take" ("teamId", "source", "lang", "file") where "isCurrent";
 create unique index "take_ack_team_lang_idx"                    -- take_ack_lang_idx
@@ -67,6 +38,7 @@ create unique index "voice_sample_team_key_idx"                 -- primary key
 create unique index "voice_team_key_idx"                        -- primary key
   on "voice" ("teamId", "name");
 
+-- For the row-level security filter, on tables with no unique key leading with "teamId".
 create index "recording_team_idx"             on "recording" ("teamId");
 create index "generation_setting_team_idx"    on "generation_setting" ("teamId");
 create index "pronunciation_lexicon_team_idx" on "pronunciation_lexicon" ("teamId");
@@ -79,8 +51,7 @@ create index "activity_team_idx"              on "activity" ("teamId");
 -- Its team-first key is partial, so it cannot serve a filter on every job.
 create index "regeneration_job_team_idx"      on "regeneration_job" ("teamId");
 
--- The foreign keys 1_columns added NOT VALID. Validating reads each table under a lock that
--- holds neither reads nor writes.
+-- Validating takes a lock that holds neither reads nor writes.
 do $$
 declare
   t text;

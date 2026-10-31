@@ -774,7 +774,7 @@ describe("a language's team", () => {
   });
 
   it("does not let a pause held by another team hold this one's work", async () => {
-    // Two teams in one language arrive in a later phase; the pause must already be theirs.
+    // No language has two teams yet, but a pause must already hold back only its own team.
     await germanJob(1);
     await db().query(
       `insert into "regeneration_pause" ("lang", "teamId") values ('deDE', $1)`,

@@ -1,9 +1,6 @@
 /**
- * For tests: a language moved onto a team of its own, and back.
- *
- * On a test database every language shares the english team (vitest.teams.ts), so a row
- * stamped with "the english team" cannot tell the language's team from any other. Moving the
- * language for the length of a test is what makes "the job's team" observable.
+ * For tests: a language moved onto a team of its own, and back. On a test database every
+ * language shares the english team, so only a moved language makes "the job's team" observable.
  */
 import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
