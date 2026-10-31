@@ -54,13 +54,26 @@ describe("keep", () => {
 describe("writing to R2", () => {
   it("never overwrites, and takes an object already under the key as written", async () => {
     const conditions: (string | null)[] = [];
-    vi.stubGlobal("fetch", async (request: Request) => {
-      conditions.push(request.headers.get("if-none-match"));
+    let body: unknown;
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      body = init.body;
+      conditions.push(new Headers(init.headers).get("if-none-match"));
       return new Response("PreconditionFailed", { status: 412 });
     });
     const bucket = r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" });
     await expect(bucket.put("recordings/x", Buffer.from("same bytes"), "audio/ogg")).resolves.toBeUndefined();
     expect(conditions).toEqual(["*"]);
+    // Bytes, not a stream, so fetch sends the Content-Length R2 requires.
+    expect(body).toBeInstanceOf(Uint8Array);
+  });
+
+  it("takes a locked object as written, and fails on any other conflict", async () => {
+    let code = "ObjectLockedByBucketPolicy";
+    vi.stubGlobal("fetch", async () => new Response(`<Error><Code>${code}</Code></Error>`, { status: 409 }));
+    const bucket = r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" });
+    await expect(bucket.put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).resolves.toBeUndefined();
+    code = "OperationAborted";
+    await expect(bucket.put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).rejects.toThrow("HTTP 409");
   });
 });
 
@@ -79,8 +92,8 @@ describe("reading a range", () => {
 
   it("asks R2 for the range only and reads the size from Content-Range", async () => {
     const asked: (string | null)[] = [];
-    vi.stubGlobal("fetch", async (request: Request) => {
-      asked.push(request.headers.get("range"));
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      asked.push(new Headers(init.headers).get("range"));
       return new Response("01", {
         status: 206,
         headers: { "content-type": "audio/mpeg", "content-range": "bytes 0-1/4096" },

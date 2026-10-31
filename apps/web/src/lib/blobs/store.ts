@@ -70,7 +70,10 @@ export function r2Blobs(env: {
         region: "auto",
       });
     }
-    return client.fetch(input, init);
+    // Fetch the bytes themselves, not the signed Request: Next's fetch sends a Request's body
+    // as a chunked stream, and R2 refuses a PUT without a Content-Length.
+    const request = await client.sign(input, init);
+    return fetch(request.url, { method: request.method, headers: request.headers, body: init?.body });
   };
   const base = `https://${env.accountId}.r2.cloudflarestorage.com/${env.bucket}`;
   const at = (key: string) => `${base}/${key.split("/").map(encodeURIComponent).join("/")}`;
@@ -98,6 +101,13 @@ export function r2Blobs(env: {
         },
       });
       if (res.status === 412) return void (await res.body?.cancel());
+      // R2 checks a lock rule before the condition, so on a locked prefix an existing key
+      // answers 409 rather than 412. A lock only ever holds an object that is already there.
+      if (res.status === 409) {
+        const answer = await res.text();
+        if (answer.includes("<Code>ObjectLockedByBucketPolicy</Code>")) return;
+        throw new Error(`R2 PUT ${key}: HTTP 409 ${answer.slice(0, 200)}`);
+      }
       if (!res.ok) await fail("PUT", key, res);
     },
     async get(key, wanted) {

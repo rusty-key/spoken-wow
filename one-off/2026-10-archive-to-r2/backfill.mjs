@@ -81,6 +81,12 @@ async function put(key, data, contentType) {
     },
   });
   if (res.status === 412) return;
+  // On a locked prefix R2 answers an existing key with 409 before it checks the condition.
+  if (res.status === 409) {
+    const answer = await res.text();
+    if (answer.includes("<Code>ObjectLockedByBucketPolicy</Code>")) return;
+    throw new Error(`PUT ${key}: HTTP 409 ${answer.slice(0, 200)}`);
+  }
   if (!res.ok) throw new Error(`PUT ${key}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
 
