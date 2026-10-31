@@ -10,6 +10,8 @@
  */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
+import type { TeamId } from "@/lib/teams/store";
+
 /**
  * How many connections one process may hold.
  *
@@ -48,6 +50,8 @@ export function db(): Pool {
       connectionString: process.env.DATABASE_URL,
       max: POOL_MAX,
       connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+      // Lets tests and CI act as the unprivileged app role, so row-level security applies to them.
+      ...(process.env.DATABASE_ROLE ? { options: `-c role=${process.env.DATABASE_ROLE}` } : {}),
     });
   }
   return holder[poolKey]!;
@@ -84,6 +88,35 @@ export async function inTransaction<T>(work: (client: PoolClient) => Promise<T>)
   } finally {
     client.release();
   }
+}
+
+/** The team value for system work that legitimately spans teams: the queue leader's claim, owner views. */
+export const ALL_TEAMS = "*";
+
+/**
+ * `work` in a transaction that acts as `team`.
+ *
+ * The setting is transaction-local (set_config's third argument), so it cannot outlive the
+ * commit or rollback and leak onto the next user of the pooled connection. Row-level security
+ * policies read it.
+ */
+export async function withTeam<T>(
+  team: TeamId | typeof ALL_TEAMS,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return inTransaction(async (client) => {
+    await client.query(`select set_config('spoken.team', $1, true)`, [team]);
+    return work(client);
+  });
+}
+
+/** One query, rows only, as `team`. */
+export async function queryIn<T extends QueryResultRow = QueryResultRow>(
+  team: TeamId | typeof ALL_TEAMS,
+  text: string,
+  params?: unknown[],
+): Promise<T[]> {
+  return withTeam(team, async (client) => (await client.query<T>(text, params)).rows);
 }
 
 /**
