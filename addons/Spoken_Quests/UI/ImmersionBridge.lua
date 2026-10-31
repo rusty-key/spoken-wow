@@ -13,19 +13,29 @@ local PAGES = { QUEST_DETAIL = true, QUEST_PROGRESS = true, QUEST_COMPLETE = tru
     GOSSIP_SHOW = true }
 local METHODS = { "CreateLineData", "ForceNext", "PauseTimer", "ResumeTimer", "GetNumTexts", "GetNumRemaining" }
 
-local Marks
+-- As often as the captions find their word.
+local TICK = 0.05
+
+local Marks, fs
 -- clip and text: what map was matched for, map[i].p the part caption word i is in. holding: this
 -- file paused Immersion's timer, so only it resumes it.
 local clip, text, map, holding
+local elapsedSince = 0
 
-local function Release(fs)
+local function Release()
     if holding then
         holding = nil
         fs:ResumeTimer()
     end
 end
 
-local function Follow(fs)
+local function Follow(_, elapsed)
+    elapsedSince = elapsedSince + elapsed
+    -- A page Immersion sets again starts from its first part, so it is turned back at once.
+    if elapsedSince < TICK and NotSecret(fs.storedText) == text then
+        return
+    end
+    elapsedSince = 0
     local caption = Spoken:GetCaption()
     local playing = caption and caption.clip
     local stored = NotSecret(fs.storedText)
@@ -34,7 +44,7 @@ local function Follow(fs)
     if not (playing and Player:Owns(playing) and caption.speaking and not Spoken:IsPaused()
         and PAGES[ImmersionFrame.playbackEvent] and type(stored) == "string"
         and not (type(setup) == "table" and setup.disableprogression)) then
-        return Release(fs)
+        return Release()
     end
     if playing ~= clip or stored ~= text then
         clip, text = playing, stored
@@ -46,7 +56,7 @@ local function Follow(fs)
         map = Marks.Align(caption.words, paragraphs)
     end
     if not map then
-        return Release(fs)
+        return Release()
     end
     fs:PauseTimer()
     holding = true
@@ -60,7 +70,7 @@ end
 
 function Bridge:Setup()
     local frame = _G.ImmersionFrame
-    local fs = type(frame) == "table" and frame.TalkBox and frame.TalkBox.TextFrame and frame.TalkBox.TextFrame.Text
+    fs = type(frame) == "table" and frame.TalkBox and frame.TalkBox.TextFrame and frame.TalkBox.TextFrame.Text
     Marks = Spoken.WordMarks and Spoken:WordMarks()
     if not (fs and Marks and Spoken.GetCaption and Spoken.SplitCaption) then
         return
@@ -72,9 +82,9 @@ function Bridge:Setup()
         end
     end
     local driver = CreateFrame("Frame", nil, frame)
-    driver:SetScript("OnUpdate", function() Follow(fs) end)
+    driver:SetScript("OnUpdate", Follow)
     driver:SetScript("OnHide", function()
-        Release(fs)
+        Release()
         clip, text, map = nil, nil, nil
     end)
     self.driver = driver
