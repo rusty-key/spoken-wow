@@ -4,9 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import { normaliseText, shownText, spokenText, isGeneratable, spokenWithTitle } from "./text.mjs";
 
-function decodeFixture(value) {
-  return value.replace(/\\(n|r|t|0|\\)/g, (_, escape) => ({ n: "\n", r: "\r", t: "\t", 0: "\0", "\\": "\\" })[escape]);
-}
+const decodeFixture = (value) => value.replaceAll("\\n", "\n");
 
 const normaliseCases = (await readFile(new URL("./normalise-cases.tsv", import.meta.url), "utf8"))
   .trimEnd()

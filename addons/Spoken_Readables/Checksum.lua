@@ -62,10 +62,14 @@ local MARKUP = {
 }
 
 local ENTITIES = { amp = "&", quot = "\"", apos = "'", nbsp = " " }
-local SHOWN_ENTITIES = { amp = "&", lt = "<", gt = ">", quot = "\"", apos = "'", nbsp = " " }
+local SHOWN_ENTITIES = setmetatable({ lt = "<", gt = ">" }, { __index = ENTITIES })
 -- NUL terminates Lua's C strings, so use the next control byte as the temporary marker.
 local PAGE_BREAK = "\001"
 local NAME_PLACEHOLDER = "<[Nn][Oo][Mm][Bb][Rr][Ee]>"
+
+local function DecodeEntities(text, entities)
+	return (gsub(text, "&(%a+);", function(name) return entities[name] end))
+end
 
 local function IsMarkup(name)
 	return MARKUP[lower(name)] == true
@@ -84,7 +88,7 @@ local function Unmark(text)
 		end
 		return ""
 	end)
-	text = gsub(text, "&(%a+);", function(name) return ENTITIES[name] end)
+	text = DecodeEntities(text, ENTITIES)
 	text = gsub(text, " +", " ")
 	text = gsub(text, " \n", "\n")
 	text = gsub(text, "\n ", "\n")
@@ -110,9 +114,8 @@ end
 function SpokenReadables:Normalise(text, keepMarkup)
 	text = gsub(text, "\r\n", "\n")
 	text = gsub(text, "\r", "\n")
-	-- `$B` is a real break inside signed HTML, not HTML whitespace. Keep a placeholder
-	-- through Unmark so its surrounding spaces are trimmed as line whitespace. Plain pages
-	-- retain the historical path, where `$B` becomes a newline before line cleanup.
+	-- `$B` is a real break inside signed HTML, not HTML whitespace: a placeholder carries it
+	-- through Unmark. Plain pages turn it into a newline before line cleanup.
 	if not keepMarkup and IsSigned(text) then
 		return Unmark(gsub(text, "%$[Bb]", PAGE_BREAK))
 	end
@@ -132,6 +135,5 @@ end
 --- The page as the client draws it: normalised layout, locale name marker removed and entities decoded.
 function SpokenReadables:ShownText(text)
 	text = self:Normalise(text)
-	text = gsub(text, NAME_PLACEHOLDER, "")
-	return (gsub(text, "&(%a+);", function(name) return SHOWN_ENTITIES[name] end))
+	return DecodeEntities(gsub(text, NAME_PLACEHOLDER, ""), SHOWN_ENTITIES)
 end

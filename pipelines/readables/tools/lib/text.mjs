@@ -79,6 +79,7 @@ function unmark(text) {
 
 /** Entities as the characters the game draws, in a title or wherever storage left them. */
 const ENTITIES = { ...STORED_ENTITIES, lt: "<", gt: ">" };
+const ENTITY = /&(amp|lt|gt|quot|apos|nbsp);/g;
 
 /** Whatever sits in brackets once the markup is gone. */
 const ASIDE = /<([^<>]+)>/g;
@@ -97,7 +98,7 @@ const NAME_PLACEHOLDER = /<nombre>/gi;
 export function shownText(text) {
   return normaliseText(text)
     .replace(NAME_PLACEHOLDER, "")
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITIES[name]);
+    .replace(ENTITY, (_, name) => ENTITIES[name]);
 }
 
 /**
@@ -115,7 +116,7 @@ export function spokenText(text) {
     .replace(ASIDE, "\n$1\n")
     .replace(/\s*\n\s*/g, "\n")
     .trim()
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITIES[name]);
+    .replace(ENTITY, (_, name) => ENTITIES[name]);
 }
 
 /**

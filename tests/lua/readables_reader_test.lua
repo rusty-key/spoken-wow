@@ -31,11 +31,7 @@ dofile(READABLES .. "Data/Books.lua")
 -- The exporter and Checksum.lua consume this same fixture. Keep the cases in one file: a
 -- normalisation change that passes Node but differs in Lua would key the next pack silently.
 local function DecodeFixture(value)
-    value = value:gsub("\\n", "\n")
-    value = value:gsub("\\r", "\r")
-    value = value:gsub("\\t", "\t")
-    value = value:gsub("\\0", "\0")
-    return (value:gsub("\\\\", "\\"))
+    return (value:gsub("\\n", "\n"))
 end
 local cases = assert(io.open(here .. "/../../pipelines/readables/tools/lib/normalise-cases.tsv", "r"))
 for line in cases:lines() do

@@ -370,16 +370,13 @@ function SpokenReadables:PageOnScreen()
 	return found, exact
 end
 
--- The page as the client drew it, in the language of the matching index: captions and the
--- Compendium prefer it to a pack's text when it was matched by its words (see PageTextIn).
+-- The page as the client drew it, in the language of the matching index, and whether its words
+-- matched (see PageTextIn).
 -- The title is the book's, so the pages queued after this one carry it too: the corpus has
 -- only the English one.
 function SpokenReadables:RememberPageText(pageId, language, text, title, exact)
 	self.pageText = self.pageText or {}
 	self.pageText[language] = self.pageText[language] or {}
-	-- Keep the page's paragraph breaks: the Compendium shows this cached text directly, and
-	-- flattening it turns a letter or book into one uninterrupted string of words. A fallback
-	-- title/owner match is only a placement guess; its text must not replace a pack's known text.
 	self.pageText[language][pageId] = { text = self:ShownText(text), exact = exact == true }
 	local book = self:PlaceOf(pageId)
 	if book and type(title) == "string" and title ~= "" then
@@ -400,12 +397,12 @@ function SpokenReadables:PackPageText(pageId, language)
 	return nil
 end
 
---- The page as the client showed it this session in `language`, or nil. `exactOnly` skips a page
---- placed only by its owner or title.
-local function KeptText(self, pageId, language, exactOnly)
+--- The page as the client showed it this session in `language`, or nil, and whether it was matched
+--- by its words rather than placed by its owner or title.
+local function KeptText(self, pageId, language)
 	local kept = self.pageText and self.pageText[language] and self.pageText[language][pageId]
-	if type(kept) ~= "table" or (exactOnly and not kept.exact) then return nil end
-	return type(kept.text) == "string" and kept.text ~= "" and kept.text or nil
+	if not kept or kept.text == "" then return nil end
+	return kept.text, kept.exact
 end
 
 --- A page's words in `language`: the page as the client showed it this session if matched by its
@@ -414,8 +411,9 @@ end
 function SpokenReadables:PageTextIn(pageId, language)
 	-- An exact page beats the pack: a pack made before layout was kept has the same words as one
 	-- line, while the client still has its paragraph breaks. A guessed page must not replace a pack.
-	return KeptText(self, pageId, language, true) or self:PackPageText(pageId, language)
-		or KeptText(self, pageId, language)
+	local kept, exact = KeptText(self, pageId, language)
+	if exact then return kept end
+	return self:PackPageText(pageId, language) or kept
 end
 
 --- A page's words in this client's language, or nil. Page by page, so a readable can be in two
@@ -445,7 +443,7 @@ local function CaptionWords(self, pageId, language)
 	if place and type(place.text) == "string" and place.text ~= "" then
 		return self:SaidTokens(place.text), true
 	end
-	return KeptText(self, pageId, language)
+	return (KeptText(self, pageId, language))
 end
 
 local function CaptionIn(self, pageId, language, clipLanguage, clipText)
