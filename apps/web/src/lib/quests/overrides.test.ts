@@ -7,14 +7,15 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { clearOverride, effectiveText, readOverrides, writeOverride } = await import("./overrides");
 
 let file: string;
 
 beforeAll(async () => {
   try {
-    await db().query(`select 1 from "line_override" limit 1`);
+    await asSystem.query(`select 1 from "line_override" limit 1`);
   } catch (error) {
     throw new Error(
       "overrides.test.ts needs a migrated database. Run:\n" +
@@ -26,8 +27,8 @@ beforeAll(async () => {
 
 afterEach(async () => {
   // The file is made up for this case, so everything logged against it is this case's.
-  await db().query(`delete from "activity" where "subject" = $1 and "kind" like 'override.%'`, [file]);
-  await db().query(`delete from "line_override" where "file" = $1`, [file]);
+  await asSystem.query(`delete from "activity" where "subject" = $1 and "kind" like 'override.%'`, [file]);
+  await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
 });
 
 afterAll(async () => {
@@ -54,7 +55,7 @@ describe("writeOverride", () => {
 
     const stored = await readOverrides();
     expect(stored.get(file)?.text).toBe("second");
-    const { rows } = await db().query(`select 1 from "line_override" where "file" = $1`, [file]);
+    const { rows } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [file]);
     expect(rows).toHaveLength(1);
   });
 });

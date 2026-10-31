@@ -30,6 +30,7 @@ import {
 import { speakPlayerTokens } from "@/lib/player-words";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
 import { liveTakes } from "@/lib/takes/store";
+import { readAs } from "@/lib/teams/store";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -315,7 +316,8 @@ export async function loadContext(
     // Grouped in the database rather than counted here: resolved rows are the ones that
     // accumulate, and there is no reason to carry them across to drop them. `lineId is not
     // null` excludes a report about the project, which belongs to no line.
-    query<{ lineId: string; open: number }>(
+    readAs<{ lineId: string; open: number }>(
+      lang,
       `select "lineId", count(*)::int as "open"
          from "report"
         where "source" = 'readables' and "status" = 'open' and "lineId" is not null

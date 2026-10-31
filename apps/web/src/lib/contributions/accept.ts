@@ -30,7 +30,7 @@ import { BOOK_ID_COMPAT, PAGE_COUNT } from "@readables-tools/lib/page.mjs";
 import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, inTransaction } from "@/lib/db";
+import { actAs, ALL_TEAMS, db, inTransaction } from "@/lib/db";
 import { observedFrom } from "@/lib/npc/resolve";
 import {
   getResolution,
@@ -40,7 +40,7 @@ import {
   type NpcRowKind,
   type NpcResolution,
 } from "@/lib/npc/store";
-import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
 import type { CorpusLine } from "@/lib/corpus";
 import { isGeneratable, mintBookId, mintPageId } from "@/lib/readables/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
@@ -58,6 +58,7 @@ import {
 } from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
+import { freshOwners } from "@/lib/teams/store";
 
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
 import { sameLine } from "./compare";
@@ -128,6 +129,7 @@ async function resolutionsFor(contributions: readonly Contribution[]): Promise<R
 /** Who speaks a quests contribution, from the npc table -- the same lookup triage.ts's page renders from. */
 async function resolvedSpeaker(
   meta: Record<string, string>,
+  lang: Lang,
   resolutions?: Resolutions,
 ): Promise<Speaker | "conflict" | null> {
   const observed = observedFrom(meta);
@@ -147,7 +149,7 @@ async function resolvedSpeaker(
     resolution = lookup.resolution;
   }
 
-  return resolution ? speakerFromResolution(resolution, await loadRoster(), observed.npcName) : null;
+  return resolution ? speakerFromResolution(resolution, await loadRoster(lang), observed.npcName) : null;
 }
 
 /**
@@ -204,7 +206,7 @@ async function speakerFor(
   contribution: Contribution,
   resolutions?: Resolutions,
 ): Promise<{ ok: true; speaker: Speaker } | Extract<ResolveRefusal, { reason: "needs-speaker" }>> {
-  const speaker = await resolvedSpeaker(observationMeta(contribution), resolutions);
+  const speaker = await resolvedSpeaker(observationMeta(contribution), isLang(contribution.locale) ? contribution.locale : BASE_LANG, resolutions);
   if (speaker === "conflict") {
     return {
       ok: false,
@@ -259,7 +261,8 @@ async function prepareLine(
   // submission.ts) strips, so a verbatim duplicate of one of them hashes differently.
   // Whichever of the two comes first in the catalogue, as a scan for either would find.
   const text = contribution.text;
-  const index = indexOf(lines, await loadRoster());
+  // English's roster, as the lines matched against are English's corpus.
+  const index = indexOf(lines, await loadRoster(BASE_LANG));
   const byId = (index.byPrefix.get(identity.lineId) ?? []).find(
     (l) => l.source === "gossip" && baseLineId(l.lineId) === identity.lineId,
   );
@@ -960,6 +963,10 @@ export async function resolveContribution(
   mayIgnore = false,
   bookMatch?: BookMatchResult,
 ): Promise<ResolveOutcome> {
+  // Read before the client is held: a refresh of the memo needs a connection of its own. Every
+  // language, since the contribution's is not known yet: one the other worker has just given a
+  // team would otherwise be logged under none.
+  const owners = await freshOwners(CODES);
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles
@@ -987,6 +994,12 @@ export async function resolveContribution(
         message: `sent from a ${contribution.locale} client, which is not a language here`,
       };
     }
+
+    // What this writes is shared but for its activity row, the language's team's, and the
+    // ignores a rejection leaves. An English row's are on every language: system work.
+    const lang = isLang(contribution.locale) ? contribution.locale : null;
+    const siteWide = status === "rejected" && mayIgnore && (lang === null || lang === BASE_LANG);
+    await actAs(client, (!siteWide && lang && owners.get(lang)) || ALL_TEAMS);
 
     const written =
       contribution.source === "readables"

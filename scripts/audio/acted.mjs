@@ -266,6 +266,7 @@ function live(section, lang) {
                    r."credit", r."createdAt", coalesce(r."lineId", ''), coalesce(r."sha256", '')
               from "recording" r
              where r."source" = :'source' and r."lang" = :'lang' and r."deletedAt" is null
+               and r."teamId" = team_of_lang(:'lang')
              order by r."file", r."version" desc`,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,

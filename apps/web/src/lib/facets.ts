@@ -10,6 +10,7 @@
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so
  * their lists live next to the type in lib/search.ts.
  */
+import type { Lang } from "./lang";
 import type { Roster } from "./voices/roster";
 import { loadRoster } from "./voices/roster-store";
 import { GENDERS } from "./voices/voices";
@@ -35,8 +36,8 @@ const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) =>
 /** Per roster: /api/search asks on every request, and the roster is one instance until it moves. */
 const built = new WeakMap<Roster, Facets>();
 
-export async function facets(): Promise<Facets> {
-  const roster = await loadRoster();
+export async function facets(lang: Lang): Promise<Facets> {
+  const roster = await loadRoster(lang);
   let value = built.get(roster);
   if (!value) {
     value = {

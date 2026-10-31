@@ -11,13 +11,17 @@
  * Read on every search, so it is memoised the way overrides are: whole table behind a
  * count-and-timestamp stamp, because there are tens of these rather than thousands and pm2
  * runs two workers that must not disagree about what is hidden.
+ *
+ * An ignore in one language is that language's team's; one in every language belongs to no
+ * team, and its "teamId" is written null rather than left to whichever team the write ran as.
  */
 import type { PoolClient } from "pg";
 
 import { recordActivity } from "../activity/store";
-import { db } from "../db";
+import { ALL_TEAMS, queryIn, withTeam } from "../db";
 import { baseLineId } from "../contributions/naming";
 import { BASE_LANG, type Lang } from "../lang";
+import { ownerOrAll, teamOf, type TeamId } from "../teams/store";
 
 export type LineIgnore = {
   lineId: string;
@@ -46,8 +50,9 @@ function toIgnore(row: IgnoreRow): LineIgnore {
   };
 }
 
-async function stamp(): Promise<string> {
-  const { rows } = await db().query<{ stamp: string | null }>(
+async function stamp(reader: TeamId | typeof ALL_TEAMS): Promise<string> {
+  const rows = await queryIn<{ stamp: string | null }>(
+    reader,
     `select count(*)::text || ':' || coalesce(max("createdAt")::text, '-') as stamp
        from "line_ignore"`,
   );
@@ -56,9 +61,10 @@ async function stamp(): Promise<string> {
   return rows[0]?.stamp ?? "-";
 }
 
-const cacheKey = Symbol.for("wow-voiceover.line-ignores");
+const cacheKey = Symbol.for("spoken.line-ignores.by-lang");
+/** Each language's own stamp: what it counts is what its team can see. */
 type CacheHolder = {
-  [cacheKey]?: { stamp: string; byLang: Map<string, Map<string, LineIgnore>> };
+  [cacheKey]?: Map<string, { stamp: string; map: Map<string, LineIgnore> }>;
 };
 
 /**
@@ -68,21 +74,23 @@ type CacheHolder = {
  */
 export async function readIgnores(lang: Lang = BASE_LANG): Promise<Map<string, LineIgnore>> {
   const holder = globalThis as CacheHolder;
-  const current = await stamp();
-  if (holder[cacheKey]?.stamp !== current) holder[cacheKey] = { stamp: current, byLang: new Map() };
-  const memo = holder[cacheKey]!.byLang;
+  const memo = (holder[cacheKey] ??= new Map());
+  // A language nobody owns has no ignores of its own, and reads across every team so that the
+  // every-language ignores still hide its lines.
+  const reader = await ownerOrAll(lang);
+  const current = await stamp(reader);
+  const hit = memo.get(lang);
+  if (hit?.stamp === current) return hit.map;
 
-  let map = memo.get(lang);
-  if (!map) {
-    const { rows } = await db().query<IgnoreRow>(
-      `select "lineId", "lang", "reason", "createdAt", "createdBy" from "line_ignore"
-        where "lang" is null or "lang" = $1
-        order by "lang" nulls last`,
-      [lang],
-    );
-    map = new Map(rows.map((r) => [r.lineId, toIgnore(r)]));
-    memo.set(lang, map);
-  }
+  const rows = await queryIn<IgnoreRow>(
+    reader,
+    `select "lineId", "lang", "reason", "createdAt", "createdBy" from "line_ignore"
+      where "lang" is null or "lang" = $1
+      order by "lang" nulls last`,
+    [lang],
+  );
+  const map = new Map(rows.map((r) => [r.lineId, toIgnore(r)]));
+  memo.set(lang, { stamp: current, map });
   return map;
 }
 
@@ -100,17 +108,26 @@ export async function writeIgnore(
   if (!trimmed) throw new Error("an ignore needs a reason: a decision nobody can revisit is a bug");
   // Ignoring one voice of a line ignores the line, as the pack build reads it.
   lineId = baseLineId(lineId);
+  // Named, not defaulted, so a caller's transaction (a contribution's reject) files it right.
+  const team = lang === null ? null : await teamOf(lang);
 
-  const { rows } = await (client ?? db()).query<IgnoreRow>(
-    `insert into "line_ignore" ("lineId", "lang", "reason", "createdBy")
-     values ($1, $4, $2, $3)
-     on conflict ("lineId", (coalesce("lang", ''))) do update
-        set "reason" = excluded."reason",
-            "createdAt" = now(),
-            "createdBy" = excluded."createdBy"
-     returning "lineId", "lang", "reason", "createdAt", "createdBy"`,
-    [lineId, trimmed, userId, lang],
-  );
+  // A site-wide ignore has no team, and nulls never conflict in the team's key: it has a key
+  // of its own.
+  const target = team === null
+    ? `("lineId") where "teamId" is null`
+    : `("teamId", "lineId", (coalesce("lang", '')))`;
+  const write = async (on: Pick<PoolClient, "query">) =>
+    (await on.query<IgnoreRow>(
+      `insert into "line_ignore" ("lineId", "lang", "reason", "createdBy", "teamId")
+       values ($1, $4, $2, $3, $5)
+       on conflict ${target} do update
+          set "reason" = excluded."reason",
+              "createdAt" = now(),
+              "createdBy" = excluded."createdBy"
+       returning "lineId", "lang", "reason", "createdAt", "createdBy"`,
+      [lineId, trimmed, userId, lang, team],
+    )).rows;
+  const rows = client ? await write(client) : await withTeam(team ?? ALL_TEAMS, write);
   if (!client) forgetIgnores();
   // A null lang is an ignore in every language, and so a row every language's log shows.
   await recordActivity({
@@ -132,9 +149,12 @@ export async function clearIgnore(
   by: string | null,
 ): Promise<boolean> {
   lineId = baseLineId(lineId);
-  const { rowCount } = await db().query(
-    `delete from "line_ignore" where "lineId" = $1 and "lang" is not distinct from $2`,
-    [lineId, lang],
+  const team = lang === null ? ALL_TEAMS : await teamOf(lang);
+  const { rowCount } = await withTeam(team, (client) =>
+    client.query(`delete from "line_ignore" where "lineId" = $1 and "lang" is not distinct from $2`, [
+      lineId,
+      lang,
+    ]),
   );
   forgetIgnores();
   const removed = (rowCount ?? 0) > 0;

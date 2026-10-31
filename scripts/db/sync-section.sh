@@ -32,6 +32,8 @@ tables=("$@")
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
 # take_encoding is each take's clip as its pack ships it.
 shared=(take recording take_encoding)
+# The per-team shared tables, whose "teamId" is remapped to this database's teams after the copy.
+teamed=(take recording take_ack)
 # The shared tables with an id, which is one sequence across every section.
 serial=(take recording)
 
@@ -139,6 +141,27 @@ begin
 end
 \$\$;
 SQL
+  # Team ids are per database, so a copied "teamId" would dangle. Each row takes its language's
+  # privileged team here, or english's when the language has none.
+  for table in "${teamed[@]}"; do
+    cat <<SQL
+\\echo ==> teams: remapping "teamId" of $staging."$table" to the local privileged teams
+do \$\$
+declare n bigint;
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = '$staging' and table_name = '$table' and column_name = 'teamId') then
+    update $staging."$table" s set "teamId" = coalesce(
+        public.team_of_lang(s."lang"),
+        (select "id" from public."team" where "slug" = 'english'))
+      where s."lang" is not null;
+    get diagnostics n = row_count;
+    raise warning 'teams: % $table rows stamped', n;
+  end if;
+end
+\$\$;
+SQL
+  done
   echo "truncate ${quoted%, };"
   for table in "${shared[@]}"; do
     echo "delete from \"$table\" where \"source\" = '$source_name';"

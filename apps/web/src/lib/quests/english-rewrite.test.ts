@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 import { englishMomentLines, rewriteEnglish } from "./english-rewrite";
 
@@ -16,20 +17,20 @@ const moment = `q:${quest}:accept`;
 const lines = [moment, `${moment}:m`, `${moment}:f`];
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Editor', $2, false)
      on conflict ("id") do nothing`,
     [EDITOR, `${EDITOR}@example.invalid`],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "fileName",
         "text", "originalText", "localeText")
      values ($1, 0, 'enUS', 1, true, 'extracted', 'accept', $2, 'Well met, adventurer.', 'Well met, $n.', null)`,
     [moment, `${quest}-accept`],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "quest_line_speaker"
        ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "flavor", "voice")
      select $1, 0, 'enUS', greatest(coalesce(max("ord") + 1, 0), 1000000), 'creature', 2104, 'Test Speaker',
@@ -40,12 +41,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "lineId" = any($1::text[])`, [lines]);
-  await db().query(`delete from "activity" where "kind" = 'override.set' and "subject" like $1`, [`%${quest}-accept.mp3`]);
-  await db().query(`delete from "quest_line_speaker" where "lineId" = any($1::text[])`, [lines]);
-  await db().query(`delete from "line_override" where "lineId" = any($1::text[])`, [lines]);
-  await db().query(`delete from "quest_line" where "lineId" = any($1::text[])`, [lines]);
-  await db().query(`delete from "user" where "id" = $1`, [EDITOR]);
+  await asSystem.query(`delete from "activity" where "lineId" = any($1::text[])`, [lines]);
+  await asSystem.query(`delete from "activity" where "kind" = 'override.set' and "subject" like $1`, [`%${quest}-accept.mp3`]);
+  await asSystem.query(`delete from "quest_line_speaker" where "lineId" = any($1::text[])`, [lines]);
+  await asSystem.query(`delete from "line_override" where "lineId" = any($1::text[])`, [lines]);
+  await asSystem.query(`delete from "quest_line" where "lineId" = any($1::text[])`, [lines]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [EDITOR]);
   await closeDb();
 });
 
@@ -64,7 +65,7 @@ describe("rewriteEnglish", () => {
     });
     expect(outcome.split).toBe(true);
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lineId", "fileName", "text", "originalText", "origin", "editedBy"
          from "quest_line" where "lineId" = any($1::text[]) and "lang" = 'enUS' and "isCurrent" order by "lineId"`,
       [lines],
@@ -75,7 +76,7 @@ describe("rewriteEnglish", () => {
       { lineId: `${moment}:m`, fileName: `m-${quest}-accept`, text: "Well met, lad.", ...shared },
     ]);
 
-    const { rows: speakers } = await db().query(
+    const { rows: speakers } = await asSystem.query(
       `select "lineId" from "quest_line_speaker" where "lineId" = any($1::text[]) order by "lineId"`,
       [lines],
     );
@@ -89,7 +90,7 @@ describe("rewriteEnglish", () => {
     });
     expect(outcome.split).toBe(false);
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lineId", "text" from "line_override" where "lineId" = any($1::text[]) order by "lineId"`,
       [lines],
     );

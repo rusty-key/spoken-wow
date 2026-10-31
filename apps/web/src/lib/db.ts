@@ -10,6 +10,9 @@
  */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
+/** "team"."id". Defined here so withTeam need not import the teams module. */
+export type TeamId = string;
+
 /**
  * How many connections one process may hold.
  *
@@ -48,6 +51,8 @@ export function db(): Pool {
       connectionString: process.env.DATABASE_URL,
       max: POOL_MAX,
       connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
+      // Lets tests and CI act as the unprivileged app role, so row-level security applies to them.
+      ...(process.env.DATABASE_ROLE ? { options: `-c role=${process.env.DATABASE_ROLE}` } : {}),
     });
   }
   return holder[poolKey]!;
@@ -84,6 +89,47 @@ export async function inTransaction<T>(work: (client: PoolClient) => Promise<T>)
   } finally {
     client.release();
   }
+}
+
+/** The team value for system work that legitimately spans teams: the queue leader's claim, owner views. */
+export const ALL_TEAMS = "*";
+
+/**
+ * `work` in a transaction that acts as `team`. The setting is transaction-local, so it cannot
+ * leak onto the next user of the pooled connection. Row-level security policies read it.
+ */
+export async function withTeam<T>(
+  team: TeamId | typeof ALL_TEAMS,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return inTransaction(async (client) => {
+    await actAs(client, team);
+    return work(client);
+  });
+}
+
+/**
+ * Act as `team` for the rest of `client`'s open transaction, for one opened by hand that learns
+ * its team from a row it locks. Transaction-local too, so it ends with the commit or rollback.
+ */
+export async function actAs(client: Pick<PoolClient, "query">, team: TeamId | typeof ALL_TEAMS): Promise<void> {
+  await client.query(`select set_config('spoken.team', $1, true)`, [team]);
+}
+
+/**
+ * Rows of the team this transaction acts as, or every team under ALL_TEAMS, for the tables that
+ * keep one copy per team. Row-level security draws the same line; this keeps the read right on
+ * a connection it does not bind, and matches nothing outside withTeam.
+ */
+export const TEAM_ROWS = `"teamId" in (select "id" from "team" where current_setting('spoken.team', true) in ('*', "id"::text))`;
+
+/** One query, rows only, as `team`. */
+export async function queryIn<T extends QueryResultRow = QueryResultRow>(
+  team: TeamId | typeof ALL_TEAMS,
+  text: string,
+  params?: unknown[],
+): Promise<T[]> {
+  return withTeam(team, async (client) => (await client.query<T>(text, params)).rows);
 }
 
 /**

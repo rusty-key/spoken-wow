@@ -12,7 +12,8 @@ import "server-only";
 import type { PoolClient } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { query, withTeam } from "@/lib/db";
+import { ownerOrAll } from "@/lib/teams/store";
 import type { Lang } from "@/lib/lang";
 
 /** The line id, which is also the addon's clip key. The key is frozen, so this never moves. */
@@ -103,9 +104,7 @@ export async function saveStory(args: {
   expectedVersion?: number | null;
 }): Promise<StoryVersion> {
   const { lang, lineId } = args;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  return withTeam(await ownerOrAll(lang), async (client) => {
     const bossId = await lockBoss(client, lineId);
 
     const { rows: currentRows } = await client.query<Row>(
@@ -128,7 +127,6 @@ export async function saveStory(args: {
 
     // The history records what the story has been, not who opened the dialog.
     if (current && text === current.text) {
-      await client.query("commit");
       return toVersion(lineId, current);
     }
 
@@ -163,14 +161,8 @@ export async function saveStory(args: {
       client,
     );
 
-    await client.query("commit");
     return toVersion(lineId, inserted[0]);
-  } catch (err) {
-    await client.query("rollback").catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -185,9 +177,7 @@ export async function restoreStory(
   lang: Lang,
   by: string | null,
 ): Promise<StoryVersion> {
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  return withTeam(await ownerOrAll(lang), async (client) => {
     const bossId = await lockBoss(client, lineId);
 
     const { rows } = await client.query<Row>(
@@ -223,12 +213,6 @@ export async function restoreStory(
       client,
     );
 
-    await client.query("commit");
     return toVersion(lineId, restored[0]);
-  } catch (err) {
-    await client.query("rollback").catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }

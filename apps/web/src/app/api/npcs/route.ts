@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   const flavor = orExisting(body.flavor, existing?.flavor ?? null, 64);
   // Before the rename, so a refused answer changes nothing.
   if (answersVoice) {
-    const refusal = (await loadRoster()).isAnswer(race, gender, flavor);
+    const refusal = (await loadRoster(lang)).isAnswer(race, gender, flavor);
     if (refusal) return Response.json({ error: refusal }, { status: 400 });
   }
 

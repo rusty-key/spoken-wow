@@ -35,7 +35,7 @@ export default async function Page({
   if (!session || !isAdmin(session.user.role)) notFound();
 
   const tab = (await searchParams).tab === "types" ? "types" : "npcs";
-  const roster = await loadRoster();
+  const roster = await loadRoster(lang);
   const [resolutions, bodies] = tab === "types" ? [[], new Map()] : await Promise.all([listResolutions(), listBodies()]);
 
   return (

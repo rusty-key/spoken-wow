@@ -19,8 +19,9 @@
  * stable across saves - which is what ELEVENLABS_DICTIONARY_ID and the in-place update
  * below are for. This is the only project that edits the lexicon; wow-lore reads it.
  */
-import { db } from "@/lib/db";
+import { TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
+import { queryAs, readAs } from "@/lib/teams/store";
 import {
   addDictionaryRules,
   countLexemes,
@@ -88,14 +89,15 @@ type Row = {
 };
 
 /**
- * Where a language's lexicon row is. English's is the singleton it has always been; every
+ * Where a language's lexicon row is. English's is the english team's pronunciation_lexicon; every
  * other language has a row of its own in pronunciation_lexicon_locale (migration 0038), with
  * the same columns meaning the same things. `$1` is the language in both, unused for English,
- * so every statement below can be written once.
+ * so every statement below can be written once. Either row is its language's team's, so every
+ * statement runs as that team.
  */
 function rowOf(lang: Lang): { table: string; where: string; params: [Lang] } {
   return lang === BASE_LANG
-    ? { table: `"pronunciation_lexicon"`, where: `"id" and $1::text is not null`, params: [lang] }
+    ? { table: `"pronunciation_lexicon"`, where: `${TEAM_ROWS} and $1::text is not null`, params: [lang] }
     : { table: `"pronunciation_lexicon_locale"`, where: `"lang" = $1`, params: [lang] };
 }
 
@@ -106,7 +108,8 @@ function rowOf(lang: Lang): { table: string; where: string; params: [Lang] } {
  */
 export async function lexiconStamp(lang: Lang = BASE_LANG): Promise<string | null> {
   const at = rowOf(lang);
-  const { rows } = await db().query<{ updatedAt: Date }>(
+  const rows = await readAs<{ updatedAt: Date }>(
+    lang,
     `select "updatedAt" from ${at.table} where ${at.where}`,
     at.params,
   );
@@ -115,7 +118,8 @@ export async function lexiconStamp(lang: Lang = BASE_LANG): Promise<string | nul
 
 async function readRow(lang: Lang = BASE_LANG): Promise<Row | undefined> {
   const at = rowOf(lang);
-  const { rows } = await db().query<Row>(
+  const rows = await readAs<Row>(
+    lang,
     // The comparison is made in Postgres, against the digest sync() stored, rather than by
     // comparing syncedAt with updatedAt out here. Both timestamps are now(), which is the
     // transaction's start time, and the save and the upload are two transactions
@@ -204,17 +208,18 @@ export async function writeLexicon(
   // lexicon_change is the record nothing else in the schema keeps. See lib/generation/dirty.
   const before = (await readRow(lang))?.entries ?? [];
 
-  await db().query(
+  await queryAs(
+    lang,
     lang === BASE_LANG
-      ? `insert into "pronunciation_lexicon" ("id", "entries", "updatedAt", "updatedBy")
-         values (true, $1, now(), $2)
-         on conflict ("id") do update set
+      ? `insert into "pronunciation_lexicon" ("entries", "updatedAt", "updatedBy")
+         values ($1, now(), $2)
+         on conflict ("teamId") do update set
            "entries"   = excluded."entries",
            "updatedAt" = excluded."updatedAt",
            "updatedBy" = excluded."updatedBy"`
       : `insert into "pronunciation_lexicon_locale" ("lang", "entries", "updatedAt", "updatedBy")
          values ($3, $1, now(), $2)
-         on conflict ("lang") do update set
+         on conflict ("teamId", "lang") do update set
            "entries"   = excluded."entries",
            "updatedAt" = excluded."updatedAt",
            "updatedBy" = excluded."updatedBy"`,
@@ -360,7 +365,8 @@ export async function sync(
   // where clause is what makes that exact: the statement only lands while "entries" is still
   // what was uploaded, so md5 of it is the digest of these rules and no others.
   const at = rowOf(lang);
-  const { rowCount } = await db().query(
+  const { rowCount } = await queryAs(
+    lang,
     `update ${at.table}
         set "dictionaryId" = $2, "versionId" = $3, "syncedAt" = now(),
             "syncedDigest" = md5("entries"::text),

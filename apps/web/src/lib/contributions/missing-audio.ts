@@ -10,8 +10,9 @@
  *
  * Server-side only: it writes.
  */
-import { db } from "@/lib/db";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { db, queryIn } from "@/lib/db";
+import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { ownerOrAll } from "@/lib/teams/store";
 
 import type { Submission } from "./contributions";
 
@@ -74,7 +75,10 @@ const RANKING_LIMIT = 200;
 
 /** The lines of one pack language, most players first. */
 export async function missingAudioRanking(packLang: string): Promise<MissingAudioRow[]> {
-  const { rows } = await db().query<MissingAudioRow>(
+  // As the language's team, for the takes "voiced" reads. The hits are shared, so a language
+  // nobody owns still lists them, all unvoiced.
+  return queryIn<MissingAudioRow>(
+    await ownerOrAll(packLang as Lang),
     `with ranked as (
        select "lineId", count(*)::int as "installs", max("lastSeen") as "lastSeen",
               array_remove(array_agg(distinct "packVersion"), null) as "packVersions"
@@ -101,5 +105,4 @@ export async function missingAudioRanking(packLang: string): Promise<MissingAudi
       order by r."installs" desc, r."lastSeen" desc, r."lineId"`,
     [packLang, RANKING_LIMIT, BASE_LANG],
   );
-  return rows;
 }

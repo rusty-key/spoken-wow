@@ -11,10 +11,20 @@
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { closeDb, db } from "@/lib/db";
+import { closeDb, db, withTeam } from "@/lib/db";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
+import { teamOf } from "@/lib/teams/store";
 
-import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry } from "./queue";
+import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry, type QueueJob } from "./queue";
 import type { Source } from "@/lib/sections";
+
+/** Settling a claimed job, as the worker does: on a transaction as the job's team. */
+const finish = (job: QueueJob, result: Parameters<typeof finishJob>[1]) =>
+  withTeam(job.teamId, (client) => finishJob(job.id, result, client));
+const fail = (job: QueueJob, failure: Parameters<typeof failJob>[1]) =>
+  withTeam(job.teamId, (client) => failJob(job.id, failure, client));
+const retry = (job: QueueJob, delayMs: number) =>
+  withTeam(job.teamId, (client) => retryJob(job.id, delayMs, client));
 
 /** A file prefix no other run collides with, so tests share one database safely. */
 let prefix: string;
@@ -35,7 +45,7 @@ const users: string[] = [];
 /** A real user row, because regeneration_batch."createdBy" references one. */
 async function newUser(): Promise<string> {
   const id = `test-owner-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $2, $3, false)`,
     [id, `Owner ${id}`, `${id}@example.invalid`],
   );
@@ -55,14 +65,14 @@ beforeEach(() => {
 
 afterEach(async () => {
   // Pauses are global, so the tests pause only koKR, which no other test file queues in.
-  await db().query(`delete from "regeneration_pause" where "lang" = 'koKR'`);
+  await asSystem.query(`delete from "regeneration_pause" where "lang" = 'koKR'`);
   // Cascades to the jobs, so nothing this file wrote outlives it.
   if (batches.length) {
-    await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+    await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
     batches.length = 0;
   }
   if (users.length) {
-    await db().query(`delete from "user" where "id" = any($1::text[])`, [users]);
+    await asSystem.query(`delete from "user" where "id" = any($1::text[])`, [users]);
     users.length = 0;
   }
 });
@@ -84,7 +94,7 @@ describe("enqueue", () => {
     const first = await newBatch();
     await enqueue(first, [line(1)], "quests");
     const claimed = await claimNext();
-    await finishJob(claimed!.id, { version: 1, credits: 55 });
+    await finish(claimed!, { version: 1, credits: 55 });
 
     const second = await newBatch();
     expect(await enqueue(second, [line(1)], "quests")).toEqual({ queued: 1, skipped: 0 });
@@ -123,7 +133,7 @@ describe("the generator a job is spoken by", () => {
   it("is the batch's unless the job names its own", async () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1), { ...line(2), provider: "fish" }], "quests", "enUS", "elevenlabs");
-    const { rows } = await db().query<{ file: string; provider: string }>(
+    const { rows } = await asSystem.query<{ file: string; provider: string }>(
       `select "file", "provider" from "regeneration_job" where "batchId" = $1 order by "file"`,
       [batch],
     );
@@ -166,7 +176,7 @@ describe("the owner of a job", () => {
     const batch = await newBatch("quests", alice);
     await enqueue(batch, [line(1), line(2)], "quests");
 
-    const { rows } = await db().query<{ owner: string | null }>(
+    const { rows } = await asSystem.query<{ owner: string | null }>(
       `select "owner" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -189,14 +199,14 @@ describe("the owner of a job", () => {
   it("is filled in from the batch when an insert leaves it out", async () => {
     const alice = await newUser();
     const batch = await newBatch("quests", alice);
-    await db().query(
+    await asSystem.query(
       `insert into "regeneration_job"
-         ("batchId", "source", "lang", "provider", "lineId", "file", "npcName", "preview", "characters")
-       values ($1, 'quests', 'enUS', 'elevenlabs', 'q:1:accept', $2, 'NPC 1', 'line 1', 100)`,
+         ("batchId", "source", "lang", "provider", "lineId", "file", "npcName", "preview", "characters", "teamId")
+       values ($1, 'quests', 'enUS', 'elevenlabs', 'q:1:accept', $2, 'NPC 1', 'line 1', 100, team_of_lang('enUS'))`,
       [batch, `${prefix}/1.mp3`],
     );
 
-    const { rows } = await db().query<{ owner: string | null }>(
+    const { rows } = await asSystem.query<{ owner: string | null }>(
       `select "owner" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -239,7 +249,7 @@ describe("claimNext", () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1)], "quests");
     const claimed = await claimNext();
-    await retryJob(claimed!.id, 60_000);
+    await retry(claimed!, 60_000);
 
     expect(await claimJobOfThisRun()).toBeNull();
   });
@@ -279,7 +289,7 @@ describe("activeLanes", () => {
 
     const first = await claimNext(undefined, { owner: alice, provider: "elevenlabs" });
     expect(first!.file).toBe(`${prefix}/1.mp3`);
-    await finishJob(first!.id, { version: 1, credits: 1 });
+    await finish(first!, { version: 1, credits: 1 });
 
     // Her remaining job is newer than Bob's, so Bob, who was waiting, goes first.
     expect((await activeLanes(1))[0].owner).toBe(bob);
@@ -290,7 +300,7 @@ describe("activeLanes", () => {
     await enqueue(await newBatch("quests", alice), [line(1)], "quests");
     await enqueue(await newBatch("quests", bob), [line(2)], "quests");
     const claimed = await claimNext(undefined, { owner: alice, provider: "elevenlabs" });
-    await retryJob(claimed!.id, 60_000);
+    await retry(claimed!, 60_000);
 
     expect((await activeLanes(1))[0].owner).toBe(alice);
   });
@@ -418,7 +428,7 @@ describe("cancelPending", () => {
     expect(states).toEqual({ running: 1, cancelled: 2 });
     expect(running).not.toBeNull();
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "kind", "actorId", "detail" from "activity" where "subject" = $1`,
       [batch],
     );
@@ -453,7 +463,7 @@ describe("cancelPending", () => {
 
     expect(await stateCounts(english)).toEqual({ pending: 1 });
     expect(await stateCounts(portuguese)).toEqual({ cancelled: 1 });
-    const { rows } = await db().query<{ id: string; stopped: boolean }>(
+    const { rows } = await asSystem.query<{ id: string; stopped: boolean }>(
       `select "id", "stoppedAt" is not null as stopped from "regeneration_batch"
         where "id" = any($1)`,
       [[english, portuguese]],
@@ -473,7 +483,7 @@ describe("cancelPending", () => {
 
     await cancelPending("Stopped by Ana", { langs: ["koKR"] });
 
-    const { rows } = await db().query<{ kind: string; subject: string | null; detail: Record<string, unknown> }>(
+    const { rows } = await asSystem.query<{ kind: string; subject: string | null; detail: Record<string, unknown> }>(
       `select "kind", "subject", "detail" from "activity"
         where "subject" = any($1)
            or ("kind" = 'queue.stopped' and "detail"->>'groupId' in
@@ -498,7 +508,7 @@ describe("cancelPending", () => {
         [second, press?.detail.groupId, 2],
       ].sort(),
     );
-    await db().query(`delete from "activity" where "detail"->>'groupId' = $1`, [press?.detail.groupId]);
+    await asSystem.query(`delete from "activity" where "detail"->>'groupId' = $1`, [press?.detail.groupId]);
   });
 });
 
@@ -507,9 +517,9 @@ describe("snapshot", () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1), line(2)], "quests");
     const a = await claimNext();
-    await finishJob(a!.id, { version: 1, credits: 55 });
+    await finish(a!, { version: 1, credits: 55 });
     const b = await claimNext();
-    await finishJob(b!.id, { version: 1, credits: null });
+    await finish(b!, { version: 1, credits: null });
 
     const seen = await snapshot(null);
     expect(seen.credits).toBeGreaterThanOrEqual(55);
@@ -521,7 +531,7 @@ describe("snapshot", () => {
     await enqueue(batch, [line(1)], "quests");
     const before = await snapshot(null);
     const a = await claimNext();
-    await finishJob(a!.id, { version: 1, credits: null, costUsd: 0.0042 });
+    await finish(a!, { version: 1, credits: null, costUsd: 0.0042 });
 
     const seen = await snapshot(null);
     expect(seen.costUsd - before.costUsd).toBeCloseTo(0.0042);
@@ -534,12 +544,12 @@ describe("snapshot", () => {
     await enqueue(batch, [line(1), line(2)], "quests");
 
     const a = await claimNext();
-    await finishJob(a!.id, { version: 3, credits: 55 });
+    await finish(a!, { version: 3, credits: 55 });
     const afterFirst = await snapshot(null);
     expect(afterFirst.finished.map((job) => job.id)).toContain(a!.id);
 
     const b = await claimNext();
-    await finishJob(b!.id, { version: 4, credits: 55 });
+    await finish(b!, { version: 4, credits: 55 });
     const afterSecond = await snapshot(afterFirst.cursor);
     const ids = afterSecond.finished.map((job) => job.id);
 
@@ -557,7 +567,7 @@ describe("snapshot", () => {
     // The queue starts lazily, so a batch interrupted by a deploy really can sit for days.
     // A snapshot that aged it out would render no panel at all - and therefore no Stop -
     // over a queue that is about to spend money.
-    await db().query(
+    await asSystem.query(
       `update "regeneration_job" set "queuedAt" = now() - interval '3 days' where "batchId" = $1`,
       [batch],
     );
@@ -580,7 +590,7 @@ describe("snapshot", () => {
     const cleanBatch = await newBatch();
     await enqueue(cleanBatch, [line(2)], "quests");
     const job = await claimNext();
-    await finishJob(job!.id, { version: 1, credits: 55 });
+    await finish(job!, { version: 1, credits: 55 });
 
     expect((await snapshot(null)).latestBatch).toEqual({
       cancelled: 0,
@@ -598,8 +608,8 @@ describe("snapshot", () => {
     const bobLane = { owner: bob, provider: "elevenlabs" as const };
     await claimNext(undefined, aliceLane);
     await claimNext(undefined, bobLane);
-    await failJob((await claimNext(undefined, aliceLane))!.id, { kind: "test", message: `${prefix} alice` });
-    await failJob((await claimNext(undefined, bobLane))!.id, { kind: "test", message: `${prefix} bob` });
+    await fail((await claimNext(undefined, aliceLane))!, { kind: "test", message: `${prefix} alice` });
+    await fail((await claimNext(undefined, bobLane))!, { kind: "test", message: `${prefix} bob` });
 
     const mine = (seen: Awaited<ReturnType<typeof snapshot>>) => ({
       running: seen.running.map((job) => job.preview),
@@ -615,7 +625,7 @@ describe("snapshot", () => {
     expect(all.failures).toEqual(expect.arrayContaining([`${prefix} alice`, `${prefix} bob`]));
   });
 
-  it("answers one poll with two pooled queries, not seven", async () => {
+  it("answers one poll with two pooled connections, not seven", async () => {
     // The exact count that matters: a batch in flight already holds two connections per job,
     // so the number a poll opens on top of that is the tightest budget in the system. This
     // spies on the real pool rather than mocking it - every query below still runs against
@@ -624,10 +634,11 @@ describe("snapshot", () => {
     await enqueue(batch, [line(1)], "quests");
 
     const pool = db();
-    const original = pool.query.bind(pool);
+    // Connections rather than pool.query calls: each query runs in its own team transaction.
+    const original = pool.connect.bind(pool);
     let calls = 0;
     const spy = vi
-      .spyOn(pool, "query")
+      .spyOn(pool, "connect")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mockImplementation((...args: any[]) => {
         calls++;
@@ -648,7 +659,7 @@ describe("snapshot", () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1)], "quests");
     const job = await claimNext();
-    await failJob(job!.id, { kind: "bad-request", message: "no line q:1:accept" });
+    await fail(job!, { kind: "bad-request", message: "no line q:1:accept" });
 
     const seen = await snapshot(null);
     expect(seen.failures).toContainEqual({
@@ -681,7 +692,7 @@ describe("snapshot", () => {
   it("names a queue whose owner is gone, and keeps it one queue", async () => {
     const gone = await newUser();
     await enqueue(await newBatch("quests", gone), [line(1), line(2)], "quests");
-    await db().query(`delete from "user" where "id" = $1`, [gone]);
+    await asSystem.query(`delete from "user" where "id" = $1`, [gone]);
     await enqueue(await newBatch("quests", null), [line(3)], "quests");
 
     const { queues } = await snapshot(null);
@@ -699,13 +710,101 @@ async function claimJobOfThisRun() {
 }
 
 async function stateCounts(batchId: string): Promise<Record<string, number>> {
-  const { rows } = await db().query<{ state: string; n: string }>(
+  const { rows } = await asSystem.query<{ state: string; n: string }>(
     `select "state", count(*)::text as n from "regeneration_job"
       where "batchId" = $1 group by "state"`,
     [batchId],
   );
   return Object.fromEntries(rows.map((row) => [row.state, Number(row.n)]));
 }
+
+describe("a language's team", () => {
+  let german: Awaited<ReturnType<typeof ownTeam>>;
+
+  beforeEach(async () => {
+    german = await ownTeam("deDE");
+  });
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "regeneration_pause" where "lang" = 'deDE'`);
+    await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+    batches.length = 0;
+    await german.restore();
+  });
+
+  async function germanJob(n: number) {
+    const batch = await createBatch("test batch", null, "quests", "deDE");
+    batches.push(batch);
+    await enqueue(batch, [line(n)], "quests", "deDE");
+    return batch;
+  }
+
+  it("is stamped on the batch and its jobs, and rides to the claim", async () => {
+    const batch = await germanJob(1);
+    const { rows } = await asSystem.query(
+      `select b."teamId" as "batch", j."teamId" as "job"
+         from "regeneration_batch" b join "regeneration_job" j on j."batchId" = b."id"
+        where b."id" = $1`,
+      [batch],
+    );
+    expect(rows).toEqual([{ batch: german.team, job: german.team }]);
+
+    const claimed = await claimJobOfThisRun();
+    expect(claimed?.teamId).toBe(german.team);
+  });
+
+  it("is the english team's for an English job", async () => {
+    await enqueue(await newBatch(), [line(2)], "quests");
+    expect((await claimJobOfThisRun())?.teamId).toBe(await teamOf("enUS"));
+  });
+
+  it("is what a pause is held under, holding back that language's jobs only", async () => {
+    await germanJob(1);
+    await enqueue(await newBatch(), [line(2)], "quests");
+
+    expect(await pauseQueue(["deDE"], null)).toEqual(["deDE"]);
+    const { rows } = await asSystem.query(`select "teamId" from "regeneration_pause" where "lang" = 'deDE'`);
+    expect(rows).toEqual([{ teamId: german.team }]);
+
+    expect((await claimJobOfThisRun())?.lang).toBe("enUS");
+    expect(await claimJobOfThisRun()).toBeNull();
+
+    expect(await resumeQueue(["deDE"], null)).toEqual(["deDE"]);
+    expect((await claimJobOfThisRun())?.lang).toBe("deDE");
+  });
+
+  it("does not let a pause held by another team hold this one's work", async () => {
+    // No language has two teams yet, but a pause must already hold back only its own team.
+    await germanJob(1);
+    await asSystem.query(
+      `insert into "regeneration_pause" ("lang", "teamId") values ('deDE', $1)`,
+      [await teamOf("enUS")],
+    );
+    expect((await claimJobOfThisRun())?.lang).toBe("deDE");
+  });
+
+  it("is the only team a job can be settled as, as the worker settles it", async () => {
+    // What the worker's withTeam(job.teamId) is for: under row-level security another team's
+    // transaction finds no such job, so a finish, failure or retry written there is lost.
+    const batch = await germanJob(1);
+    const job = await claimJobOfThisRun();
+    const english = await teamOf("enUS");
+
+    await withTeam(english, (client) => finishJob(job!.id, { version: 1, credits: 1 }, client));
+    await withTeam(english, (client) => failJob(job!.id, { kind: "upstream", message: "x" }, client));
+    await withTeam(english, (client) => retryJob(job!.id, 0, client));
+    expect(await stateCounts(batch)).toEqual({ running: 1 });
+
+    await withTeam(job!.teamId, (client) => finishJob(job!.id, { version: 1, credits: 1 }, client));
+    expect(await stateCounts(batch)).toEqual({ done: 1 });
+  });
+
+  it("is what a Stop in that language runs under", async () => {
+    const batch = await germanJob(1);
+    expect(await cancelPending("stopped", { langs: ["deDE"] })).toBe(1);
+    expect(await stateCounts(batch)).toEqual({ cancelled: 1 });
+  });
+});
 
 describe("dismissing finished work", () => {
   it("hides what was dismissed and keeps what came after", async () => {
@@ -714,12 +813,12 @@ describe("dismissing finished work", () => {
     await enqueue(batch, [line(1)], "quests");
 
     const first = await claimNext();
-    await finishJob(first!.id, { version: 1, credits: 10 });
+    await finish(first!, { version: 1, credits: 10 });
 
     const before = await snapshot(null);
     expect(before.counts.done).toBeGreaterThan(0);
 
-    await dismissThrough(before.through!, null);
+    await dismissThrough(before.through!, null, "enUS");
 
     const after = await snapshot(null);
     expect(after.counts.done).toBe(0);
@@ -728,7 +827,7 @@ describe("dismissing finished work", () => {
     // Work that finishes after the dismissal is news again.
     await enqueue(batch, [line(2)], "quests");
     const second = await claimNext();
-    await finishJob(second!.id, { version: 1, credits: 10 });
+    await finish(second!, { version: 1, credits: 10 });
 
     expect((await snapshot(null)).counts.done).toBe(1);
   });
@@ -739,7 +838,7 @@ describe("dismissing finished work", () => {
     await enqueue(batch, [line(5), line(6)], "quests");
 
     const done = await claimNext();
-    await finishJob(done!.id, { version: 1, credits: 10 });
+    await finish(done!, { version: 1, credits: 10 });
     await cancelPending("stopped", { batchId: batch });
 
     // The cancelled job has the higher id, so a watermark that only counted done and failed
@@ -747,7 +846,7 @@ describe("dismissing finished work", () => {
     const before = await snapshot(null);
     expect(before.counts.cancelled).toBe(1);
 
-    await dismissThrough(before.through!, null);
+    await dismissThrough(before.through!, null, "enUS");
     const after = await snapshot(null);
 
     expect(after.counts).toEqual({ pending: 0, running: 0, done: 0, failed: 0, cancelled: 0 });
@@ -760,11 +859,11 @@ describe("dismissing finished work", () => {
     await enqueue(batch, [line(3)], "quests");
 
     const done = await claimNext();
-    await finishJob(done!.id, { version: 1, credits: 10 });
+    await finish(done!, { version: 1, credits: 10 });
     await enqueue(batch, [line(4)], "quests");
 
     // Dismissing the finished job must leave the pending one - and the Stop button - alone.
-    await dismissThrough((await snapshot(null)).through!, null);
+    await dismissThrough((await snapshot(null)).through!, null, "enUS");
     const after = await snapshot(null);
 
     expect(after.counts.pending + after.counts.running).toBe(1);

@@ -11,7 +11,7 @@
  * bytes live and how a file is named -- frozen rules, per AGENTS.md -- so that is what the
  * adapter holds, and everything else is written once here.
  *
- * Keyed on `(source, file)` because that is what `take_current_idx` is on, and because a
+ * Keyed on `(source, file)` because that is what `take_team_current_idx` is on, and because a
  * quests file is spoken by several NPCs: "restore this line" is really "restore this file".
  */
 import "server-only";
@@ -20,8 +20,8 @@ import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
 import { blobOrFile, type Stored } from "@/lib/blobs/store";
-import { db, query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
+import { asTeamOf, readAs } from "@/lib/teams/store";
 
 import { historyDirOf } from "./adapters";
 import type { Source } from "@/lib/sections";
@@ -55,7 +55,8 @@ export async function listTakes(
   file: string,
   lang: Lang = BASE_LANG,
 ): Promise<Take[]> {
-  const rows = await query<Row>(
+  const rows = await readAs<Row>(
+    lang,
     `select ${COLUMNS}
        from "take" t
        left join "user" u on u."id" = t."createdBy"
@@ -105,12 +106,13 @@ export type LiveTake = {
  * window count avoids the join too, but reads every column of every take to do it and was
  * four times slower than either half.
  *
- * Counted by file, which is what take_current_idx is on. For places and readables a file and a
+ * Counted by file, which is what take_team_current_idx is on. For places and readables a file and a
  * line are the same thing; a quests file is shared by every NPC who speaks it.
  */
 export async function liveTakes(source: Source, lang: Lang = BASE_LANG): Promise<LiveTake[]> {
   const [live, counts] = await Promise.all([
-    query<Omit<LiveTake, "takes">>(
+    readAs<Omit<LiveTake, "takes">>(
+      lang,
       `select t."lineId", t."file", t."version", t."spokenHash", t."characters",
               t."credits", t."durationSec"::float8 as "durationSec", t."bytes"::float8 as "bytes",
               t."provider", t."modelId", t."voiceId", t."createdAt", t."createdBy",
@@ -120,7 +122,8 @@ export async function liveTakes(source: Source, lang: Lang = BASE_LANG): Promise
         where t."source" = $1 and t."lang" = $2 and t."isCurrent"`,
       [source, lang],
     ),
-    query<{ file: string; takes: number }>(
+    readAs<{ file: string; takes: number }>(
+      lang,
       `select "file", count(*)::int as "takes" from "take"
         where "source" = $1 and "lang" = $2 group by "file"`,
       [source, lang],
@@ -137,7 +140,8 @@ export async function liveVersion(
   file: string,
   lang: Lang = BASE_LANG,
 ): Promise<number | null> {
-  const rows = await query<{ version: number }>(
+  const rows = await readAs<{ version: number }>(
+    lang,
     `select "version" from "take"
       where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"`,
     [source, file, lang],
@@ -149,7 +153,7 @@ export async function liveVersion(
  * Make one take the live one.
  *
  * In a transaction, because clearing the old flag and setting the new one must not half
- * apply: `take_current_idx` allows exactly one live take per file, so a half-applied pair
+ * apply: `take_team_current_idx` allows exactly one live take per file, so a half-applied pair
  * would either leave the file with none -- the export then ships nothing for that line --
  * or make the next write fail against the index, which looks like a bug in the next run
  * rather than in this one.
@@ -164,9 +168,7 @@ export async function setLiveTake(
   lang: Lang,
   by: string | null,
 ): Promise<void> {
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  await asTeamOf(lang, async (client) => {
     const { rows: was } = await client.query<{ version: number }>(
       `update "take" set "isCurrent" = false
         where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"
@@ -202,13 +204,7 @@ export async function setLiveTake(
       },
       client,
     );
-    await client.query("commit");
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /** Where one take's bytes are, or why there are none to read. */
@@ -234,7 +230,8 @@ export async function takePath(
   version: number,
   lang: Lang = BASE_LANG,
 ): Promise<TakeBytes> {
-  const rows = await query<Located>(
+  const rows = await readAs<Located>(
+    lang,
     `select "archiveFile", "sha256" from "take"
       where "source" = $1 and "file" = $2 and "lang" = $3 and "version" = $4`,
     [source, file, lang, version],
@@ -244,7 +241,8 @@ export async function takePath(
 
 /** The live take's bytes, the way takePath finds any take's. What the live audio routes play. */
 export async function livePath(source: Source, file: string, lang: Lang = BASE_LANG): Promise<TakeBytes> {
-  const rows = await query<Located>(
+  const rows = await readAs<Located>(
+    lang,
     `select "archiveFile", "sha256" from "take"
       where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"`,
     [source, file, lang],

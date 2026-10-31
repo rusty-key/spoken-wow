@@ -14,7 +14,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "voice-regen-"));
 process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { historyDirOf } = await import("@/lib/takes/adapters");
 const historyDir = (file: string) => historyDirOf("quests", file);
 const { archiveName } = await import("@/lib/takes/bytes");
@@ -151,7 +152,7 @@ beforeEach(async () => {
   fs.mkdirSync(path.join(root, "audio", "gossip"), { recursive: true });
 
   const files = await fixtureFiles();
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `delete from "take" where "file" = any($1::text[]) returning *`,
     [files],
   );
@@ -160,17 +161,17 @@ beforeEach(async () => {
 
 afterEach(async () => {
   const files = await fixtureFiles();
-  await db().query(`delete from "take" where "file" = any($1::text[])`, [files]);
+  await asSystem.query(`delete from "take" where "file" = any($1::text[])`, [files]);
 
   for (const row of displaced) {
     const columns = Object.keys(row).filter((key) => key !== "id");
-    await db().query(
+    await asSystem.query(
       `insert into "take" (${columns.map((c) => `"${c}"`).join(", ")})
        values (${columns.map((_, i) => `$${i + 1}`).join(", ")})`,
       columns.map((column) => {
         const value = (row as Record<string, unknown>)[column];
-        // jsonb comes back parsed and has to go in as text again.
-        return value !== null && typeof value === "object" && !(value instanceof Date)
+        // jsonb comes back parsed and has to go in as text again; an array (wordTimes) goes in as it is.
+        return value !== null && typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)
           ? JSON.stringify(value)
           : value;
       }),
@@ -232,19 +233,19 @@ describe("a lexicon uploaded to ElevenLabs", () => {
   let previous: { dictionaryId: string | null; versionId: string | null } | undefined;
 
   beforeEach(async () => {
-    const { rows } = await db().query(
-      `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "id"`,
+    const { rows } = await asSystem.query(
+      `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     previous = rows[0];
-    await db().query(
+    await asSystem.query(
       `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1'
-       where "id"`,
+       where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
   });
 
   afterEach(async () => {
-    await db().query(
-      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2 where "id"`,
+    await asSystem.query(
+      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
       [previous?.dictionaryId ?? null, previous?.versionId ?? null],
     );
   });
@@ -264,7 +265,7 @@ describe("a lexicon uploaded to ElevenLabs", () => {
       { pronunciation_dictionary_id: "dict-abc", version_id: "ver-1" },
     ]);
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "dictionaryId", "dictionaryVersion" from "take" where "file" = $1`,
       [result.file],
     );
@@ -307,7 +308,7 @@ describe("a race with an accent tag", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const { rows } = await db().query(`select "wordTimes" from "take" where "file" = $1`, [result.file]);
+    const { rows } = await asSystem.query(`select "wordTimes" from "take" where "file" = $1`, [result.file]);
     // The fake mp3 cannot be trimmed, so the lead-in's 29 characters stay ahead of the words.
     const at = (word: string) => `${LEAD_IN}[Scottish accent] Hiccup! Ho Ho!`.indexOf(word) / 10;
     expect(rows[0].wordTimes).toEqual([at("Hiccup!"), at("Ho Ho"), at("Ho!")]);
@@ -540,7 +541,7 @@ describe("a line whose spoken text has been rewritten", () => {
     const { options } = stub();
     await regenerate(STAGE_DIRECTION, options);
 
-    const { rows } = await db().query<{ narratorVoice: string | null; settings: unknown }>(
+    const { rows } = await asSystem.query<{ narratorVoice: string | null; settings: unknown }>(
       `select "narratorVoice", "settings" from "take" where "file" = $1`,
       [await fileFor(STAGE_DIRECTION)],
     );

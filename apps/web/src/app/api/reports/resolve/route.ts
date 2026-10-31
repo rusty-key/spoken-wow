@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "unknown report" }, { status: 404 });
   }
 
-  const report = await setStatus(id, body.status, session.user.id);
+  const report = await setStatus(id, body.status, session.user.id, lang);
   if (!report) {
     return Response.json({ error: "unknown report" }, { status: 404 });
   }

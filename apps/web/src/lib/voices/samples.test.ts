@@ -167,12 +167,12 @@ describe("with clips in the bucket", () => {
   it("stores, lists, reads and removes a clip without touching the volume", async () => {
     const { storeSample, listSamples, readSample, sampleClip, deleteSample } = await load();
     const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
-    const { query } = await import("@/lib/db");
+    const { systemRows } = await import("@/lib/teams/testing");
     const bucket = memoryBlobs();
     const restore = useArchiveForTests(bucket, "r2");
     const clone = "orc-male-standard@deDE";
     try {
-      await query(`delete from "voice_sample" where "clone" = $1`, [clone]);
+      await systemRows(`delete from "voice_sample" where "clone" = $1`, [clone]);
       const stored = await storeSample(clone, "greeting.mp3", Buffer.from("guten tag"));
       const sha = sha256Of(Buffer.from("guten tag"));
 
@@ -187,7 +187,7 @@ describe("with clips in the bucket", () => {
       expect(await sampleClip(clone, stored.file)).toEqual({ kind: "gone" });
     } finally {
       restore();
-      await query(`delete from "voice_sample" where "clone" = $1`, [clone]);
+      await systemRows(`delete from "voice_sample" where "clone" = $1`, [clone]);
     }
   });
 });

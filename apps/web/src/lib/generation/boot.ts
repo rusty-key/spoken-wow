@@ -23,6 +23,9 @@
  */
 import type { Worker } from "./worker";
 
+import { inTransaction } from "@/lib/db";
+import { adoptEveryLang, forgetTeams } from "@/lib/teams/store";
+
 import { startLeader, type Leader } from "./leader";
 import { startWorker } from "./worker";
 
@@ -42,6 +45,11 @@ export function queueWorker(): Worker | null {
 export function ensureQueueRunning(): void {
   const holder = globalThis as Holder;
   if (holder[key]) return;
+
+  // A failure is logged and left: the queue must start whether or not the seeding could.
+  void inTransaction(adoptEveryLang)
+    .then(forgetTeams)
+    .catch((error) => console.error("teams: could not give every language a team", error));
 
   const leader = startLeader();
   const worker = startWorker(leader.held);

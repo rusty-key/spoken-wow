@@ -4,10 +4,12 @@
  * Keyed on the store-relative file, as the take table is and for the same reason: one mp3
  * is spoken by up to many NPCs, so a rewrite necessarily changes what all of them say. See
  * the header of migration 0012 for why rewriting the spoken text cannot rename that file.
+ *
+ * Every override is English's, so a write runs as English's team.
  */
 import { recordActivity } from "../activity/store";
 import { BASE_LANG, type Lang } from "../lang";
-import { db } from "../db";
+import { queryAs, readAs } from "../teams/store";
 import { overrideOf, type LineOverride } from "./override";
 
 type OverrideRow = {
@@ -29,7 +31,8 @@ function toOverride(row: OverrideRow): LineOverride {
 }
 
 async function stamp(): Promise<string> {
-  const { rows } = await db().query<{ stamp: string | null }>(
+  const rows = await readAs<{ stamp: string | null }>(
+    BASE_LANG,
     `select count(*)::text || ':' || coalesce(max("updatedAt")::text, '-') as stamp
        from "line_override"`,
   );
@@ -59,7 +62,8 @@ export async function readOverrides(lang: Lang = BASE_LANG): Promise<Map<string,
   const current = await stamp();
   if (holder[cacheKey]?.stamp === current) return holder[cacheKey].map;
 
-  const { rows } = await db().query<OverrideRow>(
+  const rows = await readAs<OverrideRow>(
+    BASE_LANG,
     `select "file", "lineId", "text", "updatedAt", "updatedBy" from "line_override"`,
   );
   const map = new Map(rows.map((r) => [r.file, toOverride(r)]));
@@ -79,11 +83,12 @@ export async function writeOverride(
 ): Promise<LineOverride> {
   // "before" is read in the same statement, from the snapshot the upsert started with, so
   // the log says what this write replaced and not what a concurrent one did.
-  const { rows } = await db().query<OverrideRow & { before: string | null }>(
+  const { rows } = await queryAs<OverrideRow & { before: string | null }>(
+    BASE_LANG,
     `with "was" as (select "text" from "line_override" where "file" = $1)
      insert into "line_override" ("file", "lineId", "text", "updatedBy")
      values ($1, $2, $3, $4)
-     on conflict ("file") do update
+     on conflict ("teamId", "file") do update
         set "text" = excluded."text",
             "lineId" = excluded."lineId",
             "updatedAt" = now(),
@@ -111,7 +116,8 @@ export async function writeOverride(
 
 /** `by` is who reverted it, for the activity log: the delete leaves nothing else behind. */
 export async function clearOverride(file: string, by: string | null): Promise<boolean> {
-  const { rows } = await db().query<{ lineId: string; text: string }>(
+  const { rows } = await queryAs<{ lineId: string; text: string }>(
+    BASE_LANG,
     `delete from "line_override" where "file" = $1 returning "lineId", "text"`,
     [file],
   );

@@ -45,7 +45,7 @@ export default async function Page({
   // The statuses, never the keys: sent to a client component as props.
   const [all, elevenStatus, fishStatus, preference, elevenKey, settings, references] =
     await Promise.all([
-      slots(),
+      slots(lang),
       apiKeyStatus(userId),
       apiKeyStatus(userId, "fish"),
       readPreference(userId, lang),

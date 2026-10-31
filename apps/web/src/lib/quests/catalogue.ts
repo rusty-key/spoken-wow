@@ -24,7 +24,7 @@
  */
 import "server-only";
 
-import { query } from "@/lib/db";
+import { query, queryIn } from "@/lib/db";
 import { memoByLang } from "@/lib/memo";
 import { isSex } from "@/lib/npc/npc";
 import { splitBody } from "@/lib/npc/store";
@@ -33,6 +33,7 @@ import { npcKey, type Corpus, type CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
+import { teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
 
 
@@ -83,7 +84,9 @@ async function stampOf(lang: Lang): Promise<string> {
   // also reads English's rows for display, and its own names.
   const english = `${versionStamp("quest_line", `"lang" = '${BASE_LANG}'`)} || '/' || ${SPEAKER_STAMP} || '/' ||
     ${versionStamp("entity_name", `"lang" = '${BASE_LANG}' and "kind" in ('creature', 'gameobject', 'item')`)}`;
-  const rows = await query<{ stamp: string }>(
+  // As the roster's team, whose voices and assignments ROSTER_STAMP reads.
+  const rows = await queryIn<{ stamp: string }>(
+    await teamOrEnglish(lang),
     lang === BASE_LANG
       ? `select ${english} as "stamp"`
       : `select ${english} || '|' || ${versionStamp("quest_line", `"lang" = $1`)} || '/' ||
@@ -262,7 +265,7 @@ async function build(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty(lang);
 
-  return withSoleSpeakers(voiced(rows, await loadRoster()).map(({ writtenVoice: _written, npcSex, npcBody, ...row }) => ({
+  return withSoleSpeakers(voiced(rows, await loadRoster(lang)).map(({ writtenVoice: _written, npcSex, npcBody, ...row }) => ({
     ...row,
     ...(isSex(npcSex) && npcBody ? { npcSex, npcBody } : {}),
     npcType: row.npcType as CorpusLine["npcType"],
@@ -352,7 +355,7 @@ async function buildTranslated(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty();
 
-  return withSoleSpeakers(voiced(rows, await loadRoster()).map((raw) => {
+  return withSoleSpeakers(voiced(rows, await loadRoster(lang)).map((raw) => {
     const { textMissing, titleMissing, nameMissing, native, englishTitle, englishName, writtenVoice: _written, npcSex, npcBody, ...row } = raw;
     return {
       ...row,
@@ -442,9 +445,10 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
  */
 export async function defaultFlavorFor(race: string, gender: string): Promise<string | null> {
   // A race-gender the corpus has no flavored line for yet falls back to the roster's first.
+  // Flavors are every team's, and the answer is for the npc table, which is every language's.
   return (
     (await flavorDefaults()).get(`${race}-${gender}`) ??
-    (await loadRoster()).flavorsOf(race, gender)[0] ??
+    (await loadRoster(BASE_LANG)).flavorsOf(race, gender)[0] ??
     null
   );
 }

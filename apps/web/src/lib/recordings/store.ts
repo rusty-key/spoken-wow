@@ -20,7 +20,6 @@ import { recordActivity } from "@/lib/activity/store";
 import { blobOrFile, keep } from "@/lib/blobs/store";
 import { fileIndex } from "@/lib/audio";
 import { catalogue as readablesCatalogue } from "@/lib/readables/catalogue";
-import { db, query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { recordedDirOf } from "@/lib/takes/adapters";
@@ -32,6 +31,7 @@ import { catalogue as bossesCatalogue } from "@/lib/bosses/catalogue";
 import { can } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { viewerOf } from "@/lib/grants/store";
+import { asTeamOf, readAs } from "@/lib/teams/store";
 
 import type { LiveRecording } from "./live";
 import type { RecordingFormat } from "./match";
@@ -86,7 +86,8 @@ const derived = new WeakMap<object, Map<string, string>>();
 
 /** Every recording of one file, newest first, removed ones included. */
 export async function listRecordings(source: Source, lang: Lang, file: string): Promise<Recording[]> {
-  return query<Recording>(
+  return readAs<Recording>(
+    lang,
     `select ${COLUMNS} from "recording"
       where "source" = $1 and "lang" = $2 and "file" = $3
       order by "version" desc`,
@@ -96,7 +97,8 @@ export async function listRecordings(source: Source, lang: Lang, file: string): 
 
 /** The live recording of every file in a language that has one. */
 export async function liveRecordings(source: Source, lang: Lang): Promise<Map<string, LiveRecording>> {
-  const rows = await query<LiveRecording & { file: string }>(
+  const rows = await readAs<LiveRecording & { file: string }>(
+    lang,
     `select distinct on ("file") "file", "version", "format", "durationSec"::float8 as "durationSec",
             "credit", "createdBy", "createdAt"
        from "recording"
@@ -123,7 +125,8 @@ export async function recordingsFor(source: Source, lang: Lang): Promise<Map<str
  * recording is never "gone", only there or never made.
  */
 export async function recordingPath(source: Source, lang: Lang, file: string, version: number): Promise<TakeBytes> {
-  const [row] = await query<{ archiveFile: string; sha256: string | null }>(
+  const [row] = await readAs<{ archiveFile: string; sha256: string | null }>(
+    lang,
     `select "archiveFile", "sha256" from "recording"
       where "source" = $1 and "lang" = $2 and "file" = $3 and "version" = $4`,
     [source, lang, file, version],
@@ -167,9 +170,7 @@ export async function commitRecording(
 
   const { source, lang, file } = upload;
   const { lineId } = upload;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  return asTeamOf(lang, async (client) => {
     await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [`recording:${source}:${lang}:${file}`]);
     const {
       rows: [{ next }],
@@ -223,14 +224,8 @@ export async function commitRecording(
       },
       client,
     );
-    await client.query("commit");
     return { recording };
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -249,9 +244,7 @@ export async function removeRecording(input: {
   mayRemoveAny: boolean;
 }): Promise<boolean> {
   const { source, lang, file, version, by } = input;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  return asTeamOf(lang, async (client) => {
     const { rows } = await client.query<{ lineId: string | null }>(
       `update "recording" set "deletedAt" = now(), "deletedBy" = $5
         where "source" = $1 and "lang" = $2 and "file" = $3 and "version" = $4
@@ -259,10 +252,8 @@ export async function removeRecording(input: {
         returning "lineId"`,
       [source, lang, file, version, by, input.mayRemoveAny],
     );
-    if (rows.length === 0) {
-      await client.query("rollback");
-      return false;
-    }
+    // Nothing was updated, so committing the empty transaction changes nothing.
+    if (rows.length === 0) return false;
     await recordActivity(
       {
         kind: "recording.removed",
@@ -275,12 +266,6 @@ export async function removeRecording(input: {
       },
       client,
     );
-    await client.query("commit");
     return true;
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

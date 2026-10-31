@@ -33,8 +33,8 @@ import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/kno
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
 import { contributionByDedup, type Contribution } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
-import { db } from "@/lib/db";
-import { BASE_LANG } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { readAs } from "@/lib/teams/store";
 
 import type { Report } from "./reports";
 import { setStatus } from "./store";
@@ -102,6 +102,8 @@ export async function reportContribution(submission: Submission): Promise<Report
  */
 export async function contributeReport(
   report: Report,
+  // The report's own, from reportLang: the submission's locale may be another.
+  lang: Lang,
   submission: Submission,
   userId: string,
   accept: CorrectionAccept = {},
@@ -136,7 +138,7 @@ export async function contributeReport(
     };
   }
 
-  const fixed = await setStatus(report.id, "fixed", userId);
+  const fixed = await setStatus(report.id, "fixed", userId, lang);
   if (!fixed) return { ok: false, reason: "not-found" };
   return { ok: true, report: fixed, contribution: outcome.contribution };
 }
@@ -151,7 +153,9 @@ async function reportState(submission: Submission): Promise<LineState> {
   const { quest, event } = submission.meta;
   if (state.kind === "missing" || submission.source !== "quests" || !quest || !event || !submission.text) return state;
 
-  const { rows } = await db().query<{ lineId: string; variant: number; text: string }>(
+  // As English: the overrides are English's, and so its team's.
+  const rows = await readAs<{ lineId: string; variant: number; text: string }>(
+    BASE_LANG,
     `select l."lineId", l."variant", coalesce(o."text", l."text") as "text"
        from "quest_line" l
        left join "line_override" o on o."lineId" = l."lineId" and l."lang" = $3

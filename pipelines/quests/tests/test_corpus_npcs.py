@@ -106,6 +106,22 @@ def test_a_type_the_site_lacks_is_added_with_the_voice_the_file_names(cur):
     assert voice_for(cur, "testtreant", None, None) == "testtreant"
 
 
+def test_a_seeded_voice_and_its_assignment_are_every_teams(cur):
+    # The types are every team's, so each team's roster gets the voice: one row per team.
+    cur.execute("""insert into "team" ("slug", "name") values ('test-corpus-npcs', 'Test')""")
+    _import_types(cur, [{"npcType": "creature", "npcId": NPC_ID, "race": "testtreant",
+                         "gender": None, "flavor": None, "provenance": "moderator",
+                         "voice": "testtreant"}])
+    cur.execute("""select (select count(*) from "team"),
+                          (select count(*) from "voice" where "name" = 'testtreant'),
+                          (select count(*) from "voice_assignment" a
+                             join "voice" v on v."teamId" = a."teamId" and v."name" = a."voice"
+                            where a."race" = 'testtreant')""")
+    teams, voices, assignments = cur.fetchone()
+    assert teams >= 2
+    assert (voices, assignments) == (teams, teams)
+
+
 def test_a_type_the_site_has_keeps_its_own_voice(cur):
     _import_types(cur, [{"npcType": "creature", "npcId": NPC_ID, "race": "human",
                          "gender": "male", "flavor": "standard", "provenance": "corpus",

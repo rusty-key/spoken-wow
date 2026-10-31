@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let filters = await filtersFromParams(new URLSearchParams(body.filters));
+  let filters = await filtersFromParams(new URLSearchParams(body.filters), lang);
   const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([
     corpus(lang),
     // Behind `regenerate`, which is working in the language, so the model and author

@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 import { addGrants, removeGrant } from "./store";
 
@@ -15,7 +16,7 @@ const GRANTER = `test-granter-${Math.random().toString(36).slice(2, 10)}`;
 
 beforeAll(async () => {
   for (const id of [GRANTEE, GRANTER]) {
-    await db().query(
+    await asSystem.query(
       `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
       [id, `${id}@example.invalid`],
     );
@@ -23,14 +24,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "subject" = $1`, [GRANTEE]);
-  await db().query(`delete from "language_grant" where "userId" = $1`, [GRANTEE]);
-  await db().query(`delete from "user" where "id" = any($1::text[])`, [[GRANTEE, GRANTER]]);
+  await asSystem.query(`delete from "activity" where "subject" = $1`, [GRANTEE]);
+  await asSystem.query(`delete from "language_grant" where "userId" = $1`, [GRANTEE]);
+  await asSystem.query(`delete from "user" where "id" = any($1::text[])`, [[GRANTEE, GRANTER]]);
   await closeDb();
 });
 
 async function logged(kind: string) {
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `select "lang", "actorId", "detail" from "activity" where "subject" = $1 and "kind" = $2`,
     [GRANTEE, kind],
   );
@@ -42,7 +43,7 @@ describe("addGrants", () => {
     await addGrants(GRANTEE, "frFR", ["edit"], GRANTER);
     await addGrants(GRANTEE, "frFR", ["edit", "regenerate", "record"], GRANTER);
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "capability" from "language_grant" where "userId" = $1 and "lang" = 'frFR' order by 1`,
       [GRANTEE],
     );
@@ -52,7 +53,7 @@ describe("addGrants", () => {
 
   it("grants none when one is refused by the table", async () => {
     await expect(addGrants(GRANTEE, "esES", ["edit", "nonsense" as never], GRANTER)).rejects.toThrow();
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select 1 from "language_grant" where "userId" = $1 and "lang" = 'esES'`,
       [GRANTEE],
     );

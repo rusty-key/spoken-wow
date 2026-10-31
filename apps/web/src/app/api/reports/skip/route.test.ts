@@ -4,6 +4,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { createReport, skippedIds } from "@/lib/reports/store";
 
 const USER = `test-skip-${Math.random().toString(36).slice(2, 10)}`;
@@ -40,7 +41,7 @@ async function file(source: "quests" | "places", lang: string, status = "open"):
     email: null,
     ip: IP,
   });
-  const { rows } = await db().query<{ id: string }>(
+  const { rows } = await asSystem.query<{ id: string }>(
     `update "report" set "status" = $2
       where "id" = (select max("id") from "report" where "ip" = $1) returning "id"::text`,
     [IP, status],
@@ -49,15 +50,15 @@ async function file(source: "quests" | "places", lang: string, status = "open"):
 }
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Skip', $2, false)`,
     [USER, `${USER}@example.invalid`],
   );
 });
 
 afterAll(async () => {
-  await db().query(`delete from "report" where "ip" = $1`, [IP]);
-  await db().query(`delete from "user" where "id" = $1`, [USER]);
+  await asSystem.query(`delete from "report" where "ip" = $1`, [IP]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
   await closeDb();
 });
 

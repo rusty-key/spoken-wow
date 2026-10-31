@@ -8,6 +8,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
 
 import { countRecent, createReport, listReports, reportsForLine, setStatus } from "./store";
 
@@ -34,7 +35,7 @@ function submission(overrides: Partial<Parameters<typeof createReport>[0]> = {})
 
 beforeEach(async () => {
   ip = `test-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -43,12 +44,12 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
+  await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -62,7 +63,7 @@ describe("createReport and countRecent", () => {
 
   it("ignores rows older than the window", async () => {
     await createReport(submission());
-    await db().query(
+    await asSystem.query(
       `update "report" set "createdAt" = now() - interval '2 hours' where "ip" = $1`,
       [ip],
     );
@@ -92,7 +93,7 @@ describe("setStatus", () => {
     await createReport(submission());
     const [report] = await reportsForLine("quests", "q:1:accept");
 
-    const updated = await setStatus(report.id, "fixed", RESOLVER);
+    const updated = await setStatus(report.id, "fixed", RESOLVER, "enUS");
 
     expect(updated?.status).toBe("fixed");
     expect(updated?.resolvedAt).not.toBeNull();
@@ -103,8 +104,8 @@ describe("setStatus", () => {
     await createReport(submission());
     const [report] = await reportsForLine("quests", "q:1:accept");
 
-    await setStatus(report.id, "fixed", RESOLVER);
-    const reopened = await setStatus(report.id, "open", RESOLVER);
+    await setStatus(report.id, "fixed", RESOLVER, "enUS");
+    const reopened = await setStatus(report.id, "open", RESOLVER, "enUS");
 
     expect(reopened?.resolvedAt).toBeNull();
     expect(reopened?.resolvedBy).toBeNull();
@@ -114,14 +115,14 @@ describe("setStatus", () => {
     await createReport(submission({ body: "Minor quibble." }));
     const [report] = (await reportsForLine("quests", "q:1:accept")).filter((each) => each.body === "Minor quibble.");
 
-    expect((await setStatus(report.id, "minor", RESOLVER))?.status).toBe("minor");
+    expect((await setStatus(report.id, "minor", RESOLVER, "enUS"))?.status).toBe("minor");
     const ids = async (status: "open" | "minor") => (await listReports(status)).map((each) => each.id);
     expect(await ids("open")).not.toContain(report.id);
     expect(await ids("minor")).toContain(report.id);
   });
 
   it("returns null for an id that does not exist", async () => {
-    expect(await setStatus(2147483000, "fixed", RESOLVER)).toBeNull();
+    expect(await setStatus(2147483000, "fixed", RESOLVER, "enUS")).toBeNull();
   });
 });
 
@@ -178,5 +179,21 @@ describe("the two sources", () => {
 
     const [report] = await reportsForLine("places", "z:1411");
     expect(report.target).toBeNull();
+  });
+});
+
+describe("a report's team", () => {
+  it("is its language's, for an anonymous report from the addon", async () => {
+    const french = await ownTeam("frFR");
+    try {
+      await createReport(submission({ lang: "frFR", userId: null }));
+      const { rows } = await asSystem.query(`select "teamId" from "report" where "ip" = $1`, [ip]);
+      expect(rows).toEqual([{ teamId: french.team }]);
+
+      const [report] = await reportsForLine("quests", "q:1:accept", "frFR");
+      expect((await setStatus(report.id, "fixed", RESOLVER, "frFR"))?.status).toBe("fixed");
+    } finally {
+      await french.restore();
+    }
   });
 });

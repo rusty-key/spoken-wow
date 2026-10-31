@@ -22,8 +22,8 @@
 import { randomUUID } from "node:crypto";
 
 import { recordActivities } from "@/lib/activity/store";
-import { db } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
+import { asTeamOf, queryAs, readAs } from "@/lib/teams/store";
 
 import { kindOf, type LexiconEntry } from "./lexicon";
 import type { Source } from "@/lib/sections";
@@ -144,7 +144,8 @@ export async function loadDirtyContext(
   lang: Lang = BASE_LANG,
 ): Promise<DirtyContext> {
   const [changes, acks] = await Promise.all([
-    db().query<{ grapheme: string; changedAt: Date }>(
+    readAs<{ grapheme: string; changedAt: Date }>(
+      lang,
       `select "grapheme", "changedAt" from (
          select distinct on (lower("grapheme")) "grapheme", "changedAt"
            from "lexicon_change" where "lang" = $1
@@ -153,18 +154,19 @@ export async function loadDirtyContext(
         order by "changedAt" desc`,
       [lang],
     ),
-    db().query<{ file: string; ackedAt: Date }>(
+    readAs<{ file: string; ackedAt: Date }>(
+      lang,
       `select "file", "ackedAt" from "take_ack" where "source" = $1 and "lang" = $2`,
       [source, lang],
     ),
   ]);
 
   return {
-    changes: changes.rows.map((row) => ({
+    changes: changes.map((row) => ({
       grapheme: row.grapheme,
       changedAt: row.changedAt.getTime(),
     })),
-    acks: new Map(acks.rows.map((row) => [row.file, row.ackedAt.getTime()])),
+    acks: new Map(acks.map((row) => [row.file, row.ackedAt.getTime()])),
   };
 }
 
@@ -184,13 +186,11 @@ export async function acknowledge(
 ): Promise<void> {
   if (!files.length) return;
   const groupId = files.length > 1 ? randomUUID() : null;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  await asTeamOf(lang, async (client) => {
     await client.query(
       `insert into "take_ack" ("source", "lang", "file", "ackedAt", "ackedBy")
        select $1, $4, unnest($2::text[]), now(), $3
-       on conflict ("source", "lang", "file") do update set
+       on conflict ("teamId", "source", "lang", "file") do update set
          "ackedAt" = excluded."ackedAt",
          "ackedBy" = excluded."ackedBy"`,
       [source, files, userId, lang],
@@ -211,13 +211,7 @@ export async function acknowledge(
       ],
       client,
     );
-    await client.query("commit");
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -293,7 +287,8 @@ export async function logSoundChanges(
   lang: Lang = BASE_LANG,
 ): Promise<void> {
   if (!changes.length) return;
-  await db().query(
+  await queryAs(
+    lang,
     `insert into "lexicon_change" ("grapheme", "kind", "versionId", "changedBy", "lang")
      select "grapheme", "kind", $3, $4, $5
        from unnest($1::text[], $2::text[]) as c("grapheme", "kind")`,

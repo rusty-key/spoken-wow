@@ -20,7 +20,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "takes-commit-int-"));
 process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { commitTake } = await import("./commit");
 const { archiveName } = await import("./bytes");
 const { listTakes, livePath, takePath } = await import("./store");
@@ -52,7 +53,7 @@ function archived(): string[] {
 
 beforeAll(async () => {
   try {
-    await db().query(`select "archiveFile" from take limit 1`);
+    await asSystem.query(`select "archiveFile" from take limit 1`);
   } catch (error) {
     throw new Error(
       'commit.test.ts needs a migrated database. Run: deploy/web/bin/migrate.sh "$PWD/apps/web"\n' +
@@ -66,7 +67,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "take" where "file" = $1`, [file]);
+  await asSystem.query(`delete from "take" where "file" = $1`, [file]);
 });
 
 afterAll(async () => {
@@ -90,7 +91,7 @@ describe("the first take of a line", () => {
   it("records what the take was made with, so it can be reproduced", async () => {
     await take("first");
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "voice", "modelId", "seed"::int, "characters", "credits", "settings"
          from "take" where "file" = $1`,
       [file],
@@ -109,7 +110,7 @@ describe("the first take of a line", () => {
     await take("timed", { wordTimes: [0, 0.31, 1.025] });
     await take("untimed");
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "wordTimes" from "take" where "file" = $1 order by "version"`,
       [file],
     );
@@ -122,7 +123,7 @@ describe("the activity log", () => {
     await commitTake("quests", file, Buffer.from("queued"), { lineId: "g:commit-test", credits: 3 }, {
       batchId: "00000000-0000-4000-8000-000000000001",
     });
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "kind", "lang", "source", "lineId", "detail" from "activity" where "subject" = $1`,
       [file],
     );
@@ -245,7 +246,7 @@ describe("with the archive in a bucket", () => {
   afterEach(() => restore());
 
   const rowHash = async () =>
-    (await db().query<{ sha256: string | null }>(`select "sha256" from "take" where "file" = $1`, [file])).rows[0].sha256;
+    (await asSystem.query<{ sha256: string | null }>(`select "sha256" from "take" where "file" = $1`, [file])).rows[0].sha256;
 
   it("records no hash in disk mode, so the backfill finds the row", async () => {
     const committed = await take("disk only");

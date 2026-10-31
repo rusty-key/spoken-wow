@@ -11,14 +11,14 @@
  * clone worse, not better. Duration is measured in the browser, so nothing on this side
  * needs to decode audio.
  */
-import { BASE_LANG } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { parseCloneName } from "./clone-name";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
 import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
-import { query } from "@/lib/db";
+import { queryAs, readAs } from "@/lib/teams/store";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
 import { withLocalCopy } from "@/lib/takes/bytes";
 import { isStoredSampleName } from "./names";
@@ -43,10 +43,17 @@ export type Sample = { file: string; bytes: number; uploadedAt: string };
  */
 export async function voiceDir(clone: string): Promise<string> {
   const parsed = parseCloneName(clone);
-  if (!parsed || !(await isVoiceSlot(parsed.voice))) throw new Error(`unknown voice slot ${clone}`);
+  if (!parsed || !(await isVoiceSlot(parsed.voice, parsed.lang))) throw new Error(`unknown voice slot ${clone}`);
   return parsed.lang === BASE_LANG
     ? path.join(VOICE_SAMPLES_DIR, parsed.voice)
     : path.join(VOICE_SAMPLES_DIR, parsed.lang, parsed.voice);
+}
+
+/** The language a clone's clips are for, and so whose team keeps their rows. */
+function langOf(clone: string): Lang {
+  const parsed = parseCloneName(clone);
+  if (!parsed) throw new Error(`unknown voice slot ${clone}`);
+  return parsed.lang;
 }
 
 export async function samplePath(voice: string, file: string): Promise<string> {
@@ -115,7 +122,8 @@ export function storedNameFor(originalName: string): string {
 export async function listSamples(voice: string): Promise<Sample[]> {
   if (readsBlobs()) {
     await voiceDir(voice);
-    const rows = await query<{ file: string; bytes: number; uploadedAt: Date }>(
+    const rows = await readAs<{ file: string; bytes: number; uploadedAt: Date }>(
+      langOf(voice),
       `select "file", "bytes", "uploadedAt" from "voice_sample" where "clone" = $1
         order by "uploadedAt", "file"`,
       [voice],
@@ -169,9 +177,10 @@ export async function storeSampleAs(voice: string, file: string, data: Buffer): 
   const dir = await voiceDir(voice);
   const sha256 = await keep("samples", data, contentTypeOf(file), path.join(dir, file));
   if (sha256) {
-    await query(
+    await queryAs(
+      langOf(voice),
       `insert into "voice_sample" ("clone", "file", "sha256", "bytes") values ($1, $2, $3, $4)
-       on conflict ("clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
+       on conflict ("teamId", "clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
       [voice, file, sha256, data.byteLength],
     );
   }
@@ -185,11 +194,12 @@ export async function deleteSample(voice: string, file: string): Promise<boolean
   await voiceDir(voice);
   let removed = false;
   if (writesBlobs()) {
-    const rows = await query(`delete from "voice_sample" where "clone" = $1 and "file" = $2 returning "file"`, [
-      voice,
-      file,
-    ]);
-    removed = rows.length > 0;
+    const { rowCount } = await queryAs(
+      langOf(voice),
+      `delete from "voice_sample" where "clone" = $1 and "file" = $2`,
+      [voice, file],
+    );
+    removed = (rowCount ?? 0) > 0;
   }
   if (!readsBlobs()) {
     try {
@@ -203,7 +213,8 @@ export async function deleteSample(voice: string, file: string): Promise<boolean
 }
 
 async function sampleSha(voice: string, file: string): Promise<string | null> {
-  const [row] = await query<{ sha256: string }>(
+  const [row] = await readAs<{ sha256: string }>(
+    langOf(voice),
     `select "sha256" from "voice_sample" where "clone" = $1 and "file" = $2`,
     [voice, file],
   );

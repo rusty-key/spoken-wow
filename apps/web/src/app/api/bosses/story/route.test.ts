@@ -9,6 +9,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import type { Grant } from "@/lib/permissions";
 
 const viewer = vi.hoisted(() => ({ grants: [] as Grant[] }));
@@ -27,7 +28,7 @@ let id: number;
 let lineId: string;
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Boss Story', $2, false)`,
     [USER, `${USER}@example.invalid`],
   );
@@ -38,15 +39,15 @@ beforeEach(async () => {
   const key = `story route ${Math.random().toString(36).slice(2, 8)}`;
   id = -Math.floor(1e6 + Math.random() * 1e9);
   lineId = `boss:${MAP}:${key}`;
-  await db().query(
+  await asSystem.query(
     `insert into "boss_instance" ("map", "kind", "zone", "position") values ($1, 'dungeon', 0, -2)`,
     [MAP],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "boss" ("id", "map", "key", "position", "encounterIds") values ($1, $2, $3, 0, $4)`,
     [id, MAP, key, [id]],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "boss_line" ("bossId", "lang", "version", "isCurrent", "origin", "text", "source")
      values ($1, 'enUS', 1, true, 'rewritten', 'The first story.', 'test')`,
     [id],
@@ -54,14 +55,14 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "boss_line" where "bossId" = $1`, [id]);
-  await db().query(`delete from "boss" where "map" = $1`, [MAP]);
-  await db().query(`delete from "boss_instance" where "map" = $1`, [MAP]);
+  await asSystem.query(`delete from "boss_line" where "bossId" = $1`, [id]);
+  await asSystem.query(`delete from "boss" where "map" = $1`, [MAP]);
+  await asSystem.query(`delete from "boss_instance" where "map" = $1`, [MAP]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [USER]);
-  await db().query(`delete from "user" where "id" = $1`, [USER]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [USER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
   await closeDb();
 });
 

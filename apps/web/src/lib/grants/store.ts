@@ -9,7 +9,8 @@ import "server-only";
 import { cache } from "react";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
-import { inTransaction, query } from "@/lib/db";
+import { query, withTeam } from "@/lib/db";
+import { ownerOrAll } from "@/lib/teams/store";
 import { isLang, type Lang } from "@/lib/lang";
 import { isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
@@ -66,7 +67,8 @@ export async function addGrants(
   grantedBy: string,
 ): Promise<void> {
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
-  await inTransaction(async (client) => {
+  // The grants are shared; the activity rows are the language's team's.
+  await withTeam(await ownerOrAll(lang), async (client) => {
     const { rows } = await client.query<{ capability: Capability }>(
       `insert into "language_grant" ("userId", "lang", "capability", "grantedBy")
        select $1, $2, capability, $4 from unnest($3::text[]) as capability

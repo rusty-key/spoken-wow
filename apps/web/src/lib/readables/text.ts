@@ -24,7 +24,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { query, withTeam } from "@/lib/db";
+import { ownerOrAll } from "@/lib/teams/store";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -88,10 +89,7 @@ export async function saveBookText(args: {
   lang?: Lang;
 }): Promise<BookVersion> {
   const lang = args.lang ?? BASE_LANG;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-
+  return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows: currentRows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"
         where "lineId" = $1 and "lang" = $2 and "isCurrent" for update`,
@@ -126,7 +124,6 @@ export async function saveBookText(args: {
     // A save that changes nothing must not spend a version number: the history is a record
     // of what the page has said, not of who opened the dialog.
     if (current && text === current.text) {
-      await client.query("commit");
       return toVersion(current);
     }
 
@@ -178,14 +175,8 @@ export async function saveBookText(args: {
       client,
     );
 
-    await client.query("commit");
     return toVersion(inserted[0]);
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -203,10 +194,7 @@ export async function restoreBookText(
   lang: Lang,
   by: string | null,
 ): Promise<BookVersion> {
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-
+  return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"
         where "lineId" = $1 and "lang" = $2 and "version" = $3 for update`,
@@ -238,12 +226,6 @@ export async function restoreBookText(
       client,
     );
 
-    await client.query("commit");
     return toVersion({ ...rows[0], isCurrent: true });
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

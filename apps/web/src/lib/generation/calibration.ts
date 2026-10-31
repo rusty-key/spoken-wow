@@ -5,8 +5,9 @@
  * `pg` import anywhere in a client component's graph fails the production build with an
  * error neither pnpm test nor pnpm typecheck reports.
  */
-import { db } from "@/lib/db";
+import { ALL_TEAMS, queryIn } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
+import { readAs } from "@/lib/teams/store";
 import { fishPrice } from "@/lib/voices/fish";
 
 import { CALIBRATION_SAMPLE, LIST_RATE, type Rate } from "./billing";
@@ -16,9 +17,12 @@ import { CALIBRATION_SAMPLE, LIST_RATE, type Rate } from "./billing";
  *
  * Per model, because the flash and turbo families are billed at half the others, and one
  * blended rate would be right for neither.
+ *
+ * As ALL_TEAMS: the rate is the plan's, and every team's takes were billed by the same one.
  */
 export async function observedRate(modelId: string): Promise<Rate> {
-  const { rows } = await db().query<{ characters: string | null; credits: string | null; n: string }>(
+  const rows = await queryIn<{ characters: string | null; credits: string | null; n: string }>(
+    ALL_TEAMS,
     `select sum("characters")::text as characters,
             sum("credits")::text    as credits,
             count(*)::text          as n
@@ -74,7 +78,8 @@ const ACCENTED_LATIN = 1.1;
  * language's: a rate learned from English would price Korean at a third of what it costs.
  */
 export async function observedFishRate(modelId: string, lang: Lang): Promise<Rate> {
-  const { rows } = await db().query<{ characters: string | null; usd: string | null; n: string }>(
+  const rows = await readAs<{ characters: string | null; usd: string | null; n: string }>(
+    lang,
     `select sum("characters")::text as characters,
             sum("costUsd")::text    as usd,
             count(*)::text          as n

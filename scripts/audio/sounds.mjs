@@ -94,6 +94,7 @@ const listing = psql(`select "file", coalesce("archiveFile", ''),
                              coalesce(array_to_json("wordTimes")::text, ''), coalesce("sha256", '')
                         from "take"
                        where "source" = :'source' and "lang" = :'lang' and "isCurrent"
+                         and "teamId" = team_of_lang(:'lang')
                        order by "file"`);
 
 // A live take's archive path: its bucket object, or the take's own directory (its file without
@@ -119,6 +120,7 @@ function bossesShipped() {
   const files = new Set(psql(`select t."file" from "take" t
                                 join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
                                where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
+                                 and t."teamId" = team_of_lang(:'lang')
                                  and not b."retired"`));
   return (stem) => files.has(stem);
 }

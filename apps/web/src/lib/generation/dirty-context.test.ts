@@ -7,28 +7,44 @@
  *
  * Needs DATABASE_URL and the migrations applied.
  */
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { Lang } from "@/lib/lang";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { dirtyFiles, loadDirtyContext } = await import("./dirty");
+const { forgetTeams } = await import("@/lib/teams/store");
 
 const LANG = "xxXX" as Lang;
 
+// A team for it, since a language nobody owns has nothing to read.
+beforeAll(async () => {
+  await asSystem.query(
+    `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'
+     on conflict do nothing`,
+    [LANG],
+  );
+  forgetTeams();
+});
+
 async function logged(grapheme: string, changedAt: string): Promise<void> {
-  await db().query(
-    `insert into "lexicon_change" ("grapheme", "kind", "changedAt", "lang")
-     values ($1, 'edited', $2, $3)`,
+  await asSystem.query(
+    `insert into "lexicon_change" ("grapheme", "kind", "changedAt", "lang", "teamId")
+     values ($1, 'edited', $2, $3, team_of_lang($3))`,
     [grapheme, changedAt, LANG],
   );
 }
 
 afterEach(async () => {
-  await db().query(`delete from "lexicon_change" where "lang" = $1`, [LANG]);
+  await asSystem.query(`delete from "lexicon_change" where "lang" = $1`, [LANG]);
 });
 
-afterAll(closeDb);
+afterAll(async () => {
+  await asSystem.query(`delete from "team_language" where "lang" = $1`, [LANG]);
+  forgetTeams();
+  await closeDb();
+});
 
 describe("loadDirtyContext", () => {
   it("keeps only the newest change of each word, newest first", async () => {

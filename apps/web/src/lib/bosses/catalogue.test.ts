@@ -9,6 +9,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 import { catalogue, instanceFacets, isKnownLine, lineByPath } from "./catalogue";
 import { saveStory, StoryConflict, StoryMissing, storyHistory, restoreStory } from "./story";
@@ -26,7 +27,7 @@ function freshId(): number {
 async function boss(key: string, position: number, opts: { id?: number; retired?: boolean } = {}) {
   const id = opts.id ?? freshId();
   ids.push(id);
-  await db().query(
+  await asSystem.query(
     `insert into "boss" ("id", "map", "key", "position", "encounterIds", "retired")
      values ($1, $2, $3, $4, $5, $6)`,
     [id, MAP, key, position, [id], opts.retired ?? false],
@@ -35,7 +36,7 @@ async function boss(key: string, position: number, opts: { id?: number; retired?
 }
 
 async function name(kind: "boss" | "instance", entityId: string, lang: string, value: string) {
-  await db().query(
+  await asSystem.query(
     `insert into "entity_name" ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name")
      values ($1, $2, $3, 1, true, 'extracted', $4)`,
     [kind, entityId, lang, value],
@@ -43,7 +44,7 @@ async function name(kind: "boss" | "instance", entityId: string, lang: string, v
 }
 
 async function story(bossId: number, lang: string, text: string) {
-  await db().query(
+  await asSystem.query(
     `insert into "boss_line" ("bossId", "lang", "version", "isCurrent", "origin", "text", "source")
      values ($1, $2, 1, true, 'rewritten', $3, 'test')`,
     [bossId, lang, text],
@@ -54,7 +55,7 @@ const ofMap = (entries: Awaited<ReturnType<typeof catalogue>>) => entries.filter
 
 beforeAll(async () => {
   userId = `test-bosses-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Bosses', $2, false)`,
     [userId, `${userId}@example.invalid`],
   );
@@ -63,7 +64,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   tag = Math.random().toString(36).slice(2, 8);
   ids = [];
-  await db().query(
+  await asSystem.query(
     `insert into "boss_instance" ("map", "kind", "zone", "position") values ($1, 'dungeon', 0, -1)`,
     [MAP],
   );
@@ -71,19 +72,19 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "boss_line" where "bossId" = any($1::int[])`, [ids]);
-  await db().query(
+  await asSystem.query(`delete from "boss_line" where "bossId" = any($1::int[])`, [ids]);
+  await asSystem.query(
     `delete from "entity_name"
       where ("kind" = 'boss' and "entityId" = any($1::text[])) or ("kind" = 'instance' and "entityId" = $2)`,
     [ids.map(String), String(MAP)],
   );
-  await db().query(`delete from "boss" where "map" = $1`, [MAP]);
-  await db().query(`delete from "boss_instance" where "map" = $1`, [MAP]);
+  await asSystem.query(`delete from "boss" where "map" = $1`, [MAP]);
+  await asSystem.query(`delete from "boss_instance" where "map" = $1`, [MAP]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [userId]);
-  await db().query(`delete from "user" where "id" = $1`, [userId]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [userId]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [userId]);
   await closeDb();
 });
 
@@ -193,7 +194,7 @@ describe("saving a story", () => {
     expect(german.text).toBe("Der Anführer.");
     expect((await storyHistory(lineId, "enUS")).map((v) => v.text)).toEqual(["The leader of the Defias."]);
 
-    const activity = await db().query(
+    const activity = await asSystem.query(
       `select "kind", "source", "lang" from "activity" where "actorId" = $1 and "lineId" = $2`,
       [userId, lineId],
     );

@@ -6,6 +6,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 /** resolvedBy has a foreign key, so resolving needs a user that exists (contributions/store.test.ts). */
 const RESOLVER = "test-contributions-resolve-many-route";
@@ -24,7 +25,7 @@ const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 const dedup = `test-${Math.random().toString(36).slice(2, 10)}`;
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -33,16 +34,16 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "activity" where "kind" = 'contribution.resolved'
         and "subject" in (select "id"::text from "contribution" where "ip" = $1)`,
     [ip],
   );
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -57,7 +58,7 @@ function post(body: unknown): Request {
 describe("POST /api/contributions/resolve-many", () => {
   it("resolves every row it is sent and answers each by id", async () => {
     // Readables, not quests: the plain status flip (accept.test.ts covers quest lines in a batch).
-    const { rows } = await db().query<{ id: number }>(
+    const { rows } = await asSystem.query<{ id: number }>(
       `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
        values ('readables', '1', 'raw', $2, 'Words.', $1), ('readables', '2', 'raw', $3, 'More.', $1)
        returning "id"`,
@@ -71,7 +72,7 @@ describe("POST /api/contributions/resolve-many", () => {
     expect(results[ids[1]]).toEqual({ ok: true });
     expect(results[999_999_999]).toEqual({ ok: false, error: "unknown contribution" });
 
-    const { rows: statuses } = await db().query<{ status: string }>(
+    const { rows: statuses } = await asSystem.query<{ status: string }>(
       `select "status" from "contribution" where "id" = any($1::int[])`,
       [ids],
     );
@@ -84,12 +85,12 @@ describe("POST /api/contributions/resolve-many", () => {
 
     async function seedPage(lineId: string, bookId: string, pageNumber: number, texts: [string, string, string][]) {
       lineIds.push(lineId);
-      await db().query(
+      await asSystem.query(
         `insert into "book_page" ("lineId", "pageTextId", "bookId", "pageNumber") values ($1, $2, $3, $4)`,
         [lineId, Number(lineId.slice(2)), bookId, pageNumber],
       );
       for (const [lang, title, text] of texts) {
-        await db().query(
+        await asSystem.query(
           `insert into "book_line" ("lineId", "lang", "version", "isCurrent", "origin", "title", "text")
            values ($1, $2, 1, true, 'extracted', $3, $4)`,
           [lineId, lang, title, text],
@@ -99,7 +100,7 @@ describe("POST /api/contributions/resolve-many", () => {
 
     async function readablesRow(locale: string, text: string, meta: Record<string, string>): Promise<number> {
       const key = `test-${Math.random().toString(36).slice(2, 10)}`;
-      const { rows } = await db().query<{ id: number }>(
+      const { rows } = await asSystem.query<{ id: number }>(
         `insert into "contribution" ("source", "key", "locale", "raw", "dedup", "text", "meta", "ip")
          values ('readables', $1, $2, 'raw', $1, $3, $4, $5) returning "id"`,
         [key, locale, text, JSON.stringify({ page: key, ...meta }), ip],
@@ -108,7 +109,7 @@ describe("POST /api/contributions/resolve-many", () => {
     }
 
     const statusOf = async (id: number) =>
-      (await db().query<{ status: string }>(`select "status" from "contribution" where "id" = $1`, [id])).rows[0].status;
+      (await asSystem.query<{ status: string }>(`select "status" from "contribution" where "id" = $1`, [id])).rows[0].status;
 
     beforeEach(async () => {
       base = 900_000_000 + Math.floor(Math.random() * 90_000_000);
@@ -119,13 +120,13 @@ describe("POST /api/contributions/resolve-many", () => {
 
     afterEach(async () => {
       // What an accept minted for the new book's row, were one let through.
-      const { rows: minted } = await db().query<{ lineId: string }>(
+      const { rows: minted } = await asSystem.query<{ lineId: string }>(
         `select "lineId" from "book_line" where "title" = $1`,
         [`Brand New ${base}`],
       );
       lineIds.push(...minted.map((m) => m.lineId));
-      await db().query(`delete from "book_line" where "lineId" = any($1::text[])`, [lineIds]);
-      await db().query(`delete from "book_page" where "lineId" = any($1::text[])`, [lineIds]);
+      await asSystem.query(`delete from "book_line" where "lineId" = any($1::text[])`, [lineIds]);
+      await asSystem.query(`delete from "book_page" where "lineId" = any($1::text[])`, [lineIds]);
       lineIds = [];
     });
 
@@ -142,12 +143,12 @@ describe("POST /api/contributions/resolve-many", () => {
       expect(await statusOf(translation)).toBe("accepted");
       expect(await statusOf(ambiguous)).toBe("new");
       expect(await statusOf(fresh)).toBe("new");
-      const { rows: minted } = await db().query(`select 1 from "book_line" where "title" = $1`, [`Brand New ${base}`]);
+      const { rows: minted } = await asSystem.query(`select 1 from "book_line" where "title" = $1`, [`Brand New ${base}`]);
       expect(minted).toEqual([]);
     });
 
     it("writes the first of two rows for one page and language, and refuses the second", async () => {
-      await db().query(`update "book_page" set "ownerKind" = 'item', "ownerIds" = $2 where "lineId" = $1`, [`b:${base}`, [base]]);
+      await asSystem.query(`update "book_page" set "ownerKind" = 'item', "ownerIds" = $2 where "lineId" = $1`, [`b:${base}`, [base]]);
       const meta = { book: "Libro", number: "1", item: String(base) };
       const first = await readablesRow("esES", `Palabras ${base}.`, meta);
       const second = await readablesRow("esES", `Otras palabras ${base}.`, meta);
@@ -157,7 +158,7 @@ describe("POST /api/contributions/resolve-many", () => {
       expect(outcomes).toContainEqual({ ok: true });
       expect(outcomes).toContainEqual({ ok: false, error: expect.stringContaining("changed since you looked") });
 
-      const { rows } = await db().query<{ origin: string }>(
+      const { rows } = await asSystem.query<{ origin: string }>(
         `select "origin" from "book_line" where "lineId" = $1 and "lang" = 'esES'`,
         [`b:${base}`],
       );
@@ -166,7 +167,7 @@ describe("POST /api/contributions/resolve-many", () => {
 
     it("accepts a row a moderator pointed at a page, and skips one the corpus already has", async () => {
       const pointed = await readablesRow("esES", `Otra cosa ${base}.`, { book: "Libro", number: "1" });
-      await db().query(`update "contribution" set "matchLineId" = $2 where "id" = $1`, [pointed, `b:${base + 10}`]);
+      await asSystem.query(`update "contribution" set "matchLineId" = $2 where "id" = $1`, [pointed, `b:${base + 10}`]);
       const known = await readablesRow("enUS", `Words one ${base}.`, { book: `Tome ${base}`, number: "1" });
 
       const { results } = await (await POST(post({ ids: [pointed, known], status: "accepted" }))).json();

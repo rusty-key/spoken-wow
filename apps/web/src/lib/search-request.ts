@@ -11,6 +11,7 @@
  */
 import { audioStateFromParams } from "./audio-state";
 import { facets } from "./facets";
+import type { Lang } from "./lang";
 import { NPC_TYPES, sourcesFromParam } from "./line-fields";
 import { RECORDED } from "./recordings/live";
 import { BROADCAST_STATUSES } from "./broadcast/status";
@@ -26,8 +27,8 @@ function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T
  * Async because the facets are: the corpus is a table now, so which races and voices exist
  * is a question with a current answer rather than a constant baked into the release.
  */
-export async function filtersFromParams(params: URLSearchParams): Promise<LineFilters> {
-  const { races, genders, flavors, voices } = await facets();
+export async function filtersFromParams(params: URLSearchParams, lang: Lang): Promise<LineFilters> {
+  const { races, genders, flavors, voices } = await facets(lang);
 
   return {
     q: params.get("q") ?? "",

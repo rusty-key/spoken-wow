@@ -46,6 +46,8 @@ function readSecrets() {
   );
 }
 
+const secrets = readSecrets();
+
 module.exports = {
   apps: [
     {
@@ -181,7 +183,11 @@ module.exports = {
 
         // DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, SPOKEN_SECRET_KEY and
         // ELEVENLABS_DICTIONARY_ID.
-        ...readSecrets(),
+        ...secrets,
+
+        // The app logs in as spoken_app, which row-level security binds, not as the owner, which
+        // reads every team. Without APP_DATABASE_URL the app keeps the owner's and filters nothing.
+        ...(secrets.APP_DATABASE_URL ? { DATABASE_URL: secrets.APP_DATABASE_URL } : {}),
       },
     },
   ],

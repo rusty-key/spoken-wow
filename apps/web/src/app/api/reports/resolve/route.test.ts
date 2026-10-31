@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 const { authorise } = vi.hoisted(() => ({ authorise: vi.fn() }));
 
@@ -28,7 +29,7 @@ function post(body: unknown): Request {
 }
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -37,8 +38,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -53,9 +54,9 @@ describe("POST /api/reports/resolve", () => {
   });
 
   it("asks for edit in the report's own language", async () => {
-    const { rows } = await db().query<{ id: number }>(
-      `insert into "report" ("source", "lang", "lineId", "target", "category", "body")
-       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test') returning "id"`,
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "teamId")
+       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test', team_of_lang('ptBR')) returning "id"`,
     );
     try {
       authorise.mockResolvedValueOnce({
@@ -65,19 +66,19 @@ describe("POST /api/reports/resolve", () => {
       expect((await POST(post({ id: rows[0].id, status: "fixed" }))).status).toBe(403);
       expect(authorise).toHaveBeenLastCalledWith("edit", "ptBR");
     } finally {
-      await db().query(`delete from "report" where "id" = $1`, [rows[0].id]);
+      await asSystem.query(`delete from "report" where "id" = $1`, [rows[0].id]);
     }
   });
 
   it("records the resolution in the activity log", async () => {
-    const { rows } = await db().query<{ id: number }>(
-      `insert into "report" ("source", "lang", "lineId", "target", "category", "body")
-       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test') returning "id"`,
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "teamId")
+       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test', team_of_lang('ptBR')) returning "id"`,
     );
     try {
       authorise.mockResolvedValueOnce({ session: { user: { id: RESOLVER } }, denied: null });
       expect((await POST(post({ id: rows[0].id, status: "fixed" }))).status).toBe(200);
-      const { rows: logged } = await db().query(
+      const { rows: logged } = await asSystem.query(
         `select "lang", "source", "lineId", "actorId", "detail" from "activity"
           where "kind" = 'report.resolved' and "subject" = $1`,
         [String(rows[0].id)],
@@ -92,7 +93,7 @@ describe("POST /api/reports/resolve", () => {
         },
       ]);
     } finally {
-      await db().query(`delete from "report" where "id" = $1`, [rows[0].id]);
+      await asSystem.query(`delete from "report" where "id" = $1`, [rows[0].id]);
     }
   });
 

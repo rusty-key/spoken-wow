@@ -1,8 +1,8 @@
 /**
  * Against a real Postgres, deliberately, for the reason history.test.ts gives.
  *
- * What this module is for is an invariant the schema owns: `take_current_idx` allows
- * exactly one live take per (source, lang, file). A mocked database would test that the
+ * What this module is for is an invariant the schema owns: `take_team_current_idx` allows
+ * exactly one live take per (team, source, lang, file). A mocked database would test that the
  * code runs the statements the code runs, which is not a test -- the thing worth pinning is
  * that the pair of updates cannot leave a file with two live takes or none.
  *
@@ -18,26 +18,28 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "takes-store-int-"));
 process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
-const { closeDb, db } = await import("@/lib/db");
-const { listTakes, livePath, setLiveTake, takePath } = await import("./store");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
+const { listTakes, livePath, liveTakes, setLiveTake, takePath } = await import("./store");
+const { forgetTeams, teamOf } = await import("@/lib/teams/store");
 
 /** A file no other run will collide with, so this can share a database with anything else. */
 let file: string;
 
 /** Rows only: what the bytes are, without pretending any exist yet. */
 async function record(version: number, isCurrent = false, archiveFile: string | null = null) {
-  await db().query(
+  await asSystem.query(
     `insert into "take"
        ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes",
-        "archiveFile")
-     values ('quests', 'enUS', $1, 'g:test', $2, $3, 'generated', 1, $4)`,
+        "archiveFile", "teamId")
+     values ('quests', 'enUS', $1, 'g:test', $2, $3, 'generated', 1, $4, team_of_lang('enUS'))`,
     [file, version, isCurrent, archiveFile],
   );
 }
 
 beforeAll(async () => {
   try {
-    await db().query(`select "archiveFile" from take limit 1`);
+    await asSystem.query(`select "archiveFile" from take limit 1`);
   } catch (error) {
     throw new Error(
       "store.test.ts needs a migrated database (migration 0031). Run:\n" +
@@ -52,7 +54,8 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "take" where "file" = $1`, [file]);
+  await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+  await asSystem.query(`delete from "activity" where "subject" = $1`, [file]);
 });
 
 afterAll(async () => {
@@ -151,5 +154,51 @@ describe("moving the live flag", () => {
 
     const live = (await listTakes("quests", file)).filter((take) => take.isCurrent);
     expect(live.map((take) => take.version)).toEqual([1]);
+  });
+});
+
+describe("a language's live takes", () => {
+  it("are the files the query by language alone found, read as the language's team", async () => {
+    await asSystem.query(
+      `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
+       values ('quests', 'deDE', $1, 'g:test', 1, false, 'generated', 1, team_of_lang('deDE')),
+              ('quests', 'deDE', $1, 'g:test', 2, true, 'generated', 1, team_of_lang('deDE'))`,
+      [file],
+    );
+    // What liveTakes asked before takes had a team.
+    const { rows } = await asSystem.query<{ file: string }>(
+      `select "file" from "take" where "source" = 'quests' and "lang" = 'deDE' and "isCurrent"`,
+    );
+
+    const live = await liveTakes("quests", "deDE");
+    expect(live.map((take) => take.file).sort()).toEqual(rows.map((row) => row.file).sort());
+    expect(live.find((take) => take.file === file)).toMatchObject({ version: 2, takes: 2 });
+  });
+
+  it("answers none for a language nobody owns, rather than failing the page", async () => {
+    const owner = await teamOf("viVN");
+    await asSystem.query(`delete from "team_language" where "lang" = 'viVN'`);
+    forgetTeams();
+    try {
+      expect(await liveTakes("quests", "viVN")).toEqual([]);
+    } finally {
+      await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, 'viVN')`, [owner]);
+      forgetTeams();
+    }
+  });
+});
+
+describe("a restore", () => {
+  it("is logged under the language's team", async () => {
+    await record(1);
+    await record(2, true);
+
+    await setLiveTake("quests", file, 1, "enUS", null);
+
+    const { rows } = await asSystem.query(
+      `select "teamId" from "activity" where "kind" = 'take.restored' and "subject" = $1`,
+      [file],
+    );
+    expect(rows).toEqual([{ teamId: await teamOf("enUS") }]);
   });
 });

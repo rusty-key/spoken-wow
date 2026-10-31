@@ -9,9 +9,12 @@
  * Being a closed set also makes it a whitelist, which is what keeps a slot name safe to use as
  * a path segment. Same reasoning as isSafeAudioPath in range.ts.
  */
+import type { Lang } from "@/lib/lang";
 import { corpus } from "@/lib/quests/catalogue";
 import { hasNarration, NARRATOR_VOICE } from "@/lib/generation/narration";
 
+import { parseCloneName } from "./clone-name";
+import type { Roster } from "./roster";
 import { loadRoster } from "./roster-store";
 
 export type VoiceSlot = {
@@ -33,7 +36,7 @@ export type VoiceSlot = {
  * never voiced. The narrator also reads the stage directions inside other NPCs' lines
  * (generation/narration.ts), so those count towards it as well as the lines it speaks itself.
  */
-export async function voiceSlots(): Promise<VoiceSlot[]> {
+export async function voiceSlots(lang: Lang): Promise<VoiceSlot[]> {
   const lines = new Map<string, number>();
   const npcs = new Map<string, Set<number>>();
   const count = (voice: string, npcId: number) => {
@@ -47,31 +50,31 @@ export async function voiceSlots(): Promise<VoiceSlot[]> {
     if (line.generatable) count(line.voice, line.npcId);
   }
 
-  return (await loadRoster()).voiceNames.map((name) => ({
+  return (await loadRoster(lang)).voiceNames.map((name) => ({
     name,
     lineCount: lines.get(name) ?? 0,
     npcCount: npcs.get(name)?.size ?? 0,
   })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-const cacheKey = Symbol.for("wow-voiceover.slots");
-type CacheHolder = { [cacheKey]?: { lines: unknown; roster: unknown; slots: VoiceSlot[] } };
+/** Per roster, as each team's is its own instance; each entry kept while its lines are the catalogue's. */
+const built = new WeakMap<Roster, { lines: unknown; slots: VoiceSlot[] }>();
 
 /**
  * Tied to the catalogue's own array rather than memoised forever: the counts come from the
  * lines, and the lines are a table now -- an edit that moves a line to another voice moves
  * the counts with it.
  */
-export async function slots(): Promise<VoiceSlot[]> {
+export async function slots(lang: Lang): Promise<VoiceSlot[]> {
   const lines = (await corpus()).lines;
   // A voice an admin just added is a slot before any line speaks in it.
-  const roster = await loadRoster();
-  const holder = globalThis as CacheHolder;
-
-  if (!holder[cacheKey] || holder[cacheKey].lines !== lines || holder[cacheKey].roster !== roster) {
-    holder[cacheKey] = { lines, roster, slots: await voiceSlots() };
+  const roster = await loadRoster(lang);
+  let entry = built.get(roster);
+  if (!entry || entry.lines !== lines) {
+    entry = { lines, slots: await voiceSlots(lang) };
+    built.set(roster, entry);
   }
-  return holder[cacheKey].slots;
+  return entry.slots;
 }
 
 /**
@@ -85,9 +88,25 @@ export async function slots(): Promise<VoiceSlot[]> {
  * costs a corpus stamp query per call, which /voices paid once per slot and once per voice
  * in the ElevenLabs account, in series.
  */
-export async function isVoiceSlot(name: string): Promise<boolean> {
+export async function isVoiceSlot(name: string, lang: Lang): Promise<boolean> {
   // The roster alone, not isVoice: a model slot (voices.ts isModelVoice) names the voice some
   // lines are in, but nothing may be cloned, cut or uploaded for one until which voice each
   // model gets has been decided.
-  return (await loadRoster()).voiceNames.includes(name);
+  return (await loadRoster(lang)).voiceNames.includes(name);
+}
+
+/**
+ * Which of these clone names (clone-name.ts) name a slot of their language: isVoiceSlot for a
+ * whole ElevenLabs account at once, each language's roster loaded once rather than per voice.
+ */
+export async function slotClones(names: readonly string[]): Promise<Set<string>> {
+  const clones = names.flatMap((name) => {
+    const clone = parseCloneName(name);
+    return clone ? [{ name, ...clone }] : [];
+  });
+  const langs = [...new Set(clones.map((clone) => clone.lang))];
+  const rosters = new Map(
+    await Promise.all(langs.map(async (lang) => [lang, new Set((await loadRoster(lang)).voiceNames)] as const)),
+  );
+  return new Set(clones.filter((clone) => rosters.get(clone.lang)?.has(clone.voice)).map((clone) => clone.name));
 }

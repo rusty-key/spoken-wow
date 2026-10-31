@@ -9,14 +9,16 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
+
 import { clearIgnore, forgetIgnores, readIgnores, writeIgnore } from "./ignores";
 
 /** An id no other run collides with, and one the corpus does not have: this table is free. */
 const LINE = `q:999999:accept:test-${process.pid}`;
 
 afterEach(async () => {
-  await db().query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
-  await db().query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
+  await asSystem.query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
+  await asSystem.query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
   forgetIgnores();
 });
 
@@ -41,7 +43,7 @@ describe("ignores", () => {
     await writeIgnore(LINE, "first", null);
     await writeIgnore(LINE, "second", null);
 
-    const { rows } = await db().query<{ n: string }>(
+    const { rows } = await asSystem.query<{ n: string }>(
       `select count(*)::text as n from "line_ignore" where "lineId" = $1`,
       [LINE],
     );
@@ -61,5 +63,33 @@ describe("ignores", () => {
 
   it("reports nothing removed for a line that was not ignored", async () => {
     expect(await clearIgnore(LINE, null, null)).toBe(false);
+  });
+});
+
+describe("an ignore's team", () => {
+  const teamOfRow = async (lang: string | null) =>
+    (await asSystem.query<{ teamId: string | null }>(
+      `select "teamId" from "line_ignore" where "lineId" = $1 and "lang" is not distinct from $2`,
+      [LINE, lang],
+    )).rows;
+
+  it("is none for an ignore in every language", async () => {
+    await writeIgnore(LINE, "everywhere", null);
+    expect(await teamOfRow(null)).toEqual([{ teamId: null }]);
+  });
+
+  it("is the language's for one language's ignore, which that language reads with the global ones", async () => {
+    const german = await ownTeam("deDE");
+    try {
+      await writeIgnore(LINE, "german only", null, "deDE");
+      expect(await teamOfRow("deDE")).toEqual([{ teamId: german.team }]);
+      expect((await readIgnores("deDE")).get(LINE)?.lang).toBe("deDE");
+      expect((await readIgnores("enUS")).has(LINE)).toBe(false);
+      expect(await clearIgnore(LINE, "deDE", null)).toBe(true);
+    } finally {
+      await asSystem.query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
+      await asSystem.query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
+      await german.restore();
+    }
   });
 });

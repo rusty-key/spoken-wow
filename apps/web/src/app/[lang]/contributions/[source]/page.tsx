@@ -202,6 +202,7 @@ async function npcFor(contributions: Contribution[]): Promise<Record<number, Npc
       { npcKind: o.npcKind, npcId: o.npcId, npcName: o.npcName },
       lookup.resolution,
       lookup.conflict,
+      isLang(row.locale) ? row.locale : BASE_LANG,
     );
   }
 
@@ -318,7 +319,7 @@ export default async function Page({
 
   // Counted after the other filters, so each tab's count matches what it shows.
   const hasSpeaker = await momentHasSpeaker(filtered);
-  const roster = await loadRoster();
+  const roster = await loadRoster(lang);
   const bucketCounts: Record<Bucket, number> = { ready: 0, blocked: 0 };
   const matching = filtered.filter((row) => {
     const own = bucketOf({ ...row, quest: questFor(row), hasSpeaker: hasSpeaker.has(row.id) }, npcs[row.id] ?? null, roster);

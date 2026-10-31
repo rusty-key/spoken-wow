@@ -7,7 +7,8 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { audioRelPath, fileIndex } = await import("@/lib/audio");
 const { lineIndex } = await import("@/lib/quests/catalogue");
 const { fileDefaults } = await import("@/lib/generation/files");
@@ -34,18 +35,18 @@ async function currentHash(provider: "elevenlabs" | "fish" = "elevenlabs"): Prom
 }
 
 async function liveTake(hash: string | null, provider: "elevenlabs" | "fish" = "elevenlabs") {
-  await db().query(
+  await asSystem.query(
     `insert into "take"
        ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
-        "spokenHash", "provider")
-     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4)`,
+        "spokenHash", "provider", "teamId")
+     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4, team_of_lang('enUS'))`,
     [file, LINE, hash, provider],
   );
 }
 
 beforeAll(async () => {
   try {
-    await db().query(`select 1 from "take" limit 1`);
+    await asSystem.query(`select 1 from "take" limit 1`);
   } catch (error) {
     throw new Error(
       "staleness.test.ts needs a migrated database. Run:\n" +
@@ -63,7 +64,7 @@ beforeAll(async () => {
 let deposed: number[] = [];
 
 beforeEach(async () => {
-  const { rows } = await db().query<{ id: string }>(
+  const { rows } = await asSystem.query<{ id: string }>(
     `update "take" set "isCurrent" = false
       where "source" = 'quests' and "file" = $1 and "isCurrent"
      returning "id"`,
@@ -73,12 +74,12 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "take" where "source" = 'quests' and "file" = $1 and "version" = 9999`,
     [file],
   );
   if (deposed.length > 0) {
-    await db().query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
+    await asSystem.query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
       deposed,
     ]);
   }
@@ -143,7 +144,7 @@ describe("a race with an accent tag", () => {
   let deposedDwarf: number[] = [];
 
   beforeEach(async () => {
-    const { rows } = await db().query<{ id: string }>(
+    const { rows } = await asSystem.query<{ id: string }>(
       `update "take" set "isCurrent" = false
         where "source" = 'quests' and "file" = $1 and "isCurrent"
        returning "id"`,
@@ -153,23 +154,23 @@ describe("a race with an accent tag", () => {
   });
 
   afterEach(async () => {
-    await db().query(
+    await asSystem.query(
       `delete from "take" where "source" = 'quests' and "file" = $1 and "version" = 9999`,
       [dwarfFile],
     );
     if (deposedDwarf.length > 0) {
-      await db().query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
+      await asSystem.query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
         deposedDwarf,
       ]);
     }
   });
 
   async function dwarfTake(hash: string) {
-    await db().query(
+    await asSystem.query(
       `insert into "take"
          ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
-          "spokenHash")
-       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3)`,
+          "spokenHash", "teamId")
+       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3, team_of_lang('enUS'))`,
       [dwarfFile, DWARF_LINE, hash],
     );
   }
