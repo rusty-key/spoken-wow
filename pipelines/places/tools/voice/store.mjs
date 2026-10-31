@@ -166,7 +166,7 @@ export async function currentDictionary() {
   const { rows } = await db.query(
     // English's lexicon is the english team's row (apps/web migration 0089).
     `select "dictionaryId", "versionId" from "pronunciation_lexicon"
-      where "teamId" = (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged")`,
+      where "teamId" = team_of_lang('enUS')`,
   );
   const row = rows[0];
   if (!row?.dictionaryId || !row.versionId) return null;

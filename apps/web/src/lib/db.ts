@@ -113,7 +113,7 @@ export async function withTeam<T>(
 
 /**
  * Act as `team` for the rest of `client`'s open transaction: withTeam for a transaction opened
- * by hand, as the text editors open theirs to hold a client across a lock and several writes.
+ * by hand, as resolveContribution opens its own to learn its team from the row it locks.
  * Transaction-local for the same reason, so it ends with the commit or rollback.
  */
 export async function actAs(client: Pick<PoolClient, "query">, team: TeamId | typeof ALL_TEAMS): Promise<void> {
@@ -126,11 +126,9 @@ export async function actAs(client: Pick<PoolClient, "query">, team: TeamId | ty
  * For the tables that hold one copy per team of what every language reads -- the roster, the
  * base generation settings, the English lexicon -- where nothing else in the query picks a
  * team's row out. Row-level security draws the same line; this keeps the read right on a
- * connection it does not bind, and matches nothing outside withTeam. TEAMS_IN_SCOPE is the
- * same teams as rows, for an insert that writes a copy for each.
+ * connection it does not bind, and matches nothing outside withTeam.
  */
-export const TEAMS_IN_SCOPE = `select "id" from "team" where current_setting('spoken.team', true) in ('*', "id"::text)`;
-export const TEAM_ROWS = `"teamId" in (${TEAMS_IN_SCOPE})`;
+export const TEAM_ROWS = `"teamId" in (select "id" from "team" where current_setting('spoken.team', true) in ('*', "id"::text))`;
 
 /** One query, rows only, as `team`. */
 export async function queryIn<T extends QueryResultRow = QueryResultRow>(

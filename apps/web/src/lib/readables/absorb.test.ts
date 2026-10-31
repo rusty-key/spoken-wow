@@ -44,7 +44,7 @@ async function line(lineId: string, lang: string, version: number, isCurrent: bo
 async function take(lineId: string, file: string, lang: string) {
   await asSystem.query(
     `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
-     values ('readables', $3, $2, $1, 1, true, 'generated', 1, (select "teamId" from "team_language" where "lang" = $3 and "privileged"))`,
+     values ('readables', $3, $2, $1, 1, true, 'generated', 1, team_of_lang($3))`,
     [lineId, file, lang],
   );
 }
@@ -76,12 +76,12 @@ beforeEach(async () => {
   await take(MINTED, MINTED_FILE, "esES");
   await asSystem.query(
     `insert into "report" ("source", "lang", "lineId", "category", "body", "teamId")
-     values ('readables', 'esES', $1, 'other', 'x', (select "teamId" from "team_language" where "lang" = 'esES' and "privileged"))`,
+     values ('readables', 'esES', $1, 'other', 'x', team_of_lang('esES'))`,
     [MINTED],
   );
   await asSystem.query(
     `insert into "recording" ("source", "lang", "file", "lineId", "version", "format", "archiveFile", "bytes", "durationSec", "credit", "teamId")
-     values ('readables', 'esES', $2, $1, 1, 'mp3', 'a', 1, 1, 'c', (select "teamId" from "team_language" where "lang" = 'esES' and "privileged"))`,
+     values ('readables', 'esES', $2, $1, 1, 'mp3', 'a', 1, 1, 'c', team_of_lang('esES'))`,
     [MINTED, MINTED_FILE],
   );
   await asSystem.query(

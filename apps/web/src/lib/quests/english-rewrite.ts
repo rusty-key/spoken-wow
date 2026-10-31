@@ -15,8 +15,8 @@ import { recordActivity } from "@/lib/activity/store";
 import { audioRelPath } from "@/lib/audio";
 import { answersQuestMomentSql, baseLineId, momentOf, playerGenderForms } from "@/lib/contributions/naming";
 import type { CorpusLine } from "@/lib/corpus";
-import { actAs, db } from "@/lib/db";
-import { loggerOf } from "@/lib/teams/store";
+import { db, withTeam } from "@/lib/db";
+import { ownerOrAll } from "@/lib/teams/store";
 import { BASE_LANG } from "@/lib/lang";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
 import { validateOverride } from "@/lib/quests/override";
@@ -102,12 +102,7 @@ async function splitByPlayerGender(
 ): Promise<void> {
   const originalText = rewrite.originalText ?? plain.originalText;
   const origin = rewrite.contributionId === undefined ? "edited" : "contributed";
-  // Its activity row is the one write a team owns.
-  const team = await loggerOf(BASE_LANG);
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-    await actAs(client, team);
+  return withTeam(await ownerOrAll(BASE_LANG), async (client) => {
     // The moment's lock, as addToMoment's writers hold it: a speaker added meanwhile would
     // reach the plain line only, after the copies were taken.
     await lockLine(client, momentOf(plain.lineId));
@@ -172,11 +167,5 @@ async function splitByPlayerGender(
         where s."lineId" = $1 and s."variant" = $2`,
       [plain.lineId, variant, ORD_FLOOR, forms.map((form) => form.lineId)],
     );
-    await client.query("commit");
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

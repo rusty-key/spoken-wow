@@ -6,17 +6,14 @@
  *
  * The types, genders and flavors are every team's, and every team has a roster of voices and
  * assignments over them. Every edit changes every team's roster in one transaction
- * (ALL_TEAMS), so no team is left with a type it cannot voice, and the rosters stay the one
- * roster they were copied from: a site owner's edit on /enUS/voices still reaches every
- * language. Phase 2 makes the voice assignments each team's own (assignVoice).
- *
- * Every statement on voice and voice_assignment is filtered to the teams the transaction acts
- * for (TEAM_ROWS), and every insert writes a row for each of them (TEAMS_IN_SCOPE), so the
- * same helpers serve both.
+ * (ALL_TEAMS): its statements on voice and voice_assignment reach every team's rows, and each
+ * insert writes a row per team. So no team is left with a type it cannot voice, and the rosters
+ * stay the one roster they were copied from: a site owner's edit on /enUS/voices still reaches
+ * every language. Phase 2 makes the voice assignments each team's own (assignVoice).
  */
 import type { PoolClient } from "pg";
 
-import { ALL_TEAMS, TEAM_ROWS, TEAMS_IN_SCOPE, withTeam } from "@/lib/db";
+import { ALL_TEAMS, withTeam } from "@/lib/db";
 
 import { newVoiceName, type Gender } from "./roster";
 import { GENDERS } from "./voices";
@@ -67,8 +64,7 @@ async function inUse(
 async function ownVoice(client: PoolClient, race: string, g: Gender | null, flavor: string | null): Promise<string | null> {
   const { rows } = await client.query<{ voice: string | null }>(
     `select string_agg(distinct "voice", ', ' order by "voice") as "voice" from "voice_assignment"
-      where "race" = $1 and "gender" is not distinct from $2 and "flavor" is not distinct from $3
-        and ${TEAM_ROWS}`,
+      where "race" = $1 and "gender" is not distinct from $2 and "flavor" is not distinct from $3`,
     [race, g, flavor],
   );
   return rows[0]?.voice ?? null;
@@ -102,9 +98,8 @@ async function requireType(client: PoolClient, race: string): Promise<void> {
 }
 
 /**
- * Points a combination at `voice`, or at a new voice of its own when `voice` is null, in each
- * team the transaction acts for. A new voice is named and hashed by the combination itself:
- * md5(text + race + gender).
+ * Points a combination at `voice`, or at a new voice of its own when `voice` is null, in every
+ * team. A new voice is named and hashed by the combination itself: md5(text + race + gender).
  */
 async function assign(
   client: PoolClient,
@@ -118,14 +113,14 @@ async function assign(
     name = newVoiceName(race, g, flavor);
     await client.query(
       `insert into "voice" ("teamId", "name", "race", "gender")
-       select "id", $1, $2, $3 from (${TEAMS_IN_SCOPE}) t
+       select "id", $1, $2, $3 from "team"
        on conflict do nothing`,
       [name, race, g ?? ""],
     );
   } else if (
     await exists(
       client,
-      `select 1 from (${TEAMS_IN_SCOPE}) t
+      `select 1 from "team" t
         where not exists (select 1 from "voice" v where v."teamId" = t."id" and v."name" = $1)`,
       [name],
     )
@@ -134,7 +129,7 @@ async function assign(
   }
   await client.query(
     `insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
-     select "id", $1, $2, $3, $4 from (${TEAMS_IN_SCOPE}) t
+     select "id", $1, $2, $3, $4 from "team"
      on conflict ("teamId", "race", coalesce("gender", ''), coalesce("flavor", '')) do update
        set "voice" = excluded."voice"`,
     [race, g, flavor, name],
@@ -166,7 +161,7 @@ export async function deleteType(rawKey: unknown): Promise<void> {
     if (await exists(client, `select 1 from "npc" where "race" = $1 limit 1`, [race])) {
       throw new TypesError(`NPCs are ${race}: give them another type first`);
     }
-    await client.query(`delete from "voice_assignment" where "race" = $1 and ${TEAM_ROWS}`, [race]);
+    await client.query(`delete from "voice_assignment" where "race" = $1`, [race]);
     await client.query(`delete from "flavor" where "race" = $1`, [race]);
     await client.query(`delete from "gender" where "race" = $1`, [race]);
     await client.query(`delete from "race" where "key" = $1`, [race]);
@@ -191,7 +186,7 @@ export async function addGender(rawRace: unknown, rawGender: unknown, rawExistin
     // Every voice the type is read by without a gender, its flavors' included: one mapped into a
     // flavor leaves no bare voice behind, and its NPCs would lose it as surely.
     const { rows } = await client.query<{ voice: string }>(
-      `select distinct "voice" from "voice_assignment" where "race" = $1 and "gender" is null and ${TEAM_ROWS} order by 1`,
+      `select distinct "voice" from "voice_assignment" where "race" = $1 and "gender" is null order by 1`,
       [race],
     );
     const voice = rows.map((row) => row.voice).join(", ") || null;
@@ -199,13 +194,13 @@ export async function addGender(rawRace: unknown, rawGender: unknown, rawExistin
     if (voice && use.npcs > 0 && !choice) throw new NeedsChoice({ voice, into: g, ...use });
     if (voice && choice === "map") {
       // The voice, its flavors and its NPCs become the gender's: their files keep their names.
-      await client.query(`update "voice_assignment" set "gender" = $2 where "race" = $1 and "gender" is null and ${TEAM_ROWS}`, [race, g]);
+      await client.query(`update "voice_assignment" set "gender" = $2 where "race" = $1 and "gender" is null`, [race, g]);
       await client.query(`update "flavor" set "gender" = $2 where "race" = $1 and "gender" is null`, [race, g]);
       await client.query(`update "npc" set "gender" = $2, "updatedAt" = now() where "race" = $1 and "gender" is null`, [race, g]);
       return;
     }
     // Unused from here: the voice and its takes stay on file, nothing reads with them.
-    await client.query(`delete from "voice_assignment" where "race" = $1 and "gender" is null and ${TEAM_ROWS}`, [race]);
+    await client.query(`delete from "voice_assignment" where "race" = $1 and "gender" is null`, [race]);
     await client.query(`delete from "flavor" where "race" = $1 and "gender" is null`, [race]);
     await assign(client, race, g, null, null);
   });
@@ -241,7 +236,7 @@ export async function addFlavor(
     if (voice && choice === "map") {
       await client.query(
         `update "voice_assignment" set "flavor" = $3
-          where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null and ${TEAM_ROWS}`,
+          where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null`,
         [race, g, flavor],
       );
       await client.query(
@@ -255,7 +250,7 @@ export async function addFlavor(
     if (voice) {
       await client.query(
         `delete from "voice_assignment"
-          where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null and ${TEAM_ROWS}`,
+          where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null`,
         [race, g],
       );
     }
@@ -274,7 +269,7 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
     }
     await client.query(
       `delete from "voice_assignment"
-        where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3 and ${TEAM_ROWS}`,
+        where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3`,
       [race, g, flavor],
     );
     await client.query(`delete from "flavor" where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3`, [

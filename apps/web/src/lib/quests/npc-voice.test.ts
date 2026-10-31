@@ -129,8 +129,8 @@ describe("a quest moment's voice", WHOLE_CORPUS, () => {
     try {
       expect(await spoken()).toEqual([`${lineId}~${type} ${questId}-accept-${type} ${type} (no-voice)`]);
       // As the Types tab does it, which writes no speaker and no npc row.
-      await asSystem.query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`, [type]);
-      await asSystem.query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`, [type]);
+      await asSystem.query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', team_of_lang('enUS'))`, [type]);
+      await asSystem.query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, team_of_lang('enUS'))`, [type]);
       expect(await spoken()).toEqual([`${lineId}~${type} ${questId}-accept-${type} ${type}`]);
     } finally {
       await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcIds[0]]);
@@ -198,8 +198,8 @@ describe("an NPC split by body", WHOLE_CORPUS, () => {
     // A race with no genders is read by one voice whatever the sex.
     const type = `t${questId}`;
     await asSystem.query(`insert into "race" ("key") values ($1)`, [type]);
-    await asSystem.query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`, [type]);
-    await asSystem.query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`, [type]);
+    await asSystem.query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', team_of_lang('enUS'))`, [type]);
+    await asSystem.query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, team_of_lang('enUS'))`, [type]);
     try {
       await body(npcIds[0], type, 2, null);
       await body(npcIds[0], type, 3, null);
@@ -231,7 +231,7 @@ describe("an NPC split by body", WHOLE_CORPUS, () => {
     await asSystem.query(`insert into "race" ("key") values ($1)`, [other]);
     await asSystem.query(
       `insert into "voice_assignment" ("race", "gender", "flavor", "voice", "teamId")
-       values ($1, 'male', 'official', 'human-male-official', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
+       values ($1, 'male', 'official', 'human-male-official', team_of_lang('enUS'))`,
       [other],
     );
     try {

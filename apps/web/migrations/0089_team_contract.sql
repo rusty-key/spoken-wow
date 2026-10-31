@@ -10,25 +10,14 @@
 -- it to follow: its `on conflict` targets name the team-first keys, and the old ones are gone.
 -- The release before deploy 1 cannot run against this schema, so it is no rollback target.
 
--- A language some row names but no team owns joins the english team, as switching a language
--- on does (languages/store.ts setEnabled). 0087 gave a team to every language it could see;
--- this catches one that only a report or an ignore names, rather than failing on it below.
+-- A language some row names (team_scoped_lang) but no team owns joins the english team, as
+-- switching a language on does (languages/store.ts setEnabled). 0087 gave a team to every
+-- language it could see; this catches one that only a report or an ignore names, rather than
+-- failing on it below.
 insert into "team_language" ("teamId", "lang", "privileged")
 select (select "id" from "team" where "slug" = 'english'), l."lang", true
-  from (
-    select "lang" from "take" union select "lang" from "recording"
-    union select "lang" from "take_ack" union select "lang" from "voice_clone"
-    union select "lang" from "fish_reference" union select "lang" from "generation_setting_locale"
-    union select "lang" from "pronunciation_lexicon_locale" union select "lang" from "lexicon_change"
-    union select "lang" from "line_ignore" union select "lang" from "line_flag"
-    union select "lang" from "line_issue" union select "lang" from "report"
-    union select "lang" from "regeneration_batch" union select "lang" from "regeneration_job"
-    union select "lang" from "regeneration_pause" union select "lang" from "activity"
-    -- A sample's language is in its clone's name, 'voice@lang'; a bare name is English's.
-    union select nullif(split_part("clone", '@', 2), '') from "voice_sample"
-  ) l
- where l."lang" is not null
-   and not exists (select 1 from "team_language" tl where tl."lang" = l."lang" and tl."privileged");
+  from "team_scoped_lang" l
+ where team_of_lang(l."lang") is null;
 
 -- BACKFILL, as 0088 did, of whatever was written without a team while deploy 1 ran: an insert
 -- that missed withTeam, or one by the release before it.
@@ -201,8 +190,7 @@ create or replace function "voice_for"(r text, g text, f text) returns text
 language sql stable as $$
   select case when r ~ '^model-\d+$' then r else (
     select a."voice" from "voice_assignment" a
-     where a."teamId" = coalesce(nullif(nullif(current_setting('spoken.team', true), ''), '*')::uuid,
-                                 (select "id" from "team" where "slug" = 'english'))
+     where a."teamId" = coalesce(spoken_team(), (select "id" from "team" where "slug" = 'english'))
        and a."race" = r
        and (a."gender" is null or a."gender" = g)
        and (a."flavor" is null or a."flavor" = f)

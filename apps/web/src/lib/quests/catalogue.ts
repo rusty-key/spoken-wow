@@ -33,7 +33,8 @@ import { npcKey, type Corpus, type CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
-import { loadRoster, ROSTER_STAMP, rosterTeam } from "@/lib/voices/roster-store";
+import { teamOrEnglish } from "@/lib/teams/store";
+import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
 
 
 /**
@@ -85,7 +86,7 @@ async function stampOf(lang: Lang): Promise<string> {
     ${versionStamp("entity_name", `"lang" = '${BASE_LANG}' and "kind" in ('creature', 'gameobject', 'item')`)}`;
   // As the roster's team, whose voices and assignments ROSTER_STAMP reads.
   const rows = await queryIn<{ stamp: string }>(
-    await rosterTeam(lang),
+    await teamOrEnglish(lang),
     lang === BASE_LANG
       ? `select ${english} as "stamp"`
       : `select ${english} || '|' || ${versionStamp("quest_line", `"lang" = $1`)} || '/' ||

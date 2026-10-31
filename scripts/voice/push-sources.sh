@@ -75,7 +75,7 @@ SQL
 insert into fish_reference (voice, lang, sample, "startSec", "endSec", transcript, "clipHash", "updatedBy", "updatedAt",
                             "teamId")
 select s.*, (select id from "user" where email = '$ADMIN_EMAIL'), now(),
-       (select "teamId" from team_language tl where tl.lang = s.lang and tl.privileged)
+       team_of_lang(s.lang)
   from seeded s
 on conflict ("teamId", voice, lang) do update set
   sample = excluded.sample, "startSec" = excluded."startSec", "endSec" = excluded."endSec",

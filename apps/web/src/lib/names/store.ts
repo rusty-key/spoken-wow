@@ -7,8 +7,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { actAs, db, query } from "@/lib/db";
-import { loggerOf } from "@/lib/teams/store";
+import { query, withTeam } from "@/lib/db";
+import { ownerOrAll } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 /** A boss is named by its id as text; instances have no rename control, so no kind here. */
@@ -67,12 +67,7 @@ export async function saveName(args: {
   const name = args.name.trim();
   if (!name) throw new Error("the name cannot be empty");
 
-  // Its activity row is the one write a team owns.
-  const team = await loggerOf(args.lang);
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-    await actAs(client, team);
+  return withTeam(await ownerOrAll(args.lang), async (client) => {
     if (!args.anyLanguage) {
       const { rows: english } = await client.query(
         `select 1 from "entity_name"
@@ -98,7 +93,6 @@ export async function saveName(args: {
       throw new NameConflict(`this name moved to v${current.version} while you were editing it`);
     }
     if (current && current.name === name) {
-      await client.query("commit");
       return { ...current, createdAt: current.createdAt.toISOString() };
     }
 
@@ -125,12 +119,6 @@ export async function saveName(args: {
       },
       client,
     );
-    await client.query("commit");
     return { ...rows[0], createdAt: rows[0].createdAt.toISOString() };
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

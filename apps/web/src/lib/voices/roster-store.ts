@@ -4,8 +4,9 @@
  * on its next read, and an unchanged roster stays the same instance, so whatever is keyed on it
  * (slots.ts) keeps.
  *
- * Races, genders and flavors are every team's; the voices and the assignments are a team's own,
- * read as the team whose roster a language is voiced from (rosterTeam).
+ * Races, genders and flavors are every team's; the voices and the assignments are a team's own
+ * (migration 0089), read as the team whose roster a language is voiced from: the team that owns
+ * the language, or English's for one nobody owns (teamOrEnglish).
  */
 import type { PoolClient } from "pg";
 
@@ -26,15 +27,6 @@ export const ROSTER_STAMP = `(select md5(coalesce(string_agg(k, ',' order by k),
              from "voice_assignment" a where a.${TEAM_ROWS}) assignments) || ':' ||
   (select count(*) from "race") || ':' || (select count(*) from "gender") || ':' ||
   (select count(*) from "flavor") || ':' || (select count(*) from "voice" v where v.${TEAM_ROWS})`;
-
-/**
- * The team whose roster `lang` is voiced from, and the one its assignments are written as:
- * the team that owns the language, or English's for one nobody owns. Every team has a roster
- * of its own (migration 0089).
- */
-export async function rosterTeam(lang: Lang): Promise<TeamId> {
-  return teamOrEnglish(lang);
-}
 
 const cacheKey = Symbol.for("spoken.roster.by-team");
 type Holder = { [cacheKey]?: Map<TeamId, { stamp: string; roster: Promise<Roster> }> };
@@ -67,7 +59,7 @@ async function rosterData(client: PoolClient): Promise<RosterData> {
 }
 
 export async function loadRoster(lang: Lang): Promise<Roster> {
-  const team = await rosterTeam(lang);
+  const team = await teamOrEnglish(lang);
   const [{ stamp }] = await queryIn<{ stamp: string }>(team, `select ${ROSTER_STAMP} as "stamp"`);
   const memo = (holder[cacheKey] ??= new Map());
   const hit = memo.get(team);

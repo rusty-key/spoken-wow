@@ -46,13 +46,6 @@ grant usage on all sequences in schema public to "spoken_app";
 alter default privileges in schema public grant select, insert, update, delete on tables to "spoken_app";
 alter default privileges in schema public grant usage on sequences to "spoken_app";
 
--- The team this transaction acts as, or null: unset (outside withTeam), or ALL_TEAMS, which
--- is no one team. Read the same way as the "teamId" column default (0088).
-create or replace function "spoken_team"() returns uuid
-language sql stable as $$
-  select nullif(nullif(current_setting('spoken.team', true), ''), '*')::uuid
-$$;
-
 -- Whether this transaction acts for every team (ALL_TEAMS).
 create or replace function "spoken_all_teams"() returns boolean
 language sql stable as $$

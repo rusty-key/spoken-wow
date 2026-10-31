@@ -31,7 +31,7 @@ beforeAll(async () => {
 async function logged(grapheme: string, changedAt: string): Promise<void> {
   await asSystem.query(
     `insert into "lexicon_change" ("grapheme", "kind", "changedAt", "lang", "teamId")
-     values ($1, 'edited', $2, $3, (select "teamId" from "team_language" where "lang" = $3 and "privileged"))`,
+     values ($1, 'edited', $2, $3, team_of_lang($3))`,
     [grapheme, changedAt, LANG],
   );
 }

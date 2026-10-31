@@ -6,9 +6,8 @@
  */
 import { requireApiKey } from "@/lib/generation/authz";
 import { requireVoiceViewer } from "@/lib/voices/authz";
-import { parseCloneName } from "@/lib/voices/clone-name";
 import { isRenamable, listAccountVoices } from "@/lib/voices/elevenlabs";
-import { isVoiceSlot } from "@/lib/voices/slots";
+import { slotClones } from "@/lib/voices/slots";
 
 export const dynamic = "force-dynamic";
 
@@ -25,16 +24,12 @@ export async function GET(request: Request) {
     return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 502 });
   }
 
+  const slotted = await slotClones(voices.map((voice) => voice.name));
   return Response.json({
-    voices: await Promise.all(
-      voices.map(async (voice) => {
-        const clone = parseCloneName(voice.name);
-        return {
-          ...voice,
-          renamable: isRenamable(voice),
-          slot: clone && (await isVoiceSlot(clone.voice, clone.lang)) ? voice.name : null,
-        };
-      }),
-    ),
+    voices: voices.map((voice) => ({
+      ...voice,
+      renamable: isRenamable(voice),
+      slot: slotted.has(voice.name) ? voice.name : null,
+    })),
   });
 }

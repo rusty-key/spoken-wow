@@ -22,7 +22,7 @@ describe("slots", () => {
     await asSystem.query(`insert into "race" ("key") values ($1)`, [type]);
     await asSystem.query(
       `insert into "voice" ("name", "race", "gender", "teamId")
-       values ($1, $1, '', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
+       values ($1, $1, '', team_of_lang('enUS'))`,
       [type],
     );
     try {

@@ -8,8 +8,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { actAs, db, query } from "@/lib/db";
-import { loggerOf } from "@/lib/teams/store";
+import { query, withTeam } from "@/lib/db";
+import { ownerOrAll } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { makeShort } from "./tools";
 
@@ -129,13 +129,7 @@ export async function saveLore(args: {
   lang?: Lang;
 }): Promise<LoreVersion> {
   const lang = args.lang ?? BASE_LANG;
-  // Its activity row is the one write a team owns.
-  const team = await loggerOf(lang);
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-    await actAs(client, team);
-
+  return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows: currentRows } = await client.query<Row & { mapID: number; kind: string; key: string | null }>(
       `select ${COLUMNS}, "mapID", "kind", "key" from "lore_line"
         where "lineId" = $1 and "lang" = $2 and "isCurrent" for update`,
@@ -182,7 +176,6 @@ export async function saveLore(args: {
     // A save that changes nothing must not spend a version number: the history is a
     // record of what the text has been, not of who opened the dialog.
     if (current && full === current.full && (args.short ?? null) === null) {
-      await client.query("commit");
       return toVersion(current);
     }
 
@@ -240,14 +233,8 @@ export async function saveLore(args: {
       client,
     );
 
-    await client.query("commit");
     return toVersion(inserted[0]);
-  } catch (err) {
-    await client.query("rollback").catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -269,13 +256,7 @@ export async function restoreLore(
   lang: Lang,
   by: string | null,
 ): Promise<LoreVersion> {
-  // Its activity row is the one write a team owns.
-  const team = await loggerOf(lang);
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-    await actAs(client, team);
-
+  return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "lore_line"
         where "lineId" = $1 and "lang" = $3 and "version" = $2 for update`,
@@ -308,12 +289,6 @@ export async function restoreLore(
       client,
     );
 
-    await client.query("commit");
     return toVersion(restored[0]);
-  } catch (err) {
-    await client.query("rollback").catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }

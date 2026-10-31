@@ -85,7 +85,7 @@ it("refuses a take whose clip was not kept, and leaves the live one alone", asyn
   await take("kept");
   await asSystem.query(
     `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
-     values ('quests', 'enUS', $1, 'g:proof', 2, false, 'generated', 1, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
+     values ('quests', 'enUS', $1, 'g:proof', 2, false, 'generated', 1, team_of_lang('enUS'))`,
     [file],
   );
 

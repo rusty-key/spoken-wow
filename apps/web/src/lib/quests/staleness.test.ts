@@ -39,7 +39,7 @@ async function liveTake(hash: string | null, provider: "elevenlabs" | "fish" = "
     `insert into "take"
        ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
         "spokenHash", "provider", "teamId")
-     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
+     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4, team_of_lang('enUS'))`,
     [file, LINE, hash, provider],
   );
 }
@@ -170,7 +170,7 @@ describe("a race with an accent tag", () => {
       `insert into "take"
          ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
           "spokenHash", "teamId")
-       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
+       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3, team_of_lang('enUS'))`,
       [dwarfFile, DWARF_LINE, hash],
     );
   }

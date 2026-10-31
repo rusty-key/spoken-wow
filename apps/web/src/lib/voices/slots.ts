@@ -13,6 +13,7 @@ import type { Lang } from "@/lib/lang";
 import { corpus } from "@/lib/quests/catalogue";
 import { hasNarration, NARRATOR_VOICE } from "@/lib/generation/narration";
 
+import { parseCloneName } from "./clone-name";
 import type { Roster } from "./roster";
 import { loadRoster } from "./roster-store";
 
@@ -92,4 +93,20 @@ export async function isVoiceSlot(name: string, lang: Lang): Promise<boolean> {
   // lines are in, but nothing may be cloned, cut or uploaded for one until which voice each
   // model gets has been decided.
   return (await loadRoster(lang)).voiceNames.includes(name);
+}
+
+/**
+ * Which of these clone names (clone-name.ts) name a slot of their language: isVoiceSlot for a
+ * whole ElevenLabs account at once, each language's roster loaded once rather than per voice.
+ */
+export async function slotClones(names: readonly string[]): Promise<Set<string>> {
+  const clones = names.flatMap((name) => {
+    const clone = parseCloneName(name);
+    return clone ? [{ name, ...clone }] : [];
+  });
+  const langs = [...new Set(clones.map((clone) => clone.lang))];
+  const rosters = new Map(
+    await Promise.all(langs.map(async (lang) => [lang, new Set((await loadRoster(lang)).voiceNames)] as const)),
+  );
+  return new Set(clones.filter((clone) => rosters.get(clone.lang)?.has(clone.voice)).map((clone) => clone.name));
 }

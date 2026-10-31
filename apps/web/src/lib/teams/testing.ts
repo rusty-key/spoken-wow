@@ -2,15 +2,36 @@
  * For tests: a language moved onto a team of its own, and back. On a test database every
  * language shares the english team, so only a moved language makes "the job's team" observable.
  */
-import type { QueryResult, QueryResultRow } from "pg";
+import { Pool, type QueryResult, type QueryResultRow } from "pg";
+import { afterAll } from "vitest";
 
-import { ALL_TEAMS, db, withTeam } from "@/lib/db";
+import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 
 import { forgetTeams, type TeamId } from "./store";
 
+let fixtures: Pool | undefined;
+
 /**
- * For fixtures: the pool as ALL_TEAMS, one statement a transaction.
+ * A pool of its own whose sessions act as ALL_TEAMS from the start, as the same role as db():
+ * a fixture's statement is one round trip, where withTeam's transaction is four.
+ */
+function fixturePool(): Pool {
+  const role = process.env.DATABASE_ROLE ? `-c role=${process.env.DATABASE_ROLE} ` : "";
+  fixtures ??= new Pool({ connectionString: process.env.DATABASE_URL, max: 2, options: `${role}-c spoken.team=*` });
+  return fixtures;
+}
+
+// Registered by the first import, so it runs after the test file's own teardown, which may
+// still clean up through asSystem.
+afterAll(async () => {
+  const pool = fixtures;
+  fixtures = undefined;
+  await pool?.end();
+});
+
+/**
+ * For fixtures: as ALL_TEAMS, one statement at a time.
  *
  * The suite acts as the app role (vitest.config.ts), so a test that seeds, inspects or cleans
  * up per-team rows itself goes through row-level security like the code under test. Seeding
@@ -21,7 +42,7 @@ export const asSystem = {
   // `any` by default, as pg's own query is, so a fixture moved here keeps its untyped reads.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query<R extends QueryResultRow = any>(text: string, params?: unknown[]): Promise<QueryResult<R>> {
-    return withTeam(ALL_TEAMS, (client) => client.query<R>(text, params));
+    return fixturePool().query<R>(text, params);
   },
 };
 
@@ -76,10 +97,7 @@ export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () =
     [slug],
   );
   const team = rows[0].id;
-  const { rows: was } = await db().query<{ teamId: TeamId }>(
-    `delete from "team_language" where "lang" = $1 and "privileged" returning "teamId"`,
-    [lang],
-  );
+  const previous = await unowned(lang);
   await db().query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [team, lang]);
   const { rows: english } = await db().query<{ id: TeamId }>(`select "id" from "team" where "slug" = 'english'`);
   for (const sql of COPIED) await asSystem.query(sql, [team, english[0].id]);
@@ -92,9 +110,7 @@ export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () =
         await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
       }
       await db().query(`delete from "team_language" where "teamId" = $1`, [team]);
-      if (was[0]) {
-        await db().query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was[0].teamId, lang]);
-      }
+      await previous.restore();
       await db().query(`delete from "team" where "id" = $1`, [team]);
       forgetTeams();
     },

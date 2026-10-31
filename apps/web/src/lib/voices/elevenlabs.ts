@@ -7,8 +7,7 @@
  * `fetch` and the base URL are both injectable: no test should need an ElevenLabs account,
  * and none should ever spend money.
  */
-import { parseCloneName } from "./clone-name";
-import { isVoiceSlot } from "./slots";
+import { slotClones } from "./slots";
 
 export const DEFAULT_BASE_URL = "https://api.elevenlabs.io";
 
@@ -60,15 +59,13 @@ export async function listVoices(options: ElevenLabsOptions = {}): Promise<Map<s
 
   const body = (await response.json()) as { voices?: { name?: string; voice_id?: string }[] };
 
-  const found = new Map<string, string>();
-  for (const voice of body.voices ?? []) {
-    // Stock voices are skipped rather than reported: their names ("Roger - Laid-Back,
-    // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
-    if (!voice.name || !voice.voice_id) continue;
-    const clone = parseCloneName(voice.name);
-    if (clone && (await isVoiceSlot(clone.voice, clone.lang))) found.set(voice.name, voice.voice_id);
-  }
-  return found;
+  const named = (body.voices ?? []).flatMap((voice) =>
+    voice.name && voice.voice_id ? [{ name: voice.name, id: voice.voice_id }] : [],
+  );
+  // Stock voices are skipped rather than reported: their names ("Roger - Laid-Back,
+  // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
+  const slotted = await slotClones(named.map((voice) => voice.name));
+  return new Map(named.filter((voice) => slotted.has(voice.name)).map((voice) => [voice.name, voice.id]));
 }
 
 /** A voice in the account, whatever it is called: what the picker offers to fill a slot with. */

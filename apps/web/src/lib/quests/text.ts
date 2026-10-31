@@ -16,8 +16,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { actAs, db, query } from "@/lib/db";
-import { loggerOf } from "@/lib/teams/store";
+import { query, withTeam } from "@/lib/db";
+import { ownerOrAll } from "@/lib/teams/store";
 import { answersQuestMomentSql, baseLineId, momentOf, playerGenderForms } from "@/lib/contributions/naming";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
@@ -108,13 +108,7 @@ export async function saveQuestText(args: {
   if (!text) throw new Error("the text cannot be empty");
   const moment = momentOf(args.lineId);
 
-  // Its activity row is the one write a team owns.
-  const team = await loggerOf(args.lang);
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-    await actAs(client, team);
-
+  return withTeam(await ownerOrAll(args.lang), async (client) => {
     // Every current row of the moment in this language, so a split can retire the others.
     const { rows: momentRows } = await client.query<Structure>(
       `select ${COLUMNS}, ${STRUCTURE} from "quest_line"
@@ -163,7 +157,6 @@ export async function saveQuestText(args: {
       !retired.length &&
       targets.every((target) => momentRows.some((row) => row.lineId === target.lineId && row.text === text))
     ) {
-      await client.query("commit");
       return toVersion(momentRows.find((row) => row.lineId === written[0])!);
     }
 
@@ -236,14 +229,8 @@ export async function saveQuestText(args: {
       );
     }
 
-    await client.query("commit");
     return toVersion(saved!);
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -260,12 +247,7 @@ export async function restoreQuestText(
   by: string | null,
 ): Promise<QuestTextVersion> {
   refuseEnglish(lang);
-  // Its activity row is the one write a team owns.
-  const team = await loggerOf(lang);
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-    await actAs(client, team);
+  return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "quest_line"
         where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 for update`,
@@ -308,12 +290,6 @@ export async function restoreQuestText(
       },
       client,
     );
-    await client.query("commit");
     return toVersion(restored[0]);
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

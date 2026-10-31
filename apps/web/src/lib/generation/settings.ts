@@ -16,7 +16,7 @@
  * configured reads its team's base, so it never needs another team's row.
  */
 import { recordActivity } from "@/lib/activity/store";
-import { ALL_TEAMS, queryIn, TEAM_ROWS, TEAMS_IN_SCOPE } from "@/lib/db";
+import { ALL_TEAMS, queryIn, TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { bareDirection } from "@/lib/generation/narration";
 import { queryAs, readAs, teamOrEnglish } from "@/lib/teams/store";
@@ -306,7 +306,7 @@ export async function writeRaceTags(
     ALL_TEAMS,
     `insert into "generation_setting"
        ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
-     select "id", $1, $2, $3, $4, now(), $5 from (${TEAMS_IN_SCOPE}) t
+     select "id", $1, $2, $3, $4, now(), $5 from "team"
      on conflict ("teamId") do update set
        "raceTags"  = excluded."raceTags",
        "updatedAt" = excluded."updatedAt",

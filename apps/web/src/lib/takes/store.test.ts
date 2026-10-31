@@ -32,7 +32,7 @@ async function record(version: number, isCurrent = false, archiveFile: string | 
     `insert into "take"
        ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes",
         "archiveFile", "teamId")
-     values ('quests', 'enUS', $1, 'g:test', $2, $3, 'generated', 1, $4, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
+     values ('quests', 'enUS', $1, 'g:test', $2, $3, 'generated', 1, $4, team_of_lang('enUS'))`,
     [file, version, isCurrent, archiveFile],
   );
 }
@@ -161,8 +161,8 @@ describe("a language's live takes", () => {
   it("are the files the query by language alone found, read as the language's team", async () => {
     await asSystem.query(
       `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
-       values ('quests', 'deDE', $1, 'g:test', 1, false, 'generated', 1, (select "teamId" from "team_language" where "lang" = 'deDE' and "privileged")),
-              ('quests', 'deDE', $1, 'g:test', 2, true, 'generated', 1, (select "teamId" from "team_language" where "lang" = 'deDE' and "privileged"))`,
+       values ('quests', 'deDE', $1, 'g:test', 1, false, 'generated', 1, team_of_lang('deDE')),
+              ('quests', 'deDE', $1, 'g:test', 2, true, 'generated', 1, team_of_lang('deDE'))`,
       [file],
     );
     // What liveTakes asked before takes had a team.

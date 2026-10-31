@@ -84,7 +84,9 @@ export async function teamOf(lang: Lang): Promise<TeamId> {
 /**
  * The team that owns `lang`, or ALL_TEAMS for a site-wide (null) or unowned language: for the
  * reads and writes that must still work there rather than refuse, where ALL_TEAMS leaves the
- * row's "teamId" null.
+ * row's "teamId" null. Also the team a transaction acts as when the rows it writes are shared
+ * -- quest text, names, grants -- and only its activity row is a team's: an act logged with no
+ * team (activity/store.ts) only ALL_TEAMS may write.
  */
 export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
   return (lang && (await ownerOf(lang))) || ALL_TEAMS;
@@ -137,16 +139,6 @@ export async function readAs<T extends QueryResultRow = QueryResultRow>(
   const team = await ownerOf(lang);
   if (!team) return [];
   return queryIn<T>(team, text, params);
-}
-
-/**
- * The team a transaction acts as when the rows it writes are shared -- quest text, names, a
- * contribution -- and only its activity row is a team's: the language's owner, or ALL_TEAMS
- * for a language nobody owns and for none, whose acts are logged with no team
- * (activity/store.ts), which only ALL_TEAMS may write.
- */
-export async function loggerOf(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
-  return (lang && (await ownerOf(lang))) || ALL_TEAMS;
 }
 
 /** These languages grouped by the team that owns each, in their given order. Unowned ones are left out. */
