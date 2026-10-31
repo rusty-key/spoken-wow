@@ -1,7 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
-import { normaliseText, spokenText, isGeneratable, spokenWithTitle } from "./text.mjs";
+import { normaliseText, shownText, spokenText, isGeneratable, spokenWithTitle } from "./text.mjs";
+
+function decodeFixture(value) {
+  return value.replace(/\\(n|r|t|0|\\)/g, (_, escape) => ({ n: "\n", r: "\r", t: "\t", 0: "\0", "\\": "\\" })[escape]);
+}
+
+const normaliseCases = (await readFile(new URL("./normalise-cases.tsv", import.meta.url), "utf8"))
+  .trimEnd()
+  .split("\n")
+  .map((line) => {
+    const [name, input, expected] = line.split("\t");
+    return { name, input: decodeFixture(input), expected: decodeFixture(expected) };
+  });
+
+for (const { name, input, expected } of normaliseCases) {
+  test(`shared normalisation case: ${name}`, () => assert.equal(normaliseText(input), expected));
+}
 
 test("CRLF becomes a newline", () => {
   assert.equal(normaliseText("Ola Morgan,\r\n\r\nOs negocios"), "Ola Morgan,\n\nOs negocios");
@@ -39,13 +56,17 @@ test("spoken text drops esMX's <nombre> rather than saying it", () => {
   assert.equal(spokenText("Ya no somos víctimas, <nombre>. Somos"), "Ya no somos víctimas, . Somos");
 });
 
+test("shown text keeps layout, drops <nombre>, and decodes entities", () => {
+  assert.equal(shownText("Ya no somos <nombre>.\n\n&amp; &lt;nombre&gt;"), "Ya no somos .\n\n& <nombre>");
+});
+
 test("a signed page is stored as lines, with no tags", () => {
   assert.equal(
     normaliseText(
       '<HTML>\n<BODY>\n<H1 align="center">RANKS</H1><BR/>\n<IMG src="Interface\\PvPRank14"/><BR/>\n' +
-        '<P align="right">Grand Marshal</P><BR/><BR/>\n<P>Horde &amp; Alliance</P></BR>\n</BODY>\n</HTML>',
+        '<P align="right">Grand Marshal</P><BR/><BR/>\n<P>Horde &amp; Alliance$BSecond line</P></BR>\n</BODY>\n</HTML>',
     ),
-    "RANKS\n\nGrand Marshal\n\nHorde & Alliance",
+    "RANKS\n\nGrand Marshal\n\nHorde & Alliance\nSecond line",
   );
 });
 

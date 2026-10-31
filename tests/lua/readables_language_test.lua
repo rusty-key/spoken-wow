@@ -97,7 +97,7 @@ Expect("D. a fallback page uses English captions rather than the open German pag
     B:ClipFor(ONLY_ENGLISH).present.transcript, "English second page.")
 -- The client showed that page this session, but the German pack has no recording of it: the clip is
 -- English, and its words are the client's, as they are for any recording on this client.
-B:RememberPageText(ONLY_ENGLISH, "deDE", "Die zweite Seite.")
+B:RememberPageText(ONLY_ENGLISH, "deDE", "Die zweite Seite.", nil, true)
 Expect("D. ...but not where the client showed that page: the Text Language's words, over the fallback clip",
     B:ClipFor(ONLY_ENGLISH).present.transcript, "Die zweite Seite.")
 Expect("D. ...which is still the English recording", B:ClipFor(ONLY_ENGLISH).language, "enUS")

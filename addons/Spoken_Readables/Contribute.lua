@@ -128,7 +128,8 @@ function SpokenReadables:ReportContext(pageId)
 		fields[#fields + 1] = { "number", (ItemTextGetPage and NotSecret(ItemTextGetPage())) or 1 }
 	else
 		local kept = self.pageText and self.pageText[self:GetClientLanguage()]
-		text = kept and kept[pageId]
+		local page = kept and kept[pageId]
+		text = type(page) == "table" and page.text or page
 	end
 	return Spoken.Contribute:Envelope("readables", fields, type(text) == "string" and self:Detemplate(text) or text)
 end

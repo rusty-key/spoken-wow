@@ -14,7 +14,7 @@ import { regenerateNarrated } from "@/lib/generation/narrated";
 import type { RegenerateResult } from "@/lib/generation/regenerate";
 
 import { catalogue, type BookPage } from "./catalogue";
-import { spokenText } from "./tools";
+import { shownText } from "./tools";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Speaker } from "@/lib/generation/speakers/speaker";
 
@@ -50,8 +50,8 @@ export async function regenerateBookLine(
 
   return regenerateNarrated(
     "readables",
-    // The caption the addon shows is the page's markup and $B breaks cleaned the same way.
-    { lineId: page.id, file: page.file, spoken: page.spoken, shown: spokenText(page.text), hash: page.hash },
+    // The caption the addon shows keeps the page's layout; only narration flattens its breaks.
+    { lineId: page.id, file: page.file, spoken: page.spoken, shown: shownText(page.text), hash: page.hash },
     createdBy,
     { ...options, lang },
   );

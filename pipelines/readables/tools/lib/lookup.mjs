@@ -23,7 +23,7 @@ import pg from "pg";
 import { isClientLocale } from "../../../lib/locales.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
-import { spokenText } from "./text.mjs";
+import { shownText } from "./text.mjs";
 
 const ROOT = new URL("../../../../", import.meta.url).pathname;
 const LANG = "enUS";
@@ -106,7 +106,7 @@ export function packLua(lang, clips, entries = null) {
     // English's words for a page Books.lua has are Books.lua's, which the addon falls back to: a
     // copy here was 440 KB more in every English pack. A minted page is not in Books.lua.
     const inBooksLua = lang === LANG && typeof row.pageId === "number";
-    const text = row.text == null || inBooksLua ? "" : `, text = ${quote(spokenText(row.text))}`;
+    const text = row.text == null || inBooksLua ? "" : `, text = ${quote(shownText(row.text))}`;
     // Absent for a take with no times: the captions then estimate.
     const times = row.wordTimes ? `, times = ${quote(packTimes(row.wordTimes))}` : "";
     lines.push(`\t\t[${luaId(row.pageId)}] = { file = ${quote(row.file)}, len = ${len}${text}${times} },`);
