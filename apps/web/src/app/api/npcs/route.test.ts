@@ -94,7 +94,7 @@ describe("POST /api/npcs", () => {
 
   it("takes a type another worker added a moment ago", async () => {
     const type = `t${npcId}`;
-    await loadRoster();
+    await loadRoster("enUS");
     // Straight into the tables, as the other pm2 worker's api/types would: this one's cache is not told.
     await db().query(`insert into "race" ("key") values ($1)`, [type]);
     try {

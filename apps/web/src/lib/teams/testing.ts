@@ -11,7 +11,9 @@ import type { Lang } from "@/lib/lang";
 import { forgetTeams, type TeamId } from "./store";
 
 /** Tables a test may leave rows in under the borrowed team, deleted before the team is. */
-const STAMPED = ["regeneration_pause", "regeneration_batch", "take_ack", "take", "recording", "activity"];
+const STAMPED = [
+  "regeneration_pause", "regeneration_batch", "take_ack", "take", "recording", "activity", "report", "line_ignore",
+];
 
 export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () => Promise<void> }> {
   const slug = `test-${lang.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`;

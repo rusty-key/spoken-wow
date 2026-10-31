@@ -63,7 +63,7 @@ async function guarded(
   const lang = await reportLang(id);
   const guard = await requireCapability("edit", lang ?? BASE_LANG);
   if (guard.denied) return { denied: guard.denied };
-  const report = lang === null ? null : await reportById(id);
+  const report = lang === null ? null : await reportById(id, lang);
   if (!report) {
     return { denied: Response.json({ error: "unknown report" }, { status: 404 }) };
   }

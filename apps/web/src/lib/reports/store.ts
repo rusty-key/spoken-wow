@@ -10,10 +10,15 @@
  * in process memory so the limit survives a pm2 restart, which is precisely the moment a
  * flood would otherwise get through. It does not filter by source, deliberately: the limit is
  * on a person, and filing ten from each page is filing twenty.
+ *
+ * Every read and write runs as the team that owns the report's language. The two that cannot
+ * know it run across every team: the rate limit, which is on a person in any language, and
+ * reportLang, which is how a route finds the language to check a permission against.
  */
 import { recordActivity } from "@/lib/activity/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { db } from "@/lib/db";
+import { ALL_TEAMS, queryIn } from "@/lib/db";
+import { asTeamOf, readAs } from "@/lib/teams/store";
 
 import type { ReportContext } from "./context";
 import { type Category, type Report, type Status } from "./reports";
@@ -42,15 +47,17 @@ export async function createReport(input: {
   context?: ReportContext | null;
 }): Promise<void> {
   // Returns nothing: the reporter cannot read a report back, so an id would only be a handle
-  // on something they cannot reach.
-  await db().query(
+  // on something they cannot reach. The team comes from the language alone, so the addon's
+  // anonymous report is filed with whoever looks after its language.
+  const lang = input.lang ?? BASE_LANG;
+  await asTeamOf(lang, (client) => client.query(
     `insert into "report"
        ("source", "lang", "lineId", "target", "category", "body", "userId", "name", "email", "ip",
         "context")
      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       input.source,
-      input.lang ?? BASE_LANG,
+      lang,
       input.lineId,
       input.target,
       input.category,
@@ -61,11 +68,12 @@ export async function createReport(input: {
       input.ip,
       input.context ? JSON.stringify(input.context) : null,
     ],
-  );
+  ));
 }
 
 export async function countRecent(ip: string, withinMs: number): Promise<number> {
-  const { rows } = await db().query<{ count: string }>(
+  const rows = await queryIn<{ count: string }>(
+    ALL_TEAMS,
     `select count(*)::text as count
        from "report"
       where "ip" = $1
@@ -93,7 +101,8 @@ export async function listReports(
   // worklist, and which corpus each of them was playing does not change the fix.
   if (category !== "all") where.push(`"category" = $${params.push(category)}`);
 
-  const { rows } = await db().query<Report>(
+  return readAs<Report>(
+    lang,
     `select ${COLUMNS}
        from "report"
       ${where.length ? `where ${where.join(" and ")}` : ""}
@@ -101,7 +110,6 @@ export async function listReports(
       limit $1`,
     params,
   );
-  return rows;
 }
 
 export async function reportsForLine(
@@ -109,36 +117,44 @@ export async function reportsForLine(
   lineId: string,
   lang: Lang = BASE_LANG,
 ): Promise<Report[]> {
-  const { rows } = await db().query<Report>(
+  return readAs<Report>(
+    lang,
     `select ${COLUMNS}
        from "report"
       where "source" = $1 and "lineId" = $2 and "lang" = $3
       order by "status" = 'open' desc, "createdAt" desc`,
     [source, lineId, lang],
   );
-  return rows;
 }
 
-export async function reportById(id: number): Promise<Report | null> {
-  const { rows } = await db().query<Report>(`select ${COLUMNS} from "report" where "id" = $1`, [id]);
+/** `lang` is the report's, from reportLang; looked up here when the caller has not. */
+export async function reportById(id: number, lang?: Lang): Promise<Report | null> {
+  const of = lang ?? (await reportLang(id));
+  if (!of) return null;
+  const rows = await readAs<Report>(of, `select ${COLUMNS} from "report" where "id" = $1`, [id]);
   return rows[0] ?? null;
 }
 
-/** The language a report was filed in, or null for an id that does not exist. */
+/**
+ * The language a report was filed in, or null for an id that does not exist. Across every
+ * team: the language is what says which team's it is, and whether the caller may see it.
+ */
 export async function reportLang(id: number): Promise<Lang | null> {
-  const { rows } = await db().query<{ lang: Lang }>(`select "lang" from "report" where "id" = $1`, [
-    id,
-  ]);
+  const rows = await queryIn<{ lang: Lang }>(ALL_TEAMS, `select "lang" from "report" where "id" = $1`, [id]);
   return rows[0]?.lang ?? null;
 }
 
+/** `lang` as for reportById. */
 export async function setStatus(
   id: number,
   status: Status,
   userId: string,
+  lang?: Lang,
 ): Promise<Report | null> {
+  const of = lang ?? (await reportLang(id));
+  if (!of) return null;
   // Reopening clears the resolution rather than leaving a stale resolver on an open report.
-  const { rows } = await db().query<Report & { lang: Lang }>(
+  const { rows } = await asTeamOf(of, (client) => client.query<Report & { lang: Lang }>(
     `update "report"
         set "status" = $2,
             "resolvedAt" = case when $2 = 'open' then null else now() end,
@@ -146,14 +162,14 @@ export async function setStatus(
       where "id" = $1
       returning ${COLUMNS}, "lang"`,
     [id, status, userId],
-  );
+  ));
   if (!rows[0]) return null;
-  const { lang, ...report } = rows[0];
+  const { lang: filed, ...report } = rows[0];
   // After the update, which is one statement with no transaction to join. A reopen is logged
   // too, as status "open": it undoes a resolution somebody else may have relied on.
   await recordActivity({
     kind: "report.resolved",
-    lang,
+    lang: filed,
     source: report.source,
     subject: String(report.id),
     lineId: report.lineId,
@@ -168,7 +184,8 @@ export async function setStatus(
  * once: ids are unique across them, so a caller holding one section's reports can use it as is.
  */
 export async function skippedIds(userId: string, lang: Lang): Promise<Set<number>> {
-  const { rows } = await db().query<{ id: string }>(
+  const rows = await readAs<{ id: string }>(
+    lang,
     `select r."id"::text as "id"
        from "report_skip" s
        join "report" r on r."id" = s."reportId"
@@ -184,23 +201,23 @@ export async function skippedIds(userId: string, lang: Lang): Promise<Set<number
  */
 export async function skipReports(userId: string, ids: number[], lang: Lang): Promise<number> {
   if (!ids.length) return 0;
-  const { rowCount } = await db().query(
+  const { rowCount } = await asTeamOf(lang, (client) => client.query(
     `insert into "report_skip" ("userId", "reportId")
      select $1, "id" from "report"
       where "id" = any($2::bigint[]) and "lang" = $3 and "status" = 'open'
      on conflict do nothing`,
     [userId, ids, lang],
-  );
+  ));
   return rowCount ?? 0;
 }
 
 /** Puts every report this person skipped in one section and language back in their queue. */
 export async function resetSkips(userId: string, source: Source, lang: Lang): Promise<number> {
-  const { rowCount } = await db().query(
+  const { rowCount } = await asTeamOf(lang, (client) => client.query(
     `delete from "report_skip" s
       using "report" r
       where r."id" = s."reportId" and s."userId" = $1 and r."source" = $2 and r."lang" = $3`,
     [userId, source, lang],
-  );
+  ));
   return rowCount ?? 0;
 }

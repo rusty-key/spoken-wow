@@ -33,7 +33,7 @@ describe("slots", () => {
 
   it("is exactly the roster's voices", async () => {
     const names = (await slots()).map((s) => s.name);
-    expect([...names].sort()).toEqual([...(await loadRoster()).voiceNames].sort());
+    expect([...names].sort()).toEqual([...(await loadRoster("enUS")).voiceNames].sort());
   });
 
   it("orders alphabetically", async () => {

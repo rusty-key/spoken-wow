@@ -42,15 +42,15 @@ describe("writeOverride", () => {
   it("is visible to the next read, in the worker that wrote it", async () => {
     fresh();
     await readOverrides(); // warm the memo, so a stale one would be served
-    await writeOverride(file, "q:1155:accept", "A crystal fragment.", null);
+    await writeOverride(file, "q:1155:accept", "A crystal fragment.", null, "enUS");
 
     expect((await readOverrides()).get(file)?.text).toBe("A crystal fragment.");
   });
 
   it("replaces rather than accumulates - one file says one thing", async () => {
     fresh();
-    await writeOverride(file, "q:1155:accept", "first", null);
-    await writeOverride(file, "q:1155:accept", "second", null);
+    await writeOverride(file, "q:1155:accept", "first", null, "enUS");
+    await writeOverride(file, "q:1155:accept", "second", null, "enUS");
 
     const stored = await readOverrides();
     expect(stored.get(file)?.text).toBe("second");
@@ -62,16 +62,16 @@ describe("writeOverride", () => {
 describe("clearOverride", () => {
   it("is noticed by a warm memo, which max(updatedAt) alone would not be", async () => {
     fresh();
-    await writeOverride(file, "q:1155:accept", "A crystal fragment.", null);
+    await writeOverride(file, "q:1155:accept", "A crystal fragment.", null, "enUS");
     await readOverrides();
 
-    expect(await clearOverride(file, null)).toBe(true);
+    expect(await clearOverride(file, null, "enUS")).toBe(true);
     expect((await readOverrides()).get(file)).toBeUndefined();
   });
 
   it("reports that there was nothing to clear", async () => {
     fresh();
-    expect(await clearOverride(file, null)).toBe(false);
+    expect(await clearOverride(file, null, "enUS")).toBe(false);
   });
 });
 

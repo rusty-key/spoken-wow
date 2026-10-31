@@ -9,11 +9,14 @@
  * Validation mirrors save_generation in tts_cli/voice_config.py. It lives on the write path
  * rather than the read path on purpose: a value already in the database is a fact, and
  * refusing to read it would take the settings page down exactly when it is needed to fix it.
+ *
+ * English's row is the english team's; another language's is its own team's. A language
+ * nobody has configured reads English's as the english team, which is where that row is.
  */
 import { recordActivity } from "@/lib/activity/store";
-import { db } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { bareDirection } from "@/lib/generation/narration";
+import { asTeamOf, readAs } from "@/lib/teams/store";
 
 import {
   isSeedStrategy,
@@ -49,7 +52,8 @@ export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSet
   if (lang !== BASE_LANG) return readLanguageSettings(lang);
   const defaults = fileDefaults().config;
 
-  const { rows } = await db().query<Row>(
+  const rows = await readAs<Row>(
+    BASE_LANG,
     `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
        from "generation_setting" where "id"`,
   );
@@ -86,9 +90,10 @@ export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSet
  * with someone else's.
  */
 async function readLanguageSettings(lang: Lang): Promise<EffectiveSettings> {
-  const [english, { rows }] = await Promise.all([
+  const [english, rows] = await Promise.all([
     readSettings(BASE_LANG),
-    db().query<Row>(
+    readAs<Row>(
+      lang,
       `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
          from "generation_setting_locale" where "lang" = $1`,
       [lang],
@@ -236,7 +241,7 @@ async function upsertLanguage(
   columns: ("modelId" | "voiceSettings" | "seedStrategy" | "raceTags")[],
 ): Promise<void> {
   const set = columns.map((column) => `"${column}" = excluded."${column}"`).join(", ");
-  await db().query(
+  await asTeamOf(lang, (client) => client.query(
     `insert into "generation_setting_locale"
        ("lang", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
      values ($1, $2, $3, $4, $5, now(), $6)
@@ -250,7 +255,7 @@ async function upsertLanguage(
       JSON.stringify(config.raceTags),
       updatedBy,
     ],
-  );
+  ));
 }
 
 /**
@@ -284,7 +289,7 @@ export async function writeRaceTags(
     return;
   }
   const defaults = fileDefaults().config;
-  await db().query(
+  await asTeamOf(BASE_LANG, (client) => client.query(
     `insert into "generation_setting"
        ("id", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
      values (true, $1, $2, $3, $4, now(), $5)
@@ -299,7 +304,7 @@ export async function writeRaceTags(
       JSON.stringify(tags),
       updatedBy,
     ],
-  );
+  ));
   await recordRaceTags(lang, updatedBy);
 }
 

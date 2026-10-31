@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const { closeDb, db } = await import("@/lib/db");
+const { ownTeam } = await import("@/lib/teams/testing");
 const { activityActors, groupRows, isDay, listActivity, recordActivities, recordActivity } = await import("./store");
 
 let actor: string;
@@ -299,6 +300,43 @@ describe("recordActivity", () => {
     await expect(
       recordActivity({ kind: "ignore.set", lang: "deDE", actorId: `missing-${randomUUID()}`, detail: {} }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("an act's team", () => {
+  const teamsOf = async () =>
+    (await db().query<{ lang: string | null; teamId: string | null }>(
+      `select "lang", "teamId" from "activity" where "actorId" = $1 order by "lang" nulls first`,
+      [actor],
+    )).rows;
+
+  it("is none for an act on every language", async () => {
+    await recordActivity({ kind: "ignore.set", lang: null, actorId: actor, detail: {} });
+    expect(await teamsOf()).toEqual([{ lang: null, teamId: null }]);
+  });
+
+  it("is each act's language's, in one call", async () => {
+    const german = await ownTeam("deDE");
+    try {
+      await recordActivities([
+        { kind: "ignore.set", lang: null, actorId: actor, detail: {} },
+        { kind: "ignore.set", lang: "deDE", actorId: actor, detail: {} },
+        { kind: "ignore.set", lang: "enUS", actorId: actor, detail: {} },
+      ]);
+      const { teamOf } = await import("@/lib/teams/store");
+      expect(await teamsOf()).toEqual([
+        { lang: null, teamId: null },
+        { lang: "deDE", teamId: german.team },
+        { lang: "enUS", teamId: await teamOf("enUS") },
+      ]);
+      expect((await listActivity({ lang: "deDE", actorId: actor })).rows.map((row) => row.lang)).toEqual([
+        "deDE",
+        null,
+      ]);
+    } finally {
+      await db().query(`delete from "activity" where "actorId" = $1`, [actor]);
+      await german.restore();
+    }
   });
 });
 

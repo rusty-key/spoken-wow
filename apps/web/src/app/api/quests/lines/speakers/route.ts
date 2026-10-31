@@ -17,7 +17,7 @@ import { requireAdmin } from "@/lib/generation/authz";
 import { INT32_MAX } from "@/lib/npc/npc";
 import { getResolution, NPC_ROW_KINDS, type NpcRowKind } from "@/lib/npc/store";
 import { baseLineId, momentOf } from "@/lib/contributions/naming";
-import type { Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { addSpeaker, removeSpeaker, replaceSpeaker } from "@/lib/quests/speakers";
 import { loadRoster } from "@/lib/voices/roster-store";
 
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
   const npc = npcOf(params.get("npcType"), params.get("npcId"));
   if (!npc) return Response.json({ error: "unknown npc" }, { status: 400 });
 
-  const [resolution, roster] = await Promise.all([getResolution(npc.npcType, npc.npcId), loadRoster()]);
+  const [resolution, roster] = await Promise.all([getResolution(npc.npcType, npc.npcId), loadRoster(BASE_LANG)]);
   const voice = resolution && roster.voiceFor(resolution.race, resolution.gender, resolution.flavor);
   return Response.json({
     npc: resolution && {

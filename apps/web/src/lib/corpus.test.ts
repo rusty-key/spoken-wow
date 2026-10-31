@@ -4,7 +4,7 @@ import { buildLineIndex, npcKey } from "./corpus";
 import { corpus as catalogue, defaultFlavorFor, lineIndex } from "./quests/catalogue";
 import { loadRoster } from "./voices/roster-store";
 
-const flavorsFor = async (race: string, gender: string) => (await loadRoster()).flavorsOf(race, gender);
+const flavorsFor = async (race: string, gender: string) => (await loadRoster("enUS")).flavorsOf(race, gender);
 
 describe("corpus", async () => {
   const corpus = await catalogue();

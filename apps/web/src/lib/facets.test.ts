@@ -7,7 +7,7 @@ import { isModelVoice } from "./voices/voices";
 
 const corpus = await catalogue();
 const facets = await readFacets();
-const roster = await loadRoster();
+const roster = await loadRoster("enUS");
 
 describe("facets", () => {
   it("offers every value the corpus actually uses", () => {

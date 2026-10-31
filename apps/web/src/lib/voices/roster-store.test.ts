@@ -13,19 +13,19 @@ afterAll(async () => {
 
 describe("loadRoster", () => {
   it("reads the seeded roster", async () => {
-    const roster = await loadRoster();
+    const roster = await loadRoster("enUS");
     expect(roster.voiceFor("orc", "male", "shady")).toBe("orc-male-shady");
     expect(roster.voiceFor("gameobject", null, null)).toBe("narrator-male");
     expect(roster.gendersOf("orc")).toEqual(["female", "male"]);
   });
 
   it("keeps one roster while nothing moves", async () => {
-    expect(await loadRoster()).toBe(await loadRoster());
+    expect(await loadRoster("enUS")).toBe(await loadRoster("enUS"));
   });
 
   it("sees a type added behind its back", async () => {
-    await loadRoster();
+    await loadRoster("enUS");
     await db().query(`insert into "race" ("key") values ($1)`, [KEY]);
-    expect((await loadRoster()).hasRace(KEY)).toBe(true);
+    expect((await loadRoster("enUS")).hasRace(KEY)).toBe(true);
   });
 });

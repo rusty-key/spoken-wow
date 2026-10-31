@@ -33,8 +33,8 @@ import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/kno
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
 import { contributionByDedup, type Contribution } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
-import { db } from "@/lib/db";
 import { BASE_LANG } from "@/lib/lang";
+import { readAs } from "@/lib/teams/store";
 
 import type { Report } from "./reports";
 import { setStatus } from "./store";
@@ -151,7 +151,9 @@ async function reportState(submission: Submission): Promise<LineState> {
   const { quest, event } = submission.meta;
   if (state.kind === "missing" || submission.source !== "quests" || !quest || !event || !submission.text) return state;
 
-  const { rows } = await db().query<{ lineId: string; variant: number; text: string }>(
+  // As English: the overrides are English's, and so its team's.
+  const rows = await readAs<{ lineId: string; variant: number; text: string }>(
+    BASE_LANG,
     `select l."lineId", l."variant", coalesce(o."text", l."text") as "text"
        from "quest_line" l
        left join "line_override" o on o."lineId" = l."lineId" and l."lang" = $3

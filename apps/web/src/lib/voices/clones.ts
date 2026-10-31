@@ -6,8 +6,8 @@
  * tts_cli/voices.py. This records what the account cannot: who made it, from how much
  * audio, and on whose consent.
  */
-import { db } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
+import { asTeamOf, readAs } from "@/lib/teams/store";
 
 export type VoiceClone = {
   voice: string;
@@ -21,7 +21,8 @@ export type VoiceClone = {
 
 /** One language's clones, by slot. A slot's clone is per language: see migration 0035. */
 export async function listClones(lang: Lang = BASE_LANG): Promise<Map<string, VoiceClone>> {
-  const { rows } = await db().query<VoiceClone>(
+  const rows = await readAs<VoiceClone>(
+    lang,
     `select "voice", "voiceId", "clonedAt", "clonedBy",
             "sampleCount", "sampleBytes"::int, "contributor"
        from "voice_clone" where "lang" = $1`,
@@ -48,7 +49,7 @@ export async function recordClone(clone: {
   consentNote?: string | null;
   lang?: Lang;
 }): Promise<void> {
-  await db().query(
+  await asTeamOf(clone.lang ?? BASE_LANG, (client) => client.query(
     `insert into "voice_clone"
        ("voice", "voiceId", "clonedBy", "sampleCount", "sampleBytes",
         "contributor", "contributorUrl", "consentAt", "consentNote", "lang")
@@ -77,5 +78,5 @@ export async function recordClone(clone: {
       clone.consentNote ?? null,
       clone.lang ?? BASE_LANG,
     ],
-  );
+  ));
 }

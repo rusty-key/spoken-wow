@@ -147,7 +147,7 @@ async function resolvedSpeaker(
     resolution = lookup.resolution;
   }
 
-  return resolution ? speakerFromResolution(resolution, await loadRoster(), observed.npcName) : null;
+  return resolution ? speakerFromResolution(resolution, await loadRoster(BASE_LANG), observed.npcName) : null;
 }
 
 /**
@@ -259,7 +259,7 @@ async function prepareLine(
   // submission.ts) strips, so a verbatim duplicate of one of them hashes differently.
   // Whichever of the two comes first in the catalogue, as a scan for either would find.
   const text = contribution.text;
-  const index = indexOf(lines, await loadRoster());
+  const index = indexOf(lines, await loadRoster(BASE_LANG));
   const byId = (index.byPrefix.get(identity.lineId) ?? []).find(
     (l) => l.source === "gossip" && baseLineId(l.lineId) === identity.lineId,
   );

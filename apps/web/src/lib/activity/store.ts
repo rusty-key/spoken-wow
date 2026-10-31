@@ -15,9 +15,10 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 
-import { db } from "@/lib/db";
+import { ALL_TEAMS, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
+import { readAs, teamLangs, type TeamId } from "@/lib/teams/store";
 
 import { FOLDS, prefixesOf, type ActivityDetail, type ActivityKind, type Category, type Group } from "./kinds";
 
@@ -33,10 +34,15 @@ export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
   detail: ActivityDetail[K];
 };
 
-const INSERT = `insert into "activity" ("lang", "kind", "source", "subject", "lineId", "detail", "actorId")
-                select "lang", "kind", "source", "subject", "lineId", coalesce("detail", '{}'), "actorId"
+/**
+ * "teamId" is written from each row rather than left to the column default: one call can
+ * carry acts in several languages, and an act on every language belongs to no team, whatever
+ * team the caller's transaction acts as.
+ */
+const INSERT = `insert into "activity" ("lang", "kind", "source", "subject", "lineId", "detail", "actorId", "teamId")
+                select "lang", "kind", "source", "subject", "lineId", coalesce("detail", '{}'), "actorId", "teamId"
                   from jsonb_to_recordset($1::jsonb) as r("lang" text, "kind" text, "source" text,
-                       "subject" text, "lineId" text, "detail" jsonb, "actorId" text)`;
+                       "subject" text, "lineId" text, "detail" jsonb, "actorId" text, "teamId" uuid)`;
 
 /** Record one act, as part of `client`'s transaction when given. */
 export async function recordActivity<K extends ActivityKind>(
@@ -55,7 +61,29 @@ export async function recordActivities(
   client?: Pick<PoolClient, "query">,
 ): Promise<void> {
   if (!events.length) return;
-  const rows = JSON.stringify(
+  if (client) {
+    await client.query(INSERT, [rowsOf(events, await teamLangs())]);
+    return;
+  }
+  try {
+    const owners = await teamLangs();
+    // Each team's acts in a transaction of its own, the every-language ones as no one team.
+    const groups = new Map<TeamId | typeof ALL_TEAMS, ActivityEvent[]>();
+    for (const event of events) {
+      const team = (event.lang && owners.get(event.lang)) || ALL_TEAMS;
+      groups.set(team, [...(groups.get(team) ?? []), event]);
+    }
+    for (const [team, group] of groups) {
+      await withTeam(team, (scoped) => scoped.query(INSERT, [rowsOf(group, owners)]));
+    }
+  } catch (error) {
+    console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
+  }
+}
+
+/** A language nobody owns has no team to file under, so its act is kept with none. */
+function rowsOf(events: ActivityEvent[], owners: Map<Lang, TeamId>): string {
+  return JSON.stringify(
     events.map((event) => ({
       lang: event.lang,
       kind: event.kind,
@@ -64,17 +92,9 @@ export async function recordActivities(
       lineId: event.lineId ?? null,
       detail: event.detail,
       actorId: event.actorId,
+      teamId: (event.lang && owners.get(event.lang)) || null,
     })),
   );
-  if (client) {
-    await client.query(INSERT, [rows]);
-    return;
-  }
-  try {
-    await db().query(INSERT, [rows]);
-  } catch (error) {
-    console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
-  }
 }
 
 export type ActivityRow = {
@@ -237,7 +257,8 @@ export async function listActivity(
        limit ${n})`;
 
   // A batch's count is of the takes in the range, so that it matches what opening it lists.
-  const { rows } = await db().query<Row>(
+  const rows = await readAs<Row>(
+    filter.lang,
     `select ${COLUMNS},
             case when a."kind" = 'batch.queued' then (
               select count(*)::int from "activity" t
@@ -275,7 +296,8 @@ export async function groupRows(
   const where = [`a."lang" = $1`, `a."kind" = $2`, `a."detail"->>'${key}' = $3`];
   const { cut } = dayRange(param, range);
   if (range.from || range.to) where.push(cut("a"));
-  const { rows } = await db().query<Row>(
+  const rows = await readAs<Row>(
+    lang,
     `select ${COLUMNS}
        from "activity" a
        ${JOINS}
@@ -295,7 +317,8 @@ export async function activityActors(
   lang: Lang,
   global = false,
 ): Promise<{ id: string; name: string }[]> {
-  const { rows } = await db().query<{ id: string; name: string }>(
+  return readAs<{ id: string; name: string }>(
+    lang,
     `select u."id", u."name" from "user" u
       where exists (select 1 from "activity" a
                      where a."actorId" = u."id" and (a."lang" = $1 or a."lang" is null)
@@ -303,7 +326,6 @@ export async function activityActors(
       order by u."name"`,
     [lang, global],
   );
-  return rows;
 }
 
 function serialise(row: Row): ActivityRow {

@@ -79,7 +79,7 @@ export async function rewriteEnglish(
     await splitByPlayerGender(rows[0], sides, variant, rewrite);
   } else {
     for (const draft of drafts) {
-      await writeOverride(draft.file, draft.lineId, draft.text, rewrite.userId, rewrite.contributionId);
+      await writeOverride(draft.file, draft.lineId, draft.text, rewrite.userId, BASE_LANG, rewrite.contributionId);
     }
   }
   return { split, files: drafts.map((draft) => draft.file) };

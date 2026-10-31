@@ -13,6 +13,7 @@
  */
 import { fileIndex } from "@/lib/audio";
 import { requireRegenerate } from "@/lib/generation/authz";
+import { BASE_LANG } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { englishMomentLines, rewriteEnglish } from "@/lib/quests/english-rewrite";
 import { OverrideError, validateRewrite } from "@/lib/quests/override";
@@ -53,7 +54,7 @@ export async function PUT(request: Request) {
     }
   }
 
-  const override = await writeOverride(draft.file, draft.lineId, draft.text, session.user.id);
+  const override = await writeOverride(draft.file, draft.lineId, draft.text, session.user.id, BASE_LANG);
   return Response.json({ override });
 }
 
@@ -68,5 +69,5 @@ export async function DELETE(request: Request) {
 
   // Answering 200 for a file that had no override: the caller asked for it to be gone and it
   // is gone, and a 404 would make "revert" fail on a second click.
-  return Response.json({ removed: await clearOverride(file, session.user.id) });
+  return Response.json({ removed: await clearOverride(file, session.user.id, BASE_LANG) });
 }

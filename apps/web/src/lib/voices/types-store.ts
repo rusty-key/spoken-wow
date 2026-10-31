@@ -3,15 +3,25 @@
  * flavors, and the voice each combination is read with. The only writer of those tables.
  *
  * A refusal is a TypesError whose message is shown to the admin as it stands.
+ *
+ * Every edit runs as the team that keeps the roster (rosterTeam): the types themselves are
+ * every team's, the voices and assignments that team's.
  */
 import type { PoolClient } from "pg";
 
-import { inTransaction } from "@/lib/db";
+import { withTeam } from "@/lib/db";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { newVoiceName, type Gender } from "./roster";
+import { rosterTeam } from "./roster-store";
 import { GENDERS } from "./voices";
 
 export class TypesError extends Error {}
+
+/** An edit of the types, which every language is voiced with, as the roster's team. */
+async function asRoster<T>(lang: Lang, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  return withTeam(await rosterTeam(lang), work);
+}
 
 /**
  * A first gender for a genderless type, or a first flavor for a race-gender read by a bare voice,
@@ -116,7 +126,7 @@ async function assign(
 export async function addType(rawKey: unknown, rawGenders: unknown): Promise<void> {
   const race = key(rawKey);
   const genders = [...new Set((Array.isArray(rawGenders) ? rawGenders : []).map(gender))];
-  await inTransaction(async (client) => {
+  await asRoster(BASE_LANG, async (client) => {
     if (await exists(client, `select 1 from "race" where "key" = $1`, [race])) {
       throw new TypesError(`${race} is a type already`);
     }
@@ -132,7 +142,7 @@ export async function addType(rawKey: unknown, rawGenders: unknown): Promise<voi
 /** Only while no NPC has it. Its voices stay: they may have takes. */
 export async function deleteType(rawKey: unknown): Promise<void> {
   const race = key(rawKey);
-  await inTransaction(async (client) => {
+  await asRoster(BASE_LANG, async (client) => {
     await requireType(client, race);
     if (await exists(client, `select 1 from "npc" where "race" = $1 limit 1`, [race])) {
       throw new TypesError(`NPCs are ${race}: give them another type first`);
@@ -148,7 +158,7 @@ export async function addGender(rawRace: unknown, rawGender: unknown, rawExistin
   const race = key(rawRace);
   const g = gender(rawGender);
   const choice = existing(rawExisting);
-  await inTransaction(async (client) => {
+  await asRoster(BASE_LANG, async (client) => {
     await requireType(client, race);
     if (await exists(client, `select 1 from "gender" where "race" = $1 and "gender" = $2`, [race, g])) {
       throw new TypesError(`${race} has ${g} already`);
@@ -192,7 +202,7 @@ export async function addFlavor(
   const g = optional(rawGender, gender);
   const flavor = key(rawFlavor);
   const choice = existing(rawExisting);
-  await inTransaction(async (client) => {
+  await asRoster(BASE_LANG, async (client) => {
     await requireType(client, race);
     const gendered = await exists(client, `select 1 from "gender" where "race" = $1`, [race]);
     if (gendered && !g) throw new TypesError(`${race} needs a gender for a flavor`);
@@ -238,7 +248,7 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
   const race = key(rawRace);
   const g = optional(rawGender, gender);
   const flavor = key(rawFlavor);
-  await inTransaction(async (client) => {
+  await asRoster(BASE_LANG, async (client) => {
     if (await exists(client, `select 1 from "npc" where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3 limit 1`, [race, g, flavor])) {
       throw new TypesError(`NPCs speak ${flavor}: give them another flavor first`);
     }
@@ -253,12 +263,18 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
 }
 
 /** `voice` null: a new voice of the combination's own. */
-export async function assignVoice(rawRace: unknown, rawGender: unknown, rawFlavor: unknown, rawVoice: unknown): Promise<void> {
+export async function assignVoice(
+  rawRace: unknown,
+  rawGender: unknown,
+  rawFlavor: unknown,
+  rawVoice: unknown,
+  lang: Lang,
+): Promise<void> {
   const race = key(rawRace);
   const g = optional(rawGender, gender);
   const flavor = optional(rawFlavor, key);
   const voice = typeof rawVoice === "string" && rawVoice ? rawVoice : null;
-  await inTransaction(async (client) => {
+  await asRoster(lang, async (client) => {
     await requireType(client, race);
     await assign(client, race, g, flavor, voice);
   });

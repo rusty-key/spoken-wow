@@ -9,6 +9,7 @@
  * sees this module's own imports.
  */
 import { flavorOptionsFor } from "@/lib/contributions/speaker";
+import { BASE_LANG } from "@/lib/lang";
 import { loadRoster } from "@/lib/voices/roster-store";
 import type { NpcResolution, NpcRowKind, Provenance } from "@/lib/npc/store";
 import type { BookMatchResult } from "./book-match";
@@ -198,7 +199,7 @@ export async function npcSummaryFrom(
     confirmed: resolution?.confirmed ?? false,
     doubtful: resolution?.doubtful ?? false,
     flavorOptions:
-      flavorOptionsFor(resolution?.race ?? null, resolution?.gender ?? null, await loadRoster()),
+      flavorOptionsFor(resolution?.race ?? null, resolution?.gender ?? null, await loadRoster(BASE_LANG)),
     conflict: conflict.map(({ npcKind, race, gender, flavor, provenance, doubtful }) => ({
       npcKind,
       race,

@@ -20,6 +20,7 @@
  */
 import "server-only";
 
+import { BASE_LANG } from "@/lib/lang";
 import { defaultFlavorFor } from "@/lib/quests/catalogue";
 import { loadRoster } from "@/lib/voices/roster-store";
 import type { Gender } from "@/lib/voices/voices";
@@ -41,7 +42,7 @@ export async function voiceForDisplay(displayId: number): Promise<DisplayVoice> 
     return { voice: null, exact: false, reason: `appearance ${displayId} has no model or voice set on file` };
   }
   const [modelFileId, npcSoundsId, setVoice] = entry;
-  const roster = await loadRoster();
+  const roster = await loadRoster(BASE_LANG);
 
   // Which voice reads the combination, not whether a voice of that name exists: one mapped into
   // a flavor keeps its name, and reads only the flavor.

@@ -8,6 +8,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { ownTeam } from "@/lib/teams/testing";
 
 import { countRecent, createReport, listReports, reportsForLine, setStatus } from "./store";
 
@@ -178,5 +179,21 @@ describe("the two sources", () => {
 
     const [report] = await reportsForLine("places", "z:1411");
     expect(report.target).toBeNull();
+  });
+});
+
+describe("a report's team", () => {
+  it("is its language's, for an anonymous report from the addon", async () => {
+    const french = await ownTeam("frFR");
+    try {
+      await createReport(submission({ lang: "frFR", userId: null }));
+      const { rows } = await db().query(`select "teamId" from "report" where "ip" = $1`, [ip]);
+      expect(rows).toEqual([{ teamId: french.team }]);
+
+      const [report] = await reportsForLine("quests", "q:1:accept", "frFR");
+      expect((await setStatus(report.id, "fixed", RESOLVER))?.status).toBe("fixed");
+    } finally {
+      await french.restore();
+    }
   });
 });
