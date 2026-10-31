@@ -16,7 +16,7 @@ import "server-only";
 import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
-import type { Lang } from "@/lib/lang";
+import { CODES, type Lang } from "@/lib/lang";
 
 export type { TeamId };
 
@@ -157,4 +157,17 @@ export async function adoptLang(client: ClientBase, lang: string): Promise<void>
      on conflict do nothing`,
     [lang],
   );
+}
+
+/**
+ * Gives every language the site knows (CODES) that no team owns to the english team, so that
+ * no language is left where a write refuses it: a player's report in it, its activity, the
+ * queue's dismissal. Run once per server process when the queue starts (generation/boot.ts)
+ * and when a language is switched on; the caller forgets the memo once that commits.
+ *
+ * Parking unowned languages on the english team is a phase-1 stopgap. Eventually a language
+ * no team owns goes to a separate bucket, not English (docs/platform/TEAMS.md).
+ */
+export async function adoptEveryLang(client: ClientBase): Promise<void> {
+  for (const lang of CODES) await adoptLang(client, lang);
 }

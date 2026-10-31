@@ -312,3 +312,9 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 Clients per team; several English teams; team-owned storage, channels and signing keys; CurseForge
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
+
+A separate bucket for languages no team owns. In phase 1 every language the site knows is parked
+on the English team when a server process starts its queue and when a language is switched on (`adoptEveryLang`,
+`apps/web/src/lib/teams/store.ts`), so a report, activity or queue action in it always has a team
+to land on. That is a stopgap: eventually a language no team owns goes to a separate bucket, not
+English.

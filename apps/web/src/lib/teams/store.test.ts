@@ -7,14 +7,16 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { recordActivity } from "@/lib/activity/store";
-import { closeDb, db } from "@/lib/db";
+import { closeDb, db, inTransaction } from "@/lib/db";
 import { setEnabled } from "@/lib/languages/store";
+import { createReport } from "@/lib/reports/store";
 
-import { byTeam, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
+import { adoptEveryLang, byTeam, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
 
 const USER = `test-teams-${Math.random().toString(36).slice(2, 10)}`;
 // A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
 const NEW_LANG = "deDE";
+const IP = `${USER}-ip`;
 
 async function englishTeam(): Promise<string> {
   const { rows } = await db().query(`select "id" from "team" where "slug" = 'english'`);
@@ -25,6 +27,7 @@ async function cleanup() {
   await db().query(`delete from "team_language" where "lang" = $1`, [NEW_LANG]);
   await db().query(`delete from "language" where "code" = $1`, [NEW_LANG]);
   await db().query(`delete from "activity" where "actorId" = $1`, [USER]);
+  await db().query(`delete from "report" where "ip" = $1`, [IP]);
   forgetTeams();
 }
 
@@ -75,6 +78,25 @@ describe("teamOf", () => {
       [NEW_LANG],
     );
     expect(rows[0].n).toBe(1);
+  });
+});
+
+describe("adoptEveryLang", () => {
+  beforeEach(cleanup);
+  afterEach(cleanup);
+
+  const report = () =>
+    createReport({
+      source: "quests", lang: NEW_LANG, lineId: null, target: "quest/1/accept", category: "other",
+      body: "test", userId: null, name: null, email: null, ip: IP,
+    });
+
+  it("gives a language with no team one, so a report in it can be filed", async () => {
+    await expect(report()).rejects.toBeInstanceOf(NoTeamError);
+    await inTransaction(adoptEveryLang);
+    forgetTeams();
+    await report();
+    expect(await teamOf(NEW_LANG)).toBe(await englishTeam());
   });
 });
 
