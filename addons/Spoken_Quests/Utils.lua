@@ -89,10 +89,9 @@ for i = 1, 40 do
     table.insert(SPEAKER_UNITS, "nameplate" .. i)
 end
 
---- The GUID of the creature on screen that said something, for NPC chat that came without one
---- (Forever and Classic Era send none): a unit of that name, the one attacking the player first,
---- since that is who shouts on aggro. Several others are told apart only when all are one sex,
---- the one thing the GUID is then wanted for; otherwise nil.
+--- The speaker's GUID for NPC chat that comes without one (Forever, Classic Era): the unit of that
+--- name attacking the player, since that is who shouts on aggro. Failing that, any of them, but only
+--- when all are one sex: the sex is what the GUID is wanted for.
 ---@param name string|nil
 ---@return string|nil guid
 function Utils:GetSpeakerGUIDByName(name)
