@@ -358,31 +358,15 @@ In order:
 
 1. **Before merging, check the languages the rows name**, from a workstation. 0089 gives a
    language nobody owns to the english team, and aborts, as `team_language` refuses it, on
-   one that is not a well-formed code. Both should be expected:
+   one that is not a well-formed code. `team_scoped_lang` (0087) is the set 0089 reads, so this
+   lists exactly what it will act on. Both should be expected:
 
    ```sql
-   select "lang", string_agg("tbl", ' ' order by "tbl") as "tables",
+   select "lang",
           case when "lang" !~ '^[a-z]{2}[A-Z]{2}$' then 'malformed: aborts 0089'
                else 'no team: joins english' end as "outcome"
-     from (
-       select 'take' as "tbl", "lang" from "take" union select 'recording', "lang" from "recording"
-       union select 'take_ack', "lang" from "take_ack" union select 'voice_clone', "lang" from "voice_clone"
-       union select 'fish_reference', "lang" from "fish_reference"
-       union select 'generation_setting_locale', "lang" from "generation_setting_locale"
-       union select 'pronunciation_lexicon_locale', "lang" from "pronunciation_lexicon_locale"
-       union select 'lexicon_change', "lang" from "lexicon_change"
-       union select 'line_ignore', "lang" from "line_ignore" union select 'line_flag', "lang" from "line_flag"
-       union select 'line_issue', "lang" from "line_issue" union select 'report', "lang" from "report"
-       union select 'regeneration_batch', "lang" from "regeneration_batch"
-       union select 'regeneration_job', "lang" from "regeneration_job"
-       union select 'regeneration_pause', "lang" from "regeneration_pause"
-       union select 'activity', "lang" from "activity"
-       union select 'voice_sample', nullif(split_part("clone", '@', 2), '') from "voice_sample"
-     ) l
-    where "lang" is not null
-      and ("lang" !~ '^[a-z]{2}[A-Z]{2}$'
-           or not exists (select 1 from "team_language" tl where tl."lang" = l."lang" and tl."privileged"))
-    group by "lang"
+     from "team_scoped_lang"
+    where team_of_lang("lang") is null or "lang" !~ '^[a-z]{2}[A-Z]{2}$'
     order by "lang";
    ```
 
