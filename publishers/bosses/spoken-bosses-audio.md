@@ -12,6 +12,7 @@ categories:
   - Roleplay
 license: MIT
 addonReadme: addons/SpokenBossesAudio/README.md
+manager: true
 ---
 
 Narrated boss stories for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Bosses module. This addon is data only: it does nothing on its own.
