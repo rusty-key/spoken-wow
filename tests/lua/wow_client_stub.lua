@@ -998,7 +998,10 @@ function _G.GetAddOnMetadata(addon, key)
     -- that is not a pack carries no metadata at all.
     return entry and entry.meta and entry.meta[key] or ""
 end
-function _G.IsAddOnLoadOnDemand() return false end
+function _G.IsAddOnLoadOnDemand(addon)
+    local entry = AddOnAt(addon)
+    return entry and entry.loadOnDemand or false
+end
 -- Character first, the pre-11.0 order. Given a name, the client answers for all characters, so
 -- an entry switched off only for this one (reason "DISABLED") is still on for some (1).
 function _G.GetAddOnEnableState(character, addon)
@@ -1006,7 +1009,12 @@ function _G.GetAddOnEnableState(character, addon)
     return (entry and entry.reason == "DISABLED") and 1 or 2
 end
 function _G.DisableAddOn(addon) table.insert(M.disabledAddOns, addon) end
-function _G.LoadAddOn() return true end
+-- An entry's onLoad stands in for the pack's own code running, which is where it registers.
+function _G.LoadAddOn(addon)
+    local entry = AddOnAt(addon)
+    if entry and entry.onLoad then return entry.onLoad() end
+    return true
+end
 
 local libs = {}
 M.ldbObjects = {}
