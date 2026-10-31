@@ -614,7 +614,7 @@ function Addon:OnInitialize()
     -- tables after entering the world. Keeping LoadAddOn out of AceAddon's
     -- shared initialization/login stack avoids Hardcore's stricter script
     -- time budget being charged to AceAddon-3.0. One pack per callback: several
-    -- in one still run past the client's script-time limit (#715).
+    -- in one still run past the client's script-time limit.
     DataModules:EnumerateAddons(false)
     self.dataModulesPending = not DataModules:HasRegisteredModules()
     local function LoadDeferredDataModules()

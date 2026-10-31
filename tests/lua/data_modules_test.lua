@@ -72,8 +72,8 @@ Expect("...while one switched on is", VO.DataModules.presentModules["OnPack"] ~=
 Expect("...and nothing was switched on to load it", #stub.enabledAddOns, 0)
 
 ---------------------------------------------------------------- loading after login, a pack at a time
--- Each pack is parsed in a timer callback of its own: several in one ran past Hardcore's
--- script-time limit (#715). A pack that does not register is tried once, not every frame.
+-- Several packs in one callback ran past Hardcore's script-time limit, and a pack that does not
+-- register must not be retried every frame.
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 _G.UISpecialFrames = _G.UISpecialFrames or {}
 stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}

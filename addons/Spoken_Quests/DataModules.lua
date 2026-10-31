@@ -374,11 +374,7 @@ function DataModules:IsOlderContent(installed, known)
     return false
 end
 
---- Load the next present pack not tried yet, one per call.
----
---- A pack is a multi-megabyte generated Lua table, and parsing several in one callback can run
---- past the client's script-time limit (#715), so the deferred loader gives each pack a
---- callback of its own. Each pack is tried once: one that fails must not be picked again and
+--- Load the next present pack not tried yet. Each pack is tried once, so one that fails cannot
 --- hold back the packs after it.
 ---@return DataModuleMetadata? module The pack tried, nil once every pack has been
 ---@return boolean? loaded
