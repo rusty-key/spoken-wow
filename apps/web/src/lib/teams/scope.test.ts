@@ -4,10 +4,10 @@
  * share it. The insert checks roll back.
  *
  * Until the app writes inside withTeam, any suite's insert gets a null team, and some put a
- * row back after the test -- the lexicon's singleton, for one -- so a null team proves
- * nothing about the migration. A wrong team always does, so that is what every table is held
- * to. That the backfill reached every row is held of activity, which is append-only and the
- * largest: a row older than the migration was the backfill's to fill.
+ * row back after the test -- the lexicon's singleton, for one -- so a null team on a row
+ * written since the migration proves nothing about it. A wrong team always does, so that is
+ * what every table is held to. That the backfill reached every row is held of the tables that
+ * stamp a row when it is made: a row stamped before the migration was the backfill's to fill.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -53,6 +53,24 @@ const privileged = (lang: string) =>
 const MIGRATED = `select "applied_at" from "schema_migrations"
                    where "name" = '0088_team_scope.sql'`;
 
+/** Each table that records when a row was made, with that column. */
+const STAMPED: Record<string, string> = {
+  take: "createdAt",
+  recording: "createdAt",
+  take_ack: "ackedAt",
+  voice: "createdAt",
+  voice_clone: "clonedAt",
+  voice_sample: "uploadedAt",
+  lexicon_change: "changedAt",
+  line_ignore: "createdAt",
+  report: "createdAt",
+  regeneration_batch: "createdAt",
+  regeneration_job: "queuedAt",
+  regeneration_pause: "pausedAt",
+  queue_dismissal: "dismissedAt",
+  activity: "at",
+};
+
 /** Rows matching `where` whose team is set and is not `expected`. */
 async function wrong(table: string, expected: string, where = "true"): Promise<number> {
   const { rows } = await db().query(
@@ -74,10 +92,11 @@ describe("team scope", () => {
     expect(rows[0].n).toBe(0);
   });
 
-  it("backfilled every activity row that has a language", async () => {
+  it.each(Object.entries(STAMPED))("backfilled every %s row older than it", async (table, at) => {
+    const siteWide = ["line_ignore", "activity"].includes(table) ? ` and "lang" is not null` : "";
     const { rows } = await db().query(
-      `select count(*)::int as "n" from "activity"
-        where "lang" is not null and "teamId" is null and "at" <= (${MIGRATED})`,
+      `select count(*)::int as "n" from "${table}"
+        where "teamId" is null and "${at}" <= (${MIGRATED})${siteWide}`,
     );
     expect(rows[0].n).toBe(0);
   });

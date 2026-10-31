@@ -149,3 +149,5 @@ create index "report_team_idx"                on "report" ("teamId");
 create index "regeneration_batch_team_idx"    on "regeneration_batch" ("teamId");
 create index "queue_dismissal_team_idx"       on "queue_dismissal" ("teamId");
 create index "activity_team_idx"              on "activity" ("teamId");
+-- Its team-first key is partial, so it cannot serve a filter on every job.
+create index "regeneration_job_team_idx"      on "regeneration_job" ("teamId");
