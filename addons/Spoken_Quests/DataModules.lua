@@ -371,13 +371,15 @@ function DataModules:IsOlderContent(installed, known)
     return false
 end
 
-function DataModules:LoadPresentModules()
-    for _, module in self:GetPresentModules() do
-        if LOAD_ALL_MODULES and module.LoadOnDemand and not self:GetModule(module.AddonName) then
-            self:LoadModule(module)
-        end
+--- Load the present pack at a position in load order, if it still needs loading.
+---@param index integer
+---@return DataModuleMetadata? module The pack there, nil past the last
+function DataModules:LoadPresentModuleAt(index)
+    local module = self.presentModulesOrdered[index]
+    if module and LOAD_ALL_MODULES and module.LoadOnDemand and not self:GetModule(module.AddonName) then
+        self:LoadModule(module)
     end
-    return self:HasRegisteredModules()
+    return module
 end
 
 -- We deliberately use a high ##Interface version in TOC to ensure that all clients will load it.

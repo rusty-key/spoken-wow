@@ -621,17 +621,32 @@ function Addon:OnInitialize()
     -- Discover data packs now, but load their multi-megabyte generated Lua
     -- tables after entering the world. Keeping LoadAddOn out of AceAddon's
     -- shared initialization/login stack avoids Hardcore's stricter script
-    -- time budget being charged to AceAddon-3.0.
+    -- time budget being charged to AceAddon-3.0. One pack per callback: several
+    -- in one still run past the client's script-time limit.
     DataModules:EnumerateAddons(false)
     self.dataModulesPending = not DataModules:HasRegisteredModules()
+    -- A position rather than "the first pack not registered", so a pack that fails is tried once
+    -- and cannot hold back the packs after it.
+    local nextPack = 1
     local function LoadDeferredDataModules()
         if not self.dataModulesPending then
             return
         end
-        local succeeded, loadError = pcall(DataModules.LoadPresentModules, DataModules)
+        -- result is the pack tried, or the error when the call itself failed.
+        local succeeded, result = pcall(DataModules.LoadPresentModuleAt, DataModules, nextPack)
+        if succeeded and result then
+            nextPack = nextPack + 1
+            local reason = DataModules:GetModuleLoadError(result.AddonName)
+            if reason then
+                Debug:Record("data-load-error", format("%s: %s", result.AddonName, reason))
+            end
+            -- The next frame's callback starts with a fresh script-time budget.
+            C_Timer.After(0, LoadDeferredDataModules)
+            return
+        end
         self.dataModulesPending = nil
         if not succeeded then
-            self.dataModulesDeferredError = tostring(loadError)
+            self.dataModulesDeferredError = tostring(result)
             Debug:Record("data-load-error", self.dataModulesDeferredError)
         elseif DataModules:HasRegisteredModules() then
             Debug:Record("data-ready", "Deferred sound packs finished loading")

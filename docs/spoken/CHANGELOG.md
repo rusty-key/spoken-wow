@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **No more "script ran too long" error after logging in on Hardcore.** Quest sound packs now load
+  one at a time after you enter the world, and a pack that fails to load no longer holds back the
+  ones after it.
+  *([anon1231823](https://github.com/anon1231823))*
 - **Immersion turns its pages with the voice.** While Spoken Quests reads a quest or gossip page in Immersion's
   talk box, the text shows the part being read and Immersion's own timer waits. When the line ends or is stopped,
   Immersion goes on as before. *([Aleph-Null-Zero](https://github.com/Aleph-Null-Zero))*
