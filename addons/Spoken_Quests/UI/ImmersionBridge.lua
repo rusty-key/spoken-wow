@@ -1,11 +1,8 @@
 setfenv(1, VoiceOver)
 
--- Immersion shows a quest or gossip page in its talk box a few sentences at a time, turned by a
--- timer that knows nothing of the voice. While Spoken Quests reads the page, this file holds that
--- timer and turns to the part being read, found by matching the caption's words to the parts.
---
--- The talk box's text and its methods are Immersion internals, not an API: Setup checks them once
--- and stands down if any is missing.
+-- Immersion turns its talk box's parts on a timer that knows nothing of the voice. While Spoken
+-- Quests reads the page, this holds that timer and turns to the part being read. The methods used
+-- are Immersion internals, not an API, so Setup stands down if any is missing.
 
 ImmersionBridge = {}
 local Bridge = ImmersionBridge

@@ -16,8 +16,7 @@
 ## Dependencies: Spoken
 # Spoken is what this module runs on, and ships in the same zip.
 ## OptionalDeps: DialogueUI, Immersion
-# DialogueUI and Immersion, when installed, load first so their windows exist to be hooked:
-# UI/DialogueUIBridge.lua and UI/ImmersionBridge.lua.
+# DialogueUI and Immersion, when installed, load first so their windows exist to be hooked.
 ## Group: Spoken
 ## X-Part-Of: Spoken
 ## X-VoiceOver-Player: 1
