@@ -2,7 +2,7 @@
 // nothing here guesses the result of an install before the job says so.
 import { createContext, createElement, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react'
 import type { AddGameResult, UpdaterState } from '@shared/api'
-import type { Catalog, CommunityCatalog, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot } from '@shared/types'
+import type { Catalog, CommunityCatalog, GameInstall, GenerateStatus, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
 import { api, errorText } from './api'
 import type { Platform } from './strings'
@@ -27,6 +27,8 @@ export interface State {
   jobs: Record<string, JobProgress>
   updater: UpdaterState
   sharing: SharingStatus
+  /** Null when this computer cannot generate (no keychain). */
+  generate: GenerateStatus | null
   refreshing: boolean
   page: Page
   gameId: string
@@ -45,6 +47,7 @@ type Action =
   | { type: 'dismiss'; key: string }
   | { type: 'updater'; state: UpdaterState }
   | { type: 'sharing'; status: SharingStatus }
+  | { type: 'generate'; status: GenerateStatus }
   | { type: 'refreshing'; on: boolean }
   | { type: 'nav'; page: Page; gameId?: string; tab?: SpokenTab }
 
@@ -67,6 +70,7 @@ const initial: State = {
   jobs: {},
   updater: { state: 'idle' },
   sharing: { sending: false },
+  generate: null,
   refreshing: false,
   page: 'home',
   gameId: '',
@@ -90,6 +94,7 @@ function reducer(s: State, a: Action): State {
         // A state sent while the window was starting is newer than the snapshot's.
         updater: s.updater.state === 'idle' ? (a.snap.updater ?? s.updater) : s.updater,
         sharing: a.snap.sharingStatus ?? s.sharing,
+        generate: a.snap.generateStatus ?? s.generate,
         statuses: a.statuses,
         page: a.page,
         gameId: a.gameId,
@@ -126,6 +131,8 @@ function reducer(s: State, a: Action): State {
       return { ...s, updater: a.state }
     case 'sharing':
       return { ...s, sharing: a.status }
+    case 'generate':
+      return { ...s, generate: a.status }
     case 'refreshing':
       return { ...s, refreshing: a.on }
     case 'nav':
@@ -338,7 +345,8 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
       }),
       a.onCommunityChanged((community) => dispatch({ type: 'community', community })),
       a.onUpdater((u) => dispatch({ type: 'updater', state: u })),
-      a.onSharing((status) => dispatch({ type: 'sharing', status }))
+      a.onSharing((status) => dispatch({ type: 'sharing', status })),
+      a.onGenerate((status) => dispatch({ type: 'generate', status }))
     ]
     const onHash = (): void => {
       const route = parseHash()

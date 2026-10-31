@@ -20,6 +20,7 @@ import { encode } from "@msgpack/msgpack";
 import { fishConfig, type FishOptions } from "@/lib/voices/fish";
 
 import { classifyFish, failure, type Failure } from "./errors";
+import { SPEECH_PATH } from "./providers";
 import { PARAGRAPH_BREAK } from "./speakers/shape";
 import { stitchMp3 } from "./stitch";
 
@@ -164,7 +165,7 @@ async function speakOnce(
 
   let response: Response;
   try {
-    response = await fetchImpl(`${baseUrl}/v1/tts`, {
+    response = await fetchImpl(`${baseUrl}${SPEECH_PATH.fish}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -209,6 +210,11 @@ async function speakOnce(
 
   // What fish.audio bills: the UTF-8 bytes of the text, speaker tags included.
   return { ok: true, audio, bytes: Buffer.byteLength(payload.text as string, "utf8") };
+}
+
+/** The stand-in answer a run that only records its requests hears back. */
+export function fishAudioAnswer(audio: Buffer): Response {
+  return new Response(new Uint8Array(audio), { headers: { "content-type": "audio/mpeg" } });
 }
 
 function message(error: unknown): string {

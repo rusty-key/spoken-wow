@@ -23,11 +23,11 @@ import { corpus } from "@/lib/quests/catalogue";
 import { isSource, type Source } from "@/lib/sections";
 import {
   requireAnyRegenerate,
-  requireApiKey,
-  requireSpeaker,
+  requireQueueable,
   requireIn,
 } from "@/lib/generation/authz";
-import { createBatch, enqueue, snapshot } from "@/lib/generation/queue";
+import { queueBatch, snapshot } from "@/lib/generation/queue";
+import { bossesEntry, placesEntry, questsEntry, readablesEntry } from "@/lib/generation/queue-entries";
 import { searchContext } from "@/lib/quests/context";
 import { batchJobs, matchingLines } from "@/lib/search";
 import { filtersFromParams, needsStale } from "@/lib/search-request";
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   //
   // The provider is fixed here too: the estimate the batch was started on was for it, and
   // switching on /voices mid-batch must not move the jobs already waiting.
-  const { provider, denied: noKey } = await requireSpeaker(session.user.id, lang);
+  const { provider, denied: noKey } = await requireQueueable(session.user.id, lang);
   if (noKey) return noKey;
 
   // Nothing starts the queue on boot - see lib/generation/boot.ts for why - so every route
@@ -114,25 +114,16 @@ export async function POST(request: NextRequest) {
   // holds one needs the fish.audio key as well, for the reason the first key is checked above.
   const pinned = provider === "fish" ? new Set<string>() : await pinnedVoices(lang);
   if (jobs.some((job) => pinned.has(job.voice))) {
-    const { denied: noFishKey } = await requireApiKey(session.user.id, "fish");
+    const { denied: noFishKey } = await requireQueueable(session.user.id, lang, "fish");
     if (noFishKey) return noFishKey;
   }
 
-  const batchId = await createBatch(label, session.user.id, "quests", lang);
-  // BatchLine calls it audioPath and the queue calls it file, because a job is one mp3 on
-  // either side and only the quests corpus thinks of it as a line's audio.
-  const { queued, skipped } = await enqueue(
-    batchId,
-    jobs.map((job) => ({
-      lineId: job.lineId,
-      file: job.audioPath,
-      npcName: job.npcName,
-      preview: job.preview,
-      characters: job.characters,
-      provider: pinned.has(job.voice) ? "fish" : undefined,
-    })),
+  const { batchId, queued, skipped } = await queueBatch(
+    label,
+    session.user.id,
     "quests",
     lang,
+    jobs.map((job) => ({ ...questsEntry(job), provider: pinned.has(job.voice) ? "fish" : undefined })),
     provider,
   );
   await recordQueued(batchId, label, session.user.id, "quests", lang, queued);
@@ -169,16 +160,9 @@ async function queuePlaces(
 
   const wanted = new Set(lineIds as string[]);
   const jobs = (await zoneCatalogue(lang))
-    .filter((entry) => wanted.has(entry.id) && entry.spoken.trim() !== "")
-    .map((entry) => ({
-      lineId: entry.id,
-      file: entry.file,
-      // There is no NPC here. The column is a label for the progress readout, and the
-      // zone is what names a line on screen.
-      npcName: entry.zoneName,
-      preview: entry.short || entry.full.slice(0, 120),
-      characters: entry.spoken.length,
-    }));
+    .filter((entry) => wanted.has(entry.id))
+    .map(placesEntry)
+    .filter((job) => job !== null);
 
   if (jobs.length === 0) {
     return NextResponse.json(
@@ -187,8 +171,7 @@ async function queuePlaces(
     );
   }
 
-  const batchId = await createBatch(label, userId, "places", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "places", lang, provider);
+  const { batchId, queued, skipped } = await queueBatch(label, userId, "places", lang, jobs, provider);
   await recordQueued(batchId, label, userId, "places", lang, queued);
 
   queueWorker()?.nudge();
@@ -221,16 +204,9 @@ async function queueReadables(
 
   const wanted = new Set(lineIds as string[]);
   const jobs = (await bookCatalogue(lang))
-    .filter((page) => wanted.has(page.id) && page.generatable && page.spoken.trim() !== "")
-    .map((page) => ({
-      lineId: page.id,
-      file: page.file,
-      // There is no NPC here either. The column is a label for the progress readout, and
-      // a book's title plus its page number is what names a page on screen.
-      npcName: page.pageCount > 1 ? `${page.title} (${page.pageNumber}/${page.pageCount})` : page.title,
-      preview: page.spoken.slice(0, 120),
-      characters: page.spoken.length,
-    }));
+    .filter((page) => wanted.has(page.id))
+    .map(readablesEntry)
+    .filter((job) => job !== null);
 
   if (jobs.length === 0) {
     return NextResponse.json(
@@ -239,8 +215,7 @@ async function queueReadables(
     );
   }
 
-  const batchId = await createBatch(label, userId, "readables", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "readables", lang, provider);
+  const { batchId, queued, skipped } = await queueBatch(label, userId, "readables", lang, jobs, provider);
   await recordQueued(batchId, label, userId, "readables", lang, queued);
 
   queueWorker()?.nudge();
@@ -268,20 +243,10 @@ async function queueBosses(
   }
 
   const wanted = new Set(lineIds as string[]);
-  const jobs = (await bossCatalogue(lang)).flatMap((entry) =>
-    wanted.has(entry.id) && entry.text !== null && entry.spoken !== null && entry.spoken.trim() !== ""
-      ? [
-          {
-            lineId: entry.id,
-            file: entry.file,
-            // The boss is what names the line on screen; the column is the progress readout's.
-            npcName: entry.name,
-            preview: entry.text.slice(0, 120),
-            characters: entry.spoken.length,
-          },
-        ]
-      : [],
-  );
+  const jobs = (await bossCatalogue(lang)).flatMap((entry) => {
+    const job = wanted.has(entry.id) ? bossesEntry(entry) : null;
+    return job ? [job] : [];
+  });
 
   if (jobs.length === 0) {
     return NextResponse.json(
@@ -290,8 +255,7 @@ async function queueBosses(
     );
   }
 
-  const batchId = await createBatch(label, userId, "bosses", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "bosses", lang, provider);
+  const { batchId, queued, skipped } = await queueBatch(label, userId, "bosses", lang, jobs, provider);
   await recordQueued(batchId, label, userId, "bosses", lang, queued);
 
   queueWorker()?.nudge();
@@ -301,16 +265,18 @@ async function queueBosses(
 
 /**
  * One row for the whole batch, however many lines it holds. The takes it cuts are recorded
- * as they land and folded under this row on the activity page.
+ * as they land and folded under this row on the activity page. None when every line was
+ * already queued, since no batch was kept.
  */
 async function recordQueued(
-  batchId: string,
+  batchId: string | null,
   label: string,
   actorId: string,
   source: Source,
   lang: Lang,
   count: number,
 ): Promise<void> {
+  if (!batchId) return;
   await recordActivity({
     kind: "batch.queued",
     lang,

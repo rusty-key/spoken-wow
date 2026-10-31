@@ -65,6 +65,11 @@ export type GenerationStatusResponse = {
    * support question - so the explorer names it instead of showing an upstream message.
    */
   noApiKey: boolean;
+  /**
+   * Their Spoken Manager generates these lines with a key kept on their machine, so the
+   * ElevenLabs voices are that account's, which this site cannot list.
+   */
+  local?: boolean;
   settings: {
     modelId: string;
     voiceSettings: Record<string, number | boolean>;
@@ -228,7 +233,8 @@ export type QueueSnapshot = {
   through: string | null;
 };
 
-export type QueuedBatch = { batchId: string; queued: number; skipped: number };
+/** `batchId` is null when every line was already queued, so no batch was kept. */
+export type QueuedBatch = { batchId: string | null; queued: number; skipped: number };
 
 /**
  * Start a batch, or say why not.

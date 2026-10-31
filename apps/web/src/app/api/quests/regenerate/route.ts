@@ -16,6 +16,7 @@
 import { requireIn, requireSpeaker } from "@/lib/generation/authz";
 import { pinnedProvider } from "@/lib/generation/pinned";
 import { regenerateLine } from "@/lib/generation/regenerate";
+import { queuedForManager } from "@/lib/worker/local-line";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,10 @@ export async function POST(request: Request) {
 
   // After the role check, never instead of it: a key is a credential, not a permission. After
   // the line is known, because a pinned voice decides whose key that is.
-  const { speaker, denied: noKey } = await requireSpeaker(
-    session.user.id,
-    lang,
-    await pinnedProvider(body.lineId, lang),
-  );
+  const pinned = await pinnedProvider(body.lineId, lang);
+  const queued = await queuedForManager("quests", body.lineId, session.user.id, lang, pinned);
+  if (queued) return queued;
+  const { speaker, denied: noKey } = await requireSpeaker(session.user.id, lang, pinned);
   if (noKey) return noKey;
 
   const result = await regenerateLine(body.lineId, session.user.id, { speaker, lang });

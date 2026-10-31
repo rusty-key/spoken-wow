@@ -11,8 +11,12 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 
 import { closeDb, db } from "@/lib/db";
 
-const { enqueue } = vi.hoisted(() => ({
-  enqueue: vi.fn(async (_batchId: string, jobs: unknown[]) => ({ queued: jobs.length, skipped: 0 })),
+const { queueBatch } = vi.hoisted(() => ({
+  queueBatch: vi.fn(async (_label: string, _by: string, _source: string, _lang: string, jobs: unknown[]) => ({
+    batchId: "batch-1",
+    queued: jobs.length,
+    skipped: 0,
+  })),
 }));
 
 vi.mock("@/lib/generation/authz", () => ({
@@ -21,10 +25,10 @@ vi.mock("@/lib/generation/authz", () => ({
     session: { user: { id: "test-queue-bosses" } },
     denied: null,
   }),
-  requireSpeaker: async () => ({ provider: "elevenlabs", denied: null }),
+  requireQueueable: async () => ({ provider: "elevenlabs", denied: null }),
 }));
 vi.mock("@/lib/generation/boot", () => ({ ensureQueueRunning: () => {}, queueWorker: () => null }));
-vi.mock("@/lib/generation/queue", () => ({ createBatch: async () => "batch-1", enqueue }));
+vi.mock("@/lib/generation/queue", () => ({ queueBatch }));
 vi.mock("@/lib/activity/store", () => ({ recordActivity: async () => {} }));
 
 import { POST } from "./route";
@@ -53,7 +57,7 @@ async function boss(key: string, position: number, story: string | null): Promis
 
 beforeEach(async () => {
   ids = [];
-  enqueue.mockClear();
+  queueBatch.mockClear();
   const tag = Math.random().toString(36).slice(2, 8);
   await db().query(
     `insert into "boss_instance" ("map", "kind", "zone", "position") values ($1, 'dungeon', 0, -3)`,
@@ -86,8 +90,8 @@ describe("POST /api/regenerate/queue, source bosses", () => {
     const response = await post([written, unwritten, `boss:${MAP}:nobody`]);
     expect(response.status).toBe(200);
 
-    expect(enqueue).toHaveBeenCalledTimes(1);
-    const [, jobs, source, lang] = enqueue.mock.calls[0] as unknown as [string, { lineId: string }[], string, string];
+    expect(queueBatch).toHaveBeenCalledTimes(1);
+    const [, , source, lang, jobs] = queueBatch.mock.calls[0] as unknown as [string, string, string, string, { lineId: string }[]];
     expect(jobs.map((job) => job.lineId)).toEqual([written]);
     expect(jobs[0]).toMatchObject({ characters: "A story worth telling.".length });
     expect([source, lang]).toEqual(["bosses", "enUS"]);
@@ -95,7 +99,7 @@ describe("POST /api/regenerate/queue, source bosses", () => {
 
   it("answers 400 when nothing named has a story", async () => {
     expect((await post([unwritten])).status).toBe(400);
-    expect(enqueue).not.toHaveBeenCalled();
+    expect(queueBatch).not.toHaveBeenCalled();
   });
 
   it("refuses lineIds that are not an array of strings", async () => {

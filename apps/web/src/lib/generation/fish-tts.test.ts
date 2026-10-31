@@ -1,6 +1,9 @@
 import { decode } from "@msgpack/msgpack";
 import { describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_FISH_URL } from "@/lib/voices/fish";
+import { speechEndpoint } from "@/lib/worker/protocol";
+
 import {
   buildFishPayload,
   fishSpeech,
@@ -83,6 +86,14 @@ describe("the payload", () => {
 });
 
 describe("a request", () => {
+  // A worker sends only what passes this check, so drift would fail every locally generated line.
+  it("goes where a worker will send its key", async () => {
+    const { calls, fetchImpl } = stub(audio());
+    await fishSpeech(SOLO, { ...OPTIONS, baseUrl: DEFAULT_FISH_URL, fetchImpl });
+    expect(calls).toHaveLength(1);
+    expect(speechEndpoint({ method: String(calls[0].init.method), url: calls[0].url })).not.toBeNull();
+  });
+
   it("is msgpack to /v1/tts, with the key as a bearer and the model as a header", async () => {
     const { calls, fetchImpl } = stub(audio());
     const result = await fishSpeech(SOLO, { ...OPTIONS, fetchImpl });

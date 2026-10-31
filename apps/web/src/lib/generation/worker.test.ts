@@ -421,25 +421,28 @@ describe("startWorker", () => {
 
   it("fails a rate-limited job rather than requeueing it once its batch is stopped", async () => {
     const batch = await seed(1);
-    await db().query(
-      `update "regeneration_batch" set "stoppedAt" = now(), "stoppedBecause" = 'Stopped'
-        where "id" = $1`,
-      [batch],
-    );
 
     const worker = startWorker(() => true, {
       apiKeyFor: KEYED,
       budget: async () => 1,
       backoffMs: () => 0,
-      regenerate: { quests: async () => ({
-        ok: false,
-        failure: {
-          kind: "rate-limit",
-          message: "too_many_concurrent_requests",
-          status: 429,
-          fatal: false,
-        },
-      }) },
+      regenerate: { quests: async () => {
+        // Stop lands while the request is at the provider.
+        await db().query(
+          `update "regeneration_batch" set "stoppedAt" = now(), "stoppedBecause" = 'Stopped'
+            where "id" = $1`,
+          [batch],
+        );
+        return {
+          ok: false,
+          failure: {
+            kind: "rate-limit",
+            message: "too_many_concurrent_requests",
+            status: 429,
+            fatal: false,
+          },
+        };
+      } },
     });
 
     await until(async () => (await statesOf(batch)).failed === 1);
@@ -644,7 +647,7 @@ describe("per-owner queues", () => {
     await seedFor(waiting, 1);
     const b = await seedFor(other, 3);
     const backedOff = await queue.claimNext(undefined, { owner: waiting, provider: "elevenlabs" });
-    await queue.retryJob(backedOff!.id, 60_000);
+    await queue.retryJob(backedOff!.id, { delayMs: 60_000 });
     const seen: string[] = [];
 
     const worker = startWorker(() => true, {

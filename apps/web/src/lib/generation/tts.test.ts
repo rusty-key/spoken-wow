@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_BASE_URL } from "@/lib/voices/elevenlabs";
+import { speechEndpoint } from "@/lib/worker/protocol";
+
 import * as leadin from "./leadin";
 import {
   buildDialoguePayload,
@@ -396,5 +399,23 @@ describe("textToDialogue", () => {
 
     expect(result.ok).toBe(false);
     expect(called).toBe(false);
+  });
+});
+
+describe("the endpoints a line is posted to", () => {
+  // A worker sends only what passes this check, so drift would fail every locally generated line.
+  it("are ones a worker will send its key to", async () => {
+    const sent: { method: string; url: string }[] = [];
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      sent.push({ method: String(init.method), url });
+      return audioResponse();
+    }) as unknown as typeof globalThis.fetch;
+    const options = { apiKey: "test-key", baseUrl: DEFAULT_BASE_URL, fetchImpl };
+
+    await textToSpeech(REQUEST, options);
+    await textToDialogue({ ...base, modelId: "eleven_multilingual_v2" }, options);
+
+    expect(sent).toHaveLength(2);
+    for (const request of sent) expect(speechEndpoint(request)).not.toBeNull();
   });
 });

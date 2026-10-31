@@ -8,6 +8,7 @@
  * Two levels. Regenerating and reverting are a language grant; changing the global settings
  * is `admin`, because those settings apply to everything anyone generates afterwards.
  */
+import { modeOf } from "@/lib/worker/mode";
 import { headers } from "next/headers";
 
 import { readApiKey } from "@/lib/api-key";
@@ -198,6 +199,21 @@ export async function requireSpeaker(
   const { key, denied } = await requireApiKey(userId, chosen);
   if (denied) return { speaker: null, provider: chosen, key: null, denied };
   return { speaker: speakerFrom(chosen, key, preference), provider: chosen, key, denied: null };
+}
+
+/**
+ * A 428 only when the lines would be generated here without a key. An author whose Spoken
+ * Manager generates for them keeps the key on their machine, so there is none here to check.
+ */
+export async function requireQueueable(
+  userId: string,
+  lang: Lang,
+  provider?: Provider,
+): Promise<{ provider: Provider; denied: Response | null }> {
+  const chosen = provider ?? (await readPreference(userId, lang)).provider;
+  if ((await modeOf(userId, chosen)) === "local") return { provider: chosen, denied: null };
+  const { denied } = await requireApiKey(userId, chosen);
+  return { provider: chosen, denied };
 }
 
 //------------------------------------------------------------------------------

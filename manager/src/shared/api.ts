@@ -1,6 +1,6 @@
 // The contract between the window and the main process. The preload exposes `ManagerApi` as
 // `window.manager`; the main process answers each channel.
-import type { Catalog, CommunityCatalog, GameInstall, JobProgress, ProductStatus, Settings, SharingStatus, Snapshot } from './types'
+import type { Catalog, CommunityCatalog, GameInstall, GenerateStatus, JobProgress, ProductStatus, Settings, SharingStatus, Snapshot } from './types'
 
 export const CHANNELS = {
   snapshot: 'manager:snapshot',
@@ -22,6 +22,9 @@ export const CHANNELS = {
   clearDownloads: 'manager:downloads:clear',
   shareNow: 'manager:sharing:send',
   resetShareId: 'manager:sharing:reset-id',
+  generatePair: 'manager:generate:pair',
+  generateUnpair: 'manager:generate:unpair',
+  generateSetKey: 'manager:generate:set-key',
   windowMinimize: 'manager:window:minimize',
   windowToggleMaximize: 'manager:window:toggle-maximize',
   windowClose: 'manager:window:close',
@@ -33,6 +36,7 @@ export const CHANNELS = {
   communityChanged: 'manager:event:community',
   updaterState: 'manager:event:updater',
   sharingChanged: 'manager:event:sharing',
+  generateChanged: 'manager:event:generate',
   windowMaximized: 'manager:event:window-maximized'
 } as const
 
@@ -99,6 +103,12 @@ export interface ManagerApi {
   shareNow(): Promise<void>
   /** Gives this manager a new random id. */
   resetShareId(): Promise<void>
+  /** Starts pairing with an account: opens the site to approve the code; the status comes through onGenerate. */
+  generatePair(): Promise<void>
+  /** Forgets the pairing on this computer. */
+  generateUnpair(): Promise<void>
+  /** Keeps a provider's key on this computer, encrypted by the system; an empty key removes it. */
+  generateSetKey(provider: 'elevenlabs' | 'fish', key: string): Promise<void>
   /** The window has no system title bar, so the page draws its own buttons and calls these. */
   windowMinimize(): Promise<void>
   /** Maximizes the window, or puts it back when it is already maximized. */
@@ -112,6 +122,7 @@ export interface ManagerApi {
   onCommunityChanged(listener: (community: CommunityCatalog) => void): () => void
   onUpdater(listener: (state: UpdaterState) => void): () => void
   onSharing(listener: (status: SharingStatus) => void): () => void
+  onGenerate(listener: (status: GenerateStatus) => void): () => void
   /** True when the window becomes maximized, false when it is put back. */
   onWindowMaximized(listener: (maximized: boolean) => void): () => void
 }

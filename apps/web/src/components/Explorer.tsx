@@ -573,6 +573,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
       if (pinned ? pinned.noApiKey : status.noApiKey) {
         return `${pinned ? `${line.voice} is pinned to fish.audio: n` : "N"}o ${provider} key on your account — set one in your profile`;
       }
+      // The Manager's ElevenLabs account holds the voices, and it fails a line whose voice is missing.
+      if (!fish && status.local) return null;
       if (!voices.includes(line.voice)) {
         return missing(line.voice);
       }

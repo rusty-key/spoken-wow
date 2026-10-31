@@ -13,6 +13,15 @@ import { signIn, signUp } from "@/lib/auth-client";
 
 type Mode = "login" | "register";
 
+/**
+ * `next` if it is a path on this site, else "/". Browsers read a backslash as a slash and drop
+ * tabs and newlines from a URL, so "/\evil.com" and "/\t/evil.com" both mean //evil.com.
+ */
+export function safeNext(next: string | null | undefined): string {
+  // eslint-disable-next-line no-control-regex
+  return next && /^\/(?![/\\])[^\s\x00-\x1f\x7f]*$/.test(next) ? next : "/";
+}
+
 const COPY = {
   login: {
     title: "Sign in",
@@ -30,7 +39,11 @@ const COPY = {
   },
 } as const;
 
-export default function AuthForm({ mode }: { mode: Mode }) {
+/**
+ * `next` must be a path on this site, so a link cannot send someone who just signed in to
+ * another origin.
+ */
+export default function AuthForm({ mode, next }: { mode: Mode; next?: string | null }) {
   const router = useRouter();
   const lang = useLang();
   const copy = COPY[mode];
@@ -59,7 +72,7 @@ export default function AuthForm({ mode }: { mode: Mode }) {
 
     // refresh() re-runs the server components, so a page guarded on the server (/admin)
     // sees the new session immediately rather than on the next full load.
-    router.push(localeHref(lang, "/"));
+    router.push(localeHref(lang, safeNext(next)));
     router.refresh();
   }
 

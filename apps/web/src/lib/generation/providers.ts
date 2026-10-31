@@ -17,3 +17,13 @@ export const PROVIDER_NAME: Record<Provider, string> = {
   elevenlabs: "ElevenLabs",
   fish: "fish.audio",
 };
+
+/**
+ * The paths each generator posts its speech to, and the only ones a worker sends a key to
+ * (worker/protocol.ts). `{voiceId}` stands for the voice.
+ */
+export const SPEECH_PATH = {
+  elevenlabsSpeech: "/v1/text-to-speech/{voiceId}/with-timestamps",
+  elevenlabsDialogue: "/v1/text-to-dialogue/with-timestamps",
+  fish: "/v1/tts",
+} as const;

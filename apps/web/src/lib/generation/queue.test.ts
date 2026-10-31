@@ -13,7 +13,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 
 import { closeDb, db } from "@/lib/db";
 
-import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry } from "./queue";
+import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, queueBatch, resumeQueue, retryJob, snapshot, type QueueEntry } from "./queue";
 import type { Source } from "@/lib/sections";
 
 /** A file prefix no other run collides with, so tests share one database safely. */
@@ -114,6 +114,22 @@ describe("enqueue", () => {
 
     const claimed = await claimNext();
     expect(claimed!.source).toBe("places");
+  });
+});
+
+describe("queueBatch", () => {
+  it("keeps a batch that got a job, and leaves none behind when every line was already queued", async () => {
+    const kept = await queueBatch(prefix, null, "quests", "enUS", [line(1)], "elevenlabs");
+    batches.push(kept.batchId!);
+    expect(kept).toEqual({ batchId: expect.any(String), queued: 1, skipped: 0 });
+    expect(await queueBatch(prefix, null, "quests", "enUS", [line(1)], "elevenlabs")).toEqual({
+      batchId: null,
+      queued: 0,
+      skipped: 1,
+    });
+
+    const { rows } = await db().query(`select "id" from "regeneration_batch" where "label" = $1`, [prefix]);
+    expect(rows).toEqual([{ id: kept.batchId }]);
   });
 });
 
@@ -235,11 +251,61 @@ describe("claimNext", () => {
     expect(second!.attempts).toEqual(2);
   });
 
+  it("takes back a claim given back unspent, but never from a claim that was overtaken", async () => {
+    const batch = await newBatch();
+    await enqueue(batch, [line(1)], "quests");
+    const first = await claimNext();
+    expect(await retryJob(first!.id, { delayMs: 0, spent: false }, first!.attempts)).toBe(true);
+    const second = await claimNext();
+    expect(second!.attempts).toEqual(first!.attempts);
+
+    // Overtaken: a lapsed lease is reclaimed as a higher attempt, which giving back never
+    // brings down to the stale one.
+    await db().query(`update "regeneration_job" set "leaseUntil" = now() - interval '1 second' where "id" = $1`, [second!.id]);
+    const third = await claimNext();
+    expect(third!.attempts).toEqual(second!.attempts + 1);
+    expect(await retryJob(third!.id, { delayMs: 0, spent: false }, third!.attempts)).toBe(true);
+    expect(await retryJob(second!.id, { delayMs: 0, spent: false }, second!.attempts)).toBe(false);
+    const fourth = await claimNext();
+    expect(fourth!.attempts).toEqual(third!.attempts);
+    expect(await finishJob(second!.id, { version: 1, credits: null }, second!.attempts)).toBe(false);
+  });
+
+  it("fails a retry once its batch is stopped, or cancels it when there is no failure to report", async () => {
+    const batch = await newBatch();
+    await enqueue(batch, [line(1), line(2)], "quests");
+    const first = await claimNext();
+    const second = await claimNext();
+    await db().query(`update "regeneration_batch" set "stoppedAt" = now() where "id" = $1`, [batch]);
+
+    const because = { kind: "rate-limit", message: "too_many_concurrent_requests" };
+    expect(await retryJob(first!.id, { delayMs: 0, because }, first!.attempts)).toBe(true);
+    expect(await retryJob(second!.id, { delayMs: 0 }, second!.attempts)).toBe(true);
+    const { rows } = await db().query(
+      `select "id"::text, "state", "errorKind", "error" from "regeneration_job" where "batchId" = $1 order by "id"`,
+      [batch],
+    );
+    expect(rows).toEqual([
+      { id: first!.id, state: "failed", errorKind: "rate-limit", error: "too_many_concurrent_requests" },
+      { id: second!.id, state: "cancelled", errorKind: null, error: null },
+    ]);
+  });
+
+  it("does not reclaim a lapsed lease once its batch is stopped, and cancels it instead", async () => {
+    const batch = await newBatch();
+    await enqueue(batch, [line(1)], "quests");
+    await claimNext(-1000);
+    await db().query(`update "regeneration_batch" set "stoppedAt" = now() where "id" = $1`, [batch]);
+
+    expect(await claimJobOfThisRun()).toBeNull();
+    expect(await stateCounts(batch)).toEqual({ cancelled: 1 });
+  });
+
   it("does not claim a job backed off into the future", async () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1)], "quests");
     const claimed = await claimNext();
-    await retryJob(claimed!.id, 60_000);
+    await retryJob(claimed!.id, { delayMs: 60_000 });
 
     expect(await claimJobOfThisRun()).toBeNull();
   });
@@ -290,7 +356,7 @@ describe("activeLanes", () => {
     await enqueue(await newBatch("quests", alice), [line(1)], "quests");
     await enqueue(await newBatch("quests", bob), [line(2)], "quests");
     const claimed = await claimNext(undefined, { owner: alice, provider: "elevenlabs" });
-    await retryJob(claimed!.id, 60_000);
+    await retryJob(claimed!.id, { delayMs: 60_000 });
 
     expect((await activeLanes(1))[0].owner).toBe(alice);
   });
@@ -429,6 +495,23 @@ describe("cancelPending", () => {
         detail: { batchId: batch, label: expect.any(String), reason: "stopped by hand", cancelled: 2 },
       },
     ]);
+  });
+
+  it("cancels a running job whose lease lapsed, and stops the batch of one still running", async () => {
+    const live = await newBatch();
+    await enqueue(live, [line(2)], "quests");
+    const running = await claimNext();
+    const lapsed = await newBatch();
+    await enqueue(lapsed, [line(1)], "quests");
+    await claimNext(-1000);
+
+    expect(await cancelPending("stopped", { batchId: lapsed })).toEqual(1);
+    expect(await stateCounts(lapsed)).toEqual({ cancelled: 1 });
+
+    expect(await cancelPending("stopped", { batchId: live })).toEqual(0);
+    expect(await stateCounts(live)).toEqual({ running: 1 });
+    expect(await retryJob(running!.id, { delayMs: 0, because: { kind: "rate-limit", message: "429" } }, running!.attempts)).toBe(true);
+    expect(await stateCounts(live)).toEqual({ failed: 1 });
   });
 
   it("leaves other batches alone when given a batch id", async () => {
