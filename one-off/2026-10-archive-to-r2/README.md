@@ -8,8 +8,8 @@
 Every take, voice actor recording, clone clip and fish.audio reference used to be a file on
 the droplet's 30 GB block volume, the only copy there was. Now each is an object in the
 `spoken-archive` bucket, named by the SHA-256 of its bytes, and its row records the hash
-(migration 0083). The audio routes redirect to the bucket's public address
-(`apps/web/src/lib/blobs/store.ts`).
+(migration 0083). Takes are redirected to the bucket's public address; recordings, clone clips
+and references stream through the site (`apps/web/src/lib/blobs/`).
 
 New audio already goes to both places in `dual` mode. This copies what was there before.
 
