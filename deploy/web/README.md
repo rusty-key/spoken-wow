@@ -334,7 +334,7 @@ merging, from a workstation:
    only, so reads go on and a write to a row being filled waits; the keys, 1 s, which hold
    writes, not reads, while the indexes build.
 
-### Deploy 2 of teams: row-level security
+### Teams, deploy 2: row-level security
 
 Migration `0090_team_rls.sql` turns on row-level security for every per-team table, and the
 app moves to a role of its own, `spoken_app`, which the policies bind. The owner, `spoken`,
@@ -347,43 +347,89 @@ on whatever `DATABASE_URL` logs in as (`-c role=…`, `apps/web/src/lib/db.ts`).
 to `spoken_app`, since a local superuser bypasses every policy. Production does not set it;
 it logs in as `spoken_app` instead.
 
-In order, on the droplet:
+**There is no rolling back across this deploy; fix forward.** Deploy 1's code cannot write
+against 0089's schema: the keys its `on conflict` clauses name are gone, and its hand-rolled
+transactions write activity with no team. `deploy-web.yaml` rolls back on its own when the
+smoke check fails, so for this deploy watch the run, and if it rolls back, deploy this
+release again (Actions, *Deploy web*, *Run workflow*) or a fix on top of it, rather than leave
+deploy 1's code serving.
 
-1. **Before merging**, as `postgres`, give the owner its bypass and make the app's role. 0090
-   refuses to run until the first is done, and cannot make the second itself, as `spoken`
-   lacks CREATEROLE:
+In order:
+
+1. **Before merging, check the languages the rows name**, from a workstation. 0089 gives a
+   language nobody owns to the english team, and aborts, as `team_language` refuses it, on
+   one that is not a well-formed code. Both should be expected:
+
+   ```sql
+   select "lang", string_agg("tbl", ' ' order by "tbl") as "tables",
+          case when "lang" !~ '^[a-z]{2}[A-Z]{2}$' then 'malformed: aborts 0089'
+               else 'no team: joins english' end as "outcome"
+     from (
+       select 'take' as "tbl", "lang" from "take" union select 'recording', "lang" from "recording"
+       union select 'take_ack', "lang" from "take_ack" union select 'voice_clone', "lang" from "voice_clone"
+       union select 'fish_reference', "lang" from "fish_reference"
+       union select 'generation_setting_locale', "lang" from "generation_setting_locale"
+       union select 'pronunciation_lexicon_locale', "lang" from "pronunciation_lexicon_locale"
+       union select 'lexicon_change', "lang" from "lexicon_change"
+       union select 'line_ignore', "lang" from "line_ignore" union select 'line_flag', "lang" from "line_flag"
+       union select 'line_issue', "lang" from "line_issue" union select 'report', "lang" from "report"
+       union select 'regeneration_batch', "lang" from "regeneration_batch"
+       union select 'regeneration_job', "lang" from "regeneration_job"
+       union select 'regeneration_pause', "lang" from "regeneration_pause"
+       union select 'activity', "lang" from "activity"
+       union select 'voice_sample', nullif(split_part("clone", '@', 2), '') from "voice_sample"
+     ) l
+    where "lang" is not null
+      and ("lang" !~ '^[a-z]{2}[A-Z]{2}$'
+           or not exists (select 1 from "team_language" tl where tl."lang" = l."lang" and tl."privileged"))
+    group by "lang"
+    order by "lang";
+   ```
+
+2. **Before merging**, on the droplet as `postgres`, give the owner its bypass and make the
+   app's role. 0090 refuses to run until the first is done, and cannot make the second
+   itself, as `spoken` lacks CREATEROLE:
 
    ```bash
    sudo -u postgres psql -c "alter role spoken bypassrls"
    sudo -u postgres psql -c "create role spoken_app nologin"
    ```
 
-2. **Pause the queue** from the queue panel. Between `migrate.sh` applying 0089 and the
+3. **Pause the queue** from the queue panel. Between `migrate.sh` applying 0089 and the
    symlink swap, deploy 1's code is still serving against keys that are gone, and every
    write naming one fails; a queue that keeps committing takes fails each one, paid for.
    The window is seconds. An edit made in it fails visibly and can be repeated.
 
-3. **Merge and let the deploy run.** Until step 5 the app still logs in as the owner, which
-   works and filters nothing.
+4. **Merge and let the deploy run**, and watch it (above). Until step 6 the app still logs
+   in as the owner, which works and filters nothing.
 
-4. **Give the role a login and a password:**
+5. **Give the role a login and a password.** The password is set at `\password`'s prompt, so
+   it never reaches a command line, the process list or psql's history:
 
    ```bash
    APPPW=$(openssl rand -base64 24 | tr -d '/+=')
-   sudo -u postgres psql -c "alter role spoken_app login password '$APPPW'"
+   echo "$APPPW"                       # to paste at the prompt, twice
+   sudo -u postgres psql -c "alter role spoken_app login"
+   sudo -u postgres psql               # then: \password spoken_app, and \q
    echo "APP_DATABASE_URL=postgres://spoken_app:$APPPW@127.0.0.1:5432/spoken" \
      >> /srv/spoken/shared/app.env
    ```
 
-5. **Restart the app as the new role.** First, from a workstation, `make web-deploy-scripts`:
+6. **Restart the app as the new role.** First, from a workstation, `make web-deploy-scripts`:
    `shared/ecosystem.config.js` is what reads `APP_DATABASE_URL`, and a deploy does not copy
-   it. Then on the droplet,
-   `pm2 startOrReload /srv/spoken/shared/ecosystem.config.js --update-env`. Resume the queue,
-   and check a language's explorer, `/voices` and the activity page show what they showed
-   before.
+   it. Then on the droplet, check the new login works before the app depends on it, and
+   reload:
 
-Backing out is step 4 undone: remove `APP_DATABASE_URL` and reload, and the app is the owner
-again. The policies stay; the owner bypasses them.
+   ```bash
+   psql "$(grep ^APP_DATABASE_URL /srv/spoken/shared/app.env | cut -d= -f2-)" -c 'select 1'
+   pm2 startOrReload /srv/spoken/shared/ecosystem.config.js --update-env
+   ```
+
+   Resume the queue, and check a language's explorer, `/voices` and the activity page show
+   what they showed before.
+
+Backing out of step 6 alone is possible: remove `APP_DATABASE_URL` and reload, and the app is
+the owner again. The policies stay; the owner bypasses them. The code stays deploy 2's.
 
 ### Promoting the first admin
 
