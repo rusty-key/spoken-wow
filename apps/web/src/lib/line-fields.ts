@@ -10,8 +10,11 @@
  * decided by the extractor, and a value outside them means the corpus is malformed rather
  * than that the game has something new in it.
  */
-/** "followup" is what an NPC says in chat after a quest is accepted or turned in. */
-export const SOURCES = ["accept", "progress", "complete", "gossip", "followup"] as const;
+/**
+ * "followup" is what an NPC says in chat after a quest is accepted or turned in; "chatter" is
+ * what an NPC says in chat with no quest behind it.
+ */
+export const SOURCES = ["accept", "progress", "complete", "gossip", "followup", "chatter"] as const;
 export const NPC_TYPES = ["creature", "gameobject", "item"] as const;
 
 export type Source = (typeof SOURCES)[number];
@@ -29,6 +32,7 @@ export const SOURCE_LABELS: Record<Source, string> = {
   complete: "complete",
   gossip: "gossip",
   followup: "follow-up",
+  chatter: "NPC chat",
 };
 
 /**

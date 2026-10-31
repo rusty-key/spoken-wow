@@ -189,8 +189,9 @@ local function Tick()
     end
     local caption = Spoken:GetCaption()
     local clip = caption and caption.clip
-    -- This addon's lines only: a zone's or a book's never match DialogueUI's text anyway.
-    if clip and Player:Owns(clip) then
+    -- This addon's lines only: a zone's or a book's never match DialogueUI's text anyway, and an NPC's
+    -- chat in the world is not on the page.
+    if clip and Player:Owns(clip) and clip.event ~= Enums.SoundEvent.NPCChatter then
         if clip ~= state.clip then
             -- Put back and drawn again in this one call: nothing shows in between.
             Restore()
@@ -213,9 +214,10 @@ local function Tick()
         return
     end
     -- A line is about to be queued for this page: its words wait blank, unless another part's
-    -- line (a zone's lore, a book page) is playing, which the quest's waits behind.
+    -- line (a zone's lore, a book page, what an NPC says in the world) is playing, which the quest's
+    -- waits behind.
     local pending = state.pending
-    local otherPart = clip ~= nil and not Player:Owns(clip)
+    local otherPart = clip ~= nil and (not Player:Owns(clip) or clip.event == Enums.SoundEvent.NPCChatter)
     if pending and not otherPart and GetTime() < pending.untilTime then
         if not pending.span then
             pending.map, pending.span = Marks.Align(pending.words, state.paragraphs)

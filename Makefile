@@ -63,6 +63,8 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/quest_overlay_test.lua
 	@$(LUA) tests/lua/quest_tracker_adapters_test.lua
 	@$(LUA) tests/lua/quest_followup_test.lua
+	@$(LUA) tests/lua/quest_chatter_test.lua
+	@$(LUA) tests/lua/quest_chatbubble_test.lua
 	@$(LUA) tests/lua/quest_abandon_test.lua
 	@$(LUA) tests/lua/easter_egg_test.lua
 	@$(LUA) tests/lua/sound_utils_test.lua

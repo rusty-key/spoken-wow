@@ -78,6 +78,8 @@ L.OPT_CONTRIBUTE_TIP_SHARE = "Contribuye con tus datos compartiendo datos de tu 
 -- Settings page: module switch and sections
 L.OPT_PAGE_TITLE = "Misiones"
 L.OPT_GOSSIP_PAGE_TITLE = "Charlas"
+L.OPT_CHATTER_PAGE_TITLE = "Charla del mundo"
+L.OPT_CHATTER_NOTE = "Lee en voz alta lo que dice la gente en el mundo, como guardias y vecinos. Solo suena cuando no se está leyendo nada más, y una línea no se repite durante dos minutos."
 L.OPT_GOSSIP_MINIMAP_SETTINGS = "Configuración de Charlas"
 L.REASON_AUTOPLAY = "Activa «Leer automáticamente» para usar esto."
 L.REASON_AUTOPLAY_ON_QUESTS = "Activa «Leer automáticamente» en la página Misiones para usar esto."
@@ -109,6 +111,8 @@ L.OPT_PANEL_GAME_GREETING_FIRST = "Voz del PNJ antes de leer"
 L.GREETING_DIALOG_APART = "Spoken: volumen de Diálogo ajustado al %1$d%%, distinto de los demás controles de volumen, para que «Voz del PNJ antes de leer» sepa cuándo un PNJ ha terminado de hablar."
 L.OPT_CMD_FOLLOWUP = "Continuación"
 L.OPT_CMD_FOLLOWUP_DESC = "Repite las líneas de continuación de los PNJ de una misión como si acabaras de entregarla: /spq followup <questID> [start]"
+L.OPT_CMD_CHATTER = "Charla del mundo"
+L.OPT_CMD_CHATTER_DESC = "Repite lo que dice un PNJ en voz alta, como si acabaras de oírlo: /spq chatter [id del PNJ] (el de tu objetivo si no pones ninguno)"
 
 -- Reading history
 L.OPT_FORGET_GREETINGS_DONE = "Se ha borrado la lista de saludos oídos de este personaje."
