@@ -1,5 +1,5 @@
--- Era's named quest log is redrawn through QuestLog_Update.  Leatrix Plus adds its own hook to
--- that function and rewrites the title rows, so Spoken must refresh after Leatrix has finished.
+-- Era's named quest log is redrawn through QuestLog_Update. Leatrix Plus hooks it after Spoken
+-- and rewrites the title rows, which must not put Play over the title's first glyphs.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -16,6 +16,8 @@ _G.FauxScrollFrame_GetOffset = function() return 0 end
 local row = CreateFrame("Button", "QuestLogTitle1", QuestLogFrame)
 _G.QuestLogTitle1NormalText = row:CreateFontString("QuestLogTitle1NormalText")
 _G.QuestLogTitle1Check = row:CreateTexture("QuestLogTitle1Check")
+-- A button's text is its font string's, as in the client.
+function row:SetText(text) QuestLogTitle1NormalText:SetText(text) end
 _G.GetNumQuestLogEntries = function() return 1, 1 end
 _G.GetQuestLogTitle = function(index)
     if index == 1 then return "A Classic Quest", 10, nil, false, false, false, 0, 748 end
@@ -56,7 +58,7 @@ end
 
 -- Leatrix's own hook is installed after Spoken's normal hook.
 hooksecurefunc("QuestLog_Update", function()
-    QuestLogTitle1NormalText:SetText("  [10] A Classic Quest")
+    QuestLogTitle1:SetText("  [10] A Classic Quest")
 end)
 QuestLog_Update()
 
@@ -64,9 +66,12 @@ Expect("Leatrix's title rewrite does not need a second Spoken refresh", updates,
 local button = VO.QuestOverlayUI.questPlayButtons[748]
 Expect("Era quest keeps its Play button", button ~= nil and button:IsShown(), true)
 Expect("Era quest Play button is enabled", button and button:IsEnabled(), true)
-Expect("Era quest Play button sits in the left margin", button and button.anchor and button.anchor.relativeTo, row)
-Expect("...at the row's left edge", button and button.anchor and button.anchor.point, "LEFT")
-Expect("the quest title keeps its original indentation", QuestLogTitle1NormalText:GetText(), "  [10] A Classic Quest")
+Expect("Era quest Play button sits at the title's start, clear of the party count",
+    button and button.anchor and button.anchor.relativeTo, QuestLogTitle1NormalText)
+Expect("Leatrix's rewritten title still makes room for Play", QuestLogTitle1NormalText:GetText(), "    [10] A Classic Quest")
+
+QuestLog_Update()
+Expect("a second redraw pads the title once", QuestLogTitle1NormalText:GetText(), "    [10] A Classic Quest")
 
 if failures > 0 then
     print(string.format("\n%d check(s) failed", failures))
