@@ -70,7 +70,8 @@ async function head(key) {
 
 async function put(key, data, contentType) {
   if (dryRun) return;
-  if ((await head(key)) === data.byteLength) return;
+  // No HEAD first: almost every key is new, and If-None-Match already turns an existing one
+  // into a cheap refusal.
   const res = await r2.fetch(`${bucket}/${key}`, {
     method: "PUT",
     body: data,
@@ -109,10 +110,12 @@ const missing = [];
 const tally = {};
 const count = (what) => (tally[what] = (tally[what] ?? 0) + 1);
 
-const clock = (seconds) =>
-  seconds >= 3600 ? `${Math.floor(seconds / 3600)}h${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}m`
-  : seconds >= 60 ? `${Math.floor(seconds / 60)}m${String(Math.round(seconds % 60)).padStart(2, "0")}s`
-  : `${Math.round(seconds)}s`;
+const clock = (exact) => {
+  const seconds = Math.round(exact);
+  return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}m`
+    : seconds >= 60 ? `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, "0")}s`
+    : `${seconds}s`;
+};
 
 // A line every five seconds and one at the end: a run over the whole archive takes hours.
 function progress(label, total) {
@@ -131,8 +134,8 @@ function progress(label, total) {
   };
 }
 
-// Four at a time by default, the size of the database pool; work that only talks to the bucket
-// can go wider.
+// Four at a time by default, the size of the database pool. Copying is mostly waiting on the
+// bucket, so it goes wider and its few queries wait for a connection.
 async function each(label, rows, work, width = 4) {
   const queue = [...rows];
   const tick = progress(label, rows.length);
@@ -154,6 +157,11 @@ async function backfillRows(table, prefix, fileOf, typeOf) {
   console.log(`${table}: ${rows.length} rows without a hash`);
   await each(table, rows, async (row) => {
     const file = fileOf(row);
+    // A dry run only lists what is missing, so it need not read and hash every file.
+    if (dryRun) {
+      if (!(await stat(file).catch(() => null))) missing.push(`${table} ${row.id}: ${file}`);
+      return;
+    }
     const data = await readFile(file).catch(() => null);
     if (!data) {
       missing.push(`${table} ${row.id}: ${file}`);
@@ -163,7 +171,7 @@ async function backfillRows(table, prefix, fileOf, typeOf) {
     await put(`${prefix}/${sha}`, data, typeOf(row));
     if (!dryRun) await db.query(`update "${table}" set "sha256" = $2 where "id" = $1 and "sha256" is null`, [row.id, sha]);
     count(table);
-  });
+  }, 16);
 }
 
 function referenceProblem(row, file, data) {
