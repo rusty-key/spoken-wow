@@ -159,7 +159,8 @@ async function backfillRows(table, prefix, fileOf, typeOf) {
     const file = fileOf(row);
     // A dry run only lists what is missing, so it need not read and hash every file.
     if (dryRun) {
-      if (!(await stat(file).catch(() => null))) missing.push(`${table} ${row.id}: ${file}`);
+      if (await stat(file).catch(() => null)) count(table);
+      else missing.push(`${table} ${row.id}: ${file}`);
       return;
     }
     const data = await readFile(file).catch(() => null);
