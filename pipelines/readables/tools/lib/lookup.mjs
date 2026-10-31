@@ -175,6 +175,7 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
          join "book_line" b on b."lineId" = t."lineId" and b."lang" = t."lang" and b."isCurrent"
          join "book_page" p on p."lineId" = t."lineId" and p."aliasOf" is null
         where t."source" = 'readables' and t."isCurrent" and t."lang" = $1
+          and t."teamId" = (select "teamId" from "team_language" where "lang" = $1 and "privileged")
         order by t."lineId", t."id" desc) c
         order by c."pageTextId" nulls last, c."lineId"`,
       [lang],

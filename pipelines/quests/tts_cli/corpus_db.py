@@ -291,10 +291,15 @@ def _import_types(cur, npcs):
             new_flavor = cur.rowcount > 0
         if not (new_race or new_flavor) or not voice or is_model_voice(voice):
             continue
-        cur.execute("""insert into "voice" ("name", "race", "gender") values (%s, %s, %s)
+        # The roster is the english team's until voice's key gains the team: this connection
+        # is the table owner and sets no spoken.team, so the column default is null and the
+        # team is named.
+        cur.execute("""insert into "voice" ("name", "race", "gender", "teamId")
+                       values (%s, %s, %s, (select "id" from "team" where "slug" = 'english'))
                        on conflict do nothing""", (voice, race, gender or ""))
-        cur.execute("""insert into "voice_assignment" ("race", "gender", "flavor", "voice")
-                       values (%s, %s, %s, %s) on conflict do nothing""",
+        cur.execute("""insert into "voice_assignment" ("race", "gender", "flavor", "voice", "teamId")
+                       values (%s, %s, %s, %s, (select "id" from "team" where "slug" = 'english'))
+                       on conflict do nothing""",
                     (race, gender, flavor if new_flavor else None, voice))
 
 

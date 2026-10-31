@@ -46,18 +46,14 @@ export async function fillCache(rows, { archive, cache, base, fetchImpl = fetch 
   return tally;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const lang = process.argv.find((arg) => arg.startsWith("--lang="))?.slice(7) || "enUS";
-  const base = process.env.SPOKEN_ARCHIVE_URL;
-  const database = process.env.LOCAL_DB;
-  if (!base || !database) {
-    console.error("fetch-encodings.mjs needs SPOKEN_ARCHIVE_URL and LOCAL_DB");
-    process.exit(2);
-  }
-  const rows = execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `lang=${lang}`, "-v", `profile=${PROFILE}`, "-f", "-"], {
+/** The live quests takes of the language's privileged team, with their encodings. */
+export function liveEncodings(database, lang) {
+  return execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `lang=${lang}`, "-v", `profile=${PROFILE}`, "-f", "-"], {
+    // The owner connection bypasses row-level security, so the team is named.
     input: `select t."sha256", e."encodedSha256" from "take" t
               join "take_encoding" e on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
-             where t."source" = 'quests' and t."lang" = :'lang' and t."isCurrent"`,
+             where t."source" = 'quests' and t."lang" = :'lang' and t."isCurrent"
+               and t."teamId" = (select "teamId" from "team_language" where "lang" = :'lang' and "privileged")`,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   })
@@ -67,6 +63,17 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       const [sha256, encodedSha256] = line.split("\t");
       return { sha256, encodedSha256 };
     });
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const lang = process.argv.find((arg) => arg.startsWith("--lang="))?.slice(7) || "enUS";
+  const base = process.env.SPOKEN_ARCHIVE_URL;
+  const database = process.env.LOCAL_DB;
+  if (!base || !database) {
+    console.error("fetch-encodings.mjs needs SPOKEN_ARCHIVE_URL and LOCAL_DB");
+    process.exit(2);
+  }
+  const rows = liveEncodings(database, lang);
   const tally = await fillCache(rows, {
     archive: archiveOf("quests"),
     cache: cacheDir(lang),
