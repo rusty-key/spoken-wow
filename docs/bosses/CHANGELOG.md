@@ -7,7 +7,7 @@ The pack numbers itself. A section for the English pack is headed `## <version> 
 and a language's by its release tag, `## <version> — bosses-audio-deDE`: the release scripts
 match the heading whole.
 
-## Unreleased
+## 1.0.0 — bosses-audio — 2026-10-31
 
 - **Boss stories are read aloud.** The first pack holds the voiced stories of dungeon and raid
   bosses, played by Spoken when the boss falls. On CurseForge it comes inside Spoken Audio: Places

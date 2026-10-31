@@ -64,10 +64,16 @@ async function main() {
   }
 
   const counts = { inserted: 0, unchanged: 0, "kept-edit": 0 };
-  for (const { map, key, bossId, lang, text } of resolved) {
+  const total = resolved.length;
+  console.log(`recording ${total} stories`);
+  for (const [i, { map, key, bossId, lang, text }] of resolved.entries()) {
     const title = titleOf.get(`${map}\t${key}`);
     const source = title ? sourceUrl(title) : null;
     counts[await recordStory({ bossId, lang, text, source, origin: "rewritten" })]++;
+    // Against production each story is a round trip, so a long run says how far it has got.
+    if ((i + 1) % 50 === 0 || i + 1 === total) {
+      console.log(`  ${i + 1}/${total} ${lang} (${counts.inserted} inserted, ${counts.unchanged} unchanged, ${counts["kept-edit"]} kept-edit)`);
+    }
   }
 
   console.log(`${counts.inserted} inserted, ${counts.unchanged} unchanged, ${counts["kept-edit"]} kept-edit`);
