@@ -6,10 +6,11 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { recordActivity } from "@/lib/activity/store";
 import { closeDb, db } from "@/lib/db";
 import { setEnabled } from "@/lib/languages/store";
 
-import { forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
+import { byTeam, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
 
 const USER = `test-teams-${Math.random().toString(36).slice(2, 10)}`;
 // A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
@@ -107,6 +108,22 @@ describe("a language switched on by the other worker", () => {
     await enableElsewhere();
     vi.advanceTimersByTime(2_000);
     expect(await readAs(NEW_LANG, `select 1 as "one"`)).toEqual([{ one: 1 }]);
+  });
+
+  it("is grouped by byTeam without waiting for the memo to expire", async () => {
+    expect(await byTeam([NEW_LANG])).toEqual(new Map());
+    await enableElsewhere();
+    vi.advanceTimersByTime(2_000);
+    expect(await byTeam([NEW_LANG])).toEqual(new Map([[await englishTeam(), [NEW_LANG]]]));
+  });
+
+  it("has its activity stamped with its team without waiting for the memo to expire", async () => {
+    await teamLangs();
+    await enableElsewhere();
+    vi.advanceTimersByTime(2_000);
+    await recordActivity({ kind: "language.toggled", lang: NEW_LANG, actorId: USER, detail: { enabled: true } });
+    const { rows } = await db().query(`select "teamId" from "activity" where "actorId" = $1`, [USER]);
+    expect(rows).toEqual([{ teamId: await englishTeam() }]);
   });
 
   it("is not looked up again on a miss against a memo under a second old", async () => {

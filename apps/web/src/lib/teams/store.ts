@@ -59,10 +59,20 @@ export function teamLangs(): Promise<Map<Lang, TeamId>> {
  * language on since this one read it, and the minute's expiry is too long to wait for that.
  */
 async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
-  const team = (await teamLangs()).get(lang);
-  if (team || !cached || Date.now() - cached.at < MISS_REFRESH_MS) return team;
+  return (await freshOwners([lang])).get(lang);
+}
+
+/**
+ * teamLangs, read again once when any of `langs` has no team in it, on the terms ownerOf
+ * gives: for the callers that resolve many languages from one map, which would otherwise
+ * drop or mis-stamp a language the other worker has just switched on.
+ */
+export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
+  const owners = await teamLangs();
+  const missing = langs.some((lang) => lang && !owners.has(lang));
+  if (!missing || !cached || Date.now() - cached.at < MISS_REFRESH_MS) return owners;
   forgetTeams();
-  return (await teamLangs()).get(lang);
+  return teamLangs();
 }
 
 export async function teamOf(lang: Lang): Promise<TeamId> {
@@ -121,7 +131,7 @@ export async function readAs<T extends QueryResultRow = QueryResultRow>(
 
 /** These languages grouped by the team that owns each, in their given order. Unowned ones are left out. */
 export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
-  const owners = await teamLangs();
+  const owners = await freshOwners(langs);
   const grouped = new Map<TeamId, Lang[]>();
   for (const lang of langs) {
     const team = owners.get(lang);

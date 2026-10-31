@@ -18,7 +18,7 @@ import type { PoolClient } from "pg";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
-import { readAs, teamLangs, type TeamId } from "@/lib/teams/store";
+import { freshOwners, readAs, type TeamId } from "@/lib/teams/store";
 
 import { FOLDS, prefixesOf, type ActivityDetail, type ActivityKind, type Category, type Group } from "./kinds";
 
@@ -62,12 +62,12 @@ export async function recordActivities(
 ): Promise<void> {
   if (!events.length) return;
   if (client) {
-    await client.query(INSERT, [rowsOf(events, await teamLangs())]);
+    await client.query(INSERT, [rowsOf(events, await freshOwners(events.map((event) => event.lang)))]);
     return;
   }
   try {
     // As no one team: every row names its own.
-    const rows = rowsOf(events, await teamLangs());
+    const rows = rowsOf(events, await freshOwners(events.map((event) => event.lang)));
     await withTeam(ALL_TEAMS, (scoped) => scoped.query(INSERT, [rows]));
   } catch (error) {
     console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
