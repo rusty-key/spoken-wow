@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.7.0 — 2026-10-31
 
 - **Spoken NPCs is now Spoken Bosses.** The module has a new name and folder, `Spoken_Bosses`, so
   the bosses you found and the stories already told start over. An old `Spoken_NPCs` folder left
