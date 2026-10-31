@@ -617,15 +617,20 @@ function Addon:OnInitialize()
     -- in one still run past the client's script-time limit.
     DataModules:EnumerateAddons(false)
     self.dataModulesPending = not DataModules:HasRegisteredModules()
+    -- A position rather than "the first pack not registered", so a pack that fails is tried once
+    -- and cannot hold back the packs after it.
+    local nextPack = 1
     local function LoadDeferredDataModules()
         if not self.dataModulesPending then
             return
         end
         -- result is the pack tried, or the error when the call itself failed.
-        local succeeded, result, loaded, reason = pcall(DataModules.LoadNextPresentModule, DataModules)
+        local succeeded, result = pcall(DataModules.LoadPresentModuleAt, DataModules, nextPack)
         if succeeded and result then
-            if not loaded then
-                Debug:Record("data-load-error", format("%s: %s", result.AddonName, tostring(reason)))
+            nextPack = nextPack + 1
+            local reason = DataModules:GetModuleLoadError(result.AddonName)
+            if reason then
+                Debug:Record("data-load-error", format("%s: %s", result.AddonName, reason))
             end
             -- The next frame's callback starts with a fresh script-time budget.
             C_Timer.After(0, LoadDeferredDataModules)

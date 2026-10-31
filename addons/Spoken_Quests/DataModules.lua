@@ -109,9 +109,6 @@ DataModules =
     ---@type table<string, string>
     loadErrors = {},
 
-    --- Where LoadNextPresentModule resumes in presentModulesOrdered.
-    nextPresentModule = 1,
-
     --- Stores modules known to exist to present the player with information on how to download or update them
     ---@type AvailableDataModule[]
     -- AddonName is the folder on disk, which is what EnumerateAddons keys presentModules by, so
@@ -374,20 +371,15 @@ function DataModules:IsOlderContent(installed, known)
     return false
 end
 
---- Load the next present pack not tried yet. Each pack is tried once, so one that fails cannot
---- hold back the packs after it.
----@return DataModuleMetadata? module The pack tried, nil once every pack has been
----@return boolean? loaded
----@return string? reason Why it did not load
-function DataModules:LoadNextPresentModule()
-    while self.nextPresentModule <= table.getn(self.presentModulesOrdered) do
-        local module = self.presentModulesOrdered[self.nextPresentModule]
-        self.nextPresentModule = self.nextPresentModule + 1
-        if LOAD_ALL_MODULES and module.LoadOnDemand and not self:GetModule(module.AddonName) then
-            local loaded, reason = self:LoadModule(module)
-            return module, loaded, reason or self:GetModuleLoadError(module.AddonName)
-        end
+--- Load the present pack at a position in load order, if it still needs loading.
+---@param index integer
+---@return DataModuleMetadata? module The pack there, nil past the last
+function DataModules:LoadPresentModuleAt(index)
+    local module = self.presentModulesOrdered[index]
+    if module and LOAD_ALL_MODULES and module.LoadOnDemand and not self:GetModule(module.AddonName) then
+        self:LoadModule(module)
     end
+    return module
 end
 
 -- We deliberately use a high ##Interface version in TOC to ensure that all clients will load it.
