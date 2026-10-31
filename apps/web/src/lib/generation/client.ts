@@ -65,6 +65,11 @@ export type GenerationStatusResponse = {
    * support question - so the explorer names it instead of showing an upstream message.
    */
   noApiKey: boolean;
+  /**
+   * Their Spoken Manager generates these lines with a key kept on their machine, so the
+   * ElevenLabs voices are that account's, which this site cannot list.
+   */
+  local?: boolean;
   settings: {
     modelId: string;
     voiceSettings: Record<string, number | boolean>;
