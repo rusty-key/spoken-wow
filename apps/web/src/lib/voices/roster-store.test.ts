@@ -2,7 +2,10 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { unowned } from "@/lib/teams/testing";
+
 import { loadRoster } from "./roster-store";
+import { isVoiceSlot } from "./slots";
 
 const KEY = `t${Math.floor(Math.random() * 1e9)}`;
 
@@ -21,6 +24,16 @@ describe("loadRoster", () => {
 
   it("keeps one roster while nothing moves", async () => {
     expect(await loadRoster("enUS")).toBe(await loadRoster("enUS"));
+  });
+
+  it("reads English's roster for a language nobody owns", async () => {
+    const italian = await unowned("itIT");
+    try {
+      expect(await loadRoster("itIT")).toBe(await loadRoster("enUS"));
+      expect(await isVoiceSlot("orc-male-shady", "itIT")).toBe(true);
+    } finally {
+      await italian.restore();
+    }
   });
 
   it("sees a type added behind its back", async () => {

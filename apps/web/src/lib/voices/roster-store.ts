@@ -11,7 +11,7 @@ import type { PoolClient } from "pg";
 
 import { queryIn, TEAM_ROWS, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { teamOf, type TeamId } from "@/lib/teams/store";
+import { teamOrEnglish, type TeamId } from "@/lib/teams/store";
 
 import { Roster, type Gender, type RosterData } from "./roster";
 
@@ -29,10 +29,11 @@ export const ROSTER_STAMP = `(select md5(coalesce(string_agg(k, ',' order by k),
 
 /**
  * The team whose roster `lang` is voiced from, and the one its assignments are written as:
- * the team that owns the language. Every team has a roster of its own (migration 0089).
+ * the team that owns the language, or English's for one nobody owns. Every team has a roster
+ * of its own (migration 0089).
  */
 export async function rosterTeam(lang: Lang): Promise<TeamId> {
-  return teamOf(lang);
+  return teamOrEnglish(lang);
 }
 
 const cacheKey = Symbol.for("spoken.roster.by-team");

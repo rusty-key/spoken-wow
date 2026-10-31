@@ -13,6 +13,7 @@ import type { Lang } from "@/lib/lang";
 import { corpus } from "@/lib/quests/catalogue";
 import { hasNarration, NARRATOR_VOICE } from "@/lib/generation/narration";
 
+import type { Roster } from "./roster";
 import { loadRoster } from "./roster-store";
 
 export type VoiceSlot = {
@@ -55,8 +56,8 @@ export async function voiceSlots(lang: Lang): Promise<VoiceSlot[]> {
   })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-const cacheKey = Symbol.for("wow-voiceover.slots");
-type CacheHolder = { [cacheKey]?: { lines: unknown; roster: unknown; slots: VoiceSlot[] } };
+/** Per roster, as each team's is its own instance; each entry kept while its lines are the catalogue's. */
+const built = new WeakMap<Roster, { lines: unknown; slots: VoiceSlot[] }>();
 
 /**
  * Tied to the catalogue's own array rather than memoised forever: the counts come from the
@@ -67,12 +68,12 @@ export async function slots(lang: Lang): Promise<VoiceSlot[]> {
   const lines = (await corpus()).lines;
   // A voice an admin just added is a slot before any line speaks in it.
   const roster = await loadRoster(lang);
-  const holder = globalThis as CacheHolder;
-
-  if (!holder[cacheKey] || holder[cacheKey].lines !== lines || holder[cacheKey].roster !== roster) {
-    holder[cacheKey] = { lines, roster, slots: await voiceSlots(lang) };
+  let entry = built.get(roster);
+  if (!entry || entry.lines !== lines) {
+    entry = { lines, slots: await voiceSlots(lang) };
+    built.set(roster, entry);
   }
-  return holder[cacheKey].slots;
+  return entry.slots;
 }
 
 /**

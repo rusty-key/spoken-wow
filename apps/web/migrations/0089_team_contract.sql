@@ -24,6 +24,8 @@ select (select "id" from "team" where "slug" = 'english'), l."lang", true
     union select "lang" from "line_issue" union select "lang" from "report"
     union select "lang" from "regeneration_batch" union select "lang" from "regeneration_job"
     union select "lang" from "regeneration_pause" union select "lang" from "activity"
+    -- A sample's language is in its clone's name, 'voice@lang'; a bare name is English's.
+    union select nullif(split_part("clone", '@', 2), '') from "voice_sample"
   ) l
  where l."lang" is not null
    and not exists (select 1 from "team_language" tl where tl."lang" = l."lang" and tl."privileged");

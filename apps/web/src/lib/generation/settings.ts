@@ -16,10 +16,10 @@
  * configured reads its team's base, so it never needs another team's row.
  */
 import { recordActivity } from "@/lib/activity/store";
-import { TEAM_ROWS } from "@/lib/db";
+import { ALL_TEAMS, queryIn, TEAM_ROWS, TEAMS_IN_SCOPE } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { bareDirection } from "@/lib/generation/narration";
-import { queryAs, readAs } from "@/lib/teams/store";
+import { queryAs, readAs, teamOrEnglish } from "@/lib/teams/store";
 
 import {
   isSeedStrategy,
@@ -56,10 +56,10 @@ export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSet
   return baseSettings(await readBase(BASE_LANG));
 }
 
-/** The base row of the team that owns `lang`. */
+/** The base row of the team that owns `lang`, or English's for a language nobody owns. */
 async function readBase(lang: Lang): Promise<Row | undefined> {
-  const rows = await readAs<Row>(
-    lang,
+  const rows = await queryIn<Row>(
+    await teamOrEnglish(lang),
     `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
        from "generation_setting" where ${TEAM_ROWS}`,
   );
@@ -299,12 +299,14 @@ export async function writeRaceTags(
     await recordRaceTags(lang, updatedBy);
     return;
   }
+  // Every team's base, as one: each team's began as a copy of English's (migration 0089), and
+  // until a team edits its own, an edit of English's is an edit of theirs.
   const defaults = fileDefaults().config;
-  await queryAs(
-    BASE_LANG,
+  await queryIn(
+    ALL_TEAMS,
     `insert into "generation_setting"
-       ("modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
-     values ($1, $2, $3, $4, now(), $5)
+       ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
+     select "id", $1, $2, $3, $4, now(), $5 from (${TEAMS_IN_SCOPE}) t
      on conflict ("teamId") do update set
        "raceTags"  = excluded."raceTags",
        "updatedAt" = excluded."updatedAt",

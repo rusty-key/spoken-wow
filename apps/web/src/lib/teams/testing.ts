@@ -29,6 +29,23 @@ const COPIED = [
    select $1, "throughJobId", "dismissedBy" from "queue_dismissal" where "teamId" = $2`,
 ];
 
+/** For tests: a language with no privileged team, as one not yet switched on has, and back. */
+export async function unowned(lang: Lang): Promise<{ restore: () => Promise<void> }> {
+  const { rows: was } = await db().query<{ teamId: TeamId }>(
+    `delete from "team_language" where "lang" = $1 and "privileged" returning "teamId"`,
+    [lang],
+  );
+  forgetTeams();
+  return {
+    async restore() {
+      if (was[0]) {
+        await db().query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was[0].teamId, lang]);
+      }
+      forgetTeams();
+    },
+  };
+}
+
 export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () => Promise<void> }> {
   const slug = `test-${lang.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`;
   const { rows } = await db().query<{ id: TeamId }>(

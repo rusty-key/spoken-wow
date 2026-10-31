@@ -170,6 +170,7 @@ describe("validateConfig", () => {
  */
 const { closeDb, db } = await import("@/lib/db");
 const { readSettings, writeRaceTags } = await import("./settings");
+const { ownTeam, unowned } = await import("@/lib/teams/testing");
 
 /**
  * The settings row, put back after every case.
@@ -265,6 +266,46 @@ describe("writeRaceTags", () => {
     await writeRaceTags({}, null);
 
     expect((await readSettings()).config.raceTags).toEqual({});
+  });
+});
+
+describe("base settings across teams", () => {
+  const ENGLISH_ROW = `"teamId" = (select "id" from "team" where "slug" = 'english')`;
+
+  it("are written to every team's base, so a language on a team of its own reads the edit", async () => {
+    const german = await ownTeam("deDE");
+    try {
+      await noRow();
+      await writeRaceTags({ orc: "[gruff]" }, null);
+      await db().query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
+      await writeRaceTags({ dwarf: "[Scottish accent]" }, null);
+
+      const { rows } = await db().query(
+        `select "modelId", "raceTags" from "generation_setting" where "teamId" = $1`,
+        [german.team],
+      );
+      // Created from the file with the first edit, then given the second edit's tags.
+      expect(rows[0].raceTags).toEqual({ dwarf: "[Scottish accent]" });
+      const settings = await readSettings("deDE");
+      expect(settings.source).toBe("english");
+      expect(settings.config.modelId).toBe(settings.defaults.modelId);
+      expect(settings.config.raceTags).toEqual({});
+    } finally {
+      await german.restore();
+    }
+  });
+
+  it("are English's for a language nobody owns", async () => {
+    await writeRaceTags({}, null);
+    await db().query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
+    const italian = await unowned("itIT");
+    try {
+      const settings = await readSettings("itIT");
+      expect(settings.source).toBe("english");
+      expect(settings.config.modelId).toBe("eleven_flash_v2_5");
+    } finally {
+      await italian.restore();
+    }
   });
 });
 
