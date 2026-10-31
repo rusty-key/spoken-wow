@@ -116,8 +116,8 @@ back to the queue and the page tells the author to use the Manager.
 
 ## Checks run
 
-- Web: typecheck and the full suite against a migrated Postgres (1,978 tests), and `next build`.
-- Manager: typecheck, the full suite (393 tests) and the build.
+- Web: typecheck and the full suite against a migrated Postgres, and `next build`.
+- Manager: typecheck, the full suite and the build.
 - Scripts: `node --test` for `scripts/lib`, `scripts/audio` and `scripts/manager`; `make lint`.
 - By hand, against a local build: pairing end to end, `/api/worker/me`, a cross-origin claim
   refused, and the profile and `/generate` pages.
