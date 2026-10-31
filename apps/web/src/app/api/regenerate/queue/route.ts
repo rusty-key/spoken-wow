@@ -39,6 +39,7 @@ import { isAdmin } from "@/lib/permissions";
 import type { Provider } from "@/lib/generation/speakers/speaker";
 import { pinnedVoices } from "@/lib/voices/references";
 import { catalogue as zoneCatalogue } from "@/lib/places/catalogue";
+import { catalogue as bossCatalogue } from "@/lib/bosses/catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
   const source = body.source === undefined ? "quests" : body.source;
   if (!isSource(source)) {
     return NextResponse.json(
-      { error: "source must be 'quests', 'places' or 'readables'", kind: "bad-request" },
+      { error: "source must be 'quests', 'places', 'readables' or 'bosses'", kind: "bad-request" },
       { status: 400 },
     );
   }
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
 
   if (source === "places") return queuePlaces(body.lineIds, label, session.user.id, lang, provider);
   if (source === "readables") return queueReadables(body.lineIds, label, session.user.id, lang, provider);
+  if (source === "bosses") return queueBosses(body.lineIds, label, session.user.id, lang, provider);
 
   if (typeof body.filters !== "string") {
     return NextResponse.json(
@@ -240,6 +242,57 @@ async function queueReadables(
   const batchId = await createBatch(label, userId, "readables", lang);
   const { queued, skipped } = await enqueue(batchId, jobs, "readables", lang, provider);
   await recordQueued(batchId, label, userId, "readables", lang, queued);
+
+  queueWorker()?.nudge();
+
+  return NextResponse.json({ batchId, queued, skipped });
+}
+
+/**
+ * A bosses batch, from the ids the explorer selected, looked up in the language's boss
+ * catalogue as the places half does. A boss with no story in the language is dropped: there
+ * is nothing to narrate, and English never stands in for it.
+ */
+async function queueBosses(
+  lineIds: unknown,
+  label: string,
+  userId: string,
+  lang: Lang,
+  provider: Provider,
+): Promise<NextResponse> {
+  if (!Array.isArray(lineIds) || lineIds.some((id) => typeof id !== "string")) {
+    return NextResponse.json(
+      { error: "lineIds is required, as an array of strings", kind: "bad-request" },
+      { status: 400 },
+    );
+  }
+
+  const wanted = new Set(lineIds as string[]);
+  const jobs = (await bossCatalogue(lang)).flatMap((entry) =>
+    wanted.has(entry.id) && entry.text !== null && entry.spoken !== null && entry.spoken.trim() !== ""
+      ? [
+          {
+            lineId: entry.id,
+            file: entry.file,
+            // The boss is what names the line on screen; the column is the progress readout's.
+            npcName: entry.name,
+            preview: entry.text.slice(0, 120),
+            characters: entry.spoken.length,
+          },
+        ]
+      : [],
+  );
+
+  if (jobs.length === 0) {
+    return NextResponse.json(
+      { error: "nothing to regenerate", kind: "bad-request" },
+      { status: 400 },
+    );
+  }
+
+  const batchId = await createBatch(label, userId, "bosses", lang);
+  const { queued, skipped } = await enqueue(batchId, jobs, "bosses", lang, provider);
+  await recordQueued(batchId, label, userId, "bosses", lang, queued);
 
   queueWorker()?.nudge();
 

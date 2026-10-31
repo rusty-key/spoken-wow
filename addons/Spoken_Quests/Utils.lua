@@ -65,18 +65,62 @@ end
 local SEX_UNITS = { "questnpc", "npc", "target", "mouseover" }
 
 --- The sex (UnitSex: 2 male, 3 female) the unit a GUID names is drawn as, where a unit token
---- on screen still points at it: the one being talked to, the target or the mouseover.
+--- on screen still points at it: the one being talked to, the target, the mouseover, or its
+--- nameplate, which is how a creature shouting as it aggroes is usually seen.
 ---@param unitGUID string|nil
 ---@return number|nil sex
 function Utils:GetSexForGUID(unitGUID)
     if not unitGUID or not UnitSex then
         return
     end
+    local token = UnitTokenFromGUID and NotSecret(UnitTokenFromGUID(unitGUID))
+    local sex = token and NotSecret(UnitSex(token))
+    if sex then
+        return sex
+    end
     for _, unit in ipairs(SEX_UNITS) do
         if NotSecret(UnitGUID(unit)) == unitGUID then
             return NotSecret(UnitSex(unit))
         end
     end
+end
+
+local SPEAKER_UNITS = { "target", "mouseover", "softenemy", "softinteract" }
+for i = 1, 40 do
+    table.insert(SPEAKER_UNITS, "nameplate" .. i)
+end
+
+-- One more unit into a group: its first GUID, the sex they share, and whether they do not (an
+-- unreadable sex counts as not).
+local function Fold(first, sex, mixed, guid, unitSex)
+    if not first then
+        return guid, unitSex, unitSex == nil
+    end
+    return first, sex, mixed or unitSex ~= sex
+end
+
+--- A live unit on screen of creature `npcID`, for NPC chat that comes without the speaker's GUID
+--- (Forever, Classic Era). Those attacking the player are judged first, since they are who shouts on
+--- aggro. A group of mixed sex names nobody: the sex is what the GUID is wanted for.
+---@param npcID number
+---@return string|nil guid
+function Utils:GetSpeakerGUID(npcID)
+    local first, sex, mixed, attacker, attackerSex, attackersMixed
+    for _, unit in ipairs(SPEAKER_UNITS) do
+        local guid = NotSecret(UnitGUID(unit))
+        if guid and self:GetCreatureIDFromGUID(guid) == npcID and not UnitIsDead(unit) then
+            local unitSex = NotSecret(UnitSex(unit))
+            if UnitIsUnit(unit .. "target", "player") then
+                attacker, attackerSex, attackersMixed = Fold(attacker, attackerSex, attackersMixed, guid, unitSex)
+            else
+                first, sex, mixed = Fold(first, sex, mixed, guid, unitSex)
+            end
+        end
+    end
+    if attacker then
+        return not attackersMixed and attacker or nil
+    end
+    return not mixed and first or nil
 end
 
 --- The body (race and sex) a GUID's creature is drawn as, read from its model: nil until the

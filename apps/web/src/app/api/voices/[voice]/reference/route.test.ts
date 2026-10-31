@@ -27,7 +27,8 @@ vi.mock("@/lib/voices/references", () => ({
 }));
 vi.mock("@/lib/voices/samples", () => ({
   isStoredSampleName: () => true,
-  samplePath: async () => "/clips/clip.mp3",
+  withSampleFiles: async (_clone: string, _files: string[], use: (paths: string[]) => unknown) =>
+    use(["/clips/clip.mp3"]),
 }));
 vi.mock("@/lib/lang-server", () => ({
   langParam: async (request: Request) => ({

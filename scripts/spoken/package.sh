@@ -9,7 +9,7 @@
 # player who does not want one switches it off on its card in Spoken's settings or deletes its
 # folder. The sound packs stay separate downloads: 280-452 MB each, one per language.
 #
-# The modules' folders are Spoken_Quests, Spoken_Readables, Spoken_Places and Spoken_NPCs. Their old names,
+# The modules' folders are Spoken_Quests, Spoken_Readables, Spoken_Places and Spoken_Bosses. Their old names,
 # SpokenQuests and the rest, belong to the retired CurseForge projects, so this zip never ships
 # a folder under them: two projects shipping one folder is what the rename exists to stop.
 #
@@ -77,13 +77,13 @@ module_packager() {
     Spoken_Readables) echo "$REPO/scripts/readables/package.sh" ;;
     Spoken_Places) echo "$REPO/scripts/places/package.sh" ;;
     # Packed as the places are: scripts/places/package.sh takes the folder from ADDON and NAME.
-    Spoken_NPCs) echo "$REPO/scripts/places/package.sh" ;;
+    Spoken_Bosses) echo "$REPO/scripts/places/package.sh" ;;
   esac
 }
 modules_dist="$(mktemp -d)"
 trap 'rm -rf "$staging" "$modules_dist"' EXIT
 folders=("$NAME" "$STORE")
-for module in Spoken_Quests Spoken_Readables Spoken_Places Spoken_NPCs; do
+for module in Spoken_Quests Spoken_Readables Spoken_Places Spoken_Bosses; do
   module_version="$(sed -n 's/^## Version:[[:space:]]*//p' "$REPO/addons/$module/$module.toc" | head -1 | tr -d '\r\n')"
   ADDON="addons/$module" NAME="$module" DIST="$modules_dist" "$(module_packager "$module")" >/dev/null
   module_zip="$modules_dist/$module-$module_version.zip"

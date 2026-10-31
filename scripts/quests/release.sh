@@ -184,8 +184,8 @@ esac; }
 # being approved, above all - is truest after they have just been uploaded. It costs nothing to
 # order it this way and it removes a class of first-release surprise.
 ALL_TARGETS="spoken audio-alliance audio-horde audio-shared audio-gossip audio-all"
-# Accepted by name, never in a bare run: it depends on the places and readables projects too, which
-# this script does not release, and its version moves on its own schedule.
+# Accepted by name, never in a bare run: it depends on the places and readables projects
+# too, which this script does not release, and its version moves on its own schedule.
 EXTRA_TARGETS="spoken-all"
 
 dry_run=""

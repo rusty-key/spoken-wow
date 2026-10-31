@@ -5,8 +5,8 @@ release: places-audio
 section: places
 lang: enUS
 slug: spoken-audio-places
-name: Spoken Audio: Places
-summary: The narration for Spoken's Places module: every zone and subzone read aloud.
+name: Spoken Audio: Places and Bosses
+summary: The narration for Spoken's Places and Bosses modules: every zone and subzone, and every dungeon and raid boss's story, read aloud.
 categories:
   - Audio & Video
   - Miscellaneous
@@ -16,8 +16,12 @@ addonReadme: addons/SpokenPlacesAudio/README.md
 manager: true
 ---
 
-Narrated zone lore for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Places module. This addon is data only — it does nothing on its own.
+Narrated zone lore for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Places module<!-- only:curseforge -->, and narrated boss stories for its Bosses module<!-- /only -->. This addon is data only — it does nothing on its own.
 
+<!-- only:curseforge -->
+The CurseForge download holds two folders: `SpokenPlacesAudio`, the zone and subzone lore, and `SpokenBossesAudio`, the boss stories. Boss stories need Spoken 3.7.0 or later.
+
+<!-- /only -->
 ## The voice, as of 0.3.0
 
 Every line was re-recorded with a new narrator — picked for the tone the lore deserves rather than for getting a first pass made cheaply — and the names of NPCs and places now go through a pronunciation dictionary, so Lordaeron sounds the same in every line it appears in.
@@ -29,10 +33,10 @@ The **lore text** was rewritten in the same release to describe the world as a v
 ## Installing
 
 <!-- only:wago -->
-**This pack is not installable from Wago.** At 448 MB it is over the upload limit here, so the file lives in its [GitHub release](https://github.com/rusty-key/spoken-wow/releases?q=places-audio), and on CurseForge.
+**This pack is not installable from Wago.** At 448 MB it is over the upload limit here, so the file lives in its [GitHub release](https://github.com/rusty-key/spoken-wow/releases?q=places-audio), and on CurseForge. The boss stories have a [GitHub release](https://github.com/rusty-key/spoken-wow/releases?q=bosses-audio) of their own.
 
 <!-- /only -->
-Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped — Spoken finds packs by folder name.
+Install **Spoken** first; this pack is inert without it. Extract every folder in the download into `Interface/AddOns` and leave the folder names as shipped — Spoken finds packs by folder name.
 
 ## Compatibility
 
@@ -44,4 +48,4 @@ Every one of these lines — and there are a lot of them — costs money to synt
 
 ## Credits
 
-The narration is generated from lore text derived from [warcraft.wiki.gg](https://warcraft.wiki.gg) and licensed CC BY-SA 4.0. Attribution: warcraft.wiki.gg contributors.
+The narration is generated from lore text and boss lore derived from [warcraft.wiki.gg](https://warcraft.wiki.gg) and licensed CC BY-SA 4.0. Attribution: warcraft.wiki.gg contributors.

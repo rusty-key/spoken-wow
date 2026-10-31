@@ -5,6 +5,7 @@
 #   ./scripts/audio-github-release.sh                    # every English pack
 #   ./scripts/audio-github-release.sh places             # places' English packs
 #   ./scripts/audio-github-release.sh places esMX        # places' Spanish packs
+#   ./scripts/audio-github-release.sh bosses             # the bosses' English pack (only by name)
 #
 # WHY THIS EXISTS. CurseForge takes the packs and Wago does not: each is 280-452 MB and
 # Cloudflare answers 413 to Wago's version endpoint before Wago sees the body. A player who
@@ -60,6 +61,7 @@ if (( ${#args[@]} > 2 )); then
   echo "error: too many arguments -- expected [section] [lang], got: ${args[*]}" >&2
   exit 2
 fi
+# Bosses are released by name only, so a bare run does not stop on a pack nobody built yet.
 SECTIONS_ALL="quests places readables"
 section="${args[0]:-}"; lang="${args[1]:-enUS}"
 targets=()   # "section lang pack"
@@ -184,6 +186,7 @@ release_target() {
       quests) kind="pack|audio";;
       places) kind="audio";;
       readables) kind="";;
+      bosses) kind="— bosses-audio";;
     esac
     notes="$(changelog_for "$changelog_file" "$version" "$kind")" || return 1
   else
@@ -205,7 +208,11 @@ release_target() {
   # A pack can reach GitHub before its CurseForge project exists (scripts/lib/packs.mjs), and
   # the notes should not send a reader to a store that does not have it.
   local elsewhere="CurseForge carries it too, and Wago's upload endpoint refuses a file this size."
-  if [[ -z "$(field "$section" "$lang" "$pack" curseforge)" ]]; then
+  local bundled_in
+  bundled_in="$(field "$section" "$lang" "$pack" bundledIn)"
+  if [[ -n "$bundled_in" ]]; then
+    elsewhere="CurseForge carries it inside [$bundled_in](https://www.curseforge.com/wow/addons/$bundled_in), and Wago's upload endpoint refuses a file this size."
+  elif [[ -z "$(field "$section" "$lang" "$pack" curseforge)" ]]; then
     elsewhere="Wago's upload endpoint refuses a file this size, and it is not on CurseForge yet."
   fi
 

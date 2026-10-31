@@ -13,6 +13,8 @@ Enums.SoundEvent =
     -- What an NPC says in chat after the player accepts or turns in a quest (Followup.lua).
     -- Neither a quest event nor gossip: it has no questID-keyed file and no dialog text.
     QuestFollowup = 6,
+    -- What an NPC says out loud in the world with no quest behind it.
+    NPCChatter = 7,
 }
 ---@param event SoundEvent
 ---@return boolean isQuestEvent Is event related to a quest (`SoundData.questID` must be present)

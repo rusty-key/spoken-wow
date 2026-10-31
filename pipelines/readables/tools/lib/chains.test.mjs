@@ -61,6 +61,17 @@ test("two owners of one chain both ride along, sorted, on every page", () => {
   assert.deepEqual(entries.find((e) => e.pageId === 12).ownerIds, [179547, 179548]);
 });
 
+test("an owner of the other kind is not filed under the chain's kind", () => {
+  const mixed = [
+    ...owners,
+    { kind: "object", id: 175732, name: "Stalvan's Note", firstPage: 20, material: 2 },
+  ];
+  const { entries } = buildBooks({ pages, owners: mixed });
+  const note = entries.find((e) => e.pageId === 20);
+  assert.equal(note.ownerKind, "item");
+  assert.deepEqual(note.ownerIds, [2794]);
+});
+
 test("a cyclic next_page terminates instead of hanging", () => {
   const cyclic = [
     { entry: 30, text: "One.", nextPage: 31 },

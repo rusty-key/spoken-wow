@@ -125,8 +125,8 @@ export function makeGameFolders(
   base: string,
   options: { flavorFolder?: string; product?: string; version?: string } = {}
 ): string {
-  const flavorFolder = options.flavorFolder ?? '_classic_beta_'
-  const product = options.product ?? 'wow_classic_beta'
+  const flavorFolder = options.flavorFolder ?? '_forever_'
+  const product = options.product ?? 'wow_forever'
   const gameRoot = path.join(base, 'World of Warcraft')
   const flavor = path.join(gameRoot, flavorFolder)
   fs.mkdirSync(path.join(flavor, 'Interface', 'AddOns'), { recursive: true })

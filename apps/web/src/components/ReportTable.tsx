@@ -51,12 +51,20 @@ import { applyResolutions, type ReportGroup } from "@/lib/reports/rows";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import type { ResultLine as ZoneLine } from "@/lib/places/search";
+import type { ResultLine as BossLine } from "@/lib/bosses/search";
+import { placesSection } from "@/components/places/sections";
+import { bossesSection } from "@/components/bosses/sections";
 import type { Source } from "@/lib/sections";
+
+// No facets: the table plays lines, it does not narrow to them.
+const PLACES = placesSection();
+const BOSSES = bossesSection();
 
 const SECTION_LABELS: Record<Section, string> = {
   quests: "Quests",
   readables: "Readables",
   places: "Places",
+  bosses: "Bosses",
 };
 
 const VIEW_LABELS: Record<StatusView, string> = { ...STATUS_LABELS, all: "All" };
@@ -363,7 +371,7 @@ export default function ReportTable({
           </p>
           <ReportContextNote context={report.context}>
             {/* The text the reporter's addon saw, as the contributions page would take it. */}
-            {report.source !== "places" && report.context?.text?.trim() ? (
+            {report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
               <ReportContribution
                 report={report}
                 onFixed={(fixed) => setResolved((current) => ({ ...current, [fixed.id]: fixed }))}
@@ -515,17 +523,25 @@ export default function ReportTable({
             />
           ) : playing.source === "places" ? (
             <PlacesPlayer
+              section={PLACES}
               audioRef={audio}
               line={playingLine as ZoneLine}
               version={playingVersion}
             />
-          ) : (
+          ) : playing.source === "bosses" ? (
+            <PlacesPlayer
+              section={BOSSES}
+              audioRef={audio}
+              line={playingLine as BossLine}
+              version={playingVersion}
+            />
+          ) : playing.source === "readables" ? (
             <ReadablesPlayer
               audioRef={audio}
               line={playingLine as BookLine}
               version={playingVersion}
             />
-          )}
+          ) : null}
         </div>
       ) : null}
     </>

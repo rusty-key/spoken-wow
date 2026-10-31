@@ -1171,6 +1171,12 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
     local caption = Caption(parent, label)
 
     local control, dropdown, Sync, setEnabled, offset
+    -- Tables by label, since a list built afresh hands back equal entries, not the same tables;
+    -- anything else by value, so two entries with one label are told apart.
+    local function Chosen(value, current)
+        if type(value) == "table" then return describe(value) == describe(current) end
+        return value == current
+    end
     local function Choose(value)
         write(value)
         if apply then apply() end
@@ -1187,11 +1193,9 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
     end
     if dropdown then
         dropdown:SetWidth(DROPDOWN_WIDTH)
-        -- Compared by what it says: a list built afresh each time hands back an equal entry, not
-        -- the same table.
         dropdown:SetupMenu(function(_, root)
             for _, value in ipairs(Resolve(values)) do
-                root:CreateRadio(describe(value), function() return describe(read()) == describe(value) end,
+                root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
             end
         end)
@@ -1209,7 +1213,7 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
             for _, value in ipairs(Resolve(values)) do
                 local info = UIDropDownMenu_CreateInfo()
                 info.text = describe(value)
-                info.checked = describe(value) == describe(current)
+                info.checked = Chosen(value, current)
                 info.func = function()
                     Choose(value)
                     if CloseDropDownMenus then CloseDropDownMenus() end
@@ -2506,6 +2510,10 @@ local function BuildScrollBar(view, parent)
     -- Brighter under the pointer and while held, as the game's thumb is.
     local function Look()
         local alpha = (view.dragging or over) and 1 or 0.8
+        if view.flatThumb then
+            view.flatThumb:SetColorTexture(1, 1, 1, (view.dragging or over) and 0.5 or 0.3)
+            return
+        end
         if pieces then
             for _, piece in ipairs(pieces) do piece:SetAlpha(alpha) end
         else
@@ -2513,6 +2521,10 @@ local function BuildScrollBar(view, parent)
         end
     end
     Look()
+    -- A UI look draws the bar its own way; `repaint` takes the strip it draws for the thumb.
+    if Layout.dressScrollBar then
+        Layout.dressScrollBar(bar, thumb, function(strip) view.flatThumb = strip; Look() end)
+    end
 
     Script(thumb, "OnEnter", function() over = true; Look() end)
     Script(thumb, "OnLeave", function() over = false; Look() end)

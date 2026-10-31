@@ -187,13 +187,13 @@ end
 do
     local redrawn = 0
     B.RefreshReadables = function() redrawn = redrawn + 1 end
-    SpokenReadablesSettings.compendiumFoundOnly = true
+    SpokenReadablesSettings.compendiumFoundOnly = false
     -- The page's Defaults button, in its header as on the game's own pages.
     local reset = B.optionsPage.layout.defaults
     reset.scripts.OnClick(reset)
     stub.popups[#stub.popups].dialog.OnAccept()
-    Expect("resetting the page puts Found Only back and draws the Readables tab again",
-        tostring(SpokenReadablesSettings.compendiumFoundOnly) .. " " .. redrawn, "false 1")
+    Expect("resetting the page puts Found Only back to its default, on, and draws the Readables tab again",
+        tostring(SpokenReadablesSettings.compendiumFoundOnly) .. " " .. redrawn, "true 1")
     B.RefreshReadables = nil
 end
 

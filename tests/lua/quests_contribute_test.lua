@@ -47,6 +47,47 @@ Expect("the pack language is carried beside it", envelope:match("\npack=enUS\n")
 Expect("...and the version of the pack speaking it, none without one", envelope:match("\npackVersion=none\n") ~= nil, true)
 Expect("the build is carried", envelope:match("\nbuild=") ~= nil, true)
 Expect("no character name is carried", envelope:match(world.playerName or "Tester") == nil, true)
+
+-- A quest a party member shares opens the window with them as its "npc". Their name is a
+-- player's, and does not go.
+do
+    local isPlayer, guid, name = _G.UnitIsPlayer, world.npcGUID, world.npcName
+    local sex, modelFile = world.unitSex, world.modelFileID
+    _G.UnitIsPlayer = function() return true end
+    world.npcGUID, world.npcName = "Player-4401-0A1B2C3D", "Sharingfriend"
+    world.unitSex, world.modelFileID = 3, 777
+    local shared = VoiceOver.Contribute:Capture()
+    Expect("a quest shared by another player sends no player's name", shared:find("Sharingfriend", 1, true), nil)
+    Expect("...nor what they look like: no kind, model, sex or creature type",
+        (shared:find("\nkind=", 1, true) or shared:find("\nmodel=", 1, true) or shared:find("\nsex=", 1, true)
+            or shared:find("\ncreature=", 1, true)), nil)
+    local primed, prime = 0, VoiceOver.NPCModel.Prime
+    VoiceOver.NPCModel.Prime = function(...) primed = primed + 1; return prime(...) end
+    VoiceOver.Contribute:HasGap()
+    VoiceOver.NPCModel.Prime = prime
+    Expect("...and no model is asked for them", primed, 0)
+    world.unitSex, world.modelFileID = sex, modelFile
+    _G.UnitIsPlayer = isPlayer
+    stub.HidePanels()
+    Expect("...nor does a report on its line after the window closed",
+        VoiceOver.Contribute:ReportContext({ questID = 9123, event = VoiceOver.Enums.SoundEvent.QuestAccept,
+            unitGUID = world.npcGUID, name = "Sharingfriend", text = "Kill six of them." }):find("Sharingfriend", 1, true), nil)
+    world.npcGUID, world.npcName = guid, name
+    stub.ShowPanel("QuestFrameDetailPanel")
+end
+-- Either sign alone is a player's: the client says the unit is one, or its GUID is a Player's.
+do
+    local isPlayer, guid, name = _G.UnitIsPlayer, world.npcGUID, world.npcName
+    world.npcName = "Sharingfriend"
+    _G.UnitIsPlayer = function() return true end
+    Expect("a unit the client calls a player sends no name, whatever its GUID",
+        VoiceOver.Contribute:Capture():find("Sharingfriend", 1, true), nil)
+    _G.UnitIsPlayer = isPlayer
+    world.npcGUID = "Player-4401-0A1B2C3D"
+    Expect("a Player GUID sends no name, whatever the client calls the unit",
+        VoiceOver.Contribute:Capture():find("Sharingfriend", 1, true), nil)
+    world.npcGUID, world.npcName = guid, name
+end
 Expect("the addon field carries the real .toc version, not the \"dev\" fallback",
     envelope:match("\naddon=SpokenQuests/9%.9%.9\n") ~= nil, true)
 
@@ -119,6 +160,22 @@ world.questText = "Greetings, young Valaas. The Dawnsight name is known, Valaas 
 local surnamed = VoiceOver.Contribute:Capture()
 Expect("a surnamed character is swapped whole and by either part",
     surnamed:match("\nGreetings, young %$N%. The %$N name is known, %$N%.\n") ~= nil, true)
+world.questText = "VALAAS DAWNSIGHT! Valaas. VALAASWOOD stays."
+Expect("...and in capitals, as some pages write it",
+    VoiceOver.Contribute:Capture():match("\n([^\n]*stays%.)\n"), "$N! $N. VALAASWOOD stays.")
+-- A part of the name inside a longer class phrase leaves that phrase to the class.
+do
+    local class = world.playerClass
+    world.playerName, world.playerClass = "Valaas Hunter", "Demon Hunter"
+    Expect("a part of the name inside the class's words does not take them first",
+        VoiceOver.Contribute:Detemplate("Demon Hunter, rise. Valaas, Hunter."), "$C, rise. $N, $N.")
+    world.playerClass = class
+end
+world.playerName = "Zöpf"
+Expect("an accented name in capitals is the name too",
+    VoiceOver.Contribute:Detemplate("ZÖPF, Zöpf, Zöpfe."), "$N, $N, Zöpfe.")
+world.playerName = "Гримбалор"
+Expect("...as is a Cyrillic one", VoiceOver.Contribute:Detemplate("ГРИМБАЛОР."), "$N.")
 world.playerName = nil
 
 stub.HidePanels()
@@ -223,6 +280,43 @@ Expect("capturing the same moment does not error", askedCapture, true)
 Expect("...and sends nothing, since the server keys gossip on the creature id", captured, nil)
 
 world.npcName, world.npcGUID = savedName, savedGUID
+
+---------------------------------------------------------- a Spoken older than this addon
+-- What this addon calls in the Spoken folder beside it, new with the name swaps and the login tidy: an
+-- older folder lacks it, and a player on it has no contribute button rather than an error.
+do
+    local Gather = SpokenEnv.Spoken.Gather
+    local questID, text = world.questID, world.questText
+    world.questID, world.questText = 9555, "Words no pack has."
+    stub.ShowPanel("QuestFrameDetailPanel")
+    local real = VoiceOver.Contribute.QuestLogDescription
+    VoiceOver.Contribute.QuestLogDescription = function() return "From the log, Tester." end
+    local clip = { questID = 9555, event = VoiceOver.Enums.SoundEvent.QuestAccept, unitGUID = world.npcGUID,
+        name = "Deathguard Linnea", text = "Words no pack has, Tester." }
+    for _, missing in ipairs({ { Spoken.Contribute, "NameWords" }, { Spoken.Contribute, "ReplaceWord" },
+        { Spoken.Contribute, "Parse" }, { Gather, "Get" }, { Gather, "Remove" }, { Gather, "IsTidied" } }) do
+        local owner, name = missing[1], missing[2]
+        local method = owner[name]
+        owner[name] = nil
+        local label = "without " .. name
+        local ok, gap = pcall(VoiceOver.Contribute.HasGap, VoiceOver.Contribute)
+        Expect(label .. ", the gap check does not error", ok, true)
+        Expect("...and finds no gap", gap, false)
+        local captured, report, fromLog, tidied
+        Expect("...capturing does not error", (pcall(function() captured = VoiceOver.Contribute:Capture() end)), true)
+        Expect("...and sends nothing", captured, nil)
+        Expect("...nor does a report", (pcall(function() report = VoiceOver.Contribute:ReportContext(clip) end)), true)
+        Expect("...and it carries nothing", report, nil)
+        Expect("...nor does the quest log's", (pcall(function() fromLog = VoiceOver.Contribute:CaptureFromLog(9555, "A Task") end)), true)
+        Expect("...and it carries nothing either", fromLog, nil)
+        Expect("...which offers no button", VoiceOver.Contribute:CanOfferFromLog(), false)
+        Expect("...and the login tidy does not error", (pcall(VoiceOver.Contribute.TidyGathered, VoiceOver.Contribute)), true)
+        owner[name] = method
+    end
+    VoiceOver.Contribute.QuestLogDescription = real
+    stub.HidePanels()
+    world.questID, world.questText = questID, text
+end
 
 ------------------------------------------------------------------------------- Show()
 -- The first-click choice between one line and gathering is gather_test.lua's; here the

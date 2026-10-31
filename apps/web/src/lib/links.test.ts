@@ -27,6 +27,7 @@ describe("reportHref", () => {
     expect(reportHref("places", "1411/razor-hill")).toBe("/places/r/1411/razor-hill");
     // A readables target is the bare page id the addon put in the address.
     expect(reportHref("readables", "261")).toBe("/readables/r/261");
+    expect(reportHref("bosses", "36/edwin-vancleef")).toBe("/bosses/r/36/edwin-vancleef");
   });
 
   it("escapes a segment without escaping the separators", () => {
@@ -123,7 +124,7 @@ describe("explorerHref", () => {
   it("names the param each explorer reads, so the link is not a bare section", () => {
     // The three filter vocabularies are three modules; a link that used a name only one
     // of them reads would render the whole corpus and report no error at all.
-    for (const source of ["quests", "places", "readables"] as const) {
+    for (const source of ["quests", "places", "readables", "bosses"] as const) {
       const href = explorerHref(source, "x:1");
       expect(new URLSearchParams(href.slice(href.indexOf("?"))).get("line")).toBe("x:1");
     }
@@ -142,11 +143,16 @@ describe("targetExplorerHref", () => {
     expect(targetExplorerHref("places", "1411/razor-hill")).toBe("/places?zone=1411");
   });
 
+  it("narrows bosses by the instance its address names", () => {
+    expect(targetExplorerHref("bosses", "36/edwin-vancleef")).toBe("/bosses?instance=36");
+  });
+
   it("is null for an address no filter addresses, so the caller keeps the /r/ page", () => {
     // A readables target is a bare page id, and neither readables field matches ids.
     expect(targetExplorerHref("readables", "261")).toBe(null);
     expect(targetExplorerHref("quests", "npc/not-a-number")).toBe(null);
     expect(targetExplorerHref("quests", "npc")).toBe(null);
     expect(targetExplorerHref("places", "razor-hill")).toBe(null);
+    expect(targetExplorerHref("bosses", "edwin-vancleef")).toBe(null);
   });
 });

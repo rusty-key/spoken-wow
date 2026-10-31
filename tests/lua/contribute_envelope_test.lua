@@ -40,6 +40,28 @@ local none = C:Envelope("places", { { "map", "1537" } }, nil)
 Expect("an envelope with no text has no fence", none:match("text<<") == nil, true)
 
 Expect("an unknown source is refused", C:Envelope("mail", { { "page", "1" } }, "x"), nil)
+
+------------------------------------------------------------------------------- whole words
+-- A name next to punctuation of any script is the name: a guillemet and its no-break space, the
+-- ellipsis, a curly apostrophe, the dash, the fullwidth comma and the ideographic stop. Next to a
+-- letter it is part of a longer word, except in Hangul and Han, which put no space between words.
+local function Swap(text) return C:ReplaceWord(text, "Grimbalor", "$N") end
+Expect("a name in guillemets with no-break spaces is swapped",
+    Swap("\194\171\194\160Grimbalor\194\160\194\187"), "\194\171\194\160$N\194\160\194\187")
+Expect("...before an ellipsis", Swap("Grimbalor\226\128\166 ok"), "$N\226\128\166 ok")
+Expect("...before a curly apostrophe", Swap("Grimbalor\226\128\153s axe"), "$N\226\128\153s axe")
+Expect("...between dashes", Swap("\226\128\148Grimbalor\226\128\148"), "\226\128\148$N\226\128\148")
+Expect("...before a fullwidth comma", Swap("Grimbalor\239\188\140\228\189\160\229\165\189"), "$N\239\188\140\228\189\160\229\165\189")
+Expect("...before an ideographic stop and in corner brackets",
+    Swap("\227\128\140Grimbalor\227\128\141\227\128\130"), "\227\128\140$N\227\128\141\227\128\130")
+Expect("...before an exclamation mark", Swap("Grimbalor! ok"), "$N! ok")
+Expect("...but not inside a word with an accented letter", Swap("Grimbalor\195\161"), "Grimbalor\195\161")
+Expect("...a Cyrillic one before it", Swap("\208\144Grimbalor"), "\208\144Grimbalor")
+Expect("...but beside a Han character it is swapped", Swap("Grimbalor\228\189\160"), "$N\228\189\160")
+Expect("a Korean name before a particle is swapped",
+    C:ReplaceWord("\237\153\141\234\184\184\235\143\153\235\139\152, ok", "\237\153\141\234\184\184\235\143\153", "$N"), "$N\235\139\152, ok")
+Expect("an accented name is swapped before the multiplication sign",
+    C:ReplaceWord("Z\195\182pf\195\151", "Z\195\182pf", "$N"), "$N\195\151")
 Expect("a field value never spans lines",
     C:Envelope("quests", { { "title", "A\nB" } }, nil):match("\ntitle=A B\n") ~= nil, true)
 
@@ -201,6 +223,31 @@ if os.getenv("SPOKEN_WRITE_FIXTURES") then
         { "kind", "creature" }, { "model", "122055" }, { "sex", "2" }, { "creature", "Humanoid" },
         { "title", "Stalk With The Earthmother" },
     }, "We'll need to work on your stealth skills, druid."))
+end
+
+------------------------------------------------------------------------------- reading one back
+-- Parse gives back what Envelope was built from, so a kept line can be rewritten and built
+-- again byte for byte: fences, escapes, an empty field and a value with "=" in it.
+local function RoundTrip(source, fields, text)
+    local built = C:Envelope(source, fields, text)
+    local readSource, readFields, readText = C:Parse(built)
+    return readSource == source and C:Envelope(readSource, readFields, readText) == built, readFields, readText
+end
+local same, readFields, readText = RoundTrip("quests",
+    { { "quest", "3117" }, { "npc", "" }, { "title", "a=b" } }, "before\n>>\n\\>>\n>>trailer\nafter")
+Expect("Parse reads an envelope back into the same envelope", same, true)
+Expect("...its text unescaped", readText, "before\n>>\n\\>>\n>>trailer\nafter")
+Expect("...an empty field kept", readFields[2][1] .. "=" .. readFields[2][2], "npc=")
+Expect("...a value keeping its =", readFields[3][2], "a=b")
+Expect("an envelope with no text reads back with none", select(3, C:Parse(C:Envelope("places", { { "map", "1" } }, nil))), nil)
+Expect("anything else is not an envelope", C:Parse("hello"), nil)
+do
+    local built = C:Envelope("quests", { { "quest", "3117" } }, "Well met.")
+    Expect("an envelope whose words changed after it was signed is not read", C:Parse((built:gsub("Well met", "Ill met"))), nil)
+    Expect("...nor one whose field did", C:Parse((built:gsub("quest=3117", "quest=3118"))), nil)
+    Expect("...nor one cut short", C:Parse(built:sub(1, -3)), nil)
+    Expect("a text that holds a sum= line of its own reads back whole",
+        select(3, C:Parse(C:Envelope("quests", {}, "a\nsum=5\nb"))), "a\nsum=5\nb")
 end
 
 os.exit(Failures() == 0 and 0 or 1)

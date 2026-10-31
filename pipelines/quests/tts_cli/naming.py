@@ -49,9 +49,17 @@ broadcast_text's, which the addon is handed by its own export; and the voice is 
 voice, flavor included, because the rule for sharing a recording is that the same words share
 a clip only among NPCs that sound alike. A quest file or a gossip hash is shared across
 flavors and forces them to agree on one (tts_utils.resolve_flavors); this one never needs to.
+
+What an NPC says in chat with no quest behind it (source "chatter", the addon's Chatter.lua) is
+named the same way, for the same reason: the words have a broadcast_text id and no quest. It shares
+the follow-up's id, file and folder, so a chat line and a follow-up line of the same words in the
+same voice are one recording.
 """
 
 FOLLOWUP = "followup"
+CHATTER = "chatter"
+#: The sources named after their broadcast_text id and voice: f:{broadcastTextId}:{voice}.
+BROADCAST_SOURCES = frozenset({FOLLOWUP, CHATTER})
 
 
 def followup_stem(broadcast_text_id, voice: str) -> str:
@@ -92,7 +100,7 @@ def gossip_stem_rank(stem: str) -> int:
 def filename_for_row(row) -> str:
     """Filename (without extension) the generator would produce for a dataframe row."""
     # Follow-up first: its row carries a quest, and would otherwise be named after it.
-    if row["source"] == FOLLOWUP:
+    if row["source"] in BROADCAST_SOURCES:
         base = followup_stem(row["broadcast_text_id"], row["voice_name"])
     elif row["quest"]:
         base = f'{row["quest"]}-{row["source"]}'
@@ -105,7 +113,7 @@ def filename_for_row(row) -> str:
 
 def line_id_for_row(row) -> str:
     """Stable identity for a dataframe row."""
-    if row["source"] == FOLLOWUP:
+    if row["source"] in BROADCAST_SOURCES:
         parts = ["f", str(int(row["broadcast_text_id"])), row["voice_name"]]
     elif row["quest"]:
         parts = ["q", str(row["quest"]), row["source"]]

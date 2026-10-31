@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 
 import { isClientLocale } from "../../../lib/locales.mjs";
+import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
 import { spokenText } from "./text.mjs";
 
@@ -80,7 +81,7 @@ export function localeEntries(pages, names) {
  * Data/Sounds.lua for a pack.
  *
  * @param lang the language the clips are recorded in
- * @param clips `{ pageId, file, durationSec }`, in page order
+ * @param clips `{ pageId, file, durationSec, wordTimes }`, in page order
  * @param entries a language's localeEntries, or null for a language with no index
  */
 export function packLua(lang, clips, entries = null) {
@@ -106,7 +107,9 @@ export function packLua(lang, clips, entries = null) {
     // copy here was 440 KB more in every English pack. A minted page is not in Books.lua.
     const inBooksLua = lang === LANG && typeof row.pageId === "number";
     const text = row.text == null || inBooksLua ? "" : `, text = ${quote(spokenText(row.text))}`;
-    lines.push(`\t\t[${luaId(row.pageId)}] = { file = ${quote(row.file)}, len = ${len}${text} },`);
+    // Absent for a take with no times: the captions then estimate.
+    const times = row.wordTimes ? `, times = ${quote(packTimes(row.wordTimes))}` : "";
+    lines.push(`\t\t[${luaId(row.pageId)}] = { file = ${quote(row.file)}, len = ${len}${text}${times} },`);
   }
   lines.push("\t},");
 
@@ -167,7 +170,7 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
        select distinct on (t."lineId")
               case when p."pageTextId" is not null then p."pageTextId"::text else substr(p."lineId", 3) end as "pageId",
               p."pageTextId" is not null as "numeric", p."pageTextId", p."lineId", p."bookId", b."title", b."text",
-              t."file", t."durationSec"
+              t."file", t."durationSec", t."wordTimes"
          from "take" t
          join "book_line" b on b."lineId" = t."lineId" and b."lang" = t."lang" and b."isCurrent"
          join "book_page" p on p."lineId" = t."lineId" and p."aliasOf" is null

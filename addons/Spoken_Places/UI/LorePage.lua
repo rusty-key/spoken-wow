@@ -143,8 +143,10 @@ local LOG_PAGE = "QuestDetailsBackgrounds"
 -- top bar: this much of its height, cut off so the parchment starts at the page's top.
 local BOOK_TOP_BAND = 0.07
 -- Beside the map: the quest log's page, its heading nearer the narrower page's top and right edge,
--- smaller and on one line, under a shorter backplate.
-local LOG_LOOK = { top = 28, right = 28, titleSize = 20, oneLine = true, backplate = { full = 300, height = 80 } }
+-- smaller and on one line, under a shorter backplate, and no round picture by the title: its Open in
+-- Compendium button shows the same tome, which would stand twice on the heading's line.
+local LOG_LOOK = { top = 28, right = 28, titleSize = 20, oneLine = true, backplate = { full = 300, height = 80 },
+	noFace = true }
 
 -- What Play does on a story's page: the story `target` ({ mapID, key }) where a pack reads it, Stop
 -- while it is read and Replay once stopped, as every Play of the Compendium's (SpokenCompendium.PlayState).
@@ -152,7 +154,6 @@ local PLAY = {
 	has = function(target) return SpokenPlaces:IsVoiceEnabled() and SpokenPlaces:HasAudio(target[1], target[2]) end,
 	find = function(target) return SpokenPlaces:LoreClip(target[1], target[2]) end,
 	start = function(target) SpokenPlaces:PlayLore(target[1], target[2]) end,
-	tip = L.AUDIO_READ_TIP,
 }
 
 -- What Report does: every story, voiced or not. Lore text can be wrong whether or not anyone has
@@ -163,7 +164,6 @@ local REPORT = {
 		SpokenPlaces:ShowReport(target[1], target[2])
 	end,
 	title = L.OPT_REPORT_PROBLEM,
-	tip = L.OPT_REPORT_LINE_TIP,
 }
 
 -- The Compendium's page inside, its parts (title, sub, body, play, report, frame) read through.
@@ -204,7 +204,6 @@ function SpokenPlaces:CreateLorePage(parent, style)
 		open:HookScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			GameTooltip:SetText(L.OPEN_IN_COMPENDIUM)
-			GameTooltip:AddLine(L.OPEN_IN_LORE_TIP, 1, 0.8, 0.2, true)
 			GameTooltip:Show()
 		end)
 		open:HookScript("OnLeave", function() GameTooltip:Hide() end)

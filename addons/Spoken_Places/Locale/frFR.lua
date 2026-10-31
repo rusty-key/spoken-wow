@@ -31,10 +31,8 @@ L.OPT_REPORT_PROBLEM = "Signaler un problème"
 L.MENU_LORE_WINDOW = "Ouvrir le Compendium d'Azeroth"
 L.MENU_ZONE_SETTINGS = "Paramètres des Lieux"
 
-L.OPT_REPORT_LINE_TIP = "Obtenez un lien pour signaler un récit erroné, une lecture erronée ou un nom mal prononcé."
 L.OPT_REPORT_LINE_ADDRESS = "Copiez cette adresse et ouvrez-la dans votre navigateur pour signaler un problème avec cette entrée."
 
-L.AUDIO_READ_TIP = "Écouter la lecture de ce récit."
 L.REPORT_BUTTON = "Signaler"
 L.IN_ZONE_FMT = "Emplacement : %1$s"
 L.DISCOVERED_FMT = "%1$d sur %2$d découvertes"
@@ -86,7 +84,6 @@ L.OPT_RELOAD_NOW = "Recharger maintenant"
 L.OPT_LATER = "Plus tard"
 
 -- Lore of Azeroth and Zone Lore
-L.OPEN_IN_LORE_TIP = "Le récit de ce lieu dans le Compendium d'Azeroth, avec ceux de toutes les autres zones et sous-zones."
 L.COMPENDIUM_PLACES = "Lieux"
 L.LORE_PANEL_TITLE = "Récit du lieu"
 L.MAP_PANEL_EXPAND = "Afficher le récit du lieu"

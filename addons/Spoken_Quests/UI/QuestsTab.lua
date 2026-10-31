@@ -39,6 +39,11 @@ VO.QuestsTab = QuestsTab
 
 local L = VO.L
 local C
+local VERSION = _G.SpokenEnv and _G.SpokenEnv.Version
+-- The shared Compendium data contains Forever's added quests, whose IDs start above the vanilla
+-- quest range. The other clients have no quest data for those, even when Forever files one under
+-- one of their zones.
+local QUEST_LIMIT = 10000
 
 local list, page
 local selection          -- { quest = id } | { mapID = id } | { sort = id } | { group = "elsewhere" }
@@ -118,7 +123,7 @@ local function Unlocked()
 end
 
 local function OnlyFound()
-    return Global().FoundOnly == true
+    return Global().FoundOnly ~= false
 end
 
 -- Voiced Only, after Started Only in the filter menu: the quests no installed voice pack has a part
@@ -190,6 +195,10 @@ local function Allowed(quest)
         if not Has(quest.classes, class) then return false end
     end
     return true
+end
+
+local function OnThisClient(id)
+    return not VERSION or VERSION.Variant == "forever" or id < QUEST_LIMIT
 end
 
 -- What the game says this character has completed, read again on each refresh: the whole list
@@ -360,7 +369,7 @@ function Index()
     if index then return index end
     index = { zones = {}, sorts = {}, elsewhere = {}, all = {} }
     for id, quest in pairs(Quests()) do
-        if Allowed(quest) then
+        if OnThisClient(id) and Allowed(quest) then
             local zones = KnownZones(quest)
             if quest.zones and #quest.zones > 0 then
                 if #zones > 0 then index.all[id] = true end
@@ -475,7 +484,7 @@ local IN_PROGRESS_MARK = "|TInterface\\GossipFrame\\ActiveQuestIcon:0|t "
 local function Prev(id)
     local quest = Quests()[id]
     local prev = quest and quest.prev
-    return prev and Quests()[prev] and prev or nil
+    return prev and OnThisClient(prev) and Quests()[prev] and prev or nil
 end
 
 -- The quests that follow each, by id, by the quest before them.
@@ -484,7 +493,7 @@ local function Following(id)
     if not following then
         following = {}
         for after, quest in pairs(Quests()) do
-            if quest.prev then
+            if OnThisClient(after) and quest.prev and OnThisClient(quest.prev) then
                 following[quest.prev] = following[quest.prev] or {}
                 table.insert(following[quest.prev], after)
             end
@@ -1104,9 +1113,9 @@ local function PartButtons(moment)
             VO.Player:PlayNow(SoundData(id, moment, "Azeroth's Compendium"))
         end)
         PaintPartPlay(self)
-        if GameTooltip and GameTooltip:GetOwner() == self then C.PlayTooltip(self, self.pageState, L.QUEST_PART_PLAY_TIP) end
+        if GameTooltip and GameTooltip:GetOwner() == self then C.PlayTooltip(self, self.pageState) end
     end)
-    play:HookScript("OnEnter", function(self) C.PlayTooltip(self, self.pageState, L.QUEST_PART_PLAY_TIP) end)
+    play:HookScript("OnEnter", function(self) C.PlayTooltip(self, self.pageState) end)
     play:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     local report = Spoken:CreateRoundButton(child, "report")
     report:SetScript("OnClick", function(self)
@@ -1114,7 +1123,7 @@ local function PartButtons(moment)
         local target = id and VO.ReportButton and VO.ReportButton:TargetForQuest(id, EVENTS[moment])
         if target then VO.ReportButton:ShowLink(target) end
     end)
-    report:HookScript("OnEnter", function(self) C.ReportTooltip(self, L.OPT_REPORT_PROBLEM, L.OPT_REPORT_QUEST_TIP) end)
+    report:HookScript("OnEnter", function(self) C.ReportTooltip(self, L.OPT_REPORT_PROBLEM) end)
     report:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     play:Hide()
     report:Hide()
@@ -1323,6 +1332,8 @@ local function ScrollIcon(done)
     return { objectOrItem = true, icon = [[Interface\Icons\INV_Scroll_03]], bullet = done and BULLETS.complete or BULLETS.accept }
 end
 
+local QUESTS_ICON = ScrollIcon(false)
+
 local function QuestIcon(id)
     return ScrollIcon(Completed(id))
 end
@@ -1378,7 +1389,7 @@ end
 local function ShowEntry()
     if not page then return end
     if not selection then
-        page:Show({ title = L.COMPENDIUM_QUESTS, subtitle = Count(Index().all) })
+        page:Show({ title = L.COMPENDIUM_QUESTS, subtitle = Count(Index().all), icon = QUESTS_ICON })
         return
     end
     local up = Holder(selection)
@@ -1406,8 +1417,7 @@ local function ShowEntry()
     if selection.dungeon then
         -- In the zone of its entrance, whose line holds it.
         local zone = tonumber(selection.dungeon:match("^d(%d+)"))
-        local place = zone and selection.map and { mapID = zone, dungeon = selection.map } or nil
-        page:Show({ title = selection.label, subtitle = Line(SetOf(selection.ids), zone and C.MapName(zone), true), icon = C.PlaceIcon(zone, selection.map), picture = place and C.PlacePicture(place) or nil })
+        page:Show({ title = selection.label, subtitle = Line(SetOf(selection.ids), zone and C.MapName(zone), true), icon = C.PlaceIcon(zone, selection.map) })
         return
     end
     local banner = selection.section and ZONE_BANNERS[selection.section]
@@ -1446,7 +1456,7 @@ local function ShowEntry()
     else
         QuestsIn(selection.mapID, set)
     end
-    page:Show({ title = C.MapName(selection.mapID), subtitle = Line(set, ZoneHolderName(up), true), icon = C.PlaceIcon(selection.mapID), picture = C.PlacePicture({ mapID = selection.mapID }) })
+    page:Show({ title = C.MapName(selection.mapID), subtitle = Line(set, ZoneHolderName(up), true), icon = C.PlaceIcon(selection.mapID) })
 end
 
 --------------------------------------------------------------------------------
@@ -1563,6 +1573,11 @@ local function OnHidden()
         selection = nil
     end
     QuestsTab:Refresh(true)
+end
+
+--- Forget what Index() and Following() worked out, for a test that changes the client under them.
+function QuestsTab:Reindex()
+    index, following = nil, nil
 end
 
 function QuestsTab:Refresh(scrollToSelection)

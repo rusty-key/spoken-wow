@@ -115,6 +115,18 @@ do
     Expect("...and off, Read Automatically greys out, saying why", discovery and discovery.layoutReason, Z.L.REASON_VOICE)
     Z:Set("voiceEnabled", true); layout:Refresh()
     Expect("...and comes back with it", discovery and discovery.layoutReason, nil)
+
+    -- Forgotten places are read again only by automatic reading, with the voice on. The greeting
+    -- and the dungeon stories read the list whatever Include Places Found Before is.
+    local forget = Row(Z.L.OPT_FORGET_PLACES)
+    Z:Set("voiceEnabled", false); layout:Refresh()
+    Expect("Forget Places Heard greys out with the voice off, saying why", forget and forget.layoutReason,
+        Z.L.REASON_VOICE)
+    Z:Set("voiceEnabled", true); Z:Set("autoplay", false); layout:Refresh()
+    Expect("...and with Read Automatically off", forget and forget.layoutReason, Z.L.REASON_DISCOVERY)
+    Z:Set("autoplay", true); Z:Set("autoplayExplored", false); layout:Refresh()
+    Expect("...but not with Include Places Found Before off", forget and forget.layoutReason, nil)
+    Z:Set("autoplayExplored", true)
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

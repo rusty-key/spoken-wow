@@ -105,6 +105,12 @@ Subtitle:Layout(short)
 Expect("...on again, the row is back over them", tostring(Subtitle.nameRow and Subtitle.nameRow:IsShown()) .. " " .. Subtitle.lines[1].anchor.y,
     "true " .. named)
 
+-- A line with neither a header nor a label has no title over its words: its key is no name.
+Subtitle:Prepare({ key = "q:123:accept:456", present = {} }, short)
+Expect("a line with no header and no label shows no title", Subtitle.title:GetText() .. "|" .. tostring(Subtitle.labelText), "|nil")
+Subtitle:Prepare({ key = "q:123:accept:456", present = { header = "Thrall", label = "A Task" } }, short)
+Expect("...and one with both shows them", Subtitle.title:GetText() .. "|" .. tostring(Subtitle.labelText), "Thrall|A Task")
+
 -- Each layout setting changed under the sample shows on it at once, not at the next line or page.
 local frame = _G.SpokenEnv.Addon.db.profile.Frame
 -- The measure follows Text Size here: 7 a character at the quest font's 12, more as it grows.

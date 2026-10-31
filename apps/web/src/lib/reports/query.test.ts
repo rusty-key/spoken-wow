@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { matchesReportSearch, reportsHref, sortedGroups, type ReportFilters } from "./query";
+import { isSection, matchesReportSearch, reportsHref, sortedGroups, type ReportFilters } from "./query";
 import type { Report } from "./reports";
 
 function report(overrides: Partial<Report> = {}): Report {
@@ -64,5 +64,12 @@ describe("reportsHref", () => {
     const filtered = { ...current, q: "thrall", dir: "asc" as const };
     expect(reportsHref(filtered, { section: "readables" })).toBe("/reports/readables?q=thrall&dir=asc");
     expect(reportsHref(filtered, {}, 3)).toBe("/reports/quests?q=thrall&dir=asc&page=3");
+  });
+});
+
+describe("isSection", () => {
+  it("has a tab for bosses, which takes reports but no contributions", () => {
+    expect(isSection("bosses")).toBe(true);
+    expect(isSection("gossip")).toBe(false);
   });
 });

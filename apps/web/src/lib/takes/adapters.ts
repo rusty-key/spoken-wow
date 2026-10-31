@@ -22,7 +22,8 @@
  * English v1 and the Portuguese v1 of a file would share a directory and be told apart only
  * by a content hash. English stays exactly where it is -- the archive is irreplaceable and a
  * path it is already at is not moved -- and no English path can begin with a language code:
- * quests paths begin quests/ or gossip/, places paths a map id, readables paths a page id.
+ * quests paths begin quests/ or gossip/, places and bosses paths a map id, readables paths a
+ * page id.
  */
 import "server-only";
 
@@ -34,6 +35,16 @@ import { AUDIO_HISTORY_DIR } from "@/lib/paths";
 import { isSafeAudioPath } from "@/lib/range";
 import type { Source } from "@/lib/sections";
 import { historyDir as placesHistory } from "@/lib/places/tools";
+
+/** Joined for the tracer, for the reason lib/paths.ts gives. */
+const PLACES_DIR = ["pipelines", "places"].join(path.sep);
+
+function bossesHistory(): string {
+  return (
+    process.env.SPOKEN_BOSSES_AUDIO_HISTORY ??
+    path.join(path.resolve(process.cwd(), "..", "..", PLACES_DIR), "bosses-audio-history")
+  );
+}
 
 type StoreAdapter = {
   /** The section's archive, which a deployment points at its own directory. */
@@ -62,6 +73,10 @@ const ADAPTERS: Record<Source, StoreAdapter> = {
   },
   readables: {
     root: readablesHistory,
+    relative: (file) => file,
+  },
+  bosses: {
+    root: bossesHistory,
     relative: (file) => file,
   },
 };

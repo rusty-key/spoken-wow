@@ -2,7 +2,7 @@ import { pageLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { Explorer } from "@/components/places/Explorer";
+import { PlacesExplorer } from "@/components/places/PlacesExplorer";
 import { isCorpusEmpty, zoneFacets } from "@/lib/places/catalogue";
 import { Contained } from "@/components/Width";
 
@@ -56,7 +56,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
-        <Explorer zones={zones} />
+        <PlacesExplorer zones={zones} />
       </Suspense>
     </main>
   );

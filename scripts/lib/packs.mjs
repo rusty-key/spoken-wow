@@ -27,7 +27,7 @@ import { parseFrontmatter } from "./frontmatter.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 export const PUBLISHERS_DIR = join(ROOT, "publishers");
 
-export const SECTIONS = ["quests", "places", "readables"];
+export const SECTIONS = ["quests", "places", "readables", "bosses"];
 
 // tts_cli/factions.py PACK_SUFFIXES, for the four that ship to CurseForge.
 const QUESTS_PACKS = { alliance: "Alliance", horde: "Horde", shared: "Shared", gossip: "Gossip" };
@@ -46,9 +46,10 @@ const ENGLISH_QUESTS_BUNDLE = Object.values(QUESTS_PACKS).map((suffix) => "Spoke
 // it carries no suffix: SpokenQuestsAudio_frFR, released as quests-audio-frFR.
 const LANGUAGE_QUESTS_PACKS = { ...QUESTS_PACKS, all: "" };
 
-function englishFolder(section, pack) {
+export function englishFolder(section, pack) {
   if (section === "places") return "SpokenPlacesAudio";
   if (section === "readables") return "SpokenReadablesAudio";
+  if (section === "bosses") return "SpokenBossesAudio";
   return "SpokenQuestsAudio" + ENGLISH_QUESTS_PACKS[pack];
 }
 
@@ -119,6 +120,14 @@ function toPack(page, meta) {
   // No `curseforge` until the project exists: a pack can go out on GitHub before it has one.
   for (const key of ["slug", "name"]) if (!meta[key]) fail(`missing '${key}'`);
 
+  // `bundledIn: <slug>` is a pack with no CurseForge project of its own, whose folder ships in the
+  // zip of the pack with that slug (the bosses inside Spoken Audio: Places and Bosses), so a
+  // player sent to CurseForge for it is sent there. loadPacks checks the slug names a pack on
+  // CurseForge.
+  if (meta.bundledIn !== undefined && meta.curseforge !== undefined) {
+    fail(`a pack is on CurseForge either as its own project or bundledIn another's, not both`);
+  }
+
   // `github: false` keeps a pack off GitHub: English's four split packs, since the single `all`
   // pack is what GitHub offers. Everything else goes there, where the ceiling is 2 GB a file.
   if (meta.github !== undefined && meta.github !== "false") fail(`github may only be false`);
@@ -144,7 +153,7 @@ function toPack(page, meta) {
   return {
     page, section, lang, pack, version, github,
     build: meta.holds ?? pack, dormant: meta.dormant === "true", manager: meta.manager === "true",
-    curseforge: meta.curseforge ?? null, wago: meta.wago ?? null, release,
+    curseforge: meta.curseforge ?? null, bundledIn: meta.bundledIn ?? null, wago: meta.wago ?? null, release,
     bundles: english && section === "quests" && pack === "all" ? ENGLISH_QUESTS_BUNDLE : null,
     slug: meta.slug, name: meta.name, folder,
     zip: english ? null : `${folder}-${version}.zip`,
@@ -164,6 +173,12 @@ export function loadPacks(dir = PUBLISHERS_DIR) {
     const key = `${p.section}/${p.lang}/${p.pack ?? "-"}`;
     if (seen.has(key)) throw new Error(`two pages for one pack (${key}): publishers/${seen.get(key)} and publishers/${p.page}`);
     seen.set(key, p.page);
+  }
+  for (const p of packs.filter((p) => p.bundledIn !== null)) {
+    const home = packs.find((h) => h.slug === p.bundledIn);
+    if (!home || home.curseforge === null || home.lang !== p.lang) {
+      throw new Error(`publishers/${p.page}: bundledIn ${p.bundledIn} is not an ${p.lang} pack on CurseForge`);
+    }
   }
   // Shared holding every quest and a side's own pack would ship that side's lines twice; Shared
   // holding only shared quests with a side dormant would ship them nowhere.
@@ -193,7 +208,8 @@ export function findPack(section, lang, pack, packs = loadPacks()) {
 
 // The oldest Spoken whose lookups each section's packs are built for. Bumped by hand only when a
 // section's lookup format changes; scripts/manager/ refuses to publish past the latest release.
-export const MIN_SPOKEN = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0" };
+// Bosses: 3.6.0 has no boss audio, so the pack waits on the release after it.
+export const MIN_SPOKEN = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0", bosses: "3.7.0" };
 
 // The folders the manager channel carries, each once: a bundle's folders, else the pack's own.
 export function managerFolders(packs = loadPacks()) {

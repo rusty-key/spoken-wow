@@ -157,7 +157,7 @@ const MOMENT_SPEAKERS = speakersBy(momentSql(`s."lineId"`));
  * audio until somebody generates it; one with no flavor yet moves to a line nobody can voice
  * until it gets one. Progress text is never voiced, so it is never split.
  */
-const OWN_VOICE_SOURCES: ReadonlySet<string> = new Set(["accept", "complete", "gossip", "followup"]);
+const OWN_VOICE_SOURCES: ReadonlySet<string> = new Set(["accept", "complete", "gossip", "followup", "chatter"]);
 
 type Speaking = {
   lineId: string;

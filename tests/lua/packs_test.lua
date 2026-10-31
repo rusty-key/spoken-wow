@@ -29,8 +29,10 @@ local PAGES = {
     quests = function(code) return "quests/audio-" .. code:lower() .. ".md" end,
     places = function(code) return "places/spoken-places-audio-" .. code:lower() .. ".md" end,
     readables = function(code) return "readables/spoken-readables-audio-" .. code:lower() .. ".md" end,
+    bosses = function(code) return "bosses/spoken-bosses-audio-" .. code:lower() .. ".md" end,
 }
-local FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio" }
+local FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio",
+    bosses = "SpokenBossesAudio" }
 
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 stub.LoadSpoken(SPOKEN)

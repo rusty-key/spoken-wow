@@ -325,10 +325,12 @@ function SoundQueue:RemoveSource(source)
 end
 
 --- End the head and let the backlog run. A stopped queue plays again: skipping is asking for
---- the next line.
+--- the next line. With no line, or one that cannot be stopped, nothing changes.
 function SoundQueue:Skip()
+    local head = self:GetCurrentSound()
+    if not head or not self:CanBePaused() then return false end
     self:SetPaused(false)
-    return self:RemoveSoundFromQueue(self:GetCurrentSound())
+    return self:RemoveSoundFromQueue(head)
 end
 
 --------------------------------------------------------------------------------
@@ -371,10 +373,12 @@ end
 --- the dialog after that: muting only once the line starts cut the greeting off mid-word.
 --- Muted in the same frame the dialog opened, the greeting is never heard at all.
 ---@param speakingOn string The channel the coming line will play on.
+---@return boolean? muted false when nothing was muted: paused, or the game's dialogue left alone
 function SoundQueue:MuteGameDialogueAhead(speakingOn)
     -- Paused, the line will only queue: nothing of ours is going to speak over the greeting.
-    if self:IsPaused() then
-        return
+    -- With the game's dialogue left alone there is nothing to mute either.
+    if self:IsPaused() or not Addon.db.profile.Audio.AutoToggleDialog then
+        return false
     end
     -- Cut, not faded: in the frame the window opens the greeting has barely started, and a fade
     -- lets its first half-second through.
@@ -383,6 +387,13 @@ function SoundQueue:MuteGameDialogueAhead(speakingOn)
         Addon:CancelTimer(muteAheadTimer)
     end
     muteAheadTimer = Addon:ScheduleTimer(LiftMuteAhead, MUTE_AHEAD_SECONDS)
+    return true
+end
+
+--- Whether a mute taken ahead still waits for its line, short of its deadline.
+---@return boolean
+function SoundQueue:IsMutingGameDialogueAhead()
+    return muteAheadTimer ~= nil
 end
 
 --- The read a mute ahead was taken for found no line: give the game's dialogue back now rather
@@ -635,13 +646,14 @@ local function AnyNormalQueued()
     return false
 end
 
--- Why a line from `source` cannot be queued now, or nil: the part is switched off, or the channel
--- is silent and not by our own mute, which is lifted before the line plays.
-local function WhyRefused(source)
+-- Why `clip` from `source` cannot be queued now, or nil: the part is switched off, or the channel
+-- is silent and not by our own mute, which is lifted before the line plays. A line of words alone
+-- needs no channel, whether its source has no recordings or only this line lacks one.
+local function WhyRefused(source, clip)
     if Sources:IsTurnedOff(source) then
         return L.PART_TURNED_OFF
     end
-    if source.textOnly then
+    if source.textOnly or clip.textOnly then
         return nil
     end
     local channel = source:GetChannel()
@@ -668,7 +680,7 @@ function SoundQueue:Add(clip, source, front)
     if not clip then
         return nil, "no clip"
     end
-    local refused = WhyRefused(source)
+    local refused = WhyRefused(source, clip)
     if refused then
         return nil, refused
     end
@@ -732,7 +744,7 @@ function SoundQueue:PlayNow(clip, source)
         return false
     end
     -- A reason, so a Play button clicked by hand says why nothing happened.
-    local refused = WhyRefused(source)
+    local refused = WhyRefused(source, clip)
     if refused then
         return false, refused
     end

@@ -144,6 +144,8 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
+    function w:LockHighlight() self.highlightLocked = true end
+    function w:UnlockHighlight() self.highlightLocked = false end
     -- A secure button's attributes (Spoken Developer's /reload macro), kept to be read back.
     function w:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
     function w:GetAttribute(key) return self.attributes and self.attributes[key] end
@@ -191,6 +193,9 @@ local function Widget(kind, name)
         local x, y, relativeTo, relativePoint
         if type(a) == "number" then
             x, y = a, b
+        elseif type(b) == "number" then
+            -- (point, relativeTo, x, y): the relative point is the point itself.
+            relativeTo, relativePoint, x, y = a, point, b, c
         else
             -- What it was anchored TO, not just where: a button placed against one of the
             -- client's own widgets is making a claim about that widget, and the claim is
@@ -210,9 +215,13 @@ local function Widget(kind, name)
     end
     -- Seven pixels a byte by default, which the caption and subtitle suites are measured in.
     -- A suite that measures translated text sets M.TextWidth to something closer to a font.
+    -- U+0378, which no font has, is the box a missing glyph draws: as wide as a Han or Hangul
+    -- character, so no font here draws them unless a suite says so.
     function w:GetStringWidth()
         if M.TextWidth then return M.TextWidth(self) end
-        return #tostring(self.text or "") * 7
+        local text = tostring(self.text or "")
+        local _, boxes = text:gsub("\205\184", "")
+        return (#text + boxes) * 7
     end
     function w:SetWordWrap(on) self.wordWrap = on and true or false end
     function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
@@ -414,11 +423,14 @@ function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
 function _G.UnitSex() return world.unitSex end
+function _G.UnitIsDead() return false end
+function _G.UnitIsUnit(a, b) return a == b end
 function _G.UnitCreatureType() return world.creatureType end
 -- The mouse UI unless a test turns the gamepad's on: read as "1", every popup an addon raises
 -- unasked would go to chat instead.
 local CVAR_DEFAULTS = { InputDeviceInterfaceStyle = "0" }
 function _G.GetCVar(key) return world.cvars[key] or CVAR_DEFAULTS[key] or "1" end
+function _G.GetCVarBool(key) return _G.GetCVar(key) == "1" end
 function _G.SetCVar(key, value)
     world.cvars[key] = tostring(value)
     table.insert(world.cvarLog, { key, tostring(value) })
@@ -1104,6 +1116,7 @@ local function DeepCopy(value)
     for key, item in pairs(value) do copy[key] = DeepCopy(item) end
     return copy
 end
+M.DeepCopy = DeepCopy
 
 -- Enough of AceDB for migrations to be testable: an existing saved table named `name`
 -- is read the way AceDB reads it -- profiles.Default over the defaults, the first char
@@ -1187,7 +1200,7 @@ function M.LoadSpoken(addonDirectory)
     for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
         "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
-        "UI/MinimalPlayer", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
+        "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
         -- Real LibDeflate, not a hand-faked stub library: Contribute:Encode's round trip through
         -- actual compression is the point of testing it at all.
         "UI/Options", "UI/DialogueUIOptions", "UI/Welcome", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather" }) do
@@ -1258,14 +1271,27 @@ end
 
 --- The quest log of a client that draws the modern map-attached one: no QuestLogFrame, no
 --- QuestLog_Update and no GetQuestLogTitle, rows out of an unnamed frame pool, and one
---- global function that redraws the list. `quests` is a list of { questID, title, level }.
+--- global function that redraws the list. `quests` is a list of { questID, title, level, tag,
+--- storyline, typeIcon, titleY, shortAnchor }: `tag` is the type in words ("(Elite)"), the next
+--- two the icons; the title is anchored `titleY` pixels off its end, in the form of SetPoint
+--- that leaves the relative point out when `shortAnchor` is set.
 function M.SetModernQuestLog(quests)
     local scroll = _G.CreateFrame("ScrollFrame", "QuestScrollFrame")
     scroll.Contents = _G.CreateFrame("Frame", nil, scroll)
 
-    local active = {}
+    -- Every row the pool has made, and the ones a redraw has handed out, in order.
+    local rows, active = {}, {}
     scroll.titleFramePool = {
         active = active,
+        GetNumActive = function(self) return getn(self.active) end,
+        Acquire = function(self)
+            local row = rows[getn(self.active) + 1]
+            table.insert(self.active, row)
+            return row
+        end,
+        ReleaseAll = function(self)
+            for index = getn(self.active), 1, -1 do self.active[index] = nil end
+        end,
         EnumerateActive = function(self)
             local index = 0
             return function()
@@ -1279,15 +1305,18 @@ function M.SetModernQuestLog(quests)
     local descriptions = {}
     for _, quest in ipairs(quests) do
         local row = _G.CreateFrame("Button", nil, scroll.Contents)
+        row.quest = quest
         row.questID = quest.questID
         row.Text = row:CreateFontString()
-        -- The row's own text carries the level prefix the quest log draws with it.
-        row.Text:SetText(format("[%d] %s", quest.level or 1, quest.title))
         row.Checkbox = _G.CreateFrame("Frame", nil, row)
-        table.insert(active, row)
+        row.TagText = row:CreateFontString()
+        row.StorylineTexture = row:CreateTexture()
+        row.TagTexture = row:CreateTexture()
+        table.insert(rows, row)
         titles[quest.questID] = quest.title
-        descriptions[getn(active)] = quest.description
+        descriptions[getn(rows)] = quest.description
     end
+    world.cvars.questPOI = "0"
 
     -- The details view the list opens a quest into, and the one function that opens it.
     local map = _G.CreateFrame("Frame", "QuestMapFrame")
@@ -1303,10 +1332,10 @@ function M.SetModernQuestLog(quests)
 
     _G.C_QuestLog = {
         GetTitleForQuestID = function(questID) return titles[questID] end,
-        GetNumQuestLogEntries = function() return getn(active) end,
+        GetNumQuestLogEntries = function() return getn(rows) end,
         GetLogIndexForQuestID = function(questID)
-            for index, row in ipairs(active) do
-                if row.questID == questID then return index end
+            for index, row in ipairs(rows) do
+                if row.quest.questID == questID then return index end
             end
         end,
     }
@@ -1314,10 +1343,44 @@ function M.SetModernQuestLog(quests)
     _G.GetQuestLogQuestText = function(index)
         return descriptions[index], ""
     end
-    -- What the client redraws the list through, and what the overlay hooks.
-    _G.QuestLogQuests_Update = function() end
+    -- What the client redraws the list through, and what the overlay hooks. Each row is laid out
+    -- as Forever's QuestLogQuests_AddQuestButton does: handed out with its quest, the title
+    -- ended against the type in words or else the storyline icon, which is placed left of the
+    -- type icon or at the checkbox, and hidden at the left of the icons when the quest has none.
+    _G.QuestLogQuests_Update = function()
+        scroll.titleFramePool:ReleaseAll()
+        for _ = 1, getn(rows) do
+            local row = scroll.titleFramePool:Acquire()
+            local quest = row.quest
+            row.questID = quest.questID
+            -- The row's own text carries the level prefix the quest log draws with it.
+            row.Text:SetText(format("[%d] %s", quest.level or 1, quest.title))
+            row.TagText:SetShown(quest.tag ~= nil)
+            local end_ = quest.tag and row.TagText or row.StorylineTexture
+            if quest.tag then
+                row.TagText:SetText(quest.tag)
+            end
+            if quest.shortAnchor then
+                row.Text:SetPoint("RIGHT", end_, -4, quest.titleY or 0)
+            else
+                row.Text:SetPoint("RIGHT", end_, "LEFT", -4, quest.titleY or 0)
+            end
+            row.TagTexture:SetShown(quest.typeIcon and true or false)
+            row.StorylineTexture:SetShown(quest.storyline and true or false)
+            row.StorylineTexture:ClearAllPoints()
+            if quest.storyline and quest.typeIcon then
+                row.StorylineTexture:SetPoint("RIGHT", row.TagTexture, "LEFT", -2, 0)
+            elseif quest.storyline then
+                row.StorylineTexture:SetPoint("RIGHT", row.Checkbox, "LEFT", -4, 0)
+            elseif quest.typeIcon then
+                row.StorylineTexture:SetPoint("LEFT", row.TagTexture, "LEFT", 0, 0)
+            else
+                row.StorylineTexture:SetPoint("LEFT", row.Checkbox, "LEFT", 0, 0)
+            end
+        end
+    end
 
-    M.questLogRows = active
+    M.questLogRows = rows
     M.questLogPOIButtons = {}
     return scroll
 end
@@ -1329,6 +1392,8 @@ function M.SetQuestLogPOIIcons(shown)
         poiButton:Hide()
     end
     M.questLogPOIButtons = {}
+    -- The setting the client asks before it hands a row its icon.
+    world.cvars.questPOI = shown and "1" or "0"
     if not shown then
         return
     end
@@ -1386,7 +1451,7 @@ function M.LoadQuestsAlone(addonDirectory)
     return VO
 end
 
---- The quests addon's settings pages, quests' and gossip's (VO.GossipSettingsPanel), which the
+--- The quests addon's settings pages, quests', gossip's and NPC chat's (VO.GossipSettingsPanel), which the
 --- dispatch tests have no use for: their files, on top of an addon already loaded by
 --- LoadQuests or LoadQuestsAlone. Returns the quests page.
 function M.LoadQuestsPanel(addonDirectory, VO)
@@ -1395,6 +1460,7 @@ function M.LoadQuestsPanel(addonDirectory, VO)
     if not VO.DialogueUIBridge then dofile(addonDirectory .. "UI/DialogueUIBridge.lua") end
     dofile(addonDirectory .. "UI/SettingsPanel.lua")
     dofile(addonDirectory .. "UI/GossipSettingsPanel.lua")
+    dofile(addonDirectory .. "UI/ChatterSettingsPanel.lua")
     return VO.SettingsPanel
 end
 

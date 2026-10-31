@@ -9,7 +9,8 @@ The player shows a round native still portrait, the speaker name, the narration
 title and its words, with the progress line along their foot. Stop or Replay,
 Skip and Report are round buttons in the header, as in the DialogueUI window
 and the subtitles. Its Background setting draws it on parchment, the
-default, with dark words, or on the dark rock, with light words. The
+default, with dark words, or on the dark rock, with light words; in EllesmereUI's look it is dark
+whichever is chosen and the setting is hidden. The
 parchment is a band of the spellbook's page shipped with Spoken
 (`Textures/MinimalParchment.tga`); it, the rock and the metal trim are WoW
 artwork. The window fades in and out, and from one line to the next.
@@ -31,7 +32,8 @@ flavors have not been visually verified.
 | Skip button | Skip the line |
 | Report button | Report a problem with the line, where its module offers it |
 | "• +N" after the title | How many lines wait behind this one; point at it for the list |
-| Right-click portrait, speaker, title or panel | Playback menu and source actions |
+| Right-click portrait, speaker, title or panel outside the words | Playback menu and source actions |
+| Right-click the words | Skip the line; with Shift, the playback menu |
 | Drag speaker name or panel | Move the unlocked player |
 | Hover collapsed player | Reveal the resize grip |
 | Ctrl and the mouse wheel | Window Size; with Shift too, Text Size (not while locked) |

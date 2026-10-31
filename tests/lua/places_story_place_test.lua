@@ -58,6 +58,7 @@ Expect("StoryPlace names where a story found at a map is kept",
 
 -- With Autoplay Explored Areas on, standing in it is enough.
 Z:Set("autoplayExplored", true)
+stub.Advance(2)
 stub.FireEvent("ZONE_CHANGED")
 local clip = Spoken:GetCurrent()
 Expect("standing at its entrance plays its story by its own id", clip and clip.key, "s:1441:razorfen downs")
@@ -75,7 +76,16 @@ Expect("discovering it at its entrance plays the same story", clip and clip.key,
 
 -- Shift-click on a story's row in Azeroth's Compendium queues it, as on Quests, choosing nothing.
 Z = Boot()
+Expect("Unlock Undiscovered Places is off in a fresh profile", Z:Get("showUndiscovered"), false)
 Z:Set("showUndiscovered", true)
+Expect("Discovered Only is on in a fresh profile", Z:Get("loreDiscoveredOnly"), true)
+Z:Set("loreDiscoveredOnly", false)
+Expect("...and an explicit off stays off", Z:Get("loreDiscoveredOnly"), false)
+SpokenPlacesSettings.discoveredOnlyDefaultOn = nil
+Z:OnSettingsBound()
+Expect("an off stored before it was on by default is turned on once", Z:Get("loreDiscoveredOnly"), true)
+Z:Set("loreDiscoveredOnly", false)
+-- The rest is about the unfiltered list: the row is a place this character has not found.
 Spoken:StopAll()
 for _, file in ipairs({ "UI/LorePage" }) do assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z) end
 Z.Zones[1414] = { name = "Kalimdor", full = "West." }

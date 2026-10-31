@@ -22,7 +22,7 @@ shipped in the game data. Two things follow, and both were checked rather than a
 - **Client data has none of it.** `WoWDBDefs` defines no `Book` or `PageText` table in any
   build, in any lineage, vanilla through retail. The only related definition is
   `PageTextMaterial`, which describes the frame the client draws around the words. The
-  WoW: Forever beta client (codename Camelot) is mainline-lineage and no different.
+  WoW: Forever client (codename Camelot) is mainline-lineage and no different.
 - **Wowhead has none of it either.** Its listviews scrape cleanly — `/classic/objects/
   containers/book` returns ids and names as JSON — but the object pages carry no page text.
   Wowhead never stored it.
@@ -34,7 +34,7 @@ same dump `pipelines/quests` already downloads and loads for the quest corpus.
 |---|---|
 | `page_text` | `entry`, `text`, `next_page` — the pages, as a linked list |
 | `locales_page_text` | the same pages in eight other languages, on the same ids |
-| `gameobject_template` | type 9 is a book, plaque or sign; `data0` is its first page |
+| `gameobject_template` | type 9 is a book, plaque or sign; `data0` is its first page. Type 10, a goober (the Ameth'Aran tablets), opens the page in `data7` when used |
 | `item_template` | `page_text`, `page_language`, `page_material` — letters, notes, scrolls |
 
 ## What is in the corpus
@@ -77,10 +77,16 @@ their title (gravestones, a treatise's `<H1>`) are left alone rather than read i
 another language the title is said only where it is translated, and whether a page can be
 voiced is still judged on the page alone.
 
-Vanilla only. WoW: Forever is a Classic+ fork, so most of its books are vanilla books with
-unchanged text, and the addon matches on the text rather than on an id — those play with no
-extra work. Forever-only books are a known gap, to be measured before anything is built for
-them.
+WoW: Forever is a Classic+ fork, so most of its books are vanilla books with unchanged text,
+and the addon matches on the text rather than on an id — those play with no extra work.
+Forever's own readables, which vmangos has no page of, come from the Forever repack that
+`places.mjs` also reads (`PLACES_MYSQL_*`): the objects and items named in `FOREVER_OBJECTS`
+and `FOREVER_ITEMS` (`tools/lib/world.mjs`), with an item's first page from Forever's client.
+They are named one by one, because the repack also holds retail page chains Forever never
+shows. Today that is the Zephras Isle readables and Advisor Nazgrel's Instructions. Their
+words are the repack's, sniffed from Forever, until a player's contribution says otherwise.
+Where the repack is not running, the extract says so and leaves them out, which removes
+nothing: the import only adds and updates.
 
 ## Pages in any language
 
@@ -104,7 +110,7 @@ plays (`pipelines/readables/tools/lib/absorb.mjs`).
 
 | Stage | Input | Output | Who runs it |
 | --- | --- | --- | --- |
-| `extract` | vmangos world DB | `pipelines/readables/corpus/extract.json` | a maintainer, after a dump refresh |
+| `extract` | vmangos world DB, and the Forever repack for Forever's own | `pipelines/readables/corpus/extract.json` | a maintainer, after a dump refresh |
 | `import` | that file | `book_page` and `book_line` rows | the same maintainer |
 | review | `book_line` | corrected text | anyone, at `/readables` |
 | generate | `book_line` | mp3s and `take` rows | anyone with an ElevenLabs key |
@@ -164,12 +170,43 @@ pnpm --filter @spoken/web test     # the site, including lib/readables
 the same API on Era, Anniversary and Forever, which is why there is one addon rather than
 three.
 
+The module is reachable by other addons through the global `SpokenReadables`, as
+`SpokenBossesAddon` is: what a page is (`PlaceOf`, `BookById`), whether it is found
+(`CompendiumHas`) and voiced (`HasAudio`), and reading it (`PlayFrom`, `StopReading`,
+`IsNarrating`) or showing it (`ShowReadables`). `PlayFrom` does not check `CompendiumHas`, which
+also covers the part being off, so an addon checks it first. It calls `PlayFrom(pageId, true,
+true)`, as the Compendium does: without `browsing` the book counts as read in the world, and
+Read Only Once then keeps it quiet when the player opens it there.
+
 **A page is identified by what is on screen**, because the client never says which page id
 it is showing. Title, page number and a checksum of the text; then the checksum alone,
 where no other page shares it; then, for a page the client filled with the reader's name,
 class or gender word, its words against the captions that hold a token, where exactly one
-fits; then nothing. Nothing is the right last answer: the alternative is reading the wrong
-page's words aloud.
+fits. Then two steps for a server that lays out or words a page differently from the corpus:
+
+- **What opened the frame.** `Opener.lua` notes the item used from the bags
+  (`C_Container.UseContainerItem`), the object a tooltip was last on and the interact key's
+  object. `Books.lua`'s `owners` maps the id to its book, and the page number picks the page.
+  Refused where the book has no page at that number, or where the title on screen is another
+  corpus book's, which means the id was something touched before the click. Where the page at
+  that number shares under 60% of the words on screen and another page of the book shares
+  more, that page: Forever's Sargeras and the Betrayal skips a page, so each later page shows
+  a number early. Text in another language matches no page's words and keeps the number.
+- **Title, page number and most of the words.** At least 60% of the distinct words in common,
+  and the client's next-page arrow agreeing with where the book ends, unless 90% are in common:
+  Forever ends some chains early. Where nothing at the number is close, the numbers either side.
+  The words are the guard: the server may hold a book of the same name that the corpus lacks
+  ("Proof of Deed" is many bosses' deeds).
+
+Either way the clip is the corpus page's, so a page the server rewords plays the corpus's words.
+The words on screen are still news to the corpus, so the page stays a contribution gap.
+
+A stale candidate is not caught where the title on screen is one the corpus lacks, as in a
+client in another language: the interact key's target stays a candidate however long ago it
+was picked, and a book opened by a way `Opener.lua` does not hear (a bag addon's buttons, an
+action bar, `/use`) falls back on it.
+Then nothing. Nothing is the right last answer: the alternative is reading the wrong page's
+words aloud.
 
 **The checksum is the load-bearing part.** `pipelines/readables/tools/lib/naming.mjs` and
 `addons/Spoken_Readables/Checksum.lua` must produce the same number for the same text, over
@@ -274,7 +311,12 @@ envelope and the address to paste. The player copies it, opens it, and sees exac
 about to be sent before it goes — the same page, submitted again by the same or another
 reader, bumps a count on one row at `/contributions` rather than filing a second. The first
 click ever also offers Spoken's **Collect Missing Lines**, which keeps such pages in
-`SpokenContributions.lua` for the player to upload at `/contribute`.
+`SpokenContributions.lua` for the player to upload at `/contribute`. The page goes with the
+reader's name, class and race as `$N`, `$C` and `$R` (`Detemplate`); the name is matched as
+written and in capitals, as the client writes it into some pages ("GRIMBALOR,"). Pages kept
+before that are not rewritten at login: the file is the account's and holds no record of which
+character kept a page, so a character's name cannot be taken out of one without risking another's
+words ("The Light keeps you.").
 
 ### The Readables tab
 
@@ -285,7 +327,14 @@ every book, letter, note, scroll, tablet, plaque, gravestone, exhibit and pictur
 reads, found or not, with the words of each on the right, on the spellbook's parchment, to read
 and to listen to wherever you are. Which readables exist and where they are comes from
 `Data/Places.lua` (`pipelines/readables/tools/places.mjs`); what this character has found, from
-`SpokenReadablesCharacter` (`Core.lua`); the words, from `Data/Books.lua`. `make readables-places` reads
+`SpokenReadablesCharacter` (`Core.lua`); the words, from `Data/Books.lua`. On a client in another
+language, a page is in that language where a pack in it has the page's words, or where the client
+showed the page this session (`SpokenReadables:ClientPageText`), and in English otherwise. That is
+decided page by page, so one readable can be in two languages. Its title follows the same way
+(`SpokenReadables:TitleIn`). A caption is in the same words whatever the voice, English on an
+English client, and in the recording's language only where the client's has none
+(`SpokenReadables:CaptionText`). An Italian or Vietnamese voice, which no client runs in, is
+captioned in its own words first. `make readables-places` reads
 the repack's world DB (`PLACES_MYSQL_*`) and its map files (`PLACES_MAPS`, the repack's `data/maps`
 folder; it stops without them). A quest places a readable only when the quests corpus or the
 client's QuestV2 has it: the repack also carries Cataclysm's quest rows.
@@ -312,7 +361,7 @@ Spoken's `Data/Dungeons.lua`). A continent's banner counts each readable once, s
 be less than the sum of its zones'.
 
 **What the list keeps.** The search box looks in names only: a search naming a place lists
-everything under it, a title lists itself under its place. The filter menu has Found Only and Voiced
+everything under it, a title lists itself under its place. The filter menu has Found Only (on by default) and Voiced
 Only, which leave out what has nothing found or voiced and take it from the counts, By Zone (the
 default) or By Type, and the window's Unlock Unfound Readables, which makes every one readable
 here. Without it a readable not found yet is greyed with a padlock, and its page says to open it in
@@ -324,7 +373,7 @@ else the continent's banner.
 **The page.** A readable's page has its name, the places it is in under it (its first two zones, and
 how many more; a click goes up to its kind in its place, then the zone and the continent), and
 then its words, all its pages one after another. A zone's, city's, continent's
-or dungeon's page has its count and Places' picture of the place above it; the other lines (a kind,
+or dungeon's page has its count and the faction's seal; the other lines (a kind,
 a banner) show their count alone. Play starts the readable from its first page with a recording and becomes Stop and then
 Replay while it is read, as every Play of the Compendium's; browsing here does not count as hearing
 it in the world (Read Only Once), nor as finding it. Report is there on every page, voiced or
@@ -341,7 +390,7 @@ Unlock Unfound Readables on (`SpokenReadables:CompendiumHas`).
 ### Installing it in a client
 
 ```bash
-CLIENT=forever make readables-deploy   # symlink Spoken_Readables and SpokenReadablesAudio into the Forever beta (wow_classic_beta)
+CLIENT=forever make readables-deploy   # symlink Spoken_Readables and SpokenReadablesAudio into Forever (_forever_)
 make readables-status                  # what is installed where, and how many mp3s exist
 ```
 
@@ -404,6 +453,11 @@ make readables-lookup LOCALE=esMX         # build/readables/esMX/Data/Sounds.lua
 LOCALE=esMX ./scripts/readables/package-audio.sh  # dist/SpokenReadablesAudio_esMX-<v>.zip
 make readables-release-audio LOCALE=esMX  # uploads it, CurseForge only
 ```
+
+A page whose take kept its word times carries them as `times` in its `Data/Sounds.lua` entry,
+counted against the page's words as the captions show them: a first page's title, read ahead of
+its words, is left out. The captions follow them only where they show the recording's own
+words. A page without them is estimated, a first page starting its words after the title's share.
 
 The addon finds a page by its title and a checksum of its words, and a client in another
 locale shows neither in English. So a language's `Data/Sounds.lua` also carries that

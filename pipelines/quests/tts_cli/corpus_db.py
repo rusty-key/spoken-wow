@@ -1072,8 +1072,7 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     live one, for the reason export_locale_text takes localeText: a translator's edit changes
     how a name is spoken, and what the addon shows must be what the client shows.
     """
-    from tts_cli.giver_names import (KINDS, givers, localized_names, write_giver_names,
-                                   write_names_xml)
+    from tts_cli.giver_names import KINDS, givers, write_every_language
     from tts_cli.ignores import load_pack_ignored
 
     corpus = load_corpus(corpus_path)
@@ -1096,12 +1095,14 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     finally:
         conn.close()
 
-    for lang in sorted(by_lang):
-        table = localized_names(found, by_lang[lang])
-        path = write_giver_names(out_dir, lang, table)
-        if verbose:
+    written, removed, checked = write_every_language(out_dir, found, by_lang)
+    if verbose:
+        for path, table in written:
             print(f"wrote {path}: {sum(len(t) for t in table.values())} of {len(found)} givers")
-    write_names_xml(out_dir, sorted(by_lang))
+        for path in removed:
+            print(f"removed {path}: no names in that language any more")
+        if not checked:
+            print(f"no Spoken_Quests.toc above {out_dir}: Forever's names lines were not checked")
 
 
 def _client_texts(cur, sources, locales):

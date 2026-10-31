@@ -318,6 +318,25 @@ stub.HidePanels()
 stub.FireEvent("GOSSIP_CLOSED")
 Greet()
 Expect("...but not the greeting on the next visit", VO.Addon:ExpectedLine("GOSSIP_SHOW", true), nil)
+-- What an NPC says in the world is another part's line: the page's words show while it is read.
+stub.HidePanels()
+stub.FireEvent("GOSSIP_CLOSED")
+Greet()
+VO.Player.chatterSource:Enqueue({ key = "chat-y", path = "chat-y.ogg", length = 12, priority = "low",
+    event = VO.Enums.SoundEvent.NPCChatter,
+    present = { header = "Guard", transcript = "Move along.", bullet = "gossip" } })
+stub.SelectGossipOption("Where is the bank?")
+stub.ShowGossip(DIRECTIONS)
+DUI:HandleGossip()
+Tick(0.2)
+Expect("a page drawn while an NPC chats in the world shows its words at once", Paragraph(1), DIRECTIONS)
+Spoken:StopAll()
+VO.Player.chatterSource:Enqueue({ key = "chat-z", path = "chat-z.ogg", length = 12, priority = "low",
+    event = VO.Enums.SoundEvent.NPCChatter,
+    present = { header = "Guard", transcript = DIRECTIONS, bullet = "gossip" } })
+Tick(2)
+Expect("...and a chat line with the page's very words is not lit in it: it is not on the page",
+    Paragraph(1), DIRECTIONS)
 stub.HidePanels()
 stub.FireEvent("GOSSIP_CLOSED")
 Spoken:StopAll()
@@ -537,7 +556,7 @@ Expect("...and Play turns to Stop while it speaks", play.state, "stop")
 Expect("...and Skip can skip it", skip:IsEnabled(), true)
 play.scripts.OnEnter(play)
 local tip = play.tooltip
-Expect("its tooltip says a click stops it", tip and tip.text, VO.L.OPT_STOP)
+Expect("its tooltip names Stop", tip and tip.text, VO.L.OPT_STOP)
 local saysRightClick = false
 for _, text in ipairs(tip and tip.lines or {}) do
     if text == VO.L.OPT_DUI_PLAY_RIGHT_CLICK then saysRightClick = true end

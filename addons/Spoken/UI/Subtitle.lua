@@ -60,7 +60,7 @@ local function WordsFont()
     if not (font and font.GetFont) then return nil end
     local path, size = font:GetFont()
     if not (path and size) then return nil end
-    return path, math.max(6, math.floor(size * (tonumber(Config().FontSize) or 16) / 16 + .5))
+    return Ellesmere:Font() or path, math.max(6, math.floor(size * (tonumber(Config().FontSize) or 16) / 16 + .5))
 end
 local function Pictured() return not Addon:Profile("Frame").HidePortrait end
 -- The words' face on the measuring string, so wrapping and paging measure at Text Size.
@@ -332,6 +332,11 @@ function Subtitle:Build()
         part:SetTextColor(.62, .62, .62)
         part:SetShadowColor(0, 0, 0, 1)
         part:SetShadowOffset(1, -1)
+    end
+    -- The speaker's name white, as on EllesmereUI's windows.
+    Ellesmere:Refont(self.title, true)
+    for _, part in ipairs({ self.dot, self.label, self.pausedLabel, self.heldDot, self.held, self.moreDot, self.more }) do
+        Ellesmere:Refont(part)
     end
     self.heldDot:SetText("•")
     self.moreDot:SetText("•")
@@ -698,11 +703,8 @@ function Subtitle:Prepare(clip, text)
     self.clip, self.page = clip, nil
     self.pageFade, self.shadowSize = nil, nil
     for _, line in ipairs(self.lines or {}) do line:SetAlpha(1) end
-    local present = clip.present or {}
-    local title, label = present.header, present.label
-    if not title or title == "" then title, label = label or "", nil end
-    -- A zone's own story names the zone twice; said once.
-    if label == "" or label == title then label = nil end
+    local title, label = Actions.Speaker(clip), Actions.Label(clip)
+    if title == "" then title, label = label, nil end
     self.titleText, self.labelText, self.shownPaused = title, label, nil
     -- The waiting count as it is now, so a line that follows a skip lays its row out once, with
     -- the count already in, rather than sliding as if lines had just been added.
@@ -818,10 +820,10 @@ end
 -- Shown once the audio has begun: the typing is paced to the voice, and before it starts there
 -- is nothing to type. A stopped queue and a line held back are the exceptions. With no window on
 -- screen, a subtitle saying "Stopped" or why the line waits (a fight, the NPC's own greeting) is
--- the only sign of why nothing is being read.
+-- the only sign of why nothing is being read. Not while Immersion's window shows the line.
 function Subtitle:Wanted()
     return Addon:ShowsNarrator(Transcript.clip) and Addon:DisplayStyle() == "subtitle" and Transcript.clip ~= nil
-        and Transcript.text ~= "" and (Transcript.hasStarted or SoundQueue:IsPaused()
+        and Transcript.text ~= "" and not Actions.ImmersionOpen() and (Transcript.hasStarted or SoundQueue:IsPaused()
         or SoundQueue:GetHeldReason(Transcript.clip) ~= nil)
 end
 
@@ -937,7 +939,6 @@ function Subtitle:BuildControls()
         if report.action and report.action.tooltip then
             GameTooltip:SetOwner(report, "ANCHOR_TOP")
             report.action.tooltip(GameTooltip)
-            Actions.AddLogMenuHint(GameTooltip)
             GameTooltip:Show()
         end
     end)

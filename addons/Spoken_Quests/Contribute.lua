@@ -22,6 +22,15 @@ local EVENT_PATHS =
 
 Contribute = {}
 
+--- Whether the Spoken folder beside this addon has what Detemplate and the gathering call. An
+--- older one does not, and a player on it has no contribute button rather than an error.
+local function CoreIsCurrent()
+    local contribute, gather = _G.Spoken and Spoken.Contribute, _G.Spoken and Spoken.Gather
+    return contribute and contribute.NameWords and contribute.ReplaceWord and contribute.Parse
+        and (not gather or (gather.Lines and gather.Get and gather.Remove and gather.IsTidied))
+        and true or false
+end
+
 local function GUIDType()
     local guid = Utils:GetNPCGUID()
     if not guid then
@@ -70,7 +79,23 @@ local function NPCLabel(id, name)
     return id and tostring(id) or name
 end
 
+--- Whether a GUID is a player's. A quest a party member shares opens the window with them as its
+--- "npc", and a player's name never goes with a line.
+local function IsPlayerGUID(guid)
+    local ok, guidType = pcall(Utils.GetGUIDType, Utils, guid)
+    return ok and guidType == Enums.GUID.Player
+end
+
+--- Whether the window's "npc" is another player, who shares the quest: nothing about them is a
+--- quest giver's to send.
+local function SharedByPlayer()
+    return Utils:IsNPCPlayer() or IsPlayerGUID(Utils:GetNPCGUID())
+end
+
 local function NPCField()
+    if SharedByPlayer() then
+        return nil
+    end
     local name = UnitName and NotSecret(UnitName("npc")) or nil
     if not name then
         name = select(2, QuestItem())
@@ -158,8 +183,13 @@ local function CachedDisplays()
     return displayCache[npcID]
 end
 
---- What the client can see about who is speaking. The site decides what it means.
-local function Observations(fields)
+--- What the client can see about who is speaking. The site decides what it means. Nothing where
+--- the one on screen is a player: their sex, kind and model are not a quest giver's. No displays
+--- for a `reworded` line: the site already knows who speaks it, and rolling them is model work.
+local function Observations(fields, reworded)
+    if SharedByPlayer() then
+        return
+    end
     local function add(key, value)
         if value ~= nil and value ~= "" then
             fields[#fields + 1] = { key, value }
@@ -170,7 +200,7 @@ local function Observations(fields)
     add("model", NPCModel:Get(Utils:GetNPCGUID()))
     -- Creatures only: a gameobject id is a different id space, and SetCreature would roll the
     -- creature that happens to share its number.
-    if kind == "creature" then
+    if kind == "creature" and not reworded then
         add("displays", CachedDisplays())
     end
     add("sex", UnitSex and NotSecret(UnitSex("npc")) or nil)
@@ -214,39 +244,6 @@ local function GossipOnScreen()
     return GetGossipText and NotSecret(GetGossipText())
 end
 
--- A letter, a digit, or any byte of a multi-byte UTF-8 character. Byte-wise rather than %w,
--- which knows nothing past ASCII: a Cyrillic or accented name is all high bytes, and the word
--- next to it must still count as a word.
-local function IsWordByte(b)
-    return b ~= nil and (b >= 128 or (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122))
-end
-
---- Every whole-word occurrence of `word` in `text` replaced by `token`.
----
---- A plain find and a hand-made boundary check rather than a pattern: a name is the player's
---- own input, so it would have to be escaped first, and %f -- the one pattern item that would
---- make the boundary easy -- is not something every client's Lua is safe to lean on. Whole
---- words only, so a player called Mist does not turn "Mistwood" into "$Nwood"; "Mist's" still
---- matches, the apostrophe not being a word byte.
-local function ReplaceWord(text, word, token)
-    local out, pos = {}, 1
-    while true do
-        local first, last = string.find(text, word, pos, true)
-        if not first then
-            break
-        end
-        if IsWordByte(string.byte(text, first - 1)) or IsWordByte(string.byte(text, last + 1)) then
-            out[#out + 1] = string.sub(text, pos, last)
-        else
-            out[#out + 1] = string.sub(text, pos, first - 1)
-            out[#out + 1] = token
-        end
-        pos = last + 1
-    end
-    out[#out + 1] = string.sub(text, pos)
-    return table.concat(out)
-end
-
 --- The text with this character's name, class and race put back as the game's own tokens.
 ---
 --- The client hands us quest text with $N, $C and $R already expanded to whoever is reading
@@ -278,17 +275,13 @@ function Contribute:Detemplate(text, questID)
         end
     end
 
-    local name = UnitName and UnitName("player")
-    add(name, "$N")
     -- A character with a surname (the Classic beta gives Skybourne elves one) is named whole by
     -- UnitName -- "Valaas Dawnsight" -- while a line greets them by one part: "Greetings, young
-    -- Valaas". Each part is the player too.
-    if type(name) == "string" then
-        for part in string.gmatch(name, "%S+") do
-            if part ~= name then
-                add(part, "$N")
-            end
-        end
+    -- Valaas". Each part is the player too, as written or in capitals. Sorted with the class and
+    -- race below, so a part of the name inside a longer class or race ("Hunter" in "Demon
+    -- Hunter") does not take it first.
+    for _, word in ipairs(Spoken.Contribute:NameWords(UnitName and UnitName("player"))) do
+        add(word, "$N")
     end
     local localized, classFile, classID
     if UnitClass then
@@ -313,7 +306,7 @@ function Contribute:Detemplate(text, questID)
     -- taken for something else.
     table.sort(swaps, function(a, b) return string.len(a[1]) > string.len(b[1]) end)
     for _, pair in ipairs(swaps) do
-        text = ReplaceWord(text, pair[1], pair[2])
+        text = Spoken.Contribute:ReplaceWord(text, pair[1], pair[2])
     end
     return text
 end
@@ -341,8 +334,12 @@ local function BaseFields()
     }
 end
 
---- The envelope for what is on screen, or nil when there is nothing to send.
-function Contribute:Capture()
+--- The envelope for what is on screen, or nil when there is nothing to send. `reworded` for a
+--- line that plays in other words, which leaves out the displays.
+function Contribute:Capture(reworded)
+    if not CoreIsCurrent() then
+        return nil
+    end
     local event, text = EventOnScreen()
     local fields = BaseFields()
 
@@ -353,12 +350,14 @@ function Contribute:Capture()
         end
         fields[#fields + 1] = { "event", EVENT_PATHS[event] }
         fields[#fields + 1] = { "npc", NPCField() }
-        Observations(fields)
+        Observations(fields, reworded)
         fields[#fields + 1] = { "title", GetTitleText and NotSecret(GetTitleText()) or "" }
         -- The second value is what Gather keys the line on: the quest, the moment and who said
-        -- it. The text is left out on purpose -- the same panel read twice is one line.
-        return Spoken.Contribute:Envelope("quests", fields, Contribute:Detemplate(text, questID)),
-            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or ""))
+        -- it. The text is left out on purpose -- the same panel read twice is one line. The
+        -- third is the text the envelope carries.
+        local said = Contribute:Detemplate(text, questID)
+        return Spoken.Contribute:Envelope("quests", fields, said),
+            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or "")), said
     end
 
     -- Gossip: no quest and no event, but an NPC saying something this corpus has never heard.
@@ -374,7 +373,7 @@ function Contribute:Capture()
         -- characters is one line rather than one per name.
         gossip = Contribute:Detemplate(gossip)
         fields[#fields + 1] = { "npc", NPCField() }
-        Observations(fields)
+        Observations(fields, reworded)
         -- An NPC can say several different things, so gossip is keyed on the words as well.
         -- Keyed on the sex too, so a man and a woman saying the same words are two lines.
         local sex = UnitSex and NotSecret(UnitSex("npc"))
@@ -403,6 +402,9 @@ end
 ---                        the log, or nil for the window on screen
 ---@return string|nil envelope
 function Contribute:ReportContext(clip)
+    if not CoreIsCurrent() then
+        return nil
+    end
     if clip and clip.fromLog then
         return self:CaptureFromLog(clip.questID, clip.title)
     end
@@ -419,7 +421,7 @@ function Contribute:ReportContext(clip)
         fields[#fields + 1] = { "quest", clip.questID }
         fields[#fields + 1] = { "event", path }
     end
-    local npc = NPCLabel(IDFromGUID(clip.unitGUID), clip.name)
+    local npc = NPCLabel(IDFromGUID(clip.unitGUID), not IsPlayerGUID(clip.unitGUID) and clip.name or nil)
     if npc then
         fields[#fields + 1] = { "npc", npc }
     end
@@ -498,15 +500,146 @@ local function IsMissing()
     return HasSomethingToSend() and not HasSoundForCurrent()
 end
 
+--- Whether the line on screen is one the corpus has in other words (DataModules:IsTextKnown):
+--- Blizzard changed it, or the corpus copy came from a client that wrote a player's name into
+--- it. It may well play, so it offers no button; it is only gathered, for the site to correct.
+local function IsChanged()
+    local event, text = EventOnScreen()
+    if event and text and text ~= "" then
+        return DataModules:IsTextKnown({ event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
+            text = text }) == false
+    end
+    local gossip = GossipOnScreen()
+    if gossip and gossip ~= "" and NPCID() then
+        return DataModules:IsTextKnown({ event = Enums.SoundEvent.Gossip, unitGUID = Utils:GetNPCGUID(),
+            name = Utils:GetNPCName(), unitIsObjectOrItem = Utils:IsNPCObjectOrItem(), text = gossip }) == false
+    end
+    return false
+end
+
+-- A quest line is kept as "q:<quest>:<moment>:<speaker>". The speaker is empty when the window
+-- closes under a capture (QUEST_FINISHED, the frame's OnHide): its text still reads, and the
+-- unit is already gone. That copy is the line just kept with its speaker, less the speaker.
+local function QuestMoment(key)
+    return string.match(key, "^(q:[^:]*:[^:]*:)(.*)$")
+end
+
+local function TextOf(envelope)
+    return (select(3, Spoken.Contribute:Parse(envelope)))
+end
+
+-- Line endings as Envelope writes them, which is how Parse reads a text back.
+local function Unix(text)
+    return text and (string.gsub(string.gsub(text, "\r\n", "\n"), "\r", "\n"))
+end
+
+-- Quest moment -> the words last kept for it with a speaker this session: the window's closing
+-- copy of the same words has no speaker, and is not kept.
+local keptWith = {}
+
 --- Keep the line on screen for later. Only reached once a caller has established it is
---- missing (HasGap), or when its model has just arrived (NPCModel.onLoaded) -- so it re-checks
---- only what the latter cannot know: that the line is still a gap.
-local function GatherLine()
-    if not (Spoken.Gather and Spoken.Gather:IsEnabled()) or not IsMissing() then
+--- missing or changed (HasGap, which passes `reworded`), or when its model has just arrived
+--- (NPCModel.onLoaded) -- so that one re-checks that the line is still one of those.
+local function GatherLine(reworded)
+    if not (Spoken.Gather and Spoken.Gather:IsEnabled()) then
         return false
     end
-    local envelope, key = Contribute:Capture()
-    return envelope and Spoken.Gather:Add(key, envelope) or false
+    if reworded == nil then
+        if IsMissing() then
+            reworded = false
+        elseif IsChanged() then
+            reworded = true
+        else
+            return false
+        end
+    end
+    local envelope, key, said = Contribute:Capture(reworded)
+    if not envelope then
+        return false
+    end
+    said = Unix(said)
+    -- A quest no one on screen speaks is still kept, without a speaker, until a copy with one
+    -- comes in to take its place.
+    local stem, speaker = QuestMoment(key)
+    if stem and speaker == "" and keptWith[stem] == said then
+        return false
+    end
+    local stored = Spoken.Gather:Add(key, envelope)
+    if stored and stem and speaker ~= "" then
+        keptWith[stem] = said
+        -- The copy kept before it, without its speaker, saying the same.
+        local twin = Spoken.Gather:Get(stem)
+        if twin and TextOf(twin) == said then
+            Spoken.Gather:Remove(stem)
+        end
+    end
+    return stored
+end
+
+--- The fields of a quest line kept before a shared quest stopped sending them: the sharing
+--- player's model, sex and creature type as the speaker's. Their name, the npc, is blanked.
+local PLAYER_FIELDS = { model = true, displays = true, sex = true, creature = true }
+
+--- Whether a speakerless quest line's fields say a player shared it: an npc of one word, with no
+--- id and no kind. An NPC is kept with its id or its kind, so this cannot tell a player from an
+--- NPC that has neither and a one-word name; a player whose name has two words is not found.
+local function SharedByAPlayer(fields)
+    local npc, kind
+    for _, field in ipairs(fields) do
+        if field[1] == "npc" then npc = field[2] elseif field[1] == "kind" then kind = field[2] end
+    end
+    return npc ~= nil and npc ~= "" and kind == nil and not string.find(npc, "^%d") and not string.find(npc, "%s")
+end
+
+--- Tidy the quest lines kept by earlier versions, once, at login: drop a speakerless line where the
+--- same moment is kept with a speaker saying the same words, and take a sharing player's name and
+--- look out of the rest. This character's name stays: the file is the account's, and a line
+--- another character kept is not this one's to read.
+function Contribute:TidyGathered()
+    local gather = _G.Spoken and Spoken.Gather
+    if not (gather and CoreIsCurrent()) or gather:IsTidied() then
+        return
+    end
+    local lines = gather:Lines()
+    local said = {}
+    for _, line in ipairs(lines) do
+        local stem, speaker = QuestMoment(line.key)
+        if stem and speaker ~= "" then
+            said[stem] = said[stem] or {}
+            local text = TextOf(line.envelope)
+            if text then said[stem][text] = true end
+        end
+    end
+    -- Backwards, so a removed line leaves the indices still to come where they were.
+    for i = #lines, 1, -1 do
+        local line = lines[i]
+        local stem, speaker = QuestMoment(line.key)
+        if stem and speaker == "" then
+            local source, fields, text = Spoken.Contribute:Parse(line.envelope)
+            if text and said[stem] and said[stem][text] then
+                table.remove(lines, i)
+            elseif source == "quests" and SharedByAPlayer(fields) then
+                local kept = {}
+                for _, field in ipairs(fields) do
+                    if field[1] == "npc" then
+                        kept[#kept + 1] = { "npc", "" }
+                    elseif not PLAYER_FIELDS[field[1]] then
+                        kept[#kept + 1] = field
+                    end
+                end
+                line.envelope = Spoken.Contribute:Envelope(source, kept, text)
+            end
+        end
+    end
+    gather:SetTidied()
+end
+
+if CreateFrame then
+    local tidier = CreateFrame("Frame")
+    tidier:RegisterEvent("PLAYER_LOGIN")
+    tidier:SetScript("OnEvent", function()
+        pcall(Contribute.TidyGathered, Contribute)
+    end)
 end
 
 -- Once a model is in, if the same NPC is still on screen: a line gathered while it was loading
@@ -531,7 +664,7 @@ end)
 --- for seconds, which is ample for the load NPCModel:Prime started to finish before a click
 --- ever reads it back.
 function Contribute:HasGap()
-    if not (_G.Spoken and Spoken.Contribute and Spoken.ShowContribution) then
+    if not (CoreIsCurrent() and Spoken.ShowContribution) then
         return false
     end
     -- Hidden in the Spoken settings: no gap to show, and so no model to prime for one. The
@@ -555,16 +688,21 @@ function Contribute:HasGap()
     local missing = (not hidden or gathering) and IsMissing()
     local gap = not hidden and missing
     if missing then
-        if not readBody then
+        if not readBody and not SharedByPlayer() then
             NPCModel:Prime(guid, "npc")
         end
         -- Gathered here, on the one pass that already knows the line is missing, rather than
         -- by a second caller asking PrepareSound all over again. This runs on every quest and
         -- gossip event through ContributeButton's refresh, which is what drives gathering.
         if gathering then
-            GatherLine()
+            GatherLine(false)
         end
-    elseif NPCModel:IsLoading() and not readBody then
+    elseif gathering and IsChanged() then
+        -- A line that plays in other words, kept for the site to correct. No model is loaded
+        -- for it: the site already knows who speaks a line it has, and a load is kept for gaps.
+        GatherLine(true)
+    end
+    if not missing and NPCModel:IsLoading() and not readBody then
         -- No gap, but a load is still in flight for whatever NPC started it: the player closed
         -- the dialog, or a pack picked up the line, with no click and no retarget to trigger
         -- NPCModel:Prime's own guid-switch guard. Left alone, this is unbounded exposure --
@@ -614,7 +752,7 @@ end
 --- contribution sent from the quest giver's own dialog. `from=log` says which of the two this
 --- was.
 function Contribute:CaptureFromLog(questID, title)
-    local text = questID and self:QuestLogDescription(questID)
+    local text = CoreIsCurrent() and questID and self:QuestLogDescription(questID)
     if not text or text == "" then
         return nil
     end
@@ -632,7 +770,7 @@ end
 --- sound, and offering to contribute all of them would say the corpus is missing what is in
 --- fact simply not installed.
 function Contribute:CanOfferFromLog()
-    if not (_G.Spoken and Spoken.Contribute and Spoken.ShowContribution) then
+    if not (CoreIsCurrent() and Spoken.ShowContribution) then
         return false
     end
     if Spoken.AreContributeButtonsHidden and Spoken:AreContributeButtonsHidden() then
@@ -651,12 +789,6 @@ function Contribute:ShowTooltip(owner, gossip, tooltip)
     tooltip:SetOwner(owner, "ANCHOR_RIGHT")
     tooltip:SetText(gossip and L.OPT_CONTRIBUTE_TIP_LINE or L.OPT_CONTRIBUTE_TIP_QUEST)
     tooltip:AddLine(L.OPT_CONTRIBUTE_TIP_SHARE, 1, 0.8, 0.2, true)
-    -- Its right-click opens the debug log's menu, where Spoken Developer is installed. Not on
-    -- DialogueUI's window, whose own tooltip this is and whose corner has no such menu.
-    local hint = tooltip == GameTooltip and Spoken and Spoken.LogMenuHint and Spoken:LogMenuHint()
-    if hint then
-        tooltip:AddLine(hint, 0.6, 0.6, 0.6, true)
-    end
     tooltip:Show()
 end
 

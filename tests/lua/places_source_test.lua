@@ -42,9 +42,6 @@ end
 local env, Z = Boot()
 local Spoken = _G.Spoken
 Expect("the places addon registers a source with the player", Spoken:GetSource("places"), Z.source)
-Z.Picture = function(_, mapID, key) return "picture of " .. mapID .. (key or ""), "mask" end
-Expect("...and hands Spoken its pictures, for the Compendium's other tabs", Spoken:PlacePicture(1411, "x"), "picture of 1411x")
-Z.Picture = nil
 Expect("...headed in the minimap menu by its page's name, in the player's language", Z.source.title, Z.L.OPT_PAGE_TITLE)
 -- No channel of its own: the channel is one setting, on the player.
 Expect("...on the player's channel", Z.source:GetChannel(), "Master")
@@ -103,7 +100,8 @@ Expect("the player's AUDIO_CHANGED reaches SpokenPlaces' own listeners", changed
 Expect("starting marks the area heard in the per-character record", Z:HasHeard(1411, nil), true)
 
 local F = env.PlayerFrame
-Expect("the player frame shows where the zone is, over its name", F.frame.container.name:GetText(), "Kalimdor")
+Expect("the player frame shows where the zone is, then its name", F.frame.container.name:GetText() .. " "
+    .. tostring(F.frame.container.label:GetText()), "Kalimdor • Durotar")
 Z.GetMapName = GetMapName
 -- Report only, as an icon among the header's controls. Reading the text is reached from the map,
 -- the minimap menu and /spz; a button on the player that opened a window over the thing being

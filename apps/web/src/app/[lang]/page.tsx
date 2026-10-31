@@ -2,319 +2,475 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import Link from "@/components/LocaleLink";
-import { isClientLang, LOCALES, langName, type Lang } from "@/lib/lang";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { BACKSTAGE_HREF } from "@/components/landing/backstage";
+import { body, display } from "@/components/landing/fonts";
+import BrandIcon from "@/components/landing/BrandIcon";
+import Gallery from "@/components/landing/Gallery";
+import HeroLine from "@/components/landing/HeroLine";
+import InstallTabs, { type InstallLanguage, type InstallLink, type InstallRow } from "@/components/landing/InstallTabs";
+import { CURSEFORGE, GITHUB, WAGO } from "@/components/landing/links";
+import LoginPanel from "@/components/landing/LoginPanel";
+import ManagerWindow from "@/components/landing/ManagerWindow";
+import NavMenu from "@/components/landing/NavMenu";
+import { NAV } from "@/components/landing/nav";
+import NavSession from "@/components/landing/NavSession";
+import Showcase from "@/components/landing/Showcase";
+import { LOCALES, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { packFor, PACKS, type Section } from "@/lib/packs";
-import { cn } from "@/lib/utils";
-import { Contained } from "@/components/Width";
+import { packFor, type Section } from "@/lib/packs";
+import "@/components/landing/landing.css";
 
-export const metadata: Metadata = { title: "Spoken" };
-
-const CURSEFORGE = "https://www.curseforge.com/wow/addons";
-const WAGO = "https://addons.wago.io/addons";
-const GITHUB_RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q=";
-const DISCORD = "https://discord.gg/HEGUgn6Yf";
-
-/**
- * Discord's mark, from Simple Icons (CC0). Inline rather than from lucide-react, which
- * carries no brand icons. Filled with Discord's own blurple (#5865F2) from its brand kit.
- */
-function DiscordIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="#5865F2" aria-hidden="true" className={className}>
-      <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z" />
-    </svg>
-  );
-}
-
-/**
- * The front door, written for a player rather than a developer: what this is, where to hear
- * it, and how to install it.
- *
- * Top to bottom: the logo and one sentence, the Discord invite, a button per explorer, then
- * the install section. That leads with Spoken: English, because a player using an addon
- * manager in English needs nothing else, and follows with one table of every addon and every
- * sound pack by language for everybody else.
- *
- * THREE CHANNELS, AND NOT EVERYTHING IS ON ALL OF THEM. The slugs are identical on CurseForge
- * and Wago, so one slug addresses both -- but a sound pack is hundreds of megabytes and Wago's
- * upload endpoint refuses a file that size, and most languages' packs have no CurseForge
- * project yet. Every addon and every pack has a GitHub release, so GitHub is the one link
- * nearly every cell carries. The link is the releases query rather than a tag, so it does not
- * go stale the next time the audio is built.
- */
-/** An addon as it is offered: CurseForge always, Wago when it is there, GitHub by tag prefix. */
-type Addon = {
-  slug: string;
-  label: string;
-  description: string;
-  wago?: boolean;
-  release?: string;
-  /** The section whose sound packs it plays; none for the player itself. */
-  section?: Section;
+export const metadata: Metadata = {
+  title: "Spoken: voiced quests, lore and books for World of Warcraft",
+  description:
+    "Spoken reads quest dialogue, NPC greetings, zone lore and in-world books aloud in WoW: Forever and Classic Era. Install it with the Spoken Manager, CurseForge or by hand.",
 };
 
-const ADDONS: Addon[] = [
-  // First, since every other row needs it.
-  {
-    slug: "spoken",
-    label: "Spoken",
-    description: "Plays the audio for the other addons. Required by all of them.",
-    wago: true,
-    release: "spoken/",
-  },
-  {
-    slug: "spoken-quests",
-    label: "Spoken Quests",
-    description: "Voices quest and gossip dialogue.",
-    wago: true,
-    release: "quests/",
-    section: "quests",
-  },
-  {
-    slug: "spoken-zones",
-    label: "Spoken Places",
-    description: "Narrates the lore of each zone as you enter it.",
-    wago: true,
-    release: "zones/",
-    section: "places",
-  },
-  {
-    slug: "spoken-books",
-    label: "Spoken Readables",
-    description: "Reads books, letters, notes and plaques aloud.",
-    wago: true,
-    release: "books/",
-    section: "readables",
-  },
+const RELEASES = `${GITHUB}/releases`;
+const MANAGER_URL = `${RELEASES}/tag/manager-latest`;
+const MANAGER_VERSION = "0.1.2";
+const MANAGER_FILES = `${RELEASES}/download/manager-latest/Spoken-Manager`;
+const MANAGER_DOWNLOADS = {
+  windows: `${MANAGER_FILES}-Setup-${MANAGER_VERSION}.exe`,
+  mac: `${MANAGER_FILES}-${MANAGER_VERSION}-mac-arm64.dmg`,
+  macIntel: `${MANAGER_FILES}-${MANAGER_VERSION}-mac-x64.dmg`,
+  linux: `${MANAGER_FILES}-${MANAGER_VERSION}-linux.AppImage`,
+};
+const DISCORD = "https://discord.gg/HEGUgn6Yf";
+
+/** CurseForge's one meta addon per language: Spoken, plus every voice pack in it. */
+const META: Partial<Record<Lang, string>> = {
+  enUS: "spoken-english",
+  deDE: "spoken-german",
+  esES: "spoken-spanish-eu",
+  esMX: "spoken-spanish-al",
+  frFR: "spoken-french",
+  itIT: "spoken-italian",
+  ptBR: "spoken-portuguese",
+  ruRU: "spoken-russian",
+  koKR: "spoken-korean",
+  zhCN: "spoken-chinese-simplified",
+  zhTW: "spoken-chinese-traditional",
+};
+
+const github = (release: string) => `${RELEASES}?q=${encodeURIComponent(release)}`;
+
+const SECTIONS: { section: Section; name: string; note: string }[] = [
+  { section: "quests", name: "Quests and Gossip", note: "Quest dialogue and what NPCs say" },
+  { section: "places", name: "Places", note: "Lore of each zone" },
+  { section: "readables", name: "Readables", note: "Books, letters and notes" },
+  { section: "bosses", name: "Bosses", note: "The story of each dungeon and raid boss" },
 ];
 
-/**
- * The explorers. Each carries the addon's own icon, the same art CurseForge and the in-game
- * addon list show -- the 512 px renders in pipelines/*, scaled to 84 px in public/icons/.
- */
-const EXPLORERS = [
-  { href: "/quests", icon: "/icons/quests.png", title: "Quests" },
-  { href: "/places", icon: "/icons/places.png", title: "Places" },
-  { href: "/readables", icon: "/icons/readables.png", title: "Readables" },
-];
-
-/** The languages with at least one pack, in the site's order: the table's columns. */
-const PACK_LANGS: Lang[] = LOCALES.map((locale) => locale.code).filter((code) =>
-  PACKS.some((pack) => pack.lang === code),
-);
-
-/**
- * Pack languages no game client runs in (Italian). Every other pack plays on a client in its
- * language without being asked; these play only once a player picks them, so the table says so.
- */
-const CHOSEN_LANGS: Lang[] = PACK_LANGS.filter((code) => !isClientLang(code));
-
-const linkClass = "hover:text-foreground underline underline-offset-2";
-
-function External({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer" className={linkClass}>
-      {children}
-    </a>
-  );
+function installRows(lang: Lang): InstallRow[] {
+  const rows: InstallRow[] = [
+    {
+      name: "Spoken",
+      note: "The addon. Required.",
+      links: [
+        { label: "CurseForge", href: `${CURSEFORGE}/spoken-player` },
+        { label: "Wago", href: `${WAGO}/spoken-quests` },
+        { label: "GitHub", href: github("spoken/") },
+      ],
+    },
+  ];
+  for (const { section, name, note } of SECTIONS) {
+    const pack = packFor(section, lang);
+    const links: InstallLink[] = [];
+    if (pack?.split) {
+      for (const part of pack.split) {
+        links.push({ label: `CurseForge: ${part.label}`, href: `${CURSEFORGE}/${part.slug}` });
+      }
+    } else if (pack?.curseforge) {
+      links.push({ label: "CurseForge", href: `${CURSEFORGE}/${pack.curseforge}` });
+    }
+    if (pack) links.push({ label: pack.split ? "GitHub: all" : "GitHub", href: github(pack.release) });
+    rows.push({ name: `${name} voices`, note, links });
+  }
+  return rows;
 }
 
-const github = (release: string) => `${GITHUB_RELEASES}${encodeURIComponent(release)}`;
+const LANGUAGES: InstallLanguage[] = LOCALES.map(({ code, name }) => ({
+  code,
+  name,
+  curseforge: META[code] ?? null,
+  rows: installRows(code),
+}));
+
+const FLOW = [
+  {
+    title: "Players send lines",
+    text: "Optional sharing in the Manager, or the Contribute page, sends quest, NPC and book text that has no voice yet.",
+  },
+  { title: "The team reviews", text: "Contributions are checked and translated where they need it." },
+  { title: "Voices are made", text: "Recordings are generated on this website and checked by listeners." },
+  { title: "Packs are updated", text: "New recordings ship as voice pack updates, which the Manager installs." },
+];
+
+const NEW_TAB = <span className="sr-only"> (opens in a new tab)</span>;
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
 
   return (
-    <main className="pt-12 pb-24">
-      <Contained>
-        <div className="text-center">
-          <h1>
-            {/* Intrinsic 1024x187, the header's logo at hero size. */}
-            <Image
-              src="/logo.png"
-              alt="Spoken WoW"
-              width={350}
-              height={64}
-              priority
-              className="mx-auto h-16 w-auto"
-            />
-          </h1>
-          <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-sm">
-            Addons that make World of Warcraft Classic more immersive by voicing quest dialogue,
-            zone lore and books. Install them from the links below, or open an explorer to hear the
-            lines first.
-          </p>
-          <a
-            href={DISCORD}
-            target="_blank"
-            rel="noreferrer"
-            className="text-muted-foreground hover:text-foreground mt-4 inline-flex items-center gap-2 text-sm transition-colors"
-          >
-            <DiscordIcon className="h-5 w-5" />
-            <span>
-              Want to help or have feedback?{" "}
-              <span className="text-foreground font-medium underline underline-offset-2">
-                Join us on Discord
-              </span>
-            </span>
-          </a>
-
-          <nav className="mt-8 flex flex-wrap justify-center gap-3">
-            {EXPLORERS.map((explorer) => (
-              <Link
-                key={explorer.href}
-                href={explorer.href}
-                className="hover:bg-accent inline-flex items-center gap-2.5 rounded-lg border px-5 py-3 font-medium transition-colors"
-              >
-                {/* Plain img, not next/image: fixed-size PNGs already at 3x, which the
-                    optimiser has nothing left to do for. */}
-                <img src={explorer.icon} alt="" width={28} height={28} className="h-7 w-7" />
-                {explorer.title}
-              </Link>
+    <div className={`bn ${display.variable} ${body.variable}`}>
+      <a className="bn-skip" href="#main">
+        Skip to content
+      </a>
+      <header className="bn-nav">
+        <div className="bn-wrap">
+          <Link href="/" className="bn-brand" aria-label="Spoken">
+            <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
+            <span className="bn-brand-name bn-display">Spoken</span>
+          </Link>
+          <nav className="bn-links" aria-label="Sections">
+            {NAV.map((link) => (
+              <a key={link.href} href={link.href}>
+                {link.label}
+              </a>
             ))}
           </nav>
+          <div className="bn-nav-end">
+            <LanguageSwitcher />
+            <NavSession />
+            <NavMenu />
+          </div>
         </div>
+      </header>
 
-        <h2 className="mt-16 text-2xl font-semibold">How to install</h2>
+      <main id="main" tabIndex={-1}>
+        <section className="bn-hero">
+          <div className="bn-hero-art">
+            <Image src="/landing/hero.jpg" alt="" fill priority sizes="100vw" quality={80} />
+          </div>
+          <div className="bn-wrap">
+            <div className="bn-hero-grid">
+              <div>
+                <h1 className="bn-display">Spoken reads World of Warcraft aloud</h1>
+                <p className="bn-lede">
+                  Quest dialogue, NPC greetings, zone lore and in-world books, voiced in ten languages with
+                  subtitles on screen. Spoken is a free addon for WoW: Forever and Classic Era.
+                </p>
+                <div className="bn-cta">
+                  <a className="bn-btn bn-btn-primary bn-btn-lg" href="#install">
+                    Install Spoken
+                  </a>
+                  <a className="bn-btn bn-btn-lg bn-btn-ghost" href="#gallery">
+                    See the gallery
+                  </a>
+                </div>
+                <p className="bn-fine">The Spoken Manager runs on Windows, macOS and Linux.</p>
+                <p className="bn-fine bn-works">Works with</p>
+                <div className="bn-logos">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="bn-logo-forever" src="/landing/games/logo-forever.png" alt="World of Warcraft: Forever" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="bn-logo-era" src="/landing/games/logo-era.png" alt="World of Warcraft Classic Era" />
+                </div>
+              </div>
+              <HeroLine />
+            </div>
+          </div>
+        </section>
 
-        <div className="mt-4 text-sm">
-          <p>
-            Install <External href={`${CURSEFORGE}/spoken-english`}>Spoken: English</External> from
-            CurseForge or WowUp-CF if you use one of these managers. It brings in every addon and
-            its English audio.
-          </p>
-          <p className="text-muted-foreground mt-1">
-            <span aria-hidden="true">⚠️</span>{" "}
-            <span className="text-foreground font-medium">Don&apos;t download and install it by hand.</span>{" "}
-            It&apos;s a meta package and won&apos;t work on its own. For a manual install, see below.
-          </p>
-        </div>
+        <section className="bn-section" id="voices">
+          <div className="bn-wrap">
+            <div className="bn-head">
+              <h2 className="bn-display">What Spoken voices</h2>
+              <p>Four parts, each with its own on/off switch in the settings. Pick one to see what it does.</p>
+            </div>
+            <Showcase />
+            <div className="bn-facts">
+              <div>
+                <h3>Subtitles and windows</h3>
+                <p>
+                  Show the words as subtitles, in a small window or in a large one. Words can be
+                  highlighted as they are spoken. Every line has Stop and Replay.
+                </p>
+              </div>
+              <div>
+                <h3>Languages</h3>
+                <p>
+                  English, German, Spanish (Spain and Latin America), French, Portuguese, Russian, Korean
+                  and both Chinese scripts. Italian is made by the community.
+                </p>
+              </div>
+              <div>
+                <h3>Reports</h3>
+                <p>
+                  If a line has a wrong word or voice, the Report button sends it to the people who
+                  correct it. The fix comes in an update.
+                </p>
+              </div>
+            </div>
 
-        <div className="text-muted-foreground my-8 flex items-center gap-4 text-xs font-medium tracking-widest uppercase">
-          <span className="h-px flex-1 bg-border" />
-          or
-          <span className="h-px flex-1 bg-border" />
-        </div>
+            <div className="bn-compendium">
+              <div>
+                <h3 className="bn-display bn-h3">Azeroth&apos;s Compendium</h3>
+                <p className="bn-lead">
+                  Every quest, place story, readable and boss story in one window, with a search box. Play
+                  any of them without going there.
+                </p>
+                <ul className="bn-compendium-tabs" aria-label="Tabs in the Compendium">
+                  <li>
+                    <img src="/landing/icons/game-quests.png" alt="" width={32} height={32} />
+                    Quests
+                  </li>
+                  <li>
+                    <img src="/landing/icons/game-places.png" alt="" width={32} height={32} />
+                    Places
+                  </li>
+                  <li>
+                    <img src="/landing/icons/game-readables.png" alt="" width={32} height={32} />
+                    Readables
+                  </li>
+                  <li>
+                    <img src="/landing/icons/game-bosses.png" alt="" width={32} height={32} />
+                    Bosses
+                  </li>
+                </ul>
+                <ul className="bn-list">
+                  <li>Opens from the minimap menu, with /sp compendium, or from the Place Story button beside the world map</li>
+                  <li>Text size and the text language are set on Spoken&apos;s page</li>
+                </ul>
+              </div>
+              <figure className="bn-compendium-shot">
+                <img
+                  src="/landing/gallery/compendium-places.webp"
+                  alt="The Compendium on its Places tab: the zones and areas in a list on the left, and the story of Shadowglen on the right"
+                  width={1109}
+                  height={731}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </figure>
+            </div>
+          </div>
+        </section>
 
-        <p className="text-muted-foreground mb-3 text-sm">
-          Pick the addons you want and a sound pack in your language for each.
-        </p>
+        <section className="bn-section bn-section-alt" id="manager">
+          <div className="bn-wrap">
+            <div className="bn-manager">
+              <div>
+                <h2 className="bn-display bn-h2">Spoken Manager</h2>
+                <p className="bn-lead">
+                  A desktop app for Windows, macOS and Linux. It installs and updates Spoken and its voice
+                  packs for every WoW install on your computer. An update downloads only the files that
+                  changed, not the whole pack again.
+                </p>
+                <div className="bn-cta">
+                  <a className="bn-btn bn-btn-primary bn-btn-lg" href={MANAGER_URL} target="_blank" rel="noreferrer">
+                    Download the Manager{NEW_TAB}
+                  </a>
+                </div>
+                <p className="bn-note">Windows .exe, macOS .dmg or Linux .AppImage, from the GitHub release page.</p>
+              </div>
+              <ol className="bn-steps">
+                <li>
+                  <strong>It finds your games</strong>
+                  <span>Forever and Classic Era each get a card.</span>
+                </li>
+                <li>
+                  <strong>You choose the languages</strong>
+                  <span>Install Spoken and the voice packs you want with one button.</span>
+                </li>
+                <li>
+                  <strong>Updates are one button</strong>
+                  <span>New versions and new recordings show up as an Update button on the card.</span>
+                </li>
+              </ol>
+            </div>
 
-        {/* A real table, scrolled inside its own box on a narrow screen so the page itself never
-            scrolls sideways. Each pack cell stacks its links, which keeps eight language
-            columns narrow enough to fit a desktop. */}
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-left text-xs">
-            <thead className="text-muted-foreground">
-              <tr className="border-b">
-                <th rowSpan={2} className="px-3 py-2 font-medium">
-                  Addon
-                </th>
-                <th rowSpan={2} className="min-w-48 px-3 py-2 font-medium">
-                  Description
-                </th>
-                <th rowSpan={2} className="px-3 py-2 font-medium">
-                  Download
-                </th>
-                <th colSpan={PACK_LANGS.length} className="border-l px-3 py-2 text-center font-medium">
-                  Sound packs
-                </th>
-              </tr>
-              <tr className="border-b">
-                {PACK_LANGS.map((code, index) => (
-                  <th
-                    key={code}
-                    className={cn(
-                      "px-3 py-2 font-medium whitespace-nowrap",
-                      index === 0 && "border-l",
-                      code === lang && "text-foreground",
-                    )}
-                  >
-                    {langName(code)}
-                    {!isClientLang(code) && "*"}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ADDONS.map((addon) => (
-                <tr key={addon.slug} className="border-b last:border-b-0 align-top">
-                  <td className="px-3 py-3 text-sm font-medium whitespace-nowrap">{addon.label}</td>
-                  <td className="text-muted-foreground px-3 py-3">{addon.description}</td>
-                  <td className="text-muted-foreground px-3 py-3">
-                    <span className="flex flex-col gap-1">
-                      <External href={`${CURSEFORGE}/${addon.slug}`}>CurseForge</External>
-                      {addon.wago && <External href={`${WAGO}/${addon.slug}`}>Wago</External>}
-                      {addon.release && <External href={github(addon.release)}>GitHub</External>}
-                    </span>
-                  </td>
-                  {addon.section ? (
-                    PACK_LANGS.map((code, index) => {
-                      const pack = packFor(addon.section!, code);
-                      return (
-                        <td
-                          key={code}
-                          className={cn(
-                            "text-muted-foreground px-3 py-3",
-                            index === 0 && "border-l",
-                            code === lang && "bg-accent/40",
-                          )}
-                        >
-                          {pack ? (
-                            <span className="flex flex-col gap-1">
-                              {pack.split ? (
-                                // Two to a line, so the English column is no wider than the rest.
-                                <span className="flex flex-col gap-1">
-                                  <span>CurseForge:</span>
-                                  <span className="grid grid-cols-[auto_auto] justify-start gap-x-2 gap-y-1">
-                                    {pack.split.map((part) => (
-                                      <External key={part.slug} href={`${CURSEFORGE}/${part.slug}`}>
-                                        {part.label}
-                                      </External>
-                                    ))}
-                                  </span>
-                                </span>
-                              ) : (
-                                pack.curseforge && (
-                                  <External href={`${CURSEFORGE}/${pack.curseforge}`}>CurseForge</External>
-                                )
-                              )}
-                              {pack.split ? (
-                                // The bundle of the same four packs, as one download.
-                                <span>
-                                  GitHub: <External href={github(pack.release)}>All</External>
-                                </span>
-                              ) : (
-                                <External href={github(pack.release)}>GitHub</External>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/40">—</span>
-                          )}
-                        </td>
-                      );
-                    })
-                  ) : (
-                    <td
-                      colSpan={PACK_LANGS.length}
-                      className="text-muted-foreground/60 border-l px-3 py-3 text-center"
-                    >
-                      No sound pack needed
-                    </td>
-                  )}
-                </tr>
+            <div className="bn-stage">
+              <ManagerWindow />
+            </div>
+
+          </div>
+        </section>
+
+        <section className="bn-section" id="install">
+          <div className="bn-wrap">
+            <div className="bn-head">
+              <h2 className="bn-display">Install Spoken</h2>
+              <p>Choose one. Each installs Spoken and the voice packs for your language. Restart the game afterwards.</p>
+            </div>
+            <InstallTabs languages={LANGUAGES} initial={lang} managerUrl={MANAGER_URL} downloads={MANAGER_DOWNLOADS} />
+          </div>
+        </section>
+
+        <section className="bn-section bn-section-alt" id="gallery">
+          <div className="bn-wrap">
+            <div className="bn-head">
+              <h2 className="bn-display">Gallery</h2>
+            </div>
+            <Gallery />
+          </div>
+        </section>
+
+        <section className="bn-section" id="fits">
+          <div className="bn-wrap">
+            <div className="bn-head">
+              <h2 className="bn-display">Fits the way you play</h2>
+              <p>Spoken follows your game&apos;s language and works alongside the addons that change how quests look.</p>
+            </div>
+
+            <div className="bn-fits">
+              <div className="bn-fit">
+                <h3>Voice languages</h3>
+                <ul className="bn-chips">
+                  {LANGUAGES.map((entry) => (
+                    <li key={entry.code}>{entry.name}</li>
+                  ))}
+                </ul>
+                <p>
+                  Menus and settings follow the game&apos;s text language. The language you hear is a separate
+                  choice, Voice Language, and plays once its voice pack is installed. Italian is made by the
+                  community.
+                </p>
+              </div>
+
+              <div className="bn-fit">
+                <h3>Addons it works with</h3>
+                <dl className="bn-addons">
+                  <div>
+                    <Image src="/landing/addons/dialogueui.png" alt="" width={48} height={48} unoptimized />
+                    <dt>DialogueUI</dt>
+                    <dd>
+                      Adds a Listen button and marks the words being read inside its window. Its own
+                      settings are left alone.
+                    </dd>
+                  </div>
+                  <div>
+                    <Image src="/landing/addons/ellesmereui.png" alt="" width={48} height={48} unoptimized />
+                    <dt>EllesmereUI</dt>
+                    <dd>Spoken&apos;s windows, scroll bars and Compendium can draw in its flat look and font.</dd>
+                  </div>
+                  <div>
+                    <Image src="/landing/addons/leatrix-plus.png" alt="" width={48} height={48} unoptimized />
+                    <dt>Leatrix Plus</dt>
+                    <dd>
+                      Quests it accepts or turns in for you are still read. Auto turn-in addons work the same
+                      way.
+                    </dd>
+                  </div>
+                  <div>
+                    <Image src="/landing/addons/leatrix-maps.png" alt="" width={48} height={48} unoptimized />
+                    <dt>Leatrix Maps</dt>
+                    <dd>The Place Story panel sits beside the map frame Leatrix draws.</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="bn-fit">
+                <h3>Game versions</h3>
+                <p>
+                  WoW: Forever and Classic Era. On the 1.12 and 3.3.5 clients Spoken starts in the
+                  Large Window, and 3.3.5 can switch to subtitles.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bn-section bn-section-alt" id="backstage">
+          <div className="bn-wrap">
+            <div className="bn-head">
+              <h2 className="bn-display">Backstage</h2>
+              <p>Every voice in Spoken starts as a line a player sent in. Backstage is where the team takes it from there.</p>
+            </div>
+            <ol className="bn-flow">
+              {FLOW.map((step) => (
+                <li key={step.title}>
+                  <b>{step.title}</b>
+                  <span>{step.text}</span>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-        {CHOSEN_LANGS.length > 0 && (
-          <p className="text-muted-foreground mt-2 text-xs">
-            * No game client runs in {CHOSEN_LANGS.map(langName).join(" or ")}: install the pack,
-            then choose the language under Voice Language in the addon&apos;s settings.
+            </ol>
+            <div className="bn-backstage">
+              <div>
+                <h3 className="bn-display bn-h3">Work on the voices</h3>
+                <ul className="bn-list">
+                  <li>Generate and replace voice recordings for quests, gossip, zones and books</li>
+                  <li>Translate lines and set how names and words are pronounced</li>
+                  <li>Review player reports and the lines players contributed</li>
+                </ul>
+                <p className="bn-note">
+                  What you can change depends on your role in each language. Without an account you can
+                  still browse the lines and <Link href="/contribute">upload the lines you collected</Link>.
+                </p>
+              </div>
+              <LoginPanel />
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="bn-section bn-band bn-band-tall"
+          id="community"
+          style={{ "--art": "url(/landing/art-anniversary.jpg)", "--art-pos": "40% 40%" } as React.CSSProperties}
+        >
+          <div className="bn-wrap">
+            <div className="bn-head">
+              <h2 className="bn-display">Community</h2>
+              <p>Forever keeps adding quests and NPCs. Spoken learns the new text from players.</p>
+            </div>
+            <div className="bn-community">
+              <div>
+                <h3>Share what you find</h3>
+                <p>
+                  Sharing is optional. Turn it on in the Manager and Spoken sends the quest and NPC text it has no voice
+                  for, so it can be recorded.
+                </p>
+              </div>
+              <div>
+                <h3>Make a voice pack</h3>
+                <p>
+                  Another narrator, a missing language or fixes to an official pack. Packs are listed on
+                  the Manager&apos;s Community page.
+                </p>
+              </div>
+              <div>
+                <h3>Get help</h3>
+                <p>Help, bug reports and ideas have their own channels on Discord, in every language Spoken supports.</p>
+                <a className="bn-btn bn-btn-primary bn-btn-sm" href={DISCORD} target="_blank" rel="noreferrer">
+                  <BrandIcon name="discord" />
+                  Join the Discord{NEW_TAB}
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="bn-footer">
+        <div className="bn-wrap">
+          <Link href="/" className="bn-brand" aria-label="Spoken">
+            <Image src="/landing/icons/spoken-192.png" alt="" width={64} height={64} unoptimized />
+            <span className="bn-brand-name bn-display">Spoken</span>
+          </Link>
+          <nav aria-label="Footer">
+            <a href={RELEASES} target="_blank" rel="noreferrer">
+              <BrandIcon name="github" size={16} />
+              Releases{NEW_TAB}
+            </a>
+            <a href={GITHUB} target="_blank" rel="noreferrer">
+              <BrandIcon name="github" size={16} />
+              GitHub{NEW_TAB}
+            </a>
+            <a href={DISCORD} target="_blank" rel="noreferrer">
+              <BrandIcon name="discord" size={16} />
+              Discord{NEW_TAB}
+            </a>
+            <Link href={BACKSTAGE_HREF}>Browse the lines</Link>
+            <Link href="/contribute">Contribute</Link>
+          </nav>
+          <p>
+            Spoken is a fan project and is not affiliated with or endorsed by Blizzard Entertainment.
+            World of Warcraft and the game artwork shown here belong to Blizzard Entertainment.
           </p>
-        )}
-      </Contained>
-    </main>
+        </div>
+      </footer>
+    </div>
   );
 }

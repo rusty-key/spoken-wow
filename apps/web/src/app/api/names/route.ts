@@ -1,6 +1,6 @@
 /**
- * The name of a quest, an NPC, a book's owner or a place, in a language other than English:
- * its history, or a new version. Needs `edit` in the language (`?lang=`).
+ * The name of a quest, an NPC, a book's owner, a place or a boss, in a language other than
+ * English: its history, or a new version. Needs `edit` in the language (`?lang=`).
  */
 import { requireIn } from "@/lib/generation/authz";
 import { BASE_LANG } from "@/lib/lang";

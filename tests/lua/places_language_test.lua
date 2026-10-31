@@ -48,8 +48,8 @@ end
 
 local ENGLISH = Pack("SpokenPlacesAudio", "enUS", {
     [BOTH] = { file = "en-valley", len = 3 }, [ONLY_ENGLISH] = { file = "en-senjin", len = 3 } })
-ENGLISH.zones[MAP] = { file = "en-durotar", len = 5 }
-local GERMAN = Pack("SpokenPlacesAudio_deDE", "deDE", { [BOTH] = { file = "de-valley", len = 3 } })
+ENGLISH.zones[MAP] = { file = "en-durotar", len = 5, times = "0 .5 1" }
+local GERMAN = Pack("SpokenPlacesAudio_deDE", "deDE", { [BOTH] = { file = "de-valley", len = 3, times = "0 1" } })
 local FRENCH = Pack("SpokenPlacesAudio_frFR", "frFR", { [ONLY_ENGLISH] = { file = "fr-senjin", len = 3 } })
 
 ---------------------------------------------------------------- A. the active pack, then English
@@ -63,11 +63,21 @@ Expect("A. installed voice metadata retains captions before that pack loads", Z:
 Expect("A. unrelated languages do not allocate caption tables", Z:ShouldLoadLanguage("frFR"), false)
 Expect("A. registering captions leaves the lore browser's language alone", Z:GetLore(MAP).full, "English zone lore.")
 Expect("A. zones carry their full text", Z:NewLoreSound(MAP, nil).present.transcript, "English zone lore.")
+Expect("A. ...timed by the take's word times",
+    Z:NewLoreSound(MAP, nil).present.timings, "0 .5 1")
 Voice("deDE")
-Expect("A. captions match the chosen voice, even when reading another language",
-    Z:NewLoreSound(MAP, BOTH).present.transcript, "Deutsche Geschichte.")
-Expect("A. fallback captions match the English audio",
+Expect("A. captions are in the Text Language, not the voice's: English words under a German voice",
+    Z:NewLoreSound(MAP, BOTH).present.transcript, "English valley lore.")
+Expect("A. ...untimed, the German take's times not being those words'", Z:NewLoreSound(MAP, BOTH).present.timings, nil)
+Expect("A. ...and under the English fallback",
     Z:NewLoreSound(MAP, ONLY_ENGLISH).present.transcript, "English village lore.")
+local valley = Z.CaptionLore.enUS.subzones[MAP][BOTH]
+Z.CaptionLore.enUS.subzones[MAP][BOTH] = nil
+Expect("A. a place the Text Language has no words for is captioned in the voice's",
+    Z:NewLoreSound(MAP, BOTH).present.transcript, "Deutsche Geschichte.")
+Expect("A. ...and timed by its take, those being the recording's words",
+    Z:NewLoreSound(MAP, BOTH).present.timings, "0 1")
+Z.CaptionLore.enUS.subzones[MAP][BOTH] = valley
 local _, _, pack = Z:GetAudioClip(MAP, BOTH)
 Expect("A. the active pack answers what it has", pack and pack.addon, "SpokenPlacesAudio_deDE")
 _, _, pack = Z:GetAudioClip(MAP, ONLY_ENGLISH)
@@ -183,6 +193,14 @@ local HANGUL, HAN, CYRILLIC = { [234] = true, [235] = true, [236] = true, [237] 
     { [228] = true, [229] = true, [230] = true, [231] = true, [232] = true, [233] = true },
     { [208] = true, [209] = true }
 local VIETNAMESE = { [225] = true }   -- ế and ệ, U+1EBF and U+1EC7
+local function With(base, extra)
+    local set = {}
+    for key in pairs(base) do set[key] = true end
+    for _, key in ipairs(extra) do set[key] = true end
+    return set
+end
+-- Han, and private-use glyphs (U+E000 on) as wide as them, as a Big5 font can have.
+local HAN_AND_PRIVATE = With(HAN, { 238 })
 local fontHas = {   -- the lead bytes each file draws
     ["Fonts\\FRIZQT__.TTF"] = CYRILLIC,
     ["Fonts\\QUEST.TTF"] = CYRILLIC,
@@ -190,7 +208,7 @@ local fontHas = {   -- the lead bytes each file draws
     ["Fonts\\FRIZQT___CYR.TTF"] = CYRILLIC,
     ["Fonts\\2002.TTF"] = HANGUL,
     ["Fonts\\ARKai_T.ttf"] = HAN,
-    ["Fonts\\blei00d.TTF"] = HAN,
+    ["Fonts\\blei00d.TTF"] = HAN_AND_PRIVATE,
     ["Fonts\\ARIALN.TTF"] = VIETNAMESE,
 }
 local realParent = _G.UIParent.CreateFontString
@@ -202,13 +220,14 @@ end
 _G.UIParent.CreateFontString = function()
     local fs = { text = "", font = nil }
     function fs:SetText(t) self.text = t end
-    function fs:SetFont(path) self.font = path end
+    -- A file the client cannot load is refused, and the font stays the object's own.
+    function fs:SetFont(path) self.font = path; return fontHas[path] ~= nil end
     function fs:Hide() end
     function fs:GetStringWidth()
         local has = fontHas[self.font] or { [208] = true, [209] = true }   -- the object's fallbacks
         local w = 0
         for ch in self.text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
-            w = w + (has[ch:byte(1)] and 7 or 10)   -- a glyph it has, or the same box as any other
+            w = w + ((has[ch:byte(1)] or has[ch]) and 7 or 10)   -- a glyph it has, or the same box as any other
         end
         return w
     end
@@ -216,6 +235,8 @@ _G.UIParent.CreateFontString = function()
 end
 -- As a string, so code without FontFor fails these checks rather than stopping the file.
 local function Font(fontObject, code) return tostring(Z.FontFor and Z:FontFor(fontObject, code)) end
+-- Forgets what the fonts were found to draw, after a test changes them.
+local function Reset() Z.drawable, Z.fonts = {}, {} end
 Faces("Fonts\\FRIZQT__.TTF", "Fonts\\QUEST.TTF")
 Z = InstallOn("deDE", nil)
 Z.drawable = {}
@@ -226,6 +247,36 @@ Expect("H. it offers Korean, which its font cannot draw, in the client's Korean 
     "true Fonts\\2002.TTF")
 Expect("H. ...and Chinese in its Chinese fonts", Font(_G.QuestFont, "zhCN") .. " "
     .. Font(_G.QuestFont, "zhTW"), "Fonts\\ARKai_T.ttf Fonts\\blei00d.TTF")
+Expect("H. Traditional Chinese is offered though its font has private-use glyphs as wide as its Han",
+    Z:CanRenderLanguage("zhTW"), true)
+Expect("H. ...by Spoken's own probe, which the Voice Language lists use too",
+    tostring(Spoken:LanguageDraws("zhTW", "Fonts\\blei00d.TTF")) .. " "
+    .. tostring(Spoken:LanguageDraws("zhTW", "Fonts\\FRIZQT__.TTF")), "true false")
+-- A font with some Hanja draws the name of Traditional Chinese and still lacks most of its characters.
+fontHas["Fonts\\2002.TTF"] = With(HANGUL, { "中", "文", "繁", "體", "這", "國" })
+Faces("Fonts\\2002.TTF", "Fonts\\2002.TTF")
+Reset()
+Expect("H. a Korean font with Hanja does not write Traditional Chinese, so the client's own font does",
+    Font(_G.GameFontHighlight, "zhTW"), "Fonts\\blei00d.TTF")
+fontHas["Fonts\\2002.TTF"] = HANGUL
+Faces("Fonts\\FRIZQT__.TTF", "Fonts\\QUEST.TTF")
+Reset()
+-- A file the client cannot load keeps the object's own font in the probe, whose fallbacks draw.
+Expect("H. a font file the client cannot load draws nothing, whatever the fonts it falls back to",
+    tostring(Spoken:LanguageDraws("ruRU", "Fonts\\MISSING.TTF")) .. " "
+    .. tostring(Spoken:LanguageDraws("ruRU", "Fonts\\FRIZQT___CYR.TTF")), "false true")
+local blei = fontHas["Fonts\\blei00d.TTF"]
+fontHas["Fonts\\blei00d.TTF"] = nil
+fontHas["Fonts\\bKAI00M.TTF"] = HAN
+Reset()
+Expect("H. Traditional Chinese is written in bKAI00M.TTF where the client lacks blei00d.TTF, as on Forever",
+    Font(_G.QuestFont, "zhTW"), "Fonts\\bKAI00M.TTF")
+fontHas["Fonts\\bKAI00M.TTF"] = nil
+Reset()
+Expect("H. ...and in no stock font where the client has neither",
+    Font(_G.QuestFont, "zhTW"), "nil")
+fontHas["Fonts\\blei00d.TTF"] = blei
+Reset()
 Expect("H. a Latin language needs no asking", Z:CanRenderLanguage("frFR"), true)
 Expect("H. ...and keeps the page's font", Font(_G.GameFontHighlight, "frFR"), "Fonts\\FRIZQT__.TTF")
 Expect("H. Vietnamese, which the page's font cannot draw, is written in Arial Narrow",
@@ -259,16 +310,16 @@ _G.GameFontNormal = realNormal
 Voice(nil)
 
 Faces("Fonts\\LATIN.TTF", "Fonts\\QUEST.TTF")
-Z.drawable, Z.fonts = {}, {}
+Reset()
 Expect("H. a font file without Cyrillic writes Russian in the client's Cyrillic font",
     tostring(Z:CanRenderLanguage("ruRU")) .. " " .. Font(_G.GameFontHighlight, "ruRU"),
     "true Fonts\\FRIZQT___CYR.TTF")
 fontHas["Fonts\\2002.TTF"] = {}
-Z.drawable, Z.fonts = {}, {}
+Reset()
 Expect("H. a client whose Korean font cannot draw Korean does not offer it",
     Z:CanRenderLanguage("koKR"), false)
 fontHas["Fonts\\ARIALN.TTF"] = {}
-Z.drawable, Z.fonts = {}, {}
+Reset()
 Expect("H. ...nor Vietnamese where no font draws its accents", Z:CanRenderLanguage("viVN"), false)
 _G.UIParent.CreateFontString = realParent
 _G.GameFontHighlight, _G.QuestFont = realHighlight, realQuest

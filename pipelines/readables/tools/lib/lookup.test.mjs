@@ -20,6 +20,15 @@ test("an English clip carries no text: Books.lua has the words", () => {
   assert.doesNotMatch(lua, /Three crates/);
 });
 
+test("a take with word times carries them packed, and one without carries none", () => {
+  const lua = packLua("enUS", [
+    { pageId: 15, file: "15", durationSec: 2.5, wordTimes: [0, 0.42, 1.5] },
+    { pageId: 16, file: "16", durationSec: 1.5, wordTimes: null },
+  ]);
+  assert.match(lua, /\[15\] = \{ file = "15", len = 2\.5, times = "0 \.42 1\.5" \},/);
+  assert.match(lua, /\[16\] = \{ file = "16", len = 1\.5 \},/);
+});
+
 test("another language's is build output, never in English's folder", () => {
   const path = lookupPath("esMX");
   assert.match(path, /build\/readables\/esMX\/Data\/Sounds\.lua$/);

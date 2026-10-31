@@ -206,7 +206,6 @@ function ContributeButton:DialogueUICorner(frame)
         else
             tooltip:SetOwner(owner, "ANCHOR_RIGHT")
             tooltip:SetText(L.OPT_REPORT_PROBLEM)
-            tooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
             tooltip:Show()
         end
     end

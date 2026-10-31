@@ -284,11 +284,24 @@ end
 
 ---------------------------------------------------------------- keys
 local bindings = assert(io.open(SPOKEN .. "Bindings.xml")):read("*a")
+-- The client titles a category with the string global it names, else with the name itself
+-- (GetBindingCategoryName in Blizzard_SettingsDefinitions_Frame/Keybindings.lua).
+local function CategoryTitle(cat)
+    local loc = _G[cat]
+    if type(loc) == "string" then return loc end
+    return cat
+end
 for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_COMPENDIUM" }) do
-    Expect(name .. " is a key binding", bindings:find('name="' .. name .. '"', 1, true) ~= nil, true)
+    local element
+    for tag in bindings:gmatch("<Binding%s[^>]*>") do
+        if tag:find('name="' .. name .. '"', 1, true) then element = tag end
+    end
+    -- A binding with no category is filed under Other, among every other addon's.
+    local category = element and element:match('category="([^"]*)"')
+    Expect(name .. " is a key binding in the key bindings' own section titled Spoken",
+        category and CategoryTitle(category), "Spoken")
     Expect("...named in the game's key bindings list", type(_G["BINDING_NAME_" .. name]), "string")
 end
-Expect("...under a Spoken heading", _G.BINDING_HEADER_SPOKEN, "Spoken")
 Expect("the keys section sets the Compendium's key too", Row(home, L.BIND_COMPENDIUM) ~= nil, true)
 
 ---------------------------------------------------------------- /sp in the settings' words
@@ -386,15 +399,15 @@ do
     end
     language.Voice, language.Fallback = "zhCN", "none"
     quests:Refresh()
-    -- The stub measures every character alike, so no font of its own draws Chinese: it is named in
-    -- English, as on a client whose font lacks it.
+    -- The stub draws a Han character as wide as the box a missing glyph draws, so no font of its own
+    -- draws Chinese: it is named in English, as on a client whose font lacks it.
     Expect("a voice language with no Quests pack and Stay Silent is said under the voice packs", Silent(),
         format(L.MODULE_NO_VOICE_FMT, "Chinese (Simplified)"))
     -- A font with the glyphs measures the text apart from the box a missing one draws.
     stub.TextWidth = function(fs)
         local text = tostring(fs.text or "")
         local width = 0
-        for char in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do width = width + (char == "\238\128\128" and 12 or 7) end
+        for char in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do width = width + (char == "\205\184" and 12 or 7) end
         return width
     end
     quests:Refresh()
@@ -535,9 +548,12 @@ Expect("...and changes nothing until answered", env.Addon.db.profile.Frame.Frame
 popup.dialog.OnCancel()
 popup.dialog.OnAccept()
 Expect("cancelling forgets the reset", stub.reloads, reloads)
+env.Addon.db.global.NewCharacterProfile = env.Addon.db:GetCurrentProfile()
 reset.scripts.OnClick(reset)
 stub.popups[#stub.popups].dialog.OnAccept()
 Expect("accepting resets", env.Addon.db.profile.Frame.FrameScale, 0.7)
+Expect("...but not the profile for new characters, which is every character's", env.Addon.db.global.NewCharacterProfile,
+    env.Addon.db:GetCurrentProfile())
 Expect("...and reloads to finish", stub.reloads, reloads + 1)
 
 ---------------------------------------------------------------- welcome
@@ -577,7 +593,7 @@ env.Addon.db.global.Welcomed = nil
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(2.1)
 Expect("the welcome opens at the first login after it ships", Welcome.frame and Welcome.frame:IsShown(), true)
-Expect("it offers the parts as a list, as Home does", #Welcome.modules, 4)
+Expect("it offers the parts as a list, as Home does", #Welcome.modules, 5)
 Expect("...under its header, the paragraph saying what the window is for",
     Welcome.layout.intro.text ~= nil and Welcome.layout.intro.text.text, L.WELCOME_INTRO)
 Expect("...which the settings pages, like the game's own, do without", home.intro.text, nil)
@@ -761,17 +777,18 @@ do
 end
 
 ---------------------------------------------------------------- links out of the game
--- GitHub, Discord, CurseForge, Wago and Rusty's Buy Me a Coffee page, a row each: the icon in a module card's icon frame where a row's
+-- Website, GitHub, Discord, CurseForge, Wago and Rusty's Buy Me a Coffee page, a row each: the icon in a module card's icon frame where a row's
 -- label starts, then a box holding the address. The game cannot open a page, so the address is
 -- there to copy: a click selects it, and nothing typed over it stays.
 do
     local links = env.Options.links
-    Expect("Spoken's page has its links", links ~= nil and #links, 5)
+    Expect("Spoken's page has its links", links ~= nil and #links, 6)
     if links then
         local names = {}
         for _, frame in ipairs(links) do table.insert(names, frame.layoutLink.title) end
-        Expect("...GitHub, Discord, CurseForge, Wago and Buy Me a Coffee", table.concat(names, ", "),
-            "GitHub, Discord, CurseForge, Wago, Buy Me a Coffee")
+        Expect("...Website, GitHub, Discord, CurseForge, Wago and Buy Me a Coffee",
+            table.concat(names, ", "),
+            "Website, GitHub, Discord, CurseForge, Wago, Buy Me a Coffee")
         -- A row outside the narrator style's box, which moves its own rows in by its padding.
         local boxed = {}
         for _, item in ipairs(home.items) do
@@ -791,10 +808,10 @@ do
         Expect("...starting where the rows' names do", caption and links[1].anchor.x, caption and caption.anchor.x)
         Expect("...each on a row of its own", links[1].anchor.x == links[2].anchor.x
             and links[2].anchor.y < links[1].anchor.y and links[3].anchor.y < links[2].anchor.y, true)
-        local box = links[2].box
+        local box = links[3].box
         Expect("...with its address in a box after the icon", box and box:GetText(), "https://discord.gg/HEGUgn6Yf")
-        Expect("...on the icon's row", box and box.anchor.x > links[2].anchor.x
-            and box.anchor.y < links[2].anchor.y and box.anchor.y > links[2].anchor.y - 32, true)
+        Expect("...on the icon's row", box and box.anchor.x > links[3].anchor.x
+            and box.anchor.y < links[3].anchor.y and box.anchor.y > links[3].anchor.y - 32, true)
         local ends = {}
         for _, frame in ipairs(links) do table.insert(ends, frame.box.anchor.x + frame.box.width) end
         Expect("...the boxes ending together", ends[1] == ends[2] and ends[2] == ends[3], true)
@@ -803,7 +820,7 @@ do
         Expect("...given again when it shows, as the game drops text set before then", box:GetText(),
             "https://discord.gg/HEGUgn6Yf")
         box.focused, box.highlighted = false, false
-        links[2].scripts.OnMouseUp(links[2])
+        links[3].scripts.OnMouseUp(links[3])
         Expect("a click on the icon selects the address", box.focused and box.highlighted, true)
         box:SetText("typed over")
         box.handlers.OnTextChanged(box)

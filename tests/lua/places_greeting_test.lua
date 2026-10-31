@@ -42,11 +42,20 @@ local function Boot(where, level, record)
     stub.SetZone(where)
     stub.FireEvent("ADDON_LOADED", "Spoken_Places")
     Z:SetupAudio()
+    -- Include Places Found Before also reads where the character stands, on login and on a
+    -- zone change: off, so only the greeting is measured.
+    Z:Set("autoplayExplored", false)
     Z:SetupAutoplay()
     return Z
 end
 
 local VALLEY = { map = 1411, zone = "Durotar", subzone = "Valley of Trials" }
+
+-- What Core's zone-change events run. Firing the event itself would also run the callbacks of
+-- every earlier Boot's addon, whose frames the stub keeps.
+local function ZoneChanged(Z)
+    for _, callback in ipairs(Z.zoneChangedCallbacks) do callback(Z:GetPlayerMapID()) end
+end
 
 Boot(VALLEY, 1, nil)
 stub.Advance(2)
@@ -83,6 +92,54 @@ stub.SetZone(VALLEY)
 stub.Advance(2)
 Expect("once the map settles on the valley, it is greeted", Spoken:IsPlaying(), true)
 C_Map.GetMapInfo = getMapInfo
+
+-- With Include Places Found Before on, a new character's zone is read after its valley at login,
+-- and the game's discovery of the zone, when the character walks out into it, reads nothing.
+local Z = Boot(VALLEY, 1, nil)
+Z:Set("autoplayExplored", true)
+stub.Advance(2)
+local current = Spoken:GetCurrent()
+Expect("with Include Places Found Before on, the valley is read first",
+    current and current.key, "s:1411:valley of trials")
+Expect("...and the zone after it", Spoken:GetQueueSize(), 2)
+stub.Advance(200)
+Z:OnAreaDiscovered("Durotar")
+Expect("...so the zone's discovery does not read it again", Spoken:GetQueueSize(), 0)
+
+-- The map settled on the zone before the subzone is filled in: the zone waits for the greeting.
+Z = Boot({ map = 1411, zone = "Durotar", subzone = "" }, 1, nil)
+Z:Set("autoplayExplored", true)
+stub.Advance(2)
+Expect("with the subzone not known yet, the zone is not read ahead of the greeting", Spoken:GetQueueSize(), 0)
+-- The game fires a zone change as the character loads in; it takes the same route.
+ZoneChanged(Z)
+Expect("...nor by a zone change", Spoken:GetQueueSize(), 0)
+stub.SetZone(VALLEY)
+stub.Advance(2)
+current = Spoken:GetCurrent()
+Expect("...the valley is read first once it is", current and current.key, "s:1411:valley of trials")
+Expect("...and the zone after it", Spoken:GetQueueSize(), 2)
+Expect("...and the greeting is remembered", SpokenPlacesCharacter.greeted, true)
+
+-- A zone change before the greeting's first try, with the valley already known.
+Z = Boot(VALLEY, 1, nil)
+Z:Set("autoplayExplored", true)
+ZoneChanged(Z)
+Expect("a zone change before the greeting reads nothing", Spoken:GetQueueSize(), 0)
+stub.Advance(2)
+current = Spoken:GetCurrent()
+Expect("...the valley is read first", current and current.key, "s:1411:valley of trials")
+Expect("...the zone after it", Spoken:GetQueueSize(), 2)
+Expect("...and the character is greeted", SpokenPlacesCharacter.greeted, true)
+ZoneChanged(Z)
+Expect("...a zone change once it is settled does not read them again", Spoken:GetQueueSize(), 2)
+
+-- The valley already waiting from another route is not refused as a duplicate and left ungreeted.
+Z = Boot(VALLEY, 1, nil)
+Z:QueueLore(1411, "valley of trials")
+stub.Advance(2)
+Expect("a valley already queued still counts as the greeting", SpokenPlacesCharacter.greeted, true)
+Expect("...and the greeting adds no zone to it", Spoken:GetQueueSize(), 1)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places greeting tests passed")

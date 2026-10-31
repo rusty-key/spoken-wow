@@ -46,7 +46,7 @@ local BOX_LIT = 0.7
 -- The Forever client's bronze, as its own frames wear it: the round buttons' rings and the small
 -- window's metal take it while Bronze Border is on. Every ring made, to tint again when the setting
 -- changes.
-local BRONZE = Version.IsCamelot and { .95, .68, .35 } or nil
+local BRONZE = Version.Variant == "forever" and { .95, .68, .35 } or nil
 Actions.BRONZE = BRONZE
 local rings = setmetatable({}, { __mode = "k" })
 
@@ -78,8 +78,9 @@ end
 
 --- Dress `button` as the player's round buttons are -- the windows' pause, the subtitle's
 --- controls: the ring round its edge, `icon` inside it, brighter under the pointer. Sized by the
---- button, so a corner icon and a subtitle control are the same button at different sizes.
-function Actions.RoundIcon(button, icon)
+--- button, so a corner icon and a subtitle control are the same button at different sizes. With
+--- `own`, the caller squares the button in EllesmereUI's look once all its parts exist.
+function Actions.RoundIcon(button, icon, own)
     local ring = button:CreateTexture(nil, "BACKGROUND")
     ring:SetTexture(RING)
     ring:SetPoint("TOPLEFT", button, "TOPLEFT", -3, 3)
@@ -95,7 +96,27 @@ function Actions.RoundIcon(button, icon)
     button:HookScript("OnEnter", function() if button:IsEnabled() then glyph:SetAlpha(1) end end)
     button:HookScript("OnLeave", function() if button:IsEnabled() then glyph:SetAlpha(GLYPH_ALPHA) end end)
     button.ring, button.glyph = ring, glyph
+    if Ellesmere and not own then Ellesmere:When(function(skin) Actions.Square(skin, button) end) end
     return button
+end
+
+-- Whether `button` keeps its ring in EllesmereUI's look: on the DialogueUI window and DialogueUI's
+-- own windows, which keep DialogueUI's look.
+local function KeepsRound(button)
+    local frame = button
+    while frame do
+        if frame.spokenRound == true or frame == _G.DUIQuestFrame or frame == _G.DUIBookFrame then return true end
+        frame = frame.GetParent and frame:GetParent() or nil
+    end
+    return false
+end
+
+--- A round button as one of EllesmereUI's square buttons, its glyph or picture kept, square too.
+function Actions.Square(skin, button)
+    if button.squared or KeepsRound(button) then return end
+    button.squared = true
+    if button.mask and button.glyph.RemoveMaskTexture then button.glyph:RemoveMaskTexture(button.mask) end
+    skin.Button(button, { "glyph", "bar" })
 end
 
 -- Big enough to aim at and to read as a bug rather than a smudge; and the gap between a row of them.
@@ -126,21 +147,15 @@ function Actions.OfferLogMenu(button, isReport)
     end)
 end
 
---- The line a Report button's tooltip ends with, where the menu exists.
-function Actions.AddLogMenuHint(tooltip)
-    local hint = Developer:MenuHint()
-    if hint then tooltip:AddLine(hint, 0.6, 0.6, 0.6, true) end
-end
-
 --- The subtitle's round button, the one every window shows: 24 across, the player's ring,
 --- `glyphSize` square glyph centred in it (or reaching the rim with none). Made without a parent
 --- and given one after, which a button on the open quest log needs (taint), and which costs the
---- rest nothing. `name` for a button that must be named.
-function Actions.RoundButton(parent, glyphSize, name)
+--- rest nothing. `name` for a button that must be named. `own` as for Actions.RoundIcon.
+function Actions.RoundButton(parent, glyphSize, name, own)
     local button = CreateFrame("Button", name, nil)
     button:SetParent(parent)
     button:SetSize(ROUND_SIZE, ROUND_SIZE)
-    Actions.RoundIcon(button)
+    Actions.RoundIcon(button, nil, own)
     if glyphSize then
         button.glyph:ClearAllPoints()
         button.glyph:SetPoint("CENTER")
@@ -188,9 +203,16 @@ function Actions.SetPausable(buttons)
     return pausable
 end
 
+--- Skip the line playing, with the click a window's Skip makes.
+function Actions.Skip()
+    local skipped = SoundQueue:Skip()
+    if skipped then SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON") end
+    return skipped
+end
+
 --- Skip: the round button with the play glyph against a bar, the usual "next" mark.
 function Actions.SkipButton(parent, name)
-    local skip = Actions.RoundButton(parent, 10, name)
+    local skip = Actions.RoundButton(parent, 10, name, true)
     Actions.Glyph(skip.glyph, "play")
     skip.glyph:ClearAllPoints()
     skip.glyph:SetPoint("CENTER", -2, 0)
@@ -199,10 +221,9 @@ function Actions.SkipButton(parent, name)
     skip.bar:SetSize(P and P(skip, 2) or 2, P and P(skip, 9) or 9)
     skip.bar:SetPoint("LEFT", skip.glyph, "RIGHT", 0, 0)
     if skip.bar.SetColorTexture then skip.bar:SetColorTexture(1, 0.82, 0, 0.85) end
-    skip:SetScript("OnClick", function()
-        SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
-        SoundQueue:Skip()
-    end)
+    -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, skip) end) end
+    skip:SetScript("OnClick", Actions.Skip)
     skip:SetScript("OnEnter", function()
         skip.glyph:SetAlpha(1)
         GameTooltip:SetOwner(skip, "ANCHOR_TOP")
@@ -280,8 +301,13 @@ function Actions.WaitingTip(owner)
 end
 
 --- A frame over `text`, the "+N" count, that lists the waiting lines while the pointer is on it.
---- It only listens: a click goes through to the window under it, which it drags as before.
 function Actions.WaitingHover(text)
+    return Actions.Hover(text, Actions.WaitingTip)
+end
+
+--- A frame over `text` that shows `tip(hover)` while the pointer is on it, hidden until shown.
+--- It only listens: a click goes through to the window under it, which it drags as before.
+function Actions.Hover(text, tip)
     local hover = CreateFrame("Frame", nil, text:GetParent())
     hover:SetAllPoints(text)
     if hover.SetMouseClickEnabled and hover.SetMouseMotionEnabled then
@@ -290,7 +316,7 @@ function Actions.WaitingHover(text)
     else
         hover:EnableMouse(true)
     end
-    hover:SetScript("OnEnter", function() Actions.WaitingTip(hover) end)
+    hover:SetScript("OnEnter", function() tip(hover) end)
     hover:SetScript("OnLeave", function() HideTipFor(hover) end)
     hover:SetScript("OnHide", function() HideTipFor(hover) end)
     hover:Hide()
@@ -386,18 +412,27 @@ end
 -- The Small Window and the DialogueUI window name a line, count what waits and take the pointer
 -- alike.
 
---- A line's title. A line with no label (a one-page letter) goes by its header: its key means
---- nothing to a player.
+--- A line's title on a dark window.
+Actions.TITLE_COLOR = { .88, .84, .76 }
+
+--- A line's own label; nil where it has none, an empty one included.
+local function OwnLabel(present)
+    local label = present and present.label
+    return label ~= "" and label or nil
+end
+
+--- A line's title. A line with no label (a one-page letter, a quest event with no title) goes by
+--- its header, and one with neither has no title: its key means nothing to a player.
 function Actions.Label(clip)
     local present = clip and clip.present
-    return clip and (present and (present.label or present.header) or clip.key) or ""
+    return present and (OwnLabel(present) or present.header) or ""
 end
 
 --- The speaker's name over the title: the header, unless it is already the title (a line with no
 --- label), and said once, so never the same as the title.
 function Actions.Speaker(clip)
     local present = clip and clip.present
-    local name = present and present.label and present.header or ""
+    local name = OwnLabel(present) and present.header or ""
     return name ~= Actions.Label(clip) and name or ""
 end
 
@@ -620,6 +655,8 @@ function Actions.RoundPicture(button, icon)
     glyph:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
     glyph:SetTexture(icon)
     glyph:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- A square button in EllesmereUI's look keeps its picture square.
+    if button.squared then return end
     local mask = button.CreateMaskTexture and glyph.AddMaskTexture and button:CreateMaskTexture()
     if type(mask) == "table" then
         mask:SetTexture(PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -858,7 +895,6 @@ local function NewButton(frame, action)
             if self.action and self.action.tooltip then
                 GameTooltip:SetOwner(self, "ANCHOR_LEFT")
                 self.action.tooltip(GameTooltip)
-                if self.action.id == "report" then Actions.AddLogMenuHint(GameTooltip) end
                 GameTooltip:Show()
             end
         end)
@@ -942,25 +978,42 @@ function Actions:HeaderControls(frame, controls, first, clip)
     return row
 end
 
---- Whether a DialogueUI dialog (its quest window or its book view) is open with the windows not
---- put over it (Show Spoken Over DialogueUI off): DialogueUI then hides the interface, and a window
---- left showing would leave its 3D portrait over the dialog, which takes no alpha from it.
+-- DialogueUI's quest window and book view, and Immersion's window, which shows quests, gossip and
+-- books in its own talking box.
+local DIALOGS = { "DUIQuestFrame", "DUIBookFrame", "ImmersionFrame" }
+
+local function Open(name)
+    local dialog = _G[name]
+    return type(dialog) == "table" and dialog.IsShown and dialog:IsShown() and true or false
+end
+
+--- Whether Immersion's window is open. The subtitles ask only this: DialogueUI hides them with
+--- the rest of the interface.
+function Actions.ImmersionOpen()
+    return Open("ImmersionFrame")
+end
+
+--- Whether another addon's dialog is open and showing the line itself, so Spoken's windows stay
+--- away rather than cover it. DialogueUI's, unless the windows are put over it
+--- (Show Spoken Over DialogueUI): DialogueUI hides the interface, and a window left showing would
+--- leave its 3D portrait over the dialog, which takes no alpha from it. Immersion's always: it
+--- keeps the interface unless its Hide Interface is on, so the window would sit beside its box.
 function Actions.DialogCovers()
-    if Addon.playerHost then return false end
-    for _, name in ipairs({ "DUIQuestFrame", "DUIBookFrame" }) do
-        local dialog = _G[name]
-        if type(dialog) == "table" and dialog.IsShown and dialog:IsShown() then return true end
+    if Addon.playerHost then return Actions.ImmersionOpen() end
+    for _, name in ipairs(DIALOGS) do
+        if Open(name) then return true end
     end
     return false
 end
 
---- Calls `fn` a frame after a DialogueUI dialog opens or closes, once DialogueUI's bridge has put
---- the windows over it or not.
+--- Calls `fn` a frame after a dialog opens or closes, once DialogueUI's bridge has put the windows
+--- over it or not. Immersion's window hides half a second after its last page, once it has faded:
+--- the window comes back then. Between one page and the next it never hides.
 function Actions.WatchDialogs(fn)
     local function Later()
         C_Timer.After(0, fn)
     end
-    for _, name in ipairs({ "DUIQuestFrame", "DUIBookFrame" }) do
+    for _, name in ipairs(DIALOGS) do
         local dialog = _G[name]
         if type(dialog) == "table" and dialog.GetEffectiveScale then
             local watch = CreateFrame("Frame", nil, dialog)

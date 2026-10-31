@@ -3339,21 +3339,21 @@
       "parent": 1423,
       "key": "lights hope chapel",
       "title": "Light's Hope Chapel",
-      "file": "File:Light's Hope Chapel.jpg",
-      "era": "lead",
-      "url": "https://warcraft.wiki.gg/images/thumb/Light%27s_Hope_Chapel.jpg/1024px-Light%27s_Hope_Chapel.jpg?1e537b",
-      "width": 1680,
-      "height": 1050,
-      "page": "https://warcraft.wiki.gg/wiki/File:Light%27s_Hope_Chapel.jpg",
+      "file": "File:Light's hope.jpg",
+      "era": "chosen",
+      "url": "https://warcraft.wiki.gg/images/Light%27s_hope.jpg?a656a8",
+      "width": 1016,
+      "height": 720,
+      "page": "https://warcraft.wiki.gg/wiki/File:Light%27s_hope.jpg",
       "license": "",
       "artist": "",
       "others": [
+        "File:Light's Hope Chapel.jpg",
         "File:Light's Hope 07.jpg",
         "File:Light's Hope Chapel outside view.jpg",
-        "File:Light's Hope Chapel views outside.jpg",
-        "File:Light's hope.jpg"
+        "File:Light's Hope Chapel views outside.jpg"
       ],
-      "raw": "Light_s_Hope_Chapel.jpg"
+      "raw": "Light_s_hope.jpg"
     },
     "1423-marris-stead": {
       "parent": 1423,

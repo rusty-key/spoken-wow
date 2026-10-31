@@ -7,6 +7,154 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Immersion turns its pages with the voice.** While Spoken Quests reads a quest or gossip page in Immersion's
   talk box, the text shows the part being read and Immersion's own timer waits. When the line ends or is stopped,
   Immersion goes on as before. *([Aleph-Null-Zero](https://github.com/Aleph-Null-Zero))*
+
+## 3.7.0 — 2026-10-31
+
+- **World Chatter voices what people say out loud in the world.** Guards, farmers and others who talk
+  without a quest are matched by who says what, and the line plays when a voice pack has it, only when
+  nothing else is being read. The game's chat bubble stays the only thing on screen, and lights the word
+  being read. It is a part of its own on Spoken's page, with a switch and a page, and `/spq chatter`
+  replays an NPC's lines. *([Nucabe](https://github.com/Nucabe))*
+- **Spoken NPCs is now Spoken Bosses.** The module has a new name and folder, `Spoken_Bosses`, so
+  the bosses you found and the stories already told start over. An old `Spoken_NPCs` folder left
+  beside it is switched off, and Spoken offers the reload that finishes it.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Boss stories are read aloud.** Install Spoken Audio: Places and Bosses and a boss's story is voiced when it falls; without it the story shows as text, as before.
+  The Bosses settings page lists the pack, with the address to download it, as the Places and
+  Readables pages list theirs. Play on a boss's page in the Compendium plays its story, and the
+  boss still tells it when it falls.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Boss stories in your language.** Every story is now written in German, French, Spanish (EU and
+  AL), Portuguese, Russian, Korean and Chinese (Simplified and Traditional), and the Bosses page
+  shows the one for your client, English where it has none.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Places and Readables are reachable by other addons**, through the globals `SpokenPlaces` and
+  `SpokenReadables`, as Bosses already is through `SpokenBossesAddon`: an addon that lists a place
+  or a book can ask whether Spoken has its story and have it read or shown. Such an addon checks
+  first whether the player has found it.
+  *([fallenguards](https://github.com/fallenguards))*
+- **Raid and world bosses wear the elite skull in the Compendium, dungeon bosses the plain one.**
+  On Season of Discovery, Blackfathom Deeps, Gnomeregan and Sunken Temple count as raids.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The Quests, Readables and Bosses pages have an icon before anything is chosen.** Quests shows
+  its scroll; Readables and Bosses show the Compendium's book, replacing the dragon on Bosses.
+  *([anon1231823](https://github.com/anon1231823))*
+- **On Forever, the Contribute box names the released game's folder.** It points to
+  `_forever_` for the saved file to upload, instead of the ended beta's `_classic_beta_`.
+  *([svengabr](https://github.com/svengabr))*
+
+## 3.6.0 — 2026-10-28
+
+- **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
+  settings page and dungeon icon instead of using the generic book portrait.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Show Play Button covers the Quest Log, Blizzard's tracker and Questie's tracker.**
+  The Quest Log and Tracker suboptions are available wherever their respective buttons can appear,
+  including Era's classic quest log and default tracker.
+  *([anon1231823](https://github.com/anon1231823))*
+- **On Classic Era, the story beside the map sits against the map.** It follows the small map's
+  border, with the same narrow gap as on Forever, instead of hanging off the hidden large map's.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Show Collected Lines, in the Contribute settings, lists the lines you have collected.** Each shows
+  where it came from and the game's text, newest 200 at most; older ones are still sent.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The Bosses tab lists dungeons straight under their continent.** The zone lines are gone: each
+  continent shows its dungeons and raids by name, then its world bosses, and the search finds bosses
+  and dungeons. A dungeon's page still names its zone.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The contribute box names TBC Anniversary's game folder.** On Anniversary it says where the
+  saved variables are, under `_anniversary_`, instead of offering `_classic_era_` first.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Captions follow the voice word by word.** Quest, gossip, place and book recordings made from
+  now on carry when each word is spoken, so the highlighted word keeps pace with the voice instead
+  of an estimate. Older recordings, and captions in another language than the voice's, are
+  estimated as before. Takes effect with sound packs released after this version.
+  *([rusty-key](https://github.com/rusty-key))*
+- **A boss's story shows in the narrator when you kill the boss, in dungeons too.** The Bosses page no
+  longer has Show a Boss's Story: killing is the only way, because inside an instance the game hides
+  which boss a target is. The world bosses, whose fight the game sends no kill for, count when they die
+  after you targeted them or saw their nameplate. A boss is also met when you kill it, so its page unlocks in the
+  Compendium even if its pull was missed. *([Nucabe](https://github.com/Nucabe))*
+- **Spoken steps aside for Immersion.** While Immersion's window shows a quest, gossip or a book,
+  Spoken's window and subtitles stay hidden, as they do for DialogueUI, and the voice plays on.
+  They come back once the window closes, for a line still playing and for one you start with Play.
+  *([Aleph-Null-Zero](https://github.com/Aleph-Null-Zero))*
+- **Captions are in the language you read, not the voice's.** A place's story is captioned in the
+  Places page's Text Language, so French text with an English voice shows French words. Books and
+  letters follow your client's language the same way, whichever voice or fallback recording plays:
+  on a client in another language than English they are captioned and shown in Azeroth's Compendium
+  in that language where its Readables pack has the words, or, with an older pack that has none,
+  once you open the page, under the title the pack's index gives. On an English client they are in
+  English, so a German voice no longer reads along in its own words where English has them. An
+  Italian or Vietnamese voice, which no client runs in, still reads along in its own words where its
+  pack has them. A book can show some pages in your language and the rest in English.
+  *([Nucabe](https://github.com/Nucabe))*
+- **Choose the profile new characters start on.** Profile for New Characters, under Profiles on
+  Spoken's page, puts each character you make from then on straight onto that profile, quests
+  settings included. Characters you already have stay on the profile they use, with every setting
+  as it was. *([Nucabe](https://github.com/Nucabe))*
+- **Collect Missing Lines keeps each quest stage once, and keeps reworded lines.** A quest stage
+  is no longer kept a second time without its NPC as the window closes. A quest or gossip line that
+  plays but whose words in the game differ from the text it was voiced from is now kept too, so it
+  can be corrected. Your character's name no longer goes out with a line or page that writes it in
+  capitals, nor another player's name or look with a quest they shared, and lines kept before that
+  have a sharing player's name taken out when you log in. *([Nucabe](https://github.com/Nucabe))*
+- **Text Language on the Places page offers Traditional Chinese (繁體中文)** on clients in other
+  languages whose fonts draw it, as it does Simplified Chinese, Korean and Russian. Voice Language
+  names it in its own language on those clients too. *([Nucabe](https://github.com/Nucabe))*
+- **The Large Window names the line as well as the speaker.** A subzone's story reads "Westfall •
+  Moonbrook", a quest "Gornek • Cutting Teeth" and a book its title after "Book", as the other windows
+  show them. Pointing at a name cut short shows the whole of it. *([Nucabe](https://github.com/Nucabe))*
+- **Include Places Found Before is on.** The game announces each discovery once per character, so a
+  character who explored before installing heard nothing in those places, and Forget Places Heard
+  read nothing again. With the setting on, each place is read once per character the first time you
+  stand in it. It is turned on once for everyone, also if you had turned it off: to keep it off,
+  untick it under Places, When to Read. Forget Places Heard is greyed while Read Automatically or Read
+  Stories Aloud is off. *([Nucabe](https://github.com/Nucabe))*
+- **A zone's page on the Quests, Readables and Bosses tabs shows the faction's seal, not the place's
+  picture.** The page has nothing to read there, and the story and its picture are on the Places tab.
+  *([Nucabe](https://github.com/Nucabe))*
+- **The quest log's Play button no longer covers a quest's title or its "(Elite)".** With
+  quest objectives shown, the title now ends short of Play and Contribute, which sit left of
+  the quest's type instead of on top of it.
+  *([Nucabe](https://github.com/Nucabe))*
+- **The tab that reopens the Place Story panel no longer covers the map's own side tabs**, such as
+  Map Legend on WoW Forever. It goes under whatever tabs hang down the map's edge, whichever addon
+  made them. *([rusty-key](https://github.com/rusty-key))*
+- **Walking with the world map open no longer floods the game with Lua errors** on WoW Forever. The
+  Place Story panel and the tab that reopens it make room for Adventure Guide Forever's tabs on the
+  quest log's edge instead of sitting under them. *([Nucabe](https://github.com/Nucabe))*
+- **Quests are read with auto-accept and auto turn-in addons.** When Enhance QoL, RestedXP, Zygor or
+  Leatrix Plus accepts or hands in a quest for you, the quest's offer is read, and a turn-in reads
+  both the progress and the reward lines, where before some or all of them were skipped. This holds
+  while the addon leaves the quest's data in place for Spoken; a quest it clears first is not read.
+  A quest you decline reads as it did. *([Nucabe](https://github.com/Nucabe))*
+- **The Compendium's Started Only, Discovered Only and Found Only start on**, so it lists what the
+  character has started, discovered or found. They are on once for everyone after this update, and
+  turning one off keeps it off. The Unlock switches (Unstarted Quests, Undiscovered Places, Unfound
+  Readables, Unfound Bosses) start off, as before. *([Nucabe](https://github.com/Nucabe))*
+- **Spoken's keys have their own Spoken category in Key Bindings**, instead of sitting under
+  Other. *([Jayshua83](https://github.com/Jayshua83))* *([Nucabe](https://github.com/Nucabe))*
+- **A right-click on a window's words skips the line**, in the Small Window, the Large Window and the
+  DialogueUI window: a larger target than the Skip button. The menu and the settings that right-click
+  opened there are now on Shift-right-click. *([Nucabe](https://github.com/Nucabe))*
+- **World bosses are found when they die.** Lord Kazzak, Azuregos, Prince Thunderaan and the four
+  Emerald Dragons could stay locked after you fought them.
+  Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again, locked unless Unlock
+  Unfound Bosses is on, as inside an instance the game names no boss to Spoken. Blackfathom Deeps and
+  Gnomeregan list their bosses in Forever's order, not the Season of Discovery raid's.
+  *([Nucabe](https://github.com/Nucabe))*
+- **Spoken's windows follow EllesmereUI's look.** With EllesmereUI installed and its EllesmereUI Style
+  in use, the Small and Large Window and the welcome and contribution windows take its dark windows
+  and its font in white, and Spoken's settings pages its thin scroll bars. Portraits are round
+  in a thin grey edge, and Spoken's round buttons, on the subtitles and the quest windows too, are its
+  square ones. The DialogueUI window keeps DialogueUI's look, and under EllesmereUI's other looks
+  nothing changes; its own settings turn this off for Spoken, under Window Skins > Third-Party Addons.
+  *([Nucabe](https://github.com/Nucabe))*
+- **Azeroth's Compendium and the story beside the map follow it too.** In EllesmereUI's look they go
+  dark with no parchment: white words in its font, a thin line for each divider, flat boxes for the
+  list's headings and the tabs, and place pictures with straight edges in a thin border.
+  *([Nucabe](https://github.com/Nucabe))*
 - **Bosses whose fight the game may not announce are found when you target them.** Baron Aquanis, Lord
   Kazzak, Azuregos, Prince Thunderaan and the four Emerald Dragons could stay locked after you fought them.
   Ribbly Screwspigot and Plugger Spazzring are listed in Blackrock Depths again. Blackfathom Deeps and
@@ -17,9 +165,16 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   Quests whose only givers are one side's are listed for that side alone, three quests moved to
   the zone Forever's quest log uses, Westfall's Toxic Soil quests and 30 follow-ups are linked into
   their chains, and Dark Sacrifice has its new name. *([Nucabe](https://github.com/Nucabe))*
+- **Silence NPC Voices also silences the first talk to an NPC.** The first time you spoke to an
+  NPC a voice pack reads, about half a second of its own greeting was heard before Spoken's line.
+  *([Nucabe](https://github.com/Nucabe))*
 - **The Places tab sorts names without a leading "The".** The Barrens is listed under B and
   The Crossroads under C, among the zones, areas and dungeons, as you would look for them. The
   names still read in full. *([rusty-key](https://github.com/rusty-key))*
+- **Readables that Forever lays out or words differently are read.** A page whose line breaks,
+  spacing or a few words differ from Spoken's copy was silent and never counted as found. It is
+  now recognised by the item or object you opened it from, or by its title and most of its words,
+  and plays Spoken's recording. *([rusty-key](https://github.com/rusty-key))*
 - **Readables in the Compendium are filed where Forever has them.** Archmage Khadgar's plaque is
   under Alterac Mountains as well as Stormwind, Holidays and Events has a line for each event, the
   Green Hills of Stranglethorn cover is under Stranglethorn Vale, and Hildelve's Journal and
@@ -59,17 +214,16 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   with no known face shows the question mark instead of an empty portrait, and targeting Balnazzar in Stratholme no
   longer shows the Scarlet Enclave's story. Five bosses take the name the game gives them: The Baron, Magmatus,
   Kirtonos the Herald, Ras Frostwhisper and C'Thun. *([Nucabe](https://github.com/Nucabe))*
-- **A boss's story shows in the narrator when you target the boss.** It shows once per character, as words
-  with no voice. On the Bosses settings page, Show a Boss's Story picks targeting or killing it, and Forget
-  Stories Shown shows each again. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's story shows in the narrator.** It shows once per character, as words with no voice. On the
+  Bosses settings page, Forget Stories Shown shows each again. *([Nucabe](https://github.com/Nucabe))*
 - **Quest givers show their own face.** The quest portraits in the Compendium and the narrator's quest-giver
   face are drawn from appearances that ship with Spoken, so a creature the client has not met yet no longer
   shows your own face or another creature's. *([Nucabe](https://github.com/Nucabe))*
 - **Fixed: closing DialogueUI on a giver's greeting after taking a quest showed the queue's
   animation with no window.** The quest's page went behind a window that was not on screen.
   Now the window flies out of the dialog with the greeting, the quest counted after its title. *([Nucabe](https://github.com/Nucabe))*
-- **The Compendium's minimise arrow sits in the middle of its button.** It was drawn off to one side of the
-  frame the template gives it. *([Nucabe](https://github.com/Nucabe))*
+- **The Compendium's minimise arrow sits in the middle of its button, beside Close and on its row.** It
+  was drawn off to one side of the frame the template gives it. *([Nucabe](https://github.com/Nucabe))*
 - **The AddOns list shows Spoken and each module's name in colour, with new icons.** Spoken, Quests,
   Places, Readables, Contributions and Developer each have a new icon, the voice packs show Spoken in
   colour too, and the minimap button shows the mark at its size, centred. *([Nucabe](https://github.com/Nucabe))*
@@ -85,8 +239,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   *([rusty-key](https://github.com/rusty-key))*
 - **Every Compendium page has a round picture beside its title, and the lists are plain lines.** A place shows its
   picture with the world, a quest a scroll with the exclamation or question mark, a readable its kind with the
-  training book. Zones and dungeons in the lists are lines with their count, as the groups are. A title
-  is always one line. *([Nucabe](https://github.com/Nucabe))*
+  training book. The story beside the map has none: its Open button already shows the Compendium's
+  tome. Zones and dungeons in the lists are lines with their count, as the groups are. A title is always
+  one line. *([Nucabe](https://github.com/Nucabe))*
 - **A readable's page is its text only.** The where-to-find-it lines are gone. *([Nucabe](https://github.com/Nucabe))*
 - **A page with nothing to read shows your faction's wax seal in its middle.** Where the client has no seal
   it shows a faint lattice. It replaces the line telling you to choose something on the left, on the
@@ -107,8 +262,6 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   its fight starts: one not found is greyed until you find it or turn on Unlock Unfound Bosses, and Found
   Only hides it. Zones and dungeons count what is found. A boss's page names its dungeon and zone, shows
   its face with a skull, and holds its story where one is written. *([Nucabe](https://github.com/Nucabe))*
-- **Show Boss Abilities, on the new Bosses settings page, puts each boss's spells under its story.** The spells
-  are cards with the spellbook's frame. It is on by default. *([Nucabe](https://github.com/Nucabe))*
 - **A boss's page tells its story.** 272 bosses have one, written from the Adventure Guide and Warcraft Wiki
   and kept to Classic. *([Nucabe](https://github.com/Nucabe))*
 - **Every dungeon and raid has its own icon in the Compendium, and so do the cities, Moonglade and the

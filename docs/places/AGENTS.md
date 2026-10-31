@@ -16,6 +16,7 @@ Before changing a part, read its file:
 - the pictures: [PICTURES.md](PICTURES.md)
 - voice, the site and releases: [VOICE.md](VOICE.md)
 - adding content and finding gaps: [CONTENT.md](CONTENT.md)
+- the boss tables behind Spoken_Bosses: [BOSSES.md](BOSSES.md)
 
 ## Generated files
 
@@ -39,6 +40,12 @@ Kept by hand: `Data/AreaZones.lua`, `pipelines/places/tools/seed/forever-places.
 
 `pipelines/places/tools/voice/generate.mjs` reports on lines and cannot voice one. Keep it that
 way: takes are cut on the site.
+
+`addons/Spoken_Bosses/Data/Bosses.lua`, `Creatures.lua` and `Stories.lua` come from the `boss_instance`,
+`boss` and `boss_line` tables and the boss names in `entity_name`. The tables are the corpus and
+the Lua is an export (`make bosses-export`, checked by `make bosses-check`). Match a boss by its
+encounter id and never key on English text; keys are frozen, and a boss the client drops is
+retired, not deleted. See [BOSSES.md](BOSSES.md).
 
 Line ids (`z:<mapID>`, `s:<mapID>:<key>`) and the keys in them are frozen once a story has one. A
 renamed place keeps its key and gets an alias.
@@ -65,5 +72,7 @@ make lint                 # what CI gates on
   `addons/Spoken_Places/Audio.lua`. That is a format number, unrelated to either `.toc` version.
   Bump it only when the pack's data shape changes.
 - `make places-full-release` chains sync, pull-live, package-audio and the upload, and asks
-  before uploading.
+  before uploading. English's CurseForge zip also carries the bosses pack (Spoken Audio: Places
+  and Bosses), so an English run builds that first; GitHub's stays Places only. See
+  [VOICE.md](VOICE.md).
 - `scripts/places/release.sh` uploads the English pack, or one language's pack with `--lang`.

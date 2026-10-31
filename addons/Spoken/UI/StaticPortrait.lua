@@ -246,6 +246,13 @@ function StaticPortrait:Capture(clip, refreshGUID)
 end
 function StaticPortrait:Mask(viewport, texture)
     if not texture.AddMaskTexture then return end
+    -- A flat face in EllesmereUI's look is cut square by its viewport alone: a mask of white
+    -- clamped to black would shade its edges.
+    if viewport.squareMask then
+        if texture.minimalMask then texture:RemoveMaskTexture(texture.minimalMask) end
+        texture.minimalMask = nil
+        return
+    end
     if not viewport.roundMask then
         viewport.roundMask = viewport:CreateMaskTexture()
         viewport.roundMask:SetAllPoints()
@@ -263,11 +270,12 @@ function StaticPortrait:Release(viewport)
         viewport.active, viewport.activeFrame, self.activeTexture = nil, nil, nil
     end
 end
-function StaticPortrait:Configure(viewport, clip)
+-- `entry`, where given, is the clip's capture the caller has made already.
+function StaticPortrait:Configure(viewport, clip, entry)
     local spec, guid, creature = Identity(clip)
     self.waiting = nil
     if not spec then self:Release(viewport); return false end
-    local entry = self:Capture(clip)
+    entry = entry or self:Capture(clip)
     if not entry and not guid and type(creature) == "number" then self.waiting = creature end
     if entry then
         if viewport.activeFrame ~= entry.texture then

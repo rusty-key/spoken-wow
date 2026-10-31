@@ -101,7 +101,6 @@ function Book:Row()
 	end)
 	row:SetTip(report, function(tooltip)
 		tooltip:SetText(L.REPORT_PROBLEM)
-		tooltip:AddLine(L.REPORT_LINE_TIP, 1, 0.8, 0.2, true)
 	end)
 	local since = 0
 	-- Open in Azeroth's Compendium, on a writing it lists. The view is a child of UIParent, which

@@ -31,7 +31,7 @@ export interface FlavorLook {
 }
 
 const LOOKS: Record<Flavor, FlavorLook> = {
-  classic_beta: { name: 'Forever', label: 'WoW: Forever', from: '#1d6f8f', to: '#0b2a3a', glow: '#f0c25a' },
+  forever: { name: 'Forever', label: 'WoW: Forever', from: '#1d6f8f', to: '#0b2a3a', glow: '#f0c25a' },
   classic_era: { name: 'Classic Era', label: 'WoW: Classic Era', from: '#9a5a1c', to: '#33200f', glow: '#f2b04a' },
   anniversary: { name: 'Anniversary', label: 'WoW: Anniversary', from: '#a23a58', to: '#2e1020', glow: '#f4bb78' }
 }

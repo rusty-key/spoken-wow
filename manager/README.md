@@ -30,9 +30,13 @@ Linux: download `Spoken-Manager-<version>-linux.AppImage`, make it runnable and 
     chmod +x Spoken-Manager-*-linux.AppImage
     ./Spoken-Manager-*-linux.AppImage
 
-The AppImage updates itself. On Ubuntu 24.04 and later the window may not open because AppArmor
-blocks the browser sandbox. Start it with `--no-sandbox` in that case; this turns the sandbox off for
-that run. The `.tar.gz` build works too but does not update itself.
+The AppImage updates itself. On Ubuntu 24.04 and later the AppImage's window may not open because
+AppArmor blocks the browser sandbox. Start it with `--no-sandbox` in that case; this turns the
+sandbox off for that run. The `.deb` and `.rpm` set up the sandbox when they install and do not
+need it. Debian/Ubuntu users can install the `.deb` with `sudo apt install ./Spoken-Manager-*-linux.deb`;
+Fedora users can install the `.rpm` with `sudo dnf install ./Spoken-Manager-*-linux.rpm`. The
+`.tar.gz`, `.deb` and `.rpm` builds work without the AppImage updater and should be updated through
+their package manager or by downloading a newer release.
 
 ## Where it looks for the game
 
@@ -46,7 +50,7 @@ Linux: the game runs under Wine, so it looks inside Wine prefixes: `$WINEPREFIX`
 `~/Games/*`, and the prefixes of Lutris, Bottles, Steam (Proton) and Heroic.
 
 If your game is somewhere else, press "Add Game Folder" and choose it. You can choose the game
-folder, one of its `_classic_era_`, `_classic_beta_` or `_anniversary_` folders, or the
+folder, one of its `_forever_`, `_classic_era_` or `_anniversary_` folders, or the
 `Interface/AddOns` folder.
 
 ## Run it from source
@@ -101,4 +105,3 @@ wrote them (the text on screen, the quest or NPC, the game's version, the langua
 your voice packs) and a random id the manager made for itself, which Settings can replace. Nothing
 about your Battle.net account or your characters is in it. The site uses lines it does not have to
 add them, and counts the ones it has but your pack could not play, to know what to voice next.
-

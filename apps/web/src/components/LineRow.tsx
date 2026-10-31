@@ -31,6 +31,7 @@ import { cn, endsSelection } from "@/lib/utils";
 import type { LineState } from "./Explorer";
 import type { ResultLine } from "@/lib/search";
 import OutdatedNote from "@/components/OutdatedNote";
+import WowheadLink from "@/components/WowheadLink";
 import { npcPageHref } from "@/lib/links";
 import { wowheadEntityUrl, wowheadQuestUrl } from "@/lib/wowhead";
 
@@ -72,6 +73,7 @@ const QUEST_MARKS: Record<string, { glyph: string; label: string }> = {
  * reaches the corpus.
  */
 const FOLLOWUP_LABEL = "said in chat after the quest is accepted or turned in";
+const CHATTER_LABEL = "said in chat in the world, with no quest behind it";
 
 function SourceMark({ source }: { source: string }) {
   // Gossip's bubble, because this is an NPC talking rather than a quest dialog, but in the
@@ -84,6 +86,14 @@ function SourceMark({ source }: { source: string }) {
         className="mt-1 flex w-3.5 shrink-0 justify-center"
       >
         <MessageSquareQuoteIcon className="size-3.5 text-amber-400" />
+      </span>
+    );
+  }
+
+  if (source === "chatter") {
+    return (
+      <span title={CHATTER_LABEL} aria-label="NPC chat" className="mt-1 flex w-3.5 shrink-0 justify-center">
+        <MessageSquareQuoteIcon className="size-3.5 text-zinc-400" />
       </span>
     );
   }
@@ -169,27 +179,6 @@ type Props = {
   /** Say this take is fine as it stands, despite a pronunciation having moved under it. */
   onClearDirty: (line: ResultLine) => void;
 };
-
-/**
- * The way out to Wowhead, small enough to sit inside the id line.
- *
- * stopPropagation because the row's own click handler toggles it open; the handler already
- * ignores clicks on an anchor, and this keeps that true if the markup around it changes.
- */
-function WowheadLink({ href }: { href: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      onClick={(event) => event.stopPropagation()}
-      title="Look this up on Wowhead Classic"
-      className="hover:text-foreground underline underline-offset-2"
-    >
-      wh
-    </a>
-  );
-}
 
 function SpeakerAction({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (

@@ -57,6 +57,16 @@ for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader",
     assert(loadfile(READABLES .. file .. ".lua"))("Spoken_Readables", B)
 end
 B:InitDB()
+Expect("Found Only is on in a fresh profile", SpokenReadablesSettings.compendiumFoundOnly, true)
+Expect("Unlock Unfound Readables is off in a fresh profile", SpokenReadablesSettings.unlockUnfound, false)
+SpokenReadablesSettings.compendiumFoundOnly = false
+B:InitDB()
+Expect("...and an explicit off stays off", SpokenReadablesSettings.compendiumFoundOnly, false)
+SpokenReadablesSettings.foundOnlyDefaultOn = nil
+B:InitDB()
+Expect("an off stored before it was on by default is turned on once", SpokenReadablesSettings.compendiumFoundOnly, true)
+SpokenReadablesSettings.compendiumFoundOnly = false
+-- The tests below are about the unfiltered list, so Found Only stays off.
 B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
@@ -216,7 +226,7 @@ do
     Reopen(1426)
     Expect("Found Only, where the player's zone holds nothing found, the tab lands on their continent's banner",
         panel.page.title.text .. " " .. tostring(RowFor("Dun Morogh") == nil), "Eastern Kingdoms true")
-    SpokenReadablesSettings.compendiumFoundOnly = nil
+    SpokenReadablesSettings.compendiumFoundOnly = false
     Reopen(9003)
 end
 -- Left open by the landing inside Hollow Vault: closed, so the list starts folded.
@@ -471,11 +481,9 @@ do
     SpokenReadablesCharacter.found[LEDGER] = nil
     Click(L.GROUP_DUNGEONS)
     Click("Cragmoor")
-    _G.Spoken.PlacePicture = function(_, mapID, key) return "pic" .. mapID .. (key or ""), "mask" end
     B:RefreshReadables()
-    Expect("a zone's page has Places' picture of the place above it", panel.page.body.picture:IsShown()
-        and panel.page.body.picture:GetTexture(), "pic9004")
-    _G.Spoken.PlacePicture = nil
+    Expect("a zone's page has the seal and no picture", panel.page.mark:IsShown()
+        and not panel.page.body.picture:IsShown(), true)
     list = Shown()
 end
 
@@ -542,6 +550,28 @@ do
         "Greetings, sister. You, Torno the Warrior, are ready.")
     SpokenReadablesData.pages[kurdranPage].text = words
     stub.world.playerName, stub.world.playerClass, stub.world.unitSex = nil, nil, 2
+    B:ShowReadables(KURDRAN)
+end
+-- On a client in another language, a page is in that language where Spoken has its words: a pack in
+-- the client's language, or the page as the client showed it.
+do
+    local first = SpokenReadablesData.books[KURDRAN].pages[1]
+    local packs, locale, kept, titles = _G.SpokenReadablesAudioPacks, _G.GetLocale, B.pageText, B.bookTitle
+    _G.GetLocale = function() return "esES" end
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio_esES = { version = 1, language = "esES",
+        pages = { [first] = { file = tostring(first), len = 2, text = "Palabras de Kurdran." } },
+        index = { ["Saludo de Kurdran"] = { [1] = { x = first } } } } }
+    B:ShowReadables(KURDRAN)
+    Expect("...on a Spanish client, a page a Spanish pack has words for is in Spanish",
+        page.body.text.text:sub(1, 20), "Palabras de Kurdran.")
+    Expect("...under the title the pack's index gives it", page.title.text, "Saludo de Kurdran")
+    _G.SpokenReadablesAudioPacks = {}
+    B:RememberPageText(first, "esES", "Palabras vistas.", "Kurdran visto")
+    B:ShowReadables(KURDRAN)
+    Expect("...and a page the client showed is in the words it showed", page.body.text.text:sub(1, 16),
+        "Palabras vistas.")
+    Expect("...under the title it showed", page.title.text, "Kurdran visto")
+    _G.SpokenReadablesAudioPacks, _G.GetLocale, B.pageText, B.bookTitle = packs, locale, kept, titles
     B:ShowReadables(KURDRAN)
 end
 -- Opened on a writing from elsewhere (Open in Azeroth's Compendium): chosen, with what holds it
@@ -818,7 +848,7 @@ do
         if not voiced[p] then return nil end
         return { key = "b:" .. p, path = "page" .. p .. ".mp3", length = 5, pageId = p, present = { header = "" } }
     end
-    -- Play's tooltip, its lines as one, the pointer put on it; or as it stands, with `asIs`.
+    -- Play and Report tooltips: titles only.
     local function Tip(asIs, button)
         button = button or page.play
         if not asIs then
@@ -830,19 +860,17 @@ do
     local S = SpokenEnv.L
     local function Head() return Spoken:GetCurrent() and Spoken:GetCurrent().pageId end
     page:Show({ title = "Ranger Captain Alleria Windrunner", target = ALLERIA })
-    Expect("a readable not being read: Play, its tooltip saying what it reads", page.play.pageState .. " " .. Tip(),
-        "play " .. S.PLAY .. "|" .. L.PLAY_TIP)
+    Expect("a readable not being read: Play's tooltip keeps its title", page.play.pageState .. " " .. Tip(),
+        "play " .. S.PLAY)
     page.play.scripts.OnClick(page.play)
     Expect("...a click reads it", Spoken:GetNowPlaying() and Spoken:GetNowPlaying().pageId, alleriaPage)
-    Expect("...its tooltip, the pointer still on it, redrawn for Stop at once", Tip(true), S.STOP .. "|" .. S.STOP_READING_TIP)
-    Expect("...its Play showing Stop", page.play.pageState .. " " .. Tip(), "stop " .. S.STOP .. "|" .. S.STOP_READING_TIP)
+    Expect("...its Play showing Stop without a description", page.play.pageState .. " " .. Tip(), "stop " .. S.STOP)
     page.play.scripts.OnClick(page.play)
     Expect("...Stop stops it and keeps it at the head", tostring(Spoken:IsPaused()) .. " " .. tostring(Head()),
         "true " .. alleriaPage)
-    Expect("...showing Replay", page.play.pageState .. " " .. Tip(), "replay " .. S.REPLAY .. "|" .. S.REPLAY_READING_TIP)
+    Expect("...showing Replay without a description", page.play.pageState .. " " .. Tip(), "replay " .. S.REPLAY)
     Spoken:RegisterDeveloper({ MenuHint = function() return "Right-click: the debug log" end })
-    Expect("its Report's tooltip ends with the debug log's menu hint", Tip(false, page.report),
-        L.REPORT_PROBLEM .. "|" .. L.REPORT_LINE_TIP .. "|Right-click: the debug log")
+    Expect("its Report's tooltip keeps its title", Tip(false, page.report), L.REPORT_PROBLEM)
     Spoken:RegisterDeveloper(nil)
     page.play.scripts.OnClick(page.play)
     Expect("...Replay reads it again from the start", not Spoken:IsPaused() and Spoken:GetNowPlaying()

@@ -1,7 +1,7 @@
 ## Interface: 11509, 20506, 16001
 ## Title: |cffb48cffSpoken|r Audio: Readables
 ## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.
-## Version: 2.2.0
+## Version: 2.3.0
 ## Author: rusty
 ## IconTexture: Interface\AddOns\SpokenReadablesAudio\Textures\AddonIcon.tga
 ## Group: Spoken

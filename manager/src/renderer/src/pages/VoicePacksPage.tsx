@@ -10,7 +10,7 @@ import { formatBytes, formatDate } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
 
-const SECTIONS: Section[] = ['quests', 'places', 'readables']
+const SECTIONS: Section[] = ['quests', 'places', 'readables', 'bosses']
 
 export function VoicePacksPage(): ReactNode {
   const { state, actions } = useStore()

@@ -13,6 +13,7 @@ local print = stub.print
 local Expect, Failures = H.Expecter(print)
 local QUESTS = here .. "/../../addons/Spoken_Quests/"
 local SPOKEN = here .. "/../../addons/Spoken/"
+local TICK = "Interface\\RaidFrame\\ReadyCheck-Ready"
 
 stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 stub.world.questID = 0; stub.ShowPanel(nil)
@@ -98,6 +99,8 @@ local shipped = SpokenQuestsCompendium.quests
 local linked = shipped[PIE].prev == NECKLACE and shipped[BACK].prev == PIE and shipped[GOLDTOOTH].prev == BACK
 -- Speak with Ruga, the breadcrumb Brutal Armor's chain starts with, names it after that quest.
 local namedByHand = shipped[1823] and shipped[1823].name == 1838
+local ERA_FOREVER_QUEST = 10000
+shipped[ERA_FOREVER_QUEST] = { "Forever quest in an Era zone", zones = { 1429 } }
 -- Zephras Isle's story, which both sides take: every High Order Skyborne starts there.
 local zephrasOpen = true
 for _, id in ipairs({ 92517, 92528, 92529, 92550, 92640, 92642, 92643, 92644, 92645, 92880, 92881, 92947,
@@ -129,11 +132,22 @@ local C = _G.SpokenCompendium
 Expect("no tab before the world is up", C:Tab("quests"), nil)
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 Expect("the quests are a tab of Azeroth's Compendium once it is", C:Tab("quests") ~= nil and C:Tab("quests").label, L.COMPENDIUM_QUESTS)
+Expect("Era does not list Forever quests", Tab:Lists(ERA_FOREVER_QUEST), false)
 -- A map with no quests and nothing above it.
 stub.world.playerMapID = 9999
 Tab:Open()
 local panel = Tab.panel
 local page = panel.page
+local function StartedOnlyTicked() return stub.OpenDropdown(panel.filterMenu)[1].checked and true or false end
+Expect("Started Only is on for a profile that never set it", StartedOnlyTicked(), true)
+Expect("Unlock Unstarted Quests is off for a profile that never set it", VO.Addon.db.global.Compendium.UnlockUnfound == true, false)
+VO.Addon.db.global.Compendium.FoundOnly = false
+Expect("...and an explicit off stays off", StartedOnlyTicked(), false)
+VO.Addon.db.global.Compendium.FoundOnly = nil
+Expect("...and a nil reads as on again", StartedOnlyTicked(), true)
+-- The rest is about the unfiltered list, quests not started included.
+VO.Addon.db.global.Compendium.FoundOnly = false
+Tab:Refresh()
 -- A page's words as one string: a quest's parts each under its heading, as one block reads.
 local function PageWords()
     local parts = page.body.lastParts
@@ -295,7 +309,9 @@ Expect("...without the crest at its left end: its middle from past it", banner.h
 Expect("...its left end the right one turned round", banner.headLeft.texCoord[1] == banner.headRight.texCoord[2]
     and banner.headLeft.texCoord[2] == banner.headRight.texCoord[1] and banner.headLeft.texCoord[1] > banner.headLeft.texCoord[2]
     and banner.headLeft:IsShown() and banner.headRight:IsShown(), true)
-Expect("...the quest log's collapse on it while open", banner.toggle.atlas, "questlog-icon-shrink")
+Expect("...the quest log's collapse on it while open",
+    SpokenEnv.Version.Variant == "era" and banner.toggle.texture or banner.toggle.atlas,
+    SpokenEnv.Version.Variant == "era" and [[Interface\Buttons\UI-MinusButton-Up]] or "questlog-icon-shrink")
 Expect("...its numbers ending in the column a zone line's do", banner.count.anchor.point .. " " .. banner.count.anchor.x .. "|"
     .. RowFor("Elwynn Forest").count.anchor.point .. " " .. RowFor("Elwynn Forest").count.anchor.x, "RIGHT -12|RIGHT -12")
 faction = "Horde"
@@ -369,12 +385,12 @@ local leftovers, reused = Leftovers()
 Expect("a row drawn as a banner and reused for a line or a quest keeps none of the banner's parts", leftovers, "")
 Expect("...as rows were, once the list changed under them", reused > 0, true)
 Click("Professions")
-Expect("Professions holds Camping, whose quests are Camping 101 for one profession or another", Has(Shown(), "Camping"), true)
+Expect("Era leaves out Forever's Camping quests", Has(Shown(), "Camping"), false)
 Click("Professions")
 Click("Other")
 list = Shown()
-Expect("Other holds the Commendation Signets' hand-ins, the Argent Dawn's and the library books, under those names",
-    Has(list, "Commendation Signets") and Has(list, "Argent Dawn") and Has(list, "Library Books")
+Expect("Other holds the Commendation Signets' hand-ins and the Argent Dawn's under those names, on Era no library books",
+    Has(list, "Commendation Signets") and Has(list, "Argent Dawn") and not Has(list, "Library Books")
     and not Has(list, "Reputation"), true)
 Expect("...and no Place Unknown: CLUCK!, its last quest, is in Westfall and Tirisfal Glades, where its feed is sold",
     tostring(Has(list, L.QUESTS_ELSEWHERE)) .. "|" .. table.concat(SpokenQuestsCompendium.quests[3861].zones, ","), "false|1436,1420")
@@ -384,11 +400,25 @@ Expect("a continent's page is in Azeroth, with its count", page.title.text == "K
     and page.sub.text.text:match("^In Azeroth · %d+ of %d+ completed$") ~= nil, true)
 Click("Kalimdor")
 
--- Zephras Isle is on no continent: under a banner of its own after them, closed with it. The
--- battlegrounds are under a banner of their own, Alterac Valley too, though the client hangs it in
--- Hillsbrad Foothills.
+-- Forever's Zephras Isle has no Era quests, so only the battlegrounds remain under the lands
+-- banner. Alterac Valley is still there, though the client hangs it in Hillsbrad Foothills.
 list = Shown()
 Expect("the zones on no continent a banner after the continents, then the battlegrounds' banner",
+    list:find("|Battlegrounds|Classes|", 1, true) ~= nil
+    and RowFor(L.QUESTS_SECTION_LANDS) == nil, true)
+Expect("...closed, Zephras Isle not shown", Has(list, "Zephras Isle"), false)
+
+-- On Forever, its own quests are listed: Zephras Isle is on no continent, under a banner of its
+-- own after them, closed with it; Camping and the library books are there too.
+local function OnClient(variant)
+    SpokenEnv.Version.Variant = variant
+    Tab:Reindex()
+    Tab:Refresh()
+end
+OnClient("forever")
+Expect("Forever lists its own quests", Tab:Lists(ERA_FOREVER_QUEST), true)
+list = Shown()
+Expect("...the zones on no continent a banner after the continents, then the battlegrounds' banner",
     list:find("|" .. L.QUESTS_SECTION_LANDS .. "|Battlegrounds|Classes|", 1, true) ~= nil
     and RowFor(L.QUESTS_SECTION_LANDS).row.style, "banner")
 Expect("...closed, Zephras Isle not shown", Has(list, "Zephras Isle"), false)
@@ -399,6 +429,13 @@ Expect("...its page in Azeroth, as a continent's, counting their quests", page.t
     and page.sub.text.text:match("^In Azeroth · 0 of %d+ completed$") ~= nil, true)
 Click(L.QUESTS_SECTION_LANDS)
 Expect("...and closed again", Has(Shown(), "Zephras Isle"), false)
+Click("Professions")
+Expect("...Professions holds Camping, whose quests are Camping 101 for one profession or another", Has(Shown(), "Camping"), true)
+Click("Professions")
+Click("Other")
+Expect("...Other the library books", Has(Shown(), "Library Books"), true)
+Click("Other")
+OnClient("era")
 list = Shown()
 Expect("...the battlegrounds a banner", RowFor("Battlegrounds").row.style, "banner")
 Expect("...no battleground among its continent's zones", Has(list, "Alterac Valley"), false)
@@ -494,10 +531,11 @@ Expect("a quest in the quest log opens", RowOf(CANDLES).row.locked, false)
 Expect("...its row marked in progress, the quest mark before its name", RowOf(CANDLES).status:IsShown()
     and RowOf(CANDLES).status.texture .. " " .. RowOf(CANDLES).label.text, [[Interface\GossipFrame\ActiveQuestIcon]] .. " Kobold Candles")
 Expect("...a completed one the quest log's gold tick", RowFor("Kobold Camp Cleanup").status:IsShown()
-    and RowFor("Kobold Camp Cleanup").status.atlas .. " " .. RowFor("Kobold Camp Cleanup").label.text,
-    "questlog-icon-checkmark-yellow Kobold Camp Cleanup")
-Expect("...15 by 13, as every tick in the list is", RowFor("Kobold Camp Cleanup").status.width .. "x"
-    .. RowFor("Kobold Camp Cleanup").status.height, "15x13")
+    and (RowFor("Kobold Camp Cleanup").status.texture or RowFor("Kobold Camp Cleanup").status.atlas)
+        .. " " .. RowFor("Kobold Camp Cleanup").label.text,
+    TICK .. " Kobold Camp Cleanup")
+Expect("...14 by 14, as every Era tick in the list is", RowFor("Kobold Camp Cleanup").status.width .. "x"
+    .. RowFor("Kobold Camp Cleanup").status.height, "14x14")
 Expect("...and its zone's line counts it in progress, apart from the completed",
     RowFor("Elwynn Forest").count.text:match("ActiveQuestIcon.-|t1 +1/%d+ • ") ~= nil, true)
 RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
@@ -678,8 +716,6 @@ do
     page.title.IsTruncated = nil
     page:Show({ title = "Nothing Written", empty = true })
     Expect("an empty page shows its mark", page.mark:IsShown(), true)
-    page:Show({ title = "Nothing Written", empty = true, picture = { file = "Interface\\Elwynn" } })
-    Expect("...but not under a place's picture", page.mark:IsShown(), false)
     ClickChain("Lost Necklace")
     ClickChain("Lost Necklace")
 end
@@ -689,8 +725,8 @@ Tab:Refresh()
 Expect("a chain all completed gets the gold tick after its numbers, no share", ChainRow("Lost Necklace").status:IsShown()
     and ChainRow("Lost Necklace").count.text, "4/4")
 Expect("...the quest log's gold tick, where a single quest's goes", ChainRow("Lost Necklace").row.tick
-    and ChainRow("Lost Necklace").status.atlas, "questlog-icon-checkmark-yellow")
-Expect("...at the same size", ChainRow("Lost Necklace").status.width .. "x" .. ChainRow("Lost Necklace").status.height, "15x13")
+    and (ChainRow("Lost Necklace").status.texture or ChainRow("Lost Necklace").status.atlas), TICK)
+Expect("...at the same size", ChainRow("Lost Necklace").status.width .. "x" .. ChainRow("Lost Necklace").status.height, "14x14")
 ClickChain("Lost Necklace")
 Expect("...and closes again", Has(Shown(), "Pie for Billy"), false)
 Tab:Open(PIE)
@@ -796,6 +832,8 @@ local function Face(part)
     return drawn .. " " .. tostring(face.badge:GetTexture()) .. " " .. tostring(part.caption and part.heading or nil)
 end
 local BADGES = SpokenEnv.Face.BADGES
+Expect("a zone portrait uses the client's world-map badge", BADGES.zone,
+    [[Interface\WorldMap\UI-World-Icon]])
 Expect("without DialogueUI, no DialogueUI header on either part",
     tostring(PartOf(L.QUEST_PART_ACCEPT).header) .. " " .. tostring(PartOf(L.QUEST_PART_COMPLETE).header), "nil nil")
 Expect("the offer is named its description, the hand-in its completion",
@@ -893,7 +931,7 @@ Expect("...named and pictured for its giver", Who(), Npc("Marshal McBride", MCBR
 local playing = Spoken:GetQueue()[1]
 Expect("...with the offer's words, for the window to show and highlight",
     playing and type(playing.text) == "string" and playing.text ~= "" and PageWords():find(playing.text, 1, true) ~= nil, true)
--- A button's tooltip, its lines as one, the pointer put on it; or as it stands, with `asIs`.
+-- Play and Report tooltips: titles only.
 local function Tip(button, asIs)
     if not asIs then
         GameTooltip.lines = nil
@@ -903,7 +941,7 @@ local function Tip(button, asIs)
 end
 local function PlayTip() return Tip(play) end
 local S = SpokenEnv.L
-Expect("...its tooltip naming Stop while it plays, and what Stop does", PlayTip(), S.STOP .. "|" .. S.STOP_READING_TIP)
+Expect("...its Play tooltip keeps its title", PlayTip(), S.STOP)
 local handIn = PartButton(L.QUEST_PART_COMPLETE, "play")
 handIn.scripts.OnClick(handIn)
 queued = {}
@@ -919,12 +957,12 @@ end
 handIn.scripts.OnClick(handIn)
 Expect("a part's Stop stops it and keeps it at the head", tostring(Spoken:IsPaused()) .. " " .. Names(), "true 7-complete")
 Expect("...its Play showing Replay", handIn.pageState, "replay")
-Expect("...named Replay in its tooltip, with what Replay does", Tip(handIn), S.REPLAY .. "|" .. S.REPLAY_READING_TIP)
+Expect("...its Replay tooltip keeps its title", Tip(handIn), S.REPLAY)
 handIn.scripts.OnClick(handIn)
 Expect("...Replay plays it again from the start", not Spoken:IsPaused() and Spoken:GetNowPlaying()
     and Spoken:GetNowPlaying().fileName, "7-complete")
 Expect("...and shows Stop again", handIn.pageState, "stop")
-Expect("...its tooltip, the pointer still on it, redrawn for Stop at once", Tip(handIn, true), S.STOP .. "|" .. S.STOP_READING_TIP)
+Expect("...its Stop tooltip keeps its title", Tip(handIn, true), S.STOP)
 -- Another part, not queued: it starts and the part playing gives way, one part of a quest at a time.
 play.scripts.OnClick(play)
 Expect("Play on another part of the quest plays it in place of the part playing", Names(), "7-accept")
@@ -950,16 +988,14 @@ Expect("...and then a click plays it at once, the stopped line kept behind it", 
     .. Names() .. " " .. tostring(Spoken:GetNowPlaying() and Spoken:GetNowPlaying().fileName), "false 7-accept,85-accept 7-accept")
 Expect("...showing Stop", play.pageState, "stop")
 Spoken:StopAll()
-Expect("...Play again once nothing is queued, its tooltip saying what the part's Play does", play.pageState .. " " .. PlayTip(),
-    "play " .. S.PLAY .. "|" .. L.QUEST_PART_PLAY_TIP)
--- A part's Report ends its tooltip with the line about its right-click, where the debug log's menu is.
+Expect("...Play again once nothing is queued without a description", play.pageState .. " " .. PlayTip(), "play " .. S.PLAY)
 Spoken:RegisterDeveloper({ MenuHint = function() return "Right-click: the debug log" end })
-Expect("a part's Report tooltip ends with the debug log's menu hint", Tip(PartButton(L.QUEST_PART_ACCEPT, "report")),
-    L.OPT_REPORT_PROBLEM .. "|" .. L.OPT_REPORT_QUEST_TIP .. "|Right-click: the debug log")
+Expect("a part's Report tooltip keeps its title", Tip(PartButton(L.QUEST_PART_ACCEPT, "report")), L.OPT_REPORT_PROBLEM)
 Spoken:RegisterDeveloper(nil)
 Click("Kobold Candles")
 Expect("a quest no pack has has a greyed Play", PartButton(L.QUEST_PART_ACCEPT, "play") ~= nil
     and PartButton(L.QUEST_PART_ACCEPT, "play"):IsShown() and not PartButton(L.QUEST_PART_ACCEPT, "play"):IsEnabled(), true)
+Expect("...whose tooltip says why", Tip(PartButton(L.QUEST_PART_ACCEPT, "play")), S.PLAY .. "|" .. S.PLAY_NO_VOICE)
 Expect("...but Report: a line no pack voices can be wrong too", PartButton(L.QUEST_PART_ACCEPT, "report") ~= nil
     and PartButton(L.QUEST_PART_ACCEPT, "report"):IsShown(), true)
 Expect("...and, no one known to say it, the book in its face and no name over its heading",
@@ -1144,12 +1180,19 @@ Expect("Quests is the first tab", _G.SpokenCompendiumWindowTab1:GetText(), L.COM
 Expect("...Places and Readables after it", _G.SpokenCompendiumWindowTab2:GetText() .. "|" .. _G.SpokenCompendiumWindowTab3:GetText(),
     "Places|Readables")
 Expect("...and the window has its title", C.window.title, SpokenEnv.L.OPT_COMPENDIUM_TITLE)
+local tab1, tab2 = _G.SpokenCompendiumWindowTab1, _G.SpokenCompendiumWindowTab2
+local tabSizes = tab1:GetWidth() .. "x" .. tab1:GetHeight() .. "|" .. tab2:GetWidth() .. "x" .. tab2:GetHeight()
+Expect("Era uses the Classic character tab art", tab2.template, "CharacterFrameTabButtonTemplate")
 -- Opened from the minimap menu, on the first tab until the player has chosen one with the tabs.
 C:Select("readables")
 C:Hide()
 C:Toggle()
 Expect("the window opened from the minimap opens on Quests, whichever tab a part showed last", C:IsOpen("quests"), true)
 _G.SpokenCompendiumWindowTab2.scripts.OnClick(_G.SpokenCompendiumWindowTab2)
+Expect("clicking a tab highlights it without swapping its frame", tostring(tab2.highlightLocked) .. "|"
+    .. tostring(tab1.highlightLocked), "true|false")
+Expect("...and leaves the neighbouring tabs the same size", tabSizes,
+    tab1:GetWidth() .. "x" .. tab1:GetHeight() .. "|" .. tab2:GetWidth() .. "x" .. tab2:GetHeight())
 C:Hide()
 C:Toggle()
 Expect("...and once the player has chosen a tab, on that one", C:IsOpen("places"), true)
@@ -1217,12 +1260,8 @@ Expect("...a dungeon's page in the zone of its entrance, counting its quests", p
 do
     list = Shown()
     Click("Searing Gorge")
-    -- Places' picture of the place above its page, where Places has one.
-    Expect("a place's page has no picture while Places has none", page.body.picture:IsShown(), false)
-    _G.Spoken.PlacePicture = function(_, mapID, key) return "pic" .. mapID .. (key or ""), "mask" end
-    Tab:Refresh()
-    Expect("...and Places' picture of the place when it has", page.body.picture:IsShown() and page.body.picture:GetTexture(), "pic1427")
-    _G.Spoken.PlacePicture = nil
+    -- Nothing to read there: the faction's seal, and no picture, as on the other tabs.
+    Expect("a place's page has the seal and no picture", page.mark:IsShown() and not page.body.picture:IsShown(), true)
     list = Shown()
     Click("Searing Gorge")
     list = Shown()
@@ -1396,6 +1435,24 @@ plainCard = RowFor("Elwynn Forest")
 Expect("...chosen, the list's own light full with its gold edge", plainCard.selected and plainCard.wash:IsShown()
     and plainCard.wash.alpha == 1 and plainCard.edge:IsShown(), true)
 _G.C_Texture = { GetAtlasInfo = stub.ListAtlas }
+
+---------------------------------------------------------------- the page in EllesmereUI's look
+-- A quest's page as EllesmereUI's look dresses it (what its login callback runs for every page): no
+-- parchment, the window's backdrop behind it, the title and the parts' headings white.
+do
+    local skin = { GetAccentColor = function() return 0.05, 0.82, 0.62 end,
+        GetPanelColor = function() return 0.08, 0.08, 0.08, 0.92 end,
+        GetFont = function() return [[Fonts\EUI.ttf]], "" end, Button = function() end, WhiteButtonLabel = function() end }
+    local colour
+    page.title.SetTextColor = function(_, r, g, b) colour = r .. " " .. g .. " " .. b end
+    page:Darken(skin)
+    Tab:Refresh()
+    Expect("a quest's page in EllesmereUI's look has no parchment, its title white",
+        page.bg:GetAlpha() .. " " .. tostring(colour), "0 1 1 1")
+    Expect("...its parts' headings white, its words light, fading into the backdrop's colour",
+        table.concat(page.body.headInk, " ") .. " | " .. table.concat(page.body.ink, " ") .. " | "
+        .. table.concat(page.body.fadeSource.colors.TOP, " "), "1 1 1 | 0.9 0.9 0.9 | 0.094 0.082 0.069")
+end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests compendium tests passed")

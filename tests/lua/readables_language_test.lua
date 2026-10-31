@@ -81,7 +81,11 @@ B = Install({ ENGLISH }, "deDE")
 stub.ShowPage({ title = "Stadtregister", number = 1, text = GERMAN_TEXT })
 Expect("D. without a German pack a German page is not recognised", B:PageOnScreen(), nil)
 B = Install({ ENGLISH, INDEXED }, "deDE")
-Expect("D. before it is opened, a German page is titled as the corpus is", B:ClipFor(PAGE).present.label, "Registry")
+Expect("D. before it is opened, a German page is titled as the pack's index has it",
+    B:ClipFor(PAGE).present.label, "Stadtregister")
+B = Install({ ENGLISH, { addon = "SpokenReadablesAudio_deDE", language = "deDE", pages = GERMAN.pages } }, "deDE")
+Expect("D. ...and as the corpus is where the pack has no index", B:ClipFor(PAGE).present.label, "Registry")
+B = Install({ ENGLISH, INDEXED }, "deDE")
 stub.ShowPage({ title = "Stadtregister", number = 1, text = GERMAN_TEXT })
 Expect("D. with one, it is found by the German title and words", B:PageOnScreen(), PAGE)
 Expect("D. ...and then titled as the client shows it", B:ClipFor(PAGE).present.label, "Stadtregister")
@@ -91,9 +95,35 @@ Expect("D. older translated packs can caption the page opened in the client",
     B:ClipFor(PAGE).present.transcript, GERMAN_TEXT)
 Expect("D. a fallback page uses English captions rather than the open German page",
     B:ClipFor(ONLY_ENGLISH).present.transcript, "English second page.")
+-- The client showed that page this session, but the German pack has no recording of it: the clip is
+-- English, and its words are the client's, as they are for any recording on this client.
+B:RememberPageText(ONLY_ENGLISH, "deDE", "Die zweite Seite.")
+Expect("D. ...but not where the client showed that page: the Text Language's words, over the fallback clip",
+    B:ClipFor(ONLY_ENGLISH).present.transcript, "Die zweite Seite.")
+Expect("D. ...which is still the English recording", B:ClipFor(ONLY_ENGLISH).language, "enUS")
+SpokenReadablesSettings.voiceLanguage = "itIT"
+Expect("D. ...the same words whichever voice the fallback stands in for",
+    B:ClipFor(ONLY_ENGLISH).present.transcript, "Die zweite Seite.")
+Expect("D. ...and the same for the page the German pack records",
+    B:ClipFor(PAGE).present.transcript, GERMAN_TEXT)
+SpokenReadablesSettings.voiceLanguage = nil
+local listed = B:GetAudioPacks()
+Expect("D. the pack list is built once while the packs are the same", B:GetAudioPacks() == listed, true)
+SpokenReadablesAudioPacks.SpokenReadablesAudio_fr = { version = 1, language = "frFR", pages = {} }
+Expect("D. ...and again once a pack is added", #B:GetAudioPacks(), #listed + 1)
+SpokenReadablesAudioPacks.SpokenReadablesAudio_fr = nil
+Expect("D. ...and once it is removed", #B:GetAudioPacks(), #listed)
+local replaced = { version = 1, addon = "SpokenReadablesAudio_deDE", language = "deDE", pages = GERMAN.pages }
+SpokenReadablesAudioPacks.SpokenReadablesAudio_deDE = replaced
+local after = B:GetAudioPacks()
+local found = false
+for _, pack in ipairs(after) do found = found or pack == replaced end
+Expect("D. ...and once a pack is replaced by another of the same name", found, true)
+SpokenReadablesAudioPacks.SpokenReadablesAudio_deDE = INDEXED
 SpokenReadablesSettings.voiceLanguage = "enUS"
-Expect("D. choosing an English voice uses the saved English words",
-    B:ClipFor(PAGE).present.transcript, "English first page.")
+Expect("D. an English voice on a German client keeps the German words the client showed",
+    B:ClipFor(PAGE).present.transcript, GERMAN_TEXT)
+Expect("D. ...under the title the client showed", B:ClipFor(PAGE).present.label, "Stadtregister")
 B = Install({ ENGLISH, INDEXED }, "enUS")
 stub.ShowPage({ title = "Stadtregister", number = 1, text = GERMAN_TEXT })
 Expect("D. ...and only on a German client", B:PageOnScreen(), nil)
@@ -114,6 +144,24 @@ SpokenReadablesAudioPacks.SpokenReadablesAudio_deDE.pages = { [PAGE] = {
     file = "15", len = 2, text = "Gespeicherte deutsche Seite." } }
 Expect("E. new packs provide captions before a page is opened",
     B:ClipFor(PAGE).present.transcript, "Gespeicherte deutsche Seite.")
+SpokenReadablesSettings.voiceLanguage = "enUS"
+Expect("E. ...and the German pack's words caption the English voice on a German client",
+    tostring(B:ClipFor(PAGE).language) .. " " .. tostring(B:ClipFor(PAGE).present.transcript),
+    "enUS Gespeicherte deutsche Seite.")
+B = Install({ ENGLISH, GERMAN }, "enUS")
+SpokenReadablesAudioPacks.SpokenReadablesAudio_deDE.pages = { [PAGE] = {
+    file = "15", len = 2, text = "Gespeicherte deutsche Seite." } }
+SpokenReadablesSettings.voiceLanguage = "deDE"
+Expect("E. a German voice on an English client is captioned in English, the Text Language",
+    B:ClipFor(PAGE).present.transcript, "English first page.")
+SpokenReadablesData.pages[PAGE].text = nil
+Expect("E. ...and in German where English has no words for the page",
+    B:ClipFor(PAGE).present.transcript, "Gespeicherte deutsche Seite.")
+-- Two packs in one language, the chosen clip's with no words: the first that has them gives them.
+local TWO = Install({ { addon = "SpokenReadablesAudio_a", pages = { [PAGE] = { file = "15", len = 2 } } },
+    { addon = "SpokenReadablesAudio_b", pages = { [PAGE] = { file = "15", len = 2, text = "Words of pack b." } } } })
+Expect("E. the first pack of a language that has a page's words gives them",
+    TWO:ClipFor(PAGE).present.transcript, "Words of pack b.")
 B = Install({ ENGLISH })
 Expect("E. with no Spoken there is nothing to report to", B:ReportURL(PAGE), nil)
 -- The address is Spoken's to build (Spoken:ReportURL); this suite loads Readables alone.
@@ -127,7 +175,8 @@ _G.Spoken, _G.SpokenEnv = nil, nil
 
 ---------------------------------------------------------------- F. a language no client runs in
 -- Italian has no index of its own: the page is found by the English client's and read from
--- the Italian pack, captions included.
+-- the Italian pack, captions included. No client runs in Italian, so its players are on an
+-- English one and read along in the voice's words, not the client's.
 local ITALIAN = { addon = "SpokenReadablesAudio_itIT", language = "itIT", pages = {
     [PAGE] = { file = "15", len = 2, text = "Prima pagina italiana." } } }
 B = Install({ ENGLISH, ITALIAN }, "enUS")
@@ -136,10 +185,35 @@ SpokenReadablesSettings.voiceLanguage = "itIT"
 SpokenReadablesData.index["Registry"][1][B:ChecksumOf("English first page.")] = PAGE
 stub.ShowPage({ title = "Registry", number = 1, text = "English first page." })
 Expect("F. the English index finds the page", B:PageOnScreen(), PAGE)
-Expect("F. ...and the Italian pack reads it", B:ClipFor(PAGE).present.transcript, "Prima pagina italiana.")
+Expect("F. ...and the Italian pack reads it", B:ClipFor(PAGE).language, "itIT")
+Expect("F. ...captioned in the Italian pack's own words, not the English client's",
+    B:ClipFor(PAGE).present.transcript, "Prima pagina italiana.")
+ITALIAN.pages[PAGE].text = nil
+B = Install({ ENGLISH, ITALIAN }, "enUS")
+SpokenReadablesSettings.voiceLanguage = "itIT"
+Expect("F. ...and in English where the Italian pack has no words for the page",
+    B:ClipFor(PAGE).present.transcript, "English first page.")
 B = Install({ ENGLISH, ITALIAN }, "itIT")
 Expect("F. a client claiming Italian is not taken at its word", B:GetClientLanguage(), "enUS")
 Expect("F. Italian is not a client language", B:IsClientLanguage("itIT"), false)
+
+---------------------------------------------------------------- F1. the pack list
+-- A pack registered before it is in this version's format is listed once it is.
+B = Install({ ENGLISH })
+local late = { addon = "SpokenReadablesAudio_late", pages = {} }
+_G.SpokenReadablesAudioPacks.SpokenReadablesAudio_late = late
+Expect("F1. a pack in no version's format is not listed", #B:GetAudioPacks(), 1)
+late.version = 1
+Expect("F1. ...and is once it is in this one's", #B:GetAudioPacks(), 2)
+
+---------------------------------------------------------------- F2. a page the corpus has no words for
+-- English is the Text Language, but its "" is no words: the recording's language gives them.
+B = Install({ ENGLISH, { addon = "SpokenReadablesAudio_deDE", language = "deDE", pages = {
+    [PAGE] = { file = "15", len = 2, text = "Deutsche Seite." } } } }, "enUS")
+SpokenReadablesSettings.voiceLanguage = "deDE"
+SpokenReadablesData.pages[PAGE].text = ""
+Expect("F2. a page with no words in the corpus is captioned in the recording's",
+    B:ClipFor(PAGE).present.transcript, "Deutsche Seite.")
 
 ---------------------------------------------------------------- G. pages only a pack has
 do

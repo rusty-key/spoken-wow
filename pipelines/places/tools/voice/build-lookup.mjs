@@ -13,6 +13,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { packTimes } from "../../../lib/word-times.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { readLines, shipped } from "../lib/loredata.mjs";
 import { close as closeStore, loadManifest, packDir, soundsDir } from "./store.mjs";
@@ -28,6 +29,13 @@ function luaString(text) {
 // that is not worth finding out about in-game, where it plays silence.
 function luaPath(file) {
   return luaString(file.replace(/\//g, "\\"));
+}
+
+// A take with no word times has no `times`, and its captions estimate. The field is additive,
+// so the pack format stays 1: an addon that predates it ignores it.
+function fields(row) {
+  const times = row.times ? `, times = ${luaString(packTimes(row.times))}` : "";
+  return `file = ${luaPath(row.file)}, len = ${row.len}${times}`;
 }
 
 /**
@@ -59,7 +67,7 @@ export async function buildLookup() {
 
     const [kind, mapIDText, ...rest] = id.split(":");
     const mapID = Number(mapIDText);
-    const row = { file: record.file, len: record.durationSec };
+    const row = { file: record.file, len: record.durationSec, times: record.wordTimes };
 
     if (kind === "z") {
       zones.set(mapID, row);
@@ -95,7 +103,7 @@ export async function buildLookup() {
 
   for (const mapID of [...zones.keys()].sort((a, b) => a - b)) {
     const row = zones.get(mapID);
-    lines.push(`\t\t[${mapID}] = { file = ${luaPath(row.file)}, len = ${row.len} },`);
+    lines.push(`\t\t[${mapID}] = { ${fields(row)} },`);
   }
 
   lines.push("\t},", "\tsubzones = {");
@@ -105,7 +113,7 @@ export async function buildLookup() {
     const table = subzones.get(mapID);
     for (const key of [...table.keys()].sort()) {
       const row = table.get(key);
-      lines.push(`\t\t\t[${luaString(key)}] = { file = ${luaPath(row.file)}, len = ${row.len} },`);
+      lines.push(`\t\t\t[${luaString(key)}] = { ${fields(row)} },`);
     }
     lines.push("\t\t},");
   }

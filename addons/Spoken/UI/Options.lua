@@ -36,8 +36,9 @@ local STYLE_LABELS = {
     none = L.OPT_STYLE_NONE,
 }
 
--- The game's key bindings list these under a Spoken heading (Bindings.xml). Set here, after
--- the locale files, so the names are in the player's language.
+-- The game's key bindings list these in a Spoken category (Bindings.xml). The category is
+-- the name of a string global the client shows as its title. Set here, after the locale
+-- files, so the names are in the player's language.
 _G.BINDING_HEADER_SPOKEN = "Spoken"
 _G.BINDING_NAME_SPOKEN_PLAYPAUSE = L.BIND_PLAYPAUSE
 _G.BINDING_NAME_SPOKEN_SKIP = L.BIND_SKIP
@@ -157,44 +158,83 @@ LANGUAGES = {
     { code = "ptBR", native = "Português", english = "Portuguese (Brazil)" },
     { code = "ruRU", native = "Русский", english = "Russian", script = "cyrillic" },
     { code = "koKR", native = "한국어", english = "Korean", script = "korean" },
-    { code = "zhCN", native = "简体中文", english = "Chinese (Simplified)", script = "han" },
-    { code = "zhTW", native = "繁體中文", english = "Chinese (Traditional)", script = "han" },
+    -- `sample`: characters only that Chinese has, which a font must draw beside the name. A Korean
+    -- font with Hanja draws "繁體中文" and still lacks most of Traditional Chinese.
+    { code = "zhCN", native = "简体中文", english = "Chinese (Simplified)", script = "han", sample = "们这简国" },
+    { code = "zhTW", native = "繁體中文", english = "Chinese (Traditional)", script = "han", sample = "嗎妳麼為" },
     -- No client runs in it either, and its stacked accents are glyphs a Latin font can lack.
     -- `hidden` keeps it out of the menus until its pack is released: picked before then, every
     -- line would play in the fallback language.
     { code = "viVN", native = "Tiếng Việt", english = "Vietnamese", script = "vietnamese", hidden = true },
 }
 
--- Whether the settings' font draws `text`. A glyph the font lacks draws as nothing or as a box,
--- so the text is measured against as many private-use characters, which no font has: the same
--- width means none of it drew. Probed in the font object the rows use, which is what draws it.
-local probe
-local function FontDraws(text)
-    if not (UIParent and UIParent.CreateFontString) then return true end
-    if not probe then
+-- Whether a font draws `text`: the settings' font object, or the file `path`. A glyph the font
+-- lacks draws as nothing or as a box, so the text is measured against as many U+0378, a code point
+-- Unicode has never assigned and so no font has: the same width means none of it drew. Han and
+-- Hangul, whose glyphs are all as wide as each other, are measured one character at a time and
+-- every one has to draw: a font with a few Hanja draws part of a Chinese name. A file the client
+-- cannot load draws nothing.
+local BOX = "\205\184"
+local probes = {}
+local function Width(probe, text)
+    probe:SetText(text)
+    return probe:GetStringWidth() or 0
+end
+-- U+3400 to U+9FFF (Han) and U+AC00 to U+D7A3 (Hangul), from a three-byte character.
+local function Square(char)
+    local a, b, c = char:byte(1, 3)
+    local code = (a - 224) * 4096 + (b - 128) * 64 + (c - 128)
+    return (code >= 0x3400 and code <= 0x9FFF) or (code >= 0xAC00 and code <= 0xD7A3)
+end
+local function FontDraws(text, path)
+    if not (UIParent and UIParent.CreateFontString) then return not path end
+    local key = path or false
+    local probe = probes[key]
+    if probe == nil then
         probe = UIParent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         probe:Hide()
+        if path and probe:SetFont(path, 12, "") == false then probe = false end
+        probes[key] = probe
     end
-    probe:SetText(text)
-    local width = probe:GetStringWidth() or 0
-    local count = 0
+    if not probe then return false end
+    local width, count = Width(probe, text), 0
     for _ in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do count = count + 1 end
-    probe:SetText(string.rep("\238\128\128", count))
-    local missing = probe:GetStringWidth() or 0
+    local drew = width > 0 and math.abs(width - Width(probe, string.rep(BOX, count))) > 0.5
+    if drew then
+        local box
+        for char in string.gmatch(text, "[\227-\237][\128-\191][\128-\191]") do
+            if Square(char) then
+                box = box or Width(probe, BOX)
+                if math.abs(Width(probe, char) - box) <= 0.5 then
+                    drew = false
+                    break
+                end
+            end
+        end
+    end
     probe:SetText("")
-    return width > 0 and math.abs(width - missing) > 0.5
+    return drew
+end
+
+local function Locale(code)
+    for _, locale in ipairs(LANGUAGES) do
+        if locale.code == code then return locale end
+    end
+end
+
+-- Whether a font draws the language `code`: its own name, and the characters only it has.
+function Options:LanguageDraws(code, path)
+    local locale = Locale(code)
+    return locale ~= nil and FontDraws(locale.native .. (locale.sample or ""), path)
 end
 
 --- A language's name in the lists, one for every module: its own, and in English where this
 --- client's font cannot draw its script (Korean on a German client).
 function Options:LanguageName(code)
-    for _, locale in ipairs(LANGUAGES) do
-        if locale.code == code then
-            if not locale.script then return locale.native end
-            return FontDraws(locale.native) and locale.native or locale.english
-        end
-    end
-    return code
+    local locale = Locale(code)
+    if not locale then return code end
+    if not locale.script then return locale.native end
+    return self:LanguageDraws(code) and locale.native or locale.english
 end
 
 --- The client's language, as "Auto" reads it: English where the client's is not one of ours.
@@ -218,13 +258,38 @@ end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
 -- unable to open a web page.
+local WEBSITE = "https://spoken.rusty.one"
+local function WebsiteURL()
+    local language = Options:ClientLanguage()
+    return language == "enUS" and WEBSITE or WEBSITE .. "/" .. language
+end
+
+local CURSEFORGE = "https://www.curseforge.com/wow/addons/"
+local CURSEFORGE_PAGES = {
+    enUS = "spoken-english",
+    deDE = "spoken-german",
+    esES = "spoken-spanish-eu",
+    esMX = "spoken-spanish-al",
+    frFR = "spoken-french",
+    itIT = "spoken-italian",
+    ptBR = "spoken-portuguese",
+    ruRU = "spoken-russian",
+    koKR = "spoken-korean",
+    zhCN = "spoken-chinese-simplified",
+    zhTW = "spoken-chinese-traditional",
+}
+local function CurseForgeURL()
+    return CURSEFORGE .. (CURSEFORGE_PAGES[Options:ClientLanguage()] or "spoken")
+end
+
 local LINKS = {
+    { name = L.OPT_LINKS_WEBSITE, icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
         url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
         url = "https://discord.gg/HEGUgn6Yf" },
     { name = "CurseForge", icon = [[Interface\AddOns\Spoken\Textures\LinkCurseForge]],
-        url = "https://www.curseforge.com/wow/addons/spoken" },
+        url = CurseForgeURL() },
     { name = "Wago", icon = [[Interface\AddOns\Spoken\Textures\LinkWago]],
         url = "https://addons.wago.io/addons/spoken" },
     { name = "Buy Me a Coffee", icon = [[Interface\AddOns\Spoken\Textures\LinkBuyMeACoffee]],
@@ -302,8 +367,8 @@ function Options:ShowDiagnostics()
 end
 
 --- The ways of showing lines this client can offer, in the order the narrator cards list them.
---- Subtitles Only first, the default; Voice Only last, its card a sound's bars rising and
---- falling, since there is nothing on screen to picture.
+--- Voice Only last, its card a sound's bars rising and falling, since there is nothing on screen
+--- to picture.
 function Options:Styles()
     local styles = { "subtitle", "minimal", "classic" }
     if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end
@@ -453,7 +518,10 @@ local function Build()
             function() return not transcript().WordsOff[key] end,
             function(v) transcript().WordsOff[key] = (not v) or nil end, refreshTranscript)
         Only(row, MarksWords)
-        Only(row, function() return Sources:Get(key) ~= nil end)
+        Only(row, function()
+            local source = Sources:Get(key)
+            return source ~= nil and not source.noNarrator
+        end)
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()
@@ -602,7 +670,7 @@ local function Build()
         { tab = "quests", part = "quests", label = L.OPT_UNLOCK_QUESTS, module = L.OPT_PART_QUESTS },
         { tab = "places", part = "places", label = L.OPT_UNLOCK_PLACES, module = L.OPT_PART_PLACES },
         { tab = "readables", part = "readables", label = L.OPT_UNLOCK_READABLES, module = L.OPT_PART_READABLES },
-        -- Spoken NPCs has no part to turn off: its tab is there while the addon is.
+        -- Spoken Bosses has no part to turn off: its tab is there while the addon is.
         { tab = "bosses", label = L.OPT_UNLOCK_BOSSES },
     }) do
         local row = layout:Checkbox(unlock.label, nil,
@@ -634,10 +702,12 @@ local function Build()
     -- How the window and the subtitles look.
     layout:Section(L.OPT_LOOK_TITLE)
     -- Parchment or Dark, for each window that has a choice: the Small Window's own, and the
-    -- DialogueUI window's, which can also follow DialogueUI's.
+    -- DialogueUI window's, which can also follow DialogueUI's. None in EllesmereUI's look, which
+    -- has its own.
     Only(layout:Dropdown(L.OPT_DUI_THEME, nil, { "parchment", "dark" },
         function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
-        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end), Small)
+        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end),
+        function() return Small() and not Ellesmere:On() end)
     DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
     local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
         function() return transcript().SubtitleShadow end,
@@ -669,7 +739,7 @@ local function Build()
     Requires(progress, function() return not Subtitles() or Narrator() end, L.REASON_NARRATOR)
     -- Forever only, where it matches the game's own frames: every frame Spoken draws, whatever
     -- the style.
-    if Version.IsCamelot then
+    if Version.Variant == "forever" then
         layout:Checkbox(L.OPT_BRONZE_TINT, nil,
             function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
     end
@@ -787,9 +857,14 @@ local function Build()
                 Gather:SetIntroduced()
                 Gather:SetEnabled(v)
             end, function() Options:UpdateRows() end)
+        rows:Button(L.OPT_GATHER_VIEW, 200, function() Spoken:ShowGatheredText() end)
         rows:Columns(2)
         rows:Button(L.OPT_GATHER_SHARE, 200, function() Spoken:ShowGatherInstructions() end)
-        rows:Button(L.OPT_GATHER_CLEAR, 200, function() Gather:Clear(); Options:UpdateRows() end)
+        rows:Button(L.OPT_GATHER_CLEAR, 200, function()
+            Gather:Clear()
+            Spoken:RefreshGatheredText()
+            Options:UpdateRows()
+        end)
         rows:Columns(nil)
         rows:Checkbox(L.OPT_HIDE_CONTRIBUTE, nil,
             function() return Addon.db.profile.Contribute.HideButtons end,
@@ -970,10 +1045,33 @@ function Options:CopyProfile(name)
     end
 end
 
+--- Delete `name` where it is not in use. AceDB clears the key of each character on it; each is put
+--- on its own profile, so it is not taken for a new character at its next login. The choice of it
+--- for new characters goes too, so a later profile of that name is not chosen.
 function Options:DeleteProfile(name)
     for _, db in ipairs(self:ProfileDBs()) do
-        if db.DeleteProfile and Has(db, name) and db:GetCurrentProfile() ~= name then db:DeleteProfile(name) end
+        if db.DeleteProfile and Has(db, name) and db:GetCurrentProfile() ~= name then
+            local keys, moved = db.sv and db.sv.profileKeys, {}
+            for key, profile in pairs(keys or {}) do
+                if profile == name then table.insert(moved, key) end
+            end
+            db:DeleteProfile(name)
+            for _, key in ipairs(moved) do keys[key] = key end
+        end
     end
+    if Addon.db and Addon.db.global.NewCharacterProfile == name and not Addon:SavedProfile(name) then
+        Addon.db.global.NewCharacterProfile = nil
+    end
+end
+
+--- The profile a character logging in with Spoken for the first time starts on: one of Spoken's
+--- saved profiles, or false for a profile of its own.
+function Options:NewCharacterProfile()
+    return Addon:NewCharacterProfile() or false
+end
+
+function Options:SetNewCharacterProfile(name)
+    Addon.db.global.NewCharacterProfile = name or nil
 end
 
 function Options:AddProfiles(layout)
@@ -1017,6 +1115,22 @@ function Options:AddProfiles(layout)
             end,
         }
         layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end)
+    end
+    if Addon.db then
+        layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, L.OPT_NEW_CHARACTER_PROFILE_TIP,
+            -- Only Spoken's saved profiles: it reads the choice before any other settings load.
+            function()
+                local names = {}
+                for _, name in ipairs(Addon.db:GetProfiles()) do
+                    if Addon:SavedProfile(name) then table.insert(names, name) end
+                end
+                table.sort(names)
+                table.insert(names, 1, false)
+                return names
+            end,
+            function() return self:NewCharacterProfile() end,
+            function(name) self:SetNewCharacterProfile(name) end,
+            nil, function(name) return name or L.OPT_PROFILE_OWN end)
     end
 end
 

@@ -55,6 +55,16 @@ function Gather:SetIntroduced()
     Store().Introduced = true
 end
 
+local function IndexOf(key)
+    local lines = Store().Lines
+    for i = 1, #lines do
+        if lines[i].key == key then
+            return i
+        end
+    end
+    return nil
+end
+
 --- Keep one envelope under `key`, replacing whatever that key held. Does nothing unless the
 --- player opted in: a feature addon may call this on every panel without asking first.
 ---@return boolean stored
@@ -66,11 +76,10 @@ function Gather:Add(key, envelope)
         return false
     end
     local lines = Store().Lines
-    for i = 1, #lines do
-        if lines[i].key == key then
-            lines[i].envelope = envelope
-            return true
-        end
+    local at = IndexOf(key)
+    if at then
+        lines[at].envelope = envelope
+        return true
     end
     lines[#lines + 1] = { key = key, envelope = envelope }
     -- Oldest out first. The player has almost certainly uploaded those already, or was never
@@ -83,6 +92,38 @@ end
 
 function Gather:Count()
     return #Store().Lines
+end
+
+--- Every line kept, oldest first, each `{ key = ..., envelope = ... }`: the store itself, for a
+--- feature addon tidying the lines it kept. Read whether or not gathering is on, since lines kept
+--- before the player opted out still go out with the file.
+function Gather:Lines()
+    return Store().Lines
+end
+
+---@return string|nil
+function Gather:Get(key)
+    local at = IndexOf(key)
+    return at and Store().Lines[at].envelope or nil
+end
+
+---@return boolean removed
+function Gather:Remove(key)
+    local at = IndexOf(key)
+    if at then
+        table.remove(Store().Lines, at)
+    end
+    return at ~= nil
+end
+
+--- Whether the lines kept by earlier versions were tidied at login: a feature addon does that
+--- once, and the file says so.
+function Gather:IsTidied()
+    return Store().Tidied and true or false
+end
+
+function Gather:SetTidied()
+    Store().Tidied = true
 end
 
 --- Forget everything gathered. The addon cannot see the upload happen, so this is the

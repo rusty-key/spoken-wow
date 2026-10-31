@@ -49,6 +49,8 @@ local METHODS = {
     "GetPlayerStyle", "SetPlayerHost", "AddDialogueUISettings",
     -- Azeroth's Compendium's Text Size, which Places, Readables and Quests draw their words at
     "CompendiumFontSize", "SetCompendiumFontSize",
+    -- the profile a feature addon's own AceDB settings start a new character on
+    "NewCharacterStartProfile",
     -- captions
     "GetCaption", "GetCaptionOptions", "SplitCaption", "CaptionWords",
     -- developer tools: the Spoken_Developer module's

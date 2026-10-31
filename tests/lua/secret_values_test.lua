@@ -268,6 +268,9 @@ local function BootPlaces()
     stub.SetZone({ map = 1411, zone = "Durotar", subzone = "Valley of Trials" })
     stub.FireEvent("ADDON_LOADED", "Spoken_Places")
     Z:SetupAudio()
+    -- Include Places Found Before also reads where the character stands, on login and on a
+    -- zone change: off, so only the greeting is measured.
+    Z:Set("autoplayExplored", false)
     return Z
 end
 

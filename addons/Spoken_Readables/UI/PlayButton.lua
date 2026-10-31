@@ -33,8 +33,9 @@
 --
 -- ONE BUTTON, TWO STATES, not two buttons: this corner is the only free one on the frame (see
 -- above), so a Contribute button would need it too. The two states never fight over it --
--- Contribute.lua's HasContributionGap is true only when PageOnScreen found nothing, and this
--- button's Play/Stop state exists only once PageOnScreen found a page with audio -- so
+-- Contribute.lua's HasContributionGap is true only when PageOnScreen found nothing or only
+-- guessed the page, and this button's Play/Stop state, which wins, exists only once
+-- PageOnScreen found a page with audio (a guessed one is still gathered, unasked) -- so
 -- re-labelling what is already here is the honest arrangement rather than a second control
 -- stacked on space that does not exist.
 
@@ -79,7 +80,6 @@ function SpokenReadables:NewOpenButton(parent, tooltip)
 		if not tip then return end
 		tip:SetOwner(self, "ANCHOR_LEFT")
 		tip:SetText(L.OPEN_IN_COMPENDIUM)
-		tip:AddLine(L.OPEN_READABLE_IN_COMPENDIUM_TIP, 1, 0.8, 0.2, true)
 		tip:Show()
 		self.tooltip = tip
 	end)

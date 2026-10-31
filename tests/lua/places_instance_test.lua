@@ -58,6 +58,9 @@ local function Boot(opts)
     stub.SetZone({ map = 1420, zone = "Tirisfal Glades", subzone = "" })
     stub.FireEvent("ADDON_LOADED", "Spoken_Places")
     Z:SetupAudio()
+    -- Include Places Found Before also reads where the character stands, on login and on a
+    -- zone change: off, so only the instance's story is measured.
+    Z:Set("autoplayExplored", false)
     Z:SetupAutoplay()
     return Z
 end

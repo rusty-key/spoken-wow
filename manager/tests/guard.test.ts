@@ -224,7 +224,7 @@ describe('running game on macOS and Linux', () => {
   const WINE = [
     'systemd           /sbin/init',
     'Wow.exe           Z:\\home\\me\\Games\\battlenet\\drive_c\\Program Files (x86)\\World of Warcraft\\_classic_era_\\Wow.exe',
-    'wine64-preloader  C:\\Program Files (x86)\\World of Warcraft\\_classic_beta_\\WowClassic.exe -managerlogin'
+    'wine64-preloader  C:\\Program Files (x86)\\World of Warcraft\\_forever_\\WowClassic.exe -managerlogin'
   ]
   const EOL = String.fromCharCode(10)
 

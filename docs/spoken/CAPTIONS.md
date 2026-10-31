@@ -37,7 +37,9 @@ an in-game visual check.
 - Scroll over the captions in a window to read back or ahead; they hold there. Click the
   text to follow the recording again. With Ctrl held the wheel changes Window Size instead (Subtitle
   Size over the subtitles), and with Ctrl and Shift Word Size; with Lock Position on it does
-  neither. Right-click opens the Small Window's menu, or the settings over the other windows. With
+  neither. Right-click the text to skip the line whose words it shows, as Skip does; a right-drag
+  begun on it skips nothing. Shift-right-click opens the Small Window's menu, or the settings over
+  the other windows. With
   **Type Words Out** on, a row the voice has not reached yet shows blank until it does; turn
   the setting off to read ahead. The subtitles cannot be scrolled by hand.
 - `/sp transcript reset` restores the caption and subtitle defaults and
@@ -74,12 +76,30 @@ pointing at "+N" lists them (see [`PLAYER-STYLES.md`](PLAYER-STYLES.md)).
 Caption settings and tooltips follow the game client language. Translations cover
 German, Spanish (EU and Latin America), French, Brazilian Portuguese, Russian,
 Korean, Simplified Chinese and Traditional Chinese. English is the fallback.
-The caption text itself follows the recording language.
+The words of a place's or a readable's caption are in the Text Language, whatever the voice and
+whichever language a fallback recording is in. Places has a setting for it, Text Language on the
+Places page. Readables has none and uses the client's language, as the game shows a page: on a
+German client the page's German words, on an English client its English ones. An Italian or
+Vietnamese voice, which no client runs in, is captioned in its own words where its pack has them:
+its players are on a client in another language. The two can differ on a client whose Places Text
+Language is not its own language: a German client with English text has English place captions and
+German readable captions. The recording's
+language gives the words only where the Text Language has none for that place or page. A readable
+is decided page by page, so a book can be partly in the client's language and partly in the
+recording's. A book's title follows its words: the one the client showed this session, else the one
+in the index of the pack in that language, else the English title. The recording's timing does not
+follow words other than the ones it says, so a caption is timed by the title's lead only where its
+words are the playing pack's own, or the corpus's under an English recording.
+
+Other caption text follows the recording language.
 
 ## Timing and text
 
-The sound packs have recording durations but no word timestamps. Timing is
-estimated from word length, punctuation and the total duration. Two neighboring
+A recording the site made with ElevenLabs after word times were kept carries them in its sound
+pack: one start per word of the text the take was cut from (`take."wordTimes"`), packed into one
+string per clip, which `clip.present.timings` takes as it is and the captions unpack when the clip plays. Quests, gossip, places and
+readables pass them as `clip.present.timings`, but only where the captions show the recording's own
+words. A take without them, a fish.audio take, and captions in another language are estimated from word length, punctuation and the total duration. Two neighboring
 words are highlighted to give the estimate some room, in the windows; the subtitles
 light one word. At the end of a page, the previous word stays highlighted instead of
 advancing the page early.
@@ -100,9 +120,9 @@ log replays can use the quest description. A completion recording never uses
 the acceptance text as a substitute. Different quest wording and pauses in a
 recording can still make the highlight drift.
 
-Zone and area captions use the full story in the actual voice language, including
-English voice fallback. Readable clips carry their own page text, so turning or closing
-the book does not change the captions of a queued recording. The English addon
+Zone and area captions use the full story in the Text Language, and in the voice's language,
+fallback included, only where it has none. Readable clips carry their own page text, so turning
+or closing the book does not change the captions of a queued recording. The English addon
 export includes every page. New readables voice pack exports include the voice language's
 text; older translated packs can caption pages opened during the current session.
 Mail is excluded. Captions stay hidden when matching text is unavailable.

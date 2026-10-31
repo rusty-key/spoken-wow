@@ -246,8 +246,8 @@ function GreetingFirst:Setup()
         return
     end
     self.ready = true
-    -- Quest lines and gossip lines are two sources: each waits for the NPC's greeting.
-    for _, source in ipairs({ Player.source, Player.gossipSource }) do
+    -- Quest, gossip and chat lines are three sources: each waits for the NPC's greeting.
+    for _, source in ipairs({ Player.source, Player.gossipSource, Player.chatterSource }) do
         source:AddGate(function()
             if GreetingFirst:IsWaiting() then
                 return L.QUEUE_HELD_GREETING

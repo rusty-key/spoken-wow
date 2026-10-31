@@ -16,6 +16,9 @@ set -euo pipefail
 section=${1:?usage: check-synced.sh <section>}
 corpus=$(corpus_table "$section")
 stamp="$(dirname "$0")/../../deploy/web/sql/section_stamp.sql"
+# A section whose tables have no serial id brings its own stamp.
+own="$(dirname "$0")/../../deploy/web/sql/${section}_stamp.sql"
+[ -f "$own" ] && stamp=$own
 : "${LOCAL_DB:?LOCAL_DB is not set}"
 
 if ! has_upstream; then

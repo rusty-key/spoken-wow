@@ -38,7 +38,7 @@ import { fileURLToPath } from "node:url";
 
 import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
 import { luaString } from "../../pipelines/places/tools/lib/wiki.mjs";
-import { archiveOf } from "../lib/archives.mjs";
+import { archiveOf, sourceOf } from "../lib/archives.mjs";
 import { actedFolder, audioFamily, languageFolder } from "../lib/packs.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -262,8 +262,8 @@ function live(section, lang) {
   const database = process.env.LOCAL_DB;
   if (!database) throw new Error("LOCAL_DB is not set");
   const out = execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-f", "-"], {
-    input: `select distinct on (r."file") r."file", r."archiveFile", r."format", r."durationSec",
-                   r."credit", r."createdAt", coalesce(r."lineId", '')
+    input: `select distinct on (r."file") r."file", coalesce(r."archiveFile", ''), r."format", r."durationSec",
+                   r."credit", r."createdAt", coalesce(r."lineId", ''), coalesce(r."sha256", '')
               from "recording" r
              where r."source" = :'source' and r."lang" = :'lang' and r."deletedAt" is null
              order by r."file", r."version" desc`,
@@ -274,8 +274,9 @@ function live(section, lang) {
     .split("\n")
     .filter(Boolean)
     .map((row) => {
-      const [file, archiveFile, format, durationSec, credit, createdAt, lineId] = row.split("\t");
-      return { file, archiveFile, format, durationSec: Number(durationSec), credit, createdAt, lineId };
+      const [file, archiveFile, format, durationSec, credit, createdAt, lineId, sha256] = row.split("\t");
+      const archived = sourceOf("recordings", sha256, archiveFile ? posix.join(recordedDir(section, lang, file), archiveFile) : "");
+      return { file, archived, format, durationSec: Number(durationSec), credit, createdAt, lineId };
     });
 }
 
@@ -330,13 +331,13 @@ async function main(args) {
 
   const clips = live(section, lang);
   if (list) {
-    for (const clip of clips) console.log(posix.join(recordedDir(section, lang, clip.file), clip.archiveFile));
+    for (const clip of clips) console.log(clip.archived);
     return;
   }
   if (clips.length === 0) throw new Error(`no live ${section} recordings in ${lang}; nothing to build`);
 
   const missing = clips
-    .map((clip) => join(archiveOf(section), recordedDir(section, lang, clip.file), clip.archiveFile))
+    .map((clip) => join(archiveOf(section), clip.archived))
     .filter((path) => !existsSync(path));
   if (missing.length) {
     console.error(`${missing.length} live recordings are not on this machine, e.g.:`);
@@ -354,7 +355,7 @@ async function main(args) {
       section,
       clips.map((clip) => [
         clip,
-        join(archiveOf(section), recordedDir(section, lang, clip.file), clip.archiveFile),
+        join(archiveOf(section), clip.archived),
         join(out, packPath(section, clip.file)),
       ]),
     );

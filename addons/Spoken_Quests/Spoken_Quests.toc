@@ -10,7 +10,7 @@
 ## Notes-koKR: Spoken으로 퀘스트와 잡담 대사를 소리 내어 읽습니다. 지원되는 클라이언트에서 퀘스트와 잡담 음성을 복원합니다.
 ## Notes-zhCN: 通过 Spoken 朗读任务和闲聊对话。在受支持的客户端上恢复任务和闲聊语音。
 ## Notes-zhTW: 透過 Spoken 朗讀任務和閒聊對話。在受支援的客戶端上恢復任務和閒聊語音。
-## Version: 3.5.1
+## Version: 3.7.0
 ## IconTexture: Interface\AddOns\Spoken_Quests\icon.tga
 ## SavedVariables: SpokenQuestsSettings
 ## Dependencies: Spoken
@@ -39,4 +39,14 @@ Gossip\ptBR.lua [AllowLoadTextLocale ptBR]
 Gossip\ruRU.lua [AllowLoadTextLocale ruRU]
 Gossip\zhCN.lua [AllowLoadTextLocale zhCN]
 Gossip\zhTW.lua [AllowLoadTextLocale zhTW]
+# Quest givers' names for the client's own locale only: a guard inside each file returns only
+# after the client has compiled it.
+Locale\Names\deDE.lua [AllowLoadTextLocale deDE]
+Locale\Names\esES.lua [AllowLoadTextLocale esES]
+Locale\Names\esMX.lua [AllowLoadTextLocale esMX]
+Locale\Names\frFR.lua [AllowLoadTextLocale frFR]
+Locale\Names\ptBR.lua [AllowLoadTextLocale ptBR]
+Locale\Names\ruRU.lua [AllowLoadTextLocale ruRU]
+Locale\Names\zhCN.lua [AllowLoadTextLocale zhCN]
+Locale\Names\zhTW.lua [AllowLoadTextLocale zhTW]
 Compendium.xml

@@ -61,7 +61,7 @@ export async function regenerateZoneLine(
 
   return regenerateNarrated(
     "places",
-    { lineId: entry.id, file: entry.file, spoken: entry.spoken, hash: entry.hash },
+    { lineId: entry.id, file: entry.file, spoken: entry.spoken, shown: entry.full, hash: entry.hash },
     createdBy,
     options,
   );

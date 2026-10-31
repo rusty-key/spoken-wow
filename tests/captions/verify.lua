@@ -34,7 +34,7 @@ end
 
 dofile(addons .. 'Spoken/Environment.lua')
 local E=SpokenEnv
-E.Version={IsCamelot=true}
+E.Version={Variant="forever"}
 dofile(addons .. 'Spoken/Core.lua')
 dofile(addons .. 'Spoken/Callbacks.lua')
 dofile(addons .. 'Spoken/SoundQueue.lua')
@@ -60,13 +60,14 @@ E.SoundUtils={WhyInaudible=function() end,IsMutedByPlayer=function() return fals
     MuteChannel=function() end,TestSound=function() return true end,
     PlaySound=function(_,clip) if clip.path=='missing' then return false end; clip.handle=1; return true end,
     StopSound=function(_,clip) clip.handle=nil end}
-E.StaticPortrait={Configure=function() return false end,Resolved=function() return false end}
+E.StaticPortrait={Configure=function() return false end,Release=function() end,Resolved=function() return false end}
 E.Portrait={Configure=function(_,frame) frame.active='mock-model' end}
 dofile(addons .. 'Spoken/UI/Actions.lua')
 dofile(addons .. 'Spoken/UI/Snap.lua')
 dofile(addons .. 'Spoken/UI/Face.lua')
 dofile(addons .. 'Spoken/UI/PlayerFrame.lua')
 dofile(addons .. 'Spoken/UI/MinimalPlayer.lua')
+dofile(addons .. 'Spoken/UI/Ellesmere.lua')
 dofile(addons .. 'Spoken/UI/DialogueUIPlayer.lua')
 dofile(addons .. 'Spoken/UI/DialogueUITransitions.lua')
 E.Minimap={Setup=function() end}; E.Options={Setup=function() end}
@@ -335,8 +336,10 @@ M.fader:Step(1)
 Check(M.frame:IsShown() and math.abs(M.frame:GetTop()-movedTop)<.001,'Show Narrator on brings the player back where it was')
 T:TurnPage(-1); T.frame:Fire('OnClick','LeftButton')
 Check(not T.manualScroll,'clicking the caption text resumes following')
+local hadShift=IsShiftKeyDown; IsShiftKeyDown=function() return true end
 T.frame:Fire('OnClick','RightButton')
-Check(M.menu:IsShown(),'right-clicking captions opens the existing player menu')
+IsShiftKeyDown=hadShift
+Check(M.menu:IsShown(),'Shift-right-clicking captions opens the existing player menu')
 M.menu:Hide()
 GetCursorPosition=GetCursorPosition or function() return 0,0 end
 frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig(); M:StartDrag()
@@ -862,6 +865,12 @@ do
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     source:Enqueue(Timed('t6','aaaa bbbb cccc dddd',4,{0,0/0,.4,.6})); Play(.2)
     Check(not T.timed,'...and one with a time that is not a number')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Timed('t7','aaaa bbbb cccc dddd',4,'0 .2 .4 .6')); Play(1)
+    Check(T.timed and T:WordAt(T:GetProgress())==4,'times packed in one string, as the sound packs keep them, are followed too')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Timed('t8','aaaa bbbb cccc dddd',4,'0 .2 x .6')); Play(.2)
+    Check(not T.timed,'...but not a string with a word that is not a time')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     local style=E.Addon:PlayerStyle()
     E.Addon:SetPlayerStyle('subtitle'); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()

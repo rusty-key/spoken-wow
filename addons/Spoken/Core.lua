@@ -126,6 +126,33 @@ Defaults = {
     },
 }
 
+--- `name` where Spoken has a saved profile of that name, else nil. Reads the saved table, since
+--- InitDB asks before AceDB loads it.
+function Addon:SavedProfile(name)
+    local sv = rawget(_G, "SpokenSettings")
+    local profiles = type(sv) == "table" and sv.profiles
+    if type(name) == "string" and type(profiles) == "table" and type(profiles[name]) == "table" then return name end
+    return nil
+end
+
+--- The profile chosen for new characters, or nil where none is chosen or it is not saved.
+function Addon:NewCharacterProfile()
+    local sv = rawget(_G, "SpokenSettings")
+    local global = type(sv) == "table" and sv.global
+    return type(global) == "table" and self:SavedProfile(global.NewCharacterProfile) or nil
+end
+
+--- Whether a character missing from profileKeys has been here before: a deleted profile clears its
+--- characters' keys but leaves their own settings, and the Forever client answers "Unknown" for any
+--- character on some logins. One with neither, whose empty char table AceDB dropped, looks new.
+local function SeenBefore(sv, charKey)
+    local unknown = rawget(_G, "UNKNOWNOBJECT") or "Unknown"
+    if charKey:sub(1, #unknown + 3) == unknown .. " - " then return true end
+    local own = type(sv.profiles) == "table" and sv.profiles[charKey]
+    local char = type(sv.char) == "table" and sv.char[charKey]
+    return type(own) == "table" or type(char) == "table"
+end
+
 local RENAMED_PARTS = { zones = "places", books = "readables" }
 local RENAMED_MODULES = { Zones = "Places", Writings = "Readables" }
 
@@ -145,7 +172,25 @@ function Addon:InitDB()
     if self.db then
         return
     end
-    self.db = LibStub("AceDB-3.0"):New("SpokenSettings", Defaults)
+    -- Not in Defaults: DialogueUITheme and Compat.lua's IsAddOnLoaded load after Core.lua.
+    if DialogueUITheme and DialogueUITheme:Available() then Defaults.profile.Frame.Style = "dialogueui" end
+    -- AceDB uses the third argument only for a character missing from profileKeys, and adds it as
+    -- it loads, so the keys are noted first. The client's name for the player can change between
+    -- loads, so the character's key is AceDB's own.
+    local newProfile, known = self:NewCharacterProfile(), {}
+    if newProfile then
+        for key in pairs(rawget(_G, "SpokenSettings").profileKeys or {}) do known[key] = true end
+    end
+    self.db = LibStub("AceDB-3.0"):New("SpokenSettings", Defaults, newProfile)
+    local charKey = newProfile and self.db.keys.char
+    if charKey and not known[charKey] then
+        if SeenBefore(self.db.sv, charKey) then
+            -- Back on the profile AceDB gave it before there was a choice: its own.
+            self.db:SetProfile(charKey)
+        else
+            self.newCharacterProfile = newProfile
+        end
+    end
     -- A saved AutoScroll = false predates ScrollMode: carry it over as "off", in every profile.
     for _, profile in pairs(self.db.sv and self.db.sv.profiles or {}) do
         local transcript = type(profile) == "table" and profile.Transcript
@@ -396,12 +441,12 @@ function Addon:SetPlayerHost(host)
     end
 end
 
---- Whether the window or subtitles show `clip`: Show Narrator is on, and not off for the clip's module.
---- The voice plays either way.
+--- Whether the window or subtitles show `clip`: Show Narrator is on, and not off for the clip's module,
+--- which may never show its words (Sources.noNarrator). The voice plays either way.
 function Addon:ShowsNarrator(clip)
     local cfg = self.db.profile.Transcript
-    local key = clip and clip.source and clip.source.key
-    return cfg.Enabled and not (key and cfg.WordsOff[key])
+    local source = clip and clip.source
+    return cfg.Enabled and not (source and (source.noNarrator or (source.key and cfg.WordsOff[source.key])))
 end
 
 --- What is on screen: the chosen style, or one previewed from the welcome window or the settings
@@ -558,12 +603,13 @@ function Addon:Enable()
 end
 
 -- Said the first time a line waits behind a stop with nothing on screen to show it: with voice
--- only, or Show Narrator off for the line, a stopped queue looks like a broken addon.
+-- only, or Show Narrator off for the line, a stopped queue looks like a broken addon. Not for a
+-- source whose words the game shows itself: its silence is not a missing window.
 local pauseReminded = false
 -- Registered at login, not at load: this file loads before Callbacks.lua does.
 local function WatchPausedQueue()
     Callbacks:Register("CLIP_QUEUED", function(clip)
-        if pauseReminded or not SoundQueue:IsPaused() then return end
+        if pauseReminded or not SoundQueue:IsPaused() or (clip.source and clip.source.noNarrator) then return end
         if Addon:PlayerStyle() == "none" or not Addon:ShowsNarrator(clip) then
             pauseReminded = true
             print("|cff66bbffSpoken:|r " .. L.STOPPED_REMINDER)
@@ -590,9 +636,9 @@ end
 -- globals and events, a second voice for every line. An empty folder an older release left there
 -- is LoadOnDemand and so never loaded, so it stays quiet here and only a full old copy is named.
 --
--- Spoken_Books and Spoken_Writings are the Readables module's folders before it took that name, and
--- Spoken_Zones the Places module's. An older zip unpacked by hand leaves one beside its module, where
--- it registers the same source and reads every page twice.
+-- Spoken_Books and Spoken_Writings are the Readables module's folders before it took that name,
+-- Spoken_Zones the Places module's and Spoken_NPCs the Bosses module's. An older zip unpacked by hand
+-- leaves one beside its module, where it registers the same source and tells every line twice.
 --
 -- Each one found is switched off for the next login, and the player is offered the reload that
 -- finishes it. The Forever client accepts DisableAddOn from an addon (checked 2026-10-04); the
@@ -602,7 +648,7 @@ end
 -- Readables. One is old only once its SpokenPlacesAudio* or SpokenReadablesAudio* replacement is
 -- loaded beside it, the same pack one release later; alone it is the player's pack, and stays.
 local OLD_FOLDERS = { "SpokenPlayer", "VoiceOverRedux", "ZoneLore", "SpokenQuests", "SpokenZones", "SpokenBooks",
-    "Spoken_Books", "Spoken_Zones", "Spoken_Writings" }
+    "Spoken_Books", "Spoken_Zones", "Spoken_Writings", "Spoken_NPCs" }
 local RENAMED_PACKS = { SpokenZonesAudio = "SpokenPlacesAudio", SpokenBooksAudio = "SpokenReadablesAudio" }
 function Addon:FindOldFolders()
     local found = {}
@@ -668,9 +714,9 @@ end
 
 --- The voice language and the fallback were set on the quests page; they are Spoken's now. On each
 --- character's first login with the quests settings loaded, that character's choice there is copied
---- to the profile it is on, unless that profile has one of its own, so the page shows what is being
---- heard. The quests settings are not loaded while that module is off: nothing is marked then, and
---- the next login that has them does it.
+--- to the profile it is on, unless that profile has one of its own or another character on it has
+--- had its copy, so the page shows what is being heard. The quests settings are not loaded while
+--- that module is off: nothing is marked then, and the next login that has them does it.
 function Addon:TakeVoiceLanguageFromQuests()
     local db = self.db
     if not db or db.char.voiceLanguageFromQuests then
@@ -681,6 +727,15 @@ function Addon:TakeVoiceLanguageFromQuests()
         return
     end
     db.char.voiceLanguageFromQuests = true
+    -- A character on this profile that has had its copy hears what the profile says: a copy now
+    -- would change that.
+    local current, chars = db:GetCurrentProfile(), db.sv and db.sv.char or {}
+    for key, profile in pairs(db.sv and db.sv.profileKeys or {}) do
+        if profile == current and key ~= db.keys.char and type(chars[key]) == "table"
+            and chars[key].voiceLanguageFromQuests then
+            return
+        end
+    end
     local audio = QuestsAudio(db)
     local language = db.profile.Language
     if not (audio and language) or language.Voice ~= nil or language.Fallback ~= nil then

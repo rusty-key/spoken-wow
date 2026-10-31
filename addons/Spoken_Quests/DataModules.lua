@@ -67,6 +67,7 @@ local LOAD_ALL_MODULES = true
 ---@field ObjectNameLookupByObjectID table<number, string> Maps GameObject ID to GameObject name
 ---@field ItemNameLookupByItemID table<number, string> Maps Item ID to Item name
 ---@field SoundLengthLookupByFileName table<string, number> Maps sound filenames to their duration in seconds
+---@field WordTimesByFileName? table<string, string> Maps sound filenames to when each word of their line starts, packed as clip.present.timings takes them
 ---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
 ---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 ---@field GossipFileLookupByNPCSex? table<number, table<number, table<string, string>>> Maps a split Creature ID, the sex it is drawn as (UnitSex) and a gossip line's hash to the file that sex hears
@@ -698,6 +699,61 @@ function DataModules:GetNPCGossipTextHash(soundData)
     return file
 end
 
+--- A line's words with the spacing gone, so two texts that sound the same compare equal.
+local function Said(text)
+    return (string.gsub(string.gsub(Words(text), "%s+", " "), "^ ?(.-) ?$", "%1"))
+end
+
+local QUEST_MOMENTS = {
+    [Enums.SoundEvent.QuestAccept] = "accept",
+    [Enums.SoundEvent.QuestProgress] = "progress",
+    [Enums.SoundEvent.QuestComplete] = "complete",
+}
+
+--- Whether the text on screen is word for word one this speaker's lines are made from, with its
+--- tokens filled in for this player. False where the speaker has lines in the client's language
+--- and none says this: Blizzard changed the words, or the corpus line was taken from a client
+--- that wrote a player's name into it. Nil where there is nothing in the client's language to
+--- compare with. A quest moment of one wording is compared with the Compendium's text
+--- (SpokenQuestsText), which is English and holds accept and complete only.
+---@param soundData SoundData its event, text and speaker, with questID for a quest line
+---@return boolean|nil
+function DataModules:IsTextKnown(soundData)
+    local shown = soundData.text
+    if type(shown) ~= "string" or shown == "" then
+        return nil
+    end
+    local texts = {}
+    if Enums.SoundEvent:IsQuestEvent(soundData.event) then
+        local moment = QUEST_MOMENTS[soundData.event]
+        CollectTexts("QuestWordingLookup", format("%d-%s", soundData.questID or 0, moment), true, texts)
+        if next(texts) == nil and Language:GetClientLanguage() == "enUS" then
+            local quest = SpokenQuestsText and SpokenQuestsText[soundData.questID]
+            if quest and type(quest[moment]) == "string" then
+                texts[quest[moment]] = true
+            end
+        end
+    else
+        local lookup, npc = GossipLookupKey(soundData)
+        if not lookup or npc == nil then
+            return nil
+        end
+        CollectTexts(lookup, npc, true, texts)
+    end
+    if next(texts) == nil then
+        return nil
+    elseif texts[shown] then
+        return true
+    end
+    shown = Said(shown)
+    for text in pairs(texts) do
+        if Said(Utils:FillPlayerTokens(text)) == shown then
+            return true
+        end
+    end
+    return false
+end
+
 local function getFirstNWords(text, n)
     local firstNWords = {}
     local count = 0
@@ -1094,6 +1150,10 @@ function DataModules:ResolveSoundFile(soundData, instead)
                             module.GetSoundPath and module:GetSoundPath(fileName, soundData.event) or
                             fileName)
                         soundData.length = length
+                        -- Timed to the recording's words, which the window shows only in the
+                        -- client's own language.
+                        soundData.timings = language == Language:GetClientLanguage()
+                            and module.WordTimesByFileName and module.WordTimesByFileName[fileName] or nil
                         soundData.module = module
                         soundData.language = language
                         EasterEggs:Apply(soundData)

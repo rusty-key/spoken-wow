@@ -1,6 +1,6 @@
 /**
- * entity_name, written from the site: a translator naming a quest, an NPC, a book's owner
- * or a place in their language. The only module here that writes the table; the catalogues
+ * entity_name, written from the site: a translator naming a quest, an NPC, a book's owner,
+ * a place or a boss in their language. The only module here that writes the table; the catalogues
  * read it, and English is kept in step by trigger (migration 0036), written here only by a
  * moderator's override.
  */
@@ -10,7 +10,8 @@ import { recordActivity } from "@/lib/activity/store";
 import { db, query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
-export const NAME_KINDS = ["quest", "creature", "gameobject", "item", "zone", "subzone"] as const;
+/** A boss is named by its id as text; instances have no rename control, so no kind here. */
+export const NAME_KINDS = ["quest", "creature", "gameobject", "item", "zone", "subzone", "boss"] as const;
 export type NameKind = (typeof NAME_KINDS)[number];
 
 export function isNameKind(value: unknown): value is NameKind {

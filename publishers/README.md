@@ -46,7 +46,8 @@ which is why there is one file per project here and not two.
 | `quests/audio-shared-<lang>.md` for itIT, ptBR, koKR, ruRU, zhCN, zhTW | `Spoken <Language> Audio: Quests`, every quest in one pack beside Gossip; Alliance and Horde dormant | each page's `curseforge:` | — | `<language>-spoken-quests` |
 | `quests/audio-<lang>.md` | Spoken Quests Audio: `<Language>`, every line in one folder, GitHub only | — | — | — |
 | `zones/spoken-zones.md` | Spoken Zones (retired; was ZoneLore) | 1636521 | mNw7b5No | `spoken-zones` |
-| `zones/spoken-places-audio.md` | Spoken Audio: Places | 1636532 | b6mvD9KP | `spoken-audio-places` |
+| `zones/spoken-places-audio.md` | Spoken Audio: Places and Bosses, which carries the bosses pack | 1636532 | b6mvD9KP | `spoken-audio-places` |
+| `bosses/spoken-bosses-audio.md` | Spoken Audio: Bosses, inside Spoken Audio: Places and Bosses on CurseForge (`bundledIn:`) | — | — | `spoken-audio-bosses` (not a project) |
 | `zones/spoken-places-audio-dede.md` | Spoken German Audio: Places | 1713131 | — | `spoken-german-audio-places` |
 | `zones/spoken-places-audio-eses.md` | Spoken Spanish (EU) Audio: Places | 1712807 | — | `spoken-spanish-eu-audio-places` |
 | `zones/spoken-places-audio-esmx.md` | Spoken Spanish (AL) Audio: Places | 1711067 | — | `spoken-spanish-al-audio-places` |
@@ -75,6 +76,14 @@ and, on a quests pack, `pack:` say which pack it is; a language other than Engli
 release tag (English's, plus `-<lang>`), and every build and release script asks it rather than
 keeping a table of its own. Adding a language's pack is its page -- one per pack, four for quests
 -- plus the CurseForge project it names.
+
+**A pack can live inside another's CurseForge project.** The English bosses pack has no project
+of its own: its page says `bundledIn: spoken-audio-places`, and CurseForge's Spoken Audio: Places
+and Bosses is sent a zip carrying its `SpokenBossesAudio` folder beside `SpokenPlacesAudio`.
+Players sent to CurseForge for it go there. Its page keeps its slug so its README is still
+written, but nothing uploads it to CurseForge on its own. On GitHub the two stay apart:
+`places-audio` holds Places only and `bosses-audio` the bosses pack, and the manager installs them
+as separate products.
 
 **A language with few players yet ships two quests packs, not four.** Its Shared page says
 `holds: quests` and carries every quest line, both sides' included, under the name

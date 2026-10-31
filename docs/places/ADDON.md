@@ -14,6 +14,11 @@ What Places adds to Spoken:
 - A page in Spoken's settings (`UI/Options.lua`), under Spoken in the game's settings list.
 - The Places tab of Azeroth's Compendium and a panel beside the world map ([COMPENDIUM.md](COMPENDIUM.md)).
 - A Report button on each line being read. There is no Read button of its own.
+- A global, `SpokenPlaces`, for other addons, as `SpokenBossesAddon` is: whether a place has a
+  story (`GetLore`, `GetSubzoneLore`), whether it is found (`IsLocked`) and voiced (`HasAudio`),
+  and reading it (`PlayLore`, `StopLore`, `IsPlayingLore`) or showing it (`ShowLoreFor`).
+  `PlayLore` and `ShowLoreFor` check neither the lock nor the part, so an addon checks
+  `Spoken:IsPartOn("places")` and `IsLocked` before calling them.
 
 The Enable switch on the Places page is Spoken's switch for the part (`Spoken:IsPartOn("places")`).
 With it off the map panel, its side tab and the Compendium tab go away.
@@ -26,7 +31,7 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | --- | --- | --- | --- |
 | When to Read | Read Automatically | `autoplay` | on |
 | | Include Smaller Areas | `autoplaySubzones` | on |
-| | Include Places Found Before | `autoplayExplored` | off |
+| | Include Places Found Before | `autoplayExplored` | on |
 | Stories | Show Story Beside Map | `showMapPanel` | on |
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
@@ -43,7 +48,7 @@ default). Spoken's Language section holds Voice Language and If a Voice Is Missi
 Spoken Reads section holds Read in Battlegrounds. Under Spoken's Developer page are Places Debug
 Messages (`debug`) and Offer Unfinished Translations (`languagePreview`).
 
-Three settings have no row. `loreDiscoveredOnly` and `loreVoicedOnly` are the tab's filter menu,
+Three settings have no row. `loreDiscoveredOnly` (on by default) and `loreVoicedOnly` (off) are the tab's filter menu,
 `mapPanelCollapsed` is the panel's close button and side tab, and `audioPack` is `/spp audio`.
 
 ### Where they are saved
@@ -66,8 +71,8 @@ every player reads English and nothing errors.
 | Kind | Setting | What it decides |
 | --- | --- | --- |
 | Client locale | the game's own | The area names the game reports (so which `Data/<locale>/Aliases.lua` is used) and the interface strings (`Locale/<locale>.lua`, English where a key is missing). |
-| Text language | Text Language, `/spp lang` | The words of the stories on the map panel, the Compendium and the lookup tables. |
-| Voice language | Spoken's Voice Language | The voice pack that reads, and the words Spoken's windows and subtitles show for the line playing. |
+| Text language | Text Language, `/spp lang` | The words of the stories on the map panel, the Compendium and the lookup tables, and of the captions and subtitles of the line playing, whatever the voice. The voice's words only where the Text Language has none for the place. |
+| Voice language | Spoken's Voice Language | The voice pack that reads. |
 
 Places follows Spoken's Voice Language and If a Voice Is Missing (`Audio.lua`, `GetVoiceLanguage`,
 `GetFallbackLanguage`). Text Language changes the words only and takes effect after `/reload`,
@@ -78,9 +83,18 @@ a language pins it on every client.
 - A language is offered only when `Data/Languages.lua` marks it ready (every story translated, and
   an alias table where a client runs in it) and the client's fonts can draw it
   (`CanRenderLanguage`). Interface strings are not required, because each key falls back to English.
+  The fonts are asked by drawing the language's own name, and for the two Chinese the characters
+  only that one has (a language's `sample` in Spoken's list, none of them in a Korean font's
+  Hanja), measured against as many U+0378, a code point no font has; each Han or Hangul character
+  must also measure differently from it alone, so a Korean font with some Hanja does not pass for
+  Chinese. A private-use character would not do: a Traditional Chinese font can draw those. A font
+  file the client cannot load (`SetFont` returns false) draws nothing. The test is Spoken's
+  (`Spoken:LanguageDraws`), the one that names languages in every module's lists.
+  Whether a voice pack is installed does not decide it: the voice follows Voice Language.
 - Where a page sets a font file, `FontFor` picks the client's font for the script: `2002.TTF` for
-  Korean, `ARKai_T.ttf` for Simplified Chinese, `blei00d.TTF` for Traditional Chinese and
-  `FRIZQT___CYR.TTF` for Cyrillic.
+  Korean, `ARKai_T.ttf` for Simplified Chinese, `blei00d.TTF` for Traditional Chinese (the font the
+  game's `GameFontNormal` family uses for it), else `bKAI00M.TTF`, which an English Forever client
+  ships in its place, and `FRIZQT___CYR.TTF` for Cyrillic.
 - Text has no per-line fallback to English. A language is offered only once every story is
   translated, so a gap shows only in a preview. Audio does fall back, clip by clip: the active
   pack first, then the fallback language's packs, unless If a Voice Is Missing is Stay Silent.
@@ -139,6 +153,9 @@ A pack is an addon folder with `Data/Sounds.lua`, which registers itself in
   as a folder name), else the higher bitrate.
 - Durations come from the lookup, because the client cannot report how long a file is. Spoken's
   queue needs them to know when a clip has ended.
+- An entry may carry `times`, its take's word times packed as `clip.present.timings` takes them. The captions
+  follow them only where they show the recording's own words. The field is optional, so it did
+  not change `PACK_FORMAT`.
 - No clip stands in for a missing one. A quest line used to, and players reported the lore as
   wrong.
 
@@ -166,6 +183,15 @@ The game announces a discovery once per character, and Places reads that message
   `SpokenPlacesCharacter` makes it happen once, and `/spp forget` clears it.
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
+  It was off by default, and every profile stored that off; loading a profile turns it on once
+  (`autoplayExploredTurnedOn` marks that it was), so a player who turns it off later keeps it off.
+  With it on, a discovery of a place already heard reads nothing: at login a new character hears
+  its valley and then its zone, which the game announces only later. Nothing reads the zone or a
+  subzone, on a zone change or at login, until the greeting is settled (it queued, or there is
+  nothing it will queue, or its eight tries are spent), so the zone never plays ahead of the
+  valley; a valley already waiting in the queue counts as the greeting. Forget Places Heard (and
+  `/spp forget`) clears `heard` and `greeted`, never `visited`. The button is greyed while Read
+  Automatically or Read Stories Aloud is off, as nothing reads the list then.
 - Entering a dungeon or raid reads its story, once per character (`heard`), with Read
   Automatically and Include Smaller Areas on. Inside an instance the client gives no map for the
   player and announces no discovery, so on every loading screen, zone change and two seconds

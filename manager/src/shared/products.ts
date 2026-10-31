@@ -34,7 +34,15 @@ const SIDES: Record<Exclude<QuestsPack, 'all'>, string> = {
 const SECTION_TITLE: Record<Section, string> = {
   quests: 'Quests',
   places: 'Places',
-  readables: 'Readables'
+  readables: 'Readables',
+  bosses: 'Bosses'
+}
+
+/** English's folder for each section but quests, whose folders follow the pack. */
+const FOLDER: Record<Exclude<Section, 'quests'>, string> = {
+  places: 'SpokenPlacesAudio',
+  readables: 'SpokenReadablesAudio',
+  bosses: 'SpokenBossesAudio'
 }
 
 /** Places' and Readables' packs before their sections were renamed: the tag prefix and folder. */
@@ -46,7 +54,8 @@ const LEGACY: Partial<Record<Section, { section: string; folder: string }>> = {
 const SECTION_BLURB: Record<Section, string> = {
   quests: 'Every quest, spoken as you read it, and the gossip of the people who give them.',
   places: 'The story of each zone, dungeon and place, told as you arrive.',
-  readables: 'Books, letters and notes read aloud when you open them.'
+  readables: 'Books, letters and notes read aloud when you open them.',
+  bosses: 'The story of each dungeon and raid boss, told when it falls.'
 }
 
 const SIDE_BLURB: Record<QuestsPack, string> = {
@@ -78,14 +87,16 @@ function voices(section: Section, lang: string, pack: QuestsPack): Product {
       base = folder
     }
   } else {
-    const name = section === 'places' ? 'SpokenPlacesAudio' : 'SpokenReadablesAudio'
+    const name = FOLDER[section]
     const suffix = english ? '' : `-${lang}`
     id = `${section}-audio${suffix}`
     folder = english ? name : `${name}_${lang}`
     base = folder
-    const old = LEGACY[section]!
-    const oldFolder = english ? old.folder : `${old.folder}_${lang}`
-    legacy = { id: `${old.section}-audio${suffix}`, tagPrefix: `${old.section}-audio${suffix}`, folders: [oldFolder], assetPattern: zip(oldFolder) }
+    const old = LEGACY[section]
+    if (old) {
+      const oldFolder = english ? old.folder : `${old.folder}_${lang}`
+      legacy = { id: `${old.section}-audio${suffix}`, tagPrefix: `${old.section}-audio${suffix}`, folders: [oldFolder], assetPattern: zip(oldFolder) }
+    }
   }
   // English's "all" is a bundle holding the four split packs' folders, as the store installs them.
   const folders =
@@ -126,8 +137,9 @@ function build(): Product[] {
     } else {
       out.push(voices('quests', code, 'all'))
     }
-    // Italian has quests voices only, so far: its other packs have no release and do not show.
-    out.push(voices('places', code, 'all'), voices('readables', code, 'all'))
+    // Italian has quests voices only, so far, and bosses English only. With no release in a
+    // language, the voice packs page still shows that language's first product.
+    out.push(voices('places', code, 'all'), voices('readables', code, 'all'), voices('bosses', code, 'all'))
   }
   return out
 }
@@ -151,6 +163,7 @@ export const SPOKEN_FOLDERS = [
   'Spoken_Conversations',
   'Spoken_Places',
   'Spoken_Readables',
+  'Spoken_Bosses',
   'Spoken_NPCs',
   'SpokenContributions'
 ]

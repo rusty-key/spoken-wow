@@ -12,7 +12,8 @@ stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
 -- Two quests in the log: one the sound pack has a line for, one it does not.
 stub.SetModernQuestLog({
     { questID = 748, title = "Poison Water", level = 8 },
-    { questID = 96130, title = "Chakuyak", level = 9, description = "Bring me the tusks, and be quick about it." },
+    { questID = 96130, title = "Chakuyak", level = 9, tag = "(Elite)",
+        description = "Bring me the tusks, and be quick about it." },
 })
 
 local VO = stub.LoadQuestsOverlay(here .. "/../../addons/Spoken_Quests/", here .. "/../../addons/Spoken/")
@@ -99,18 +100,150 @@ local anchor = buttons[748] and buttons[748].anchor
 Expect("the button sits on its own row", anchor and anchor.relativeTo == row, true)
 Expect("...left of the title", anchor and anchor.point, "TOPLEFT")
 
--- "Quest objectives" puts an icon of the client's own in exactly that spot, so the button
--- moves to the other end of the row, beside the tracking checkbox.
+-- The title runs to where the client ends it, 4 pixels short of the checkbox's corner.
+local function TitleEnd(r)
+    local a = r.Text.anchor
+    return a and a.point == "RIGHT" and a.relativeTo, a and a.x
+end
+local titleEndsAt, titleOffset = TitleEnd(row)
+Expect("with the button beside the title, the title keeps its own end",
+    titleEndsAt == row.StorylineTexture and titleOffset, -4)
+
+-- What the client lays out from the two anchors: both are measured from the same edge of the same
+-- region, the title ends before the 20-pixel button begins, and the button does not reach past that edge.
+local function Fit(r, button)
+    local t, b = r.Text.anchor, button.anchor
+    if not (t and b) or t.relativeTo ~= b.relativeTo or t.relativePoint ~= b.relativePoint or t.y ~= b.y then
+        return "not against the same edge"
+    end
+    if t.x > b.x - 20 then return "the title runs under the button" end
+    if b.x > 0 then return "the button covers what the title ends against" end
+    return "fits"
+end
+
+-- The objective icon takes exactly that spot, so the button moves to the other end of the row,
+-- where the title ends, and the title is made to end short of it before the client measures it.
 stub.SetQuestLogPOIIcons(true)
 QuestLogQuests_Update()
 anchor = buttons[748].anchor
-Expect("the objective icon takes the left of the row", anchor and anchor.relativeTo == row.Checkbox, true)
-Expect("...and the play button moves beside the checkbox", anchor and anchor.point, "RIGHT")
-Expect("...against its left edge", anchor and anchor.relativePoint, "LEFT")
+Expect("the objective icon takes the left of the row, and the button goes where the title ends",
+    anchor and anchor.relativeTo == row.Text.anchor.relativeTo, true)
+Expect("...against its left edge", anchor and anchor.point .. " " .. anchor.relativePoint, "RIGHT LEFT")
+Expect("...with the title ended short of it", Fit(row, buttons[748]), "fits")
+titleEndsAt, titleOffset = TitleEnd(row)
+Expect("...the client's gap and the button's room further left", titleOffset, -27)
+-- An elite, dungeon or raid quest says so in words, and the title ends against those words:
+-- the button sits between them, covering neither the title nor "(Elite)".
+local eliteRow = stub.questLogRows[2]
+Expect("an elite quest's button sits left of its (Elite)", buttons[96130].anchor.relativeTo == eliteRow.TagText, true)
+Expect("...with the title ended short of it", Fit(eliteRow, buttons[96130]), "fits")
+-- A storyline quest has its icon between the type text and the checkbox: still the words.
+eliteRow.quest.storyline = true
+QuestLogQuests_Update()
+Expect("an elite storyline quest's button stays left of (Elite)",
+    buttons[96130].anchor.relativeTo == eliteRow.TagText, true)
+Expect("...and fits", Fit(eliteRow, buttons[96130]), "fits")
+-- With no words, the title ends at the storyline icon.
+eliteRow.quest.tag = nil
+QuestLogQuests_Update()
+Expect("a storyline quest with no words: the button is left of the storyline icon",
+    buttons[96130].anchor.relativeTo == eliteRow.StorylineTexture, true)
+Expect("...and fits", Fit(eliteRow, buttons[96130]), "fits")
+eliteRow.quest.typeIcon = true
+QuestLogQuests_Update()
+Expect("a storyline quest with a type icon fits too", Fit(eliteRow, buttons[96130]), "fits")
+eliteRow.quest.storyline = nil
+QuestLogQuests_Update()
+Expect("a type icon alone fits", Fit(eliteRow, buttons[96130]), "fits")
+eliteRow.quest.typeIcon = nil
+eliteRow.quest.tag = "(Elite)"
+
+-- The client may set the title's end without the relative point, where it is the point itself.
+eliteRow.quest.shortAnchor = true
+QuestLogQuests_Update()
+Expect("a title anchored without the relative point is ended short of the button", Fit(eliteRow, buttons[96130]), "fits")
+titleEndsAt, titleOffset = TitleEnd(eliteRow)
+Expect("...the same distance", titleOffset, -27)
+Expect("...against the edge it names", eliteRow.Text.anchor.relativePoint, "RIGHT")
+eliteRow.quest.shortAnchor = nil
+
+-- A title that sits off the middle of its end keeps that, and so does the button.
+eliteRow.quest.titleY = -3
+QuestLogQuests_Update()
+Expect("a title anchored off the line has the button on the same line", buttons[96130].anchor.y, -3)
+Expect("...and fits", Fit(eliteRow, buttons[96130]), "fits")
+eliteRow.quest.titleY = nil
+
+-- A row with no checkbox has the title's end all the same.
+local checkbox = row.Checkbox
+row.Checkbox = nil
+QuestLogQuests_Update()
+Expect("a row with no checkbox has its button at the title's end", Fit(row, buttons[748]), "fits")
+row.Checkbox = checkbox
+
+-- Switched off, the part leaves the title as the client set it.
+Spoken:SetPartOn("quests", false)
+QuestLogQuests_Update()
+titleEndsAt, titleOffset = TitleEnd(row)
+Expect("with the quests part off the title keeps its own end", titleOffset, -4)
+Spoken:SetPartOn("quests", true)
+QuestLogQuests_Update()
+titleEndsAt, titleOffset = TitleEnd(row)
+Expect("...and is ended short again when it is on", titleOffset, -27)
+
+-- A calling quest has no objective icon, so the setting alone does not move the button.
+local calling = {}
+_G.C_QuestLog.IsQuestCalling = function(questID) return calling[questID] end
+calling[748] = true
+stub.SetQuestLogPOIIcons(true)
+stub.questLogPOIButtons[1]:Hide()
+QuestLogQuests_Update()
+titleEndsAt, titleOffset = TitleEnd(row)
+Expect("a calling quest keeps the title's own end", titleOffset, -4)
+Expect("...and its button is left of the title", buttons[748].anchor.point, "TOPLEFT")
+Expect("a quest beside it still has the icon's room", select(2, TitleEnd(eliteRow)), -27)
+calling[748] = nil
+-- The client's own question failing is not the quest log's.
+_G.C_QuestLog.IsQuestCalling = function() error("not known yet") end
+Expect("a failing IsQuestCalling does not reach the client's redraw", pcall(QuestLogQuests_Update), true)
+_G.C_QuestLog.IsQuestCalling = nil
+
+-- The client draws the icon whatever the setting says: the title is not moved once the row is laid
+-- out, so the button stays off its end.
+stub.SetQuestLogPOIIcons(true)
+SetCVar("questPOI", "0")
+QuestLogQuests_Update()
+titleEndsAt, titleOffset = TitleEnd(row)
+Expect("an icon the setting did not announce leaves the title where the client anchored it", titleOffset, -4)
+Expect("...and the button is not on the title's end", buttons[748].anchor.point, "TOPLEFT")
+
+-- An error in the title hook never reaches the client's redraw, and does not leave it stuck.
+local blocked = true
+for _, each in ipairs(stub.questLogRows) do
+    local setPoint = each.Text.SetPoint
+    each.Text.SetPoint = function(self, point, relativeTo, relativePoint, x, y)
+        if blocked and x == -27 then
+            blocked = false
+            error("the client refused it")
+        end
+        return setPoint(self, point, relativeTo, relativePoint, x, y)
+    end
+end
+stub.SetQuestLogPOIIcons(true)
+Expect("a title that cannot be moved does not reach the client's redraw", pcall(QuestLogQuests_Update), true)
+Expect("...and the next row's title is still ended short", select(2, TitleEnd(eliteRow)), -27)
+local failing = stub.questLogRows[1].Text
+failing.GetParent = function() error("no parent") end
+Expect("an error in the hook itself does not reach the client's redraw", pcall(QuestLogQuests_Update), true)
+failing.GetParent = nil
+
+QuestLogQuests_Update()
 
 stub.SetQuestLogPOIIcons(false)
 QuestLogQuests_Update()
 Expect("with the icons off it is back beside the title", buttons[748].anchor.relativeTo == row, true)
+titleEndsAt, titleOffset = TitleEnd(row)
+Expect("...and the title has its own end back", titleEndsAt == row.StorylineTexture and titleOffset, -4)
 
 Expect("two rows drawn, two buttons displayed", table.getn(VO.QuestOverlayUI.displayedButtons), 2)
 Expect("...once, however often the log is redrawn", stub.SetCreatureCount() - setCreatures, 1)

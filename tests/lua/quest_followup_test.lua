@@ -399,10 +399,12 @@ for i = #queued, 1, -1 do queued[i] = nil end
 VO, Spoken = Boot({ { folder = "NewPack", module = FollowupPack(LOOKUP,
     { [STEM] = 3, ["10-dwarf-male-standard"] = 2, ["40-human-male-standard"] = 1, [GOSSIP_HASH] = 2 },
     { [SPEAKER] = { ["Hail."] = GOSSIP_HASH } }) } })
+VO.DataModules:GetModule("NewPack").WordTimesByFileName = { [STEM] = "0 .8" }
 Reset()
 stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
 Say("Thanks, Tester!", SPEAKER_GUID)
 Expect("a pack's FollowupLookup plays the line's own recording", Keys(), STEM)
+Expect("...timed by its word times", queued[1] and queued[1].present.timings, "0 .8")
 Expect("...from the pack's follow-up folder", queued[1] and queued[1].path,
     [[Interface\AddOns\NewPack\]] .. FOLLOWUP_DIR .. STEM .. ".ogg")
 Expect("...with the pack's length for it", queued[1] and queued[1].length, 3)

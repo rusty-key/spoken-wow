@@ -17,9 +17,11 @@
 -- installing Places already spent every discovery it will ever get, and so is
 -- narrated nothing at all. The `autoplayExplored` option answers that by keeping
 -- the record here instead -- see "Per-character record" below -- and narrating on
--- zone change rather than on discovery. It is off by default, and on a fresh
--- character it changes nothing observable: the discovery message still arrives
--- first and marks the area heard, leaving the override with nothing to say.
+-- zone change rather than on discovery. It is on by default. On a fresh character a
+-- zone change and its discovery name the same place, which the queue takes once; the
+-- one difference is at login, where the starting zone is read after the greeting
+-- rather than when the character walks out into it, and its discovery then reads
+-- nothing.
 
 local ADDON_NAME, SpokenPlaces = ...
 
@@ -221,16 +223,26 @@ local function Enqueue(mapID, areaKey)
 	-- The queue refuses a duplicate of its own accord: the login greeting and a
 	-- real discovery message can name the same area, and an area on a zone border
 	-- can be announced twice. Narrating it twice in a row is worse than missing it.
-	return SpokenPlaces:EnqueueLore(item)
+	-- A clip already speaking or waiting counts as queued, so a caller that needs the
+	-- area read is not told it was not.
+	if SpokenPlaces:EnqueueLore(item) then
+		return true
+	end
+	for _, queued in ipairs(Spoken:GetQueue()) do
+		if queued.key == item.key then
+			return true
+		end
+	end
+	return false
 end
 
 --------------------------------------------------------------------------------
 -- Per-character record
 --------------------------------------------------------------------------------
 --
--- What this character has already been narrated. Only `autoplayExplored` reads it;
--- everything writes it, because an area heard from the map panel is still an area
--- the player has heard.
+-- What this character has already been narrated. `autoplayExplored`, a discovery
+-- with it on, and a dungeon's story read it; everything writes it, because an area
+-- heard from the map panel is still an area the player has heard.
 --
 -- Marking happens when playback starts rather than when an area is queued. The
 -- queue holds three, so riding across an explored Stranglethorn drops most of what
@@ -296,7 +308,15 @@ end
 -- transitions as well as zone ones -- and unlike a discovery they fire every time,
 -- which is exactly why the record above has to exist.
 
+-- Whether the login greeting is settled. Until it is, nothing here reads the zone or a
+-- subzone, whichever route asks: a zone change at login would otherwise queue the zone ahead
+-- of the valley the greeting is still to queue. Set where the greeting settles.
+local greetingSettled = false
+
 local function NarrateUnheard()
+	if not greetingSettled then
+		return
+	end
 	if not SpokenPlaces:Get("autoplayExplored") then
 		return
 	end
@@ -502,6 +522,18 @@ end
 -- Discovery handling
 --------------------------------------------------------------------------------
 
+-- Include Places Found Before may have read a discovered place already: at login it reads a
+-- new character's zone, which the game announces only when the character walks out into it.
+local function HeardAlready(mapID, key, areaName)
+	if not (SpokenPlaces:Get("autoplayExplored") and SpokenPlaces:HasHeard(mapID, key)) then
+		return false
+	end
+	if SpokenPlaces:Get("debug") then
+		SpokenPlaces:Print('discovered "%s" -- heard already', areaName)
+	end
+	return true
+end
+
 -- Discovering the area that shares the zone's name -- stepping out of Valley of
 -- Trials into open Durotar -- is what "discovered a zone" means. Everything else
 -- the client announces is a subzone.
@@ -533,7 +565,7 @@ function SpokenPlaces:OnAreaDiscovered(areaName)
 	end
 
 	if IsZoneDiscovery(areaName, mapID) then
-		if self:GetLore(mapID) then
+		if self:GetLore(mapID) and not HeardAlready(mapID, nil, areaName) then
 			if debugOn then
 				self:Print('discovered zone "%s" -- queued', areaName)
 			end
@@ -551,10 +583,12 @@ function SpokenPlaces:OnAreaDiscovered(areaName)
 
 	local entry, key, storyMapID = self:GetSubzoneLore(mapID, areaName)
 	if entry and key then
-		if debugOn then
-			self:Print('discovered subzone "%s" -> key "%s" -- queued', areaName, key)
+		if not HeardAlready(storyMapID, key, areaName) then
+			if debugOn then
+				self:Print('discovered subzone "%s" -> key "%s" -- queued', areaName, key)
+			end
+			Enqueue(storyMapID, key)
 		end
-		Enqueue(storyMapID, key)
 	elseif debugOn then
 		self:Print('discovered subzone "%s" -> key "%s" -- no lore', areaName, tostring(key))
 	end
@@ -676,11 +710,16 @@ function SpokenPlaces:SetupAutoplay()
 		local settled = SeedLoginArea(attempts)
 		-- Logging in is not a zone change, so without this a player who logs out
 		-- and back in somewhere unheard stands there in silence until they walk
-		-- into the next subzone. The greeting runs first and Enqueue refuses a
-		-- duplicate, so the spawn area cannot end up queued by both.
-		NarrateUnheard()
-		if not settled and attempts < LOGIN_SEED_ATTEMPTS then
+		-- into the next subzone. Only once the greeting is settled, or out of tries,
+		-- for this call and for every zone change after it: before, the zone would be
+		-- read ahead of the valley still to be greeted. The greeting runs first and
+		-- Enqueue refuses a duplicate, so the spawn area cannot end up queued by both.
+		local retry = not settled and attempts < LOGIN_SEED_ATTEMPTS
+		if retry then
 			C_Timer.After(LOGIN_SEED_DELAY, seed)
+		else
+			greetingSettled = true
+			NarrateUnheard()
 		end
 	end
 	C_Timer.After(LOGIN_SEED_DELAY, seed)

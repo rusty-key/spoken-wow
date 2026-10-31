@@ -133,44 +133,22 @@ function SpokenPlaces:IsLanguageReady(code)
 	return (entry and entry.ready) and true or false
 end
 
--- A missing glyph draws as nothing or as a box, so `text` is measured against as many private-use
--- characters, which no font has: the same width means none of it drew. The pages set font files,
--- which lack the font object's fallbacks, so the text must draw in the file itself.
-local probe
-local function draws(text, path)
-	probe:SetFont(path, 12, "")
-	probe:SetText(text)
-	local width = probe:GetStringWidth() or 0
-	local count = 0
-	for _ in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do
-		count = count + 1
-	end
-	probe:SetText(string.rep("\238\128\128", count))
-	local missing = probe:GetStringWidth() or 0
-	probe:SetText("")
-	return width > 0 and math.abs(width - missing) > 0.5
+-- The pages set font files, which lack the font object's fallbacks, so the language must draw in
+-- the file itself.
+function SpokenPlaces:LanguageDraws(code, path)
+	return Spoken:LanguageDraws(code, path)
 end
 
-function SpokenPlaces:FontDraws(text, path)
-	if not (path and UIParent and UIParent.CreateFontString) then
-		return false
-	end
-	if not probe then
-		probe = UIParent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-		probe:Hide()
-	end
-	return draws(text, path)
-end
-
--- The fonts every client ships for the other scripts, which the game's font objects fall back to
--- and a page that sets a file has to name itself.
+-- The fonts clients ship for the other scripts, which the game's font objects fall back to and a
+-- page that sets a file has to name itself, the first that draws the language taken.
 local SCRIPT_FONTS = {
-	cyrillic = "Fonts\\FRIZQT___CYR.TTF",
-	korean = "Fonts\\2002.TTF",
-	simplifiedchinese = "Fonts\\ARKai_T.ttf",
-	traditionalchinese = "Fonts\\blei00d.TTF",
+	cyrillic = { "Fonts\\FRIZQT___CYR.TTF" },
+	korean = { "Fonts\\2002.TTF" },
+	simplifiedchinese = { "Fonts\\ARKai_T.ttf" },
+	-- An English Forever client has no blei00d.TTF, which its font objects still name.
+	traditionalchinese = { "Fonts\\blei00d.TTF", "Fonts\\bKAI00M.TTF" },
 	-- Not a font for the script, only the stock one most likely to draw ệ and ữ.
-	vietnamese = "Fonts\\ARIALN.TTF",
+	vietnamese = { "Fonts\\ARIALN.TTF" },
 }
 
 --- The font file to write `code` (the lore's language by default) in where a page uses
@@ -189,13 +167,12 @@ function SpokenPlaces:FontFor(fontObject, code)
 	self.fonts = self.fonts or {}
 	local key = path .. "|" .. locale.code
 	if self.fonts[key] == nil then
-		local stock = SCRIPT_FONTS[locale.script]
-		if self:FontDraws(locale.native, path) then
-			self.fonts[key] = path
-		elseif stock and self:FontDraws(locale.native, stock) then
-			self.fonts[key] = stock
-		else
-			self.fonts[key] = false
+		self.fonts[key] = false
+		for _, font in ipairs({ path, unpack(SCRIPT_FONTS[locale.script] or {}) }) do
+			if self:LanguageDraws(locale.code, font) then
+				self.fonts[key] = font
+				break
+			end
 		end
 	end
 	return self.fonts[key] or nil

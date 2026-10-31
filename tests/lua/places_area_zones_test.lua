@@ -126,6 +126,7 @@ Expect("on Era, which has no Shen'dralas, the Valley of Bones stays in Desolace"
 
 -- With Autoplay Explored Areas on, standing in it is enough.
 Z:Set("autoplayExplored", true)
+stub.Advance(2)
 stub.FireEvent("ZONE_CHANGED")
 local clip = Spoken:GetCurrent()
 Expect("standing in Strahnbrad plays its story by its own id", clip and clip.key, "s:1424:strahnbrad")
@@ -151,6 +152,7 @@ Expect("discovering it in Alterac Mountains plays the same story", clip and clip
 
 Z = Boot({ map = BARRENS, zone = "The Barrens", subzone = "The Great Lift" })
 Z:Set("autoplayExplored", true)
+stub.Advance(2)
 stub.FireEvent("ZONE_CHANGED")
 clip = Spoken:GetCurrent()
 Expect("standing at the Great Lift's top in The Barrens plays its story", clip and clip.key, "s:1441:great lift")

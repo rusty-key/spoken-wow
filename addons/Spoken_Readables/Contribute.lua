@@ -1,8 +1,9 @@
 -- A page this corpus does not carry, as something that can be sent.
 --
--- The gap is the same one Reader.lua's PageOnScreen answers with nil: a page no lookup
--- finds. On a 1.12-derived corpus that is every post-vanilla book, every locale but
--- one, and custom text a server added itself.
+-- The gap is a page whose words the corpus does not have: one Reader.lua's PageOnScreen
+-- answers with nil, or with a page it only told by what opened it or by most of its words.
+-- On a 1.12-derived corpus that is every post-vanilla book, every locale but one, custom
+-- text a server added itself, and a page the server lays out or words its own way.
 --
 -- MAIL NEVER LEAVES THE CLIENT. IsMail is already how the reader refuses to narrate a letter,
 -- and the reason is stronger here: a letter is a player's own words to another player, and
@@ -18,6 +19,13 @@ local ADDON_NAME, SpokenReadables = ...
 -- A value the game hands over as a secret, in an instance or in combat, reads as nil.
 local NotSecret = Spoken and Spoken.NotSecret or function(value) return value end
 
+--- Whether the Spoken folder beside this addon has what Detemplate calls. An older one does not,
+--- and a player on it has no contribute button rather than an error.
+local function CoreIsCurrent()
+	local contribute = _G.Spoken and Spoken.Contribute
+	return contribute and contribute.NameWords and contribute.ReplaceWord and true or false
+end
+
 --- The fields every readables envelope starts with: which addon, which client, which language.
 local function BaseFields(self)
 	return
@@ -31,32 +39,6 @@ local function BaseFields(self)
 		{ "pack", self:GetPackLanguage() },
 		{ "packVersion", self:GetPackVersion(self:GetPackLanguage()) },
 	}
-end
-
--- A letter, a digit, or any byte of a multi-byte UTF-8 character.
-local function IsWordByte(b)
-	return b ~= nil and (b >= 128 or (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122))
-end
-
---- Every whole-word occurrence of `word` in `text` replaced by `token`. A plain find, as the
---- word is the player's own name and no pattern; whole words, so "Mist" leaves "Mistwood".
-local function ReplaceWord(text, word, token)
-	local out, pos = {}, 1
-	while true do
-		local first, last = string.find(text, word, pos, true)
-		if not first then
-			break
-		end
-		if IsWordByte(string.byte(text, first - 1)) or IsWordByte(string.byte(text, last + 1)) then
-			out[#out + 1] = string.sub(text, pos, last)
-		else
-			out[#out + 1] = string.sub(text, pos, first - 1)
-			out[#out + 1] = token
-		end
-		pos = last + 1
-	end
-	out[#out + 1] = string.sub(text, pos)
-	return table.concat(out)
 end
 
 --- The page with this character's name, class and race put back as the game's tokens, as
@@ -77,15 +59,10 @@ function SpokenReadables:Detemplate(text)
 		end
 	end
 
-	local name = UnitName and UnitName("player")
-	add(name, "$N")
-	-- A name with a surname is greeted by one part of it.
-	if type(name) == "string" then
-		for part in string.gmatch(name, "%S+") do
-			if part ~= name then
-				add(part, "$N")
-			end
-		end
+	-- Whole or by one part of it, as written or in capitals: a page greets its reader "GRIMBALOR,".
+	-- Sorted with the class and race below.
+	for _, word in ipairs(Spoken.Contribute:NameWords(UnitName and UnitName("player"))) do
+		add(word, "$N")
 	end
 	if UnitClass then
 		local localized, classFile = UnitClass("player")
@@ -102,14 +79,14 @@ function SpokenReadables:Detemplate(text)
 	-- Longest first, so "Night Elf" goes as one race before a shorter word inside it.
 	table.sort(swaps, function(a, b) return string.len(a[1]) > string.len(b[1]) end)
 	for _, pair in ipairs(swaps) do
-		text = ReplaceWord(text, pair[1], pair[2])
+		text = Spoken.Contribute:ReplaceWord(text, pair[1], pair[2])
 	end
 	return text
 end
 
 --- The envelope for the page on screen, or nil when there is nothing to send.
 function SpokenReadables:CaptureContribution()
-	if self:IsMail() then
+	if not CoreIsCurrent() or self:IsMail() then
 		return nil
 	end
 
@@ -138,7 +115,7 @@ end
 --- `id`, the corpus page, not `page`: that field is a contribution's client checksum. The text
 --- is the open page's when it is the one reported, else the copy the reader kept of it.
 function SpokenReadables:ReportContext(pageId)
-	if type(pageId) ~= "number" or self:IsMail() or not (_G.Spoken and Spoken.Contribute) then
+	if type(pageId) ~= "number" or self:IsMail() or not CoreIsCurrent() then
 		return nil
 	end
 	local fields = BaseFields(self)
@@ -175,21 +152,22 @@ function SpokenReadables:ShowReport(pageId)
 	self:ShowCopyLink(url, self.L.REPORT_LINE_ADDRESS)
 end
 
---- Keep the page on screen for later, if the player opted into gathering and the corpus has
---- no id for it. Called on every ITEM_TEXT_READY, which fires for each page turned; the
+--- Keep the page on screen for later, if the player opted into gathering and the corpus lacks
+--- its words. Called on every ITEM_TEXT_READY, which fires for each page turned; the
 --- hide-buttons setting does not apply, and mail is refused by CaptureContribution itself.
 function SpokenReadables:GatherContribution()
 	if not (_G.Spoken and Spoken.Gather and Spoken.Gather:IsEnabled()) then
 		return false
 	end
-	if self:PageOnScreen() then
+	local _, exact = self:PageOnScreen()
+	if exact then
 		return false
 	end
 	local envelope, key = self:CaptureContribution()
 	return envelope and Spoken.Gather:Add(key, envelope) or false
 end
 
---- Whether the contribute button belongs on the page: text to send, and no page id for it.
+--- Whether the contribute button belongs on the page: text to send, and the corpus without it.
 function SpokenReadables:HasContributionGap()
 	if not (_G.Spoken and Spoken.Contribute and Spoken.ShowContribution) then
 		return false
@@ -198,7 +176,8 @@ function SpokenReadables:HasContributionGap()
 	if Spoken.AreContributeButtonsHidden and Spoken:AreContributeButtonsHidden() then
 		return false
 	end
-	if self:PageOnScreen() then
+	local _, exact = self:PageOnScreen()
+	if exact then
 		return false
 	end
 	return self:CaptureContribution() ~= nil
