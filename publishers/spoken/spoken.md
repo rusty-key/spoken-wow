@@ -82,8 +82,8 @@ Game Menu → Options → AddOns → **Spoken**, or `/sp settings`.
 
 **Code.** The addon is open source on [GitHub](https://github.com/rusty-key/spoken-wow): issues and pull requests are welcome.
 
-**Voices and translations.** Want to help a voice sound right, or the addon read well in your language? Come to the [Discord](https://discord.gg/HEGUgn6Yf).
+**Voices and translations.** Want to help a voice sound right, or the addon read well in your language? Come to the [Discord](https://discord.gg/KgeQhjv9Rd).
 
 ---
 
-[Join the Discord](https://discord.gg/HEGUgn6Yf) · [Buy Me a Coffee](https://buymeacoffee.com/rustykey)
+[Join the Discord](https://discord.gg/KgeQhjv9Rd) · [Buy Me a Coffee](https://buymeacoffee.com/rustykey)

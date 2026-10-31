@@ -809,7 +809,7 @@ do
         Expect("...each on a row of its own", links[1].anchor.x == links[2].anchor.x
             and links[2].anchor.y < links[1].anchor.y and links[3].anchor.y < links[2].anchor.y, true)
         local box = links[3].box
-        Expect("...with its address in a box after the icon", box and box:GetText(), "https://discord.gg/HEGUgn6Yf")
+        Expect("...with its address in a box after the icon", box and box:GetText(), "https://discord.gg/KgeQhjv9Rd")
         Expect("...on the icon's row", box and box.anchor.x > links[3].anchor.x
             and box.anchor.y < links[3].anchor.y and box.anchor.y > links[3].anchor.y - 32, true)
         local ends = {}
@@ -818,13 +818,13 @@ do
         box.text = ""
         box.handlers.OnShow(box)
         Expect("...given again when it shows, as the game drops text set before then", box:GetText(),
-            "https://discord.gg/HEGUgn6Yf")
+            "https://discord.gg/KgeQhjv9Rd")
         box.focused, box.highlighted = false, false
         links[3].scripts.OnMouseUp(links[3])
         Expect("a click on the icon selects the address", box.focused and box.highlighted, true)
         box:SetText("typed over")
         box.handlers.OnTextChanged(box)
-        Expect("...which cannot be typed over", box:GetText(), "https://discord.gg/HEGUgn6Yf")
+        Expect("...which cannot be typed over", box:GetText(), "https://discord.gg/KgeQhjv9Rd")
     end
 end
 

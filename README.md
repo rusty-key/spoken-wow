@@ -1,6 +1,6 @@
 # Spoken
 
-Discord: https://discord.gg/HEGUgn6Yf
+Discord: https://discord.gg/KgeQhjv9Rd
 
 Voiced dialogue, lore and text for World of Warcraft Forever. The other clients' code is
 still here, with no new work going into it.
