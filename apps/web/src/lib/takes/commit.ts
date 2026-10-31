@@ -26,8 +26,9 @@ import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
 import { keep, readsBlobs } from "@/lib/blobs/store";
-import { db, query } from "@/lib/db";
+import { queryIn, withTeam } from "@/lib/db";
 import type { Source } from "@/lib/sections";
+import { teamOf, type TeamId } from "@/lib/teams/store";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -96,8 +97,11 @@ export async function commitTake(
   } = {},
 ): Promise<Committed> {
   const lang = options.lang ?? BASE_LANG;
+  // Before any bytes are kept, so a language nobody owns leaves nothing behind.
+  const team = await teamOf(lang);
 
-  const [{ next }] = await query<{ next: number }>(
+  const [{ next }] = await queryIn<{ next: number }>(
+    team,
     `select coalesce(max("version"), 0) + 1 as "next" from "take"
       where "source" = $1 and "file" = $2 and "lang" = $3`,
     [source, file, lang],
@@ -112,6 +116,7 @@ export async function commitTake(
   const commit = async (clip: string): Promise<Committed> => {
     const durationSec = options.measure ? await options.measure(clip) : null;
     await insertLive({
+      team,
       source,
       file,
       lang,
@@ -131,8 +136,9 @@ export async function commitTake(
   return onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
 }
 
-/** Insert one take and make it the only live one, in one transaction. */
+/** Insert one take and make it the only live one, in one transaction as the language's team. */
 async function insertLive(input: {
+  team: TeamId;
   source: Source;
   file: string;
   lang: string;
@@ -148,9 +154,7 @@ async function insertLive(input: {
   // || rather than ??: the worker passes "" for a batch whose owner's account is gone, and
   // both the take and its activity row are then nobody's.
   const createdBy = fields.createdBy || null;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  await withTeam(input.team, async (client) => {
     await client.query(
       `update "take" set "isCurrent" = false
         where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"`,
@@ -224,11 +228,5 @@ async function insertLive(input: {
       },
       client,
     );
-    await client.query("commit");
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

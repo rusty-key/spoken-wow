@@ -24,7 +24,7 @@ import { dirtyQuestFiles } from "./dirtiness";
 import { staleFiles } from "./staleness";
 import type { SearchContext } from "../search";
 import { NO_CONTEXT } from "../search";
-import { query } from "../db";
+import { readAs } from "../teams/store";
 import { readIgnores } from "./ignores";
 import { readOverrides } from "./overrides";
 import { BASE_LANG, type Lang } from "../lang";
@@ -38,7 +38,8 @@ import { BASE_LANG, type Lang } from "../lang";
  * has already reported this one" without showing what they said.
  */
 async function openReports(lang: Lang): Promise<Map<string, number>> {
-  const rows = await query<{ lineId: string; open: number }>(
+  const rows = await readAs<{ lineId: string; open: number }>(
+    lang,
     `select "lineId", count(*)::int as "open"
        from "report"
       where "source" = 'quests' and "status" = 'open' and "lineId" is not null

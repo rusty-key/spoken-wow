@@ -15,7 +15,7 @@
  */
 import { BASE_LANG, type Lang } from "../lang";
 import { fileIndex } from "../audio";
-import { db } from "../db";
+import { readAs } from "../teams/store";
 import { sentText } from "../generation/files";
 import { spokenHash } from "../generation/spoken-hash";
 import { directionFor } from "../generation/narration";
@@ -42,13 +42,15 @@ export async function staleFiles(
 ): Promise<Set<string>> {
   if (files?.length === 0) return new Set();
 
-  const { rows } = files
-    ? await db().query<Row>(
+  const rows = files
+    ? await readAs<Row>(
+        lang,
         `select "file", "spokenHash", "provider" from "take"
           where "source" = 'quests' and "lang" = $2 and "isCurrent" and "file" = any($1::text[])`,
         [files, lang],
       )
-    : await db().query<Row>(
+    : await readAs<Row>(
+        lang,
         `select "file", "spokenHash", "provider" from "take"
           where "source" = 'quests' and "lang" = $1 and "isCurrent"`,
         [lang],

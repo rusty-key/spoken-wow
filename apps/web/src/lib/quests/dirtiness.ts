@@ -13,7 +13,7 @@
  */
 import { BASE_LANG, type Lang } from "../lang";
 import { fileIndex } from "../audio";
-import { db } from "../db";
+import { readAs } from "../teams/store";
 import { dirtyFiles, loadDirtyContext } from "../generation/dirty";
 import { sentText } from "../generation/files";
 import { overrideOf } from "./override";
@@ -33,15 +33,17 @@ export async function dirtyQuestFiles(
 ): Promise<Set<string>> {
   if (files?.length === 0) return new Set();
 
-  const [{ rows }, context, overrides] = await Promise.all([
+  const [rows, context, overrides] = await Promise.all([
     files
-      ? db().query<{ file: string; generatedAt: Date | null }>(
+      ? readAs<{ file: string; generatedAt: Date | null }>(
+          lang,
           `select "file", "createdAt" as "generatedAt" from "take"
             where "source" = 'quests' and "lang" = $2 and "isCurrent"
               and "file" = any($1::text[])`,
           [files, lang],
         )
-      : db().query<{ file: string; generatedAt: Date | null }>(
+      : readAs<{ file: string; generatedAt: Date | null }>(
+          lang,
           `select "file", "createdAt" as "generatedAt" from "take"
             where "source" = 'quests' and "lang" = $1 and "isCurrent"`,
           [lang],

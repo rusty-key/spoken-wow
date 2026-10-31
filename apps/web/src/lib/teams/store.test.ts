@@ -12,7 +12,7 @@ import { setEnabled } from "@/lib/languages/store";
 import { allTeams, forgetTeams, NoTeamError, teamLangs, teamOf } from "./store";
 
 const USER = `test-teams-${Math.random().toString(36).slice(2, 10)}`;
-// A code nobody has a team for on a migrated test database.
+// A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
 const NEW_LANG = "deDE";
 
 async function englishTeam(): Promise<string> {
@@ -39,6 +39,12 @@ beforeEach(() => forgetTeams());
 
 afterAll(async () => {
   await cleanup();
+  // Back on the english team, where vitest.teams.ts put it, for the suites that write German.
+  await db().query(
+    `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'`,
+    [NEW_LANG],
+  );
+  forgetTeams();
   await db().query(`delete from "user" where "id" = $1`, [USER]);
   await closeDb();
 });

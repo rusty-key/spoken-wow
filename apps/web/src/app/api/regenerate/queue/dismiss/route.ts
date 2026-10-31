@@ -20,7 +20,7 @@ import { dismissThrough } from "@/lib/generation/queue";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const { session, denied } = await requireAnyRegenerate();
+  const { session, langs, denied } = await requireAnyRegenerate();
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as { through?: unknown };
@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "through is required" }, { status: 400 });
   }
 
-  await dismissThrough(through, session.user.id);
+  // One watermark for the one panel until each team has a queue of its own; written as the
+  // team of the caller's first language.
+  await dismissThrough(through, session.user.id, langs[0]);
   return NextResponse.json({ ok: true });
 }

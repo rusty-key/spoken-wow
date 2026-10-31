@@ -11,7 +11,9 @@
  */
 import "server-only";
 
-import { query } from "@/lib/db";
+import type { PoolClient, QueryResultRow } from "pg";
+
+import { query, queryIn, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 
 export type TeamId = string;
@@ -56,4 +58,44 @@ export async function teamOf(lang: Lang): Promise<TeamId> {
 export async function allTeams(): Promise<TeamId[]> {
   const rows = await query<{ id: TeamId }>(`select "id" from "team" order by "createdAt", "id"`);
   return rows.map((row) => row.id);
+}
+
+/**
+ * `work` in a transaction as the team that owns `lang`: how a write to a per-team table is
+ * made, so the row takes its "teamId" from the column default. Throws NoTeamError for a
+ * language nobody owns, since its work would have nowhere to land.
+ */
+export async function asTeamOf<T>(lang: Lang, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  return withTeam(await teamOf(lang), work);
+}
+
+/**
+ * One read of a per-team table, as the team that owns `lang`.
+ *
+ * A language nobody owns answers no rows rather than throwing. Every language with takes was
+ * given a team when teams arrived, so there is nothing of its to read, and an admin's early
+ * look at a language never switched on keeps rendering an empty explorer as it does today.
+ */
+export async function readAs<T extends QueryResultRow = QueryResultRow>(
+  lang: Lang,
+  text: string,
+  params?: unknown[],
+): Promise<T[]> {
+  const team = (await teamLangs()).get(lang);
+  if (!team) return [];
+  return queryIn<T>(team, text, params);
+}
+
+/** These languages grouped by the team that owns each, in their given order. Unowned ones are left out. */
+export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
+  const owners = await teamLangs();
+  const grouped = new Map<TeamId, Lang[]>();
+  for (const lang of langs) {
+    const team = owners.get(lang);
+    if (!team) continue;
+    const group = grouped.get(team);
+    if (group) group.push(lang);
+    else grouped.set(team, [lang]);
+  }
+  return grouped;
 }

@@ -51,8 +51,9 @@ export default defineConfig({
      * is seconds.
      */
     fileParallelism: false,
-    // Removes the activity rows a run writes as nobody; see the file for why.
-    globalSetup: ["./vitest.activity.ts"],
+    // Removes the activity rows a run writes as nobody; see the file for why. Gives every
+    // language a team, as production has.
+    globalSetup: ["./vitest.activity.ts", "./vitest.teams.ts"],
   },
   resolve: {
     alias: {

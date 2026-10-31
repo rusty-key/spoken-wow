@@ -7,14 +7,25 @@
  *
  * Needs DATABASE_URL and the migrations applied.
  */
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { Lang } from "@/lib/lang";
 
 const { closeDb, db } = await import("@/lib/db");
 const { dirtyFiles, loadDirtyContext } = await import("./dirty");
+const { forgetTeams } = await import("@/lib/teams/store");
 
 const LANG = "xxXX" as Lang;
+
+// A team for it, since a language nobody owns has nothing to read.
+beforeAll(async () => {
+  await db().query(
+    `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'
+     on conflict do nothing`,
+    [LANG],
+  );
+  forgetTeams();
+});
 
 async function logged(grapheme: string, changedAt: string): Promise<void> {
   await db().query(
@@ -28,7 +39,11 @@ afterEach(async () => {
   await db().query(`delete from "lexicon_change" where "lang" = $1`, [LANG]);
 });
 
-afterAll(closeDb);
+afterAll(async () => {
+  await db().query(`delete from "team_language" where "lang" = $1`, [LANG]);
+  forgetTeams();
+  await closeDb();
+});
 
 describe("loadDirtyContext", () => {
   it("keeps only the newest change of each word, newest first", async () => {

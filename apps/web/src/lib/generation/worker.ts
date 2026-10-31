@@ -10,7 +10,7 @@
  * runs against the real queue, because the exclusions that keep it honest are in the schema.
  */
 import { readApiKey } from "@/lib/api-key";
-import { POOL_MAX } from "@/lib/db";
+import { POOL_MAX, withTeam } from "@/lib/db";
 
 import { afterRateLimit, budgetFor, clampToPool, maxActiveFrom, pickLane } from "./concurrency";
 import {
@@ -30,6 +30,7 @@ import { regenerateZoneLine } from "@/lib/places/regenerate";
 import { regenerateBossLine } from "@/lib/bosses/regenerate";
 import { generationStatus } from "./status";
 import type { Lang } from "@/lib/lang";
+import type { PoolClient } from "pg";
 import type { Source } from "@/lib/sections";
 import { fishConcurrency, getWallet } from "@/lib/voices/fish";
 import { readGenerationSettings, type Preference } from "./preference";
@@ -258,6 +259,15 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     return value;
   }
 
+  /**
+   * Settle a job as its own team. The generation before it is not held in this transaction:
+   * that would keep a connection, and a transaction, open across the provider's call. What it
+   * writes - the take - is written as the same team, resolved from the job's language.
+   */
+  function asJob<T>(job: QueueJob, work: (client: PoolClient) => Promise<T>): Promise<T> {
+    return withTeam(job.teamId, work);
+  }
+
   async function run(job: QueueJob, lane: LaneState): Promise<void> {
     // Whose credits this line is spent from. A batch is enqueued by someone who had a key at
     // the time, so reaching here without one means it was cleared or the master key changed
@@ -275,7 +285,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
       const message =
         `the account that started this batch has no usable ${PROVIDER_NAME[job.provider]} key; set one in your` +
         " profile and start it again";
-      await failJob(job.id, { kind: "auth", message }).catch((error: unknown) =>
+      await asJob(job, (client) => failJob(job.id, { kind: "auth", message }, client)).catch((error: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;
@@ -290,7 +300,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
       const message = `could not read the settings of the account that started this batch: ${
         error instanceof Error ? error.message : String(error)
       }`;
-      await failJob(job.id, { kind: "upstream", message }).catch((failure: unknown) =>
+      await asJob(job, (client) => failJob(job.id, { kind: "upstream", message }, client)).catch((failure: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, failure),
       );
       return;
@@ -298,7 +308,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     const generate = generators[job.source];
     if (!generate) {
       const message = `no generator for ${job.source} jobs in this build`;
-      await failJob(job.id, { kind: "bad-request", message }).catch((error: unknown) =>
+      await asJob(job, (client) => failJob(job.id, { kind: "bad-request", message }, client)).catch((error: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;
@@ -329,34 +339,40 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     // the log explains the duplicate charge.
     try {
       if (result.ok) {
-        await finishJob(job.id, {
-          version: result.version,
-          credits: result.credits,
-          costUsd: result.costUsd,
-        });
+        await asJob(job, (client) =>
+          finishJob(
+            job.id,
+            { version: result.version, credits: result.credits, costUsd: result.costUsd },
+            client,
+          ),
+        );
         return;
       }
 
       const { kind, message } = result.failure;
+      if (kind === "rate-limit") lane.rateLimitedAt = Date.now();
 
-      if (kind === "rate-limit") {
-        lane.rateLimitedAt = Date.now();
+      await asJob(job, async (client) => {
         // A retry puts the row back to `pending`, where it would be claimed and paid for
         // after an admin pressed Stop - and where it would flip the queue back to active, so
         // the panel returns to "Regenerating" having just said "Stopped". Stop means stop.
-        if (job.attempts < MAX_ATTEMPTS && !(await batchStopped(job.batchId))) {
-          await retryJob(job.id, backoff(job.attempts));
+        if (
+          kind === "rate-limit" &&
+          job.attempts < MAX_ATTEMPTS &&
+          !(await batchStopped(job.batchId, client))
+        ) {
+          await retryJob(job.id, backoff(job.attempts), client);
           return;
         }
-      }
 
-      // Only this job fails; the rest of its batch carries on, whatever `fatal` says. `fatal`
-      // is the browser's contract (errors.ts) and assumes a batch is one voice and one key,
-      // which a queued batch is not: a "Regenerate all" spans every NPC slot, and cancelling
-      // it for one slot with no voice takes down every line that has one. Even an
-      // account-wide failure - no credits, a revoked key - is refused before anything is
-      // billed, so letting each remaining line fail on its own costs nothing but log rows.
-      await failJob(job.id, { kind, message });
+        // Only this job fails; the rest of its batch carries on, whatever `fatal` says. `fatal`
+        // is the browser's contract (errors.ts) and assumes a batch is one voice and one key,
+        // which a queued batch is not: a "Regenerate all" spans every NPC slot, and cancelling
+        // it for one slot with no voice takes down every line that has one. Even an
+        // account-wide failure - no credits, a revoked key - is refused before anything is
+        // billed, so letting each remaining line fail on its own costs nothing but log rows.
+        await failJob(job.id, { kind, message }, client);
+      });
     } catch (error) {
       console.error(
         `regeneration queue: job ${job.id} (${job.file}) settled but its outcome could not be` +
@@ -421,7 +437,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
           // retryJob rather than starting it is what keeps a rolling deploy's SIGTERM from
           // stranding the row for its whole five-minute lease. Losing an attempt to a
           // deploy that never actually tried the job is the fair side of that trade.
-          await retryJob(job.id, 0);
+          await withTeam(job.teamId, (client) => retryJob(job.id, 0, client));
           return;
         }
 

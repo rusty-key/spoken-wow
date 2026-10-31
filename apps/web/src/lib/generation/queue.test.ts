@@ -12,6 +12,8 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { ownTeam } from "@/lib/teams/testing";
+import { teamOf } from "@/lib/teams/store";
 
 import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry } from "./queue";
 import type { Source } from "@/lib/sections";
@@ -615,7 +617,7 @@ describe("snapshot", () => {
     expect(all.failures).toEqual(expect.arrayContaining([`${prefix} alice`, `${prefix} bob`]));
   });
 
-  it("answers one poll with two pooled queries, not seven", async () => {
+  it("answers one poll with two pooled connections, not seven", async () => {
     // The exact count that matters: a batch in flight already holds two connections per job,
     // so the number a poll opens on top of that is the tightest budget in the system. This
     // spies on the real pool rather than mocking it - every query below still runs against
@@ -624,10 +626,11 @@ describe("snapshot", () => {
     await enqueue(batch, [line(1)], "quests");
 
     const pool = db();
-    const original = pool.query.bind(pool);
+    // Connections rather than pool.query calls: each query runs in its own team transaction.
+    const original = pool.connect.bind(pool);
     let calls = 0;
     const spy = vi
-      .spyOn(pool, "query")
+      .spyOn(pool, "connect")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mockImplementation((...args: any[]) => {
         calls++;
@@ -707,6 +710,78 @@ async function stateCounts(batchId: string): Promise<Record<string, number>> {
   return Object.fromEntries(rows.map((row) => [row.state, Number(row.n)]));
 }
 
+describe("a language's team", () => {
+  let german: Awaited<ReturnType<typeof ownTeam>>;
+
+  beforeEach(async () => {
+    german = await ownTeam("deDE");
+  });
+
+  afterEach(async () => {
+    await db().query(`delete from "regeneration_pause" where "lang" = 'deDE'`);
+    await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+    batches.length = 0;
+    await german.restore();
+  });
+
+  async function germanJob(n: number) {
+    const batch = await createBatch("test batch", null, "quests", "deDE");
+    batches.push(batch);
+    await enqueue(batch, [line(n)], "quests", "deDE");
+    return batch;
+  }
+
+  it("is stamped on the batch and its jobs, and rides to the claim", async () => {
+    const batch = await germanJob(1);
+    const { rows } = await db().query(
+      `select b."teamId" as "batch", j."teamId" as "job"
+         from "regeneration_batch" b join "regeneration_job" j on j."batchId" = b."id"
+        where b."id" = $1`,
+      [batch],
+    );
+    expect(rows).toEqual([{ batch: german.team, job: german.team }]);
+
+    const claimed = await claimJobOfThisRun();
+    expect(claimed?.teamId).toBe(german.team);
+  });
+
+  it("is the english team's for an English job", async () => {
+    await enqueue(await newBatch(), [line(2)], "quests");
+    expect((await claimJobOfThisRun())?.teamId).toBe(await teamOf("enUS"));
+  });
+
+  it("is what a pause is held under, holding back that language's jobs only", async () => {
+    await germanJob(1);
+    await enqueue(await newBatch(), [line(2)], "quests");
+
+    expect(await pauseQueue(["deDE"], null)).toEqual(["deDE"]);
+    const { rows } = await db().query(`select "teamId" from "regeneration_pause" where "lang" = 'deDE'`);
+    expect(rows).toEqual([{ teamId: german.team }]);
+
+    expect((await claimJobOfThisRun())?.lang).toBe("enUS");
+    expect(await claimJobOfThisRun()).toBeNull();
+
+    expect(await resumeQueue(["deDE"], null)).toEqual(["deDE"]);
+    expect((await claimJobOfThisRun())?.lang).toBe("deDE");
+  });
+
+  it("does not let a pause held by another team hold this one's work", async () => {
+    // Two teams in one language arrive in a later phase; the pause must already be theirs.
+    await germanJob(1);
+    await db().query(
+      `insert into "regeneration_pause" ("lang", "teamId") values ('deDE', $1)`,
+      [await teamOf("enUS")],
+    );
+    expect((await claimJobOfThisRun())?.lang).toBe("deDE");
+  });
+
+  it("is what a Stop in that language runs under", async () => {
+    const batch = await germanJob(1);
+    expect(await cancelPending("stopped", { langs: ["deDE"] })).toBe(1);
+    expect(await stateCounts(batch)).toEqual({ cancelled: 1 });
+  });
+});
+
 describe("dismissing finished work", () => {
   it("hides what was dismissed and keeps what came after", async () => {
     const batch = await createBatch("dismiss", null, "quests");
@@ -719,7 +794,7 @@ describe("dismissing finished work", () => {
     const before = await snapshot(null);
     expect(before.counts.done).toBeGreaterThan(0);
 
-    await dismissThrough(before.through!, null);
+    await dismissThrough(before.through!, null, "enUS");
 
     const after = await snapshot(null);
     expect(after.counts.done).toBe(0);
@@ -747,7 +822,7 @@ describe("dismissing finished work", () => {
     const before = await snapshot(null);
     expect(before.counts.cancelled).toBe(1);
 
-    await dismissThrough(before.through!, null);
+    await dismissThrough(before.through!, null, "enUS");
     const after = await snapshot(null);
 
     expect(after.counts).toEqual({ pending: 0, running: 0, done: 0, failed: 0, cancelled: 0 });
@@ -764,7 +839,7 @@ describe("dismissing finished work", () => {
     await enqueue(batch, [line(4)], "quests");
 
     // Dismissing the finished job must leave the pending one - and the Stop button - alone.
-    await dismissThrough((await snapshot(null)).through!, null);
+    await dismissThrough((await snapshot(null)).through!, null, "enUS");
     const after = await snapshot(null);
 
     expect(after.counts.pending + after.counts.running).toBe(1);

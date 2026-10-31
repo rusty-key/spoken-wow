@@ -8,6 +8,10 @@
  * Needs DATABASE_URL and migrations applied:
  *   docker compose up -d postgres && deploy/bin/migrate.sh "$PWD/web"
  */
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db, POOL_MAX } from "@/lib/db";
@@ -17,6 +21,8 @@ import { clampToPool } from "./concurrency";
 import type { RegenerateResult } from "./regenerate";
 import { backoffFor, startWorker } from "./worker";
 import type { Source } from "@/lib/sections";
+import { commitTake } from "@/lib/takes/commit";
+import { ownTeam } from "@/lib/teams/testing";
 
 // The real boss generator would reach the catalogue and a provider; the dispatch to it is
 // what is under test here, and lib/bosses/regenerate.test.ts covers what it does.
@@ -926,5 +932,46 @@ describe("an ElevenLabs batch", () => {
     await worker.stop();
 
     expect(seen).toEqual([{ provider: "elevenlabs", seed: "none" }]);
+  });
+});
+
+describe("a job's team", () => {
+  it("is the team its take is committed under", async () => {
+    // German on a team of its own, so a take stamped with any other team would show.
+    const german = await ownTeam("deDE");
+    const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-"));
+    const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+    process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
+    try {
+      const batch = await createBatch("test", null, "bosses", "deDE");
+      batches.push(batch);
+      await enqueue(batch, [line(1)], "bosses", "deDE");
+
+      const worker = startWorker(() => true, {
+        apiKeyFor: KEYED,
+        budget: async () => 1,
+        regenerate: {
+          bosses: async (lineId, _user, { lang, batchId }) => {
+            const committed = await commitTake("bosses", line(1).file, Buffer.from("take"), { lineId }, { lang, batchId });
+            return { ...OK, lineId, version: committed.version };
+          },
+        },
+      });
+      await until(async () => (await statesOf(batch)).done === 1);
+      await worker.stop();
+
+      const { rows } = await db().query(
+        `select "teamId", "lang" from "take" where "source" = 'bosses' and "file" = $1`,
+        [line(1).file],
+      );
+      expect(rows).toEqual([{ teamId: german.team, lang: "deDE" }]);
+    } finally {
+      if (before === undefined) delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+      else process.env.SPOKEN_BOSSES_AUDIO_HISTORY = before;
+      fs.rmSync(archive, { recursive: true, force: true });
+      await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+      batches.length = 0;
+      await german.restore();
+    }
   });
 });

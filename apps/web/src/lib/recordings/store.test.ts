@@ -19,6 +19,7 @@ process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 const { closeDb, db } = await import("@/lib/db");
 const { commitRecording, listRecordings, liveRecordings, recordingPath, removeRecording } = await import("./store");
 const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
+const { teamOf } = await import("@/lib/teams/store");
 
 const hasFfmpeg = (() => {
   try {
@@ -170,5 +171,14 @@ describe.skipIf(!hasFfmpeg)("a recording", () => {
     expect(takes).toEqual([]);
     const { rows } = await db().query(`select "kind", "lineId", "actorId" from "activity" where "subject" = $1`, [file]);
     expect(rows).toEqual([{ kind: "recording.uploaded", lineId: "q:1:accept", actorId: ACTOR }]);
+  });
+
+  it("is kept, with its log row, as the language's team", async () => {
+    await upload(mp3);
+    const team = await teamOf(lang);
+    const { rows: kept } = await db().query(`select "teamId" from "recording" where "file" = $1`, [file]);
+    const { rows: log } = await db().query(`select "teamId" from "activity" where "subject" = $1`, [file]);
+    expect(kept).toEqual([{ teamId: team }]);
+    expect(log).toEqual([{ teamId: team }]);
   });
 });

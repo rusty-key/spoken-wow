@@ -15,6 +15,7 @@ import type { Lang } from "@/lib/lang";
 
 const { closeDb, db } = await import("@/lib/db");
 const { acknowledge } = await import("./dirty");
+const { teamOf } = await import("@/lib/teams/store");
 
 let actor: string;
 let prefix: string;
@@ -50,6 +51,16 @@ const acked = async () =>
   (await db().query(`select 1 from "take_ack" where "file" like $1`, [`${prefix}/%`])).rowCount;
 
 describe("acknowledge", () => {
+  it("writes the marks and their log rows as the language's team", async () => {
+    await acknowledge("quests", [`${prefix}/a.mp3`], actor, "deDE");
+
+    const team = await teamOf("deDE");
+    const { rows: marks } = await db().query(`select "teamId" from "take_ack" where "file" like $1`, [`${prefix}/%`]);
+    const { rows: log } = await db().query(`select "teamId" from "activity" where "actorId" = $1`, [actor]);
+    expect(marks).toEqual([{ teamId: team }]);
+    expect(log).toEqual([{ teamId: team }]);
+  });
+
   it("logs a click that cleared several marks as one row, its files grouped under it", async () => {
     const files = [`${prefix}/a.mp3`, `${prefix}/b.mp3`, `${prefix}/c.mp3`];
 
