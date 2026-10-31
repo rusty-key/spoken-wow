@@ -2,6 +2,13 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **No more "script ran too long" error after logging in on Hardcore.** Quest sound packs now load
+  one at a time after you enter the world, and a pack that fails to load no longer holds back the
+  ones after it.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.7.0 — 2026-10-31
 
 - **World Chatter voices what people say out loud in the world.** Guards, farmers and others who talk
