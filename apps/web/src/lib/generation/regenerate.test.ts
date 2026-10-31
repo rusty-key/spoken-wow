@@ -68,6 +68,16 @@ const DEFAULT_VOICES = {
   "dwarf-male-grim": "voice-dwarf-male-grim",
 };
 
+function timed(text: string, extra: Record<string, unknown> = {}): Response {
+  const characters = [...text];
+  const alignment = {
+    characters,
+    character_start_times_seconds: characters.map((_, index) => index / 10),
+    character_end_times_seconds: characters.map((_, index) => (index + 1) / 10),
+  };
+  return Response.json({ audio_base64: MP3.toString("base64"), alignment, ...extra });
+}
+
 function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
   const calls: { url: string; body?: unknown }[] = [];
 
@@ -87,15 +97,18 @@ function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
         { model_id: "eleven_multilingual_v2", name: "Multilingual v2", can_do_text_to_speech: true },
       ]);
     }
-    if (url.endsWith("/v1/text-to-dialogue")) {
+    // Each character of what was sent 0.1s after the one before, as the with-timestamps
+    // endpoints time it; the dialogue endpoint joins its turns with nothing between them.
+    const body = calls[calls.length - 1].body as { text?: string; inputs?: { text: string }[] };
+    if (url.endsWith("/v1/text-to-dialogue/with-timestamps")) {
+      const texts = body.inputs!.map((input) => input.text);
+      const offsets = texts.map((_, index) => texts.slice(0, index).join("").length);
       return speech
         ? speech()
-        : new Response(MP3, { status: 200, headers: { "content-type": "audio/mpeg" } });
+        : timed(texts.join(""), { voice_segments: offsets.map((at) => ({ character_start_index: at })) });
     }
     if (url.includes("/v1/text-to-speech/")) {
-      return speech
-        ? speech()
-        : new Response(MP3, { status: 200, headers: { "content-type": "audio/mpeg" } });
+      return speech ? speech() : timed(body.text!);
     }
     throw new Error(`stub got an unexpected url: ${url}`);
   });
@@ -193,7 +206,9 @@ describe("a line with no audio yet", () => {
     expect(fs.readFileSync(path.join(historyDir(result.file), archiveName(1, MP3)))).toEqual(MP3);
 
     const speech = calls.find((call) => call.url.includes("text-to-speech"))!;
-    expect(speech.url).toBe("https://stub.invalid/v1/text-to-speech/voice-human-male-standard");
+    expect(speech.url).toBe(
+      "https://stub.invalid/v1/text-to-speech/voice-human-male-standard/with-timestamps",
+    );
   });
 
   // The lead-in is the one thing sent that the take does NOT record: it is a constant, it
@@ -282,6 +297,20 @@ describe("a race with an accent tag", () => {
     if (!result.ok) return;
     expect(result.spokenText).toBe("[Scottish accent] Hiccup! Ho Ho!");
     expect(result.characters).toBe("[Scottish accent] Hiccup! Ho Ho!".length);
+  });
+
+  // The tag is timed by ElevenLabs as though it were said; the addon shows only the words.
+  it("times the words the addon shows, and not the tag", async () => {
+    const { options } = stub();
+
+    const result = await regenerate(DWARF, options);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { rows } = await db().query(`select "wordTimes" from "take" where "file" = $1`, [result.file]);
+    // The fake mp3 cannot be trimmed, so the lead-in's 29 characters stay ahead of the words.
+    const at = (word: string) => `${LEAD_IN}[Scottish accent] Hiccup! Ho Ho!`.indexOf(word) / 10;
+    expect(rows[0].wordTimes).toEqual([at("Hiccup!"), at("Ho Ho"), at("Ho!")]);
   });
 
   it("leaves a race with no tag exactly as it was", async () => {
@@ -486,7 +515,7 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(result.ok).toBe(true);
 
     // The dialogue endpoint, not text-to-speech: two voices, one file.
-    const dialogue = calls.find((call) => call.url.endsWith("/v1/text-to-dialogue"));
+    const dialogue = calls.find((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"));
     expect(dialogue).toBeDefined();
     expect(calls.some((call) => call.url.includes("/v1/text-to-speech/"))).toBe(false);
 
@@ -531,7 +560,7 @@ describe("a line whose spoken text has been rewritten", () => {
     const result = await regenerate(SOLO, options);
     expect(result.ok).toBe(true);
 
-    const dialogue = calls.find((call) => call.url.endsWith("/v1/text-to-dialogue"));
+    const dialogue = calls.find((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"));
     const body = dialogue!.body as { inputs: { text: string; voice_id: string }[] };
     expect(body.inputs).toEqual([
       { text: `${LEAD_IN}A voice crackles.`, voice_id: "voice-human-male-standard" },
@@ -558,7 +587,7 @@ describe("a line whose spoken text has been rewritten", () => {
     await regenerate(SOLO, options);
 
     expect(calls.some((call) => call.url.includes("/v1/text-to-speech/"))).toBe(true);
-    expect(calls.some((call) => call.url.endsWith("/v1/text-to-dialogue"))).toBe(false);
+    expect(calls.some((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"))).toBe(false);
   });
 
   it("still refuses progress text, which no rewrite can make voiceable", async () => {

@@ -76,6 +76,8 @@ jobs:
             files: |
               manager/release/*.AppImage
               manager/release/*.tar.gz
+              manager/release/*.deb
+              manager/release/*.rpm
               manager/release/latest-linux.yml
     steps:
       - uses: actions/checkout@v4
@@ -85,6 +87,9 @@ jobs:
           cache: npm
           cache-dependency-path: manager/package-lock.json
       - run: npm ci
+      - name: Install RPM packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
       # The macOS app icon is an Icon Composer file (build/icon.icon), which only Xcode 26's actool
       # compiles. The runner may default to an older Xcode next to a newer one.
       - name: Use Xcode 26 or newer
@@ -163,11 +168,26 @@ jobs:
           done
         env:
           SIGNED: ${{ secrets.MAC_CSC_LINK != '' }}
+      # upload-artifact fails only when no pattern matches, and the release job's globs need each one.
+      - name: Check every installer was built
+        working-directory: .
+        shell: bash
+        run: |
+          missing=0
+          while read -r pattern; do
+            [ -n "$pattern" ] || continue
+            compgen -G "$pattern" > /dev/null || { echo "Nothing matches $pattern." >&2; missing=1; }
+          done <<< "$FILES"
+          exit "$missing"
+        env:
+          FILES: ${{ matrix.files }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.files }}
           if-no-files-found: error
+          # Every installer is compressed already.
+          compression-level: 0
 
   release:
     name: Release
@@ -208,12 +228,12 @@ jobs:
           flags=""
           case "${GITHUB_REF_NAME}" in *-*) flags="--prerelease" ;; esac
           # The installers only: the update feed files and block maps go to manager-latest.
-          installers="dist/*.exe dist/*.dmg dist/*.zip dist/*.AppImage dist/*.tar.gz"
+          mapfile -t installers < <(find dist -type f ! -name 'latest*.yml' ! -name '*.blockmap' | sort)
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             # A re-run: the release is there already, so only its files are replaced.
-            gh release upload "${GITHUB_REF_NAME}" $installers --clobber
+            gh release upload "${GITHUB_REF_NAME}" "${installers[@]}" --clobber
           else
-            gh release create "${GITHUB_REF_NAME}" $installers \
+            gh release create "${GITHUB_REF_NAME}" "${installers[@]}" \
               --title "Spoken Manager ${GITHUB_REF_NAME#manager/v}" \
               --notes "Installers for Windows, macOS and Linux. See manager/README.md for how to install them." \
               --verify-tag --latest=false $flags

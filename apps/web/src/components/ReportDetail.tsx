@@ -100,7 +100,11 @@ export default function ReportDetail({
         </div>
       </div>
 
-      <p className="text-sm whitespace-pre-wrap">{detail.text}</p>
+      {detail.text === null ? (
+        <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
+      ) : (
+        <p className="text-sm whitespace-pre-wrap">{detail.text}</p>
+      )}
 
       {detail.audioSrc === null ? (
         <p className="text-muted-foreground text-xs">No audio on file for this line.</p>
@@ -110,9 +114,12 @@ export default function ReportDetail({
 
       {canRegenerate ? (
         <div className="flex items-center gap-3">
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void regenerate()}>
-            {busy ? "Regenerating…" : "Regenerate"}
-          </Button>
+          {/* Nothing written in the language is nothing to voice: the server would refuse it. */}
+          {detail.text === null ? null : (
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void regenerate()}>
+              {busy ? "Regenerating…" : "Regenerate"}
+            </Button>
+          )}
           {/* Quests only: the override endpoint is theirs, and places and readables have no text a
               triager may edit - their lines are the corpus itself. */}
           {source === "quests" ? (

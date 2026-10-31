@@ -76,16 +76,29 @@ function SettingsPanel:Setup()
         function(value) audio().ReadAfterClose = value end),
         function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
 
-    -- Only where the client has the objective tracker the button is drawn on.
+    local function HasQuestLog()
+        return _G.QuestLogFrame ~= nil or QuestLogQuests_Update ~= nil
+    end
+    local function HasObjectiveTracker()
+        return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
+            or QuestWatch_Update ~= nil
+            or (_G.QuestieLoader and _G.QuestieLoader.ImportModule ~= nil)
+    end
     layout:Section(L.OPT_SECTION_TRACKER)
-    local trackerPlay = layout:Checkbox(L.OPT_TRACKER_PLAY, nil,
-        function() return Addon.db.profile.TrackerPlayButton end,
+    local questLogPlay = layout:Checkbox(L.OPT_TRACKER_QUEST_LOG, nil,
+        function() return Addon.db.profile.QuestLogPlayButton ~= false end,
+        function(value)
+            Addon.db.profile.QuestLogPlayButton = value
+            QuestOverlayUI:RefreshQuestLog()
+        end)
+    layout:ShowWhen(questLogPlay, HasQuestLog)
+    local trackerPlay = layout:Checkbox(L.OPT_TRACKER_OBJECTIVE, nil,
+        function() return Addon.db.profile.TrackerPlayButton ~= false end,
         function(value)
             Addon.db.profile.TrackerPlayButton = value
             QuestOverlayUI.UpdateTrackerButtons()
         end)
-    layout:ShowWhen(trackerPlay, function() return QuestOverlayUI.UpdateTrackerButtons ~= nil
-        and _G.QuestObjectiveTracker ~= nil end)
+    layout:ShowWhen(trackerPlay, HasObjectiveTracker)
 
     -- Only with DialogueUI installed, on Spoken's page.
     if DialogueUIBridge and DialogueUIBridge.Problem and IsAddOnLoaded and IsAddOnLoaded("DialogueUI") then

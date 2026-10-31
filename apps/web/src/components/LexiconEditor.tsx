@@ -860,7 +860,7 @@ function Row({
           <span className="w-40 shrink-0 truncate text-sm font-medium">
             {entry.grapheme || <span className="text-muted-foreground">(new entry)</span>}
           </span>
-          <span className="text-primary w-52 shrink-0 truncate text-sm">
+          <span className="text-primary-ink w-52 shrink-0 truncate text-sm">
             {entry.alias ? `“${entry.alias}”` : `/${entry.ipa}/`}
           </span>
           <FishBadge use={fishUse(entry, lang)} />
@@ -887,7 +887,7 @@ function Row({
         <Button
           size="icon"
           variant="ghost"
-          className={cn("size-6", editing ? "text-primary" : "text-muted-foreground")}
+          className={cn("size-6", editing ? "text-primary-ink" : "text-muted-foreground")}
           title={editing ? "Done editing" : `Edit ${entry.grapheme || "this entry"}`}
           aria-label={editing ? "Done editing" : `Edit ${entry.grapheme || "this entry"}`}
           onClick={editing ? onClose : onOpen}

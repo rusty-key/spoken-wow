@@ -23,6 +23,7 @@ import { isAdmin, langsWhere } from "@/lib/permissions";
 const SECTIONS = [
   { href: "/quests", label: "Quests" },
   { href: "/places", label: "Places" },
+  { href: "/bosses", label: "Bosses" },
   { href: "/readables", label: "Readables" },
   { href: "/contribute", label: "Contribute" },
 ];

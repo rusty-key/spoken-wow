@@ -18,6 +18,11 @@ import type { RegenerateResult } from "./regenerate";
 import { backoffFor, startWorker } from "./worker";
 import type { Source } from "@/lib/sections";
 
+// The real boss generator would reach the catalogue and a provider; the dispatch to it is
+// what is under test here, and lib/bosses/regenerate.test.ts covers what it does.
+const regenerateBossLine = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/bosses/regenerate", () => ({ regenerateBossLine }));
+
 let prefix: string;
 const batches: string[] = [];
 
@@ -337,6 +342,22 @@ describe("startWorker", () => {
 
     expect(seen).toHaveLength(2);
     expect(seen.every((entry) => entry.startsWith("places:"))).toBe(true);
+  });
+
+  it("hands a bosses job to regenerateBossLine when no generator is injected for it", async () => {
+    const batch = await seed(2, "bosses");
+    regenerateBossLine.mockImplementation(async (lineId: string) => ({ ...OK, lineId }));
+
+    const worker = startWorker(() => true, {
+      apiKeyFor: KEYED,
+      budget: async () => 1,
+    });
+
+    await until(async () => (await statesOf(batch)).done === 2);
+    await worker.stop();
+
+    expect(regenerateBossLine).toHaveBeenCalledTimes(2);
+    expect(regenerateBossLine.mock.calls.map((call) => call[2].lang)).toEqual(["enUS", "enUS"]);
   });
 
   it("keeps going after a failure that is not fatal", async () => {

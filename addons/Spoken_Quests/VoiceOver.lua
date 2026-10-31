@@ -477,7 +477,7 @@ local defaults = {
             -- Shown whether or not DialogueUI's Text To Speech is on.
             PlayButton = true,
         },
-        -- The Play button on each quest in the objective tracker.
+        QuestLogPlayButton = true,
         TrackerPlayButton = true,
         DebugEnabled = false,
     },
@@ -526,6 +526,13 @@ function Addon:OnInitialize()
     -- two stay one profile. AceDB uses it only where these settings have not seen the character.
     local profile = Spoken and Spoken.NewCharacterStartProfile and Spoken:NewCharacterStartProfile()
     self.db = LibStub("AceDB-3.0"):New("SpokenQuestsSettings", defaults, profile)
+    -- A Started Only saved off before it was on by default would read as the player's choice:
+    -- cleared once behind this marker, as unset reads as on. An off set after that is kept.
+    local global = self.db.global
+    if not global.startedOnlyDefaultOn then
+        global.startedOnlyDefaultOn = true
+        if global.Compendium then global.Compendium.FoundOnly = nil end
+    end
     self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
     self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
 
@@ -591,6 +598,16 @@ function Addon:OnInitialize()
     end)
     if not followupReady then
         Debug:Record("followup-error", tostring(followupError))
+    end
+
+    -- What NPCs say in the world: a failed hook here must not take quest narration down either.
+    local chatterReady, chatterError = pcall(function()
+        if Chatter and Chatter.Setup then
+            Chatter:Setup()
+        end
+    end)
+    if not chatterReady then
+        Debug:Record("chatter-error", tostring(chatterError))
     end
 
     -- Discover data packs now, but load their multi-megabyte generated Lua
@@ -1093,7 +1110,8 @@ end
 
 function Addon:RefreshConfig()
     Player:RefreshConfig()
-    if QuestOverlayUI.UpdateTrackerButtons then QuestOverlayUI.UpdateTrackerButtons() end
+    QuestOverlayUI:RefreshQuestLog()
+    QuestOverlayUI.UpdateTrackerButtons()
 end
 
 local function GossipSoundDataAdded(soundData)

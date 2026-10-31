@@ -29,7 +29,8 @@ end
 
 --- `face`'s badge for bullet `id`, with its dark disc (`badgeBackground`) only under a badge.
 function Face.SetBadge(face, id)
-    local texture = Face.BadgeFor(id)
+    -- A flat face in EllesmereUI's look has no badge: its glyphs are round.
+    local texture = not face.squared and Face.BadgeFor(id) or nil
     face.badge:SetTexture(texture)
     face.badge:SetShown(texture ~= nil)
     if face.badgeBackground then face.badgeBackground:SetShown(texture ~= nil) end
@@ -71,8 +72,45 @@ function Face.Build(parent, size, level, least)
     host.badge = chrome:CreateTexture(nil, "OVERLAY")
     host.badge:SetSize(badge, badge)
     host.badge:SetPoint("CENTER", host, "TOPLEFT", At(56.5), -At(56.5))
+    host.background, host.chrome = background, chrome
     Face.SetBadge(host, nil)
+    if Ellesmere then Ellesmere:When(function(skin) Face.Square(skin, host) end) end
     return host
+end
+
+--- The face as a flat box in EllesmereUI's look: no ring and no badge, the speaker in a 1 px edge on
+--- a dark backing, cut round or, for a 3D model, square.
+function Face.Square(skin, face)
+    if face.squared then return end
+    face.squared = true
+    face.ring:SetAlpha(0)
+    face.background:SetAlpha(0)
+    local viewport = face.viewport
+    face.box = Ellesmere:Box(skin, viewport, face.chrome, true)
+    face.disc = Ellesmere:Disc(skin, face, viewport)
+    Face.SetBadge(face, nil)
+    Face.Fit(face)
+end
+
+--- In EllesmereUI's look, a face round whatever it shows: a creature, an icon, the book. Only a 3D
+--- model (viewport.active "model", drawn when no face could be captured), which no mask cuts, keeps
+--- the square.
+function Face.Fit(face)
+    if not face.squared then return end
+    local viewport = face.viewport
+    local round = (face.still and face.still:IsShown()) or viewport.active ~= "model"
+    round = round and true or false
+    if face.round ~= round then
+        face.round = round
+        viewport.squareMask = not round
+        Ellesmere.Shape(face.box, face.disc, round)
+    end
+    local static = viewport.active == "static" and viewport.activeFrame or nil
+    -- Each one there: a face may have no still, and ipairs would stop at that gap and skip the
+    -- captured face.
+    for _, texture in pairs({ face.still or false, viewport.texture or false, static or false }) do
+        if texture then StaticPortrait:Mask(viewport, texture) end
+    end
 end
 
 --- `clip`'s speaker in `face.viewport`: the face captured from their unit or creature, else the
@@ -82,6 +120,7 @@ function Face.Show(face, clip)
     if not StaticPortrait:Configure(viewport, clip) then Portrait:Configure(viewport, clip) end
     if viewport.active == "texture" and viewport.texture then StaticPortrait:Mask(viewport, viewport.texture) end
     Face.SetBadge(face, clip and clip.present and clip.present.bullet)
+    Face.Fit(face)
 end
 
 --------------------------------------------------------------------------------
@@ -149,6 +188,7 @@ function Speaker:Draw()
         Portrait:Configure(viewport, { present = { portrait = spec.kind == "model" and spec.fallback or spec } })
         if viewport.texture then StaticPortrait:Mask(viewport, viewport.texture) end
     end
+    Face.Fit(self)
     self:SetScript("OnUpdate", self.waiting and Speaker.Wait or nil)
 end
 

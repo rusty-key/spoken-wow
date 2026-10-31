@@ -114,12 +114,6 @@ function SpokenPlaces:SetupAudio()
 		return
 	end
 
-	-- The Compendium's other tabs show a place's picture above its page too, and reach it through
-	-- Spoken: this namespace is the addon's own.
-	Spoken.PlacePicture = function(_, mapID, key)
-		if self.Picture then return self:Picture(mapID, key) end
-	end
-
 	self.source = Spoken:RegisterSource("places", {
 		title = L.OPT_PAGE_TITLE,
 		addon = ADDON_NAME,
@@ -422,7 +416,7 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		end
 		if clip and clip.file then
 			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. ".mp3",
-				clip.len, pack, clip.file
+				clip.len, pack, clip.file, clip.times
 		end
 	end
 
@@ -449,7 +443,6 @@ local ACTIONS = {
 		anchor = "topright",
 		tooltip = function(tooltip)
 			tooltip:SetText(L.OPT_REPORT_PROBLEM)
-			tooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
 		end,
 		onClick = function(clip)
 			if not clip then
@@ -483,7 +476,7 @@ end
 -- s:{mapID}:{key} -- and it is frozen: it is what the player dedups on, what a report
 -- names, and what audio-history is keyed by.
 function SpokenPlaces:NewLoreSound(mapID, areaKey)
-	local path, length, pack, fileName = self:GetAudioClip(mapID, areaKey)
+	local path, length, pack, fileName, times = self:GetAudioClip(mapID, areaKey)
 	if not path then
 		return nil
 	end
@@ -527,6 +520,8 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 			header = areaKey and (self:GetMapName(zone) or label) or self:GetMapName(self:PlaceAbove(mapID)),
 			label = label,
 			transcript = entry and entry.full,
+			-- Timed to the recording's own words, so not under another language's.
+			timings = entry and language == (pack.language or "enUS") and times or nil,
 			font = font,
 			bullet = "zone",
 			portrait = self:Portrait(mapID),
@@ -575,7 +570,7 @@ end
 -- saying anything at all.
 function SpokenPlaces:DescribeMissingAudio()
 	if #self:GetAudioPacks() == 0 then
-		return "no voice pack installed -- get Spoken Audio: Places to hear the lore read aloud"
+		return "no voice pack installed -- get Spoken Audio: Places and Bosses to hear the lore read aloud"
 	end
 	return "no narration for this entry in the installed voice pack yet"
 end

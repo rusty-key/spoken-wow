@@ -25,12 +25,14 @@ export function buildBooks({ pages, owners }) {
   const byEntry = new Map(pages.map((page) => [page.entry, page]));
 
   // Several objects can open one chain, so owners collapse per first page rather than the
-  // chain being claimed by whichever row happened to be read last.
+  // chain being claimed by whichever row happened to be read last. A page has one owner kind
+  // (`book_page."ownerKind"`), so an owner of the other kind is left out rather than filed
+  // under the wrong one, where its id would name an unrelated item or object.
   const ownersByFirstPage = new Map();
   for (const owner of owners) {
     const existing = ownersByFirstPage.get(owner.firstPage);
     if (existing) {
-      existing.ids.push(owner.id);
+      if (existing.kind === owner.kind) existing.ids.push(owner.id);
       continue;
     }
     ownersByFirstPage.set(owner.firstPage, {

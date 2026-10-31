@@ -2510,6 +2510,10 @@ local function BuildScrollBar(view, parent)
     -- Brighter under the pointer and while held, as the game's thumb is.
     local function Look()
         local alpha = (view.dragging or over) and 1 or 0.8
+        if view.flatThumb then
+            view.flatThumb:SetColorTexture(1, 1, 1, (view.dragging or over) and 0.5 or 0.3)
+            return
+        end
         if pieces then
             for _, piece in ipairs(pieces) do piece:SetAlpha(alpha) end
         else
@@ -2517,6 +2521,10 @@ local function BuildScrollBar(view, parent)
         end
     end
     Look()
+    -- A UI look draws the bar its own way; `repaint` takes the strip it draws for the thumb.
+    if Layout.dressScrollBar then
+        Layout.dressScrollBar(bar, thumb, function(strip) view.flatThumb = strip; Look() end)
+    end
 
     Script(thumb, "OnEnter", function() over = true; Look() end)
     Script(thumb, "OnLeave", function() over = false; Look() end)

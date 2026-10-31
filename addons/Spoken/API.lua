@@ -8,6 +8,37 @@ setfenv(1, SpokenEnv)
 Spoken.API_VERSION = 1
 Spoken.ADDON_VERSION = AddonVersion
 
+-- The shared dungeon data is Forever's, which holds every instance of the Classic-era clients.
+-- The vanilla instances end at map 533; every later one is Season of Discovery's or Forever's own.
+local LAST_VANILLA_DUNGEON = 533
+-- Demon Fall Canyon, Scarlet Enclave and Karazhan Crypts.
+local SOD_DUNGEONS = { [2784] = true, [2856] = true, [2875] = true }
+
+--- Whether the client can have the dungeon instance map `map`.
+---
+--- The data lists instances a client may not have, and the clients without them expose no
+--- C_Map for them, so callers apply this to shared Compendium data themselves.
+function Spoken:IsDungeonOnClient(map)
+    local variant = Version and Version.Variant
+    if variant == "forever" or type(map) ~= "number" or map <= LAST_VANILLA_DUNGEON then
+        return true
+    end
+    return variant == "sod" and SOD_DUNGEONS[map] or false
+end
+
+-- Vanilla's raids and Scarlet Enclave. Season of Discovery turns Blackfathom Deeps, Gnomeregan and
+-- Sunken Temple into raids under their old maps.
+local RAIDS = {
+    [249] = true, [309] = true, [409] = true, [469] = true,
+    [509] = true, [531] = true, [533] = true, [2856] = true,
+}
+local SOD_RAIDS = { [48] = true, [90] = true, [109] = true }
+
+--- Whether the instance map `map` is a raid on this client.
+function Spoken:IsRaid(map)
+    return RAIDS[map] or (Version and Version.Variant == "sod" and SOD_RAIDS[map]) or false
+end
+
 -- The site every module's report, contribute and help links point at. The old hosts
 -- (voiceover.rusty.one, lore.rusty.one) keep redirecting, so changing this breaks no copy
 -- already installed.
@@ -49,7 +80,8 @@ end
 --- Whether the narrator would show a line of the source `key`: a narrator style that shows words,
 --- Show Narrator on, and not off for that source. A text-only line is worth queueing only then.
 function Spoken:ShowsNarratorFor(key)
-    return Addon:PlayerStyle() ~= "none" and Addon:ShowsNarrator({ source = { key = key } }) and true or false
+    return Addon:PlayerStyle() ~= "none" and Addon:ShowsNarrator({ source = Sources:Get(key) or { key = key } })
+        and true or false
 end
 
 function Spoken:GetSource(key)
@@ -86,7 +118,8 @@ end
 --                                             -- and text, for a script the game's font has no
 --                                             -- glyphs for; the player's size stays
 --       timings  = { 0, .42, .61, ... },      -- optional; when each word of the transcript starts,
---                                             -- in seconds, one per Spoken:CaptionWords(transcript)
+--                                             -- in seconds, one per Spoken:CaptionWords(transcript),
+--                                             -- or the same as one string, "0 .42 .61"
 --       bullet   = "quest-accept",            -- a RegisterBullet id
 --       tint     = { r, g, b },               -- optional row tint
 --       portrait = { kind = "model", creatureID = 196 }
@@ -242,7 +275,7 @@ function Spoken:RefreshPlayer()
 end
 
 --- A feature addon's settings page, shown under Spoken's own in the game's settings as `name`,
---- listed in `order` (Quests 1, Gossip 2, Places 3, Readables 4, Bosses 5). Pass the page's SpokenLayout and its
+--- listed in `order` (Quests 1, Gossip 2, Places 3, Readables 4, Bosses 5, World Chatter 5.5, Developer 6, Contribute 7). Pass the page's SpokenLayout and its
 --- scroller to make its rows searchable from Home. Returns a table whose `category` is
 --- filled in once the page is registered, for Settings.OpenToCategory.
 function Spoken:AddSettingsPage(panel, name, order, layout, scroller)
@@ -278,7 +311,8 @@ end
 -- are each module's own to list. tests/lua/packs_test.lua keeps this in step with the pages.
 local CURSEFORGE = "https://www.curseforge.com/wow/addons/"
 local RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q="
-local PACK_FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio" }
+local PACK_FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio",
+    bosses = "SpokenBossesAudio" }
 local PACK_PAGES = {
     -- Quests in one folder per language is a GitHub download: on CurseForge a language's quests
     -- are split into packs under other folders.
@@ -293,9 +327,11 @@ local PACK_PAGES = {
     readables = { deDE = "spoken-german-audio-readables", esES = "spoken-spanish-eu-audio-readables", esMX = "spoken-spanish-al-audio-readables",
         frFR = "spoken-french-audio-readables", koKR = "spoken-korean-audio-readables", ptBR = "spoken-portuguese-audio-readables",
         ruRU = "spoken-russian-audio-readables", zhCN = "spoken-chinese-simplified-audio-readables", zhTW = "spoken-chinese-traditional-audio-readables" },
+    -- A language's page is added once it has takes.
+    bosses = {},
 }
 
---- The voice pack `module` ("quests", "places" or "readables") has in `lang`, English's aside: the folder
+--- The voice pack `module` ("quests", "places", "readables" or "bosses") has in `lang`, English's aside: the folder
 --- it installs as and the address to get it, or nil where that language has none.
 function Spoken:VoicePack(module, lang)
     local page = PACK_PAGES[module] and PACK_PAGES[module][lang]
@@ -475,7 +511,7 @@ function Spoken:VoiceLanguage()
 end
 
 --- What a module's page says under its voice packs when nothing can be heard: no pack in the voice
---- language exists for `module` ("quests", "places" or "readables"), and If a Voice Is Missing is Stay
+--- language exists for `module` ("quests", "places", "readables" or "bosses"), and If a Voice Is Missing is Stay
 --- Silent. Nil otherwise.
 function Spoken:SilentNote(module)
     local voice = self:VoiceLanguage()

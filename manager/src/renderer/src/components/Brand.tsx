@@ -23,7 +23,7 @@ interface GameImages {
 }
 
 const IMAGES: Record<Flavor, GameImages> = {
-  classic_beta: { logo: logoForever, art: artForever, icon: iconForever, pos: '34% 30%', filter: 'brightness(0.55) saturate(0.8)' },
+  forever: { logo: logoForever, art: artForever, icon: iconForever, pos: '34% 30%', filter: 'brightness(0.55) saturate(0.8)' },
   classic_era: { logo: logoEra, art: artEra, icon: iconEra, pos: '12% 22%', filter: 'brightness(0.85)' },
   anniversary: { logo: logoAnniversary, art: artAnniversary, icon: iconAnniversary, pos: '26% 40%', filter: 'brightness(0.8)' }
 }

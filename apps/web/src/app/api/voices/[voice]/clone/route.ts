@@ -12,7 +12,6 @@
  * it would pick whichever came back first.
  */
 import { cloneName } from "@/lib/voices/clone-name";
-import fs from "node:fs/promises";
 
 import { recordActivity } from "@/lib/activity/store";
 import { requireApiKey } from "@/lib/generation/authz";
@@ -20,7 +19,7 @@ import { invalidateStatus } from "@/lib/generation/status";
 import { requireVoiceViewer } from "@/lib/voices/authz";
 import { recordClone } from "@/lib/voices/clones";
 import { addVoice, deleteVoice, listVoices } from "@/lib/voices/elevenlabs";
-import { listSamples, samplePath } from "@/lib/voices/samples";
+import { listSamples, readSample } from "@/lib/voices/samples";
 
 export const dynamic = "force-dynamic";
 
@@ -67,10 +66,11 @@ export async function POST(request: Request, context: Context) {
   }
 
   const clips = await Promise.all(
-    samples.map(async (sample) => ({
-      name: sample.file,
-      data: await fs.readFile(await samplePath(clone, sample.file)),
-    })),
+    samples.map(async (sample) => {
+      const data = await readSample(clone, sample.file);
+      if (!data) throw new Error(`clip ${sample.file} is missing`);
+      return { name: sample.file, data };
+    }),
   );
 
   // Deleted first: ElevenLabs rejects a duplicate name, and a failure here must stop the

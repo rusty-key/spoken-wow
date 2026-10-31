@@ -4,6 +4,7 @@ The store on disk is always mp3; scripts/quests/package-audio.sh stages a transc
 hands that to `build --store`, and that copy is ogg for the packs this project ships. So
 the module's sound paths have to follow the files rather than assume an extension.
 """
+import json
 import os
 import shutil
 
@@ -225,6 +226,32 @@ def test_the_length_table_measures_ogg(tmp_path):
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
 
     assert '["5-accept"] = 0.3' in _sound_length_table(tmp_path)
+
+
+def test_word_times_ship_for_the_clips_a_pack_carries(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    # The gossip clip has times but is not in this store, so its times would be dead weight.
+    with open(os.path.join(store, "word-times.json"), "w", encoding="utf-8") as f:
+        json.dump({"quests/5-accept": "0 0 .42 1.5", "gossip/abc123": "0 .5"}, f)
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    with open(tmp_path / "dist" / "Mod" / "generated" / "word_times_table.lua",
+              encoding="utf-8") as f:
+        lua = f.read()
+    assert "Mod.WordTimesByFileName = " in lua
+    assert '["5-accept"] = "0 0 .42 1.5"' in lua
+    assert "abc123" not in lua
+    assert "generated\\word_times_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["word_times_table"] == 1
+
+
+def test_a_store_without_word_times_ships_an_empty_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    assert report["tableRows"]["word_times_table"] == 0
 
 
 def _toc(tmp_path):

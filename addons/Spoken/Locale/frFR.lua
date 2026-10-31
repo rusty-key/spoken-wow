@@ -29,9 +29,7 @@ L.MIN_MENU_HINT = "Clic droit pour les options de lecture. Glissez le nom de l'i
 L.MIN_SKIP = "Passer la réplique"
 L.MIN_STOP_ALL = "Tout arrêter"
 L.REPLAY = "Rejouer"
-L.STOP_READING_TIP = "Arrête la lecture. Rejouer la reprend depuis le début."
 L.PLAY_NO_VOICE = "Pas encore de voix pour ceci."
-L.REPLAY_READING_TIP = "Reprend la lecture depuis le début."
 L.STOP_REPLAY = "Arrêter ou rejouer"
 L.BIND_PLAYPAUSE = "Arrêter ou rejouer"
 L.SUBTITLE_STOPPED = "Arrêté"
@@ -52,6 +50,7 @@ L.OPT_CONTRIBUTE_TITLE = "Contribuer et signaler"
 L.OPT_HIDE_CONTRIBUTE = "Masquer les boutons Contribuer"
 L.OPT_HIDE_REPORT = "Masquer les boutons Signaler"
 L.OPT_GATHER = "Collecter les répliques"
+L.OPT_GATHER_VIEW = "Afficher les répliques collectées"
 L.OPT_GATHER_SHARE = "Envoyer les répliques collectées"
 L.OPT_GATHER_CLEAR = "Effacer les répliques collectées"
 L.CONTRIBUTE_INTRO = "Spoken n'a pas encore de voix pour ceci, et le texte du jeu est le moyen de l'obtenir.\n\nVous pouvez envoyer juste cette réplique maintenant, ou laisser Spoken collecter en silence, pendant que vous jouez, chaque réplique manquante et chaque réplique qui a une voix mais dont le texte diffère dans votre jeu, et tout envoyer d'un coup quand vous voulez.\n\nRien ne quitte votre jeu à moins que vous le téléversiez vous-même ou laissiez le Spoken Manager l'envoyer pour vous, et vous pouvez arrêter la collecte à tout moment dans les paramètres de Spoken."
@@ -128,6 +127,7 @@ L.SAMPLE_WINDOW_TEXT = "Voici à quoi ressembleront les répliques. Placez la fe
 L.STYLE_PREVIEW = "Aperçu"
 L.STYLE_PREVIEW_HIDE = "Masquer l'aperçu"
 L.OPT_LINKS_TITLE = "Liens"
+L.OPT_LINKS_WEBSITE = "Site web"
 L.OPT_LINKS_TIP = "Cliquez pour sélectionner l'adresse, puis Ctrl+C pour la copier."
 
 -- Modules
@@ -203,6 +203,7 @@ L.OLD_FOLDERS_LATER = "Plus tard"
 L.OPT_GATHER_ROW = "Répliques collectées"
 L.GATHER_OFF = "Collecte désactivée"
 L.GATHER_NONE = "Rien de collecté pour l'instant"
+L.GATHER_VIEW_OLDER_FMT = "%1$d réplique(s) plus ancienne(s) non affichée(s) ici. Elles sont tout de même envoyées."
 L.GATHER_BADGE_FMT = "%1$d prêtes à envoyer"
 
 -- Profiles and starting over

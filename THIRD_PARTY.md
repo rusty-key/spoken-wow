@@ -55,12 +55,13 @@ None of this is the project's to license, and the MIT grant does not reach it.
   **CC BY-SA 4.0**. Re-use of that text carries the same terms, including attribution
   and share-alike. `pipelines/places/tools/scrape.mjs` is what fetches it and records
   which article each line came from.
-- **Boss and dungeon stories** (`addons/Spoken_NPCs/Data/Stories.lua`) are written from
+- **Boss and dungeon stories** (`addons/Spoken_Bosses/Data/Stories.lua`) are written from
   Blizzard's Adventure Guide text and from Warcraft Wiki (**CC BY-SA 4.0**), rewritten
-  into one voice. The file is committed;
-  `pipelines/places/tools/build-boss-stories.mjs`, `boss-history.mjs` and
-  `assemble-boss-stories.mjs` make it, and `apply-boss-stories.mjs` writes it. Where the guide has no text
-  for a boss, the story is that boss's History section on Warcraft Wiki, kept to Classic.
+  into one voice. The stories live in the `boss_line` table, and the file is exported from it
+  and committed. `pipelines/places/tools/build-boss-stories.mjs`, `boss-history.mjs` and
+  `assemble-boss-stories.mjs` gather the source text, and `apply-boss-stories.mjs` records the
+  stories in the table. Where the guide has no text for a boss, the story is that boss's
+  History section on Warcraft Wiki, kept to Classic.
   The Forever-only dungeons' stories come from Forever's quest text (credited below), and the
   checks of the others use the vmangos quest corpus.
 - **Book, letter and in-world text** for Spoken_Readables comes from the same vmangos
@@ -140,6 +141,40 @@ None of this is the project's to license, and the MIT grant does not reach it.
   a Coffee's from [Simple Icons](https://github.com/simple-icons/simple-icons) (CC0), Wago's from
   the logo on addons.wago.io. The logos are trademarks of GitHub, Inc., Discord Inc., Overwolf
   (CurseForge), Wago and Buy Me a Coffee, used only to link to those sites.
+- **The addon logos on the front page** (`apps/web/public/landing/addons/`) are the icons that
+  DialogueUI and EllesmereUI ship in their own addon folders, and the Leatrix Plus and Leatrix
+  Maps logos (their project logos, saved by Spoken's owner), resized. They belong to those
+  addons' authors and are shown only to say Spoken works with them. The page also draws the
+  Discord, CurseForge, GitHub, Windows, Apple and Linux marks inline: the first five are from
+  Simple Icons (CC0), the Windows mark is drawn for the page; all are their owners' trademarks.
+- **The part icons under "What Spoken voices"** (`apps/web/public/landing/icons/game-*.png`) are
+  the game's own icons, as Spoken's settings page shows them: INV_Scroll_03, UI_Chat,
+  INV_Misc_Map02, INV_Misc_Book_09 and INV_Misc_Head_Dragon_01. They are Blizzard Entertainment's.
+  Scroll and book were exported from the Forever client with wow.export; the other three come from
+  [Warcraft Wiki](https://warcraft.wiki.gg), which hosts them as File:Ui_chat.png,
+  File:Inv_misc_map02.png and File:Inv_misc_head_dragon_01.png.
+  The Places player's icon (`icons/zone-badlands.png`) is the game's Badlands zone icon, exported
+  with wow.export, and so are the Durotar, Mulgore and Arathi Highlands zone icons
+  (`icons/zone-*.png`), all set in the same frame as the others. The Quests and Gossip players
+  show the game's race and sex icons (`icons/voice-*.png`: Achievement_Character_ Dwarf_Male,
+  Human_Female, Human_Male, NightElf_Female, Orc_Male and Tauren_Female) and the Readables players
+  the item icons of their kind (`icons/game-letter.png`, `game-tablet.png`, `game-journal.png`:
+  INV_Letter_15, INV_Misc_StoneTablet_11, INV_Misc_Book_11). They are Blizzard's, taken from
+  [Warcraft Wiki](https://warcraft.wiki.gg), where each is File:<name>.png in lower case.
+- **The players under "What Spoken voices"** (`apps/web/public/landing/voice/*.mp3`, and the text,
+  waveform peaks and word times in `src/components/landing/voices.ts`) are sixteen lines from the
+  voice packs, re-encoded: four quest lines, four gossip lines, four place stories and four
+  writings. The text, and the NPC, quest and place names, are Blizzard's (names from the quest
+  corpus), the audio is Spoken's generated audio (see "The generated audio" below), and the word
+  times come from the project's alignment of that audio. The reviewer decides whether they ship.
+- **The front page's key art** (`apps/web/public/landing/hero.jpg`, `art-era.jpg`,
+  `art-anniversary.jpg`) is Blizzard Entertainment's, resized and compressed from the copies on
+  warcraft.wiki.gg. `hero.jpg` is the WoW: Forever key art by Alex Horley, `art-era.jpg` is the left
+  part of the Classic Ragnaros wallpaper by Dmitry Prozorov, and `art-anniversary.jpg` is the
+  BC Classic Anniversary launch key art by Dmitry Prozorov. `apps/web/public/landing/games/` holds
+  the Blizzard game logos and icons shown in the "Fits the way you play" row. The reviewer
+  decides whether the art and logos ship. The page's fonts, Cinzel and Noto Sans, are under the SIL
+  Open Font License 1.1 and are loaded through `next/font`.
 - **Minimal Classic player textures** (`addons/Spoken/Textures/Minimal*.tga`)
   also derive from Blizzard UI artwork. Sources and adaptations are listed in
   [`docs/minimal-classic/ARTWORK.md`](docs/minimal-classic/ARTWORK.md).

@@ -28,6 +28,8 @@ env.Sources:Register("readables", { title = "Spoken Readables", addon = "Spoken_
     packs = function() return { "SpokenReadablesAudio" } end })
 env.Sources:Register("places", { title = "Spoken Places", addon = "Spoken_Places", order = 3,
     packs = function() return { "SpokenPlacesAudio" } end })
+env.Sources:Register("bosses", { title = "Spoken Bosses", addon = "Spoken_Bosses", order = 5,
+    packs = function() return { "SpokenBossesAudio" } end })
 _G.Spoken:RegisterOptionalAction("report", "Report")
 env.Addon:Enable()
 local QuestsPanel = stub.LoadQuestsPanel(QUESTS, VO)
@@ -247,11 +249,6 @@ for _, control in ipairs(Controls(pages[1].layout)) do
 end
 Expect("Spoken's page lists the Unlock switches in the order of the Compendium's tabs: Quests, Places, Readables, Bosses",
     table.concat(unlocks, "|"), "Unlock Unstarted Quests|Unlock Undiscovered Places|Unlock Unfound Readables|Unlock Unfound Bosses")
-local abilityRows = {}
-for _, control in ipairs(Controls(pages[1].layout)) do
-    if Name(control) == "Show Boss Abilities" then table.insert(abilityRows, Name(control)) end
-end
-Expect("...and no Show Boss Abilities, which is on the Bosses page", #abilityRows, 0)
 
 ---------------------------------------------------------------- the Compendium's Text Size
 -- On Spoken's page, after Open Azeroth's Compendium, for every tab; no longer on the Places page.

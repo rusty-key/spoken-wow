@@ -128,7 +128,7 @@ export default function GameData({ pending, script }: { pending: Pending[]; scri
         <p className="text-muted-foreground mt-1 mb-3 text-sm">
           Pick <code>creaturecache.wdb</code> from the client&apos;s{" "}
           <code>Cache/WDB/enUS/</code> folder, e.g.{" "}
-          <code>World of Warcraft/_classic_beta_/Cache/WDB/enUS/creaturecache.wdb</code>. It is
+          <code>World of Warcraft/_forever_/Cache/WDB/enUS/creaturecache.wdb</code>. It is
           read in your browser; only NPC and appearance ids are sent.
         </p>
         <input

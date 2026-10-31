@@ -19,6 +19,7 @@ Era) and 20506 (Anniversary), and the code still runs there, but no new work is 
 | [ADDON.md](ADDON.md) | Settings, languages, how a story is read, the voice packs, reading on discovery |
 | [COMPENDIUM.md](COMPENDIUM.md) | The Places tab, undiscovered places, the dungeon and area tables, the map panel |
 | [LORE.md](LORE.md) | How the story text is built, stored, exported and checked |
+| [BOSSES.md](BOSSES.md) | The boss tables behind Spoken_Bosses and the Lua exported from them |
 | [PICTURES.md](PICTURES.md) | The place pictures and their edge masks |
 | [VOICE.md](VOICE.md) | Voice, the site, the voice packs, releases |
 | [CONTENT.md](CONTENT.md) | Adding a place, a dungeon, a picture or a language, and finding what is missing |

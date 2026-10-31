@@ -14,7 +14,7 @@
  *
  * THE ORDER: the bytes first, under a name that includes their hash, then the row. A crash
  * between the two leaves a file no row names -- unreferenced and harmless -- never a row
- * whose file is missing.
+ * whose file is missing. The same holds for the bucket, where the name is the whole hash.
  *
  * The caller holds the file's lock, `${source}:${file}` (generation/lock.ts), across the
  * whole generation, so that two requests for one line cannot both spend credits. Every
@@ -25,13 +25,15 @@ import "server-only";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
+import { keep, readsBlobs } from "@/lib/blobs/store";
 import { db, query } from "@/lib/db";
 import type { Source } from "@/lib/sections";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { historyDirOf } from "./adapters";
-import { archiveName, writeAtomic } from "./bytes";
+import { archiveName, withLocalCopy } from "./bytes";
+import { encodeForPack } from "./encode";
 import type { Provider } from "@/lib/generation/providers";
 
 /** What a take was made with. Anything unknown is null, which means unknown, not unchanged. */
@@ -62,20 +64,24 @@ export type TakeFields = {
   leadIn?: boolean;
   leadInSec?: number | null;
   createdBy?: string | null;
+  /** One start per word the addon shows, in seconds (lib/generation/word-times.ts). */
+  wordTimes?: number[] | null;
 };
 
 export type Committed = {
   version: number;
   bytes: number;
-  archiveFile: string;
+  /** Null when the bucket is the only store. */
+  archiveFile: string | null;
+  /** Null when the bucket does not hold it. */
+  sha256: string | null;
   durationSec: number | null;
 };
 
 /**
  * Write a new take and make it live.
  *
- * `measure` reads a clip's duration, where a section records one. It is given the archived
- * file.
+ * `measure` may be handed a temporary copy that is gone once this returns.
  */
 export async function commitTake(
   source: Source,
@@ -97,24 +103,32 @@ export async function commitTake(
     [source, file, lang],
   );
 
-  const archiveFile = archiveName(next, data);
-  const archived = path.join(historyDirOf(source, file, lang), archiveFile);
-  await writeAtomic(archived, data);
-  const durationSec = options.measure ? await options.measure(archived) : null;
+  const name = archiveName(next, data);
+  const archived = path.join(historyDirOf(source, file, lang), name);
+  const sha256 = await keep("takes", data, "audio/mpeg", archived);
+  const onDisk = !readsBlobs();
+  const archiveFile = onDisk ? name : null;
 
-  await insertLive({
-    source,
-    file,
-    lang,
-    version: next,
-    fields,
-    bytes: data.byteLength,
-    durationSec,
-    archiveFile,
-    batchId: options.batchId,
-  });
-
-  return { version: next, bytes: data.byteLength, archiveFile, durationSec };
+  const commit = async (clip: string): Promise<Committed> => {
+    const durationSec = options.measure ? await options.measure(clip) : null;
+    await insertLive({
+      source,
+      file,
+      lang,
+      version: next,
+      fields,
+      bytes: data.byteLength,
+      durationSec,
+      archiveFile,
+      sha256,
+      batchId: options.batchId,
+    });
+    // After the row, so the take is live even when its pack encoding fails. Only for a
+    // master in the bucket, which is where a build finds its encoding.
+    if (sha256) await encodeForPack(source, sha256, clip, durationSec);
+    return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
+  };
+  return onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
 }
 
 /** Insert one take and make it the only live one, in one transaction. */
@@ -126,7 +140,8 @@ async function insertLive(input: {
   fields: TakeFields;
   bytes: number;
   durationSec: number | null;
-  archiveFile: string;
+  archiveFile: string | null;
+  sha256: string | null;
   batchId?: string;
 }): Promise<void> {
   const { source, file, lang, version, fields } = input;
@@ -156,9 +171,9 @@ async function insertLive(input: {
           "voice", "narratorVoice", "voiceId", "modelId", "seed", "outputFormat", "settings",
           "characters", "credits", "durationSec", "bytes", "spokenHash", "dictionaryId",
           "dictionaryVersion", "leadIn", "leadInSec", "createdBy", "archiveFile",
-          "provider", "costUsd")
+          "provider", "costUsd", "wordTimes", "sha256")
        values ($1, $2, $3, $4, $5, true, 'generated', $6, $7, $8, $9, $10, $11, $12::jsonb,
-               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
       [
         source,
         lang,
@@ -187,6 +202,8 @@ async function insertLive(input: {
         input.archiveFile,
         fields.provider ?? "elevenlabs",
         fields.costUsd ?? null,
+        fields.wordTimes ?? null,
+        input.sha256,
       ],
     );
     await recordActivity(

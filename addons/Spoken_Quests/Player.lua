@@ -10,7 +10,7 @@ setfenv(1, VoiceOver)
 -- Two sources, one per part of Spoken's page: quests, and gossip (what NPCs say in their gossip
 -- and greeting windows). Spoken switches each on and off and shows each on its own; the queue
 -- below them is shared.
-Player = { source = nil, gossipSource = nil }
+Player = { source = nil, gossipSource = nil, chatterSource = nil }
 
 local TEXTURES = format([[Interface\AddOns\%s\Textures\]], AddonFolder)
 local BOOK = TEXTURES .. "Book"
@@ -34,19 +34,25 @@ local BULLETS = {
     [Enums.SoundEvent.QuestGreeting] = "gossip",
     [Enums.SoundEvent.Gossip]        = "gossip",
     [Enums.SoundEvent.QuestFollowup] = "quest-complete",
+    [Enums.SoundEvent.NPCChatter]    = "gossip",
 }
 
 --------------------------------------------------------------------------------
 -- Reading the queue back
 --------------------------------------------------------------------------------
 
---- Whether a clip is this addon's, quests' or gossip's.
+--- Whether a clip is this addon's: quests', gossip's or World Chatter's.
 function Player:Owns(clip)
-    return clip.source ~= nil and (clip.source == self.source or clip.source == self.gossipSource)
+    return clip.source ~= nil
+        and (clip.source == self.source or clip.source == self.gossipSource or clip.source == self.chatterSource)
 end
 
---- The source that plays a line: gossip's for what NPCs say, quests' for the rest.
+--- The source that plays a line: gossip's for what NPCs say in their windows, World Chatter's for what they
+--- say in the world, quests' for the rest.
 function Player:SourceOf(soundData)
+    if self.chatterSource and soundData.event == Enums.SoundEvent.NPCChatter then
+        return self.chatterSource
+    end
     if self.gossipSource and Enums.SoundEvent:IsGossipEvent(soundData.event) then
         return self.gossipSource
     end
@@ -199,7 +205,6 @@ local REPORT = {
     anchor = "topright",
     tooltip = function(tooltip)
         tooltip:SetText(L.OPT_REPORT_PROBLEM)
-        tooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
     end,
     onClick = function(clip)
         -- The line itself first: by the time Report is clicked the quest window may be shut.
@@ -220,6 +225,8 @@ local ACTIONS = { REPORT, STOP_GOSSIP }
 function Player:Prepare(soundData)
     local event = soundData.event
     local gossip = Enums.SoundEvent:IsGossipEvent(event)
+    -- Chat heard in the world waits its turn as gossip does, and has no dialog window to hold the NPC's own voice.
+    local chatter = event == Enums.SoundEvent.NPCChatter
     -- Log replay clips have no dialog snapshot. Resolve only their acceptance text;
     -- the log's description must never stand in for a reward or progress speech.
     if event == Enums.SoundEvent.QuestAccept and (not soundData.text or soundData.text == "")
@@ -229,17 +236,19 @@ function Player:Prepare(soundData)
     end
     soundData.key = soundData.fileName
     soundData.path = soundData.filePath
-    soundData.priority = gossip and "low" or "normal"
+    soundData.priority = (gossip or chatter) and "low" or "normal"
     -- Cut, so none of the NPC's greeting is heard under the line. With Game Greeting First the NPC
     -- has had its say, so a greeting the wait fell short of fades instead.
-    soundData.cutsGameDialogue = not (GreetingFirst and GreetingFirst:IsOn())
+    soundData.cutsGameDialogue = not chatter and not (GreetingFirst and GreetingFirst:IsOn())
     soundData.present = {
         header = soundData.name or "",
-        label = soundData.title or (event == Enums.SoundEvent.QuestGreeting and L.OPT_GREETING or (gossip and L.OPT_PACK_GOSSIP or "")),
+        label = soundData.title or (event == Enums.SoundEvent.QuestGreeting and L.OPT_GREETING
+            or (gossip and L.OPT_PACK_GOSSIP or (chatter and L.OPT_CHATTER_PAGE_TITLE or ""))),
         bullet = BULLETS[event],
-        tint = gossip and { 1, 1, 1 } or nil,
+        tint = (gossip or chatter) and { 1, 1, 1 } or nil,
         portrait = PortraitFor(soundData),
         actions = ACTIONS,
+        timings = soundData.timings,
     }
     return soundData
 end
@@ -463,6 +472,28 @@ function Player:Setup()
             for _, module in DataModules:GetPresentModules() do
                 if Player:HoldsGossip(module) then table.insert(names, module.Title) end
             end
+            return names
+        end,
+    })
+
+    -- World Chatter is a part of its own. Every pack carries the lookup its recordings resolve through.
+    self.chatterSource = Spoken:RegisterSource("chatter", {
+        title = L.OPT_CHATTER_PAGE_TITLE,
+        addon = AddonFolder,
+        icon = [[Interface\Icons\Spell_Shadow_PsychicHorrors]],
+        -- Between Bosses (5) and the Developer page (6): a page is opened by its order, so it is not shared.
+        order = 5.5,
+        -- How many clips may wait behind the one speaking: a busy hub talks all the time, and a line
+        -- read minutes late is for a bubble that is gone.
+        queueLimit = 3,
+        interClipGap = 0.55,
+        -- The game's own chat bubble shows the words.
+        noNarrator = true,
+        testBeforeQueue = true,
+        profiles = function() return Addon.db end,
+        packs = function()
+            local names = {}
+            for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
             return names
         end,
     })

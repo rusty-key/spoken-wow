@@ -10,14 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AUDIO_STATE_OPTIONS } from "@/lib/audio-state";
-import type { ZoneFacet } from "@/lib/places/catalogue";
-import {
-  activeFilterCount,
-  FIELDS,
-  KINDS,
-  STATES,
-  type LineFilters,
-} from "@/lib/places/filters";
+import type { ExplorerFilters, ExplorerSection } from "@/components/explorer/section";
 
 /**
  * The same controls the quests explorer uses, on this section's fields.
@@ -27,18 +20,14 @@ import {
  * one app that filter differently read as two apps.
  */
 
-/** Where the free-text query is matched. "any" is the idle state, so it is not an option. */
-const FIELD_OPTIONS: ChipOption[] = FIELDS.filter((field) => field !== "any").map((field) => ({
-  value: field,
-  label: `${field} only`,
-}));
-
-const KIND_OPTIONS: ChipOption[] = KINDS.map((kind) => ({ value: kind, label: `${kind}s only` }));
-
-
 type Props = {
-  zones: ZoneFacet[];
-  filters: LineFilters;
+  section: Pick<ExplorerSection, "facetLabel" | "facets" | "labels">;
+  /** The section's own search fields, "any" first, and its kinds where it has any. */
+  fields: readonly string[];
+  kinds: readonly string[];
+  filters: ExplorerFilters;
+  /** How many filters are in force, by the section's own count. */
+  active: number;
   /**
    * Editor and up. Gates the "reported" control only, not the filter behind it: a
    * hand-typed ?fb=open still works for anyone, which is fine because the open counts
@@ -56,13 +45,16 @@ type Props = {
   onQueryChange: (value: string) => void;
   /** Enter, meaning "search now" rather than waiting out the debounce. */
   onQuerySubmit: () => void;
-  onChange: (next: Partial<LineFilters>) => void;
+  onChange: (next: Partial<ExplorerFilters>) => void;
   onClearAll: () => void;
 };
 
 export function SearchBar({
-  zones,
+  section,
+  fields,
+  kinds,
   filters,
+  active,
   canTriage,
   madeBy,
   recordable,
@@ -73,7 +65,11 @@ export function SearchBar({
   onChange,
   onClearAll,
 }: Props) {
-  const active = activeFilterCount(filters);
+  /** Where the free-text query is matched. "any" is the idle state, so it is not an option. */
+  const fieldOptions: ChipOption[] = fields
+    .filter((field) => field !== "any")
+    .map((field) => ({ value: field, label: `${field} only` }));
+  const kindOptions: ChipOption[] = kinds.map((kind) => ({ value: kind, label: `${kind}s only` }));
 
   return (
     <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b py-3">
@@ -81,7 +77,7 @@ export function SearchBar({
         ref={inputRef}
         type="search"
         value={query}
-        placeholder="Search lore, names, zones…"
+        placeholder={section.labels.search}
         aria-label="Search"
         autoFocus
         className="min-w-0 flex-1 basis-64"
@@ -97,33 +93,30 @@ export function SearchBar({
       <FilterChip
         label="search in"
         value={filters.field === "any" ? undefined : filters.field}
-        options={FIELD_OPTIONS}
-        onChange={(field) => onChange({ field: (field ?? "any") as LineFilters["field"] })}
+        options={fieldOptions}
+        onChange={(field) => onChange({ field: (field ?? "any") as ExplorerFilters["field"] })}
       />
 
       <div className="flex w-full flex-wrap items-center gap-2">
-        {/* The count rides in the label rather than in a column of its own: it is what
-            makes one zone worth picking over another. */}
         <FilterChip
-          label="zone"
+          label={section.facetLabel.toLowerCase()}
           value={filters.mapID === undefined ? undefined : String(filters.mapID)}
-          options={zones.map((zone) => ({
-            value: String(zone.mapID),
-            label: `${zone.name} (${zone.lines})`,
-          }))}
+          options={section.facets.map((facet) => ({ value: String(facet.value), label: facet.label }))}
           onChange={(mapID) => onChange({ mapID: mapID === undefined ? undefined : Number(mapID) })}
         />
-        <FilterChip
-          label="kind"
-          value={filters.kind}
-          options={KIND_OPTIONS}
-          onChange={(kind) => onChange({ kind: kind as LineFilters["kind"] })}
-        />
+        {kindOptions.length > 0 && (
+          <FilterChip
+            label="kind"
+            value={filters.kind}
+            options={kindOptions}
+            onChange={(kind) => onChange({ kind: kind as ExplorerFilters["kind"] })}
+          />
+        )}
         <FilterChip
           label="audio"
           value={filters.state}
           options={AUDIO_STATE_OPTIONS}
-          onChange={(state) => onChange({ state: state as LineFilters["state"] })}
+          onChange={(state) => onChange({ state: state as ExplorerFilters["state"] })}
         />
         {/* Read as one range: "generated after X" and "generated before Y". */}
         <DateChip

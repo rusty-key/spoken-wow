@@ -225,6 +225,12 @@ later a re-run rather than a second purchase.
 Durations stay honest for free: `build` computes the length table from the files it just
 copied, and mutagen reads a VBR mp3's Xing header and an Ogg page's granule position alike.
 
+Word times come from the take table, which `build` never reads, so `scripts/audio/sounds.mjs`
+writes the live takes' `wordTimes` into `audio/word-times.json` when it assembles the store, and
+`package-audio.sh` stages that file with the clips. `build` writes `word_times_table.lua`
+(`WordTimesByFileName`) for the clips the pack carries. A pack built without the file ships an
+empty table, and its captions are estimated.
+
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 
 **Icons.** Every addon here carries an `icon.tga` and a `## IconTexture:` line naming
@@ -1389,14 +1395,14 @@ Progress text is kept but never voiced.
 ## Addon Install
 
 ```bash
-python cli-main.py install --force --addons "<WoW folder>/_classic_beta_/Interface/AddOns"
+python cli-main.py install --force --addons "<WoW folder>/_forever_/Interface/AddOns"
 ```
 
 `install` copies a built pack from `dist/` into the AddOns folder. Its default is a macOS
-`_classic_era_` folder, so pass `--addons` for Forever (`_classic_beta_`). It moves any existing
+`_classic_era_` folder, so pass `--addons` for Forever (`_forever_`). It moves any existing
 install aside to `<module>.replaced` rather than deleting it. The addons are `addons/Spoken` and
 the modules beside it, and Quests needs Spoken. To run a checkout's code, the repo's
-`/link-addon` skill links every addon folder into a client (`beta`, the default, is Forever)
+`/link-addon` skill links every addon folder into a client (`forever` is the default)
 and `/reload` loads it. It skips the audio packs, whose mp3s are not in git, so install a pack
 with the command above.
 
@@ -1494,6 +1500,57 @@ files one under the speaker's `npc/{id}` address with the line's id, the way it 
 amber speech bubble and "after quest {id}", and the source filter calls them "follow-up"; it
 cannot say whether the line follows the accept or the turn-in, since the corpus row keeps only
 the quest.
+
+### What NPCs say in the world
+
+The same chat events carry what NPCs say with no quest behind it: a guard's warning, a farmer's complaint, a
+town crier. They are corpus lines of source `chatter`, and `ChatterLines.lua` is their export
+(`make quests-export-chatter-lines`, `tts_cli/chatter_lines.py`, read from the corpus, so run after
+export-corpus), keyed by the speaker's creature entry. `Chatter.lua` reads it. Nothing is armed: a message is looked up by
+the creature id in the event's GUID, so chat from a speaker with no lines costs one table lookup. The text must
+equal a line once `$n`, `$r`, `$c` and `$g...;` are filled in for the local player, so only English clients
+match: on any other the text is translated, and an NPC says more than its exported lines (lines the game
+voices, emotes, quest scripts), so not even an NPC with a single line can be told by who said it. Forever and
+Classic Era send no GUID with NPC chat. There the speaker is found by the name in the event (each speaker's
+`name` in the export) and the text, English clients only, since a translated name matches nothing. Once a line
+matched, a live unit of that entry is looked for among the target, mouseover, soft target and nameplates
+(`Utils:GetSpeakerGUID`), so a split NPC's body or sex can be read as from an event's GUID: those attacking the
+player first, since they are who shouts on aggro, and of a group only one that is all one sex. Same-sex bodies
+of different races (a Twilight Thug) are not told apart, and a speaker off screen takes a visible unit's voice. A message the client hides (a
+dungeon's chat can come as secrets) is not matched. Read Automatically, the quest window's, does not apply:
+World Chatter's own switch is the only one.
+
+A line that a quest's script makes the NPC say (`FollowupLines.lua` lists the same speaker and id) is not
+played here: heard with nothing armed it is another player's quest, and the follow-up part plays it for the
+player's own.
+
+The first lines were seeded once from the vmangos world DB's creature AI and waypoint scripts (a one-off
+import, kept outside the repo): say, yell, whisper and boss whisper that the game does not voice, with a
+broadcast text id and a speaker with a spawn on the open-world maps, since in an instance the client hides the
+GUID. Some lines vmangos says from its C++ scripts, which no table links to a speaker (a Defias Thug's aggro
+talk); those were added by hand. Each speaker got an `npc` row of provenance `display`, so it is listed on
+`/npcs` and `make quests-import-npc-bodies` splits one drawn as several bodies: its lines are then spoken per
+body, like any split NPC's follow-up. From there they are
+edited on the site like any other line. A chat line is named as a follow-up line is, `f:{broadcastTextId}:{voice}`
+(`tts_cli/naming.py`), and shares its file and folder, so the same words in the same voice are one recording;
+its audio ships in the Gossip pack, having no quest to side with. The broadcast text id names the recording:
+`FollowupLookup[speaker][id]`, resolved by
+`DataModules:ResolveSoundFile` like any other file, so a pack that has the file plays it and one that has not is
+silent (`chatter-no-recording` in the debug log). A line is played as low priority, as gossip is: only when
+nothing else is being read, and a quest line arriving drops it. At most three lines wait behind the one
+speaking (`queueLimit`). The same line from the same NPC does not play again for two minutes. The narrator never shows these lines (`noNarrator` on the source): the game's chat
+bubble already shows the words, so only the voice is added. `ChatBubble.lua` lights the word being read in that
+bubble's own text, as the captions light it (Spoken:GetCaption and Spoken:WordMarks do the matching): it finds
+the bubble through `C_ChatBubbles` by its text, rewrites it with the word in colour, and puts the text back when
+the line ends or stops. Show Narrator and Highlight Words are the narrator window's and do not apply to it.
+The light waits up to two seconds for the captions to reach a line that a fading window holds back, and a line
+the Stop button holds is not lit. A bubble the client
+forbids (an instance's) or whose text is a secret is left alone.
+
+World Chatter is a part of Spoken of its own (`chatter`, after Bosses on Spoken's page, with a page and a switch beside
+Quests' and Gossip's). `/spq chatter [NPC id]` replays an NPC's lines three seconds apart through the same match
+and play path, the target's when no id is given (with the target's own GUID, so a split NPC plays the body on
+screen), and marks a line with no recording as silent.
 
 ### The Quests tab of Azeroth's Compendium
 
@@ -1631,7 +1688,7 @@ after where it is on its page; zone and group counts include it, and a page's co
 are in progress. The list follows the log while it is open (`QUEST_LOG_UPDATE`,
 `QUEST_ACCEPTED`, `QUEST_REMOVED`, drawn again once a burst is over and only when the log's
 quests changed). The rest are locked unless Unlock Unstarted Quests is on, which Spoken's page
-shows in its Compendium section. The filter menu holds Started Only and Voiced Only, which leaves
+shows in its Compendium section. The filter menu holds Started Only, on until it is turned off (`FoundOnly` unset reads as on; the setting is the account's), and Voiced Only, which leaves
 out the quests no voice pack has the offer or the hand-in of, with any line or banner left with nothing, and counts
 only what it lists. That switch and both filters are kept in
 `SpokenQuestsSettings.global.Compendium`.
@@ -1716,8 +1773,8 @@ shown that a pack voices (its accept line, else its complete line) to `Player:En
 what the queue holds, and leaves the selection and the page as they were; a line already queued
 is not queued again. The page shown with no quest chosen says so.
 
-A zone's, city's, continent's or dungeon's page shows Spoken Places' picture of the place above its
-words where Places has one (`SpokenCompendium.PlacePicture`).
+A zone's, city's, continent's or dungeon's page has no words of its own: its count under the title,
+and the faction's seal. Its story is on the Places tab.
 
 Open in Azeroth's Compendium (`UI/OpenInCompendium.lua`) is Spoken Places' lore-page button for
 quests: the Compendium's tome in the player's round button, opening the tab on the quest with its
@@ -1847,6 +1904,22 @@ artwork under the border art and arrives as a floating label) and mirrored off t
 its size and its line. `QuestOverlayUI:BindPlayButton` is what both kinds of button share; a
 button that says what it does in words rather than in a texture carries a `setPlayState` of its
 own, which is what `SetPlayButtonState` calls instead of swapping the icon.
+
+Play is also on each quest in the objective tracker. The Quests page's Show Play Button section
+switches the two places apart: Quest Log (`QuestLogPlayButton`, which also takes away the log's
+Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in three shapes, so
+`Compatibility.lua` has one adapter for each, registered with `RegisterTrackerUpdater`.
+`QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
+switched and when the setting changes, and a profile change redraws the quest log and the trackers.
+Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
+each block keeps one square button at its title's right. Classic Era's tracker writes each title
+into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
+watched quest's title text to a shown line and puts the round button left of it, so a title some
+other addon rewrites gets no button. Questie draws its own tracker, and its built-in Play answers
+only the retired AI_VoiceOver addon. Each Questie title line gets a separate Spoken button left of
+its minimize button, swept after `TrackerUtils:UpdateVoiceOverPlayButtons`, the last call of
+Questie's layout. A failing adapter is logged and never raises inside the tracker's own update.
+`tests/lua/quest_tracker_adapters_test.lua` covers the Era and Questie adapters.
 
 The web suite runs against a **real Postgres**, because the invariants it protects — archive
 the current take before anything overwrites it, never hand the same file to two jobs — live in

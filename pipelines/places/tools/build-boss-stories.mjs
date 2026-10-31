@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds Data/Stories.lua for Spoken NPCs: each boss's story and each dungeon's.
+// Builds the source text of each boss's story and each dungeon's, in the shape of Data/Stories.lua.
 //
 // Sources, in order:
 //   1. The game's own Adventure Guide (the retail client's JournalEncounter and JournalInstance
@@ -11,31 +11,38 @@
 // SpokenBossStories[instance map][boss key] = the story: a string (English) or { "English", deDE = ..,
 // ... }. The key "_" holds the dungeon's own story. A boss with no text anywhere has no entry.
 //
-// The result is Blizzard's and the wiki's text, not the project's data: it is written for the local build
-// (the Data/Stories.lua of local/game) and kept out of commits to the repository. Credit for it is in
-// THIRD_PARTY.md.
+// The result is Blizzard's and the wiki's text, not the project's data. It goes to
+// build/boss-stories/Stories.lua (gitignored) and Stories.sources.txt beside it, or to --out; never under
+// addons/, whose Data/Stories.lua is exported from the boss_line table (make bosses-export). Credit for it
+// is in THIRD_PARTY.md.
 //
-// With --packets <file> it writes, instead of Stories.lua, the source material of every story: for each boss the
+// With --packets <file> it writes, instead of that, the source material of every story: for each boss the
 // guide's text and the wiki's, to be rewritten into one voice (tools/apply-boss-stories.mjs puts the rewritten
-// text into Stories.lua). The guide and the wiki differ in length and in how they are written; the rewrite is what
+// text into the boss_line table). The guide and the wiki differ in length and in how they are written; the rewrite is what
 // makes the stories read as one.
 //
 // Usage: node tools/build-boss-stories.mjs [--out <file>] [--no-wiki] [--report] [--packets <file>]
 
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 import { STORY_MAX_CHARS, guideFinder, readBosses } from "../../lib/bosses.mjs";
 import { LOCALES, loadDungeons } from "../../lib/dungeons.mjs";
 import { RETAIL_BUILD, wagoTable } from "../../lib/wago.mjs";
-import { ROOT, capParagraphs, creatureTitles, fetchLoreText, isDisambiguation, sourceUrl } from "./lib/wiki.mjs";
-import { renderStories } from "./lib/boss-stories.mjs";
+import { capParagraphs, creatureTitles, fetchLoreText, isDisambiguation, sourceUrl } from "./lib/wiki.mjs";
+import { SCRATCH, outsideAddons, renderStories } from "./lib/boss-stories.mjs";
 
 const args = process.argv.slice(2);
 const value = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
-const OUT = value("--out") ?? join(ROOT, "addons/Spoken_NPCs/Data/Stories.lua");
-
-
+let OUT;
+let PACKETS;
+try {
+  OUT = outsideAddons(value("--out") ?? join(SCRATCH, "Stories.lua"));
+  PACKETS = value("--packets") && outsideAddons(value("--packets"));
+} catch (err) {
+  console.error(`error: ${err.message}`);
+  process.exit(1);
+}
 
 /** The guide's markup out of a text: line breaks kept, colours, icons and spell templates dropped. */
 function clean(text) {
@@ -129,7 +136,7 @@ async function main() {
     }
   }
 
-  if (value("--packets")) {
+  if (PACKETS) {
     const packets = [];
     for (const [n, boss] of bosses.entries()) {
       const wiki = await wikiStory(boss.name);
@@ -143,8 +150,9 @@ async function main() {
       if (guide) packets.push({ map, key: "_", name: dungeonNames.get(map) ?? String(map), dungeon: null, guide, wiki: null, wikiTitle: null });
     }
     process.stdout.write("\n");
-    await writeFile(value("--packets"), JSON.stringify(packets, null, 1));
-    console.log(`${packets.length} packets in ${value("--packets")}`);
+    await mkdir(dirname(PACKETS), { recursive: true });
+    await writeFile(PACKETS, JSON.stringify(packets, null, 1));
+    console.log(`${packets.length} packets in ${PACKETS}`);
     return;
   }
 
@@ -169,6 +177,7 @@ async function main() {
     missing.push(...gaps.map((b) => `${b.map}/${b.name}`));
   }
 
+  await mkdir(dirname(OUT), { recursive: true });
   await writeFile(OUT, renderStories(stories));
   await writeFile(OUT.replace(/\.lua$/, ".sources.txt"), sources.join("\n") + "\n");
   console.log(`${bosses.length} bosses: ${fromGuide} from the Adventure Guide, ${fromWiki} from the wiki, ${missing.length} with none`);

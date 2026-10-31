@@ -84,6 +84,7 @@ describe("finding a take's bytes", () => {
     expect(await takePath("quests", file, 3)).toEqual({
       kind: "file",
       path: path.join(root, "audio-history", "gossip", stem(), "v3-1a2b3c4d.mp3"),
+      prefix: "takes",
     });
   });
 
@@ -94,6 +95,7 @@ describe("finding a take's bytes", () => {
     const archived = {
       kind: "file",
       path: path.join(root, "audio-history", "gossip", stem(), "v2-00ff00ff.mp3"),
+      prefix: "takes",
     };
     expect(await takePath("quests", file, 2)).toEqual(archived);
     expect(await livePath("quests", file)).toEqual(archived);

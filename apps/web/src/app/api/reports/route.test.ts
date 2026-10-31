@@ -141,6 +141,33 @@ describe("POST /api/reports", () => {
     }
   });
 
+  it("files a bosses report against the boss's audio path, and refuses a path no boss owns", async () => {
+    const map = -2;
+    const id = -Math.floor(1e6 + Math.random() * 1e9);
+    const key = `report-${randomUUID().slice(0, 8)}`;
+    await db().query(
+      `insert into "boss_instance" ("map", "kind", "zone", "position") values ($1, 'dungeon', 0, -2)`,
+      [map],
+    );
+    try {
+      await db().query(
+        `insert into "boss" ("id", "map", "key", "position", "encounterIds") values ($1, $2, $3, 0, $4)`,
+        [id, map, key, [id]],
+      );
+
+      expect((await POST(post(valid({ source: "bosses", target: `${map}/nobody-${key}` })))).status).toBe(400);
+      // Exactly '<map>/<slug>': a trailing segment is not the same boss under another address.
+      expect((await POST(post(valid({ source: "bosses", target: `${map}/${key}/extra` })))).status).toBe(400);
+      expect((await POST(post(valid({ source: "bosses", target: `${map}/${key}` })))).status).toBe(200);
+
+      const { rows } = await db().query(`select "lineId", "target" from "report" where "ip" = $1`, [ip]);
+      expect(rows).toEqual([{ lineId: `boss:${map}:${key}`, target: `${map}/${key}` }]);
+    } finally {
+      await db().query(`delete from "boss" where "map" = $1`, [map]);
+      await db().query(`delete from "boss_instance" where "map" = $1`, [map]);
+    }
+  });
+
   it("stores no lineId when the claimed line does not belong to the target", async () => {
     await POST(post(valid({ lineId: "g:not-a-real-line" })));
 

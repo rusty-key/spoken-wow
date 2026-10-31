@@ -27,7 +27,7 @@ import { resolveContribution } from "@/lib/contributions/accept";
 import { closeness, readable, sameLine } from "@/lib/contributions/compare";
 import type { ContributionStatus, Submission } from "@/lib/contributions/contributions";
 import { acceptAsWording, acceptCorrection, type WordingPick } from "@/lib/contributions/correction";
-import { formatEnvelope } from "@/lib/contributions/envelope";
+import { formatEnvelope, isEnvelopeSource } from "@/lib/contributions/envelope";
 import { storeSubmission } from "@/lib/contributions/intake";
 import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/known";
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
@@ -67,10 +67,11 @@ export type ContributeOutcome =
 /** The submission a report's context makes, or why it makes none. */
 export function reportSubmission(report: Report): Submission | string {
   const { context } = report;
-  if (report.source === "places" || !context?.text?.trim()) {
+  const { source } = report;
+  if (source === "places" || !isEnvelopeSource(source) || !context?.text?.trim()) {
     return "This report carries no text from the game.";
   }
-  const envelope = { source: report.source, fields: context.fields, text: context.text };
+  const envelope = { source, fields: context.fields, text: context.text };
   return (
     submissionFrom(envelope, formatEnvelope(envelope), report.body) ??
     "The addon did not say which line this text is."

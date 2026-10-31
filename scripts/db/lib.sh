@@ -32,6 +32,7 @@ corpus_table() {
     quests) echo quest_line ;;
     places) echo lore_line ;;
     readables) echo book_line ;;
+    bosses) echo boss_line ;;
     *) echo "unknown section: $1" >&2; return 1 ;;
   esac
 }

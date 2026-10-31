@@ -4,6 +4,7 @@ Not a record of anything. Every take lives in the site's archive, and this folde
 assembled from the live ones right before a build (scripts/audio/sounds.mjs), under the
 same filenames the addon resolves, so a file here is copied into a data module unchanged.
 """
+import json
 import os
 
 
@@ -16,6 +17,9 @@ SUBFOLDERS = ("quests", "gossip", "followup")
 #: masters, as ElevenLabs made them - but scripts/quests/package-audio.sh stages a transcoded copy
 #: and hands it to `build --store`, and that copy is ogg for the packs this project ships.
 AUDIO_EXTENSIONS = (".mp3", ".ogg")
+#: Each live take's word times, by store-relative stem, packed by sounds.mjs as the addon reads
+#: them: the one thing a build needs that the corpus and the audio cannot give it.
+WORD_TIMES_FILE = "word-times.json"
 
 
 def _walk(directory: str, extensions=(".mp3",)) -> list:
@@ -47,3 +51,12 @@ def audio_extension(store_dir: str) -> str:
             f"{store_dir} holds more than one audio format ({', '.join(sorted(found))}); "
             "a module can ship only one")
     return found.pop() if found else ".mp3"
+
+
+def word_times(store_dir: str) -> dict:
+    """{stem: "0 .42 1.5"} for the takes that have times, empty for a store without the file."""
+    path = os.path.join(store_dir, WORD_TIMES_FILE)
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)

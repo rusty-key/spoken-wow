@@ -43,7 +43,6 @@ L.REASON_READ_ONCE = "Включите «Читать только один ра
 L.REASON_WHOLE_BOOK = "Включите «Читать всю книгу», чтобы пользоваться этим."
 L.OPT_RESET_PAGE_CONFIRM = "Вернуть все настройки раздела «Тексты» к значениям по умолчанию?"
 L.REPORT_PROBLEM = "Сообщить о проблеме"
-L.REPORT_LINE_TIP = "Получить ссылку, чтобы сообщить о неверном чтении, неправильно произнесённом имени или озвучке, не соответствующей странице."
 L.REPORT_LINE_ADDRESS = "Скопируйте этот адрес и откройте его в браузере, чтобы сообщить о проблеме с этой страницей."
 
 -- Azeroth's Compendium: the readables' tab (UI/Readables.lua) and its settings.
@@ -89,7 +88,6 @@ L.GROUP_BATTLEGROUNDS = "Поля боя"
 L.GROUP_DUNGEONS = "Подземелья и рейды"
 L.READABLE_NOT_FOUND = "Вы ещё не нашли это. Откройте это в мире, чтобы прочитать здесь."
 L.OPEN_IN_COMPENDIUM = "Открыть в «Компендиуме Азерота»"
-L.OPEN_READABLE_IN_COMPENDIUM_TIP = "Этот текст в «Компендиуме Азерота», рядом со всеми другими текстами."
 L.FOUND_FMT = "Найдено %1$d из %2$d"
 L.READABLES_IN_FMT = "Расположение: %1$s"
 L.READABLES_MORE_FMT = " и ещё %1$d"

@@ -1,6 +1,8 @@
 <!-- GENERATED from publishers/places/spoken-places-audio.md by scripts/descriptions.mjs. Do not edit by hand. -->
 
-Narrated zone lore for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Places module. This addon is data only — it does nothing on its own.
+Narrated zone lore for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Places module, and narrated boss stories for its Bosses module. This addon is data only — it does nothing on its own.
+
+The CurseForge download holds two folders: `SpokenPlacesAudio`, the zone and subzone lore, and `SpokenBossesAudio`, the boss stories. Boss stories need Spoken 3.7.0 or later.
 
 ## The voice, as of 0.3.0
 
@@ -12,7 +14,7 @@ The **lore text** was rewritten in the same release to describe the world as a v
 
 ## Installing
 
-Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped — Spoken finds packs by folder name.
+Install **Spoken** first; this pack is inert without it. Extract every folder in the download into `Interface/AddOns` and leave the folder names as shipped — Spoken finds packs by folder name.
 
 ## Compatibility
 
@@ -24,4 +26,4 @@ Every one of these lines — and there are a lot of them — costs money to synt
 
 ## Credits
 
-The narration is generated from lore text derived from [warcraft.wiki.gg](https://warcraft.wiki.gg) and licensed CC BY-SA 4.0. Attribution: warcraft.wiki.gg contributors.
+The narration is generated from lore text and boss lore derived from [warcraft.wiki.gg](https://warcraft.wiki.gg) and licensed CC BY-SA 4.0. Attribution: warcraft.wiki.gg contributors.

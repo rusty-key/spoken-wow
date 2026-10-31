@@ -18,6 +18,7 @@ process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
 const { closeDb, db } = await import("@/lib/db");
 const { commitRecording, listRecordings, liveRecordings, recordingPath, removeRecording } = await import("./store");
+const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
 
 const hasFfmpeg = (() => {
   try {
@@ -131,6 +132,36 @@ describe.skipIf(!hasFfmpeg)("a recording", () => {
   it("numbers concurrent uploads of one file apart", async () => {
     const results = await Promise.all([upload(mp3), upload(ogg, OTHER), upload(mp3)]);
     expect(results.map((r) => ("recording" in r ? r.recording.version : 0)).sort()).toEqual([1, 2, 3]);
+  });
+
+  it("records a hash only for a recording the bucket holds, and its name in every mode", async () => {
+    const stored = async () =>
+      (
+        await db().query<{ archiveFile: string; sha256: string | null }>(
+          `select "archiveFile", "sha256" from "recording" where "file" = $1 order by "version" desc limit 1`,
+          [file],
+        )
+      ).rows[0];
+
+    await upload(mp3);
+    expect((await stored()).sha256).toBeNull();
+    const first = await recordingPath("quests", lang, file, 1);
+    if (first.kind !== "file") throw new Error(`no file for v1: ${first.kind}`);
+
+    const bucket = memoryBlobs();
+    const restore = useArchiveForTests(bucket, "r2");
+    try {
+      await upload(ogg);
+      const sha = sha256Of(ogg);
+      const row = await stored();
+      expect(row.sha256).toBe(sha);
+      expect(row.archiveFile).toMatch(/^v2-.*\.ogg$/);
+      expect(bucket.objects.get(`recordings/${sha}`)?.contentType).toBe("audio/ogg");
+      expect(fs.readdirSync(path.dirname(first.path))).toEqual([path.basename(first.path)]);
+      expect(await recordingPath("quests", lang, file, 2)).toEqual({ kind: "blob", key: `recordings/${sha}` });
+    } finally {
+      restore();
+    }
   });
 
   it("leaves the generated takes alone, and is logged", async () => {

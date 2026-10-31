@@ -144,6 +144,8 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
+    function w:LockHighlight() self.highlightLocked = true end
+    function w:UnlockHighlight() self.highlightLocked = false end
     -- A secure button's attributes (Spoken Developer's /reload macro), kept to be read back.
     function w:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
     function w:GetAttribute(key) return self.attributes and self.attributes[key] end
@@ -421,6 +423,8 @@ function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
 function _G.UnitSex() return world.unitSex end
+function _G.UnitIsDead() return false end
+function _G.UnitIsUnit(a, b) return a == b end
 function _G.UnitCreatureType() return world.creatureType end
 -- The mouse UI unless a test turns the gamepad's on: read as "1", every popup an addon raises
 -- unasked would go to chat instead.
@@ -1196,7 +1200,7 @@ function M.LoadSpoken(addonDirectory)
     for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
         "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
-        "UI/MinimalPlayer", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
+        "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
         -- Real LibDeflate, not a hand-faked stub library: Contribute:Encode's round trip through
         -- actual compression is the point of testing it at all.
         "UI/Options", "UI/DialogueUIOptions", "UI/Welcome", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather" }) do
@@ -1447,7 +1451,7 @@ function M.LoadQuestsAlone(addonDirectory)
     return VO
 end
 
---- The quests addon's settings pages, quests' and gossip's (VO.GossipSettingsPanel), which the
+--- The quests addon's settings pages, quests', gossip's and NPC chat's (VO.GossipSettingsPanel), which the
 --- dispatch tests have no use for: their files, on top of an addon already loaded by
 --- LoadQuests or LoadQuestsAlone. Returns the quests page.
 function M.LoadQuestsPanel(addonDirectory, VO)
@@ -1456,6 +1460,7 @@ function M.LoadQuestsPanel(addonDirectory, VO)
     if not VO.DialogueUIBridge then dofile(addonDirectory .. "UI/DialogueUIBridge.lua") end
     dofile(addonDirectory .. "UI/SettingsPanel.lua")
     dofile(addonDirectory .. "UI/GossipSettingsPanel.lua")
+    dofile(addonDirectory .. "UI/ChatterSettingsPanel.lua")
     return VO.SettingsPanel
 end
 

@@ -646,13 +646,14 @@ local function AnyNormalQueued()
     return false
 end
 
--- Why a line from `source` cannot be queued now, or nil: the part is switched off, or the channel
--- is silent and not by our own mute, which is lifted before the line plays.
-local function WhyRefused(source)
+-- Why `clip` from `source` cannot be queued now, or nil: the part is switched off, or the channel
+-- is silent and not by our own mute, which is lifted before the line plays. A line of words alone
+-- needs no channel, whether its source has no recordings or only this line lacks one.
+local function WhyRefused(source, clip)
     if Sources:IsTurnedOff(source) then
         return L.PART_TURNED_OFF
     end
-    if source.textOnly then
+    if source.textOnly or clip.textOnly then
         return nil
     end
     local channel = source:GetChannel()
@@ -679,7 +680,7 @@ function SoundQueue:Add(clip, source, front)
     if not clip then
         return nil, "no clip"
     end
-    local refused = WhyRefused(source)
+    local refused = WhyRefused(source, clip)
     if refused then
         return nil, refused
     end
@@ -743,7 +744,7 @@ function SoundQueue:PlayNow(clip, source)
         return false
     end
     -- A reason, so a Play button clicked by hand says why nothing happened.
-    local refused = WhyRefused(source)
+    local refused = WhyRefused(source, clip)
     if refused then
         return false, refused
     end

@@ -119,8 +119,15 @@ function SpokenReadables:OnPageFinished(clip)
 	CloseItemText()
 end
 
-frame:SetScript("OnEvent", function(_, name, payload)
-	if name == "ITEM_TEXT_READY" then
+frame:SetScript("OnEvent", function(_, name, payload, second)
+	if name == "ITEM_TEXT_BEGIN" then
+		-- Guarded, as the UI files are: Opener.lua only helps Reader.lua find a page.
+		if SpokenReadables.OnTextBegin then
+			SpokenReadables:OnTextBegin()
+		end
+	elseif name == "PLAYER_SOFT_INTERACT_CHANGED" then
+		SpokenReadables:NoteSoftInteract(second)
+	elseif name == "ITEM_TEXT_READY" then
 		SpokenReadables:OnTextReady()
 		-- Guarded: Contribute.lua is absent where contributing is off.
 		if SpokenReadables.GatherContribution then
@@ -136,6 +143,9 @@ frame:SetScript("OnEvent", function(_, name, payload)
 		end
 	elseif name == "ITEM_TEXT_CLOSED" then
 		SpokenReadables:OnTextClosed()
+		if SpokenReadables.OnOpenerClosed then
+			SpokenReadables:OnOpenerClosed()
+		end
 	elseif name == "ADDON_LOADED" then
 		-- Every addon's load fires this; only this addon's own restores SpokenReadablesSettings.
 		if payload == ADDON_NAME then
@@ -144,6 +154,9 @@ frame:SetScript("OnEvent", function(_, name, payload)
 		end
 	elseif name == "PLAYER_ENTERING_WORLD" then
 		SpokenReadables:SetupSource()
+		if SpokenReadables.SetupOpeners then
+			SpokenReadables:SetupOpeners()
+		end
 		-- Both guarded, and for the same reason: UI/PlayButton.lua and UI/Options.lua are
 		-- the two files this addon reads books without. The .toc loads them, so a guard here
 		-- is not about the shipped addon -- it is what keeps narration working when one of

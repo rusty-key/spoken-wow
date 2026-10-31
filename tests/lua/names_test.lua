@@ -73,17 +73,17 @@ Expect("nothing left behind, nothing found", table.getn(env.Addon:FindOldFolders
 loaded = { SpokenPlayer = true, VoiceOverRedux = true, ZoneLore = true,
     SpokenQuests = true, SpokenZones = true, SpokenBooks = true, Spoken_Books = true,
     Spoken_Writings = true,
-    Spoken_Zones = true,
-    Spoken_Quests = true, Spoken_Places = true, Spoken_Readables = true }
+    Spoken_Zones = true, Spoken_NPCs = true,
+    Spoken_Quests = true, Spoken_Places = true, Spoken_Readables = true, Spoken_Bosses = true }
 local found = env.Addon:FindOldFolders()
 Expect("every old folder is found, and no current one", table.concat(found, " "),
-    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings")
+    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings Spoken_NPCs")
 Expect("...and finding them disables nothing", table.getn(stub.disabledAddOns), 0)
 stub.popups = {}
 local reloads = stub.reloads
 env.Addon:RetireOldFolders()
 Expect("retiring them switches every old folder off for the next login", table.concat(stub.disabledAddOns, " "),
-    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings")
+    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings Spoken_NPCs")
 local popup = stub.popups[1]
 -- A sound pack under its module's old name is old only beside its renamed replacement.
 do
@@ -112,7 +112,7 @@ Expect("...and reloads when taken up on it", stub.reloads, reloads + 1)
 stub.disabledAddOns, stub.popups = {}, {}
 SetCVar("InputDeviceInterfaceStyle", "1")
 env.Addon:RetireOldFolders()
-Expect("under the gamepad UI, old folders are still switched off", table.getn(stub.disabledAddOns), 9)
+Expect("under the gamepad UI, old folders are still switched off", table.getn(stub.disabledAddOns), 10)
 Expect("...with no popup", table.getn(stub.popups), 0)
 SetCVar("InputDeviceInterfaceStyle", "0")
 loaded = {}

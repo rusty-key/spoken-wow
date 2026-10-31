@@ -31,6 +31,8 @@ function localEnv(): Record<string, string> {
     }
   }
 
+  // A checkout set up to try the R2 archive must not have its tests write to the bucket.
+  values.set("SPOKEN_ARCHIVE_STORE", "disk");
   return Object.fromEntries([...values].filter(([key]) => !(key in process.env)));
 }
 

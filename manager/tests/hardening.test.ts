@@ -155,7 +155,7 @@ describe('openableDirectory', () => {
 
 describe('the downloads folder', () => {
   const base = tmpDir()
-  const game = { root: path.join(base, 'World of Warcraft', '_classic_beta_'), addOnsPath: path.join(base, 'World of Warcraft', '_classic_beta_', 'Interface', 'AddOns') }
+  const game = { root: path.join(base, 'World of Warcraft', '_forever_'), addOnsPath: path.join(base, 'World of Warcraft', '_forever_', 'Interface', 'AddOns') }
 
   it('accepts empty (the default), an existing folder and one that can be created', () => {
     expect(checkDownloadsPath('', [game])).toBeNull()

@@ -30,9 +30,7 @@ L.MIN_MENU_HINT = "Clic derecho para opciones de reproducción. Arrastra el nomb
 L.MIN_SKIP = "Omitir línea"
 L.MIN_STOP_ALL = "Detener todo"
 L.REPLAY = "Repetir"
-L.STOP_READING_TIP = "Detiene la lectura. Repetir vuelve a leer desde el principio."
 L.PLAY_NO_VOICE = "Aún no hay voz para esto."
-L.REPLAY_READING_TIP = "Vuelve a leer desde el principio."
 L.STOP_REPLAY = "Detener o repetir"
 L.BIND_PLAYPAUSE = "Detener o repetir"
 L.SUBTITLE_STOPPED = "Detenido"
@@ -53,6 +51,7 @@ L.OPT_CONTRIBUTE_TITLE = "Contribuir e informar"
 L.OPT_HIDE_CONTRIBUTE = "Ocultar botones de Contribuir"
 L.OPT_HIDE_REPORT = "Ocultar botones de Informar"
 L.OPT_GATHER = "Recopilar líneas que faltan"
+L.OPT_GATHER_VIEW = "Mostrar líneas recopiladas"
 L.OPT_GATHER_SHARE = "Cómo enviar las líneas recopiladas"
 L.OPT_GATHER_CLEAR = "Borrar líneas recopiladas"
 L.CONTRIBUTE_INTRO = "Spoken aún no tiene voz para esto, y el texto del juego es el camino para conseguirla.\n\nPuedes enviar solo esta línea ahora, o dejar que Spoken recopile en silencio, mientras juegas, cada línea que falte y cada línea que ya tiene voz pero dice otra cosa en tu juego, y enviarlas todas a la vez cuando quieras.\n\nNada sale de tu juego a menos que lo subas tú mismo o dejes que Spoken Manager lo envíe por ti, y puedes dejar de recopilar en cualquier momento en la configuración de Spoken."
@@ -135,6 +134,7 @@ L.SAMPLE_WINDOW_TEXT = "Así se verán las líneas habladas. Lleva la ventana ad
 L.STYLE_PREVIEW = "Vista previa"
 L.STYLE_PREVIEW_HIDE = "Ocultar"
 L.OPT_LINKS_TITLE = "Enlaces"
+L.OPT_LINKS_WEBSITE = "Sitio web"
 L.OPT_LINKS_TIP = "Haz clic para seleccionar la dirección y luego Ctrl+C para copiarla."
 
 -- Modules
@@ -206,6 +206,7 @@ L.OLD_FOLDERS_LATER = "Más tarde"
 L.OPT_GATHER_ROW = "Líneas recopiladas"
 L.GATHER_OFF = "Sin recopilar"
 L.GATHER_NONE = "Aún no se ha recopilado nada"
+L.GATHER_VIEW_OLDER_FMT = "%1$d línea(s) más antigua(s) no se muestran aquí. Se envían igualmente."
 L.GATHER_BADGE_FMT = "%1$d listas para enviar"
 
 -- Profiles and starting over

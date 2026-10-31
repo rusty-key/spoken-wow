@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  actedFolder,
+  actedFolder, englishFolder, languageFolder,
   changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, MIN_SPOKEN, packsFor,
 } from "./packs.mjs";
 
@@ -195,5 +195,43 @@ test("manager may only be true", () => {
 });
 
 test("every section names the oldest Spoken its packs need", () => {
-  for (const section of ["quests", "places", "readables"]) assert.match(MIN_SPOKEN[section], /^\d+\.\d+\.\d+$/);
+  for (const section of ["quests", "places", "readables", "bosses"]) assert.match(MIN_SPOKEN[section], /^\d+\.\d+\.\d+$/);
+});
+
+test("the bosses pack is SpokenBossesAudio, and a language's is that plus its code", () => {
+  assert.equal(englishFolder("bosses"), "SpokenBossesAudio");
+  assert.equal(`${languageFolder("bosses", null)}_deDE`, "SpokenBossesAudio_deDE");
+  const en = ["bosses", "a.md", { section: "bosses", lang: "enUS", release: "bosses-audio",
+    slug: "spoken-audio-bosses", name: "Spoken Audio: Bosses", manager: "true" }];
+  const de = ["bosses", "b.md", { section: "bosses", lang: "deDE", version: "1.0.0",
+    release: "bosses-audio-deDE", slug: "spoken-german-audio-bosses", name: "Spoken German Audio: Bosses" }];
+  const packs = loadPacks(tree([en, de]));
+  assert.equal(findPack("bosses", "enUS", null, packs).folder, "SpokenBossesAudio");
+  const german = findPack("bosses", "deDE", null, packs);
+  assert.equal(german.folder, "SpokenBossesAudio_deDE");
+  assert.equal(german.tag, "bosses-audio-deDE/v1.0.0");
+  assert.deepEqual(managerFolders(packs), [{ folder: "SpokenBossesAudio", section: "bosses", lang: "enUS" }]);
+});
+
+test("a pack bundledIn another names that pack's CurseForge project and has none of its own", () => {
+  const bosses = { section: "bosses", lang: "enUS", release: "bosses-audio",
+    slug: "spoken-audio-bosses", name: "Spoken Audio: Bosses" };
+  const packs = loadPacks(tree([placesEn, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-audio-places" }]]));
+  const found = findPack("bosses", "enUS", null, packs);
+  assert.equal(found.bundledIn, "spoken-audio-places");
+  assert.equal(found.curseforge, null);
+  assert.equal(findPack("places", "enUS", null, packs).bundledIn, null);
+  assert.throws(() => loadPacks(tree([placesEn, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-audio-places", curseforge: "1" }]])),
+    /either as its own project or bundledIn another's/);
+  assert.throws(() => loadPacks(tree([placesEn, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-audio-nowhere" }]])),
+    /bundledIn spoken-audio-nowhere is not an enUS pack on CurseForge/);
+  assert.throws(() => loadPacks(tree([placesMx, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-spanish-al-audio-places" }]])),
+    /is not an enUS pack on CurseForge/);
+});
+
+test("the bosses pack's CurseForge home is the English places pack", () => {
+  const packs = loadPacks();
+  const bosses = findPack("bosses", "enUS", null, packs);
+  assert.equal(bosses.bundledIn, findPack("places", "enUS", null, packs).slug);
+  assert.equal(bosses.curseforge, null);
 });

@@ -18,6 +18,7 @@
     <Include file="Options.lua"/>
     <Include file="UI\SettingsPanel.lua"/>
     <Include file="UI\GossipSettingsPanel.lua"/>
+    <Include file="UI\ChatterSettingsPanel.lua"/>
     <Include file="FuzzySearch.lua"/>
     <Include file="QuestOverlayUI.lua"/>
     <Include file="ReportButton.lua"/>
@@ -30,6 +31,9 @@
     <Include file="VoiceOver.lua"/>
     <Include file="FollowupLines.lua"/>
     <Include file="Followup.lua"/>
+    <Include file="ChatterLines.lua"/>
+    <Include file="Chatter.lua"/>
+    <Include file="ChatBubble.lua"/>
 
     <Include file="Compatibility.lua"/>
 </Ui>

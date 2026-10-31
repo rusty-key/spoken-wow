@@ -4,12 +4,22 @@
  *
  * Node-free, like reports.ts: ReportTable is a client component and builds its links here.
  */
-import { SECTIONS, type Section } from "@/lib/contributions/query";
+import type { Source } from "@/lib/sections";
 
 import { groupByLine, type ReportGroup } from "./rows";
 import { STATUSES, type Category, type Report, type Status } from "./reports";
 
-export { SECTIONS, type Section };
+/**
+ * The inbox's tabs. Not the contributions sections: a boss can be reported but not contributed
+ * to, and a report filed under a source with no tab could never be read.
+ */
+export const SECTIONS = ["quests", "readables", "places", "bosses"] as const satisfies readonly Source[];
+
+export type Section = (typeof SECTIONS)[number];
+
+export function isSection(value: unknown): value is Section {
+  return SECTIONS.includes(value as Section);
+}
 
 export type StatusView = Status | "all";
 

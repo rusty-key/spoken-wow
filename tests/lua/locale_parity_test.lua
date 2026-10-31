@@ -40,7 +40,7 @@ local MODULES = {
     { name = "Quests", base = "Spoken_Quests/Strings.lua", dir = "Spoken_Quests/Locale/" },
     { name = "Places", base = "Spoken_Places/Locale/enUS.lua", dir = "Spoken_Places/Locale/" },
     { name = "Readables", base = "Spoken_Readables/Locale/enUS.lua", dir = "Spoken_Readables/Locale/" },
-    { name = "NPCs", base = "Spoken_NPCs/Locale/enUS.lua", dir = "Spoken_NPCs/Locale/", min = 5 },
+    { name = "Bosses", base = "Spoken_Bosses/Locale/enUS.lua", dir = "Spoken_Bosses/Locale/", min = 5 },
     -- TITLE is the addon's name, the same in every language.
     { name = "Developer", base = "Spoken_Developer/Locale/enUS.lua", dir = "Spoken_Developer/Locale/", same = { TITLE = true } },
 }

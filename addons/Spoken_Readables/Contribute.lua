@@ -1,8 +1,9 @@
 -- A page this corpus does not carry, as something that can be sent.
 --
--- The gap is the same one Reader.lua's PageOnScreen answers with nil: a page no lookup
--- finds. On a 1.12-derived corpus that is every post-vanilla book, every locale but
--- one, and custom text a server added itself.
+-- The gap is a page whose words the corpus does not have: one Reader.lua's PageOnScreen
+-- answers with nil, or with a page it only told by what opened it or by most of its words.
+-- On a 1.12-derived corpus that is every post-vanilla book, every locale but one, custom
+-- text a server added itself, and a page the server lays out or words its own way.
 --
 -- MAIL NEVER LEAVES THE CLIENT. IsMail is already how the reader refuses to narrate a letter,
 -- and the reason is stronger here: a letter is a player's own words to another player, and
@@ -151,21 +152,22 @@ function SpokenReadables:ShowReport(pageId)
 	self:ShowCopyLink(url, self.L.REPORT_LINE_ADDRESS)
 end
 
---- Keep the page on screen for later, if the player opted into gathering and the corpus has
---- no id for it. Called on every ITEM_TEXT_READY, which fires for each page turned; the
+--- Keep the page on screen for later, if the player opted into gathering and the corpus lacks
+--- its words. Called on every ITEM_TEXT_READY, which fires for each page turned; the
 --- hide-buttons setting does not apply, and mail is refused by CaptureContribution itself.
 function SpokenReadables:GatherContribution()
 	if not (_G.Spoken and Spoken.Gather and Spoken.Gather:IsEnabled()) then
 		return false
 	end
-	if self:PageOnScreen() then
+	local _, exact = self:PageOnScreen()
+	if exact then
 		return false
 	end
 	local envelope, key = self:CaptureContribution()
 	return envelope and Spoken.Gather:Add(key, envelope) or false
 end
 
---- Whether the contribute button belongs on the page: text to send, and no page id for it.
+--- Whether the contribute button belongs on the page: text to send, and the corpus without it.
 function SpokenReadables:HasContributionGap()
 	if not (_G.Spoken and Spoken.Contribute and Spoken.ShowContribution) then
 		return false
@@ -174,7 +176,8 @@ function SpokenReadables:HasContributionGap()
 	if Spoken.AreContributeButtonsHidden and Spoken:AreContributeButtonsHidden() then
 		return false
 	end
-	if self:PageOnScreen() then
+	local _, exact = self:PageOnScreen()
+	if exact then
 		return false
 	end
 	return self:CaptureContribution() ~= nil

@@ -54,12 +54,36 @@ local function Render(text, sender)
     end
     return Normalize(text)
 end
+Followup.Normalize = Normalize
+Followup.Render = Render
 
 --- Only an English client shows the English text the export holds. Anywhere else a line
 --- can only be told by who said it.
 local function ClientSpeaksExportLanguage()
     local locale = GetLocale and GetLocale()
     return locale == "enUS" or locale == "enGB"
+end
+Followup.ClientSpeaksExportLanguage = ClientSpeaksExportLanguage
+
+local scripted
+
+--- Whether `speaker` says line `id` only because a quest's script makes them: the lines this file
+--- arms after the player's own accept or turn-in. Heard with nothing armed, such a line is another
+--- player's quest.
+function Followup.IsScripted(speaker, id)
+    if not scripted then
+        scripted = {}
+        for _, byQuest in pairs(FollowupLines or {}) do
+            for _, lines in pairs(byQuest) do
+                for _, line in ipairs(lines) do
+                    if line.speaker and line.id then
+                        scripted[line.speaker .. ":" .. line.id] = true
+                    end
+                end
+            end
+        end
+    end
+    return scripted[speaker .. ":" .. id] or false
 end
 
 --- The text a line is matched by, rendered when it is armed: nothing in it changes before
@@ -276,14 +300,19 @@ local function OwnClip(line, npcID, guid)
     end
 end
 
-function Followup:Play(entry, message, sender, guid, npcID, asked)
+Followup.OwnClip = OwnClip
+
+--- `event`: the sound event to play the line as, QuestFollowup when omitted.
+function Followup:Play(entry, message, sender, guid, npcID, asked, event)
+    local chatter = event == Enums.SoundEvent.NPCChatter
     -- Only the line's own recording plays. A borrowed clip - the speaker's gossip, the
     -- quest's accept or complete - says other words in the NPC's voice while the chat shows
     -- this line, which is worse than the silence of a line nobody has voiced yet.
     local clip = OwnClip(entry.line, npcID, guid)
     if not clip then
-        Debug:Record("followup-no-recording", format("No installed pack has a recording of follow-up line %d (NPC %s)",
-            entry.line.id or 0, tostring(entry.line.speaker or npcID or "unknown")))
+        Debug:Record(chatter and "chatter-no-recording" or "followup-no-recording",
+            format("No installed pack has a recording of %s line %d (NPC %s)", chatter and "chat" or "follow-up",
+                entry.line.id or 0, tostring(entry.line.speaker or npcID or "unknown")))
         return false
     end
     local speaker = entry.line.speaker or npcID
@@ -292,9 +321,10 @@ function Followup:Play(entry, message, sender, guid, npcID, asked)
     end
     ---@type SoundData
     local soundData = {
-        event = Enums.SoundEvent.QuestFollowup,
+        event = event or Enums.SoundEvent.QuestFollowup,
         name = sender or (speaker and DataModules:GetObjectName(Enums.GUID.Creature, speaker)) or "",
         title = entry.title,
+        lineKey = entry.lineKey,
         text = message,
         unitGUID = guid,
         unitIsObjectOrItem = false,
@@ -302,6 +332,7 @@ function Followup:Play(entry, message, sender, guid, npcID, asked)
         fileName = clip.fileName,
         filePath = clip.filePath,
         length = clip.length,
+        timings = clip.timings,
         module = clip.module,
         language = clip.language,
     }

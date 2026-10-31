@@ -33,6 +33,7 @@ local function Boot()
     VO.Addon:OnInitialize()
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = lookup,
+        WordTimesByFileName = { ["101-accept"] = "0 .5 1.25", [GREETING_HASH] = "0 .4" },
         GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
         GossipLookupByNPCID = { [1234] = { ["Greetings, traveller."] = GREETING_HASH } },
     })
@@ -63,9 +64,20 @@ Expect("...bullet is the accept bullet", clip.present.bullet, "quest-accept")
 Expect("...portrait is the NPC's model", clip.present.portrait.kind .. ":" .. tostring(clip.present.portrait.creatureID), "model:1234")
 Expect("...with the book as fallback", clip.present.portrait.fallback.texture, BOOK)
 Expect("...and the Report action", clip.present.actions[1].id, "report")
+Expect("...timed by the pack's word times", clip.present.timings, "0 .5 1.25")
 Expect("...the original fields survive for the dispatcher", clip.questID .. "/" .. clip.event, "101/1")
 Expect("the watcher's stage is recorded", VO.Debug.runtime.stage, "playing")
 Expect("the player shows it", env.PlayerFrame.frame.container.name:GetText(), "Innkeeper Test")
+
+---------------------------------------------------------------- word times under other words
+stub.SetLocale("deDE")
+VO, env, Spoken = Boot()
+world.questID = 101
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+Expect("an English recording on a German client plays", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, "101-accept")
+Expect("...untimed, the window's words being German", Spoken:GetCurrent() and Spoken:GetCurrent().present.timings, nil)
+stub.SetLocale("enUS")
 
 ---------------------------------------------------------------- a quest from an object or an item
 -- A wanted poster's line shows a posted notice, never a captured face (the game paints an object
@@ -332,6 +344,7 @@ VO.Addon:GOSSIP_SHOW()
 Expect("the easter egg swaps the path before the player sees it", Spoken:GetCurrent().path,
     [[Interface\AddOns\Spoken_Quests\Sounds\og-thrall.mp3]])
 Expect("...and the length", Spoken:GetCurrent().length, 33.802375)
+Expect("...and drops the pack clip's word times, which are not its", Spoken:GetCurrent().present.timings, nil)
 
 ---------------------------------------------------------------- the quest-log overlay
 VO, env, Spoken = Boot()

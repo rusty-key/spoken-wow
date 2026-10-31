@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Fetches pictures of the bosses from warcraft.wiki.gg, the way fetch.mjs does the zones': for each
-// boss in addons/Spoken_NPCs/Data/Bosses.lua, the wiki page of that name, its pictures ranked by
+// boss in addons/Spoken_Bosses/Data/Bosses.lua, the wiki page of that name, its pictures ranked by
 // whether the file is named for the boss, and the best few downloaded to cache/pictures/raw/. Writes
 // bosses.json (page, file, licence, author) and, with --folders, a folder per boss under
 // <dir>\<dungeon>\<boss>\ with the candidates, the best one marked "[picked] ", for choosing by hand

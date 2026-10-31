@@ -67,6 +67,7 @@ local TYPE_ICONS = {
 local function TypeIcon(type)
 	return { objectOrItem = true, icon = [[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other), bullet = "book" }
 end
+local READABLES_ICON = { objectOrItem = true, icon = C.ICON, bullet = "book" }
 local filter = ""
 
 --------------------------------------------------------------------------------
@@ -769,7 +770,6 @@ local PLAY = {
 	end,
 	-- Browsing: heard here is not heard in the world (Read Only Once), nor found.
 	start = function(id) SpokenReadables:SyncTo(FirstVoiced(id), true) end,
-	tip = L.PLAY_TIP,
 }
 
 -- The page of a readable being read: the one of it in the queue. Nil where none is.
@@ -794,7 +794,6 @@ local REPORT = {
 		if pageId then SpokenReadables:ShowReport(pageId) end
 	end,
 	title = L.REPORT_PROBLEM,
-	tip = L.REPORT_LINE_TIP,
 }
 
 -- Where a readable is, under its title: its first two zones, and how many more. One line: a book
@@ -851,7 +850,7 @@ end
 local function ShowEntry()
 	if not page then return end
 	if not selection then
-		page:Show({ title = L.COMPENDIUM_READABLES, subtitle = Count(Tally(Index().all)) })
+		page:Show({ title = L.COMPENDIUM_READABLES, subtitle = Count(Tally(Index().all)), icon = READABLES_ICON })
 		return
 	end
 	if selection.book then
@@ -898,8 +897,7 @@ local function ShowEntry()
 	if selection.dungeon then
 		DungeonReadables(selection.mapID, selection.dungeon, set)
 		page:Show({ title = DungeonName(selection.dungeon), subtitle = InAndCount(MapName(selection.mapID), Tally(set)),
-			icon = C.PlaceIcon(nil, selection.dungeon),
-			picture = C.PlacePicture({ mapID = selection.mapID, dungeon = selection.dungeon }) })
+			icon = C.PlaceIcon(nil, selection.dungeon) })
 		return
 	end
 	if selection.dungeons then
@@ -941,8 +939,7 @@ local function ShowEntry()
 		ReadablesIn(selection.mapID, set)
 	end
 	page:Show({ title = MapName(selection.mapID), subtitle = InAndCount(MapName(Above(selection.mapID)), Tally(set)),
-		icon = C.PlaceIcon(selection.mapID),
-		picture = C.PlacePicture({ mapID = selection.mapID }) })
+		icon = C.PlaceIcon(selection.mapID) })
 end
 
 --------------------------------------------------------------------------------

@@ -220,6 +220,37 @@ env.Addon:SetPlayerHost(nil)
 _G.DUIQuestFrame = nil
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
+-- Immersion shows the quest, gossip or book in its own box and keeps the interface: the window and
+-- the subtitles step aside while its window is open, and come back once it has closed.
+_G.ImmersionFrame = CreateFrame("Frame")
+_G.ImmersionFrame:Hide()
+env, quests, places = Boot(); F = env.PlayerFrame
+quests:Enqueue(H.Clip({ present = { header = "Thrall", portrait = { kind = "none" } } }))
+F.fader:Step(1)
+_G.ImmersionFrame:Show()
+F:Update()
+F.fader:Step(1)
+Expect("Immersion's window open: the window gone", F.frame:IsShown(), false)
+_G.ImmersionFrame:Hide()
+F:Update()
+F.fader:Step(1)
+Expect("...back once it closes on the line playing", tostring(F.frame:IsShown()) .. " " .. F.frame:GetAlpha(), "true 1")
+_G.ImmersionFrame:Show()
+env.Addon:SetPlayerHost(CreateFrame("Frame"))
+Expect("...and gone with the windows put over DialogueUI, which is not the window open", env.Actions.DialogCovers(), true)
+env.Addon:SetPlayerHost(nil)
+env.Addon:SetPlayerStyle("minimal")
+env.MinimalPlayer:Update()
+Expect("...the small window too", env.MinimalPlayer.wanted and true or false, false)
+env.Addon:SetPlayerStyle("subtitle")
+env.Transcript.clip, env.Transcript.text, env.Transcript.hasStarted = env.SoundQueue:GetCurrentSound(), "Lok'tar.", true
+Expect("...and the subtitles", env.Subtitle:Wanted() and true or false, false)
+_G.ImmersionFrame:Hide()
+Expect("...which come back with it closed", env.Subtitle:Wanted() and true or false, true)
+env.Addon:SetPlayerStyle("classic")
+_G.ImmersionFrame = nil
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
 ---------------------------------------------------------------- the lines waiting are counted, not listed
 env, quests, places = Boot(); F = env.PlayerFrame
 places:AddGate(function() return "in combat" end)

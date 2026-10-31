@@ -76,14 +76,15 @@ export async function publish({ store, packs, distDir, signingKey, minSpoken, la
 
   // Every folder and every requirement is checked before anything is read from or sent to R2.
   for (const { folder, section } of packs) {
+    const build = `${section}-package-audio`;
     if (!PACK_ID.test(folder)) throw new Error(`${folder} is not a pack id the manager accepts`);
-    if (!existsSync(join(distDir, folder))) throw new Error(`dist/${folder} is missing: build it first (make ${section}-package-audio)`);
+    if (!existsSync(join(distDir, folder))) throw new Error(`dist/${folder} is missing: build it first (make ${build})`);
     // The packagers leave dist/<folder>/ beside the zip; a folder older than a zip is a stale build.
     const toc = join(distDir, folder, `${folder}.toc`);
     if (!existsSync(toc)) throw new Error(`dist/${folder} has no ${folder}.toc: the build did not finish`);
     const tocMs = statSync(toc).mtimeMs;
     const newer = readdirSync(distDir).some((n) => n.startsWith(`${folder}-`) && n.endsWith(".zip") && statSync(join(distDir, n)).mtimeMs > tocMs);
-    if (newer) throw new Error(`dist/${folder} is older than its zip: rebuild it (make ${section}-package-audio)`);
+    if (newer) throw new Error(`dist/${folder} is older than its zip: rebuild it (make ${build})`);
     if (compareVersions(minSpoken[section], latestSpoken) > 0) {
       throw new Error(`${folder} needs Spoken ${minSpoken[section]}, but the latest release is ${latestSpoken}`);
     }

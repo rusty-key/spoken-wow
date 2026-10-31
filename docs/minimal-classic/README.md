@@ -9,7 +9,8 @@ The player shows a round native still portrait, the speaker name, the narration
 title and its words, with the progress line along their foot. Stop or Replay,
 Skip and Report are round buttons in the header, as in the DialogueUI window
 and the subtitles. Its Background setting draws it on parchment, the
-default, with dark words, or on the dark rock, with light words. The
+default, with dark words, or on the dark rock, with light words; in EllesmereUI's look it is dark
+whichever is chosen and the setting is hidden. The
 parchment is a band of the spellbook's page shipped with Spoken
 (`Textures/MinimalParchment.tga`); it, the rock and the metal trim are WoW
 artwork. The window fades in and out, and from one line to the next.

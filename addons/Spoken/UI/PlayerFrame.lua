@@ -97,7 +97,7 @@ function PlayerFrame:Initialize()
     end
     self:RefreshConfig()
     Callbacks:Register("AUDIO_CHANGED", function() PlayerFrame:Update() end)
-    Actions.WatchDialogs(function() PlayerFrame:Update() end)
+    Actions.WatchDialogs(function() PlayerFrame:Update(); Subtitle:Update() end)
 end
 
 function PlayerFrame:InitDisplay()
@@ -170,6 +170,7 @@ function PlayerFrame:InitHeader()
     self.stopped, self.count, self.held = TailText(), TailText(), TailText()
     self.stopped:SetText(format("• (%s)", L.SUBTITLE_STOPPED))
     self.tail = Actions.Tail(self.stopped, self.count, self.held)
+    for _, text in ipairs({ container.name, self.stopped, self.count, self.held }) do Ellesmere:Refont(text) end
 
     self.controls = CreateFrame("Frame", nil, container)
     self.controls:SetHeight(1)
@@ -304,6 +305,27 @@ function PlayerFrame:RefreshConfig()
         self.frame.mover:SetPoint("CENTER", self.frame.portrait, "BOTTOMLEFT", 0, 0)
     end
     self:ApplyArt()
+    Ellesmere:Dress(self.frame)
+    -- Only once the shell is on, and a failure here said in chat: the window's scale, strata and
+    -- host below must still be set.
+    if self.frame.spokenEllesmere == true then
+        Ellesmere:When(function(skin)
+            -- White on EllesmereUI's shell, as its windows write their names.
+            self.frame.container.name:SetTextColor(1, 1, 1)
+            -- The shell's own dark behind the words: ApplyArt has just drawn Spoken's box again.
+            self.frame.background:SetAlpha(0)
+            local portrait = self.frame.portrait
+            portrait.border.texture:SetAlpha(0)
+            portrait.background:SetAlpha(0)
+            portrait.box = Ellesmere:Box(skin, portrait, portrait.border, true)
+            -- On the portrait, under what it shows, so Hide Portrait hides it too.
+            portrait.disc = Ellesmere:Disc(skin, portrait, portrait)
+            self:FitPortrait()
+            local level = self.frame:GetFrameLevel() + Ellesmere.OVER_SHELL
+            portrait:SetFrameLevel(level)
+            portrait.border:SetFrameLevel(level + 3)
+        end)
+    end
 
     self.frame.mover:SetShown(not Addon:IsFrameLocked())
     self.frame:SetScale(cfg.FrameScale)
@@ -508,11 +530,29 @@ function PlayerFrame:Update()
         self.labelWidth = (label:GetStringWidth() or 0) + 1
     end
 
-    Portrait:Configure(self.frame.portrait, head)
+    -- In EllesmereUI's look the speaker's captured face where there is one: a face can be cut round,
+    -- a 3D model cannot. Without one, the 3D model as ever, not the book StaticPortrait stands in with.
+    local portrait = self.frame.portrait
+    local captured = Ellesmere:On() and StaticPortrait:Capture(head)
+    if not (captured and StaticPortrait:Configure(portrait, head, captured)) then
+        -- The face of the speaker before is let go: Portrait does not know it.
+        StaticPortrait:Release(portrait)
+        Portrait:Configure(portrait, head)
+    end
+    self:FitPortrait()
     self:ConfigureActions(head)
     self:Layout()
     self:UpdateControls()
     self:UpdateProgress()
+end
+
+--- In EllesmereUI's look the portrait round whatever it shows, but a 3D model, which no mask cuts.
+function PlayerFrame:FitPortrait()
+    local portrait = self.frame and self.frame.portrait
+    if not (portrait and portrait.box) then return end
+    local round = portrait.active ~= "model"
+    Ellesmere.Shape(portrait.box, portrait.disc, round)
+    if round and portrait.active == "texture" and portrait.texture then StaticPortrait:Mask(portrait, portrait.texture) end
 end
 
 --- What the frame is actually doing, for a bug report. A header that is set but drawn nowhere,

@@ -5,7 +5,7 @@ import { clientFilterOf, clientOf, matchesClient } from "./client";
 describe("clientOf", () => {
   it.each([
     ["1.15.7/61582", "era", "Classic Era 1.15.7"],
-    ["1.60.1/69913", "forever", "Forever beta 1.60.1"],
+    ["1.60.1/69913", "forever", "Forever 1.60.1"],
     ["2.5.5/64796", "anniversary", "TBC Anniversary 2.5.5"],
     ["12.0.5/66102", "retail", "Retail 12.0.5"],
     ["1.12.1/5875", "legacy", "Legacy client 1.12.1"],

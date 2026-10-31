@@ -20,7 +20,7 @@
 .PHONY: help db extract import export places lookup deploy deploy-copy status remove \
         import-locale pull-history pull-live pull-recorded package-acted acted sounds sync check-synced package package-audio release-dry release \
         release-audio-dry release-audio icon test \
-        full-release
+        full-release upload upload-dry
 
 PIPELINE := pipelines/readables
 QUESTS   := pipelines/quests
@@ -211,9 +211,16 @@ full-release: require-droplet ## Sync, pull live takes, build and upload the sou
 	@$(MAKE) --no-print-directory -f make/readables.mk sync
 	@$(MAKE) --no-print-directory -f make/readables.mk pull-live LOCALE=$(LOCALE)
 	@$(MAKE) --no-print-directory -f make/readables.mk package-audio LOCALE=$(LOCALE)
-	@./scripts/readables/release.sh --dry-run --lang=$(or $(LOCALE),enUS) audio
-	@./scripts/audio-github-release.sh --dry-run readables $(or $(LOCALE),enUS)
+	@$(MAKE) --no-print-directory -f make/readables.mk upload-dry LOCALE=$(LOCALE)
 	@printf 'Upload the readables pack to CurseForge and GitHub? [y/N] '; \
 	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@$(MAKE) --no-print-directory -f make/readables.mk upload LOCALE=$(LOCALE)
+
+# For a dist/ already built: release-packs.yaml builds and uploads in separate steps.
+upload-dry: ## Show what full-release would upload from dist/ (LOCALE=xx for a language's)
+	@./scripts/readables/release.sh --dry-run --lang=$(or $(LOCALE),enUS) audio
+	@./scripts/audio-github-release.sh --dry-run readables $(or $(LOCALE),enUS)
+
+upload: ## Upload the pack in dist/ as full-release does, building nothing (LOCALE=xx for a language's)
 	@./scripts/readables/release.sh --lang=$(or $(LOCALE),enUS) audio
 	@./scripts/audio-github-release.sh readables $(or $(LOCALE),enUS)

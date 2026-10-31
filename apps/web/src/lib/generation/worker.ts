@@ -27,6 +27,7 @@ import {
 import { regenerateLine, type RegenerateResult } from "./regenerate";
 import { regenerateBookLine } from "@/lib/readables/regenerate";
 import { regenerateZoneLine } from "@/lib/places/regenerate";
+import { regenerateBossLine } from "@/lib/bosses/regenerate";
 import { generationStatus } from "./status";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
@@ -170,6 +171,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     quests: options.regenerate?.quests ?? regenerateLine,
     places: options.regenerate?.places ?? regenerateZoneLine,
     readables: options.regenerate?.readables ?? regenerateBookLine,
+    bosses: options.regenerate?.bosses ?? regenerateBossLine,
   };
 
   const budget = options.budget ?? currentBudget;

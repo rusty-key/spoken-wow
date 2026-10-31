@@ -258,13 +258,38 @@ end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
 -- unable to open a web page.
+local WEBSITE = "https://spoken.rusty.one"
+local function WebsiteURL()
+    local language = Options:ClientLanguage()
+    return language == "enUS" and WEBSITE or WEBSITE .. "/" .. language
+end
+
+local CURSEFORGE = "https://www.curseforge.com/wow/addons/"
+local CURSEFORGE_PAGES = {
+    enUS = "spoken-english",
+    deDE = "spoken-german",
+    esES = "spoken-spanish-eu",
+    esMX = "spoken-spanish-al",
+    frFR = "spoken-french",
+    itIT = "spoken-italian",
+    ptBR = "spoken-portuguese",
+    ruRU = "spoken-russian",
+    koKR = "spoken-korean",
+    zhCN = "spoken-chinese-simplified",
+    zhTW = "spoken-chinese-traditional",
+}
+local function CurseForgeURL()
+    return CURSEFORGE .. (CURSEFORGE_PAGES[Options:ClientLanguage()] or "spoken")
+end
+
 local LINKS = {
+    { name = L.OPT_LINKS_WEBSITE, icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
         url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
         url = "https://discord.gg/HEGUgn6Yf" },
     { name = "CurseForge", icon = [[Interface\AddOns\Spoken\Textures\LinkCurseForge]],
-        url = "https://www.curseforge.com/wow/addons/spoken" },
+        url = CurseForgeURL() },
     { name = "Wago", icon = [[Interface\AddOns\Spoken\Textures\LinkWago]],
         url = "https://addons.wago.io/addons/spoken" },
     { name = "Buy Me a Coffee", icon = [[Interface\AddOns\Spoken\Textures\LinkBuyMeACoffee]],
@@ -342,8 +367,8 @@ function Options:ShowDiagnostics()
 end
 
 --- The ways of showing lines this client can offer, in the order the narrator cards list them.
---- Subtitles Only first, the default; Voice Only last, its card a sound's bars rising and
---- falling, since there is nothing on screen to picture.
+--- Voice Only last, its card a sound's bars rising and falling, since there is nothing on screen
+--- to picture.
 function Options:Styles()
     local styles = { "subtitle", "minimal", "classic" }
     if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end
@@ -493,7 +518,10 @@ local function Build()
             function() return not transcript().WordsOff[key] end,
             function(v) transcript().WordsOff[key] = (not v) or nil end, refreshTranscript)
         Only(row, MarksWords)
-        Only(row, function() return Sources:Get(key) ~= nil end)
+        Only(row, function()
+            local source = Sources:Get(key)
+            return source ~= nil and not source.noNarrator
+        end)
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()
@@ -642,7 +670,7 @@ local function Build()
         { tab = "quests", part = "quests", label = L.OPT_UNLOCK_QUESTS, module = L.OPT_PART_QUESTS },
         { tab = "places", part = "places", label = L.OPT_UNLOCK_PLACES, module = L.OPT_PART_PLACES },
         { tab = "readables", part = "readables", label = L.OPT_UNLOCK_READABLES, module = L.OPT_PART_READABLES },
-        -- Spoken NPCs has no part to turn off: its tab is there while the addon is.
+        -- Spoken Bosses has no part to turn off: its tab is there while the addon is.
         { tab = "bosses", label = L.OPT_UNLOCK_BOSSES },
     }) do
         local row = layout:Checkbox(unlock.label, nil,
@@ -674,10 +702,12 @@ local function Build()
     -- How the window and the subtitles look.
     layout:Section(L.OPT_LOOK_TITLE)
     -- Parchment or Dark, for each window that has a choice: the Small Window's own, and the
-    -- DialogueUI window's, which can also follow DialogueUI's.
+    -- DialogueUI window's, which can also follow DialogueUI's. None in EllesmereUI's look, which
+    -- has its own.
     Only(layout:Dropdown(L.OPT_DUI_THEME, nil, { "parchment", "dark" },
         function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
-        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end), Small)
+        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end),
+        function() return Small() and not Ellesmere:On() end)
     DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
     local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
         function() return transcript().SubtitleShadow end,
@@ -709,7 +739,7 @@ local function Build()
     Requires(progress, function() return not Subtitles() or Narrator() end, L.REASON_NARRATOR)
     -- Forever only, where it matches the game's own frames: every frame Spoken draws, whatever
     -- the style.
-    if Version.IsCamelot then
+    if Version.Variant == "forever" then
         layout:Checkbox(L.OPT_BRONZE_TINT, nil,
             function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
     end
@@ -827,9 +857,14 @@ local function Build()
                 Gather:SetIntroduced()
                 Gather:SetEnabled(v)
             end, function() Options:UpdateRows() end)
+        rows:Button(L.OPT_GATHER_VIEW, 200, function() Spoken:ShowGatheredText() end)
         rows:Columns(2)
         rows:Button(L.OPT_GATHER_SHARE, 200, function() Spoken:ShowGatherInstructions() end)
-        rows:Button(L.OPT_GATHER_CLEAR, 200, function() Gather:Clear(); Options:UpdateRows() end)
+        rows:Button(L.OPT_GATHER_CLEAR, 200, function()
+            Gather:Clear()
+            Spoken:RefreshGatheredText()
+            Options:UpdateRows()
+        end)
         rows:Columns(nil)
         rows:Checkbox(L.OPT_HIDE_CONTRIBUTE, nil,
             function() return Addon.db.profile.Contribute.HideButtons end,

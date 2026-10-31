@@ -48,8 +48,8 @@ end
 
 local ENGLISH = Pack("SpokenPlacesAudio", "enUS", {
     [BOTH] = { file = "en-valley", len = 3 }, [ONLY_ENGLISH] = { file = "en-senjin", len = 3 } })
-ENGLISH.zones[MAP] = { file = "en-durotar", len = 5 }
-local GERMAN = Pack("SpokenPlacesAudio_deDE", "deDE", { [BOTH] = { file = "de-valley", len = 3 } })
+ENGLISH.zones[MAP] = { file = "en-durotar", len = 5, times = "0 .5 1" }
+local GERMAN = Pack("SpokenPlacesAudio_deDE", "deDE", { [BOTH] = { file = "de-valley", len = 3, times = "0 1" } })
 local FRENCH = Pack("SpokenPlacesAudio_frFR", "frFR", { [ONLY_ENGLISH] = { file = "fr-senjin", len = 3 } })
 
 ---------------------------------------------------------------- A. the active pack, then English
@@ -63,15 +63,20 @@ Expect("A. installed voice metadata retains captions before that pack loads", Z:
 Expect("A. unrelated languages do not allocate caption tables", Z:ShouldLoadLanguage("frFR"), false)
 Expect("A. registering captions leaves the lore browser's language alone", Z:GetLore(MAP).full, "English zone lore.")
 Expect("A. zones carry their full text", Z:NewLoreSound(MAP, nil).present.transcript, "English zone lore.")
+Expect("A. ...timed by the take's word times",
+    Z:NewLoreSound(MAP, nil).present.timings, "0 .5 1")
 Voice("deDE")
 Expect("A. captions are in the Text Language, not the voice's: English words under a German voice",
     Z:NewLoreSound(MAP, BOTH).present.transcript, "English valley lore.")
+Expect("A. ...untimed, the German take's times not being those words'", Z:NewLoreSound(MAP, BOTH).present.timings, nil)
 Expect("A. ...and under the English fallback",
     Z:NewLoreSound(MAP, ONLY_ENGLISH).present.transcript, "English village lore.")
 local valley = Z.CaptionLore.enUS.subzones[MAP][BOTH]
 Z.CaptionLore.enUS.subzones[MAP][BOTH] = nil
 Expect("A. a place the Text Language has no words for is captioned in the voice's",
     Z:NewLoreSound(MAP, BOTH).present.transcript, "Deutsche Geschichte.")
+Expect("A. ...and timed by its take, those being the recording's words",
+    Z:NewLoreSound(MAP, BOTH).present.timings, "0 1")
 Z.CaptionLore.enUS.subzones[MAP][BOTH] = valley
 local _, _, pack = Z:GetAudioClip(MAP, BOTH)
 Expect("A. the active pack answers what it has", pack and pack.addon, "SpokenPlacesAudio_deDE")

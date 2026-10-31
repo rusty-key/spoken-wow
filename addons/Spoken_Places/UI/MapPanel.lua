@@ -35,10 +35,17 @@ end
 -- is 22 high and its black frame lies 1 outside the map; the gold border reaches 5 past that.
 local LEATRIX_TITLE, LEATRIX_FRAME, LEATRIX_BORDER = 22, 1, 5
 
+local VERSION = SpokenEnv.Version
+
+local function IsEra()
+	return VERSION.Variant == "era" or VERSION.Variant == "sod"
+end
+
 local function LeatrixFrame()
 	local db = _G.LeaMapsDB
-	return type(db) == "table" and db.SimpleMapFrame ~= "Off" and WorldMapFrame.ScrollContainer ~= nil
-		and C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Leatrix_Maps")
+	-- Spoken's environment has IsAddOnLoaded on every client; the game's own global is gone.
+	return type(db) == "table" and db.SimpleMapFrame ~= "Off"
+		and SpokenEnv.IsAddOnLoaded("Leatrix_Maps")
 end
 
 local edge
@@ -53,6 +60,10 @@ local function FitLeatrixEdge()
 	local out = LEATRIX_FRAME + LEATRIX_BORDER
 	edge:SetPoint("TOPLEFT", map, "TOPLEFT", -out, LEATRIX_TITLE + LEATRIX_FRAME)
 	edge:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", questWidth + out, -out)
+end
+
+local function IsShown(frame)
+	return type(frame) == "table" and frame.IsShown and frame:IsShown()
 end
 
 -- The frame the player sees as the map: the game's border frame, or where Leatrix Maps' simple frame
@@ -70,7 +81,11 @@ local function MapEdge()
 		FitLeatrixEdge()
 		return edge
 	end
-	local border = WorldMapFrame.BorderFrame
+	-- Era's windowed map uses MiniBorderFrame; BorderFrame belongs to the other map size and may be
+	-- hidden.
+	local mini, border = WorldMapFrame.MiniBorderFrame, WorldMapFrame.BorderFrame
+	if IsShown(border) and not IsShown(mini) then return border end
+	if type(mini) == "table" and mini.SetPoint then return mini end
 	if type(border) == "table" and border.SetPoint then return border end
 	return WorldMapFrame
 end
@@ -78,6 +93,10 @@ end
 -- Space between the map's frame and the panel's: a small gap, so the two read as neighbours
 -- rather than one frame.
 local GAP = 2
+-- Era's default border has 12 of clear space on its right: step back over it, so the visible gap is
+-- GAP.
+local ERA_BORDER_CLEAR = 12
+
 -- The action slot border's opening is 36/66 of its image, so the icon fills it at about
 -- BORDER_SIZE * 36 / 66; larger, the border overlaps the icon's edge, smaller leaves a gap.
 local ICON_SIZE = 40
@@ -172,6 +191,16 @@ local function BuildPanel()
 	filigree:SetPoint("TOP", rim, "TOP", 0, 1)
 	rim.filigree = filigree
 	panel.rim = rim
+	-- In EllesmereUI's look, as it draws the map beside it: its shell, and no quest log frame round
+	-- the page.
+	if SpokenCompendium and SpokenCompendium.Ellesmere then
+		SpokenCompendium.Ellesmere(function(skin)
+			skin.Shell(panel)
+			skin.CloseButton(close)
+			SpokenCompendium.EllesmereTitle(skin, panel)
+			rim:SetAlpha(0)
+		end)
+	end
 
 	SpokenPlaces.panel = panel
 end
@@ -364,7 +393,7 @@ end
 function ApplyAnchors()
 	local mapEdge = MapEdge()
 	local tab, reach = SideTabs(mapEdge)
-	local gap = GAP + reach
+	local gap = GAP + reach - ((mapEdge ~= edge and IsEra()) and ERA_BORDER_CLEAR or 0)
 	panel:ClearAllPoints()
 	panel:SetPoint("TOPLEFT", mapEdge, "TOPRIGHT", gap, 0)
 	panel:SetPoint("BOTTOMLEFT", mapEdge, "BOTTOMRIGHT", gap, 0)

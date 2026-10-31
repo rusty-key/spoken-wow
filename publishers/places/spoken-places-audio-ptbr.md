@@ -17,7 +17,7 @@ manager: true
 
 Narrated zone lore for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Places module, in Brazilian Portuguese. This addon is data only — it does nothing on its own.
 
-Spoken Places plays it when Spoken's **Voice Language** is Portuguese. It installs beside the English pack, **[Spoken Audio: Places](https://www.curseforge.com/wow/addons/spoken-audio-places)**, rather than replacing it, so a player who switches languages keeps the narration for both.
+Spoken Places plays it when Spoken's **Voice Language** is Portuguese. It installs beside the English pack, **[Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places)**, rather than replacing it, so a player who switches languages keeps the narration for both.
 
 ## Installing
 

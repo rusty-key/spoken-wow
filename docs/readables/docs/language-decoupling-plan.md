@@ -67,7 +67,7 @@ frame:SetScript("OnEvent", function(_, event)
 end)
 ```
 
-Add `Probe.lua` as the last line of `Spoken_Books.toc`, then symlink this worktree into the client with `/link-addon beta` (and `era` for Era).
+Add `Probe.lua` as the last line of `Spoken_Books.toc`, then symlink this worktree into the client with `/link-addon forever` (and `era` for Era).
 
 - [ ] **Step 2: The user reads three books in Forever and in Era, and pastes the chat lines**
 

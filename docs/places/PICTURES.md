@@ -1,7 +1,7 @@
 # Place pictures
 
-A place can have a picture above its story, on the map panel and in the Compendium. The Quests and
-Readables tabs show a place's picture on that place's page too (`SpokenCompendium.PlacePicture`).
+A place can have a picture above its story, on the map panel and in the Compendium's Places tab.
+The other tabs' pages for a place have no picture: they show the faction's seal.
 Only pictures chosen by hand and reviewed ship, so a place with no picture shows none.
 
 ## From the wiki to a texture

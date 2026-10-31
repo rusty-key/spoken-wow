@@ -176,7 +176,7 @@ terms.
 | 1421-pyrewood-village | Pyrewood Village | [Pyrewood Village.jpg](https://warcraft.wiki.gg/wiki/File:Pyrewood_Village.jpg) |
 | 1421-sepulcher | Sepulcher | [The Sepulcher.jpg](https://warcraft.wiki.gg/wiki/File:The_Sepulcher.jpg) |
 | 1421-shadowfang-keep | Shadowfang Keep | [Shadowfang Keep2.jpg](https://warcraft.wiki.gg/wiki/File:Shadowfang_Keep2.jpg) |
-| 1421-shining-strand | Shining Strand | [Shining Strand.jpg](https://warcraft.wiki.gg/wiki/File:Shining_Strand.jpg) |
+| 1421-shining-strand | The Shining Strand | [Shining Strand.jpg](https://warcraft.wiki.gg/wiki/File:Shining_Strand.jpg) |
 | 1421-skittering-dark | Skittering Dark | [Skittering Dark.jpg](https://warcraft.wiki.gg/wiki/File:Skittering_Dark.jpg) |
 | 1421-south-tides-run | South Tide's Run | [South Tide's Run.jpg](https://warcraft.wiki.gg/wiki/File:South_Tide's_Run.jpg) |
 | 1421-valgans-field | Valgan's Field | [Valgan's Field.jpg](https://warcraft.wiki.gg/wiki/File:Valgan's_Field.jpg) |
@@ -206,7 +206,7 @@ terms.
 | 1423-fungal-vale | Fungal Vale | [The Fungal Vale.jpg](https://warcraft.wiki.gg/wiki/File:The_Fungal_Vale.jpg) |
 | 1423-infectis-scar | Infectis Scar | [The Infectis Scar.jpg](https://warcraft.wiki.gg/wiki/File:The_Infectis_Scar.jpg) |
 | 1423-lake-mereldar | Lake Mereldar | [Lake Mereldar.jpg](https://warcraft.wiki.gg/wiki/File:Lake_Mereldar.jpg) |
-| 1423-lights-hope-chapel | Light's Hope Chapel | [Light's Hope 07.jpg](https://warcraft.wiki.gg/wiki/File:Light's_Hope_07.jpg) |
+| 1423-lights-hope-chapel | Light's Hope Chapel | [Light's hope.jpg](https://warcraft.wiki.gg/wiki/File:Light's_hope.jpg) |
 | 1423-marris-stead | Marris Stead | [Marris stead.jpg](https://warcraft.wiki.gg/wiki/File:Marris_stead.jpg) |
 | 1423-mazraalor | Mazra'Alor | [Mazra'Alor.jpg](https://warcraft.wiki.gg/wiki/File:Mazra'Alor.jpg) |
 | 1423-northdale | Northdale | [Northdale.jpg](https://warcraft.wiki.gg/wiki/File:Northdale.jpg) |
