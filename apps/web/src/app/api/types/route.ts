@@ -10,7 +10,6 @@
  */
 import { recordActivity } from "@/lib/activity/store";
 import { requireAdmin } from "@/lib/generation/authz";
-import type { Lang } from "@/lib/lang";
 import { loadRoster } from "@/lib/voices/roster-store";
 import {
   addFlavor,
@@ -25,13 +24,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const ACTIONS: Record<string, (body: Record<string, unknown>, lang: Lang) => Promise<void>> = {
+const ACTIONS: Record<string, (body: Record<string, unknown>) => Promise<void>> = {
   "add-type": (b) => addType(b.key, b.genders),
   "delete-type": (b) => deleteType(b.key),
   "add-gender": (b) => addGender(b.race, b.gender, b.existing),
   "add-flavor": (b) => addFlavor(b.race, b.gender, b.flavor, b.existing),
   "delete-flavor": (b) => deleteFlavor(b.race, b.gender, b.flavor),
-  "assign-voice": (b, lang) => assignVoice(b.race, b.gender, b.flavor, b.voice, lang),
+  "assign-voice": (b) => assignVoice(b.race, b.gender, b.flavor, b.voice),
 };
 
 export async function POST(request: Request) {
@@ -43,7 +42,7 @@ export async function POST(request: Request) {
   if (!action) return Response.json({ error: "unknown action" }, { status: 400 });
 
   try {
-    await action(body, lang);
+    await action(body);
   } catch (error) {
     if (error instanceof NeedsChoice) {
       return Response.json({ error: error.message, choice: error.choice }, { status: 409 });

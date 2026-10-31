@@ -1,6 +1,6 @@
 /**
- * The types are every team's and each team keeps its own roster over them: an edit of the
- * types reaches every team's roster, a voice assignment only its own.
+ * The types are every team's and each team keeps its own roster over them. In phase 1 every
+ * edit reaches every team's roster, a voice assignment included, so the rosters stay one.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -70,10 +70,20 @@ describe("types across teams", () => {
     expect((await loadRoster("deDE")).hasRace(KEY)).toBe(false);
   });
 
-  it("points one team's combination at a voice without moving another's", async () => {
+  // Phase 2 makes an assignment its own team's alone, and this the other way round.
+  it("points every team's combination at a voice, whichever team assigns it", async () => {
     await addType(KEY, ["male"]);
-    await assignVoice(KEY, "male", null, "narrator-male", "deDE");
+    await assignVoice(KEY, "male", null, "narrator-male");
     expect((await loadRoster("deDE")).voiceFor(KEY, "male", null)).toBe("narrator-male");
+    expect((await loadRoster("enUS")).voiceFor(KEY, "male", null)).toBe("narrator-male");
+  });
+
+  it("gives every team the new voice of a combination's own", async () => {
+    await addType(KEY, ["male"]);
+    await assignVoice(KEY, "male", null, "narrator-male");
+    await asSystem.query(`delete from "voice" where "name" = $1`, [`${KEY}-male`]);
+    await assignVoice(KEY, "male", null, null);
+    expect(await teamsWith(`${KEY}-male`)).toContain(german.team);
     expect((await loadRoster("enUS")).voiceFor(KEY, "male", null)).toBe(`${KEY}-male`);
   });
 });

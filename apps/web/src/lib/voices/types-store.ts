@@ -5,9 +5,10 @@
  * A refusal is a TypesError whose message is shown to the admin as it stands.
  *
  * The types, genders and flavors are every team's, and every team has a roster of voices and
- * assignments over them. An edit of the types changes every team's roster in one transaction
- * (ALL_TEAMS), so no team is left with a type it cannot voice. Pointing a combination at a
- * voice is one team's own choice (assignVoice), made as the team its language is voiced by.
+ * assignments over them. Every edit changes every team's roster in one transaction
+ * (ALL_TEAMS), so no team is left with a type it cannot voice, and the rosters stay the one
+ * roster they were copied from: a site owner's edit on /enUS/voices still reaches every
+ * language. Phase 2 makes the voice assignments each team's own (assignVoice).
  *
  * Every statement on voice and voice_assignment is filtered to the teams the transaction acts
  * for (TEAM_ROWS), and every insert writes a row for each of them (TEAMS_IN_SCOPE), so the
@@ -16,15 +17,13 @@
 import type { PoolClient } from "pg";
 
 import { ALL_TEAMS, TEAM_ROWS, TEAMS_IN_SCOPE, withTeam } from "@/lib/db";
-import type { Lang } from "@/lib/lang";
 
 import { newVoiceName, type Gender } from "./roster";
-import { rosterTeam } from "./roster-store";
 import { GENDERS } from "./voices";
 
 export class TypesError extends Error {}
 
-/** An edit of the types, which every team's roster is made of: as every team. */
+/** An edit of the roster, which every team keeps a copy of: as every team. */
 function asEveryRoster<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
   return withTeam(ALL_TEAMS, work);
 }
@@ -123,7 +122,14 @@ async function assign(
        on conflict do nothing`,
       [name, race, g ?? ""],
     );
-  } else if (!(await exists(client, `select 1 from "voice" where "name" = $1 and ${TEAM_ROWS}`, [name]))) {
+  } else if (
+    await exists(
+      client,
+      `select 1 from (${TEAMS_IN_SCOPE}) t
+        where not exists (select 1 from "voice" v where v."teamId" = t."id" and v."name" = $1)`,
+      [name],
+    )
+  ) {
     throw new TypesError(`${name} is not a voice`);
   }
   await client.query(
@@ -277,19 +283,21 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
   });
 }
 
-/** `voice` null: a new voice of the combination's own. */
+/**
+ * `voice` null: a new voice of the combination's own. In every team's roster, as the types
+ * are: one team's own assignment, and the voice it creates, is phase 2's.
+ */
 export async function assignVoice(
   rawRace: unknown,
   rawGender: unknown,
   rawFlavor: unknown,
   rawVoice: unknown,
-  lang: Lang,
 ): Promise<void> {
   const race = key(rawRace);
   const g = optional(rawGender, gender);
   const flavor = optional(rawFlavor, key);
   const voice = typeof rawVoice === "string" && rawVoice ? rawVoice : null;
-  await withTeam(await rosterTeam(lang), async (client) => {
+  await asEveryRoster(async (client) => {
     await requireType(client, race);
     await assign(client, race, g, flavor, voice);
   });
