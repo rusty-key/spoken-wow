@@ -600,6 +600,16 @@ function Addon:OnInitialize()
         Debug:Record("followup-error", tostring(followupError))
     end
 
+    -- What NPCs say in the world: a failed hook here must not take quest narration down either.
+    local chatterReady, chatterError = pcall(function()
+        if Chatter and Chatter.Setup then
+            Chatter:Setup()
+        end
+    end)
+    if not chatterReady then
+        Debug:Record("chatter-error", tostring(chatterError))
+    end
+
     -- Discover data packs now, but load their multi-megabyte generated Lua
     -- tables after entering the world. Keeping LoadAddOn out of AceAddon's
     -- shared initialization/login stack avoids Hardcore's stricter script

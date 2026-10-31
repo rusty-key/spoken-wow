@@ -11,8 +11,8 @@ import { corpus as questCorpus } from "@/lib/quests/catalogue";
 
 /**
  * The three of lib/line-fields.ts's SOURCES that a quest address can name. `gossip` has no
- * quest to hang an id on and travels as an NPC address instead, and so does `followup`,
- * which has a quest but is neither of its dialogs (lib/reports/line-target.ts).
+ * quest to hang an id on and travels as an NPC address instead, and so do `chatter` and
+ * `followup`, which has a quest but is neither of its dialogs (lib/reports/line-target.ts).
  */
 const QUEST_EVENTS = ["accept", "progress", "complete"] as const;
 

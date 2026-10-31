@@ -11,24 +11,34 @@
  * corpus to do it. That is a server module; this one is imported by a row in the table.
  */
 import type { CorpusLine } from "@/lib/corpus";
+import type { Source } from "@/lib/line-fields";
 
 /**
- * The three sources a quest address can name. Gossip and follow-up lines travel as an NPC
- * address instead: gossip has no quest, and a follow-up line is neither of a quest's two
+ * Which address each source travels as, so a new source fails the build here rather than losing
+ * its report button. Three name a quest. Gossip, chat and follow-up lines travel as an NPC
+ * address instead: gossip and chat have no quest, and a follow-up line is neither of a quest's two
  * dialogs - quest/{id}/complete would resolve to the turn-in text, not to what the NPC said
  * afterwards. Its speaker's address does resolve to it (target.ts matches every line of that
  * NPC), and the lineId the row sends along picks it out of the others.
  */
-const QUEST_EVENTS = new Set(["accept", "progress", "complete"]);
+const ADDRESS: Record<Source, "quest" | "npc"> = {
+  accept: "quest",
+  progress: "quest",
+  complete: "quest",
+  gossip: "npc",
+  followup: "npc",
+  chatter: "npc",
+};
 
 export function targetForLine(
   line: Pick<CorpusLine, "source" | "questId" | "npcId" | "npcType">,
 ): string | null {
-  if (QUEST_EVENTS.has(line.source)) {
+  const address = ADDRESS[line.source];
+  if (address === "quest") {
     // Nothing in the corpus should be a quest line without a quest, but "quest/null/accept"
     // would resolve to nothing while looking like a real report, so it is worth refusing.
     return line.questId === null ? null : `quest/${line.questId}/${line.source}`;
   }
-  if (line.source !== "gossip" && line.source !== "followup") return null;
+  if (address !== "npc") return null;
   return line.npcType === "gameobject" ? `object/${line.npcId}` : `npc/${line.npcId}`;
 }

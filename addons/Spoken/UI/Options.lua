@@ -518,7 +518,10 @@ local function Build()
             function() return not transcript().WordsOff[key] end,
             function(v) transcript().WordsOff[key] = (not v) or nil end, refreshTranscript)
         Only(row, MarksWords)
-        Only(row, function() return Sources:Get(key) ~= nil end)
+        Only(row, function()
+            local source = Sources:Get(key)
+            return source ~= nil and not source.noNarrator
+        end)
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()

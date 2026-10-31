@@ -485,8 +485,11 @@ async function verifyStaged(product: Product, dir: string): Promise<string[]> {
   const names = entries.filter((e) => e.isDirectory()).map((e) => e.name)
   if (names.length === 0 || names.length !== entries.length) throw new PlainError('The zip file does not hold the folders it should, so nothing was installed.')
   if (product.folders) {
-    const missing = product.folders.filter((f) => !names.includes(f))
-    const extra = names.filter((n) => !product.folders!.includes(n))
+    // A release from before the section was renamed holds the old folder instead.
+    const legacy = product.legacy?.folders
+    const expected = legacy && legacy.every((f) => names.includes(f)) ? legacy : product.folders
+    const missing = expected.filter((f) => !names.includes(f))
+    const extra = names.filter((n) => !expected.includes(n))
     if (missing.length > 0 || extra.length > 0) {
       throw new PlainError(
         `The zip file does not hold the expected folders${missing.length ? ` (missing ${missing.join(', ')})` : ''}, so nothing was installed.`

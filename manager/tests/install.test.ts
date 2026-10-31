@@ -137,6 +137,15 @@ describe('installProduct: success', () => {
     expect(listDir(env.addOns)).toEqual([WORK_DIR, ...product.folders!].sort())
   })
 
+  it('installs a release from before the section was renamed, with its old folder', async () => {
+    const env = await setup()
+    const product = productById('places-audio-deDE')!
+    const zip = await yazlZip([{ name: 'SpokenZonesAudio_deDE/SpokenZonesAudio_deDE.toc', data: toc('x', '2.1.1') }, { name: 'SpokenZonesAudio_deDE/a.ogg', data: 'ogg' }])
+    const result = await installProduct(env.game, product, release('places-audio-deDE', '2.1.1', zip, await serveZip(zip)), ctx(env))
+    expect(result.folders).toEqual(['SpokenZonesAudio_deDE'])
+    expect(listDir(env.addOns)).toEqual([WORK_DIR, 'SpokenZonesAudio_deDE'].sort())
+  })
+
   it('moves a folder from another product to the new owner in the record', async () => {
     const env = await setup()
     const all = productById('quests-audio')!

@@ -423,6 +423,8 @@ function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
 function _G.UnitSex() return world.unitSex end
+function _G.UnitIsDead() return false end
+function _G.UnitIsUnit(a, b) return a == b end
 function _G.UnitCreatureType() return world.creatureType end
 -- The mouse UI unless a test turns the gamepad's on: read as "1", every popup an addon raises
 -- unasked would go to chat instead.
@@ -1449,7 +1451,7 @@ function M.LoadQuestsAlone(addonDirectory)
     return VO
 end
 
---- The quests addon's settings pages, quests' and gossip's (VO.GossipSettingsPanel), which the
+--- The quests addon's settings pages, quests', gossip's and NPC chat's (VO.GossipSettingsPanel), which the
 --- dispatch tests have no use for: their files, on top of an addon already loaded by
 --- LoadQuests or LoadQuestsAlone. Returns the quests page.
 function M.LoadQuestsPanel(addonDirectory, VO)
@@ -1458,6 +1460,7 @@ function M.LoadQuestsPanel(addonDirectory, VO)
     if not VO.DialogueUIBridge then dofile(addonDirectory .. "UI/DialogueUIBridge.lua") end
     dofile(addonDirectory .. "UI/SettingsPanel.lua")
     dofile(addonDirectory .. "UI/GossipSettingsPanel.lua")
+    dofile(addonDirectory .. "UI/ChatterSettingsPanel.lua")
     return VO.SettingsPanel
 end
 

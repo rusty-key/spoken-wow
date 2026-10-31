@@ -116,7 +116,12 @@ local gossip = Spoken:GetCurrent()
 Expect("the gossip line is queued", gossip and gossip.fileName, "gossip-hash")
 Expect("...and waits while the NPC speaks", Spoken:IsPlaying(), false)
 Expect("...saying why", gossip and Spoken:GetHeldReason(gossip), VO.L.QUEUE_HELD_GREETING)
-stub.Advance(1.1)
+-- What a nearby NPC says in chat waits too, or it would play in the held line's place and fade the
+-- greeting out.
+VO.Player.chatterSource:Enqueue({ key = "chat-x", path = "chat-x.ogg", length = 2, priority = "low" })
+stub.Advance(0.1)
+Expect("chat from a nearby NPC waits for the greeting as well", Spoken:IsPlaying(), false)
+stub.Advance(1)
 Expect("...and starts once the greeting is over", Spoken:IsPlaying(), true)
 stub.HidePanels()
 stub.FireEvent("GOSSIP_CLOSED")

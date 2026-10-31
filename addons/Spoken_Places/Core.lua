@@ -4,6 +4,11 @@
 
 local ADDON_NAME, SpokenPlaces = ...
 
+-- Other addons reach the module here; docs/places/ADDON.md lists the functions they call.
+-- PlayLore and ShowLoreFor check neither the lock nor the part, so callers check IsLocked and
+-- Spoken:IsPartOn("places") first.
+_G.SpokenPlaces = SpokenPlaces
+
 -- A value the game hands over as a secret, in an instance or in combat, reads as nil.
 local NotSecret = Spoken and Spoken.NotSecret or function(value) return value end
 
