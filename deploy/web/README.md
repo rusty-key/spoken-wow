@@ -270,6 +270,68 @@ against the schema of the release *after* it, or rolling back one version breaks
 a way `rollback.sh` cannot fix. Adding a nullable column is fine; renaming or dropping one
 needs two deploys.
 
+### Teams, deploy 1
+
+The release that ships `0087_team.sql` and the three `0088_team_scope_*.sql` files seeds one
+team per group of languages the same people maintain, and writes each per-team row's team
+on it. It is additive: the release before it keeps working on the new schema. Before
+merging, from a workstation:
+
+1. **Preview the grouping** and confirm it with the people in it:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -f deploy/web/bin/team-grouping.sql
+   ```
+
+   After the deploy, teams are edited, not seeded again. A team's slug is its languages'
+   codes joined by `-`, and the slug check stops at 41 characters, so a group of nine or more
+   languages aborts 0087 and with it the deploy (the previous release keeps serving). Change
+   the grants that put them together first.
+
+2. **Check the languages the rows name.** One that is not a well-formed code (`deDE`)
+   aborts 0087, as `team_language` refuses it; one nobody maintains joins the english team.
+   Both should be expected:
+
+   ```sql
+   select "lang", string_agg("tbl", ' ' order by "tbl") as "tables",
+          case when "lang" !~ '^[a-z]{2}[A-Z]{2}$' then 'malformed: aborts 0087'
+               else 'no maintainers: joins english' end as "outcome"
+     from (
+       select 'language' as "tbl", "code" as "lang" from "language"
+       union select 'take', "lang" from "take" union select 'recording', "lang" from "recording"
+       union select 'take_ack', "lang" from "take_ack" union select 'voice_clone', "lang" from "voice_clone"
+       union select 'fish_reference', "lang" from "fish_reference"
+       union select 'generation_setting_locale', "lang" from "generation_setting_locale"
+       union select 'pronunciation_lexicon_locale', "lang" from "pronunciation_lexicon_locale"
+       union select 'lexicon_change', "lang" from "lexicon_change"
+       union select 'line_ignore', "lang" from "line_ignore" union select 'line_flag', "lang" from "line_flag"
+       union select 'line_issue', "lang" from "line_issue" union select 'report', "lang" from "report"
+       union select 'regeneration_batch', "lang" from "regeneration_batch"
+       union select 'regeneration_job', "lang" from "regeneration_job"
+       union select 'regeneration_pause', "lang" from "regeneration_pause"
+       union select 'activity', "lang" from "activity"
+       union select 'voice_sample', nullif(split_part("clone", '@', 2), '') from "voice_sample"
+     ) l
+    where "lang" is not null and "lang" <> 'enUS'
+      and ("lang" !~ '^[a-z]{2}[A-Z]{2}$'
+           or not exists (select 1 from "language_grant" g
+                           where g."lang" = l."lang"
+                             and g."capability" in ('edit', 'regenerate', 'configure', 'ignore', 'admin')))
+    group by "lang"
+    order by "lang";
+   ```
+
+3. **Pause the queue** from the queue panel, and resume it once the deploy is green. The
+   backfill holds a row lock on every take until it commits, so a take the queue commits
+   meanwhile waits for it.
+
+4. **Merge and let the deploy run.** Expect short locks, one transaction per file. On a copy
+   of the development database (240k takes, 122k activity rows): the columns, 0.1 s, under
+   ACCESS EXCLUSIVE, but only a catalog change -- it does wait for any long query on those
+   tables to finish, and holds every query behind it meanwhile; the backfill, 15 s, row locks
+   only, so reads go on and a write to a row being filled waits; the keys, 1 s, which hold
+   writes, not reads, while the indexes build.
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the
