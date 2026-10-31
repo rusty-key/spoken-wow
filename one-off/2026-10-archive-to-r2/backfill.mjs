@@ -51,8 +51,8 @@ const BASE_LANG = "enUS";
 
 const db = new Pool({ connectionString: need("DATABASE_URL"), max: 4 });
 const r2 = new AwsClient({
-  accessKeyId: need("R2_ACCESS_KEY_ID"),
-  secretAccessKey: need("R2_SECRET_ACCESS_KEY"),
+  accessKeyId: need("SPOKEN_ARCHIVE_ACCESS_KEY_ID"),
+  secretAccessKey: need("SPOKEN_ARCHIVE_SECRET_ACCESS_KEY"),
   service: "s3",
   region: "auto",
 });
@@ -73,8 +73,14 @@ async function put(key, data, contentType) {
   const res = await r2.fetch(`${bucket}/${key}`, {
     method: "PUT",
     body: data,
-    headers: { "content-type": contentType, "cache-control": "public, max-age=31536000, immutable" },
+    // The bucket lock refuses an overwrite, and the key is the bytes' hash.
+    headers: {
+      "content-type": contentType,
+      "cache-control": "public, max-age=31536000, immutable",
+      "if-none-match": "*",
+    },
   });
+  if (res.status === 412) return;
   if (!res.ok) throw new Error(`PUT ${key}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
 

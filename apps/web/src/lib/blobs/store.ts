@@ -92,8 +92,12 @@ export function r2Blobs(env: {
           "content-type": contentType,
           // The key is the content's hash, so whatever is cached under it is never stale.
           "cache-control": "public, max-age=31536000, immutable",
+          // Never an overwrite: the bucket lock refuses one on takes/ and recordings/, and an
+          // object already under this key holds these same bytes.
+          "if-none-match": "*",
         },
       });
+      if (res.status === 412) return void (await res.body?.cancel());
       if (!res.ok) await fail("PUT", key, res);
     },
     async get(key, wanted) {
@@ -174,8 +178,8 @@ export function archive(): BlobStore {
   if (fromEnv) return fromEnv;
   const need = [
     "R2_ACCOUNT_ID",
-    "R2_ACCESS_KEY_ID",
-    "R2_SECRET_ACCESS_KEY",
+    "SPOKEN_ARCHIVE_ACCESS_KEY_ID",
+    "SPOKEN_ARCHIVE_SECRET_ACCESS_KEY",
     "SPOKEN_ARCHIVE_BUCKET",
     "SPOKEN_ARCHIVE_URL",
   ] as const;
@@ -185,8 +189,8 @@ export function archive(): BlobStore {
   }
   fromEnv = r2Blobs({
     accountId: process.env.R2_ACCOUNT_ID!,
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.SPOKEN_ARCHIVE_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.SPOKEN_ARCHIVE_SECRET_ACCESS_KEY!,
     bucket: process.env.SPOKEN_ARCHIVE_BUCKET!,
     publicUrl: process.env.SPOKEN_ARCHIVE_URL!,
   });

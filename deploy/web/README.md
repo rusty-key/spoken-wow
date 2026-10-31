@@ -112,11 +112,12 @@ sealed under it, and AES-GCM offers no way to re-seal a credential nothing can o
 it and every collaborator pastes their key again — recoverable, but they have to be told.
 
 **The audio archive's bucket** comes from `app.env` too, once it is set up
-(`one-off/2026-10-archive-to-r2/`): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
-`R2_SECRET_ACCESS_KEY`, `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL` (its public address) and
+(`one-off/2026-10-archive-to-r2/`): `R2_ACCOUNT_ID`, `SPOKEN_ARCHIVE_ACCESS_KEY_ID` and
+`SPOKEN_ARCHIVE_SECRET_ACCESS_KEY` (a token scoped to the archive bucket alone, never the packs
+channel's), `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL` (its public address) and
 `SPOKEN_ARCHIVE_STORE`. That last one is `disk` until the bucket exists, `dual` while the
-backfill runs, and `r2` after: then the audio routes redirect to the bucket and the volume is
-no longer read or written (`apps/web/src/lib/blobs/store.ts`).
+backfill runs, and `r2` after: then takes redirect to the bucket, recordings, clone clips and
+references stream through the site, and the volume is no longer read or written.
 
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
 (`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its

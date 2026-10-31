@@ -51,6 +51,19 @@ describe("keep", () => {
   });
 });
 
+describe("writing to R2", () => {
+  it("never overwrites, and takes an object already under the key as written", async () => {
+    const conditions: (string | null)[] = [];
+    vi.stubGlobal("fetch", async (request: Request) => {
+      conditions.push(request.headers.get("if-none-match"));
+      return new Response("PreconditionFailed", { status: 412 });
+    });
+    const bucket = r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" });
+    await expect(bucket.put("recordings/x", Buffer.from("same bytes"), "audio/ogg")).resolves.toBeUndefined();
+    expect(conditions).toEqual(["*"]);
+  });
+});
+
 describe("reading a range", () => {
   const text = async (body: ReadableStream<Uint8Array> | null) => (body ? new Response(body).text() : null);
 

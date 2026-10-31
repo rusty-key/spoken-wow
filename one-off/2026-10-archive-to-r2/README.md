@@ -19,8 +19,9 @@ New audio already goes to both places in `dual` mode. This copies what was there
    lock rule on `takes/` and `recordings/` so no key can delete them.
 2. Install `oggenc` on the droplet (`apt install vorbis-tools`), so each quests take is
    encoded when it is committed rather than by the release (`deploy/web/README.md`).
-3. Add to `shared/app.env`: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-   `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL`, and `SPOKEN_ARCHIVE_STORE=dual`. Reload.
+3. Add to `shared/app.env`: `R2_ACCOUNT_ID`, `SPOKEN_ARCHIVE_ACCESS_KEY_ID`,
+   `SPOKEN_ARCHIVE_SECRET_ACCESS_KEY` (a token for this bucket only), `SPOKEN_ARCHIVE_BUCKET`,
+   `SPOKEN_ARCHIVE_URL`, and `SPOKEN_ARCHIVE_STORE=dual`. Reload.
    From here on, every new clip is in both places.
 4. On the droplet:
 
