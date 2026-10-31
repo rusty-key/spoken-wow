@@ -84,19 +84,15 @@ function Chatter:OnChat(event, message, sender, guid, asked)
     if not message then
         return
     end
-    local told = guid ~= nil and guid ~= ""
-    if not told then
-        -- Before the unit scan, so a speaker with no lines still costs one table lookup.
-        if not (sender and SpeakersNamed(sender) and Followup.ClientSpeaksExportLanguage()) then
-            return
-        end
-        guid = Utils:GetSpeakerGUIDByName(sender)
-    end
     local npcID = guid and Utils:GetCreatureIDFromGUID(guid)
-    local line = npcID and self:Match(npcID, message, sender)
-    -- A unit found by name may be another entry of that name than the one that spoke.
-    if not line and not told then
+    local line
+    if npcID then
+        line = self:Match(npcID, message, sender)
+    else
+        -- The name and text tell the entry; a unit of it on screen tells the body, once a line
+        -- matched, so chat nobody voices costs no unit scan.
         npcID, line = self:MatchByName(message, sender)
+        guid = line and Utils:GetSpeakerGUID(npcID) or nil
     end
     if not line then
         return

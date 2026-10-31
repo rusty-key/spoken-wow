@@ -1511,12 +1511,12 @@ the creature id in the event's GUID, so chat from a speaker with no lines costs 
 equal a line once `$n`, `$r`, `$c` and `$g...;` are filled in for the local player, so only English clients
 match: on any other the text is translated, and an NPC says more than its exported lines (lines the game
 voices, emotes, quest scripts), so not even an NPC with a single line can be told by who said it. Forever and
-Classic Era send no GUID with NPC chat. There the speaker is looked for on screen first, a unit of the event's
-name among the target, mouseover, soft target and nameplates (`Utils:GetSpeakerGUIDByName`): the one attacking
-the player, since that is who shouts on aggro, or any of them when all are one sex. Its GUID tells a split
-NPC's body or sex as an event's would. With none found, or a unit of another entry by that name, the speaker
-is found by the name in the event (each speaker's `name` in the export) and the text, English clients only,
-since a translated name matches nothing. A message the client hides (a
+Classic Era send no GUID with NPC chat. There the speaker is found by the name in the event (each speaker's
+`name` in the export) and the text, English clients only, since a translated name matches nothing. Once a line
+matched, a live unit of that entry is looked for among the target, mouseover, soft target and nameplates
+(`Utils:GetSpeakerGUID`), so a split NPC's body or sex can be read as from an event's GUID: those attacking the
+player first, since they are who shouts on aggro, and of a group only one that is all one sex. Same-sex bodies
+of different races (a Twilight Thug) are not told apart, and a speaker off screen takes a visible unit's voice. A message the client hides (a
 dungeon's chat can come as secrets) is not matched. Read Automatically, the quest window's, does not apply:
 World Chatter's own switch is the only one.
 

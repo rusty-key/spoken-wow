@@ -74,8 +74,9 @@ function Utils:GetSexForGUID(unitGUID)
         return
     end
     local token = UnitTokenFromGUID and NotSecret(UnitTokenFromGUID(unitGUID))
-    if token then
-        return NotSecret(UnitSex(token))
+    local sex = token and NotSecret(UnitSex(token))
+    if sex then
+        return sex
     end
     for _, unit in ipairs(SEX_UNITS) do
         if NotSecret(UnitGUID(unit)) == unitGUID then
@@ -89,27 +90,35 @@ for i = 1, 40 do
     table.insert(SPEAKER_UNITS, "nameplate" .. i)
 end
 
---- The speaker's GUID for NPC chat that comes without one (Forever, Classic Era): the unit of that
---- name attacking the player, since that is who shouts on aggro. Failing that, any of them, but only
---- when all are one sex: the sex is what the GUID is wanted for.
----@param name string|nil
----@return string|nil guid
-function Utils:GetSpeakerGUIDByName(name)
-    if not name or not UnitName then
-        return
+-- One more unit into a group: its first GUID, the sex they share, and whether they do not (an
+-- unreadable sex counts as not).
+local function Fold(first, sex, mixed, guid, unitSex)
+    if not first then
+        return guid, unitSex, unitSex == nil
     end
-    local first, sex, mixed = nil, nil, false
+    return first, sex, mixed or unitSex ~= sex
+end
+
+--- A live unit on screen of creature `npcID`, for NPC chat that comes without the speaker's GUID
+--- (Forever, Classic Era). Those attacking the player are judged first, since they are who shouts on
+--- aggro. A group of mixed sex names nobody: the sex is what the GUID is wanted for.
+---@param npcID number
+---@return string|nil guid
+function Utils:GetSpeakerGUID(npcID)
+    local first, sex, mixed, attacker, attackerSex, attackersMixed
     for _, unit in ipairs(SPEAKER_UNITS) do
         local guid = NotSecret(UnitGUID(unit))
-        if guid and NotSecret(UnitName(unit)) == name and not UnitIsPlayer(unit) then
-            if UnitIsUnit and UnitIsUnit(unit .. "target", "player") then
-                return guid
-            end
+        if guid and self:GetCreatureIDFromGUID(guid) == npcID and not UnitIsDead(unit) then
             local unitSex = NotSecret(UnitSex(unit))
-            first = first or guid
-            mixed = mixed or (sex ~= nil and unitSex ~= sex)
-            sex = sex or unitSex
+            if UnitIsUnit(unit .. "target", "player") then
+                attacker, attackerSex, attackersMixed = Fold(attacker, attackerSex, attackersMixed, guid, unitSex)
+            else
+                first, sex, mixed = Fold(first, sex, mixed, guid, unitSex)
+            end
         end
+    end
+    if attacker then
+        return not attackersMixed and attacker or nil
     end
     return not mixed and first or nil
 end
