@@ -37,7 +37,7 @@ const MANAGER_DOWNLOADS = {
   macIntel: `${MANAGER_FILES}-${MANAGER_VERSION}-mac-x64.dmg`,
   linux: `${MANAGER_FILES}-${MANAGER_VERSION}-linux.AppImage`,
 };
-const DISCORD = "https://discord.gg/HEGUgn6Yf";
+const DISCORD = "https://discord.gg/KgeQhjv9Rd";
 
 /** CurseForge's one meta addon per language: Spoken, plus every voice pack in it. */
 const META: Partial<Record<Lang, string>> = {
