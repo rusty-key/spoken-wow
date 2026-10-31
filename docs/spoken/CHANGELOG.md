@@ -8,6 +8,15 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   quest, gossip and book text as it does to the captions, so it types letter by letter, the
   default, or word by word, and Highlight Words lights only the letters typed so far.
   *([anon1231823](https://github.com/anon1231823))*
+- **No more "script ran too long" error after logging in on Hardcore.** Quest sound packs now load
+  one at a time after you enter the world, and a pack that fails to load no longer holds back the
+  ones after it.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Immersion turns its pages with the voice.** While Spoken Quests reads a quest or gossip page in Immersion's
+  talk box, the text shows the part being read and Immersion's own timer waits. When the line ends or is stopped,
+  Immersion goes on as before. *([Aleph-Null-Zero](https://github.com/Aleph-Null-Zero))*
+
+## 3.7.0 — 2026-10-31
 
 - **World Chatter voices what people say out loud in the world.** Guards, farmers and others who talk
   without a quest are matched by who says what, and the line plays when a voice pack has it, only when
@@ -23,6 +32,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   Readables pages list theirs. Play on a boss's page in the Compendium plays its story, and the
   boss still tells it when it falls.
   *([rusty-key](https://github.com/rusty-key))*
+- **Boss stories in your language.** Every story is now written in German, French, Spanish (EU and
+  AL), Portuguese, Russian, Korean and Chinese (Simplified and Traditional), and the Bosses page
+  shows the one for your client, English where it has none.
+  *([anon1231823](https://github.com/anon1231823))*
 - **Places and Readables are reachable by other addons**, through the globals `SpokenPlaces` and
   `SpokenReadables`, as Bosses already is through `SpokenBossesAddon`: an addon that lists a place
   or a book can ask whether Spoken has its story and have it read or shown. Such an addon checks

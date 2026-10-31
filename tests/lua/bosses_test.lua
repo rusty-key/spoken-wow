@@ -236,7 +236,7 @@ Bosses:ShowBosses()
 Shown()
 Expect("with Found Only on and none met in the Eastern Kingdoms, the tab does not land on its banner, which the list leaves out too",
     RowFor("Eastern Kingdoms") == nil and page.title.text ~= "Eastern Kingdoms", true)
-Expect("...the empty Bosses section uses the Compendium icon", page.headFace.speaker.icon, SpokenCompendium.ICON)
+Expect("...the empty Bosses section uses the dragon icon", page.headFace.speaker.icon, Bosses.ICON)
 Expect("...and its small socket uses the in-game skull", page.headFace.speaker.bullet .. "|"
     .. page.headFace.badge.texture, "boss|Interface\\Minimap\\Minimap_skull_normal")
 Expect("a dungeon boss uses the normal skull badge", Spoken:GetBullet("boss").texture,

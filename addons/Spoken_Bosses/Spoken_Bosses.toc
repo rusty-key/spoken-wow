@@ -10,7 +10,7 @@
 ## Notes-koKR: 모든 던전과 공격대의 우두머리와 그 이야기를 아제로스 대백과에서 볼 수 있습니다.
 ## Notes-zhCN: 在艾泽拉斯百科中查看所有地下城和团队副本的首领及其剧情。
 ## Notes-zhTW: 在艾澤拉斯百科中查看所有地城和團隊副本的首領及其故事。
-## Version: 3.6.0
+## Version: 3.7.0
 ## Author: Nucabe
 ## Dependencies: Spoken
 ## OptionalDeps: SpokenBossesAudio

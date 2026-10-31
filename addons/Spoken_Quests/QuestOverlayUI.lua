@@ -79,9 +79,11 @@ function QuestOverlayUI:ContributeButtonFor(questID, title)
 end
 
 local prefix
-function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalText, questCheck)
+
+--- Spaces ahead of the title, as wide as Play, so the button sits before the title's first glyph.
+local function PadTitle(normalText)
+    local text = normalText:GetText() or ""
     if not prefix then
-        local text = normalText:GetText()
         for i = 1, 20 do
             normalText:SetText(string.rep(" ", i))
             if normalText:GetStringWidth() >= 24 then
@@ -92,13 +94,29 @@ function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalT
         prefix = prefix or "  "
         normalText:SetText(text)
     end
+    local padded = prefix .. string.trim(text)
+    if padded ~= text then normalText:SetText(padded) end
+    return padded
+end
 
+--- Re-pads the title whenever anything rewrites it: addons hooking QuestLog_Update after Spoken
+--- (Leatrix Plus adds the level) drop the padding. The left margin holds the party-member count.
+local function KeepTitlePadded(row, i, normalText)
+    if row.spokenKeepsPadding then return end
+    row.spokenKeepsPadding = true
+    hooksecurefunc(row, "SetText", function()
+        if not QuestOverlayUI:ShowsQuestLogButtons() then return end
+        local questIndex = i + Utils:GetQuestLogScrollOffset()
+        local numEntries = GetNumQuestLogEntries()
+        if questIndex > numEntries or select(4, GetQuestLogTitle(questIndex)) then return end
+        PadTitle(normalText)
+    end)
+end
+
+function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalText, questCheck)
     playButton:SetPoint("LEFT", normalText, "LEFT", 4, 0)
 
-    local formatedText = prefix .. string.trim(normalText:GetText() or "")
-
-    normalText:SetText(formatedText)
-    QuestLogDummyText:SetText(formatedText)
+    QuestLogDummyText:SetText(PadTitle(normalText))
 
     questCheck:SetPoint("LEFT", normalText, "LEFT", normalText:GetStringWidth(), 0)
 end
@@ -325,6 +343,7 @@ function QuestOverlayUI:Update()
         local questLogTitleFrame = Utils:GetQuestLogTitleFrame(i)
         local normalText = Utils:GetQuestLogTitleNormalText(i)
         local questCheck = Utils:GetQuestLogTitleCheck(i)
+        KeepTitlePadded(questLogTitleFrame, i, normalText)
         local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID = GetQuestLogTitle(
             questIndex)
 

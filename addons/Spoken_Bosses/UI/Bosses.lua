@@ -355,7 +355,7 @@ local function BossBullet(map)
 end
 
 -- No boss is selected yet, so there is no creature portrait to show.
-local SECTION_ICON = { objectOrItem = true, icon = C.ICON, bullet = "boss" }
+local SECTION_ICON = { objectOrItem = true, icon = Bosses.ICON, bullet = "boss" }
 
 --- The story of the boss `key` of `map` as a line for Spoken's narrator: voiced where an installed
 --- pack has it (Audio.lua), else words alone; nil where it has none.

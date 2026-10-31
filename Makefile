@@ -61,6 +61,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/gossip_frequency_test.lua
 	@$(LUA) tests/lua/gossip_variant_test.lua
 	@$(LUA) tests/lua/quest_overlay_test.lua
+	@$(LUA) tests/lua/quest_overlay_classic_test.lua
 	@$(LUA) tests/lua/quest_tracker_adapters_test.lua
 	@$(LUA) tests/lua/quest_followup_test.lua
 	@$(LUA) tests/lua/quest_chatter_test.lua
@@ -129,6 +130,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/packs_test.lua
 	@$(LUA) tests/lua/quests_options_test.lua
 	@$(LUA) tests/lua/quests_dialogueui_test.lua
+	@$(LUA) tests/lua/quests_immersion_test.lua
 	@$(LUA) tests/lua/readables_source_test.lua
 	@$(LUA) tests/lua/readables_options_test.lua
 	@$(LUA) tests/lua/module_settings_test.lua
