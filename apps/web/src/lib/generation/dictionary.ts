@@ -19,6 +19,7 @@
  * stable across saves - which is what ELEVENLABS_DICTIONARY_ID and the in-place update
  * below are for. This is the only project that edits the lexicon; wow-lore reads it.
  */
+import { TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { queryAs, readAs } from "@/lib/teams/store";
 import {
@@ -88,7 +89,7 @@ type Row = {
 };
 
 /**
- * Where a language's lexicon row is. English's is the singleton it has always been; every
+ * Where a language's lexicon row is. English's is the english team's pronunciation_lexicon; every
  * other language has a row of its own in pronunciation_lexicon_locale (migration 0038), with
  * the same columns meaning the same things. `$1` is the language in both, unused for English,
  * so every statement below can be written once. Either row is its language's team's, so every
@@ -96,7 +97,7 @@ type Row = {
  */
 function rowOf(lang: Lang): { table: string; where: string; params: [Lang] } {
   return lang === BASE_LANG
-    ? { table: `"pronunciation_lexicon"`, where: `"id" and $1::text is not null`, params: [lang] }
+    ? { table: `"pronunciation_lexicon"`, where: `${TEAM_ROWS} and $1::text is not null`, params: [lang] }
     : { table: `"pronunciation_lexicon_locale"`, where: `"lang" = $1`, params: [lang] };
 }
 
@@ -210,15 +211,15 @@ export async function writeLexicon(
   await queryAs(
     lang,
     lang === BASE_LANG
-      ? `insert into "pronunciation_lexicon" ("id", "entries", "updatedAt", "updatedBy")
-         values (true, $1, now(), $2)
-         on conflict ("id") do update set
+      ? `insert into "pronunciation_lexicon" ("entries", "updatedAt", "updatedBy")
+         values ($1, now(), $2)
+         on conflict ("teamId") do update set
            "entries"   = excluded."entries",
            "updatedAt" = excluded."updatedAt",
            "updatedBy" = excluded."updatedBy"`
       : `insert into "pronunciation_lexicon_locale" ("lang", "entries", "updatedAt", "updatedBy")
          values ($3, $1, now(), $2)
-         on conflict ("lang") do update set
+         on conflict ("teamId", "lang") do update set
            "entries"   = excluded."entries",
            "updatedAt" = excluded."updatedAt",
            "updatedBy" = excluded."updatedBy"`,

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   let filters, lines, seesMadeBy, recordings, broadcastStatus;
   try {
     [filters, lines, seesMadeBy, recordings, broadcastStatus] = await Promise.all([
-      filtersFromParams(params),
+      filtersFromParams(params, lang),
       corpus(lang),
       worksHere(lang),
       recordingsFor("quests", lang),

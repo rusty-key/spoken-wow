@@ -164,7 +164,9 @@ async function loadFromDatabase() {
 export async function currentDictionary() {
   if (!db.isEnabled()) return null;
   const { rows } = await db.query(
-    `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "id"`,
+    // English's lexicon is the english team's row (apps/web migration 0089).
+    `select "dictionaryId", "versionId" from "pronunciation_lexicon"
+      where "teamId" = (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged")`,
   );
   const row = rows[0];
   if (!row?.dictionaryId || !row.versionId) return null;

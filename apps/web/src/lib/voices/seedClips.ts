@@ -28,7 +28,7 @@ import { isVoiceSlot } from "./slots";
  */
 export async function seedClips(clone: string): Promise<string[]> {
   const parsed = parseCloneName(clone);
-  if (!parsed || !(await isVoiceSlot(parsed.voice))) throw new Error(`unknown voice slot ${clone}`);
+  if (!parsed || !(await isVoiceSlot(parsed.voice, parsed.lang))) throw new Error(`unknown voice slot ${clone}`);
 
   const [race, gender, flavor] = parsed.voice.split("-");
   const root = parsed.lang === BASE_LANG ? SEED_CLIPS_DIR : path.join(SEED_CLIPS_DIR, parsed.lang);

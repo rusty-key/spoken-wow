@@ -17,7 +17,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
-import type { Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
 import { canManageVoices, canViewVoices } from "@/lib/permissions";
 import { isVoiceSlot } from "./slots";
@@ -37,7 +37,8 @@ export async function requireVoiceManager(
   if (!session || !canManageVoices(session.user.role)) {
     return { session: null, denied: FORBIDDEN() };
   }
-  const unknown = await unknownVoice(voice);
+  // A voice manager's routes name no language, and every team's roster has the same voices.
+  const unknown = await unknownVoice(voice, BASE_LANG);
   if (unknown) return { session: null, denied: unknown };
   return { session, denied: null };
 }
@@ -61,14 +62,14 @@ export async function requireVoiceViewer(
   const { lang, denied } = await langParam(request);
   if (denied) return refuse(denied);
   if (!canViewVoices(await viewerOf(session), lang)) return refuse(FORBIDDEN());
-  const unknown = await unknownVoice(voice);
+  const unknown = await unknownVoice(voice, lang);
   if (unknown) return refuse(unknown);
   return { session, lang, manager: canManageVoices(session.user.role), denied: null };
 }
 
 // Checked after the session so an unauthorized caller cannot use the response to learn which
 // voice names exist.
-async function unknownVoice(voice: string | undefined): Promise<Response | null> {
-  if (voice === undefined || (await isVoiceSlot(voice))) return null;
+async function unknownVoice(voice: string | undefined, lang: Lang): Promise<Response | null> {
+  if (voice === undefined || (await isVoiceSlot(voice, lang))) return null;
   return Response.json({ error: `unknown voice ${voice}` }, { status: 404 });
 }

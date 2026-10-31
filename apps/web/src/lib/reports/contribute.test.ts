@@ -28,8 +28,9 @@ const fields = {
 
 async function report(text: string | null, source: Report["source"] = "quests"): Promise<Report> {
   const { rows } = await db().query<Report>(
-    `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "context")
-     values ($1, 'enUS', $2, $2, 'wrong_text', 'This is the correct completion text.', $3::jsonb)
+    `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "context", "teamId")
+     values ($1, 'enUS', $2, $2, 'wrong_text', 'This is the correct completion text.', $3::jsonb,
+             (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))
      returning "id", "source", "lineId", "target", "category", "body", "status", "userId", "name",
                "email", "createdAt"::text, null as "resolvedAt", "resolvedBy", "context"`,
     [source, lineId, JSON.stringify({ fields, text })],
@@ -113,7 +114,8 @@ describe("reportContribution", () => {
 
   it("shows text the line prints but does not speak as a correction against what it speaks", async () => {
     await db().query(
-      `insert into "line_override" ("file", "lineId", "text") values ($1, $2, 'Goodbye, friend.')`,
+      `insert into "line_override" ("file", "lineId", "text", "teamId")
+       values ($1, $2, 'Goodbye, friend.', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
       [file, lineId],
     );
     try {

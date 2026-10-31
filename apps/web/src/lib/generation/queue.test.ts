@@ -201,8 +201,8 @@ describe("the owner of a job", () => {
     const batch = await newBatch("quests", alice);
     await db().query(
       `insert into "regeneration_job"
-         ("batchId", "source", "lang", "provider", "lineId", "file", "npcName", "preview", "characters")
-       values ($1, 'quests', 'enUS', 'elevenlabs', 'q:1:accept', $2, 'NPC 1', 'line 1', 100)`,
+         ("batchId", "source", "lang", "provider", "lineId", "file", "npcName", "preview", "characters", "teamId")
+       values ($1, 'quests', 'enUS', 'elevenlabs', 'q:1:accept', $2, 'NPC 1', 'line 1', 100, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
       [batch, `${prefix}/1.mp3`],
     );
 

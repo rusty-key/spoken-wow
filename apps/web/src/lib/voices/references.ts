@@ -249,7 +249,7 @@ export type SaveReference = {
  * failure between the two leaves a file nothing points at, which the next save overwrites.
  */
 export async function saveReference(input: SaveReference): Promise<Reference> {
-  if (!(await isVoiceSlot(input.voice))) throw new Error(`unknown voice slot ${input.voice}`);
+  if (!(await isVoiceSlot(input.voice, input.lang))) throw new Error(`unknown voice slot ${input.voice}`);
   const rejected = rejectWindow(input.startSec, input.endSec);
   if (rejected) throw new Error(rejected);
   // Before the transcription is paid for, so a language nobody owns is refused for nothing.
@@ -264,7 +264,7 @@ export async function saveReference(input: SaveReference): Promise<Reference> {
     `insert into "fish_reference"
        ("voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedBy", "updatedAt", "sha256")
      values ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
-     on conflict ("voice", "lang") do update set
+     on conflict ("teamId", "voice", "lang") do update set
        "sample" = excluded."sample",
        "startSec" = excluded."startSec",
        "endSec" = excluded."endSec",

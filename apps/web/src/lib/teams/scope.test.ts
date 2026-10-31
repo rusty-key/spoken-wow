@@ -1,13 +1,19 @@
 /**
- * Asserts what must hold of whatever database the team-scope migration ran against, since other
- * suites share it; the insert checks roll back. An insert outside withTeam gets a null team, so
- * every table is held to no wrong team, and only tables with a creation stamp to no missing one.
+ * The team-scope migration gives every per-team row the team that owns it. These assert what
+ * must hold of whatever database it ran against, rather than inserting rows: other suites
+ * share it. The insert checks roll back.
+ *
+ * Until the app writes inside withTeam, any suite's insert gets a null team, and some put a
+ * row back after the test -- the lexicon's singleton, for one -- so a null team on a row
+ * written since the migration proves nothing about it. A wrong team always does, so that is
+ * what every table is held to. That the backfill reached every row is held of the tables that
+ * stamp a row when it is made: a row stamped before the migration was the backfill's to fill.
  *
  * Needs DATABASE_URL and migrations applied.
  */
 import { afterAll, describe, expect, it } from "vitest";
 
-import { ALL_TEAMS, closeDb, db, withTeam } from "@/lib/db";
+import { closeDb, db, withTeam } from "@/lib/db";
 
 afterAll(closeDb);
 
@@ -31,19 +37,16 @@ const BY_LANG = [
   "activity",
 ];
 
-/** Tables with no language of their own, which are English's. */
-const ENGLISH = [
-  "voice",
-  "voice_assignment",
-  "generation_setting",
-  "pronunciation_lexicon",
-  "queue_dismissal",
-  "line_override",
-];
+/**
+ * Tables with no language of their own that are English's alone. The roster, the base
+ * generation settings and the dismissal mark were too, until 0089 gave every team a copy.
+ */
+const ENGLISH = ["pronunciation_lexicon", "line_override"];
 
 const MIGRATED = `select "applied_at" from "schema_migrations"
                    where "name" = '0088_team_scope_2_backfill.sql'`;
 
+/** Each table that records when a row was made, with that column. */
 const STAMPED: Record<string, string> = {
   take: "createdAt",
   recording: "createdAt",
@@ -122,22 +125,5 @@ describe("team scope", () => {
       }),
     ).rejects.toBe(rollback);
     expect(got).toBe(team);
-  });
-
-  it("leaves teamId null for an insert as every team", async () => {
-    const rollback = new Error("rollback");
-    let got: unknown = "unset";
-    await expect(
-      withTeam(ALL_TEAMS, async (client) => {
-        const inserted = await client.query(
-          `insert into "take" ("source", "lang", "file", "lineId", "version", "origin", "bytes")
-           values ('quests', 'enUS', 'quests/scope-test.mp3', 'scope-test', 1, 'generated', 0)
-           returning "teamId"`,
-        );
-        got = inserted.rows[0].teamId;
-        throw rollback;
-      }),
-    ).rejects.toBe(rollback);
-    expect(got).toBeNull();
   });
 });

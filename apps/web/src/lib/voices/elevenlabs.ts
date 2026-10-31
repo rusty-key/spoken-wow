@@ -66,7 +66,7 @@ export async function listVoices(options: ElevenLabsOptions = {}): Promise<Map<s
     // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
     if (!voice.name || !voice.voice_id) continue;
     const clone = parseCloneName(voice.name);
-    if (clone && (await isVoiceSlot(clone.voice))) found.set(voice.name, voice.voice_id);
+    if (clone && (await isVoiceSlot(clone.voice, clone.lang))) found.set(voice.name, voice.voice_id);
   }
   return found;
 }

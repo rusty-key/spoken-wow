@@ -58,7 +58,7 @@ export async function recordClone(clone: {
      -- and rejects the statement with "could not determine data type of parameter".
      values ($1, $2, $3, $4, $5, $6, $7, case when $6::text is null then null else now() end, $8,
              $9)
-     on conflict ("voice", "lang") do update set
+     on conflict ("teamId", "voice", "lang") do update set
        "voiceId"        = excluded."voiceId",
        "clonedAt"       = now(),
        "clonedBy"       = excluded."clonedBy",

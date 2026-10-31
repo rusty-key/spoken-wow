@@ -216,7 +216,7 @@ export async function enqueue(
               "lineId", "file", "npcName", "preview", "characters"
          from unnest($3::text[], $4::text[], $5::text[], $6::text[], $7::int[], $9::text[])
            as job ("lineId", "file", "npcName", "preview", "characters", "provider")
-       on conflict ("source", "lang", "file") where "state" in ('pending', 'running') do nothing`,
+       on conflict ("teamId", "source", "lang", "file") where "state" in ('pending', 'running') do nothing`,
       [
         batchId,
         source,
@@ -517,7 +517,7 @@ export async function pauseQueue(langs: readonly Lang[], by: string | null): Pro
     client.query<{ lang: Lang }>(
       `insert into "regeneration_pause" ("lang", "pausedBy")
        select unnest($1::text[]), $2
-       on conflict ("lang") do nothing
+       on conflict ("teamId", "lang") do nothing
        returning "lang"`,
       [own, by],
     ),
@@ -617,13 +617,16 @@ type JobAggregateRow = {
  *
  * Takes the id rather than reading the maximum itself, so what is dismissed is what the panel
  * was showing when the X was pressed. A job that finished in between stays news.
+ *
+ * Each team keeps its own mark. The one panel every team watches (snapshot) is cut at the
+ * latest of them, so a dismissal still hides the news for everybody, as the single mark did.
  */
 export async function dismissThrough(jobId: string, userId: string | null, lang: Lang): Promise<void> {
   await queryAs(
     lang,
-    `insert into "queue_dismissal" ("id", "throughJobId", "dismissedBy")
-     values (true, $1, $2)
-     on conflict ("id") do update
+    `insert into "queue_dismissal" ("throughJobId", "dismissedBy")
+     values ($1, $2)
+     on conflict ("teamId") do update
         set "throughJobId" = greatest("queue_dismissal"."throughJobId", excluded."throughJobId"),
             "dismissedAt" = now(),
             "dismissedBy" = excluded."dismissedBy"`,
@@ -658,7 +661,7 @@ export async function snapshot(
     queryIn<JobAggregateRow>(
       ALL_TEAMS,
       `with dismissal as (
-         select coalesce((select "throughJobId" from "queue_dismissal" where "id"), 0) as through
+         select coalesce((select max("throughJobId") from "queue_dismissal"), 0) as through
        ),
        job_counts as (
          select

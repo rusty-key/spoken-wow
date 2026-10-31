@@ -43,7 +43,7 @@ export type Sample = { file: string; bytes: number; uploadedAt: string };
  */
 export async function voiceDir(clone: string): Promise<string> {
   const parsed = parseCloneName(clone);
-  if (!parsed || !(await isVoiceSlot(parsed.voice))) throw new Error(`unknown voice slot ${clone}`);
+  if (!parsed || !(await isVoiceSlot(parsed.voice, parsed.lang))) throw new Error(`unknown voice slot ${clone}`);
   return parsed.lang === BASE_LANG
     ? path.join(VOICE_SAMPLES_DIR, parsed.voice)
     : path.join(VOICE_SAMPLES_DIR, parsed.lang, parsed.voice);
@@ -180,7 +180,7 @@ export async function storeSampleAs(voice: string, file: string, data: Buffer): 
     await queryAs(
       langOf(voice),
       `insert into "voice_sample" ("clone", "file", "sha256", "bytes") values ($1, $2, $3, $4)
-       on conflict ("clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
+       on conflict ("teamId", "clone", "file") do update set "sha256" = excluded."sha256", "bytes" = excluded."bytes"`,
       [voice, file, sha256, data.byteLength],
     );
   }

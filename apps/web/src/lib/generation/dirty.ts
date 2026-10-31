@@ -190,7 +190,7 @@ export async function acknowledge(
     await client.query(
       `insert into "take_ack" ("source", "lang", "file", "ackedAt", "ackedBy")
        select $1, $4, unnest($2::text[]), now(), $3
-       on conflict ("source", "lang", "file") do update set
+       on conflict ("teamId", "source", "lang", "file") do update set
          "ackedAt" = excluded."ackedAt",
          "ackedBy" = excluded."ackedBy"`,
       [source, files, userId, lang],

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
   // Gated like the search itself, or narrowing by author here would say whose lines are whose.
   const seesMadeBy = await worksHere(lang);
-  let filters = await filtersFromParams(request.nextUrl.searchParams);
+  let filters = await filtersFromParams(request.nextUrl.searchParams, lang);
   if (!seesMadeBy) filters = withoutMadeBy(filters);
   const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([
     corpus(lang),

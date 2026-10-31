@@ -264,7 +264,7 @@ async function build(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty(lang);
 
-  return withSoleSpeakers(voiced(rows, await loadRoster(BASE_LANG)).map(({ writtenVoice: _written, npcSex, npcBody, ...row }) => ({
+  return withSoleSpeakers(voiced(rows, await loadRoster(lang)).map(({ writtenVoice: _written, npcSex, npcBody, ...row }) => ({
     ...row,
     ...(isSex(npcSex) && npcBody ? { npcSex, npcBody } : {}),
     npcType: row.npcType as CorpusLine["npcType"],
@@ -444,6 +444,7 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
  */
 export async function defaultFlavorFor(race: string, gender: string): Promise<string | null> {
   // A race-gender the corpus has no flavored line for yet falls back to the roster's first.
+  // Flavors are every team's, and the answer is for the npc table, which is every language's.
   return (
     (await flavorDefaults()).get(`${race}-${gender}`) ??
     (await loadRoster(BASE_LANG)).flavorsOf(race, gender)[0] ??

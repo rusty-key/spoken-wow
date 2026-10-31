@@ -106,17 +106,20 @@ def test_a_type_the_site_lacks_is_added_with_the_voice_the_file_names(cur):
     assert voice_for(cur, "testtreant", None, None) == "testtreant"
 
 
-def test_a_seeded_voice_and_its_assignment_belong_to_the_english_team(cur):
-    # The import connects as the table owner, so the column default is null: the team is named.
+def test_a_seeded_voice_and_its_assignment_are_every_teams(cur):
+    # The types are every team's, so each team's roster gets the voice: one row per team.
+    cur.execute("""insert into "team" ("slug", "name") values ('test-corpus-npcs', 'Test')""")
     _import_types(cur, [{"npcType": "creature", "npcId": NPC_ID, "race": "testtreant",
                          "gender": None, "flavor": None, "provenance": "moderator",
                          "voice": "testtreant"}])
-    cur.execute("""select v."teamId" = t."id", a."teamId" = t."id"
-                     from "voice" v
-                     join "voice_assignment" a on a."voice" = v."name"
-                     join "team" t on t."slug" = 'english'
-                    where v."name" = 'testtreant'""")
-    assert cur.fetchone() == (True, True)
+    cur.execute("""select (select count(*) from "team"),
+                          (select count(*) from "voice" where "name" = 'testtreant'),
+                          (select count(*) from "voice_assignment" a
+                             join "voice" v on v."teamId" = a."teamId" and v."name" = a."voice"
+                            where a."race" = 'testtreant')""")
+    teams, voices, assignments = cur.fetchone()
+    assert teams >= 2
+    assert (voices, assignments) == (teams, teams)
 
 
 def test_a_type_the_site_has_keeps_its_own_voice(cur):

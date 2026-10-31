@@ -10,10 +10,13 @@
  * rather than the read path on purpose: a value already in the database is a fact, and
  * refusing to read it would take the settings page down exactly when it is needed to fix it.
  *
- * English's row is the english team's; another language's is its own team's. A language
- * nobody has configured reads English's as the english team, which is where that row is.
+ * Every team has a generation_setting row of its own, its base: English's is the english
+ * team's, and every other team's began as a copy of it (migration 0089). A language's own
+ * generation_setting_locale row, when it has one, is its team's too. A language nobody has
+ * configured reads its team's base, so it never needs another team's row.
  */
 import { recordActivity } from "@/lib/activity/store";
+import { TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { bareDirection } from "@/lib/generation/narration";
 import { queryAs, readAs } from "@/lib/teams/store";
@@ -50,15 +53,21 @@ type Row = {
 
 export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSettings> {
   if (lang !== BASE_LANG) return readLanguageSettings(lang);
-  const defaults = fileDefaults().config;
+  return baseSettings(await readBase(BASE_LANG));
+}
 
+/** The base row of the team that owns `lang`. */
+async function readBase(lang: Lang): Promise<Row | undefined> {
   const rows = await readAs<Row>(
-    BASE_LANG,
+    lang,
     `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
-       from "generation_setting" where "id"`,
+       from "generation_setting" where ${TEAM_ROWS}`,
   );
+  return rows[0];
+}
 
-  const row = rows[0];
+function baseSettings(row: Row | undefined): EffectiveSettings {
+  const defaults = fileDefaults().config;
   if (!row) {
     return { config: defaults, source: "file", defaults, updatedAt: null, updatedBy: null };
   }
@@ -83,15 +92,16 @@ export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSet
 }
 
 /**
- * Another language's settings: its own row, or English's until somebody saves one.
+ * Another language's settings: its own row, or its team's base -- English's, as copied --
+ * until somebody saves one.
  *
- * English's without the accent tags, though. A tag like "[Scottish accent]" is a direction
+ * The base without the accent tags, though. A tag like "[Scottish accent]" is a direction
  * about how English is spoken, and a language that has not chosen its own should not start
  * with someone else's.
  */
 async function readLanguageSettings(lang: Lang): Promise<EffectiveSettings> {
   const [english, rows] = await Promise.all([
-    readSettings(BASE_LANG),
+    readBase(lang).then(baseSettings),
     readAs<Row>(
       lang,
       `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
@@ -246,7 +256,7 @@ async function upsertLanguage(
     `insert into "generation_setting_locale"
        ("lang", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
      values ($1, $2, $3, $4, $5, now(), $6)
-     on conflict ("lang") do update set
+     on conflict ("teamId", "lang") do update set
        ${set}, "updatedAt" = excluded."updatedAt", "updatedBy" = excluded."updatedBy"`,
     [
       lang,
@@ -293,9 +303,9 @@ export async function writeRaceTags(
   await queryAs(
     BASE_LANG,
     `insert into "generation_setting"
-       ("id", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
-     values (true, $1, $2, $3, $4, now(), $5)
-     on conflict ("id") do update set
+       ("modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
+     values ($1, $2, $3, $4, now(), $5)
+     on conflict ("teamId") do update set
        "raceTags"  = excluded."raceTags",
        "updatedAt" = excluded."updatedAt",
        "updatedBy" = excluded."updatedBy"`,

@@ -174,14 +174,16 @@ const { readSettings, writeRaceTags } = await import("./settings");
 /**
  * The settings row, put back after every case.
  *
- * One row forever, and it is whatever this database generates with. A test that deleted it
- * would silently reset the settings of whatever DATABASE_URL points at - the mistake
- * dictionary.test.ts records having made with the lexicon.
+ * The english team's row, and it is whatever this database generates English with. A test
+ * that deleted it would silently reset the settings of whatever DATABASE_URL points at - the
+ * mistake dictionary.test.ts records having made with the lexicon.
  */
 let snapshot: Record<string, unknown> | undefined;
 
 beforeAll(async () => {
-  const { rows } = await db().query("select * from generation_setting where id");
+  const { rows } = await db().query(
+    `select * from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+  );
   snapshot = rows[0];
 });
 
@@ -192,17 +194,17 @@ beforeAll(async () => {
  * settings of whatever DATABASE_URL points at, and this file is careful with it.
  */
 async function noRow() {
-  await db().query(`delete from "generation_setting" where "id"`);
+  await db().query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
 }
 
 afterEach(async () => {
   await db().query(`delete from "generation_setting_locale" where "lang" = 'koKR'`);
-  await db().query(`delete from "generation_setting" where "id"`);
+  await db().query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
   if (snapshot) {
     await db().query(
       `insert into "generation_setting"
-         ("id", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
-       values (true, $1, $2, $3, $4, $5, $6)`,
+         ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
+       values ((select "id" from "team" where "slug" = 'english'), $1, $2, $3, $4, $5, $6)`,
       [
         snapshot.modelId,
         JSON.stringify(snapshot.voiceSettings),
@@ -247,7 +249,7 @@ describe("writeRaceTags", () => {
   it("leaves the rest of an existing row alone", async () => {
     await writeRaceTags({}, null);
     await db().query(
-      `update "generation_setting" set "modelId" = 'eleven_flash_v2_5', "seedStrategy" = 'none' where "id"`,
+      `update "generation_setting" set "modelId" = 'eleven_flash_v2_5', "seedStrategy" = 'none' where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
 
     await writeRaceTags({ orc: "[gruff]" }, null);

@@ -83,8 +83,8 @@ it("puts a take back by moving the flag, touching no file and adding no take", a
 it("refuses a take whose clip was not kept, and leaves the live one alone", async () => {
   await take("kept");
   await db().query(
-    `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes")
-     values ('quests', 'enUS', $1, 'g:proof', 2, false, 'generated', 1)`,
+    `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
+     values ('quests', 'enUS', $1, 'g:proof', 2, false, 'generated', 1, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
     [file],
   );
 

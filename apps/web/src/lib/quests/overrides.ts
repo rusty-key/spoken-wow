@@ -88,7 +88,7 @@ export async function writeOverride(
     `with "was" as (select "text" from "line_override" where "file" = $1)
      insert into "line_override" ("file", "lineId", "text", "updatedBy")
      values ($1, $2, $3, $4)
-     on conflict ("file") do update
+     on conflict ("teamId", "file") do update
         set "text" = excluded."text",
             "lineId" = excluded."lineId",
             "updatedAt" = now(),

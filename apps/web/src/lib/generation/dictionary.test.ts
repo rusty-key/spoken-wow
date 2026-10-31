@@ -83,7 +83,9 @@ let startedAt: string;
 
 beforeAll(async () => {
   try {
-    const { rows } = await db().query("select * from pronunciation_lexicon where id");
+    const { rows } = await db().query(
+      `select * from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+    );
     snapshot = rows[0];
     startedAt = (await db().query<{ now: string }>(`select now()::text as "now"`)).rows[0].now;
   } catch (error) {
@@ -107,15 +109,15 @@ afterEach(async () => {
     [startedAt],
   );
   if (!snapshot) {
-    await db().query(`delete from "pronunciation_lexicon" where "id"`);
+    await db().query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
     return;
   }
   await db().query(
     `insert into "pronunciation_lexicon"
-       ("id", "entries", "dictionaryId", "versionId", "rulesSent", "rulesKept",
+       ("teamId", "entries", "dictionaryId", "versionId", "rulesSent", "rulesKept",
         "syncedAt", "syncedDigest", "updatedAt", "updatedBy")
-     values (true, $1, $2, $3, $4, $5, $6, $9, $7, $8)
-     on conflict ("id") do update set
+     values ((select "id" from "team" where "slug" = 'english'), $1, $2, $3, $4, $5, $6, $9, $7, $8)
+     on conflict ("teamId") do update set
        "entries"      = excluded."entries",
        "dictionaryId" = excluded."dictionaryId",
        "versionId"    = excluded."versionId",
@@ -166,7 +168,7 @@ describe("readLexicon", () => {
   it("does not claim a seeded lexicon is in force at ElevenLabs", async () => {
     await db().query(
       `update "pronunciation_lexicon"
-          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "id"`,
+          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     expect((await readLexicon()).sync).toBe("never");
     expect(await currentLocator()).toBeNull();
@@ -178,7 +180,7 @@ describe("readLexicon", () => {
    * instead of inviting someone to retype 134 entries.
    */
   it("reports an unseeded table rather than an empty lexicon", async () => {
-    await db().query(`delete from "pronunciation_lexicon" where "id"`);
+    await db().query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
     const lexicon = await readLexicon();
     expect(lexicon.seeded).toBe(false);
     expect(lexicon.entries).toEqual([]);
@@ -229,7 +231,7 @@ describe("writeLexicon", () => {
   it("keeps the entries when the upload fails, and says why", async () => {
     await db().query(
       `update "pronunciation_lexicon"
-          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "id"`,
+          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     const { fetchImpl } = refuses();
     const { lexicon, syncError } = await writeLexicon(ENTRIES, null as unknown as string,
@@ -297,7 +299,7 @@ describe("what is in force", () => {
 
     // Neither timestamp is touched. The old comparison sees nothing at all here.
     await db().query(
-      `update "pronunciation_lexicon" set "entries" = $1::jsonb where "id"`,
+      `update "pronunciation_lexicon" set "entries" = $1::jsonb where "teamId" = (select "id" from "team" where "slug" = 'english')`,
       [JSON.stringify([{ ...ENTRIES[0], ipa: "something-else" }])],
     );
 
@@ -313,7 +315,7 @@ describe("what is in force", () => {
   it("keeps a lexicon synced when a save changes nothing about the entries", async () => {
     await writeLexicon(ENTRIES, null as unknown as string, OPTIONS(accepts().fetchImpl));
 
-    await db().query(`update "pronunciation_lexicon" set "updatedAt" = now() where "id"`);
+    await db().query(`update "pronunciation_lexicon" set "updatedAt" = now() where "teamId" = (select "id" from "team" where "slug" = 'english')`);
 
     expect((await readLexicon()).sync).toBe("synced");
   });
@@ -329,7 +331,7 @@ describe("concurrent saves", () => {
   it("refuses to attach a locator to entries it did not upload", async () => {
     await db().query(
       `update "pronunciation_lexicon"
-          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "id"`,
+          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     const a = [{ ...ENTRIES[0], ipa: "aaa" }];
     const b = [{ ...ENTRIES[0], ipa: "bbb" }];
@@ -406,7 +408,7 @@ describe("resync", () => {
   it("uploads what is stored and puts it in force", async () => {
     await db().query(
       `update "pronunciation_lexicon"
-          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "id"`,
+          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     await writeLexicon(ENTRIES, null as unknown as string, OPTIONS(refuses().fetchImpl));
     expect((await readLexicon()).sync).toBe("never");
@@ -422,7 +424,7 @@ describe("resync", () => {
   // Only reachable with migrations unrun, since 0008 seeds the row - but resync must still
   // say so rather than uploading an empty dictionary and reporting success.
   it("refuses when there is no lexicon at all", async () => {
-    await db().query(`delete from "pronunciation_lexicon" where "id"`);
+    await db().query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
     expect(await resync(OPTIONS(accepts().fetchImpl))).toMatch(/no saved lexicon/);
   });
 });
@@ -523,7 +525,7 @@ describe("the pinned dictionary", () => {
 
     await db().query(
       `update "pronunciation_lexicon"
-          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "id"`,
+          set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     const { lexicon, syncError } = await writeLexicon(ENTRIES, null as unknown as string,
       OPTIONS(fetchImpl));

@@ -42,8 +42,8 @@ async function line(lineId: string, lang: string, version: number, isCurrent: bo
 
 async function take(lineId: string, file: string, lang: string) {
   await db().query(
-    `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes")
-     values ('readables', $3, $2, $1, 1, true, 'generated', 1)`,
+    `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
+     values ('readables', $3, $2, $1, 1, true, 'generated', 1, (select "teamId" from "team_language" where "lang" = $3 and "privileged"))`,
     [lineId, file, lang],
   );
 }
@@ -74,13 +74,13 @@ beforeEach(async () => {
   await take(REAL, String(n), "esES");
   await take(MINTED, MINTED_FILE, "esES");
   await db().query(
-    `insert into "report" ("source", "lang", "lineId", "category", "body")
-     values ('readables', 'esES', $1, 'other', 'x')`,
+    `insert into "report" ("source", "lang", "lineId", "category", "body", "teamId")
+     values ('readables', 'esES', $1, 'other', 'x', (select "teamId" from "team_language" where "lang" = 'esES' and "privileged"))`,
     [MINTED],
   );
   await db().query(
-    `insert into "recording" ("source", "lang", "file", "lineId", "version", "format", "archiveFile", "bytes", "durationSec", "credit")
-     values ('readables', 'esES', $2, $1, 1, 'mp3', 'a', 1, 1, 'c')`,
+    `insert into "recording" ("source", "lang", "file", "lineId", "version", "format", "archiveFile", "bytes", "durationSec", "credit", "teamId")
+     values ('readables', 'esES', $2, $1, 1, 'mp3', 'a', 1, 1, 'c', (select "teamId" from "team_language" where "lang" = 'esES' and "privileged"))`,
     [MINTED, MINTED_FILE],
   );
   await db().query(

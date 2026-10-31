@@ -424,8 +424,8 @@ describe("resolveContribution: quests accept", () => {
   it("a greeting from a genderless type an admin added is voiced by its own voice", async () => {
     const type = `t${npcId}`;
     await db().query(`insert into "race" ("key") values ($1)`, [type]);
-    await db().query(`insert into "voice" ("name", "race", "gender") values ($1, $1, '')`, [type]);
-    await db().query(`insert into "voice_assignment" ("race", "voice") values ($1, $1)`, [type]);
+    await db().query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`, [type]);
+    await db().query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`, [type]);
     try {
       await speaker(npcId, type, null);
       const text = "Creak. The old wood remembers you.";

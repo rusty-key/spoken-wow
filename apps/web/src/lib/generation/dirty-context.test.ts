@@ -29,8 +29,8 @@ beforeAll(async () => {
 
 async function logged(grapheme: string, changedAt: string): Promise<void> {
   await db().query(
-    `insert into "lexicon_change" ("grapheme", "kind", "changedAt", "lang")
-     values ($1, 'edited', $2, $3)`,
+    `insert into "lexicon_change" ("grapheme", "kind", "changedAt", "lang", "teamId")
+     values ($1, 'edited', $2, $3, (select "teamId" from "team_language" where "lang" = $3 and "privileged"))`,
     [grapheme, changedAt, LANG],
   );
 }

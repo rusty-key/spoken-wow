@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         return {
           ...voice,
           renamable: isRenamable(voice),
-          slot: clone && (await isVoiceSlot(clone.voice)) ? voice.name : null,
+          slot: clone && (await isVoiceSlot(clone.voice, clone.lang)) ? voice.name : null,
         };
       }),
     ),

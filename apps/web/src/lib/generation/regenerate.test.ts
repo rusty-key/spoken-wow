@@ -233,18 +233,18 @@ describe("a lexicon uploaded to ElevenLabs", () => {
 
   beforeEach(async () => {
     const { rows } = await db().query(
-      `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "id"`,
+      `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     previous = rows[0];
     await db().query(
       `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1'
-       where "id"`,
+       where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
   });
 
   afterEach(async () => {
     await db().query(
-      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2 where "id"`,
+      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
       [previous?.dictionaryId ?? null, previous?.versionId ?? null],
     );
   });

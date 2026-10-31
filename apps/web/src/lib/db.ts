@@ -10,7 +10,7 @@
  */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
-/** "team"."id". Defined here so withTeam need not import the teams module. */
+/** A team's id, "team"."id". Defined here so withTeam need not import the teams module. */
 export type TeamId = string;
 
 /**
@@ -95,8 +95,11 @@ export async function inTransaction<T>(work: (client: PoolClient) => Promise<T>)
 export const ALL_TEAMS = "*";
 
 /**
- * `work` in a transaction that acts as `team`. The setting is transaction-local, so it cannot
- * leak onto the next user of the pooled connection. Row-level security policies read it.
+ * `work` in a transaction that acts as `team`.
+ *
+ * The setting is transaction-local (set_config's third argument), so it cannot outlive the
+ * commit or rollback and leak onto the next user of the pooled connection. Row-level security
+ * policies read it.
  */
 export async function withTeam<T>(
   team: TeamId | typeof ALL_TEAMS,
@@ -108,6 +111,19 @@ export async function withTeam<T>(
   });
 }
 
+/**
+ * A filter to the rows of the team this transaction acts as, or of every team under ALL_TEAMS.
+ *
+ * For the tables that hold one copy per team of what every language reads -- the roster, the
+ * base generation settings, the English lexicon -- where nothing else in the query picks a
+ * team's row out. Row-level security draws the same line; this keeps the read right on a
+ * connection it does not bind, and matches nothing outside withTeam. TEAMS_IN_SCOPE is the
+ * same teams as rows, for an insert that writes a copy for each.
+ */
+export const TEAMS_IN_SCOPE = `select "id" from "team" where current_setting('spoken.team', true) in ('*', "id"::text)`;
+export const TEAM_ROWS = `"teamId" in (${TEAMS_IN_SCOPE})`;
+
+/** One query, rows only, as `team`. */
 export async function queryIn<T extends QueryResultRow = QueryResultRow>(
   team: TeamId | typeof ALL_TEAMS,
   text: string,

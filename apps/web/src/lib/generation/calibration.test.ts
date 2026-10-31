@@ -48,8 +48,9 @@ describe("a fish.audio rate", () => {
     ]) {
       await db().query(
         `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin",
-                             "bytes", "characters", "modelId", "provider", "costUsd")
-         values ('quests', 'ruRU', $1, 'g:calibration', $2, $3, 'generated', 1, $4, $5, 'fish', $6)`,
+                             "bytes", "characters", "modelId", "provider", "costUsd", "teamId")
+         values ('quests', 'ruRU', $1, 'g:calibration', $2, $3, 'generated', 1, $4, $5, 'fish', $6,
+                 (select "teamId" from "team_language" where "lang" = 'ruRU' and "privileged"))`,
         [FILE, version, version === 2, characters, MODEL, usd],
       );
     }

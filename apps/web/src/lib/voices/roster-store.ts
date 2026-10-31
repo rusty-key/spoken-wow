@@ -9,8 +9,8 @@
  */
 import type { PoolClient } from "pg";
 
-import { queryIn, withTeam } from "@/lib/db";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import { queryIn, TEAM_ROWS, withTeam } from "@/lib/db";
+import type { Lang } from "@/lib/lang";
 import { teamOf, type TeamId } from "@/lib/teams/store";
 
 import { Roster, type Gender, type RosterData } from "./roster";
@@ -23,16 +23,16 @@ import { Roster, type Gender, type RosterData } from "./roster";
 export const ROSTER_STAMP = `(select md5(coalesce(string_agg(k, ',' order by k), ''))
      from (select a."race" || ':' || coalesce(a."gender", '') || ':' || coalesce(a."flavor", '') ||
                   ':' || a."voice" as k
-             from "voice_assignment" a) assignments) || ':' ||
+             from "voice_assignment" a where a.${TEAM_ROWS}) assignments) || ':' ||
   (select count(*) from "race") || ':' || (select count(*) from "gender") || ':' ||
-  (select count(*) from "flavor") || ':' || (select count(*) from "voice")`;
+  (select count(*) from "flavor") || ':' || (select count(*) from "voice" v where v.${TEAM_ROWS})`;
 
 /**
- * The team whose roster `lang` is voiced from, and the one its edits are written as. The
- * english team's for every language: there is one roster, and its rows are that team's.
+ * The team whose roster `lang` is voiced from, and the one its assignments are written as:
+ * the team that owns the language. Every team has a roster of its own (migration 0089).
  */
-export async function rosterTeam(_lang: Lang): Promise<TeamId> {
-  return teamOf(BASE_LANG);
+export async function rosterTeam(lang: Lang): Promise<TeamId> {
+  return teamOf(lang);
 }
 
 const cacheKey = Symbol.for("spoken.roster.by-team");
@@ -49,10 +49,10 @@ async function rosterData(client: PoolClient): Promise<RosterData> {
     `select "race", "gender", "flavor" from "flavor" order by 1, 2, 3`,
   );
   const voices = await client.query<RosterData["voices"][number]>(
-    `select "name", "race", "gender" from "voice" order by 1`,
+    `select "name", "race", "gender" from "voice" where ${TEAM_ROWS} order by 1`,
   );
   const assignments = await client.query<RosterData["assignments"][number]>(
-    `select "race", "gender", "flavor", "voice" from "voice_assignment" order by 1, 2, 3`,
+    `select "race", "gender", "flavor", "voice" from "voice_assignment" where ${TEAM_ROWS} order by 1, 2, 3`,
   );
   return {
     races: races.rows.map(({ key }) => ({

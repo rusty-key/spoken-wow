@@ -37,8 +37,8 @@ async function liveTake(hash: string | null, provider: "elevenlabs" | "fish" = "
   await db().query(
     `insert into "take"
        ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
-        "spokenHash", "provider")
-     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4)`,
+        "spokenHash", "provider", "teamId")
+     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
     [file, LINE, hash, provider],
   );
 }
@@ -168,8 +168,8 @@ describe("a race with an accent tag", () => {
     await db().query(
       `insert into "take"
          ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
-          "spokenHash")
-       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3)`,
+          "spokenHash", "teamId")
+       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
       [dwarfFile, DWARF_LINE, hash],
     );
   }

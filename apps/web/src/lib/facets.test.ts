@@ -6,7 +6,7 @@ import { loadRoster } from "./voices/roster-store";
 import { isModelVoice } from "./voices/voices";
 
 const corpus = await catalogue();
-const facets = await readFacets();
+const facets = await readFacets("enUS");
 const roster = await loadRoster("enUS");
 
 describe("facets", () => {

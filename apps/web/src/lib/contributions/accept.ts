@@ -128,6 +128,7 @@ async function resolutionsFor(contributions: readonly Contribution[]): Promise<R
 /** Who speaks a quests contribution, from the npc table -- the same lookup triage.ts's page renders from. */
 async function resolvedSpeaker(
   meta: Record<string, string>,
+  lang: Lang,
   resolutions?: Resolutions,
 ): Promise<Speaker | "conflict" | null> {
   const observed = observedFrom(meta);
@@ -147,7 +148,7 @@ async function resolvedSpeaker(
     resolution = lookup.resolution;
   }
 
-  return resolution ? speakerFromResolution(resolution, await loadRoster(BASE_LANG), observed.npcName) : null;
+  return resolution ? speakerFromResolution(resolution, await loadRoster(lang), observed.npcName) : null;
 }
 
 /**
@@ -204,7 +205,7 @@ async function speakerFor(
   contribution: Contribution,
   resolutions?: Resolutions,
 ): Promise<{ ok: true; speaker: Speaker } | Extract<ResolveRefusal, { reason: "needs-speaker" }>> {
-  const speaker = await resolvedSpeaker(observationMeta(contribution), resolutions);
+  const speaker = await resolvedSpeaker(observationMeta(contribution), isLang(contribution.locale) ? contribution.locale : BASE_LANG, resolutions);
   if (speaker === "conflict") {
     return {
       ok: false,
@@ -259,6 +260,7 @@ async function prepareLine(
   // submission.ts) strips, so a verbatim duplicate of one of them hashes differently.
   // Whichever of the two comes first in the catalogue, as a scan for either would find.
   const text = contribution.text;
+  // English's roster, as the lines matched against are English's corpus.
   const index = indexOf(lines, await loadRoster(BASE_LANG));
   const byId = (index.byPrefix.get(identity.lineId) ?? []).find(
     (l) => l.source === "gossip" && baseLineId(l.lineId) === identity.lineId,

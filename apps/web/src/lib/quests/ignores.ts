@@ -111,11 +111,16 @@ export async function writeIgnore(
   // Named, not defaulted, so a caller's transaction (a contribution's reject) files it right.
   const team = lang === null ? null : await teamOf(lang);
 
+  // A site-wide ignore has no team, and nulls never conflict in the team's key: it has a key
+  // of its own.
+  const target = team === null
+    ? `("lineId") where "teamId" is null`
+    : `("teamId", "lineId", (coalesce("lang", '')))`;
   const write = async (on: Pick<PoolClient, "query">) =>
     (await on.query<IgnoreRow>(
       `insert into "line_ignore" ("lineId", "lang", "reason", "createdBy", "teamId")
        values ($1, $4, $2, $3, $5)
-       on conflict ("lineId", (coalesce("lang", ''))) do update
+       on conflict ${target} do update
           set "reason" = excluded."reason",
               "createdAt" = now(),
               "createdBy" = excluded."createdBy"

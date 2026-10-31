@@ -69,6 +69,8 @@ export function speakerFromResolution(
 
 /** The speaker an NPC's answer in `npc` makes, or null when it has no type. */
 export async function speakerOf(npcType: NpcRowKind, npcId: number): Promise<Speaker | null> {
+  // No language: a speaker is added to a moment in whichever languages it has, from the shared
+  // npc answer, and its voice is named by English's roster -- every team's names the same.
   const [resolution, roster] = await Promise.all([getResolution(npcType, npcId), loadRoster(BASE_LANG)]);
   return resolution ? speakerFromResolution(resolution, roster) : null;
 }

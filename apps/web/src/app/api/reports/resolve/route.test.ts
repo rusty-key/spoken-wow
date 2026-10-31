@@ -54,8 +54,8 @@ describe("POST /api/reports/resolve", () => {
 
   it("asks for edit in the report's own language", async () => {
     const { rows } = await db().query<{ id: number }>(
-      `insert into "report" ("source", "lang", "lineId", "target", "category", "body")
-       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test') returning "id"`,
+      `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "teamId")
+       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test', (select "teamId" from "team_language" where "lang" = 'ptBR' and "privileged")) returning "id"`,
     );
     try {
       authorise.mockResolvedValueOnce({
@@ -71,8 +71,8 @@ describe("POST /api/reports/resolve", () => {
 
   it("records the resolution in the activity log", async () => {
     const { rows } = await db().query<{ id: number }>(
-      `insert into "report" ("source", "lang", "lineId", "target", "category", "body")
-       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test') returning "id"`,
+      `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "teamId")
+       values ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test', (select "teamId" from "team_language" where "lang" = 'ptBR' and "privileged")) returning "id"`,
     );
     try {
       authorise.mockResolvedValueOnce({ session: { user: { id: RESOLVER } }, denied: null });

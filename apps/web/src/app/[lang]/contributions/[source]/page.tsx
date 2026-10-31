@@ -202,6 +202,7 @@ async function npcFor(contributions: Contribution[]): Promise<Record<number, Npc
       { npcKind: o.npcKind, npcId: o.npcId, npcName: o.npcName },
       lookup.resolution,
       lookup.conflict,
+      isLang(row.locale) ? row.locale : BASE_LANG,
     );
   }
 

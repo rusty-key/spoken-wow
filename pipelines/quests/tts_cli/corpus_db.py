@@ -291,13 +291,14 @@ def _import_types(cur, npcs):
             new_flavor = cur.rowcount > 0
         if not (new_race or new_flavor) or not voice or is_model_voice(voice):
             continue
-        # The roster is the english team's. This connection sets no spoken.team, so the column
-        # default is null and the team is named.
-        cur.execute("""insert into "voice" ("name", "race", "gender", "teamId")
-                       values (%s, %s, %s, (select "id" from "team" where "slug" = 'english'))
+        # The types are every team's, so every team's roster gets the voice (apps/web
+        # migration 0089). This connection is the table owner and sets no spoken.team, so the
+        # column default is null and each team is named.
+        cur.execute("""insert into "voice" ("teamId", "name", "race", "gender")
+                       select t."id", %s, %s, %s from "team" t
                        on conflict do nothing""", (voice, race, gender or ""))
-        cur.execute("""insert into "voice_assignment" ("race", "gender", "flavor", "voice", "teamId")
-                       values (%s, %s, %s, %s, (select "id" from "team" where "slug" = 'english'))
+        cur.execute("""insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
+                       select t."id", %s, %s, %s, %s from "team" t
                        on conflict do nothing""",
                     (race, gender, flavor if new_flavor else None, voice))
 
