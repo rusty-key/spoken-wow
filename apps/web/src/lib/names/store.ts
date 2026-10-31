@@ -7,7 +7,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { actAs, db, query } from "@/lib/db";
+import { loggerOf } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 /** A boss is named by its id as text; instances have no rename control, so no kind here. */
@@ -66,9 +67,12 @@ export async function saveName(args: {
   const name = args.name.trim();
   if (!name) throw new Error("the name cannot be empty");
 
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(args.lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
     if (!args.anyLanguage) {
       const { rows: english } = await client.query(
         `select 1 from "entity_name"

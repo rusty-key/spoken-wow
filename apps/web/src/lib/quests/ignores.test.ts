@@ -9,7 +9,7 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { ownTeam } from "@/lib/teams/testing";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
 
 import { clearIgnore, forgetIgnores, readIgnores, writeIgnore } from "./ignores";
 
@@ -17,8 +17,8 @@ import { clearIgnore, forgetIgnores, readIgnores, writeIgnore } from "./ignores"
 const LINE = `q:999999:accept:test-${process.pid}`;
 
 afterEach(async () => {
-  await db().query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
-  await db().query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
+  await asSystem.query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
+  await asSystem.query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
   forgetIgnores();
 });
 
@@ -43,7 +43,7 @@ describe("ignores", () => {
     await writeIgnore(LINE, "first", null);
     await writeIgnore(LINE, "second", null);
 
-    const { rows } = await db().query<{ n: string }>(
+    const { rows } = await asSystem.query<{ n: string }>(
       `select count(*)::text as n from "line_ignore" where "lineId" = $1`,
       [LINE],
     );
@@ -68,7 +68,7 @@ describe("ignores", () => {
 
 describe("an ignore's team", () => {
   const teamOfRow = async (lang: string | null) =>
-    (await db().query<{ teamId: string | null }>(
+    (await asSystem.query<{ teamId: string | null }>(
       `select "teamId" from "line_ignore" where "lineId" = $1 and "lang" is not distinct from $2`,
       [LINE, lang],
     )).rows;
@@ -87,8 +87,8 @@ describe("an ignore's team", () => {
       expect((await readIgnores("enUS")).has(LINE)).toBe(false);
       expect(await clearIgnore(LINE, "deDE", null)).toBe(true);
     } finally {
-      await db().query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
-      await db().query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
+      await asSystem.query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
+      await asSystem.query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
       await german.restore();
     }
   });

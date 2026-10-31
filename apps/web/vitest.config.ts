@@ -33,6 +33,10 @@ function localEnv(): Record<string, string> {
 
   // A checkout set up to try the R2 archive must not have its tests write to the bucket.
   values.set("SPOKEN_ARCHIVE_STORE", "disk");
+  // As the app role, so row-level security binds the suite as it binds the site (lib/db.ts):
+  // the local and CI users are superusers, who bypass every policy. DATABASE_ROLE= (empty)
+  // runs as the connecting user instead.
+  values.set("DATABASE_ROLE", "spoken_app");
   return Object.fromEntries([...values].filter(([key]) => !(key in process.env)));
 }
 

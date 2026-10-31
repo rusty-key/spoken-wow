@@ -5,6 +5,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 const set = (race: string, gender: string, ...flavors: (string | null)[]) =>
   flavors.map((flavor): [string, string, string | null] => [race, gender, flavor]);
@@ -27,7 +28,7 @@ const ROSTER: [string, string, string | null][] = [
 afterAll(closeDb);
 
 const voiceFor = async (race: string, gender: string | null, flavor: string | null) =>
-  (await db().query<{ v: string | null }>(`select voice_for($1, $2, $3) as v`, [race, gender, flavor])).rows[0].v;
+  (await asSystem.query<{ v: string | null }>(`select voice_for($1, $2, $3) as v`, [race, gender, flavor])).rows[0].v;
 
 describe("migration 0071", () => {
   it("seeds every ROSTER voice, each read by the combination of the same name", async () => {
@@ -38,9 +39,9 @@ describe("migration 0071", () => {
   });
 
   it("keeps narrator a voice and not a type", async () => {
-    const { rows } = await db().query(`select 1 from "race" where "key" = 'narrator'`);
+    const { rows } = await asSystem.query(`select 1 from "race" where "key" = 'narrator'`);
     expect(rows).toHaveLength(0);
-    const { rows: voices } = await db().query(`select "race", "gender" from "voice" where "name" = 'narrator-male'`);
+    const { rows: voices } = await asSystem.query(`select "race", "gender" from "voice" where "name" = 'narrator-male'`);
     expect(voices).toEqual([{ race: "narrator", gender: "male" }]);
   });
 
@@ -61,7 +62,7 @@ describe("migration 0071", () => {
   });
 
   it("leaves no NPC on narrator, and no generic type with a gender", async () => {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select count(*)::int as n from "npc"
         where "race" = 'narrator' or ("race" in ('gameobject', 'item', 'creature') and "gender" is not null)`,
     );
@@ -69,7 +70,7 @@ describe("migration 0071", () => {
   });
 
   it("gives every speaker's NPC an answer", async () => {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select count(*)::int as n from "quest_line_speaker" s
         where s."race" is not null and s."race" <> ''
           and not exists (select 1 from "npc" n

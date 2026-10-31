@@ -2,10 +2,33 @@
  * For tests: a language moved onto a team of its own, and back. On a test database every
  * language shares the english team, so only a moved language makes "the job's team" observable.
  */
-import { db } from "@/lib/db";
+import type { QueryResult, QueryResultRow } from "pg";
+
+import { ALL_TEAMS, db, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 
 import { forgetTeams, type TeamId } from "./store";
+
+/**
+ * For fixtures: the pool as ALL_TEAMS, one statement a transaction.
+ *
+ * The suite acts as the app role (vitest.config.ts), so a test that seeds, inspects or cleans
+ * up per-team rows itself goes through row-level security like the code under test. Seeding
+ * through this is what a superuser's db() did before the policies; what the code under test
+ * does is still bound by them.
+ */
+export const asSystem = {
+  // `any` by default, as pg's own query is, so a fixture moved here keeps its untyped reads.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query<R extends QueryResultRow = any>(text: string, params?: unknown[]): Promise<QueryResult<R>> {
+    return withTeam(ALL_TEAMS, (client) => client.query<R>(text, params));
+  },
+};
+
+/** One statement's rows, as ALL_TEAMS: query() of lib/db.ts for fixtures. */
+export async function systemRows<R extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]): Promise<R[]> {
+  return (await asSystem.query<R>(text, params)).rows;
+}
 
 /** Tables a test may leave rows in under the borrowed team, deleted before the team is. */
 const STAMPED = [
@@ -59,14 +82,14 @@ export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () =
   );
   await db().query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [team, lang]);
   const { rows: english } = await db().query<{ id: TeamId }>(`select "id" from "team" where "slug" = 'english'`);
-  for (const sql of COPIED) await db().query(sql, [team, english[0].id]);
+  for (const sql of COPIED) await asSystem.query(sql, [team, english[0].id]);
   forgetTeams();
 
   return {
     team,
     async restore() {
       for (const table of STAMPED) {
-        await db().query(`delete from "${table}" where "teamId" = $1`, [team]);
+        await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
       }
       await db().query(`delete from "team_language" where "teamId" = $1`, [team]);
       if (was[0]) {

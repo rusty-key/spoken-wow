@@ -7,7 +7,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { ownTeam } from "@/lib/teams/testing";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
 
 import { loadRoster } from "./roster-store";
 import { addFlavor, addType, assignVoice, deleteFlavor, deleteType } from "./types-store";
@@ -21,12 +21,12 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "voice_assignment" where "race" = $1`, [KEY]);
-  await db().query(`delete from "flavor" where "race" = $1`, [KEY]);
-  await db().query(`delete from "gender" where "race" = $1`, [KEY]);
-  await db().query(`delete from "race" where "key" = $1`, [KEY]);
-  await db().query(`delete from "voice" where "name" = $1 or "name" like $2`, [KEY, `${KEY}-%`]);
-  await db().query(`delete from "activity" where "subject" = $1`, [KEY]);
+  await asSystem.query(`delete from "voice_assignment" where "race" = $1`, [KEY]);
+  await asSystem.query(`delete from "flavor" where "race" = $1`, [KEY]);
+  await asSystem.query(`delete from "gender" where "race" = $1`, [KEY]);
+  await asSystem.query(`delete from "race" where "key" = $1`, [KEY]);
+  await asSystem.query(`delete from "voice" where "name" = $1 or "name" like $2`, [KEY, `${KEY}-%`]);
+  await asSystem.query(`delete from "activity" where "subject" = $1`, [KEY]);
 });
 
 afterAll(async () => {
@@ -35,7 +35,7 @@ afterAll(async () => {
 });
 
 async function teamsWith(voice: string): Promise<string[]> {
-  const { rows } = await db().query<{ teamId: string }>(
+  const { rows } = await asSystem.query<{ teamId: string }>(
     `select a."teamId" from "voice_assignment" a join "voice" v on v."teamId" = a."teamId" and v."name" = a."voice"
       where a."voice" = $1 order by 1`,
     [voice],

@@ -6,6 +6,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { loadRoster } from "@/lib/voices/roster-store";
 
 const ACTOR = "test-types-route";
@@ -25,17 +26,17 @@ const npcId = 990_000_000 + Math.floor(Math.random() * 9_999_999);
 
 afterEach(async () => {
   admin = true;
-  await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
-  await db().query(`delete from "voice_assignment" where "race" = $1`, [KEY]);
-  await db().query(`delete from "flavor" where "race" = $1`, [KEY]);
-  await db().query(`delete from "gender" where "race" = $1`, [KEY]);
-  await db().query(`delete from "race" where "key" = $1`, [KEY]);
-  await db().query(`delete from "voice" where "name" = $1 or "name" like $2`, [KEY, `${KEY}-%`]);
-  await db().query(`delete from "activity" where "kind" = 'type.changed' and "subject" = $1`, [KEY]);
+  await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcId]);
+  await asSystem.query(`delete from "voice_assignment" where "race" = $1`, [KEY]);
+  await asSystem.query(`delete from "flavor" where "race" = $1`, [KEY]);
+  await asSystem.query(`delete from "gender" where "race" = $1`, [KEY]);
+  await asSystem.query(`delete from "race" where "key" = $1`, [KEY]);
+  await asSystem.query(`delete from "voice" where "name" = $1 or "name" like $2`, [KEY, `${KEY}-%`]);
+  await asSystem.query(`delete from "activity" where "kind" = 'type.changed' and "subject" = $1`, [KEY]);
 });
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Types', $2, false)
      on conflict ("id") do nothing`,
     [ACTOR, `${ACTOR}@example.invalid`],
@@ -43,7 +44,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [ACTOR]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [ACTOR]);
   await closeDb();
 });
 
@@ -113,7 +114,7 @@ describe("POST /api/types", () => {
 
   it("refuses to delete a type an NPC has", async () => {
     await POST(post({ action: "add-type", key: KEY, genders: [] }));
-    await db().query(
+    await asSystem.query(
       `insert into "npc" ("npcKind", "npcId", "race", "provenance", "confirmed") values ('creature', $1, $2, 'moderator', true)`,
       [npcId, KEY],
     );
@@ -125,7 +126,7 @@ describe("POST /api/types", () => {
   it("refuses to delete a flavor an NPC has", async () => {
     await POST(post({ action: "add-type", key: KEY, genders: ["male"] }));
     await POST(post({ action: "add-flavor", race: KEY, gender: "male", flavor: "old" }));
-    await db().query(
+    await asSystem.query(
       `insert into "npc" ("npcKind", "npcId", "race", "gender", "flavor", "provenance", "confirmed")
        values ('creature', $1, $2, 'male', 'old', 'moderator', true)`,
       [npcId, KEY],
@@ -145,7 +146,7 @@ describe("POST /api/types", () => {
   });
 
   async function npcOf(race: string, gender: string | null = null, flavor: string | null = null) {
-    await db().query(
+    await asSystem.query(
       `insert into "npc" ("npcKind", "npcId", "race", "gender", "flavor", "provenance", "confirmed")
        values ('creature', $1, $2, $3, $4, 'moderator', true)`,
       [npcId, race, gender, flavor],
@@ -153,7 +154,7 @@ describe("POST /api/types", () => {
   }
 
   async function answer() {
-    const { rows } = await db().query(`select "gender", "flavor" from "npc" where "npcId" = $1`, [npcId]);
+    const { rows } = await asSystem.query(`select "gender", "flavor" from "npc" where "npcId" = $1`, [npcId]);
     return rows[0];
   }
 
@@ -250,7 +251,7 @@ describe("POST /api/types", () => {
 
   it("logs each change", async () => {
     await POST(post({ action: "add-type", key: KEY, genders: [] }));
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "detail" from "activity" where "kind" = 'type.changed' and "subject" = $1`,
       [KEY],
     );

@@ -8,6 +8,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { upsertResolution } from "@/lib/npc/store";
 import { corpus } from "@/lib/quests/catalogue";
 
@@ -22,7 +23,7 @@ const moment = `q:${quest}:accept`;
 const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 
 async function contribution(locale: string, text: string, meta: Record<string, string> = {}): Promise<number> {
-  const { rows } = await db().query<{ id: number }>(
+  const { rows } = await asSystem.query<{ id: number }>(
     `insert into "contribution" ("source", "key", "locale", "raw", "dedup", "text", "ip", "meta")
      values ('quests', $1, $2, 'raw', $3, $4, $5, $6::jsonb) returning "id"`,
     [
@@ -38,7 +39,7 @@ async function contribution(locale: string, text: string, meta: Record<string, s
 }
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Wording Accepter', $2, false)
      on conflict ("id") do nothing`,
@@ -61,7 +62,7 @@ beforeAll(async () => {
     note: null,
     resolvedBy: ACCEPTER,
   });
-  await db().query(
+  await asSystem.query(
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "fileName",
         "text", "originalText", "localeText")
@@ -69,7 +70,7 @@ beforeAll(async () => {
             ($1, 0, 'deDE', 1, true, 'extracted', 'accept', $2, $3, 'Hallo, $N.', 'Hello, $n.', 'Hallo, $N.')`,
     [moment, quest, `${quest}-accept`],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "quest_line_speaker"
        ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "flavor", "voice")
      select $1, 0, 'enUS', greatest(coalesce(max("ord") + 1, 0), 1000000), 'creature', $2, 'Other Speaker',
@@ -81,20 +82,20 @@ beforeAll(async () => {
 
 afterAll(async () => {
   const lines = `q:${quest}:accept%`;
-  await db().query(
+  await asSystem.query(
     `delete from "activity" where "lineId" like $1
         or ("kind" = 'contribution.resolved'
             and "subject" in (select "id"::text from "contribution" where "ip" = $2))`,
     [lines, ip],
   );
-  await db().query(`delete from "activity" where "kind" = 'override.set' and "subject" like $1`, [`quests/${quest}-accept%`]);
-  await db().query(`delete from "line_override" where "file" like $1`, [`quests/${quest}-accept%`]);
-  await db().query(`delete from "quest_line_speaker" where "lineId" like $1`, [lines]);
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
-  await db().query(`delete from "quest_line" where "lineId" like $1`, [lines]);
-  await db().query(`delete from "entity_name" where "kind" = 'quest' and "entityId" = $1`, [String(quest)]);
-  await db().query(`delete from "npc" where "npcId" between $1 and $2`, [npcId, otherNpc]);
-  await db().query(`delete from "user" where "id" = $1`, [ACCEPTER]);
+  await asSystem.query(`delete from "activity" where "kind" = 'override.set' and "subject" like $1`, [`quests/${quest}-accept%`]);
+  await asSystem.query(`delete from "line_override" where "file" like $1`, [`quests/${quest}-accept%`]);
+  await asSystem.query(`delete from "quest_line_speaker" where "lineId" like $1`, [lines]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "quest_line" where "lineId" like $1`, [lines]);
+  await asSystem.query(`delete from "entity_name" where "kind" = 'quest' and "entityId" = $1`, [String(quest)]);
+  await asSystem.query(`delete from "npc" where "npcId" between $1 and $2`, [npcId, otherNpc]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [ACCEPTER]);
   await closeDb();
 });
 
@@ -104,7 +105,7 @@ describe("acceptAsWording", () => {
     const outcome = await acceptAsWording(id, ACCEPTER);
     expect(outcome.ok && outcome.contribution.status).toBe("accepted");
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lineId", "fileName", "text", "originalText", "origin", "generatable"
          from "quest_line" where "lineId" = $1 and "lang" = 'enUS' and "isCurrent"`,
       [`${moment}:w1`],
@@ -119,7 +120,7 @@ describe("acceptAsWording", () => {
         generatable: true,
       },
     ]);
-    const { rows: speakers } = await db().query(
+    const { rows: speakers } = await asSystem.query(
       `select "npcId", "contributionId" from "quest_line_speaker" where "lineId" = $1`,
       [`${moment}:w1`],
     );
@@ -141,7 +142,7 @@ describe("acceptAsWording", () => {
     const id = await contribution("deDE", "Ah, Ihr seid zurück.");
     const outcome = await acceptAsWording(id, ACCEPTER);
     expect(outcome.ok).toBe(true);
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "localeText", "originalText" from "quest_line" where "lineId" = $1 and "lang" = 'deDE' and "isCurrent"`,
       [`${moment}:w2`],
     );
@@ -151,17 +152,17 @@ describe("acceptAsWording", () => {
   it("only flips the status when its wording is already written", async () => {
     const id = await contribution("enUS", "Back again, are you?");
     expect((await acceptAsWording(id, ACCEPTER)).ok).toBe(true);
-    await db().query(`update "contribution" set "status" = 'new' where "id" = $1`, [id]);
+    await asSystem.query(`update "contribution" set "status" = 'new' where "id" = $1`, [id]);
     const again = await acceptAsWording(id, ACCEPTER);
     expect(again.ok && again.contribution.status).toBe("accepted");
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lineId" from "quest_line" where "lineId" like $1 and "lang" = 'enUS' order by "lineId"`,
       [`${moment}:w%`],
     );
     // w1 from the first test, w3 here; the resend wrote no w4.
     expect(rows.map((row) => row.lineId)).toEqual([`${moment}:w1`, `${moment}:w3`]);
     // Both accepts log the wording they wrote or found.
-    const { rows: logged } = await db().query(
+    const { rows: logged } = await asSystem.query(
       `select "detail"->>'wording' as "wording" from "activity"
         where "kind" = 'contribution.resolved' and "subject" = $1`,
       [String(id)],
@@ -175,7 +176,7 @@ describe("acceptAsWording", () => {
     const outcomes = await Promise.all([acceptAsWording(id, ACCEPTER), acceptAsWording(id, ACCEPTER), acceptAsWording(other, ACCEPTER)]);
     // Whichever writes first, the other's text is then a wording the moment has, as it would be one after the other.
     expect(outcomes.filter((outcome) => !outcome.ok).map((outcome) => outcome.reason)).toEqual(["not-a-correction"]);
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lineId" from "quest_line" where "lineId" like $1 and "lang" = 'enUS' and "originalText" = 'You again?'`,
       [`${moment}:w%`],
     );
@@ -193,7 +194,7 @@ describe("acceptAsWording", () => {
     const id = await contribution("enUS", "Oh, you are back, $N. Hello.");
     const outcome = await acceptCorrection(id, ACCEPTER, { lineId: moment, variant: 0 });
     expect(outcome.ok).toBe(true);
-    const { rows } = await db().query(`select "lineId", "text" from "line_override" where "file" like $1`, [`quests/${quest}-accept%`]);
+    const { rows } = await asSystem.query(`select "lineId", "text" from "line_override" where "file" like $1`, [`quests/${quest}-accept%`]);
     expect(rows).toEqual([{ lineId: moment, text: "Oh, you are back, Adventurer. Hello." }]);
   });
 

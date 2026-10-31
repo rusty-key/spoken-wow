@@ -8,6 +8,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { getResolution, upsertResolution } from "@/lib/npc/store";
 import { loadRoster } from "@/lib/voices/roster-store";
 
@@ -34,7 +35,7 @@ import { POST } from "./route";
 const npcId = 900_000_000 + Math.floor(Math.random() * 99_999_999);
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -43,16 +44,16 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "npc" where "npcId" in ($1, 0)`, [npcId]);
-  await db().query(`delete from "entity_name" where "entityId" = $1`, [String(npcId)]);
-  await db().query(`delete from "activity" where "kind" = 'name.edited' and "actorId" = $1`, [RESOLVER]);
-  await db().query(`delete from "activity" where "kind" = 'npc.resolved' and "actorId" = $1`, [
+  await asSystem.query(`delete from "npc" where "npcId" in ($1, 0)`, [npcId]);
+  await asSystem.query(`delete from "entity_name" where "entityId" = $1`, [String(npcId)]);
+  await asSystem.query(`delete from "activity" where "kind" = 'name.edited' and "actorId" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "activity" where "kind" = 'npc.resolved' and "actorId" = $1`, [
     RESOLVER,
   ]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -96,13 +97,13 @@ describe("POST /api/npcs", () => {
     const type = `t${npcId}`;
     await loadRoster("enUS");
     // Straight into the tables, as the other pm2 worker's api/types would: this one's cache is not told.
-    await db().query(`insert into "race" ("key") values ($1)`, [type]);
+    await asSystem.query(`insert into "race" ("key") values ($1)`, [type]);
     try {
       const response = await POST(post({ npcKind: "creature", npcId, race: type, gender: "" }));
       expect(response.status).toBe(200);
     } finally {
-      await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
-      await db().query(`delete from "race" where "key" = $1`, [type]);
+      await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcId]);
+      await asSystem.query(`delete from "race" where "key" = $1`, [type]);
     }
   });
 
@@ -127,7 +128,7 @@ describe("POST /api/npcs", () => {
       provenance: "client",
       confirmed: false,
     });
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lang", "origin", "editedBy" from "entity_name" where "entityId" = $1 and "isCurrent"`,
       [String(npcId)],
     );
@@ -142,7 +143,7 @@ describe("POST /api/npcs", () => {
     });
     await POST(post({ npcKind: "creature", npcId, npcName: "Some Guard" }));
     // What the import's speaker trigger runs for each English speaker row.
-    await db().query(`select "entity_name_set"('creature', $1, 'enUS', 'Some Gaurd')`, [String(npcId)]);
+    await asSystem.query(`select "entity_name_set"('creature', $1, 'enUS', 'Some Gaurd')`, [String(npcId)]);
     expect((await getResolution("creature", npcId))?.npcName).toBe("Some Guard");
   });
 
@@ -156,7 +157,7 @@ describe("POST /api/npcs", () => {
     await POST(post({ npcKind: "creature", npcId, npcName: "Guarda" }, "ptBR"));
 
     expect(asked).toEqual(["ptBR"]);
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lang", "name" from "entity_name" where "entityId" = $1 and "isCurrent" order by "lang"`,
       [String(npcId)],
     );
@@ -182,7 +183,7 @@ describe("POST /api/npcs", () => {
     const row = await getResolution("creature", npcId);
     expect(row).toMatchObject({ flavor: "elder", provenance: "moderator", confirmed: true });
     expect(row?.resolvedBy).toBe(RESOLVER);
-    const { rows: logged } = await db().query(
+    const { rows: logged } = await asSystem.query(
       `select "lang", "detail" from "activity" where "kind" = 'npc.resolved' and "subject" = $1`,
       [`creature:${npcId}`],
     );
@@ -195,7 +196,7 @@ describe("POST /api/npcs", () => {
     const response = await POST(post({ npcKind: "creature", npcId, race: "tauren", gender: "male" }, "ptBR"));
     expect(response.status).toBe(200);
     expect(asked).toEqual(["ptBR"]);
-    const { rows: logged } = await db().query(
+    const { rows: logged } = await asSystem.query(
       `select "lang" from "activity" where "kind" = 'npc.resolved' and "subject" = $1`,
       [`creature:${npcId}`],
     );

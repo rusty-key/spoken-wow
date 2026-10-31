@@ -17,7 +17,8 @@ import { afterAll, beforeEach, expect, it } from "vitest";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "restore-proof-"));
 process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { commitTake } = await import("@/lib/takes/commit");
 const { restoreTake } = await import("@/lib/takes/restore");
 const { listTakes, livePath } = await import("@/lib/takes/store");
@@ -27,7 +28,7 @@ beforeEach(() => {
   file = `gossip/${Math.random().toString(16).slice(2).padEnd(12, "0")}proof.mp3`;
 });
 afterAll(async () => {
-  await db().query(`delete from "take" where "file" like '%proof.mp3'`);
+  await asSystem.query(`delete from "take" where "file" like '%proof.mp3'`);
   fs.rmSync(root, { recursive: true, force: true });
   await closeDb();
 });
@@ -68,7 +69,7 @@ it("puts a take back by moving the flag, touching no file and adding no take", a
   expect(rows).toHaveLength(3);
   expect(rows.filter((r) => r.isCurrent).map((r) => r.version)).toEqual([1]);
   // Nothing in the take table says a restore happened, so the activity log is its record.
-  const { rows: logged } = await db().query(
+  const { rows: logged } = await asSystem.query(
     `select "detail" from "activity" where "kind" = 'take.restored' and "subject" = $1`,
     [file],
   );
@@ -82,7 +83,7 @@ it("puts a take back by moving the flag, touching no file and adding no take", a
 
 it("refuses a take whose clip was not kept, and leaves the live one alone", async () => {
   await take("kept");
-  await db().query(
+  await asSystem.query(
     `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
      values ('quests', 'enUS', $1, 'g:proof', 2, false, 'generated', 1, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
     [file],

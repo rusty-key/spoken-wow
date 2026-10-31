@@ -168,9 +168,9 @@ describe("validateConfig", () => {
  * Needs DATABASE_URL and migrations applied:
  *   deploy/web/bin/migrate.sh "$PWD/apps/web"
  */
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
 const { readSettings, writeRaceTags } = await import("./settings");
-const { ownTeam, unowned } = await import("@/lib/teams/testing");
+const { asSystem, ownTeam, unowned } = await import("@/lib/teams/testing");
 
 /**
  * The settings row, put back after every case.
@@ -182,7 +182,7 @@ const { ownTeam, unowned } = await import("@/lib/teams/testing");
 let snapshot: Record<string, unknown> | undefined;
 
 beforeAll(async () => {
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `select * from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
   );
   snapshot = rows[0];
@@ -195,14 +195,14 @@ beforeAll(async () => {
  * settings of whatever DATABASE_URL points at, and this file is careful with it.
  */
 async function noRow() {
-  await db().query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
+  await asSystem.query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
 }
 
 afterEach(async () => {
-  await db().query(`delete from "generation_setting_locale" where "lang" = 'koKR'`);
-  await db().query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
+  await asSystem.query(`delete from "generation_setting_locale" where "lang" = 'koKR'`);
+  await asSystem.query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
   if (snapshot) {
-    await db().query(
+    await asSystem.query(
       `insert into "generation_setting"
          ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
        values ((select "id" from "team" where "slug" = 'english'), $1, $2, $3, $4, $5, $6)`,
@@ -249,7 +249,7 @@ describe("writeRaceTags", () => {
 
   it("leaves the rest of an existing row alone", async () => {
     await writeRaceTags({}, null);
-    await db().query(
+    await asSystem.query(
       `update "generation_setting" set "modelId" = 'eleven_flash_v2_5', "seedStrategy" = 'none' where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
 
@@ -277,10 +277,10 @@ describe("base settings across teams", () => {
     try {
       await noRow();
       await writeRaceTags({ orc: "[gruff]" }, null);
-      await db().query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
+      await asSystem.query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
       await writeRaceTags({ dwarf: "[Scottish accent]" }, null);
 
-      const { rows } = await db().query(
+      const { rows } = await asSystem.query(
         `select "modelId", "raceTags" from "generation_setting" where "teamId" = $1`,
         [german.team],
       );
@@ -297,7 +297,7 @@ describe("base settings across teams", () => {
 
   it("are English's for a language nobody owns", async () => {
     await writeRaceTags({}, null);
-    await db().query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
+    await asSystem.query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
     const italian = await unowned("itIT");
     try {
       const settings = await readSettings("itIT");

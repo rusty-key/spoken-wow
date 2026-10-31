@@ -13,15 +13,16 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
-const { ownTeam } = await import("@/lib/teams/testing");
+const { actAs, closeDb, db } = await import("@/lib/db");
+const { teamOf } = await import("@/lib/teams/store");
+const { asSystem, ownTeam } = await import("@/lib/teams/testing");
 const { activityActors, groupRows, isDay, listActivity, recordActivities, recordActivity } = await import("./store");
 
 let actor: string;
 
 beforeAll(async () => {
   try {
-    await db().query(`select 1 from "activity" limit 1`);
+    await asSystem.query(`select 1 from "activity" limit 1`);
   } catch (error) {
     throw new Error(
       "store.test.ts needs a migrated database (migration 0050). Run:\n" +
@@ -33,15 +34,15 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   actor = `activity-test-${randomUUID()}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Tester', $2, true)`,
     [actor, `${actor}@example.test`],
   );
 });
 
 afterEach(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [actor]);
-  await db().query(`delete from "user" where "id" = $1`, [actor]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [actor]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [actor]);
 });
 
 afterAll(async () => {
@@ -186,7 +187,7 @@ describe("listActivity by day, with a batch that runs past midnight", () => {
 
   /** Move one of this test's rows to a time given relative to the start of DAY. */
   async function at(subject: string, offset: string) {
-    await db().query(
+    await asSystem.query(
       `update "activity" set "at" = $3::date + $4::interval where "actorId" = $1 and "subject" = $2`,
       [actor, subject, DAY, offset],
     );
@@ -273,7 +274,7 @@ describe("account events", () => {
   });
 
   it("do not put their actor in a language admin's person filter", async () => {
-    await db().query(`delete from "activity" where "actorId" = $1 and "kind" = 'ignore.set'`, [actor]);
+    await asSystem.query(`delete from "activity" where "actorId" = $1 and "kind" = 'ignore.set'`, [actor]);
 
     expect((await activityActors("deDE")).map((person) => person.id)).not.toContain(actor);
     expect((await activityActors("deDE", true)).map((person) => person.id)).toContain(actor);
@@ -285,6 +286,7 @@ describe("recordActivity", () => {
     const client = await db().connect();
     try {
       await client.query("begin");
+      await actAs(client, await teamOf("deDE"));
       await recordActivity({ kind: "ignore.set", lang: "deDE", actorId: actor, detail: {} }, client);
       await client.query("rollback");
     } finally {
@@ -305,7 +307,7 @@ describe("recordActivity", () => {
 
 describe("an act's team", () => {
   const teamsOf = async () =>
-    (await db().query<{ lang: string | null; teamId: string | null }>(
+    (await asSystem.query<{ lang: string | null; teamId: string | null }>(
       `select "lang", "teamId" from "activity" where "actorId" = $1 order by "lang" nulls first`,
       [actor],
     )).rows;
@@ -334,7 +336,7 @@ describe("an act's team", () => {
         null,
       ]);
     } finally {
-      await db().query(`delete from "activity" where "actorId" = $1`, [actor]);
+      await asSystem.query(`delete from "activity" where "actorId" = $1`, [actor]);
       await german.restore();
     }
   });

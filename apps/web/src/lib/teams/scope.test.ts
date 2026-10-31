@@ -14,6 +14,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { closeDb, db, withTeam } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 afterAll(closeDb);
 
@@ -66,7 +67,7 @@ const STAMPED: Record<string, string> = {
 
 /** Rows matching `where` whose team is set and is not `expected`. */
 async function wrong(table: string, expected: string, where = "true"): Promise<number> {
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `select count(*)::int as "n" from "${table}" t
       where (${where}) and t."teamId" is not null and t."teamId" is distinct from (${expected})`,
   );
@@ -79,7 +80,7 @@ describe("team scope", () => {
   });
 
   it.each(["line_ignore", "activity"])("leaves site-wide %s rows without a team", async (table) => {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select count(*)::int as "n" from "${table}" where "lang" is null and "teamId" is not null`,
     );
     expect(rows[0].n).toBe(0);
@@ -87,7 +88,7 @@ describe("team scope", () => {
 
   it.each(Object.entries(STAMPED))("backfilled every %s row older than it", async (table, at) => {
     const siteWide = ["line_ignore", "activity"].includes(table) ? ` and "lang" is not null` : "";
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select count(*)::int as "n" from "${table}"
         where "teamId" is null and "${at}" <= (${MIGRATED})${siteWide}`,
     );
@@ -109,7 +110,7 @@ describe("team scope", () => {
   });
 
   it("fills teamId from withTeam on an insert that does not name it", async () => {
-    const { rows } = await db().query(`select "id" from "team" where "slug" = 'english'`);
+    const { rows } = await asSystem.query(`select "id" from "team" where "slug" = 'english'`);
     const team: string = rows[0].id;
     const rollback = new Error("rollback");
     let got: unknown;

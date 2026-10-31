@@ -10,7 +10,8 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { currentLocator, readLexicon, resync, sync, writeLexicon } = await import("./dictionary");
 
 const ENTRIES = [
@@ -83,11 +84,11 @@ let startedAt: string;
 
 beforeAll(async () => {
   try {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select * from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     snapshot = rows[0];
-    startedAt = (await db().query<{ now: string }>(`select now()::text as "now"`)).rows[0].now;
+    startedAt = (await asSystem.query<{ now: string }>(`select now()::text as "now"`)).rows[0].now;
   } catch (error) {
     throw new Error(
       "dictionary.test.ts needs a migrated database. Run:\n" +
@@ -104,15 +105,15 @@ afterEach(async () => {
   // the corpus -- and one row per word per save made the check itself take 26 seconds a page
   // (2026-10-03: 78,000 rows on spoken_dev). Nobody's, because the site never saves as
   // nobody.
-  await db().query(
+  await asSystem.query(
     `delete from "lexicon_change" where "changedBy" is null and "changedAt" >= $1::timestamptz`,
     [startedAt],
   );
   if (!snapshot) {
-    await db().query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
+    await asSystem.query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
     return;
   }
-  await db().query(
+  await asSystem.query(
     `insert into "pronunciation_lexicon"
        ("teamId", "entries", "dictionaryId", "versionId", "rulesSent", "rulesKept",
         "syncedAt", "syncedDigest", "updatedAt", "updatedBy")
@@ -166,7 +167,7 @@ describe("readLexicon", () => {
    * rules that have never reached ElevenLabs.
    */
   it("does not claim a seeded lexicon is in force at ElevenLabs", async () => {
-    await db().query(
+    await asSystem.query(
       `update "pronunciation_lexicon"
           set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
@@ -180,7 +181,7 @@ describe("readLexicon", () => {
    * instead of inviting someone to retype 134 entries.
    */
   it("reports an unseeded table rather than an empty lexicon", async () => {
-    await db().query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
+    await asSystem.query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
     const lexicon = await readLexicon();
     expect(lexicon.seeded).toBe(false);
     expect(lexicon.entries).toEqual([]);
@@ -229,7 +230,7 @@ describe("writeLexicon", () => {
    * rules that no row describes, and generation applying pronunciations nothing can show.
    */
   it("keeps the entries when the upload fails, and says why", async () => {
-    await db().query(
+    await asSystem.query(
       `update "pronunciation_lexicon"
           set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
@@ -271,7 +272,7 @@ describe("the activity log", () => {
     const edited = [{ ...ENTRIES[0], ipa: "ɡnoʊmˈɹɛɡən" }];
     await writeLexicon(edited, null as unknown as string, OPTIONS(accepts().fetchImpl));
 
-    const { rows } = await db().query<{ kind: string; detail: unknown }>(
+    const { rows } = await asSystem.query<{ kind: string; detail: unknown }>(
       `select "kind", "detail" from "activity"
         where "subject" = 'Gnomeregan' and "lang" = 'enUS' and "at" >= $1::timestamptz
         order by "id" desc limit 1`,
@@ -298,7 +299,7 @@ describe("what is in force", () => {
     expect((await readLexicon()).sync).toBe("synced");
 
     // Neither timestamp is touched. The old comparison sees nothing at all here.
-    await db().query(
+    await asSystem.query(
       `update "pronunciation_lexicon" set "entries" = $1::jsonb where "teamId" = (select "id" from "team" where "slug" = 'english')`,
       [JSON.stringify([{ ...ENTRIES[0], ipa: "something-else" }])],
     );
@@ -315,7 +316,7 @@ describe("what is in force", () => {
   it("keeps a lexicon synced when a save changes nothing about the entries", async () => {
     await writeLexicon(ENTRIES, null as unknown as string, OPTIONS(accepts().fetchImpl));
 
-    await db().query(`update "pronunciation_lexicon" set "updatedAt" = now() where "teamId" = (select "id" from "team" where "slug" = 'english')`);
+    await asSystem.query(`update "pronunciation_lexicon" set "updatedAt" = now() where "teamId" = (select "id" from "team" where "slug" = 'english')`);
 
     expect((await readLexicon()).sync).toBe("synced");
   });
@@ -329,7 +330,7 @@ describe("concurrent saves", () => {
    * nothing is being spoken with.
    */
   it("refuses to attach a locator to entries it did not upload", async () => {
-    await db().query(
+    await asSystem.query(
       `update "pronunciation_lexicon"
           set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
@@ -406,7 +407,7 @@ describe("rule verification", () => {
 
 describe("resync", () => {
   it("uploads what is stored and puts it in force", async () => {
-    await db().query(
+    await asSystem.query(
       `update "pronunciation_lexicon"
           set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
@@ -424,7 +425,7 @@ describe("resync", () => {
   // Only reachable with migrations unrun, since 0008 seeds the row - but resync must still
   // say so rather than uploading an empty dictionary and reporting success.
   it("refuses when there is no lexicon at all", async () => {
-    await db().query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
+    await asSystem.query(`delete from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
     expect(await resync(OPTIONS(accepts().fetchImpl))).toMatch(/no saved lexicon/);
   });
 });
@@ -523,7 +524,7 @@ describe("the pinned dictionary", () => {
         : new Response(JSON.stringify({ id: PINNED, version_id: "ver-2" })),
     ) as unknown as typeof globalThis.fetch;
 
-    await db().query(
+    await asSystem.query(
       `update "pronunciation_lexicon"
           set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );

@@ -24,7 +24,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { actAs, db, query } from "@/lib/db";
+import { loggerOf } from "@/lib/teams/store";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -88,9 +89,12 @@ export async function saveBookText(args: {
   lang?: Lang;
 }): Promise<BookVersion> {
   const lang = args.lang ?? BASE_LANG;
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
 
     const { rows: currentRows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"
@@ -203,9 +207,12 @@ export async function restoreBookText(
   lang: Lang,
   by: string | null,
 ): Promise<BookVersion> {
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
 
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"

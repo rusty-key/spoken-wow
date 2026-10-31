@@ -7,6 +7,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 afterAll(closeDb);
 
@@ -29,7 +30,7 @@ const LANGS = `
 
 describe("seeded teams", () => {
   it("gives every language exactly one privileged team", async () => {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select l."lang", count(tl."teamId")::int as "n"
          from (${LANGS}) l
          left join "team_language" tl on tl."lang" = l."lang" and tl."privileged"
@@ -40,7 +41,7 @@ describe("seeded teams", () => {
   });
 
   it("puts enUS on the english team", async () => {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select t."slug", t."name" from "team" t
          join "team_language" tl on tl."teamId" = t."id"
         where tl."lang" = 'enUS'`,
@@ -49,12 +50,12 @@ describe("seeded teams", () => {
   });
 
   it("shares a team only between languages with equal, non-empty maintainer sets", async () => {
-    const { rows: teams } = await db().query(
+    const { rows: teams } = await asSystem.query(
       `select tl."teamId", t."slug", array_agg(tl."lang" order by tl."lang") as "langs"
          from "team_language" tl join "team" t on t."id" = tl."teamId"
         group by tl."teamId", t."slug"`,
     );
-    const { rows: grants } = await db().query(
+    const { rows: grants } = await asSystem.query(
       `select "lang", array_agg(distinct "userId" order by "userId") as "key"
          from "language_grant"
         where "capability" in ('edit', 'regenerate', 'configure', 'ignore', 'admin')

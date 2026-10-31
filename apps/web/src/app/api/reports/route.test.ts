@@ -14,6 +14,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/auth", () => ({ auth: { api: { getSession: async () => null } } }));
@@ -41,9 +42,9 @@ function valid(overrides: Record<string, unknown> = {}) {
 }
 
 afterEach(async () => {
-  await db().query(`delete from "report" where "ip" = $1`, [ip]);
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
-  await db().query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "report" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
 });
 
 afterAll(async () => {
@@ -54,7 +55,7 @@ describe("POST /api/reports", () => {
   it("writes a report", async () => {
     expect((await POST(post(valid()))).status).toBe(200);
 
-    const { rows } = await db().query<{ target: string }>(
+    const { rows } = await asSystem.query<{ target: string }>(
       `select "target" from "report" where "ip" = $1`,
       [ip],
     );
@@ -65,7 +66,7 @@ describe("POST /api/reports", () => {
   it("answers a filled honeypot with 200 and writes nothing", async () => {
     expect((await POST(post(valid({ website: "http://spam.example" })))).status).toBe(200);
 
-    const { rows } = await db().query(`select 1 from "report" where "ip" = $1`, [ip]);
+    const { rows } = await asSystem.query(`select 1 from "report" where "ip" = $1`, [ip]);
     expect(rows).toHaveLength(0);
   });
 
@@ -88,12 +89,12 @@ describe("POST /api/reports", () => {
   it("files a readables report against a minted page's key", async () => {
     const key = `n${randomUUID()}`;
     const lineId = `b:${key}`;
-    await db().query(
+    await asSystem.query(
       `insert into "book_page" ("lineId", "bookId", "pageNumber") values ($1, $2, 1)`,
       [lineId, key],
     );
     try {
-      await db().query(
+      await asSystem.query(
         `insert into "book_line" ("lineId", "lang", "version", "isCurrent", "origin", "title", "text")
          values ($1, 'enUS', 1, true, 'contributed', 'Minted', 'Words.')`,
         [lineId],
@@ -101,14 +102,14 @@ describe("POST /api/reports", () => {
 
       expect((await POST(post(valid({ source: "readables", target: key })))).status).toBe(200);
 
-      const { rows } = await db().query<{ lineId: string | null }>(
+      const { rows } = await asSystem.query<{ lineId: string | null }>(
         `select "lineId" from "report" where "ip" = $1`,
         [ip],
       );
       expect(rows).toEqual([{ lineId }]);
     } finally {
-      await db().query(`delete from "book_line" where "lineId" = $1`, [lineId]);
-      await db().query(`delete from "book_page" where "lineId" = $1`, [lineId]);
+      await asSystem.query(`delete from "book_line" where "lineId" = $1`, [lineId]);
+      await asSystem.query(`delete from "book_page" where "lineId" = $1`, [lineId]);
     }
   });
 
@@ -117,27 +118,27 @@ describe("POST /api/reports", () => {
     const mintedId = `b:${key}`;
     const realId = `b:${700_000_000 + Math.floor(Math.random() * 90_000_000)}`;
     const num = Number(realId.slice(2));
-    await db().query(
+    await asSystem.query(
       `insert into "book_page" ("lineId", "pageTextId", "bookId", "pageNumber") values ($1, $2::int, $2::int::text, 1)`,
       [realId, num],
     );
-    await db().query(
+    await asSystem.query(
       `insert into "book_page" ("lineId", "bookId", "pageNumber", "aliasOf") values ($1, $2, 1, $3)`,
       [mintedId, key, realId],
     );
     try {
-      await db().query(
+      await asSystem.query(
         `insert into "book_line" ("lineId", "lang", "version", "isCurrent", "origin", "title", "text")
          values ($1, 'enUS', 1, true, 'extracted', 'Real', 'Words.')`,
         [realId],
       );
       expect((await POST(post(valid({ source: "readables", target: key })))).status).toBe(200);
-      const { rows } = await db().query(`select "lineId" from "report" where "ip" = $1`, [ip]);
+      const { rows } = await asSystem.query(`select "lineId" from "report" where "ip" = $1`, [ip]);
       expect(rows).toEqual([{ lineId: realId }]);
     } finally {
-      await db().query(`delete from "book_line" where "lineId" = $1`, [realId]);
-      await db().query(`delete from "book_page" where "lineId" = $1`, [mintedId]);
-      await db().query(`delete from "book_page" where "lineId" = $1`, [realId]);
+      await asSystem.query(`delete from "book_line" where "lineId" = $1`, [realId]);
+      await asSystem.query(`delete from "book_page" where "lineId" = $1`, [mintedId]);
+      await asSystem.query(`delete from "book_page" where "lineId" = $1`, [realId]);
     }
   });
 
@@ -145,12 +146,12 @@ describe("POST /api/reports", () => {
     const map = -2;
     const id = -Math.floor(1e6 + Math.random() * 1e9);
     const key = `report-${randomUUID().slice(0, 8)}`;
-    await db().query(
+    await asSystem.query(
       `insert into "boss_instance" ("map", "kind", "zone", "position") values ($1, 'dungeon', 0, -2)`,
       [map],
     );
     try {
-      await db().query(
+      await asSystem.query(
         `insert into "boss" ("id", "map", "key", "position", "encounterIds") values ($1, $2, $3, 0, $4)`,
         [id, map, key, [id]],
       );
@@ -160,18 +161,18 @@ describe("POST /api/reports", () => {
       expect((await POST(post(valid({ source: "bosses", target: `${map}/${key}/extra` })))).status).toBe(400);
       expect((await POST(post(valid({ source: "bosses", target: `${map}/${key}` })))).status).toBe(200);
 
-      const { rows } = await db().query(`select "lineId", "target" from "report" where "ip" = $1`, [ip]);
+      const { rows } = await asSystem.query(`select "lineId", "target" from "report" where "ip" = $1`, [ip]);
       expect(rows).toEqual([{ lineId: `boss:${map}:${key}`, target: `${map}/${key}` }]);
     } finally {
-      await db().query(`delete from "boss" where "map" = $1`, [map]);
-      await db().query(`delete from "boss_instance" where "map" = $1`, [map]);
+      await asSystem.query(`delete from "boss" where "map" = $1`, [map]);
+      await asSystem.query(`delete from "boss_instance" where "map" = $1`, [map]);
     }
   });
 
   it("stores no lineId when the claimed line does not belong to the target", async () => {
     await POST(post(valid({ lineId: "g:not-a-real-line" })));
 
-    const { rows } = await db().query<{ lineId: string | null }>(
+    const { rows } = await asSystem.query<{ lineId: string | null }>(
       `select "lineId" from "report" where "ip" = $1`,
       [ip],
     );
@@ -181,7 +182,7 @@ describe("POST /api/reports", () => {
   it("keeps the context the addon sent", async () => {
     expect((await POST(post(valid({ context: observed })))).status).toBe(200);
 
-    const { rows } = await db().query<{ context: { fields: Record<string, string>; text: string } }>(
+    const { rows } = await asSystem.query<{ context: { fields: Record<string, string>; text: string } }>(
       `select "context" from "report" where "ip" = $1`,
       [ip],
     );
@@ -194,7 +195,7 @@ describe("POST /api/reports", () => {
     const tampered = observed.replace("druid", "rogue");
     expect((await POST(post(valid({ context: tampered })))).status).toBe(200);
 
-    const { rows } = await db().query<{ context: unknown }>(
+    const { rows } = await asSystem.query<{ context: unknown }>(
       `select "context" from "report" where "ip" = $1`,
       [ip],
     );
@@ -204,7 +205,7 @@ describe("POST /api/reports", () => {
   it("contributes the text of a missing line", async () => {
     await POST(post(valid({ category: "missing", body: "Nothing played.", context: observed })));
 
-    const { rows } = await db().query<{ key: string; text: string; body: string }>(
+    const { rows } = await asSystem.query<{ key: string; text: string; body: string }>(
       `select "key", "text", "body" from "contribution" where "ip" = $1`,
       [ip],
     );
@@ -216,7 +217,7 @@ describe("POST /api/reports", () => {
   it("contributes nothing for any other complaint", async () => {
     await POST(post(valid({ category: "pronunciation", context: observed })));
 
-    const { rows } = await db().query(`select 1 from "contribution" where "ip" = $1`, [ip]);
+    const { rows } = await asSystem.query(`select 1 from "contribution" where "ip" = $1`, [ip]);
     expect(rows).toHaveLength(0);
   });
 });

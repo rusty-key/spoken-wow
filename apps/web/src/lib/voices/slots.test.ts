@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 import { isVoiceSlot, slots } from "./slots";
 import { loadRoster } from "./roster-store";
@@ -18,8 +19,8 @@ describe("slots", () => {
   it("offers a voice the corpus does not speak yet, so it can be cloned first", async () => {
     // A voice of its own: every roster voice speaks once contributions reach it.
     const type = "tsilentslot";
-    await db().query(`insert into "race" ("key") values ($1)`, [type]);
-    await db().query(
+    await asSystem.query(`insert into "race" ("key") values ($1)`, [type]);
+    await asSystem.query(
       `insert into "voice" ("name", "race", "gender", "teamId")
        values ($1, $1, '', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
       [type],
@@ -28,8 +29,8 @@ describe("slots", () => {
       const slot = (await slots("enUS")).find((s) => s.name === type);
       expect(slot).toEqual({ name: type, lineCount: 0, npcCount: 0 });
     } finally {
-      await db().query(`delete from "voice" where "name" = $1`, [type]);
-      await db().query(`delete from "race" where "key" = $1`, [type]);
+      await asSystem.query(`delete from "voice" where "name" = $1`, [type]);
+      await asSystem.query(`delete from "race" where "key" = $1`, [type]);
     }
     // A race-gender with flavors is offered by its flavors, never bare.
     expect((await slots("enUS")).map((s) => s.name)).not.toContain("skybourneelf-female");

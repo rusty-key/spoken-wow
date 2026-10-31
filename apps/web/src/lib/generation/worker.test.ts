@@ -22,7 +22,7 @@ import type { RegenerateResult } from "./regenerate";
 import { backoffFor, startWorker } from "./worker";
 import type { Source } from "@/lib/sections";
 import { commitTake } from "@/lib/takes/commit";
-import { ownTeam } from "@/lib/teams/testing";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
 
 // The real boss generator would reach the catalogue and a provider; the dispatch to it is
 // what is under test here, and lib/bosses/regenerate.test.ts covers what it does.
@@ -75,7 +75,7 @@ const users: string[] = [];
 /** A real user row, because regeneration_batch."createdBy" references one. */
 async function newUser(): Promise<string> {
   const id = `test-owner-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $2, $3, false)`,
     [id, `Owner ${id}`, `${id}@example.invalid`],
   );
@@ -101,7 +101,7 @@ async function seedFor(
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function statesOf(batchId: string): Promise<Record<string, number>> {
-  const { rows } = await db().query<{ state: string; n: string }>(
+  const { rows } = await asSystem.query<{ state: string; n: string }>(
     `select "state", count(*)::text as n from "regeneration_job"
       where "batchId" = $1 group by "state"`,
     [batchId],
@@ -126,11 +126,11 @@ beforeEach(() => {
 afterEach(async () => {
   vi.restoreAllMocks();
   if (batches.length) {
-    await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+    await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
     batches.length = 0;
   }
   if (users.length) {
-    await db().query(`delete from "user" where "id" = any($1::text[])`, [users]);
+    await asSystem.query(`delete from "user" where "id" = any($1::text[])`, [users]);
     users.length = 0;
   }
 });
@@ -239,7 +239,7 @@ describe("startWorker", () => {
     await worker.stop();
 
     expect((await statesOf(batch)).cancelled).toBeUndefined();
-    const { rows } = await db().query<{ stoppedBecause: string | null }>(
+    const { rows } = await asSystem.query<{ stoppedBecause: string | null }>(
       `select "stoppedBecause" from "regeneration_batch" where "id" = $1`,
       [batch],
     );
@@ -290,7 +290,7 @@ describe("startWorker", () => {
     expect(generated).toBe(0);
     expect((await statesOf(batch)).cancelled).toBeUndefined();
 
-    const { rows } = await db().query<{ error: string }>(
+    const { rows } = await asSystem.query<{ error: string }>(
       `select "error" from "regeneration_job" where "batchId" = $1 limit 1`,
       [batch],
     );
@@ -418,7 +418,7 @@ describe("startWorker", () => {
     await until(async () => (await statesOf(batch)).failed === 1);
     await worker.stop();
 
-    const { rows } = await db().query<{ attempts: number }>(
+    const { rows } = await asSystem.query<{ attempts: number }>(
       `select "attempts" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -427,7 +427,7 @@ describe("startWorker", () => {
 
   it("fails a rate-limited job rather than requeueing it once its batch is stopped", async () => {
     const batch = await seed(1);
-    await db().query(
+    await asSystem.query(
       `update "regeneration_batch" set "stoppedAt" = now(), "stoppedBecause" = 'Stopped'
         where "id" = $1`,
       [batch],
@@ -454,7 +454,7 @@ describe("startWorker", () => {
     // One attempt, not three: a retry would put the row back to `pending`, where it would be
     // claimed and paid for after someone pressed Stop - and where it would flip the queue
     // back to active, so the panel would return to "Regenerating" having just said "Stopped".
-    const { rows } = await db().query<{ attempts: number }>(
+    const { rows } = await asSystem.query<{ attempts: number }>(
       `select "attempts" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -798,7 +798,7 @@ describe("a fish.audio batch", () => {
     // happen to ask the same lane's key here because there is only one job.
     expect(asked).toEqual(["fish", "fish"]);
     expect(seen).toEqual(["fish"]);
-    const { rows } = await db().query(`select "costUsd"::float8 as usd from "regeneration_job" where "batchId" = $1`, [batch]);
+    const { rows } = await asSystem.query(`select "costUsd"::float8 as usd from "regeneration_job" where "batchId" = $1`, [batch]);
     expect(rows[0].usd).toBeCloseTo(0.001);
   });
 
@@ -812,7 +812,7 @@ describe("a fish.audio batch", () => {
     await until(async () => (await statesOf(batch)).failed === 2);
     await worker.stop();
 
-    const { rows } = await db().query<{ error: string }>(
+    const { rows } = await asSystem.query<{ error: string }>(
       `select "error" from "regeneration_job" where "batchId" = $1 and "state" = 'failed'`,
       [batch],
     );
@@ -898,7 +898,7 @@ describe("a settings read that fails", () => {
     });
     await worker.stop();
 
-    const { rows } = await db().query<{ error: string }>(
+    const { rows } = await asSystem.query<{ error: string }>(
       `select "error" from "regeneration_job" where "batchId" = $1 and "state" = 'failed'`,
       [batch],
     );
@@ -960,7 +960,7 @@ describe("a job's team", () => {
       await until(async () => (await statesOf(batch)).done === 1);
       await worker.stop();
 
-      const { rows } = await db().query(
+      const { rows } = await asSystem.query(
         `select "teamId", "lang" from "take" where "source" = 'bosses' and "file" = $1`,
         [line(1).file],
       );
@@ -969,7 +969,7 @@ describe("a job's team", () => {
       if (before === undefined) delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
       else process.env.SPOKEN_BOSSES_AUDIO_HISTORY = before;
       fs.rmSync(archive, { recursive: true, force: true });
-      await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+      await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
       batches.length = 0;
       await german.restore();
     }

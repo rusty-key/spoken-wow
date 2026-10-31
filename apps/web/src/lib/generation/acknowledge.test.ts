@@ -13,7 +13,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { Lang } from "@/lib/lang";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { acknowledge } = await import("./dirty");
 const { teamOf } = await import("@/lib/teams/store");
 
@@ -23,16 +24,16 @@ let prefix: string;
 beforeEach(async () => {
   actor = `ack-test-${randomUUID()}`;
   prefix = `ack-test/${randomUUID()}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Tester', $2, true)`,
     [actor, `${actor}@example.test`],
   );
 });
 
 afterEach(async () => {
-  await db().query(`delete from "take_ack" where "file" like $1`, [`${prefix}/%`]);
-  await db().query(`delete from "activity" where "actorId" = $1`, [actor]);
-  await db().query(`delete from "user" where "id" = $1`, [actor]);
+  await asSystem.query(`delete from "take_ack" where "file" like $1`, [`${prefix}/%`]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [actor]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [actor]);
 });
 
 afterAll(async () => {
@@ -41,22 +42,22 @@ afterAll(async () => {
 
 const logged = async () =>
   (
-    await db().query<{ kind: string; source: string; subject: string | null; detail: Record<string, unknown> }>(
+    await asSystem.query<{ kind: string; source: string; subject: string | null; detail: Record<string, unknown> }>(
       `select "kind", "source", "subject", "detail" from "activity" where "actorId" = $1 order by "id"`,
       [actor],
     )
   ).rows;
 
 const acked = async () =>
-  (await db().query(`select 1 from "take_ack" where "file" like $1`, [`${prefix}/%`])).rowCount;
+  (await asSystem.query(`select 1 from "take_ack" where "file" like $1`, [`${prefix}/%`])).rowCount;
 
 describe("acknowledge", () => {
   it("writes the marks and their log rows as the language's team", async () => {
     await acknowledge("quests", [`${prefix}/a.mp3`], actor, "deDE");
 
     const team = await teamOf("deDE");
-    const { rows: marks } = await db().query(`select "teamId" from "take_ack" where "file" like $1`, [`${prefix}/%`]);
-    const { rows: log } = await db().query(`select "teamId" from "activity" where "actorId" = $1`, [actor]);
+    const { rows: marks } = await asSystem.query(`select "teamId" from "take_ack" where "file" like $1`, [`${prefix}/%`]);
+    const { rows: log } = await asSystem.query(`select "teamId" from "activity" where "actorId" = $1`, [actor]);
     expect(marks).toEqual([{ teamId: team }]);
     expect(log).toEqual([{ teamId: team }]);
   });

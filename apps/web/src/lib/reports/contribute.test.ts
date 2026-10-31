@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 import { contributeReport, reportContribution, reportSubmission } from "./contribute";
 import type { Report } from "./reports";
@@ -27,7 +28,7 @@ const fields = {
 };
 
 async function report(text: string | null, source: Report["source"] = "quests"): Promise<Report> {
-  const { rows } = await db().query<Report>(
+  const { rows } = await asSystem.query<Report>(
     `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "context", "teamId")
      values ($1, 'enUS', $2, $2, 'wrong_text', 'This is the correct completion text.', $3::jsonb,
              (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))
@@ -39,13 +40,13 @@ async function report(text: string | null, source: Report["source"] = "quests"):
 }
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Accepter', $2, false)
      on conflict ("id") do nothing`,
     [ACCEPTER, `${ACCEPTER}@example.invalid`],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "fileName",
         "text", "originalText", "localeText")
@@ -55,7 +56,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "activity"
       where "lineId" = $1
          or ("kind" = 'override.set' and "subject" = $2)
@@ -64,11 +65,11 @@ afterAll(async () => {
          or ("kind" = 'report.resolved' and "subject" in (select "id"::text from "report" where "lineId" = $1))`,
     [lineId, file, `${quest}:%`],
   );
-  await db().query(`delete from "contribution" where "key" like $1`, [`${quest}:%`]);
-  await db().query(`delete from "report" where "lineId" = $1`, [lineId]);
-  await db().query(`delete from "line_override" where "lineId" = $1`, [lineId]);
-  await db().query(`delete from "quest_line" where "lineId" = $1`, [lineId]);
-  await db().query(`delete from "user" where "id" = $1`, [ACCEPTER]);
+  await asSystem.query(`delete from "contribution" where "key" like $1`, [`${quest}:%`]);
+  await asSystem.query(`delete from "report" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "line_override" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "quest_line" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [ACCEPTER]);
   await closeDb();
 });
 
@@ -113,7 +114,7 @@ describe("reportContribution", () => {
   });
 
   it("shows text the line prints but does not speak as a correction against what it speaks", async () => {
-    await db().query(
+    await asSystem.query(
       `insert into "line_override" ("file", "lineId", "text", "teamId")
        values ($1, $2, 'Goodbye, friend.', (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
       [file, lineId],
@@ -127,7 +128,7 @@ describe("reportContribution", () => {
         closest: 0,
       });
     } finally {
-      await db().query(`delete from "line_override" where "file" = $1`, [file]);
+      await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
     }
   });
 
@@ -148,7 +149,7 @@ describe("contributeReport", () => {
     expect(outcome.ok && [outcome.report.status, outcome.contribution.status]).toEqual(["fixed", "accepted"]);
     expect(outcome.ok && outcome.contribution.body).toBe(filed.body);
 
-    const { rows } = await db().query(`select "text" from "line_override" where "file" = $1`, [file]);
+    const { rows } = await asSystem.query(`select "text" from "line_override" where "file" = $1`, [file]);
     expect(rows).toEqual([{ text: "Greetings, Adventurer." }]);
   });
 
@@ -160,7 +161,7 @@ describe("contributeReport", () => {
 
     // Stored once already, by the accept above: refusing must not count it again.
     const count = async () =>
-      (await db().query(`select "count" from "contribution" where "dedup" = $1`, [submission.dedup])).rows[0]?.count;
+      (await asSystem.query(`select "count" from "contribution" where "dedup" = $1`, [submission.dedup])).rows[0]?.count;
     const before = await count();
     const outcome = await contributeReport(filed, "enUS", submission, ACCEPTER);
     expect(outcome.ok).toBe(false);

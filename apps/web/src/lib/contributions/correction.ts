@@ -36,7 +36,8 @@ import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
 import { BookConflict, BookMissing, saveBookText } from "@/lib/readables/text";
-import { db } from "@/lib/db";
+import { actAs, db } from "@/lib/db";
+import { loggerOf } from "@/lib/teams/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { englishMomentLines, rewriteEnglish } from "@/lib/quests/english-rewrite";
@@ -195,9 +196,12 @@ async function markAccepted(
   extra: Record<string, unknown> = {},
 ): Promise<CorrectionOutcome> {
   const { id } = contribution;
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
     const updated = await client.query<Contribution>(
       `update "contribution"
           set "status" = 'accepted', "resolvedBy" = $2, "updatedAt" = now()

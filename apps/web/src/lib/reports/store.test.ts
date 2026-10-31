@@ -8,7 +8,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { ownTeam } from "@/lib/teams/testing";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
 
 import { countRecent, createReport, listReports, reportsForLine, setStatus } from "./store";
 
@@ -35,7 +35,7 @@ function submission(overrides: Partial<Parameters<typeof createReport>[0]> = {})
 
 beforeEach(async () => {
   ip = `test-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -44,12 +44,12 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
+  await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -63,7 +63,7 @@ describe("createReport and countRecent", () => {
 
   it("ignores rows older than the window", async () => {
     await createReport(submission());
-    await db().query(
+    await asSystem.query(
       `update "report" set "createdAt" = now() - interval '2 hours' where "ip" = $1`,
       [ip],
     );
@@ -187,7 +187,7 @@ describe("a report's team", () => {
     const french = await ownTeam("frFR");
     try {
       await createReport(submission({ lang: "frFR", userId: null }));
-      const { rows } = await db().query(`select "teamId" from "report" where "ip" = $1`, [ip]);
+      const { rows } = await asSystem.query(`select "teamId" from "report" where "ip" = $1`, [ip]);
       expect(rows).toEqual([{ teamId: french.team }]);
 
       const [report] = await reportsForLine("quests", "q:1:accept", "frFR");

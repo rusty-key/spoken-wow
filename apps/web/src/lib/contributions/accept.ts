@@ -30,7 +30,7 @@ import { BOOK_ID_COMPAT, PAGE_COUNT } from "@readables-tools/lib/page.mjs";
 import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, inTransaction } from "@/lib/db";
+import { actAs, ALL_TEAMS, db, inTransaction } from "@/lib/db";
 import { observedFrom } from "@/lib/npc/resolve";
 import {
   getResolution,
@@ -58,6 +58,7 @@ import {
 } from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
+import { teamLangs } from "@/lib/teams/store";
 
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
 import { sameLine } from "./compare";
@@ -962,6 +963,8 @@ export async function resolveContribution(
   mayIgnore = false,
   bookMatch?: BookMatchResult,
 ): Promise<ResolveOutcome> {
+  // Read before the client is held: a refresh of the memo needs a connection of its own.
+  const owners = await teamLangs();
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles
@@ -989,6 +992,12 @@ export async function resolveContribution(
         message: `sent from a ${contribution.locale} client, which is not a language here`,
       };
     }
+
+    // What this writes is shared but for its activity row, the language's team's, and the
+    // ignores a rejection leaves. An English row's are on every language: system work.
+    const lang = isLang(contribution.locale) ? contribution.locale : null;
+    const siteWide = status === "rejected" && mayIgnore && (lang === null || lang === BASE_LANG);
+    await actAs(client, (!siteWide && lang && owners.get(lang)) || ALL_TEAMS);
 
     const written =
       contribution.source === "readables"

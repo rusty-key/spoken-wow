@@ -7,6 +7,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 import {
   acceptedContributions,
@@ -73,7 +74,7 @@ beforeEach(async () => {
   ip = `test-${Math.random().toString(36).slice(2, 10)}`;
   dedup = `test-${Math.random().toString(36).slice(2, 10)}`;
   key = `${Math.floor(Math.random() * 1e9)}:accept`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -82,17 +83,17 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "activity" where "kind" like 'contribution.%'
         and "subject" in (select "id"::text from "contribution" where "ip" = $1)`,
     [ip],
   );
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
-  await db().query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -117,7 +118,7 @@ describe("createContribution", () => {
     // The older row is sent twice, so the two orders disagree about which comes first.
     await createContribution(submission());
     await createContribution(submission());
-    await db().query(`update "contribution" set "createdAt" = now() - interval '1 day' where "ip" = $1`, [ip]);
+    await asSystem.query(`update "contribution" set "createdAt" = now() - interval '1 day' where "ip" = $1`, [ip]);
     await createContribution(submission({ text: "Kill six.", dedup: `${dedup}-two` }));
 
     expect(ours(await listContributions("new")).map((row) => row.text)).toEqual(["Убей шестерых.", "Kill six."]);
@@ -218,7 +219,7 @@ describe("countRecentContributions", () => {
   it("counts inside the window and not outside it", async () => {
     await recordContributionHit(ip);
     expect(await countRecentContributions(ip, 60_000)).toBe(1);
-    await db().query(
+    await asSystem.query(
       `update "contribution_hit" set "createdAt" = now() - interval '2 hours' where "ip" = $1`,
       [ip],
     );

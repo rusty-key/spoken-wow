@@ -7,6 +7,7 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { createReport } from "@/lib/reports/store";
 
 const authorise = vi.fn();
@@ -27,7 +28,7 @@ const ALLOWED = { session: { user: { id: "u1" } }, lang: "enUS", denied: null };
 const IP = `test-line-${Math.random().toString(36).slice(2, 10)}`;
 
 afterAll(async () => {
-  await db().query(`delete from "report" where "ip" = $1`, [IP]);
+  await asSystem.query(`delete from "report" where "ip" = $1`, [IP]);
   await closeDb();
 });
 

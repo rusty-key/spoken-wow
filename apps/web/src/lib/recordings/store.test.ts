@@ -16,7 +16,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "recordings-int-"));
 process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { commitRecording, listRecordings, liveRecordings, recordingPath, removeRecording } = await import("./store");
 const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
 const { teamOf } = await import("@/lib/teams/store");
@@ -61,7 +62,7 @@ beforeAll(async () => {
   mp3 = tone(1, ["-c:a", "libmp3lame"], "mp3");
   ogg = tone(2, ["-ac", "2", "-c:a", "vorbis", "-strict", "-2"], "ogg");
   for (const id of [ACTOR, OTHER]) {
-    await db().query(
+    await asSystem.query(
       `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)
        on conflict do nothing`,
       [id, `${id}@example.invalid`],
@@ -74,12 +75,12 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "recording" where "file" = $1`, [file]);
-  await db().query(`delete from "activity" where "subject" = $1`, [file]);
+  await asSystem.query(`delete from "recording" where "file" = $1`, [file]);
+  await asSystem.query(`delete from "activity" where "subject" = $1`, [file]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = any($1)`, [[ACTOR, OTHER]]);
+  await asSystem.query(`delete from "user" where "id" = any($1)`, [[ACTOR, OTHER]]);
   fs.rmSync(root, { recursive: true, force: true });
   await closeDb();
 });
@@ -138,7 +139,7 @@ describe.skipIf(!hasFfmpeg)("a recording", () => {
   it("records a hash only for a recording the bucket holds, and its name in every mode", async () => {
     const stored = async () =>
       (
-        await db().query<{ archiveFile: string; sha256: string | null }>(
+        await asSystem.query<{ archiveFile: string; sha256: string | null }>(
           `select "archiveFile", "sha256" from "recording" where "file" = $1 order by "version" desc limit 1`,
           [file],
         )
@@ -167,17 +168,17 @@ describe.skipIf(!hasFfmpeg)("a recording", () => {
 
   it("leaves the generated takes alone, and is logged", async () => {
     await upload(mp3);
-    const { rows: takes } = await db().query(`select 1 from "take" where "file" = $1`, [file]);
+    const { rows: takes } = await asSystem.query(`select 1 from "take" where "file" = $1`, [file]);
     expect(takes).toEqual([]);
-    const { rows } = await db().query(`select "kind", "lineId", "actorId" from "activity" where "subject" = $1`, [file]);
+    const { rows } = await asSystem.query(`select "kind", "lineId", "actorId" from "activity" where "subject" = $1`, [file]);
     expect(rows).toEqual([{ kind: "recording.uploaded", lineId: "q:1:accept", actorId: ACTOR }]);
   });
 
   it("is kept, with its log row, as the language's team", async () => {
     await upload(mp3);
     const team = await teamOf(lang);
-    const { rows: kept } = await db().query(`select "teamId" from "recording" where "file" = $1`, [file]);
-    const { rows: log } = await db().query(`select "teamId" from "activity" where "subject" = $1`, [file]);
+    const { rows: kept } = await asSystem.query(`select "teamId" from "recording" where "file" = $1`, [file]);
+    const { rows: log } = await asSystem.query(`select "teamId" from "activity" where "subject" = $1`, [file]);
     expect(kept).toEqual([{ teamId: team }]);
     expect(log).toEqual([{ teamId: team }]);
   });

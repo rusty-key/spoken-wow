@@ -16,7 +16,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { actAs, db, query } from "@/lib/db";
+import { loggerOf } from "@/lib/teams/store";
 import { answersQuestMomentSql, baseLineId, momentOf, playerGenderForms } from "@/lib/contributions/naming";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
@@ -107,9 +108,12 @@ export async function saveQuestText(args: {
   if (!text) throw new Error("the text cannot be empty");
   const moment = momentOf(args.lineId);
 
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(args.lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
 
     // Every current row of the moment in this language, so a split can retire the others.
     const { rows: momentRows } = await client.query<Structure>(
@@ -256,9 +260,12 @@ export async function restoreQuestText(
   by: string | null,
 ): Promise<QuestTextVersion> {
   refuseEnglish(lang);
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "quest_line"
         where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 for update`,

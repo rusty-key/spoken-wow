@@ -8,6 +8,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { ALL_TEAMS, closeDb, db, withTeam } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 afterAll(closeDb);
 
@@ -43,14 +44,14 @@ async function failure(team: string, sql: string, params: unknown[] = []): Promi
 describe("team contract", () => {
   it.each(TABLES)("leaves no %s row without a team but a site-wide one", async (table) => {
     const siteWide = SITE_WIDE.includes(table) ? ` and "lang" is not null` : "";
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select count(*)::int as "n" from "${table}" where "teamId" is null${siteWide}`,
     );
     expect(rows[0].n).toBe(0);
   });
 
   it.each(TABLES.filter((t) => !SITE_WIDE.includes(t)))("requires a team on %s", async (table) => {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "is_nullable" from "information_schema"."columns"
         where "table_name" = $1 and "column_name" = 'teamId'`,
       [table],
@@ -68,7 +69,7 @@ describe("team contract", () => {
   });
 
   it("gives every team the english team's roster", async () => {
-    const { rows } = await db().query<{ slug: string; voices: string; assignments: string }>(
+    const { rows } = await asSystem.query<{ slug: string; voices: string; assignments: string }>(
       `select t."slug",
               (select string_agg(v."name", ',' order by v."name") from "voice" v
                 where v."teamId" = t."id") as "voices",
@@ -87,7 +88,7 @@ describe("team contract", () => {
   });
 
   it.each(["generation_setting", "queue_dismissal"])("gives every team a %s row if English has one", async (table) => {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select count(*)::int as "n" from "team" t
         where t."slug" not like 'test-%'
           and exists (select 1 from "${table}" where "teamId" = (${ENGLISH}))
@@ -97,22 +98,23 @@ describe("team contract", () => {
   });
 
   it("keys a voice assignment to a voice of its own team", async () => {
-    const { rows } = await db().query(`select "id" from "team" where "slug" = 'english'`);
+    const { rows } = await asSystem.query(`select "id" from "team" where "slug" = 'english'`);
     const english: string = rows[0].id;
-    const { rows: other } = await db().query(
+    const { rows: other } = await asSystem.query(
       `insert into "team" ("slug", "name") values ($1, $1) returning "id"`,
       [`test-contract-${Math.random().toString(36).slice(2, 8)}`],
     );
     try {
+      // As ALL_TEAMS, so the copy can read English's row and name the other team itself.
       const error = await failure(
-        other[0].id,
-        `insert into "voice_assignment" ("race", "gender", "flavor", "voice")
-         select "race", "gender", "flavor", "voice" from "voice_assignment" where "teamId" = $1 limit 1`,
-        [english],
+        ALL_TEAMS,
+        `insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
+         select $2, "race", "gender", "flavor", "voice" from "voice_assignment" where "teamId" = $1 limit 1`,
+        [english, other[0].id],
       );
       expect(error).toMatchObject({ code: "23503" });
     } finally {
-      await db().query(`delete from "team" where "id" = $1`, [other[0].id]);
+      await asSystem.query(`delete from "team" where "id" = $1`, [other[0].id]);
     }
   });
 
@@ -128,7 +130,7 @@ describe("team contract", () => {
   });
 
   it("refuses a site-wide ignore with a team, and a language's without one", async () => {
-    const english = (await db().query(ENGLISH)).rows[0].id;
+    const english = (await asSystem.query(ENGLISH)).rows[0].id;
     expect(await failure(
       ALL_TEAMS,
       `insert into "line_ignore" ("lineId", "lang", "reason", "teamId") values ('contract-test', null, 'x', $1)`,

@@ -12,7 +12,8 @@ import "server-only";
 import type { PoolClient } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { actAs, db, query } from "@/lib/db";
+import { loggerOf } from "@/lib/teams/store";
 import type { Lang } from "@/lib/lang";
 
 /** The line id, which is also the addon's clip key. The key is frozen, so this never moves. */
@@ -103,9 +104,12 @@ export async function saveStory(args: {
   expectedVersion?: number | null;
 }): Promise<StoryVersion> {
   const { lang, lineId } = args;
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
     const bossId = await lockBoss(client, lineId);
 
     const { rows: currentRows } = await client.query<Row>(
@@ -185,9 +189,12 @@ export async function restoreStory(
   lang: Lang,
   by: string | null,
 ): Promise<StoryVersion> {
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
     const bossId = await lockBoss(client, lineId);
 
     const { rows } = await client.query<Row>(

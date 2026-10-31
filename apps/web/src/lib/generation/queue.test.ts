@@ -12,7 +12,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db, withTeam } from "@/lib/db";
-import { ownTeam } from "@/lib/teams/testing";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
 import { teamOf } from "@/lib/teams/store";
 
 import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry, type QueueJob } from "./queue";
@@ -45,7 +45,7 @@ const users: string[] = [];
 /** A real user row, because regeneration_batch."createdBy" references one. */
 async function newUser(): Promise<string> {
   const id = `test-owner-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $2, $3, false)`,
     [id, `Owner ${id}`, `${id}@example.invalid`],
   );
@@ -65,14 +65,14 @@ beforeEach(() => {
 
 afterEach(async () => {
   // Pauses are global, so the tests pause only koKR, which no other test file queues in.
-  await db().query(`delete from "regeneration_pause" where "lang" = 'koKR'`);
+  await asSystem.query(`delete from "regeneration_pause" where "lang" = 'koKR'`);
   // Cascades to the jobs, so nothing this file wrote outlives it.
   if (batches.length) {
-    await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+    await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
     batches.length = 0;
   }
   if (users.length) {
-    await db().query(`delete from "user" where "id" = any($1::text[])`, [users]);
+    await asSystem.query(`delete from "user" where "id" = any($1::text[])`, [users]);
     users.length = 0;
   }
 });
@@ -133,7 +133,7 @@ describe("the generator a job is spoken by", () => {
   it("is the batch's unless the job names its own", async () => {
     const batch = await newBatch();
     await enqueue(batch, [line(1), { ...line(2), provider: "fish" }], "quests", "enUS", "elevenlabs");
-    const { rows } = await db().query<{ file: string; provider: string }>(
+    const { rows } = await asSystem.query<{ file: string; provider: string }>(
       `select "file", "provider" from "regeneration_job" where "batchId" = $1 order by "file"`,
       [batch],
     );
@@ -176,7 +176,7 @@ describe("the owner of a job", () => {
     const batch = await newBatch("quests", alice);
     await enqueue(batch, [line(1), line(2)], "quests");
 
-    const { rows } = await db().query<{ owner: string | null }>(
+    const { rows } = await asSystem.query<{ owner: string | null }>(
       `select "owner" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -199,14 +199,14 @@ describe("the owner of a job", () => {
   it("is filled in from the batch when an insert leaves it out", async () => {
     const alice = await newUser();
     const batch = await newBatch("quests", alice);
-    await db().query(
+    await asSystem.query(
       `insert into "regeneration_job"
          ("batchId", "source", "lang", "provider", "lineId", "file", "npcName", "preview", "characters", "teamId")
        values ($1, 'quests', 'enUS', 'elevenlabs', 'q:1:accept', $2, 'NPC 1', 'line 1', 100, (select "teamId" from "team_language" where "lang" = 'enUS' and "privileged"))`,
       [batch, `${prefix}/1.mp3`],
     );
 
-    const { rows } = await db().query<{ owner: string | null }>(
+    const { rows } = await asSystem.query<{ owner: string | null }>(
       `select "owner" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -428,7 +428,7 @@ describe("cancelPending", () => {
     expect(states).toEqual({ running: 1, cancelled: 2 });
     expect(running).not.toBeNull();
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "kind", "actorId", "detail" from "activity" where "subject" = $1`,
       [batch],
     );
@@ -463,7 +463,7 @@ describe("cancelPending", () => {
 
     expect(await stateCounts(english)).toEqual({ pending: 1 });
     expect(await stateCounts(portuguese)).toEqual({ cancelled: 1 });
-    const { rows } = await db().query<{ id: string; stopped: boolean }>(
+    const { rows } = await asSystem.query<{ id: string; stopped: boolean }>(
       `select "id", "stoppedAt" is not null as stopped from "regeneration_batch"
         where "id" = any($1)`,
       [[english, portuguese]],
@@ -483,7 +483,7 @@ describe("cancelPending", () => {
 
     await cancelPending("Stopped by Ana", { langs: ["koKR"] });
 
-    const { rows } = await db().query<{ kind: string; subject: string | null; detail: Record<string, unknown> }>(
+    const { rows } = await asSystem.query<{ kind: string; subject: string | null; detail: Record<string, unknown> }>(
       `select "kind", "subject", "detail" from "activity"
         where "subject" = any($1)
            or ("kind" = 'queue.stopped' and "detail"->>'groupId' in
@@ -508,7 +508,7 @@ describe("cancelPending", () => {
         [second, press?.detail.groupId, 2],
       ].sort(),
     );
-    await db().query(`delete from "activity" where "detail"->>'groupId' = $1`, [press?.detail.groupId]);
+    await asSystem.query(`delete from "activity" where "detail"->>'groupId' = $1`, [press?.detail.groupId]);
   });
 });
 
@@ -567,7 +567,7 @@ describe("snapshot", () => {
     // The queue starts lazily, so a batch interrupted by a deploy really can sit for days.
     // A snapshot that aged it out would render no panel at all - and therefore no Stop -
     // over a queue that is about to spend money.
-    await db().query(
+    await asSystem.query(
       `update "regeneration_job" set "queuedAt" = now() - interval '3 days' where "batchId" = $1`,
       [batch],
     );
@@ -692,7 +692,7 @@ describe("snapshot", () => {
   it("names a queue whose owner is gone, and keeps it one queue", async () => {
     const gone = await newUser();
     await enqueue(await newBatch("quests", gone), [line(1), line(2)], "quests");
-    await db().query(`delete from "user" where "id" = $1`, [gone]);
+    await asSystem.query(`delete from "user" where "id" = $1`, [gone]);
     await enqueue(await newBatch("quests", null), [line(3)], "quests");
 
     const { queues } = await snapshot(null);
@@ -710,7 +710,7 @@ async function claimJobOfThisRun() {
 }
 
 async function stateCounts(batchId: string): Promise<Record<string, number>> {
-  const { rows } = await db().query<{ state: string; n: string }>(
+  const { rows } = await asSystem.query<{ state: string; n: string }>(
     `select "state", count(*)::text as n from "regeneration_job"
       where "batchId" = $1 group by "state"`,
     [batchId],
@@ -726,8 +726,8 @@ describe("a language's team", () => {
   });
 
   afterEach(async () => {
-    await db().query(`delete from "regeneration_pause" where "lang" = 'deDE'`);
-    await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+    await asSystem.query(`delete from "regeneration_pause" where "lang" = 'deDE'`);
+    await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
     batches.length = 0;
     await german.restore();
   });
@@ -741,7 +741,7 @@ describe("a language's team", () => {
 
   it("is stamped on the batch and its jobs, and rides to the claim", async () => {
     const batch = await germanJob(1);
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select b."teamId" as "batch", j."teamId" as "job"
          from "regeneration_batch" b join "regeneration_job" j on j."batchId" = b."id"
         where b."id" = $1`,
@@ -763,7 +763,7 @@ describe("a language's team", () => {
     await enqueue(await newBatch(), [line(2)], "quests");
 
     expect(await pauseQueue(["deDE"], null)).toEqual(["deDE"]);
-    const { rows } = await db().query(`select "teamId" from "regeneration_pause" where "lang" = 'deDE'`);
+    const { rows } = await asSystem.query(`select "teamId" from "regeneration_pause" where "lang" = 'deDE'`);
     expect(rows).toEqual([{ teamId: german.team }]);
 
     expect((await claimJobOfThisRun())?.lang).toBe("enUS");
@@ -776,11 +776,27 @@ describe("a language's team", () => {
   it("does not let a pause held by another team hold this one's work", async () => {
     // No language has two teams yet, but a pause must already hold back only its own team.
     await germanJob(1);
-    await db().query(
+    await asSystem.query(
       `insert into "regeneration_pause" ("lang", "teamId") values ('deDE', $1)`,
       [await teamOf("enUS")],
     );
     expect((await claimJobOfThisRun())?.lang).toBe("deDE");
+  });
+
+  it("is the only team a job can be settled as, as the worker settles it", async () => {
+    // What the worker's withTeam(job.teamId) is for: under row-level security another team's
+    // transaction finds no such job, so a finish, failure or retry written there is lost.
+    const batch = await germanJob(1);
+    const job = await claimJobOfThisRun();
+    const english = await teamOf("enUS");
+
+    await withTeam(english, (client) => finishJob(job!.id, { version: 1, credits: 1 }, client));
+    await withTeam(english, (client) => failJob(job!.id, { kind: "upstream", message: "x" }, client));
+    await withTeam(english, (client) => retryJob(job!.id, 0, client));
+    expect(await stateCounts(batch)).toEqual({ running: 1 });
+
+    await withTeam(job!.teamId, (client) => finishJob(job!.id, { version: 1, credits: 1 }, client));
+    expect(await stateCounts(batch)).toEqual({ done: 1 });
   });
 
   it("is what a Stop in that language runs under", async () => {

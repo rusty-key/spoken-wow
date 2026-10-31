@@ -106,9 +106,18 @@ export async function withTeam<T>(
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   return inTransaction(async (client) => {
-    await client.query(`select set_config('spoken.team', $1, true)`, [team]);
+    await actAs(client, team);
     return work(client);
   });
+}
+
+/**
+ * Act as `team` for the rest of `client`'s open transaction: withTeam for a transaction opened
+ * by hand, as the text editors open theirs to hold a client across a lock and several writes.
+ * Transaction-local for the same reason, so it ends with the commit or rollback.
+ */
+export async function actAs(client: Pick<PoolClient, "query">, team: TeamId | typeof ALL_TEAMS): Promise<void> {
+  await client.query(`select set_config('spoken.team', $1, true)`, [team]);
 }
 
 /**

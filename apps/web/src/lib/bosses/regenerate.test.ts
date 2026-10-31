@@ -23,7 +23,8 @@ vi.mock("@/lib/places/tools", async (importOriginal) => ({
   durationOf: async () => 1.5,
 }));
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { catalogue, loadContext } = await import("./catalogue");
 const { regenerateBossLine } = await import("./regenerate");
 const { search } = await import("./search");
@@ -65,7 +66,7 @@ const speaker: Speaker = {
 
 beforeAll(async () => {
   userId = `test-boss-regen-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Boss Regen', $2, false)`,
     [userId, `${userId}@example.invalid`],
   );
@@ -76,15 +77,15 @@ beforeEach(async () => {
   const key = `regen ${Math.random().toString(36).slice(2, 8)}`;
   id = -Math.floor(1e6 + Math.random() * 1e9);
   lineId = `boss:${MAP}:${key}`;
-  await db().query(
+  await asSystem.query(
     `insert into "boss_instance" ("map", "kind", "zone", "position") values ($1, 'dungeon', 0, -3)`,
     [MAP],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "boss" ("id", "map", "key", "position", "encounterIds") values ($1, $2, $3, 0, $4)`,
     [id, MAP, key, [id]],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "boss_line" ("bossId", "lang", "version", "isCurrent", "origin", "text", "source")
      values ($1, 'enUS', 1, true, 'rewritten', 'The first story.', 'test')`,
     [id],
@@ -92,15 +93,15 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "take" where "source" = 'bosses' and "lineId" = $1`, [lineId]);
-  await db().query(`delete from "boss_line" where "bossId" = $1`, [id]);
-  await db().query(`delete from "boss" where "map" = $1`, [MAP]);
-  await db().query(`delete from "boss_instance" where "map" = $1`, [MAP]);
+  await asSystem.query(`delete from "take" where "source" = 'bosses' and "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "boss_line" where "bossId" = $1`, [id]);
+  await asSystem.query(`delete from "boss" where "map" = $1`, [MAP]);
+  await asSystem.query(`delete from "boss_instance" where "map" = $1`, [MAP]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [userId]);
-  await db().query(`delete from "user" where "id" = $1`, [userId]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [userId]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [userId]);
   fs.rmSync(root, { recursive: true, force: true });
   await closeDb();
 });

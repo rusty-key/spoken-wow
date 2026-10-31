@@ -3,7 +3,8 @@
  */
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { observedFishRate } = await import("./calibration");
 
 /** A model no real take names, so the rows here are the only ones it can learn from. */
@@ -11,7 +12,7 @@ const MODEL = "test-calibration-fish";
 const FILE = "gossip/calibration-test.mp3";
 
 afterEach(async () => {
-  await db().query(`delete from "take" where "file" = $1`, [FILE]);
+  await asSystem.query(`delete from "take" where "file" = $1`, [FILE]);
 });
 
 afterAll(async () => {
@@ -46,7 +47,7 @@ describe("a fish.audio rate", () => {
       [1, 100, 0.003],
       [2, 300, 0.009],
     ]) {
-      await db().query(
+      await asSystem.query(
         `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin",
                              "bytes", "characters", "modelId", "provider", "costUsd", "teamId")
          values ('quests', 'ruRU', $1, 'g:calibration', $2, $3, 'generated', 1, $4, $5, 'fish', $6,

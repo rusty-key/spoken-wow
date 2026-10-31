@@ -8,7 +8,8 @@
 import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { actAs, db, query } from "@/lib/db";
+import { loggerOf } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { makeShort } from "./tools";
 
@@ -128,9 +129,12 @@ export async function saveLore(args: {
   lang?: Lang;
 }): Promise<LoreVersion> {
   const lang = args.lang ?? BASE_LANG;
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
 
     const { rows: currentRows } = await client.query<Row & { mapID: number; kind: string; key: string | null }>(
       `select ${COLUMNS}, "mapID", "kind", "key" from "lore_line"
@@ -265,9 +269,12 @@ export async function restoreLore(
   lang: Lang,
   by: string | null,
 ): Promise<LoreVersion> {
+  // Its activity row is the one write a team owns.
+  const team = await loggerOf(lang);
   const client = await db().connect();
   try {
     await client.query("begin");
+    await actAs(client, team);
 
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "lore_line"

@@ -139,6 +139,16 @@ export async function readAs<T extends QueryResultRow = QueryResultRow>(
   return queryIn<T>(team, text, params);
 }
 
+/**
+ * The team a transaction acts as when the rows it writes are shared -- quest text, names, a
+ * contribution -- and only its activity row is a team's: the language's owner, or ALL_TEAMS
+ * for a language nobody owns and for none, whose acts are logged with no team
+ * (activity/store.ts), which only ALL_TEAMS may write.
+ */
+export async function loggerOf(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
+  return (lang && (await teamLangs()).get(lang)) || ALL_TEAMS;
+}
+
 /** These languages grouped by the team that owns each, in their given order. Unowned ones are left out. */
 export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
   const owners = await freshOwners(langs);

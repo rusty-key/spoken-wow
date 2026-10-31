@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { recordActivity } from "@/lib/activity/store";
 import { closeDb, db, inTransaction } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { setEnabled } from "@/lib/languages/store";
 import { createReport } from "@/lib/reports/store";
 
@@ -14,21 +15,21 @@ const NEW_LANG = "deDE";
 const IP = `${USER}-ip`;
 
 async function englishTeam(): Promise<string> {
-  const { rows } = await db().query(`select "id" from "team" where "slug" = 'english'`);
+  const { rows } = await asSystem.query(`select "id" from "team" where "slug" = 'english'`);
   return rows[0].id;
 }
 
 async function cleanup() {
-  await db().query(`delete from "team_language" where "lang" = $1`, [NEW_LANG]);
-  await db().query(`delete from "language" where "code" = $1`, [NEW_LANG]);
-  await db().query(`delete from "activity" where "actorId" = $1`, [USER]);
-  await db().query(`delete from "report" where "ip" = $1`, [IP]);
+  await asSystem.query(`delete from "team_language" where "lang" = $1`, [NEW_LANG]);
+  await asSystem.query(`delete from "language" where "code" = $1`, [NEW_LANG]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [USER]);
+  await asSystem.query(`delete from "report" where "ip" = $1`, [IP]);
   forgetTeams();
 }
 
 beforeAll(async () => {
   await cleanup();
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
     [USER, `${USER}@example.invalid`],
   );
@@ -39,12 +40,12 @@ beforeEach(() => forgetTeams());
 afterAll(async () => {
   await cleanup();
   // Back on the english team, where vitest.teams.ts put it, for the suites that write German.
-  await db().query(
+  await asSystem.query(
     `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'`,
     [NEW_LANG],
   );
   forgetTeams();
-  await db().query(`delete from "user" where "id" = $1`, [USER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
   await closeDb();
 });
 
@@ -68,7 +69,7 @@ describe("teamOf", () => {
   it("leaves the team alone when a language is toggled again", async () => {
     await setEnabled(NEW_LANG, true, USER);
     await setEnabled(NEW_LANG, false, USER);
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select count(*)::int as n from "team_language" where "lang" = $1`,
       [NEW_LANG],
     );
@@ -139,7 +140,7 @@ describe("a language switched on by the other worker", () => {
     await enableElsewhere();
     vi.advanceTimersByTime(2_000);
     await recordActivity({ kind: "language.toggled", lang: NEW_LANG, actorId: USER, detail: { enabled: true } });
-    const { rows } = await db().query(`select "teamId" from "activity" where "actorId" = $1`, [USER]);
+    const { rows } = await asSystem.query(`select "teamId" from "activity" where "actorId" = $1`, [USER]);
     expect(rows).toEqual([{ teamId: await englishTeam() }]);
   });
 
