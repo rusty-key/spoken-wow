@@ -55,9 +55,16 @@ select "lang" from (
 -- Every language some per-team row names (team_scoped_lang) gets a team here, the same set
 -- 0089 later checks (0089_team_contract.sql), so that no row of deploy 1 is left with a
 -- language nobody owns.
+--
+-- So does every language the site knows, so that a report or activity in one nobody has
+-- switched on has a team from the moment this deploys. The list is a snapshot of CODES
+-- (apps/web/src/lib/lang.ts); adoptEveryLang (generation/boot.ts, languages/store.ts
+-- setEnabled) covers codes added later. Parking unowned languages on the english team is a
+-- phase-1 stopgap: eventually a language no team owns goes to a separate bucket, not English.
 create temp table "team_seed" on commit drop as
 with "langs" as (
-  select "lang" from "team_scoped_lang" union select 'enUS'
+  select "lang" from "team_scoped_lang"
+  union select unnest(array['enUS', 'deDE', 'esES', 'esMX', 'frFR', 'itIT', 'ptBR', 'ruRU', 'koKR', 'zhCN', 'zhTW', 'viVN'])
 ), "keyed" as (
   select l."lang",
          case when l."lang" = 'enUS' then '{}'::text[]

@@ -7,7 +7,8 @@
 with "langs" as (
   select "lang" from (
     select "code" as "lang" from "language"
-    union select 'enUS'
+    -- Every language the site knows, as 0087 lists them.
+    union select unnest(array['enUS', 'deDE', 'esES', 'esMX', 'frFR', 'itIT', 'ptBR', 'ruRU', 'koKR', 'zhCN', 'zhTW', 'viVN'])
     union select "lang" from "take" union select "lang" from "recording"
     union select "lang" from "take_ack" union select "lang" from "voice_clone"
     union select "lang" from "fish_reference" union select "lang" from "generation_setting_locale"
