@@ -588,6 +588,14 @@ function Addon:OnInitialize()
     if not dialogueUIReady then
         Debug:Record("dialogueui-error", tostring(dialogueUIError))
     end
+    local immersionReady, immersionError = pcall(function()
+        if ImmersionBridge and ImmersionBridge.Setup then
+            ImmersionBridge:Setup()
+        end
+    end)
+    if not immersionReady then
+        Debug:Record("immersion-error", tostring(immersionError))
+    end
 
     -- The lines NPCs say after a quest. Guarded the same way: a failed hook here must not
     -- take quest narration down with it.

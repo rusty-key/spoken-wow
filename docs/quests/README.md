@@ -1450,6 +1450,21 @@ The data module names no `RequiredDeps`. It used to require `AI_VoiceOver`, whic
 and the original sat disabled — three folder names into this lineage, that is the normal case. The module is `LoadOnDemand` and its `Module.lua` returns early
 unless `VoiceOver.DataModules` exists, so the dependency bought nothing and cost the fork.
 
+### Immersion
+
+Immersion's talk box shows a quest or gossip page a few sentences at a time, turned by its own
+timer. While Spoken Quests reads the page it shows (`QUEST_DETAIL`, `QUEST_PROGRESS`,
+`QUEST_COMPLETE`, `QUEST_GREETING` or `GOSSIP_SHOW`), `UI/ImmersionBridge.lua` holds that timer and
+turns to the part being read, found by matching the caption's words to the parts with
+`Spoken:WordMarks()`. When the line ends or is stopped, Immersion's timer goes on as before. A part
+the player clicks ahead to stays until the voice reaches it, and Immersion's repeat starts the page
+over, so the next frame turns back to the part being read. With Immersion's **Disable automatic text
+progress** on, and for its toasts and books, nothing changes. The bridge relies on Immersion
+internals: `ImmersionFrame.playbackEvent` and the talk box text's `storedText`, `CreateLineData`,
+`ForceNext`, `PauseTimer`, `ResumeTimer`, `GetNumTexts` and `GetNumRemaining`. Without one of the
+methods it records `immersion-unknown` and leaves Immersion alone. Immersion's own Text To Speech
+still speaks each part over the voice, so leave it off. `tests/lua/quests_immersion_test.lua` covers it.
+
 ### What NPCs say after a quest
 
 Some quests end, or begin, with the NPC saying something in `/say`, `/yell` or a whisper a few seconds

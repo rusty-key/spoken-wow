@@ -15,8 +15,8 @@
 ## SavedVariables: SpokenQuestsSettings
 ## Dependencies: Spoken
 # Spoken is what this module runs on, and ships in the same zip.
-## OptionalDeps: DialogueUI
-# DialogueUI, when installed, loads first so its window exists to be hooked: UI/DialogueUIBridge.lua.
+## OptionalDeps: DialogueUI, Immersion
+# DialogueUI and Immersion, when installed, load first so their windows exist to be hooked.
 ## Group: Spoken
 ## X-Part-Of: Spoken
 ## X-VoiceOver-Player: 1

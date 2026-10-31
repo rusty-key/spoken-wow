@@ -24,6 +24,7 @@
     <Include file="ReportButton.lua"/>
     <Include file="UI\DialogPlayButton.lua"/>
     <Include file="UI\DialogueUIBridge.lua"/>
+    <Include file="UI\ImmersionBridge.lua"/>
     <Include file="EasterEggs.lua"/>
     <Include file="DataModules.lua"/>
     <Include file="Player.lua"/>
