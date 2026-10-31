@@ -99,10 +99,8 @@ local function PadTitle(normalText)
     return padded
 end
 
---- Pads the row's title again whenever anything rewrites it. Other addons hook QuestLog_Update
---- after Spoken and replace the whole title (Leatrix Plus prefixes the quest level), which
---- would put Play over the title's first glyphs. The left margin is no room for Play: the
---- client shows how many party members share the quest there.
+--- Re-pads the title whenever anything rewrites it: addons hooking QuestLog_Update after Spoken
+--- (Leatrix Plus adds the level) drop the padding. The left margin holds the party-member count.
 local function KeepTitlePadded(row, i, normalText)
     if row.spokenKeepsPadding then return end
     row.spokenKeepsPadding = true

@@ -45,7 +45,7 @@ VO.DataModules:Register("TestPack", {
 })
 stub.Advance(2)
 
--- Leatrix's own hook is installed after Spoken's normal hook.
+-- Installed after Spoken's hook, as Leatrix's is.
 hooksecurefunc("QuestLog_Update", function()
     QuestLogTitle1:SetText("  [10] A Classic Quest")
 end)
