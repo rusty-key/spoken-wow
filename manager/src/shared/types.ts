@@ -175,6 +175,8 @@ export interface Settings {
   lastGameId: string
   /** Sending what Spoken collects to the site: 'unset' until the player answers the first-start question. */
   sharing: SharingChoice
+  /** Generating the author's queued lines here, with their own keys. */
+  generating: boolean
 }
 
 export const SHARING_CHOICES = ['unset', 'on', 'off'] as const
@@ -191,6 +193,25 @@ export interface SharingStatus {
   error?: string
 }
 
+/** The token and keys stay in the main process; the window learns only whether each is set. */
+export interface GenerateStatus {
+  /** Whose account this Manager is paired with; null when it is not. */
+  pairedAs: string | null
+  /** A pairing waiting for its owner: the code to show, until it is approved or expires. */
+  pairing?: { code: string; verifyUrl: string; expiresAt: string }
+  /** Which providers have a key on this computer. */
+  keys: { elevenlabs: boolean; fish: boolean }
+  /** Which providers the account generates here (set on the site's profile page). */
+  modes: { elevenlabs: 'site' | 'local'; fish: 'site' | 'local' }
+  /** The lines in flight now. */
+  current: { lineId: string; npcName: string; preview: string }[]
+  /** Since the Manager started. */
+  done: number
+  failed: number
+  /** Why the last round failed, in plain words, until one succeeds. */
+  error?: string
+}
+
 export const DEFAULT_SETTINGS: Settings = {
   includePrereleases: false,
   checkOnStart: true,
@@ -199,7 +220,8 @@ export const DEFAULT_SETTINGS: Settings = {
   keepDownloads: false,
   voiceLanguage: 'enUS',
   lastGameId: '',
-  sharing: 'unset'
+  sharing: 'unset',
+  generating: false
 }
 
 /** The settings that take only some values of their type; anything else is dropped on load. */
@@ -258,4 +280,5 @@ export interface Snapshot {
   /** The manager's own update, as last sent: a window opened later still shows it. */
   updater?: import('./api').UpdaterState
   sharingStatus?: SharingStatus
+  generateStatus?: GenerateStatus
 }

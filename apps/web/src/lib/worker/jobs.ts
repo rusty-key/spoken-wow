@@ -1,0 +1,256 @@
+/**
+ * The leader skips an author's lanes once they generate on their own machine; their Manager
+ * claims the jobs here and its answers run through the leader's code to the same commit.
+ * A Manager that goes quiet loses the job after the queue's five-minute lease, and a late
+ * answer settles nothing because every write is made against the attempt its claim was handed.
+ */
+import "server-only";
+
+import { failure, isBusy } from "@/lib/generation/errors";
+import { readGenerationSettings, type Preference } from "@/lib/generation/preference";
+import {
+  claimForOwner,
+  failJob,
+  recordRelay,
+  relayedJob,
+  renewLease,
+  retryJob,
+  type QueueJob,
+} from "@/lib/generation/queue";
+import { regenerateLine, type RegenerateResult } from "@/lib/generation/regenerate";
+import { answeringFetch, Recorded, recordingFetch, stopBeforeCommit } from "@/lib/generation/relay";
+import { speakerFrom } from "@/lib/generation/speakers/for";
+import type { Provider } from "@/lib/generation/speakers/speaker";
+import { settle, type Generator } from "@/lib/generation/worker";
+import { regenerateZoneLine } from "@/lib/places/regenerate";
+import { regenerateBossLine } from "@/lib/bosses/regenerate";
+import { regenerateBookLine } from "@/lib/readables/regenerate";
+import type { Source } from "@/lib/sections";
+import { slotClones } from "@/lib/voices/elevenlabs";
+
+import { speechEndpoint } from "./protocol";
+import type * as Wire from "./protocol";
+
+/** Stands in for the key in a run whose requests a Manager sends: never sent anywhere. */
+const NO_KEY = "relayed";
+
+/** At most this many jobs per claim, whatever a Manager asks for. */
+export const MAX_CLAIM = 8;
+
+/** A worker reads the protocol's fields; the source and language are for anyone looking. */
+export type ClaimedJob = Wire.ClaimedJob & { source: Source; lang: string };
+
+/** Every answer but "released", which a worker reports of itself. */
+export type Answered = Exclude<Wire.Answered, { status: "released" }>;
+
+type Voices = { name: string; voiceId: string }[];
+type Settings = Pick<Preference, "elevenlabs" | "fish">;
+
+export type JobsOptions = {
+  generators?: Partial<Record<Source, Generator>>;
+  preferenceFor?: (userId: string) => Promise<Settings>;
+};
+
+function generatorsOf(options: JobsOptions): Record<Source, Generator> {
+  return {
+    quests: options.generators?.quests ?? regenerateLine,
+    places: options.generators?.places ?? regenerateZoneLine,
+    readables: options.generators?.readables ?? regenerateBookLine,
+    bosses: options.generators?.bosses ?? regenerateBossLine,
+  };
+}
+
+const asFailure = (error: unknown): RegenerateResult => ({
+  ok: false,
+  failure: {
+    kind: "upstream",
+    message: error instanceof Error ? error.message : String(error),
+    status: 502,
+    fatal: false,
+  },
+});
+
+/**
+ * The claim and the answer both run through here, so the answer sends the requests the claim
+ * recorded unless the line moved.
+ */
+function generate(
+  job: QueueJob,
+  run: {
+    fetchImpl: typeof fetch;
+    roster: ReadonlyMap<string, string> | null;
+    settings: Settings;
+    commit?: typeof stopBeforeCommit;
+  },
+  options: JobsOptions,
+): Promise<RegenerateResult> {
+  const speaker = speakerFrom(job.provider, NO_KEY, run.settings, {
+    fetchImpl: run.fetchImpl,
+    roster: run.roster ?? (job.provider === "elevenlabs" ? new Map() : null),
+  });
+  return generatorsOf(options)[job.source](job.lineId, job.createdBy ?? "", {
+    speaker,
+    lang: job.lang,
+    batchId: job.batchId,
+    ...(run.commit ? { commit: run.commit } : {}),
+  });
+}
+
+/** One job, generated as far as its requests, which are recorded instead of sent. */
+async function record(
+  job: QueueJob,
+  claim: { voices: Voices | null; roster: Map<string, string> | null; settings: Settings },
+  options: JobsOptions,
+): Promise<ClaimedJob | null> {
+  const requests: Wire.RelayedRequest[] = [];
+  let result: RegenerateResult | null = null;
+  try {
+    result = await generate(
+      job,
+      {
+        fetchImpl: recordingFetch(requests, job.provider),
+        roster: claim.roster,
+        settings: claim.settings,
+        commit: stopBeforeCommit,
+      },
+      options,
+    );
+  } catch (error) {
+    if (!(error instanceof Recorded)) result = asFailure(error);
+  }
+
+  if (result) {
+    // Ended before its commit. A file being regenerated right now is retried; an unvoiceable
+    // line or missing voice settles as the leader would.
+    if (!result.ok && isBusy(result.failure)) {
+      await retryJob(job.id, { delayMs: 5_000, because: result.failure }, job.attempts);
+    } else {
+      await settle(job, result);
+    }
+    return null;
+  }
+  if (requests.length === 0) {
+    await failJob(job.id, { kind: "bad-request", message: "this line sends no request to generate" }, job.attempts);
+    return null;
+  }
+
+  // Drift between the generators and the workers' allowlist shows here, naming the request,
+  // rather than as a refusal on every worker.
+  const refused = requests.find((request) => !speechEndpoint(request));
+  if (refused) {
+    const message = `this line would send a ${refused.method} request to ${refused.url}, which workers refuse to send`;
+    await failJob(job.id, { kind: "bad-request", message }, job.attempts);
+    return null;
+  }
+
+  const kept = await recordRelay(job.id, job.attempts, {
+    fingerprints: requests.map((request) => request.id),
+    roster: claim.voices,
+  });
+  if (!kept) return null;
+  return {
+    jobId: job.id,
+    attempt: job.attempts,
+    provider: job.provider,
+    source: job.source,
+    lang: job.lang,
+    lineId: job.lineId,
+    npcName: job.npcName,
+    preview: job.preview,
+    requests,
+  };
+}
+
+/**
+ * `voices` are the clones on the Manager's ElevenLabs account, which this server cannot list
+ * without the key.
+ */
+export async function claimJobs(
+  owner: string,
+  request: { providers: Provider[]; max: number; voices: Voices | null },
+  options: JobsOptions = {},
+): Promise<ClaimedJob[]> {
+  const claimed: ClaimedJob[] = [];
+  const max = Math.max(1, Math.min(MAX_CLAIM, Math.floor(request.max)));
+  const preferenceFor = options.preferenceFor ?? readGenerationSettings;
+  const roster = request.voices ? await slotClones(request.voices) : null;
+  // A batch's settings are its creator's, and one claim is nearly always one creator's.
+  const settings = new Map<string, Promise<Settings>>();
+  const settingsOf = (userId: string) => {
+    if (!settings.has(userId)) settings.set(userId, preferenceFor(userId));
+    return settings.get(userId)!;
+  };
+
+  // Bounded: every job that ends before its requests is settled and costs nothing, but a
+  // queue of them must not keep one request spinning.
+  for (let tries = 0; claimed.length < max && tries < max * 4; tries++) {
+    const job = await claimForOwner(owner, request.providers);
+    if (!job) break;
+    const recorded = await settingsOf(job.createdBy ?? "")
+      .then((jobSettings) => record(job, { voices: request.voices, roster, settings: jobSettings }, options))
+      .catch(async (error: unknown) => {
+        await settle(job, asFailure(error));
+        return null;
+      });
+    if (recorded) claimed.push(recorded);
+  }
+  return claimed;
+}
+
+/** Generate one claimed job from the Manager's answers, and settle it. */
+export async function answerJob(
+  owner: string,
+  answer: { jobId: string; attempt: number; answers: Wire.RelayedAnswer[] },
+  options: JobsOptions = {},
+): Promise<Answered> {
+  const found = await relayedJob(answer.jobId, owner, answer.attempt);
+  if (!found) return { status: "gone" };
+  const { job, relay } = found;
+
+  const preferenceFor = options.preferenceFor ?? readGenerationSettings;
+  const seen = { mismatch: false };
+  const result = await generate(
+    job,
+    {
+      fetchImpl: answeringFetch(answer.answers, seen),
+      roster: relay.roster ? await slotClones(relay.roster) : null,
+      settings: await preferenceFor(job.createdBy ?? ""),
+    },
+    options,
+  ).catch(asFailure);
+
+  if (seen.mismatch) {
+    // The line, its lexicon or its reference moved since the claim. Nothing was kept;
+    // the job goes back to be claimed and recorded afresh.
+    await retryJob(
+      job.id,
+      { delayMs: 0, spent: false, because: failure("upstream", "the line changed while it was being generated") },
+      job.attempts,
+    );
+    return { status: "changed" };
+  }
+  await settle(job, result);
+  return result.ok
+    ? { status: "done", version: result.version }
+    : { status: "failed", kind: result.failure.kind, message: result.failure.message };
+}
+
+/**
+ * The worker could not reach the provider at all, so the line cost nothing and waits for the
+ * next claim rather than failing.
+ */
+export async function releaseJob(owner: string, jobId: string, attempt: number): Promise<boolean> {
+  const found = await relayedJob(jobId, owner, attempt);
+  if (!found) return false;
+  return retryJob(
+    jobId,
+    { delayMs: 0, spent: false, because: failure("upstream", "the provider could not be reached") },
+    attempt,
+  );
+}
+
+/** Keep a claim while its requests are in flight. False tells the Manager to drop it. */
+export async function holdJob(owner: string, jobId: string, attempt: number): Promise<boolean> {
+  const found = await relayedJob(jobId, owner, attempt);
+  return found ? renewLease(jobId, attempt) : false;
+}

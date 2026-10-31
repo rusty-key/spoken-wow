@@ -21,6 +21,7 @@ import { getWallet } from "@/lib/voices/fish";
 import { generationStatus } from "@/lib/generation/status";
 import type { Lang } from "@/lib/lang";
 import { pinnedVoices } from "@/lib/voices/references";
+import { modeOf } from "@/lib/worker/mode";
 
 export const dynamic = "force-dynamic";
 
@@ -35,10 +36,13 @@ export async function GET(request: Request) {
   // A row that will not open reads as no key here. The distinction between the two is worth
   // making where it can be acted on, which is requireApiKey on the routes that spend; this
   // one only decides whether to draw a balance.
-  const [apiKey, settings] = await Promise.all([
+  const [apiKey, settings, mode] = await Promise.all([
     readApiKey(session.user.id, preference.provider).catch(() => null),
     speakingConfig(preference.elevenlabs, lang),
+    modeOf(session.user.id, preference.provider),
   ]);
+  // Generated on their own machine, with a key this site never holds.
+  const local = mode === "local";
 
   if (preference.provider === "fish") {
     const [voices, wallet, rate] = await Promise.all([
@@ -50,7 +54,8 @@ export async function GET(request: Request) {
       voices: [...voices.ids.keys()].sort(),
       subscription: null,
       error: apiKey && !wallet ? "could not read the fish.audio balance" : null,
-      noApiKey: !apiKey,
+      noApiKey: !apiKey && !local,
+      local,
       settings,
       rate,
       provider: "fish",
@@ -70,7 +75,8 @@ export async function GET(request: Request) {
     voices: status.voices,
     subscription: status.subscription,
     error: status.error,
-    noApiKey: !apiKey,
+    noApiKey: !apiKey && !local,
+    local,
     settings,
     rate,
     provider: "elevenlabs",
@@ -85,7 +91,10 @@ export async function GET(request: Request) {
 async function pinnedStatus(userId: string, lang: Lang, preference: Preference) {
   const voices = await pinnedVoices(lang);
   if (voices.size === 0) return null;
-  const fishKey = await readApiKey(userId, "fish").catch(() => null);
+  const [fishKey, mode] = await Promise.all([
+    readApiKey(userId, "fish").catch(() => null),
+    modeOf(userId, "fish"),
+  ]);
   const [references, rate] = await Promise.all([
     speakerFrom("fish", fishKey ?? "", preference).voices(lang),
     observedFishRate(preference.fish.model, lang),
@@ -93,7 +102,7 @@ async function pinnedStatus(userId: string, lang: Lang, preference: Preference) 
   return {
     voices: [...voices].sort(),
     references: [...references.ids.keys()].sort(),
-    noApiKey: !fishKey,
+    noApiKey: !fishKey && mode !== "local",
     rate,
   };
 }

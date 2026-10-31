@@ -21,6 +21,7 @@ import { estimatePack } from './packs-plan'
 import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndex, type ChannelOptions, type ChannelPack } from './packs-remote'
 import { dropPackState, loadPackState } from './packs-state'
 import { syncPacks } from './packs-sync'
+import { Generating, type Cipher } from './generating'
 import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
 import { loadSettings, loadState, log, sanitizeSettings, saveSettings } from './state'
 import { computeStatuses } from './status'
@@ -47,6 +48,12 @@ export interface ServiceOptions {
   packsTimeoutMs?: number
   /** Replaces the site's contributions address (tests, and SPOKEN_SHARE_URL in a dev build). */
   shareUrl?: string
+  /** The system keychain the generating secrets are encrypted with; without one none are kept. */
+  cipher?: Cipher
+  /** Replaces the site's address for generating (tests, and SPOKEN_SITE_URL in a dev build). */
+  siteUrl?: string
+  /** Opens a link in the browser: where the author approves a pairing. */
+  openExternal?: (url: string) => void
 }
 
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
@@ -76,6 +83,8 @@ export class ManagerService {
   private shareTimer: ReturnType<typeof setInterval> | null = null
   /** share.json, read once and kept: every poll would otherwise parse up to LEDGER_CAP hashes. */
   private ledger: ShareLedger
+  /** Null on a system with no keychain, where no key could be kept safely. */
+  readonly generating: Generating | null
 
   constructor(private opts: ServiceOptions) {
     this.settings = loadSettings(opts.dataPath)
@@ -85,6 +94,17 @@ export class ManagerService {
     this.jobs = new JobManager((p: JobProgress) => opts.send(CHANNELS.jobProgress, p))
     this.ledger = loadLedger(opts.dataPath)
     this.sharingStatus = { sending: false, ...(this.ledger.lastSent ? { lastSent: this.ledger.lastSent } : {}) }
+    this.generating = opts.cipher
+      ? new Generating({
+          dataPath: opts.dataPath,
+          appVersion: opts.appVersion,
+          cipher: opts.cipher,
+          send: (status) => opts.send(CHANNELS.generateChanged, status),
+          openExternal: opts.openExternal ?? (() => undefined),
+          ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
+          ...(opts.siteUrl ? { siteUrl: opts.siteUrl } : {})
+        })
+      : null
   }
 
   get dataPath(): string {
@@ -123,7 +143,8 @@ export class ManagerService {
       appVersion: this.opts.appVersion,
       dataPath: this.opts.dataPath,
       platform: process.platform === 'darwin' ? 'darwin' : process.platform === 'win32' ? 'win32' : 'linux',
-      sharingStatus: this.sharingStatus
+      sharingStatus: this.sharingStatus,
+      ...(this.generating ? { generateStatus: this.generating.status } : {})
     }
   }
 
@@ -577,6 +598,31 @@ export class ManagerService {
     return result
   }
 
+  // ---------------------------------------------------------------- generating
+
+  private requireGenerating(): Generating {
+    if (!this.generating) throw new PlainError('This computer has no keychain to keep the keys in, so the Manager cannot generate here.')
+    return this.generating
+  }
+
+  /** Starts the loop when Generating is on; called once at start. */
+  startGenerating(): void {
+    if (this.settings.generating) this.generating?.start()
+    else void this.generating?.refresh()
+  }
+
+  async generatePair(): Promise<void> {
+    await this.requireGenerating().pair()
+  }
+
+  async generateUnpair(): Promise<void> {
+    await this.requireGenerating().unpair()
+  }
+
+  generateSetKey(provider: 'elevenlabs' | 'fish', key: string): void {
+    this.requireGenerating().setKey(provider, key)
+  }
+
   // ---------------------------------------------------------------- settings
 
   setSettings(patch: Partial<Settings>): Settings {
@@ -597,6 +643,8 @@ export class ManagerService {
       log('Could not save the settings:', err)
     }
     this.sharingChanged(wasSharing)
+    if (clean.generating === true) this.generating?.start()
+    if (clean.generating === false) this.generating?.stop()
     return this.settings
   }
 }

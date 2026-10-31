@@ -13,7 +13,7 @@ import type { ElevenLabsOptions } from "@/lib/voices/elevenlabs";
 
 import { currentLocator } from "../dictionary";
 import type { ElevenLabsSettings } from "../preference";
-import { generationStatus } from "../status";
+import { generationStatus, voicesIn } from "../status";
 import { textToDialogue, textToSpeech } from "../tts";
 import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
 
@@ -35,7 +35,11 @@ export const OUTPUT_FORMAT = "mp3_44100_128";
  * spending account does not own.
  */
 export function elevenLabsSpeaker(
-  options: ElevenLabsOptions & { settings: ElevenLabsSettings },
+  options: ElevenLabsOptions & {
+    settings: ElevenLabsSettings;
+    /** Clone name to voice id, when the caller has already listed the account. */
+    roster?: ReadonlyMap<string, string>;
+  },
 ): Speaker {
   // The collaborator's own (see preference.ts).
   const config = options.settings;
@@ -45,6 +49,7 @@ export function elevenLabsSpeaker(
     seedStrategy: config.seedStrategy,
 
     async voices(lang: Lang): Promise<Voices> {
+      if (options.roster) return { ids: voicesIn(options.roster, lang), error: null };
       // The account, not the provenance table: a voice created in the ElevenLabs dashboard
       // is just as real, and refusing to notice it would block a usable voice.
       const status = await generationStatus(options, lang);

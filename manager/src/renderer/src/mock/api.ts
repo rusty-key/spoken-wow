@@ -3,7 +3,7 @@
 // list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered).
 import type { AddGameResult, InstallOptions, ManagerApi, UpdaterState } from '@shared/api'
 import { PRODUCTS, SPOKEN_FOLDERS, productById } from '@shared/products'
-import type { Catalog, CommunityCatalog, CommunityPack, GameInstall, JobProgress, Product, ProductStatus, ReleaseInfo, Settings, SharingStatus, Snapshot } from '@shared/types'
+import type { Catalog, CommunityCatalog, CommunityPack, GameInstall, GenerateStatus, JobProgress, Product, ProductStatus, ReleaseInfo, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, communityFolder } from '@shared/types'
 import { compareVersions } from '@shared/version'
 
@@ -268,6 +268,23 @@ export function createMockApi(): ManagerApi {
   }
   let sharingStatus: SharingStatus = { sending: false, ...(sharingParam === 'on' ? { lastSent: { at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), count: 37 } } : {}) }
   const sharingListeners = new Set<(s: SharingStatus) => void>()
+  // ?generate=paired shows a paired Manager with keys, mid-batch.
+  let generateStatus: GenerateStatus =
+    q.get('generate') === 'paired'
+      ? {
+          pairedAs: 'Hello',
+          keys: { elevenlabs: false, fish: true },
+          modes: { elevenlabs: 'site', fish: 'local' },
+          current: [{ lineId: 'q:5:accept', npcName: 'Marshal Dughan', preview: 'Ah, a new recruit…' }],
+          done: 41,
+          failed: 1
+        }
+      : { pairedAs: null, keys: { elevenlabs: false, fish: false }, modes: { elevenlabs: 'site', fish: 'site' }, current: [], done: 0, failed: 0 }
+  const generateListeners = new Set<(s: GenerateStatus) => void>()
+  const emitGenerate = (next: GenerateStatus): void => {
+    generateStatus = next
+    generateListeners.forEach((l) => l(next))
+  }
   const releases = buildReleases()
   const packs = q.get('empty') === 'packs' ? [] : COMMUNITY_PACKS
   const everyProduct = (): Product[] => [...PRODUCTS, ...packs.map(communityProduct)]
@@ -407,7 +424,7 @@ export function createMockApi(): ManagerApi {
   const api: ManagerApi = {
     async snapshot(): Promise<Snapshot> {
       await sleep(250)
-      return { games, settings, sharingStatus, catalog: catalog(), community: community(), products: PRODUCTS, appVersion: '0.1.0', platform, dataPath: platform === 'darwin' ? '/Users/hello/Library/Application Support/Spoken Manager' : platform === 'linux' ? '/home/hello/.config/Spoken Manager' : 'C:\\Users\\hello\\AppData\\Roaming\\Spoken Manager' }
+      return { games, settings, sharingStatus, generateStatus, catalog: catalog(), community: community(), products: PRODUCTS, appVersion: '0.1.0', platform, dataPath: platform === 'darwin' ? '/Users/hello/Library/Application Support/Spoken Manager' : platform === 'linux' ? '/home/hello/.config/Spoken Manager' : 'C:\\Users\\hello\\AppData\\Roaming\\Spoken Manager' }
     },
     async scanGames() {
       await sleep(900)
@@ -507,6 +524,18 @@ export function createMockApi(): ManagerApi {
     async resetShareId() {
       console.info('[mock] resetShareId')
     },
+    async generatePair() {
+      emitGenerate({ ...generateStatus, pairing: { code: 'K7QM-2XPA', verifyUrl: 'https://spoken.rusty.one/profile?pair=K7QM-2XPA', expiresAt: new Date(Date.now() + 600_000).toISOString() } })
+      await sleep(3000)
+      const { pairing: _p, ...rest } = generateStatus
+      emitGenerate({ ...rest, pairedAs: 'Hello' })
+    },
+    async generateUnpair() {
+      emitGenerate({ ...generateStatus, pairedAs: null })
+    },
+    async generateSetKey(provider, key) {
+      emitGenerate({ ...generateStatus, keys: { ...generateStatus.keys, [provider]: key.trim() !== '' } })
+    },
     async windowMinimize() {
       console.info('[mock] windowMinimize')
     },
@@ -538,6 +567,10 @@ export function createMockApi(): ManagerApi {
     onSharing(l) {
       sharingListeners.add(l)
       return () => void sharingListeners.delete(l)
+    },
+    onGenerate(l) {
+      generateListeners.add(l)
+      return () => void generateListeners.delete(l)
     },
     onWindowMaximized(l) {
       maximizedListeners.add(l)

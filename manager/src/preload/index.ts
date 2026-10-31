@@ -27,6 +27,9 @@ const api: ManagerApi = {
   clearDownloads: () => ipcRenderer.invoke(CHANNELS.clearDownloads),
   shareNow: () => ipcRenderer.invoke(CHANNELS.shareNow),
   resetShareId: () => ipcRenderer.invoke(CHANNELS.resetShareId),
+  generatePair: () => ipcRenderer.invoke(CHANNELS.generatePair),
+  generateUnpair: () => ipcRenderer.invoke(CHANNELS.generateUnpair),
+  generateSetKey: (provider, key) => ipcRenderer.invoke(CHANNELS.generateSetKey, provider, key),
   windowMinimize: () => ipcRenderer.invoke(CHANNELS.windowMinimize),
   windowToggleMaximize: () => ipcRenderer.invoke(CHANNELS.windowToggleMaximize),
   windowClose: () => ipcRenderer.invoke(CHANNELS.windowClose),
@@ -37,6 +40,7 @@ const api: ManagerApi = {
   onCommunityChanged: (l) => listen(CHANNELS.communityChanged, l),
   onUpdater: (l) => listen(CHANNELS.updaterState, l),
   onSharing: (l) => listen(CHANNELS.sharingChanged, l),
+  onGenerate: (l) => listen(CHANNELS.generateChanged, l),
   onWindowMaximized: (l) => listen(CHANNELS.windowMaximized, l)
 }
 

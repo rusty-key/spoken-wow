@@ -126,6 +126,13 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
   handle(CHANNELS.clearDownloads, () => service.clearDownloads())
   handle(CHANNELS.shareNow, () => service.sendNow())
   handle(CHANNELS.resetShareId, () => service.resetShareId())
+  handle(CHANNELS.generatePair, () => service.generatePair())
+  handle(CHANNELS.generateUnpair, () => service.generateUnpair())
+  handle(CHANNELS.generateSetKey, (_e, provider, key) => {
+    if (provider !== 'elevenlabs' && provider !== 'fish') throw new Error('Invalid provider')
+    if (typeof key !== 'string' || key.length > 512 || key.includes('\0')) throw new Error('Invalid key')
+    return service.generateSetKey(provider, key)
+  })
 
   handle(CHANNELS.openLogs, async () => {
     const problem = await shell.openPath(logsDir(service.dataPath))

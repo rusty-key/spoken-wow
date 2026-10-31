@@ -3,9 +3,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { isInside } from './guard'
 
-const EXTERNAL_HOSTS = new Set(['github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com'])
+const EXTERNAL_HOSTS = new Set(['github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com', 'spoken.rusty.one'])
 
-/** Only plain https links to GitHub's own hosts: no other scheme, no credentials, no odd port. */
+/** Only plain https links to GitHub's own hosts and the site's: no other scheme, no credentials, no odd port. */
 export function isAllowedExternalUrl(value: unknown): boolean {
   if (typeof value !== 'string' || value.length > 2048) return false
   let u: URL

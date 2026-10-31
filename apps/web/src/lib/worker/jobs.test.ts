@@ -1,0 +1,268 @@
+/**
+ * Runs against the real queue and take table; the provider is never called, the answers are
+ * made up here.
+ */
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+import { closeDb, db } from "@/lib/db";
+import { createBatch, enqueue } from "@/lib/generation/queue";
+import type { RegenerateResult } from "@/lib/generation/regenerate";
+import type { Generator } from "@/lib/generation/worker";
+import { defaultPreference } from "@/lib/generation/preference";
+import { commitTake } from "@/lib/takes/commit";
+
+import { answerJob, claimJobs, holdJob, releaseJob } from "./jobs";
+import { writeMode } from "./mode";
+
+const SILENT_MP3 = "//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM";
+/** What ElevenLabs' with-timestamps endpoint answers, as the Manager passes it on. */
+const TIMED_SILENCE = Buffer.from(JSON.stringify({ audio_base64: SILENT_MP3, alignment: null })).toString("base64");
+/** An answer to a request no line sends, as for a line that changed since its claim. */
+const STALE = [{ id: "0".repeat(64), status: 200, contentType: "application/json", characterCost: "1", body: TIMED_SILENCE }];
+
+let owner: string;
+let file: string;
+const batches: string[] = [];
+
+/** What places' narrated generator does, cut down to the speaker and the commit. */
+const narrate: Generator = async (lineId, createdBy, { speaker, lang, commit }) => {
+  const voices = await speaker.voices(lang);
+  const voiceId = voices.ids.get("narrator-male");
+  if (!voiceId) return { ok: false, failure: { kind: "voice-missing", message: "no narrator", status: 400, fatal: false } };
+  const speech = await speaker.speak({ turns: [{ text: "Well met.", voiceId }], lang, seed: null, dialogue: false });
+  if (!speech.ok) return { ok: false, failure: speech.failure };
+  const committed = await (commit ?? commitTake)("places", file, speech.audio, {
+    lineId,
+    provider: speaker.provider,
+    credits: speech.credits,
+    createdBy,
+  }, { lang });
+  const result: RegenerateResult = {
+    ok: true,
+    lineId,
+    file,
+    version: committed.version,
+    bytes: committed.bytes,
+    characters: 9,
+    credits: speech.credits,
+    costUsd: null,
+    seed: null,
+    voice: "narrator-male",
+    voiceId,
+    spokenText: "Well met.",
+    dictionaryVersion: null,
+    sharedWith: 0,
+  };
+  return result;
+};
+
+const options = {
+  generators: { places: narrate },
+  preferenceFor: async () => {
+    const preference = defaultPreference();
+    return { ...preference, elevenlabs: { ...preference.elevenlabs, modelId: "eleven_multilingual_v2" } };
+  },
+};
+const voices = [{ name: "narrator-male", voiceId: "voice-123" }];
+
+beforeEach(async () => {
+  owner = `test-relay-${Math.random().toString(36).slice(2, 10)}`;
+  file = `relay-test/${owner}`;
+  await db().query(
+    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
+    [owner, `${owner}@example.invalid`],
+  );
+  const batch = await createBatch("relay", owner, "places");
+  batches.push(batch);
+  await enqueue(batch, [{ lineId: file, file, npcName: "Zone", preview: "Well met.", characters: 9 }], "places", "enUS", "elevenlabs");
+});
+
+afterEach(async () => {
+  await db().query(`delete from "take" where "file" = $1`, [file]);
+  await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches.splice(0)]);
+  await db().query(`delete from "user" where "id" = $1`, [owner]);
+});
+
+let history: string;
+
+// The commit writes each take into the places archive, which would otherwise be the checkout's own.
+beforeAll(async () => {
+  history = await mkdtemp(path.join(os.tmpdir(), "relay-history-"));
+  process.env.SPOKEN_PLACES_AUDIO_HISTORY = history;
+});
+
+afterAll(async () => {
+  delete process.env.SPOKEN_PLACES_AUDIO_HISTORY;
+  await rm(history, { recursive: true, force: true });
+  await closeDb();
+});
+
+async function job() {
+  const { rows } = await db().query<{ state: string; attempts: number; credits: number | null }>(
+    `select "state", "attempts", "credits" from "regeneration_job" where "file" = $1`,
+    [file],
+  );
+  return rows[0];
+}
+
+describe("relayed generation", () => {
+  it("claims nothing for an author who generates on the site", async () => {
+    expect(await claimJobs(owner, { providers: ["elevenlabs"], max: 4, voices }, options)).toEqual([]);
+    expect((await job()).state).toBe("pending");
+  });
+
+  it("hands out the request without a key, and commits what the Manager answers", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed, ...rest] = await claimJobs(owner, { providers: ["elevenlabs"], max: 4, voices }, options);
+    expect(rest).toEqual([]);
+    expect(claimed.requests).toHaveLength(1);
+    const [request] = claimed.requests;
+    expect(request.url).toMatch(/\/v1\/text-to-speech\/voice-123\/with-timestamps$/);
+    expect(request.headers["xi-api-key"]).toBeUndefined();
+    expect(JSON.parse(Buffer.from(request.body, "base64").toString()).text).toContain("Well met.");
+    expect((await db().query(`select 1 from "take" where "file" = $1`, [file])).rows).toEqual([]);
+    expect(await holdJob(owner, claimed.jobId, claimed.attempt)).toBe(true);
+
+    const answered = await answerJob(
+      owner,
+      {
+        jobId: claimed.jobId,
+        attempt: claimed.attempt,
+        answers: [{ id: request.id, status: 200, contentType: "application/json", characterCost: "12", body: TIMED_SILENCE }],
+      },
+      options,
+    );
+
+    expect(answered).toEqual({ status: "done", version: 1 });
+    expect(await job()).toMatchObject({ state: "done", credits: 12 });
+    const { rows } = await db().query<{ credits: number; createdBy: string }>(
+      `select "credits", "createdBy" from "take" where "file" = $1 and "isCurrent"`,
+      [file],
+    );
+    expect(rows).toEqual([{ credits: 12, createdBy: owner }]);
+  });
+
+  it("puts the job back, without spending an attempt, when the answer is for a request the line no longer sends", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    const answered = await answerJob(owner, { jobId: claimed.jobId, attempt: claimed.attempt, answers: STALE }, options);
+    expect(answered).toEqual({ status: "changed" });
+    expect(await job()).toMatchObject({ state: "pending", attempts: claimed.attempt - 1 });
+    expect((await db().query(`select 1 from "take" where "file" = $1`, [file])).rows).toEqual([]);
+  });
+
+  it("settles nothing for a claim that has been overtaken, or for somebody else", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    const answers = [{ id: claimed.requests[0].id, status: 200, contentType: "application/json", characterCost: "1", body: TIMED_SILENCE }];
+    expect(await answerJob("someone-else", { jobId: claimed.jobId, attempt: claimed.attempt, answers }, options)).toEqual({
+      status: "gone",
+    });
+    expect(await answerJob(owner, { jobId: claimed.jobId, attempt: claimed.attempt + 1, answers }, options)).toEqual({
+      status: "gone",
+    });
+    expect((await job()).state).toBe("running");
+  });
+
+  it("records the provider's refusal as the job's failure", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    const answered = await answerJob(
+      owner,
+      {
+        jobId: claimed.jobId,
+        attempt: claimed.attempt,
+        answers: [
+          {
+            id: claimed.requests[0].id,
+            status: 401,
+            contentType: "application/json",
+            characterCost: null,
+            body: Buffer.from(JSON.stringify({ detail: { status: "invalid_api_key", message: "bad key" } })).toString("base64"),
+          },
+        ],
+      },
+      options,
+    );
+    expect(answered).toMatchObject({ status: "failed", kind: "auth" });
+    expect((await job()).state).toBe("failed");
+  });
+
+  it("fails a line whose voice the Manager's account does not hold, without handing it out", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    expect(await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices: [] }, options)).toEqual([]);
+    expect((await job()).state).toBe("failed");
+  });
+
+  it("takes a line back unanswered, to be claimed again, when the Manager could not reach the provider", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    expect(await releaseJob("someone-else", claimed.jobId, claimed.attempt)).toBe(false);
+    expect(await releaseJob(owner, claimed.jobId, claimed.attempt)).toBe(true);
+    expect(await job()).toMatchObject({ state: "pending", attempts: claimed.attempt - 1 });
+    // Not an attempt: a worker that was offline a while must leave the rate limit its retries.
+    const [again] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    expect(again.attempt).toBe(claimed.attempt);
+  });
+
+  it("fails a line given back, or found changed, once its batch was stopped", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const stopped = (at: "now" | null) =>
+      db().query(`update "regeneration_batch" set "stoppedAt" = ${at === "now" ? "now()" : "null"} where "id" = any($1::uuid[])`, [batches]);
+
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    await stopped("now");
+    expect(await releaseJob(owner, claimed.jobId, claimed.attempt)).toBe(true);
+    expect((await job()).state).toBe("failed");
+
+    await stopped(null);
+    await db().query(`update "regeneration_job" set "state" = 'pending', "finishedAt" = null where "file" = $1`, [file]);
+    const [again] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    await stopped("now");
+    await answerJob(owner, { jobId: again.jobId, attempt: again.attempt, answers: STALE }, options);
+    expect((await job()).state).toBe("failed");
+  });
+
+  it("claims nothing from a stopped batch, a lapsed lease included", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    await db().query(`update "regeneration_job" set "leaseUntil" = now() - interval '1 second' where "id" = $1`, [claimed.jobId]);
+    await db().query(`update "regeneration_batch" set "stoppedAt" = now() where "id" = any($1::uuid[])`, [batches]);
+    expect(await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options)).toEqual([]);
+    expect((await job()).state).toBe("cancelled");
+  });
+
+  it("fails a line whose requests a worker would refuse, without handing it out", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const previous = process.env.ELEVENLABS_BASE_URL;
+    process.env.ELEVENLABS_BASE_URL = "https://elevenlabs.example";
+    try {
+      expect(await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options)).toEqual([]);
+    } finally {
+      if (previous === undefined) delete process.env.ELEVENLABS_BASE_URL;
+      else process.env.ELEVENLABS_BASE_URL = previous;
+    }
+    const { rows } = await db().query<{ state: string; error: string }>(`select "state", "error" from "regeneration_job" where "file" = $1`, [file]);
+    expect(rows[0]).toEqual({ state: "failed", error: expect.stringContaining("https://elevenlabs.example/v1/text-to-speech/voice-123/with-timestamps") });
+  });
+
+  it("fails a line its worker refused to send, rather than handing it out again", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    const answered = await answerJob(
+      owner,
+      {
+        jobId: claimed.jobId,
+        attempt: claimed.attempt,
+        answers: [{ id: claimed.requests[0].id, error: "no ElevenLabs key here", refused: true }],
+      },
+      options,
+    );
+    expect(answered).toMatchObject({ status: "failed", message: expect.stringContaining("no ElevenLabs key here") });
+    expect((await job()).state).toBe("failed");
+  });
+});

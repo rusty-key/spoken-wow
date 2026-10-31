@@ -10,7 +10,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import { failure } from "@/lib/generation/errors";
 import { regenerateNarrated } from "@/lib/generation/narrated";
 import type { RegenerateResult } from "@/lib/generation/regenerate";
-import type { Speaker } from "@/lib/generation/speakers/speaker";
+import type { GenerateOptions } from "@/lib/generation/generate-options";
 
 import { catalogue } from "./catalogue";
 
@@ -18,7 +18,7 @@ import { catalogue } from "./catalogue";
 export async function regenerateBossLine(
   lineId: string,
   createdBy: string,
-  options: { speaker: Speaker; lang?: Lang; batchId?: string },
+  options: GenerateOptions,
 ): Promise<RegenerateResult> {
   const entry = (await catalogue(options.lang ?? BASE_LANG)).find((candidate) => candidate.id === lineId);
   if (!entry) {

@@ -11,12 +11,22 @@ import { elevenLabsSpeaker } from "./elevenlabs";
 import { fishSpeaker } from "./fish";
 import type { Provider, Speaker } from "./speaker";
 
+/**
+ * `relay` is for a line generated on its author's own machine, whose ElevenLabs voices this
+ * server cannot list without the key.
+ */
 export function speakerFrom(
   provider: Provider,
   apiKey: string,
   preference: Pick<Preference, "elevenlabs" | "fish">,
+  relay?: { fetchImpl: typeof fetch; roster: ReadonlyMap<string, string> | null },
 ): Speaker {
   return provider === "fish"
-    ? fishSpeaker({ apiKey, settings: preference.fish })
-    : elevenLabsSpeaker({ apiKey, settings: preference.elevenlabs });
+    ? fishSpeaker({ apiKey, settings: preference.fish, fetchImpl: relay?.fetchImpl })
+    : elevenLabsSpeaker({
+        apiKey,
+        settings: preference.elevenlabs,
+        fetchImpl: relay?.fetchImpl,
+        roster: relay?.roster ?? undefined,
+      });
 }
