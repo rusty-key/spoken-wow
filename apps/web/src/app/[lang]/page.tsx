@@ -60,6 +60,7 @@ const SECTIONS: { section: Section; name: string; note: string }[] = [
   { section: "quests", name: "Quests and Gossip", note: "Quest dialogue and what NPCs say" },
   { section: "places", name: "Places", note: "Lore of each zone" },
   { section: "readables", name: "Readables", note: "Books, letters and notes" },
+  { section: "bosses", name: "Bosses", note: "The story of each dungeon and raid boss" },
 ];
 
 function installRows(lang: Lang): InstallRow[] {

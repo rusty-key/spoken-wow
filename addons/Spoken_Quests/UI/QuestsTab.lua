@@ -1332,6 +1332,8 @@ local function ScrollIcon(done)
     return { objectOrItem = true, icon = [[Interface\Icons\INV_Scroll_03]], bullet = done and BULLETS.complete or BULLETS.accept }
 end
 
+local QUESTS_ICON = ScrollIcon(false)
+
 local function QuestIcon(id)
     return ScrollIcon(Completed(id))
 end
@@ -1387,7 +1389,7 @@ end
 local function ShowEntry()
     if not page then return end
     if not selection then
-        page:Show({ title = L.COMPENDIUM_QUESTS, subtitle = Count(Index().all) })
+        page:Show({ title = L.COMPENDIUM_QUESTS, subtitle = Count(Index().all), icon = QUESTS_ICON })
         return
     end
     local up = Holder(selection)

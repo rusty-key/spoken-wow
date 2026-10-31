@@ -134,6 +134,7 @@ L.SAMPLE_WINDOW_TEXT = "Así se verán las líneas habladas. Lleva la ventana ad
 L.STYLE_PREVIEW = "Vista previa"
 L.STYLE_PREVIEW_HIDE = "Ocultar"
 L.OPT_LINKS_TITLE = "Enlaces"
+L.OPT_LINKS_WEBSITE = "Sitio web"
 L.OPT_LINKS_TIP = "Haz clic para seleccionar la dirección y luego Ctrl+C para copiarla."
 
 -- Modules

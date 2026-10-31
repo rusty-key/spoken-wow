@@ -29,6 +29,7 @@ export const SOURCE_LABELS: Record<Source, string> = {
   quests: "Quests",
   places: "Places",
   readables: "Readables",
+  bosses: "Bosses",
 };
 
 /** Written for a player rather than an editor: the reporter is not reading the schema. */

@@ -4,9 +4,37 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **DialogueUI's text follows Type Out By.** With Mark Words in DialogueUI on, its quest, gossip
-  and book text types out letter by letter by default, or word by word, as the captions do.
+- **World Chatter voices what people say out loud in the world.** Guards, farmers and others who talk
+  without a quest are matched by who says what, and the line plays when a voice pack has it, only when
+  nothing else is being read. The game's chat bubble stays the only thing on screen, and lights the word
+  being read. It is a part of its own on Spoken's page, with a switch and a page, and `/spq chatter`
+  replays an NPC's lines. *([Nucabe](https://github.com/Nucabe))*
+- **Spoken NPCs is now Spoken Bosses.** The module has a new name and folder, `Spoken_Bosses`, so
+  the bosses you found and the stories already told start over. An old `Spoken_NPCs` folder left
+  beside it is switched off, and Spoken offers the reload that finishes it.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Boss stories are read aloud.** Install Spoken Audio: Places and Bosses and a boss's story is voiced when it falls; without it the story shows as text, as before.
+  The Bosses settings page lists the pack, with the address to download it, as the Places and
+  Readables pages list theirs. Play on a boss's page in the Compendium plays its story, and the
+  boss still tells it when it falls.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Places and Readables are reachable by other addons**, through the globals `SpokenPlaces` and
+  `SpokenReadables`, as Bosses already is through `SpokenBossesAddon`: an addon that lists a place
+  or a book can ask whether Spoken has its story and have it read or shown. Such an addon checks
+  first whether the player has found it.
+  *([fallenguards](https://github.com/fallenguards))*
+- **Raid and world bosses wear the elite skull in the Compendium, dungeon bosses the plain one.**
+  On Season of Discovery, Blackfathom Deeps, Gnomeregan and Sunken Temple count as raids.
   *([anon1231823](https://github.com/anon1231823))*
+- **The Quests, Readables and Bosses pages have an icon before anything is chosen.** Quests shows
+  its scroll; Readables and Bosses show the Compendium's book, replacing the dragon on Bosses.
+  *([anon1231823](https://github.com/anon1231823))*
+- **On Forever, the Contribute box names the released game's folder.** It points to
+  `_forever_` for the saved file to upload, instead of the ended beta's `_classic_beta_`.
+  *([svengabr](https://github.com/svengabr))*
+
+## 3.6.0 — 2026-10-28
+
 - **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
   settings page and dungeon icon instead of using the generic book portrait.
   *([anon1231823](https://github.com/anon1231823))*

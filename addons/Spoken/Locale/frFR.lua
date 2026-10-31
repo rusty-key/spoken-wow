@@ -127,6 +127,7 @@ L.SAMPLE_WINDOW_TEXT = "Voici à quoi ressembleront les répliques. Placez la fe
 L.STYLE_PREVIEW = "Aperçu"
 L.STYLE_PREVIEW_HIDE = "Masquer l'aperçu"
 L.OPT_LINKS_TITLE = "Liens"
+L.OPT_LINKS_WEBSITE = "Site web"
 L.OPT_LINKS_TIP = "Cliquez pour sélectionner l'adresse, puis Ctrl+C pour la copier."
 
 -- Modules

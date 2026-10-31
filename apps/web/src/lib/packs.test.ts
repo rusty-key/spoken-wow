@@ -9,6 +9,7 @@ type RegistryPack = {
   lang: string;
   pack: string | null;
   curseforge: string | null;
+  bundledIn: string | null;
   slug: string;
   release: string;
   github: boolean;
@@ -26,7 +27,7 @@ describe("the landing page's pack list", () => {
       .map((pack) => ({
         section: pack.section,
         lang: pack.lang,
-        curseforge: pack.curseforge ? pack.slug : null,
+        curseforge: pack.curseforge ? pack.slug : pack.bundledIn,
         release: pack.github ? pack.release : null,
       }));
 

@@ -90,6 +90,7 @@ superpowers/
 # No trailing slash: a test client is pointed at this pack by symlinking its audio in,
 # and a trailing slash matches only a real directory, leaving the link to be committed.
 /addons/SpokenPlacesAudio/Sounds
+/addons/SpokenBossesAudio/Sounds
 # Another language's pack, staged by `make <section>-sounds LOCALE=xx` and the lookups and
 # manifests built beside it. Build output, never committed: the pages under publishers/ are
 # what says a language has a pack.
@@ -113,6 +114,9 @@ superpowers/
 # Every places take, pulled from the droplet: the only places audio there is. Grows without
 # bound -- re-cutting the whole corpus adds ~700MB.
 /pipelines/places/audio-history/
+
+# Every boss story take, pulled from the droplet.
+/pipelines/places/bosses-audio-history/
 
 # --- apps ---------------------------------------------------------------------
 

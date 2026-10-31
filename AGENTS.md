@@ -8,14 +8,17 @@ covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelo
 ## Layout
 
 - `addons/`: the shipped Lua.
-  - `Spoken` plays every line. `Spoken_Quests`, `Spoken_Places` and `Spoken_Readables` are its
-    modules, and `SpokenContributions` holds what players upload at /contribute. All five
-    ship in one zip, `Spoken-<v>.zip` (`scripts/spoken/package.sh`).
+  - `Spoken` plays every line. `Spoken_Quests`, `Spoken_Places`, `Spoken_Readables` and
+    `Spoken_Bosses` are its modules, and `SpokenContributions` holds what players upload at
+    /contribute. All six ship in one zip, `Spoken-<v>.zip` (`scripts/spoken/package.sh`).
+    The bosses' data is covered by the Places guide (`docs/places/BOSSES.md`), the module by
+    `docs/bosses/README.md`.
   - `Spoken_Developer` is for developers only: the debug log and the Developer page. It is
     not in Spoken's zip and has no store page or release; a developer links it from a checkout
     or builds it with `scripts/developer/package.sh` (`addons/Spoken_Developer/README.md`).
-  - `SpokenPlacesAudio` and `SpokenReadablesAudio` are sound packs. The quests packs have no folder
-    here; they are built into `pipelines/quests/audio/`, which is gitignored.
+  - `SpokenPlacesAudio`, `SpokenReadablesAudio` and `SpokenBossesAudio` are sound packs. The
+    quests packs have no folder here; they are built into `pipelines/quests/audio/`, which is
+    gitignored.
 - `apps/web`: the site, `spoken.rusty.one`, a Next.js app backed by Postgres. It imports
   `pipelines/places` and `pipelines/readables` (`@tools/*` and `@readables-tools/*`), so a change there is
   a change to the site.
@@ -56,8 +59,10 @@ schema constraints. The CI `web` job shows the setup.
 droplet, through the site. Do not add a generation flag to a CLI. `make places-lore-rewrite` does spend Claude
 credits, even with `--dry-run`.
 
-**Data only comes home from production.** The take archive (`audio-history/`) is the only
-audio and only the site writes it. The `<section>-pull-*` targets never delete anything.
+**Data only comes home from production.** The take archive is the only audio and only the
+site writes it: `audio-history/` on the droplet's volume, and the `spoken-archive` R2 bucket,
+whose objects are named by their SHA-256 (`apps/web/src/lib/blobs/store.ts`). Nothing deletes
+from the bucket's `takes/` or `recordings/`. The `<section>-pull-*` targets never delete anything.
 The `<section>-sync` targets replace local tables and are destructive, so confirm before
 running one. `sounds` directories are assembled from the live takes before a build and are
 never the record. Audio stays out of git; `.gitignore` says which directories cannot be

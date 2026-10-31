@@ -28,6 +28,8 @@ env.Sources:Register("readables", { title = "Spoken Readables", addon = "Spoken_
     packs = function() return { "SpokenReadablesAudio" } end })
 env.Sources:Register("places", { title = "Spoken Places", addon = "Spoken_Places", order = 3,
     packs = function() return { "SpokenPlacesAudio" } end })
+env.Sources:Register("bosses", { title = "Spoken Bosses", addon = "Spoken_Bosses", order = 5,
+    packs = function() return { "SpokenBossesAudio" } end })
 _G.Spoken:RegisterOptionalAction("report", "Report")
 env.Addon:Enable()
 local QuestsPanel = stub.LoadQuestsPanel(QUESTS, VO)

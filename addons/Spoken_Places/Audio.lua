@@ -570,7 +570,7 @@ end
 -- saying anything at all.
 function SpokenPlaces:DescribeMissingAudio()
 	if #self:GetAudioPacks() == 0 then
-		return "no voice pack installed -- get Spoken Audio: Places to hear the lore read aloud"
+		return "no voice pack installed -- get Spoken Audio: Places and Bosses to hear the lore read aloud"
 	end
 	return "no narration for this entry in the installed voice pack yet"
 end

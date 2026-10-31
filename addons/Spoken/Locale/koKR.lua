@@ -206,6 +206,7 @@ L.SAMPLE_WINDOW_TEXT = "대사는 이렇게 표시됩니다. 창을 원하는 �
 L.STYLE_PREVIEW = "미리 보기"
 L.STYLE_PREVIEW_HIDE = "숨기기"
 L.OPT_LINKS_TITLE = "링크"
+L.OPT_LINKS_WEBSITE = "웹사이트"
 L.OPT_LINKS_TIP = "클릭해서 주소를 선택한 뒤 Ctrl+C로 복사하세요."
 L.OPT_PARTS_TITLE = "Spoken이 읽는 것"
 L.OPT_PART_QUESTS = "퀘스트"

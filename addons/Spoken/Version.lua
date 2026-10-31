@@ -7,7 +7,7 @@ Version.Client                  = CLIENT_VERSION
 Version.Interface               = INTERFACE_VERSION
 
 -- Which client and realm this is, as one of:
---   "forever"      the WoW Forever beta: vanilla content on the modern engine
+--   "forever"      WoW Forever: vanilla content on the modern engine
 --   "era"          Classic Era, Hardcore included
 --   "sod"          Season of Discovery: the Era client, with the season's own maps and quests
 --   "anniversary"  TBC Anniversary

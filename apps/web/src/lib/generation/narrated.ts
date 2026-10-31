@@ -1,5 +1,5 @@
 /**
- * Narrating one line in a section read by the single narrator: places and readables.
+ * Narrating one line in a section read by the single narrator: places, readables and bosses.
  *
  * Both sections voice every line with the one narrator, the generating collaborator's own
  * settings and the pronunciation lexicon, give every line a file of its own, and record a duration --
@@ -55,7 +55,7 @@ function asFailure(error: unknown) {
 }
 
 export async function regenerateNarrated(
-  source: "places" | "readables",
+  source: "places" | "readables" | "bosses",
   line: NarratedLine,
   createdBy: string,
   options: { speaker: Speaker; lang?: Lang; batchId?: string },
@@ -72,7 +72,7 @@ export async function regenerateNarrated(
       failure: failure(
         "voice-missing",
         `${speaker.missing(NARRATOR_VOICE)} on this account. ` +
-          "Create it on /voices before generating zone lore.",
+          `Create it on /voices before generating ${source} lines.`,
       ),
     };
   }

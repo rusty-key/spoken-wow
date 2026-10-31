@@ -258,13 +258,38 @@ end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
 -- unable to open a web page.
+local WEBSITE = "https://spoken.rusty.one"
+local function WebsiteURL()
+    local language = Options:ClientLanguage()
+    return language == "enUS" and WEBSITE or WEBSITE .. "/" .. language
+end
+
+local CURSEFORGE = "https://www.curseforge.com/wow/addons/"
+local CURSEFORGE_PAGES = {
+    enUS = "spoken-english",
+    deDE = "spoken-german",
+    esES = "spoken-spanish-eu",
+    esMX = "spoken-spanish-al",
+    frFR = "spoken-french",
+    itIT = "spoken-italian",
+    ptBR = "spoken-portuguese",
+    ruRU = "spoken-russian",
+    koKR = "spoken-korean",
+    zhCN = "spoken-chinese-simplified",
+    zhTW = "spoken-chinese-traditional",
+}
+local function CurseForgeURL()
+    return CURSEFORGE .. (CURSEFORGE_PAGES[Options:ClientLanguage()] or "spoken")
+end
+
 local LINKS = {
+    { name = L.OPT_LINKS_WEBSITE, icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
         url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
         url = "https://discord.gg/HEGUgn6Yf" },
     { name = "CurseForge", icon = [[Interface\AddOns\Spoken\Textures\LinkCurseForge]],
-        url = "https://www.curseforge.com/wow/addons/spoken" },
+        url = CurseForgeURL() },
     { name = "Wago", icon = [[Interface\AddOns\Spoken\Textures\LinkWago]],
         url = "https://addons.wago.io/addons/spoken" },
     { name = "Buy Me a Coffee", icon = [[Interface\AddOns\Spoken\Textures\LinkBuyMeACoffee]],
@@ -493,7 +518,10 @@ local function Build()
             function() return not transcript().WordsOff[key] end,
             function(v) transcript().WordsOff[key] = (not v) or nil end, refreshTranscript)
         Only(row, MarksWords)
-        Only(row, function() return Sources:Get(key) ~= nil end)
+        Only(row, function()
+            local source = Sources:Get(key)
+            return source ~= nil and not source.noNarrator
+        end)
         Requires(row, Narrator, L.REASON_NARRATOR)
     end
     layout:Outdent()
@@ -642,7 +670,7 @@ local function Build()
         { tab = "quests", part = "quests", label = L.OPT_UNLOCK_QUESTS, module = L.OPT_PART_QUESTS },
         { tab = "places", part = "places", label = L.OPT_UNLOCK_PLACES, module = L.OPT_PART_PLACES },
         { tab = "readables", part = "readables", label = L.OPT_UNLOCK_READABLES, module = L.OPT_PART_READABLES },
-        -- Spoken NPCs has no part to turn off: its tab is there while the addon is.
+        -- Spoken Bosses has no part to turn off: its tab is there while the addon is.
         { tab = "bosses", label = L.OPT_UNLOCK_BOSSES },
     }) do
         local row = layout:Checkbox(unlock.label, nil,

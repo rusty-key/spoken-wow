@@ -31,6 +31,7 @@ import { countRecentContributions, recordContributionHit } from "@/lib/contribut
 import { formatTarget, parseTarget, resolveTarget } from "@/lib/reports/target";
 import { pageById } from "@/lib/readables/catalogue";
 import { lineByPath } from "@/lib/places/catalogue";
+import { lineByPath as bossByPath } from "@/lib/bosses/catalogue";
 import { type Source, isSource } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,8 @@ export async function POST(request: Request) {
    * A readables address is the page id the addon built its link from, and is resolved as strictly
    * as a places one for the same reason: the reporter got here from a page this site rendered,
    * so an id naming nothing is a typo in the URL bar rather than a corpus that failed to load.
+   *
+   * A bosses address is the boss's audio path, resolved as strictly as a places one.
    */
   const raw = typeof body.target === "string" ? body.target : null;
   const addressed =
@@ -80,7 +83,9 @@ export async function POST(request: Request) {
       ? await placesTarget(raw)
       : source === "readables"
         ? await readablesTarget(raw)
-        : await questsTarget(raw, body.lineId);
+        : source === "bosses"
+          ? await bossesTarget(raw)
+          : await questsTarget(raw, body.lineId);
 
   if (!addressed) {
     return Response.json({ error: "unknown target" }, { status: 400 });
@@ -205,6 +210,22 @@ async function placesTarget(
 
   const [mapID, slug] = raw.split("/");
   const entry = await lineByPath(Number(mapID), slug ?? "");
+  if (!entry) return null;
+
+  return { lineId: entry.id, target: entry.file };
+}
+
+/** A bosses address: the boss's own audio path, '36/edwin-vancleef'. */
+async function bossesTarget(
+  raw: string | null,
+): Promise<{ lineId: string | null; target: string } | null> {
+  if (!raw) return null;
+
+  // Exactly '<map>/<slug>', as targetExplorerHref reads it: a trailing segment is no address.
+  const segments = raw.split("/");
+  if (segments.length !== 2) return null;
+  const [map, slug] = segments;
+  const entry = await bossByPath(Number(map), slug);
   if (!entry) return null;
 
   return { lineId: entry.id, target: entry.file };

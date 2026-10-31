@@ -206,6 +206,7 @@ L.SAMPLE_WINDOW_TEXT = "台詞會像這樣顯示。把視窗放到你想要的�
 L.STYLE_PREVIEW = "預覽"
 L.STYLE_PREVIEW_HIDE = "隱藏"
 L.OPT_LINKS_TITLE = "連結"
+L.OPT_LINKS_WEBSITE = "網站"
 L.OPT_LINKS_TIP = "點擊選取網址，再按 Ctrl+C 複製。"
 L.OPT_PARTS_TITLE = "朗讀內容"
 L.OPT_PART_QUESTS = "任務"

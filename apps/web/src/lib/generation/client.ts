@@ -248,7 +248,7 @@ export async function queueBatch(
     // Both id-driven sections, for the same reason: their explorers already hold the set
     // of ids the visitor was shown, and quoting one set while queueing another is the
     // failure the quote exists to prevent.
-    | { source: "places" | "readables"; lineIds: string[] },
+    | { source: "places" | "readables" | "bosses"; lineIds: string[] },
   label: string,
   lang: Lang = BASE_LANG,
 ): Promise<QueuedBatch | { error: string } | null> {

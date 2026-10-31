@@ -593,7 +593,7 @@ env.Addon.db.global.Welcomed = nil
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(2.1)
 Expect("the welcome opens at the first login after it ships", Welcome.frame and Welcome.frame:IsShown(), true)
-Expect("it offers the parts as a list, as Home does", #Welcome.modules, 4)
+Expect("it offers the parts as a list, as Home does", #Welcome.modules, 5)
 Expect("...under its header, the paragraph saying what the window is for",
     Welcome.layout.intro.text ~= nil and Welcome.layout.intro.text.text, L.WELCOME_INTRO)
 Expect("...which the settings pages, like the game's own, do without", home.intro.text, nil)
@@ -777,17 +777,18 @@ do
 end
 
 ---------------------------------------------------------------- links out of the game
--- GitHub, Discord, CurseForge, Wago and Rusty's Buy Me a Coffee page, a row each: the icon in a module card's icon frame where a row's
+-- Website, GitHub, Discord, CurseForge, Wago and Rusty's Buy Me a Coffee page, a row each: the icon in a module card's icon frame where a row's
 -- label starts, then a box holding the address. The game cannot open a page, so the address is
 -- there to copy: a click selects it, and nothing typed over it stays.
 do
     local links = env.Options.links
-    Expect("Spoken's page has its links", links ~= nil and #links, 5)
+    Expect("Spoken's page has its links", links ~= nil and #links, 6)
     if links then
         local names = {}
         for _, frame in ipairs(links) do table.insert(names, frame.layoutLink.title) end
-        Expect("...GitHub, Discord, CurseForge, Wago and Buy Me a Coffee", table.concat(names, ", "),
-            "GitHub, Discord, CurseForge, Wago, Buy Me a Coffee")
+        Expect("...Website, GitHub, Discord, CurseForge, Wago and Buy Me a Coffee",
+            table.concat(names, ", "),
+            "Website, GitHub, Discord, CurseForge, Wago, Buy Me a Coffee")
         -- A row outside the narrator style's box, which moves its own rows in by its padding.
         local boxed = {}
         for _, item in ipairs(home.items) do
@@ -807,10 +808,10 @@ do
         Expect("...starting where the rows' names do", caption and links[1].anchor.x, caption and caption.anchor.x)
         Expect("...each on a row of its own", links[1].anchor.x == links[2].anchor.x
             and links[2].anchor.y < links[1].anchor.y and links[3].anchor.y < links[2].anchor.y, true)
-        local box = links[2].box
+        local box = links[3].box
         Expect("...with its address in a box after the icon", box and box:GetText(), "https://discord.gg/HEGUgn6Yf")
-        Expect("...on the icon's row", box and box.anchor.x > links[2].anchor.x
-            and box.anchor.y < links[2].anchor.y and box.anchor.y > links[2].anchor.y - 32, true)
+        Expect("...on the icon's row", box and box.anchor.x > links[3].anchor.x
+            and box.anchor.y < links[3].anchor.y and box.anchor.y > links[3].anchor.y - 32, true)
         local ends = {}
         for _, frame in ipairs(links) do table.insert(ends, frame.box.anchor.x + frame.box.width) end
         Expect("...the boxes ending together", ends[1] == ends[2] and ends[2] == ends[3], true)
@@ -819,7 +820,7 @@ do
         Expect("...given again when it shows, as the game drops text set before then", box:GetText(),
             "https://discord.gg/HEGUgn6Yf")
         box.focused, box.highlighted = false, false
-        links[2].scripts.OnMouseUp(links[2])
+        links[3].scripts.OnMouseUp(links[3])
         Expect("a click on the icon selects the address", box.focused and box.highlighted, true)
         box:SetText("typed over")
         box.handlers.OnTextChanged(box)

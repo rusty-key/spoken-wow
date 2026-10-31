@@ -37,6 +37,13 @@ import type { ResultLine as QuestLine } from "@/lib/search";
 import type { Source } from "@/lib/sections";
 import { cn, endsSelection } from "@/lib/utils";
 import type { ResultLine as ZoneLine } from "@/lib/places/search";
+import type { ResultLine as BossLine } from "@/lib/bosses/search";
+import { placesSection } from "@/components/places/sections";
+import { bossesSection } from "@/components/bosses/sections";
+
+// No facets: the card shows one line, with nothing to narrow.
+const PLACES = placesSection();
+const BOSSES = bossesSection();
 
 /** Enough to read a typical complaint whole without pushing the actions off a phone screen. */
 const PREVIEW = 3;
@@ -220,7 +227,8 @@ export default function SortQueue({
   }
 
   const canEdit = canEditText && line !== null;
-  const canRegenerateLine = canRegenerate && line !== null;
+  // An unwritten boss has nothing to voice, and the server would refuse it.
+  const canRegenerateLine = canRegenerate && line !== null && detail?.text !== null;
 
   const keys: Record<string, () => void> = {
     " ": togglePlay,
@@ -282,6 +290,7 @@ export default function SortQueue({
   const total = groups.length;
   const reports = expanded ? group.reports : group.reports.slice(0, PREVIEW);
   const text = detail?.text ?? "";
+  const unwritten = detail !== null && detail.text === null;
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pt-4 pb-56">
@@ -341,16 +350,20 @@ export default function SortQueue({
             </div>
             {/* The text is the expand control, as each report below is: [X] does the same from
                 the keyboard. */}
-            <p
-              className={cn(
-                "cursor-pointer text-sm whitespace-pre-wrap",
-                !expanded && text.length > LONG_TEXT && "line-clamp-5",
-              )}
-              aria-expanded={expanded}
-              onClick={() => !endsSelection() && setExpanded(!expanded)}
-            >
-              {text}
-            </p>
+            {unwritten ? (
+              <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
+            ) : (
+              <p
+                className={cn(
+                  "cursor-pointer text-sm whitespace-pre-wrap",
+                  !expanded && text.length > LONG_TEXT && "line-clamp-5",
+                )}
+                aria-expanded={expanded}
+                onClick={() => !endsSelection() && setExpanded(!expanded)}
+              >
+                {text}
+              </p>
+            )}
             <div className="text-muted-foreground flex items-center gap-3 text-xs">
               <Link href={explorerHref(source, lineId)} className="font-mono underline-offset-2 hover:underline">
                 {lineId}
@@ -392,7 +405,13 @@ export default function SortQueue({
             className="h-11"
             disabled={!canRegenerateLine || busy !== null}
             onClick={() => void regenerate()}
-            title={canRegenerate ? "Regenerate this line" : "You can't regenerate in this language"}
+            title={
+              !canRegenerate
+                ? "You can't regenerate in this language"
+                : unwritten
+                  ? "No story in this language to voice"
+                  : "Regenerate this line"
+            }
           >
             <RefreshCw className={cn(busy === "regenerate" && "animate-spin")} />
             {busy === "regenerate" ? "Working…" : "Regenerate"}
@@ -477,7 +496,12 @@ function SourcePlayer({
   audio: React.RefObject<HTMLAudioElement | null>;
 }) {
   if (source === "quests") return <QuestsPlayer ref={audio} line={line as QuestLine | null} version={version} />;
-  if (source === "places") return <PlacesPlayer audioRef={audio} line={line as ZoneLine | null} version={version} />;
+  if (source === "places") {
+    return <PlacesPlayer section={PLACES} audioRef={audio} line={line as ZoneLine | null} version={version} />;
+  }
+  if (source === "bosses") {
+    return <PlacesPlayer section={BOSSES} audioRef={audio} line={line as BossLine | null} version={version} />;
+  }
   return <ReadablesPlayer audioRef={audio} line={line as BookLine | null} version={version} />;
 }
 
@@ -495,7 +519,12 @@ function EditDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  if (source === "places") return <LoreDialog line={line as ZoneLine} onClose={onClose} onSaved={onSaved} />;
+  if (source === "places") {
+    return <LoreDialog section={PLACES} line={line as ZoneLine} onClose={onClose} onSaved={onSaved} />;
+  }
+  if (source === "bosses") {
+    return <LoreDialog section={BOSSES} line={line as BossLine} onClose={onClose} onSaved={onSaved} />;
+  }
   if (source === "readables") return <PageTextDialog line={line as BookLine} onClose={onClose} onSaved={onSaved} />;
   if (lang !== BASE_LANG) {
     return <TranslateDialog subject={lineTextSubject(line as QuestLine)} onClose={onClose} onSaved={onSaved} />;

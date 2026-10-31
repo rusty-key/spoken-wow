@@ -206,6 +206,7 @@ L.SAMPLE_WINDOW_TEXT = "Так будут выглядеть реплики. П�
 L.STYLE_PREVIEW = "Просмотр"
 L.STYLE_PREVIEW_HIDE = "Скрыть"
 L.OPT_LINKS_TITLE = "Ссылки"
+L.OPT_LINKS_WEBSITE = "Веб-сайт"
 L.OPT_LINKS_TIP = "Щёлкните, чтобы выделить адрес, затем Ctrl+C, чтобы скопировать."
 L.OPT_PARTS_TITLE = "Что читает Spoken"
 L.OPT_PART_QUESTS = "Задания"

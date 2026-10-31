@@ -3,14 +3,16 @@
 #
 #   scripts/db/sync-section.sh <source> <corpus table>...
 #   scripts/db/sync-section.sh places lore_line
+#   scripts/db/sync-section.sh bosses boss_instance boss boss_line
 #
 # Production is upstream for everything the site writes -- corpus edits and takes -- so
-# data only ever flows droplet -> here. This is the one recipe for all three sections: the
-# section's corpus tables whole, and its rows of the shared tables -- `take`, and the voice
-# actors' `recording` (migration 0062), which the acted packs are built from. It replaced a
-# quests `sync`, a books `db-pull` that fetched takes but not the text they were cut from,
-# and a zones `db-pull`/`db-push` pair written against a table and a Docker database that
-# no longer exist.
+# data only ever flows droplet -> here. This is the one recipe for every section: the
+# section's corpus tables whole, and its rows of the shared tables -- `take`, the voice
+# actors' `recording` (migration 0062), which the acted packs are built from, and for bosses
+# `take_ack`.
+# It replaced a quests `sync`, a books `db-pull` that fetched takes but not the text they
+# were cut from, and a zones `db-pull`/`db-push` pair written against a table and a Docker
+# database that no longer exist.
 #
 # Environment, as the Makefiles pass it:
 #   DROPLET, SSH, REMOTE_ROOT   how to reach production (make/droplet.mk)
@@ -28,11 +30,28 @@ tables=("$@")
 : "${LOCAL_DB:?LOCAL_DB is not set}"
 
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
-shared=(take recording)
+# take_encoding is each take's clip as its pack ships it.
+shared=(take recording take_encoding)
+# The shared tables with an id, which is one sequence across every section.
+serial=(take recording)
+
+# The section's rows of entity_name, which holds every section's names and which no sync
+# copies whole: bosses' names live there, by kind. Bosses also take `take_ack`, the cleared
+# pronunciation mark, so a take production cleared does not read as dirty here again.
+names_where=
+case "$source_name" in
+  bosses)
+    names_where="\"kind\" in ('boss', 'instance')"
+    shared+=(take_ack)
+    ;;
+esac
 
 counts="select (select count(*) from \"${tables[0]}\") || ' ${tables[0]} rows, '
                || (select count(*) from \"take\" where \"source\" = '$source_name') || ' $source_name takes, '
                || (select count(*) from \"recording\" where \"source\" = '$source_name') || ' recordings'"
+[ -z "$names_where" ] || counts="$counts || ', ' || (select count(*) from \"entity_name\" where $names_where) || ' names'"
+[[ " ${shared[*]} " != *" take_ack "* ]] \
+  || counts="$counts || ', ' || (select count(*) from \"take_ack\" where \"source\" = '$source_name') || ' acks'"
 echo "local:    $(psql "$LOCAL_DB" -tAc "$counts")"
 # On stdin rather than inside the command, so the query's quotes never pass through ssh.
 echo "upstream: $(upstream 'psql "$DATABASE_URL" -tA -f -' <<<"$counts")"
@@ -71,6 +90,7 @@ columns_of() {
   for table in "${tables[@]}" "${shared[@]}"; do
     echo "create table $staging.\"$table\" (like public.\"$table\");"
   done
+  [ -z "$names_where" ] || echo "create table $staging.\"entity_name\" (like public.\"entity_name\");"
   upstream "pg_dump \"\$DATABASE_URL\" --data-only ${dump_tables[*]}" \
     | unrestrict | sed -E "s/^COPY public\./COPY $staging./"
   # This section's rows of each shared table, selected on production with a WHERE rather
@@ -83,6 +103,13 @@ columns_of() {
       <<<"copy (select $columns from \"$table\" where \"source\" = '$source_name') to stdout;"
     echo '\.'
   done
+  if [ -n "$names_where" ]; then
+    name_columns=$(columns_of entity_name)
+    echo "copy $staging.\"entity_name\" ($name_columns) from stdin;"
+    upstream 'psql "$DATABASE_URL" -X -q -f -' \
+      <<<"copy (select $name_columns from \"entity_name\" where $names_where) to stdout;"
+    echo '\.'
+  fi
   # pg_dump's output empties search_path for the session; put it back for what follows.
   echo 'set search_path = public;'
   cat <<SQL
@@ -116,6 +143,7 @@ SQL
   for table in "${shared[@]}"; do
     echo "delete from \"$table\" where \"source\" = '$source_name';"
   done
+  [ -z "$names_where" ] || echo "delete from \"entity_name\" where $names_where;"
   # Take ids are one sequence across all three sections, so another section's local row can
   # hold an id production has since given to one of these -- a quests take here sitting on
   # production's readables take 10049 failed the whole sync on the primary key. Such a row is not
@@ -123,7 +151,7 @@ SQL
   # the count says which section to sync next. A warning, not a notice: the dump sets
   # client_min_messages to warning, and a notice would never be seen.
   # The same holds for recording ids, which are one sequence too.
-  for table in "${shared[@]}"; do
+  for table in "${serial[@]}"; do
     cat <<SQL
 do \$\$
 declare r record;
@@ -143,6 +171,13 @@ SQL
   for table in "${tables[@]}" "${shared[@]}"; do
     echo "insert into public.\"$table\" select * from $staging.\"$table\";"
   done
+  # Under fresh local ids: the id is one sequence across every kind of name, nothing references
+  # it, and keeping production's would collide with local names of other kinds, which no sync
+  # brings back.
+  if [ -n "$names_where" ]; then
+    name_columns=$(printf '%s' "$name_columns" | tr ',' '\n' | sed 's/^ *//' | grep -vx id | paste -sd, -)
+    echo "insert into public.\"entity_name\" ($name_columns) select $name_columns from $staging.\"entity_name\";"
+  fi
   echo "drop schema $staging cascade;"
   echo 'commit;'
 } | psql "$LOCAL_DB" -v ON_ERROR_STOP=1 -q

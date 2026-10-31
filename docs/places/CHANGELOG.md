@@ -11,6 +11,11 @@ section with no kind in its heading is the addon's. A language's pack numbers it
 
 ## Unreleased
 
+- **The English pack is Spoken Audio: Places and Bosses on CurseForge.** The CurseForge download
+  now also carries `SpokenBossesAudio`, the narration of the boss stories, beside
+  `SpokenPlacesAudio`. Extract both folders. Boss stories play with Spoken 3.7.0 or later. The
+  GitHub download stays Places only, the boss stories have their own release there, and the
+  language packs are unchanged.
 - **The sound packs are called Spoken Audio: Places** in the AddOns list, after the module that
   reads them, and a language's is Spoken German Audio: Places and so on. Their folders keep their
   names, so nothing needs reinstalling.

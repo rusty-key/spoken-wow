@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   const file = params.get("file");
 
   if (!isSource(source)) {
-    return Response.json({ error: "source must be quests, places or readables" }, { status: 400 });
+    return Response.json({ error: "source must be quests, places, readables or bosses" }, { status: 400 });
   }
   if (!file || !(await isAddressableFile(source, file, lang))) {
     return Response.json({ error: "unknown file" }, { status: 404 });

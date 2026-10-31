@@ -1395,14 +1395,14 @@ Progress text is kept but never voiced.
 ## Addon Install
 
 ```bash
-python cli-main.py install --force --addons "<WoW folder>/_classic_beta_/Interface/AddOns"
+python cli-main.py install --force --addons "<WoW folder>/_forever_/Interface/AddOns"
 ```
 
 `install` copies a built pack from `dist/` into the AddOns folder. Its default is a macOS
-`_classic_era_` folder, so pass `--addons` for Forever (`_classic_beta_`). It moves any existing
+`_classic_era_` folder, so pass `--addons` for Forever (`_forever_`). It moves any existing
 install aside to `<module>.replaced` rather than deleting it. The addons are `addons/Spoken` and
 the modules beside it, and Quests needs Spoken. To run a checkout's code, the repo's
-`/link-addon` skill links every addon folder into a client (`beta`, the default, is Forever)
+`/link-addon` skill links every addon folder into a client (`forever` is the default)
 and `/reload` loads it. It skips the audio packs, whose mp3s are not in git, so install a pack
 with the command above.
 
@@ -1500,6 +1500,48 @@ files one under the speaker's `npc/{id}` address with the line's id, the way it 
 amber speech bubble and "after quest {id}", and the source filter calls them "follow-up"; it
 cannot say whether the line follows the accept or the turn-in, since the corpus row keeps only
 the quest.
+
+### What NPCs say in the world
+
+The same chat events carry what NPCs say with no quest behind it: a guard's warning, a farmer's complaint, a
+town crier. They are corpus lines of source `chatter`, and `ChatterLines.lua` is their export
+(`make quests-export-chatter-lines`, `tts_cli/chatter_lines.py`, read from the corpus, so run after
+export-corpus), keyed by the speaker's creature entry. `Chatter.lua` reads it. Nothing is armed: a message is looked up by
+the creature id in the event's GUID, so chat from a speaker with no lines costs one table lookup. The text must
+equal a line once `$n`, `$r`, `$c` and `$g...;` are filled in for the local player, so only English clients
+match: on any other the text is translated, and an NPC says more than its exported lines (lines the game
+voices, emotes, quest scripts), so not even an NPC with a single line can be told by who said it. Forever sends no GUID
+with NPC chat: there the speaker is found by the name in the event (each speaker's `name` in the export) and
+the text, English clients only, since a translated name matches nothing. A message the client hides (a
+dungeon's chat can come as secrets) is not matched. Read Automatically, the quest window's, does not apply:
+World Chatter's own switch is the only one.
+
+A line that a quest's script makes the NPC say (`FollowupLines.lua` lists the same speaker and id) is not
+played here: heard with nothing armed it is another player's quest, and the follow-up part plays it for the
+player's own.
+
+The first lines were seeded once from the Forever repack's `creature_text` (a one-off import, kept outside
+the repo): say, yell, whisper and boss whisper that the game does not voice, with a broadcast text id and a
+speaker with a spawn on the open-world maps, since in an instance the client hides the GUID. From there they are
+edited on the site like any other line. A chat line is named as a follow-up line is, `f:{broadcastTextId}:{voice}`
+(`tts_cli/naming.py`), and shares its file and folder, so the same words in the same voice are one recording;
+its audio ships in the Gossip pack, having no quest to side with. The broadcast text id names the recording:
+`FollowupLookup[speaker][id]`, resolved by
+`DataModules:ResolveSoundFile` like any other file, so a pack that has the file plays it and one that has not is
+silent (`chatter-no-recording` in the debug log). A line is played as low priority, as gossip is: only when
+nothing else is being read, and a quest line arriving drops it. At most three lines wait behind the one
+speaking (`queueLimit`). The same line from the same NPC does not play again for two minutes. The narrator never shows these lines (`noNarrator` on the source): the game's chat
+bubble already shows the words, so only the voice is added. `ChatBubble.lua` lights the word being read in that
+bubble's own text, as the captions light it (Spoken:GetCaption and Spoken:WordMarks do the matching): it finds
+the bubble through `C_ChatBubbles` by its text, rewrites it with the word in colour, and puts the text back when
+the line ends or stops. Show Narrator and Highlight Words are the narrator window's and do not apply to it.
+The light waits up to two seconds for the captions to reach a line that a fading window holds back, and a line
+the Stop button holds is not lit. A bubble the client
+forbids (an instance's) or whose text is a secret is left alone.
+
+World Chatter is a part of Spoken of its own (`chatter`, after Bosses on Spoken's page, with a page and a switch beside
+Quests' and Gossip's). `/spq chatter [NPC id]` replays an NPC's lines three seconds apart through the same match
+and play path, the target's when no id is given, and marks a line with no recording as silent.
 
 ### The Quests tab of Azeroth's Compendium
 

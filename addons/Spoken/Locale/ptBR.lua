@@ -206,6 +206,7 @@ L.SAMPLE_WINDOW_TEXT = "É assim que as falas vão aparecer. Coloque a janela on
 L.STYLE_PREVIEW = "Prévia"
 L.STYLE_PREVIEW_HIDE = "Ocultar"
 L.OPT_LINKS_TITLE = "Links"
+L.OPT_LINKS_WEBSITE = "Site"
 L.OPT_LINKS_TIP = "Clique para selecionar o endereço e depois Ctrl+C para copiá-lo."
 L.OPT_PARTS_TITLE = "O que o Spoken lê"
 L.OPT_PART_QUESTS = "Missões"

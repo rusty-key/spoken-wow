@@ -13,6 +13,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 /** First eight hex digits of the SHA-256 of `data`. Enough to tell takes of one line apart. */
@@ -48,5 +49,21 @@ export async function writeAtomic(target: string, data: Buffer): Promise<void> {
   } catch (error) {
     await fs.rm(partial, { force: true });
     throw error;
+  }
+}
+
+/** For ffmpeg and ffprobe, which read files, when the bytes have none on the volume. */
+export async function withLocalCopy<T>(
+  data: Buffer,
+  ext: string,
+  use: (file: string) => Promise<T>,
+): Promise<T> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-clip-"));
+  const file = path.join(dir, `clip.${ext}`);
+  try {
+    await fs.writeFile(file, data);
+    return await use(file);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
   }
 }

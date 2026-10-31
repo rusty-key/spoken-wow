@@ -20,6 +20,7 @@ developers and is not in the zip.
 | `Spoken_Quests` | **Spoken Quests** | quest dialogue and NPC gossip | [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-audio-quests-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-audio-quests-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared) · [Gossip](https://www.curseforge.com/wow/addons/spoken-audio-gossip) — or all in one from [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio) |
 | `Spoken_Readables` | **Spoken Readables** | books, letters and other in-world texts | [CurseForge](https://www.curseforge.com/wow/addons/spoken-audio-readables) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=readables-audio) |
 | `Spoken_Places` | **Spoken Places** | zone and subzone lore | [CurseForge](https://www.curseforge.com/wow/addons/spoken-audio-places) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=places-audio) |
+| `Spoken_Bosses` | **Spoken Bosses** | the story of each dungeon and raid boss | [CurseForge, in Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=bosses-audio) |
 
 `make package-spoken` builds the download, `Spoken-<version>.zip`, with every module built by
 its own packager. A module's voice pack holds its recordings; the module has nothing to play

@@ -50,7 +50,7 @@ Linux: the game runs under Wine, so it looks inside Wine prefixes: `$WINEPREFIX`
 `~/Games/*`, and the prefixes of Lutris, Bottles, Steam (Proton) and Heroic.
 
 If your game is somewhere else, press "Add Game Folder" and choose it. You can choose the game
-folder, one of its `_classic_era_`, `_classic_beta_` or `_anniversary_` folders, or the
+folder, one of its `_forever_`, `_classic_era_` or `_anniversary_` folders, or the
 `Interface/AddOns` folder.
 
 ## Run it from source

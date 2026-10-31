@@ -22,7 +22,7 @@ shipped in the game data. Two things follow, and both were checked rather than a
 - **Client data has none of it.** `WoWDBDefs` defines no `Book` or `PageText` table in any
   build, in any lineage, vanilla through retail. The only related definition is
   `PageTextMaterial`, which describes the frame the client draws around the words. The
-  WoW: Forever beta client (codename Camelot) is mainline-lineage and no different.
+  WoW: Forever client (codename Camelot) is mainline-lineage and no different.
 - **Wowhead has none of it either.** Its listviews scrape cleanly — `/classic/objects/
   containers/book` returns ids and names as JSON — but the object pages carry no page text.
   Wowhead never stored it.
@@ -169,6 +169,14 @@ pnpm --filter @spoken/web test     # the site, including lib/readables
 `addons/Spoken_Readables` hooks `ITEM_TEXT_BEGIN` / `READY` / `CLOSED` — the whole book UI, and
 the same API on Era, Anniversary and Forever, which is why there is one addon rather than
 three.
+
+The module is reachable by other addons through the global `SpokenReadables`, as
+`SpokenBossesAddon` is: what a page is (`PlaceOf`, `BookById`), whether it is found
+(`CompendiumHas`) and voiced (`HasAudio`), and reading it (`PlayFrom`, `StopReading`,
+`IsNarrating`) or showing it (`ShowReadables`). `PlayFrom` does not check `CompendiumHas`, which
+also covers the part being off, so an addon checks it first. It calls `PlayFrom(pageId, true,
+true)`, as the Compendium does: without `browsing` the book counts as read in the world, and
+Read Only Once then keeps it quiet when the player opens it there.
 
 **A page is identified by what is on screen**, because the client never says which page id
 it is showing. Title, page number and a checksum of the text; then the checksum alone,
@@ -382,7 +390,7 @@ Unlock Unfound Readables on (`SpokenReadables:CompendiumHas`).
 ### Installing it in a client
 
 ```bash
-CLIENT=forever make readables-deploy   # symlink Spoken_Readables and SpokenReadablesAudio into the Forever beta (wow_classic_beta)
+CLIENT=forever make readables-deploy   # symlink Spoken_Readables and SpokenReadablesAudio into Forever (_forever_)
 make readables-status                  # what is installed where, and how many mp3s exist
 ```
 

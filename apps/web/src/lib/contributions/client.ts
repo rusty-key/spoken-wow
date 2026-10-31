@@ -7,7 +7,7 @@
  *
  *   1.15.x  Classic Era, Hardcore and Season of Discovery (one client; the build cannot tell
  *           them apart)
- *   1.60.x  the WoW: Forever beta (1.16 and up, allowing for its later builds)
+ *   1.60.x  WoW: Forever (1.16 and up, allowing for its later builds)
  *   2.5.x   TBC Anniversary
  *   10+     retail
  *   1.12.1, 2.4.3, 3.3.5  the three legacy clients
@@ -26,7 +26,7 @@ export const CLIENT_FAMILY_LABELS: Record<ClientFamily, string> = {
   era: "Classic Era",
   anniversary: "TBC Anniversary",
   retail: "Retail",
-  forever: "Forever beta",
+  forever: "Forever",
   legacy: "Legacy client",
   other: "Other",
 };

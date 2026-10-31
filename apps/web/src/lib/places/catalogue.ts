@@ -332,20 +332,29 @@ export async function loadContext(
   lang: Lang = BASE_LANG,
   seesMadeBy = false,
 ): Promise<SearchContext> {
+  return sectionContext("places", lang, seesMadeBy);
+}
+
+/** The same context for any section whose lines are one file each, keyed by line id. */
+export async function sectionContext(
+  source: "places" | "bosses",
+  lang: Lang,
+  seesMadeBy: boolean,
+): Promise<SearchContext> {
   const [takeRows, reportRows, dirt] = await Promise.all([
-    liveTakes("places", lang),
+    liveTakes(source, lang),
     // Grouped in the database rather than counted here: the resolved rows are the ones
     // that accumulate, and there is no reason to carry them across the wire to drop them.
     // `lineId is not null` excludes a report about the project, which belongs to no line.
     query<{ lineId: string; open: number }>(
       `select "lineId", count(*)::int as "open"
          from "report"
-        where "source" = 'places' and "status" = 'open' and "lineId" is not null
+        where "source" = $2 and "status" = 'open' and "lineId" is not null
           and "lang" = $1
         group by "lineId"`,
-      [lang],
+      [lang, source],
     ),
-    loadDirtyContext("places", lang),
+    loadDirtyContext(source, lang),
   ]);
 
   return {

@@ -35,7 +35,7 @@ if [ "$LANG_CODE" = enUS ]; then
   NAME="${NAME:-SpokenAll}"
   VERSION="${VERSION:-3.0.0}"
   TITLE="${TITLE:-Spoken: English}"
-  NOTES="Installs every Spoken addon with its English audio - quests, gossip, zone lore and books."
+  NOTES="Installs every Spoken addon with its English audio - quests, gossip, zone lore, books and boss stories."
 else
   NAME="${NAME:-$(meta_field folder)}"
   VERSION="${VERSION:-$(meta_field version)}"

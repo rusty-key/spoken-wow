@@ -170,6 +170,15 @@ module.exports = {
         // directory is deleted five deploys later.
         SPOKEN_READABLES_AUDIO_HISTORY: `${SHARED}/audio-history/readables`,
 
+        //--------------------------------------------------------------------------
+        // Bosses
+        //--------------------------------------------------------------------------
+
+        // Every boss story take, beside the other sections' and separate from them. Has to be
+        // set: lib/takes/adapters.ts falls back to a path inside the release, and a release
+        // directory is deleted five deploys later.
+        SPOKEN_BOSSES_AUDIO_HISTORY: `${SHARED}/audio-history/bosses`,
+
         // DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, SPOKEN_SECRET_KEY and
         // ELEVENLABS_DICTIONARY_ID.
         ...readSecrets(),

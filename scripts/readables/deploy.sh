@@ -10,9 +10,7 @@
 #
 # The addon ships for three clients and the only way to know it loads on all of them is to
 # load it on each, so which client to install into is a variable rather than a
-# constant. `forever` is the WoW: Forever beta, which Blizzard installs under the
-# wow_classic_beta product directory -- confirmed by its own .flavor.info rather than
-# guessed from the name. Installing targets one client; --status and --remove walk every client
+# constant. Installing targets one client; --status and --remove walk every client
 # that is installed, because the failure they exist to catch is a stale copy left
 # behind in the one you were not thinking about.
 #
@@ -41,7 +39,7 @@ CLIENTS=(era anniversary forever)
 client_flavour() { case "$1" in
   era)         echo "_classic_era_";;
   anniversary) echo "_anniversary_";;
-  forever)     echo "_classic_beta_";;
+  forever)     echo "_forever_";;
 esac; }
 addons_dir() { echo "$WOW/$(client_flavour "$1")/Interface/AddOns"; }
 

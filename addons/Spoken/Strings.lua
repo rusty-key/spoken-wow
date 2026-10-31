@@ -147,6 +147,7 @@ L = {
     STYLE_PREVIEW = "Preview",
     STYLE_PREVIEW_HIDE = "Hide Preview",
     OPT_LINKS_TITLE = "Links",
+    OPT_LINKS_WEBSITE = "Website",
     OPT_LINKS_TIP = "Click to select the address, then Ctrl+C to copy it.",
     OPT_PARTS_TITLE = "What Spoken Reads",
     OPT_PART_QUESTS = "Quests",

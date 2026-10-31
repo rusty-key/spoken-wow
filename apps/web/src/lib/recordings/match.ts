@@ -11,6 +11,7 @@
  *           947/zone                   947-zone.mp3     (every map has a `zone`, so the map
  *                                                        id has to be in the name)
  *   readables 1381                     1381.mp3
+ *   bosses  36/edwin-vancleef          36-edwin-vancleef.mp3
  *
  * Browser-safe: the drop zone names files with it before anything is sent.
  */

@@ -206,6 +206,7 @@ L.SAMPLE_WINDOW_TEXT = "So sehen gesprochene Zeilen aus. Schiebe das Fenster dor
 L.STYLE_PREVIEW = "Vorschau"
 L.STYLE_PREVIEW_HIDE = "Vorschau ausblenden"
 L.OPT_LINKS_TITLE = "Links"
+L.OPT_LINKS_WEBSITE = "Webseite"
 L.OPT_LINKS_TIP = "Klicke, um die Adresse zu markieren, dann Strg+C zum Kopieren."
 L.OPT_PARTS_TITLE = "Was Spoken vorliest"
 L.OPT_PART_QUESTS = "Quests"

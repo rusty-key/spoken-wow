@@ -32,7 +32,7 @@ API="https://wow.curseforge.com/api"
 # The clients a zip can target. Matched by name against /api/game/versions rather than
 # hardcoding the numeric ids, because those ids are not documented anywhere and would be
 # mystery constants the first time they need changing. Both addons declare interface
-# 11509, 20506 and 16001, which is Era, Anniversary and the Forever beta in that order.
+# 11509, 20506 and 16001, which is Era, Anniversary and Forever in that order.
 GAME_VERSION_ERA="${GAME_VERSION_ERA:-1.15.9}"
 GAME_VERSION_ANNIVERSARY="${GAME_VERSION_ANNIVERSARY:-2.5.6}"
 GAME_VERSION_FOREVER="${GAME_VERSION_FOREVER:-1.60.1}"

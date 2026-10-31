@@ -12,7 +12,7 @@ import type { Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
 
 /** The order a triager is most likely to want: quests carry most of the reports. */
-const ORDER: readonly Source[] = ["quests", "readables", "places"];
+const ORDER: readonly Source[] = ["quests", "readables", "places", "bosses"];
 
 export default function SortPicker({ counts }: { counts: Record<Source, { left: number; skipped: number }> }) {
   const lang = useLang();

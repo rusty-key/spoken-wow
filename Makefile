@@ -23,7 +23,9 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         package-spoken package-spoken-all release-spoken release-spoken-dry \
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
-        character-models dungeons bosses \
+        character-models dungeons bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
+        bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
+        bosses-full-release \
         audio-release audio-release-dry \
         manager-publish manager-publish-dry manager-gc manager-gc-dry
 
@@ -61,6 +63,8 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/quest_overlay_test.lua
 	@$(LUA) tests/lua/quest_tracker_adapters_test.lua
 	@$(LUA) tests/lua/quest_followup_test.lua
+	@$(LUA) tests/lua/quest_chatter_test.lua
+	@$(LUA) tests/lua/quest_chatbubble_test.lua
 	@$(LUA) tests/lua/quest_abandon_test.lua
 	@$(LUA) tests/lua/easter_egg_test.lua
 	@$(LUA) tests/lua/sound_utils_test.lua
@@ -148,12 +152,14 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_each_place_once_test.lua
 	@$(LUA) tests/lua/places_city_test.lua
 	@$(LUA) tests/lua/places_dungeons_test.lua
-	@$(LUA) tests/lua/npcs_bosses_test.lua
+	@$(LUA) tests/lua/bosses_test.lua
+	@$(LUA) tests/lua/bosses_audio_test.lua
 	@$(LUA) tests/lua/places_story_place_test.lua
 	@$(LUA) tests/lua/places_area_zones_test.lua
 	@$(LUA) tests/lua/places_forever_places_test.lua
 	@$(LUA) tests/lua/minimap_compartment_test.lua
 	@$(LUA) tests/lua/bronze_rings_test.lua
+	@$(LUA) tests/lua/module_globals_test.lua
 
 # Rewrite the envelope fixtures the TypeScript reader is tested against. A diff here is the
 # wire format changing, and that is a change the reader's tests must be part of. The
@@ -217,9 +223,68 @@ dungeons: ## Rebuild addons/Spoken/Data/Dungeons.lua from pipelines/lib/dungeons
 	@node pipelines/lib/dungeons.mjs
 
 # The bosses of those dungeons and raids, from the client's DungeonEncounter table, for the bosses'
-# tab (Spoken_NPCs/Data/Bosses.lua).
-bosses: ## Rebuild addons/Spoken_NPCs/Data/Bosses.lua from the client's DungeonEncounter table
+# tab. It writes the boss tables, not Spoken_Bosses/Data/Bosses.lua: run bosses-export after it.
+bosses-extract: ## Bring the boss tables into step with the client's DungeonEncounter table
 	@node pipelines/lib/bosses.mjs
+
+# Spoken_Bosses' Bosses, Creatures and Stories Lua are exports of the boss tables. bosses-check needs
+# Postgres, so it stays out of lint, which has to pass on a clone without one.
+bosses-export: ## Write Spoken_Bosses' Bosses, Creatures and Stories Lua from the database
+	@node pipelines/places/tools/bosses/export.mjs
+bosses-check: ## Confirm the committed Spoken_Bosses data matches the database
+	@node pipelines/places/tools/bosses/export.mjs --check
+
+include make/droplet.mk
+
+# The site will edit boss stories and names, so production is upstream for the boss tables as it
+# is for every section's corpus. scripts/db/sync-section.sh has the recipe.
+bosses-sync: require-droplet ## Replace the local boss tables, boss names and boss takes with the droplet's (DESTRUCTIVE)
+	@$(DB_ENV) scripts/db/sync-section.sh bosses boss_instance boss boss_line
+	@echo "==> bring the addon into step with:  make bosses-export"
+bosses-check-synced: ## Compare the local boss data with the droplet's, and prompt if they differ
+	@$(DB_ENV) scripts/db/check-synced.sh bosses
+
+# The bosses' sound pack, SpokenBossesAudio, built as the places pack is (make/places.mk): from
+# the live boss takes in LOCAL_DB and the archive, pipelines/places/bosses-audio-history (on the
+# droplet shared/audio-history/bosses). Every step reads the one database LOCAL_DB names, so the
+# clips Sounds/ holds and the entries the lookup lists come from the same takes. LOCALE=deDE
+# acts on that language's pack, under build/bosses/deDE.
+BOSSES_LOCALE = $(or $(LOCALE),enUS)
+BOSSES_DB = DATABASE_URL="$(LOCAL_DB)"
+RSYNC ?= $(shell for r in /opt/homebrew/bin/rsync /usr/local/bin/rsync $$(command -v rsync); do \
+	[ -x "$$r" ] && "$$r" --version 2>/dev/null | head -1 | grep -q 'version 3' && { echo "$$r"; exit 0; }; \
+	done)
+
+# Only the takes the pack is built from, as the local database has them: run bosses-sync first.
+bosses-pull-live: require-droplet ## Fetch only the live boss takes the local database names (after bosses-sync)
+	@$(DB_ENV) RSYNC="$(RSYNC)" scripts/audio/pull-live.sh bosses $(BOSSES_LOCALE)
+
+# Sounds/ is not kept: it is assembled from the live takes before every build (scripts/audio/sounds.mjs).
+bosses-sounds: ## Assemble SpokenBossesAudio's Sounds/ (LOCALE=xx: into build/bosses/xx) from the live takes
+	@$(DB_ENV) node scripts/audio/sounds.mjs --lang=$(BOSSES_LOCALE) bosses
+
+bosses-lookup: ## Write SpokenBossesAudio's Data/Sounds.lua from the live boss takes (LOCALE=xx)
+	@$(BOSSES_DB) node pipelines/places/tools/bosses/build-lookup.mjs --lang $(BOSSES_LOCALE)
+
+# A lookup row whose mp3 is missing plays silence and reports nothing; this fails the build on it.
+bosses-validate-audio: ## Check SpokenBossesAudio's lookup, mp3s and live takes agree (LOCALE=xx)
+	@$(BOSSES_DB) node pipelines/places/tools/bosses/validate-audio.mjs --lang $(BOSSES_LOCALE)
+
+bosses-package-audio: bosses-check-synced bosses-sounds bosses-lookup bosses-validate-audio ## Build the bosses sound-pack zip into dist/ (LOCALE=xx)
+	@LOCALE="$(BOSSES_LOCALE)" ./scripts/bosses/package-audio.sh
+
+# GitHub only: CurseForge has no bosses project, and English's pack reaches it inside the Places
+# project's zip, Spoken Audio: Places and Bosses, with the next places-full-release. The version is
+# SpokenBossesAudio.toc's (a language's, its page's), and its `## <version> — bosses-audio` section
+# in docs/bosses/CHANGELOG.md is the notes.
+bosses-full-release: require-droplet ## Sync, pull live takes, build and GitHub-release the bosses sound pack (LOCALE=xx)
+	@$(MAKE) --no-print-directory bosses-sync
+	@$(MAKE) --no-print-directory bosses-pull-live LOCALE=$(LOCALE)
+	@$(MAKE) --no-print-directory bosses-package-audio LOCALE=$(LOCALE)
+	@./scripts/audio-github-release.sh --dry-run bosses $(BOSSES_LOCALE)
+	@printf 'Release the bosses pack on GitHub? [y/N] '; \
+	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@./scripts/audio-github-release.sh bosses $(BOSSES_LOCALE)
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json
 	@sed -n '2,10p' scripts/character-models.mjs | sed -e 's/^\/\/ //' -e 's/^\/\/$$//'

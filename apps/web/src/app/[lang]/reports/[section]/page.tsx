@@ -10,6 +10,7 @@ import { viewerOf } from "@/lib/grants/store";
 import { can, isAdmin } from "@/lib/permissions";
 import { isCategory, type Category, type Status } from "@/lib/reports/reports";
 import {
+  isSection,
   isStatusView,
   matchesReportSearch,
   pageOf,
@@ -22,7 +23,7 @@ import {
 } from "@/lib/reports/query";
 import { npcDetails } from "@/lib/reports/npc";
 import { listReports } from "@/lib/reports/store";
-import { isSection, queryOf } from "@/lib/contributions/query";
+import { queryOf } from "@/lib/contributions/query";
 import { localeHref } from "@/lib/lang";
 import { Contained, Wide } from "@/components/Width";
 
@@ -67,7 +68,7 @@ export default async function Page({
   const inSection = all.filter((report) => report.source === section);
   const sectionCounts = Object.fromEntries(SECTIONS.map((key) => [key, 0])) as Record<Section, number>;
   for (const report of all) {
-    if (view === "all" || report.status === view) sectionCounts[report.source]++;
+    if (isSection(report.source) && (view === "all" || report.status === view)) sectionCounts[report.source]++;
   }
   const statusCounts = Object.fromEntries(STATUS_VIEWS.map((key) => [key, 0])) as Record<StatusView, number>;
   for (const report of inSection) {

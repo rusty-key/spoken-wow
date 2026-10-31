@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   };
 
   if (!isSource(body.source)) {
-    return Response.json({ error: "source must be quests, places or readables" }, { status: 400 });
+    return Response.json({ error: "source must be quests, places, readables or bosses" }, { status: 400 });
   }
   const source = body.source;
 

@@ -137,6 +137,15 @@ describe('installProduct: success', () => {
     expect(listDir(env.addOns)).toEqual([WORK_DIR, ...product.folders!].sort())
   })
 
+  it('installs a release from before the section was renamed, with its old folder', async () => {
+    const env = await setup()
+    const product = productById('places-audio-deDE')!
+    const zip = await yazlZip([{ name: 'SpokenZonesAudio_deDE/SpokenZonesAudio_deDE.toc', data: toc('x', '2.1.1') }, { name: 'SpokenZonesAudio_deDE/a.ogg', data: 'ogg' }])
+    const result = await installProduct(env.game, product, release('places-audio-deDE', '2.1.1', zip, await serveZip(zip)), ctx(env))
+    expect(result.folders).toEqual(['SpokenZonesAudio_deDE'])
+    expect(listDir(env.addOns)).toEqual([WORK_DIR, 'SpokenZonesAudio_deDE'].sort())
+  })
+
   it('moves a folder from another product to the new owner in the record', async () => {
     const env = await setup()
     const all = productById('quests-audio')!
@@ -534,6 +543,14 @@ describe('installProduct: folders no longer in the zip', () => {
     const result = await installFolders(env, '3.6.0', ['Spoken'])
     expect(result.removed.sort()).toEqual(['Spoken_Quests', 'Spoken_Readables'])
     expect(result.message).toMatch(/^Removed the old Spoken_Quests and Spoken_Readables folders\. /)
+  })
+
+  it('removes Spoken_NPCs once Spoken_Bosses replaces it', async () => {
+    const env = await setup()
+    await installFolders(env, '3.6.0', ['Spoken', 'Spoken_NPCs'])
+    const result = await installFolders(env, '3.7.0', ['Spoken', 'Spoken_Bosses'])
+    expect(result.removed).toEqual(['Spoken_NPCs'])
+    expect(listDir(env.addOns)).toEqual([WORK_DIR, 'Spoken', 'Spoken_Bosses'].sort())
   })
 
   it('leaves a linked old folder alone', async () => {

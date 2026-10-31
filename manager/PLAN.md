@@ -31,7 +31,7 @@ GitHub Releases of `rusty-key/spoken-wow` (public, no token). Product tags, from
 
 | Product | Tag | Asset | Folders |
 | --- | --- | --- | --- |
-| Spoken | `spoken/vX.Y.Z` | `Spoken-X.Y.Z.zip` | `Spoken`, `Spoken_Conversations`, `Spoken_Places`, `Spoken_Readables`, `Spoken_NPCs`, `SpokenContributions` |
+| Spoken | `spoken/vX.Y.Z` | `Spoken-X.Y.Z.zip` | `Spoken`, `Spoken_Conversations`, `Spoken_Places`, `Spoken_Readables`, `Spoken_Bosses`, `SpokenContributions` |
 | Quests voices, English, all | `quests-audio/vX` | `SpokenQuestsAudioAll-X.zip` (1.4 GB) | the four split folders |
 | Quests voices, English, split | `quests-audio-{alliance,horde,shared,gossip}/vX` | | `SpokenQuestsAudio<Side>` |
 | Quests voices, a language | `quests-audio-<lang>/vX` | | `SpokenQuestsAudio_<lang>` |
@@ -49,7 +49,7 @@ opens with the last catalog and says so.
 
 ## Which games
 
-From `publishers/spoken/spoken.md`: Spoken is made and tested on Forever (`_classic_beta_`) and
+From `publishers/spoken/spoken.md`: Spoken is made and tested on Forever (`_forever_`) and
 installs on Classic Era (`_classic_era_`) and Anniversary (`_anniversary_`). Those three are
 `SUPPORTED_FLAVORS` in `src/shared/types.ts`, and the only ones the scan looks for. Any other
 flavor folder (Retail, Classic, PTRs, betas) is not listed; adding one by hand is refused with

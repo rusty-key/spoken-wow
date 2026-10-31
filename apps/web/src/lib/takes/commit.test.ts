@@ -23,7 +23,8 @@ process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 const { closeDb, db } = await import("@/lib/db");
 const { commitTake } = await import("./commit");
 const { archiveName } = await import("./bytes");
-const { listTakes, livePath } = await import("./store");
+const { listTakes, livePath, takePath } = await import("./store");
+const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
 
 /** A file no other run will collide with, so this can share a database with anything else. */
 let file: string;
@@ -220,8 +221,8 @@ describe("a take in another language", () => {
 
     const enLive = await livePath("quests", file);
     const ptLive = await livePath("quests", file, "ptBR");
-    expect(enLive).toEqual({ kind: "file", path: path.join(history(), english.archiveFile) });
-    expect(ptLive).toEqual({ kind: "file", path: path.join(ptHistory, portuguese.archiveFile) });
+    expect(enLive).toEqual({ kind: "file", path: path.join(history(), english.archiveFile!), prefix: "takes" });
+    expect(ptLive).toEqual({ kind: "file", path: path.join(ptHistory, portuguese.archiveFile!), prefix: "takes" });
   });
 
   it("does not take the live flag from the English take", async () => {
@@ -236,5 +237,76 @@ describe("a take in another language", () => {
     expect((await listTakes("quests", file, "ptBR")).map((t) => [t.version, t.isCurrent])).toEqual([
       [1, true],
     ]);
+  });
+});
+
+describe("with the archive in a bucket", () => {
+  let restore: () => void = () => {};
+  afterEach(() => restore());
+
+  const rowHash = async () =>
+    (await db().query<{ sha256: string | null }>(`select "sha256" from "take" where "file" = $1`, [file])).rows[0].sha256;
+
+  it("records no hash in disk mode, so the backfill finds the row", async () => {
+    const committed = await take("disk only");
+    expect(committed.sha256).toBeNull();
+    expect(await rowHash()).toBeNull();
+  });
+
+  it("still commits from the volume when the bucket refuses, in dual mode, and leaves the hash for the backfill", async () => {
+    restore = useArchiveForTests(memoryBlobs({ refusePut: true }), "dual");
+
+    const committed = await take("bucket down");
+    expect(committed.sha256).toBeNull();
+    expect(await rowHash()).toBeNull();
+    expect(archived()).toEqual([committed.archiveFile]);
+    expect((await livePath("quests", file)).kind).toBe("file");
+  });
+
+  it("fails when the bucket refuses in r2 mode, where it is the only store", async () => {
+    restore = useArchiveForTests(memoryBlobs({ refusePut: true }), "r2");
+
+    await expect(take("bucket down")).rejects.toThrow("HTTP 503");
+    expect(await listTakes("quests", file)).toEqual([]);
+  });
+
+  it("puts the bytes under their hash and keeps the volume as well, in dual mode", async () => {
+    const bucket = memoryBlobs();
+    restore = useArchiveForTests(bucket, "dual");
+
+    const committed = await take("dual write");
+    const sha = sha256Of(Buffer.from("dual write"));
+
+    expect(committed.sha256).toBe(sha);
+    expect(await rowHash()).toBe(sha);
+    expect(bucket.objects.get(`takes/${sha}`)?.data.toString()).toBe("dual write");
+    expect(archived()).toEqual([committed.archiveFile]);
+    // Reads stay on the volume until the backfill is done.
+    expect((await livePath("quests", file)).kind).toBe("file");
+  });
+
+  it("writes nothing to the volume and answers with the object's address, in r2 mode", async () => {
+    const bucket = memoryBlobs();
+    restore = useArchiveForTests(bucket, "r2");
+
+    const measured: string[] = [];
+    const committed = await commitTake(
+      "quests",
+      file,
+      Buffer.from("bucket only"),
+      { lineId: "g:commit-test" },
+      { measure: async (clip) => (measured.push(fs.readFileSync(clip, "utf8")), 1.5) },
+    );
+    const sha = sha256Of(Buffer.from("bucket only"));
+
+    expect(committed.archiveFile).toBeNull();
+    expect(committed.sha256).toBe(sha);
+    expect(committed.durationSec).toBe(1.5);
+    // The measure saw the bytes, from a temporary copy that is gone again.
+    expect(measured).toEqual(["bucket only"]);
+    expect(archived()).toEqual([]);
+    const live = await livePath("quests", file);
+    expect(live).toEqual({ kind: "blob", key: `takes/${sha}` });
+    expect(await takePath("quests", file, committed.version)).toEqual(live);
   });
 });

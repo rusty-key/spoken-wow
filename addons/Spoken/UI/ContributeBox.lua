@@ -227,7 +227,7 @@ end
 -- than left as a placeholder because hunting for the right one of four is where a player
 -- gives up; a guess that is wrong on some install is still a better start than none.
 local function GameFolder()
-    local folders = { forever = "_classic_beta_", era = "_classic_era_", sod = "_classic_era_",
+    local folders = { forever = "_forever_", era = "_classic_era_", sod = "_classic_era_",
         anniversary = "_anniversary_" }
     return folders[Version.Variant] or "<your game folder>"
 end

@@ -75,6 +75,8 @@ L.OPT_CONTRIBUTE_TIP_SHARE = "Contribuez avec vos données en partageant celles 
 -- Settings page
 L.OPT_PAGE_TITLE = "Quêtes"
 L.OPT_GOSSIP_PAGE_TITLE = "Discussions"
+L.OPT_CHATTER_PAGE_TITLE = "Bavardages du monde"
+L.OPT_CHATTER_NOTE = "Lit à voix haute ce que disent les gens dans le monde, comme les gardes et les habitants. Cela ne se joue que lorsque rien d'autre n'est lu, et une réplique ne se répète pas avant deux minutes."
 L.OPT_GOSSIP_MINIMAP_SETTINGS = "Paramètres des Discussions"
 L.REASON_AUTOPLAY = "Activez l'option Lire automatiquement pour utiliser ceci."
 L.REASON_AUTOPLAY_ON_QUESTS = "Activez l'option Lire automatiquement sur la page Quêtes pour utiliser ceci."
@@ -92,6 +94,8 @@ L.OPT_PANEL_GAME_GREETING_FIRST = "Voix du PNJ avant la lecture"
 L.GREETING_DIALOG_APART = "Spoken : volume des dialogues réglé à %1$d%%, à l'écart des autres curseurs de volume, pour que Voix du PNJ avant la lecture sache quand un PNJ a fini de parler."
 L.OPT_CMD_FOLLOWUP = "Suite de quête"
 L.OPT_CMD_FOLLOWUP_DESC = "Rejoue les répliques de suite d'une quête comme si vous veniez de la rendre : /spq followup <questID> [start]"
+L.OPT_CMD_CHATTER = "Bavardages du monde"
+L.OPT_CMD_CHATTER_DESC = "Rejoue ce qu'un PNJ dit à voix haute, comme si vous veniez de l'entendre : /spq chatter [id du PNJ] (celui de votre cible si omis)"
 -- UI/DialogueUIBridge.lua
 L.OPT_SECTION_DIALOGUEUI = "DialogueUI"
 L.OPT_DUI_CAPTIONS = "Marquer les mots dans DialogueUI"
