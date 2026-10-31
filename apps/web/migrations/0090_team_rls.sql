@@ -13,16 +13,18 @@
 --
 -- FORCE puts the owner under the policies too, unless it bypasses them by attribute (a
 -- superuser does, locally and in CI). In production `spoken` is neither, so it is given
--- BYPASSRLS before this runs (deploy/web/README.md, "Deploy 2"): without it every owner
+-- BYPASSRLS before this runs (deploy/web/README.md, "Teams, deploy 2"): without it every owner
 -- connection -- the pack builds above all -- would read no take at all and say nothing. This
 -- refuses to run rather than leave that to be found in an empty pack.
 --
 -- Creating the role needs CREATEROLE, which `spoken` lacks; on the droplet it is made as
 -- `postgres` beforehand, and this only creates it where it can (a workstation, CI).
 --
--- NOT ADDITIVE for the code it ships with in one sense only: a release that queries a per-team
--- table outside withTeam sees no rows as `spoken_app`. Deploy 1's code is not such a release,
--- and it keeps the owner's URL until app.env names the new one.
+-- NOT ADDITIVE: a release that queries a per-team table outside withTeam sees no rows as
+-- `spoken_app`, and one that writes there is refused. Deploy 1's code is such a release: its
+-- hand-rolled transactions write activity outside withTeam, with no team. Nor can it be
+-- rolled back to as the owner, as 0089 dropped the keys it writes against. Rolling back across
+-- deploy 2 is unsupported; fix forward (deploy/web/README.md, "Teams, deploy 2").
 
 do $$
 begin
