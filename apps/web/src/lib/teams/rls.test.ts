@@ -60,6 +60,21 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("row-level security", () => {
+  it("binds every table with a team, so a new one cannot be left open", async () => {
+    // team_language is how a request finds its team, so it is read before any is set.
+    const { rows } = await db().query<{ table: string; enabled: boolean; forced: boolean; policies: number }>(
+      `select c."relname" as "table", c."relrowsecurity" as "enabled", c."relforcerowsecurity" as "forced",
+              (select count(*)::int from "pg_policies" p
+                where p."schemaname" = 'public' and p."tablename" = c."relname") as "policies"
+         from "pg_class" c
+         join "pg_namespace" n on n."oid" = c."relnamespace"
+         join "pg_attribute" a on a."attrelid" = c."oid" and a."attname" = 'teamId' and not a."attisdropped"
+        where n."nspname" = 'public' and c."relkind" in ('r', 'p') and c."relname" <> 'team_language'`,
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.filter((row) => !row.enabled || !row.forced || row.policies === 0)).toEqual([]);
+  });
+
   it("keeps another team's take out of the privileged team's live takes", async () => {
     const live = await liveTakes("quests", "deDE");
     expect(live.some((take) => take.file === file)).toBe(false);
