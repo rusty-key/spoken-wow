@@ -44,6 +44,7 @@ const ROOTS = {
   quests: need("SPOKEN_QUESTS_AUDIO_HISTORY"),
   places: need("SPOKEN_PLACES_AUDIO_HISTORY", "SPOKEN_ZONES_AUDIO_HISTORY"),
   readables: need("SPOKEN_READABLES_AUDIO_HISTORY", "SPOKEN_BOOKS_AUDIO_HISTORY"),
+  bosses: need("SPOKEN_BOSSES_AUDIO_HISTORY"),
 };
 const SAMPLES = need("SPOKEN_QUESTS_VOICE_SAMPLES");
 const REFERENCES = need("SPOKEN_QUESTS_VOICE_REFERENCES");
@@ -69,7 +70,8 @@ async function head(key) {
 
 async function put(key, data, contentType) {
   if (dryRun) return;
-  if ((await head(key)) === data.byteLength) return;
+  // No HEAD first: almost every key is new, and If-None-Match already turns an existing one
+  // into a cheap refusal.
   const res = await r2.fetch(`${bucket}/${key}`, {
     method: "PUT",
     body: data,
@@ -108,13 +110,41 @@ const missing = [];
 const tally = {};
 const count = (what) => (tally[what] = (tally[what] ?? 0) + 1);
 
-// Four at a time by default, the size of the database pool; work that only talks to the bucket
-// can go wider.
-async function each(rows, work, width = 4) {
+const clock = (exact) => {
+  const seconds = Math.round(exact);
+  return seconds >= 3600 ? `${Math.floor(seconds / 3600)}h${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}m`
+    : seconds >= 60 ? `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, "0")}s`
+    : `${seconds}s`;
+};
+
+// A line every five seconds and one at the end: a run over the whole archive takes hours.
+function progress(label, total) {
+  const start = Date.now();
+  let done = 0;
+  let shown = start;
+  return () => {
+    done++;
+    const now = Date.now();
+    if (now - shown < 5000 && done < total) return;
+    shown = now;
+    const elapsed = (now - start) / 1000;
+    const rate = done / Math.max(elapsed, 0.001);
+    const left = done < total ? `, ~${clock((total - done) / rate)} left` : `, took ${clock(elapsed)}`;
+    console.log(`${label}: ${done}/${total} (${((100 * done) / total).toFixed(1)}%), ${missing.length} missing, ${rate.toFixed(1)}/s${left}`);
+  };
+}
+
+// Four at a time by default, the size of the database pool. Copying is mostly waiting on the
+// bucket, so it goes wider and its few queries wait for a connection.
+async function each(label, rows, work, width = 4) {
   const queue = [...rows];
+  const tick = progress(label, rows.length);
   await Promise.all(
     Array.from({ length: width }, async () => {
-      for (let row = queue.shift(); row; row = queue.shift()) await work(row);
+      for (let row = queue.shift(); row; row = queue.shift()) {
+        await work(row);
+        tick();
+      }
     }),
   );
 }
@@ -125,8 +155,14 @@ async function backfillRows(table, prefix, fileOf, typeOf) {
        from "${table}" where "sha256" is null and "archiveFile" is not null order by "id"`,
   );
   console.log(`${table}: ${rows.length} rows without a hash`);
-  await each(rows, async (row) => {
+  await each(table, rows, async (row) => {
     const file = fileOf(row);
+    // A dry run only lists what is missing, so it need not read and hash every file.
+    if (dryRun) {
+      if (await stat(file).catch(() => null)) count(table);
+      else missing.push(`${table} ${row.id}: ${file}`);
+      return;
+    }
     const data = await readFile(file).catch(() => null);
     if (!data) {
       missing.push(`${table} ${row.id}: ${file}`);
@@ -136,7 +172,7 @@ async function backfillRows(table, prefix, fileOf, typeOf) {
     await put(`${prefix}/${sha}`, data, typeOf(row));
     if (!dryRun) await db.query(`update "${table}" set "sha256" = $2 where "id" = $1 and "sha256" is null`, [row.id, sha]);
     count(table);
-  });
+  }, 16);
 }
 
 function referenceProblem(row, file, data) {
@@ -150,6 +186,7 @@ async function backfillReferences() {
     `select "voice", "lang", "transcript", "clipHash" from "fish_reference" where "sha256" is null`,
   );
   console.log(`fish_reference: ${rows.length} rows without a hash`);
+  const tick = progress("fish_reference", rows.length);
   for (const row of rows) {
     const file = path.join(REFERENCES, row.lang, `${row.voice}.mp3`);
     const data = await readFile(file).catch(() => null);
@@ -158,6 +195,7 @@ async function backfillReferences() {
     const problem = referenceProblem(row, file, data);
     if (problem) {
       missing.push(`fish_reference ${row.voice} ${row.lang}: ${problem}`);
+      tick();
       continue;
     }
     const sha = sha256Of(data);
@@ -166,6 +204,7 @@ async function backfillReferences() {
       await db.query(`update "fish_reference" set "sha256" = $3 where "voice" = $1 and "lang" = $2`, [row.voice, row.lang, sha]);
     }
     count("fish_reference");
+    tick();
   }
 }
 
@@ -196,7 +235,7 @@ async function findSamples() {
 async function backfillSamples() {
   const found = await findSamples();
   console.log(`voice samples: ${found.length} clips on the volume`);
-  await each(found, async ({ clone, file, full }) => {
+  await each("voice samples", found, async ({ clone, file, full }) => {
     const data = await readFile(full);
     const info = await stat(full);
     const sha = sha256Of(data);
@@ -218,7 +257,7 @@ async function verifyAll() {
     const { rows } = await db.query(
       `select "id", "sha256", "bytes" from "${table}" where "archiveFile" is not null order by "id"`,
     );
-    await each(rows, async (row) => {
+    await each(`${table} check`, rows, async (row) => {
       const size = row.sha256 ? await head(`${prefix}/${row.sha256}`) : null;
       if (size === null || size !== Number(row.bytes)) {
         bad++;

@@ -25,12 +25,27 @@ New audio already goes to both places in `dual` mode. This copies what was there
    From here on, every new clip is in both places.
 4. On the droplet:
 
+   A release is a Next standalone bundle without `pg` where a script can find it, so the
+   script gets its own two dependencies. The archive paths are pm2's
+   (`deploy/web/ecosystem.config.js`), not `app.env`'s. In bash, as `deploy`:
+
    ```sh
-   set -a; . /srv/spoken/shared/app.env; set +a
-   export NODE_PATH=/srv/spoken/current/node_modules
-   node backfill.mjs --dry-run   # read the missing list
-   node backfill.mjs
-   node backfill.mjs --verify
+   mkdir -p /tmp/backfill && cp backfill.mjs /tmp/backfill/ && cd /tmp/backfill
+   npm init -y >/dev/null && npm i --no-audit --no-fund pg aws4fetch@1.0.20
+   run() (
+     set -a; . /srv/spoken/shared/app.env; set +a
+     S=/srv/spoken/shared
+     SPOKEN_QUESTS_AUDIO_HISTORY=$S/audio-history/quests \
+     SPOKEN_PLACES_AUDIO_HISTORY=$S/audio-history/places \
+     SPOKEN_READABLES_AUDIO_HISTORY=$S/audio-history/readables \
+     SPOKEN_BOSSES_AUDIO_HISTORY=$S/audio-history/bosses \
+     SPOKEN_QUESTS_VOICE_SAMPLES=$S/voices \
+     SPOKEN_QUESTS_VOICE_REFERENCES=$S/voice-references \
+     NODE_PATH=/tmp/backfill/node_modules node backfill.mjs "$@"
+   )
+   run --dry-run   # read the missing list
+   run
+   run --verify
    ```
 
 5. When `--verify` passes, set `SPOKEN_ARCHIVE_STORE=r2` and reload. Listen to a few takes,
