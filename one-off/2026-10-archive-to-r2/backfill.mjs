@@ -109,13 +109,39 @@ const missing = [];
 const tally = {};
 const count = (what) => (tally[what] = (tally[what] ?? 0) + 1);
 
+const clock = (seconds) =>
+  seconds >= 3600 ? `${Math.floor(seconds / 3600)}h${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}m`
+  : seconds >= 60 ? `${Math.floor(seconds / 60)}m${String(Math.round(seconds % 60)).padStart(2, "0")}s`
+  : `${Math.round(seconds)}s`;
+
+// A line every five seconds and one at the end: a run over the whole archive takes hours.
+function progress(label, total) {
+  const start = Date.now();
+  let done = 0;
+  let shown = start;
+  return () => {
+    done++;
+    const now = Date.now();
+    if (now - shown < 5000 && done < total) return;
+    shown = now;
+    const elapsed = (now - start) / 1000;
+    const rate = done / Math.max(elapsed, 0.001);
+    const left = done < total ? `, ~${clock((total - done) / rate)} left` : `, took ${clock(elapsed)}`;
+    console.log(`${label}: ${done}/${total} (${((100 * done) / total).toFixed(1)}%), ${missing.length} missing, ${rate.toFixed(1)}/s${left}`);
+  };
+}
+
 // Four at a time by default, the size of the database pool; work that only talks to the bucket
 // can go wider.
-async function each(rows, work, width = 4) {
+async function each(label, rows, work, width = 4) {
   const queue = [...rows];
+  const tick = progress(label, rows.length);
   await Promise.all(
     Array.from({ length: width }, async () => {
-      for (let row = queue.shift(); row; row = queue.shift()) await work(row);
+      for (let row = queue.shift(); row; row = queue.shift()) {
+        await work(row);
+        tick();
+      }
     }),
   );
 }
@@ -126,7 +152,7 @@ async function backfillRows(table, prefix, fileOf, typeOf) {
        from "${table}" where "sha256" is null and "archiveFile" is not null order by "id"`,
   );
   console.log(`${table}: ${rows.length} rows without a hash`);
-  await each(rows, async (row) => {
+  await each(table, rows, async (row) => {
     const file = fileOf(row);
     const data = await readFile(file).catch(() => null);
     if (!data) {
@@ -151,6 +177,7 @@ async function backfillReferences() {
     `select "voice", "lang", "transcript", "clipHash" from "fish_reference" where "sha256" is null`,
   );
   console.log(`fish_reference: ${rows.length} rows without a hash`);
+  const tick = progress("fish_reference", rows.length);
   for (const row of rows) {
     const file = path.join(REFERENCES, row.lang, `${row.voice}.mp3`);
     const data = await readFile(file).catch(() => null);
@@ -159,6 +186,7 @@ async function backfillReferences() {
     const problem = referenceProblem(row, file, data);
     if (problem) {
       missing.push(`fish_reference ${row.voice} ${row.lang}: ${problem}`);
+      tick();
       continue;
     }
     const sha = sha256Of(data);
@@ -167,6 +195,7 @@ async function backfillReferences() {
       await db.query(`update "fish_reference" set "sha256" = $3 where "voice" = $1 and "lang" = $2`, [row.voice, row.lang, sha]);
     }
     count("fish_reference");
+    tick();
   }
 }
 
@@ -197,7 +226,7 @@ async function findSamples() {
 async function backfillSamples() {
   const found = await findSamples();
   console.log(`voice samples: ${found.length} clips on the volume`);
-  await each(found, async ({ clone, file, full }) => {
+  await each("voice samples", found, async ({ clone, file, full }) => {
     const data = await readFile(full);
     const info = await stat(full);
     const sha = sha256Of(data);
@@ -219,7 +248,7 @@ async function verifyAll() {
     const { rows } = await db.query(
       `select "id", "sha256", "bytes" from "${table}" where "archiveFile" is not null order by "id"`,
     );
-    await each(rows, async (row) => {
+    await each(`${table} check`, rows, async (row) => {
       const size = row.sha256 ? await head(`${prefix}/${row.sha256}`) : null;
       if (size === null || size !== Number(row.bytes)) {
         bad++;
