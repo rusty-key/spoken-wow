@@ -387,6 +387,11 @@ button (`UI/PlayButton.lua`, `NewOpenButton`), which opens this tab on that read
 it opened (`SpokenReadables:ShowReadables(bookId)`). It shows for readables listed, and found or with
 Unlock Unfound Readables on (`SpokenReadables:CompendiumHas`).
 
+**DialogueUI's book view** marks the page being read with Spoken's word marks
+(`UI/DialogueUIBook.lua`, through `Spoken:WordMarks()`), the way the quests bridge marks
+DialogueUI's quest text: Type Words Out types it by letter or by word as Type Out By says, and
+Highlight Words lights the word being read.
+
 ### Installing it in a client
 
 ```bash

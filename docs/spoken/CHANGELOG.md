@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **DialogueUI's text types out letter by letter.** Type Out By now applies to DialogueUI's
+  quest, gossip and book text as it does to the captions, so it types letter by letter, the
+  default, or word by word, and Highlight Words lights only the letters typed so far.
+  *([anon1231823](https://github.com/anon1231823))*
 - **No more "script ran too long" error after logging in on Hardcore.** Quest sound packs now load
   one at a time after you enter the world, and a pack that fails to load no longer holds back the
   ones after it.
