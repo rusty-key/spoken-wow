@@ -97,7 +97,7 @@ export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL
  * yet given a team reads English's, as every language did before teams.
  */
 export async function teamOrEnglish(lang: Lang): Promise<TeamId> {
-  return (await teamLangs()).get(lang) ?? teamOf(BASE_LANG);
+  return (await ownerOf(lang)) ?? teamOf(BASE_LANG);
 }
 
 /**
@@ -146,7 +146,7 @@ export async function readAs<T extends QueryResultRow = QueryResultRow>(
  * (activity/store.ts), which only ALL_TEAMS may write.
  */
 export async function loggerOf(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
-  return (lang && (await teamLangs()).get(lang)) || ALL_TEAMS;
+  return (lang && (await ownerOf(lang))) || ALL_TEAMS;
 }
 
 /** These languages grouped by the team that owns each, in their given order. Unowned ones are left out. */
