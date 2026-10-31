@@ -5,9 +5,20 @@
 --
 -- Confirm it against the people before deploying; after deploy, teams are edited, not re-seeded.
 with "langs" as (
-  select "code" as "lang" from "language"
-  union select "lang" from "take"
-  union select 'enUS'
+  select "lang" from (
+    select "code" as "lang" from "language"
+    union select 'enUS'
+    union select "lang" from "take" union select "lang" from "recording"
+    union select "lang" from "take_ack" union select "lang" from "voice_clone"
+    union select "lang" from "fish_reference" union select "lang" from "generation_setting_locale"
+    union select "lang" from "pronunciation_lexicon_locale" union select "lang" from "lexicon_change"
+    union select "lang" from "line_ignore" union select "lang" from "line_flag"
+    union select "lang" from "line_issue" union select "lang" from "report"
+    union select "lang" from "regeneration_batch" union select "lang" from "regeneration_job"
+    union select "lang" from "regeneration_pause" union select "lang" from "activity"
+    union select nullif(split_part("clone", '@', 2), '') from "voice_sample"
+  ) l
+   where "lang" is not null
 ), "keyed" as (
   select l."lang",
          case when l."lang" = 'enUS' then '{}'::text[]

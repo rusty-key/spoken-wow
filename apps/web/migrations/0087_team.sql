@@ -28,11 +28,26 @@ create unique index "team_language_privileged_idx" on "team_language" ("lang") w
 --
 -- The same query, read-only, is deploy/web/bin/team-grouping.sql; run it against production
 -- before deploying to see who ends up together.
+--
+-- Every language some per-team row names gets a team here, the same set 0089 later checks
+-- (0089_team_contract.sql), so that no row of deploy 1 is left with a language nobody owns.
 create temp table "team_seed" on commit drop as
 with "langs" as (
-  select "code" as "lang" from "language"
-  union select "lang" from "take"
-  union select 'enUS'
+  select "lang" from (
+    select "code" as "lang" from "language"
+    union select 'enUS'
+    union select "lang" from "take" union select "lang" from "recording"
+    union select "lang" from "take_ack" union select "lang" from "voice_clone"
+    union select "lang" from "fish_reference" union select "lang" from "generation_setting_locale"
+    union select "lang" from "pronunciation_lexicon_locale" union select "lang" from "lexicon_change"
+    union select "lang" from "line_ignore" union select "lang" from "line_flag"
+    union select "lang" from "line_issue" union select "lang" from "report"
+    union select "lang" from "regeneration_batch" union select "lang" from "regeneration_job"
+    union select "lang" from "regeneration_pause" union select "lang" from "activity"
+    -- A sample's language is in its clone's name, 'voice@lang'; a bare name is English's.
+    union select nullif(split_part("clone", '@', 2), '') from "voice_sample"
+  ) l
+   where "lang" is not null
 ), "keyed" as (
   select l."lang",
          case when l."lang" = 'enUS' then '{}'::text[]
