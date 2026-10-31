@@ -10,7 +10,7 @@
 ## Notes-koKR: Spoken으로 책, 편지, 쪽지, 명판을 소리 내어 읽습니다.
 ## Notes-zhCN: 通过 Spoken 朗读书籍、信件、笔记和铭牌。
 ## Notes-zhTW: 透過 Spoken 朗讀書籍、信件、筆記和牌匾。
-## Version: 3.6.0
+## Version: 3.7.0
 ## Author: rusty
 ## SavedVariables: SpokenReadablesSettings, SpokenBooksSettings
 ## SavedVariablesPerCharacter: SpokenReadablesCharacter, SpokenBooksCharacter

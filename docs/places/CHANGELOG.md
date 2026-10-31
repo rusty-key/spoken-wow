@@ -9,7 +9,7 @@ is the pack's, and `scripts/zones/release.sh` matches on the kind as well as the
 section with no kind in its heading is the addon's. A language's pack numbers itself too, from
 2.0.0 in step with the English pack (Spanish (AL) shipped first, as 1.0.0), and its sections are headed by its release tag: `## <version> — zones-audio-esMX`.
 
-## Unreleased
+## 2.1.0 — audio — 2026-10-31
 
 - **The English pack is Spoken Audio: Places and Bosses on CurseForge.** The CurseForge download
   now also carries `SpokenBossesAudio`, the narration of the boss stories, beside

@@ -33,7 +33,7 @@ VoiceOver = setmetatable({
     AddonFolder = "Spoken_Quests",
     -- What /spq diagnostics prints. A literal because this file loads before the addon has any
     -- metadata API; scripts/package.sh refuses to build when it disagrees with the .toc.
-    AddonVersion = "3.6.0",
+    AddonVersion = "3.7.0",
     PreviousEnvironment = previousEnvironment,
     -- A value the game hides from addons in some situations comes back as nil, not an error.
     NotSecret = Spoken and Spoken.NotSecret or function(value) return value end,

@@ -10,7 +10,7 @@
 ## Notes-koKR: 게임을 소리 내어 읽습니다: 퀘스트, 잡담, 장소, 읽을거리. 하나의 대기열, 하나의 내레이터, 하나의 미니맵 버튼, 그리고 모든 설정.
 ## Notes-zhCN: 朗读游戏内容：任务、闲聊、地点和读物。一个队列、一个旁白、一个小地图按钮，以及所有设置。
 ## Notes-zhTW: 朗讀遊戲內容：任務、閒聊、地點和讀物。一個佇列、一個旁白、一個小地圖按鈕，以及所有設定。
-## Version: 3.6.0
+## Version: 3.7.0
 ## IconTexture: Interface\AddOns\Spoken\icon.tga
 ## SavedVariables: SpokenSettings
 ## OptionalDeps: DialogueUI
