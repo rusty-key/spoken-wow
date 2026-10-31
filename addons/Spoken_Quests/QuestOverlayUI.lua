@@ -82,8 +82,8 @@ local prefix
 
 --- Spaces ahead of the title, as wide as Play, so the button sits before the title's first glyph.
 local function PadTitle(normalText)
+    local text = normalText:GetText() or ""
     if not prefix then
-        local text = normalText:GetText()
         for i = 1, 20 do
             normalText:SetText(string.rep(" ", i))
             if normalText:GetStringWidth() >= 24 then
@@ -94,7 +94,6 @@ local function PadTitle(normalText)
         prefix = prefix or "  "
         normalText:SetText(text)
     end
-    local text = normalText:GetText() or ""
     local padded = prefix .. string.trim(text)
     if padded ~= text then normalText:SetText(padded) end
     return padded
