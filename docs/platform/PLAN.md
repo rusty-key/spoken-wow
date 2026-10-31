@@ -16,7 +16,8 @@ production (`one-off/2026-10-archive-to-r2/README.md`).
 ## Decisions
 
 1. The archive bucket is public. Objects are named by their hash, so an address is only known
-   to whoever was given it.
+   to whoever was given it. Only shared takes are served from it directly; recordings, voice
+   clips and references go through the site, because a bucket URL outlives a revoked grant.
 2. Where an author's lines are generated is their choice, per provider, on `/profile`. No row
    means "on this site", which is how everybody generated before.
 3. GitHub Actions holds the pack signing key (`.github/workflows/release-packs.yaml`).
@@ -30,12 +31,13 @@ production (`one-off/2026-10-archive-to-r2/README.md`).
 | --- | --- | --- |
 | `disk` (default) | the volume | the volume |
 | `dual` | the volume and the bucket | the volume |
-| `r2` | the bucket | the bucket: audio routes redirect to `SPOKEN_ARCHIVE_URL` |
+| `r2` | the bucket | the bucket: take routes redirect to `SPOKEN_ARCHIVE_URL`, the rest stream |
 
 Keys are `takes/`, `recordings/`, `encodings/`, `samples/` and `references/`, each followed by
-the object's sha256. Every row records the full hash (migration 0083): `take.sha256`,
-`recording.sha256`, `fish_reference.sha256`, and the new `voice_sample` table, which replaces
-listing a directory. Quests takes now record a duration too.
+the object's sha256. A row records the full hash once its object is in the bucket (migration
+0083): `take.sha256`, `recording.sha256`, `fish_reference.sha256`, and the new `voice_sample`
+table, which replaces listing a directory. A row without one is the backfill's, which is also
+where a failed PUT in `dual` leaves it. Quests takes now record a duration too.
 
 Moving what is there: `one-off/2026-10-archive-to-r2/backfill.mjs`, run on the droplet in
 `dual` mode, then `--verify`, then `r2`. Pack builds fetch clips from the public bucket when
@@ -76,8 +78,9 @@ server never sees, and the server replays the answers through the same code
 1. **Claim** (`/api/worker/claim`): the generator runs with a fetch that records each provider
    request and answers with silence, and a commit that stops the run. The requests, without any
    key, go to the worker; their fingerprints are stored on the job.
-2. **Send**: the worker adds the key and sends each request, only to `api.elevenlabs.io` or
-   `api.fish.audio`.
+2. **Send**: the worker adds the key and sends each request, only as a POST to the speech
+   endpoints of `api.elevenlabs.io` or `api.fish.audio`. It refuses anything else, and a
+   refusal fails the line rather than giving it back.
 3. **Answer** (`/api/worker/answer`): the generator runs again with a fetch that answers from the
    worker's responses, and the real commit. Trimming, stitching, measuring, pricing and the
    commit are the same code as on the site. A request with no recorded answer means the line
@@ -95,7 +98,7 @@ lanes whose owner generates locally (`generation_mode`, migration 0085).
 
 Workers authenticate with a token (`worker_token`), got by pairing: the Manager shows a code, the
 author approves it on `/profile`, and the Manager collects the token once. Only its hash is
-stored.
+stored. Unpairing in the Manager revokes it on the site.
 
 The Manager (`manager/src/main/generating.ts`) keeps the token and keys encrypted by the system
 keychain and runs the loop while Settings > Generating is on. A single-line regenerate in local
@@ -126,3 +129,7 @@ release workflow.
 
 Projects per author, a review step before a take goes live, quotas and abuse limits, publishing
 community packs, and terms of service.
+
+The server cannot verify that a worker's answer came from the provider, so a stolen worker
+token or a dishonest author can post any audio as a generated take. The review step above is
+the mitigation.

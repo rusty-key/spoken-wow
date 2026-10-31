@@ -615,8 +615,8 @@ export class ManagerService {
     await this.requireGenerating().pair()
   }
 
-  generateUnpair(): void {
-    this.requireGenerating().unpair()
+  async generateUnpair(): Promise<void> {
+    await this.requireGenerating().unpair()
   }
 
   generateSetKey(provider: 'elevenlabs' | 'fish', key: string): void {

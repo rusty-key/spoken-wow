@@ -7,6 +7,7 @@
 // bucket is public and objects are named by hash, so this needs no keys and skips files already here.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { archiveBase, downloadVerified, eachParallel } from "../lib/download.mjs";
 
@@ -29,7 +30,7 @@ export async function fetchObjects(objects, root, base, fetchImpl = fetch) {
   return { fetched: wanted.length - failed.length, present: objects.length - wanted.length, failed };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const root = process.argv[2];
   const base = process.env.SPOKEN_ARCHIVE_URL;
   if (!root || !base) {

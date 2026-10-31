@@ -244,6 +244,40 @@ describe("with the archive in a bucket", () => {
   let restore: () => void = () => {};
   afterEach(() => restore());
 
+  const rowHash = async () =>
+    (await db().query<{ sha256: string | null }>(`select "sha256" from "take" where "file" = $1`, [file])).rows[0].sha256;
+
+  it("records no hash in disk mode, so the backfill finds the row", async () => {
+    const committed = await take("disk only");
+    expect(committed.sha256).toBeNull();
+    expect(await rowHash()).toBeNull();
+  });
+
+  it("still commits from the volume when the bucket refuses, in dual mode, and leaves the hash for the backfill", async () => {
+    const bucket = memoryBlobs();
+    bucket.put = async () => {
+      throw new Error("R2 PUT: HTTP 503");
+    };
+    restore = useArchiveForTests(bucket, "dual");
+
+    const committed = await take("bucket down");
+    expect(committed.sha256).toBeNull();
+    expect(await rowHash()).toBeNull();
+    expect(archived()).toEqual([committed.archiveFile]);
+    expect((await livePath("quests", file)).kind).toBe("file");
+  });
+
+  it("fails when the bucket refuses in r2 mode, where it is the only store", async () => {
+    const bucket = memoryBlobs();
+    bucket.put = async () => {
+      throw new Error("R2 PUT: HTTP 503");
+    };
+    restore = useArchiveForTests(bucket, "r2");
+
+    await expect(take("bucket down")).rejects.toThrow("HTTP 503");
+    expect(await listTakes("quests", file)).toEqual([]);
+  });
+
   it("puts the bytes under their hash and keeps the volume as well, in dual mode", async () => {
     const bucket = memoryBlobs();
     restore = useArchiveForTests(bucket, "dual");
@@ -252,6 +286,7 @@ describe("with the archive in a bucket", () => {
     const sha = sha256Of(Buffer.from("dual write"));
 
     expect(committed.sha256).toBe(sha);
+    expect(await rowHash()).toBe(sha);
     expect(bucket.objects.get(`takes/${sha}`)?.data.toString()).toBe("dual write");
     expect(archived()).toEqual([committed.archiveFile]);
     // Reads stay on the volume until the backfill is done.
@@ -273,12 +308,13 @@ describe("with the archive in a bucket", () => {
     const sha = sha256Of(Buffer.from("bucket only"));
 
     expect(committed.archiveFile).toBeNull();
+    expect(committed.sha256).toBe(sha);
     expect(committed.durationSec).toBe(1.5);
     // The measure saw the bytes, from a temporary copy that is gone again.
     expect(measured).toEqual(["bucket only"]);
     expect(archived()).toEqual([]);
     const live = await livePath("quests", file);
-    expect(live).toEqual({ kind: "blob", url: `https://archive.test/takes/${sha}` });
+    expect(live).toEqual({ kind: "blob", key: `takes/${sha}`, url: `https://archive.test/takes/${sha}` });
     expect(await takePath("quests", file, committed.version)).toEqual(live);
   });
 });

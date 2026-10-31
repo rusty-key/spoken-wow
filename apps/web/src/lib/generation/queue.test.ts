@@ -13,7 +13,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 
 import { closeDb, db } from "@/lib/db";
 
-import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, enqueue, failJob, finishJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry } from "./queue";
+import { activeLanes, cancelPending, dismissThrough, claimNext, createBatch, dropEmptyBatch, enqueue, failJob, finishJob, giveBackJob, laneKey, pauseQueue, resumeQueue, retryJob, snapshot, type QueueEntry } from "./queue";
 import type { Source } from "@/lib/sections";
 
 /** A file prefix no other run collides with, so tests share one database safely. */
@@ -114,6 +114,23 @@ describe("enqueue", () => {
 
     const claimed = await claimNext();
     expect(claimed!.source).toBe("places");
+  });
+});
+
+describe("dropEmptyBatch", () => {
+  it("deletes a batch that got no job, and keeps one that did", async () => {
+    const kept = await newBatch();
+    await enqueue(kept, [line(1)], "quests");
+    const empty = await newBatch();
+    expect(await enqueue(empty, [line(1)], "quests")).toEqual({ queued: 0, skipped: 1 });
+
+    await dropEmptyBatch(empty);
+    await dropEmptyBatch(kept);
+    const { rows } = await db().query<{ id: string }>(
+      `select "id" from "regeneration_batch" where "id" = any($1::uuid[])`,
+      [[kept, empty]],
+    );
+    expect(rows).toEqual([{ id: kept }]);
   });
 });
 
@@ -233,6 +250,26 @@ describe("claimNext", () => {
     const second = await claimNext();
     expect(second!.id).toEqual(first!.id);
     expect(second!.attempts).toEqual(2);
+  });
+
+  it("takes back a claim given back unspent, but never from a claim that was overtaken", async () => {
+    const batch = await newBatch();
+    await enqueue(batch, [line(1)], "quests");
+    const first = await claimNext();
+    expect(await giveBackJob(first!.id, first!.attempts)).toBe(true);
+    const second = await claimNext();
+    expect(second!.attempts).toEqual(first!.attempts);
+
+    // Overtaken: a lapsed lease is reclaimed as a higher attempt, which giving back never
+    // brings down to the stale one.
+    await db().query(`update "regeneration_job" set "leaseUntil" = now() - interval '1 second' where "id" = $1`, [second!.id]);
+    const third = await claimNext();
+    expect(third!.attempts).toEqual(second!.attempts + 1);
+    expect(await giveBackJob(third!.id, third!.attempts)).toBe(true);
+    expect(await giveBackJob(second!.id, second!.attempts)).toBe(false);
+    const fourth = await claimNext();
+    expect(fourth!.attempts).toEqual(third!.attempts);
+    expect(await finishJob(second!.id, { version: 1, credits: null }, second!.attempts)).toBe(false);
   });
 
   it("does not claim a job backed off into the future", async () => {

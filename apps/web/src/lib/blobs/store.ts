@@ -6,7 +6,8 @@
  *   disk  the volume only. The default, so a checkout with no R2 keys still works.
  *   dual  both. Reads stay on the volume until one-off/2026-10-archive-to-r2 has given every
  *         old row a blob.
- *   r2    the bucket only. Audio routes redirect to its public address.
+ *   r2    the bucket only. Audio routes redirect public takes to its public address and
+ *         answer the rest themselves (serve.ts).
  */
 import "server-only";
 
@@ -148,26 +149,44 @@ export function archive(): BlobStore {
 
 export type Kept = { sha256: string; inBucket: boolean; onDisk: boolean };
 
-/** Both writes have finished when this returns, so the caller's row comes after them. */
+/**
+ * Both writes have finished when this returns, so the caller's row comes after them. A row
+ * records `sha256` only when `inBucket`, which is what the backfill looks for.
+ *
+ * In `dual` the volume is still the record, so a failed PUT is logged and the row is left for
+ * the backfill rather than failing a take the provider was already paid for.
+ */
 export async function keep(prefix: BlobPrefix, data: Buffer, contentType: string, diskPath: string): Promise<Kept> {
   const sha256 = sha256Of(data);
-  const inBucket = writesBlobs();
-  const onDisk = !readsBlobs();
-  await Promise.all([
-    inBucket && archive().put(blobKey(prefix, sha256), data, contentType),
-    onDisk && writeAtomic(diskPath, data),
-  ]);
+  const mode = archiveMode();
+  const onDisk = mode !== "r2";
+  const put = async () => {
+    if (mode === "disk") return false;
+    try {
+      await archive().put(blobKey(prefix, sha256), data, contentType);
+      return true;
+    } catch (error) {
+      if (mode === "r2") throw error;
+      console.error(`archiving ${prefix}/${sha256.slice(0, 12)} failed, left for the backfill:`, error);
+      return false;
+    }
+  };
+  const [inBucket] = await Promise.all([put(), onDisk && writeAtomic(diskPath, data)]);
   return { sha256, inBucket, onDisk };
 }
 
 export type Stored =
   /** The file may be missing; the reader finds out. */
   | { kind: "file"; path: string }
-  | { kind: "blob"; url: string }
+  /** `url` is public: only audio anybody may hear is redirected to it (blobs/serve.ts). */
+  | { kind: "blob"; key: string; url: string }
   | { kind: "gone" };
 
 export function blobOrFile(prefix: BlobPrefix, sha256: string | null, file: string | null): Stored {
-  if (readsBlobs() && sha256) return { kind: "blob", url: archive().url(blobKey(prefix, sha256)) };
+  if (readsBlobs() && sha256) {
+    const key = blobKey(prefix, sha256);
+    return { kind: "blob", key, url: archive().url(key) };
+  }
   return file ? { kind: "file", path: file } : { kind: "gone" };
 }
 

@@ -14,6 +14,7 @@ import "server-only";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 
+import { serveBlob } from "@/lib/blobs/serve";
 import { serveFile } from "@/lib/stream";
 
 import { BASE_LANG, langTag, type Lang } from "@/lib/lang";
@@ -52,7 +53,14 @@ export async function serveTake(
 
   // The bucket answers ranges itself, Safari's bytes=0-1 probe included. The redirect is
   // cached as the bytes were: a version's for good, a live line's for five minutes, after
-  // which it may point at a newer take.
+  // which it may point at a newer take. Audio behind a grant is never redirected: the
+  // bucket's URL would outlive the grant.
+  if (bytes.kind === "blob" && !shared) {
+    return serveBlob(request, bytes.key, {
+      cacheControl,
+      headers: lang === BASE_LANG ? {} : { "Content-Language": langTag(lang) },
+    });
+  }
   if (bytes.kind === "blob") {
     return new Response(null, {
       status: 302,

@@ -18,7 +18,7 @@ const tools = has("ffmpeg", "-version") && has("oggenc", "--version");
 
 const { db, closeDb } = await import("@/lib/db");
 const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
-const { encodeForPack } = await import("./encode");
+const { encodeForPack, encodeOgg } = await import("./encode");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "encode-test-"));
 
@@ -79,5 +79,20 @@ describe.skipIf(!tools)("encodeForPack", () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe("encodeOgg", () => {
+  it("rejects, rather than crashing the server, when neither encoder exists", async () => {
+    const master = clip("missing-tools.mp3", Buffer.from("not audio"));
+    await expect(encodeOgg(master, { ffmpeg: "/nonexistent/ffmpeg", oggenc: "/nonexistent/oggenc" })).rejects.toThrow(
+      /ENOENT/,
+    );
+  });
+
+  it.skipIf(!has("ffmpeg", "-version"))("rejects when the encoder is missing or quits while ffmpeg writes to it", async () => {
+    const master = tone();
+    await expect(encodeOgg(master, { ffmpeg: "ffmpeg", oggenc: "/nonexistent/oggenc" })).rejects.toThrow();
+    await expect(encodeOgg(master, { ffmpeg: "ffmpeg", oggenc: "false" })).rejects.toThrow();
   });
 });

@@ -14,8 +14,12 @@ export function archiveOf(section) {
 }
 
 // A row's path under the section's archive root, as `--list` prints it and pull-live.sh fetches
-// it. "" means nobody kept the clip.
+// it. "" means nobody kept the clip. A row with a hash and no volume path is only in the
+// bucket, so without the bucket's address it cannot be found, not "never kept".
 export function sourceOf(prefix, sha256, archivedPath) {
   if (sha256 && process.env.SPOKEN_ARCHIVE_URL) return `blobs/${prefix}/${sha256}`;
+  if (sha256 && !archivedPath) {
+    throw new Error(`${prefix}/${sha256} is only in the archive bucket: set SPOKEN_ARCHIVE_URL to its public address`);
+  }
   return archivedPath;
 }

@@ -73,7 +73,8 @@ export type Committed = {
   bytes: number;
   /** Null when the bucket is the only store. */
   archiveFile: string | null;
-  sha256: string;
+  /** Null when the bucket does not hold it. */
+  sha256: string | null;
   durationSec: number | null;
 };
 
@@ -104,8 +105,9 @@ export async function commitTake(
 
   const name = archiveName(next, data);
   const archived = path.join(historyDirOf(source, file, lang), name);
-  const { sha256, onDisk } = await keep("takes", data, "audio/mpeg", archived);
-  const archiveFile = onDisk ? name : null;
+  const kept = await keep("takes", data, "audio/mpeg", archived);
+  const archiveFile = kept.onDisk ? name : null;
+  const sha256 = kept.inBucket ? kept.sha256 : null;
 
   const commit = async (clip: string): Promise<Committed> => {
     const durationSec = options.measure ? await options.measure(clip) : null;
@@ -121,11 +123,12 @@ export async function commitTake(
       sha256,
       batchId: options.batchId,
     });
-    // After the row, so the take is live even when its pack encoding fails.
-    await encodeForPack(source, sha256, clip);
+    // After the row, so the take is live even when its pack encoding fails. Only for a
+    // master in the bucket, which is where a build finds its encoding.
+    if (kept.inBucket) await encodeForPack(source, kept.sha256, clip);
     return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
   };
-  return onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
+  return kept.onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
 }
 
 /** Insert one take and make it the only live one, in one transaction. */
@@ -138,7 +141,7 @@ async function insertLive(input: {
   bytes: number;
   durationSec: number | null;
   archiveFile: string | null;
-  sha256: string;
+  sha256: string | null;
   batchId?: string;
 }): Promise<void> {
   const { source, file, lang, version, fields } = input;

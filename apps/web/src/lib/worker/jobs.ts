@@ -6,11 +6,13 @@
  */
 import "server-only";
 
-import { isBusy } from "@/lib/generation/errors";
+import { failure, isBusy, type Failure } from "@/lib/generation/errors";
 import { readGenerationSettings, type Preference } from "@/lib/generation/preference";
 import {
+  batchStopped,
   claimForOwner,
   failJob,
+  giveBackJob,
   recordRelay,
   relayedJob,
   renewLease,
@@ -68,6 +70,16 @@ const asFailure = (error: unknown): RegenerateResult => ({
 });
 
 /**
+ * Back to the queue, unless its batch was stopped: then it fails as settle() fails a rate
+ * limit after Stop, since a pending row would be claimed and paid for. Without `retryInMs` the
+ * claim is given back unspent, not counted against the job's attempts.
+ */
+async function requeue(job: QueueJob, because: Failure, retryInMs?: number): Promise<boolean> {
+  if (await batchStopped(job.batchId)) return failJob(job.id, because, job.attempts);
+  return retryInMs === undefined ? giveBackJob(job.id, job.attempts) : retryJob(job.id, retryInMs, job.attempts);
+}
+
+/**
  * The claim and the answer both run through here, so the answer sends the requests the claim
  * recorded unless the line moved.
  */
@@ -120,7 +132,7 @@ async function record(
     // Ended before its commit. A file being regenerated right now is retried; an unvoiceable
     // line or missing voice settles as the leader would.
     if (!result.ok && isBusy(result.failure)) {
-      await retryJob(job.id, 5_000, job.attempts);
+      await requeue(job, result.failure, 5_000);
     } else {
       await settle(job, result);
     }
@@ -210,7 +222,7 @@ export async function answerJob(
   if (seen.mismatch) {
     // The line, its lexicon or its reference moved since the claim. Nothing was kept;
     // the job goes back to be claimed and recorded afresh.
-    await retryJob(job.id, 0, job.attempts);
+    await requeue(job, failure("upstream", "the line changed while it was being generated"));
     return { status: "changed" };
   }
   await settle(job, result);
@@ -225,7 +237,8 @@ export async function answerJob(
  */
 export async function releaseJob(owner: string, jobId: string, attempt: number): Promise<boolean> {
   const found = await relayedJob(jobId, owner, attempt);
-  return found ? retryJob(jobId, 0, attempt) : false;
+  if (!found) return false;
+  return requeue(found.job, failure("upstream", "the provider could not be reached"));
 }
 
 /** Keep a claim while its requests are in flight. False tells the Manager to drop it. */

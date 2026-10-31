@@ -116,13 +116,13 @@ export async function recordingsFor(source: Source, lang: Lang): Promise<Map<str
  * recording is never "gone", only there or never made.
  */
 export async function recordingPath(source: Source, lang: Lang, file: string, version: number): Promise<TakeBytes> {
-  const [row] = await query<{ archiveFile: string | null; sha256: string | null }>(
+  const [row] = await query<{ archiveFile: string; sha256: string | null }>(
     `select "archiveFile", "sha256" from "recording"
       where "source" = $1 and "lang" = $2 and "file" = $3 and "version" = $4`,
     [source, lang, file, version],
   );
   if (!row) return { kind: "none" };
-  return blobOrFile("recordings", row.sha256, row.archiveFile && path.join(recordedDirOf(source, file, lang), row.archiveFile));
+  return blobOrFile("recordings", row.sha256, path.join(recordedDirOf(source, file, lang), row.archiveFile));
 }
 
 export type Upload = {
@@ -172,13 +172,13 @@ export async function commitRecording(
       [source, lang, file],
     );
     const name = archiveName(next, upload.data, probed.format);
-    const { sha256, onDisk } = await keep(
+    const kept = await keep(
       "recordings",
       upload.data,
       probed.format === "ogg" ? "audio/ogg" : "audio/mpeg",
       path.join(recordedDirOf(source, file, lang), name),
     );
-    const archiveFile = onDisk ? name : null;
+    const sha256 = kept.inBucket ? kept.sha256 : null;
     const {
       rows: [recording],
     } = await client.query<Recording>(
@@ -194,7 +194,9 @@ export async function commitRecording(
         lineId,
         next,
         probed.format,
-        archiveFile,
+        // Named in r2 too, where nothing is on the volume: the column stays not null for code
+        // rolled back to before the bucket, and readers prefer the object while there is a hash.
+        name,
         upload.data.byteLength,
         probed.durationSec,
         upload.originalName,

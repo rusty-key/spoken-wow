@@ -2,7 +2,11 @@
  * Runs against the real queue and take table; the provider is never called, the answers are
  * made up here.
  */
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
 import { createBatch, enqueue } from "@/lib/generation/queue";
@@ -81,7 +85,17 @@ afterEach(async () => {
   await db().query(`delete from "user" where "id" = $1`, [owner]);
 });
 
+let history: string;
+
+// The commit writes each take into the places archive, which would otherwise be the checkout's own.
+beforeAll(async () => {
+  history = await mkdtemp(path.join(os.tmpdir(), "relay-history-"));
+  process.env.SPOKEN_PLACES_AUDIO_HISTORY = history;
+});
+
 afterAll(async () => {
+  delete process.env.SPOKEN_PLACES_AUDIO_HISTORY;
+  await rm(history, { recursive: true, force: true });
   await closeDb();
 });
 
@@ -195,8 +209,47 @@ describe("relayed generation", () => {
     const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
     expect(await releaseJob("someone-else", claimed.jobId, claimed.attempt)).toBe(false);
     expect(await releaseJob(owner, claimed.jobId, claimed.attempt)).toBe(true);
-    expect((await job()).state).toBe("pending");
+    expect(await job()).toMatchObject({ state: "pending", attempts: claimed.attempt - 1 });
+    // Not an attempt: a worker that was offline a while must leave the rate limit its retries.
     const [again] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
-    expect(again.attempt).toBe(claimed.attempt + 1);
+    expect(again.attempt).toBe(claimed.attempt);
+  });
+
+  it("fails a line given back, or found changed, once its batch was stopped", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    await db().query(`update "regeneration_batch" set "stoppedAt" = now() where "id" = any($1::uuid[])`, [batches]);
+    expect(await releaseJob(owner, claimed.jobId, claimed.attempt)).toBe(true);
+    expect((await job()).state).toBe("failed");
+
+    await db().query(`update "regeneration_job" set "state" = 'pending', "finishedAt" = null where "file" = $1`, [file]);
+    const [again] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    const answers = [{ id: "0".repeat(64), status: 200, contentType: "application/json", characterCost: "1", body: TIMED_SILENCE }];
+    await answerJob(owner, { jobId: again.jobId, attempt: again.attempt, answers }, options);
+    expect((await job()).state).toBe("failed");
+  });
+
+  it("does not spend an attempt on a line found changed", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    const answers = [{ id: "0".repeat(64), status: 200, contentType: "application/json", characterCost: "1", body: TIMED_SILENCE }];
+    await answerJob(owner, { jobId: claimed.jobId, attempt: claimed.attempt, answers }, options);
+    expect((await job()).attempts).toBe(claimed.attempt - 1);
+  });
+
+  it("fails a line its worker refused to send, rather than handing it out again", async () => {
+    await writeMode(owner, "elevenlabs", "local");
+    const [claimed] = await claimJobs(owner, { providers: ["elevenlabs"], max: 1, voices }, options);
+    const answered = await answerJob(
+      owner,
+      {
+        jobId: claimed.jobId,
+        attempt: claimed.attempt,
+        answers: [{ id: claimed.requests[0].id, error: "no ElevenLabs key here", refused: true }],
+      },
+      options,
+    );
+    expect(answered).toMatchObject({ status: "failed", message: expect.stringContaining("no ElevenLabs key here") });
+    expect((await job()).state).toBe("failed");
   });
 });

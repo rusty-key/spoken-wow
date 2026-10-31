@@ -1,10 +1,11 @@
 /**
  * A reference's cut clip, to listen to beside its transcript.
  *
- * Answered by serveFile, which the take audio routes use too.
+ * Answered by serveFile, which the take audio routes use too, or serveBlob in r2 mode.
  */
 import fs from "node:fs";
 
+import { serveBlob } from "@/lib/blobs/serve";
 import { serveFile } from "@/lib/stream";
 import { requireVoiceViewer } from "@/lib/voices/authz";
 import { readReference, referenceClip } from "@/lib/voices/references";
@@ -24,9 +25,8 @@ export async function GET(request: Request, context: Context) {
 
   const clip = referenceClip(reference);
   if (clip.kind === "gone") return new Response("no reference clip", { status: 404 });
-  if (clip.kind === "blob") {
-    return new Response(null, { status: 302, headers: { Location: clip.url, "Cache-Control": "private, no-cache" } });
-  }
+  // Through the site, not to the public bucket, whose URL would outlive the viewer's grant.
+  if (clip.kind === "blob") return serveBlob(request, clip.key, { cacheControl: "private, no-cache", contentType: "audio/mpeg" });
 
   let size: number;
   try {

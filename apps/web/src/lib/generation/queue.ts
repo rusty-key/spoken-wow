@@ -174,6 +174,15 @@ export async function createBatch(
   return rows[0].id;
 }
 
+/** Delete a batch that never got a job, such as one whose only line was already queued. */
+export async function dropEmptyBatch(batchId: string): Promise<void> {
+  await db().query(
+    `delete from "regeneration_batch" b
+      where b."id" = $1 and not exists (select 1 from "regeneration_job" j where j."batchId" = b."id")`,
+    [batchId],
+  );
+}
+
 /**
  * Add jobs, refusing any file already queued.
  *
@@ -379,6 +388,24 @@ export async function retryJob(id: string, delayMs: number, attempt?: number): P
             "leaseUntil" = null, "relay" = null
       where "id" = $1 ${claimed(attempt, 3)}`,
     params,
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/**
+ * Put a claim back unspent: a remote worker could not reach the provider, or the line moved
+ * before its answer. The attempt is handed back with it, so going offline does not use up the
+ * retries a rate limit gets. The next claim gets the same number again, which is safe because
+ * only the claimant gives a claim back and it then says nothing more for it, while a lapsed
+ * lease is reclaimed as a higher attempt that a give-back never brings below the stale one.
+ */
+export async function giveBackJob(id: string, attempt: number): Promise<boolean> {
+  const { rowCount } = await db().query(
+    `update "regeneration_job"
+        set "state" = 'pending', "notBefore" = now(), "attempts" = "attempts" - 1,
+            "leaseUntil" = null, "relay" = null
+      where "id" = $1 and "state" = 'running' and "attempts" = $2`,
+    [id, attempt],
   );
   return (rowCount ?? 0) > 0;
 }

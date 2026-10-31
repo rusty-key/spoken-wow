@@ -9,6 +9,7 @@ export {
   runRound,
   sendRequest,
   startPairing,
+  unpair,
   whoAmI,
   type ClaimedJob,
   type Provider as GenerateProvider

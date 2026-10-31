@@ -7,7 +7,7 @@ import "server-only";
 
 import { catalogue as readablesCatalogue } from "@/lib/readables/catalogue";
 import { readPreference } from "@/lib/generation/preference";
-import { createBatch, enqueue, type QueueEntry } from "@/lib/generation/queue";
+import { createBatch, dropEmptyBatch, enqueue, type QueueEntry } from "@/lib/generation/queue";
 import { placesEntry, questsEntry, readablesEntry } from "@/lib/generation/queue-entries";
 import type { Provider } from "@/lib/generation/speakers/speaker";
 import type { Lang } from "@/lib/lang";
@@ -49,6 +49,7 @@ export async function queuedForManager(
   if (!entry) return Response.json({ error: `no line ${lineId}`, kind: "bad-request", fatal: false }, { status: 404 });
   const batchId = await createBatch("one line", userId, source, lang);
   const { queued } = await enqueue(batchId, [entry], source, lang, provider);
+  if (!queued) await dropEmptyBatch(batchId);
   return Response.json(
     {
       error: queued
@@ -57,7 +58,7 @@ export async function queuedForManager(
       kind: "upstream",
       fatal: false,
       queued: queued > 0,
-      batchId,
+      ...(queued ? { batchId } : {}),
     },
     { status: 409 },
   );

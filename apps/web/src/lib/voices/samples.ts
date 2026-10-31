@@ -219,11 +219,11 @@ export async function readSample(voice: string, file: string): Promise<Buffer | 
   return fs.readFile(await samplePath(voice, file)).catch(() => null);
 }
 
-/** Undefined when clips are on the volume, null when the bucket has no such clip. */
-export async function sampleUrl(voice: string, file: string): Promise<string | null | undefined> {
+/** The clip's object. Undefined when clips are on the volume, null when the bucket has no such clip. */
+export async function sampleKey(voice: string, file: string): Promise<string | null | undefined> {
   if (!readsBlobs()) return undefined;
   const sha256 = await sampleSha(voice, file);
-  return sha256 ? archive().url(blobKey("samples", sha256)) : null;
+  return sha256 ? blobKey("samples", sha256) : null;
 }
 
 /** ffmpeg reads files, so clips in the bucket are handed over as temporary copies. */

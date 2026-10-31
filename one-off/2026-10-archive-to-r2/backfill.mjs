@@ -8,7 +8,8 @@
 //
 //   node backfill.mjs --dry-run      what it would copy, and what is missing
 //   node backfill.mjs                copy and record
-//   node backfill.mjs --verify       every row with a file has an object of the same size
+//   node backfill.mjs --verify       every row with a file has an object of the same size, every
+//                                    reference has a hash, every clone clip has a row
 //
 // From the release directory's node_modules (pg, aws4fetch), with the site's own environment:
 //   set -a; . /srv/spoken/shared/app.env; set +a
@@ -125,6 +126,12 @@ async function backfillRows(table, prefix, fileOf, typeOf) {
   });
 }
 
+function referenceProblem(row, file, data) {
+  if (!data) return `no file at ${file}`;
+  const clip = createHash("sha256").update(data).update("\0").update(row.transcript).digest("hex");
+  return clip === row.clipHash ? null : "file does not match clipHash";
+}
+
 async function backfillReferences() {
   const { rows } = await db.query(
     `select "voice", "lang", "transcript", "clipHash" from "fish_reference" where "sha256" is null`,
@@ -133,11 +140,11 @@ async function backfillReferences() {
   for (const row of rows) {
     const file = path.join(REFERENCES, row.lang, `${row.voice}.mp3`);
     const data = await readFile(file).catch(() => null);
-    const clip = data && createHash("sha256").update(data).update("\0").update(row.transcript).digest("hex");
     // A file that no longer matches its row is a re-cut that never finished; the site already
     // refuses to send it, so it is not copied as though it were the reference.
-    if (!data || clip !== row.clipHash) {
-      missing.push(`fish_reference ${row.voice} ${row.lang}: ${data ? "file does not match clipHash" : file}`);
+    const problem = referenceProblem(row, file, data);
+    if (problem) {
+      missing.push(`fish_reference ${row.voice} ${row.lang}: ${problem}`);
       continue;
     }
     const sha = sha256Of(data);
@@ -152,7 +159,7 @@ async function backfillReferences() {
 const SAMPLE_NAME = /^[0-9a-f]{8}-[A-Za-z0-9._-]{1,64}\.(mp3|wav|m4a|mp4|ogg|flac|webm)$/;
 const SAMPLE_TYPES = { mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", mp4: "audio/mp4", ogg: "audio/ogg", flac: "audio/flac", webm: "audio/webm" };
 
-async function backfillSamples() {
+async function findSamples() {
   const found = [];
   const walk = async (dir, clone) => {
     for (const name of await readdir(dir).catch(() => [])) {
@@ -170,6 +177,11 @@ async function backfillSamples() {
       await walk(path.join(SAMPLES, entry.name), entry.name);
     }
   }
+  return found;
+}
+
+async function backfillSamples() {
+  const found = await findSamples();
   console.log(`voice samples: ${found.length} clips on the volume`);
   await each(found, async ({ clone, file, full }) => {
     const data = await readFile(full);
@@ -202,7 +214,26 @@ async function verifyAll() {
     });
     console.log(`${table}: ${rows.length} rows checked`);
   }
-  console.log(bad ? `${bad} rows are not in the bucket` : "every row with a file has its object");
+
+  const { rows: references } = await db.query(
+    `select "voice", "lang", "transcript", "clipHash" from "fish_reference" where "sha256" is null order by "voice", "lang"`,
+  );
+  for (const row of references) {
+    const file = path.join(REFERENCES, row.lang, `${row.voice}.mp3`);
+    const problem = referenceProblem(row, file, await readFile(file).catch(() => null)) ?? "not backfilled yet";
+    console.error(`fish_reference ${row.voice} ${row.lang}: no hash (${problem})`);
+  }
+  console.log(`fish_reference: ${references.length} rows without a hash`);
+  bad += references.length;
+
+  const { rows: known } = await db.query(`select "clone", "file" from "voice_sample"`);
+  const recorded = new Set(known.map((row) => `${row.clone}\0${row.file}`));
+  const unrecorded = (await findSamples()).filter((sample) => !recorded.has(`${sample.clone}\0${sample.file}`));
+  for (const { full } of unrecorded) console.error(`voice sample ${full}: no voice_sample row`);
+  console.log(`voice samples: ${unrecorded.length} clips on the volume without a row`);
+  bad += unrecorded.length;
+
+  console.log(bad ? `${bad} clips are not in the bucket` : "every clip with a file has its object");
   return bad === 0;
 }
 

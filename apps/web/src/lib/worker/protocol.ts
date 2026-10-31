@@ -1,6 +1,7 @@
 /**
- * Requests go only to the providers' own hosts, whatever the site says: the key is added
- * here, so any other host would receive it.
+ * Requests go only to the providers' speech endpoints, whatever the site says: the key is added
+ * here, so any other host would receive it, and any other endpoint of theirs could hand the
+ * account, or the key itself, back to the site.
  * No Node or server imports: the Manager bundles this file and the browser loads it.
  */
 import { PROVIDER_NAME, PROVIDERS, type Provider } from "../generation/providers";
@@ -10,10 +11,20 @@ export type { Provider };
 /** Where an author's lines for a provider are generated: on the site, or by their own worker. */
 export type GenerationMode = "site" | "local";
 
-/** The providers' API hosts, and how each is given the key. */
-const PROVIDER_HOSTS: Record<string, { provider: Provider; auth: (key: string) => Record<string, string> }> = {
-  "api.elevenlabs.io": { provider: "elevenlabs", auth: (key) => ({ "xi-api-key": key }) },
-  "api.fish.audio": { provider: "fish", auth: (key) => ({ authorization: `Bearer ${key}` }) },
+/**
+ * The providers' API hosts, how each is given the key, and the paths a worker sends there:
+ * what lib/generation/tts.ts and fish-tts.ts post, and nothing else.
+ */
+const PROVIDER_HOSTS: Record<
+  string,
+  { provider: Provider; auth: (key: string) => Record<string, string>; paths: RegExp }
+> = {
+  "api.elevenlabs.io": {
+    provider: "elevenlabs",
+    auth: (key) => ({ "xi-api-key": key }),
+    paths: /^\/v1\/(text-to-speech\/[A-Za-z0-9_-]+|text-to-dialogue)\/with-timestamps$/,
+  },
+  "api.fish.audio": { provider: "fish", auth: (key) => ({ authorization: `Bearer ${key}` }), paths: /^\/v1\/tts$/ },
 };
 
 /** The request headers that carry a key, lowercased: the site never records them, and a worker never sends the site's. */
@@ -31,10 +42,13 @@ export type RelayedRequest = {
   body: string;
 };
 
-/** What the provider answered, or why it could not be reached. */
+/**
+ * What the provider answered, or why it was not. `refused` is this worker declining to send
+ * it, which no retry changes, as opposed to the provider being out of reach.
+ */
 export type RelayedAnswer =
   | { id: string; status: number; contentType: string | null; characterCost: string | null; body: string }
-  | { id: string; error: string };
+  | { id: string; error: string; refused?: true };
 
 export type ClaimedJob = {
   jobId: string;
@@ -81,6 +95,13 @@ export function providerOf(url: string): Provider | null {
   return PROVIDER_HOSTS[u.hostname]?.provider ?? null;
 }
 
+/** Whether a worker sends this request: a POST to one of the speech endpoints. */
+function speechRequest(request: RelayedRequest): boolean {
+  if (request.method !== "POST" || !providerOf(request.url)) return false;
+  const u = new URL(request.url);
+  return !u.search && !u.hash && PROVIDER_HOSTS[u.hostname]!.paths.test(u.pathname);
+}
+
 /** Sends one request with the key, and says what came back. Never throws. */
 export async function sendRequest(
   request: RelayedRequest,
@@ -88,12 +109,11 @@ export async function sendRequest(
   fetchImpl: typeof fetch = fetch,
 ): Promise<RelayedAnswer> {
   const provider = providerOf(request.url);
-  if (!provider) return { id: request.id, error: `refused to send a request to ${request.url}` };
-  const key = keys[provider];
-  if (!key) return { id: request.id, error: `no ${PROVIDER_NAME[provider]} key here` };
-  if (request.method !== "POST" && request.method !== "GET") {
-    return { id: request.id, error: `refused a ${request.method} request` };
+  if (!provider || !speechRequest(request)) {
+    return { id: request.id, error: `refused to send a ${request.method} request to ${request.url}`, refused: true };
   }
+  const key = keys[provider];
+  if (!key) return { id: request.id, error: `no ${PROVIDER_NAME[provider]} key here`, refused: true };
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(request.headers)) {
     // The site never sends a key; one that came anyway is dropped rather than sent beside ours.
@@ -104,7 +124,7 @@ export async function sendRequest(
     const res = await fetchImpl(request.url, {
       method: request.method,
       headers: { ...headers, ...PROVIDER_HOSTS[new URL(request.url).hostname]!.auth(key) },
-      ...(request.method === "POST" ? { body: fromBase64(request.body) as BodyInit } : {}),
+      body: fromBase64(request.body) as BodyInit,
       signal: AbortSignal.timeout(180_000),
     });
     return {
@@ -212,6 +232,15 @@ export function pollPairing(
   return site(opts, "/api/worker/pair/poll", { poll });
 }
 
+/** Revokes this Manager's token on the site. A token already revoked there counts as done. */
+export async function unpair(opts: SiteOptions): Promise<void> {
+  try {
+    await site(opts, "/api/worker/unpair", {});
+  } catch (err) {
+    if (!(err instanceof NotPaired)) throw err;
+  }
+}
+
 export function whoAmI(
   opts: SiteOptions,
 ): Promise<{ name: string | null; modes: Record<Provider, GenerationMode> }> {
@@ -266,7 +295,10 @@ export async function runRound(opts: RoundOptions): Promise<RoundResult> {
   return result;
 }
 
-/** One line: its requests in turn, holding the claim meanwhile, then the answer. */
+/**
+ * One line: its requests in turn, holding the claim meanwhile, then the answer. The first that
+ * fails ends the line, so no later part is paid for only to be thrown away.
+ */
 async function runJob(opts: RoundOptions, job: ClaimedJob): Promise<Answered> {
   let dropped = false;
   const hold = setInterval(() => {
@@ -282,15 +314,18 @@ async function runJob(opts: RoundOptions, job: ClaimedJob): Promise<Answered> {
     const answers: RelayedAnswer[] = [];
     for (const request of job.requests) {
       if (dropped) return { status: "gone" };
-      answers.push(await sendRequest(request, opts.keys, opts.fetchImpl));
+      const answer = await sendRequest(request, opts.keys, opts.fetchImpl);
+      answers.push(answer);
+      if ("error" in answer || answer.status < 200 || answer.status >= 300) break;
     }
     if (dropped) return { status: "gone" };
     // A request that got no answer at all never reached the provider, so nothing was spent:
-    // the line goes back to the queue rather than failing as though the provider refused it.
-    const unreachable = answers.find((answer): answer is { id: string; error: string } => "error" in answer);
-    if (unreachable) {
+    // the line goes back to the queue. A refusal is answered instead, and fails the line,
+    // since it would be refused again on every claim.
+    const last = answers.at(-1);
+    if (last && "error" in last && !last.refused) {
       await site(opts, "/api/worker/release", { jobId: job.jobId, attempt: job.attempt });
-      return { status: "released", message: unreachable.error };
+      return { status: "released", message: last.error };
     }
     return await site<Answered>(opts, "/api/worker/answer", { jobId: job.jobId, attempt: job.attempt, answers });
   } finally {

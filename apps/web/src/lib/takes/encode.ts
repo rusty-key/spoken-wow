@@ -7,7 +7,7 @@
  */
 import "server-only";
 
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -24,28 +24,48 @@ function profileFor(source: Source): string | null {
   return source === "quests" ? QUESTS_PROFILE : null;
 }
 
-function run(command: string, args: string[], input?: NodeJS.ReadableStream) {
-  const child = spawn(command, args, { stdio: [input ? "pipe" : "ignore", "pipe", "pipe"] });
-  if (input) input.pipe(child.stdin!);
-  const done = new Promise<void>((resolve, reject) => {
+function finished(child: ChildProcess, command: string): Promise<void> {
+  return new Promise((resolve, reject) => {
     let stderr = "";
-    child.stderr!.on("data", (chunk) => (stderr += chunk));
+    child.stderr?.on("data", (chunk) => (stderr += chunk));
     child.on("error", reject);
     child.on("close", (code) =>
       code === 0 ? resolve() : reject(new Error(`${command} exited ${code}: ${stderr.slice(0, 300)}`)),
     );
   });
-  return { child, done };
 }
 
-async function encodeOgg(master: string): Promise<{ bytes: Buffer; durationSec: number | null }> {
+export type Encoders = { ffmpeg: string; oggenc: string };
+
+/**
+ * ffmpeg decodes into oggenc. Every error is listened for, the pipe's two ends included: an
+ * encoder that is missing or exits early leaves the decoder writing into a closed pipe, and an
+ * unheard EPIPE is an uncaught exception that takes the server down. Either failing kills both.
+ */
+export async function encodeOgg(
+  master: string,
+  tools: Encoders = { ffmpeg: "ffmpeg", oggenc: "oggenc" },
+): Promise<{ bytes: Buffer; durationSec: number | null }> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-encode-"));
   const out = path.join(dir, "clip.ogg");
+  const decoder = spawn(
+    tools.ffmpeg,
+    ["-nostdin", "-loglevel", "error", "-f", "mp3", "-i", master, "-ac", "1", "-f", "wav", "-"],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  const encoder = spawn(tools.oggenc, ["-Q", "-q", "0", "-o", out, "-"], { stdio: ["pipe", "ignore", "pipe"] });
   try {
-    const decode = run("ffmpeg", ["-nostdin", "-loglevel", "error", "-f", "mp3", "-i", master, "-ac", "1", "-f", "wav", "-"]);
-    const encode = run("oggenc", ["-Q", "-q", "0", "-o", out, "-"], decode.child.stdout!);
-    await Promise.all([decode.done, encode.done]);
+    const piped = new Promise<never>((_, reject) => {
+      decoder.stdout!.on("error", reject);
+      encoder.stdin!.on("error", reject);
+    });
+    decoder.stdout!.pipe(encoder.stdin!);
+    await Promise.race([Promise.all([finished(decoder, tools.ffmpeg), finished(encoder, tools.oggenc)]), piped]);
     return { bytes: await fs.readFile(out), durationSec: await durationOf(out).catch(() => null) };
+  } catch (error) {
+    decoder.kill();
+    encoder.kill();
+    throw error;
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

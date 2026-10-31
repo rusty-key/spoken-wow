@@ -12,6 +12,7 @@ import {
   runRound,
   SITE_URL,
   startPairing,
+  unpair,
   whoAmI,
   type GenerateProvider
 } from './generate'
@@ -175,13 +176,22 @@ export class Generating {
     this.pairingPoll.unref?.()
   }
 
-  unpair(): void {
+  /** Forgets the token here whatever happens, and revokes it on the site if the site answers. */
+  async unpair(): Promise<void> {
     if (this.pairingPoll) clearInterval(this.pairingPoll)
     this.pairingPoll = null
+    const token = this.vault.token
     delete this.vault.token
     this.save()
     this.clear('pairing', 'error')
     this.update({ pairedAs: null })
+    if (!token) return
+    try {
+      await unpair(this.site(token))
+    } catch (err) {
+      log('Generating: could not revoke the token on the site:', err)
+      this.update({ error: 'Unpaired here, but the site could not be reached: remove this Manager on your profile.' })
+    }
   }
 
   setKey(provider: GenerateProvider, key: string): void {

@@ -11,10 +11,11 @@ import { cloneName } from "@/lib/voices/clone-name";
 import { langParam } from "@/lib/lang-server";
 import fs from "node:fs";
 
+import { serveBlob } from "@/lib/blobs/serve";
 import { parseRange } from "@/lib/range";
 import { streamOf } from "@/lib/stream";
 import { requireVoiceManager, requireVoiceViewer } from "@/lib/voices/authz";
-import { contentTypeOf, deleteSample, isStoredSampleName, samplePath, sampleUrl } from "@/lib/voices/samples";
+import { contentTypeOf, deleteSample, isStoredSampleName, samplePath, sampleKey } from "@/lib/voices/samples";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +29,11 @@ export async function GET(request: Request, context: Context) {
   const clone = cloneName(voice, lang);
   if (!isStoredSampleName(file)) return new Response("bad clip name", { status: 400 });
 
-  // The bucket answers ranges itself, and names objects by their bytes, so the redirect is
-  // cached as the clip itself would be.
-  const url = await sampleUrl(clone, file);
-  if (url === null) return new Response("no such clip", { status: 404 });
-  if (url) {
-    return new Response(null, {
-      status: 302,
-      headers: { Location: url, "Cache-Control": "private, max-age=3600, immutable" },
-    });
-  }
+  // Through the site, not to the public bucket, whose URL would outlive the viewer's grant
+  // and the clip's deletion.
+  const key = await sampleKey(clone, file);
+  if (key === null) return new Response("no such clip", { status: 404 });
+  if (key) return serveBlob(request, key, { cacheControl: "private, max-age=3600, immutable", contentType: contentTypeOf(file) });
 
   const target = await samplePath(clone, file);
   let size: number;

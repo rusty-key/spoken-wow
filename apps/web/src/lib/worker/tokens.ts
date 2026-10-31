@@ -95,8 +95,8 @@ export async function pollPairing(poll: string): Promise<PollResult> {
 export async function workerUser(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
   if (!header) return tabUser(request);
-  const match = /^Bearer\s+(spw_[A-Za-z0-9_-]{20,})$/.exec(header.trim());
-  if (!match) return null;
+  const token = bearerToken(header);
+  if (!token) return null;
   // lastUsedAt only backs /profile's "last seen", so it is written every five minutes at most.
   const { rows } = await db().query<{ userId: string }>(
     `with found as (
@@ -108,9 +108,24 @@ export async function workerUser(request: Request): Promise<string | null> {
           and (found."lastUsedAt" is null or found."lastUsedAt" < now() - interval '5 minutes')
      )
      select "userId" from found`,
-    [hash(match[1])],
+    [hash(token)],
   );
   return rows[0]?.userId ?? null;
+}
+
+function bearerToken(header: string): string | null {
+  return /^Bearer\s+(spw_[A-Za-z0-9_-]{20,})$/.exec(header.trim())?.[1] ?? null;
+}
+
+/** A Manager unpairing itself. False for a tab, which has no token, or a token already revoked. */
+export async function revokeCallingToken(request: Request): Promise<boolean> {
+  const token = bearerToken(request.headers.get("authorization") ?? "");
+  if (!token) return false;
+  const { rowCount } = await db().query(
+    `update "worker_token" set "revokedAt" = now() where "tokenHash" = $1 and "revokedAt" is null`,
+    [hash(token)],
+  );
+  return (rowCount ?? 0) > 0;
 }
 
 export type WorkerToken = { id: string; label: string; createdAt: string; lastUsedAt: string | null };

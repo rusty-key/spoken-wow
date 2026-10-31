@@ -46,7 +46,7 @@ export async function fillCache(rows, { archive, cache, base, fetchImpl = fetch 
   return tally;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const lang = process.argv.find((arg) => arg.startsWith("--lang="))?.slice(7) || "enUS";
   const base = process.env.SPOKEN_ARCHIVE_URL;
   const database = process.env.LOCAL_DB;
