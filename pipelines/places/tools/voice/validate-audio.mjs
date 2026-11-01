@@ -4,13 +4,16 @@
 // lore data all still agree.
 //
 // This is the failure worth catching here: a lookup row pointing at a file that
-// is not there plays silence in-game and reports nothing. Every other kind of
-// mistake announces itself.
+// is not there plays silence in-game and reports nothing. So does the reverse, an
+// mp3 the lookup does not list: German Places 2.1.1 shipped every clip beside an
+// empty table, because its manifest was missing and read as empty. Every other
+// kind of mistake announces itself.
 
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 import { loadEnvFile } from "../lib/env.mjs";
 import { readLines, shipped } from "../lib/loredata.mjs";
@@ -25,6 +28,49 @@ const notes = [];
 
 function problem(text) { problems.push(text); }
 function note(text) { notes.push(text); }
+
+/**
+ * @param lookup        the text of Data/Sounds.lua
+ * @param onDisk        the mp3s in Sounds/, as paths without the extension
+ * @param shippedFiles  the files of the takes whose place has words
+ * @param validKeys     `mapID:key` for every subzone in the lore data
+ */
+export function checkLookup({ lookup, onDisk, shippedFiles, validKeys }) {
+  const problems = [];
+  // The table stores WoW-style backslash paths (escaped in Lua source); the
+  // files on disk are POSIX. Compare in one form.
+  const referenced = new Set([...lookup.matchAll(/file = "([^"]+)"/g)].map((m) =>
+    m[1].replace(/\\\\/g, "/").replace(/\\/g, "/"),
+  ));
+  for (const file of referenced) {
+    if (!onDisk.has(file)) problems.push(`lookup table points at ${file}.mp3, which is not on disk (plays silence)`);
+  }
+  const missingFromLookup = [...shippedFiles].filter((f) => !referenced.has(f));
+  if (missingFromLookup.length) {
+    problems.push(`${missingFromLookup.length} generated files are not in the lookup table `
+      + "(unreachable in-game) -- run node tools/voice/build-lookup.mjs");
+  }
+  // Checked against the disk as well as the manifest: an empty manifest lists nothing, so
+  // the check above passes an empty table beside a full Sounds/.
+  const unlisted = [...onDisk].filter((f) => !referenced.has(f)).sort();
+  if (unlisted.length) {
+    problems.push(`${unlisted.length} mp3s on disk are not in the lookup table (unreachable in-game), `
+      + `e.g. ${unlisted.slice(0, 3).map((f) => `${f}.mp3`).join(", ")}`);
+  }
+
+  // Keys in the table must be exactly what SpokenPlaces:NormaliseAreaKey produces,
+  // or the lookup silently misses.
+  let currentMap = null;
+  for (const line of lookup.split("\n")) {
+    const zoneHeader = line.match(/^\t\t\[(\d+)\] = \{$/);
+    if (zoneHeader) { currentMap = zoneHeader[1]; continue; }
+    const keyRow = line.match(/^\t\t\t\["([^"]+)"\]/);
+    if (keyRow && currentMap && !validKeys.has(`${currentMap}:${keyRow[1]}`)) {
+      problems.push(`lookup key "${keyRow[1]}" under ${currentMap} matches no subzone in the lore data`);
+    }
+  }
+  return problems;
+}
 
 async function mp3sOnDisk(dir, prefix = "") {
   if (!existsSync(dir)) return [];
@@ -85,34 +131,9 @@ async function main() {
 
   //-- lookup table vs disk --------------------------------------------------
   if (existsSync(LOOKUP_PATH)) {
-    const lookup = await readFile(LOOKUP_PATH, "utf8");
-    // The table stores WoW-style backslash paths (escaped in Lua source); the
-    // files on disk are POSIX. Compare in one form.
-    const referenced = [...lookup.matchAll(/file = "([^"]+)"/g)].map((m) =>
-      m[1].replace(/\\\\/g, "/").replace(/\\/g, "/"),
-    );
-    for (const file of referenced) {
-      if (!onDisk.has(file)) problem(`lookup table points at ${file}.mp3, which is not on disk (plays silence)`);
-    }
-    const missingFromLookup = [...shippedFiles].filter((f) => !referenced.includes(f));
-    if (missingFromLookup.length) {
-      problem(`${missingFromLookup.length} generated files are not in the lookup table `
-        + "(unreachable in-game) -- run node tools/voice/build-lookup.mjs");
-    }
-
-    // Keys in the table must be exactly what SpokenPlaces:NormaliseAreaKey produces,
-    // or the lookup silently misses.
     const validKeys = new Set(entries.filter((e) => e.key).map((e) => `${e.mapID}:${e.key}`));
-    let currentMap = null;
-    for (const line of lookup.split("\n")) {
-      const zoneHeader = line.match(/^\t\t\[(\d+)\] = \{$/);
-      if (zoneHeader) { currentMap = zoneHeader[1]; continue; }
-      const keyRow = line.match(/^\t\t\t\["([^"]+)"\]/);
-      if (keyRow && currentMap && !validKeys.has(`${currentMap}:${keyRow[1]}`)) {
-        problem(`lookup key "${keyRow[1]}" under ${currentMap} matches no subzone in the lore data`);
-      }
-    }
-  } else if (Object.keys(manifest).length) {
+    problems.push(...checkLookup({ lookup: await readFile(LOOKUP_PATH, "utf8"), onDisk, shippedFiles, validKeys }));
+  } else if (Object.keys(manifest).length || onDisk.size) {
     problem("audio has been generated but no lookup table exists -- run node tools/voice/build-lookup.mjs");
   }
 
@@ -130,11 +151,13 @@ async function main() {
   process.exit(1);
 }
 
-loadEnvFile()
-  .then(main)
-  .catch((err) => {
-    // err.stack, not err.message: a thrown non-Error and a rejected promise carrying one
-    // both print an empty message, which reports a failure while hiding every word of it.
-    console.error(`error: ${err?.stack || err}`);
-    process.exit(1);
-  });
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  loadEnvFile()
+    .then(main)
+    .catch((err) => {
+      // err.stack, not err.message: a thrown non-Error and a rejected promise carrying one
+      // both print an empty message, which reports a failure while hiding every word of it.
+      console.error(`error: ${err?.stack || err}`);
+      process.exit(1);
+    });
+}
