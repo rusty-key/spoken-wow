@@ -7,8 +7,6 @@ alter table "line_override"
   add primary key ("teamId", "lang", "file");
 
 -- A language's overrides are its team's, so they move with it.
--- Security invoker, so the caller's row-level security applies; the app calls it as ALL_TEAMS.
--- A running job raises object_in_use (55006) for the app to answer 409; other refusals are P0001.
 create or replace function "move_team_lang"(p_lang text, p_team uuid) returns integer
 language plpgsql security invoker as $$
 declare
@@ -48,7 +46,8 @@ begin
   foreach t in array array[
     'take', 'recording', 'take_ack', 'voice_clone', 'fish_reference', 'generation_setting_locale',
     'pronunciation_lexicon_locale', 'lexicon_change', 'line_override', 'line_ignore', 'line_flag', 'line_issue',
-    'report', 'regeneration_batch', 'regeneration_job', 'regeneration_pause', 'activity'
+    'report', 'regeneration_batch', 'regeneration_job', 'regeneration_pause', 'activity',
+    'release_run'
   ] loop
     execute format('update %I set "teamId" = $1 where "teamId" = $2 and "lang" = $3', t)
       using p_team, v_from, p_lang;

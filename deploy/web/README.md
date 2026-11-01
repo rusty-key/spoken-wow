@@ -534,7 +534,7 @@ psql "$PROD_DATABASE_URL" -c "select grant_text_maintainers()"
 
 ### Overrides in every language
 
-Migration 0095 adds `lang` to `line_override` and to its primary key. The previous release's save
+Migration 0096 adds `lang` to `line_override` and to its primary key. The previous release's save
 names the old key, so for the seconds between migrating and the symlink swap saving an override
 fails. Nothing else does.
 
