@@ -74,15 +74,14 @@ export async function createTeam(
       const user = await client.query(`select 1 from "user" where lower("email") = lower($1)`, [input.adminEmail]);
       if (!user.rowCount) throw new TeamInputError(`No user has the email ${input.adminEmail}.`);
     }
-    const taken = await client.query(`select 1 from "team" where "slug" = $1`, [input.slug]);
-    if (taken.rowCount) throw new TeamInputError(`A team is already called ${input.slug}.`);
     try {
       const { rows } = await client.query<{ id: TeamId }>(`select new_team($1, $2) as "id"`, [input.slug, input.name]);
       return rows[0].id;
     } catch (error) {
-      // 23505 unique, 23514 check: a slug taken between the look and the insert.
+      // new_team raises 23505 on a taken slug; 23514 is the slug check, which SLUG mirrors.
       const code = (error as { code?: string }).code;
-      if (code === "23505" || code === "23514") throw new TeamInputError(`The slug ${input.slug} is not available.`);
+      if (code === "23505") throw new TeamInputError(`A team is already called ${input.slug}.`);
+      if (code === "23514") throw new TeamInputError(`The slug ${input.slug} is not available.`);
       throw error;
     }
   });

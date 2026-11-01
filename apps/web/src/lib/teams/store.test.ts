@@ -19,9 +19,19 @@ async function englishTeam(): Promise<string> {
   return rows[0].id;
 }
 
+/** The team NEW_LANG had before this file took it away, given back at the end. */
+let was: string | undefined;
+
+/**
+ * The team adoption made for NEW_LANG. The one it had still holds the slug "dede", so adoption
+ * makes "dede-2": a language adopted never joins a team that happens to bear its code.
+ */
 async function ownTeamId(): Promise<string> {
-  const { rows } = await asSystem.query(`select "id" from "team" where "slug" = $1`, [NEW_LANG.toLowerCase()]);
-  return rows[0].id;
+  const { rows } = await asSystem.query(
+    `select t."id" from "team" t where t."id" = team_of_lang($1) and t."slug" ~ $2 and t."id" is distinct from $3`,
+    [NEW_LANG, `^${NEW_LANG.toLowerCase()}-[0-9]+$`, was ?? null],
+  );
+  return rows[0]?.id;
 }
 
 async function cleanup() {
@@ -29,10 +39,23 @@ async function cleanup() {
   await asSystem.query(`delete from "language" where "code" = $1`, [NEW_LANG]);
   await asSystem.query(`delete from "activity" where "actorId" = $1`, [USER]);
   await asSystem.query(`delete from "report" where "ip" = $1`, [IP]);
+  // The teams adoption made here, with the roster it copied to each.
+  const { rows: made } = await asSystem.query<{ id: string }>(
+    `select "id" from "team" where "slug" ~ $1 and "id" is distinct from $2`,
+    [`^${NEW_LANG.toLowerCase()}-[0-9]+$`, was ?? null],
+  );
+  for (const { id } of made) {
+    for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal"]) {
+      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [id]);
+    }
+    await asSystem.query(`delete from "team" where "id" = $1`, [id]);
+  }
   forgetTeams();
 }
 
 beforeAll(async () => {
+  const { rows } = await asSystem.query<{ team: string | null }>(`select team_of_lang($1) as "team"`, [NEW_LANG]);
+  was = rows[0].team ?? undefined;
   await cleanup();
   await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
@@ -45,7 +68,8 @@ beforeEach(() => forgetTeams());
 afterAll(async () => {
   await cleanup();
   // Back on its own team, where migration 0091 put it, for the suites that write German.
-  await asSystem.query(`select adopt_lang($1)`, [NEW_LANG]);
+  if (was) await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was, NEW_LANG]);
+  else await asSystem.query(`select adopt_lang($1)`, [NEW_LANG]);
   forgetTeams();
   await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
   await closeDb();

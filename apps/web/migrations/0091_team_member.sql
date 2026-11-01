@@ -25,19 +25,31 @@ create index "team_member_user_idx" on "team_member" ("userId");
 revoke all on "team_member" from "spoken_app";
 grant select, insert, delete on "team_member" to "spoken_app";
 
--- A team with no languages, or the one already named so.
+-- A team with no languages. A taken slug raises unique_violation (23505): handing back the team
+-- already named so would give its languages and members to whoever asked.
 create function "new_team"(p_slug text, p_name text) returns uuid
 language plpgsql as $$
 declare
   v_id uuid;
 begin
   insert into "team" ("slug", "name") values (p_slug, p_name)
-  on conflict ("slug") do nothing
   returning "id" into v_id;
-  if v_id is null then
-    select "id" into v_id from "team" where "slug" = p_slug;
-  end if;
   return v_id;
+end
+$$;
+
+-- p_base if no team is called so, else the first free of p_base-2, p_base-3...
+create function "free_team_slug"(p_base text) returns text
+language plpgsql as $$
+declare
+  v_slug text := p_base;
+  v_n    integer := 1;
+begin
+  while exists (select 1 from "team" where "slug" = v_slug) loop
+    v_n := v_n + 1;
+    v_slug := p_base || '-' || v_n;
+  end loop;
+  return v_slug;
 end
 $$;
 
@@ -158,7 +170,7 @@ begin
   if team_of_lang(p_lang) is not null then
     return;
   end if;
-  v_team := new_team(lower(p_lang), p_lang);
+  v_team := new_team(free_team_slug(lower(p_lang)), p_lang);
   perform copy_team_roster((select "id" from "team" where "slug" = 'english'), v_team);
   insert into "team_language" ("teamId", "lang", "privileged")
   values (v_team, p_lang, true)
@@ -185,7 +197,7 @@ begin
    where tl."lang" <> 'enUS' and tl."privileged";
   foreach v_lang in array v_langs loop
     v_i := v_i + 1;
-    v_team := new_team(lower(v_lang), v_lang);
+    v_team := new_team(free_team_slug(lower(v_lang)), v_lang);
     v_rows := v_rows + move_team_lang(v_lang, v_team);
     insert into "team_made" values (v_team, v_lang);
     raise notice '% / % %', v_i, cardinality(v_langs), v_lang;

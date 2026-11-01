@@ -64,6 +64,11 @@ describe("createTeam", () => {
     await expect(createTeam({ slug: `t-${tag}`, name: "again", adminEmail: null }, actor)).rejects.toBeInstanceOf(TeamInputError);
   });
 
+  it("has new_team raise on a taken slug rather than hand that team back", async () => {
+    await newTeam();
+    await expect(asSystem.query(`select new_team($1, 'again')`, [`t-${tag}`])).rejects.toMatchObject({ code: "23505" });
+  });
+
   it("refuses an admin email nobody has", async () => {
     await expect(
       createTeam({ slug: `t-${tag}`, name: "x", adminEmail: "nobody@example.invalid" }, actor),
@@ -173,6 +178,17 @@ describe("adoptLang", () => {
     expect(rows[0].slug).toBe("zzzz");
     expect(rows[0].english).toBeGreaterThan(0);
     expect(rows[0].voices).toBe(rows[0].english);
+  });
+
+  it("makes a team of its own when the code's slug is taken, rather than joining that team", async () => {
+    const squatter = await newTeam("zzzz");
+    await inTransaction((client) => adoptLang(client, "zzZZ"));
+    const rows = await systemRows<{ id: string; slug: string }>(
+      `select t."id", t."slug" from "team" t where t."id" = team_of_lang('zzZZ')`,
+    );
+    made.push(rows[0].id);
+    expect(rows[0].id).not.toBe(squatter);
+    expect(rows[0].slug).toBe("zzzz-2");
   });
 
   it("leaves the caller's transaction acting as the team it acted as", async () => {
