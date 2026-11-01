@@ -1,6 +1,6 @@
 "use client";
 
-import { nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
@@ -750,13 +750,13 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                     ? (l) =>
                         setNaming({
                           lineId: l.id,
-                          subject: nameSubject({
+                          subject: {
                             ...nameOf(l),
                             title: l.name,
                             subtitle: l.id,
                             english: l.englishName ?? l.name,
                             current: l.nameMissing ? null : l.name,
-                          }),
+                          },
                         })
                     : null
                 }

@@ -1,19 +1,17 @@
 "use client";
 
-import { Loader2, RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { withLang } from "@/lib/lang";
-import type { ResultLine as QuestLine } from "@/lib/search";
 
 import { useLang } from "./LangProvider";
 
-// Writing something in the page's language that the English corpus has: a quest line's
-// text, or a name -- a quest's, an NPC's, a book's owner's, a place's.
+// Writing a name in the page's language that the English corpus has: a quest's, an NPC's, a
+// book's owner's, a place's.
 //
-// One dialog for both because a translation is the same job whatever is being translated:
-// the English above, the box below, the versions behind it. What differs is only where it is
-// saved and what addresses it, which the caller passes. The readables and places editors keep
+// One dialog because a translation is the same job whatever is being named: the English above,
+// the box below, the versions behind it. The readables and places editors keep
 // their own dialogs because they edit English too, with fields a translation does not have.
 
 type Version = {
@@ -22,12 +20,14 @@ type Version = {
   origin: "extracted" | "edited" | "contributed" | "community";
   note: string | null;
   createdAt: string;
-  /** The field is `text` on a line and `name` on a name. */
-  text?: string;
-  name?: string;
+  name: string;
 };
 
+const ROUTE = "/api/names";
+
 export type TranslateSubject = {
+  kind: string;
+  entityId: string;
   /** What the dialog is headed with. */
   title: string;
   subtitle?: string;
@@ -35,51 +35,7 @@ export type TranslateSubject = {
   english: string;
   /** This language's current wording, or null where there is none yet. */
   current: string | null;
-  /** The API route, e.g. /api/quests/lines/text or /api/names. */
-  endpoint: string;
-  /** What addresses the thing on that route: { lineId, variant } or { kind, entityId }. */
-  address: Record<string, string | number>;
-  /** The field the route calls the text: `text` for a line, `name` for a name. */
-  field: "text" | "name";
-  /** A line is a paragraph; a name is one line. */
-  multiline: boolean;
 };
-
-/** A quest line's text, in a language other than English. */
-export function lineTextSubject(line: QuestLine): TranslateSubject {
-  return {
-    title: line.npcName,
-    subtitle: line.lineId,
-    english: line.english ? line.originalText : "There is no English line yet.",
-    current: line.missing?.text ? null : line.text,
-    endpoint: "/api/quests/lines/text",
-    address: { lineId: line.lineId, variant: line.variant ?? 0 },
-    field: "text",
-    multiline: true,
-  };
-}
-
-/** A thing's name: a quest's, an NPC's, a book owner's, a place's. */
-export function nameSubject(args: {
-  kind: string;
-  entityId: string;
-  title: string;
-  subtitle: string;
-  english: string;
-  /** The language's own name, or null where it has none yet. */
-  current: string | null;
-}): TranslateSubject {
-  return {
-    title: args.title,
-    subtitle: args.subtitle,
-    english: args.english,
-    current: args.current,
-    endpoint: "/api/names",
-    address: { kind: args.kind, entityId: args.entityId },
-    field: "name",
-    multiline: false,
-  };
-}
 
 type Props = {
   subject: TranslateSubject | null;
@@ -110,10 +66,8 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
     if (!dialog.current?.open) dialog.current?.showModal();
 
     let cancelled = false;
-    const params = new URLSearchParams(
-      Object.entries(subject.address).map(([key, v]) => [key, String(v)]),
-    );
-    fetch(withLang(lang, `${subject.endpoint}?${params}`))
+    const params = new URLSearchParams({ kind: subject.kind, entityId: subject.entityId });
+    fetch(withLang(lang, `${ROUTE}?${params}`))
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("could not load history"))))
       .then((data: { versions: Version[] }) => {
         if (cancelled) return;
@@ -128,44 +82,37 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
     };
   }, [subject, lang]);
 
-  const send = useCallback(
-    async (method: "PUT" | "POST", body: Record<string, unknown>, done: (v: string) => void) => {
-      if (!subject) return;
-      setBusy(true);
-      setError(null);
-      const res = await fetch(withLang(lang, subject.endpoint), {
-        method,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...subject.address, ...body }),
-      }).catch(() => null);
-      setBusy(false);
-      if (!res || !res.ok) {
-        const message = res
-          ? ((await res.json().catch(() => ({}))).error ?? res.statusText)
-          : "network error";
-        setError(String(message));
-        return;
-      }
-      const data = (await res.json()) as { version: Version };
-      done(data.version[subject.field] ?? "");
-    },
-    [subject, lang],
-  );
-
   if (!subject) return null;
 
   const trimmed = value.trim();
   const changed = trimmed !== "" && trimmed !== (subject.current ?? "").trim();
 
-  function save() {
-    void send(
-      "PUT",
-      { [subject!.field]: value, note: note.trim() || null, expectedVersion: baseVersion },
-      (saved) => {
-        onSaved(subject!, saved);
-        onClose();
-      },
-    );
+  async function save() {
+    const named = subject!;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(withLang(lang, ROUTE), {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: named.kind,
+        entityId: named.entityId,
+        name: value,
+        note: note.trim() || null,
+        expectedVersion: baseVersion,
+      }),
+    }).catch(() => null);
+    setBusy(false);
+    if (!res || !res.ok) {
+      const message = res
+        ? ((await res.json().catch(() => ({}))).error ?? res.statusText)
+        : "network error";
+      setError(String(message));
+      return;
+    }
+    const data = (await res.json()) as { version: Version };
+    onSaved(named, data.version.name);
+    onClose();
   }
 
   return (
@@ -183,34 +130,18 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
         {subject.english}
       </p>
 
-      {subject.multiline ? (
-        <textarea
-          autoFocus
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          rows={10}
-          className="border-border bg-background w-full rounded border p-2 text-sm leading-relaxed"
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && changed) {
-              event.preventDefault();
-              save();
-            }
-          }}
-        />
-      ) : (
-        <input
-          autoFocus
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          className="border-border bg-background w-full rounded border p-2 text-sm"
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && changed) {
-              event.preventDefault();
-              save();
-            }
-          }}
-        />
-      )}
+      <input
+        autoFocus
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        className="border-border bg-background w-full rounded border p-2 text-sm"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && changed) {
+            event.preventDefault();
+            void save();
+          }
+        }}
+      />
 
       <input
         value={note}
@@ -234,25 +165,10 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
                 </span>
                 <span className="text-muted-foreground w-20 shrink-0 truncate">{version.origin}</span>
                 <span className="text-muted-foreground truncate">
-                  {version.note ?? version[subject.field]}
+                  {version.note ?? version.name}
                 </span>
                 {version.isCurrent ? (
                   <span className="ml-auto shrink-0 text-emerald-400">live</span>
-                ) : subject.field === "text" ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void send("POST", { version: version.version }, (restored) => {
-                        onSaved(subject, restored);
-                        onClose();
-                      })
-                    }
-                    title="Make this the live text"
-                    className="text-muted-foreground/50 hover:bg-accent hover:text-foreground ml-auto shrink-0 rounded p-1"
-                  >
-                    <RotateCcw size={12} />
-                  </button>
                 ) : null}
               </li>
             ))}

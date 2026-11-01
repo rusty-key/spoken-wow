@@ -77,6 +77,26 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("move_team_lang", () => {
+  it("moves the language's overrides and leaves a same-named file's in another language", async () => {
+    const file = `quests/${tag}-move.mp3`;
+    const insert = `insert into "line_override" ("teamId", "lang", "file", "lineId", "text") values ($1, $2, $3, 'q:1:accept', 'x')`;
+    await asSystem.query(insert, [source.team, "deDE", file]);
+    await asSystem.query(insert, [source.team, "frFR", file]);
+    try {
+      await move("deDE", target);
+      const rows = await systemRows<{ lang: string; teamId: string }>(
+        `select "lang", "teamId" from "line_override" where "file" = $1 order by "lang"`,
+        [file],
+      );
+      expect(rows).toEqual([
+        { lang: "deDE", teamId: target },
+        { lang: "frFR", teamId: source.team },
+      ]);
+    } finally {
+      await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
+    }
+  });
+
   it("moves every row of the language to the new team", async () => {
     const team = source.team;
     const take = await systemRows<{ id: string }>(

@@ -459,15 +459,15 @@ describe("when ElevenLabs refuses", () => {
  */
 describe("a line whose spoken text has been rewritten", () => {
   afterEach(async () => {
-    await clearOverride(await fileFor(SOLO), null);
-    await clearOverride(await fileFor(STAGE_DIRECTION), null);
-    await clearOverride(await fileFor(NEVER_VOICED), null);
-    await clearOverride(await fileFor(TEMPLATE_TOKEN), null);
+    await clearOverride("enUS", await fileFor(SOLO), null);
+    await clearOverride("enUS", await fileFor(STAGE_DIRECTION), null);
+    await clearOverride("enUS", await fileFor(NEVER_VOICED), null);
+    await clearOverride("enUS", await fileFor(TEMPLATE_TOKEN), null);
   });
 
   it("speaks the rewrite rather than what the corpus says", async () => {
     const { options, calls } = stub();
-    await writeOverride(await fileFor(SOLO), SOLO, "Say this instead.", null);
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Say this instead.", null);
 
     const result = await regenerate(SOLO, options);
 
@@ -489,7 +489,7 @@ describe("a line whose spoken text has been rewritten", () => {
     if (before.ok) return;
     expect(before.failure.message).toContain("rewrite it");
 
-    await writeOverride(await fileFor(TEMPLATE_TOKEN), TEMPLATE_TOKEN, "Well done, adventurer.", null);
+    await writeOverride("enUS", await fileFor(TEMPLATE_TOKEN), TEMPLATE_TOKEN, "Well done, adventurer.", null);
     const after = await regenerate(TEMPLATE_TOKEN, options);
 
     expect(after.ok).toBe(true);
@@ -552,6 +552,7 @@ describe("a line whose spoken text has been rewritten", () => {
   it("hands a marked stretch to the slot it names, with that slot's accent", async () => {
     const { options, calls } = stub();
     await writeOverride(
+      "enUS",
       await fileFor(SOLO),
       SOLO,
       "A voice crackles.\n\n_dwarf-male-grim_\nHiccup! <Static.> Ho Ho!",
@@ -573,7 +574,7 @@ describe("a line whose spoken text has been rewritten", () => {
 
   it("refuses a marker naming a slot that does not exist, before spending anything", async () => {
     const { options, calls } = stub();
-    await writeOverride(await fileFor(SOLO), SOLO, "Hi. _goblin-male-zany_ Wizbang here!", null);
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Hi. _goblin-male-zany_ Wizbang here!", null);
 
     const result = await regenerate(SOLO, options);
 
@@ -593,7 +594,7 @@ describe("a line whose spoken text has been rewritten", () => {
 
   it("still refuses progress text, which no rewrite can make voiceable", async () => {
     const { options, calls } = stub();
-    await writeOverride(await fileFor(NEVER_VOICED), NEVER_VOICED, "perfectly ordinary text", null);
+    await writeOverride("enUS", await fileFor(NEVER_VOICED), NEVER_VOICED, "perfectly ordinary text", null);
 
     const result = await regenerateLine(NEVER_VOICED, "user", options);
 
@@ -605,7 +606,7 @@ describe("a line whose spoken text has been rewritten", () => {
 
   it("refuses a rewrite that puts the offending characters back", async () => {
     const { options, calls } = stub();
-    await writeOverride(await fileFor(SOLO), SOLO, "Meet me in $B Ironforge", null);
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Meet me in $B Ironforge", null);
 
     const result = await regenerateLine(SOLO, "user", options);
 

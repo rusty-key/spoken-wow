@@ -10,7 +10,7 @@
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
-import { BASE_LANG, CODES, type Lang } from "@/lib/lang";
+import { CODES, type Lang } from "@/lib/lang";
 
 const statement = {
   ...defaultStatements,
@@ -70,7 +70,8 @@ export function canConfigureGeneration(role: string | null | undefined): boolean
  *
  * `text` is a text maintainer: the language's original text and its contributions, whichever
  * team voices it. The rest are capabilities inside a team, and `edit` among them is the team's
- * audio reports and missing audio.
+ * audio reports and missing audio. What a team speaks in place of the original is an override,
+ * which `regenerate` writes.
  *
  * `admin` in a language is every team capability there and hands them out, `admin` included.
  * It is not `text`: only a global admin appoints a text maintainer, because the original text is
@@ -155,14 +156,6 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
   return capability !== "text" && can(viewer, "admin", lang);
-}
-
-/**
- * English quest text is rewritten through an override, which is guarded as regeneration is; every
- * other language's is the original.
- */
-export function questTextCapability(lang: Lang): Capability {
-  return lang === BASE_LANG ? "regenerate" : "text";
 }
 
 /** Whether somebody holds anything at all in a language, which lets them see it switched off. */

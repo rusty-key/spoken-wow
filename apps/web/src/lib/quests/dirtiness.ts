@@ -17,6 +17,7 @@ import { readAs } from "../teams/store";
 import { dirtyFiles, loadDirtyContext } from "../generation/dirty";
 import { sentText } from "../generation/files";
 import { overrideOf } from "./override";
+import type { LineOverride } from "./override";
 import { readOverrides } from "./overrides";
 
 /**
@@ -30,6 +31,8 @@ import { readOverrides } from "./overrides";
 export async function dirtyQuestFiles(
   files?: string[],
   lang: Lang = BASE_LANG,
+  // A caller that read them this request saves the stamp check.
+  known?: Map<string, LineOverride>,
 ): Promise<Set<string>> {
   if (files?.length === 0) return new Set();
 
@@ -51,8 +54,7 @@ export async function dirtyQuestFiles(
     loadDirtyContext("quests", lang),
     // In the same round as the rest: memoised behind a stamp, so this is a timestamp check
     // rather than a table read, but it is still a round trip to sit behind the others.
-    // English's alone: overrides rewrite the English corpus.
-    readOverrides(lang),
+    known ?? readOverrides(lang),
   ]);
 
   if (!context.changes.length) return new Set();

@@ -532,6 +532,28 @@ deploying this release again:
 psql "$PROD_DATABASE_URL" -c "select grant_text_maintainers()"
 ```
 
+### Overrides in every language
+
+Migration 0096 adds `lang` to `line_override` and to its primary key. The previous release's save
+names the old key, so for the seconds between migrating and the symlink swap saving an override
+fails. Nothing else does.
+
+**After a rollback, run this at once**, or English overrides cannot be saved. The other languages'
+overrides stay in the table and come back on the next deploy. The previous release does not read
+them, unless the English team also holds that language: it reads every row its team can see, so
+such a row would replace English's text for that file. Delete those first.
+
+```bash
+psql "$PROD_DATABASE_URL" -c 'alter table line_override add constraint line_override_team_file unique ("teamId", "file")'
+```
+
+It fails if one team holds overrides on the same file in two languages. Delete the ones you can
+spare first. Before deploying again:
+
+```bash
+psql "$PROD_DATABASE_URL" -c 'alter table line_override drop constraint line_override_team_file'
+```
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the

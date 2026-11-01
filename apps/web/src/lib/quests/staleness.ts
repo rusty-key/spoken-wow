@@ -22,6 +22,7 @@ import { directionFor } from "../generation/narration";
 import { SHAPE } from "../generation/speakers/shape";
 import { currentConfig } from "../generation/settings";
 import { overrideOf } from "./override";
+import type { LineOverride } from "./override";
 import { readOverrides } from "./overrides";
 import type { Provider } from "../generation/providers";
 
@@ -39,6 +40,8 @@ type Row = { file: string; spokenHash: string | null; provider: Provider };
 export async function staleFiles(
   files?: string[],
   lang: Lang = BASE_LANG,
+  // A caller that read them this request saves the stamp check.
+  known?: Map<string, LineOverride>,
 ): Promise<Set<string>> {
   if (files?.length === 0) return new Set();
 
@@ -56,9 +59,9 @@ export async function staleFiles(
         [lang],
       );
 
-  // What regenerate.ts would send now, in the same language: English's overrides and file
-  // rules, or neither for another language, which speaks its own text with its own lexicon.
-  const overrides = await readOverrides(lang);
+  // What would be sent now: the language's overrides, and English's file rules, which another
+  // language goes without, speaking with its own lexicon.
+  const overrides = known ?? (await readOverrides(lang));
   const lines = await fileIndex(lang);
   // Once for the whole sweep, unlike regenerate.ts which reads it per line: this answers a
   // question about the takes as they stand, and a settings change landing mid-sweep would

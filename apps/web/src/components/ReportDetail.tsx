@@ -122,7 +122,7 @@ export default function ReportDetail({
           )}
           {/* Quests only: the override endpoint is theirs, and places and readables have no text a
               triager may edit - their lines are the corpus itself. */}
-          {source === "quests" ? (
+          {source === "quests" && !(line as QuestLine).missing?.text ? (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => setEditing(true)}>
               Rewrite
             </Button>

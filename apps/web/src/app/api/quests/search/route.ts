@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     // The whole dirty set, intersected here, rather than the match set sent to Postgres as a
     // parameter: unfiltered, that is eleven thousand paths in an `= any($1)`, and several
     // times slower than asking for every dirty file.
-    const dirty = context.dirty ?? (await dirtyQuestFiles(undefined, lang));
+    const dirty = context.dirty ?? (await dirtyQuestFiles(undefined, lang, context.overrides));
     const files = new Set(all.lines.map((line) => line.audioPath));
     return NextResponse.json({ dirtyFiles: [...dirty].filter((file) => files.has(file)) });
   }
@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
   const files = [...new Set(result.lines.map((line) => line.audioPath))];
   const gossip = [...new Set(result.lines.filter((line) => line.source === "gossip").map((line) => line.lineId))];
   const [stale, dirty, broadcast, siblings] = await Promise.all([
-    context.stale ?? staleFiles(files, lang),
-    context.dirty ?? dirtyQuestFiles(files, lang),
+    context.stale ?? staleFiles(files, lang, context.overrides),
+    context.dirty ?? dirtyQuestFiles(files, lang, context.overrides),
     gossip.length > 0 ? broadcastIdsFor(gossip) : new Map<string, LineBroadcast[]>(),
     gossip.length > 0 ? momentSiblingsFor(gossip) : new Map<string, string[]>(),
   ]);

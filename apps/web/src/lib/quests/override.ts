@@ -7,7 +7,8 @@
  * An override replaces what is *spoken*. It cannot touch originalText, which is what names
  * the file and what the addon matches on - see the header of migration 0012.
  */
-import { playerGenderSides } from "../player-words";
+import { BASE_LANG, type Lang } from "../lang";
+import { branchesOnPlayerGender, playerGenderSides, speakPlayerTokens } from "../player-words";
 import { INVALID_CHARS, hasInvalidChars } from "../text-gate";
 
 export type LineOverride = {
@@ -31,9 +32,9 @@ export const MAX_OVERRIDE_LENGTH = 2000;
 
 /**
  * What the dialog sends: an override's shape, whose text may also hold `$G` branches, which the
- * route writes to the moment's lines (quests/english-rewrite.ts) rather than to this file.
+ * route writes to the moment's lines (quests/moment-rewrite.ts) rather than to this file.
  */
-export function validateRewrite(input: unknown): { file: string; lineId: string; text: string } {
+export function validateRewrite(input: unknown, lang: Lang): { file: string; lineId: string; text: string } {
   if (!input || typeof input !== "object") throw new OverrideError("expected an override object");
   const body = input as Record<string, unknown>;
 
@@ -52,7 +53,7 @@ export function validateRewrite(input: unknown): { file: string; lineId: string;
   }
   // The whole point of an override is to get a line past this gate, so letting one
   // reintroduce the characters it exists to remove would be a trap rather than a freedom.
-  if (rewriteHasInvalidChars(trimmed)) {
+  if (rewriteHasInvalidChars(trimmed, lang)) {
     throw new OverrideError(
       `text cannot contain any of ${INVALID_CHARS} outside a $g branch such as $glad:lass; - those are what make a line unvoiceable`,
     );
@@ -62,17 +63,23 @@ export function validateRewrite(input: unknown): { file: string; lineId: string;
 }
 
 /** One file's override: a rewrite whose text is what that file says, with no `$G` left in it. */
-export function validateOverride(input: unknown): { file: string; lineId: string; text: string } {
-  const draft = validateRewrite(input);
-  if (hasInvalidChars(draft.text)) {
+export function validateOverride(input: unknown, lang: Lang): { file: string; lineId: string; text: string } {
+  const draft = validateRewrite(input, lang);
+  if (branchesOnPlayerGender(draft.text)) {
     throw new OverrideError(`text cannot contain any of ${INVALID_CHARS} - those are what make a line unvoiceable`);
   }
   return draft;
 }
 
-/** hasInvalidChars on each reader's side of the text's `$G` branches. */
-export function rewriteHasInvalidChars(text: string): boolean {
-  return playerGenderSides(text).some(hasInvalidChars);
+/**
+ * Whether either reader's side of the text's `$G` branches holds what cannot be voiced. A
+ * translation keeps its tokens for player-words.ts, so a voice maintainer starts from a line holding
+ * a `$N`. English text has none left, so one typed there is a mistake.
+ */
+export function rewriteHasInvalidChars(text: string, lang: Lang): boolean {
+  return playerGenderSides(text).some((side) =>
+    hasInvalidChars(lang === BASE_LANG ? side : speakPlayerTokens(side, lang)),
+  );
 }
 
 /** A voice's name as migration 0071's voice table allows it, or a model slot's. */

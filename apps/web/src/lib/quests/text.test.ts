@@ -131,10 +131,10 @@ describe("a later translation", () => {
     ]);
   });
 
-  it("is never English, which is rewritten through line_override", async () => {
+  it("is never English, which is written through moment-rewrite", async () => {
     await expect(
       saveQuestText({ lineId: english.lineId, variant: english.variant, lang: "enUS", text: "x", editedBy: userId }),
-    ).rejects.toThrow(/line_override/);
+    ).rejects.toThrow(/moment-rewrite/);
   });
 });
 

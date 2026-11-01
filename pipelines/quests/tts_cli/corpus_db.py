@@ -126,7 +126,7 @@ def with_answered_voices(lines, answers):
 
 def split_here(variants, live):
     """The dump's plain lines the site split by player gender: (lineId, variant) whose own row
-    is not current while its `:m` or `:f` is (apps/web/src/lib/quests/english-rewrite.ts).
+    is not current while its `:m` or `:f` is (apps/web/src/lib/quests/moment-rewrite.ts).
 
     The site is the corpus. Such a line is left out, never promoted back beside its split, and
     its speakers are written onto the two sides.

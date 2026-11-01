@@ -130,9 +130,6 @@ type Props = {
   showRecordings: boolean;
   onRecordingChanged: (line: ResultLine) => void;
   canRegenerate: boolean;
-  /** May write this line's text in the page's language. Apart from regenerating: a
-   *  translator may do this and not spend anything. */
-  canEdit: boolean;
   /** Editor and up: may read the report bodies and resolve them from the row. */
   canTriage: boolean;
   onOverrideAnswered: (line: ResultLine) => void;
@@ -203,7 +200,6 @@ export default function LineRow({
   showRecordings,
   onRecordingChanged,
   canRegenerate,
-  canEdit,
   canTriage,
   onOverrideAnswered,
   state,
@@ -587,7 +583,7 @@ export default function LineRow({
               <FlagIcon className="size-3.5" />
             </Button>
           )}
-          {canEdit && (
+          {canRegenerate && !line.missing?.text && (
             <Button
               variant="ghost"
               size="icon"
