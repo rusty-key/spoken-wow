@@ -1,7 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { closeDb } from "@/lib/db";
-import { asSystem, ownTeam, systemRows, testUser } from "@/lib/teams/testing";
+import { closeDb, db } from "@/lib/db";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/testing";
 
 import { ReleaseBusyError, activeRun, recentRuns, startRun, updateRun } from "./store";
 
@@ -51,6 +52,30 @@ describe("release runs", () => {
     await startRun("quests", "frFR", user.id);
     expect(await recentRuns("deDE", 10)).toEqual([]);
     expect(await recentRuns("frFR", 10)).toHaveLength(1);
+  });
+
+  it("lists only the asked language's runs when a team holds several", async () => {
+    const moved = await unowned("esES");
+    await db().query(`insert into "team_language" ("teamId", "lang") values ($1, 'esES')`, [fr.team]);
+    forgetTeams();
+    try {
+      await updateRun((await startRun("quests", "frFR", user.id)).id, { state: "done" });
+      await startRun("places", "esES", user.id);
+      expect((await recentRuns("frFR", 10)).map((r) => r.lang)).toEqual(["frFR"]);
+      expect((await recentRuns("esES", 10)).map((r) => r.lang)).toEqual(["esES"]);
+    } finally {
+      await db().query(`delete from "team_language" where "teamId" = $1 and "lang" = 'esES'`, [fr.team]);
+      await moved.restore();
+    }
+  });
+
+  it("lists nothing for a language no team owns", async () => {
+    const gone = await unowned("itIT");
+    try {
+      expect(await recentRuns("itIT", 10)).toEqual([]);
+    } finally {
+      await gone.restore();
+    }
   });
 
   it("records activity for the start and, once, for the finish", async () => {

@@ -7,7 +7,7 @@ import "server-only";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
-import { asTeamOf } from "@/lib/teams/store";
+import { asTeamOf, readAs } from "@/lib/teams/store";
 
 export type ReleaseState = "dispatching" | "running" | "done" | "failed";
 
@@ -103,11 +103,10 @@ export async function updateRun(
 }
 
 export async function recentRuns(lang: Lang, limit: number): Promise<ReleaseRun[]> {
-  return asTeamOf(lang, async (client) => {
-    const { rows } = await client.query<ReleaseRun>(
-      `select ${COLUMNS} from "release_run" order by "createdAt" desc limit $1`,
-      [limit],
-    );
-    return rows;
-  });
+  // A team can hold several languages, and a language no team owns reads as empty.
+  return readAs<ReleaseRun>(
+    lang,
+    `select ${COLUMNS} from "release_run" where "lang" = $1 order by "createdAt" desc limit $2`,
+    [lang, limit],
+  );
 }
