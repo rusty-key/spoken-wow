@@ -5,6 +5,7 @@ import "server-only";
 
 import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
+import { addGrants, userByEmail } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
 
@@ -18,35 +19,43 @@ export type TeamSummary = {
   members: { userId: string; email: string; name: string | null; lang: Lang; capability: Capability }[];
 };
 
-/** A slug, an admin email or a hand-over the store refuses; the message is fit to show. */
-export class TeamInputError extends Error {
-  constructor(message: string) {
+/**
+ * A refusal whose message is fit to show. 409 is a language with a running regeneration job,
+ * which cannot move because the job would commit under the old team; 400 is anything else
+ * the store refuses.
+ */
+export class TeamError extends Error {
+  constructor(
+    message: string,
+    readonly status: 400 | 409 = 400,
+  ) {
     super(message);
-    this.name = "TeamInputError";
-  }
-}
-
-/** A language with a running regeneration job cannot move: the job would commit under the old team. */
-export class TeamBusyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TeamBusyError";
+    this.name = "TeamError";
   }
 }
 
 /** The same shape the "team"."slug" check enforces. */
 const SLUG = /^[a-z][a-z0-9-]{1,40}$/;
 
-export async function listTeams(): Promise<TeamSummary[]> {
+/** Every team, or only the one with id `only`. */
+export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
+  const id = [only ?? null];
   const [teams, langs, members] = await Promise.all([
-    query<{ id: TeamId; slug: string; name: string }>(`select "id", "slug", "name" from "team" order by "slug"`),
+    query<{ id: TeamId; slug: string; name: string }>(
+      `select "id", "slug", "name" from "team" where $1::uuid is null or "id" = $1 order by "slug"`,
+      id,
+    ),
     query<{ teamId: TeamId; lang: Lang }>(
-      `select "teamId", "lang" from "team_language" where "privileged" order by "lang"`,
+      `select "teamId", "lang" from "team_language"
+        where "privileged" and ($1::uuid is null or "teamId" = $1) order by "lang"`,
+      id,
     ),
     query<TeamSummary["members"][number] & { teamId: TeamId }>(
       `select m."teamId", m."userId", u."email", u."name", m."lang", m."capability"
          from "team_member" m join "user" u on u."id" = m."userId"
+        where $1::uuid is null or m."teamId" = $1
         order by u."email", m."lang", m."capability"`,
+      id,
     ),
   ]);
   return teams.map((team) => ({
@@ -68,31 +77,51 @@ export async function createTeam(
   actorId: string,
 ): Promise<{ id: TeamId; adminId: string | null }> {
   if (!SLUG.test(input.slug)) {
-    throw new TeamInputError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
+    throw new TeamError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
   }
-  const team = await withTeam(ALL_TEAMS, async (client) => {
-    let adminId: string | null = null;
-    if (input.adminEmail !== null) {
-      const { rows } = await client.query<{ id: string }>(
-        `select "id" from "user" where lower("email") = lower($1)`,
-        [input.adminEmail],
-      );
-      if (!rows[0]) throw new TeamInputError(`No user has the email ${input.adminEmail}.`);
-      adminId = rows[0].id;
-    }
+  let adminId: string | null = null;
+  if (input.adminEmail !== null) {
+    const admin = await userByEmail(input.adminEmail);
+    if (!admin) throw new TeamError(`No user has the email ${input.adminEmail}.`);
+    adminId = admin.id;
+  }
+  const id = await withTeam(ALL_TEAMS, async (client) => {
     try {
       const { rows } = await client.query<{ id: TeamId }>(`select new_team($1, $2) as "id"`, [input.slug, input.name]);
-      return { id: rows[0].id, adminId };
+      return rows[0].id;
     } catch (error) {
-      // new_team raises 23505 on a taken slug; 23514 is the slug check, which SLUG mirrors.
-      const code = (error as { code?: string }).code;
-      if (code === "23505") throw new TeamInputError(`A team is already called ${input.slug}.`);
-      if (code === "23514") throw new TeamInputError(`The slug ${input.slug} is not available.`);
+      // new_team raises 23505 on a taken slug.
+      if ((error as { code?: string }).code === "23505") throw new TeamError(`A team is already called ${input.slug}.`);
       throw error;
     }
   });
   await recordActivity({ kind: "team.created", lang: null, actorId, subject: input.slug, detail: { slug: input.slug } });
-  return team;
+  return { id, adminId };
+}
+
+/**
+ * A new team, handed `langs` one by one, with its admin granted in each language that moved.
+ * A refusal part way keeps the team and what already moved, so its message says what did.
+ */
+export async function createTeamWithLangs(
+  input: { slug: string; name: string; adminEmail: string | null; langs: readonly Lang[] },
+  actorId: string,
+): Promise<{ team: TeamSummary; moved: Lang[] }> {
+  const { id, adminId } = await createTeam(input, actorId);
+  const moved: Lang[] = [];
+  for (const lang of input.langs) {
+    try {
+      await handOver(lang, id, actorId);
+    } catch (error) {
+      if (!(error instanceof TeamError)) throw error;
+      const done = moved.length ? `moved ${moved.join(", ")}; ` : "";
+      throw new TeamError(`${done}${lang} refused: ${error.message}`, error.status);
+    }
+    moved.push(lang);
+    if (adminId) await addGrants(adminId, lang, ["admin"], actorId);
+  }
+  const [team] = await listTeams(id);
+  return { team, moved };
 }
 
 export async function renameTeam(team: TeamId, name: string, actorId: string): Promise<void> {
@@ -103,7 +132,7 @@ export async function renameTeam(team: TeamId, name: string, actorId: string): P
     );
     return rows[0]?.slug;
   });
-  if (!slug) throw new TeamInputError("No such team.");
+  if (!slug) throw new TeamError("No such team.");
   await recordActivity({ kind: "team.renamed", lang: null, actorId, subject: slug, detail: { name } });
 }
 
@@ -121,10 +150,12 @@ export async function handOver(lang: Lang, team: TeamId, actorId: string): Promi
       return { rows: rows[0].moved, from: slugs[0].from ?? "", to: slugs[0].to ?? "" };
     });
   } catch (error) {
-    // move_team_lang raises with a message for each refusal; P0001 is a plain `raise exception`.
-    if ((error as { code?: string }).code !== "P0001") throw error;
-    const message = (error as Error).message;
-    throw /running regeneration job/.test(message) ? new TeamBusyError(message) : new TeamInputError(message);
+    // move_team_lang raises object_in_use (55006) for a running job, and a plain `raise
+    // exception` (P0001) for every other refusal.
+    const code = (error as { code?: string }).code;
+    if (code === "55006") throw new TeamError((error as Error).message, 409);
+    if (code === "P0001") throw new TeamError((error as Error).message);
+    throw error;
   }
   // Before the log row, which takes its team from the memo: it belongs to the new owner.
   forgetTeams();

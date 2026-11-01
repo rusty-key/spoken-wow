@@ -7,27 +7,28 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { asSystem } from "@/lib/teams/testing";
+import { asSystem, testUser } from "@/lib/teams/testing";
 
 import { addGrants, grantsOf, listGrants, removeGrant } from "./store";
 
-const GRANTEE = `test-grantee-${Math.random().toString(36).slice(2, 10)}`;
-const GRANTER = `test-granter-${Math.random().toString(36).slice(2, 10)}`;
+let grantee: Awaited<ReturnType<typeof testUser>>;
+let granter: Awaited<ReturnType<typeof testUser>>;
+let GRANTEE: string;
+let GRANTER: string;
 
 beforeAll(async () => {
-  for (const id of [GRANTEE, GRANTER]) {
-    await asSystem.query(
-      `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
-      [id, `${id}@example.invalid`],
-    );
-  }
+  grantee = await testUser("test-grantee");
+  granter = await testUser("test-granter");
+  GRANTEE = grantee.id;
+  GRANTER = granter.id;
 });
 
 afterAll(async () => {
   await asSystem.query(`delete from "activity" where "subject" = $1`, [GRANTEE]);
   await asSystem.query(`delete from "language_grant" where "userId" = $1`, [GRANTEE]);
   await asSystem.query(`delete from "team_member" where "userId" = $1`, [GRANTEE]);
-  await asSystem.query(`delete from "user" where "id" = any($1::text[])`, [[GRANTEE, GRANTER]]);
+  await grantee.cleanup();
+  await granter.cleanup();
   await closeDb();
 });
 

@@ -9,23 +9,21 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, inTransaction, withTeam } from "@/lib/db";
 
-import { createTeam, handOver, listTeams, liveTakeCounts, renameTeam, TeamBusyError, TeamInputError } from "./admin";
+import { createTeam, handOver, listTeams, liveTakeCounts, renameTeam, TeamError } from "./admin";
 import { adoptLang, forgetTeams, teamOf } from "./store";
-import { asSystem, systemRows, unowned } from "./testing";
+import { asSystem, dropTeam, runningJob, systemRows, testUser, unowned } from "./testing";
 
 let tag: string;
+let user: Awaited<ReturnType<typeof testUser>>;
 let actor: string;
 let was: string;
 let made: string[];
 
 beforeEach(async () => {
   tag = randomUUID().slice(0, 8);
-  actor = `test-admin-${tag}`;
+  user = await testUser("test-admin");
+  actor = user.id;
   made = [];
-  await asSystem.query(
-    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
-    [actor, `${actor}@example.invalid`],
-  );
   forgetTeams();
   was = await teamOf("deDE");
 });
@@ -35,18 +33,14 @@ afterEach(async () => {
   const now = (await systemRows<{ team: string }>(`select team_of_lang('deDE') as "team"`))[0].team;
   if (now !== was) await asSystem.query(`select move_team_lang('deDE', $1)`, [was]);
   await asSystem.query(`delete from "activity" where "actorId" = $1`, [actor]);
-  for (const team of made) {
-    for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal"]) {
-      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-    }
-    await asSystem.query(`delete from "team_language" where "teamId" = $1`, [team]);
-    await asSystem.query(`delete from "team" where "id" = $1`, [team]);
-  }
-  await asSystem.query(`delete from "user" where "id" = $1`, [actor]);
+  for (const team of made) await dropTeam(team);
+  await user.cleanup();
   forgetTeams();
 });
 
 afterAll(closeDb);
+
+const refused = (status: 400 | 409) => (error: unknown) => error instanceof TeamError && error.status === status;
 
 async function newTeam(slug = `t-${tag}`): Promise<string> {
   const { id: team } = await createTeam({ slug, name: `Team ${tag}`, adminEmail: null }, actor);
@@ -56,12 +50,12 @@ async function newTeam(slug = `t-${tag}`): Promise<string> {
 
 describe("createTeam", () => {
   it("refuses a slug that is not lowercase letters, digits and dashes", async () => {
-    await expect(createTeam({ slug: "Bad Slug", name: "x", adminEmail: null }, actor)).rejects.toBeInstanceOf(TeamInputError);
+    await expect(createTeam({ slug: "Bad Slug", name: "x", adminEmail: null }, actor)).rejects.toSatisfy(refused(400));
   });
 
   it("refuses a slug already taken", async () => {
     await newTeam();
-    await expect(createTeam({ slug: `t-${tag}`, name: "again", adminEmail: null }, actor)).rejects.toBeInstanceOf(TeamInputError);
+    await expect(createTeam({ slug: `t-${tag}`, name: "again", adminEmail: null }, actor)).rejects.toSatisfy(refused(400));
   });
 
   it("has new_team raise on a taken slug rather than hand that team back", async () => {
@@ -72,7 +66,7 @@ describe("createTeam", () => {
   it("refuses an admin email nobody has", async () => {
     await expect(
       createTeam({ slug: `t-${tag}`, name: "x", adminEmail: "nobody@example.invalid" }, actor),
-    ).rejects.toBeInstanceOf(TeamInputError);
+    ).rejects.toSatisfy(refused(400));
     expect(await systemRows(`select 1 from "team" where "slug" = $1`, [`t-${tag}`])).toHaveLength(0);
   });
 
@@ -111,25 +105,16 @@ describe("handOver", () => {
 
   it("refuses English", async () => {
     const team = await newTeam();
-    await expect(handOver("enUS", team, actor)).rejects.toBeInstanceOf(TeamInputError);
+    await expect(handOver("enUS", team, actor)).rejects.toSatisfy(refused(400));
   });
 
   it("refuses while a job of the language is running", async () => {
     const team = await newTeam();
-    const batch = await systemRows<{ id: string }>(
-      `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, 'deDE', $2) returning "id"`,
-      [`admin-${tag}`, was],
-    );
-    await asSystem.query(
-      `insert into "regeneration_job" ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "lang", "teamId")
-       values ($1, $2, 'busy.mp3', '', '', 1, 'running', 'deDE', $3)`,
-      [batch[0].id, `g:${tag}`, was],
-    );
+    const job = await runningJob("deDE", was);
     try {
-      await expect(handOver("deDE", team, actor)).rejects.toBeInstanceOf(TeamBusyError);
+      await expect(handOver("deDE", team, actor)).rejects.toSatisfy(refused(409));
     } finally {
-      await asSystem.query(`delete from "regeneration_job" where "batchId" = $1`, [batch[0].id]);
-      await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batch[0].id]);
+      await job.cleanup();
     }
   });
 });

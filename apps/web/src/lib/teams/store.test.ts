@@ -3,16 +3,18 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { recordActivity } from "@/lib/activity/store";
 import { closeDb, db, inTransaction } from "@/lib/db";
-import { asSystem } from "@/lib/teams/testing";
+import { asSystem, dropTeam, testUser } from "@/lib/teams/testing";
 import { setEnabled } from "@/lib/languages/store";
 import { createReport } from "@/lib/reports/store";
 
 import { adoptEveryLang, byTeam, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
 
-const USER = `test-teams-${Math.random().toString(36).slice(2, 10)}`;
 // A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
 const NEW_LANG = "deDE";
-const IP = `${USER}-ip`;
+const IP = `test-teams-${Math.random().toString(36).slice(2, 10)}-ip`;
+let user: Awaited<ReturnType<typeof testUser>>;
+// Set once the user exists; the first cleanup, before then, matches no activity row.
+let USER = "";
 
 async function englishTeam(): Promise<string> {
   const { rows } = await asSystem.query(`select "id" from "team" where "slug" = 'english'`);
@@ -44,12 +46,7 @@ async function cleanup() {
     `select "id" from "team" where "slug" ~ $1 and "id" is distinct from $2`,
     [`^${NEW_LANG.toLowerCase()}-[0-9]+$`, was ?? null],
   );
-  for (const { id } of made) {
-    for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal"]) {
-      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [id]);
-    }
-    await asSystem.query(`delete from "team" where "id" = $1`, [id]);
-  }
+  for (const { id } of made) await dropTeam(id);
   forgetTeams();
 }
 
@@ -57,10 +54,8 @@ beforeAll(async () => {
   const { rows } = await asSystem.query<{ team: string | null }>(`select team_of_lang($1) as "team"`, [NEW_LANG]);
   was = rows[0].team ?? undefined;
   await cleanup();
-  await asSystem.query(
-    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
-    [USER, `${USER}@example.invalid`],
-  );
+  user = await testUser("test-teams");
+  USER = user.id;
 });
 
 beforeEach(() => forgetTeams());
@@ -71,7 +66,7 @@ afterAll(async () => {
   if (was) await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was, NEW_LANG]);
   else await asSystem.query(`select adopt_lang($1)`, [NEW_LANG]);
   forgetTeams();
-  await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
+  await user.cleanup();
   await closeDb();
 });
 

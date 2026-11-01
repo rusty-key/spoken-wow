@@ -79,7 +79,8 @@ $$;
 
 -- Hands p_lang, with every row of it, from its privileged team to p_team, and returns the number
 -- of rows moved. Security invoker, so the caller's row-level security applies: the app calls it
--- as ALL_TEAMS.
+-- as ALL_TEAMS. A running job is refused as object_in_use (55006), which the app answers with a
+-- 409; every other refusal is a plain exception (P0001).
 create function "move_team_lang"(p_lang text, p_team uuid) returns integer
 language plpgsql security invoker as $$
 declare
@@ -109,7 +110,8 @@ begin
            where "lang" = p_lang and "state" in ('pending', 'running')
              for update) j;
   if v_running > 0 then
-    raise exception '% has % running regeneration job(s); move it once they finish', p_lang, v_running;
+    raise exception '% has % running regeneration job(s); move it once they finish', p_lang, v_running
+      using errcode = '55006';
   end if;
 
   -- A new team voices the language exactly as before.
@@ -179,10 +181,9 @@ begin
 end
 $$;
 
-create temp table "team_made" ("teamId" uuid not null, "lang" text not null) on commit drop;
-
 -- EVERY LANGUAGE ITS OWN TEAM. Each language the english team holds but English moves to a team
--- of its own, with its rows.
+-- of its own, with its rows. The site owner admins each team made here, for its language (user,
+-- 2026-11-01).
 do $$
 declare
   v_langs text[];
@@ -199,32 +200,34 @@ begin
     v_i := v_i + 1;
     v_team := new_team(free_team_slug(lower(v_lang)), v_lang);
     v_rows := v_rows + move_team_lang(v_lang, v_team);
-    insert into "team_made" values (v_team, v_lang);
+    insert into "team_member" ("teamId", "userId", "lang", "capability")
+    select v_team, u."id", v_lang, 'admin' from "user" u where u."email" = 'x@rusty.one'
+    on conflict do nothing;
     raise notice '% / % %', v_i, cardinality(v_langs), v_lang;
   end loop;
   raise notice '0091: % languages moved off the english team, % rows moved', cardinality(v_langs), v_rows;
 end
 $$;
 
--- The audio grants, now that every language's team is final.
-insert into "team_member" ("teamId", "userId", "lang", "capability", "grantedAt", "grantedBy")
-select team_of_lang(g."lang"), g."userId", g."lang", g."capability", g."grantedAt", g."grantedBy"
-  from "language_grant" g
- where g."capability" <> 'edit' and team_of_lang(g."lang") is not null
-on conflict do nothing;
-
--- The site owner admins every team made here, for its language (user, 2026-11-01).
-insert into "team_member" ("teamId", "userId", "lang", "capability")
-select m."teamId", u."id", m."lang", 'admin'
-  from "team_made" m
- cross join "user" u
- where u."email" = 'x@rusty.one'
-on conflict do nothing;
-
+-- The audio grants, now that every language's team is final. A grant in a language with no team
+-- has nowhere to go and is only counted.
 do $$
+declare
+  v_stranded integer;
 begin
+  with "audio" as (
+    select g."userId", g."lang", g."capability", g."grantedAt", g."grantedBy", tl."teamId"
+      from "language_grant" g
+      left join "team_language" tl on tl."lang" = g."lang" and tl."privileged"
+     where g."capability" <> 'edit'
+  ), "copied" as (
+    insert into "team_member" ("teamId", "userId", "lang", "capability", "grantedAt", "grantedBy")
+    select "teamId", "userId", "lang", "capability", "grantedAt", "grantedBy" from "audio"
+     where "teamId" is not null
+    on conflict do nothing
+  )
+  select count(*) filter (where "teamId" is null) into v_stranded from "audio";
   raise notice '0091: % team_member rows, % audio grants in a language with no team, not copied',
-    (select count(*) from "team_member"),
-    (select count(*) from "language_grant" g where g."capability" <> 'edit' and team_of_lang(g."lang") is null);
+    (select count(*) from "team_member"), v_stranded;
 end
 $$;

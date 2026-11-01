@@ -7,13 +7,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { closeDb } from "@/lib/db";
 import { forgetTeams, teamOf } from "@/lib/teams/store";
-import { asSystem, systemRows } from "@/lib/teams/testing";
+import { asSystem, dropTeam, runningJob, systemRows, testUser } from "@/lib/teams/testing";
 
-const who = vi.hoisted(() => ({
-  role: "admin" as string | null,
-  signedOut: false,
-  id: `test-teams-route-${Math.random().toString(36).slice(2, 10)}`,
-}));
+const who = vi.hoisted(() => ({ role: "admin" as string | null, signedOut: false, id: "" }));
 
 vi.mock("@/lib/session", () => ({
   currentSession: async () => who.signedOut ? null : ({ user: { id: who.id, role: who.role } }),
@@ -26,16 +22,16 @@ import { GET, POST } from "./route";
 const tag = Math.random().toString(36).slice(2, 8);
 let was: string;
 let made: string[];
+let user: Awaited<ReturnType<typeof testUser>>;
 
 const json = (method: string, body: unknown) =>
   new Request("http://x/api/teams", { method, body: JSON.stringify(body) });
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
+const list = () => GET(new Request("http://x/api/teams"));
 
 beforeAll(async () => {
-  await asSystem.query(
-    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Teams', $2, false)`,
-    [who.id, `${who.id}@example.invalid`],
-  );
+  user = await testUser("test-teams-route");
+  who.id = user.id;
 });
 
 beforeEach(async () => {
@@ -50,18 +46,12 @@ afterEach(async () => {
   const now = (await systemRows<{ team: string }>(`select team_of_lang('deDE') as "team"`))[0].team;
   if (now !== was) await asSystem.query(`select move_team_lang('deDE', $1)`, [was]);
   await asSystem.query(`delete from "activity" where "actorId" = $1`, [who.id]);
-  for (const team of made) {
-    for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal"]) {
-      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-    }
-    await asSystem.query(`delete from "team_language" where "teamId" = $1`, [team]);
-    await asSystem.query(`delete from "team" where "id" = $1`, [team]);
-  }
+  for (const team of made) await dropTeam(team);
   forgetTeams();
 });
 
 afterAll(async () => {
-  await asSystem.query(`delete from "user" where "id" = $1`, [who.id]);
+  await user.cleanup();
   await closeDb();
 });
 
@@ -74,7 +64,7 @@ async function post(body: unknown): Promise<Response> {
 describe("teams routes", () => {
   it("answers 403 to a member on all four", async () => {
     who.role = "member";
-    expect((await GET()).status).toBe(403);
+    expect((await list()).status).toBe(403);
     expect((await POST(json("POST", { slug: `m-${tag}`, name: "M", langs: [] }))).status).toBe(403);
     expect((await PATCH(json("PATCH", { name: "x" }), ctx("1"))).status).toBe(403);
     expect((await PUT(json("PUT", { lang: "deDE" }), ctx("1"))).status).toBe(403);
@@ -83,20 +73,12 @@ describe("teams routes", () => {
 
   it("answers 403 to a signed-out caller", async () => {
     who.signedOut = true;
-    expect((await GET()).status).toBe(403);
+    expect((await list()).status).toBe(403);
     expect((await POST(json("POST", { slug: `o-${tag}`, name: "O", langs: [] }))).status).toBe(403);
   });
 
   it("keeps what moved and grants admin there when a later language is refused", async () => {
-    const batch = await systemRows<{ id: string }>(
-      `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, 'frFR', $2) returning "id"`,
-      [`part-${tag}`, await teamOf("frFR")],
-    );
-    await asSystem.query(
-      `insert into "regeneration_job" ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "lang", "teamId")
-       values ($1, $2, 'busy.mp3', '', '', 1, 'running', 'frFR', $3)`,
-      [batch[0].id, `g:${tag}`, await teamOf("frFR")],
-    );
+    const job = await runningJob("frFR", await teamOf("frFR"));
     try {
       const response = await POST(json("POST", { slug: `part-${tag}`, name: "P", langs: ["deDE", "frFR"], adminEmail: `${who.id}@example.invalid` }));
       const team = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = $1`, [`part-${tag}`]))[0].id;
@@ -111,8 +93,7 @@ describe("teams routes", () => {
       );
       expect(grants.map((g) => g.capability)).toEqual(["admin"]);
     } finally {
-      await asSystem.query(`delete from "regeneration_job" where "batchId" = $1`, [batch[0].id]);
-      await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batch[0].id]);
+      await job.cleanup();
     }
   });
 
@@ -126,7 +107,7 @@ describe("teams routes", () => {
 
   it("lists the teams", async () => {
     await post({ slug: `list-${tag}`, name: "L", langs: [] });
-    const { teams } = (await (await GET()).json()) as { teams: { slug: string }[] };
+    const { teams } = (await (await list()).json()) as { teams: { slug: string }[] };
     expect(teams.some((team) => team.slug === `list-${tag}`)).toBe(true);
   });
 
@@ -178,20 +159,11 @@ describe("teams routes", () => {
 
   it("answers 409 while a job of the language runs", async () => {
     const id = ((await (await post({ slug: `busy-${tag}`, name: "B", langs: [] })).json()) as { team: { id: string } }).team.id;
-    const batch = await systemRows<{ id: string }>(
-      `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, 'deDE', $2) returning "id"`,
-      [`route-${tag}`, was],
-    );
-    await asSystem.query(
-      `insert into "regeneration_job" ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "lang", "teamId")
-       values ($1, $2, 'busy.mp3', '', '', 1, 'running', 'deDE', $3)`,
-      [batch[0].id, `g:${tag}`, was],
-    );
+    const job = await runningJob("deDE", was);
     try {
       expect((await PUT(json("PUT", { lang: "deDE" }), ctx(id))).status).toBe(409);
     } finally {
-      await asSystem.query(`delete from "regeneration_job" where "batchId" = $1`, [batch[0].id]);
-      await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batch[0].id]);
+      await job.cleanup();
     }
   });
 

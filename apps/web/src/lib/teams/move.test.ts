@@ -10,18 +10,18 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { closeDb, db } from "@/lib/db";
 
 import { forgetTeams } from "./store";
-import { asSystem, ownTeam, systemRows } from "./testing";
+import { asSystem, dropTeam, ownTeam, runningJob, systemRows, testUser } from "./testing";
 
-/** Tables the target may end up with rows in, children first. */
+/** Tables the target may end up with rows in beyond what dropTeam deletes, children first. */
 const TARGET_ROWS = [
   "line_issue_line", "line_issue", "voice_sample", "voice_clone", "report", "take", "regeneration_job",
-  "regeneration_batch", "voice_assignment", "voice", "generation_setting", "queue_dismissal",
+  "regeneration_batch",
 ];
 
 let source: Awaited<ReturnType<typeof ownTeam>>;
 let target: string;
 let tag: string;
-let user: string;
+let user: Awaited<ReturnType<typeof testUser>>;
 
 async function teamOfLang(lang: string): Promise<string | null> {
   return (await systemRows<{ team: string | null }>(`select team_of_lang($1) as "team"`, [lang]))[0].team;
@@ -33,11 +33,7 @@ function move(lang: string, team: string) {
 
 beforeEach(async () => {
   tag = randomUUID().slice(0, 8);
-  user = `test-move-${tag}`;
-  await asSystem.query(
-    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
-    [user, `${user}@example.invalid`],
-  );
+  user = await testUser("test-move");
   source = await ownTeam("deDE");
   // new_team, not ownTeam: a target with no roster is what the copy is for.
   const { rows } = await asSystem.query<{ id: string }>(`select new_team($1, $1) as "id"`, [`test-move-${tag}`]);
@@ -46,14 +42,13 @@ beforeEach(async () => {
 
 afterEach(async () => {
   for (const table of TARGET_ROWS) await asSystem.query(`delete from "${table}" where "teamId" = $1`, [target]);
-  await asSystem.query(`delete from "team_language" where "teamId" = $1`, [target]);
-  await asSystem.query(`delete from "team" where "id" = $1`, [target]);
+  await dropTeam(target);
   // A refused move leaves the seeded rows on the source team.
   for (const table of ["line_issue_line", "line_issue", "voice_sample", "voice_clone", "regeneration_job"]) {
     await asSystem.query(`delete from "${table}" where "teamId" = $1`, [source.team]);
   }
   await source.restore();
-  await asSystem.query(`delete from "user" where "id" = $1`, [user]);
+  await user.cleanup();
   forgetTeams();
 });
 
@@ -93,7 +88,7 @@ describe("move_team_lang", () => {
 
     await asSystem.query(
       `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'deDE', 'regenerate')`,
-      [team, user],
+      [team, user.id],
     );
 
     const { rows } = await move("deDE", target);
@@ -107,7 +102,7 @@ describe("move_team_lang", () => {
        union all select "teamId" from "line_issue" where "id" = $4
        union all select "teamId" from "line_issue_line" where "issueId" = $4
       union all select "teamId" from "team_member" where "userId" = $5`,
-      [take[0].id, report[0].id, `move-${tag}`, issue[0].id, user],
+      [take[0].id, report[0].id, `move-${tag}`, issue[0].id, user.id],
     );
     expect(teams.map((row) => row.team)).toEqual(Array(7).fill(target));
     expect(await teamOfLang("deDE")).toBe(target);
@@ -128,20 +123,12 @@ describe("move_team_lang", () => {
   });
 
   it("refuses while a job runs", async () => {
-    const batch = await systemRows<{ id: string }>(
-      `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, 'deDE', $2) returning "id"`,
-      [`move-${tag}`, source.team],
-    );
-    await asSystem.query(
-      `insert into "regeneration_job" ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "lang", "teamId")
-       values ($1, 'g:move', 'move.mp3', '', '', 1, 'running', 'deDE', $2)`,
-      [batch[0].id, source.team],
-    );
+    const job = await runningJob("deDE", source.team);
 
-    await expect(move("deDE", target)).rejects.toThrow(/running/);
+    await expect(move("deDE", target)).rejects.toMatchObject({ code: "55006", message: expect.stringMatching(/running/) });
     expect(await teamOfLang("deDE")).toBe(source.team);
 
-    await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batch[0].id]);
+    await job.cleanup();
   });
 
   it("refuses enUS", async () => {
@@ -179,10 +166,7 @@ describe("adopt_lang", () => {
   async function drop() {
     const team = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'qaqa'`))[0]?.id;
     if (!team) return;
-    for (const table of ["voice_assignment", "voice", "generation_setting", "queue_dismissal"]) {
-      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-    }
-    await asSystem.query(`delete from "team" where "id" = $1`, [team]);
+    await dropTeam(team);
   }
 
   afterEach(drop);
