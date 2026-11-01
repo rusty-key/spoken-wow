@@ -39,11 +39,8 @@ beforeEach(() => forgetTeams());
 
 afterAll(async () => {
   await cleanup();
-  // Back on the english team, where vitest.teams.ts put it, for the suites that write German.
-  await asSystem.query(
-    `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'`,
-    [NEW_LANG],
-  );
+  // Back on its own team, where migration 0091 put it, for the suites that write German.
+  await asSystem.query(`select adopt_lang($1)`, [NEW_LANG]);
   forgetTeams();
   await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
   await closeDb();
