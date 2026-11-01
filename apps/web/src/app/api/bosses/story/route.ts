@@ -2,7 +2,7 @@
  * A boss's story in one language, read, rewritten and restored.
  *
  * /api/places/lore's contract with one text in place of full and short, and the same
- * reasons behind it: guarded by `edit` in `?lang=`, and editing never regenerates -- the new
+ * reasons behind it: guarded by `text` in `?lang=`, and editing never regenerates -- the new
  * text hashes differently from the live take, so the row reads stale until somebody pays to
  * voice it.
  *
@@ -26,7 +26,7 @@ function failed(error: unknown): Response {
 }
 
 export async function GET(request: Request) {
-  const { lang, denied } = await requireIn(request, "edit");
+  const { lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
 
   const lineId = new URL(request.url).searchParams.get("lineId");
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const { session, lang, denied } = await requireIn(request, "edit");
+  const { session, lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -84,7 +84,7 @@ export async function PUT(request: Request) {
 
 /** Puts an earlier version of the story back. */
 export async function POST(request: Request) {
-  const { session, lang, denied } = await requireIn(request, "edit");
+  const { session, lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as {

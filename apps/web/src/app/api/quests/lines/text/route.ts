@@ -2,7 +2,7 @@
  * A quest line's text in a language other than English: its history, a new version, or an
  * earlier one put back. English is rewritten through /api/quests/lines/override.
  *
- * All three need `edit` in the language (`?lang=`), which is what a translator holds.
+ * All three need `text` in the language (`?lang=`), which is what a translator holds.
  */
 import { requireIn } from "@/lib/generation/authz";
 import { BASE_LANG } from "@/lib/lang";
@@ -38,7 +38,7 @@ function variantOf(value: unknown): number | null {
 }
 
 export async function GET(request: Request) {
-  const { lang, denied } = await requireIn(request, "edit");
+  const { lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
   if (lang === BASE_LANG) return englishRefused();
 
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const { session, lang, denied } = await requireIn(request, "edit");
+  const { session, lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
   if (lang === BASE_LANG) return englishRefused();
 
@@ -91,7 +91,7 @@ export async function PUT(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { session, lang, denied } = await requireIn(request, "edit");
+  const { session, lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
   if (lang === BASE_LANG) return englishRefused();
 

@@ -34,6 +34,7 @@ type Props = {
   canRegenerate: boolean;
   /** May write this page's text in the page's language, apart from regenerating it. */
   canEdit: boolean;
+  canTriage: boolean;
   /**
    * How many rows this book occupies here, or 0 when this is not its first row.
    *
@@ -55,7 +56,7 @@ type Props = {
   onRestored: (line: ResultLine, version: number) => void;
   /** Rewrite what this page says. Editor and up. */
   onEditText: (line: ResultLine) => void;
-  /** Name the book's owner in the page's language; null on the English site or without `edit`. */
+  /** Name the book's owner in the page's language; null on the English site or without `text`. */
   onRename: ((line: ResultLine) => void) | null;
   /** Say this take is fine as it stands, despite a pronunciation having moved under it. */
   onClearDirty: (line: ResultLine) => void;
@@ -83,6 +84,7 @@ export function PageRow({
   onRecordingChanged,
   canRegenerate,
   canEdit,
+  canTriage,
   groupRows,
   state,
   onPlay,
@@ -276,7 +278,7 @@ export function PageRow({
           source="readables"
           lineId={line.id}
           count={line.reportsOpen}
-          canTriage={canEdit}
+          canTriage={canTriage}
         />
         {/* Outside the canRegenerate gate, deliberately: reporting is what a reader who
             cannot sign in has, and /api/reports is unauthenticated for the same reason.

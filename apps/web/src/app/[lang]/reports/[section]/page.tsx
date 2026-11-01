@@ -50,7 +50,7 @@ export default async function Page({
   // learning the page exists, and these rows hold prose written by strangers. Per language:
   // whoever may fix a language's text triages what is reported about it.
   const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
+  if (!session || !(can(viewer, "text", lang) || can(viewer, "edit", lang))) notFound();
 
   const { view: rawView, category: rawCategory, q: rawQ, dir: rawDir, page: rawPage } = await searchParams;
   const view: StatusView = isStatusView(rawView) ? rawView : "open";

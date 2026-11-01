@@ -20,7 +20,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const session = await auth.api.getSession({ headers: await headers() });
   // The same gate as /reports: these are the same reports, a card at a time.
   const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
+  if (!session || !(can(viewer, "text", lang) || can(viewer, "edit", lang))) notFound();
 
   const [open, skipped] = await Promise.all([
     listReports("open", "all", "all", null, lang),

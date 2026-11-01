@@ -76,8 +76,8 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   // editing -- reading a report and fixing the text it is about are one job.
   const may = useCan();
   const canRegenerate = may("regenerate");
-  const canEdit = may("edit");
-  const canTriage = canEdit;
+  const canEdit = may("text");
+  const canTriage = may("text") || may("edit");
   // A line's name in this language, written as its own version in entity_name, and the line
   // to refresh once it is saved: a boss is named by its id, not by its line's.
   const [naming, setNaming] = useState<{ subject: TranslateSubject; lineId: string } | null>(null);

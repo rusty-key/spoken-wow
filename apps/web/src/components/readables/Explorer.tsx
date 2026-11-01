@@ -61,7 +61,8 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   // these is checked again server-side; nothing here is an access control.
   const may = useCan();
   const canRegenerate = may("regenerate");
-  const canEdit = may("edit");
+  const canEdit = may("text");
+  const canTriage = may("text") || may("edit");
   // The book owner's name in this language, written as its own version in entity_name.
   const [naming, setNaming] = useState<TranslateSubject | null>(null);
 
@@ -494,7 +495,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           onQuerySubmit={submitQuery}
           onChange={updateFilters}
           onClearAll={() => writeQuery(new URLSearchParams())}
-          canTriage={canEdit}
+          canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={result?.recordable === true}
         />
@@ -570,6 +571,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
                 onRecordingChanged={(line) => void refreshRows([line.id])}
                 canRegenerate={canRegenerate}
                 canEdit={canEdit}
+                canTriage={canTriage}
                 rowStates={rowStates}
                 onPlay={play}
                 onClearDirty={(line) => clearDirty([line.file])}

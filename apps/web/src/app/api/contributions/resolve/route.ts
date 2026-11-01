@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   // permission, so a member learns nothing about which ids exist.
   const locale = await contributionLocale(id);
   const lang = isLang(locale) ? locale : BASE_LANG;
-  const { session, denied } = await requireCapability("edit", lang);
+  const { session, denied } = await requireCapability("text", lang);
   if (denied) return denied;
   if (locale === null) {
     return Response.json({ error: "unknown contribution" }, { status: 404 });

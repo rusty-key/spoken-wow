@@ -248,7 +248,7 @@ export default async function Page({
   // rows hold text and identifying details a stranger pasted in. Per language, because
   // accepting a contribution writes that language's text.
   const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
+  if (!session || !can(viewer, "text", lang)) notFound();
 
   // Every envelope is in the language of the client that wrote it, and no client runs in this
   // one: the queue is empty by construction, not because nobody has sent anything yet.

@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   for (const locale of new Set(locales.values())) {
     const lang = isLang(locale) ? locale : BASE_LANG;
     if (allowed.has(lang)) continue;
-    const { session, denied } = await requireCapability("edit", lang);
+    const { session, denied } = await requireCapability("text", lang);
     allowed.set(lang, !denied);
     if (session) userId = session.user.id;
     // As the single route: rejecting a written row ignores its line.
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   }
   // Nothing here the viewer may edit: answered as the single route answers it.
   if (userId === null) {
-    const { denied } = await requireCapability("edit", BASE_LANG);
+    const { denied } = await requireCapability("text", BASE_LANG);
     if (denied) return denied;
     return Response.json({ results: Object.fromEntries(ids.map((id) => [id, { ok: false, error: UNKNOWN }])) });
   }

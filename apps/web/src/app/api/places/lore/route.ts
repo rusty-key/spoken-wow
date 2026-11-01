@@ -34,7 +34,7 @@ function failed(error: unknown): Response {
 }
 
 export async function GET(request: Request) {
-  const { lang, denied } = await requireIn(request, "edit");
+  const { lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
 
   const lineId = new URL(request.url).searchParams.get("lineId");
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const { session, lang, denied } = await requireIn(request, "edit");
+  const { session, lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -98,7 +98,7 @@ export async function PUT(request: Request) {
 
 /** Puts an earlier version of the text back. */
 export async function POST(request: Request) {
-  const { session, lang, denied } = await requireIn(request, "edit");
+  const { session, lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as {

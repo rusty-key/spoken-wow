@@ -22,7 +22,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
   if (!isSource(section)) notFound();
   const session = await auth.api.getSession({ headers: await headers() });
   const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
+  if (!session || !(can(viewer, "text", lang) || can(viewer, "edit", lang))) notFound();
 
   const [reports, skipped] = await Promise.all([
     listReports("open", section, "all", null, lang),
@@ -38,7 +38,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
       canRegenerate={canRegenerate}
       // English quest text is rewritten through an override, which spends nothing itself but
       // is guarded as regeneration is (OverrideDialog); every other text is an edit.
-      canEditText={section === "quests" && lang === BASE_LANG ? canRegenerate : true}
+      canEditText={section === "quests" && lang === BASE_LANG ? canRegenerate : can(viewer, "text", lang)}
       showNpcPage={isAdmin(session.user.role)}
     />
   );

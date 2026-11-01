@@ -135,7 +135,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
   // LineRows and the answer is the same for all of them.
   const may = useCan();
   const showRegenerate = may("regenerate");
-  const canEdit = may("edit");
+  const canEdit = may("text");
+  const canTriage = may("text") || may("edit");
   // Ignoring hides a line from everyone and takes it out of the module, which is the reach
   // the generation settings have rather than the reach a rewrite has. Same gate as the API.
   const canConfigure = canConfigureGeneration(session?.user.role);
@@ -978,7 +979,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   onRecordingChanged={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
                   canRegenerate={showRegenerate}
                   canEdit={canEdit}
-                  canTriage={canEdit}
+                  canTriage={canTriage}
                   state={lineStates[line.lineId]}
                   blocked={blockedReason(line)}
                   takes={line.take?.takes ?? 0}

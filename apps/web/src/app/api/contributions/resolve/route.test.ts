@@ -15,8 +15,14 @@ import { asSystem } from "@/lib/teams/testing";
 /** resolvedBy has a foreign key, so resolving needs a user that exists (contributions/store.test.ts). */
 const RESOLVER = "test-contributions-resolve-route";
 
+/** What the mocked session holds, in every language. */
+const held = vi.hoisted(() => ({ capability: "text" }));
+
 vi.mock("@/lib/generation/authz", () => ({
-  requireCapability: async () => ({ session: { user: { id: RESOLVER } }, denied: null }),
+  requireCapability: async (capability: string) =>
+    capability === held.capability
+      ? { session: { user: { id: RESOLVER } }, denied: null }
+      : { session: null, denied: Response.json({ error: "not allowed" }, { status: 403 }) },
   mayIgnoreIn: async () => false,
 }));
 
@@ -58,6 +64,13 @@ function post(body: unknown): Request {
 }
 
 describe("POST /api/contributions/resolve", () => {
+  it("answers 403 to a team's edit without text", async () => {
+    held.capability = "edit";
+    const response = await POST(post({ id: 1, status: "accepted" }));
+    held.capability = "text";
+    expect(response.status).toBe(403);
+  });
+
   it("accepts a row", async () => {
     // Places: accepting a quests or readables row also writes it (lib/contributions/accept.ts),
     // which is its own test suite (accept.test.ts). This is just the plain status flip.

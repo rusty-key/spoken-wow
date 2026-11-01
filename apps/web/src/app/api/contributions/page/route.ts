@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   // Permission before existence, as ../npc-identity does, so a member learns nothing about which ids exist.
   const locale = await contributionLocale(id);
-  const { session, denied } = await requireCapability("edit", isLang(locale) ? locale : BASE_LANG);
+  const { session, denied } = await requireCapability("text", isLang(locale) ? locale : BASE_LANG);
   if (denied) return denied;
 
   const corpus = await loadBookCorpus();

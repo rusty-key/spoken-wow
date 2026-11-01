@@ -55,7 +55,7 @@ export default async function Page({
   if (source !== "quests" && source !== "readables") notFound();
   const session = await auth.api.getSession({ headers: await headers() });
   const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
+  if (!session || !can(viewer, "text", lang)) notFound();
 
   const { status: rawStatus, client: rawClient, stage: rawStage, q: rawQ, filter: rawFilter } = await searchParams;
   const status: ContributionStatus = isStatus(rawStatus) ? rawStatus : "new";
