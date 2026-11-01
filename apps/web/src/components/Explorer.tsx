@@ -1,6 +1,6 @@
 "use client";
 
-import { nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { isTypingTarget } from "@/lib/keyboard";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
@@ -216,22 +216,22 @@ export default function Explorer({ facets }: { facets: Facets }) {
           ? (row) => row.npcType === line.npcType && row.npcId === line.npcId
           : (row) => row.questId === line.questId,
       subject: what === "npc"
-        ? nameSubject({
+        ? {
             kind: line.npcType,
             entityId: String(line.npcId),
             title: line.npcName,
             subtitle: `${line.npcType} ${line.npcId}`,
             english: line.english?.npcName ?? "",
             current: line.missing?.npcName ? null : line.npcName,
-          })
-        : nameSubject({
+          }
+        : {
             kind: "quest",
             entityId: String(line.questId),
             title: line.questTitle ?? `quest ${line.questId}`,
             subtitle: `quest ${line.questId}`,
             english: line.english?.questTitle ?? "",
             current: line.missing?.questTitle ? null : line.questTitle,
-          }),
+          },
     });
   }, []);
   const [ignoring, setIgnoring] = useState<ResultLine | null>(null);

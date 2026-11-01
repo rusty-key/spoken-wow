@@ -1,6 +1,6 @@
 "use client";
 
-import { nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
@@ -587,14 +587,14 @@ export function Explorer({ books }: { books: BookFacet[] }) {
                         // A page without an owner is named by no entity.
                         if (!l.ownerKind) return;
                         setNaming(
-                          nameSubject({
+                          {
                             kind: ownerEntityKind(l.ownerKind),
                             entityId: String(l.ownerIds[0]),
                             title: l.title,
                             subtitle: `${l.ownerKind} ${l.ownerIds[0]}`,
                             english: l.englishTitle ?? l.title,
                             current: l.missing?.title ? null : l.title,
-                          }),
+                          },
                         );
                       }
                     : null
@@ -641,7 +641,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
         // A title is on every page its owner has.
         onSaved={() => {
           if (!naming) return;
-          const { kind, entityId } = naming.address;
+          const { kind, entityId } = naming;
           void refreshRows(
             (result?.lines ?? [])
               .filter((line) => line.ownerKind && ownerEntityKind(line.ownerKind) === kind && String(line.ownerIds[0]) === String(entityId))

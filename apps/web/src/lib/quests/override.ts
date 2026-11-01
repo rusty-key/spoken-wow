@@ -34,7 +34,7 @@ export const MAX_OVERRIDE_LENGTH = 2000;
  * What the dialog sends: an override's shape, whose text may also hold `$G` branches, which the
  * route writes to the moment's lines (quests/moment-rewrite.ts) rather than to this file.
  */
-export function validateRewrite(input: unknown, lang: Lang = BASE_LANG): { file: string; lineId: string; text: string } {
+export function validateRewrite(input: unknown, lang: Lang): { file: string; lineId: string; text: string } {
   if (!input || typeof input !== "object") throw new OverrideError("expected an override object");
   const body = input as Record<string, unknown>;
 
@@ -63,25 +63,23 @@ export function validateRewrite(input: unknown, lang: Lang = BASE_LANG): { file:
 }
 
 /** One file's override: a rewrite whose text is what that file says, with no `$G` left in it. */
-export function validateOverride(input: unknown, lang: Lang = BASE_LANG): { file: string; lineId: string; text: string } {
+export function validateOverride(input: unknown, lang: Lang): { file: string; lineId: string; text: string } {
   const draft = validateRewrite(input, lang);
-  if (branchesOnPlayerGender(draft.text) || speaksInvalidChars(draft.text, lang)) {
+  if (branchesOnPlayerGender(draft.text)) {
     throw new OverrideError(`text cannot contain any of ${INVALID_CHARS} - those are what make a line unvoiceable`);
   }
   return draft;
 }
 
 /**
- * A translation keeps its tokens for player-words.ts, so a voice maintainer starts from a line
- * holding a `$N`. English text has none left (player-words.ts), so one typed there is a mistake.
+ * Whether either reader's side of the text's `$G` branches holds what cannot be voiced. A
+ * translation keeps its tokens for player-words.ts, so a voice maintainer starts from a line holding
+ * a `$N`. English text has none left (player-words.ts), so one typed there is a mistake.
  */
-function speaksInvalidChars(text: string, lang: Lang): boolean {
-  return hasInvalidChars(lang === BASE_LANG ? text : speakPlayerTokens(text, lang));
-}
-
-/** Whether either reader's side of the text's `$G` branches holds what cannot be voiced. */
-export function rewriteHasInvalidChars(text: string, lang: Lang = BASE_LANG): boolean {
-  return playerGenderSides(text).some((side) => speaksInvalidChars(side, lang));
+export function rewriteHasInvalidChars(text: string, lang: Lang): boolean {
+  return playerGenderSides(text).some((side) =>
+    hasInvalidChars(lang === BASE_LANG ? side : speakPlayerTokens(side, lang)),
+  );
 }
 
 /** A voice's name as migration 0071's voice table allows it, or a model slot's. */

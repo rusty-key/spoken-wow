@@ -245,10 +245,8 @@ async function correctEnglish(
       message: "This line has a side for each player gender, and the correction is one player's words. Edit it in the explorer.",
     };
   }
-  await writeEnglishOriginal(rows, variant, {
-    text,
+  await writeEnglishOriginal(rows, variant, text, userId, {
     originalText: template,
-    userId,
     contributionId,
     note: correctionNote(contributionId),
   });

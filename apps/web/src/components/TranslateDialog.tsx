@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { withLang } from "@/lib/lang";
 
@@ -11,8 +11,7 @@ import { useLang } from "./LangProvider";
 // book's owner's, a place's.
 //
 // One dialog because a translation is the same job whatever is being named: the English above,
-// the box below, the versions behind it. What differs is only where it is saved and what
-// addresses it, which the caller passes. The readables and places editors keep
+// the box below, the versions behind it. The readables and places editors keep
 // their own dialogs because they edit English too, with fields a translation does not have.
 
 type Version = {
@@ -21,10 +20,15 @@ type Version = {
   origin: "extracted" | "edited" | "contributed" | "community";
   note: string | null;
   createdAt: string;
-  name?: string;
+  name: string;
 };
 
+const ROUTE = "/api/names";
+
 export type TranslateSubject = {
+  /** What the name belongs to on the route. */
+  kind: string;
+  entityId: string;
   /** What the dialog is headed with. */
   title: string;
   subtitle?: string;
@@ -32,31 +36,7 @@ export type TranslateSubject = {
   english: string;
   /** This language's current wording, or null where there is none yet. */
   current: string | null;
-  /** The API route. */
-  endpoint: string;
-  /** What addresses the thing on that route. */
-  address: Record<string, string | number>;
 };
-
-/** A thing's name: a quest's, an NPC's, a book owner's, a place's. */
-export function nameSubject(args: {
-  kind: string;
-  entityId: string;
-  title: string;
-  subtitle: string;
-  english: string;
-  /** The language's own name, or null where it has none yet. */
-  current: string | null;
-}): TranslateSubject {
-  return {
-    title: args.title,
-    subtitle: args.subtitle,
-    english: args.english,
-    current: args.current,
-    endpoint: "/api/names",
-    address: { kind: args.kind, entityId: args.entityId },
-  };
-}
 
 type Props = {
   subject: TranslateSubject | null;
@@ -87,10 +67,8 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
     if (!dialog.current?.open) dialog.current?.showModal();
 
     let cancelled = false;
-    const params = new URLSearchParams(
-      Object.entries(subject.address).map(([key, v]) => [key, String(v)]),
-    );
-    fetch(withLang(lang, `${subject.endpoint}?${params}`))
+    const params = new URLSearchParams({ kind: subject.kind, entityId: subject.entityId });
+    fetch(withLang(lang, `${ROUTE}?${params}`))
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("could not load history"))))
       .then((data: { versions: Version[] }) => {
         if (cancelled) return;
@@ -105,43 +83,37 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
     };
   }, [subject, lang]);
 
-  const send = useCallback(
-    async (body: Record<string, unknown>, done: (v: string) => void) => {
-      if (!subject) return;
-      setBusy(true);
-      setError(null);
-      const res = await fetch(withLang(lang, subject.endpoint), {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...subject.address, ...body }),
-      }).catch(() => null);
-      setBusy(false);
-      if (!res || !res.ok) {
-        const message = res
-          ? ((await res.json().catch(() => ({}))).error ?? res.statusText)
-          : "network error";
-        setError(String(message));
-        return;
-      }
-      const data = (await res.json()) as { version: Version };
-      done(data.version.name ?? "");
-    },
-    [subject, lang],
-  );
-
   if (!subject) return null;
 
   const trimmed = value.trim();
   const changed = trimmed !== "" && trimmed !== (subject.current ?? "").trim();
 
-  function save() {
-    void send(
-      { name: value, note: note.trim() || null, expectedVersion: baseVersion },
-      (saved) => {
-        onSaved(subject!, saved);
-        onClose();
-      },
-    );
+  async function save() {
+    const named = subject!;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(withLang(lang, ROUTE), {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: named.kind,
+        entityId: named.entityId,
+        name: value,
+        note: note.trim() || null,
+        expectedVersion: baseVersion,
+      }),
+    }).catch(() => null);
+    setBusy(false);
+    if (!res || !res.ok) {
+      const message = res
+        ? ((await res.json().catch(() => ({}))).error ?? res.statusText)
+        : "network error";
+      setError(String(message));
+      return;
+    }
+    const data = (await res.json()) as { version: Version };
+    onSaved(named, data.version.name);
+    onClose();
   }
 
   return (
@@ -167,7 +139,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
         onKeyDown={(event) => {
           if (event.key === "Enter" && changed) {
             event.preventDefault();
-            save();
+            void save();
           }
         }}
       />

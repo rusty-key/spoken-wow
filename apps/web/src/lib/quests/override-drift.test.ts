@@ -35,7 +35,7 @@ afterEach(async () => {
 
 afterAll(closeDb);
 
-const drifted = async () => hasDrifted((await readOverrides()).get(file), originals.get(file)!.text);
+const drifted = async () => hasDrifted((await readOverrides("enUS")).get(file), originals.get(file)!.text);
 
 describe("hasDrifted, over what writeOverride stored", () => {
   it("leaves an override written over the current original alone", async () => {

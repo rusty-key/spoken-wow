@@ -59,11 +59,10 @@ describe("momentLines", () => {
 
 describe("rewriteMoment", () => {
   it("splits an extracted plain line into each reader's words, keeping what it prints", async () => {
-    const outcome = await rewriteMoment("enUS", await momentLines("enUS", moment, 0), 0, {
+    await rewriteMoment("enUS", await momentLines("enUS", moment, 0), 0, {
       text: "Well met, $glad:lass;.",
       userId: EDITOR,
     });
-    expect(outcome.split).toBe(true);
 
     const { rows } = await asSystem.query(
       `select "lineId", "fileName", "text", "originalText", "origin", "editedBy"
@@ -93,7 +92,7 @@ describe("rewriteMoment", () => {
          from "quest_line" where "lineId" = $1 and "lang" = 'enUS' and "version" = 1`,
       [moment],
     );
-    const { files } = await rewriteMoment("deDE", await momentLines("deDE", moment, 0), 0, {
+    const files = await rewriteMoment("deDE", await momentLines("deDE", moment, 0), 0, {
       text: "Seid gegrüßt, $n, $gmein Herr:meine Dame;.",
       userId: EDITOR,
     });
@@ -106,15 +105,29 @@ describe("rewriteMoment", () => {
     expect(rows.map((row) => row.lineId)).toEqual([`${moment}:f`, `${moment}:m`]);
   });
 
+  it("keeps a translation's tokens on each side, for player-words.ts to say", async () => {
+    await rewriteMoment("deDE", await momentLines("deDE", moment, 0), 0, {
+      text: "Gut, $C, $gmein Herr:meine Dame;.",
+      userId: EDITOR,
+    });
+    const { rows } = await asSystem.query(
+      `select "lineId", "text" from "line_override" where "lineId" = any($1::text[]) and "lang" = 'deDE' order by "lineId"`,
+      [lines],
+    );
+    expect(rows).toEqual([
+      { lineId: `${moment}:f`, text: "Gut, $C, meine Dame." },
+      { lineId: `${moment}:m`, text: "Gut, $C, mein Herr." },
+    ]);
+  });
+
   it("then overrides each side in its reader's words", async () => {
-    const outcome = await rewriteMoment("enUS", await momentLines("enUS", moment, 0), 0, {
+    await rewriteMoment("enUS", await momentLines("enUS", moment, 0), 0, {
       text: "Hail, $gbrother:sister;.",
       userId: EDITOR,
     });
-    expect(outcome.split).toBe(false);
 
     const { rows } = await asSystem.query(
-      `select "lineId", "text" from "line_override" where "lineId" = any($1::text[]) order by "lineId"`,
+      `select "lineId", "text" from "line_override" where "lineId" = any($1::text[]) and "lang" = 'enUS' order by "lineId"`,
       [lines],
     );
     expect(rows).toEqual([

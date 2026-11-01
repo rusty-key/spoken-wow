@@ -11,7 +11,8 @@
 import { recordActivity } from "../activity/store";
 import { fileIndex } from "../audio";
 import { spokenHash } from "../generation/spoken-hash";
-import { BASE_LANG, type Lang } from "../lang";
+import type { Lang } from "../lang";
+import { memoByLang } from "../memo";
 import { queryAs, readAs } from "../teams/store";
 import { overrideOf, type LineOverride } from "./override";
 
@@ -48,7 +49,6 @@ async function stamp(lang: Lang): Promise<string> {
 }
 
 const cacheKey = Symbol.for("wow-voiceover.line-overrides");
-type CacheHolder = { [cacheKey]?: Map<Lang, { map: Map<string, LineOverride>; stamp: string }> };
 
 /**
  * A language's overrides, by file. Memoised behind the stamp because search needs them for every
@@ -58,22 +58,16 @@ type CacheHolder = { [cacheKey]?: Map<Lang, { map: Map<string, LineOverride>; st
  * The whole language because there are tens of these, not thousands: an override is a line
  * someone sat down and rewrote.
  */
-export async function readOverrides(lang: Lang = BASE_LANG): Promise<Map<string, LineOverride>> {
-  const holder = globalThis as CacheHolder;
-  const memo = (holder[cacheKey] ??= new Map());
-  const current = await stamp(lang);
-  const held = memo.get(lang);
-  if (held?.stamp === current) return held.map;
-
-  const rows = await readAs<OverrideRow>(
-    lang,
-    `select "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash"
-       from "line_override" where "lang" = $1`,
-    [lang],
-  );
-  const map = new Map(rows.map((r) => [r.file, toOverride(r)]));
-  memo.set(lang, { map, stamp: current });
-  return map;
+export async function readOverrides(lang: Lang): Promise<Map<string, LineOverride>> {
+  return memoByLang(cacheKey, lang, await stamp(lang), async () => {
+    const rows = await readAs<OverrideRow>(
+      lang,
+      `select "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash"
+         from "line_override" where "lang" = $1`,
+      [lang],
+    );
+    return new Map(rows.map((r) => [r.file, toOverride(r)]));
+  });
 }
 
 export async function writeOverride(
@@ -149,7 +143,7 @@ export async function clearOverride(lang: Lang, file: string, by: string | null)
  * and serve the text that was just replaced - to the person who just replaced it.
  */
 export function forgetOverrides(): void {
-  delete (globalThis as CacheHolder)[cacheKey];
+  delete (globalThis as Record<symbol, unknown>)[cacheKey];
 }
 
 /** The text that would actually be sent for a line, before pronunciation rules. */

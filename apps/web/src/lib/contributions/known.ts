@@ -93,6 +93,15 @@ function otherBody(row: Comparable, voiced: VoicedBodies | undefined): boolean {
   return !voiced.sexes.has(sex);
 }
 
+/** A moment's wordings against a player's text: the one it matches, or the one it is closest to. */
+export function stateOfMoment(lines: CorpusText[], text: string): LineState {
+  const same = lines.find((line) => sameLine(line.text, text));
+  if (same) return { kind: "known", lineId: same.lineId };
+  const wordings = oneLineEach(lines);
+  const scores = wordings.map((line) => closeness(line.text, text));
+  return { kind: "changed", wordings, closest: scores.indexOf(Math.max(...scores)) };
+}
+
 /**
  * Every current line answering each (language, moment), in one query, keyed `locale|moment`.
  * `client` reads inside a transaction (accept.ts writeWording, under the moment's lock).
@@ -242,11 +251,7 @@ export async function lineStates(rows: readonly Comparable[]): Promise<LineState
     if (moment) {
       const lines = byMoment.get(`${row.locale}|${moment}`);
       if (!lines?.length) return MISSING;
-      const same = lines.find((line) => sameLine(line.text, text));
-      if (same) return { kind: "known", lineId: same.lineId };
-      const wordings = oneLineEach(lines);
-      const scores = wordings.map((line) => closeness(line.text, text));
-      return { kind: "changed", wordings, closest: scores.indexOf(Math.max(...scores)) };
+      return stateOfMoment(lines, text);
     }
     const npcId = npcOf(row);
     const spoken = npcId === null ? undefined : byNpc.get(`${row.locale}|${npcId}`);

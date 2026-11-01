@@ -49,7 +49,7 @@ export async function PUT(request: Request) {
       const rows = await momentLines(lang, line.lineId, variant);
       // The file is the corpus's, so its moment has lines unless they moved since it was indexed.
       if (rows.length === 0) return Response.json({ error: "unknown line" }, { status: 404 });
-      const { files } = await rewriteMoment(lang, rows, variant, { text: draft.text, userId: session.user.id });
+      const files = await rewriteMoment(lang, rows, variant, { text: draft.text, userId: session.user.id });
       return Response.json({ files });
     } catch (error) {
       if (error instanceof OverrideError) return Response.json({ error: error.message }, { status: 400 });

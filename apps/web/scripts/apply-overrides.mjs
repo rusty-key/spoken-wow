@@ -88,8 +88,8 @@ async function main() {
     for (const entry of fresh) {
       await pool.query(
         // English's text, so the english team's override. The script sets no team, so it names it.
-        `insert into "line_override" ("teamId", "file", "lineId", "text", "updatedBy")
-         values (team_of_lang('enUS'), $1, $2, $3, null)
+        `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "updatedBy")
+         values (team_of_lang('enUS'), 'enUS', $1, $2, $3, null)
          on conflict ("teamId", "lang", "file") do nothing`,
         [entry.file, entry.lineId, entry.text],
       );
