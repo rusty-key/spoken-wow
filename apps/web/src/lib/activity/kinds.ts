@@ -122,6 +122,8 @@ export type ActivityDetail = {
   "contribution.resolved": { status: string; key?: string; correction?: boolean };
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };
+  /** Between a language's text maintainers and its team. */
+  "report.passed": { to: "text" | "audio" };
 
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every
   // language's, so a global admin's alone to read: see `global` in store.ts.

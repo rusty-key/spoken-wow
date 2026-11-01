@@ -13,15 +13,19 @@
  *
  * Every read and write runs as the team that owns the report's language. The two that cannot
  * know it run across every team: the rate limit, which is on a person in any language, and
- * reportLang, which is how a route finds the language to check a permission against.
+ * reportPlace, which is how a route finds the language and queue to check a permission against.
  */
 import { recordActivity } from "@/lib/activity/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { ALL_TEAMS, queryIn } from "@/lib/db";
+import { viewersIn } from "@/lib/grants/store";
+import { isAdmin } from "@/lib/permissions";
+import { overrideOf } from "@/lib/quests/override";
+import { readOverrides } from "@/lib/quests/overrides";
 import { queryAs, readAs } from "@/lib/teams/store";
 
 import type { ReportContext } from "./context";
-import { type Category, type Report, type Status } from "./reports";
+import { CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
 import type { Source } from "@/lib/sections";
 
 // Timestamps are cast to text so a Report is the same shape in Postgres, over JSON and in the
@@ -31,13 +35,24 @@ import type { Source } from "@/lib/sections";
 // and ISO 8601 parses everywhere.
 const COLUMNS = `"id", "source", "lineId", "target", "category", "body", "status", "userId",
                  "name", "email", to_json("createdAt") #>> '{}' as "createdAt",
-                 to_json("resolvedAt") #>> '{}' as "resolvedAt", "resolvedBy", "context"`;
+                 to_json("resolvedAt") #>> '{}' as "resolvedAt", "resolvedBy", "context", "queue"`;
+
+/**
+ * A complaint about the words goes to whoever keeps them, unless the words were the team's own:
+ * `file` is the line's audio path, null where there is none or the section has no overrides.
+ */
+export async function queueFor(category: Category, lang: Lang, file: string | null): Promise<Queue> {
+  if (category !== "wrong_text" || file === null) return CATEGORY_QUEUE[category];
+  return overrideOf(await readOverrides(lang), file) ? "audio" : CATEGORY_QUEUE[category];
+}
 
 export async function createReport(input: {
   source: Source;
   lang?: Lang;
   lineId: string | null;
   target: string | null;
+  /** The English quest line's audio path, which is what an override is filed under. */
+  file?: string | null;
   category: Category;
   body: string;
   userId: string | null;
@@ -50,12 +65,13 @@ export async function createReport(input: {
   // on something they cannot reach. The team comes from the language alone, so the addon's
   // anonymous report is filed with whoever looks after its language.
   const lang = input.lang ?? BASE_LANG;
+  const queue = await queueFor(input.category, lang, input.file ?? null);
   await queryAs(
     lang,
     `insert into "report"
        ("source", "lang", "lineId", "target", "category", "body", "userId", "name", "email", "ip",
-        "context")
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        "context", "queue")
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       input.source,
       lang,
@@ -68,6 +84,7 @@ export async function createReport(input: {
       input.email,
       input.ip,
       input.context ? JSON.stringify(input.context) : null,
+      queue,
     ],
   );
 }
@@ -91,11 +108,12 @@ export async function listReports(
   /** Null for every one: the triage page counts each tab, so it reads them all. */
   limit: number | null = 500,
   lang: Lang = BASE_LANG,
+  queues: readonly Queue[] = QUEUES,
 ): Promise<Report[]> {
   // One language's reports, like every other list on a page in that language: a claim about
   // how a Portuguese take sounds is for whoever looks after the Portuguese.
-  const where: string[] = [`"lang" = $2`];
-  const params: unknown[] = [limit, lang];
+  const where: string[] = [`"lang" = $2`, `"queue" = any($3::text[])`];
+  const params: unknown[] = [limit, lang, queues];
   if (status !== "all") where.push(`"status" = $${params.push(status)}`);
   if (source !== "all") where.push(`"source" = $${params.push(source)}`);
   // Across sources on purpose: "everyone who says a word is being read wrong" is one
@@ -117,14 +135,16 @@ export async function reportsForLine(
   source: Source,
   lineId: string,
   lang: Lang = BASE_LANG,
+  queues: readonly Queue[] = QUEUES,
 ): Promise<Report[]> {
   return readAs<Report>(
     lang,
     `select ${COLUMNS}
        from "report"
       where "source" = $1 and "lineId" = $2 and "lang" = $3
+        and "queue" = any($4::text[])
       order by "status" = 'open' desc, "createdAt" desc`,
-    [source, lineId, lang],
+    [source, lineId, lang, queues],
   );
 }
 
@@ -135,15 +155,53 @@ export async function reportById(id: number, lang: Lang): Promise<Report | null>
 }
 
 /**
- * The language a report was filed in, or null for an id that does not exist. Across every
- * team: the language is what says which team's it is, and whether the caller may see it.
+ * The language a report was filed in and the queue it waits in, or null for an id that does not
+ * exist. Across every team: these are what say whose it is, and whether the caller may see it.
  */
-export async function reportLang(id: number): Promise<Lang | null> {
-  const rows = await queryIn<{ lang: Lang }>(ALL_TEAMS, `select "lang" from "report" where "id" = $1`, [id]);
-  return rows[0]?.lang ?? null;
+export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queue } | null> {
+  const rows = await queryIn<{ lang: Lang; queue: Queue }>(
+    ALL_TEAMS,
+    `select "lang", "queue" from "report" where "id" = $1`,
+    [id],
+  );
+  return rows[0] ?? null;
 }
 
-/** `lang` is the report's, from reportLang. */
+/**
+ * Who works each queue in a language, as the triage pages compare them. Site owners are left out:
+ * they hold both everywhere, so they say nothing about whether the groups differ.
+ */
+export async function queueHolders(lang: Lang): Promise<Record<Queue, Set<string>>> {
+  const holders: Record<Queue, Set<string>> = { text: new Set(), audio: new Set() };
+  for (const [userId, viewer] of await viewersIn(lang)) {
+    if (isAdmin(viewer.role)) continue;
+    for (const queue of queuesOf(viewer, lang)) holders[queue].add(userId);
+  }
+  return holders;
+}
+
+/** `lang` is the report's. A report already in `queue` is left unlogged. */
+export async function setQueue(id: number, queue: Queue, actorId: string, lang: Lang): Promise<Report | null> {
+  const { rows } = await queryAs<Report>(
+    lang,
+    `update "report" set "queue" = $2 where "id" = $1 and "queue" <> $2 returning ${COLUMNS}`,
+    [id, queue],
+  );
+  const report = rows[0];
+  if (!report) return reportById(id, lang);
+  await recordActivity({
+    kind: "report.passed",
+    lang,
+    source: report.source,
+    subject: String(report.id),
+    lineId: report.lineId,
+    actorId,
+    detail: { to: queue },
+  });
+  return report;
+}
+
+/** `lang` is the report's, from reportPlace. */
 export async function setStatus(
   id: number,
   status: Status,
@@ -197,15 +255,20 @@ export async function skippedIds(userId: string, lang: Lang): Promise<Set<number
  * Only open reports in `lang` are written: the caller's grant is for that language, and an
  * id from another one, or one already answered, has nothing to put aside.
  */
-export async function skipReports(userId: string, ids: number[], lang: Lang): Promise<number> {
+export async function skipReports(
+  userId: string,
+  ids: number[],
+  lang: Lang,
+  queues: readonly Queue[],
+): Promise<number> {
   if (!ids.length) return 0;
   const { rowCount } = await queryAs(
     lang,
     `insert into "report_skip" ("userId", "reportId")
      select $1, "id" from "report"
-      where "id" = any($2::bigint[]) and "lang" = $3 and "status" = 'open'
+      where "id" = any($2::bigint[]) and "lang" = $3 and "status" = 'open' and "queue" = any($4::text[])
      on conflict do nothing`,
-    [userId, ids, lang],
+    [userId, ids, lang, queues],
   );
   return rowCount ?? 0;
 }

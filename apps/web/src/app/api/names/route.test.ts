@@ -36,7 +36,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  viewer.grants = [{ lang: "deDE", capability: "edit" }];
+  viewer.grants = [{ lang: "deDE", capability: "text" }];
   id = -Math.floor(1e6 + Math.random() * 1e9);
   await asSystem.query(
     `insert into "boss_instance" ("map", "kind", "zone", "position") values ($1, 'dungeon', 0, -2)`,
@@ -96,8 +96,20 @@ describe("PUT /api/names, kind boss", () => {
     expect(entry).toMatchObject({ name: "Mutanus der Verschlinger", nameMissing: false });
   });
 
-  it("answers 403 to somebody without edit in the language asked for", async () => {
-    viewer.grants = [{ lang: "enUS", capability: "edit" }, { lang: "deDE", capability: "regenerate" }];
+  it("answers 403 to a team's edit without text", async () => {
+    viewer.grants = [{ lang: "deDE", capability: "edit" }];
+    const response = await put({ kind: "boss", entityId: String(id), name: "Mutanus der Verschlinger" });
+    expect(response.status).toBe(403);
+  });
+
+  it("answers 403 to a team admin who was never appointed", async () => {
+    viewer.grants = [{ lang: "deDE", capability: "admin" }];
+    const response = await put({ kind: "boss", entityId: String(id), name: "Mutanus der Verschlinger" });
+    expect(response.status).toBe(403);
+  });
+
+  it("answers 403 to somebody without text in the language asked for", async () => {
+    viewer.grants = [{ lang: "enUS", capability: "text" }, { lang: "deDE", capability: "regenerate" }];
     const response = await put({ kind: "boss", entityId: String(id), name: "Mutanus der Verschlinger" });
     expect(response.status).toBe(403);
   });

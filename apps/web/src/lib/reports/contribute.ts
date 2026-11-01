@@ -102,7 +102,7 @@ export async function reportContribution(submission: Submission): Promise<Report
  */
 export async function contributeReport(
   report: Report,
-  // The report's own, from reportLang: the submission's locale may be another.
+  // The report's own, from reportPlace: the submission's locale may be another.
   lang: Lang,
   submission: Submission,
   userId: string,

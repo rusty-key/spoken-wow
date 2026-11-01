@@ -21,6 +21,7 @@ import { langParam } from "@/lib/lang-server";
 import { NO_API_KEY } from "@/lib/no-api-key";
 import { currentSession } from "@/lib/session";
 import { viewerOf } from "@/lib/grants/store";
+import { queuesOf, type Queue } from "@/lib/reports/reports";
 import {
   can,
   canConfigureGeneration,
@@ -221,6 +222,24 @@ export async function requireIn(
   const guard = await requireCapability(capability, lang);
   if (guard.denied) return { lang: null, session: null, denied: guard.denied };
   return { lang, session: guard.session, denied: null };
+}
+
+/**
+ * The language from `?lang=`, the session if it works either queue there, and which it works:
+ * one queue's reports are not the other's to touch.
+ */
+export async function requireQueues(
+  request: Request,
+): Promise<
+  | { lang: Lang; session: NonNullable<Session>; queues: Queue[]; denied: null }
+  | { lang: null; session: null; queues: null; denied: Response }
+> {
+  const { lang, denied } = await langParam(request);
+  if (denied) return { lang: null, session: null, queues: null, denied };
+  const session = await currentSession();
+  const queues = session ? queuesOf(await viewerOf(session), lang) : [];
+  if (!session || !queues.length) return { lang: null, session: null, queues: null, denied: FORBIDDEN() };
+  return { lang, session, queues, denied: null };
 }
 
 /**

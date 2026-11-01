@@ -23,6 +23,7 @@ type Props = {
   onRecordingChanged: (line: ResultLine) => void;
   canRegenerate: boolean;
   canEdit: boolean;
+  canTriage: boolean;
   rowStates: Record<string, RowState>;
   onPlay: (line: ResultLine) => void;
   onRegenerate: (line: ResultLine) => void;
@@ -72,6 +73,7 @@ export function BookList({
   onRecordingChanged,
   canRegenerate,
   canEdit,
+  canTriage,
   rowStates,
   onPlay,
   onRegenerate,
@@ -132,6 +134,7 @@ export function BookList({
             onRecordingChanged={onRecordingChanged}
             canRegenerate={canRegenerate}
             canEdit={canEdit}
+            canTriage={canTriage}
             groupRows={groupRows.get(line.id) ?? 0}
             state={rowStates[line.id]}
             onPlay={onPlay}

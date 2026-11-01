@@ -2,9 +2,8 @@
  * Who may do what in which language.
  *
  * A global admin sees and changes every grant. Somebody who is `admin` in a language sees
- * that language's and may hand out `edit` and `regenerate` in it -- enough to bring
- * translators in without an admin, not enough to decide the language's settings or make
- * another admin. lib/permissions.ts `canGrant` is the rule; this only applies it.
+ * that language's and may hand out its team capabilities, not `text`. lib/permissions.ts
+ * `canGrant` is the rule; this only applies it.
  */
 import { headers } from "next/headers";
 
@@ -54,7 +53,7 @@ export async function PUT(request: Request) {
   ) {
     return Response.json({ error: "expected { email, lang, capabilities: [...] }" }, { status: 400 });
   }
-  if (!canGrant(who.viewer, lang)) return FORBIDDEN();
+  if (!capabilities.every((capability) => canGrant(who.viewer, capability, lang))) return FORBIDDEN();
 
   // By email, not by id: a language admin cannot list the users, and an address is what
   // a translator gives somebody when asking to be let in.
@@ -76,7 +75,7 @@ export async function DELETE(request: Request) {
   if (!userId || !isLang(lang) || !isCapability(capability)) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
-  if (!canGrant(who.viewer, lang)) return FORBIDDEN();
+  if (!canGrant(who.viewer, capability, lang)) return FORBIDDEN();
 
   await removeGrant(userId, lang, capability, who.userId);
   return listing(who.viewer);

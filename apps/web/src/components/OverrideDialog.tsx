@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { OverrideError, rewriteHasInvalidChars, validateRewrite } from "@/lib/quests/override";
+import { dropOverride, saveOverride } from "@/lib/quests/override-client";
 import { INVALID_CHARS } from "@/lib/text-gate";
 import type { ResultLine } from "@/lib/search";
 import { isModelVoice } from "@/lib/voices/voices";
@@ -75,18 +76,9 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
         validateRewrite({ file: line.audioPath, lineId: line.lineId, text: draft });
       }
 
-      const url =
-        method === "PUT"
-          ? "/api/quests/lines/override"
-          : `/api/quests/lines/override?file=${encodeURIComponent(line.audioPath)}`;
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body:
-          method === "PUT"
-            ? JSON.stringify({ file: line.audioPath, lineId: line.lineId, text: draft })
-            : undefined,
-      });
+      const response = await (method === "PUT"
+        ? saveOverride(line.audioPath, line.lineId, draft)
+        : dropOverride(line.audioPath));
 
       const body = (await response.json().catch(() => ({}))) as { error?: string; files?: string[] };
       if (!response.ok) {

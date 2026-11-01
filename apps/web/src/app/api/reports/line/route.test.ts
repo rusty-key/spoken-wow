@@ -13,7 +13,7 @@ import { createReport } from "@/lib/reports/store";
 const authorise = vi.fn();
 
 vi.mock("@/lib/generation/authz", () => ({
-  requireIn: async () => authorise(),
+  requireQueues: async () => authorise(),
 }));
 
 import { GET } from "./route";
@@ -22,7 +22,7 @@ function get(query: string): Request {
   return new Request(`https://example.com/api/reports/line?${query}`);
 }
 
-const ALLOWED = { session: { user: { id: "u1" } }, lang: "enUS", denied: null };
+const ALLOWED = { session: { user: { id: "u1" } }, lang: "enUS", queues: ["text", "audio"], denied: null };
 
 /** A bucket no other run shares, so the rows this file files can be swept after it. */
 const IP = `test-line-${Math.random().toString(36).slice(2, 10)}`;

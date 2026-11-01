@@ -13,11 +13,23 @@ import { readFileSync } from "node:fs";
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
+import { audioRelPath } from "@/lib/audio";
 import { closeDb, db } from "@/lib/db";
 import { asSystem } from "@/lib/teams/testing";
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/auth", () => ({ auth: { api: { getSession: async () => null } } }));
+
+/** Real unless a test fills it: a line whose file the override test controls without a corpus. */
+const corpusLines = vi.hoisted(() => [] as { lineId: string; fileName: string }[]);
+vi.mock("@/lib/reports/target", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/reports/target")>();
+  return {
+    ...real,
+    resolveTarget: async (...args: Parameters<typeof real.resolveTarget>) =>
+      corpusLines.length ? corpusLines : real.resolveTarget(...args),
+  };
+});
 
 import { POST } from "./route";
 
@@ -177,6 +189,37 @@ describe("POST /api/reports", () => {
       [ip],
     );
     expect(rows[0].lineId).toBeNull();
+  });
+
+  it("stores the queue its category goes to", async () => {
+    expect((await POST(post(valid({ category: "other" })))).status).toBe(200);
+    expect((await POST(post(valid({ category: "wrong_voice" })))).status).toBe(200);
+    const { rows } = await asSystem.query(
+      `select "category", "queue" from "report" where "ip" = $1 order by "id"`,
+      [ip],
+    );
+    expect(rows).toEqual([
+      { category: "other", queue: "text" },
+      { category: "wrong_voice", queue: "audio" },
+    ]);
+  });
+
+  it("sends wrong_text on a line the team overrode to the team", async () => {
+    const line = { lineId: "q:1:accept", fileName: `test-override-${randomUUID()}` };
+    const file = audioRelPath(line);
+    corpusLines.push(line);
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "file", "lineId", "text") values (team_of_lang('enUS'), $1, $2, 'Mine.')`,
+      [file, line.lineId],
+    );
+    try {
+      expect((await POST(post(valid({ category: "wrong_text", lineId: line.lineId })))).status).toBe(200);
+      const { rows } = await asSystem.query(`select "queue", "lineId" from "report" where "ip" = $1`, [ip]);
+      expect(rows).toEqual([{ queue: "audio", lineId: line.lineId }]);
+    } finally {
+      corpusLines.length = 0;
+      await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
+    }
   });
 
   it("keeps the context the addon sent", async () => {

@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   }
 
   const locale = await contributionLocale(id);
-  const { denied } = await requireCapability("edit", isLang(locale) ? locale : BASE_LANG);
+  const { denied } = await requireCapability("text", isLang(locale) ? locale : BASE_LANG);
   if (denied) return denied;
 
   const senders = locale === null ? null : await contributionSenders(id);

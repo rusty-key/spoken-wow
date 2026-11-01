@@ -49,7 +49,11 @@ export async function listUsers({
        from "user" u
        left join lateral (
          select string_agg(distinct "lang", ',' order by "lang") as "langs"
-           from "language_grant" where "userId" = u."id"
+           from (
+             select "lang" from "language_grant" where "userId" = u."id"
+             union all
+             select "lang" from "team_member" where "userId" = u."id"
+           ) held
        ) g on true
       where $1::text is null or u."name" ilike $1 or u."email" ilike $1
       order by ${ORDER[sort.column]} ${sort.direction === "desc" ? "desc" : "asc"} nulls last,

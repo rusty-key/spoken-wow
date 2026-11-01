@@ -6,6 +6,8 @@
  * bundle. Same reasoning as the note atop lib/line-fields.ts.
  */
 
+import type { Lang } from "@/lib/lang";
+import { can, type Capability, type Viewer } from "@/lib/permissions";
 import type { ReportContext } from "@/lib/reports/context";
 import type { Source } from "@/lib/sections";
 
@@ -88,7 +90,58 @@ export type Report = {
   resolvedBy: string | null;
   /** What the player's addon said it saw, or null for a report that came without it. */
   context: ReportContext | null;
+  queue: Queue;
 };
+
+/** Who a report waits for: the language's text maintainers, or the team voicing it. */
+export const QUEUES = ["text", "audio"] as const;
+
+export type Queue = (typeof QUEUES)[number];
+
+export function isQueue(value: unknown): value is Queue {
+  return typeof value === "string" && (QUEUES as readonly string[]).includes(value);
+}
+
+export function queueCapability(queue: Queue): Capability {
+  return queue === "text" ? "text" : "edit";
+}
+
+/** Total, so a new category has to choose. */
+export const CATEGORY_QUEUE: Record<Category, Queue> = {
+  wrong_text: "text",
+  other: "text",
+  pronunciation: "audio",
+  wrong_voice: "audio",
+  audio_quality: "audio",
+  missing: "audio",
+};
+
+export function triages(may: (capability: Capability) => boolean): boolean {
+  return QUEUES.some((queue) => may(queueCapability(queue)));
+}
+
+export function queuesOf(viewer: Viewer | null, lang: Lang): Queue[] {
+  return QUEUES.filter((queue) => can(viewer, queueCapability(queue), lang));
+}
+
+/**
+ * What the triage pages show of the queues. Nothing while the language's two groups are the same
+ * people, so a language where one group does both keeps today's page.
+ *
+ * `labelled`: this viewer sees one queue, and somebody else works the other.
+ * `passTo`: the queues a report can be passed into; never one nobody works.
+ */
+export function queueView(
+  queues: readonly Queue[],
+  holders: Record<Queue, ReadonlySet<string>>,
+): { labelled: boolean; passTo: Queue[] } {
+  const same =
+    holders.text.size === holders.audio.size && [...holders.text].every((user) => holders.audio.has(user));
+  return {
+    labelled: queues.length === 1 && holders[queues[0] === "text" ? "audio" : "text"].size > 0,
+    passTo: same ? [] : QUEUES.filter((queue) => holders[queue].size > 0),
+  };
+}
 
 export function isCategory(value: unknown): value is Category {
   return typeof value === "string" && (CATEGORIES as readonly string[]).includes(value);

@@ -43,6 +43,7 @@ import { PAGE_SIZE } from "@/lib/places/filters";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import * as echo from "@/lib/url-echo";
+import { triages } from "@/lib/reports/reports";
 
 // Long enough to hold a whole typed word: the timer restarts on every keystroke, so this
 // is the pause after the last one, not a rate limit. Anyone who wants results before it
@@ -76,8 +77,8 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   // editing -- reading a report and fixing the text it is about are one job.
   const may = useCan();
   const canRegenerate = may("regenerate");
-  const canEdit = may("edit");
-  const canTriage = canEdit;
+  const canEdit = may("text");
+  const canTriage = triages(may);
   // A line's name in this language, written as its own version in entity_name, and the line
   // to refresh once it is saved: a boss is named by its id, not by its line's.
   const [naming, setNaming] = useState<{ subject: TranslateSubject; lineId: string } | null>(null);

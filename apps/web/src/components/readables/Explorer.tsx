@@ -44,6 +44,7 @@ import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { noApiKeyMessage } from "@/lib/no-api-key";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import * as echo from "@/lib/url-echo";
+import { triages } from "@/lib/reports/reports";
 
 // Long enough to hold a whole typed word: the timer restarts on every keystroke, so this is
 // the pause after the last one rather than a rate limit. Enter fires the search immediately.
@@ -61,7 +62,8 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   // these is checked again server-side; nothing here is an access control.
   const may = useCan();
   const canRegenerate = may("regenerate");
-  const canEdit = may("edit");
+  const canEdit = may("text");
+  const canTriage = triages(may);
   // The book owner's name in this language, written as its own version in entity_name.
   const [naming, setNaming] = useState<TranslateSubject | null>(null);
 
@@ -494,7 +496,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           onQuerySubmit={submitQuery}
           onChange={updateFilters}
           onClearAll={() => writeQuery(new URLSearchParams())}
-          canTriage={canEdit}
+          canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={result?.recordable === true}
         />
@@ -570,6 +572,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
                 onRecordingChanged={(line) => void refreshRows([line.id])}
                 canRegenerate={canRegenerate}
                 canEdit={canEdit}
+                canTriage={canTriage}
                 rowStates={rowStates}
                 onPlay={play}
                 onClearDirty={(line) => clearDirty([line.file])}

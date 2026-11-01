@@ -8,6 +8,8 @@
  * Every override is English's, so a write runs as English's team.
  */
 import { recordActivity } from "../activity/store";
+import { fileIndex } from "../audio";
+import { spokenHash } from "../generation/spoken-hash";
 import { BASE_LANG, type Lang } from "../lang";
 import { queryAs, readAs } from "../teams/store";
 import { overrideOf, type LineOverride } from "./override";
@@ -18,6 +20,7 @@ type OverrideRow = {
   text: string;
   updatedAt: Date;
   updatedBy: string | null;
+  originalHash: string | null;
 };
 
 function toOverride(row: OverrideRow): LineOverride {
@@ -27,6 +30,7 @@ function toOverride(row: OverrideRow): LineOverride {
     text: row.text,
     updatedAt: row.updatedAt.toISOString(),
     updatedBy: row.updatedBy,
+    originalHash: row.originalHash,
   };
 }
 
@@ -64,7 +68,7 @@ export async function readOverrides(lang: Lang = BASE_LANG): Promise<Map<string,
 
   const rows = await readAs<OverrideRow>(
     BASE_LANG,
-    `select "file", "lineId", "text", "updatedAt", "updatedBy" from "line_override"`,
+    `select "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash" from "line_override"`,
   );
   const map = new Map(rows.map((r) => [r.file, toOverride(r)]));
   holder[cacheKey] = { map, stamp: current };
@@ -81,21 +85,23 @@ export async function writeOverride(
   // table has no provenance column, so the activity log is where that is kept.
   contributionId?: number,
 ): Promise<LineOverride> {
+  const original = (await fileIndex()).get(file);
   // "before" is read in the same statement, from the snapshot the upsert started with, so
   // the log says what this write replaced and not what a concurrent one did.
   const { rows } = await queryAs<OverrideRow & { before: string | null }>(
     BASE_LANG,
     `with "was" as (select "text" from "line_override" where "file" = $1)
-     insert into "line_override" ("file", "lineId", "text", "updatedBy")
-     values ($1, $2, $3, $4)
+     insert into "line_override" ("file", "lineId", "text", "updatedBy", "originalHash")
+     values ($1, $2, $3, $4, $5)
      on conflict ("teamId", "file") do update
         set "text" = excluded."text",
             "lineId" = excluded."lineId",
             "updatedAt" = now(),
-            "updatedBy" = excluded."updatedBy"
-     returning "file", "lineId", "text", "updatedAt", "updatedBy",
+            "updatedBy" = excluded."updatedBy",
+            "originalHash" = excluded."originalHash"
+     returning "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash",
                (select "text" from "was") as "before"`,
-    [file, lineId, text, userId],
+    [file, lineId, text, userId, original ? spokenHash(original.text) : null],
   );
   forgetOverrides();
   const { before, ...row } = rows[0];

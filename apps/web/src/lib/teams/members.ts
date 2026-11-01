@@ -1,6 +1,7 @@
-/** The only module that names team_member's columns. `edit` stays in language_grant. */
+/** The only module that names team_member's columns. `text` is in language_grant. */
 import type { ClientBase } from "pg";
 
+import { query } from "@/lib/db";
 import type { Capability } from "@/lib/permissions";
 
 /** The capabilities that were handed out; the ones already held are left out. */
@@ -23,15 +24,10 @@ export async function insertMembers(
 }
 
 /** Whatever team the row is filed under, as grantsOf reads it: a grant it shows must be removable. */
-export async function deleteMember(
-  client: ClientBase,
-  userId: string,
-  lang: string,
-  capability: Capability,
-): Promise<boolean> {
-  const { rowCount } = await client.query(
-    `delete from "team_member" where "userId" = $1 and "lang" = $2 and "capability" = $3`,
+export async function deleteMember(userId: string, lang: string, capability: Capability): Promise<boolean> {
+  const rows = await query(
+    `delete from "team_member" where "userId" = $1 and "lang" = $2 and "capability" = $3 returning 1`,
     [userId, lang, capability],
   );
-  return (rowCount ?? 0) > 0;
+  return rows.length > 0;
 }

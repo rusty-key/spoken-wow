@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { audioRelPath } from "./audio";
 import { npcKey } from "./corpus";
+import { spokenHash } from "./generation/spoken-hash";
 import { corpus as catalogue } from "./quests/catalogue";
 import { batchJobs, batchPlan, isGap, matchingLines, search } from "./search";
 import { madeByOf } from "./takes/made-by";
@@ -343,6 +344,39 @@ describe("overrides", () => {
   /** An override is keyed on the audio file, because one mp3 is spoken by many NPCs. */
   const rewrite = (file: string, text: string) => ({
     overrides: new Map([[file, { file, lineId: "", text, updatedAt: "", updatedBy: null }]]),
+  });
+
+  it("says when the original has changed since the override was saved", () => {
+    const file = "quests/123-complete.mp3";
+    const flagged = (originalHash: string | null) =>
+      search(
+        corpus,
+        store,
+        { limit: 50_000, includeProgress: true },
+        { overrides: new Map([[file, { file, lineId: "", text: "x", updatedAt: "", updatedBy: null, originalHash }]]) },
+      ).lines.find((line) => line.audioPath === file)?.driftedOverride !== null;
+    const text = corpus.lines.find((line) => audioRelPath(line) === file)!.text;
+
+    expect(flagged(spokenHash(text))).toBe(false);
+    expect(flagged(spokenHash(`${text} changed`))).toBe(true);
+    expect(flagged(null)).toBe(false);
+  });
+
+  it("names the row holding the override, which a voice's row inherits from its line's", () => {
+    const owner = "quests/123.mp3";
+    const row = (file: string) =>
+      search(
+        corpus,
+        store,
+        { limit: 50_000, includeProgress: true },
+        {
+          overrides: new Map([
+            [owner, { file: owner, lineId: "q:123", text: "x", updatedAt: "", updatedBy: null, originalHash: "old" }],
+          ]),
+        },
+      ).lines.find((line) => line.audioPath === file);
+
+    expect(row("quests/123-complete.mp3")?.driftedOverride).toEqual({ file: owner, lineId: "q:123" });
   });
 
   it("narrows to audio the current text would no longer produce", () => {

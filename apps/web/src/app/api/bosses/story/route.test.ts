@@ -35,7 +35,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  viewer.grants = [{ lang: "enUS", capability: "edit" }];
+  viewer.grants = [{ lang: "enUS", capability: "text" }];
   const key = `story route ${Math.random().toString(36).slice(2, 8)}`;
   id = -Math.floor(1e6 + Math.random() * 1e9);
   lineId = `boss:${MAP}:${key}`;
@@ -94,9 +94,14 @@ describe("PUT /api/bosses/story", () => {
     expect(stale.status).toBe(409);
   });
 
-  it("answers 403 to somebody without edit in the language asked for", async () => {
-    // Edit in English is no grant in German.
-    viewer.grants = [{ lang: "enUS", capability: "edit" }, { lang: "deDE", capability: "regenerate" }];
+  it("answers 403 to a team's edit without text", async () => {
+    viewer.grants = [{ lang: "enUS", capability: "edit" }];
+    const response = await PUT(request("PUT", { lineId, text: "A story." }));
+    expect(response.status).toBe(403);
+  });
+
+  it("answers 403 to somebody without text in the language asked for", async () => {
+    viewer.grants = [{ lang: "enUS", capability: "text" }, { lang: "deDE", capability: "regenerate" }];
     const response = await PUT(request("PUT", { lineId, text: "Eine Geschichte." }, "deDE"));
     expect(response.status).toBe(403);
   });

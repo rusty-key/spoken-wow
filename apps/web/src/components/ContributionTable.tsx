@@ -36,6 +36,7 @@ import { Refreshing } from "@/components/Loading";
 import SendersButton from "@/components/SendersButton";
 import StatusTabs, { BucketTabs } from "@/components/StatusTabs";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -135,15 +136,6 @@ const STATUS_LABELS: Record<ContributionStatus, string> = {
 };
 
 
-/** The day and the clock time, short enough to sit in a column, matching ReportTable's `when`. */
-function when(at: string): string {
-  return new Date(at).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 
 export default function ContributionTable({
@@ -780,6 +772,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
   onNameNpc: (id: number, answer: { npcKind: NpcRowKind; npcId: number; npcName: string }) => Promise<void>;
   onMatchPage: (id: number, answer: MatchAnswer) => Promise<void>;
 }) {
+  const when = useLocalDates();
   // A written page is one-way (accept.ts), so its match is no longer the moderator's to move.
   const pageWritten = current === "accepted" && (row.hasLine || lineCreated);
   const book = row.book;

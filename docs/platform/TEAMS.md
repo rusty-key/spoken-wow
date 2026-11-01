@@ -85,8 +85,12 @@ exactly this, so it stays a site-level grant.
 - Edit the **original text** of their language: quest, place, readable and boss text, and NPC and
   place names (`entity_name`).
 - Triage contributions and corrections from players (`contribution*`, `lib/contributions/*`).
-- Receive text reports (see *Reports*).
-- Appointed by site owners. *(My call.)*
+- Receive text reports (see *Contributions and reports*).
+- Appointed by site owners only. A team admin cannot appoint one, and `admin` does not imply this
+  role: migration 0092 appointed everyone who held `admin`, so nobody lost anything, and a new team
+  admin edits original text only once a site owner appoints them.
+- Stored as a `language_grant` row whose capability column says `edit`, which the app reads as
+  the capability `text`. The stored value stays so a rollback's release can read it.
 
 ### Audio team members
 
@@ -94,29 +98,28 @@ Roles inside a team, per language: `regenerate`, `configure`, `ignore`, `record`
 team-level `edit` that covers the team's text overrides, audio reports and missing audio
 (definitions today in `apps/web/src/lib/permissions.ts`).
 
-- A team admin adds members and grants any role within the team's languages, `admin` included.
+- A team admin adds members and grants any team role within the team's languages, `admin` included.
   Today only a global admin may grant `configure`, `ignore`, `record` and `admin` (`canGrant`); that
   limit goes, because the team is the boundary now. *(My call.)*
 - A person can belong to several teams, and can be a text maintainer and a team member at once.
   Small languages will usually be one person doing both.
 - Tables `team` (id, slug, name, languages, created) and `team_member` (team, user, language,
-  capability). `team_member` holds the audio capabilities; `language_grant` keeps `edit`, with
-  today's meaning and grantors, until report routing splits the text maintainer's `edit` from the
-  team-level one. Like `team_language`, `team_member` is read before any team is set, so it has no
-  row-level security.
+  capability). `team_member` holds every team capability, `edit` included; `language_grant` holds
+  only text maintainers. Like `team_language`, `team_member` is read before any team is set, so it
+  has no row-level security.
 
 ## Text: original and overrides
 
 - The **original text** is the shared `quest_line` / `lore_line` / `book_line` / `boss_line` /
   `entity_name` text. It changes through imports (the pipelines), text maintainers and site owners.
-- Each team has a **text layer** on top: per-team overrides, generalising `line_override` to
-  `(team, source, lang, line)`. The text a team voices, shows and ships is its override where
-  present, else the original. A take's staleness is judged against that.
+- In phase 1 the only override is `line_override`, English quests only: nothing else could write
+  one while a language has one team. The general per-team text layer waits for *Phase 2*.
 - When the original text of a line changes, that team's takes on the line go stale and appear in
   the team's queue, as stale takes do today (`lib/generation/dirty.ts`). The team re-rolls or
   overrides.
 - If the team had already overridden the line, the override is flagged **"original changed since
-  your override"**, and the team keeps or drops it.
+  your override"**, and the team keeps or drops it. Keeping saves the same text again, which marks
+  the new original as seen. An override saved before this flag existed stays quiet until saved again.
 
 **Invisible while one team voices a language.** Editing a line does exactly what it does today in
 that language:
@@ -141,7 +144,13 @@ Reports are routed by their existing category (`report_category_check`, migratio
 
 - A `wrong_text` report on a line the team has overridden goes to the team, since the text the
   player heard was the team's.
-- Text maintainers get a **pass to team** action, and the team a **pass to text** action.
+- A report's queue is stored on it (`report.queue`), set when it is filed. Each route checks the
+  capability of the report's queue, not only the language: `text` for the text queue, `edit` for
+  the audio queue.
+- Text maintainers get a **pass to team** action, and the team a **pass to text** action. Neither
+  shows when nobody works the queue it would pass to.
+- Accepting a report's text as a contribution writes original text, so it needs `text` whichever
+  queue the report sits in.
 - **Invisible while the two groups are the same people.** If a language's text maintainers and its
   team members are the same people, the two queues show as one page, today's triage page. Routing
   happens underneath and is only visible when the groups differ.
@@ -261,9 +270,9 @@ takes, filtered by team since it reads production as the owner role and RLS does
   generation settings and dismissal mark, and the site owner as its admin. In `spoken_dev` these
   are deDE, itIT, koKR, ptBR, ruRU, viVN, zhCN and zhTW. A language switched on later gets a new
   team with no members and the same copy of English's roster and settings (`adopt_lang`). There is no shared bucket for unmaintained languages.
-- `edit` stays in `language_grant`. The other capabilities are copied into `team_member`
-  unchanged, in the team that owns the language; their `language_grant` rows stay until a later
-  migration deletes them, so a rollback still works.
+- 0091 copied the audio capabilities into `team_member`, in the team that owns the language. 0092
+  gave every `edit` holder the team's `edit` as well, appointed every team admin a text maintainer,
+  and deleted the audio rows from `language_grant`.
 - A handover (`move_team_lang`) moves every row of a language to the new team in one transaction,
   and refuses while a job in the language runs.
 - Every existing per-team row moves to the team owning its language. Takes stay live; packs keep
@@ -302,6 +311,9 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 - **Explorer** gets a team picker per language.
 - **Reports** from the addon carry the team of the pack that played the line, so audio reports reach
   that team. A report without a team (older addons) goes to every team voicing that language.
+- **Text layer.** Per-team overrides generalise `line_override` to `(team, source, lang, line)`. The
+  text a team voices, shows and ships is its override where present, else the original, and a take's
+  staleness is judged against that.
 - **Edit UI** shows the choice between editing the original (text maintainers) and overriding for
   the team.
 
@@ -322,5 +334,6 @@ Clients per team; several English teams; team-owned storage, channels and signin
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
 
-Deleting the audio grants 0091 leaves in `language_grant`; the split of the text maintainer's
-`edit` from the team-level one; deleting a team, and a team admin's own page for their team.
+Deleting a team, and a team admin's own page for their team. Removing `line_issue` and `line_flag`,
+which have no readers. The English override route requiring `regenerate` rather than the team's
+`edit`.

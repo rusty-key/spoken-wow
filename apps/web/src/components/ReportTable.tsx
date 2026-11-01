@@ -15,6 +15,7 @@
 import { useLang } from "@/components/LangProvider";
 import { localeHref } from "@/lib/lang";
 import Link from "@/components/LocaleLink";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import FilterChip from "@/components/FilterChip";
@@ -29,6 +30,7 @@ import SortHeader from "@/components/SortHeader";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
 import { LinkTabs } from "@/components/StatusTabs";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
 import { Player as ReadablesPlayer } from "@/components/readables/Player";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +47,16 @@ import {
   type Section,
   type StatusView,
 } from "@/lib/reports/query";
-import { CATEGORIES, CATEGORY_COLUMN, STATUS_LABELS, type Category, type Report, type Status } from "@/lib/reports/reports";
-import { resolveReport } from "@/lib/reports/client";
+import {
+  CATEGORIES,
+  CATEGORY_COLUMN,
+  STATUS_LABELS,
+  type Category,
+  type Queue,
+  type Report,
+  type Status,
+} from "@/lib/reports/reports";
+import { passReport, resolveReport } from "@/lib/reports/client";
 import { applyResolutions, type ReportGroup } from "@/lib/reports/rows";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import { cn } from "@/lib/utils";
@@ -75,15 +85,6 @@ const CATEGORY_OPTIONS = CATEGORIES.map((category) => ({
   label: CATEGORY_COLUMN[category],
 }));
 
-/** The day and the clock time, short enough to sit in a column. */
-function when(at: string): string {
-  return new Date(at).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 /** One line of one corpus. Reports from all three share this table and its player. */
 function lineKey(source: Source, lineId: string): string {
@@ -100,6 +101,9 @@ export default function ReportTable({
   filters,
   npcs,
   canRegenerate,
+  canContribute,
+  labelled,
+  passTo,
   showNpcPage,
 }: {
   /** This page's lines, each with its reports, in the order the server sorted them. */
@@ -117,9 +121,14 @@ export default function ReportTable({
   npcs: Record<string, Heading>;
   /** Whether this visitor may spend credits from the line's panel. */
   canRegenerate: boolean;
+  /** Accepting a report's text writes the language's original. */
+  canContribute: boolean;
+  labelled: boolean;
+  passTo: Queue[];
   /** The NPC page is the admins'; see LineHeading. */
   showNpcPage: boolean;
 }) {
+  const when = useLocalDates();
   /**
    * What this session resolved, overlaid on the server's rows.
    *
@@ -129,6 +138,7 @@ export default function ReportTable({
    * shape exists to make impossible. See lib/reports/rows.ts.
    */
   const { pending, push } = usePendingPush();
+  const { refresh } = useRouter();
   const lang = useLang();
   const [resolved, setResolved] = useState<Record<number, Report>>({});
   /** Reports with a resolution in flight. A set, because a group resolves all of its at once. */
@@ -212,11 +222,11 @@ export default function ReportTable({
     void audio.current?.play().catch(() => {});
   }, [pressed]);
 
-  async function resolve(ids: number[], status: Status) {
+  async function act(ids: number[], request: (id: number) => Promise<Report | null>) {
     setBusy((current) => new Set([...current, ...ids]));
     await Promise.all(
       ids.map(async (id) => {
-        const report = await resolveReport(id, status);
+        const report = await request(id);
         if (report) setResolved((current) => ({ ...current, [report.id]: report }));
 
         setBusy((current) => {
@@ -227,6 +237,11 @@ export default function ReportTable({
       }),
     );
   }
+
+  const resolve = (ids: number[], status: Status) => act(ids, (id) => resolveReport(id, status));
+
+  // Refreshed because the row may no longer belong on this viewer's list.
+  const pass = (id: number, to: Queue) => act([id], (each) => passReport(each, to)).then(refresh);
 
   /** Move one filter and keep the rest, through the URL so a narrowed queue can be shared. */
   const hrefFor = (next: Partial<ReportFilters>, toPage = 1) => localeHref(lang, reportsHref(filters, next, toPage));
@@ -351,6 +366,16 @@ export default function ReportTable({
     );
   }
 
+  function passAction(report: Report) {
+    const to: Queue = report.queue === "text" ? "audio" : "text";
+    if (!passTo.includes(to)) return null;
+    return (
+      <LiteButton disabled={busy.has(report.id)} onClick={() => void pass(report.id, to)}>
+        {to === "text" ? "Pass to text" : "Pass to team"}
+      </LiteButton>
+    );
+  }
+
   /**
    * One report. On its own it carries the line; under a group it carries only what that
    * reporter said, with the line and its details spanning down from the group's row.
@@ -366,12 +391,17 @@ export default function ReportTable({
 
         <td className="pr-3">
           <p className="whitespace-pre-wrap">
+            {labelled ? (
+              <Badge variant="outline" className="mr-2 py-0 leading-5">
+                {report.queue === "text" ? "Text" : "Team"}
+              </Badge>
+            ) : null}
             <span className="text-muted-foreground mr-2 text-xs">{CATEGORY_COLUMN[report.category]}</span>
             {report.body}
           </p>
           <ReportContextNote context={report.context}>
             {/* The text the reporter's addon saw, as the contributions page would take it. */}
-            {report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
+            {canContribute && report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
               <ReportContribution
                 report={report}
                 onFixed={(fixed) => setResolved((current) => ({ ...current, [fixed.id]: fixed }))}
@@ -387,6 +417,7 @@ export default function ReportTable({
 
         <td className="w-0">
           <div className="flex items-center justify-end gap-1">
+            {passAction(report)}
             {resolveActions([report])}
           </div>
         </td>

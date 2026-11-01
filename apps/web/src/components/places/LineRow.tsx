@@ -52,7 +52,7 @@ type Props<L extends ExplorerLine> = {
   /** An earlier take is live again, so the row and the player can catch up. */
   onRestored: (line: L, version: number) => void;
   onEditText: (line: L) => void;
-  /** Name the line's place or boss in the page's language; null in English or without `edit`. */
+  /** Name the line's place or boss in the page's language; null in English or without `text`. */
   onRename: ((line: L) => void) | null;
   onRegenerate: (line: L) => void;
   /** Say this take is fine as it stands, despite a pronunciation having moved under it. */

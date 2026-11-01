@@ -16,6 +16,8 @@ export type LineOverride = {
   text: string;
   updatedAt: string;
   updatedBy: string | null;
+  /** The original's hash at the last save. Absent or null never counts as changed. */
+  originalHash?: string | null;
 };
 
 export class OverrideError extends Error {}

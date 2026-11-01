@@ -1,6 +1,6 @@
 /**
  * The name of a quest, an NPC, a book's owner, a place or a boss, in a language other than
- * English: its history, or a new version. Needs `edit` in the language (`?lang=`).
+ * English: its history, or a new version. Needs `text` in the language (`?lang=`).
  */
 import { requireIn } from "@/lib/generation/authz";
 import { BASE_LANG } from "@/lib/lang";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const MAX_NAME = 200;
 
 export async function GET(request: Request) {
-  const { lang, denied } = await requireIn(request, "edit");
+  const { lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
 
   const params = new URL(request.url).searchParams;
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const { session, lang, denied } = await requireIn(request, "edit");
+  const { session, lang, denied } = await requireIn(request, "text");
   if (denied) return denied;
   if (lang === BASE_LANG) {
     return Response.json({ error: "English names come from the corpus" }, { status: 400 });
