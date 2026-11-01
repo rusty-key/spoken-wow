@@ -32,8 +32,9 @@ function broadcast(channel: string, payload: unknown): void {
 // Node's own fetch (undici) brings the whole main process down when a server closes the connection while a large
 // body is held back because the disk write is slower (`assert(!this.paused)` in Parser.finish, uncaught). Chromium's
 // network stack does not, and it also uses the system proxy. `no-store`: the packs are not worth a copy in its cache.
+// `omit`: net.fetch would otherwise keep and resend cookies, and the Manager sends only the request and a User-Agent.
 const chromiumFetch: typeof fetch = (input, init) =>
-  net.fetch(input instanceof URL ? input.href : input, { ...init, cache: 'no-store' })
+  net.fetch(input instanceof URL ? input.href : input, { ...init, cache: 'no-store', credentials: 'omit' })
 
 function contentSecurityPolicy(): string {
   if (DEV_URL) {
