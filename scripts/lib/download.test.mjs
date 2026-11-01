@@ -27,6 +27,31 @@ test("writes a download that matches its name, and leaves nothing behind for one
   assert.equal(existsSync(`${bad}.part`), false);
 });
 
+test("waits out a rate limit, and gives up at once on a missing object", async () => {
+  const data = Buffer.from("clip");
+  const sha = createHash("sha256").update(data).digest("hex");
+  const target = join(mkdtempSync(join(tmpdir(), "download-")), "clip");
+  const waits = [];
+  const wait = async (ms) => void waits.push(ms);
+  const replies = [
+    new Response("", { status: 429, headers: { "retry-after": "7" } }),
+    new Response("", { status: 503 }),
+    new Response(data),
+  ];
+  await downloadVerified("u", sha, target, async () => replies.shift(), wait);
+  assert.deepEqual(waits, [7000, 2000]);
+  assert.deepEqual(readFileSync(target), data);
+
+  let calls = 0;
+  const missing = async () => (calls++, new Response("", { status: 404 }));
+  await assert.rejects(downloadVerified("u", sha, `${target}2`, missing, wait), /HTTP 404/);
+  assert.equal(calls, 1);
+
+  const refused = async () => new Response("", { status: 429 });
+  await assert.rejects(downloadVerified("u", sha, `${target}3`, refused, wait), /HTTP 429/);
+  assert.equal(existsSync(`${target}3`), false);
+});
+
 test("runs the work side by side, no more than asked at once", async () => {
   let running = 0;
   let most = 0;

@@ -8,9 +8,22 @@ export const PARALLEL = 16;
 
 export const archiveBase = (url) => (url.endsWith("/") ? url : `${url}/`);
 
-export async function downloadVerified(url, sha256, target, fetchImpl = fetch) {
-  try {
+const RETRIES = 5;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// The archive's CDN answers 429 to a burst, so one refused clip must not fail a whole pack's build.
+async function fetchRetrying(url, fetchImpl, wait) {
+  for (let attempt = 0; ; attempt++) {
     const res = await fetchImpl(url);
+    if ((res.status !== 429 && res.status < 500) || attempt === RETRIES) return res;
+    const after = Number(res.headers?.get("retry-after"));
+    await wait((after > 0 ? after : 2 ** attempt) * 1000);
+  }
+}
+
+export async function downloadVerified(url, sha256, target, fetchImpl = fetch, wait = sleep) {
+  try {
+    const res = await fetchRetrying(url, fetchImpl, wait);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = Buffer.from(await res.arrayBuffer());
     const got = createHash("sha256").update(data).digest("hex");
