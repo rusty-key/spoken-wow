@@ -41,3 +41,12 @@ export function parseFrontmatter(text, file) {
 
   return { meta, body: text.slice(end + 5).trim() + "\n" };
 }
+
+const ONLY_LINES =
+  /^[ \t]*<!--\s*only:(curseforge|wago)\s*-->[ \t]*\r?\n([\s\S]*?)^[ \t]*<!--\s*\/only\s*-->[ \t]*\r?\n/gm;
+const ONLY_INLINE = /<!--\s*only:(curseforge|wago)\s*-->([\s\S]*?)<!--\s*\/only\s*-->/g;
+
+export function forStore(body, store) {
+  const keep = (_, named, inner) => (named === store ? inner : "");
+  return body.replace(ONLY_LINES, keep).replace(ONLY_INLINE, keep);
+}

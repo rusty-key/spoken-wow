@@ -36,7 +36,7 @@ import { createHash } from "node:crypto";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseFrontmatter } from "./lib/frontmatter.mjs";
+import { forStore, parseFrontmatter } from "./lib/frontmatter.mjs";
 import { loadPacks } from "./lib/packs.mjs";
 
 // The monorepo root, two levels up from scripts/.
@@ -93,15 +93,6 @@ function wagoUrls(pages) {
 // more than a paragraph of difference is two pages, and should say so by being two pages.
 // Two shapes, because a block is either whole lines or part of a sentence, and getting the
 // newlines wrong shows up as a blank row in the middle of a markdown table.
-const ONLY_LINES =
-  /^[ \t]*<!--\s*only:(curseforge|wago)\s*-->[ \t]*\r?\n([\s\S]*?)^[ \t]*<!--\s*\/only\s*-->[ \t]*\r?\n/gm;
-const ONLY_INLINE = /<!--\s*only:(curseforge|wago)\s*-->([\s\S]*?)<!--\s*\/only\s*-->/g;
-
-function forStore(body, store) {
-  const keep = (_, named, inner) => (named === store ? inner : "");
-  return body.replace(ONLY_LINES, keep).replace(ONLY_INLINE, keep);
-}
-
 function forWago(body, urls) {
   return forStore(body, "wago").replace(
     new RegExp(`${CURSEFORGE_ADDON_URL}([a-z0-9-]+)`, "g"),

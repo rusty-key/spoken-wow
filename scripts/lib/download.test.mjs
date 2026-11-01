@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { archiveBase, downloadVerified, eachParallel } from "./download.mjs";
+import { archiveBase, downloadVerified, eachParallel, fetchRetrying } from "./download.mjs";
 
 const sha = (text) => createHash("sha256").update(text).digest("hex");
 
@@ -68,4 +68,15 @@ test("runs the work side by side, no more than asked at once", async () => {
   );
   assert.equal(most, 2);
   assert.deepEqual(done.sort(), [1, 2, 3, 4, 5]);
+});
+
+test("a dropped connection is retried", async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    if (++calls < 3) throw new TypeError("fetch failed");
+    return new Response("ok");
+  };
+  const res = await fetchRetrying("https://x", fetchImpl, async () => {});
+  assert.equal(res.status, 200);
+  assert.equal(calls, 3);
 });
