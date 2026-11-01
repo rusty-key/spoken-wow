@@ -19,6 +19,11 @@ async function englishTeam(): Promise<string> {
   return rows[0].id;
 }
 
+async function ownTeamId(): Promise<string> {
+  const { rows } = await asSystem.query(`select "id" from "team" where "slug" = $1`, [NEW_LANG.toLowerCase()]);
+  return rows[0].id;
+}
+
 async function cleanup() {
   await asSystem.query(`delete from "team_language" where "lang" = $1`, [NEW_LANG]);
   await asSystem.query(`delete from "language" where "code" = $1`, [NEW_LANG]);
@@ -55,12 +60,12 @@ describe("teamOf", () => {
     await expect(teamOf(NEW_LANG)).rejects.toBeInstanceOf(NoTeamError);
   });
 
-  it("gives a newly enabled language to the english team", async () => {
+  it("gives a newly enabled language a team of its own", async () => {
     await setEnabled(NEW_LANG, true, USER);
-    expect(await teamOf(NEW_LANG)).toBe(await englishTeam());
-    expect((await teamLangs()).get(NEW_LANG)).toBe(await englishTeam());
+    expect(await teamOf(NEW_LANG)).toBe(await ownTeamId());
+    expect((await teamLangs()).get(NEW_LANG)).toBe(await ownTeamId());
     const { rows } = await db().query(`select "id" from "team"`);
-    expect(rows.map((row) => row.id)).toContain(await englishTeam());
+    expect(rows.map((row) => row.id)).toContain(await ownTeamId());
   });
 
   it("leaves the team alone when a language is toggled again", async () => {
@@ -89,7 +94,7 @@ describe("adoptEveryLang", () => {
     await inTransaction(adoptEveryLang);
     forgetTeams();
     await report();
-    expect(await teamOf(NEW_LANG)).toBe(await englishTeam());
+    expect(await teamOf(NEW_LANG)).toBe(await ownTeamId());
   });
 });
 

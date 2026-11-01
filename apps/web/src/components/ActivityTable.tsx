@@ -255,6 +255,12 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: `took ${grantName(d.capability)} from ${row.subjectName ?? "someone"}`, quote: null };
     case "language.toggled":
       return { what: d.enabled ? "switched the language on" : "switched the language off", quote: null };
+    case "team.created":
+      return { what: `created the team ${str(d.slug) ?? ""}`.trim(), quote: null };
+    case "team.renamed":
+      return { what: "renamed the team", quote: str(d.name) };
+    case "team.language_moved":
+      return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
     case "contribution.resolved":
       return {
         what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,

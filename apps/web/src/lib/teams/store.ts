@@ -123,17 +123,12 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
 }
 
 /**
- * Gives `lang` to the english team unless a team owns it. On the caller's client, so it shares
- * the transaction that switches the language on; the caller calls forgetTeams once that commits.
+ * Gives `lang` a team of its own, slugged by its code and holding English's roster, unless a
+ * team owns it (adopt_lang). On the caller's client, so it shares the transaction that
+ * switches the language on; the caller calls forgetTeams once that commits.
  */
 export async function adoptLang(client: ClientBase, lang: string): Promise<void> {
-  await client.query(
-    `insert into "team_language" ("teamId", "lang", "privileged")
-     select "id", $1, true from "team" where "slug" = 'english'
-        and team_of_lang($1) is null
-     on conflict do nothing`,
-    [lang],
-  );
+  await client.query(`select adopt_lang($1)`, [lang]);
 }
 
 /**
