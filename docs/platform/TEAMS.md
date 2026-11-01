@@ -228,11 +228,12 @@ The button starts that workflow and follows it.
    15 seconds. There is no webhook. Progress is the workflow's current step, shown with a link to
    the run; there is no per-clip count.
 3. The run ends `done` or `failed`. A run GitHub has not started 15 minutes after the press is failed
-   by the site, so a lost dispatch cannot hold the lock for ever.
+   by the site, so a lost dispatch cannot hold the lock for ever. Nor can an expired token: a run whose
+   checks still get errors 9 hours after the press, past any run the workflow allows, is failed too.
 
 **One release at a time, site-wide.** The partial unique index `release_run_one_active` allows one
 `dispatching` or `running` row across all teams, and a second press gets a 409 naming the active
-run. The workflow's `concurrency` group serialises it from GitHub's side as well. A team sees only
+run. A team sees only
 that another team's release is running, not its step, link or error.
 
 Manager-only mode publishes to the Manager channel alone, with no CurseForge or GitHub upload, and
@@ -253,9 +254,10 @@ transcodes only its 64 kbps tier, to MP3 as well.
 
 **Today's release workflow** *(my call)*: `release-packs.yaml` stays the only Manager publisher, and
 the site starts it instead of publishing itself, so two publishers never race for one pack's revs.
-Manual dispatches still work, including the CurseForge and GitHub upload; a manual dispatch and a
-press cannot race on the index, because the `concurrency` group serialises them and the index write
-is conditional.
+Manual dispatches still work, including the CurseForge and GitHub upload. A manual dispatch and a
+press cannot overwrite each other on the index, because only one run builds at a time and the index
+write is conditional. They can cost each other a run: GitHub's `concurrency` group keeps one pending
+run and cancels it for a newer one, so a press waiting behind a manual build can end `cancelled`.
 
 ## Migration
 

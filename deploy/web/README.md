@@ -540,7 +540,9 @@ Migration `0095_release_run.sql` arrives with that deploy (`activate.sh` runs it
 
 **A stuck run** needs no `make` target: if GitHub has not started a run 15 minutes after the
 press, the page fails it itself ("GitHub never started it") and frees the lock. A run that
-GitHub reports as finished is settled the next time anyone opens the page.
+GitHub reports as finished is settled the next time anyone opens the page. If every check gets an
+error, as with an expired token, the lock holds for 9 hours and the only sign is in the server log,
+so replace the token rather than waiting.
 
 **The first real release.** Pick a small language and a small section, press Release, watch the
 run's step on the page and the run itself through its link, then check the Manager lists the new
