@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
 import { BASE_LANG } from "@/lib/lang";
 import { can, isAdmin } from "@/lib/permissions";
+import { queuesOf } from "@/lib/reports/reports";
 import { sortQueue } from "@/lib/reports/sort";
 import { listReports, skippedIds } from "@/lib/reports/store";
 import { isSource } from "@/lib/sections";
@@ -22,10 +23,11 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
   if (!isSource(section)) notFound();
   const session = await auth.api.getSession({ headers: await headers() });
   const viewer = await viewerOf(session);
-  if (!session || !(can(viewer, "text", lang) || can(viewer, "edit", lang))) notFound();
+  const queues = queuesOf(viewer, lang);
+  if (!session || !queues.length) notFound();
 
   const [reports, skipped] = await Promise.all([
-    listReports("open", section, "all", null, lang),
+    listReports("open", section, "all", null, lang, queues),
     skippedIds(session.user.id, lang),
   ]);
   const groups = sortQueue(reports, skipped);

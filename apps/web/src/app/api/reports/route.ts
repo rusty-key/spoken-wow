@@ -12,6 +12,7 @@
  */
 import { headers } from "next/headers";
 
+import { audioRelPath } from "@/lib/audio";
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
 import { validateSubmission } from "@/lib/reports/reports";
@@ -122,6 +123,7 @@ export async function POST(request: Request) {
     lang,
     lineId: addressed.lineId,
     target: addressed.target,
+    file: addressed.file,
     category: validated.value.category,
     body: validated.value.body,
     ...identity,
@@ -175,14 +177,14 @@ async function contributeMissing(
 async function questsTarget(
   raw: string | null,
   claimed: unknown,
-): Promise<{ lineId: string | null; target: string } | null> {
+): Promise<{ lineId: string | null; target: string; file: string | null } | null> {
   const target = raw ? parseTarget(raw.split("/")) : null;
   if (!target) return null;
 
   const wanted = typeof claimed === "string" ? claimed : null;
   const lines = await resolveTarget(target);
-  const lineId = lines.find((line) => line.lineId === wanted)?.lineId ?? null;
-  return { lineId, target: formatTarget(target) };
+  const line = lines.find((each) => each.lineId === wanted);
+  return { lineId: line?.lineId ?? null, target: formatTarget(target), file: line ? audioRelPath(line) : null };
 }
 
 /**
@@ -193,7 +195,7 @@ async function questsTarget(
  */
 async function readablesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string } | null> {
+): Promise<{ lineId: string | null; target: string; file?: string | null } | null> {
   if (!raw) return null;
 
   const page = await pageById(raw);
@@ -205,7 +207,7 @@ async function readablesTarget(
 /** A places address: the line's own audio path, '1411/razor-hill'. */
 async function placesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string } | null> {
+): Promise<{ lineId: string | null; target: string; file?: string | null } | null> {
   if (!raw) return null;
 
   const [mapID, slug] = raw.split("/");
@@ -218,7 +220,7 @@ async function placesTarget(
 /** A bosses address: the boss's own audio path, '36/edwin-vancleef'. */
 async function bossesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string } | null> {
+): Promise<{ lineId: string | null; target: string; file?: string | null } | null> {
   if (!raw) return null;
 
   // Exactly '<map>/<slug>', as targetExplorerHref reads it: a trailing segment is no address.

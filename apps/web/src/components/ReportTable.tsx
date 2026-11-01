@@ -15,6 +15,7 @@
 import { useLang } from "@/components/LangProvider";
 import { localeHref } from "@/lib/lang";
 import Link from "@/components/LocaleLink";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import FilterChip from "@/components/FilterChip";
@@ -45,8 +46,16 @@ import {
   type Section,
   type StatusView,
 } from "@/lib/reports/query";
-import { CATEGORIES, CATEGORY_COLUMN, STATUS_LABELS, type Category, type Report, type Status } from "@/lib/reports/reports";
-import { resolveReport } from "@/lib/reports/client";
+import {
+  CATEGORIES,
+  CATEGORY_COLUMN,
+  STATUS_LABELS,
+  type Category,
+  type Queue,
+  type Report,
+  type Status,
+} from "@/lib/reports/reports";
+import { passReport, resolveReport } from "@/lib/reports/client";
 import { applyResolutions, type ReportGroup } from "@/lib/reports/rows";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import { cn } from "@/lib/utils";
@@ -100,6 +109,9 @@ export default function ReportTable({
   filters,
   npcs,
   canRegenerate,
+  canContribute,
+  labelled,
+  passTo,
   showNpcPage,
 }: {
   /** This page's lines, each with its reports, in the order the server sorted them. */
@@ -117,6 +129,12 @@ export default function ReportTable({
   npcs: Record<string, Heading>;
   /** Whether this visitor may spend credits from the line's panel. */
   canRegenerate: boolean;
+  /** Whether the viewer keeps the language's text, which accepting a report's text writes. */
+  canContribute: boolean;
+  /** Whether a row says which queue it waits in. See queueView. */
+  labelled: boolean;
+  /** The queues a report can be passed into. See queueView. */
+  passTo: Queue[];
   /** The NPC page is the admins'; see LineHeading. */
   showNpcPage: boolean;
 }) {
@@ -129,6 +147,7 @@ export default function ReportTable({
    * shape exists to make impossible. See lib/reports/rows.ts.
    */
   const { pending, push } = usePendingPush();
+  const { refresh } = useRouter();
   const lang = useLang();
   const [resolved, setResolved] = useState<Record<number, Report>>({});
   /** Reports with a resolution in flight. A set, because a group resolves all of its at once. */
@@ -226,6 +245,20 @@ export default function ReportTable({
         });
       }),
     );
+  }
+
+  async function pass(id: number, to: Queue) {
+    setBusy((current) => new Set([...current, id]));
+    const report = await passReport(id, to);
+    if (report) {
+      setResolved((current) => ({ ...current, [report.id]: report }));
+      refresh();
+    }
+    setBusy((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
   }
 
   /** Move one filter and keep the rest, through the URL so a narrowed queue can be shared. */
@@ -351,6 +384,17 @@ export default function ReportTable({
     );
   }
 
+  /** To the other queue, where somebody works it; refreshed so the row leaves a list it no longer belongs on. */
+  function passAction(report: Report) {
+    const to: Queue = report.queue === "text" ? "audio" : "text";
+    if (!passTo.includes(to)) return null;
+    return (
+      <LiteButton disabled={busy.has(report.id)} onClick={() => void pass(report.id, to)}>
+        {to === "text" ? "Pass to text" : "Pass to team"}
+      </LiteButton>
+    );
+  }
+
   /**
    * One report. On its own it carries the line; under a group it carries only what that
    * reporter said, with the line and its details spanning down from the group's row.
@@ -366,12 +410,17 @@ export default function ReportTable({
 
         <td className="pr-3">
           <p className="whitespace-pre-wrap">
+            {labelled ? (
+              <Badge variant="outline" className="mr-2 py-0 leading-5">
+                {report.queue === "text" ? "Text" : "Team"}
+              </Badge>
+            ) : null}
             <span className="text-muted-foreground mr-2 text-xs">{CATEGORY_COLUMN[report.category]}</span>
             {report.body}
           </p>
           <ReportContextNote context={report.context}>
             {/* The text the reporter's addon saw, as the contributions page would take it. */}
-            {report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
+            {canContribute && report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
               <ReportContribution
                 report={report}
                 onFixed={(fixed) => setResolved((current) => ({ ...current, [fixed.id]: fixed }))}
@@ -387,6 +436,7 @@ export default function ReportTable({
 
         <td className="w-0">
           <div className="flex items-center justify-end gap-1">
+            {passAction(report)}
             {resolveActions([report])}
           </div>
         </td>

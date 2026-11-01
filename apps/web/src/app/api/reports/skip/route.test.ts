@@ -13,12 +13,12 @@ const IP = `test-skip-${Math.random().toString(36).slice(2, 10)}`;
 const authorise = vi.fn();
 
 vi.mock("@/lib/generation/authz", () => ({
-  requireIn: async () => authorise(),
+  requireQueues: async () => authorise(),
 }));
 
 import { DELETE, POST } from "./route";
 
-const allowed = (lang = "enUS") => ({ session: { user: { id: USER } }, lang, denied: null });
+const allowed = (lang = "enUS", queues = ["text", "audio"]) => ({ session: { user: { id: USER } }, lang, queues, denied: null });
 
 function post(ids: unknown): Request {
   return new Request("https://example.com/api/reports/skip", {

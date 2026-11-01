@@ -270,6 +270,8 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: `changed a contribution's ${str(d.field) ?? "details"}`, quote: null };
     case "report.resolved":
       return { what: `marked a report ${str(d.status) ?? "resolved"}`, quote: str(d.category) };
+    case "report.passed":
+      return { what: `passed a report to ${d.to === "text" ? "text maintainers" : "the team"}`, quote: null };
     case "user.role_changed":
       return { what: `made ${row.subjectName ?? "a removed user"} ${str(d.role) ?? "?"}`, quote: null };
     case "user.banned":

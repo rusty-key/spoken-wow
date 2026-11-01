@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import SortPicker from "@/components/reports/SortPicker";
 import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
-import { can } from "@/lib/permissions";
+import { queuesOf } from "@/lib/reports/reports";
 import { queueCounts } from "@/lib/reports/sort";
 import { listReports, skippedIds } from "@/lib/reports/store";
 import { SOURCES, type Source } from "@/lib/sections";
@@ -20,10 +20,11 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const session = await auth.api.getSession({ headers: await headers() });
   // The same gate as /reports: these are the same reports, a card at a time.
   const viewer = await viewerOf(session);
-  if (!session || !(can(viewer, "text", lang) || can(viewer, "edit", lang))) notFound();
+  const queues = queuesOf(viewer, lang);
+  if (!session || !queues.length) notFound();
 
   const [open, skipped] = await Promise.all([
-    listReports("open", "all", "all", null, lang),
+    listReports("open", "all", "all", null, lang, queues),
     skippedIds(session.user.id, lang),
   ]);
   const counts = Object.fromEntries(

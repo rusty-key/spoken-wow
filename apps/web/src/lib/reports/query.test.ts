@@ -5,6 +5,7 @@ import type { Report } from "./reports";
 
 function report(overrides: Partial<Report> = {}): Report {
   return {
+    queue: "audio",
     id: 1,
     source: "quests",
     lineId: "q:374:accept",

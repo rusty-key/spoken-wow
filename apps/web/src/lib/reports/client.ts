@@ -7,7 +7,7 @@
 import type { ContributionStatus } from "@/lib/contributions/contributions";
 
 import type { CorrectionAccept, ReportContribution } from "./contribute";
-import type { Report, Status } from "./reports";
+import type { Queue, Report, Status } from "./reports";
 
 /** The report as it now stands, or null when the change did not go through. */
 export async function resolveReport(id: number, status: Status): Promise<Report | null> {
@@ -15,6 +15,18 @@ export async function resolveReport(id: number, status: Status): Promise<Report 
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ id, status }),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const body = (await response.json().catch(() => null)) as { report?: Report } | null;
+  return body?.report ?? null;
+}
+
+/** The report as it now stands, or null when the pass did not go through. */
+export async function passReport(id: number, to: Queue): Promise<Report | null> {
+  const response = await fetch("/api/reports/pass", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, to }),
   }).catch(() => null);
   if (!response?.ok) return null;
   const body = (await response.json().catch(() => null)) as { report?: Report } | null;

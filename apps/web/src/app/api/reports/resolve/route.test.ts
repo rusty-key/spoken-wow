@@ -43,7 +43,34 @@ afterAll(async () => {
   await closeDb();
 });
 
+/** A session holding `capability` in every language, as requireCapability would answer it. */
+function holding(capability: string) {
+  authorise.mockImplementationOnce(async (asked: string) =>
+    asked === capability
+      ? { session: { user: { id: RESOLVER } }, denied: null }
+      : { session: null, denied: Response.json({ error: "not allowed" }, { status: 403 }) },
+  );
+}
+
 describe("POST /api/reports/resolve", () => {
+  it("answers a text maintainer 403 on an audio report, and 200 on a text report", async () => {
+    const { rows } = await asSystem.query<{ id: number; queue: string }>(
+      `insert into "report" ("source", "lang", "lineId", "target", "category", "body", "teamId", "queue")
+       values ('quests', 'ptBR', 'q:1:accept', 'text', 'pronunciation', 'test', team_of_lang('ptBR'), 'audio'),
+              ('quests', 'ptBR', 'q:1:accept', 'text', 'wrong_text', 'test', team_of_lang('ptBR'), 'text')
+       returning "id", "queue"`,
+    );
+    try {
+      const [audio, text] = [rows.find((r) => r.queue === "audio")!, rows.find((r) => r.queue === "text")!];
+      holding("text");
+      expect((await POST(post({ id: audio.id, status: "fixed" }))).status).toBe(403);
+      holding("text");
+      expect((await POST(post({ id: text.id, status: "fixed" }))).status).toBe(200);
+    } finally {
+      await asSystem.query(`delete from "report" where "id" = any($1)`, [rows.map((r) => r.id)]);
+    }
+  });
+
   it("returns the 403 a denied session carries", async () => {
     authorise.mockResolvedValueOnce({
       session: null,

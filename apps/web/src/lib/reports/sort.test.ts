@@ -7,6 +7,7 @@ let nextId = 1;
 
 function report(lineId: string | null, createdAt: string, extra: Partial<Report> = {}): Report {
   return {
+    queue: "audio",
     id: nextId++,
     source: "quests",
     lineId,
