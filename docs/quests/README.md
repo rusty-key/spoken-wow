@@ -1581,7 +1581,8 @@ in Spoken's `UI/TextView.lua`). `UI/QuestsTab.lua` adds a Quests tab to it once 
 first, before Places and Readables; it needs Spoken and no other module. `Compendium.xml` loads
 the tab and its data from every `.toc` file (Forever, Classic Era and TBC Anniversary).
 
-Two generated files feed it, both committed so the addon never needs a database:
+Two generated English files feed it, both committed so the addon never needs a database. A
+language's localized wording is a separate export in that language's sound pack:
 
 - `Data/Compendium.lua` (`make quests-compendium`, `tools/export_compendium.py`): every corpus
   quest with its English title, its zone as uiMapIDs (the quest log's zone, a dungeon counting as
@@ -1700,6 +1701,14 @@ Two generated files feed it, both committed so the addon never needs a database:
   text; where givers' texts differ, the one most of the moment's lines have, ties to the first in
   the corpus; ignored lines, and the quests the hand corrections `remove`, are left out. About 2.8 MB, parsed at every login on those clients.
 
+- Localized quest titles, accept text and complete text come from the corpus database's
+  `entity_name` and `quest_line.localeText` rows. `make quests-export-compendium-locale-text
+  LOCALE=esMX` writes the snapshot used by `make quests-package-audio LOCALE=esMX`; the
+  language pack loads it only when the client is in that locale. Progress is used as the accept
+  text only when the quest has neither accept nor complete text. If the corpus has no
+  translation, the Compendium keeps the client's English wording; the English client does not
+  load a localized table.
+
 The tab lists only the quests this character's race and class may take. A quest is found once
 the client says it is completed (`C_QuestLog.GetAllCompletedQuestIDs`, else
 `GetQuestsCompleted`, else `IsQuestFlaggedCompleted` one at a time) or while it is in the quest
@@ -1811,11 +1820,14 @@ view's Play, Report or Contribute; and in DialogueUI's window, at the left end o
 a quest page (`UI/DialogueUIBridge.lua`). DialogueUI hides the rest of the interface while it is
 up, so that one closes DialogueUI's window before the Compendium opens.
 
-On a client in another language, `QUEST_DETAIL` and `QUEST_COMPLETE` keep the window's title and
-words in `SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown over the English;
-`QUEST_PROGRESS` keeps the title alone. The player's name, class and race go back to `$N`, `$C` and `$R` where the
-English has them, so another character sees its own. A text kept by a character of the other sex
-is not shown where the English has a `$G`. An English client keeps nothing.
+On a client in another language, the matching language pack's corpus export supplies the
+Compendium's title, offer and hand-in text before any window has been seen. `QUEST_DETAIL` and
+`QUEST_COMPLETE` can then keep the exact text shown by the client in
+`SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown over the English;
+`QUEST_PROGRESS` keeps the title alone. The player's name, class and race go back to `$N`, `$C`
+and `$R` where the English has them, so another character sees its own. A text kept by a
+character of the other sex is not shown where the English has a `$G`. An English client keeps
+nothing.
 
 ## Tests
 

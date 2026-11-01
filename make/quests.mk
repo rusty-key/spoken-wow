@@ -59,7 +59,7 @@ endef
         package-meta icon \
         downloads-status \
         factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
-        release-dry import-corpus import-locale import-npc-bodies fill-locales import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
+        release-dry import-corpus import-locale import-npc-bodies fill-locales export-compendium-locale-text import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
         sync check-synced full-release upload upload-dry
 
 help: ## Show this help
@@ -194,7 +194,7 @@ package: ## Zip the quests addon into dist/
 # them. Recursive, so only a target that reads it pays for the node start.
 NON_CLIENT_LOCALES = $(shell node --input-type=module -e 'const { LOCALES } = await import("./pipelines/lib/locales.mjs"); console.log(LOCALES.filter((l) => l.client === false).map((l) => l.code).join(" "))')
 
-package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE)),export-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
+package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE)),export-locale-text export-compendium-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
 	@VERSION=$(VERSION) ENCODE=$(if $(ENCODE),$(ENCODE),ogg-q0-44k) MODULE=SpokenQuestsAudio \
 	  LANGUAGE="$(or $(LOCALE),enUS)" JOBS=$(JOBS) ./scripts/quests/package-audio.sh
 
@@ -399,6 +399,12 @@ fill-locales: ## Fill vmangos's empty *_locN columns from TrinityCore (TDB335= T
 	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/fill_locales_from_tdb.py \
 	  --tdb335 "$(abspath $(TDB335))" --tdb-world "$(abspath $(TDB_WORLD))" \
 	  --tdb-hotfixes "$(abspath $(TDB_HOTFIXES))" $(ARGS)
+
+# The website corpus is the source of truth for the Compendium's client wording. The export
+# stays in the language's build area so the main addon never loads every locale for everyone.
+export-compendium-locale-text: ## quest_line.localeText/entity_name -> build/quests/$(LOCALE)/compendium-text.json.gz (LOCALE=esMX)
+	@test -n "$(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE))" || { echo "export-compendium-locale-text: set LOCALE to a supported client language, e.g. LOCALE=esMX"; exit 2; }
+	@$(QUESTS_CLI) export-compendium-locale-text --lang $(LOCALE) --out $(abspath build/quests/$(LOCALE)/compendium-text.json.gz)
 
 # Italian, which no client runs in, from the QuestIT community's addon: quest text, quest
 # titles and the few book pages it has, as 'community' rows. Run again on each of their

@@ -89,6 +89,7 @@ local ns = {}
 for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "Data/QuestFaces", "UI/QuestsTab", "UI/OpenInCompendium" }) do
     assert(loadfile(QUESTS .. file .. ".lua"))("Spoken_Quests", ns)
 end
+Expect("an English client has no localized Compendium table", SpokenQuestsLocalizedText, nil)
 -- The shipped data links each quest to the one before it in its chain: Lost Necklace, Pie for
 -- Billy, Back to Billy, then Goldtooth. Only that chain is kept here, so the rest of the tree
 -- reads as single quests; and one made up, crossing from Elwynn Forest into Westfall: The
@@ -1391,7 +1392,36 @@ stub.world.unitSex = 3
 Tab:Refresh()
 Expect("...and to a woman, the English, with her word", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)
 stub.world.unitSex = 2
+stub.SetLocale("esMX")
+-- Language packs provide this table. Keeping the fixture here makes the player test cover the
+-- seam without making the main addon load a locale's export, or every locale at once.
+SpokenQuestsLocalizedText = {
+    esMX = {
+        [2] = { accept = "El poderoso hipogrifo Garfafilada ha sido asesinado." },
+        [47] = {
+            title = "Intercambio de polvo de oro",
+            accept = "Los kóbolds de esa zona a veces llevan polvo de oro.",
+            complete = "Gracias por el Polvo de oro, Tester.",
+        },
+    },
+    esES = {
+        [47] = { accept = "Los kobolds de esa zona a veces llevan polvo de oro." },
+    },
+}
+C:Tab("quests").unlock.set(true)
+Tab:Keep("accept", SpokenQuestsText[47].accept, SpokenQuestsCompendium.quests[47][1])
+Tab:Open(47)
+local spanishWords = PageWords() or ""
+Expect("Spanish quest title uses the localized fallback", page.title.text, "Intercambio de polvo de oro")
+Expect("...and its description is localized", spanishWords:find("Los kóbolds de esa zona", 1, true) ~= nil, true)
+Expect("...and its conclusion is localized", spanishWords:find("Gracias por el Polvo de oro, Tester.", 1, true) ~= nil, true)
+Expect("the esMX corpus wording overrides the esES wording",
+    SpokenQuestsLocalizedText.esMX[2].accept:find("ha sido asesinado", 1, true) ~= nil, true)
+Expect("the esES table keeps its own locale wording",
+    SpokenQuestsLocalizedText.esES[47].accept:find("Los kobolds de esa zona", 1, true) ~= nil, true)
+
 stub.SetLocale("enUS")
+SpokenQuestsLocalizedText = nil
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_DETAIL")
 stub.world.questID = 0
