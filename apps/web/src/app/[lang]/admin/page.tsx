@@ -74,6 +74,9 @@ export default async function Page({
             Teams
           </LocaleLink>
         )}
+        <LocaleLink href="/admin/release" className="text-muted-foreground ml-4 text-sm hover:underline">
+          Release
+        </LocaleLink>
         <p className="text-muted-foreground mt-1 mb-5 text-sm">
           {global ? (
             <>
