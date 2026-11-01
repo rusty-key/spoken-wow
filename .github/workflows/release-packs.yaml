@@ -141,6 +141,7 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           echo "DROPLET=$TARGET" >> "$GITHUB_ENV"
+          echo "DEPLOY_KEY=$HOME/.ssh/deploy_key" >> "$GITHUB_ENV"
           echo "SSH=ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
 
       # bosses has no CurseForge project, and its GitHub release is make bosses-full-release, which
