@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { closeDb } from "@/lib/db";
+import { closeDb, db } from "@/lib/db";
 
 import { forgetTeams } from "./store";
 import { asSystem, ownTeam, systemRows } from "./testing";
@@ -189,7 +189,8 @@ describe("adopt_lang", () => {
 
   it("gives an unowned language a team of its own with English's roster", async () => {
     await drop();
-    await asSystem.query(`select adopt_lang($1)`, [LANG]);
+    // As the app calls it: its own role, acting as no team.
+    await db().query(`select adopt_lang($1)`, [LANG]);
 
     const team = await teamOfLang(LANG);
     const counts = await systemRows<{ english: number; adopted: number }>(

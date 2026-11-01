@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { closeDb, db } from "@/lib/db";
+import { closeDb, inTransaction, withTeam } from "@/lib/db";
 
 import { createTeam, handOver, listTeams, liveTakeCount, renameTeam, TeamBusyError, TeamInputError } from "./admin";
 import { adoptLang, forgetTeams, teamOf } from "./store";
@@ -159,19 +159,28 @@ describe("liveTakeCount", () => {
 });
 
 describe("adoptLang", () => {
-  it("gives an unowned language a team slugged by its code", async () => {
-    // A code no migration made a team for, so the cleanup deletes only what this made.
-    const client = await db().connect();
-    try {
-      await client.query(`select set_config('spoken.team', '*', false)`);
-      await adoptLang(client, "zzZZ");
-    } finally {
-      client.release();
-    }
-    const rows = await systemRows<{ id: string; slug: string }>(
-      `select t."id", t."slug" from "team" t where t."id" = team_of_lang('zzZZ')`,
+  // As setEnabled and the queue's boot call it: the app role's own transaction, no team set.
+  // A code no migration made a team for, so the cleanup deletes only what this made.
+  it("gives an unowned language a team slugged by its code, with English's roster", async () => {
+    await inTransaction((client) => adoptLang(client, "zzZZ"));
+    const rows = await systemRows<{ id: string; slug: string; voices: number; english: number }>(
+      `select t."id", t."slug",
+              (select count(*)::int from "voice" v where v."teamId" = t."id") as "voices",
+              (select count(*)::int from "voice" v join "team" e on e."id" = v."teamId" and e."slug" = 'english') as "english"
+         from "team" t where t."id" = team_of_lang('zzZZ')`,
     );
-    expect(rows[0].slug).toBe("zzzz");
     made.push(rows[0].id);
+    expect(rows[0].slug).toBe("zzzz");
+    expect(rows[0].english).toBeGreaterThan(0);
+    expect(rows[0].voices).toBe(rows[0].english);
+  });
+
+  it("leaves the caller's transaction acting as the team it acted as", async () => {
+    const team = await withTeam(was, async (client) => {
+      await adoptLang(client, "zzZZ");
+      return (await client.query<{ team: string }>(`select current_setting('spoken.team', true) as "team"`)).rows[0].team;
+    });
+    made.push((await systemRows<{ id: string }>(`select team_of_lang('zzZZ') as "id"`))[0].id);
+    expect(team).toBe(was);
   });
 });

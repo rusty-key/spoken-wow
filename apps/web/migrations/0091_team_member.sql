@@ -148,8 +148,10 @@ $$;
 
 -- A language switched on with no team gets one of its own, with no members (site owners act in
 -- any team) and English's roster, since only an unowned language falls back to English's.
+-- The app calls it in a transaction acting as no team, where row-level security would show
+-- copy_team_roster no English roster to copy, so it acts as every team until it returns.
 create function "adopt_lang"(p_lang text) returns void
-language plpgsql as $$
+language plpgsql set spoken.team = '*' as $$
 declare
   v_team uuid;
 begin
