@@ -11,10 +11,18 @@ export const archiveBase = (url) => (url.endsWith("/") ? url : `${url}/`);
 const RETRIES = 5;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// The archive's CDN answers 429 to a burst, so one refused clip must not fail a whole pack's build.
+// The archive's CDN answers 429 to a burst and drops the odd connection, so one refused clip must
+// not fail a whole pack's build.
 export async function fetchRetrying(url, fetchImpl = fetch, wait = sleep) {
   for (let attempt = 0; ; attempt++) {
-    const res = await fetchImpl(url);
+    let res;
+    try {
+      res = await fetchImpl(url);
+    } catch (error) {
+      if (attempt === RETRIES) throw error;
+      await wait(2 ** attempt * 1000);
+      continue;
+    }
     if ((res.status !== 429 && res.status < 500) || attempt === RETRIES) return res;
     const after = Number(res.headers?.get("retry-after"));
     await wait((after > 0 ? after : 2 ** attempt) * 1000);
