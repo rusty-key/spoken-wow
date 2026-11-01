@@ -527,11 +527,24 @@ builds, signs and publishes. One release runs at a time, site-wide.
 
    `SPOKEN_RELEASE_GITHUB_REF` is optional and defaults to `master`: the branch the workflow is
    dispatched on. Unset token or repo, a press fails at once and the run is marked failed.
+   `SPOKEN_RELEASE_CHANNEL` is optional too. Unset means the `production` environment; a checkout
+   testing the button sets `staging`.
 3. Restart so pm2 reads the file:
 
    ```bash
    pm2 startOrReload /srv/spoken/shared/ecosystem.config.js --update-env
    ```
+
+**The GitHub environment holds the run's secrets.** The workflow reads them from the environment its
+`channel` input names, and fails in its first steps if one is missing. `production` and `staging` each
+need `DO_SSH_KEY`, `DO_KNOWN_HOSTS` (with an entry for `DO_HOST`), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET` and `SPOKEN_PACKS_SIGNING_KEY`, their R2 token scoped to their own
+bucket. `DO_USER` and `DO_HOST` are repository secrets. A manual CurseForge upload also needs
+`CURSEFORGE_TOKEN` in `production`.
+
+**A publish that would empty a pack is refused.** A pack losing more than 5 files and more than 5% of
+them stops the run, since that is what a short sync or pull looks like. If the loss is meant, dispatch
+the workflow by hand with `allow_removals`.
 
 **Deploy and the workflow go together.** The workflow file on the default branch must already
 have the `manager_only` and `release_id` inputs, or GitHub rejects the dispatch and every press

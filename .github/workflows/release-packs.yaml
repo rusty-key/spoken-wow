@@ -29,6 +29,10 @@ on:
       release_id:
         description: Names the run, so whoever dispatched it can find it
         required: false
+      allow_removals:
+        description: Publish even if a pack would lose many of its files
+        type: boolean
+        default: false
       channel:
         description: Which environment's bucket, signing key and secrets the run uses
         type: choice
@@ -66,6 +70,7 @@ jobs:
       MANAGER_ONLY: ${{ inputs.manager_only }}
       # The build leaves one section's folders in dist/, so manager_only publishes what is there.
       ONLY_PRESENT: ${{ inputs.manager_only && '1' || '' }}
+      ALLOW_REMOVALS: ${{ inputs.allow_removals && '1' || '' }}
       SPOKEN_ARCHIVE_URL: ${{ vars.SPOKEN_ARCHIVE_URL }}
       REMOTE_ROOT: /srv/spoken
     steps:
@@ -90,6 +95,38 @@ jobs:
       - run: deploy/web/bin/migrate.sh "$PWD/apps/web"
         env:
           DATABASE_URL: ${{ env.LOCAL_DB }}
+
+      # A secret an environment lacks reads as empty, which otherwise surfaces much later as
+      # "Host key verification failed", or as a publish failing at the end of a long build.
+      - name: Check this environment's secrets
+        env:
+          DO_SSH_KEY: ${{ secrets.DO_SSH_KEY }}
+          DO_KNOWN_HOSTS: ${{ secrets.DO_KNOWN_HOSTS }}
+          DO_USER: ${{ secrets.DO_USER }}
+          DO_HOST: ${{ secrets.DO_HOST }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
+          PUBLISHES: ${{ inputs.manager || inputs.manager_only }}
+        run: |
+          need="DO_SSH_KEY DO_KNOWN_HOSTS DO_USER DO_HOST"
+          if [ "$PUBLISHES" = true ]; then
+            need="$need R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET SPOKEN_PACKS_SIGNING_KEY"
+          fi
+          missing=""
+          for name in $need; do [ -n "${!name}" ] || missing="$missing $name"; done
+          if [ -n "$missing" ]; then
+            echo "::error::the ${{ inputs.channel }} environment lacks:$missing"
+            exit 1
+          fi
+          printf '%s\n' "$DO_KNOWN_HOSTS" > "$RUNNER_TEMP/known_hosts"
+          if ! ssh-keygen -F "$DO_HOST" -f "$RUNNER_TEMP/known_hosts" > /dev/null; then
+            echo "::error::DO_KNOWN_HOSTS has no entry for DO_HOST in the ${{ inputs.channel }} environment"
+            exit 1
+          fi
+          rm "$RUNNER_TEMP/known_hosts"
 
       # Only reads production's rows; the audio comes from the bucket.
       - name: Reach production's database
