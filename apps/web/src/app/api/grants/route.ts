@@ -54,8 +54,7 @@ export async function PUT(request: Request) {
   ) {
     return Response.json({ error: "expected { email, lang, capabilities: [...] }" }, { status: 400 });
   }
-  // One the viewer may not hand out refuses the lot: half a grant is not what was asked for.
-  if (!capabilities.every((capability) => canGrant(who.viewer, capability, lang))) return FORBIDDEN();
+  if (!canGrant(who.viewer, lang)) return FORBIDDEN();
 
   // By email, not by id: a language admin cannot list the users, and an address is what
   // a translator gives somebody when asking to be let in.
@@ -77,7 +76,7 @@ export async function DELETE(request: Request) {
   if (!userId || !isLang(lang) || !isCapability(capability)) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
-  if (!canGrant(who.viewer, capability, lang)) return FORBIDDEN();
+  if (!canGrant(who.viewer, lang)) return FORBIDDEN();
 
   await removeGrant(userId, lang, capability, who.userId);
   return listing(who.viewer);

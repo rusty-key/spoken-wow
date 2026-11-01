@@ -19,7 +19,7 @@ export async function grantsOf(userId: string): Promise<Grant[]> {
   // Audio rows left in language_grant by the migration are ignored: team_member holds them.
   const rows = await query<{ lang: string; capability: string }>(
     `select "lang", "capability" from "language_grant" where "userId" = $1 and "capability" = 'edit'
-     union
+     union all
      select "lang", "capability" from "team_member" where "userId" = $1
      order by "lang", "capability"`,
     [userId],
@@ -114,30 +114,33 @@ export async function removeGrant(
   capability: Capability,
   removedBy: string,
 ): Promise<void> {
-  const deleted =
-    capability === "edit"
-      ? (
-          await query(
-            `delete from "language_grant" where "userId" = $1 and "lang" = $2 and "capability" = 'edit'
-             returning 1`,
-            [userId, lang],
-          )
-        ).length > 0
-      : await inTransaction(async (client) => {
-          // The migration's copy in language_grant would otherwise outlive the removal.
-          await client.query(
-            `delete from "language_grant" where "userId" = $1 and "lang" = $2 and "capability" = $3`,
-            [userId, lang, capability],
-          );
-          return deleteMember(client, userId, lang, capability);
-        });
-  if (!deleted) return;
+  if (!(await deleteGrant(userId, lang, capability))) return;
   await recordActivity({
     kind: "grant.removed",
     lang,
     subject: userId,
     actorId: removedBy,
     detail: { capability },
+  });
+}
+
+/** Whether there was such a grant to delete. */
+async function deleteGrant(userId: string, lang: Lang, capability: Capability): Promise<boolean> {
+  if (capability === "edit") {
+    const rows = await query(
+      `delete from "language_grant" where "userId" = $1 and "lang" = $2 and "capability" = 'edit'
+       returning 1`,
+      [userId, lang],
+    );
+    return rows.length > 0;
+  }
+  return inTransaction(async (client) => {
+    // The migration's copy in language_grant would otherwise outlive the removal.
+    await client.query(
+      `delete from "language_grant" where "userId" = $1 and "lang" = $2 and "capability" = $3`,
+      [userId, lang, capability],
+    );
+    return deleteMember(client, userId, lang, capability);
   });
 }
 

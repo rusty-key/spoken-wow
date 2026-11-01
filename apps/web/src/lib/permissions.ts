@@ -145,8 +145,8 @@ export function canViewVoices(viewer: Viewer | null, lang: Lang): boolean {
   return can(viewer, "regenerate", lang) || can(viewer, "configure", lang);
 }
 
-/** Whether somebody may hand out `capability` in `lang`. */
-export function canGrant(viewer: Viewer | null, _capability: Capability, lang: Lang): boolean {
+/** Whether somebody may hand out grants in `lang`: every capability there, or none. */
+export function canGrant(viewer: Viewer | null, lang: Lang): boolean {
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
   return can(viewer, "admin", lang);
