@@ -401,14 +401,16 @@ fill-locales: ## Fill vmangos's empty *_locN columns from TrinityCore (TDB335= T
 	  --tdb-hotfixes "$(abspath $(TDB_HOTFIXES))" $(ARGS)
 
 # The client does not expose the body of an unstarted quest to addons. Keep a generated fallback
-# in the addon for the locales whose Classic text is present in TDB 3.3.5. CACHE may point to a
-# client's Cache/WDB/<locale>/questcache.wdb to prefer exact text downloaded by that client.
-export-compendium-locale-text: ## Export Compendium quest wording from TDB 3.3.5 (TDB335=... CACHE=...)
+# in the addon for the locales whose Classic text is present in TDB 3.3.5. CACHES may list
+# client Cache/WDB/<locale>/questcache.wdb files to prefer exact text downloaded by those clients.
+# PFQUEST_ES may point to pfQuest's esES/db/esES/quests.lua for a distinct Spain-Spanish fallback.
+export-compendium-locale-text: ## Export Compendium quest wording from TDB 3.3.5 (TDB335=... CACHES="... ..." PFQUEST_ES=...)
 	@test -n "$(TDB335)" || { echo "export-compendium-locale-text: set TDB335 to an extracted TDB_full_world_335 .sql file"; exit 2; }
 	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/export_compendium_locale_text.py \
 	  --tdb "$(abspath $(TDB335))" --locale esES --locale esMX \
 	  --out "$(abspath addons/Spoken_Quests/Data/LocalizedQuestText.lua)" \
-	  $(if $(CACHE),--cache "$(abspath $(CACHE))") $(ARGS)
+	  $(foreach cache,$(CACHES),--cache "$(abspath $(cache))") \
+	  $(if $(PFQUEST_ES),--pfquest-esES "$(abspath $(PFQUEST_ES))") $(ARGS)
 
 # Italian, which no client runs in, from the QuestIT community's addon: quest text, quest
 # titles and the few book pages it has, as 'community' rows. Run again on each of their

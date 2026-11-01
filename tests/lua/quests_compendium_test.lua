@@ -1401,6 +1401,8 @@ Expect("...and its description is localized", spanishWords:find("Los kóbolds de
 Expect("...and its conclusion is localized", spanishWords:find("Gracias por el Polvo de oro, Tester.", 1, true) ~= nil, true)
 Expect("the esMX cache wording overrides the esES database wording",
     SpokenQuestsLocalizedText.esMX[2].accept:find("ha sido asesinado", 1, true) ~= nil, true)
+Expect("the esES table keeps its own locale wording",
+    SpokenQuestsLocalizedText.esES[47].accept:find("Los kobolds de esa zona", 1, true) ~= nil, true)
 
 local localizedQuestCount = 0
 for id, text in pairs(SpokenQuestsLocalizedText.esMX) do
