@@ -101,7 +101,6 @@ describe("PUT /api/bosses/story", () => {
   });
 
   it("answers 403 to somebody without text in the language asked for", async () => {
-    // Text in English is no grant in German.
     viewer.grants = [{ lang: "enUS", capability: "text" }, { lang: "deDE", capability: "regenerate" }];
     const response = await PUT(request("PUT", { lineId, text: "Eine Geschichte." }, "deDE"));
     expect(response.status).toBe(403);

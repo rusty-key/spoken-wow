@@ -1,4 +1,3 @@
-/** Whether an override was saved over an original text that has changed since. */
 import { spokenHash } from "@/lib/generation/spoken-hash";
 
 import type { LineOverride } from "./override";

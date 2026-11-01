@@ -225,8 +225,8 @@ export async function requireIn(
 }
 
 /**
- * A route acting on a language's reports: the language from `?lang=`, the session if it works
- * either queue there, and which it works, since one queue's reports are not the other's to touch.
+ * The language from `?lang=`, the session if it works either queue there, and which it works:
+ * one queue's reports are not the other's to touch.
  */
 export async function requireQueues(
   request: Request,

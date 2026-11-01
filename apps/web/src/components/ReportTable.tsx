@@ -129,11 +129,9 @@ export default function ReportTable({
   npcs: Record<string, Heading>;
   /** Whether this visitor may spend credits from the line's panel. */
   canRegenerate: boolean;
-  /** Whether the viewer keeps the language's text, which accepting a report's text writes. */
+  /** Accepting a report's text writes the language's original. */
   canContribute: boolean;
-  /** Whether a row says which queue it waits in. See queueView. */
   labelled: boolean;
-  /** The queues a report can be passed into. See queueView. */
   passTo: Queue[];
   /** The NPC page is the admins'; see LineHeading. */
   showNpcPage: boolean;
@@ -231,7 +229,6 @@ export default function ReportTable({
     void audio.current?.play().catch(() => {});
   }, [pressed]);
 
-  /** Each report busy until its own request is back, and the answer laid over its row. */
   async function act(ids: number[], request: (id: number) => Promise<Report | null>) {
     setBusy((current) => new Set([...current, ...ids]));
     await Promise.all(
@@ -250,6 +247,7 @@ export default function ReportTable({
 
   const resolve = (ids: number[], status: Status) => act(ids, (id) => resolveReport(id, status));
 
+  // Refreshed because the row may no longer belong on this viewer's list.
   const pass = (id: number, to: Queue) => act([id], (each) => passReport(each, to)).then(refresh);
 
   /** Move one filter and keep the rest, through the URL so a narrowed queue can be shared. */
@@ -375,7 +373,6 @@ export default function ReportTable({
     );
   }
 
-  /** To the other queue, where somebody works it; refreshed so the row leaves a list it no longer belongs on. */
   function passAction(report: Report) {
     const to: Queue = report.queue === "text" ? "audio" : "text";
     if (!passTo.includes(to)) return null;

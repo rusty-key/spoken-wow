@@ -1,6 +1,5 @@
 /**
- * Passing a report between a language's text maintainers and its team. A sibling of
- * /api/reports for the reason /resolve is: that path's POST is open to the internet.
+ * Not a verb on /api/reports, whose POST is open to the internet.
  *
  * Gated on the queue it is leaving: a report can be handed on only by whoever it waits for.
  */

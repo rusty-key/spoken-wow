@@ -5,9 +5,8 @@
  * whole internet and this one must never be; two verbs on one path with opposite access rules
  * is the arrangement a later edit quietly breaks.
  *
- * Whoever works the report's queue in its language rather than an admin: these are the people
- * who already act on its lines, and a report they have read and dismissed should not need an
- * admin to close. A Portuguese report is a Portuguese translator's, and not an English one's.
+ * Whoever works the report's queue in its language rather than an admin: a report they have read
+ * and dismissed should not need an admin to close.
  */
 import { requireReportQueue } from "@/lib/reports/access";
 import { isStatus } from "@/lib/reports/reports";

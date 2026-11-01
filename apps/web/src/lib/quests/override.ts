@@ -16,7 +16,7 @@ export type LineOverride = {
   text: string;
   updatedAt: string;
   updatedBy: string | null;
-  /** The original line's hash when this was last saved. Absent or null never counts as changed. */
+  /** The original's hash at the last save. Absent or null never counts as changed. */
   originalHash?: string | null;
 };
 

@@ -1,5 +1,5 @@
 /**
- * Who may appoint a text maintainer, with the session and its grants mocked and the writes real.
+ * Session and grants mocked, writes real.
  *
  * Needs DATABASE_URL and migrations applied.
  */

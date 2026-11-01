@@ -158,8 +158,8 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
 }
 
 /**
- * What writing a quest line's text takes: English's is rewritten through an override, which is
- * guarded as regeneration is, and every other language's is the original.
+ * English quest text is rewritten through an override, which is guarded as regeneration is; every
+ * other language's is the original.
  */
 export function questTextCapability(lang: Lang): Capability {
   return lang === BASE_LANG ? "regenerate" : "text";

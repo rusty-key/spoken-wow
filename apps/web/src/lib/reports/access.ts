@@ -1,4 +1,3 @@
-/** The gate on a route acting on one report by id. */
 import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -6,9 +5,8 @@ import { queueCapability, type Queue } from "./reports";
 import { reportPlace } from "./store";
 
 /**
- * The session, or a 403, for whoever works the report's queue in its language. The permission
- * comes before the existence check, so a null `place` (no such id) only reaches somebody already
- * allowed, and a member learns nothing about which ids exist.
+ * The session, or a 403, for whoever works the report's queue. A null `place` (no such id) reaches
+ * only somebody already allowed, so a member learns nothing about which ids exist.
  */
 export async function requireReportQueue(id: number) {
   const place: { lang: Lang; queue: Queue } | null = await reportPlace(id);

@@ -135,7 +135,6 @@ type Props = {
   canEdit: boolean;
   /** Editor and up: may read the report bodies and resolve them from the row. */
   canTriage: boolean;
-  /** An override's Keep or Drop went through, so the row reads its text again. */
   onOverrideAnswered: (line: ResultLine) => void;
   state?: LineState;
   blocked: string | null;

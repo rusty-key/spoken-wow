@@ -15,7 +15,6 @@ import { asSystem } from "@/lib/teams/testing";
 /** resolvedBy has a foreign key, so resolving needs a user that exists (contributions/store.test.ts). */
 const RESOLVER = "test-contributions-resolve-route";
 
-/** What the mocked session holds, in every language. */
 const held = vi.hoisted(() => ({ capability: "text" }));
 
 vi.mock("@/lib/generation/authz", () => ({

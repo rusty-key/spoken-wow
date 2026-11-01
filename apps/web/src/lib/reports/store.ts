@@ -108,7 +108,6 @@ export async function listReports(
   /** Null for every one: the triage page counts each tab, so it reads them all. */
   limit: number | null = 500,
   lang: Lang = BASE_LANG,
-  /** The queues the viewer works. */
   queues: readonly Queue[] = QUEUES,
 ): Promise<Report[]> {
   // One language's reports, like every other list on a page in that language: a claim about
@@ -136,7 +135,6 @@ export async function reportsForLine(
   source: Source,
   lineId: string,
   lang: Lang = BASE_LANG,
-  /** The queues the viewer works. */
   queues: readonly Queue[] = QUEUES,
 ): Promise<Report[]> {
   return readAs<Report>(
@@ -171,7 +169,7 @@ export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queu
 
 /**
  * Who works each queue in a language, as the triage pages compare them. Site owners are left out:
- * they hold both everywhere, seeded rows or not, so they say nothing about whether the groups differ.
+ * they hold both everywhere, so they say nothing about whether the groups differ.
  */
 export async function queueHolders(lang: Lang): Promise<Record<Queue, Set<string>>> {
   const holders: Record<Queue, Set<string>> = { text: new Set(), audio: new Set() };
@@ -182,7 +180,7 @@ export async function queueHolders(lang: Lang): Promise<Record<Queue, Set<string
   return holders;
 }
 
-/** `lang` is the report's, from reportPlace. A report already there is left as it is, and unlogged. */
+/** `lang` is the report's. A report already in `queue` is left unlogged. */
 export async function setQueue(id: number, queue: Queue, actorId: string, lang: Lang): Promise<Report | null> {
   const { rows } = await queryAs<Report>(
     lang,

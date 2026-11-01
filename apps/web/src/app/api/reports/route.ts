@@ -37,7 +37,7 @@ import { type Source, isSource } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
 
-/** What a report is filed against. `file` only for a quests line, which is all an override can be on. */
+/** `file` only for a quests line: nothing else can have an override. */
 type Address = { lineId: string | null; target: string; file?: string | null };
 
 /** Deliberately not configurable: a knob nobody turns is a knob set wrong. */

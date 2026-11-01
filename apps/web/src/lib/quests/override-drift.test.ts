@@ -1,6 +1,5 @@
 /**
- * Against a real Postgres for the stored hash, with the corpus's original text in the test's hand:
- * the corpus changes only through an import, which is the thing being waited for here.
+ * The original text is mocked because the corpus changes only through an import.
  *
  * Needs DATABASE_URL and migrations applied.
  */

@@ -43,7 +43,6 @@ afterAll(async () => {
   await closeDb();
 });
 
-/** A session holding `capability` in every language, as requireCapability would answer it. */
 function holding(capability: string) {
   authorise.mockImplementationOnce(async (asked: string) =>
     asked === capability

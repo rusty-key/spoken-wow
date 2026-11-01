@@ -1,9 +1,6 @@
--- Text maintainers and the team's `edit` come apart. language_grant keeps storing `edit`, read as
--- the capability `text`, since the previous release reads `edit` there and rollback must keep
--- working. team_member gains the team-level `edit`.
---
--- Nobody loses anything: an `edit` holder keeps both meanings, and a team admin, who no longer
--- implies `text`, is appointed. The audio rows 0091 left in language_grant go: no release reads them.
+-- language_grant keeps storing `edit`, read as the capability `text`, because a rolled-back release
+-- reads that value there. Nobody loses anything: an `edit` holder gets both, and a team admin, who
+-- no longer implies `text`, is appointed.
 
 -- migrate.sh runs psql at warning level; the row counts below are notices.
 set local client_min_messages = notice;
@@ -12,7 +9,7 @@ alter table "team_member" drop constraint "team_member_capability_check";
 alter table "team_member" add constraint "team_member_capability_check"
   check ("capability" in ('edit', 'regenerate', 'configure', 'ignore', 'admin', 'record'));
 
--- A function so the test can run the backfill on rows it seeded.
+-- A function so a test, and a redeploy after a rollback, can run the backfill again.
 create function "grant_text_maintainers"() returns void
 language plpgsql as $$
 declare

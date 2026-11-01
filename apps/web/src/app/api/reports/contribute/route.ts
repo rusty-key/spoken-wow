@@ -3,9 +3,9 @@
  * of it, POST accepts it. A correction's accept takes what the corrections tab's does:
  * `as: "wording"`, or the `lineId` and `variant` of the wording it fixes.
  *
- * Gated as resolve is, on the report's queue, and then as the contributions routes are, on the
- * language the text is written into: the reporter's client may be in another one. Accepting
- * writes original text, so it takes `text` there even for the team a report waits with.
+ * Gated on the report's queue, then on the language the text is written into: the reporter's
+ * client may be in another one. Accepting writes original text, so it takes `text` there even for
+ * the team a report waits with.
  */
 import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";

@@ -47,14 +47,12 @@ export type GrantRow = {
   grantedAt: string;
 };
 
-/** Every grant, read as its capability, whichever table holds it. */
 const GRANTS = `(
   select "userId", "lang", 'text' as "capability", "grantedAt" from "language_grant"
   union all
   select "userId", "lang", "capability", "grantedAt" from "team_member"
 )`;
 
-/** Everybody holding anything in a language, as `can` asks about them. */
 export async function viewersIn(lang: Lang): Promise<Map<string, Viewer>> {
   const rows = await query<{ userId: string; role: string | null; capability: Capability }>(
     `select g."userId", u."role", g."capability"
