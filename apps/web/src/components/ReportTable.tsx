@@ -30,6 +30,7 @@ import SortHeader from "@/components/SortHeader";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
 import { LinkTabs } from "@/components/StatusTabs";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
 import { Player as ReadablesPlayer } from "@/components/readables/Player";
 import { Badge } from "@/components/ui/badge";
@@ -84,15 +85,6 @@ const CATEGORY_OPTIONS = CATEGORIES.map((category) => ({
   label: CATEGORY_COLUMN[category],
 }));
 
-/** The day and the clock time, short enough to sit in a column. */
-function when(at: string): string {
-  return new Date(at).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 /** One line of one corpus. Reports from all three share this table and its player. */
 function lineKey(source: Source, lineId: string): string {
@@ -136,6 +128,7 @@ export default function ReportTable({
   /** The NPC page is the admins'; see LineHeading. */
   showNpcPage: boolean;
 }) {
+  const when = useLocalDates();
   /**
    * What this session resolved, overlaid on the server's rows.
    *

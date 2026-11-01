@@ -29,6 +29,7 @@ import SendersButton from "@/components/SendersButton";
 import StatusTabs from "@/components/StatusTabs";
 import { Input } from "@/components/ui/input";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
 import type { ClientSummary } from "@/lib/contributions/client";
 import { wordDiff, type DiffPart } from "@/lib/contributions/compare";
@@ -90,14 +91,6 @@ function correctionsHref(source: CorrectionSource, filters: Filters): string {
   return `/contributions/${source}/corrections?${params}`;
 }
 
-function when(at: string): string {
-  return new Date(at).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function CorrectionTable({
   source,
@@ -116,6 +109,7 @@ export default function CorrectionTable({
   q: string;
   searchIn: Filter;
 }) {
+  const when = useLocalDates();
   const lang = useLang();
   const { pending, push } = usePendingPush();
   const filters: Filters = { status, client, stage, q, searchIn };

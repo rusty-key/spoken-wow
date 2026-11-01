@@ -19,6 +19,7 @@ import Link from "@/components/LocaleLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useLocalDates } from "@/components/useLocalDates";
 import { CATEGORIES, categoryOf, FOLDS, type Category, type Group } from "@/lib/activity/kinds";
 import type { ActivityRow } from "@/lib/activity/store";
 import { usd } from "@/lib/generation/money";
@@ -55,18 +56,8 @@ const SOURCE_OPTIONS = SOURCES.map((source) => ({ value: source, label: SOURCE_L
 /** One take the transport bar can be pointed at. */
 type Take = { source: Source; file: string; version: number };
 
-function time(at: string): string {
-  return new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-}
-
-function day(at: string): string {
-  return new Date(at).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+const DAY: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric", year: "numeric" };
 
 /** A capability the way /admin names it, or the raw string when a later release wrote one. */
 function grantName(value: unknown): string | null {
@@ -360,6 +351,7 @@ export default function ActivityTable({
   filter: Filter;
   actors: { id: string; name: string }[];
 }) {
+  const date = useLocalDates();
   const lang = useLang();
   const { pending, push } = usePendingPush();
   const audio = useRef<HTMLAudioElement>(null);
@@ -468,7 +460,7 @@ export default function ActivityTable({
         >
           <tbody>
             {rows.flatMap((row) => {
-              const heading = day(row.at);
+              const heading = date(row.at, DAY);
               const out = [];
               if (heading !== lastDay) {
                 lastDay = heading;
@@ -493,7 +485,7 @@ export default function ActivityTable({
               out.push(
                 <tr key={row.id} className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5">
                   <td className="text-muted-foreground w-14 pr-3 text-xs whitespace-nowrap tabular-nums">
-                    {time(row.at)}
+                    {date(row.at, TIME)}
                   </td>
                   <td className="w-40 max-w-[10rem] truncate pr-3 font-medium">
                     {row.actorName ?? <span className="text-muted-foreground font-normal">system</span>}
@@ -556,7 +548,7 @@ export default function ActivityTable({
                         <ul className="max-h-80 overflow-y-auto text-xs">
                           {inner.map((take) => (
                             <li key={take.id} className="flex items-center gap-2 py-0.5">
-                              <span className="text-muted-foreground w-12 tabular-nums">{time(take.at)}</span>
+                              <span className="text-muted-foreground w-12 tabular-nums">{date(take.at, TIME)}</span>
                               {take.kind === "batch.stopped" ? (
                                 <span className="truncate">
                                   {str(take.detail.label) ?? "a batch"}
