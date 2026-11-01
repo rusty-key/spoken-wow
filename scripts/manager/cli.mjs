@@ -21,7 +21,7 @@ const dryRun = flags.includes("--dry-run");
 const onlyPresent = flags.includes("--present");
 
 try {
-  if (command !== "publish" && command !== "gc") throw new Error("usage: cli.mjs publish|gc [--dry-run]");
+  if (command !== "publish" && command !== "gc") throw new Error("usage: cli.mjs publish|gc [--dry-run] [--present]");
   await loadEnv();
   const store = r2Store(process.env);
   const signingKey = process.env.SPOKEN_PACKS_SIGNING_KEY;

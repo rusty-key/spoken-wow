@@ -58,6 +58,8 @@ jobs:
       LOCALE: ${{ inputs.locale }}
       VERSION: ${{ inputs.version }}
       MANAGER_ONLY: ${{ inputs.manager_only }}
+      # The build leaves one section's folders in dist/, so manager_only publishes what is there.
+      ONLY_PRESENT: ${{ inputs.manager_only && '1' || '' }}
       SPOKEN_ARCHIVE_URL: ${{ vars.SPOKEN_ARCHIVE_URL }}
       REMOTE_ROOT: /srv/spoken
     steps:
@@ -121,26 +123,29 @@ jobs:
       # bosses build (make/places.mk full-release).
       - name: The bosses pack that English's places zip carries
         if: ${{ inputs.section == 'places' && inputs.locale == 'enUS' }}
+        env:
+          SYNC_CHECK: warn
         run: |
           make bosses-sync < <(yes y)
           make bosses-pull-live
-          make bosses-package-audio < <(yes y)
-      # The packagers ask again if production moved since the sync, and with no answer they abort.
-      # This run has just synced, and the stamp spans every language, so another team's new take
-      # would otherwise fail the build.
+          make bosses-package-audio
+      # This run has just synced, and the freshness stamp spans every language, so asking again
+      # would fail the build over another team's new take.
       - name: Build
+        env:
+          SYNC_CHECK: warn
         run: |
           # package-audio.sh's own default would stamp a lower version on all four English packs.
           if [ "$MANAGER_ONLY" = true ] && [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ] && [ -z "$VERSION" ]; then
             VERSION=$(awk '/^## [0-9.]+ — Spoken Quests Audio/ { print $2; exit }' docs/quests/CHANGELOG.md)
             [ -n "$VERSION" ] || { echo "::error::no Spoken Quests Audio section in docs/quests/CHANGELOG.md"; exit 1; }
           fi
-          make "$SECTION-package-audio" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION} < <(yes y)
-          if [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ]; then make quests-package-meta ${VERSION:+VERSION=$VERSION}; fi
+          make "$SECTION-package-audio" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
+          # The meta addon goes to the stores only; the manager's All pack is the four themselves.
+          if [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ] && [ "$MANAGER_ONLY" != true ]; then make quests-package-meta ${VERSION:+VERSION=$VERSION}; fi
           ls -la dist/
 
       - name: What would be uploaded
-        if: ${{ !inputs.manager_only }}
         env:
           GH_TOKEN: ${{ github.token }}
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
@@ -150,20 +155,8 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
         run: |
-          make "$SECTION-upload-dry" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
-          if [ "${{ inputs.manager }}" = true ]; then make manager-publish-dry; fi
-
-      # The build leaves one section's folders in dist/, so manager_only publishes what is there.
-      - name: What the manager channel would get
-        if: ${{ inputs.manager_only }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
-        run: make manager-publish-dry ONLY_PRESENT=1
+          if [ "$MANAGER_ONLY" != true ]; then make "$SECTION-upload-dry" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}; fi
+          if [ "${{ inputs.manager }}" = true ] || [ "$MANAGER_ONLY" = true ]; then make manager-publish-dry; fi
 
       # Not full-release: it would sync, pull and build again.
       - name: Upload to CurseForge and GitHub
@@ -181,6 +174,4 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
-        run: |
-          # MANAGER_ONLY is the string "false" when off, so ${MANAGER_ONLY:+...} would always expand.
-          if [ "$MANAGER_ONLY" = true ]; then make manager-publish ONLY_PRESENT=1; else make manager-publish; fi
+        run: make manager-publish
