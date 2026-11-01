@@ -73,8 +73,9 @@ describe("team contract", () => {
       `select t."slug",
               (select string_agg(v."name", ',' order by v."name") from "voice" v
                 where v."teamId" = t."id") as "voices",
-              (select string_agg(a."race" || ':' || coalesce(a."gender", '') || ':' || coalesce(a."flavor", ''),
-                                 ',' order by 1) from "voice_assignment" a
+              (select string_agg(a."key", ',' order by a."key")
+                 from (select "teamId", "race" || ':' || coalesce("gender", '') || ':' || coalesce("flavor", '') as "key"
+                         from "voice_assignment") a
                 where a."teamId" = t."id") as "assignments"
          from "team" t
         where t."slug" not like 'test-%'`,
