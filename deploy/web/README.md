@@ -478,8 +478,12 @@ working on the new schema.
    psql "$PROD_DATABASE_URL" -f deploy/web/bin/team-strays.sql
    ```
 
-   If the total is not 0, pause the queue and run the repair block at the end of the script,
-   which re-teams each stray row to its language's team.
+   If the total is not 0, pause the queue and run it again with `-v repair=on`, which
+   re-teams each stray row to its language's team:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -v repair=on -f deploy/web/bin/team-strays.sql
+   ```
 
 **Rolling back to the previous release is safe**: 0091 only adds, and the old code still reads
 the audio grants left in `language_grant`. One caveat: grants changed on the new release are
