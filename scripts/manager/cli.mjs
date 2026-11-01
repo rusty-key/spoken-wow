@@ -2,7 +2,7 @@
 // make manager-publish / manager-gc. Everything comes from the repo-root .env or the environment
 // (which wins); nothing prompts, so a scheduled job can run the same command later.
 //
-//   node scripts/manager/cli.mjs publish [--dry-run] [--present]
+//   node scripts/manager/cli.mjs publish [--dry-run] [--present] [--allow-removals]
 //   node scripts/manager/cli.mjs gc [--dry-run]
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -19,9 +19,10 @@ const DIST = join(dirname(fileURLToPath(import.meta.url)), "../../dist");
 const [command, ...flags] = process.argv.slice(2);
 const dryRun = flags.includes("--dry-run");
 const onlyPresent = flags.includes("--present");
+const allowRemovals = flags.includes("--allow-removals");
 
 try {
-  if (command !== "publish" && command !== "gc") throw new Error("usage: cli.mjs publish|gc [--dry-run] [--present]");
+  if (command !== "publish" && command !== "gc") throw new Error("usage: cli.mjs publish|gc [--dry-run] [--present] [--allow-removals]");
   await loadEnv();
   const store = r2Store(process.env);
   const signingKey = process.env.SPOKEN_PACKS_SIGNING_KEY;
@@ -31,7 +32,7 @@ try {
     const cache = loadHashCache(cacheFile);
     try {
       await publish({ store, packs: managerFolders(), distDir: DIST, signingKey, minSpoken: MIN_SPOKEN,
-        latestSpoken: await latestSpokenRelease(), cache, dryRun, onlyPresent });
+        latestSpoken: await latestSpokenRelease(), cache, dryRun, onlyPresent, allowRemovals });
     } finally {
       // Without dist/ there is nothing to cache, and the write would hide publish's own error.
       if (existsSync(DIST)) saveHashCache(cacheFile, cache);

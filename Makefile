@@ -321,11 +321,12 @@ audio-release: ## Publish the built sound packs as GitHub releases (needs gh; SE
 # R2_SECRET_ACCESS_KEY, R2_BUCKET and SPOKEN_PACKS_SIGNING_KEY, in the repo-root .env.
 # ONLY_PRESENT=1 publishes just the folders dist/ holds, for a build of one section and language;
 # without it a missing folder stops the run, so a partial build cannot pass for a full one.
+# ALLOW_REMOVALS=1 lets a pack lose more files than publish.mjs accepts unasked.
 manager-publish-dry: ## Show what the manager channel would get from dist/ (ONLY_PRESENT=1: only what is built)
-	@node scripts/manager/cli.mjs publish --dry-run $(if $(ONLY_PRESENT),--present)
+	@node scripts/manager/cli.mjs publish --dry-run $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
 
 manager-publish: ## Publish dist/'s manager packs to the manager channel (ONLY_PRESENT=1: only what is built)
-	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present)
+	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
 
 manager-gc-dry: ## Show what manager-gc would delete
 	@node scripts/manager/cli.mjs gc --dry-run

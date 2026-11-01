@@ -96,6 +96,29 @@ test("onlyPresent with nothing built is refused rather than publishing nothing",
   assert.equal(store.log.length, 0);
 });
 
+test("a pack losing many of its files is refused until allowed", async () => {
+  const store = memoryStore();
+  const full = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`Sounds/${i}.mp3`, `clip ${i}`]));
+  const toc = { "SpokenPlacesAudio_deDE.toc": "toc" };
+  await run(store, dist({ ...toc, ...full }), { now: new Date("2026-01-01T00:00:00Z") });
+  const before = index(store).packs.SpokenPlacesAudio_deDE.rev;
+
+  const short = dist({ ...toc, "Sounds/0.mp3": "clip 0" });
+  await assert.rejects(run(store, short, { now: new Date("2026-01-02T00:00:00Z") }), /would lose 19 of its 21 files/);
+  assert.equal(index(store).packs.SpokenPlacesAudio_deDE.rev, before);
+
+  const out = await run(store, short, { now: new Date("2026-01-03T00:00:00Z"), allowRemovals: true });
+  assert.deepEqual(out.changed, ["SpokenPlacesAudio_deDE"]);
+});
+
+test("a pack losing a few files publishes", async () => {
+  const store = memoryStore();
+  const toc = { "SpokenPlacesAudio_deDE.toc": "toc" };
+  await run(store, dist({ ...toc, "Sounds/a.mp3": "a", "Sounds/b.mp3": "b" }), { now: new Date("2026-01-01T00:00:00Z") });
+  const out = await run(store, dist({ ...toc, "Sounds/a.mp3": "a" }), { now: new Date("2026-01-02T00:00:00Z") });
+  assert.deepEqual(out.changed, ["SpokenPlacesAudio_deDE"]);
+});
+
 test("a folder older than its zip is refused as a stale build", async () => {
   const store = memoryStore();
   const d = dist({ "SpokenPlacesAudio_deDE.toc": "toc" });

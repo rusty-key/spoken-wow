@@ -15,6 +15,10 @@ const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/;
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const INDEX_CACHE = "public, max-age=60";
 
+// A sync or pull that came up short looks like a pack losing its clips, and players would lose them.
+const MAX_REMOVED_FILES = 5;
+const MAX_REMOVED_SHARE = 0.05;
+
 export function compareVersions(a, b) {
   const x = a.split(".").map(Number);
   const y = b.split(".").map(Number);
@@ -71,8 +75,10 @@ async function readSigned(store, key, publicKey) {
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };
 }
 
-export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, onlyPresent = false, log = console.log }) {
+export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
+  // The bucket's name is masked in CI logs; this says which channel a run signed for.
+  log(`signing with ${publicKey}`);
 
   // A one-section build leaves the other sections' folders absent, which is not an error there.
   const packs = onlyPresent ? allPacks.filter((p) => existsSync(join(distDir, p.folder))) : allPacks;
@@ -119,6 +125,9 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
       continue;
     }
     log(`${folder}: +${diff.added} ~${diff.changed} -${diff.removed}`);
+    if (!allowRemovals && diff.removed > MAX_REMOVED_FILES && diff.removed > before.length * MAX_REMOVED_SHARE) {
+      throw new Error(`${folder} would lose ${diff.removed} of its ${before.length} files: check the build, or allow it with --allow-removals`);
+    }
     changes.push({ folder, files, requires });
   }
 
