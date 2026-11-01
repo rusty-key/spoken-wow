@@ -41,6 +41,30 @@ begin
 end
 $$;
 
+-- Gives p_to a copy of p_from's roster, base generation settings and dismissal mark, unless it
+-- has a roster already: a team without one would voice its languages with no voices.
+create function "copy_team_roster"(p_from uuid, p_to uuid) returns void
+language plpgsql security invoker as $$
+begin
+  if exists (select 1 from "voice" where "teamId" = p_to) then
+    return;
+  end if;
+  insert into "voice" ("teamId", "name", "race", "gender")
+  select p_to, "name", "race", "gender" from "voice" where "teamId" = p_from
+  on conflict do nothing;
+  insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
+  select p_to, "race", "gender", "flavor", "voice" from "voice_assignment" where "teamId" = p_from
+  on conflict do nothing;
+  insert into "generation_setting" ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedBy")
+  select p_to, "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedBy"
+    from "generation_setting" where "teamId" = p_from
+  on conflict do nothing;
+  insert into "queue_dismissal" ("teamId", "throughJobId", "dismissedBy")
+  select p_to, "throughJobId", "dismissedBy" from "queue_dismissal" where "teamId" = p_from
+  on conflict do nothing;
+end
+$$;
+
 -- Hands p_lang, with every row of it, from its privileged team to p_team, and returns the number
 -- of rows moved. Security invoker, so the caller's row-level security applies: the app calls it
 -- as ALL_TEAMS.
@@ -77,21 +101,7 @@ begin
   end if;
 
   -- A new team voices the language exactly as before.
-  if not exists (select 1 from "voice" where "teamId" = p_team) then
-    insert into "voice" ("teamId", "name", "race", "gender")
-    select p_team, "name", "race", "gender" from "voice" where "teamId" = v_from
-    on conflict do nothing;
-    insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
-    select p_team, "race", "gender", "flavor", "voice" from "voice_assignment" where "teamId" = v_from
-    on conflict do nothing;
-    insert into "generation_setting" ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedBy")
-    select p_team, "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedBy"
-      from "generation_setting" where "teamId" = v_from
-    on conflict do nothing;
-    insert into "queue_dismissal" ("teamId", "throughJobId", "dismissedBy")
-    select p_team, "throughJobId", "dismissedBy" from "queue_dismissal" where "teamId" = v_from
-    on conflict do nothing;
-  end if;
+  perform copy_team_roster(v_from, p_team);
 
   foreach t in array array[
     'take', 'recording', 'take_ack', 'voice_clone', 'fish_reference', 'generation_setting_locale',
@@ -136,16 +146,20 @@ begin
 end
 $$;
 
--- A language switched on with no team gets one of its own, with no members: site owners act in
--- any team.
+-- A language switched on with no team gets one of its own, with no members (site owners act in
+-- any team) and English's roster, since only an unowned language falls back to English's.
 create function "adopt_lang"(p_lang text) returns void
 language plpgsql as $$
+declare
+  v_team uuid;
 begin
   if team_of_lang(p_lang) is not null then
     return;
   end if;
+  v_team := new_team(lower(p_lang), p_lang);
+  perform copy_team_roster((select "id" from "team" where "slug" = 'english'), v_team);
   insert into "team_language" ("teamId", "lang", "privileged")
-  values (new_team(lower(p_lang), p_lang), p_lang, true)
+  values (v_team, p_lang, true)
   on conflict do nothing;
   perform pg_notify('spoken_team_language', p_lang);
 end

@@ -21,6 +21,7 @@ const TARGET_ROWS = [
 let source: Awaited<ReturnType<typeof ownTeam>>;
 let target: string;
 let tag: string;
+let user: string;
 
 async function teamOfLang(lang: string): Promise<string | null> {
   return (await systemRows<{ team: string | null }>(`select team_of_lang($1) as "team"`, [lang]))[0].team;
@@ -32,6 +33,11 @@ function move(lang: string, team: string) {
 
 beforeEach(async () => {
   tag = randomUUID().slice(0, 8);
+  user = `test-move-${tag}`;
+  await asSystem.query(
+    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
+    [user, `${user}@example.invalid`],
+  );
   source = await ownTeam("deDE");
   // new_team, not ownTeam: a target with no roster is what the copy is for.
   const { rows } = await asSystem.query<{ id: string }>(`select new_team($1, $1) as "id"`, [`test-move-${tag}`]);
@@ -47,6 +53,7 @@ afterEach(async () => {
     await asSystem.query(`delete from "${table}" where "teamId" = $1`, [source.team]);
   }
   await source.restore();
+  await asSystem.query(`delete from "user" where "id" = $1`, [user]);
   forgetTeams();
 });
 
@@ -84,8 +91,13 @@ describe("move_team_lang", () => {
       [issue[0].id, team],
     );
 
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'deDE', 'regenerate')`,
+      [team, user],
+    );
+
     const { rows } = await move("deDE", target);
-    expect(rows[0].moved).toBeGreaterThanOrEqual(6);
+    expect(rows[0].moved).toBe(7);
 
     const teams = await systemRows<{ team: string }>(
       `select "teamId" as "team" from "take" where "id" = $1
@@ -93,10 +105,11 @@ describe("move_team_lang", () => {
        union all select "teamId" from "voice_clone" where "voice" = $3
        union all select "teamId" from "voice_sample" where "clone" = $3 || '@deDE'
        union all select "teamId" from "line_issue" where "id" = $4
-       union all select "teamId" from "line_issue_line" where "issueId" = $4`,
-      [take[0].id, report[0].id, `move-${tag}`, issue[0].id],
+       union all select "teamId" from "line_issue_line" where "issueId" = $4
+      union all select "teamId" from "team_member" where "userId" = $5`,
+      [take[0].id, report[0].id, `move-${tag}`, issue[0].id, user],
     );
-    expect(teams.map((row) => row.team)).toEqual(Array(6).fill(target));
+    expect(teams.map((row) => row.team)).toEqual(Array(7).fill(target));
     expect(await teamOfLang("deDE")).toBe(target);
   });
 
@@ -135,6 +148,16 @@ describe("move_team_lang", () => {
     await expect(move("enUS", target)).rejects.toThrow(/enUS/);
   });
 
+  it("refuses an unknown team", async () => {
+    await expect(move("deDE", randomUUID())).rejects.toThrow(/no team/);
+    expect(await teamOfLang("deDE")).toBe(source.team);
+  });
+
+  it("refuses a team that already holds the language", async () => {
+    await expect(move("deDE", source.team)).rejects.toThrow(/already holds/);
+    expect(await teamOfLang("deDE")).toBe(source.team);
+  });
+
   it("leaves another language's rows alone", async () => {
     const take = await systemRows<{ id: string }>(
       `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
@@ -146,5 +169,36 @@ describe("move_team_lang", () => {
 
     const rows = await systemRows<{ team: string }>(`select "teamId" as "team" from "take" where "id" = $1`, [take[0].id]);
     expect(rows[0].team).toBe(source.team);
+  });
+});
+
+describe("adopt_lang", () => {
+  // A code no fixture or suite uses, so it is unowned and its team is new.
+  const LANG = "qaQA";
+
+  async function drop() {
+    const team = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'qaqa'`))[0]?.id;
+    if (!team) return;
+    for (const table of ["voice_assignment", "voice", "generation_setting", "queue_dismissal"]) {
+      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
+    }
+    await asSystem.query(`delete from "team" where "id" = $1`, [team]);
+  }
+
+  afterEach(drop);
+
+  it("gives an unowned language a team of its own with English's roster", async () => {
+    await drop();
+    await asSystem.query(`select adopt_lang($1)`, [LANG]);
+
+    const team = await teamOfLang(LANG);
+    const counts = await systemRows<{ english: number; adopted: number }>(
+      `select (select count(*)::int from "voice" v join "team" t on t."id" = v."teamId" where t."slug" = 'english') as "english",
+              (select count(*)::int from "voice" where "teamId" = $1) as "adopted"`,
+      [team],
+    );
+    expect(counts[0].english).toBeGreaterThan(0);
+    expect(counts[0].adopted).toBe(counts[0].english);
+    expect(await systemRows(`select 1 from "generation_setting" where "teamId" = $1`, [team])).toHaveLength(1);
   });
 });
