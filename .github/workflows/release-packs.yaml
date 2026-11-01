@@ -64,6 +64,8 @@ jobs:
         ports: ["5432:5432"]
     env:
       LOCAL_DB: postgres://postgres:postgres@localhost:5432/postgres
+      # The places and readables lookups read it; without it places writes an empty one.
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       SECTION: ${{ inputs.section }}
       LOCALE: ${{ inputs.locale }}
       VERSION: ${{ inputs.version }}
@@ -72,6 +74,9 @@ jobs:
       ONLY_PRESENT: ${{ inputs.manager_only && '1' || '' }}
       ALLOW_REMOVALS: ${{ inputs.allow_removals && '1' || '' }}
       SPOKEN_ARCHIVE_URL: ${{ vars.SPOKEN_ARCHIVE_URL }}
+      # A Manager pack needs no clips on the runner: the publish copies the ones the channel lacks
+      # from the archive. Quests ship Oggs, and a zip needs the real files.
+      SPOKEN_CLIP_POINTERS: ${{ inputs.manager_only && inputs.section != 'quests' && '1' || '' }}
       REMOTE_ROOT: /srv/spoken
     steps:
       - uses: actions/checkout@v5
@@ -93,8 +98,6 @@ jobs:
       - name: Encoders
         run: sudo apt-get update && sudo apt-get install -y ffmpeg vorbis-tools zip rsync
       - run: deploy/web/bin/migrate.sh "$PWD/apps/web"
-        env:
-          DATABASE_URL: ${{ env.LOCAL_DB }}
 
       # A secret an environment lacks reads as empty, which otherwise surfaces much later as
       # "Host key verification failed", or as a publish failing at the end of a long build.
@@ -162,6 +165,7 @@ jobs:
         # Not `yes | make`: under the runner's pipefail, yes dying of SIGPIPE fails the step.
         run: make "$SECTION-sync" < <(yes y)
       - name: The live clips, from the bucket
+        if: ${{ env.SPOKEN_CLIP_POINTERS == '' }}
         run: make "$SECTION-pull-live" LOCALE="$LOCALE"
       # English's places zip carries the bosses pack, and packaging refuses a missing or stale
       # bosses build.
@@ -171,7 +175,7 @@ jobs:
           SYNC_CHECK: warn
         run: |
           make bosses-sync < <(yes y)
-          make bosses-pull-live
+          [ -n "$SPOKEN_CLIP_POINTERS" ] || make bosses-pull-live
           make bosses-package-audio
       # This run has just synced, and the freshness stamp spans every language, so asking again
       # would fail the build over another team's new take.

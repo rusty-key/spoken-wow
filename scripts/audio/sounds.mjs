@@ -26,6 +26,9 @@
 // next to no time, and unlike a hard link, a tool that later writes into Sounds/ cannot
 // reach the archive. The database is asked through psql, as scripts/db/ does, so this needs
 // no node_modules.
+//
+// SPOKEN_CLIP_POINTERS=1 writes pointers instead (scripts/lib/clip-pointer.mjs), for a Manager
+// pack built without its clips on this machine. Not quests: those packs ship Oggs, not the takes.
 import { execFileSync } from "node:child_process";
 import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
@@ -36,6 +39,7 @@ import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mj
 import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, sourceOf } from "../lib/archives.mjs";
+import { writePointers } from "../lib/clip-pointer.mjs";
 import { NAMED_QUESTS_SQL, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -102,7 +106,7 @@ const listing = psql(`select "file", coalesce("archiveFile", ''),
 const takes = listing.map((row) => {
   const [file, name, times, sha256] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
-  return { file, stem, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times };
+  return { file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times };
 });
 
 // Quests carry only the audio a current line names (relevant.mjs), and places only the areas the
@@ -148,6 +152,35 @@ if (existsSync(paths.out) && !existsSync(marker) && readdirSync(paths.out).lengt
 await rm(paths.out, { recursive: true, force: true });
 await mkdir(paths.out, { recursive: true });
 await writeFile(marker, "");
+
+if (process.env.SPOKEN_CLIP_POINTERS) {
+  if (section === "quests") {
+    console.error("SPOKEN_CLIP_POINTERS cannot build quests: its packs ship Oggs, not the takes");
+    process.exit(1);
+  }
+  if (!process.env.SPOKEN_ARCHIVE_URL) {
+    console.error("SPOKEN_CLIP_POINTERS needs SPOKEN_ARCHIVE_URL");
+    process.exit(1);
+  }
+  const unhashed = live.filter((take) => take.archived && !take.sha256);
+  if (unhashed.length) {
+    console.error(`${unhashed.length} live takes are only on the droplet's volume, e.g. ${unhashed[0].file}: build with their clips instead`);
+    process.exit(1);
+  }
+  const pointed = live.filter((take) => take.sha256);
+  const targets = pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) }));
+  await Promise.all([...new Set(targets.map(({ target }) => dirname(target)))].map((dir) => mkdir(dir, { recursive: true })));
+  const absent = await writePointers(targets, process.env.SPOKEN_ARCHIVE_URL);
+  console.log(`${section}: ${pointed.length - absent.length} pointers in ${paths.out.slice(ROOT.length + 1)}`);
+  if (unnamed) console.log(`  ${unnamed} live takes left out: no lore names their place, or their boss is retired`);
+  if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
+  if (absent.length) {
+    console.error(`  ${absent.length} live takes are not in the archive, e.g.:`);
+    for (const { target, reason } of absent.slice(0, 5)) console.error(`    ${target}: ${reason}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
 
 let copied = 0;
 const gone = [];

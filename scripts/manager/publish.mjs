@@ -6,6 +6,8 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { readPointer } from "../lib/clip-pointer.mjs";
+import { archiveBase, fetchRetrying } from "../lib/download.mjs";
 import { buildManifest, caseDuplicate, diffFiles, hashFolder, revOf } from "./manifest.mjs";
 import { openJson, publicKeyOf, sealJson, sha256Text } from "./sign.mjs";
 
@@ -75,7 +77,26 @@ async function readSigned(store, key, publicKey) {
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };
 }
 
-export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, log = console.log }) {
+// A pointer's manifest entry is the clip it names, never the pointer's own bytes.
+async function resolvePointers(root, files, archived) {
+  for (const f of files) {
+    const pointer = /\.(mp3|ogg)$/.test(f.path) ? await readPointer(join(root, ...f.path.split("/"))) : null;
+    if (!pointer) continue;
+    f.sha256 = pointer.sha256;
+    f.size = pointer.size;
+    archived.set(pointer.sha256, pointer);
+  }
+}
+
+async function archivedBytes({ key, sha256, size }, archiveUrl, fetchImpl) {
+  const res = await fetchRetrying(`${archiveBase(archiveUrl)}${key}`, fetchImpl);
+  if (!res.ok) throw new Error(`${key}: HTTP ${res.status} from the archive`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.length !== size || sha256Text(bytes) !== sha256) throw new Error(`${key}: the archive's bytes do not match their name`);
+  return bytes;
+}
+
+export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, archiveUrl, fetchImpl = fetch, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
   // The bucket's name is masked in CI logs; this says which channel a run signed for.
   log(`signing with ${publicKey}`);
@@ -104,9 +125,12 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
   const live = current?.value.packs ?? {};
   const known = new Set();
   const changes = [];
+  const archived = new Map();
   for (const { folder, section } of packs) {
     log(`${folder}: hashing`);
     const files = await hashFolder(join(distDir, folder), cache);
+    await resolvePointers(join(distDir, folder), files, archived);
+    if (archived.size > 0 && !archiveUrl) throw new Error(`dist/${folder} holds clip pointers: set SPOKEN_ARCHIVE_URL`);
     // Windows and macOS fold case, so paths differing only in case would be one file there.
     const dup = caseDuplicate(files);
     if (dup) throw new Error(`${folder} lists ${dup} twice, differing only in case`);
@@ -145,16 +169,18 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
   let done = 0;
   await eachLimit([...blobs], 16, async ([sha, b]) => {
     if (!(await store.head(`blobs/${sha}`))) {
-      const bytes = await readFile(b.abs);
       // A blob under an immutable, year-cached key cannot be corrected, so its bytes are checked
       // against the key first (a stale hash-cache entry would otherwise store the wrong bytes).
+      const pointer = archived.get(sha);
+      const bytes = pointer ? await archivedBytes(pointer, archiveUrl, fetchImpl) : await readFile(b.abs);
       if (sha256Text(bytes) !== sha) {
         throw new Error(`${b.abs} changed while publishing; run it again`);
       }
       await store.put(`blobs/${sha}`, bytes, { contentType: "application/octet-stream", cacheControl: IMMUTABLE });
     }
-    if (++done % 1000 === 0) log(`  ${done}/${blobs.size} blobs`);
+    if (++done % 100 === 0) log(`  ${done}/${blobs.size} blobs`);
   });
+  log(`${done} blobs in place`);
 
   const rev = revOf(now);
   const nextPacks = { ...live };
