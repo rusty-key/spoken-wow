@@ -9,7 +9,7 @@ import "server-only";
 import { cache } from "react";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
-import { query, withTeam } from "@/lib/db";
+import { inTransaction, query, withTeam } from "@/lib/db";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
 import { ownerOrAll, teamOf } from "@/lib/teams/store";
 import { isLang, type Lang } from "@/lib/lang";
@@ -123,14 +123,14 @@ export async function removeGrant(
             [userId, lang],
           )
         ).length > 0
-      : await teamOf(lang).then((team) => withTeam(team, async (client) => {
+      : await inTransaction(async (client) => {
           // The migration's copy in language_grant would otherwise outlive the removal.
           await client.query(
             `delete from "language_grant" where "userId" = $1 and "lang" = $2 and "capability" = $3`,
             [userId, lang, capability],
           );
-          return deleteMember(client, team, userId, lang, capability);
-        }));
+          return deleteMember(client, userId, lang, capability);
+        });
   if (!deleted) return;
   await recordActivity({
     kind: "grant.removed",

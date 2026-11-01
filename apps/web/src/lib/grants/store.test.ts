@@ -104,6 +104,24 @@ describe("two tables", () => {
 });
 
 describe("removeGrant", () => {
+  it("revokes an audio grant filed under a team that does not own the language, as grantsOf reads it", async () => {
+    const { rows } = await asSystem.query<{ id: string }>(
+      `select "id" from "team" where "id" is distinct from team_of_lang('esMX') order by "slug" limit 1`,
+    );
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'esMX', 'configure')`,
+      [rows[0].id, GRANTEE],
+    );
+    expect((await grantsOf(GRANTEE)).filter((g) => g.lang === "esMX")).toEqual([
+      { lang: "esMX", capability: "configure" },
+    ]);
+
+    await removeGrant(GRANTEE, "esMX", "configure", GRANTER);
+
+    expect((await grantsOf(GRANTEE)).filter((g) => g.lang === "esMX")).toEqual([]);
+    expect((await logged("grant.removed")).filter((row) => row.lang === "esMX")).toHaveLength(1);
+  });
+
   it("records who removed which grant, once, and nothing for a grant that was not there", async () => {
     await addGrants(GRANTEE, "ptBR", ["edit"], GRANTER);
     await removeGrant(GRANTEE, "ptBR", "edit", GRANTER);

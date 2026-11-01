@@ -25,17 +25,16 @@ export async function insertMembers(
   return rows.map((row) => row.capability);
 }
 
+/** Whatever team the row is filed under, as grantsOf reads it: a grant it shows must be removable. */
 export async function deleteMember(
   client: ClientBase,
-  team: string,
   userId: string,
   lang: string,
   capability: Capability,
 ): Promise<boolean> {
   const { rowCount } = await client.query(
-    `delete from "team_member"
-      where "teamId" = $1 and "userId" = $2 and "lang" = $3 and "capability" = $4`,
-    [team, userId, lang, capability],
+    `delete from "team_member" where "userId" = $1 and "lang" = $2 and "capability" = $3`,
+    [userId, lang, capability],
   );
   return (rowCount ?? 0) > 0;
 }
