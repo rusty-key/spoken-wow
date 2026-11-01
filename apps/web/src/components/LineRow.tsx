@@ -430,9 +430,21 @@ export default function LineRow({
           )}
           {/* The override, when there is one: this cell shows what the line says out loud,
               and after a rewrite that is no longer what the corpus holds. */}
-          <span className={cn("min-w-0 flex-1 whitespace-pre-wrap", !expanded && "line-clamp-2")}>
-            <Untranslated missing={line.missing?.text}>{line.override ?? line.text}</Untranslated>
-          </span>
+          <div className="min-w-0 flex-1">
+            <span className={cn("whitespace-pre-wrap", !expanded && "line-clamp-2")}>
+              <Untranslated missing={line.missing?.text}>{line.override ?? line.text}</Untranslated>
+            </span>
+            {/* Under the text: the strip beside it does not shrink, so this would squeeze the text
+                to nothing. */}
+            {line.override !== null && line.driftedOverride && canRegenerate && (
+              <OverrideDrift
+                file={line.driftedOverride.file}
+                lineId={line.driftedOverride.lineId}
+                text={line.override}
+                onAnswered={() => onOverrideAnswered(line)}
+              />
+            )}
+          </div>
           {/* What is true of the TEXT stays beside the text; what is true of the audio
               moved to the Audio column, where it lines up down the page. */}
           <span className="mt-0.5 flex shrink-0 gap-2 text-xs">
@@ -471,14 +483,6 @@ export default function LineRow({
               <span className="text-muted-foreground" title="This line's spoken text was rewritten">
                 rewritten
               </span>
-            )}
-            {line.override !== null && line.driftedOverride && canRegenerate && (
-              <OverrideDrift
-                file={line.driftedOverride.file}
-                lineId={line.driftedOverride.lineId}
-                text={line.override}
-                onAnswered={() => onOverrideAnswered(line)}
-              />
             )}
           </span>
           {/* A row click is a mouse gesture and reaches no keyboard, so the same toggle needs

@@ -38,7 +38,7 @@ export default function OverrideDrift({
   }
 
   return (
-    <span className="flex flex-wrap items-center gap-1 text-amber-300">
+    <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-amber-300">
       original changed since your override
       <LiteButton disabled={busy} onClick={() => void answer(() => saveOverride(file, lineId, text))}>
         Keep
