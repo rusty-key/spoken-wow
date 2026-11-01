@@ -10,6 +10,8 @@ import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
 import { BASE_LANG, CODES, type Lang } from "@/lib/lang";
 
+import { listenUnlessTesting } from "./listen";
+
 export type { TeamId };
 
 /** A language with no privileged team: nothing can be written for it until it has one. */
@@ -32,6 +34,7 @@ export function forgetTeams(): void {
 }
 
 export function teamLangs(): Promise<Map<Lang, TeamId>> {
+  listenUnlessTesting();
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
   const langs = query<{ lang: Lang; teamId: TeamId }>(
     `select "lang", "teamId" from "team_language" where "privileged"`,

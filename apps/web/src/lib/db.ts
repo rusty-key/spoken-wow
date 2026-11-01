@@ -42,17 +42,24 @@ export const POOL_CONNECTION_TIMEOUT_MS = 10_000;
 const poolKey = Symbol.for("wow-voiceover.pool");
 type PoolHolder = { [poolKey]?: Pool };
 
+/** Where and as whom to connect, for the pool and for connections of their own (the team listener). */
+export function connectionOptions(): { connectionString?: string; options?: string } {
+  return {
+    connectionString: process.env.DATABASE_URL,
+    // Lets tests and CI act as the unprivileged app role, so row-level security applies to them.
+    ...(process.env.DATABASE_ROLE ? { options: `-c role=${process.env.DATABASE_ROLE}` } : {}),
+  };
+}
+
 export function db(): Pool {
   const holder = globalThis as PoolHolder;
   // Memoised on globalThis because the dev server re-evaluates modules on hot reload, and
   // a fresh pool per reload leaks connections until Postgres refuses new ones.
   if (!holder[poolKey]) {
     holder[poolKey] = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      ...connectionOptions(),
       max: POOL_MAX,
       connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
-      // Lets tests and CI act as the unprivileged app role, so row-level security applies to them.
-      ...(process.env.DATABASE_ROLE ? { options: `-c role=${process.env.DATABASE_ROLE}` } : {}),
     });
   }
   return holder[poolKey]!;
