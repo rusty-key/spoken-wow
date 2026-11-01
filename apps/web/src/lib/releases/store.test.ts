@@ -78,6 +78,14 @@ describe("release runs", () => {
     }
   });
 
+  it("never reopens a settled run, however late the write", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    await updateRun(run.id, { state: "done" });
+    const late = await updateRun(run.id, { state: "running", step: "Build, step 2 of 2" });
+    expect(late).toMatchObject({ state: "done", step: null });
+    expect(await activeRun()).toBeNull();
+  });
+
   it("records activity for the start and, once, for the finish", async () => {
     const run = await startRun("readables", "frFR", user.id);
     await updateRun(run.id, { state: "running", step: "build" });

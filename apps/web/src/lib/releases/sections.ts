@@ -7,11 +7,13 @@ export function isReleaseSection(value: unknown): value is ReleaseSection {
   return typeof value === "string" && (RELEASE_SECTIONS as readonly string[]).includes(value);
 }
 
+export type ReleaseState = "dispatching" | "running" | "done" | "failed";
+
 /** What the panel draws of a run; another team's active run carries only the first four. */
 export type RunView = {
   section: string;
   lang: string;
-  state: "dispatching" | "running" | "done" | "failed";
+  state: ReleaseState;
   /** False for another team's run, which shows no link, step or error. */
   own: boolean;
   id?: string;

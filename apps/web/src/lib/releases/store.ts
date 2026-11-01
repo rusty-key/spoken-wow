@@ -9,7 +9,7 @@ import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
 
-export type ReleaseState = "dispatching" | "running" | "done" | "failed";
+import type { ReleaseState } from "./sections";
 
 export type ReleaseRun = {
   id: string;
@@ -77,6 +77,9 @@ export async function updateRun(
       [id],
     );
     if (!before[0]) throw new Error(`no release run ${id}`);
+    // Each process polls on its own, so a slower one can arrive after another has settled the
+    // run; its write would take the lock again, or clash with the next press's.
+    if (before[0].state === "done" || before[0].state === "failed") return before[0];
     const settles = patch.state === "done" || patch.state === "failed";
     const { rows } = await client.query<ReleaseRun>(
       `update "release_run" set
@@ -91,8 +94,7 @@ export async function updateRun(
        patch.error ?? null, settles],
     );
     const run = rows[0];
-    const wasSettled = before[0].state === "done" || before[0].state === "failed";
-    if (settles && !wasSettled) {
+    if (settles) {
       await recordActivity(
         { kind: "release.finished", lang: run.lang as Lang, actorId: null, detail: { section: run.section, state: run.state as "done" | "failed" } },
         client,

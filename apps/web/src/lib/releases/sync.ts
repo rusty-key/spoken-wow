@@ -9,6 +9,9 @@ import { activeRun, updateRun, type ReleaseRun } from "./store";
 
 const CHECK_EVERY_MS = 15_000;
 const GIVE_UP_AFTER_MS = 15 * 60_000;
+// Past the workflow's 240-minute timeout with another run queued ahead of it. An expired token
+// answers every check with an error, and nobody could press Release until someone noticed.
+const LOST_AFTER_MS = 9 * 60 * 60_000;
 
 // Only the question to GitHub is memoised; the row is always read fresh, so a run started
 // a moment ago shows at once. Keyed by run, so a new run is asked about straight away.
@@ -37,29 +40,29 @@ export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Da
   checked = { runId: run.id, at: now };
 
   const result = await lookup(run, fetchFn);
-  if (result === "error") return run;
+  if (result === "error") {
+    if (now - run.createdAt.getTime() < LOST_AFTER_MS) return run;
+    await updateRun(run.id, { state: "failed", error: "Lost track of it: GitHub stopped answering" });
+    return null;
+  }
   const { found } = result;
 
   if (!found) {
     if (now - run.createdAt.getTime() < GIVE_UP_AFTER_MS) return run;
-    return settled(await updateRun(run.id, { state: "failed", error: "GitHub never started it" }));
+    await updateRun(run.id, { state: "failed", error: "GitHub never started it" });
+    return null;
   }
   if (found.status === "completed") {
-    return settled(
+    await updateRun(
+      run.id,
       found.conclusion === "success"
-        ? await updateRun(run.id, { state: "done", githubRunId: found.id, githubUrl: found.url })
-        : await updateRun(run.id, {
-            state: "failed",
-            githubRunId: found.id,
-            githubUrl: found.url,
-            error: found.conclusion ?? "unknown",
-          }),
+        ? { state: "done", githubRunId: found.id, githubUrl: found.url }
+        : { state: "failed", githubRunId: found.id, githubUrl: found.url, error: found.conclusion ?? "unknown" },
     );
+    return null;
   }
-  if (run.state === "running" && run.githubRunId === found.id && run.step === found.step) return run;
-  return updateRun(run.id, { state: "running", githubRunId: found.id, githubUrl: found.url, step: found.step });
-}
-
-function settled(run: ReleaseRun): ReleaseRun | null {
-  return run.state === "done" || run.state === "failed" ? null : run;
+  // Between steps GitHub names none, and the row keeps the last one.
+  if (run.state === "running" && run.githubRunId === found.id && run.step === (found.step ?? run.step)) return run;
+  const updated = await updateRun(run.id, { state: "running", githubRunId: found.id, githubUrl: found.url, step: found.step });
+  return updated.state === "running" ? updated : null;
 }

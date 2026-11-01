@@ -92,7 +92,7 @@ describe("syncActive", () => {
     expect(row).toEqual({ state: "failed", error: "GitHub never started it" });
   });
 
-  it("leaves the row alone on a GitHub error, however old", async () => {
+  it("leaves the row alone on a GitHub error while it could still be running", async () => {
     const run = await startRun("quests", "frFR", user.id);
     await age(run.id, 60);
     for (const status of [500, 403]) {
@@ -102,6 +102,26 @@ describe("syncActive", () => {
     }
     forgetReleaseCheck();
     expect(await syncActive(vi.fn().mockRejectedValue(new TypeError("fetch failed")))).toMatchObject({ state: "dispatching" });
+  });
+
+  it("frees the lock once GitHub's errors outlast any run", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    await age(run.id, 9 * 60 + 1);
+    const fetchFn = vi.fn().mockResolvedValue(reply({ message: "Bad credentials" }, 401));
+    expect(await syncActive(fetchFn)).toBeNull();
+    const [row] = await systemRows<{ state: string; error: string }>(`select "state", "error" from "release_run" where "id" = $1`, [run.id]);
+    expect(row).toEqual({ state: "failed", error: "Lost track of it: GitHub stopped answering" });
+  });
+
+  it("makes no write between steps, when GitHub names none", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    await syncActive(github({ status: "in_progress", steps: [{ name: "Build", number: 1, status: "in_progress" }] }));
+    forgetReleaseCheck();
+    const version = () => systemRows<{ xmin: string }>(`select xmin::text from "release_run" where "id" = $1`, [run.id]);
+    const before = await version();
+    const synced = await syncActive(github({ status: "in_progress", steps: [{ name: "Build", number: 1, status: "completed" }] }));
+    expect(synced).toMatchObject({ state: "running", step: "Build, step 1 of 1" });
+    expect(await version()).toEqual(before);
   });
 
   it("with no token leaves a young row and fails an old one", async () => {
