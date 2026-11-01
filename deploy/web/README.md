@@ -547,6 +547,58 @@ psql "$(grep ^DATABASE_URL /srv/spoken/shared/app.env | cut -d= -f2-)" \
 Every role after this one is handed out from `/admin`, which will not let an admin demote
 themselves.
 
+## The Release button
+
+`/admin/release?lang=xx` lets a team admin start the `release-packs.yaml` workflow in
+Manager-only mode and follow it by step. The site only dispatches and reads; GitHub Actions
+builds, signs and publishes. One release runs at a time, site-wide.
+
+1. Create a **fine-grained** GitHub token for this repository only, with the repository
+   permission **Actions: Read and write** (`actions: write`) and nothing else.
+2. Add to `/srv/spoken/shared/app.env`:
+
+   ```
+   SPOKEN_RELEASE_GITHUB_TOKEN=<the token>
+   SPOKEN_RELEASE_GITHUB_REPO=<owner>/<repo>
+   ```
+
+   `SPOKEN_RELEASE_GITHUB_REF` is optional and defaults to `master`: the branch the workflow is
+   dispatched on. Unset token or repo, a press fails at once and the run is marked failed.
+   `SPOKEN_RELEASE_CHANNEL` is optional too. Unset means the `production` environment; a checkout
+   testing the button sets `staging`.
+3. Restart so pm2 reads the file:
+
+   ```bash
+   pm2 startOrReload /srv/spoken/shared/ecosystem.config.js --update-env
+   ```
+
+**The GitHub environment holds the run's secrets.** The workflow reads them from the environment its
+`channel` input names, and fails in its first steps if one is missing. `production` and `staging` each
+need `DO_SSH_KEY`, `DO_KNOWN_HOSTS` (with an entry for `DO_HOST`), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET` and `SPOKEN_PACKS_SIGNING_KEY`, their R2 token scoped to their own
+bucket. `DO_USER` and `DO_HOST` are repository secrets. A manual CurseForge upload also needs
+`CURSEFORGE_TOKEN` in `production`.
+
+**A publish that would empty a pack is refused.** A pack losing more than 5 files and more than 5% of
+them stops the run, since that is what a short sync or pull looks like. If the loss is meant, dispatch
+the workflow by hand with `allow_removals`.
+
+**Deploy and the workflow go together.** The workflow file on the default branch must already
+have the `manager_only` and `release_id` inputs, or GitHub rejects the dispatch and every press
+fails. They arrive in the same merge as the site; do not set the token before it is deployed.
+Migration `0095_release_run.sql` arrives with that deploy (`activate.sh` runs it).
+
+**A stuck run** needs no `make` target: if GitHub has not started a run 15 minutes after the
+press, the page fails it itself ("GitHub never started it") and frees the lock. A run that
+GitHub reports as finished is settled the next time anyone opens the page. If every check gets an
+error, as with an expired token, the lock holds for 9 hours and the only sign is in the server log,
+so replace the token rather than waiting.
+
+**The first real release.** Pick a small language and a small section, press Release, watch the
+run's step on the page and the run itself through its link, then check the Manager lists the new
+rev for that pack. Nothing else should have changed: one release publishes only the folders that
+build produced.
+
 ## Downloads
 
 nginx aliases `/downloads/` straight at `shared/downloads/`, so a file there never passes

@@ -15,6 +15,10 @@ const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/;
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const INDEX_CACHE = "public, max-age=60";
 
+// A sync or pull that came up short looks like a pack losing its clips, and players would lose them.
+const MAX_REMOVED_FILES = 5;
+const MAX_REMOVED_SHARE = 0.05;
+
 export function compareVersions(a, b) {
   const x = a.split(".").map(Number);
   const y = b.split(".").map(Number);
@@ -45,7 +49,7 @@ export async function eachLimit(items, limit, fn) {
 
 // The releases list is newest first and mixes in per-language audio releases, so spoken/v tags can
 // sit past page 1. Pages are read until one holds a spoken/v release, the list runs out, or 10 pages.
-export async function latestSpokenRelease(fetchImpl = fetch, token = process.env.GITHUB_TOKEN) {
+export async function latestSpokenRelease(fetchImpl = fetch, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN) {
   const versions = [];
   for (let page = 1; page <= 10; page++) {
     const res = await fetchImpl(`https://api.github.com/repos/rusty-key/spoken-wow/releases?per_page=100&page=${page}`, {
@@ -71,8 +75,14 @@ async function readSigned(store, key, publicKey) {
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };
 }
 
-export async function publish({ store, packs, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, log = console.log }) {
+export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
+  // The bucket's name is masked in CI logs; this says which channel a run signed for.
+  log(`signing with ${publicKey}`);
+
+  // A one-section build leaves the other sections' folders absent, which is not an error there.
+  const packs = onlyPresent ? allPacks.filter((p) => existsSync(join(distDir, p.folder))) : allPacks;
+  if (onlyPresent && packs.length === 0) throw new Error("nothing in dist/ to publish: build a pack first");
 
   // Every folder and every requirement is checked before anything is read from or sent to R2.
   for (const { folder, section } of packs) {
@@ -115,6 +125,9 @@ export async function publish({ store, packs, distDir, signingKey, minSpoken, la
       continue;
     }
     log(`${folder}: +${diff.added} ~${diff.changed} -${diff.removed}`);
+    if (!allowRemovals && diff.removed > MAX_REMOVED_FILES && diff.removed > before.length * MAX_REMOVED_SHARE) {
+      throw new Error(`${folder} would lose ${diff.removed} of its ${before.length} files: check the build, or allow it with --allow-removals`);
+    }
     changes.push({ folder, files, requires });
   }
 
