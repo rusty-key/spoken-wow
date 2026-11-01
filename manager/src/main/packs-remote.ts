@@ -128,10 +128,14 @@ export function parseManifest(signed: string, packId: string, pack: ChannelPack)
   return { packId, rev: pack.rev, requires: { Spoken: raw.requires.Spoken }, fileCount: files.length, totalSize: files.reduce((n, f) => n + f.size, 0), files }
 }
 
+// net.fetch has no time limit of its own, and a silent server would hold the job forever.
+const GET_TIMEOUT_MS = 60_000
+
 async function getText(url: string, opts: ChannelOptions): Promise<string> {
+  const timeout = AbortSignal.timeout(GET_TIMEOUT_MS)
   const res = await (opts.fetchImpl ?? fetch)(url, {
     headers: opts.userAgent ? { 'User-Agent': opts.userAgent } : {},
-    ...(opts.signal ? { signal: opts.signal } : {})
+    signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout
   })
   if (!res.ok) throw new PlainError(`The voice pack server answered ${res.status}. Try again later.`)
   return res.text()

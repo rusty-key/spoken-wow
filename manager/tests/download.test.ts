@@ -256,6 +256,58 @@ describe('downloadAsset', () => {
     expect(fs.readFileSync(result.file).equals(DATA)).toBe(true)
   })
 
+  it('gives up on a server that goes silent mid-body and resumes from what arrived', async () => {
+    server = await startServer((req, res, n) => {
+      if (n === 1) {
+        res.writeHead(200, { 'Content-Length': DATA.length })
+        res.write(DATA.subarray(0, 150_000))
+        // The rest never comes, and the connection stays open.
+        return
+      }
+      serveBuffer(req, res, DATA)
+    })
+    const result = await downloadAsset({ url: `${server.url}/file`, dir, ...base(), stallMs: 100 })
+    expect(server.requests).toHaveLength(2)
+    expect(server.requests[1]!.range).toMatch(/^bytes=\d+-$/)
+    expect(fs.readFileSync(result.file).equals(DATA)).toBe(true)
+  })
+
+  it('gives up on a server that never answers and says why', async () => {
+    server = await startServer(() => undefined)
+    const err = await downloadAsset({ url: `${server.url}/file`, dir, ...base(), stallMs: 50, attempts: 2 }).catch((e) => e)
+    expect(err).toBeInstanceOf(PlainError)
+    expect(err.message).toContain('the server stopped sending data')
+    expect(server.requests).toHaveLength(2)
+  })
+
+  it('is a cancel, not a retry, when the player cancels during a silence', async () => {
+    server = await startServer((_req, res) => {
+      res.writeHead(200, { 'Content-Length': DATA.length })
+      res.write(DATA.subarray(0, 150_000))
+    })
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), 50)
+    const err = await downloadAsset({ url: `${server.url}/file`, dir, ...base(), signal: controller.signal }).catch((e) => e)
+    expect(isAbortError(err)).toBe(true)
+    expect(server.requests).toHaveLength(1)
+  })
+
+  it('aborts the request when it walks away from a body', async () => {
+    server = await startServer((_req, res) => {
+      res.writeHead(206, { 'Content-Length': DATA.length, 'Content-Range': `bytes 5-${DATA.length}/${DATA.length}` })
+      res.write(DATA.subarray(0, 1000))
+    })
+    writePart(dir, 'pack-1.0.0', DATA.subarray(0, 100_000))
+    const signals: AbortSignal[] = []
+    const fetchImpl: typeof fetch = (input, init) => {
+      signals.push(init!.signal!)
+      return fetch(input, init)
+    }
+    await downloadAsset({ url: `${server.url}/file`, dir, ...base(), attempts: 1, fetchImpl }).catch(() => undefined)
+    expect(signals).toHaveLength(1)
+    expect(signals[0]!.aborted).toBe(true)
+  })
+
   it('retries a 503 and gives up after three attempts with a message that says the part is kept', async () => {
     server = await startServer((_req, res, n) => {
       res.writeHead(503)

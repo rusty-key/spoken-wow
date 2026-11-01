@@ -31,6 +31,8 @@ export interface DownloadOptions {
   attempts?: number
   /** First wait between attempts in ms (default 1000, doubled each time). */
   backoffMs?: number
+  /** How long the server may stay silent before the attempt gives up, in ms (default 60000). */
+  stallMs?: number
 }
 
 export interface DownloadResult {
@@ -78,6 +80,10 @@ async function removeQuiet(file: string): Promise<void> {
 }
 
 class Retryable extends Error {}
+
+// A connection can stay open with nothing coming, and net.fetch has no time limit of its own: without this the
+// download would sit at the same percentage until the player cancels it.
+const STALL_MS = 60_000
 
 /** What the server said identifies the file, saved beside the `.part` so a resume can prove it is the same file. */
 interface Validator {
@@ -172,6 +178,23 @@ export async function downloadAsset(opts: DownloadOptions): Promise<DownloadResu
   )
 
   async function attemptOnce(): Promise<void> {
+    const attempt = new AbortController()
+    let timer: NodeJS.Timeout | undefined
+    const watchNetwork = (waiting: boolean): void => {
+      clearTimeout(timer)
+      if (waiting) timer = setTimeout(() => attempt.abort(new Retryable('the server stopped sending data')), opts.stallMs ?? STALL_MS)
+    }
+    try {
+      await transfer(attempt.signal, watchNetwork)
+    } finally {
+      watchNetwork(false)
+      // net.fetch only lets go of a request through its signal. Dropping the body after a failed write or a bad
+      // answer would leave the request paused and holding its connection.
+      attempt.abort()
+    }
+  }
+
+  async function transfer(attempt: AbortSignal, watchNetwork: (waiting: boolean) => void): Promise<void> {
     let existing = await sizeOf(part)
     let saved = existing > 0 ? readValidator(part) : null
     // A part with no record beside it cannot be shown to belong to this file: start again.
@@ -202,11 +225,16 @@ export async function downloadAsset(opts: DownloadOptions): Promise<DownloadResu
     }
 
     let res: Response
+    watchNetwork(true)
     try {
-      res = await doFetch(opts.url, { headers, redirect: 'follow', signal: opts.signal })
+      const signal = opts.signal ? AbortSignal.any([opts.signal, attempt]) : attempt
+      res = await doFetch(opts.url, { headers, redirect: 'follow', signal })
     } catch (err) {
       if (opts.signal?.aborted) throw new CancelledError()
+      if (attempt.aborted) throw attempt.reason
       throw new Retryable(err instanceof Error ? err.message : String(err))
+    } finally {
+      watchNetwork(false)
     }
 
     if (res.status === 416) {
@@ -291,7 +319,10 @@ export async function downloadAsset(opts: DownloadOptions): Promise<DownloadResu
     let streamError: unknown = null
     try {
       const stream = Readable.fromWeb(res.body as never)
+      watchNetwork(true)
       for await (const chunk of stream) {
+        // Off during the write: a slow disk is not a silent server.
+        watchNetwork(false)
         const buf = chunk as Buffer
         await fh.write(buf)
         hash?.update(buf)
@@ -301,17 +332,21 @@ export async function downloadAsset(opts: DownloadOptions): Promise<DownloadResu
           stream.destroy()
           throw new CancelledError()
         }
+        watchNetwork(true)
       }
     } catch (err) {
       streamError = err
     } finally {
+      watchNetwork(false)
       await fh.close().catch(() => undefined)
     }
     report(true)
     fetched += received - existing
 
     if (streamError) {
-      if (opts.signal?.aborted || isAbortError(streamError)) throw new CancelledError()
+      if (opts.signal?.aborted) throw new CancelledError()
+      if (attempt.aborted) throw attempt.reason
+      if (isAbortError(streamError)) throw new CancelledError()
       throw new Retryable(streamError instanceof Error ? streamError.message : String(streamError))
     }
 
