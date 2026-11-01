@@ -45,7 +45,7 @@ export async function eachLimit(items, limit, fn) {
 
 // The releases list is newest first and mixes in per-language audio releases, so spoken/v tags can
 // sit past page 1. Pages are read until one holds a spoken/v release, the list runs out, or 10 pages.
-export async function latestSpokenRelease(fetchImpl = fetch, token = process.env.GITHUB_TOKEN) {
+export async function latestSpokenRelease(fetchImpl = fetch, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN) {
   const versions = [];
   for (let page = 1; page <= 10; page++) {
     const res = await fetchImpl(`https://api.github.com/repos/rusty-key/spoken-wow/releases?per_page=100&page=${page}`, {

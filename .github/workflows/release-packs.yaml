@@ -124,10 +124,18 @@ jobs:
         run: |
           make bosses-sync < <(yes y)
           make bosses-pull-live
-          make bosses-package-audio
+          make bosses-package-audio < <(yes y)
+      # The packagers ask again if production moved since the sync, and with no answer they abort.
+      # This run has just synced, and the stamp spans every language, so another team's new take
+      # would otherwise fail the build.
       - name: Build
         run: |
-          make "$SECTION-package-audio" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
+          # package-audio.sh's own default would stamp a lower version on all four English packs.
+          if [ "$MANAGER_ONLY" = true ] && [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ] && [ -z "$VERSION" ]; then
+            VERSION=$(awk '/^## [0-9.]+ — Spoken Quests Audio/ { print $2; exit }' docs/quests/CHANGELOG.md)
+            [ -n "$VERSION" ] || { echo "::error::no Spoken Quests Audio section in docs/quests/CHANGELOG.md"; exit 1; }
+          fi
+          make "$SECTION-package-audio" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION} < <(yes y)
           if [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ]; then make quests-package-meta ${VERSION:+VERSION=$VERSION}; fi
           ls -la dist/
 
