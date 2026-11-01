@@ -83,6 +83,19 @@ test("a missing folder stops the run before anything is read or sent", async () 
   assert.equal(store.log.length, 0);
 });
 
+test("onlyPresent publishes the folders dist/ holds and skips the absent ones", async () => {
+  const store = memoryStore();
+  const two = [...packs, { folder: "SpokenPlacesAudio_frFR", section: "places", lang: "frFR" }];
+  const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc" }), { packs: two, onlyPresent: true });
+  assert.deepEqual(out.changed, ["SpokenPlacesAudio_deDE"]);
+});
+
+test("onlyPresent with nothing built is refused rather than publishing nothing", async () => {
+  const store = memoryStore();
+  await assert.rejects(run(store, mkdtempSync(join(tmpdir(), "empty-")), { onlyPresent: true }), /nothing in dist\/ to publish/);
+  assert.equal(store.log.length, 0);
+});
+
 test("a folder older than its zip is refused as a stale build", async () => {
   const store = memoryStore();
   const d = dist({ "SpokenPlacesAudio_deDE.toc": "toc" });

@@ -319,11 +319,13 @@ audio-release: ## Publish the built sound packs as GitHub releases (needs gh; SE
 # The manager's channel (scripts/manager/): what dist/ holds, uploaded to R2 as changed files only.
 # Build first with the <section>-package-audio targets. Needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
 # R2_SECRET_ACCESS_KEY, R2_BUCKET and SPOKEN_PACKS_SIGNING_KEY, in the repo-root .env.
-manager-publish-dry: ## Show what the manager channel would get from dist/
-	@node scripts/manager/cli.mjs publish --dry-run
+# ONLY_PRESENT=1 publishes just the folders dist/ holds, for a build of one section and language;
+# without it a missing folder stops the run, so a partial build cannot pass for a full one.
+manager-publish-dry: ## Show what the manager channel would get from dist/ (ONLY_PRESENT=1: only what is built)
+	@node scripts/manager/cli.mjs publish --dry-run $(if $(ONLY_PRESENT),--present)
 
-manager-publish: ## Publish dist/'s manager packs to the manager channel
-	@node scripts/manager/cli.mjs publish
+manager-publish: ## Publish dist/'s manager packs to the manager channel (ONLY_PRESENT=1: only what is built)
+	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present)
 
 manager-gc-dry: ## Show what manager-gc would delete
 	@node scripts/manager/cli.mjs gc --dry-run

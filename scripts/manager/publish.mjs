@@ -71,8 +71,13 @@ async function readSigned(store, key, publicKey) {
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };
 }
 
-export async function publish({ store, packs, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, log = console.log }) {
+export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, onlyPresent = false, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
+
+  // A one-section build leaves the other sections' folders absent, which is not an error there; a
+  // folder that is present still goes through every check below.
+  const packs = onlyPresent ? allPacks.filter((p) => existsSync(join(distDir, p.folder))) : allPacks;
+  if (onlyPresent && packs.length === 0) throw new Error("nothing in dist/ to publish: build a pack first");
 
   // Every folder and every requirement is checked before anything is read from or sent to R2.
   for (const { folder, section } of packs) {
