@@ -4,7 +4,16 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { capabilityLabel } from "@/lib/permissions";
 import type { TeamSummary } from "@/lib/teams/admin";
@@ -29,6 +38,8 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
+const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
+
 async function send(url: string, method: string, body: unknown): Promise<{ ok: boolean; error?: string }> {
   const response = await fetch(url, {
     method,
@@ -47,6 +58,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
+  const [moving, setMoving] = useState<{ lang: Lang; target: TeamSummary } | null>(null);
 
   async function run(action: () => Promise<{ ok: boolean; error?: string }>): Promise<boolean> {
     setBusy(true);
@@ -68,12 +80,11 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     });
   };
 
-  function moveTo(lang: Lang, target: TeamSummary) {
-    const count = takes[lang] ?? 0;
-    const sure = window.confirm(
-      `Hand ${lang} to ${target.name}? ${count} live take${count === 1 ? "" : "s"} move with it, along with its voices, settings and members.`,
-    );
-    if (sure) void run(() => send(`/api/teams/${target.id}/languages`, "PUT", { lang }));
+  function move() {
+    if (!moving) return;
+    const { lang, target } = moving;
+    setMoving(null);
+    void run(() => send(`/api/teams/${target.id}/languages`, "PUT", { lang }));
   }
 
   async function create(event: React.FormEvent) {
@@ -126,25 +137,27 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                     <li key={lang} className="flex items-center gap-2">
                       <span className="w-12 font-mono text-xs">{lang}</span>
                       {lang !== BASE_LANG && (
-                        <select
-                          aria-label={`Move ${lang} to`}
-                          className="border-input bg-background rounded-md border px-2 py-1 text-xs"
-                          disabled={busy}
+                        <Select
                           value=""
-                          onChange={(event) => {
-                            const target = initial.find((other) => other.id === event.target.value);
-                            if (target) moveTo(lang, target);
+                          disabled={busy}
+                          onValueChange={(id) => {
+                            const target = initial.find((other) => other.id === id);
+                            if (target) setMoving({ lang, target });
                           }}
                         >
-                          <option value="">Move to…</option>
-                          {initial
-                            .filter((other) => other.id !== team.id)
-                            .map((other) => (
-                              <option key={other.id} value={other.id}>
-                                {other.name}
-                              </option>
-                            ))}
-                        </select>
+                          <SelectTrigger size="sm" className="text-xs" aria-label={`Move ${lang} to`}>
+                            <SelectValue placeholder="Move to…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {initial
+                              .filter((other) => other.id !== team.id)
+                              .map((other) => (
+                                <SelectItem key={other.id} value={other.id}>
+                                  {other.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       )}
                     </li>
                   ))}
@@ -209,6 +222,27 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
           Create team
         </Button>
       </form>
+
+      <Dialog open={moving !== null} onOpenChange={(open) => !open && setMoving(null)}>
+        {moving && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Hand {moving.lang} to {moving.target.name}?
+              </DialogTitle>
+              <DialogDescription>
+                {liveTakes(takes[moving.lang] ?? 0)} move with it, along with its voices, settings and members.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setMoving(null)}>
+                Cancel
+              </Button>
+              <Button onClick={move}>Hand over</Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }
