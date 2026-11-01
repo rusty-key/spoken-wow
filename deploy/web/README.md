@@ -436,8 +436,10 @@ working on the new schema.
    psql "$PROD_DATABASE_URL" -c "select id from \"user\" where email = 'x@rusty.one'"
    ```
 
-3. **Pause the queue** from the queue panel, then wait until no job is running in any language
-   from step 1. A running job would commit its take under the old team after the move, so 0091
+3. **Pause the queue** from the queue panel, and don't change grants until the deploy is done:
+   the old release writes audio grants only to `language_grant`, so one given or removed after
+   0091 has copied them is missing from `team_member`, or still in it. Then wait until no job is
+   running in any language from step 1. A running job would commit its take under the old team after the move, so 0091
    aborts, and with it the deploy (the previous release keeps serving), if one is. Migrations
    run at the Activate step while the old release still serves, so the queue has to be paused
    before merging. Check, and repeat until it returns no rows:
