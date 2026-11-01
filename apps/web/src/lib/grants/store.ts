@@ -1,5 +1,5 @@
 /**
- * language_grant (edit) and, through teams/members, team_member (the audio capabilities).
+ * language_grant holds `edit`; team_member holds the audio capabilities.
  *
  * Read once per render (the grants are cached on the user id), because a page asks "may
  * this person do that here" more than once and the answer does not change inside it.
@@ -124,7 +124,6 @@ export async function removeGrant(
   });
 }
 
-/** Whether there was such a grant to delete. */
 async function deleteGrant(userId: string, lang: Lang, capability: Capability): Promise<boolean> {
   if (capability === "edit") {
     const rows = await query(

@@ -1,6 +1,4 @@
-/**
- * Teams, for site owners only: the list, and a new team with the languages it starts with.
- */
+/** Site owners only. */
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { createTeamWithLangs, listTeams } from "@/lib/teams/admin";
 

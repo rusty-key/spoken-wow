@@ -9,15 +9,15 @@ type Handler = (request: Request, actorId: string) => Promise<Response>;
 type TeamHandler = (request: Request, actorId: string, team: TeamId) => Promise<Response>;
 type TeamContext = { params: Promise<{ id: string }> };
 
-/** A refusal the admin can act on as its status and message; anything else is not ours to hide. */
+/** Anything but a TeamError rethrows, so a real failure is not hidden as a refusal. */
 function refusal(error: unknown): Response {
   if (error instanceof TeamError) return Response.json({ error: error.message }, { status: error.status });
   throw error;
 }
 
 /**
- * A route for the signed-in site admin, called with their id; anybody else gets a 403. With
- * "id", the route's [id] is the team, and one that is not a uuid is no such team.
+ * For the signed-in site admin only; anybody else gets a 403. With "id", an [id] that is not a
+ * uuid is no such team.
  */
 export function withAdmin(handle: Handler): (request: Request) => Promise<Response>;
 export function withAdmin(handle: TeamHandler, by: "id"): (request: Request, context: TeamContext) => Promise<Response>;

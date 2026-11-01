@@ -1,8 +1,4 @@
-/**
- * move_team_lang (migration 0091): a language handed to another team takes every row with it.
- *
- * Needs DATABASE_URL and migrations through 0091 applied.
- */
+/** Needs DATABASE_URL and migrations through 0091 applied. */
 import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";

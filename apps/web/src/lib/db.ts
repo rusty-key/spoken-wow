@@ -42,7 +42,7 @@ export const POOL_CONNECTION_TIMEOUT_MS = 10_000;
 const poolKey = Symbol.for("wow-voiceover.pool");
 type PoolHolder = { [poolKey]?: Pool };
 
-/** Where and as whom to connect, for the pool and for connections of their own (the team listener). */
+/** For the pool and for connections of their own, such as the team listener's LISTEN. */
 export function connectionOptions(): { connectionString?: string; options?: string } {
   return {
     connectionString: process.env.DATABASE_URL,
@@ -148,16 +148,14 @@ function closeHooks(): Set<() => Promise<void>> {
   return (holder[hooksKey] ??= new Set());
 }
 
-/**
- * Something closeDb also closes: a connection of a module's own, like the team listener, which
- * this module cannot import without a cycle.
- */
+/** For connections closeDb must close but this module cannot import without a cycle. */
 export function onCloseDb(hook: () => Promise<void>): void {
   closeHooks().add(hook);
 }
 
 /**
- * Close the pool, and every connection registered with onCloseDb, and forget the pool, so the next db() builds a fresh one.
+ * Close the pool and every onCloseDb connection, and forget the pool, so the next db() builds a
+ * fresh one.
  *
  * For tests. Ending the pool without clearing the memo leaves a closed pool on globalThis,
  * and vitest reuses workers between files - so one test file finishing would break the next

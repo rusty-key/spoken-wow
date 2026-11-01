@@ -1,7 +1,4 @@
-/**
- * team_member: the only module that names its columns. A member's audio capabilities, per
- * language of the team; `edit` stays in language_grant.
- */
+/** The only module that names team_member's columns. `edit` stays in language_grant. */
 import type { ClientBase } from "pg";
 
 import type { Capability } from "@/lib/permissions";

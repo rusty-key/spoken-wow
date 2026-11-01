@@ -1,13 +1,11 @@
--- Team members, and every language a team of its own.
---
--- ADDITIVE. The audio grants are copied into team_member and left in language_grant, so the
--- release before this one still reads them.
+-- Additive: the audio grants are copied into team_member and stay in language_grant, which the
+-- previous release still reads.
 
 -- migrate.sh runs psql at warning level; the per-language progress below is a notice.
 set local client_min_messages = notice;
 
--- A member's audio capabilities, per language of the team. `edit` stays in language_grant.
--- Not row-level secured: a viewer's grants span teams, so it is read before any team is set.
+-- Audio capabilities only; `edit` stays in language_grant. Not row-level secured: a viewer's
+-- grants span teams, so it is read before any team is set.
 create table "team_member" (
   "teamId"     uuid        not null references "team" ("id") on delete cascade,
   "userId"     text        not null references "user" ("id") on delete cascade,
@@ -38,7 +36,6 @@ begin
 end
 $$;
 
--- p_base if no team is called so, else the first free of p_base-2, p_base-3...
 create function "free_team_slug"(p_base text) returns text
 language plpgsql as $$
 declare
@@ -53,8 +50,8 @@ begin
 end
 $$;
 
--- Gives p_to a copy of p_from's roster, base generation settings and dismissal mark, unless it
--- has a roster already: a team without one would voice its languages with no voices.
+-- A team without a roster would voice its languages with no voices; one that has a roster
+-- keeps it.
 create function "copy_team_roster"(p_from uuid, p_to uuid) returns void
 language plpgsql security invoker as $$
 begin
@@ -77,10 +74,8 @@ begin
 end
 $$;
 
--- Hands p_lang, with every row of it, from its privileged team to p_team, and returns the number
--- of rows moved. Security invoker, so the caller's row-level security applies: the app calls it
--- as ALL_TEAMS. A running job is refused as object_in_use (55006), which the app answers with a
--- 409; every other refusal is a plain exception (P0001).
+-- Security invoker, so the caller's row-level security applies; the app calls it as ALL_TEAMS.
+-- A running job raises object_in_use (55006) for the app to answer 409; other refusals are P0001.
 create function "move_team_lang"(p_lang text, p_team uuid) returns integer
 language plpgsql security invoker as $$
 declare
@@ -160,10 +155,8 @@ begin
 end
 $$;
 
--- A language switched on with no team gets one of its own, with no members (site owners act in
--- any team) and English's roster, since only an unowned language falls back to English's.
--- The app calls it in a transaction acting as no team, where row-level security would show
--- copy_team_roster no English roster to copy, so it acts as every team until it returns.
+-- The app calls it acting as no team, where row-level security would hide English's roster from
+-- copy_team_roster, so it acts as every team until it returns.
 create function "adopt_lang"(p_lang text) returns void
 language plpgsql set spoken.team = '*' as $$
 declare
@@ -181,9 +174,7 @@ begin
 end
 $$;
 
--- EVERY LANGUAGE ITS OWN TEAM. Each language the english team holds but English moves to a team
--- of its own, with its rows. The site owner admins each team made here, for its language (user,
--- 2026-11-01).
+-- Every language but English moves off the english team to a team of its own.
 do $$
 declare
   v_langs text[];
@@ -209,8 +200,8 @@ begin
 end
 $$;
 
--- The audio grants, now that every language's team is final. A grant in a language with no team
--- has nowhere to go and is only counted.
+-- After the moves, so each grant lands on its language's final team. A grant in a language with
+-- no team has nowhere to go and is only counted.
 do $$
 declare
   v_stranded integer;

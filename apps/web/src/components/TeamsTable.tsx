@@ -27,7 +27,6 @@ type Props = {
 
 type Person = { email: string; name: string | null; held: Map<Lang, string[]> };
 
-/** The members of a team, one entry per person with their capabilities by language. */
 function people(team: TeamSummary): Person[] {
   const byUser = new Map<string, Person>();
   for (const member of team.members) {

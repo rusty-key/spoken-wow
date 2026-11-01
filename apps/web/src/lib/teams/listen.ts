@@ -1,9 +1,7 @@
 /**
- * Keeps every worker's language-to-team memo honest. pm2 runs two workers, and a language
- * moved by one would otherwise be written by the other under its old team until the memo's
- * TTL ran out. Moving a language notifies; each process forgets its memo when it hears.
- * Each (re)connect forgets the memo too, for a move made while the listener was down; the TTL
- * stays as the backstop for a notification lost in between.
+ * pm2 runs two workers, so a language one moves would be written by the other under its old team
+ * until the memo's TTL ran out. Each process forgets its memo on the move's notification and on
+ * every (re)connect; the TTL backstops a lost notification.
  */
 import "server-only";
 
@@ -20,7 +18,7 @@ let client: Client | undefined;
 let retry: NodeJS.Timeout | undefined;
 let stopped = true;
 
-/** Starts the listener once per process; later calls do nothing. Never throws. */
+/** Once per process; never throws. */
 export function listenForTeamChanges(): void {
   if (!stopped) return;
   stopped = false;
@@ -64,7 +62,6 @@ function fail(own: Client, error: unknown): void {
   retry.unref();
 }
 
-/** Closes the connection and cancels a pending retry; closeDb calls it. */
 export async function stopListening(): Promise<void> {
   stopped = true;
   clearTimeout(retry);

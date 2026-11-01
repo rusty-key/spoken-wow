@@ -1,8 +1,4 @@
-/**
- * The team store: creating, renaming and handing a language to a team.
- *
- * Needs DATABASE_URL and migrations through 0091 applied.
- */
+/** Needs DATABASE_URL and migrations through 0091 applied. */
 import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";

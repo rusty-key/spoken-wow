@@ -1,6 +1,4 @@
-/**
- * Creating, renaming and handing languages to teams. The caller has checked the viewer may.
- */
+/** Team writes. Nothing here checks the viewer; the caller has. */
 import "server-only";
 
 import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
@@ -20,9 +18,8 @@ export type TeamSummary = {
 };
 
 /**
- * A refusal whose message is fit to show. 409 is a language with a running regeneration job,
- * which cannot move because the job would commit under the old team; 400 is anything else
- * the store refuses.
+ * A refusal whose message is fit to show: 409 for a language with a running job, which would
+ * commit under the old team, 400 for anything else.
  */
 export class TeamError extends Error {
   constructor(
@@ -37,7 +34,6 @@ export class TeamError extends Error {
 /** The same shape the "team"."slug" check enforces. */
 const SLUG = /^[a-z][a-z0-9-]{1,40}$/;
 
-/** Every team, or only the one with id `only`. */
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
   const [teams, langs, members] = await Promise.all([
@@ -68,9 +64,8 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
 }
 
 /**
- * Writes the team alone: membership is per language, so its first admin is granted once a
- * language is handed over. `adminEmail` is only checked here; its user's id is returned for
- * that grant.
+ * Writes the team alone: membership is per language, so the admin is granted once a language
+ * is handed over, and only their id is returned.
  */
 export async function createTeam(
   input: { slug: string; name: string; adminEmail: string | null },
@@ -90,7 +85,6 @@ export async function createTeam(
       const { rows } = await client.query<{ id: TeamId }>(`select new_team($1, $2) as "id"`, [input.slug, input.name]);
       return rows[0].id;
     } catch (error) {
-      // new_team raises 23505 on a taken slug.
       if ((error as { code?: string }).code === "23505") throw new TeamError(`A team is already called ${input.slug}.`);
       throw error;
     }
@@ -99,10 +93,7 @@ export async function createTeam(
   return { id, adminId };
 }
 
-/**
- * A new team, handed `langs` one by one, with its admin granted in each language that moved.
- * A refusal part way keeps the team and what already moved, so its message says what did.
- */
+/** A refusal part way keeps the team and what already moved, so its message says what did. */
 export async function createTeamWithLangs(
   input: { slug: string; name: string; adminEmail: string | null; langs: readonly Lang[] },
   actorId: string,
@@ -150,8 +141,7 @@ export async function handOver(lang: Lang, team: TeamId, actorId: string): Promi
       return { rows: rows[0].moved, from: slugs[0].from ?? "", to: slugs[0].to ?? "" };
     });
   } catch (error) {
-    // move_team_lang raises object_in_use (55006) for a running job, and a plain `raise
-    // exception` (P0001) for every other refusal.
+    // 55006 is a running job; P0001 is any other refusal of move_team_lang.
     const code = (error as { code?: string }).code;
     if (code === "55006") throw new TeamError((error as Error).message, 409);
     if (code === "P0001") throw new TeamError((error as Error).message);
@@ -169,7 +159,7 @@ export async function handOver(lang: Lang, team: TeamId, actorId: string): Promi
   return moved.rows;
 }
 
-/** The live takes of each language, which a hand-over moves along with everything else. */
+/** Live takes per language, which a hand-over moves too. */
 export async function liveTakeCounts(): Promise<Map<Lang, number>> {
   const rows = await queryIn<{ lang: Lang; count: number }>(
     ALL_TEAMS,

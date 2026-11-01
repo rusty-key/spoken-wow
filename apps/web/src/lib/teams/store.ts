@@ -76,9 +76,8 @@ export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL
 }
 
 /**
- * The owner of `lang`, or the english team for a language not switched on yet: switching one on
- * gives it a team of its own holding a copy of English's roster. For what every team keeps a
- * copy of, so an unowned language reads English's until then.
+ * For what every team keeps a copy of: a language not switched on yet reads English's, which
+ * switching it on copies to its own team.
  */
 export async function teamOrEnglish(lang: Lang): Promise<TeamId> {
   return (await ownerOf(lang)) ?? teamOf(BASE_LANG);
@@ -127,11 +126,8 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
 }
 
 /**
- * Gives `lang` a team of its own, slugged by its code (code-2, code-3 when that is taken) and
- * holding English's roster, unless a team owns it (adopt_lang). On the caller's client, so it
- * shares the transaction that switches the language on; the caller calls forgetTeams once that
- * commits. adopt_lang acts as every team while it runs, so the caller's transaction need not
- * act as any.
+ * On the caller's client, so it shares the transaction that switches the language on; the caller
+ * calls forgetTeams once that commits. The transaction need not act as any team.
  */
 export async function adoptLang(client: ClientBase, lang: string): Promise<void> {
   await client.query(`select adopt_lang($1)`, [lang]);

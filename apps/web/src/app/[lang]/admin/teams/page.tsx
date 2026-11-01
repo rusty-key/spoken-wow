@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Teams · Spoken" };
 
 export const dynamic = "force-dynamic";
 
-/** Who owns which language, for site admins only; a 404 for everyone else, as the users page. */
+/** Site admins only; everyone else gets a 404. */
 export default async function Page() {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();

@@ -9,11 +9,9 @@
 -- One line per table, with how many rows stray there, then the total. A language with no team
 -- at all is left alone: there is nowhere to send its rows.
 --
--- REPAIR, opt-in with `-v repair=on`: run it only after reading the counts, and keep the queue
--- paused while it runs. It re-teams each stray row to its language's team, the issue lines
--- last, so they follow their issues. A row whose new team already holds the same key (a second
--- locale setting, say) aborts the whole repair with a unique violation; settle that row by hand
--- first.
+-- REPAIR with `-v repair=on`, only after reading the counts and with the queue paused. Issue
+-- lines go last, after their issues. A row whose new team already holds its key aborts the
+-- repair with a unique violation; settle that row by hand first.
 --
 --   psql "$PROD_DATABASE_URL" -v repair=on -f deploy/web/bin/team-strays.sql
 \set ON_ERROR_STOP on

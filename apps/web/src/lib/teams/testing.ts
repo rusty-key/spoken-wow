@@ -115,7 +115,6 @@ export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () =
   };
 }
 
-/** For tests: a user with id `prefix-<random>` and an @example.invalid email, and its removal. */
 export async function testUser(prefix = "test-user"): Promise<{ id: string; cleanup: () => Promise<void> }> {
   const id = `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
   await asSystem.query(
@@ -130,7 +129,7 @@ export async function testUser(prefix = "test-user"): Promise<{ id: string; clea
   };
 }
 
-/** For tests: a running regeneration job of `lang` under `team`, which no move gets past. */
+/** A running job, which no move gets past. */
 export async function runningJob(lang: Lang, team: TeamId): Promise<{ cleanup: () => Promise<void> }> {
   const tag = Math.random().toString(36).slice(2, 10);
   const [batch] = await systemRows<{ id: string }>(
@@ -150,7 +149,7 @@ export async function runningJob(lang: Lang, team: TeamId): Promise<{ cleanup: (
   };
 }
 
-/** For tests: a test team gone, with its members, roster and languages; the caller deletes any other rows under it first. */
+/** The caller deletes any rows under the team beyond its members, roster and languages first. */
 export async function dropTeam(team: TeamId): Promise<void> {
   for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
     await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);

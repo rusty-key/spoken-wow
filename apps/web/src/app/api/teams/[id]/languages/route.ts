@@ -5,7 +5,6 @@ import { bad, bodyOf, withAdmin } from "../../guard";
 
 export const dynamic = "force-dynamic";
 
-/** Hands `lang`, and every row of it, to the team. */
 export const PUT = withAdmin(async (request, actorId, team) => {
   const { lang } = await bodyOf(request);
   if (!isLang(lang)) return bad("expected { lang }");

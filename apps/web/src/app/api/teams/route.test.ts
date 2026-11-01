@@ -1,8 +1,4 @@
-/**
- * The teams routes against a real Postgres, with only the session mocked.
- *
- * Needs DATABASE_URL and migrations through 0091 applied.
- */
+/** Needs DATABASE_URL and migrations through 0091 applied; only the session is mocked. */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
