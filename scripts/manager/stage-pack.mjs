@@ -1,23 +1,23 @@
 // A sound pack's folder in dist/, for the Manager channel: what the section's package-audio.sh
 // leaves there, without the zip. Its clips may be pointers (scripts/lib/clip-pointer.mjs).
-import { cp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { cp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { basename, join } from "node:path";
 
-import { findPack } from "../lib/packs.mjs";
-
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const ENGLISH = "enUS";
+import { BASE_LOCALE } from "../../pipelines/lib/locales.mjs";
+import { englishFolder } from "../lib/packs.mjs";
 
 // Whatever a section does differently: its English folder, its languages' badged icons, and the
 // .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back.
 const SECTIONS = {
   // English's page is named for the CurseForge project, which also carries the bosses; this pack does not.
-  places: { source: "SpokenPlacesAudio", englishTitle: "Spoken Audio: Places", icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
-  bosses: { source: "SpokenBossesAudio", icon: null, tocPrefix: "X-SpokenBosses" },
-  readables: { source: "SpokenReadablesAudio", icon: (lang) => `pipelines/readables/assets/spoken-books-${lang}.tga`, tocPrefix: null },
+  places: { englishTitle: "Spoken Audio: Places", icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
+  bosses: { icon: null, tocPrefix: "X-SpokenBosses" },
+  readables: { icon: (lang) => `pipelines/readables/assets/spoken-books-${lang}.tga`, tocPrefix: null },
 };
+
+// English readables are their folder as committed, .toc and README: nothing is rewritten.
+export const keepsCommittedFolder = (section, lang) => section === "readables" && lang === BASE_LOCALE;
 
 export function rewriteToc(text, { folder, title, version, lang, tocPrefix }) {
   const rewrites = [
@@ -38,11 +38,12 @@ export function rewriteToc(text, { folder, title, version, lang, tocPrefix }) {
 
 const notHidden = (path) => !basename(path).startsWith(".") && !path.endsWith(".part");
 
-export async function stagePack(section, lang, { root = ROOT, dist = join(root, "dist"), pack = findPack(section, lang), readme } = {}) {
+export async function stagePack(section, lang, { root, pack, readme }) {
   const shape = SECTIONS[section];
   if (!shape) throw new Error(`${section} has no Manager-only build`);
-  const english = lang === ENGLISH;
-  const source = join(root, "addons", shape.source);
+  const english = lang === BASE_LOCALE;
+  const sourceName = englishFolder(section);
+  const source = join(root, "addons", sourceName);
   const work = english ? source : join(root, "build", section, lang);
   const sounds = join(work, "Sounds");
   const lookup = join(work, "Data/Sounds.lua");
@@ -50,29 +51,26 @@ export async function stagePack(section, lang, { root = ROOT, dist = join(root, 
   if (!existsSync(lookup)) throw new Error(`no ${lookup}: build its lookup first`);
 
   const folder = pack.folder;
-  const target = join(dist, folder);
+  const target = join(root, "dist", folder);
   await rm(target, { recursive: true, force: true });
-  await mkdir(target, { recursive: true });
   const fromSource = (path) => {
     const rel = path.slice(source.length + 1);
     return rel !== "Sounds" && !rel.startsWith("Sounds/") && rel !== "Data/Sounds.lua" && notHidden(path);
   };
   await cp(source, target, { recursive: true, filter: fromSource });
-  await mkdir(join(target, "Data"), { recursive: true });
   await cp(lookup, join(target, "Data/Sounds.lua"));
   await cp(sounds, join(target, "Sounds"), { recursive: true, filter: notHidden });
   if (!english && shape.icon) await cp(join(root, shape.icon(lang)), join(target, "Textures/AddonIcon.tga"));
   if (readme != null) await writeFile(join(target, "README.md"), readme);
 
   const toc = join(target, `${folder}.toc`);
-  if (folder !== shape.source) await rename(join(target, `${shape.source}.toc`), toc);
+  if (folder !== sourceName) await rename(join(target, `${sourceName}.toc`), toc);
   const text = await readFile(toc, "utf8");
   // A language's version is its page's; English's is its .toc's.
   const version = pack.version ?? /^## Version:\s*(.+?)\s*$/m.exec(text)?.[1];
   if (!version) throw new Error(`no version for ${folder}`);
-  // English readables are its folder as committed, the one pack nothing is rewritten in.
-  if (!(section === "readables" && english)) {
+  if (!keepsCommittedFolder(section, lang)) {
     await writeFile(toc, rewriteToc(text, { folder, title: (english && shape.englishTitle) || pack.name, version, lang, tocPrefix: shape.tocPrefix }));
   }
-  return { folder, version, path: target };
+  return { folder, version };
 }

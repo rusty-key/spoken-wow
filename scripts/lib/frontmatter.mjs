@@ -42,6 +42,8 @@ export function parseFrontmatter(text, file) {
   return { meta, body: text.slice(end + 5).trim() + "\n" };
 }
 
+// Two shapes, because a block is either whole lines or part of a sentence, and getting the
+// newlines wrong shows up as a blank row in the middle of a markdown table.
 const ONLY_LINES =
   /^[ \t]*<!--\s*only:(curseforge|wago)\s*-->[ \t]*\r?\n([\s\S]*?)^[ \t]*<!--\s*\/only\s*-->[ \t]*\r?\n/gm;
 const ONLY_INLINE = /<!--\s*only:(curseforge|wago)\s*-->([\s\S]*?)<!--\s*\/only\s*-->/g;

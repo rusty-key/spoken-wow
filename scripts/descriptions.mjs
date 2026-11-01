@@ -91,8 +91,6 @@ function wagoUrls(pages) {
 //
 // Deliberately blunt: no nesting, no conditions beyond the two store names. A page that needs
 // more than a paragraph of difference is two pages, and should say so by being two pages.
-// Two shapes, because a block is either whole lines or part of a sentence, and getting the
-// newlines wrong shows up as a blank row in the middle of a markdown table.
 function forWago(body, urls) {
   return forStore(body, "wago").replace(
     new RegExp(`${CURSEFORGE_ADDON_URL}([a-z0-9-]+)`, "g"),
