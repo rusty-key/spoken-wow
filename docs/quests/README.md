@@ -386,11 +386,9 @@ rule. A plain line made from a split English line is read beside English's male 
 
 A player's client has already picked one side of any `$G`, so a contribution is one plain line.
 A moderator splits it by writing the `$G` back in the explorer: the plain line stops being
-current and `:m` and `:f` take its place, both holding the template. Edited without a `$G`, a
-side of a split moment changes alone; putting the plain version back undoes the split. English
-splits the same way: a rewrite or an accepted correction holding a `$G` makes a plain line,
-extracted or not, its `:m` and `:f`, each holding its own reader's words
-(`apps/web/src/lib/quests/english-rewrite.ts`), and on a split moment it rewrites both sides. The site decides the shape: `extract` leaves out a dump
+current and `:m` and `:f` take its place, both holding the template. English splits the same way,
+except that each side holds its own reader's words. On a moment already split, a rewrite holding a
+`$G` overrides both sides and an accepted correction writes both (`apps/web/src/lib/quests/moment-rewrite.ts`). The site decides the shape: `extract` leaves out a dump
 line the site split and gives its speakers to both sides (`split_here` in
 `tts_cli/corpus_db.py`).
 
@@ -687,10 +685,19 @@ a reload replaces every detection while leaving every verdict (`open`, `fixed`,
 
 **Some lines cannot be fixed by pronunciation.** `q:1155:accept` is the single letter `x`;
 `q:257:complete` says "adventurerama", because Blizzard wrote `$Nama` and the token
-substitutes to a fixed word. For those a collaborator rewrites what the line *says*, and the
-explorer marks it **rewritten**. An override changes the spoken text only: the filename and
-every addon lookup key derive from the original text, so a rewrite can never rename a file or
-make the addon miss it. It also reopens the `invalid-chars` gate — stripping a `$` or a `<>`
+substitutes to a fixed word. For those a voice maintainer rewrites what the line *says*, with
+the explorer's pencil, in any language: `regenerate` in that language lets them. The explorer
+marks the line **rewritten**. This is also where a line gets its stage directions and one-off
+respellings. An override changes the spoken text only: the filename and every addon lookup key
+derive from the original text, so a rewrite can never rename a file or make the addon miss it.
+A line with no text in that language has nothing to rewrite, and no pencil: a contribution
+fills it in.
+
+The original text is a different thing. It changes through imports and accepted corrections,
+which a text maintainer answers, and the team's override stays above it, flagged as
+"original changed since your override" until the team keeps or drops it. A correction accepted
+before this was an override, and stays one.
+ It also reopens the `invalid-chars` gate — stripping a `$` or a `<>`
 makes an otherwise unvoiceable line voiceable — while `progress` lines stay skipped, because
 that is policy rather than a text defect. The one token a rewrite may hold is a
 `$gmale:female;` branch, which splits the line by player gender instead of overriding it.

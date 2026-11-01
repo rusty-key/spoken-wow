@@ -5,7 +5,8 @@
  * is spoken by up to many NPCs, so a rewrite necessarily changes what all of them say. See
  * the header of migration 0012 for why rewriting the spoken text cannot rename that file.
  *
- * Every override is English's, so a write runs as English's team.
+ * A file has the same name in every language, so an override is its language's, and is read and
+ * written as that language's team.
  */
 import { recordActivity } from "../activity/store";
 import { fileIndex } from "../audio";
@@ -34,11 +35,12 @@ function toOverride(row: OverrideRow): LineOverride {
   };
 }
 
-async function stamp(): Promise<string> {
+async function stamp(lang: Lang): Promise<string> {
   const rows = await readAs<{ stamp: string | null }>(
-    BASE_LANG,
+    lang,
     `select count(*)::text || ':' || coalesce(max("updatedAt")::text, '-') as stamp
-       from "line_override"`,
+       from "line_override" where "lang" = $1`,
+    [lang],
   );
   // The count is load-bearing: a delete leaves max(updatedAt) where it was, so a timestamp
   // alone would keep serving an override that no longer exists.
@@ -46,54 +48,51 @@ async function stamp(): Promise<string> {
 }
 
 const cacheKey = Symbol.for("wow-voiceover.line-overrides");
-type CacheHolder = { [cacheKey]?: { map: Map<string, LineOverride>; stamp: string } };
+type CacheHolder = { [cacheKey]?: Map<Lang, { map: Map<string, LineOverride>; stamp: string }> };
 
 /**
- * Every override, by file. Memoised behind the stamp because search needs it for every
- * row of every page, and regeneration needs it to be right rather than
+ * A language's overrides, by file. Memoised behind the stamp because search needs them for every
+ * row of every page, and regeneration needs them to be right rather than
  * recent - pm2 runs two workers, and an edit made on one must reach the other.
  *
- * Whole-table because there are tens of these, not thousands: an override is a line someone
- * sat down and rewrote.
- */
-/**
- * `lang` other than English reads as no overrides at all: an override rewrites the English
- * corpus, and another language's rewrites are versions of its own text.
+ * The whole language because there are tens of these, not thousands: an override is a line
+ * someone sat down and rewrote.
  */
 export async function readOverrides(lang: Lang = BASE_LANG): Promise<Map<string, LineOverride>> {
-  if (lang !== BASE_LANG) return new Map();
   const holder = globalThis as CacheHolder;
-  const current = await stamp();
-  if (holder[cacheKey]?.stamp === current) return holder[cacheKey].map;
+  const memo = (holder[cacheKey] ??= new Map());
+  const current = await stamp(lang);
+  const held = memo.get(lang);
+  if (held?.stamp === current) return held.map;
 
   const rows = await readAs<OverrideRow>(
-    BASE_LANG,
-    `select "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash" from "line_override"`,
+    lang,
+    `select "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash"
+       from "line_override" where "lang" = $1`,
+    [lang],
   );
   const map = new Map(rows.map((r) => [r.file, toOverride(r)]));
-  holder[cacheKey] = { map, stamp: current };
+  memo.set(lang, { map, stamp: current });
   return map;
 }
 
 export async function writeOverride(
+  lang: Lang,
   file: string,
   lineId: string,
   text: string,
   // Nullable to match the column, which is SET NULL: who rewrote a line outlives the account.
   userId: string | null,
-  // The contribution the text came from, when it is a correction accepted from the game: the
-  // table has no provenance column, so the activity log is where that is kept.
-  contributionId?: number,
 ): Promise<LineOverride> {
-  const original = (await fileIndex()).get(file);
+  const original = (await fileIndex(lang)).get(file);
   // "before" is read in the same statement, from the snapshot the upsert started with, so
   // the log says what this write replaced and not what a concurrent one did.
   const { rows } = await queryAs<OverrideRow & { before: string | null }>(
-    BASE_LANG,
-    `with "was" as (select "text" from "line_override" where "file" = $1)
-     insert into "line_override" ("file", "lineId", "text", "updatedBy", "originalHash")
-     values ($1, $2, $3, $4, $5)
-     on conflict ("teamId", "file") do update
+    lang,
+    `with "was" as (select "text" from "line_override" where "file" = $1 and "lang" = $6)
+     insert into "line_override" ("file", "lineId", "text", "updatedBy", "originalHash", "lang")
+     values ($1, $2, $3, $4, $5, $6)
+     on conflict ("teamId", "lang", "file") do update
         set "text" = excluded."text",
             "lineId" = excluded."lineId",
             "updatedAt" = now(),
@@ -101,7 +100,7 @@ export async function writeOverride(
             "originalHash" = excluded."originalHash"
      returning "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash",
                (select "text" from "was") as "before"`,
-    [file, lineId, text, userId, original ? spokenHash(original.text) : null],
+    [file, lineId, text, userId, original ? spokenHash(original.text) : null, lang],
   );
   forgetOverrides();
   const { before, ...row } = rows[0];
@@ -109,29 +108,29 @@ export async function writeOverride(
   if (before !== text) {
     await recordActivity({
       kind: "override.set",
-      lang: BASE_LANG,
+      lang,
       actorId: userId,
       source: "quests",
       subject: file,
       lineId,
-      detail: contributionId ? { text, before, contribution: contributionId } : { text, before },
+      detail: { text, before },
     });
   }
   return toOverride(row);
 }
 
 /** `by` is who reverted it, for the activity log: the delete leaves nothing else behind. */
-export async function clearOverride(file: string, by: string | null): Promise<boolean> {
+export async function clearOverride(lang: Lang, file: string, by: string | null): Promise<boolean> {
   const { rows } = await queryAs<{ lineId: string; text: string }>(
-    BASE_LANG,
-    `delete from "line_override" where "file" = $1 returning "lineId", "text"`,
-    [file],
+    lang,
+    `delete from "line_override" where "file" = $1 and "lang" = $2 returning "lineId", "text"`,
+    [file, lang],
   );
   forgetOverrides();
   if (rows[0]) {
     await recordActivity({
       kind: "override.cleared",
-      lang: BASE_LANG,
+      lang,
       actorId: by,
       source: "quests",
       subject: file,

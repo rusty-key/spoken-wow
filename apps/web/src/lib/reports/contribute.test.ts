@@ -149,7 +149,10 @@ describe("contributeReport", () => {
     expect(outcome.ok && [outcome.report.status, outcome.contribution.status]).toEqual(["fixed", "accepted"]);
     expect(outcome.ok && outcome.contribution.body).toBe(filed.body);
 
-    const { rows } = await asSystem.query(`select "text" from "line_override" where "file" = $1`, [file]);
+    const { rows } = await asSystem.query(
+      `select "text" from "quest_line" where "lineId" = $1 and "lang" = 'enUS' and "isCurrent"`,
+      [lineId],
+    );
     expect(rows).toEqual([{ text: "Greetings, Adventurer." }]);
   });
 

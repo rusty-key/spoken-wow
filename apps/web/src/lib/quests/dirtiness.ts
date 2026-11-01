@@ -51,7 +51,6 @@ export async function dirtyQuestFiles(
     loadDirtyContext("quests", lang),
     // In the same round as the rest: memoised behind a stamp, so this is a timestamp check
     // rather than a table read, but it is still a round trip to sit behind the others.
-    // English's alone: overrides rewrite the English corpus.
     readOverrides(lang),
   ]);
 

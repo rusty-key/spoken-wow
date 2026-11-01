@@ -2,10 +2,8 @@
  * Writing a quest line's text in a language other than English: new quest_line versions,
  * the way lib/readables/text.ts writes pages and lib/places/lore.ts writes lore.
  *
- * English is not written here. Its spoken rewrites are line_override's -- keyed by file,
- * with the committed corpus and its export behind them -- and moving English onto versions
- * is a change to how every English pack is built, which this is not. Another language has
- * no such history to keep, so its text is simply a versioned row like every other.
+ * English is not written here: its text is spoken for its $G sides already resolved
+ * (quests/moment-rewrite.ts), where another language keeps its tokens for player-words.ts.
  *
  * A line is addressed by its id and variant, because 103 ids name two different texts. The
  * first translation of a line copies its structure -- event, quest, file, player gender --
@@ -60,7 +58,7 @@ export class QuestTextMissing extends Error {}
 
 function refuseEnglish(lang: Lang): void {
   if (lang === BASE_LANG) {
-    throw new Error("English lines are rewritten through line_override, not here");
+    throw new Error("English lines are written through quests/moment-rewrite.ts, not here");
   }
 }
 

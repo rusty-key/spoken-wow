@@ -4,16 +4,15 @@ import { Loader2, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { withLang } from "@/lib/lang";
-import type { ResultLine as QuestLine } from "@/lib/search";
 
 import { useLang } from "./LangProvider";
 
-// Writing something in the page's language that the English corpus has: a quest line's
-// text, or a name -- a quest's, an NPC's, a book's owner's, a place's.
+// Writing a name in the page's language that the English corpus has: a quest's, an NPC's, a
+// book's owner's, a place's.
 //
-// One dialog for both because a translation is the same job whatever is being translated:
-// the English above, the box below, the versions behind it. What differs is only where it is
-// saved and what addresses it, which the caller passes. The readables and places editors keep
+// One dialog because a translation is the same job whatever is being named: the English above,
+// the box below, the versions behind it. What differs is only where it is saved and what
+// addresses it, which the caller passes. The readables and places editors keep
 // their own dialogs because they edit English too, with fields a translation does not have.
 
 type Version = {
@@ -46,19 +45,6 @@ export type TranslateSubject = {
 };
 
 /** A quest line's text, in a language other than English. */
-export function lineTextSubject(line: QuestLine): TranslateSubject {
-  return {
-    title: line.npcName,
-    subtitle: line.lineId,
-    english: line.english ? line.originalText : "There is no English line yet.",
-    current: line.missing?.text ? null : line.text,
-    endpoint: "/api/quests/lines/text",
-    address: { lineId: line.lineId, variant: line.variant ?? 0 },
-    field: "text",
-    multiline: true,
-  };
-}
-
 /** A thing's name: a quest's, an NPC's, a book owner's, a place's. */
 export function nameSubject(args: {
   kind: string;

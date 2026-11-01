@@ -1,6 +1,6 @@
 "use client";
 
-import { lineTextSubject, nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { isTypingTarget } from "@/lib/keyboard";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
@@ -51,7 +51,6 @@ import type { Filter, LineFilters, ResultLine, SearchResult } from "@/lib/search
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { type Pending, receive, target, write } from "@/lib/url-echo";
 import { triages } from "@/lib/reports/reports";
-import { questTextCapability } from "@/lib/permissions";
 
 /** What a line's Regenerate button is doing, keyed by lineId. */
 export type LineState =
@@ -137,7 +136,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
   // LineRows and the answer is the same for all of them.
   const may = useCan();
   const showRegenerate = may("regenerate");
-  const canEdit = may(questTextCapability(lang));
+  const canName = may("text");
   const canTriage = triages(may);
   // Ignoring hides a line from everyone and takes it out of the module, which is the reach
   // the generation settings have rather than the reach a rewrite has. Same gate as the API.
@@ -204,23 +203,12 @@ export default function Explorer({ facets }: { facets: Facets }) {
   const { cleared, clear: clearDirty } = useClearDirty("quests");
   // The line whose spoken text is being rewritten, or null.
   const [editing, setEditing] = useState<ResultLine | null>(null);
-  // Another language's text or names, which are written as versions rather than as
-  // English's overrides. See TranslateDialog.
+  // Another language's names, which are written as versions. See TranslateDialog.
   // `touches` picks the rows on this page that show what is being translated.
   const [translating, setTranslating] = useState<{
     subject: TranslateSubject;
     touches: (row: ResultLine) => boolean;
   } | null>(null);
-  const editText = useCallback(
-    (line: ResultLine) => {
-      if (lang === BASE_LANG) {
-        setEditing(line);
-        return;
-      }
-      setTranslating({ subject: lineTextSubject(line), touches: (row) => row.lineId === line.lineId });
-    },
-    [lang],
-  );
   const rename = useCallback((line: ResultLine, what: "npc" | "quest") => {
     setTranslating({
       touches:
@@ -980,7 +968,6 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   showRecordings={showRecordings}
                   onRecordingChanged={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
                   canRegenerate={showRegenerate}
-                  canEdit={canEdit}
                   canTriage={canTriage}
                   onOverrideAnswered={(l) =>
                     void refreshRows((row) => row.driftedOverride?.file === l.driftedOverride?.file)
@@ -993,8 +980,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   dirty={line.dirty && !cleared.has(line.audioPath)}
                   onClearDirty={(l) => clearDirty([l.audioPath])}
                   onPlay={play}
-                  onEditText={editText}
-                  onRename={lang !== BASE_LANG && canEdit ? rename : null}
+                  onEditText={setEditing}
+                  onRename={lang !== BASE_LANG && canName ? rename : null}
                   onIgnore={canIgnore ? setIgnoring : null}
                   onAddSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: false }) : null}
                   onReplaceSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: true }) : null}

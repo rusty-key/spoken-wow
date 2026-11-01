@@ -68,3 +68,20 @@ describe("overrideOf", () => {
     expect(overrideOf(overrides, "quests/6-accept-human-male-warrior.mp3")).toBeUndefined();
   });
 });
+
+describe("a rewrite's tokens", () => {
+  const body = (text: string) => ({ file: "quests/1-accept.mp3", lineId: "q:1:accept", text });
+
+  it("lets a language keep the tokens it speaks", () => {
+    expect(validateRewrite(body("Gut gemacht, $C."), "deDE").text).toBe("Gut gemacht, $C.");
+    expect(validateOverride(body("Gut gemacht, $C."), "deDE").text).toBe("Gut gemacht, $C.");
+  });
+
+  it("refuses a $g branch in one file there too", () => {
+    expect(() => validateOverride(body("Gut, $gHerr:Dame;."), "deDE")).toThrow(/unvoiceable/);
+  });
+
+  it("still refuses a token glued to a word", () => {
+    expect(() => validateRewrite(body("Gut gemacht, $Nama."), "deDE")).toThrow(OverrideError);
+  });
+});

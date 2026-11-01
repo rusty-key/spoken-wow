@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useLang } from "@/components/LangProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,6 +40,7 @@ type Props = {
  * this can always be reverted to.
  */
 export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }: Props) {
+  const lang = useLang();
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
   // would claim every edit rescued it.
   // No rewrite rescues a line in a model slot, which is refused for its voice, not its text.
   const rescues =
-    !line.voiceable && line.skipReason !== "progress" && !isModelVoice(line.voice) && !rewriteHasInvalidChars(draft);
+    !line.voiceable && line.skipReason !== "progress" && !isModelVoice(line.voice) && !rewriteHasInvalidChars(draft, lang);
   const gendered = branchesOnPlayerGender(draft);
 
   async function send(method: "PUT" | "DELETE") {
@@ -73,12 +75,12 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
       if (method === "PUT") {
         // Checked here so the message lands next to the field, and again on the server
         // because that is the copy that counts.
-        validateRewrite({ file: line.audioPath, lineId: line.lineId, text: draft });
+        validateRewrite({ file: line.audioPath, lineId: line.lineId, text: draft }, lang);
       }
 
       const response = await (method === "PUT"
-        ? saveOverride(line.audioPath, line.lineId, draft)
-        : dropOverride(line.audioPath));
+        ? saveOverride(lang, line.audioPath, line.lineId, draft)
+        : dropOverride(lang, line.audioPath));
 
       const body = (await response.json().catch(() => ({}))) as { error?: string; files?: string[] };
       if (!response.ok) {

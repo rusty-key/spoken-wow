@@ -81,8 +81,7 @@ export async function searchContext(
   const madeBy = seesMadeBy ? new Map(live.map((row) => [row.file, madeByOf(row)])) : undefined;
 
   try {
-    // Overrides are English's alone -- they rewrite the English corpus. Staleness and dirt
-    // are per language: a take is compared with its own language's text and lexicon.
+    // All per language: a take is compared with its own language's text and lexicon.
     const [overrides, ignores, reports, stale, dirt] = await Promise.all([
       readOverrides(lang),
       readIgnores(lang),

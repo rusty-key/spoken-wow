@@ -1,6 +1,7 @@
 /**
  * A quest line's text in a language other than English: its history, a new version, or an
- * earlier one put back. English is rewritten through /api/quests/lines/override.
+ * earlier one put back. The explorer's pencil writes overrides instead, so nothing in the site
+ * calls this yet: it is where a text maintainer's direct edit of the original will land.
  *
  * All three need `text` in the language (`?lang=`), which is what a translator holds.
  */
@@ -27,7 +28,7 @@ function failed(error: unknown): Response {
 
 function englishRefused(): Response {
   return Response.json(
-    { error: "English lines are rewritten through /api/quests/lines/override" },
+    { error: "English lines have no versions to edit here" },
     { status: 400 },
   );
 }

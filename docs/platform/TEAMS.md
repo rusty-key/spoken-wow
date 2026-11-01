@@ -112,8 +112,9 @@ team-level `edit` that covers the team's text overrides, audio reports and missi
 
 - The **original text** is the shared `quest_line` / `lore_line` / `book_line` / `boss_line` /
   `entity_name` text. It changes through imports (the pipelines), text maintainers and site owners.
-- In phase 1 the only override is `line_override`, English quests only: nothing else could write
-  one while a language has one team. The general per-team text layer waits for *Phase 2*.
+- `line_override` is a team's spoken text for a quest line, in any language, written with the
+  explorer's pencil by whoever holds `regenerate` there. Overrides for places, readables and bosses
+  wait for *Phase 2*.
 - When the original text of a line changes, that team's takes on the line go stale and appear in
   the team's queue, as stale takes do today (`lib/generation/dirty.ts`). The team re-rolls or
   overrides.
@@ -121,14 +122,9 @@ team-level `edit` that covers the team's text overrides, audio reports and missi
   your override"**, and the team keeps or drops it. Keeping saves the same text again, which marks
   the new original as seen. An override saved before this flag existed stays quiet until saved again.
 
-**Invisible while one team voices a language.** Editing a line does exactly what it does today in
-that language:
-
-- Outside English, an edit by someone who is a text maintainer changes the original text, as now.
-- In English, an edit becomes the team's override, as `line_override` does now.
-
-The explicit "override for my team" action, and the choice between editing the original and
-overriding, only appear in a language with two teams.
+The two never mix. The pencil always writes an override. The original changes through imports and
+accepted corrections, in English too, so a text maintainer works in contributions. Editing the
+original directly, and a translator's way to fill in a line with no text, come later.
 
 ## Contributions and reports
 
@@ -311,11 +307,10 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 - **Explorer** gets a team picker per language.
 - **Reports** from the addon carry the team of the pack that played the line, so audio reports reach
   that team. A report without a team (older addons) goes to every team voicing that language.
-- **Text layer.** Per-team overrides generalise `line_override` to `(team, source, lang, line)`. The
-  text a team voices, shows and ships is its override where present, else the original, and a take's
-  staleness is judged against that.
-- **Edit UI** shows the choice between editing the original (text maintainers) and overriding for
-  the team.
+- **Text layer.** Per-team overrides generalise `line_override` from quest lines to every `source`.
+  The text a team voices, shows and ships is its override where present, else the original, and a
+  take's staleness is judged against that.
+- **Edit UI** gives text maintainers their own way to edit the original, beside the team's override.
 
 ## Left to the builder
 

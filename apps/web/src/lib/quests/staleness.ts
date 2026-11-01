@@ -56,8 +56,8 @@ export async function staleFiles(
         [lang],
       );
 
-  // What regenerate.ts would send now, in the same language: English's overrides and file
-  // rules, or neither for another language, which speaks its own text with its own lexicon.
+  // What regenerate.ts would send now, in the same language: its overrides, and English's file
+  // rules, which another language goes without, speaking with its own lexicon.
   const overrides = await readOverrides(lang);
   const lines = await fileIndex(lang);
   // Once for the whole sweep, unlike regenerate.ts which reads it per line: this answers a

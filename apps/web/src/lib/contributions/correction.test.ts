@@ -112,17 +112,24 @@ afterAll(async () => {
 });
 
 describe("acceptCorrection", () => {
-  it("writes an English correction as the line's spoken override and accepts it", async () => {
+  it("writes an English correction as a new version of the original and accepts it", async () => {
     const id = await contribution("enUS", "Greetings, $N.");
     const outcome = await acceptCorrection(id, ACCEPTER);
     expect(outcome.ok && outcome.contribution.status).toBe("accepted");
 
-    const { rows } = await asSystem.query(`select "lineId", "text" from "line_override" where "file" = $1`, [file]);
-    expect(rows).toEqual([{ lineId, text: "Greetings, Adventurer." }]);
+    const { rows } = await asSystem.query(
+      `select "text", "origin", "note", "originalText" from "quest_line"
+        where "lineId" = $1 and "lang" = 'enUS' and "isCurrent"`,
+      [lineId],
+    );
+    expect(rows[0]).toMatchObject({ text: "Greetings, Adventurer.", origin: "edited", note: correctionNote(id) });
+
+    const { rows: overrides } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [file]);
+    expect(overrides).toEqual([]);
 
     const { rows: logged } = await asSystem.query(
-      `select "detail" from "activity" where "kind" = 'override.set' and "subject" = $1`,
-      [file],
+      `select "detail" from "activity" where "kind" = 'text.edited' and "lineId" = $1`,
+      [lineId],
     );
     expect(logged[0].detail.contribution).toBe(id);
 
@@ -177,13 +184,14 @@ describe("acceptCorrection", () => {
     expect(state.kind).toBe("known");
   });
 
-  it("overrides each side of a split moment in its reader's words", async () => {
+  it("writes each side of a split moment in its reader's words", async () => {
     const id = await contribution("enUS", "Hail and well met, $glad:lass;.", "accept", splitQuest);
     const outcome = await acceptCorrection(id, ACCEPTER);
     expect(outcome.ok && outcome.contribution.status).toBe("accepted");
 
     const { rows } = await asSystem.query(
-      `select "lineId", "text" from "line_override" where "lineId" = any($1::text[]) order by "lineId"`,
+      `select "lineId", "text" from "quest_line"
+        where "lineId" = any($1::text[]) and "lang" = 'enUS' and "isCurrent" order by "lineId"`,
       [linesOf(splitQuest)],
     );
     expect(rows).toEqual([

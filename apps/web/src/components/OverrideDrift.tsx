@@ -6,6 +6,7 @@
  */
 import { useState } from "react";
 
+import { useLang } from "@/components/LangProvider";
 import { LiteButton } from "@/components/LiteControls";
 import { dropOverride, saveOverride } from "@/lib/quests/override-client";
 
@@ -21,6 +22,7 @@ export default function OverrideDrift({
   text: string;
   onAnswered: () => void;
 }) {
+  const lang = useLang();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,10 +42,10 @@ export default function OverrideDrift({
   return (
     <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-amber-300">
       original changed since your override
-      <LiteButton disabled={busy} onClick={() => void answer(() => saveOverride(file, lineId, text))}>
+      <LiteButton disabled={busy} onClick={() => void answer(() => saveOverride(lang, file, lineId, text))}>
         Keep
       </LiteButton>
-      <LiteButton disabled={busy} onClick={() => void answer(() => dropOverride(file))}>
+      <LiteButton disabled={busy} onClick={() => void answer(() => dropOverride(lang, file))}>
         Drop
       </LiteButton>
       {error ? <span className="text-destructive">{error}</span> : null}

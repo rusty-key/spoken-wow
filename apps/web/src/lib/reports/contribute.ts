@@ -33,7 +33,7 @@ import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/kno
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
 import { contributionByDedup, type Contribution } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import type { Lang } from "@/lib/lang";
 import { readAs } from "@/lib/teams/store";
 
 import type { Report } from "./reports";
@@ -153,15 +153,15 @@ async function reportState(submission: Submission): Promise<LineState> {
   const { quest, event } = submission.meta;
   if (state.kind === "missing" || submission.source !== "quests" || !quest || !event || !submission.text) return state;
 
-  // As English: the overrides are English's, and so its team's.
+  // As the language's team, whose overrides they are.
   const rows = await readAs<{ lineId: string; variant: number; text: string }>(
-    BASE_LANG,
+    submission.locale as Lang,
     `select l."lineId", l."variant", coalesce(o."text", l."text") as "text"
        from "quest_line" l
-       left join "line_override" o on o."lineId" = l."lineId" and l."lang" = $3
+       left join "line_override" o on o."lineId" = l."lineId" and o."lang" = l."lang"
       where l."lang" = $2 and l."isCurrent" and ${wordingsOfMomentSql(`l."questId"`, `l."source"`, "$1")}
       order by l."lineId" ~ ':w[0-9]+(:[mf])?$', l."lineId", l."variant"`,
-    [`q:${quest}:${event}`, submission.locale, BASE_LANG],
+    [`q:${quest}:${event}`, submission.locale],
   );
   const text = submission.text;
   if (rows.length === 0) return state;

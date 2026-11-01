@@ -194,8 +194,11 @@ describe("acceptAsWording", () => {
     const id = await contribution("enUS", "Oh, you are back, $N. Hello.");
     const outcome = await acceptCorrection(id, ACCEPTER, { lineId: moment, variant: 0 });
     expect(outcome.ok).toBe(true);
-    const { rows } = await asSystem.query(`select "lineId", "text" from "line_override" where "file" like $1`, [`quests/${quest}-accept%`]);
-    expect(rows).toEqual([{ lineId: moment, text: "Oh, you are back, Adventurer. Hello." }]);
+    const { rows } = await asSystem.query(
+      `select "text" from "quest_line" where "lineId" = $1 and "variant" = 0 and "lang" = 'enUS' and "isCurrent"`,
+      [moment],
+    );
+    expect(rows).toEqual([{ text: "Oh, you are back, Adventurer. Hello." }]);
   });
 
   it("refuses a pick that is no wording of the moment", async () => {
