@@ -8,9 +8,18 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { asSystem, ownTeam } from "@/lib/teams/testing";
+import { asSystem, ownTeam, testUser } from "@/lib/teams/testing";
 
-import { countRecent, createReport, listReports, queueFor, reportsForLine, setQueue, setStatus } from "./store";
+import {
+  countRecent,
+  createReport,
+  listReports,
+  queueFor,
+  queueHolders,
+  reportsForLine,
+  setQueue,
+  setStatus,
+} from "./store";
 
 /** resolvedBy has a foreign key, so resolving needs a user that exists. */
 const RESOLVER = "test-report-resolver";
@@ -240,6 +249,37 @@ describe("queues", () => {
       (await reportsForLine("quests", "q:1:accept", "enUS", queues)).some((each) => each.id === report.id);
     expect(await onLine(["text"])).toBe(false);
     expect(await onLine(["audio"])).toBe(true);
+  });
+
+  it("leaves a site owner out of who works each queue, whatever rows they hold", async () => {
+    const owner = await testUser("test-queue-owner");
+    const maintainer = await testUser("test-queue-maintainer");
+    await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [owner.id]);
+    try {
+      for (const user of [owner, maintainer]) {
+        await asSystem.query(
+          `insert into "language_grant" ("userId", "lang", "capability") values ($1, 'itIT', 'edit')`,
+          [user.id],
+        );
+      }
+      await asSystem.query(
+        `insert into "team_member" ("teamId", "userId", "lang", "capability")
+         values (team_of_lang('itIT'), $1, 'itIT', 'admin')`,
+        [owner.id],
+      );
+
+      const holders = await queueHolders("itIT");
+
+      expect(holders.text.has(maintainer.id)).toBe(true);
+      expect(holders.text.has(owner.id)).toBe(false);
+      expect(holders.audio.has(owner.id)).toBe(false);
+    } finally {
+      for (const user of [owner, maintainer]) {
+        await asSystem.query(`delete from "language_grant" where "userId" = $1`, [user.id]);
+        await asSystem.query(`delete from "team_member" where "userId" = $1`, [user.id]);
+        await user.cleanup();
+      }
+    }
   });
 
   it("moves a report to the other queue, once, and logs it", async () => {

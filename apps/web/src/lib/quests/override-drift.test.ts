@@ -18,8 +18,8 @@ vi.mock("@/lib/audio", async (importOriginal) => ({
 import { closeDb } from "@/lib/db";
 import { asSystem } from "@/lib/teams/testing";
 
-import { driftedOverrides } from "./override-drift";
-import { writeOverride } from "./overrides";
+import { hasDrifted } from "./override-drift";
+import { readOverrides, writeOverride } from "./overrides";
 
 let file: string;
 
@@ -36,25 +36,27 @@ afterEach(async () => {
 
 afterAll(closeDb);
 
-describe("driftedOverrides", () => {
+const drifted = async () => hasDrifted((await readOverrides()).get(file), originals.get(file)!.text);
+
+describe("hasDrifted, over what writeOverride stored", () => {
   it("leaves an override written over the current original alone", async () => {
     await writeOverride(file, "q:1:accept", "Mine.", null);
-    expect((await driftedOverrides()).has(file)).toBe(false);
+    expect(await drifted()).toBe(false);
   });
 
   it("names an override once the original under it changes", async () => {
     await writeOverride(file, "q:1:accept", "Mine.", null);
     originals.set(file, { text: "Text B." });
-    expect((await driftedOverrides()).has(file)).toBe(true);
+    expect(await drifted()).toBe(true);
   });
 
   it("clears when the override is saved again, until the original changes again", async () => {
     await writeOverride(file, "q:1:accept", "Mine.", null);
     originals.set(file, { text: "Text B." });
     await writeOverride(file, "q:1:accept", "Mine.", null);
-    expect((await driftedOverrides()).has(file)).toBe(false);
+    expect(await drifted()).toBe(false);
     originals.set(file, { text: "Text C." });
-    expect((await driftedOverrides()).has(file)).toBe(true);
+    expect(await drifted()).toBe(true);
   });
 
   it("never names a row with no hash", async () => {
@@ -63,12 +65,6 @@ describe("driftedOverrides", () => {
       [file],
     );
     originals.set(file, { text: "Text B." });
-    expect((await driftedOverrides()).has(file)).toBe(false);
-  });
-
-  it("does not name an override whose file left the corpus", async () => {
-    await writeOverride(file, "q:1:accept", "Mine.", null);
-    originals.delete(file);
-    expect((await driftedOverrides()).has(file)).toBe(false);
+    expect(await drifted()).toBe(false);
   });
 });

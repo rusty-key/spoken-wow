@@ -135,7 +135,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
   // LineRows and the answer is the same for all of them.
   const may = useCan();
   const showRegenerate = may("regenerate");
-  const canEdit = may("text");
+  // English quest text is rewritten through an override, guarded as regeneration is; every other
+  // text is the original's.
+  const canEdit = lang === BASE_LANG ? showRegenerate : may("text");
   const canTriage = may("text") || may("edit");
   // Ignoring hides a line from everyone and takes it out of the module, which is the reach
   // the generation settings have rather than the reach a rewrite has. Same gate as the API.
@@ -980,7 +982,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   canRegenerate={showRegenerate}
                   canEdit={canEdit}
                   canTriage={canTriage}
-                  onOverrideAnswered={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
+                  onOverrideAnswered={(l) =>
+                    void refreshRows((row) => row.overrideOwner?.file === l.overrideOwner?.file)
+                  }
                   state={lineStates[line.lineId]}
                   blocked={blockedReason(line)}
                   takes={line.take?.takes ?? 0}

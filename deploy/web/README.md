@@ -515,9 +515,22 @@ release working on the new schema.
 3. **From now on only a site owner appoints text maintainers.** A team admin's `edit` no longer
    reaches original text or contributions, and a new team admin has no `text` until appointed.
 
-Rolling back to the previous release is safe: it ignores `report.queue` and
-`line_override."originalHash"`, and reads `language_grant`'s `edit` rows as it always did. Reports
-it files meanwhile default to the audio team.
+**After a rollback, run this at once.** The previous release ignores `report.queue` and
+`line_override."originalHash"`, and files reports with the audio team by default, but it also reads
+the `edit` rows 0092 added to `team_member` and cannot delete them: taking `edit` away from someone
+there removes only the `language_grant` row, so they keep it, and the Users page shows `edit` twice.
+Deleting those rows puts it back as it was. It also loses any team-only `edit` given on this release:
+
+```bash
+psql "$PROD_DATABASE_URL" -c "delete from team_member where capability = 'edit'"
+```
+
+**Going forward again after a rollback** needs them back, since 0092 will not run twice. Before
+deploying this release again:
+
+```bash
+psql "$PROD_DATABASE_URL" -c "select grant_text_maintainers()"
+```
 
 ### Promoting the first admin
 

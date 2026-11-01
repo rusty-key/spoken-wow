@@ -362,6 +362,25 @@ describe("overrides", () => {
     expect(flagged(null)).toBe(false);
   });
 
+  it("names the row holding the override, which a voice's row inherits from its line's", () => {
+    const owner = "quests/123.mp3";
+    const row = (file: string) =>
+      search(
+        corpus,
+        store,
+        { limit: 50_000, includeProgress: true },
+        {
+          overrides: new Map([
+            [owner, { file: owner, lineId: "q:123", text: "x", updatedAt: "", updatedBy: null, originalHash: "old" }],
+          ]),
+        },
+      ).lines.find((line) => line.audioPath === file);
+
+    const inherited = row("quests/123-complete.mp3");
+    expect(inherited?.originalChanged).toBe(true);
+    expect(inherited?.overrideOwner).toEqual({ file: owner, lineId: "q:123" });
+  });
+
   it("narrows to audio the current text would no longer produce", () => {
     const file = "quests/123-complete.mp3";
     const context = { ...rewrite(file, "anything"), stale: new Set([file]) };

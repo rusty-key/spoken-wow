@@ -170,13 +170,17 @@ export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queu
 
 /**
  * Who works each queue in a language, as the triage pages compare them. Site owners are left out:
- * they hold both everywhere, so they say nothing about whether the groups differ.
+ * they hold both everywhere, seeded rows or not, so they say nothing about whether the groups differ.
  */
 export async function queueHolders(lang: Lang): Promise<Record<Queue, Set<string>>> {
   const rows = await query<{ userId: string; queue: Queue }>(
-    `select "userId", 'text' as "queue" from "language_grant" where "lang" = $1
+    `select g."userId", 'text' as "queue"
+       from "language_grant" g join "user" u on u."id" = g."userId"
+      where g."lang" = $1 and u."role" is distinct from 'admin'
      union
-     select "userId", 'audio' from "team_member" where "lang" = $1 and "capability" in ('edit', 'admin')`,
+     select m."userId", 'audio'
+       from "team_member" m join "user" u on u."id" = m."userId"
+      where m."lang" = $1 and m."capability" in ('edit', 'admin') and u."role" is distinct from 'admin'`,
     [lang],
   );
   const holders = (queue: Queue) => new Set(rows.filter((row) => row.queue === queue).map((row) => row.userId));
