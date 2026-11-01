@@ -217,4 +217,21 @@ describe("adopt_lang", () => {
     expect(await hasRow("generation_setting", team!)).toBe(true);
     expect(await hasRow("queue_dismissal", team!)).toBe(true);
   });
+
+  it("leaves the caller acting as the team it was, whether it adopts or finds a team", async () => {
+    const caller = randomUUID();
+    const client = await db().connect();
+    try {
+      await client.query("begin");
+      await client.query(`select set_config('spoken.team', $1, true)`, [caller]);
+      for (const _ of ["adopts", "finds"]) {
+        await client.query(`select adopt_lang($1)`, [LANG]);
+        const { rows } = await client.query(`select current_setting('spoken.team') as "team"`);
+        expect(rows[0].team).toBe(caller);
+      }
+    } finally {
+      await client.query("rollback");
+      client.release();
+    }
+  });
 });

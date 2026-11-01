@@ -156,21 +156,24 @@ end
 $$;
 
 -- The app calls it acting as no team, where row-level security would hide English's roster from
--- copy_team_roster, so it acts as every team until it returns.
+-- copy_team_roster, so it acts as every team until it returns. Not with a SET clause on the
+-- function: for a custom parameter that takes a superuser, and production's owner is not one.
 create function "adopt_lang"(p_lang text) returns void
-language plpgsql set spoken.team = '*' as $$
+language plpgsql as $$
 declare
-  v_team uuid;
+  v_team   uuid;
+  v_caller text := current_setting('spoken.team', true);
 begin
-  if team_of_lang(p_lang) is not null then
-    return;
+  perform set_config('spoken.team', '*', true);
+  if team_of_lang(p_lang) is null then
+    v_team := new_team(free_team_slug(lower(p_lang)), p_lang);
+    perform copy_team_roster((select "id" from "team" where "slug" = 'english'), v_team);
+    insert into "team_language" ("teamId", "lang", "privileged")
+    values (v_team, p_lang, true)
+    on conflict do nothing;
+    perform pg_notify('spoken_team_language', p_lang);
   end if;
-  v_team := new_team(free_team_slug(lower(p_lang)), p_lang);
-  perform copy_team_roster((select "id" from "team" where "slug" = 'english'), v_team);
-  insert into "team_language" ("teamId", "lang", "privileged")
-  values (v_team, p_lang, true)
-  on conflict do nothing;
-  perform pg_notify('spoken_team_language', p_lang);
+  perform set_config('spoken.team', coalesce(v_caller, ''), true);
 end
 $$;
 
