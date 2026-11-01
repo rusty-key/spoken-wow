@@ -9,7 +9,7 @@ import "server-only";
 
 import { Client } from "pg";
 
-import { connectionOptions } from "@/lib/db";
+import { connectionOptions, onCloseDb } from "@/lib/db";
 
 import { forgetTeams } from "./store";
 
@@ -27,9 +27,12 @@ export function listenForTeamChanges(): void {
   void connect();
 }
 
-/** Under Vitest only a test that asks for the listener gets one; `next build` has no database. */
-export function listenUnlessTesting(): void {
-  if (process.env.VITEST || process.env.NEXT_PHASE === "phase-production-build") return;
+/**
+ * Only the Next server listens: a script would never exit with the connection open, and a test
+ * asks for the listener itself. `next build` runs as nodejs too but has no database.
+ */
+export function listenInServer(): void {
+  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.NEXT_PHASE === "phase-production-build") return;
   listenForTeamChanges();
 }
 
@@ -61,7 +64,7 @@ function fail(own: Client, error: unknown): void {
   retry.unref();
 }
 
-/** For tests: closes the connection and cancels a pending retry. */
+/** Closes the connection and cancels a pending retry; closeDb calls it. */
 export async function stopListening(): Promise<void> {
   stopped = true;
   clearTimeout(retry);
@@ -69,3 +72,5 @@ export async function stopListening(): Promise<void> {
   client = undefined;
   await own?.end().catch(() => {});
 }
+
+onCloseDb(stopListening);
