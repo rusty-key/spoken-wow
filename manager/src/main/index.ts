@@ -2,7 +2,7 @@
 // server, the asset downloads and the manager's own update, plus, only when the player turned
 // Sharing on, the lines Spoken collected, sent to spoken.rusty.one (share.ts).
 import path from 'node:path'
-import { app, BrowserWindow, Menu, session, shell } from 'electron'
+import { app, BrowserWindow, Menu, net, session, shell } from 'electron'
 import { CHANNELS, type UpdaterState } from '../shared/api'
 import { windowChrome } from './chrome'
 import { isAllowedExternalUrl } from './external'
@@ -28,6 +28,12 @@ function broadcast(channel: string, payload: unknown): void {
     if (!win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, payload)
   }
 }
+
+// Node's own fetch (undici) brings the whole main process down when a server closes the connection while a large
+// body is held back because the disk write is slower (`assert(!this.paused)` in Parser.finish, uncaught). Chromium's
+// network stack does not, and it also uses the system proxy. `no-store`: the packs are not worth a copy in its cache.
+const chromiumFetch: typeof fetch = (input, init) =>
+  net.fetch(input instanceof URL ? input.href : input, { ...init, cache: 'no-store' })
 
 function contentSecurityPolicy(): string {
   if (DEV_URL) {
@@ -163,7 +169,13 @@ if (!app.requestSingleInstanceLock()) {
     setUpMenu()
     // A dev build can send to a local site instead (SPOKEN_SHARE_URL); a packaged one never does.
     const shareUrl = app.isPackaged ? undefined : process.env.SPOKEN_SHARE_URL
-    service = new ManagerService({ dataPath, appVersion: app.getVersion(), send: broadcast, ...(shareUrl ? { shareUrl } : {}) })
+    service = new ManagerService({
+      dataPath,
+      appVersion: app.getVersion(),
+      send: broadcast,
+      fetchImpl: chromiumFetch,
+      ...(shareUrl ? { shareUrl } : {})
+    })
     registerIpc(service, PAGE, () => updaterState)
     void service.init()
     service.startSharing()
