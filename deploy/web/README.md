@@ -495,6 +495,30 @@ on the old release went to `language_grant` only, and this release reads `team_m
 regenerate taken away there comes back. Mirror those changes into `team_member` (per language,
 on `team_of_lang(lang)`) before deploying this release again.
 
+### Teams, text maintainers
+
+The release that ships `0092_text_maintainers.sql`, `0093_report_queue.sql` and
+`0094_override_original.sql` splits the text maintainer from the team's `edit`. 0092 gives every
+`edit` holder both and appoints every team admin, so nobody loses anything, and deletes the audio
+rows from `language_grant`, which the current release no longer reads. All three keep the current
+release working on the new schema.
+
+1. **Don't change grants during the deploy.** `edit` given on the old release lands only in
+   `language_grant`, so afterwards it would mean `text` alone. One taken away there would leave
+   the team's `edit` behind.
+
+2. **After the deploy, check** that `/[lang]/admin` shows the same people with `text maintainer`
+   added, and that one language's report page lists the same open reports. Both should look as
+   before: nobody holds one capability without the other yet, so there are no queue labels.
+   The deploy log's notices give each step's row count.
+
+3. **From now on only a site owner appoints text maintainers.** A team admin's `edit` no longer
+   reaches original text or contributions, and a new team admin has no `text` until appointed.
+
+Rolling back to the previous release is safe: it ignores `report.queue` and
+`line_override."originalHash"`, and reads `language_grant`'s `edit` rows as it always did. Reports
+it files meanwhile default to the audio team.
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the
