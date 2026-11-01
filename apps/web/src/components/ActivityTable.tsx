@@ -252,6 +252,10 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: "renamed the team", quote: str(d.name) };
     case "team.language_moved":
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
+    case "release.started":
+      return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
+    case "release.finished":
+      return { what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : "finished"}`, quote: null };
     case "contribution.resolved":
       return {
         what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,

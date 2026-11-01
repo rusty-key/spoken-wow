@@ -125,6 +125,10 @@ export type ActivityDetail = {
   /** Between a language's text maintainers and its team. */
   "report.passed": { to: "text" | "audio" };
 
+  // Releases.
+  "release.started": { section: string };
+  "release.finished": { section: string; state: "done" | "failed" };
+
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every
   // language's, so a global admin's alone to read: see `global` in store.ts.
   /** `role` as set-role received it: one role, or several joined with ", ". */
@@ -189,6 +193,7 @@ const CATEGORY_OF: Record<string, Category> = {
   grant: "admin",
   language: "admin",
   team: "admin",
+  release: "admin",
   contribution: "admin",
   report: "admin",
   user: "admin",

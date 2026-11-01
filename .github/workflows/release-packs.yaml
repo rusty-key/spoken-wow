@@ -1,6 +1,7 @@
 # Dispatch only, never on a push: a release is a version number and a changelog section
 # somebody decided on.
 name: Release sound packs
+run-name: ${{ inputs.release_id && format('release {0}', inputs.release_id) || 'Release sound packs' }}
 
 on:
   workflow_dispatch:
@@ -8,7 +9,7 @@ on:
       section:
         description: Which section's packs
         type: choice
-        options: [quests, places, readables]
+        options: [quests, places, readables, bosses]
         required: true
       locale:
         description: The language (enUS for English)
@@ -21,6 +22,22 @@ on:
         description: Also publish to the manager channel
         type: boolean
         default: true
+      manager_only:
+        description: Publish to the manager channel alone, with no CurseForge or GitHub upload (the manager input is ignored)
+        type: boolean
+        default: false
+      release_id:
+        description: Names the run, so whoever dispatched it can find it
+        required: false
+      allow_removals:
+        description: Publish even if a pack would lose many of its files
+        type: boolean
+        default: false
+      channel:
+        description: Which environment's bucket, signing key and secrets the run uses
+        type: choice
+        options: [production, staging]
+        default: production
       dry_run:
         description: Build, and upload nothing
         type: boolean
@@ -33,6 +50,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 240
+    environment: ${{ inputs.channel }}
     permissions:
       contents: write
     services:
@@ -49,6 +67,10 @@ jobs:
       SECTION: ${{ inputs.section }}
       LOCALE: ${{ inputs.locale }}
       VERSION: ${{ inputs.version }}
+      MANAGER_ONLY: ${{ inputs.manager_only }}
+      # The build leaves one section's folders in dist/, so manager_only publishes what is there.
+      ONLY_PRESENT: ${{ inputs.manager_only && '1' || '' }}
+      ALLOW_REMOVALS: ${{ inputs.allow_removals && '1' || '' }}
       SPOKEN_ARCHIVE_URL: ${{ vars.SPOKEN_ARCHIVE_URL }}
       REMOTE_ROOT: /srv/spoken
     steps:
@@ -74,6 +96,38 @@ jobs:
         env:
           DATABASE_URL: ${{ env.LOCAL_DB }}
 
+      # A secret an environment lacks reads as empty, which otherwise surfaces much later as
+      # "Host key verification failed", or as a publish failing at the end of a long build.
+      - name: Check this environment's secrets
+        env:
+          DO_SSH_KEY: ${{ secrets.DO_SSH_KEY }}
+          DO_KNOWN_HOSTS: ${{ secrets.DO_KNOWN_HOSTS }}
+          DO_USER: ${{ secrets.DO_USER }}
+          DO_HOST: ${{ secrets.DO_HOST }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
+          PUBLISHES: ${{ inputs.manager || inputs.manager_only }}
+        run: |
+          need="DO_SSH_KEY DO_KNOWN_HOSTS DO_USER DO_HOST"
+          if [ "$PUBLISHES" = true ]; then
+            need="$need R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET SPOKEN_PACKS_SIGNING_KEY"
+          fi
+          missing=""
+          for name in $need; do [ -n "${!name}" ] || missing="$missing $name"; done
+          if [ -n "$missing" ]; then
+            echo "::error::the ${{ inputs.channel }} environment lacks:$missing"
+            exit 1
+          fi
+          printf '%s\n' "$DO_KNOWN_HOSTS" > "$RUNNER_TEMP/known_hosts"
+          if ! ssh-keygen -F "$DO_HOST" -f "$RUNNER_TEMP/known_hosts" > /dev/null; then
+            echo "::error::DO_KNOWN_HOSTS has no entry for DO_HOST in the ${{ inputs.channel }} environment"
+            exit 1
+          fi
+          rm "$RUNNER_TEMP/known_hosts"
+
       # Only reads production's rows; the audio comes from the bucket.
       - name: Reach production's database
         env:
@@ -87,7 +141,17 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           echo "DROPLET=$TARGET" >> "$GITHUB_ENV"
+          echo "DEPLOY_KEY=$HOME/.ssh/deploy_key" >> "$GITHUB_ENV"
           echo "SSH=ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
+
+      # bosses has no CurseForge project, and its GitHub release is make bosses-full-release, which
+      # asks a question; there is no bosses-upload for this workflow to call.
+      - name: Check the combination is one that exists
+        run: |
+          if [ "$SECTION" = bosses ] && [ "$MANAGER_ONLY" != true ]; then
+            echo "::error::bosses has no CurseForge or GitHub upload target here: tick manager_only, or run make bosses-full-release"
+            exit 1
+          fi
 
       - name: Check the bucket is configured
         run: |
@@ -99,10 +163,30 @@ jobs:
         run: make "$SECTION-sync" < <(yes y)
       - name: The live clips, from the bucket
         run: make "$SECTION-pull-live" LOCALE="$LOCALE"
-      - name: Build
+      # English's places zip carries the bosses pack, and packaging refuses a missing or stale
+      # bosses build.
+      - name: The bosses pack that English's places zip carries
+        if: ${{ inputs.section == 'places' && inputs.locale == 'enUS' }}
+        env:
+          SYNC_CHECK: warn
         run: |
+          make bosses-sync < <(yes y)
+          make bosses-pull-live
+          make bosses-package-audio
+      # This run has just synced, and the freshness stamp spans every language, so asking again
+      # would fail the build over another team's new take.
+      - name: Build
+        env:
+          SYNC_CHECK: warn
+        run: |
+          # package-audio.sh's own default would stamp a lower version on all four English packs.
+          if [ "$MANAGER_ONLY" = true ] && [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ] && [ -z "$VERSION" ]; then
+            VERSION=$(awk '/^## [0-9.]+ — Spoken Quests Audio/ { print $2; exit }' docs/quests/CHANGELOG.md)
+            [ -n "$VERSION" ] || { echo "::error::no Spoken Quests Audio section in docs/quests/CHANGELOG.md"; exit 1; }
+          fi
           make "$SECTION-package-audio" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
-          if [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ]; then make quests-package-meta ${VERSION:+VERSION=$VERSION}; fi
+          # The meta addon goes to the stores only; the manager's All pack is the four themselves.
+          if [ "$SECTION" = quests ] && [ "$LOCALE" = enUS ] && [ "$MANAGER_ONLY" != true ]; then make quests-package-meta ${VERSION:+VERSION=$VERSION}; fi
           ls -la dist/
 
       - name: What would be uploaded
@@ -115,18 +199,18 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
         run: |
-          make "$SECTION-upload-dry" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
-          if [ "${{ inputs.manager }}" = true ]; then make manager-publish-dry; fi
+          if [ "$MANAGER_ONLY" != true ]; then make "$SECTION-upload-dry" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}; fi
+          if [ "${{ inputs.manager }}" = true ] || [ "$MANAGER_ONLY" = true ]; then make manager-publish-dry; fi
 
       # Not full-release: it would sync, pull and build again.
       - name: Upload to CurseForge and GitHub
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.manager_only }}
         env:
           GH_TOKEN: ${{ github.token }}
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
         run: make "$SECTION-upload" LOCALE="$LOCALE" ${VERSION:+VERSION=$VERSION}
       - name: Publish to the manager channel
-        if: ${{ !inputs.dry_run && inputs.manager }}
+        if: ${{ !inputs.dry_run && (inputs.manager || inputs.manager_only) }}
         env:
           GH_TOKEN: ${{ github.token }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}

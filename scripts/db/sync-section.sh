@@ -122,6 +122,7 @@ begin
   -- bring, blanked where the row it names is not on this machine. Found from the catalog
   -- rather than listed, so the next such column -- contributionId was the second, after the
   -- authors -- cannot fail a sync again.
+  -- A required column cannot be blanked: "teamId" is remapped below instead.
   for fk in
     select src.relname as tbl, a.attname as col, dst.relname as ref, ra.attname as refcol
       from pg_constraint c
@@ -133,6 +134,7 @@ begin
        and c.connamespace = 'public'::regnamespace
        and to_regclass(format('$staging.%I', src.relname)) is not null
        and to_regclass(format('$staging.%I', dst.relname)) is null
+       and not a.attnotnull
   loop
     execute format(
       'update $staging.%I set %I = null where %I is not null and %I not in (select %I from public.%I)',

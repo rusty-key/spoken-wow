@@ -5,6 +5,8 @@
 .vscode/settings.json
 node_modules/
 RELEASE
+# RELEASE is a file name, but a case-insensitive filesystem also matches the release page's folder.
+!apps/web/src/app/*/admin/release/
 
 # Packaged addon zips and the data modules built into them. Both projects'
 # Makefiles write here from the repo root; `make quests-package` and
