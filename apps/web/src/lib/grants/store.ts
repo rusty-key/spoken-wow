@@ -1,5 +1,6 @@
 /**
- * language_grant holds `edit`; team_member holds the audio capabilities.
+ * language_grant holds `text`, stored as `edit` because a rollback's release reads that value
+ * there; team_member holds every other capability, the team's `edit` included.
  *
  * Read once per render (the grants are cached on the user id), because a page asks "may
  * this person do that here" more than once and the answer does not change inside it.
@@ -16,9 +17,8 @@ import { isLang, type Lang } from "@/lib/lang";
 import { isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
 export async function grantsOf(userId: string): Promise<Grant[]> {
-  // Audio rows left in language_grant by the migration are ignored: team_member holds them.
   const rows = await query<{ lang: string; capability: string }>(
-    `select "lang", "capability" from "language_grant" where "userId" = $1 and "capability" = 'edit'
+    `select "lang", 'text' as "capability" from "language_grant" where "userId" = $1
      union all
      select "lang", "capability" from "team_member" where "userId" = $1
      order by "lang", "capability"`,
@@ -52,8 +52,7 @@ export async function listGrants(langs?: string[]): Promise<GrantRow[]> {
   const rows = await query<Omit<GrantRow, "grantedAt"> & { grantedAt: Date }>(
     `select g."userId", u."email", u."name", g."lang", g."capability", g."grantedAt"
        from (
-         select "userId", "lang", "capability", "grantedAt" from "language_grant"
-          where "capability" = 'edit'
+         select "userId", "lang", 'text' as "capability", "grantedAt" from "language_grant"
          union all
          select "userId", "lang", "capability", "grantedAt" from "team_member"
        ) g join "user" u on u."id" = g."userId"
@@ -76,21 +75,20 @@ export async function addGrants(
   grantedBy: string,
 ): Promise<void> {
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
-  const audio = capabilities.filter((capability) => capability !== "edit");
-  const team = audio.length ? await teamOf(lang) : await ownerOrAll(lang);
+  const members = capabilities.filter((capability) => capability !== "text");
+  const team = members.length ? await teamOf(lang) : await ownerOrAll(lang);
   await withTeam(team, async (client) => {
     const added: Capability[] = [];
-    if (audio.length < capabilities.length) {
-      const { rows } = await client.query<{ capability: Capability }>(
+    if (members.length < capabilities.length) {
+      const { rowCount } = await client.query(
         `insert into "language_grant" ("userId", "lang", "capability", "grantedBy")
          values ($1, $2, 'edit', $3)
-         on conflict ("userId", "lang", "capability") do nothing
-         returning "capability"`,
+         on conflict ("userId", "lang", "capability") do nothing`,
         [userId, lang, grantedBy],
       );
-      added.push(...rows.map((row) => row.capability));
+      if (rowCount) added.push("text");
     }
-    if (audio.length) added.push(...(await insertMembers(client, team, userId, lang, audio, grantedBy)));
+    if (members.length) added.push(...(await insertMembers(client, team, userId, lang, members, grantedBy)));
     await recordActivities(
       added.map((capability) => ({
         kind: "grant.added",
@@ -125,22 +123,14 @@ export async function removeGrant(
 }
 
 async function deleteGrant(userId: string, lang: Lang, capability: Capability): Promise<boolean> {
-  if (capability === "edit") {
+  if (capability === "text") {
     const rows = await query(
-      `delete from "language_grant" where "userId" = $1 and "lang" = $2 and "capability" = 'edit'
-       returning 1`,
+      `delete from "language_grant" where "userId" = $1 and "lang" = $2 returning 1`,
       [userId, lang],
     );
     return rows.length > 0;
   }
-  return inTransaction(async (client) => {
-    // The migration's copy in language_grant would otherwise outlive the removal.
-    await client.query(
-      `delete from "language_grant" where "userId" = $1 and "lang" = $2 and "capability" = $3`,
-      [userId, lang, capability],
-    );
-    return deleteMember(client, userId, lang, capability);
-  });
+  return inTransaction((client) => deleteMember(client, userId, lang, capability));
 }
 
 /** Somebody to grant to, found by email: a language admin cannot list the users. */

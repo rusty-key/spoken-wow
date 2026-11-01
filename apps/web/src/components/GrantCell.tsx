@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
  * words. The heavier the capability, the warmer: admin is the only red one.
  */
 const CAPABILITY_COLOURS: Record<Capability, string> = {
+  text: "border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300",
   edit: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   regenerate: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300",
   record: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
@@ -29,7 +30,7 @@ const CAPABILITY_COLOURS: Record<Capability, string> = {
  * add another.
  *
  * Offers only what `viewer` may hand out (lib/permissions.ts `canGrant`), so a language
- * admin sees edit and regenerate in their own languages and nothing else. The server
+ * admin sees the team capabilities in their own languages and nothing else. The server
  * refuses anything else whatever this offers.
  */
 export default function GrantCell({
@@ -56,7 +57,7 @@ export default function GrantCell({
     else byLang.set(grant.lang, [grant.capability]);
   }
   const offer = (lang: Lang) =>
-    canGrant(viewer, lang) ? CAPABILITIES.filter((cap) => !byLang.get(lang)?.includes(cap)) : [];
+    CAPABILITIES.filter((cap) => canGrant(viewer, cap, lang) && !byLang.get(lang)?.includes(cap));
 
   return (
     <div className="flex flex-col items-start gap-1">
@@ -64,7 +65,7 @@ export default function GrantCell({
         <div key={lang} className="flex flex-wrap items-center gap-1">
           <span className="text-muted-foreground min-w-24 text-xs">{langName(lang)}</span>
           {capabilities.map((capability) => {
-            const removable = canGrant(viewer, lang);
+            const removable = canGrant(viewer, capability, lang);
             return (
               <Badge
                 key={capability}

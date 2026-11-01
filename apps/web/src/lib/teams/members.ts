@@ -1,4 +1,4 @@
-/** The only module that names team_member's columns. `edit` stays in language_grant. */
+/** The only module that names team_member's columns. `text` is in language_grant. */
 import type { ClientBase } from "pg";
 
 import type { Capability } from "@/lib/permissions";

@@ -1,6 +1,6 @@
 /**
  * Grants against a real Postgres, for the activity rows they leave: a removed grant deletes
- * its own row, so the log is the only trace it ever existed.
+ * its own row, so the log is the only trace it ever existed, and for the two tables they span.
  *
  * Needs DATABASE_URL and migrations applied.
  */
@@ -54,7 +54,7 @@ describe("addGrants", () => {
   });
 
   it("grants none when one is refused by the table", async () => {
-    await expect(addGrants(GRANTEE, "esES", ["edit", "nonsense" as never], GRANTER)).rejects.toThrow();
+    await expect(addGrants(GRANTEE, "esES", ["text", "nonsense" as never], GRANTER)).rejects.toThrow();
     const { rows } = await asSystem.query(
       `select 1 from "language_grant" where "userId" = $1 and "lang" = 'esES'`,
       [GRANTEE],
@@ -64,43 +64,34 @@ describe("addGrants", () => {
 });
 
 describe("two tables", () => {
-  it("keeps an edit grant and a team capability apart", async () => {
-    await addGrants(GRANTEE, "deDE", ["edit", "regenerate"], GRANTER);
-    const count = async (table: string) =>
-      (
-        await asSystem.query(
-          `select 1 from "${table}" where "userId" = $1 and "lang" = 'deDE'`,
-          [GRANTEE],
-        )
-      ).rows.length;
-    expect(await count("language_grant")).toBe(1);
-    expect(await count("team_member")).toBe(1);
-    const here = async () => (await grantsOf(GRANTEE)).filter((g) => g.lang === "deDE");
+  const here = async () => (await grantsOf(GRANTEE)).filter((g) => g.lang === "deDE");
+  const rows = async (table: string) =>
+    (
+      await asSystem.query(`select "capability" from "${table}" where "userId" = $1 and "lang" = 'deDE'`, [GRANTEE])
+    ).rows;
+
+  it("stores text as language_grant's edit and the team's edit in team_member", async () => {
+    await addGrants(GRANTEE, "deDE", ["text", "edit"], GRANTER);
+    expect(await rows("language_grant")).toEqual([{ capability: "edit" }]);
+    expect(await rows("team_member")).toEqual([{ capability: "edit" }]);
     expect(await here()).toEqual([
       { lang: "deDE", capability: "edit" },
-      { lang: "deDE", capability: "regenerate" },
+      { lang: "deDE", capability: "text" },
     ]);
-    await removeGrant(GRANTEE, "deDE", "regenerate", GRANTER);
+    expect((await listGrants(["deDE"])).filter((g) => g.userId === GRANTEE).map((g) => g.capability)).toEqual([
+      "edit",
+      "text",
+    ]);
+  });
+
+  it("takes text away without touching the team's edit, and the other way round", async () => {
+    await removeGrant(GRANTEE, "deDE", "text", GRANTER);
     expect(await here()).toEqual([{ lang: "deDE", capability: "edit" }]);
-  });
-
-  it("ignores audio grants left in language_grant", async () => {
-    await asSystem.query(
-      `insert into "language_grant" ("userId", "lang", "capability") values ($1, 'itIT', 'configure')`,
-      [GRANTEE],
-    );
-    expect((await grantsOf(GRANTEE)).filter((g) => g.lang === "itIT")).toEqual([]);
-    expect((await listGrants(["itIT"])).filter((g) => g.userId === GRANTEE)).toEqual([]);
-  });
-
-  it("lists a capability held in both tables once", async () => {
-    await asSystem.query(
-      `insert into "language_grant" ("userId", "lang", "capability") values ($1, 'ruRU', 'record')`,
-      [GRANTEE],
-    );
-    await addGrants(GRANTEE, "ruRU", ["record"], GRANTER);
-    const rows = (await listGrants(["ruRU"])).filter((g) => g.userId === GRANTEE);
-    expect(rows.map((g) => g.capability)).toEqual(["record"]);
+    await addGrants(GRANTEE, "deDE", ["text"], GRANTER);
+    await removeGrant(GRANTEE, "deDE", "edit", GRANTER);
+    expect(await here()).toEqual([{ lang: "deDE", capability: "text" }]);
+    await removeGrant(GRANTEE, "deDE", "text", GRANTER);
+    expect(await here()).toEqual([]);
   });
 });
 
@@ -124,12 +115,12 @@ describe("removeGrant", () => {
   });
 
   it("records who removed which grant, once, and nothing for a grant that was not there", async () => {
-    await addGrants(GRANTEE, "ptBR", ["edit"], GRANTER);
-    await removeGrant(GRANTEE, "ptBR", "edit", GRANTER);
-    await removeGrant(GRANTEE, "ptBR", "edit", GRANTER);
+    await addGrants(GRANTEE, "ptBR", ["text"], GRANTER);
+    await removeGrant(GRANTEE, "ptBR", "text", GRANTER);
+    await removeGrant(GRANTEE, "ptBR", "text", GRANTER);
 
     expect((await logged("grant.removed")).filter((row) => row.lang === "ptBR")).toEqual([
-      { lang: "ptBR", actorId: GRANTER, detail: { capability: "edit" } },
+      { lang: "ptBR", actorId: GRANTER, detail: { capability: "text" } },
     ]);
   });
 });
