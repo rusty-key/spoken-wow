@@ -980,6 +980,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   canRegenerate={showRegenerate}
                   canEdit={canEdit}
                   canTriage={canTriage}
+                  onOverrideAnswered={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
                   state={lineStates[line.lineId]}
                   blocked={blockedReason(line)}
                   takes={line.take?.takes ?? 0}

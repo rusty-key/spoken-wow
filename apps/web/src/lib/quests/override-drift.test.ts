@@ -1,0 +1,74 @@
+/**
+ * Against a real Postgres for the stored hash, with the corpus's original text in the test's hand:
+ * the corpus changes only through an import, which is the thing being waited for here.
+ *
+ * Needs DATABASE_URL and migrations applied.
+ */
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { CorpusLine } from "@/lib/corpus";
+
+const originals = vi.hoisted(() => new Map<string, { text: string }>());
+
+vi.mock("@/lib/audio", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/audio")>()),
+  fileIndex: async () => originals as unknown as Map<string, CorpusLine>,
+}));
+
+import { closeDb } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
+
+import { driftedOverrides } from "./override-drift";
+import { writeOverride } from "./overrides";
+
+let file: string;
+
+beforeEach(() => {
+  file = `quests/test-drift-${Math.random().toString(36).slice(2, 10)}.mp3`;
+  originals.set(file, { text: "Text A." });
+});
+
+afterEach(async () => {
+  originals.clear();
+  await asSystem.query(`delete from "activity" where "subject" = $1`, [file]);
+  await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
+});
+
+afterAll(closeDb);
+
+describe("driftedOverrides", () => {
+  it("leaves an override written over the current original alone", async () => {
+    await writeOverride(file, "q:1:accept", "Mine.", null);
+    expect((await driftedOverrides()).has(file)).toBe(false);
+  });
+
+  it("names an override once the original under it changes", async () => {
+    await writeOverride(file, "q:1:accept", "Mine.", null);
+    originals.set(file, { text: "Text B." });
+    expect((await driftedOverrides()).has(file)).toBe(true);
+  });
+
+  it("clears when the override is saved again, until the original changes again", async () => {
+    await writeOverride(file, "q:1:accept", "Mine.", null);
+    originals.set(file, { text: "Text B." });
+    await writeOverride(file, "q:1:accept", "Mine.", null);
+    expect((await driftedOverrides()).has(file)).toBe(false);
+    originals.set(file, { text: "Text C." });
+    expect((await driftedOverrides()).has(file)).toBe(true);
+  });
+
+  it("never names a row with no hash", async () => {
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "file", "lineId", "text") values (team_of_lang('enUS'), $1, 'q:1:accept', 'Old.')`,
+      [file],
+    );
+    originals.set(file, { text: "Text B." });
+    expect((await driftedOverrides()).has(file)).toBe(false);
+  });
+
+  it("does not name an override whose file left the corpus", async () => {
+    await writeOverride(file, "q:1:accept", "Mine.", null);
+    originals.delete(file);
+    expect((await driftedOverrides()).has(file)).toBe(false);
+  });
+});

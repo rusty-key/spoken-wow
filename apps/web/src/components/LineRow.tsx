@@ -2,6 +2,7 @@
 
 import ActorTakeCell from "@/components/ActorTakeCell";
 import { MadeByCell } from "@/components/MadeBy";
+import OverrideDrift from "@/components/OverrideDrift";
 import { RenameButton } from "@/components/RenameButton";
 import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
@@ -134,6 +135,8 @@ type Props = {
   canEdit: boolean;
   /** Editor and up: may read the report bodies and resolve them from the row. */
   canTriage: boolean;
+  /** An override's Keep or Drop went through, so the row reads its text again. */
+  onOverrideAnswered: (line: ResultLine) => void;
   state?: LineState;
   blocked: string | null;
   /** How many takes this line's file has. Zero means nothing has been cut yet. */
@@ -203,6 +206,7 @@ export default function LineRow({
   canRegenerate,
   canEdit,
   canTriage,
+  onOverrideAnswered,
   state,
   blocked,
   takes,
@@ -468,6 +472,15 @@ export default function LineRow({
               <span className="text-muted-foreground" title="This line's spoken text was rewritten">
                 rewritten
               </span>
+            )}
+            {line.override !== null && line.originalChanged && (canEdit || canRegenerate) && (
+              <OverrideDrift
+                file={line.audioPath}
+                lineId={line.lineId}
+                text={line.override}
+                canAnswer={canRegenerate}
+                onAnswered={() => onOverrideAnswered(line)}
+              />
             )}
           </span>
           {/* A row click is a mouse gesture and reaches no keyboard, so the same toggle needs

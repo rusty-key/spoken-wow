@@ -19,6 +19,7 @@ import { hasNarration, restoresOnlyNarration } from "./generation/narration";
 import type { NpcType, Source } from "./line-fields";
 import type { LineIgnore } from "./quests/ignores";
 import { overrideOf, type LineOverride } from "./quests/override";
+import { hasDrifted } from "./quests/override-drift";
 import type { LineBroadcast } from "./broadcast/store";
 import type { BroadcastStatus } from "./broadcast/status";
 import type { AudioState } from "./audio-state";
@@ -204,6 +205,8 @@ export type ResultLine = CorpusLine & {
   dirty: boolean;
   /** The rewritten spoken text, or null. `text` stays what the corpus says. */
   override: string | null;
+  /** The original has changed since the override was saved. Never set without an override. */
+  originalChanged: boolean;
   /**
    * Whether this line would be voiced *now*, which `generatable` cannot answer: that flag was
    * computed in Python from text nobody could edit yet, so an override that strips a stage
@@ -555,7 +558,8 @@ export function search(
   const start = Math.max(0, Math.floor(offset));
   const lines = all.slice(start, start + limit).map((line) => {
     const audioPath = audioRelPath(line);
-    const override = overrideOf(context.overrides, audioPath)?.text ?? null;
+    const own = overrideOf(context.overrides, audioPath);
+    const override = own?.text ?? null;
     return {
       ...line,
       key: keys.get(line)!,
@@ -568,6 +572,7 @@ export function search(
       stale: context.stale?.has(audioPath) ?? false,
       dirty: context.dirty?.has(audioPath) ?? false,
       override,
+      originalChanged: hasDrifted(own, line.text),
       voiceable: isVoiceable(line, override ?? line.text),
       narration: hasNarration(override ?? line.text),
       narrationRestored: override !== null && restoresOnlyNarration(override, line.text),
