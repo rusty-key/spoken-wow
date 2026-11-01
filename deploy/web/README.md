@@ -426,7 +426,7 @@ working on the new schema.
 1. **Preview what 0091 will split**, from a workstation. Each language listed becomes a team:
 
    ```bash
-   psql "$PROD_DATABASE_URL" -c "select tl.lang from team_language tl join team t on t.id = tl.\"teamId\" where t.slug = 'english' and tl.lang <> 'enUS' order by tl.lang"
+   psql "$PROD_DATABASE_URL" -c "select tl.lang from team_language tl join team t on t.id = tl.\"teamId\" where t.slug = 'english' and tl.lang <> 'enUS' and tl.privileged order by tl.lang"
    ```
 
 2. **Check the site owner exists.** The admin grants are made for the user with this email; if
@@ -443,18 +443,51 @@ working on the new schema.
    before merging. Check, and repeat until it returns no rows:
 
    ```bash
-   psql "$PROD_DATABASE_URL" -c "select lang, count(*) from regeneration_job where state = 'running' group by lang"
+   psql "$PROD_DATABASE_URL" -c "select id, lang, \"leaseUntil\", \"leaseUntil\" < now() as expired from regeneration_job where state = 'running' order by lang, id"
    ```
 
-4. **Merge and let the deploy run.** Resume the queue once it is green.
+   A row whose lease has expired never finishes on its own: its worker is gone, and a paused
+   language reclaims nothing, so it stays running until the pause is lifted. Put such rows
+   back in the queue, where the claim would have put them, and check again:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "update regeneration_job set state = 'pending', \"leaseUntil\" = null where state = 'running' and \"leaseUntil\" < now()"
+   ```
+
+4. **Merge and let the deploy run.** 0091 is one transaction of about 180k row updates on the
+   development database's data (12 s on a workstation; expect several times that on the 1 vCPU
+   droplet). While it runs, creating `team_member`'s foreign key holds SHARE ROW EXCLUSIVE on
+   `user` until the commit, so sign-ups and anything else writing `user` wait for it, and the
+   pending jobs of the moved languages stay locked. Reads go on. Resume the queue once the
+   deploy is green.
+
+   If 0091 aborts, the previous release keeps serving and nothing of 0091 is left. Drain the
+   queue as in step 3, then deploy again (Actions, *Deploy web*, *Run workflow*).
 
 5. **Check `/enUS/admin/teams`.** English should hold only enUS, and each language from step 1
    should be a team of its own.
+
+6. **Look for strays**, a minute or more after the deploy is green. Until the old release's
+   workers stop, they map languages from a memo up to 60 s old and hear no move, so a row they
+   wrote during the migration or just after it can sit under english for a moved language.
+   The script reports a count per table and changes nothing:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -f deploy/web/bin/team-strays.sql
+   ```
+
+   If the total is not 0, pause the queue and run the repair block at the end of the script,
+   which re-teams each stray row to its language's team.
 
 **Rolling back to the previous release is safe**: 0091 only adds, and the old code still reads
 the audio grants left in `language_grant`. One caveat: grants changed on the new release are
 written to `team_member` and are not visible to the old code, which reads only `language_grant`.
 Repeat them there by hand, or accept that they revert.
+
+**Going forward again after a rollback** needs the opposite: audio grants given or taken away
+on the old release went to `language_grant` only, and this release reads `team_member`, so a
+regenerate taken away there comes back. Mirror those changes into `team_member` (per language,
+on `team_of_lang(lang)`) before deploying this release again.
 
 ### Promoting the first admin
 

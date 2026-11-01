@@ -260,7 +260,7 @@ takes, filtered by team since it reads production as the owner role and RLS does
   slug the lowercased code), with every row of the language, a copy of English's roster, base
   generation settings and dismissal mark, and the site owner as its admin. In `spoken_dev` these
   are deDE, itIT, koKR, ptBR, ruRU, viVN, zhCN and zhTW. A language switched on later gets a new
-  team with no members (`adopt_lang`). There is no shared bucket for unmaintained languages.
+  team with no members and the same copy of English's roster and settings (`adopt_lang`). There is no shared bucket for unmaintained languages.
 - `edit` stays in `language_grant`. The other capabilities are copied into `team_member`
   unchanged, in the team that owns the language; their `language_grant` rows stay until a later
   migration deletes them, so a rollback still works.
