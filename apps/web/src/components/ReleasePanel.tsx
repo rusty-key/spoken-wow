@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Lang } from "@/lib/lang";
+import { langName, type Lang } from "@/lib/lang";
 import { RELEASE_SECTIONS, type ReleaseView, type RunView } from "@/lib/releases/sections";
 
 const POLL_MS = 15_000;
@@ -19,7 +19,7 @@ const SHOWN: Record<RunView["state"], string> = {
 function RunLink({ run, children }: { run: RunView; children: React.ReactNode }) {
   if (!run.githubUrl) return <>{children}</>;
   return (
-    <a href={run.githubUrl} target="_blank" rel="noreferrer" className="underline-offset-4 hover:underline">
+    <a href={run.githubUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
       {children}
     </a>
   );
@@ -76,10 +76,10 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
         <p className="mb-3 text-sm">
           {active.own ? (
             <RunLink run={active}>
-              {active.section} in {active.lang}: {active.step ?? SHOWN[active.state]}
+              {active.section} in {langName(active.lang)}: {active.step ?? SHOWN[active.state]}
             </RunLink>
           ) : (
-            <>A release is running: {active.section} in {active.lang}.</>
+            <>A release is running: {active.section} in {langName(active.lang)}.</>
           )}
         </p>
       )}

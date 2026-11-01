@@ -26,7 +26,7 @@ export type ReleaseRun = {
 };
 
 export class ReleaseBusyError extends Error {
-  constructor(readonly active: { section: string; lang: string }) {
+  constructor(readonly active: { section: string; lang: Lang }) {
     super(`a release is already running: ${active.section} in ${active.lang}`);
   }
 }

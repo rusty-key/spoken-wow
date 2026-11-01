@@ -1,4 +1,5 @@
 import { requireCapability } from "@/lib/generation/authz";
+import { langName } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
 import { dispatchRelease } from "@/lib/releases/github";
 import { isReleaseSection, RELEASE_SECTIONS } from "@/lib/releases/sections";
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     run = await startRun(body.section, lang, session.user.id);
   } catch (error) {
     if (error instanceof ReleaseBusyError) {
-      return fail(409, `A release is already running: ${error.active.section} in ${error.active.lang}.`);
+      return fail(409, `A release is already running: ${error.active.section} in ${langName(error.active.lang)}.`);
     }
     if (error instanceof NoTeamError) return fail(400, `${lang} has no team to release for.`);
     throw error;

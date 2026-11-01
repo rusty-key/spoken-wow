@@ -1,3 +1,5 @@
+import type { Lang } from "@/lib/lang";
+
 /** Browser-safe: the panel imports it, and store.ts is server-only. */
 export const RELEASE_SECTIONS = ["quests", "places", "readables", "bosses"] as const;
 
@@ -12,7 +14,7 @@ export type ReleaseState = "dispatching" | "running" | "done" | "failed";
 /** What the panel draws of a run; another team's active run carries only the first four. */
 export type RunView = {
   section: string;
-  lang: string;
+  lang: Lang;
   state: ReleaseState;
   /** False for another team's run. */
   own: boolean;

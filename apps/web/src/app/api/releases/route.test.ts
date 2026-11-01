@@ -93,7 +93,7 @@ describe("release route", () => {
     await press("frFR", { section: "quests" });
     const response = await press("frFR", { section: "places" });
     expect(response.status).toBe(409);
-    expect((await response.json()).error).toContain("quests in frFR");
+    expect((await response.json()).error).toContain("quests in French");
     expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
   });
 
