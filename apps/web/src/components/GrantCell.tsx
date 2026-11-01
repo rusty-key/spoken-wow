@@ -56,7 +56,7 @@ export default function GrantCell({
     else byLang.set(grant.lang, [grant.capability]);
   }
   const offer = (lang: Lang) =>
-    CAPABILITIES.filter((cap) => canGrant(viewer, cap, lang) && !byLang.get(lang)?.includes(cap));
+    canGrant(viewer, lang) ? CAPABILITIES.filter((cap) => !byLang.get(lang)?.includes(cap)) : [];
 
   return (
     <div className="flex flex-col items-start gap-1">
@@ -64,7 +64,7 @@ export default function GrantCell({
         <div key={lang} className="flex flex-wrap items-center gap-1">
           <span className="text-muted-foreground min-w-24 text-xs">{langName(lang)}</span>
           {capabilities.map((capability) => {
-            const removable = canGrant(viewer, capability, lang);
+            const removable = canGrant(viewer, lang);
             return (
               <Badge
                 key={capability}

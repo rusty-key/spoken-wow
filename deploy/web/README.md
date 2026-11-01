@@ -415,6 +415,86 @@ In order:
 Backing out of step 6 alone is possible: remove `APP_DATABASE_URL` and reload, and the app is
 the owner again. The policies stay; the owner bypasses them. The code stays deploy 2's.
 
+### Teams, members
+
+The release that ships `0091_team_member.sql` adds `team_member` (the audio capabilities, per
+member and language), copies the audio grants into it, and moves every language the english
+team holds, except enUS, to a team of its own. It makes `x@rusty.one` admin of each of those
+teams. It is additive: `language_grant` keeps its audio grants, so the release before it keeps
+working on the new schema.
+
+1. **Preview what 0091 will split**, from a workstation. Each language listed becomes a team:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "select tl.lang from team_language tl join team t on t.id = tl.\"teamId\" where t.slug = 'english' and tl.lang <> 'enUS' and tl.privileged order by tl.lang"
+   ```
+
+2. **Check the site owner exists.** The admin grants are made for the user with this email; if
+   there is none, the teams are still made, with no admin:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "select id from \"user\" where email = 'x@rusty.one'"
+   ```
+
+3. **Pause the queue** from the queue panel, and don't change grants until the deploy is done:
+   the old release writes audio grants only to `language_grant`, so one given or removed after
+   0091 has copied them is missing from `team_member`, or still in it. Then wait until no job is
+   running in any language from step 1. A running job would commit its take under the old team after the move, so 0091
+   aborts, and with it the deploy (the previous release keeps serving), if one is. Migrations
+   run at the Activate step while the old release still serves, so the queue has to be paused
+   before merging. Check, and repeat until it returns no rows:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "select id, lang, \"leaseUntil\", \"leaseUntil\" < now() as expired from regeneration_job where state = 'running' order by lang, id"
+   ```
+
+   A row whose lease has expired never finishes on its own: its worker is gone, and a paused
+   language reclaims nothing, so it stays running until the pause is lifted. Put such rows
+   back in the queue, where the claim would have put them, and check again:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "update regeneration_job set state = 'pending', \"leaseUntil\" = null where state = 'running' and \"leaseUntil\" < now()"
+   ```
+
+4. **Merge and let the deploy run.** 0091 is one transaction of about 180k row updates on the
+   development database's data (12 s on a workstation; expect several times that on the 1 vCPU
+   droplet). While it runs, creating `team_member`'s foreign key holds SHARE ROW EXCLUSIVE on
+   `user` until the commit, so sign-ups and anything else writing `user` wait for it, and the
+   pending jobs of the moved languages stay locked. Reads go on. Resume the queue once the
+   deploy is green.
+
+   If 0091 aborts, the previous release keeps serving and nothing of 0091 is left. Drain the
+   queue as in step 3, then deploy again (Actions, *Deploy web*, *Run workflow*).
+
+5. **Check `/enUS/admin/teams`.** English should hold only enUS, and each language from step 1
+   should be a team of its own.
+
+6. **Look for strays**, a minute or more after the deploy is green. Until the old release's
+   workers stop, they map languages from a memo up to 60 s old and hear no move, so a row they
+   wrote during the migration or just after it can sit under english for a moved language.
+   The script reports a count per table and changes nothing:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -f deploy/web/bin/team-strays.sql
+   ```
+
+   If the total is not 0, pause the queue and run it again with `-v repair=on`, which
+   re-teams each stray row to its language's team:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -v repair=on -f deploy/web/bin/team-strays.sql
+   ```
+
+**Rolling back to the previous release is safe**: 0091 only adds, and the old code still reads
+the audio grants left in `language_grant`. One caveat: grants changed on the new release are
+written to `team_member` and are not visible to the old code, which reads only `language_grant`.
+Repeat them there by hand, or accept that they revert.
+
+**Going forward again after a rollback** needs the opposite: audio grants given or taken away
+on the old release went to `language_grant` only, and this release reads `team_member`, so a
+regenerate taken away there comes back. Mirror those changes into `team_member` (per language,
+on `team_of_lang(lang)`) before deploying this release again.
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the

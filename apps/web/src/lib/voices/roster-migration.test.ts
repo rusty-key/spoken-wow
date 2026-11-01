@@ -41,7 +41,11 @@ describe("migration 0071", () => {
   it("keeps narrator a voice and not a type", async () => {
     const { rows } = await asSystem.query(`select 1 from "race" where "key" = 'narrator'`);
     expect(rows).toHaveLength(0);
-    const { rows: voices } = await asSystem.query(`select "race", "gender" from "voice" where "name" = 'narrator-male'`);
+    // English's roster: every team has its own copy.
+    const { rows: voices } = await asSystem.query(
+      `select "race", "gender" from "voice"
+        where "name" = 'narrator-male' and "teamId" = (select "id" from "team" where "slug" = 'english')`,
+    );
     expect(voices).toEqual([{ race: "narrator", gender: "male" }]);
   });
 

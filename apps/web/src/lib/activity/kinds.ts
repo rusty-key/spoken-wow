@@ -115,6 +115,10 @@ export type ActivityDetail = {
   "grant.added": { capability: Capability };
   "grant.removed": { capability: Capability };
   "language.toggled": { enabled: boolean };
+  "team.created": { slug: string };
+  "team.renamed": { name: string };
+  /** A language handed to another team, by team slug. */
+  "team.language_moved": { from: string; to: string };
   "contribution.resolved": { status: string; key?: string; correction?: boolean };
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };
@@ -182,6 +186,7 @@ const CATEGORY_OF: Record<string, Category> = {
   npc: "voices",
   grant: "admin",
   language: "admin",
+  team: "admin",
   contribution: "admin",
   report: "admin",
   user: "admin",

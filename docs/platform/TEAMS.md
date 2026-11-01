@@ -99,9 +99,11 @@ team-level `edit` that covers the team's text overrides, audio reports and missi
   limit goes, because the team is the boundary now. *(My call.)*
 - A person can belong to several teams, and can be a text maintainer and a team member at once.
   Small languages will usually be one person doing both.
-- Tables `team` (id, slug, name, languages, created) and `team_member` (team, user, role grants).
-  `language_grant` keeps only the text-maintainer `edit`; its other capabilities move to
-  `team_member`.
+- Tables `team` (id, slug, name, languages, created) and `team_member` (team, user, language,
+  capability). `team_member` holds the audio capabilities; `language_grant` keeps `edit`, with
+  today's meaning and grantors, until report routing splits the text maintainer's `edit` from the
+  team-level one. Like `team_language`, `team_member` is read before any team is set, so it has no
+  row-level security.
 
 ## Text: original and overrides
 
@@ -254,15 +256,22 @@ takes, filtered by team since it reads production as the owner role and RLS does
 - One team per group of people, from `language_grant`: people who maintain several languages
   together (for example esES and esMX) form one team covering all of them. English is one team. The
   site owner confirms the grouping before the migration runs.
-- Languages with live takes but no grant holders (in `spoken_dev`: deDE, itIT, koKR, ptBR, ruRU,
-  zhCN, zhTW) go to the English team until handed over.
-- Everyone holding `edit` in a language becomes both its text maintainer and a member of its team.
-  Other capabilities move to `team_member` unchanged.
+- Every language the English team holds but `enUS` gets a team of its own (migration 0091,
+  slug the lowercased code), with every row of the language, a copy of English's roster, base
+  generation settings and dismissal mark, and the site owner as its admin. In `spoken_dev` these
+  are deDE, itIT, koKR, ptBR, ruRU, viVN, zhCN and zhTW. A language switched on later gets a new
+  team with no members and the same copy of English's roster and settings (`adopt_lang`). There is no shared bucket for unmaintained languages.
+- `edit` stays in `language_grant`. The other capabilities are copied into `team_member`
+  unchanged, in the team that owns the language; their `language_grant` rows stay until a later
+  migration deletes them, so a rollback still works.
+- A handover (`move_team_lang`) moves every row of a language to the new team in one transaction,
+  and refuses while a job in the language runs.
 - Every existing per-team row moves to the team owning its language. Takes stay live; packs keep
   their names. Non-English edits made before the migration are already in the original text and
   stay there; `line_override` rows move into the English team's layer.
-- A team created later in an already-voiced language starts empty: original text, a roster with no
-  voices assigned, no settings or lexicon. Copying another team's setup is later work. *(My call.)*
+- A handover gives the receiving team a copy of the old team's roster and settings if it has none.
+  Only a second team in the same language (phase 2) starts empty: original text, a roster with no
+  voices assigned, no settings or lexicon. *(My call.)*
 
 ## Phase 2: a second team in one language
 
@@ -313,8 +322,5 @@ Clients per team; several English teams; team-owned storage, channels and signin
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
 
-A separate bucket for languages no team owns. In phase 1 every language the site knows is parked
-on the English team when a server process starts its queue and when a language is switched on (`adoptEveryLang`,
-`apps/web/src/lib/teams/store.ts`), so a report, activity or queue action in it always has a team
-to land on. That is a stopgap: eventually a language no team owns goes to a separate bucket, not
-English.
+Deleting the audio grants 0091 leaves in `language_grant`; the split of the text maintainer's
+`edit` from the team-level one; deleting a team, and a team admin's own page for their team.

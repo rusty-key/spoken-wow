@@ -114,3 +114,45 @@ export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () =
     },
   };
 }
+
+export async function testUser(prefix = "test-user"): Promise<{ id: string; cleanup: () => Promise<void> }> {
+  const id = `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+  await asSystem.query(
+    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
+    [id, `${id}@example.invalid`],
+  );
+  return {
+    id,
+    async cleanup() {
+      await asSystem.query(`delete from "user" where "id" = $1`, [id]);
+    },
+  };
+}
+
+/** A running job, which no move gets past. */
+export async function runningJob(lang: Lang, team: TeamId): Promise<{ cleanup: () => Promise<void> }> {
+  const tag = Math.random().toString(36).slice(2, 10);
+  const [batch] = await systemRows<{ id: string }>(
+    `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, $2, $3) returning "id"`,
+    [`running-${tag}`, lang, team],
+  );
+  await asSystem.query(
+    `insert into "regeneration_job" ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "lang", "teamId")
+     values ($1, $2, 'busy.mp3', '', '', 1, 'running', $3, $4)`,
+    [batch.id, `g:${tag}`, lang, team],
+  );
+  return {
+    async cleanup() {
+      await asSystem.query(`delete from "regeneration_job" where "batchId" = $1`, [batch.id]);
+      await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batch.id]);
+    },
+  };
+}
+
+/** The caller deletes any rows under the team beyond its members, roster and languages first. */
+export async function dropTeam(team: TeamId): Promise<void> {
+  for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
+    await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
+  }
+  await asSystem.query(`delete from "team" where "id" = $1`, [team]);
+}

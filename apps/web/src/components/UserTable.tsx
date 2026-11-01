@@ -482,7 +482,7 @@ function AddByEmail({
   return (
     <div className="mt-4">
       <GrantPicker
-        offer={(lang) => CAPABILITIES.filter((cap) => canGrant(viewer, cap, lang))}
+        offer={(lang) => (canGrant(viewer, lang) ? CAPABILITIES : [])}
         busy={busy}
         onPick={(lang, capabilities) =>
           void onGrant(email, lang, capabilities).then((ok) => {

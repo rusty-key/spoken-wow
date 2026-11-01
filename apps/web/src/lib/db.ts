@@ -42,17 +42,24 @@ export const POOL_CONNECTION_TIMEOUT_MS = 10_000;
 const poolKey = Symbol.for("wow-voiceover.pool");
 type PoolHolder = { [poolKey]?: Pool };
 
+/** For the pool and for connections of their own, such as the team listener's LISTEN. */
+export function connectionOptions(): { connectionString?: string; options?: string } {
+  return {
+    connectionString: process.env.DATABASE_URL,
+    // Lets tests and CI act as the unprivileged app role, so row-level security applies to them.
+    ...(process.env.DATABASE_ROLE ? { options: `-c role=${process.env.DATABASE_ROLE}` } : {}),
+  };
+}
+
 export function db(): Pool {
   const holder = globalThis as PoolHolder;
   // Memoised on globalThis because the dev server re-evaluates modules on hot reload, and
   // a fresh pool per reload leaks connections until Postgres refuses new ones.
   if (!holder[poolKey]) {
     holder[poolKey] = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      ...connectionOptions(),
       max: POOL_MAX,
       connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
-      // Lets tests and CI act as the unprivileged app role, so row-level security applies to them.
-      ...(process.env.DATABASE_ROLE ? { options: `-c role=${process.env.DATABASE_ROLE}` } : {}),
     });
   }
   return holder[poolKey]!;
@@ -132,14 +139,30 @@ export async function queryIn<T extends QueryResultRow = QueryResultRow>(
   return withTeam(team, async (client) => (await client.query<T>(text, params)).rows);
 }
 
+const hooksKey = Symbol.for("wow-voiceover.close-hooks");
+type HooksHolder = { [hooksKey]?: Set<() => Promise<void>> };
+
+/** On globalThis like the pool: a script run by tsx can load this module twice, ESM and CJS. */
+function closeHooks(): Set<() => Promise<void>> {
+  const holder = globalThis as HooksHolder;
+  return (holder[hooksKey] ??= new Set());
+}
+
+/** For connections closeDb must close but this module cannot import without a cycle. */
+export function onCloseDb(hook: () => Promise<void>): void {
+  closeHooks().add(hook);
+}
+
 /**
- * Close the pool and forget it, so the next db() builds a fresh one.
+ * Close the pool and every onCloseDb connection, and forget the pool, so the next db() builds a
+ * fresh one.
  *
  * For tests. Ending the pool without clearing the memo leaves a closed pool on globalThis,
  * and vitest reuses workers between files - so one test file finishing would break the next
  * one to run in that worker, as an intermittent "Cannot use a pool after calling end".
  */
 export async function closeDb(): Promise<void> {
+  await Promise.all([...closeHooks()].map((hook) => hook()));
   const holder = globalThis as PoolHolder;
   const pool = holder[poolKey];
   if (!pool) return;

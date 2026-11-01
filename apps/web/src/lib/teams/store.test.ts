@@ -3,20 +3,37 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { recordActivity } from "@/lib/activity/store";
 import { closeDb, db, inTransaction } from "@/lib/db";
-import { asSystem } from "@/lib/teams/testing";
+import { asSystem, dropTeam, testUser } from "@/lib/teams/testing";
 import { setEnabled } from "@/lib/languages/store";
 import { createReport } from "@/lib/reports/store";
 
 import { adoptEveryLang, byTeam, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
 
-const USER = `test-teams-${Math.random().toString(36).slice(2, 10)}`;
 // A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
 const NEW_LANG = "deDE";
-const IP = `${USER}-ip`;
+const IP = `test-teams-${Math.random().toString(36).slice(2, 10)}-ip`;
+let user: Awaited<ReturnType<typeof testUser>>;
+// Set once the user exists; the first cleanup, before then, matches no activity row.
+let USER = "";
 
 async function englishTeam(): Promise<string> {
   const { rows } = await asSystem.query(`select "id" from "team" where "slug" = 'english'`);
   return rows[0].id;
+}
+
+/** The team NEW_LANG had before this file took it away, given back at the end. */
+let was: string | undefined;
+
+/**
+ * The team adoption made for NEW_LANG. The one it had still holds the slug "dede", so adoption
+ * makes "dede-2": a language adopted never joins a team that happens to bear its code.
+ */
+async function ownTeamId(): Promise<string> {
+  const { rows } = await asSystem.query(
+    `select t."id" from "team" t where t."id" = team_of_lang($1) and t."slug" ~ $2 and t."id" is distinct from $3`,
+    [NEW_LANG, `^${NEW_LANG.toLowerCase()}-[0-9]+$`, was ?? null],
+  );
+  return rows[0]?.id;
 }
 
 async function cleanup() {
@@ -24,28 +41,31 @@ async function cleanup() {
   await asSystem.query(`delete from "language" where "code" = $1`, [NEW_LANG]);
   await asSystem.query(`delete from "activity" where "actorId" = $1`, [USER]);
   await asSystem.query(`delete from "report" where "ip" = $1`, [IP]);
+  const { rows: made } = await asSystem.query<{ id: string }>(
+    `select "id" from "team" where "slug" ~ $1 and "id" is distinct from $2`,
+    [`^${NEW_LANG.toLowerCase()}-[0-9]+$`, was ?? null],
+  );
+  for (const { id } of made) await dropTeam(id);
   forgetTeams();
 }
 
 beforeAll(async () => {
+  const { rows } = await asSystem.query<{ team: string | null }>(`select team_of_lang($1) as "team"`, [NEW_LANG]);
+  was = rows[0].team ?? undefined;
   await cleanup();
-  await asSystem.query(
-    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $1, $2, false)`,
-    [USER, `${USER}@example.invalid`],
-  );
+  user = await testUser("test-teams");
+  USER = user.id;
 });
 
 beforeEach(() => forgetTeams());
 
 afterAll(async () => {
   await cleanup();
-  // Back on the english team, where vitest.teams.ts put it, for the suites that write German.
-  await asSystem.query(
-    `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'`,
-    [NEW_LANG],
-  );
+  // Back on its own team, for the suites that write German.
+  if (was) await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was, NEW_LANG]);
+  else await asSystem.query(`select adopt_lang($1)`, [NEW_LANG]);
   forgetTeams();
-  await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
+  await user.cleanup();
   await closeDb();
 });
 
@@ -58,12 +78,12 @@ describe("teamOf", () => {
     await expect(teamOf(NEW_LANG)).rejects.toBeInstanceOf(NoTeamError);
   });
 
-  it("gives a newly enabled language to the english team", async () => {
+  it("gives a newly enabled language a team of its own", async () => {
     await setEnabled(NEW_LANG, true, USER);
-    expect(await teamOf(NEW_LANG)).toBe(await englishTeam());
-    expect((await teamLangs()).get(NEW_LANG)).toBe(await englishTeam());
+    expect(await teamOf(NEW_LANG)).toBe(await ownTeamId());
+    expect((await teamLangs()).get(NEW_LANG)).toBe(await ownTeamId());
     const { rows } = await db().query(`select "id" from "team"`);
-    expect(rows.map((row) => row.id)).toContain(await englishTeam());
+    expect(rows.map((row) => row.id)).toContain(await ownTeamId());
   });
 
   it("leaves the team alone when a language is toggled again", async () => {
@@ -92,7 +112,7 @@ describe("adoptEveryLang", () => {
     await inTransaction(adoptEveryLang);
     forgetTeams();
     await report();
-    expect(await teamOf(NEW_LANG)).toBe(await englishTeam());
+    expect(await teamOf(NEW_LANG)).toBe(await ownTeamId());
   });
 });
 

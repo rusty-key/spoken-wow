@@ -10,6 +10,8 @@ import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
 import { BASE_LANG, CODES, type Lang } from "@/lib/lang";
 
+import { listenInServer } from "./listen";
+
 export type { TeamId };
 
 /** A language with no privileged team: nothing can be written for it until it has one. */
@@ -32,6 +34,7 @@ export function forgetTeams(): void {
 }
 
 export function teamLangs(): Promise<Map<Lang, TeamId>> {
+  listenInServer();
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
   const langs = query<{ lang: Lang; teamId: TeamId }>(
     `select "lang", "teamId" from "team_language" where "privileged"`,
@@ -73,8 +76,8 @@ export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL
 }
 
 /**
- * The owner of `lang`, or the english team, where an unowned language lands when switched on.
- * For what every team keeps a copy of, so an unowned language reads English's.
+ * For what every team keeps a copy of: a language not switched on yet reads English's, which
+ * switching it on copies to its own team.
  */
 export async function teamOrEnglish(lang: Lang): Promise<TeamId> {
   return (await ownerOf(lang)) ?? teamOf(BASE_LANG);
@@ -123,21 +126,15 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
 }
 
 /**
- * Gives `lang` to the english team unless a team owns it. On the caller's client, so it shares
- * the transaction that switches the language on; the caller calls forgetTeams once that commits.
+ * On the caller's client, so it shares the transaction that switches the language on; the caller
+ * calls forgetTeams once that commits. The transaction need not act as any team.
  */
 export async function adoptLang(client: ClientBase, lang: string): Promise<void> {
-  await client.query(
-    `insert into "team_language" ("teamId", "lang", "privileged")
-     select "id", $1, true from "team" where "slug" = 'english'
-        and team_of_lang($1) is null
-     on conflict do nothing`,
-    [lang],
-  );
+  await client.query(`select adopt_lang($1)`, [lang]);
 }
 
 /**
- * Gives every known language with no team to the english team, so no write refuses one: a
+ * Gives every known language with no team a team of its own, so no write refuses one: a
  * player's report in it, its activity, the queue's dismissal.
  */
 export async function adoptEveryLang(client: ClientBase): Promise<void> {

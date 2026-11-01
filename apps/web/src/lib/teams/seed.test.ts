@@ -67,7 +67,8 @@ describe("seeded teams", () => {
       if (t.slug === "english") continue;
       const keys = new Set(langs.map((l) => key.get(l) ?? "[]"));
       expect(keys.size).toBe(1);
-      expect([...keys][0]).not.toBe("[]");
+      // A language nobody maintains is a team of its own.
+      if (langs.length > 1) expect([...keys][0]).not.toBe("[]");
       expect(t.slug).toBe(langs.map((l) => l.toLowerCase()).join("-"));
     }
     // A language with maintainers never falls into the english team unless it is English.
