@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { capabilityLabel } from "@/lib/permissions";
 import type { TeamSummary } from "@/lib/teams/admin";
 
@@ -48,7 +48,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
 
-  async function run(action: () => Promise<{ ok: boolean; error?: string }>) {
+  async function run(action: () => Promise<{ ok: boolean; error?: string }>): Promise<boolean> {
     setBusy(true);
     setError(null);
     const result = await action();
@@ -56,12 +56,16 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     // A partial create still changed things, so the page is refreshed either way.
     if (!result.ok) setError(result.error ?? null);
     router.refresh();
+    return result.ok;
   }
 
   const rename = (team: TeamSummary) => {
     const name = names[team.id]?.trim();
     if (!name || name === team.name) return;
-    return run(() => send(`/api/teams/${team.id}`, "PATCH", { name }));
+    return run(() => send(`/api/teams/${team.id}`, "PATCH", { name })).then((ok) => {
+      // The refreshed team carries the new name; keeping the draft would shadow later renames.
+      if (ok) setNames(({ [team.id]: _done, ...rest }) => rest);
+    });
   };
 
   function moveTo(lang: Lang, target: TeamSummary) {
@@ -109,7 +113,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
               <td className="py-2 pr-3">
                 <Input
                   aria-label={`Name of ${team.slug}`}
-                  value={names[team.id] ?? ""}
+                  value={names[team.id] ?? team.name}
                   disabled={busy}
                   onChange={(event) => setNames({ ...names, [team.id]: event.target.value })}
                   onBlur={() => rename(team)}
@@ -121,7 +125,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                   {team.langs.map((lang) => (
                     <li key={lang} className="flex items-center gap-2">
                       <span className="w-12 font-mono text-xs">{lang}</span>
-                      {lang !== "enUS" && (
+                      {lang !== BASE_LANG && (
                         <select
                           aria-label={`Move ${lang} to`}
                           className="border-input bg-background rounded-md border px-2 py-1 text-xs"

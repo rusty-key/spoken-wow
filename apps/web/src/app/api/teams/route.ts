@@ -3,7 +3,7 @@
  */
 import { addGrants, userByEmail } from "@/lib/grants/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
-import { createTeam, handOver, listTeams } from "@/lib/teams/admin";
+import { createTeam, handOver, listTeams, TeamBusyError, TeamInputError } from "@/lib/teams/admin";
 
 import { bad, bodyOf, refusal, siteAdmin } from "./guard";
 
@@ -32,19 +32,21 @@ export async function POST(request: Request) {
 
   try {
     const team = await createTeam({ slug, name: name.trim(), adminEmail: email }, who.userId);
+    const admin = email ? await userByEmail(email) : null;
     const moved: Lang[] = [];
     for (const lang of langs as Lang[]) {
       try {
         await handOver(lang, team, who.userId);
         moved.push(lang);
+        if (admin) await addGrants(admin.id, lang, ["admin"], who.userId);
       } catch (error) {
         // The team and what already moved stay, which the message has to say.
         const done = moved.length ? `moved ${moved.join(", ")}; ` : "";
-        return refusal(error, `${done}${lang} refused: `);
+        const said = `${done}${lang} ${moved.includes(lang) ? "granted nothing" : "refused"}: `;
+        if (error instanceof TeamBusyError || error instanceof TeamInputError) return refusal(error, said);
+        return Response.json({ error: said + (error instanceof Error ? error.message : String(error)) }, { status: 500 });
       }
     }
-    const admin = email ? await userByEmail(email) : null;
-    if (admin) for (const lang of moved) await addGrants(admin.id, lang, ["admin"], who.userId);
     const created = (await listTeams()).find((row) => row.id === team);
     return Response.json({ team: created });
   } catch (error) {

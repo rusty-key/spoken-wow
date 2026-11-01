@@ -11,11 +11,12 @@ import { asSystem, systemRows } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({
   role: "admin" as string | null,
+  signedOut: false,
   id: `test-teams-route-${Math.random().toString(36).slice(2, 10)}`,
 }));
 
 vi.mock("@/lib/session", () => ({
-  currentSession: async () => ({ user: { id: who.id, role: who.role } }),
+  currentSession: async () => who.signedOut ? null : ({ user: { id: who.id, role: who.role } }),
 }));
 
 import { PATCH } from "./[id]/route";
@@ -39,6 +40,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   who.role = "admin";
+  who.signedOut = false;
   made = [];
   forgetTeams();
   was = await teamOf("deDE");
@@ -77,6 +79,41 @@ describe("teams routes", () => {
     expect((await PATCH(json("PATCH", { name: "x" }), ctx("1"))).status).toBe(403);
     expect((await PUT(json("PUT", { lang: "deDE" }), ctx("1"))).status).toBe(403);
     expect(await systemRows(`select 1 from "team" where "slug" = $1`, [`m-${tag}`])).toHaveLength(0);
+  });
+
+  it("answers 403 to a signed-out caller", async () => {
+    who.signedOut = true;
+    expect((await GET()).status).toBe(403);
+    expect((await POST(json("POST", { slug: `o-${tag}`, name: "O", langs: [] }))).status).toBe(403);
+  });
+
+  it("keeps what moved and grants admin there when a later language is refused", async () => {
+    const batch = await systemRows<{ id: string }>(
+      `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, 'frFR', $2) returning "id"`,
+      [`part-${tag}`, await teamOf("frFR")],
+    );
+    await asSystem.query(
+      `insert into "regeneration_job" ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "lang", "teamId")
+       values ($1, $2, 'busy.mp3', '', '', 1, 'running', 'frFR', $3)`,
+      [batch[0].id, `g:${tag}`, await teamOf("frFR")],
+    );
+    try {
+      const response = await POST(json("POST", { slug: `part-${tag}`, name: "P", langs: ["deDE", "frFR"], adminEmail: `${who.id}@example.invalid` }));
+      const team = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = $1`, [`part-${tag}`]))[0].id;
+      made.push(team);
+      expect(response.status).toBe(409);
+      expect(((await response.json()) as { error: string }).error).toMatch(/^moved deDE; frFR refused/);
+      forgetTeams();
+      expect(await teamOf("deDE")).toBe(team);
+      const grants = await systemRows<{ capability: string }>(
+        `select "capability" from "team_member" where "teamId" = $1 and "userId" = $2 and "lang" = 'deDE'`,
+        [team, who.id],
+      );
+      expect(grants.map((g) => g.capability)).toEqual(["admin"]);
+    } finally {
+      await asSystem.query(`delete from "regeneration_job" where "batchId" = $1`, [batch[0].id]);
+      await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batch[0].id]);
+    }
   });
 
   it("creates a team holding the language it was given, with its admin", async () => {
