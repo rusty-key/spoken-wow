@@ -1,7 +1,8 @@
 import { isLang } from "@/lib/lang";
 import { handOver } from "@/lib/teams/admin";
+import { isUuid } from "@/lib/uuid";
 
-import { bad, bodyOf, isTeamId, refusal, siteAdmin } from "../../guard";
+import { bad, bodyOf, refusal, siteAdmin } from "../../guard";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const { lang } = await bodyOf(request);
-  if (!isTeamId(id)) return bad("No such team.");
+  if (!isUuid(id)) return bad("No such team.");
   if (!isLang(lang)) return bad("expected { lang }");
   try {
     return Response.json({ moved: await handOver(lang, id, who.userId) });

@@ -24,6 +24,3 @@ export async function bodyOf(request: Request): Promise<Record<string, unknown>>
   const body: unknown = await request.json().catch(() => null);
   return body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
 }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const isTeamId = (value: string) => UUID.test(value);
