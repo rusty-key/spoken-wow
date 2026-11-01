@@ -2,7 +2,8 @@
  * Keeps every worker's language-to-team memo honest. pm2 runs two workers, and a language
  * moved by one would otherwise be written by the other under its old team until the memo's
  * TTL ran out. Moving a language notifies; each process forgets its memo when it hears.
- * The TTL stays as the backstop for a notification missed while reconnecting.
+ * Each (re)connect forgets the memo too, for a move made while the listener was down; the TTL
+ * stays as the backstop for a notification lost in between.
  */
 import "server-only";
 
@@ -42,6 +43,8 @@ async function connect(): Promise<void> {
   try {
     await own.connect();
     await own.query(`LISTEN ${CHANNEL}`);
+    // A move made before this, while nothing listened, would otherwise wait out the TTL.
+    forgetTeams();
   } catch (error) {
     fail(own, error);
   }

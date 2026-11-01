@@ -8,20 +8,32 @@ import { teamLangs } from "./store";
 
 afterAll(stopListening);
 
+/** The memo once it is not `before`, polled for a second; `each` runs before every look. */
+async function changedFrom(before: Awaited<ReturnType<typeof teamLangs>>, each = async () => {}) {
+  const deadline = Date.now() + 1_000;
+  let after = before;
+  while (after === before && Date.now() < deadline) {
+    await each();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    after = await teamLangs();
+  }
+  return after;
+}
+
 describe("listenForTeamChanges", () => {
-  it("forgets the memo when another connection moves a language", async () => {
+  it("forgets the memo once it is listening, for a move made while it was not", async () => {
+    const before = await teamLangs();
     listenForTeamChanges();
+    expect(await changedFrom(before)).not.toBe(before);
+  });
+
+  it("forgets the memo when another connection moves a language", async () => {
+    // Listening since the test above.
     const before = await teamLangs();
     expect(await teamLangs()).toBe(before);
-
-    // The listener connects asynchronously, so notify until it has heard one.
-    const deadline = Date.now() + 1_000;
-    let after = before;
-    while (after === before && Date.now() < deadline) {
+    const after = await changedFrom(before, async () => {
       await asSystem.query(`select pg_notify('spoken_team_language', 'deDE')`);
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      after = await teamLangs();
-    }
+    });
     expect(after).not.toBe(before);
   });
 });
