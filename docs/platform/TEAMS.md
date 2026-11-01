@@ -263,7 +263,8 @@ In phase 1 every team is the **privileged** team of its languages: its packs kee
 folders (`SpokenQuestsAudio_deDE`, `SpokenPlacesAudio_frFR`, …), with no team code. Older Managers
 see no change.
 
-The workflow encodes and signs; the signing key stays with GitHub Actions, as PLAN.md decided.
+The workflow encodes and signs Quests. Places, Readables and Bosses publish from the droplet, whose
+own copy of the signing key sits in `shared/release.env`, as PLAN.md decided.
 Only quests ship Ogg Vorbis
 (`scripts/quests/package-audio.sh`, via `oggenc`). Places, readables and bosses ship the take's own
 MP3: readables and bosses pack the files as they are, and Places copies them for its full tier and

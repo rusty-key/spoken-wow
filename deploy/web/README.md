@@ -571,9 +571,42 @@ themselves.
 
 ## The Release button
 
-`/admin/release?lang=xx` lets a team admin start the `release-packs.yaml` workflow in
-Manager-only mode and follow it by step. The site only dispatches and reads; GitHub Actions
-builds, signs and publishes. One release runs at a time, site-wide.
+`/admin/release?lang=xx` lets a team admin publish one section and language to the Manager channel
+and follow it by step. One release runs at a time, site-wide. Places, Readables and Bosses run on
+the droplet once `SPOKEN_RELEASE_ENV` is set; Quests, and everything when it is unset, dispatches
+the `release-packs.yaml` workflow.
+
+### On the droplet
+
+A press forks `release-tools/scripts/manager/release-job.mjs` out of the worker's process tree, so a
+deploy's pm2 reload does not kill it. It works in a scratch copy of the release's `release-tools/`,
+copies only the clips the channel lacks from the archive to the packs bucket, and reports through
+`shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`). The last 30 runs are kept. The page
+shows the step and the end of the log; the whole log is in that directory.
+
+1. Create `/srv/spoken/shared/release.env`, owned by `deploy`, mode 600:
+
+   ```
+   SPOKEN_PACKS_SIGNING_KEY=<the channel's existing key, never a new one>
+   R2_ACCESS_KEY_ID=<a token scoped to the packs bucket alone>
+   R2_SECRET_ACCESS_KEY=<its secret>
+   R2_BUCKET=spoken-packs
+   ```
+
+   It stays out of `app.env` because pm2 merges that file into every site worker, and the Manager
+   trusts whatever this key signs. A new key makes every installed Manager reject the channel.
+2. Add to `app.env`, where `DATABASE_URL` (the owner's login), `R2_ACCOUNT_ID` and
+   `SPOKEN_ARCHIVE_URL` must already be, as the job reads those three from it:
+
+   ```
+   SPOKEN_RELEASE_ENV=/srv/spoken/shared/release.env
+   ```
+3. Restart as below. To go back to Actions, remove that line and restart.
+
+A job that stops beating for 3 minutes, from a reboot or an out-of-memory kill, fails on the page's
+next look and frees the lock.
+
+### On GitHub Actions
 
 1. Create a **fine-grained** GitHub token for this repository only, with the repository
    permission **Actions: Read and write** (`actions: write`) and nothing else.
