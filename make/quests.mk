@@ -194,7 +194,7 @@ package: ## Zip the quests addon into dist/
 # them. Recursive, so only a target that reads it pays for the node start.
 NON_CLIENT_LOCALES = $(shell node --input-type=module -e 'const { LOCALES } = await import("./pipelines/lib/locales.mjs"); console.log(LOCALES.filter((l) => l.client === false).map((l) => l.code).join(" "))')
 
-package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE)),export-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
+package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE)),export-locale-text export-compendium-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
 	@VERSION=$(VERSION) ENCODE=$(if $(ENCODE),$(ENCODE),ogg-q0-44k) MODULE=SpokenQuestsAudio \
 	  LANGUAGE="$(or $(LOCALE),enUS)" JOBS=$(JOBS) ./scripts/quests/package-audio.sh
 
@@ -400,17 +400,11 @@ fill-locales: ## Fill vmangos's empty *_locN columns from TrinityCore (TDB335= T
 	  --tdb335 "$(abspath $(TDB335))" --tdb-world "$(abspath $(TDB_WORLD))" \
 	  --tdb-hotfixes "$(abspath $(TDB_HOTFIXES))" $(ARGS)
 
-# The client does not expose the body of an unstarted quest to addons. Keep a generated fallback
-# in the addon for the locales whose Classic text is present in TDB 3.3.5. CACHES may list
-# client Cache/WDB/<locale>/questcache.wdb files to prefer exact text downloaded by those clients.
-# PFQUEST_ES may point to pfQuest's esES/db/esES/quests.lua for a distinct Spain-Spanish fallback.
-export-compendium-locale-text: ## Export Compendium quest wording from TDB 3.3.5 (TDB335=... CACHES="... ..." PFQUEST_ES=...)
-	@test -n "$(TDB335)" || { echo "export-compendium-locale-text: set TDB335 to an extracted TDB_full_world_335 .sql file"; exit 2; }
-	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/export_compendium_locale_text.py \
-	  --tdb "$(abspath $(TDB335))" --locale esES --locale esMX \
-	  --out "$(abspath addons/Spoken_Quests/Data/LocalizedQuestText.lua)" \
-	  $(foreach cache,$(CACHES),--cache "$(abspath $(cache))") \
-	  $(if $(PFQUEST_ES),--pfquest-esES "$(abspath $(PFQUEST_ES))") $(ARGS)
+# The website corpus is the source of truth for the Compendium's client wording. The export
+# stays in the language's build area so the main addon never loads every locale for everyone.
+export-compendium-locale-text: ## quest_line.localeText/entity_name -> build/quests/$(LOCALE)/compendium-text.json.gz (LOCALE=esMX)
+	@test -n "$(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE))" || { echo "export-compendium-locale-text: set LOCALE to a supported client language, e.g. LOCALE=esMX"; exit 2; }
+	@$(QUESTS_CLI) export-compendium-locale-text --lang $(LOCALE) --out $(abspath build/quests/$(LOCALE)/compendium-text.json.gz)
 
 # Italian, which no client runs in, from the QuestIT community's addon: quest text, quest
 # titles and the few book pages it has, as 'community' rows. Run again on each of their

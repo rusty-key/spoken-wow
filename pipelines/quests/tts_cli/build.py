@@ -425,6 +425,23 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
         f.write("\n")
 
 
+def write_compendium_text(path: str, lang: str, data: dict) -> None:
+    """Write localized Compendium wording guarded by the client's locale.
+
+    This is deliberately a global: the Compendium is part of Spoken, while the data is
+    shipped by the separate language sound pack that contains it.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(GUARD + "\n")
+        f.write("if not VoiceOver.Language or "
+                f'VoiceOver.Language:GetClientLanguage() ~= "{lang}" then return end\n')
+        f.write("SpokenQuestsLocalizedText = SpokenQuestsLocalizedText or {}\n")
+        f.write(f"SpokenQuestsLocalizedText[{lua.encode(lang)}] = ")
+        f.write(lua.encode(data))
+        f.write("\n")
+
+
 def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
                title: str = DEFAULT_TITLE, language: str = None) -> str:
     """The TOC, listing exactly the files this build produced.
@@ -446,7 +463,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None) -> dict:
+                 locale_text: list = None, compendium_text: dict = None) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -465,9 +482,15 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     language's pack holding its gossip - Gossip, or All - is given them (cli-main.py refuses
     the rest). The English tables
     are written either way: they are what matches on an English client.
+
+    `compendium_text` is the corpus's localized quest title and wording snapshot. It is
+    written only into the language pack's all slice, and its file returns unless the client
+    has that language selected.
     """
     if locale_text is not None and (not language or language == "enUS"):
         raise ValueError("locale text belongs to a language pack; pass its language")
+    if compendium_text is not None and (not language or language == "enUS"):
+        raise ValueError("Compendium text belongs to a language pack; pass its language")
     module_dir = os.path.join(dist_dir, module_name)
     generated_dir = os.path.join(module_dir, "generated")
     sounds_dir = os.path.join(generated_dir, "sounds")
@@ -511,6 +534,13 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                             module_name, table_name, data, lang=language)
             written.append(f"{language}\\{filename}.lua")
             locale_rows[f"{language}/{filename}"] = len(data)
+
+    if compendium_text is not None:
+        filename = "compendium_localized_quest_text.lua"
+        write_compendium_text(os.path.join(generated_dir, language, filename), language,
+                              compendium_text)
+        written.append(f"{language}\\{filename}")
+        locale_rows[f"{language}/compendium_localized_quest_text"] = len(compendium_text)
 
     # Durations come from the copied files, so the table can never disagree with them.
     write_sound_length_table_lua(module_name, sounds_dir, generated_dir)

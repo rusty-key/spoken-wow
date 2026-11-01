@@ -981,6 +981,8 @@ local function Stored(id, moment)
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = localized and localized[moment] or english[moment]
+    -- If the corpus has no translation, the client shows English and keeping that fallback
+    -- would only duplicate the English table.
     local hasLocalizedFallback = localized and localized[moment]
     local isEnglishCopy = hasLocalizedFallback and own and own.text == english[moment]
     if type(own) == "table" and own.text and not isEnglishCopy
