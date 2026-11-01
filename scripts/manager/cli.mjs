@@ -32,7 +32,7 @@ try {
     const cache = loadHashCache(cacheFile);
     try {
       await publish({ store, packs: managerFolders(), distDir: DIST, signingKey, minSpoken: MIN_SPOKEN,
-        latestSpoken: await latestSpokenRelease(), cache, dryRun, onlyPresent, allowRemovals });
+        latestSpoken: await latestSpokenRelease(), cache, dryRun, onlyPresent, allowRemovals, archiveUrl: process.env.SPOKEN_ARCHIVE_URL });
     } finally {
       // Without dist/ there is nothing to cache, and the write would hide publish's own error.
       if (existsSync(DIST)) saveHashCache(cacheFile, cache);

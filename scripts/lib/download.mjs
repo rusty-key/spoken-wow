@@ -12,7 +12,7 @@ const RETRIES = 5;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // The archive's CDN answers 429 to a burst, so one refused clip must not fail a whole pack's build.
-async function fetchRetrying(url, fetchImpl, wait) {
+export async function fetchRetrying(url, fetchImpl = fetch, wait = sleep) {
   for (let attempt = 0; ; attempt++) {
     const res = await fetchImpl(url);
     if ((res.status !== 429 && res.status < 500) || attempt === RETRIES) return res;

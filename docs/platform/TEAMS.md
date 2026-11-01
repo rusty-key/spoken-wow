@@ -231,6 +231,13 @@ site does not build anything: the publisher is the `release-packs.yaml` workflow
 packs from production's rows and the archive bucket, signs them and writes the Manager channel.
 The button starts that workflow and follows it.
 
+A Places, Bosses or Readables run keeps no clips on the runner. `sounds.mjs` writes a pointer where
+each clip goes (`scripts/lib/clip-pointer.mjs`), the packaging moves those as it would clips, and
+`publish.mjs` lists each pointer as the take it names and copies across only the ones the channel
+lacks, checking their hash. Such a build is for the channel alone: its zips hold pointers, so the
+workflow only does this with `manager_only`. Quests still pull their masters, because their packs ship
+Oggs rather than the takes.
+
 1. The press inserts a `release_run` row (migration 0095) and dispatches the workflow with
    `manager_only` ticked and `dry_run` off, naming the run by the row's id (`release_id`) so the
    site can find it again.

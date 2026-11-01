@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { pointerText } from "../lib/clip-pointer.mjs";
 import { generateKeys, openJson, sha256Text } from "./sign.mjs";
 import { ConflictError, memoryStore } from "./store.mjs";
 import { IMMUTABLE, INDEX_CACHE, latestSpokenRelease, publish } from "./publish.mjs";
@@ -208,4 +209,76 @@ test("a blob whose bytes no longer match its hash is refused and nothing is inde
   const cache = new Map([[abs, { size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs, sha256: "0".repeat(64) }]]);
   await assert.rejects(run(store, d, { cache }), /changed while publishing/);
   assert.equal(store.objects.has("index.json"), false);
+});
+
+const CLIP = Buffer.from("the real clip's bytes");
+const clipSha = sha256Text(CLIP);
+const pointer = pointerText(clipSha, CLIP.length);
+const archiveOf = (body = CLIP, status = 200) => {
+  const asked = [];
+  const fetchImpl = async (url) => {
+    asked.push(url);
+    return new Response(body, { status });
+  };
+  return { asked, extra: { archiveUrl: "https://archive.example", fetchImpl } };
+};
+const manifestOf = (store, rev = "20261018T142233Z") =>
+  openJson(store.objects.get(`packs/SpokenPlacesAudio_deDE/${rev}.json`).body.toString(), keys.publicKey).value;
+
+test("a pointer publishes as the clip it names, copied from the archive", async () => {
+  const store = memoryStore();
+  const { asked, extra } = archiveOf();
+  await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.mp3": pointer }), extra);
+  assert.deepEqual(asked, [`https://archive.example/takes/${clipSha}`]);
+  assert.deepEqual(store.objects.get(`blobs/${clipSha}`).body, CLIP);
+  const file = manifestOf(store).files.find((f) => f.path === "Sounds/1.mp3");
+  assert.deepEqual(file, { path: "Sounds/1.mp3", sha256: clipSha, size: CLIP.length });
+  assert.equal(store.objects.has(`blobs/${sha256Text(pointer)}`), false);
+});
+
+test("a pointer matches the pack built from the real clip, so nothing changes", async () => {
+  const store = memoryStore();
+  const { asked, extra } = archiveOf();
+  await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.mp3": CLIP }));
+  const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.mp3": pointer }), { ...extra, now: new Date("2026-10-19T00:00:00Z") });
+  assert.equal(out.rev, null);
+  assert.deepEqual(asked, []);
+});
+
+test("a clip the channel already has is not fetched again", async () => {
+  const store = memoryStore();
+  const { asked, extra } = archiveOf();
+  await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "one", "Sounds/1.mp3": pointer }), extra);
+  asked.length = 0;
+  const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "two", "Sounds/1.mp3": pointer }), { ...extra, now: new Date("2026-10-19T00:00:00Z") });
+  assert.equal(out.blobs, 1);
+  assert.deepEqual(asked, []);
+});
+
+test("archive bytes that do not match their name are refused and nothing is indexed", async () => {
+  const store = memoryStore();
+  const { extra } = archiveOf(Buffer.from("the wrong bytes, same length!"));
+  await assert.rejects(run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.mp3": pointer }), extra), /do not match/);
+  assert.equal(store.objects.has("index.json"), false);
+});
+
+test("a clip the archive cannot give stops the publish before the index", async () => {
+  const store = memoryStore();
+  const { extra } = archiveOf(null, 404);
+  await assert.rejects(run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.mp3": pointer }), extra), /HTTP 404/);
+  assert.equal(store.objects.has("index.json"), false);
+});
+
+test("pointers without the archive's address stop the publish before anything is sent", async () => {
+  const store = memoryStore();
+  await assert.rejects(run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.mp3": pointer })), /SPOKEN_ARCHIVE_URL/);
+  assert.equal(store.log.filter(([op]) => op === "put").length, 0);
+});
+
+test("a dry run with pointers fetches nothing", async () => {
+  const store = memoryStore();
+  const { asked, extra } = archiveOf();
+  const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.mp3": pointer }), { ...extra, dryRun: true });
+  assert.equal(out.bytes, CLIP.length + 3);
+  assert.deepEqual(asked, []);
 });
