@@ -182,7 +182,7 @@ begin
   select coalesce(array_agg(tl."lang" order by tl."lang"), '{}') into v_langs
     from "team_language" tl
     join "team" t on t."id" = tl."teamId" and t."slug" = 'english'
-   where tl."lang" <> 'enUS';
+   where tl."lang" <> 'enUS' and tl."privileged";
   foreach v_lang in array v_langs loop
     v_i := v_i + 1;
     v_team := new_team(lower(v_lang), v_lang);
