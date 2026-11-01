@@ -111,6 +111,12 @@ local function Locale()
     return GetLocale and GetLocale() or "enUS"
 end
 
+local function Localized(id)
+    local localized = _G.SpokenQuestsLocalizedText
+    localized = localized and localized[Locale()]
+    return localized and localized[id] or nil
+end
+
 local function Global()
     local db = VO.Addon.db and VO.Addon.db.global
     if not db then return {} end
@@ -150,9 +156,15 @@ end
 -- and the list drawn again when it arrives (QUEST_DATA_LOAD_RESULT).
 local titles, asked = {}, {}
 local function Title(id, ask)
-    if titles[id] then return titles[id] end
+    local localized = Localized(id)
+    local quest = Quests()[id]
+    -- QUEST_DETAIL can cache the English title before the Compendium is opened. Do not let
+    -- that transient cache hide a shipped title for a client whose quest window is English.
+    if titles[id] and not (localized and quest and titles[id] == quest[1]) then return titles[id] end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
+    if title and quest and title == quest[1] then title = nil end
+    title = title or localized and localized.title
     if not title and Locale() ~= "enUS" and C_QuestLog and C_QuestLog.GetTitleForQuestID then
         title = C_QuestLog.GetTitleForQuestID(id)
         if (type(title) ~= "string" or title == "") and ask and not asked[id] and C_QuestLog.RequestLoadQuestByID then
@@ -164,7 +176,6 @@ local function Title(id, ask)
         titles[id] = title
         return title
     end
-    local quest = Quests()[id]
     return quest and quest[1] or tostring(id)
 end
 
@@ -965,11 +976,15 @@ end
 -- Kept words filled for the other sex are not used where the English has a word for each.
 local function Stored(id, moment)
     local english = English(id)
+    local localized = Localized(id)
     local kept = Kept()
     kept = kept and kept[id]
     local own = kept and kept[moment]
-    local text = english[moment]
-    if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
+    local text = localized and localized[moment] or english[moment]
+    local hasLocalizedFallback = localized and localized[moment]
+    local isEnglishCopy = hasLocalizedFallback and own and own.text == english[moment]
+    if type(own) == "table" and own.text and not isEnglishCopy
+        and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
         text = own.text
     end
     if text and text ~= "" then return text end

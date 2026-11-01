@@ -86,7 +86,7 @@ QuestMapFrame.DetailsFrame = CreateFrame("Frame", nil, QuestMapFrame)
 QuestMapFrame.DetailsFrame.BackFrame = CreateFrame("Frame", nil, QuestMapFrame.DetailsFrame)
 _G.QuestMapFrame_ShowQuestDetails = function(questID) QuestMapFrame.DetailsFrame.questID = questID end
 local ns = {}
-for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "Data/QuestFaces", "UI/QuestsTab", "UI/OpenInCompendium" }) do
+for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "Data/LocalizedQuestText", "Data/QuestFaces", "UI/QuestsTab", "UI/OpenInCompendium" }) do
     assert(loadfile(QUESTS .. file .. ".lua"))("Spoken_Quests", ns)
 end
 -- The shipped data links each quest to the one before it in its chain: Lost Necklace, Pie for
@@ -1391,6 +1391,23 @@ stub.world.unitSex = 3
 Tab:Refresh()
 Expect("...and to a woman, the English, with her word", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)
 stub.world.unitSex = 2
+stub.SetLocale("esMX")
+C:Tab("quests").unlock.set(true)
+Tab:Keep("accept", SpokenQuestsText[47].accept, SpokenQuestsCompendium.quests[47][1])
+Tab:Open(47)
+local spanishWords = PageWords() or ""
+Expect("Spanish quest title uses the localized fallback", page.title.text, "Intercambio de polvo de oro")
+Expect("...and its description is localized", spanishWords:find("Los kóbolds de esa zona", 1, true) ~= nil, true)
+Expect("...and its conclusion is localized", spanishWords:find("Gracias por el Polvo de oro, Tester.", 1, true) ~= nil, true)
+Expect("the esMX cache wording overrides the esES database wording",
+    SpokenQuestsLocalizedText.esMX[2].accept:find("ha sido asesinado", 1, true) ~= nil, true)
+
+local localizedQuestCount = 0
+for id, text in pairs(SpokenQuestsLocalizedText.esMX) do
+    if shipped[id] and text.title and text.accept and text.complete then localizedQuestCount = localizedQuestCount + 1 end
+end
+Expect("the Spanish fallback includes complete localized quest records", localizedQuestCount > 3000, true)
+
 stub.SetLocale("enUS")
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_DETAIL")

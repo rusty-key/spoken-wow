@@ -59,7 +59,7 @@ endef
         package-meta icon \
         downloads-status \
         factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
-        release-dry import-corpus import-locale import-npc-bodies fill-locales import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
+        release-dry import-corpus import-locale import-npc-bodies fill-locales export-compendium-locale-text import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
         sync check-synced full-release upload upload-dry
 
 help: ## Show this help
@@ -399,6 +399,16 @@ fill-locales: ## Fill vmangos's empty *_locN columns from TrinityCore (TDB335= T
 	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/fill_locales_from_tdb.py \
 	  --tdb335 "$(abspath $(TDB335))" --tdb-world "$(abspath $(TDB_WORLD))" \
 	  --tdb-hotfixes "$(abspath $(TDB_HOTFIXES))" $(ARGS)
+
+# The client does not expose the body of an unstarted quest to addons. Keep a generated fallback
+# in the addon for the locales whose Classic text is present in TDB 3.3.5. CACHE may point to a
+# client's Cache/WDB/<locale>/questcache.wdb to prefer exact text downloaded by that client.
+export-compendium-locale-text: ## Export Compendium quest wording from TDB 3.3.5 (TDB335=... CACHE=...)
+	@test -n "$(TDB335)" || { echo "export-compendium-locale-text: set TDB335 to an extracted TDB_full_world_335 .sql file"; exit 2; }
+	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/export_compendium_locale_text.py \
+	  --tdb "$(abspath $(TDB335))" --locale esES --locale esMX \
+	  --out "$(abspath addons/Spoken_Quests/Data/LocalizedQuestText.lua)" \
+	  $(if $(CACHE),--cache "$(abspath $(CACHE))") $(ARGS)
 
 # Italian, which no client runs in, from the QuestIT community's addon: quest text, quest
 # titles and the few book pages it has, as 'community' rows. Run again on each of their
