@@ -1,0 +1,153 @@
+/**
+ * The teams routes against a real Postgres, with only the session mocked.
+ *
+ * Needs DATABASE_URL and migrations through 0091 applied.
+ */
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { closeDb } from "@/lib/db";
+import { forgetTeams, teamOf } from "@/lib/teams/store";
+import { asSystem, systemRows } from "@/lib/teams/testing";
+
+const who = vi.hoisted(() => ({
+  role: "admin" as string | null,
+  id: `test-teams-route-${Math.random().toString(36).slice(2, 10)}`,
+}));
+
+vi.mock("@/lib/session", () => ({
+  currentSession: async () => ({ user: { id: who.id, role: who.role } }),
+}));
+
+import { PATCH } from "./[id]/route";
+import { PUT } from "./[id]/languages/route";
+import { GET, POST } from "./route";
+
+const tag = Math.random().toString(36).slice(2, 8);
+let was: string;
+let made: string[];
+
+const json = (method: string, body: unknown) =>
+  new Request("http://x/api/teams", { method, body: JSON.stringify(body) });
+const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
+
+beforeAll(async () => {
+  await asSystem.query(
+    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Teams', $2, false)`,
+    [who.id, `${who.id}@example.invalid`],
+  );
+});
+
+beforeEach(async () => {
+  who.role = "admin";
+  made = [];
+  forgetTeams();
+  was = await teamOf("deDE");
+});
+
+afterEach(async () => {
+  const now = (await systemRows<{ team: string }>(`select team_of_lang('deDE') as "team"`))[0].team;
+  if (now !== was) await asSystem.query(`select move_team_lang('deDE', $1)`, [was]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [who.id]);
+  for (const team of made) {
+    for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal"]) {
+      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
+    }
+    await asSystem.query(`delete from "team_language" where "teamId" = $1`, [team]);
+    await asSystem.query(`delete from "team" where "id" = $1`, [team]);
+  }
+  forgetTeams();
+});
+
+afterAll(async () => {
+  await asSystem.query(`delete from "user" where "id" = $1`, [who.id]);
+  await closeDb();
+});
+
+async function post(body: unknown): Promise<Response> {
+  const response = await POST(json("POST", body));
+  if (response.ok) made.push(((await response.clone().json()) as { team: { id: string } }).team.id);
+  return response;
+}
+
+describe("teams routes", () => {
+  it("answers 403 to a member on all four", async () => {
+    who.role = "member";
+    expect((await GET()).status).toBe(403);
+    expect((await POST(json("POST", { slug: `m-${tag}`, name: "M", langs: [] }))).status).toBe(403);
+    expect((await PATCH(json("PATCH", { name: "x" }), ctx("1"))).status).toBe(403);
+    expect((await PUT(json("PUT", { lang: "deDE" }), ctx("1"))).status).toBe(403);
+    expect(await systemRows(`select 1 from "team" where "slug" = $1`, [`m-${tag}`])).toHaveLength(0);
+  });
+
+  it("creates a team holding the language it was given, with its admin", async () => {
+    const response = await post({ slug: `german-${tag}`, name: "German", langs: ["deDE"], adminEmail: `${who.id}@example.invalid` });
+    expect(response.status).toBe(200);
+    const { team } = (await response.json()) as { team: { langs: string[]; members: { userId: string; capability: string }[] } };
+    expect(team.langs).toEqual(["deDE"]);
+    expect(team.members.filter((m) => m.userId === who.id).map((m) => m.capability)).toEqual(["admin"]);
+  });
+
+  it("lists the teams", async () => {
+    await post({ slug: `list-${tag}`, name: "L", langs: [] });
+    const { teams } = (await (await GET()).json()) as { teams: { slug: string }[] };
+    expect(teams.some((team) => team.slug === `list-${tag}`)).toBe(true);
+  });
+
+  it("answers 400 to a bad slug, a blank name, an unknown language or enUS, creating nothing", async () => {
+    for (const body of [
+      { slug: "Bad Slug", name: "x", langs: [] },
+      { slug: `blank-${tag}`, name: "  ", langs: [] },
+      { slug: `unk-${tag}`, name: "x", langs: ["xxXX"] },
+      { slug: `en-${tag}`, name: "x", langs: ["enUS"] },
+      { slug: `mal-${tag}`, name: "x", langs: "deDE" },
+    ]) {
+      expect((await POST(json("POST", body))).status).toBe(400);
+    }
+    expect((await POST(new Request("http://x", { method: "POST", body: "{" }))).status).toBe(400);
+    expect(await systemRows(`select 1 from "team" where "slug" like $1`, [`%-${tag}`])).toHaveLength(0);
+  });
+
+  it("answers 400 to an admin email nobody has", async () => {
+    const response = await POST(json("POST", { slug: `ghost-${tag}`, name: "x", langs: [], adminEmail: "nobody@example.invalid" }));
+    expect(response.status).toBe(400);
+  });
+
+  it("renames a team, and refuses a blank name", async () => {
+    const id = ((await (await post({ slug: `ren-${tag}`, name: "Old", langs: [] })).json()) as { team: { id: string } }).team.id;
+    expect((await PATCH(json("PATCH", { name: "New" }), ctx(id))).status).toBe(200);
+    expect((await systemRows<{ name: string }>(`select "name" from "team" where "id" = $1`, [id]))[0].name).toBe("New");
+    expect((await PATCH(json("PATCH", { name: " " }), ctx(id))).status).toBe(400);
+  });
+
+  it("hands a language over", async () => {
+    const id = ((await (await post({ slug: `hand-${tag}`, name: "H", langs: [] })).json()) as { team: { id: string } }).team.id;
+    const response = await PUT(json("PUT", { lang: "deDE" }), ctx(id));
+    expect(response.status).toBe(200);
+    forgetTeams();
+    expect(await teamOf("deDE")).toBe(id);
+  });
+
+  it("answers 409 while a job of the language runs", async () => {
+    const id = ((await (await post({ slug: `busy-${tag}`, name: "B", langs: [] })).json()) as { team: { id: string } }).team.id;
+    const batch = await systemRows<{ id: string }>(
+      `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, 'deDE', $2) returning "id"`,
+      [`route-${tag}`, was],
+    );
+    await asSystem.query(
+      `insert into "regeneration_job" ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "lang", "teamId")
+       values ($1, $2, 'busy.mp3', '', '', 1, 'running', 'deDE', $3)`,
+      [batch[0].id, `g:${tag}`, was],
+    );
+    try {
+      expect((await PUT(json("PUT", { lang: "deDE" }), ctx(id))).status).toBe(409);
+    } finally {
+      await asSystem.query(`delete from "regeneration_job" where "batchId" = $1`, [batch[0].id]);
+      await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batch[0].id]);
+    }
+  });
+
+  it("answers 400 to a language it does not know", async () => {
+    const id = ((await (await post({ slug: `bad-${tag}`, name: "B", langs: [] })).json()) as { team: { id: string } }).team.id;
+    expect((await PUT(json("PUT", { lang: "xxXX" }), ctx(id))).status).toBe(400);
+  });
+});

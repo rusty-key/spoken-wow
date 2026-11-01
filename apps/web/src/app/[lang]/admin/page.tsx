@@ -12,6 +12,7 @@ import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { userSortOf } from "@/lib/users/sort";
 import { listUsers } from "@/lib/users/store";
+import LocaleLink from "@/components/LocaleLink";
 import { Contained, Wide } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Users · Spoken" };
@@ -68,6 +69,11 @@ export default async function Page({
     <main className="pt-6 pb-36">
       <Contained>
         <h1 className="text-xl font-semibold">Users</h1>
+        {global && (
+          <LocaleLink href="/admin/teams" className="text-muted-foreground text-sm hover:underline">
+            Teams
+          </LocaleLink>
+        )}
         <p className="text-muted-foreground mt-1 mb-5 text-sm">
           {global ? (
             <>

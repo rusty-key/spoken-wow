@@ -3,7 +3,7 @@
  */
 import "server-only";
 
-import { ALL_TEAMS, query, withTeam } from "@/lib/db";
+import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
@@ -131,4 +131,14 @@ export async function handOver(lang: Lang, team: TeamId, actorId: string): Promi
     detail: { from: moved.from, to: moved.to },
   });
   return moved.rows;
+}
+
+/** The live takes of `lang`, which a hand-over moves along with everything else. */
+export async function liveTakeCount(lang: Lang): Promise<number> {
+  const rows = await queryIn<{ count: number }>(
+    ALL_TEAMS,
+    `select count(*)::int as "count" from "take" where "lang" = $1 and "isCurrent"`,
+    [lang],
+  );
+  return rows[0].count;
 }
