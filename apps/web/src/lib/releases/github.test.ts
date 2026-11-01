@@ -16,6 +16,13 @@ describe("github client", () => {
   });
   afterEach(() => vi.unstubAllEnvs());
 
+  it("names a channel only when one is set, so production stays the workflow's default", async () => {
+    vi.stubEnv("SPOKEN_RELEASE_CHANNEL", "staging");
+    const fetchFn = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    await dispatchRelease({ id: "run-1", section: "quests", lang: "frFR" }, fetchFn);
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body).inputs.channel).toBe("staging");
+  });
+
   it("dispatches with the exact inputs and the bearer token", async () => {
     const fetchFn = vi.fn().mockResolvedValue(reply(null, 204));
     await dispatchRelease({ id: "run-1", section: "quests", lang: "frFR" }, fetchFn);

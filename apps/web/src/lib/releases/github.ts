@@ -54,6 +54,7 @@ export async function dispatchRelease(
   fetchFn: Fetch = fetch,
 ): Promise<void> {
   const { ref } = config();
+  const channel = process.env.SPOKEN_RELEASE_CHANNEL;
   await call(fetchFn, `actions/workflows/${WORKFLOW}/dispatches`, {
     method: "POST",
     body: {
@@ -64,6 +65,7 @@ export async function dispatchRelease(
         manager_only: "true",
         dry_run: "false",
         release_id: run.id,
+        ...(channel && { channel }),
       },
     },
   });
