@@ -23,6 +23,32 @@ async function teamOfLang(lang: string): Promise<string | null> {
   return (await systemRows<{ team: string | null }>(`select team_of_lang($1) as "team"`, [lang]))[0].team;
 }
 
+/**
+ * A base settings row and a dismissal mark on `team` where it has none, as a database that has
+ * saved settings and dismissed a run has; a fresh one has neither. Removes only what it added.
+ */
+async function baseRows(team: string): Promise<() => Promise<void>> {
+  const added: string[] = [];
+  const setting = await systemRows(
+    `insert into "generation_setting" ("teamId", "modelId", "voiceSettings", "seedStrategy")
+     values ($1, 'eleven_v3', '{}', 'none') on conflict do nothing returning 1`,
+    [team],
+  );
+  if (setting.length) added.push("generation_setting");
+  const dismissal = await systemRows(
+    `insert into "queue_dismissal" ("teamId", "throughJobId") values ($1, 0) on conflict do nothing returning 1`,
+    [team],
+  );
+  if (dismissal.length) added.push("queue_dismissal");
+  return async () => {
+    for (const table of added) await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
+  };
+}
+
+async function hasRow(table: string, team: string): Promise<boolean> {
+  return (await systemRows(`select 1 from "${table}" where "teamId" = $1`, [team])).length === 1;
+}
+
 function move(lang: string, team: string) {
   return asSystem.query<{ moved: number }>(`select move_team_lang($1, $2) as "moved"`, [lang, team]);
 }
@@ -105,6 +131,8 @@ describe("move_team_lang", () => {
   });
 
   it("copies the roster to a team that has none", async () => {
+    // Cleared with the source team by restore().
+    await baseRows(source.team);
     await move("deDE", target);
 
     const counts = await systemRows<{ team: string; n: number }>(
@@ -114,8 +142,8 @@ describe("move_team_lang", () => {
     const of = (team: string) => counts.find((row) => row.team === team)?.n;
     expect(of(source.team)).toBeGreaterThan(0);
     expect(of(target)).toBe(of(source.team));
-    const settings = await systemRows(`select 1 from "generation_setting" where "teamId" = $1`, [target]);
-    expect(settings).toHaveLength(1);
+    expect(await hasRow("generation_setting", target)).toBe(true);
+    expect(await hasRow("queue_dismissal", target)).toBe(true);
   });
 
   it("refuses while a job runs", async () => {
@@ -169,8 +197,14 @@ describe("adopt_lang", () => {
 
   it("gives an unowned language a team of its own with English's roster", async () => {
     await drop();
-    // As the app calls it: its own role, acting as no team.
-    await db().query(`select adopt_lang($1)`, [LANG]);
+    const english = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'english'`))[0].id;
+    const unseed = await baseRows(english);
+    try {
+      // As the app calls it: its own role, acting as no team.
+      await db().query(`select adopt_lang($1)`, [LANG]);
+    } finally {
+      await unseed();
+    }
 
     const team = await teamOfLang(LANG);
     const counts = await systemRows<{ english: number; adopted: number }>(
@@ -180,6 +214,7 @@ describe("adopt_lang", () => {
     );
     expect(counts[0].english).toBeGreaterThan(0);
     expect(counts[0].adopted).toBe(counts[0].english);
-    expect(await systemRows(`select 1 from "generation_setting" where "teamId" = $1`, [team])).toHaveLength(1);
+    expect(await hasRow("generation_setting", team!)).toBe(true);
+    expect(await hasRow("queue_dismissal", team!)).toBe(true);
   });
 });

@@ -88,12 +88,14 @@ describe("team contract", () => {
     }
   });
 
-  it.each(["generation_setting", "queue_dismissal"])("gives every team a %s row if English has one", async (table) => {
+  // Not queue_dismissal: each team keeps its own mark (dismissThrough), so English dismissing a
+  // run leaves the others without one. A new team's copy of it is move.test.ts's to check.
+  it("gives every team a generation_setting row if English has one", async () => {
     const { rows } = await asSystem.query(
       `select count(*)::int as "n" from "team" t
         where t."slug" not like 'test-%'
-          and exists (select 1 from "${table}" where "teamId" = (${ENGLISH}))
-          and not exists (select 1 from "${table}" where "teamId" = t."id")`,
+          and exists (select 1 from "generation_setting" where "teamId" = (${ENGLISH}))
+          and not exists (select 1 from "generation_setting" where "teamId" = t."id")`,
     );
     expect(rows[0].n).toBe(0);
   });
