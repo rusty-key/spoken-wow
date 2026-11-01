@@ -415,6 +415,47 @@ In order:
 Backing out of step 6 alone is possible: remove `APP_DATABASE_URL` and reload, and the app is
 the owner again. The policies stay; the owner bypasses them. The code stays deploy 2's.
 
+### Teams, members
+
+The release that ships `0091_team_member.sql` adds `team_member` (the audio capabilities, per
+member and language), copies the audio grants into it, and moves every language the english
+team holds, except enUS, to a team of its own. It makes `x@rusty.one` admin of each of those
+teams. It is additive: `language_grant` keeps its audio grants, so the release before it keeps
+working on the new schema.
+
+1. **Preview what 0091 will split**, from a workstation. Each language listed becomes a team:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "select tl.lang from team_language tl join team t on t.id = tl.\"teamId\" where t.slug = 'english' and tl.lang <> 'enUS' order by tl.lang"
+   ```
+
+2. **Check the site owner exists.** The admin grants are made for the user with this email; if
+   there is none, the teams are still made, with no admin:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "select id from \"user\" where email = 'x@rusty.one'"
+   ```
+
+3. **Pause the queue** from the queue panel, then wait until no job is running in any language
+   from step 1. A running job would commit its take under the old team after the move, so 0091
+   aborts, and with it the deploy (the previous release keeps serving), if one is. Migrations
+   run at the Activate step while the old release still serves, so the queue has to be paused
+   before merging. Check, and repeat until it returns no rows:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "select lang, count(*) from regeneration_job where state = 'running' group by lang"
+   ```
+
+4. **Merge and let the deploy run.** Resume the queue once it is green.
+
+5. **Check `/enUS/admin/teams`.** English should hold only enUS, and each language from step 1
+   should be a team of its own.
+
+**Rolling back to the previous release is safe**: 0091 only adds, and the old code still reads
+the audio grants left in `language_grant`. One caveat: grants changed on the new release are
+written to `team_member` and are not visible to the old code, which reads only `language_grant`.
+Repeat them there by hand, or accept that they revert.
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the

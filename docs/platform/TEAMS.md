@@ -269,8 +269,9 @@ takes, filtered by team since it reads production as the owner role and RLS does
 - Every existing per-team row moves to the team owning its language. Takes stay live; packs keep
   their names. Non-English edits made before the migration are already in the original text and
   stay there; `line_override` rows move into the English team's layer.
-- A team created later in an already-voiced language starts empty: original text, a roster with no
-  voices assigned, no settings or lexicon. Copying another team's setup is later work. *(My call.)*
+- A handover gives the receiving team a copy of the old team's roster and settings if it has none.
+  Only a second team in the same language (phase 2) starts empty: original text, a roster with no
+  voices assigned, no settings or lexicon. *(My call.)*
 
 ## Phase 2: a second team in one language
 
