@@ -24,12 +24,6 @@ export class GithubNotConfiguredError extends Error {
   }
 }
 
-export class GithubError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(`GitHub answered ${status}: ${message}`);
-  }
-}
-
 function config(): { token: string; repo: string; ref: string } {
   const token = process.env.SPOKEN_RELEASE_GITHUB_TOKEN;
   const repo = process.env.SPOKEN_RELEASE_GITHUB_REPO;
@@ -39,21 +33,22 @@ function config(): { token: string; repo: string; ref: string } {
 
 async function call(fetchFn: Fetch, path: string, init: { method?: string; body?: unknown } = {}): Promise<unknown> {
   const { token, repo } = config();
+  const body = init.body === undefined ? undefined : JSON.stringify(init.body);
   const response = await fetchFn(`https://api.github.com/repos/${repo}/${path}`, {
     method: init.method ?? "GET",
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
       "X-GitHub-Api-Version": "2022-11-28",
-      ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(body && { "Content-Type": "application/json" }),
     },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body,
     // A hung GitHub must not hold a request open, or leave the press stuck in dispatching.
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => null) as { message?: string } | null;
-    throw new GithubError(response.status, detail?.message ?? response.statusText);
+    throw new Error(`GitHub answered ${response.status}: ${detail?.message ?? response.statusText}`);
   }
   return response.status === 204 ? null : response.json().catch(() => null);
 }

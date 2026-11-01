@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,26 +29,19 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
   const [view, setView] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [pressing, setPressing] = useState(false);
-  const mounted = useRef(true);
   const running = view.active !== null;
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
 
   const refresh = useCallback(async () => {
     const response = await fetch(`/api/releases?lang=${lang}`, { cache: "no-store" }).catch(() => null);
-    if (!response?.ok || !mounted.current) return;
-    const next = (await response.json()) as ReleaseView;
-    if (mounted.current) setView(next);
+    if (response?.ok) setView((await response.json()) as ReleaseView);
   }, [lang]);
 
   useEffect(() => {
     if (!running) return;
-    const timer = setInterval(() => void refresh(), POLL_MS);
+    // A hidden tab asking every 15 s could last the hours a release takes.
+    const timer = setInterval(() => {
+      if (!document.hidden) void refresh();
+    }, POLL_MS);
     return () => clearInterval(timer);
   }, [running, refresh]);
 
@@ -60,15 +53,14 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ section }),
     }).catch(() => null);
-    if (!mounted.current) return;
     if (!response) setError("Could not reach the server.");
     else if (!response.ok) {
       const { error: message } = (await response.json().catch(() => ({}))) as { error?: string };
-      if (mounted.current) setError(message ?? "Something went wrong.");
+      setError(message ?? "Something went wrong.");
     }
     // A refused press may still leave a run to show, and a good one starts the polling.
     await refresh();
-    if (mounted.current) setPressing(false);
+    setPressing(false);
   }
 
   const { active } = view;
@@ -79,7 +71,8 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
           {error}
         </p>
       )}
-      {active && (
+      {/* The team's own run in this language shows on its section's row. */}
+      {active && !(active.own && active.lang === lang) && (
         <p className="mb-3 text-sm">
           {active.own ? (
             <RunLink run={active}>
@@ -105,9 +98,9 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
                     <Badge variant={last.state === "done" ? "secondary" : "destructive"}>{SHOWN[last.state]}</Badge>
                     {last.state === "failed" && last.error && <span className="ml-2">{last.error}</span>}
                     {last.githubUrl && (
-                      <a href={last.githubUrl} target="_blank" rel="noreferrer" className="ml-2 underline-offset-4 hover:underline">
-                        Run
-                      </a>
+                      <span className="ml-2">
+                        <RunLink run={last}>Run</RunLink>
+                      </span>
                     )}
                   </>
                 ) : (

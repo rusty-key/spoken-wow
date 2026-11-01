@@ -15,13 +15,12 @@ export type ReleaseRun = {
   id: string;
   teamId: string;
   section: string;
-  lang: string;
+  lang: Lang;
   state: ReleaseState;
   githubRunId: number | null;
   githubUrl: string | null;
   step: string | null;
   error: string | null;
-  requestedBy: string | null;
   createdAt: Date;
   finishedAt: Date | null;
 };
@@ -33,7 +32,7 @@ export class ReleaseBusyError extends Error {
 }
 
 const COLUMNS = `"id", "teamId", "section", "lang", "state", "githubRunId"::float8 as "githubRunId", "githubUrl",
-                 "step", "error", "requestedBy", "createdAt", "finishedAt"`;
+                 "step", "error", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
 const UNIQUE_VIOLATION = "23505";
 
@@ -80,7 +79,7 @@ export async function updateRun(
     // Each process polls on its own, so a slower one can arrive after another has settled the
     // run; its write would take the lock again, or clash with the next press's.
     if (before[0].state === "done" || before[0].state === "failed") return before[0];
-    const settles = patch.state === "done" || patch.state === "failed";
+    const settles = patch.state === "done" || patch.state === "failed" ? patch.state : null;
     const { rows } = await client.query<ReleaseRun>(
       `update "release_run" set
          "state" = coalesce($2, "state"),
@@ -91,12 +90,12 @@ export async function updateRun(
          "finishedAt" = case when $7 then coalesce("finishedAt", now()) else "finishedAt" end
        where "id" = $1 returning ${COLUMNS}`,
       [id, patch.state ?? null, patch.githubRunId ?? null, patch.githubUrl ?? null, patch.step ?? null,
-       patch.error ?? null, settles],
+       patch.error ?? null, settles !== null],
     );
     const run = rows[0];
     if (settles) {
       await recordActivity(
-        { kind: "release.finished", lang: run.lang as Lang, actorId: null, detail: { section: run.section, state: run.state as "done" | "failed" } },
+        { kind: "release.finished", lang: run.lang, actorId: null, detail: { section: run.section, state: settles } },
         client,
       );
     }

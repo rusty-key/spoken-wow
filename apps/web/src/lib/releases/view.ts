@@ -10,7 +10,6 @@ import { syncActive } from "./sync";
 const RECENT = 20;
 
 const ownView = (run: ReleaseRun): RunView => ({
-  id: run.id,
   section: run.section,
   lang: run.lang,
   state: run.state,

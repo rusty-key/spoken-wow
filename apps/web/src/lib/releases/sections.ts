@@ -16,7 +16,6 @@ export type RunView = {
   state: ReleaseState;
   /** False for another team's run, which shows no link, step or error. */
   own: boolean;
-  id?: string;
   githubUrl?: string | null;
   step?: string | null;
   error?: string | null;

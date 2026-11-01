@@ -40,18 +40,16 @@ export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Da
   checked = { runId: run.id, at: now };
 
   const result = await lookup(run, fetchFn);
-  if (result === "error") {
-    if (now - run.createdAt.getTime() < LOST_AFTER_MS) return run;
-    await updateRun(run.id, { state: "failed", error: "Lost track of it: GitHub stopped answering" });
+  if (result === "error" || !result.found) {
+    const [limit, error] = result === "error"
+      ? [LOST_AFTER_MS, "Lost track of it: GitHub stopped answering"]
+      : [GIVE_UP_AFTER_MS, "GitHub never started it"];
+    if (now - run.createdAt.getTime() < limit) return run;
+    await updateRun(run.id, { state: "failed", error });
     return null;
   }
   const { found } = result;
 
-  if (!found) {
-    if (now - run.createdAt.getTime() < GIVE_UP_AFTER_MS) return run;
-    await updateRun(run.id, { state: "failed", error: "GitHub never started it" });
-    return null;
-  }
   if (found.status === "completed") {
     await updateRun(
       run.id,
