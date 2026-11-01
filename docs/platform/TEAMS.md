@@ -38,8 +38,8 @@ picker, and reports that carry the pack's team. See *Phase 2* below.
 - Isolation is enforced by Postgres row-level security, so a query missing its team filter returns
   nothing instead of another team's rows.
 - Text maintainers and audio teams are separate roles; contributions and reports reach the right one.
-- A team admin releases the team's packs from the site with one button. The release is live in the
-  Manager straight away.
+- A team admin releases the team's packs from the site with one button. The workflow runs, and the release is live in the
+  Manager when it ends.
 - **Invisible while a language has one team.** Current maintainers, players and packs see no
   change beyond a new Release button: same pages, same edit behaviour, same pack folders, no
   re-download, no lost take.
@@ -216,40 +216,46 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
 
 ## Releases
 
-A team admin presses **Release** for a section and language. The job runs in the existing queue
-worker, with per-item progress shown in the UI (`412/2448 clips`) and a summary at the end:
+A team admin presses **Release** for a section and language, on `/admin/release?lang=xx`. The
+site does not build anything: the publisher is the `release-packs.yaml` workflow, which builds the
+packs from production's rows and the archive bucket, signs them and writes the Manager channel.
+The button starts that workflow and follows it.
 
-1. Reads the team's live takes.
-2. Copies each take's Ogg from the archive bucket to the packs bucket's `blobs/<sha256>`, server-side
-   inside R2, skipping blobs already there.
-3. Generates the pack's text files (`.toc`, Lua data tables, module file), hashes and uploads them.
-4. Writes the signed manifest `packs/<packId>/<rev>.json`.
-5. Updates `index.json` with the conditional write `scripts/manager/publish.mjs` already uses, so
-   concurrent releases cannot overwrite each other.
+1. The press inserts a `release_run` row (migration 0095) and dispatches the workflow with
+   `manager_only` ticked and `dry_run` off, naming the run by the row's id (`release_id`) so the
+   site can find it again.
+2. Whoever looks at the page settles the row from GitHub (`lib/releases/sync.ts`), at most every
+   15 seconds. There is no webhook. Progress is the workflow's current step, shown with a link to
+   the run; there is no per-clip count.
+3. The run ends `done` or `failed`. A run GitHub has not started 15 minutes after the press is failed
+   by the site, so a lost dispatch cannot hold the lock for ever.
 
-There is no approval step. A site owner can delist a team, which removes its entries from the
-index; that is the only moderation in this version.
+**One release at a time, site-wide.** The partial unique index `release_run_one_active` allows one
+`dispatching` or `running` row across all teams, and a second press gets a 409 naming the active
+run. The workflow's `concurrency` group serialises it from GitHub's side as well. A team sees only
+that another team's release is running, not its step, link or error.
+
+Manager-only mode publishes to the Manager channel alone, with no CurseForge or GitHub upload, and
+publishes the folders present in `dist/` (`ONLY_PRESENT=1`), since a build holds one section and
+language. Section `bosses` is Manager-only in the workflow: it has no CurseForge project and no
+upload target there. English places also builds the bosses pack that its zip carries, so an
+English places release publishes `SpokenBossesAudio` too.
 
 In phase 1 every team is the **privileged** team of its languages: its packs keep today's ids and
 folders (`SpokenQuestsAudio_deDE`, `SpokenPlacesAudio_frFR`, …), with no team code. Older Managers
 see no change.
 
-What this needs:
+The workflow encodes and signs; the signing key stays with GitHub Actions, as PLAN.md decided.
+Only quests ship Ogg Vorbis
+(`scripts/quests/package-audio.sh`, via `oggenc`). Places, readables and bosses ship the take's own
+MP3: readables and bosses pack the files as they are, and Places copies them for its full tier and
+transcodes only its 64 kbps tier, to MP3 as well.
 
-- The pack builder ported to the site. Quests packs are built in Python today
-  (`pipelines/quests/tts_cli/build.py`, `scripts/quests/package-audio.sh`); the site must produce
-  the same files from the database. Places and readables have Node builders that may be reused.
-- Encode at commit for every section. Only quests takes get a `take_encoding` today
-  (`apps/web/src/lib/takes/encode.ts`); places, readables and bosses need one too, so the release
-  never transcodes on the droplet.
-- The publisher (`scripts/manager/publish.mjs`, `sign.mjs`, `manifest.mjs`) moved into a library
-  the app can call, and `SPOKEN_PACKS_SIGNING_KEY` on the droplet. This reverses the PLAN.md
-  decision that only GitHub Actions holds the key.
-
-**Today's release workflow** *(my call)*: `release-packs.yaml` stops publishing to the Manager
-channel; the site's Release is the only Manager publisher, so two publishers never race for one
-pack's revs. The workflow keeps building CurseForge and GitHub packs, from each language's team's
-takes, filtered by team since it reads production as the owner role and RLS does not filter it.
+**Today's release workflow** *(my call)*: `release-packs.yaml` stays the only Manager publisher, and
+the site starts it instead of publishing itself, so two publishers never race for one pack's revs.
+Manual dispatches still work, including the CurseForge and GitHub upload; a manual dispatch and a
+press cannot race on the index, because the `concurrency` group serialises them and the index write
+is conditional.
 
 ## Migration
 
@@ -313,12 +319,15 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
   must exist (the queue leader claiming jobs, site-owner views, delisting) get through: a separate
   role or narrow security-definer functions.
 - How the site generates pack files: port, reuse the Node builders, or call shared code.
-- Release button placement and progress display; the merged triage page and pass-to actions.
+- The merged triage page and pass-to actions.
 - Slug rules, provided they fit the Manager's id check and WoW folder names.
 
 ## Not in this plan
 
-Clients per team; several English teams; team-owned storage, channels and signing keys; CurseForge
+Delisting a team's packs (site-owner moderation; no team needs it while teams are today's
+maintainers); per-clip progress; building on the droplet, and encode-at-commit for sections other
+than quests, since the workflow encodes; the quests builder port; the signing key on the droplet;
+team-owned publishing; clients per team; several English teams; team-owned storage, channels and signing keys; CurseForge
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
 
