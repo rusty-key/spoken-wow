@@ -29,6 +29,11 @@ on:
       release_id:
         description: Names the run, so whoever dispatched it can find it
         required: false
+      channel:
+        description: Which environment's bucket, signing key and secrets the run uses
+        type: choice
+        options: [production, staging]
+        default: production
       dry_run:
         description: Build, and upload nothing
         type: boolean
@@ -41,6 +46,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 240
+    environment: ${{ inputs.channel }}
     permissions:
       contents: write
     services:
