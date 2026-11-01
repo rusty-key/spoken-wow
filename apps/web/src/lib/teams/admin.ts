@@ -138,12 +138,11 @@ export async function handOver(lang: Lang, team: TeamId, actorId: string): Promi
   return moved.rows;
 }
 
-/** The live takes of `lang`, which a hand-over moves along with everything else. */
-export async function liveTakeCount(lang: Lang): Promise<number> {
-  const rows = await queryIn<{ count: number }>(
+/** The live takes of each language, which a hand-over moves along with everything else. */
+export async function liveTakeCounts(): Promise<Map<Lang, number>> {
+  const rows = await queryIn<{ lang: Lang; count: number }>(
     ALL_TEAMS,
-    `select count(*)::int as "count" from "take" where "lang" = $1 and "isCurrent"`,
-    [lang],
+    `select "lang", count(*)::int as "count" from "take" where "isCurrent" group by "lang"`,
   );
-  return rows[0].count;
+  return new Map(rows.map((row) => [row.lang, row.count]));
 }

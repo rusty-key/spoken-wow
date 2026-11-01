@@ -6,7 +6,7 @@ import { Contained, Wide } from "@/components/Width";
 import { CODES, BASE_LANG, langName } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
-import { listTeams, liveTakeCount } from "@/lib/teams/admin";
+import { listTeams, liveTakeCounts } from "@/lib/teams/admin";
 
 export const metadata: Metadata = { title: "Teams · Spoken" };
 
@@ -17,9 +17,8 @@ export default async function Page() {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
 
-  const teams = await listTeams();
-  const held = teams.flatMap((team) => team.langs);
-  const counts = await Promise.all(held.map(async (lang) => [lang, await liveTakeCount(lang)] as const));
+  const [teams, live] = await Promise.all([listTeams(), liveTakeCounts()]);
+  const counts = teams.flatMap((team) => team.langs).map((lang) => [lang, live.get(lang) ?? 0] as const);
 
   return (
     <main className="pt-6 pb-36">

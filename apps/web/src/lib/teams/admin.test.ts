@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, inTransaction, withTeam } from "@/lib/db";
 
-import { createTeam, handOver, listTeams, liveTakeCount, renameTeam, TeamBusyError, TeamInputError } from "./admin";
+import { createTeam, handOver, listTeams, liveTakeCounts, renameTeam, TeamBusyError, TeamInputError } from "./admin";
 import { adoptLang, forgetTeams, teamOf } from "./store";
 import { asSystem, systemRows, unowned } from "./testing";
 
@@ -143,8 +143,8 @@ describe("listTeams", () => {
   });
 });
 
-describe("liveTakeCount", () => {
-  it("counts only the live takes of the language, whichever team holds them", async () => {
+describe("liveTakeCounts", () => {
+  it("counts only the live takes of each language, whichever team holds them", async () => {
     const file = `gossip/${tag}count.mp3`;
     const row = (version: number, current: boolean, lang: string) =>
       asSystem.query(
@@ -152,12 +152,14 @@ describe("liveTakeCount", () => {
          values ('quests', $3, $1, 'g:count', $2, $4, 'generated', 1, $5)`,
         [file, version, lang, current, was],
       );
-    const before = await liveTakeCount("deDE");
+    const before = await liveTakeCounts();
     try {
       await row(1, false, "deDE");
       await row(2, true, "deDE");
       await row(1, true, "frFR");
-      expect(await liveTakeCount("deDE")).toBe(before + 1);
+      const after = await liveTakeCounts();
+      expect(after.get("deDE")).toBe((before.get("deDE") ?? 0) + 1);
+      expect(after.get("frFR")).toBe((before.get("frFR") ?? 0) + 1);
     } finally {
       await asSystem.query(`delete from "take" where "file" = $1`, [file]);
     }
