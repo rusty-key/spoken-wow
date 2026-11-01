@@ -235,6 +235,19 @@ describe("queues", () => {
     }
   });
 
+  it("counts a voice's file as overridden when its line's is", async () => {
+    const file = `quests/${ip}.mp3`;
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "file", "lineId", "text") values (team_of_lang('enUS'), $1, 'q:1:accept', 'Mine.')`,
+      [file],
+    );
+    try {
+      expect(await queueFor("wrong_text", "enUS", `quests/${ip}-voice.mp3`)).toBe("audio");
+    } finally {
+      await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
+    }
+  });
+
   it("stores the queue and lists only the queues asked for", async () => {
     await createReport(submission({ category: "pronunciation" }));
     const [report] = (await listReports("open", "all", "all", null)).filter((each) => each.lineId === "q:1:accept");

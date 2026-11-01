@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { signOut, useSession } from "@/lib/auth-client";
 import { isAdmin, langsWhere } from "@/lib/permissions";
+import { triages } from "@/lib/reports/reports";
 
 /**
  * What every visitor gets, signed in or not: the explorers, and the page an addon's
@@ -80,7 +81,7 @@ export default function UserMenu() {
         // Each of these is the page's language's own, and gated on the same capability there as
         // the page it opens -- so a link is never offered to a page that would answer 404.
         may("configure") && { href: "/lexicon", label: "Pronunciation" },
-        (may("text") || may("edit")) && { href: "/reports", label: "Reports" },
+        triages(may) && { href: "/reports", label: "Reports" },
         may("text") && { href: "/contributions", label: "Contributions" },
         may("edit") && { href: "/missing-audio", label: "Missing audio" },
         // Who every NPC is holds in every language, so it is the global admin's alone.

@@ -10,28 +10,20 @@ import type { CorrectionAccept, ReportContribution } from "./contribute";
 import type { Queue, Report, Status } from "./reports";
 
 /** The report as it now stands, or null when the change did not go through. */
-export async function resolveReport(id: number, status: Status): Promise<Report | null> {
-  const response = await fetch("/api/reports/resolve", {
+async function changeReport(path: string, change: Record<string, unknown>): Promise<Report | null> {
+  const response = await fetch(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id, status }),
+    body: JSON.stringify(change),
   }).catch(() => null);
   if (!response?.ok) return null;
   const body = (await response.json().catch(() => null)) as { report?: Report } | null;
   return body?.report ?? null;
 }
 
-/** The report as it now stands, or null when the pass did not go through. */
-export async function passReport(id: number, to: Queue): Promise<Report | null> {
-  const response = await fetch("/api/reports/pass", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id, to }),
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  const body = (await response.json().catch(() => null)) as { report?: Report } | null;
-  return body?.report ?? null;
-}
+export const resolveReport = (id: number, status: Status) => changeReport("/api/reports/resolve", { id, status });
+
+export const passReport = (id: number, to: Queue) => changeReport("/api/reports/pass", { id, to });
 
 /** What the corpus makes of a report's text (lib/reports/contribute.ts), or why it has none. */
 export async function reportContribution(id: number): Promise<ReportContribution | { error: string }> {

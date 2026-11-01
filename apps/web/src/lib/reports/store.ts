@@ -17,12 +17,15 @@
  */
 import { recordActivity } from "@/lib/activity/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { ALL_TEAMS, query, queryIn } from "@/lib/db";
+import { ALL_TEAMS, queryIn } from "@/lib/db";
+import { viewersIn } from "@/lib/grants/store";
+import { isAdmin } from "@/lib/permissions";
+import { overrideOf } from "@/lib/quests/override";
 import { readOverrides } from "@/lib/quests/overrides";
 import { queryAs, readAs } from "@/lib/teams/store";
 
 import type { ReportContext } from "./context";
-import { type Category, type Queue, type Report, type Status } from "./reports";
+import { CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
 import type { Source } from "@/lib/sections";
 
 // Timestamps are cast to text so a Report is the same shape in Postgres, over JSON and in the
@@ -38,10 +41,9 @@ const COLUMNS = `"id", "source", "lineId", "target", "category", "body", "status
  * A complaint about the words goes to whoever keeps them, unless the words were the team's own:
  * `file` is the line's audio path, null where there is none or the section has no overrides.
  */
-export async function queueFor(category: string, lang: Lang, file: string | null): Promise<Queue> {
-  if (category === "other") return "text";
-  if (category !== "wrong_text") return "audio";
-  return file !== null && (await readOverrides(lang)).has(file) ? "audio" : "text";
+export async function queueFor(category: Category, lang: Lang, file: string | null): Promise<Queue> {
+  if (category !== "wrong_text" || file === null) return CATEGORY_QUEUE[category];
+  return overrideOf(await readOverrides(lang), file) ? "audio" : CATEGORY_QUEUE[category];
 }
 
 export async function createReport(input: {
@@ -106,19 +108,18 @@ export async function listReports(
   /** Null for every one: the triage page counts each tab, so it reads them all. */
   limit: number | null = 500,
   lang: Lang = BASE_LANG,
-  /** The queues the viewer works; absent for every report in the language. */
-  queues?: readonly Queue[],
+  /** The queues the viewer works. */
+  queues: readonly Queue[] = QUEUES,
 ): Promise<Report[]> {
   // One language's reports, like every other list on a page in that language: a claim about
   // how a Portuguese take sounds is for whoever looks after the Portuguese.
-  const where: string[] = [`"lang" = $2`];
-  const params: unknown[] = [limit, lang];
+  const where: string[] = [`"lang" = $2`, `"queue" = any($3::text[])`];
+  const params: unknown[] = [limit, lang, queues];
   if (status !== "all") where.push(`"status" = $${params.push(status)}`);
   if (source !== "all") where.push(`"source" = $${params.push(source)}`);
   // Across sources on purpose: "everyone who says a word is being read wrong" is one
   // worklist, and which corpus each of them was playing does not change the fix.
   if (category !== "all") where.push(`"category" = $${params.push(category)}`);
-  if (queues) where.push(`"queue" = any($${params.push(queues)}::text[])`);
 
   return readAs<Report>(
     lang,
@@ -135,17 +136,17 @@ export async function reportsForLine(
   source: Source,
   lineId: string,
   lang: Lang = BASE_LANG,
-  /** The queues the viewer works; absent for every report on the line. */
-  queues?: readonly Queue[],
+  /** The queues the viewer works. */
+  queues: readonly Queue[] = QUEUES,
 ): Promise<Report[]> {
   return readAs<Report>(
     lang,
     `select ${COLUMNS}
        from "report"
       where "source" = $1 and "lineId" = $2 and "lang" = $3
-        and ($4::text[] is null or "queue" = any($4::text[]))
+        and "queue" = any($4::text[])
       order by "status" = 'open' desc, "createdAt" desc`,
-    [source, lineId, lang, queues ?? null],
+    [source, lineId, lang, queues],
   );
 }
 
@@ -173,32 +174,26 @@ export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queu
  * they hold both everywhere, seeded rows or not, so they say nothing about whether the groups differ.
  */
 export async function queueHolders(lang: Lang): Promise<Record<Queue, Set<string>>> {
-  const rows = await query<{ userId: string; queue: Queue }>(
-    `select g."userId", 'text' as "queue"
-       from "language_grant" g join "user" u on u."id" = g."userId"
-      where g."lang" = $1 and u."role" is distinct from 'admin'
-     union
-     select m."userId", 'audio'
-       from "team_member" m join "user" u on u."id" = m."userId"
-      where m."lang" = $1 and m."capability" in ('edit', 'admin') and u."role" is distinct from 'admin'`,
-    [lang],
-  );
-  const holders = (queue: Queue) => new Set(rows.filter((row) => row.queue === queue).map((row) => row.userId));
-  return { text: holders("text"), audio: holders("audio") };
+  const holders: Record<Queue, Set<string>> = { text: new Set(), audio: new Set() };
+  for (const [userId, viewer] of await viewersIn(lang)) {
+    if (isAdmin(viewer.role)) continue;
+    for (const queue of queuesOf(viewer, lang)) holders[queue].add(userId);
+  }
+  return holders;
 }
 
 /** `lang` is the report's, from reportPlace. A report already there is left as it is, and unlogged. */
 export async function setQueue(id: number, queue: Queue, actorId: string, lang: Lang): Promise<Report | null> {
-  const { rows } = await queryAs<Report & { lang: Lang }>(
+  const { rows } = await queryAs<Report>(
     lang,
-    `update "report" set "queue" = $2 where "id" = $1 and "queue" <> $2 returning ${COLUMNS}, "lang"`,
+    `update "report" set "queue" = $2 where "id" = $1 and "queue" <> $2 returning ${COLUMNS}`,
     [id, queue],
   );
-  if (!rows[0]) return reportById(id, lang);
-  const { lang: filed, ...report } = rows[0];
+  const report = rows[0];
+  if (!report) return reportById(id, lang);
   await recordActivity({
     kind: "report.passed",
-    lang: filed,
+    lang,
     source: report.source,
     subject: String(report.id),
     lineId: report.lineId,

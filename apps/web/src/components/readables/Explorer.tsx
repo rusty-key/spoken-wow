@@ -44,6 +44,7 @@ import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { noApiKeyMessage } from "@/lib/no-api-key";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import * as echo from "@/lib/url-echo";
+import { triages } from "@/lib/reports/reports";
 
 // Long enough to hold a whole typed word: the timer restarts on every keystroke, so this is
 // the pause after the last one rather than a rate limit. Enter fires the search immediately.
@@ -62,7 +63,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   const may = useCan();
   const canRegenerate = may("regenerate");
   const canEdit = may("text");
-  const canTriage = may("text") || may("edit");
+  const canTriage = triages(may);
   // The book owner's name in this language, written as its own version in entity_name.
   const [naming, setNaming] = useState<TranslateSubject | null>(null);
 

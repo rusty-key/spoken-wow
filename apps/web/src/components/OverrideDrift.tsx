@@ -7,53 +7,45 @@
 import { useState } from "react";
 
 import { LiteButton } from "@/components/LiteControls";
+import { dropOverride, saveOverride } from "@/lib/quests/override-client";
 
 export default function OverrideDrift({
   file,
   lineId,
   text,
-  canAnswer,
   onAnswered,
 }: {
+  /** Where the override is stored, which a voice's row inherits from its line's. */
   file: string;
   lineId: string;
   text: string;
-  /** The override route's own gate; everybody else only reads the note. */
-  canAnswer: boolean;
   onAnswered: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function answer(method: "PUT" | "DELETE") {
+  async function answer(request: () => Promise<Response>) {
     setBusy(true);
     setError(null);
-    const response = await fetch(
-      method === "PUT" ? "/api/quests/lines/override" : `/api/quests/lines/override?file=${encodeURIComponent(file)}`,
-      {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: method === "PUT" ? JSON.stringify({ file, lineId, text }) : undefined,
-      },
-    ).catch(() => null);
+    const response = await request().catch(() => null);
     setBusy(false);
-    if (response?.ok) onAnswered();
-    else setError("That didn't go through -- try again.");
+    if (response?.ok) {
+      onAnswered();
+      return;
+    }
+    const body = (await response?.json().catch(() => null)) as { error?: string } | null;
+    setError(body?.error ?? "That didn't go through -- try again.");
   }
 
   return (
     <span className="flex flex-wrap items-center gap-1 text-amber-300">
       original changed since your override
-      {canAnswer ? (
-        <>
-          <LiteButton disabled={busy} onClick={() => void answer("PUT")}>
-            Keep
-          </LiteButton>
-          <LiteButton disabled={busy} onClick={() => void answer("DELETE")}>
-            Drop
-          </LiteButton>
-        </>
-      ) : null}
+      <LiteButton disabled={busy} onClick={() => void answer(() => saveOverride(file, lineId, text))}>
+        Keep
+      </LiteButton>
+      <LiteButton disabled={busy} onClick={() => void answer(() => dropOverride(file))}>
+        Drop
+      </LiteButton>
       {error ? <span className="text-destructive">{error}</span> : null}
     </span>
   );

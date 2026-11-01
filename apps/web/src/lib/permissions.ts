@@ -10,7 +10,7 @@
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
-import { CODES, type Lang } from "@/lib/lang";
+import { BASE_LANG, CODES, type Lang } from "@/lib/lang";
 
 const statement = {
   ...defaultStatements,
@@ -155,6 +155,14 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
   return capability !== "text" && can(viewer, "admin", lang);
+}
+
+/**
+ * What writing a quest line's text takes: English's is rewritten through an override, which is
+ * guarded as regeneration is, and every other language's is the original.
+ */
+export function questTextCapability(lang: Lang): Capability {
+  return lang === BASE_LANG ? "regenerate" : "text";
 }
 
 /** Whether somebody holds anything at all in a language, which lets them see it switched off. */

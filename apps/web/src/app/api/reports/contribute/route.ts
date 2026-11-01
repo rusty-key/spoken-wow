@@ -11,8 +11,9 @@ import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import type { Submission } from "@/lib/contributions/contributions";
 import { contributeReport, reportContribution, reportSubmission } from "@/lib/reports/contribute";
-import { queueCapability, type Report } from "@/lib/reports/reports";
-import { reportById, reportPlace } from "@/lib/reports/store";
+import { requireReportQueue } from "@/lib/reports/access";
+import type { Report } from "@/lib/reports/reports";
+import { reportById } from "@/lib/reports/store";
 
 export const dynamic = "force-dynamic";
 
@@ -62,11 +63,9 @@ async function guarded(
     return { denied: Response.json({ error: "unknown report" }, { status: 404 }) };
   }
 
-  // The permission before the existence check, as resolve does.
-  const place = await reportPlace(id);
-  const lang = place?.lang ?? null;
-  const guard = await requireCapability(queueCapability(place?.queue ?? "audio"), lang ?? BASE_LANG);
+  const guard = await requireReportQueue(id);
   if (guard.denied) return { denied: guard.denied };
+  const lang = guard.place?.lang ?? null;
   const report = lang === null ? null : await reportById(id, lang);
   if (!lang || !report) {
     return { denied: Response.json({ error: "unknown report" }, { status: 404 }) };

@@ -37,6 +37,9 @@ import { type Source, isSource } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
 
+/** What a report is filed against. `file` only for a quests line, which is all an override can be on. */
+type Address = { lineId: string | null; target: string; file?: string | null };
+
 /** Deliberately not configurable: a knob nobody turns is a knob set wrong. */
 const PER_HOUR = 10;
 const WINDOW_MS = 60 * 60 * 1000;
@@ -177,7 +180,7 @@ async function contributeMissing(
 async function questsTarget(
   raw: string | null,
   claimed: unknown,
-): Promise<{ lineId: string | null; target: string; file: string | null } | null> {
+): Promise<Address | null> {
   const target = raw ? parseTarget(raw.split("/")) : null;
   if (!target) return null;
 
@@ -195,7 +198,7 @@ async function questsTarget(
  */
 async function readablesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string; file?: string | null } | null> {
+): Promise<Address | null> {
   if (!raw) return null;
 
   const page = await pageById(raw);
@@ -207,7 +210,7 @@ async function readablesTarget(
 /** A places address: the line's own audio path, '1411/razor-hill'. */
 async function placesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string; file?: string | null } | null> {
+): Promise<Address | null> {
   if (!raw) return null;
 
   const [mapID, slug] = raw.split("/");
@@ -220,7 +223,7 @@ async function placesTarget(
 /** A bosses address: the boss's own audio path, '36/edwin-vancleef'. */
 async function bossesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string; file?: string | null } | null> {
+): Promise<Address | null> {
   if (!raw) return null;
 
   // Exactly '<map>/<slug>', as targetExplorerHref reads it: a trailing segment is no address.

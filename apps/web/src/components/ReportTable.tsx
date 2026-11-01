@@ -231,11 +231,12 @@ export default function ReportTable({
     void audio.current?.play().catch(() => {});
   }, [pressed]);
 
-  async function resolve(ids: number[], status: Status) {
+  /** Each report busy until its own request is back, and the answer laid over its row. */
+  async function act(ids: number[], request: (id: number) => Promise<Report | null>) {
     setBusy((current) => new Set([...current, ...ids]));
     await Promise.all(
       ids.map(async (id) => {
-        const report = await resolveReport(id, status);
+        const report = await request(id);
         if (report) setResolved((current) => ({ ...current, [report.id]: report }));
 
         setBusy((current) => {
@@ -247,19 +248,9 @@ export default function ReportTable({
     );
   }
 
-  async function pass(id: number, to: Queue) {
-    setBusy((current) => new Set([...current, id]));
-    const report = await passReport(id, to);
-    if (report) {
-      setResolved((current) => ({ ...current, [report.id]: report }));
-      refresh();
-    }
-    setBusy((current) => {
-      const next = new Set(current);
-      next.delete(id);
-      return next;
-    });
-  }
+  const resolve = (ids: number[], status: Status) => act(ids, (id) => resolveReport(id, status));
+
+  const pass = (id: number, to: Queue) => act([id], (each) => passReport(each, to)).then(refresh);
 
   /** Move one filter and keep the rest, through the URL so a narrowed queue can be shared. */
   const hrefFor = (next: Partial<ReportFilters>, toPage = 1) => localeHref(lang, reportsHref(filters, next, toPage));

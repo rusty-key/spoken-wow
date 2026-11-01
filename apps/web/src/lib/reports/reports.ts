@@ -107,6 +107,21 @@ export function queueCapability(queue: Queue): Capability {
   return queue === "text" ? "text" : "edit";
 }
 
+/** Who a complaint goes to by its category alone. Total, so a new category has to choose. */
+export const CATEGORY_QUEUE: Record<Category, Queue> = {
+  wrong_text: "text",
+  other: "text",
+  pronunciation: "audio",
+  wrong_voice: "audio",
+  audio_quality: "audio",
+  missing: "audio",
+};
+
+/** Whether somebody triages any report, given what they may do in the language. */
+export function triages(may: (capability: Capability) => boolean): boolean {
+  return QUEUES.some((queue) => may(queueCapability(queue)));
+}
+
 /** The queues somebody works in one language, for a list or a route to narrow to. */
 export function queuesOf(viewer: Viewer | null, lang: Lang): Queue[] {
   return QUEUES.filter((queue) => can(viewer, queueCapability(queue), lang));

@@ -205,10 +205,11 @@ export type ResultLine = CorpusLine & {
   dirty: boolean;
   /** The rewritten spoken text, or null. `text` stays what the corpus says. */
   override: string | null;
-  /** The original has changed since the override was saved. Never set without an override. */
-  originalChanged: boolean;
-  /** Where the override is stored: a voice's row inherits its line's, so not always this row. */
-  overrideOwner: { file: string; lineId: string } | null;
+  /**
+   * Set when the original has changed since the override was saved, naming where the override is
+   * stored: a voice's row inherits its line's, so not always this row.
+   */
+  driftedOverride: { file: string; lineId: string } | null;
   /**
    * Whether this line would be voiced *now*, which `generatable` cannot answer: that flag was
    * computed in Python from text nobody could edit yet, so an override that strips a stage
@@ -574,8 +575,7 @@ export function search(
       stale: context.stale?.has(audioPath) ?? false,
       dirty: context.dirty?.has(audioPath) ?? false,
       override,
-      originalChanged: hasDrifted(own, line.text),
-      overrideOwner: own ? { file: own.file, lineId: own.lineId } : null,
+      driftedOverride: own && hasDrifted(own, line.text) ? { file: own.file, lineId: own.lineId } : null,
       voiceable: isVoiceable(line, override ?? line.text),
       narration: hasNarration(override ?? line.text),
       narrationRestored: override !== null && restoresOnlyNarration(override, line.text),

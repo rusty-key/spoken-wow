@@ -473,12 +473,11 @@ export default function LineRow({
                 rewritten
               </span>
             )}
-            {line.override !== null && line.overrideOwner && line.originalChanged && (canEdit || canRegenerate) && (
+            {line.override !== null && line.driftedOverride && canRegenerate && (
               <OverrideDrift
-                file={line.overrideOwner.file}
-                lineId={line.overrideOwner.lineId}
+                file={line.driftedOverride.file}
+                lineId={line.driftedOverride.lineId}
                 text={line.override}
-                canAnswer={canRegenerate}
                 onAnswered={() => onOverrideAnswered(line)}
               />
             )}

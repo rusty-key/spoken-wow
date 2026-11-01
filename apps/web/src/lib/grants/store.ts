@@ -10,7 +10,7 @@ import "server-only";
 import { cache } from "react";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
-import { inTransaction, query, withTeam } from "@/lib/db";
+import { query, withTeam } from "@/lib/db";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
 import { ownerOrAll, teamOf } from "@/lib/teams/store";
 import { isLang, type Lang } from "@/lib/lang";
@@ -47,15 +47,34 @@ export type GrantRow = {
   grantedAt: string;
 };
 
+/** Every grant, read as its capability, whichever table holds it. */
+const GRANTS = `(
+  select "userId", "lang", 'text' as "capability", "grantedAt" from "language_grant"
+  union all
+  select "userId", "lang", "capability", "grantedAt" from "team_member"
+)`;
+
+/** Everybody holding anything in a language, as `can` asks about them. */
+export async function viewersIn(lang: Lang): Promise<Map<string, Viewer>> {
+  const rows = await query<{ userId: string; role: string | null; capability: Capability }>(
+    `select g."userId", u."role", g."capability"
+       from ${GRANTS} g join "user" u on u."id" = g."userId"
+      where g."lang" = $1`,
+    [lang],
+  );
+  const viewers = new Map<string, Viewer>();
+  for (const { userId, role, capability } of rows) {
+    const grants = viewers.get(userId)?.grants ?? [];
+    viewers.set(userId, { role, grants: [...grants, { lang, capability }] });
+  }
+  return viewers;
+}
+
 /** Every grant in the given languages, or in all of them, with who holds it. */
 export async function listGrants(langs?: string[]): Promise<GrantRow[]> {
   const rows = await query<Omit<GrantRow, "grantedAt"> & { grantedAt: Date }>(
     `select g."userId", u."email", u."name", g."lang", g."capability", g."grantedAt"
-       from (
-         select "userId", "lang", 'text' as "capability", "grantedAt" from "language_grant"
-         union all
-         select "userId", "lang", "capability", "grantedAt" from "team_member"
-       ) g join "user" u on u."id" = g."userId"
+       from ${GRANTS} g join "user" u on u."id" = g."userId"
       where $1::text[] is null or g."lang" = any($1::text[])
       order by g."lang", u."email", g."capability"`,
     [langs ?? null],
@@ -130,7 +149,7 @@ async function deleteGrant(userId: string, lang: Lang, capability: Capability): 
     );
     return rows.length > 0;
   }
-  return inTransaction((client) => deleteMember(client, userId, lang, capability));
+  return deleteMember(userId, lang, capability);
 }
 
 /** Somebody to grant to, found by email: a language admin cannot list the users. */

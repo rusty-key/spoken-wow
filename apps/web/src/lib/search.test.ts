@@ -354,7 +354,7 @@ describe("overrides", () => {
         store,
         { limit: 50_000, includeProgress: true },
         { overrides: new Map([[file, { file, lineId: "", text: "x", updatedAt: "", updatedBy: null, originalHash }]]) },
-      ).lines.find((line) => line.audioPath === file)?.originalChanged;
+      ).lines.find((line) => line.audioPath === file)?.driftedOverride !== null;
     const text = corpus.lines.find((line) => audioRelPath(line) === file)!.text;
 
     expect(flagged(spokenHash(text))).toBe(false);
@@ -376,9 +376,7 @@ describe("overrides", () => {
         },
       ).lines.find((line) => line.audioPath === file);
 
-    const inherited = row("quests/123-complete.mp3");
-    expect(inherited?.originalChanged).toBe(true);
-    expect(inherited?.overrideOwner).toEqual({ file: owner, lineId: "q:123" });
+    expect(row("quests/123-complete.mp3")?.driftedOverride).toEqual({ file: owner, lineId: "q:123" });
   });
 
   it("narrows to audio the current text would no longer produce", () => {

@@ -4,10 +4,9 @@
  *
  * Gated on the queue it is leaving: a report can be handed on only by whoever it waits for.
  */
-import { requireCapability } from "@/lib/generation/authz";
-import { BASE_LANG } from "@/lib/lang";
-import { isQueue, queueCapability } from "@/lib/reports/reports";
-import { reportPlace, setQueue } from "@/lib/reports/store";
+import { requireReportQueue } from "@/lib/reports/access";
+import { isQueue } from "@/lib/reports/reports";
+import { setQueue } from "@/lib/reports/store";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +21,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "unknown queue" }, { status: 400 });
   }
 
-  // The permission before the existence check, as resolve does.
-  const place = await reportPlace(id);
-  const { session, denied } = await requireCapability(
-    queueCapability(place?.queue ?? "audio"),
-    place?.lang ?? BASE_LANG,
-  );
+  const { place, session, denied } = await requireReportQueue(id);
   if (denied) return denied;
 
   const report = place && (await setQueue(id, body.to, session.user.id, place.lang));

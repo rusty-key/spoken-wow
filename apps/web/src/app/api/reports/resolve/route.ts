@@ -9,10 +9,9 @@
  * who already act on its lines, and a report they have read and dismissed should not need an
  * admin to close. A Portuguese report is a Portuguese translator's, and not an English one's.
  */
-import { requireCapability } from "@/lib/generation/authz";
-import { BASE_LANG } from "@/lib/lang";
-import { isStatus, queueCapability } from "@/lib/reports/reports";
-import { reportPlace, setStatus } from "@/lib/reports/store";
+import { requireReportQueue } from "@/lib/reports/access";
+import { isStatus } from "@/lib/reports/reports";
+import { setStatus } from "@/lib/reports/store";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +26,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "unknown status" }, { status: 400 });
   }
 
-  // The id is checked for existence only after the permission, so a member learns nothing
-  // about which ids exist.
-  const place = await reportPlace(id);
-  const { session, denied } = await requireCapability(
-    queueCapability(place?.queue ?? "audio"),
-    place?.lang ?? BASE_LANG,
-  );
+  const { place, session, denied } = await requireReportQueue(id);
   if (denied) return denied;
   if (place === null) {
     return Response.json({ error: "unknown report" }, { status: 404 });
