@@ -4,13 +4,13 @@
   "type": "module",
   "description": "Dependencies for the zones pipeline. The scrapers and the addon build stay dependency-free; only the voiceline store needs a Postgres client and only the lore rewrite needs the Claude SDK. A workspace member so that pnpm installs pg here, where voice/db.mjs's upward resolution can find it -- which is what the old repo needed a second, npm-managed root package for.",
   "scripts": {
-    "test": "node --test tools/lib/*.test.mjs tools/bosses/*.test.mjs"
+    "test": "node --test tools/lib/*.test.mjs tools/bosses/*.test.mjs tools/voice/*.test.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test tools/lib/*.test.mjs tools/bosses/*.test.mjs"
+    "test": "node --test tools/lib/*.test.mjs tools/bosses/*.test.mjs tools/voice/*.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
