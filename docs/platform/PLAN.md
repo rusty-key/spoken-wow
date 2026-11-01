@@ -18,7 +18,9 @@ production (`one-off/2026-10-archive-to-r2/README.md`).
 1. The archive bucket is public. Objects are named by their hash, so an address is only known
    to whoever was given it. Only shared takes are served from it directly; recordings, voice
    clips and references go through the site, because a bucket URL outlives a revoked grant.
-2. GitHub Actions holds the pack signing key (`.github/workflows/release-packs.yaml`).
+2. The droplet holds the pack signing key for Places, Readables and Bosses
+   (`scripts/manager/release-job.mjs`, in `shared/release.env`, never `app.env`). GitHub Actions
+   holds it for Quests (`.github/workflows/release-packs.yaml`).
 3. Quests takes are encoded to the pack's Ogg when they are committed.
 
 ## Phase 1: the archive is a bucket

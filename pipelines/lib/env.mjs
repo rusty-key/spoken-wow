@@ -32,7 +32,7 @@ export function envPaths(name) {
   return name ? [ROOT_ENV_PATH, pipelineEnvPath(name)] : [ROOT_ENV_PATH];
 }
 
-function parse(text) {
+export function parseEnv(text) {
   const values = new Map();
   for (const line of text.split("\n")) {
     const match = line.match(/^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=\s*(.*)$/);
@@ -48,7 +48,7 @@ async function read(paths) {
   const values = new Map();
   for (const path of paths) {
     if (!existsSync(path)) continue;
-    for (const [name, value] of parse(await readFile(path, "utf8"))) values.set(name, value);
+    for (const [name, value] of parseEnv(await readFile(path, "utf8"))) values.set(name, value);
   }
   return values;
 }

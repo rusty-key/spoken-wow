@@ -19,6 +19,12 @@ vi.mock("@/lib/releases/github", async (original) => ({
   ...github,
 }));
 
+const droplet = vi.hoisted(() => ({ startDropletRun: vi.fn() }));
+vi.mock("@/lib/releases/droplet", async (original) => ({
+  ...(await original<typeof import("@/lib/releases/droplet")>()),
+  ...droplet,
+}));
+
 import { GET, POST } from "./route";
 
 let user: Awaited<ReturnType<typeof testUser>>;
@@ -51,6 +57,7 @@ beforeEach(() => {
   forgetReleaseCheck();
   github.dispatchRelease.mockReset().mockResolvedValue(undefined);
   github.findRun.mockReset().mockResolvedValue(null);
+  droplet.startDropletRun.mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(async () => {
@@ -87,6 +94,36 @@ describe("release route", () => {
     const { run } = await response.json();
     expect(run).toMatchObject({ section: "quests", lang: "frFR", state: "dispatching" });
     expect(github.dispatchRelease.mock.calls[0][0]).toMatchObject({ id: run.id, section: "quests", lang: "frFR" });
+  });
+
+  it("starts a section the droplet can release there, and quests still on GitHub", async () => {
+    vi.stubEnv("SPOKEN_RELEASE_ENV", "/srv/spoken/shared/release.env");
+    try {
+      const bosses = await press("frFR", { section: "bosses" });
+      expect(bosses.status).toBe(202);
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
+      expect(github.dispatchRelease).not.toHaveBeenCalled();
+      await asSystem.query(`delete from "release_run"`);
+
+      expect((await press("frFR", { section: "quests" })).status).toBe(202);
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
+      expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("answers 502 with the reason when the job cannot start, and frees the lock", async () => {
+    vi.stubEnv("SPOKEN_RELEASE_ENV", "/srv/spoken/shared/release.env");
+    try {
+      droplet.startDropletRun.mockRejectedValueOnce(new Error("spawn setsid ENOENT"));
+      const failed = await press("frFR", { section: "bosses" });
+      expect(failed.status).toBe(502);
+      expect((await failed.json()).error).toBe("spawn setsid ENOENT");
+      expect((await press("frFR", { section: "bosses" })).status).toBe(202);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("answers 409 naming the active run, and does not dispatch again", async () => {

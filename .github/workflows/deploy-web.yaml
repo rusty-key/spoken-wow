@@ -30,6 +30,15 @@ on:
       - "addons/Spoken_Places/Data/**"
       # Its version is read into the bundle, so a report page knows what the latest release is.
       - "addons/Spoken/Spoken.toc"
+      # What the Release button runs on the droplet. A pack's version is on its store page, so
+      # a page changed without a deploy would publish the old one.
+      - "scripts/manager/**"
+      - "scripts/lib/**"
+      - "scripts/audio/**"
+      - "publishers/**"
+      - "addons/SpokenPlacesAudio/**"
+      - "addons/SpokenReadablesAudio/**"
+      - "addons/SpokenBossesAudio/**"
       - "deploy/web/**"
       - ".github/workflows/deploy-web.yaml"
   workflow_dispatch:
@@ -185,6 +194,9 @@ jobs:
           # release directory, so without this a deploy has nothing to apply.
           cp -a apps/web/migrations "$R"/migrations
 
+          deploy/web/assemble-release-tools.sh "$R"/release-tools
+
+          test -f "$R"/release-tools/scripts/manager/release-job.mjs
           test -f "$R"/apps/web/server.js
           test -f "$R"/apps/web/public/icons/places.png   # public/ survived the copy
           test -L "$R"/apps/web/node_modules/next   # symlink survived the copy

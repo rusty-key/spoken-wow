@@ -21,6 +21,8 @@ export type RunView = {
   githubUrl?: string | null;
   step?: string | null;
   error?: string | null;
+  /** The end of the output, for a run this machine ran. */
+  log?: string | null;
 };
 
 export type ReleaseView = { active: RunView | null; recent: RunView[] };

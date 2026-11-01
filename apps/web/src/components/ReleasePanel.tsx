@@ -25,6 +25,16 @@ function RunLink({ run, children }: { run: RunView; children: React.ReactNode })
   );
 }
 
+function RunLog({ run }: { run: RunView }) {
+  if (!run.log) return null;
+  return (
+    <details className="ml-2 inline-block align-top">
+      <summary className="cursor-pointer underline underline-offset-4">Log</summary>
+      <pre className="bg-muted mt-2 max-h-80 max-w-3xl overflow-auto rounded p-3 text-xs whitespace-pre-wrap">{run.log}</pre>
+    </details>
+  );
+}
+
 export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
   const [view, setView] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +102,10 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
               <span className="w-28 font-medium capitalize">{section}</span>
               <span className="text-muted-foreground flex-1 text-sm">
                 {current ? (
-                  <RunLink run={current}>{current.step ?? SHOWN[current.state]}</RunLink>
+                  <>
+                    <RunLink run={current}>{current.step ?? SHOWN[current.state]}</RunLink>
+                    <RunLog run={current} />
+                  </>
                 ) : last ? (
                   <>
                     <Badge variant={last.state === "done" ? "secondary" : "destructive"}>{SHOWN[last.state]}</Badge>
@@ -102,6 +115,7 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
                         <RunLink run={last}>Run</RunLink>
                       </span>
                     )}
+                    <RunLog run={last} />
                   </>
                 ) : (
                   "Not released from here yet"

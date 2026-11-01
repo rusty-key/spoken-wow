@@ -1,3 +1,7 @@
+import { mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
@@ -51,6 +55,62 @@ describe("syncActive", () => {
   async function age(id: string, minutes: number) {
     await asSystem.query(`update "release_run" set "createdAt" = now() - make_interval(mins => $2) where "id" = $1`, [id, minutes]);
   }
+
+  describe("a job on this machine", () => {
+    let shared: string;
+
+    function job(id: string, files: Record<string, string>) {
+      const dir = join(shared, "release-runs", id);
+      mkdirSync(dir, { recursive: true });
+      for (const [name, text] of Object.entries({ log: "", heartbeat: "", ...files })) writeFileSync(join(dir, name), text);
+      return dir;
+    }
+
+    const row = async (id: string) =>
+      (await systemRows<{ state: string; step: string | null; error: string | null }>(
+        `select "state", "step", "error" from "release_run" where "id" = $1`, [id],
+      ))[0];
+
+    beforeEach(() => {
+      shared = mkdtempSync(join(tmpdir(), "release-sync-"));
+      vi.stubEnv("SPOKEN_RELEASE_ENV", join(shared, "release.env"));
+    });
+
+    it("shows its step without asking GitHub", async () => {
+      const run = await startRun("bosses", "frFR", user.id);
+      job(run.id, { log: "==> step 1/5: clip pointers\n==> step 2/5: lookup\n" });
+      const asked = github(null);
+      expect(await syncActive(asked)).toMatchObject({ state: "running", step: "lookup, step 2 of 5" });
+      expect(asked).not.toHaveBeenCalled();
+    });
+
+    it("settles on its exit code, naming the failure", async () => {
+      const good = await startRun("bosses", "frFR", user.id);
+      job(good.id, { exit: "0" });
+      expect(await syncActive()).toBeNull();
+      expect((await row(good.id)).state).toBe("done");
+
+      const bad = await startRun("bosses", "frFR", user.id);
+      job(bad.id, { exit: "1", log: "error: SpokenBossesAudio would lose 40 files\n" });
+      expect(await syncActive()).toBeNull();
+      expect(await row(bad.id)).toMatchObject({ state: "failed", error: "SpokenBossesAudio would lose 40 files" });
+    });
+
+    it("frees the lock when the job stops beating", async () => {
+      const run = await startRun("bosses", "frFR", user.id);
+      const dir = job(run.id, {});
+      const old = new Date(Date.now() - 4 * 60_000);
+      utimesSync(join(dir, "heartbeat"), old, old);
+      expect(await syncActive()).toBeNull();
+      expect(await row(run.id)).toMatchObject({ state: "failed", error: "The release process stopped without finishing" });
+    });
+
+    it("leaves a run with no job directory to GitHub", async () => {
+      await startRun("quests", "frFR", user.id);
+      const asked = github({ status: "queued" });
+      expect(await syncActive(asked)).toMatchObject({ state: "running", githubUrl: "https://gh/99" });
+    });
+  });
 
   it("marks a completed success done and returns nothing active", async () => {
     const run = await startRun("quests", "frFR", user.id);

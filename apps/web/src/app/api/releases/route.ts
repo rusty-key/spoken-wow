@@ -1,6 +1,7 @@
 import { requireCapability } from "@/lib/generation/authz";
 import { langName } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
+import { runsOnDroplet, startDropletRun } from "@/lib/releases/droplet";
 import { dispatchRelease } from "@/lib/releases/github";
 import { isReleaseSection, RELEASE_SECTIONS } from "@/lib/releases/sections";
 import { ReleaseBusyError, startRun, updateRun } from "@/lib/releases/store";
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await dispatchRelease(run);
+    await (runsOnDroplet(run.section) ? startDropletRun(run) : dispatchRelease(run));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "the release could not be started";
     await updateRun(run.id, { state: "failed", error: reason });

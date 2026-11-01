@@ -1,12 +1,16 @@
 /**
- * Settles the active release run from GitHub, so the page needs no webhook: whoever looks
- * at it moves it on.
+ * Settles the active release run from its job on this machine or from GitHub, so the page needs
+ * no webhook: whoever looks at it moves it on.
  */
 import "server-only";
 
+import { currentStep, failureReason, readDropletRun, type DropletRun } from "./droplet";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
 import { activeRun, updateRun, type ReleaseRun } from "./store";
 
+// Twelve missed heartbeats. A reboot or an out-of-memory kill leaves no exit file, and nobody
+// could press Release until someone noticed.
+const JOB_LOST_AFTER_MS = 3 * 60_000;
 const CHECK_EVERY_MS = 15_000;
 const GIVE_UP_AFTER_MS = 15 * 60_000;
 // Past the workflow's 240-minute timeout with another run queued ahead of it. An expired token
@@ -32,9 +36,29 @@ async function lookup(run: ReleaseRun, fetchFn: typeof fetch): Promise<{ found: 
   }
 }
 
+async function settleFromJob(run: ReleaseRun, job: DropletRun, now: number): Promise<ReleaseRun | null> {
+  if (job.exitCode !== null) {
+    await updateRun(
+      run.id,
+      job.exitCode === 0 ? { state: "done" } : { state: "failed", error: failureReason(job.log, job.exitCode) },
+    );
+    return null;
+  }
+  if (now - job.heartbeatAt > JOB_LOST_AFTER_MS) {
+    await updateRun(run.id, { state: "failed", error: "The release process stopped without finishing" });
+    return null;
+  }
+  const step = currentStep(job.log);
+  if (run.state === "running" && run.step === (step ?? run.step)) return run;
+  const updated = await updateRun(run.id, { state: "running", step });
+  return updated.state === "running" ? updated : null;
+}
+
 export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Date.now()): Promise<ReleaseRun | null> {
   const run = await activeRun();
   if (!run) return null;
+  const job = await readDropletRun(run.id);
+  if (job) return settleFromJob(run, job, now);
   if (checked && checked.runId === run.id && now - checked.at < CHECK_EVERY_MS) return run;
   checked = { runId: run.id, at: now };
 
