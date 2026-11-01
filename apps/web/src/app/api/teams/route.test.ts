@@ -144,6 +144,18 @@ describe("teams routes", () => {
     expect(await systemRows(`select 1 from "team" where "slug" like $1`, [`%-${tag}`])).toHaveLength(0);
   });
 
+  it("hands over a language named twice once", async () => {
+    const response = await post({ slug: `twice-${tag}`, name: "T", langs: ["deDE", "deDE"] });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { team: { langs: string[] } }).team.langs).toEqual(["deDE"]);
+  });
+
+  it("answers 400 to an admin email with no language to admin, creating nothing", async () => {
+    const response = await POST(json("POST", { slug: `lone-${tag}`, name: "x", langs: [], adminEmail: `${who.id}@example.invalid` }));
+    expect(response.status).toBe(400);
+    expect(await systemRows(`select 1 from "team" where "slug" = $1`, [`lone-${tag}`])).toHaveLength(0);
+  });
+
   it("answers 400 to an admin email nobody has", async () => {
     const response = await POST(json("POST", { slug: `ghost-${tag}`, name: "x", langs: [], adminEmail: "nobody@example.invalid" }));
     expect(response.status).toBe(400);

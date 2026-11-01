@@ -49,7 +49,7 @@ afterEach(async () => {
 afterAll(closeDb);
 
 async function newTeam(slug = `t-${tag}`): Promise<string> {
-  const team = await createTeam({ slug, name: `Team ${tag}`, adminEmail: null }, actor);
+  const { id: team } = await createTeam({ slug, name: `Team ${tag}`, adminEmail: null }, actor);
   made.push(team);
   return team;
 }
@@ -77,8 +77,9 @@ describe("createTeam", () => {
   });
 
   it("accepts a known admin email and writes the team alone", async () => {
-    const team = await createTeam({ slug: `t-${tag}`, name: "x", adminEmail: `${actor}@example.invalid` }, actor);
+    const { id: team, adminId } = await createTeam({ slug: `t-${tag}`, name: "x", adminEmail: `${actor}@example.invalid` }, actor);
     made.push(team);
+    expect(adminId).toBe(actor);
     expect(await systemRows(`select 1 from "team_member" where "teamId" = $1`, [team])).toHaveLength(0);
     expect(await systemRows(`select 1 from "team_language" where "teamId" = $1`, [team])).toHaveLength(0);
   });

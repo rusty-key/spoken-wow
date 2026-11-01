@@ -1,7 +1,7 @@
 /**
  * Teams, for site owners only: the list, and a new team with the languages it starts with.
  */
-import { addGrants, userByEmail } from "@/lib/grants/store";
+import { addGrants } from "@/lib/grants/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { createTeam, handOver, listTeams, TeamBusyError, TeamInputError } from "@/lib/teams/admin";
 
@@ -29,16 +29,19 @@ export async function POST(request: Request) {
     return bad("adminEmail is an email address.");
   }
   const email = typeof adminEmail === "string" && adminEmail.trim() ? adminEmail.trim() : null;
+  // A language named twice would be refused the second time, as already the team's.
+  const given = [...new Set(langs as Lang[])];
+  // The admin is granted per language, so with none they would be granted nothing.
+  if (email && !given.length) return bad("An admin needs a language to admin.");
 
   try {
-    const team = await createTeam({ slug, name: name.trim(), adminEmail: email }, who.userId);
-    const admin = email ? await userByEmail(email) : null;
+    const { id: team, adminId } = await createTeam({ slug, name: name.trim(), adminEmail: email }, who.userId);
     const moved: Lang[] = [];
-    for (const lang of langs as Lang[]) {
+    for (const lang of given) {
       try {
         await handOver(lang, team, who.userId);
         moved.push(lang);
-        if (admin) await addGrants(admin.id, lang, ["admin"], who.userId);
+        if (adminId) await addGrants(adminId, lang, ["admin"], who.userId);
       } catch (error) {
         // The team and what already moved stay, which the message has to say.
         const done = moved.length ? `moved ${moved.join(", ")}; ` : "";

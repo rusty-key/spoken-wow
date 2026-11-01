@@ -60,23 +60,29 @@ export async function listTeams(): Promise<TeamSummary[]> {
 
 /**
  * Writes the team alone: membership is per language, so its first admin is granted once a
- * language is handed over. `adminEmail` is only checked here.
+ * language is handed over. `adminEmail` is only checked here; its user's id is returned for
+ * that grant.
  */
 export async function createTeam(
   input: { slug: string; name: string; adminEmail: string | null },
   actorId: string,
-): Promise<TeamId> {
+): Promise<{ id: TeamId; adminId: string | null }> {
   if (!SLUG.test(input.slug)) {
     throw new TeamInputError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
   }
   const team = await withTeam(ALL_TEAMS, async (client) => {
+    let adminId: string | null = null;
     if (input.adminEmail !== null) {
-      const user = await client.query(`select 1 from "user" where lower("email") = lower($1)`, [input.adminEmail]);
-      if (!user.rowCount) throw new TeamInputError(`No user has the email ${input.adminEmail}.`);
+      const { rows } = await client.query<{ id: string }>(
+        `select "id" from "user" where lower("email") = lower($1)`,
+        [input.adminEmail],
+      );
+      if (!rows[0]) throw new TeamInputError(`No user has the email ${input.adminEmail}.`);
+      adminId = rows[0].id;
     }
     try {
       const { rows } = await client.query<{ id: TeamId }>(`select new_team($1, $2) as "id"`, [input.slug, input.name]);
-      return rows[0].id;
+      return { id: rows[0].id, adminId };
     } catch (error) {
       // new_team raises 23505 on a taken slug; 23514 is the slug check, which SLUG mirrors.
       const code = (error as { code?: string }).code;
