@@ -122,9 +122,14 @@ team-level `edit` that covers the team's text overrides, audio reports and missi
   your override"**, and the team keeps or drops it. Keeping saves the same text again, which marks
   the new original as seen. An override saved before this flag existed stays quiet until saved again.
 
-The two never mix. The pencil always writes an override. The original changes through imports and
-accepted corrections, in English too, so a text maintainer works in contributions. Editing the
-original directly, and a translator's way to fill in a line with no text, come later.
+The pencil writes an override. The one exception is text that branches on the reader's gender on a
+plain line, in any language: one file cannot say both, so saving splits the line into `:m` and `:f`,
+which changes the original every team shares. That is deliberate for now.
+
+The original otherwise changes through imports and accepted corrections, in English too, so a text
+maintainer works in contributions. Editing the original directly, and a translator's way to fill in
+a line with no text, come later. Until then a `wrong_text` report that carries no replacement text
+can be answered from the site but not fixed.
 
 ## Contributions and reports
 

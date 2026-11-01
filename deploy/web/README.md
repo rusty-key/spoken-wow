@@ -539,7 +539,9 @@ names the old key, so for the seconds between migrating and the symlink swap sav
 fails. Nothing else does.
 
 **After a rollback, run this at once**, or English overrides cannot be saved. The other languages'
-overrides stay in the table, unread, and come back on the next deploy:
+overrides stay in the table and come back on the next deploy. The previous release does not read
+them, unless the English team also holds that language: it reads every row its team can see, so
+such a row would replace English's text for that file. Delete those first.
 
 ```bash
 psql "$PROD_DATABASE_URL" -c 'alter table line_override add constraint line_override_team_file unique ("teamId", "file")'

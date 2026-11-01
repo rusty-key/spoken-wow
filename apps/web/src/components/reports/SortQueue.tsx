@@ -225,7 +225,8 @@ export default function SortQueue({
     if (index > 0 && !busy) goTo(index - 1);
   }
 
-  const canEdit = canEditText && line !== null;
+  // A quest line with no text in the language has nothing to override.
+  const canEdit = canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text);
   // An unwritten boss has nothing to voice, and the server would refuse it.
   const canRegenerateLine = canRegenerate && line !== null && detail?.text !== null;
 

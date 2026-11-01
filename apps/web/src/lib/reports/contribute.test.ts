@@ -113,20 +113,20 @@ describe("reportContribution", () => {
     expect((await reportContribution(submission)).state).toEqual({ kind: "missing" });
   });
 
-  it("shows text the line prints but does not speak as a correction against what it speaks", async () => {
+  it("compares on the original, whatever a team's override says", async () => {
     await asSystem.query(
       `insert into "line_override" ("file", "lineId", "text", "teamId")
        values ($1, $2, 'Goodbye, friend.', team_of_lang('enUS'))`,
       [file, lineId],
     );
     try {
-      const submission = reportSubmission(await report("Hello, $n."));
-      if (typeof submission === "string") throw new Error(submission);
-      expect((await reportContribution(submission)).state).toEqual({
-        kind: "changed",
-        wordings: [{ lineId, variant: 0, before: "Goodbye, friend." }],
-        closest: 0,
-      });
+      const unchanged = reportSubmission(await report("Hello, $n."));
+      if (typeof unchanged === "string") throw new Error(unchanged);
+      expect((await reportContribution(unchanged)).state.kind).toBe("known");
+
+      const overridden = reportSubmission(await report("Goodbye, friend."));
+      if (typeof overridden === "string") throw new Error(overridden);
+      expect((await reportContribution(overridden)).state.kind).toBe("changed");
     } finally {
       await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
     }

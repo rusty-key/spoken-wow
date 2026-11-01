@@ -33,8 +33,8 @@ import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/kno
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
 import { contributionByDedup, type Contribution } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
+import { query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { readAs } from "@/lib/teams/store";
 
 import type { Report } from "./reports";
 import { setStatus } from "./store";
@@ -145,20 +145,17 @@ export async function contributeReport(
 
 /**
  * The report's text against the corpus: known.ts's answer, except that a quest moment's wordings
- * are compared on what they speak -- the English override where one is set, else the line's own
- * text -- in the order and shape known.ts lists them.
+ * are compared on their text rather than what they print, in the order and shape known.ts lists
+ * them. Never on a team's override: a correction changes the original, which the override sits above.
  */
 async function reportState(submission: Submission): Promise<LineState> {
   const [state] = await lineStates([submission]);
   const { quest, event } = submission.meta;
   if (state.kind === "missing" || submission.source !== "quests" || !quest || !event || !submission.text) return state;
 
-  // As the language's team, whose overrides they are.
-  const rows = await readAs<{ lineId: string; variant: number; text: string }>(
-    submission.locale as Lang,
-    `select l."lineId", l."variant", coalesce(o."text", l."text") as "text"
+  const rows = await query<{ lineId: string; variant: number; text: string }>(
+    `select l."lineId", l."variant", l."text"
        from "quest_line" l
-       left join "line_override" o on o."lineId" = l."lineId" and o."lang" = l."lang"
       where l."lang" = $2 and l."isCurrent" and ${wordingsOfMomentSql(`l."questId"`, `l."source"`, "$1")}
       order by l."lineId" ~ ':w[0-9]+(:[mf])?$', l."lineId", l."variant"`,
     [`q:${quest}:${event}`, submission.locale],

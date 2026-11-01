@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { withLang } from "@/lib/lang";
@@ -21,8 +21,6 @@ type Version = {
   origin: "extracted" | "edited" | "contributed" | "community";
   note: string | null;
   createdAt: string;
-  /** The field is `text` on a line and `name` on a name. */
-  text?: string;
   name?: string;
 };
 
@@ -34,17 +32,12 @@ export type TranslateSubject = {
   english: string;
   /** This language's current wording, or null where there is none yet. */
   current: string | null;
-  /** The API route, e.g. /api/quests/lines/text or /api/names. */
+  /** The API route. */
   endpoint: string;
-  /** What addresses the thing on that route: { lineId, variant } or { kind, entityId }. */
+  /** What addresses the thing on that route. */
   address: Record<string, string | number>;
-  /** The field the route calls the text: `text` for a line, `name` for a name. */
-  field: "text" | "name";
-  /** A line is a paragraph; a name is one line. */
-  multiline: boolean;
 };
 
-/** A quest line's text, in a language other than English. */
 /** A thing's name: a quest's, an NPC's, a book owner's, a place's. */
 export function nameSubject(args: {
   kind: string;
@@ -62,8 +55,6 @@ export function nameSubject(args: {
     current: args.current,
     endpoint: "/api/names",
     address: { kind: args.kind, entityId: args.entityId },
-    field: "name",
-    multiline: false,
   };
 }
 
@@ -115,12 +106,12 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
   }, [subject, lang]);
 
   const send = useCallback(
-    async (method: "PUT" | "POST", body: Record<string, unknown>, done: (v: string) => void) => {
+    async (body: Record<string, unknown>, done: (v: string) => void) => {
       if (!subject) return;
       setBusy(true);
       setError(null);
       const res = await fetch(withLang(lang, subject.endpoint), {
-        method,
+        method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...subject.address, ...body }),
       }).catch(() => null);
@@ -133,7 +124,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
         return;
       }
       const data = (await res.json()) as { version: Version };
-      done(data.version[subject.field] ?? "");
+      done(data.version.name ?? "");
     },
     [subject, lang],
   );
@@ -145,8 +136,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
 
   function save() {
     void send(
-      "PUT",
-      { [subject!.field]: value, note: note.trim() || null, expectedVersion: baseVersion },
+      { name: value, note: note.trim() || null, expectedVersion: baseVersion },
       (saved) => {
         onSaved(subject!, saved);
         onClose();
@@ -169,34 +159,18 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
         {subject.english}
       </p>
 
-      {subject.multiline ? (
-        <textarea
-          autoFocus
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          rows={10}
-          className="border-border bg-background w-full rounded border p-2 text-sm leading-relaxed"
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && changed) {
-              event.preventDefault();
-              save();
-            }
-          }}
-        />
-      ) : (
-        <input
-          autoFocus
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          className="border-border bg-background w-full rounded border p-2 text-sm"
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && changed) {
-              event.preventDefault();
-              save();
-            }
-          }}
-        />
-      )}
+      <input
+        autoFocus
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        className="border-border bg-background w-full rounded border p-2 text-sm"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && changed) {
+            event.preventDefault();
+            save();
+          }
+        }}
+      />
 
       <input
         value={note}
@@ -220,25 +194,10 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
                 </span>
                 <span className="text-muted-foreground w-20 shrink-0 truncate">{version.origin}</span>
                 <span className="text-muted-foreground truncate">
-                  {version.note ?? version[subject.field]}
+                  {version.note ?? version.name}
                 </span>
                 {version.isCurrent ? (
                   <span className="ml-auto shrink-0 text-emerald-400">live</span>
-                ) : subject.field === "text" ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void send("POST", { version: version.version }, (restored) => {
-                        onSaved(subject, restored);
-                        onClose();
-                      })
-                    }
-                    title="Make this the live text"
-                    className="text-muted-foreground/50 hover:bg-accent hover:text-foreground ml-auto shrink-0 rounded p-1"
-                  >
-                    <RotateCcw size={12} />
-                  </button>
                 ) : null}
               </li>
             ))}
