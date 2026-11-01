@@ -1,5 +1,4 @@
--- Additive: one row per press of Release on the site. 0090's default privileges give the app
--- role its grants on a table made here.
+-- Additive. The app role's grants on this table come from default privileges.
 
 create table "release_run" (
   "id"          uuid        primary key default gen_random_uuid(),
@@ -29,8 +28,8 @@ create policy "team_isolation" on "release_run"
   using ("teamId" = spoken_team() or spoken_all_teams())
   with check ("teamId" = spoken_team() or spoken_all_teams());
 
--- As 0091's, with release_run on the list: a handover would otherwise hide the language's
--- release history from its new team, and show a run in flight as another team's.
+-- A handover moves release_run too: otherwise the language's release history hides from its new
+-- team, and a run in flight shows as another team's.
 create or replace function "move_team_lang"(p_lang text, p_team uuid) returns integer
 language plpgsql security invoker as $$
 declare

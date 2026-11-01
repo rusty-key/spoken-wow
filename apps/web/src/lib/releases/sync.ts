@@ -17,7 +17,6 @@ const LOST_AFTER_MS = 9 * 60 * 60_000;
 // a moment ago shows at once. Keyed by run, so a new run is asked about straight away.
 let checked: { runId: string; at: number } | null = null;
 
-/** Drops the memo. For tests. */
 export function forgetReleaseCheck(): void {
   checked = null;
 }

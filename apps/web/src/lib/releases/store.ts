@@ -1,6 +1,6 @@
 /**
- * A press of Release on the site (migration 0095), one row each. At most one run is active
- * site-wide: the unique index says so, across teams that cannot see each other's rows.
+ * At most one run is active site-wide: the unique index holds across teams that cannot see each
+ * other's rows.
  */
 import "server-only";
 

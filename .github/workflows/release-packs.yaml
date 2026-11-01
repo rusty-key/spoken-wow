@@ -120,7 +120,7 @@ jobs:
       - name: The live clips, from the bucket
         run: make "$SECTION-pull-live" LOCALE="$LOCALE"
       # English's places zip carries the bosses pack, and packaging refuses a missing or stale
-      # bosses build (make/places.mk full-release).
+      # bosses build.
       - name: The bosses pack that English's places zip carries
         if: ${{ inputs.section == 'places' && inputs.locale == 'enUS' }}
         env:

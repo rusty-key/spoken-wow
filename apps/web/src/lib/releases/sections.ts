@@ -1,4 +1,4 @@
-/** Browser-safe: the panel and the route share one list, and store.ts is server-only. */
+/** Browser-safe: the panel imports it, and store.ts is server-only. */
 export const RELEASE_SECTIONS = ["quests", "places", "readables", "bosses"] as const;
 
 export type ReleaseSection = (typeof RELEASE_SECTIONS)[number];
@@ -14,7 +14,7 @@ export type RunView = {
   section: string;
   lang: string;
   state: ReleaseState;
-  /** False for another team's run, which shows no link, step or error. */
+  /** False for another team's run. */
   own: boolean;
   githubUrl?: string | null;
   step?: string | null;

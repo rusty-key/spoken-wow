@@ -1,7 +1,4 @@
-/**
- * The site's side of the release workflow: start it, and find it again by the name the site
- * gave it. The token never reaches a message or a log; errors carry GitHub's own words only.
- */
+/** The token never reaches a message or a log; errors carry GitHub's own words only. */
 import "server-only";
 
 const WORKFLOW = "release-packs.yaml";
@@ -17,7 +14,6 @@ export type GithubRun = {
 
 type Fetch = typeof fetch;
 
-/** No token or no repository configured: not a GitHub failure, and not worth a retry. */
 export class GithubNotConfiguredError extends Error {
   constructor() {
     super("releases need SPOKEN_RELEASE_GITHUB_TOKEN and SPOKEN_RELEASE_GITHUB_REPO set");

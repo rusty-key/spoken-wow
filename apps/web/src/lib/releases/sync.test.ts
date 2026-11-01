@@ -10,7 +10,6 @@ function reply(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }
 
-/** A stub GitHub that lists one run for the release id, or none. */
 function github(run: { status: string; conclusion?: string | null; steps?: { name: string; number: number; status: string }[] } | null) {
   return vi.fn(async (url: string | URL | Request) => {
     if (String(url).includes("/jobs")) return reply({ jobs: [{ steps: run?.steps ?? [] }] });

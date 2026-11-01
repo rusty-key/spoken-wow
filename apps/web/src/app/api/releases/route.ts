@@ -1,7 +1,3 @@
-/**
- * Release a section in a language: record the press, start the GitHub workflow, and let the
- * page follow it. Gated on `admin` in that language.
- */
 import { requireCapability } from "@/lib/generation/authz";
 import { langParam } from "@/lib/lang-server";
 import { dispatchRelease } from "@/lib/releases/github";

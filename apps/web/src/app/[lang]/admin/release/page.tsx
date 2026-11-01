@@ -15,9 +15,8 @@ export const metadata: Metadata = { title: "Release · Spoken" };
 export const dynamic = "force-dynamic";
 
 /**
- * Release a section for a language one administers. The `[lang]` segment is the site's
- * language, so the language released comes from `?lang=`, the first one administered when
- * absent. A 404 for everyone who administers none, as the Users page gives.
+ * The `[lang]` segment is the site's language, so the language released comes from `?lang=`, the
+ * first one administered when absent.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const session = await currentSession();

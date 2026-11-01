@@ -123,7 +123,7 @@ export type ActivityDetail = {
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };
 
-  // Releases: a press of Release on the site, and how its run ended.
+  // Releases.
   "release.started": { section: string };
   "release.finished": { section: string; state: "done" | "failed" };
 
