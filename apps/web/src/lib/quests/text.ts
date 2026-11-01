@@ -2,8 +2,8 @@
  * Writing a quest line's text in a language other than English: new quest_line versions,
  * the way lib/readables/text.ts writes pages and lib/places/lore.ts writes lore.
  *
- * English is not written here: its text is spoken for its $G sides already resolved
- * (quests/moment-rewrite.ts), where another language keeps its tokens for player-words.ts.
+ * English is not written here: it stores each $G side already resolved, where another language
+ * keeps its tokens for player-words.ts.
  *
  * A line is addressed by its id and variant, because 103 ids name two different texts. The
  * first translation of a line copies its structure -- event, quest, file, player gender --

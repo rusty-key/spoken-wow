@@ -26,7 +26,6 @@ type Version = {
 const ROUTE = "/api/names";
 
 export type TranslateSubject = {
-  /** What the name belongs to on the route. */
   kind: string;
   entityId: string;
   /** What the dialog is headed with. */

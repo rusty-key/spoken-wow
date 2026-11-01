@@ -504,7 +504,6 @@ function SourcePlayer({
   return <ReadablesPlayer audioRef={audio} line={line as BookLine | null} version={version} />;
 }
 
-/** Each section's own editor: quest text is an override, in any language. */
 function EditDialog({
   source,
   line,

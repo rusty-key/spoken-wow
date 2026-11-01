@@ -203,7 +203,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
   const { cleared, clear: clearDirty } = useClearDirty("quests");
   // The line whose spoken text is being rewritten, or null.
   const [editing, setEditing] = useState<ResultLine | null>(null);
-  // Another language's names, which are written as versions. See TranslateDialog.
+  // Another language's names, which are written as versions.
   // `touches` picks the rows on this page that show what is being translated.
   const [translating, setTranslating] = useState<{
     subject: TranslateSubject;

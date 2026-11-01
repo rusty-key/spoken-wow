@@ -1,7 +1,6 @@
 /**
  * A quest line's text in a language other than English: its history, a new version, or an
- * earlier one put back. The explorer's pencil writes overrides instead, so nothing in the site
- * calls this yet: it is where a text maintainer's direct edit of the original will land.
+ * earlier one put back. Nothing in the site calls this: the explorer's pencil writes overrides.
  *
  * All three need `text` in the language (`?lang=`), which is what a translator holds.
  */

@@ -219,7 +219,7 @@ async function markAccepted(
 }
 
 /**
- * An English correction, written to every line the moment has (quests/moment-rewrite.ts).
+ * An English correction, written to every line the moment has.
  *
  * A template without `$G` for a moment split by player gender is refused: the client resolves
  * `$G` before sending (Contribute.lua's Detemplate does not restore it) and the envelope does

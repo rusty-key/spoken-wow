@@ -2,9 +2,8 @@
  * Accepting a correction: the player's text taken as what the corpus line speaks
  * (lib/contributions/correction.ts). Rejecting one is resolve's plain status flip.
  *
- * Gated as resolve is, and as the corrections page is: whoever holds `text` in the language the
- * player sent it in. It changes the original, in English too, which is what a text maintainer
- * looks after; a team's override is `regenerate`'s.
+ * Needs `text` in the language the player sent it in, English included: it changes the original,
+ * unlike a team's override, which needs `regenerate`.
  *
  * `as: "wording"` keeps the corpus text and adds the player's as another wording of the
  * moment (acceptAsWording). Otherwise `lineId` and `variant`, where given, name the wording the

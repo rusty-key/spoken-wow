@@ -6,10 +6,6 @@
  * the moment is one plain line cannot be one file's: the line is split instead, extracted or not.
  * The site is the corpus; the dump import records an extracted line the site has split without
  * making it current again (pipelines/quests/tts_cli/corpus_db.py).
- *
- * Two entry points: rewriteMoment is what a voice maintainer says for the team (line_override), and
- * writeEnglishOriginal changes what English's corpus says, for an accepted correction. Another
- * language's original is saveQuestText's.
  */
 import "server-only";
 
@@ -101,8 +97,8 @@ type Correction = {
 };
 
 /**
- * An accepted correction: new versions of what English's corpus says, as another language's
- * corrections are. The same text again spends no version.
+ * An accepted correction: new versions of what English's corpus says. The same text again spends
+ * no version.
  *
  * `edited`, not `contributed`, for a line that stays itself: the dump import keeps only an edited
  * line, and would put its own text back over any other. A split's lines are safe from it either way.
@@ -155,8 +151,7 @@ async function inMoment(
   write: (client: PoolClient) => Promise<void>,
 ): Promise<void> {
   return withTeam(await ownerOrAll(BASE_LANG), async (client) => {
-    // The moment's lock, as addToMoment's writers hold it: a speaker added meanwhile would
-    // reach the plain line only, after the copies were taken.
+    // A speaker added meanwhile would reach the plain line only, after the copies were taken.
     await lockLine(client, momentOf(retired[0]));
     const { rowCount } = await client.query(
       `update "quest_line" set "isCurrent" = false
@@ -220,7 +215,7 @@ async function insertVersions(
  * to lines by id.
  */
 async function copySpeakers(client: PoolClient, plain: string, variant: number, sides: string[]): Promise<void> {
-  // One writer at a time past this point, so no two inserts pick the same `ord` (accept.ts).
+  // One writer at a time past this point, so no two inserts pick the same `ord`.
   // Within the statement the max is read once, so row_number spaces the copies apart.
   await client.query(`select pg_advisory_xact_lock(hashtext('quest_line_speaker.contributed_ord'))`);
   await client.query(

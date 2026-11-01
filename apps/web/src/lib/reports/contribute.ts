@@ -145,8 +145,8 @@ export async function contributeReport(
 
 /**
  * The report's text against the corpus: known.ts's answer, except that a quest moment's wordings
- * are compared on their text rather than what they print, in the order and shape known.ts lists
- * them. Never on a team's override: a correction changes the original, which the override sits above.
+ * are compared on their text rather than what they print. Never on a team's override: a correction
+ * changes the original, which the override sits above.
  */
 async function reportState(submission: Submission): Promise<LineState> {
   const [state] = await lineStates([submission]);
