@@ -193,4 +193,4 @@ jobs:
       - run: node pipelines/places/tools/locale/check-strings.mjs
       - run: pnpm --filter @spoken/readables-pipeline test
       - run: pnpm --filter @spoken/places-pipeline test
-      - run: node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs
+      - run: node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs

@@ -2,6 +2,7 @@
 .DS_Store
 .env
 .env*.local
+scripts/maintainers/spoken-release.env
 .vscode/settings.json
 node_modules/
 RELEASE
