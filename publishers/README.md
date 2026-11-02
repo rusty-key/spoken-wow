@@ -47,6 +47,7 @@ which is why there is one file per project here and not two.
 | `zones/spoken-zones.md` | Spoken Zones (retired; was ZoneLore) | 1636521 | mNw7b5No | `spoken-zones` |
 | `zones/spoken-places-audio.md` | Spoken Audio: Places and Bosses, which carries the bosses pack | 1636532 | b6mvD9KP | `spoken-audio-places` |
 | `bosses/spoken-bosses-audio.md` | Spoken Audio: Bosses, inside Spoken Audio: Places and Bosses on CurseForge (`bundledIn:`) | — | — | `spoken-audio-bosses` (not a project) |
+| `bosses/spoken-bosses-audio-<lang>.md` | `Spoken <Language> Audio: Bosses`, on GitHub and the Manager only | — | — | `spoken-<language>-audio-bosses` (not a project) |
 | `zones/spoken-places-audio-dede.md` | Spoken German Audio: Places | 1713131 | — | `spoken-german-audio-places` |
 | `zones/spoken-places-audio-eses.md` | Spoken Spanish (EU) Audio: Places | 1712807 | — | `spoken-spanish-eu-audio-places` |
 | `zones/spoken-places-audio-esmx.md` | Spoken Spanish (AL) Audio: Places | 1711067 | — | `spoken-spanish-al-audio-places` |
