@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **The Bosses page lists its voice pack in your language**, in every language but Italian, which
+  has none yet. *([rusty-key](https://github.com/rusty-key))*
+
 ## 3.8.0 — 2026-11-02
 
 - **Every language's quest audio comes in four parts, as English's does:** Alliance, Horde, Shared

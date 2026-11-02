@@ -487,10 +487,10 @@ do
         end
         return nil
     end
-    language.Voice, language.Fallback = "deDE", "none"
+    language.Voice, language.Fallback = "itIT", "none"
     panel.layout:Refresh()
     Expect("a voice language with no boss pack and Stay Silent is said under the voice packs",
-        Silent(), SpokenEnv.L.MODULE_NO_VOICE_FMT:format(Spoken:LanguageName("deDE")))
+        Silent(), SpokenEnv.L.MODULE_NO_VOICE_FMT:format(Spoken:LanguageName("itIT")))
     Expect("...and English's is not offered, nothing falling back on it", English().shown, false)
     language.Fallback = "enUS"
     panel.layout:Refresh()
