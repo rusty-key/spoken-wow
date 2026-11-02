@@ -2,8 +2,17 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.8.0 — 2026-11-02
 
+- **Every language's quest audio comes in four parts, as English's does:** Alliance, Horde, Shared
+  and Gossip. Spoken's settings list each part with its own download, and once all four are
+  installed, Spoken names the old single pack so you can remove it.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Play buttons in the Classic Era quest log.** Each quest in the list has its Play button, and it
+  stays ahead of the title when another addon, such as Leatrix Plus, rewrites the title.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The Bosses page shows the right icon** before a boss is selected.
+  *([anon1231823](https://github.com/anon1231823))*
 - **DialogueUI's text types out letter by letter.** Type Out By now applies to DialogueUI's
   quest, gossip and book text as it does to the captions, so it types letter by letter, the
   default, or word by word, and Highlight Words lights only the letters typed so far.
