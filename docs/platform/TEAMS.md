@@ -260,7 +260,7 @@ upload target there. English places also builds the bosses pack that its zip car
 English places release publishes `SpokenBossesAudio` too.
 
 In phase 1 every team is the **privileged** team of its languages: its packs keep today's ids and
-folders (`SpokenQuestsAudio_deDE`, `SpokenPlacesAudio_frFR`, …), with no team code. Older Managers
+folders (`SpokenQuestsAudioHorde_deDE`, `SpokenPlacesAudio_frFR`, …), with no team code. Older Managers
 see no change.
 
 Every section publishes from the droplet, whose copy of the signing key sits in

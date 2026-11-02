@@ -4,7 +4,6 @@ release: quests-audio-alliance-zhCN
 section: quests
 lang: zhCN
 pack: alliance
-dormant: true
 version: 0.0.1
 github: false
 slug: spoken-chinese-simplified-audio-quests-alliance
@@ -22,7 +21,7 @@ This is the Chinese (Simplified) audio pack for Alliance quest dialogue: the que
 **You need two more addons for this to do anything:**
 
 1. **[Spoken](https://www.curseforge.com/wow/addons/spoken)** — the player. Without it no pack plays.
-2. **[Spoken Chinese (Simplified) Audio: Quests](https://www.curseforge.com/wow/addons/spoken-chinese-simplified-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
+2. **[Spoken Chinese (Simplified) Audio: Quests - Shared](https://www.curseforge.com/wow/addons/spoken-chinese-simplified-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
 
 ## The packs
 

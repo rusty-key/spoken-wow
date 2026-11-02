@@ -4,7 +4,6 @@ release: quests-audio-alliance-koKR
 section: quests
 lang: koKR
 pack: alliance
-dormant: true
 version: 0.0.2
 github: false
 slug: spoken-korean-audio-quests-alliance
@@ -22,7 +21,7 @@ This is the Korean audio pack for Alliance quest dialogue: the quests only an Al
 **You need two more addons for this to do anything:**
 
 1. **[Spoken](https://www.curseforge.com/wow/addons/spoken)** — the player. Without it no pack plays.
-2. **[Spoken Korean Audio: Quests](https://www.curseforge.com/wow/addons/spoken-korean-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
+2. **[Spoken Korean Audio: Quests - Shared](https://www.curseforge.com/wow/addons/spoken-korean-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
 
 ## The packs
 

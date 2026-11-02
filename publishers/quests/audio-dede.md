@@ -6,7 +6,7 @@ pack: all
 version: 1.0.1
 slug: spoken-quests-audio-dede
 name: Spoken Quests Audio: German
-summary: Every quest and gossip line for Spoken, voiced in German. One pack, both factions. Needs Spoken.
+summary: Every quest and gossip line for Spoken, voiced in German. All four packs in one download. Needs Spoken.
 categories:
   - Audio & Video
   - Roleplay
@@ -17,13 +17,13 @@ manager: true
 
 Voiced quest dialogue for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Quests module, in German. This addon is data only — it does nothing on its own.
 
-One pack holds everything: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. It installs beside the English packs rather than replacing them, so a player who switches languages keeps both.
+One download holds all four packs, each in its own folder: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. They install beside the English packs rather than replacing them, so a player who switches languages keeps both.
 
 ## Installing
 
-Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_deDE`) — Spoken finds packs by folder name.
+Install **Spoken** first; these packs are inert without it. Extract into `Interface/AddOns` and leave the folder names as shipped (`SpokenQuestsAudioAlliance_deDE`, `SpokenQuestsAudioHorde_deDE`, `SpokenQuestsAudioShared_deDE`, `SpokenQuestsAudioGossip_deDE`) — Spoken finds packs by folder name.
 
-Spoken Quests speaks in your client's language by default. To hear German on another client, pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line this pack does not hold.
+Spoken Quests speaks in your client's language by default. To hear German on another client, pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line these packs do not hold.
 
 ## Compatibility
 

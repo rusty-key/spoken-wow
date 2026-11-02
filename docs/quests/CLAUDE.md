@@ -18,8 +18,8 @@ behaviour changes.
   out loud in the world (`Chatter.lua`, README "What NPCs say in the world"). `docs/gossip/AGENTS.md`
   is Gossip's guide.
 - Sound packs `SpokenQuestsAudio{Alliance,Horde,Shared,Gossip}`, plus the `All` meta addon,
-  which depends on those four and `spoken`. A language other than English has one pack,
-  `SpokenQuestsAudio_<lang>` (`LOCALE=xx`), holding quests and gossip together. Pack metadata,
+  which depends on those four and `spoken`. Every other language has the same four, each folder
+  plus `_<lang>` (`LOCALE=xx`). Pack metadata,
   CurseForge and Wago ids live in `publishers/quests/audio-*.md` and are read by
   `scripts/lib/packs.mjs`.
 

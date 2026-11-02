@@ -306,21 +306,18 @@ function Spoken:SettingsStyle()
     return "pages"
 end
 
--- Each module's voice pack in each language but English, by its store page under publishers/:
--- the CurseForge project where it has one, its GitHub releases where it has not. English's packs
--- are each module's own to list. tests/lua/packs_test.lua keeps this in step with the pages.
+-- Each module's voice pack in each language but English, by its CurseForge project under
+-- publishers/. English's packs are each module's own to list. tests/lua/packs_test.lua keeps this in step with the pages.
 local CURSEFORGE = "https://www.curseforge.com/wow/addons/"
-local RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q="
 local PACK_FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio",
     bosses = "SpokenBossesAudio" }
+-- The start of each language's quests slugs, which the four packs' pages finish.
+local QUESTS_SLUGS = { deDE = "spoken-german", esES = "spoken-spanish-eu", esMX = "spoken-spanish-al", frFR = "spoken-french",
+    itIT = "spoken-italian", koKR = "spoken-korean", ptBR = "spoken-portuguese", ruRU = "spoken-russian",
+    zhCN = "spoken-chinese-simplified", zhTW = "spoken-chinese-traditional" }
+local QUESTS_SIDES = { { "alliance", "Alliance", "-audio-quests-alliance" }, { "horde", "Horde", "-audio-quests-horde" },
+    { "shared", "Shared", "-audio-quests-shared" }, { "gossip", "Gossip", "-audio-gossip" } }
 local PACK_PAGES = {
-    -- Quests in one folder per language is a GitHub download: on CurseForge a language's quests
-    -- are split into packs under other folders.
-    quests = { deDE = { github = "quests-audio-deDE" }, esES = { github = "quests-audio-esES" },
-        esMX = { github = "quests-audio-esMX" }, frFR = { github = "quests-audio-frFR" },
-        itIT = { github = "quests-audio-itIT" }, koKR = { github = "quests-audio-koKR" },
-        ptBR = { github = "quests-audio-ptBR" }, ruRU = { github = "quests-audio-ruRU" },
-        zhCN = { github = "quests-audio-zhCN" }, zhTW = { github = "quests-audio-zhTW" } },
     places = { deDE = "spoken-german-audio-places", esES = "spoken-spanish-eu-audio-places", esMX = "spoken-spanish-al-audio-places",
         frFR = "spoken-french-audio-places", koKR = "spoken-korean-audio-places", ptBR = "spoken-portuguese-audio-places",
         ruRU = "spoken-russian-audio-places", zhCN = "spoken-chinese-simplified-audio-places", zhTW = "spoken-chinese-traditional-audio-places" },
@@ -334,10 +331,26 @@ local PACK_PAGES = {
 --- The voice pack `module` ("quests", "places", "readables" or "bosses") has in `lang`, English's aside: the folder
 --- it installs as and the address to get it, or nil where that language has none.
 function Spoken:VoicePack(module, lang)
+    if module == "quests" then
+        local packs = self:QuestsVoicePacks(lang)
+        if not packs then return nil end
+        return packs[3].folder, packs[3].url
+    end
     local page = PACK_PAGES[module] and PACK_PAGES[module][lang]
     if not page then return nil end
-    local url = type(page) == "table" and (RELEASES .. page.github) or (CURSEFORGE .. page)
-    return PACK_FOLDERS[module] .. "_" .. lang, url
+    return PACK_FOLDERS[module] .. "_" .. lang, CURSEFORGE .. page
+end
+
+--- The four quests packs a language but English has, or nil where it has none: for each, `side`
+--- ("alliance", "horde", "shared" or "gossip"), the folder it installs as and the address to get it.
+function Spoken:QuestsVoicePacks(lang)
+    local slug = QUESTS_SLUGS[lang]
+    if not slug then return nil end
+    local packs = {}
+    for i, side in ipairs(QUESTS_SIDES) do
+        packs[i] = { side = side[1], folder = PACK_FOLDERS.quests .. side[2] .. "_" .. lang, url = CURSEFORGE .. slug .. side[3] }
+    end
+    return packs
 end
 
 -- Zone icons by uiMapID, copied into Textures/Zones so every client has them. A city has an icon

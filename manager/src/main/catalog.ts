@@ -35,6 +35,8 @@ function toInfo(release: GithubRelease, product: Product): ReleaseInfo | null {
   const version = current ?? (legacy ? versionOfTag(release.tag_name, legacy.tagPrefix) : null)
   if (!version || compareVersions(version, version) === null) return null
   const asset = pickAsset(release, current !== null || !legacy ? product.assetPattern : legacy.assetPattern)
+    // A language's quests kept their tag when they were split, so its old zip can be under it.
+    ?? (legacy?.tagPrefix === product.tagPrefix ? pickAsset(release, legacy.assetPattern) : undefined)
   if (!asset) return null
   const digest = cleanDigest(asset.digest)
   return {

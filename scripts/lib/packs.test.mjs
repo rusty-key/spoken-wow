@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  actedFolder, englishFolder, languageFolder,
+  actedFolder, englishFolder,
   changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, MIN_SPOKEN, packsFor,
 } from "./packs.mjs";
 
@@ -108,15 +108,24 @@ test("changelogSection takes exactly the language pack's section", () => {
   assert.throws(() => changelogSection(CHANGELOG + "\n## 2.1.0 — readables-audio-esMX\n", "2.1.0", "readables-audio-esMX"), /two/);
 });
 
-test("a language may ship its quests as one pack, with no suffix", () => {
+test("a language's all is a bundle of its four split packs' folders, like English's", () => {
   const allFr = ["quests", "fr.md", { section: "quests", lang: "frFR", pack: "all",
     version: "2.0.0", release: "quests-audio-frFR", slug: "spoken-quests-audio-frfr",
-    name: "Spoken Quests Audio: French" }];
-  const fr = findPack("quests", "frFR", "all", loadPacks(tree([allFr])));
-  assert.equal(fr.folder, "SpokenQuestsAudio_frFR");
+    name: "Spoken Quests Audio: French", manager: "true" }];
+  const packs = loadPacks(tree([allFr]));
+  const fr = findPack("quests", "frFR", "all", packs);
+  assert.equal(fr.zip, "SpokenQuestsAudioAll_frFR-2.0.0.zip");
   assert.equal(fr.tag, "quests-audio-frFR/v2.0.0");
   assert.equal(fr.curseforge, null);
+  assert.deepEqual(managerFolders(packs).map((p) => p.folder), [
+    "SpokenQuestsAudioAlliance_frFR", "SpokenQuestsAudioHorde_frFR", "SpokenQuestsAudioShared_frFR", "SpokenQuestsAudioGossip_frFR",
+  ]);
+});
 
+test("every language has the structure English has", () => {
+  const packs = loadPacks();
+  const shape = (lang) => packsFor(null, lang, packs).filter((p) => p.section === "quests").map((p) => `${p.pack} ${p.github} ${p.manager}`).sort();
+  for (const lang of new Set(packs.map((p) => p.lang))) assert.deepEqual(shape(lang), shape("enUS"), lang);
 });
 
 test("English's all is a bundle of the four split packs' folders, zipped clear of the meta addon's name", () => {
@@ -149,33 +158,6 @@ test("an acted overlay is the section's English folder plus Acted, and the langu
   assert.throws(() => actedFolder("places", "xxYY"));
 });
 
-const itQuests = (pack, extra = {}) => ["quests", `${pack}.md`, { section: "quests", lang: "itIT",
-  pack, version: "0.0.2", curseforge: "1", release: `quests-audio-${pack}-itIT`,
-  slug: `italian-spoken-quests-${pack}`, name: `Italian ${pack}`, github: "false", ...extra }];
-
-test("a Shared pack holding every quest builds as the quests pack, and its sides are dormant", () => {
-  const packs = loadPacks(tree([itQuests("shared", { holds: "quests" }),
-    itQuests("alliance", { dormant: "true" }), itQuests("horde", { dormant: "true" }), itQuests("gossip")]));
-  const shared = findPack("quests", "itIT", "shared", packs);
-  assert.equal(shared.build, "quests");
-  assert.equal(shared.folder, "SpokenQuestsAudioShared_itIT");
-  assert.equal(findPack("quests", "itIT", "gossip", packs).build, "gossip");
-  assert.equal(findPack("quests", "itIT", "horde", packs).dormant, true);
-});
-
-test("a dormant side needs a Shared pack holding every quest, and the other way round", () => {
-  assert.throws(() => loadPacks(tree([itQuests("shared", { holds: "quests" }), itQuests("horde")])),
-    /must be dormant/);
-  assert.throws(() => loadPacks(tree([itQuests("shared"), itQuests("horde", { dormant: "true" })])),
-    /must say holds: quests/);
-});
-
-test("only a language's shared pack holds quests, and only its sides are dormant", () => {
-  assert.throws(() => loadPacks(tree([itQuests("gossip", { holds: "quests" })])), /holds: quests/);
-  assert.throws(() => loadPacks(tree([itQuests("gossip", { dormant: "true" })])), /dormant: true/);
-  assert.throws(() => loadPacks(tree([["quests", "h.md", { ...hordeEn[2], dormant: "true" }]])), /dormant: true/);
-});
-
 test("manager: true puts a pack's folders on the manager channel", () => {
   const onChannel = ["places", "b.md", { ...placesMx[2], manager: "true" }];
   assert.deepEqual(managerFolders(loadPacks(tree([placesEn, onChannel]))),
@@ -200,7 +182,6 @@ test("every section names the oldest Spoken its packs need", () => {
 
 test("the bosses pack is SpokenBossesAudio, and a language's is that plus its code", () => {
   assert.equal(englishFolder("bosses"), "SpokenBossesAudio");
-  assert.equal(`${languageFolder("bosses", null)}_deDE`, "SpokenBossesAudio_deDE");
   const en = ["bosses", "a.md", { section: "bosses", lang: "enUS", release: "bosses-audio",
     slug: "spoken-audio-bosses", name: "Spoken Audio: Bosses", manager: "true" }];
   const de = ["bosses", "b.md", { section: "bosses", lang: "deDE", version: "1.0.0",

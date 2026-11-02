@@ -287,8 +287,7 @@ endif
 #
 # The packs never go to Wago, which answers 413 to a file this size (scripts/lib/wago.sh), and
 # GitHub is where a Wago player gets them. English's four split packs go to CurseForge, and the
-# same four bundled into one zip to GitHub; a language's one pack goes to GitHub, and to
-# CurseForge once it has a project. English's meta addon is kilobytes and goes to both stores; a
+# same four bundled into one zip to GitHub, in every language. English's meta addon is kilobytes and goes to both stores; a
 # language has none.
 #
 # upload-dry and upload take a dist/ already built (release-packs.yaml runs them on their own),

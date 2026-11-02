@@ -43,8 +43,7 @@ which is why there is one file per project here and not two.
 | `quests/audio-shared.md` | Spoken Audio: Quests - Shared | 1660199 | QNlz3YKe | `spoken-audio-quests-shared` |
 | `quests/audio-gossip.md` | Spoken Audio: Gossip | 1660202 | XKqA45Ky | `spoken-audio-gossip` |
 | `quests/audio-<pack>-<lang>.md` | `Spoken <Language> Audio: Quests - <Side>` for Alliance, Horde and Shared, and `Spoken <Language> Audio: Gossip` | each page's `curseforge:` | — | `<language>-spoken-quests-<pack>` |
-| `quests/audio-shared-<lang>.md` for itIT, ptBR, koKR, ruRU, zhCN, zhTW | `Spoken <Language> Audio: Quests`, every quest in one pack beside Gossip; Alliance and Horde dormant | each page's `curseforge:` | — | `<language>-spoken-quests` |
-| `quests/audio-<lang>.md` | Spoken Quests Audio: `<Language>`, every line in one folder, GitHub only | — | — | — |
+| `quests/audio-<lang>.md` | Spoken Quests Audio: `<Language>`, the bundle of the language's four packs, GitHub only | — | — | — |
 | `zones/spoken-zones.md` | Spoken Zones (retired; was ZoneLore) | 1636521 | mNw7b5No | `spoken-zones` |
 | `zones/spoken-places-audio.md` | Spoken Audio: Places and Bosses, which carries the bosses pack | 1636532 | b6mvD9KP | `spoken-audio-places` |
 | `bosses/spoken-bosses-audio.md` | Spoken Audio: Bosses, inside Spoken Audio: Places and Bosses on CurseForge (`bundledIn:`) | — | — | `spoken-audio-bosses` (not a project) |
@@ -85,17 +84,8 @@ written, but nothing uploads it to CurseForge on its own. On GitHub the two stay
 `places-audio` holds Places only and `bosses-audio` the bosses pack, and the manager installs them
 as separate products.
 
-**A language with few players yet ships two quests packs, not four.** Its Shared page says
-`holds: quests` and carries every quest line, both sides' included, under the name
-`Spoken <Language> Audio: Quests`; its Alliance and Horde pages say `dormant: true`, keep their project
-ids, and nothing builds or uploads them. Splitting the language later is dropping both keys and
-renaming Shared back: its players keep the folder and add their side. Italian, Portuguese,
-Korean, Russian and both Chinese ship this way.
-
 The slugs follow the projects' names: lowercased, with the colon, the dash and the brackets
-dropped, so `Spoken German Audio: Quests - Horde` is `spoken-german-audio-quests-horde`. A Shared
-page that holds every quest is the one exception: it is named `... Audio: Quests` but keeps the
-`-quests-shared` slug, so splitting the language later renames the project without moving it.
+dropped, so `Spoken German Audio: Quests - Horde` is `spoken-german-audio-quests-horde`.
 `spoken-quests-audio-all` and the retired projects keep the slugs they were published under.
 
 **Gossip has no project of its own.** It is a part of Spoken Quests, in Spoken's zip, and its
@@ -175,9 +165,10 @@ makes the Wago copy of every page linking that pack point at the GitHub releases
 instead of at a Wago project holding no files. The link is the releases query rather than a
 tag, so it survives the next audio build.
 
-**English quests are one download on GitHub and four on CurseForge -- the same four folders
-either way.** GitHub takes a file up to 2 GB, so there, as for every language, one download is
-the whole answer: `SpokenQuestsAudioAll-<version>.zip`, tagged `quests-audio/vX.Y.Z`. It is a
+**Quests are one download on GitHub and four on CurseForge in every language -- the same four
+folders either way.** GitHub takes a file up to 2 GB, so there one download is the whole answer:
+`SpokenQuestsAudioAll-<version>.zip`, tagged `quests-audio/vX.Y.Z`, and a language's name and tag
+carry its code. It is a
 bundle rather than a fifth pack: inside are `SpokenQuestsAudioAlliance`, `...Horde`, `...Shared`
 and `...Gossip`, exactly as CurseForge installs them, so a player who moves between the stores
 overwrites the same folders instead of holding every line twice. CurseForge cannot take that

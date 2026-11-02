@@ -6,7 +6,7 @@ pack: all
 version: 0.0.3
 slug: spoken-quests-audio-ruru
 name: Spoken Quests Audio: Russian
-summary: Every quest and gossip line for Spoken, voiced in Russian. One pack, both factions. Needs Spoken.
+summary: Every quest and gossip line for Spoken, voiced in Russian. All four packs in one download. Needs Spoken.
 categories:
   - Audio & Video
   - Roleplay
@@ -19,13 +19,13 @@ Voiced quest dialogue for **[Spoken](https://www.curseforge.com/wow/addons/spoke
 
 **Experimental.** This is a first cut, numbered 0.x until it has been listened through: expect lines to be re-recorded, and report the ones that sound wrong.
 
-One pack holds everything: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. It installs beside the English packs rather than replacing them, so a player who switches languages keeps both.
+One download holds all four packs, each in its own folder: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. They install beside the English packs rather than replacing them, so a player who switches languages keeps both.
 
 ## Installing
 
-Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_ruRU`) — Spoken finds packs by folder name.
+Install **Spoken** first; these packs are inert without it. Extract into `Interface/AddOns` and leave the folder names as shipped (`SpokenQuestsAudioAlliance_ruRU`, `SpokenQuestsAudioHorde_ruRU`, `SpokenQuestsAudioShared_ruRU`, `SpokenQuestsAudioGossip_ruRU`) — Spoken finds packs by folder name.
 
-Spoken Quests speaks in your client's language by default. To hear Russian on another client, pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line this pack does not hold.
+Spoken Quests speaks in your client's language by default. To hear Russian on another client, pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line these packs do not hold.
 
 ## Compatibility
 

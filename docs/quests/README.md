@@ -348,21 +348,22 @@ Uploading a file cannot change the page around it: descriptions, relations and p
 settings live in the web UI, and a script that rewrote them each release would be one that
 could quietly undo an edit made there.
 
-### A language's pack
+### A language's packs
 
-A language other than English has one pack, holding both factions' quests and the gossip. It
-exists because its page does: `publishers/quests/audio-<lang>.md` (`pack: all`) names the
-project, version, folder and title that `scripts/lib/packs.mjs` reads instead of a case added to
-a script per language. `LOCALE=` moves the chain — pull, assemble, build — to that language,
+A language other than English has English's four packs, each folder plus `_<lang>`. They exist
+because their pages do: `publishers/quests/audio-<pack>-<lang>.md` names the project, version,
+folder and title that `scripts/lib/packs.mjs` reads instead of a case added to a script per
+language, and `publishers/quests/audio-<lang>.md` (`pack: all`) is the bundle of the four.
+`LOCALE=` moves the chain — pull, assemble, build — to that language,
 staged under `build/quests/<lang>/audio/` rather than English's `pipelines/quests/audio/`:
 
 ```bash
 make quests-pull-live LOCALE=esMX          # this language's live takes
 make quests-sounds LOCALE=esMX             # build/quests/esMX/audio, assembled from the archive
-make quests-package-audio LOCALE=esMX      # SpokenQuestsAudio_esMX, encoded, into dist/
+make quests-package-audio LOCALE=esMX      # its four folders, encoded, into dist/
 ```
 
-The zip goes to GitHub under the tag `quests-audio-<lang>/v<version>`
+The bundle of the four goes to GitHub under the tag `quests-audio-<lang>/v<version>`
 (`scripts/audio-github-release.sh quests esMX`).
 
 The client never says which gossip line is on screen, only who is speaking and the words, and
