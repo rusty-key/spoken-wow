@@ -90,12 +90,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # A pointer build encodes nothing and runs no Python.
       - name: Quests pipeline venv, where make/quests.mk looks for it
+        if: ${{ env.SPOKEN_CLIP_POINTERS == '' }}
         working-directory: pipelines/quests
         run: |
           python -m venv .venv
           .venv/bin/pip install -q -r requirements-extract.txt
       - name: Encoders
+        if: ${{ env.SPOKEN_CLIP_POINTERS == '' }}
         run: sudo apt-get update && sudo apt-get install -y ffmpeg vorbis-tools zip rsync
       - run: deploy/web/bin/migrate.sh "$PWD/apps/web"
 
