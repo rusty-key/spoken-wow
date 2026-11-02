@@ -6,7 +6,7 @@ pack: all
 version: 0.0.2
 slug: spoken-quests-audio-kokr
 name: Spoken Quests Audio: Korean
-summary: Quest and gossip lines for Spoken, voiced in Korean. One pack, both factions. Partial: about four quests in five. Needs Spoken.
+summary: Quest and gossip lines for Spoken, voiced in Korean. All four packs in one download. Partial: about four quests in five. Needs Spoken.
 categories:
   - Audio & Video
   - Roleplay
@@ -19,15 +19,15 @@ Voiced quest dialogue for **[Spoken](https://www.curseforge.com/wow/addons/spoke
 
 **Experimental.** This is a first cut, numbered 0.x until it has been listened through: expect lines to be re-recorded, and report the ones that sound wrong.
 
-One pack holds everything: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. It installs beside the English packs rather than replacing them, so a player who switches languages keeps both.
+One download holds all four packs, each in its own folder: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. They install beside the English packs rather than replacing them, so a player who switches languages keeps both.
 
 **It is not complete.** The game's own Korean text is the source, and some of it is missing: this pack voices about four in five quest offers and turn-ins, and most gossip. Set **If a Voice Is Missing** to English to hear the rest in English rather than silence.
 
 ## Installing
 
-Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_koKR`) — Spoken finds packs by folder name.
+Install **Spoken** first; these packs are inert without it. Extract into `Interface/AddOns` and leave the folder names as shipped (`SpokenQuestsAudioAlliance_koKR`, `SpokenQuestsAudioHorde_koKR`, `SpokenQuestsAudioShared_koKR`, `SpokenQuestsAudioGossip_koKR`) — Spoken finds packs by folder name.
 
-Spoken Quests speaks in your client's language by default. To hear Korean on another client, pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line this pack does not hold.
+Spoken Quests speaks in your client's language by default. To hear Korean on another client, pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line these packs do not hold.
 
 ## Compatibility
 

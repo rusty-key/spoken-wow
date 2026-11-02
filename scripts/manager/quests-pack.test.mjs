@@ -20,20 +20,23 @@ test("English builds its four folders, each its own slice, under one version", (
   }
 });
 
-test("a language builds its one folder from its page, with its gossip text", () => {
-  const [page] = packsFor("quests", "frFR").filter((p) => p.pack === "all");
-  const builds = buildArgs("frFR", foldersOf("frFR"), { localeText: "/tmp/text.json.gz" });
-  assert.deepEqual(builds, [{
-    folder: page.folder,
-    args: [
-      "--module", page.folder,
-      "--pack", page.build,
-      "--version", page.version,
-      "--module-title", page.name,
-      "--language", "frFR",
-      "--locale-text", "/tmp/text.json.gz",
-    ],
-  }]);
+test("every language builds English's four folders from their pages, its gossip text with Gossip", () => {
+  for (const lang of ["deDE", "esES", "esMX", "frFR", "itIT", "koKR", "ptBR", "ruRU", "zhCN", "zhTW"]) {
+    const pages = packsFor("quests", lang);
+    const builds = buildArgs(lang, foldersOf(lang), { localeText: "/tmp/text.json.gz" });
+    assert.deepEqual(builds.map(({ folder }) => folder), ["Alliance", "Horde", "Shared", "Gossip"].map((side) => `SpokenQuestsAudio${side}_${lang}`));
+    for (const { folder, args } of builds) {
+      const page = pages.find((p) => p.folder === folder);
+      assert.deepEqual(args, [
+        "--module", folder,
+        "--pack", page.pack,
+        "--version", page.version,
+        "--module-title", page.name,
+        "--language", lang,
+        ...(page.pack === "gossip" ? ["--locale-text", "/tmp/text.json.gz"] : []),
+      ]);
+    }
+  }
 });
 
 test("a folder with no page is an error, not a pack built from nothing", () => {

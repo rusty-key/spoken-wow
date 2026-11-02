@@ -97,9 +97,9 @@ THRESHOLD="${THRESHOLD:-80}"
 LANGUAGE="${LANGUAGE:-enUS}"
 if [ "$LANGUAGE" != enUS ]; then
   STORE="$REPO/build/quests/$LANGUAGE/audio"
-  PACKS="$(node "$REPO/scripts/lib/packs.mjs" list quests "$LANGUAGE" | tr '\n' ' ')"
+  PACKS="$(node "$REPO/scripts/lib/packs.mjs" list quests "$LANGUAGE" curseforge | tr '\n' ' ')"
 fi
-# A language's Gossip pack - or its All pack, when it ships as one - also carries that language's
+# A language's Gossip pack also carries that language's
 # gossip text, so a client in it matches the NPC's words (tts_cli/locale_text.py). make writes
 # the file first (export-locale-text).
 # A language no client runs in has none: no client shows its words to match.
@@ -108,7 +108,7 @@ CLIENT_LANGUAGE="$(node --input-type=module -e 'const { isClientLocale } = await
 if [ "$CLIENT_LANGUAGE" = no ]; then
   LOCALE_TEXT=""
 fi
-if [ "$LANGUAGE" != enUS ] && [ -n "$LOCALE_TEXT" ] && [[ " $PACKS " == *" gossip "* || " $PACKS " == *" all "* ]] \
+if [ "$LANGUAGE" != enUS ] && [ -n "$LOCALE_TEXT" ] && [[ " $PACKS " == *" gossip "* ]] \
     && [ ! -f "$LOCALE_TEXT" ]; then
   echo "error: no $LANGUAGE gossip text at $LOCALE_TEXT -- run: make quests-export-locale-text LOCALE=$LANGUAGE" >&2
   exit 1
@@ -306,15 +306,12 @@ for pack in $PACKS; do
 
   version="$VERSION"
   language_args=()
-  build_pack="$pack"
   if [ "$LANGUAGE" != enUS ]; then
     module="$(pack_field "$pack" folder)"
-    # A Shared page that holds every quest builds the quests slice (scripts/lib/packs.mjs).
-    build_pack="$(pack_field "$pack" build)"
     title="$(pack_field "$pack" name)"
     version="$(pack_field "$pack" version)"
     language_args=(--language "$LANGUAGE")
-    if [ -n "$LOCALE_TEXT" ] && { [ "$pack" = gossip ] || [ "$pack" = all ]; }; then language_args+=(--locale-text "$LOCALE_TEXT"); fi
+    if [ -n "$LOCALE_TEXT" ] && [ "$pack" = gossip ]; then language_args+=(--locale-text "$LOCALE_TEXT"); fi
   fi
 
   echo
@@ -322,7 +319,7 @@ for pack in $PACKS; do
   # ${language_args[@]+...} rather than a bare expansion: macOS's bash 3.2 raises "unbound
   # variable" under set -u when a plain "${arr[@]}" is empty, which it is on every English build.
   (cd "$QUESTS" && "$PYTHON" cli-main.py build --store "$staging" --dist "$DIST" \
-    --module "$module" --version "$version" --pack "$build_pack" ${title:+--module-title "$title"} \
+    --module "$module" --version "$version" --pack "$pack" ${title:+--module-title "$title"} \
     "${language_args[@]+"${language_args[@]}"}")
 
   echo "  module size: $(du -sh "$DIST/$module" | cut -f1)  (store: $(du -sh "$STORE" | cut -f1))"
@@ -344,17 +341,18 @@ for pack in $PACKS; do
   echo "  ==> $zip_path ($(du -h "$zip_path" | cut -f1))"
 done
 
-# THE GITHUB BUNDLE. English quests go to GitHub as one download, but one holding the four split
+# THE GITHUB BUNDLE. A language's quests go to GitHub as one download, but one holding the four split
 # packs' own folders rather than a fifth folder with every line: the same folders CurseForge
 # installs, so a player who takes one channel and then the other overwrites them instead of
 # installing every line twice. Made from the folders this run just built, so it is only made
 # when the run built all four; scripts/lib/packs.mjs names the zip and the folders in it.
-if [ "$ZIP" = 1 ] && [ "$LANGUAGE" = enUS ] && [ -z "$MODULE_NAME" ] && [ -z "$LABEL" ]; then
-  bundled="$(node "$REPO/scripts/lib/packs.mjs" get quests enUS all bundles)"
+if [ "$ZIP" = 1 ] && [ -z "$MODULE_NAME" ] && [ -z "$LABEL" ]; then
+  bundled="$(node "$REPO/scripts/lib/packs.mjs" get quests "$LANGUAGE" all bundles)"
   built=1
   for pack in alliance horde shared gossip; do [[ " $PACKS " == *" $pack "* ]] || built=0; done
   if [ "$built" = 1 ] && [ "$MODULE" = SpokenQuestsAudio ]; then
-    bundle_path="$(cd "$DIST" && pwd)/$(node "$REPO/scripts/lib/packs.mjs" get quests enUS all folder)-$VERSION.zip"
+    if [ "$LANGUAGE" = enUS ]; then bundle_version="$VERSION"; else bundle_version="$(pack_field all version)"; fi
+    bundle_path="$(cd "$DIST" && pwd)/$(pack_field all folder)-$bundle_version.zip"
     rm -f "$bundle_path"
     echo
     echo "bundling $bundled into $(basename "$bundle_path")..."

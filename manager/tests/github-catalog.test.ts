@@ -179,6 +179,7 @@ describe('buildCatalog', () => {
       meta
     )
     expect(Object.keys(c.releases).sort()).toEqual(['places-audio', 'quests-audio', 'quests-audio-deDE', 'spoken'])
+    expect(c.releases['quests-audio-deDE']![0]!.assetName).toBe('SpokenQuestsAudio_deDE-1.zip')
     const s = c.releases.spoken![0]!
     expect(s).toMatchObject({
       productId: 'spoken',

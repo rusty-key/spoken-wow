@@ -21,9 +21,8 @@ export function buildArgs(lang, folders, { version, localeText }) {
   return folders.map((folder) => {
     const pack = packs.find((p) => p.folder === folder);
     if (!pack) throw new Error(`${folder} has no quests page for ${lang}`);
-    const common = ["--module", folder, "--pack", pack.build];
+    const common = ["--module", folder, "--pack", pack.pack];
     if (lang === BASE_LOCALE) return { folder, args: [...common, "--version", version] };
-    const holdsGossip = pack.pack === "gossip" || pack.pack === "all";
     return {
       folder,
       args: [
@@ -31,7 +30,7 @@ export function buildArgs(lang, folders, { version, localeText }) {
         "--version", pack.version,
         "--module-title", pack.name,
         "--language", lang,
-        ...(localeText && holdsGossip ? ["--locale-text", localeText] : []),
+        ...(localeText && pack.pack === "gossip" ? ["--locale-text", localeText] : []),
       ],
     };
   });

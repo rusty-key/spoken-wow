@@ -75,7 +75,8 @@ export async function computeStatuses(
     let st: InstallState
     if (installedFolders.length === 0) st = 'not-installed'
     else if (linked) st = 'linked'
-    else if (product.folders && product.folders.length > 1 && installedFolders.length < product.folders.length) st = 'unknown'
+    // Only a pack's old folder is not a partial install: its update replaces it.
+    else if (product.folders && product.folders.length > 1 && product.folders.some((f) => installedFolders.includes(f)) && product.folders.some((f) => !installedFolders.includes(f))) st = 'unknown'
     else if (latest && isChannelRelease(latest)) {
       // Judged per folder: a bundle and its split packs share folders, and each folder's pack state is what is on disk.
       const installedTag = channelTag((product.folders ?? []).map((f) => loadPackState(game, f)?.rev ?? ''))

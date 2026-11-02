@@ -4,7 +4,6 @@ release: quests-audio-alliance-ruRU
 section: quests
 lang: ruRU
 pack: alliance
-dormant: true
 version: 0.0.3
 github: false
 slug: spoken-russian-audio-quests-alliance
@@ -22,7 +21,7 @@ This is the Russian audio pack for Alliance quest dialogue: the quests only an A
 **You need two more addons for this to do anything:**
 
 1. **[Spoken](https://www.curseforge.com/wow/addons/spoken)** — the player. Without it no pack plays.
-2. **[Spoken Russian Audio: Quests](https://www.curseforge.com/wow/addons/spoken-russian-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
+2. **[Spoken Russian Audio: Quests - Shared](https://www.curseforge.com/wow/addons/spoken-russian-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
 
 ## The packs
 

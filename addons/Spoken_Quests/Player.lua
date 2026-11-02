@@ -15,7 +15,7 @@ Player = { source = nil, gossipSource = nil, chatterSource = nil }
 local TEXTURES = format([[Interface\AddOns\%s\Textures\]], AddonFolder)
 local BOOK = TEXTURES .. "Book"
 
--- The packs that hold quests alone. Every other pack holds gossip too.
+-- The packs that hold quests alone, in any language. Every other pack holds gossip too.
 local QUEST_ONLY = {
     SpokenQuestsAudioAlliance = true,
     SpokenQuestsAudioHorde = true,
@@ -24,7 +24,8 @@ local QUEST_ONLY = {
 
 --- Whether a pack holds gossip.
 function Player:HoldsGossip(module)
-    return not QUEST_ONLY[module.AddonName]
+    local english = string.gsub(module.AddonName, "_%a%a%a%a$", "")
+    return not QUEST_ONLY[english]
 end
 
 local BULLETS = {
