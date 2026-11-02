@@ -78,9 +78,13 @@ Spoken's own page. Gossip adds no saved variable.
   show a Listen button.
 - Original Thrall Speech, and Forget Greetings Heard, which makes every
   NPC greet this character again. That matters only for the two once-per settings. Heard
-  greetings are kept per character in `hasSeenGossipForNPC`: under each NPC's GUID, a short hash
-  of every text heard from it, marked when the line starts playing. A GUID marked `true` dates
-  from when only the NPC was kept, and counts as unheard.
+  greetings are kept per character in `hasSeenGossipForNPC`: under each creature's ID (the GUID
+  of a speaker that is not a creature), a short hash of every text heard from it, marked when the
+  line starts playing. The ID and not the GUID, because the GUID's last part is the spawn: it
+  changes on a respawn or a server restart, and Forever clients see one that holds only for the
+  session.
+  Entries kept under a creature's GUID, as they were before, move to its ID as the addon loads.
+  A key marked `true` dates from when only the NPC was kept, and counts as unheard.
 - Stop When Window Closes is on the Quests page and covers the quest, gossip and greeting windows.
   Closing the quest frame also stops a greeting, but never a quest's own line.
 

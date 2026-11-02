@@ -533,6 +533,7 @@ function Addon:OnInitialize()
         global.startedOnlyDefaultOn = true
         if global.Compendium then global.Compendium.FoundOnly = nil end
     end
+    self:FoldGreetingsHeardByGUID()
     self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
     self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
 
@@ -1293,20 +1294,55 @@ local function TextKey(text)
     return format("%08x", h)
 end
 
+-- Greetings heard are kept under the creature's ID, not its GUID: the GUID's last part is the
+-- spawn, new on a respawn or a server restart, and Forever clients see one that holds only for
+-- the session. Each new one would greet as a stranger. A speaker that is not a creature keeps
+-- its GUID.
+local function SpeakerKey(guid)
+    return Utils:GetCreatureIDFromGUID(guid) or guid or "unknown"
+end
+
 --- Whether this character has heard this NPC greet them with this text. An NPC that greets
---- with several texts reads each of them once. A GUID that holds anything but a table was
+--- with several texts reads each of them once. A key that holds anything but a table was
 --- marked when only the NPC was remembered, and counts as unheard.
 function Addon:HasHeardGreeting(guid, text)
     if not text then
         return false
     end
-    local heard = self.db.char.hasSeenGossipForNPC[guid or "unknown"]
+    local heard = self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]
     return type(heard) == "table" and heard[TextKey(text)] == true
+end
+
+--- Moves greetings heard under a creature's GUID, as they were kept before, to its ID, so a
+--- character does not hear them again. A GUID marked `true` holds no text and counts as unheard
+--- anyway, so it goes.
+function Addon:FoldGreetingsHeardByGUID()
+    local seen = self.db.char.hasSeenGossipForNPC
+    local idOf = {}
+    for key in pairs(seen) do
+        local id = type(key) == "string" and Utils:GetCreatureIDFromGUID(key)
+        if id then
+            idOf[key] = id
+        end
+    end
+    -- Collected first: a key added to a table while `pairs` walks it breaks the walk.
+    for guid, id in pairs(idOf) do
+        local texts = seen[guid]
+        seen[guid] = nil
+        if type(texts) == "table" then
+            if type(seen[id]) ~= "table" then
+                seen[id] = {}
+            end
+            for textKey, heard in pairs(texts) do
+                seen[id][textKey] = heard
+            end
+        end
+    end
 end
 
 function Addon:MarkGreetingHeard(guid, text)
     local seen = self.db.char.hasSeenGossipForNPC
-    local npcKey = guid or "unknown"
+    local npcKey = SpeakerKey(guid)
     if type(seen[npcKey]) ~= "table" then
         seen[npcKey] = {}
     end
