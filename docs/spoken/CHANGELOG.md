@@ -4,6 +4,12 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Compendium turn-ins use localized NPC names.** The locale export now includes quest-dialog
+  speakers that are not quest starters, such as festival elders.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Localized Compendium quests follow the corpus.** Titles, offers and hand-ins are exported
+  from the corpus into the matching language pack; clients without a translation keep English.
+  *([anon1231823](https://github.com/anon1231823))*
 - **DialogueUI's text types out letter by letter.** Type Out By now applies to DialogueUI's
   quest, gossip and book text as it does to the captions, so it types letter by letter, the
   default, or word by word, and Highlight Words lights only the letters typed so far.

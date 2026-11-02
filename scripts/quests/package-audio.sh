@@ -100,17 +100,24 @@ if [ "$LANGUAGE" != enUS ]; then
   PACKS="$(node "$REPO/scripts/lib/packs.mjs" list quests "$LANGUAGE" | tr '\n' ' ')"
 fi
 # A language's Gossip pack - or its All pack, when it ships as one - also carries that language's
-# gossip text, so a client in it matches the NPC's words (tts_cli/locale_text.py). make writes
-# the file first (export-locale-text).
+# gossip text, so a client in it matches the NPC's words (tts_cli/locale_text.py). The All pack
+# also carries the Compendium's localized quest text. make writes both files first.
 # A language no client runs in has none: no client shows its words to match.
 LOCALE_TEXT="$REPO/build/quests/$LANGUAGE/locale-text.json.gz"
+COMPENDIUM_TEXT="$REPO/build/quests/$LANGUAGE/compendium-text.json.gz"
 CLIENT_LANGUAGE="$(node --input-type=module -e 'const { isClientLocale } = await import(process.argv[1]); console.log(isClientLocale(process.argv[2]) ? "yes" : "no")' "$REPO/pipelines/lib/locales.mjs" "$LANGUAGE")"
 if [ "$CLIENT_LANGUAGE" = no ]; then
   LOCALE_TEXT=""
+  COMPENDIUM_TEXT=""
 fi
 if [ "$LANGUAGE" != enUS ] && [ -n "$LOCALE_TEXT" ] && [[ " $PACKS " == *" gossip "* || " $PACKS " == *" all "* ]] \
     && [ ! -f "$LOCALE_TEXT" ]; then
   echo "error: no $LANGUAGE gossip text at $LOCALE_TEXT -- run: make quests-export-locale-text LOCALE=$LANGUAGE" >&2
+  exit 1
+fi
+if [ "$LANGUAGE" != enUS ] && [ -n "$COMPENDIUM_TEXT" ] && [[ " $PACKS " == *" all "* ]] \
+    && [ ! -f "$COMPENDIUM_TEXT" ]; then
+  echo "error: no $LANGUAGE Compendium text at $COMPENDIUM_TEXT -- run: make quests-export-compendium-locale-text LOCALE=$LANGUAGE" >&2
   exit 1
 fi
 pack_field() { node "$REPO/scripts/lib/packs.mjs" get quests "$LANGUAGE" "$1" "$2"; }
@@ -315,6 +322,7 @@ for pack in $PACKS; do
     version="$(pack_field "$pack" version)"
     language_args=(--language "$LANGUAGE")
     if [ -n "$LOCALE_TEXT" ] && { [ "$pack" = gossip ] || [ "$pack" = all ]; }; then language_args+=(--locale-text "$LOCALE_TEXT"); fi
+    if [ -n "$COMPENDIUM_TEXT" ] && [ "$pack" = all ]; then language_args+=(--compendium-text "$COMPENDIUM_TEXT"); fi
   fi
 
   echo

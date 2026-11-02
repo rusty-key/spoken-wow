@@ -9,6 +9,7 @@ the corpus, and building a pack from audio/ once `make quests-sounds` has assemb
     import-npc-bodies  world DB -> Postgres npc_body         after init-db, or into production
     export-corpus Postgres -> corpus/corpus.json.gz         before a build; its only writer
     export-locale-text  Postgres -> one language's gossip text   before its Gossip pack
+    export-compendium-locale-text  Postgres -> one language's Compendium text
     export-giver-names  Postgres -> the addon's translated quest-giver names   after import-locale
     export-gossip-text  Postgres -> the addon's gossip text per client locale, and aliases
     export-chatter-lines  corpus -> the addon's World Chatter lines             after export-corpus
@@ -76,6 +77,15 @@ lxt = subparsers.add_parser(
 lxt.add_argument("--lang", required=True, help="e.g. esMX")
 lxt.add_argument("--out", required=True, help="e.g. build/quests/esMX/locale-text.json.gz")
 
+clxt = subparsers.add_parser(
+    "export-compendium-locale-text",
+    help="One language's Compendium quest text from the corpus -> a file build reads.")
+clxt.add_argument("--lang", required=True, help="e.g. esMX")
+clxt.add_argument("--out", required=True,
+                   help="e.g. build/quests/esMX/compendium-text.json.gz")
+clxt.add_argument("--compendium", default=None,
+                   help="Compendium.lua to restrict the export to its quest ids")
+
 gvn = subparsers.add_parser(
     "export-giver-names",
     help="Every other language's quest-giver names -> the addon's Locale/Names/<lang>.lua.")
@@ -118,6 +128,9 @@ bld.add_argument("--language", default=None,
 bld.add_argument("--locale-text", default=None,
                  help="A file export-locale-text wrote for --language; adds that language's "
                       "gossip tables, loaded only on a client in it. Gossip pack only.")
+bld.add_argument("--compendium-text", default=None,
+                 help="A file export-compendium-locale-text wrote for --language; adds the "
+                      "localized Compendium quest text. All pack only.")
 
 ins = subparsers.add_parser(
     "install", help="Copy the built module into a WoW AddOns folder.")
@@ -184,6 +197,10 @@ elif args.mode == "export-locale-text":
     from tts_cli.corpus_db import export_locale_text
     export_locale_text(args.lang, args.out)
 
+elif args.mode == "export-compendium-locale-text":
+    from tts_cli.corpus_db import export_compendium_locale_text
+    export_compendium_locale_text(args.lang, args.out, args.compendium)
+
 elif args.mode == "export-giver-names":
     from tts_cli.corpus_db import export_giver_names
     export_giver_names(args.corpus, args.out_dir)
@@ -199,6 +216,7 @@ elif args.mode == "export-chatter-lines":
 
 elif args.mode == "build":
     locale_text = None
+    compendium_text = None
     if args.locale_text:
         # The client-locale tables ship once per language, in the pack that holds its gossip -
         # its Gossip pack, or its All pack when it ships as one: a faction pack carrying them
@@ -212,6 +230,17 @@ elif args.mode == "build":
         if not locale_text:
             print(f"warning: no {lang} gossip lines with client text; on a {lang} client "
                   "gossip will be matched against the English text")
+    if args.compendium_text:
+        if args.pack != "all":
+            raise SystemExit("--compendium-text is for the all pack, not "
+                             f"'{args.pack}'")
+        if not args.language or args.language == "enUS":
+            raise SystemExit("--compendium-text belongs to a language pack; pass --language")
+        from tts_cli.compendium_text import load_compendium_text
+        lang, compendium_text = load_compendium_text(args.compendium_text)
+        if lang != args.language:
+            raise SystemExit(f"{args.compendium_text} holds {lang} text, not --language "
+                             f"{args.language}'s")
     from tts_cli.store import stored_files
     from tts_cli.voice_files import stored_stems, with_voice_files
     # Each NPC in its own voice's file, wherever the store has that file's audio.
@@ -225,7 +254,8 @@ elif args.mode == "build":
                           ignored=load_pack_ignored(corpus, args.ignored, args.overrides),
                           include=include,
                           title=args.module_title or pack_title(args.pack),
-                          language=args.language, locale_text=locale_text)
+                          language=args.language, locale_text=locale_text,
+                          compendium_text=compendium_text)
     print(f"\nbuilt {report['moduleDir']}")
     print(f"  audio files {report['audioFiles']} ({report['audioFormat']}, pack: {args.pack})")
     for name, rows in sorted(report["tableRows"].items()):

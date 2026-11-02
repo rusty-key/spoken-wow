@@ -375,3 +375,24 @@ def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
 
     assert not os.path.exists(tmp_path / "dist" / "Mod" / "generated" / "esMX")
     assert "ClientLocaleLookups" not in _toc(tmp_path)
+
+
+def test_an_all_language_pack_gets_its_compendium_text(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    localized = {5: {"title": "Tripas de Jitters", "accept": "Busca mi manada."}}
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                          compendium_text=localized)
+
+    table = _generated(tmp_path, "esMX", "compendium_localized_quest_text.lua")
+    assert 'VoiceOver.Language:GetClientLanguage() ~= "esMX"' in table
+    assert "SpokenQuestsLocalizedText[\"esMX\"]" in table
+    assert '"Tripas de Jitters"' in table
+    assert "generated\\esMX\\compendium_localized_quest_text.lua" in _toc(tmp_path)
+    assert report["tableRows"]["esMX/compendium_localized_quest_text"] == 1
+
+
+def test_compendium_text_without_a_language_is_refused(tmp_path):
+    with pytest.raises(ValueError):
+        build_module(CORPUS, _store(tmp_path, "quests/5-accept.ogg"),
+                     str(tmp_path / "dist"), "Mod", compendium_text={5: {"title": "x"}})

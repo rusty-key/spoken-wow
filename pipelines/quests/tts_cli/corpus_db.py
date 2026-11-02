@@ -1069,6 +1069,48 @@ def export_locale_text(lang, path, verbose=True):
     return lines
 
 
+def export_compendium_locale_text(lang, path, compendium_path=None, verbose=True):
+    """Compendium quest wording and titles from the corpus database.
+
+    The addon cannot query Postgres at runtime, so this writes the client-locale snapshot that
+    the language sound pack carries.  TDB, pfQuest and client caches belong in import-locale;
+    they are never read by this export.
+    """
+    from tts_cli.compendium_text import (DEFAULT_COMPENDIUM_PATH, compendium_ids,
+                                         localized_quest_text, write_compendium_text)
+
+    quest_ids = compendium_ids(compendium_path or DEFAULT_COMPENDIUM_PATH)
+    conn = connect()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """select "questId", "source", "lineId", "localeText"
+                     from "quest_line"
+                    where "lang" = %s and "isCurrent"
+                      and "source" = any(%s) and "questId" = any(%s)
+                      and coalesce("localeText", '') <> ''
+                    order by "questId", "source", "lineId", "variant""",
+                (lang, ["accept", "complete", "progress"], list(quest_ids)),
+            )
+            rows = [dict(zip(("questId", "source", "lineId", "localeText"), row))
+                    for row in cur.fetchall()]
+            cur.execute(
+                """select "entityId", "name" from "entity_name"
+                    where "lang" = %s and "kind" = 'quest' and "isCurrent"
+                      and "entityId" = any(%s)""",
+                (lang, [str(quest_id) for quest_id in quest_ids]),
+            )
+            names = {int(entity_id): name for entity_id, name in cur.fetchall()}
+    finally:
+        conn.close()
+
+    quests = localized_quest_text(rows, names, quest_ids)
+    write_compendium_text(path, lang, quests)
+    if verbose:
+        print(f"wrote {path}: {len(quests)} localized Compendium quest records")
+    return quests
+
+
 def export_giver_names(corpus_path, out_dir, verbose=True):
     """Every other language's quest-giver names -> one addon Lua file per language.
 
