@@ -20,6 +20,8 @@ AUDIO_EXTENSIONS = (".mp3", ".ogg")
 #: Each live take's word times, by store-relative stem, packed by sounds.mjs as the addon reads
 #: them: the one thing a build needs that the corpus and the audio cannot give it.
 WORD_TIMES_FILE = "word-times.json"
+#: Each clip's length by stem, written by sounds.mjs when the store holds pointers, not audio.
+DURATIONS_FILE = "durations.json"
 
 
 def _walk(directory: str, extensions=(".mp3",)) -> list:
@@ -58,5 +60,14 @@ def word_times(store_dir: str) -> dict:
     path = os.path.join(store_dir, WORD_TIMES_FILE)
     if not os.path.isfile(path):
         return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def durations(store_dir: str) -> dict:
+    """{stem: seconds} for a store of pointers, None for a store of real clips."""
+    path = os.path.join(store_dir, DURATIONS_FILE)
+    if not os.path.isfile(path):
+        return None
     with open(path, encoding="utf-8") as f:
         return json.load(f)

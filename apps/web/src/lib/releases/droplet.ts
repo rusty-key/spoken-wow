@@ -19,9 +19,9 @@ export type DropletRun = {
   heartbeatAt: number;
 };
 
-/** Quests still encodes, which the droplet is not for. No release.env means Actions, as a way back. */
-export function runsOnDroplet(section: string): boolean {
-  return section !== "quests" && Boolean(process.env.SPOKEN_RELEASE_ENV);
+/** No release.env means Actions, as a way back. */
+export function runsOnDroplet(): boolean {
+  return Boolean(process.env.SPOKEN_RELEASE_ENV);
 }
 
 function runDir(id: string): string | null {
@@ -101,6 +101,7 @@ export function currentStep(log: string): string | null {
 
 export function failureReason(log: string, exitCode: number): string {
   const lines = log.trim().split("\n");
-  const said = lines.findLast((line) => line.startsWith("error: "));
+  // The first, because each step that fails is followed by release.mjs saying that it exited.
+  const said = lines.find((line) => line.startsWith("error: "));
   return said ? said.slice("error: ".length) : `the release exited ${exitCode}`;
 }

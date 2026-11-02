@@ -15,12 +15,16 @@
  * with nothing to play, and the pack would ship a gap where it had audio. Whether a kept
  * clip is really on this machine's disk is not asked -- the player reports a missing file
  * when somebody presses play.
+ *
+ * The one thing a restore may add is the take's pack encoding: a release refuses a live take
+ * without one.
  */
 import "server-only";
 
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 
+import { encodeArchivedForPack } from "./encode";
 import { setLiveTake, takePath } from "./store";
 
 export async function restoreTake(
@@ -36,4 +40,5 @@ export async function restoreTake(
     throw new Error(`the audio of version ${version} of ${file} was not kept, so it cannot be restored`);
   }
   await setLiveTake(source, file, version, lang, by);
+  if (bytes.kind === "blob") await encodeArchivedForPack(source, bytes.key.slice(bytes.key.indexOf("/") + 1));
 }

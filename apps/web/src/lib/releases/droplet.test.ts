@@ -28,16 +28,10 @@ function fakeSpawn(code: number | Error) {
 }
 
 describe("runsOnDroplet", () => {
-  it("takes what ships the takes as they are, while quests stays on Actions", () => {
-    expect(runsOnDroplet("bosses")).toBe(true);
-    expect(runsOnDroplet("places")).toBe(true);
-    expect(runsOnDroplet("readables")).toBe(true);
-    expect(runsOnDroplet("quests")).toBe(false);
-  });
-
-  it("is off without SPOKEN_RELEASE_ENV", () => {
+  it("is on with SPOKEN_RELEASE_ENV and off without it", () => {
+    expect(runsOnDroplet()).toBe(true);
     vi.stubEnv("SPOKEN_RELEASE_ENV", "");
-    expect(runsOnDroplet("bosses")).toBe(false);
+    expect(runsOnDroplet()).toBe(false);
   });
 });
 
@@ -105,5 +99,6 @@ describe("what a log says", () => {
   it("prefers the release's own words for a failure", () => {
     expect(failureReason("==> step 1/5: x\nerror: scripts/x.mjs exited 1\n", 1)).toBe("scripts/x.mjs exited 1");
     expect(failureReason("Segmentation fault\n", 139)).toBe("the release exited 139");
+    expect(failureReason("error: 2 takes have no Ogg\n  a.mp3\nerror: scripts/x.mjs exited 1\n", 1)).toBe("2 takes have no Ogg");
   });
 });

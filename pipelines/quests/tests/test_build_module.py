@@ -228,6 +228,20 @@ def test_the_length_table_measures_ogg(tmp_path):
     assert '["5-accept"] = 0.3' in _sound_length_table(tmp_path)
 
 
+def test_a_store_of_pointers_takes_its_lengths_from_durations_json(tmp_path):
+    root = tmp_path / "store"
+    (root / "quests").mkdir(parents=True)
+    (root / "gossip").mkdir()
+    (root / "gossip" / "abc123.ogg").write_text("spoken-clip-pointer encodings/aa 5\n")
+    (root / "quests" / "5-accept.ogg").write_text("spoken-clip-pointer encodings/bb 5\n")
+    (root / "durations.json").write_text('{"quests/5-accept": 26, "gossip/abc123": 1.25}')
+    build_module(CORPUS, str(root), str(tmp_path / "dist"), "Mod")
+    table = _sound_length_table(tmp_path)
+    assert '["5-accept"] = 26.0' in table
+    assert '["abc123"] = 1.25' in table
+    assert table.index("5-accept") < table.index("abc123")
+
+
 def test_word_times_ship_for_the_clips_a_pack_carries(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
     # The gossip clip has times but is not in this store, so its times would be dead weight.

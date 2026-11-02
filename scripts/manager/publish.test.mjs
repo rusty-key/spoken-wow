@@ -225,6 +225,15 @@ const archiveOf = (body = CLIP, status = 200) => {
 const manifestOf = (store, rev = "20261018T142233Z") =>
   openJson(store.objects.get(`packs/SpokenPlacesAudio_deDE/${rev}.json`).body.toString(), keys.publicKey).value;
 
+test("a pointer to an encoding publishes as that Ogg, copied from the archive", async () => {
+  const store = memoryStore();
+  const { asked, extra } = archiveOf();
+  const files = { "SpokenPlacesAudio_deDE.toc": "toc", "Sounds/1.ogg": pointerText(clipSha, CLIP.length, "encodings") };
+  await run(store, dist(files), extra);
+  assert.deepEqual(asked, [`https://archive.example/encodings/${clipSha}`]);
+  assert.deepEqual(store.objects.get(`blobs/${clipSha}`).body, CLIP);
+});
+
 test("a pointer publishes as the clip it names, copied from the archive", async () => {
   const store = memoryStore();
   const { asked, extra } = archiveOf();

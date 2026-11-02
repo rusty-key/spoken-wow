@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await (runsOnDroplet(run.section) ? startDropletRun(run) : dispatchRelease(run));
+    await (runsOnDroplet() ? startDropletRun(run) : dispatchRelease(run));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "the release could not be started";
     await updateRun(run.id, { state: "failed", error: reason });

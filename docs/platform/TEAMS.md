@@ -263,8 +263,8 @@ In phase 1 every team is the **privileged** team of its languages: its packs kee
 folders (`SpokenQuestsAudio_deDE`, `SpokenPlacesAudio_frFR`, …), with no team code. Older Managers
 see no change.
 
-The workflow encodes and signs Quests. Places, Readables and Bosses publish from the droplet, whose
-own copy of the signing key sits in `shared/release.env`, as PLAN.md decided.
+Every section publishes from the droplet, whose copy of the signing key sits in
+`shared/release.env`, as PLAN.md decided.
 Only quests ship Ogg Vorbis
 (`scripts/quests/package-audio.sh`, via `oggenc`). Places, readables and bosses ship the take's own
 MP3: readables and bosses pack the files as they are, and Places copies them for its full tier and
@@ -347,8 +347,8 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 ## Not in this plan
 
 Delisting a team's packs (site-owner moderation; no team needs it while teams are today's
-maintainers); per-clip progress; building on the droplet, and encode-at-commit for sections other
-than quests, since the workflow encodes; the quests builder port; the signing key on the droplet;
+maintainers); per-clip progress; encode-at-commit for sections other than quests; the quests
+builder port;
 team-owned publishing; clients per team; several English teams; team-owned storage, channels and signing keys; CurseForge
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).

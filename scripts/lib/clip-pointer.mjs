@@ -7,15 +7,15 @@ import { archiveBase, eachParallel, fetchRetrying } from "./download.mjs";
 
 const MAGIC = "spoken-clip-pointer";
 const MAX_SIZE = 200;
-const LINE = new RegExp(`^${MAGIC} takes/([0-9a-f]{64}) (\\d+)\\n$`);
+const LINE = new RegExp(`^${MAGIC} (takes|encodings)/([0-9a-f]{64}) (\\d+)\\n$`);
 
-export const pointerText = (sha256, size) => `${MAGIC} takes/${sha256} ${size}\n`;
+export const pointerText = (sha256, size, prefix = "takes") => `${MAGIC} ${prefix}/${sha256} ${size}\n`;
 
 /** { sha256, size, key }, or null for a file that is really a clip. */
 export async function readPointer(file) {
   if ((await stat(file)).size > MAX_SIZE) return null;
   const match = LINE.exec(await readFile(file, "latin1"));
-  return match && { sha256: match[1], size: Number(match[2]), key: `takes/${match[1]}` };
+  return match && { sha256: match[2], size: Number(match[3]), key: `${match[1]}/${match[2]}` };
 }
 
 /**

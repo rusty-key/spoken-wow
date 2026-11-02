@@ -2,8 +2,8 @@
  * A take's clip as its pack ships it, encoded at commit so a release need not encode it again.
  *
  * The recipe must match scripts/quests/package-audio.sh's ogg-q0-44k, so a clip encoded here
- * and one encoded by the build are the same file. Best effort: a build encodes whatever
- * scripts/audio/fetch-encodings.mjs does not find.
+ * and one encoded by the build are the same file. Best effort: a zip's build encodes whatever
+ * scripts/audio/fetch-encodings.mjs does not find, and a Manager release stops on it.
  */
 import "server-only";
 
@@ -13,9 +13,11 @@ import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 
-import { archive, blobKey, sha256Of } from "@/lib/blobs/store";
+import { archive, blobBytes, blobKey, sha256Of } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
 import type { Source } from "@/lib/sections";
+
+import { withLocalCopy } from "./bytes";
 
 const QUESTS_PROFILE = "ogg-q0-44k";
 
@@ -67,30 +69,48 @@ export async function encodeOgg(master: string, tools: Encoders = { ffmpeg: "ffm
   }
 }
 
-export type Encoding = { encodedSha256: string; bytes: number; durationSec: number | null };
+/**
+ * The length the pack's table lists, as mutagen reads it: the last page's granule position over the
+ * sample rate. `bytes` needs only the start and the end of the file (a page is under 64 KB).
+ */
+export function oggDurationSec(bytes: Buffer): number {
+  if (bytes.subarray(0, 4).toString("latin1") !== "OggS") throw new Error("not an Ogg");
+  const serial = bytes.readUInt32LE(14);
+  const sampleRate = bytes.readUInt32LE(40);
+  for (let at = bytes.lastIndexOf("OggS"); at > 0; at = bytes.lastIndexOf("OggS", at - 1)) {
+    // Audio can hold these four bytes by chance; a real last page has this serial and its flag.
+    if (at + 18 <= bytes.length && bytes[at + 4] === 0 && bytes[at + 5] & 4 && bytes.readUInt32LE(at + 14) === serial) {
+      return Number(bytes.readBigInt64LE(at + 6)) / sampleRate;
+    }
+  }
+  throw new Error("an Ogg with no last page");
+}
+
+export type Encoding = { encodedSha256: string; bytes: number; durationSec: number };
+
+async function recorded(source: Source, sha256: string, profile: string): Promise<Encoding | undefined> {
+  const [done] = await query<Encoding>(
+    `select "encodedSha256", "bytes", "durationSec"::float8 as "durationSec" from "take_encoding"
+      where "source" = $1 and "sha256" = $2 and "profile" = $3`,
+    [source, sha256, profile],
+  );
+  return done;
+}
 
 /**
- * Never throws: what went wrong is logged, and the build encodes what is missing. The duration
- * recorded is the master's: nothing reads an encoding's own.
+ * Never throws: what went wrong is logged, and a release lists the live takes without one. The
+ * duration recorded is the Ogg's, because a release reads no clips to measure.
  */
-export async function encodeForPack(
-  source: Source,
-  sha256: string,
-  master: string,
-  durationSec: number | null,
-): Promise<Encoding | null> {
+export async function encodeForPack(source: Source, sha256: string, master: string): Promise<Encoding | null> {
   const profile = profileFor(source);
   if (!profile) return null;
   try {
-    const [done] = await query<Encoding>(
-      `select "encodedSha256", "bytes", "durationSec"::float8 as "durationSec" from "take_encoding"
-        where "source" = $1 and "sha256" = $2 and "profile" = $3`,
-      [source, sha256, profile],
-    );
+    const done = await recorded(source, sha256, profile);
     if (done) return done;
 
     const encoded = await encodeOgg(master);
     const encodedSha256 = sha256Of(encoded);
+    const durationSec = oggDurationSec(encoded);
     await archive().put(blobKey("encodings", encodedSha256), encoded, "audio/ogg");
     await query(
       `insert into "take_encoding" ("source", "sha256", "profile", "encodedSha256", "bytes", "durationSec")
@@ -101,5 +121,19 @@ export async function encodeForPack(
   } catch (error) {
     console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
     return null;
+  }
+}
+
+/** For a take put back live, which may be older than encoding at commit. Never throws. */
+export async function encodeArchivedForPack(source: Source, sha256: string): Promise<void> {
+  const profile = profileFor(source);
+  if (!profile) return;
+  try {
+    if (await recorded(source, sha256, profile)) return;
+    const master = await blobBytes(blobKey("takes", sha256));
+    if (!master) throw new Error("not in the archive");
+    await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file));
+  } catch (error) {
+    console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
   }
 }
