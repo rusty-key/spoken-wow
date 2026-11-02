@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
-import type { JobProgress } from '../src/shared/types'
+import type { Catalog, JobProgress } from '../src/shared/types'
 import { ManagerService } from '../src/main/service'
 import { loadPackState } from '../src/main/packs-state'
 import { channelFixture, channelKeys, serveChannel, type PackSpec } from './channel-helpers'
@@ -60,6 +60,14 @@ function waitFor(sent: { channel: string; payload: unknown }[], jobId: string): 
 }
 
 describe('the channel through the service', () => {
+  it('offers the window a pack only the channel has', async () => {
+    const { svc, sent } = await setup()
+    const told = sent.filter((s) => s.channel === CHANNELS.catalogChanged).at(-1)?.payload as Catalog
+    expect(told.releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
+    expect(svc.snapshot().catalog.releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
+    expect((await svc.refreshCatalog()).releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
+  })
+
   it('offers, installs and removes a channel pack', async () => {
     const { svc, game, sent } = await setup({ spoken: '3.0.0' })
     const before = (await svc.statuses(game.id)).find((s) => s.productId === 'places-audio-deDE')

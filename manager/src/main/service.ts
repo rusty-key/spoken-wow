@@ -117,7 +117,7 @@ export class ManagerService {
     return {
       games: this.games,
       settings: this.settings,
-      catalog: this.catalog,
+      catalog: this.effectiveCatalog(),
       community: this.community,
       products: PRODUCTS,
       appVersion: this.opts.appVersion,
@@ -166,7 +166,7 @@ export class ManagerService {
     if (this.refreshing) return this.refreshing
     if (!force && this.catalog.fetchedAt && !this.catalog.offline) {
       const age = Date.now() - Date.parse(this.catalog.fetchedAt)
-      if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.catalog)
+      if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.effectiveCatalog())
     }
     this.refreshing = this.doRefresh().finally(() => {
       this.refreshing = null
@@ -200,7 +200,9 @@ export class ManagerService {
     } catch (err) {
       log('Could not save the catalog:', err)
     }
-    this.opts.send(CHANNELS.catalogChanged, next)
+    // The file keeps GitHub's list alone; the window is offered what can be installed, channel packs too.
+    const offered = this.effectiveCatalog()
+    this.opts.send(CHANNELS.catalogChanged, offered)
     // Warm the manifest cache of installed channel packs so the Update label can be computed offline. The window has
     // the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
     const wanted = new Map<string, ChannelPack>()
@@ -226,9 +228,9 @@ export class ManagerService {
           )
         )
       )
-      if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, next)
+      if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, offered)
     }
-    return next
+    return offered
   }
 
   // ---------------------------------------------------------------- community
