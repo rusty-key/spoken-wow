@@ -18,6 +18,7 @@ const ownView = async (run: ReleaseRun): Promise<RunView> => ({
   githubUrl: run.githubUrl,
   step: run.step,
   error: run.error,
+  version: run.version,
   log: (await readDropletRun(run.id))?.log ?? null,
 });
 

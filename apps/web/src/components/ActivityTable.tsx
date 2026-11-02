@@ -255,7 +255,10 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
     case "release.started":
       return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
     case "release.finished":
-      return { what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : "finished"}`, quote: null };
+      return {
+        what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : d.state === "unchanged" ? "found nothing to release" : "finished"}`,
+        quote: str(d.version),
+      };
     case "contribution.resolved":
       return {
         what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,

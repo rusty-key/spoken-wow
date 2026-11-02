@@ -291,3 +291,73 @@ test("a dry run with pointers fetches nothing", async () => {
   assert.equal(out.bytes, CLIP.length + 3);
   assert.deepEqual(asked, []);
 });
+
+const toc = (version) => `## Title: Pack\n## Version: ${version}\n`;
+const liveToc = (store, rev, folder = "SpokenPlacesAudio_deDE") => {
+  const manifest = openJson(store.objects.get(`packs/${folder}/${rev}.json`).body.toString(), keys.publicKey).value;
+  const file = manifest.files.find((f) => f.path === `${folder}.toc`);
+  return store.objects.get(`blobs/${file.sha256}`).body.toString();
+};
+const later = new Date("2026-10-19T00:00:00Z");
+
+test("a bump's first publish keeps the staged version", async () => {
+  const store = memoryStore();
+  const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("0.0.3"), "s/1.ogg": "one" }), { bump: "patch" });
+  assert.equal(out.version, "0.0.3");
+  assert.equal(liveToc(store, out.rev), toc("0.0.3"));
+});
+
+for (const [bump, next] of [["patch", "1.2.4"], ["minor", "1.3.0"], ["major", "2.0.0"]]) {
+  test(`a ${bump} bump counts from the channel, not from what was staged`, async () => {
+    const store = memoryStore();
+    await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("1.2.3"), "s/1.ogg": "one" }));
+    const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("0.0.1"), "s/1.ogg": "two" }), { bump, now: later });
+    assert.equal(out.version, next);
+    assert.equal(liveToc(store, out.rev), toc(next));
+  });
+}
+
+test("a bump finds nothing to release when only the staged version differs", async () => {
+  const store = memoryStore();
+  await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("1.2.3"), "s/1.ogg": "one" }));
+  const before = store.objects.get("index.json").body.toString();
+  const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("0.0.1"), "s/1.ogg": "one" }), { bump: "major", now: later });
+  assert.deepEqual(out.changed, []);
+  assert.equal(out.version, null);
+  assert.equal(store.objects.get("index.json").body.toString(), before);
+});
+
+test("one press gives its changed folders one version, past the highest, and leaves the others", async () => {
+  const folders = ["SpokenQuestsAudioAlliance", "SpokenQuestsAudioHorde", "SpokenQuestsAudioShared"];
+  const quests = folders.map((folder) => ({ folder, section: "quests", lang: "enUS" }));
+  const distDir = mkdtempSync(join(tmpdir(), "dist-"));
+  const write = (folder, version, clip) => {
+    mkdirSync(join(distDir, folder), { recursive: true });
+    writeFileSync(join(distDir, folder, `${folder}.toc`), toc(version));
+    writeFileSync(join(distDir, folder, "1.ogg"), clip);
+  };
+  const store = memoryStore();
+  write(folders[0], "2.5.0", "a");
+  write(folders[1], "2.6.0", "b");
+  write(folders[2], "2.5.0", "c");
+  await run(store, distDir, { packs: quests });
+  const first = index(store).packs;
+
+  write(folders[0], "9.9.9", "a2");
+  write(folders[1], "9.9.9", "b");
+  write(folders[2], "9.9.9", "c2");
+  const out = await run(store, distDir, { packs: quests, bump: "patch", now: later });
+  assert.equal(out.version, "2.6.1");
+  assert.deepEqual(out.changed, [folders[0], folders[2]]);
+  assert.equal(liveToc(store, out.rev, folders[0]), toc("2.6.1"));
+  assert.equal(liveToc(store, out.rev, folders[2]), toc("2.6.1"));
+  assert.equal(index(store).packs[folders[1]].rev, first[folders[1]].rev);
+});
+
+test("with no bump a publish takes the .toc as staged", async () => {
+  const store = memoryStore();
+  await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("1.2.3"), "s/1.ogg": "one" }));
+  const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("1.2.4"), "s/1.ogg": "one" }), { now: later });
+  assert.equal(out.version, null);
+  assert.equal(liveToc(store, out.rev), toc("1.2.4"));
+});

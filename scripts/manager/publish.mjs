@@ -3,12 +3,13 @@
 // conditional, so two publishes racing cannot both win. Spec:
 // docs/superpowers/specs/2026-10-18-manager-delta-packs-design.md
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { readPointer } from "../lib/clip-pointer.mjs";
 import { archiveBase, fetchRetrying } from "../lib/download.mjs";
 import { buildManifest, caseDuplicate, diffFiles, hashFolder, revOf } from "./manifest.mjs";
+import { bumpVersion, tocVersion, withTocVersion } from "./pack-version.mjs";
 import { openJson, publicKeyOf, sealJson, sha256Text } from "./sign.mjs";
 
 // The pack ids the manager accepts: an index entry it rejects hides the whole channel.
@@ -96,7 +97,21 @@ async function archivedBytes({ key, sha256, size }, archiveUrl, fetchImpl) {
   return bytes;
 }
 
-export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, archiveUrl, fetchImpl = fetch, log = console.log }) {
+async function liveVersion(store, folder, files) {
+  const toc = files.find((f) => f.path === `${folder}.toc`);
+  const blob = toc && (await store.get(`blobs/${toc.sha256}`));
+  if (!blob) throw new Error(`${folder} has no .toc on the channel to read its version from`);
+  return tocVersion(blob.body.toString("utf8"));
+}
+
+// The press's one version: past the highest live one, or as staged for packs with none live yet.
+function nextVersion(liveVersions, stagedVersions, bump) {
+  const highest = (versions) => [...versions].sort(compareVersions).at(-1);
+  return liveVersions.length > 0 ? bumpVersion(highest(liveVersions), bump) : highest(stagedVersions);
+}
+
+// With `bump`, a changed pack gets a new version in its .toc, and the version alone never counts as a change.
+export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, archiveUrl, fetchImpl = fetch, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
   // The bucket's name is masked in CI logs; this says which channel a run signed for.
   log(`signing with ${publicKey}`);
@@ -126,14 +141,9 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
   const known = new Set();
   const changes = [];
   const archived = new Map();
+  const liveVersions = [];
+  const stagedVersions = [];
   for (const { folder, section } of packs) {
-    log(`${folder}: hashing`);
-    const files = await hashFolder(join(distDir, folder), cache);
-    await resolvePointers(join(distDir, folder), files, archived);
-    if (archived.size > 0 && !archiveUrl) throw new Error(`dist/${folder} holds clip pointers: set SPOKEN_ARCHIVE_URL`);
-    // Windows and macOS fold case, so paths differing only in case would be one file there.
-    const dup = caseDuplicate(files);
-    if (dup) throw new Error(`${folder} lists ${dup} twice, differing only in case`);
     const requires = { Spoken: `>=${minSpoken[section]}` };
     let before = [];
     const entry = live[folder];
@@ -143,6 +153,23 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
       before = m.value.files;
       for (const f of before) known.add(f.sha256);
     }
+    const tocPath = join(distDir, folder, `${folder}.toc`);
+    if (bump) {
+      const toc = await readFile(tocPath, "utf8");
+      stagedVersions.push(tocVersion(toc));
+      if (entry) {
+        const version = await liveVersion(store, folder, before);
+        liveVersions.push(version);
+        await writeFile(tocPath, withTocVersion(toc, version));
+      }
+    }
+    log(`${folder}: hashing`);
+    const files = await hashFolder(join(distDir, folder), cache);
+    await resolvePointers(join(distDir, folder), files, archived);
+    if (archived.size > 0 && !archiveUrl) throw new Error(`dist/${folder} holds clip pointers: set SPOKEN_ARCHIVE_URL`);
+    // Windows and macOS fold case, so paths differing only in case would be one file there.
+    const dup = caseDuplicate(files);
+    if (dup) throw new Error(`${folder} lists ${dup} twice, differing only in case`);
     const diff = diffFiles(before, files);
     if (diff.same && entry?.requires.Spoken === requires.Spoken) {
       log(`${folder}: unchanged`);
@@ -155,6 +182,19 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
     changes.push({ folder, files, requires });
   }
 
+  const version = bump && changes.length > 0 ? nextVersion(liveVersions, stagedVersions, bump) : null;
+  if (version) {
+    for (const { folder, files } of changes) {
+      const tocPath = join(distDir, folder, `${folder}.toc`);
+      const toc = withTocVersion(await readFile(tocPath, "utf8"), version);
+      await writeFile(tocPath, toc);
+      const file = files.find((f) => f.path === `${folder}.toc`);
+      file.sha256 = sha256Text(toc);
+      file.size = Buffer.byteLength(toc);
+      log(`${folder}: version ${version}`);
+    }
+  }
+
   const blobs = new Map();
   for (const c of changes) {
     for (const f of c.files) {
@@ -163,7 +203,7 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
   }
   const bytes = [...blobs.values()].reduce((n, b) => n + b.size, 0);
   log(`${blobs.size} new blobs, ${bytes} bytes${dryRun ? " (dry run: nothing sent)" : ""}`);
-  const result = { changed: changes.map((c) => c.folder), blobs: blobs.size, bytes, rev: null };
+  const result = { changed: changes.map((c) => c.folder), blobs: blobs.size, bytes, rev: null, version };
   if (dryRun || changes.length === 0) return result;
 
   let done = 0;

@@ -582,6 +582,12 @@ copies only the clips the channel lacks from the archive to the packs bucket, an
 `shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`). The last 30 runs are kept. The page
 shows the step and the end of the log; the whole log is in that directory.
 
+A press never commits, so a pack's version is the one in its `.toc` on the channel. The button is a
+patch release, its dropdown offers minor and major, and the folders that changed get the highest
+live version of the press bumped by that, so a folder with no changes keeps its own. A `.toc`
+version, a page's `version:` or `docs/quests/CHANGELOG.md` counts only for a pack not on the channel
+yet. A press that changes nothing, or that fails, releases nothing, and the page says so.
+
 Quests needs `python3` with psycopg2, once, as root: `apt-get install python3-psycopg2`. Its other
 imports ship in `release-tools/`. Its clips are the Oggs in `take_encoding`, so nothing is encoded
 during a release, and a live take with no Ogg or no duration there stops it with the take's name.

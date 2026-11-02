@@ -10,6 +10,8 @@ import { closeSync, openSync, realpathSync } from "node:fs";
 import { mkdir, open, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import type { ReleaseBump } from "./sections";
+
 const LOG_TAIL_BYTES = 8_000;
 
 export type DropletRun = {
@@ -33,6 +35,7 @@ type Spawn = (command: string, args: string[], options: SpawnOptions) => ChildPr
 
 export async function startDropletRun(
   run: { id: string; section: string; lang: string },
+  bump: ReleaseBump,
   spawnFn: Spawn = spawn,
 ): Promise<void> {
   const dir = runDir(run.id);
@@ -49,7 +52,7 @@ export async function startDropletRun(
       const child = spawnFn(
         "setsid",
         // The site keeps the machine's one CPU.
-        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir, run.section, run.lang],
+        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir, run.section, run.lang, bump],
         {
           cwd: tools,
           env: { NODE_ENV: process.env.NODE_ENV, PATH: process.env.PATH, HOME: process.env.HOME, SPOKEN_RELEASE_ENV: process.env.SPOKEN_RELEASE_ENV },
@@ -97,6 +100,12 @@ export function currentStep(log: string): string | null {
   const steps = [...log.matchAll(/^==> step (\d+)\/(\d+): (.+)$/gm)];
   const last = steps.at(-1);
   return last ? `${last[3]}, step ${last[1]} of ${last[2]}` : null;
+}
+
+/** What the last line of a job that exited 0 says came of it. */
+export function outcome(log: string): { state: "done"; version: string | null } | { state: "unchanged" } {
+  if (/^==> nothing changed/m.test(log)) return { state: "unchanged" };
+  return { state: "done", version: /^==> released (\S+?):/m.exec(log)?.[1] ?? null };
 }
 
 export function failureReason(log: string, exitCode: number): string {

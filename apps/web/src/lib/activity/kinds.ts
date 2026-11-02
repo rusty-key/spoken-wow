@@ -127,7 +127,7 @@ export type ActivityDetail = {
 
   // Releases.
   "release.started": { section: string };
-  "release.finished": { section: string; state: "done" | "failed" };
+  "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
 
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every
   // language's, so a global admin's alone to read: see `global` in store.ts.

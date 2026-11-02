@@ -101,11 +101,20 @@ describe("release route", () => {
     try {
       expect((await press("frFR", { section: "bosses" })).status).toBe(202);
       expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
+      expect(droplet.startDropletRun.mock.calls[0][1]).toBe("patch");
       await asSystem.query(`delete from "release_run"`);
 
       expect((await press("frFR", { section: "quests" })).status).toBe(202);
       expect(droplet.startDropletRun).toHaveBeenCalledTimes(2);
       expect(github.dispatchRelease).not.toHaveBeenCalled();
+      await asSystem.query(`delete from "release_run"`);
+
+      expect((await press("frFR", { section: "quests", bump: "major" })).status).toBe(202);
+      expect(droplet.startDropletRun.mock.calls[2][1]).toBe("major");
+      await asSystem.query(`delete from "release_run"`);
+
+      expect((await press("frFR", { section: "quests", bump: "huge" })).status).toBe(400);
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(3);
     } finally {
       vi.unstubAllEnvs();
     }

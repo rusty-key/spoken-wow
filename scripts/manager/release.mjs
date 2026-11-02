@@ -2,10 +2,11 @@
 // One section and language onto the Manager channel, with no clips on this machine and no zip:
 // pointers for the clips, the pack's generated files from the database, then the publish.
 //
-//   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--dry-run] [--allow-removals] [--stage-only]
+//   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]
 //
 // DATABASE_URL names the database; a checkout's LOCAL_DB wins for the steps that read it. The
-// channel's keys come as for cli.mjs. Each step prints `==> step n/m`, then its own progress.
+// channel's keys come as for cli.mjs. Each step prints `==> step n/m`, then its own progress, and
+// the last line says what came of it: `==> released <version>` or `==> nothing changed`.
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -15,6 +16,7 @@ import { loadEnv } from "../../pipelines/lib/env.mjs";
 import { parseFrontmatter, forStore } from "../lib/frontmatter.mjs";
 import { findPack, managerFolders, PUBLISHERS_DIR } from "../lib/packs.mjs";
 import { errorText, publishFromEnv } from "./channel.mjs";
+import { BUMPS } from "./pack-version.mjs";
 import { questsSteps } from "./quests-pack.mjs";
 import { keepsCommittedFolder, stagePack } from "./stage-pack.mjs";
 
@@ -35,8 +37,9 @@ const LOOKUPS = {
 
 const [section, lang, ...flags] = process.argv.slice(2);
 const quests = section === "quests";
-if ((!quests && !LOOKUPS[section]) || !/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "")) {
-  console.error("usage: release.mjs <quests|places|readables|bosses> <lang> [--dry-run] [--allow-removals] [--stage-only]");
+const bump = flags.find((flag) => flag.startsWith("--bump="))?.slice("--bump=".length) ?? "patch";
+if ((!quests && !LOOKUPS[section]) || !/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "") || !BUMPS.includes(bump)) {
+  console.error("usage: release.mjs <quests|places|readables|bosses> <lang> [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]");
   process.exit(2);
 }
 const stageOnly = flags.includes("--stage-only");
@@ -79,22 +82,29 @@ try {
   const { folders, build } = await (quests ? questsPack() : soundPack());
   if (folders.length === 0) throw new Error(`${section} ${lang} is not on the Manager channel: its page has no manager: true`);
 
+  const dryRun = flags.includes("--dry-run");
+  let published = null;
   const steps = [
     ["clip pointers", () => runNode("scripts/audio/sounds.mjs", [`--lang=${lang}`, section])],
     ...build,
-    ...(stageOnly ? [] : [["publish", () => publishFromEnv({
-      packs: folders,
-      distDir: join(ROOT, "dist"),
-      cache: new Map(),
-      dryRun: flags.includes("--dry-run"),
-      allowRemovals: flags.includes("--allow-removals"),
-    })]]),
+    ...(stageOnly ? [] : [["publish", async () => {
+      published = await publishFromEnv({
+        packs: folders,
+        distDir: join(ROOT, "dist"),
+        cache: new Map(),
+        bump,
+        dryRun,
+        allowRemovals: flags.includes("--allow-removals"),
+      });
+    }]]),
   ];
   for (const [i, [name, work]] of steps.entries()) {
     console.log(`==> step ${i + 1}/${steps.length}: ${name}`);
     await work();
   }
-  console.log("==> done");
+  if (published?.version) console.log(`==> ${dryRun ? "would release" : "released"} ${published.version}: ${published.changed.join(", ")}`);
+  else if (published) console.log("==> nothing changed: nothing was released");
+  else console.log("==> done");
 } catch (error) {
   console.error(errorText(error));
   process.exit(1);

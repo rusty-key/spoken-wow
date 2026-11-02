@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Toaster, useToast } from "@/components/ui/toast";
 import { langName, type Lang } from "@/lib/lang";
-import { RELEASE_SECTIONS, type ReleaseView, type RunView } from "@/lib/releases/sections";
+import { isSettled, RELEASE_SECTIONS, type ReleaseBump, type ReleaseView, type RunView } from "@/lib/releases/sections";
 
 const POLL_MS = 15_000;
 
@@ -13,8 +16,15 @@ const SHOWN: Record<RunView["state"], string> = {
   dispatching: "Starting",
   running: "Running",
   done: "Done",
+  unchanged: "Nothing changed",
   failed: "Failed",
 };
+
+/** What came of a settled run. */
+function outcomeText(run: RunView): string {
+  if (run.state === "done") return run.version ? `Released ${run.version}.` : "Released.";
+  return run.error ? `Nothing was released: ${run.error}` : "Nothing was released.";
+}
 
 function RunLink({ run, children }: { run: RunView; children: React.ReactNode }) {
   if (!run.githubUrl) return <>{children}</>;
@@ -35,16 +45,75 @@ function RunLog({ run }: { run: RunView }) {
   );
 }
 
-export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
+function ReleaseButton({ disabled, onRelease }: { disabled: boolean; onRelease: (bump: ReleaseBump) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex">
+      <Button disabled={disabled} className="rounded-r-none" onClick={() => onRelease("patch")}>
+        Patch release
+      </Button>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button disabled={disabled} size="icon" aria-label="Other releases" className="border-background rounded-l-none border-l">
+            <ChevronDown className={open ? "size-4 rotate-180" : "size-4"} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-44 p-1">
+          {(["minor", "major"] as const).map((bump) => (
+            <button
+              key={bump}
+              type="button"
+              className="hover:bg-muted w-full cursor-pointer rounded px-2 py-1.5 text-left text-sm capitalize"
+              onClick={() => {
+                setOpen(false);
+                onRelease(bump);
+              }}
+            >
+              {bump} release
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+// A shell, because useToast has to find a provider above the component that calls it.
+export default function ReleasePanel(props: { lang: Lang; initial: ReleaseView }) {
+  return (
+    <Toaster>
+      <Panel {...props} />
+    </Toaster>
+  );
+}
+
+function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
+  const toast = useToast();
   const [view, setView] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [pressing, setPressing] = useState(false);
   const running = view.active !== null;
+  const watching = useRef(initial.active?.own && initial.active.lang === lang ? initial.active.section : null);
 
   const refresh = useCallback(async () => {
     const response = await fetch(`/api/releases?lang=${lang}`, { cache: "no-store" }).catch(() => null);
-    if (response?.ok) setView((await response.json()) as ReleaseView);
-  }, [lang]);
+    if (!response?.ok) return;
+    const next = (await response.json()) as ReleaseView;
+    setView(next);
+    const section = watching.current;
+    const now = next.active?.own && next.active.lang === lang ? next.active.section : null;
+    watching.current = now;
+    if (section && !now) {
+      const settled = next.recent.find((run) => run.section === section && isSettled(run.state));
+      if (settled) {
+        toast({
+          tone: settled.state === "failed" ? "error" : "info",
+          title: `${section[0].toUpperCase()}${section.slice(1)} in ${langName(lang)}`,
+          detail: outcomeText(settled),
+        });
+      }
+    }
+  }, [lang, toast]);
 
   useEffect(() => {
     if (!running) return;
@@ -55,18 +124,23 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
     return () => clearInterval(timer);
   }, [running, refresh]);
 
-  async function release(section: string) {
+  async function release(section: string, bump: ReleaseBump) {
     setPressing(true);
     setError(null);
     const response = await fetch(`/api/releases?lang=${lang}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ section }),
+      body: JSON.stringify({ section, bump }),
     }).catch(() => null);
-    if (!response) setError("Could not reach the server.");
+    let refused: string | null = null;
+    if (!response) refused = "Could not reach the server.";
     else if (!response.ok) {
       const { error: message } = (await response.json().catch(() => ({}))) as { error?: string };
-      setError(message ?? "Something went wrong.");
+      refused = message ?? "Something went wrong.";
+    }
+    if (refused) {
+      setError(`Nothing was released: ${refused}`);
+      toast({ tone: "error", title: "Nothing was released", detail: refused });
     }
     // A refused press may still leave a run to show, and a good one starts the polling.
     await refresh();
@@ -95,7 +169,7 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
       )}
       <ul className="divide-y">
         {RELEASE_SECTIONS.map((section) => {
-          const last = view.recent.find((run) => run.section === section && (run.state === "done" || run.state === "failed"));
+          const last = view.recent.find((run) => run.section === section && isSettled(run.state));
           const current = active?.own && active.section === section && active.lang === lang ? active : null;
           return (
             <li key={section} className="flex items-center gap-4 py-3">
@@ -108,8 +182,8 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
                   </>
                 ) : last ? (
                   <>
-                    <Badge variant={last.state === "done" ? "secondary" : "destructive"}>{SHOWN[last.state]}</Badge>
-                    {last.state === "failed" && last.error && <span className="ml-2">{last.error}</span>}
+                    <Badge variant={last.state === "failed" ? "destructive" : "secondary"}>{SHOWN[last.state]}</Badge>
+                    <span className="ml-2">{outcomeText(last)}</span>
                     {last.githubUrl && (
                       <span className="ml-2">
                         <RunLink run={last}>Run</RunLink>
@@ -121,9 +195,7 @@ export default function ReleasePanel({ lang, initial }: { lang: Lang; initial: R
                   "Not released from here yet"
                 )}
               </span>
-              <Button disabled={running || pressing} onClick={() => void release(section)}>
-                Release
-              </Button>
+              <ReleaseButton disabled={running || pressing} onRelease={(bump) => void release(section, bump)} />
             </li>
           );
         })}

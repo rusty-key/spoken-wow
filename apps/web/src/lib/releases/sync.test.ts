@@ -90,6 +90,17 @@ describe("syncActive", () => {
       expect(await syncActive()).toBeNull();
       expect((await row(good.id)).state).toBe("done");
 
+      const released = await startRun("bosses", "frFR", user.id);
+      job(released.id, { exit: "0", log: "==> released 1.0.1: SpokenBossesAudio_frFR\n" });
+      expect(await syncActive()).toBeNull();
+      const [settled] = await systemRows<{ state: string; version: string }>(`select "state", "version" from "release_run" where "id" = $1`, [released.id]);
+      expect(settled).toEqual({ state: "done", version: "1.0.1" });
+
+      const unchanged = await startRun("bosses", "frFR", user.id);
+      job(unchanged.id, { exit: "0", log: "==> nothing changed: nothing was released\n" });
+      expect(await syncActive()).toBeNull();
+      expect((await row(unchanged.id)).state).toBe("unchanged");
+
       const bad = await startRun("bosses", "frFR", user.id);
       job(bad.id, { exit: "1", log: "error: SpokenBossesAudio would lose 40 files\n" });
       expect(await syncActive()).toBeNull();

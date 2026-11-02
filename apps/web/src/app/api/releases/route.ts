@@ -3,7 +3,7 @@ import { langName } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
 import { runsOnDroplet, startDropletRun } from "@/lib/releases/droplet";
 import { dispatchRelease } from "@/lib/releases/github";
-import { isReleaseSection, RELEASE_SECTIONS } from "@/lib/releases/sections";
+import { isReleaseBump, isReleaseSection, RELEASE_BUMPS, RELEASE_SECTIONS } from "@/lib/releases/sections";
 import { ReleaseBusyError, startRun, updateRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 import { releaseView } from "@/lib/releases/view";
@@ -28,8 +28,10 @@ export async function POST(request: Request) {
   const { session, denied } = await requireCapability("admin", lang);
   if (denied) return denied;
 
-  const body = (await request.json().catch(() => ({}))) as { section?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { section?: unknown; bump?: unknown };
   if (!isReleaseSection(body.section)) return fail(400, `section is one of ${RELEASE_SECTIONS.join(", ")}`);
+  const bump = body.bump ?? "patch";
+  if (!isReleaseBump(bump)) return fail(400, `bump is one of ${RELEASE_BUMPS.join(", ")}`);
 
   // A finished run settles first, or it would hold the lock until somebody happened to look.
   await syncActive();
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await (runsOnDroplet() ? startDropletRun(run) : dispatchRelease(run));
+    await (runsOnDroplet() ? startDropletRun(run, bump) : dispatchRelease(run));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "the release could not be started";
     await updateRun(run.id, { state: "failed", error: reason });
