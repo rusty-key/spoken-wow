@@ -20,5 +20,8 @@ export async function publishFromEnv(options) {
   });
 }
 
-export const errorText = (err) =>
-  err instanceof ConflictError ? `error: ${err.message} was written by another publish while this one ran; run it again` : `error: ${err.message}`;
+// fetch says only "fetch failed" and keeps what went wrong in `cause`.
+export const errorText = (err) => {
+  if (err instanceof ConflictError) return `error: ${err.message} was written by another publish while this one ran; run it again`;
+  return `error: ${err.message}${err.cause?.message ? `: ${err.cause.message}` : ""}`;
+};
