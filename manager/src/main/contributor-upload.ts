@@ -4,10 +4,11 @@
 import fs from 'node:fs'
 import { createReadStream, createWriteStream } from 'node:fs'
 import path from 'node:path'
+import { randomBytes } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import yazl from 'yazl'
-import { CancelledError, isAbortError, PlainError } from './errors'
+import { CancelledError, errorCode, isAbortError, PlainError } from './errors'
 
 const CF_API = 'https://wow.curseforge.com/api'
 const GH_API = 'https://api.github.com'
@@ -51,13 +52,17 @@ async function rejected(store: string, res: Response, token: string): Promise<Pl
 
 // ---------------------------------------------------------------- zip
 
-async function filesUnder(dir: string, prefix: string, out: Array<[string, string]>): Promise<void> {
+async function filesUnder(root: string, dir: string, prefix: string, out: Array<[string, string]>): Promise<void> {
   for (const entry of await fs.promises.readdir(dir, { withFileTypes: true })) {
     if (entry.name === '.DS_Store') continue
     const full = path.join(dir, entry.name)
     const inZip = `${prefix}/${entry.name}`
-    if (entry.isDirectory()) await filesUnder(full, inZip, out)
+    if (entry.isDirectory()) await filesUnder(root, full, inZip, out)
     else if (entry.isFile()) out.push([full, inZip])
+    else if (entry.isSymbolicLink()) {
+      // Leaving a link out would drop clips from a published zip without a word.
+      throw new PlainError(`${path.relative(root, full).split(path.sep).join('/')} is a link, which a pack cannot hold.`)
+    }
   }
 }
 
@@ -65,17 +70,40 @@ async function filesUnder(dir: string, prefix: string, out: Array<[string, strin
 export async function zipFolder(addOns: string, folder: string, dest: string, signal: AbortSignal): Promise<void> {
   if (signal.aborted) throw new CancelledError()
   const files: Array<[string, string]> = []
-  await filesUnder(path.join(addOns, folder), folder, files)
+  const root = path.join(addOns, folder)
+  try {
+    await filesUnder(root, root, folder, files)
+  } catch (err) {
+    if (err instanceof PlainError) throw err
+    if (errorCode(err) === 'ENOENT') throw new PlainError(`${folder} is not installed.`)
+    throw new PlainError(`Could not read ${folder}.`)
+  }
   const zip = new yazl.ZipFile()
+  // yazl reports a file it cannot read on the ZipFile, not on its output; without this the run hangs.
+  zip.on('error', (err) => (zip.outputStream as unknown as Readable).destroy(err))
   for (const [full, inZip] of files) zip.addFile(full, inZip, { compress: false })
   zip.end()
   try {
     await pipeline(zip.outputStream, createWriteStream(dest), { signal })
   } catch (err) {
-    await fs.promises.rm(dest, { force: true })
+    await fs.promises.rm(dest, { force: true }).catch(() => undefined)
     if (isAbortError(err) || signal.aborted) throw new CancelledError()
     throw new PlainError(`Could not zip ${folder}.`)
   }
+}
+
+async function zipSize(zip: string): Promise<number> {
+  try {
+    return (await fs.promises.stat(zip)).size
+  } catch {
+    throw new PlainError('The zip to send could not be read.')
+  }
+}
+
+async function* multipartBody(head: Buffer, file: string, tail: Buffer): AsyncGenerator<Buffer> {
+  yield head
+  for await (const chunk of createReadStream(file)) yield chunk as Buffer
+  yield tail
 }
 
 // ---------------------------------------------------------------- CurseForge
@@ -133,15 +161,31 @@ export async function uploadCurseForge(a: {
     releaseType: 'release',
     relations: { projects: [{ slug: 'spoken', type: 'requiredDependency' }] }
   }
-  const form = new FormData()
-  form.set('metadata', JSON.stringify(metadata))
-  // openAsBlob reads from disk as the body is sent, so a large pack is not held in memory.
-  form.set('file', await fs.openAsBlob(a.zip), path.basename(a.zip))
+  const fileName = `${a.folder}-${a.version}.zip`
+  const boundary = `----spoken${randomBytes(16).toString('hex')}`
+  const head = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="metadata"\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+      'Content-Type: application/octet-stream\r\n\r\n'
+  )
+  const tail = Buffer.from(`\r\n--${boundary}--\r\n`)
+  const size = await zipSize(a.zip)
   const res = await send(
     'CurseForge',
     a.fetchImpl,
     `${CF_API}/projects/${encodeURIComponent(a.project)}/upload-file`,
-    { method: 'POST', headers: cfHeaders(a.token), body: form },
+    {
+      method: 'POST',
+      headers: {
+        ...cfHeaders(a.token),
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': String(head.length + size + tail.length)
+      },
+      // FormData would read the whole zip into memory before sending; this streams it from disk.
+      body: Readable.toWeb(Readable.from(multipartBody(head, a.zip, tail))) as unknown as BodyInit,
+      duplex: 'half',
+      redirect: 'error'
+    } as RequestInit,
     a.signal
   )
   if (res.status === 413) throw new PlainError(`${a.folder} is over CurseForge's upload limit (HTTP 413).`)
@@ -187,7 +231,7 @@ export async function checkGhRepo(token: string, repo: string, fetchImpl: typeof
 interface GhRelease {
   id?: unknown
   upload_url?: unknown
-  assets?: Array<{ name?: unknown }>
+  assets?: unknown
 }
 
 /** A release already holding this zip is left alone, so a re-run sends only what is missing. */
@@ -222,19 +266,26 @@ export async function uploadGitHub(a: {
     )
   }
   if (!res.ok) throw await rejected('GitHub', res, a.token)
-  let release: GhRelease
+  let parsed: unknown
   try {
-    release = (await res.json()) as GhRelease
+    parsed = await res.json()
   } catch {
+    parsed = null
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new PlainError("GitHub's answer could not be read.")
   }
-  if (release.assets?.some((x) => x.name === name)) return { link, alreadyThere: true }
+  const release = parsed as GhRelease
+  const assets: unknown[] = Array.isArray(release.assets) ? release.assets : []
+  if (assets.some((x) => typeof x === 'object' && x !== null && (x as { name?: unknown }).name === name)) {
+    return { link, alreadyThere: true }
+  }
 
   const fromUrl = typeof release.upload_url === 'string' ? /\/releases\/(\d+)\/assets/.exec(release.upload_url)?.[1] : undefined
   const id = fromUrl ?? (typeof release.id === 'number' ? String(release.id) : undefined)
   if (!id) throw new PlainError("GitHub's answer names no release id.")
 
-  const size = (await fs.promises.stat(a.zip)).size
+  const size = await zipSize(a.zip)
   const stream = createReadStream(a.zip)
   const up = await send(
     'GitHub',
@@ -243,9 +294,11 @@ export async function uploadGitHub(a: {
     {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/zip', 'Content-Length': String(size) },
-      // Streamed: the biggest pack of a language would not fit in memory on every machine.
+      // Streamed from disk, since the biggest pack of a language would not fit in memory on every machine.
+      // A redirect would resend the token to wherever it points.
       body: Readable.toWeb(stream) as unknown as BodyInit,
-      duplex: 'half'
+      duplex: 'half',
+      redirect: 'error'
     } as RequestInit,
     a.signal
   ).finally(() => stream.destroy())
