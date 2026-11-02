@@ -432,10 +432,10 @@ export-locale-text: ## quest_line localeText -> build/quests/$(LOCALE)/locale-te
 	@test -n "$(filter-out enUS,$(LOCALE))" || { echo "export-locale-text: set LOCALE to a language other than English, e.g. LOCALE=esMX"; exit 2; }
 	@$(QUESTS_CLI) export-locale-text --lang $(LOCALE) --out $(abspath build/quests/$(LOCALE)/locale-text.json.gz)
 
-# What a quest-log play button names the giver on a client in another language. Committed into
-# the addon, not a pack: the name follows the client's language, not the voice the player
-# chose, so it has to be there with the English packs too (tts_cli/giver_names.py). Rerun after
-# an import-locale; the files only change when a name does.
+# What the quest log and Compendium name for a client in another language. Committed into the
+# addon, not a pack: the name follows the client's language, not the voice the player chose, so
+# it has to be there with the English packs too (tts_cli/giver_names.py). Rerun after an
+# import-locale; the files only change when a name does.
 export-giver-names: ## entity_name -> addons/Spoken_Quests/Locale/Names/<lang>.lua
 	@$(QUESTS_CLI) export-giver-names --out-dir $(abspath addons/Spoken_Quests/Locale/Names)
 

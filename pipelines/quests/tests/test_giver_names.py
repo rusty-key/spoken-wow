@@ -31,6 +31,7 @@ def test_the_givers_are_the_ones_the_pack_hands_the_quest_log():
         ("creature", "237"): "Farmer Furlbrow",
         ("creature", "197"): "Eagan Peltskinner",
         ("item", "1307"): "Gold Pickup Schedule",
+        ("creature", "240"): "Marshal Dughan",
     }
 
 
@@ -44,12 +45,12 @@ def test_only_givers_with_a_name_of_their_own_are_written():
         # Not translated: the pack's English table already answers.
         ("creature", "197"): "Eagan Peltskinner",
         ("item", "1307"): "Goldabholplan",
-        # Not a giver.
+        # A Compendium turn-in speaker, not a quest-log giver.
         ("creature", "240"): "Marschall Dughan",
     }
 
     assert localized_names(givers(CORPUS), names) == {
-        "creature": {237: "Bauer Furlbrow"},
+        "creature": {237: "Bauer Furlbrow", 240: "Marschall Dughan"},
         "gameobject": {},
         "item": {1307: "Goldabholplan"},
     }

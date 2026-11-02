@@ -1911,9 +1911,10 @@ A quest-log play button has no NPC to ask who is speaking. The dialog names its 
 `UnitName("questnpc")` in the client's own language; the log looks the giver up in the pack
 (`NPCIDLookupByQuestID` and its object and item twins) and names them from
 `NPCNameLookupByNPCID`, which is built from the English corpus. So the addon itself ships every
-other language's giver names, `Locale/Names/<lang>.lua`, each returning before it builds
+other language's quest-dialog speaker names, `Locale/Names/<lang>.lua`, each returning before it builds
 anything on a client in another locale, and `DataModules:GetObjectName` asks them first. They
-live in the addon rather than in the packs because the name follows the client, not the voice:
+include Compendium turn-ins as well as quest-log givers. They live in the addon rather than in
+the packs because the name follows the client, not the voice:
 a German client with English packs still shows German names. `make quests-export-giver-names`
 writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale`, along with
 a `Names.xml` that lists them all. Forever's `.toc` lists each file with
