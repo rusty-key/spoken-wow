@@ -259,3 +259,21 @@ export interface Snapshot {
   updater?: import('./api').UpdaterState
   sharingStatus?: SharingStatus
 }
+
+export type RowState =
+  | 'unreleased'
+  | 'awaiting'
+  | 'live'
+  | 'unchecked'
+  | 'not-installed'
+  | 'update-first'
+  | 'linked'
+  | 'no-project'
+
+export interface ReleaseRow {
+  folder: string
+  version?: string
+  state: RowState
+  link?: string
+  project?: string
+}
