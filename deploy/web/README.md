@@ -124,8 +124,7 @@ references stream through the site, and the volume is no longer read or written.
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
 (`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its
 pack's Ogg when it is committed (`apps/web/src/lib/takes/encode.ts`). Without it the take
-still commits, but the release workflow (`.github/workflows/release-packs.yaml`) must encode
-every take instead.
+still commits, but a Manager release stops and names the takes that have no Ogg.
 
 `app.env` may also set **`QUEUE_MAX_ACTIVE`**, which is not a secret: how many people's
 regeneration queues drain at once. Default 3. Each queue runs at its own key's plan width,
@@ -572,9 +571,8 @@ themselves.
 ## The Release button
 
 `/admin/release?lang=xx` lets a team admin publish one section and language to the Manager channel
-and follow it by step. One release runs at a time, site-wide. Places, Readables and Bosses run on
-the droplet once `SPOKEN_RELEASE_ENV` is set; Quests, and everything when it is unset, dispatches
-the `release-packs.yaml` workflow.
+and follow it by step. One release runs at a time, site-wide. Every section runs on the droplet once
+`SPOKEN_RELEASE_ENV` is set; when it is unset, a press dispatches the `release-packs.yaml` workflow.
 
 ### On the droplet
 
@@ -583,6 +581,10 @@ deploy's pm2 reload does not kill it. It works in a scratch copy of the release'
 copies only the clips the channel lacks from the archive to the packs bucket, and reports through
 `shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`). The last 30 runs are kept. The page
 shows the step and the end of the log; the whole log is in that directory.
+
+Quests needs `python3` with psycopg2, once, as root: `apt-get install python3-psycopg2`. Its other
+imports ship in `release-tools/`. Its clips are the Oggs in `take_encoding`, so nothing is encoded
+during a release, and a live take with no Ogg or no duration there stops it with the take's name.
 
 1. Create `/srv/spoken/shared/release.env`, owned by `deploy`, mode 600:
 

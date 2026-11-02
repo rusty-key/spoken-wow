@@ -2,7 +2,7 @@
 // One section and language onto the Manager channel, with no clips on this machine and no zip:
 // pointers for the clips, the pack's generated files from the database, then the publish.
 //
-//   node scripts/manager/release.mjs <places|readables|bosses> <lang> [--dry-run] [--allow-removals] [--stage-only]
+//   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--dry-run] [--allow-removals] [--stage-only]
 //
 // DATABASE_URL names the database; a checkout's LOCAL_DB wins for the steps that read it. The
 // channel's keys come as for cli.mjs. Each step prints `==> step n/m`, then its own progress.
@@ -15,6 +15,7 @@ import { loadEnv } from "../../pipelines/lib/env.mjs";
 import { parseFrontmatter, forStore } from "../lib/frontmatter.mjs";
 import { findPack, managerFolders, PUBLISHERS_DIR } from "../lib/packs.mjs";
 import { errorText, publishFromEnv } from "./channel.mjs";
+import { questsSteps } from "./quests-pack.mjs";
 import { keepsCommittedFolder, stagePack } from "./stage-pack.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -33,41 +34,54 @@ const LOOKUPS = {
 };
 
 const [section, lang, ...flags] = process.argv.slice(2);
-if (!LOOKUPS[section] || !/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "")) {
-  console.error("usage: release.mjs <places|readables|bosses> <lang> [--dry-run] [--allow-removals] [--stage-only]");
+const quests = section === "quests";
+if ((!quests && !LOOKUPS[section]) || !/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "")) {
+  console.error("usage: release.mjs <quests|places|readables|bosses> <lang> [--dry-run] [--allow-removals] [--stage-only]");
   process.exit(2);
 }
 const stageOnly = flags.includes("--stage-only");
 
-function run(script, args = []) {
-  const env = {
-    ...process.env,
-    LOCAL_DB: process.env.LOCAL_DB || process.env.DATABASE_URL,
-    SPOKEN_CLIP_POINTERS: "1",
-    SPOKEN_PLACES_LANG: lang,
-  };
-  const { status, error } = spawnSync(process.execPath, [join(ROOT, script), ...args], { cwd: ROOT, env, stdio: "inherit" });
+function run(command, args, { cwd, env, label }) {
+  const { status, error } = spawnSync(command, args, { cwd, env: { ...process.env, ...env }, stdio: "inherit" });
   if (error) throw error;
-  if (status !== 0) throw new Error(`${script} exited ${status}`);
+  if (status !== 0) throw new Error(`${label} exited ${status}`);
+}
+
+function runNode(script, args = []) {
+  const env = { LOCAL_DB: process.env.LOCAL_DB || process.env.DATABASE_URL, SPOKEN_CLIP_POINTERS: "1", SPOKEN_PLACES_LANG: lang };
+  run(process.execPath, [join(ROOT, script), ...args], { cwd: ROOT, env, label: script });
+}
+
+async function questsPack() {
+  const folders = managerFolders().filter((p) => p.section === section && p.lang === lang);
+  return { folders, build: await questsSteps(lang, { root: ROOT, folders: folders.map((p) => p.folder), run }) };
+}
+
+function soundPack() {
+  const pack = findPack(section, lang);
+  return {
+    folders: managerFolders().filter((p) => p.folder === pack.folder),
+    build: [
+      ...LOOKUPS[section](lang).map(([name, script, ...args]) => [name, () => runNode(script, args)]),
+      ["the pack's folder", async () => {
+        const page = keepsCommittedFolder(section, lang) ? null : parseFrontmatter(await readFile(join(PUBLISHERS_DIR, pack.page), "utf8"), pack.page);
+        const staged = await stagePack(section, lang, { root: ROOT, pack, readme: page && forStore(page.body, "curseforge") });
+        console.log(`${staged.folder} ${staged.version}`);
+      }],
+    ],
+  };
 }
 
 try {
   await loadEnv();
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   if (!process.env.SPOKEN_ARCHIVE_URL) throw new Error("SPOKEN_ARCHIVE_URL is not set");
-  const pack = findPack(section, lang);
-  const folders = managerFolders().filter((p) => p.folder === pack.folder);
-  if (folders.length === 0) throw new Error(`${pack.folder} is not on the Manager channel: its page has no manager: true`);
+  const { folders, build } = await (quests ? questsPack() : soundPack());
+  if (folders.length === 0) throw new Error(`${section} ${lang} is not on the Manager channel: its page has no manager: true`);
 
-  const lookups = LOOKUPS[section](lang);
   const steps = [
-    ["clip pointers", () => run("scripts/audio/sounds.mjs", [`--lang=${lang}`, section])],
-    ...lookups.map(([name, script, ...args]) => [name, () => run(script, args)]),
-    ["the pack's folder", async () => {
-      const page = keepsCommittedFolder(section, lang) ? null : parseFrontmatter(await readFile(join(PUBLISHERS_DIR, pack.page), "utf8"), pack.page);
-      const staged = await stagePack(section, lang, { root: ROOT, pack, readme: page && forStore(page.body, "curseforge") });
-      console.log(`${staged.folder} ${staged.version}`);
-    }],
+    ["clip pointers", () => runNode("scripts/audio/sounds.mjs", [`--lang=${lang}`, section])],
+    ...build,
     ...(stageOnly ? [] : [["publish", () => publishFromEnv({
       packs: folders,
       distDir: join(ROOT, "dist"),

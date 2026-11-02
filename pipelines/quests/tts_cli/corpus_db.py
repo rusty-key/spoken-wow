@@ -77,7 +77,8 @@ def connect():
             "Producing audio and building a pack still need no database; this command does."
         )
     # Here rather than at the top, so the module's pure parts (split_contributed) load and are
-    # tested without psycopg2, which only requirements-extract.txt installs.
+    # tested without psycopg2, which only requirements-extract.txt installs, and the droplet's
+    # python3-psycopg2 package.
     import psycopg2
 
     return psycopg2.connect(url)

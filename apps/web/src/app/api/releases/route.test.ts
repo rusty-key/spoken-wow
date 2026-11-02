@@ -96,18 +96,16 @@ describe("release route", () => {
     expect(github.dispatchRelease.mock.calls[0][0]).toMatchObject({ id: run.id, section: "quests", lang: "frFR" });
   });
 
-  it("starts a section the droplet can release there, and quests still on GitHub", async () => {
+  it("starts every section on the droplet once it can release there", async () => {
     vi.stubEnv("SPOKEN_RELEASE_ENV", "/srv/spoken/shared/release.env");
     try {
-      const bosses = await press("frFR", { section: "bosses" });
-      expect(bosses.status).toBe(202);
+      expect((await press("frFR", { section: "bosses" })).status).toBe(202);
       expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
-      expect(github.dispatchRelease).not.toHaveBeenCalled();
       await asSystem.query(`delete from "release_run"`);
 
       expect((await press("frFR", { section: "quests" })).status).toBe(202);
-      expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
-      expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(2);
+      expect(github.dispatchRelease).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();
     }

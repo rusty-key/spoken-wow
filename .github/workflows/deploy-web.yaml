@@ -39,6 +39,12 @@ on:
       - "addons/SpokenPlacesAudio/**"
       - "addons/SpokenReadablesAudio/**"
       - "addons/SpokenBossesAudio/**"
+      - "pipelines/quests/cli-main.py"
+      - "pipelines/quests/tts_cli/**"
+      - "pipelines/quests/assets/icon/**"
+      - "pipelines/quests/requirements-release.txt"
+      - "addons/Spoken_Quests/Data/Compendium.lua"
+      - "docs/quests/CHANGELOG.md"
       - "deploy/web/**"
       - ".github/workflows/deploy-web.yaml"
   workflow_dispatch:
