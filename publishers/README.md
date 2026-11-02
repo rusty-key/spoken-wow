@@ -180,6 +180,15 @@ under `bundles`). The four split pages say `github: false`, which keeps them out
 `scripts/audio-github-release.sh`. The zip is not called `SpokenQuestsAudio-<version>.zip`
 because that is the meta addon's.
 
+**A maintainer publishes from their own machine and to their own stores.** The Release button
+puts a pack on the Manager channel and commits nothing. `scripts/maintainers/spoken-release.sh`
+then takes what the Manager installed in `AddOns`, zips each folder at the version in its `.toc`,
+and uploads it to the maintainer's CurseForge projects, their GitHub repository, or both, with
+their own tokens. It is one bash file with no Node and no checkout, for a maintainer to download
+along with `spoken-release.env.example`, and on Windows it runs in Git Bash, where Windows' own
+`tar` makes the zip. CurseForge may refuse the largest packs at its upload limit; the script says
+which and carries on. It uploads files only, so a project's page is still pasted by hand.
+
 **These are pasted by hand and the site is the live copy.** There is no API for descriptions —
 `release.sh` uploads files and nothing else, deliberately, because a script that rewrote project
 pages each release could quietly undo an edit made in the web UI. So these files are the source
