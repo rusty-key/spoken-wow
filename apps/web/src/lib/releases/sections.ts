@@ -9,7 +9,19 @@ export function isReleaseSection(value: unknown): value is ReleaseSection {
   return typeof value === "string" && (RELEASE_SECTIONS as readonly string[]).includes(value);
 }
 
-export type ReleaseState = "dispatching" | "running" | "done" | "failed";
+export const RELEASE_BUMPS = ["patch", "minor", "major"] as const;
+
+export type ReleaseBump = (typeof RELEASE_BUMPS)[number];
+
+export function isReleaseBump(value: unknown): value is ReleaseBump {
+  return typeof value === "string" && (RELEASE_BUMPS as readonly string[]).includes(value);
+}
+
+export type ReleaseState = "dispatching" | "running" | "done" | "unchanged" | "failed";
+
+export function isSettled(state: ReleaseState): state is "done" | "unchanged" | "failed" {
+  return state === "done" || state === "unchanged" || state === "failed";
+}
 
 /** What the panel draws of a run; another team's active run carries only the first four. */
 export type RunView = {
@@ -21,6 +33,8 @@ export type RunView = {
   githubUrl?: string | null;
   step?: string | null;
   error?: string | null;
+  /** The version it released. */
+  version?: string | null;
   /** The end of the output, for a run this machine ran. */
   log?: string | null;
 };

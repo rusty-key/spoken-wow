@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { currentStep, failureReason, readDropletRun, runsOnDroplet, startDropletRun } from "./droplet";
+import { currentStep, failureReason, outcome, readDropletRun, runsOnDroplet, startDropletRun } from "./droplet";
 
 let shared: string;
 
@@ -46,18 +46,32 @@ describe("startDropletRun", () => {
 
   it("forks the job away and hands it none of the site's secrets", async () => {
     const spawnFn = fakeSpawn(0);
-    await startDropletRun(run, spawnFn);
+    await startDropletRun(run, "minor", spawnFn);
     const [command, args, options] = spawnFn.mock.calls[0] as unknown as [string, string[], { env: Record<string, string> }];
     expect(command).toBe("setsid");
     expect(args[0]).toBe("--fork");
     expect(args).toContain(join(realpathSync(shared), "release-tools/scripts/manager/release-job.mjs"));
-    expect(args.slice(-3)).toEqual([join(shared, "release-runs/run-1"), "bosses", "enUS"]);
+    expect(args.slice(-4)).toEqual([join(shared, "release-runs/run-1"), "bosses", "enUS", "minor"]);
     expect(Object.keys(options.env).sort()).toEqual(["HOME", "NODE_ENV", "PATH", "SPOKEN_RELEASE_ENV"]);
   });
 
   it("refuses when the fork could not start", async () => {
-    await expect(startDropletRun(run, fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
-    await expect(startDropletRun(run, fakeSpawn(1))).rejects.toThrow("setsid exited 1");
+    await expect(startDropletRun(run, "patch", fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
+    await expect(startDropletRun(run, "patch", fakeSpawn(1))).rejects.toThrow("setsid exited 1");
+  });
+});
+
+describe("outcome", () => {
+  it("reads the version a job released", () => {
+    expect(outcome("==> step 3/3: publish\n==> released 2.5.1: SpokenPlacesAudio\n")).toEqual({ state: "done", version: "2.5.1" });
+  });
+
+  it("tells a job that found nothing to release", () => {
+    expect(outcome("==> step 3/3: publish\n==> nothing changed: nothing was released\n")).toEqual({ state: "unchanged" });
+  });
+
+  it("is done with no version when the log does not say", () => {
+    expect(outcome("==> done\n")).toEqual({ state: "done", version: null });
   });
 });
 

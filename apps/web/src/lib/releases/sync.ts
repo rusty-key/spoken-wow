@@ -4,7 +4,7 @@
  */
 import "server-only";
 
-import { currentStep, failureReason, readDropletRun, type DropletRun } from "./droplet";
+import { currentStep, failureReason, outcome, readDropletRun, type DropletRun } from "./droplet";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
 import { activeRun, updateRun, type ReleaseRun } from "./store";
 
@@ -40,7 +40,7 @@ async function settleFromJob(run: ReleaseRun, job: DropletRun, now: number): Pro
   if (job.exitCode !== null) {
     await updateRun(
       run.id,
-      job.exitCode === 0 ? { state: "done" } : { state: "failed", error: failureReason(job.log, job.exitCode) },
+      job.exitCode === 0 ? outcome(job.log) : { state: "failed", error: failureReason(job.log, job.exitCode) },
     );
     return null;
   }

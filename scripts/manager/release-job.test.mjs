@@ -42,7 +42,7 @@ test("a run logs its output, records its code, and leaves no scratch copy", asyn
   const runDir = runDirectory();
   assert.equal(await runJob({ runDir, section: "bosses", lang: "enUS", env: { PATH: process.env.PATH }, tools }), 0);
   const log = readFileSync(join(runDir, "log"), "utf8");
-  assert.match(log, /==> step 1\/1: bosses enUS/);
+  assert.match(log, /==> step 1\/1: bosses enUS --bump=patch/);
   assert.match(log, /to stderr/);
   assert.equal(readFileSync(join(runDir, "exit"), "utf8"), "0");
   assert.equal(existsSync(join(runDir, "work")), false);

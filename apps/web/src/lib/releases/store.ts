@@ -9,7 +9,7 @@ import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
 
-import type { ReleaseState } from "./sections";
+import { isSettled, type ReleaseState } from "./sections";
 
 export type ReleaseRun = {
   id: string;
@@ -21,6 +21,7 @@ export type ReleaseRun = {
   githubUrl: string | null;
   step: string | null;
   error: string | null;
+  version: string | null;
   createdAt: Date;
   finishedAt: Date | null;
 };
@@ -32,7 +33,7 @@ export class ReleaseBusyError extends Error {
 }
 
 const COLUMNS = `"id", "teamId", "section", "lang", "state", "githubRunId"::float8 as "githubRunId", "githubUrl",
-                 "step", "error", "createdAt", "finishedAt"`;
+                 "step", "error", "version", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
 const UNIQUE_VIOLATION = "23505";
 
@@ -68,7 +69,7 @@ export async function startRun(section: string, lang: Lang, userId: string): Pro
 
 export async function updateRun(
   id: string,
-  patch: Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error">>,
+  patch: Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error" | "version">>,
 ): Promise<ReleaseRun> {
   return withTeam(ALL_TEAMS, async (client) => {
     const { rows: before } = await client.query<ReleaseRun>(
@@ -78,8 +79,8 @@ export async function updateRun(
     if (!before[0]) throw new Error(`no release run ${id}`);
     // Each process polls on its own, so a slower one can arrive after another has settled the
     // run; its write would take the lock again, or clash with the next press's.
-    if (before[0].state === "done" || before[0].state === "failed") return before[0];
-    const settles = patch.state === "done" || patch.state === "failed" ? patch.state : null;
+    if (isSettled(before[0].state)) return before[0];
+    const settles = patch.state && isSettled(patch.state) ? patch.state : null;
     const { rows } = await client.query<ReleaseRun>(
       `update "release_run" set
          "state" = coalesce($2, "state"),
@@ -87,15 +88,16 @@ export async function updateRun(
          "githubUrl" = coalesce($4, "githubUrl"),
          "step" = coalesce($5, "step"),
          "error" = coalesce($6, "error"),
-         "finishedAt" = case when $7 then coalesce("finishedAt", now()) else "finishedAt" end
+         "version" = coalesce($7, "version"),
+         "finishedAt" = case when $8 then coalesce("finishedAt", now()) else "finishedAt" end
        where "id" = $1 returning ${COLUMNS}`,
       [id, patch.state ?? null, patch.githubRunId ?? null, patch.githubUrl ?? null, patch.step ?? null,
-       patch.error ?? null, settles !== null],
+       patch.error ?? null, patch.version ?? null, settles !== null],
     );
     const run = rows[0];
     if (settles) {
       await recordActivity(
-        { kind: "release.finished", lang: run.lang, actorId: null, detail: { section: run.section, state: settles } },
+        { kind: "release.finished", lang: run.lang, actorId: null, detail: { section: run.section, state: settles, ...(run.version ? { version: run.version } : {}) } },
         client,
       );
     }
