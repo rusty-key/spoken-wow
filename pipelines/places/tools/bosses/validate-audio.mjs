@@ -96,6 +96,14 @@ export function checkPack({ lookup, onDisk, takes, hashes }) {
   return { problems, notes };
 }
 
+/**
+ * A language with no takes agrees with itself on every check above, and would go out as a pack
+ * with no voices. Thrown, not a problem, so the Release button shows it as the run's reason.
+ */
+export function refuseEmpty(lookup, lang) {
+  if (lookup.length === 0) throw new Error(`${lang} has no live boss takes, so there is no pack to build`);
+}
+
 async function mp3sOnDisk(dir, prefix = "") {
   if (!existsSync(dir)) return [];
   const found = [];
@@ -131,6 +139,7 @@ async function main() {
   }
 
   const lookup = parseLookup(lua);
+  refuseEmpty(lookup, lang);
   const { problems, notes } = checkPack({ lookup, onDisk: new Set(onDisk), takes, hashes });
   console.log(`${lang}: ${lookup.length} lookup entries, ${onDisk.length} mp3s`);
   for (const note of notes) console.log(`  note: ${note}`);
