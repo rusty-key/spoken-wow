@@ -17,6 +17,12 @@ python scripts/audio/optional-speed-pack.py ORIGINAL.zip --speed 1.5 --output OP
 python scripts/audio/optional-speed-pack.py ORIGINAL.zip --speed 2 --output OPTIONAL-2.zip
 ```
 
+`ORIGINAL.zip` and the output names are examples, not required filenames. Replace the input with
+the ZIP you downloaded, such as `SpokenQuestsAudioAll-2.5.0.zip`. What must match exactly is the
+structure inside it: each audio addon's folder sits at the ZIP root and has a `.toc` with the
+same name. The output keeps the audio paths under `SpokenSpeed15_<source folder>` or
+`SpokenSpeed20_<source folder>`, names Spoken uses to find the faster recording.
+
 Run the commands for the English and Spanish ZIPs you want to support. The tool reads the
 originals and writes audio-only add-ons; it does not call a TTS service or alter the source ZIP.
 The optional ZIPs can be offered separately, so a 1× listener downloads no extra audio. Extract
