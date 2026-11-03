@@ -110,6 +110,10 @@ async function* multipartBody(head: Buffer, file: string, tail: Buffer): AsyncGe
 
 const cfHeaders = (token: string): Record<string, string> => ({ 'X-Api-Token': token })
 
+export function cfProjectLink(project: string): string {
+  return `https://www.curseforge.com/projects/${encodeURIComponent(project)}`
+}
+
 async function listGameVersions(token: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<unknown> {
   const res = await send('CurseForge', fetchImpl, `${CF_API}/game/versions`, { headers: cfHeaders(token) }, signal)
   if (!res.ok) {
@@ -197,7 +201,7 @@ export async function uploadCurseForge(a: {
   } catch {
     // The file is up; only its id is unknown.
   }
-  return { fileId, link: `https://www.curseforge.com/projects/${encodeURIComponent(a.project)}` }
+  return { fileId, link: cfProjectLink(a.project) }
 }
 
 // ---------------------------------------------------------------- GitHub

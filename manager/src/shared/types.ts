@@ -232,9 +232,9 @@ export interface JobProgress {
   gameId: string
   productId: string
   /** A repair is an install of the version already there. */
-  action: 'install' | 'repair' | 'uninstall'
+  action: 'install' | 'repair' | 'uninstall' | 'publish'
   phase: JobPhase
-  /** Bytes of the download so far and its total. */
+  /** Bytes of the download so far and its total; for a publish run, the pack counter. */
   received: number
   total: number
   bytesPerSecond: number
@@ -258,6 +258,35 @@ export interface Snapshot {
   /** The manager's own update, as last sent: a window opened later still shows it. */
   updater?: import('./api').UpdaterState
   sharingStatus?: SharingStatus
+}
+
+export type StoreId = 'curseforge' | 'github'
+
+/** A language admin's store settings. Secrets stay in the main process; the window sees only whether one is kept. */
+export interface ContributorConfig {
+  projects: Record<string, string>
+  repo: string
+  gameVersions: string
+  hasCfToken: boolean
+  hasGhToken: boolean
+}
+
+export interface ContributorView {
+  /** Null when signed out. An account with no admin languages is still an account, so the window can say so. */
+  account: { email: string; adminLangs: string[] } | null
+  config: ContributorConfig
+  canStoreSecrets: boolean
+  lastRun: PublishResult | null
+}
+
+export interface PublishResult {
+  store: StoreId
+  published: { folder: string; version: string; link: string }[]
+  /** Folders not sent: not unreleased, or already on the store. */
+  skipped: string[]
+  failed: { folder: string; reason: string }[]
+  /** A cancel or a failure of the whole run, so folders may be in none of the lists. */
+  stoppedEarly: boolean
 }
 
 export type RowState =

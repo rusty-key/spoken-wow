@@ -33,6 +33,7 @@ export const CHANNELS = {
   communityChanged: 'manager:event:community',
   updaterState: 'manager:event:updater',
   sharingChanged: 'manager:event:sharing',
+  contributorChanged: 'manager:event:contributor',
   windowMaximized: 'manager:event:window-maximized'
 } as const
 

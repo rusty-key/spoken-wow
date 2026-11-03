@@ -9,7 +9,9 @@ import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
 import { COMMUNITY_PREFIX, communityProduct, communityRelease, fetchCommunity, isCommunityProductId, loadCommunity, saveCommunity } from './community'
 import { PlainError } from './errors'
 import { checkDownloadsPath } from './guard'
-import { cleanLeftovers, clearDownloads } from './cleanup'
+import { cleanContributorTmp, cleanLeftovers, clearDownloads } from './cleanup'
+import { ContributorService, NO_SECRET_BOX } from './contributor'
+import type { SecretBox } from './contributor-store'
 import { addGame, notSupportedMessage, removeGame, scanGames } from './games'
 import { fetchReleases } from './github'
 import { installProduct, recoverInterrupted, uninstallProduct, type FsOps, type JobContext } from './install'
@@ -47,6 +49,12 @@ export interface ServiceOptions {
   packsTimeoutMs?: number
   /** Replaces the site's contributions address (tests, and SPOKEN_SHARE_URL in a dev build). */
   shareUrl?: string
+  /** Replaces the site's address (tests, and SPOKEN_SITE_URL in a dev build). */
+  siteUrl?: string
+  /** Seals the contributor's tokens and cookie; without one, none can be saved. */
+  secretBox?: SecretBox
+  /** The fetch for the site and the stores, when it must differ from `fetchImpl` (index.ts says why). */
+  contributorFetch?: typeof fetch
 }
 
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
@@ -62,6 +70,7 @@ export class ManagerService {
   settings: Settings
   catalog: Catalog
   readonly jobs: JobManager
+  readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
   private refreshingCommunity: Promise<CommunityCatalog> | null = null
   community: CommunityCatalog
@@ -83,6 +92,16 @@ export class ManagerService {
     this.community = loadCommunity(opts.dataPath)
     this.channel = loadCachedIndex(opts.dataPath, opts.packsPublicKey)
     this.jobs = new JobManager((p: JobProgress) => opts.send(CHANNELS.jobProgress, p))
+    this.contributor = new ContributorService({
+      dataPath: opts.dataPath,
+      box: opts.secretBox ?? NO_SECRET_BOX,
+      fetchImpl: opts.contributorFetch ?? opts.fetchImpl ?? fetch,
+      ...(opts.siteUrl ? { siteUrl: opts.siteUrl } : {}),
+      jobs: this.jobs,
+      game: (gameId) => this.requireGame(gameId),
+      channel: () => this.channel,
+      changed: (view) => opts.send(CHANNELS.contributorChanged, view)
+    })
     this.ledger = loadLedger(opts.dataPath)
     this.sharingStatus = { sending: false, ...(this.ledger.lastSent ? { lastSent: this.ledger.lastSent } : {}) }
   }
@@ -105,6 +124,7 @@ export class ManagerService {
           if (failed.length > 0) log(`Could not restore ${failed.join(', ')} on ${game.label}; the backup is kept.`)
         }
         await cleanLeftovers(this.games, this.downloadsPath())
+        await cleanContributorTmp(this.opts.dataPath)
       })
       .then(
         () => undefined,

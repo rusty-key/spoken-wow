@@ -3,22 +3,15 @@
 // through the SecretBox (Electron's safeStorage) and never returned by config().
 import path from 'node:path'
 import { PlainError } from './errors'
+import type { ContributorConfig, StoreId } from '../shared/types'
 import { readJsonFile, writeJsonAtomic } from './state'
 
-export type StoreId = 'curseforge' | 'github'
+export type { ContributorConfig, StoreId } from '../shared/types'
 
 export interface SecretBox {
   available(): boolean
   seal(s: string): string
   open(s: string): string
-}
-
-export interface ContributorConfig {
-  projects: Record<string, string>
-  repo: string
-  gameVersions: string
-  hasCfToken: boolean
-  hasGhToken: boolean
 }
 
 export interface UploadRecord {
@@ -82,7 +75,7 @@ export class ContributorStore {
     }
   }
 
-  private requireBox(): void {
+  requireBox(): void {
     if (!this.box.available()) {
       throw new PlainError('This computer cannot keep secrets safely, so Spoken Manager will not store them.')
     }
