@@ -74,7 +74,8 @@ Expect("TestSound says no for a missing file", SU:TestSound({ path = "gone.ogg" 
 
 -- The speed pack is optional and mirrors both English and translated pack paths.
 stub.SetAddOns({ { folder = "SpokenSpeed15_SpokenQuestsAudioAlliance" },
-    { folder = "SpokenSpeed20_SpokenQuestsAudio_esES" } })
+    { folder = "SpokenSpeed20_SpokenQuestsAudio_esES" },
+    { folder = "SpokenSpeed15_SpokenZonesAudio_esES" } })
 local english = { path = [[Interface\AddOns\SpokenQuestsAudioAlliance\generated\sounds\quests\a.ogg]], length = 6,
     text = "First second third", present = { timings = "0 1.5 3" } }
 env.Spoken:SetPlaybackSpeed(1.5)
@@ -99,6 +100,14 @@ Expect("missing optional copy falls back to original", SU:PlaySound(spanish, "Ma
 Expect("fallback plays at normal speed", spanish.playbackSpeed, 1)
 Expect("fallback restores the original duration", spanish.length, 6)
 Expect("fallback uses the source path", spanish.playedPath, spanish.path)
+
+local zone = { path = [[Interface\AddOns\SpokenZonesAudio_esES\Sounds\1411\bladefist-bay.mp3]], length = 12 }
+env.Spoken:SetPlaybackSpeed(1.5)
+stub.ResetSound()
+Expect("Spanish MP3 speed copy plays", SU:PlaySound(zone, "Master"), true)
+Expect("Spanish MP3 path mirrors the source", world.played[1],
+    [[Interface\AddOns\SpokenSpeed15_SpokenZonesAudio_esES\Sounds\1411\bladefist-bay.mp3]])
+Expect("Spanish MP3 duration follows the copy", zone.length, 8)
 
 if failures > 0 then
     print(string.format("\n%d failure(s)", failures))

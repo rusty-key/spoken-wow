@@ -126,13 +126,13 @@ end
 
 local SPEED_PACKS = { [1.5] = "SpokenSpeed15_", [2] = "SpokenSpeed20_" }
 
---- The optional pack mirrors the original pack's OGG paths under its own addon folder.
+--- The optional pack mirrors the original pack's audio paths under its own addon folder.
 --- A missing speed pack leaves the original recording usable without changing the settings.
 function SoundUtils:SpeedPath(path, speed)
     local prefix = SPEED_PACKS[speed]
     if not prefix then return nil end
-    local root, pack, rest = string.match(path or "", "^(Interface[\\/]AddOns[\\/])([^\\/]+)([\\/].+%.ogg)$")
-    if not root then return nil end
+    local root, pack, rest, extension = string.match(path or "", "^(Interface[\\/]AddOns[\\/])([^\\/]+)([\\/].+%.(%w+))$")
+    if not root or (string.lower(extension) ~= "ogg" and string.lower(extension) ~= "mp3") then return nil end
     local addon = prefix .. pack
     local getInfo = C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo
     if not getInfo or not getInfo(addon) then return nil end

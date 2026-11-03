@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build an optional 1.5x or 2x OGG pack from a shipped Spoken audio ZIP.
+"""Build an optional 1.5x or 2x audio pack from a shipped Spoken audio ZIP.
 
 The output contains only audio and a TOC. It does not replace the source pack.
-Each output addon mirrors one source addon's internal OGG paths so Spoken can
+Each output addon mirrors one source addon's OGG and MP3 paths so Spoken can
 choose a faster copy without changing the source pack or its lookup tables.
 """
 
@@ -35,7 +35,7 @@ def main() -> None:
     if args.source.resolve() == args.output.resolve() or args.output.exists():
         parser.error("output must be a new ZIP, separate from the source")
     if not shutil.which("ffmpeg"):
-        parser.error("ffmpeg is required, with the libvorbis encoder")
+        parser.error("ffmpeg is required, with libvorbis and libmp3lame encoders")
 
     suffix, rate = RATES[args.speed]
     with ZipFile(args.source) as source:
@@ -48,12 +48,12 @@ def main() -> None:
                 raise ValueError(f"Unsafe path in source ZIP: {item.filename}")
             if not re.fullmatch(r"[A-Za-z0-9_]+", path.parts[0]) or "\\" in item.filename:
                 raise ValueError(f"Unsafe addon folder in source ZIP: {item.filename}")
-            if path.suffix.lower() == ".ogg":
+            if path.suffix.lower() in (".ogg", ".mp3"):
                 audio.append((item, path))
             elif len(path.parts) == 2 and path.suffix.lower() == ".toc" and path.stem == path.parts[0]:
                 tocs[path.parts[0]] = source.read(item)
         if not audio:
-            raise ValueError("Source ZIP has no OGG files")
+            raise ValueError("Source ZIP has no OGG or MP3 files")
         packs = {path.parts[0] for _, path in audio}
         if packs - tocs.keys():
             raise ValueError(f"Missing source TOC for {sorted(packs - tocs.keys())}")
@@ -61,8 +61,6 @@ def main() -> None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="spoken-speed-") as temporary:
             temporary = Path(temporary)
-            original = temporary / "original.ogg"
-            converted = temporary / "converted.ogg"
             with ZipFile(args.output, "w", compression=ZIP_STORED, allowZip64=True) as output:
                 for pack in sorted(packs):
                     optional = f"SpokenSpeed{suffix}_{pack}"
@@ -78,16 +76,22 @@ def main() -> None:
                     )
                     output.writestr(f"{optional}/{optional}.toc", header)
                 for count, (item, path) in enumerate(audio, 1):
+                    extension = path.suffix.lower()
+                    original = temporary / f"original{extension}"
+                    converted = temporary / f"converted{extension}"
                     original.write_bytes(source.read(item))
+                    encoder = "libvorbis" if extension == ".ogg" else "libmp3lame"
+                    quality = "0" if extension == ".ogg" else "3"
                     command = [
                         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(original),
-                        "-filter:a", f"atempo={rate}", "-c:a", "libvorbis", "-q:a", "0", str(converted),
+                        "-filter:a", f"atempo={rate}", "-c:a", encoder, "-q:a", quality, str(converted),
                     ]
                     subprocess.run(command, check=True)
                     optional = f"SpokenSpeed{suffix}_{path.parts[0]}"
                     output.write(converted, str(PurePosixPath(optional, *path.parts[1:])))
                     if count % 100 == 0 or count == len(audio):
                         print(f"{count}/{len(audio)} recordings", flush=True)
+                    original.unlink()
                     converted.unlink()
     print(args.output)
 
