@@ -38,7 +38,8 @@ The profile name must be the Spoken voice slot name for English, for example
    are lowered to OmniVoice CMU phoneme brackets. A version of the applied rules is recorded
    with the take.
 4. Lines containing narration or voice markers are generated turn-by-turn and stitched into one
-   MP3 before the take is committed.
+   MP3 before the take is committed. A line whose audio passes 16 MiB across its turns fails, and
+   the rest of the batch carries on.
 
 The existing ElevenLabs and fish.audio paths, credentials, references, and take history remain
 unchanged.

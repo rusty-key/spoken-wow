@@ -26,6 +26,13 @@ const TURN_PAUSE_SEC = 0.25;
 const LIST_TIMEOUT_MS = 10_000;
 const SPEECH_TIMEOUT_MS = 180_000;
 
+// The server buffers what a collaborator's service sends. Unbounded, one runaway response takes
+// the app past its memory limit and the restart interrupts everybody's jobs. A line is the unit
+// because its turns stay in memory until they are stitched; 16 MiB is over ten minutes of mp3.
+const MAX_LINE_BYTES = 16 * 1024 * 1024;
+const MAX_LIST_BYTES = 1024 * 1024;
+const MAX_ERROR_BYTES = 64 * 1024;
+
 type Service = Pick<VoiceStudioConnection, "baseUrl" | "apiKey" | "model">;
 type Fetch = typeof globalThis.fetch;
 type VoiceProfile = { id?: string; voice_id?: string; name?: string };
@@ -45,9 +52,31 @@ function headers(apiKey: string, json = false): Record<string, string> {
   };
 }
 
+/** At most `limit` bytes of a body, and whether there was more, which is left unread. */
+async function readUpTo(response: Response, limit: number): Promise<{ bytes: Buffer; cut: boolean }> {
+  const chunks: Uint8Array[] = [];
+  if (!response.body) return { bytes: Buffer.alloc(0), cut: false };
+  const reader = response.body.getReader();
+  let room = limit;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return { bytes: Buffer.concat(chunks), cut: false };
+    chunks.push(value.subarray(0, room));
+    if (value.length > room) {
+      await reader.cancel().catch(() => undefined);
+      return { bytes: Buffer.concat(chunks), cut: true };
+    }
+    room -= value.length;
+  }
+}
+
+async function errorText(response: Response): Promise<string> {
+  const read = await readUpTo(response, MAX_ERROR_BYTES).catch(() => null);
+  return read ? read.bytes.toString() : "";
+}
+
 async function upstreamFailure(response: Response, what: string) {
-  const raw = await response.text().catch(() => "");
-  return classifyUpstream(response.status, raw, what);
+  return classifyUpstream(response.status, await errorText(response), what);
 }
 
 async function fetchProfiles({ baseUrl, apiKey }: Service, fetchImpl: Fetch): Promise<VoiceProfile[]> {
@@ -64,7 +93,14 @@ async function fetchProfiles({ baseUrl, apiKey }: Service, fetchImpl: Fetch): Pr
     const issue = await upstreamFailure(response, "listing VoiceStudio voices");
     throw new Error(issue.message);
   }
-  const body = (await response.json().catch(() => null)) as { voices?: VoiceProfile[] } | null;
+  const list = await readUpTo(response, MAX_LIST_BYTES).catch(() => null);
+  if (list?.cut) throw new Error("VoiceStudio answered the voice list with more than 1 MiB");
+  let body: { voices?: VoiceProfile[] } | null = null;
+  try {
+    body = JSON.parse(list?.bytes.toString() ?? "") as { voices?: VoiceProfile[] } | null;
+  } catch {
+    // Reported below, with everything else that is not a voice list.
+  }
   if (!body || !Array.isArray(body.voices)) {
     throw new Error("VoiceStudio answered the voice list with something that is not one");
   }
@@ -103,6 +139,7 @@ async function speakTurn(
   { baseUrl, apiKey, model }: Service,
   fetchImpl: Fetch,
   turn: Turn,
+  room: number,
 ): Promise<{ ok: true; audio: Buffer } | { ok: false; failure: Failure }> {
   const refused = (why: string) => ({ ok: false as const, failure: failure("upstream", why) });
 
@@ -127,12 +164,13 @@ async function speakTurn(
   if (!response.ok) return { ok: false, failure: await upstreamFailure(response, "generating the line") };
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().startsWith("audio/")) {
-    const raw = await response.text().catch(() => "");
+    const raw = await errorText(response);
     return refused(
       `VoiceStudio answered 200 with ${contentType || "no content type"} rather than audio: ${raw.slice(0, 200)}`,
     );
   }
-  const audio = Buffer.from(await response.arrayBuffer());
+  const { bytes: audio, cut } = await readUpTo(response, room);
+  if (cut) return refused(`VoiceStudio sent more than ${MAX_LINE_BYTES / (1024 * 1024)} MiB of audio for one line`);
   if (audio.length === 0) return refused("VoiceStudio returned an empty response");
   return { ok: true, audio };
 }
@@ -162,10 +200,12 @@ export function voiceStudioSpeaker(service: Service, fetchImpl: Fetch = globalTh
 
       const lexicon = await voiceStudioLexicon(lang);
       const parts: Buffer[] = [];
+      let room = MAX_LINE_BYTES;
       for (const turn of turns) {
-        const part = await speakTurn(service, fetchImpl, { ...turn, text: lexicon.apply(turn.text) });
+        const part = await speakTurn(service, fetchImpl, { ...turn, text: lexicon.apply(turn.text) }, room);
         if (!part.ok) return part;
         parts.push(part.audio);
+        room -= part.audio.length;
       }
 
       let audio: Buffer;
