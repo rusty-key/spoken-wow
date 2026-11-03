@@ -4,6 +4,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Grubbis has its own portrait** in Spoken Bosses on Classic Era, using its Classic display ID
+  instead of Forever's display ID.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Plugger Spazzring and Ribbly Screwspigot have portraits** in Spoken Bosses.
+  *([anon1231823](https://github.com/anon1231823))*
 - **The Bosses page lists its voice pack in your language**, in every language but Italian, which
   has none yet. *([rusty-key](https://github.com/rusty-key))*
 
