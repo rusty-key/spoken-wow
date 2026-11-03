@@ -22,7 +22,7 @@ const index: ChannelIndex = {
     SpokenQuestsAudioGossip: entry('20261004T000000Z', 4)
   }
 }
-const BASE = 'https://spoken-packs.rusty.one/'
+const BASE = 'https://packs.spoken.quest/'
 
 describe('channelRelease', () => {
   it('describes a one-folder pack', () => {

@@ -18,7 +18,7 @@ import { loadPackState } from './packs-state'
 import { log } from './state'
 import { parseTocVersion } from './status'
 
-const SITE_URL = 'https://spoken.rusty.one'
+const SITE_URL = 'https://spoken.quest'
 const SITE_TIMEOUT_MS = 15_000
 const PROGRESS_INTERVAL_MS = 250
 /** A stalled read would otherwise hold the store's run and the game's job queue until someone cancels. */
