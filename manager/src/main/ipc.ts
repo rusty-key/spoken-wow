@@ -188,10 +188,9 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
   })
 
   handle(CHANNELS.checkManagerUpdate, (_e, background) => checkForManagerUpdate(background === true))
-  handle(CHANNELS.restartManager, async () => {
+  handle(CHANNELS.restartManager, () => {
     // Windows starts the installer before the app quits, so before-quit would stop a job too late.
-    await service.jobs.cancelAll()
-    restartToUpdateManager()
+    if (service.jobs.active().length === 0) restartToUpdateManager()
   })
   handle(CHANNELS.clearDownloads, () => service.clearDownloads())
   handle(CHANNELS.shareNow, () => service.sendNow())

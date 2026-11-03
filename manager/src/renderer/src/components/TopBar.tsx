@@ -6,9 +6,10 @@ import type { Flavor, GameInstall } from '@shared/types'
 import { SUPPORTED_FLAVORS } from '@shared/types'
 import { useGame, useStore, useSupportedGames, type Page } from '../store'
 import { S } from '../strings'
-import { flavorLook, jobBusy } from '../catalog'
+import { flavorLook } from '../catalog'
 import { releaseAvailable } from '../contributor'
 import { GameIcon } from './Brand'
+import { RestartButton } from './RestartButton'
 import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
 
 const TABS: { page: Page; label: string }[] = [
@@ -154,17 +155,6 @@ export function GamesStrip(): ReactNode {
         </span>
       </button>
     </nav>
-  )
-}
-
-/** Off while a job runs, so one click cannot throw away a long download. */
-export function RestartButton({ className }: { className: string }): ReactNode {
-  const { state, actions } = useStore()
-  const busy = Object.values(state.jobs).some((job) => jobBusy(job))
-  return (
-    <button type="button" className={className} disabled={busy} title={busy ? S.banners.restartBusy : undefined} onClick={() => void actions.restartManager()}>
-      {S.banners.restart}
-    </button>
   )
 }
 
