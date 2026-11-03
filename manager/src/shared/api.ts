@@ -1,6 +1,6 @@
 // The contract between the window and the main process. The preload exposes `ManagerApi` as
 // `window.manager`; the main process answers each channel.
-import type { Catalog, CommunityCatalog, GameInstall, JobProgress, ProductStatus, Settings, SharingStatus, Snapshot } from './types'
+import type { Catalog, CommunityCatalog, ContributorView, GameInstall, JobProgress, ProductStatus, ReleaseRow, Settings, SharingStatus, Snapshot, StoreId } from './types'
 
 export const CHANNELS = {
   snapshot: 'manager:snapshot',
@@ -22,6 +22,12 @@ export const CHANNELS = {
   clearDownloads: 'manager:downloads:clear',
   shareNow: 'manager:sharing:send',
   resetShareId: 'manager:sharing:reset-id',
+  contributorView: 'manager:contributor:view',
+  contributorSignIn: 'manager:contributor:sign-in',
+  contributorSignOut: 'manager:contributor:sign-out',
+  contributorSaveStore: 'manager:contributor:save-store',
+  contributorRows: 'manager:contributor:rows',
+  contributorPublish: 'manager:contributor:publish',
   windowMinimize: 'manager:window:minimize',
   windowToggleMaximize: 'manager:window:toggle-maximize',
   windowClose: 'manager:window:close',
@@ -33,6 +39,7 @@ export const CHANNELS = {
   communityChanged: 'manager:event:community',
   updaterState: 'manager:event:updater',
   sharingChanged: 'manager:event:sharing',
+  contributorChanged: 'manager:event:contributor',
   windowMaximized: 'manager:event:window-maximized'
 } as const
 
@@ -63,6 +70,16 @@ export type UpdaterState =
   | { state: 'downloading'; percent: number }
   | { state: 'ready'; version: string }
   | { state: 'error'; message: string }
+
+/** What a store form sends. A token is write-only: the window can set it but never read it back. */
+export interface StoreInput {
+  store: StoreId
+  /** Empty removes the saved token; absent keeps it. */
+  token?: string
+  projects?: Record<string, string>
+  repo?: string
+  gameVersions?: string
+}
 
 export interface ManagerApi {
   /** Everything the window needs to draw its first frame. */
@@ -99,6 +116,15 @@ export interface ManagerApi {
   shareNow(): Promise<void>
   /** Gives this manager a new random id. */
   resetShareId(): Promise<void>
+  /** The signed-in account and the stores' settings, with no secret in it. */
+  contributorView(): Promise<ContributorView>
+  contributorSignIn(email: string, password: string): Promise<ContributorView>
+  contributorSignOut(): Promise<ContributorView>
+  contributorSaveStore(input: StoreInput): Promise<ContributorView>
+  contributorRows(gameId: string, lang: string, store: StoreId): Promise<ReleaseRow[]>
+  /** Starts a release of a language's packs, or of the one folder `only`; progress comes through `onJob`
+   *  and `cancel` stops it. Returns the job id. */
+  contributorPublish(gameId: string, lang: string, store: StoreId, only?: string): Promise<string>
   /** The window has no system title bar, so the page draws its own buttons and calls these. */
   windowMinimize(): Promise<void>
   /** Maximizes the window, or puts it back when it is already maximized. */
@@ -112,6 +138,7 @@ export interface ManagerApi {
   onCommunityChanged(listener: (community: CommunityCatalog) => void): () => void
   onUpdater(listener: (state: UpdaterState) => void): () => void
   onSharing(listener: (status: SharingStatus) => void): () => void
+  onContributorChanged(listener: (view: ContributorView) => void): () => void
   /** True when the window becomes maximized, false when it is put back. */
   onWindowMaximized(listener: (maximized: boolean) => void): () => void
 }

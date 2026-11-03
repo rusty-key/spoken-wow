@@ -3,9 +3,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { isInside } from './guard'
 
-const EXTERNAL_HOSTS = new Set(['github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com'])
+// curseforge.com and www.curseforge.com carry the project links of a release; github.com a repo's.
+const EXTERNAL_HOSTS = new Set(['github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com', 'curseforge.com', 'www.curseforge.com'])
 
-/** Only plain https links to GitHub's own hosts: no other scheme, no credentials, no odd port. */
+/** Only plain https links to GitHub's and CurseForge's own hosts: no other scheme, no credentials, no odd port. */
 export function isAllowedExternalUrl(value: unknown): boolean {
   if (typeof value !== 'string' || value.length > 2048) return false
   let u: URL

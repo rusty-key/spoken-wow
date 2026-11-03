@@ -4,17 +4,19 @@ import { api, errorText } from '../api'
 import { GameIcon } from '../components/Brand'
 import { Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
-import { IconChevron, IconChevronRight, IconDownload, IconGames, IconHeart, IconInfo, IconRefresh } from '../components/Icons'
+import { IconChevron, IconChevronRight, IconDownload, IconGames, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
 import { useStore } from '../store'
+import { ContributorSection } from './ContributorSection'
 import { REPO_URL, S, SITE_URL } from '../strings'
 
-type Section = 'games' | 'updates' | 'downloads' | 'sharing' | 'about'
+type Section = 'games' | 'updates' | 'downloads' | 'sharing' | 'contributor' | 'about'
 
 const NAV: { id: Section; label: string; icon: ReactNode }[] = [
   { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
   { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
   { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
   { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
+  { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
   { id: 'about', label: S.settings.about, icon: <IconInfo size={18} /> }
 ]
 
@@ -41,6 +43,7 @@ export function SettingsPage(): ReactNode {
             {section === 'updates' && <UpdatesSection />}
             {section === 'downloads' && <DownloadsSection />}
             {section === 'sharing' && <SharingSection />}
+            {section === 'contributor' && <ContributorSection />}
             {section === 'about' && <AboutSection />}
           </div>
         </div>

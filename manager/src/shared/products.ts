@@ -24,6 +24,21 @@ export function languageName(code: string): string {
   return LANGUAGES.find((l) => l.code === code)?.name ?? code
 }
 
+const RELEASE_PACKS = [
+  'SpokenQuestsAudioAlliance',
+  'SpokenQuestsAudioHorde',
+  'SpokenQuestsAudioShared',
+  'SpokenQuestsAudioGossip',
+  'SpokenPlacesAudio',
+  'SpokenReadablesAudio',
+  'SpokenBossesAudio'
+]
+
+/** The folders a language's release covers: English folders carry no suffix. */
+export function languageFolders(lang: string): string[] {
+  return RELEASE_PACKS.map((p) => (lang === 'enUS' ? p : `${p}_${lang}`))
+}
+
 const SIDES: Record<Exclude<QuestsPack, 'all'>, string> = {
   alliance: 'Alliance',
   horde: 'Horde',

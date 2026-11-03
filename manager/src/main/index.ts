@@ -1,10 +1,12 @@
 // Spoken Manager: main process. The network traffic is the GitHub release list, the voice pack
 // server, the asset downloads and the manager's own update, plus, only when the player turned
-// Sharing on, the lines Spoken collected, sent to spoken.rusty.one (share.ts).
+// Sharing on, the lines Spoken collected, sent to spoken.rusty.one (share.ts), and, only for a
+// language admin who signs in, the site and that admin's stores (contributor.ts).
 import path from 'node:path'
-import { app, BrowserWindow, Menu, net, session, shell } from 'electron'
+import { app, BrowserWindow, Menu, net, safeStorage, session, shell } from 'electron'
 import { CHANNELS, type UpdaterState } from '../shared/api'
 import { windowChrome } from './chrome'
+import type { SecretBox } from './contributor-store'
 import { isAllowedExternalUrl } from './external'
 import { registerIpc } from './ipc'
 import { ManagerService } from './service'
@@ -35,6 +37,12 @@ function broadcast(channel: string, payload: unknown): void {
 // `omit`: net.fetch would otherwise keep and resend cookies, and the Manager sends only the request and a User-Agent.
 const chromiumFetch: typeof fetch = (input, init) =>
   net.fetch(input instanceof URL ? input.href : input, { ...init, cache: 'no-store', credentials: 'omit' })
+
+const secretBox: SecretBox = {
+  available: () => safeStorage.isEncryptionAvailable(),
+  seal: (s) => safeStorage.encryptString(s).toString('base64'),
+  open: (s) => safeStorage.decryptString(Buffer.from(s, 'base64'))
+}
 
 function contentSecurityPolicy(): string {
   if (DEV_URL) {
@@ -170,12 +178,20 @@ if (!app.requestSingleInstanceLock()) {
     setUpMenu()
     // A dev build can send to a local site instead (SPOKEN_SHARE_URL); a packaged one never does.
     const shareUrl = app.isPackaged ? undefined : process.env.SPOKEN_SHARE_URL
+    // Only a dev build may be pointed elsewhere: a packaged one must not be able to send a password to another host.
+    const siteUrl = app.isPackaged ? undefined : process.env.SPOKEN_SITE_URL
     service = new ManagerService({
       dataPath,
       appVersion: app.getVersion(),
       send: broadcast,
       fetchImpl: chromiumFetch,
-      ...(shareUrl ? { shareUrl } : {})
+      // Node's fetch, because net.fetch cannot do this traffic: an Origin header makes it send a CORS preflight and
+      // fail the request, and a Content-Length on a streamed upload is an invalid argument to it. The crash noted at
+      // chromiumFetch needs a large response body, and these answers are short.
+      contributorFetch: fetch,
+      secretBox,
+      ...(shareUrl ? { shareUrl } : {}),
+      ...(siteUrl ? { siteUrl } : {})
     })
     registerIpc(service, PAGE, () => updaterState)
     void service.init()

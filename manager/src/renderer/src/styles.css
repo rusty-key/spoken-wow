@@ -2419,3 +2419,114 @@ svg.is-spinning {
   gap: 10px;
 }
 
+
+/* Contributor section */
+.contrib-form,
+.contrib-store {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 640px;
+}
+
+.contrib-store {
+  margin-bottom: 28px;
+}
+
+.contrib-store-h {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.contrib-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contrib-field .field-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.contrib-field .input {
+  flex: 0 0 auto;
+}
+
+.contrib-note {
+  font-size: 12.5px;
+}
+
+.contrib-gap {
+  margin-bottom: 14px;
+}
+
+.subtabs-wrap {
+  flex-wrap: wrap;
+  gap: 2px 20px;
+}
+
+.contrib-run .jobbar {
+  margin-bottom: 6px;
+}
+
+.contrib-actions,
+.contrib-run .status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.contrib-rows {
+  max-width: none;
+}
+
+.contrib-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+}
+
+.contrib-row-main,
+.contrib-result-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.contrib-folder {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contrib-version {
+  flex: none;
+  font-size: var(--fs-small);
+}
+
+.contrib-hint {
+  font-size: 12px;
+}
+
+.contrib-result {
+  margin-top: 14px;
+}
+
+.contrib-result-line {
+  padding: 4px 0;
+  font-size: var(--fs-small);
+}
+
+.contrib-result-line .link {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
