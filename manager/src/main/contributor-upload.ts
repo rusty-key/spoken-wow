@@ -8,11 +8,12 @@ import { randomBytes } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import yazl from 'yazl'
-import { CancelledError, errorCode, isAbortError, PlainError } from './errors'
+import { CancelledError, errorCode, isAbortError, PlainError, withTimeout } from './errors'
 
 const CF_API = 'https://wow.curseforge.com/api'
 const GH_API = 'https://api.github.com'
 const GH_UPLOADS = 'https://uploads.github.com'
+const CHECK_TIMEOUT_MS = 30_000
 
 /** Server text shown to the player: short, and without the secret it may echo back. */
 function scrub(text: string, token: string): string {
@@ -28,17 +29,22 @@ async function bodyText(res: Response, token: string): Promise<string> {
   }
 }
 
-/** A fetch whose network failures read as words; a cancel passes through untouched. */
+/**
+ * A fetch whose network failures read as words; a cancel passes through untouched. Every call carries
+ * a token, and a redirect would deliver it to wherever it points. `timeoutMs` is for short calls, not
+ * for an upload, whose length depends on the pack.
+ */
 async function send(
   store: string,
   fetchImpl: typeof fetch,
   url: string,
   init: RequestInit,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs?: number
 ): Promise<Response> {
   if (signal?.aborted) throw new CancelledError()
   try {
-    return await fetchImpl(url, { ...init, signal })
+    return await fetchImpl(url, { ...init, redirect: 'error', signal: timeoutMs ? withTimeout(timeoutMs, signal) : signal })
   } catch (err) {
     if (isAbortError(err) || signal?.aborted) throw new CancelledError()
     throw new PlainError(`Could not reach ${store}.`)
@@ -115,7 +121,7 @@ export function cfProjectLink(project: string): string {
 }
 
 async function listGameVersions(token: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<unknown> {
-  const res = await send('CurseForge', fetchImpl, `${CF_API}/game/versions`, { headers: cfHeaders(token) }, signal)
+  const res = await send('CurseForge', fetchImpl, `${CF_API}/game/versions`, { headers: cfHeaders(token) }, signal, CHECK_TIMEOUT_MS)
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) throw new PlainError('CurseForge did not accept that token.')
     throw await rejected('CurseForge', res, token)
@@ -123,6 +129,7 @@ async function listGameVersions(token: string, fetchImpl: typeof fetch, signal?:
   try {
     return await res.json()
   } catch {
+    if (signal?.aborted) throw new CancelledError()
     throw new PlainError("CurseForge's list of game versions could not be read.")
   }
 }
@@ -132,8 +139,8 @@ export async function checkCfToken(token: string, fetchImpl: typeof fetch): Prom
 }
 
 /** A name that matches no entry, or two, would file the pack under the wrong client, so it stops the run. */
-export async function resolveGameVersions(token: string, names: string, fetchImpl: typeof fetch): Promise<number[]> {
-  const list = await listGameVersions(token, fetchImpl)
+export async function resolveGameVersions(token: string, names: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<number[]> {
+  const list = await listGameVersions(token, fetchImpl, signal)
   if (!Array.isArray(list)) throw new PlainError("CurseForge's list of game versions could not be read.")
   const ids: number[] = []
   for (const name of names.split(/\s+/).filter(Boolean)) {
@@ -219,7 +226,7 @@ function checkRepoName(repo: string): void {
 /** Refuses a repository the token cannot push to, before a run sends anything. */
 export async function checkGhRepo(token: string, repo: string, fetchImpl: typeof fetch): Promise<void> {
   checkRepoName(repo)
-  const res = await send('GitHub', fetchImpl, `${GH_API}/repos/${repo}`, { headers: ghHeaders(token) })
+  const res = await send('GitHub', fetchImpl, `${GH_API}/repos/${repo}`, { headers: ghHeaders(token) }, undefined, CHECK_TIMEOUT_MS)
   if (res.status === 401) throw new PlainError('GitHub did not accept that token.')
   if (res.status === 404) throw new PlainError(`GitHub shows no repository ${repo} to that token.`)
   if (!res.ok) throw await rejected('GitHub', res, token)

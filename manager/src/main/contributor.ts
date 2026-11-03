@@ -36,6 +36,15 @@ export interface ContributorDeps {
   changed: (view: ContributorView) => void
 }
 
+/** Names the Manager to the site and the stores, whichever fetch carries the request. */
+export function withUserAgent(fetchImpl: typeof fetch, appVersion: string): typeof fetch {
+  return (input, init) => {
+    const headers = new Headers(init?.headers)
+    headers.set('User-Agent', `SpokenManager/${appVersion}`)
+    return fetchImpl(input, { ...init, headers })
+  }
+}
+
 /** Refuses every secret: what a service built without the operating system's secret store has. */
 export const NO_SECRET_BOX: SecretBox = {
   available: () => false,
@@ -81,6 +90,11 @@ export class ContributorService {
   /** The account as last confirmed; a site that cannot be reached is no reason to forget it. */
   private known: Account | null = null
   private lastRun: PublishResult | null = null
+  /**
+   * One run per store across all games. JobManager would hand a second request the running job's id,
+   * dropping it unseen, and runs on two games would go in parallel and could send a folder twice.
+   */
+  private readonly publishing = new Set<StoreId>()
 
   constructor(private readonly deps: ContributorDeps) {
     this.store = new ContributorStore(deps.dataPath, deps.box)
@@ -101,6 +115,13 @@ export class ContributorService {
     }
   }
 
+  /** Tells the window too, since the call that found out may be about something else, such as the rows. */
+  private clearSession(): void {
+    this.store.setCookie(null)
+    this.known = null
+    this.deps.changed(this.localView())
+  }
+
   /** Only a 401 ends the session: an outage must not sign the admin out. */
   private async account(): Promise<Account | null> {
     const cookie = this.store.cookie()
@@ -111,8 +132,7 @@ export class ContributorService {
     try {
       const res = await this.siteRequest('/api/manager/contributor', { headers: { Cookie: cookie } })
       if (res.status === 401) {
-        this.store.setCookie(null)
-        this.known = null
+        this.clearSession()
         return null
       }
       if (res.ok) this.known = parseAccount(await res.json()) ?? this.known
@@ -154,7 +174,12 @@ export class ContributorService {
     const cookie = cookiePairs(res)
     if (!cookie) throw new PlainError('The site did not keep you signed in.')
     this.store.setCookie(cookie)
-    if (!(await this.account())) throw new PlainError('The site did not confirm the sign-in. Try again.')
+    // An earlier account must not pass for this session if the site cannot be asked.
+    this.known = null
+    if (!(await this.account())) {
+      this.clearSession()
+      throw new PlainError('The site did not confirm the sign-in. Try again.')
+    }
     return this.localView()
   }
 
@@ -240,7 +265,7 @@ export class ContributorService {
     return null
   }
 
-  private async rowOf(pack: Pack, store: StoreId, config: ContributorConfig): Promise<ReleaseRow> {
+  private async rowOf(pack: Pack, store: StoreId, config: ContributorConfig, signal?: AbortSignal): Promise<ReleaseRow> {
     const { folder, version } = pack
     const project = store === 'curseforge' ? config.projects[folder] : undefined
     const token = this.store.token(store)
@@ -248,9 +273,9 @@ export class ContributorService {
     let link = project ? cfProjectLink(project) : undefined
     // A folder that could not be sent anyway is not worth a request.
     if (version && !pack.linked && !pack.stale) {
-      if (project) publicVersions = await cfPublicVersions(project, this.deps.fetchImpl)
+      if (project) publicVersions = await cfPublicVersions(project, this.deps.fetchImpl, signal)
       if (store === 'github' && token && config.repo) {
-        const found = await ghHasAsset(config.repo, token, folder, version, this.deps.fetchImpl)
+        const found = await ghHasAsset(config.repo, token, folder, version, this.deps.fetchImpl, signal)
         if (found) publicVersions = found.live ? [version] : []
         if (found?.live) link = found.link
       }
@@ -269,9 +294,9 @@ export class ContributorService {
     return { folder, ...(version ? { version } : {}), state, ...(link ? { link } : {}), ...(project ? { project } : {}) }
   }
 
-  private rowsOf(packs: Pack[], store: StoreId): Promise<ReleaseRow[]> {
+  private rowsOf(packs: Pack[], store: StoreId, signal?: AbortSignal): Promise<ReleaseRow[]> {
     const config = this.store.config()
-    return Promise.all(packs.map((p) => this.rowOf(p, store, config)))
+    return Promise.all(packs.map((p) => this.rowOf(p, store, config, signal)))
   }
 
   async rows(gameId: string, lang: string, store: StoreId): Promise<ReleaseRow[]> {
@@ -291,10 +316,16 @@ export class ContributorService {
       const refused = this.refusal((await this.inspect(game, [only]))[0]!, store, this.store.config())
       if (refused) throw new PlainError(refused)
     }
+    // After the awaits above, with none before enqueue, so two calls at once cannot both pass.
+    if (this.publishing.has(store)) {
+      throw new PlainError(`A release to ${STORE_NAMES[store]} is already running. Wait for it to end or cancel it.`)
+    }
+    this.publishing.add(store)
     return this.deps.jobs.enqueue({
       gameId,
       productId: `publish/${store}`,
       action: 'publish',
+      onDropped: () => this.publishing.delete(store),
       run: (ctx) => this.runJob(game, only ? [only] : folders, store, only !== undefined, ctx)
     })
   }
@@ -307,6 +338,7 @@ export class ContributorService {
       result.stoppedEarly = true
       throw err
     } finally {
+      this.publishing.delete(store)
       this.lastRun = result
       log(`Publish to ${store}: ${result.published.length} sent, ${result.skipped.length} skipped, ${result.failed.length} failed${result.stoppedEarly ? ', stopped early' : ''}.`)
       this.deps.changed(this.localView())
@@ -327,13 +359,15 @@ export class ContributorService {
       const refused = this.refusal(packs[0]!, store, config)
       if (refused) throw new PlainError(refused)
     } else {
-      const rows = await this.rowsOf(packs, store)
+      const rows = await this.rowsOf(packs, store, ctx.signal)
+      // A cancelled look answers like an outage, so without this the run would seem to have had nothing to send.
+      throwIfAborted(ctx.signal)
       targets = packs.filter((_, i) => rows[i]!.state === 'unreleased')
       result.skipped.push(...packs.filter((p) => !targets.includes(p)).map((p) => p.folder))
     }
     if (targets.length === 0) return
 
-    const gameVersionIds = store === 'curseforge' ? await resolveGameVersions(token, config.gameVersions, this.deps.fetchImpl) : []
+    const gameVersionIds = store === 'curseforge' ? await resolveGameVersions(token, config.gameVersions, this.deps.fetchImpl, ctx.signal) : []
     const tmp = path.join(this.deps.dataPath, CONTRIBUTOR_TMP)
     await fs.promises.mkdir(tmp, { recursive: true })
 
@@ -349,7 +383,8 @@ export class ContributorService {
         say('uploading')
         await this.sendOne(pack, store, token, config, zip, gameVersionIds, result, ctx)
       } catch (err) {
-        if (isAbortError(err)) throw new CancelledError()
+        // Aborted as well: reading a response the cancel cut short fails with words, not with an abort.
+        if (isAbortError(err) || ctx.signal.aborted) throw new CancelledError()
         result.failed.push({ folder: pack.folder, reason: plainMessage(err) })
       } finally {
         await fs.promises.rm(zip, { force: true }).catch(() => undefined)
@@ -362,13 +397,20 @@ export class ContributorService {
     const version = pack.version!
     const notes = `${pack.title ?? folder} ${version}`
     const common = { token, folder, version, zip, notes, signal: ctx.signal, fetchImpl: this.deps.fetchImpl }
+    let fileId: string | null = null
+    let link: string
     if (store === 'github') {
-      const { link, alreadyThere } = await uploadGitHub({ ...common, repo: config.repo })
-      if (alreadyThere) result.skipped.push(folder)
-      else result.published.push({ folder, version, link })
-      return
+      const sent = await uploadGitHub({ ...common, repo: config.repo })
+      if (sent.alreadyThere) {
+        result.skipped.push(folder)
+        return
+      }
+      link = sent.link
+    } else {
+      const sent = await uploadCurseForge({ ...common, project: config.projects[folder]!, gameVersionIds })
+      fileId = sent.fileId
+      link = sent.link
     }
-    const { fileId, link } = await uploadCurseForge({ ...common, project: config.projects[folder]!, gameVersionIds })
     result.published.push({ folder, version, link })
     try {
       // Written now and not at the end of the run, so a quit or a cancel cannot forget what the store received.

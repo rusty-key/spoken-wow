@@ -1,6 +1,7 @@
 import type { RowState } from '../shared/types'
 import { compareVersions } from '../shared/version'
 import type { StoreId, UploadRecord } from './contributor-store'
+import { withTimeout } from './errors'
 
 const PACKS = [
   'SpokenQuestsAudioAlliance',
@@ -29,10 +30,10 @@ export function versionOfFileName(name: string): string | null {
 }
 
 /** The versions CurseForge lists publicly; null when it could not be read. */
-export async function cfPublicVersions(project: string, fetchImpl: typeof fetch): Promise<string[] | null> {
+export async function cfPublicVersions(project: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<string[] | null> {
   try {
     const res = await fetchImpl(`https://api.cfwidget.com/${encodeURIComponent(project)}`, {
-      signal: AbortSignal.timeout(TIMEOUT_MS)
+      signal: withTimeout(TIMEOUT_MS, signal)
     })
     if (res.status !== 200) return null
     const body = (await res.json()) as { files?: unknown }
@@ -55,7 +56,8 @@ export async function ghHasAsset(
   token: string,
   folder: string,
   version: string,
-  fetchImpl: typeof fetch
+  fetchImpl: typeof fetch,
+  signal?: AbortSignal
 ): Promise<{ live: boolean; link: string } | null> {
   const tag = `${folder}/v${version}`
   const link = `https://github.com/${repo}/releases/tag/${tag}`
@@ -66,7 +68,9 @@ export async function ghHasAsset(
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28'
       },
-      signal: AbortSignal.timeout(TIMEOUT_MS)
+      // A redirect would carry the token to wherever it points.
+      redirect: 'error',
+      signal: withTimeout(TIMEOUT_MS, signal)
     })
     if (res.status === 404) return { live: false, link }
     if (res.status !== 200) return null

@@ -10,7 +10,7 @@ import { COMMUNITY_PREFIX, communityProduct, communityRelease, fetchCommunity, i
 import { PlainError } from './errors'
 import { checkDownloadsPath } from './guard'
 import { cleanContributorTmp, cleanLeftovers, clearDownloads } from './cleanup'
-import { ContributorService, NO_SECRET_BOX } from './contributor'
+import { ContributorService, NO_SECRET_BOX, withUserAgent } from './contributor'
 import type { SecretBox } from './contributor-store'
 import { addGame, notSupportedMessage, removeGame, scanGames } from './games'
 import { fetchReleases } from './github'
@@ -95,7 +95,7 @@ export class ManagerService {
     this.contributor = new ContributorService({
       dataPath: opts.dataPath,
       box: opts.secretBox ?? NO_SECRET_BOX,
-      fetchImpl: opts.contributorFetch ?? opts.fetchImpl ?? fetch,
+      fetchImpl: withUserAgent(opts.contributorFetch ?? opts.fetchImpl ?? fetch, opts.appVersion),
       ...(opts.siteUrl ? { siteUrl: opts.siteUrl } : {}),
       jobs: this.jobs,
       game: (gameId) => this.requireGame(gameId),

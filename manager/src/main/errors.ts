@@ -24,6 +24,12 @@ export function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new CancelledError()
 }
 
+/** Aborts at `signal` or after `ms`. A timeout rejects with a TimeoutError, so it never reads as a cancel. */
+export function withTimeout(ms: number, signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(ms)
+  return signal ? AbortSignal.any([signal, timeout]) : timeout
+}
+
 /** The message to show for any thrown value. */
 export function plainMessage(err: unknown): string {
   if (err instanceof PlainError) return err.message

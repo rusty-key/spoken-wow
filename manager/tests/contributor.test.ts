@@ -179,13 +179,15 @@ describe('signing in', () => {
 
   it('the site and the stores go through contributorFetch when one is given', async () => {
     const asked: string[] = []
+    const agents: Array<string | null> = []
     const svc = new ManagerService({
       dataPath: tmpDir(),
       appVersion: '1.0.0',
       send: () => undefined,
       fetchImpl: (() => Promise.reject(new Error('the wrong fetch'))) as typeof fetch,
-      contributorFetch: (async (url: string) => {
+      contributorFetch: (async (url: string, init?: RequestInit) => {
         asked.push(url)
+        agents.push(new Headers(init?.headers).get('user-agent'))
         return json({ error: 'wrong' }, 401)
       }) as typeof fetch,
       siteUrl: SITE,
@@ -193,6 +195,7 @@ describe('signing in', () => {
     })
     await expect(svc.contributor.signIn('me@example.test', PASSWORD)).rejects.toThrow(/not right/)
     expect(asked).toEqual([`${SITE}/api/auth/sign-in/email`])
+    expect(agents).toEqual(['SpokenManager/1.0.0'])
   })
 
   it('a wrong password says so and keeps nothing', async () => {
@@ -232,6 +235,30 @@ describe('signing in', () => {
     expect(view.config.hasCfToken).toBe(true)
     expect(h.store.cookie()).toBeNull()
     expect(h.store.token('curseforge')).toBe(CF_TOKEN)
+  })
+
+  it('a 401 found while reading rows or publishing tells the window', async () => {
+    const h = await signedIn()
+    h.site.accountStatus = 401
+    await expect(h.svc.contributor.rows(h.game.id, 'deDE', 'curseforge')).rejects.toThrow(/Sign in/)
+    const changed = h.events.filter((e) => e.channel === CHANNELS.contributorChanged)
+    expect(changed).toHaveLength(1)
+    expect(changed[0]!.payload).toMatchObject({ account: null })
+    expect(h.store.cookie()).toBeNull()
+  })
+
+  it('a sign-in the site cannot confirm keeps neither the cookie nor an earlier account', async () => {
+    let siteAnswers = true
+    const h = await signedIn({
+      route: (c) => {
+        if (c.url.endsWith('/api/manager/contributor') && !siteAnswers) throw new Error('down')
+        return undefined
+      }
+    })
+    siteAnswers = false
+    await expect(h.svc.contributor.signIn('other@example.test', PASSWORD)).rejects.toThrow(/did not confirm/)
+    expect(h.store.cookie()).toBeNull()
+    expect((await h.svc.contributor.view()).account).toBeNull()
   })
 
   it('a site that cannot be reached keeps the session and the account already known', async () => {
@@ -671,7 +698,114 @@ describe('publish', () => {
     expect(uploaded).toEqual([`${PLACES}-1.2.0.zip`])
     expect(lastRun!.published).toEqual([{ folder: PLACES, version: '1.2.0', link: `https://github.com/me/packs/releases/tag/${PLACES}/v1.2.0` }])
     expect(lastRun!.skipped).toContain(BOSSES)
-    expect(h.store.uploads('github')).toEqual([])
+    // Only what was sent: the pack already there is not this Manager's upload.
+    expect(h.store.uploads('github').map((u) => [u.folder, u.version, u.fileId])).toEqual([[PLACES, '1.2.0', null]])
+  })
+
+  it('one publish per store at a time: another language, another folder or another game is refused, not dropped', async () => {
+    let release: (r: Response) => void = () => undefined
+    let started: () => void = () => undefined
+    const running = new Promise<void>((r) => (started = r))
+    const h = await signedIn({
+      adminLangs: ['deDE', 'frFR'],
+      route: cfUpload((project) => {
+        if (project !== '100') return undefined
+        started()
+        return new Promise<Response>((r) => (release = r))
+      })
+    })
+    h.install(PLACES)
+    configureCf(h, { [PLACES]: '100' })
+    const other = await makeGame(tmpDir())
+    h.svc.games = [h.game, other]
+
+    const jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
+    await running
+    await expect(h.svc.contributor.publish(h.game.id, 'frFR', 'curseforge')).rejects.toThrow(/already running/)
+    await expect(h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge', PLACES)).rejects.toThrow(/already running/)
+    await expect(h.svc.contributor.publish(other.id, 'deDE', 'curseforge')).rejects.toThrow(/already running/)
+    expect(new Set(h.jobs().map((j) => j.jobId))).toEqual(new Set([jobId]))
+
+    release(json({ id: 1 }))
+    expect((await h.finished(jobId)).phase).toBe('done')
+    const again = await h.svc.contributor.publish(h.game.id, 'frFR', 'curseforge')
+    expect(again).not.toBe(jobId)
+    await h.finished(again)
+  })
+
+  it('two publish calls at the same moment give one run', async () => {
+    const h = await signedIn({ route: cfUpload() })
+    configureCf(h, {})
+    const both = await Promise.allSettled([h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge'), h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')])
+    expect(both.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected'])
+    const run = both.find((r) => r.status === 'fulfilled') as PromiseFulfilledResult<string>
+    await h.finished(run.value)
+  })
+
+  it('a publish cancelled while queued frees its store', async () => {
+    const h = await signedIn({ route: cfUpload() })
+    h.store.setToken('curseforge', CF_TOKEN)
+    let unblock: () => void = () => undefined
+    const blocker = h.svc.jobs.enqueue({ gameId: h.game.id, productId: 'spoken', action: 'install', run: () => new Promise<void>((r) => (unblock = r)) })
+
+    const queued = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
+    await expect(h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')).rejects.toThrow(/already running/)
+    h.svc.cancel(queued)
+    expect((await h.finished(queued)).phase).toBe('cancelled')
+    const next = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
+    expect(next).not.toBe(queued)
+    unblock()
+    await h.finished(blocker)
+    expect((await h.finished(next)).phase).toBe('done')
+  })
+
+  const cancelledRequest = (h: () => Harness, jobId: () => string, call: Call): Promise<Response> =>
+    new Promise<Response>((_resolve, reject) => {
+      call.init.signal!.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+      h().svc.cancel(jobId())
+    })
+
+  it('a cancel during the game version lookup ends the run as cancelled', async () => {
+    let harness: Harness | null = null
+    let jobId = ''
+    const h = await signedIn({ route: (c) => (c.url.endsWith('/game/versions') ? cancelledRequest(() => harness!, () => jobId, c) : undefined) })
+    harness = h
+    h.install(PLACES)
+    configureCf(h, { [PLACES]: '100' })
+    jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
+    expect((await h.finished(jobId)).phase).toBe('cancelled')
+    expect(h.jobs().some((j) => j.message?.includes('zipping'))).toBe(false)
+    expect((await h.svc.contributor.view()).lastRun).toMatchObject({ published: [], failed: [], stoppedEarly: true })
+  })
+
+  it('a cancel during the row check does not end as a run with nothing to send', async () => {
+    let harness: Harness | null = null
+    let jobId = ''
+    const h = await signedIn({ route: (c) => (c.url.includes('cfwidget') ? cancelledRequest(() => harness!, () => jobId, c) : undefined) })
+    harness = h
+    h.install(PLACES)
+    configureCf(h, { [PLACES]: '100' })
+    jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
+    expect((await h.finished(jobId)).phase).toBe('cancelled')
+    expect(h.calls.some((c) => c.url.endsWith('/game/versions'))).toBe(false)
+    expect((await h.svc.contributor.view()).lastRun?.stoppedEarly).toBe(true)
+  })
+
+  it('a failure read after a cancel is the cancel, not a failed pack', async () => {
+    let harness: Harness | null = null
+    let jobId = ''
+    const h = await signedIn({
+      route: cfUpload(() => {
+        harness!.svc.cancel(jobId)
+        return json({ error: 'cut short' }, 500)
+      })
+    })
+    harness = h
+    h.install(PLACES)
+    configureCf(h, { [PLACES]: '100' })
+    jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
+    expect((await h.finished(jobId)).phase).toBe('cancelled')
+    expect((await h.svc.contributor.view()).lastRun).toMatchObject({ failed: [], stoppedEarly: true })
   })
 
   it('a run keeps to the game it started on', async () => {
