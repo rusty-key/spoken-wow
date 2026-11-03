@@ -29,13 +29,12 @@ export const metadata: Metadata = {
 
 const RELEASES = `${GITHUB}/releases`;
 const MANAGER_URL = `${RELEASES}/tag/manager-latest`;
-const MANAGER_VERSION = "0.1.2";
 const MANAGER_FILES = `${RELEASES}/download/manager-latest/Spoken-Manager`;
 const MANAGER_DOWNLOADS = {
-  windows: `${MANAGER_FILES}-Setup-${MANAGER_VERSION}.exe`,
-  mac: `${MANAGER_FILES}-${MANAGER_VERSION}-mac-arm64.dmg`,
-  macIntel: `${MANAGER_FILES}-${MANAGER_VERSION}-mac-x64.dmg`,
-  linux: `${MANAGER_FILES}-${MANAGER_VERSION}-linux.AppImage`,
+  windows: `${MANAGER_FILES}-Setup.exe`,
+  mac: `${MANAGER_FILES}-mac-arm64.dmg`,
+  macIntel: `${MANAGER_FILES}-mac-x64.dmg`,
+  linux: `${MANAGER_FILES}-linux.AppImage`,
 };
 const DISCORD = "https://discord.gg/KgeQhjv9Rd";
 
