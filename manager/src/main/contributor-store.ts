@@ -6,6 +6,7 @@ import { PlainError } from './errors'
 import type { ContributorConfig, StoreId } from '../shared/types'
 import { readJsonFile, writeJsonAtomic } from './state'
 
+export { storeConfigured } from '../shared/types'
 export type { ContributorConfig, StoreId } from '../shared/types'
 
 export interface SecretBox {
@@ -168,9 +169,4 @@ export class ContributorStore {
   recordUpload(r: UploadRecord): void {
     writeJsonAtomic(this.uploadsFile, [...this.allUploads(), r])
   }
-}
-
-export function storeConfigured(store: StoreId, c: ContributorConfig): boolean {
-  if (store === 'curseforge') return c.hasCfToken && Object.keys(c.projects).length > 0
-  return c.hasGhToken && c.repo !== ''
 }

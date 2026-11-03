@@ -1,24 +1,12 @@
 import type { RowState } from '../shared/types'
+import { languageFolders } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import type { StoreId, UploadRecord } from './contributor-store'
 import { withTimeout } from './errors'
 
-const PACKS = [
-  'SpokenQuestsAudioAlliance',
-  'SpokenQuestsAudioHorde',
-  'SpokenQuestsAudioShared',
-  'SpokenQuestsAudioGossip',
-  'SpokenPlacesAudio',
-  'SpokenReadablesAudio',
-  'SpokenBossesAudio'
-]
+export { languageFolders }
 
 const TIMEOUT_MS = 10_000
-
-/** The folders a language's release covers: English folders carry no suffix. */
-export function languageFolders(lang: string): string[] {
-  return PACKS.map((p) => (lang === 'enUS' ? p : `${p}_${lang}`))
-}
 
 /**
  * Only the trailing `-<version>.zip` counts: older language files carry a retired folder name before

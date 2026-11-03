@@ -271,6 +271,12 @@ export interface ContributorConfig {
   hasGhToken: boolean
 }
 
+/** A store is configured with a token, and a repo for GitHub or at least one project id for CurseForge. */
+export function storeConfigured(store: StoreId, c: ContributorConfig): boolean {
+  if (store === 'curseforge') return c.hasCfToken && Object.keys(c.projects).length > 0
+  return c.hasGhToken && c.repo !== ''
+}
+
 export interface ContributorView {
   /** Null when signed out. An account with no admin languages is still an account, so the window can say so. */
   account: { email: string; adminLangs: string[] } | null

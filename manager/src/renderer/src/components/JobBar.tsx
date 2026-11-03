@@ -35,6 +35,8 @@ interface Props {
 
 /** The progress bar that takes the place of a button while a job runs. */
 export function JobBar({ job, size = 'md', onCancel, meta = true }: Props): ReactNode {
+  // A release has no download phases to label; the Contributor section draws its own progress.
+  if (job.action === 'publish') return null
   const downloading = job.phase === 'downloading' && job.total > 0
   const pct = downloading ? Math.min(100, (job.received / job.total) * 100) : job.phase === 'queued' ? 0 : 100
   const indeterminate = job.phase !== 'downloading' || job.total <= 0
