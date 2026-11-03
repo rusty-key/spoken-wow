@@ -168,7 +168,7 @@ export class ContributorService {
   }
 
   private localView(): ContributorView {
-    return { account: this.known, config: this.store.config(), canStoreSecrets: this.deps.box.available(), siteUnreachable: this.unreachable, sessionExpired: this.expired, lastRuns: { ...this.lastRuns } }
+    return { account: this.known, config: this.store.config(), siteUnreachable: this.unreachable, sessionExpired: this.expired, lastRuns: { ...this.lastRuns } }
   }
 
   async view(): Promise<ContributorView> {
