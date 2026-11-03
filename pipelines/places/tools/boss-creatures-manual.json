@@ -83,6 +83,13 @@
   "source": "Sneed himself (643's model) rather than his Shredder (1269), as Efficient Games' encounter 2742 and the Adventure Guide show him. The creature stays the spawned Shredder 642."
  },
  {
+  "map": 230,
+  "key": "plugger spazzring",
+  "creature": 9499,
+  "display": 8652,
+  "source": "The Classic Encounter Journal lists Plugger Spazzring with display 8652 (EncounterCreatureId 383, encounter 241). The creature remains 9499; the database template model 13780 is not the encounter portrait."
+ },
+ {
   "map": 90,
   "key": "grubbis",
   "display": 144378,

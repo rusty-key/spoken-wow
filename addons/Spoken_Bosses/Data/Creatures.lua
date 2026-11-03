@@ -145,6 +145,7 @@ SpokenBossCreatures = {
 		["lord roccor"] = { creature = 9025, display = 5781 },
 		["magmus"] = { creature = 9938, display = 12162 },
 		["phalanx"] = { creature = 9502, display = 8177 },
+		["plugger spazzring"] = { creature = 9499, display = 8652 },
 		["princess moira bronzebeard"] = { creature = 8929, display = 8705 },
 		["pyromancer loregrain"] = { creature = 9024, display = 8762 },
 		["ring of law"] = { creature = 10096, display = 9329 },
