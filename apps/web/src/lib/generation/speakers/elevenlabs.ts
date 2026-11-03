@@ -15,7 +15,7 @@ import { dictionaryFor } from "../dictionary";
 import { failure } from "../errors";
 import type { ElevenLabsSettings } from "../preference";
 import { generationStatus } from "../status";
-import { textToDialogue, textToSpeech } from "../tts";
+import { message, textToDialogue, textToSpeech } from "../tts";
 import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
 
 /**
@@ -66,8 +66,10 @@ export function elevenLabsSpeaker(
       try {
         dictionary = await dictionaryFor(lang, options);
       } catch (error) {
-        const why = error instanceof Error ? error.message : String(error);
-        return { ok: false, failure: failure("upstream", `preparing the ${lang} dictionary: ${why}`) };
+        return {
+          ok: false,
+          failure: failure("upstream", `preparing the ${lang} dictionary: ${message(error)}`),
+        };
       }
       const languageCode = elevenLabsCode(lang);
 

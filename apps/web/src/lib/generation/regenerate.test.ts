@@ -99,7 +99,6 @@ function stub({ voices = DEFAULT_VOICES, speech, dictionary }: StubOptions = {})
         { model_id: "eleven_multilingual_v2", name: "Multilingual v2", can_do_text_to_speech: true },
       ]);
     }
-    // The account holds what the lexicon row names: see dictionaryFor.
     if (url.includes("/v1/pronunciation-dictionaries/")) {
       return dictionary ? dictionary() : Response.json({ latest_version_id: "ver-1", rules: [] });
     }
