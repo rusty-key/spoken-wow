@@ -34,7 +34,6 @@ target there. What it lacks is its face.
 
 | Dungeon | Bosses | Why |
 | --- | --- | --- |
-| Blackrock Depths (230) | Ribbly Screwspigot | The database has it (9543), spawned once on the map, but `boss-sources.json` does not yet name it and the creature tools have not been run for it. |
 | Demon Fall Canyon (2784) | Grimroot, Destructor's Wraith, Zilbagob, Pyranis, Diathorus the Seeker, Hellscream's Phantom, Azgaloth | The database has no spawns on the map and none of the wiki's ids. Efficient Games recorded no fight there. The database's Diathorus the Seeker (6072) is the Ashenvale elite. |
 | Scarlet Enclave (2856) | Beatrix, Beastmaster, Solistrasza, Mason, Reborn Council, Lillian Voss, Caldoran | As for Demon Fall Canyon. The database's Beastmasters (26307, 133390) are retail creatures. |
 | Scarlet Enclave (2856) | Balnazzar | The only Balnazzar in the database is Stratholme's (10813), whose model the client lacks. The wiki's id, 240811, is not in the database. |

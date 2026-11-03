@@ -84,6 +84,13 @@
  },
  {
   "map": 230,
+  "key": "ribbly screwspigot",
+  "creature": 9543,
+  "display": 8667,
+  "source": "ClassicDB lists Ribbly Screwspigot's Classic model as display 8667; the creature is 9543."
+ },
+ {
+  "map": 230,
   "key": "plugger spazzring",
   "creature": 9499,
   "display": 8652,

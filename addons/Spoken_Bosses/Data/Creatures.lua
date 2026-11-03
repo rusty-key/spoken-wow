@@ -148,6 +148,7 @@ SpokenBossCreatures = {
 		["plugger spazzring"] = { creature = 9499, display = 8652 },
 		["princess moira bronzebeard"] = { creature = 8929, display = 8705 },
 		["pyromancer loregrain"] = { creature = 9024, display = 8762 },
+		["ribbly screwspigot"] = { creature = 9543, display = 8667 },
 		["ring of law"] = { creature = 10096, display = 9329 },
 		["the seven"] = { creature = 9034, display = 8690 },
 		["warder stilgiss"] = { creature = 9041, display = 9089 },

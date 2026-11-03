@@ -914,6 +914,14 @@
  },
  {
   "map": 230,
+  "key": "ribbly screwspigot",
+  "wikiTitle": "Ribbly Screwspigot",
+  "npcIds": [
+   9543
+  ]
+ },
+ {
+  "map": 230,
   "key": "plugger spazzring",
   "wikiTitle": "Plugger Spazzring",
   "npcIds": [
