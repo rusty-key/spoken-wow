@@ -182,7 +182,7 @@ end
 
 -- A timings list that does not fit the words exactly is ignored for the estimate: words drifting
 -- a little beat words lit at random.
-local function ApplyTimings(words, timings, length)
+local function ApplyTimings(words, timings, length, speed)
     -- A sound pack keeps a clip's times as one string, "0 .42 1.5", so a client holds a table
     -- only for the clip that plays.
     if type(timings) == "string" then
@@ -195,11 +195,14 @@ local function ApplyTimings(words, timings, length)
     end
     -- By index, not ipairs, which stops at a hole that # may count past.
     for i = 1, #words do
-        local at = timings[i]
-        if type(at) ~= "number" or at ~= at or at < (timings[i - 1] or 0) or at > length then return false end
+        local raw = timings[i]
+        if type(raw) ~= "number" then return false end
+        local at = raw / (speed or 1)
+        if at ~= at or at < (timings[i - 1] or 0) / (speed or 1) or at > length then return false end
     end
     for i, word in ipairs(words) do
-        word.start, word.finish = timings[i], timings[i + 1] or length
+        word.start = timings[i] / (speed or 1)
+        word.finish = timings[i + 1] and timings[i + 1] / (speed or 1) or length
     end
     return true
 end
@@ -209,7 +212,8 @@ function Transcript:Tokenize()
     local clip = self.clip
     local length = clip and tonumber(clip.length)
     -- Timed, a word's share is its own seconds, so progress times length finds it.
-    self.timed = ApplyTimings(self.words, clip and clip.present and clip.present.timings, length)
+    self.timed = ApplyTimings(self.words, clip and clip.present and clip.present.timings, length,
+        clip and clip.playbackSpeed)
     if self.timed then self.totalWeight = length end
 end
 

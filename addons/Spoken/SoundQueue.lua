@@ -539,7 +539,7 @@ function SoundQueue:Share(clip, elapsed)
     if length <= 0 then return 0 end
     elapsed = math.max(0, math.min(length, elapsed or 0))
     local span = clip.span
-    local share = span and span.total and span.total > 0 and (span.before + elapsed) / span.total
+    local share = span and span.total and span.total > 0 and (span.before + elapsed * (clip.playbackSpeed or 1)) / span.total
         or elapsed / length
     return math.max(0, math.min(1, share))
 end
@@ -802,7 +802,7 @@ end
 -- old names, which the public API carries.
 local PAUSE_FADE_MS = 400
 
-function SoundQueue:PauseQueue()
+function SoundQueue:PauseQueue(cut)
     if self:IsPaused() then
         return false
     end
@@ -821,7 +821,7 @@ function SoundQueue:PauseQueue()
     end
     if head and self:CanBePaused() then
         -- Faded out, not cut: a pause is the player stepping away, not an interruption.
-        SoundUtils:StopSound(head, PAUSE_FADE_MS)
+        if cut then SoundUtils:StopSound(head) else SoundUtils:StopSound(head, PAUSE_FADE_MS) end
         CancelSpeakTimer(head)
     end
     -- Nothing of ours is speaking, so the game may. Resuming plays the line, which mutes again.

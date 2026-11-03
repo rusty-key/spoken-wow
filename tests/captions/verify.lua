@@ -78,6 +78,8 @@ E.Addon.db.profile.Frame.Style='minimal'
 -- The dark background keeps the gold highlight the checks below expect.
 E.Addon.db.profile.Frame.MinimalBackground='dark'
 E.Addon.db.profile.Audio.LineGap=0
+E.Spoken.GetPlaybackSpeed=function() return E.Addon.db.profile.Audio.PlaybackSpeed or 1 end
+E.Spoken.SetPlaybackSpeed=function(_, speed) E.Addon.db.profile.Audio.PlaybackSpeed=speed end
 E.Addon.db.profile.Transcript.HighlightWord=true
 -- The checks below follow the words typed in and the progress line, which are off by default.
 E.Addon.db.profile.Transcript.Typewriter=true

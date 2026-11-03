@@ -377,6 +377,7 @@ function Skin:Initialize()
         function() self:UpdateControls() end)
     self.play, self.skip = play, Actions.SkipButton(self.controls)
     self.buttons = { self.play, self.skip }
+    self.speed = Actions.SpeedButton(self.controls)
     Actions:Build(frame)
 
     -- No scrollbar: the captions scroll themselves on the wheel.
@@ -564,7 +565,7 @@ function Skin:ConfigurePortrait()
 end
 
 function Skin:ConfigureActions()
-    self.row = Actions:HeaderControls(self.frame, self.controls, { self.play, self.skip }, self.clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls, { self.play, self.skip, self.speed }, self.clip)
     self:LayoutControls()
 end
 

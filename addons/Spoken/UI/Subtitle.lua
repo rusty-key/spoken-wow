@@ -904,7 +904,7 @@ function Subtitle:Corner(clip)
         self.report = nil
     end
     -- As wide as the buttons it shows, so the row stays centred under the subtitle.
-    local count = action and 3 or 2
+    local count = action and 4 or 3
     self.controls:SetWidth(CONTROL_SIZE * count + CONTROL_GAP * (count - 1))
 end
 
@@ -927,10 +927,14 @@ function Subtitle:BuildControls()
     skip:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
     self.skip = skip
 
+    local speed = Actions.SpeedButton(controls)
+    speed:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
+    self.speed = speed
+
     -- Report, in the same ring, with the action's own bug icon: what the windows show in their
     -- corner, and what it does is the action's, as there.
     local report = Actions.RoundButton(controls)
-    report:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
+    report:SetPoint("LEFT", speed, "RIGHT", CONTROL_GAP, 0)
     report:SetScript("OnClick", function()
         if report.action and report.action.onClick then report.action.onClick(report.clip) end
     end)

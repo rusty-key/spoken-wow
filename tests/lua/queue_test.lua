@@ -500,5 +500,20 @@ Expect("...the stop taken off", Q:IsPaused(), false)
 Expect("...moved to the front as it is, never stopped on the way", behindStopped, 0)
 Expect("...the stopped line kept behind it", Q:GetQueue()[2], held)
 
+---------------------------------------------------------------- switching to an optional faster recording
+Fresh()
+stub.SetAddOns({ { folder = "SpokenSpeed20_SpokenQuestsAudio_esES" } })
+local sped = H.Clip({ path = [[Interface\AddOns\SpokenQuestsAudio_esES\generated\sounds\quests\a.ogg]], length = 4 })
+quests:Enqueue(sped)
+stub.Advance(1)
+env.Spoken:SetPlaybackSpeed(2)
+Expect("speed change starts the optional recording", world.played[2],
+    [[Interface\AddOns\SpokenSpeed20_SpokenQuestsAudio_esES\generated\sounds\quests\a.ogg]])
+Expect("...cuts the old recording before restarting", world.lastStopFade, nil)
+Expect("...times the faster line", sped.length, 2)
+Expect("...keeps the original duration for a later replay", sped.originalLength, 4)
+stub.Advance(2.55)
+Expect("...completes at the faster rate", Q:IsEmpty(), true)
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll queue tests passed")
