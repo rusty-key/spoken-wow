@@ -6,6 +6,9 @@
  */
 import "server-only";
 
+import type { PoolClient } from "pg";
+
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -60,10 +63,9 @@ export async function saveName(args: {
   editedBy: string;
   expectedVersion?: number | null;
   anyLanguage?: boolean;
-}): Promise<NameVersion> {
-  if (args.lang === BASE_LANG && !args.anyLanguage) {
-    throw new Error("English names come from the corpus, not from here");
-  }
+  audit?: ApiAudit;
+}): Promise<NameVersion & { wrote: boolean }> {
+  if (!args.anyLanguage) refuseEnglish(args.lang);
   const name = args.name.trim();
   if (!name) throw new Error("the name cannot be empty");
 
@@ -93,7 +95,7 @@ export async function saveName(args: {
       throw new NameConflict(`this name moved to v${current.version} while you were editing it`);
     }
     if (current && current.name === name) {
-      return { ...current, createdAt: current.createdAt.toISOString() };
+      return { ...current, createdAt: current.createdAt.toISOString(), wrote: false };
     }
 
     await client.query(
@@ -115,10 +117,79 @@ export async function saveName(args: {
         lang: args.lang,
         actorId: args.editedBy,
         subject: `${args.kind}:${args.entityId}`,
-        detail: { version: rows[0].version, name, note: rows[0].note },
+        detail: {
+          version: rows[0].version,
+          name,
+          note: rows[0].note,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
-    return { ...rows[0], createdAt: rows[0].createdAt.toISOString() };
+    return { ...rows[0], createdAt: rows[0].createdAt.toISOString(), wrote: true };
+  });
+}
+
+function refuseEnglish(lang: Lang): void {
+  if (lang === BASE_LANG) throw new Error("English names come from the corpus, not from here");
+}
+
+async function leaveCurrent(
+  client: PoolClient,
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+): Promise<void> {
+  const { rowCount } = await client.query(
+    `update "entity_name" set "isCurrent" = false
+      where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
+    [kind, entityId, lang, version],
+  );
+  if (!rowCount) throw new NameConflict(`${kind} ${entityId} v${version} is not the current name`);
+}
+
+/** Moves the live flag back to `version`, as long as `from` still holds it. */
+export async function restoreName(
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+  from: number,
+  by: string | null,
+): Promise<void> {
+  refuseEnglish(lang);
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    // Two statements: the partial unique index is checked per row, so one statement flipping
+    // both would briefly hold two current rows and be refused.
+    await leaveCurrent(client, kind, entityId, lang, from);
+    const { rowCount: back } = await client.query(
+      `update "entity_name" set "isCurrent" = true
+        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4`,
+      [kind, entityId, lang, version],
+    );
+    if (!back) throw new NameMissing(`${kind} ${entityId} has no version ${version}`);
+    await recordActivity(
+      { kind: "name.restored", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version, from } },
+      client,
+    );
+  });
+}
+
+/** Takes a first name back, so the English shows again. A site translator cannot do this. */
+export async function retireName(
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+  by: string | null,
+): Promise<void> {
+  refuseEnglish(lang);
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    await leaveCurrent(client, kind, entityId, lang, version);
+    await recordActivity(
+      { kind: "name.retired", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version } },
+      client,
+    );
   });
 }

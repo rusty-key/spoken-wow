@@ -11,6 +11,7 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -67,7 +68,7 @@ async function lockBoss(client: PoolClient, lineId: string): Promise<number> {
   return rows[0].id;
 }
 
-async function bossIdOf(lineId: string): Promise<number | null> {
+export async function bossIdOf(lineId: string): Promise<number | null> {
   const parsed = parseBossLineId(lineId);
   if (!parsed) return null;
   const rows = await query<{ id: number }>(
@@ -102,7 +103,8 @@ export async function saveStory(args: {
   note?: string | null;
   editedBy: string;
   expectedVersion?: number | null;
-}): Promise<StoryVersion> {
+  audit?: ApiAudit;
+}): Promise<StoryVersion & { wrote: boolean }> {
   const { lang, lineId } = args;
   return withTeam(await ownerOrAll(lang), async (client) => {
     const bossId = await lockBoss(client, lineId);
@@ -127,7 +129,7 @@ export async function saveStory(args: {
 
     // The history records what the story has been, not who opened the dialog.
     if (current && text === current.text) {
-      return toVersion(lineId, current);
+      return { ...toVersion(lineId, current), wrote: false };
     }
 
     const { rows: maxRows } = await client.query<{ version: number }>(
@@ -156,12 +158,12 @@ export async function saveStory(args: {
         source: "bosses",
         subject: lineId,
         lineId,
-        detail: { version, text, note },
+        detail: { version, text, note, ...auditDetail(args.audit, current?.version ?? null) },
       },
       client,
     );
 
-    return toVersion(lineId, inserted[0]);
+    return { ...toVersion(lineId, inserted[0]), wrote: true };
   });
 }
 
@@ -214,5 +216,22 @@ export async function restoreStory(
     );
 
     return toVersion(lineId, restored[0]);
+  });
+}
+
+/** Takes a first story back, so the boss reads as having none in the language. */
+export async function retireStory(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    const bossId = await lockBoss(client, lineId);
+    const { rowCount } = await client.query(
+      `update "boss_line" set "isCurrent" = false
+        where "bossId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
+      [bossId, lang, version],
+    );
+    if (!rowCount) throw new StoryConflict(`${lineId} v${version} is not the current story`);
+    await recordActivity(
+      { kind: "text.retired", lang, actorId: by, source: "bosses", subject: lineId, lineId, detail: { version } },
+      client,
+    );
   });
 }

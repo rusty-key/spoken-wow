@@ -23,6 +23,7 @@
  */
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -87,7 +88,8 @@ export async function saveBookText(args: {
   editedBy: string;
   expectedVersion?: number | null;
   lang?: Lang;
-}): Promise<BookVersion> {
+  audit?: ApiAudit;
+}): Promise<BookVersion & { wrote: boolean }> {
   const lang = args.lang ?? BASE_LANG;
   return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows: currentRows } = await client.query<Row>(
@@ -124,7 +126,7 @@ export async function saveBookText(args: {
     // A save that changes nothing must not spend a version number: the history is a record
     // of what the page has said, not of who opened the dialog.
     if (current && text === current.text) {
-      return toVersion(current);
+      return { ...toVersion(current), wrote: false };
     }
 
     const { rows: maxRows } = await client.query<{ version: string }>(
@@ -170,12 +172,17 @@ export async function saveBookText(args: {
         source: "readables",
         subject: args.lineId,
         lineId: args.lineId,
-        detail: { version, text, note: args.note?.trim() || null },
+        detail: {
+          version,
+          text,
+          note: args.note?.trim() || null,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
 
-    return toVersion(inserted[0]);
+    return { ...toVersion(inserted[0]), wrote: true };
   });
 }
 
@@ -227,5 +234,21 @@ export async function restoreBookText(
     );
 
     return toVersion({ ...rows[0], isCurrent: true });
+  });
+}
+
+/** Takes a first translation back, so the page reads as untranslated again. */
+export async function retireBookText(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    const { rowCount } = await client.query(
+      `update "book_line" set "isCurrent" = false
+        where "lineId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
+      [lineId, lang, version],
+    );
+    if (!rowCount) throw new BookConflict(`${lineId} v${version} is not the current text`);
+    await recordActivity(
+      { kind: "text.retired", lang, actorId: by, source: "readables", subject: lineId, lineId, detail: { version } },
+      client,
+    );
   });
 }

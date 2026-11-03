@@ -14,6 +14,24 @@
  */
 import type { Capability } from "@/lib/permissions";
 
+export type ApiAudit = { tokenId: string; batchId?: string };
+
+/**
+ * `apiBatchId` is not `batchId`, which already means a voice queue batch in this log. `previous`
+ * is the version the edit replaced, because the version number below it may not be: a restore
+ * moves the live version without writing a row.
+ */
+type ApiAuditDetail = { previous?: number | null; apiTokenId?: string; apiBatchId?: string };
+
+export function auditDetail(audit: ApiAudit | undefined, previous: number | null): ApiAuditDetail {
+  if (!audit) return {};
+  return {
+    previous,
+    apiTokenId: audit.tokenId,
+    ...(audit.batchId ? { apiBatchId: audit.batchId } : {}),
+  };
+}
+
 export type ActivityDetail = {
   // Audio.
   "take.generated": {
@@ -56,9 +74,13 @@ export type ActivityDetail = {
     replaces?: string[];
     /** The contribution whose text this is, for a correction accepted from the game. */
     contribution?: number;
-  };
+  } & ApiAuditDetail;
   "text.restored": { version: number; from?: number | null };
-  "name.edited": { version: number; name?: string; note?: string | null };
+  /** An undone first translation: the line has no current version in the language any more. */
+  "text.retired": { version: number };
+  "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
+  "name.restored": { version: number; from?: number | null };
+  "name.retired": { version: number };
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
