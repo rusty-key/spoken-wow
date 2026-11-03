@@ -302,7 +302,6 @@ export function createMockApi(): ManagerApi {
   let contributor: ContributorView = {
     account: contribMode === 'out' || contribMode === 'fail' || contribMode === 'expire' || contribMode === 'unreachable' ? null : { email: 'admin@example.com', adminLangs: contribMode === 'nonadmin' ? [] : LANGUAGES.map((l) => l.code) },
     config: { projects: { SpokenQuestsAudio_deDE: '1234567' }, repo: 'example/spoken-packs', gameVersions: '1.15.9 2.5.6 1.60.1', hasCfToken: true, hasGhToken: false },
-    canStoreSecrets: true,
     siteUnreachable: contribMode === 'unreachable',
     sessionExpired: false,
     lastRuns: contribMode === 'result' ? { curseforge: sentResult } : {}

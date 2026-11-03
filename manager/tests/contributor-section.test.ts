@@ -7,7 +7,7 @@ import { S } from '../src/renderer/src/strings'
 import { tmpDir } from './helpers'
 
 const base: ContributorConfig = { projects: {}, repo: '', gameVersions: '', hasCfToken: false, hasGhToken: false }
-const view = (account: ContributorView['account']): ContributorView => ({ account, config: base, canStoreSecrets: true, siteUnreachable: false, sessionExpired: false, lastRuns: {} })
+const view = (account: ContributorView['account']): ContributorView => ({ account, config: base, siteUnreachable: false, sessionExpired: false, lastRuns: {} })
 const admin = { email: 'a@b.c', adminLangs: ['deDE'] }
 
 describe('releaseAvailable', () => {

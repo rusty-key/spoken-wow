@@ -281,7 +281,6 @@ export interface ContributorView {
   /** Null when signed out. An account with no admin languages is still an account, so the window can say so. */
   account: { email: string; adminLangs: string[] } | null
   config: ContributorConfig
-  canStoreSecrets: boolean
   /** A stored session the site could not confirm just now. With no account known, a sign-in is not what is missing. */
   siteUnreachable: boolean
   /** The site ended a session the user had not asked to end. */

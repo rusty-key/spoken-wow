@@ -71,7 +71,6 @@ export function ContributorSection(): ReactNode {
     >
       <p className="settings-text">{S.contributor.signedInAs(view.account.email)}</p>
       {error && <p className="text-error" role="alert">{error}</p>}
-      {!view.canStoreSecrets && <p className="status status-warn contrib-gap">{S.contributor.unsafeStorage}</p>}
       {releaseAvailable(view) ? (
         <p className="contrib-gap">
           <button type="button" className="btn" onClick={() => actions.navigate('release')}>
@@ -120,6 +119,7 @@ function SiteUnreachable({ onView }: { onView: (v: ContributorView) => void }): 
 }
 
 function SignIn({ notice, onDone }: { notice: string; onDone: (v: ContributorView) => void }): ReactNode {
+  const { state } = useStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -151,7 +151,7 @@ function SignIn({ notice, onDone }: { notice: string; onDone: (v: ContributorVie
         <Field label={S.contributor.email}>
           {(id) => <input id={id} className="input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />}
         </Field>
-        <Field label={S.contributor.password}>
+        <Field label={S.contributor.password} text={state.platform === 'darwin' ? S.contributor.keychainHint : undefined}>
           {(id) => <input id={id} className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
         </Field>
         <div className="contrib-actions">

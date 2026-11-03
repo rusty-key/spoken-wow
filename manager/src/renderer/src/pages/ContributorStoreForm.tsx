@@ -46,22 +46,18 @@ export function StoreForm({ store, view, onView }: { store: StoreId; view: Contr
       }}
     >
       <h3 className="contrib-store-h">{storeName(store)}</h3>
-      {view.canStoreSecrets ? (
-        <Field label={S.contributor.token} text={hasToken ? S.contributor.tokenSet : S.contributor.tokenNotSet}>
-          {(id) => (
-            <div className="path-line">
-              <input id={id} className="input" type="password" autoComplete="off" spellCheck={false} placeholder={hasToken ? S.contributor.tokenPlaceholderSet : ''} value={token} onChange={(e) => setToken(e.target.value)} />
-              {hasToken && (
-                <button type="button" className="btn" disabled={busy} onClick={() => void save(true)}>
-                  {S.contributor.removeToken}
-                </button>
-              )}
-            </div>
-          )}
-        </Field>
-      ) : (
-        <p className="status status-warn">{S.contributor.unsafeStorage}</p>
-      )}
+      <Field label={S.contributor.token} text={hasToken ? S.contributor.tokenSet : S.contributor.tokenNotSet}>
+        {(id) => (
+          <div className="path-line">
+            <input id={id} className="input" type="password" autoComplete="off" spellCheck={false} placeholder={hasToken ? S.contributor.tokenPlaceholderSet : ''} value={token} onChange={(e) => setToken(e.target.value)} />
+            {hasToken && (
+              <button type="button" className="btn" disabled={busy} onClick={() => void save(true)}>
+                {S.contributor.removeToken}
+              </button>
+            )}
+          </div>
+        )}
+      </Field>
       {isCf ? (
         <>
           <span className="field-label">{S.contributor.projectIds}</span>

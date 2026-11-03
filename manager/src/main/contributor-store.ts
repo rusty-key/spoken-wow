@@ -5,6 +5,7 @@ import type { ContributorConfig, StoreId } from '../shared/types'
 import { readJsonFile, writeJsonAtomic } from './state'
 
 
+/** `available` and `seal` can raise the macOS Keychain dialog, so nothing someone signed out triggers may call them. */
 export interface SecretBox {
   available(): boolean
   seal(s: string): string
@@ -31,6 +32,7 @@ interface ContributorFile {
 
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/
 const DIGITS = /^\d+$/
+const CANNOT_KEEP = 'Spoken Manager cannot keep secrets on this computer right now. If your system asked for access, allow it and try again.'
 
 function str(v: unknown): string | null {
   return typeof v === 'string' && v !== '' ? v : null
@@ -83,8 +85,12 @@ export class ContributorStore {
   }
 
   requireBox(): void {
-    if (!this.box.available()) {
-      throw new PlainError('This computer cannot keep secrets safely, so Spoken Manager will not store them.')
+    if (!this.box.available()) throw new PlainError(CANNOT_KEEP)
+    // A refused system dialog may pass the check above. Found only at the real seal, that is after the password has left.
+    try {
+      this.box.seal('probe')
+    } catch {
+      throw new PlainError(CANNOT_KEEP)
     }
   }
 

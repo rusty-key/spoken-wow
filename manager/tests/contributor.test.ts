@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { GameInstall, JobProgress } from '../src/shared/types'
 import { cleanContributorTmp } from '../src/main/cleanup'
@@ -229,7 +229,31 @@ describe('signing in', () => {
     const h = await setup({ box: fakeBox(false) })
     await expect(h.svc.contributor.signIn('me@example.test', PASSWORD)).rejects.toThrow(/cannot keep secrets/)
     expect(h.calls).toEqual([])
-    expect((await h.svc.contributor.view()).canStoreSecrets).toBe(false)
+  })
+
+  it('never opens the secret store for someone signed out, even with tokens kept', async () => {
+    const box = fakeBox()
+    const touched = [vi.spyOn(box, 'available'), vi.spyOn(box, 'seal'), vi.spyOn(box, 'open')]
+    const h = await setup({ box })
+    await h.svc.contributor.view()
+    for (const spy of touched) expect(spy).not.toHaveBeenCalled()
+
+    await h.svc.contributor.signIn('me@example.test', PASSWORD)
+    await h.svc.contributor.saveStore({ store: 'curseforge', token: CF_TOKEN })
+    await h.svc.contributor.signOut()
+    for (const spy of touched) spy.mockClear()
+    await h.svc.contributor.view()
+    for (const spy of touched) expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('a sealing the system refuses reads as plain words, before the password leaves', async () => {
+    const box = fakeBox()
+    vi.spyOn(box, 'seal').mockImplementation(() => {
+      throw new Error('Error while encrypting the text provided to encryptString.')
+    })
+    const h = await setup({ box })
+    await expect(h.svc.contributor.signIn('me@example.test', PASSWORD)).rejects.toThrow(/allow it and try again/)
+    expect(h.calls).toEqual([])
   })
 
   it('a 401 from the site clears the session, keeps tokens and ids, and view() returns account null', async () => {
