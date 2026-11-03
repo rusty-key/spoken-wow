@@ -37,6 +37,10 @@ describe('cfPublicVersions', () => {
     const f = json(200, { files: [{ name: 'X-1.0.0.zip' }, { name: 'Y-2.0.0.zip' }, { name: 'odd.zip' }] })
     expect(await cfPublicVersions('1', f)).toEqual(['1.0.0', '2.0.0'])
   })
+  it('reads a 404 as a project with nothing public yet', async () => {
+    expect(await cfPublicVersions('1', json(404, {}))).toEqual([])
+  })
+
   it('answers null when it cannot tell', async () => {
     expect(await cfPublicVersions('1', json(202, {}))).toBeNull()
     expect(await cfPublicVersions('1', json(500, {}))).toBeNull()

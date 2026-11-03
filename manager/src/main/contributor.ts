@@ -10,7 +10,7 @@ import { cfPublicVersions, deriveRow, ghHasAsset } from './contributor-status'
 import { CONTRIBUTOR_TMP } from './cleanup'
 import { ContributorStore, type SecretBox, type UploadRecord } from './contributor-store'
 import { cfProjectLink, checkCfToken, checkGhRepo, resolveGameVersions, uploadCurseForge, uploadGitHub, zipFolder, type UploadProgress } from './contributor-upload'
-import { CancelledError, isAbortError, plainMessage, PlainError, throwIfAborted } from './errors'
+import { CancelledError, isAbortError, plainMessage, PlainError, throwIfAborted, withTimeout } from './errors'
 import { isLinked } from './guard'
 import type { JobManager, JobSpec } from './jobs'
 import type { ChannelIndex } from './packs-remote'
@@ -21,6 +21,8 @@ import { parseTocVersion } from './status'
 const SITE_URL = 'https://spoken.rusty.one'
 const SITE_TIMEOUT_MS = 15_000
 const PROGRESS_INTERVAL_MS = 250
+/** A stalled read would otherwise hold the store's run and the game's job queue until someone cancels. */
+const CHANNEL_TIMEOUT_MS = 30_000
 const STORE_NAMES: Record<StoreId, string> = { curseforge: 'CurseForge', github: 'GitHub' }
 /** Long enough for one screen's stores and its refresh button to share a request. */
 const ROWS_CHANNEL_MAX_AGE_MS = 60_000
@@ -141,16 +143,18 @@ export class ContributorService {
     }
     try {
       const res = await this.siteRequest('/api/manager/contributor', { headers: { Cookie: cookie } })
+      const account = res.ok ? parseAccount(await res.json()) : null
+      // A sign-out or a new sign-in came first, so this answer is about a session that is gone.
+      if (this.store.cookie() !== cookie) return this.known
       if (res.status === 401) {
         this.clearSession()
         return null
       }
-      const account = res.ok ? parseAccount(await res.json()) : null
       if (account) this.known = account
       this.unreachable = !account
     } catch {
       // Keeps what is known; a cookie still stored tells requireAdmin the site was the problem.
-      this.unreachable = true
+      if (this.store.cookie() === cookie) this.unreachable = true
     }
     return this.known
   }
@@ -225,7 +229,8 @@ export class ContributorService {
       const saved = this.store.config().repo
       const repo = input.repo?.trim() ?? saved
       const newRepo = repo !== '' && repo !== saved
-      const checkWith = token || (newRepo ? this.store.token('github') : null)
+      // A token being removed may be the revoked one, so it checks nothing.
+      const checkWith = token || (newRepo && input.token === undefined ? this.store.token('github') : null)
       if (checkWith) await checkGhRepo(checkWith, repo, this.deps.fetchImpl)
     }
     this.store.saveConfig({
@@ -379,7 +384,7 @@ export class ContributorService {
 
     // Publishing on an old index would send an older folder to the store as the current release.
     try {
-      await this.deps.refreshChannel({ signal: ctx.signal })
+      await this.deps.refreshChannel({ signal: withTimeout(CHANNEL_TIMEOUT_MS, ctx.signal) })
     } catch {
       if (ctx.signal.aborted) throw new CancelledError()
       throw new PlainError('Could not check the voice pack channel, so nothing was published. Try again.')

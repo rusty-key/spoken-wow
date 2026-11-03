@@ -263,6 +263,32 @@ describe('signing in', () => {
     expect((await h.svc.contributor.signOut()).sessionExpired).toBe(false)
   })
 
+  it('an answer about a session already gone changes nothing', async () => {
+    let gate: Promise<void> | null = null
+    let secondSession = false
+    const h = await signedIn({
+      route: async (c) => {
+        if (secondSession && c.url.endsWith('/api/auth/sign-in/email')) return new Response('{}', { headers: { 'set-cookie': 'session=second; Path=/' } })
+        if (!gate || !c.url.endsWith('/api/manager/contributor')) return undefined
+        await gate
+        return json({ error: 'signed out' }, 401)
+      }
+    })
+    let release = (): void => undefined
+    gate = new Promise((r) => (release = r))
+    const inFlight = h.svc.contributor.view()
+    await new Promise((r) => setTimeout(r, 0))
+    await h.svc.contributor.signOut()
+    gate = null
+    secondSession = true
+    await h.svc.contributor.signIn('me@example.test', 'pw')
+
+    release()
+    await inFlight
+    expect(h.store.cookie()).toBe('session=second')
+    expect((await h.svc.contributor.view())).toMatchObject({ account: { email: 'me@example.test' }, sessionExpired: false })
+  })
+
   it('does not call a refused sign-in an expiry', async () => {
     const h = await signedIn()
     await h.svc.contributor.signOut()
@@ -505,6 +531,13 @@ describe('saveStore', () => {
     expect(view.config.hasCfToken).toBe(false)
     expect(view.config.gameVersions).toBe('1.15.9')
     expect(h.calls.some((c) => c.url.includes('curseforge.com'))).toBe(false)
+  })
+
+  it('removes a revoked GitHub token even with the repository edited', async () => {
+    const h = await signedIn({ route: (c) => (c.url === 'https://api.github.com/repos/me/other' ? json({}, 401) : undefined) })
+    h.store.setToken('github', GH_TOKEN)
+    const view = await h.svc.contributor.saveStore({ store: 'github', token: '', repo: 'me/other' })
+    expect(view.config).toMatchObject({ hasGhToken: false, repo: 'me/other' })
   })
 
   it('a new repository is checked against the token already saved', async () => {

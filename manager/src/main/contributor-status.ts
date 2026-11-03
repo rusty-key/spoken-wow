@@ -15,12 +15,16 @@ export function versionOfFileName(name: string): string | null {
   return m ? m[1]! : null
 }
 
-/** The versions CurseForge lists publicly; null when it could not be read. */
+/**
+ * The versions CurseForge lists publicly; null when it could not be read. cfwidget's 404 is an answer: a
+ * new project has nothing public yet, and an id that is wrong fails at upload, where nothing is sent twice.
+ */
 export async function cfPublicVersions(project: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<string[] | null> {
   try {
     const res = await fetchImpl(`https://api.cfwidget.com/${encodeURIComponent(project)}`, {
       signal: withTimeout(TIMEOUT_MS, signal)
     })
+    if (res.status === 404) return []
     if (res.status !== 200) return null
     const body = (await res.json()) as { files?: unknown }
     if (!Array.isArray(body.files)) return null

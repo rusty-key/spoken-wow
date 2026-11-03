@@ -23,7 +23,8 @@ export function rowUploadLabel(row: ReleaseRow): string | null {
 
 /** A cleared project id goes as `''`: the saved ids are merged with these, and only that removes one. */
 export function storeFormInput(store: StoreId, form: { token: string; removeToken: boolean; projects: Record<string, string>; repo: string; versions: string }): StoreInput {
-  const token = form.removeToken ? '' : form.token
+  // Trimmed here: only Remove Token may send an empty one, which forgets the saved token.
+  const token = form.removeToken ? '' : form.token.trim()
   const sentToken = token !== '' || form.removeToken ? { token } : {}
   if (store === 'github') return { store, ...sentToken, repo: form.repo.trim() }
   return { store, ...sentToken, projects: Object.fromEntries(Object.entries(form.projects).map(([k, v]) => [k, v.trim()])), gameVersions: form.versions.trim() }

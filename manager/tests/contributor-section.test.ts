@@ -105,6 +105,11 @@ describe('storeFormInput', () => {
     expect(storeFormInput('github', { ...form, token: 't' })).toEqual({ store: 'github', token: 't', repo: 'me/packs' })
     expect(storeFormInput('github', { ...form, token: 't', removeToken: true })).toEqual({ store: 'github', token: '', repo: 'me/packs' })
   })
+
+  it('takes a token of spaces as none typed, so it keeps the saved one', () => {
+    expect(storeFormInput('github', { ...form, token: '   ' })).toEqual({ store: 'github', repo: 'me/packs' })
+    expect(storeFormInput('github', { ...form, token: ' t ' })).toEqual({ store: 'github', token: 't', repo: 'me/packs' })
+  })
 })
 
 describe('words of a release', () => {

@@ -292,7 +292,7 @@ export async function uploadGitHub(a: {
   const { tag, asset: name, link } = ghRelease(a.repo, a.folder, a.version)
   const headers = ghHeaders(a.token)
 
-  let res = await send('GitHub', a.fetchImpl, `${GH_API}/repos/${a.repo}/releases/tags/${tag}`, { headers }, a.signal)
+  let res = await send('GitHub', a.fetchImpl, `${GH_API}/repos/${a.repo}/releases/tags/${tag}`, { headers }, a.signal, CHECK_TIMEOUT_MS)
   if (res.status === 404) {
     res = await send(
       'GitHub',
@@ -303,7 +303,8 @@ export async function uploadGitHub(a: {
         headers,
         body: JSON.stringify({ tag_name: tag, name: `${a.folder} ${a.version}`, body: a.notes })
       },
-      a.signal
+      a.signal,
+      CHECK_TIMEOUT_MS
     )
   }
   if (!res.ok) throw await rejected('GitHub', res, a.token)
