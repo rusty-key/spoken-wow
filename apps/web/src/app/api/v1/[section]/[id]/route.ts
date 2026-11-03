@@ -1,7 +1,7 @@
 /** One item of a section, by its line id. */
 import { applyItem, statusOf } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
-import { decodeId, parseVariant, sectionOf } from "@/lib/text-api/respond";
+import { decodeId, invalid, parseVariant, sectionOf } from "@/lib/text-api/respond";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const body: unknown = await request.json().catch(() => null);
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return Response.json({ error: "send a JSON object" }, { status: 400 });
+    return invalid("send a JSON object");
   }
 
   const id = decodeId(raw);

@@ -4,7 +4,7 @@
  * from whichever English line `LANG` has not translated.
  */
 import { bossLineId } from "@/lib/bosses/story";
-import { asSystem } from "@/lib/teams/testing";
+import { asSystem, testUser } from "@/lib/teams/testing";
 
 /** Tests elsewhere already wipe this language, so nothing real is at stake in it. */
 export const LANG = "koKR";
@@ -47,11 +47,7 @@ async function seedPage(lineId: string, bookId: string, owner: number | null): P
 }
 
 export async function createFixtures(): Promise<Fixtures> {
-  const user = `test-api-${random()}`;
-  await asSystem.query(
-    `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test API', $1 || '@example.invalid', false)`,
-    [user],
-  );
+  const { id: user, cleanup: removeUser } = await testUser("test-api");
 
   const map = -randomInt();
   const zone = `z:${map}`;
@@ -142,7 +138,7 @@ export async function createFixtures(): Promise<Fixtures> {
         await asSystem.query(`delete from "book_line" where "lineId" = $1`, [lineId]);
         await asSystem.query(`delete from "book_page" where "lineId" = $1`, [lineId]);
       }
-      await asSystem.query(`delete from "user" where "id" = $1`, [user]);
+      await removeUser();
     },
   };
 }

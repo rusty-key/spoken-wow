@@ -16,10 +16,12 @@ import { saveBookText } from "@/lib/readables/text";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem } from "@/lib/teams/testing";
 
-import { keyOf, sections } from "./index";
+import { sections } from "./index";
 import { listSql } from "./quests";
 import { createFixtures, LANG, type Fixtures } from "./testing";
-import type { Page, Section, TextItem } from "./types";
+import type { Source } from "@/lib/sections";
+
+import { keyOf, type Page, type TextItem } from "./types";
 
 let f: Fixtures;
 
@@ -35,7 +37,7 @@ afterAll(async () => {
 });
 
 /** Every item a filter yields, following cursors, in a small page size. */
-async function all(section: Section, filter: Record<string, string>, limit = 500): Promise<TextItem[]> {
+async function all(section: Source, filter: Record<string, string>, limit = 500): Promise<TextItem[]> {
   const items: TextItem[] = [];
   let cursor: string | null = null;
   do {

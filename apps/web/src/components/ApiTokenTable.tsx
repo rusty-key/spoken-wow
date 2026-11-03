@@ -1,31 +1,14 @@
 "use client";
 
-import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import { langName } from "@/lib/lang";
 import type { ApiToken } from "@/lib/tokens/types";
 
-/** Everyone's API tokens, for a global admin. Hints are left out: they are the owner's to see. */
-export default function ApiTokenTable({ initial }: { initial: (ApiToken & { userEmail: string })[] }) {
-  const [tokens, setTokens] = useState(initial);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+import { useApiTokens } from "./useApiTokens";
 
-  async function revoke(id: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/tokens?id=${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("could not revoke that token");
-      const now = new Date().toISOString();
-      setTokens((current) => current.map((t) => (t.id === id ? { ...t, revokedAt: now } : t)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
+/** Everyone's API tokens, for a global admin. Hints are not drawn: they are the owner's to see. */
+export default function ApiTokenTable({ initial }: { initial: (ApiToken & { userEmail: string })[] }) {
+  const { tokens, busy, error, revoke } = useApiTokens(initial, (id) => `/api/tokens?id=${id}`);
 
   return (
     <section className="mt-10">

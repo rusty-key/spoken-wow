@@ -89,7 +89,7 @@ export async function saveBookText(args: {
   expectedVersion?: number | null;
   lang?: Lang;
   audit?: ApiAudit;
-}): Promise<BookVersion> {
+}): Promise<BookVersion & { wrote: boolean }> {
   const lang = args.lang ?? BASE_LANG;
   return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows: currentRows } = await client.query<Row>(
@@ -126,7 +126,7 @@ export async function saveBookText(args: {
     // A save that changes nothing must not spend a version number: the history is a record
     // of what the page has said, not of who opened the dialog.
     if (current && text === current.text) {
-      return toVersion(current);
+      return { ...toVersion(current), wrote: false };
     }
 
     const { rows: maxRows } = await client.query<{ version: string }>(
@@ -182,7 +182,7 @@ export async function saveBookText(args: {
       client,
     );
 
-    return toVersion(inserted[0]);
+    return { ...toVersion(inserted[0]), wrote: true };
   });
 }
 
@@ -237,7 +237,7 @@ export async function restoreBookText(
   });
 }
 
-/** Takes a first translation back, so the page reads as untranslated again. See retireLore. */
+/** Takes a first translation back, so the page reads as untranslated again. */
 export async function retireBookText(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
   return withTeam(await ownerOrAll(lang), async (client) => {
     const { rowCount } = await client.query(

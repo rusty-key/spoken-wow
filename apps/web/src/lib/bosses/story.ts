@@ -68,7 +68,7 @@ async function lockBoss(client: PoolClient, lineId: string): Promise<number> {
   return rows[0].id;
 }
 
-async function bossIdOf(lineId: string): Promise<number | null> {
+export async function bossIdOf(lineId: string): Promise<number | null> {
   const parsed = parseBossLineId(lineId);
   if (!parsed) return null;
   const rows = await query<{ id: number }>(
@@ -104,7 +104,7 @@ export async function saveStory(args: {
   editedBy: string;
   expectedVersion?: number | null;
   audit?: ApiAudit;
-}): Promise<StoryVersion> {
+}): Promise<StoryVersion & { wrote: boolean }> {
   const { lang, lineId } = args;
   return withTeam(await ownerOrAll(lang), async (client) => {
     const bossId = await lockBoss(client, lineId);
@@ -129,7 +129,7 @@ export async function saveStory(args: {
 
     // The history records what the story has been, not who opened the dialog.
     if (current && text === current.text) {
-      return toVersion(lineId, current);
+      return { ...toVersion(lineId, current), wrote: false };
     }
 
     const { rows: maxRows } = await client.query<{ version: number }>(
@@ -163,7 +163,7 @@ export async function saveStory(args: {
       client,
     );
 
-    return toVersion(lineId, inserted[0]);
+    return { ...toVersion(lineId, inserted[0]), wrote: true };
   });
 }
 
@@ -219,7 +219,7 @@ export async function restoreStory(
   });
 }
 
-/** Takes a first story back, so the boss reads as having none in the language. See retireLore. */
+/** Takes a first story back, so the boss reads as having none in the language. */
 export async function retireStory(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
   return withTeam(await ownerOrAll(lang), async (client) => {
     const bossId = await lockBoss(client, lineId);

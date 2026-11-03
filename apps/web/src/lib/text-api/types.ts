@@ -3,13 +3,6 @@ import type { ApiAudit } from "@/lib/activity/kinds";
 import type { Lang } from "@/lib/lang";
 import type { NameKind } from "@/lib/names/store";
 
-export const SECTIONS = ["places", "bosses", "readables", "quests"] as const;
-export type Section = (typeof SECTIONS)[number];
-
-export function isSection(value: unknown): value is Section {
-  return typeof value === "string" && (SECTIONS as readonly string[]).includes(value);
-}
-
 export type NameTarget = { kind: NameKind; entityId: string };
 
 export type TextItem = {
@@ -29,7 +22,7 @@ export type TextItem = {
 
 export type Page = { items: TextItem[]; nextCursor: string | null };
 
-export type SaveTextArgs = {
+type SaveTextArgs = {
   lang: Lang;
   id: string;
   variant: number;
@@ -48,13 +41,13 @@ export type SectionApi = {
   one(lang: Lang, id: string, variant: number): Promise<TextItem | null>;
   /** Which of `keys` are items, as keyOf(id, variant). Asked once a request, before any write. */
   known(lang: Lang, keys: { id: string; variant: number }[]): Promise<Set<string>>;
-  saveText(args: SaveTextArgs): Promise<{ version: number; lines: string[] }>;
+  saveText(args: SaveTextArgs): Promise<{ version: number; lines: string[]; wrote: boolean }>;
   /** What a name on this item writes to. Asked per item in a run, so it must not read a catalogue. */
   nameTarget(lang: Lang, id: string, variant: number): Promise<NameTarget | null>;
-  /** The current text version. Asked per item in a run, so it must not read a catalogue. */
+  /** The current text version. Asked per edit in an undo, so it must not read a catalogue. */
   version(lang: Lang, id: string, variant: number): Promise<number | null>;
   /** Moves the live text back to `version`. */
-  restore(lang: Lang, id: string, variant: number, version: number, by: string): Promise<void>;
+  restore(lang: Lang, id: string, variant: number, version: number, by: string): Promise<unknown>;
   /** Takes back a first translation, so the line has no text in the language again. */
   retire(lang: Lang, id: string, variant: number, version: number, by: string): Promise<void>;
 };
@@ -69,10 +62,13 @@ export function encodeCursor(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-export function decodeCursor(cursor: string): unknown {
+export function decodeCursor<T>(cursor: string, valid: (value: unknown) => value is T): T {
+  let decoded: unknown;
   try {
-    return JSON.parse(Buffer.from(cursor, "base64url").toString());
+    decoded = JSON.parse(Buffer.from(cursor, "base64url").toString());
   } catch {
-    throw new BadCursor("that cursor is not one this API gave out");
+    decoded = undefined;
   }
+  if (!valid(decoded)) throw new BadCursor("that cursor is not one this API gave out");
+  return decoded;
 }

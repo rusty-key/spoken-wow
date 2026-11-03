@@ -14,7 +14,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { restoreQuestText, retireQuestText, saveQuestText } from "@/lib/quests/text";
 
-import { BadCursor, decodeCursor, encodeCursor, keyOf, type SectionApi, type TextItem } from "./types";
+import { decodeCursor, encodeCursor, keyOf, type SectionApi, type TextItem } from "./types";
 
 type Row = {
   lineId: string;
@@ -31,17 +31,18 @@ type Row = {
 };
 
 /**
- * `where` and `limit` slot into the outer query, with $1 the language and $2 English. `scope` limits
- * the rows read at the start, given the alias to read them under, because one quest must not pay
- * for a pass over a whole language.
+ * $1 is the language and $2 English. `scope` limits the rows read at the start, given the alias to
+ * read them under, because one quest must not pay for a pass over a whole language. `where` and
+ * `limit` pick the page before the joins, under the alias `ln`, so a page pays for its own rows'
+ * English and names rather than a whole language's.
  *
  * The own rows carry their text with them: joining quest_line back by id scans the whole table,
  * every language, and spills to disk on a small host.
  */
-function linesSql(where: string, limit: string, scope: (alias: string) => string = () => "true"): string {
+function linesSql(where: string, limit: string, scope: (alias: string) => string): string {
   return `
     with "own" as (
-      select o."id", o."lineId", o."variant", ${momentSql(`o."lineId"`)} as "moment",
+      select o."lineId", o."variant", ${momentSql(`o."lineId"`)} as "moment",
              o."source", o."questId", o."playerGender", o."text", o."version"
         from "quest_line" o
        where o."lang" = $1 and o."isCurrent" and ${scope("o")}
@@ -53,9 +54,14 @@ function linesSql(where: string, limit: string, scope: (alias: string) => string
        where e."lang" = $2 and e."isCurrent" and ${scope("e")}
          and not exists (select 1 from "own" o
                           where o."moment" = ${momentSql(`e."lineId"`)} and o."variant" = e."variant")
+    ), "page" as (
+      select * from "lines" ln
+       ${where}
+       order by ln."lineId" collate "C", ln."variant"
+       ${limit}
     ), "items" as (
       select ln.*, e."text" as "englishText", e."questTitle" as "englishTitle"
-        from "lines" ln
+        from "page" ln
         left join lateral (
           select * from "quest_line" e
            where e."lineId" = any(array[ln."lineId", ln."moment", ln."moment" || ':m'])
@@ -72,9 +78,7 @@ function linesSql(where: string, limit: string, scope: (alias: string) => string
         on n."kind" = 'quest' and n."entityId" = i."questId"::text and n."lang" = $1 and n."isCurrent"
       left join "entity_name" en
         on en."kind" = 'quest' and en."entityId" = i."questId"::text and en."lang" = $2 and en."isCurrent"
-     ${where}
-     order by i."lineId" collate "C", i."variant"
-     ${limit}`;
+     order by i."lineId" collate "C", i."variant"`;
 }
 
 function toItem(row: Row): TextItem {
@@ -91,17 +95,8 @@ function toItem(row: Row): TextItem {
   };
 }
 
-function cursorOf(cursor: string): [string, number] {
-  const decoded = decodeCursor(cursor);
-  if (
-    !Array.isArray(decoded) ||
-    decoded.length !== 2 ||
-    typeof decoded[0] !== "string" ||
-    !Number.isInteger(decoded[1])
-  ) {
-    throw new BadCursor("that cursor is not one this API gave out");
-  }
-  return decoded as [string, number];
+function isCursor(value: unknown): value is [string, number] {
+  return Array.isArray(value) && value.length === 2 && typeof value[0] === "string" && Number.isInteger(value[1]);
 }
 
 /** One page's query. Exported so a test can read what the database is asked to do. */
@@ -109,7 +104,7 @@ export function listSql(
   filter: Record<string, string>,
   cursor: string | null,
   limit: number,
-  lang: Lang = BASE_LANG,
+  lang: Lang,
 ): { text: string; params: unknown[] } {
   const params: unknown[] = [lang, BASE_LANG];
   const add = (value: unknown) => `$${params.push(value)}`;
@@ -120,9 +115,9 @@ export function listSql(
       ...(quest ? [`${alias}."questId" = ${quest}::int`] : []),
       ...(source ? [`${alias}."source" = ${source}`] : []),
     ].join(" and ") || "true";
-  const after = cursor === null ? null : cursorOf(cursor);
+  const after = cursor === null ? null : decodeCursor(cursor, isCursor);
   const where = after
-    ? `where (i."lineId" collate "C", i."variant") > (${add(after[0])} collate "C", ${add(after[1])}::smallint)`
+    ? `where (ln."lineId" collate "C", ln."variant") > (${add(after[0])} collate "C", ${add(after[1])}::smallint)`
     : "";
   return { text: linesSql(where, `limit ${add(limit + 1)}`, scope), params };
 }
@@ -140,7 +135,7 @@ export const quests: SectionApi = {
 
   async one(lang, id, variant) {
     const rows = await query<Row>(
-      linesSql(`where i."lineId" = $3 and i."variant" = $4`, "", (alias) =>
+      linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) =>
         answersQuestMomentSql(`${alias}."lineId"`, "$5"),
       ),
       [lang, BASE_LANG, id, variant, momentOf(id)],
@@ -171,18 +166,18 @@ export const quests: SectionApi = {
 
   async saveText({ lang, id, variant, text, note, by, expectedVersion, audit }) {
     const body = text ?? "";
-    const gendered = branchesOnPlayerGender(body);
     const moment = momentOf(id);
-    const current = () =>
-      query<{ lineId: string }>(
-        `select "lineId" from "quest_line"
+    // Two plain saves to the sides of an untranslated split would land on one plain line, and
+    // the second would silently overwrite the first.
+    if (id !== moment && !branchesOnPlayerGender(body)) {
+      const rows = await query(
+        `select 1 from "quest_line"
           where ${answersQuestMomentSql(`"lineId"`, "$1")} and "variant" = $2 and "lang" = $3 and "isCurrent"`,
         [moment, variant, lang],
       );
-    // Two plain saves to the sides of an untranslated split would land on one plain line, and
-    // the second would silently overwrite the first.
-    if (id !== moment && !gendered && !(await current()).length) {
-      throw new Error("this moment splits by player gender and has no text yet: send one text with a $G branch");
+      if (!rows.length) {
+        throw new Error("this moment splits by player gender and has no text yet: send one text with a $G branch");
+      }
     }
     const saved = await saveQuestText({
       lang,
@@ -194,7 +189,7 @@ export const quests: SectionApi = {
       expectedVersion,
       audit,
     });
-    return { version: saved.version, lines: gendered ? (await current()).map((row) => row.lineId) : [id] };
+    return { version: saved.version, lines: saved.lines, wrote: saved.wrote };
   },
 
   async nameTarget(lang, id, variant) {
@@ -218,9 +213,7 @@ export const quests: SectionApi = {
     return row?.version ?? null;
   },
 
-  async restore(lang, id, variant, version, by) {
-    await restoreQuestText(id, variant, lang, version, by);
-  },
+  restore: (lang, id, variant, version, by) => restoreQuestText(id, variant, lang, version, by),
 
   retire: (lang, id, variant, version, by) => retireQuestText(id, variant, lang, version, by),
 };

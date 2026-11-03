@@ -17,7 +17,7 @@ import { getBatch, listBatches, restoreBatch as undo } from "./batches";
 import type { TokenContext } from "./guard";
 import { sections } from "./index";
 import { createFixtures, LANG, type Fixtures } from "./testing";
-import type { Section } from "./types";
+import type { Source } from "@/lib/sections";
 
 let f: Fixtures;
 let context: TokenContext;
@@ -41,16 +41,16 @@ afterAll(async () => {
   await closeDb();
 });
 
-const run = (section: Section, items: unknown[]) => applyItems(section, context, items, null);
-const restoreBatch = async (batchId: string, _lang: string, by: string) => undo((await getBatch(batchId))!, by);
-const textOf = async (section: Section, id: string, variant = 0) => (await sections[section].one(LANG, id, variant))?.text;
+const run = (section: Source, items: unknown[]) => applyItems(section, context, items, null);
+const restoreBatch = async (batchId: string, by: string) => undo((await getBatch(batchId))!, by);
+const textOf = async (section: Source, id: string, variant = 0) => (await sections[section].one(LANG, id, variant))?.text;
 
 describe("restoreBatch", () => {
   it("puts back the version a batch replaced", async () => {
     await run("bosses", [{ id: f.boss.lineId, text: "원래." }]);
     const { batchId } = await run("bosses", [{ id: f.boss.lineId, text: "나쁜 글." }]);
 
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([
+    expect(await restoreBatch(batchId, f.user)).toEqual([
       { id: f.boss.lineId, field: "text", status: "restored" },
     ]);
     expect(await textOf("bosses", f.boss.lineId)).toBe("원래.");
@@ -60,11 +60,11 @@ describe("restoreBatch", () => {
     await run("places", [{ id: f.zone, text: "하나." }]);
     await run("places", [{ id: f.zone, text: "둘." }]);
     const { batchId: second } = await run("places", [{ id: f.zone, text: "셋." }]);
-    await restoreBatch(second, LANG, f.user);
+    await restoreBatch(second, f.user);
     expect(await textOf("places", f.zone)).toBe("둘.");
 
     const { batchId: third } = await run("places", [{ id: f.zone, text: "넷." }]);
-    await restoreBatch(third, LANG, f.user);
+    await restoreBatch(third, f.user);
     expect(await textOf("places", f.zone)).toBe("둘.");
   });
 
@@ -75,7 +75,7 @@ describe("restoreBatch", () => {
   ] as const)("retires a first translation in %s, so the line reads untranslated", async (section, id) => {
     const { batchId } = await run(section, [{ id: id(), text: "첫 번역." }]);
 
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([{ id: id(), field: "text", status: "retired" }]);
+    expect(await restoreBatch(batchId, f.user)).toEqual([{ id: id(), field: "text", status: "retired" }]);
     expect(await textOf(section, id())).toBeNull();
   });
 
@@ -83,7 +83,7 @@ describe("restoreBatch", () => {
     const { lineId: id, variant } = f.quest;
     const { batchId } = await run("quests", [{ id, variant, text: "첫 번역." }]);
 
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([{ id, variant, field: "text", status: "retired" }]);
+    expect(await restoreBatch(batchId, f.user)).toEqual([{ id, variant, field: "text", status: "retired" }]);
     expect(await textOf("quests", id, variant)).toBeNull();
   });
 
@@ -92,7 +92,7 @@ describe("restoreBatch", () => {
     const { batchId } = await run("bosses", [{ id: f.boss.lineId, name: "나쁜 이름" }]);
 
     const entity = { kind: "boss", entityId: String(f.boss.id) };
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([
+    expect(await restoreBatch(batchId, f.user)).toEqual([
       { id: entity.entityId, entity, field: "name", status: "restored" },
     ]);
     expect((await sections.bosses.one(LANG, f.boss.lineId, 0))?.name).toBe("옛 이름");
@@ -101,7 +101,7 @@ describe("restoreBatch", () => {
   it("retires a first name, so the English shows again", async () => {
     const { batchId } = await run("places", [{ id: f.zone, name: "첫 이름" }]);
 
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([
+    expect(await restoreBatch(batchId, f.user)).toEqual([
       { id: f.zone, entity: { kind: "zone", entityId: f.zone }, field: "name", status: "retired" },
     ]);
     expect((await sections.places.one(LANG, f.zone, 0))?.name).toBeNull();
@@ -111,7 +111,7 @@ describe("restoreBatch", () => {
     await run("places", [{ id: f.subzone, name: "옛 이름" }]);
     const { batchId } = await run("places", [{ id: f.subzone, name: "나쁜 이름" }]);
 
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([
+    expect(await restoreBatch(batchId, f.user)).toEqual([
       { id: f.subzone, entity: { kind: "subzone", entityId: f.subzone }, field: "name", status: "restored" },
     ]);
   });
@@ -121,7 +121,7 @@ describe("restoreBatch", () => {
     const { batchId } = await run("readables", [{ id: f.page.lineId, text: "묶음." }]);
     await run("readables", [{ id: f.page.lineId, text: "사람이 고침." }]);
 
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([
+    expect(await restoreBatch(batchId, f.user)).toEqual([
       { id: f.page.lineId, field: "text", status: "skipped", reason: "edited_since" },
     ]);
     expect(await textOf("readables", f.page.lineId)).toBe("사람이 고침.");
@@ -144,7 +144,7 @@ describe("restoreBatch", () => {
     const moment = await splitMoment();
     const { batchId } = await run("quests", [{ id: `${moment}:m`, text: "$G남자:여자;" }]);
 
-    const results = await restoreBatch(batchId, LANG, f.user);
+    const results = await restoreBatch(batchId, f.user);
     expect(results).toHaveLength(2);
     expect(results.every((r) => r.status === "skipped" && r.reason === "gender_split")).toBe(true);
     expect(await sections.quests.version(LANG, `${moment}:m`, 0)).toBe(1);
@@ -155,7 +155,7 @@ describe("restoreBatch", () => {
     await run("quests", [{ id, variant, text: "평문." }]);
     const { batchId } = await run("quests", [{ id, variant, text: "$G남자:여자;" }]);
 
-    const results = await restoreBatch(batchId, LANG, f.user);
+    const results = await restoreBatch(batchId, f.user);
     expect(results).toHaveLength(2);
     expect(results.every((r) => r.status === "skipped" && r.reason === "gender_split")).toBe(true);
     expect(await sections.quests.version(LANG, `${id}:m`, variant)).toBe(1);
@@ -164,10 +164,10 @@ describe("restoreBatch", () => {
   it("run twice: the second changes nothing and reports all skipped", async () => {
     await run("bosses", [{ id: f.boss.lineId, text: "원래." }]);
     const { batchId } = await run("bosses", [{ id: f.boss.lineId, text: "묶음." }]);
-    await restoreBatch(batchId, LANG, f.user);
+    await restoreBatch(batchId, f.user);
     const version = await sections.bosses.version(LANG, f.boss.lineId, 0);
 
-    expect(await restoreBatch(batchId, LANG, f.user)).toEqual([
+    expect(await restoreBatch(batchId, f.user)).toEqual([
       { id: f.boss.lineId, field: "text", status: "skipped", reason: "edited_since" },
     ]);
     expect(await sections.bosses.version(LANG, f.boss.lineId, 0)).toBe(version);
@@ -178,7 +178,7 @@ describe("restoreBatch", () => {
     forgetTeams();
     try {
       const { batchId } = await run("places", [{ id: f.zone, text: "주인 없음." }]);
-      expect(await restoreBatch(batchId, LANG, f.user)).toEqual([{ id: f.zone, field: "text", status: "retired" }]);
+      expect(await restoreBatch(batchId, f.user)).toEqual([{ id: f.zone, field: "text", status: "retired" }]);
     } finally {
       await asSystem.query(`update "team_language" set "privileged" = true where "lang" = $1`, [LANG]);
       forgetTeams();
@@ -192,7 +192,7 @@ describe("restoreBatch", () => {
     ]);
     const spy = vi.spyOn(sections.places, "retire").mockRejectedValueOnce(new Error("boom"));
 
-    const results = await restoreBatch(batchId, LANG, f.user);
+    const results = await restoreBatch(batchId, f.user);
     spy.mockRestore();
 
     expect(results.map((r) => r.status).sort()).toEqual(["retired", "skipped"]);

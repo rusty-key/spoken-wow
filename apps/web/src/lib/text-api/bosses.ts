@@ -2,12 +2,12 @@
 import "server-only";
 
 import { catalogue, type BossEntry } from "@/lib/bosses/catalogue";
-import { parseBossLineId, restoreStory, retireStory, saveStory } from "@/lib/bosses/story";
+import { bossIdOf, parseBossLineId, restoreStory, retireStory, saveStory } from "@/lib/bosses/story";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
-import { nameVersionOf, nameVersions, pageOf } from "./catalogue-page";
-import { keyOf, type NameTarget, type SectionApi, type TextItem } from "./types";
+import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
+import type { NameTarget, SectionApi, TextItem } from "./types";
 
 function targetOf(entry: BossEntry): NameTarget {
   return { kind: "boss", entityId: String(entry.bossId) };
@@ -39,36 +39,16 @@ async function itemsOf(lang: Lang, entries: BossEntry[]): Promise<TextItem[]> {
 export const bosses: SectionApi = {
   filters: { instance: /^-?\d+$/ },
 
-  async list(lang, filter, cursor, limit) {
-    const entries = await catalogue(lang);
-    const wanted = filter.instance === undefined ? entries : entries.filter((e) => e.map === Number(filter.instance));
-    const page = pageOf(wanted, cursor, limit);
-    return { items: await itemsOf(lang, page.entries), nextCursor: page.nextCursor };
-  },
-
-  async one(lang, id) {
-    const entry = (await catalogue(lang)).find((e) => e.id === id);
-    return entry ? (await itemsOf(lang, [entry]))[0] : null;
-  },
-
-  async known(lang, keys) {
-    const ids = new Set((await catalogue(lang)).map((e) => e.id));
-    return new Set(keys.filter((k) => ids.has(k.id)).map((k) => keyOf(k.id, k.variant)));
-  },
+  ...catalogueReads(catalogue, itemsOf, (e, f) => f.instance === undefined || e.map === Number(f.instance)),
 
   async saveText({ lang, id, text, note, by, expectedVersion, audit }) {
     const saved = await saveStory({ lang, lineId: id, text: text ?? "", note, editedBy: by, expectedVersion, audit });
-    return { version: saved.version, lines: [id] };
+    return { version: saved.version, lines: [id], wrote: saved.wrote };
   },
 
   async nameTarget(_lang, id) {
-    const parsed = parseBossLineId(id);
-    if (!parsed) return null;
-    const [row] = await query<{ id: number }>(`select "id" from "boss" where "map" = $1 and "key" = $2`, [
-      parsed.map,
-      parsed.key,
-    ]);
-    return row ? { kind: "boss", entityId: String(row.id) } : null;
+    const bossId = await bossIdOf(id);
+    return bossId === null ? null : { kind: "boss", entityId: String(bossId) };
   },
 
   async version(lang, id) {
@@ -82,9 +62,7 @@ export const bosses: SectionApi = {
     return row?.version ?? null;
   },
 
-  async restore(lang, id, _variant, version, by) {
-    await restoreStory(id, version, lang, by);
-  },
+  restore: (lang, id, _variant, version, by) => restoreStory(id, version, lang, by),
 
   retire: (lang, id, _variant, version, by) => retireStory(id, version, lang, by),
 };

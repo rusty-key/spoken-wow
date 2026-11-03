@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { langName, type Lang } from "@/lib/lang";
 import type { ApiToken, TokenAccess } from "@/lib/tokens/types";
 
+import { useApiTokens } from "./useApiTokens";
+
 const DAY_MS = 86_400_000;
 
 function dateInDays(days: number): string {
@@ -20,15 +22,16 @@ const SELECT = "border-input bg-background h-9 rounded-md border px-2 text-sm";
  * and leaving the page loses it: nothing can read it back.
  */
 export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; initial: ApiToken[] }) {
-  const [tokens, setTokens] = useState(initial);
+  const { tokens, setTokens, busy, setBusy, error, setError, revoke } = useApiTokens(
+    initial,
+    (id) => `/api/profile/tokens/${id}`,
+  );
   const [label, setLabel] = useState("");
   const [lang, setLang] = useState<Lang>(langs[0]);
   const [access, setAccess] = useState<TokenAccess>("read");
   const [expires, setExpires] = useState(() => dateInDays(90));
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function create() {
     setBusy(true);
@@ -46,21 +49,6 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
       setCreated(body.token);
       setTokens((current) => [body.row!, ...current]);
       setLabel("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function revoke(id: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/profile/tokens/${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("could not revoke that token");
-      const now = new Date().toISOString();
-      setTokens((current) => current.map((t) => (t.id === id ? { ...t, revokedAt: now } : t)));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

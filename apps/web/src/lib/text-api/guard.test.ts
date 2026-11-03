@@ -20,7 +20,8 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
   }),
 }));
 
-import { createToken, revokeToken, type TokenAccess } from "@/lib/tokens/store";
+import { createToken, revokeToken } from "@/lib/tokens/store";
+import type { TokenAccess } from "@/lib/tokens/types";
 
 import { requireToken } from "./guard";
 

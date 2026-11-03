@@ -101,7 +101,7 @@ export async function saveQuestText(args: {
   /** The contribution the text came from, for a correction accepted from the game. */
   contribution?: number;
   audit?: ApiAudit;
-}): Promise<QuestTextVersion> {
+}): Promise<QuestTextVersion & { wrote: boolean; lines: string[] }> {
   refuseEnglish(args.lang);
   args = { ...args, lineId: baseLineId(args.lineId) };
   const text = args.text.trim();
@@ -157,7 +157,7 @@ export async function saveQuestText(args: {
       !retired.length &&
       targets.every((target) => momentRows.some((row) => row.lineId === target.lineId && row.text === text))
     ) {
-      return toVersion(momentRows.find((row) => row.lineId === written[0])!);
+      return { ...toVersion(momentRows.find((row) => row.lineId === written[0])!), wrote: false, lines: written };
     }
 
     await client.query(
@@ -230,7 +230,7 @@ export async function saveQuestText(args: {
       );
     }
 
-    return toVersion(saved!);
+    return { ...toVersion(saved!), wrote: true, lines: written };
   });
 }
 
@@ -295,7 +295,7 @@ export async function restoreQuestText(
   });
 }
 
-/** Takes a first translation back, so the line reads as untranslated again. See retireLore. */
+/** Takes a first translation back, so the line reads as untranslated again. */
 export async function retireQuestText(
   lineId: string,
   variant: number,

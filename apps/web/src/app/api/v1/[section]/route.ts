@@ -1,7 +1,7 @@
 /** A section's items in the token's language, a page at a time. */
 import { applyItems, MAX_ITEMS } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
-import { badCursor, parseList, sectionOf } from "@/lib/text-api/respond";
+import { badCursor, invalid, parseList, sectionOf } from "@/lib/text-api/respond";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,6 @@ export async function PATCH(request: Request, { params }: Params) {
   const found = sectionOf((await params).section);
   if (found instanceof Response) return found;
 
-  const invalid = (error: string) => Response.json({ error }, { status: 400 });
   const body = (await request.json().catch(() => null)) as { items?: unknown; note?: unknown } | null;
   if (!body || !Array.isArray(body.items)) return invalid("send JSON with an items array");
   if (body.items.length === 0) return invalid("items is empty");

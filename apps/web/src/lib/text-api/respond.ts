@@ -1,23 +1,25 @@
 /** What the /api/v1 routes share: reading the query, and answering about a bad one. */
 import "server-only";
 
-import { isSection, sections } from "./index";
-import { BadCursor, type Section, type SectionApi } from "./types";
+import { isSource, type Source } from "@/lib/sections";
+
+import { sections } from "./index";
+import { BadCursor, type SectionApi } from "./types";
 
 export const PAGE_SIZE = 500;
 
 const VARIANT = /^\d+$/;
 
-function invalid(error: string): Response {
+export function invalid(error: string): Response {
   return Response.json({ error }, { status: 400 });
 }
 
-export function sectionOf(name: string): { section: Section; api: SectionApi } | Response {
-  if (!isSection(name)) return Response.json({ error: `no section ${name}` }, { status: 404 });
+export function sectionOf(name: string): { section: Source; api: SectionApi } | Response {
+  if (!isSource(name)) return Response.json({ error: `no section ${name}` }, { status: 404 });
   return { section: name, api: sections[name] };
 }
 
-export type ListQuery = { filter: Record<string, string>; cursor: string | null; limit: number };
+type ListQuery = { filter: Record<string, string>; cursor: string | null; limit: number };
 
 /**
  * Anything it does not know is refused, not ignored: an agent that misspells `zone`, or asks for
@@ -48,7 +50,7 @@ export function parseList(api: SectionApi, params: URLSearchParams): ListQuery |
 }
 
 /** A quest line's variant from `?variant=`, 0 when absent. Only quests have one. */
-export function parseVariant(section: Section, params: URLSearchParams): number | Response {
+export function parseVariant(section: Source, params: URLSearchParams): number | Response {
   for (const name of params.keys()) {
     if (name !== "variant" || section !== "quests") return invalid(`unknown parameter ${name}`);
   }

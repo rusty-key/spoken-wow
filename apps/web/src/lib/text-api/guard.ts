@@ -9,7 +9,8 @@ import "server-only";
 import { viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can } from "@/lib/permissions";
-import { findLiveToken, type TokenAccess } from "@/lib/tokens/store";
+import { findLiveToken } from "@/lib/tokens/store";
+import type { TokenAccess } from "@/lib/tokens/types";
 
 export type TokenContext = {
   tokenId: string;

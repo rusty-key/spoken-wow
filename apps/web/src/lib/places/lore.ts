@@ -129,7 +129,7 @@ export async function saveLore(args: {
   expectedVersion?: number | null;
   lang?: Lang;
   audit?: ApiAudit;
-}): Promise<LoreVersion> {
+}): Promise<LoreVersion & { wrote: boolean }> {
   const lang = args.lang ?? BASE_LANG;
   return withTeam(await ownerOrAll(lang), async (client) => {
     const { rows: currentRows } = await client.query<Row & { mapID: number; kind: string; key: string | null }>(
@@ -178,7 +178,7 @@ export async function saveLore(args: {
     // A save that changes nothing must not spend a version number: the history is a
     // record of what the text has been, not of who opened the dialog.
     if (current && full === current.full && (args.short ?? null) === null) {
-      return toVersion(current);
+      return { ...toVersion(current), wrote: false };
     }
 
     const shortIsManual = typeof args.short === "string" && args.short.trim() !== "";
@@ -241,7 +241,7 @@ export async function saveLore(args: {
       client,
     );
 
-    return toVersion(inserted[0]);
+    return { ...toVersion(inserted[0]), wrote: true };
   });
 }
 

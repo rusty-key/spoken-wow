@@ -62,7 +62,7 @@ export async function saveName(args: {
   expectedVersion?: number | null;
   anyLanguage?: boolean;
   audit?: ApiAudit;
-}): Promise<NameVersion> {
+}): Promise<NameVersion & { wrote: boolean }> {
   if (args.lang === BASE_LANG && !args.anyLanguage) {
     throw new Error("English names come from the corpus, not from here");
   }
@@ -95,7 +95,7 @@ export async function saveName(args: {
       throw new NameConflict(`this name moved to v${current.version} while you were editing it`);
     }
     if (current && current.name === name) {
-      return { ...current, createdAt: current.createdAt.toISOString() };
+      return { ...current, createdAt: current.createdAt.toISOString(), wrote: false };
     }
 
     await client.query(
@@ -126,7 +126,7 @@ export async function saveName(args: {
       },
       client,
     );
-    return { ...rows[0], createdAt: rows[0].createdAt.toISOString() };
+    return { ...rows[0], createdAt: rows[0].createdAt.toISOString(), wrote: true };
   });
 }
 

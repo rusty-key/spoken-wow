@@ -14,15 +14,8 @@ import type { Lang } from "@/lib/lang";
 
 import type { ApiToken, TokenAccess } from "./types";
 
-export type { ApiToken, TokenAccess };
-
 export function isTokenAccess(value: unknown): value is TokenAccess {
   return value === "read" || value === "write";
-}
-
-/** Postgres refuses a malformed uuid with an error, where a route wants a plain 404. */
-export function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 type Row = Omit<ApiToken, "createdAt" | "expiresAt" | "lastUsedAt" | "revokedAt"> & {
@@ -72,7 +65,8 @@ export async function createToken(args: {
  * The token and its owner's role, or null if it is unknown, expired, revoked or its owner is
  * banned. A ban with a past banExpires has lapsed, as it has for a session.
  *
- * The write is limited to once a minute so that an agent's requests do not each update the row.
+ * The write is limited to once a minute so that an agent's requests do not each update the row
+ * or wait on it. The condition in the update is for the other worker, which may have just written.
  */
 export async function findLiveToken(raw: string): Promise<(ApiToken & { role: string | null }) | null> {
   const rows = await query<Row & { role: string | null }>(
@@ -83,11 +77,14 @@ export async function findLiveToken(raw: string): Promise<(ApiToken & { role: st
     [hashOf(raw)],
   );
   if (!rows[0]) return null;
-  await query(
-    `update "api_token" set "lastUsedAt" = now()
-      where "id" = $1 and ("lastUsedAt" is null or "lastUsedAt" < now() - interval '1 minute')`,
-    [rows[0].id],
-  );
+  const lastUsed = rows[0].lastUsedAt;
+  if (!lastUsed || Date.now() - lastUsed.getTime() >= 60_000) {
+    await query(
+      `update "api_token" set "lastUsedAt" = now()
+        where "id" = $1 and ("lastUsedAt" is null or "lastUsedAt" < now() - interval '1 minute')`,
+      [rows[0].id],
+    );
+  }
   const { role, ...row } = rows[0];
   return { ...toToken(row), role };
 }

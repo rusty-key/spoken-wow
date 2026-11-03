@@ -6,8 +6,8 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import { catalogue, type CatalogueEntry } from "@/lib/places/catalogue";
 import { restoreLore, retireLore, saveLore } from "@/lib/places/lore";
 
-import { nameVersionOf, nameVersions, pageOf } from "./catalogue-page";
-import { keyOf, type NameTarget, type SectionApi, type TextItem } from "./types";
+import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
+import type { NameTarget, SectionApi, TextItem } from "./types";
 
 function targetOf(entry: CatalogueEntry): NameTarget {
   return { kind: entry.kind, entityId: entry.id };
@@ -48,22 +48,7 @@ async function itemsOf(lang: Lang, entries: CatalogueEntry[]): Promise<TextItem[
 export const places: SectionApi = {
   filters: { zone: /^-?\d+$/ },
 
-  async list(lang, filter, cursor, limit) {
-    const entries = await catalogue(lang);
-    const wanted = filter.zone === undefined ? entries : entries.filter((e) => e.mapID === Number(filter.zone));
-    const page = pageOf(wanted, cursor, limit);
-    return { items: await itemsOf(lang, page.entries), nextCursor: page.nextCursor };
-  },
-
-  async one(lang, id) {
-    const entry = (await catalogue(lang)).find((e) => e.id === id);
-    return entry ? (await itemsOf(lang, [entry]))[0] : null;
-  },
-
-  async known(lang, keys) {
-    const ids = new Set((await catalogue(lang)).map((e) => e.id));
-    return new Set(keys.filter((k) => ids.has(k.id)).map((k) => keyOf(k.id, k.variant)));
-  },
+  ...catalogueReads(catalogue, itemsOf, (e, f) => f.zone === undefined || e.mapID === Number(f.zone)),
 
   async saveText({ lang, id, text, short, note, by, expectedVersion, audit }) {
     const current = (await textVersions(lang, [id])).get(id);
@@ -81,7 +66,7 @@ export const places: SectionApi = {
       expectedVersion,
       audit,
     });
-    return { version: saved.version, lines: [id] };
+    return { version: saved.version, lines: [id], wrote: saved.wrote };
   },
 
   async nameTarget(_lang, id) {
@@ -92,9 +77,7 @@ export const places: SectionApi = {
     return (await textVersions(lang, [id])).get(id)?.version ?? null;
   },
 
-  async restore(lang, id, _variant, version, by) {
-    await restoreLore(id, version, lang, by);
-  },
+  restore: (lang, id, _variant, version, by) => restoreLore(id, version, lang, by),
 
   retire: (lang, id, _variant, version, by) => retireLore(id, version, lang, by),
 };

@@ -5,7 +5,7 @@
 import { isAdmin } from "@/lib/permissions";
 import { getBatch, restoreBatch } from "@/lib/text-api/batches";
 import { requireToken } from "@/lib/text-api/guard";
-import { isUuid } from "@/lib/tokens/store";
+import { isUuid } from "@/lib/uuid";
 
 export const dynamic = "force-dynamic";
 

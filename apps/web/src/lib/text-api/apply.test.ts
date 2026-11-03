@@ -8,13 +8,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, query } from "@/lib/db";
 import { keepLanguage } from "@/lib/quests/keep-language";
+import type { Source } from "@/lib/sections";
 import { asSystem } from "@/lib/teams/testing";
 
 import { applyItem, MAX_NAME, MAX_TEXT, type ItemInput } from "./apply";
 import type { TokenContext } from "./guard";
-import { keyOf, sections } from "./index";
+import { sections } from "./index";
 import { createFixtures, LANG, type Fixtures } from "./testing";
-import type { Section } from "./types";
+import { keyOf } from "./types";
 
 let f: Fixtures;
 let context: TokenContext;
@@ -32,7 +33,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-function apply(section: Section, input: ItemInput, ctx = context) {
+function apply(section: Source, input: ItemInput, ctx = context) {
   const known = new Set([keyOf(input.id, typeof input.variant === "number" ? input.variant : 0)]);
   return applyItem(section, ctx, input, known, AUDIT);
 }
@@ -156,6 +157,17 @@ describe("gender", () => {
     await apply("quests", { id, variant, text: "평문." });
     const result = await apply("quests", { id, variant, text: "$G남자:여자;" });
     expect(result.text).toMatchObject({ status: "updated", lines: expect.arrayContaining([`${id}:m`, `${id}:f`]) });
+  });
+
+  it("resending $G text to a split moment is unchanged and spends no version", async () => {
+    const moment = await splitMoment();
+    const first = await apply("quests", { id: `${moment}:m`, text: "$G다시 남자:다시 여자;" });
+    const again = await apply("quests", { id: `${moment}:m`, text: "$G다시 남자:다시 여자;" });
+    expect(again.text).toMatchObject({
+      status: "unchanged",
+      version: (first.text as { version: number }).version,
+    });
+    expect((again.text as { lines: string[] }).lines.sort()).toEqual([`${moment}:f`, `${moment}:m`]);
   });
 
   it("plain text to a side of an untranslated split is invalid and writes nothing", async () => {

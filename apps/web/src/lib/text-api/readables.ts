@@ -11,8 +11,8 @@ import { catalogue, type BookPage } from "@/lib/readables/catalogue";
 import { ownerEntityKind, type OwnerKind } from "@/lib/readables/filters";
 import { restoreBookText, retireBookText, saveBookText } from "@/lib/readables/text";
 
-import { nameVersionOf, nameVersions, pageOf } from "./catalogue-page";
-import { keyOf, type NameTarget, type SectionApi, type TextItem } from "./types";
+import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
+import type { NameTarget, SectionApi, TextItem } from "./types";
 
 function targetOf(page: Pick<BookPage, "ownerKind" | "ownerIds">): NameTarget | null {
   if (!page.ownerKind || !page.ownerIds.length) return null;
@@ -46,26 +46,11 @@ async function itemsOf(lang: Lang, pages: BookPage[]): Promise<TextItem[]> {
 export const readables: SectionApi = {
   filters: { book: /^.+$/ },
 
-  async list(lang, filter, cursor, limit) {
-    const pages = await catalogue(lang);
-    const wanted = filter.book === undefined ? pages : pages.filter((p) => p.bookId === filter.book);
-    const page = pageOf(wanted, cursor, limit);
-    return { items: await itemsOf(lang, page.entries), nextCursor: page.nextCursor };
-  },
-
-  async one(lang, id) {
-    const page = (await catalogue(lang)).find((p) => p.id === id);
-    return page ? (await itemsOf(lang, [page]))[0] : null;
-  },
-
-  async known(lang, keys) {
-    const ids = new Set((await catalogue(lang)).map((p) => p.id));
-    return new Set(keys.filter((k) => ids.has(k.id)).map((k) => keyOf(k.id, k.variant)));
-  },
+  ...catalogueReads(catalogue, itemsOf, (p, f) => f.book === undefined || p.bookId === f.book),
 
   async saveText({ lang, id, text, note, by, expectedVersion, audit }) {
     const saved = await saveBookText({ lang, lineId: id, text: text ?? "", note, editedBy: by, expectedVersion, audit });
-    return { version: saved.version, lines: [id] };
+    return { version: saved.version, lines: [id], wrote: saved.wrote };
   },
 
   async nameTarget(_lang, id) {
@@ -84,9 +69,7 @@ export const readables: SectionApi = {
     return row?.version ?? null;
   },
 
-  async restore(lang, id, _variant, version, by) {
-    await restoreBookText(id, version, lang, by);
-  },
+  restore: (lang, id, _variant, version, by) => restoreBookText(id, version, lang, by),
 
   retire: (lang, id, _variant, version, by) => retireBookText(id, version, lang, by),
 };

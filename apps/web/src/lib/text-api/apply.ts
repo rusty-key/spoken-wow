@@ -6,15 +6,16 @@ import "server-only";
 
 import type { ApiAudit } from "@/lib/activity/kinds";
 import { StoryConflict, StoryMissing } from "@/lib/bosses/story";
-import { NameConflict, nameHistory, NameMissing, saveName } from "@/lib/names/store";
+import { NameConflict, NameMissing, saveName } from "@/lib/names/store";
 import { LoreConflict, LoreMissing } from "@/lib/places/lore";
 import { QuestTextConflict, QuestTextMissing } from "@/lib/quests/text";
 import { BookConflict, BookMissing } from "@/lib/readables/text";
+import type { Source } from "@/lib/sections";
 
 import { createBatch } from "./batches";
 import type { TokenContext } from "./guard";
-import { keyOf, sections } from "./index";
-import type { NameTarget, Section } from "./types";
+import { sections } from "./index";
+import { keyOf, type NameTarget } from "./types";
 
 export const MAX_ITEMS = 1000;
 export const MAX_TEXT = 5000;
@@ -33,11 +34,11 @@ export type ItemInput = {
 
 type ErrorCode = "conflict" | "unknown_id" | "invalid" | "internal";
 
-export type FieldResult =
+type FieldResult =
   | { status: "updated" | "unchanged"; version: number; lines?: string[]; entity?: NameTarget }
   | { status: "error"; code: ErrorCode; message: string };
 
-export type ItemResult = {
+type ItemResult = {
   id: string | null;
   variant?: number;
   text?: FieldResult;
@@ -68,7 +69,7 @@ function optionalVersion(value: unknown): value is number | null | undefined {
 }
 
 /** Why the item's shape is wrong, or null. Fields' own values are judged where they are written. */
-function shapeError(section: Section, input: ItemInput): string | null {
+function shapeError(section: Source, input: ItemInput): string | null {
   if (input.text === undefined && input.short === undefined && input.name === undefined) {
     return "give text, name or both";
   }
@@ -97,20 +98,20 @@ function checkedText(input: ItemInput): string | null {
   return null;
 }
 
-async function writeText(
-  section: Section,
-  context: TokenContext,
-  input: ItemInput,
-  variant: number,
-  note: string | null,
-  audit: ApiAudit,
-): Promise<FieldResult> {
+type Write = {
+  section: Source;
+  context: TokenContext;
+  input: ItemInput;
+  variant: number;
+  note: string | null;
+  audit: ApiAudit;
+};
+
+async function writeText({ section, context, input, variant, note, audit }: Write): Promise<FieldResult> {
   const problem = checkedText(input);
   if (problem) return refused(problem);
-  const api = sections[section];
   try {
-    const before = await api.version(context.lang, input.id, variant);
-    const saved = await api.saveText({
+    const saved = await sections[section].saveText({
       lang: context.lang,
       id: input.id,
       variant,
@@ -121,32 +122,18 @@ async function writeText(
       expectedVersion: (input.expectedVersion as number | null | undefined) ?? null,
       audit,
     });
-    return {
-      // A split writes other lines than the one asked about, whose numbers start again at 1, so
-      // an equal version says nothing about whether anything was written.
-      status: saved.version === before && saved.lines.length === 1 ? "unchanged" : "updated",
-      version: saved.version,
-      lines: saved.lines,
-    };
+    return { status: saved.wrote ? "updated" : "unchanged", version: saved.version, lines: saved.lines };
   } catch (error) {
     return fieldError(error);
   }
 }
 
-async function writeName(
-  section: Section,
-  context: TokenContext,
-  input: ItemInput,
-  variant: number,
-  note: string | null,
-  audit: ApiAudit,
-): Promise<FieldResult> {
+async function writeName({ section, context, input, variant, note, audit }: Write): Promise<FieldResult> {
   if (typeof input.name !== "string" || !input.name.trim()) return refused("name must be a string that is not empty");
   if (input.name.length > MAX_NAME) return refused(`name is at most ${MAX_NAME} characters`);
   try {
     const target = await sections[section].nameTarget(context.lang, input.id, variant);
     if (!target) return refused("this item has no name of its own to write");
-    const before = (await nameHistory(target.kind, target.entityId, context.lang)).find((v) => v.isCurrent);
     const saved = await saveName({
       ...target,
       lang: context.lang,
@@ -156,18 +143,14 @@ async function writeName(
       expectedVersion: (input.expectedNameVersion as number | null | undefined) ?? null,
       audit,
     });
-    return {
-      status: saved.version === before?.version ? "unchanged" : "updated",
-      version: saved.version,
-      entity: target,
-    };
+    return { status: saved.wrote ? "updated" : "unchanged", version: saved.version, entity: target };
   } catch (error) {
     return fieldError(error);
   }
 }
 
 export async function applyItem(
-  section: Section,
+  section: Source,
   context: TokenContext,
   input: ItemInput,
   known: Set<string>,
@@ -182,14 +165,17 @@ export async function applyItem(
     return { ...head, error: { code: "unknown_id", message: `no item ${input.id} in ${section}` } };
   }
 
-  const note = typeof input.note === "string" ? input.note : null;
+  const write = { section, context, input, variant, note: typeof input.note === "string" ? input.note : null, audit };
   return {
     ...head,
-    ...(input.text !== undefined || input.short !== undefined
-      ? { text: await writeText(section, context, input, variant, note, audit) }
-      : {}),
-    ...(input.name !== undefined ? { name: await writeName(section, context, input, variant, note, audit) } : {}),
+    ...(input.text !== undefined || input.short !== undefined ? { text: await writeText(write) } : {}),
+    ...(input.name !== undefined ? { name: await writeName(write) } : {}),
   };
+}
+
+/** A bad variant is refused where the item is applied; until then it reads as the first. */
+function variantOf(item: ItemInput): number {
+  return Number.isInteger(item.variant) ? (item.variant as number) : 0;
 }
 
 function isItem(value: unknown): value is ItemInput {
@@ -209,15 +195,12 @@ function isItem(value: unknown): value is ItemInput {
  * The batch row comes first so that a run cut off partway can still be found and undone.
  */
 export async function applyItems(
-  section: Section,
+  section: Source,
   context: TokenContext,
   items: unknown[],
   note: string | null,
 ): Promise<{ batchId: string; results: ItemResult[] }> {
-  const wanted = items.filter(isItem).map((item) => ({
-    id: item.id,
-    variant: Number.isInteger(item.variant) ? (item.variant as number) : 0,
-  }));
+  const wanted = items.filter(isItem).map((item) => ({ id: item.id, variant: variantOf(item) }));
   const known = await sections[section].known(context.lang, wanted);
   const batchId = await createBatch({
     userId: context.userId,
@@ -236,7 +219,7 @@ export async function applyItems(
       results.push({ id: null, error: { code: "invalid", message: "each item is an object with an id" } });
       continue;
     }
-    const key = keyOf(item.id, Number.isInteger(item.variant) ? (item.variant as number) : 0);
+    const key = keyOf(item.id, variantOf(item));
     if (seen.has(key)) {
       results.push({
         id: item.id,
