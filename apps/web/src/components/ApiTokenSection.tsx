@@ -22,7 +22,7 @@ const SELECT = "border-input bg-background h-9 rounded-md border px-2 text-sm";
  * and leaving the page loses it: nothing can read it back.
  */
 export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; initial: ApiToken[] }) {
-  const { tokens, setTokens, busy, setBusy, error, setError, revoke } = useApiTokens(
+  const { tokens, setTokens, busy, error, run, revoke } = useApiTokens(
     initial,
     (id) => `/api/profile/tokens/${id}`,
   );
@@ -33,11 +33,9 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function create() {
-    setBusy(true);
-    setError(null);
-    setCopied(false);
-    try {
+  const create = () =>
+    run(async () => {
+      setCopied(false);
       const response = await fetch("/api/profile/tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -49,12 +47,7 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
       setCreated(body.token);
       setTokens((current) => [body.row!, ...current]);
       setLabel("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
+    });
 
   async function copy() {
     if (!created) return;

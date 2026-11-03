@@ -10,15 +10,16 @@ export async function GET(request: Request, { params }: Params) {
   const { context, denied } = await requireToken(request);
   if (denied) return denied;
 
-  const { section, id } = await params;
+  const { section, id: raw } = await params;
   const found = sectionOf(section);
   if (found instanceof Response) return found;
 
   const variant = parseVariant(found.section, new URL(request.url).searchParams);
   if (variant instanceof Response) return variant;
 
-  const item = await found.api.one(context.lang, decodeId(id), variant);
-  if (!item) return Response.json({ error: `no item ${decodeId(id)}` }, { status: 404 });
+  const id = decodeId(raw);
+  const item = await found.api.one(context.lang, id, variant);
+  if (!item) return Response.json({ error: `no item ${id}` }, { status: 404 });
   return Response.json(item);
 }
 
@@ -39,7 +40,7 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   // The mass update reads it from the item, so an agent may send it here too, and the URL's would
   // otherwise replace it and write to the other line.
-  if ("variant" in body) return invalid("a variant goes in the URL here, as ?variant=");
+  if (found.section === "quests" && "variant" in body) return invalid("a variant goes in the URL here, as ?variant=");
 
   const id = decodeId(raw);
   const known = await found.api.known(context.lang, [{ id, variant }]);

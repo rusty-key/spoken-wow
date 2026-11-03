@@ -3,7 +3,7 @@ import "server-only";
 import { momentOf } from "@/lib/contributions/naming";
 import { ALL_TEAMS, query, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { isNameKind, nameHistory, restoreName, retireName } from "@/lib/names/store";
+import { restoreName, retireName, type NameKind } from "@/lib/names/store";
 import type { Source } from "@/lib/sections";
 
 import { describeError } from "./errors";
@@ -27,7 +27,7 @@ export async function createBatch(args: {
   return rows[0].id;
 }
 
-export type Batch = {
+type Batch = {
   id: string;
   userId: string;
   lang: Lang;
@@ -70,6 +70,8 @@ type UndoResult = {
   message?: string;
 };
 
+type Outcome = Pick<UndoResult, "status" | "reason">;
+
 type Edit = {
   kind: "text.edited" | "name.edited";
   subject: string;
@@ -93,69 +95,67 @@ async function editsOf(batchId: string): Promise<Edit[]> {
   });
 }
 
-async function undoText(section: Source, lang: Lang, edit: Edit, by: string): Promise<UndoResult> {
+function nameTargetOf(edit: Edit): NameTarget {
+  const at = edit.subject.indexOf(":");
+  return { kind: edit.subject.slice(0, at) as NameKind, entityId: edit.subject.slice(at + 1) };
+}
+
+function headOf(section: Source, edit: Edit): Pick<UndoResult, "id" | "variant" | "entity" | "field"> {
+  if (edit.kind === "name.edited") {
+    const entity = nameTargetOf(edit);
+    return { id: entity.entityId, entity, field: "name" };
+  }
+  return { id: edit.subject, ...(section === "quests" ? { variant: edit.detail.variant ?? 0 } : {}), field: "text" };
+}
+
+async function undoText(section: Source, lang: Lang, edit: Edit, by: string): Promise<Outcome> {
   const api = sections[section];
   const id = edit.subject;
   const { version, previous = null, replaces } = edit.detail;
   const variant = edit.detail.variant ?? 0;
-  const head = { id, ...(section === "quests" ? { variant } : {}), field: "text" as const };
 
   // A moment is one plain line or two gendered ones, and moving the flag on one line cannot turn
   // it back into the other shape.
   if (replaces?.length || (previous === null && momentOf(id) !== id)) {
-    return { ...head, status: "skipped", reason: "gender_split" };
+    return { status: "skipped", reason: "gender_split" };
   }
   if ((await api.version(lang, id, variant)) !== version) {
-    return { ...head, status: "skipped", reason: "edited_since" };
+    return { status: "skipped", reason: "edited_since" };
   }
   if (previous === null) {
     await api.retire(lang, id, variant, version, by);
-    return { ...head, status: "retired" };
+    return { status: "retired" };
   }
   await api.restore(lang, id, variant, previous, by);
-  return { ...head, status: "restored" };
+  return { status: "restored" };
 }
 
-async function undoName(lang: Lang, edit: Edit, by: string): Promise<UndoResult> {
-  const at = edit.subject.indexOf(":");
-  const kind = edit.subject.slice(0, at);
-  const entityId = edit.subject.slice(at + 1);
-  if (!isNameKind(kind)) throw new Error(`no name kind ${kind}`);
-  const head = { id: entityId, entity: { kind, entityId }, field: "name" as const };
-
+/** Either write refuses a name no longer at `version`, which restoreBatch reports as edited since. */
+async function undoName(lang: Lang, edit: Edit, by: string): Promise<Outcome> {
+  const { kind, entityId } = nameTargetOf(edit);
   const { version, previous = null } = edit.detail;
-  const history = await nameHistory(kind, entityId, lang);
-  if (history.find((v) => v.isCurrent)?.version !== version) {
-    return { ...head, status: "skipped", reason: "edited_since" };
-  }
   if (previous === null) {
     await retireName(kind, entityId, lang, version, by);
-    return { ...head, status: "retired" };
+    return { status: "retired" };
   }
   await restoreName(kind, entityId, lang, previous, version, by);
-  return { ...head, status: "restored" };
+  return { status: "restored" };
 }
 
 /** Each edit stands alone, as it did when written: one line that fails must not stop the rest. */
-export async function restoreBatch(batch: Pick<Batch, "id" | "lang" | "section">, by: string): Promise<UndoResult[]> {
+export async function restoreBatch(batch: Batch, by: string): Promise<UndoResult[]> {
   const results: UndoResult[] = [];
   for (const edit of await editsOf(batch.id)) {
+    const head = headOf(batch.section, edit);
     try {
-      results.push(
+      const outcome =
         edit.kind === "name.edited"
           ? await undoName(batch.lang, edit, by)
-          : await undoText(batch.section, batch.lang, edit, by),
-      );
+          : await undoText(batch.section, batch.lang, edit, by);
+      results.push({ ...head, ...outcome });
     } catch (error) {
       const { code, message } = describeError(error);
-      results.push({
-        id: edit.subject,
-        ...(edit.detail.variant !== undefined ? { variant: edit.detail.variant } : {}),
-        field: edit.kind === "name.edited" ? "name" : "text",
-        status: "skipped",
-        reason: code === "conflict" ? "edited_since" : "error",
-        message,
-      });
+      results.push({ ...head, status: "skipped", reason: code === "conflict" ? "edited_since" : "error", message });
     }
   }
   return results;

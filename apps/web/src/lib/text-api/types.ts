@@ -53,6 +53,8 @@ export type SectionApi = {
 /** Postgres' smallint, the column a variant lives in. */
 const MAX_VARIANT = 32767;
 
+export const BAD_VARIANT = `variant must be a whole number from 0 to ${MAX_VARIANT}`;
+
 export function isVariant(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= MAX_VARIANT;
 }

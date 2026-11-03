@@ -5,6 +5,7 @@
 import "server-only";
 
 import type { ApiAudit } from "@/lib/activity/kinds";
+import { BASE_LANG } from "@/lib/lang";
 import { saveName } from "@/lib/names/store";
 import type { Source } from "@/lib/sections";
 
@@ -12,7 +13,7 @@ import { createBatch } from "./batches";
 import { describeError, type ErrorCode } from "./errors";
 import type { TokenContext } from "./guard";
 import { sections } from "./index";
-import { hasNul, isVariant, keyOf, type NameTarget } from "./types";
+import { BAD_VARIANT, hasNul, isVariant, keyOf, type NameTarget } from "./types";
 
 export const MAX_ITEMS = 1000;
 export const MAX_TEXT = 5000;
@@ -47,6 +48,17 @@ function fieldError(error: unknown): FieldResult {
 
 const refused = (message: string): FieldResult => ({ status: "error", code: "invalid", message });
 
+export function noteError(note: unknown): string | null {
+  if (note === undefined || note === null) return null;
+  if (typeof note !== "string") return "note must be a string or null";
+  return hasNul(note) ? "note cannot hold a NUL character" : null;
+}
+
+function lengthError(field: string, value: string, max: number): string | null {
+  if (value.length > max) return `${field} is at most ${max} characters`;
+  return hasNul(value) ? `${field} cannot hold a NUL character` : null;
+}
+
 function optionalVersion(value: unknown): value is number | null | undefined {
   return value === undefined || value === null || Number.isInteger(value);
 }
@@ -56,16 +68,14 @@ function shapeError(section: Source, input: ItemInput): string | null {
   if (input.text === undefined && input.short === undefined && input.name === undefined) {
     return "give text, name or both";
   }
-  if (input.note !== undefined && input.note !== null && typeof input.note !== "string") {
-    return "note must be a string or null";
-  }
-  if (typeof input.note === "string" && hasNul(input.note)) return "note cannot hold a NUL character";
+  const note = noteError(input.note);
+  if (note) return note;
   if (!optionalVersion(input.expectedVersion)) return "expectedVersion must be a whole number";
   if (!optionalVersion(input.expectedNameVersion)) return "expectedNameVersion must be a whole number";
   if (input.short !== undefined && section !== "places") return "only places have short";
   if (input.variant !== undefined) {
     if (section !== "quests") return "only quest lines have variant";
-    if (!isVariant(input.variant)) return "variant must be a whole number from 0 to 32767";
+    if (!isVariant(input.variant)) return BAD_VARIANT;
   }
   return null;
 }
@@ -73,13 +83,12 @@ function shapeError(section: Source, input: ItemInput): string | null {
 function checkedText(input: ItemInput): string | null {
   if (input.text !== undefined) {
     if (typeof input.text !== "string" || !input.text.trim()) return "text must be a string that is not empty";
-    if (input.text.length > MAX_TEXT) return `text is at most ${MAX_TEXT} characters`;
-    if (hasNul(input.text)) return "text cannot hold a NUL character";
+    const problem = lengthError("text", input.text, MAX_TEXT);
+    if (problem) return problem;
   }
   if (input.short !== undefined && input.short !== null) {
     if (typeof input.short !== "string") return "short must be a string or null";
-    if (input.short.length > MAX_TEXT) return `short is at most ${MAX_TEXT} characters`;
-    if (hasNul(input.short)) return "short cannot hold a NUL character";
+    return lengthError("short", input.short, MAX_TEXT);
   }
   return null;
 }
@@ -116,8 +125,9 @@ async function writeText({ section, context, input, variant, note, audit }: Writ
 
 async function writeName({ section, context, input, variant, note, audit }: Write): Promise<FieldResult> {
   if (typeof input.name !== "string" || !input.name.trim()) return refused("name must be a string that is not empty");
-  if (input.name.length > MAX_NAME) return refused(`name is at most ${MAX_NAME} characters`);
-  if (hasNul(input.name)) return refused("name cannot hold a NUL character");
+  const problem = lengthError("name", input.name, MAX_NAME);
+  if (problem) return refused(problem);
+  if (context.lang === BASE_LANG) return refused("English names come from the corpus and cannot be changed here");
   try {
     const target = await sections[section].nameTarget(context.lang, input.id, variant);
     if (!target) return refused("this item has no name of its own to write");
@@ -136,6 +146,15 @@ async function writeName({ section, context, input, variant, note, audit }: Writ
   }
 }
 
+/** Of an item whose shape has passed. */
+function variantOf(item: ItemInput): number {
+  return (item.variant as number | undefined) ?? 0;
+}
+
+function refusedItem(id: string | null, message: string): ItemResult {
+  return { id, error: { code: "invalid", message } };
+}
+
 export async function applyItem(
   section: Source,
   context: TokenContext,
@@ -144,9 +163,17 @@ export async function applyItem(
   audit: ApiAudit,
 ): Promise<ItemResult> {
   const problem = shapeError(section, input);
-  if (problem) return { id: input.id, error: { code: "invalid", message: problem } };
+  return problem ? refusedItem(input.id, problem) : applyChecked(section, context, input, known, audit);
+}
 
-  const variant = (input.variant as number | undefined) ?? 0;
+async function applyChecked(
+  section: Source,
+  context: TokenContext,
+  input: ItemInput,
+  known: Set<string>,
+  audit: ApiAudit,
+): Promise<ItemResult> {
+  const variant = variantOf(input);
   const head = { id: input.id, ...(section === "quests" ? { variant } : {}) };
   if (!known.has(keyOf(input.id, variant))) {
     return { ...head, error: { code: "unknown_id", message: `no item ${input.id} in ${section}` } };
@@ -158,11 +185,6 @@ export async function applyItem(
     ...(input.text !== undefined || input.short !== undefined ? { text: await writeText(write) } : {}),
     ...(input.name !== undefined ? { name: await writeName(write) } : {}),
   };
-}
-
-/** A bad variant is refused where the item is applied; until then it reads as the first. */
-function variantOf(item: ItemInput): number {
-  return isVariant(item.variant) ? item.variant : 0;
 }
 
 function isItem(value: unknown): value is ItemInput {
@@ -187,7 +209,10 @@ export async function applyItems(
   items: unknown[],
   note: string | null,
 ): Promise<{ batchId: string; results: ItemResult[] }> {
-  const wanted = items.filter(isItem).map((item) => ({ id: item.id, variant: variantOf(item) }));
+  const wanted = items
+    .filter(isItem)
+    .filter((item) => !shapeError(section, item))
+    .map((item) => ({ id: item.id, variant: variantOf(item) }));
   const known = await sections[section].known(context.lang, wanted);
   const batchId = await createBatch({
     userId: context.userId,
@@ -203,19 +228,22 @@ export async function applyItems(
   const results: ItemResult[] = [];
   for (const item of items) {
     if (!isItem(item)) {
-      results.push({ id: null, error: { code: "invalid", message: "each item is an object with an id" } });
+      results.push(refusedItem(null, "each item is an object with an id"));
+      continue;
+    }
+    const input = { note, ...item };
+    const problem = shapeError(section, input);
+    if (problem) {
+      results.push(refusedItem(item.id, problem));
       continue;
     }
     const key = keyOf(item.id, variantOf(item));
     if (seen.has(key)) {
-      results.push({
-        id: item.id,
-        error: { code: "invalid", message: "this item appears twice in the update; only the first was applied" },
-      });
+      results.push(refusedItem(item.id, "this item appears twice in the update; only the first was applied"));
       continue;
     }
     seen.add(key);
-    results.push(await applyItem(section, context, { note, ...item }, known, audit));
+    results.push(await applyChecked(section, context, input, known, audit));
   }
   return { batchId, results };
 }

@@ -1,7 +1,7 @@
-import { applyItems, MAX_ITEMS } from "@/lib/text-api/apply";
+import { applyItems, MAX_ITEMS, noteError } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
-import { badCursor, invalid, parseList, sectionOf } from "@/lib/text-api/respond";
-import { hasNul } from "@/lib/text-api/types";
+import { invalid, parseList, sectionOf } from "@/lib/text-api/respond";
+import { BadCursor } from "@/lib/text-api/types";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +21,7 @@ export async function GET(request: Request, { params }: Params) {
     const page = await found.api.list(context.lang, query.filter, query.cursor, query.limit);
     return Response.json({ lang: context.lang, ...page });
   } catch (error) {
-    const response = badCursor(error);
-    if (response) return response;
+    if (error instanceof BadCursor) return invalid(error.message);
     throw error;
   }
 }
@@ -38,10 +37,8 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!body || !Array.isArray(body.items)) return invalid("send JSON with an items array");
   if (body.items.length === 0) return invalid("items is empty");
   if (body.items.length > MAX_ITEMS) return invalid(`at most ${MAX_ITEMS} items per update`);
-  if (body.note !== undefined && body.note !== null && typeof body.note !== "string") {
-    return invalid("note must be a string or null");
-  }
-  if (typeof body.note === "string" && hasNul(body.note)) return invalid("note cannot hold a NUL character");
+  const note = noteError(body.note);
+  if (note) return invalid(note);
 
   return Response.json(await applyItems(found.section, context, body.items, (body.note as string | null) ?? null));
 }

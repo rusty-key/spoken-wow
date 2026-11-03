@@ -6,6 +6,8 @@
  */
 import "server-only";
 
+import type { PoolClient } from "pg";
+
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
@@ -63,9 +65,7 @@ export async function saveName(args: {
   anyLanguage?: boolean;
   audit?: ApiAudit;
 }): Promise<NameVersion & { wrote: boolean }> {
-  if (args.lang === BASE_LANG && !args.anyLanguage) {
-    throw new Error("English names come from the corpus, not from here");
-  }
+  if (!args.anyLanguage) refuseEnglish(args.lang);
   const name = args.name.trim();
   if (!name) throw new Error("the name cannot be empty");
 
@@ -130,6 +130,25 @@ export async function saveName(args: {
   });
 }
 
+function refuseEnglish(lang: Lang): void {
+  if (lang === BASE_LANG) throw new Error("English names come from the corpus, not from here");
+}
+
+async function leaveCurrent(
+  client: PoolClient,
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+): Promise<void> {
+  const { rowCount } = await client.query(
+    `update "entity_name" set "isCurrent" = false
+      where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
+    [kind, entityId, lang, version],
+  );
+  if (!rowCount) throw new NameConflict(`${kind} ${entityId} v${version} is not the current name`);
+}
+
 /** Moves the live flag back to `version`, as long as `from` still holds it. */
 export async function restoreName(
   kind: NameKind,
@@ -139,16 +158,11 @@ export async function restoreName(
   from: number,
   by: string | null,
 ): Promise<void> {
-  if (lang === BASE_LANG) throw new Error("English names come from the corpus, not from here");
+  refuseEnglish(lang);
   return withTeam(await ownerOrAll(lang), async (client) => {
     // Two statements: the partial unique index is checked per row, so one statement flipping
     // both would briefly hold two current rows and be refused.
-    const { rowCount: left } = await client.query(
-      `update "entity_name" set "isCurrent" = false
-        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
-      [kind, entityId, lang, from],
-    );
-    if (!left) throw new NameConflict(`${kind} ${entityId} v${from} is not the current name`);
+    await leaveCurrent(client, kind, entityId, lang, from);
     const { rowCount: back } = await client.query(
       `update "entity_name" set "isCurrent" = true
         where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4`,
@@ -170,14 +184,9 @@ export async function retireName(
   version: number,
   by: string | null,
 ): Promise<void> {
-  if (lang === BASE_LANG) throw new Error("English names come from the corpus, not from here");
+  refuseEnglish(lang);
   return withTeam(await ownerOrAll(lang), async (client) => {
-    const { rowCount } = await client.query(
-      `update "entity_name" set "isCurrent" = false
-        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
-      [kind, entityId, lang, version],
-    );
-    if (!rowCount) throw new NameConflict(`${kind} ${entityId} v${version} is not the current name`);
+    await leaveCurrent(client, kind, entityId, lang, version);
     await recordActivity(
       { kind: "name.retired", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version } },
       client,

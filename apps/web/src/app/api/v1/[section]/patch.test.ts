@@ -112,6 +112,19 @@ describe("PATCH /api/v1/[section]", () => {
     expect(results.map((r) => r.error?.code)).toEqual(["invalid", "unknown_id"]);
   });
 
+  it("an item refused for its shape does not count against the next with the same id", async () => {
+    const response = await many("places", {
+      items: [
+        { id: f.zone, variant: "x", text: "거절." },
+        { id: f.zone, text: "통과." },
+      ],
+    });
+    const { results } = (await response.json()) as { results: { error?: unknown; text?: { status: string } }[] };
+    expect(results[0].error).toMatchObject({ code: "invalid" });
+    expect(results[1].error).toBeUndefined();
+    expect(results[1].text?.status).toBe("updated");
+  });
+
   it("400 on a NUL in the run's note", async () => {
     expect((await many("places", { note: "메\u0000모", items: [{ id: f.zone, text: "글." }] })).status).toBe(400);
   });
@@ -207,6 +220,12 @@ describe("PATCH /api/v1/[section]/[id]", () => {
     expect(await response.text()).toContain("?variant=");
     const after = await query(`select 1 from "quest_line" where "lineId" = $1 and "lang" = $2`, [f.quest.lineId, LANG]);
     expect(after.length).toBe(before.length);
+  });
+
+  it("tells a section with no variants that it has none", async () => {
+    const response = await one("places", f.zone, { variant: 1, text: "글." });
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain("only quest lines have variant");
   });
 
   it("answers an error with its status", async () => {

@@ -15,6 +15,7 @@ import { createToken } from "@/lib/tokens/store";
 
 import { applyItem, applyItems } from "./apply";
 import { createBatch, getBatch, listBatches, restoreBatch as undo } from "./batches";
+import { Refused } from "./errors";
 import type { TokenContext } from "./guard";
 import { sections } from "./index";
 import { createFixtures, LANG, type Fixtures } from "./testing";
@@ -117,6 +118,17 @@ describe("restoreBatch", () => {
       { id: entity.entityId, entity, field: "name", status: "restored" },
     ]);
     expect(await sections.bosses.one(LANG, f.boss.lineId, 0)).toMatchObject({ name: "옛 이름", nameVersion: before });
+  });
+
+  it("names a name's undo by its entity id when it is skipped", async () => {
+    const { batchId } = await run("bosses", [{ id: f.boss.lineId, name: "실행 이름" }]);
+    await run("bosses", [{ id: f.boss.lineId, name: "나중 이름" }]);
+
+    const entity = { kind: "boss", entityId: String(f.boss.id) };
+    expect(await restoreBatch(batchId, f.user)).toMatchObject([
+      { id: entity.entityId, entity, field: "name", status: "skipped", reason: "edited_since" },
+    ]);
+    expect((await sections.bosses.one(LANG, f.boss.lineId, 0))?.name).toBe("나중 이름");
   });
 
   it("does not hand a database's message to the caller", async () => {
@@ -235,7 +247,7 @@ describe("restoreBatch", () => {
       { id: f.zone, text: "하나." },
       { id: f.subzone, text: "둘." },
     ]);
-    const spy = vi.spyOn(sections.places, "retire").mockRejectedValueOnce(new Error("boom"));
+    const spy = vi.spyOn(sections.places, "retire").mockRejectedValueOnce(new Refused("boom"));
 
     const results = await restoreBatch(batchId, f.user);
     spy.mockRestore();

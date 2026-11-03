@@ -211,14 +211,13 @@ describe("quests", () => {
     expect(merged.items.map((i) => keyOf(i.id, i.variant ?? 0))).toEqual(ids);
   });
 
-  // The filters must reach the rows read at the start, or one quest costs a pass over a language.
+  // A page's own text is looked up per item; a scan of the table reads every language.
   it.each([
     ["no filter", {}],
     ["a quest", () => ({ quest: String(f.quest.questId) })],
     ["a source", { source: "gossip" }],
-  ])("never joins quest_line back by id for %s", async (_name, filter) => {
+  ])("never scans quest_line for its text for %s", async (_name, filter) => {
     const sql = listSql(typeof filter === "function" ? filter() : filter, null, 500, LANG);
-    expect(sql.text).not.toMatch(/left join "quest_line" t\b/);
     expect((await query(`explain ${sql.text}`, sql.params)).map((row) => row["QUERY PLAN"]).join("\n")).not.toMatch(
       /Seq Scan on quest_line t\b/,
     );

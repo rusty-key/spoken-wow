@@ -7,14 +7,11 @@ export function useApiTokens<T extends ApiToken>(initial: T[], revokeUrl: (id: s
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function revoke(id: string) {
+  async function run(work: () => Promise<void>) {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(revokeUrl(id), { method: "DELETE" });
-      if (!response.ok) throw new Error("could not revoke that token");
-      const now = new Date().toISOString();
-      setTokens((current) => current.map((t) => (t.id === id ? { ...t, revokedAt: now } : t)));
+      await work();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -22,5 +19,13 @@ export function useApiTokens<T extends ApiToken>(initial: T[], revokeUrl: (id: s
     }
   }
 
-  return { tokens, setTokens, busy, setBusy, error, setError, revoke };
+  const revoke = (id: string) =>
+    run(async () => {
+      const response = await fetch(revokeUrl(id), { method: "DELETE" });
+      if (!response.ok) throw new Error("could not revoke that token");
+      const now = new Date().toISOString();
+      setTokens((current) => current.map((t) => (t.id === id ? { ...t, revokedAt: now } : t)));
+    });
+
+  return { tokens, setTokens, busy, error, run, revoke };
 }

@@ -3,7 +3,7 @@ import "server-only";
 import { isSource, type Source } from "@/lib/sections";
 
 import { sections } from "./index";
-import { BadCursor, isVariant, type SectionApi } from "./types";
+import { BAD_VARIANT, isVariant, type SectionApi } from "./types";
 
 export const PAGE_SIZE = 500;
 
@@ -54,9 +54,7 @@ export function parseVariant(section: Source, params: URLSearchParams): number |
   }
   const value = params.get("variant");
   if (value === null) return 0;
-  return VARIANT.test(value) && isVariant(Number(value))
-    ? Number(value)
-    : invalid("variant must be a whole number from 0 to 32767");
+  return VARIANT.test(value) && isVariant(Number(value)) ? Number(value) : invalid(BAD_VARIANT);
 }
 
 /** The id as the store knows it, whether its colons arrived encoded or not. */
@@ -66,8 +64,4 @@ export function decodeId(id: string): string {
   } catch {
     return id;
   }
-}
-
-export function badCursor(error: unknown): Response | null {
-  return error instanceof BadCursor ? invalid(error.message) : null;
 }

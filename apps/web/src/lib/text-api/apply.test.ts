@@ -101,6 +101,16 @@ describe("text", () => {
 });
 
 describe("errors", () => {
+  it("a plain error from the driver is internal, not the caller's input", async () => {
+    const pool = new Error("timeout exceeded when trying to connect");
+    const spy = vi.spyOn(sections.bosses, "saveText").mockRejectedValueOnce(pool);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await apply("bosses", { id: f.boss.lineId, text: "글." });
+    expect(result.text).toMatchObject({ status: "error", code: "internal" });
+    spy.mockRestore();
+    logged.mockRestore();
+  });
+
   it("a bug is internal, not the caller's input", async () => {
     const spy = vi.spyOn(sections.bosses, "saveText").mockRejectedValueOnce(new TypeError("x is not a function"));
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
