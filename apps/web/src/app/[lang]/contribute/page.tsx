@@ -11,7 +11,7 @@ import { Contained } from "@/components/Width";
 /**
  * Where the addons send a player when there is no audio for a quest, book page or place.
  *
- * The address every addon's Contribute link points at -- spoken.rusty.one/contribute#e1=... --
+ * The address every addon's Contribute link points at -- spoken.quest/contribute#e1=... --
  * so it has to work with nothing but what the link carries: most of the people who reach it
  * have no account here, and never will.
  *

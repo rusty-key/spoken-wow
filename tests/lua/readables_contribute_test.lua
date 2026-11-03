@@ -159,7 +159,7 @@ B:ShowContribution()
 Expect("...only Show() does", encodeCalls, 1)
 local box = env.Spoken.ContributeBox
 Expect("Show() puts a link in the box, not the raw envelope",
-    box.editBox:GetText():match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
+    box.editBox:GetText():match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
 Expect("...with the link hint", box.hint:GetText(), "Copy this and open it in your browser:")
 env.Spoken.Contribute.Encode = realEncode
 
@@ -169,7 +169,7 @@ B:ShowContribution()
 Expect("...falls back to the raw envelope when Encode is absent",
     box.editBox:GetText():match("^!SPOKEN1 readables\n") ~= nil, true)
 Expect("...with the old two-copy hint", box.hint:GetText(), "Press Ctrl+C, then paste it at:")
-Expect("...and the address shown again", box.address:GetText(), "https://spoken.rusty.one/contribute")
+Expect("...and the address shown again", box.address:GetText(), "https://spoken.quest/contribute")
 env.Spoken.Contribute.Encode = realEncode
 
 os.exit(Failures() == 0 and 0 or 1)

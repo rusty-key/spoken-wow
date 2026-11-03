@@ -167,10 +167,10 @@ Expect("E. with no Spoken there is nothing to report to", B:ReportURL(PAGE), nil
 -- The address is Spoken's to build (Spoken:ReportURL); this suite loads Readables alone.
 stub.LoadSpoken(here .. "/../../addons/Spoken/")
 Expect("E. an English report keeps its address", B:ReportURL(PAGE, "enUS"),
-    "https://spoken.rusty.one/readables/r/15")
-Expect("E. ...as does one with no language", B:ReportURL(PAGE), "https://spoken.rusty.one/readables/r/15")
+    "https://spoken.quest/readables/r/15")
+Expect("E. ...as does one with no language", B:ReportURL(PAGE), "https://spoken.quest/readables/r/15")
 Expect("E. a German report goes to the German page", B:ReportURL(PAGE, "deDE"),
-    "https://spoken.rusty.one/deDE/readables/r/15")
+    "https://spoken.quest/deDE/readables/r/15")
 _G.Spoken, _G.SpokenEnv = nil, nil
 
 ---------------------------------------------------------------- F. a language no client runs in
@@ -244,9 +244,9 @@ do
     Expect("G. ...which reads from its page", B:BookOf(MINTED).pages[1], MINTED)
     stub.LoadSpoken(here .. "/../../addons/Spoken/")
     Expect("G. ...reported by its key", B:ReportURL(MINTED, "esES"),
-        "https://spoken.rusty.one/esES/readables/r/" .. MINTED)
+        "https://spoken.quest/esES/readables/r/" .. MINTED)
     Expect("G. an English report of a minted page", B:ReportURL(MINTED),
-        "https://spoken.rusty.one/readables/r/" .. MINTED)
+        "https://spoken.quest/readables/r/" .. MINTED)
     Expect("G. a string that is not a minted key has no report", B:ReportURL("../x", "esES"), nil)
     _G.Spoken, _G.SpokenEnv = nil, nil
 

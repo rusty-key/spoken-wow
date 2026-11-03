@@ -34,14 +34,14 @@ box.editBox.handlers.OnTextChanged(box.editBox)
 Expect("a keystroke restores the envelope", box.editBox:GetText(), envelope)
 
 ------------------------------------------------------------------------------- the link case
-local link = "https://spoken.rusty.one/contribute#e1=abc"
+local link = "https://spoken.quest/contribute#e1=abc"
 Expect("a link is shown", Spoken:ShowContribution(link, "https://x", true), true)
 Expect("the box holds the link itself", box.editBox:GetText(), link)
 Expect("...with the link-specific hint", box.hint:GetText(), "Copy this and open it in your browser:")
 Expect("...and no redundant address line, since the link already carries it", box.address:GetText(), "")
 
 ------------------------------------------------------------------------------- a report
-local report = "https://spoken.rusty.one/quests/r/quest/5/accept"
+local report = "https://spoken.quest/quests/r/quest/5/accept"
 Expect("a report is shown", Spoken:ShowReport(report, function() return envelope end), true)
 local address, carried = H.SplitReportLink(box.editBox:GetText())
 Expect("...at its own address", address, report)

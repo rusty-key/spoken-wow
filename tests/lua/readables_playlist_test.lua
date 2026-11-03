@@ -139,7 +139,7 @@ Expect("...drawn as the bug icon the other addons use", report and report.icon,
 -- Built from the page id alone, which docs/readables/AGENTS.md freezes as b:{pageTextID}. That
 -- is what lets the addon address a page with no per-page table and nothing to escape.
 Expect("the report address names the page", B:ReportURL(261),
-    "https://spoken.rusty.one/readables/r/261")
+    "https://spoken.quest/readables/r/261")
 Expect("...and is nothing at all without one", B:ReportURL(nil), nil)
 
 -- The client cannot open a browser, so pressing it can only offer the address to copy, in
@@ -147,7 +147,7 @@ Expect("...and is nothing at all without one", B:ReportURL(nil), nil)
 report.onClick(clip)
 local box = _G.Spoken.ContributeBox
 local address, context = H.SplitReportLink(box and box.frame:IsShown() and box.editBox:GetText())
-Expect("pressing it offers the page's address", address, "https://spoken.rusty.one/readables/r/261")
+Expect("pressing it offers the page's address", address, "https://spoken.quest/readables/r/261")
 Expect("...carrying the addon and the page", context
     and context:find("\naddon=", 1, true) and context:find("\nid=261\n", 1, true) and true, true)
 box.frame:Hide()
