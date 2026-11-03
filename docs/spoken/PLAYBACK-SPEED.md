@@ -23,6 +23,10 @@ The optional ZIPs can be offered separately, so a 1× listener downloads no extr
 the original pack and the chosen optional pack into `Interface/AddOns`, then restart WoW so it
 can see the new sound files. Select Voice Speed in Spoken's settings or cycle the rate on the
 narrator window. The numbers and caption word timings follow the copy actually played.
+When a voice pack supplies word timestamps, Spoken scales them with the selected speed and uses
+them in both the narrator and subtitles. Older packs without timestamps, including the esES
+quest pack 0.0.4, use an estimate based on word length and punctuation; they cannot highlight
+every spoken word exactly.
 
 Build both rates from every source pack a player might hear if every line must stay at one rate.
 Otherwise the missing lines play at 1×. A speed pack's files are transcoded from shipped audio,
