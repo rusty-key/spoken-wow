@@ -1,4 +1,3 @@
-/** Bosses through the API: boss_line for the story, entity_name for the name. */
 import "server-only";
 
 import { catalogue, type BossEntry } from "@/lib/bosses/catalogue";

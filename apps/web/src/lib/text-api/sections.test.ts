@@ -36,7 +36,6 @@ afterAll(async () => {
   await closeDb();
 });
 
-/** Every item a filter yields, following cursors, in a small page size. */
 async function all(section: Source, filter: Record<string, string>, limit = 500): Promise<TextItem[]> {
   const items: TextItem[] = [];
   let cursor: string | null = null;

@@ -1,4 +1,3 @@
-/** A section's items in the token's language, a page at a time. */
 import { applyItems, MAX_ITEMS } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
 import { badCursor, invalid, parseList, sectionOf } from "@/lib/text-api/respond";
@@ -28,7 +27,6 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-/** A mass update. Every item is answered for in order; see applyItems. */
 export async function PATCH(request: Request, { params }: Params) {
   const { context, denied } = await requireToken(request, { write: true });
   if (denied) return denied;

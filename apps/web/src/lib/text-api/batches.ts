@@ -1,4 +1,3 @@
-/** Mass updates: a record of each run, and undoing one. */
 import "server-only";
 
 import { momentOf } from "@/lib/contributions/naming";

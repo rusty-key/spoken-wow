@@ -1,6 +1,4 @@
 /**
- * Personal API tokens: one maintainer, one language, read or write, until an expiry.
- *
  * Only a hash is kept, so nothing here can hand a token back after the response that created
  * it. The hash is a plain SHA-256 because a token is 32 random bytes, which leaves nothing for
  * a slow hash to protect, and it is looked up on every API request.

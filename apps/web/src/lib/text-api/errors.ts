@@ -1,4 +1,3 @@
-/** What a failed write tells the caller. */
 import "server-only";
 
 import { StoryConflict, StoryMissing } from "@/lib/bosses/story";

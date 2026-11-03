@@ -1,6 +1,4 @@
 /**
- * The API's description of itself, which is the one URL a maintainer points an agent at.
- *
  * Needs DATABASE_URL and migrations applied.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";

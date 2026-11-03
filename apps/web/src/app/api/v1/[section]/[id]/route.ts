@@ -1,4 +1,3 @@
-/** One item of a section, by its line id. */
 import { applyItem, statusOf } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
 import { decodeId, invalid, parseVariant, sectionOf } from "@/lib/text-api/respond";

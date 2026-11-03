@@ -6,7 +6,7 @@ import type { ApiToken } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
 
-/** Everyone's API tokens, for a global admin. Hints are not drawn: they are the owner's to see. */
+/** Hints are not drawn: they are the owner's to see. */
 export default function ApiTokenTable({ initial }: { initial: (ApiToken & { userEmail: string })[] }) {
   const { tokens, busy, error, revoke } = useApiTokens(initial, (id) => `/api/tokens?id=${id}`);
 

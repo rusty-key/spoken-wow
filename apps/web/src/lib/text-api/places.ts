@@ -1,4 +1,3 @@
-/** Places through the API: lore_line for the words, entity_name for what a place is called. */
 import "server-only";
 
 import { query } from "@/lib/db";

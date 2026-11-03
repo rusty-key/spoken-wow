@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import type { ApiToken } from "@/lib/tokens/types";
 
-/** A list of API tokens on screen, and revoking one through `revokeUrl`. */
 export function useApiTokens<T extends ApiToken>(initial: T[], revokeUrl: (id: string) => string) {
   const [tokens, setTokens] = useState(initial);
   const [busy, setBusy] = useState(false);

@@ -14,7 +14,6 @@
  */
 import type { Capability } from "@/lib/permissions";
 
-/** Who wrote through the API, and which mass update it belongs to. */
 export type ApiAudit = { tokenId: string; batchId?: string };
 
 /**
@@ -24,7 +23,6 @@ export type ApiAudit = { tokenId: string; batchId?: string };
  */
 type ApiAuditDetail = { previous?: number | null; apiTokenId?: string; apiBatchId?: string };
 
-/** What an API save adds to its activity row. A save from the site adds nothing. */
 export function auditDetail(audit: ApiAudit | undefined, previous: number | null): ApiAuditDetail {
   if (!audit) return {};
   return {

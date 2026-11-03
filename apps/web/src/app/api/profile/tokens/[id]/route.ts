@@ -1,4 +1,3 @@
-/** Revoking one of the signed-in maintainer's own API tokens. */
 import { currentSession } from "@/lib/session";
 import { revokeToken } from "@/lib/tokens/store";
 import { isUuid } from "@/lib/uuid";

@@ -35,7 +35,6 @@ afterAll(async () => {
   await closeDb();
 });
 
-/** The activity row of the newest edit of a line by the test user. */
 async function lastDetail(subject: string, kind = "text.edited") {
   const { rows } = await asSystem.query<{ detail: Record<string, unknown> }>(
     `select "detail" from "activity" where "actorId" = $1 and "subject" = $2 and "kind" = $3

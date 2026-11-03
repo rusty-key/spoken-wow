@@ -1,6 +1,5 @@
 /**
- * The API describing itself, so a maintainer can hand an agent one URL and a token. The limits
- * are the ones enforced, imported rather than restated, so this cannot drift from them.
+ * The API describing itself, so a maintainer can hand an agent one URL and a token.
  */
 import { MAX_ITEMS, MAX_NAME, MAX_TEXT } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";

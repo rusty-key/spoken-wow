@@ -1,6 +1,6 @@
 /**
- * One item of an update, and a run of them. Each item stands alone: its failure is reported in
- * its result, because one bad id must not throw away a 500-line run.
+ * Each item stands alone: its failure is reported in its result, because one bad id must not throw
+ * away a 500-line run.
  */
 import "server-only";
 
@@ -51,7 +51,7 @@ function optionalVersion(value: unknown): value is number | null | undefined {
   return value === undefined || value === null || Number.isInteger(value);
 }
 
-/** Why the item's shape is wrong, or null. Fields' own values are judged where they are written. */
+/** Fields' own values are judged where they are written. */
 function shapeError(section: Source, input: ItemInput): string | null {
   if (input.text === undefined && input.short === undefined && input.name === undefined) {
     return "give text, name or both";

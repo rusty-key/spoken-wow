@@ -25,7 +25,6 @@ function pageOf<T extends { id: string }>(
   };
 }
 
-/** The reads of a section whose items come from a catalogue. */
 export function catalogueReads<T extends { id: string }>(
   read: (lang: Lang) => Promise<readonly T[]>,
   itemsOf: (lang: Lang, entries: T[]) => Promise<TextItem[]>,
@@ -47,7 +46,7 @@ export function catalogueReads<T extends { id: string }>(
   };
 }
 
-/** Current version of each named thing in a language, as `${kind}:${entityId}`. */
+/** Keyed `${kind}:${entityId}`. */
 export async function nameVersions(lang: Lang, targets: readonly (NameTarget | null)[]): Promise<Map<string, number>> {
   const present = targets.filter((target): target is NameTarget => target !== null);
   if (!present.length) return new Map();

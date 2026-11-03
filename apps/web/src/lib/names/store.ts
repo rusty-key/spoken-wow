@@ -130,10 +130,7 @@ export async function saveName(args: {
   });
 }
 
-/**
- * Puts an earlier name back by moving the live flag, as restoring text does, while `from` is still
- * the live one.
- */
+/** Moves the live flag back to `version`, as long as `from` still holds it. */
 export async function restoreName(
   kind: NameKind,
   entityId: string,

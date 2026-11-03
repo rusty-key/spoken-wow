@@ -1,4 +1,4 @@
-/** Everyone's API tokens, for a global admin to see and revoke. Never carries a token's value. */
+/** Never carries a token's value. */
 import { requireAdminSession } from "@/lib/generation/authz";
 import { listAllTokens, revokeToken } from "@/lib/tokens/store";
 import { isUuid } from "@/lib/uuid";

@@ -1,7 +1,5 @@
 /**
- * Quest lines through the API, gossip among them.
- *
- * Read from quest_line rather than corpus(): the corpus has no variant, reads only variant 0 of
+ * Gossip lines are among these. Read from quest_line rather than corpus(): the corpus has no variant, reads only variant 0 of
  * a translation, and repeats a line once per speaker, none of which suits an item addressed by
  * id. What is listed matches the corpus's rule otherwise: a language's own rows, then English's
  * for the moments it has none of, so an English split shows as :m and :f until translated.
@@ -101,7 +99,7 @@ function isCursor(value: unknown): value is [string, number] {
   );
 }
 
-/** One page's query. Exported so a test can read what the database is asked to do. */
+/** Exported so a test can read what the database is asked to do. */
 export function listSql(
   filter: Record<string, string>,
   cursor: string | null,

@@ -1,4 +1,3 @@
-/** What the /api/v1 routes share: reading the query, and answering about a bad one. */
 import "server-only";
 
 import { isSource, type Source } from "@/lib/sections";
@@ -49,7 +48,6 @@ export function parseList(api: SectionApi, params: URLSearchParams): ListQuery |
   return { filter, cursor, limit };
 }
 
-/** A quest line's variant from `?variant=`, 0 when absent. Only quests have one. */
 export function parseVariant(section: Source, params: URLSearchParams): number | Response {
   for (const name of params.keys()) {
     if (name !== "variant" || section !== "quests") return invalid(`unknown parameter ${name}`);

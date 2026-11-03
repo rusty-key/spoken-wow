@@ -1,7 +1,6 @@
 /**
- * Readables through the API: book_line for a page's words. A page's name is its owner's, so
- * renaming one page renames everything that shares that owner, and a page with no owner has no
- * name to write.
+ * A page's name is its owner's, so renaming one page renames everything that shares that owner,
+ * and a page with no owner has no name to write.
  */
 import "server-only";
 

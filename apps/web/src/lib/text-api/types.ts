@@ -35,7 +35,6 @@ type SaveTextArgs = {
 };
 
 export type SectionApi = {
-  /** Each filter's name, and what its value must look like. */
   filters: Readonly<Record<string, RegExp>>;
   list(lang: Lang, filter: Record<string, string>, cursor: string | null, limit: number): Promise<Page>;
   one(lang: Lang, id: string, variant: number): Promise<TextItem | null>;
@@ -46,7 +45,6 @@ export type SectionApi = {
   nameTarget(lang: Lang, id: string, variant: number): Promise<NameTarget | null>;
   /** The current text version. Asked per edit in an undo, so it must not read a catalogue. */
   version(lang: Lang, id: string, variant: number): Promise<number | null>;
-  /** Moves the live text back to `version`. */
   restore(lang: Lang, id: string, variant: number, version: number, by: string): Promise<unknown>;
   /** Takes back a first translation, so the line has no text in the language again. */
   retire(lang: Lang, id: string, variant: number, version: number, by: string): Promise<void>;
