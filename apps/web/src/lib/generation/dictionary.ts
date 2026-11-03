@@ -18,14 +18,21 @@
  * dictionary by id in tools/voice/config.json and pins a version, so the id has to be
  * stable across saves - which is what ELEVENLABS_DICTIONARY_ID and the in-place update
  * below are for. This is the only project that edits the lexicon; wow-lore reads it.
+ *
+ * ElevenLabs refuses a request naming a dictionary the key's account cannot read, and every
+ * collaborator generates on their own key. So the row says what the editor last uploaded, and
+ * lexicon_account_dictionary says where each account holds it: see dictionaryFor.
  */
-import { TEAM_ROWS } from "@/lib/db";
+import { createHash } from "node:crypto";
+
+import { query, TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { queryAs, readAs } from "@/lib/teams/store";
 import {
   addDictionaryRules,
   countLexemes,
   createPronunciationDictionary,
+  DictionaryUnreadable,
   downloadPronunciationDictionary,
   readDictionary,
   removeDictionaryRules,
@@ -83,6 +90,8 @@ type Row = {
   rulesKept: number | null;
   /** Whether the dictionary in force was built from exactly these entries. See below. */
   inForce: boolean;
+  /** md5 of "entries", which an account's dictionary is compared against. */
+  digest: string;
   syncedAt: string | null;
   updatedAt: string;
   updatedBy: string | null;
@@ -128,6 +137,7 @@ async function readRow(lang: Lang = BASE_LANG): Promise<Row | undefined> {
     // happened later. See migration 0019.
     `select "entries", "dictionaryId", "versionId", "rulesSent", "rulesKept",
             ("syncedDigest" is not null and "syncedDigest" = md5("entries"::text)) as "inForce",
+            md5("entries"::text) as "digest",
             "syncedAt", "updatedAt", "updatedBy"
        from ${at.table} where ${at.where}`,
     at.params,
@@ -175,17 +185,151 @@ export async function readLexicon(lang: Lang = BASE_LANG): Promise<EffectiveLexi
   };
 }
 
+type AccountDictionary = DictionaryLocator & { syncedDigest: string };
+
+function accountOf(apiKey: string): string {
+  return createHash("sha256").update(apiKey).digest("hex");
+}
+
+async function readAccountDictionary(
+  lang: Lang,
+  account: string,
+): Promise<AccountDictionary | undefined> {
+  const rows = await query<AccountDictionary>(
+    `select "dictionaryId", "versionId", "syncedDigest"
+       from "lexicon_account_dictionary" where "lang" = $1 and "account" = $2`,
+    [lang, account],
+  );
+  return rows[0];
+}
+
+/** Hashed from jsonb, so it compares equal to the md5("entries"::text) readRow selects. */
+async function saveAccountDictionary(
+  lang: Lang,
+  account: string,
+  locator: DictionaryLocator,
+  entries: LexiconEntry[],
+): Promise<void> {
+  await query(
+    `insert into "lexicon_account_dictionary"
+       ("lang", "account", "dictionaryId", "versionId", "syncedDigest")
+     values ($1, $2, $3, $4, md5($5::jsonb::text))
+     on conflict ("lang", "account") do update set
+       "dictionaryId" = excluded."dictionaryId",
+       "versionId"    = excluded."versionId",
+       "syncedDigest" = excluded."syncedDigest",
+       "syncedAt"     = now()`,
+    [lang, account, locator.dictionaryId, locator.versionId, JSON.stringify(entries)],
+  );
+}
+
 /**
- * The locator to attach to a TTS request, or null to send none.
+ * The first id this key can read gets the rules, and with none a new dictionary is created.
  *
- * Null rather than a throw when nothing has been uploaded: a missing dictionary costs
- * pronunciation quality, and refusing to generate over it would take regeneration down for
- * everyone the first time an upload failed.
+ * Only an unreadable id moves on. Any other failure is an outage or a refused key, and creating
+ * a dictionary over one would leave the account with a second copy of the lexicon.
  */
-export async function currentLocator(lang: Lang = BASE_LANG): Promise<DictionaryLocator | null> {
+async function uploadRules(
+  ids: (string | null | undefined)[],
+  rules: DictionaryRule[],
+  options: ElevenLabsOptions,
+  lang: Lang,
+): Promise<DictionaryLocator> {
+  for (const id of new Set(ids)) {
+    if (!id) continue;
+    try {
+      return await updateDictionary(id, rules, options);
+    } catch (error) {
+      if (!(error instanceof DictionaryUnreadable)) throw error;
+    }
+  }
+  return createDictionary(rules, options, lang);
+}
+
+async function rulesFor(entries: LexiconEntry[], lang: Lang): Promise<DictionaryRule[]> {
+  // One rule per spelling the corpus actually uses, because a phoneme rule cannot be
+  // case-insensitive - see toRules. The language's own text, since that is what is spoken.
+  return toRules(
+    entries,
+    await graphemeCasings(entries.filter((e) => !e.alias).map((e) => e.grapheme), lang),
+  );
+}
+
+async function bringAccountUpToDate(
+  lang: Lang,
+  account: string,
+  row: Row & { dictionaryId: string; versionId: string },
+  mine: AccountDictionary | undefined,
+  options: ElevenLabsOptions,
+): Promise<DictionaryLocator> {
+  // The row's own account, or one sharing it through a workspace. It adopts the dictionary as
+  // it stands: uploading would mint a version that says the same thing as the one in force.
+  if (!mine && row.inForce) {
+    try {
+      await readDictionary(row.dictionaryId, options);
+      const locator = { dictionaryId: row.dictionaryId, versionId: row.versionId };
+      await saveAccountDictionary(lang, account, locator, row.entries);
+      return locator;
+    } catch (error) {
+      if (!(error instanceof DictionaryUnreadable)) throw error;
+    }
+  }
+
+  try {
+    const locator = await uploadRules(
+      [mine?.dictionaryId, row.dictionaryId],
+      await rulesFor(row.entries, lang),
+      options,
+      lang,
+    );
+    await saveAccountDictionary(lang, account, locator, row.entries);
+    return locator;
+  } catch (error) {
+    // An older version of the lexicon beats failing the line, as it does for a failed save.
+    if (mine) return { dictionaryId: mine.dictionaryId, versionId: mine.versionId };
+    throw error;
+  }
+}
+
+/** Lines run concurrently, and each would otherwise create the account's first dictionary. */
+const bringing = new Map<string, Promise<DictionaryLocator>>();
+
+/**
+ * The locator to attach to a request made with this key, or null to send none.
+ *
+ * Null when the language has nothing in force: that costs pronunciation quality, and refusing
+ * to generate over it would take regeneration down the first time an upload failed.
+ *
+ * Throws when a lexicon is in force but this account cannot get it. Sending none then would
+ * spend credits on lines known to say the language's names wrong, with nothing marking them for
+ * a redo, whereas a failed line costs nothing and can be queued again.
+ *
+ * While the row is pending, every account keeps the version it has: the editor is telling
+ * someone that the newest save is not in effect yet.
+ */
+export async function dictionaryFor(
+  lang: Lang,
+  options: ElevenLabsOptions,
+): Promise<DictionaryLocator | null> {
   const row = await readRow(lang);
-  if (!row?.dictionaryId || !row.versionId) return null;
-  return { dictionaryId: row.dictionaryId, versionId: row.versionId };
+  if (!row?.dictionaryId || !row.versionId || !row.entries.length || !options.apiKey) return null;
+
+  const account = accountOf(options.apiKey);
+  const mine = await readAccountDictionary(lang, account);
+  if (mine && (!row.inForce || mine.syncedDigest === row.digest)) {
+    return { dictionaryId: mine.dictionaryId, versionId: mine.versionId };
+  }
+
+  const key = `${lang}:${account}`;
+  const running = bringing.get(key);
+  if (running) return running;
+
+  const inForce = { ...row, dictionaryId: row.dictionaryId, versionId: row.versionId };
+  const work = bringAccountUpToDate(lang, account, inForce, mine, options).finally(() =>
+    bringing.delete(key),
+  );
+  bringing.set(key, work);
+  return work;
 }
 
 /**
@@ -303,10 +447,13 @@ async function createDictionary(
   const name = `wow-voiceover ${stamp}`;
   const locator = await createPronunciationDictionary(name, rules, options);
 
-  console.warn(
-    `ELEVENLABS_DICTIONARY_ID is not set, so a new pronunciation dictionary was created: ` +
-      `${locator.dictionaryId}. Set it to that id so later saves update it in place.`,
-  );
+  // With an id set, this is a collaborator's account that cannot read it, and is not a mistake.
+  if (!process.env.ELEVENLABS_DICTIONARY_ID?.trim()) {
+    console.warn(
+      `ELEVENLABS_DICTIONARY_ID is not set, so a new pronunciation dictionary was created: ` +
+        `${locator.dictionaryId}. Set it to that id so later saves update it in place.`,
+    );
+  }
   return locator;
 }
 
@@ -323,26 +470,25 @@ export async function sync(
   options: ElevenLabsOptions = {},
   lang: Lang = BASE_LANG,
 ): Promise<string | null> {
-  // One rule per spelling the corpus actually uses, because a phoneme rule cannot be
-  // case-insensitive - see toRules. The language's own text, since that is what is spoken.
-  const rules = toRules(
-    entries,
-    await graphemeCasings(entries.filter((e) => !e.alias).map((e) => e.grapheme), lang),
-  );
+  const rules = await rulesFor(entries, lang);
+  const account = options.apiKey ? accountOf(options.apiKey) : null;
+  const mine = account ? await readAccountDictionary(lang, account) : undefined;
 
-  // English's dictionary is named by the environment, because ../wow-lore pins it too;
-  // another language's is whatever its first save created, held in its row.
-  const pinned =
-    lang === BASE_LANG
-      ? process.env.ELEVENLABS_DICTIONARY_ID?.trim()
-      : ((await readRow(lang))?.dictionaryId ?? undefined);
+  // English's dictionary is named by the environment, because ../wow-lore pins it too; another
+  // language's is whatever its first save created, held in its row. Either may be on another
+  // collaborator's account, and then this save goes to this account's own.
+  const pinned = process.env.ELEVENLABS_DICTIONARY_ID?.trim();
+  const ids =
+    lang !== BASE_LANG
+      ? [mine?.dictionaryId, (await readRow(lang))?.dictionaryId]
+      : pinned
+        ? [pinned, mine?.dictionaryId]
+        : [];
 
   let locator: DictionaryLocator;
   let kept: number | null = null;
   try {
-    locator = pinned
-      ? await updateDictionary(pinned, rules, options)
-      : await createDictionary(rules, options, lang);
+    locator = await uploadRules(ids, rules, options, lang);
 
     // Read it back rather than trusting the 200. This is the check whose absence let 134
     // phoneme rules upload as 2 and look like success from every surface this app had.
@@ -377,6 +523,7 @@ export async function sync(
   if (rowCount === 0) {
     return "the lexicon changed while this upload was in flight; the newer save is the one to retry";
   }
+  if (account) await saveAccountDictionary(lang, account, locator, entries);
 
   if (kept !== null && kept < rules.length) {
     return `ElevenLabs kept only ${kept} of ${rules.length} rules. The dictionary is in force, but incomplete.`;

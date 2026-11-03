@@ -670,6 +670,18 @@ immutable and every request still pins one, so generation already in flight is u
 With the id unset the old behaviour returns: a dictionary is created, and its id is logged as
 the value to configure.
 
+**Each ElevenLabs account holds its own copy.** ElevenLabs refuses a request naming a dictionary
+the key's account cannot read, and every collaborator generates on their own key. So the row
+records what the editor last uploaded, and `lexicon_account_dictionary` records, per language and
+per key, where that account holds the lexicon. On a line's way out, an account with no copy adopts
+the row's dictionary if it can read it, and otherwise gets a new one. A copy older than the
+lexicon is brought up to date first, unless the row is `pending`, when every account stays on the
+version it has. An account that cannot get a copy and has no older one fails the line before any
+credit is spent: sending none would voice the language's names wrong with nothing marking those
+takes for a redo. Takes record the id they were sent, so they differ by account.
+`ELEVENLABS_DICTIONARY_ID` still goes first for English, and a save by an account that cannot read
+it goes to that account's own copy, which leaves `../wow-lore`'s dictionary as it was.
+
 #### What the corpus scan found
 
 `tools/scan_corpus_hiccups.py` reads the corpus and lists every token or fragment likely to
