@@ -4,6 +4,7 @@ import { api, errorText } from '../api'
 import { GameIcon } from '../components/Brand'
 import { Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
+import { RestartButton } from '../components/RestartButton'
 import { IconChevron, IconChevronRight, IconDownload, IconGames, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
 import { useStore } from '../store'
 import { ContributorSection } from './ContributorSection'
@@ -297,7 +298,7 @@ function AboutSection(): ReactNode {
         : u.state === 'downloading'
           ? { text: S.banners.updating(Math.round(u.percent)), cls: 'status-muted' }
           : u.state === 'ready'
-            ? { text: S.banners.updateReady(u.version), cls: 'status-ok-text' }
+            ? { text: u.message ?? S.banners.updateReady(u.version), cls: u.message ? 'status-error' : 'status-ok-text' }
             : u.state === 'error'
               ? { text: u.message, cls: 'status-error' }
               : asked
@@ -318,7 +319,7 @@ function AboutSection(): ReactNode {
       </dl>
       <p className="settings-text disclaimer">{S.settings.disclaimer}</p>
       <div className="setting-actions">
-        <button type="button" className="btn" onClick={() => void check()} disabled={busy} aria-busy={busy}>
+        <button type="button" className="btn" onClick={() => void check()} disabled={busy || u.state === 'ready'} aria-busy={busy}>
           {S.settings.checkUpdate}
         </button>
         {u.state === 'available' && u.url && (
@@ -326,6 +327,7 @@ function AboutSection(): ReactNode {
             {S.banners.download}
           </button>
         )}
+        {u.state === 'ready' && <RestartButton className="btn btn-primary" />}
         <button type="button" className="btn" title={S.common.showIn(state.platform)} onClick={() => void api().openLogs()}>
           {S.settings.openLogs}
         </button>

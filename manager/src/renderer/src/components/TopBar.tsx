@@ -9,6 +9,7 @@ import { S } from '../strings'
 import { flavorLook } from '../catalog'
 import { releaseAvailable } from '../contributor'
 import { GameIcon } from './Brand'
+import { RestartButton } from './RestartButton'
 import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
 
 const TABS: { page: Page; label: string }[] = [
@@ -176,8 +177,9 @@ export function Banners(): ReactNode {
         </div>
       )}
       {updater.state === 'ready' && (
-        <div className="banner banner-info" role="status">
-          {S.banners.updateReady(updater.version)}
+        <div className="banner banner-info banner-action" role="status">
+          {updater.message ?? S.banners.updateReady(updater.version)}
+          <RestartButton className="btn btn-sm" />
         </div>
       )}
       {updater.state === 'downloading' && (

@@ -169,6 +169,7 @@ export interface Actions {
   /** Puts the installed version back, over what is there. */
   repair(gameId: string, productId: string): Promise<void>
   checkManagerUpdate(): Promise<void>
+  restartManager(): void
   cancel(jobId: string): void
   dismissJob(key: string): void
   refresh(): Promise<void>
@@ -229,6 +230,7 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
         dispatch({ type: 'updater', state: { state: 'error', message: errorText(e) } })
       }
     },
+    restartManager: () => void api().restartManager(),
     async uninstall(gameId, productId) {
       dispatch({ type: 'dismiss', key: jobKey(gameId, productId) })
       try {
@@ -241,6 +243,10 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
     dismissJob: (key) => dispatch({ type: 'dismiss', key }),
     async refresh() {
       dispatch({ type: 'refreshing', on: true })
+      // Not awaited: its result comes through onUpdater, and a stalled feed must not hold back the catalog.
+      void api()
+        .checkManagerUpdate(true)
+        .catch(() => undefined)
       try {
         const [catalog] = await Promise.all([
           api().refreshCatalog(true),

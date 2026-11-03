@@ -4,9 +4,9 @@
 //
 // Windows (NSIS installer), macOS (signed and notarized, updated from the zip) and a Linux AppImage
 // use electron-updater's generic provider: it downloads the update and installs it when the
-// manager quits. Outside an AppImage on Linux (the tar.gz, deb and rpm) the manager does not use
-// electron-updater at all: it reads the feed's `latest-linux.yml`, compares the version and reports
-// the page to download from. Does nothing when the app is not packaged or the player switched it
+// manager quits, or at once when the player presses Restart. Outside an AppImage on Linux (the
+// tar.gz, deb and rpm) the manager does not use electron-updater at all: it reads the feed's
+// `latest-linux.yml`, compares the version and reports the page to download from. Does nothing when the app is not packaged or the player switched it
 // off; it never throws.
 import { compareVersions } from '../shared/version'
 import type { UpdaterState } from '../shared/api'
@@ -43,6 +43,7 @@ export interface UpdaterLike {
   logger: unknown
   on(event: string, listener: (arg: never) => void): unknown
   checkForUpdates(): Promise<unknown>
+  quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void
 }
 
 /** `auto`: electron-updater downloads and installs. `manual`: only tell the player where to get the new version. */
@@ -102,7 +103,10 @@ export class ManagerUpdater {
   /** A failed check is only shown when the player asked for it (or a download had begun); otherwise it is logged and the state goes back to idle. */
   private failed(reason: unknown): void {
     log('Manager update failed:', reason)
-    if (this.userTriggered || this.last.state === 'downloading') {
+    // check() never runs once an update is ready, so this is the install failing; the download is still good.
+    if (this.last.state === 'ready') {
+      this.publish({ state: 'ready', version: this.last.version, message: 'Could not install the update. Try again, or close the manager and open it again.' })
+    } else if (this.userTriggered || this.last.state === 'downloading') {
       this.publish({ state: 'error', message: 'Could not check for a newer manager. Check your connection and try again.' })
     } else this.publish({ state: 'idle' })
   }
@@ -143,7 +147,14 @@ export class ManagerUpdater {
     else this.publish({ state: 'idle' })
   }
 
+  /** A second check would start the download again, and a failed one would take Restart away from an update that is ready. */
+  private checkWouldInterfere(): boolean {
+    const s = this.last
+    return s.state === 'checking' || s.state === 'downloading' || s.state === 'ready' || (s.state === 'available' && !s.url)
+  }
+
   private async check(byPlayer: boolean): Promise<void> {
+    if (this.checkWouldInterfere()) return
     this.userTriggered = byPlayer
     try {
       if (this.mode === 'manual') return await this.checkManually()
@@ -155,9 +166,13 @@ export class ManagerUpdater {
     }
   }
 
-  /** Called once at start: checks when the player has not switched it off and the app is installed. */
   async start(): Promise<void> {
     this.publish({ state: 'idle' })
+    await this.checkInBackground()
+  }
+
+  /** Checks when the player has not switched it off and the app is installed; failures are only logged. */
+  async checkInBackground(): Promise<void> {
     if (!this.opts.isPackaged || !this.opts.autoUpdateManager()) return
     await this.check(false)
   }
@@ -170,6 +185,16 @@ export class ManagerUpdater {
     }
     await this.check(true)
   }
+
+  restart(): void {
+    if (this.last.state !== 'ready' || !this.updater) return
+    try {
+      // Silent: otherwise Windows shows the installer's wizard. Force-run: otherwise an AppImage does not start again.
+      this.updater.quitAndInstall(true, true)
+    } catch (err) {
+      this.failed(err)
+    }
+  }
 }
 
 let current: ManagerUpdater | null = null
@@ -179,6 +204,10 @@ export async function startUpdater(options: UpdaterOptions): Promise<void> {
   await current.start()
 }
 
-export async function checkForManagerUpdate(): Promise<void> {
-  await current?.checkNow()
+export async function checkForManagerUpdate(background: boolean): Promise<void> {
+  await (background ? current?.checkInBackground() : current?.checkNow())
+}
+
+export function restartToUpdateManager(): void {
+  current?.restart()
 }

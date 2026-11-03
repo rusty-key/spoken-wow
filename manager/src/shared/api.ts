@@ -19,6 +19,7 @@ export const CHANNELS = {
   openExternal: 'manager:open-external',
   openLogs: 'manager:open-logs',
   checkManagerUpdate: 'manager:updater:check',
+  restartManager: 'manager:updater:restart',
   clearDownloads: 'manager:downloads:clear',
   shareNow: 'manager:sharing:send',
   resetShareId: 'manager:sharing:reset-id',
@@ -68,7 +69,8 @@ export type UpdaterState =
   /** `url`: where to download it, when this system cannot update the manager by itself (macOS without signing). */
   | { state: 'available'; version: string; url?: string }
   | { state: 'downloading'; percent: number }
-  | { state: 'ready'; version: string }
+  /** `message`: installing it failed; pressing Restart again may still work. */
+  | { state: 'ready'; version: string; message?: string }
   | { state: 'error'; message: string }
 
 /** What a store form sends. A token is write-only: the window can set it but never read it back. */
@@ -107,8 +109,13 @@ export interface ManagerApi {
   openPath(path: string): Promise<void>
   openExternal(url: string): Promise<void>
   openLogs(): Promise<void>
-  /** Asks for a newer manager now. Progress and failures come through `onUpdater`. */
-  checkManagerUpdate(): Promise<void>
+  /**
+   * Asks for a newer manager now. Progress and failures come through `onUpdater`.
+   * `background`: respects the auto-update setting and only logs a failure.
+   */
+  checkManagerUpdate(background?: boolean): Promise<void>
+  /** Installs the ready update and starts the new version. Does nothing while a job runs. */
+  restartManager(): Promise<void>
   /** Deletes the downloaded zips (and half-finished ones) kept in the downloads folder. Refused while a job runs. */
   clearDownloads(): Promise<ClearDownloadsResult>
   /** Sends the collected lines now. Refused while Sharing is off. */

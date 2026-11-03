@@ -34,7 +34,9 @@ export const S = {
     updateReady: (v: string) => `Update ready: restart to use ${v}`,
     updating: (pct: number) => `Downloading a manager update: ${pct}%`,
     updateAvailable: (v: string) => `Version ${v} is available.`,
-    download: 'Download'
+    download: 'Download',
+    restart: 'Restart',
+    restartBusy: 'Available when the running downloads and installs finish'
   },
   common: {
     loading: 'Loading',

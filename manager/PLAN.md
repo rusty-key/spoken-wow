@@ -240,8 +240,9 @@ system), so the tests run all three on one machine.
 
 Windows (NSIS), macOS (from the zip; the build is signed, which the Mac updater requires) and a
 Linux AppImage (the `APPIMAGE` variable is set) download the update and install it when the
-manager quits. Linux outside an AppImage (the tar.gz) has nothing to download into, and
-electron-updater does not even check there. There the manager does not use electron-updater: it
+manager quits, or at once when the player presses Restart. The top bar's refresh also checks for a
+new manager, unless the player switched updates off; Settings checks either way. Linux outside an
+AppImage (the tar.gz) has nothing to download into, and electron-updater does not even check there. There the manager does not use electron-updater: it
 fetches `latest-linux.yml` from the feed, compares its
 `version:` with its own, and when the feed is newer shows "available" with a link to
 `https://github.com/rusty-key/spoken-wow/releases/tag/manager-latest`. Failures are silent at start
