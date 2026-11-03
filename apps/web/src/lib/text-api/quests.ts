@@ -12,7 +12,7 @@ import { momentOf, momentSql, answersQuestMomentSql } from "@/lib/contributions/
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
-import { saveQuestText } from "@/lib/quests/text";
+import { restoreQuestText, retireQuestText, saveQuestText } from "@/lib/quests/text";
 
 import { BadCursor, decodeCursor, encodeCursor, keyOf, type SectionApi, type TextItem } from "./types";
 
@@ -201,4 +201,10 @@ export const quests: SectionApi = {
     );
     return row?.version ?? null;
   },
+
+  async restore(lang, id, variant, version, by) {
+    await restoreQuestText(id, variant, lang, version, by);
+  },
+
+  retire: (lang, id, variant, version, by) => retireQuestText(id, variant, lang, version, by),
 };

@@ -2,7 +2,7 @@
 import "server-only";
 
 import { catalogue, type BossEntry } from "@/lib/bosses/catalogue";
-import { parseBossLineId, saveStory } from "@/lib/bosses/story";
+import { parseBossLineId, restoreStory, retireStory, saveStory } from "@/lib/bosses/story";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -81,4 +81,10 @@ export const bosses: SectionApi = {
     );
     return row?.version ?? null;
   },
+
+  async restore(lang, id, _variant, version, by) {
+    await restoreStory(id, version, lang, by);
+  },
+
+  retire: (lang, id, _variant, version, by) => retireStory(id, version, lang, by),
 };

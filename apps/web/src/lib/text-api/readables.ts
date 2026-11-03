@@ -9,7 +9,7 @@ import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { catalogue, type BookPage } from "@/lib/readables/catalogue";
 import { ownerEntityKind, type OwnerKind } from "@/lib/readables/filters";
-import { saveBookText } from "@/lib/readables/text";
+import { restoreBookText, retireBookText, saveBookText } from "@/lib/readables/text";
 
 import { nameVersionOf, nameVersions, pageOf } from "./catalogue-page";
 import { keyOf, type NameTarget, type SectionApi, type TextItem } from "./types";
@@ -83,4 +83,10 @@ export const readables: SectionApi = {
     );
     return row?.version ?? null;
   },
+
+  async restore(lang, id, _variant, version, by) {
+    await restoreBookText(id, version, lang, by);
+  },
+
+  retire: (lang, id, _variant, version, by) => retireBookText(id, version, lang, by),
 };

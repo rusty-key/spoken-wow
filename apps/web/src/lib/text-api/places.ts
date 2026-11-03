@@ -4,7 +4,7 @@ import "server-only";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { catalogue, type CatalogueEntry } from "@/lib/places/catalogue";
-import { saveLore } from "@/lib/places/lore";
+import { restoreLore, retireLore, saveLore } from "@/lib/places/lore";
 
 import { nameVersionOf, nameVersions, pageOf } from "./catalogue-page";
 import { keyOf, type NameTarget, type SectionApi, type TextItem } from "./types";
@@ -91,4 +91,10 @@ export const places: SectionApi = {
   async version(lang, id) {
     return (await textVersions(lang, [id])).get(id)?.version ?? null;
   },
+
+  async restore(lang, id, _variant, version, by) {
+    await restoreLore(id, version, lang, by);
+  },
+
+  retire: (lang, id, _variant, version, by) => retireLore(id, version, lang, by),
 };

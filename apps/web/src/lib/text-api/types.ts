@@ -53,6 +53,10 @@ export type SectionApi = {
   nameTarget(lang: Lang, id: string, variant: number): Promise<NameTarget | null>;
   /** The current text version. Asked per item in a run, so it must not read a catalogue. */
   version(lang: Lang, id: string, variant: number): Promise<number | null>;
+  /** Moves the live text back to `version`. */
+  restore(lang: Lang, id: string, variant: number, version: number, by: string): Promise<void>;
+  /** Takes back a first translation, so the line has no text in the language again. */
+  retire(lang: Lang, id: string, variant: number, version: number, by: string): Promise<void>;
 };
 
 export function keyOf(id: string, variant: number): string {
