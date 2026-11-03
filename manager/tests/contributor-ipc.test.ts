@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 
 const handlers = new Map<string, (...args: unknown[]) => unknown>()
@@ -44,8 +45,9 @@ describe('contributor IPC', () => {
       ready: Promise.resolve(),
       contributor: { signIn: async () => Promise.reject(new Error('The site answered HTTP 500.')) }
     }
-    registerIpc(service as never, { indexHtml: '/app/index.html' }, () => ({ state: 'idle' }))
-    const frame = { url: 'file:///app/index.html' }
+    const indexHtml = '/app/index.html'
+    registerIpc(service as never, { indexHtml }, () => ({ state: 'idle' }))
+    const frame = { url: pathToFileURL(indexHtml).href }
     const event = { senderFrame: frame, sender: { mainFrame: frame } }
     await expect(handlers.get(CHANNELS.contributorSignIn)!(event, 'a@b.c', secret)).rejects.toThrow('HTTP 500')
     expect(logged.length).toBeGreaterThan(0)
