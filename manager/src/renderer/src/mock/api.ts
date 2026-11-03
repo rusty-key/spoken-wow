@@ -2,8 +2,8 @@
 // `npm run dev:web`). Address options: ?offline=1, ?empty=1 (no games), ?empty=packs (an empty community
 // list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered).
 import type { AddGameResult, InstallOptions, ManagerApi, UpdaterState } from '@shared/api'
-import { PRODUCTS, SPOKEN_FOLDERS, productById } from '@shared/products'
-import type { Catalog, CommunityCatalog, CommunityPack, GameInstall, JobProgress, Product, ProductStatus, ReleaseInfo, Settings, SharingStatus, Snapshot } from '@shared/types'
+import { LANGUAGES, PRODUCTS, SPOKEN_FOLDERS, productById } from '@shared/products'
+import type { Catalog, CommunityCatalog, CommunityPack, ContributorView, GameInstall, JobProgress, Product, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, communityFolder } from '@shared/types'
 import { compareVersions } from '@shared/version'
 
@@ -289,6 +289,19 @@ export function createMockApi(): ManagerApi {
   let maximized = false
   const running = new Map<string, { timer: number; cancel: () => void }>()
   let seq = 0
+  // Signed in as an admin of every language, with one store set up, so the screens show without a site.
+  let contributor: ContributorView = {
+    account: { email: 'admin@example.com', adminLangs: LANGUAGES.map((l) => l.code) },
+    config: { projects: { SpokenQuestsAudio_deDE: '1234567' }, repo: 'example/spoken-packs', gameVersions: '1.15.9 2.5.6 1.60.1', hasCfToken: true, hasGhToken: false },
+    canStoreSecrets: true,
+    lastRun: null
+  }
+  const contributorListeners = new Set<(v: ContributorView) => void>()
+  const setContributor = (next: ContributorView): ContributorView => {
+    contributor = next
+    contributorListeners.forEach((l) => l(next))
+    return next
+  }
   let cleared = false
   let pick = 0
   const failedOnce = new Set<string>()
@@ -404,6 +417,20 @@ export function createMockApi(): ManagerApi {
     return jobId
   }
 
+  const contributorRows = (lang: string): ReleaseRow[] => {
+    const rows: [string, ReleaseRow['state'], Partial<ReleaseRow>][] = [
+      ['SpokenQuestsAudio', 'unreleased', {}],
+      ['SpokenQuestsAllianceAudio', 'awaiting', { version: '1.4.0' }],
+      ['SpokenQuestsHordeAudio', 'live', { version: '1.4.0', link: 'https://www.curseforge.com/wow/addons/example' }],
+      ['SpokenQuestsSharedAudio', 'unchecked', { version: '1.4.0' }],
+      ['SpokenGossipAudio', 'not-installed', {}],
+      ['SpokenPlacesAudio', 'update-first', { version: '1.2.0' }],
+      ['SpokenReadablesAudio', 'linked', { version: '1.0.0' }],
+      ['SpokenBossesAudio', 'no-project', { version: '1.0.0' }]
+    ]
+    return rows.map(([name, state, extra]) => ({ folder: `${name}_${lang}`, state, ...extra }))
+  }
+
   const api: ManagerApi = {
     async snapshot(): Promise<Snapshot> {
       await sleep(250)
@@ -507,6 +534,57 @@ export function createMockApi(): ManagerApi {
     async resetShareId() {
       console.info('[mock] resetShareId')
     },
+    async contributorView() {
+      return contributor
+    },
+    async contributorSignIn(email) {
+      return setContributor({ ...contributor, account: { email, adminLangs: LANGUAGES.map((l) => l.code) } })
+    },
+    async contributorSignOut() {
+      return setContributor({ ...contributor, account: null })
+    },
+    async contributorSaveStore(input) {
+      const { config } = contributor
+      return setContributor({
+        ...contributor,
+        config: {
+          ...config,
+          projects: input.projects ?? config.projects,
+          repo: input.repo ?? config.repo,
+          gameVersions: input.gameVersions ?? config.gameVersions,
+          ...(input.store === 'curseforge' && input.token !== undefined ? { hasCfToken: input.token !== '' } : {}),
+          ...(input.store === 'github' && input.token !== undefined ? { hasGhToken: input.token !== '' } : {})
+        }
+      })
+    },
+    async contributorRows(_gameId, lang) {
+      await sleep(200)
+      return contributorRows(lang)
+    },
+    async contributorPublish(gameId, lang, store, only) {
+      const jobId = `job-${++seq}`
+      const folders = only ? [only] : contributorRows(lang).filter((r) => r.state === 'awaiting').map((r) => r.folder)
+      const base: JobProgress = { jobId, gameId, productId: `publish/${store}`, action: 'publish', phase: 'queued', received: 0, total: folders.length, bytesPerSecond: 0 }
+      emit(base)
+      let done = 0
+      const handle = {
+        timer: 0,
+        cancel: () => {
+          window.clearInterval(handle.timer)
+          running.delete(jobId)
+          emit({ ...base, phase: 'cancelled', received: done })
+        }
+      }
+      running.set(jobId, handle)
+      handle.timer = window.setInterval(() => {
+        done++
+        if (done < folders.length) return void emit({ ...base, phase: 'installing', received: done, message: `${done}/${folders.length} ${folders[done]}: uploading` })
+        window.clearInterval(handle.timer)
+        running.delete(jobId)
+        emit({ ...base, phase: 'done', received: done })
+      }, 900)
+      return jobId
+    },
     async windowMinimize() {
       console.info('[mock] windowMinimize')
     },
@@ -519,6 +597,10 @@ export function createMockApi(): ManagerApi {
     },
     async windowIsMaximized() {
       return maximized
+    },
+    onContributorChanged(l) {
+      contributorListeners.add(l)
+      return () => void contributorListeners.delete(l)
     },
     onJob(l) {
       jobListeners.add(l)
