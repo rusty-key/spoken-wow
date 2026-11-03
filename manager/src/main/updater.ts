@@ -5,8 +5,8 @@
 // Windows (NSIS installer), macOS (signed and notarized, updated from the zip) and a Linux AppImage
 // use electron-updater's generic provider: it downloads the update and installs it when the
 // manager quits, or at once when the player presses Restart. Outside an AppImage on Linux (the
-// tar.gz, deb and rpm) the manager does not use electron-updater at all: it reads the feed's `latest-linux.yml`, compares the version and reports
-// the page to download from. Does nothing when the app is not packaged or the player switched it
+// tar.gz, deb and rpm) the manager does not use electron-updater at all: it reads the feed's
+// `latest-linux.yml`, compares the version and reports the page to download from. Does nothing when the app is not packaged or the player switched it
 // off; it never throws.
 import { compareVersions } from '../shared/version'
 import type { UpdaterState } from '../shared/api'
@@ -103,7 +103,7 @@ export class ManagerUpdater {
   /** A failed check is only shown when the player asked for it (or a download had begun); otherwise it is logged and the state goes back to idle. */
   private failed(reason: unknown): void {
     log('Manager update failed:', reason)
-    // check() never runs once an update is ready, so this is the install failing. The download is still good: Restart stays.
+    // check() never runs once an update is ready, so this is the install failing; the download is still good.
     if (this.last.state === 'ready') {
       this.publish({ state: 'ready', version: this.last.version, message: 'Could not install the update. Try again, or close the manager and open it again.' })
     } else if (this.userTriggered || this.last.state === 'downloading') {
@@ -166,7 +166,6 @@ export class ManagerUpdater {
     }
   }
 
-  /** Called once at start. */
   async start(): Promise<void> {
     this.publish({ state: 'idle' })
     await this.checkInBackground()
@@ -187,7 +186,6 @@ export class ManagerUpdater {
     await this.check(true)
   }
 
-  /** Installs the update that is ready and starts the new version. */
   restart(): void {
     if (this.last.state !== 'ready' || !this.updater) return
     try {

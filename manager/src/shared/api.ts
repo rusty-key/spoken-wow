@@ -111,10 +111,10 @@ export interface ManagerApi {
   openLogs(): Promise<void>
   /**
    * Asks for a newer manager now. Progress and failures come through `onUpdater`.
-   * `background`: as part of a wider refresh, so it respects the auto-update setting and a failure is only logged.
+   * `background`: respects the auto-update setting and only logs a failure.
    */
   checkManagerUpdate(background?: boolean): Promise<void>
-  /** Installs the update that is ready and starts the new version. Does nothing while a job runs. */
+  /** Installs the ready update and starts the new version. Does nothing while a job runs. */
   restartManager(): Promise<void>
   /** Deletes the downloaded zips (and half-finished ones) kept in the downloads folder. Refused while a job runs. */
   clearDownloads(): Promise<ClearDownloadsResult>
