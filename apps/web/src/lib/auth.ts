@@ -24,8 +24,8 @@ export const auth = betterAuth({
   // Better Auth refuses a sign-in whose Origin does not match baseURL, and `next dev` moves
   // to 3001 whenever something else holds 3000 -- so the login form answers "invalid origin"
   // for a port nobody chose. Production keeps the strict check: this list is what stops a
-  // page on another origin posting credentials here, and widening it there would be handing
-  // that protection away to save an env var.
+  // page on another origin posting credentials here. Its one entry is the site's old address,
+  // which installed Managers still sign in through and send as their Origin.
   //
   // Wildcard strings rather than regexes: this version matches patterns with * and ?
   // (dist/auth/trusted-origins.mjs) and its options type takes string[]. A plain property
@@ -34,7 +34,7 @@ export const auth = betterAuth({
   // every caller.
   trustedOrigins:
     process.env.NODE_ENV === "production"
-      ? []
+      ? ["https://spoken.rusty.one"]
       : ["http://localhost:*", "http://127.0.0.1:*"],
   plugins: [
     adminPlugin({

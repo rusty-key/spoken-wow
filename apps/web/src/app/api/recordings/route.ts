@@ -10,7 +10,7 @@
  *
  * One file per POST. The bulk drop zone sends them one after another, so a 25 MiB cap holds
  * per request and one bad file fails alone. Buffered through formData() as the voice samples
- * route is; nginx's limit for /api/recordings/ is set to match (deploy/web/nginx-spoken.conf).
+ * route is; nginx's limit for /api/recordings/ is set to match (deploy/web/nginx-spoken-api.conf).
  */
 import { requireIn } from "@/lib/generation/authz";
 import { MAX_RECORDING_BYTES } from "@/lib/recordings/match";

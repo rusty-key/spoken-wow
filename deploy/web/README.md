@@ -6,7 +6,9 @@ deploying on every push to `master` that touches `apps/web/`, `pipelines/`,
 
 It replaced two separate deployments, whose names are now redirect vhosts pointing here —
 see `nginx-voiceover-redirect.conf` and `nginx-lore-redirect.conf`, which exist so that
-every address the addons have ever emitted still resolves.
+every address the addons have ever emitted still resolves. `spoken.rusty.one` stays up the
+same way (`nginx-spoken-rusty-redirect.conf`): its pages redirect and its API is proxied,
+because installed Managers refuse redirects.
 
 ```
 /srv/spoken/
@@ -105,7 +107,7 @@ pm2 environment. They are secrets, and that file is the only place they exist:
 | `DATABASE_URL` | `postgres://spoken:…@127.0.0.1:5432/spoken` | localhost only. The owner: `migrate.sh`, backups and scripts use it |
 | `APP_DATABASE_URL` | `postgres://spoken_app:…@127.0.0.1:5432/spoken` | what the app logs in as; `ecosystem.config.js` hands it to the app as its `DATABASE_URL`. Row-level security binds it, so a query that misses its team reads nothing. Unset, the app uses the owner's |
 | `BETTER_AUTH_SECRET` | 32 random bytes | signs session cookies; rotating it signs everyone out |
-| `BETTER_AUTH_URL` | `https://spoken.rusty.one` | **must match the public origin exactly** |
+| `BETTER_AUTH_URL` | `https://spoken.quest` | **must match the public origin exactly** |
 | `SPOKEN_SECRET_KEY` | 32 bytes, base64 | the master key stored ElevenLabs credentials are sealed under |
 | `ELEVENLABS_DICTIONARY_ID` | an id from your ElevenLabs account | the pronunciation dictionary `/lexicon` updates in place. **Must not change**: unset, every save creates a new one |
 
@@ -145,7 +147,7 @@ cat > /srv/spoken/shared/app.env <<EOF
 DATABASE_URL=postgres://spoken:$PGPW@127.0.0.1:5432/spoken
 APP_DATABASE_URL=postgres://spoken_app:$APPPW@127.0.0.1:5432/spoken
 BETTER_AUTH_SECRET=$(openssl rand -base64 32)
-BETTER_AUTH_URL=https://spoken.rusty.one
+BETTER_AUTH_URL=https://spoken.quest
 SPOKEN_SECRET_KEY=$(openssl rand -base64 32)   # once, and never again: see above
 ELEVENLABS_DICTIONARY_ID=<the dictionary id from your ElevenLabs account>
 EOF
@@ -167,19 +169,21 @@ ssh -L 3002:127.0.0.1:3002 "$SPOKEN_DROPLET"     # then http://127.0.0.1:3002
 ### Checking it
 
 ```bash
-curl -fsS 'https://spoken.rusty.one/api/quests/search?q=thrall&filter=npc' | grep Thrall
-curl -fsS 'https://spoken.rusty.one/api/places/search' | head -c 200
-curl -sI -H 'Range: bytes=0-1' 'https://spoken.rusty.one/api/quests/audio/quests/5-accept.mp3' | head -1   # 206
-curl -sI 'https://spoken.rusty.one/api/places/audio/1411/zone.mp3' | head -1
+curl -fsS 'https://spoken.quest/api/quests/search?q=thrall&filter=npc' | grep Thrall
+curl -fsS 'https://spoken.quest/api/places/search' | head -c 200
+curl -sI -H 'Range: bytes=0-1' 'https://spoken.quest/api/quests/audio/quests/5-accept.mp3' | head -1   # 206
+curl -sI 'https://spoken.quest/api/places/audio/1411/zone.mp3' | head -1
 
 # every address shape the two addons have ever emitted
+curl -sI 'https://spoken.rusty.one/quests' | grep -i location                 # https://spoken.quest/quests
+curl -s -o /dev/null -w '%{http_code}\n' 'https://spoken.rusty.one/api/places/search'  # 200, no redirect
 curl -sI 'https://voiceover.rusty.one/r/quest/5/accept'      | grep -i location  # /quests/r/quest/5/accept
 curl -sI 'https://lore.rusty.one/enUS/r/1411/razor-hill'     | grep -i location  # /places/r/1411/razor-hill
 curl -sI 'https://lore.rusty.one/r/1411/razor-hill'          | grep -i location  # the same
 curl -sI 'https://lore.rusty.one/deDE/r/1411/razor-hill'     | grep -i location  # /deDE/places/r/1411/razor-hill
 curl -sI 'https://lore.rusty.one/?q=razor'                   | grep -i location  # /places?q=razor
 curl -sI 'https://voiceover.rusty.one/?q=thrall'             | grep -i location  # /quests?q=thrall
-curl -sI 'https://spoken.rusty.one/downloads/SpokenQuestsAudioComplete-latest.zip' | grep -i location  # the meta addon's page
+curl -sI 'https://spoken.quest/downloads/SpokenQuestsAudioComplete-latest.zip' | grep -i location  # the meta addon's page
 ```
 
 Then sign in and regenerate one line in each section with a key set on `/profile`.

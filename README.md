@@ -106,7 +106,7 @@ no keys bound.
 
 ```
 addons/      Spoken, its modules, and the sound packs
-apps/web     the site, spoken.rusty.one: quests, gossip, zones and books sections,
+apps/web     the site, spoken.quest: quests, gossip, zones and books sections,
              per-line reports and /contribute for text the corpus has none of yet
 pipelines/   corpus extraction and voiceline generation
              quests/ is Python, zones/ and books/ are Node, lib/ is shared
