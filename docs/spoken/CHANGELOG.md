@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.8.1 — 2026-11-03
 
 - **Spoken's website is now [spoken.quest](https://spoken.quest).** Report and Contribute links and
   the Settings website link use it. Links from older versions still work.
