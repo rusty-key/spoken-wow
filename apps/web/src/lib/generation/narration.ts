@@ -98,7 +98,7 @@ export function bareDirection(tag: string): string {
 }
 
 /** A lowercase bracketed span: a sound the NPC makes, not the game narrating. */
-const SOUND = /<([a-z][^<>]*)>/g;
+export const SOUND = /<([a-z][^<>]*)>/g;
 
 /**
  * The NPC's own sounds, rewritten into ElevenLabs' audio-tag syntax.
@@ -167,6 +167,14 @@ export function voiceAfter(text: string, voice?: string): string | undefined {
   let current = voice;
   for (const piece of text.split(CUT)) current = markedVoice(piece) ?? current;
   return current;
+}
+
+/**
+ * Who speaks a segment. By name, because narrator-male is not a race-gender-flavor slot and so
+ * has no corpus line to read it off, and a marked slot has no corpus line either.
+ */
+export function segmentSlot(part: Segment, lineVoice: string): string {
+  return part.speaker === "narrator" ? NARRATOR_VOICE : (part.voice ?? lineVoice);
 }
 
 export function segments(text: string): Segment[] {

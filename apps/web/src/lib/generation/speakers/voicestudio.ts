@@ -9,38 +9,28 @@
 import "server-only";
 
 import { parseCloneName } from "@/lib/voices/clone-name";
-import { isVoiceSlot } from "@/lib/voices/slots";
+import { loadRoster } from "@/lib/voices/roster-store";
 import type { Lang } from "@/lib/lang";
 
-import { failure, classifyUpstream } from "../errors";
+import { failure, classifyUpstream, type Failure } from "../errors";
 import { stitchMp3 } from "../stitch";
-import type { VoiceStudioConnection } from "../voicestudio-connection";
-import { applyVoiceStudioLexicon } from "../voicestudio-lexicon";
-import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
+import { decodeConnection, type VoiceStudioConnection } from "../voicestudio-connection";
+import { voiceStudioLexicon } from "../voicestudio-lexicon";
+import type { Speaker, SpeakRequest, Spoken, Turn, Voices } from "./speaker";
 
-export const VOICESTUDIO_OUTPUT_FORMAT = "mp3";
-export const VOICESTUDIO_TURN_PAUSE_SEC = 0.25;
+const OUTPUT_FORMAT = "mp3";
+const TURN_PAUSE_SEC = 0.25;
 
 // A listing that takes longer than this is a service that is down or asleep, and /voices and
 // the status route wait on it. Speech gets longer: a cold model can take a while on a turn.
 const LIST_TIMEOUT_MS = 10_000;
 const SPEECH_TIMEOUT_MS = 180_000;
 
-export type VoiceStudioOptions = Pick<VoiceStudioConnection, "baseUrl" | "model"> &
-  Partial<Pick<VoiceStudioConnection, "apiKey">> & {
-    fetchImpl?: typeof globalThis.fetch;
-  };
-
+type Service = Pick<VoiceStudioConnection, "baseUrl" | "apiKey" | "model">;
+type Fetch = typeof globalThis.fetch;
 type VoiceProfile = { id?: string; voice_id?: string; name?: string };
 
-function config(options: VoiceStudioOptions) {
-  return {
-    apiKey: options.apiKey ?? "",
-    baseUrl: options.baseUrl,
-    modelId: options.model,
-    fetchImpl: options.fetchImpl ?? globalThis.fetch,
-  };
-}
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 // No redirects: the URL was checked when it was saved, and a redirect is how a public host
 // would hand the request on to one that was not.
@@ -48,8 +38,19 @@ function request(timeoutMs: number): Pick<RequestInit, "redirect" | "signal" | "
   return { redirect: "error", signal: AbortSignal.timeout(timeoutMs), cache: "no-store" };
 }
 
-async function fetchProfiles(options: VoiceStudioOptions): Promise<VoiceProfile[]> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
+function headers(apiKey: string, json = false): Record<string, string> {
+  return {
+    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    ...(json ? { "Content-Type": "application/json" } : {}),
+  };
+}
+
+async function upstreamFailure(response: Response, what: string) {
+  const raw = await response.text().catch(() => "");
+  return classifyUpstream(response.status, raw, what);
+}
+
+async function fetchProfiles({ baseUrl, apiKey }: Service, fetchImpl: Fetch): Promise<VoiceProfile[]> {
   let response: Response;
   try {
     response = await fetchImpl(`${baseUrl}/v1/audio/voices`, {
@@ -57,7 +58,7 @@ async function fetchProfiles(options: VoiceStudioOptions): Promise<VoiceProfile[
       ...request(LIST_TIMEOUT_MS),
     });
   } catch (error) {
-    throw new Error(`could not reach VoiceStudio: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`could not reach VoiceStudio: ${message(error)}`);
   }
   if (!response.ok) {
     const issue = await upstreamFailure(response, "listing VoiceStudio voices");
@@ -73,33 +74,21 @@ async function fetchProfiles(options: VoiceStudioOptions): Promise<VoiceProfile[
 /** Whether a connection answers, for /profile before it stores one. Throws why not. */
 export async function checkVoiceStudio(
   connection: VoiceStudioConnection,
-  fetchImpl?: typeof globalThis.fetch,
+  fetchImpl: Fetch = globalThis.fetch,
 ): Promise<void> {
-  await fetchProfiles({ ...connection, fetchImpl });
+  await fetchProfiles(connection, fetchImpl);
 }
 
-function headers(apiKey: string, json = false): Record<string, string> {
-  return {
-    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-    ...(json ? { "Content-Type": "application/json" } : {}),
-  };
-}
-
-async function upstreamFailure(response: Response, what: string) {
-  const raw = await response.text().catch(() => "");
-  return classifyUpstream(response.status, raw, what);
-}
-
-async function listProfiles(options: VoiceStudioOptions, lang: Lang): Promise<ReadonlyMap<string, string>> {
+async function listProfiles(service: Service, fetchImpl: Fetch, lang: Lang): Promise<ReadonlyMap<string, string>> {
+  const [profiles, roster] = await Promise.all([fetchProfiles(service, fetchImpl), loadRoster()]);
+  const slots = new Set(roster.voiceNames);
   const found = new Map<string, string>();
-  for (const profile of await fetchProfiles(options)) {
+  for (const profile of profiles) {
     const name = profile.name;
     const id = profile.voice_id ?? profile.id ?? name;
     if (!name || !id) continue;
     const clone = parseCloneName(name);
-    if (clone?.lang === lang && (await isVoiceSlot(clone.voice))) {
-      found.set(clone.voice, id);
-    }
+    if (clone?.lang === lang && slots.has(clone.voice)) found.set(clone.voice, id);
   }
   return found;
 }
@@ -110,18 +99,55 @@ function instruction(text: string | undefined): string | undefined {
   return plain || undefined;
 }
 
-export function voiceStudioSpeaker(options: VoiceStudioOptions): Speaker {
-  const configForSpeaker = config(options);
+async function speakTurn(
+  { baseUrl, apiKey, model }: Service,
+  fetchImpl: Fetch,
+  turn: Turn,
+): Promise<{ ok: true; audio: Buffer } | { ok: false; failure: Failure }> {
+  const refused = (why: string) => ({ ok: false as const, failure: failure("upstream", why) });
+
+  let response: Response;
+  try {
+    response = await fetchImpl(`${baseUrl}/v1/audio/speech`, {
+      method: "POST",
+      headers: headers(apiKey, true),
+      ...request(SPEECH_TIMEOUT_MS),
+      body: JSON.stringify({
+        model,
+        voice: turn.voiceId,
+        input: turn.text,
+        response_format: OUTPUT_FORMAT,
+        instructions: instruction(turn.instructions),
+      }),
+    });
+  } catch (error) {
+    return refused(`could not reach VoiceStudio: ${message(error)}`);
+  }
+
+  if (!response.ok) return { ok: false, failure: await upstreamFailure(response, "generating the line") };
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().startsWith("audio/")) {
+    const raw = await response.text().catch(() => "");
+    return refused(
+      `VoiceStudio answered 200 with ${contentType || "no content type"} rather than audio: ${raw.slice(0, 200)}`,
+    );
+  }
+  const audio = Buffer.from(await response.arrayBuffer());
+  if (audio.length === 0) return refused("VoiceStudio returned an empty response");
+  return { ok: true, audio };
+}
+
+export function voiceStudioSpeaker(service: Service, fetchImpl: Fetch = globalThis.fetch): Speaker {
   return {
     provider: "voicestudio",
-    modelId: configForSpeaker.modelId,
+    modelId: service.model,
     seedStrategy: "none",
 
     async voices(lang: Lang): Promise<Voices> {
       try {
-        return { ids: await listProfiles(options, lang), error: null };
+        return { ids: await listProfiles(service, fetchImpl, lang), error: null };
       } catch (error) {
-        return { ids: new Map(), error: error instanceof Error ? error.message : String(error) };
+        return { ids: new Map(), error: message(error) };
       }
     },
 
@@ -134,56 +160,17 @@ export function voiceStudioSpeaker(options: VoiceStudioOptions): Speaker {
         return { ok: false, failure: failure("bad-request", "VoiceStudio received no speech turns") };
       }
 
-      const { apiKey, baseUrl, modelId, fetchImpl } = configForSpeaker;
-      const lexicon = await applyVoiceStudioLexiconToTurns(turns, lang);
+      const lexicon = await voiceStudioLexicon(lang);
       const parts: Buffer[] = [];
-      for (const turn of lexicon.turns) {
-        let response: Response;
-        try {
-          response = await fetchImpl(`${baseUrl}/v1/audio/speech`, {
-            method: "POST",
-            headers: headers(apiKey, true),
-            ...request(SPEECH_TIMEOUT_MS),
-            body: JSON.stringify({
-              model: modelId,
-              voice: turn.voiceId,
-              input: turn.text,
-              response_format: VOICESTUDIO_OUTPUT_FORMAT,
-              ...(instruction(turn.instructions) ? { instructions: instruction(turn.instructions) } : {}),
-            }),
-          });
-        } catch (error) {
-          return {
-            ok: false,
-            failure: failure(
-              "upstream",
-              `could not reach VoiceStudio: ${error instanceof Error ? error.message : String(error)}`,
-            ),
-          };
-        }
-
-        if (!response.ok) return { ok: false, failure: await upstreamFailure(response, "generating the line") };
-        const contentType = response.headers.get("content-type") ?? "";
-        if (!contentType.toLowerCase().startsWith("audio/")) {
-          const raw = await response.text().catch(() => "");
-          return {
-            ok: false,
-            failure: failure(
-              "upstream",
-              `VoiceStudio answered 200 with ${contentType || "no content type"} rather than audio: ${raw.slice(0, 200)}`,
-            ),
-          };
-        }
-        const audio = Buffer.from(await response.arrayBuffer());
-        if (audio.length === 0) {
-          return { ok: false, failure: failure("upstream", "VoiceStudio returned an empty response") };
-        }
-        parts.push(audio);
+      for (const turn of turns) {
+        const part = await speakTurn(service, fetchImpl, { ...turn, text: lexicon.apply(turn.text) });
+        if (!part.ok) return part;
+        parts.push(part.audio);
       }
 
       let audio: Buffer;
       try {
-        audio = await stitchMp3(parts, VOICESTUDIO_TURN_PAUSE_SEC);
+        audio = await stitchMp3(parts, TURN_PAUSE_SEC);
       } catch (error) {
         return {
           ok: false,
@@ -203,9 +190,9 @@ export function voiceStudioSpeaker(options: VoiceStudioOptions): Speaker {
         costUsd: null,
         words: null,
         made: {
-          modelId,
-          settings: { response_format: VOICESTUDIO_OUTPUT_FORMAT, turns: turns.length },
-          outputFormat: VOICESTUDIO_OUTPUT_FORMAT,
+          modelId: service.model,
+          settings: { response_format: OUTPUT_FORMAT, turns: turns.length },
+          outputFormat: OUTPUT_FORMAT,
           dictionaryId: null,
           dictionaryVersion: lexicon.version,
         },
@@ -214,16 +201,15 @@ export function voiceStudioSpeaker(options: VoiceStudioOptions): Speaker {
   };
 }
 
-async function applyVoiceStudioLexiconToTurns(
-  turns: SpeakRequest["turns"],
+/** The profiles behind a stored connection, or why it could not be read. Never throws. */
+export async function voiceStudioRoster(
+  stored: string,
   lang: Lang,
-): Promise<{ turns: SpeakRequest["turns"]; version: string | null }> {
-  let version: string | null = null;
-  const transformed = [];
-  for (const turn of turns) {
-    const applied = await applyVoiceStudioLexicon(turn.text, lang);
-    transformed.push({ ...turn, text: applied.text });
-    version = applied.version;
+): Promise<Voices & { model: string | null }> {
+  try {
+    const connection = decodeConnection(stored);
+    return { model: connection.model, ...(await voiceStudioSpeaker(connection).voices(lang)) };
+  } catch (error) {
+    return { model: null, ids: new Map(), error: message(error) };
   }
-  return { turns: transformed, version };
 }

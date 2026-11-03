@@ -17,7 +17,7 @@ import { requireIn } from "@/lib/generation/authz";
 import { observedFishRate, observedRate } from "@/lib/generation/calibration";
 import { readPreference, speakingConfig, type Preference } from "@/lib/generation/preference";
 import { speakerFrom } from "@/lib/generation/speakers/for";
-import type { Speaker } from "@/lib/generation/speakers/speaker";
+import { voiceStudioRoster } from "@/lib/generation/speakers/voicestudio";
 import { VOICESTUDIO_DEFAULT_MODEL } from "@/lib/generation/voicestudio-connection";
 import { getWallet } from "@/lib/voices/fish";
 import { generationStatus } from "@/lib/generation/status";
@@ -61,25 +61,18 @@ export async function GET(request: Request) {
   }
 
   if (preference.provider === "voicestudio") {
-    let speaker: Speaker | null = null;
-    let error: string | null = null;
-    try {
-      speaker = apiKey ? speakerFrom("voicestudio", apiKey, preference) : null;
-    } catch (reason) {
-      error = reason instanceof Error ? reason.message : String(reason);
-    }
-    const [voices, pinned] = await Promise.all([
-      speaker ? speaker.voices(lang) : Promise.resolve({ ids: new Map<string, string>(), error }),
+    const [roster, pinned] = await Promise.all([
+      apiKey ? voiceStudioRoster(apiKey, lang) : null,
       pinnedStatus(session.user.id, lang, preference),
     ]);
     return Response.json({
       pinned,
-      voices: [...voices.ids.keys()].sort(),
+      voices: [...(roster?.ids.keys() ?? [])].sort(),
       subscription: null,
-      error: voices.error,
+      error: roster?.error ?? null,
       noApiKey: !apiKey,
       settings,
-      rate: { rate: 0, unknown: true, samples: 0, modelId: speaker?.modelId ?? VOICESTUDIO_DEFAULT_MODEL },
+      rate: { rate: 0, unknown: true, samples: 0, modelId: roster?.model ?? VOICESTUDIO_DEFAULT_MODEL },
       provider: "voicestudio",
     });
   }

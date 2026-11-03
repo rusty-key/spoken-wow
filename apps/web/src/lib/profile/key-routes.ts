@@ -17,17 +17,7 @@ import { currentSession } from "@/lib/session";
 
 const FORBIDDEN = () => Response.json({ error: "not allowed" }, { status: 403 });
 
-/**
- * `verify` proves a key works before it is stored, by a call that costs nothing, and says
- * what plan it answered with if the provider has plans. A typo would otherwise first surface
- * as an "auth" failure in the middle of a batch, where it is fatal -- so a bad paste would
- * cost a whole regeneration pass instead of one message here.
- */
-/**
- * `read` turns the posted body into the credential to verify and store, or says why it cannot.
- * A key by default; VoiceStudio's is a whole connection (voicestudio-connection.ts).
- */
-export type ReadCredential = (
+type ReadCredential = (
   body: Record<string, unknown>,
 ) => { key: string; error: null } | { key: null; error: string };
 
@@ -36,6 +26,15 @@ const readKey: ReadCredential = (body) => {
   return key === "" ? { key: null, error: "a key is required" } : { key, error: null };
 };
 
+/**
+ * `verify` proves a key works before it is stored, by a call that costs nothing, and says
+ * what plan it answered with if the provider has plans. A typo would otherwise first surface
+ * as an "auth" failure in the middle of a batch, where it is fatal -- so a bad paste would
+ * cost a whole regeneration pass instead of one message here.
+ *
+ * `read` turns the posted body into the credential to verify and store, or says why it cannot.
+ * A key by default; VoiceStudio's is a whole connection.
+ */
 export function keyRoutes(
   provider: Provider,
   verify: (key: string) => Promise<{ tier: string | null }>,

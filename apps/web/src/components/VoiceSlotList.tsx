@@ -406,17 +406,21 @@ export default function VoiceSlotList({
                               ) : (
                                 <span className="text-muted-foreground text-xs">no reference</span>
                               )
-                            ) : (tab === "voicestudio"
-                                ? voiceStudioPresent?.has(slot.name)
-                                : present?.has(slot.name)) ? (
+                            ) : tab === "voicestudio" ? (
+                              voiceStudioPresent?.has(slot.name) ? (
+                                <Badge variant="outline" className="text-emerald-400">
+                                  profile available
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">
+                                  {voiceStudioPresent === null ? "unknown" : "profile missing"}
+                                </span>
+                              )
+                            ) : present?.has(slot.name) ? (
                               // Before the clips: a voice adopted from the account has none.
                               <Badge variant="outline" className="text-emerald-400">
-                                {tab === "voicestudio" ? "profile available" : "in your account"}
+                                in your account
                               </Badge>
-                            ) : tab === "voicestudio" && voiceStudioPresent === null ? (
-                              <span className="text-muted-foreground text-xs">unknown</span>
-                            ) : tab === "voicestudio" ? (
-                              <span className="text-muted-foreground text-xs">profile missing</span>
                             ) : clips.length === 0 ? (
                               <span className="text-muted-foreground text-xs">no clips</span>
                             ) : present === null ? (

@@ -30,11 +30,11 @@ import { sentText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
-import { directionFor, NARRATOR_VOICE, segments, type Segment } from "./narration";
+import { directionFor, NARRATOR_VOICE, segments, segmentSlot, type Segment } from "./narration";
 import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
-import { SHAPE, voiceStudioFingerprint } from "./speakers/shape";
+import { hashedSpeech, SHAPE } from "./speakers/shape";
 import { timesFor } from "./word-times";
 
 export type RegenerateSuccess = {
@@ -183,10 +183,7 @@ export async function regenerateLine(
     const narrated = parts.some((part) => part.speaker === "narrator");
     const multi = narrated || parts.some((part) => part.voice);
 
-    // Resolved by name, because narrator-male is not a race-gender-flavor slot and so has no
-    // corpus line to read it off - and a marked slot has no corpus line either.
-    const slotOf = (part: Segment) =>
-      part.speaker === "narrator" ? NARRATOR_VOICE : (part.voice ?? line.voice);
+    const slotOf = (part: Segment) => segmentSlot(part, line.voice);
     const instructionsOf = (slot: string) => directionFor(slot, config.raceTags);
     for (const slot of new Set(parts.map(slotOf))) {
       if (voices.ids.has(slot)) continue;
@@ -238,11 +235,7 @@ export async function regenerateLine(
         provider: speaker.provider,
         costUsd: speech.costUsd,
         settings: speech.made.settings,
-        spokenHash: spokenHash(
-          speaker.provider === "voicestudio"
-            ? voiceStudioFingerprint(spokenText, line.voice, config.raceTags)
-            : spokenText,
-        ),
+        spokenHash: spokenHash(hashedSpeech(speaker.provider, spokenText, line.voice, config.raceTags)),
         dictionaryId: speech.made.dictionaryId,
         dictionaryVersion: speech.made.dictionaryVersion,
         leadIn: speech.leadIn,

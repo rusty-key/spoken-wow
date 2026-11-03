@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import type { ApiKeyStatus } from "@/lib/api-key";
 import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
 
-// VoiceStudio stores a connection rather than a key: VoiceStudioSection.
+import { useStoredCredential } from "./useStoredCredential";
+
+// VoiceStudio stores a connection rather than a key.
 type StoredProvider = Exclude<Provider, "voicestudio">;
 
 /** What differs between the two providers' sections: the words, and where the key goes. */
@@ -46,53 +47,15 @@ export default function ApiKeySection({
   provider?: StoredProvider;
 }) {
   const copy = COPY[provider];
-  // Re-rendered from the server after a save or a removal, because other sections of the page
-  // depend on which keys exist: the generator choice offers fish.audio only once it has one.
-  const router = useRouter();
-  const [status, setStatus] = useState(initial);
+  const { status, replacing, setReplacing, busy, error, setError, save, remove } = useStoredCredential(
+    initial,
+    copy.endpoint,
+    "key",
+  );
   const [entry, setEntry] = useState("");
-  // Replacing is a separate state from having none, so a set key cannot be overwritten by a
-  // stray paste into a field that was sitting there open.
-  const [replacing, setReplacing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function save() {
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch(copy.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: entry.trim() }),
-      });
-      const body = (await response.json()) as { status?: ApiKeyStatus; error?: string };
-      if (!response.ok || !body.status) throw new Error(body.error ?? "could not save that key");
-      setStatus(body.status);
-      setEntry("");
-      setReplacing(false);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove() {
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch(copy.endpoint, { method: "DELETE" });
-      if (!response.ok) throw new Error("could not remove that key");
-      setStatus(null);
-      setReplacing(false);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
+  async function saveEntry() {
+    if (await save({ key: entry.trim() })) setEntry("");
   }
 
   const entering = status === null || replacing;
@@ -152,7 +115,7 @@ export default function ApiKeySection({
             onChange={(event) => setEntry(event.target.value)}
             className="w-80 font-mono"
           />
-          <Button type="button" disabled={busy || entry.trim() === ""} onClick={save}>
+          <Button type="button" disabled={busy || entry.trim() === ""} onClick={saveEntry}>
             {busy ? "Checking…" : "Save"}
           </Button>
           {replacing && (

@@ -32,15 +32,20 @@ export function fishUse(entry: LexiconEntry, lang: Lang): FishUse {
   return lang === BASE_LANG && entry.ipa && ipaToArpabet(entry.ipa) ? "phoneme" : "unused";
 }
 
-/** The entries fish.audio can use in `lang`, as replacements. */
-export function fishRules(entries: LexiconEntry[], lang: Lang): FishRule[] {
+/**
+ * The entries fish.audio can use in `lang`, as replacements. `phoneme` writes the ARPAbet for a
+ * provider with another phoneme syntax.
+ */
+export function fishRules(
+  entries: LexiconEntry[],
+  lang: Lang,
+  phoneme: (arpabet: string) => string = (arpabet) => `<|phoneme_start|>${arpabet}<|phoneme_end|>`,
+): FishRule[] {
   return entries.flatMap((entry): FishRule[] => {
     if (entry.alias) return [{ grapheme: entry.grapheme, replacement: entry.alias }];
     if (lang !== BASE_LANG || !entry.ipa) return [];
     const arpabet = ipaToArpabet(entry.ipa);
-    return arpabet
-      ? [{ grapheme: entry.grapheme, replacement: `<|phoneme_start|>${arpabet}<|phoneme_end|>` }]
-      : [];
+    return arpabet ? [{ grapheme: entry.grapheme, replacement: phoneme(arpabet) }] : [];
   });
 }
 

@@ -560,23 +560,20 @@ export default function Explorer({ facets }: { facets: Facets }) {
       // A voice pinned to fish.audio is spoken there whatever this collaborator chose, so it
       // is fish.audio's key and references that decide, exactly as the server will.
       const pinned = status.pinned?.voices.includes(line.voice) ? status.pinned : null;
-      const fish = pinned !== null || status.provider === "fish";
-      const voiceStudio = pinned === null && status.provider === "voicestudio";
+      const target = pinned ? "fish" : status.provider;
       // Named for the generator this line goes to, not always ElevenLabs: someone on
       // fish.audio with a key and references was otherwise told to go and set up a provider
       // they do not use.
-      const provider = PROVIDER_NAME[fish ? "fish" : status.provider];
+      const provider = PROVIDER_NAME[target];
       const voices = pinned ? pinned.references : status.voices;
       const missing = (voice: string) =>
-        fish
+        target === "fish"
           ? `No fish.audio reference for "${voice}" in this language yet — cut one on /voices`
-          : voiceStudio
+          : target === "voicestudio"
             ? `No VoiceStudio profile for "${voice}" in this language — create it in VoiceStudio`
-          : `No ElevenLabs voice named "${voice}" yet — create it on /voices`;
+            : `No ElevenLabs voice named "${voice}" yet — create it on /voices`;
       if (pinned ? pinned.noApiKey : status.noApiKey) {
-        return voiceStudio
-          ? "VoiceStudio is not configured on this Spoken deployment"
-          : `${pinned ? `${line.voice} is pinned to fish.audio: n` : "N"}o ${provider} key on your account — set one in your profile`;
+        return `${pinned ? `${line.voice} is pinned to fish.audio: n` : "N"}o ${provider} ${target === "voicestudio" ? "connection" : "key"} on your account — set one in your profile`;
       }
       if (!voices.includes(line.voice)) {
         return missing(line.voice);

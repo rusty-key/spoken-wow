@@ -13,6 +13,7 @@ import type { Take } from "@/lib/takes/store";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/sections";
 import { usd } from "@/lib/generation/money";
+import { PROVIDER_NAME } from "@/lib/generation/providers";
 
 export function when(iso: string): string {
   const date = new Date(iso);
@@ -277,8 +278,7 @@ export default function TakeSelector({
                         claimed about it. */}
                     {take.credits !== null && ` · ${take.credits} credits`}
                     {take.costUsd !== null && ` · ${usd(take.costUsd)}`}
-                    {take.provider === "fish" && " · fish.audio"}
-                    {take.provider === "voicestudio" && " · VoiceStudio"}
+                    {take.provider !== "elevenlabs" && ` · ${PROVIDER_NAME[take.provider]}`}
                   </div>
                 </div>
 

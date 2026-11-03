@@ -32,6 +32,13 @@ const SHORT: Record<Provider, string> = {
   voicestudio: "voice",
 };
 
+const MODEL_PREFIX: Record<Provider, RegExp | null> = {
+  elevenlabs: /^eleven_/,
+  // fish names its generations s1, s2, s2.1; the letter is the family, not the model.
+  fish: /^s(?=\d)/,
+  voicestudio: null,
+};
+
 /**
  * A model as the column names it: the provider, and the model without the prefix that
  * only repeats it.
@@ -41,14 +48,8 @@ const SHORT: Record<Provider, string> = {
  */
 export function modelLabel(provider: Provider, modelId: string | null): string {
   if (!modelId) return `${SHORT[provider]}:unknown`;
-  const model =
-    provider === "elevenlabs"
-      ? modelId.replace(/^eleven_/, "")
-      : provider === "fish"
-        ? // fish names its generations s1, s2, s2.1; the letter is the family, not the model.
-          modelId.replace(/^s(?=\d)/, "")
-        : modelId;
-  return `${SHORT[provider]}:${model}`;
+  const prefix = MODEL_PREFIX[provider];
+  return `${SHORT[provider]}:${prefix ? modelId.replace(prefix, "") : modelId}`;
 }
 
 export function madeByOf(row: {

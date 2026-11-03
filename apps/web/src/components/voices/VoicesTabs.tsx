@@ -51,12 +51,8 @@ type Props = {
   existing: string[] | null;
   /** Why the account could not be read, when there is a key to read it with. */
   accountError: string | null;
-  /** VoiceStudio profiles matching this language's Spoken slots. */
-  voiceStudioExisting: string[] | null;
-  /** Why VoiceStudio could not be read, when it is configured. */
-  voiceStudioError: string | null;
-  /** The model the viewer's connection asks for, when they have one that reads. */
-  voiceStudioModel: string | null;
+  /** The viewer's connected VoiceStudio service: its matching profiles, or why it did not read. */
+  voiceStudio: { existing: string[]; error: string | null; model: string | null } | null;
   manager: boolean;
   /** May change this language's directions. */
   directs: boolean;
@@ -84,8 +80,7 @@ export default function VoicesTabs(props: Props) {
   // Held as state so a voice flips to "in your account" without a reload; the server value
   // is the account, read fresh on every page view.
   const [present, setPresent] = useState(props.existing === null ? null : new Set(props.existing));
-  const voiceStudioPresent =
-    props.voiceStudioExisting === null ? null : new Set(props.voiceStudioExisting);
+  const voiceStudioPresent = props.voiceStudio && new Set(props.voiceStudio.existing);
   // Counted up as the dialog fills slots, so its "free" never promises room already spent.
   // Null until /api/voices/subscription answers: ElevenLabs takes a second or more to say,
   // and nothing else on the page should wait for it.
@@ -148,10 +143,10 @@ export default function VoicesTabs(props: Props) {
 
   const total = props.slots.length;
   const cloneable = props.slots.filter((slot) => (samples[slot.name] ?? []).length > 0);
-  const created = present ? props.slots.filter((slot) => present.has(slot.name)).length : null;
-  const voiceStudioCreated = voiceStudioPresent
-    ? props.slots.filter((slot) => voiceStudioPresent.has(slot.name)).length
-    : null;
+  const countIn = (names: Set<string> | null) =>
+    names && props.slots.filter((slot) => names.has(slot.name)).length;
+  const created = countIn(present);
+  const voiceStudioCreated = countIn(voiceStudioPresent);
   const referenced = props.slots.filter((slot) => slot.name in references).length;
   const hasKey = props.keys[tab];
 
@@ -239,12 +234,12 @@ export default function VoicesTabs(props: Props) {
             Could not read your ElevenLabs account: {props.accountError}
           </div>
         )}
-        {tab === "voicestudio" && props.keys.voicestudio && props.voiceStudioError && (
+        {tab === "voicestudio" && props.voiceStudio?.error && (
           <div
             role="alert"
             className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
           >
-            Could not read VoiceStudio profiles: {props.voiceStudioError}
+            Could not read VoiceStudio profiles: {props.voiceStudio.error}
           </div>
         )}
 
@@ -268,7 +263,7 @@ export default function VoicesTabs(props: Props) {
                 onSave={(fish) => save({ fish })}
               />
             ) : (
-              <VoiceStudioSettings model={props.voiceStudioModel} />
+              <VoiceStudioSettings model={props.voiceStudio?.model ?? null} />
             )}
           </div>
         </details>

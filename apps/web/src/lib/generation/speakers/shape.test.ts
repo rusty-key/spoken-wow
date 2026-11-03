@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PARAGRAPH_BREAK, SHAPE, voiceStudioFingerprint } from "./shape";
+import { hashedSpeech, PARAGRAPH_BREAK, SHAPE } from "./shape";
 
 describe("how fish.audio is sent a line", () => {
   it("marks each paragraph break once, and flattens every other run of whitespace", () => {
@@ -50,8 +50,8 @@ describe("how VoiceStudio is sent a line", () => {
 
   it("fingerprints per-turn directions separately from spoken text", () => {
     const text = "Hello.";
-    expect(voiceStudioFingerprint(text, "dwarf-male-grim", { dwarf: "[Scottish accent]" })).not.toBe(
-      voiceStudioFingerprint(text, "dwarf-male-grim", { dwarf: "[neutral]" }),
+    expect(hashedSpeech("voicestudio", text, "dwarf-male-grim", { dwarf: "[Scottish accent]" })).not.toBe(
+      hashedSpeech("voicestudio", text, "dwarf-male-grim", { dwarf: "[neutral]" }),
     );
   });
 });

@@ -169,8 +169,8 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
 
         {local ? (
           <p className="text-muted-foreground text-xs">
-            VoiceStudio runs on the site&apos;s configured local service, so Spoken cannot provide
-            a provider cost estimate. Each completed take is recorded in history.
+            VoiceStudio runs on your own service, so Spoken cannot provide a provider cost
+            estimate. Each completed take is recorded in history.
           </p>
         ) : dollars ? (
           <p className="text-muted-foreground text-xs">

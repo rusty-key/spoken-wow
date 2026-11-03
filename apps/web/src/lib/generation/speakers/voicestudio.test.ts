@@ -5,8 +5,8 @@ vi.mock("../dictionary", () => ({
   lexiconStamp: vi.fn(async () => "test-stamp"),
   readLexicon: vi.fn(async () => ({ entries: [{ grapheme: "Gnomeregan", alias: "nomeregan", confidence: "high" }] })),
 }));
-vi.mock("@/lib/voices/slots", () => ({
-  isVoiceSlot: vi.fn(async (name: string) => name === "dwarf-male-grim"),
+vi.mock("@/lib/voices/roster-store", () => ({
+  loadRoster: vi.fn(async () => ({ voiceNames: ["dwarf-male-grim"] })),
 }));
 vi.mock("../stitch", () => ({
   stitchMp3: vi.fn(async (parts: Buffer[]) => Buffer.concat(parts)),
@@ -32,11 +32,10 @@ describe("VoiceStudio speaker", () => {
       ),
     );
 
-    const speaker = voiceStudioSpeaker({
-      baseUrl: "https://voice.test",
-      model: "omnivoice",
-      fetchImpl: fetchImpl as unknown as typeof globalThis.fetch,
-    });
+    const speaker = voiceStudioSpeaker(
+      { baseUrl: "https://voice.test", apiKey: "", model: "omnivoice" },
+      fetchImpl as unknown as typeof globalThis.fetch,
+    );
     expect([...((await speaker.voices("esMX")).ids.entries())]).toEqual([
       ["dwarf-male-grim", "es-id"],
     ]);
@@ -48,12 +47,10 @@ describe("VoiceStudio speaker", () => {
 
   it("uses profile ids and the OpenAI-compatible speech endpoint", async () => {
     const fetchImpl = vi.fn(async () => audio());
-    const speaker = voiceStudioSpeaker({
-      apiKey: "service-key",
-      baseUrl: "https://voice.test",
-      model: "omnivoice",
-      fetchImpl: fetchImpl as unknown as typeof globalThis.fetch,
-    });
+    const speaker = voiceStudioSpeaker(
+      { apiKey: "service-key", baseUrl: "https://voice.test", model: "omnivoice" },
+      fetchImpl as unknown as typeof globalThis.fetch,
+    );
 
     const result = await speaker.speak({
       turns: [{ text: "Hello.", voiceId: "profile-id", instructions: "[warm]" }],
@@ -81,11 +78,10 @@ describe("VoiceStudio speaker", () => {
 
   it("applies the active locale lexicon before synthesis", async () => {
     const fetchImpl = vi.fn(async () => audio());
-    const speaker = voiceStudioSpeaker({
-      baseUrl: "https://voice.test",
-      model: "omnivoice",
-      fetchImpl: fetchImpl as unknown as typeof globalThis.fetch,
-    });
+    const speaker = voiceStudioSpeaker(
+      { baseUrl: "https://voice.test", apiKey: "", model: "omnivoice" },
+      fetchImpl as unknown as typeof globalThis.fetch,
+    );
 
     const result = await speaker.speak({
       turns: [{ text: "Gnomeregan está cerca.", voiceId: "profile-id" }],

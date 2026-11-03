@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,75 +12,33 @@ import {
   VOICESTUDIO_MAX_CONCURRENCY,
 } from "@/lib/generation/voicestudio-connection";
 
+import { useStoredCredential } from "./useStoredCredential";
+
 const ENDPOINT = "/api/profile/voicestudio";
+const EMPTY = { baseUrl: "", apiKey: "", model: "", maxConcurrency: "" };
 
 /**
- * Where a collaborator connects their own VoiceStudio service: ApiKeySection's rules, for a
- * connection rather than a key. Nothing stored is read back -- not even the URL, which names
+ * Where a collaborator connects their own VoiceStudio service. Nothing stored is read back -- not even the URL, which names
  * somebody's machine -- so replacing it means entering all of it again. What is drawn instead
  * is the host the server stored.
  */
 export default function VoiceStudioSection({ initial }: { initial: ApiKeyStatus | null }) {
-  const router = useRouter();
-  const [status, setStatus] = useState(initial);
-  const [baseUrl, setBaseUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("");
-  const [maxConcurrency, setMaxConcurrency] = useState("");
-  const [replacing, setReplacing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { status, replacing, setReplacing, busy, error, setError, save, remove } = useStoredCredential(
+    initial,
+    ENDPOINT,
+    "service",
+  );
+  const [entry, setEntry] = useState(EMPTY);
+  const { baseUrl, apiKey, model, maxConcurrency } = entry;
 
-  function clear() {
-    setBaseUrl("");
-    setApiKey("");
-    setModel("");
-    setMaxConcurrency("");
-  }
-
-  async function save() {
-    const entry = { baseUrl, apiKey, model, maxConcurrency };
+  async function saveEntry() {
     // The server checks the same rules; this only saves a round trip for a plain typo.
     const local = parseConnection(entry);
     if (local.error !== null) {
       setError(local.error);
       return;
     }
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entry),
-      });
-      const body = (await response.json()) as { status?: ApiKeyStatus; error?: string };
-      if (!response.ok || !body.status) throw new Error(body.error ?? "could not save that service");
-      setStatus(body.status);
-      clear();
-      setReplacing(false);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove() {
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch(ENDPOINT, { method: "DELETE" });
-      if (!response.ok) throw new Error("could not remove that service");
-      setStatus(null);
-      setReplacing(false);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
+    if (await save(entry)) setEntry(EMPTY);
   }
 
   const entering = status === null || replacing;
@@ -122,7 +79,7 @@ export default function VoiceStudioSection({ initial }: { initial: ApiKeyStatus 
             autoComplete="off"
             placeholder="https://voicestudio.example.com"
             aria-label="VoiceStudio service URL"
-            onChange={(event) => setBaseUrl(event.target.value)}
+            onChange={(event) => setEntry({ ...entry, baseUrl: event.target.value })}
             className="font-mono"
           />
           <Input
@@ -131,7 +88,7 @@ export default function VoiceStudioSection({ initial }: { initial: ApiKeyStatus 
             autoComplete="off"
             placeholder="API key (optional)"
             aria-label="VoiceStudio API key"
-            onChange={(event) => setApiKey(event.target.value)}
+            onChange={(event) => setEntry({ ...entry, apiKey: event.target.value })}
             className="font-mono"
           />
           <div className="flex gap-2">
@@ -140,7 +97,7 @@ export default function VoiceStudioSection({ initial }: { initial: ApiKeyStatus 
               autoComplete="off"
               placeholder={`model (${VOICESTUDIO_DEFAULT_MODEL})`}
               aria-label="VoiceStudio model"
-              onChange={(event) => setModel(event.target.value)}
+              onChange={(event) => setEntry({ ...entry, model: event.target.value })}
               className="font-mono"
             />
             <Input
@@ -150,12 +107,12 @@ export default function VoiceStudioSection({ initial }: { initial: ApiKeyStatus 
               value={maxConcurrency}
               placeholder={`at once (${VOICESTUDIO_DEFAULT_CONCURRENCY})`}
               aria-label="Lines generated at once"
-              onChange={(event) => setMaxConcurrency(event.target.value)}
+              onChange={(event) => setEntry({ ...entry, maxConcurrency: event.target.value })}
               className="w-40"
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button type="button" disabled={busy || baseUrl.trim() === ""} onClick={save}>
+            <Button type="button" disabled={busy || baseUrl.trim() === ""} onClick={saveEntry}>
               {busy ? "Checking…" : "Save"}
             </Button>
             {replacing && (
@@ -163,7 +120,7 @@ export default function VoiceStudioSection({ initial }: { initial: ApiKeyStatus 
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  clear();
+                  setEntry(EMPTY);
                   setReplacing(false);
                   setError(null);
                 }}

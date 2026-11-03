@@ -129,6 +129,12 @@ export async function currentSpender() {
 
 export type KeyGuard = { key: string; denied: null } | { key: null; denied: Response };
 
+const NO_KEY: Record<Provider, string> = {
+  elevenlabs: "This spends ElevenLabs credits, and you have no key set.",
+  fish: "This spends from your fish.audio balance, and you have no fish.audio key set.",
+  voicestudio: "This generates with your own VoiceStudio service, and you have not connected one.",
+};
+
 function noKey(message: string): Response {
   return Response.json({ error: message, code: "no_api_key" }, { status: NO_API_KEY });
 }
@@ -164,13 +170,7 @@ export async function requireApiKey(
   if (!key) {
     return {
       key: null,
-      denied: noKey(
-        provider === "elevenlabs"
-          ? "This spends ElevenLabs credits, and you have no key set."
-          : provider === "fish"
-            ? "This spends from your fish.audio balance, and you have no fish.audio key set."
-            : "This generates with your own VoiceStudio service, and you have not connected one.",
-      ),
+      denied: noKey(NO_KEY[provider]),
     };
   }
 

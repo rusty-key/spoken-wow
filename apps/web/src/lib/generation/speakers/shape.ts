@@ -7,7 +7,7 @@
  * against its own provider's shaping, so it never reads as stale because another provider
  * would be sent the line differently.
  */
-import { accentTagged, audioTags, directionFor, NARRATOR_VOICE, segments, voiceAfter } from "../narration";
+import { accentTagged, audioTags, directionFor, segments, segmentSlot, SOUND, voiceAfter } from "../narration";
 import type { Provider } from "../providers";
 
 /**
@@ -67,25 +67,29 @@ function paragraphed(
  */
 function voiceStudio(text: string): string {
   return text
-    .replace(/<([a-z][^<>]*)>/g, "$1")
+    .replace(SOUND, "$1")
     .replace(/\s*\n\s*/g, "\n")
     .replace(/[ \t]+/g, " ")
     .trim();
 }
 
 /**
- * VoiceStudio directions travel in a request field rather than in the text hash. Include the
- * same per-turn directions in the fingerprint so changing an accent marks VoiceStudio takes
- * stale just as changing an ElevenLabs bracket does.
+ * What a take's spokenHash covers, given its shaped text.
+ *
+ * The shaped text alone, except VoiceStudio's, whose directions travel in a request field: its
+ * per-turn directions are included so changing an accent marks its takes stale, just as changing
+ * an ElevenLabs bracket does.
  */
-export function voiceStudioFingerprint(
-  text: string,
+export function hashedSpeech(
+  provider: Provider,
+  spoken: string,
   lineVoice: string,
-  raceTags: Record<string, string> = {},
+  raceTags: Record<string, string>,
 ): string {
+  if (provider !== "voicestudio") return spoken;
   return JSON.stringify(
-    segments(text).map((part) => {
-      const voice = part.speaker === "narrator" ? NARRATOR_VOICE : (part.voice ?? lineVoice);
+    segments(spoken).map((part) => {
+      const voice = segmentSlot(part, lineVoice);
       return { speaker: part.speaker, voice, text: part.text, instructions: directionFor(voice, raceTags) ?? null };
     }),
   );
