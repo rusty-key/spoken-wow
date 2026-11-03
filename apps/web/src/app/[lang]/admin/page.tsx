@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import ApiTokenTable from "@/components/ApiTokenTable";
 import LanguageTable from "@/components/LanguageTable";
 import UserSearch from "@/components/UserSearch";
 import UserTable from "@/components/UserTable";
@@ -10,6 +11,7 @@ import { langName } from "@/lib/lang";
 import { languageStates } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { listAllTokens } from "@/lib/tokens/store";
 import { userSortOf } from "@/lib/users/sort";
 import { listUsers } from "@/lib/users/store";
 import LocaleLink from "@/components/LocaleLink";
@@ -64,6 +66,7 @@ export default async function Page({
         languageStates(),
       ])
     : [{ users: [], total: 0 }, await listGrants(administered), null, null];
+  const tokens = global ? await listAllTokens() : null;
 
   return (
     <main className="pt-6 pb-36">
@@ -122,6 +125,7 @@ export default async function Page({
             />
           </>
         )}
+        {tokens && <ApiTokenTable initial={tokens} />}
       </Contained>
     </main>
   );

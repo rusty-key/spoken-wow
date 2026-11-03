@@ -12,24 +12,18 @@ import { createHash, randomBytes } from "node:crypto";
 import { query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 
-export type TokenAccess = "read" | "write";
+import type { ApiToken, TokenAccess } from "./types";
+
+export type { ApiToken, TokenAccess };
 
 export function isTokenAccess(value: unknown): value is TokenAccess {
   return value === "read" || value === "write";
 }
 
-export type ApiToken = {
-  id: string;
-  userId: string;
-  lang: Lang;
-  access: TokenAccess;
-  label: string;
-  hint: string;
-  createdAt: string;
-  expiresAt: string;
-  lastUsedAt: string | null;
-  revokedAt: string | null;
-};
+/** Postgres refuses a malformed uuid with an error, where a route wants a plain 404. */
+export function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
 
 type Row = Omit<ApiToken, "createdAt" | "expiresAt" | "lastUsedAt" | "revokedAt"> & {
   createdAt: Date;
