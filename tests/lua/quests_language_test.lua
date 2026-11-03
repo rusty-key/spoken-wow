@@ -246,15 +246,15 @@ Expect("H. with no pack at all, the chosen language", VO.DataModules:GetPackLang
 ---------------------------------------------------------------- J. a report is filed in the clip's language
 VO = Install({ { folder = "EnglishPack", lines = EN_LINES } })
 Expect("J. an English report goes to the unprefixed page",
-    VO.ReportButton:Link("quest/1/accept", "enUS"), "https://spoken.rusty.one/quests/r/quest/1/accept")
+    VO.ReportButton:Link("quest/1/accept", "enUS"), "https://spoken.quest/quests/r/quest/1/accept")
 Expect("J. ...and so does one with no language",
-    VO.ReportButton:Link("quest/1/accept"), "https://spoken.rusty.one/quests/r/quest/1/accept")
+    VO.ReportButton:Link("quest/1/accept"), "https://spoken.quest/quests/r/quest/1/accept")
 Expect("J. a creature is reported by its npc address",
     VO.ReportButton:TargetForGUID("Creature-0-1-2-3-68-0000000001"), "npc/68")
 Expect("J. ...and an object of the same id by its object address",
     VO.ReportButton:TargetForGUID("GameObject-0-1-2-3-68-0000000001"), "object/68")
 Expect("J. another language's report goes to that language's page",
-    VO.ReportButton:Link("quest/1/accept", "deDE"), "https://spoken.rusty.one/deDE/quests/r/quest/1/accept")
+    VO.ReportButton:Link("quest/1/accept", "deDE"), "https://spoken.quest/deDE/quests/r/quest/1/accept")
 
 -- The Report action files under the voice language, whatever the clip was answered in: line 2
 -- is English fallback under a Portuguese selection, and its report is that Portuguese is missing.
@@ -273,9 +273,9 @@ local function ReportFor(VO, questID)
 end
 VO = Install(PACKS, "ptBR")
 Expect("J. reporting a Portuguese clip files it in Portuguese", ReportFor(VO, 1),
-    "https://spoken.rusty.one/ptBR/quests/r/quest/1/accept")
+    "https://spoken.quest/ptBR/quests/r/quest/1/accept")
 Expect("J. reporting a fallback clip files it in Portuguese too", ReportFor(VO, 2),
-    "https://spoken.rusty.one/ptBR/quests/r/quest/2/accept")
+    "https://spoken.quest/ptBR/quests/r/quest/2/accept")
 do
     -- With the quest window already shut, as it is by the time a subtitle's Report is clicked:
     -- the clip says which line it was.

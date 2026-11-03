@@ -40,9 +40,9 @@ function Spoken:IsRaid(map)
 end
 
 -- The site every module's report, contribute and help links point at. The old hosts
--- (voiceover.rusty.one, lore.rusty.one) keep redirecting, so changing this breaks no copy
--- already installed.
-Spoken.SITE_URL = "https://spoken.rusty.one"
+-- (spoken.rusty.one, voiceover.rusty.one, lore.rusty.one) keep redirecting, so changing this
+-- breaks no copy already installed.
+Spoken.SITE_URL = "https://spoken.quest"
 
 --- The page for reporting one line: `section` is "quests", "places" or "readables", `path` the
 --- line's address under it, `language` the language the line was read in. English goes

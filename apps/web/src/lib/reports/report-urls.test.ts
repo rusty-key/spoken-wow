@@ -17,7 +17,7 @@ import { localeRedirects, localeRewrites } from "@/lib/locale-routes";
 
 import { parseTarget } from "./target";
 
-const SITE = "https://spoken.rusty.one";
+const SITE = "https://spoken.quest";
 
 const urls = readFileSync(
   new URL("../../../../../tests/fixtures/report-urls.txt", import.meta.url),

@@ -793,7 +793,7 @@ driver.scripts.OnShow(driver)
 Fire(icon, "OnClick")
 local box = Spoken.ContributeBox
 local address, context = H.SplitReportLink(box and box.editBox:GetText())
-Expect("Report opens the quest page's address", address, "https://spoken.rusty.one/quests/r/quest/101/accept")
+Expect("Report opens the quest page's address", address, "https://spoken.quest/quests/r/quest/101/accept")
 Expect("...carrying the addon, the quest and the text on screen", context
     and context:find("\naddon=SpokenQuests/", 1, true) and context:find("\nquest=101\nevent=accept\n", 1, true)
     and context:find("\ntext<<\n", 1, true) and true, true)

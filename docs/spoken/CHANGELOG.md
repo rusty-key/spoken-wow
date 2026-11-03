@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Spoken's website is now [spoken.quest](https://spoken.quest).** Report and Contribute links and
+  the Settings website link use it. Links from older versions still work.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Grubbis has its own portrait** in Spoken Bosses on Classic Era, using its Classic display ID
   instead of Forever's display ID.
   *([anon1231823](https://github.com/anon1231823))*
