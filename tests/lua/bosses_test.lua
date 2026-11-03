@@ -82,9 +82,9 @@ Expect("bosses the database lacks have theirs from Efficient Games' records: the
 Expect("...the Excavation Site: Wetlands", Faces(2998, { "saltspine", "shadetooth", "relic guardian", "highland horror" }),
     "260322/144209,260325/144210,260326/144224,260808/9010")
 Expect("...and two of the Karazhan Crypts' Marylas", Faces(2875, { "kaigy maryla", "sairuh maryla" }), "256275/139545,256273/139544")
-Expect("bosses have the model Forever draws them with: Sneed himself on his spawned Shredder, Grubbis, Gandling, Sapphiron",
+Expect("bosses have the model Forever draws them with: Sneed himself on his spawned Shredder, Grubbis uses Classic's display, Gandling, Sapphiron",
     Face(36, "sneed") .. "," .. Face(90, "grubbis") .. "," .. Face(289, "darkmaster gandling") .. "," .. Face(533, "sapphiron"),
-    "642/7125,7361/144378,1853/11070,15989/16033")
+    "642/7125,7361/6533,1853/11070,15989/16033")
 Expect("...the City of Dalaran's Arcane Anomaly is Forever's, not Karazhan's", Face(2959, "arcane anomaly"), "245999/129891")
 Expect("a boss known only by a namesake has no creature, so the namesake's death does not tell its story",
     Face(2856, "balnazzar") .. "," .. Face(2959, "mana elemental") .. "," .. tostring(owner[10813]) .. "," .. tostring(owner[16488]),

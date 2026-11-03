@@ -99,8 +99,8 @@
  {
   "map": 90,
   "key": "grubbis",
-  "display": 144378,
-  "source": "Efficient Games: every Forever build records Grubbis (7361) with display 144378, not the database's 6533."
+  "display": 6533,
+  "source": "Classic's CreatureDisplayInfo uses display 6533 for Grubbis (7361); the Forever-only display 144378 is not present in Classic Era."
  },
  {
   "map": 289,

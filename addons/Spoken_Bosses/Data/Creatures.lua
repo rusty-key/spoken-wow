@@ -74,7 +74,7 @@ SpokenBossCreatures = {
 	[90] = {
 		["crowd pummeler 9 60"] = { creature = 6229, display = 6774 },
 		["electrocutioner 6000"] = { creature = 6235, display = 6915 },
-		["grubbis"] = { creature = 7361, display = 144378 },
+		["grubbis"] = { creature = 7361, display = 6533 },
 		["mekgineer thermaplugg"] = { creature = 7800, display = 6980 },
 		["viscous fallout"] = { creature = 7079, display = 5497 },
 	},
