@@ -122,7 +122,9 @@ async function writeText(
       audit,
     });
     return {
-      status: saved.version === before ? "unchanged" : "updated",
+      // A split writes other lines than the one asked about, whose numbers start again at 1, so
+      // an equal version says nothing about whether anything was written.
+      status: saved.version === before && saved.lines.length === 1 ? "unchanged" : "updated",
       version: saved.version,
       lines: saved.lines,
     };

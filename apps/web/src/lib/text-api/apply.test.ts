@@ -151,6 +151,13 @@ describe("gender", () => {
     expect(lines.sort()).toEqual([`${moment}:f`, `${moment}:m`]);
   });
 
+  it("$G over a first plain version reports updated, though the new line is also version 1", async () => {
+    const { lineId: id, variant } = f.quest;
+    await apply("quests", { id, variant, text: "평문." });
+    const result = await apply("quests", { id, variant, text: "$G남자:여자;" });
+    expect(result.text).toMatchObject({ status: "updated", lines: expect.arrayContaining([`${id}:m`, `${id}:f`]) });
+  });
+
   it("plain text to a side of an untranslated split is invalid and writes nothing", async () => {
     const moment = await splitMoment();
     const result = await apply("quests", { id: `${moment}:m`, text: "평문." });

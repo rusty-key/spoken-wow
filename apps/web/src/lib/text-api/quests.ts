@@ -32,28 +32,30 @@ type Row = {
 
 /**
  * `where` and `limit` slot into the outer query, with $1 the language and $2 English. `scope` limits
- * the rows considered at the start, because one item must not pay for reading a whole language.
+ * the rows read at the start, given the alias to read them under, because one quest must not pay
+ * for a pass over a whole language.
+ *
+ * The own rows carry their text with them: joining quest_line back by id scans the whole table,
+ * every language, and spills to disk on a small host.
  */
-function linesSql(where: string, limit: string, scope = "true"): string {
+function linesSql(where: string, limit: string, scope: (alias: string) => string = () => "true"): string {
   return `
     with "own" as (
-      select "id", "lineId", "variant", ${momentSql(`"lineId"`)} as "moment" from "quest_line"
-       where "lang" = $1 and "isCurrent" and ${scope}
+      select o."id", o."lineId", o."variant", ${momentSql(`o."lineId"`)} as "moment",
+             o."source", o."questId", o."playerGender", o."text", o."version"
+        from "quest_line" o
+       where o."lang" = $1 and o."isCurrent" and ${scope("o")}
     ), "lines" as (
-      select "lineId", "variant", "moment", "id" as "ownId" from "own"
+      select "lineId", "variant", "moment", "source", "questId", "playerGender", "text", "version" from "own"
       union all
-      select e."lineId", e."variant", ${momentSql(`e."lineId"`)}, null from "quest_line" e
-       where e."lang" = $2 and e."isCurrent" and ${scope.replaceAll(`"lineId"`, `e."lineId"`)}
+      select e."lineId", e."variant", ${momentSql(`e."lineId"`)}, e."source", e."questId", e."playerGender", null, null
+        from "quest_line" e
+       where e."lang" = $2 and e."isCurrent" and ${scope("e")}
          and not exists (select 1 from "own" o
                           where o."moment" = ${momentSql(`e."lineId"`)} and o."variant" = e."variant")
     ), "items" as (
-      select ln."lineId", ln."variant", ln."moment", ln."ownId",
-             coalesce(t."source", e."source") as "source",
-             coalesce(t."questId", e."questId") as "questId",
-             coalesce(t."playerGender", e."playerGender") as "playerGender",
-             t."text", t."version", e."text" as "englishText", e."questTitle" as "englishTitle"
+      select ln.*, e."text" as "englishText", e."questTitle" as "englishTitle"
         from "lines" ln
-        left join "quest_line" t on t."id" = ln."ownId"
         left join lateral (
           select * from "quest_line" e
            where e."lineId" = any(array[ln."lineId", ln."moment", ln."moment" || ':m'])
@@ -102,23 +104,35 @@ function cursorOf(cursor: string): [string, number] {
   return decoded as [string, number];
 }
 
+/** One page's query. Exported so a test can read what the database is asked to do. */
+export function listSql(
+  filter: Record<string, string>,
+  cursor: string | null,
+  limit: number,
+  lang: Lang = BASE_LANG,
+): { text: string; params: unknown[] } {
+  const params: unknown[] = [lang, BASE_LANG];
+  const add = (value: unknown) => `$${params.push(value)}`;
+  const quest = filter.quest === undefined ? null : add(Number(filter.quest));
+  const source = filter.source === undefined ? null : add(filter.source);
+  const scope = (alias: string) =>
+    [
+      ...(quest ? [`${alias}."questId" = ${quest}::int`] : []),
+      ...(source ? [`${alias}."source" = ${source}`] : []),
+    ].join(" and ") || "true";
+  const after = cursor === null ? null : cursorOf(cursor);
+  const where = after
+    ? `where (i."lineId" collate "C", i."variant") > (${add(after[0])} collate "C", ${add(after[1])}::smallint)`
+    : "";
+  return { text: linesSql(where, `limit ${add(limit + 1)}`, scope), params };
+}
+
 export const quests: SectionApi = {
   filters: { quest: /^\d+$/, source: /^(accept|progress|complete|gossip)$/ },
 
   async list(lang, filter, cursor, limit) {
-    const params: unknown[] = [lang, BASE_LANG];
-    const where: string[] = [];
-    const add = (value: unknown) => `$${params.push(value)}`;
-    if (filter.quest !== undefined) where.push(`i."questId" = ${add(Number(filter.quest))}`);
-    if (filter.source !== undefined) where.push(`i."source" = ${add(filter.source)}`);
-    if (cursor !== null) {
-      const [id, variant] = cursorOf(cursor);
-      where.push(`(i."lineId" collate "C", i."variant") > (${add(id)} collate "C", ${add(variant)}::smallint)`);
-    }
-    const rows = await query<Row>(
-      linesSql(where.length ? `where ${where.join(" and ")}` : "", `limit ${add(limit + 1)}`),
-      params,
-    );
+    const { text, params } = listSql(filter, cursor, limit, lang);
+    const rows = await query<Row>(text, params);
     const items = rows.slice(0, limit).map(toItem);
     const last = items[items.length - 1];
     return { items, nextCursor: rows.length > limit ? encodeCursor([last.id, last.variant]) : null };
@@ -126,7 +140,9 @@ export const quests: SectionApi = {
 
   async one(lang, id, variant) {
     const rows = await query<Row>(
-      linesSql(`where i."lineId" = $3 and i."variant" = $4`, "", answersQuestMomentSql(`"lineId"`, "$5")),
+      linesSql(`where i."lineId" = $3 and i."variant" = $4`, "", (alias) =>
+        answersQuestMomentSql(`${alias}."lineId"`, "$5"),
+      ),
       [lang, BASE_LANG, id, variant, momentOf(id)],
     );
     return rows[0] ? toItem(rows[0]) : null;

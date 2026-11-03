@@ -17,6 +17,7 @@ import { forgetTeams } from "@/lib/teams/store";
 import { asSystem } from "@/lib/teams/testing";
 
 import { keyOf, sections } from "./index";
+import { listSql } from "./quests";
 import { createFixtures, LANG, type Fixtures } from "./testing";
 import type { Page, Section, TextItem } from "./types";
 
@@ -207,6 +208,25 @@ describe("quests", () => {
     expect(new Set(ids).size).toBe(6);
     const merged = await sections.quests.list(LANG, {}, null, 6);
     expect(merged.items.map((i) => keyOf(i.id, i.variant ?? 0))).toEqual(ids);
+  });
+
+  // The filters must reach the rows read at the start, or one quest costs a pass over a language.
+  it.each([
+    ["no filter", {}],
+    ["a quest", () => ({ quest: String(f.quest.questId) })],
+    ["a source", { source: "gossip" }],
+  ])("never joins quest_line back by id for %s", async (_name, filter) => {
+    const sql = listSql(typeof filter === "function" ? filter() : filter, null, 500, LANG);
+    expect(sql.text).not.toMatch(/left join "quest_line" t\b/);
+    expect((await query(`explain ${sql.text}`, sql.params)).map((row) => row["QUERY PLAN"]).join("\n")).not.toMatch(
+      /Seq Scan on quest_line t\b/,
+    );
+  });
+
+  it("applies a quest filter when reading the language's rows, not after", async () => {
+    const sql = listSql({ quest: String(f.quest.questId) }, null, 500, LANG);
+    const own = sql.text.slice(sql.text.indexOf(`"own" as`), sql.text.indexOf(`"lines" as`));
+    expect(own).toContain(`"questId" =`);
   });
 
   it("keeps two variants of one line id as two items", async () => {
