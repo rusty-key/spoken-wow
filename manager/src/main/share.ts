@@ -18,7 +18,7 @@ import type { LocalFile } from './packs-plan'
 import { sha256Text } from './packs-remote'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
-export const SHARE_URL = 'https://spoken.rusty.one/api/contributions/batch'
+export const SHARE_URL = 'https://spoken.quest/api/contributions/batch'
 
 /** Hashes kept; the oldest go first. Far more than one file holds (MAX_ENVELOPES). */
 export const LEDGER_CAP = 20000

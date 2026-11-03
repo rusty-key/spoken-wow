@@ -17,7 +17,7 @@ function gameFolderExample(platform: Platform): string {
 }
 
 export const REPO_URL = 'https://github.com/rusty-key/spoken-wow'
-export const SITE_URL = 'https://spoken.rusty.one'
+export const SITE_URL = 'https://spoken.quest'
 export const COMMUNITY_README_URL = 'https://github.com/rusty-key/spoken-wow/blob/master/community/README.md'
 
 export const S = {
@@ -236,7 +236,7 @@ export const S = {
     keepZipsText: 'Saves a copy of each pack, so a reinstall does not download it again. Packs are large.',
     sharing: 'Sharing',
     sharingSwitch: 'Send What Spoken Collects',
-    sharingText: 'Sent to spoken.rusty.one after each logout, with your pack versions and a random id. Nothing about your account.',
+    sharingText: 'Sent to spoken.quest after each logout, with your pack versions and a random id. Nothing about your account.',
     lastSent: (count: number, when: string) => `Last sent: ${count} line${count === 1 ? '' : 's'}, ${when}`,
     neverSent: 'Nothing sent yet.',
     sending: 'Sending',

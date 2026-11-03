@@ -1,6 +1,6 @@
 // Spoken Manager: main process. The network traffic is the GitHub release list, the voice pack
 // server, the asset downloads and the manager's own update, plus, only when the player turned
-// Sharing on, the lines Spoken collected, sent to spoken.rusty.one (share.ts), and, only for a
+// Sharing on, the lines Spoken collected, sent to spoken.quest (share.ts), and, only for a
 // language admin who signs in, the site and that admin's stores (contributor.ts).
 import path from 'node:path'
 import { app, BrowserWindow, Menu, net, safeStorage, session, shell } from 'electron'
