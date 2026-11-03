@@ -1,6 +1,4 @@
-// Zips an installed pack and sends it to CurseForge or GitHub, the way
-// scripts/maintainers/spoken-release.sh does. Every failure is a PlainError whose text never
-// holds a token, since these messages reach the window.
+// Every failure is a PlainError whose text never holds a token, since these messages reach the window.
 import fs from 'node:fs'
 import { createReadStream, createWriteStream } from 'node:fs'
 import path from 'node:path'
@@ -30,9 +28,8 @@ async function bodyText(res: Response, token: string): Promise<string> {
 }
 
 /**
- * A fetch whose network failures read as words; a cancel passes through untouched. Every call carries
- * a token, and a redirect would deliver it to wherever it points. `timeoutMs` is for short calls, not
- * for an upload, whose length depends on the pack.
+ * Every call carries a token, and a redirect would deliver it to wherever it points. `timeoutMs` is for
+ * short calls, not for an upload, whose length depends on the pack.
  */
 async function send(
   store: string,
@@ -72,7 +69,7 @@ async function filesUnder(root: string, dir: string, prefix: string, out: Array<
   }
 }
 
-/** Stores `<addOns>/<folder>` in `dest` with `<folder>/` as the root. The clips are Ogg already, so nothing is compressed. */
+/** The zip's root is `<folder>/`. The clips are Ogg already, so nothing is compressed. */
 export async function zipFolder(addOns: string, folder: string, dest: string, signal: AbortSignal): Promise<void> {
   if (signal.aborted) throw new CancelledError()
   const files: Array<[string, string]> = []
@@ -339,7 +336,6 @@ export async function uploadGitHub(a: {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/zip', 'Content-Length': String(size) },
       // Streamed from disk, since the biggest pack of a language would not fit in memory on every machine.
-      // A redirect would resend the token to wherever it points.
       body: Readable.toWeb(Readable.from(counted(stream, size, a.onProgress))) as unknown as BodyInit,
       duplex: 'half',
       redirect: 'error'

@@ -234,7 +234,7 @@ export interface JobProgress {
   /** A repair is an install of the version already there. */
   action: 'install' | 'repair' | 'uninstall' | 'publish'
   phase: JobPhase
-  /** Bytes of the download so far and its total; for a publish run, the pack counter. */
+  /** Bytes of the download or upload so far and its total. */
   received: number
   total: number
   bytesPerSecond: number

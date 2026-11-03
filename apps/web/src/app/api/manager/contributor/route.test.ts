@@ -1,4 +1,3 @@
-/** The session and the grants are mocked; nothing here touches the database. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CODES } from "@/lib/lang";

@@ -53,7 +53,7 @@ export interface ServiceOptions {
   siteUrl?: string
   /** Seals the contributor's tokens and cookie; without one, none can be saved. */
   secretBox?: SecretBox
-  /** The fetch for the site and the stores, when it must differ from `fetchImpl` (index.ts says why). */
+  /** The fetch for the site and the stores, when it must differ from `fetchImpl`. */
   contributorFetch?: typeof fetch
 }
 

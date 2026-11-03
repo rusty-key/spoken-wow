@@ -1,6 +1,4 @@
-// What a language admin keeps for publishing to their own stores: project ids, repo, game versions,
-// sealed tokens and a sealed site cookie, plus a record of every upload. Secrets are written only
-// through the SecretBox (Electron's safeStorage) and never returned by config().
+// Secrets are written only through the SecretBox (Electron's safeStorage) and never returned by config().
 import path from 'node:path'
 import { PlainError } from './errors'
 import type { ContributorConfig, StoreId } from '../shared/types'

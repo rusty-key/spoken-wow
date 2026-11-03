@@ -153,8 +153,7 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
   handle(CHANNELS.cancel, (_e, jobId) => service.cancel(id(jobId, 'job id')))
   handle(CHANNELS.setSettings, (_e, patch) => service.setSettings(settingsPatch(patch)))
 
-  // Sign-in and the store form carry secrets. They go through handle() like the rest, which logs the
-  // thrown error and never the arguments, and the checks above name a field, not its value.
+  // Sign-in and the store form carry secrets: handle() logs the thrown error and never the arguments.
   handle(CHANNELS.contributorView, () => service.contributor.view())
   handle(CHANNELS.contributorSignIn, (_e, email, password) =>
     service.contributor.signIn(text(email, 'email', 320), text(password, 'password', 1024))

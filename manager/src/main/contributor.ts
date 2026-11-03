@@ -1,6 +1,5 @@
-// What a language admin does from the Manager: signs in to the site, keeps store settings, sees where
-// each pack of a language stands and publishes it. Passwords, tokens and cookies never enter a thrown
-// error or a log line here, since ipc.ts logs what is thrown and the window shows it.
+// Passwords, tokens and cookies never enter a thrown error or a log line here, since ipc.ts logs what
+// is thrown and the window shows it.
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -42,7 +41,6 @@ export interface ContributorDeps {
   changed: (view: ContributorView) => void
 }
 
-/** Names the Manager to the site and the stores, whichever fetch carries the request. */
 export function withUserAgent(fetchImpl: typeof fetch, appVersion: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(init?.headers)
@@ -60,7 +58,6 @@ export const NO_SECRET_BOX: SecretBox = {
   open: () => ''
 }
 
-/** A pack folder as it stands on disk. */
 interface Pack {
   folder: string
   version?: string
@@ -275,7 +272,7 @@ export class ContributorService {
     )
   }
 
-  /** A folder that "upload again" must not send, as words for the window. */
+  /** Why a folder must not be sent by itself, as words for the window. */
   private refusal(pack: Pack, store: StoreId, config: ContributorConfig): string | null {
     if (!pack.version) return `${pack.folder} is not installed.`
     if (pack.linked) return `${pack.folder} is a link to a checkout, so it cannot be published.`
@@ -334,7 +331,7 @@ export class ContributorService {
 
   // ---------------------------------------------------------------- publish
 
-  /** `only` is "upload again": it skips the row's store state but not what makes a folder unsafe to send. */
+  /** `only` sends one folder whatever its row says about the store, but not one that is unsafe to send. */
   async publish(gameId: string, lang: string, store: StoreId, only?: string): Promise<string> {
     await this.requireAdmin(lang)
     const game = this.deps.game(gameId)

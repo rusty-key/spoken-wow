@@ -34,7 +34,6 @@ function look(flavor: Flavor): CSSProperties {
   return { '--g-from': l.from, '--g-to': l.to, '--g-glow': l.glow, '--g-art': `url(${img.art})`, '--g-pos': img.pos, '--g-filter': img.filter } as CSSProperties
 }
 
-/** The top of a game page's rail: the logo and which game this is. */
 export function RailTop({ game }: { game: GameInstall }): ReactNode {
   return (
     <div className="rail-top">
