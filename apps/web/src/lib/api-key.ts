@@ -1,5 +1,5 @@
-// The stored provider keys, per user: ElevenLabs' and fish.audio's, one of each at most.
-// VoiceStudio is a site-configured local/remote service and does not use this table.
+// The stored provider keys, per user: ElevenLabs', fish.audio's and a VoiceStudio connection,
+// one of each at most. A VoiceStudio "key" is the sealed JSON voicestudio-connection.ts describes.
 //
 // The plaintext exists in exactly two places: inside a request that is about to store
 // it, and inside a request that is about to spend with it. It is never returned to a
@@ -14,27 +14,22 @@ import "server-only";
 import { query } from "./db";
 import { open, seal } from "./secrets";
 import type { Provider } from "./generation/providers";
+import { connectionHint, decodeConnection } from "./generation/voicestudio-connection";
 
 
 // A table per provider (see migration 0040 for why not one table with a column). Written
 // out rather than interpolated from the argument, so no caller can name a table.
-type StoredProvider = Exclude<Provider, "voicestudio">;
-
-const TABLE: Record<StoredProvider, string> = {
+const TABLE: Record<Provider, string> = {
   elevenlabs: `"elevenlabs_key"`,
   fish: `"fish_key"`,
+  voicestudio: `"voicestudio_key"`,
 };
 
-export function voiceStudioConfigured(): boolean {
-  return Boolean(process.env.VOICESTUDIO_BASE_URL);
-}
-
-export function voiceStudioApiKey(): string {
-  return process.env.OMNIVOICE_API_KEY ?? "";
-}
-
 export type ApiKeyStatus = {
-  /** The last four characters, for "sk_…••••1a2b". Proves a key is set; authenticates nothing. */
+  /**
+   * The last four characters, for "sk_…••••1a2b". Proves a key is set; authenticates nothing.
+   * A VoiceStudio connection's is its host.
+   */
   hint: string;
   /** When the provider last confirmed it, which is when it was saved. */
   verifiedAt: string | null;
@@ -51,19 +46,14 @@ type Row = {
   tier: string | null;
 };
 
-function hintFor(key: string): string {
-  return key.slice(-4);
+function hintFor(key: string, provider: Provider): string {
+  return provider === "voicestudio" ? connectionHint(decodeConnection(key)) : key.slice(-4);
 }
 
 export async function apiKeyStatus(
   userId: string,
   provider: Provider = "elevenlabs",
 ): Promise<ApiKeyStatus | null> {
-  if (provider === "voicestudio") {
-    return voiceStudioConfigured()
-      ? { hint: "local", verifiedAt: null, tier: null }
-      : null;
-  }
   const rows = await query<{ hint: string; verifiedAt: Date | null; tier: string | null }>(
     `select "hint", "verifiedAt", "tier" from ${TABLE[provider]} where "userId" = $1`,
     [userId],
@@ -89,9 +79,6 @@ export async function readApiKey(
   userId: string,
   provider: Provider = "elevenlabs",
 ): Promise<string | null> {
-  if (provider === "voicestudio") {
-    return voiceStudioConfigured() ? voiceStudioApiKey() : null;
-  }
   const rows = await query<Row>(
     `select "ciphertext", "iv", "tag", "hint", "verifiedAt", "tier"
        from ${TABLE[provider]} where "userId" = $1`,
@@ -109,9 +96,6 @@ export async function storeApiKey(
   tier: string | null,
   provider: Provider = "elevenlabs",
 ): Promise<ApiKeyStatus> {
-  if (provider === "voicestudio") {
-    throw new Error("VoiceStudio is configured by the site, not by a stored user key");
-  }
   const sealed = seal(key);
 
   // Upsert rather than delete-then-insert: replacing a key is one statement, and a
@@ -128,7 +112,7 @@ export async function storeApiKey(
        "verifiedAt" = excluded."verifiedAt",
        "tier" = excluded."tier",
        "updatedAt" = now()`,
-    [userId, sealed.ciphertext, sealed.iv, sealed.tag, hintFor(key), tier],
+    [userId, sealed.ciphertext, sealed.iv, sealed.tag, hintFor(key, provider), tier],
   );
 
   return (await apiKeyStatus(userId, provider))!;
@@ -138,9 +122,6 @@ export async function deleteApiKey(
   userId: string,
   provider: Provider = "elevenlabs",
 ): Promise<void> {
-  if (provider === "voicestudio") {
-    throw new Error("VoiceStudio is configured by the site, not by a stored user key");
-  }
   await query(`delete from ${TABLE[provider]} where "userId" = $1`, [userId]);
 }
 

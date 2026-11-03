@@ -1,10 +1,10 @@
 /**
  * VoiceStudio, as a Speaker.
  *
- * VoiceStudio exposes an OpenAI-compatible local API rather than a metered cloud account. The
- * service root is configured for the deployment, and an optional OMNIVOICE_API_KEY is sent for
- * remote backends. Profiles are matched by the same names Spoken uses everywhere else:
- * `slot` in English and `slot@lang` for another locale.
+ * VoiceStudio exposes an OpenAI-compatible API rather than a metered cloud account. Each
+ * collaborator connects their own service on /profile (voicestudio-connection.ts), and its
+ * optional key is sent as a bearer token. Profiles are matched by the same names Spoken uses
+ * everywhere else: `slot` in English and `slot@lang` for another locale.
  */
 import "server-only";
 
@@ -14,34 +14,68 @@ import type { Lang } from "@/lib/lang";
 
 import { failure, classifyUpstream } from "../errors";
 import { stitchMp3 } from "../stitch";
+import type { VoiceStudioConnection } from "../voicestudio-connection";
 import { applyVoiceStudioLexicon } from "../voicestudio-lexicon";
 import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
 
-export const VOICESTUDIO_DEFAULT_BASE_URL = "http://127.0.0.1:3900";
-export const VOICESTUDIO_DEFAULT_MODEL = "omnivoice";
 export const VOICESTUDIO_OUTPUT_FORMAT = "mp3";
 export const VOICESTUDIO_TURN_PAUSE_SEC = 0.25;
 
-export type VoiceStudioOptions = {
-  apiKey?: string;
-  baseUrl?: string;
-  modelId?: string;
-  fetchImpl?: typeof globalThis.fetch;
-};
+// A listing that takes longer than this is a service that is down or asleep, and /voices and
+// the status route wait on it. Speech gets longer: a cold model can take a while on a turn.
+const LIST_TIMEOUT_MS = 10_000;
+const SPEECH_TIMEOUT_MS = 180_000;
+
+export type VoiceStudioOptions = Pick<VoiceStudioConnection, "baseUrl" | "model"> &
+  Partial<Pick<VoiceStudioConnection, "apiKey">> & {
+    fetchImpl?: typeof globalThis.fetch;
+  };
 
 type VoiceProfile = { id?: string; voice_id?: string; name?: string };
 
 function config(options: VoiceStudioOptions) {
-  const rawBase = options.baseUrl ?? process.env.VOICESTUDIO_BASE_URL ?? VOICESTUDIO_DEFAULT_BASE_URL;
-  // The documented value is the service root. Be forgiving when an operator copies an OpenAI
-  // client base URL ending in /v1, so requests do not become /v1/v1/…
-  const baseUrl = rawBase.replace(/\/+$/, "").replace(/\/v1$/, "");
   return {
-    apiKey: options.apiKey ?? process.env.OMNIVOICE_API_KEY ?? "",
-    baseUrl,
-    modelId: options.modelId ?? process.env.VOICESTUDIO_MODEL ?? VOICESTUDIO_DEFAULT_MODEL,
+    apiKey: options.apiKey ?? "",
+    baseUrl: options.baseUrl,
+    modelId: options.model,
     fetchImpl: options.fetchImpl ?? globalThis.fetch,
   };
+}
+
+// No redirects: the URL was checked when it was saved, and a redirect is how a public host
+// would hand the request on to one that was not.
+function request(timeoutMs: number): Pick<RequestInit, "redirect" | "signal" | "cache"> {
+  return { redirect: "error", signal: AbortSignal.timeout(timeoutMs), cache: "no-store" };
+}
+
+async function fetchProfiles(options: VoiceStudioOptions): Promise<VoiceProfile[]> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+  let response: Response;
+  try {
+    response = await fetchImpl(`${baseUrl}/v1/audio/voices`, {
+      headers: headers(apiKey),
+      ...request(LIST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw new Error(`could not reach VoiceStudio: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (!response.ok) {
+    const issue = await upstreamFailure(response, "listing VoiceStudio voices");
+    throw new Error(issue.message);
+  }
+  const body = (await response.json().catch(() => null)) as { voices?: VoiceProfile[] } | null;
+  if (!body || !Array.isArray(body.voices)) {
+    throw new Error("VoiceStudio answered the voice list with something that is not one");
+  }
+  return body.voices;
+}
+
+/** Whether a connection answers, for /profile before it stores one. Throws why not. */
+export async function checkVoiceStudio(
+  connection: VoiceStudioConnection,
+  fetchImpl?: typeof globalThis.fetch,
+): Promise<void> {
+  await fetchProfiles({ ...connection, fetchImpl });
 }
 
 function headers(apiKey: string, json = false): Record<string, string> {
@@ -57,19 +91,8 @@ async function upstreamFailure(response: Response, what: string) {
 }
 
 async function listProfiles(options: VoiceStudioOptions, lang: Lang): Promise<ReadonlyMap<string, string>> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-  const response = await fetchImpl(`${baseUrl}/v1/audio/voices`, {
-    headers: headers(apiKey),
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    const issue = await upstreamFailure(response, "listing VoiceStudio voices");
-    throw new Error(issue.message);
-  }
-
-  const body = (await response.json()) as { voices?: VoiceProfile[] };
   const found = new Map<string, string>();
-  for (const profile of body.voices ?? []) {
+  for (const profile of await fetchProfiles(options)) {
     const name = profile.name;
     const id = profile.voice_id ?? profile.id ?? name;
     if (!name || !id) continue;
@@ -87,7 +110,7 @@ function instruction(text: string | undefined): string | undefined {
   return plain || undefined;
 }
 
-export function voiceStudioSpeaker(options: VoiceStudioOptions = {}): Speaker {
+export function voiceStudioSpeaker(options: VoiceStudioOptions): Speaker {
   const configForSpeaker = config(options);
   return {
     provider: "voicestudio",
@@ -120,6 +143,7 @@ export function voiceStudioSpeaker(options: VoiceStudioOptions = {}): Speaker {
           response = await fetchImpl(`${baseUrl}/v1/audio/speech`, {
             method: "POST",
             headers: headers(apiKey, true),
+            ...request(SPEECH_TIMEOUT_MS),
             body: JSON.stringify({
               model: modelId,
               voice: turn.voiceId,

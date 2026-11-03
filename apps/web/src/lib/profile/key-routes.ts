@@ -23,7 +23,24 @@ const FORBIDDEN = () => Response.json({ error: "not allowed" }, { status: 403 })
  * as an "auth" failure in the middle of a batch, where it is fatal -- so a bad paste would
  * cost a whole regeneration pass instead of one message here.
  */
-export function keyRoutes(provider: Provider, verify: (key: string) => Promise<{ tier: string | null }>) {
+/**
+ * `read` turns the posted body into the credential to verify and store, or says why it cannot.
+ * A key by default; VoiceStudio's is a whole connection (voicestudio-connection.ts).
+ */
+export type ReadCredential = (
+  body: Record<string, unknown>,
+) => { key: string; error: null } | { key: null; error: string };
+
+const readKey: ReadCredential = (body) => {
+  const key = typeof body.key === "string" ? body.key.trim() : "";
+  return key === "" ? { key: null, error: "a key is required" } : { key, error: null };
+};
+
+export function keyRoutes(
+  provider: Provider,
+  verify: (key: string) => Promise<{ tier: string | null }>,
+  read: ReadCredential = readKey,
+) {
   return {
     async GET() {
       const session = await currentSpender();
@@ -35,9 +52,9 @@ export function keyRoutes(provider: Provider, verify: (key: string) => Promise<{
       const session = await currentSpender();
       if (!session) return FORBIDDEN();
 
-      const body = (await request.json().catch(() => ({}))) as { key?: unknown };
-      const key = typeof body.key === "string" ? body.key.trim() : "";
-      if (key === "") return Response.json({ error: "a key is required" }, { status: 400 });
+      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+      const { key, error } = read(body ?? {});
+      if (key === null) return Response.json({ error }, { status: 400 });
 
       let tier: string | null;
       try {

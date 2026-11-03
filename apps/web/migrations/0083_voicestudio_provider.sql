@@ -1,6 +1,6 @@
--- VoiceStudio is a third generation provider. Its service is configured by the deployment,
--- unlike the per-user ElevenLabs and fish.audio credentials, but its generated takes still
--- need the provider recorded so history, filters and staleness use the right contract.
+-- VoiceStudio is a third generation provider. Each collaborator connects their own service
+-- (0084), and its generated takes need the provider recorded so history, filters and
+-- staleness use the right contract.
 
 alter table "take" drop constraint if exists "take_provider_check";
 alter table "take" add constraint "take_provider_check"

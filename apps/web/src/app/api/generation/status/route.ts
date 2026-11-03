@@ -7,16 +7,18 @@
  * along - a collaborator cannot open /voices, and "what am I about to spend, and how" should
  * not require the page that they cannot reach.
  *
- * Not refused when the caller has no key or configured VoiceStudio service, unlike the routes that spend. This is the answer
+ * Not refused when the caller has no key, unlike the routes that spend. This is the answer
  * the explorer asks for on load, and the useful answer to "what can you generate" from
  * somebody who has not been to /profile is "nothing yet, and here is why" - which is what
  * `noApiKey` carries. A 428 here would leave the page unable to say it.
  */
-import { readApiKey, voiceStudioConfigured } from "@/lib/api-key";
+import { readApiKey } from "@/lib/api-key";
 import { requireIn } from "@/lib/generation/authz";
 import { observedFishRate, observedRate } from "@/lib/generation/calibration";
 import { readPreference, speakingConfig, type Preference } from "@/lib/generation/preference";
 import { speakerFrom } from "@/lib/generation/speakers/for";
+import type { Speaker } from "@/lib/generation/speakers/speaker";
+import { VOICESTUDIO_DEFAULT_MODEL } from "@/lib/generation/voicestudio-connection";
 import { getWallet } from "@/lib/voices/fish";
 import { generationStatus } from "@/lib/generation/status";
 import type { Lang } from "@/lib/lang";
@@ -59,13 +61,15 @@ export async function GET(request: Request) {
   }
 
   if (preference.provider === "voicestudio") {
+    let speaker: Speaker | null = null;
+    let error: string | null = null;
+    try {
+      speaker = apiKey ? speakerFrom("voicestudio", apiKey, preference) : null;
+    } catch (reason) {
+      error = reason instanceof Error ? reason.message : String(reason);
+    }
     const [voices, pinned] = await Promise.all([
-      voiceStudioConfigured()
-        ? speakerFrom("voicestudio", apiKey ?? "", preference).voices(lang)
-        : Promise.resolve({
-            ids: new Map<string, string>(),
-            error: "VoiceStudio is not configured on this Spoken deployment",
-          }),
+      speaker ? speaker.voices(lang) : Promise.resolve({ ids: new Map<string, string>(), error }),
       pinnedStatus(session.user.id, lang, preference),
     ]);
     return Response.json({
@@ -73,9 +77,9 @@ export async function GET(request: Request) {
       voices: [...voices.ids.keys()].sort(),
       subscription: null,
       error: voices.error,
-      noApiKey: !voiceStudioConfigured(),
+      noApiKey: !apiKey,
       settings,
-      rate: { rate: 0, unknown: true, samples: 0, modelId: process.env.VOICESTUDIO_MODEL ?? "omnivoice" },
+      rate: { rate: 0, unknown: true, samples: 0, modelId: speaker?.modelId ?? VOICESTUDIO_DEFAULT_MODEL },
       provider: "voicestudio",
     });
   }

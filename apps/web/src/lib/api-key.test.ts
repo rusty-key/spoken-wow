@@ -1,5 +1,5 @@
 /**
- * The two providers' keys live side by side and never in each other's table.
+ * The providers' keys live side by side and never in each other's table.
  *
  * Against the real database, because the table a query names is the whole of what is being
  * tested here: a fish.audio key read back as somebody's ElevenLabs key would be spent there.
@@ -45,5 +45,24 @@ describe("a fish.audio key", () => {
     await deleteApiKey(USER, "fish");
     expect(await readApiKey(USER, "fish")).toBeNull();
     expect(await readApiKey(USER)).toBe("sk_eleven_1234");
+  });
+});
+
+describe("a VoiceStudio connection", () => {
+  it("is stored in its own table and shows its host, not its key", async () => {
+    const connection = JSON.stringify({
+      baseUrl: "https://voice.example.com/studio",
+      apiKey: "vs_secret_5555",
+      model: "omnivoice",
+      maxConcurrency: 2,
+    });
+    const status = await storeApiKey(USER, connection, null, "voicestudio");
+
+    expect(status).toMatchObject({ hint: "voice.example.com", tier: null });
+    expect(await readApiKey(USER, "voicestudio")).toBe(connection);
+    expect(await readApiKey(USER)).toBe("sk_eleven_1234");
+
+    await deleteApiKey(USER, "voicestudio");
+    expect(await readApiKey(USER, "voicestudio")).toBeNull();
   });
 });
