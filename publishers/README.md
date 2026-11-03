@@ -194,21 +194,23 @@ their Spoken site account. The account needs the `admin` grant in a language (a 
 every language), and the section shows only those languages. Under Stores the maintainer saves a
 CurseForge token and project ids per pack, a GitHub token and an `owner/repo`, or both; saving
 checks the token and refuses one that fails. Tokens and the site session are kept encrypted with the
-operating system's secret store, and are refused when there is none. Release then lists each pack
-installed in the selected game as unreleased, live, awaiting CurseForge or skipped with a reason
-(not installed, update in the Manager first, a linked developer checkout, no project id), and has
-one button per store that publishes every unreleased row. It uses the script's tag, asset and file
+operating system's secret store, and are refused when there is none. One project id belongs to one
+pack: saving the same id on two packs is refused. Release then lists each pack as "Unreleased",
+"Live", "Uploaded, awaiting CurseForge" or "Could not check", or says why it cannot be released
+("Not installed" in the selected game, "Not on the newest version from the Manager", "Developer's
+checkout", "No project id"), and has one button per store that publishes every "Unreleased" row. It
+reads the channel again first, and stops if it cannot. It uses the script's tag, asset and file
 names, so the two can be mixed. The script stays for anyone not using the Manager. These limits
 hold:
 
 - CurseForge's upload token cannot list files, so the Manager reads the public list from
   `api.cfwidget.com`, a third party, and keeps its own record of what it uploaded. When cfwidget
-  fails and no upload is recorded, the row reads "could not check" and is left out of Release, so an
-  outage cannot cause a run of duplicates. "Upload again" is available on that row.
+  fails and no upload is recorded, the row reads "Could not check" and is left out of Release, so an
+  outage cannot cause a run of duplicates. "Upload Again" is available on that row.
 - A file in moderation that was uploaded from anywhere else, such as the script, looks unreleased
   until it goes public. Releasing it again makes a duplicate for CurseForge to moderate.
-- A file CurseForge rejects stays "awaiting CF", since nothing reports a rejection. "Upload again"
-  is the way out.
+- A file CurseForge rejects stays "Uploaded, awaiting CurseForge", since nothing reports a
+  rejection. "Upload Again" is the way out.
 - This traffic (the site, cfwidget, CurseForge and GitHub) does not use the system proxy.
 - A GitHub repository that was renamed reads as unreachable until the new name is saved.
 - No real upload has run from the Manager yet, or from the script. The first one needs a

@@ -282,14 +282,17 @@ export interface ContributorView {
   account: { email: string; adminLangs: string[] } | null
   config: ContributorConfig
   canStoreSecrets: boolean
-  lastRun: PublishResult | null
+  /** A stored session the site could not confirm just now. With no account known, a sign-in is not what is missing. */
+  siteUnreachable: boolean
+  /** Each store's own last run, so a run to one does not take away the links of the other. */
+  lastRuns: Partial<Record<StoreId, PublishResult>>
 }
 
 export interface PublishResult {
   store: StoreId
+  lang: string
   published: { folder: string; version: string; link: string }[]
-  /** Folders not sent: not unreleased, or already on the store. */
-  skipped: string[]
+  skipped: { folder: string; reason: SkipReason }[]
   failed: { folder: string; reason: string }[]
   /** A cancel or a failure of the whole run, so folders may be in none of the lists. */
   stoppedEarly: boolean
@@ -304,6 +307,9 @@ export type RowState =
   | 'update-first'
   | 'linked'
   | 'no-project'
+
+/** Why a run left a folder out: the row's state, or a store that turned out to hold the file when the upload began. */
+export type SkipReason = Exclude<RowState, 'unreleased'> | 'already-there'
 
 export interface ReleaseRow {
   folder: string

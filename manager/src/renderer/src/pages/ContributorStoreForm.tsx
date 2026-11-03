@@ -3,7 +3,7 @@ import { languageFolders } from '@shared/products'
 import type { ContributorView, StoreId } from '@shared/types'
 import { api, errorText } from '../api'
 import { Field } from '../components/ContributorField'
-import { storeName } from '../contributor'
+import { storeFormInput, storeName } from '../contributor'
 import { S } from '../strings'
 
 export function StoreForm({ store, view, lang, onView }: { store: StoreId; view: ContributorView; lang: string; onView: (v: ContributorView) => void }): ReactNode {
@@ -23,16 +23,8 @@ export function StoreForm({ store, view, lang, onView }: { store: StoreId; view:
     setBusy(true)
     setError('')
     setSaved(false)
-    const sentToken = removeToken ? '' : token
     try {
-      const kept = Object.fromEntries(Object.entries(projects).filter(([, v]) => v.trim() !== '').map(([k, v]) => [k, v.trim()]))
-      onView(
-        await api().contributorSaveStore(
-          isCf
-            ? { store, ...(sentToken !== '' || removeToken ? { token: sentToken } : {}), projects: kept, gameVersions: versions.trim() }
-            : { store, ...(sentToken !== '' || removeToken ? { token: sentToken } : {}), repo: repo.trim() }
-        )
-      )
+      onView(await api().contributorSaveStore(storeFormInput(store, { token, removeToken, projects, repo, versions })))
       setToken('')
       setSaved(true)
     } catch (e) {

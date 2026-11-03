@@ -1,14 +1,16 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { GameInstall, JobProgress } from '../src/shared/types'
 import { cleanContributorTmp } from '../src/main/cleanup'
 import { ContributorStore, type SecretBox } from '../src/main/contributor-store'
+import { PlainError } from '../src/main/errors'
 import { languageFolders } from '../src/main/contributor-status'
 import { savePackState } from '../src/main/packs-state'
 import { ManagerService } from '../src/main/service'
-import { makeGame, tmpDir, write } from './helpers'
+import { channelFixture, channelKeys, seal, serveChannel, type ChannelFixture, type ChannelKeys } from './channel-helpers'
+import { makeGame, tmpDir, write, type TestServer } from './helpers'
 
 const SITE = 'https://site.test'
 const PASSWORD = 'hunter2-password'
@@ -51,7 +53,7 @@ async function setup(o: Options = {}) {
   const game = await makeGame(tmpDir())
   const calls: Call[] = []
   const events: Array<{ channel: string; payload: unknown }> = []
-  const site = { accountStatus: 200, adminLangs: o.adminLangs ?? ['deDE'], down: false }
+  const site = { accountStatus: 200, adminLangs: o.adminLangs ?? ['deDE'], down: false, channelDown: false, channelRefreshes: 0 }
   const box = o.box ?? fakeBox()
 
   const fetchImpl = (async (input: string | URL, init: RequestInit = {}) => {
@@ -95,6 +97,11 @@ async function setup(o: Options = {}) {
   })
   svc.games = [game]
   svc.channel = { generatedAt: '2026-11-01T00:00:00.000Z', packs: {} }
+  // These tests set the index by hand; 'the channel behind rows and a run' below goes through the real fetch.
+  svc.refreshChannel = async () => {
+    site.channelRefreshes++
+    if (site.channelDown) throw new PlainError('The voice pack channel could not be read.')
+  }
   const store = new ContributorStore(dir, box)
 
   const install = (folder: string, version = '1.2.0', rev = 'r1', title = `|cFF00FF00${folder}|r voices`): void => {
@@ -269,6 +276,38 @@ describe('signing in', () => {
     expect(h.store.cookie()).not.toBeNull()
   })
 
+  it('a session the site cannot confirm at launch says so, keeps the cookie and clears when the site answers', async () => {
+    const h = await setup()
+    h.store.setCookie(COOKIE)
+    h.site.down = true
+    let view = await h.svc.contributor.view()
+    expect(view).toMatchObject({ account: null, siteUnreachable: true })
+    expect(JSON.stringify(view)).not.toContain(COOKIE_VALUE)
+    expect(h.store.cookie()).toBe(COOKIE)
+
+    h.site.down = false
+    view = await h.svc.contributor.view()
+    expect(view).toMatchObject({ account: { email: 'me@example.test' }, siteUnreachable: false })
+  })
+
+  it('a site answering with an error is unreachable too; no session, or an ended one, is not', async () => {
+    const h = await setup()
+    expect((await h.svc.contributor.view()).siteUnreachable).toBe(false)
+    h.store.setCookie(COOKIE)
+    h.site.accountStatus = 502
+    expect(await h.svc.contributor.view()).toMatchObject({ account: null, siteUnreachable: true })
+    h.site.accountStatus = 401
+    expect(await h.svc.contributor.view()).toMatchObject({ account: null, siteUnreachable: false })
+    expect(h.store.cookie()).toBeNull()
+  })
+
+  it('signing out leaves no unreachable site behind', async () => {
+    const h = await signedIn()
+    h.site.down = true
+    expect((await h.svc.contributor.view()).siteUnreachable).toBe(true)
+    expect((await h.svc.contributor.signOut()).siteUnreachable).toBe(false)
+  })
+
   it('an account with no admin languages still returns its account, so the window can say so', async () => {
     const h = await signedIn({ adminLangs: [] })
     expect((await h.svc.contributor.view()).account).toEqual({ email: 'me@example.test', adminLangs: [] })
@@ -365,8 +404,8 @@ describe('rows', () => {
       route: (c) => {
         const m = /\/releases\/tags\/(.+)$/.exec(c.url)
         if (!m) return undefined
-        const folder = decodeURIComponent(m[1]!).split('/')[0]!
-        if (folder === PLACES) return json({ assets: [{ name: `${PLACES}-1.2.0.zip` }] })
+        const folder = m[1]!.split('/')[0]!
+        if (folder === PLACES) return json({ assets: [{ name: `${PLACES}-1.2.0.zip`, state: 'uploaded' }] })
         if (folder === READABLES) return new Response('', { status: 404 })
         return new Response('', { status: 500 })
       }
@@ -491,13 +530,16 @@ describe('publish', () => {
     expect(seen.find((s) => s.project === '100')?.changelog).toBe(`${PLACES} voices 1.2.0`)
     expect(seen.every((s) => s.zips === 1)).toBe(true)
 
-    const { lastRun } = await h.svc.contributor.view()
-    expect(lastRun).toMatchObject({ store: 'curseforge', stoppedEarly: false })
+    const lastRun = (await h.svc.contributor.view()).lastRuns.curseforge
+    expect(lastRun).toMatchObject({ store: 'curseforge', lang: 'deDE', stoppedEarly: false })
     expect(lastRun!.published).toEqual([{ folder: PLACES, version: '1.2.0', link: 'https://www.curseforge.com/projects/100' }])
     expect(lastRun!.failed.map((f) => f.folder)).toEqual([READABLES])
     expect(lastRun!.failed[0]!.reason).toContain('422')
     expect(lastRun!.failed[0]!.reason).not.toContain(CF_TOKEN)
-    expect(lastRun!.skipped.sort()).toEqual(DE.filter((f) => f !== PLACES && f !== READABLES).sort())
+    expect(lastRun!.skipped.map((s) => s.folder).sort()).toEqual(DE.filter((f) => f !== PLACES && f !== READABLES).sort())
+    expect(lastRun!.skipped.find((s) => s.folder === quests)?.reason).toBe('awaiting')
+    expect(lastRun!.skipped.find((s) => s.folder === BOSSES)?.reason).toBe('no-project')
+    expect(lastRun!.skipped.find((s) => s.folder === 'SpokenQuestsAudioShared_deDE')?.reason).toBe('not-installed')
 
     expect(h.store.uploads('curseforge').map((u) => [u.folder, u.fileId])).toEqual([
       [quests, '1'],
@@ -512,7 +554,7 @@ describe('publish', () => {
     expect(step).toMatchObject({ gameId: h.game.id, productId: 'publish/curseforge', action: 'publish', received: 2, total: 2 })
     const changed = h.events.filter((e) => e.channel === CHANNELS.contributorChanged)
     expect(changed).toHaveLength(1)
-    expect(changed[0]!.payload).toMatchObject({ lastRun: { store: 'curseforge' } })
+    expect(changed[0]!.payload).toMatchObject({ lastRuns: { curseforge: { store: 'curseforge' } } })
     expect(JSON.stringify(changed[0]!.payload)).not.toContain(COOKIE_VALUE)
   })
 
@@ -541,7 +583,7 @@ describe('publish', () => {
     configureCf(h, { [PLACES]: '100', [READABLES]: '200' })
     const jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
     expect((await h.finished(jobId)).phase).toBe('done')
-    const { lastRun } = await h.svc.contributor.view()
+    const lastRun = (await h.svc.contributor.view()).lastRuns.curseforge
     expect(lastRun!.failed.map((f) => f.folder)).toEqual([PLACES])
     expect(lastRun!.published.map((p) => p.folder)).toEqual([READABLES])
     expect(lastRun!.stoppedEarly).toBe(false)
@@ -559,8 +601,7 @@ describe('publish', () => {
     expect(fs.existsSync(path.join(h.dir, 'contributor-tmp')) ? fs.readdirSync(path.join(h.dir, 'contributor-tmp')) : []).toEqual([])
     expect(h.calls.some((c) => c.url.endsWith('/upload-file'))).toBe(false)
     expect(h.jobs().some((j) => j.message?.includes('zipping'))).toBe(false)
-    const { lastRun } = await h.svc.contributor.view()
-    expect(lastRun).toMatchObject({ published: [], stoppedEarly: true })
+    expect((await h.svc.contributor.view()).lastRuns.curseforge).toMatchObject({ published: [], stoppedEarly: true })
   })
 
   it('a run with no token stops with words, not with a request', async () => {
@@ -570,7 +611,7 @@ describe('publish', () => {
     const end = await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge'))
     expect(end.phase).toBe('error')
     expect(end.message).toMatch(/token/)
-    expect((await h.svc.contributor.view()).lastRun?.stoppedEarly).toBe(true)
+    expect((await h.svc.contributor.view()).lastRuns.curseforge?.stoppedEarly).toBe(true)
   })
 
   it('a run with nothing to send asks CurseForge nothing and ends done', async () => {
@@ -579,7 +620,7 @@ describe('publish', () => {
     h.store.saveConfig({ gameVersions: '9.9.9' })
     const end = await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge'))
     expect(end.phase).toBe('done')
-    expect((await h.svc.contributor.view()).lastRun).toMatchObject({ published: [], failed: [], stoppedEarly: false })
+    expect((await h.svc.contributor.view()).lastRuns.curseforge).toMatchObject({ published: [], failed: [], stoppedEarly: false })
   })
 
   it('only uploads that one folder even from awaiting or unchecked, and refuses linked, stale or not-installed', async () => {
@@ -599,10 +640,10 @@ describe('publish', () => {
 
     // Awaiting.
     expect((await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge', PLACES))).phase).toBe('done')
-    expect((await h.svc.contributor.view()).lastRun!.published.map((p) => p.folder)).toEqual([PLACES])
+    expect((await h.svc.contributor.view()).lastRuns.curseforge!.published.map((p) => p.folder)).toEqual([PLACES])
     // Unchecked.
     expect((await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge', READABLES))).phase).toBe('done')
-    const { lastRun } = await h.svc.contributor.view()
+    const lastRun = (await h.svc.contributor.view()).lastRuns.curseforge
     expect(lastRun!.published.map((p) => p.folder)).toEqual([READABLES])
     expect(lastRun!.skipped).toEqual([])
     expect(h.store.uploads('curseforge').map((u) => u.folder)).toEqual([PLACES, PLACES, READABLES])
@@ -661,7 +702,7 @@ describe('publish', () => {
     expect(zipsDuringUpload).toBe(1)
     expect(fs.readdirSync(path.join(h.dir, 'contributor-tmp'))).toEqual([])
     expect(h.store.uploads('curseforge').map((u) => u.folder)).toEqual([quests])
-    const { lastRun } = await h.svc.contributor.view()
+    const lastRun = (await h.svc.contributor.view()).lastRuns.curseforge
     expect(lastRun).toMatchObject({ stoppedEarly: true, failed: [] })
     expect(lastRun!.published.map((p) => p.folder)).toEqual([quests])
     expect(h.calls.filter((c) => c.url.endsWith('/upload-file'))).toHaveLength(2)
@@ -670,13 +711,15 @@ describe('publish', () => {
 
   it('sends a GitHub run through the release steps and reports a pack already there as skipped', async () => {
     const uploaded: string[] = []
+    let looks = 0
     const h = await signedIn({
       route: async (c) => {
         const tag = /\/releases\/tags\/(.+)$/.exec(c.url)
         if (tag) {
-          const folder = decodeURIComponent(tag[1]!).split('/')[0]!
-          if (c.url.includes('%2F')) return new Response('', { status: 404 }) // the row's look
-          if (folder === BOSSES) return json({ id: 7, assets: [{ name: `${BOSSES}-1.2.0.zip` }] })
+          const folder = tag[1]!.split('/')[0]!
+          // BOSSES goes up between the rows' look and the upload; READABLES was live from the start.
+          if (folder === READABLES) return json({ id: 8, assets: [{ name: `${READABLES}-1.2.0.zip`, state: 'uploaded' }] })
+          if (folder === BOSSES && looks++ > 0) return json({ id: 7, assets: [{ name: `${BOSSES}-1.2.0.zip`, state: 'uploaded' }] })
           return new Response('', { status: 404 })
         }
         if (c.url.endsWith('/repos/me/packs/releases')) return json({ id: 5, assets: [] }, 201)
@@ -689,17 +732,112 @@ describe('publish', () => {
       }
     })
     h.install(PLACES)
+    h.install(READABLES)
     h.install(BOSSES)
     h.store.setToken('github', GH_TOKEN)
     h.store.saveConfig({ repo: 'me/packs' })
     const end = await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'github'))
     expect(end.phase).toBe('done')
-    const { lastRun } = await h.svc.contributor.view()
+    const lastRun = (await h.svc.contributor.view()).lastRuns.github
     expect(uploaded).toEqual([`${PLACES}-1.2.0.zip`])
     expect(lastRun!.published).toEqual([{ folder: PLACES, version: '1.2.0', link: `https://github.com/me/packs/releases/tag/${PLACES}/v1.2.0` }])
-    expect(lastRun!.skipped).toContain(BOSSES)
+    expect(lastRun!.skipped).toContainEqual({ folder: BOSSES, reason: 'already-there' })
+    expect(lastRun!.skipped).toContainEqual({ folder: READABLES, reason: 'live' })
     // Only what was sent: the pack already there is not this Manager's upload.
     expect(h.store.uploads('github').map((u) => [u.folder, u.version, u.fileId])).toEqual([[PLACES, '1.2.0', null]])
+  })
+
+  it('a partial GitHub asset is replaced in a run, and its row is not live', async () => {
+    const asset = `${PLACES}-1.2.0.zip`
+    const asked: string[] = []
+    const h = await signedIn({
+      route: async (c) => {
+        if (/\/releases\/tags\//.test(c.url)) return json({ id: 5, assets: [{ id: 91, name: asset, state: 'starter' }] })
+        if (c.init.method === 'DELETE') {
+          asked.push(c.url)
+          return new Response(null, { status: 204 })
+        }
+        if (c.url.includes('uploads.github.com')) {
+          await new Response(c.init.body as BodyInit).arrayBuffer()
+          asked.push(new URL(c.url).searchParams.get('name')!)
+          return json({}, 201)
+        }
+        return undefined
+      }
+    })
+    h.install(PLACES)
+    h.store.setToken('github', GH_TOKEN)
+    h.store.saveConfig({ repo: 'me/packs' })
+    expect((await h.svc.contributor.rows(h.game.id, 'deDE', 'github')).find((r) => r.folder === PLACES)?.state).toBe('unreleased')
+    await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'github'))
+    expect(asked).toEqual(['https://api.github.com/repos/me/packs/releases/assets/91', asset])
+    expect((await h.svc.contributor.view()).lastRuns.github!.published.map((p) => p.folder)).toEqual([PLACES])
+  })
+
+  it('each store keeps its own last run, with the language it was for', async () => {
+    const h = await signedIn({
+      adminLangs: ['deDE', 'frFR'],
+      route: async (c) => {
+        const answer = await cfUpload()(c)
+        if (answer) return answer
+        if (/\/releases\/tags\//.test(c.url)) return new Response('', { status: 404 })
+        if (c.url.endsWith('/repos/me/packs/releases')) return json({ id: 5, assets: [] }, 201)
+        if (c.url.includes('uploads.github.com')) {
+          await new Response(c.init.body as BodyInit).arrayBuffer()
+          return json({}, 201)
+        }
+        return undefined
+      }
+    })
+    const french = 'SpokenPlacesAudio_frFR'
+    h.install(PLACES)
+    h.install(french)
+    configureCf(h, { [PLACES]: '100' })
+    h.store.setToken('github', GH_TOKEN)
+    h.store.saveConfig({ repo: 'me/packs' })
+    await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge'))
+    await h.finished(await h.svc.contributor.publish(h.game.id, 'frFR', 'github'))
+    const { lastRuns } = await h.svc.contributor.view()
+    expect(lastRuns.curseforge).toMatchObject({ store: 'curseforge', lang: 'deDE' })
+    expect(lastRuns.curseforge!.published.map((p) => p.folder)).toEqual([PLACES])
+    expect(lastRuns.github).toMatchObject({ store: 'github', lang: 'frFR' })
+    expect(lastRuns.github!.published.map((p) => p.folder)).toEqual([french])
+  })
+
+  it('a run stops before anything is sent when the channel cannot be fetched', async () => {
+    const h = await signedIn({ route: cfUpload() })
+    h.install(PLACES)
+    configureCf(h, { [PLACES]: '100' })
+    h.site.channelDown = true
+    const end = await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge'))
+    expect(end.phase).toBe('error')
+    expect(end.message).toMatch(/channel/)
+    expect(h.calls.some((c) => c.url.endsWith('/upload-file') || c.url.includes('cfwidget') || c.url.endsWith('/game/versions'))).toBe(false)
+    expect((await h.svc.contributor.view()).lastRuns.curseforge).toMatchObject({ published: [], stoppedEarly: true })
+  })
+
+  it('upload again also stops when the channel cannot be fetched', async () => {
+    const h = await signedIn({ route: cfUpload() })
+    h.install(PLACES)
+    configureCf(h, { [PLACES]: '100' })
+    h.site.channelDown = true
+    const end = await h.finished(await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge', PLACES))
+    expect(end.phase).toBe('error')
+    expect(h.calls.some((c) => c.url.endsWith('/upload-file'))).toBe(false)
+  })
+
+  it('a cancel during the channel fetch ends the run as cancelled', async () => {
+    const h = await signedIn({ route: cfUpload() })
+    configureCf(h, { [PLACES]: '100' })
+    let jobId = ''
+    // fetchIndex turns an abort into an offline answer, so the rejection reads like any failed fetch.
+    h.svc.refreshChannel = ({ signal } = {}) =>
+      new Promise((_resolve, reject) => {
+        signal!.addEventListener('abort', () => reject(new PlainError('The voice pack channel could not be read.')))
+        setTimeout(() => h.svc.cancel(jobId), 0)
+      })
+    jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
+    expect((await h.finished(jobId)).phase).toBe('cancelled')
   })
 
   it('one publish per store at a time: another language, another folder or another game is refused, not dropped', async () => {
@@ -775,7 +913,7 @@ describe('publish', () => {
     jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
     expect((await h.finished(jobId)).phase).toBe('cancelled')
     expect(h.jobs().some((j) => j.message?.includes('zipping'))).toBe(false)
-    expect((await h.svc.contributor.view()).lastRun).toMatchObject({ published: [], failed: [], stoppedEarly: true })
+    expect((await h.svc.contributor.view()).lastRuns.curseforge).toMatchObject({ published: [], failed: [], stoppedEarly: true })
   })
 
   it('a cancel during the row check does not end as a run with nothing to send', async () => {
@@ -788,7 +926,7 @@ describe('publish', () => {
     jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
     expect((await h.finished(jobId)).phase).toBe('cancelled')
     expect(h.calls.some((c) => c.url.endsWith('/game/versions'))).toBe(false)
-    expect((await h.svc.contributor.view()).lastRun?.stoppedEarly).toBe(true)
+    expect((await h.svc.contributor.view()).lastRuns.curseforge?.stoppedEarly).toBe(true)
   })
 
   it('a failure read after a cancel is the cancel, not a failed pack', async () => {
@@ -805,7 +943,7 @@ describe('publish', () => {
     configureCf(h, { [PLACES]: '100' })
     jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
     expect((await h.finished(jobId)).phase).toBe('cancelled')
-    expect((await h.svc.contributor.view()).lastRun).toMatchObject({ failed: [], stoppedEarly: true })
+    expect((await h.svc.contributor.view()).lastRuns.curseforge).toMatchObject({ failed: [], stoppedEarly: true })
   })
 
   it('a run keeps to the game it started on', async () => {
@@ -815,7 +953,151 @@ describe('publish', () => {
     const jobId = await h.svc.contributor.publish(h.game.id, 'deDE', 'curseforge')
     h.svc.games = []
     expect((await h.finished(jobId)).phase).toBe('done')
-    expect((await h.svc.contributor.view()).lastRun!.published).toHaveLength(1)
+    expect((await h.svc.contributor.view()).lastRuns.curseforge!.published).toHaveLength(1)
+  })
+})
+
+describe('the channel behind rows and a run', () => {
+  const REV_A = '20261101T000000Z'
+  const REV_B = '20261102T000000Z'
+  let server: TestServer | null = null
+  afterEach(async () => {
+    await server?.close()
+    server = null
+  })
+
+  /** What the server hands out from now on: one pack at `rev`, signed. */
+  function publishRev(fx: { objects: ChannelFixture['objects'] }, keys: ChannelKeys, rev: string, generatedAt: string): void {
+    const next = channelFixture(keys, [{ packId: PLACES, rev, files: { [`${PLACES}.toc`]: 'toc' } }])
+    next.objects.set('/index.json', Buffer.from(seal({ ...next.index, generatedAt }, keys).text))
+    fx.objects = next.objects
+  }
+
+  async function open(o: { uploads?: boolean } = {}) {
+    const keys = channelKeys()
+    const fx: { objects: ChannelFixture['objects'] } = { objects: new Map() }
+    publishRev(fx, keys, REV_A, '2026-11-01T00:00:00.000Z')
+    let refuse = false
+    let indexAsked = 0
+    const s = await serveChannel(fx, (req, res) => {
+      if (req.url === '/index.json') indexAsked++
+      if (!refuse) return false
+      res.writeHead(500)
+      res.end()
+      return true
+    })
+    server = s
+    const dir = tmpDir()
+    const game = await makeGame(tmpDir())
+    const sent: Array<{ channel: string; payload: unknown }> = []
+    const uploads: string[] = []
+    const svc = new ManagerService({
+      dataPath: dir,
+      appVersion: '1.0.0',
+      send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl: fetch,
+      contributorFetch: (async (url: string) => {
+        const u = String(url)
+        if (u.endsWith('/sign-in/email')) return new Response('{}', { status: 200, headers: { 'set-cookie': `${COOKIE}; Path=/` } })
+        if (u.endsWith('/api/manager/contributor')) return json({ email: 'me@example.test', adminLangs: ['deDE'] })
+        if (u.includes('cfwidget')) return json({ files: [] })
+        if (u.endsWith('/game/versions')) return json([{ id: 1, name: '1.15.9' }, { id: 2, name: '2.5.6' }, { id: 3, name: '1.60.1' }])
+        if (u.endsWith('/upload-file') && o.uploads) {
+          uploads.push(u)
+          return json({ id: 1 })
+        }
+        throw new Error(`unexpected request ${u}`)
+      }) as typeof fetch,
+      autoPaths: [],
+      siteUrl: SITE,
+      secretBox: fakeBox(),
+      packsBaseUrl: s.base,
+      packsPublicKey: keys.publicKey
+    })
+    svc.games = [game]
+    await svc.refreshChannel()
+    expect(svc.channel?.packs[PLACES]?.rev).toBe(REV_A)
+    const store = new ContributorStore(dir, fakeBox())
+    store.setToken('curseforge', CF_TOKEN)
+    store.saveConfig({ projects: { [PLACES]: '100' } })
+    write(path.join(game.addOnsPath, PLACES, `${PLACES}.toc`), `## Title: Places\n## Version: 1.2.0\n`)
+    savePackState(game, { packId: PLACES, rev: REV_A, files: {} })
+    await svc.contributor.signIn('me@example.test', PASSWORD)
+    const place = async (): Promise<string | undefined> => (await svc.contributor.rows(game.id, 'deDE', 'curseforge')).find((r) => r.folder === PLACES)?.state
+    const finished = async (jobId: string): Promise<JobProgress> => {
+      for (let i = 0; i < 2000; i++) {
+        const jobs = sent.filter((e) => e.channel === CHANNELS.jobProgress).map((e) => e.payload as JobProgress)
+        const end = jobs.find((j) => j.jobId === jobId && ['done', 'error', 'cancelled'].includes(j.phase))
+        if (end) return end
+        await new Promise((r) => setTimeout(r, 5))
+      }
+      throw new Error('the job did not end')
+    }
+    return {
+      svc,
+      game,
+      sent,
+      uploads,
+      place,
+      finished,
+      release: (rev: string, at: string) => publishRev(fx, keys, rev, at),
+      refuse: (v: boolean) => (refuse = v),
+      indexAsked: () => indexAsked,
+      /** The Manager has been open for hours: what it fetched is older than any max age. */
+      resetAge: () => ((svc as unknown as { channelFetchedAt: number }).channelFetchedAt = 0)
+    }
+  }
+
+  it('rows read a release made while the Manager was open, and the window hears of the update', async () => {
+    const c = await open()
+    c.resetAge()
+    expect(await c.place()).toBe('unreleased')
+    c.release(REV_B, '2026-11-02T00:00:00.000Z')
+    c.resetAge()
+    expect(await c.place()).toBe('update-first')
+    expect(c.svc.channel?.packs[PLACES]?.rev).toBe(REV_B)
+    expect(c.sent.some((e) => e.channel === CHANNELS.catalogChanged)).toBe(true)
+  })
+
+  it('rows of one screen ask once, and a failed fetch keeps the last verified index', async () => {
+    const c = await open()
+    c.resetAge()
+    const before = c.indexAsked()
+    await Promise.all([c.place(), c.place()])
+    await c.place()
+    expect(c.indexAsked() - before).toBe(1)
+
+    c.refuse(true)
+    c.resetAge()
+    expect(await c.place()).toBe('unreleased')
+    expect(c.svc.channel?.packs[PLACES]?.rev).toBe(REV_A)
+  })
+
+  it('a run fetches for itself even just after the rows, and sends nothing stale', async () => {
+    const c = await open({ uploads: true })
+    expect(await c.place()).toBe('unreleased')
+    c.release(REV_B, '2026-11-02T00:00:00.000Z')
+    const end = await c.finished(await c.svc.contributor.publish(c.game.id, 'deDE', 'curseforge'))
+    expect(end.phase).toBe('done')
+    expect(c.uploads).toEqual([])
+    expect((await c.svc.contributor.view()).lastRuns.curseforge!.skipped).toContainEqual({ folder: PLACES, reason: 'update-first' })
+  })
+
+  it('a run with a channel that fails stops with words, though rows just read fine', async () => {
+    const c = await open({ uploads: true })
+    expect(await c.place()).toBe('unreleased')
+    c.refuse(true)
+    const end = await c.finished(await c.svc.contributor.publish(c.game.id, 'deDE', 'curseforge'))
+    expect(end.phase).toBe('error')
+    expect(end.message).toMatch(/channel/)
+    expect(c.uploads).toEqual([])
+  })
+
+  it('a run on a channel that answers still sends', async () => {
+    const c = await open({ uploads: true })
+    const end = await c.finished(await c.svc.contributor.publish(c.game.id, 'deDE', 'curseforge'))
+    expect(end.phase).toBe('done')
+    expect(c.uploads).toHaveLength(1)
   })
 })
 

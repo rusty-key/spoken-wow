@@ -21,6 +21,8 @@ import { parseTocVersion } from './status'
 const SITE_URL = 'https://spoken.rusty.one'
 const SITE_TIMEOUT_MS = 15_000
 const STORE_NAMES: Record<StoreId, string> = { curseforge: 'CurseForge', github: 'GitHub' }
+/** Long enough for one screen's stores and its refresh button to share a request. */
+const ROWS_CHANNEL_MAX_AGE_MS = 60_000
 
 type Account = NonNullable<ContributorView['account']>
 type JobContext = Parameters<JobSpec['run']>[0]
@@ -33,6 +35,8 @@ export interface ContributorDeps {
   jobs: JobManager
   game: (gameId: string) => GameInstall
   channel: () => ChannelIndex | null
+  /** Replaces what `channel` answers; rejects, leaving it as it was, when no verified index came back. `maxAgeMs` accepts one that recent. */
+  refreshChannel: (options: { maxAgeMs?: number; signal?: AbortSignal }) => Promise<void>
   changed: (view: ContributorView) => void
 }
 
@@ -89,7 +93,9 @@ export class ContributorService {
   private readonly site: string
   /** The account as last confirmed; a site that cannot be reached is no reason to forget it. */
   private known: Account | null = null
-  private lastRun: PublishResult | null = null
+  /** A cookie is kept and the site gave no answer about it. */
+  private unreachable = false
+  private readonly lastRuns: Partial<Record<StoreId, PublishResult>> = {}
   /**
    * One run per store across all games. JobManager would hand a second request the running job's id,
    * dropping it unseen, and runs on two games would go in parallel and could send a folder twice.
@@ -119,6 +125,7 @@ export class ContributorService {
   private clearSession(): void {
     this.store.setCookie(null)
     this.known = null
+    this.unreachable = false
     this.deps.changed(this.localView())
   }
 
@@ -127,6 +134,7 @@ export class ContributorService {
     const cookie = this.store.cookie()
     if (!cookie) {
       this.known = null
+      this.unreachable = false
       return null
     }
     try {
@@ -135,9 +143,12 @@ export class ContributorService {
         this.clearSession()
         return null
       }
-      if (res.ok) this.known = parseAccount(await res.json()) ?? this.known
+      const account = res.ok ? parseAccount(await res.json()) : null
+      if (account) this.known = account
+      this.unreachable = !account
     } catch {
       // Keeps what is known; a cookie still stored tells requireAdmin the site was the problem.
+      this.unreachable = true
     }
     return this.known
   }
@@ -151,7 +162,7 @@ export class ContributorService {
   }
 
   private localView(): ContributorView {
-    return { account: this.known, config: this.store.config(), canStoreSecrets: this.deps.box.available(), lastRun: this.lastRun }
+    return { account: this.known, config: this.store.config(), canStoreSecrets: this.deps.box.available(), siteUnreachable: this.unreachable, lastRuns: { ...this.lastRuns } }
   }
 
   async view(): Promise<ContributorView> {
@@ -187,6 +198,7 @@ export class ContributorService {
     const cookie = this.store.cookie()
     this.store.setCookie(null)
     this.known = null
+    this.unreachable = false
     if (cookie) {
       // Ends the session on the site as well, when it can be reached; the Manager has forgotten it either way.
       await this.siteRequest('/api/auth/sign-out', {
@@ -301,6 +313,9 @@ export class ContributorService {
 
   async rows(gameId: string, lang: string, store: StoreId): Promise<ReleaseRow[]> {
     await this.requireAdmin(lang)
+    // The Manager may have stayed open across a site release, and an old index reads an older folder as current.
+    // Rows can still be drawn from the last verified index, because a run fetches its own before it sends anything.
+    await this.deps.refreshChannel({ maxAgeMs: ROWS_CHANNEL_MAX_AGE_MS }).catch(() => undefined)
     return this.rowsOf(await this.inspect(this.deps.game(gameId), languageFolders(lang)), store)
   }
 
@@ -326,12 +341,12 @@ export class ContributorService {
       productId: `publish/${store}`,
       action: 'publish',
       onDropped: () => this.publishing.delete(store),
-      run: (ctx) => this.runJob(game, only ? [only] : folders, store, only !== undefined, ctx)
+      run: (ctx) => this.runJob(game, lang, only ? [only] : folders, store, only !== undefined, ctx)
     })
   }
 
-  private async runJob(game: GameInstall, folders: string[], store: StoreId, again: boolean, ctx: JobContext): Promise<void> {
-    const result: PublishResult = { store, published: [], skipped: [], failed: [], stoppedEarly: false }
+  private async runJob(game: GameInstall, lang: string, folders: string[], store: StoreId, again: boolean, ctx: JobContext): Promise<void> {
+    const result: PublishResult = { store, lang, published: [], skipped: [], failed: [], stoppedEarly: false }
     try {
       await this.sendPacks(game, folders, store, again, result, ctx)
     } catch (err) {
@@ -339,7 +354,7 @@ export class ContributorService {
       throw err
     } finally {
       this.publishing.delete(store)
-      this.lastRun = result
+      this.lastRuns[store] = result
       log(`Publish to ${store}: ${result.published.length} sent, ${result.skipped.length} skipped, ${result.failed.length} failed${result.stoppedEarly ? ', stopped early' : ''}.`)
       this.deps.changed(this.localView())
     }
@@ -352,6 +367,14 @@ export class ContributorService {
     const config = this.store.config()
     if (store === 'github' && !config.repo) throw new PlainError('Save your GitHub repository under Stores first.')
 
+    // Publishing on an old index would send an older folder to the store as the current release.
+    try {
+      await this.deps.refreshChannel({ signal: ctx.signal })
+    } catch {
+      if (ctx.signal.aborted) throw new CancelledError()
+      throw new PlainError('Could not check the voice pack channel, so nothing was published. Try again.')
+    }
+
     // Read here and not when the job was asked for: it may have waited for an install on this game.
     const packs = await this.inspect(game, folders)
     let targets = packs
@@ -363,7 +386,9 @@ export class ContributorService {
       // A cancelled look answers like an outage, so without this the run would seem to have had nothing to send.
       throwIfAborted(ctx.signal)
       targets = packs.filter((_, i) => rows[i]!.state === 'unreleased')
-      result.skipped.push(...packs.filter((p) => !targets.includes(p)).map((p) => p.folder))
+      for (const row of rows) {
+        if (row.state !== 'unreleased') result.skipped.push({ folder: row.folder, reason: row.state })
+      }
     }
     if (targets.length === 0) return
 
@@ -402,7 +427,7 @@ export class ContributorService {
     if (store === 'github') {
       const sent = await uploadGitHub({ ...common, repo: config.repo })
       if (sent.alreadyThere) {
-        result.skipped.push(folder)
+        result.skipped.push({ folder, reason: 'already-there' })
         return
       }
       link = sent.link

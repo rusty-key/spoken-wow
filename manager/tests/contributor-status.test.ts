@@ -49,7 +49,7 @@ describe('cfPublicVersions', () => {
 })
 
 describe('ghHasAsset', () => {
-  const asset = { assets: [{ name: 'F-1.0.0.zip' }] }
+  const asset = { assets: [{ name: 'F-1.0.0.zip', state: 'uploaded' }] }
   it('is live only when the tag holds the asset', async () => {
     const r = await ghHasAsset('o/r', 't', 'F', '1.0.0', json(200, asset))
     expect(r).toEqual({ live: true, link: 'https://github.com/o/r/releases/tag/F/v1.0.0' })
@@ -57,7 +57,12 @@ describe('ghHasAsset', () => {
     expect((await ghHasAsset('o/r', 't', 'F', '1.0.0', json(404, {})))?.live).toBe(false)
     expect(await ghHasAsset('o/r', 't', 'F', '1.0.0', json(500, {}))).toBeNull()
   })
-  it('asks for the url-encoded tag with the token', async () => {
+  it('does not count an asset cut short as live', async () => {
+    for (const state of ['starter', 'open', undefined]) {
+      expect((await ghHasAsset('o/r', 't', 'F', '1.0.0', json(200, { assets: [{ name: 'F-1.0.0.zip', state }] })))?.live).toBe(false)
+    }
+  })
+  it('asks for the tag with its raw slash, as an upload does, with the token', async () => {
     let url = ''
     let auth = ''
     const f = (async (u: string, init: RequestInit) => {
@@ -66,7 +71,7 @@ describe('ghHasAsset', () => {
       return new Response('{}', { status: 404 })
     }) as unknown as typeof fetch
     await ghHasAsset('o/r', 'tok', 'F', '1.0.0', f)
-    expect(url).toBe('https://api.github.com/repos/o/r/releases/tags/F%2Fv1.0.0')
+    expect(url).toBe('https://api.github.com/repos/o/r/releases/tags/F/v1.0.0')
     expect(auth).toBe('Bearer tok')
   })
 })

@@ -43,6 +43,14 @@ describe('requests that carry a token', () => {
     }
   })
 
+  it('the delete of a partial GitHub asset does not follow a redirect either', async () => {
+    const { inits, fetchImpl } = recording({ id: 5, assets: [{ id: 9, name: 'F-1.0.0.zip', state: 'starter' }] })
+    await uploadGitHub({ token: TOKEN, folder: 'F', version: '1.0.0', notes: 'n', signal: new AbortController().signal, repo: 'o/r', zip: zipFile(), fetchImpl }).catch(() => undefined)
+    const del = inits.find((i) => i.method === 'DELETE')
+    expect(del?.redirect).toBe('error')
+    expect(del?.signal).toBeInstanceOf(AbortSignal)
+  })
+
   it('the checks a save makes have a timeout, with no signal of the caller', async () => {
     for (const call of [(f: typeof fetch) => checkCfToken(TOKEN, f), (f: typeof fetch) => checkGhRepo(TOKEN, 'o/r', f).catch(() => undefined)]) {
       const { inits, fetchImpl } = recording()

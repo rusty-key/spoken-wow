@@ -245,7 +245,19 @@ interface GhRelease {
   assets?: unknown
 }
 
-/** A release already holding this zip is left alone, so a re-run sends only what is missing. */
+async function deleteGhAsset(a: { token: string; repo: string; signal: AbortSignal; fetchImpl: typeof fetch }, id: unknown, name: string): Promise<void> {
+  if (typeof id !== 'number') throw new PlainError(`GitHub holds an unfinished ${name}, with no id to remove it by.`)
+  const res = await send('GitHub', a.fetchImpl, `${GH_API}/repos/${a.repo}/releases/assets/${id}`, { method: 'DELETE', headers: ghHeaders(a.token) }, a.signal, CHECK_TIMEOUT_MS)
+  if (!res.ok) {
+    const answer = await rejected('GitHub', res, a.token)
+    throw new PlainError(`Could not remove the unfinished ${name}. ${answer.message}`)
+  }
+}
+
+/**
+ * A release already holding this zip is left alone, so a re-run sends only what is missing. An asset of
+ * that name cut short by a cancel or a dropped connection still takes the name, so it is removed first.
+ */
 export async function uploadGitHub(a: {
   token: string
   repo: string
@@ -288,9 +300,9 @@ export async function uploadGitHub(a: {
   }
   const release = parsed as GhRelease
   const assets: unknown[] = Array.isArray(release.assets) ? release.assets : []
-  if (assets.some((x) => typeof x === 'object' && x !== null && (x as { name?: unknown }).name === name)) {
-    return { link, alreadyThere: true }
-  }
+  const existing = assets.find((x) => typeof x === 'object' && x !== null && (x as { name?: unknown }).name === name) as { id?: unknown; state?: unknown } | undefined
+  if (existing?.state === 'uploaded') return { link, alreadyThere: true }
+  if (existing) await deleteGhAsset(a, existing.id, name)
 
   const fromUrl = typeof release.upload_url === 'string' ? /\/releases\/(\d+)\/assets/.exec(release.upload_url)?.[1] : undefined
   const id = fromUrl ?? (typeof release.id === 'number' ? String(release.id) : undefined)

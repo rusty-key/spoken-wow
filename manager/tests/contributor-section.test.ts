@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { ContributorConfig, ContributorView, JobProgress, ReleaseRow } from '../src/shared/types'
 import { isAllowedExternalUrl } from '../src/main/external'
-import { publishJobFor, releasableCount, visibleTabs } from '../src/renderer/src/contributor'
+import { ContributorStore } from '../src/main/contributor-store'
+import { liveRunText, publishJobFor, releasableCount, resultLines, rowHint, skipReasonText, storeFormInput, visibleTabs } from '../src/renderer/src/contributor'
+import { S } from '../src/renderer/src/strings'
+import { tmpDir } from './helpers'
 
 const base: ContributorConfig = { projects: {}, repo: '', gameVersions: '', hasCfToken: false, hasGhToken: false }
-const view = (account: ContributorView['account']): ContributorView => ({ account, config: base, canStoreSecrets: true, lastRun: null })
+const view = (account: ContributorView['account']): ContributorView => ({ account, config: base, canStoreSecrets: true, siteUnreachable: false, lastRuns: {} })
 const admin = { email: 'a@b.c', adminLangs: ['deDE'] }
 
 describe('visibleTabs', () => {
@@ -62,6 +65,59 @@ describe('publishJobFor', () => {
       'g2|publish/github': job('g2', 'publish/github', 'publish', 'installing')
     }
     expect(publishJobFor(jobs, 'github')?.phase).toBe('installing')
+  })
+})
+
+describe('storeFormInput', () => {
+  const form = { token: '', removeToken: false, projects: {} as Record<string, string>, repo: ' me/packs ', versions: ' 1.0 ' }
+
+  it('sends a cleared project id as empty and trims the rest', () => {
+    expect(storeFormInput('curseforge', { ...form, projects: { A: ' 1 ', B: '', C: '   ' } })).toEqual({
+      store: 'curseforge',
+      projects: { A: '1', B: '', C: '' },
+      gameVersions: '1.0'
+    })
+  })
+
+  it('a cleared id really leaves what the store keeps', () => {
+    const box = { available: () => true, seal: (s: string) => s, open: (s: string) => s }
+    const store = new ContributorStore(tmpDir(), box)
+    store.saveConfig({ projects: { A: '1', B: '2' } })
+    const input = storeFormInput('curseforge', { ...form, projects: { A: '', B: '2' } })
+    expect(store.saveConfig({ projects: input.projects! }).projects).toEqual({ B: '2' })
+  })
+
+  it('leaves the token out unless one is typed or removed, and GitHub sends only its repo', () => {
+    expect(storeFormInput('github', form)).toEqual({ store: 'github', repo: 'me/packs' })
+    expect(storeFormInput('github', { ...form, token: 't' })).toEqual({ store: 'github', token: 't', repo: 'me/packs' })
+    expect(storeFormInput('github', { ...form, token: 't', removeToken: true })).toEqual({ store: 'github', token: '', repo: 'me/packs' })
+  })
+})
+
+describe('words of a release', () => {
+  it('an unchecked row names its own store', () => {
+    expect(rowHint('unchecked', 'github')).toContain('GitHub')
+    expect(rowHint('unchecked', 'github')).not.toContain('CurseForge')
+    expect(rowHint('unchecked', 'curseforge')).toContain('CurseForge')
+    expect(rowHint('live', 'github')).toBe(S.contributor.hint.live)
+  })
+
+  it('each reason a pack was skipped reads differently', () => {
+    const texts = (['live', 'awaiting', 'already-there'] as const).map(skipReasonText)
+    expect(new Set(texts).size).toBe(3)
+    expect(skipReasonText('awaiting')).toBe('Uploaded, awaiting CurseForge')
+  })
+
+  it('a skipped line keeps its reason', () => {
+    const lines = resultLines({ store: 'github', lang: 'deDE', published: [], skipped: [{ folder: 'F', reason: 'already-there' }], failed: [], stoppedEarly: false })
+    expect(lines).toEqual([{ kind: 'skipped', folder: 'F', reason: 'already-there' }])
+  })
+
+  it('a job with no count yet shows only the start text', () => {
+    const job: JobProgress = { jobId: 'j', gameId: 'g', productId: 'publish/github', action: 'publish', phase: 'queued', received: 0, total: 0, bytesPerSecond: 0 }
+    expect(liveRunText(job)).toBe(`${S.contributor.starting}…`)
+    expect(liveRunText({ ...job, received: 1, total: 3 })).toContain('1/3')
+    expect(liveRunText({ ...job, total: 3, message: '1/3 F: zipping' })).toBe('1/3 F: zipping')
   })
 })
 

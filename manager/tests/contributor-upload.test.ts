@@ -33,7 +33,7 @@ function fake(route: (url: string, method: string) => Answer): { fetchImpl: type
     calls.push({ url, method, headers, body: init?.body })
     const a = route(url, method)
     const text = a.text ?? (a.body === undefined ? '' : JSON.stringify(a.body))
-    return new Response(text, { status: a.status })
+    return new Response(a.status === 204 ? null : text, { status: a.status })
   }) as unknown as typeof fetch
   return { fetchImpl, calls }
 }
@@ -148,10 +148,10 @@ const ghArgs = (fetchImpl: typeof fetch) => ({
   fetchImpl
 })
 
-const release = (assets: string[]) => ({
+const release = (assets: string[], state = 'uploaded') => ({
   id: 55,
   upload_url: 'https://uploads.github.com/repos/me/repo/releases/55/assets{?name,label}',
-  assets: assets.map((name) => ({ name }))
+  assets: assets.map((name, i) => ({ id: 700 + i, name, state }))
 })
 
 describe('uploadGitHub', () => {
@@ -188,6 +188,40 @@ describe('uploadGitHub', () => {
     const { fetchImpl, calls } = fake(() => ({ status: 200, body: release(['Pack_x-1.2.3.zip']) }))
     const r = await uploadGitHub(ghArgs(fetchImpl))
     expect(r.alreadyThere).toBe(true)
+    expect(calls).toHaveLength(1)
+  })
+  it('removes an asset of that name cut short, and only that one, then uploads', async () => {
+    const asset = { id: 700, name: 'Pack_x-1.2.3.zip', state: 'starter' }
+    const others = [
+      { id: 701, name: 'Pack_x-1.2.2.zip', state: 'starter' },
+      { id: 702, name: 'Other-1.2.3.zip', state: 'uploaded' }
+    ]
+    const { fetchImpl, calls } = fake((_url, method) => {
+      if (method === 'GET') return { status: 200, body: { ...release([]), assets: [...others, asset] } }
+      if (method === 'DELETE') return { status: 204 }
+      return { status: 201, body: {} }
+    })
+    const r = await uploadGitHub(ghArgs(fetchImpl))
+    expect(r.alreadyThere).toBe(false)
+    expect(calls.map((c) => c.method)).toEqual(['GET', 'DELETE', 'POST'])
+    expect(calls[1]!.url).toBe('https://api.github.com/repos/me/repo/releases/assets/700')
+    expect(calls[1]!.headers.authorization).toBe(`Bearer ${TOKEN}`)
+    expect(calls[2]!.url).toContain('uploads.github.com')
+  })
+  it('a delete that fails is a PlainError without the token, and nothing is uploaded', async () => {
+    const { fetchImpl, calls } = fake((_url, method) => {
+      if (method === 'GET') return { status: 200, body: release(['Pack_x-1.2.3.zip'], 'starter') }
+      return { status: 403, text: `refused ${TOKEN}` }
+    })
+    const err = await uploadGitHub(ghArgs(fetchImpl)).catch((e: Error) => e)
+    expect(err).toBeInstanceOf(PlainError)
+    expect((err as Error).message).toMatch(/Could not remove/)
+    expect((err as Error).message).not.toContain(TOKEN)
+    expect(calls.map((c) => c.method)).toEqual(['GET', 'DELETE'])
+  })
+  it('a partial asset with no id to delete it by is a PlainError', async () => {
+    const { fetchImpl, calls } = fake(() => ({ status: 200, body: { ...release([]), assets: [{ name: 'Pack_x-1.2.3.zip', state: 'starter' }] } }))
+    await expect(uploadGitHub(ghArgs(fetchImpl))).rejects.toBeInstanceOf(PlainError)
     expect(calls).toHaveLength(1)
   })
 })

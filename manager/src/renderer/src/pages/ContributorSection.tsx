@@ -47,6 +47,7 @@ export function ContributorSection(): ReactNode {
       setLoadError(errorText(e))
     }
   }
+  if (!view.account && view.siteUnreachable) return <SiteUnreachable onView={(v) => apply(v, true)} />
   if (!view.account) return <SignIn notice={notice} onDone={(v) => apply(v, true)} />
   if (view.account.adminLangs.length === 0) {
     return (
@@ -62,6 +63,41 @@ export function ContributorSection(): ReactNode {
     )
   }
   return <Signed view={view} account={view.account} onView={(v) => apply(v, true)} onSignOut={() => void signOut()} />
+}
+
+/** The session may be fine, so a sign-in form would ask for a password nothing needs. */
+function SiteUnreachable({ onView }: { onView: (v: ContributorView) => void }): ReactNode {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const retry = async (): Promise<void> => {
+    setBusy(true)
+    setError('')
+    try {
+      onView(await api().contributorView())
+    } catch (e) {
+      setError(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section aria-labelledby="set-contributor">
+      <h2 id="set-contributor" className="settings-h">
+        {S.settings.contributor}
+      </h2>
+      <p className="status status-warn contrib-gap" role="status">
+        {S.contributor.siteUnreachable}
+      </p>
+      <button type="button" className="btn" disabled={busy} onClick={() => void retry()}>
+        {S.common.retry}
+      </button>
+      {error && (
+        <p className="text-error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
+  )
 }
 
 function SignIn({ notice, onDone }: { notice: string; onDone: (v: ContributorView) => void }): ReactNode {

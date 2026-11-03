@@ -38,7 +38,10 @@ export async function cfPublicVersions(project: string, fetchImpl: typeof fetch,
   }
 }
 
-/** Live means the tag exists and holds the zip; a release with no asset is unreleased so a failed run resumes. */
+/**
+ * Live means the tag exists and holds the whole zip. A release with no asset, or with one cut short
+ * (GitHub lists it in another state), is unreleased so a failed run resumes.
+ */
 export async function ghHasAsset(
   repo: string,
   token: string,
@@ -50,7 +53,7 @@ export async function ghHasAsset(
   const tag = `${folder}/v${version}`
   const link = `https://github.com/${repo}/releases/tag/${tag}`
   try {
-    const res = await fetchImpl(`https://api.github.com/repos/${repo}/releases/tags/${encodeURIComponent(tag)}`, {
+    const res = await fetchImpl(`https://api.github.com/repos/${repo}/releases/tags/${tag}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
@@ -64,7 +67,12 @@ export async function ghHasAsset(
     if (res.status !== 200) return null
     const body = (await res.json()) as { assets?: unknown }
     const name = `${folder}-${version}.zip`
-    const live = Array.isArray(body.assets) && body.assets.some((a) => (a as { name?: unknown } | null)?.name === name)
+    const live =
+      Array.isArray(body.assets) &&
+      body.assets.some((a) => {
+        const asset = a as { name?: unknown; state?: unknown } | null
+        return asset?.name === name && asset.state === 'uploaded'
+      })
     return { live, link }
   } catch {
     return null

@@ -66,6 +66,33 @@ describe('ContributorStore', () => {
     expect(s.saveConfig({ projects: { enUS: '' } }).projects).toEqual({ deDE: '456' })
   })
 
+  it('one project id on two folders is refused, naming both, and nothing is saved', () => {
+    const s = new ContributorStore(tmpDir(), fakeBox())
+    s.saveConfig({ projects: { A_deDE: '1', B_deDE: '2' }, repo: 'me/packs' })
+    const err = (() => {
+      try {
+        s.saveConfig({ projects: { C_frFR: '1' }, repo: 'me/other', gameVersions: '9.9' })
+        return null
+      } catch (e) {
+        return e as Error
+      }
+    })()
+    expect(err).toBeInstanceOf(PlainError)
+    expect(err!.message).toContain('A_deDE')
+    expect(err!.message).toContain('C_frFR')
+    expect(s.config()).toMatchObject({ projects: { A_deDE: '1', B_deDE: '2' }, repo: 'me/packs' })
+    expect(s.config().gameVersions).not.toBe('9.9')
+    expect(() => s.saveConfig({ projects: { C_frFR: '3', D_frFR: ' 3 ' } })).toThrow(PlainError)
+  })
+
+  it('a project id can move in one save, since the check reads the map as it ends up', () => {
+    const s = new ContributorStore(tmpDir(), fakeBox())
+    s.saveConfig({ projects: { A: '1', B: '2' } })
+    expect(s.saveConfig({ projects: { A: '2', B: '1' } }).projects).toEqual({ A: '2', B: '1' })
+    expect(s.saveConfig({ projects: { A: '', B: '2' } }).projects).toEqual({ B: '2' })
+    expect(s.saveConfig({ projects: { C: '1' } }).projects).toEqual({ B: '2', C: '1' })
+  })
+
   it('a repo not shaped owner/repo is refused', () => {
     const s = new ContributorStore(tmpDir(), fakeBox())
     for (const bad of ['nope', 'a/b/c', 'https://github.com/a/b', 'a/ b']) {

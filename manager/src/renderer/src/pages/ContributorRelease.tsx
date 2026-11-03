@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { languageName } from '@shared/products'
 import type { ContributorView, JobProgress, PublishResult, ReleaseRow, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
 import { api, errorText } from '../api'
 import { IconExternal, IconRefresh } from '../components/Icons'
-import { STORES, canUploadAgain, isRunning, publishJobFor, releasableCount, resultLines, storeName } from '../contributor'
+import { STORES, canUploadAgain, isRunning, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, skipReasonText, storeName } from '../contributor'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
 
@@ -38,7 +39,8 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
   const [refresh, setRefresh] = useState(0)
   const [starting, setStarting] = useState(false)
   const [refusal, setRefusal] = useState('')
-  const [lastRun, setLastRun] = useState<PublishResult | null>(view.lastRun)
+  const shownRun = view.lastRuns[store] ?? null
+  const [lastRun, setLastRun] = useState<PublishResult | null>(shownRun)
 
   useEffect(() => {
     let alive = true
@@ -55,19 +57,19 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
 
   useEffect(() => {
     let alive = true
-    if (reload > 0) api().contributorView().then((v) => alive && setLastRun(v.lastRun)).catch(() => undefined)
+    if (reload > 0) api().contributorView().then((v) => alive && setLastRun(v.lastRuns[store] ?? null)).catch(() => undefined)
     return () => {
       alive = false
     }
-  }, [reload])
+  }, [reload, store])
 
   // A run that was cancelled still published some packs, and its job is gone: the new result is the cue.
-  const seenRun = useRef(view.lastRun)
+  const seenRun = useRef(shownRun)
   useEffect(() => {
-    setLastRun(view.lastRun)
-    if (view.lastRun !== seenRun.current) setRefresh((n) => n + 1)
-    seenRun.current = view.lastRun
-  }, [view.lastRun])
+    setLastRun(shownRun)
+    if (shownRun !== seenRun.current) setRefresh((n) => n + 1)
+    seenRun.current = shownRun
+  }, [shownRun])
 
   const publish = async (only?: string): Promise<void> => {
     setStarting(true)
@@ -84,7 +86,7 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
 
   const busy = running || starting
   const count = rows ? releasableCount(rows) : 0
-  const result = lastRun?.store === store && !running ? lastRun : null
+  const result = running ? null : lastRun
   return (
     <div className="contrib-store">
       <div className="settings-title-row">
@@ -121,7 +123,7 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
       ) : (
         <ul className="list card contrib-rows">
           {rows.map((r) => (
-            <RowItem key={r.folder} row={r} storeBusy={busy} onUploadAgain={() => void publish(r.folder)} />
+            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} onUploadAgain={() => void publish(r.folder)} />
           ))}
         </ul>
       )}
@@ -134,7 +136,7 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
 function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }): ReactNode {
   const live = isRunning(job)
   const text = live
-    ? (job.message ?? `${S.contributor.progress(job.received, job.total)}, ${S.contributor.starting}…`)
+    ? liveRunText(job)
     : job.phase === 'done'
       ? S.contributor.runDone
       : job.phase === 'cancelled'
@@ -152,7 +154,7 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
   )
 }
 
-function RowItem({ row, storeBusy, onUploadAgain }: { row: ReleaseRow; storeBusy: boolean; onUploadAgain: () => void }): ReactNode {
+function RowItem({ row, store, storeBusy, onUploadAgain }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; onUploadAgain: () => void }): ReactNode {
   const tone = row.state === 'live' ? 'status-ok' : row.state === 'unreleased' ? 'status-dev' : row.state === 'awaiting' || row.state === 'unchecked' || row.state === 'update-first' ? 'status-warn' : ''
   return (
     <li className="contrib-row">
@@ -173,7 +175,7 @@ function RowItem({ row, storeBusy, onUploadAgain }: { row: ReleaseRow; storeBusy
           </button>
         )}
       </div>
-      <span className="muted contrib-hint">{S.contributor.hint[row.state]}</span>
+      <span className="muted contrib-hint">{rowHint(row.state, store)}</span>
     </li>
   )
 }
@@ -182,7 +184,7 @@ function Result({ result }: { result: PublishResult }): ReactNode {
   const lines = resultLines(result)
   return (
     <div className="contrib-result">
-      <h4 className="field-label">{S.contributor.resultTitle(storeName(result.store))}</h4>
+      <h4 className="field-label">{S.contributor.resultTitle(storeName(result.store), languageName(result.lang))}</h4>
       {result.stoppedEarly && <p className="status status-warn">{S.contributor.stoppedEarly}</p>}
       <ul>
         {lines.map((l) => (
@@ -201,6 +203,7 @@ function Result({ result }: { result: PublishResult }): ReactNode {
                 </button>
               </>
             )}
+            {l.kind === 'skipped' && <span className="muted">{skipReasonText(l.reason)}</span>}
             {l.kind === 'failed' && <span className="text-error">{l.reason}</span>}
           </li>
         ))}

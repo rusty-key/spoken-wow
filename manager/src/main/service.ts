@@ -72,6 +72,9 @@ export class ManagerService {
   readonly jobs: JobManager
   readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
+  private refreshingChannel: Promise<void> | null = null
+  /** When the server last gave a verified index; 0 until then. */
+  private channelFetchedAt = 0
   private refreshingCommunity: Promise<CommunityCatalog> | null = null
   community: CommunityCatalog
   /** The channel's index: the last verified one, until a refresh brings a newer one. */
@@ -100,6 +103,7 @@ export class ManagerService {
       jobs: this.jobs,
       game: (gameId) => this.requireGame(gameId),
       channel: () => this.channel,
+      refreshChannel: (options) => this.refreshChannel(options),
       changed: (view) => opts.send(CHANNELS.contributorChanged, view)
     })
     this.ledger = loadLedger(opts.dataPath)
@@ -205,6 +209,7 @@ export class ManagerService {
       fetchIndex(this.opts.dataPath, this.channelOptions())
     ])
     if (ch.index) this.channel = ch.index
+    if (!ch.offline) this.channelFetchedAt = Date.now()
     // When the request failed and nothing was cached, keep what the catalog already held.
     const keepOld = res.offline && res.releases.length === 0
     const next = keepOld
@@ -223,8 +228,15 @@ export class ManagerService {
     // The file keeps GitHub's list alone; the window is offered what can be installed, channel packs too.
     const offered = this.effectiveCatalog()
     this.opts.send(CHANNELS.catalogChanged, offered)
-    // Warm the manifest cache of installed channel packs so the Update label can be computed offline. The window has
-    // the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
+    await this.warmManifests(offered)
+    return offered
+  }
+
+  /**
+   * Warms the manifest cache of installed channel packs so the Update label can be computed offline. The window has
+   * the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
+   */
+  private async warmManifests(offered: Catalog): Promise<void> {
     const wanted = new Map<string, ChannelPack>()
     for (const game of this.games) {
       for (const p of PRODUCTS) {
@@ -250,7 +262,34 @@ export class ManagerService {
       )
       if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, offered)
     }
-    return offered
+  }
+
+  /**
+   * Fetches the channel's index alone, without GitHub's list. With `maxAgeMs`, an index that recent will do, and callers
+   * at once share one request. Without it a new request is always made, which `signal` can cancel. Rejects when the
+   * server gave no verified index, and the last verified one stays.
+   */
+  refreshChannel(options: { maxAgeMs?: number; signal?: AbortSignal } = {}): Promise<void> {
+    if (options.maxAgeMs === undefined) return this.fetchChannel(options.signal)
+    if (this.refreshingChannel) return this.refreshingChannel
+    if (Date.now() - this.channelFetchedAt < options.maxAgeMs) return Promise.resolve()
+    this.refreshingChannel = this.fetchChannel().finally(() => {
+      this.refreshingChannel = null
+    })
+    return this.refreshingChannel
+  }
+
+  private async fetchChannel(signal?: AbortSignal): Promise<void> {
+    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal))
+    if (ch.offline || !ch.index) throw new PlainError('The voice pack channel could not be read.')
+    const changed = ch.index.generatedAt !== this.channel?.generatedAt
+    this.channel = ch.index
+    this.channelFetchedAt = Date.now()
+    if (!changed) return
+    // A row saying "update first" needs the update it points at to be on offer.
+    const offered = this.effectiveCatalog()
+    this.opts.send(CHANNELS.catalogChanged, offered)
+    void this.warmManifests(offered).catch((err) => log('Manifests of the channel:', err))
   }
 
   // ---------------------------------------------------------------- community

@@ -40,6 +40,16 @@ function str(v: unknown): string | null {
   return typeof v === 'string' && v !== '' ? v : null
 }
 
+/** One pack on another's public project would reach the wrong players, and the other pack would read Live unsent. */
+function refuseSharedProjects(projects: Record<string, string>): void {
+  const holder = new Map<string, string>()
+  for (const [folder, id] of Object.entries(projects)) {
+    const other = holder.get(id)
+    if (other) throw new PlainError(`${other} and ${folder} have the same CurseForge project id, ${id}. Each pack needs its own project.`)
+    holder.set(id, folder)
+  }
+}
+
 export class ContributorStore {
   private readonly file: string
   private readonly uploadsFile: string
@@ -112,6 +122,7 @@ export class ContributorStore {
         else if (DIGITS.test(id)) next[lang] = id
         else throw new PlainError(`The CurseForge project id for ${lang} must be digits only.`)
       }
+      refuseSharedProjects(next)
       f.projects = next
     }
     if (patch.repo !== undefined) {

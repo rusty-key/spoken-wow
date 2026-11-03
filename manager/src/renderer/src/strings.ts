@@ -259,6 +259,7 @@ export const S = {
     signingIn: 'Signing in',
     signOut: 'Sign Out',
     expired: 'You were signed out. Sign in again; your tokens and project ids are kept.',
+    siteUnreachable: 'The site could not be reached, so your account could not be checked. You are still signed in, and your tokens and project ids are kept.',
     noAdmin: 'This account has no admin rights in any language.',
     noGame: 'Choose a game in the Manager first: the packs released are the ones installed there.',
     tabStores: 'Stores',
@@ -273,7 +274,7 @@ export const S = {
     tokenPlaceholderSet: 'Saved',
     removeToken: 'Remove Token',
     projectIds: 'Project Ids',
-    projectIdsText: 'One CurseForge project per pack of the chosen language. Leave empty a pack that has none.',
+    projectIdsText: 'One CurseForge project per pack of the chosen language, each pack with its own. Leave empty a pack that has none.',
     repo: 'Repository',
     repoText: 'owner/repo, one for every language.',
     gameVersions: 'Game Versions',
@@ -296,10 +297,11 @@ export const S = {
     runCancelled: 'Cancelled.',
     runFailed: 'The release stopped.',
     stoppedEarly: 'The run stopped early, so some packs are in none of the lists below.',
-    resultTitle: (store: string) => `Last release to ${store}`,
+    resultTitle: (store: string, language: string) => `Last release to ${store}: ${language}`,
     published: 'Published',
     skipped: 'Skipped',
     failed: 'Failed',
+    alreadyThere: 'Already on this store',
     state: {
       unreleased: 'Unreleased',
       awaiting: 'Uploaded, awaiting CurseForge',
@@ -310,13 +312,13 @@ export const S = {
       linked: "Developer's checkout",
       'no-project': 'No project id'
     },
+    hintUnchecked: (store: string) => `${store} could not be asked, and nothing is recorded. Upload again only if you know it is missing.`,
     hint: {
       unreleased: 'The installed version is not on this store yet.',
       awaiting: 'Sent by this Manager and not public yet. CurseForge may have rejected it: if it never appears, upload it again.',
       live: 'This version is public.',
-      unchecked: 'CurseForge could not be asked, and nothing is recorded. Upload again only if you know it is missing.',
       'not-installed': 'Not installed in the selected game.',
-      'update-first': 'Update it in the Manager, or wait for the channel to load. A folder the channel does not carry stays here.',
+      'update-first': 'Update it in the Manager. If the channel could not be read, refresh this list. A folder the channel does not carry stays here.',
       linked: 'A link to a development folder. These are never published.',
       'no-project': 'Add this pack\'s project id under Stores.'
     }
