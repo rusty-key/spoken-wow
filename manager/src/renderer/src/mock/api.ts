@@ -2,7 +2,7 @@
 // `npm run dev:web`). Address options: ?offline=1, ?empty=1 (no games), ?empty=packs (an empty community
 // list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered), ?contrib=out|fail|nonadmin|result|expire (Contributor: start signed out, sign-in refused, an account without admin rights, a finished release to show, a session that ends after a few seconds).
 import type { AddGameResult, InstallOptions, ManagerApi, UpdaterState } from '@shared/api'
-import { LANGUAGES, PRODUCTS, SPOKEN_FOLDERS, productById } from '@shared/products'
+import { LANGUAGES, PRODUCTS, languageFolders, SPOKEN_FOLDERS, productById } from '@shared/products'
 import type { Catalog, CommunityCatalog, CommunityPack, ContributorView, GameInstall, JobProgress, Product, PublishResult, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, communityFolder } from '@shared/types'
 import { compareVersions } from '@shared/version'
@@ -307,9 +307,11 @@ export function createMockApi(): ManagerApi {
   // Folders the mock has uploaded, so the next list shows them as waiting.
   const uploaded = new Set<string>()
   const contributorListeners = new Set<(v: ContributorView) => void>()
-  const setContributor = (next: ContributorView): ContributorView => {
+  // Like the main process: calls return the new view and emit nothing; only a session the site ended
+  // and the end of a run are announced.
+  const setContributor = (next: ContributorView, announce = false): ContributorView => {
     contributor = next
-    contributorListeners.forEach((l) => l(next))
+    if (announce) contributorListeners.forEach((l) => l(next))
     return next
   }
   let cleared = false
@@ -428,20 +430,20 @@ export function createMockApi(): ManagerApi {
   }
 
   const contributorRows = (lang: string): ReleaseRow[] => {
+    const [alliance, horde, shared, gossip, places, readables, bosses] = languageFolders(lang)
     const rows: [string, ReleaseRow['state'], Partial<ReleaseRow>][] = [
-      ['SpokenQuestsAudioAlliance', 'unreleased', { version: '1.5.0' }],
-      ['SpokenQuestsAudioHorde', 'unreleased', { version: '1.5.0' }],
-      ['SpokenQuestsAudioShared', 'awaiting', { version: '1.4.0' }],
-      ['SpokenQuestsAudioGossip', 'live', { version: '1.4.0', link: 'https://www.curseforge.com/wow/addons/example' }],
-      ['SpokenPlacesAudio', 'unchecked', { version: '1.4.0' }],
-      ['SpokenReadablesAudio', 'update-first', { version: '1.2.0' }],
-      ['SpokenQuestsAudioLongNameForFit', 'linked', { version: '1.0.0' }],
-      ['SpokenBossesAudio', 'no-project', { version: '1.0.0' }]
+      [alliance!, 'unreleased', { version: '1.5.0' }],
+      [horde!, 'unreleased', { version: '1.5.0' }],
+      [shared!, 'awaiting', { version: '1.4.0' }],
+      [gossip!, 'live', { version: '1.4.0', link: 'https://www.curseforge.com/wow/addons/example' }],
+      [places!, 'unchecked', { version: '1.4.0' }],
+      [readables!, 'update-first', { version: '1.2.0' }],
+      [`SpokenQuestsAudioLongNameForFit${lang === 'enUS' ? '' : `_${lang}`}`, 'linked', { version: '1.0.0' }],
+      [bosses!, 'no-project', { version: '1.0.0' }]
     ]
-    return rows.map(([name, state, extra]) => {
-      const folder = `${name}_${lang}`
-      return uploaded.has(folder) ? { folder, state: 'awaiting' as const, version: '1.5.0' } : { folder, state, ...extra }
-    })
+    return rows.map(([folder, state, extra]) =>
+      uploaded.has(folder) ? { folder, state: 'awaiting' as const, version: '1.5.0' } : { folder, state, ...extra }
+    )
   }
 
   const api: ManagerApi = {
@@ -553,7 +555,7 @@ export function createMockApi(): ManagerApi {
     async contributorSignIn(email) {
       await sleep(400)
       if (contribMode === 'fail') throw new Error('The email or the password is wrong.')
-      if (contribMode === 'expire') window.setTimeout(() => setContributor({ ...contributor, account: null }), 6000)
+      if (contribMode === 'expire') window.setTimeout(() => setContributor({ ...contributor, account: null }, true), 6000)
       return setContributor({ ...contributor, account: { email, adminLangs: contribMode === 'nonadmin' ? [] : LANGUAGES.map((l) => l.code) } })
     },
     async contributorSignOut() {

@@ -1,6 +1,7 @@
 // What the Contributor section decides without drawing: which tabs show, what a row offers, which job is a store's.
 import type { ContributorConfig, ContributorView, JobProgress, PublishResult, ReleaseRow, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
+import { S } from './strings'
 
 export const STORES: StoreId[] = ['curseforge', 'github']
 
@@ -40,3 +41,5 @@ export function resultLines(r: PublishResult): ResultLine[] {
     ...r.failed.map((f) => ({ kind: 'failed' as const, ...f }))
   ]
 }
+
+export const storeName = (store: StoreId): string => (store === 'curseforge' ? S.contributor.curseforge : S.contributor.github)
