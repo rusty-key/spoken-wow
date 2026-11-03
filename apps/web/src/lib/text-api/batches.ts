@@ -4,9 +4,10 @@ import "server-only";
 import { momentOf } from "@/lib/contributions/naming";
 import { ALL_TEAMS, query, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { isNameKind, nameHistory, retireName, saveName } from "@/lib/names/store";
+import { isNameKind, nameHistory, restoreName, retireName } from "@/lib/names/store";
 import type { Source } from "@/lib/sections";
 
+import { describeError } from "./errors";
 import { sections } from "./index";
 import type { NameTarget } from "./types";
 
@@ -116,7 +117,6 @@ async function undoText(section: Source, lang: Lang, edit: Edit, by: string): Pr
   return { ...head, status: "restored" };
 }
 
-/** Names have no restore: saving the old name back is what putting one back means there. */
 async function undoName(lang: Lang, edit: Edit, by: string): Promise<UndoResult> {
   const at = edit.subject.indexOf(":");
   const kind = edit.subject.slice(0, at);
@@ -133,9 +133,7 @@ async function undoName(lang: Lang, edit: Edit, by: string): Promise<UndoResult>
     await retireName(kind, entityId, lang, version, by);
     return { ...head, status: "retired" };
   }
-  const old = history.find((v) => v.version === previous);
-  if (!old) throw new Error(`${edit.subject} has no version ${previous}`);
-  await saveName({ kind, entityId, lang, name: old.name, editedBy: by, note: "undid a mass update" });
+  await restoreName(kind, entityId, lang, previous, version, by);
   return { ...head, status: "restored" };
 }
 
@@ -150,13 +148,14 @@ export async function restoreBatch(batch: Pick<Batch, "id" | "lang" | "section">
           : await undoText(batch.section, batch.lang, edit, by),
       );
     } catch (error) {
+      const { code, message } = describeError(error);
       results.push({
         id: edit.subject,
         ...(edit.detail.variant !== undefined ? { variant: edit.detail.variant } : {}),
         field: edit.kind === "name.edited" ? "name" : "text",
         status: "skipped",
-        reason: "error",
-        message: error instanceof Error ? error.message : String(error),
+        reason: code === "conflict" ? "edited_since" : "error",
+        message,
       });
     }
   }

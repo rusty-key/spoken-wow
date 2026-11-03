@@ -60,6 +60,12 @@ describe("text", () => {
     expect(await sections.places.one(LANG, f.subzone, 0)).toMatchObject({ text: "처음." });
   });
 
+  it("resending a place's text with an empty short is unchanged", async () => {
+    const first = await apply("places", { id: f.zone, text: "빈 요약." });
+    const again = await apply("places", { id: f.zone, text: "빈 요약.", short: "" });
+    expect(again.text).toMatchObject({ status: "unchanged", version: (first.text as { version: number }).version });
+  });
+
   it("an unknown id is unknown_id", async () => {
     const result = await applyItem("places", context, { id: "z:nothing", text: "글." }, new Set(), AUDIT);
     expect(result.error).toMatchObject({ code: "unknown_id" });
@@ -91,6 +97,38 @@ describe("text", () => {
     expect(result.text).toMatchObject({ status: "error", code: "internal" });
     spy.mockRestore();
     logged.mockRestore();
+  });
+});
+
+describe("errors", () => {
+  it("a bug is internal, not the caller's input", async () => {
+    const spy = vi.spyOn(sections.bosses, "saveText").mockRejectedValueOnce(new TypeError("x is not a function"));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await apply("bosses", { id: f.boss.lineId, text: "글." });
+    expect(result.text).toMatchObject({ status: "error", code: "internal" });
+    expect((result.text as { message: string }).message).not.toContain("not a function");
+    spy.mockRestore();
+    logged.mockRestore();
+  });
+});
+
+describe("what a store would choke on", () => {
+  it.each([
+    ["a NUL in text", { text: "글\u0000." }],
+    ["a NUL in a note", { text: "글.", note: "메\u0000모" }],
+  ])("%s is invalid", async (_name, change) => {
+    const result = await apply("bosses", { id: f.boss.lineId, ...change });
+    expect(result.error ?? result.text).toMatchObject({ code: "invalid" });
+  });
+
+  it("a NUL in a name is invalid", async () => {
+    const result = await apply("bosses", { id: f.boss.lineId, name: "이\u0000름" });
+    expect(result.name).toMatchObject({ status: "error", code: "invalid" });
+  });
+
+  it("a variant too big to store is invalid", async () => {
+    const result = await apply("quests", { id: f.quest.lineId, text: "글.", variant: 40000 });
+    expect(result.error).toMatchObject({ code: "invalid" });
   });
 });
 

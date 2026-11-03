@@ -2,6 +2,7 @@
 import { applyItems, MAX_ITEMS } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
 import { badCursor, invalid, parseList, sectionOf } from "@/lib/text-api/respond";
+import { hasNul } from "@/lib/text-api/types";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export async function PATCH(request: Request, { params }: Params) {
   if (body.note !== undefined && body.note !== null && typeof body.note !== "string") {
     return invalid("note must be a string or null");
   }
+  if (typeof body.note === "string" && hasNul(body.note)) return invalid("note cannot hold a NUL character");
 
   return Response.json(await applyItems(found.section, context, body.items, (body.note as string | null) ?? null));
 }

@@ -63,7 +63,7 @@ URL-encode an id in a path, because place and boss ids can contain spaces:
 
 `text: null` means no translation yet, and `englishText` is what to translate from. `short` is on
 places only. `variant` is on quest lines only, because a few line ids name two different lines; a
-single-item URL takes `?variant=`, default 0.
+single-item URL takes `?variant=`, default 0, and refuses a `variant` in its body.
 
 ## Writing
 
@@ -105,9 +105,13 @@ The response has a `batchId` and one result per item, in order. Each item succee
 | `internal` | a failure on the server; try this item again |
 
 Text and names have separate version numbers. Send `expectedVersion` for text and
-`expectedNameVersion` for a name to avoid overwriting someone's newer edit. Both are optional.
-Text can be up to 5,000 characters and a name up to 200. The same item twice in one request is
-`invalid` the second time.
+`expectedNameVersion` for a name to avoid overwriting someone's newer edit. Both are optional, and
+both guard an existing version only: a line with no text has nothing to compare, so they do not
+protect a first translation someone saved since you read it. The overwritten text stays in history.
+
+Text can be up to 5,000 characters and a name up to 200. A request can be at most 8 MB, past which
+the proxy answers 413 with no results, so split a run of very long texts. The same item twice in one
+request is `invalid` the second time.
 
 ## Things that behave unexpectedly
 

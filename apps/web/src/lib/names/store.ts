@@ -130,6 +130,41 @@ export async function saveName(args: {
   });
 }
 
+/**
+ * Puts an earlier name back by moving the live flag, as restoring text does, while `from` is still
+ * the live one.
+ */
+export async function restoreName(
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+  from: number,
+  by: string | null,
+): Promise<void> {
+  if (lang === BASE_LANG) throw new Error("English names come from the corpus, not from here");
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    // Two statements: the partial unique index is checked per row, so one statement flipping
+    // both would briefly hold two current rows and be refused.
+    const { rowCount: left } = await client.query(
+      `update "entity_name" set "isCurrent" = false
+        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
+      [kind, entityId, lang, from],
+    );
+    if (!left) throw new NameConflict(`${kind} ${entityId} v${from} is not the current name`);
+    const { rowCount: back } = await client.query(
+      `update "entity_name" set "isCurrent" = true
+        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4`,
+      [kind, entityId, lang, version],
+    );
+    if (!back) throw new NameMissing(`${kind} ${entityId} has no version ${version}`);
+    await recordActivity(
+      { kind: "name.restored", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version, from } },
+      client,
+    );
+  });
+}
+
 /** Takes a first name back, so the English shows again. A site translator cannot do this. */
 export async function retireName(
   kind: NameKind,

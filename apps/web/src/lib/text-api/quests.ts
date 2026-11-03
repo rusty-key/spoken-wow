@@ -14,7 +14,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { restoreQuestText, retireQuestText, saveQuestText } from "@/lib/quests/text";
 
-import { decodeCursor, encodeCursor, keyOf, type SectionApi, type TextItem } from "./types";
+import { decodeCursor, encodeCursor, hasNul, isVariant, keyOf, type SectionApi, type TextItem } from "./types";
 
 type Row = {
   lineId: string;
@@ -96,7 +96,9 @@ function toItem(row: Row): TextItem {
 }
 
 function isCursor(value: unknown): value is [string, number] {
-  return Array.isArray(value) && value.length === 2 && typeof value[0] === "string" && Number.isInteger(value[1]);
+  return (
+    Array.isArray(value) && value.length === 2 && typeof value[0] === "string" && !hasNul(value[0]) && isVariant(value[1])
+  );
 }
 
 /** One page's query. Exported so a test can read what the database is asked to do. */
@@ -123,7 +125,7 @@ export function listSql(
 }
 
 export const quests: SectionApi = {
-  filters: { quest: /^\d+$/, source: /^(accept|progress|complete|gossip)$/ },
+  filters: { quest: /^\d{1,9}$/, source: /^(accept|progress|complete|gossip)$/ },
 
   async list(lang, filter, cursor, limit) {
     const { text, params } = listSql(filter, cursor, limit, lang);
@@ -134,6 +136,7 @@ export const quests: SectionApi = {
   },
 
   async one(lang, id, variant) {
+    if (hasNul(id)) return null;
     const rows = await query<Row>(
       linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) =>
         answersQuestMomentSql(`${alias}."lineId"`, "$5"),
@@ -143,7 +146,8 @@ export const quests: SectionApi = {
     return rows[0] ? toItem(rows[0]) : null;
   },
 
-  async known(lang, keys) {
+  async known(lang, asked) {
+    const keys = asked.filter((k) => !hasNul(k.id));
     if (!keys.length) return new Set();
     const rows = await query<{ lineId: string; variant: number }>(
       `with "wanted" as (

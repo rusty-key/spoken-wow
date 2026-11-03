@@ -5,17 +5,14 @@
 import "server-only";
 
 import type { ApiAudit } from "@/lib/activity/kinds";
-import { StoryConflict, StoryMissing } from "@/lib/bosses/story";
-import { NameConflict, NameMissing, saveName } from "@/lib/names/store";
-import { LoreConflict, LoreMissing } from "@/lib/places/lore";
-import { QuestTextConflict, QuestTextMissing } from "@/lib/quests/text";
-import { BookConflict, BookMissing } from "@/lib/readables/text";
+import { saveName } from "@/lib/names/store";
 import type { Source } from "@/lib/sections";
 
 import { createBatch } from "./batches";
+import { describeError, type ErrorCode } from "./errors";
 import type { TokenContext } from "./guard";
 import { sections } from "./index";
-import { keyOf, type NameTarget } from "./types";
+import { hasNul, isVariant, keyOf, type NameTarget } from "./types";
 
 export const MAX_ITEMS = 1000;
 export const MAX_TEXT = 5000;
@@ -32,8 +29,6 @@ export type ItemInput = {
   expectedNameVersion?: unknown;
 };
 
-type ErrorCode = "conflict" | "unknown_id" | "invalid" | "internal";
-
 type FieldResult =
   | { status: "updated" | "unchanged"; version: number; lines?: string[]; entity?: NameTarget }
   | { status: "error"; code: ErrorCode; message: string };
@@ -46,20 +41,8 @@ type ItemResult = {
   error?: { code: ErrorCode; message: string };
 };
 
-const CONFLICTS = [LoreConflict, StoryConflict, BookConflict, QuestTextConflict, NameConflict];
-const MISSING = [LoreMissing, StoryMissing, BookMissing, QuestTextMissing, NameMissing];
-
 function fieldError(error: unknown): FieldResult {
-  const message = error instanceof Error ? error.message : String(error);
-  if (CONFLICTS.some((type) => error instanceof type)) return { status: "error", code: "conflict", message };
-  if (MISSING.some((type) => error instanceof type)) return { status: "error", code: "unknown_id", message };
-  // What a store refuses is a plain Error, with its reason. A driver's error has a code, is
-  // nothing the caller can fix by changing the text, and must not read as if they could.
-  if (error instanceof Error && "code" in error) {
-    console.error("text-api: a save failed", error);
-    return { status: "error", code: "internal", message: "the save failed; try this item again" };
-  }
-  return { status: "error", code: "invalid", message };
+  return { status: "error", ...describeError(error) };
 }
 
 const refused = (message: string): FieldResult => ({ status: "error", code: "invalid", message });
@@ -76,12 +59,13 @@ function shapeError(section: Source, input: ItemInput): string | null {
   if (input.note !== undefined && input.note !== null && typeof input.note !== "string") {
     return "note must be a string or null";
   }
+  if (typeof input.note === "string" && hasNul(input.note)) return "note cannot hold a NUL character";
   if (!optionalVersion(input.expectedVersion)) return "expectedVersion must be a whole number";
   if (!optionalVersion(input.expectedNameVersion)) return "expectedNameVersion must be a whole number";
   if (input.short !== undefined && section !== "places") return "only places have short";
   if (input.variant !== undefined) {
     if (section !== "quests") return "only quest lines have variant";
-    if (!Number.isInteger(input.variant) || (input.variant as number) < 0) return "variant must be a whole number";
+    if (!isVariant(input.variant)) return "variant must be a whole number from 0 to 32767";
   }
   return null;
 }
@@ -90,10 +74,12 @@ function checkedText(input: ItemInput): string | null {
   if (input.text !== undefined) {
     if (typeof input.text !== "string" || !input.text.trim()) return "text must be a string that is not empty";
     if (input.text.length > MAX_TEXT) return `text is at most ${MAX_TEXT} characters`;
+    if (hasNul(input.text)) return "text cannot hold a NUL character";
   }
   if (input.short !== undefined && input.short !== null) {
     if (typeof input.short !== "string") return "short must be a string or null";
     if (input.short.length > MAX_TEXT) return `short is at most ${MAX_TEXT} characters`;
+    if (hasNul(input.short)) return "short cannot hold a NUL character";
   }
   return null;
 }
@@ -131,6 +117,7 @@ async function writeText({ section, context, input, variant, note, audit }: Writ
 async function writeName({ section, context, input, variant, note, audit }: Write): Promise<FieldResult> {
   if (typeof input.name !== "string" || !input.name.trim()) return refused("name must be a string that is not empty");
   if (input.name.length > MAX_NAME) return refused(`name is at most ${MAX_NAME} characters`);
+  if (hasNul(input.name)) return refused("name cannot hold a NUL character");
   try {
     const target = await sections[section].nameTarget(context.lang, input.id, variant);
     if (!target) return refused("this item has no name of its own to write");
@@ -175,7 +162,7 @@ export async function applyItem(
 
 /** A bad variant is refused where the item is applied; until then it reads as the first. */
 function variantOf(item: ItemInput): number {
-  return Number.isInteger(item.variant) ? (item.variant as number) : 0;
+  return isVariant(item.variant) ? item.variant : 0;
 }
 
 function isItem(value: unknown): value is ItemInput {

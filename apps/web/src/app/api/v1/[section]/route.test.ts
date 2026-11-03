@@ -127,6 +127,23 @@ describe("GET /api/v1/[section]/[id]", () => {
     expect((await oneOf("quests", f.quest.lineId, "?variant=x")).status).toBe(400);
   });
 
+  it("400 on a ?variant= too big to store", async () => {
+    expect((await oneOf("quests", f.quest.lineId, "?variant=99999")).status).toBe(400);
+  });
+
+  it("400 on a ?quest= too big to store", async () => {
+    expect((await listOf("quests", "?quest=99999999999")).status).toBe(400);
+  });
+
+  it("400 on a cursor too big to store", async () => {
+    const cursor = Buffer.from(JSON.stringify(["q:1", 40000])).toString("base64url");
+    expect((await listOf("quests", `?cursor=${cursor}`)).status).toBe(400);
+  });
+
+  it("404 on a NUL in an id", async () => {
+    expect((await oneOf("quests", "q%3A1%00")).status).toBe(404);
+  });
+
   it("404 on an unknown id", async () => {
     expect((await oneOf("places", "z:nothing")).status).toBe(404);
   });

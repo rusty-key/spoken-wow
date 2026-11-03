@@ -38,6 +38,9 @@ export async function PATCH(request: Request, { params }: Params) {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return invalid("send a JSON object");
   }
+  // The mass update reads it from the item, so an agent may send it here too, and the URL's would
+  // otherwise replace it and write to the other line.
+  if ("variant" in body) return invalid("a variant goes in the URL here, as ?variant=");
 
   const id = decodeId(raw);
   const known = await found.api.known(context.lang, [{ id, variant }]);

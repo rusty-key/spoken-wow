@@ -158,6 +158,8 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: `took back text v${version}`, quote: null };
     case "name.edited":
       return { what: "renamed", quote: str(d.name) };
+    case "name.restored":
+      return { what: `restored name v${version}`, quote: null };
     case "name.retired":
       return { what: `took back name v${version}`, quote: null };
     case "lexicon.added":

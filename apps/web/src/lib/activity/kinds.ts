@@ -81,6 +81,7 @@ export type ActivityDetail = {
   /** An undone first translation: the line has no current version in the language any more. */
   "text.retired": { version: number };
   "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
+  "name.restored": { version: number; from?: number | null };
   "name.retired": { version: number };
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };

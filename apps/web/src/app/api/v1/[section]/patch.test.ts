@@ -100,6 +100,22 @@ describe("PATCH /api/v1/[section]", () => {
     expect((await query(`select 1 from "api_batch" where "userId" = $1`, [f.user])).length).toBe(before);
   });
 
+  it("a variant too big to store and a NUL in an id are answered per item", async () => {
+    const response = await many("quests", {
+      items: [
+        { id: f.quest.lineId, variant: 40000, text: "글." },
+        { id: "q:1\u0000", text: "글." },
+      ],
+    });
+    expect(response.status).toBe(200);
+    const { results } = (await response.json()) as { results: { error?: { code: string } }[] };
+    expect(results.map((r) => r.error?.code)).toEqual(["invalid", "unknown_id"]);
+  });
+
+  it("400 on a NUL in the run's note", async () => {
+    expect((await many("places", { note: "메\u0000모", items: [{ id: f.zone, text: "글." }] })).status).toBe(400);
+  });
+
   it("one bad id does not stop the others: 200, results in order", async () => {
     const response = await many("places", {
       items: [
@@ -182,6 +198,15 @@ describe("PATCH /api/v1/[section]/[id]", () => {
   it("reads ?variant= for quests", async () => {
     const response = await one("quests", f.quest.lineId, { text: "변형." }, write, `?variant=${f.quest.variant}`);
     expect(response.status).toBe(200);
+  });
+
+  it("400 on a variant in the body, which belongs in the URL", async () => {
+    const before = await query(`select 1 from "quest_line" where "lineId" = $1 and "lang" = $2`, [f.quest.lineId, LANG]);
+    const response = await one("quests", f.quest.lineId, { variant: 1, text: "다른 변형." });
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain("?variant=");
+    const after = await query(`select 1 from "quest_line" where "lineId" = $1 and "lang" = $2`, [f.quest.lineId, LANG]);
+    expect(after.length).toBe(before.length);
   });
 
   it("answers an error with its status", async () => {

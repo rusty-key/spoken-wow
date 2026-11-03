@@ -61,7 +61,12 @@ describe("GET /api/v1", () => {
 
   it("states the limits", async () => {
     expect(await (await get(token)).json()).toMatchObject({
-      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, nameLength: 200 },
+      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, nameLength: 200, requestBytes: 8_388_608 },
     });
+  });
+
+  it("points at documents a client can open", async () => {
+    const { docs } = (await (await get(token)).json()) as { docs: string };
+    expect(docs).toMatch(/^https:\/\//);
   });
 });

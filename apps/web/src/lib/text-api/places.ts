@@ -54,13 +54,15 @@ export const places: SectionApi = {
     const current = (await textVersions(lang, [id])).get(id);
     const full = text ?? current?.full;
     if (full === undefined) throw new Error("this place has no text yet in this language, so short needs text alongside it");
-    // saveLore counts any short it is handed as a change, and a rerun must not spend a version.
-    const unchanged = full.trim() === current?.full && short?.trim() === current?.short;
+    // saveLore counts any short it is handed as a change, even a blank one that only asks for the
+    // short to be made again, and a rerun must not spend a version.
+    const wanted = short?.trim() || null;
+    const unchanged = full.trim() === current?.full && wanted === current?.short;
     const saved = await saveLore({
       lang,
       lineId: id,
       full,
-      short: unchanged ? null : short,
+      short: unchanged ? null : wanted,
       note,
       editedBy: by,
       expectedVersion,

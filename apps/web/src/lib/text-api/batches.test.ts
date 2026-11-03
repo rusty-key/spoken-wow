@@ -6,17 +6,19 @@
  */
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { StoryConflict } from "@/lib/bosses/story";
 import { closeDb, query } from "@/lib/db";
 import { keepLanguage } from "@/lib/quests/keep-language";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem } from "@/lib/teams/testing";
 import { createToken } from "@/lib/tokens/store";
 
-import { applyItems } from "./apply";
-import { getBatch, listBatches, restoreBatch as undo } from "./batches";
+import { applyItem, applyItems } from "./apply";
+import { createBatch, getBatch, listBatches, restoreBatch as undo } from "./batches";
 import type { TokenContext } from "./guard";
 import { sections } from "./index";
 import { createFixtures, LANG, type Fixtures } from "./testing";
+import { keyOf } from "./types";
 import type { Source } from "@/lib/sections";
 
 let f: Fixtures;
@@ -87,15 +89,58 @@ describe("restoreBatch", () => {
     expect(await textOf("quests", id, variant)).toBeNull();
   });
 
-  it("restores a name by saving the one before it", async () => {
+  it("undoes two names a run gave one entity, back to none", async () => {
+    const batchId = await createBatch({
+      userId: f.user,
+      tokenId: context.tokenId,
+      lang: LANG,
+      section: "bosses",
+      itemCount: 2,
+      note: null,
+    });
+    const known = new Set([keyOf(f.boss.lineId, 0)]);
+    const audit = { tokenId: context.tokenId, batchId };
+    await applyItem("bosses", context, { id: f.boss.lineId, name: "첫 이름" }, known, audit);
+    await applyItem("bosses", context, { id: f.boss.lineId, name: "둘째 이름" }, known, audit);
+
+    expect((await restoreBatch(batchId, f.user)).map((r) => r.status)).toEqual(["restored", "retired"]);
+    expect((await sections.bosses.one(LANG, f.boss.lineId, 0))?.name).toBeNull();
+  });
+
+  it("restores a name by moving back to its version, writing none", async () => {
     await run("bosses", [{ id: f.boss.lineId, name: "옛 이름" }]);
+    const before = (await sections.bosses.one(LANG, f.boss.lineId, 0))?.nameVersion;
     const { batchId } = await run("bosses", [{ id: f.boss.lineId, name: "나쁜 이름" }]);
 
     const entity = { kind: "boss", entityId: String(f.boss.id) };
     expect(await restoreBatch(batchId, f.user)).toEqual([
       { id: entity.entityId, entity, field: "name", status: "restored" },
     ]);
-    expect((await sections.bosses.one(LANG, f.boss.lineId, 0))?.name).toBe("옛 이름");
+    expect(await sections.bosses.one(LANG, f.boss.lineId, 0)).toMatchObject({ name: "옛 이름", nameVersion: before });
+  });
+
+  it("does not hand a database's message to the caller", async () => {
+    const { batchId } = await run("bosses", [{ id: f.boss.lineId, text: "글." }]);
+    const driver = Object.assign(new Error('duplicate key violates "boss_line_current"'), { code: "23505" });
+    const spy = vi.spyOn(sections.bosses, "version").mockRejectedValueOnce(driver);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const [result] = await restoreBatch(batchId, f.user);
+    spy.mockRestore();
+    logged.mockRestore();
+
+    expect(result).toMatchObject({ status: "skipped", reason: "error" });
+    expect(result.message).not.toContain("boss_line_current");
+  });
+
+  it("reports a conflict while writing as edited since", async () => {
+    const { batchId } = await run("bosses", [{ id: f.boss.lineId, text: "첫 글." }]);
+    const spy = vi.spyOn(sections.bosses, "retire").mockRejectedValueOnce(new StoryConflict("moved"));
+
+    const [result] = await restoreBatch(batchId, f.user);
+    spy.mockRestore();
+
+    expect(result).toMatchObject({ status: "skipped", reason: "edited_since" });
   });
 
   it("retires a first name, so the English shows again", async () => {

@@ -52,6 +52,18 @@ export type SectionApi = {
   retire(lang: Lang, id: string, variant: number, version: number, by: string): Promise<void>;
 };
 
+/** Postgres' smallint, the column a variant lives in. */
+const MAX_VARIANT = 32767;
+
+export function isVariant(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= MAX_VARIANT;
+}
+
+/** Postgres text cannot hold a NUL, and refuses the whole statement that carries one. */
+export function hasNul(value: string): boolean {
+  return value.includes("\u0000");
+}
+
 export function keyOf(id: string, variant: number): string {
   return `${variant}\u0000${id}`;
 }
