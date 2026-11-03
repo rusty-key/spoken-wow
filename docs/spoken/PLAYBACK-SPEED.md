@@ -1,18 +1,19 @@
 # Optional playback speeds
 
 `PlaySoundFile` cannot change a recording's rate. Spoken therefore uses separate audio copies for
-1.5× and 2×. The original voice pack stays installed and 1× remains the default. A missing faster
+1.25×, 1.5× and 2×. The original voice pack stays installed and 1× remains the default. A missing faster
 copy plays at 1×. Changing the setting during a line restarts that line from the beginning, since
 the client cannot seek into a sound file.
 
 Each optional addon mirrors the OGG and MP3 paths inside one original voice pack. For example,
-`SpokenQuestsAudio_esES` gets `SpokenSpeed15_SpokenQuestsAudio_esES` for 1.5×. The same builder
+`SpokenQuestsAudio_esES` gets `SpokenSpeed125_SpokenQuestsAudio_esES` for 1.25×. The same builder
 accepts an English release ZIP with several addon folders and makes a separate optional folder
 for each. It works for any language and any Spoken module whose audio is in a ZIP.
 
 Build a variant from an official audio ZIP with FFmpeg built with `libvorbis` and `libmp3lame`:
 
 ```sh
+python scripts/audio/optional-speed-pack.py ORIGINAL.zip --speed 1.25 --output OPTIONAL-1.25.zip
 python scripts/audio/optional-speed-pack.py ORIGINAL.zip --speed 1.5 --output OPTIONAL-1.5.zip
 python scripts/audio/optional-speed-pack.py ORIGINAL.zip --speed 2 --output OPTIONAL-2.zip
 ```
@@ -20,8 +21,9 @@ python scripts/audio/optional-speed-pack.py ORIGINAL.zip --speed 2 --output OPTI
 `ORIGINAL.zip` and the output names are examples, not required filenames. Replace the input with
 the ZIP you downloaded, such as `SpokenQuestsAudioAll-2.5.0.zip`. What must match exactly is the
 structure inside it: each audio addon's folder sits at the ZIP root and has a `.toc` with the
-same name. The output keeps the audio paths under `SpokenSpeed15_<source folder>` or
-`SpokenSpeed20_<source folder>`, names Spoken uses to find the faster recording.
+same name. The output keeps the audio paths under `SpokenSpeed125_<source folder>`,
+`SpokenSpeed15_<source folder>` or `SpokenSpeed20_<source folder>`, names Spoken uses to find
+the faster recording.
 
 Run the commands for the English and Spanish ZIPs you want to support. The tool reads the
 originals and writes audio-only add-ons; it does not call a TTS service or alter the source ZIP.

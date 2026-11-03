@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an optional 1.5x or 2x audio pack from a shipped Spoken audio ZIP.
+"""Build an optional 1.25x, 1.5x or 2x audio pack from a shipped Spoken audio ZIP.
 
 The output contains only audio and a TOC. It does not replace the source pack.
 Each output addon mirrors one source addon's OGG and MP3 paths so Spoken can
@@ -15,7 +15,7 @@ import tempfile
 from zipfile import ZipFile, ZIP_STORED
 
 
-RATES = {"1.5": ("15", "1.5"), "2": ("20", "2")}
+RATES = {"1.25": ("125", "1.25"), "1.5": ("15", "1.5"), "2": ("20", "2")}
 
 
 def metadata(toc: bytes, key: str) -> str:

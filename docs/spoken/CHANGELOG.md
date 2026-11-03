@@ -4,7 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Support for optional 1.5× and 2× voice packs.** Choose a speed on Spoken's settings page or
+- **Support for optional 1.25×, 1.5× and 2× voice packs.** Choose a speed on Spoken's settings page or
   the narrator's button. Spoken uses the faster copy when installed and plays the original
   otherwise. A change during a line restarts it from the beginning. Subtitle highlighting and
   page turns follow the same word timing as the narrator. The voice packs stay separate from

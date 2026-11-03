@@ -124,7 +124,7 @@ function SoundUtils:TestSound(clip, channel)
     return willPlay
 end
 
-local SPEED_PACKS = { [1.5] = "SpokenSpeed15_", [2] = "SpokenSpeed20_" }
+local SPEED_PACKS = { [1.25] = "SpokenSpeed125_", [1.5] = "SpokenSpeed15_", [2] = "SpokenSpeed20_" }
 
 --- The optional pack mirrors the original pack's audio paths under its own addon folder.
 --- A missing speed pack leaves the original recording usable without changing the settings.

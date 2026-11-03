@@ -18,7 +18,7 @@ local scroller
 local Layout = SpokenLayout
 
 local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog" }
-local SPEEDS = { 1, 1.5, 2 }
+local SPEEDS = { 1, 1.25, 1.5, 2 }
 -- Stored names stay English: playback passes them to the sound API.
 local CHANNEL_LABELS = {
     Master = L.OPT_CHANNEL_MASTER,

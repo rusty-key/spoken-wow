@@ -73,11 +73,20 @@ world.missing["gone.ogg"] = true
 Expect("TestSound says no for a missing file", SU:TestSound({ path = "gone.ogg" }, "Master"), false)
 
 -- The speed pack is optional and mirrors both English and translated pack paths.
-stub.SetAddOns({ { folder = "SpokenSpeed15_SpokenQuestsAudioAlliance" },
+stub.SetAddOns({ { folder = "SpokenSpeed125_SpokenQuestsAudioAlliance" },
+    { folder = "SpokenSpeed15_SpokenQuestsAudioAlliance" },
     { folder = "SpokenSpeed20_SpokenQuestsAudio_esES" },
     { folder = "SpokenSpeed15_SpokenZonesAudio_esES" } })
 local english = { path = [[Interface\AddOns\SpokenQuestsAudioAlliance\generated\sounds\quests\a.ogg]], length = 6,
     text = "First second third", present = { timings = "0 1.5 3" } }
+env.Spoken:SetPlaybackSpeed(1.25)
+stub.ResetSound()
+Expect("1.25x speed copy plays", SU:PlaySound(english, "Master"), true)
+Expect("1.25x path mirrors the source", world.played[1],
+    [[Interface\AddOns\SpokenSpeed125_SpokenQuestsAudioAlliance\generated\sounds\quests\a.ogg]])
+Expect("1.25x duration follows the copy", english.length, 4.8)
+env.Transcript:SetClip(english)
+Expect("1.25x word timing follows the copy", env.Transcript.words[2].start, 1.2)
 env.Spoken:SetPlaybackSpeed(1.5)
 stub.ResetSound()
 Expect("English speed copy plays", SU:PlaySound(english, "Master"), true)

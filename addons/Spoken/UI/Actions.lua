@@ -246,7 +246,7 @@ function Actions.SpeedButton(parent)
     end
     button:SetScript("OnClick", function()
         local current = Spoken:GetPlaybackSpeed()
-        local nextSpeed = current == 1 and 1.5 or current == 1.5 and 2 or 1
+        local nextSpeed = current == 1 and 1.25 or current == 1.25 and 1.5 or current == 1.5 and 2 or 1
         Spoken:SetPlaybackSpeed(nextSpeed)
         SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
     end)
