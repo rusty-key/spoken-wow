@@ -294,6 +294,12 @@ export async function createPronunciationDictionary(
   return { dictionaryId: body.id, versionId: body.version_id };
 }
 
+/** Not 401, which is a key missing the permission and would fail again on a dictionary of its own. */
+const UNREADABLE_STATUSES = new Set([400, 403, 404, 422]);
+
+/** The id is not one this key's account can use, as opposed to the read having failed. */
+export class DictionaryUnreadable extends Error {}
+
 /** What a stored dictionary holds right now: its newest version, and the rules in it. */
 export type StoredDictionary = { latestVersionId: string; ruleStrings: string[] };
 
@@ -315,7 +321,10 @@ export async function readDictionary(
     headers: { "xi-api-key": apiKey },
     cache: "no-store",
   });
-  if (!response.ok) throw await failure(response, `reading pronunciation dictionary ${dictionaryId}`);
+  if (!response.ok) {
+    const error = await failure(response, `reading pronunciation dictionary ${dictionaryId}`);
+    throw UNREADABLE_STATUSES.has(response.status) ? new DictionaryUnreadable(error.message) : error;
+  }
 
   const body = (await response.json()) as {
     latest_version_id?: string;

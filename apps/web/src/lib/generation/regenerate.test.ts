@@ -54,6 +54,7 @@ const MP3 = Buffer.from("ID3generated-audio");
 type StubOptions = {
   voices?: Record<string, string>;
   speech?: () => Response;
+  dictionary?: () => Response;
 };
 
 /** Stands in for the three ElevenLabs endpoints this path touches. */
@@ -79,7 +80,7 @@ function timed(text: string, extra: Record<string, unknown> = {}): Response {
   return Response.json({ audio_base64: MP3.toString("base64"), alignment, ...extra });
 }
 
-function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
+function stub({ voices = DEFAULT_VOICES, speech, dictionary }: StubOptions = {}) {
   const calls: { url: string; body?: unknown }[] = [];
 
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
@@ -97,6 +98,9 @@ function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
       return Response.json([
         { model_id: "eleven_multilingual_v2", name: "Multilingual v2", can_do_text_to_speech: true },
       ]);
+    }
+    if (url.includes("/v1/pronunciation-dictionaries/")) {
+      return dictionary ? dictionary() : Response.json({ latest_version_id: "ver-1", rules: [] });
     }
     // Each character of what was sent 0.1s after the one before, as the with-timestamps
     // endpoints time it; the dialogue endpoint joins its turns with nothing between them.
@@ -230,24 +234,29 @@ describe("a line with no audio yet", () => {
 });
 
 describe("a lexicon uploaded to ElevenLabs", () => {
-  let previous: { dictionaryId: string | null; versionId: string | null } | undefined;
+  let previous:
+    | { dictionaryId: string | null; versionId: string | null; syncedDigest: string | null }
+    | undefined;
 
   beforeEach(async () => {
     const { rows } = await asSystem.query(
-      `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+      `select "dictionaryId", "versionId", "syncedDigest" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     previous = rows[0];
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
     await asSystem.query(
-      `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1'
+      `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1',
+              "syncedDigest" = md5("entries"::text)
        where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
   });
 
   afterEach(async () => {
     await asSystem.query(
-      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
-      [previous?.dictionaryId ?? null, previous?.versionId ?? null],
+      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2, "syncedDigest" = $3 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+      [previous?.dictionaryId ?? null, previous?.versionId ?? null, previous?.syncedDigest ?? null],
     );
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
   });
 
   // The version alone cannot be looked up: ElevenLabs addresses a version through its
@@ -270,6 +279,19 @@ describe("a lexicon uploaded to ElevenLabs", () => {
       [result.file],
     );
     expect(rows).toEqual([{ dictionaryId: "dict-abc", dictionaryVersion: "ver-1" }]);
+  });
+
+  // A line without the language's rules would say its names wrong, and nothing would mark it.
+  it("fails the line, spending nothing, when the account cannot get the dictionary", async () => {
+    const { options, calls } = stub({
+      dictionary: () => new Response('{"detail":"busy"}', { status: 500 }),
+    });
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.message).toMatch(/preparing the enUS dictionary/);
+    expect(calls.some((c) => c.url.includes("text-to-speech"))).toBe(false);
   });
 });
 
