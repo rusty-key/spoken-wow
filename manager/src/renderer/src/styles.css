@@ -2463,9 +2463,13 @@ svg.is-spinning {
   margin-bottom: 14px;
 }
 
-.contrib-lang {
-  max-width: 280px;
-  margin-bottom: 14px;
+.subtabs-wrap {
+  flex-wrap: wrap;
+  gap: 2px 20px;
+}
+
+.contrib-run .jobbar {
+  margin-bottom: 6px;
 }
 
 .contrib-actions,

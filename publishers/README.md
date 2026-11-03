@@ -189,19 +189,21 @@ along with `spoken-release.env.example`, and on Windows it runs in Git Bash, whe
 `tar` makes the zip. CurseForge may refuse the largest packs at its upload limit; the script says
 which and carries on. It uploads files only, so a project's page is still pasted by hand.
 
-**The Spoken Manager does the same from Settings, under Contributor.** A maintainer signs in with
-their Spoken site account. The account needs the `admin` grant in a language (a global admin has
-every language), and the section shows only those languages. Under Stores the maintainer saves a
-CurseForge token and project ids per pack, a GitHub token and an `owner/repo`, or both; saving
-checks the token and refuses one that fails. Tokens and the site session are kept encrypted with the
-operating system's secret store, and are refused when there is none. One project id belongs to one
-pack: saving the same id on two packs is refused. Release then lists each pack as "Unreleased",
-"Live", "Uploaded, awaiting CurseForge" or "Could not check", or says why it cannot be released
-("Not installed" in the selected game, "Not on the newest version from the Manager", "Developer's
-checkout", "No project id"), and has one button per store that publishes every "Unreleased" row. It
-reads the channel again first, and stops if it cannot. It uses the script's tag, asset and file
-names, so the two can be mixed. The script stays for anyone not using the Manager. These limits
-hold:
+**The Spoken Manager does the same from its Release page, set up in Settings under Contributor.** A
+maintainer signs in with their Spoken site account. The account needs the `admin` grant in a language
+(a global admin has every language), and only those languages show. In Settings the maintainer saves
+a CurseForge token and project ids per pack, with a tab per language, a GitHub token and an
+`owner/repo`, or both; saving checks the token and refuses one that fails. Tokens and the site session
+are kept encrypted with the operating system's secret store, and are refused when there is none. One
+project id belongs to one pack: saving the same id on two packs is refused. The Release page appears
+next to Community once a store can take a pack: CurseForge needs a token and at least one project id,
+GitHub a token and a repository. It lists each pack of the chosen language as "Unreleased", "Live",
+"Uploaded, awaiting CurseForge" or "Could not check", or says why it cannot be released ("Not
+installed" in the selected game, "Not on the newest version from the Manager", "Developer's checkout",
+"No project id"). One button per store publishes every "Unreleased" row, and each such row has its
+own Upload button. A run shows the bytes sent of the pack in hand. It reads the channel again first,
+and stops if it cannot. It uses the script's tag, asset and file names, so the two can be mixed. The
+script stays for anyone not using the Manager. These limits hold:
 
 - CurseForge's upload token cannot list files, so the Manager reads the public list from
   `api.cfwidget.com`, a third party, and keeps its own record of what it uploaded. When cfwidget

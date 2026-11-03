@@ -1,4 +1,6 @@
 import fs from 'node:fs'
+import http from 'node:http'
+import type { AddressInfo } from 'node:net'
 import path from 'node:path'
 import yauzl from 'yauzl'
 import { describe, expect, it } from 'vitest'
@@ -112,6 +114,59 @@ const cfArgs = (fetchImpl: typeof fetch) => ({
   gameVersionIds: [11, 22],
   signal,
   fetchImpl
+})
+
+/** A store that reads the whole body, the way a real one does. */
+const draining = (answer: () => Response) =>
+  (async (_url: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.body) await new Response(init.body).arrayBuffer()
+    return answer()
+  }) as unknown as typeof fetch
+
+describe('upload progress', () => {
+  it('counts a CurseForge body up to its Content-Length', async () => {
+    const seen: Array<[number, number]> = []
+    let length = 0
+    const inner = draining(() => new Response('{"id":1}'))
+    const fetchImpl = ((url: RequestInfo | URL, init?: RequestInit) => {
+      length = Number(new Headers(init?.headers).get('content-length'))
+      return inner(url, init)
+    }) as typeof fetch
+    await uploadCurseForge({ ...cfArgs(fetchImpl), onProgress: (sent, total) => seen.push([sent, total]) })
+    expect(seen[0]).toEqual([0, length])
+    expect(seen.at(-1)).toEqual([length, length])
+    expect(seen.map(([sent]) => sent)).toEqual([...seen.map(([sent]) => sent)].sort((a, b) => a - b))
+  })
+
+  it('counts a GitHub asset by the bytes of the zip', async () => {
+    const seen: number[] = []
+    const fetchImpl = draining(() => new Response(JSON.stringify({ id: 5, assets: [] }), { status: 200 }))
+    await uploadGitHub({ token: TOKEN, repo: 'me/packs', folder: 'Pack_x', version: '1.2.3', zip: zipFile(), notes: 'n', signal, fetchImpl, onProgress: (sent) => seen.push(sent) })
+    expect(seen).toEqual([0, 'zipbytes'.length])
+  })
+
+  it('reaches a real server whole through the real fetch, at the length it declared', async () => {
+    const received: Array<{ length: string | undefined; bytes: number }> = []
+    const server = http.createServer((req, res) => {
+      let bytes = 0
+      req.on('data', (c: Buffer) => (bytes += c.length))
+      req.on('end', () => {
+        received.push({ length: req.headers['content-length'], bytes })
+        res.end(JSON.stringify({ id: 5, assets: [] }))
+      })
+    })
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+    const { port } = server.address() as AddressInfo
+    const local = ((url: RequestInfo | URL, init?: RequestInit) => fetch(`http://127.0.0.1:${port}${new URL(String(url)).pathname}`, init)) as typeof fetch
+    try {
+      await uploadCurseForge(cfArgs(local))
+      await uploadGitHub({ token: TOKEN, repo: 'me/packs', folder: 'Pack_x', version: '1.2.3', zip: zipFile(), notes: 'n', signal, fetchImpl: local })
+    } finally {
+      server.close()
+    }
+    expect(received.at(0)!.bytes).toBe(Number(received.at(0)!.length))
+    expect(received.at(-1)).toEqual({ length: String('zipbytes'.length), bytes: 'zipbytes'.length })
+  })
 })
 
 describe('uploadCurseForge', () => {

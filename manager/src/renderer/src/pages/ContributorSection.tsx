@@ -1,34 +1,20 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { languageName } from '@shared/products'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { ContributorView } from '@shared/types'
 import { api, errorText } from '../api'
 import { Field } from '../components/ContributorField'
-import { Select } from '../components/Controls'
-import { visibleTabs } from '../contributor'
-import { Release } from './ContributorRelease'
+import { releaseAvailable } from '../contributor'
 import { StoreForm } from './ContributorStoreForm'
+import { useStore } from '../store'
 import { S } from '../strings'
 
-export { visibleTabs }
-
 export function ContributorSection(): ReactNode {
-  const [view, setView] = useState<ContributorView | null>(null)
-  const [notice, setNotice] = useState('')
-  const [loadError, setLoadError] = useState('')
-  const signedIn = useRef(false)
-  // The ref lets the event handler see the latest answer without resubscribing.
-  const apply = useRef((next: ContributorView, asked = false): void => {
-    // A session that ends without the user asking is an expiry; the saved tokens and ids stay.
-    if (signedIn.current && !next.account && !asked) setNotice(S.contributor.expired)
-    if (next.account || asked) setNotice('')
-    signedIn.current = !!next.account
-    setView(next)
-  }).current
+  const { state, actions } = useStore()
+  const view = state.contributor
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    api().contributorView().then((v) => apply(v, true)).catch((e) => setLoadError(errorText(e)))
-    return api().onContributorChanged((v) => apply(v))
-  }, [apply])
+    void actions.refreshContributor()
+  }, [actions])
 
   if (!view) {
     return (
@@ -36,19 +22,20 @@ export function ContributorSection(): ReactNode {
         <h2 id="set-contributor" className="settings-h">
           {S.settings.contributor}
         </h2>
-        {loadError ? <p className="text-error" role="alert">{loadError}</p> : <p className="muted">{S.common.loading}</p>}
+        {state.contributorError ? <p className="text-error" role="alert">{state.contributorError}</p> : <p className="muted">{S.common.loading}</p>}
       </section>
     )
   }
   const signOut = async (): Promise<void> => {
+    setError('')
     try {
-      apply(await api().contributorSignOut(), true)
+      actions.applyContributor(await api().contributorSignOut())
     } catch (e) {
-      setLoadError(errorText(e))
+      setError(errorText(e))
     }
   }
-  if (!view.account && view.siteUnreachable) return <SiteUnreachable onView={(v) => apply(v, true)} />
-  if (!view.account) return <SignIn notice={notice} onDone={(v) => apply(v, true)} />
+  if (!view.account && view.siteUnreachable) return <SiteUnreachable onView={actions.applyContributor} />
+  if (!view.account) return <SignIn notice={state.contributorExpired ? S.contributor.expired : ''} onDone={actions.applyContributor} />
   if (view.account.adminLangs.length === 0) {
     return (
       <section aria-labelledby="set-contributor">
@@ -59,10 +46,36 @@ export function ContributorSection(): ReactNode {
         <button type="button" className="btn" onClick={() => void signOut()}>
           {S.contributor.signOut}
         </button>
+        {error && <p className="text-error" role="alert">{error}</p>}
       </section>
     )
   }
-  return <Signed view={view} account={view.account} onView={(v) => apply(v, true)} onSignOut={() => void signOut()} />
+  return (
+    <section aria-labelledby="set-contributor">
+      <div className="settings-title-row">
+        <h2 id="set-contributor" className="settings-h">
+          {S.settings.contributor}
+        </h2>
+        <button type="button" className="link" onClick={() => void signOut()}>
+          {S.contributor.signOut}
+        </button>
+      </div>
+      <p className="settings-text">{S.contributor.signedInAs(view.account.email)}</p>
+      {error && <p className="text-error" role="alert">{error}</p>}
+      {!view.canStoreSecrets && <p className="status status-warn contrib-gap">{S.contributor.unsafeStorage}</p>}
+      {releaseAvailable(view) ? (
+        <p className="contrib-gap">
+          <button type="button" className="btn" onClick={() => actions.navigate('release')}>
+            {S.contributor.openRelease}
+          </button>
+        </p>
+      ) : (
+        <p className="muted contrib-gap">{S.contributor.releaseHint}</p>
+      )}
+      <StoreForm store="curseforge" view={view} onView={actions.applyContributor} />
+      <StoreForm store="github" view={view} onView={actions.applyContributor} />
+    </section>
+  )
 }
 
 /** The session may be fine, so a sign-in form would ask for a password nothing needs. */
@@ -149,58 +162,6 @@ function SignIn({ notice, onDone }: { notice: string; onDone: (v: ContributorVie
           </p>
         )}
       </form>
-    </section>
-  )
-}
-
-type Tab = 'stores' | 'release'
-
-function Signed({ view, account, onView, onSignOut }: { view: ContributorView; account: NonNullable<ContributorView['account']>; onView: (v: ContributorView) => void; onSignOut: () => void }): ReactNode {
-  const tabs = visibleTabs(view, view.config)
-  const [tab, setTab] = useState<Tab>('stores')
-  const [lang, setLang] = useState(account.adminLangs[0] ?? '')
-  const shown: Tab = tabs.includes(tab) ? tab : 'stores'
-  const chosen = account.adminLangs.includes(lang) ? lang : (account.adminLangs[0] ?? '')
-  return (
-    <section aria-labelledby="set-contributor">
-      <div className="settings-title-row">
-        <h2 id="set-contributor" className="settings-h">
-          {S.settings.contributor}
-        </h2>
-        <button type="button" className="link" onClick={onSignOut}>
-          {S.contributor.signOut}
-        </button>
-      </div>
-      <p className="settings-text">{S.contributor.signedInAs(account.email)}</p>
-      {account.adminLangs.length > 1 && (
-        <div className="contrib-lang">
-          <Select label={S.contributor.language} value={chosen} onChange={setLang}>
-            {account.adminLangs.map((l) => (
-              <option key={l} value={l}>
-                {languageName(l)}
-              </option>
-            ))}
-          </Select>
-        </div>
-      )}
-      <div className="subtabs" role="tablist" aria-label={S.settings.contributor}>
-        {tabs.map((t) => (
-          <button key={t} type="button" role="tab" id={`ctab-${t}`} aria-selected={shown === t} aria-controls={`cpanel-${t}`} className="subtab" onClick={() => setTab(t)}>
-            {t === 'stores' ? S.contributor.tabStores : S.contributor.tabRelease}
-          </button>
-        ))}
-      </div>
-      {shown === 'stores' ? (
-        <div role="tabpanel" id="cpanel-stores" aria-labelledby="ctab-stores">
-          {!view.canStoreSecrets && <p className="status status-warn contrib-gap">{S.contributor.unsafeStorage}</p>}
-          <StoreForm store="curseforge" view={view} lang={chosen} onView={onView} />
-          <StoreForm store="github" view={view} lang={chosen} onView={onView} />
-        </div>
-      ) : (
-        <div role="tabpanel" id="cpanel-release" aria-labelledby="ctab-release">
-          <Release view={view} lang={chosen} />
-        </div>
-      )}
     </section>
   )
 }

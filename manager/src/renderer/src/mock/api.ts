@@ -601,21 +601,30 @@ export function createMockApi(): ManagerApi {
     async contributorPublish(gameId, lang, store, only) {
       const jobId = `job-${++seq}`
       const folders = only ? [only] : contributorRows(lang).filter((r) => r.state === 'unreleased').map((r) => r.folder)
-      const base: JobProgress = { jobId, gameId, productId: `publish/${store}`, action: 'publish', phase: 'queued', received: 0, total: folders.length, bytesPerSecond: 0 }
-      emit({ ...base, phase: 'installing', message: `0/${folders.length} ${folders[0] ?? ''}: zipping` })
-      let done = 0
+      const base: JobProgress = { jobId, gameId, productId: `publish/${store}`, action: 'publish', phase: 'queued', received: 0, total: 0, bytesPerSecond: 0 }
+      const size = 180 * 1024 * 1024
+      const ticksPerPack = 6
+      emit({ ...base, phase: 'installing', message: `1/${folders.length} ${folders[0] ?? ''}: zipping` })
+      let tick = 0
       const handle = {
         timer: 0,
         cancel: () => {
           window.clearInterval(handle.timer)
           running.delete(jobId)
-          emit({ ...base, phase: 'cancelled', received: done })
+          emit({ ...base, phase: 'cancelled' })
         }
       }
       running.set(jobId, handle)
       handle.timer = window.setInterval(() => {
-        done++
-        if (done < folders.length) return void emit({ ...base, phase: 'installing', received: done, message: `${done}/${folders.length} ${folders[done]}: uploading` })
+        tick++
+        const n = Math.floor(tick / ticksPerPack)
+        if (n < folders.length) {
+          const step = tick % ticksPerPack
+          const label = `${n + 1}/${folders.length} ${folders[n]}`
+          if (step === 0) return void emit({ ...base, phase: 'installing', message: `${label}: zipping` })
+          if (step === ticksPerPack - 1) return void emit({ ...base, phase: 'installing', message: `${label}: waiting for ${store === 'github' ? 'GitHub' : 'CurseForge'}` })
+          return void emit({ ...base, phase: 'installing', received: (size * step) / (ticksPerPack - 1), total: size, bytesPerSecond: 12 * 1024 * 1024, message: `${label}: uploading` })
+        }
         window.clearInterval(handle.timer)
         running.delete(jobId)
         folders.forEach((f) => uploaded.add(f))
@@ -623,11 +632,11 @@ export function createMockApi(): ManagerApi {
         const skipped = only ? [] : contributorRows(lang).filter((r) => !folders.includes(r.folder)).map((r) => ({ folder: r.folder, reason: r.state as Exclude<ReleaseRow['state'], 'unreleased'> }))
         contributor = {
           ...contributor,
-          lastRuns: { ...contributor.lastRuns, [store]: { store, lang, published: folders.map((folder) => ({ folder, version: '1.5.0', link: link(folder) })), skipped, failed: [], stoppedEarly: false } }
+          lastRuns: { ...contributor.lastRuns, [store]: { store, lang, published: folders.map((folder) => ({ folder, version: '1.5.0', link: link(folder) })), skipped, failed: [], stoppedEarly: false, finishedAt: new Date().toISOString() } }
         }
         contributorListeners.forEach((l) => l(contributor))
-        emit({ ...base, phase: 'done', received: done })
-      }, 900)
+        emit({ ...base, phase: 'done' })
+      }, 500)
       return jobId
     },
     async windowMinimize() {

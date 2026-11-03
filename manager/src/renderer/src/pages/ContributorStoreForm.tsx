@@ -3,13 +3,15 @@ import { languageFolders } from '@shared/products'
 import type { ContributorView, StoreId } from '@shared/types'
 import { api, errorText } from '../api'
 import { Field } from '../components/ContributorField'
+import { LanguageTabs, useLanguageTab } from '../components/LanguageTabs'
 import { storeFormInput, storeName } from '../contributor'
 import { S } from '../strings'
 
-export function StoreForm({ store, view, lang, onView }: { store: StoreId; view: ContributorView; lang: string; onView: (v: ContributorView) => void }): ReactNode {
+export function StoreForm({ store, view, onView }: { store: StoreId; view: ContributorView; onView: (v: ContributorView) => void }): ReactNode {
   const { config } = view
   const isCf = store === 'curseforge'
-  const folders = languageFolders(lang)
+  const langs = view.account?.adminLangs ?? []
+  const [lang, setLang] = useLanguageTab(langs)
   const [token, setToken] = useState('')
   const [projects, setProjects] = useState<Record<string, string>>(config.projects)
   const [repo, setRepo] = useState(config.repo)
@@ -64,11 +66,13 @@ export function StoreForm({ store, view, lang, onView }: { store: StoreId; view:
         <>
           <span className="field-label">{S.contributor.projectIds}</span>
           <span className="muted contrib-note">{S.contributor.projectIdsText}</span>
-          {folders.map((f) => (
-            <Field key={f} label={f}>
-              {(id) => <input id={id} className="input" inputMode="numeric" value={projects[f] ?? ''} onChange={(e) => setProjects({ ...projects, [f]: e.target.value })} />}
-            </Field>
-          ))}
+          <LanguageTabs langs={langs} value={lang} onChange={setLang} label={S.contributor.projectIds}>
+            {languageFolders(lang).map((f) => (
+              <Field key={f} label={f}>
+                {(id) => <input id={id} className="input" inputMode="numeric" value={projects[f] ?? ''} onChange={(e) => setProjects({ ...projects, [f]: e.target.value })} />}
+              </Field>
+            ))}
+          </LanguageTabs>
           <Field label={S.contributor.gameVersions} text={S.contributor.gameVersionsText}>
             {(id) => <input id={id} className="input" value={versions} onChange={(e) => setVersions(e.target.value)} />}
           </Field>

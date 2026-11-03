@@ -9,7 +9,9 @@ import { compareVersions } from '../shared/version'
 import { cfPublicVersions, deriveRow, ghHasAsset, languageFolders } from './contributor-status'
 import { CONTRIBUTOR_TMP } from './cleanup'
 import { ContributorStore, type SecretBox } from './contributor-store'
-import { cfProjectLink, checkCfToken, checkGhRepo, resolveGameVersions, uploadCurseForge, uploadGitHub, zipFolder } from './contributor-upload'
+import { cfProjectLink, checkCfToken, checkGhRepo, resolveGameVersions, uploadCurseForge, uploadGitHub, zipFolder, type UploadProgress } from './contributor-upload'
+
+const PROGRESS_INTERVAL_MS = 250
 import { CancelledError, isAbortError, plainMessage, PlainError, throwIfAborted } from './errors'
 import { isLinked } from './guard'
 import type { JobManager, JobSpec } from './jobs'
@@ -354,7 +356,7 @@ export class ContributorService {
       throw err
     } finally {
       this.publishing.delete(store)
-      this.lastRuns[store] = result
+      this.lastRuns[store] = { ...result, finishedAt: new Date().toISOString() }
       log(`Publish to ${store}: ${result.published.length} sent, ${result.skipped.length} skipped, ${result.failed.length} failed${result.stoppedEarly ? ', stopped early' : ''}.`)
       this.deps.changed(this.localView())
     }
@@ -399,14 +401,24 @@ export class ContributorService {
     for (const [i, pack] of targets.entries()) {
       throwIfAborted(ctx.signal)
       const n = i + 1
-      const say = (step: string): void => this.progress(ctx, game, store, n, targets.length, `${n}/${targets.length} ${pack.folder}: ${step}`)
+      const say = (step: string, bytes?: { received: number; total: number; bytesPerSecond: number }): void =>
+        this.progress(ctx, game, store, `${n}/${targets.length} ${pack.folder}: ${step}`, bytes)
       // Unique per pack: runs on two games can be going at once.
       const zip = path.join(tmp, `${randomUUID()}.zip`)
       try {
         say('zipping')
         await zipFolder(game.addOnsPath, pack.folder, zip, ctx.signal)
         say('uploading')
-        await this.sendOne(pack, store, token, config, zip, gameVersionIds, result, ctx)
+        const started = Date.now()
+        let lastSaid = 0
+        const onProgress = (sent: number, total: number): void => {
+          const now = Date.now()
+          if (sent >= total) return say(`waiting for ${name}`)
+          if (now - lastSaid < PROGRESS_INTERVAL_MS) return
+          lastSaid = now
+          say('uploading', { received: sent, total, bytesPerSecond: now > started ? (sent * 1000) / (now - started) : 0 })
+        }
+        await this.sendOne(pack, store, token, config, zip, gameVersionIds, result, ctx, onProgress)
       } catch (err) {
         // Aborted as well: reading a response the cancel cut short fails with words, not with an abort.
         if (isAbortError(err) || ctx.signal.aborted) throw new CancelledError()
@@ -417,11 +429,11 @@ export class ContributorService {
     }
   }
 
-  private async sendOne(pack: Pack, store: StoreId, token: string, config: ContributorConfig, zip: string, gameVersionIds: number[], result: PublishResult, ctx: JobContext): Promise<void> {
+  private async sendOne(pack: Pack, store: StoreId, token: string, config: ContributorConfig, zip: string, gameVersionIds: number[], result: PublishResult, ctx: JobContext, onProgress: UploadProgress): Promise<void> {
     const { folder } = pack
     const version = pack.version!
     const notes = `${pack.title ?? folder} ${version}`
-    const common = { token, folder, version, zip, notes, signal: ctx.signal, fetchImpl: this.deps.fetchImpl }
+    const common = { token, folder, version, zip, notes, signal: ctx.signal, fetchImpl: this.deps.fetchImpl, onProgress }
     let fileId: string | null = null
     let link: string
     if (store === 'github') {
@@ -446,16 +458,15 @@ export class ContributorService {
     }
   }
 
-  private progress(ctx: JobContext, game: GameInstall, store: StoreId, n: number, total: number, message: string): void {
+  /** `received` and `total` are the bytes of the pack being sent; without them the window draws a moving bar. */
+  private progress(ctx: JobContext, game: GameInstall, store: StoreId, message: string, bytes = { received: 0, total: 0, bytesPerSecond: 0 }): void {
     const progress: JobProgress = {
       jobId: ctx.jobId,
       gameId: game.id,
       productId: `publish/${store}`,
       action: 'publish',
       phase: 'installing',
-      received: n,
-      total,
-      bytesPerSecond: 0,
+      ...bytes,
       message
     }
     ctx.emit(progress)

@@ -1,36 +1,30 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { languageName } from '@shared/products'
 import type { ContributorView, JobProgress, PublishResult, ReleaseRow, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
 import { api, errorText } from '../api'
 import { IconExternal, IconRefresh } from '../components/Icons'
-import { STORES, canUploadAgain, isRunning, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, skipReasonText, storeName } from '../contributor'
+import { STORES, isRunning, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
+import { formatBytes, formatSpeed } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
 
 export function Release({ view, lang }: { view: ContributorView; lang: string }): ReactNode {
   const game = useGame()
-  const { state, actions } = useStore()
-  const [reload, setReload] = useState(0)
+  const { actions } = useStore()
   const stores = STORES.filter((s) => storeConfigured(s, view.config))
-
-  // A finished run changes what the stores hold: ask for the rows and the result again.
-  const finished = stores.map((s) => publishJobFor(state.jobs, s)).filter((j): j is JobProgress => !!j && !isRunning(j)).map((j) => j.jobId).join(',')
-  useEffect(() => {
-    if (finished !== '') setReload((n) => n + 1)
-  }, [finished])
 
   if (!game) return <p className="settings-text">{S.contributor.noGame}</p>
   return (
     <div>
       {stores.map((s) => (
-        <StoreRelease key={s} store={s} gameId={game.id} lang={lang} view={view} reload={reload} onDismiss={(job) => actions.dismissJob(jobKey(job.gameId, job.productId))} />
+        <StoreRelease key={s} store={s} gameId={game.id} lang={lang} view={view} onDismiss={(job) => actions.dismissJob(jobKey(job.gameId, job.productId))} />
       ))}
     </div>
   )
 }
 
-function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store: StoreId; gameId: string; lang: string; view: ContributorView; reload: number; onDismiss: (job: JobProgress) => void }): ReactNode {
+function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId; gameId: string; lang: string; view: ContributorView; onDismiss: (job: JobProgress) => void }): ReactNode {
   const { state, actions } = useStore()
   const job = publishJobFor(state.jobs, store)
   const running = isRunning(job)
@@ -39,8 +33,7 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
   const [refresh, setRefresh] = useState(0)
   const [starting, setStarting] = useState(false)
   const [refusal, setRefusal] = useState('')
-  const shownRun = view.lastRuns[store] ?? null
-  const [lastRun, setLastRun] = useState<PublishResult | null>(shownRun)
+  const lastRun = view.lastRuns[store] ?? null
 
   useEffect(() => {
     let alive = true
@@ -53,23 +46,8 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
     return () => {
       alive = false
     }
-  }, [gameId, lang, store, reload, refresh])
-
-  useEffect(() => {
-    let alive = true
-    if (reload > 0) api().contributorView().then((v) => alive && setLastRun(v.lastRuns[store] ?? null)).catch(() => undefined)
-    return () => {
-      alive = false
-    }
-  }, [reload, store])
-
-  // A run that was cancelled still published some packs, and its job is gone: the new result is the cue.
-  const seenRun = useRef(shownRun)
-  useEffect(() => {
-    setLastRun(shownRun)
-    if (shownRun !== seenRun.current) setRefresh((n) => n + 1)
-    seenRun.current = shownRun
-  }, [shownRun])
+    // Every run ends with a new result, a cancelled one too, whose job is already gone.
+  }, [gameId, lang, store, refresh, lastRun?.finishedAt])
 
   const publish = async (only?: string): Promise<void> => {
     setStarting(true)
@@ -109,7 +87,7 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
       </div>
 
       {(job || refusal) && (
-        <div className="contrib-run" role="status">
+        <div className="contrib-run">
           {job && <RunLine job={job} onDismiss={() => onDismiss(job)} />}
           {refusal && <p className="text-error" role="alert">{refusal}</p>}
         </div>
@@ -123,7 +101,7 @@ function StoreRelease({ store, gameId, lang, view, reload, onDismiss }: { store:
       ) : (
         <ul className="list card contrib-rows">
           {rows.map((r) => (
-            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} onUploadAgain={() => void publish(r.folder)} />
+            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} onUpload={() => void publish(r.folder)} />
           ))}
         </ul>
       )}
@@ -142,19 +120,33 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
       : job.phase === 'cancelled'
         ? S.contributor.runCancelled
         : (job.message ?? S.contributor.runFailed)
+  const percent = runPercent(job)
   return (
-    <div className={`status ${job.phase === 'error' ? 'status-error' : ''}`}>
-      <span>{text}</span>
-      {!live && (
-        <button type="button" className="link link-muted" onClick={onDismiss}>
-          {S.common.dismiss}
-        </button>
+    <>
+      {live && (
+        <div className="jobbar jobbar-sm" aria-busy="true">
+          <div className={`jobbar-track${percent === null ? ' is-indeterminate' : ''}`} role="progressbar" aria-label={text} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent ?? undefined}>
+            <div className="jobbar-fill" style={{ width: `${percent ?? 100}%` }} />
+            {percent !== null && <span className="jobbar-text">{percent}%</span>}
+          </div>
+          {percent !== null && <div className="jobbar-meta">{S.contributor.sentOf(formatSpeed(job.bytesPerSecond), formatBytes(job.received), formatBytes(job.total))}</div>}
+        </div>
       )}
-    </div>
+      {/* Apart from the bar, so a reader hears each step and not each percent. */}
+      <div className={`status ${job.phase === 'error' ? 'status-error' : ''}`} role="status">
+        <span>{text}</span>
+        {!live && (
+          <button type="button" className="link link-muted" onClick={onDismiss}>
+            {S.common.dismiss}
+          </button>
+        )}
+      </div>
+    </>
   )
 }
 
-function RowItem({ row, store, storeBusy, onUploadAgain }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; onUploadAgain: () => void }): ReactNode {
+function RowItem({ row, store, storeBusy, onUpload }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; onUpload: () => void }): ReactNode {
+  const uploadLabel = rowUploadLabel(row)
   const tone = row.state === 'live' ? 'status-ok' : row.state === 'unreleased' ? 'status-dev' : row.state === 'awaiting' || row.state === 'unchecked' || row.state === 'update-first' ? 'status-warn' : ''
   return (
     <li className="contrib-row">
@@ -169,9 +161,9 @@ function RowItem({ row, store, storeBusy, onUploadAgain }: { row: ReleaseRow; st
             <IconExternal size={14} />
           </button>
         )}
-        {canUploadAgain(row) && (
-          <button type="button" className="btn btn-sm" disabled={storeBusy} onClick={onUploadAgain}>
-            {S.contributor.uploadAgain}
+        {uploadLabel && (
+          <button type="button" className="btn btn-sm" disabled={storeBusy} aria-label={`${uploadLabel} ${row.folder}`} onClick={onUpload}>
+            {uploadLabel}
           </button>
         )}
       </div>

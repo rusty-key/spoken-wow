@@ -551,7 +551,11 @@ describe('publish', () => {
     expect(messages).toContain(`1/2 ${PLACES}: uploading`)
     expect(messages).toContain(`2/2 ${READABLES}: uploading`)
     const step = h.jobs().find((j) => j.message === `2/2 ${READABLES}: uploading`)!
-    expect(step).toMatchObject({ gameId: h.game.id, productId: 'publish/curseforge', action: 'publish', received: 2, total: 2 })
+    expect(step).toMatchObject({ gameId: h.game.id, productId: 'publish/curseforge', action: 'publish' })
+    // Bytes of the pack while it goes; a step with nothing to count leaves the bar moving.
+    expect(h.jobs().find((j) => j.jobId === jobId && j.message === `1/2 ${PLACES}: zipping`)).toMatchObject({ received: 0, total: 0 })
+    expect(h.jobs().some((j) => j.jobId === jobId && j.message === `1/2 ${PLACES}: uploading` && j.total > 0)).toBe(true)
+    expect(messages).toContain(`1/2 ${PLACES}: waiting for CurseForge`)
     const changed = h.events.filter((e) => e.channel === CHANNELS.contributorChanged)
     expect(changed).toHaveLength(1)
     expect(changed[0]!.payload).toMatchObject({ lastRuns: { curseforge: { store: 'curseforge' } } })

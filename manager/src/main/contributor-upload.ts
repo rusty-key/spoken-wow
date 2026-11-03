@@ -112,6 +112,19 @@ async function* multipartBody(head: Buffer, file: string, tail: Buffer): AsyncGe
   yield tail
 }
 
+export type UploadProgress = (sent: number, total: number) => void
+
+/** Counts bytes as fetch takes them, so the count runs slightly ahead of what has reached the store. */
+async function* counted(source: AsyncIterable<Buffer>, total: number, onProgress?: UploadProgress): AsyncGenerator<Buffer> {
+  let sent = 0
+  onProgress?.(0, total)
+  for await (const chunk of source) {
+    yield chunk
+    sent += chunk.length
+    onProgress?.(sent, total)
+  }
+}
+
 // ---------------------------------------------------------------- CurseForge
 
 const cfHeaders = (token: string): Record<string, string> => ({ 'X-Api-Token': token })
@@ -163,6 +176,7 @@ export async function uploadCurseForge(a: {
   gameVersionIds: number[]
   signal: AbortSignal
   fetchImpl: typeof fetch
+  onProgress?: UploadProgress
 }): Promise<{ fileId: string | null; link: string }> {
   const metadata = {
     changelog: a.notes,
@@ -180,7 +194,7 @@ export async function uploadCurseForge(a: {
       'Content-Type: application/octet-stream\r\n\r\n'
   )
   const tail = Buffer.from(`\r\n--${boundary}--\r\n`)
-  const size = await zipSize(a.zip)
+  const size = head.length + (await zipSize(a.zip)) + tail.length
   const res = await send(
     'CurseForge',
     a.fetchImpl,
@@ -190,10 +204,10 @@ export async function uploadCurseForge(a: {
       headers: {
         ...cfHeaders(a.token),
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
-        'Content-Length': String(head.length + size + tail.length)
+        'Content-Length': String(size)
       },
       // FormData would read the whole zip into memory before sending; this streams it from disk.
-      body: Readable.toWeb(Readable.from(multipartBody(head, a.zip, tail))) as unknown as BodyInit,
+      body: Readable.toWeb(Readable.from(counted(multipartBody(head, a.zip, tail), size, a.onProgress))) as unknown as BodyInit,
       duplex: 'half',
       redirect: 'error'
     } as RequestInit,
@@ -267,6 +281,7 @@ export async function uploadGitHub(a: {
   notes: string
   signal: AbortSignal
   fetchImpl: typeof fetch
+  onProgress?: UploadProgress
 }): Promise<{ link: string; alreadyThere: boolean }> {
   checkRepoName(a.repo)
   const tag = `${a.folder}/v${a.version}`
@@ -319,7 +334,7 @@ export async function uploadGitHub(a: {
       headers: { ...headers, 'Content-Type': 'application/zip', 'Content-Length': String(size) },
       // Streamed from disk, since the biggest pack of a language would not fit in memory on every machine.
       // A redirect would resend the token to wherever it points.
-      body: Readable.toWeb(stream) as unknown as BodyInit,
+      body: Readable.toWeb(Readable.from(counted(stream, size, a.onProgress))) as unknown as BodyInit,
       duplex: 'half',
       redirect: 'error'
     } as RequestInit,

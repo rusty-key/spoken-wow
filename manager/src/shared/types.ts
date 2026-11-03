@@ -296,6 +296,8 @@ export interface PublishResult {
   failed: { folder: string; reason: string }[]
   /** A cancel or a failure of the whole run, so folders may be in none of the lists. */
   stoppedEarly: boolean
+  /** Tells a new run from the same result sent again; the window reloads its rows on a new one. */
+  finishedAt?: string
 }
 
 export type RowState =

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ContributorConfig, ContributorView, JobProgress, ReleaseRow } from '../src/shared/types'
 import { isAllowedExternalUrl } from '../src/main/external'
 import { ContributorStore } from '../src/main/contributor-store'
-import { liveRunText, publishJobFor, releasableCount, resultLines, rowHint, skipReasonText, storeFormInput, visibleTabs } from '../src/renderer/src/contributor'
+import { liveRunText, publishJobFor, releasableCount, releaseAvailable, resultLines, rowHint, rowUploadLabel, runPercent, sessionExpired, skipReasonText, storeFormInput } from '../src/renderer/src/contributor'
 import { S } from '../src/renderer/src/strings'
 import { tmpDir } from './helpers'
 
@@ -10,17 +10,51 @@ const base: ContributorConfig = { projects: {}, repo: '', gameVersions: '', hasC
 const view = (account: ContributorView['account']): ContributorView => ({ account, config: base, canStoreSecrets: true, siteUnreachable: false, lastRuns: {} })
 const admin = { email: 'a@b.c', adminLangs: ['deDE'] }
 
-describe('visibleTabs', () => {
-  it('shows nothing when signed out or without an admin language', () => {
-    expect(visibleTabs(view(null), base)).toEqual([])
-    expect(visibleTabs(view({ email: 'a@b.c', adminLangs: [] }), base)).toEqual([])
+describe('releaseAvailable', () => {
+  const configured = (config: ContributorConfig): ContributorView => ({ ...view(admin), config })
+
+  it('is off when signed out, without an admin language, or before the first answer', () => {
+    expect(releaseAvailable(null)).toBe(false)
+    expect(releaseAvailable(view(null))).toBe(false)
+    expect(releaseAvailable({ ...view({ email: 'a@b.c', adminLangs: [] }), config: { ...base, hasGhToken: true, repo: 'a/b' } })).toBe(false)
   })
 
-  it('shows Stores alone until a store is configured, then Release too', () => {
-    expect(visibleTabs(view(admin), base)).toEqual(['stores'])
-    expect(visibleTabs(view(admin), { ...base, hasCfToken: true })).toEqual(['stores'])
-    expect(visibleTabs(view(admin), { ...base, hasGhToken: true, repo: 'a/b' })).toEqual(['stores', 'release'])
-    expect(visibleTabs(view(admin), { ...base, hasCfToken: true, projects: { X: '1' } })).toEqual(['stores', 'release'])
+  it('turns on once a store could take a pack', () => {
+    expect(releaseAvailable(view(admin))).toBe(false)
+    expect(releaseAvailable(configured({ ...base, hasCfToken: true }))).toBe(false)
+    expect(releaseAvailable(configured({ ...base, hasGhToken: true, repo: 'a/b' }))).toBe(true)
+    expect(releaseAvailable(configured({ ...base, hasCfToken: true, projects: { X: '1' } }))).toBe(true)
+  })
+})
+
+describe('sessionExpired', () => {
+  const signedIn = { view: view(admin), expired: false }
+
+  it('is an expiry only when a session ends unasked', () => {
+    expect(sessionExpired(signedIn, view(null), false)).toBe(true)
+    expect(sessionExpired(signedIn, view(null), true)).toBe(false)
+    expect(sessionExpired({ view: null, expired: false }, view(null), false)).toBe(false)
+  })
+
+  it('does not call an outage an expiry', () => {
+    expect(sessionExpired(signedIn, { ...view(null), siteUnreachable: true }, false)).toBe(false)
+  })
+
+  it('keeps the notice through a later signed-out answer, until signed in or asked', () => {
+    const expired = { view: view(null), expired: true }
+    expect(sessionExpired(expired, view(null), false)).toBe(true)
+    expect(sessionExpired(expired, view(admin), false)).toBe(false)
+    expect(sessionExpired(expired, view(null), true)).toBe(false)
+  })
+})
+
+describe('rowUploadLabel', () => {
+  it('offers a first upload, an upload again, or nothing', () => {
+    expect(rowUploadLabel({ folder: 'a', state: 'unreleased' })).toBe(S.contributor.upload)
+    expect(rowUploadLabel({ folder: 'a', state: 'awaiting' })).toBe(S.contributor.uploadAgain)
+    expect(rowUploadLabel({ folder: 'a', state: 'unchecked' })).toBe(S.contributor.uploadAgain)
+    expect(rowUploadLabel({ folder: 'a', state: 'live' })).toBeNull()
+    expect(rowUploadLabel({ folder: 'a', state: 'no-project' })).toBeNull()
   })
 })
 
@@ -116,8 +150,14 @@ describe('words of a release', () => {
   it('a job with no count yet shows only the start text', () => {
     const job: JobProgress = { jobId: 'j', gameId: 'g', productId: 'publish/github', action: 'publish', phase: 'queued', received: 0, total: 0, bytesPerSecond: 0 }
     expect(liveRunText(job)).toBe(`${S.contributor.starting}…`)
-    expect(liveRunText({ ...job, received: 1, total: 3 })).toContain('1/3')
-    expect(liveRunText({ ...job, total: 3, message: '1/3 F: zipping' })).toBe('1/3 F: zipping')
+    expect(liveRunText({ ...job, message: '1/3 F: zipping' })).toBe('1/3 F: zipping')
+  })
+
+  it('a step with no bytes to count has no percent', () => {
+    const job: JobProgress = { jobId: 'j', gameId: 'g', productId: 'publish/github', action: 'publish', phase: 'installing', received: 0, total: 0, bytesPerSecond: 0 }
+    expect(runPercent(job)).toBeNull()
+    expect(runPercent({ ...job, received: 50, total: 200 })).toBe(25)
+    expect(runPercent({ ...job, received: 300, total: 200 })).toBe(100)
   })
 })
 
