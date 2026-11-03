@@ -6,7 +6,7 @@ import type { Flavor, GameInstall } from '@shared/types'
 import { SUPPORTED_FLAVORS } from '@shared/types'
 import { useGame, useStore, useSupportedGames, type Page } from '../store'
 import { S } from '../strings'
-import { flavorLook } from '../catalog'
+import { flavorLook, jobBusy } from '../catalog'
 import { releaseAvailable } from '../contributor'
 import { GameIcon } from './Brand'
 import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
@@ -157,6 +157,17 @@ export function GamesStrip(): ReactNode {
   )
 }
 
+/** Off while a job runs, so one click cannot throw away a long download. */
+export function RestartButton({ className }: { className: string }): ReactNode {
+  const { state, actions } = useStore()
+  const busy = Object.values(state.jobs).some((job) => jobBusy(job))
+  return (
+    <button type="button" className={className} disabled={busy} title={busy ? S.banners.restartBusy : undefined} onClick={() => void actions.restartManager()}>
+      {S.banners.restart}
+    </button>
+  )
+}
+
 export function Banners(): ReactNode {
   const { state } = useStore()
   const { updater, catalog } = state
@@ -176,8 +187,9 @@ export function Banners(): ReactNode {
         </div>
       )}
       {updater.state === 'ready' && (
-        <div className="banner banner-info" role="status">
-          {S.banners.updateReady(updater.version)}
+        <div className="banner banner-info banner-action" role="status">
+          {updater.message ?? S.banners.updateReady(updater.version)}
+          <RestartButton className="btn btn-sm" />
         </div>
       )}
       {updater.state === 'downloading' && (

@@ -527,7 +527,11 @@ export function createMockApi(): ManagerApi {
     async openLogs() {
       console.info('[mock] openLogs')
     },
-    async checkManagerUpdate() {
+    async restartManager() {
+      console.info('[mock] restartManager')
+    },
+    async checkManagerUpdate(background) {
+      if (background) return
       const emit = (s: UpdaterState): void => updaterListeners.forEach((l) => l(s))
       emit({ state: 'checking' })
       await sleep(900)

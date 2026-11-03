@@ -169,6 +169,7 @@ export interface Actions {
   /** Puts the installed version back, over what is there. */
   repair(gameId: string, productId: string): Promise<void>
   checkManagerUpdate(): Promise<void>
+  restartManager(): Promise<void>
   cancel(jobId: string): void
   dismissJob(key: string): void
   refresh(): Promise<void>
@@ -229,6 +230,13 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
         dispatch({ type: 'updater', state: { state: 'error', message: errorText(e) } })
       }
     },
+    async restartManager() {
+      try {
+        await api().restartManager()
+      } catch (e) {
+        dispatch({ type: 'updater', state: { state: 'error', message: errorText(e) } })
+      }
+    },
     async uninstall(gameId, productId) {
       dispatch({ type: 'dismiss', key: jobKey(gameId, productId) })
       try {
@@ -247,7 +255,10 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
           api()
             .refreshCommunity(true)
             .then((community) => dispatch({ type: 'community', community }))
-            .catch(() => dispatch({ type: 'community', community: { ...get().community, offline: true } }))
+            .catch(() => dispatch({ type: 'community', community: { ...get().community, offline: true } })),
+          api()
+            .checkManagerUpdate(true)
+            .catch(() => undefined)
         ])
         dispatch({ type: 'catalog', catalog })
         refetchAll(get().games)

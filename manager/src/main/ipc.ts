@@ -9,7 +9,7 @@ import { isAllowedExternalUrl, openableDirectory } from './external'
 import type { ManagerService } from './service'
 import { isOurPage, type AppPage } from './trust'
 import { log, logsDir } from './state'
-import { checkForManagerUpdate } from './updater'
+import { checkForManagerUpdate, restartToUpdateManager } from './updater'
 
 function text(v: unknown, what: string, max = 2048): string {
   if (typeof v !== 'string' || v.length === 0 || v.length > max || v.includes('\0')) throw new Error(`Invalid ${what}`)
@@ -187,7 +187,12 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
     await shell.openExternal(url as string)
   })
 
-  handle(CHANNELS.checkManagerUpdate, () => checkForManagerUpdate())
+  handle(CHANNELS.checkManagerUpdate, (_e, background) => checkForManagerUpdate(background === true))
+  handle(CHANNELS.restartManager, async () => {
+    // Windows starts the installer before the app quits, so before-quit would stop a job too late.
+    await service.jobs.cancelAll()
+    restartToUpdateManager()
+  })
   handle(CHANNELS.clearDownloads, () => service.clearDownloads())
   handle(CHANNELS.shareNow, () => service.sendNow())
   handle(CHANNELS.resetShareId, () => service.resetShareId())
