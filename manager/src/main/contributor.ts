@@ -6,12 +6,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { ContributorConfig, ContributorView, GameInstall, JobProgress, PublishResult, ReleaseRow, StoreId } from '../shared/types'
 import { compareVersions } from '../shared/version'
-import { cfPublicVersions, deriveRow, ghHasAsset, languageFolders } from './contributor-status'
+import { languageFolders } from '../shared/products'
+import { cfPublicVersions, deriveRow, ghHasAsset } from './contributor-status'
 import { CONTRIBUTOR_TMP } from './cleanup'
-import { ContributorStore, type SecretBox } from './contributor-store'
+import { ContributorStore, type SecretBox, type UploadRecord } from './contributor-store'
 import { cfProjectLink, checkCfToken, checkGhRepo, resolveGameVersions, uploadCurseForge, uploadGitHub, zipFolder, type UploadProgress } from './contributor-upload'
-
-const PROGRESS_INTERVAL_MS = 250
 import { CancelledError, isAbortError, plainMessage, PlainError, throwIfAborted } from './errors'
 import { isLinked } from './guard'
 import type { JobManager, JobSpec } from './jobs'
@@ -22,6 +21,7 @@ import { parseTocVersion } from './status'
 
 const SITE_URL = 'https://spoken.rusty.one'
 const SITE_TIMEOUT_MS = 15_000
+const PROGRESS_INTERVAL_MS = 250
 const STORE_NAMES: Record<StoreId, string> = { curseforge: 'CurseForge', github: 'GitHub' }
 /** Long enough for one screen's stores and its refresh button to share a request. */
 const ROWS_CHANNEL_MAX_AGE_MS = 60_000
@@ -97,6 +97,8 @@ export class ContributorService {
   private known: Account | null = null
   /** A cookie is kept and the site gave no answer about it. */
   private unreachable = false
+  /** The site ended a session the user had not asked to end. */
+  private expired = false
   private readonly lastRuns: Partial<Record<StoreId, PublishResult>> = {}
   /**
    * One run per store across all games. JobManager would hand a second request the running job's id,
@@ -126,6 +128,7 @@ export class ContributorService {
   /** Tells the window too, since the call that found out may be about something else, such as the rows. */
   private clearSession(): void {
     this.store.setCookie(null)
+    this.expired = this.known !== null
     this.known = null
     this.unreachable = false
     this.deps.changed(this.localView())
@@ -164,7 +167,7 @@ export class ContributorService {
   }
 
   private localView(): ContributorView {
-    return { account: this.known, config: this.store.config(), canStoreSecrets: this.deps.box.available(), siteUnreachable: this.unreachable, lastRuns: { ...this.lastRuns } }
+    return { account: this.known, config: this.store.config(), canStoreSecrets: this.deps.box.available(), siteUnreachable: this.unreachable, sessionExpired: this.expired, lastRuns: { ...this.lastRuns } }
   }
 
   async view(): Promise<ContributorView> {
@@ -193,6 +196,7 @@ export class ContributorService {
       this.clearSession()
       throw new PlainError('The site did not confirm the sign-in. Try again.')
     }
+    this.expired = false
     return this.localView()
   }
 
@@ -201,6 +205,7 @@ export class ContributorService {
     this.store.setCookie(null)
     this.known = null
     this.unreachable = false
+    this.expired = false
     if (cookie) {
       // Ends the session on the site as well, when it can be reached; the Manager has forgotten it either way.
       await this.siteRequest('/api/auth/sign-out', {
@@ -279,10 +284,10 @@ export class ContributorService {
     return null
   }
 
-  private async rowOf(pack: Pack, store: StoreId, config: ContributorConfig, signal?: AbortSignal): Promise<ReleaseRow> {
+  private async rowOf(pack: Pack, on: { store: StoreId; config: ContributorConfig; token: string | null; uploads: UploadRecord[]; signal: AbortSignal | undefined }): Promise<ReleaseRow> {
     const { folder, version } = pack
+    const { store, config, token, uploads, signal } = on
     const project = store === 'curseforge' ? config.projects[folder] : undefined
-    const token = this.store.token(store)
     let publicVersions: string[] | null = null
     let link = project ? cfProjectLink(project) : undefined
     // A folder that could not be sent anyway is not worth a request.
@@ -302,15 +307,21 @@ export class ContributorService {
       stale: pack.stale,
       ...(project ? { project } : {}),
       publicVersions,
-      // GitHub shows a release at once, so only CurseForge's review leaves anything awaiting.
-      uploads: store === 'curseforge' ? this.store.uploads(store) : []
+      uploads
     })
-    return { folder, ...(version ? { version } : {}), state, ...(link ? { link } : {}), ...(project ? { project } : {}) }
+    return { folder, ...(version ? { version } : {}), state, ...(link ? { link } : {}) }
   }
 
   private rowsOf(packs: Pack[], store: StoreId, signal?: AbortSignal): Promise<ReleaseRow[]> {
-    const config = this.store.config()
-    return Promise.all(packs.map((p) => this.rowOf(p, store, config, signal)))
+    const on = {
+      store,
+      config: this.store.config(),
+      token: store === 'github' ? this.store.token(store) : null,
+      // GitHub shows a release at once, so only CurseForge's review leaves anything awaiting.
+      uploads: store === 'curseforge' ? this.store.uploads(store) : [],
+      signal
+    }
+    return Promise.all(packs.map((p) => this.rowOf(p, on)))
   }
 
   async rows(gameId: string, lang: string, store: StoreId): Promise<ReleaseRow[]> {

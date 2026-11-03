@@ -2,6 +2,7 @@
 import type { StoreInput } from '@shared/api'
 import type { ContributorView, JobProgress, PublishResult, ReleaseRow, SkipReason, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
+import { jobBusy } from './catalog'
 import { S } from './strings'
 
 export const STORES: StoreId[] = ['curseforge', 'github']
@@ -10,12 +11,6 @@ export const STORES: StoreId[] = ['curseforge', 'github']
 export function releaseAvailable(view: ContributorView | null): boolean {
   if (!view?.account || view.account.adminLangs.length === 0) return false
   return STORES.some((s) => storeConfigured(s, view.config))
-}
-
-/** A session that ends without the user asking is an expiry; an outage is not, and the notice lasts until an answer clears it. */
-export function sessionExpired(was: { view: ContributorView | null; expired: boolean }, next: ContributorView, asked: boolean): boolean {
-  if (next.account || asked) return false
-  return was.expired || (!!was.view?.account && !next.siteUnreachable)
 }
 
 /** What Release would publish: the unreleased rows, and only those. */
@@ -56,18 +51,14 @@ export function runPercent(job: JobProgress): number | null {
   return job.total > 0 ? Math.min(100, Math.floor((job.received / job.total) * 100)) : null
 }
 
-const running = (j: JobProgress): boolean => j.phase !== 'done' && j.phase !== 'error' && j.phase !== 'cancelled'
-
 /** The publish job of a store in any game, since the service runs one per store; a running job wins over a finished one. */
 export function publishJobFor(jobs: Record<string, JobProgress>, store: StoreId): JobProgress | undefined {
   const mine = Object.values(jobs).filter((j) => j.action === 'publish' && j.productId === `publish/${store}`)
-  return mine.find(running) ?? mine[0]
+  return mine.find(jobBusy) ?? mine[0]
 }
 
-export const isRunning = (job: JobProgress | undefined): boolean => !!job && running(job)
-
 /** The outcome in reading order: published, then skipped, then failed. */
-export type ResultLine = { kind: 'published'; folder: string; version: string; link: string } | { kind: 'skipped'; folder: string; reason: SkipReason } | { kind: 'failed'; folder: string; reason: string }
+type ResultLine = { kind: 'published'; folder: string; version: string; link: string } | { kind: 'skipped'; folder: string; reason: SkipReason } | { kind: 'failed'; folder: string; reason: string }
 
 export function resultLines(r: PublishResult): ResultLine[] {
   return [

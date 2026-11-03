@@ -6,7 +6,7 @@ import type { GameInstall, JobProgress } from '../src/shared/types'
 import { cleanContributorTmp } from '../src/main/cleanup'
 import { ContributorStore, type SecretBox } from '../src/main/contributor-store'
 import { PlainError } from '../src/main/errors'
-import { languageFolders } from '../src/main/contributor-status'
+import { languageFolders } from '../src/shared/products'
 import { savePackState } from '../src/main/packs-state'
 import { ManagerService } from '../src/main/service'
 import { channelFixture, channelKeys, seal, serveChannel, type ChannelFixture, type ChannelKeys } from './channel-helpers'
@@ -244,6 +244,33 @@ describe('signing in', () => {
     expect(h.store.token('curseforge')).toBe(CF_TOKEN)
   })
 
+  it('calls a session expired only when the site ended one the user had not', async () => {
+    const h = await signedIn()
+    h.site.down = true
+    expect((await h.svc.contributor.view()).sessionExpired).toBe(false)
+    h.site.down = false
+    h.site.accountStatus = 401
+    expect((await h.svc.contributor.view()).sessionExpired).toBe(true)
+    expect((await h.svc.contributor.view()).sessionExpired).toBe(true)
+
+    h.site.accountStatus = 200
+    expect((await h.svc.contributor.signIn('me@example.test', 'pw')).sessionExpired).toBe(false)
+    expect((await h.svc.contributor.signOut()).sessionExpired).toBe(false)
+
+    await h.svc.contributor.signIn('me@example.test', 'pw')
+    h.site.accountStatus = 401
+    await h.svc.contributor.view()
+    expect((await h.svc.contributor.signOut()).sessionExpired).toBe(false)
+  })
+
+  it('does not call a refused sign-in an expiry', async () => {
+    const h = await signedIn()
+    await h.svc.contributor.signOut()
+    h.site.accountStatus = 401
+    await expect(h.svc.contributor.signIn('me@example.test', 'pw')).rejects.toThrow()
+    expect((await h.svc.contributor.view()).sessionExpired).toBe(false)
+  })
+
   it('a 401 found while reading rows or publishing tells the window', async () => {
     const h = await signedIn()
     h.site.accountStatus = 401
@@ -394,8 +421,8 @@ describe('rows', () => {
     configureCf(h, { [PLACES]: '123', [READABLES]: '124' })
     h.store.recordUpload({ store: 'curseforge', folder: READABLES, version: '1.2.0', fileId: '9', at: 'now' })
     const rows = await h.svc.contributor.rows(h.game.id, 'deDE', 'curseforge')
-    expect(rows.find((r) => r.folder === PLACES)).toMatchObject({ state: 'unreleased', project: '123' })
-    expect(rows.find((r) => r.folder === READABLES)).toMatchObject({ state: 'awaiting', project: '124' })
+    expect(rows.find((r) => r.folder === PLACES)).toMatchObject({ state: 'unreleased' })
+    expect(rows.find((r) => r.folder === READABLES)).toMatchObject({ state: 'awaiting' })
     expect(rows.find((r) => r.folder === BOSSES)?.state).toBe('no-project')
   })
 

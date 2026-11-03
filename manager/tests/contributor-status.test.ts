@@ -3,10 +3,10 @@ import {
   cfPublicVersions,
   deriveRow,
   ghHasAsset,
-  languageFolders,
   versionOfFileName
 } from '../src/main/contributor-status'
 import type { UploadRecord } from '../src/main/contributor-store'
+import { languageFolders } from '../src/shared/products'
 
 const json = (status: number, body: unknown): typeof fetch =>
   (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch

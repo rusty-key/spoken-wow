@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode } from 'react'
-import { Wordmark } from '../components/Brand'
+import type { ReactNode } from 'react'
+import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
 import { LanguageTabs, useLanguageTab } from '../components/LanguageTabs'
 import { releaseAvailable } from '../contributor'
@@ -14,18 +14,11 @@ export function ReleasePage(): ReactNode {
   const langs = view?.account?.adminLangs ?? []
   const [lang, setLang] = useLanguageTab(langs)
 
-  useEffect(() => {
-    void actions.refreshContributor()
-  }, [actions])
-
   if (!game) return <NoGame />
   return (
     <div className="frame">
       <aside className="rail scroll" aria-label={S.tabs.release}>
-        <div className="rail-top">
-          <Wordmark flavor={game.flavor} kicker />
-          <p className="rail-game">{game.gameVersion ? `${game.label} · ${game.gameVersion}` : game.label}</p>
-        </div>
+        <RailTop game={game} />
       </aside>
       <section className="center scroll">
         <div className="center-inner">

@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PlainError } from '../src/main/errors'
-import { ContributorStore, storeConfigured, type SecretBox } from '../src/main/contributor-store'
+import { ContributorStore, type SecretBox } from '../src/main/contributor-store'
+import { storeConfigured } from '../src/shared/types'
 import { tmpDir } from './helpers'
 
 function fakeBox(available = true): SecretBox {

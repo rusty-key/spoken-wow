@@ -3,7 +3,7 @@ import type { Product, ProductStatus, Section } from '@shared/types'
 import { isChannelRelease } from '@shared/channel'
 import { BASE_LANGUAGE, LANGUAGES, languageName } from '@shared/products'
 import { jobBusy, latestOf, releasesFor, statusOf } from '../catalog'
-import { Wordmark } from '../components/Brand'
+import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
 import { PackRow } from '../components/PackRow'
 import { formatBytes, formatDate } from '../format'
@@ -51,10 +51,7 @@ export function VoicePacksPage(): ReactNode {
   return (
     <div className="frame">
       <aside className="rail scroll" aria-label={S.voices.title}>
-        <div className="rail-top">
-          <Wordmark flavor={game.flavor} kicker />
-          <p className="rail-game">{game.gameVersion ? `${game.label} · ${game.gameVersion}` : game.label}</p>
-        </div>
+        <RailTop game={game} />
         <div className="rail-bottom">
           {showInstallAll &&
             (confirmAll ? (

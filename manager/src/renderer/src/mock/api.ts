@@ -304,6 +304,7 @@ export function createMockApi(): ManagerApi {
     config: { projects: { SpokenQuestsAudio_deDE: '1234567' }, repo: 'example/spoken-packs', gameVersions: '1.15.9 2.5.6 1.60.1', hasCfToken: true, hasGhToken: false },
     canStoreSecrets: true,
     siteUnreachable: contribMode === 'unreachable',
+    sessionExpired: false,
     lastRuns: contribMode === 'result' ? { curseforge: sentResult } : {}
   }
   const siteBackAt = Date.now() + 10_000
@@ -561,11 +562,11 @@ export function createMockApi(): ManagerApi {
     async contributorSignIn(email) {
       await sleep(400)
       if (contribMode === 'fail') throw new Error('The email or the password is wrong.')
-      if (contribMode === 'expire') window.setTimeout(() => setContributor({ ...contributor, account: null }, true), 6000)
-      return setContributor({ ...contributor, account: { email, adminLangs: contribMode === 'nonadmin' ? [] : LANGUAGES.map((l) => l.code) } })
+      if (contribMode === 'expire') window.setTimeout(() => setContributor({ ...contributor, account: null, sessionExpired: true }, true), 6000)
+      return setContributor({ ...contributor, sessionExpired: false, account: { email, adminLangs: contribMode === 'nonadmin' ? [] : LANGUAGES.map((l) => l.code) } })
     },
     async contributorSignOut() {
-      return setContributor({ ...contributor, account: null, siteUnreachable: false })
+      return setContributor({ ...contributor, account: null, siteUnreachable: false, sessionExpired: false })
     },
     async contributorSaveStore(input) {
       const { config } = contributor

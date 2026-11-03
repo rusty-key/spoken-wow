@@ -5,7 +5,6 @@ import type { AddGameResult, UpdaterState } from '@shared/api'
 import type { Catalog, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
 import { api, errorText } from './api'
-import { sessionExpired } from './contributor'
 import type { Platform } from './strings'
 
 export type Page = 'home' | 'spoken' | 'voices' | 'community' | 'release' | 'settings'
@@ -34,7 +33,6 @@ export interface State {
   spokenTab: SpokenTab
   /** Null until the first answer; the top bar and Settings both read it, so a save shows in both at once. */
   contributor: ContributorView | null
-  contributorExpired: boolean
   contributorError: string
 }
 
@@ -52,7 +50,7 @@ type Action =
   | { type: 'sharing'; status: SharingStatus }
   | { type: 'refreshing'; on: boolean }
   | { type: 'nav'; page: Page; gameId?: string; tab?: SpokenTab }
-  | { type: 'contributor'; view: ContributorView; asked: boolean }
+  | { type: 'contributor'; view: ContributorView }
   | { type: 'contributorError'; message: string }
 
 export const jobKey = (gameId: string, productId: string): string => `${gameId}|${productId}`
@@ -79,7 +77,6 @@ const initial: State = {
   gameId: '',
   spokenTab: 'modules',
   contributor: null,
-  contributorExpired: false,
   contributorError: ''
 }
 
@@ -141,7 +138,7 @@ function reducer(s: State, a: Action): State {
     case 'nav':
       return { ...s, page: a.page, gameId: a.gameId ?? s.gameId, spokenTab: a.tab ?? s.spokenTab }
     case 'contributor':
-      return { ...s, contributor: a.view, contributorError: '', contributorExpired: sessionExpired({ view: s.contributor, expired: s.contributorExpired }, a.view, a.asked) }
+      return { ...s, contributor: a.view, contributorError: '' }
     case 'contributorError':
       return { ...s, contributorError: a.message }
   }
@@ -182,7 +179,6 @@ export interface Actions {
   setSettings(patch: Partial<Settings>): Promise<void>
   /** Sends the collected lines now; the result comes through `state.sharing`. */
   shareNow(): Promise<void>
-  /** Takes a view the user asked for: a signed-out one is then not an expiry. */
   applyContributor(view: ContributorView): void
   refreshContributor(): Promise<void>
 }
@@ -298,10 +294,10 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
         dispatch({ type: 'sharing', status: { ...get().sharing, sending: false, error: errorText(e) } })
       }
     },
-    applyContributor: (view) => dispatch({ type: 'contributor', view, asked: true }),
+    applyContributor: (view) => dispatch({ type: 'contributor', view }),
     async refreshContributor() {
       try {
-        dispatch({ type: 'contributor', view: await api().contributorView(), asked: false })
+        dispatch({ type: 'contributor', view: await api().contributorView() })
       } catch (e) {
         dispatch({ type: 'contributorError', message: errorText(e) })
       }
@@ -365,7 +361,7 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
       a.onCommunityChanged((community) => dispatch({ type: 'community', community })),
       a.onUpdater((u) => dispatch({ type: 'updater', state: u })),
       a.onSharing((status) => dispatch({ type: 'sharing', status })),
-      a.onContributorChanged((view) => dispatch({ type: 'contributor', view, asked: false }))
+      a.onContributorChanged((view) => dispatch({ type: 'contributor', view }))
     ]
     const onHash = (): void => {
       const route = parseHash()

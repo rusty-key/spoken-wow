@@ -3,7 +3,7 @@ import type { CommunityPack, Section } from '@shared/types'
 import { LANGUAGES, languageName } from '@shared/products'
 import { api } from '../api'
 import { statusOf } from '../catalog'
-import { Wordmark } from '../components/Brand'
+import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
 import { IconAlert } from '../components/Icons'
 import { PackRow } from '../components/PackRow'
@@ -82,10 +82,7 @@ export function CommunityPage(): ReactNode {
   return (
     <div className="frame">
       <aside className="rail scroll" aria-label={S.community.title}>
-        <div className="rail-top">
-          <Wordmark flavor={game.flavor} kicker />
-          <p className="rail-game">{game.gameVersion ? `${game.label} · ${game.gameVersion}` : game.label}</p>
-        </div>
+        <RailTop game={game} />
         <div className="rail-bottom">
           <button type="button" className="btn btn-play btn-wrap" onClick={() => open(COMMUNITY_README_URL)}>
             {S.community.share}

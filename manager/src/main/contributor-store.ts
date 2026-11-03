@@ -6,8 +6,6 @@ import { PlainError } from './errors'
 import type { ContributorConfig, StoreId } from '../shared/types'
 import { readJsonFile, writeJsonAtomic } from './state'
 
-export { storeConfigured } from '../shared/types'
-export type { ContributorConfig, StoreId } from '../shared/types'
 
 export interface SecretBox {
   available(): boolean

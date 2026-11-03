@@ -12,7 +12,7 @@ vi.mock('../src/main/state', () => ({ log: (...parts: unknown[]) => void logged.
 
 import { CHANNELS } from '../src/shared/api'
 import { contributorLang, contributorOnly, contributorStore, registerIpc } from '../src/main/ipc'
-import { languageFolders } from '../src/main/contributor-status'
+import { languageFolders } from '../src/shared/products'
 
 describe('contributor argument checks', () => {
   it('a store other than curseforge or github is refused', () => {

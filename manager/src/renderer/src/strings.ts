@@ -251,7 +251,6 @@ export const S = {
     site: 'Project Site'
   },
   contributor: {
-    signInTitle: 'Contributor',
     signInText: 'Sign in with your Spoken web account to publish the voice packs of a language you administer.',
     email: 'Email',
     password: 'Password',
@@ -285,7 +284,6 @@ export const S = {
     save: 'Save',
     saving: 'Saving',
     saved: 'Saved.',
-    noProject: 'No project id',
     refresh: 'Refresh',
     loading: 'Checking the stores',
     noRows: 'No packs to show.',
@@ -293,7 +291,6 @@ export const S = {
     upload: 'Upload',
     uploadAgain: 'Upload Again',
     nothingToRelease: 'Nothing is unreleased on this store.',
-    busyElsewhere: 'A release to this store is running.',
     sentOf: (speed: string, sent: string, total: string) => `${speed} · ${sent} of ${total}`,
     starting: 'Starting',
     runDone: 'Finished.',

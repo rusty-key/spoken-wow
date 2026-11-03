@@ -284,6 +284,8 @@ export interface ContributorView {
   canStoreSecrets: boolean
   /** A stored session the site could not confirm just now. With no account known, a sign-in is not what is missing. */
   siteUnreachable: boolean
+  /** The site ended a session the user had not asked to end. */
+  sessionExpired: boolean
   /** Each store's own last run, so a run to one does not take away the links of the other. */
   lastRuns: Partial<Record<StoreId, PublishResult>>
 }
@@ -318,5 +320,4 @@ export interface ReleaseRow {
   version?: string
   state: RowState
   link?: string
-  project?: string
 }

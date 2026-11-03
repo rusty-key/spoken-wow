@@ -4,7 +4,7 @@ import { CHANNELS, type InstallOptions, type StoreInput, type UpdaterState } fro
 import { LANGUAGES } from '../shared/products'
 import type { Settings, StoreId } from '../shared/types'
 import { DEFAULT_SETTINGS } from '../shared/types'
-import { languageFolders } from './contributor-status'
+import { languageFolders } from '../shared/products'
 import { isAllowedExternalUrl, openableDirectory } from './external'
 import type { ManagerService } from './service'
 import { isOurPage, type AppPage } from './trust'

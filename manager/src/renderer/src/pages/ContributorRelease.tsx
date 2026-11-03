@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { languageName } from '@shared/products'
-import type { ContributorView, JobProgress, PublishResult, ReleaseRow, StoreId } from '@shared/types'
+import type { ContributorView, JobProgress, PublishResult, ReleaseRow, RowState, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
 import { api, errorText } from '../api'
+import { jobBusy } from '../catalog'
 import { IconExternal, IconRefresh } from '../components/Icons'
-import { STORES, isRunning, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
+import { ProgressTrack } from '../components/JobBar'
+import { STORES, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
 import { formatBytes, formatSpeed } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
@@ -27,7 +29,7 @@ export function Release({ view, lang }: { view: ContributorView; lang: string })
 function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId; gameId: string; lang: string; view: ContributorView; onDismiss: (job: JobProgress) => void }): ReactNode {
   const { state, actions } = useStore()
   const job = publishJobFor(state.jobs, store)
-  const running = isRunning(job)
+  const running = jobBusy(job)
   const [rows, setRows] = useState<ReleaseRow[] | null>(null)
   const [rowsError, setRowsError] = useState('')
   const [refresh, setRefresh] = useState(0)
@@ -111,8 +113,15 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
   )
 }
 
+const ROW_TONE: Partial<Record<RowState, string>> = { live: 'status-ok', unreleased: 'status-dev', awaiting: 'status-warn', unchecked: 'status-warn', 'update-first': 'status-warn' }
+const RESULT_LOOK = {
+  published: { tone: 'status-ok', label: S.contributor.published },
+  skipped: { tone: '', label: S.contributor.skipped },
+  failed: { tone: 'status-error', label: S.contributor.failed }
+}
+
 function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }): ReactNode {
-  const live = isRunning(job)
+  const live = jobBusy(job)
   const text = live
     ? liveRunText(job)
     : job.phase === 'done'
@@ -125,10 +134,7 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
     <>
       {live && (
         <div className="jobbar jobbar-sm" aria-busy="true">
-          <div className={`jobbar-track${percent === null ? ' is-indeterminate' : ''}`} role="progressbar" aria-label={text} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent ?? undefined}>
-            <div className="jobbar-fill" style={{ width: `${percent ?? 100}%` }} />
-            {percent !== null && <span className="jobbar-text">{percent}%</span>}
-          </div>
+          <ProgressTrack percent={percent} label={text} text={percent === null ? undefined : `${percent}%`} />
           {percent !== null && <div className="jobbar-meta">{S.contributor.sentOf(formatSpeed(job.bytesPerSecond), formatBytes(job.received), formatBytes(job.total))}</div>}
         </div>
       )}
@@ -147,7 +153,6 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
 
 function RowItem({ row, store, storeBusy, onUpload }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; onUpload: () => void }): ReactNode {
   const uploadLabel = rowUploadLabel(row)
-  const tone = row.state === 'live' ? 'status-ok' : row.state === 'unreleased' ? 'status-dev' : row.state === 'awaiting' || row.state === 'unchecked' || row.state === 'update-first' ? 'status-warn' : ''
   return (
     <li className="contrib-row">
       <div className="contrib-row-main">
@@ -155,7 +160,7 @@ function RowItem({ row, store, storeBusy, onUpload }: { row: ReleaseRow; store: 
           {row.folder}
         </span>
         <span className="muted contrib-version">{row.version ?? ''}</span>
-        <span className={`status ${tone}`}>{S.contributor.state[row.state]}</span>
+        <span className={`status ${ROW_TONE[row.state] ?? ''}`}>{S.contributor.state[row.state]}</span>
         {row.link && (
           <button type="button" className="icon-btn icon-btn-sm" aria-label={row.folder} title={row.link} onClick={() => void api().openExternal(row.link!).catch(() => undefined)}>
             <IconExternal size={14} />
@@ -181,9 +186,7 @@ function Result({ result }: { result: PublishResult }): ReactNode {
       <ul>
         {lines.map((l) => (
           <li key={`${l.kind}-${l.folder}`} className="contrib-result-line">
-            <span className={`status ${l.kind === 'published' ? 'status-ok' : l.kind === 'failed' ? 'status-error' : ''}`}>
-              {l.kind === 'published' ? S.contributor.published : l.kind === 'skipped' ? S.contributor.skipped : S.contributor.failed}
-            </span>
+            <span className={`status ${RESULT_LOOK[l.kind].tone}`}>{RESULT_LOOK[l.kind].label}</span>
             <span className="contrib-folder" title={l.folder}>
               {l.folder}
             </span>

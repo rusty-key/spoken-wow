@@ -1,10 +1,8 @@
-import type { RowState } from '../shared/types'
-import { languageFolders } from '../shared/products'
+import type { RowState, StoreId } from '../shared/types'
 import { compareVersions } from '../shared/version'
-import type { StoreId, UploadRecord } from './contributor-store'
+import type { UploadRecord } from './contributor-store'
+import { GH_API, ghHeaders, ghRelease } from './contributor-upload'
 import { withTimeout } from './errors'
-
-export { languageFolders }
 
 const TIMEOUT_MS = 10_000
 
@@ -50,15 +48,10 @@ export async function ghHasAsset(
   fetchImpl: typeof fetch,
   signal?: AbortSignal
 ): Promise<{ live: boolean; link: string } | null> {
-  const tag = `${folder}/v${version}`
-  const link = `https://github.com/${repo}/releases/tag/${tag}`
+  const { tag, asset, link } = ghRelease(repo, folder, version)
   try {
-    const res = await fetchImpl(`https://api.github.com/repos/${repo}/releases/tags/${tag}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
+    const res = await fetchImpl(`${GH_API}/repos/${repo}/releases/tags/${tag}`, {
+      headers: ghHeaders(token),
       // A redirect would carry the token to wherever it points.
       redirect: 'error',
       signal: withTimeout(TIMEOUT_MS, signal)
@@ -66,12 +59,11 @@ export async function ghHasAsset(
     if (res.status === 404) return { live: false, link }
     if (res.status !== 200) return null
     const body = (await res.json()) as { assets?: unknown }
-    const name = `${folder}-${version}.zip`
     const live =
       Array.isArray(body.assets) &&
       body.assets.some((a) => {
-        const asset = a as { name?: unknown; state?: unknown } | null
-        return asset?.name === name && asset.state === 'uploaded'
+        const listed = a as { name?: unknown; state?: unknown } | null
+        return listed?.name === asset && listed.state === 'uploaded'
       })
     return { live, link }
   } catch {

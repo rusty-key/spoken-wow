@@ -7,6 +7,27 @@ import { StoreForm } from './ContributorStoreForm'
 import { useStore } from '../store'
 import { S } from '../strings'
 
+function Shell({ action, children }: { action?: ReactNode; children: ReactNode }): ReactNode {
+  const title = (
+    <h2 id="set-contributor" className="settings-h">
+      {S.settings.contributor}
+    </h2>
+  )
+  return (
+    <section aria-labelledby="set-contributor">
+      {action ? (
+        <div className="settings-title-row">
+          {title}
+          {action}
+        </div>
+      ) : (
+        title
+      )}
+      {children}
+    </section>
+  )
+}
+
 export function ContributorSection(): ReactNode {
   const { state, actions } = useStore()
   const view = state.contributor
@@ -17,14 +38,7 @@ export function ContributorSection(): ReactNode {
   }, [actions])
 
   if (!view) {
-    return (
-      <section aria-labelledby="set-contributor">
-        <h2 id="set-contributor" className="settings-h">
-          {S.settings.contributor}
-        </h2>
-        {state.contributorError ? <p className="text-error" role="alert">{state.contributorError}</p> : <p className="muted">{S.common.loading}</p>}
-      </section>
-    )
+    return <Shell>{state.contributorError ? <p className="text-error" role="alert">{state.contributorError}</p> : <p className="muted">{S.common.loading}</p>}</Shell>
   }
   const signOut = async (): Promise<void> => {
     setError('')
@@ -35,31 +49,26 @@ export function ContributorSection(): ReactNode {
     }
   }
   if (!view.account && view.siteUnreachable) return <SiteUnreachable onView={actions.applyContributor} />
-  if (!view.account) return <SignIn notice={state.contributorExpired ? S.contributor.expired : ''} onDone={actions.applyContributor} />
+  if (!view.account) return <SignIn notice={view.sessionExpired ? S.contributor.expired : ''} onDone={actions.applyContributor} />
   if (view.account.adminLangs.length === 0) {
     return (
-      <section aria-labelledby="set-contributor">
-        <h2 id="set-contributor" className="settings-h">
-          {S.settings.contributor}
-        </h2>
+      <Shell>
         <p className="settings-text">{S.contributor.noAdmin}</p>
         <button type="button" className="btn" onClick={() => void signOut()}>
           {S.contributor.signOut}
         </button>
         {error && <p className="text-error" role="alert">{error}</p>}
-      </section>
+      </Shell>
     )
   }
   return (
-    <section aria-labelledby="set-contributor">
-      <div className="settings-title-row">
-        <h2 id="set-contributor" className="settings-h">
-          {S.settings.contributor}
-        </h2>
+    <Shell
+      action={
         <button type="button" className="link" onClick={() => void signOut()}>
           {S.contributor.signOut}
         </button>
-      </div>
+      }
+    >
       <p className="settings-text">{S.contributor.signedInAs(view.account.email)}</p>
       {error && <p className="text-error" role="alert">{error}</p>}
       {!view.canStoreSecrets && <p className="status status-warn contrib-gap">{S.contributor.unsafeStorage}</p>}
@@ -74,7 +83,7 @@ export function ContributorSection(): ReactNode {
       )}
       <StoreForm store="curseforge" view={view} onView={actions.applyContributor} />
       <StoreForm store="github" view={view} onView={actions.applyContributor} />
-    </section>
+    </Shell>
   )
 }
 
@@ -94,10 +103,7 @@ function SiteUnreachable({ onView }: { onView: (v: ContributorView) => void }): 
     }
   }
   return (
-    <section aria-labelledby="set-contributor">
-      <h2 id="set-contributor" className="settings-h">
-        {S.settings.contributor}
-      </h2>
+    <Shell>
       <p className="status status-warn contrib-gap" role="status">
         {S.contributor.siteUnreachable}
       </p>
@@ -109,7 +115,7 @@ function SiteUnreachable({ onView }: { onView: (v: ContributorView) => void }): 
           {error}
         </p>
       )}
-    </section>
+    </Shell>
   )
 }
 
@@ -134,10 +140,7 @@ function SignIn({ notice, onDone }: { notice: string; onDone: (v: ContributorVie
     }
   }
   return (
-    <section aria-labelledby="set-contributor">
-      <h2 id="set-contributor" className="settings-h">
-        {S.contributor.signInTitle}
-      </h2>
+    <Shell>
       <p className="settings-text">{S.contributor.signInText}</p>
       {notice && (
         <p className="status status-warn contrib-gap" role="status">
@@ -162,6 +165,6 @@ function SignIn({ notice, onDone }: { notice: string; onDone: (v: ContributorVie
           </p>
         )}
       </form>
-    </section>
+    </Shell>
   )
 }

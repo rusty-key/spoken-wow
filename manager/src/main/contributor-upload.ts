@@ -11,7 +11,7 @@ import yazl from 'yazl'
 import { CancelledError, errorCode, isAbortError, PlainError, withTimeout } from './errors'
 
 const CF_API = 'https://wow.curseforge.com/api'
-const GH_API = 'https://api.github.com'
+export const GH_API = 'https://api.github.com'
 const GH_UPLOADS = 'https://uploads.github.com'
 const CHECK_TIMEOUT_MS = 30_000
 
@@ -127,6 +127,8 @@ async function* counted(source: AsyncIterable<Buffer>, total: number, onProgress
 
 // ---------------------------------------------------------------- CurseForge
 
+const zipName = (folder: string, version: string): string => `${folder}-${version}.zip`
+
 const cfHeaders = (token: string): Record<string, string> => ({ 'X-Api-Token': token })
 
 export function cfProjectLink(project: string): string {
@@ -186,7 +188,7 @@ export async function uploadCurseForge(a: {
     releaseType: 'release',
     relations: { projects: [{ slug: 'spoken', type: 'requiredDependency' }] }
   }
-  const fileName = `${a.folder}-${a.version}.zip`
+  const fileName = zipName(a.folder, a.version)
   const boundary = `----spoken${randomBytes(16).toString('hex')}`
   const head = Buffer.from(
     `--${boundary}\r\nContent-Disposition: form-data; name="metadata"\r\n\r\n${JSON.stringify(metadata)}\r\n` +
@@ -227,7 +229,13 @@ export async function uploadCurseForge(a: {
 
 // ---------------------------------------------------------------- GitHub
 
-const ghHeaders = (token: string): Record<string, string> => ({
+/** The names both the uploader and the status check must agree on, or a finished run reads as unreleased. */
+export function ghRelease(repo: string, folder: string, version: string): { tag: string; asset: string; link: string } {
+  const tag = `${folder}/v${version}`
+  return { tag, asset: zipName(folder, version), link: `https://github.com/${repo}/releases/tag/${tag}` }
+}
+
+export const ghHeaders = (token: string): Record<string, string> => ({
   Authorization: `Bearer ${token}`,
   Accept: 'application/vnd.github+json',
   'X-GitHub-Api-Version': '2022-11-28'
@@ -284,9 +292,7 @@ export async function uploadGitHub(a: {
   onProgress?: UploadProgress
 }): Promise<{ link: string; alreadyThere: boolean }> {
   checkRepoName(a.repo)
-  const tag = `${a.folder}/v${a.version}`
-  const name = `${a.folder}-${a.version}.zip`
-  const link = `https://github.com/${a.repo}/releases/tag/${tag}`
+  const { tag, asset: name, link } = ghRelease(a.repo, a.folder, a.version)
   const headers = ghHeaders(a.token)
 
   let res = await send('GitHub', a.fetchImpl, `${GH_API}/repos/${a.repo}/releases/tags/${tag}`, { headers }, a.signal)

@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import type { ContributorConfig, ContributorView, JobProgress, ReleaseRow } from '../src/shared/types'
 import { isAllowedExternalUrl } from '../src/main/external'
 import { ContributorStore } from '../src/main/contributor-store'
-import { liveRunText, publishJobFor, releasableCount, releaseAvailable, resultLines, rowHint, rowUploadLabel, runPercent, sessionExpired, skipReasonText, storeFormInput } from '../src/renderer/src/contributor'
+import { liveRunText, publishJobFor, releasableCount, releaseAvailable, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeFormInput } from '../src/renderer/src/contributor'
 import { S } from '../src/renderer/src/strings'
 import { tmpDir } from './helpers'
 
 const base: ContributorConfig = { projects: {}, repo: '', gameVersions: '', hasCfToken: false, hasGhToken: false }
-const view = (account: ContributorView['account']): ContributorView => ({ account, config: base, canStoreSecrets: true, siteUnreachable: false, lastRuns: {} })
+const view = (account: ContributorView['account']): ContributorView => ({ account, config: base, canStoreSecrets: true, siteUnreachable: false, sessionExpired: false, lastRuns: {} })
 const admin = { email: 'a@b.c', adminLangs: ['deDE'] }
 
 describe('releaseAvailable', () => {
@@ -24,27 +24,6 @@ describe('releaseAvailable', () => {
     expect(releaseAvailable(configured({ ...base, hasCfToken: true }))).toBe(false)
     expect(releaseAvailable(configured({ ...base, hasGhToken: true, repo: 'a/b' }))).toBe(true)
     expect(releaseAvailable(configured({ ...base, hasCfToken: true, projects: { X: '1' } }))).toBe(true)
-  })
-})
-
-describe('sessionExpired', () => {
-  const signedIn = { view: view(admin), expired: false }
-
-  it('is an expiry only when a session ends unasked', () => {
-    expect(sessionExpired(signedIn, view(null), false)).toBe(true)
-    expect(sessionExpired(signedIn, view(null), true)).toBe(false)
-    expect(sessionExpired({ view: null, expired: false }, view(null), false)).toBe(false)
-  })
-
-  it('does not call an outage an expiry', () => {
-    expect(sessionExpired(signedIn, { ...view(null), siteUnreachable: true }, false)).toBe(false)
-  })
-
-  it('keeps the notice through a later signed-out answer, until signed in or asked', () => {
-    const expired = { view: view(null), expired: true }
-    expect(sessionExpired(expired, view(null), false)).toBe(true)
-    expect(sessionExpired(expired, view(admin), false)).toBe(false)
-    expect(sessionExpired(expired, view(null), true)).toBe(false)
   })
 })
 
