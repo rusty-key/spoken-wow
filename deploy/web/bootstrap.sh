@@ -117,7 +117,8 @@ cat <<'NEXT'
        /srv/spoken/bin/migrate.sh /srv/spoken/current      (after the first deploy)
 
   4. Get the certificate and install the vhost:
-       certbot certonly --nginx -d spoken.rusty.one
+       certbot certonly --nginx -d spoken.quest -d www.spoken.quest
+       cp deploy/web/nginx-spoken-api.conf /etc/nginx/snippets/spoken-api.conf
        cp deploy/web/nginx-spoken.conf /etc/nginx/sites-available/spoken
        ln -s /etc/nginx/sites-available/spoken /etc/nginx/sites-enabled/
        nginx -t && systemctl reload nginx
