@@ -23,6 +23,7 @@
  */
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -87,6 +88,7 @@ export async function saveBookText(args: {
   editedBy: string;
   expectedVersion?: number | null;
   lang?: Lang;
+  audit?: ApiAudit;
 }): Promise<BookVersion> {
   const lang = args.lang ?? BASE_LANG;
   return withTeam(await ownerOrAll(lang), async (client) => {
@@ -170,7 +172,12 @@ export async function saveBookText(args: {
         source: "readables",
         subject: args.lineId,
         lineId: args.lineId,
-        detail: { version, text, note: args.note?.trim() || null },
+        detail: {
+          version,
+          text,
+          note: args.note?.trim() || null,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
@@ -227,5 +234,21 @@ export async function restoreBookText(
     );
 
     return toVersion({ ...rows[0], isCurrent: true });
+  });
+}
+
+/** Takes a first translation back, so the page reads as untranslated again. See retireLore. */
+export async function retireBookText(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    const { rowCount } = await client.query(
+      `update "book_line" set "isCurrent" = false
+        where "lineId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
+      [lineId, lang, version],
+    );
+    if (!rowCount) throw new BookConflict(`${lineId} v${version} is not the current text`);
+    await recordActivity(
+      { kind: "text.retired", lang, actorId: by, source: "readables", subject: lineId, lineId, detail: { version } },
+      client,
+    );
   });
 }

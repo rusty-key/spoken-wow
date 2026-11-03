@@ -6,6 +6,7 @@
  */
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -60,6 +61,7 @@ export async function saveName(args: {
   editedBy: string;
   expectedVersion?: number | null;
   anyLanguage?: boolean;
+  audit?: ApiAudit;
 }): Promise<NameVersion> {
   if (args.lang === BASE_LANG && !args.anyLanguage) {
     throw new Error("English names come from the corpus, not from here");
@@ -115,10 +117,38 @@ export async function saveName(args: {
         lang: args.lang,
         actorId: args.editedBy,
         subject: `${args.kind}:${args.entityId}`,
-        detail: { version: rows[0].version, name, note: rows[0].note },
+        detail: {
+          version: rows[0].version,
+          name,
+          note: rows[0].note,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
     return { ...rows[0], createdAt: rows[0].createdAt.toISOString() };
+  });
+}
+
+/** Takes a first name back, so the English shows again. A site translator cannot do this. */
+export async function retireName(
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+  by: string | null,
+): Promise<void> {
+  if (lang === BASE_LANG) throw new Error("English names come from the corpus, not from here");
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    const { rowCount } = await client.query(
+      `update "entity_name" set "isCurrent" = false
+        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
+      [kind, entityId, lang, version],
+    );
+    if (!rowCount) throw new NameConflict(`${kind} ${entityId} v${version} is not the current name`);
+    await recordActivity(
+      { kind: "name.retired", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version } },
+      client,
+    );
   });
 }

@@ -13,6 +13,7 @@
  */
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -99,6 +100,7 @@ export async function saveQuestText(args: {
   expectedVersion?: number | null;
   /** The contribution the text came from, for a correction accepted from the game. */
   contribution?: number;
+  audit?: ApiAudit;
 }): Promise<QuestTextVersion> {
   refuseEnglish(args.lang);
   args = { ...args, lineId: baseLineId(args.lineId) };
@@ -221,6 +223,7 @@ export async function saveQuestText(args: {
             variant: args.variant,
             ...(retired.length ? { replaces: retired } : {}),
             ...(args.contribution ? { contribution: args.contribution } : {}),
+            ...auditDetail(args.audit, own?.version ?? null),
           },
         },
         client,
@@ -289,5 +292,28 @@ export async function restoreQuestText(
       client,
     );
     return toVersion(restored[0]);
+  });
+}
+
+/** Takes a first translation back, so the line reads as untranslated again. See retireLore. */
+export async function retireQuestText(
+  lineId: string,
+  variant: number,
+  lang: Lang,
+  version: number,
+  by: string | null,
+): Promise<void> {
+  refuseEnglish(lang);
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    const { rowCount } = await client.query(
+      `update "quest_line" set "isCurrent" = false
+        where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
+      [lineId, variant, lang, version],
+    );
+    if (!rowCount) throw new QuestTextConflict(`${lineId} v${version} is not the current text`);
+    await recordActivity(
+      { kind: "text.retired", lang, actorId: by, source: "quests", subject: lineId, lineId, detail: { version } },
+      client,
+    );
   });
 }

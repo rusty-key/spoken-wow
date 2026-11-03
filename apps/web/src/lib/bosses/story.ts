@@ -11,6 +11,7 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -102,6 +103,7 @@ export async function saveStory(args: {
   note?: string | null;
   editedBy: string;
   expectedVersion?: number | null;
+  audit?: ApiAudit;
 }): Promise<StoryVersion> {
   const { lang, lineId } = args;
   return withTeam(await ownerOrAll(lang), async (client) => {
@@ -156,7 +158,7 @@ export async function saveStory(args: {
         source: "bosses",
         subject: lineId,
         lineId,
-        detail: { version, text, note },
+        detail: { version, text, note, ...auditDetail(args.audit, current?.version ?? null) },
       },
       client,
     );
@@ -214,5 +216,22 @@ export async function restoreStory(
     );
 
     return toVersion(lineId, restored[0]);
+  });
+}
+
+/** Takes a first story back, so the boss reads as having none in the language. See retireLore. */
+export async function retireStory(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    const bossId = await lockBoss(client, lineId);
+    const { rowCount } = await client.query(
+      `update "boss_line" set "isCurrent" = false
+        where "bossId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
+      [bossId, lang, version],
+    );
+    if (!rowCount) throw new StoryConflict(`${lineId} v${version} is not the current story`);
+    await recordActivity(
+      { kind: "text.retired", lang, actorId: by, source: "bosses", subject: lineId, lineId, detail: { version } },
+      client,
+    );
   });
 }

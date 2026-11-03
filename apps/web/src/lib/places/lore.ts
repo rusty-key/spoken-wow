@@ -7,6 +7,7 @@
 
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -127,6 +128,7 @@ export async function saveLore(args: {
   editedBy: string;
   expectedVersion?: number | null;
   lang?: Lang;
+  audit?: ApiAudit;
 }): Promise<LoreVersion> {
   const lang = args.lang ?? BASE_LANG;
   return withTeam(await ownerOrAll(lang), async (client) => {
@@ -228,7 +230,13 @@ export async function saveLore(args: {
         source: "places",
         subject: args.lineId,
         lineId: args.lineId,
-        detail: { version, text: full, short, note: args.note?.trim() || null },
+        detail: {
+          version,
+          text: full,
+          short,
+          note: args.note?.trim() || null,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
@@ -290,5 +298,24 @@ export async function restoreLore(
     );
 
     return toVersion(restored[0]);
+  });
+}
+
+/**
+ * Takes a first translation back, so the line reads as untranslated again. Restoring cannot,
+ * since there is no earlier version to move to, and the row stays as the record of what it said.
+ */
+export async function retireLore(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
+  return withTeam(await ownerOrAll(lang), async (client) => {
+    const { rowCount } = await client.query(
+      `update "lore_line" set "isCurrent" = false
+        where "lineId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
+      [lineId, lang, version],
+    );
+    if (!rowCount) throw new LoreConflict(`${lineId} v${version} is not the current text`);
+    await recordActivity(
+      { kind: "text.retired", lang, actorId: by, source: "places", subject: lineId, lineId, detail: { version } },
+      client,
+    );
   });
 }
