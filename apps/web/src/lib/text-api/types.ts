@@ -49,7 +49,10 @@ export type SectionApi = {
   /** Which of `keys` are items, as keyOf(id, variant). Asked once a request, before any write. */
   known(lang: Lang, keys: { id: string; variant: number }[]): Promise<Set<string>>;
   saveText(args: SaveTextArgs): Promise<{ version: number; lines: string[] }>;
+  /** What a name on this item writes to. Asked per item in a run, so it must not read a catalogue. */
   nameTarget(lang: Lang, id: string, variant: number): Promise<NameTarget | null>;
+  /** The current text version. Asked per item in a run, so it must not read a catalogue. */
+  version(lang: Lang, id: string, variant: number): Promise<number | null>;
 };
 
 export function keyOf(id: string, variant: number): string {

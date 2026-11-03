@@ -14,8 +14,8 @@ function targetOf(entry: CatalogueEntry): NameTarget {
 }
 
 async function textVersions(lang: Lang, ids: string[]) {
-  const rows = await query<{ lineId: string; version: number; short: string }>(
-    `select "lineId", "version", "short" from "lore_line"
+  const rows = await query<{ lineId: string; version: number; full: string; short: string }>(
+    `select "lineId", "version", "full", "short" from "lore_line"
       where "lang" = $1 and "isCurrent" and "lineId" = any($2)`,
     [lang, ids],
   );
@@ -67,22 +67,15 @@ export const places: SectionApi = {
 
   async saveText({ lang, id, text, short, note, by, expectedVersion, audit }) {
     const current = (await textVersions(lang, [id])).get(id);
-    let full = text;
-    if (full === undefined) {
-      const [row] = await query<{ full: string }>(
-        `select "full" from "lore_line" where "lang" = $1 and "isCurrent" and "lineId" = $2`,
-        [lang, id],
-      );
-      if (!row) throw new Error("this place has no text yet in this language, so short needs text alongside it");
-      full = row.full;
-    }
+    const full = text ?? current?.full;
+    if (full === undefined) throw new Error("this place has no text yet in this language, so short needs text alongside it");
     // saveLore counts any short it is handed as a change, and a rerun must not spend a version.
-    const sameShort = short !== undefined && short !== null && short.trim() === current?.short;
+    const unchanged = full.trim() === current?.full && short?.trim() === current?.short;
     const saved = await saveLore({
       lang,
       lineId: id,
       full,
-      short: sameShort ? null : short,
+      short: unchanged ? null : short,
       note,
       editedBy: by,
       expectedVersion,
@@ -91,8 +84,11 @@ export const places: SectionApi = {
     return { version: saved.version, lines: [id] };
   },
 
-  async nameTarget(lang, id) {
-    const entry = (await catalogue(lang)).find((e) => e.id === id);
-    return entry ? targetOf(entry) : null;
+  async nameTarget(_lang, id) {
+    return { kind: id.startsWith("s:") ? "subzone" : "zone", entityId: id };
+  },
+
+  async version(lang, id) {
+    return (await textVersions(lang, [id])).get(id)?.version ?? null;
   },
 };

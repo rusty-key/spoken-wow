@@ -97,6 +97,19 @@ describe("places", () => {
     expect(await sections.places.one(LANG, f.subzone, 0)).toMatchObject({ text: "긴 글.", short: "짧게." });
   });
 
+  it("resending the same short is no new version", async () => {
+    const args = { lang: LANG, id: f.subzone, variant: 0, short: "또 짧게.", note: null, by: f.user, expectedVersion: null, audit: { tokenId: "t" } } as const;
+    const first = await sections.places.saveText(args);
+    expect((await sections.places.saveText(args)).version).toBe(first.version);
+  });
+
+  it("new text with the same short keeps that short", async () => {
+    const args = { lang: LANG, id: f.subzone, variant: 0, note: null, by: f.user, expectedVersion: null, audit: { tokenId: "t" } } as const;
+    await sections.places.saveText({ ...args, text: "옛 글.", short: "손으로 쓴 짧은 글." });
+    await sections.places.saveText({ ...args, text: "새 글.", short: "손으로 쓴 짧은 글." });
+    expect(await sections.places.one(LANG, f.subzone, 0)).toMatchObject({ text: "새 글.", short: "손으로 쓴 짧은 글." });
+  });
+
   it("changing only short with no text yet is an error", async () => {
     const bare = await createFixtures();
     await expect(

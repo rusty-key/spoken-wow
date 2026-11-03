@@ -2,7 +2,7 @@
 import "server-only";
 
 import { catalogue, type BossEntry } from "@/lib/bosses/catalogue";
-import { saveStory } from "@/lib/bosses/story";
+import { parseBossLineId, saveStory } from "@/lib/bosses/story";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -61,8 +61,24 @@ export const bosses: SectionApi = {
     return { version: saved.version, lines: [id] };
   },
 
-  async nameTarget(lang, id) {
-    const entry = (await catalogue(lang)).find((e) => e.id === id);
-    return entry ? targetOf(entry) : null;
+  async nameTarget(_lang, id) {
+    const parsed = parseBossLineId(id);
+    if (!parsed) return null;
+    const [row] = await query<{ id: number }>(`select "id" from "boss" where "map" = $1 and "key" = $2`, [
+      parsed.map,
+      parsed.key,
+    ]);
+    return row ? { kind: "boss", entityId: String(row.id) } : null;
+  },
+
+  async version(lang, id) {
+    const parsed = parseBossLineId(id);
+    if (!parsed) return null;
+    const [row] = await query<{ version: number }>(
+      `select l."version" from "boss_line" l join "boss" b on b."id" = l."bossId"
+        where b."map" = $1 and b."key" = $2 and l."lang" = $3 and l."isCurrent"`,
+      [parsed.map, parsed.key, lang],
+    );
+    return row?.version ?? null;
   },
 };

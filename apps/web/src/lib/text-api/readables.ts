@@ -8,13 +8,13 @@ import "server-only";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { catalogue, type BookPage } from "@/lib/readables/catalogue";
-import { ownerEntityKind } from "@/lib/readables/filters";
+import { ownerEntityKind, type OwnerKind } from "@/lib/readables/filters";
 import { saveBookText } from "@/lib/readables/text";
 
 import { nameVersionOf, nameVersions, pageOf } from "./catalogue-page";
 import { keyOf, type NameTarget, type SectionApi, type TextItem } from "./types";
 
-function targetOf(page: BookPage): NameTarget | null {
+function targetOf(page: Pick<BookPage, "ownerKind" | "ownerIds">): NameTarget | null {
   if (!page.ownerKind || !page.ownerIds.length) return null;
   return { kind: ownerEntityKind(page.ownerKind), entityId: String(page.ownerIds[0]) };
 }
@@ -68,8 +68,19 @@ export const readables: SectionApi = {
     return { version: saved.version, lines: [id] };
   },
 
-  async nameTarget(lang, id) {
-    const page = (await catalogue(lang)).find((p) => p.id === id);
-    return page ? targetOf(page) : null;
+  async nameTarget(_lang, id) {
+    const [row] = await query<{ ownerKind: OwnerKind | null; ownerIds: number[] | null }>(
+      `select "ownerKind", "ownerIds" from "book_page" where "lineId" = $1`,
+      [id],
+    );
+    return row ? targetOf({ ownerKind: row.ownerKind, ownerIds: row.ownerIds ?? [] }) : null;
+  },
+
+  async version(lang, id) {
+    const [row] = await query<{ version: number }>(
+      `select "version" from "book_line" where "lang" = $1 and "isCurrent" and "lineId" = $2`,
+      [lang, id],
+    );
+    return row?.version ?? null;
   },
 };

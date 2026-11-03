@@ -30,17 +30,20 @@ type Row = {
   englishName: string | null;
 };
 
-/** `where` and `limit` slot into the outer query, with $1 the language and $2 English. */
-function linesSql(where: string, limit: string): string {
+/**
+ * `where` and `limit` slot into the outer query, with $1 the language and $2 English. `scope` limits
+ * the rows considered at the start, because one item must not pay for reading a whole language.
+ */
+function linesSql(where: string, limit: string, scope = "true"): string {
   return `
     with "own" as (
       select "id", "lineId", "variant", ${momentSql(`"lineId"`)} as "moment" from "quest_line"
-       where "lang" = $1 and "isCurrent"
+       where "lang" = $1 and "isCurrent" and ${scope}
     ), "lines" as (
       select "lineId", "variant", "moment", "id" as "ownId" from "own"
       union all
       select e."lineId", e."variant", ${momentSql(`e."lineId"`)}, null from "quest_line" e
-       where e."lang" = $2 and e."isCurrent"
+       where e."lang" = $2 and e."isCurrent" and ${scope.replaceAll(`"lineId"`, `e."lineId"`)}
          and not exists (select 1 from "own" o
                           where o."moment" = ${momentSql(`e."lineId"`)} and o."variant" = e."variant")
     ), "items" as (
@@ -122,12 +125,10 @@ export const quests: SectionApi = {
   },
 
   async one(lang, id, variant) {
-    const rows = await query<Row>(linesSql(`where i."lineId" = $3 and i."variant" = $4`, ""), [
-      lang,
-      BASE_LANG,
-      id,
-      variant,
-    ]);
+    const rows = await query<Row>(
+      linesSql(`where i."lineId" = $3 and i."variant" = $4`, "", answersQuestMomentSql(`"lineId"`, "$5")),
+      [lang, BASE_LANG, id, variant, momentOf(id)],
+    );
     return rows[0] ? toItem(rows[0]) : null;
   },
 
@@ -181,8 +182,23 @@ export const quests: SectionApi = {
   },
 
   async nameTarget(lang, id, variant) {
-    const item = await quests.one(lang, id, variant);
-    const questId = item?.group.questId;
-    return questId === null || questId === undefined ? null : { kind: "quest", entityId: String(questId) };
+    const [row] = await query<{ questId: number | null }>(
+      `select "questId" from "quest_line"
+        where "lineId" = $1 and "variant" = $2 and "lang" = any($3) and "isCurrent"
+        order by "lang" = $4 desc limit 1`,
+      [id, variant, [lang, BASE_LANG], lang],
+    );
+    return row?.questId === null || row?.questId === undefined
+      ? null
+      : { kind: "quest", entityId: String(row.questId) };
+  },
+
+  async version(lang, id, variant) {
+    const [row] = await query<{ version: number }>(
+      `select "version" from "quest_line"
+        where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "isCurrent"`,
+      [id, variant, lang],
+    );
+    return row?.version ?? null;
   },
 };
