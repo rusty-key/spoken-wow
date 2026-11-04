@@ -21,7 +21,7 @@ export type LogLine = {
 
 const STEP = /^==> step (\d+)\/(\d+): (.+)$/;
 
-/** One pass of the patterns below, in the order they may appear on a line. */
+/** What a line is coloured by: the earliest match on the line wins, the first listed on a tie. */
 const TOKENS: { pattern: RegExp; tone: Tone }[] = [
   { pattern: /\bSpoken\w+/, tone: "pack" },
   { pattern: /(?<=\s|^)\+\d+\b/, tone: "add" },

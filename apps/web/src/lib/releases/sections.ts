@@ -37,11 +37,21 @@ export type RunView = {
   version?: string | null;
   /** The end of the output, for a run this machine ran. */
   log?: string | null;
+  /** The output was longer than `log`, which is its end. */
+  logCut?: boolean;
   /** ISO times: when it was pressed, and when it settled. */
   startedAt?: string;
   finishedAt?: string | null;
-  /** Who pressed it, by name or address; null once their account is gone. */
+  /** Who pressed it, by name; null when they have none, or their account is gone. */
   by?: string | null;
 };
 
-export type ReleaseView = { active: RunView | null; recent: RunView[] };
+export type ReleaseView = {
+  active: RunView | null;
+  recent: RunView[];
+  /**
+   * Per section, its newest run that released, however far back: what players have, as far as
+   * the site knows. `recent` is only the latest few runs of every section together.
+   */
+  released: Record<string, RunView>;
+};

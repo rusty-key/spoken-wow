@@ -106,6 +106,16 @@ export async function updateRun(
   });
 }
 
+/** Per section, its newest run that released something. */
+export async function lastDoneRuns(lang: Lang): Promise<ReleaseRun[]> {
+  return readAs<ReleaseRun>(
+    lang,
+    `select distinct on ("section") ${COLUMNS} from "release_run"
+      where "lang" = $1 and "state" = 'done' order by "section", "createdAt" desc`,
+    [lang],
+  );
+}
+
 export async function recentRuns(lang: Lang, limit: number): Promise<ReleaseRun[]> {
   // A team can hold several languages, and a language no team owns reads as empty.
   return readAs<ReleaseRun>(

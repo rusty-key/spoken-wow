@@ -51,7 +51,8 @@ function LogDialog({ run }: { run: RunView }) {
   const date = useLocalDates();
   const lines = useMemo(() => parseLog(run.log ?? ""), [run.log]);
   const steps = lines.filter((line) => line.step);
-  const cut = isCut(lines);
+  // The server knows when it kept only the tail; the text alone can only guess from its steps.
+  const cut = run.logCut ?? isCut(lines);
   const settled = isSettled(run.state);
   const [follow, setFollow] = useState(!settled);
   const [errorsOnly, setErrorsOnly] = useState(false);
@@ -76,7 +77,11 @@ function LogDialog({ run }: { run: RunView }) {
   }
 
   async function copy() {
-    await navigator.clipboard.writeText(text).catch(() => undefined);
+    const ok = await navigator.clipboard.writeText(text).then(
+      () => true,
+      () => false,
+    );
+    if (!ok) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -88,7 +93,8 @@ function LogDialog({ run }: { run: RunView }) {
       download: `release-${run.section}-${run.lang}-${(run.startedAt ?? "").slice(0, 16).replace(/[:T]/g, "")}.txt`,
     });
     link.click();
-    URL.revokeObjectURL(url);
+    // After the click has been handled: revoked at once, some browsers drop the download.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   return (
@@ -154,7 +160,12 @@ function LogDialog({ run }: { run: RunView }) {
 
       <div
         ref={body}
-        onWheel={(event) => event.deltaY < 0 && setFollow(false)}
+        onScroll={(event) => {
+          // Any way of scrolling up to read stops following: wheel, scrollbar, keys or touch. The
+          // effect's own scroll to the end lands at the bottom, so it never trips this.
+          const box = event.currentTarget;
+          if (box.scrollHeight - box.scrollTop - box.clientHeight > 8) setFollow(false);
+        }}
         className="min-h-48 overflow-auto bg-[oklch(0.115_0.004_260)] py-2 font-mono text-[12.5px] leading-[1.7]"
       >
         {cut && !errorsOnly && (

@@ -93,14 +93,19 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
   const running = view.active !== null;
   const watching = useRef(initial.active?.own && initial.active.lang === lang ? initial.active.section : null);
   const asked = useRef(0);
+  // Which ask an answer belongs to: a focus check still out when a press asks again must not land
+  // after the press's answer and take its run back off the page.
+  const asks = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     asked.current = Date.now();
+    const ask = ++asks.current;
     const response = await fetch(`/api/releases?lang=${lang}`, { cache: "no-store" }).catch(() => null);
     const next = response?.ok ? ((await response.json().catch(() => null)) as ReleaseView | null) : null;
+    if (ask !== asks.current) return true;
     if (!next) {
       setMissed((count) => count + 1);
-      return;
+      return false;
     }
     setMissed(0);
     setView(next);
@@ -117,6 +122,7 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
         });
       }
     }
+    return true;
   }, [lang, toast]);
 
   useEffect(() => {
@@ -130,7 +136,7 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
 
   // The interval skips a hidden tab, and a release lasts long enough to switch away from, so
   // coming back asks at once instead of showing a finished run as running until the next tick.
-  // It also catches a run started elsewhere, from the Manager or another admin's browser.
+  // It also catches a run another admin started from their browser.
   useEffect(() => {
     // Switching windows back and forth asks at most once in a while; a poll in progress already
     // keeps a running release current.
@@ -165,8 +171,9 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
       setError(`Nothing was released: ${refused}`);
       toast({ tone: "error", title: "Nothing was released", detail: refused });
     }
-    // A refused press may still leave a run to show, and a good one starts the polling.
-    await refresh();
+    // A refused press may still leave a run to show, and a good one starts the polling. Polling
+    // runs only while the page knows of a run, so a lost answer here is asked once more.
+    if (!(await refresh()) && !refused) setTimeout(() => void refresh(), 5_000);
     setPressing(false);
   }
 
@@ -212,6 +219,7 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
             key={section}
             section={section}
             recent={view.recent.filter((run) => run.section === section)}
+            released={view.released[section]}
             current={ours?.section === section ? ours : null}
             disabled={running || pressing}
             waitingFor={running && ours?.section !== section ? holdUp : null}
@@ -223,10 +231,11 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
   );
 }
 
-/** One section's pack: the version players have, who released it when, and the button. */
+/** One section's pack: the version last released from here, who released it when, and the button. */
 function SectionCard({
   section,
   recent,
+  released,
   current,
   disabled,
   waitingFor,
@@ -235,6 +244,8 @@ function SectionCard({
   section: string;
   /** This section's runs, newest first. */
   recent: RunView[];
+  /** Its newest run that released, however far back. */
+  released: RunView | undefined;
   current: RunView | null;
   disabled: boolean;
   /** The run this card's button waits on, when it is another section's or language's. */
@@ -242,9 +253,6 @@ function SectionCard({
   onRelease: (bump: ReleaseBump) => void;
 }) {
   const date = useLocalDates();
-  // What players have is the last run that released, which a later unchanged or failed press
-  // leaves as it was.
-  const released = recent.find((run) => run.state === "done");
   const last = recent.find((run) => isSettled(run.state));
   return (
     <article className="bg-card flex flex-col gap-3 rounded-lg border p-4">

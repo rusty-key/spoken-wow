@@ -4,7 +4,7 @@ import { closeDb, db } from "@/lib/db";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/testing";
 
-import { ReleaseBusyError, activeRun, recentRuns, startRun, updateRun } from "./store";
+import { ReleaseBusyError, activeRun, lastDoneRuns, recentRuns, startRun, updateRun } from "./store";
 
 // Only this file touches release_run, and vitest.config runs files one at a time, so the
 // one-active index cannot be tripped by another suite.
@@ -46,6 +46,17 @@ describe("release runs", () => {
     expect(await activeRun()).toBeNull();
     const second = await startRun("places", "deDE", user.id);
     expect(second.id).not.toBe(first.id);
+  });
+
+  it("finds a section's last release however many runs came after it", async () => {
+    const done = await startRun("bosses", "deDE", user.id);
+    await updateRun(done.id, { state: "done", version: "1.0.0" });
+    for (let i = 0; i < 3; i++) {
+      const later = await startRun("bosses", "deDE", user.id);
+      await updateRun(later.id, { state: "failed", error: "no" });
+    }
+    const runs = await lastDoneRuns("deDE");
+    expect(runs.map((run) => [run.section, run.version])).toEqual([["bosses", "1.0.0"]]);
   });
 
   it("keeps a run to its own language's team", async () => {
