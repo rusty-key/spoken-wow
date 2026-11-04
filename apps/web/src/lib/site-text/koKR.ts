@@ -46,10 +46,6 @@ const ko: Dictionary = {
     compendium:
       "모든 퀘스트, 장소 이야기, 읽을거리, 우두머리 이야기를 검색창이 있는 하나의 창에서 볼 수 있습니다. 그곳에 가지 않아도 어느 것이든 들을 수 있습니다.",
     compendiumTabs: "백과사전의 탭",
-    quests: "퀘스트",
-    places: "장소",
-    readables: "읽을거리",
-    bosses: "우두머리",
     compendiumOpens:
       "미니맵 메뉴, /sp compendium 명령, 또는 세계 지도 옆의 장소 이야기 버튼으로 엽니다",
     compendiumText: "텍스트 크기와 텍스트 언어는 Spoken 설정 페이지에서 정합니다",

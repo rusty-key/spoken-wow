@@ -46,10 +46,6 @@ const de: Dictionary = {
     compendium:
       "Jede Quest, Ortsgeschichte, jeder Lesestoff und jede Bossgeschichte in einem Fenster, mit Suchfeld. Spiele jede davon ab, ohne hinzugehen.",
     compendiumTabs: "Reiter im Kompendium",
-    quests: "Quests",
-    places: "Orte",
-    readables: "Lesestoff",
-    bosses: "Bosse",
     compendiumOpens:
       "Öffnet sich über das Minikartenmenü, mit /sp compendium oder über die Schaltfläche „Ortsgeschichte“ neben der Weltkarte",
     compendiumText: "Textgröße und Textsprache stellst du auf der Seite von Spoken ein",

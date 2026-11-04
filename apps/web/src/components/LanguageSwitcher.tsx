@@ -28,7 +28,7 @@ type Offered = { code: Lang; name: string; enabled: boolean };
  * each language named in itself. A popup portalled to the body would not carry the page's
  * colours and font, which live on the page's own container.
  */
-export default function LanguageSwitcher({ variant, label = "Language" }: { variant?: "landing"; label?: string }) {
+export default function LanguageSwitcher({ variant, label }: { variant?: "landing"; label?: string }) {
   const lang = useLang();
   const pathname = usePathname();
   const { pending, push } = usePendingPush();
@@ -84,7 +84,6 @@ export default function LanguageSwitcher({ variant, label = "Language" }: { vari
         {offered.map((language) => (
           <option key={language.code} value={language.code}>
             {nativeName(language.code)}
-            {language.enabled ? "" : " (off)"}
           </option>
         ))}
       </select>

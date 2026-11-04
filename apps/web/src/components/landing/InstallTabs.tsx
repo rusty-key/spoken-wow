@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { Lang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
+import WithLink from "@/lib/site-text/WithLink";
 
 import BrandIcon from "./BrandIcon";
 import { CURSEFORGE } from "./links";
@@ -27,18 +28,6 @@ const TABS: { id: Tab; icon: "spoken" | "curseforge" | "github" }[] = [
   { id: "curseforge", icon: "curseforge" },
   { id: "manual", icon: "github" },
 ];
-
-/** A sentence with one `{link}` in it, around the element that stands for it. */
-function WithLink({ text, link }: { text: string; link: React.ReactNode }) {
-  const [before, after = ""] = text.split("{link}");
-  return (
-    <>
-      {before}
-      {link}
-      {after}
-    </>
-  );
-}
 
 /**
  * The three ways in: the Manager, a CurseForge meta addon per language, or a zip per pack.

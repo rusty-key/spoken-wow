@@ -21,6 +21,7 @@ import { LOCALES, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { packFor, type Section } from "@/lib/packs";
 import { fill } from "@/lib/site-text/format";
+import WithLink from "@/lib/site-text/WithLink";
 import { nativeName } from "@/lib/site-text/names";
 import { siteText, type SiteText } from "@/lib/site-text";
 import "@/components/landing/landing.css";
@@ -89,18 +90,6 @@ function installRows(lang: Lang, t: SiteText["install"]): InstallRow[] {
 }
 
 const NEW_TAB = (text: string) => <span className="sr-only">{text}</span>;
-
-/** A sentence with one `{link}` in it, around the element that stands for it. */
-function WithLink({ text, link }: { text: string; link: React.ReactNode }) {
-  const [before, after = ""] = text.split("{link}");
-  return (
-    <>
-      {before}
-      {link}
-      {after}
-    </>
-  );
-}
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
@@ -201,19 +190,19 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                   <ul className="bn-compendium-tabs" aria-label={t.voices.compendiumTabs}>
                     <li>
                       <img src="/landing/icons/game-quests.png" alt="" width={32} height={32} />
-                      {t.voices.quests}
+                      {t.showcase.quests.title}
                     </li>
                     <li>
                       <img src="/landing/icons/game-places.png" alt="" width={32} height={32} />
-                      {t.voices.places}
+                      {t.showcase.places.title}
                     </li>
                     <li>
                       <img src="/landing/icons/game-readables.png" alt="" width={32} height={32} />
-                      {t.voices.readables}
+                      {t.showcase.readables.title}
                     </li>
                     <li>
                       <img src="/landing/icons/game-bosses.png" alt="" width={32} height={32} />
-                      {t.voices.bosses}
+                      {t.showcase.bosses.title}
                     </li>
                   </ul>
                   <ul className="bn-list">

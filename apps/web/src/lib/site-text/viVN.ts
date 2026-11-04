@@ -46,10 +46,6 @@ const vi: Dictionary = {
     compendium:
       "Mọi quest, “Place Story”, sách và câu chuyện về boss trong một cửa sổ, có ô tìm kiếm. Phát bất kỳ mục nào mà không cần đến tận nơi.",
     compendiumTabs: "Các tab trong Compendium",
-    quests: "Quests",
-    places: "Places",
-    readables: "Readables",
-    bosses: "Bosses",
     compendiumOpens:
       "Mở từ menu ở minimap, bằng /sp compendium, hoặc từ nút “Place Story” cạnh bản đồ thế giới",
     compendiumText: "Cỡ chữ và ngôn ngữ chữ được đặt ở trang cài đặt của Spoken",
