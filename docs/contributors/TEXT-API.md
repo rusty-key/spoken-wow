@@ -65,6 +65,10 @@ URL-encode an id in a path, because place and boss ids can contain spaces:
 places only. `variant` is on quest lines only, because a few line ids name two different lines; a
 single-item URL takes `?variant=`, default 0, and refuses a `variant` in its body.
 
+`override` is on quest lines only. When it is not null, it is what the line is spoken as in place of
+`text`: a rewrite made with the pencil on the site. This API only reads it. A `PATCH` changes `text`
+and leaves `override` in place, so the line keeps speaking the override.
+
 ## Writing
 
 Change one item:
