@@ -9,6 +9,11 @@ from the player whose changelog is CHANGELOG.md beside this one.
   Spoken: English, in the AddOns list and on CurseForge.
   *([rusty-key](https://github.com/rusty-key))*
 
+## 1.1.0 — spoken-all-deDE — 2026-11-04
+
+- Installs Spoken German Audio: Bosses too, now that it has a CurseForge project, so the German
+  boss stories come with one install. 7 sound packs in all.
+
 ## 1.0.0 — spoken-all-deDE — 2026-10-15
 
 - First release. Installs Spoken Player with every German sound pack on CurseForge, 6 in all,
