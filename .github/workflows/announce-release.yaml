@@ -26,6 +26,9 @@ jobs:
   discord:
     if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
+    # Admits master and the release tags only, so a branch's workflow cannot read the bot token.
+    # A new tag namespace has to be added to the environment as well as to the tag ruleset.
+    environment: discord
     steps:
       - uses: actions/checkout@v5
         with:
@@ -82,6 +85,7 @@ jobs:
   language-channel:
     if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
+    environment: discord
     # A language's three packs are usually released minutes apart. Run side by side, each
     # would find no post yet and pin its own. GitHub keeps only one pending run per group, so
     # the middle of three shows as cancelled; nothing is lost, as the last run reads every release.
