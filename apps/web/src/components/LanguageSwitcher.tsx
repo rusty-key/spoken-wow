@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Refreshing } from "@/components/Loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { localeHref, stripLang, type Lang } from "@/lib/lang";
+import { nativeName } from "@/lib/site-text/names";
 
 import { useLang } from "./LangProvider";
 import { usePendingPush } from "./usePendingPush";
@@ -22,8 +23,12 @@ type Offered = { code: Lang; name: string; enabled: boolean };
  * Asked of the API in the browser rather than read by the layout, for the reason UserMenu
  * reads the session there: the layout would otherwise put a query in front of every English
  * page. Renders nothing while only one language is on, which is the site as it stands.
+ *
+ * On the front page (`variant="landing"`) it is a native select in that page's own style, with
+ * each language named in itself. A popup portalled to the body would not carry the page's
+ * colours and font, which live on the page's own container.
  */
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ variant, label = "Language" }: { variant?: "landing"; label?: string }) {
   const lang = useLang();
   const pathname = usePathname();
   const { pending, push } = usePendingPush();
@@ -46,12 +51,40 @@ export default function LanguageSwitcher() {
     };
   }, []);
 
+  // Until the list arrives the front page holds the select's place with the page's own language, so
+  // the bar does not shift when the others appear.
+  if (variant === "landing" && offered.length === 0) {
+    return (
+      <select className="bn-select bn-select-nav" aria-label={label} value={lang} disabled onChange={() => {}}>
+        <option value={lang}>{nativeName(lang)}</option>
+      </select>
+    );
+  }
   if (offered.length < 2) return null;
 
   function choose(next: string) {
     const here = `${stripLang(pathname).path}${window.location.search}`;
     setChosen(next);
     push(localeHref(next as Lang, here));
+  }
+
+  if (variant === "landing") {
+    return (
+      <select
+        className="bn-select bn-select-nav"
+        aria-label={label}
+        aria-busy={pending}
+        value={pending ? chosen : lang}
+        onChange={(event) => choose(event.target.value)}
+      >
+        {offered.map((language) => (
+          <option key={language.code} value={language.code}>
+            {nativeName(language.code)}
+            {language.enabled ? "" : " (off)"}
+          </option>
+        ))}
+      </select>
+    );
   }
 
   return (
