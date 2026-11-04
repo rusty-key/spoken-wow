@@ -78,6 +78,8 @@ E.Addon.db.profile.Frame.Style='minimal'
 -- The dark background keeps the gold highlight the checks below expect.
 E.Addon.db.profile.Frame.MinimalBackground='dark'
 E.Addon.db.profile.Audio.LineGap=0
+E.Spoken.GetPlaybackSpeed=function() return E.Addon.db.profile.Audio.PlaybackSpeed or 1 end
+E.Spoken.SetPlaybackSpeed=function(_, speed) E.Addon.db.profile.Audio.PlaybackSpeed=speed end
 E.Addon.db.profile.Transcript.HighlightWord=true
 -- The checks below follow the words typed in and the progress line, which are off by default.
 E.Addon.db.profile.Transcript.Typewriter=true
@@ -883,6 +885,34 @@ do
     source:Enqueue(Timed('t4',text,words*.1+6,timings)); Play(.7)
     Check(T.timed and #S.pages==4,'a timed line is paged a sentence at a time')
     Check(math.abs(S.pages[2].start-timings[13])<1e-9,"...and its second page turns at its first word's time")
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    local fast=Timed('fast','aaaa bbbb cccc dddd',2,'0 .2 .4 .6')
+    fast.playbackSpeed=2
+    cfg.Typewriter=false
+    source:Enqueue(fast); Play(.25)
+    Check(T.timed and T:WordAt(T:GetProgress())==3,'a faster recording scales the supplied word times')
+    Check(S.pages[1].firstWord==1 and S:LitWord(S.pages[1],T:AudioElapsed())==3,
+        'the subtitle lights the word spoken by the faster recording, rather than a character estimate')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    local estimated=Timed('estimated','a a a longword',2,nil)
+    estimated.playbackSpeed=2
+    source:Enqueue(estimated); Play(.6)
+    Check(not T.timed and T:WordAt(T:GetProgress())==2,
+        'without word times, the narrator estimates the accelerated voice by word length')
+    Check(S:LitWord(S.pages[1],T:AudioElapsed())==2,
+        'the accelerated subtitle uses the same estimate instead of running ahead by character')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    cfg.SubtitleSentences=1
+    local paged=Timed('paged','Extraordinary extraordinary. a a a a a a a a a a.',6,nil)
+    paged.playbackSpeed=2
+    source:Enqueue(paged); Play(.1)
+    Check(#S.pages==2 and S.pages[2].firstWord==3,'the accelerated line has a second subtitle page')
+    local pageStart=6*T.words[3].start/T.totalWeight
+    Check(math.abs(S.pages[2].start-pageStart)<1e-9,
+        'the page turn follows the same word estimate as the highlight')
+    Play(pageStart-T:AudioElapsed()+.25)
+    Check(S.page==2,'the next subtitle page appears while the accelerated voice continues')
+    cfg.Typewriter=true
     cfg.SubtitleSentences=3
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()

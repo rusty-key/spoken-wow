@@ -2,6 +2,14 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Support for optional 1.25×, 1.5× and 2× voice packs.** Choose a speed on Spoken's settings page or
+  the narrator's button. Spoken uses the faster copy when installed and plays the original
+  otherwise. A change during a line restarts it from the beginning. Subtitle highlighting and
+  page turns follow the same word timing as the narrator. The voice packs stay separate from
+  Spoken and from the normal recordings. *([Poltiger](https://github.com/Poltiger))*
+
 ## 3.8.1 — 2026-11-03
 
 - **Spoken's website is now [spoken.quest](https://spoken.quest).** Report and Contribute links and

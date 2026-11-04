@@ -233,6 +233,34 @@ function Actions.SkipButton(parent, name)
     return skip
 end
 
+--- The choice is shared by every narrator window. A click restarts the speaking line because
+--- PlaySoundFile offers no seek and cannot change the rate of a sound handle.
+function Actions.SpeedButton(parent)
+    local button = Actions.RoundButton(parent)
+    button.glyph:Hide()
+    local value = button:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    value:SetPoint("CENTER")
+    value:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
+    local function Refresh()
+        value:SetText(format("%g×", Spoken:GetPlaybackSpeed()))
+    end
+    button:SetScript("OnClick", function()
+        local current = Spoken:GetPlaybackSpeed()
+        local nextSpeed = current == 1 and 1.25 or current == 1.25 and 1.5 or current == 1.5 and 2 or 1
+        Spoken:SetPlaybackSpeed(nextSpeed)
+        SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
+    end)
+    button:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(button, "ANCHOR_TOP")
+        GameTooltip:SetText(L.OPT_PLAYBACK_SPEED)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnShow", Refresh)
+    Callbacks:Register("PLAYBACK_SPEED_CHANGED", Refresh)
+    Refresh()
+    return button
+end
+
 --- Stop or Replay for the line at the head. `allowed()`, optional, says whether the window has
 --- a line to act on; `after()`, optional, runs once it has acted.
 function Actions.StopButton(parent, allowed, after)

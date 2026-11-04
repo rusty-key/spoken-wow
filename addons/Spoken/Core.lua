@@ -50,6 +50,8 @@ Defaults = {
         Audio = {
             -- A string, because that is what PlaySoundFile takes.
             SoundChannel = "Master",
+            -- 1 is the recording as shipped. Faster copies live in separate, optional packs.
+            PlaybackSpeed = 1,
             -- Seconds of quiet between one line and the next, on top of each module's own short
             -- gap: back to back, a new line started before the last had settled.
             LineGap = 1,
