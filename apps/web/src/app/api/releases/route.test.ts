@@ -174,8 +174,15 @@ describe("release route", () => {
       expect(theirs.active).toEqual({ section: "bosses", lang: "deDE", state: "dispatching", own: false });
       expect(JSON.stringify(theirs)).not.toContain(user.id);
 
+      // A test user is named after its id, which would read as the id leaking.
+      await asSystem.query(`update "user" set "name" = 'Release Tester' where "id" = $1`, [user.id]);
       const own = await (await read("deDE")).json();
-      expect(own.active).toMatchObject({ own: true, githubUrl: "https://github.com/x/y/runs/1", step: "Package audio" });
+      expect(own.active).toMatchObject({
+        own: true,
+        githubUrl: "https://github.com/x/y/runs/1",
+        step: "Package audio",
+        by: "Release Tester",
+      });
       expect(JSON.stringify(own)).not.toContain(user.id);
     } finally {
       await dropAdmin("deDE");

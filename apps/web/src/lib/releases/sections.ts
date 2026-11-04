@@ -37,6 +37,11 @@ export type RunView = {
   version?: string | null;
   /** The end of the output, for a run this machine ran. */
   log?: string | null;
+  /** ISO times: when it was pressed, and when it settled. */
+  startedAt?: string;
+  finishedAt?: string | null;
+  /** Who pressed it, by name or address; null once their account is gone. */
+  by?: string | null;
 };
 
 export type ReleaseView = { active: RunView | null; recent: RunView[] };

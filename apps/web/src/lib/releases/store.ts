@@ -22,6 +22,7 @@ export type ReleaseRun = {
   step: string | null;
   error: string | null;
   version: string | null;
+  requestedBy: string | null;
   createdAt: Date;
   finishedAt: Date | null;
 };
@@ -33,7 +34,7 @@ export class ReleaseBusyError extends Error {
 }
 
 const COLUMNS = `"id", "teamId", "section", "lang", "state", "githubRunId"::float8 as "githubRunId", "githubUrl",
-                 "step", "error", "version", "createdAt", "finishedAt"`;
+                 "step", "error", "version", "requestedBy", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
 const UNIQUE_VIOLATION = "23505";
 
