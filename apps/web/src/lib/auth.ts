@@ -2,8 +2,8 @@
  * The Better Auth server instance. Everything that reads or writes a session goes through
  * this module: the catch-all route handler, and the /admin page's guard.
  *
- * Email and password only, with no verification step — the explorer is a small tool with a
- * handful of contributors, and an SMTP dependency would be the largest moving part in it.
+ * Email and password only, with no verification step. Email is sent for one thing, the
+ * password reset (lib/email.ts).
  */
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
@@ -11,11 +11,17 @@ import { admin as adminPlugin } from "better-auth/plugins";
 
 import { recordAuthEvent } from "./activity/auth-events";
 import { db } from "./db";
+import { sendPasswordResetEmail } from "./email";
 import { ac, roles } from "./permissions";
 
 export const auth = betterAuth({
   database: db(),
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    sendResetPassword: async ({ user, url }) => sendPasswordResetEmail(user.email, url),
+    // Someone resetting because their account was taken also throws the intruder out.
+    revokeSessionsOnPasswordReset: true,
+  },
   // nginx terminates TLS, so the origin Better Auth sees is http://127.0.0.1:3000 unless we
   // tell it the public one. Cookies and redirects are built from this.
   baseURL: process.env.BETTER_AUTH_URL,

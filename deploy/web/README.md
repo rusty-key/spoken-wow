@@ -99,7 +99,7 @@ no longer lives in is one somebody sets on the wrong box.
 | `SPOKEN_BOSSES_AUDIO_HISTORY` | `shared/audio-history/bosses` | shared; **must be set**, for the reason the quests one must |
 | `SPOKEN_PLACES_MANIFEST` | `shared/manifest.json` | shared; the app rewrites it whenever a batch drains |
 
-Six more come from `shared/app.env`, which `ecosystem.config.js` parses and merges into the
+Eight more come from `shared/app.env`, which `ecosystem.config.js` parses and merges into the
 pm2 environment. They are secrets, and that file is the only place they exist:
 
 | Env var | Value | Notes |
@@ -110,6 +110,8 @@ pm2 environment. They are secrets, and that file is the only place they exist:
 | `BETTER_AUTH_URL` | `https://spoken.quest` | **must match the public origin exactly** |
 | `SPOKEN_SECRET_KEY` | 32 bytes, base64 | the master key stored ElevenLabs credentials are sealed under |
 | `ELEVENLABS_DICTIONARY_ID` | an id from your ElevenLabs account | the pronunciation dictionary `/lexicon` updates in place. **Must not change**: unset, every save creates a new one |
+| `RESEND_API_KEY` | a sending key from Resend | sends password reset emails. Unset, `/forgot-password` still says a link is on its way, sends nothing and logs an error |
+| `RESEND_FROM` | `Spoken <noreply@spoken.quest>` | the sender; its domain must be verified in Resend |
 
 **`SPOKEN_SECRET_KEY` cannot be rotated casually.** Every stored ElevenLabs credential is
 sealed under it, and AES-GCM offers no way to re-seal a credential nothing can open. Change
