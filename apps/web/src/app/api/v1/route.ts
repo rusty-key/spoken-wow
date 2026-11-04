@@ -37,6 +37,7 @@ export async function GET(request: Request) {
       "The language always comes from the token.",
       "Writes go live at once. Edited lines read as stale until someone regenerates them; nothing here makes audio.",
       "A null text is an item with no translation yet. englishText is what to translate from.",
+      "A quest line's override, when not null, is what gets spoken instead of its text. Writing text does not change it, and this API cannot write it.",
       "Text containing $G splits a quest line into :m and :f. Plain text to either side of an untranslated split is refused: send one text with a $G branch.",
       "A readable page's name is its owner's, shared by every page and item with that owner. A quest's name is shared by all its lines. Gossip lines and pages with no owner have no name to write.",
       "Places: sending text without short regenerates short.",

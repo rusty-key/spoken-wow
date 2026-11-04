@@ -10,7 +10,9 @@ import { saveStory } from "@/lib/bosses/story";
 import { closeDb, query } from "@/lib/db";
 import { saveName } from "@/lib/names/store";
 import { saveLore } from "@/lib/places/lore";
+import { audioRelPath } from "@/lib/audio";
 import { keepLanguage } from "@/lib/quests/keep-language";
+import { clearOverride, writeOverride } from "@/lib/quests/overrides";
 import { saveQuestText } from "@/lib/quests/text";
 import { saveBookText } from "@/lib/readables/text";
 import { forgetTeams } from "@/lib/teams/store";
@@ -189,6 +191,29 @@ describe("quests", () => {
       name: "퀘스트",
       nameVersion: 1,
     });
+  });
+
+  it("carries what the line is spoken as, in the list and alone, until the rewrite is dropped", async () => {
+    const { lineId, variant, questId } = f.quest;
+    await saveQuestText({ lang: LANG, lineId, variant, text: "번역.", editedBy: f.user });
+    const [row] = await query<{ fileName: string }>(
+      `select "fileName" from "quest_line" where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "isCurrent"`,
+      [lineId, variant, LANG],
+    );
+    const file = audioRelPath({ lineId, fileName: row.fileName });
+    const listed = async () => (await all("quests", { quest: String(questId) })).find((i) => i.id === lineId);
+
+    expect(await sections.quests.one(LANG, lineId, variant)).toMatchObject({ override: null });
+
+    await writeOverride(LANG, file, lineId, "다시 쓴 번역.", f.user);
+    try {
+      expect(await sections.quests.one(LANG, lineId, variant)).toMatchObject({ text: "번역.", override: "다시 쓴 번역." });
+      expect(await listed()).toMatchObject({ text: "번역.", override: "다시 쓴 번역." });
+    } finally {
+      await clearOverride(LANG, file, f.user);
+    }
+
+    expect(await sections.quests.one(LANG, lineId, variant)).toMatchObject({ text: "번역.", override: null });
   });
 
   it("filters by quest and by source", async () => {
