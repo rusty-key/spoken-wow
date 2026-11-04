@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { GALLERY } from "@/components/landing/shots";
 import { CODES } from "@/lib/lang";
 
 import { EN } from "./en";
@@ -41,6 +42,10 @@ describe("the front page's dictionaries", () => {
     });
     expect(merge(base, { items: [{ a: "1" }, { a: "2" }, { a: "3" }, { a: "4" }] }).items).toHaveLength(3);
     expect(merge(base, { title: 5 }).title).toBe("T");
+  });
+
+  it("has one English caption per gallery shot", () => {
+    expect(GALLERY).toHaveLength(EN.gallery.items.length);
   });
 
   it("names every language in itself", () => {
