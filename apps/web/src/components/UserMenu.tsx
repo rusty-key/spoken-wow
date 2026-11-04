@@ -106,14 +106,19 @@ export default function UserMenu() {
 
   // In the header row rather than the menu: it is where an admin works, not a setting. Any
   // language the viewer looks after counts, as /admin's own gate does, and it opens that
-  // language's team when the page is in one of them.
+  // language's dashboard when the page is in one of them.
   const administered = session ? langsWhere({ role, grants }, "admin") : [];
   const admin: MenuLink[] =
     administered.length > 0
       ? [
           {
-            // A site admin administers every language, and their way in is the list of everyone.
-            href: !isAdmin(role) && administered.includes(lang) ? `/admin?lang=${lang}` : "/admin",
+            // A site admin administers every language, and their way in is the list of everyone; a
+            // team's admin lands on their team's dashboard.
+            href: isAdmin(role)
+              ? "/admin"
+              : administered.includes(lang)
+                ? `/admin/dashboard?lang=${lang}`
+                : "/admin/dashboard",
             label: "Admin",
             admin: true,
           },

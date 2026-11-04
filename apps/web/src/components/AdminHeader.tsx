@@ -10,9 +10,10 @@ import { Contained } from "@/components/Width";
 import { CODES, langName, type Lang } from "@/lib/lang";
 import { cn } from "@/lib/utils";
 
-export type AdminTab = "team" | "release" | "teams";
+export type AdminTab = "dashboard" | "team" | "release" | "teams";
 
 const PATHS: Record<AdminTab, string> = {
+  dashboard: "/admin/dashboard",
   team: "/admin",
   release: "/admin/release",
   teams: "/admin/teams",
@@ -41,6 +42,7 @@ export default function AdminHeader({
   description?: React.ReactNode;
 }) {
   const tabs: { tab: AdminTab; label: string }[] = [
+    { tab: "dashboard", label: "Dashboard" },
     { tab: "team", label: global && !lang ? "Users" : "Team" },
     { tab: "release", label: "Release" },
     ...(global ? [{ tab: "teams" as const, label: "Teams" }] : []),
