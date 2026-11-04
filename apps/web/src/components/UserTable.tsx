@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import GrantCell, { GrantPicker } from "@/components/GrantCell";
+import GrantCell from "@/components/GrantCell";
 import Cell from "@/components/Cell";
 import Pagination from "@/components/Pagination";
 import SortHeader from "@/components/SortHeader";
 import { usePendingPush } from "@/components/usePendingPush";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -20,24 +19,21 @@ import {
 } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
 import type { GrantRow } from "@/lib/grants/store";
+import { giveGrants, takeGrant } from "@/lib/grants/client";
 import type { Lang } from "@/lib/lang";
 import { nextUserSort, usersQuery, type UserSort } from "@/lib/users/sort";
 import { cn } from "@/lib/utils";
 import {
-  CAPABILITIES,
-  canGrant,
   isAdmin,
   ROLES,
   type Capability,
   type Role,
-  type Viewer,
 } from "@/lib/permissions";
 
 export type UserRow = {
   id: string;
   name: string | null;
   email: string;
-  /** Present for a global admin's listing only, as are the joined date and the key. */
   role?: string | null | undefined;
   createdAt?: string;
 };
@@ -46,74 +42,22 @@ const NONE: readonly GrantRow[] = [];
 
 type Props = {
   users: UserRow[];
-  /** Every grant the viewer may see: all of them for an admin, their languages' otherwise. */
+  /** Every grant on the site. */
   grants: GrantRow[];
-  viewer: Viewer;
   /** The signed-in user, whose own role is deliberately not editable here. */
   currentUserId: string;
-  /**
-   * Who holds a key. Presence only - no value crosses this boundary. Null for a language
-   * admin, who hands out nothing that spends on anybody else's behalf and so takes nothing
-   * back.
-   */
-  keyedUserIds: string[] | null;
-  /**
-   * The search. A global admin's `users` are already its matches; a language admin's list is
-   * filtered here.
-   */
+  /** Who holds a key. Presence only - no value crosses this boundary. */
+  keyedUserIds: string[];
+  /** The search, which `users` already match. */
   q: string;
-  /** Likewise: a global admin's `users` come in this order, a language admin's are put in it here. */
+  /** The order `users` already come in. */
   sort: UserSort;
-  /** Where a global admin's list is; null for a language admin's, which is not paged. */
-  page: { page: number; pageCount: number } | null;
+  page: { page: number; pageCount: number };
 };
-
-function matches(user: UserRow, q: string): boolean {
-  const needle = q.toLowerCase();
-  return user.email.toLowerCase().includes(needle) || (user.name?.toLowerCase().includes(needle) ?? false);
-}
-
-/**
- * A language admin's order, the server's for a global admin's (lib/users/store): languages is
- * the languages held, alphabetically joined, admins first; empty values last either way.
- */
-function compareUsers(sort: UserSort, langsOf: (user: UserRow) => string | null) {
-  const key = (user: UserRow): string | null => {
-    switch (sort.column) {
-      case "name":
-        return user.name || null;
-      case "email":
-        return user.email;
-      case "joined":
-        return user.createdAt ?? null;
-      case "languages":
-        return isAdmin(user.role) ? "" : langsOf(user);
-    }
-  };
-  const sign = sort.direction === "asc" ? 1 : -1;
-  return (a: UserRow, b: UserRow) => {
-    const x = key(a);
-    const y = key(b);
-    if (x === null || y === null) return Number(x === null) - Number(y === null);
-    return sign * x.localeCompare(y);
-  };
-}
-
-/** `users`, plus whoever in `grants` is not among them yet, in the order they turned up. */
-function withGrantees(users: UserRow[], grants: readonly GrantRow[]): UserRow[] {
-  const seen = new Map(users.map((user) => [user.id, user]));
-  for (const grant of grants) {
-    if (!seen.has(grant.userId)) {
-      seen.set(grant.userId, { id: grant.userId, name: grant.name, email: grant.email });
-    }
-  }
-  return seen.size === users.length ? users : [...seen.values()];
-}
 
 export default function UserTable({
   users: initialUsers,
   grants: initialGrants,
-  viewer,
   currentUserId,
   keyedUserIds,
   q,
@@ -121,20 +65,13 @@ export default function UserTable({
   page,
 }: Props) {
   const { pending, push } = usePendingPush();
-  const global = isAdmin(viewer.role);
-  // Busy is per row, or "new" for the form that lets somebody in by email.
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [keyed, setKeyed] = useState(() => new Set(keyedUserIds ?? []));
+  const [keyed, setKeyed] = useState(() => new Set(keyedUserIds));
   const [grants, setGrants] = useState(initialGrants);
-  // A language admin's list is the grant holders, since they cannot list the users. It only
-  // ever grows: somebody let in by email joins it, and somebody whose last grant was just
-  // removed stays until the page is reloaded rather than vanishing from under the pointer.
-  // A global admin's is the page of users it was given, and the grants of anybody on
-  // another page are not a reason to show them on this one.
-  const adopt = (current: UserRow[], next: readonly GrantRow[]) =>
-    global ? current : withGrantees(current, next);
-  const [users, setUsers] = useState(() => adopt(initialUsers, initialGrants));
+  // The page of users it was given: the grants of anybody on another page are not a reason to
+  // show them on this one.
+  const [users, setUsers] = useState(initialUsers);
 
   const grantsOf = useMemo(() => {
     const byUser = new Map<string, GrantRow[]>();
@@ -146,44 +83,27 @@ export default function UserTable({
     return byUser;
   }, [grants]);
 
-  const shown = global
-    ? users
-    : users
-        .filter((user) => !q || matches(user, q))
-        .sort(
-          compareUsers(sort, (user) => {
-            const langs = [...new Set((grantsOf.get(user.id) ?? NONE).map((grant) => grant.lang))];
-            return langs.length ? langs.sort().join(",") : null;
-          }),
-        );
   const onSort = (column: UserSort["column"]) => push(usersQuery({ q, sort: nextUserSort(sort, column) }));
 
-  async function sendGrant(busyKey: string, method: "PUT" | "DELETE", target: string, body?: unknown) {
-    setPendingId(busyKey);
+  async function saving(userId: string, send: () => ReturnType<typeof takeGrant>) {
+    setPendingId(userId);
     setError(null);
-    const response = await fetch(target, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    }).catch(() => null);
+    const answer = await send();
     setPendingId(null);
-    const data = (await response?.json().catch(() => ({}))) as { grants?: GrantRow[]; error?: string };
-    if (!response?.ok || !data.grants) {
-      setError(data?.error ?? "That did not work.");
+    if (!answer.grants) {
+      setError(answer.error ?? "That did not work.");
       return false;
     }
     // The route answers with every grant the viewer may see, which is this table's.
-    const next = data.grants;
-    setGrants(next);
-    setUsers((current) => adopt(current, next));
+    setGrants(answer.grants);
     return true;
   }
 
-  const grant = (busyKey: string, email: string, lang: Lang, capabilities: Capability[]) =>
-    sendGrant(busyKey, "PUT", "/api/grants", { email, lang, capabilities });
+  const grant = (userId: string, email: string, lang: Lang, capabilities: Capability[]) =>
+    saving(userId, () => giveGrants(email, lang, capabilities));
 
   const revoke = (userId: string, lang: Lang, capability: Capability) =>
-    void sendGrant(userId, "DELETE", `/api/grants?${new URLSearchParams({ userId, lang, capability })}`);
+    void saving(userId, () => takeGrant(userId, lang, capability));
 
   async function changeRole(userId: string, role: Role) {
     setPendingId(userId);
@@ -265,114 +185,85 @@ export default function UserTable({
             <SortHeader column="email" sort={sort} onSort={onSort}>
               Email
             </SortHeader>
-            {global && <th className="py-2 pr-3 font-normal">Role</th>}
+            <th className="py-2 pr-3 font-normal">Role</th>
             <SortHeader column="languages" sort={sort} onSort={onSort}>
               Languages
             </SortHeader>
-            {global && <th className="py-2 pr-3 font-normal">Key</th>}
-            {global && (
-              <SortHeader column="joined" sort={sort} onSort={onSort}>
-                Joined
-              </SortHeader>
-            )}
-            {global && (
-              <th className="py-2 font-normal">
-                <span className="sr-only">Delete</span>
-              </th>
-            )}
+            <th className="py-2 pr-3 font-normal">Key</th>
+            <SortHeader column="joined" sort={sort} onSort={onSort}>
+              Joined
+            </SortHeader>
+            <th className="py-2 font-normal">
+              <span className="sr-only">Delete</span>
+            </th>
           </tr>
         </thead>
         <tbody>
-          {shown.length === 0 && (
+          {users.length === 0 && (
             <tr>
-              <Cell colSpan={3} className="text-muted-foreground">
-                {q ? "Nobody matches that." : "Nobody works in your languages yet."}
+              <Cell colSpan={7} className="text-muted-foreground">
+                {q ? "Nobody matches that." : "Nobody has registered yet."}
               </Cell>
             </tr>
           )}
-          {shown.map((user) => (
+          {users.map((user) => (
             <tr key={user.id} className="border-b last:border-0">
               <Cell>{user.name}</Cell>
               <Cell className="text-muted-foreground">{user.email}</Cell>
-              {global && (
-                <Cell fit="control">
-                  <RoleCell
-                    user={user}
-                    self={user.id === currentUserId}
-                    busy={pendingId === user.id}
-                    onChange={(role) => changeRole(user.id, role)}
-                  />
-                </Cell>
-              )}
+              <Cell fit="control">
+                <RoleCell
+                  user={user}
+                  self={user.id === currentUserId}
+                  busy={pendingId === user.id}
+                  onChange={(role) => changeRole(user.id, role)}
+                />
+              </Cell>
               <Cell fit="control">
                 {isAdmin(user.role) ? (
                   <span className="text-muted-foreground text-xs">every language, as admin</span>
                 ) : (
                   <GrantCell
                     grants={grantsOf.get(user.id) ?? NONE}
-                    viewer={viewer}
                     busy={pendingId === user.id}
                     onGrant={(lang, capabilities) => grant(user.id, user.email, lang, capabilities)}
                     onRevoke={(lang, capability) => revoke(user.id, lang, capability)}
                   />
                 )}
               </Cell>
-              {global && (
-                <Cell fit="control" className="whitespace-nowrap">
-                  {keyed.has(user.id) ? (
-                    <span className="flex items-center gap-2">
-                      <span aria-label="key set">✓</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={pendingId === user.id}
-                        onClick={() => clearKey(user.id)}
-                      >
-                        Clear
-                      </Button>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </Cell>
-              )}
-              {global && (
-                <Cell className="text-muted-foreground whitespace-nowrap">
-                  {user.createdAt?.slice(0, 10)}
-                </Cell>
-              )}
-              {global && (
-                <Cell fit="control" className="whitespace-nowrap">
-                  {user.id === currentUserId ? null : (
-                    <DeleteUser
-                      user={user}
-                      busy={pendingId === user.id}
-                      onDelete={() => removeUser(user.id)}
-                    />
-                  )}
-                </Cell>
-              )}
+              <Cell fit="control" className="whitespace-nowrap">
+                {keyed.has(user.id) ? (
+                  <span className="flex items-center gap-2">
+                    <span aria-label="key set">✓</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={pendingId === user.id}
+                      onClick={() => clearKey(user.id)}
+                    >
+                      Clear
+                    </Button>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </Cell>
+              <Cell className="text-muted-foreground whitespace-nowrap">{user.createdAt?.slice(0, 10)}</Cell>
+              <Cell fit="control" className="whitespace-nowrap">
+                {user.id === currentUserId ? null : (
+                  <DeleteUser user={user} busy={pendingId === user.id} onDelete={() => removeUser(user.id)} />
+                )}
+              </Cell>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {page && (
-        <Pagination
-          page={page.page}
-          pageCount={page.pageCount}
-          onPage={(next) => push(usersQuery({ q, sort, page: next }))}
-        />
-      )}
-
-      {!global && (
-        <AddByEmail
-          viewer={viewer}
-          busy={pendingId === "new"}
-          onGrant={(email, lang, capabilities) => grant("new", email, lang, capabilities)}
-        />
-      )}
+      <Pagination
+        page={page.page}
+        pageCount={page.pageCount}
+        onPage={(next) => push(usersQuery({ q, sort, page: next }))}
+      />
     </>
   );
 }
@@ -461,44 +352,5 @@ function RoleCell({
         ))}
       </SelectContent>
     </Select>
-  );
-}
-
-/**
- * Letting somebody new into a language, for a language admin, who cannot see the users who
- * hold nothing there yet. By email: an address is what a translator gives somebody when
- * asking to be let in.
- */
-function AddByEmail({
-  viewer,
-  busy,
-  onGrant,
-}: {
-  viewer: Viewer;
-  busy: boolean;
-  onGrant: (email: string, lang: Lang, capabilities: Capability[]) => Promise<boolean>;
-}) {
-  const [email, setEmail] = useState("");
-  return (
-    <div className="mt-4">
-      <GrantPicker
-        offer={(lang) => CAPABILITIES.filter((cap) => canGrant(viewer, cap, lang))}
-        busy={busy}
-        onPick={(lang, capabilities) =>
-          void onGrant(email, lang, capabilities).then((ok) => {
-            if (ok) setEmail("");
-          })
-        }
-      >
-        <Input
-          type="email"
-          required
-          placeholder="their registered email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="w-64"
-        />
-      </GrantPicker>
-    </div>
   );
 }

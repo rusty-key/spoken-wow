@@ -99,6 +99,24 @@ export function capabilityLabel(capability: Capability): string {
   return CAPABILITY_LABELS[capability];
 }
 
+/**
+ * What /admin says each capability lets its holder do, so an admin handing one out does not
+ * have to know the code. Total, so a capability added without its words is a type error.
+ */
+const CAPABILITY_HINTS: Record<Capability, string> = {
+  text: "Looks after the language's original text and the contributions to it, whichever team voices it.",
+  edit: "Works through the team's audio reports and missing audio.",
+  regenerate: "Cuts new takes, paid from their own ElevenLabs or fish.audio key.",
+  configure: "Changes the language's generation settings and lexicon.",
+  ignore: "Marks a line as never voiced in this language.",
+  admin: "Everything the team may do here, and hands out access in this language.",
+  record: "Records takes in their own voice.",
+};
+
+export function capabilityHint(capability: Capability): string {
+  return CAPABILITY_HINTS[capability];
+}
+
 export function isCapability(value: unknown): value is Capability {
   return typeof value === "string" && (CAPABILITIES as readonly string[]).includes(value);
 }
@@ -156,6 +174,15 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
   return capability !== "text" && can(viewer, "admin", lang);
+}
+
+/**
+ * Whether this removal is a language admin taking away their own admin: it is what lets them
+ * reach /admin at all, so doing it would lock them out of the page that gives it back. Another
+ * admin, or a site admin, can.
+ */
+export function removesOwnAdmin(viewer: Viewer, viewerId: string, userId: string, capability: Capability): boolean {
+  return userId === viewerId && capability === "admin" && !isAdmin(viewer.role);
 }
 
 /** Whether somebody holds anything at all in a language, which lets them see it switched off. */

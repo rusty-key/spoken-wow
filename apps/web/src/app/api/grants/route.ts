@@ -10,7 +10,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { addGrants, listGrants, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
 import { isLang } from "@/lib/lang";
-import { canGrant, isAdmin, isCapability, langsWhere, type Viewer } from "@/lib/permissions";
+import { canGrant, isAdmin, isCapability, langsWhere, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +76,9 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
   if (!canGrant(who.viewer, capability, lang)) return FORBIDDEN();
+  if (removesOwnAdmin(who.viewer, who.userId, userId, capability)) {
+    return Response.json({ error: "you cannot remove your own admin" }, { status: 403 });
+  }
 
   await removeGrant(userId, lang, capability, who.userId);
   return listing(who.viewer);
