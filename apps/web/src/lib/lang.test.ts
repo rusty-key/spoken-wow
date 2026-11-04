@@ -79,7 +79,7 @@ describe("addresses", () => {
     expect(localeHref("ptBR", "/quests?q=1")).toBe("/ptBR/quests?q=1");
     expect(localeHref("ptBR", "/")).toBe("/ptBR");
     expect(localeHref("ptBR", "/api/quests/search")).toBe("/api/quests/search");
-    expect(localeHref("ptBR", "https://www.wowhead.com/classic")).toBe("https://www.wowhead.com/classic");
+    expect(localeHref("ptBR", "https://www.wowhead.com/forever")).toBe("https://www.wowhead.com/forever");
     expect(localeHref("ptBR", "//cdn.example")).toBe("//cdn.example");
   });
 
