@@ -1,10 +1,10 @@
 ---
 curseforge: 1746503
 lang: esES
-version: 1.0.0
+version: 1.1.0
 slug: spoken-spanish-eu
 name: Spoken: Spanish (EU)
-summary: Meta package: installs Spoken with every European Spanish voice pack, quests, gossip, zones and books. Install through the CurseForge app.
+summary: Meta package: installs Spoken with every European Spanish voice pack, quests, gossip, zones, books and boss stories. Install through the CurseForge app.
 categories:
   - Audio & Video
   - Roleplay
@@ -18,7 +18,7 @@ license: MIT
 
 ## What it installs
 
-[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places and Spoken Readables inside it, and the European Spanish voice packs:
+[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places, Spoken Readables and Spoken Bosses inside it, and the European Spanish voice packs:
 
 | Module | Voices | Its audio |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ license: MIT
 | Spoken Quests | NPC gossip | [Spoken Spanish (EU) Audio: Gossip](https://www.curseforge.com/wow/addons/spoken-spanish-eu-audio-gossip) |
 | Spoken Places | zone and subzone lore | [Spoken Spanish (EU) Audio: Places](https://www.curseforge.com/wow/addons/spoken-spanish-eu-audio-places) |
 | Spoken Readables | books, letters, notes and plaques | [Spoken Spanish (EU) Audio: Readables](https://www.curseforge.com/wow/addons/spoken-spanish-eu-audio-readables) |
+| Spoken Bosses | the story of each dungeon and raid boss | [Spoken Spanish (EU) Audio: Bosses](https://www.curseforge.com/wow/addons/spoken-spanish-eu-audio-bosses) |
 
 The quest dialogue comes as three packs, one per faction plus the quests both sides share, and this installs all of them: it does not know which side you play. Remove the other faction's pack afterwards if you want the disk space back.
 
