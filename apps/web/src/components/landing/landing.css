@@ -2179,6 +2179,11 @@ html:has(.bn) {
 :lang(zh-CN) .bn *,
 :lang(zh-TW) .bn * {
   letter-spacing: 0;
+}
+/* The Latin wordmark and headings keep their capitals, as in the other languages. */
+:lang(ko-KR) .bn *:not(.bn-brand-name, .bn-display),
+:lang(zh-CN) .bn *:not(.bn-brand-name, .bn-display),
+:lang(zh-TW) .bn *:not(.bn-brand-name, .bn-display) {
   text-transform: none;
 }
 :lang(ko-KR) .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button),

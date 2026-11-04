@@ -46,10 +46,6 @@ const fr: Dictionary = {
     compendium:
       "Chaque quête, récit de lieu, lecture et récit de boss dans une seule fenêtre, avec un champ de recherche. Lancez-en n'importe lequel sans vous y rendre.",
     compendiumTabs: "Onglets du Compendium",
-    quests: "Quêtes",
-    places: "Lieux",
-    readables: "Lectures",
-    bosses: "Boss",
     compendiumOpens:
       "S'ouvre depuis le menu de la minicarte, avec /sp compendium, ou depuis le bouton «\u00a0Récit du lieu\u00a0» à côté de la carte du monde",
     compendiumText: "La taille et la langue du texte se règlent sur la page de Spoken",

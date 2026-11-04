@@ -46,10 +46,6 @@ const es: Dictionary = {
     compendium:
       "Todas las misiones, historias de lugares, lecturas e historias de jefes en una sola ventana, con un cuadro de búsqueda. Reproduce cualquiera sin ir hasta allí.",
     compendiumTabs: "Pestañas del Compendio",
-    quests: "Misiones",
-    places: "Lugares",
-    readables: "Lecturas",
-    bosses: "Jefes",
     compendiumOpens:
       "Se abre desde el menú del minimapa, con /sp compendium, o desde el botón Historia del lugar junto al mapa del mundo",
     compendiumText: "El tamaño y el idioma del texto se eligen en la página de Spoken",

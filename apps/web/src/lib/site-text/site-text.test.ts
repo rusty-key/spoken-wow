@@ -7,6 +7,7 @@ import { CODES } from "@/lib/lang";
 
 import { EN } from "./en";
 import { fill } from "./format";
+import { merge } from "./merge";
 import { NATIVE_NAMES } from "./names";
 
 /** Every string in a dictionary with the path that reaches it, arrays by position. */
@@ -28,6 +29,18 @@ describe("the front page's dictionaries", () => {
   it("fills placeholders and leaves unknown ones as written", () => {
     expect(fill("Play: {name}", { name: "Muglash" })).toBe("Play: Muglash");
     expect(fill("{a} {b}", { a: "x" })).toBe("x {b}");
+  });
+
+  it("lays a translation over English and keeps English for what it lacks", () => {
+    const base = { title: "T", items: [{ a: "1" }, { a: "2" }, { a: "3" }], nested: { x: "x", y: "y" } };
+    const over = { title: "Titel", items: [{ a: "eins" }], nested: { y: "why" } };
+    expect(merge(base, over)).toEqual({
+      title: "Titel",
+      items: [{ a: "eins" }, { a: "2" }, { a: "3" }],
+      nested: { x: "x", y: "why" },
+    });
+    expect(merge(base, { items: [{ a: "1" }, { a: "2" }, { a: "3" }, { a: "4" }] }).items).toHaveLength(3);
+    expect(merge(base, { title: 5 }).title).toBe("T");
   });
 
   it("names every language in itself", () => {

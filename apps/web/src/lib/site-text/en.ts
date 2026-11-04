@@ -51,10 +51,6 @@ export const EN = {
     compendium:
       "Every quest, place story, readable and boss story in one window, with a search box. Play any of them without going there.",
     compendiumTabs: "Tabs in the Compendium",
-    quests: "Quests",
-    places: "Places",
-    readables: "Readables",
-    bosses: "Bosses",
     compendiumOpens:
       "Opens from the minimap menu, with /sp compendium, or from the Place Story button beside the world map",
     compendiumText: "Text size and the text language are set on Spoken's page",

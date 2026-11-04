@@ -46,10 +46,6 @@ const it: Dictionary = {
     compendium:
       "Ogni quest, storia di un luogo, libro e storia di un boss in una sola finestra, con una casella di ricerca. Ascoltane una qualsiasi senza andare sul posto.",
     compendiumTabs: "Schede del Compendium",
-    quests: "Quests",
-    places: "Places",
-    readables: "Readables",
-    bosses: "Bosses",
     compendiumOpens:
       "Si apre dal menu della minimappa, con /sp compendium, o dal pulsante «Place Story» accanto alla mappa del mondo",
     compendiumText: "Dimensione e lingua del testo si impostano nella pagina di Spoken",
