@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import AdminHeader from "@/components/AdminHeader";
 import TeamsTable from "@/components/TeamsTable";
-import { Contained, Wide } from "@/components/Width";
+import { Wide } from "@/components/Width";
 import { CODES, BASE_LANG, langName } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
@@ -21,15 +22,14 @@ export default async function Page() {
   const counts = teams.flatMap((team) => team.langs).map((lang) => [lang, live.get(lang) ?? 0] as const);
 
   return (
-    <main className="pt-6 pb-36">
-      <Contained>
-        <h1 className="text-xl font-semibold">Teams</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          A team owns its languages&apos; takes, voices and settings, and the people who regenerate
-          them. Handing a language over moves all of it, and is refused while one of its jobs is
-          running.
-        </p>
-      </Contained>
+    <main className="pb-36">
+      <AdminHeader
+        lang={null}
+        administered={CODES}
+        global
+        tab="teams"
+        description="A team owns its languages' takes, voices and settings, and the people who regenerate them. Handing a language over moves all of it, and is refused while one of its jobs is running."
+      />
       <Wide>
         <TeamsTable
           initial={teams}

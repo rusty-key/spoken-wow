@@ -13,12 +13,19 @@ import { cn } from "@/lib/utils";
  * that moved the button next to the one being aimed at.
  *
  * Deliberately not a queue with pause-on-hover and swipe-to-dismiss. Three at a time, oldest
- * dropped, gone after a few seconds - the information is worth glancing at and never worth
- * acting on.
+ * dropped, gone after a few seconds - the information is worth glancing at. The one thing a
+ * toast may offer is to take back what it reports, for a change saved on a single click.
  */
 export type ToastTone = "info" | "error";
 
-type Toast = { id: number; tone: ToastTone; title: string; detail?: string };
+type Toast = {
+  id: number;
+  tone: ToastTone;
+  title: string;
+  detail?: string;
+  /** Takes back what the toast reports; offered until the toast goes. */
+  undo?: () => void;
+};
 
 const MAX_VISIBLE = 3;
 const DISMISS_MS = 6000;
@@ -62,12 +69,28 @@ export function Toaster({ children }: { children: React.ReactNode }) {
               toast.tone === "error" && "border-destructive/40 bg-destructive/10 text-destructive",
             )}
           >
-            <p className="font-medium">{toast.title}</p>
-            {toast.detail && (
-              <p className={cn("mt-0.5 text-xs", toast.tone === "error" || "text-muted-foreground")}>
-                {toast.detail}
-              </p>
-            )}
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{toast.title}</p>
+                {toast.detail && (
+                  <p className={cn("mt-0.5 text-xs", toast.tone === "error" || "text-muted-foreground")}>
+                    {toast.detail}
+                  </p>
+                )}
+              </div>
+              {toast.undo && (
+                <button
+                  type="button"
+                  className="text-primary-ink -my-0.5 rounded px-1.5 py-0.5 text-sm font-medium hover:underline"
+                  onClick={() => {
+                    toast.undo?.();
+                    setToasts((current) => current.filter((t) => t.id !== toast.id));
+                  }}
+                >
+                  Undo
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

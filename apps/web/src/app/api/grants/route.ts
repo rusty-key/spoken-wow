@@ -76,6 +76,11 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
   if (!canGrant(who.viewer, capability, lang)) return FORBIDDEN();
+  // Their own admin is what lets a language admin reach /admin at all, so taking it away
+  // would leave nobody on the team able to undo it. Another admin, or a global one, can.
+  if (userId === who.userId && capability === "admin" && !isAdmin(who.viewer.role)) {
+    return Response.json({ error: "you cannot remove your own admin" }, { status: 403 });
+  }
 
   await removeGrant(userId, lang, capability, who.userId);
   return listing(who.viewer);

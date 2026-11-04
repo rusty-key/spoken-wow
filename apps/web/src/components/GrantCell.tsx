@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
  * A tint per capability, so who can do what reads down the column without reading the
  * words. The heavier the capability, the warmer: admin is the only red one.
  */
-const CAPABILITY_COLOURS: Record<Capability, string> = {
+export const CAPABILITY_COLOURS: Record<Capability, string> = {
   text: "border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300",
   edit: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   regenerate: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300",
@@ -158,8 +158,7 @@ function GrantPopover({
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       {/* Mounted only while open, so the choice starts fresh each time. */}
       <PopoverContent align="start" className="w-auto max-w-[min(32rem,calc(100vw-2rem))]">
-        {children}
-      </PopoverContent>
+        </PopoverContent>
     </Popover>
   );
 }
@@ -172,19 +171,16 @@ function GrantPopover({
  * left out, and changing the language clears what was ticked. `lang` fixes the language and
  * hides its select, for adding to one somebody already holds.
  */
-export function GrantPicker({
+function GrantPicker({
   offer,
   lang: fixed,
   busy,
   onPick,
-  children,
 }: {
   offer: (lang: Lang) => readonly Capability[];
   lang?: Lang;
   busy: boolean;
   onPick: (lang: Lang, capabilities: Capability[]) => void;
-  /** Anything to put before the selects, such as an email field; the whole is one form. */
-  children?: React.ReactNode;
 }) {
   const langs = CODES.filter((code) => offer(code).length > 0);
   const [lang, setLang] = useState(fixed ?? langs[0]);
@@ -207,7 +203,6 @@ export function GrantPicker({
         if (lang && picked.size) onPick(lang, offered.filter((cap) => picked.has(cap)));
       }}
     >
-      {children}
       {fixed ? null : (
         <Select
           value={lang}
