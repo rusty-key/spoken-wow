@@ -100,7 +100,20 @@ function changed(section: ReleaseSection): string {
  * retired line, a renamed one, one ignored or let back in. Distinct lines, not edits, and none
  * that has a new take too, since that line is counted with the audio already.
  */
-const TEXT_KINDS = ["text.edited", "text.restored", "text.retired", "name.edited", "name.restored", "name.retired", "ignore.set", "ignore.cleared"];
+const TEXT_KINDS = ["text.edited", "text.restored", "text.retired", "ignore.set", "ignore.cleared"];
+
+/**
+ * The name kinds each section's build reads as they stand on the site. A name's activity row has
+ * no section, so its kind is what says which pack it changes. Quest titles ship from quest_line,
+ * and readables' lookup takes only extracted and contributed names, so a site edit of either
+ * reaches no pack and would read as a release with nothing in it.
+ */
+const SHIPPED_NAMES: Record<ReleaseSection, readonly string[]> = {
+  quests: ["creature", "gameobject", "item"],
+  places: ["zone", "subzone"],
+  readables: [],
+  bosses: ["boss"],
+};
 
 /**
  * With `list` false, the counts alone: the release page asks for those on every check, and the
@@ -143,11 +156,16 @@ export async function pendingChanges(
     ? await readAs<{ count: string }>(
         lang,
         `select count(distinct coalesce(a."lineId", a."subject")) as "count" from "activity" a
-          where a."lang" = $1 and a."source" = $2 and a."at" > $3 and a."kind" = any($4::text[])
+          where a."at" > $3
+            and ((a."lang" = $1 and a."source" = $2 and a."kind" = any($4::text[]))
+                 -- An ignore in every language has no language of its own, and the build applies it.
+                 or (a."lang" is null and a."source" = $2 and a."kind" in ('ignore.set', 'ignore.cleared'))
+                 or (a."lang" = $1 and a."source" is null and a."kind" in ('name.edited', 'name.restored', 'name.retired')
+                     and split_part(a."subject", ':', 1) = any($5::text[])))
             and not exists (select 1 from "take" t
                              where t."source" = $2 and t."lang" = $1 and t."isCurrent"
                                and t."lineId" = coalesce(a."lineId", a."subject") and t."createdAt" > $3)`,
-        [lang, section, since, TEXT_KINDS],
+        [lang, section, since, TEXT_KINDS, SHIPPED_NAMES[section]],
       )
     : [{ count: "0" }];
   const names = await namesOf([...rows.map((row) => row.by), ...people.map((row) => row.by)]);

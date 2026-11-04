@@ -1,6 +1,7 @@
 /** Needs DATABASE_URL and migrations applied. */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { recordActivity } from "@/lib/activity/store";
 import { closeDb } from "@/lib/db";
 import { asSystem, ownTeam } from "@/lib/teams/testing";
 
@@ -27,7 +28,7 @@ describe("pendingChanges", () => {
 
   afterEach(async () => {
     await asSystem.query(`delete from "take" where "file" like 'pending-test-%'`);
-    await asSystem.query(`delete from "activity" where "subject" like 'pending-test-%'`);
+    await asSystem.query(`delete from "activity" where "subject" like 'pending-test-%' or "subject" like '%:pending-test-%'`);
     await asSystem.query(`delete from "lore_line" where "lineId" like 'z:pending-test-%'`);
   });
 
@@ -101,6 +102,25 @@ describe("pendingChanges", () => {
     const start = (await pendingChanges("places", "deDE", null, { list: false })).count;
     await take("pending-test-old", 1, before, { team: de.team });
     expect((await pendingChanges("places", "deDE", null, { list: false })).count).toBe(start + 1);
+  });
+
+  it("counts a rename only in the sections whose build reads that kind of name", async () => {
+    for (const subject of ["zone:pending-test-zone", "creature:pending-test-npc", "item:pending-test-owner", "quest:pending-test-quest"]) {
+      await recordActivity({ kind: "name.edited", lang: "deDE", actorId: null, subject, detail: { version: 2 } });
+    }
+    const counted = async (section: "places" | "quests" | "readables" | "bosses") =>
+      (await pendingChanges(section, "deDE", CUTOFF, { list: false })).textChanges;
+    expect(await counted("places")).toBe(1);
+    expect(await counted("quests")).toBe(2);
+    expect(await counted("readables")).toBe(0);
+    expect(await counted("bosses")).toBe(0);
+  });
+
+  it("counts an ignore set in every language, in the section it belongs to", async () => {
+    const line = "pending-test-everywhere";
+    await recordActivity({ kind: "ignore.set", lang: null, actorId: null, source: "quests", subject: line, lineId: line, detail: {} });
+    expect((await pendingChanges("quests", "deDE", CUTOFF, { list: false })).textChanges).toBe(1);
+    expect((await pendingChanges("places", "deDE", CUTOFF, { list: false })).textChanges).toBe(0);
   });
 
   it("counts a line edited and then cut again once, as its new audio", async () => {
