@@ -259,7 +259,7 @@ export default function VoicePlayer({ voices, position }: { voices: Voice[]; pos
           {CHEVRON("M8 4l6 6-6 6")}
         </button>
       </div>
-      <Clip key={pick} voice={voices[pick]} position={position} />
+      <Clip key={voices[pick].audio} voice={voices[pick]} position={position} />
     </div>
   );
 }

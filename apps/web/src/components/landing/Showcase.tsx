@@ -46,7 +46,7 @@ export default function Showcase({ voices: all }: { voices: Record<string, Voice
       <div className="bn-stage-part">
         <div className="bn-stage-art">
           {voices?.length ? (
-            <VoicePlayer key={part.id} voices={voices} position={text.position} />
+            <VoicePlayer key={`${part.id}:${voices[0].audio}`} voices={voices} position={text.position} />
           ) : (
             <VoicePlaceholder icon={part.icon} name={text.title} text={t.noVoice} position={text.position} />
           )}
