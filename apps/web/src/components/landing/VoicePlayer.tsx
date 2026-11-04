@@ -18,7 +18,7 @@ const behavior = (): ScrollBehavior => (window.matchMedia("(prefers-reduced-moti
  * the words below it, lit as they are spoken by the start times measured against this audio. The
  * file downloads when it is played.
  */
-function Clip({ voice, position, disabled = false }: { voice: Voice; position: string; disabled?: boolean }) {
+function Clip({ voice, position, disabled = false, textLang = "en" }: { voice: Voice; position: string; disabled?: boolean; textLang?: string | null }) {
   const t = useSiteText().showcase;
   const audio = useRef<HTMLAudioElement>(null);
   const pending = useRef<number | null>(null);
@@ -155,7 +155,7 @@ function Clip({ voice, position, disabled = false }: { voice: Voice; position: s
           {t.failed}
         </p>
       )}
-      <p className="bn-voice-text" lang="en" ref={text}>
+      <p className="bn-voice-text" lang={textLang ?? undefined} ref={text}>
         {voice.words.map((word, i) => (
           <span key={i} className={i === current ? "now" : i < current ? "said" : undefined}>
             {word}{" "}
@@ -185,7 +185,7 @@ export function VoicePlaceholder({ icon, name, text, position }: { icon: string;
           </li>
         </ul>
       </div>
-      <Clip voice={none} position={position} disabled />
+      <Clip voice={none} position={position} disabled textLang={null} />
     </div>
   );
 }

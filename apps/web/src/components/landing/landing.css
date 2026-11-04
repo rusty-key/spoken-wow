@@ -2175,17 +2175,22 @@ html:has(.bn) {
 :lang(zh-TW) .bn {
   letter-spacing: 0;
 }
-:lang(ko-KR) .bn :is(.bn-links a, .bn-menu nav a, .bn-btn, .bn-tag, .bn-brand-name, .bn-display),
-:lang(zh-CN) .bn :is(.bn-links a, .bn-menu nav a, .bn-btn, .bn-tag, .bn-brand-name, .bn-display),
-:lang(zh-TW) .bn :is(.bn-links a, .bn-menu nav a, .bn-btn, .bn-tag, .bn-brand-name, .bn-display) {
+:lang(ko-KR) .bn *,
+:lang(zh-CN) .bn *,
+:lang(zh-TW) .bn * {
   letter-spacing: 0;
   text-transform: none;
+}
+:lang(ko-KR) .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button),
+:lang(zh-CN) .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button),
+:lang(zh-TW) .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button) {
+  font-family: var(--bn-body), var(--bn-fallback), sans-serif;
 }
 
 /* A phone: the bar holds the logo, the language, the sign-in button and the menu, and the longest
    words (Iniciar sesión, Anmelden) need the room the name takes. */
 @media (max-width: 520px) {
-  .bn-brand-name {
+  .bn-nav .bn-brand-name {
     display: none;
   }
   .bn-nav-end {
