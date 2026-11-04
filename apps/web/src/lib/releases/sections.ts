@@ -46,6 +46,40 @@ export type RunView = {
   by?: string | null;
 };
 
+/** One line whose audio went live since the section's last release. */
+export type PendingChange = {
+  file: string;
+  lineId: string | null;
+  version: number;
+  /** ISO: when it went live. */
+  at: string;
+  /** Who cut it, to filter by; `by` is their name, null when they have none or are gone. */
+  byId: string | null;
+  by: string | null;
+  /** A newly cut take, or an older version put back. */
+  kind: "new" | "restored";
+  /** What the line belongs to and says, in the language; null before it has a text row. */
+  title: string | null;
+  text: string | null;
+};
+
+export type PendingView = {
+  /** ISO start of the run this counts from; null when nothing was released from here yet. */
+  since: string | null;
+  count: number;
+  /** Of `count`, the older versions put back; the rest are new takes. */
+  restored: number;
+  /**
+   * Lines whose text, name or ignore changed with no new audio, which the release also sends:
+   * a correction to a quest's title ships in the lookup, not in a take.
+   */
+  textChanges: number;
+  /** Who made the changes, most first; a null name has none, or is an account since deleted. */
+  people: { id: string | null; name: string | null; count: number }[];
+  /** The newest of them, up to a limit. */
+  changes: PendingChange[];
+};
+
 export type ReleaseView = {
   active: RunView | null;
   recent: RunView[];
@@ -54,4 +88,11 @@ export type ReleaseView = {
    * the site knows. `recent` is only the latest few runs of every section together.
    */
   released: Record<string, RunView>;
+  /**
+   * Whether a press may choose patch, minor or major. A release on this machine bumps as asked;
+   * one dispatched to GitHub Actions takes no bump, so offering one would be a choice ignored.
+   */
+  bumpable: boolean;
+  /** Per section: what a release would send that players do not have yet. */
+  pending: Record<string, PendingView>;
 };

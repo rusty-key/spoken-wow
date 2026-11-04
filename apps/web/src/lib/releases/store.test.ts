@@ -4,7 +4,7 @@ import { closeDb, db } from "@/lib/db";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/testing";
 
-import { ReleaseBusyError, activeRun, lastDoneRuns, recentRuns, startRun, updateRun } from "./store";
+import { ReleaseBusyError, activeRun, lastDoneRuns, lastReleasedAt, recentRuns, startRun, updateRun } from "./store";
 
 // Only this file touches release_run, and vitest.config runs files one at a time, so the
 // one-active index cannot be tripped by another suite.
@@ -57,6 +57,18 @@ describe("release runs", () => {
     }
     const runs = await lastDoneRuns("deDE");
     expect(runs.map((run) => [run.section, run.version])).toEqual([["bosses", "1.0.0"]]);
+  });
+
+  it("counts a section as released from a run that released or found nothing, not one that failed", async () => {
+    const done = await startRun("quests", "deDE", user.id);
+    await updateRun(done.id, { state: "done", version: "1.0.0" });
+    const unchanged = await startRun("places", "deDE", user.id);
+    await updateRun(unchanged.id, { state: "unchanged" });
+    const failed = await startRun("bosses", "deDE", user.id);
+    await updateRun(failed.id, { state: "failed", error: "no" });
+    const released = await lastReleasedAt("deDE");
+    expect([...released.keys()].sort()).toEqual(["places", "quests"]);
+    expect(released.get("quests")?.getTime()).toBe(done.createdAt.getTime());
   });
 
   it("keeps a run to its own language's team", async () => {

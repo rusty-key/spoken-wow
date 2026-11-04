@@ -1,11 +1,10 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ReleaseLog from "@/components/ReleaseLog";
+import ReleaseReview from "@/components/ReleaseReview";
 import { Toaster, useToast } from "@/components/ui/toast";
 import { useLocalDates } from "@/components/useLocalDates";
 import { langName, type Lang } from "@/lib/lang";
@@ -13,6 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   isSettled,
   RELEASE_SECTIONS,
+  type PendingView,
   type ReleaseBump,
   type ReleaseSection,
   type ReleaseView,
@@ -46,39 +46,6 @@ function RunLink({ run, children }: { run: RunView; children: React.ReactNode })
     <a href={run.githubUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
       {children}
     </a>
-  );
-}
-
-function ReleaseButton({ disabled, onRelease }: { disabled: boolean; onRelease: (bump: ReleaseBump) => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="flex">
-      <Button disabled={disabled} className="rounded-r-none" onClick={() => onRelease("patch")}>
-        Patch release
-      </Button>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button disabled={disabled} size="icon" aria-label="Other releases" className="border-background rounded-l-none border-l">
-            <ChevronDown className={open ? "size-4 rotate-180" : "size-4"} />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-44 p-1">
-          {(["minor", "major"] as const).map((bump) => (
-            <button
-              key={bump}
-              type="button"
-              className="hover:bg-muted w-full cursor-pointer rounded px-2 py-1.5 text-left text-sm capitalize"
-              onClick={() => {
-                setOpen(false);
-                onRelease(bump);
-              }}
-            >
-              {bump} release
-            </button>
-          ))}
-        </PopoverContent>
-      </Popover>
-    </div>
   );
 }
 
@@ -151,8 +118,8 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
   // coming back asks at once instead of showing a finished run as running until the next tick.
   // It also catches a run another admin started from their browser.
   useEffect(() => {
-    // Switching windows back and forth asks at most once in a while; a poll in progress already
-    // keeps a running release current.
+    // Each answer counts every section's unreleased lines, so switching windows back and forth
+    // asks at most once in a while; a poll in progress already keeps a running release current.
     const look = () => {
       if (!document.hidden && Date.now() - asked.current > FOCUS_MIN_MS) void refresh();
     };
@@ -231,11 +198,14 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
           <SectionCard
             key={section}
             section={section}
+            lang={lang}
+            pending={view.pending[section]}
             last={lastSettled(view, section)}
             released={view.released[section]}
             current={ours?.section === section ? ours : null}
             disabled={running || pressing}
             waitingFor={running && ours?.section !== section ? holdUp : null}
+            bumpable={view.bumpable}
             onRelease={(bump) => void release(section, bump)}
           />
         ))}
@@ -247,14 +217,19 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
 /** One section's pack: the version last released from here, who released it when, and the button. */
 function SectionCard({
   section,
+  lang,
+  pending,
   last,
   released,
   current,
   disabled,
   waitingFor,
+  bumpable,
   onRelease,
 }: {
   section: ReleaseSection;
+  lang: Lang;
+  pending: PendingView;
   /** Its newest settled run. */
   last: RunView | undefined;
   /** Its newest run that released, however far back. */
@@ -263,14 +238,31 @@ function SectionCard({
   disabled: boolean;
   /** The run this card's button waits on, when it is another section's or language's. */
   waitingFor: string | null;
+  /** Whether the review may offer patch, minor and major (ReleaseView.bumpable). */
+  bumpable: boolean;
   onRelease: (bump: ReleaseBump) => void;
 }) {
   const date = useLocalDates();
   const logRun = current ?? last;
+  const [reviewing, setReviewing] = useState(false);
+  const total = pending.count + pending.textChanges;
+  const nothing = total === 0;
+  const tag = current
+    ? { text: "Releasing", tone: "border-primary/35 text-primary-ink" }
+    : nothing && pending.since
+      ? { text: "Up to date", tone: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" }
+      : !pending.since && pending.count
+        ? { text: "First release", tone: "border-primary/35 bg-primary/10 text-primary-ink" }
+        : total
+          ? { text: `${total.toLocaleString()} to release`, tone: "border-primary/35 bg-primary/10 text-primary-ink" }
+          : null;
   return (
-    <article className="bg-card flex flex-col gap-3 rounded-lg border p-4">
-      <header className="flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold capitalize">{section}</h2>
+    <article className={cn("bg-card flex flex-col gap-3 rounded-lg border p-4", (current || total > 0) && "border-primary/30")}>
+      <header className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2.5 font-semibold capitalize">
+          {section}
+          {tag && <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium normal-case", tag.tone)}>{tag.text}</span>}
+        </h2>
         <span className="text-muted-foreground font-mono text-sm">
           {released?.version ? `v${released.version}` : "no version yet"}
         </span>
@@ -287,6 +279,35 @@ function SectionCard({
             </>
           ) : (
             <span className="text-muted-foreground">Not released from here yet</span>
+          )}
+        </dd>
+        <dt className="text-muted-foreground">Unreleased</dt>
+        <dd className="tabular-nums">
+          {nothing ? (
+            <span className="text-muted-foreground">
+              {pending.since ? "Nothing new. Players have all of it." : "No audio live yet"}
+            </span>
+          ) : (
+            <>
+              {pending.count > 0 && (
+                <>
+                  <span className="text-primary-ink font-semibold">
+                    {pending.count.toLocaleString()} {pending.count === 1 ? "line" : "lines"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {pending.since
+                      ? ` · ${(pending.count - pending.restored).toLocaleString()} new${pending.restored ? `, ${pending.restored} put back` : ""}`
+                      : " · everything live"}
+                  </span>
+                </>
+              )}
+              {pending.textChanges > 0 && (
+                <span className={pending.count > 0 ? "text-muted-foreground" : "text-primary-ink font-semibold"}>
+                  {pending.count > 0 ? " · " : ""}
+                  {pending.textChanges.toLocaleString()} {pending.textChanges === 1 ? "text change" : "text changes"}
+                </span>
+              )}
+            </>
           )}
         </dd>
         <dt className="text-muted-foreground">Status</dt>
@@ -326,8 +347,35 @@ function SectionCard({
             waitingFor && <p className="text-muted-foreground text-xs">Waits for {waitingFor} to finish.</p>
           )}
         </div>
-        <ReleaseButton disabled={disabled} onRelease={onRelease} />
+        {/* The count sees audio and text, not lines removed by a fold; the release decides. */}
+        {nothing && !disabled && (
+          <Button variant="link" size="sm" className="text-muted-foreground px-0" onClick={() => setReviewing(true)}>
+            Release anyway
+          </Button>
+        )}
+        <Button
+          disabled={disabled || nothing}
+          onClick={() => setReviewing(true)}
+          title={nothing && pending.since ? "No audio or text changed in this section since its last release." : undefined}
+          variant={disabled || nothing ? "outline" : "default"}
+        >
+          {current
+            ? "Releasing…"
+            : nothing
+              ? "Nothing to release"
+              : `Review release · ${total.toLocaleString()}`}
+        </Button>
       </div>
+      <ReleaseReview
+        open={reviewing}
+        onOpenChange={setReviewing}
+        section={section}
+        lang={lang}
+        pending={pending}
+        version={released?.version}
+        bumpable={bumpable}
+        onRelease={onRelease}
+      />
     </article>
   );
 }
