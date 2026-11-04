@@ -287,7 +287,7 @@ export const PACKS: readonly Pack[] = [
   { section: "bosses", lang: "esES", curseforge: "spoken-spanish-eu-audio-bosses", release: "bosses-audio-esES" },
   { section: "bosses", lang: "esMX", curseforge: "spoken-spanish-al-audio-bosses", release: "bosses-audio-esMX" },
   { section: "bosses", lang: "frFR", curseforge: null, release: "bosses-audio-frFR" },
-  { section: "bosses", lang: "ptBR", curseforge: null, release: "bosses-audio-ptBR" },
+  { section: "bosses", lang: "ptBR", curseforge: "spoken-portuguese-audio-bosses", release: "bosses-audio-ptBR" },
   { section: "bosses", lang: "ruRU", curseforge: null, release: "bosses-audio-ruRU" },
   { section: "bosses", lang: "koKR", curseforge: null, release: "bosses-audio-koKR" },
   { section: "bosses", lang: "zhCN", curseforge: null, release: "bosses-audio-zhCN" },
