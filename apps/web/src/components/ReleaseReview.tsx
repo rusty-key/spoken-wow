@@ -3,15 +3,22 @@
 import { Pause, Play } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import Avatar from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useLocalDates } from "@/components/useLocalDates";
-import { langName, type Lang } from "@/lib/lang";
-import { RELEASE_BUMPS, type PendingChange, type PendingView, type ReleaseBump } from "@/lib/releases/sections";
+import { langName, withLang, type Lang } from "@/lib/lang";
+import {
+  RELEASE_BUMPS,
+  type PendingChange,
+  type PendingView,
+  type ReleaseBump,
+  type ReleaseSection,
+} from "@/lib/releases/sections";
+import { SOURCE_LABELS } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
 
-const WHEN: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" };
 const CLOCK: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
 const lines = (n: number) => `${n.toLocaleString()} ${n === 1 ? "line" : "lines"}`;
@@ -53,7 +60,7 @@ export default function ReleaseReview({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  section: string;
+  section: ReleaseSection;
   lang: Lang;
   pending: PendingView;
   /**
@@ -94,7 +101,7 @@ function Review({
   onCancel,
   onRelease,
 }: {
-  section: string;
+  section: ReleaseSection;
   lang: Lang;
   pending: PendingView;
   version: string | null | undefined;
@@ -121,7 +128,7 @@ function Review({
   const [filter, setFilter] = useState<Filter>({ kind: "all", q: "" });
   const [playing, setPlaying] = useState<string | null>(null);
   const audio = useRef<HTMLAudioElement>(null);
-  const name = `${section[0].toUpperCase()}${section.slice(1)}`;
+  const name = SOURCE_LABELS[section];
   // Without a bump the release keeps the version GitHub's workflow gives it, which nothing here knows.
   const next = bumpable ? bumped(version, bump) : null;
   const created = pending.count - pending.restored;
@@ -157,7 +164,7 @@ function Review({
       setPlaying(null);
       return;
     }
-    element.src = `/api/takes/audio?${new URLSearchParams({ source: section, file: change.file, version: String(change.version), lang })}`;
+    element.src = withLang(lang, `/api/takes/audio?${new URLSearchParams({ source: section, file: change.file, version: String(change.version) })}`);
     void element.play().catch(() => setPlaying(null));
     setPlaying(key);
   }
@@ -177,7 +184,7 @@ function Review({
         </DialogTitle>
         <DialogDescription className="mt-1.5">
           {pending.since ? (
-            <>Audio that went live since the last release started, on {date(pending.since, WHEN)}. </>
+            <>Audio that went live since the last release started, on {date(pending.since)}. </>
           ) : (
             <>Nothing was released from here yet, so this sends every live line. </>
           )}
@@ -262,7 +269,7 @@ function Review({
           <p className="text-muted-foreground border-b px-5 py-2.5 text-sm">
             {pending.count > 0 ? "Also " : ""}
             <span className="text-foreground font-medium">
-              {pending.textChanges.toLocaleString()} {pending.textChanges === 1 ? "line" : "lines"}
+              {lines(pending.textChanges)}
             </span>{" "}
             changed in text, name or ignore with no new audio; their text goes out with the release.
           </p>
@@ -398,20 +405,6 @@ function Kind({ kind }: { kind: PendingChange["kind"] }) {
       )}
     >
       {kind === "new" ? "new" : "put back"}
-    </span>
-  );
-}
-
-function Avatar({ name, small }: { name: string | null; small?: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "bg-muted text-muted-foreground inline-grid shrink-0 place-items-center rounded-full font-semibold",
-        small ? "size-5 text-[10px]" : "size-6 text-xs",
-      )}
-    >
-      {(name ?? "?")[0].toUpperCase()}
     </span>
   );
 }

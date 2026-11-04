@@ -16,7 +16,8 @@ import type { Lang } from "@/lib/lang";
 import { readAs } from "@/lib/teams/store";
 import { namesOf } from "@/lib/users/store";
 
-import type { PendingChange, PendingView, ReleaseSection } from "./sections";
+import { RELEASE_SECTIONS, type PendingChange, type PendingView, type ReleaseSection } from "./sections";
+import { lastReleasedAt } from "./store";
 
 /** As many as the dialog lists; the counts are of all of them. */
 const LISTED = 200;
@@ -128,9 +129,10 @@ export async function pendingChanges(
   const CHANGED = changed(section);
   // One after another: a page asks for every section at once, and each query here holds a
   // connection of its own while it runs.
-  const counts = await readAs<{ total: string; restored: string }>(
+  const byPerson = await readAs<{ by: string | null; count: string; restored: string }>(
     lang,
-    `select count(*) as "total", count(*) filter (where "kind" = 'restored') as "restored" from (${CHANGED}) c`,
+    `select "by", count(*) as "count", count(*) filter (where "kind" = 'restored') as "restored"
+       from (${CHANGED}) c group by "by" order by count(*) desc`,
     [section, lang, since],
   );
   const rows = list
@@ -144,13 +146,7 @@ export async function pendingChanges(
       )
     : [];
   // Everybody in the list, restores included, so a person's chip counts the rows it filters to.
-  const people = list
-    ? await readAs<{ by: string | null; count: string }>(
-        lang,
-        `select "by", count(*) as "count" from (${CHANGED}) c group by "by" order by count(*) desc`,
-        [section, lang, since],
-      )
-    : [];
+  const people = list ? byPerson : [];
   // Before any release everything goes out anyway, so there is nothing to add.
   const text = since
     ? await readAs<{ count: string }>(
@@ -183,10 +179,21 @@ export async function pendingChanges(
   }));
   return {
     since: since?.toISOString() ?? null,
-    count: Number(counts[0]?.total ?? 0),
-    restored: Number(counts[0]?.restored ?? 0),
+    count: byPerson.reduce((sum, row) => sum + Number(row.count), 0),
+    restored: byPerson.reduce((sum, row) => sum + Number(row.restored), 0),
     textChanges: Number(text[0]?.count ?? 0),
     people: people.map((row) => ({ id: row.by, name: name(row.by), count: Number(row.count) })),
     changes,
   };
+}
+
+/** Every section's counts in a language, each from its own last release. */
+export async function pendingBySection(lang: Lang): Promise<Record<ReleaseSection, PendingView>> {
+  const released = await lastReleasedAt(lang);
+  const sections = await Promise.all(
+    RELEASE_SECTIONS.map(
+      async (section) => [section, await pendingChanges(section, lang, released.get(section) ?? null, { list: false })] as const,
+    ),
+  );
+  return Object.fromEntries(sections) as Record<ReleaseSection, PendingView>;
 }
