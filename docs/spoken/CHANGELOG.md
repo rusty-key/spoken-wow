@@ -2,6 +2,14 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Spoken no longer adds a Play button to Questie's tracker.** The Questie team asked for this
+  so Spoken stops depending on their tracker's internals, and they plan to add Spoken support on
+  their side. Until then, Questie's tracker has no Play button; the Quest Log and Blizzard's
+  tracker keep theirs.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.1 — 2026-11-03
 
 - **Spoken's website is now [spoken.quest](https://spoken.quest).** Report and Contribute links and

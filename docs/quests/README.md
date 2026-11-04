@@ -1942,19 +1942,16 @@ own, which is what `SetPlayButtonState` calls instead of swapping the icon.
 
 Play is also on each quest in the objective tracker. The Quests page's Show Play Button section
 switches the two places apart: Quest Log (`QuestLogPlayButton`, which also takes away the log's
-Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in three shapes, so
-`Compatibility.lua` has one adapter for each, registered with `RegisterTrackerUpdater`.
+Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in two shapes, so
+`Compatibility.lua` has an adapter for each, registered with `RegisterTrackerUpdater`.
 `QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
 switched and when the setting changes, and a profile change redraws the quest log and the trackers.
 Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
 each block keeps one square button at its title's right. Classic Era's tracker writes each title
 into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
 watched quest's title text to a shown line and puts the round button left of it, so a title some
-other addon rewrites gets no button. Questie draws its own tracker, and its built-in Play answers
-only the retired AI_VoiceOver addon. Each Questie title line gets a separate Spoken button left of
-its minimize button, swept after `TrackerUtils:UpdateVoiceOverPlayButtons`, the last call of
-Questie's layout. A failing adapter is logged and never raises inside the tracker's own update.
-`tests/lua/quest_tracker_adapters_test.lua` covers the Era and Questie adapters.
+other addon rewrites gets no button. A failing adapter is logged and never raises inside the
+tracker's own update. `tests/lua/quest_tracker_adapters_test.lua` covers the Era adapter.
 
 The web suite runs against a **real Postgres**, because the invariants it protects — archive
 the current take before anything overwrites it, never hand the same file to two jobs — live in

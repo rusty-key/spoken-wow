@@ -82,7 +82,6 @@ function SettingsPanel:Setup()
     local function HasObjectiveTracker()
         return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
             or QuestWatch_Update ~= nil
-            or (_G.QuestieLoader and _G.QuestieLoader.ImportModule ~= nil)
     end
     layout:Section(L.OPT_SECTION_TRACKER)
     local questLogPlay = layout:Checkbox(L.OPT_TRACKER_QUEST_LOG, nil,
