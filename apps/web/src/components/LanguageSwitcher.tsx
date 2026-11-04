@@ -37,6 +37,7 @@ export default function LanguageSwitcher({ variant, label = "Language" }: { vari
   // took to render, which read as a switch that had refused.
   const [chosen, setChosen] = useState<string>(lang);
   const [offered, setOffered] = useState<Offered[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -45,7 +46,10 @@ export default function LanguageSwitcher({ variant, label = "Language" }: { vari
       .then((body: { languages: Offered[] }) => {
         if (live) setOffered(body.languages);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (live) setLoaded(true);
+      });
     return () => {
       live = false;
     };
@@ -53,7 +57,7 @@ export default function LanguageSwitcher({ variant, label = "Language" }: { vari
 
   // Until the list arrives the front page holds the select's place with the page's own language, so
   // the bar does not shift when the others appear.
-  if (variant === "landing" && offered.length === 0) {
+  if (variant === "landing" && !loaded) {
     return (
       <select className="bn-select bn-select-nav" aria-label={label} value={lang} disabled onChange={() => {}}>
         <option value={lang}>{nativeName(lang)}</option>
