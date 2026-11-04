@@ -2205,8 +2205,8 @@ html:has(.bn) {
     padding: 0 12px;
   }
   .bn-select-nav {
-    max-width: 136px;
-    padding-right: 32px;
+    max-width: 104px;
+    padding: 0 26px 0 10px;
     background-position: right 8px center;
   }
 }

@@ -12,7 +12,7 @@ const de: Dictionary = {
     sections: "Bereiche",
     menu: "Menü",
     voices: "Stimmen",
-    install: "Setup",
+    install: "Installieren",
     gallery: "Galerie",
     community: "Community",
     signIn: "Anmelden",
