@@ -806,7 +806,7 @@ local function Build()
 
     -- How lines follow one another.
     layout:Section(L.OPT_PLAYBACK_TITLE)
-    layout:Dropdown(L.OPT_PLAYBACK_SPEED, L.OPT_PLAYBACK_SPEED_TIP, SPEEDS,
+    layout:Dropdown(L.OPT_PLAYBACK_SPEED, nil, SPEEDS,
         function() return Spoken:GetPlaybackSpeed() end,
         function(v) Spoken:SetPlaybackSpeed(v) end, nil,
         function(v) return format("%g×", v) end)
