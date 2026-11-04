@@ -350,7 +350,7 @@ function SpokenReadables:PageOnScreen()
 			and self:PackLanguage(pack) == client then
 			local found = FindAny(pack)
 			if found then
-				self:RememberPageText(found, client, text, title)
+				self:RememberPageText(found, client, text, title, true)
 				return found, true
 			end
 		end
@@ -366,19 +366,18 @@ function SpokenReadables:PageOnScreen()
 	if not found then
 		return nil
 	end
-	self:RememberPageText(found, language, text, title)
+	self:RememberPageText(found, language, text, title, exact)
 	return found, exact
 end
 
--- Older translated packs have an index but no caption text. Remember only pages
--- identified as books, in the language of the matching index, for those packs.
+-- The page as the client drew it, in the language of the matching index, and whether its words
+-- matched (see PageTextIn).
 -- The title is the book's, so the pages queued after this one carry it too: the corpus has
 -- only the English one.
-function SpokenReadables:RememberPageText(pageId, language, text, title)
+function SpokenReadables:RememberPageText(pageId, language, text, title, exact)
 	self.pageText = self.pageText or {}
 	self.pageText[language] = self.pageText[language] or {}
-	self.pageText[language][pageId] = text:gsub("\r\n?", "\n"):gsub("%$[Bb]", "\n")
-		:gsub("<[^>]+>", " "):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+	self.pageText[language][pageId] = { text = self:ShownText(text), exact = exact == true }
 	local book = self:PlaceOf(pageId)
 	if book and type(title) == "string" and title ~= "" then
 		self.bookTitle = self.bookTitle or {}
@@ -398,16 +397,23 @@ function SpokenReadables:PackPageText(pageId, language)
 	return nil
 end
 
---- The page as the client showed it this session in `language`, or nil.
+--- The page as the client showed it this session in `language`, or nil, and whether it was matched
+--- by its words rather than placed by its owner or title.
 local function KeptText(self, pageId, language)
 	local kept = self.pageText and self.pageText[language] and self.pageText[language][pageId]
-	return type(kept) == "string" and kept ~= "" and kept or nil
+	if not kept or kept.text == "" then return nil end
+	return kept.text, kept.exact
 end
 
---- A page's words in `language`: the words of a pack recorded in it, else the page as the client
---- showed it this session. Nil where neither has them.
+--- A page's words in `language`: the page as the client showed it this session if matched by its
+--- words, else the words of a pack recorded in it, else the page as the client showed it however
+--- it was placed. Nil where none has them.
 function SpokenReadables:PageTextIn(pageId, language)
-	return self:PackPageText(pageId, language) or KeptText(self, pageId, language)
+	-- An exact page beats the pack: a pack made before layout was kept has the same words as one
+	-- line, while the client still has its paragraph breaks. A guessed page must not replace a pack.
+	local kept, exact = KeptText(self, pageId, language)
+	if exact then return kept end
+	return self:PackPageText(pageId, language) or kept
 end
 
 --- A page's words in this client's language, or nil. Page by page, so a readable can be in two
@@ -437,7 +443,7 @@ local function CaptionWords(self, pageId, language)
 	if place and type(place.text) == "string" and place.text ~= "" then
 		return self:SaidTokens(place.text), true
 	end
-	return KeptText(self, pageId, language)
+	return (KeptText(self, pageId, language))
 end
 
 local function CaptionIn(self, pageId, language, clipLanguage, clipText)

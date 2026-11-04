@@ -2,16 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { localeEntries, lookupPath, packLua } from "./lookup.mjs";
+import { quote } from "./lua.mjs";
 import { pageChecksum } from "./naming.mjs";
 
 test("English's lookup stays in the pack folder", () => {
   assert.match(lookupPath("enUS"), /addons\/SpokenReadablesAudio\/Data\/Sounds\.lua$/);
 });
 
-test("a voiced page carries caption text from its current language row", () => {
+test("a voiced page carries layout-preserving caption text from its current language row", () => {
   const lua = packLua("esMX", [{ pageId: 15, file: "15", durationSec: 2.5,
     text: "<H1>Registro</H1>Hola.$BAdiós." }]);
-  assert.match(lua, /text = "Registro Hola\. Adiós\."/);
+  assert.ok(lua.includes(`text = ${quote("Registro\nHola.\nAdiós.")}`));
 });
 
 test("an English clip carries no text: Books.lua has the words", () => {

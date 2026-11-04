@@ -75,6 +75,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## 3.6.0 — 2026-10-28
 
+- **The Compendium keeps a readable's paragraphs.** A page you read this session shows its line
+  breaks rather than one run of words. *([anon1231823](https://github.com/anon1231823))*
 - **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
   settings page and dungeon icon instead of using the generic book portrait.
   *([anon1231823](https://github.com/anon1231823))*

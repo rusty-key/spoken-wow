@@ -104,7 +104,7 @@ Expect("a page whose take kept its word times is timed by them",
 -- title's share of the recording says nothing about words of another length.
 stub.SetLocale("deDE")
 _G.SpokenReadablesSettings.voiceLanguage = "enUS"
-B:RememberPageText(15, "deDE", "Ein Brief an William, der eine ganze Weile dauert.", "Williams Lieferung")
+B:RememberPageText(15, "deDE", "Ein Brief an William, der eine ganze Weile dauert.", "Williams Lieferung", true)
 _G.SpokenReadablesAudioPacks.SpokenReadablesAudio.pages[15].times = "0 .5 1"
 local german = B:ClipFor(15)
 _G.SpokenReadablesAudioPacks.SpokenReadablesAudio.pages[15].times = nil

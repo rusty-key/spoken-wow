@@ -1,0 +1,6 @@
+plain paragraphs	First line\n\nSecond line	First line\n\nSecond line
+plain page breaks	Line one$BLine two$bLine three	Line one\nLine two\nLine three
+plain spaces before page break	One  $BTwo	One\nTwo
+signed page break	<HTML><BODY><P>One$BTwo</P></BODY></HTML>	One\nTwo
+signed spaces before page break	<HTML><BODY><P>One  $BTwo</P></BODY></HTML>	One\nTwo
+signed source whitespace	<HTML>\n<BODY>\n<P>One</P>\n</BODY>\n</HTML>	One

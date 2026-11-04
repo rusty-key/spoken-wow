@@ -62,6 +62,14 @@ local MARKUP = {
 }
 
 local ENTITIES = { amp = "&", quot = "\"", apos = "'", nbsp = " " }
+local SHOWN_ENTITIES = setmetatable({ lt = "<", gt = ">" }, { __index = ENTITIES })
+-- NUL terminates Lua's C strings, so use the next control byte as the temporary marker.
+local PAGE_BREAK = "\001"
+local NAME_PLACEHOLDER = "<[Nn][Oo][Mm][Bb][Rr][Ee]>"
+
+local function DecodeEntities(text, entities)
+	return (gsub(text, "&(%a+);", function(name) return entities[name] end))
+end
 
 local function IsMarkup(name)
 	return MARKUP[lower(name)] == true
@@ -71,6 +79,7 @@ end
 --- also take an ideographic space that Lua's %s does not.
 local function Unmark(text)
 	text = gsub(text, "[ \t\n\r\f\v]+", " ")
+	text = gsub(text, PAGE_BREAK, "\n")
 	text = gsub(text, "<(/?)([%w_]+)[^>]*>", function(slash, name)
 		if not IsMarkup(name) then return nil end
 		name = lower(name)
@@ -79,7 +88,7 @@ local function Unmark(text)
 		end
 		return ""
 	end)
-	text = gsub(text, "&(%a+);", function(name) return ENTITIES[name] end)
+	text = DecodeEntities(text, ENTITIES)
 	text = gsub(text, " +", " ")
 	text = gsub(text, " \n", "\n")
 	text = gsub(text, "\n ", "\n")
@@ -105,6 +114,11 @@ end
 function SpokenReadables:Normalise(text, keepMarkup)
 	text = gsub(text, "\r\n", "\n")
 	text = gsub(text, "\r", "\n")
+	-- `$B` is a real break inside signed HTML, not HTML whitespace: a placeholder carries it
+	-- through Unmark. Plain pages turn it into a newline before line cleanup.
+	if not keepMarkup and IsSigned(text) then
+		return Unmark(gsub(text, "%$[Bb]", PAGE_BREAK))
+	end
 	text = gsub(text, "%$[Bb]", "\n")
 	-- Trailing whitespace per line, then runs of blank lines, then the ends. Done in that
 	-- order because trimming first would leave a "   \n" in the middle looking blank.
@@ -115,8 +129,11 @@ function SpokenReadables:Normalise(text, keepMarkup)
 	end
 	text = gsub(text, "^%s+", "")
 	text = gsub(text, "%s+$", "")
-	if not keepMarkup and IsSigned(text) then
-		text = Unmark(text)
-	end
 	return text
+end
+
+--- The page as the client draws it: normalised layout, locale name marker removed and entities decoded.
+function SpokenReadables:ShownText(text)
+	text = self:Normalise(text)
+	return DecodeEntities(gsub(text, NAME_PLACEHOLDER, ""), SHOWN_ENTITIES)
 end

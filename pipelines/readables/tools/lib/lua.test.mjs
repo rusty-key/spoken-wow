@@ -24,10 +24,10 @@ test("a page records which book it belongs to and where", () => {
   assert.match(booksLua(entries), /\[11\] = \{ book = 10, number = 2, text = "Two\." \}/);
 });
 
-test("captions omit page markup without changing the reader's checksum", () => {
+test("captions retain page breaks without changing the reader's checksum", () => {
   const text = '<HTML><BODY><H1>Ledger</H1>Three crates.$B"Paid"</BODY></HTML>';
   const lua = booksLua([{ ...entries[0], text }]);
-  assert.ok(lua.includes(`text = ${quote('Ledger Three crates. "Paid"')}`));
+  assert.ok(lua.includes(`text = ${quote('Ledger\nThree crates.\n"Paid"')}`));
   assert.ok(lua.includes(`[${pageChecksum(text)}] = 10`));
 });
 
