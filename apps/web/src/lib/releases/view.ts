@@ -4,9 +4,10 @@ import type { Lang } from "@/lib/lang";
 import { ownerOrAll } from "@/lib/teams/store";
 import { namesOf } from "@/lib/users/store";
 
-import { readDropletRun } from "./droplet";
-import { isSettled, type ReleaseView, type RunView } from "./sections";
-import { lastDoneRuns, recentRuns, type ReleaseRun } from "./store";
+import { readDropletRun, runsOnDroplet } from "./droplet";
+import { pendingChanges } from "./pending";
+import { isSettled, RELEASE_SECTIONS, type PendingView, type ReleaseView, type RunView } from "./sections";
+import { lastDoneRuns, lastReleasedAt, recentRuns, type ReleaseRun } from "./store";
 import { syncActive } from "./sync";
 
 const RECENT = 20;
@@ -47,6 +48,14 @@ export async function releaseView(lang: Lang): Promise<ReleaseView> {
       ? await withLog(ours, names)
       : { section: active.section, lang: active.lang, state: active.state, own: false };
   }
+  const releasedAt = await lastReleasedAt(lang);
+  const pending: Record<string, PendingView> = Object.fromEntries(
+    await Promise.all(
+      RELEASE_SECTIONS.map(
+        async (section) => [section, await pendingChanges(section, lang, releasedAt.get(section) ?? null)] as const,
+      ),
+    ),
+  );
   // A card opens the log of its running run or its newest settled one, and no other.
   const opened = new Set<string>();
   return {
@@ -59,5 +68,7 @@ export async function releaseView(lang: Lang): Promise<ReleaseView> {
       }),
     ),
     released: Object.fromEntries(done.map((run) => [run.section, ownView(run, names)])),
+    bumpable: runsOnDroplet(),
+    pending,
   };
 }

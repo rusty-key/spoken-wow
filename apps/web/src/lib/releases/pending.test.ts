@@ -1,0 +1,126 @@
+/** Needs DATABASE_URL and migrations applied. */
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+
+import { closeDb } from "@/lib/db";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
+
+import { pendingChanges } from "./pending";
+
+const CUTOFF = new Date("2026-11-01T12:00:00Z");
+const before = "2026-11-01T11:00:00Z";
+const after = "2026-11-02T09:00:00Z";
+
+async function take(file: string, version: number, at: string, { current = true, lang = "deDE", team = "" } = {}) {
+  await asSystem.query(
+    `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "createdAt", "teamId")
+     values ('places', $1, $2, $3, $4, $5, 'generated', 1, $6, $7)`,
+    [lang, file, `z:${file}`, version, current, at, team],
+  );
+}
+
+describe("pendingChanges", () => {
+  let de: Awaited<ReturnType<typeof ownTeam>>;
+
+  beforeAll(async () => {
+    de = await ownTeam("deDE");
+  });
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "take" where "file" like 'pending-test-%'`);
+    await asSystem.query(`delete from "activity" where "subject" like 'pending-test-%'`);
+    await asSystem.query(`delete from "lore_line" where "lineId" like 'z:pending-test-%'`);
+  });
+
+  afterAll(async () => {
+    await de.restore();
+    await closeDb();
+  });
+
+  it("counts the takes that went live after the last release, and nothing older or not live", async () => {
+    await take("pending-test-old", 1, before, { team: de.team });
+    await take("pending-test-new", 1, after, { team: de.team });
+    await take("pending-test-replaced", 1, after, { team: de.team, current: false });
+    await take("pending-test-replaced", 2, after, { team: de.team });
+
+    const pending = await pendingChanges("places", "deDE", CUTOFF);
+    expect(pending.count).toBe(2);
+    expect(pending.changes.map((c) => [c.file, c.version, c.kind]).sort()).toEqual([
+      ["pending-test-new", 1, "new"],
+      ["pending-test-replaced", 2, "new"],
+    ]);
+    expect(pending.since).toBe(CUTOFF.toISOString());
+  });
+
+  async function restored(file: string, at: string) {
+    await asSystem.query(
+      `insert into "activity" ("at", "lang", "kind", "source", "subject", "detail", "teamId")
+       values ($1, 'deDE', 'take.restored', 'places', $2, '{"version":1}', $3)`,
+      [at, file, de.team],
+    );
+  }
+
+  it("counts an older version put back since, once", async () => {
+    // v2 was live at the release; going back to v1 is a change players have not had.
+    await take("pending-test-restored", 1, "2026-11-01T10:00:00Z", { team: de.team });
+    await take("pending-test-restored", 2, before, { team: de.team, current: false });
+    await restored("pending-test-restored", "2026-11-02T08:00:00Z");
+    await restored("pending-test-restored", after);
+    const pending = await pendingChanges("places", "deDE", CUTOFF);
+    expect(pending.changes).toEqual([expect.objectContaining({ file: "pending-test-restored", kind: "restored", version: 1 })]);
+    expect(pending.restored).toBe(1);
+  });
+
+  it("does not count going back to what was live at the release", async () => {
+    // v2 released, v3 cut and disliked, v2 put back: players already have it.
+    await take("pending-test-undo", 2, before, { team: de.team });
+    await take("pending-test-undo", 3, after, { team: de.team, current: false });
+    await restored("pending-test-undo", after);
+    expect((await pendingChanges("places", "deDE", CUTOFF)).count).toBe(0);
+  });
+
+  it("counts lines whose text or ignore changed with no new audio, once each", async () => {
+    for (const kind of ["text.edited", "text.edited", "ignore.set"]) {
+      await asSystem.query(
+        `insert into "activity" ("at", "lang", "kind", "source", "subject", "lineId", "detail", "teamId")
+         values ($1, 'deDE', $2, 'places', 'pending-test-text', $3, '{}', $4)`,
+        [after, kind, kind === "ignore.set" ? "z:pending-test-b" : "z:pending-test-a", de.team],
+      );
+    }
+    const pending = await pendingChanges("places", "deDE", CUTOFF);
+    expect(pending.textChanges).toBe(2);
+    expect(pending.count).toBe(0);
+  });
+
+  it("gives the counts alone without a list", async () => {
+    await take("pending-test-new", 1, after, { team: de.team });
+    const pending = await pendingChanges("places", "deDE", CUTOFF, { list: false });
+    expect(pending).toMatchObject({ count: 1, changes: [], people: [] });
+  });
+
+  it("counts everything live when nothing was released yet", async () => {
+    await take("pending-test-old", 1, before, { team: de.team });
+    expect((await pendingChanges("places", "deDE", null)).count).toBeGreaterThanOrEqual(1);
+  });
+
+  it("names each line and says what it says, and counts who cut them", async () => {
+    await take("pending-test-zone", 1, after, { team: de.team });
+    await asSystem.query(
+      `insert into "lore_line" ("lineId", "lang", "version", "isCurrent", "origin", "mapID", "kind", "name", "full", "short")
+       values ('z:pending-test-zone', 'deDE', 1, true, 'translated', 1, 'zone', 'Wald von Elwynn', 'Ein friedlicher Wald.', '')`,
+    );
+    const pending = await pendingChanges("places", "deDE", CUTOFF);
+    expect(pending.changes[0]).toMatchObject({ title: "Wald von Elwynn", text: "Ein friedlicher Wald." });
+    expect(pending.restored).toBe(0);
+    expect(pending.people).toEqual([{ id: null, name: null, count: 1 }]);
+  });
+
+  it.each(["quests", "places", "readables", "bosses"] as const)("runs %s's text lookup", async (section) => {
+    await asSystem.query(
+      `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "createdAt", "teamId")
+       values ($1, 'deDE', 'pending-test-each', 'boss:1:pending-test', 1, true, 'generated', 1, $2, $3)`,
+      [section, after, de.team],
+    );
+    const pending = await pendingChanges(section, "deDE", CUTOFF);
+    expect(pending.changes).toEqual([expect.objectContaining({ file: "pending-test-each", title: null, text: null })]);
+  });
+});

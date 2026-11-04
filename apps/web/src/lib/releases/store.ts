@@ -124,3 +124,17 @@ export async function recentRuns(lang: Lang, limit: number): Promise<ReleaseRun[
     [lang, limit],
   );
 }
+
+/**
+ * Per section, when the newest run that brought players up to date started: one that released,
+ * or that found nothing to. Counted from the start because the build reads the takes then.
+ */
+export async function lastReleasedAt(lang: Lang): Promise<Map<string, Date>> {
+  const rows = await readAs<{ section: string; at: Date }>(
+    lang,
+    `select "section", max("createdAt") as "at" from "release_run"
+      where "lang" = $1 and "state" in ('done', 'unchanged') group by "section"`,
+    [lang],
+  );
+  return new Map(rows.map((row) => [row.section, row.at]));
+}
