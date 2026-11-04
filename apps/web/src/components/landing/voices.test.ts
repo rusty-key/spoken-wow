@@ -53,4 +53,17 @@ describe("the front page's voice samples", () => {
       });
     });
   }
+
+  it("has three hero subtitle lines in every file, with words and no replacement character", () => {
+    const heroDir = join(__dirname, "hero");
+    expect(existsSync(join(heroDir, "enUS.json"))).toBe(true);
+    for (const file of readdirSync(heroDir)) {
+      const lines = JSON.parse(readFileSync(join(heroDir, file), "utf8"));
+      expect(lines, file).toHaveLength(3);
+      for (const line of lines) {
+        expect(line.words.length, file).toBeGreaterThan(2);
+        expect(JSON.stringify(line), file).not.toContain("�");
+      }
+    }
+  });
 });

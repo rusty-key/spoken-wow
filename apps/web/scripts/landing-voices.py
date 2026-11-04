@@ -1,7 +1,7 @@
 """
 Builds the front page's voice samples for each language from the live site.
 
-    py -3 -X utf8 apps/web/scripts/landing-voices.py [lang ...]        (default: every language)
+    py -3 -X utf8 apps/web/scripts/landing-voices.py [--hero] [lang ...]        (default: every language)
 
 For each language it takes the same lines the English set uses (quests, gossip, places,
 readables) plus four boss stories, by id, from spoken.quest's public API in that language.
@@ -33,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.dirname(HERE)
 AUDIO_OUT = os.path.join(WEB, "public", "landing", "voice")
 DATA_OUT = os.path.join(WEB, "src", "components", "landing", "voices")
+HERO_OUT = os.path.join(WEB, "src", "components", "landing", "hero")
 CACHE = os.environ.get("LANDING_VOICES_CACHE") or os.path.join(tempfile.gettempdir(), "landing-voices")
 LANGS = ["enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN"]
 WHISPER = {"deDE": "de", "esES": "es", "esMX": "es", "frFR": "fr", "itIT": "it", "ptBR": "pt", "ruRU": "ru",
@@ -335,6 +336,68 @@ def bosses(lang):
     return out
 
 
+# ---------------------------------------------------------------- the hero's subtitle lines
+HERO = [("quests", "quests", "q:33:accept"), ("spoken", "gossip", "g:206f059d0c629c5d37a5efc62769a4a3"),
+        ("zones", "places", "z:1429")]
+
+
+def short_text(text, lang):
+    """The first sentences of a line that fit the subtitle box: 40 to 110 characters, 20 to 50 in Chinese."""
+    cjk = lang in ("zhCN", "zhTW")
+    low, high = (20, 50) if cjk else (40, 110)
+    text = re.sub(r"\s+", " ", clean(text)).strip()
+    parts = re.findall(r".+?(?:[.!?。！？…]+[\"'”’」』)]*(?:\s+|$)|$)", text)
+    out = ""
+    for part in parts:
+        if out and len(out) + len(part) > high:
+            break
+        out += part
+        if len(out) >= low:
+            break
+    out = out.strip()
+    if len(out) > high + high // 5:  # one long sentence: cut it at a comma, or else at a space
+        cut = max(out.rfind(c, 0, high) for c in (",", "，", "、", ";"))
+        if cut < low:
+            cut = out.rfind(" ", 0, high) if not cjk else high
+        out = out[:cut].rstrip(",;，、 ") + "…"
+    return out
+
+
+def hero(lang):
+    """Three subtitle lines for the hero in the page's language, from the same corpus as the players."""
+    out = []
+    cjk = lang in ("zhCN", "zhTW")
+    for icon, kind, lid in HERO:
+        if kind == "places":
+            l = line_by_id("places", lang, lid)
+            name, sub, text = (l["name"], None, l["spoken"]) if l else (None, None, None)
+        else:
+            l = line_by_id("quests", lang, lid)
+            name = l["npcName"] if l else None
+            sub = (l.get("questTitle") if kind == "quests" else None) if l else None
+            text = l["text"] if l else None
+        if not name or not usable_text(text or ""):
+            return None
+        text = short_text(text, lang)
+        words = [text[i:i + 2] for i in range(0, len(text), 2)] if cjk else text.split(" ")
+        line = {"icon": icon, "name": name, "subtitle": sub, "kind": kind, "words": words}
+        if cjk:
+            line["joiner"] = ""
+        out.append(line)
+    return out
+
+
+def write_hero(lang):
+    lines_ = hero(lang)
+    if lines_:
+        os.makedirs(HERO_OUT, exist_ok=True)
+        with open(os.path.join(HERO_OUT, lang + ".json"), "w", encoding="utf-8", newline="\n") as f:
+            json.dump(lines_, f, ensure_ascii=False, separators=(",", ":"))
+            f.write("\n")
+    else:
+        log("  hero: no lines, the page keeps English")
+
+
 def build(lang):
     log(f"== {lang}")
     data = {}
@@ -351,8 +414,11 @@ def build(lang):
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         f.write("\n")
     log("  ->", {k: len(v) for k, v in data.items()})
+    write_hero(lang)
 
 
 if __name__ == "__main__":
-    for code in sys.argv[1:] or LANGS:
-        build(code)
+    args = sys.argv[1:]
+    only_hero = "--hero" in args  # the subtitle lines alone, without the clips
+    for code in [a for a in args if a != "--hero"] or LANGS:
+        write_hero(code) if only_hero else build(code)

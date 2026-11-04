@@ -16,6 +16,7 @@ import NavMenu from "@/components/landing/NavMenu";
 import { NAV } from "@/components/landing/nav";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
+import { heroFor } from "@/components/landing/heroFor";
 import { voicesFor } from "@/components/landing/voicesFor";
 import { SiteTextProvider } from "@/components/landing/SiteTextProvider";
 import { LOCALES, type Lang } from "@/lib/lang";
@@ -94,7 +95,7 @@ const NEW_TAB = (text: string) => <span className="sr-only">{text}</span>;
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
-  const [t, voices] = await Promise.all([siteText(lang), voicesFor(lang)]);
+  const [t, voices, heroLines] = await Promise.all([siteText(lang), voicesFor(lang), heroFor(lang)]);
   const newTab = NEW_TAB(t.newTab);
   const languages: InstallLanguage[] = LOCALES.map(({ code }) => ({
     code,
@@ -157,7 +158,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                     <img className="bn-logo-era" src="/landing/games/logo-era.png" alt={t.hero.eraAlt} />
                   </div>
                 </div>
-                <HeroLine />
+                <HeroLine lines={heroLines} />
               </div>
             </div>
           </section>
