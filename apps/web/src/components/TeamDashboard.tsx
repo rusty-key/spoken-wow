@@ -57,9 +57,11 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
       count: release.count,
       title: `Release ${title(release.section)}`,
       detail: release.since
-        ? `${release.count.toLocaleString()} lines changed that players don't have yet${
-            release.restored ? ` · ${release.count - release.restored} new, ${release.restored} put back` : ""
-          }`
+        ? joined([
+            `${release.count.toLocaleString()} lines changed that players don't have yet`,
+            release.restored > 0 && `${(release.count - release.textChanges - release.restored).toLocaleString()} new, ${release.restored.toLocaleString()} put back`,
+            release.textChanges > 0 && `${release.textChanges.toLocaleString()} text changes`,
+          ])
         : "Never released from here: the first release sends everything live",
       capabilities: ["admin" as const],
       href: `/admin/release?lang=${lang}`,
@@ -159,7 +161,7 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
                 <li key={row.id} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-2.5 px-4 py-2 text-sm">
                   <Avatar name={row.actorName} />
                   <span className="text-muted-foreground min-w-0">
-                    <span className="text-foreground font-medium">{row.actorName ?? "The site"}</span> {what}
+                    <span className="text-foreground font-medium">{row.actorName || "The site"}</span> {what}
                     {quote && <span className="block truncate text-xs">{quote}</span>}
                   </span>
                   <time dateTime={row.at} className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
@@ -256,7 +258,7 @@ function Avatar({ name, overlap }: { name: string | null; overlap?: boolean }) {
         overlap && "-ml-1.5 first:ml-0",
       )}
     >
-      {(name ?? "?")[0].toUpperCase()}
+      {(name || "?")[0].toUpperCase()}
     </span>
   );
 }

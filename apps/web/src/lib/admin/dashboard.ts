@@ -25,7 +25,7 @@ import { namesOf } from "@/lib/users/store";
 import { runsOf, type ActivityRun } from "./runs";
 
 export type Dashboard = {
-  release: { section: ReleaseSection; count: number; restored: number; since: string | null }[];
+  release: { section: ReleaseSection; count: number; restored: number; textChanges: number; since: string | null }[];
   contributions: PendingCounts;
   reports: Record<Category, number>;
   /** Of the most-heard silent lines the Missing audio page ranks, those with no take at all. */
@@ -73,6 +73,7 @@ export async function dashboard(lang: Lang, queues: readonly Queue[]): Promise<D
         section,
         count: pending.count + pending.textChanges,
         restored: pending.restored,
+        textChanges: pending.textChanges,
         since: pending.since,
       };
     }),
