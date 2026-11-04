@@ -4,7 +4,8 @@ import { langParam } from "@/lib/lang-server";
 import { runsOnDroplet, startDropletRun } from "@/lib/releases/droplet";
 import { dispatchRelease } from "@/lib/releases/github";
 import { isReleaseBump, isReleaseSection, RELEASE_BUMPS, RELEASE_SECTIONS } from "@/lib/releases/sections";
-import { ReleaseBusyError, startRun, updateRun } from "@/lib/releases/store";
+import { pendingChanges } from "@/lib/releases/pending";
+import { ReleaseBusyError, lastReleasedAt, startRun, updateRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 import { releaseView } from "@/lib/releases/view";
 import { NoTeamError } from "@/lib/teams/store";
@@ -18,6 +19,14 @@ export async function GET(request: Request) {
   if (unknown) return unknown;
   const { denied } = await requireCapability("admin", lang);
   if (denied) return denied;
+
+  // ?section= is one section's review: every line it would send, which the page's checks leave out.
+  const section = new URL(request.url).searchParams.get("section");
+  if (section !== null) {
+    if (!isReleaseSection(section)) return fail(400, `section is one of ${RELEASE_SECTIONS.join(", ")}`);
+    const since = (await lastReleasedAt(lang)).get(section) ?? null;
+    return Response.json({ pending: await pendingChanges(section, lang, since) });
+  }
 
   return Response.json(await releaseView(lang));
 }

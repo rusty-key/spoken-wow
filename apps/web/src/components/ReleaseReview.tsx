@@ -1,7 +1,7 @@
 "use client";
 
 import { Pause, Play } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -88,7 +88,7 @@ export default function ReleaseReview({
 function Review({
   section,
   lang,
-  pending,
+  pending: counted,
   version,
   bumpable,
   onCancel,
@@ -103,6 +103,20 @@ function Review({
   onRelease: (bump: ReleaseBump) => void;
 }) {
   const date = useLocalDates();
+  // The page's checks carry the counts alone; the lines themselves are asked for here, once.
+  const [loaded, setLoaded] = useState<PendingView | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/releases?${new URLSearchParams({ lang, section })}`, { cache: "no-store" })
+      .then((response) => (response.ok ? (response.json() as Promise<{ pending: PendingView }>) : null))
+      .then((body) => live && (body ? setLoaded(body.pending) : setFailed(true)))
+      .catch(() => live && setFailed(true));
+    return () => {
+      live = false;
+    };
+  }, [lang, section]);
+  const pending = loaded ?? counted;
   const [bump, setBump] = useState<ReleaseBump>("patch");
   const [filter, setFilter] = useState<Filter>({ kind: "all", q: "" });
   const [playing, setPlaying] = useState<string | null>(null);
@@ -259,7 +273,7 @@ function Review({
             changed, such as a line folded into another, and releases nothing otherwise.
           </p>
         )}
-        {pending.count > 0 && shown.length === 0 && (
+        {loaded && pending.count > 0 && shown.length === 0 && (
           <p className="text-muted-foreground px-5 py-6 text-sm">No line matches.</p>
         )}
         {groups.map((group, index) => (
@@ -286,7 +300,7 @@ function Review({
                   </button>
                   <div className="min-w-0">
                     <p className="truncate text-sm" title={change.text ?? undefined}>
-                      {change.text ? <>„{change.text}“</> : <span className="font-mono text-xs">{change.lineId ?? change.file}</span>}
+                      {change.text ? <>“{change.text}”</> : <span className="font-mono text-xs">{change.lineId ?? change.file}</span>}
                     </p>
                     <p className="text-muted-foreground text-xs">
                       {[moment, `v${change.version}`].filter(Boolean).join(" · ")}
@@ -305,7 +319,12 @@ function Review({
             })}
           </section>
         ))}
-        {pending.count > pending.changes.length && (
+        {!loaded && pending.count > 0 && (
+          <p className="text-muted-foreground px-5 py-6 text-sm">
+            {failed ? "The lines did not load; the counts above still hold." : "Loading the lines…"}
+          </p>
+        )}
+        {loaded && pending.count > pending.changes.length && (
           <p className="text-muted-foreground px-5 py-3 text-xs">
             Showing the newest {pending.changes.length.toLocaleString()} of {lines(pending.count)}; all of them go out.
           </p>
@@ -346,8 +365,8 @@ function Review({
           </Button>
           <Button onClick={() => onRelease(bump)}>
             {pending.count + pending.textChanges > 0
-              ? `Release ${lines(pending.count + pending.textChanges)}${next ? ` as ${next}` : ""}`
-              : `Release anyway${next ? ` as ${next}` : ""}`}
+              ? `Release ${lines(pending.count + pending.textChanges)}`
+              : "Release anyway"}
           </Button>
         </div>
         <p className="text-muted-foreground px-5 pb-2.5 text-xs">

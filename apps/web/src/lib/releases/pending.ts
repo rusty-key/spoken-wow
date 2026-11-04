@@ -1,13 +1,14 @@
 /**
  * What a press of Release would send that players do not have yet: the audio that went live in a
- * section since its last release.
+ * section since its last release, and the lines whose text changed without new audio.
  *
  * Not the release's own comparison, which needs the pack built and hashed against the channel
- * and takes minutes (scripts/manager/publish.mjs). This reads what that build reads -- a
- * section's current takes in the language, scripts/audio/sounds.mjs -- and keeps those that
- * became current after the last run that released or found nothing to release started. A new
- * take is a row of its own; putting an older version back writes none, so restores come from the
- * activity log.
+ * and takes minutes. This reads the section's current takes in the language, which the build
+ * starts from, and keeps those that became current after the last run that released or found
+ * nothing to release started. The build also leaves out takes no line names any more; one of
+ * those counts here until a release finds it unchanged, which is why the review says its numbers
+ * can differ. A new take is a row of its own; putting an older version back writes none, so
+ * restores come from the activity log.
  */
 import "server-only";
 
@@ -23,10 +24,11 @@ const LISTED = 200;
 /**
  * Per section, what a line is called and what it says, in the language: the reviewer reads
  * German, not ids. Each is a lateral join on `c` and yields "title" and "text"; a line with no
- * text row yet yields nulls and shows by its id.
+ * text row yet yields nulls and shows by its id. Gossip has no quest, so it is titled as gossip.
  */
 const TEXT: Record<ReleaseSection, string> = {
-  quests: `select l."questTitle" as "title", l."text" from "quest_line" l
+  quests: `select coalesce(l."questTitle", case when l."lineId" like 'g:%' then 'Gossip' end) as "title", l."text"
+             from "quest_line" l
             where l."lineId" = c."lineId" and l."lang" = $2 and l."isCurrent" order by l."variant" limit 1`,
   places: `select l."name" as "title", coalesce(l."full", l."short") as "text" from "lore_line" l
             where l."lineId" = c."lineId" and l."lang" = $2 and l."isCurrent" limit 1`,
@@ -35,6 +37,15 @@ const TEXT: Record<ReleaseSection, string> = {
   bosses: `select concat_ws(' · ', b."zone", b."key") as "title", l."text" from "boss" b
              join "boss_line" l on l."bossId" = b."id" and l."lang" = $2 and l."isCurrent"
             where c."lineId" = 'boss:' || b."map" || ':' || b."key" limit 1`,
+};
+
+/** Per section, the takes its build leaves out, as a condition on `t`: a retired boss ships none. */
+const SHIPPED: Record<ReleaseSection, string> = {
+  quests: "",
+  places: "",
+  readables: "",
+  bosses: `and not exists (select 1 from "boss" b
+                            where 'boss:' || b."map" || ':' || b."key" = t."lineId" and b."retired")`,
 };
 
 type Row = {
@@ -52,15 +63,16 @@ type Row = {
  * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`.
  *
  * A restore counts only when it put back something other than what was live at `$3`: cutting
- * v3 and going back to v2 is an undo, and players already have v2. What was live then is
- * taken as the newest version older than `$3`, which holds unless that file had a restore
- * before `$3` too.
+ * v3 and going back to v2 is an undo, and players already have v2. What was live then is the
+ * version the file's last cut or restore before `$3` made live, or, for a file older than the
+ * activity log, its newest version from before `$3`.
  */
-const CHANGED = `
+function changed(section: ReleaseSection): string {
+  return `
   select t."file", t."lineId", t."version", t."createdAt" as "at", t."createdBy" as "by", 'new' as "kind"
     from "take" t
    where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."teamId" = team_of_lang($2)
-     and ($3::timestamptz is null or t."createdAt" > $3)
+     and ($3::timestamptz is null or t."createdAt" > $3) ${SHIPPED[section]}
   union all
   -- A file restored and regenerated since counts once, as the newer take; restored twice, once,
   -- at the latest.
@@ -70,23 +82,29 @@ const CHANGED = `
       join "take" t on t."source" = a."source" and t."lang" = a."lang" and t."file" = a."subject"
                    and t."isCurrent" and t."teamId" = team_of_lang($2)
      where $3::timestamptz is not null and a."kind" = 'take.restored' and a."lang" = $2
-       and a."source" = $1 and a."at" > $3 and t."createdAt" <= $3
-       and t."version" is distinct from (
-         select max(o."version") from "take" o
-          where o."source" = t."source" and o."lang" = t."lang" and o."file" = t."file"
-            and o."teamId" = t."teamId" and o."createdAt" <= $3)
+       and a."source" = $1 and a."at" > $3 and t."createdAt" <= $3 ${SHIPPED[section]}
+       and t."version" is distinct from coalesce(
+         (select (e."detail"->>'version')::int from "activity" e
+           where e."lang" = $2 and e."source" = $1 and e."subject" = t."file"
+             and e."kind" in ('take.generated', 'take.restored') and e."at" <= $3
+           order by e."at" desc limit 1),
+         (select max(o."version") from "take" o
+           where o."source" = t."source" and o."lang" = t."lang" and o."file" = t."file"
+             and o."teamId" = t."teamId" and o."createdAt" <= $3))
      order by a."subject", a."at" desc
   ) restored`;
+}
 
 /**
  * Text the release rebuilds into the pack's lookup without any audio changing: an edited or
- * retired line, a renamed one, one ignored or let back in. Distinct lines, not edits.
+ * retired line, a renamed one, one ignored or let back in. Distinct lines, not edits, and none
+ * that has a new take too, since that line is counted with the audio already.
  */
 const TEXT_KINDS = ["text.edited", "text.restored", "text.retired", "name.edited", "name.restored", "name.retired", "ignore.set", "ignore.cleared"];
 
 /**
- * With `list` false, the counts alone: the dashboard says how many and links here, and the
- * list and its text lookups are the most expensive part.
+ * With `list` false, the counts alone: the release page asks for those on every check, and the
+ * list with its text lookups only when a review opens.
  */
 export async function pendingChanges(
   section: ReleaseSection,
@@ -94,8 +112,9 @@ export async function pendingChanges(
   since: Date | null,
   { list = true }: { list?: boolean } = {},
 ): Promise<PendingView> {
-  // One after another: every caller asks for several sections at once, and each query here is a
-  // connection of its own, so in parallel one page view could hold a dozen of the pool's thirty.
+  const CHANGED = changed(section);
+  // One after another: a page asks for every section at once, and each query here holds a
+  // connection of its own while it runs.
   const counts = await readAs<{ total: string; restored: string }>(
     lang,
     `select count(*) as "total", count(*) filter (where "kind" = 'restored') as "restored" from (${CHANGED}) c`,
@@ -111,14 +130,11 @@ export async function pendingChanges(
         [section, lang, since],
       )
     : [];
+  // Everybody in the list, restores included, so a person's chip counts the rows it filters to.
   const people = list
     ? await readAs<{ by: string | null; count: string }>(
         lang,
-        `select "by", count(*) as "count" from (
-           select t."createdBy" as "by" from "take" t
-            where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."teamId" = team_of_lang($2)
-              and ($3::timestamptz is null or t."createdAt" > $3)
-         ) p group by "by" order by count(*) desc`,
+        `select "by", count(*) as "count" from (${CHANGED}) c group by "by" order by count(*) desc`,
         [section, lang, since],
       )
     : [];
@@ -126,8 +142,11 @@ export async function pendingChanges(
   const text = since
     ? await readAs<{ count: string }>(
         lang,
-        `select count(distinct coalesce("lineId", "subject")) as "count" from "activity"
-          where "lang" = $1 and "source" = $2 and "at" > $3 and "kind" = any($4::text[])`,
+        `select count(distinct coalesce(a."lineId", a."subject")) as "count" from "activity" a
+          where a."lang" = $1 and a."source" = $2 and a."at" > $3 and a."kind" = any($4::text[])
+            and not exists (select 1 from "take" t
+                             where t."source" = $2 and t."lang" = $1 and t."isCurrent"
+                               and t."lineId" = coalesce(a."lineId", a."subject") and t."createdAt" > $3)`,
         [lang, section, since, TEXT_KINDS],
       )
     : [{ count: "0" }];
@@ -149,7 +168,6 @@ export async function pendingChanges(
     count: Number(counts[0]?.total ?? 0),
     restored: Number(counts[0]?.restored ?? 0),
     textChanges: Number(text[0]?.count ?? 0),
-    // New takes only: who put an older version back is in `changes`, and is rarely many.
     people: people.map((row) => ({ id: row.by, name: name(row.by), count: Number(row.count) })),
     changes,
   };

@@ -98,8 +98,43 @@ describe("pendingChanges", () => {
   });
 
   it("counts everything live when nothing was released yet", async () => {
+    const start = (await pendingChanges("places", "deDE", null, { list: false })).count;
     await take("pending-test-old", 1, before, { team: de.team });
-    expect((await pendingChanges("places", "deDE", null)).count).toBeGreaterThanOrEqual(1);
+    expect((await pendingChanges("places", "deDE", null, { list: false })).count).toBe(start + 1);
+  });
+
+  it("counts a line edited and then cut again once, as its new audio", async () => {
+    await take("pending-test-both", 2, after, { team: de.team });
+    await asSystem.query(
+      `insert into "activity" ("at", "lang", "kind", "source", "subject", "lineId", "detail", "teamId")
+       values ($1, 'deDE', 'text.edited', 'places', 'z:pending-test-both', 'z:pending-test-both', '{}', $2)`,
+      ["2026-11-02T08:00:00Z", de.team],
+    );
+    const pending = await pendingChanges("places", "deDE", CUTOFF, { list: false });
+    expect([pending.count, pending.textChanges]).toEqual([1, 0]);
+  });
+
+  it("reads what was live at the release from a restore made before it", async () => {
+    // v1 put back before the release, so players have v1; putting v2 back since is a change.
+    await take("pending-test-twice", 1, "2026-11-01T09:00:00Z", { team: de.team, current: false });
+    await take("pending-test-twice", 2, "2026-11-01T10:00:00Z", { team: de.team });
+    await asSystem.query(
+      `insert into "activity" ("at", "lang", "kind", "source", "subject", "detail", "teamId")
+       values ('2026-11-01T11:00:00Z', 'deDE', 'take.restored', 'places', 'pending-test-twice', '{"version":1}', $1)`,
+      [de.team],
+    );
+    await restored("pending-test-twice", after);
+    expect((await pendingChanges("places", "deDE", CUTOFF, { list: false })).count).toBe(1);
+  });
+
+  it("leaves out another team's takes in the same language", async () => {
+    const fr = await ownTeam("frFR");
+    try {
+      await take("pending-test-theirs", 1, after, { team: fr.team });
+      expect((await pendingChanges("places", "deDE", CUTOFF, { list: false })).count).toBe(0);
+    } finally {
+      await fr.restore();
+    }
   });
 
   it("names each line and says what it says, and counts who cut them", async () => {

@@ -74,7 +74,7 @@ export type PendingView = {
    * a correction to a quest's title ships in the lookup, not in a take.
    */
   textChanges: number;
-  /** Who cut the new takes, most first; a null name has none, or is an account since deleted. */
+  /** Who made the changes, most first; a null name has none, or is an account since deleted. */
   people: { id: string | null; name: string | null; count: number }[];
   /** The newest of them, up to a limit. */
   changes: PendingChange[];

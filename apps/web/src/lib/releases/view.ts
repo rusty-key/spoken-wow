@@ -52,7 +52,7 @@ export async function releaseView(lang: Lang): Promise<ReleaseView> {
   const pending: Record<string, PendingView> = Object.fromEntries(
     await Promise.all(
       RELEASE_SECTIONS.map(
-        async (section) => [section, await pendingChanges(section, lang, releasedAt.get(section) ?? null)] as const,
+        async (section) => [section, await pendingChanges(section, lang, releasedAt.get(section) ?? null, { list: false })] as const,
       ),
     ),
   );
