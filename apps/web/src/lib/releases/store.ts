@@ -9,12 +9,12 @@ import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
 
-import { isSettled, type ReleaseState } from "./sections";
+import { isSettled, type ReleaseSection, type ReleaseState } from "./sections";
 
 export type ReleaseRun = {
   id: string;
   teamId: string;
-  section: string;
+  section: ReleaseSection;
   lang: Lang;
   state: ReleaseState;
   githubRunId: number | null;
@@ -22,6 +22,7 @@ export type ReleaseRun = {
   step: string | null;
   error: string | null;
   version: string | null;
+  requestedBy: string | null;
   createdAt: Date;
   finishedAt: Date | null;
 };
@@ -33,7 +34,7 @@ export class ReleaseBusyError extends Error {
 }
 
 const COLUMNS = `"id", "teamId", "section", "lang", "state", "githubRunId"::float8 as "githubRunId", "githubUrl",
-                 "step", "error", "version", "createdAt", "finishedAt"`;
+                 "step", "error", "version", "requestedBy", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
 const UNIQUE_VIOLATION = "23505";
 
@@ -103,6 +104,16 @@ export async function updateRun(
     }
     return run;
   });
+}
+
+/** Per section, its newest run that released something. */
+export async function lastDoneRuns(lang: Lang): Promise<ReleaseRun[]> {
+  return readAs<ReleaseRun>(
+    lang,
+    `select distinct on ("section") ${COLUMNS} from "release_run"
+      where "lang" = $1 and "state" = 'done' order by "section", "createdAt" desc`,
+    [lang],
+  );
 }
 
 export async function recentRuns(lang: Lang, limit: number): Promise<ReleaseRun[]> {
