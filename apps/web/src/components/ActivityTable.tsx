@@ -98,7 +98,7 @@ function change(before: string | null, after: string | null): string | null {
  * What one row says happened, in words, plus the text it quotes. The quoted part is kept
  * apart so the row can clamp it without clamping the verb.
  */
-function describe(row: ActivityRow): { what: string; quote: string | null } {
+export function describe(row: ActivityRow): { what: string; quote: string | null } {
   const d = row.detail;
   const version = num(d.version);
   switch (row.kind) {
