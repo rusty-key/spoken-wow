@@ -1,6 +1,6 @@
 name: Discord to issues
 
-# Each post in the Discord forum #bugs-and-ideas becomes a GitHub issue, and so does any message a
+# Each post in the Discord forum #bugs-forever-era becomes a GitHub issue, and so does any message a
 # moderator reacts to with 🐛 in another channel. When the issue is closed the post or message is
 # told, and a post is tagged Fixed or Not planned (scripts/lib/forum-issues.mjs).
 #
