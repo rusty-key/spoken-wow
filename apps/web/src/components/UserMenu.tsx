@@ -112,7 +112,8 @@ export default function UserMenu() {
     administered.length > 0
       ? [
           {
-            href: administered.includes(lang) ? `/admin?lang=${lang}` : "/admin",
+            // A site admin administers every language, and their way in is the list of everyone.
+            href: !isAdmin(role) && administered.includes(lang) ? `/admin?lang=${lang}` : "/admin",
             label: "Admin",
             admin: true,
           },

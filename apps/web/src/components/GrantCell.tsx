@@ -158,7 +158,8 @@ function GrantPopover({
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       {/* Mounted only while open, so the choice starts fresh each time. */}
       <PopoverContent align="start" className="w-auto max-w-[min(32rem,calc(100vw-2rem))]">
-        </PopoverContent>
+        {children}
+      </PopoverContent>
     </Popover>
   );
 }

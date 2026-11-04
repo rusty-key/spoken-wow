@@ -101,7 +101,7 @@ export function capabilityLabel(capability: Capability): string {
 
 /**
  * What /admin says each capability lets its holder do, so an admin handing one out does not
- * have to know the code. Total for the same reason as the labels.
+ * have to know the code. Total, so a capability added without its words is a type error.
  */
 const CAPABILITY_HINTS: Record<Capability, string> = {
   text: "Looks after the language's original text and the contributions to it, whichever team voices it.",

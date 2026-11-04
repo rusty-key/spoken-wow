@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Lock, Plus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { CAPABILITY_COLOURS } from "@/components/GrantCell";
 import { Button } from "@/components/ui/button";
@@ -67,12 +67,21 @@ function Matrix({ lang, grants: initial, viewer, currentUserId }: Props) {
   const [email, setEmail] = useState("");
   const global = isAdmin(viewer.role);
 
+  // Saves one after another, an undo from a toast included: every save answers with the whole
+  // listing, and a slower reply landing after a newer one would put the older state on screen.
+  const saving = useRef<Promise<unknown>>(Promise.resolve());
+
   const holds = (userId: string, capability: Capability) =>
     grants.some((grant) => grant.userId === userId && grant.capability === capability);
+
+  /** `admin` in a language is every capability there but `text`, as permissions.ts `can` reads it. */
+  const implied = (userId: string, capability: Capability) =>
+    capability !== "admin" && capability !== "text" && holds(userId, "admin");
 
   /** Why a cell cannot be changed here, or null when it can. The server holds the same rules. */
   function lockOf(person: Person, capability: Capability): string | null {
     if (!canGrant(viewer, capability, lang)) return "Only a site admin appoints a text maintainer";
+    if (implied(person.id, capability)) return "Included in their admin";
     if (person.id === currentUserId && capability === "admin" && !global) {
       return "You cannot remove your own admin; another admin can";
     }
@@ -103,7 +112,13 @@ function Matrix({ lang, grants: initial, viewer, currentUserId }: Props) {
 
   // Says which way rather than flipping, because the undo runs from a toast that outlives this
   // render and would flip whatever the grants were when it was raised.
-  async function set(person: Person, capability: Capability, on: boolean, undoable: boolean) {
+  function set(person: Person, capability: Capability, on: boolean, undoable: boolean): Promise<void> {
+    const run = saving.current.then(() => save(person, capability, on, undoable));
+    saving.current = run;
+    return run;
+  }
+
+  async function save(person: Person, capability: Capability, on: boolean, undoable: boolean) {
     setBusy(`${person.id}:${capability}`);
     setError(null);
     const failed = await (on ? give(person, [capability]) : take(person, capability));
@@ -207,7 +222,9 @@ function Matrix({ lang, grants: initial, viewer, currentUserId }: Props) {
                 {COLUMNS.map((capability) => (
                   <td key={capability} className={cn("text-center", capability === "admin" && "bg-rose-500/[0.03]")}>
                     <Tick
-                      on={holds(person.id, capability)}
+                      id={`${person.id}-${capability}`}
+                      on={holds(person.id, capability) || implied(person.id, capability)}
+                      implied={implied(person.id, capability)}
                       capability={capability}
                       lock={lockOf(person, capability)}
                       busy={busy === `${person.id}:${capability}`}
@@ -227,6 +244,9 @@ function Matrix({ lang, grants: initial, viewer, currentUserId }: Props) {
       <p className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs">
         <span className="inline-flex items-center gap-1.5">
           <Lock className="size-3.5" aria-hidden /> can&apos;t be changed here
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Check className="size-3.5 opacity-55" aria-hidden /> comes with their admin
         </span>
         <span>Point at a column for what it allows. A tick saves at once, and you can undo it.</span>
       </p>
@@ -268,7 +288,9 @@ function ColumnHeading({ capability }: { capability: Capability }) {
 }
 
 function Tick({
+  id,
   on,
+  implied,
   capability,
   lock,
   busy,
@@ -276,7 +298,10 @@ function Tick({
   label,
   onToggle,
 }: {
+  id: string;
   on: boolean;
+  /** Held through admin rather than granted: shown ticked, and changed by changing admin. */
+  implied: boolean;
   capability: Capability;
   lock: string | null;
   busy: boolean;
@@ -284,26 +309,42 @@ function Tick({
   label: string;
   onToggle: () => void;
 }) {
+  const reason = `lock-${id}`;
   return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={on}
-      aria-label={label}
-      aria-disabled={lock ? true : undefined}
-      aria-busy={busy || undefined}
-      title={lock ?? undefined}
-      disabled={frozen}
-      onClick={lock ? undefined : onToggle}
-      className={cn(
-        "inline-grid size-8 place-items-center rounded-md border transition-colors",
-        on ? CAPABILITY_COLOURS[capability] : "border-border hover:border-foreground/40",
-        lock && "cursor-not-allowed",
-        lock && !on && "border-dashed hover:border-border",
-        busy && "animate-pulse",
+    <>
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={on}
+        aria-label={label}
+        aria-disabled={lock ? true : undefined}
+        // The reason in words for a screen reader and a touch screen, where a title never shows.
+        aria-describedby={lock ? reason : undefined}
+        aria-busy={busy || undefined}
+        title={lock ?? undefined}
+        disabled={frozen}
+        onClick={lock ? undefined : onToggle}
+        className={cn(
+          "inline-grid size-8 place-items-center rounded-md border transition-colors",
+          on ? CAPABILITY_COLOURS[capability] : "border-border hover:border-foreground/40",
+          implied && "opacity-55",
+          lock && "cursor-not-allowed",
+          lock && !on && "border-dashed hover:border-border",
+          busy && "animate-pulse",
+        )}
+      >
+        {on &&
+          (lock && !implied ? (
+            <Lock className="size-3.5" aria-hidden />
+          ) : (
+            <Check className="size-4" strokeWidth={2.5} aria-hidden />
+          ))}
+      </button>
+      {lock && (
+        <span id={reason} className="sr-only">
+          {lock}
+        </span>
       )}
-    >
-      {on && (lock ? <Lock className="size-3.5" aria-hidden /> : <Check className="size-4" strokeWidth={2.5} aria-hidden />)}
-    </button>
+    </>
   );
 }
