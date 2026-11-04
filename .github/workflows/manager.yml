@@ -254,6 +254,8 @@ jobs:
           cp "dist/Spoken-Manager-$version-mac-arm64.dmg" dist/Spoken-Manager-mac-arm64.dmg
           cp "dist/Spoken-Manager-$version-mac-x64.dmg" dist/Spoken-Manager-mac-x64.dmg
           cp "dist/Spoken-Manager-$version-linux.AppImage" dist/Spoken-Manager-linux.AppImage
+          cp "dist/Spoken-Manager-$version-linux.deb" dist/Spoken-Manager-linux.deb
+          cp "dist/Spoken-Manager-$version-linux.rpm" dist/Spoken-Manager-linux.rpm
           if gh release view manager-latest >/dev/null 2>&1; then
             # Upload first, then drop what the new version no longer ships, so a failed upload
             # leaves the old feed working and a re-run picks up from there.

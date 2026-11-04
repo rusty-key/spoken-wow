@@ -35,6 +35,8 @@ const MANAGER_DOWNLOADS = {
   mac: `${MANAGER_FILES}-mac-arm64.dmg`,
   macIntel: `${MANAGER_FILES}-mac-x64.dmg`,
   linux: `${MANAGER_FILES}-linux.AppImage`,
+  deb: `${MANAGER_FILES}-linux.deb`,
+  rpm: `${MANAGER_FILES}-linux.rpm`,
 };
 const DISCORD = "https://discord.gg/KgeQhjv9Rd";
 
@@ -263,7 +265,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                     Download the Manager{NEW_TAB}
                   </a>
                 </div>
-                <p className="bn-note">Windows .exe, macOS .dmg or Linux .AppImage, from the GitHub release page.</p>
+                <p className="bn-note">Windows .exe, macOS .dmg or Linux .AppImage, .deb or .rpm, from the GitHub release page.</p>
               </div>
               <ol className="bn-steps">
                 <li>
