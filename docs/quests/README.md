@@ -22,7 +22,8 @@ into a pack:
 | `extract` | vmangos world DB | Postgres `quest_line` | a maintainer, when vmangos ships a new dump |
 | `export-corpus` | Postgres `quest_line` | `corpus/corpus.json.gz` | before every build (`package-audio` runs it) |
 | `make quests-sounds` | live takes + `audio-history/` | `audio/` | before every build |
-| `build` | corpus + `audio/` | `dist/SpokenQuestsAudio/` | anyone cutting a release |
+| `build-data` | corpus | `dist/SpokenQuestsData/` | anyone cutting a player release |
+| `build` | corpus + `audio/` | `dist/SpokenQuestsAudio/` | anyone cutting an audio release |
 | `install` | the built module | WoW AddOns folder | to try it in game |
 
 The corpus is **committed** — 17,507 lines, 2 MB gzipped — so building a pack from a given
@@ -138,9 +139,10 @@ Sync first: `pull-live` reads its list from the local database, so a stale one f
 production has already replaced. `make quests-full-release VERSION=x.y.z` runs sync, pull-live,
 the pack build and, after one confirmation, the CurseForge and GitHub uploads.
 
-`build` emits the sounds, every lookup table and a `sound_length_table.lua` computed from
-the mp3s it just copied. The addon resolves sounds through that table rather than the
-filesystem, so building the two together is what stops a line going silent.
+`build-data` emits the shared lookup tables. `build --audio-only` emits the sounds and a
+`sound_length_table.lua` computed from the files it just copied. The player package ships
+`SpokenQuestsData` beside `Spoken_Quests`, while each audio pack contains only its recordings
+and audio metadata. Existing packs that still contain lookup tables remain readable.
 
 For a module to hand to players, use `make quests-package-audio` instead: it transcodes first.
 
@@ -288,9 +290,9 @@ project: addon managers install the newest file for a project, so a second file 
 move a player from the pack they chose to whichever was uploaded last. The player needs no
 change to read them — `DataModules:PrepareSound` walks every registered module and takes the
 first whose `SoundLengthLookupByFileName` has the file, which is how upstream shipped a pack
-per expansion. Every pack carries the full lookup tables (3.5 MB); they map text to ids and
-hashes rather than to files, so an entry whose audio lives in a pack you did not install finds
-no length and stays quiet.
+per expansion. The shared data addon maps text to ids and hashes, while audio packs provide
+the lengths and recordings; an entry whose audio lives in a pack you did not install finds no
+length and stays quiet.
 
 **Which side a quest is on comes first from the Compendium's race masks**
 (`addons/Spoken_Quests/Data/Compendium.lua`, `tts_cli/factions.py` `compendium_sides`): a quest
@@ -801,9 +803,9 @@ First-time droplet setup, the nginx vhost, and the GitHub secrets the workflow n
 ## Output
 
 `make quests-sounds` fills `audio/{quests,gossip}/` from the live takes in `audio-history/`,
-and is run again before every build rather than kept. `build` copies from there into
-`dist/SpokenQuestsAudio/generated/sounds/`, alongside every lookup table and the
-`sound_length_table.lua` computed from exactly those files. A pack for players goes through
+and is run again before every build rather than kept. `build --audio-only` copies from there into
+`dist/SpokenQuestsAudio/generated/sounds/`, alongside the `sound_length_table.lua` computed from
+exactly those files. `build-data` writes the lookup tables to `dist/SpokenQuestsData/`. A pack for players goes through
 `make quests-package-audio`, which runs `quests-sounds` and stages an ogg copy first — see
 *Packaging*.
 

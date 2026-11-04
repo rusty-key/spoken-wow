@@ -453,7 +453,9 @@ function Player:Setup()
         -- What Spoken's settings show on this part's card: which voice packs are installed.
         packs = function()
             local names = {}
-            for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
+            for _, module in DataModules:GetPresentModules() do
+                if not module.DataOnly then table.insert(names, module.Title) end
+            end
             return names
         end,
     })
@@ -471,7 +473,9 @@ function Player:Setup()
         packs = function()
             local names = {}
             for _, module in DataModules:GetPresentModules() do
-                if Player:HoldsGossip(module) then table.insert(names, module.Title) end
+                if not module.DataOnly and Player:HoldsGossip(module) then
+                    table.insert(names, module.Title)
+                end
             end
             return names
         end,
@@ -494,7 +498,9 @@ function Player:Setup()
         profiles = function() return Addon.db end,
         packs = function()
             local names = {}
-            for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
+            for _, module in DataModules:GetPresentModules() do
+                if not module.DataOnly then table.insert(names, module.Title) end
+            end
             return names
         end,
     })

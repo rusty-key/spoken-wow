@@ -118,7 +118,9 @@ function SettingsPanel:Setup()
         end
     end
     local present = 0
-    for _ in DataModules:GetPresentModules() do present = present + 1 end
+    for _, module in DataModules:GetPresentModules() do
+        if not module.DataOnly then present = present + 1 end
+    end
     if present == 0 then
         layout:Note(W.MODULE_NO_PACK, nil, 16)
     end
@@ -173,7 +175,7 @@ function SettingsPanel:Setup()
     end
     -- A pack the list does not know, as another language's, after the ones it does.
     for _, module in DataModules:GetPresentModules() do
-        if not listed[module.AddonName] then PackRow(module) end
+        if not module.DataOnly and not listed[module.AddonName] then PackRow(module) end
     end
     layout:Button(W.MODULE_TEST_LINE, 200, function() Options:RunSelfTest() end)
     content:SetScript("OnShow", function() layout:Refresh() end)

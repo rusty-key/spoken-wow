@@ -358,14 +358,16 @@ function Options:PrintDiagnostics()
 
             local presentCount, registeredCount = 0, 0
             for _, module in DataModules:GetPresentModules() do
-                presentCount = presentCount + 1
-                local registered = DataModules:GetModule(module.AddonName) ~= nil
-                if registered then
-                    registeredCount = registeredCount + 1
+                if not module.DataOnly then
+                    presentCount = presentCount + 1
+                    local registered = DataModules:GetModule(module.AddonName) ~= nil
+                    if registered then
+                        registeredCount = registeredCount + 1
+                    end
+                    local status = registered and "loaded" or (DataModules:GetModuleLoadError(module.AddonName) or "not loaded")
+                    print(format("Data: %s (%s) - %s", module.AddonName,
+                        module.ContentVersion or "unknown version", status))
                 end
-                local status = registered and "loaded" or (DataModules:GetModuleLoadError(module.AddonName) or "not loaded")
-                print(format("Data: %s (%s) - %s", module.AddonName,
-                    module.ContentVersion or "unknown version", status))
             end
             if presentCount == 0 then
                 print("Data: no voice packs were detected")

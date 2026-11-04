@@ -39,6 +39,16 @@ Expect("...its format version is read", found and found.ModuleVersion, 1)
 Expect("...its priority", found and found.ModulePriority, 7)
 Expect("...and its maps", found and found.Maps[3], true)
 
+---------------------------------------------------------------- shared lookup data
+VO, found = Enumerate({ [NEW .. "Version"] = "1", [NEW .. "Type"] = "data" })
+Expect("the shared lookup addon is discovered", found ~= nil, true)
+Expect("...and marked as data-only", found and found.DataOnly, true)
+local registeredData = pcall(function()
+    VO.DataModules:Register("TestPack", { GetSoundPath = function() end })
+end)
+Expect("data-only modules still use the normal registration contract", registeredData, true)
+Expect("data-only modules do not count as voice packs", VO.DataModules:HasAudioModules(), false)
+
 ---------------------------------------------------------------- both, as a transitional pack ships
 -- A pack built during the transition carries both so it also loads under the old addon.
 -- The values agree there; when they do not, the new key is the one this addon believes.
