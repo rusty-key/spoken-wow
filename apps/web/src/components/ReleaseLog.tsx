@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useLocalDates } from "@/components/useLocalDates";
 import { langName } from "@/lib/lang";
-import { isCut, parseLog, type LogLine, type Tone } from "@/lib/releases/log";
+import { parseLog, type LogLine, type Tone } from "@/lib/releases/log";
 import { isSettled, type RunView } from "@/lib/releases/sections";
+import { SOURCE_LABELS } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
 
 const TONES: Record<Tone, string> = {
@@ -51,8 +52,7 @@ function LogDialog({ run }: { run: RunView }) {
   const date = useLocalDates();
   const lines = useMemo(() => parseLog(run.log ?? ""), [run.log]);
   const steps = lines.filter((line) => line.step);
-  // The server knows when it kept only the tail; the text alone can only guess from its steps.
-  const cut = run.logCut ?? isCut(lines);
+  const cut = run.logCut;
   const settled = isSettled(run.state);
   const [follow, setFollow] = useState(!settled);
   const [errorsOnly, setErrorsOnly] = useState(false);
@@ -66,7 +66,7 @@ function LogDialog({ run }: { run: RunView }) {
     // On the text, not the line count: once the kept tail is full it slides at the same length.
   }, [follow, run.log]);
 
-  const section = `${run.section[0].toUpperCase()}${run.section.slice(1)}`;
+  const section = SOURCE_LABELS[run.section];
   const text = run.log ?? "";
 
   function jump(no: number) {

@@ -77,13 +77,3 @@ export function parseLog(log: string): LogLine[] {
     return { no, kind: "plain", segments: segments(readableBytes(text)) };
   });
 }
-
-/**
- * Whether the start of the output is missing: the site keeps only its last few kilobytes, and
- * a whole log has its step 1. Lines before step 1 are a preamble, and a run that failed before
- * its first step printed none: neither is a cut.
- */
-export function isCut(lines: readonly LogLine[]): boolean {
-  const first = lines.find((line) => line.step);
-  return first !== undefined && first.step!.at !== 1;
-}

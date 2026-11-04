@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isCut, parseLog, segments } from "./log";
+import { parseLog, segments } from "./log";
 
 const join = (line: { segments: { text: string }[] }) => line.segments.map((s) => s.text).join("");
 
@@ -40,23 +40,5 @@ describe("segments", () => {
   it("leaves a timestamp and a byte count alone", () => {
     const line = "index.json now at 20261104T075308Z for 44410828 bytes";
     expect(segments(line)).toEqual([{ text: line, tone: "plain" }]);
-  });
-});
-
-describe("isCut", () => {
-  it("knows a log that starts at step 1 is whole", () => {
-    expect(isCut(parseLog("==> step 1/5: clip pointers\nsounds: 4 packs"))).toBe(false);
-  });
-
-  it("reads lines before step 1 as a preamble, not a cut", () => {
-    expect(isCut(parseLog("signing with abc\n==> step 1/5: clip pointers"))).toBe(false);
-  });
-
-  it("knows one that starts mid-way was cut", () => {
-    expect(isCut(parseLog("  200/415 blobs\n==> step 5/5: publish"))).toBe(true);
-  });
-
-  it("does not call a run that failed before its first step cut", () => {
-    expect(isCut(parseLog("error: DATABASE_URL is not set"))).toBe(false);
   });
 });

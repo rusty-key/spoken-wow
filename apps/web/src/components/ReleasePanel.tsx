@@ -10,7 +10,15 @@ import { Toaster, useToast } from "@/components/ui/toast";
 import { useLocalDates } from "@/components/useLocalDates";
 import { langName, type Lang } from "@/lib/lang";
 import { cn } from "@/lib/utils";
-import { isSettled, RELEASE_SECTIONS, type ReleaseBump, type ReleaseView, type RunView } from "@/lib/releases/sections";
+import {
+  isSettled,
+  RELEASE_SECTIONS,
+  type ReleaseBump,
+  type ReleaseSection,
+  type ReleaseView,
+  type RunView,
+} from "@/lib/releases/sections";
+import { SOURCE_LABELS } from "@/lib/reports/reports";
 
 const POLL_MS = 15_000;
 const FOCUS_MIN_MS = 10_000;
@@ -74,6 +82,11 @@ function ReleaseButton({ disabled, onRelease }: { disabled: boolean; onRelease: 
   );
 }
 
+const ownRun = (view: ReleaseView, lang: Lang) => (view.active?.own && view.active.lang === lang ? view.active : null);
+
+const lastSettled = (view: ReleaseView, section: ReleaseSection) =>
+  view.recent.find((run) => run.section === section && isSettled(run.state));
+
 // A shell, because useToast has to find a provider above the component that calls it.
 export default function ReleasePanel(props: { lang: Lang; initial: ReleaseView }) {
   return (
@@ -91,7 +104,7 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
   // Checks in a row that got no answer; without it a stale "running" looks like a live one.
   const [missed, setMissed] = useState(0);
   const running = view.active !== null;
-  const watching = useRef(initial.active?.own && initial.active.lang === lang ? initial.active.section : null);
+  const watching = useRef(ownRun(initial, lang)?.section ?? null);
   const asked = useRef(0);
   // Which ask an answer belongs to: a focus check still out when a press asks again must not land
   // after the press's answer and take its run back off the page.
@@ -110,14 +123,14 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
     setMissed(0);
     setView(next);
     const section = watching.current;
-    const now = next.active?.own && next.active.lang === lang ? next.active.section : null;
+    const now = ownRun(next, lang)?.section ?? null;
     watching.current = now;
     if (section && !now) {
-      const settled = next.recent.find((run) => run.section === section && isSettled(run.state));
+      const settled = lastSettled(next, section);
       if (settled) {
         toast({
           tone: settled.state === "failed" ? "error" : "info",
-          title: `${section[0].toUpperCase()}${section.slice(1)} in ${langName(lang)}`,
+          title: `${SOURCE_LABELS[section]} in ${langName(lang)}`,
           detail: outcomeText(settled),
         });
       }
@@ -151,9 +164,9 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
     };
   }, [refresh]);
 
-  const ours = view.active?.own && view.active.lang === lang ? view.active : null;
+  const ours = ownRun(view, lang);
 
-  async function release(section: string, bump: ReleaseBump) {
+  async function release(section: ReleaseSection, bump: ReleaseBump) {
     setPressing(true);
     setError(null);
     const response = await fetch(`/api/releases?lang=${lang}`, {
@@ -179,7 +192,7 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
 
   const { active } = view;
   const elsewhere = active && !ours ? active : null;
-  const holdUp = active ? `${active.section[0].toUpperCase()}${active.section.slice(1)} in ${langName(active.lang)}` : null;
+  const holdUp = active ? `${SOURCE_LABELS[active.section]} in ${langName(active.lang)}` : null;
   return (
     <div>
       {error && (
@@ -218,7 +231,7 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
           <SectionCard
             key={section}
             section={section}
-            recent={view.recent.filter((run) => run.section === section)}
+            last={lastSettled(view, section)}
             released={view.released[section]}
             current={ours?.section === section ? ours : null}
             disabled={running || pressing}
@@ -234,16 +247,16 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
 /** One section's pack: the version last released from here, who released it when, and the button. */
 function SectionCard({
   section,
-  recent,
+  last,
   released,
   current,
   disabled,
   waitingFor,
   onRelease,
 }: {
-  section: string;
-  /** This section's runs, newest first. */
-  recent: RunView[];
+  section: ReleaseSection;
+  /** Its newest settled run. */
+  last: RunView | undefined;
   /** Its newest run that released, however far back. */
   released: RunView | undefined;
   current: RunView | null;
@@ -253,7 +266,7 @@ function SectionCard({
   onRelease: (bump: ReleaseBump) => void;
 }) {
   const date = useLocalDates();
-  const last = recent.find((run) => isSettled(run.state));
+  const logRun = current ?? last;
   return (
     <article className="bg-card flex flex-col gap-3 rounded-lg border p-4">
       <header className="flex items-baseline justify-between gap-3">
@@ -306,7 +319,7 @@ function SectionCard({
       {current && <Progress run={current} />}
       <div className="mt-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t pt-3">
         <div className="mr-auto flex min-w-0 flex-wrap items-center gap-x-3">
-          {(current ?? last) && <ReleaseLog run={(current ?? last)!} />}
+          {logRun && <ReleaseLog run={logRun} />}
           {current ? (
             <p className="text-muted-foreground text-xs">Releasing now. You can leave this page.</p>
           ) : (

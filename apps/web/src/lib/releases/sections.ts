@@ -25,7 +25,7 @@ export function isSettled(state: ReleaseState): state is "done" | "unchanged" | 
 
 /** What the panel draws of a run; another team's active run carries only the first four. */
 export type RunView = {
-  section: string;
+  section: ReleaseSection;
   lang: Lang;
   state: ReleaseState;
   /** False for another team's run. */

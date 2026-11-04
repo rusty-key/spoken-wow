@@ -9,12 +9,12 @@ import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
 
-import { isSettled, type ReleaseState } from "./sections";
+import { isSettled, type ReleaseSection, type ReleaseState } from "./sections";
 
 export type ReleaseRun = {
   id: string;
   teamId: string;
-  section: string;
+  section: ReleaseSection;
   lang: Lang;
   state: ReleaseState;
   githubRunId: number | null;
