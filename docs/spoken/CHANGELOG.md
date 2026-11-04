@@ -78,7 +78,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
   settings page and dungeon icon instead of using the generic book portrait.
   *([anon1231823](https://github.com/anon1231823))*
-- **Show Play Button covers the Quest Log, Blizzard's tracker and Questie's tracker.**
+- **Show Play Button covers the Quest Log and Blizzard's tracker.**
   The Quest Log and Tracker suboptions are available wherever their respective buttons can appear,
   including Era's classic quest log and default tracker.
   *([anon1231823](https://github.com/anon1231823))*
