@@ -104,7 +104,7 @@ function Debug:DeveloperRows(layout)
             if button and button.Refresh then button:Refresh() end
         end
     end
-    layout:Checkbox(L.OPT_DEV_MOCK_MISSING, L.OPT_DEV_MOCK_MISSING_TIP,
+    layout:Checkbox(L.OPT_DEV_MOCK_MISSING, nil,
         function() return Debug:IsMockingMissingVoice() end,
         function(value)
             DeveloperSettings().MockMissingVoice = value and true or false
