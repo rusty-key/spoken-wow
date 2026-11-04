@@ -74,7 +74,7 @@ import { NPC_ROW_KINDS, type NpcKind, type NpcRowKind } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
 import type { Filter } from "@/lib/search";
 import { cn, endsSelection } from "@/lib/utils";
-import { wowheadEntityUrl, wowheadForeverUrl, wowheadQuestUrl } from "@/lib/wowhead";
+import { wowheadEntityUrl, wowheadQuestUrl } from "@/lib/wowhead";
 
 export type { NpcSummary };
 
@@ -832,18 +832,11 @@ const ContributionTableRow = memo(function ContributionTableRow({
                   </a>
                   <a
                     href={
-                      // The corpus's own exact answer means it has this NPC on the branch
-                      // the corpus is built from; anything else -- including a post-vanilla
-                      // NPC like 205729 -- is only ever on the client's own branch. See
-                      // wowhead.ts for why two branches exist rather than one.
-                      //
                       // A kind-less row (npc.npcKind === null) has no real kind to link
                       // with yet -- "creature" is a convenience guess for this link only,
                       // never stored, and every quest/gossip npc field this table has ever
                       // seen has in fact named one.
-                      npc.provenance === "corpus"
-                        ? wowheadEntityUrl(npc.npcKind ?? "creature", npc.npcId)
-                        : wowheadForeverUrl(npc.npcKind ?? "creature", npc.npcId)
+                      wowheadEntityUrl(npc.npcKind ?? "creature", npc.npcId)
                     }
                     target="_blank"
                     rel="noreferrer"
