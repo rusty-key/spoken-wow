@@ -283,7 +283,7 @@ export const PACKS: readonly Pack[] = [
     curseforge: "spoken-audio-places",
     release: "bosses-audio",
   },
-  { section: "bosses", lang: "deDE", curseforge: null, release: "bosses-audio-deDE" },
+  { section: "bosses", lang: "deDE", curseforge: "spoken-german-audio-bosses", release: "bosses-audio-deDE" },
   { section: "bosses", lang: "esES", curseforge: null, release: "bosses-audio-esES" },
   { section: "bosses", lang: "esMX", curseforge: null, release: "bosses-audio-esMX" },
   { section: "bosses", lang: "frFR", curseforge: null, release: "bosses-audio-frFR" },

@@ -199,7 +199,7 @@ export function audioFamily(lang, dir = PUBLISHERS_DIR) {
 // counterpart of Spoken: English (scripts/spoken/package-meta.sh). Not a pack -- the page has
 // no `section` -- but its dependencies are the packs, so they are read off the registry here
 // rather than listed a second time: every pack of the language that is on CurseForge, quests,
-// places and readables alike. A language without a places or readables project simply has none to
+// places, readables and bosses alike. A language without a project for one simply has none to
 // name.
 export function metaFor(lang, packs = loadPacks(), dir = PUBLISHERS_DIR) {
   if (lang === BASE_LOCALE) throw new Error(`English's meta addon is spoken-all itself, not a language's`);

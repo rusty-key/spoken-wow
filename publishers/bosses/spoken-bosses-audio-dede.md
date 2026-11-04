@@ -1,4 +1,5 @@
 ---
+curseforge: 1781613
 release: bosses-audio-deDE
 section: bosses
 lang: deDE
