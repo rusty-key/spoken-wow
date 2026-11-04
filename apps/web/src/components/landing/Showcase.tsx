@@ -7,7 +7,7 @@ import Link from "@/components/LocaleLink";
 
 import { useSiteText } from "./SiteTextProvider";
 import VoicePlayer, { VoicePlaceholder } from "./VoicePlayer";
-import { VOICES } from "./voices";
+import type { Voice } from "./voices";
 
 const PARTS = [
   { id: "quests", href: "/quests", icon: "/landing/icons/game-quests.png" },
@@ -22,12 +22,12 @@ const PARTS = [
  * region, so a screen reader hears the part that was picked. Only the picked part's player
  * is mounted, and its audio downloads when played.
  */
-export default function Showcase() {
+export default function Showcase({ voices: all }: { voices: Record<string, Voice[]> }) {
   const t = useSiteText().showcase;
   const [index, setIndex] = useState(0);
   const part = PARTS[index];
   const text = t[part.id];
-  const voices = VOICES[part.id];
+  const voices = all[part.id];
 
   return (
     <div className="bn-showcase">
@@ -45,7 +45,7 @@ export default function Showcase() {
       </ul>
       <div className="bn-stage-part">
         <div className="bn-stage-art">
-          {voices ? (
+          {voices?.length ? (
             <VoicePlayer key={part.id} voices={voices} position={text.position} />
           ) : (
             <VoicePlaceholder icon={part.icon} name={text.title} text={t.noVoice} position={text.position} />
