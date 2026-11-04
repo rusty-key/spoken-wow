@@ -1,4 +1,5 @@
 ---
+curseforge: 1782535
 release: bosses-audio-esMX
 section: bosses
 lang: esMX

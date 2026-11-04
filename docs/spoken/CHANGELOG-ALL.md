@@ -14,6 +14,16 @@ from the player whose changelog is CHANGELOG.md beside this one.
 - Installs Spoken German Audio: Bosses too, now that it has a CurseForge project, so the German
   boss stories come with one install. 7 sound packs in all.
 
+## 1.1.0 — spoken-all-esES — 2026-11-04
+
+- Installs Spoken Spanish (EU) Audio: Bosses too, now that it has a CurseForge project, so the
+  Spanish (EU) boss stories come with one install. 7 sound packs in all.
+
+## 1.1.0 — spoken-all-esMX — 2026-11-04
+
+- Installs Spoken Spanish (AL) Audio: Bosses too, now that it has a CurseForge project, so the
+  Spanish (AL) boss stories come with one install. 7 sound packs in all.
+
 ## 1.0.0 — spoken-all-deDE — 2026-10-15
 
 - First release. Installs Spoken Player with every German sound pack on CurseForge, 6 in all,

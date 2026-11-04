@@ -1,4 +1,5 @@
 ---
+curseforge: 1782544
 release: bosses-audio-esES
 section: bosses
 lang: esES
