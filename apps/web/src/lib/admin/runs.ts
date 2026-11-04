@@ -8,7 +8,7 @@
 import type { ActivityRow } from "@/lib/activity/store";
 
 /** A pause longer than this starts a new run, even for the same person doing the same thing. */
-export const RUN_GAP_MS = 30 * 60_000;
+const RUN_GAP_MS = 30 * 60_000;
 
 export type ActivityRun = {
   /** The newest row of the run: what a run of one shows as it is. */
@@ -44,7 +44,7 @@ export const FOLDABLE: Partial<Record<ActivityRow["kind"], string>> = {
  * One run's identity. The language too, since a language's list also holds every-language rows;
  * and a contribution's outcome, since accepting and rejecting are not one thing done many times.
  */
-export const keyOf = (row: ActivityRow) =>
+const keyOf = (row: ActivityRow) =>
   row.kind in FOLDABLE
     ? [row.actorId ?? "", row.kind, row.source ?? "", row.lang ?? "", row.kind === "contribution.resolved" ? String(row.detail.status ?? "") : ""].join("|")
     : `row:${row.id}`;
@@ -58,14 +58,14 @@ export const keyOf = (row: ActivityRow) =>
 export function runsOf(
   rows: readonly ActivityRow[],
   max: number,
-  { more = false, gapMs = RUN_GAP_MS }: { more?: boolean; gapMs?: number } = {},
+  { more = false }: { more?: boolean } = {},
 ): ActivityRun[] {
   const runs: ActivityRun[] = [];
   const open = new Map<string, ActivityRun>();
   for (const row of rows) {
     const key = keyOf(row);
     const run = open.get(key);
-    if (run && Date.parse(run.from) - Date.parse(row.at) <= gapMs) {
+    if (run && Date.parse(run.from) - Date.parse(row.at) <= RUN_GAP_MS) {
       run.count++;
       run.from = row.at;
       continue;
@@ -78,8 +78,7 @@ export function runsOf(
   const end = rows.at(-1);
   if (more && end) {
     for (const run of open.values()) {
-      if (keyOf(run.row).startsWith("row:")) continue;
-      if (Date.parse(run.from) - Date.parse(end.at) <= gapMs) run.atLeast = true;
+      if (Date.parse(run.from) - Date.parse(end.at) <= RUN_GAP_MS) run.atLeast = true;
     }
   }
   return runs.slice(0, max);

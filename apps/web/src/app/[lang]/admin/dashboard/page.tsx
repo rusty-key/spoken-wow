@@ -6,8 +6,8 @@ import TeamDashboard from "@/components/TeamDashboard";
 import { Contained } from "@/components/Width";
 import { dashboard } from "@/lib/admin/dashboard";
 import { viewerOf } from "@/lib/grants/store";
-import { isLang, langName } from "@/lib/lang";
-import { can, isAdmin, langsWhere } from "@/lib/permissions";
+import { langName } from "@/lib/lang";
+import { can, isAdmin, langsWhere, type Capability } from "@/lib/permissions";
 import { queuesOf, triages } from "@/lib/reports/reports";
 import { currentSession } from "@/lib/session";
 
@@ -27,8 +27,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
   if (!session || !viewer || administered.length === 0) notFound();
 
   const { lang: asked } = await searchParams;
-  const lang = (isLang(asked) && administered.find((code) => code === asked)) || administered[0];
-  const may = (capability: Parameters<typeof can>[1]) => can(viewer, capability, lang);
+  const lang = administered.find((code) => code === asked) ?? administered[0];
+  const may = (capability: Capability) => can(viewer, capability, lang);
 
   return (
     <main className="pb-36">

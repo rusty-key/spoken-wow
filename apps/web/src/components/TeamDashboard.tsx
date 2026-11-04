@@ -3,10 +3,10 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
 
-import LocaleLink from "@/components/LocaleLink";
-
 import { describe } from "@/components/ActivityTable";
+import Avatar from "@/components/Avatar";
 import { CAPABILITY_COLOURS } from "@/components/GrantCell";
+import { useLang } from "@/components/LangProvider";
 import { useLocalDates } from "@/components/useLocalDates";
 import type { Dashboard } from "@/lib/admin/dashboard";
 import { FOLDABLE, type ActivityRun } from "@/lib/admin/runs";
@@ -26,17 +26,13 @@ type Task = {
   title: string;
   detail: string;
   capabilities: Capability[];
-  /** In the team's language, not the page's, unless `admin`. */
   href: string | null;
-  /** An admin page, which takes the team from `?lang=` and keeps the reader's site language. */
-  admin?: boolean;
   action: string;
 };
 
 const WHEN: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 const DAY: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
 
-const title = (section: string) => `${section[0].toUpperCase()}${section.slice(1)}`;
 const joined = (parts: (string | false | null)[]) => parts.filter(Boolean).join(" · ");
 
 /**
@@ -47,6 +43,8 @@ const joined = (parts: (string | false | null)[]) => parts.filter(Boolean).join(
 export default function TeamDashboard({ lang, data, access }: { lang: Lang; data: Dashboard; access: DashboardAccess }) {
   const date = useLocalDates();
   const to = (path: string) => localeHref(lang, path);
+  // An admin page takes the team from `?lang=` and keeps the reader's site language.
+  const siteLang = useLang();
   const { contributions: c, reports, missing } = data;
   const reportTotal = CATEGORIES.reduce((sum, category) => sum + reports[category], 0);
   const contributionTotal = c.sections.quests + c.sections.readables + c.sections.places;
@@ -54,18 +52,17 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
   const tasks: Task[] = [
     ...data.release.map((release) => ({
       key: `release:${release.section}`,
-      count: release.count,
-      title: `Release ${title(release.section)}`,
+      count: release.count + release.textChanges,
+      title: `Release ${SOURCE_LABELS[release.section]}`,
       detail: release.since
         ? joined([
-            `${release.count.toLocaleString()} lines changed that players don't have yet`,
-            release.restored > 0 && `${(release.count - release.textChanges - release.restored).toLocaleString()} new, ${release.restored.toLocaleString()} put back`,
+            `${(release.count + release.textChanges).toLocaleString()} lines changed that players don't have yet`,
+            release.restored > 0 && `${(release.count - release.restored).toLocaleString()} new, ${release.restored.toLocaleString()} put back`,
             release.textChanges > 0 && `${release.textChanges.toLocaleString()} text changes`,
           ])
         : "Never released from here: the first release sends everything live",
       capabilities: ["admin" as const],
-      href: `/admin/release?lang=${lang}`,
-      admin: true,
+      href: localeHref(siteLang, `/admin/release?lang=${lang}`),
       action: "Review release",
     })),
     {
@@ -159,7 +156,7 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
                 date(iso, new Date(iso).toDateString() === new Date().toDateString() ? WHEN : DAY);
               return (
                 <li key={row.id} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-2.5 px-4 py-2 text-sm">
-                  <Avatar name={row.actorName} />
+                  <Avatar name={row.actorName} className="border-card border-2" />
                   <span className="text-muted-foreground min-w-0">
                     <span className="text-foreground font-medium">{row.actorName || "The site"}</span> {what}
                     {quote && <span className="block truncate text-xs">{quote}</span>}
@@ -189,7 +186,7 @@ function summary(run: ActivityRun): { what: string; quote: string | null } {
   const n = `${run.count.toLocaleString()}${run.atLeast ? "+" : ""}`;
   const where = run.row.source ? ` in ${SOURCE_LABELS[run.row.source]}` : "";
   // Only foldable kinds make runs of more than one, and each of them has its words.
-  const words = (FOLDABLE[run.row.kind] ?? "did {n} things")
+  const words = FOLDABLE[run.row.kind]!
     .replace("{n}", n)
     .replace("{status}", String(run.row.detail.status ?? "resolved"));
   return { what: `${words}${where}`, quote: null };
@@ -218,7 +215,7 @@ function TaskRow({ task, holders }: { task: Task; holders: Dashboard["holders"] 
           {people.length > 0 ? (
             <span className="ml-1 flex" title={named.join(", ")}>
               {people.slice(0, 5).map((person) => (
-                <Avatar key={person.id} name={person.name} overlap />
+                <Avatar key={person.id} name={person.name} className="border-card -ml-1.5 border-2 first:ml-0" />
               ))}
             </span>
           ) : (
@@ -233,32 +230,11 @@ function TaskRow({ task, holders }: { task: Task; holders: Dashboard["holders"] 
   );
   const className = "grid grid-cols-[3.25rem_minmax(0,1fr)_auto] items-center gap-4 border-b px-4 py-3.5";
   const linked = cn(className, "hover:bg-muted/20 focus-visible:bg-muted/20");
-  if (task.href && task.admin) {
-    return (
-      <LocaleLink href={task.href} className={linked}>
-        {body}
-      </LocaleLink>
-    );
-  }
   return task.href ? (
     <Link href={task.href} className={linked}>
       {body}
     </Link>
   ) : (
     <div className={className}>{body}</div>
-  );
-}
-
-function Avatar({ name, overlap }: { name: string | null; overlap?: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "bg-muted text-muted-foreground border-card inline-grid size-6 shrink-0 place-items-center rounded-full border-2 text-xs font-semibold",
-        overlap && "-ml-1.5 first:ml-0",
-      )}
-    >
-      {(name || "?")[0].toUpperCase()}
-    </span>
   );
 }

@@ -14,21 +14,19 @@ import { missingAudioRanking, RANKING_LIMIT } from "@/lib/contributions/missing-
 import { viewersIn } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can, CAPABILITIES, isAdmin, type Capability } from "@/lib/permissions";
-import { pendingChanges } from "@/lib/releases/pending";
-import { RELEASE_SECTIONS, type ReleaseSection } from "@/lib/releases/sections";
-import { lastReleasedAt } from "@/lib/releases/store";
-import { CATEGORIES, type Category, type Queue } from "@/lib/reports/reports";
-import { listReports } from "@/lib/reports/store";
+import { pendingBySection } from "@/lib/releases/pending";
+import { RELEASE_SECTIONS, type PendingView, type ReleaseSection } from "@/lib/releases/sections";
+import type { Category, Queue } from "@/lib/reports/reports";
+import { openReportCounts } from "@/lib/reports/store";
 import { readAs } from "@/lib/teams/store";
 import { namesOf } from "@/lib/users/store";
 
 import { runsOf, type ActivityRun } from "./runs";
 
 export type Dashboard = {
-  release: { section: ReleaseSection; count: number; restored: number; textChanges: number; since: string | null }[];
+  release: (PendingView & { section: ReleaseSection })[];
   contributions: PendingCounts;
   reports: Record<Category, number>;
-  /** Of the most-heard silent lines the Missing audio page ranks, those with no take at all. */
   /**
    * Of the most-heard silent lines the Missing audio page ranks, those with no take at all.
    * `capped` when the ranking stopped at its limit, so there may be more.
@@ -55,32 +53,15 @@ const WEEK = `now() - interval '7 days'`;
 
 /** `queues` are the report queues the viewer triages, as /reports lists them for the same viewer. */
 export async function dashboard(lang: Lang, queues: readonly Queue[]): Promise<Dashboard> {
-  const [released, contributions, reports, ranking, grants, week, recent] = await Promise.all([
-    lastReleasedAt(lang),
+  const [pending, contributions, reports, ranking, grants, week, recent] = await Promise.all([
+    pendingBySection(lang),
     pendingCounts(lang),
-    queues.length > 0 ? listReports("open", "all", "all", null, lang, queues) : Promise.resolve([]),
+    openReportCounts(lang, queues),
     missingAudioRanking(lang),
     viewersIn(lang),
     weekIn(lang),
     listActivity({ lang, limit: RECENT_ROWS }),
   ]);
-
-  const release = await Promise.all(
-    RELEASE_SECTIONS.map(async (section) => {
-      const since = released.get(section) ?? null;
-      const pending = await pendingChanges(section, lang, since, { list: false });
-      return {
-        section,
-        count: pending.count + pending.textChanges,
-        restored: pending.restored,
-        textChanges: pending.textChanges,
-        since: pending.since,
-      };
-    }),
-  );
-
-  const byCategory = Object.fromEntries(CATEGORIES.map((category) => [category, 0])) as Record<Category, number>;
-  for (const report of reports) byCategory[report.category]++;
 
   const silent = ranking.filter((row) => !row.voiced);
   // What each person can do, as permissions.ts `can` reads their grants: admin in the language
@@ -95,9 +76,9 @@ export async function dashboard(lang: Lang, queues: readonly Queue[]): Promise<D
   }
 
   return {
-    release,
+    release: RELEASE_SECTIONS.map((section) => ({ ...pending[section], section })),
     contributions,
-    reports: byCategory,
+    reports,
     missing: {
       count: silent.length,
       capped: ranking.length >= RANKING_LIMIT,
