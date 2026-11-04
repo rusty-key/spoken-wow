@@ -1,4 +1,4 @@
--- The optional Classic Era tracker adapter: its WatchFrame alongside the default tracker path.
+-- The Classic Era WatchFrame tracker adapter.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -26,7 +26,7 @@ end
 local VO = stub.LoadQuestsOverlay(QUESTS, SPOKEN)
 VO.Addon:OnInitialize()
 VO.DataModules:Register("TestPack", {
-    SoundLengthLookupByFileName = { ["748-accept"] = 1, ["749-accept"] = 1 },
+    SoundLengthLookupByFileName = { ["748-accept"] = 1 },
     GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
 })
 stub.Advance(2)

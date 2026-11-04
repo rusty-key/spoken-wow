@@ -2,6 +2,14 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Spoken no longer adds a Play button to Questie's tracker.** The Questie team asked for this
+  so Spoken stops depending on their tracker's internals, and they plan to add Spoken support on
+  their side. Until then, Questie's tracker has no Play button; the Quest Log and Blizzard's
+  tracker keep theirs.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.1 — 2026-11-03
 
 - **Spoken's website is now [spoken.quest](https://spoken.quest).** Report and Contribute links and
@@ -78,7 +86,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **The Bosses section uses its dragon icon and skull badge in the Compendium**, matching its
   settings page and dungeon icon instead of using the generic book portrait.
   *([anon1231823](https://github.com/anon1231823))*
-- **Show Play Button covers the Quest Log and Blizzard's tracker.**
+- **Show Play Button covers the Quest Log, Blizzard's tracker and Questie's tracker.**
   The Quest Log and Tracker suboptions are available wherever their respective buttons can appear,
   including Era's classic quest log and default tracker.
   *([anon1231823](https://github.com/anon1231823))*
