@@ -42,6 +42,23 @@ describe("runsOf", () => {
     expect(runs[0].from).toBe(rows[1399].at);
   });
 
+  it("marks every run that may go on past the rows read, not only the last one", () => {
+    const rows = [
+      row("ranfred", "take.generated", "2026-11-04T10:04:00Z"),
+      row("laurenz", "take.generated", "2026-11-04T10:03:00Z"),
+      row("ranfred", "take.generated", "2026-11-04T10:02:00Z"),
+      row("laurenz", "take.generated", "2026-11-04T10:01:00Z"),
+    ];
+    expect(runsOf(rows, 6, { more: true }).map((r) => r.atLeast)).toEqual([true, true]);
+    expect(runsOf(rows, 6).map((r) => r.atLeast ?? false)).toEqual([false, false]);
+  });
+
+  it("keeps accepted and rejected contributions apart", () => {
+    const accepted = { ...row("ranfred", "contribution.resolved", "2026-11-04T10:04:00Z"), detail: { status: "accepted" } };
+    const rejected = { ...row("ranfred", "contribution.resolved", "2026-11-04T10:03:00Z"), detail: { status: "rejected" } };
+    expect(runsOf([accepted, rejected], 6)).toHaveLength(2);
+  });
+
   it("starts a new run after a pause, or for another person, kind or section", () => {
     const runs = runsOf(
       [

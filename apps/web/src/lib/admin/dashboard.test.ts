@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb } from "@/lib/db";
-import { asSystem, ownTeam } from "@/lib/teams/testing";
+import { asSystem, ownTeam, testUser } from "@/lib/teams/testing";
 
 import { dashboard } from "./dashboard";
 
@@ -57,5 +57,23 @@ describe("dashboard", () => {
     const both = (await dashboard("deDE", ["audio", "text"])).reports.wrong_text;
     expect((await dashboard("deDE", ["audio"])).reports.wrong_text).toBe(both - 1);
     expect((await dashboard("deDE", [])).reports.wrong_text).toBe(0);
+  });
+
+  it("counts somebody who holds admin as able to do what admin includes", async () => {
+    const user = await testUser("dashboard-test-admin");
+    try {
+      await asSystem.query(
+        `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'deDE', 'admin')`,
+        [de.team, user.id],
+      );
+      const { holders } = await dashboard("deDE", ["audio"]);
+      for (const capability of ["edit", "regenerate", "admin"] as const) {
+        expect(holders[capability].map((h) => h.id)).toContain(user.id);
+      }
+      expect(holders.text.map((h) => h.id)).not.toContain(user.id);
+    } finally {
+      await asSystem.query(`delete from "team_member" where "userId" = $1`, [user.id]);
+      await user.cleanup();
+    }
   });
 });

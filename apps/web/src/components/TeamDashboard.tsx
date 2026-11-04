@@ -3,6 +3,8 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
 
+import LocaleLink from "@/components/LocaleLink";
+
 import { describe } from "@/components/ActivityTable";
 import { CAPABILITY_COLOURS } from "@/components/GrantCell";
 import { useLocalDates } from "@/components/useLocalDates";
@@ -19,11 +21,15 @@ export type DashboardAccess = { contributions: boolean; reports: boolean; missin
 type Task = {
   key: string;
   count: number;
+  /** The count stopped at a limit, so there may be more. */
+  atLeast?: boolean;
   title: string;
   detail: string;
   capabilities: Capability[];
-  /** In the team's language, not the page's. */
+  /** In the team's language, not the page's, unless `admin`. */
   href: string | null;
+  /** An admin page, which takes the team from `?lang=` and keeps the reader's site language. */
+  admin?: boolean;
   action: string;
 };
 
@@ -56,7 +62,8 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
           }`
         : "Never released from here: the first release sends everything live",
       capabilities: ["admin" as const],
-      href: `${to("/admin/release")}?lang=${lang}`,
+      href: `/admin/release?lang=${lang}`,
+      admin: true,
       action: "Review release",
     })),
     {
@@ -85,10 +92,11 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
     {
       key: "missing",
       count: missing.count,
+      atLeast: missing.capped,
       title: "Missing audio",
       detail: joined([
-        missing.count === missing.ranked ? `the ${missing.ranked} lines players hear in silence most` : "lines players heard in silence",
-        missing.top && `top: ${missing.top.text ? `„${missing.top.text}“` : missing.top.lineId}, heard by ${missing.top.installs} players`,
+        missing.capped ? "among the lines players hear in silence most" : "lines players heard in silence",
+        missing.top && `top: ${missing.top.text ? `“${missing.top.text}”` : missing.top.lineId}, heard by ${missing.top.installs} players`,
       ]),
       capabilities: ["edit", "regenerate"],
       href: access.missing ? to("/missing-audio") : null,
@@ -144,8 +152,9 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
             {data.recent.map((run) => {
               const { row } = run;
               const { what, quote } = run.count > 1 ? summary(run) : describe(row);
-              const today = new Date(row.at).toDateString() === new Date().toDateString();
-              const at = (iso: string) => date(iso, today ? WHEN : DAY);
+              // Each end on its own: a run from 23:40 to 00:20 spans two days.
+              const at = (iso: string) =>
+                date(iso, new Date(iso).toDateString() === new Date().toDateString() ? WHEN : DAY);
               return (
                 <li key={row.id} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-2.5 px-4 py-2 text-sm">
                   <Avatar name={row.actorName} />
@@ -178,15 +187,22 @@ function summary(run: ActivityRun): { what: string; quote: string | null } {
   const n = `${run.count.toLocaleString()}${run.atLeast ? "+" : ""}`;
   const where = run.row.source ? ` in ${SOURCE_LABELS[run.row.source]}` : "";
   // Only foldable kinds make runs of more than one, and each of them has its words.
-  return { what: `${(FOLDABLE[run.row.kind] ?? "did {n} things").replace("{n}", n)}${where}`, quote: null };
+  const words = (FOLDABLE[run.row.kind] ?? "did {n} things")
+    .replace("{n}", n)
+    .replace("{status}", String(run.row.detail.status ?? "resolved"));
+  return { what: `${words}${where}`, quote: null };
 }
 
 function TaskRow({ task, holders }: { task: Task; holders: Dashboard["holders"] }) {
-  const people = [...new Set(task.capabilities.flatMap((capability) => holders[capability] ?? []))];
+  const people = [
+    ...new Map(task.capabilities.flatMap((capability) => holders[capability] ?? []).map((p) => [p.id, p])).values(),
+  ];
+  const named = people.map((person) => person.name ?? "unnamed");
   const body = (
     <>
       <span className="text-primary-ink text-right text-2xl font-semibold tracking-tight tabular-nums">
         {task.count.toLocaleString()}
+        {task.atLeast && "+"}
       </span>
       <span className="min-w-0">
         <span className="block font-semibold">{task.title}</span>
@@ -198,9 +214,9 @@ function TaskRow({ task, holders }: { task: Task; holders: Dashboard["holders"] 
             </span>
           ))}
           {people.length > 0 ? (
-            <span className="ml-1 flex" title={people.join(", ")}>
+            <span className="ml-1 flex" title={named.join(", ")}>
               {people.slice(0, 5).map((person) => (
-                <Avatar key={person} name={person} overlap />
+                <Avatar key={person.id} name={person.name} overlap />
               ))}
             </span>
           ) : (
@@ -214,8 +230,16 @@ function TaskRow({ task, holders }: { task: Task; holders: Dashboard["holders"] 
     </>
   );
   const className = "grid grid-cols-[3.25rem_minmax(0,1fr)_auto] items-center gap-4 border-b px-4 py-3.5";
+  const linked = cn(className, "hover:bg-muted/20 focus-visible:bg-muted/20");
+  if (task.href && task.admin) {
+    return (
+      <LocaleLink href={task.href} className={linked}>
+        {body}
+      </LocaleLink>
+    );
+  }
   return task.href ? (
-    <Link href={task.href} className={cn(className, "hover:bg-muted/20 focus-visible:bg-muted/20")}>
+    <Link href={task.href} className={linked}>
       {body}
     </Link>
   ) : (

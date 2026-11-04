@@ -30,7 +30,7 @@ export const FOLDABLE: Partial<Record<ActivityRow["kind"], string>> = {
   "take.restored": "restored {n} older takes",
   "take.acked": "marked {n} takes fine after a pronunciation change",
   "recording.uploaded": "recorded {n} lines",
-  "contribution.resolved": "resolved {n} contributions",
+  "contribution.resolved": "{status} {n} contributions",
   "text.edited": "edited {n} texts",
   "name.edited": "renamed {n} lines",
   "ignore.set": "ignored {n} lines",
@@ -40,8 +40,14 @@ export const FOLDABLE: Partial<Record<ActivityRow["kind"], string>> = {
   "lexicon.edited": "changed {n} pronunciations",
 };
 
+/**
+ * One run's identity. The language too, since a language's list also holds every-language rows;
+ * and a contribution's outcome, since accepting and rejecting are not one thing done many times.
+ */
 export const keyOf = (row: ActivityRow) =>
-  row.kind in FOLDABLE ? `${row.actorId ?? ""}|${row.kind}|${row.source ?? ""}` : `row:${row.id}`;
+  row.kind in FOLDABLE
+    ? [row.actorId ?? "", row.kind, row.source ?? "", row.lang ?? "", row.kind === "contribution.resolved" ? String(row.detail.status ?? "") : ""].join("|")
+    : `row:${row.id}`;
 
 /**
  * `rows` newest first, as listActivity gives them; the first `max` runs, newest first.
@@ -49,7 +55,11 @@ export const keyOf = (row: ActivityRow) =>
  * A row joins its person's run while that run is still going, whatever came between: two people
  * cutting takes in the same hour interleave row by row, and each still did one thing.
  */
-export function runsOf(rows: readonly ActivityRow[], max: number, gapMs = RUN_GAP_MS): ActivityRun[] {
+export function runsOf(
+  rows: readonly ActivityRow[],
+  max: number,
+  { more = false, gapMs = RUN_GAP_MS }: { more?: boolean; gapMs?: number } = {},
+): ActivityRun[] {
   const runs: ActivityRun[] = [];
   const open = new Map<string, ActivityRun>();
   for (const row of rows) {
@@ -63,6 +73,14 @@ export function runsOf(rows: readonly ActivityRow[], max: number, gapMs = RUN_GA
     const started = { row, count: 1, from: row.at };
     runs.push(started);
     open.set(key, started);
+  }
+  // With more rows past those read, any run still going at the last one read may go on in them.
+  const end = rows.at(-1);
+  if (more && end) {
+    for (const run of open.values()) {
+      if (keyOf(run.row).startsWith("row:")) continue;
+      if (Date.parse(run.from) - Date.parse(end.at) <= gapMs) run.atLeast = true;
+    }
   }
   return runs.slice(0, max);
 }

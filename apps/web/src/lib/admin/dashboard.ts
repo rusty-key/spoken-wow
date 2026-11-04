@@ -3,34 +3,43 @@
  * that handles it reads it, so the number on the dashboard is the number that page opens on.
  *
  * Outdated audio is left out: whether a take is outdated is decided per take against every
- * pronunciation change (lib/generation/dirty.ts), which the explorers do one page at a time and
- * which over a whole language would cost more than the rest of this together.
+ * pronunciation change, which the explorers do one page at a time and which over a whole
+ * language would cost more than the rest of this together.
  */
 import "server-only";
 
 import { listActivity } from "@/lib/activity/store";
 import { pendingCounts, type PendingCounts } from "@/lib/contributions/pending";
-import { missingAudioRanking } from "@/lib/contributions/missing-audio";
-import { listGrants } from "@/lib/grants/store";
+import { missingAudioRanking, RANKING_LIMIT } from "@/lib/contributions/missing-audio";
+import { viewersIn } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
-import type { Capability } from "@/lib/permissions";
+import { can, CAPABILITIES, isAdmin, type Capability } from "@/lib/permissions";
 import { pendingChanges } from "@/lib/releases/pending";
 import { RELEASE_SECTIONS, type ReleaseSection } from "@/lib/releases/sections";
 import { lastReleasedAt } from "@/lib/releases/store";
 import { CATEGORIES, type Category, type Queue } from "@/lib/reports/reports";
 import { listReports } from "@/lib/reports/store";
 import { readAs } from "@/lib/teams/store";
+import { namesOf } from "@/lib/users/store";
 
-import { keyOf, runsOf, type ActivityRun } from "./runs";
+import { runsOf, type ActivityRun } from "./runs";
 
 export type Dashboard = {
   release: { section: ReleaseSection; count: number; restored: number; since: string | null }[];
   contributions: PendingCounts;
   reports: Record<Category, number>;
   /** Of the most-heard silent lines the Missing audio page ranks, those with no take at all. */
-  missing: { count: number; ranked: number; top: { lineId: string; text: string | null; installs: number } | null };
+  /**
+   * Of the most-heard silent lines the Missing audio page ranks, those with no take at all.
+   * `capped` when the ranking stopped at its limit, so there may be more.
+   */
+  missing: {
+    count: number;
+    capped: boolean;
+    top: { lineId: string; text: string | null; installs: number } | null;
+  };
   /** Who holds each capability in the language, by name. */
-  holders: Record<Capability, string[]>;
+  holders: Record<Capability, { id: string; name: string | null }[]>;
   week: { takes: number; accepted: number; releases: number };
   recent: ActivityRun[];
 };
@@ -51,7 +60,7 @@ export async function dashboard(lang: Lang, queues: readonly Queue[]): Promise<D
     pendingCounts(lang),
     queues.length > 0 ? listReports("open", "all", "all", null, lang, queues) : Promise.resolve([]),
     missingAudioRanking(lang),
-    listGrants([lang]),
+    viewersIn(lang),
     weekIn(lang),
     listActivity({ lang, limit: RECENT_ROWS }),
   ]);
@@ -73,8 +82,16 @@ export async function dashboard(lang: Lang, queues: readonly Queue[]): Promise<D
   for (const report of reports) byCategory[report.category]++;
 
   const silent = ranking.filter((row) => !row.voiced);
-  const holders = {} as Record<Capability, string[]>;
-  for (const grant of grants) (holders[grant.capability] ??= []).push(grant.name || grant.email);
+  // What each person can do, as permissions.ts `can` reads their grants: admin in the language
+  // holds every capability there but text. A site admin works everywhere and is no team's.
+  const names = await namesOf([...grants.keys()]);
+  const holders = Object.fromEntries(CAPABILITIES.map((capability) => [capability, []])) as unknown as Dashboard["holders"];
+  for (const [id, viewer] of grants) {
+    if (isAdmin(viewer.role)) continue;
+    for (const capability of CAPABILITIES) {
+      if (can(viewer, capability, lang)) holders[capability].push({ id, name: names.get(id) ?? null });
+    }
+  }
 
   return {
     release,
@@ -82,12 +99,12 @@ export async function dashboard(lang: Lang, queues: readonly Queue[]): Promise<D
     reports: byCategory,
     missing: {
       count: silent.length,
-      ranked: ranking.length,
+      capped: ranking.length >= RANKING_LIMIT,
       top: silent[0] ? { lineId: silent[0].lineId, text: silent[0].text, installs: silent[0].installs } : null,
     },
     holders,
     week,
-    recent: recentRuns(recent.rows, recent.next !== null),
+    recent: runsOf(recent.rows, RECENT_RUNS, { more: recent.next !== null }),
   };
 }
 
@@ -103,14 +120,4 @@ async function weekIn(lang: Lang): Promise<Dashboard["week"]> {
   );
   const row = rows[0];
   return { takes: Number(row?.takes ?? 0), accepted: Number(row?.accepted ?? 0), releases: Number(row?.releases ?? 0) };
-}
-
-function recentRuns(rows: Parameters<typeof runsOf>[0], more: boolean): ActivityRun[] {
-  const runs = runsOf(rows, RECENT_RUNS);
-  // A run the read ended inside may go on past it: the one holding the last row read.
-  const end = rows.at(-1);
-  if (more && end) {
-    for (const run of runs) if (run.from === end.at && keyOf(run.row) === keyOf(end)) run.atLeast = true;
-  }
-  return runs;
 }

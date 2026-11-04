@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 /**
  * What waits in one language the viewer looks after, each count linking to the page that
  * handles it. Gated like /admin, a 404 for anybody who is admin nowhere; the language comes
- * from `?lang=`, the first one administered when absent, as on the release page.
+ * from `?lang=`, the first one administered when absent.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const session = await currentSession();
@@ -43,7 +43,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
         <TeamDashboard
           lang={lang}
           data={await dashboard(lang, queuesOf(viewer, lang))}
-          // The same gates as the pages themselves, so no task links to a 404.
+          // A link only where its page would let the viewer in, so none leads to a 404.
           access={{ contributions: may("text"), reports: triages(may), missing: may("edit"), activity: may("admin") }}
         />
       </Contained>

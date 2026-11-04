@@ -71,7 +71,7 @@ export type MissingAudioRow = {
 };
 
 /** Rows the page shows: the head of the list is what to voice next, the tail can wait. */
-const RANKING_LIMIT = 200;
+export const RANKING_LIMIT = 200;
 
 /** The lines of one pack language, most players first. */
 export async function missingAudioRanking(packLang: string): Promise<MissingAudioRow[]> {
