@@ -116,7 +116,6 @@ export default async function Page({
           key={`${page}:${q}:${sort.column}:${sort.direction}`}
           users={users}
           grants={grants}
-          viewer={viewer}
           currentUserId={session.user.id}
           keyedUserIds={keyed}
           q={q}

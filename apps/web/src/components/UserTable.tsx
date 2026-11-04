@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
 import type { GrantRow } from "@/lib/grants/store";
+import { giveGrants, takeGrant } from "@/lib/grants/client";
 import type { Lang } from "@/lib/lang";
 import { nextUserSort, usersQuery, type UserSort } from "@/lib/users/sort";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,6 @@ import {
   ROLES,
   type Capability,
   type Role,
-  type Viewer,
 } from "@/lib/permissions";
 
 export type UserRow = {
@@ -44,7 +44,6 @@ type Props = {
   users: UserRow[];
   /** Every grant on the site. */
   grants: GrantRow[];
-  viewer: Viewer;
   /** The signed-in user, whose own role is deliberately not editable here. */
   currentUserId: string;
   /** Who holds a key. Presence only - no value crosses this boundary. */
@@ -59,7 +58,6 @@ type Props = {
 export default function UserTable({
   users: initialUsers,
   grants: initialGrants,
-  viewer,
   currentUserId,
   keyedUserIds,
   q,
@@ -87,31 +85,25 @@ export default function UserTable({
 
   const onSort = (column: UserSort["column"]) => push(usersQuery({ q, sort: nextUserSort(sort, column) }));
 
-  async function sendGrant(busyKey: string, method: "PUT" | "DELETE", target: string, body?: unknown) {
-    setPendingId(busyKey);
+  async function saving(userId: string, send: () => ReturnType<typeof takeGrant>) {
+    setPendingId(userId);
     setError(null);
-    const response = await fetch(target, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    }).catch(() => null);
+    const answer = await send();
     setPendingId(null);
-    const data = (await response?.json().catch(() => ({}))) as { grants?: GrantRow[]; error?: string };
-    if (!response?.ok || !data.grants) {
-      setError(data?.error ?? "That did not work.");
+    if (!answer.grants) {
+      setError(answer.error ?? "That did not work.");
       return false;
     }
     // The route answers with every grant the viewer may see, which is this table's.
-    const next = data.grants;
-    setGrants(next);
+    setGrants(answer.grants);
     return true;
   }
 
-  const grant = (busyKey: string, email: string, lang: Lang, capabilities: Capability[]) =>
-    sendGrant(busyKey, "PUT", "/api/grants", { email, lang, capabilities });
+  const grant = (userId: string, email: string, lang: Lang, capabilities: Capability[]) =>
+    saving(userId, () => giveGrants(email, lang, capabilities));
 
   const revoke = (userId: string, lang: Lang, capability: Capability) =>
-    void sendGrant(userId, "DELETE", `/api/grants?${new URLSearchParams({ userId, lang, capability })}`);
+    void saving(userId, () => takeGrant(userId, lang, capability));
 
   async function changeRole(userId: string, role: Role) {
     setPendingId(userId);
@@ -232,7 +224,6 @@ export default function UserTable({
                 ) : (
                   <GrantCell
                     grants={grantsOf.get(user.id) ?? NONE}
-                    viewer={viewer}
                     busy={pendingId === user.id}
                     onGrant={(lang, capabilities) => grant(user.id, user.email, lang, capabilities)}
                     onRevoke={(lang, capability) => revoke(user.id, lang, capability)}

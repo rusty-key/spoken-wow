@@ -7,6 +7,7 @@ import { CAPABILITY_COLOURS } from "@/components/GrantCell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster, useToast } from "@/components/ui/toast";
+import { giveGrants, takeGrant } from "@/lib/grants/client";
 import type { GrantRow } from "@/lib/grants/store";
 import { langName, type Lang } from "@/lib/lang";
 import {
@@ -14,6 +15,7 @@ import {
   capabilityHint,
   capabilityLabel,
   isAdmin,
+  removesOwnAdmin,
   type Capability,
   type Viewer,
 } from "@/lib/permissions";
@@ -82,33 +84,26 @@ function Matrix({ lang, grants: initial, viewer, currentUserId }: Props) {
   function lockOf(person: Person, capability: Capability): string | null {
     if (!canGrant(viewer, capability, lang)) return "Only a site admin appoints a text maintainer";
     if (implied(person.id, capability)) return "Included in their admin";
-    if (person.id === currentUserId && capability === "admin" && !global) {
+    if (removesOwnAdmin(viewer, currentUserId, person.id, capability)) {
       return "You cannot remove your own admin; another admin can";
     }
     return null;
   }
 
-  async function send(method: "PUT" | "DELETE", target: string, body?: unknown): Promise<string | null> {
-    const response = await fetch(target, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    }).catch(() => null);
-    if (!response) return "Could not reach the server.";
-    const data = (await response.json().catch(() => ({}))) as { grants?: GrantRow[]; error?: string };
-    if (!response.ok || !data.grants) return data.error ?? "That did not save.";
+  /** Why it did not save, or null when it did. */
+  function adopt(answer: Awaited<ReturnType<typeof takeGrant>>): string | null {
+    if (!answer.grants) return answer.error ?? "That did not save.";
     // The route answers with every language the viewer administers; this table is one of them.
-    const next = data.grants.filter((grant) => grant.lang === lang);
+    const next = answer.grants.filter((grant) => grant.lang === lang);
     setGrants(next);
     setPeople((current) => peopleOf(current, next));
     return null;
   }
 
-  const give = (person: Person, capabilities: Capability[]) =>
-    send("PUT", "/api/grants", { email: person.email, lang, capabilities });
+  const give = async (person: Person, capabilities: Capability[]) =>
+    adopt(await giveGrants(person.email, lang, capabilities));
 
-  const take = (person: Person, capability: Capability) =>
-    send("DELETE", `/api/grants?${new URLSearchParams({ userId: person.id, lang, capability })}`);
+  const take = async (person: Person, capability: Capability) => adopt(await takeGrant(person.id, lang, capability));
 
   // Says which way rather than flipping, because the undo runs from a toast that outlives this
   // render and would flip whatever the grants were when it was raised.

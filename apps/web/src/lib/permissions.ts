@@ -176,6 +176,15 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
   return capability !== "text" && can(viewer, "admin", lang);
 }
 
+/**
+ * Whether this removal is a language admin taking away their own admin: it is what lets them
+ * reach /admin at all, so doing it would lock them out of the page that gives it back. Another
+ * admin, or a site admin, can.
+ */
+export function removesOwnAdmin(viewer: Viewer, viewerId: string, userId: string, capability: Capability): boolean {
+  return userId === viewerId && capability === "admin" && !isAdmin(viewer.role);
+}
+
 /** Whether somebody holds anything at all in a language, which lets them see it switched off. */
 export function worksIn(viewer: Viewer | null, lang: Lang): boolean {
   if (!viewer) return false;

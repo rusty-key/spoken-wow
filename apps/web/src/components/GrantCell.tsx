@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { GrantRow } from "@/lib/grants/store";
 import { CODES, isLang, langName, type Lang } from "@/lib/lang";
-import { CAPABILITIES, canGrant, capabilityLabel, type Capability, type Viewer } from "@/lib/permissions";
+import { CAPABILITIES, capabilityLabel, type Capability } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,23 +26,16 @@ export const CAPABILITY_COLOURS: Record<Capability, string> = {
 };
 
 /**
- * One person's languages: what they hold in each, every capability removable, and a way to
- * add another.
- *
- * Offers only what `viewer` may hand out (lib/permissions.ts `canGrant`), so a language
- * admin sees the team capabilities in their own languages and nothing else. The server
- * refuses anything else whatever this offers.
+ * One person's languages for the site admin's user list: what they hold in each, every
+ * capability removable, and a way to add another.
  */
 export default function GrantCell({
   grants,
-  viewer,
   busy,
   onGrant,
   onRevoke,
 }: {
-  /** This person's grants, as far as the viewer may see them. */
   grants: readonly GrantRow[];
-  viewer: Viewer;
   busy: boolean;
   onGrant: (lang: Lang, capabilities: Capability[]) => Promise<boolean>;
   onRevoke: (lang: Lang, capability: Capability) => void;
@@ -56,37 +49,27 @@ export default function GrantCell({
     if (held) held.push(grant.capability);
     else byLang.set(grant.lang, [grant.capability]);
   }
-  const offer = (lang: Lang) =>
-    CAPABILITIES.filter((cap) => canGrant(viewer, cap, lang) && !byLang.get(lang)?.includes(cap));
+  const offer = (lang: Lang) => CAPABILITIES.filter((cap) => !byLang.get(lang)?.includes(cap));
 
   return (
     <div className="flex flex-col items-start gap-1">
       {[...byLang].map(([lang, capabilities]) => (
         <div key={lang} className="flex flex-wrap items-center gap-1">
           <span className="text-muted-foreground min-w-24 text-xs">{langName(lang)}</span>
-          {capabilities.map((capability) => {
-            const removable = canGrant(viewer, capability, lang);
-            return (
-              <Badge
-                key={capability}
-                variant="outline"
-                className={cn(CAPABILITY_COLOURS[capability], removable && "pr-0.5")}
+          {capabilities.map((capability) => (
+            <Badge key={capability} variant="outline" className={cn(CAPABILITY_COLOURS[capability], "pr-0.5")}>
+              {capabilityLabel(capability)}
+              <button
+                type="button"
+                disabled={busy}
+                aria-label={`Remove ${capabilityLabel(capability)} in ${langName(lang)}`}
+                className="rounded-full px-1 opacity-60 hover:opacity-100 disabled:opacity-30"
+                onClick={() => onRevoke(lang, capability)}
               >
-                {capabilityLabel(capability)}
-                {removable ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    aria-label={`Remove ${capabilityLabel(capability)} in ${langName(lang)}`}
-                    className="rounded-full px-1 opacity-60 hover:opacity-100 disabled:opacity-30"
-                    onClick={() => onRevoke(lang, capability)}
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </Badge>
-            );
-          })}
+                ×
+              </button>
+            </Badge>
+          ))}
           {offer(lang).length > 0 ? (
             <GrantPopover
               open={open === lang}
