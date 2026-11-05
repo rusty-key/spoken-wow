@@ -477,6 +477,28 @@ source filter also counts as asking for them, since otherwise that choice would 
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
 them, and clearing filters returns it to hidden.
 
+**The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
+`?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
+too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
+known level is in no range, so setting either bound hides gossip and quests the extract lacks.
+
+**Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
+Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
+lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking
+(`/missing-audio` and its dashboard tile) leave them out unless the client filter asks for
+them. The filter takes the Contributions pages' bins (`?client=low-effort`, `?client=anniversary`,
+`?client=all`; absent is `focus`, Era + Forever). A lookup by `?line=` finds a line whatever its
+client. Nothing stores the client: `lib/quests/line-client.ts` derives it per row when the
+catalogue is built. A speaker the extract wrote has none and counts as focus, and so does every
+row of a quest the extract has, whoever sent its speaker. Any other speaker a contribution wrote
+has that contribution's `build`; one with no build counts as focus. A line keeps the client of
+whoever sent it first, since a later identical upload only counts on that row. A quest the
+Classic extract has no row for,
+with an id below 13000, is TBC Anniversary whatever sent it (the extract ends at 9665, Season of
+Discovery starts at 78000, Forever's own quests at 80000), which catches the Wowhead imports and
+their Forever build. Gossip has no quest id, so gossip scraped from Wowhead's TBC pages still
+reads as Forever.
+
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.
 A gossip row has no quest, and its Quest / broadcast cell shows the BroadcastText ids it speaks

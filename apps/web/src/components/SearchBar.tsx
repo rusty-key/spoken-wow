@@ -2,9 +2,12 @@
 
 import { forwardRef, useCallback, useMemo } from "react";
 
+import ClientSelect from "@/components/ClientSelect";
 import DateChip from "@/components/DateChip";
 import { MadeByChips } from "@/components/MadeBy";
+import LevelBound from "@/components/LevelBound";
 import RecordedChip from "@/components/RecordedChip";
+import { DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
 import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
 import type { MadeByFacets } from "@/lib/takes/made-by";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
@@ -184,6 +187,21 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           options={BROADCAST_OPTIONS}
           onChange={(broadcast) => onFilters({ broadcast: broadcast as BroadcastStatus | undefined })}
         />
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="text-muted-foreground text-sm">level</span>
+          <LevelBound
+            label="minimum quest level"
+            placeholder="from"
+            value={filters.minLevel}
+            onChange={(minLevel) => onFilters({ minLevel })}
+          />
+          <LevelBound
+            label="maximum quest level"
+            placeholder="to"
+            value={filters.maxLevel}
+            onChange={(maxLevel) => onFilters({ maxLevel })}
+          />
+        </div>
 
         <div className="flex items-center gap-2 whitespace-nowrap">
           <Checkbox
@@ -255,6 +273,16 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           <Label htmlFor="include-progress" className="text-muted-foreground text-sm">
             show progress text
           </Label>
+        </div>
+        {/* Era + Forever by default, the clients the site voices (lib/quests/line-client.ts); the
+            same bins as the Contributions pages. */}
+        {/* Wrapped, so its own ml-auto (right-aligned on the Contributions pages) does not split
+            the row's free space with the Clear button's. */}
+        <div className="flex items-center">
+          <ClientSelect
+            value={filters.client ?? DEFAULT_CLIENT_FILTER}
+            onChange={(client) => onFilters({ client })}
+          />
         </div>
 
         {/* Only when there is something to clear: a button that does nothing on most visits

@@ -30,7 +30,7 @@ import {
 import { createBatch, enqueue, snapshot } from "@/lib/generation/queue";
 import { searchContext } from "@/lib/quests/context";
 import { batchJobs, matchingLines } from "@/lib/search";
-import { filtersFromParams, needsStale } from "@/lib/search-request";
+import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
 import { recordingsFor } from "@/lib/recordings/store";
 import { ensureQueueRunning, queueWorker } from "@/lib/generation/boot";
 import { catalogue as bookCatalogue } from "@/lib/readables/catalogue";
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     corpus(lang),
     // Behind `regenerate`, which is working in the language, so the model and author
     // filters narrow the batch exactly as they narrowed the page it was quoted from.
-    searchContext(needsStale(filters), false, lang, true),
+    searchContext(needsStale(filters), false, lang, true, needsLevels(filters)),
     // And the recorded filter, as /api/quests/search/lines narrowed the quote: without the
     // recordings "not recorded" would queue every line and "recorded" none.
     filters.recorded ? recordingsFor("quests", lang) : undefined,

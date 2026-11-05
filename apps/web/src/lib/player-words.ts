@@ -50,6 +50,7 @@ const WORDS: Partial<Record<Lang, { m: Words; f: Words }>> = {
   esMX: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
   frFR: { m: { name: "aventurier", race: "voyageur" }, f: { name: "aventurière", race: "voyageuse" } },
   itIT: { m: { name: "avventuriero", race: "viaggiatore" }, f: { name: "avventuriera", race: "viaggiatrice" } },
+  plPL: { m: { name: "wędrowcze", race: "wędrowiec" }, f: { name: "wędrowczyni", race: "wędrowczyni" } },
   ptBR: { m: { name: "aventureiro", race: "viajante" }, f: { name: "aventureira", race: "viajante" } },
   ruRU: { m: { name: "путник", race: "странник" }, f: { name: "путница", race: "странница" } },
   koKR: { m: { name: "모험가", race: "여행자" }, f: { name: "모험가", race: "여행자" } },
