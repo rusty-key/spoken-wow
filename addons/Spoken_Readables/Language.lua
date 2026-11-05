@@ -31,6 +31,7 @@ SpokenReadables.LOCALES = {
 	{ code = "esMX", name = "Spanish (AL)", native = "Español (América Latina)" },
 	{ code = "frFR", name = "French", native = "Français" },
 	{ code = "itIT", name = "Italian", native = "Italiano", client = false },
+	{ code = "plPL", name = "Polish", native = "Polski", client = false },
 	{ code = "ptBR", name = "Portuguese", native = "Português" },
 	{ code = "ruRU", name = "Russian", native = "Русский" },
 	{ code = "koKR", name = "Korean", native = "한국어" },

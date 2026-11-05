@@ -155,6 +155,7 @@ LANGUAGES = {
     { code = "frFR", native = "Français", english = "French" },
     -- No client runs in Italian, so "Auto" never lands on it; a player picks it by hand.
     { code = "itIT", native = "Italiano", english = "Italian" },
+    { code = "plPL", native = "Polski", english = "Polish" },
     { code = "ptBR", native = "Português", english = "Portuguese (Brazil)" },
     { code = "ruRU", native = "Русский", english = "Russian", script = "cyrillic" },
     { code = "koKR", native = "한국어", english = "Korean", script = "korean" },
