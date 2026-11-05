@@ -4,6 +4,7 @@ import { forwardRef, useCallback, useMemo } from "react";
 
 import DateChip from "@/components/DateChip";
 import { MadeByChips } from "@/components/MadeBy";
+import LevelBound from "@/components/LevelBound";
 import RecordedChip from "@/components/RecordedChip";
 import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
 import type { MadeByFacets } from "@/lib/takes/made-by";
@@ -184,6 +185,21 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           options={BROADCAST_OPTIONS}
           onChange={(broadcast) => onFilters({ broadcast: broadcast as BroadcastStatus | undefined })}
         />
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="text-muted-foreground text-sm">level</span>
+          <LevelBound
+            label="minimum quest level"
+            placeholder="from"
+            value={filters.minLevel}
+            onChange={(minLevel) => onFilters({ minLevel })}
+          />
+          <LevelBound
+            label="maximum quest level"
+            placeholder="to"
+            value={filters.maxLevel}
+            onChange={(maxLevel) => onFilters({ maxLevel })}
+          />
+        </div>
 
         <div className="flex items-center gap-2 whitespace-nowrap">
           <Checkbox

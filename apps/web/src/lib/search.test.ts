@@ -643,6 +643,39 @@ describe("reported lines", () => {
   });
 });
 
+describe("quest level", () => {
+  const quests = [...new Set(corpus.lines.flatMap((line) => line.questId ?? []))];
+  const [low, high, unknown] = quests;
+  const levels = new Map([[low, 5], [high, 40]]);
+  const context = { overrides: new Map(), levels };
+  const questsIn = (filters: { minLevel?: number; maxLevel?: number }) =>
+    new Set(matchingLines(corpus, store, filters, context).map((line) => line.questId));
+
+  it("includes both bounds, and takes either alone", () => {
+    expect(questsIn({ minLevel: 5, maxLevel: 40 })).toEqual(new Set([low, high]));
+    expect(questsIn({ maxLevel: 5 })).toEqual(new Set([low]));
+    expect(questsIn({ minLevel: 6 })).toEqual(new Set([high]));
+  });
+
+  it("treats a bound of 0 as a bound", () => {
+    expect(questsIn({ maxLevel: 0 })).toEqual(new Set());
+  });
+
+  it("hides gossip and quests with no known level", () => {
+    const found = questsIn({ minLevel: 0 });
+    expect(found.has(unknown)).toBe(false);
+    expect(found.has(null)).toBe(false);
+  });
+
+  it("matches nothing when the levels were never fetched, so a batch cannot widen", () => {
+    expect(matchingLines(corpus, store, { maxLevel: 60 })).toEqual([]);
+  });
+
+  it("filters nothing with no bound", () => {
+    expect(matchingLines(corpus, store, {}, context)).toEqual(matchingLines(corpus, store, {}));
+  });
+});
+
 describe("broadcast id status", () => {
   const gossip = corpus.lines.filter((line) => line.source === "gossip");
   const [exact, guessed] = gossip.map((line) => line.lineId).filter((id, i, ids) => ids.indexOf(id) === i);

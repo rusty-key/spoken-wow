@@ -20,6 +20,7 @@ import { asSystem } from "@/lib/teams/testing";
 
 import { sections } from "./index";
 import { listSql } from "./quests";
+import { parseList } from "./respond";
 import { createFixtures, LANG, type Fixtures } from "./testing";
 import type { Source } from "@/lib/sections";
 
@@ -252,6 +253,28 @@ describe("quests", () => {
     const sql = listSql({ quest: String(f.quest.questId) }, null, 500, LANG);
     const own = sql.text.slice(sql.text.indexOf(`"own" as`), sql.text.indexOf(`"lines" as`));
     expect(own).toContain(`"questId" =`);
+  });
+
+  it("filters by a quest's level, leaving out lines with none", async () => {
+    const quest = f.quest.questId!;
+    await query(
+      `insert into "quest_level" ("questId", "level") values ($1, 12)
+       on conflict ("questId") do update set "level" = 12`,
+      [quest],
+    );
+    const ids = async (filter: Record<string, string>) =>
+      (await sections.quests.list(LANG, filter, null, 500)).items.map((item) => item.id);
+
+    expect(await ids({ quest: String(quest), minLevel: "12", maxLevel: "12" })).toContain(f.quest.lineId);
+    expect(await ids({ quest: String(quest), minLevel: "13" })).toEqual([]);
+    expect(await ids({ quest: String(quest), maxLevel: "11" })).toEqual([]);
+    expect(await ids({ source: "gossip", minLevel: "0" })).toEqual([]);
+    await query(`delete from "quest_level" where "questId" = $1`, [quest]);
+  });
+
+  it("refuses a level that is not a number", () => {
+    const parsed = parseList(sections.quests, new URLSearchParams("minLevel=low"));
+    expect(parsed).toBeInstanceOf(Response);
   });
 
   it("keeps two variants of one line id as two items", async () => {

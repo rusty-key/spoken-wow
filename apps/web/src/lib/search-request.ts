@@ -12,7 +12,7 @@
 import { audioStateFromParams } from "./audio-state";
 import { facets } from "./facets";
 import type { Lang } from "./lang";
-import { NPC_TYPES, sourcesFromParam } from "./line-fields";
+import { levelFromParam, NPC_TYPES, sourcesFromParam } from "./line-fields";
 import { RECORDED } from "./recordings/live";
 import { BROADCAST_STATUSES } from "./broadcast/status";
 import type { Filter, LineFilters } from "./search";
@@ -61,6 +61,8 @@ export async function filtersFromParams(params: URLSearchParams, lang: Lang): Pr
     author: params.get("author") || undefined,
     recorded: oneOf(params.get("rec"), RECORDED),
     broadcast: oneOf(params.get("bt"), BROADCAST_STATUSES),
+    minLevel: levelFromParam(params.get("minLevel")),
+    maxLevel: levelFromParam(params.get("maxLevel")),
   };
 }
 
@@ -76,6 +78,10 @@ export function withoutMadeBy(filters: LineFilters): LineFilters {
 /** Whether staleness has to be answered for the whole corpus, which is a query and a hash per take. */
 export function needsStale(filters: LineFilters): boolean {
   return filters.state === "stale" || filters.state === "current";
+}
+
+export function needsLevels(filters: LineFilters): boolean {
+  return filters.minLevel !== undefined || filters.maxLevel !== undefined;
 }
 
 /** The same question for pronunciation: one query plus a substring pass per changed word. */

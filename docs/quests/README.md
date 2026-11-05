@@ -477,6 +477,11 @@ source filter also counts as asking for them, since otherwise that choice would 
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
 them, and clearing filters returns it to hidden.
 
+**The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
+`?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
+too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
+known level is in no range, so setting either bound hides gossip and quests the extract lacks.
+
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.
 A gossip row has no quest, and its Quest / broadcast cell shows the BroadcastText ids it speaks

@@ -36,11 +36,12 @@ curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/place
 | `places` | `?zone={mapID}` | the zone and its subzones |
 | `bosses` | `?instance={map}` | an instance's bosses |
 | `readables` | `?book={bookId}` | a book's pages |
-| `quests` | `?quest={questId}`, `?source=accept\|progress\|complete\|gossip` | a quest's lines, or one kind of line |
+| `quests` | `?quest={questId}`, `?source=accept\|progress\|complete\|gossip`, `?minLevel={n}`, `?maxLevel={n}` | a quest's lines, one kind of line, or the lines of quests in a level range |
 
 A list returns at most 500 items and a `nextCursor`. Pass it back as `?cursor=` until it is null.
 `?limit=` asks for fewer. A parameter this API does not know is an error, so a misspelled filter
-never returns the whole language by accident.
+never returns the whole language by accident. A level bound leaves out lines with no known level,
+which includes all gossip.
 
 An item:
 
