@@ -211,12 +211,19 @@ export async function readStories() {
   return out;
 }
 
-/** Live boss takes for one language: what the pack's lookup lists. lineId is boss:{map}:{key}. */
+/**
+ * Live boss takes for one language: what the pack's lookup lists. lineId is boss:{map}:{key}.
+ * `text` is what its pack shows: the words the take was voiced from, else the story's today.
+ */
 export async function readLiveTakes(lang) {
   const { rows } = await query(
-    `select "lineId", "file", "durationSec", "wordTimes", "spokenHash" from "take"
-      where "source" = 'bosses' and "lang" = $1 and "isCurrent"
-        and "teamId" = team_of_lang($1)`,
+    `select t."lineId", t."file", t."durationSec", t."wordTimes", t."spokenHash",
+            coalesce(t."shownText", l."text") as "text"
+       from "take" t
+       left join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
+       left join "boss_line" l on l."bossId" = b."id" and l."lang" = t."lang" and l."isCurrent"
+      where t."source" = 'bosses' and t."lang" = $1 and t."isCurrent"
+        and t."teamId" = team_of_lang($1)`,
     [lang],
   );
   return rows;

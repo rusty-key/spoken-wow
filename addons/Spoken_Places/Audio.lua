@@ -379,6 +379,26 @@ function SpokenPlaces:IsVoiceEnabled()
 	return self:Get("voiceEnabled") and true or false
 end
 
+local function ClipIn(pack, mapID, areaKey)
+	if areaKey then
+		local zoneClips = pack.subzones and pack.subzones[mapID]
+		return zoneClips and zoneClips[areaKey]
+	end
+	return pack.zones and pack.zones[mapID]
+end
+
+--- The words a pack in `language` carries for a place, or nil. Kept out of the lore tables, which
+--- the Text Language switch reads and packs may load after: this is display only.
+function SpokenPlaces:PackLoreText(mapID, areaKey, language)
+	for _, pack in ipairs(self:GetAudioPacks(language)) do
+		local clip = ClipIn(pack, mapID, areaKey)
+		if clip and type(clip.text) == "string" and clip.text ~= "" then
+			return clip.text
+		end
+	end
+	return nil
+end
+
 -- Path and duration for a lore entry. `areaKey` is a canonical subzone key (see
 -- SpokenPlaces:NormaliseAreaKey), or nil for the zone itself.
 --
@@ -407,13 +427,7 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 	end
 
 	for _, pack in ipairs(candidates) do
-		local clip
-		if areaKey then
-			local zoneClips = pack.subzones and pack.subzones[mapID]
-			clip = zoneClips and zoneClips[areaKey]
-		else
-			clip = pack.zones and pack.zones[mapID]
-		end
+		local clip = ClipIn(pack, mapID, areaKey)
 		if clip and clip.file then
 			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. ".mp3",
 				clip.len, pack, clip.file, clip.times
@@ -519,7 +533,7 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 			-- An area under its zone; anything else under the place above it.
 			header = areaKey and (self:GetMapName(zone) or label) or self:GetMapName(self:PlaceAbove(mapID)),
 			label = label,
-			transcript = entry and entry.full,
+			transcript = self:PackLoreText(mapID, areaKey, language) or (entry and entry.full),
 			-- Timed to the recording's own words, so not under another language's.
 			timings = entry and language == (pack.language or "enUS") and times or nil,
 			font = font,

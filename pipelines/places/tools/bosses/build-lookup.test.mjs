@@ -61,3 +61,20 @@ test("times are written only when the take has word times", () => {
   assert.ok(withTimes.includes('times = "0 .42 1.5"'), withTimes);
   assert.ok(!without.includes("times = "));
 });
+
+test("a take's text reaches its entry, and the lookup as one Lua string", () => {
+  const { entries } = buildEntries(
+    [{ lineId: "boss:36:a", file: "36/a", durationSec: 5, text: 'He said "go"\nnow' }],
+    [{ map: 36, key: "a", retired: false }],
+  );
+  assert.equal(entries[0].text, 'He said "go"\nnow');
+  assert.ok(renderLookup(entries).includes(', text = "He said \\"go\\"\\010now"'));
+});
+
+test("a take with no text has no text field", () => {
+  const { entries } = buildEntries(
+    [{ lineId: "boss:36:a", file: "36/a", durationSec: 5, text: null }],
+    [{ map: 36, key: "a", retired: false }],
+  );
+  assert.equal(renderLookup(entries).includes("text ="), false);
+});

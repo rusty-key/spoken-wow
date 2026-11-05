@@ -2,6 +2,14 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
+  lines it voices, so new audio no longer plays under old text. This applies when the pack is in
+  the language you read; a German player with English voices keeps German text. In English, quest
+  text now says "Adventurer" where the voice does, rather than your character's name.
+  *([rusty-key](https://github.com/rusty-key))*
+
 ## 3.8.2 — 2026-11-05
 
 - **Updated texts.** Place stories in English, German and Portuguese, boss stories and boss names

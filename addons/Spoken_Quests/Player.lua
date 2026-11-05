@@ -250,6 +250,7 @@ function Player:Prepare(soundData)
         portrait = PortraitFor(soundData),
         actions = ACTIONS,
         timings = soundData.timings,
+        transcript = soundData.packText,
     }
     return soundData
 end
