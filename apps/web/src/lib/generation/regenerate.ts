@@ -27,7 +27,7 @@ import { commitTake } from "@/lib/takes/commit";
 import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 
-import { sentText } from "./files";
+import { sentText, shownTextOf } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
@@ -236,6 +236,9 @@ export async function regenerateLine(
         createdBy,
         // `source`, not spokenText: the addon shows the line before its rules and directions.
         wordTimes: timesFor(source, speech.words),
+        // `line.text`, not `source`: code cannot tell a rewrite's respellings from a real change of
+        // wording, and a respelling must never reach the screen.
+        shownText: shownTextOf(line.text, lang, line.playerGender),
       },
       // A clip ffprobe cannot read still commits, with no length: the pack build measures
       // what is missing.

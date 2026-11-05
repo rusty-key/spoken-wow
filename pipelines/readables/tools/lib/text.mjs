@@ -102,6 +102,16 @@ export function spokenText(text) {
 }
 
 /**
+ * A page as a pack shows it: the words the narrator was given, paragraphs kept, because
+ * spokenText's single flowing line reads badly on screen.
+ */
+export function shownPage(text) {
+  return normaliseText(text)
+    .replace(NAME_PLACEHOLDER, " ")
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITIES[name]);
+}
+
+/**
  * Whether this page can be voiced, and if not, why.
  *
  * Mirrors the quests corpus's `generatable`/`skipReason` pair: a page that cannot be
