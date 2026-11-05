@@ -495,9 +495,10 @@ position, not the token: lowercase mid-sentence, capitalised at a sentence's sta
 in German. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
 German's own templates write, is read the same way in every language, and so is Forever's deDE
-gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first). A token whose `$`
-is doubled (`$$N, …`, as TBC Anniversary and Forever send some lines) reads as the token. English quest text has
-nothing left for it to replace, its words having been written in at extraction; a book page
+gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, no space around the
+`;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send some lines)
+reads as the token. English quest text has nothing left for it to replace, its words having
+been written in at extraction; a book page
 in any language, English included, goes through the same table (`docs/readables/README.md`). A
 token glued to a following letter (`$Nama`) is left in, so the line stays unvoiceable until a
 translator rewrites it. German's genitive `s` is the one exception: `$Ns` and `$Cs` read as

@@ -65,6 +65,10 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens(line, "deDE")).toBe("Wonach sucht Ihr, Bürger?");
     expect(speakPlayerTokens(line, "deDE", "f")).toBe("Wonach sucht Ihr, Bürgerin?");
     expect(playerGenderSides(line)).toEqual(["Wonach sucht Ihr, Bürger?", "Wonach sucht Ihr, Bürgerin?"]);
+    // A $u whose `:` is lost stays refused rather than reading on to the sentence's colon.
+    const lost = "Ihr seid $uHeld Heldin; hört gut: geht.";
+    expect(speakPlayerTokens(lost, "deDE")).toBe(lost);
+    expect(branchesOnPlayerGender(lost)).toBe(false);
   });
 
   it("reads a doubled $ before the reader's name, class or race as the token", () => {
@@ -74,6 +78,7 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("$$C, wir brauchen Eure Unterstützung", "deDE", "f")).toBe(
       "Abenteurerin, wir brauchen Eure Unterstützung",
     );
+    expect(speakPlayerTokens("Die Legion $$Ns wartet.", "deDE")).toBe("Die Legion Abenteurers wartet.");
     expect(speakPlayerTokens("Es kostet $$5.", "deDE")).toBe("Es kostet $$5.");
   });
 
