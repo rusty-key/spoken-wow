@@ -36,7 +36,6 @@ import { newVoiceName, type Roster } from "@/lib/voices/roster";
 import { teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
 import { markClients, type LineClientFacts } from "@/lib/quests/line-client";
-import { matchingLines } from "@/lib/search";
 
 
 /**
@@ -452,28 +451,6 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
       else index.set(line.lineId, [line]);
     }
     return index;
-  });
-}
-
-const hiddenKey = Symbol.for("spoken.quests-hidden-by-default.by-lang");
-
-/**
- * Every line id in `lang` none of whose rows the explorer's default view shows -- progress text,
- * which nothing voices, and other clients' lines (lib/quests/line-client.ts) -- under its own id
- * and the id of the line it is a voice of. Read off the search itself, with no filters, so a list
- * that is not a search (the Missing audio ranking) hides exactly what the explorer hides.
- * Rebuilt with the catalogue.
- */
-export async function hiddenByDefaultLineIds(lang: Lang = BASE_LANG): Promise<ReadonlySet<string>> {
-  const corpusOf = await corpus(lang);
-  return memoByLang(hiddenKey, lang, corpusOf.lines, () => {
-    const shown = new Set(matchingLines(corpusOf, new Set()).map((line) => line.lineId));
-    const hidden = new Map<string, boolean>();
-    for (const line of corpusOf.lines) {
-      const out = !shown.has(line.lineId);
-      for (const id of new Set([line.lineId, baseLineId(line.lineId)])) hidden.set(id, (hidden.get(id) ?? true) && out);
-    }
-    return new Set([...hidden].filter(([, all]) => all).map(([id]) => id));
   });
 }
 
