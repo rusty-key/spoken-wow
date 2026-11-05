@@ -17,6 +17,7 @@ PLAYER_SCRIPT = os.path.join(REPO, "scripts", "spoken", "package.sh")
 ADDON_DIR = os.path.join(REPO, "addons", "Spoken_Quests")
 PLAYER_DIR = os.path.join(REPO, "addons", "Spoken")
 NAME = "Spoken_Quests"
+DATA = "SpokenQuestsData"
 PLAYER = "Spoken"
 #: The flavor suffixes of the .toc files the modules carry for Blizzard's clients.
 FLAVORS = ("", "_TBC", "_Vanilla")
@@ -83,8 +84,8 @@ def test_the_zip_carries_every_flavor(built):
     tocs = tocs_in(files, NAME)
     assert sorted(tocs) == sorted(f"{NAME}/{NAME}{suffix}.toc" for suffix in FLAVORS)
     assert any(name.startswith(f"{NAME}/Libs/") for name in names)
-    # Spoken ships beside it in Spoken's own zip; it is not bundled here.
-    assert {name.split("/", 1)[0] for name in names} == {NAME}
+    # Spoken ships beside it in Spoken's own zip; the shared lookup addon is bundled here.
+    assert {name.split("/", 1)[0] for name in names} == {NAME, DATA}
     assert "## Dependencies: Spoken" in tocs[f"{NAME}/{NAME}.toc"]
 
 
@@ -93,7 +94,7 @@ def test_every_zip_unpacks_into_the_addons_folder(built):
     # folder the client reads.
     for name, (names, _) in built.items():
         roots = {entry.split("/", 1)[0] for entry in names}
-        assert roots == {NAME}, (name, roots)
+        assert roots == {NAME, DATA}, (name, roots)
 
 
 def test_spoken_ships_with_its_modules_for_blizzard_clients(player_built):
@@ -106,8 +107,8 @@ def test_spoken_ships_with_its_modules_for_blizzard_clients(player_built):
     # (addons/SpokenContributions/SpokenContributions.toc): one .toc and its icon, no Lua, and the three
     # modules and Spoken Bosses: one download with everything in it.
     assert {entry.split("/", 1)[0] for entry in names} == {PLAYER, "SpokenContributions",
-                                                          "Spoken_Quests", "Spoken_Readables", "Spoken_Places",
-                                                          "Spoken_Bosses"}
+                                                          "Spoken_Quests", "SpokenQuestsData", "Spoken_Readables",
+                                                          "Spoken_Places", "Spoken_Bosses"}
     assert sorted(name for name in names if name.startswith("SpokenContributions/") and not name.endswith("/")) \
         == ["SpokenContributions/SpokenContributions.toc", "SpokenContributions/icon.tga"]
 
