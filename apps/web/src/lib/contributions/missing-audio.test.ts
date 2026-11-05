@@ -103,8 +103,7 @@ describe("missingAudioRanking", () => {
   });
 
   it("leaves out progress text, which the addon reports as silent but nothing voices", async () => {
-    // q:179:progress is the seeded corpus's own: "Did the wolves give you trouble?", the line the
-    // German ranking was topped by.
+    // q:179:progress comes from the seeded corpus, which already lists it through its speakers.
     await db().query(
       `insert into "quest_line"
          ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "fileName", "text", "originalText")
