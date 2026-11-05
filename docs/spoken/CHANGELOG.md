@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## 3.8.3 — 2026-11-05
+
+- **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice
+  pack made in Polish, such as the community's Spoken Polski. No game client runs in Polish, so
+  Spoken never picks it by itself. *([zaxcer](https://github.com/zaxcer))*
+
 ## 3.8.2 — 2026-11-05
 
 - **Updated texts.** Place stories in English, German and Portuguese, boss stories and boss names
