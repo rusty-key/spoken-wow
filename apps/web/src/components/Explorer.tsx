@@ -4,6 +4,7 @@ import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDi
 import { isTypingTarget } from "@/lib/keyboard";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
+import { clientFilterOf, DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -77,7 +78,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.source?.length) params.set("source", filters.source.join(","));
   if (filters.npcType) params.set("type", filters.npcType);
   if (filters.includeProgress) params.set("progress", "1");
-  if (filters.includeTbc) params.set("tbc", "1");
+  if (filters.client && filters.client !== DEFAULT_CLIENT_FILTER) params.set("client", filters.client);
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
   if (filters.overridden) params.set("overridden", "1");
@@ -167,7 +168,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       source: sourcesFromParam(params.get("source")),
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
       includeProgress: params.get("progress") === "1",
-      includeTbc: params.get("tbc") === "1",
+      client: clientFilterOf(params.get("client")),
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
       overridden: params.get("overridden") === "1",
@@ -333,7 +334,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("includeProgress" in next
           ? { progress: next.includeProgress ? "1" : undefined }
           : {}),
-        ...("includeTbc" in next ? { tbc: next.includeTbc ? "1" : undefined } : {}),
+        ...("client" in next ? { client: next.client === DEFAULT_CLIENT_FILTER ? undefined : next.client } : {}),
         ...("line" in next ? { line: next.line } : {}),
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),
         ...("dirty" in next ? { dirty: next.dirty ? "1" : undefined } : {}),

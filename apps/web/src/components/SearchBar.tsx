@@ -2,10 +2,12 @@
 
 import { forwardRef, useCallback, useMemo } from "react";
 
+import ClientSelect from "@/components/ClientSelect";
 import DateChip from "@/components/DateChip";
 import { MadeByChips } from "@/components/MadeBy";
 import LevelBound from "@/components/LevelBound";
 import RecordedChip from "@/components/RecordedChip";
+import { DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
 import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
 import type { MadeByFacets } from "@/lib/takes/made-by";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
@@ -272,17 +274,12 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
             show progress text
           </Label>
         </div>
-        {/* TBC lines are kept but not voiced until the site supports TBC (lib/quests/expansion.ts). */}
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="include-tbc"
-            checked={filters.includeTbc ?? false}
-            onCheckedChange={(value) => onFilters({ includeTbc: value === true })}
-          />
-          <Label htmlFor="include-tbc" className="text-muted-foreground text-sm">
-            show TBC lines
-          </Label>
-        </div>
+        {/* Era + Forever by default, the clients the site voices (lib/quests/line-client.ts); the
+            same bins as the Contributions pages. */}
+        <ClientSelect
+          value={filters.client ?? DEFAULT_CLIENT_FILTER}
+          onChange={(client) => onFilters({ client })}
+        />
 
         {/* Only when there is something to clear: a button that does nothing on most visits
             is one more thing to read past every time. */}

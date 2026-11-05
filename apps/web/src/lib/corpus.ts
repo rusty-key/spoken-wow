@@ -12,6 +12,7 @@
  * fails silently.
  */
 import type { Lang } from "./lang";
+import type { ClientFamily } from "./contributions/client";
 import type { NpcType, Source } from "./line-fields";
 
 /** Mirrors the line schema built in tts_cli/corpus.py:build_corpus. */
@@ -48,10 +49,10 @@ export type CorpusLine = {
    */
   soleSpeaker?: boolean;
   /**
-   * "tbc" for a line from an expansion the site does not voice yet, which the explorer hides
-   * unless asked (lib/quests/expansion.ts). Absent for Classic.
+   * The game client this row came from (lib/quests/line-client.ts). Absent for the extract's
+   * rows, which are with the focus bin; the explorer shows Era + Forever unless asked.
    */
-  expansion?: "tbc";
+  clientFamily?: ClientFamily;
   /**
    * What a language other than English has not translated yet. The row then carries the
    * English in its place, for the explorer to show and mark -- never to voice: a line whose

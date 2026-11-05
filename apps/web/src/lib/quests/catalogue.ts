@@ -35,7 +35,8 @@ import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from 
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
 import { teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
-import { familyOfBuild, markExpansions, type ExpansionFacts } from "@/lib/quests/expansion";
+import { lineMatchesClient, markClients, type LineClientFacts } from "@/lib/quests/line-client";
+import { DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
 
 
 /**
@@ -407,16 +408,16 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
   return memoByLang(cacheKey, lang, stamp, async () => {
-    const [lines, facts] = await Promise.all([build(lang), expansionFacts()]);
-    return { lines: markExpansions(lines, facts) };
+    const [lines, facts] = await Promise.all([build(lang), lineClientFacts()]);
+    return { lines: markClients(lines, facts) };
   });
 }
 
 /**
- * What lib/quests/expansion.ts decides a line's expansion by. Both move only with quest_line and
+ * What lib/quests/line-client.ts decides a row's client by. Both move only with quest_line and
  * its speakers, which the stamp already covers: a contribution's build never changes.
  */
-async function expansionFacts(): Promise<ExpansionFacts> {
+async function lineClientFacts(): Promise<LineClientFacts> {
   const [quests, contributions] = await Promise.all([
     query<{ questId: number }>(
       `select distinct "questId" from "quest_line" where "origin" = 'extracted' and "questId" is not null`,
@@ -428,7 +429,7 @@ async function expansionFacts(): Promise<ExpansionFacts> {
   ]);
   return {
     extractedQuests: new Set(quests.map((row) => row.questId)),
-    contributionClients: new Map(contributions.map((row) => [row.id, familyOfBuild(row.build)])),
+    contributionBuilds: new Map(contributions.map((row) => [row.id, row.build])),
   };
 }
 
@@ -453,23 +454,23 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
   });
 }
 
-const tbcKey = Symbol.for("spoken.quests-tbc-lines.by-lang");
+const hiddenKey = Symbol.for("spoken.quests-hidden-client-lines.by-lang");
 
 /**
- * Every line id in `lang` whose rows are all TBC (lib/quests/expansion.ts), under its own id and
- * the id of the line it is a voice of. For lists that are not searches, such as the Missing
- * audio ranking, to leave out what the explorer hides. Rebuilt with the catalogue.
+ * Every line id in `lang` none of whose rows the default client filter (Era + Forever) shows,
+ * under its own id and the id of the line it is a voice of (lib/quests/line-client.ts). For
+ * lists that are not searches, such as the Missing audio ranking, to leave out what the
+ * explorer hides. Rebuilt with the catalogue.
  */
-export async function tbcLineIds(lang: Lang = BASE_LANG): Promise<ReadonlySet<string>> {
+export async function hiddenClientLineIds(lang: Lang = BASE_LANG): Promise<ReadonlySet<string>> {
   const lines = (await corpus(lang)).lines;
-  return memoByLang(tbcKey, lang, lines, () => {
-    const tbc = new Map<string, boolean>();
+  return memoByLang(hiddenKey, lang, lines, () => {
+    const hidden = new Map<string, boolean>();
     for (const line of lines) {
-      for (const id of new Set([line.lineId, baseLineId(line.lineId)])) {
-        tbc.set(id, (tbc.get(id) ?? true) && line.expansion === "tbc");
-      }
+      const out = !lineMatchesClient(line, DEFAULT_CLIENT_FILTER);
+      for (const id of new Set([line.lineId, baseLineId(line.lineId)])) hidden.set(id, (hidden.get(id) ?? true) && out);
     }
-    return new Set([...tbc].filter(([, all]) => all).map(([id]) => id));
+    return new Set([...hidden].filter(([, all]) => all).map(([id]) => id));
   });
 }
 

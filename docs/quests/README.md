@@ -482,16 +482,19 @@ them, and clearing filters returns it to hidden.
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
 known level is in no range, so setting either bound hides gossip and quests the extract lacks.
 
-**TBC lines are hidden by default too.** Players on TBC Anniversary and Wowhead's TBC pages
-send lines the site does not voice yet. They are accepted and kept, but neither the explorer
-nor a queued batch sees them until **Show TBC lines** (`?tbc=1`) asks for them; a lookup by
-`?line=` finds one either way. Nothing stores the flag: `lib/quests/expansion.ts` derives it
-when the catalogue is built. A quest the Classic extract has no row for, with an id below
-13000, is TBC (the extract ends at 9665, Season of Discovery starts at 78000, Forever's own
-quests at 80000). A gossip line is TBC when every speaker of it was sent from a TBC
-Anniversary client (`build` 2.5.x). Gossip scraped from Wowhead's TBC pages carries a Forever
-build and still reads as Classic. The Missing audio ranking (`/missing-audio` and its dashboard tile)
-leaves TBC lines out as well, so a TBC player's silent line is not counted as work to do.
+**Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
+Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
+lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking
+(`/missing-audio` and its dashboard tile) leave them out unless the client filter asks for
+them. The filter takes the Contributions pages' bins (`?client=low-effort`, `?client=anniversary`,
+`?client=all`; absent is `focus`, Era + Forever). A lookup by `?line=` finds a line whatever its
+client. Nothing stores the client: `lib/quests/line-client.ts` derives it per row when the
+catalogue is built. A speaker the extract wrote has none and counts as focus; a speaker a
+contribution wrote has that contribution's `build`. A quest the Classic extract has no row for,
+with an id below 13000, is TBC Anniversary whatever sent it (the extract ends at 9665, Season of
+Discovery starts at 78000, Forever's own quests at 80000), which catches the Wowhead imports and
+their Forever build. Gossip has no quest id, so gossip scraped from Wowhead's TBC pages still
+reads as Forever.
 
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.

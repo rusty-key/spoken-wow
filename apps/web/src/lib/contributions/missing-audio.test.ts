@@ -75,7 +75,7 @@ describe("missingAudioRanking", () => {
   });
 
   it("leaves out a TBC line, which is nothing to do until the site voices TBC", async () => {
-    // q:8326 is Sunstrider Isle: no Classic extract has it, so lib/quests/expansion.ts calls it TBC.
+    // q:8326 is Sunstrider Isle: no Classic extract has it, so lib/quests/line-client.ts calls it TBC.
     const tbc = "q:8326:accept";
     await db().query(
       `insert into "quest_line"

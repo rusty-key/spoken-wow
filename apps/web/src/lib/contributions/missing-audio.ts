@@ -12,7 +12,7 @@
  */
 import { db, queryIn } from "@/lib/db";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
-import { isCorpusEmpty, tbcLineIds } from "@/lib/quests/catalogue";
+import { hiddenClientLineIds, isCorpusEmpty } from "@/lib/quests/catalogue";
 import { ownerOrAll } from "@/lib/teams/store";
 
 import type { Submission } from "./contributions";
@@ -75,21 +75,21 @@ export type MissingAudioRow = {
 export const RANKING_LIMIT = 200;
 
 /**
- * The TBC lines a pack language's catalogue holds, which the ranking leaves out: the site does not
- * voice TBC yet, so a TBC player's silent line is nothing to do (lib/quests/expansion.ts). None
- * for a language with no catalogue.
+ * The lines a pack language's catalogue holds from clients the site does not voice (TBC
+ * Anniversary, the legacy clients, retail: lib/quests/line-client.ts), which the ranking leaves
+ * out, so a silent line there is nothing to do. None for a language with no catalogue.
  */
 async function hiddenLines(packLang: string): Promise<string[]> {
   if (!isLang(packLang)) return [];
   try {
-    return [...(await tbcLineIds(packLang))];
+    return [...(await hiddenClientLineIds(packLang))];
   } catch (error) {
     if (isCorpusEmpty(error)) return [];
     throw error;
   }
 }
 
-/** The lines of one pack language, most players first, leaving out TBC. */
+/** The lines of one pack language, most players first, leaving out other clients' lines. */
 export async function missingAudioRanking(packLang: string): Promise<MissingAudioRow[]> {
   const hidden = await hiddenLines(packLang);
   // As the language's team, for the takes "voiced" reads. The hits are shared, so a language
