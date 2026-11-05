@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **A place story you skipped can be heard again.** Its page in Azeroth's Compendium, and the
+  story beside the map, have a Mark as Not Heard button, and Read Automatically reads the story
+  the next time you are there. Forget Places Heard still clears every place at once.
+  *([Ozzadar](https://github.com/Ozzadar))*
 - **Spoken no longer adds a Play button to Questie's tracker.** The Questie team asked for this
   so Spoken stops depending on their tracker's internals, and they plan to add Spoken support on
   their side. Until then, Questie's tracker has no Play button; the Quest Log and Blizzard's

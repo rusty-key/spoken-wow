@@ -149,5 +149,7 @@ L.OPT_DEV_DEBUG = "Places Debug Messages"
 L.OPT_DEV_PREVIEW = "Offer Unfinished Translations"
 
 L.OPEN_IN_COMPENDIUM = "Open in Azeroth's Compendium"
+L.MARK_UNHEARD = "Mark as Not Heard"
+L.MARK_UNHEARD_HINT = "Read Automatically reads this story again the next time you are here."
 
 SpokenPlaces:RegisterStrings("enUS", L)

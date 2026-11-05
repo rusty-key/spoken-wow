@@ -88,5 +88,7 @@ L.OPT_DEV_DEBUG = "地點除錯訊息"
 L.OPT_DEV_PREVIEW = "提供未完成的翻譯"
 
 L.OPEN_IN_COMPENDIUM = "在艾澤拉斯百科中開啟"
+L.MARK_UNHEARD = "標記為未聽過"
+L.MARK_UNHEARD_HINT = "下次來到這裡時，「自動朗讀」會再次朗讀這個故事。"
 
 SpokenPlaces:RegisterStrings("zhTW", L)

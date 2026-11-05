@@ -22,7 +22,9 @@ when Places is installed.
 
 `UI/LorePage.lua` makes the page for a story: the Compendium's page on the spellbook's parchment
 in the window and on the quest log's details page beside the map. The beside-the-map page also
-has a button that opens the place in the tab.
+has a button that opens the place in the tab. Both pages show Mark as Not Heard while this
+character has heard the story; it takes that one place out of `heard`, so Read Automatically reads
+it again.
 
 ## The list
 

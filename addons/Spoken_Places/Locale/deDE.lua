@@ -88,5 +88,7 @@ L.OPT_DEV_DEBUG = "Debug: Orte"
 L.OPT_DEV_PREVIEW = "Unfertige Übersetzungen"
 
 L.OPEN_IN_COMPENDIUM = "Im „Kompendium von Azeroth“ öffnen"
+L.MARK_UNHEARD = "Als nicht gehört markieren"
+L.MARK_UNHEARD_HINT = "„Automatisch vorlesen“ liest diese Geschichte beim nächsten Besuch erneut vor."
 
 SpokenPlaces:RegisterStrings("deDE", L)

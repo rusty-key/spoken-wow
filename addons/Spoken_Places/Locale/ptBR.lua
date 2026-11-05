@@ -88,5 +88,7 @@ L.OPT_DEV_DEBUG = "Depuração de Lugares"
 L.OPT_DEV_PREVIEW = "Oferecer traduções inacabadas"
 
 L.OPEN_IN_COMPENDIUM = "Abrir no Compêndio de Azeroth"
+L.MARK_UNHEARD = "Marcar como não ouvido"
+L.MARK_UNHEARD_HINT = ""Ler automaticamente" lerá esta história de novo na próxima vez que você estiver aqui."
 
 SpokenPlaces:RegisterStrings("ptBR", L)

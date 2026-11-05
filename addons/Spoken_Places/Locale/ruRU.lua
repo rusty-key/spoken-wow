@@ -88,5 +88,7 @@ L.OPT_DEV_DEBUG = "Отладка: Места"
 L.OPT_DEV_PREVIEW = "Незаконченные переводы"
 
 L.OPEN_IN_COMPENDIUM = "Открыть в «Компендиуме Азерота»"
+L.MARK_UNHEARD = "Отметить как не услышанное"
+L.MARK_UNHEARD_HINT = "«Читать автоматически» снова прочитает эту историю, когда вы окажетесь здесь в следующий раз."
 
 SpokenPlaces:RegisterStrings("ruRU", L)

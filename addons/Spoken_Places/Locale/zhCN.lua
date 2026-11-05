@@ -88,5 +88,7 @@ L.OPT_DEV_DEBUG = "地点调试信息"
 L.OPT_DEV_PREVIEW = "提供未完成的翻译"
 
 L.OPEN_IN_COMPENDIUM = "在艾泽拉斯百科中打开"
+L.MARK_UNHEARD = "标记为未听过"
+L.MARK_UNHEARD_HINT = "下次来到这里时，“自动朗读”会再次朗读这个故事。"
 
 SpokenPlaces:RegisterStrings("zhCN", L)

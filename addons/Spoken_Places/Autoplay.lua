@@ -291,6 +291,13 @@ function SpokenPlaces:MarkHeard(mapID, areaKey)
 	HeardSet()[HeardKey(mapID, areaKey)] = true
 end
 
+function SpokenPlaces:ForgetHeard(mapID, areaKey)
+	if not mapID then
+		return
+	end
+	HeardSet()[HeardKey(mapID, areaKey)] = nil
+end
+
 function SpokenPlaces:HeardCount()
 	local count = 0
 	for _ in pairs(HeardSet()) do
