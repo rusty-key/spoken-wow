@@ -231,6 +231,12 @@ writes the live takes' `wordTimes` into `audio/word-times.json` when it assemble
 (`WordTimesByFileName`) for the clips the pack carries. A pack built without the file ships an
 empty table, and its captions are estimated.
 
+Each clip's words reach the build the same way, as `audio/take-text.json`: the take's `shownText`,
+else the current `quest_line` text of the line that names the file, its tokens as the voice says
+them. `build` writes `text_table.lua` (`TextByFileName`) for the clips the pack carries, and the addon
+shows it where the pack is in the client's language (`docs/spoken/CAPTIONS.md`). It does not reach
+the lookup tables, which match the window's words.
+
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 
 **Icons.** Every addon here carries an `icon.tga` and a `## IconTexture:` line naming

@@ -4,6 +4,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
+  lines it voices, so new audio no longer plays under old text. This applies when the pack is in
+  the language you read; a German player with English voices keeps German text. In English, quest
+  text now says "Adventurer" where the voice does, rather than your character's name.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Spoken no longer adds a Play button to Questie's tracker.** The Questie team asked for this
   so Spoken stops depending on their tracker's internals, and they plan to add Spoken support on
   their side. Until then, Questie's tracker has no Play button; the Quest Log and Blizzard's
