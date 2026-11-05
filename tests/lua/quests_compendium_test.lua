@@ -1014,6 +1014,12 @@ do
     handInPlay.scripts.OnClick(handInPlay)
     Expect("...its Play playing it", Spoken:GetNowPlaying() and Spoken:GetNowPlaying().fileName, "7-complete")
     Spoken:StopAll()
+    testPack.TextByFileName = { ["7-complete"] = "Pack words." }
+    Click("Kobold Camp Cleanup")
+    Expect("a pack's words show on the part, in the client's language",
+        page.body.lastParts[#page.body.lastParts].text, "Pack words.")
+    Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
+    testPack.TextByFileName = nil
     SpokenQuestsText[KOBOLDS].complete = words
     local handInWords = SpokenQuestsText[CANDLES].complete
     SpokenQuestsText[CANDLES].complete = nil

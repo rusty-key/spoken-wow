@@ -975,9 +975,15 @@ local function Stored(id, moment)
     if text and text ~= "" then return text end
 end
 
--- One part's words, in the client's language where its window was seen, or nil.
+local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.SoundEvent.QuestProgress,
+    complete = VO.Enums.SoundEvent.QuestComplete }
+
+-- One part's words, in the client's language where its window was seen, or nil. A pack's words
+-- first, so the page reads what Play says.
 local function PartText(id, moment)
-    local text = Stored(id, moment)
+    local soundData = { event = EVENTS[moment], questID = id }
+    VO.DataModules:PrepareSound(soundData)
+    local text = soundData.packText or Stored(id, moment)
     return text and QuestsTab:Fill(text)
 end
 
@@ -1000,8 +1006,6 @@ end
 -- The page
 --------------------------------------------------------------------------------
 
-local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.SoundEvent.QuestProgress,
-    complete = VO.Enums.SoundEvent.QuestComplete }
 
 -- The quest's clips queued, of one moment where `moment` is given.
 local function Clips(id, moment)
