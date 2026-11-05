@@ -12,6 +12,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { luaText } from "../../../lib/lua-text.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { close, readBosses, readLiveTakes, requireDatabase } from "./store.mjs";
@@ -26,7 +27,8 @@ function luaString(text) {
 // Takes store a POSIX path; WoW addresses files with backslashes.
 function fields(entry) {
   const times = entry.times ? `, times = ${luaString(packTimes(entry.times))}` : "";
-  return `file = ${luaString(entry.file.replace(/\//g, "\\"))}, len = ${entry.len}${times}`;
+  const text = entry.text ? `, text = ${luaText(entry.text)}` : "";
+  return `file = ${luaString(entry.file.replace(/\//g, "\\"))}, len = ${entry.len}${times}${text}`;
 }
 
 /** The take rows of live bosses as lookup entries; takes naming no live boss come back in `skipped`. */
@@ -46,12 +48,13 @@ export function buildEntries(takes, bosses) {
       file: take.file,
       len: take.durationSec,
       ...(take.wordTimes ? { times: take.wordTimes } : {}),
+      ...(take.text ? { text: take.text } : {}),
     });
   }
   return { entries, skipped };
 }
 
-/** @param entries {{ map: number, key: string, file: string, len: number, times?: number[] }[]} */
+/** @param entries {{ map: number, key: string, file: string, len: number, times?: number[], text?: string }[]} */
 export function renderLookup(entries) {
   const byMap = new Map();
   for (const e of entries) {

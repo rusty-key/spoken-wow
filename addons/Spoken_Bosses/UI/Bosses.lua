@@ -167,6 +167,9 @@ local function Story(map, key)
 		text = Name(text)
 	end
 	if type(text) ~= "string" or text == "" then return nil end
+	local locale = GetLocale and GetLocale()
+	local packed = locale and Bosses:PackStoryText(map, key, locale)
+	if packed then return packed, locale end
 	return text, language
 end
 
