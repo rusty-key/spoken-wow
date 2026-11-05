@@ -489,8 +489,11 @@ lines are accepted and kept, but the explorer, a queued batch and the Missing au
 them. The filter takes the Contributions pages' bins (`?client=low-effort`, `?client=anniversary`,
 `?client=all`; absent is `focus`, Era + Forever). A lookup by `?line=` finds a line whatever its
 client. Nothing stores the client: `lib/quests/line-client.ts` derives it per row when the
-catalogue is built. A speaker the extract wrote has none and counts as focus; a speaker a
-contribution wrote has that contribution's `build`. A quest the Classic extract has no row for,
+catalogue is built. A speaker the extract wrote has none and counts as focus, and so does every
+row of a quest the extract has, whoever sent its speaker. Any other speaker a contribution wrote
+has that contribution's `build`; one with no build counts as focus. A line keeps the client of
+whoever sent it first, since a later identical upload only counts on that row. A quest the
+Classic extract has no row for,
 with an id below 13000, is TBC Anniversary whatever sent it (the extract ends at 9665, Season of
 Discovery starts at 78000, Forever's own quests at 80000), which catches the Wowhead imports and
 their Forever build. Gossip has no quest id, so gossip scraped from Wowhead's TBC pages still

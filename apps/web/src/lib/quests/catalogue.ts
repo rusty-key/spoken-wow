@@ -415,7 +415,8 @@ export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
 
 /**
  * What lib/quests/line-client.ts decides a row's client by. Both move only with quest_line and
- * its speakers, which the stamp already covers: a contribution's build never changes.
+ * its speakers, which the stamp covers: a contribution's build never changes, and the extract's
+ * rows are English, whose quest_line every language's stamp reads.
  */
 async function lineClientFacts(): Promise<LineClientFacts> {
   const [quests, contributions] = await Promise.all([

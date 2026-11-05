@@ -12,8 +12,13 @@
  * read off facts no writer has to remember:
  *
  *   * A row whose speaker the extract wrote has no client: it is the game data, and belongs with
- *     the focus bin (matchesClient's null).
- *   * A row whose speaker a contribution wrote is that contribution's client, from its `build`.
+ *     the focus bin (matchesClient's null). So does every row of a quest the extract has, whoever
+ *     sent its speaker: TBC Anniversary and the legacy clients still have Classic's quests, and
+ *     an Era player hears them.
+ *   * Any other row whose speaker a contribution wrote is that contribution's client, from its
+ *     `build`. A contribution with no build (an old envelope) is with the focus bin too: nothing
+ *     says it came from elsewhere. A line is the client of whoever sent it first, since a later
+ *     identical upload only counts on that row (submission.ts's dedup keeps no build).
  *   * Except a quest the Classic extract (vmangos) has no row for, with an id below
  *     TBC_QUEST_CEILING, which is TBC Anniversary whatever sent it: the extract ends at 9665,
  *     TBC's quests run from 8326 (Sunstrider Isle) to the 11000s, Season of Discovery's are
@@ -38,11 +43,12 @@ export type LineClientFacts = {
 
 function familyOf(line: CorpusLine, facts: LineClientFacts): ClientFamily | null {
   const { questId } = line;
-  if (questId !== null && questId < TBC_QUEST_CEILING && !facts.extractedQuests.has(questId)) return "anniversary";
+  if (questId !== null && facts.extractedQuests.has(questId)) return null;
+  if (questId !== null && questId < TBC_QUEST_CEILING) return "anniversary";
   const id = line.contributionId;
   if (id == null) return null;
-  const build = facts.contributionBuilds.get(id);
-  return build === undefined ? null : clientOf(build).family;
+  const client = clientOf(facts.contributionBuilds.get(id));
+  return client.version === null ? null : client.family;
 }
 
 /** Sets every row's `clientFamily`, in place: the rows are the catalogue build's own. */

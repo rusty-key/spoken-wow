@@ -52,4 +52,12 @@ describe("filtersFromParams", () => {
     expect(await read("minLevel=abc&maxLevel=-1")).toEqual([undefined, undefined]);
     expect(await read("minLevel=&maxLevel=1000")).toEqual([undefined, undefined]);
   });
+
+  it("reads the client bin, Era + Forever when absent or unknown", async () => {
+    const client = async (query: string) => (await filtersFromParams(new URLSearchParams(query), "enUS")).client;
+    expect(await client("")).toBe("focus");
+    expect(await client("client=nonsense")).toBe("focus");
+    expect(await client("client=anniversary")).toBe("anniversary");
+    expect(await client("client=all")).toBe("all");
+  });
 });

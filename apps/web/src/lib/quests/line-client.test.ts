@@ -34,6 +34,7 @@ const facts: LineClientFacts = {
     [2, "1.60.1/70235"],
     [3, "1.15.7/62581"],
     [4, "3.3.5/12340"],
+    [5, ""],
   ]),
 };
 
@@ -45,20 +46,30 @@ describe("markClients", () => {
     expect(
       clientsOf([
         line("q:1324:accept", 1324),
-        line("q:9665:complete", 9665, 1),
         line("q:78132:accept", 78132, 3),
         line("q:94237:accept", 94237, 2),
         line("g:aaa", null, 4),
+        line("g:bbb", null, 1),
       ]),
     ).toEqual({
       "q:1324:accept#null": null,
-      // A Classic quest sent from TBC Anniversary is that client's row, but the extract's own
-      // speakers of it stay with the focus bin.
-      "q:9665:complete#1": "anniversary",
       "q:78132:accept#3": "era",
       "q:94237:accept#2": "forever",
       "g:aaa#4": "legacy",
+      "g:bbb#1": "anniversary",
     });
+  });
+
+  it("keeps a quest the extract has with the focus bin, whatever client sent its speaker", () => {
+    // TBC Anniversary still has Classic's quests, and adds a giver as one more speaker.
+    expect(clientsOf([line("q:9665:complete", 9665, 1), line("q:1324:accept~human-male-gruff", 1324, 4)])).toEqual({
+      "q:9665:complete#1": null,
+      "q:1324:accept~human-male-gruff#4": null,
+    });
+  });
+
+  it("keeps a contribution with no build with the focus bin", () => {
+    expect(clientsOf([line("g:ccc", null, 5)])).toEqual({ "g:ccc#5": null });
   });
 
   it("takes a quest the Classic extract lacks, below the ceiling, as TBC whatever sent it", () => {
@@ -94,5 +105,13 @@ describe("the client filter", () => {
 
   it("finds any line by its id, so a report or contribution link still reaches it", () => {
     expect(ids({ line: "q:9463:accept" })).toEqual(["q:9463:accept"]);
+  });
+});
+
+describe("activeFilterCount", () => {
+  it("counts a client bin other than the default", async () => {
+    const { activeFilterCount } = await import("@/lib/active-filters");
+    expect(activeFilterCount({ client: "focus" })).toBe(0);
+    expect(activeFilterCount({ client: "anniversary" })).toBe(1);
   });
 });
