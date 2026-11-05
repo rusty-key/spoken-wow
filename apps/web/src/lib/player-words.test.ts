@@ -69,6 +69,9 @@ describe("speakPlayerTokens", () => {
     const lost = "Ihr seid $uHeld Heldin; hört gut: geht.";
     expect(speakPlayerTokens(lost, "deDE")).toBe(lost);
     expect(branchesOnPlayerGender(lost)).toBe(false);
+    const lostBeforeComma = "Ihr seid $uHeld Heldin;, hört gut: geht.";
+    expect(speakPlayerTokens(lostBeforeComma, "deDE")).toBe(lostBeforeComma);
+    expect(branchesOnPlayerGender(lostBeforeComma)).toBe(false);
   });
 
   it("reads a doubled $ before the reader's name, class or race as the token", () => {

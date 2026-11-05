@@ -77,10 +77,11 @@ const BRANCH = String.raw`\s*(${FIELD}+?)\s*:\s*(${FIELD}+?)\s*(?::${FIELD}*)?;`
 const GENDER = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
 // Forever's deDE gossip also writes $u with its separators swapped, "$uBürger;Bürgerin:", male
 // first all the same. Neither field may hold the other's separator, so a normal branch never
-// reads as one. Its `;` has no space around it, as a sentence's own `;` has: a $u that lost its
-// `:` would otherwise read on to a later colon and drop the words between unheard.
-const SWAPPED = new RegExp(String.raw`\$[Uu]\s*(${FIELD}+?)(?<!\s);(?!\s)(${FIELD}+?)\s*:`, "g");
-const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`);
+// reads as one. Its `;` stands between two letters, where a sentence's own `;` and a normal
+// branch's end are followed by a space or a mark: a $u that lost its `:` would otherwise read
+// on to a later colon and drop the words between unheard.
+const SWAPPED = new RegExp(String.raw`\$[Uu]\s*(${FIELD}+?)(?<=\p{L});(?=\p{L})(${FIELD}+?)\s*:`, "gu");
+const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`, "u");
 // TBC Anniversary and Forever send some lines with the token's $ doubled ("$$N, …"), which the
 // client reads as the token itself. Left doubled, a genitive "$$Ns" would say "$Abenteurers".
 const DOUBLED = /\$\$(?=[NnCcRr](?!\p{L})|[NnCc]s(?!\p{L}))/gu;

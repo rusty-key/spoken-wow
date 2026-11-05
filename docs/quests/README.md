@@ -517,15 +517,15 @@ position, not the token: lowercase mid-sentence, capitalised at a sentence's sta
 in German. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
 German's own templates write, is read the same way in every language, and so is Forever's deDE
-gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, no space around the
-`;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send some lines)
-reads as the token. English quest text has nothing left for it to replace, its words having
-been written in at extraction; a book page
-in any language, English included, goes through the same table (`docs/readables/README.md`). A
-token glued to a following letter (`$Nama`) is left in, so the line stays unvoiceable until a
-translator rewrites it. German's genitive `s` is the one exception: `$Ns` and `$Cs` read as
-`Abenteurers`, or `Abenteurerin` on the female variant. A branch never spans a sentence's end,
-so one whose `;` was lost stays in as a token instead of swallowing the text up to a later `;`.
+gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, a letter on either
+side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send
+some lines) reads as the token. English quest text has nothing left for it to replace, its
+words having been written in at extraction; a book page in any language, English included,
+goes through the same table (`docs/readables/README.md`). A token glued to a following letter
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. German's
+genitive `s` is the one exception: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
+in as a token instead of swallowing the text up to a later `;`.
 A Craftsman's Writ's `$2oa`, the item count the client fills in, reads as "an order of" in
 English, "algumas unidades de" in ptBR, and "несколько" plus the second of ruRU's two written
 forms (`порции:порций`); a language without words for it keeps the token and stays
