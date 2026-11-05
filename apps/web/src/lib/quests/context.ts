@@ -68,7 +68,7 @@ async function openReports(lang: Lang): Promise<Map<string, number>> {
  * @param dirty whether the pronunciation filter is in force. The same bargain.
  * @param seesMadeBy whether the viewer works in the language, and so may know who made each
  *   take. Nobody else gets the map, so no route can hand an author's name to a visitor.
- * @param levels whether a level bound is in force. A read of the whole table, so the same bargain.
+ * @param levels whether a level bound is in force. Reads the whole table, so only those searches pay.
  */
 export async function searchContext(
   outdated = false,

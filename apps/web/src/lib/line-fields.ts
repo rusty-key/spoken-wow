@@ -52,7 +52,6 @@ export function listParam<T extends string>(value: unknown, allowed: readonly T[
 
 export const LEVEL_PARAM = /^\d{1,3}$/;
 
-/** A bound of the level filter. Level 0 is real: 32 quests have it. */
 export function levelFromParam(value: string | null): number | undefined {
   return value && LEVEL_PARAM.test(value) ? Number(value) : undefined;
 }

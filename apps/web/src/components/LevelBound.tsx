@@ -4,9 +4,8 @@ import { Input } from "@/components/ui/input";
 import { levelFromParam } from "@/lib/line-fields";
 
 /**
- * One end of the level range. It commits on blur or Enter, because committing per keystroke would
- * search for level 1 on the way to typing 10. The key remounts it when the URL changes, so "clear
- * all" empties it.
+ * Commits on blur, because committing per keystroke would search for level 1 on the way to typing
+ * 10. The key remounts this uncontrolled input, so "clear all" empties it.
  */
 export default function LevelBound({
   label,

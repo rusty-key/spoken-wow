@@ -106,9 +106,8 @@ export type LineFilters = {
   generatedBefore?: string;
   generatedAfter?: string;
   /**
-   * Bounds on the quest's level, both inclusive, so maintainers can spend a limited budget on
-   * low-level quests first. A line with no known level is in no range: gossip has no quest, and
-   * some quests have no level on record.
+   * Both inclusive. A line with no known level is in no range: gossip has no quest, and some
+   * quests have no level on record.
    */
   minLevel?: number;
   maxLevel?: number;
@@ -181,7 +180,7 @@ export type SearchContext = {
   recordings?: Map<string, LiveRecording>;
   /** lineId -> how its BroadcastText ids were found. Absent means nobody asked. */
   broadcast?: Map<string, Exclude<BroadcastStatus, "none">>;
-  /** questId -> its level. Absent means nobody asked, or the database could not be reached. */
+  /** Absent means nobody asked, or the database could not be reached. */
   levels?: Map<number, number>;
 };
 
