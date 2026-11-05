@@ -9,6 +9,15 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   the language you read; a German player with English voices keeps German text. In English, quest
   text now says "Adventurer" where the voice does, rather than your character's name.
   *([rusty-key](https://github.com/rusty-key))*
+
+## 3.8.2 — 2026-11-05
+
+- **Updated texts.** Place stories in English, German and Portuguese, boss stories and boss names
+  have the latest edits from the site, and gossip matches more lines on clients in other languages.
+  Razorfen Kraul and the Hall of Thanes now have stories on their dungeon cards.
+  *([rusty-key](https://github.com/rusty-key))*
+- **The Bosses page links German, Spanish and Portuguese voice packs to CurseForge**, where they
+  now live, instead of GitHub. *([rusty-key](https://github.com/rusty-key))*
 - **Spoken no longer adds a Play button to Questie's tracker.** The Questie team asked for this
   so Spoken stops depending on their tracker's internals, and they plan to add Spoken support on
   their side. Until then, Questie's tracker has no Play button; the Quest Log and Blizzard's

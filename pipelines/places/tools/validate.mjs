@@ -26,7 +26,7 @@ const DATA = join(ROOT, "addons/Spoken_Places/Data");
 const FORBIDDEN = [
   /\bcataclysm\b/i,
   // Onyxia's parentage is Classic lore (Onyxia's Lair, Wyrmbog); Deathwing's return is not.
-  /(?<!daughter of )\bDeathwing\b/,
+  /(?<!daughter of |Tochter von )\bDeathwing\b/,
   /\bPandaria\b/,
   /\bShadowlands\b/,
   /\bGarrosh\b/,
