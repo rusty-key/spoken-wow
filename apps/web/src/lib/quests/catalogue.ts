@@ -453,6 +453,26 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
   });
 }
 
+const tbcKey = Symbol.for("spoken.quests-tbc-lines.by-lang");
+
+/**
+ * Every line id in `lang` whose rows are all TBC (lib/quests/expansion.ts), under its own id and
+ * the id of the line it is a voice of. For lists that are not searches, such as the Missing
+ * audio ranking, to leave out what the explorer hides. Rebuilt with the catalogue.
+ */
+export async function tbcLineIds(lang: Lang = BASE_LANG): Promise<ReadonlySet<string>> {
+  const lines = (await corpus(lang)).lines;
+  return memoByLang(tbcKey, lang, lines, () => {
+    const tbc = new Map<string, boolean>();
+    for (const line of lines) {
+      for (const id of new Set([line.lineId, baseLineId(line.lineId)])) {
+        tbc.set(id, (tbc.get(id) ?? true) && line.expansion === "tbc");
+      }
+    }
+    return new Set([...tbc].filter(([, all]) => all).map(([id]) => id));
+  });
+}
+
 /**
  * The flavor to give a race-gender the game data does not answer for -- an NPC resolved only
  * from the model file id the addon reported, which names a race and a gender but never a

@@ -12,6 +12,7 @@
  */
 import { db, queryIn } from "@/lib/db";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { isCorpusEmpty, tbcLineIds } from "@/lib/quests/catalogue";
 import { ownerOrAll } from "@/lib/teams/store";
 
 import type { Submission } from "./contributions";
@@ -73,8 +74,24 @@ export type MissingAudioRow = {
 /** Rows the page shows: the head of the list is what to voice next, the tail can wait. */
 export const RANKING_LIMIT = 200;
 
-/** The lines of one pack language, most players first. */
+/**
+ * The TBC lines a pack language's catalogue holds, which the ranking leaves out: the site does not
+ * voice TBC yet, so a TBC player's silent line is nothing to do (lib/quests/expansion.ts). None
+ * for a language with no catalogue.
+ */
+async function hiddenLines(packLang: string): Promise<string[]> {
+  if (!isLang(packLang)) return [];
+  try {
+    return [...(await tbcLineIds(packLang))];
+  } catch (error) {
+    if (isCorpusEmpty(error)) return [];
+    throw error;
+  }
+}
+
+/** The lines of one pack language, most players first, leaving out TBC. */
 export async function missingAudioRanking(packLang: string): Promise<MissingAudioRow[]> {
+  const hidden = await hiddenLines(packLang);
   // As the language's team, for the takes "voiced" reads. The hits are shared, so a language
   // nobody owns still lists them, all unvoiced.
   return queryIn<MissingAudioRow>(
@@ -83,7 +100,7 @@ export async function missingAudioRanking(packLang: string): Promise<MissingAudi
        select "lineId", count(*)::int as "installs", max("lastSeen") as "lastSeen",
               array_remove(array_agg(distinct "packVersion"), null) as "packVersions"
          from "missing_audio_hit"
-        where "packLang" = $1
+        where "packLang" = $1 and not ("lineId" = any($4::text[]))
         group by "lineId"
         order by count(*) desc, max("lastSeen") desc, "lineId"
         limit $2
@@ -103,6 +120,6 @@ export async function missingAudioRanking(packLang: string): Promise<MissingAudi
                        and t."lineId" = r."lineId" and t."isCurrent") as "voiced"
        from ranked r
       order by r."installs" desc, r."lastSeen" desc, r."lineId"`,
-    [packLang, RANKING_LIMIT, BASE_LANG],
+    [packLang, RANKING_LIMIT, BASE_LANG, hidden],
   );
 }

@@ -490,7 +490,8 @@ when the catalogue is built. A quest the Classic extract has no row for, with an
 13000, is TBC (the extract ends at 9665, Season of Discovery starts at 78000, Forever's own
 quests at 80000). A gossip line is TBC when every speaker of it was sent from a TBC
 Anniversary client (`build` 2.5.x). Gossip scraped from Wowhead's TBC pages carries a Forever
-build and still reads as Classic.
+build and still reads as Classic. The Missing audio ranking (`/missing-audio` and its dashboard tile)
+leaves TBC lines out as well, so a TBC player's silent line is not counted as work to do.
 
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.
