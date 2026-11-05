@@ -121,6 +121,7 @@ jobs:
           # and requirements-extract pins pandas 1.5.3, whose last wheels are cp311.
           python-version: "3.11"
           cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y zip unzip
       - run: pip install -r requirements-dev.txt
       # test_package.py runs scripts/quests/package.sh for real and asserts which .toc and
       # which vendored Ace3 each client's zip carries, so it needs the whole tree.

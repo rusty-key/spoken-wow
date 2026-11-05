@@ -48,7 +48,8 @@ claiming is global.
   (`check-synced`), and `make quests-sync` is destructive.
 - `pipelines/quests/tts_cli/factions.py` owns the four-way split, using the race masks of the
   committed `Data/Compendium.lua`, then `corpus/factions.json` for quests the Compendium does not
-  list. Every pack carries the full lookup tables.
+  list. The shared `SpokenQuestsData` addon carries invariant lookup tables; language-specific
+  wording tables may still live in the language's pack.
 - A pack ships one audio format, `ogg-q0-44k`; `store.py:audio_extension` refuses a store
   holding two.
 - The meta addon must never carry a `DataModule-Version` key. If it does, the player counts it

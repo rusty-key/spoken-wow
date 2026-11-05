@@ -49,6 +49,7 @@ local LOAD_ALL_MODULES = true
 ---@field Title string Module's title (TOC ##Title or addon name if missing)
 ---@field Maps number[] Map IDs in which the module should load (TOC ##X-SpokenQuests-DataModule-Maps or ##X-VoiceOver-DataModule-Maps)
 ---@field Language string The language the pack was recorded in (TOC ##X-SpokenQuests-Language; absent means enUS)
+---@field DataOnly boolean Whether this is the shared lookup addon rather than an audio pack
 
 ---@class DataModule
 ---@field METADATA DataModuleMetadata
@@ -202,6 +203,15 @@ function DataModules:HasRegisteredModules()
     return next(self.registeredModules) ~= nil
 end
 
+function DataModules:HasAudioModules()
+    for _, module in self:GetModules() do
+        if not module.METADATA.DataOnly then
+            return true
+        end
+    end
+    return false
+end
+
 function DataModules:GetModule(name)
     return self.registeredModules[name]
 end
@@ -258,7 +268,7 @@ function DataModules:GetPackLanguage()
     local order = Language:ResolutionOrder()
     for _, language in ipairs(order) do
         for _, module in self:GetPresentModules() do
-            if module.Language == language then
+            if not module.DataOnly and module.Language == language then
                 return language
             end
         end
@@ -275,7 +285,7 @@ function DataModules:GetPackVersion(language)
     local newest
     for _, module in self:GetPresentModules() do
         local version = module.ContentVersion
-        if module.Language == language and version
+        if not module.DataOnly and module.Language == language and version
             and (not newest or self:IsOlderContent(newest, version)) then
             newest = version
         end
@@ -313,6 +323,7 @@ function DataModules:EnumerateAddons(loadModules)
                 Title = GetAddOnMetadata(name, "Title") or name,
                 Maps = maps,
                 Language = Language:Normalize(GetAddOnMetadata(i, LANGUAGE_KEY)),
+                DataOnly = ModuleMeta(i, "Type") == "data",
             }
             self.presentModules[name] = module
             table.insert(self.presentModulesOrdered, module)
@@ -326,14 +337,22 @@ function DataModules:EnumerateAddons(loadModules)
 
     table.sort(self.presentModulesOrdered, SortModules)
     for order, module in self:GetPresentModules() do
-        Options:AddDataModule(module, order)
+        if not module.DataOnly then
+            Options:AddDataModule(module, order)
+        end
     end
 
     -- A player with no pack at all is offered every one of them and picks; a player who has
     -- one is offered only updates to what they installed. Before the pack was split there was
     -- a single entry and "you do not have it" was the whole question, but now four of the five
     -- are absent from any sensible install, and advertising those is nagging.
-    local hasAnyPack = next(self.presentModules) ~= nil
+    local hasAnyPack = false
+    for _, module in self:GetPresentModules() do
+        if not module.DataOnly then
+            hasAnyPack = true
+            break
+        end
+    end
 
     for order, module in self:GetAvailableModules() do
         local min = module.RelevantAboveVersion
@@ -1138,7 +1157,7 @@ function DataModules:ResolveSoundFile(soundData, instead)
             local playerGenderedFileName = DataModules:AddPlayerGenderToFilename(wantedFileName)
             for _, module in self:GetModules() do
                 local data = module.SoundLengthLookupByFileName
-                if data and module.METADATA.Language == language then
+                if not module.METADATA.DataOnly and data and module.METADATA.Language == language then
                     local fileName = wantedFileName
                     local length = data[playerGenderedFileName]
                     if length then

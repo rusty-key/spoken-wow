@@ -12,13 +12,14 @@ the corpus, and building a pack from audio/ once `make quests-sounds` has assemb
     export-giver-names  Postgres -> the addon's translated quest-giver names   after import-locale
     export-gossip-text  Postgres -> the addon's gossip text per client locale, and aliases
     export-chatter-lines  corpus -> the addon's World Chatter lines             after export-corpus
-    build         corpus + audio/ -> dist/<module>          per release
+    build-data    corpus -> dist/SpokenQuestsData           per player release
+    build         corpus + audio/ -> dist/<module>          per audio release
     install       dist/<module> -> WoW AddOns               per release
 """
 import argparse
 
-from tts_cli.build import (DEFAULT_ADDONS_DIR, DEFAULT_DIST_DIR,
-                           DEFAULT_MODULE_NAME, build_module, install_module)
+from tts_cli.build import (DEFAULT_ADDONS_DIR, DEFAULT_DATA_MODULE_NAME, DEFAULT_DIST_DIR,
+                           DEFAULT_MODULE_NAME, build_data_module, build_module, install_module)
 from tts_cli.corpus import DEFAULT_CORPUS_PATH, load_corpus
 from tts_cli.factions import (DEFAULT_FACTIONS_PATH, PACKS, load_sides, pack_stems,
                               pack_title)
@@ -118,6 +119,17 @@ bld.add_argument("--language", default=None,
 bld.add_argument("--locale-text", default=None,
                  help="A file export-locale-text wrote for --language; adds that language's "
                       "gossip tables, loaded only on a client in it. Gossip pack only.")
+bld.add_argument("--audio-only", action="store_true",
+                 help="Build only recordings and metadata; lookup tables go in SpokenQuestsData.")
+
+data = subparsers.add_parser(
+    "build-data",
+    help="Build the lookup-only SpokenQuestsData addon from the corpus.")
+data.add_argument("--corpus", default=DEFAULT_CORPUS_PATH)
+data.add_argument("--dist", default=DEFAULT_DIST_DIR)
+data.add_argument("--module", default=DEFAULT_DATA_MODULE_NAME)
+data.add_argument("--version", default="1.0.1")
+data.add_argument("--ignored", default=DEFAULT_IGNORED_PATH)
 
 ins = subparsers.add_parser(
     "install", help="Copy the built module into a WoW AddOns folder.")
@@ -225,9 +237,19 @@ elif args.mode == "build":
                           ignored=load_pack_ignored(corpus, args.ignored, args.overrides),
                           include=include,
                           title=args.module_title or pack_title(args.pack),
-                          language=args.language, locale_text=locale_text)
+                          language=args.language, locale_text=locale_text,
+                          audio_only=args.audio_only)
     print(f"\nbuilt {report['moduleDir']}")
     print(f"  audio files {report['audioFiles']} ({report['audioFormat']}, pack: {args.pack})")
+    for name, rows in sorted(report["tableRows"].items()):
+        print(f"  {name:<32} {rows:>6} entries")
+
+elif args.mode == "build-data":
+    corpus = load_corpus(args.corpus)
+    report = build_data_module(
+        corpus, args.dist, args.module, args.version,
+        ignored=load_pack_ignored(corpus, args.ignored, DEFAULT_OVERRIDES_PATH))
+    print(f"\nbuilt {report['moduleDir']}")
     for name, rows in sorted(report["tableRows"].items()):
         print(f"  {name:<32} {rows:>6} entries")
 

@@ -33,8 +33,9 @@
 # worse. See tools/plan_transcode.py.
 #
 # Separate from `python cli-main.py build`, which copies the store as it finds it.
-# That command is still what assembles the module - this stages a transcoded store
-# and hands it over, so there is one definition of what a module contains.
+# That command is still what assembles the audio module - this stages a transcoded store
+# and hands it over, so there is one definition of what a module contains. Shared lookup
+# tables are built by `build-data` and ship with the player module.
 #
 # Durations come out right without doing anything: build computes
 # sound_length_table.lua from the files it just copied, and mutagen reads a VBR
@@ -289,8 +290,8 @@ fi
 # was uploaded last. tts_cli/factions.py holds the split and explains it.
 #
 # --store, so this is the same build everyone runs, over a store whose clips happen to be
-# smaller. The lookup tables, the TOC and the length table are all built by that command and
-# are not this script's business.
+# smaller. The TOC and length table are built by that command. Lookup tables live in the
+# separately packaged SpokenQuestsData addon, so they are not copied into each audio pack.
 for pack in $PACKS; do
   title="$TITLE"
   if [ -n "$MODULE_NAME" ]; then
@@ -320,7 +321,7 @@ for pack in $PACKS; do
   # variable" under set -u when a plain "${arr[@]}" is empty, which it is on every English build.
   (cd "$QUESTS" && "$PYTHON" cli-main.py build --store "$staging" --dist "$DIST" \
     --module "$module" --version "$version" --pack "$pack" ${title:+--module-title "$title"} \
-    "${language_args[@]+"${language_args[@]}"}")
+    --audio-only "${language_args[@]+"${language_args[@]}"}")
 
   echo "  module size: $(du -sh "$DIST/$module" | cut -f1)  (store: $(du -sh "$STORE" | cut -f1))"
 

@@ -6,6 +6,11 @@ The player and the sound pack are versioned independently — the pack moves whe
 rebuilt, the player when its Lua changes — so a section belongs to whichever of the two
 carries that version. The heading says which.
 
+## Unreleased
+
+- The shared `SpokenQuestsData` addon now carries lookup tables separately from the recordings;
+  existing audio packs remain compatible.
+
 ## 2.5.0 — Spoken Quests Audio — 2026-10-31
 
 - **The sound packs are renamed** in the AddOns list: Spoken Audio: Quests - Horde, Quests -

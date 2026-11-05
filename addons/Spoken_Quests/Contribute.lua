@@ -776,7 +776,7 @@ function Contribute:CanOfferFromLog()
     if Spoken.AreContributeButtonsHidden and Spoken:AreContributeButtonsHidden() then
         return false
     end
-    return DataModules:HasRegisteredModules()
+    return DataModules:HasAudioModules()
 end
 
 --- The tooltip every Contribute button in this addon shows. `gossip` for an NPC's line rather

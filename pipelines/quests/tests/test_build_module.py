@@ -10,7 +10,7 @@ import shutil
 
 import pytest
 
-from tts_cli.build import build_module, icon_source
+from tts_cli.build import build_data_module, build_module, icon_source
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -85,6 +85,28 @@ def test_an_empty_store_still_builds(tmp_path):
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
 
     assert "quests\\%s.mp3" in _module_lua(tmp_path)
+
+
+def test_an_audio_only_pack_leaves_lookup_tables_to_the_data_addon(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", audio_only=True)
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    assert report["audioOnly"] is True
+    assert not (generated / "quest_id_lookups.lua").exists()
+    assert (generated / "sound_length_table.lua").exists()
+
+
+def test_the_data_addon_contains_lookup_tables_but_no_audio(tmp_path):
+    report = build_data_module(CORPUS, str(tmp_path / "dist"), version="3.8.1")
+
+    root = tmp_path / "dist" / "SpokenQuestsData"
+    toc = (root / "SpokenQuestsData.toc").read_text(encoding="utf-8")
+    assert report["moduleDir"].endswith("SpokenQuestsData")
+    assert "## X-SpokenQuests-DataModule-Type: data\n" in toc
+    assert (root / "generated" / "quest_id_lookups.lua").exists()
+    assert not (root / "generated" / "sounds").exists()
 
 
 def test_ignored_audio_is_left_out_of_an_ogg_store(tmp_path):

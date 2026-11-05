@@ -255,7 +255,7 @@ local function Say(text)
 end
 
 function Addon:ShowMissingDataModulePopup()
-    if DataModules:HasRegisteredModules() then
+    if DataModules:HasAudioModules() then
         return
     end
 

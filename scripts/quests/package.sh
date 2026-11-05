@@ -28,6 +28,8 @@ NAME="${NAME:-Spoken_Quests}"
 SRC="$REPO/$ADDON"
 TOC="$SRC/$NAME.toc"
 DIST="${DIST:-$REPO/dist}"
+PYTHON="${PYTHON:-$REPO/pipelines/quests/.venv/bin/python}"
+[ -x "$PYTHON" ] || PYTHON="$(command -v python3)"
 
 [ -f "$TOC" ] || { echo "error: $TOC not found" >&2; exit 1; }
 
@@ -92,8 +94,18 @@ mkdir -p "$staging/$NAME"
 (cd "$SRC" && tar -cf - --exclude '.DS_Store' --exclude '*.bak' --exclude '*.orig' .) \
   | (cd "$staging/$NAME" && tar -xf -)
 
+# The common lookup tables are generated from the committed corpus and ship beside the player
+# module. Keeping this build here makes a standalone Spoken Quests zip installable while
+# leaving the large audio packs free of tables they all share.
+data_dist="$(mktemp -d)"
+trap 'rm -rf "$staging" "$data_dist"' EXIT
+(cd "$REPO/pipelines/quests" && "$PYTHON" cli-main.py build-data --dist "$data_dist" \
+  --version "$version") >/dev/null
+cp -a "$data_dist/SpokenQuestsData" "$staging/"
+
 # -X drops the extra macOS attributes that otherwise ride along.
-(cd "$staging" && zip -r -q -X "$zip_path" "$NAME" -x '*.DS_Store' '*/.git/*' '*.bak' '*.orig')
+(cd "$staging" && zip -r -q -X "$zip_path" "$NAME" SpokenQuestsData \
+  -x '*.DS_Store' '*/.git/*' '*.bak' '*.orig')
 
 files="$(unzip -Z1 "$zip_path" | grep -cv '/$')"
 

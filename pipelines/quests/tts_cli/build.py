@@ -1,4 +1,4 @@
-"""Build the addon data module from the corpus and the audio store.
+"""Build the addon data and audio modules from the corpus and audio store.
 
 This is what makes the sound pack an artifact of this project rather than something we
 patch. Because the module is built rather than edited, it comes out self-consistent and
@@ -27,6 +27,7 @@ from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
 DEFAULT_MODULE_NAME = "VoiceOverReduxAudio"
+DEFAULT_DATA_MODULE_NAME = "SpokenQuestsData"
 DEFAULT_DIST_DIR = "dist"
 DEFAULT_ADDONS_DIR = ("/Applications/World of Warcraft/_classic_era_"
                       "/Interface/AddOns")
@@ -65,6 +66,13 @@ function {module}:GetSoundPath(fileName, event)
         return format([[generated\\sounds\\followup\\%s{extension}]], fileName)
     end
 end
+
+VoiceOver.DataModules:Register("{module}", {module})
+"""
+
+DATA_MODULE_LUA = """if not VoiceOver or not VoiceOver.DataModules then return end
+
+{module} = {{}}
 
 VoiceOver.DataModules:Register("{module}", {module})
 """
@@ -130,6 +138,22 @@ TOC_HEADER = """## Interface: 11509, 20506, 16001
 ## X-SpokenQuests-DataModule-Priority: 100
 ## X-VoiceOver-DataModule-Version: 1
 ## X-VoiceOver-DataModule-Priority: 100
+
+Module.lua
+"""
+
+DATA_TOC_HEADER = """## Interface: 11509, 20506, 16001
+## Title: |cffb48cffSpoken|r |cff6cb8ffQuests Data|r
+## Notes: Shared quest and gossip lookup data for Spoken Quests.
+## Version: {version}
+## IconTexture: Interface\\AddOns\\Spoken_Quests\\icon.tga
+## LoadOnDemand: 1
+## Group: Spoken
+## X-Part-Of: Spoken
+## X-Child-Of: Spoken_Quests
+## X-SpokenQuests-DataModule-Version: 1
+## X-SpokenQuests-DataModule-Priority: 1000
+## X-SpokenQuests-DataModule-Type: data
 
 Module.lua
 """
@@ -442,11 +466,46 @@ def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
     return "\n".join(lines) + "\n"
 
 
+def data_module_toc(generated_files: list, version: str = "1.0.1") -> str:
+    """The TOC for the common lookup addon shipped beside Spoken Quests."""
+    lines = [DATA_TOC_HEADER.format(version=version)]
+    lines.extend(f"generated\\{name}" for name in generated_files)
+    return "\n".join(lines) + "\n"
+
+
+def build_data_module(corpus: dict, dist_dir: str = DEFAULT_DIST_DIR,
+                      module_name: str = DEFAULT_DATA_MODULE_NAME,
+                      version: str = "1.0.1", ignored=()) -> dict:
+    """Build the lookup-only addon shared by all Quests audio packs."""
+    module_dir = os.path.join(dist_dir, module_name)
+    generated_dir = os.path.join(module_dir, "generated")
+    if os.path.isdir(generated_dir):
+        shutil.rmtree(generated_dir)
+
+    tables = build_tables(corpus, ignored)
+    written = []
+    for filename, (table_name, data) in sorted(tables.items()):
+        write_lua_table(os.path.join(generated_dir, filename + ".lua"),
+                        module_name, table_name, data)
+        written.append(filename + ".lua")
+
+    with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
+        f.write(DATA_MODULE_LUA.format(module=module_name))
+    with open(os.path.join(module_dir, module_name + ".toc"), "w", encoding="utf-8") as f:
+        f.write(data_module_toc(sorted(written), version))
+
+    return {
+        "moduleDir": module_dir,
+        "tables": sorted(written),
+        "tableRows": {name: len(data) for name, (_, data) in tables.items()},
+    }
+
+
 def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None) -> dict:
+                 locale_text: list = None, audio_only: bool = False) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -455,10 +514,11 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     `include` is a set of store-relative stems ('quests/5-accept', no extension) and makes
     this one pack of several: the store is staged once and built into a pack per side of the
-    war. None means everything in the store. The lookup tables are not narrowed with it -
-    they map text to ids and hashes rather than to files, they are the same in every pack,
-    and an entry whose audio is in a pack the player did not install simply finds no length
-    and stays quiet. See tts_cli/factions.py.
+    war. None means everything in the store. When `audio_only` is false, the lookup tables are
+    included for compatibility with older releases. New audio packs omit them: they map text
+    to ids and hashes rather than to files, so the shared SpokenQuestsData addon carries them
+    once, and an entry whose audio is in a pack the player did not install simply finds no
+    length and stays quiet. See tts_cli/factions.py.
 
     `locale_text` is `language`'s rows from tts_cli.locale_text, and adds that language's
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
@@ -496,7 +556,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     for rel in iterator:
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
 
-    tables = build_tables(corpus, ignored)
+    tables = {} if audio_only else build_tables(corpus, ignored)
     written = []
     for filename, (table_name, data) in sorted(tables.items()):
         write_lua_table(os.path.join(generated_dir, filename + ".lua"),
@@ -530,7 +590,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
         f.write(MODULE_LUA.format(module=module_name, extension=extension))
-        if language:
+        if language and not audio_only:
             # The unguarded tables are built from the English corpus whatever the pack speaks.
             f.write(f'{module_name}.LookupLocale = "enUS"\n')
     with open(os.path.join(module_dir, module_name + ".toc"), "w", encoding="utf-8") as f:
@@ -544,6 +604,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows,
                       "word_times_table": len(times)},
         "language": language,
+        "audioOnly": audio_only,
     }
 
 
