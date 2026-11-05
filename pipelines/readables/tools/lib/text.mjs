@@ -1,3 +1,5 @@
+import { speakPlayerTokens } from "../../../lib/player-words.mjs";
+
 // Page text as it comes out of vmangos, and as it goes to a narrator.
 //
 // Two forms, deliberately: `normaliseText` is stored and shown, so it keeps the shape of
@@ -83,6 +85,8 @@ const ASIDE = /<([^<>]+)>/g;
  */
 const NAME_PLACEHOLDER = /<nombre>/gi;
 
+const ENTITY = /&(amp|lt|gt|quot|apos|nbsp);/g;
+
 /**
  * Narration form: one flowing paragraph, asides read.
  *
@@ -98,17 +102,17 @@ export function spokenText(text) {
     .replace(ASIDE, "\n$1\n")
     .replace(/\s*\n\s*/g, "\n")
     .trim()
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITIES[name]);
+    .replace(ENTITY, (_, name) => ENTITIES[name]);
 }
 
 /**
- * A page as a pack shows it: the words the narrator was given, paragraphs kept, because
- * spokenText's single flowing line reads badly on screen.
+ * A page as a pack shows it: the words the narrator was given, tokens as the voice says them and
+ * paragraphs kept, because spokenText's single flowing line reads badly on screen.
  */
-export function shownPage(text) {
-  return normaliseText(text)
+export function shownPage(text, lang) {
+  return normaliseText(speakPlayerTokens(text, lang))
     .replace(NAME_PLACEHOLDER, " ")
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITIES[name]);
+    .replace(ENTITY, (_, name) => ENTITIES[name]);
 }
 
 /**

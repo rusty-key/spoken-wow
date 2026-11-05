@@ -58,22 +58,22 @@ def audio_extension(store_dir: str) -> str:
     return found.pop() if found else ".mp3"
 
 
-def word_times(store_dir: str) -> dict:
-    """{stem: "0 .42 1.5"} for the takes that have times, empty for a store without the file."""
-    path = os.path.join(store_dir, WORD_TIMES_FILE)
+def _stem_table(store_dir: str, name: str) -> dict:
+    path = os.path.join(store_dir, name)
     if not os.path.isfile(path):
         return {}
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+def word_times(store_dir: str) -> dict:
+    """{stem: "0 .42 1.5"} for the takes that have times, empty for a store without the file."""
+    return _stem_table(store_dir, WORD_TIMES_FILE)
 
 
 def take_text(store_dir: str) -> dict:
     """{stem: words} for the takes that have words, empty for a store without the file."""
-    path = os.path.join(store_dir, TAKE_TEXT_FILE)
-    if not os.path.isfile(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    return _stem_table(store_dir, TAKE_TEXT_FILE)
 
 
 def durations(store_dir: str) -> dict:

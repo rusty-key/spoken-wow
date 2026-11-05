@@ -68,7 +68,7 @@ test("a take's text reaches its entry, and the lookup as one Lua string", () => 
     [{ map: 36, key: "a", retired: false }],
   );
   assert.equal(entries[0].text, 'He said "go"\nnow');
-  assert.ok(renderLookup(entries).includes(', text = "He said \\"go\\"\\nnow"'));
+  assert.ok(renderLookup(entries).includes(', text = "He said \\"go\\"\\010now"'));
 });
 
 test("a take with no text has no text field", () => {

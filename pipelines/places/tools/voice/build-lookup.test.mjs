@@ -20,5 +20,5 @@ test("with neither there is no text field, and core's words show", () => {
 });
 
 test("the text field stays one Lua string", () => {
-  assert.equal(fields(packRow(record, 'He said "go"\nnow')).endsWith(', text = "He said \\"go\\"\\nnow"'), true);
+  assert.equal(fields(packRow(record, 'He said "go"\nnow')).endsWith(', text = "He said \\"go\\"\\010now"'), true);
 });

@@ -1155,11 +1155,12 @@ function DataModules:ResolveSoundFile(soundData, instead)
                         soundData.length = length
                         -- Timed to the recording's words, which the window shows only in the
                         -- client's own language.
-                        soundData.timings = language == Language:GetClientLanguage()
+                        local inClientLanguage = language == Language:GetClientLanguage()
+                        soundData.timings = inClientLanguage
                             and module.WordTimesByFileName and module.WordTimesByFileName[fileName] or nil
                         -- Display only, under the same rule: a client in another language keeps
                         -- its own words, and soundData.text stays the window's for matching.
-                        soundData.packText = language == Language:GetClientLanguage()
+                        soundData.packText = inClientLanguage
                             and module.TextByFileName and module.TextByFileName[fileName] or nil
                         soundData.module = module
                         soundData.language = language

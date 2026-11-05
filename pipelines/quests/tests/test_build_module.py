@@ -275,6 +275,7 @@ def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
 
     assert "Mod.TextByFileName = " in lua
     assert '["5-accept"] = "Pack words."' in lua
+    assert 'GetClientLanguage() ~= "enUS" then return end' in lua
     assert "abc123" not in lua
     assert "generated\\text_table.lua" in _toc(tmp_path)
     assert report["tableRows"]["text_table"] == 1

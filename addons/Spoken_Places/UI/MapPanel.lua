@@ -496,7 +496,7 @@ local function Refresh(mapID)
 				contribute = { story, name }, lore = { story, key } })
 			return
 		end
-		page:Show({ title = name, subtitle = line, onSubtitle = back, text = SpokenPlaces:PackLoreText(story, key, SpokenPlaces:GetLanguage()) or selected.entry.full or selected.entry.short or "",
+		page:Show({ title = name, subtitle = line, onSubtitle = back, text = SpokenPlaces:LoreText(story, key, selected.entry),
 			audio = { story, key }, report = { story, key }, lore = { story, key } })
 		return
 	end
@@ -529,7 +529,7 @@ local function Refresh(mapID)
 	end
 	-- foundOn, not mapID: a dungeon showing its parent zone's text should read that same parent
 	-- zone's narration, and a report on it belongs to the line the text actually came from.
-	page:Show({ title = zoneName, subtitle = caption, text = SpokenPlaces:PackLoreText(foundOn, nil, SpokenPlaces:GetLanguage()) or entry.full or entry.short or "",
+	page:Show({ title = zoneName, subtitle = caption, text = SpokenPlaces:LoreText(foundOn, nil, entry),
 		audio = { foundOn, nil }, report = { foundOn, nil }, lore = { foundOn, nil } })
 end
 

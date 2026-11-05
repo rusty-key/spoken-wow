@@ -410,12 +410,13 @@ def lua_text(text: str) -> str:
 
 
 def write_lua_table(path: str, module_name: str, table_name: str, data,
-                    lang: str = None) -> None:
+                    lang: str = None, only_on: str = None) -> None:
     """One generated table. With `lang`, a copy that exists only on a client in that locale.
 
     That copy is in a language's pack, but a player on an English client may install the
     pack to hear the language, and their client shows English: the English tables are the
-    ones that match there, so the copy returns before it is built.
+    ones that match there, so the copy returns before it is built. With `only_on`, the table
+    itself is built only on a client in that locale.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -427,6 +428,9 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
             f.write(f"{module_name}.ClientLocaleLookups = "
                     f"{module_name}.ClientLocaleLookups or {{}}\n")
             target = f"{module_name}.ClientLocaleLookups.{table_name}"
+        if only_on:
+            f.write("if not VoiceOver.Language or "
+                    f'VoiceOver.Language:GetClientLanguage() ~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
         f.write(lua.encode(data))
         f.write("\n")
@@ -533,12 +537,13 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                     module_name, "WordTimesByFileName", times)
     written.append("word_times_table.lua")
 
-    # For this pack's audio alone, or four packs of a language each repeat every line's text.
+    # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
+    # on a client in the pack's language, the only one that shows it: megabytes of strings otherwise.
     words = take_text(store_dir)
     texts = {os.path.basename(stem): lua_text(words[stem])
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
     write_lua_table(os.path.join(generated_dir, "text_table.lua"),
-                    module_name, "TextByFileName", texts)
+                    module_name, "TextByFileName", texts, only_on=language or "enUS")
     written.append("text_table.lua")
 
     shutil.copy2(icon_source(language), os.path.join(module_dir, ICON_NAME))

@@ -1,13 +1,5 @@
-/**
- * Prose as one Lua string literal. A raw newline or a lone backslash in a pack's generated Lua is a
- * syntax error, and the whole pack then fails to load.
- */
-export function luaText(text) {
-  const escaped = text
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r")
-    .replace(/\t/g, "\\t");
-  return `"${escaped}"`;
+/** One Lua string literal. Escapes control bytes too: a raw newline is a syntax error that stops a whole pack loading. */
+export function quote(text) {
+  return `"${String(text).replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+    .replace(/[\x00-\x1f\x7f]/g, (char) => `\\${char.charCodeAt(0).toString().padStart(3, "0")}`)}"`;
 }

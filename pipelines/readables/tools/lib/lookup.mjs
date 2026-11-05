@@ -21,7 +21,6 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 
 import { isClientLocale } from "../../../lib/locales.mjs";
-import { speakPlayerTokens } from "../../../lib/player-words.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
 import { shownPage } from "./text.mjs";
@@ -106,7 +105,7 @@ export function packLua(lang, clips, entries = null) {
     const len = row.durationSec === null ? 0 : row.durationSec;
     // What the pack shows: the words the take was voiced from, else the page's today. English's
     // too, about 440 KB more, or an English reader sees Books.lua over a newer voice.
-    const words = row.shownText ?? (row.text == null ? null : shownPage(speakPlayerTokens(row.text, lang)));
+    const words = row.shownText ?? (row.text == null ? null : shownPage(row.text, lang));
     const text = words ? `, text = ${quote(words)}` : "";
     // Absent for a take with no times: the captions then estimate.
     const times = row.wordTimes ? `, times = ${quote(packTimes(row.wordTimes))}` : "";

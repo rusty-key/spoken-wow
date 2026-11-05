@@ -104,16 +104,3 @@ export function sentText(
 ): string {
   return committedPronunciation(speakPlayerTokens(text, lang, playerGender), lang);
 }
-
-/**
- * The words a take saves, for a pack to show. Tokens as the voice said them, or a subtitle names
- * the player over a voice saying "adventurer". No pronunciation rules: players would read the
- * respellings.
- */
-export function shownTextOf(
-  text: string,
-  lang: Lang,
-  playerGender: "m" | "f" | null,
-): string {
-  return speakPlayerTokens(text, lang, playerGender);
-}

@@ -235,3 +235,8 @@ function Page:Show(entry)
 		self.open:SetShown(lore ~= nil and lore[1] ~= nil)
 	end
 end
+
+--- What a place's page shows: a pack's words in the language being read, else its lore.
+function SpokenPlaces:LoreText(mapID, areaKey, entry)
+	return self:PackLoreText(mapID, areaKey, self:GetLanguage()) or entry.full or entry.short or ""
+end

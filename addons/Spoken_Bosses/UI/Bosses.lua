@@ -157,7 +157,7 @@ end
 
 -- A boss's story (key = its key) and the language it is in: a string, or the client's language
 -- beside the English that is its first.
-local function Story(map, key)
+local function CoreStory(map, key)
 	local stories = _G.SpokenBossStories
 	local text = stories and stories[map] and stories[map][key]
 	local language = "enUS"
@@ -167,6 +167,13 @@ local function Story(map, key)
 		text = Name(text)
 	end
 	if type(text) ~= "string" or text == "" then return nil end
+	return text, language
+end
+
+-- A boss's story as it shows: a pack's words in the client's language first, on a boss core has.
+local function Story(map, key)
+	local text, language = CoreStory(map, key)
+	if not text then return nil end
 	local locale = GetLocale and GetLocale()
 	local packed = locale and Bosses:PackStoryText(map, key, locale)
 	if packed then return packed, locale end
@@ -182,7 +189,7 @@ end
 -- Whether a boss has a story and a known appearance.
 local function Complete(map, key)
 	local entry = Creature(map, key)
-	return Story(map, key) ~= nil and entry ~= nil and entry.display ~= nil
+	return CoreStory(map, key) ~= nil and entry ~= nil and entry.display ~= nil
 end
 
 -- Every zone that has a dungeon or a raid.

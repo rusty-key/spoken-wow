@@ -379,22 +379,19 @@ function SpokenPlaces:IsVoiceEnabled()
 	return self:Get("voiceEnabled") and true or false
 end
 
--- Path and duration for a lore entry. `areaKey` is a canonical subzone key (see
--- SpokenPlaces:NormaliseAreaKey), or nil for the zone itself.
---
--- Duration comes from the generated lookup because there is no way to ask the
--- client how long a sound file is; without one the button could never reset itself.
+local function ClipIn(pack, mapID, areaKey)
+	if areaKey then
+		local zoneClips = pack.subzones and pack.subzones[mapID]
+		return zoneClips and zoneClips[areaKey]
+	end
+	return pack.zones and pack.zones[mapID]
+end
+
 --- The words a pack in `language` carries for a place, or nil. Kept out of the lore tables, which
 --- the Text Language switch reads and packs may load after: this is display only.
 function SpokenPlaces:PackLoreText(mapID, areaKey, language)
 	for _, pack in ipairs(self:GetAudioPacks(language)) do
-		local clip
-		if areaKey then
-			local clips = pack.subzones and pack.subzones[mapID]
-			clip = clips and clips[areaKey]
-		else
-			clip = pack.zones and pack.zones[mapID]
-		end
+		local clip = ClipIn(pack, mapID, areaKey)
 		if clip and type(clip.text) == "string" and clip.text ~= "" then
 			return clip.text
 		end
@@ -402,6 +399,11 @@ function SpokenPlaces:PackLoreText(mapID, areaKey, language)
 	return nil
 end
 
+-- Path and duration for a lore entry. `areaKey` is a canonical subzone key (see
+-- SpokenPlaces:NormaliseAreaKey), or nil for the zone itself.
+--
+-- Duration comes from the generated lookup because there is no way to ask the
+-- client how long a sound file is; without one the button could never reset itself.
 function SpokenPlaces:GetAudioClip(mapID, areaKey)
 	if not mapID then
 		return nil, nil
@@ -425,13 +427,7 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 	end
 
 	for _, pack in ipairs(candidates) do
-		local clip
-		if areaKey then
-			local zoneClips = pack.subzones and pack.subzones[mapID]
-			clip = zoneClips and zoneClips[areaKey]
-		else
-			clip = pack.zones and pack.zones[mapID]
-		end
+		local clip = ClipIn(pack, mapID, areaKey)
 		if clip and clip.file then
 			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. ".mp3",
 				clip.len, pack, clip.file, clip.times

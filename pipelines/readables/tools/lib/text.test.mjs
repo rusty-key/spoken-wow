@@ -106,9 +106,13 @@ test("no title, just the spoken page", () => {
 });
 
 test("shownPage keeps a page's paragraphs and cleans what the narrator would not say", () => {
-  assert.equal(shownPage("First.$B$BSecond &amp; <nombre>last."), "First.\n\nSecond &  last.");
+  assert.equal(shownPage("First.$B$BSecond &amp; <nombre>last.", "enUS"), "First.\n\nSecond &  last.");
 });
 
 test("shownPage lays a signed page out as lines", () => {
-  assert.equal(shownPage("<HTML><BODY><P>One</P><BR/><P>Two</P></BODY></HTML>").includes("<"), false);
+  assert.equal(shownPage("<HTML><BODY><P>One</P><BR/><P>Two</P></BODY></HTML>", "enUS").includes("<"), false);
+});
+
+test("shownPage says tokens as the voice does", () => {
+  assert.equal(shownPage("Hallo, $N.", "deDE"), "Hallo, Abenteurer.");
 });

@@ -45,8 +45,6 @@ export type NarratedLine = {
   spoken: string;
   /** The text as the addon shows it, which the take's word times are counted against. */
   shown: string;
-  /** The words a pack shows, where `shown` has lost something players should read, as paragraphs. */
-  saved?: string;
   /** The section's hash of `spoken`, which staleness compares against. */
   hash: string;
 };
@@ -126,7 +124,7 @@ export async function regenerateNarrated(
           leadInSec: speech.leadInSec,
           createdBy,
           wordTimes: timesFor(line.shown, speech.words),
-          shownText: line.saved ?? line.shown,
+          shownText: line.shown,
         },
         { lang, measure: durationOf, batchId: options.batchId },
       );
