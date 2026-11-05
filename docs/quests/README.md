@@ -477,6 +477,11 @@ source filter also counts as asking for them, since otherwise that choice would 
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
 them, and clearing filters returns it to hidden.
 
+**The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
+`?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
+too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
+known level is in no range, so setting either bound hides gossip and quests the extract lacks.
+
 **TBC lines are hidden by default too.** Players on TBC Anniversary and Wowhead's TBC pages
 send lines the site does not voice yet. They are accepted and kept, but neither the explorer
 nor a queued batch sees them until **Show TBC lines** (`?tbc=1`) asks for them; a lookup by

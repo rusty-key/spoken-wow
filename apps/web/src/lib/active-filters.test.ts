@@ -8,6 +8,11 @@ describe("counting what is in force", () => {
     expect(activeFilterCount({ q: "", filter: "any" })).toBe(0);
   });
 
+  it("counts a level bound of 0, which is a real bound", () => {
+    expect(activeFilterCount({ minLevel: 0 })).toBe(1);
+    expect(activeFilterCount({ minLevel: 0, maxLevel: 10 })).toBe(2);
+  });
+
   it("does not count whitespace as a query", () => {
     expect(activeFilterCount({ q: "   " })).toBe(0);
   });
