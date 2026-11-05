@@ -39,6 +39,11 @@ export const SOURCE_LABELS: Record<Source, string> = {
  * The source filter off a query string: `source=accept,gossip`, comma-separated so a link made
  * when it took one value still reads. Unknown values are dropped, and none left is no filter.
  */
+/** A bound of the level filter. Level 0 is real: 32 quests have it. */
+export function levelFromParam(value: string | null): number | undefined {
+  return value && /^\d{1,3}$/.test(value) ? Number(value) : undefined;
+}
+
 export function sourcesFromParam(value: string | null): Source[] | undefined {
   const sources = listParam(value, SOURCES);
   return sources.length ? sources : undefined;

@@ -116,10 +116,19 @@ export function listSql(
   const add = (value: unknown) => `$${params.push(value)}`;
   const quest = filter.quest === undefined ? null : add(Number(filter.quest));
   const source = filter.source === undefined ? null : add(filter.source);
+  const minLevel = filter.minLevel === undefined ? null : add(Number(filter.minLevel));
+  const maxLevel = filter.maxLevel === undefined ? null : add(Number(filter.maxLevel));
+  const levelBounds = [
+    ...(minLevel ? [`"level" >= ${minLevel}::int`] : []),
+    ...(maxLevel ? [`"level" <= ${maxLevel}::int`] : []),
+  ].join(" and ");
   const scope = (alias: string) =>
     [
       ...(quest ? [`${alias}."questId" = ${quest}::int`] : []),
       ...(source ? [`${alias}."source" = ${source}`] : []),
+      ...(levelBounds
+        ? [`${alias}."questId" in (select "questId" from "quest_level" where ${levelBounds})`]
+        : []),
     ].join(" and ") || "true";
   const after = cursor === null ? null : decodeCursor(cursor, isCursor);
   const where = after
@@ -129,7 +138,12 @@ export function listSql(
 }
 
 export const quests: SectionApi = {
-  filters: { quest: /^\d{1,9}$/, source: /^(accept|progress|complete|gossip)$/ },
+  filters: {
+    quest: /^\d{1,9}$/,
+    source: /^(accept|progress|complete|gossip)$/,
+    minLevel: /^\d{1,3}$/,
+    maxLevel: /^\d{1,3}$/,
+  },
 
   async list(lang, filter, cursor, limit) {
     const { text, params } = listSql(filter, cursor, limit, lang);

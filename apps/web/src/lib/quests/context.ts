@@ -26,6 +26,7 @@ import type { SearchContext } from "../search";
 import { NO_CONTEXT } from "../search";
 import { readAs } from "../teams/store";
 import { readIgnores } from "./ignores";
+import { questLevels } from "./levels";
 import { readOverrides } from "./overrides";
 import { BASE_LANG, type Lang } from "../lang";
 
@@ -82,10 +83,11 @@ export async function searchContext(
 
   try {
     // All per language: a take is compared with its own language's text and lexicon.
-    const [overrides, ignores, reports, stale, dirt] = await Promise.all([
+    const [overrides, ignores, reports, levels, stale, dirt] = await Promise.all([
       readOverrides(lang),
       readIgnores(lang),
       openReports(lang),
+      questLevels(),
       outdated ? staleFiles(undefined, lang) : null,
       dirty ? dirtyQuestFiles(undefined, lang) : null,
     ]);
@@ -95,6 +97,7 @@ export async function searchContext(
         overrides,
         ignores,
         reports,
+        levels,
         takes,
         generatedAt,
         madeBy,

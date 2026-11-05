@@ -106,6 +106,13 @@ export type LineFilters = {
   generatedBefore?: string;
   generatedAfter?: string;
   /**
+   * Bounds on the quest's level, both inclusive, so maintainers can spend a limited budget on
+   * low-level quests first. A line with no known level is in no range: gossip has no quest, and
+   * some quests have no level on record.
+   */
+  minLevel?: number;
+  maxLevel?: number;
+  /**
    * The live take's model, as lib/takes/made-by.ts labels it, and the id of who made it.
    * Both need `madeBy` in the context, which only somebody working in the language gets;
    * without it they match nothing.
@@ -174,6 +181,8 @@ export type SearchContext = {
   recordings?: Map<string, LiveRecording>;
   /** lineId -> how its BroadcastText ids were found. Absent means nobody asked. */
   broadcast?: Map<string, Exclude<BroadcastStatus, "none">>;
+  /** questId -> its level. Absent means the database could not be reached. */
+  levels?: Map<number, number>;
 };
 
 export const NO_CONTEXT: SearchContext = { overrides: new Map() };
@@ -442,6 +451,8 @@ export function matchingLines(
     author,
     recorded,
     broadcast,
+    minLevel,
+    maxLevel,
   }: LineFilters = {},
   {
     overrides,
@@ -453,6 +464,7 @@ export function matchingLines(
     madeBy,
     recordings,
     broadcast: broadcastOf,
+    levels,
   }: SearchContext = NO_CONTEXT,
 ): CorpusLine[] {
   const query = q.trim();
@@ -544,6 +556,14 @@ export function matchingLines(
     lines = broadcastOf
       ? lines.filter((line) => line.source === "gossip" && (broadcastOf.get(line.lineId) ?? "none") === broadcast)
       : [];
+  }
+  // Absent `levels` matches nothing: a batch posts these same filters, and an outage must not
+  // widen "regenerate level 1 to 10" into every line.
+  if (minLevel !== undefined || maxLevel !== undefined) {
+    lines = lines.filter((line) => {
+      const level = line.questId === null ? undefined : levels?.get(line.questId);
+      return level !== undefined && level >= (minLevel ?? 0) && level <= (maxLevel ?? Infinity);
+    });
   }
 
   return [...lines].sort(order);

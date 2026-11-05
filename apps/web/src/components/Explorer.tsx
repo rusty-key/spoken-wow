@@ -27,7 +27,7 @@ import RecordingDropZone from "@/components/RecordingDropZone";
 import { RECORDED, type Recorded } from "@/lib/recordings/live";
 import { BROADCAST_STATUSES } from "@/lib/broadcast/status";
 import type { Facets } from "@/lib/facets";
-import { sourcesFromParam } from "@/lib/line-fields";
+import { levelFromParam, sourcesFromParam } from "@/lib/line-fields";
 import { NARRATOR_VOICE } from "@/lib/generation/narration";
 import { PROVIDER_NAME } from "@/lib/generation/providers";
 import {
@@ -88,6 +88,8 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.model) params.set("model", filters.model);
   if (filters.author) params.set("author", filters.author);
   if (filters.recorded) params.set("rec", filters.recorded);
+  if (filters.minLevel !== undefined) params.set("minLevel", String(filters.minLevel));
+  if (filters.maxLevel !== undefined) params.set("maxLevel", String(filters.maxLevel));
   if (filters.broadcast) params.set("bt", filters.broadcast);
   return params;
 }
@@ -176,6 +178,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
       author: params.get("author") ?? undefined,
       recorded: RECORDED.find((value) => value === params.get("rec")),
       broadcast: BROADCAST_STATUSES.find((value) => value === params.get("bt")),
+      minLevel: levelFromParam(params.get("minLevel")),
+      maxLevel: levelFromParam(params.get("maxLevel")),
     }),
     [params, urlQuery],
   );
@@ -338,6 +342,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("author" in next ? { author: next.author } : {}),
         ...("recorded" in next ? { rec: next.recorded } : {}),
         ...("broadcast" in next ? { bt: next.broadcast } : {}),
+        // Strings, because hrefFor drops a falsy value and level 0 is a real bound.
+        ...("minLevel" in next ? { minLevel: next.minLevel?.toString() } : {}),
+        ...("maxLevel" in next ? { maxLevel: next.maxLevel?.toString() } : {}),
       });
     },
     [updateUrl],
