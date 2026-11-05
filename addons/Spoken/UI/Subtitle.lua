@@ -293,7 +293,7 @@ function Subtitle:Build()
     self.dot:SetTextColor(.62, .62, .62)
     self.dot:SetShadowColor(0, 0, 0, 1)
     self.dot:SetShadowOffset(1, -1)
-    self.dot:SetText("•")
+    self.dot:SetText("·")
     -- Cut short with an ellipsis where the row would run too wide.
     self.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     self.label:SetJustifyH("LEFT")
@@ -323,7 +323,7 @@ function Subtitle:Build()
         self.fillRoom, self.progressHeight, self.progressBroken = 0, 0, true
     end
 
-    -- Why the line has not started, "• (Waiting for combat to end.)", and the lines waiting, "• +2".
+    -- Why the line has not started, "· (Waiting for combat to end.)", and the lines waiting, "· +2".
     self.heldDot = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     self.held = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     self.moreDot = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -338,8 +338,8 @@ function Subtitle:Build()
     for _, part in ipairs({ self.dot, self.label, self.pausedLabel, self.heldDot, self.held, self.moreDot, self.more }) do
         Ellesmere:Refont(part)
     end
-    self.heldDot:SetText("•")
-    self.moreDot:SetText("•")
+    self.heldDot:SetText("·")
+    self.moreDot:SetText("·")
     self.moreHover = Actions.WaitingHover(self.more)
     self.waiting = 0
 
