@@ -306,8 +306,9 @@ function Spoken:SettingsStyle()
     return "pages"
 end
 
--- Each module's voice pack in each language but English, by its CurseForge project under
--- publishers/. English's packs are each module's own to list. tests/lua/packs_test.lua keeps this in step with the pages.
+-- Each module's voice pack in each language but English, by its CurseForge project or GitHub
+-- release under publishers/. English's packs are each module's own to list.
+-- tests/lua/packs_test.lua keeps this in step with the pages.
 local CURSEFORGE = "https://www.curseforge.com/wow/addons/"
 local PACK_FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio",
     bosses = "SpokenBossesAudio" }
@@ -324,8 +325,10 @@ local PACK_PAGES = {
     readables = { deDE = "spoken-german-audio-readables", esES = "spoken-spanish-eu-audio-readables", esMX = "spoken-spanish-al-audio-readables",
         frFR = "spoken-french-audio-readables", koKR = "spoken-korean-audio-readables", ptBR = "spoken-portuguese-audio-readables",
         ruRU = "spoken-russian-audio-readables", zhCN = "spoken-chinese-simplified-audio-readables", zhTW = "spoken-chinese-traditional-audio-readables" },
+    bosses = { deDE = "spoken-german-audio-bosses", esES = "spoken-spanish-eu-audio-bosses", esMX = "spoken-spanish-al-audio-bosses" },
 }
--- No language's Bosses has a CurseForge project yet, so the address is its releases on GitHub.
+-- The remaining languages' Bosses packs are released on GitHub until their CurseForge projects
+-- exist.
 local BOSSES_LANGS = { deDE = true, esES = true, esMX = true, frFR = true, koKR = true, ptBR = true, ruRU = true,
     zhCN = true, zhTW = true }
 local GITHUB_RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q="
@@ -340,6 +343,10 @@ function Spoken:VoicePack(module, lang)
     end
     if module == "bosses" then
         if not BOSSES_LANGS[lang] then return nil end
+        local page = PACK_PAGES.bosses[lang]
+        if page then
+            return PACK_FOLDERS.bosses .. "_" .. lang, CURSEFORGE .. page
+        end
         return PACK_FOLDERS.bosses .. "_" .. lang, GITHUB_RELEASES .. "bosses-audio-" .. lang
     end
     local page = PACK_PAGES[module] and PACK_PAGES[module][lang]
