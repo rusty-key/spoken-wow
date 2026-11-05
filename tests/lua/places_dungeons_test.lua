@@ -308,8 +308,8 @@ local filters = stub.OpenDropdown(window.filterMenu)
 found = { ["1413"] = true, ["1413/wailing caverns"] = true, ["1413/crossroads"] = true }
 filters[1].func()
 Click("Dungeons and Raids")
-Expect("Discovered Only leaves out the dungeons not found", Shown(),
-    "Kalimdor|The Barrens|Dungeons and Raids|Wailing Caverns|Crossroads")
+Expect("Unlock Undiscovered Places keeps every dungeon despite Discovered Only", Shown(),
+    "Eastern Kingdoms|Westfall|Deadmines|Moonbrook|Kalimdor|The Barrens|Dungeons and Raids|Razorfen Downs|Wailing Caverns|Crossroads|Durotar|Thousand Needles")
 Expect("...the line still counting them, as a zone's card does", RowFor("Dungeons and Raids").count.text, "1/2 • 50%")
 filters[1].func()
 found = {}

@@ -324,8 +324,8 @@ local PACK_PAGES = {
     readables = { deDE = "spoken-german-audio-readables", esES = "spoken-spanish-eu-audio-readables", esMX = "spoken-spanish-al-audio-readables",
         frFR = "spoken-french-audio-readables", koKR = "spoken-korean-audio-readables", ptBR = "spoken-portuguese-audio-readables",
         ruRU = "spoken-russian-audio-readables", zhCN = "spoken-chinese-simplified-audio-readables", zhTW = "spoken-chinese-traditional-audio-readables" },
+    bosses = { deDE = "spoken-german-audio-bosses", esES = "spoken-spanish-eu-audio-bosses", esMX = "spoken-spanish-al-audio-bosses" },
 }
--- No language's Bosses has a CurseForge project yet, so the address is its releases on GitHub.
 local BOSSES_LANGS = { deDE = true, esES = true, esMX = true, frFR = true, koKR = true, ptBR = true, ruRU = true,
     zhCN = true, zhTW = true }
 local GITHUB_RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q="
@@ -340,7 +340,8 @@ function Spoken:VoicePack(module, lang)
     end
     if module == "bosses" then
         if not BOSSES_LANGS[lang] then return nil end
-        return PACK_FOLDERS.bosses .. "_" .. lang, GITHUB_RELEASES .. "bosses-audio-" .. lang
+        local page = PACK_PAGES.bosses[lang]
+        return PACK_FOLDERS.bosses .. "_" .. lang, page and CURSEFORGE .. page or GITHUB_RELEASES .. "bosses-audio-" .. lang
     end
     local page = PACK_PAGES[module] and PACK_PAGES[module][lang]
     if not page then return nil end

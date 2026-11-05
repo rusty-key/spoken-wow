@@ -772,6 +772,17 @@ do
     SpokenTextView.Unsnap = unsnap
     Expect("a page's parchment drawn off the pixel grid, as the fade cut from it is", unsnapped ~= nil and unsnapped == fresh.bg, true)
 
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("a page can show a 3D model above its words",
+        fresh.body.model:IsShown() and fresh.body.model.frameType == "PlayerModel", true)
+    Expect("...at the compact model size", fresh.body.model.width .. "x" .. fresh.body.model.height, "150x150")
+    Expect("...with the same top spacing as a zone image", fresh.body.model.anchor.y, -8)
+    Expect("...using the model display ID", fresh.body.model.displayID, 2029)
+    Expect("...with DBM-like model settings", fresh.body.model.portraitZoom .. "|" .. fresh.body.model.sequence,
+        "0.4|4")
+    fresh:Show({ title = "A place", text = "Place lore." })
+    Expect("a page without a model hides the old one", fresh.body.model:IsShown(), false)
+
     -- The line under the title: plain words, or where the tab gives one, a way up a level.
     local sub, clicked, red = fresh.sub, 0, nil
     sub.text.SetTextColor = function(_, r) red = r end
