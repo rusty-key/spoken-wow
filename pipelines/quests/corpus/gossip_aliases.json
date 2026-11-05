@@ -65,6 +65,8 @@
  ],
  "1394be9de1e0b36dc8ca9962d38734d0": [
   "deDE-72fd21dd1f005a06c1de93c4104b6942",
+  "esES-47ba89f5c4669619e1317bcea658e67e",
+  "esES-e8954c967f80b4831602c9484369db80",
   "esMX-47ba89f5c4669619e1317bcea658e67e",
   "frFR-f0c0f1434830af6236a00bce6da24520"
  ],
@@ -114,7 +116,8 @@
  ],
  "2e120038d85f41ca7316542f6acb1110": [
   "deDE-4cb04d7f7233811e4b9ce48fa83ed2d5",
-  "esMX-f08c4603dd5aa0586a72fa247c468adc"
+  "esMX-f08c4603dd5aa0586a72fa247c468adc",
+  "frFR-9a7a06a54e18d5e87aeb819a27aa49b8"
  ],
  "301f08afeaaf0bae76748990cd7d1828": [
   "esMX-13c9d059d5b245ecb920c40a007e5159"
@@ -132,6 +135,7 @@
  ],
  "36bb26fecf6b2a6dee69ac2dad990d3a": [
   "deDE-c47f7776cc7cc9f4c10bcb2c06e09043",
+  "esES-ee209960f31e4bc10b80a2ddf2bd381e",
   "esMX-9dc7858915fdb6991d71ef1c5e2c80a0"
  ],
  "38768d11b2afe83e6ac88e388c51ca4a": [
@@ -162,6 +166,9 @@
  ],
  "413ad4b110a4af0029570b0e12273b30": [
   "deDE-bf2c18845dc476e9ae619ff22309369f"
+ ],
+ "41bde45e0819c686a439bedd874fbea9": [
+  "deDE-89a7d50bc64fe0b5cdcf5eaf164de7e8"
  ],
  "42655ee5336fd221bf884ee01510fd63": [
   "esMX-adee555ba045d333d4dd6e7667351b0d"
@@ -217,13 +224,20 @@
  "5b3cae2bbf692b29d7870c4807b43924": [
   "deDE-38b9b10abd0684cbbad211d54642ef8b"
  ],
+ "5b8d8a89e020dc2fa9b656115e4a9cb4": [
+  "deDE-c2a94c0727f4cbe3fd1cd1a5c5ce7cb7"
+ ],
  "5ce9305b1ff139391c9ddbc2c191b656": [
   "esMX-df16c9d1c74e63bc94f2e3a80f106fc8",
   "frFR-d04d2de3a48103002d831881a3199c2f"
  ],
  "5ef49377b8dd68254ffba79ca4353eea": [
   "deDE-2b04a2ab24091992314647e9f76188e8",
-  "esMX-47f7b416898cc4299b5bab8a85684a61"
+  "esMX-47f7b416898cc4299b5bab8a85684a61",
+  "frFR-4b06d162f7be081e195c01cbdfea2a5f"
+ ],
+ "5f0f285172f8b3fead4c49f9c56d6553": [
+  "frFR-feb5b28f4b549bfcafea8935475e7b8e"
  ],
  "60338cc8e4cadc013adcc8a789c2338a": [
   "esMX-ec2606a8d2d7bbfc234c3e2b73b559ef"
@@ -253,7 +267,9 @@
   "d466fe41f6f2d22f7a8db09a7966d6c7"
  ],
  "682af36b98761a235fc70a1a7114c7e1": [
-  "esMX-aa76805163e0ed6e10200480bdca6e1b"
+  "deDE-00407f392f01ee9beb15d9462286166e",
+  "esMX-aa76805163e0ed6e10200480bdca6e1b",
+  "frFR-002e5114f8a68e9a8e3372afaee6052e"
  ],
  "6ac10856479660152ac493ee64b58f4e": [
   "d60817dbe236b7089fc232eee4ef8e4a"
@@ -278,7 +294,8 @@
   "c6053c67f2e8d4868a8337f7315817d0"
  ],
  "741b4719faa15fd951c3ba261a3bfc58": [
-  "b292959-human-male-standard"
+  "b292959-human-male-standard",
+  "frFR-d8829d750e7d6cda7552b922b8889857"
  ],
  "74c1447e02baffde1a5e7a50b06c5597": [
   "deDE-e6bc469445cc8c2b7d78f2455a88d79b",
@@ -315,7 +332,8 @@
   "002e3e2a721f2f5fb8a4b9da6cdeb661"
  ],
  "852369f0d2fbc11e555e75fe5a433853": [
-  "94b518f48b844adeec5c6d975a0ecbef"
+  "94b518f48b844adeec5c6d975a0ecbef",
+  "deDE-cebc73a9fd2a76dc8458e534c6e051f7"
  ],
  "896fe1126a91ad2a5311167bae4102d7": [
   "deDE-0746d15f7c453ca7c66e3d768a766e53"
@@ -331,10 +349,14 @@
   "deDE-ef032d34dd6acc24c8132dc9824575c6",
   "esMX-7eec76926fc27e321d5304885f98a510"
  ],
+ "8bf2a497dfd2a2114570b31ad8edc3e5": [
+  "deDE-20b2bafecf19a01ef66f3209ee979531"
+ ],
  "8d5a94fecd48af8f93d9d75d365ea743": [
   "3e057055259d660918d6daacb764fb05"
  ],
  "8e72071ac74c912ab2cf7088a192e1e1": [
+  "esES-2a229ab1eaf96049d419c98098d67059",
   "esMX-c2d5ddb2a9eb8c29637247ab955ec5c5"
  ],
  "8ee51604a955a9ecb35d813d6fa2b31e": [
@@ -364,7 +386,8 @@
   "esMX-55c4427025b850da2ba5a2a5f0410197"
  ],
  "94b518f48b844adeec5c6d975a0ecbef": [
-  "852369f0d2fbc11e555e75fe5a433853"
+  "852369f0d2fbc11e555e75fe5a433853",
+  "deDE-cebc73a9fd2a76dc8458e534c6e051f7"
  ],
  "9a451b7c031973753539b1df7f3e102c": [
   "deDE-3b4cd31da3c579ee65bfa0f08ff8be8b"
@@ -388,6 +411,7 @@
  ],
  "a4a46a36be7098226552afb81f3f4f65": [
   "deDE-14fa2d3d2e51278ad6f41197df3e95ec",
+  "esES-7acab544e1dc4c2c4863f2cc003de0ef",
   "esMX-a63b9f9ca31e06409e5cfd6aeadffcde"
  ],
  "a737aa6fce1609bef044e8192877549b": [
@@ -405,10 +429,17 @@
   "esMX-2f6e3765bab80fef5548f5564abdeaf5"
  ],
  "a99c6cb6931916301d9f42a914c6f800": [
+  "esES-f3d2e600e2f5bf480c93468d58e54777",
   "esMX-f3d2e600e2f5bf480c93468d58e54777"
+ ],
+ "abc0bc3774958d865a2dfe9eb652c17d": [
+  "deDE-3187964ff1e986e881c9a187fa4182c7"
  ],
  "ac15bcb9c16fc2ebbe2029d0c4ee152a": [
   "esMX-59ef825f077452aea8fda53084b6b405"
+ ],
+ "b179e09cb0340dcb98cbdbde94354c09": [
+  "frFR-1a36e91358c67d54cc3fabb1c6333ed5"
  ],
  "b2544c3bf97ec106583835dc5a2aaaf1": [
   "78c72b92c02d69f67b68bb8842819441"
@@ -422,13 +453,21 @@
   "frFR-e29c0c651d5872a90341378518084246"
  ],
  "b292959-human-male-standard": [
-  "741b4719faa15fd951c3ba261a3bfc58"
+  "741b4719faa15fd951c3ba261a3bfc58",
+  "frFR-d8829d750e7d6cda7552b922b8889857"
  ],
  "b292988-dwarf-male-standard": [
   "frFR-63bab0c730d6997ab207a4a0cc5d3e02"
  ],
+ "b292988-human-male-standard": [
+  "frFR-0aa285bf092c83c98fb811fd5e33ab18"
+ ],
  "b293810-human-female-standard": [
-  "d55ab6e2b0e912ceee8bb89b81f9c165"
+  "d55ab6e2b0e912ceee8bb89b81f9c165",
+  "frFR-cb678f7ffc7fa1cfd2eda29a922e38b5"
+ ],
+ "b293818-tauren-female-shaman": [
+  "frFR-78c73ff75226484c9241cd9cad0c0d63"
  ],
  "b294064-dwarf-male-standard": [
   "10f9b0641dbd9e8aba8546bf7f26d0e1",
@@ -465,6 +504,9 @@
  ],
  "b316839-dwarf-male-standard": [
   "frFR-70f5b5a4a7a598b7283d45c28f9393ed"
+ ],
+ "b316839-human-male-standard": [
+  "frFR-67b6a8c8e8d0a088de5615ecb17f293b"
  ],
  "b320569-human-male-warrior": [
   "773e8b03b4c7ac255241329fd6ff90cc"
@@ -505,6 +547,9 @@
  "bcca90523118cba7ea2c138018469f80": [
   "deDE-c0c4489e5870588d628b15efb3247712"
  ],
+ "be2a049bfff27090d42fa86864cded42": [
+  "esMX-93f27af1a5b0336ac6fe1e3360bfe127"
+ ],
  "be402a4764cbd38f893fef4c3a89b6ff": [
   "esMX-fa1efaf787f061fb2000b2a9ad66f1bb"
  ],
@@ -539,11 +584,15 @@
   "esMX-2543d96a630bb982f3d63f31e46f89a0",
   "esMX-bf218f5bf83b51ff364c8a804d39410c"
  ],
+ "ce9f8a149cf026469096f4e33886943a": [
+  "deDE-686cd9394db7501391c6a4507d2673bd"
+ ],
  "cf75442c563caa4fbff303262ccbe855": [
   "deDE-ab73f5c80f7016d6b24e3610ec695c7a"
  ],
  "d55ab6e2b0e912ceee8bb89b81f9c165": [
-  "b293810-human-female-standard"
+  "b293810-human-female-standard",
+  "frFR-cb678f7ffc7fa1cfd2eda29a922e38b5"
  ],
  "d5d11c09b878dd3c167a32a3a3a5e8fe": [
   "b325819-nightelf-female-standard",
@@ -582,6 +631,11 @@
  "ddd4d55dd1de943c233b8a47f730d0f9": [
   "58a07ba5d668196689ecb253dea303f8"
  ],
+ "deDE-00407f392f01ee9beb15d9462286166e": [
+  "682af36b98761a235fc70a1a7114c7e1",
+  "esMX-aa76805163e0ed6e10200480bdca6e1b",
+  "frFR-002e5114f8a68e9a8e3372afaee6052e"
+ ],
  "deDE-0279e7de10117327120d6181499249f8": [
   "92f5764071224797e5f9ed7dc4b1a23e",
   "esMX-c95c2300d3b275235a1247d678332105",
@@ -615,6 +669,7 @@
  ],
  "deDE-14fa2d3d2e51278ad6f41197df3e95ec": [
   "a4a46a36be7098226552afb81f3f4f65",
+  "esES-7acab544e1dc4c2c4863f2cc003de0ef",
   "esMX-a63b9f9ca31e06409e5cfd6aeadffcde"
  ],
  "deDE-166125e2fcff28cf66ce19d53e2e564e": [
@@ -631,16 +686,23 @@
  "deDE-204f70f92d5518ee6d7ec52f842661ac": [
   "frFR-6b7382dd1fef91620026cac94e4b053f"
  ],
+ "deDE-20b2bafecf19a01ef66f3209ee979531": [
+  "8bf2a497dfd2a2114570b31ad8edc3e5"
+ ],
  "deDE-226b845a3b2abb6ba73805edeae7ef78": [
   "e3b1e80443822ef0533f362d56abf362",
   "esMX-6b50212c18744bd8375752a76c87177f"
  ],
  "deDE-2b04a2ab24091992314647e9f76188e8": [
   "5ef49377b8dd68254ffba79ca4353eea",
-  "esMX-47f7b416898cc4299b5bab8a85684a61"
+  "esMX-47f7b416898cc4299b5bab8a85684a61",
+  "frFR-4b06d162f7be081e195c01cbdfea2a5f"
  ],
  "deDE-3058427f437393a9cef8ab9724693d86": [
   "0354fc95cfc55148e4987c3e3c849629"
+ ],
+ "deDE-3187964ff1e986e881c9a187fa4182c7": [
+  "abc0bc3774958d865a2dfe9eb652c17d"
  ],
  "deDE-31ea3904c66a9e7ff84bc955a6513003": [
   "1b9a413cc5a0c37395ffce5a1833577f",
@@ -690,7 +752,8 @@
  ],
  "deDE-4cb04d7f7233811e4b9ce48fa83ed2d5": [
   "2e120038d85f41ca7316542f6acb1110",
-  "esMX-f08c4603dd5aa0586a72fa247c468adc"
+  "esMX-f08c4603dd5aa0586a72fa247c468adc",
+  "frFR-9a7a06a54e18d5e87aeb819a27aa49b8"
  ],
  "deDE-507c10b4229dbe4b4480936461bedca5": [
   "d8461992f589cbc9e251cd2872a33b62",
@@ -725,6 +788,9 @@
  "deDE-65cc897e24454db7da83d8162e0c4c6e": [
   "e831e57f2a91f4a3da2d84a806dd13e5"
  ],
+ "deDE-686cd9394db7501391c6a4507d2673bd": [
+  "ce9f8a149cf026469096f4e33886943a"
+ ],
  "deDE-6a73fa27c80cce6535dad38214da8848": [
   "0ad0b46c05f2db722e3b617913228055",
   "esMX-efc3fae1397dfa3748257fad8cade9a2"
@@ -736,6 +802,8 @@
  ],
  "deDE-72fd21dd1f005a06c1de93c4104b6942": [
   "1394be9de1e0b36dc8ca9962d38734d0",
+  "esES-47ba89f5c4669619e1317bcea658e67e",
+  "esES-e8954c967f80b4831602c9484369db80",
   "esMX-47ba89f5c4669619e1317bcea658e67e",
   "frFR-f0c0f1434830af6236a00bce6da24520"
  ],
@@ -776,6 +844,9 @@
  "deDE-890fadfcf3b9b50d9f7cb2bb089193e3": [
   "e0d890d3a39a39b25e5f7297115adafd",
   "esMX-92b093d0fb17fb1e056c9e2d715c4dba"
+ ],
+ "deDE-89a7d50bc64fe0b5cdcf5eaf164de7e8": [
+  "41bde45e0819c686a439bedd874fbea9"
  ],
  "deDE-8c3555ecf533d6642e2ffef649b9517c": [
   "esMX-6adb63177c8331749679f1cfcf06c8d6",
@@ -842,12 +913,16 @@
  "deDE-c0c4489e5870588d628b15efb3247712": [
   "bcca90523118cba7ea2c138018469f80"
  ],
+ "deDE-c2a94c0727f4cbe3fd1cd1a5c5ce7cb7": [
+  "5b8d8a89e020dc2fa9b656115e4a9cb4"
+ ],
  "deDE-c418a11c188888a4db1d814fd581d66a": [
   "0b31b9f39f80394c757cec12b82b7267",
   "esMX-99fd96832ea5a8ad9711fb623dc6ff4f"
  ],
  "deDE-c47f7776cc7cc9f4c10bcb2c06e09043": [
   "36bb26fecf6b2a6dee69ac2dad990d3a",
+  "esES-ee209960f31e4bc10b80a2ddf2bd381e",
   "esMX-9dc7858915fdb6991d71ef1c5e2c80a0"
  ],
  "deDE-c70b6d5f52ae8d75b0bf4ce35fd360ec": [
@@ -861,6 +936,10 @@
  "deDE-cbc8319002b5e4ebcc238cec5de37aae": [
   "esES-37e934d77aade805062e9065e6fb1cbc",
   "esMX-054b69412b3be80005a1ceeaea52f2d0"
+ ],
+ "deDE-cebc73a9fd2a76dc8458e534c6e051f7": [
+  "852369f0d2fbc11e555e75fe5a433853",
+  "94b518f48b844adeec5c6d975a0ecbef"
  ],
  "deDE-d21dc21a1ce0403991300d28407f75c8": [
   "5a5cfd9b66c08e54d7f912c93f16aec1"
@@ -933,14 +1012,49 @@
   "esMX-0f233aaa923dfb0822e4033a8e53ff65",
   "frFR-dfeca89c8d294155d4ec60aacb4f6706"
  ],
+ "esES-2a229ab1eaf96049d419c98098d67059": [
+  "8e72071ac74c912ab2cf7088a192e1e1",
+  "esMX-c2d5ddb2a9eb8c29637247ab955ec5c5"
+ ],
  "esES-37e934d77aade805062e9065e6fb1cbc": [
   "deDE-cbc8319002b5e4ebcc238cec5de37aae",
   "esMX-054b69412b3be80005a1ceeaea52f2d0"
+ ],
+ "esES-47ba89f5c4669619e1317bcea658e67e": [
+  "1394be9de1e0b36dc8ca9962d38734d0",
+  "deDE-72fd21dd1f005a06c1de93c4104b6942",
+  "esES-e8954c967f80b4831602c9484369db80",
+  "esMX-47ba89f5c4669619e1317bcea658e67e",
+  "frFR-f0c0f1434830af6236a00bce6da24520"
  ],
  "esES-60d3eafa5ea575cf71b415cf50b79bf4": [
   "b292949-human-male-standard",
   "deDE-96ac8af0d9f9c795e8af58e95710820a",
   "esMX-b563de30d6d4e59866f21fb5eabc0ca4"
+ ],
+ "esES-7acab544e1dc4c2c4863f2cc003de0ef": [
+  "a4a46a36be7098226552afb81f3f4f65",
+  "deDE-14fa2d3d2e51278ad6f41197df3e95ec",
+  "esMX-a63b9f9ca31e06409e5cfd6aeadffcde"
+ ],
+ "esES-aad6f5e6d33ffeb0509ae9a20c763e56": [
+  "esMX-8ea1947ddf1ff06f840b8522e9a6eb76"
+ ],
+ "esES-e8954c967f80b4831602c9484369db80": [
+  "1394be9de1e0b36dc8ca9962d38734d0",
+  "deDE-72fd21dd1f005a06c1de93c4104b6942",
+  "esES-47ba89f5c4669619e1317bcea658e67e",
+  "esMX-47ba89f5c4669619e1317bcea658e67e",
+  "frFR-f0c0f1434830af6236a00bce6da24520"
+ ],
+ "esES-ee209960f31e4bc10b80a2ddf2bd381e": [
+  "36bb26fecf6b2a6dee69ac2dad990d3a",
+  "deDE-c47f7776cc7cc9f4c10bcb2c06e09043",
+  "esMX-9dc7858915fdb6991d71ef1c5e2c80a0"
+ ],
+ "esES-f3d2e600e2f5bf480c93468d58e54777": [
+  "a99c6cb6931916301d9f42a914c6f800",
+  "esMX-f3d2e600e2f5bf480c93468d58e54777"
  ],
  "esMX-0025f21ec55b0ef9dfcb1c4a91dc83e7": [
   "941abdf670b7128c8662847e932c6a33",
@@ -1052,11 +1166,14 @@
  "esMX-47ba89f5c4669619e1317bcea658e67e": [
   "1394be9de1e0b36dc8ca9962d38734d0",
   "deDE-72fd21dd1f005a06c1de93c4104b6942",
+  "esES-47ba89f5c4669619e1317bcea658e67e",
+  "esES-e8954c967f80b4831602c9484369db80",
   "frFR-f0c0f1434830af6236a00bce6da24520"
  ],
  "esMX-47f7b416898cc4299b5bab8a85684a61": [
   "5ef49377b8dd68254ffba79ca4353eea",
-  "deDE-2b04a2ab24091992314647e9f76188e8"
+  "deDE-2b04a2ab24091992314647e9f76188e8",
+  "frFR-4b06d162f7be081e195c01cbdfea2a5f"
  ],
  "esMX-517dd9b3377ee2878f0dba4784badb45": [
   "f2b255bf99830e58fd3542f57058da15"
@@ -1147,9 +1264,15 @@
  "esMX-8cfed4924b2c5e364f508ef0da56485b": [
   "3af1a98c7b3e89ff1e145713a5a2e71d"
  ],
+ "esMX-8ea1947ddf1ff06f840b8522e9a6eb76": [
+  "esES-aad6f5e6d33ffeb0509ae9a20c763e56"
+ ],
  "esMX-92b093d0fb17fb1e056c9e2d715c4dba": [
   "e0d890d3a39a39b25e5f7297115adafd",
   "deDE-890fadfcf3b9b50d9f7cb2bb089193e3"
+ ],
+ "esMX-93f27af1a5b0336ac6fe1e3360bfe127": [
+  "be2a049bfff27090d42fa86864cded42"
  ],
  "esMX-943f1dba6c28bf1d0ff549fcfed64554": [
   "7957de210cb420c60905de65a8050458",
@@ -1181,7 +1304,8 @@
  ],
  "esMX-9dc7858915fdb6991d71ef1c5e2c80a0": [
   "36bb26fecf6b2a6dee69ac2dad990d3a",
-  "deDE-c47f7776cc7cc9f4c10bcb2c06e09043"
+  "deDE-c47f7776cc7cc9f4c10bcb2c06e09043",
+  "esES-ee209960f31e4bc10b80a2ddf2bd381e"
  ],
  "esMX-a20f1be33492252d9219dcfc32c2d850": [
   "b313261-human-male-standard",
@@ -1198,7 +1322,8 @@
  ],
  "esMX-a63b9f9ca31e06409e5cfd6aeadffcde": [
   "a4a46a36be7098226552afb81f3f4f65",
-  "deDE-14fa2d3d2e51278ad6f41197df3e95ec"
+  "deDE-14fa2d3d2e51278ad6f41197df3e95ec",
+  "esES-7acab544e1dc4c2c4863f2cc003de0ef"
  ],
  "esMX-a6f15a3edc6bca8d075e20aa5b0e5c87": [
   "a7706c001be19b9f911c402d0c8cfd0e",
@@ -1212,7 +1337,9 @@
   "1a805a968ec63be0827b8f2a0145bef2"
  ],
  "esMX-aa76805163e0ed6e10200480bdca6e1b": [
-  "682af36b98761a235fc70a1a7114c7e1"
+  "682af36b98761a235fc70a1a7114c7e1",
+  "deDE-00407f392f01ee9beb15d9462286166e",
+  "frFR-002e5114f8a68e9a8e3372afaee6052e"
  ],
  "esMX-adee555ba045d333d4dd6e7667351b0d": [
   "42655ee5336fd221bf884ee01510fd63"
@@ -1257,7 +1384,8 @@
   "esMX-2543d96a630bb982f3d63f31e46f89a0"
  ],
  "esMX-c2d5ddb2a9eb8c29637247ab955ec5c5": [
-  "8e72071ac74c912ab2cf7088a192e1e1"
+  "8e72071ac74c912ab2cf7088a192e1e1",
+  "esES-2a229ab1eaf96049d419c98098d67059"
  ],
  "esMX-c39dab3767e49505d93bc24693d8daa1": [
   "esMX-c6957201bddbc31dc689ab594a97043b"
@@ -1309,7 +1437,8 @@
   "4a605cf97ec7148d2b14abbe8192ce12"
  ],
  "esMX-e9ffc8988c7f98608c8acb8c08b8c322": [
-  "frFR-01d2fd16a0a9993ab6a2f095fa5d2e78"
+  "frFR-01d2fd16a0a9993ab6a2f095fa5d2e78",
+  "frFR-9848b4bcb45a3585dce3425ea9ba5760"
  ],
  "esMX-ebcae900cfb2967e9e2021141e51771b": [
   "dadcb63a8ca0a60db74bbb61c6c34baa",
@@ -1328,13 +1457,15 @@
  ],
  "esMX-f08c4603dd5aa0586a72fa247c468adc": [
   "2e120038d85f41ca7316542f6acb1110",
-  "deDE-4cb04d7f7233811e4b9ce48fa83ed2d5"
+  "deDE-4cb04d7f7233811e4b9ce48fa83ed2d5",
+  "frFR-9a7a06a54e18d5e87aeb819a27aa49b8"
  ],
  "esMX-f225f249540fb2acd96be9c72da8acb7": [
   "19b97ab0f6cfedc90d4b7cfb464436c7"
  ],
  "esMX-f3d2e600e2f5bf480c93468d58e54777": [
-  "a99c6cb6931916301d9f42a914c6f800"
+  "a99c6cb6931916301d9f42a914c6f800",
+  "esES-f3d2e600e2f5bf480c93468d58e54777"
  ],
  "esMX-f65718945a38c2663d99ea52221ddd5e": [
   "esMX-0193b3ca4091ce2b6bebbb7b78a5234b"
@@ -1378,13 +1509,25 @@
  "feda7a707c2a24a91121f428edf5aaf0": [
   "deDE-18148e0f105f170aa18c98c75859b0b6"
  ],
+ "frFR-002e5114f8a68e9a8e3372afaee6052e": [
+  "682af36b98761a235fc70a1a7114c7e1",
+  "deDE-00407f392f01ee9beb15d9462286166e",
+  "esMX-aa76805163e0ed6e10200480bdca6e1b"
+ ],
  "frFR-01d2fd16a0a9993ab6a2f095fa5d2e78": [
-  "esMX-e9ffc8988c7f98608c8acb8c08b8c322"
+  "esMX-e9ffc8988c7f98608c8acb8c08b8c322",
+  "frFR-9848b4bcb45a3585dce3425ea9ba5760"
+ ],
+ "frFR-0aa285bf092c83c98fb811fd5e33ab18": [
+  "b292988-human-male-standard"
  ],
  "frFR-17c64a9ffdd6164898704669dbef555b": [
   "941abdf670b7128c8662847e932c6a33",
   "deDE-3f1aa10a1a59f767b2d8a85d69a93eeb",
   "esMX-0025f21ec55b0ef9dfcb1c4a91dc83e7"
+ ],
+ "frFR-1a36e91358c67d54cc3fabb1c6333ed5": [
+  "b179e09cb0340dcb98cbdbde94354c09"
  ],
  "frFR-326f259cfc52a1d1dc46fa8d60184ec9": [
   "b296775-human-female-standard"
@@ -1396,6 +1539,11 @@
  ],
  "frFR-488a7d175006ce5bffa7b988fc57f6f8": [
   "d946f44a23da83262fe2d024db084c06"
+ ],
+ "frFR-4b06d162f7be081e195c01cbdfea2a5f": [
+  "5ef49377b8dd68254ffba79ca4353eea",
+  "deDE-2b04a2ab24091992314647e9f76188e8",
+  "esMX-47f7b416898cc4299b5bab8a85684a61"
  ],
  "frFR-4ddd46c886db178a0a5d31dfd59f3898": [
   "7d02b0734a6c09d86a59db08a4cb1d34",
@@ -1409,6 +1557,9 @@
  "frFR-63bab0c730d6997ab207a4a0cc5d3e02": [
   "b292988-dwarf-male-standard"
  ],
+ "frFR-67b6a8c8e8d0a088de5615ecb17f293b": [
+  "b316839-human-male-standard"
+ ],
  "frFR-696afca145286d9115f92324dc9f4f82": [
   "e455b2b724321077b2e09289bdfe481a",
   "deDE-5ee67b3ac17065531fa8d103458e6187"
@@ -1418,6 +1569,9 @@
  ],
  "frFR-70f5b5a4a7a598b7283d45c28f9393ed": [
   "b316839-dwarf-male-standard"
+ ],
+ "frFR-78c73ff75226484c9241cd9cad0c0d63": [
+  "b293818-tauren-female-shaman"
  ],
  "frFR-7c4a05d2803b3ac23807318eff3d3f97": [
   "5a56faeceb0518e365bb866d2f122071",
@@ -1438,6 +1592,15 @@
   "deDE-31ea3904c66a9e7ff84bc955a6513003",
   "esMX-65faaa802cae658359d8968b8fa2bf8e"
  ],
+ "frFR-9848b4bcb45a3585dce3425ea9ba5760": [
+  "esMX-e9ffc8988c7f98608c8acb8c08b8c322",
+  "frFR-01d2fd16a0a9993ab6a2f095fa5d2e78"
+ ],
+ "frFR-9a7a06a54e18d5e87aeb819a27aa49b8": [
+  "2e120038d85f41ca7316542f6acb1110",
+  "deDE-4cb04d7f7233811e4b9ce48fa83ed2d5",
+  "esMX-f08c4603dd5aa0586a72fa247c468adc"
+ ],
  "frFR-a64c40ef286a3086bff998536f1916d9": [
   "22342a8892082f0c6c59c805de80023b",
   "deDE-fc710416eaab60c96da5703b2db4d2b6",
@@ -1451,9 +1614,17 @@
   "a2780dc416d6641a40bbc4e0c7813698",
   "deDE-551563a6cfe31380c605ed239a939a6c"
  ],
+ "frFR-cb678f7ffc7fa1cfd2eda29a922e38b5": [
+  "b293810-human-female-standard",
+  "d55ab6e2b0e912ceee8bb89b81f9c165"
+ ],
  "frFR-d04d2de3a48103002d831881a3199c2f": [
   "5ce9305b1ff139391c9ddbc2c191b656",
   "esMX-df16c9d1c74e63bc94f2e3a80f106fc8"
+ ],
+ "frFR-d8829d750e7d6cda7552b922b8889857": [
+  "b292959-human-male-standard",
+  "741b4719faa15fd951c3ba261a3bfc58"
  ],
  "frFR-de42a3d4a4267899ea6c646c18cb5155": [
   "dadcb63a8ca0a60db74bbb61c6c34baa",
@@ -1486,9 +1657,14 @@
  "frFR-f0c0f1434830af6236a00bce6da24520": [
   "1394be9de1e0b36dc8ca9962d38734d0",
   "deDE-72fd21dd1f005a06c1de93c4104b6942",
+  "esES-47ba89f5c4669619e1317bcea658e67e",
+  "esES-e8954c967f80b4831602c9484369db80",
   "esMX-47ba89f5c4669619e1317bcea658e67e"
  ],
  "frFR-fa294a90bdc73773f14a9cc488762efb": [
   "esMX-0d6c4466ea96fc3f59d6c4739efeee6b"
+ ],
+ "frFR-feb5b28f4b549bfcafea8935475e7b8e": [
+  "5f0f285172f8b3fead4c49f9c56d6553"
  ]
 }
