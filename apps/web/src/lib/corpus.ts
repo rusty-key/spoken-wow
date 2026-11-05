@@ -48,6 +48,11 @@ export type CorpusLine = {
    */
   soleSpeaker?: boolean;
   /**
+   * "tbc" for a line from an expansion the site does not voice yet, which the explorer hides
+   * unless asked (lib/quests/expansion.ts). Absent for Classic.
+   */
+  expansion?: "tbc";
+  /**
    * What a language other than English has not translated yet. The row then carries the
    * English in its place, for the explorer to show and mark -- never to voice: a line whose
    * text is missing is not generatable. Absent in English, and absent on a row where nothing

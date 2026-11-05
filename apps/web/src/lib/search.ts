@@ -63,6 +63,12 @@ export type LineFilters = {
    */
   includeProgress?: boolean;
   /**
+   * Whether to include lines from TBC (lib/quests/expansion.ts), hidden unless asked for until
+   * the site supports TBC. A lookup by `line` finds one whatever its expansion, so a report or a
+   * contribution's link still reaches it. Widening, like includeProgress.
+   */
+  includeTbc?: boolean;
+  /**
    * One line by its id, which is how a report reaches the corpus.
    *
    * Not unique, and the filter does not pretend otherwise: a gossip lineId is a hash of the
@@ -430,6 +436,7 @@ export function matchingLines(
     source,
     npcType,
     includeProgress = false,
+    includeTbc = false,
     narration = false,
     line: lineId,
     overridden,
@@ -478,6 +485,7 @@ export function matchingLines(
   if (!includeProgress && !source?.includes("progress")) {
     lines = lines.filter((line) => line.source !== "progress");
   }
+  if (!includeTbc && !lineId) lines = lines.filter((line) => line.expansion !== "tbc");
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -

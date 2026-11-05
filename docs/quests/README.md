@@ -477,6 +477,16 @@ source filter also counts as asking for them, since otherwise that choice would 
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
 them, and clearing filters returns it to hidden.
 
+**TBC lines are hidden by default too.** Players on TBC Anniversary and Wowhead's TBC pages
+send lines the site does not voice yet. They are accepted and kept, but neither the explorer
+nor a queued batch sees them until **Show TBC lines** (`?tbc=1`) asks for them; a lookup by
+`?line=` finds one either way. Nothing stores the flag: `lib/quests/expansion.ts` derives it
+when the catalogue is built. A quest the Classic extract has no row for, with an id below
+13000, is TBC (the extract ends at 9665, Season of Discovery starts at 78000, Forever's own
+quests at 80000). A gossip line is TBC when every speaker of it was sent from a TBC
+Anniversary client (`build` 2.5.x). Gossip scraped from Wowhead's TBC pages carries a Forever
+build and still reads as Classic.
+
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.
 A gossip row has no quest, and its Quest / broadcast cell shows the BroadcastText ids it speaks

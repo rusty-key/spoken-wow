@@ -77,6 +77,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.source?.length) params.set("source", filters.source.join(","));
   if (filters.npcType) params.set("type", filters.npcType);
   if (filters.includeProgress) params.set("progress", "1");
+  if (filters.includeTbc) params.set("tbc", "1");
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
   if (filters.overridden) params.set("overridden", "1");
@@ -164,6 +165,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       source: sourcesFromParam(params.get("source")),
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
       includeProgress: params.get("progress") === "1",
+      includeTbc: params.get("tbc") === "1",
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
       overridden: params.get("overridden") === "1",
@@ -327,6 +329,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("includeProgress" in next
           ? { progress: next.includeProgress ? "1" : undefined }
           : {}),
+        ...("includeTbc" in next ? { tbc: next.includeTbc ? "1" : undefined } : {}),
         ...("line" in next ? { line: next.line } : {}),
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),
         ...("dirty" in next ? { dirty: next.dirty ? "1" : undefined } : {}),

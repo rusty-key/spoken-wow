@@ -44,6 +44,8 @@ export async function filtersFromParams(params: URLSearchParams, lang: Lang): Pr
     // Absent means hidden, so the default state needs no parameter and a bare URL is the
     // useful view rather than the padded one.
     includeProgress: params.get("progress") === "1",
+    // Absent means hidden too: TBC lines are kept but not voiced yet (lib/quests/expansion.ts).
+    includeTbc: params.get("tbc") === "1",
     line: params.get("line") || undefined,
     overridden: params.get("overridden") === "1",
     // Absent means hidden, like progress text: the useful default view is the corpus minus

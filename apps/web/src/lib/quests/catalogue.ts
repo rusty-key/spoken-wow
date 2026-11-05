@@ -35,6 +35,7 @@ import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from 
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
 import { teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
+import { familyOfBuild, markExpansions, type ExpansionFacts } from "@/lib/quests/expansion";
 
 
 /**
@@ -405,7 +406,30 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
  */
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
-  return memoByLang(cacheKey, lang, stamp, async () => ({ lines: await build(lang) }));
+  return memoByLang(cacheKey, lang, stamp, async () => {
+    const [lines, facts] = await Promise.all([build(lang), expansionFacts()]);
+    return { lines: markExpansions(lines, facts) };
+  });
+}
+
+/**
+ * What lib/quests/expansion.ts decides a line's expansion by. Both move only with quest_line and
+ * its speakers, which the stamp already covers: a contribution's build never changes.
+ */
+async function expansionFacts(): Promise<ExpansionFacts> {
+  const [quests, contributions] = await Promise.all([
+    query<{ questId: number }>(
+      `select distinct "questId" from "quest_line" where "origin" = 'extracted' and "questId" is not null`,
+    ),
+    query<{ id: number; build: string }>(
+      `select c."id", c."build" from "contribution" c
+        where c."id" in (select "contributionId" from "quest_line_speaker" where "contributionId" is not null)`,
+    ),
+  ]);
+  return {
+    extractedQuests: new Set(quests.map((row) => row.questId)),
+    contributionClients: new Map(contributions.map((row) => [row.id, familyOfBuild(row.build)])),
+  };
 }
 
 /**

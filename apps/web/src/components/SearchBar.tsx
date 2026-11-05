@@ -256,6 +256,17 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
             show progress text
           </Label>
         </div>
+        {/* TBC lines are kept but not voiced until the site supports TBC (lib/quests/expansion.ts). */}
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <Checkbox
+            id="include-tbc"
+            checked={filters.includeTbc ?? false}
+            onCheckedChange={(value) => onFilters({ includeTbc: value === true })}
+          />
+          <Label htmlFor="include-tbc" className="text-muted-foreground text-sm">
+            show TBC lines
+          </Label>
+        </div>
 
         {/* Only when there is something to clear: a button that does nothing on most visits
             is one more thing to read past every time. */}
