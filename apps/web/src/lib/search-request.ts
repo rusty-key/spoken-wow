@@ -80,6 +80,10 @@ export function needsStale(filters: LineFilters): boolean {
   return filters.state === "stale" || filters.state === "current";
 }
 
+export function needsLevels(filters: LineFilters): boolean {
+  return filters.minLevel !== undefined || filters.maxLevel !== undefined;
+}
+
 /** The same question for pronunciation: one query plus a substring pass per changed word. */
 export function needsDirty(filters: LineFilters): boolean {
   return Boolean(filters.dirty);

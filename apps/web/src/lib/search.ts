@@ -181,7 +181,7 @@ export type SearchContext = {
   recordings?: Map<string, LiveRecording>;
   /** lineId -> how its BroadcastText ids were found. Absent means nobody asked. */
   broadcast?: Map<string, Exclude<BroadcastStatus, "none">>;
-  /** questId -> its level. Absent means the database could not be reached. */
+  /** questId -> its level. Absent means nobody asked, or the database could not be reached. */
   levels?: Map<number, number>;
 };
 

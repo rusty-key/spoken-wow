@@ -4,6 +4,7 @@
  * id. What is listed matches the corpus's rule otherwise: a language's own rows, then English's
  * for the moments it has none of, so an English split shows as :m and :f until translated.
  */
+import { LEVEL_PARAM } from "@/lib/line-fields";
 import "server-only";
 
 import { audioRelPath } from "@/lib/audio";
@@ -141,8 +142,8 @@ export const quests: SectionApi = {
   filters: {
     quest: /^\d{1,9}$/,
     source: /^(accept|progress|complete|gossip)$/,
-    minLevel: /^\d{1,3}$/,
-    maxLevel: /^\d{1,3}$/,
+    minLevel: LEVEL_PARAM,
+    maxLevel: LEVEL_PARAM,
   },
 
   async list(lang, filter, cursor, limit) {

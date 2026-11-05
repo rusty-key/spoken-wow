@@ -19,11 +19,6 @@ export default function LevelBound({
   value: number | undefined;
   onChange: (value: number | undefined) => void;
 }) {
-  const commit = (input: HTMLInputElement) => {
-    const next = levelFromParam(input.value);
-    if (next !== value) onChange(next);
-  };
-
   return (
     <Input
       key={value ?? ""}
@@ -34,9 +29,12 @@ export default function LevelBound({
       placeholder={placeholder}
       defaultValue={value}
       className="h-8 w-16 px-2 text-sm"
-      onBlur={(event) => commit(event.currentTarget)}
+      onBlur={(event) => {
+        const next = levelFromParam(event.currentTarget.value);
+        if (next !== value) onChange(next);
+      }}
       onKeyDown={(event) => {
-        if (event.key === "Enter") commit(event.currentTarget);
+        if (event.key === "Enter") event.currentTarget.blur();
       }}
     />
   );

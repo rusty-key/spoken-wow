@@ -42,7 +42,7 @@ export function activeFilterCount(filters: LineFilters): number {
     filters.recorded,
     filters.broadcast,
     // Compared, because level 0 is a real bound and the filter below would drop it.
-    filters.minLevel !== undefined || undefined,
-    filters.maxLevel !== undefined || undefined,
+    filters.minLevel !== undefined,
+    filters.maxLevel !== undefined,
   ].filter(Boolean).length;
 }

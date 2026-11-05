@@ -68,12 +68,14 @@ async function openReports(lang: Lang): Promise<Map<string, number>> {
  * @param dirty whether the pronunciation filter is in force. The same bargain.
  * @param seesMadeBy whether the viewer works in the language, and so may know who made each
  *   take. Nobody else gets the map, so no route can hand an author's name to a visitor.
+ * @param levels whether a level bound is in force. A read of the whole table, so the same bargain.
  */
 export async function searchContext(
   outdated = false,
   dirty = false,
   lang: Lang = BASE_LANG,
   seesMadeBy = false,
+  levels = false,
 ): Promise<{ voiced: Set<string>; context: SearchContext }> {
   const live = await liveTakes("quests", lang);
   const voiced = new Set(live.map((row) => row.file));
@@ -83,13 +85,13 @@ export async function searchContext(
 
   try {
     // All per language: a take is compared with its own language's text and lexicon.
-    const [overrides, ignores, reports, levels, stale, dirt] = await Promise.all([
+    const [overrides, ignores, reports, stale, dirt, questLevelsByQuest] = await Promise.all([
       readOverrides(lang),
       readIgnores(lang),
       openReports(lang),
-      questLevels(),
       outdated ? staleFiles(undefined, lang) : null,
       dirty ? dirtyQuestFiles(undefined, lang) : null,
+      levels ? questLevels() : null,
     ]);
     return {
       voiced,
@@ -97,7 +99,7 @@ export async function searchContext(
         overrides,
         ignores,
         reports,
-        levels,
+        levels: questLevelsByQuest ?? undefined,
         takes,
         generatedAt,
         madeBy,

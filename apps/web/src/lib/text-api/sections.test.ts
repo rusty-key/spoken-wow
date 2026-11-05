@@ -258,7 +258,7 @@ describe("quests", () => {
   it("filters by a quest's level, leaving out lines with none", async () => {
     const quest = f.quest.questId!;
     await query(
-      `insert into "quest_level" ("questId", "level", "source") values ($1, 12, 'import')
+      `insert into "quest_level" ("questId", "level") values ($1, 12)
        on conflict ("questId") do update set "level" = 12`,
       [quest],
     );

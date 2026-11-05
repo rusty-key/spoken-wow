@@ -14,7 +14,7 @@ import { searchContext } from "@/lib/quests/context";
 import { dirtyQuestFiles } from "@/lib/quests/dirtiness";
 import { staleFiles } from "@/lib/quests/staleness";
 import { recordingsFor } from "@/lib/recordings/store";
-import { filtersFromParams, needsDirty, needsStale, withoutMadeBy } from "@/lib/search-request";
+import { filtersFromParams, needsDirty, needsLevels, needsStale, withoutMadeBy } from "@/lib/search-request";
 import { PAGE_SIZE, search } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
     needsDirty(filters),
     lang,
     seesMadeBy,
+    needsLevels(filters),
   );
   const context = { ...base, recordings, broadcast: broadcastStatus };
 

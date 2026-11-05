@@ -290,8 +290,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
 
       for (const [key, value] of Object.entries(next)) {
         if (key === "page") continue;
-        if (value) search.set(key, String(value));
-        else search.delete(key);
+        if (value === undefined || value === "") search.delete(key);
+        else search.set(key, String(value));
       }
 
       if (next.page !== undefined && next.page > 1) search.set("page", String(next.page));
@@ -342,9 +342,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("author" in next ? { author: next.author } : {}),
         ...("recorded" in next ? { rec: next.recorded } : {}),
         ...("broadcast" in next ? { bt: next.broadcast } : {}),
-        // Strings, because hrefFor drops a falsy value and level 0 is a real bound.
-        ...("minLevel" in next ? { minLevel: next.minLevel?.toString() } : {}),
-        ...("maxLevel" in next ? { maxLevel: next.maxLevel?.toString() } : {}),
+        ...("minLevel" in next ? { minLevel: next.minLevel } : {}),
+        ...("maxLevel" in next ? { maxLevel: next.maxLevel } : {}),
       });
     },
     [updateUrl],
