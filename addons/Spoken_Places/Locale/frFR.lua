@@ -98,5 +98,7 @@ L.BATTLEGROUNDS = "Champs de bataille"
 L.DUNGEONS = "Donjons et raids"
 
 L.OPEN_IN_COMPENDIUM = "Ouvrir dans le Compendium d'Azeroth"
+L.MARK_UNHEARD = "Marquer comme non entendu"
+L.MARK_UNHEARD_HINT = "« Lire automatiquement » relira cette histoire la prochaine fois que vous serez ici."
 
 SpokenPlaces:RegisterStrings("frFR", L)

@@ -88,5 +88,7 @@ L.OPT_DEV_DEBUG = "장소 디버그 메시지"
 L.OPT_DEV_PREVIEW = "미완성 번역 제공"
 
 L.OPEN_IN_COMPENDIUM = "아제로스 백과사전에서 열기"
+L.MARK_UNHEARD = "듣지 않음으로 표시"
+L.MARK_UNHEARD_HINT = "다음에 이곳에 오면 "자동으로 읽기"가 이 이야기를 다시 읽습니다."
 
 SpokenPlaces:RegisterStrings("koKR", L)

@@ -147,6 +147,8 @@ local BOOK_TOP_BAND = 0.07
 -- Compendium button shows the same tome, which would stand twice on the heading's line.
 local LOG_LOOK = { top = 28, right = 28, titleSize = 20, oneLine = true, backplate = { full = 300, height = 80 },
 	noFace = true }
+-- In Era's icon set as well as Forever's: a missing icon draws an empty ring.
+local UNHEARD_ICON = [[Interface\Icons\INV_Misc_PocketWatch_01]]
 
 -- What Play does on a story's page: the story `target` ({ mapID, key }) where a pack reads it, Stop
 -- while it is read and Replay once stopped, as every Play of the Compendium's (SpokenCompendium.PlayState).
@@ -212,7 +214,37 @@ function SpokenPlaces:CreateLorePage(parent, style)
 		page.open = open
 	end
 
+	-- A story skipped by mistake is otherwise heard for good: Forget Places Heard is the only
+	-- way back, and it clears every place at once.
+	if _G.Spoken and Spoken.CreateRoundButton then
+		local unheard = Spoken:CreateRoundButton(inner.frame, "icon", nil, UNHEARD_ICON)
+		unheard:SetScript("OnClick", function(self)
+			SpokenPlaces:ForgetHeard(self.mapID, self.areaKey)
+			GameTooltip:Hide()
+			self:Hide()
+		end)
+		unheard:HookScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+			GameTooltip:SetText(L.MARK_UNHEARD)
+			GameTooltip:AddLine(L.MARK_UNHEARD_HINT, 1, 1, 1, true)
+			GameTooltip:Show()
+		end)
+		unheard:HookScript("OnLeave", function() GameTooltip:Hide() end)
+		unheard:Hide()
+		inner:AddButton(unheard)
+		page.unheard = unheard
+		-- Heard is recorded when a clip starts, so a story played from this page shows the
+		-- button without being opened again.
+		SpokenPlaces:OnAudioChanged(function() page:RefreshUnheard() end)
+	end
+
 	return page
+end
+
+function Page:RefreshUnheard()
+	local button = self.unheard
+	if not button then return end
+	button:SetShown(button.mapID ~= nil and SpokenPlaces:HasHeard(button.mapID, button.areaKey))
 end
 
 --- What the page shows: entry = { title, subtitle, onSubtitle = fn?, text,
@@ -233,5 +265,9 @@ function Page:Show(entry)
 		local lore = entry.lore
 		self.open.mapID, self.open.areaKey = lore and lore[1], lore and lore[2]
 		self.open:SetShown(lore ~= nil and lore[1] ~= nil)
+	end
+	if self.unheard then
+		self.unheard.mapID, self.unheard.areaKey = story and story[1], story and story[2]
+		self:RefreshUnheard()
 	end
 end

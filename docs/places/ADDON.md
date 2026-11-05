@@ -190,7 +190,8 @@ The game announces a discovery once per character, and Places reads that message
   subzone, on a zone change or at login, until the greeting is settled (it queued, or there is
   nothing it will queue, or its eight tries are spent), so the zone never plays ahead of the
   valley; a valley already waiting in the queue counts as the greeting. Forget Places Heard (and
-  `/spp forget`) clears `heard` and `greeted`, never `visited`. The button is greyed while Read
+  `/spp forget`) clears `heard` and `greeted`, never `visited`. Mark as Not Heard on a story's
+  page clears that one place from `heard` and leaves `greeted` alone. The button is greyed while Read
   Automatically or Read Stories Aloud is off, as nothing reads the list then.
 - Entering a dungeon or raid reads its story, once per character (`heard`), with Read
   Automatically and Include Smaller Areas on. Inside an instance the client gives no map for the

@@ -103,6 +103,8 @@ L.BATTLEGROUNDS = "Campos de batalla"
 L.DUNGEONS = "Mazmorras y bandas"
 
 L.OPEN_IN_COMPENDIUM = "Abrir en el Compendio de Azeroth"
+L.MARK_UNHEARD = "Marcar como no oído"
+L.MARK_UNHEARD_HINT = "«Leer automáticamente» volverá a leer esta historia la próxima vez que estés aquí."
 
 SpokenPlaces:RegisterStrings("esES", L)
 SpokenPlaces:RegisterStrings("esMX", L)
