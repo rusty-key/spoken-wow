@@ -18,6 +18,7 @@
  * reads as its corpus text. Nothing is generated from this - regenerate.ts reads the
  * override itself, and there a failure *should* be fatal.
  */
+import type { CorpusLine } from "../corpus";
 import { madeByOf } from "../takes/made-by";
 import { liveTakes } from "../takes/store";
 import { dirtyQuestFiles } from "./dirtiness";
@@ -69,6 +70,7 @@ async function openReports(lang: Lang): Promise<Map<string, number>> {
  * @param seesMadeBy whether the viewer works in the language, and so may know who made each
  *   take. Nobody else gets the map, so no route can hand an author's name to a visitor.
  * @param levels whether a level bound is in force. Reads the whole table, so only those searches pay.
+ * @param index the file index of a corpus the caller already read, which saves its stamp check.
  */
 export async function searchContext(
   outdated = false,
@@ -76,6 +78,7 @@ export async function searchContext(
   lang: Lang = BASE_LANG,
   seesMadeBy = false,
   levels = false,
+  index?: Map<string, CorpusLine>,
 ): Promise<{ voiced: Set<string>; context: SearchContext }> {
   const live = await liveTakes("quests", lang);
   const voiced = new Set(live.map((row) => row.file));
@@ -89,8 +92,8 @@ export async function searchContext(
       readOverrides(lang),
       readIgnores(lang),
       openReports(lang),
-      outdated ? staleFiles(undefined, lang) : null,
-      dirty ? dirtyQuestFiles(undefined, lang) : null,
+      outdated ? staleFiles(undefined, lang, undefined, index) : null,
+      dirty ? dirtyQuestFiles(undefined, lang, undefined, index) : null,
       levels ? questLevels() : null,
     ]);
     return {

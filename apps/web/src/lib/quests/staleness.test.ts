@@ -125,6 +125,15 @@ describe("staleFiles", () => {
     expect(await staleFiles([file])).toEqual(new Set([file]));
   });
 
+  it("judges by the index a caller hands it", async () => {
+    await liveTake(await currentHash());
+    const line = (await fileIndex()).get(file)!;
+
+    const changed = new Map([[file, { ...line, text: "Something else entirely." }]]);
+
+    expect(await staleFiles([file], "enUS", undefined, changed)).toEqual(new Set([file]));
+  });
+
   it("says nothing about a file with no take at all", async () => {
     expect(await staleFiles([file])).toEqual(new Set());
     expect(await staleFiles([])).toEqual(new Set());
