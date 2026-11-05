@@ -13,10 +13,11 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { luaText } from "../../../lib/lua-text.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { readLines, shipped } from "../lib/loredata.mjs";
-import { close as closeStore, loadManifest, packDir, soundsDir } from "./store.mjs";
+import { close as closeStore, loadCurrentLore, loadManifest, packDir, soundsDir } from "./store.mjs";
 
 function luaString(text) {
   return `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -33,9 +34,21 @@ function luaPath(file) {
 
 // A take with no word times has no `times`, and its captions estimate. The field is additive,
 // so the pack format stays 1: an addon that predates it ignores it.
-function fields(row) {
+export function fields(row) {
   const times = row.times ? `, times = ${luaString(packTimes(row.times))}` : "";
-  return `file = ${luaPath(row.file)}, len = ${row.len}${times}`;
+  const text = row.text ? `, text = ${luaText(row.text)}` : "";
+  return `file = ${luaPath(row.file)}, len = ${row.len}${times}${text}`;
+}
+
+// What the pack shows: the words the take was voiced from, else the line's today. With neither the
+// field is left out, and the addon falls back to its own lore.
+export function packRow(record, currentText) {
+  return {
+    file: record.file,
+    len: record.durationSec,
+    times: record.wordTimes,
+    text: record.shownText ?? currentText,
+  };
 }
 
 /**
@@ -47,6 +60,7 @@ function fields(row) {
  */
 export async function buildLookup() {
   const manifest = await loadManifest();
+  const currentLore = await loadCurrentLore();
   const lore = shipped(await readLines());
 
   const zones = new Map();      // mapID -> row
@@ -67,7 +81,7 @@ export async function buildLookup() {
 
     const [kind, mapIDText, ...rest] = id.split(":");
     const mapID = Number(mapIDText);
-    const row = { file: record.file, len: record.durationSec, times: record.wordTimes };
+    const row = packRow(record, currentLore.get(id));
 
     if (kind === "z") {
       zones.set(mapID, row);

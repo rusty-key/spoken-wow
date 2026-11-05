@@ -384,6 +384,24 @@ end
 --
 -- Duration comes from the generated lookup because there is no way to ask the
 -- client how long a sound file is; without one the button could never reset itself.
+--- The words a pack in `language` carries for a place, or nil. Kept out of the lore tables, which
+--- the Text Language switch reads and packs may load after: this is display only.
+function SpokenPlaces:PackLoreText(mapID, areaKey, language)
+	for _, pack in ipairs(self:GetAudioPacks(language)) do
+		local clip
+		if areaKey then
+			local clips = pack.subzones and pack.subzones[mapID]
+			clip = clips and clips[areaKey]
+		else
+			clip = pack.zones and pack.zones[mapID]
+		end
+		if clip and type(clip.text) == "string" and clip.text ~= "" then
+			return clip.text
+		end
+	end
+	return nil
+end
+
 function SpokenPlaces:GetAudioClip(mapID, areaKey)
 	if not mapID then
 		return nil, nil
@@ -519,7 +537,7 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 			-- An area under its zone; anything else under the place above it.
 			header = areaKey and (self:GetMapName(zone) or label) or self:GetMapName(self:PlaceAbove(mapID)),
 			label = label,
-			transcript = entry and entry.full,
+			transcript = self:PackLoreText(mapID, areaKey, language) or (entry and entry.full),
 			-- Timed to the recording's own words, so not under another language's.
 			timings = entry and language == (pack.language or "enUS") and times or nil,
 			font = font,
