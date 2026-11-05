@@ -475,7 +475,9 @@ act on. **Show progress text** brings them back, and `?progress=1` says the same
 URL; absence means hidden, so a bare link is the useful view. Ticking `progress` in the
 source filter also counts as asking for them, since otherwise that choice would return
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
-them, and clearing filters returns it to hidden.
+them, and clearing filters returns it to hidden. The Missing audio ranking (`/missing-audio`
+and its dashboard tile) leaves progress text out too: the addon reports it as silent like any
+other line, but nothing will voice it, so it is not a gap to close.
 
 **The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
 `?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
