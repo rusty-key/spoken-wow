@@ -1,0 +1,41 @@
+name: UI merge
+
+# A UI maintainer comments /merge on a pull request; scripts/lib/ui-merge.mjs decides whether it
+# may land. issue_comment runs this file and the script from master, so a pull request cannot
+# change the rules it is judged by. The script reads the pull request through the API and never
+# checks out its code.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  merge:
+    if: ${{ github.event.issue.pull_request && github.event.comment.user.login == 'svengabr' && github.event.comment.body == '/merge' }}
+    runs-on: ubuntu-latest
+    # The App's key can write to master past the ruleset, so only master may read it.
+    environment: merge-bot
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            scripts/lib
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Merge if allowed
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: node scripts/lib/ui-merge.mjs "$NUMBER"
