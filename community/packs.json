@@ -1,3 +1,19 @@
 {
-  "packs": []
+  "packs": [
+    {
+      "id": "polski",
+      "title": "Spoken Polski",
+      "author": "zaxcer",
+      "description": "Polish quest voiceover, growing zone by zone (now Durotar: 499 recordings with male and female variants). Translation entirely by the WoWPoPolskuForever team led by Loe'Aner, used with permission. Voices designed with ElevenLabs Voice Design, lines by ElevenLabs v4 Turbo.",
+      "lang": "plPL",
+      "section": "quests",
+      "version": "0.1.2",
+      "size": 61926218,
+      "sha256": "5e02a5f6d35609ea22d0e465def4023edc2117449044cace64f91e1d30be26e5",
+      "url": "https://github.com/zaxcer/spoken-polish/releases/download/v0.1.2/SpokenCommunity_polski-0.1.2.zip",
+      "homepage": "https://github.com/zaxcer/spoken-polish",
+      "license": "Non-commercial; text WoWPoPolskuForever",
+      "addedAt": "2026-11-05"
+    }
+  ]
 }
