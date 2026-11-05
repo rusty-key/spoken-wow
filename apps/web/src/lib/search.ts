@@ -11,6 +11,8 @@
  * browser; search.test.ts is what keeps the two honest. Text, race, gender, source and
  * entity-type filtering are web-only and have no CLI counterpart to stay in step with.
  */
+import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "./contributions/client";
+import { lineMatchesClient } from "./quests/line-client";
 import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
@@ -62,6 +64,12 @@ export type LineFilters = {
    * Widening rather than narrowing, which is why activeFilterCount ignores it.
    */
   includeProgress?: boolean;
+  /**
+   * Which clients' lines (lib/quests/line-client.ts), in the Contributions pages' bins: Era +
+   * Forever when absent, the clients the site voices. A lookup by `line` finds a line whatever
+   * its client, so a report or a contribution's link still reaches it.
+   */
+  client?: ClientFilter;
   /**
    * One line by its id, which is how a report reaches the corpus.
    *
@@ -438,6 +446,7 @@ export function matchingLines(
     source,
     npcType,
     includeProgress = false,
+    client = DEFAULT_CLIENT_FILTER,
     narration = false,
     line: lineId,
     overridden,
@@ -489,6 +498,7 @@ export function matchingLines(
   if (!includeProgress && !source?.includes("progress")) {
     lines = lines.filter((line) => line.source !== "progress");
   }
+  if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -

@@ -823,7 +823,7 @@ const ContributionTableRow = memo(function ContributionTableRow({
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-1 whitespace-nowrap">
                   <a
-                    href={localeHref(lang, `/quests?q=${npc.npcId}&filter=npc`)}
+                    href={localeHref(lang, `/quests?q=${npc.npcId}&filter=npc&client=all`)}
                     className="truncate hover:underline"
                     title={npc.npcName ?? undefined}
                   >

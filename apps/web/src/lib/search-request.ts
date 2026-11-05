@@ -9,6 +9,7 @@
  * a hand-edited URL, and answering it with the unfiltered corpus is both safe and more
  * useful than a 400.
  */
+import { clientFilterOf } from "./contributions/client";
 import { audioStateFromParams } from "./audio-state";
 import { facets } from "./facets";
 import type { Lang } from "./lang";
@@ -44,6 +45,8 @@ export async function filtersFromParams(params: URLSearchParams, lang: Lang): Pr
     // Absent means hidden, so the default state needs no parameter and a bare URL is the
     // useful view rather than the padded one.
     includeProgress: params.get("progress") === "1",
+    // Absent means Era + Forever, the clients the site voices (lib/quests/line-client.ts).
+    client: clientFilterOf(params.get("client")),
     line: params.get("line") || undefined,
     overridden: params.get("overridden") === "1",
     // Absent means hidden, like progress text: the useful default view is the corpus minus
