@@ -35,8 +35,8 @@ import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from 
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
 import { teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
-import { lineMatchesClient, markClients, type LineClientFacts } from "@/lib/quests/line-client";
-import { DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
+import { markClients, type LineClientFacts } from "@/lib/quests/line-client";
+import { matchingLines } from "@/lib/search";
 
 
 /**
@@ -455,20 +455,22 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
   });
 }
 
-const hiddenKey = Symbol.for("spoken.quests-hidden-client-lines.by-lang");
+const hiddenKey = Symbol.for("spoken.quests-hidden-by-default.by-lang");
 
 /**
- * Every line id in `lang` none of whose rows the default client filter (Era + Forever) shows,
- * under its own id and the id of the line it is a voice of (lib/quests/line-client.ts). For
- * lists that are not searches, such as the Missing audio ranking, to leave out what the
- * explorer hides. Rebuilt with the catalogue.
+ * Every line id in `lang` none of whose rows the explorer's default view shows -- progress text,
+ * which nothing voices, and other clients' lines (lib/quests/line-client.ts) -- under its own id
+ * and the id of the line it is a voice of. Read off the search itself, with no filters, so a list
+ * that is not a search (the Missing audio ranking) hides exactly what the explorer hides.
+ * Rebuilt with the catalogue.
  */
-export async function hiddenClientLineIds(lang: Lang = BASE_LANG): Promise<ReadonlySet<string>> {
-  const lines = (await corpus(lang)).lines;
-  return memoByLang(hiddenKey, lang, lines, () => {
+export async function hiddenByDefaultLineIds(lang: Lang = BASE_LANG): Promise<ReadonlySet<string>> {
+  const corpusOf = await corpus(lang);
+  return memoByLang(hiddenKey, lang, corpusOf.lines, () => {
+    const shown = new Set(matchingLines(corpusOf, new Set()).map((line) => line.lineId));
     const hidden = new Map<string, boolean>();
-    for (const line of lines) {
-      const out = !lineMatchesClient(line, DEFAULT_CLIENT_FILTER);
+    for (const line of corpusOf.lines) {
+      const out = !shown.has(line.lineId);
       for (const id of new Set([line.lineId, baseLineId(line.lineId)])) hidden.set(id, (hidden.get(id) ?? true) && out);
     }
     return new Set([...hidden].filter(([, all]) => all).map(([id]) => id));

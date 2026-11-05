@@ -101,4 +101,22 @@ describe("missingAudioRanking", () => {
       await db().query(`delete from "quest_line" where "lineId" = $1`, [tbc]);
     }
   });
+
+  it("leaves out progress text, which the addon reports as silent but nothing voices", async () => {
+    // q:179:progress is the seeded corpus's own: "Did the wolves give you trouble?", the line the
+    // German ranking was topped by.
+    await db().query(
+      `insert into "quest_line"
+         ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "fileName", "text", "originalText")
+       values ($1, 0, 'enUS', 1, true, 'extracted', 'accept', $2, $1, 'Kill six.', 'Kill six.')`,
+      [lineA, quest],
+    );
+    await recordMissingAudio(installs[0]!, [
+      { lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" },
+      { lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" },
+      { lineId: lineA, packLang: lang, packVersion: "1.0.0" },
+    ]);
+    await recordMissingAudio(installs[1]!, [{ lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" }]);
+    expect((await missingAudioRanking(lang)).map((row) => row.lineId)).toEqual([lineA]);
+  });
 });
