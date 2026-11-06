@@ -13,6 +13,8 @@ local Spoken = Developer:Spoken()
 if Spoken then
 	Spoken:RegisterDeveloper(Developer.provider)
 end
+-- Before any page is built, so a view made at login is taken in.
+Developer.Camera:Install()
 
 local started = false
 
