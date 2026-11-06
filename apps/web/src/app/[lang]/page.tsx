@@ -16,6 +16,8 @@ import NavMenu from "@/components/landing/NavMenu";
 import { NAV } from "@/components/landing/nav";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
+import { heroFor } from "@/components/landing/heroFor";
+import { voicesFor } from "@/components/landing/voicesFor";
 import { SiteTextProvider } from "@/components/landing/SiteTextProvider";
 import { LOCALES, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
@@ -93,7 +95,7 @@ const NEW_TAB = (text: string) => <span className="sr-only">{text}</span>;
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
-  const t = await siteText(lang);
+  const [t, voices, heroLines] = await Promise.all([siteText(lang), voicesFor(lang), heroFor(lang)]);
   const newTab = NEW_TAB(t.newTab);
   const languages: InstallLanguage[] = LOCALES.map(({ code }) => ({
     code,
@@ -156,7 +158,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                     <img className="bn-logo-era" src="/landing/games/logo-era.png" alt={t.hero.eraAlt} />
                   </div>
                 </div>
-                <HeroLine />
+                <HeroLine key={lang} lines={heroLines} />
               </div>
             </div>
           </section>
@@ -167,7 +169,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                 <h2 className="bn-display">{t.voices.title}</h2>
                 <p>{t.voices.intro}</p>
               </div>
-              <Showcase />
+              <Showcase voices={voices} />
               <div className="bn-facts">
                 <div>
                   <h3>{t.voices.subtitlesTitle}</h3>

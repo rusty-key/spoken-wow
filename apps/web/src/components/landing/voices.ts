@@ -16,6 +16,10 @@ export type Voice = {
   peaks: number[];
   words: string[];
   times: number[];
+  /** The language of the words, as html lang. English clips leave it out. */
+  lang?: string;
+  /** What goes between two words on screen: a space unless the language has none (Chinese). */
+  joiner?: string;
 };
 
 export const VOICES: Record<string, Voice[]> = {
@@ -24,7 +28,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Muglash",
       "name": "Muglash",
       "sub": "Vorsha the Lasher",
-      "icon": "/landing/icons/voice-orc-male.png",
+      "icon": "/landing/icons/npc-12717.png",
       "audio": "/landing/voice/quests-1.mp3",
       "duration": 7.6,
       "peaks": [
@@ -182,7 +186,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Anaya",
       "name": "Anaya",
       "sub": "For Love Eternal",
-      "icon": "/landing/icons/voice-nightelf-female.png",
+      "icon": "/landing/icons/npc-3843.png",
       "audio": "/landing/voice/quests-2.mp3",
       "duration": 8.16,
       "peaks": [
@@ -336,7 +340,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Grand Mason Marblesten",
       "name": "Grand Mason Marblesten",
       "sub": "A King's Tribute",
-      "icon": "/landing/icons/voice-dwarf-male.png",
+      "icon": "/landing/icons/npc-2790.png",
       "audio": "/landing/voice/quests-3.mp3",
       "duration": 8.72,
       "peaks": [
@@ -498,7 +502,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Princess Poobah",
       "name": "Princess Poobah",
       "sub": "Message in a Bottle",
-      "icon": "/landing/icons/voice-tauren-female.png",
+      "icon": "/landing/icons/npc-2634.png",
       "audio": "/landing/voice/quests-4.mp3",
       "duration": 5.76,
       "peaks": [
@@ -644,7 +648,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Orgrimmar Grunt",
       "name": "Orgrimmar Grunt",
       "sub": "Gossip",
-      "icon": "/landing/icons/voice-orc-male.png",
+      "icon": "/landing/icons/npc-3296.png",
       "audio": "/landing/voice/gossip-1.mp3",
       "duration": 5.12,
       "peaks": [
@@ -790,7 +794,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Stormwind Guard",
       "name": "Stormwind Guard",
       "sub": "Gossip",
-      "icon": "/landing/icons/voice-human-male.png",
+      "icon": "/landing/icons/npc-1423.png",
       "audio": "/landing/voice/gossip-2.mp3",
       "duration": 6.64,
       "peaks": [
@@ -952,7 +956,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Martie Jainrose",
       "name": "Martie Jainrose",
       "sub": "Gossip",
-      "icon": "/landing/icons/voice-human-female.png",
+      "icon": "/landing/icons/npc-342.png",
       "audio": "/landing/voice/gossip-3.mp3",
       "duration": 8.8,
       "peaks": [
@@ -1108,7 +1112,7 @@ export const VOICES: Record<string, Voice[]> = {
       "label": "Hahrana Ironhide",
       "name": "Hahrana Ironhide",
       "sub": "Gossip",
-      "icon": "/landing/icons/voice-tauren-female.png",
+      "icon": "/landing/icons/npc-11098.png",
       "audio": "/landing/voice/gossip-4.mp3",
       "duration": 8.88,
       "peaks": [

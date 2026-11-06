@@ -167,6 +167,13 @@ None of this is the project's to license, and the MIT grant does not reach it.
   writings. The text, and the NPC, quest and place names, are Blizzard's (names from the quest
   corpus), the audio is Spoken's generated audio (see "The generated audio" below), and the word
   times come from the project's alignment of that audio. The reviewer decides whether they ship.
+  The samples exist in each language (`src/components/landing/voices/<locale>.json`, audio in
+  `public/landing/voice/<locale>/`, about 23 MB), taken from spoken.quest's public API by
+  `apps/web/scripts/landing-voices.py`. The speakers' pictures (`icons/npc-<creature id>.png`) and
+  the four boss portraits (`icons/boss-*.png`) are Blizzard's: the NPC pictures are crops of the
+  model screenshots on [Warcraft Wiki](https://warcraft.wiki.gg) (each NPC's own page), and the boss
+  portraits are the Dungeon Journal images, both set in the same frame as the other icons. The reviewer
+  decides whether they ship.
 - **The front page's key art** (`apps/web/public/landing/hero.jpg`, `art-era.jpg`,
   `art-anniversary.jpg`) is Blizzard Entertainment's, resized and compressed from the copies on
   warcraft.wiki.gg. `hero.jpg` is the WoW: Forever key art by Alex Horley, `art-era.jpg` is the left
