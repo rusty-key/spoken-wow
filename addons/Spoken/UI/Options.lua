@@ -167,8 +167,8 @@ LANGUAGES = {
     -- `hidden` keeps it out of the menus until its pack is released: picked before then, every
     -- line would play in the fallback language.
     { code = "viVN", native = "Tiếng Việt", english = "Vietnamese", script = "vietnamese", hidden = true },
-    -- No client runs in Hebrew either, and the game's fonts have no Hebrew letters: where the
-    -- settings' font cannot draw them, the menus say "Hebrew".
+    -- No client runs in Hebrew, and the game's fonts have no Hebrew letters: where the settings'
+    -- font cannot draw them, the menus say "Hebrew".
     { code = "heIL", native = "עברית", english = "Hebrew", script = "hebrew" },
 }
 
