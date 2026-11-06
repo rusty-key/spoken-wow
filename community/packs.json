@@ -14,6 +14,21 @@
       "homepage": "https://github.com/zaxcer/spoken-polish",
       "license": "Non-commercial; text WoWPoPolskuForever",
       "addedAt": "2026-11-05"
+    },
+    {
+      "id": "ivrit",
+      "title": "Spoken Hebrew (Ivrit)",
+      "author": "renanbazinin",
+      "description": "Hebrew quest and gossip voiceover, growing zone by zone (now the six starting zones, the six capitals and most zones up to level 30: about 5,100 recordings). Fan translation made for the pack with a shared glossary. Voices are ElevenLabs clones of each race's NPC voices, lines by ElevenLabs v4 and v4 Turbo. Captions read right to left in Noto Sans Hebrew.",
+      "lang": "heIL",
+      "section": "quests",
+      "version": "0.6.3",
+      "size": 471609008,
+      "sha256": "5d43061d748c809925e41625f16504e337c963331b28fb7674fabda7c3a33a81",
+      "url": "https://github.com/renanbazinin/spoken-ivrit/releases/download/v0.6.3/SpokenCommunity_ivrit-0.6.3.zip",
+      "homepage": "https://github.com/renanbazinin/spoken-ivrit",
+      "license": "Non-commercial fan work",
+      "addedAt": "2026-11-07"
     }
   ]
 }
