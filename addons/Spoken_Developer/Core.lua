@@ -28,6 +28,8 @@ local function Defaults()
 		on = true,
 		-- "<GetTime> <category> <text>", oldest first.
 		lines = {},
+		-- The camera editor's changes (Camera.lua): [place][model group] = { right, up, zoom, turn }.
+		cameraEdits = {},
 	}
 end
 
@@ -43,6 +45,7 @@ function Developer:InitDB()
 		if SpokenDeveloperDB[key] == nil then SpokenDeveloperDB[key] = value end
 	end
 	if type(SpokenDeveloperDB.lines) ~= "table" then SpokenDeveloperDB.lines = {} end
+	if type(SpokenDeveloperDB.cameraEdits) ~= "table" then SpokenDeveloperDB.cameraEdits = {} end
 end
 
 function Developer:Print(message, ...)

@@ -1,0 +1,182 @@
+"""Tests for import_edits.py. Run: py -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"
+(python3 on Linux and macOS)."""
+import os
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import import_edits as ie  # noqa: E402
+
+# A Spoken_Developer.lua as the game writes it: arrays without keys carry `-- [n]` comments, other saved
+# data sits beside the camera edits, and a string value holds characters the reader must not take for Lua.
+SAMPLE = """
+SpokenDeveloperDB = {
+	["note"] = "has -- dashes, a \\"quote\\", [1] = and }, in it",
+	["cameraEdits"] = {
+		["compendium"] = {
+			[126277] = {
+				-0.0108, -- [1]
+				-0.1473, -- [2]
+				1.6528, -- [3]
+				0, -- [4]
+			},
+			[125777] = {
+				-0.0084, -- [1]
+				0.014, -- [2]
+				1.3439, -- [3]
+			},
+			[124857] = {
+				0, -- [1]
+				0, -- [2]
+				1, -- [3]
+				0, -- [4]
+			},
+		},
+		["story"] = {
+			[126277] = {
+				0.5, -- [1]
+				-0.25, -- [2]
+				1.5, -- [3]
+				-0.2848, -- [4]
+			},
+		},
+	},
+	["other"] = { 1, 2, 3, ["x"] = 1e-05 },
+}
+OtherSavedVariable = { "a", "b" }
+"""
+
+def read(path):
+    with open(path, encoding="utf8") as f:
+        return f.read()
+
+
+KEPT = {
+    "compendium": {126277: [0.0, -0.1, 1.4, 0.0], 124857: [0.1, 0.0, 1.2, 0.0], 100: [0.0, 0.0, 2.0, 0.0]},
+    "story": {},
+}
+
+
+class ParseTest(unittest.TestCase):
+    def test_reads_rows_past_index_comments_and_strings(self):
+        saved = ie.saved_edits(SAMPLE)
+        self.assertEqual(saved["compendium"][126277], [-0.0108, -0.1473, 1.6528, 0.0])
+        self.assertEqual(saved["story"][126277], [0.5, -0.25, 1.5, -0.2848])
+
+    def test_three_number_row_gets_a_turn_of_zero(self):
+        self.assertEqual(ie.saved_edits(SAMPLE)["compendium"][125777], [-0.0084, 0.014, 1.3439, 0.0])
+
+    def test_unkeyed_items_are_numbered_like_lua(self):
+        parsed = ie.parse(SAMPLE)
+        self.assertEqual(parsed["OtherSavedVariable"], {1: "a", 2: "b"})
+        self.assertEqual(parsed["SpokenDeveloperDB"]["other"], {1: 1.0, 2: 2.0, 3: 3.0, "x": 1e-05})
+        self.assertIn("-- dashes", parsed["SpokenDeveloperDB"]["note"])
+
+    def test_no_camera_edits_gives_empty_places(self):
+        self.assertEqual(ie.saved_edits('SpokenDeveloperDB = { ["x"] = 1 }'), {"compendium": {}, "story": {}})
+        self.assertEqual(ie.saved_edits("Other = {}"), {"compendium": {}, "story": {}})
+
+    def test_the_old_saved_variable_shape_is_not_read(self):
+        old = 'SpokenBossCameraEdits = { ["compendium"] = { [1] = { 1, 2, 3, 0, }, }, }'
+        self.assertEqual(ie.saved_edits(old), {"compendium": {}, "story": {}})
+
+    def test_rejects_text_that_is_not_lua(self):
+        with self.assertRaises(ValueError):
+            ie.parse("SpokenDeveloperDB = { ? }")
+
+
+class MergeTest(unittest.TestCase):
+    def test_a_changed_row_replaces_the_kept_one_and_new_rows_are_added(self):
+        merged, counts = ie.merge(KEPT, ie.saved_edits(SAMPLE))
+        self.assertEqual(merged["compendium"][126277], [-0.0108, -0.1473, 1.6528, 0.0])
+        self.assertEqual(merged["compendium"][125777], [-0.0084, 0.014, 1.3439, 0.0])
+        self.assertEqual(merged["story"][126277], [0.5, -0.25, 1.5, -0.2848])
+        self.assertEqual((counts["replaced"], counts["added"]), (1, 2))
+
+    def test_a_row_that_changes_nothing_is_a_reset_and_takes_the_kept_row_out(self):
+        merged, counts = ie.merge(KEPT, ie.saved_edits(SAMPLE))
+        self.assertNotIn(124857, merged["compendium"])
+        self.assertEqual(counts["removed"], 1)
+
+    def test_a_row_that_changes_nothing_for_a_model_with_no_row_adds_nothing(self):
+        saved = {"compendium": {7: [0.0, 0.0, 1.0, 0.0]}, "story": {}}
+        merged, counts = ie.merge(KEPT, saved)
+        self.assertNotIn(7, merged["compendium"])
+        self.assertEqual((counts["ignored"], counts["removed"]), (1, 0))
+
+    def test_rows_missing_from_the_game_file_stay_and_are_counted(self):
+        merged, counts = ie.merge(KEPT, ie.saved_edits(SAMPLE))
+        self.assertEqual(merged["compendium"][100], [0.0, 0.0, 2.0, 0.0])
+        self.assertEqual(counts["kept"], 1)
+
+    def test_the_same_row_again_is_neither_replaced_nor_added(self):
+        again = {"compendium": {126277: [-0.0108, -0.1473, 1.6528, 0.0]}, "story": {}}
+        kept = {"compendium": {126277: [-0.0108, -0.1473, 1.6528, 0.0]}, "story": {}}
+        _, counts = ie.merge(kept, again)
+        self.assertEqual((counts["replaced"], counts["added"], counts["kept"]), (0, 0, 1))
+
+
+class WriteTest(unittest.TestCase):
+    def test_writes_the_generated_header_and_leaves_out_rows_that_change_nothing(self):
+        merged, _ = ie.merge(KEPT, ie.saved_edits(SAMPLE))
+        merged["story"][5] = [0.0, 0.0, 1.0, 0.0]
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "CameraNudges.lua")
+            ie.write(merged, path)
+            text = read(path)
+        self.assertTrue(text.startswith("-- AUTO-GENERATED by pipelines/places/tools/bosses/import_edits.py"))
+        self.assertIn("Do not edit by hand", text)
+        self.assertIn("[126277] = { -0.0108, -0.1473, 1.6528, 0.0000 },", text)
+        self.assertNotIn("[5] =", text)
+
+    def test_a_row_that_was_reset_is_not_written(self):
+        merged, _ = ie.merge(KEPT, ie.saved_edits(SAMPLE))
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "CameraNudges.lua")
+            ie.write(merged, path)
+            self.assertNotIn("[124857] =", read(path))
+
+    def test_the_framing_the_rows_were_made_with_is_written_into_the_header(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "CameraNudges.lua")
+            ie.write(KEPT, path, framed="fit=0.85 aspect=1.25 fov=27.78")
+            self.assertEqual(ie.FRAMED.search(read(path)).group(1), "fit=0.85 aspect=1.25 fov=27.78")
+
+    def test_what_it_wrote_reads_back_the_same(self):
+        merged, _ = ie.merge(KEPT, ie.saved_edits(SAMPLE))
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "CameraNudges.lua")
+            ie.write(merged, path)
+            back = ie.kept_nudges(read(path))
+        self.assertEqual(back, merged)
+
+
+class FramingTest(unittest.TestCase):
+    TEXTVIEW = ("local MODEL_MOST, MODEL_GAP, MODEL_WIDE = 220, 10, 1.25\n"
+                "local FIT, ASPECT = 0.85, MODEL_WIDE\n")
+    CAMERAS = "SpokenBossCameraView = { fov = 27.78, sequence = 0 }\n"
+
+    def test_reads_fit_aspect_and_fov(self):
+        self.assertEqual(ie.framing(self.TEXTVIEW, self.CAMERAS), "fit=0.85 aspect=1.25 fov=27.78")
+
+    def test_an_aspect_written_as_a_number_is_read_too(self):
+        text = self.TEXTVIEW.replace("0.85, MODEL_WIDE", "0.9, 1.5")
+        self.assertEqual(ie.framing(text, self.CAMERAS), "fit=0.9 aspect=1.5 fov=27.78")
+
+    def test_a_change_to_either_constant_is_a_different_framing(self):
+        was = ie.framing(self.TEXTVIEW, self.CAMERAS)
+        self.assertNotEqual(ie.framing(self.TEXTVIEW.replace("0.85", "0.8"), self.CAMERAS), was)
+        self.assertNotEqual(ie.framing(self.TEXTVIEW.replace("1.25", "1.3"), self.CAMERAS), was)
+
+    def test_the_real_sources_are_read(self):
+        with open(ie.TEXTVIEW, encoding="utf8") as f, open(ie.CAMERAS, encoding="utf8") as g:
+            self.assertRegex(ie.framing(f.read(), g.read()), r"^fit=[\d.]+ aspect=[\d.]+ fov=[\d.]+$")
+
+    def test_sources_the_importer_cannot_read_are_an_error(self):
+        with self.assertRaises(ValueError):
+            ie.framing("nothing here", self.CAMERAS)
+
+
+if __name__ == "__main__":
+    unittest.main()
