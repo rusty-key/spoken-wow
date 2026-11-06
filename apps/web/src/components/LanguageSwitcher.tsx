@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Refreshing } from "@/components/Loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { localeHref, stripLang, type Lang } from "@/lib/lang";
-import { nativeName } from "@/lib/site-text/names";
+import { FRONT_PAGE_LANGS, nativeName } from "@/lib/site-text/names";
 
 import { useLang } from "./LangProvider";
 import { usePendingPush } from "./usePendingPush";
@@ -64,7 +64,12 @@ export default function LanguageSwitcher({ variant, label }: { variant?: "landin
       </select>
     );
   }
-  if (offered.length < 2) return null;
+  // The front page's select lists the languages it is written in, and the page's own language even if it is not.
+  const choices =
+    variant === "landing"
+      ? offered.filter((language) => language.code === lang || FRONT_PAGE_LANGS.includes(language.code))
+      : offered;
+  if (choices.length < 2) return null;
 
   function choose(next: string) {
     const here = `${stripLang(pathname).path}${window.location.search}`;
@@ -81,7 +86,7 @@ export default function LanguageSwitcher({ variant, label }: { variant?: "landin
         value={pending ? chosen : lang}
         onChange={(event) => choose(event.target.value)}
       >
-        {offered.map((language) => (
+        {choices.map((language) => (
           <option key={language.code} value={language.code}>
             {nativeName(language.code)}
           </option>

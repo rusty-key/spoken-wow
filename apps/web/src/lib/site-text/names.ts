@@ -20,6 +20,15 @@ export const NATIVE_NAMES: Record<Lang, string> = {
   viVN: "Tiếng Việt",
 };
 
+/**
+ * The languages the front page is written in, which are the ones with a dictionary beside this file (and
+ * English). The front page's language select offers only these: any other would show English words under
+ * its name. A new dictionary goes here and in the loaders of index.ts.
+ */
+export const FRONT_PAGE_LANGS: readonly Lang[] = [
+  "enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN",
+];
+
 export function nativeName(lang: Lang): string {
   return NATIVE_NAMES[lang];
 }

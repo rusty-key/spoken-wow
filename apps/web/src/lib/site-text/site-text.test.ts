@@ -9,7 +9,7 @@ import { CODES } from "@/lib/lang";
 import { EN } from "./en";
 import { fill } from "./format";
 import { merge } from "./merge";
-import { NATIVE_NAMES } from "./names";
+import { FRONT_PAGE_LANGS, NATIVE_NAMES } from "./names";
 
 /** Every string in a dictionary with the path that reaches it, arrays by position. */
 function leaves(value: unknown, path = ""): [string, string][] {
@@ -46,6 +46,10 @@ describe("the front page's dictionaries", () => {
 
   it("has one English caption per gallery shot", () => {
     expect(GALLERY).toHaveLength(EN.gallery.items.length);
+  });
+
+  it("lists as front page languages English and the ones with a dictionary, so the select offers no English page under another name", () => {
+    expect([...FRONT_PAGE_LANGS].sort()).toEqual(["enUS", ...written].sort());
   });
 
   it("names every language in itself", () => {
