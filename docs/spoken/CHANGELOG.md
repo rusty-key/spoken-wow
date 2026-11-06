@@ -2,6 +2,13 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Hebrew is a voice language.** Choose עברית (Hebrew) under Voice Language in Settings to hear
+  a voice pack made in Hebrew. No game client runs in Hebrew, so Spoken never picks it by itself.
+  The game's fonts have no Hebrew letters, so Settings names it "Hebrew" where it cannot draw
+  עברית. *([renanbazinin](https://github.com/renanbazinin))*
+
 ## 3.8.3 — 2026-11-05
 
 - **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice

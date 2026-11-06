@@ -41,6 +41,12 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("$R, hãy đi đi.", "viVN")).toBe("Lữ khách, hãy đi đi.");
   });
 
+  it("speaks Hebrew, in the reader's gender on a female variant", () => {
+    expect(speakPlayerTokens("תודה, $N.", "heIL")).toBe("תודה, הרפתקן.");
+    expect(speakPlayerTokens("תודה, $N.", "heIL", "f")).toBe("תודה, הרפתקנית.");
+    expect(speakPlayerTokens("$R, לך לשם.", "heIL")).toBe("נוסע, לך לשם.");
+  });
+
   it("resolves ruRU's three-field $g by the player gender, agreeing with the noun", () => {
     const line = "Привет тебе, $gюный:юная:r; $r.";
     expect(speakPlayerTokens(line, "ruRU")).toBe("Привет тебе, юный странник.");
