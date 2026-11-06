@@ -3,8 +3,10 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { fill } from "@/lib/site-text/format";
 import { timecode } from "@/lib/utils";
 
+import { useSiteText } from "./SiteTextProvider";
 import { useArrowFocus } from "./useArrowFocus";
 import type { Voice } from "./voices";
 
@@ -16,7 +18,8 @@ const behavior = (): ScrollBehavior => (window.matchMedia("(prefers-reduced-moti
  * the words below it, lit as they are spoken by the start times measured against this audio. The
  * file downloads when it is played.
  */
-function Clip({ voice, label, disabled = false }: { voice: Voice; label: string; disabled?: boolean }) {
+function Clip({ voice, position, disabled = false, textLang = "en" }: { voice: Voice; position: string; disabled?: boolean; textLang?: string | null }) {
+  const t = useSiteText().showcase;
   const audio = useRef<HTMLAudioElement>(null);
   const pending = useRef<number | null>(null);
   const text = useRef<HTMLParagraphElement>(null);
@@ -109,11 +112,11 @@ function Clip({ voice, label, disabled = false }: { voice: Voice; label: string;
         <Image src={voice.icon} alt="" width={64} height={64} unoptimized />
         <p>
           <b>{voice.name}</b>
-          <span>{voice.sub}</span>
+          <span>{t.kinds[voice.sub as keyof typeof t.kinds] ?? voice.sub}</span>
         </p>
       </div>
       <div className="bn-voice-bar">
-        <button type="button" className="bn-voice-play" aria-label={disabled ? "Play: no recording yet" : `${playing ? "Pause" : "Play"}: ${voice.name}`} onClick={toggle} disabled={disabled}>
+        <button type="button" className="bn-voice-play" aria-label={disabled ? t.playNone : fill(playing ? t.pause : t.play, { name: voice.name })} onClick={toggle} disabled={disabled}>
           {playing ? (
             <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor" />
@@ -132,8 +135,8 @@ function Clip({ voice, label, disabled = false }: { voice: Voice; label: string;
             max={voice.duration}
             step={0.05}
             value={time}
-            aria-label={`Position in the ${label} example`}
-            aria-valuetext={`${timecode(time)} of ${timecode(voice.duration)}`}
+            aria-label={position}
+            aria-valuetext={fill(t.time, { time: timecode(time), total: timecode(voice.duration) })}
             onChange={(event) => seek(Number(event.target.value))}
             onKeyDown={keySeek}
           />}
@@ -149,10 +152,10 @@ function Clip({ voice, label, disabled = false }: { voice: Voice; label: string;
       </div>
       {failed && (
         <p role="alert" className="bn-voice-error">
-          This recording could not be played. Check your connection and try again.
+          {t.failed}
         </p>
       )}
-      <p className="bn-voice-text" lang="en" ref={text}>
+      <p className="bn-voice-text" lang={textLang ?? undefined} ref={text}>
         {voice.words.map((word, i) => (
           <span key={i} className={i === current ? "now" : i < current ? "said" : undefined}>
             {word}{" "}
@@ -167,8 +170,9 @@ function Clip({ voice, label, disabled = false }: { voice: Voice; label: string;
  * A part with no recording yet, in the shape of the others so the section does not change size:
  * one example button, the speaker, a flat waveform and a Play button that cannot be pressed.
  */
-export function VoicePlaceholder({ icon, name, text }: { icon: string; name: string; text: string }) {
-  const none: Voice = { label: name, name, sub: "No recording yet", icon, audio: "", duration: 0, peaks: Array(96).fill(0.06), words: [text], times: [] };
+export function VoicePlaceholder({ icon, name, text, position }: { icon: string; name: string; text: string; position: string }) {
+  const t = useSiteText().showcase;
+  const none: Voice = { label: name, name, sub: t.noRecording, icon, audio: "", duration: 0, peaks: Array(96).fill(0.06), words: [text], times: [] };
   return (
     <div className="bn-voice">
       <div className="bn-voice-picks-wrap">
@@ -181,7 +185,7 @@ export function VoicePlaceholder({ icon, name, text }: { icon: string; name: str
           </li>
         </ul>
       </div>
-      <Clip voice={none} label={name.toLowerCase()} disabled />
+      <Clip voice={none} position={position} disabled textLang={null} />
     </div>
   );
 }
@@ -196,7 +200,8 @@ const CHEVRON = (path: string) => (
  * The part's recordings: one row of buttons that scrolls sideways, fading out at an edge that has
  * more, above the recording that is showing.
  */
-export default function VoicePlayer({ voices, label }: { voices: Voice[]; label: string }) {
+export default function VoicePlayer({ voices, position }: { voices: Voice[]; position: string }) {
+  const t = useSiteText().showcase;
   const [pick, setPick] = useState(0);
   const [edges, setEdges] = useState({ start: false, end: false });
   const row = useRef<HTMLUListElement>(null);
@@ -237,7 +242,7 @@ export default function VoicePlayer({ voices, label }: { voices: Voice[]; label:
   return (
     <div className="bn-voice">
       <div className="bn-voice-picks-wrap" data-start={edges.start} data-end={edges.end}>
-        <ul className="bn-voice-picks" aria-label={`${label} examples`} ref={row} onScroll={measure}>
+        <ul className="bn-voice-picks" aria-label={t.examplesLabel} ref={row} onScroll={measure}>
           {voices.map((voice, i) => (
             <li key={voice.audio}>
               <button type="button" aria-pressed={i === pick} onClick={() => choose(i)}>
@@ -247,14 +252,14 @@ export default function VoicePlayer({ voices, label }: { voices: Voice[]; label:
             </li>
           ))}
         </ul>
-        <button type="button" ref={prev} className="bn-voice-arrow bn-voice-prev" aria-label="Earlier examples" aria-hidden={!edges.start} tabIndex={edges.start ? 0 : -1} onClick={() => scroll(-1)}>
+        <button type="button" ref={prev} className="bn-voice-arrow bn-voice-prev" aria-label={t.earlier} aria-hidden={!edges.start} tabIndex={edges.start ? 0 : -1} onClick={() => scroll(-1)}>
           {CHEVRON("M12 4l-6 6 6 6")}
         </button>
-        <button type="button" ref={next} className="bn-voice-arrow bn-voice-next" aria-label="More examples" aria-hidden={!edges.end} tabIndex={edges.end ? 0 : -1} onClick={() => scroll(1)}>
+        <button type="button" ref={next} className="bn-voice-arrow bn-voice-next" aria-label={t.more} aria-hidden={!edges.end} tabIndex={edges.end ? 0 : -1} onClick={() => scroll(1)}>
           {CHEVRON("M8 4l6 6-6 6")}
         </button>
       </div>
-      <Clip key={pick} voice={voices[pick]} label={label} />
+      <Clip key={pick} voice={voices[pick]} position={position} />
     </div>
   );
 }
