@@ -34,6 +34,7 @@ Locale/zhTW.lua
 Core.lua
 Data/Bosses.lua
 Data/Creatures.lua
+Data/Cameras.lua
 Data/Stories.lua
 Audio.lua
 UI/Bosses.lua

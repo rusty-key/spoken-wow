@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- A boss's 3D model is now framed automatically once it has loaded, so the whole boss fits and fills
+  the frame, standing in its idle pose. Two bosses in overlapping windows no longer cut into each other: the
+  one in the window on top is drawn whole.
+  *([Nucabe](https://github.com/Nucabe))*
 - A boss's 3D model on the map panel and in the Compendium now sits on a frayed edge cut from the page's
   own parchment, over a faint brown backing, in a frame large enough for any boss.
   A boss on the map panel has its round portrait by the name and an Open in Compendium button, as the

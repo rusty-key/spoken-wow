@@ -31,6 +31,10 @@ Fix the source and regenerate. Never hand-edit the output.
   a change to a translation or to the keys of `Locale/enUS.lua`.
 - `addons/Spoken/Data/Dungeons.lua` comes from `pipelines/lib/dungeons.json` (`make dungeons`).
 - `addons/SpokenPlacesAudio/Data/Sounds.lua` is the pack's lookup table (`make places-lookup`).
+- `addons/Spoken_Bosses/Data/Cameras.lua` holds the lens and the model file of each display, read from the
+  Forever tables (`make bosses-cameras`), and `Data/CameraNudges.lua` is made from the camera edits saved in
+  the game by `/spokenbosscam` (`make bosses-nudges`). The game frames each boss itself; a change to how it
+  does changes what every nudge means: see [BOSSES.md](BOSSES.md).
 - `addons/SpokenPlacesAudio/Sounds/` and `build/places/<lang>/` are assembled by `make places-sounds`
   from the live takes. They are not a store.
 
