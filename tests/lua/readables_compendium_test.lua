@@ -775,14 +775,76 @@ do
     fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
     Expect("a page can show a 3D model above its words",
         fresh.body.model:IsShown() and fresh.body.model.frameType == "PlayerModel", true)
-    Expect("...at the compact model size", fresh.body.model.width .. "x" .. fresh.body.model.height, "150x150")
+    Expect("...at the compact model size, a quarter wider than tall", fresh.body.model.width .. "x" .. fresh.body.model.height, "275x220")
     Expect("...with the same top spacing as a zone image", fresh.body.model.anchor.y, -8)
     Expect("...using the model display ID", fresh.body.model.displayID, 2029)
-    Expect("...with DBM-like model settings", fresh.body.model.portraitZoom .. "|" .. fresh.body.model.sequence,
-        "0.4|4")
+    Expect("...the whole body, standing", fresh.body.model.portraitZoom .. "|" .. fresh.body.model.sequence,
+        "0|4")
     fresh.body.model.sequence = "still playing"
     fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
     Expect("...left playing when the page is shown again", fresh.body.model.sequence, "still playing")
+    -- On a page narrower than 275 the whole frame shrinks, keeping the shape the boss cameras are fitted to.
+    local body = fresh.body
+    local wide = body.frame:GetWidth()
+    body.frame:SetWidth(200 + body:BarRoom())
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("...on a narrower page the frame shrinks whole, still a quarter wider than tall",
+        body.model.width .. "x" .. body.model.height, "200x160")
+    body.frame:SetWidth(wide)
+
+    -- The brown backing and the frayed edge are drawn together, where the page has a picture to cut the edge from.
+    local function Drawn() return tostring(body.modelShade:IsShown()) .. " " .. tostring(body.modelEdge:IsShown()) end
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    body:SetFadeSource(fresh.bg, [[Interface\AddOns\Spoken\Textures\Test]], { 0, 1, 0, 1 })
+    Expect("a model on a page with a picture has its edge and the backing", Drawn(), "true true")
+    body:SetFadeShown(false)
+    Expect("...both off while the page's fade layers are held off", Drawn(), "false false")
+    body:SetFadeShown(true)
+    Expect("...and back when they are let on", Drawn(), "true true")
+    body:SetFadeColors({ 1, 1, 1 }, { 1, 1, 1 })
+    Expect("...neither on a page with only colours, such as EllesmereUI's look", Drawn(), "false false")
+    body:SetFadeSource(fresh.bg, [[Interface\AddOns\Spoken\Textures\Test]], { 0, 1, 0, 1 })
+
+    -- The edge is cut again for a new scroll position, not for the same one, nor out of sight.
+    body.frame:SetHeight(300)
+    body.child:SetHeight(5000)
+    local cuts = 0
+    local setCoord = body.modelEdge.SetTexCoord
+    body.modelEdge.SetTexCoord = function(...) cuts = cuts + 1; return setCoord(...) end
+    body.frame.scripts.OnVerticalScroll(body.frame)
+    Expect("...not cut again for the scroll position it was cut at", cuts, 0)
+    body.frame:SetVerticalScroll(30)
+    body.frame.scripts.OnVerticalScroll(body.frame)
+    body.frame.scripts.OnVerticalScroll(body.frame)
+    Expect("...cut once for a new position", cuts, 1)
+    body.frame:SetVerticalScroll(1000)
+    body.frame.scripts.OnVerticalScroll(body.frame)
+    Expect("...and not while the model is scrolled out of sight", cuts, 1)
+    body.frame:SetVerticalScroll(0)
+
+    -- A page made with noFace has the round portrait only for an entry that asks for it, and a one-line
+    -- heading lets the name take two lines beside it.
+    local small = _G.SpokenCompendium.NewPage(CreateFrame("Frame"), B, nil, nil, { noFace = true, oneLine = true })
+    small:Show({ title = "Warlord Kalithresh", text = "A boss's story." })
+    Expect("a page made with noFace makes no portrait for an entry without one", small.headFace == nil and small.shift, 0)
+    Expect("...its one-line heading cut short, not wrapped", small.title.wordWrap, false)
+    small:Show({ title = "Warlord Kalithresh", text = "A boss's story.", face = true })
+    Expect("...makes it for an entry that asks", small.headFace ~= nil and small.face == small.headFace and small.shift > 0, true)
+    Expect("...and the name may then wrap", small.title.wordWrap, true)
+    small:Show({ title = "Hollow Vault", text = "Place lore." })
+    Expect("...hidden again for an entry without", small.face == nil and small.headFace:IsShown() == false and small.shift == 0, true)
+    Expect("...the heading on one line again", small.title.wordWrap, false)
+
+    local made, said = 0, nil
+    local create, speak = Spoken.CreateSpeakerFace, _G.print
+    Spoken.CreateSpeakerFace = function() made = made + 1; error("no face") end
+    _G.print = function(...) said = (said or "") .. table.concat({ ... }, " ") end
+    local failing = _G.SpokenCompendium.NewPage(CreateFrame("Frame"), B, nil, nil, { noFace = true })
+    failing:Show({ title = "A", text = "B", face = true })
+    failing:Show({ title = "A", text = "B", face = true })
+    Spoken.CreateSpeakerFace, _G.print = create, speak
+    Expect("a portrait that fails to build is said once in chat and not tried again",
+        made .. "|" .. tostring(failing.headFace) .. "|" .. tostring(said and said:find("no face", 1, true) ~= nil), "1|false|true")
     fresh:Show({ title = "A place", text = "Place lore." })
     Expect("a page without a model hides the old one", fresh.body.model:IsShown(), false)
 

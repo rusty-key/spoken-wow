@@ -710,7 +710,7 @@ Expect("...the middle stretched to the bottom-right corner's", border and border
     and border[9].anchor.relativePoint, "TOPLEFT")
 Expect("...and shows the zone the map is on, with its story", mapPage.title.text .. ": " .. mapPage.body.text.text,
     "Durotar: Durotar is a cracked, red land.")
-Expect("...with no round picture by its title, unlike the Compendium's pages", mapPage.headFace == false
+Expect("...with no round picture by its title, unlike the Compendium's pages", mapPage.headFace == nil
     and mapPage.shift, 0)
 Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
 Z:RefreshPanel()
