@@ -360,7 +360,7 @@ Bosses:RefreshBosses()
 Shown()
 Click("Edwin VanCleef")
 Expect("a boss with a creature has its story as one block", page.body.text.text, "He led the Brotherhood.")
-Expect("...and its model above the story", page.body.model.displayID, 1305)
+Expect("...and its model above the story", page.body.modelActor.displayID, 1305)
 Expect("...and its portrait at the left of its name, the title moved right of it", page.face:IsShown() and page.shift > 0, true)
 Expect("...the boss badge on it", page.headFace.speaker.bullet, "boss")
 local badge = page.headFace and page.headFace.badge

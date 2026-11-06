@@ -772,18 +772,66 @@ do
     SpokenTextView.Unsnap = unsnap
     Expect("a page's parchment drawn off the pixel grid, as the fade cut from it is", unsnapped ~= nil and unsnapped == fresh.bg, true)
 
-    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    -- The shared frame that looks at the models is made when the first one is shown, and is told a frame has
+    -- passed through its OnUpdate.
+    local watcher
+    do
+        local made, create = {}, _G.CreateFrame
+        _G.CreateFrame = function(...)
+            local f = create(...)
+            made[#made + 1] = f
+            return f
+        end
+        fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+        _G.CreateFrame = create
+        for _, f in ipairs(made) do
+            if f.scripts.OnUpdate then watcher = f end
+        end
+    end
+    local function Tick(elapsed) watcher.scripts.OnUpdate(watcher, elapsed or 0.2) end
     Expect("a page can show a 3D model above its words",
-        fresh.body.model:IsShown() and fresh.body.model.frameType == "PlayerModel", true)
+        fresh.body.model:IsShown() and fresh.body.model.frameType == "ModelScene", true)
+    Expect("...in a scene that leaves the mouse wheel to the page", fresh.body.model.mouseEnabled, false)
     Expect("...at the compact model size, a quarter wider than tall", fresh.body.model.width .. "x" .. fresh.body.model.height, "275x220")
     Expect("...with the same top spacing as a zone image", fresh.body.model.anchor.y, -8)
-    Expect("...using the model display ID", fresh.body.model.displayID, 2029)
-    Expect("...the whole body, standing", fresh.body.model.portraitZoom .. "|" .. fresh.body.model.sequence,
-        "0|4")
-    fresh.body.model.sequence = "still playing"
+    local actor = fresh.body.modelActor
+    Expect("...drawn by one actor from the model display ID", actor and actor.displayID .. "|" .. #fresh.body.model.actors .. "|"
+        .. tostring(actor:IsShown()), "2029|1|true")
+    Expect("...its feet at the scene's origin, its front to the camera, not centred on its middle",
+        table.concat(actor.position, ",") .. "|" .. actor.yaw .. "|" .. table.concat({ tostring(actor.useCenter[1]),
+        tostring(actor.useCenter[2]), tostring(actor.useCenter[3]) }, ","), "0,0,0|0|false,false,false")
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2030 }, text = "A boss's story." })
+    Expect("...the same actor drawing the next boss", #fresh.body.model.actors .. "|" .. actor.displayID, "1|2030")
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029, scale = 1.5 }, text = "A boss's story." })
+    Expect("...at the scale the model asks for", actor.scale, 1.5)
+    fresh:Show({ title = "Edwin VanCleef", model = { creatureID = 196 }, text = "A boss's story." })
+    Expect("a model with no display ID is no model: a scene draws a display and nothing else",
+        tostring(fresh.body.modelDisplayID) .. "|" .. tostring(fresh.body.model:IsShown()) .. "|" .. tostring(actor.displayID), "nil|false|nil")
     fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
-    Expect("...left playing when the page is shown again", fresh.body.model.sequence, "still playing")
-    -- On a page narrower than 275 the whole frame shrinks, keeping the shape the boss cameras are fitted to.
+
+    -- A boss gets a light of its own, so it does not come up almost black.
+    local light = fresh.body.model.light
+    Expect("...lit by a directional light of its own", light.visible == true and light.type == 0
+        and light.direction[1] < 0 and light.diffuse[1] == 0.66 and light.ambient[1] == 0.8, true)
+    -- Alone, so no model is ranked beside it.
+    fresh.body:SetModel(nil)
+    local refusing = _G.SpokenCompendium.NewPage(CreateFrame("Frame"), B)
+    refusing.body.model.SetLightVisible = function() error("no light on this client") end
+    local said, speak = nil, _G.print
+    _G.print = function(...) said = (said or "") .. table.concat({ ... }, " ") end
+    refusing:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    _G.print = speak
+    Expect("...a client that refuses the light still shows the model, and says so once",
+        tostring(refusing.body.model:IsShown()) .. "|" .. tostring(refusing.body.modelActor and refusing.body.modelActor.displayID)
+        .. "|" .. tostring(said and said:find("no light on this client", 1, true) ~= nil), "true|2029|true")
+    refusing.body:SetModel(nil)
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("...the whole body, standing", actor.animation, 0)
+    actor.animation = "still playing"
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("...left playing when the page is shown again", actor.animation, "still playing")
+    actor.animation = 0
+    -- On a page narrower than 275 the whole frame shrinks, keeping the shape bosses are framed for.
     local body = fresh.body
     local wide = body.frame:GetWidth()
     body.frame:SetWidth(200 + body:BarRoom())
@@ -845,8 +893,459 @@ do
     Spoken.CreateSpeakerFace, _G.print = create, speak
     Expect("a portrait that fails to build is said once in chat and not tried again",
         made .. "|" .. tostring(failing.headFace) .. "|" .. tostring(said and said:find("no face", 1, true) ~= nil), "1|false|true")
+
+    -- A boss is framed once its model has loaded, from the box its actor reports, and drawn through that
+    -- camera moved by what was changed by hand for its place. The scene's units are the model's own, and
+    -- the frame is 1.25 times as wide as tall, filled to 85 percent: the numbers are written out here so a
+    -- change to them in TextView shows up.
+    local scene = fresh.body.model
+    local FIT, ASPECT, FOV = 0.85, 1.25, 27.78
+    local function Span(fov) return 2 * math.tan(math.rad(fov) / 2) end
+    -- How far the camera stands from the middle of a box `h` high and `w` wide, for the figure to fill FIT of
+    -- the frame's height or of its width, whichever needs more.
+    local function Reach(h, w, fov) return math.max(h / (FIT * Span(fov)), w / (FIT * ASPECT * Span(fov))) end
+    local function Round(v) return math.floor(v * 10000 + 0.5) / 10000 + 0 end
+    local BOX = { -0.5, -0.5, 0, 0.5, 0.5, 2 }
+    -- The camera's distance from the target, for BOX: the figure's reach plus half its depth.
+    local BASE = Reach(2, 1, FOV) + 0.5
+    local function Look(dist)
+        local c = scene.camera
+        if not c.position then return nil end
+        local p = c.position
+        local cp = math.cos(c.pitch)
+        local f = { cp * math.cos(c.yaw), cp * math.sin(c.yaw), math.sin(c.pitch) }
+        return { p = p, t = { p[1] + f[1] * dist, p[2] + f[2] * dist, p[3] + f[3] * dist } }
+    end
+    local function Clear() scene.camera.position = nil end
+    -- A boss shown anew: the page's model is cleared first, as it is when another boss was shown before it.
+    local function Boss(id)
+        fresh.body:SetModel(nil)
+        fresh:Show({ title = "Edwin VanCleef", model = { displayID = id or 2029 }, text = "A boss's story." })
+        Tick(0.02)
+    end
+    local function Near(a, b) return math.abs(a - b) < 1e-6 end
+    local function At(point, x, y, z) return Near(point[1], x) and Near(point[2], y) and Near(point[3], z) end
+    local function Position() return scene.camera.position and table.concat({ Round(scene.camera.position[1]),
+        Round(scene.camera.position[2]), Round(scene.camera.position[3]) }, ",") end
+
+    -- While the model loads there is nothing to frame: the scene is invisible, so the boss does not show in the
+    -- wrong place first, and the shared frame looks at it every frame.
+    stub.actorLoaded = false
+    Clear()
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("a boss whose model has not loaded is invisible and has no camera",
+        tostring(scene:GetAlpha()) .. "|" .. tostring(scene.camera.position) .. "|" .. tostring(fresh.body.modelCamera), "0|nil|nil")
+    Expect("...and the shared frame looks at it every frame", watcher:IsShown(), true)
+    Tick(1)
+    Tick(1.9)
+    Expect("...still waiting 2.9 seconds on", tostring(scene:GetAlpha()) .. "|" .. tostring(scene.camera.position), "0|nil")
+    stub.actorLoaded = true
+    stub.actorBox = nil
+    Tick(0.016)
+    Expect("...a model that has loaded but has no box is waited for as well",
+        tostring(scene:GetAlpha()) .. "|" .. tostring(scene.camera.position), "0|nil")
+    stub.actorBox = BOX
+    Tick(0.016)
+    Expect("...framed on the frame after its box is known: drawn, through a camera",
+        tostring(scene:GetAlpha()) .. "|" .. tostring(scene.camera.position ~= nil) .. "|" .. tostring(fresh.body.modelCamera ~= nil), "1|true|true")
+    Expect("...and the shared frame rests with nothing left to look at", watcher:IsShown(), false)
+
+    -- The frame: the camera on the +x side, where a model at yaw 0 has its front, looking back at the middle of the box.
+    local seen = Look(BASE)
+    Expect("a boss is looked at from the +x side, stood back from its box's middle by its reach and half its depth",
+        At(seen.p, BASE, 0, 1), true)
+    Expect("...a figure 2 high filling 85 percent of the frame's height from 4.757 away", Round(BASE - 0.5), 4.7575)
+    Expect("...at the middle of its box", At(seen.t, 0, 0, 1), true)
+    Expect("...turned to face it: yaw is the way the view points along the ground (pi, towards -x), pitch its slope, roll none",
+        Near(scene.camera.yaw, math.pi) and Near(scene.camera.pitch, 0) and scene.camera.roll == 0, true)
+    Expect("...with the lens its data was made for", Near(scene.camera.fov, math.rad(27.78)), true)
+    Expect("...and far enough out for any boss", scene.camera.far, 500)
+    Expect("...a row of the old per-boss camera data is ignored", (function()
+        _G.SpokenBossCameras = { [2029] = { 50, 50, 50, 0, 0, 0 } }
+        Boss()
+        _G.SpokenBossCameras = nil
+        return Position()
+    end)(), Round(BASE) .. ",0,1")
+
+    -- A wide box is held further back, until its width fills the frame; a box off the origin is looked at in the middle.
+    stub.actorBox = { -1, -5, 0, 1, 5, 2 }
+    Boss()
+    seen = Look(Reach(2, 10, FOV) + 1)
+    Expect("a figure wider than the frame is tall stands further back for its width, past half its depth",
+        At(seen.p, Reach(2, 10, FOV) + 1, 0, 1) and Reach(2, 10, FOV) > Reach(2, 1, FOV) * 3, true)
+    stub.actorBox = { 0, -1, 0.5, 2, 3, 3.5 }
+    Boss()
+    seen = Look(Reach(3, 4, FOV) + 1)
+    Expect("a box off the origin is framed round its own middle", At(seen.p, 1 + Reach(3, 4, FOV) + 1, 1, 2) and At(seen.t, 1, 1, 2), true)
+    Expect("...the width deciding for it, as the frame is wider than tall but this box is wider still",
+        Reach(3, 4, FOV) > 3 / (FIT * Span(FOV)), true)
+    stub.actorBox = BOX
+    _G.SpokenBossCameraView = { fov = 90, sequence = 0 }
+    Boss()
+    Expect("a wider lens stands the camera nearer, a figure 2 high from 1.176 away",
+        Near(scene.camera.position[1], Reach(2, 1, 90) + 0.5) and Round(Reach(2, 1, 90)) == 1.1765
+        and Near(scene.camera.fov, math.pi / 2), true)
+    _G.SpokenBossCameraView = { fov = "wide" }
+    Boss()
+    Expect("...the default lens where the data holds none that is a number", At(scene.camera.position, BASE, 0, 1)
+        and Near(scene.camera.fov, math.rad(27.78)), true)
+    _G.SpokenBossCameraView = nil
+
+    -- A box with no height or width is no box, as a model's first answer may be: it is waited for, and framed as
+    -- the plain one only when the wait runs out.
+    stub.actorBox = { 0, 0, 0, 1, 1, 0 }
+    Clear()
+    Boss()
+    Expect("a box with no height is waited for", tostring(scene.camera.position) .. "|" .. scene:GetAlpha(), "nil|0")
+    stub.actorBox = { 0, 0, 0, 1, 0, 1 }
+    Tick()
+    Expect("...a box with no width as well", tostring(scene.camera.position), "nil")
+    stub.actorBox = { 0, 0 / 0, 0, 1, 1, 1 }
+    Tick()
+    Expect("...a box with a number that is not one as well", tostring(scene.camera.position), "nil")
+    Tick(3)
+    Expect("...and then framed as the plain box", At(scene.camera.position, BASE, 0, 1), true)
+    stub.actorBox = { 0, 0, 0, 0, 0, 0 }
+    Clear()
+    Boss()
+    stub.actorBox = BOX
+    Tick()
+    Expect("...a box that fills in a frame later is framed from it", At(scene.camera.position, BASE, 0, 1), true)
+
+    -- A model that has not loaded in 3 seconds is framed as the plain box, a person-sized figure, and shown.
+    stub.actorBox = { -5, -5, 0, 5, 5, 20 }
+    stub.actorLoaded = false
+    Clear()
+    Boss()
+    Tick(2.8)
+    Expect("a model still loading after 2.8 seconds is not framed", tostring(scene.camera.position) .. "|" .. scene:GetAlpha(), "nil|0")
+    Tick(0.3)
+    Expect("...but is after 3: the plain box (not the big one it would report), and shown",
+        tostring(At(scene.camera.position, BASE, 0, 1)) .. "|" .. scene:GetAlpha(), "true|1")
+    Expect("...the shared frame resting again", watcher:IsShown(), false)
+    stub.actorLoaded = true
+    Tick(0.2)
+    Expect("...and not framed a second time when the model loads late", At(scene.camera.position, BASE, 0, 1), true)
+    stub.actorBox = BOX
+
+    -- The wait counts only while the page is shown: a hidden page's model may load once it is shown.
+    stub.actorLoaded = false
+    Clear()
+    fresh.body.frame:Hide()
+    Boss()
+    Tick(5)
+    Expect("a model on a hidden page is not framed as the plain box however long the page stays hidden",
+        tostring(scene.camera.position) .. "|" .. scene:GetAlpha(), "nil|0")
+    Expect("...and does not keep the shared frame looking while it is hidden", watcher:IsShown(), false)
+    fresh.body.frame:Show()
+    Tick(2.8)
+    Expect("...its 3 seconds count from when the page is shown", tostring(scene.camera.position), "nil")
+    Tick(0.3)
+    Expect("...and then it is framed as the plain box", At(scene.camera.position, BASE, 0, 1), true)
+    stub.actorLoaded = true
+
+    -- A page with no model drops the camera and shows the scene again, and nothing is framed for it later.
+    stub.actorLoaded = false
+    Boss()
+    fresh.body:SetModel(nil)
+    Clear()
+    stub.actorLoaded = true
+    Tick(5)
+    Expect("a page with no model drops the camera and nothing waits to frame it",
+        tostring(fresh.body.modelCamera) .. "|" .. tostring(scene.camera.position) .. "|" .. scene:GetAlpha(), "nil|nil|1")
+    fresh.body:ApplyModelCamera()
+    Expect("...so nothing is applied to the cleared model", Position(), nil)
+    Expect("...the shared frame resting", watcher:IsShown(), false)
+    Boss(2029)
+    Expect("...and a later boss is framed afresh", Position(), Round(BASE) .. ",0,1")
+    local before = fresh.body.modelCamera
+    stub.actorLoaded = false
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2030 }, text = "A boss's story." })
+    Expect("...a boss changed for another drops the framing of the one before while the new one loads",
+        before ~= nil and fresh.body.modelCamera == nil, true)
+    stub.actorLoaded = true
+    Boss(2029)
+
+    -- Nudges act on the framed camera: a change made by hand for a place is moved from the camera above.
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0, 2, 0 } } }
+    Boss()
+    Expect("a boss is twice as large when its Compendium page was zoomed to 2, from half the distance",
+        At(scene.camera.position, BASE / 2, 0, 1), true)
+    _G.SpokenBossCameraNudges = { story = { [2029] = { 0, 0, 2, 0 } } }
+    Boss()
+    Expect("...a change made for the map's story page leaves the Compendium's as it was", At(scene.camera.position, BASE, 0, 1), true)
+    fresh.body.cameraPlace = "story"
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0, 2, 0 } } }
+    Boss()
+    Expect("...the map's story page, with no change of its own, is moved as the Compendium's page is",
+        At(scene.camera.position, BASE / 2, 0, 1), true)
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0, 2, 0 } }, story = { [2029] = { 0, 0, 1, 0 } } }
+    Boss()
+    Expect("...and by its own once it has one", At(scene.camera.position, BASE, 0, 1), true)
+    fresh.body.cameraPlace = nil
+
+    -- The nudge's directions, for a camera on the x axis looking back at the middle of the box: a positive `right`
+    -- moves what the camera looks at towards -y (the boss towards the right of the frame), `up` towards -z, and a
+    -- positive turn swings the camera round towards -y.
+    local move = BASE * Span(FOV)
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0.5, 0, 1, 0 } } }
+    Boss()
+    seen = Look(BASE)
+    Expect("a positive right moves the target towards -y by that many frame heights",
+        Near(seen.t[2], -0.5 * move) and Near(seen.t[1], 0) and Near(seen.t[3], 1), true)
+    Expect("...and the camera with it", Near(seen.p[2], -0.5 * move) and Near(seen.p[1], BASE), true)
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0.25, 1, 0 } } }
+    Boss()
+    seen = Look(BASE)
+    Expect("a positive up lowers the target, the boss rises in the frame", Near(seen.t[3], 1 - 0.25 * move) and Near(seen.t[2], 0), true)
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0, 1, math.pi / 2 } } }
+    Boss()
+    seen = Look(BASE)
+    Expect("a positive turn swings the camera round the boss towards -y, keeping its distance",
+        At(seen.p, 0, -BASE, 1) and Near(seen.t[1], 0), true)
+    _G.SpokenBossCameraView = { fov = 90, sequence = 0 }
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0.5, 0, 1, 0 } } }
+    Boss()
+    seen = Look(Reach(2, 1, 90) + 0.5)
+    Expect("the field of view is the one the camera data was made for, for a nudge as for the framing",
+        Near(seen.t[2], -0.5 * (Reach(2, 1, 90) + 0.5) * Span(90)) and Near(scene.camera.fov, math.pi / 2), true)
+    _G.SpokenBossCameraView = { fov = "wide" }
+    Boss()
+    seen = Look(BASE)
+    Expect("...and the default where the data holds none that is a number", Near(seen.t[2], -0.5 * move) and Near(scene.camera.fov, math.rad(27.78)), true)
+    _G.SpokenBossCameraView = nil
+
+    -- A row that is not four finite numbers, or whose zoom is not above 0, is no nudge: the boss is still drawn.
+    local bad = { { 0.1 }, {}, { 0, 0, 0, 0 }, { 0, 0, -1, 0 }, { 0, 0, 1 / 0, 0 }, { 0, 0, 0 / 0, 0 }, { 0, 0, "2", 0 },
+        { 0, 0, 1 }, "row" }
+    local drawn = 0
+    for _, row in ipairs(bad) do
+        _G.SpokenBossCameraNudges = { compendium = { [2029] = row } }
+        Clear()
+        Boss()
+        if Position() == Round(BASE) .. ",0,1" then drawn = drawn + 1 end
+    end
+    Expect("a camera row of the wrong shape leaves the camera as framed, whatever it is", drawn, #bad)
+
+    -- Bosses on one model file share a nudge: its group is the key in SpokenBossCameraGroups.
+    _G.SpokenBossCameraGroups = { [2030] = 2029 }
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0, 2, 0 } } }
+    Boss(2030)
+    Expect("a boss on another display of the same model file takes the file's nudge", At(scene.camera.position, BASE / 2, 0, 1), true)
+    Expect("...whose group the view says", fresh.body:CameraGroup(), 2029)
+    _G.SpokenBossCameraGroups = nil
+    Boss(2030)
+    Expect("...and none where no group names it", At(scene.camera.position, BASE, 0, 1), true)
+
+    -- A developer module's edits win over the shipped nudge; players have none.
+    local edits
+    SpokenTextView.cameraEdits = function(place, group) return edits and edits[place] and edits[place][group] end
+    _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0, 2, 0 } } }
+    edits = { compendium = { [2029] = { 0, 0, 1, 0 } } }
+    Boss()
+    Expect("an edit of no change wins over a shipped nudge", At(scene.camera.position, BASE, 0, 1), true)
+    edits = { compendium = { [2029] = { 0.1 } } }
+    Boss()
+    Expect("...a bad edit does not, the shipped nudge stands", At(scene.camera.position, BASE / 2, 0, 1), true)
+    SpokenTextView.cameraEdits = function() error("editor broke") end
+    Boss()
+    Expect("...an editor that fails does not break the page", At(scene.camera.position, BASE / 2, 0, 1), true)
+    SpokenTextView.cameraEdits = nil
+
+    -- Nothing waits for the scene's own load event: the actor is asked.
+    _G.SpokenBossCameraNudges = nil
+    Boss()
+    Expect("a boss's camera is set from its actor's box, with no handler on the scene waiting for the model to load",
+        Position() .. "|" .. tostring(scene.scripts.OnModelLoaded), Round(BASE) .. ",0,1|nil")
+
+    -- The pose every boss stands in: SpokenBossCameraView's, unless the model asks for one.
+    _G.SpokenBossCameraView = { fov = 27.78, sequence = 5 }
+    Boss()
+    Expect("a boss stands in the pose its data names", actor.animation, 5)
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029, sequence = 2 }, text = "A boss's story." })
+    Expect("...unless the model names another", actor.animation, 2)
+    _G.SpokenBossCameraView = nil
+    Boss()
+    Expect("...and a data file with no view in it means the idle pose", actor.animation, 0)
+    local animate = actor.SetAnimation
+    actor.SetAnimation = function() error("no such animation") end
+    Boss()
+    actor.SetAnimation = animate
+    Expect("...a client that refuses the pose still shows the boss", actor:IsShown() and actor.displayID, 2029)
+
+    -- The code keeps nothing of the old cameras.
+    local source = io.open(SPOKEN .. "UI/TextView.lua", "rb"):read("*a")
+    Expect("the view reads no per-boss camera rows and has no scale from the old camera units",
+        tostring(source:find("SpokenBossCameras", 1, true) ~= nil) .. "|" .. tostring(source:find("SCENE_SCALE", 1, true) ~= nil)
+        .. "|" .. tostring(source:find("PLAIN_CAMERA", 1, true) ~= nil), "false|false|false")
+
+    -- A camera call that raises is said once in chat, not swallowed.
+    local said
+    local speak = _G.print
+    _G.print = function(...) said = (said or "") .. table.concat({ ... }, " ") .. "\n" end
+    local setPosition = scene.SetCameraPosition
+    scene.SetCameraPosition = function() error("no camera here") end
+    Boss()
+    Boss()
+    _G.print = speak
+    scene.SetCameraPosition = setPosition
+    local _, times = (said or ""):gsub("no camera here", "")
+    Expect("a camera call that fails is said once in chat", times, 1)
+    _G.SpokenBossCameraNudges = nil
     fresh:Show({ title = "A place", text = "Place lore." })
     Expect("a page without a model hides the old one", fresh.body.model:IsShown(), false)
+
+    -- Two models in different windows share one depth buffer and cut into each other, whichever window is on
+    -- top. Each model takes a rank from its window's stacking (strata, then frame level, then who asked first)
+    -- and its scene a near clip plane of that rank: the lowest a tiny share of the camera's distance to the
+    -- model's nearest face, then 0.3, 0.5 and 0.7 of it, so the one above wins the depth test and is never clipped.
+    do
+        local create = _G.CreateFrame
+        -- The camera stands BASE from the middle of the box. A near clip is a share of that less the half
+        -- diagonal of the box's footprint, which is as near as the figure comes in any turn.
+        local REACH = math.sqrt(0.5)
+        local D = BASE - REACH
+        local function Boss(level, displayID, strata)
+            local window = create("Frame")
+            window.GetFrameStrata = function() return window.strata end
+            window.GetFrameLevel = function() return window.level end
+            window.level, window.strata = level, strata or "HIGH"
+            local view = SpokenTextView.Create(window, B)
+            view.window = window
+            view:SetModel({ displayID = displayID })
+            view:SetText("A boss's story.")
+            Tick()
+            return view
+        end
+        local function Share(view)
+            return Round(view.model.camera.near / D * 100) / 100
+        end
+        local function Shares(...)
+            local out = {}
+            for _, view in ipairs({ ... }) do out[#out + 1] = Share(view) end
+            return table.concat(out, " ")
+        end
+        local back = Boss(1, 2029)
+        Expect("a lone model has the lowest rank: a near clip of a hundredth of its camera's distance to the figure", Shares(back), "0.01")
+        Expect("...its far clip well past the boss", back.model.camera.far, 500)
+        local front = Boss(2, 2030)
+
+        Expect("two models: the window on top has the larger near clip, the one under it the tiny one",
+            Shares(back, front), "0.01 0.3")
+        Expect("...a shared frame looking again as windows are raised", watcher ~= nil and watcher:IsShown(), true)
+        Expect("...both models shown, whatever the windows cover: none is hidden or faded",
+            tostring(back.model:IsShown()) .. " " .. tostring(front.model:IsShown()) .. "|" .. back.model:GetAlpha()
+            .. " " .. front.model:GetAlpha(), "true true|1 1")
+        back.window.level = 3
+        Tick()
+        Expect("raising the other window swaps the near clips", Shares(back, front), "0.3 0.01")
+        local calls = back.model.camera.nearCalls + front.model.camera.nearCalls
+        Tick()
+        Expect("...a window left where it is leaves the near clips alone", back.model.camera.nearCalls
+            + front.model.camera.nearCalls, calls)
+        back.window.level = 2
+        Tick(0.05)
+        Expect("...looked at no more often than every tenth of a second", Shares(back, front), "0.3 0.01")
+        Tick(0.05)
+        Expect("...on equal levels the model that asked first is the lower", Shares(back, front), "0.01 0.3")
+        back.window.strata, front.window.strata = "DIALOG", "HIGH"
+        Tick()
+        Expect("a window in a higher strata is on top, whatever its level", Shares(back, front), "0.3 0.01")
+        back.window.strata = "HIGH"
+        Tick()
+
+        local third = Boss(3, 2030)
+        local fourth = Boss(4, 2029)
+        Expect("three overlapping windows: tiny, 0.3 and 0.5 from the bottom up", Shares(back, front, third), "0.01 0.3 0.5")
+        Expect("...a fourth is 0.7, each rank 0.2 above the one under it", Shares(back, front, third, fourth), "0.01 0.3 0.5 0.7")
+        third.window.level = 0
+        Tick()
+        Expect("raising the lowest of them re-ranks the four", Shares(back, front, third, fourth), "0.3 0.5 0.01 0.7")
+        Expect("...the near clip always short of the figure's nearest face, so the boss is never clipped",
+            back.model.camera.near < BASE - 0.5 and front.model.camera.near < BASE - 0.5
+            and fourth.model.camera.near < BASE - 0.5, true)
+        local fifth = Boss(5, 2030)
+        Expect("...a fifth window takes the last share with the fourth", Shares(fifth, fourth), "0.7 0.7")
+        fifth:SetModel(nil)
+        fourth:SetModel(nil)
+        third:SetModel(nil)
+        Tick()
+        Expect("two models left are ranked again from the bottom", Shares(back, front), "0.01 0.3")
+
+        front.frame:Hide()
+        Tick()
+        Expect("a page that is hidden no longer ranks above the other", Shares(back), "0.01")
+        front.frame:Show()
+        Tick()
+        Expect("...and ranks again when it is shown", Shares(back, front), "0.01 0.3")
+        _G.SpokenBossCameraNudges = { compendium = { [2029] = { 0, 0, 2, 0 } } }
+        back:SetModel({ displayID = 2029 })
+        back:SetText("A boss's story.")
+        Tick()
+        Expect("a model set again takes its near clip from its new camera's distance, at the rank its window has now",
+            Round(back.model.camera.near / (BASE / 2 - REACH) * 100) / 100, 0.3)
+        _G.SpokenBossCameraNudges = nil
+        back:SetModel({ displayID = 2029 })
+        back:SetText("A boss's story.")
+        Tick()
+        Expect("...a model asked for again is above the one before it", Shares(back, front), "0.3 0.01")
+        front:SetModel(nil)
+        Tick()
+        Expect("a model that is cleared lets the other back to the lowest rank", Shares(back), "0.01")
+        Expect("...with no more than one model wanted the shared frame is let rest", watcher:IsShown(), false)
+        local other = Boss(3, 2030)
+        Expect("two shown models keep the shared frame looking", watcher:IsShown(), true)
+        back.frame:Hide()
+        other.frame:Hide()
+        Tick()
+        Expect("...and two models whose pages are hidden let it rest, however many were asked for", watcher:IsShown(), false)
+        back.frame:Show()
+        other.frame:Show()
+        Tick()
+        Expect("...and it looks again once they are shown", watcher:IsShown(), true)
+        other:SetModel(nil)
+        Tick()
+
+        -- A boss shown again is the one already drawn: it is not loaded and framed over again, which would
+        -- blink it out and back. One asked for in another size or pose is another model.
+        local actor = back.modelActor
+        local sets = actor.modelSets
+        back:SetModel({ displayID = 2029 })
+        Tick()
+        Expect("a boss shown again is not loaded again, and stays drawn", actor.modelSets .. "|" .. back.model:GetAlpha(),
+            sets .. "|1")
+        back:SetModel({ displayID = 2029, scale = 2 })
+        Expect("...but one asked for at another scale is", actor.modelSets, sets + 1)
+        Tick()
+        back:SetModel({ displayID = 2029, scale = 2, sequence = 3 })
+        Expect("...or in another pose", actor.modelSets, sets + 2)
+        back:SetModel(nil)
+        back:SetModel({ displayID = 2029, scale = 2, sequence = 3 })
+        Expect("...and one cleared in between is loaded afresh", actor.modelSets, sets + 3)
+        Tick()
+        Expect("nothing is left of hiding or fading a covered model",
+            tostring(back.SnapModel) .. tostring(back.StepModelFade) .. tostring(back.modelCovered)
+            .. tostring(back.modelHidden) .. tostring(back.modelAlpha), "nilnilnilnilnil")
+        back:SetModel(nil)
+    end
+
+    -- A client with no ModelScene draws no boss: the page has no room, backing or frame for one.
+    do
+        local create = _G.CreateFrame
+        _G.CreateFrame = function(kind, ...)
+            if kind == "ModelScene" then error("no such frame type") end
+            return create(kind, ...)
+        end
+        local bare = SpokenTextView.Create(create("Frame"), B)
+        _G.CreateFrame = create
+        bare:SetModel({ displayID = 2029 })
+        bare:SetText("A boss's story.")
+        Tick()
+        Expect("a client with no ModelScene shows no model, backing or edge for a boss",
+            tostring(bare.modelDisplayID) .. "|" .. tostring(bare.model:IsShown()) .. "|"
+            .. tostring(bare.modelShade:IsShown()) .. "|" .. tostring(bare.modelEdgeFrame:IsShown()), "nil|false|false|false")
+        Expect("...and the shared frame has nothing to look at", watcher:IsShown(), false)
+    end
 
     -- The line under the title: plain words, or where the tab gives one, a way up a level.
     local sub, clicked, red = fresh.sub, 0, nil

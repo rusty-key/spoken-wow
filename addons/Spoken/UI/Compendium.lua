@@ -2134,6 +2134,7 @@ function C.NewPage(parent, addon, play, report, look)
 	frame:HookScript("OnSizeChanged", function() self:PlaceDivider() end)
 
 	local body = SpokenTextView.Create(frame, addon)
+	body.cameraPlace = look.place
 	body.frame:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 6, -2)
 	body.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -right, PAD - 6)
 	body:SetInk(INK[1], INK[2], INK[3])
@@ -2423,7 +2424,7 @@ end
 --- entry = { title, subtitle, onSubtitle, text, target = what Play and Report act on, or nil for
 --- none, icon = the round portrait left of the title (a Spoken:CreateSpeakerFace speaker table), the
 --- Compendium's tome without it, and none on a page made with `noFace` unless `face` is set, model = { displayID,
---- creatureID, scale, zoom, rotation, facing, sequence, x, y, z } above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
+--- scale, sequence } above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
 --- of `text`: words in parts, each under its heading with its own buttons (TextView:SetParts) }. With no text, parts, target or unwritten the page is a group's or a place's: no
 --- Play, and its mark in the middle.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's
