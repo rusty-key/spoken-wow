@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { clientFilterOf, clientOf, matchesClient } from "@/lib/contributions/client";
 import { readable } from "@/lib/contributions/compare";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
-import { lineStates, tabOf } from "@/lib/contributions/known";
+import { tabOf } from "@/lib/contributions/known";
 import {
   isQuestStage,
   isSearchIn,
@@ -18,8 +18,8 @@ import {
   type ClientFilter,
   type StageFilter,
 } from "@/lib/contributions/query";
-import { pendingCounts } from "@/lib/contributions/pending";
-import { listContributions, observationMeta } from "@/lib/contributions/store";
+import { listedWithPending } from "@/lib/contributions/pending";
+import { observationMeta } from "@/lib/contributions/store";
 import { explorerHref } from "@/lib/links";
 import { observedFrom } from "@/lib/npc/resolve";
 import { questFor } from "@/lib/contributions/triage";
@@ -66,15 +66,11 @@ export default async function Page({
   const q = typeof rawQ === "string" ? rawQ.trim() : "";
   const searchIn = isSearchIn(rawFilter) ? rawFilter : "any";
 
-  const [all, pending] = await Promise.all([
-    listContributions(status, lang, undefined, source),
-    pendingCounts(lang),
-  ]);
-  const listed = all.filter((row) => matchesClient(clientOf(row.build).family, client));
-  const states = await lineStates(listed);
+  const { listed, states, pending } = await listedWithPending(status, lang, undefined, source);
 
   // Only what crosses into the client component, as page.tsx's ContributionRow projection says.
   const rows: CorrectionRow[] = listed.flatMap((row, index) => {
+    if (!matchesClient(clientOf(row.build).family, client)) return [];
     const state = states[index];
     if (state.kind !== "changed" || tabOf(row.status, state) !== "corrections") return [];
     const quest = source === "quests" ? questFor(row) : null;

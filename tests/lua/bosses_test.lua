@@ -42,8 +42,8 @@ table.sort(without)
 Expect("every dungeon and raid of the table has its bosses", table.concat(without, ","), "")
 Expect("Wailing Caverns has the Lady Anacondra and Mutanus first and last",
     SpokenBosses.maps[43][1][1] .. "|" .. SpokenBosses.maps[43][#SpokenBosses.maps[43]][1], "Lady Anacondra|Mutanus the Devourer")
-Expect("a boss's name in another language is there", SpokenBosses.maps[33][1][1] .. "|" .. tostring(SpokenBosses.maps[33][1].deDE),
-    "Rethilgore|Rotkralle")
+Expect("a boss's name in another language is there", SpokenBosses.maps[33][2][1] .. "|" .. tostring(SpokenBosses.maps[33][2].deDE),
+    "Razorclaw the Butcher|Klingenklaue der Metzger")
 
 dofile(ADDONS .. "Spoken_Bosses/Data/Creatures.lua")
 local creatures = SpokenBossCreatures

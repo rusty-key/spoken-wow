@@ -133,9 +133,9 @@ make dungeons                          # from the repository root
 node pipelines/lib/dungeons.mjs --check
 ```
 
-The table lists 29 dungeons and raids, and 18 have a `story`. The rest (Stormwind Stockade,
-Razorfen Kraul, Blackrock Spire, Blackrock Depths, Maraudon, the Molten Core, Blackwing Lair, both
-Ahn'Qiraj instances, Naxxramas and the Hall of Thanes) have no area story, so no line. Forever's City
+The table lists 29 dungeons and raids, and 20 have a `story`. The rest (Stormwind Stockade,
+Blackrock Spire, Blackrock Depths, Maraudon, the Molten Core, Blackwing Lair, both
+Ahn'Qiraj instances and Naxxramas) have no area story, so no line. Forever's City
 of Dalaran is the `dalaran` area of Alterac Mountains, and its Ruins of Lordaeron Tirisfal Glades'
 `ruins of lordaeron`, the surface ruins its entrance is in. Run `make dungeons`, then the Quests and Readables exporters, after editing
 the JSON. `tests/lua/places_dungeons_test.lua` checks the table against the stories and the Quests

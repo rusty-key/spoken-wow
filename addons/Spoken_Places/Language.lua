@@ -71,6 +71,7 @@ SpokenPlaces.LOCALES = {
 	{ code = "esMX", name = "Spanish (AL)", native = "Español (América Latina)", script = "latin" },
 	{ code = "frFR", name = "French", native = "Français", script = "latin" },
 	{ code = "itIT", name = "Italian", native = "Italiano", script = "latin", client = false },
+	{ code = "plPL", name = "Polish", native = "Polski", script = "latin", client = false },
 	{ code = "ptBR", name = "Portuguese", native = "Português", script = "latin" },
 	{ code = "ruRU", name = "Russian", native = "Русский", script = "cyrillic" },
 	{ code = "koKR", name = "Korean", native = "한국어", script = "korean" },

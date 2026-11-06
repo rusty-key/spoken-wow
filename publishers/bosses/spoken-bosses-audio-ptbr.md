@@ -1,4 +1,5 @@
 ---
+curseforge: 1783849
 release: bosses-audio-ptBR
 section: bosses
 lang: ptBR

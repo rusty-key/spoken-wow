@@ -35,6 +35,7 @@ import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from 
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
 import { teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
+import { markClients, type LineClientFacts } from "@/lib/quests/line-client";
 
 
 /**
@@ -405,7 +406,31 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
  */
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
-  return memoByLang(cacheKey, lang, stamp, async () => ({ lines: await build(lang) }));
+  return memoByLang(cacheKey, lang, stamp, async () => {
+    const [lines, facts] = await Promise.all([build(lang), lineClientFacts()]);
+    return { lines: markClients(lines, facts) };
+  });
+}
+
+/**
+ * What lib/quests/line-client.ts decides a row's client by. Both move only with quest_line and
+ * its speakers, which the stamp covers: a contribution's build never changes, and the extract's
+ * rows are English, whose quest_line every language's stamp reads.
+ */
+async function lineClientFacts(): Promise<LineClientFacts> {
+  const [quests, contributions] = await Promise.all([
+    query<{ questId: number }>(
+      `select distinct "questId" from "quest_line" where "origin" = 'extracted' and "questId" is not null`,
+    ),
+    query<{ id: number; build: string }>(
+      `select c."id", c."build" from "contribution" c
+        where c."id" in (select "contributionId" from "quest_line_speaker" where "contributionId" is not null)`,
+    ),
+  ]);
+  return {
+    extractedQuests: new Set(quests.map((row) => row.questId)),
+    contributionBuilds: new Map(contributions.map((row) => [row.id, row.build])),
+  };
 }
 
 /**

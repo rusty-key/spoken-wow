@@ -80,7 +80,7 @@ Expect("Forever's City of Dalaran is Alterac Mountains' Dalaran, and Ruins of Lo
 Expect("the Sunken Temple is the Temple of Atal'Hakkar's area", dungeons[1435][1].key .. "|" .. dungeons[1435][1].dungeon,
     "temple of atalhakkar|109")
 Expect("Razorfen Downs is listed in The Barrens, its story kept under Thousand Needles",
-    dungeons[1413][2].key .. "|" .. dungeons[1413][2].mapID, "razorfen downs|1441")
+    dungeons[1413][3].key .. "|" .. dungeons[1413][3].mapID, "razorfen downs|1441")
 
 ---------------------------------------------------------------- the list
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()

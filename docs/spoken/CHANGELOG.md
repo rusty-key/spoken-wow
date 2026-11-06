@@ -85,6 +85,21 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   projects there.
   *([anon1231823](https://github.com/anon1231823))*
 
+
+## 3.8.3 — 2026-11-05
+
+- **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice
+  pack made in Polish, such as the community's Spoken Polski. No game client runs in Polish, so
+  Spoken never picks it by itself. *([zaxcer](https://github.com/zaxcer))*
+
+## 3.8.2 — 2026-11-05
+
+- **Updated texts.** Place stories in English, German and Portuguese, boss stories and boss names
+  have the latest edits from the site, and gossip matches more lines on clients in other languages.
+  Razorfen Kraul and the Hall of Thanes now have stories on their dungeon cards.
+  *([rusty-key](https://github.com/rusty-key))*
+- **The Bosses page links German, Spanish and Portuguese voice packs to CurseForge**, where they
+  now live, instead of GitHub. *([rusty-key](https://github.com/rusty-key))*
 - **Spoken no longer adds a Play button to Questie's tracker.** The Questie team asked for this
   so Spoken stops depending on their tracker's internals, and they plan to add Spoken support on
   their side. Until then, Questie's tracker has no Play button; the Quest Log and Blizzard's

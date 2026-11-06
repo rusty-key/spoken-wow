@@ -13,6 +13,7 @@
  */
 import { BASE_LANG, type Lang } from "../lang";
 import { fileIndex } from "../audio";
+import type { CorpusLine } from "../corpus";
 import { readAs } from "../teams/store";
 import { dirtyFiles, loadDirtyContext } from "../generation/dirty";
 import { sentText } from "../generation/files";
@@ -31,8 +32,9 @@ import { readOverrides } from "./overrides";
 export async function dirtyQuestFiles(
   files?: string[],
   lang: Lang = BASE_LANG,
-  // A caller that read them this request saves the stamp check.
+  // A caller that read them this request saves the stamp checks.
   known?: Map<string, LineOverride>,
+  index?: Map<string, CorpusLine>,
 ): Promise<Set<string>> {
   if (files?.length === 0) return new Set();
 
@@ -59,7 +61,7 @@ export async function dirtyQuestFiles(
 
   if (!context.changes.length) return new Set();
 
-  const lines = await fileIndex(lang);
+  const lines = index ?? (await fileIndex(lang));
 
   const takes = [];
   for (const row of rows) {

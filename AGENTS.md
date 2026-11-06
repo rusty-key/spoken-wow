@@ -32,9 +32,10 @@ covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelo
 
 ## Branches and checks
 
-`master` is where work lands: open the PR against it. Merging needs the four CI jobs green,
-and only the admin merges. A merge into `master` that touches the site's inputs deploys
-production (`.github/workflows/deploy-web.yaml`).
+`master` is where work lands: open the PR against it. Only the admin and `svengabr` can merge.
+CI does not block them, so check that its jobs are green first. A merge into `master` that
+touches the site's inputs deploys production (`.github/workflows/deploy-web.yaml`), so ask the
+admin before merging a migration.
 
 Run what your change touches before pushing:
 

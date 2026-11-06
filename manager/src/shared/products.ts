@@ -13,6 +13,7 @@ export const LANGUAGES: { code: string; name: string }[] = [
   { code: 'esMX', name: 'Español (Latinoamérica)' },
   { code: 'frFR', name: 'Français' },
   { code: 'itIT', name: 'Italiano' },
+  { code: 'plPL', name: 'Polski' },
   { code: 'ptBR', name: 'Português (Brasil)' },
   { code: 'ruRU', name: 'Русский' },
   { code: 'koKR', name: '한국어' },

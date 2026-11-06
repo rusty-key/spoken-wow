@@ -12,7 +12,7 @@ import { pageKeyOf } from "@/lib/readables/tools";
 import { bulkAcceptable, loadBookCorpus, matchBook, type BookCorpusPage, type BookMatchResult } from "@/lib/contributions/book-match";
 import { clientFilterOf, clientOf, matchesClient } from "@/lib/contributions/client";
 import { corpusLookup } from "@/lib/contributions/existing";
-import { lineStates, tabOf } from "@/lib/contributions/known";
+import { tabOf } from "@/lib/contributions/known";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
 import { linesInExplorer, momentHasSpeaker } from "@/lib/contributions/accept";
 import {
@@ -33,8 +33,8 @@ import {
   type Bucket,
   type StageFilter,
 } from "@/lib/contributions/query";
-import { pendingCounts } from "@/lib/contributions/pending";
-import { listContributions, observationMeta, type Contribution } from "@/lib/contributions/store";
+import { listedWithPending } from "@/lib/contributions/pending";
+import { observationMeta, type Contribution } from "@/lib/contributions/store";
 import {
   bookFor,
   npcSummaryFrom,
@@ -303,11 +303,7 @@ export default async function Page({
 
   // Lines the corpus already has are not this queue's: a different text is a correction, on
   // its own tab, and the same text is nothing to triage at all (known.ts's tabOf).
-  const [listed, pending] = await Promise.all([
-    listContributions(status, lang, sort, source),
-    pendingCounts(lang),
-  ]);
-  const states = await lineStates(listed);
+  const { listed, states, pending } = await listedWithPending(status, lang, sort, source);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
   const npcs = await npcFor(contributions);

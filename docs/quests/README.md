@@ -475,7 +475,31 @@ act on. **Show progress text** brings them back, and `?progress=1` says the same
 URL; absence means hidden, so a bare link is the useful view. Ticking `progress` in the
 source filter also counts as asking for them, since otherwise that choice would return
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
-them, and clearing filters returns it to hidden.
+them, and clearing filters returns it to hidden. The Missing audio ranking (`/missing-audio`
+and its dashboard tile) leaves progress text out too: the addon reports it as silent like any
+other line, but nothing will voice it, so it is not a gap to close.
+
+**The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
+`?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
+too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
+known level is in no range, so setting either bound hides gossip and quests the extract lacks.
+
+**Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
+Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
+lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking
+(`/missing-audio` and its dashboard tile) leave them out unless the client filter asks for
+them. The filter takes the Contributions pages' bins (`?client=low-effort`, `?client=anniversary`,
+`?client=all`; absent is `focus`, Era + Forever). A lookup by `?line=` finds a line whatever its
+client. Nothing stores the client: `lib/quests/line-client.ts` derives it per row when the
+catalogue is built. A speaker the extract wrote has none and counts as focus, and so does every
+row of a quest the extract has, whoever sent its speaker. Any other speaker a contribution wrote
+has that contribution's `build`; one with no build counts as focus. A line keeps the client of
+whoever sent it first, since a later identical upload only counts on that row. A quest the
+Classic extract has no row for,
+with an id below 13000, is TBC Anniversary whatever sent it (the extract ends at 9665, Season of
+Discovery starts at 78000, Forever's own quests at 80000), which catches the Wowhead imports and
+their Forever build. Gossip has no quest id, so gossip scraped from Wowhead's TBC pages still
+reads as Forever.
 
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.
@@ -494,13 +518,16 @@ hashes, which go through one function (`sentText`) so they cannot disagree. Case
 position, not the token: lowercase mid-sentence, capitalised at a sentence's start and always
 in German. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
-German's own templates write, is read the same way in every language. English quest text has
-nothing left for it to replace, its words having been written in at extraction; a book page
-in any language, English included, goes through the same table (`docs/readables/README.md`). A
-token glued to a following letter (`$Nama`) is left in, so the line stays unvoiceable until a
-translator rewrites it. German's genitive `s` is the one exception: `$Ns` and `$Cs` read as
-`Abenteurers`, or `Abenteurerin` on the female variant. A branch never spans a sentence's end,
-so one whose `;` was lost stays in as a token instead of swallowing the text up to a later `;`.
+German's own templates write, is read the same way in every language, and so is Forever's deDE
+gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, a letter on either
+side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send
+some lines) reads as the token. English quest text has nothing left for it to replace, its
+words having been written in at extraction; a book page in any language, English included,
+goes through the same table (`docs/readables/README.md`). A token glued to a following letter
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. German's
+genitive `s` is the one exception: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
+in as a token instead of swallowing the text up to a later `;`.
 A Craftsman's Writ's `$2oa`, the item count the client fills in, reads as "an order of" in
 English, "algumas unidades de" in ptBR, and "несколько" plus the second of ruRU's two written
 forms (`порции:порций`); a language without words for it keeps the token and stays

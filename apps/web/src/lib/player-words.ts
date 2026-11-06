@@ -50,6 +50,7 @@ const WORDS: Partial<Record<Lang, { m: Words; f: Words }>> = {
   esMX: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
   frFR: { m: { name: "aventurier", race: "voyageur" }, f: { name: "aventurière", race: "voyageuse" } },
   itIT: { m: { name: "avventuriero", race: "viaggiatore" }, f: { name: "avventuriera", race: "viaggiatrice" } },
+  plPL: { m: { name: "wędrowcze", race: "wędrowiec" }, f: { name: "wędrowczyni", race: "wędrowczyni" } },
   ptBR: { m: { name: "aventureiro", race: "viajante" }, f: { name: "aventureira", race: "viajante" } },
   ruRU: { m: { name: "путник", race: "странник" }, f: { name: "путница", race: "странница" } },
   koKR: { m: { name: "모험가", race: "여행자" }, f: { name: "모험가", race: "여행자" } },
@@ -74,7 +75,16 @@ const FIELD = String.raw`[^:;${ENDS}\n]`;
 const BRANCH = String.raw`\s*(${FIELD}+?)\s*:\s*(${FIELD}+?)\s*(?::${FIELD}*)?;`;
 // $u is the same branch: ptBR's templates write it, and deDE's Forever quests.
 const GENDER = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
-const HAS_GENDER = new RegExp(GENDER.source);
+// Forever's deDE gossip also writes $u with its separators swapped, "$uBürger;Bürgerin:", male
+// first all the same. Neither field may hold the other's separator, so a normal branch never
+// reads as one. Its `;` stands between two letters, where a sentence's own `;` and a normal
+// branch's end are followed by a space or a mark: a $u that lost its `:` would otherwise read
+// on to a later colon and drop the words between unheard.
+const SWAPPED = new RegExp(String.raw`\$[Uu]\s*(${FIELD}+?)(?<=\p{L});(?=\p{L})(${FIELD}+?)\s*:`, "gu");
+const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`, "u");
+// TBC Anniversary and Forever send some lines with the token's $ doubled ("$$N, …"), which the
+// client reads as the token itself. Left doubled, a genitive "$$Ns" would say "$Abenteurers".
+const DOUBLED = /\$\$(?=[NnCcRr](?!\p{L})|[NnCc]s(?!\p{L}))/gu;
 // Whatever may stand between a sentence's end and its first word: space, a line break, an
 // opening quote or Spanish's inverted marks.
 const SENTENCE_START = new RegExp(String.raw`(?:^|[${ENDS}]|\n)[\s"'«„“¡¿]*$`, "u");
@@ -114,7 +124,7 @@ export function branchesOnPlayerGender(text: string): boolean {
 
 /** The text as a male and a female reader read it, every `$G` branch taken to its side. */
 export function playerGenderSides(text: string): [string, string] {
-  return [text.replace(GENDER, "$1"), text.replace(GENDER, "$2")];
+  return [text.replace(GENDER, "$1").replace(SWAPPED, "$1"), text.replace(GENDER, "$2").replace(SWAPPED, "$2")];
 }
 
 /** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
@@ -132,7 +142,8 @@ export function speakPlayerTokens(
       ? word[0].toUpperCase() + word.slice(1)
       : word;
 
-  let spoken = text.replace(GENDER, playerGender === "f" ? "$2" : "$1");
+  const side = playerGender === "f" ? "$2" : "$1";
+  let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
   const genitive = words.nameGenitive;
   if (genitive) {
     spoken = spoken.replace(TOKEN_GENITIVE, (_, _token: string, at: number, whole: string) =>

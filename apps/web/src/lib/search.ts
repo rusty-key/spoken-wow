@@ -11,6 +11,8 @@
  * browser; search.test.ts is what keeps the two honest. Text, race, gender, source and
  * entity-type filtering are web-only and have no CLI counterpart to stay in step with.
  */
+import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "./contributions/client";
+import { lineMatchesClient } from "./quests/line-client";
 import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
@@ -63,6 +65,12 @@ export type LineFilters = {
    */
   includeProgress?: boolean;
   /**
+   * Which clients' lines (lib/quests/line-client.ts), in the Contributions pages' bins: Era +
+   * Forever when absent, the clients the site voices. A lookup by `line` finds a line whatever
+   * its client, so a report or a contribution's link still reaches it.
+   */
+  client?: ClientFilter;
+  /**
    * One line by its id, which is how a report reaches the corpus.
    *
    * Not unique, and the filter does not pretend otherwise: a gossip lineId is a hash of the
@@ -105,6 +113,12 @@ export type LineFilters = {
    */
   generatedBefore?: string;
   generatedAfter?: string;
+  /**
+   * Both inclusive. A line with no known level is in no range: gossip has no quest, and some
+   * quests have no level on record.
+   */
+  minLevel?: number;
+  maxLevel?: number;
   /**
    * The live take's model, as lib/takes/made-by.ts labels it, and the id of who made it.
    * Both need `madeBy` in the context, which only somebody working in the language gets;
@@ -174,6 +188,8 @@ export type SearchContext = {
   recordings?: Map<string, LiveRecording>;
   /** lineId -> how its BroadcastText ids were found. Absent means nobody asked. */
   broadcast?: Map<string, Exclude<BroadcastStatus, "none">>;
+  /** Absent means nobody asked, or the database could not be reached. */
+  levels?: Map<number, number>;
 };
 
 export const NO_CONTEXT: SearchContext = { overrides: new Map() };
@@ -430,6 +446,7 @@ export function matchingLines(
     source,
     npcType,
     includeProgress = false,
+    client = DEFAULT_CLIENT_FILTER,
     narration = false,
     line: lineId,
     overridden,
@@ -442,6 +459,8 @@ export function matchingLines(
     author,
     recorded,
     broadcast,
+    minLevel,
+    maxLevel,
   }: LineFilters = {},
   {
     overrides,
@@ -453,6 +472,7 @@ export function matchingLines(
     madeBy,
     recordings,
     broadcast: broadcastOf,
+    levels,
   }: SearchContext = NO_CONTEXT,
 ): CorpusLine[] {
   const query = q.trim();
@@ -478,6 +498,7 @@ export function matchingLines(
   if (!includeProgress && !source?.includes("progress")) {
     lines = lines.filter((line) => line.source !== "progress");
   }
+  if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
@@ -544,6 +565,14 @@ export function matchingLines(
     lines = broadcastOf
       ? lines.filter((line) => line.source === "gossip" && (broadcastOf.get(line.lineId) ?? "none") === broadcast)
       : [];
+  }
+  // Absent `levels` matches nothing: a batch posts these same filters, and an outage must not
+  // widen "regenerate level 1 to 10" into every line.
+  if (minLevel !== undefined || maxLevel !== undefined) {
+    lines = lines.filter((line) => {
+      const level = line.questId === null ? undefined : levels?.get(line.questId);
+      return level !== undefined && level >= (minLevel ?? 0) && level <= (maxLevel ?? Infinity);
+    });
   }
 
   return [...lines].sort(order);
