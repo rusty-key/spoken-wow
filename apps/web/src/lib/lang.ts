@@ -27,6 +27,7 @@ export const LOCALES = [
   { code: "zhCN", name: "Chinese (S)", bcp47: "zh-CN", elevenLabs: "zh" },
   { code: "zhTW", name: "Chinese (T)", bcp47: "zh-TW", elevenLabs: "zh" },
   { code: "viVN", name: "Vietnamese", bcp47: "vi-VN", elevenLabs: "vi", client: false },
+  { code: "heIL", name: "Hebrew", bcp47: "he-IL", elevenLabs: "he", client: false },
 ] as const;
 
 export type Lang = (typeof LOCALES)[number]["code"];

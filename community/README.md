@@ -35,7 +35,7 @@ Each entry is an object in the `packs` list. This is an example only. It is not 
 | `id` | Lower-case letters and digits, with single hyphens between words. At most 48 characters. Unique in the list. |
 | `title`, `author` | Plain text, up to 80 characters. |
 | `description` | Plain text, up to 400 characters. |
-| `lang` | One of `enUS`, `deDE`, `esES`, `esMX`, `frFR`, `itIT`, `plPL`, `ptBR`, `ruRU`, `koKR`, `zhCN`, `zhTW`. |
+| `lang` | One of `enUS`, `deDE`, `esES`, `esMX`, `frFR`, `itIT`, `plPL`, `ptBR`, `ruRU`, `koKR`, `zhCN`, `zhTW`, `heIL`. |
 | `section` | `quests`, `zones` or `books`. |
 | `version` | A version such as `1.0.0` or `1.1.0-beta.1`. Raise it for every new zip, so installed copies show an update. |
 | `size` | The size of the zip in bytes, as a whole number. |

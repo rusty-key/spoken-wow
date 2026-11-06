@@ -38,6 +38,7 @@ SpokenReadables.LOCALES = {
 	{ code = "zhCN", name = "Chinese (S)", native = "简体中文" },
 	{ code = "zhTW", name = "Chinese (T)", native = "繁體中文" },
 	{ code = "viVN", name = "Vietnamese", native = "Tiếng Việt", client = false },
+	{ code = "heIL", name = "Hebrew", native = "עברית", client = false },
 }
 
 SpokenReadables.BASE_LANGUAGE = "enUS"

@@ -18,7 +18,8 @@ export const LANGUAGES: { code: string; name: string }[] = [
   { code: 'ruRU', name: 'Русский' },
   { code: 'koKR', name: '한국어' },
   { code: 'zhCN', name: '简体中文' },
-  { code: 'zhTW', name: '繁體中文' }
+  { code: 'zhTW', name: '繁體中文' },
+  { code: 'heIL', name: 'עברית' }
 ]
 
 export function languageName(code: string): string {

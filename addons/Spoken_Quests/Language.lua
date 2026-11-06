@@ -57,6 +57,7 @@ Language.LOCALES = {
     { code = "zhCN", name = "Chinese (S)", native = "简体中文" },
     { code = "zhTW", name = "Chinese (T)", native = "繁體中文" },
     { code = "viVN", name = "Vietnamese", native = "Tiếng Việt", client = false },
+    { code = "heIL", name = "Hebrew", native = "עברית", client = false },
 }
 
 -- What an undeclared pack is, what a client in an unknown locale gets, and what the
