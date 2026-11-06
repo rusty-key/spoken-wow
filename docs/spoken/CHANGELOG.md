@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- A boss's 3D model on the map panel and in the Compendium now sits on a frayed edge cut from the page's
+  own parchment, over a faint brown backing, in a frame large enough for any boss.
+  A boss on the map panel has its round portrait by the name and an Open in Compendium button, as the
+  Compendium's page has. *([Nucabe](https://github.com/Nucabe))*
 - Right-clicking out of a Leatrix Maps dungeon map now returns the Places panel to the zone's lore.
   *([anon1231823](https://github.com/anon1231823))*
 - Switching dungeon maps from Leatrix Maps' world-map menu now updates the Places panel to the
