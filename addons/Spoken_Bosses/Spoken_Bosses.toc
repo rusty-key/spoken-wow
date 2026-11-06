@@ -35,6 +35,7 @@ Core.lua
 Data/Bosses.lua
 Data/Creatures.lua
 Data/Cameras.lua
+Data/CameraNudges.lua
 Data/Stories.lua
 Audio.lua
 UI/Bosses.lua
