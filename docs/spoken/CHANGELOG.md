@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **A quest's Play button in the objective tracker no longer covers the quest's item button.** The
+  item stays where the game puts it and Play sits below it. *([Nucabe](https://github.com/Nucabe))*
+
 ## 3.8.3 — 2026-11-05
 
 - **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice

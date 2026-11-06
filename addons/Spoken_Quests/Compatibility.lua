@@ -529,6 +529,30 @@ do
     local BOX, SIZE = "QuestLog-icon-ticksquare", 14
     local buttons, hooked = {}, {}
 
+    -- The client lays a quest's own buttons (its item, a find-group button) out from the block's top
+    -- right, one left of the next. Play goes under the first of them, the one against the block's
+    -- edge; with none it takes the corner. Only this button is anchored, to the client's frame:
+    -- nothing of the client's is called or changed.
+    local function Place(block, button)
+        local frame = block.rightEdgeFrame
+        local edge
+        for _ = 1, 4 do
+            if type(frame) ~= "table" or not frame.GetPoint then break end
+            local _, relativeTo = frame:GetPoint(1)
+            if relativeTo == block then
+                edge = frame
+                break
+            end
+            frame = relativeTo
+        end
+        button:ClearAllPoints()
+        if edge and edge:IsShown() then
+            button:SetPoint("TOPRIGHT", edge, "BOTTOMRIGHT", 0, -2)
+        else
+            button:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
+        end
+    end
+
     local function Dress(block)
         local questID = block.id
         local button = buttons[block]
@@ -555,9 +579,9 @@ do
             back:SetPoint("BOTTOMRIGHT", -1, 1)
             back:SetColorTexture(0, 0, 0, 0.6)
             button:SetFrameLevel(block:GetFrameLevel() + 3)
-            button:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
             buttons[block] = button
         end
+        Place(block, button)
         if button.questID ~= questID then button.soundData = nil end
         QuestOverlayUI:BindPlayButton(button, questID, C_QuestLog.GetTitleForQuestID(questID) or "",
             "the objective tracker's Play button")
