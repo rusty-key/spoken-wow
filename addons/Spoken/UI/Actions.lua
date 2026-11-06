@@ -264,8 +264,8 @@ function Actions.LayOutRow(controls, row, gap)
     controls:SetSize(math.max(1, x - gap), tallest)
 end
 
--- What follows a window's title: why the line is held, "• (Stopped)" while it is stopped and the
--- lines waiting, "• +N", TAIL_GAP after it. One more fades the count in over TAIL_IN; Stopped fades in and
+-- What follows a window's title: why the line is held, "· (Stopped)" while it is stopped and the
+-- lines waiting, "· +N", TAIL_GAP after it. One more fades the count in over TAIL_IN; Stopped fades in and
 -- out, and keeps its room until it has faded.
 local TAIL_GAP, TAIL_IN = 6, .25
 local function EaseOut(t) return 1 - (1 - t) * (1 - t) end
@@ -328,12 +328,12 @@ function Tail:SetStopped(stopped)
     self.want = stopped and true or false
 end
 
---- Why the line is held back, "• (in combat)", or nil once it may play. A held line with no
+--- Why the line is held back, "· (in combat)", or nil once it may play. A held line with no
 --- reason looks exactly like narration that failed.
 function Tail:SetHeld(reason)
     if not self.held or reason == self.reason then return end
     self.reason = reason
-    self.held:SetText(reason and "• (" .. reason .. ")" or "")
+    self.held:SetText(reason and "· (" .. reason .. ")" or "")
 end
 
 --- `waiting` lines behind the one playing: the count says it, fading in when it grew.
@@ -341,7 +341,7 @@ function Tail:SetCount(waiting)
     if waiting ~= self.counted then
         if waiting > (self.counted or 0) then self.fade = 0 end
         self.counted = waiting
-        self.count:SetText(waiting > 0 and "• +" .. waiting or "")
+        self.count:SetText(waiting > 0 and "· +" .. waiting or "")
     end
     self.hover:SetShown(waiting > 0)
     self.parts = {}

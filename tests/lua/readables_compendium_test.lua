@@ -251,7 +251,7 @@ Expect("...a city inside the zone around it, not beside it", Has(list, "Stormwin
 Expect("...the readables after the continents, a banner each: those found across Azeroth and those of no known origin",
     RowFor(L.GROUP_WIDE).row.style == "banner" and RowFor(L.GROUP_UNKNOWN).row.style, "banner")
 Expect("...each zone's card counting what is found out of all, its city's included",
-    RowFor("Elwynn Forest").count.text:match("^1/%d+ • %d+%%$") ~= nil, true)
+    RowFor("Elwynn Forest").count.text:match("^1/%d+ · %d+%%$") ~= nil, true)
 Expect("...and the seasonal events' readables, in a group of their own before them",
     Has(list, L.GROUP_EVENTS) and list:find(L.GROUP_EVENTS, 1, true) < list:find(L.GROUP_WIDE, 1, true), true)
 Click(L.GROUP_EVENTS)
