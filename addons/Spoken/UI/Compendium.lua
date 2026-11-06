@@ -1998,7 +1998,8 @@ function C.NewPage(parent, addon, play, report, look)
 	look = look or {}
 	local top, right = look.top or TOP, look.right or RIGHT
 	local titleSize = look.titleSize or 26
-	local self = setmetatable({ playing = play, reporting = report, top = top, right = right,
+	local self = setmetatable({ playing = play, reporting = report, defaultPlaying = play,
+		defaultReporting = report, top = top, right = right,
 		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon }, Page)
 	-- False is a face never made.
 	if look.noFace then self.headFace = false end
@@ -2178,9 +2179,11 @@ function C.NewPage(parent, addon, play, report, look)
 	if report and _G.Spoken and Spoken.CreateRoundButton then
 		local button = Spoken:CreateRoundButton(frame, "report")
 		button:SetScript("OnClick", function()
-			if self.target ~= nil then report.open(self.target) end
+			if self.target ~= nil and self.reporting then self.reporting.open(self.target) end
 		end)
-		button:HookScript("OnEnter", function(b) C.ReportTooltip(b, report.title) end)
+		button:HookScript("OnEnter", function(b)
+			if self.reporting then C.ReportTooltip(b, self.reporting.title) end
+		end)
 		button:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 		button:Hide()
 		self.report = button
@@ -2194,9 +2197,9 @@ function C.NewPage(parent, addon, play, report, look)
 		local button = Spoken:CreateRoundButton(frame, "play")
 		button:SetScript("OnClick", function()
 			local target = self.target
-			if target == nil then return end
+			if target == nil or not self.playing then return end
 			-- Looked up each click: a line that has since finished is no longer in the queue.
-			C.PlayClick(play.find(target), function() play.start(target) end)
+			C.PlayClick(self.playing.find(target), function() self.playing.start(target) end)
 			self:RefreshPlay()
 			if GameTooltip and GameTooltip:GetOwner() == button then C.PlayTooltip(button, button.pageState) end
 		end)
@@ -2210,6 +2213,14 @@ function C.NewPage(parent, addon, play, report, look)
 	end
 	C.Ellesmere(function(skin) self:Darken(skin) end)
 	return self
+end
+
+--- Changes the actions for the next page shown. Feature modules can reuse a Places page in the
+--- map panel while keeping their own source and report behaviour; omitting either action restores
+--- the action the page was built with.
+function Page:SetActions(play, report)
+	self.playing = play == nil and self.defaultPlaying or play
+	self.reporting = report == nil and self.defaultReporting or report
 end
 
 -- EllesmereUI's window backdrop where a page's text is cut, for its fade to blend into: in its own
@@ -2367,10 +2378,10 @@ function Page:RefreshPlay()
 	local report, button = self.report, self.play
 	if report then
 		local hidden = _G.Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden()
-		report:SetShown(target ~= nil and not hidden and self.reporting.has(target) and true or false)
+		report:SetShown(target ~= nil and not hidden and self.reporting and self.reporting.has(target) and true or false)
 	end
 	if button then
-		local has = target ~= nil and self.playing.has(target) and true or false
+		local has = target ~= nil and self.playing and self.playing.has(target) and true or false
 		button:SetShown(not self.empty)
 		if has then button:Enable() else button:Disable() end
 		button.pageState = has and C.PlayState(self.playing.find(target)) or "play"
@@ -2414,7 +2425,8 @@ end
 
 --- entry = { title, subtitle, onSubtitle, text, target = what Play and Report act on, or nil for
 --- none, icon = the round portrait left of the title (a Spoken:CreateSpeakerFace speaker table), the
---- Compendium's tome without it, and none on a page made with `noFace`, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
+--- Compendium's tome without it, and none on a page made with `noFace`, model = { displayID,
+--- creatureID, scale, zoom, rotation, facing, sequence, x, y, z } above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
 --- of `text`: words in parts, each under its heading with its own buttons (TextView:SetParts) }. With no text, parts, target or unwritten the page is a group's or a place's: no
 --- Play, and its mark in the middle.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's
@@ -2457,6 +2469,7 @@ function Page:Show(entry)
 		contribute:ClearAllPoints()
 		contribute:SetPoint("TOPLEFT", self.body.text, "BOTTOMLEFT", 0, -12)
 		local picture = entry.picture
+		self.body:SetModel(entry.model)
 		self.body:SetPicture(picture and picture.file, picture and picture.mask)
 		-- A page with nothing written says so in one voice on every tab, with Contribute under it.
 		local words = entry.unwritten and C.NotWritten()

@@ -2,6 +2,90 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- Right-clicking out of a Leatrix Maps dungeon map now returns the Places panel to the zone's lore.
+  *([anon1231823](https://github.com/anon1231823))*
+- Switching dungeon maps from Leatrix Maps' world-map menu now updates the Places panel to the
+  selected dungeon's lore.
+  *([anon1231823](https://github.com/anon1231823))*
+- Leatrix Maps dungeon POI clicks no longer depend on Leatrix's private local control table; Spoken
+  resolves the clicked localized dungeon name from the POI itself.
+  *([anon1231823](https://github.com/anon1231823))*
+- Leatrix Maps zone-map dungeon POI clicks now use the hovered dungeon destination to open its
+  lore, even when Leatrix does not expose a preview callback.
+  *([anon1231823](https://github.com/anon1231823))*
+- Leatrix Maps dungeon pins now open the matching dungeon lore directly from the pin's click
+  destination, even if Leatrix's preview state is not available yet.
+  *([anon1231823](https://github.com/anon1231823))*
+- The Places panel now shows a dungeon's lore while Leatrix Maps displays its dungeon preview,
+  even though the map frame still reports the entrance zone.
+  *([anon1231823](https://github.com/anon1231823))*
+- Clicking the same Leatrix dungeon pin again now reopens its dungeon lore instead of being
+  suppressed as a duplicate click.
+  *([anon1231823](https://github.com/anon1231823))*
+- Zone-map dungeon pins now update the lore panel from Leatrix Maps' post-click map event, even
+  when its dungeon-preview API is unavailable.
+  *([anon1231823](https://github.com/anon1231823))*
+- Dungeon lore hooks now attach even when Leatrix Maps creates its dungeon-preview buttons after
+  Spoken initializes.
+  *([anon1231823](https://github.com/anon1231823))*
+- The English boss lore panel now uses the same “Story” wording as the Place Story panel, matching
+  the equivalent wording in every other locale.
+  *([anon1231823](https://github.com/anon1231823))*
+- Leatrix Maps dungeon entrance pins now identify the active preview dungeon even while its
+  entrance zone remains selected on the world map.
+  *([anon1231823](https://github.com/anon1231823))*
+- Leatrix Maps dungeon pins on zone maps now open the dungeon's lore after opening its map.
+  *([anon1231823](https://github.com/anon1231823))*
+- Leatrix Maps dungeon entrance pins now open the dungeon's lore when it exists, including from
+  dungeon floor maps, and fall back to the entrance zone's lore otherwise.
+  *([anon1231823](https://github.com/anon1231823))*
+- Stratholme's Balnazzar now uses Leatrix Maps' dreadlord model instead of the Grand Crusader
+  Dathrohan disguise.
+  *([anon1231823](https://github.com/anon1231823))*
+- Balnazzar's lore now opens when his pin is clicked in Leatrix Maps, whether Stratholme is shown
+  from its parent zone or as a dungeon preview.
+  *([anon1231823](https://github.com/anon1231823))*
+- Clicking a Leatrix Maps dungeon icon on a zone map now opens that dungeon's lore beside the map,
+  including Gnomeregan.
+  *([anon1231823](https://github.com/anon1231823))*
+- Unlock Undiscovered Places now shows every zone in Azeroth's Compendium, even when its Discovered
+  Only filter is on.
+  *([anon1231823](https://github.com/anon1231823))*
+- Boss lore in Azeroth's Compendium now shows the boss's 3D model above the story, including
+  Stratholme's Balnazzar with DBM-Dungeons' display ID.
+  *([anon1231823](https://github.com/anon1231823))*
+- The Four Horsemen's lore model now matches DBM-Raids-Vanilla's display ID.
+  *([anon1231823](https://github.com/anon1231823))*
+- Leatrix Maps boss pins on dungeon floor maps now resolve to their parent dungeon, so alternate
+  floor-map pins such as Balnazzar's open the correct boss lore.
+  *([anon1231823](https://github.com/anon1231823))*
+- Scarlet Enclave's Balnazzar now uses the model ID from DBM-Dungeons, and Balnazzar's alternate
+  Leatrix creature opens his lore.
+  *([anon1231823](https://github.com/anon1231823))*
+- Boss lore opened from Leatrix Maps has its own panel title, and recycled dungeon pins still open
+  the right story.
+  *([anon1231823](https://github.com/anon1231823))*
+- Clicking a boss on a Leatrix Maps dungeon map opens that boss's lore beside the map.
+  *([anon1231823](https://github.com/anon1231823))*
+- A Leatrix Maps dungeon map shows the dungeon's lore beside the map before a boss is selected.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Clicking a Leatrix Maps dungeon entrance shows the entrance zone's lore** beside the dungeon map.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Leatrix Maps boss lore shows the boss's 3D model in the story**, and dungeon entrances on floor
+  maps such as Gnomeregan now open the entrance zone's lore too.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Leatrix Maps boss models are smaller and line up with zone lore images**, leaving more room for
+  their lore in the map panel.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Unlock Unfound Bosses now shows every boss in the Compendium**, even while Found Only is on.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The Bosses settings page links to CurseForge** for the German and Spanish packs that now have
+  projects there.
+  *([anon1231823](https://github.com/anon1231823))*
+
+
 ## 3.8.3 — 2026-11-05
 
 - **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice

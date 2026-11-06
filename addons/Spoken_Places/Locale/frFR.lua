@@ -86,6 +86,7 @@ L.OPT_LATER = "Plus tard"
 -- Lore of Azeroth and Zone Lore
 L.COMPENDIUM_PLACES = "Lieux"
 L.LORE_PANEL_TITLE = "Récit du lieu"
+L.BOSS_LORE_TITLE = "Récit du boss"
 L.MAP_PANEL_EXPAND = "Afficher le récit du lieu"
 L.PANEL_SHOWN = "Récit à côté de la carte : activé"
 L.PANEL_HIDDEN = "Récit à côté de la carte : désactivé"

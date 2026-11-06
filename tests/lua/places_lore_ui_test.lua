@@ -56,6 +56,8 @@ _G.CreateFrame = function(kind, name, parent, template)
         frame.MinimizeButton, frame.MaximizeButton = createFrame("Button", nil, frame), createFrame("Button", nil, frame)
         frame:SetSize(28, 28)
         maxMin = frame
+    elseif template == "DefaultPanelFlatTemplate" then
+        function frame:SetTitle(text) self.title = text end
     end
     frame.template = template
     -- A colour painted on a texture, kept to be read back: a page with no art is one.
@@ -86,7 +88,7 @@ _G.GameFontHighlight = _G.GameFontHighlight or { GetFont = function() return "fo
 local Z = H.NewZoneLore()
 -- The world's name is the client's: no story of its own to take it from.
 local mapName = Z.GetMapName
-function Z:GetMapName(id) return id == 947 and "Azeroth" or mapName(self, id) end
+function Z:GetMapName(id) return id == 947 and "Azeroth" or id == 36 and "Deadmines" or mapName(self, id) end
 Z.Zones = { [1411] = { name = "Durotar", full = "Durotar is a cracked, red land." },
     [1426] = { name = "Dun Morogh", pending = true },
     -- A city: a zone of its own, listed inside the zone around it.
@@ -105,6 +107,8 @@ Z.Subzones = { [1411] = { ["valley of trials"] = { name = "Valley of Trials", fu
     ["sen'jin village"] = { name = "Sen'jin Village", pending = true },
     -- An area only Forever has: this client, Era, never lists it.
     ["camp forever"] = { name = "Camp Forever", full = "Only on Forever." } } }
+Z.Subzones[1436] = { deadmines = { name = "Deadmines", full = "The Defias' mine." } }
+Z.Dungeons = { [1436] = { { mapID = 1436, key = "deadmines", dungeon = 36 } } }
 Z.ForeverOnlyAreas = { [1411] = { ["camp forever"] = true } }
 function Z:GetLore(mapID) return self.Zones[mapID] end
 function Z:IsPending(entry) return entry and entry.pending or false end
@@ -737,6 +741,14 @@ local displayed = Z.GetDisplayedMapID
 Z.GetDisplayedMapID = function() return 9999 end
 Z:RefreshPanel()
 Expect("...and a map with no entry at all offers nothing to open", mapPage.open:IsShown(), false)
+Z.GetDisplayedMapID = function() return 36 end
+Z:RefreshPanel()
+Expect("a dungeon map shows the dungeon's story before its parent zone's", mapPage.title.text .. ": " .. mapPage.body.text.text,
+    "Deadmines: The Defias' mine.")
+Expect("...and its lore button opens the dungeon entry", mapPage.open:IsShown(), true)
+Z.GetDisplayedMapID = function() return 1411 end
+Z:ShowMapStory(36, { title = "Edwin VanCleef", panelTitle = "Boss Story", text = "Boss story." })
+Expect("a boss opened from a Leatrix map has its own panel title", panel.title, "Boss Story")
 Z.Zones[947] = { name = "Azeroth", full = "The world." }
 Z.GetDisplayedMapID = function() return 947 end
 Z:RefreshPanel()
@@ -879,6 +891,12 @@ Z:RefreshLoreWindow()
 Expect("Unlock Undiscovered Places opens every area", Locked(), "")
 Expect("...the places not found still greyed", Greyed(), "Dun Morogh|Orgrimmar")
 Expect("...the counts still what this character has found", RowFor("Durotar").count.text, "1/3 • 33%")
+Z:Set("loreDiscoveredOnly", true)
+Z:RefreshLoreWindow()
+Expect("Unlock Undiscovered Places shows every zone despite Discovered Only", Shown(),
+    "Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|Sen'jin Village|Valley of Trials")
+Z:Set("loreDiscoveredOnly", false)
+Z:RefreshLoreWindow()
 RowFor("Sen'jin Village").scripts.OnClick(RowFor("Sen'jin Village"))
 Expect("...and when a place not found is chosen", RowFor("Durotar").count.text, "1/3 • 33%")
 Expect("...its story told", page.body.text.text, _G.SpokenCompendium.NotWritten())
@@ -889,7 +907,8 @@ RowFor("Dun Morogh").scripts.OnClick(RowFor("Dun Morogh"))
 Z:ShowLoreFor(1411, nil)
 showAll = false
 
--- Discovered Only, in the filter menu beside the search box, leaves the places not found out of it.
+-- Discovered Only, in the filter menu beside the search box, leaves the places not found out of it
+-- when Unlock Undiscovered Places is off.
 local function Only() return stub.OpenDropdown(window.filterMenu)[1] end
 Expect("the filter menu holds Discovered Only, a checkbox", Only().text == Z.L.LORE_DISCOVERED_ONLY and Only().isNotRadio, true)
 Expect("...which is off here, the mock's settings having no default", Only().checked and true or false, false)
