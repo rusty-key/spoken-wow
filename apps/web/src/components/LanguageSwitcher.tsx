@@ -88,7 +88,7 @@ export default function LanguageSwitcher({ variant, label }: { variant?: "landin
       >
         {choices.map((language) => (
           <option key={language.code} value={language.code}>
-            {nativeName(language.code)}
+            {nativeName(language.code) + (language.enabled ? "" : " (off)")}
           </option>
         ))}
       </select>

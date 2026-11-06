@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -50,6 +50,13 @@ describe("the front page's dictionaries", () => {
 
   it("lists as front page languages English and the ones with a dictionary, so the select offers no English page under another name", () => {
     expect([...FRONT_PAGE_LANGS].sort()).toEqual(["enUS", ...written].sort());
+  });
+
+  it("loads a dictionary for each front page language but English", () => {
+    const loaders = readFileSync(join(__dirname, "index.ts"), "utf8");
+    for (const code of FRONT_PAGE_LANGS.filter((lang) => lang !== "enUS")) {
+      expect(loaders, code).toContain(`${code}: () => import("./${code}")`);
+    }
   });
 
   it("names every language in itself", () => {
