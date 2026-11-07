@@ -136,7 +136,6 @@ L.OPT_CONTRIBUTE_TIP_QUEST = "Spoken Quests doesn't have this quest"
 L.OPT_CONTRIBUTE_TIP_SHARE = "Contribute your data by sharing data from your client"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nCopy this address and open it in your web browser."
 L.OPT_COPY_TEXT = "Copy text"
-L.OPT_COPY_TEXT_TIP = "Copy the text shown in this dialogue."
 
 --------------------------------------------------------------------------------
 -- Minimap menu and player settings link

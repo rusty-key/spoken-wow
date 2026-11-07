@@ -13,7 +13,6 @@ local CORNER_INSET = 32
 local COPY_ICON = "Interface\\Icons\\INV_Misc_ScrollUnrolled01"
 local COPY_DIALOG = "SPOKEN_COPY_TEXT"
 local COPY_TEXT = L.OPT_COPY_TEXT
-local COPY_TEXT_TIP = L.OPT_COPY_TEXT_TIP
 
 local REFRESH_EVENTS = {
     "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING",
@@ -282,7 +281,7 @@ function CopyTextButton:Setup()
     button:SetScript("OnEnter", function(self)
         if GameTooltip then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(COPY_TEXT_TIP)
+            GameTooltip:SetText(COPY_TEXT)
             GameTooltip:Show()
         end
     end)
