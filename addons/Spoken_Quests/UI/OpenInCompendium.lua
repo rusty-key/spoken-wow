@@ -80,12 +80,12 @@ function QuestsTab:PositionGiver()
     local frame = _G.QuestFrame
     giver:ClearAllPoints()
 
-    -- Contribute positions itself relative to Compendium, so it must not be an anchor here.
-    -- DialogPlay has its own frame anchor and does not depend on this button.
-    for _, owner in ipairs({ VO.DialogPlayButton }) do
+    -- Contribute and DialogPlay are the rightmost text controls. They position independently
+    -- from the frame, so Compendium can sit to their left while reserving Copy Text's slot.
+    for _, owner in ipairs({ VO.ContributeButton, VO.DialogPlayButton }) do
         local beside = type(owner) == "table" and owner.button
         if type(beside) == "table" and beside:IsShown() then
-            giver:SetPoint("RIGHT", beside, "LEFT", -GAP, 0)
+            giver:SetPoint("RIGHT", beside, "LEFT", -(GAP + CopyTextWidth() + COPY_GAP), 0)
             return
         end
     end

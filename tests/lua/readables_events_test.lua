@@ -211,15 +211,15 @@ Expect("...hidden when there is no page to read", button:IsShown(), false)
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_1, hasNext = true })
 stub.FireEvent("ITEM_TEXT_READY")
 Expect("shown on a page the pack can narrate", button:IsShown(), true)
-Expect("...offering Stop while that book is being read", button:GetText(), "Stop")
+Expect("...offering Stop while that book is being read", button.state, "stop")
 
 button.scripts.OnClick(button)
 Expect("pressing it stops the book", #QueuedPages(), 0)
-Expect("...and offers to start it again", button:GetText(), "Play")
+Expect("...and offers to start it again", button.state, "play")
 
 button.scripts.OnClick(button)
 Expect("pressing it again reads the book", Reading(), 3)
-Expect("...whatever autoplay and read-once say", button:GetText(), "Stop")
+Expect("...whatever autoplay and read-once say", button.state, "stop")
 
 -- Open in Azeroth's Compendium beside it, for a writing whose page the Compendium shows.
 local copy = B.copyButton

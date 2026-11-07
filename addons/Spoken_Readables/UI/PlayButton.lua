@@ -4,10 +4,7 @@
 -- book: the addon's two settings both mean "do not start by yourself", and neither should
 -- mean "give me no way to start it".
 --
--- A TEXT button, not an icon, for the reason the places side once gave: an
--- icon path cannot be verified without launching the client, and a texture that does not
--- exist on 11509 draws nothing at all -- an invisible button is a worse failure than a plain
--- one.
+-- A round Play/Stop icon, shared with Spoken's other playback controls.
 --
 -- IN THE HEADER STRIP, under the close button. The same strip is where the quest and gossip
 -- controls live, so the readable controls belong there too rather than on top of the page.
@@ -21,24 +18,6 @@ local L = SpokenReadables.L
 local GAP = 4
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
-local BUTTON_WIDTH = 58
-local BUTTON_HEIGHT = 22
--- Room the button's end caps take either side of its label.
-local LABEL_PADDING = 24
-
---- Widen the button to fit the widest label it will ever show, never below BUTTON_WIDTH.
---- Measured once over every label rather than on each SetText, so flipping between Play,
---- Stop and Contribute keeps one width. BUTTON_WIDTH was sized to the English labels; a
---- translated one can be twice as long. The button is pinned by its right edge, so it
---- grows into the page, not off it.
-local function FitToLabels(button, labels)
-	local widest = 0
-	for _, label in ipairs(labels) do
-		button:SetText(label)
-		widest = math.max(widest, button:GetTextWidth())
-	end
-	button:SetWidth(math.max(BUTTON_WIDTH, widest + LABEL_PADDING))
-end
 
 --- Open in Azeroth's Compendium: the Compendium's tome in the player's round button, as Quests
 --- and Places have it, opening the tab on writing `bookId`. `tooltip`, where given, returns the
@@ -147,11 +126,7 @@ local function RefreshPlay(self)
 		self.playButtonMode = "play"
 
 		local book = self:PlaceOf(pageId)
-		if self:IsNarrating(book) then
-			button:SetText(L.STOP)
-		else
-			button:SetText(L.PLAY)
-		end
+		button:SetPlaying(self:IsNarrating(book))
 		return
 	end
 
@@ -162,7 +137,7 @@ local function RefreshPlay(self)
 	-- asked to load.
 	if self.HasContributionGap and self:HasContributionGap() then
 		button:Show()
-		button:SetText(L.CONTRIBUTE)
+		button:SetPlaying(false)
 		self.playButtonMode = "contribute"
 		return
 	end
@@ -193,10 +168,7 @@ function SpokenReadables:SetupPlayButton()
 		return nil
 	end
 
-	local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-	button:SetHeight(BUTTON_HEIGHT)
-	FitToLabels(button, { L.PLAY, L.STOP, L.CONTRIBUTE })
-	button:SetText(L.PLAY)
+	local button = Spoken:CreateRoundButton(frame, "play")
 	button:Hide()
 
 	button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
@@ -226,7 +198,7 @@ function SpokenReadables:SetupPlayButton()
 		if SpokenReadables.playButtonMode == "contribute" then
 			GameTooltip:SetText(L.NO_LINE)
 			GameTooltip:AddLine(L.NO_LINE_TIP, 1, 0.8, 0.2, true)
-		elseif self:GetText() == L.STOP then
+		elseif self.state == "stop" then
 			GameTooltip:SetText(L.STOP_TIP)
 		else
 			GameTooltip:SetText(L.PLAY_TIP)
