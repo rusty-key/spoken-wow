@@ -4,9 +4,6 @@ setfenv(1, VoiceOver)
 -- window already, so use it when it exposes its clipboard method; the Blizzard-frame button gets
 -- the same selectable edit box through a large StaticPopup.
 
-local BUTTON_HEIGHT = 20
-local BUTTON_WIDTH = 75
-local LABEL_PADDING = 24
 local BUTTON_SIZE = 24
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
@@ -144,14 +141,6 @@ local function CreateIconButton(parent)
     return button
 end
 
-local function CreateTextButton()
-    local button = CreateFrame("Button", nil, UIParent, "UIPanelButtonTemplate")
-    button:SetHeight(BUTTON_HEIGHT)
-    button:SetText(COPY_TEXT)
-    button:SetWidth(math.max(BUTTON_WIDTH, button:GetTextWidth() + LABEL_PADDING))
-    return button
-end
-
 function CopyTextButton:PositionDialogue(frame)
     local button = self.dialogueButton
     local native = frame.CopyTextButton
@@ -270,7 +259,7 @@ function CopyTextButton:Setup()
         end,
     }
 
-    local button = CreateTextButton()
+    local button = CreateIconButton(UIParent)
     if button.SetFrameStrata then
         button:SetFrameStrata("DIALOG")
     end
