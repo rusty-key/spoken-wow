@@ -87,6 +87,7 @@ Data/ForeverAreas.lua
 Data/AreaZones.lua
 UI/CopyLink.lua
 UI/LorePage.lua
+UI/OpenMap.lua
 UI/MapPanel.lua
 UI/SubzoneClick.lua
 UI/MapHighlight.lua
