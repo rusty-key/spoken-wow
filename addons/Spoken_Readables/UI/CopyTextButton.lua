@@ -4,7 +4,7 @@ local _, SpokenReadables = ...
 local L = SpokenReadables.L
 local NotSecret = Spoken and Spoken.NotSecret or function(value) return value end
 
-local BUTTON_SIZE, GAP = 24, 4
+local BUTTON_SIZE = 24
 local COPY_ICON = "Interface\\Icons\\INV_Misc_ScrollUnrolled01"
 local COPY_FRAME = "SpokenReadableCopyTextFrame"
 
@@ -164,16 +164,4 @@ function SpokenReadables:RefreshCopyButton()
     end
     local shown = not self:IsMail() and CurrentText(self) ~= nil
     button:SetShown(shown)
-    if not shown then return end
-
-    local play = self.playButton
-    local anchor = play and play:IsShown() and play
-    button:ClearAllPoints()
-    if anchor then
-        button:SetPoint("RIGHT", anchor, "LEFT", -GAP, 0)
-    elseif _G.ItemTextScrollFrame then
-        button:SetPoint("BOTTOMRIGHT", ItemTextScrollFrame, "BOTTOMRIGHT", -6, 6)
-    else
-        button:SetPoint("BOTTOMRIGHT", ItemTextFrame, "TOPRIGHT", -39, -412)
-    end
 end

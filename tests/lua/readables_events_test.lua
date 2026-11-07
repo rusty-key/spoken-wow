@@ -26,7 +26,7 @@ local REGISTRY_2 = "Magistrate Rutherford Burnside\nAll debts settled.\n\nBlacks
 local function LoadReadables()
     local SpokenReadables = {}
     for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Opener", "Reader", "Audio", "Playlist",
-        "UI/PlayButton", "Events", "Commands" }) do
+        "UI/PlayButton", "UI/CopyTextButton", "Events", "Commands" }) do
         local chunk = assert(loadfile(READABLES .. file .. ".lua"))
         chunk("Spoken_Readables", SpokenReadables)
     end
@@ -192,17 +192,12 @@ B:SetupPlayButton()
 local button = B.playButton
 Expect("the book frame carries a button", button ~= nil, true)
 
--- On the page, bottom right. Twice it was on the strip above the page instead -- off the
--- frame's corner, then beside the previous-page arrow -- and that row has no free space: the
--- arrows carry PREV and NEXT labels on their inner edges, and ItemTextCurrentPage is a
--- 192-wide FontString reaching back under the left arrow. The scrollbar hangs outside the
--- page's right edge, so this corner is clear of it too.
-Expect("...on the page, not on the row above it", button.anchor.relativeTo,
-    _G.ItemTextScrollFrame)
-Expect("...in its bottom-right corner",
-    button.anchor.point .. "/" .. button.anchor.relativePoint, "BOTTOMRIGHT/BOTTOMRIGHT")
-Expect("...inset, so it sits on the parchment rather than over its edge",
-    button.anchor.x < 0 and button.anchor.y > 0, true)
+-- In the header strip, below the close button and aligned with the frame's right edge.
+Expect("...in the readable frame's header strip", button.anchor.relativeTo,
+    _G.ItemTextFrame)
+Expect("...in its top-right corner",
+    button.anchor.point .. "/" .. button.anchor.relativePoint, "TOPRIGHT/TOPRIGHT")
+Expect("...inset below and inside the header", button.anchor.x < 0 and button.anchor.y < 0, true)
 
 -- ITEM_TEXT_CLOSED is not handled for the button on purpose: it is the frame's child and
 -- goes with it. What is asserted here is the branch the addon does own -- asked to refresh
@@ -227,13 +222,16 @@ Expect("pressing it again reads the book", Reading(), 3)
 Expect("...whatever autoplay and read-once say", button:GetText(), "Stop")
 
 -- Open in Azeroth's Compendium beside it, for a writing whose page the Compendium shows.
+local copy = B.copyButton
 local open, opened = B.openButton, nil
 local has, show = B.CompendiumHas, B.ShowReadables
 B.CompendiumHas = function(_, book) return book ~= nil end
 B.ShowReadables = function(_, book) opened = book end
 B:RefreshPlayButton()
-Expect("Open in Azeroth's Compendium beside Play, for a writing the Compendium shows",
-    open ~= nil and open:IsShown() and open.anchor.relativeTo == button and open.anchor.point, "RIGHT")
+Expect("Copy Text beside Play, for a page with readable text",
+    copy ~= nil and copy:IsShown() and copy.anchor.relativeTo == button and copy.anchor.point, "RIGHT")
+Expect("Open in Azeroth's Compendium beside Copy Text, for a writing the Compendium shows",
+    open ~= nil and open:IsShown() and open.anchor.relativeTo == copy and open.anchor.point, "RIGHT")
 open.scripts.OnClick(open)
 Expect("...opening its tab on the book", opened ~= nil and opened == B:PlaceOf(B:PageOnScreen()), true)
 B.CompendiumHas = function() return false end
