@@ -256,7 +256,7 @@ function CopyTextButton:PositionStandard(frame)
     local close = CloseButtonOf(frame, frame == _G.QuestFrame and "QuestFrameCloseButton" or "GossipFrameCloseButton")
     button:ClearAllPoints()
     if close then
-        button:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -2, -STRIP_OFFSET)
+        button:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -11, -STRIP_OFFSET)
     else
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
     end
