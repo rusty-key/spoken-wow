@@ -191,14 +191,16 @@ B:StopReading()
 B:SetupPlayButton()
 local button = B.playButton
 local copy = B.copyButton
+local report = B.reportButton
 Expect("the book frame carries a button", button ~= nil, true)
 
--- In the header strip, below the close button, with Play at the right edge and Copy Text at the left.
-Expect("...in the readable frame's header strip", button.anchor.relativeTo,
+-- In the header strip, below the close button, with Report at the right edge and Copy Text at the left.
+Expect("...in the readable frame's header strip", report.anchor.relativeTo,
     _G.ItemTextFrame)
 Expect("...in its top-right corner",
-    button.anchor.point .. "/" .. button.anchor.relativePoint, "TOPRIGHT/TOPRIGHT")
-Expect("...inset below and inside the header", button.anchor.x < 0 and button.anchor.y < 0, true)
+    report.anchor.point .. "/" .. report.anchor.relativePoint, "TOPRIGHT/TOPRIGHT")
+Expect("...inset below and inside the header", report.anchor.x < 0 and report.anchor.y < 0, true)
+Expect("...with Play to its left", button.anchor.relativeTo == report and button.anchor.point, "RIGHT")
 
 -- ITEM_TEXT_CLOSED is not handled for the button on purpose: it is the frame's child and
 -- goes with it. What is asserted here is the branch the addon does own -- asked to refresh
@@ -232,6 +234,11 @@ Expect("Copy Text is left of the Compendium, for a page with readable text",
     copy ~= nil and copy:IsShown() and copy.anchor.relativeTo == open and copy.anchor.point, "RIGHT")
 Expect("Open in Azeroth's Compendium is left of Play, for a writing the Compendium shows",
     open ~= nil and open:IsShown() and open.anchor.relativeTo == button and open.anchor.point, "RIGHT")
+local savedShowReport, reported = B.ShowReport, nil
+B.ShowReport = function(_, page) reported = page end
+report.scripts.OnClick(report)
+Expect("Report opens the current readable's report", reported, B:PageOnScreen())
+B.ShowReport = savedShowReport
 local savedGUID, savedCItem = stub.world.npcGUID, _G.C_Item
 stub.world.npcGUID = "Item-0-0-9550"
 _G.C_Item = { GetItemIDByGUID = function(guid) return guid == stub.world.npcGUID and 9550 or nil end }

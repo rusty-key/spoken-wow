@@ -10,7 +10,7 @@
 -- controls live, so the readable controls belong there too rather than on top of the page.
 --
 -- The page arrows and page number remain below it, in their own row. The controls are kept
--- together left-to-right as Copy Text, Compendium, then Play/Stop when visible.
+-- together left-to-right as Copy Text, Compendium, Play/Stop, then Report when visible.
 --
 local _, SpokenReadables = ...
 local L = SpokenReadables.L
@@ -68,6 +68,19 @@ function SpokenReadables:RefreshOpenButton()
 	open:SetShown(shown)
 end
 
+local function ReportsHidden()
+	return _G.Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden() or false
+end
+
+function SpokenReadables:RefreshReportButton()
+	local report = self.reportButton
+	if not report then return end
+	local page = self:IsPartOn() and self:PageOnScreen() or nil
+	local shown = page ~= nil and not self:IsMail() and not ReportsHidden()
+	report.pageId = shown and page or nil
+	report:SetShown(shown)
+end
+
 local function CloseButtonOf(frame)
 	if frame and type(frame.CloseButton) == "table" then
 		return frame.CloseButton
@@ -87,6 +100,7 @@ function SpokenReadables:PositionReadableButtons()
 			table.insert(controls, button)
 		end
 	end
+	Add(self.reportButton)
 	Add(self.playButton)
 	Add(self.openButton)
 	Add(self.copyButton)
@@ -166,6 +180,7 @@ function SpokenReadables:RefreshPlayButton()
 	RefreshPlay(self)
 	self:RefreshOpenButton()
 	if self.RefreshCopyButton then self:RefreshCopyButton() end
+	self:RefreshReportButton()
 	self:PositionReadableButtons()
 end
 
@@ -242,12 +257,30 @@ function SpokenReadables:SetupPlayButton()
 		copy:SetFrameLevel(button:GetFrameLevel())
 		self.copyButton = copy
 	end
+	local report = Spoken:CreateRoundButton(frame, "report")
+	report:SetScript("OnClick", function()
+		if report.pageId then SpokenReadables:ShowReport(report.pageId) end
+	end)
+	report:SetScript("OnEnter", function(self)
+		if GameTooltip then
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L.REPORT_PROBLEM)
+			GameTooltip:Show()
+		end
+	end)
+	report:SetScript("OnLeave", function()
+		if GameTooltip then GameTooltip:Hide() end
+	end)
+	report:Hide()
+	self.reportButton = report
 
 	-- Toggling the hide setting in the Spoken settings fires no game event.
 	if _G.Spoken and Spoken.RegisterCallback then
-		Spoken:RegisterCallback("CONTRIBUTE_SETTINGS_CHANGED", function()
-			SpokenReadables:RefreshPlayButton()
-		end)
+		for _, event in ipairs({ "CONTRIBUTE_SETTINGS_CHANGED", "REPORT_SETTINGS_CHANGED" }) do
+			Spoken:RegisterCallback(event, function()
+				SpokenReadables:RefreshPlayButton()
+			end)
+		end
 	end
 
 	return button
