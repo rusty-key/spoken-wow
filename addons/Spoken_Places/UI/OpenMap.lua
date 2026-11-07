@@ -1,19 +1,15 @@
 -- SpokenPlaces -- the world map while OpenMap draws its stitched map in it.
 --
--- OpenMap shows every zone at once inside WorldMapFrame and points WorldMapFrame.mapID at
--- whatever map the view is centred on: a neighbouring zone under the cursor is not that map,
--- and at a zoom that already shows a whole zone the map is still the continent. Its public API
--- (OpenMapAPI, docs/api.md in its repo) tells which zone is under the cursor and where. Only
--- that API is read, and only at the major version written against, so another major, or no
--- OpenMap, leaves the map features exactly as they are without it.
+-- OpenMap shows every zone at once and points WorldMapFrame.mapID at the map the view is centred
+-- on, which stays the continent until well past the zoom that shows a whole zone. Only its public
+-- OpenMapAPI is read, at major 1, so without it the map features behave as they always have.
 
 local _, SpokenPlaces = ...
 
--- OpenMap's zoom (1: the whole world fits the view) from which areas answer the cursor. Further
--- out its click means "go to that zone" and the areas are too small to point at. One zoom for
--- every zone, not a share of the view each fills: a small zone next to a large one would
--- otherwise stay dark while the large one lights up. At 4.5 Dun Morogh fills about half the view;
--- OpenMap's map is still the continent there, and only turns to the zone at about 8.
+-- OpenMap's zoom (1: the whole world fits) from which areas answer the cursor; further out its
+-- click picks a zone and areas are too small to point at. One zoom for every zone: a share of the
+-- view each fills would leave a small zone dark beside a large lit one. At 4.5 Dun Morogh fills
+-- about half the view.
 local MIN_ZOOM = 4.5
 
 local function API()
@@ -108,9 +104,8 @@ function SpokenPlaces:MapCursor()
 	return nil
 end
 
---- The frame level for a frame meant to show over the map's explored areas at `level`: OpenMap
---- puts its art in the levels just over them, so there it goes over that art instead (under
---- OpenMap's own icons, which start above it).
+--- The frame level for a frame meant to show over the map's explored areas at `level`: OpenMap's
+--- art takes the levels just above them, and its icons start above the art.
 function SpokenPlaces:OverArtLevel(level)
 	local om = self:OpenMap()
 	if om and om.ArtTopLevel then
@@ -163,9 +158,9 @@ function SpokenPlaces:PlaceOverZone(frame, canvas, zone, layer)
 	return true
 end
 
---- Chooses a whole map's story for the panel on OpenMap's map, which shows no map of its own to
---- tell: a city clicked there, whose map opened under OpenMap's moving view left the map on the
---- city while the view went back to the zone (rusty-key/spoken-wow#921), or a zone.
+--- Chooses a zone's or a city's story for the panel on OpenMap's map, without opening its map:
+--- a city's map opened under OpenMap's moving view left the map on the city while the view went
+--- back to the zone.
 function SpokenPlaces:SelectMap(mapID)
 	self.selected = { mapID = mapID, map = true }
 	if self.RefreshPanel then
@@ -205,12 +200,10 @@ function SpokenPlaces:OnOpenMapView(fn)
 end
 
 -- How much closer than the fit of the zone at the view's centre the view may be before a click
--- no longer fits the zone clicked: a player zoomed in on part of a zone wants to stay there, not
--- be taken out to the whole of it. The zone looked at, not the one clicked: from a small zone,
--- fitted, a large neighbour fits much further out.
+-- no longer fits the zone clicked: a player zoomed in on part of a zone wants to stay there. The
+-- zone looked at, not the one clicked: from a small zone, a large neighbour fits much further out.
 local FIT_DEEPEST = 1.5
 
--- A map's rectangle on the stitched world.
 local function WorldRect(om, mapID)
 	local ok1, u0, v0 = pcall(om.WorldFromMap, mapID, 0, 0)
 	local ok2, u1, v1 = pcall(om.WorldFromMap, mapID, 1, 1)
@@ -239,8 +232,7 @@ end
 
 --- After a click chose `zone`'s story on OpenMap's map, glides the view to fit the zone where part
 --- of it is out of view: OpenMap's own click only zooms in, so a neighbour clicked at the view's
---- edge stayed cut off. Nothing where OpenMap's click is already zooming in on this one, or the
---- view is well inside the zone.
+--- edge stayed cut off.
 function SpokenPlaces:FitZone(zone)
 	local om = self:OpenMap()
 	if not (om and om.ShowWorld and zone) then
@@ -257,8 +249,8 @@ function SpokenPlaces:FitZone(zone)
 		return zoom * math.min(viewW / (right - left), viewH / (bottom - top))
 	end
 	local fit = Fit(u0, v0, u1, v1)
-	-- OpenMap zooms in on the first map under the click it would fit closer than the view is
-	-- (OpenMap's Map/WorldMap.lua, OnCanvasClick): the zone, or a city inside it.
+	-- OpenMap's click is already zooming in on the first map under it that fits closer than the
+	-- view (the zone, or a city inside it), and a second glide would fight it.
 	if fit > zoom * 1.05 then
 		return
 	end
