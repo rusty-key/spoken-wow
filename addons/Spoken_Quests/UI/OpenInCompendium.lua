@@ -77,7 +77,7 @@ function QuestsTab:PositionGiver()
     if close then
         -- The close button is the stable header anchor. Measuring the frame and close edges here
         -- makes the button jump when Blizzard finishes laying out the quest window.
-        giver:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -GAP, -STRIP_OFFSET + LIFT)
+        giver:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -INSET, -STRIP_OFFSET + LIFT)
     else
         giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET, -CORNER_INSET + LIFT)
     end
