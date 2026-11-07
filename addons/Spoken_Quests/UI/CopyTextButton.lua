@@ -346,11 +346,13 @@ function CopyTextButton:Setup()
     self.driver = driver
 
     if Spoken and Spoken.RegisterCallback then
-        Spoken:RegisterCallback("REPORT_SETTINGS_CHANGED", function()
-            if self.popup and Spoken.TintDialog then
-                Spoken:TintDialog(self.popup.frame)
-            end
-        end)
+        for _, event in ipairs({ "FRAME_SETTINGS_CHANGED", "REPORT_SETTINGS_CHANGED" }) do
+            Spoken:RegisterCallback(event, function()
+                if self.popup and Spoken.TintDialog then
+                    Spoken:TintDialog(self.popup.frame)
+                end
+            end)
+        end
     end
 
     self:Refresh()

@@ -37,7 +37,9 @@ local function RefreshDialogTint(frame)
 end
 
 if Spoken and Spoken.RegisterCallback then
-    Spoken:RegisterCallback("REPORT_SETTINGS_CHANGED", RefreshDialogTint)
+    for _, event in ipairs({ "FRAME_SETTINGS_CHANGED", "REPORT_SETTINGS_CHANGED" }) do
+        Spoken:RegisterCallback(event, RefreshDialogTint)
+    end
 end
 
 local HIDDEN_FIELDS = {
