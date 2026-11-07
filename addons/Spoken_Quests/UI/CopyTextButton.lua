@@ -390,6 +390,17 @@ function CopyTextButton:Setup()
     button:SetScript("OnLeave", HideTooltip)
     self.button = button
 
+    local function RefreshAfterControlChange()
+        CopyTextButton:Refresh()
+    end
+    for _, owner in ipairs({ ContributeButton, DialogPlayButton }) do
+        local control = owner and owner.button
+        if control and control.HookScript then
+            control:HookScript("OnShow", RefreshAfterControlChange)
+            control:HookScript("OnHide", RefreshAfterControlChange)
+        end
+    end
+
     local watcher = CreateFrame("Frame")
     for _, event in ipairs(REFRESH_EVENTS) do
         pcall(watcher.RegisterEvent, watcher, event)
