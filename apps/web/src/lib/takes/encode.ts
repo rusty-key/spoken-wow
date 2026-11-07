@@ -122,11 +122,13 @@ const FAILED = "take.encode_failed";
 async function failed(source: Source, sha256: string, take: EncodedTake | undefined, error: unknown): Promise<void> {
   console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
   if (!take) return;
-  // ffmpeg names its input, a fresh temporary file each time, which would make every failure new.
+  // ffmpeg names its input, a fresh temporary file each time, and its decoder's address, which
+  // would make every repeat of one failure look new.
   const message = (error instanceof Error ? error.message : String(error))
     .split(os.tmpdir())
     .map((part, i) => (i === 0 ? part : part.replace(/^[^\s:]*/, "<clip>")))
     .join("")
+    .replace(/ @ 0x[0-9a-f]+/g, "")
     .slice(0, 500);
   try {
     const [seen] = await queryIn(
