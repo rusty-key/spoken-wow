@@ -7,6 +7,7 @@
 
 local _, SpokenReadables = ...
 local L = SpokenReadables.L
+local SharedL = _G.SpokenEnv and _G.SpokenEnv.L or {}
 
 local ROUND, ROUND_GAP = 24, 4
 -- DialogueUI's speaker, as it draws it, given back when the row goes.
@@ -63,8 +64,11 @@ end
 --- What a click on Play does now, and Read Automatically, which a right-click switches.
 local function PlayTip(tooltip)
 	local key = OpenBook()
-	local reading = key and SpokenReadables:IsNarrating(key)
-	tooltip:SetText(reading and L.STOP_TIP or L.PLAY_TIP)
+	local state = key and SpokenReadables:IsNarrating(key) and "stop"
+		or key and SpokenReadables.replayBook == key and "replay" or "play"
+	tooltip:SetText(state == "stop" and (SharedL.OPT_STOP or L.STOP)
+		or state == "replay" and (SharedL.OPT_REPLAY or SharedL.REPLAY or L.PLAY)
+		or (SharedL.OPT_PLAY or L.PLAY))
 	local on = SpokenReadablesSettings and SpokenReadablesSettings.autoplay
 	tooltip:AddDoubleLine(L.OPT_AUTOPLAY, on and L.DUI_ON or L.DUI_OFF, 1, 1, 1,
 		on and 0.1 or 1, on and 1 or 0.125, on and 0.1 or 0.125)
@@ -86,9 +90,11 @@ function Book:Row()
 			end
 		else
 			local key, first = OpenBook()
-			if key and SpokenReadables:IsNarrating(key) then
+			if key and play.state == "stop" and SpokenReadables:IsNarrating(key) then
 				SpokenReadables:StopReading(key)
+				SpokenReadables.replayBook = key
 			elseif first then
+				SpokenReadables.replayBook = nil
 				SpokenReadables:SyncTo(first, nil, true)
 			end
 		end
@@ -310,7 +316,11 @@ function Book:Draw()
 	local key, first = OpenBook()
 	local voiced = first ~= nil and SpokenReadables:HasAudio(first)
 	SetEnabled(row.play, voiced)
-	local state = key and SpokenReadables:IsNarrating(key) and "stop" or "play"
+	if SpokenReadables.replayBook and SpokenReadables.replayBook ~= key then
+		SpokenReadables.replayBook = nil
+	end
+	local state = key and SpokenReadables:IsNarrating(key) and "stop"
+		or key and SpokenReadables.replayBook == key and "replay" or "play"
 	if row.play.state ~= state then
 		row.play:SetState(state)
 	end

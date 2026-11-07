@@ -215,7 +215,7 @@ Expect("...offering Stop while that book is being read", button.state, "stop")
 
 button.scripts.OnClick(button)
 Expect("pressing it stops the book", #QueuedPages(), 0)
-Expect("...and offers to start it again", button.state, "play")
+Expect("...and offers to repeat it", button.state, "replay")
 
 button.scripts.OnClick(button)
 Expect("pressing it again reads the book", Reading(), 3)

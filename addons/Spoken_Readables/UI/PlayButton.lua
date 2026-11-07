@@ -14,10 +14,20 @@
 --
 local _, SpokenReadables = ...
 local L = SpokenReadables.L
+local SharedL = _G.SpokenEnv and _G.SpokenEnv.L or {}
 
 local GAP = 4
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
+
+local function PlaybackLabel(state)
+	if state == "stop" then
+		return SharedL.OPT_STOP or L.STOP
+	elseif state == "replay" then
+		return SharedL.OPT_REPLAY or SharedL.REPLAY or L.PLAY
+	end
+	return SharedL.OPT_PLAY or L.PLAY
+end
 
 --- Open in Azeroth's Compendium: the Compendium's tome in the player's round button, as Quests
 --- and Places have it, opening the tab on writing `bookId`. `tooltip`, where given, returns the
@@ -126,9 +136,15 @@ local function RefreshPlay(self)
 		self.playButtonMode = "play"
 
 		local book = self:PlaceOf(pageId)
-		button:SetPlaying(self:IsNarrating(book))
+		if self.replayBook and self.replayBook ~= book then
+			self.replayBook = nil
+		end
+		local state = self:IsNarrating(book) and "stop"
+			or self.replayBook == book and "replay" or "play"
+		button:SetState(state)
 		return
 	end
+	self.replayBook = nil
 
 	-- No clip to play. The other thing this corner can mean: a page this corpus never saw,
 	-- offered back as something to send instead of something to hear. Guarded the same way
@@ -137,7 +153,7 @@ local function RefreshPlay(self)
 	-- asked to load.
 	if self.HasContributionGap and self:HasContributionGap() then
 		button:Show()
-		button:SetPlaying(false)
+		button:SetState("play")
 		self.playButtonMode = "contribute"
 		return
 	end
@@ -180,11 +196,13 @@ function SpokenReadables:SetupPlayButton()
 		end
 
 		local book = SpokenReadables:PlaceOf(SpokenReadables:PageOnScreen())
-		if book and SpokenReadables:IsNarrating(book) then
+		if book and button.state == "stop" and SpokenReadables:IsNarrating(book) then
 			SpokenReadables:StopReading(book)
+			SpokenReadables.replayBook = book
 		else
 			-- The same call `/spr read` makes, so a page with no clip explains itself here
 			-- exactly as it does in the chat frame.
+			SpokenReadables.replayBook = nil
 			SpokenReadables:ReadOrExplain()
 		end
 		SpokenReadables:RefreshPlayButton()
@@ -198,10 +216,8 @@ function SpokenReadables:SetupPlayButton()
 		if SpokenReadables.playButtonMode == "contribute" then
 			GameTooltip:SetText(L.NO_LINE)
 			GameTooltip:AddLine(L.NO_LINE_TIP, 1, 0.8, 0.2, true)
-		elseif self.state == "stop" then
-			GameTooltip:SetText(L.STOP_TIP)
 		else
-			GameTooltip:SetText(L.PLAY_TIP)
+			GameTooltip:SetText(PlaybackLabel(self.state))
 		end
 		GameTooltip:Show()
 	end)

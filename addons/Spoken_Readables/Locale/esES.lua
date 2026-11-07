@@ -18,8 +18,6 @@ L.OPT_FORGET = "Olvidar lecturas oídas"
 L.OPT_FORGET_DONE_FMT = "Lecturas olvidadas: %1$d. Se volverán a leer."
 L.PLAY = "Reproducir"
 L.STOP = "Detener"
-L.PLAY_TIP = "Leer esto en voz alta"
-L.STOP_TIP = "Dejar de leer esto"
 L.COPY_TEXT = "Copiar texto"
 -- DialogueUI's book view: Play's tooltip (UI/DialogueUIBook.lua).
 L.DUI_ON = "Activado"

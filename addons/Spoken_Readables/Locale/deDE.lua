@@ -17,8 +17,6 @@ L.OPT_FORGET = "Gehörten Lesestoff vergessen"
 L.OPT_FORGET_DONE_FMT = "vergessener Lesestoff: %1$d; er wird wieder vorgelesen"
 L.PLAY = "Abspielen"
 L.STOP = "Stopp"
-L.PLAY_TIP = "Dies laut vorlesen"
-L.STOP_TIP = "Aufhören, dies vorzulesen"
 L.COPY_TEXT = "Text kopieren"
 -- DialogueUI's book view: Play's tooltip (UI/DialogueUIBook.lua).
 L.DUI_ON = "An"
