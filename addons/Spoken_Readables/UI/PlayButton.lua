@@ -94,13 +94,15 @@ end
 --- only for a writing whose page the Compendium would show.
 function SpokenReadables:RefreshOpenButton()
 	local open, play = self.openButton, self.playButton
+	local copy = self.copyButton
+	local anchor = copy and copy:IsShown() and copy or play and play:IsShown() and play
 	if not open then return end
 	local book = self:IsPartOn() and self:PlaceOf(self:PageOnScreen()) or nil
 	local shown = self.CompendiumHas ~= nil and self:CompendiumHas(book)
 	open.bookId = shown and book or nil
 	open:ClearAllPoints()
-	if play and play:IsShown() then
-		open:SetPoint("RIGHT", play, "LEFT", -GAP, 0)
+	if anchor then
+		open:SetPoint("RIGHT", anchor, "LEFT", -GAP, 0)
 	elseif _G.ItemTextScrollFrame then
 		open:SetPoint("BOTTOMRIGHT", ItemTextScrollFrame, "BOTTOMRIGHT", -6, 6)
 	else
@@ -158,8 +160,8 @@ end
 --- Play, then Open in Azeroth's Compendium beside it.
 function SpokenReadables:RefreshPlayButton()
 	RefreshPlay(self)
-	self:RefreshOpenButton()
 	if self.RefreshCopyButton then self:RefreshCopyButton() end
+	self:RefreshOpenButton()
 end
 
 --- Build the button, once, as soon as the client has a book frame to hang it on.

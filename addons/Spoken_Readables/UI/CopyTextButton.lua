@@ -166,8 +166,8 @@ function SpokenReadables:RefreshCopyButton()
     button:SetShown(shown)
     if not shown then return end
 
-    local open, play = self.openButton, self.playButton
-    local anchor = open and open:IsShown() and open or play and play:IsShown() and play
+    local play = self.playButton
+    local anchor = play and play:IsShown() and play
     button:ClearAllPoints()
     if anchor then
         button:SetPoint("RIGHT", anchor, "LEFT", -GAP, 0)

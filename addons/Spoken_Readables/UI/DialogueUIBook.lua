@@ -265,8 +265,8 @@ function Book:Place()
 	if row.report:IsShown() then table.insert(list, row.report) end
 	if row.skip:IsShown() then table.insert(list, row.skip) end
 	if row.play:IsShown() then table.insert(list, row.play) end
-	if row.open and row.open:IsShown() then table.insert(list, row.open) end
 	if row.copy and row.copy:IsShown() then table.insert(list, row.copy) end
+	if row.open and row.open:IsShown() then table.insert(list, row.open) end
 	local close = view.CloseButton
 	row:Place(list, type(close) == "table" and close.GetObjectType and close or nil)
 end
