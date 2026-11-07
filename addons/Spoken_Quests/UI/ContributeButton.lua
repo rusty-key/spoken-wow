@@ -28,7 +28,8 @@ setfenv(1, VoiceOver)
 
 local BUTTON_HEIGHT = 20
 local BUTTON_WIDTH = 90
-local GAP = 2
+-- Keep the same four-pixel separation used by the readable header controls.
+local GAP = 4
 -- From the close button's bottom edge down into the middle of the strip under the title bar.
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
