@@ -90,6 +90,11 @@ function QuestsTab:RefreshGiverButton()
     giver.questID = shown and id or nil
     if id then self:PositionGiver() end
     giver:SetShown(shown)
+    -- The copy control may have refreshed before the Compendium button settled on a new quest
+    -- panel. Refresh it after our own visibility and position are final.
+    if VO.CopyTextButton and VO.CopyTextButton.Refresh then
+        VO.CopyTextButton:Refresh()
+    end
 end
 
 local function SetupGiver()
