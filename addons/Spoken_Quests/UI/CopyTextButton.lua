@@ -2,14 +2,12 @@ setfenv(1, VoiceOver)
 
 -- The Copy text button on quest and gossip dialogue. DialogueUI has the best version of the
 -- window already, so use it when it exposes its clipboard method; the Blizzard-frame button gets
--- the same selectable edit box through a StaticPopup.
+-- the same selectable edit box through a large StaticPopup.
 
-local BUTTON_HEIGHT = 20
-local LABEL_PADDING = 24
+local BUTTON_SIZE = 24
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
-local DUI_BUTTON_SIZE = 24
-local DUI_COPY_ICON = "Interface\\AddOns\\DialogueUI\\Art\\Theme_Shared\\CopyTextButton.png"
+local COPY_ICON = "Interface\\Icons\\INV_Misc_ScrollUnrolled01"
 local COPY_DIALOG = "SPOKEN_COPY_TEXT"
 -- These are optional locale entries: older packs may not have them yet, so keep the English
 -- fallback here until the next locale pass adds translations without making the feature fail.
@@ -125,6 +123,21 @@ function CopyTextButton:PositionStandard(frame)
     end
 end
 
+local function CreateIconButton(parent)
+    local button
+    if Spoken and Spoken.CreateRoundButton then
+        button = Spoken:CreateRoundButton(parent, "icon", nil, COPY_ICON)
+    else
+        button = CreateFrame("Button", nil, parent)
+        button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+        button.texture = button:CreateTexture(nil, "OVERLAY")
+        button.texture:SetAllPoints()
+        button.texture:SetTexture(COPY_ICON)
+    end
+    button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+    return button
+end
+
 function CopyTextButton:PositionDialogue(frame)
     local button = self.dialogueButton
     local native = frame.CopyTextButton
@@ -137,7 +150,7 @@ function CopyTextButton:PositionDialogue(frame)
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
     end
     button:SetScale(1)
-    button:SetSize(DUI_BUTTON_SIZE, DUI_BUTTON_SIZE)
+    button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
 end
 
 function CopyTextButton:Refresh()
@@ -201,14 +214,17 @@ function CopyTextButton:Setup()
             if not dialog then
                 return
             end
-            dialog:SetWidth(500)
-            dialog:SetHeight(330)
+            dialog:SetWidth(700)
+            dialog:SetHeight(500)
             local editBox = dialog.editBox or _G[dialog:GetName() .. "EditBox"]
             if not editBox then
                 return
             end
-            editBox:SetWidth(440)
-            editBox:SetHeight(245)
+            editBox:ClearAllPoints()
+            editBox:SetPoint("TOPLEFT", dialog, "TOPLEFT", 32, -55)
+            editBox:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -32, 70)
+            editBox:SetWidth(636)
+            editBox:SetHeight(375)
             if editBox.SetMultiLine then
                 editBox:SetMultiLine(true)
             end
@@ -219,6 +235,11 @@ function CopyTextButton:Setup()
             editBox:SetText(editBox.spokenCopyText)
             editBox:SetFocus()
             editBox:HighlightText()
+            local close = dialog.button1 or dialog.Button1
+            if close then
+                close:ClearAllPoints()
+                close:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -32, 24)
+            end
         end,
         EditBoxOnTextChanged = function(editBox)
             editBox = editBox or this
@@ -235,10 +256,7 @@ function CopyTextButton:Setup()
         end,
     }
 
-    local button = CreateFrame("Button", nil, UIParent, "UIPanelButtonTemplate")
-    button:SetHeight(BUTTON_HEIGHT)
-    button:SetText(COPY_TEXT)
-    button:SetWidth(math.max(75, button:GetTextWidth() + LABEL_PADDING))
+    local button = CreateIconButton(UIParent)
     if button.SetFrameStrata then
         button:SetFrameStrata("DIALOG")
     end
@@ -256,17 +274,8 @@ function CopyTextButton:Setup()
     button:SetScript("OnLeave", HideTooltip)
     self.button = button
 
-    local dialogueButton
     local dialogueParent = _G.DUIQuestFrame or UIParent
-    if Spoken and Spoken.CreateRoundButton then
-        dialogueButton = Spoken:CreateRoundButton(dialogueParent, "icon", nil, DUI_COPY_ICON)
-    else
-        dialogueButton = CreateFrame("Button", nil, dialogueParent)
-        dialogueButton:SetSize(DUI_BUTTON_SIZE, DUI_BUTTON_SIZE)
-        dialogueButton.texture = dialogueButton:CreateTexture(nil, "OVERLAY")
-        dialogueButton.texture:SetAllPoints()
-        dialogueButton.texture:SetTexture(DUI_COPY_ICON)
-    end
+    local dialogueButton = CreateIconButton(dialogueParent)
     dialogueButton:SetFrameStrata("FULLSCREEN")
     dialogueButton:SetScript("OnClick", function()
         CopyTextButton:ShowText()
