@@ -18,7 +18,9 @@ const tools = has("ffmpeg", "-version") && has("oggenc", "--version");
 
 const { db, closeDb } = await import("@/lib/db");
 const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
-const { encodeArchivedForPack, encodeForPack, encodeOgg, oggDurationSec } = await import("./encode");
+const { encodeArchivedForPack, encodeForPack, encodeMissingForPack, encodeOgg, oggDurationSec } = await import("./encode");
+const { commitTake } = await import("./commit");
+const { asSystem } = await import("@/lib/teams/testing");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "encode-test-"));
 
@@ -88,6 +90,28 @@ describe.skipIf(!tools)("encodeForPack", () => {
     } finally {
       restore();
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+    }
+  });
+
+  it("encodes a live take whose encoding failed at commit, before a release", async () => {
+    const bucket = memoryBlobs();
+    const restore = useArchiveForTests(bucket, "r2");
+    const master = fs.readFileSync(tone());
+    const sha = sha256Of(master);
+    const file = `gossip/${Math.random().toString(16).slice(2)}encode-missing.mp3`;
+    const encoded = async () =>
+      (await db().query(`select 1 from "take_encoding" where "source" = 'quests' and "sha256" = $1`, [sha])).rowCount;
+    try {
+      await commitTake("quests", file, master, { lineId: "g:encode-missing" });
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+      expect(await encoded()).toBe(0);
+
+      await encodeMissingForPack("quests", "enUS");
+      expect(await encoded()).toBe(1);
+    } finally {
+      restore();
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+      await asSystem.query(`delete from "take" where "file" = $1`, [file]);
     }
   });
 
