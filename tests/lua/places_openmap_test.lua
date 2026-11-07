@@ -122,5 +122,58 @@ under = { 0.72, 0.50 }
 OpenMapAPI.MapAt = function() error("broken") end
 Expect("a failing call is nothing, not an error", Z:CursorArea(), nil)
 
+-- After a click, the zone it chose fitted in the view when part of it is out of view.
+local WETLANDS = 1437
+RECTS[WETLANDS] = { 0.70, 0.33, 0.82, 0.47 }
+OpenMapAPI = NewOpenMap()
+local glided
+OpenMapAPI.ShowWorld = function(u, v, zoom) glided = { u, v, zoom } end
+-- The view sits on Dun Morogh's map, showing 1 / viewScale of it, centred on it.
+local viewScale = 1.1
+WorldMapFrame.mapID = DUN_MOROGH
+WorldMapFrame.ScrollContainer.GetWidth = function() return 1002 end
+WorldMapFrame.ScrollContainer.GetHeight = function() return 668 end
+WorldMapFrame.ScrollContainer.GetEffectiveScale = function() return 1 end
+local canvas = {
+    GetWidth = function() return 1002 end, GetHeight = function() return 668 end,
+    GetEffectiveScale = function() return viewScale end,
+}
+WorldMapFrame.GetCanvas = function() return canvas end
+view = { u = 0.74, v = 0.515, zoom = 9 }
+local function Fit(zone)
+    glided = nil
+    Z:FitZone(zone)
+    return glided
+end
+
+under = { 0.75, 0.40 }
+local g = Fit(WETLANDS)
+Expect("a neighbour cut off at the view's edge glides into view",
+    g and Near(g[1], 0.76) and Near(g[2], 0.40), true)
+Expect("...zoomed to just fit it", g and Near(g[3], 9 * math.min((0.1 / 1.1) / 0.12, (0.11 / 1.1) / 0.14)), true)
+under = { 0.81, 0.45 }
+Expect("a neighbour OpenMap's own click zooms in on is left to it", Fit(LOCH_MODAN), nil)
+under = { 0.75, 0.49 }
+Expect("...as is a city OpenMap's click zooms in on", Fit(DUN_MOROGH), nil)
+viewScale = 0.98
+under = { 0.72, 0.50 }
+Expect("a zone the view already shows whole stays as it is", Fit(DUN_MOROGH), nil)
+-- Loch Modan fitted, at the zoom of a zone half Dun Morogh's size: Dun Morogh, clicked at the
+-- edge, fits much further out, and still glides into view.
+view = { u = 0.81, v = 0.465, zoom = 18 }
+viewScale = 1
+WorldMapFrame.mapID = LOCH_MODAN
+under = { 0.775, 0.48 }
+g = Fit(DUN_MOROGH)
+Expect("from a small zone, fitted, a large neighbour clicked at the edge glides into view",
+    g and Near(g[1], 0.74) and Near(g[2], 0.515), true)
+WorldMapFrame.mapID = DUN_MOROGH
+view = { u = 0.74, v = 0.515, zoom = 9 }
+viewScale = 2.2
+under = { 0.75, 0.40 }
+Expect("zoomed well inside a zone, the view stays where the player put it", Fit(WETLANDS), nil)
+OpenMapAPI = nil
+Expect("without OpenMap, nothing moves", Fit(WETLANDS), nil)
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places OpenMap tests passed")

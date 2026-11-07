@@ -196,3 +196,88 @@ function SpokenPlaces:OnOpenMapView(fn)
 	pcall(om.RegisterCallback, owner, "OpenMap_ViewChanged", function() fn() end)
 	pcall(om.RegisterCallback, owner, "OpenMap_StitchedChanged", function() fn() end)
 end
+
+-- How much closer than the fit of the zone at the view's centre the view may be before a click
+-- no longer fits the zone clicked: a player zoomed in on part of a zone wants to stay there, not
+-- be taken out to the whole of it. The zone looked at, not the one clicked: from a small zone,
+-- fitted, a large neighbour fits much further out.
+local FIT_DEEPEST = 1.5
+
+-- A map's rectangle on the stitched world.
+local function WorldRect(om, mapID)
+	local ok1, u0, v0 = pcall(om.WorldFromMap, mapID, 0, 0)
+	local ok2, u1, v1 = pcall(om.WorldFromMap, mapID, 1, 1)
+	if ok1 and ok2 and u0 and u1 then
+		return u0, v0, u1, v1
+	end
+end
+
+-- The view's size on the stitched world: the scroll frame's share of the canvas, which is the
+-- map the view sits on.
+local function ViewSize(om)
+	local container = WorldMapFrame.ScrollContainer
+	local canvas = WorldMapFrame.GetCanvas and WorldMapFrame:GetCanvas()
+	local host = WorldMapFrame.mapID
+	if not (container and canvas and host) then
+		return nil
+	end
+	local u0, v0, u1, v1 = WorldRect(om, host)
+	local cw, ch = canvas:GetWidth(), canvas:GetHeight()
+	if not u0 or not cw or cw <= 0 or ch <= 0 then
+		return nil
+	end
+	local scale = container:GetEffectiveScale() / canvas:GetEffectiveScale()
+	return container:GetWidth() * scale / cw * (u1 - u0), container:GetHeight() * scale / ch * (v1 - v0)
+end
+
+--- After a click chose `zone`'s story on OpenMap's map, glides the view to fit the zone where part
+--- of it is out of view: OpenMap's own click only zooms in, so a neighbour clicked at the view's
+--- edge stayed cut off. Nothing where OpenMap's click is already zooming in on this one, or the
+--- view is well inside the zone.
+function SpokenPlaces:FitZone(zone)
+	local om = self:OpenMap()
+	if not (om and om.ShowWorld and zone) then
+		return
+	end
+	local okView, cu, cv, zoom = pcall(om.GetView)
+	local viewW, viewH = ViewSize(om)
+	local u0, v0, u1, v1 = WorldRect(om, zone)
+	if not (okView and zoom and viewW and u0) or u1 <= u0 or v1 <= v0 then
+		return
+	end
+	-- Zoom scales the view's size down in step, so this is the zoom at which the zone just fits.
+	local function Fit(left, top, right, bottom)
+		return zoom * math.min(viewW / (right - left), viewH / (bottom - top))
+	end
+	local fit = Fit(u0, v0, u1, v1)
+	-- OpenMap zooms in on the first map under the click it would fit closer than the view is
+	-- (OpenMap's Map/WorldMap.lua, OnCanvasClick): the zone, or a city inside it.
+	if fit > zoom * 1.05 then
+		return
+	end
+	local looked = ZoneAt(om, cu, cv)
+	local lu0, lv0, lu1, lv1
+	if looked then
+		lu0, lv0, lu1, lv1 = WorldRect(om, looked)
+	end
+	local lookedFit = lu0 and lu1 > lu0 and lv1 > lv0 and Fit(lu0, lv0, lu1, lv1) or fit
+	if zoom > lookedFit * FIT_DEEPEST then
+		return
+	end
+	local okCursor, u, v = pcall(om.CursorPosition)
+	local okAt, under = false, nil
+	if okCursor and u then
+		okAt, under = pcall(om.MapAt, u, v)
+	end
+	if okAt and type(under) == "number" and under ~= zone then
+		local left, top, right, bottom = WorldRect(om, under)
+		if left and right > left and bottom > top and Fit(left, top, right, bottom) > zoom * 1.05 then
+			return
+		end
+	end
+	local halfW, halfH = viewW / 2, viewH / 2
+	if u0 >= cu - halfW and u1 <= cu + halfW and v0 >= cv - halfH and v1 <= cv + halfH then
+		return
+	end
+	pcall(om.ShowWorld, (u0 + u1) / 2, (v0 + v1) / 2, fit)
+end
