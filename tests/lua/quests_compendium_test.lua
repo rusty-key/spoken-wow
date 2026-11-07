@@ -1276,10 +1276,15 @@ Tab:Open(IRONDEEP)
 
 -- The quest giver's window: the Compendium's tome beside its controls, for a quest the tab lists.
 local giver = Tab.giverButton
+local copyHeader = stub.Widget("Button")
+copyHeader:Show()
+VO.CopyTextButton = { button = copyHeader }
 stub.world.questID = KOBOLDS
 stub.ShowPanel("QuestFrameDetailPanel")
 stub.FireEvent("QUEST_DETAIL")
 Expect("the quest giver's window has Open in Azeroth's Compendium", giver ~= nil and giver:IsShown(), true)
+Expect("the Compendium button is to the right of Copy Text", giver.anchor and giver.anchor.point .. " "
+    .. tostring(giver.anchor.relativeTo == copyHeader) .. " " .. giver.anchor.relativePoint, "LEFT true RIGHT")
 C:Hide()
 giver.scripts.OnClick(giver)
 Expect("...which opens the Compendium on that quest", C:IsOpen("quests") and page.title.text, "Kobold Camp Cleanup")

@@ -58,10 +58,18 @@ local function GiverQuestOnScreen()
         or Visible(_G.QuestFrameRewardPanel)
 end
 
--- Left of Listen or Contribute where one is shown, else in their corner.
+-- Right of Copy Text where it is shown; otherwise left of Listen or Contribute, else in the
+-- corner. The intended header order is Copy Text, Compendium, then any text control.
 local function PlaceGiver()
     local frame = _G.QuestFrame
     giver:ClearAllPoints()
+
+    local copy = type(VO.CopyTextButton) == "table" and VO.CopyTextButton.button
+    if type(copy) == "table" and copy:IsShown() then
+        giver:SetPoint("LEFT", copy, "RIGHT", GAP, 0)
+        return
+    end
+
     for _, owner in ipairs({ VO.DialogPlayButton, VO.ContributeButton }) do
         local beside = type(owner) == "table" and owner.button
         if type(beside) == "table" and beside:IsShown() then
