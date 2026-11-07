@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Copy text from NPC dialogue.** A Copy text button now opens the current quest or gossip text
+  in a selectable window, including in DialogueUI.
+
 ## 3.8.3 — 2026-11-05
 
 - **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice

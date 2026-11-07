@@ -244,6 +244,25 @@ local function GossipOnScreen()
     return GetGossipText and NotSecret(GetGossipText())
 end
 
+--- The quest or gossip text currently shown in the NPC dialog.
+---
+--- This is deliberately the same client text that Contribute captures. It keeps Copy text useful
+--- on clients without DialogueUI too, and avoids asking a replacement dialog for an API it may not
+--- have.
+---@return string?
+function Contribute:CurrentText()
+    local _, questText = EventOnScreen()
+    if questText then
+        return questText
+    end
+    local page = Utils:DialogueUIPage()
+    if page == "QUEST_GREETING"
+        or (QuestFrameGreetingPanel and QuestFrameGreetingPanel:IsShown()) then
+        return GetGreetingText and NotSecret(GetGreetingText())
+    end
+    return GossipOnScreen()
+end
+
 --- The text with this character's name, class and race put back as the game's own tokens.
 ---
 --- The client hands us quest text with $N, $C and $R already expanded to whoever is reading

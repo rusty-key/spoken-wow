@@ -588,6 +588,19 @@ function Addon:OnInitialize()
     if not dialogueUIReady then
         Debug:Record("dialogueui-error", tostring(dialogueUIError))
     end
+
+    -- Copy text is independent of the voice controls, but is also parented to DialogueUI when
+    -- that window is open because DialogueUI hides UIParent. Guard it like the other optional UI
+    -- controls so a replacement dialog cannot affect narration.
+    local copyTextButtonReady, copyTextButtonError = pcall(function()
+        if CopyTextButton and CopyTextButton.Setup then
+            CopyTextButton:Setup()
+        end
+    end)
+    if not copyTextButtonReady then
+        Debug:Record("copy-text-button-error", tostring(copyTextButtonError))
+    end
+
     local immersionReady, immersionError = pcall(function()
         if ImmersionBridge and ImmersionBridge.Setup then
             ImmersionBridge:Setup()
