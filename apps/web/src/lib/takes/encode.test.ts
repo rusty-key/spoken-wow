@@ -115,6 +115,64 @@ describe.skipIf(!tools)("encodeForPack", () => {
     }
   });
 
+  it("replaces an encoding that has no duration, which a release stops on as on a missing one", async () => {
+    const bucket = memoryBlobs();
+    const restore = useArchiveForTests(bucket, "r2");
+    const master = fs.readFileSync(tone());
+    const sha = sha256Of(master);
+    const file = `gossip/${Math.random().toString(16).slice(2)}encode-missing.mp3`;
+    try {
+      await commitTake("quests", file, master, { lineId: "g:encode-missing" });
+      await db().query(`update "take_encoding" set "durationSec" = null where "sha256" = $1`, [sha]);
+
+      await encodeMissingForPack("quests", "enUS");
+      const { rows } = await db().query(`select "durationSec"::float8 as "d" from "take_encoding" where "sha256" = $1`, [sha]);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].d).toBeGreaterThan(0.9);
+    } finally {
+      restore();
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+      await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+    }
+  });
+
+  it("encodes nothing once its time is spent, so the request that starts a release stays short", async () => {
+    const bucket = memoryBlobs();
+    const restore = useArchiveForTests(bucket, "r2");
+    const master = fs.readFileSync(tone());
+    const sha = sha256Of(master);
+    const file = `gossip/${Math.random().toString(16).slice(2)}encode-missing.mp3`;
+    try {
+      await commitTake("quests", file, master, { lineId: "g:encode-missing" });
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+
+      await encodeMissingForPack("quests", "enUS", 0);
+      expect((await db().query(`select 1 from "take_encoding" where "sha256" = $1`, [sha])).rowCount).toBe(0);
+    } finally {
+      restore();
+      await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+    }
+  });
+
+  it("puts a failed encode in the language's activity log, where an admin can read why", async () => {
+    const restore = useArchiveForTests(memoryBlobs(), "r2");
+    const file = `gossip/${Math.random().toString(16).slice(2)}encode-missing.mp3`;
+    try {
+      await commitTake("quests", file, Buffer.from("not audio"), { lineId: "g:encode-missing" });
+      const { rows } = await asSystem.query(
+        `select "lang", "source", "lineId", "detail" from "activity" where "kind" = 'take.encode_failed' and "subject" = $1`,
+        [file],
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ lang: "enUS", source: "quests", lineId: "g:encode-missing", detail: { version: 1 } });
+      expect(rows[0].detail.error).toMatch(/ffmpeg exited/);
+    } finally {
+      restore();
+      await asSystem.query(`delete from "activity" where "subject" = $1`, [file]);
+      await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+    }
+  });
+
   it("logs and gives up on a clip it cannot decode", async () => {
     const restore = useArchiveForTests(memoryBlobs(), "r2");
     try {

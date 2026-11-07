@@ -13,8 +13,10 @@ import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 
+import { recordActivity } from "@/lib/activity/store";
 import { archive, blobBytes, blobKey, sha256Of } from "@/lib/blobs/store";
 import { ALL_TEAMS, query, queryIn } from "@/lib/db";
+import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 
 import { withLocalCopy } from "./bytes";
@@ -88,20 +90,47 @@ export function oggDurationSec(bytes: Buffer): number {
 
 export type Encoding = { encodedSha256: string; bytes: number; durationSec: number };
 
+/** A row with no duration counts as none: a release stops on it as on a missing one. */
 async function recorded(source: Source, sha256: string, profile: string): Promise<Encoding | undefined> {
   const [done] = await query<Encoding>(
     `select "encodedSha256", "bytes", "durationSec"::float8 as "durationSec" from "take_encoding"
-      where "source" = $1 and "sha256" = $2 and "profile" = $3`,
+      where "source" = $1 and "sha256" = $2 and "profile" = $3 and "durationSec" is not null`,
     [source, sha256, profile],
   );
   return done;
+}
+
+/** The live take an encoding is for, so a failure can be put where its team will see it. */
+export type EncodedTake = { lang: Lang; file: string; version: number; lineId?: string | null };
+
+/**
+ * Logged on the droplet and recorded in the language's activity log: the log is where an admin
+ * whose release stopped can read why, and few of them can read the droplet's.
+ */
+async function failed(source: Source, sha256: string, take: EncodedTake | undefined, error: unknown): Promise<void> {
+  console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
+  if (!take) return;
+  await recordActivity({
+    kind: "take.encode_failed",
+    lang: take.lang,
+    actorId: null,
+    source,
+    subject: take.file,
+    lineId: take.lineId ?? null,
+    detail: { version: take.version, error: (error instanceof Error ? error.message : String(error)).slice(0, 500) },
+  });
 }
 
 /**
  * Never throws: what went wrong is logged, and a release lists the live takes without one. The
  * duration recorded is the Ogg's, because a release reads no clips to measure.
  */
-export async function encodeForPack(source: Source, sha256: string, master: string): Promise<Encoding | null> {
+export async function encodeForPack(
+  source: Source,
+  sha256: string,
+  master: string,
+  take?: EncodedTake,
+): Promise<Encoding | null> {
   const profile = profileFor(source);
   if (!profile) return null;
   try {
@@ -112,14 +141,19 @@ export async function encodeForPack(source: Source, sha256: string, master: stri
     const encodedSha256 = sha256Of(encoded);
     const durationSec = oggDurationSec(encoded);
     await archive().put(blobKey("encodings", encodedSha256), encoded, "audio/ogg");
+    // A row with no duration never shipped from the Manager, whose release stops on it, so
+    // replacing its Ogg re-downloads nothing.
     await query(
       `insert into "take_encoding" ("source", "sha256", "profile", "encodedSha256", "bytes", "durationSec")
-       values ($1, $2, $3, $4, $5, $6) on conflict do nothing`,
+       values ($1, $2, $3, $4, $5, $6)
+       on conflict ("source", "sha256", "profile") do update
+          set "encodedSha256" = excluded."encodedSha256", "bytes" = excluded."bytes", "durationSec" = excluded."durationSec"
+        where "take_encoding"."durationSec" is null`,
       [source, sha256, profile, encodedSha256, encoded.byteLength, durationSec],
     );
     return { encodedSha256, bytes: encoded.byteLength, durationSec };
   } catch (error) {
-    console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
+    await failed(source, sha256, take, error);
     return null;
   }
 }
@@ -127,35 +161,49 @@ export async function encodeForPack(source: Source, sha256: string, master: stri
 /**
  * Every live take of a language whose encoding failed at commit, encoded again before a release.
  * Encoding at commit is best effort and nothing else retries it, so one failed encode stopped
- * that language's release until someone noticed. At most `limit` per call, so a large backlog
- * cannot hold the request that starts a release; the release names whatever is left.
+ * that language's release until someone noticed.
+ *
+ * Newest first, since those are the takes the release is about to send, and only for
+ * `budgetMs`: this runs inside the request that starts the release, and nginx gives that
+ * request 60 seconds before the page reports a failure for a release that is in fact starting.
+ * Whatever is left is named by the release and encoded on the next press.
  */
-export async function encodeMissingForPack(source: Source, lang: string, limit = 50): Promise<void> {
+export async function encodeMissingForPack(source: Source, lang: Lang, budgetMs = 30_000): Promise<void> {
   const profile = profileFor(source);
   if (!profile) return;
-  const missing = await queryIn<{ sha256: string }>(
+  const until = Date.now() + budgetMs;
+  const missing = await queryIn<{ sha256: string; file: string; version: number; lineId: string | null }>(
     ALL_TEAMS,
-    `select distinct t."sha256" from "take" t
-      where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."sha256" is not null
-        and t."teamId" = team_of_lang($2)
-        and not exists (select 1 from "take_encoding" e
-                         where e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = $3)
-      limit $4`,
-    [source, lang, profile, limit],
+    `select "sha256", "file", "version", "lineId" from (
+       select distinct on (t."sha256") t."sha256", t."file", t."version", t."lineId", t."createdAt"
+         from "take" t
+         left join "take_encoding" e
+           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = $3
+        where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."sha256" is not null
+          and t."teamId" = team_of_lang($2)
+          and (e."id" is null or e."durationSec" is null)
+        order by t."sha256", t."createdAt" desc
+     ) live
+     order by "createdAt" desc
+     limit 500`,
+    [source, lang, profile],
   );
-  for (const { sha256 } of missing) await encodeArchivedForPack(source, sha256);
+  for (const { sha256, ...take } of missing) {
+    if (Date.now() >= until) break;
+    await encodeArchivedForPack(source, sha256, { lang, ...take });
+  }
 }
 
 /** For a take put back live, which may be older than encoding at commit. Never throws. */
-export async function encodeArchivedForPack(source: Source, sha256: string): Promise<void> {
+export async function encodeArchivedForPack(source: Source, sha256: string, take?: EncodedTake): Promise<void> {
   const profile = profileFor(source);
   if (!profile) return;
   try {
     if (await recorded(source, sha256, profile)) return;
     const master = await blobBytes(blobKey("takes", sha256));
     if (!master) throw new Error("not in the archive");
-    await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file));
+    await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file, take));
   } catch (error) {
-    console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
+    await failed(source, sha256, take, error);
   }
 }

@@ -40,5 +40,5 @@ export async function restoreTake(
     throw new Error(`the audio of version ${version} of ${file} was not kept, so it cannot be restored`);
   }
   await setLiveTake(source, file, version, lang, by);
-  if (bytes.kind === "blob") await encodeArchivedForPack(source, bytes.key.slice(bytes.key.indexOf("/") + 1));
+  if (bytes.kind === "blob") await encodeArchivedForPack(source, bytes.key.slice(bytes.key.indexOf("/") + 1), { lang, file, version });
 }
