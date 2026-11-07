@@ -14,7 +14,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 
 import { archive, blobBytes, blobKey, sha256Of } from "@/lib/blobs/store";
-import { query } from "@/lib/db";
+import { ALL_TEAMS, query, queryIn } from "@/lib/db";
 import type { Source } from "@/lib/sections";
 
 import { withLocalCopy } from "./bytes";
@@ -122,6 +122,28 @@ export async function encodeForPack(source: Source, sha256: string, master: stri
     console.warn(`encoding ${source} take ${sha256.slice(0, 12)} for its pack failed:`, error);
     return null;
   }
+}
+
+/**
+ * Every live take of a language whose encoding failed at commit, encoded again before a release.
+ * Encoding at commit is best effort and nothing else retries it, so one failed encode stopped
+ * that language's release until someone noticed. At most `limit` per call, so a large backlog
+ * cannot hold the request that starts a release; the release names whatever is left.
+ */
+export async function encodeMissingForPack(source: Source, lang: string, limit = 50): Promise<void> {
+  const profile = profileFor(source);
+  if (!profile) return;
+  const missing = await queryIn<{ sha256: string }>(
+    ALL_TEAMS,
+    `select distinct t."sha256" from "take" t
+      where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."sha256" is not null
+        and t."teamId" = team_of_lang($2)
+        and not exists (select 1 from "take_encoding" e
+                         where e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = $3)
+      limit $4`,
+    [source, lang, profile, limit],
+  );
+  for (const { sha256 } of missing) await encodeArchivedForPack(source, sha256);
 }
 
 /** For a take put back live, which may be older than encoding at commit. Never throws. */
