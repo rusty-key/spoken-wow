@@ -232,6 +232,11 @@ end
 function CopyTextButton:PositionStandard(frame)
     local button = self.button
     local compendium = QuestsTab and QuestsTab.giverButton
+    if compendium and compendium.HookScript and self.compendiumHook ~= compendium then
+        self.compendiumHook = compendium
+        compendium:HookScript("OnShow", function() CopyTextButton:Refresh() end)
+        compendium:HookScript("OnHide", function() CopyTextButton:Refresh() end)
+    end
     if frame == _G.QuestFrame and compendium and compendium:IsShown() then
         if QuestsTab.PositionGiver then
             QuestsTab:PositionGiver()
@@ -389,17 +394,6 @@ function CopyTextButton:Setup()
     end)
     button:SetScript("OnLeave", HideTooltip)
     self.button = button
-
-    local function RefreshAfterControlChange()
-        CopyTextButton:Refresh()
-    end
-    for _, owner in ipairs({ ContributeButton, DialogPlayButton }) do
-        local control = owner and owner.button
-        if control and control.HookScript then
-            control:HookScript("OnShow", RefreshAfterControlChange)
-            control:HookScript("OnHide", RefreshAfterControlChange)
-        end
-    end
 
     local watcher = CreateFrame("Frame")
     for _, event in ipairs(REFRESH_EVENTS) do
