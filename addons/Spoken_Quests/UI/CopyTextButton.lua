@@ -2,13 +2,14 @@ setfenv(1, VoiceOver)
 
 -- The Copy text button on quest and gossip dialogue. DialogueUI has the best version of the
 -- window already, so use it when it exposes its clipboard method; the Blizzard-frame button gets
--- the same selectable edit box through a large StaticPopup.
+-- the same selectable edit box through Spoken's Gathered Lines dialog style.
 
 local BUTTON_SIZE = 24
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
+local COPY_WIDTH, COPY_HEIGHT = 640, 480
 local COPY_ICON = "Interface\\Icons\\INV_Misc_ScrollUnrolled01"
-local COPY_DIALOG = "SPOKEN_COPY_TEXT"
+local COPY_FRAME = "SpokenCopyTextFrame"
 local COPY_TEXT = L.OPT_COPY_TEXT
 
 local REFRESH_EVENTS = {
@@ -83,11 +84,17 @@ local function TooltipFor(frame)
 end
 
 function CopyTextButton:ShowPopup(text)
-    if not (StaticPopup_Show and StaticPopupDialogs) then
-        return
+    if not self.popup then
+        self.popup = self:BuildPopup()
     end
-    self.text = text
-    StaticPopup_Show(COPY_DIALOG)
+    self.popup.payload = text
+    if Spoken and Spoken.TintDialog then
+        Spoken:TintDialog(self.popup.frame)
+    end
+    self.popup.frame:Show()
+    self.popup.editBox:SetText(text)
+    self.popup.editBox:SetFocus()
+    self.popup.editBox:HighlightText()
 end
 
 function CopyTextButton:ShowText()
@@ -199,65 +206,73 @@ local function HideTooltip()
     end
 end
 
+function CopyTextButton:BuildPopup()
+    local frame = CreateFrame("Frame", COPY_FRAME, UIParent, "BackdropTemplate")
+    frame:SetSize(COPY_WIDTH, COPY_HEIGHT)
+    frame:SetPoint("CENTER")
+    frame:SetFrameStrata("DIALOG")
+    frame:SetToplevel(true)
+    frame:EnableMouse(true)
+    frame:SetMovable(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetClampedToScreen(true)
+    if UISpecialFrames then
+        table.insert(UISpecialFrames, COPY_FRAME)
+    end
+    if frame.SetBackdrop then
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 32,
+            insets = { left = 11, right = 12, top = 12, bottom = 11 },
+        })
+    end
+    if Spoken and Spoken.TintDialog then
+        Spoken:TintDialog(frame)
+    end
+
+    local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    title:SetPoint("TOP", frame, "TOP", 0, -16)
+    title:SetText(COPY_TEXT)
+
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
+    close:SetScript("OnClick", function() frame:Hide() end)
+
+    local scroll = CreateFrame("ScrollFrame", COPY_FRAME .. "Scroll", frame)
+    scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -44)
+    scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 20)
+
+    local editBox = CreateFrame("EditBox", COPY_FRAME .. "Edit", scroll)
+    editBox:SetMultiLine(true)
+    editBox:SetMaxBytes(0)
+    editBox:SetAutoFocus(false)
+    editBox:SetFontObject(ChatFontNormal)
+    editBox:SetWidth(COPY_WIDTH - 48)
+    editBox:SetHeight(COPY_HEIGHT - 64)
+    scroll:SetScrollChild(editBox)
+    editBox:SetScript("OnTextChanged", function(self)
+        if self:GetParent():GetParent().payload and self:GetText() ~= self:GetParent():GetParent().payload then
+            self:SetText(self:GetParent():GetParent().payload)
+            self:HighlightText()
+        end
+    end)
+    editBox:SetScript("OnEscapePressed", function(self)
+        self:GetParent():GetParent():Hide()
+    end)
+
+    frame:Hide()
+    return { frame = frame, editBox = editBox, title = title }
+end
+
 function CopyTextButton:Setup()
     if self.button or not CreateFrame then
         return self.button
     end
-
-    StaticPopupDialogs[COPY_DIALOG] = {
-        text = COPY_TEXT,
-        button1 = CLOSE,
-        timeout = 0,
-        whileDead = 1,
-        hideOnEscape = true,
-        hasEditBox = true,
-        editBoxWidth = 420,
-        OnShow = function(dialog)
-            dialog = dialog or this
-            if not dialog then
-                return
-            end
-            dialog:SetWidth(700)
-            dialog:SetHeight(500)
-            local editBox = dialog.editBox or _G[dialog:GetName() .. "EditBox"]
-            if not editBox then
-                return
-            end
-            editBox:ClearAllPoints()
-            editBox:SetPoint("TOPLEFT", dialog, "TOPLEFT", 32, -55)
-            editBox:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -32, 70)
-            editBox:SetWidth(636)
-            editBox:SetHeight(375)
-            if editBox.SetMultiLine then
-                editBox:SetMultiLine(true)
-            end
-            if editBox.SetAutoFocus then
-                editBox:SetAutoFocus(false)
-            end
-            editBox.spokenCopyText = CopyTextButton.text or ""
-            editBox:SetText(editBox.spokenCopyText)
-            editBox:SetFocus()
-            editBox:HighlightText()
-            local close = dialog.button1 or dialog.Button1
-            if close then
-                close:ClearAllPoints()
-                close:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -32, 24)
-            end
-        end,
-        EditBoxOnTextChanged = function(editBox)
-            editBox = editBox or this
-            if editBox and editBox.spokenCopyText and editBox:GetText() ~= editBox.spokenCopyText then
-                editBox:SetText(editBox.spokenCopyText)
-                editBox:HighlightText()
-            end
-        end,
-        EditBoxOnEscapePressed = function(editBox)
-            editBox = editBox or this
-            if editBox and editBox:GetParent() then
-                editBox:GetParent():Hide()
-            end
-        end,
-    }
 
     local button = CreateIconButton(UIParent)
     if button.SetFrameStrata then
@@ -329,6 +344,14 @@ function CopyTextButton:Setup()
         end
     end)
     self.driver = driver
+
+    if Spoken and Spoken.RegisterCallback then
+        Spoken:RegisterCallback("REPORT_SETTINGS_CHANGED", function()
+            if self.popup and Spoken.TintDialog then
+                Spoken:TintDialog(self.popup.frame)
+            end
+        end)
+    end
 
     self:Refresh()
     return button
