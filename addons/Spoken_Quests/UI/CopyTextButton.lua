@@ -4,15 +4,16 @@ setfenv(1, VoiceOver)
 -- window already, so use it when it exposes its clipboard method; the Blizzard-frame button gets
 -- the same selectable edit box through a large StaticPopup.
 
+local BUTTON_HEIGHT = 20
+local BUTTON_WIDTH = 75
+local LABEL_PADDING = 24
 local BUTTON_SIZE = 24
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
 local COPY_ICON = "Interface\\Icons\\INV_Misc_ScrollUnrolled01"
 local COPY_DIALOG = "SPOKEN_COPY_TEXT"
--- These are optional locale entries: older packs may not have them yet, so keep the English
--- fallback here until the next locale pass adds translations without making the feature fail.
-local COPY_TEXT = L.OPT_COPY_TEXT or "Copy text"
-local COPY_TEXT_TIP = L.OPT_COPY_TEXT_TIP or "Copy the text shown in this dialogue."
+local COPY_TEXT = L.OPT_COPY_TEXT
+local COPY_TEXT_TIP = L.OPT_COPY_TEXT_TIP
 
 local REFRESH_EVENTS = {
     "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING",
@@ -109,6 +110,12 @@ end
 
 function CopyTextButton:PositionStandard(frame)
     local button = self.button
+    local compendium = QuestsTab and QuestsTab.giverButton
+    if frame == _G.QuestFrame and compendium and compendium:IsShown() then
+        button:ClearAllPoints()
+        button:SetPoint("RIGHT", compendium, "LEFT", -4, 0)
+        return
+    end
     local close = CloseButtonOf(frame, frame == _G.QuestFrame and "QuestFrameCloseButton" or "GossipFrameCloseButton")
     button:ClearAllPoints()
     local frameTop = frame.GetTop and frame:GetTop()
@@ -135,6 +142,14 @@ local function CreateIconButton(parent)
         button.texture:SetTexture(COPY_ICON)
     end
     button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+    return button
+end
+
+local function CreateTextButton()
+    local button = CreateFrame("Button", nil, UIParent, "UIPanelButtonTemplate")
+    button:SetHeight(BUTTON_HEIGHT)
+    button:SetText(COPY_TEXT)
+    button:SetWidth(math.max(BUTTON_WIDTH, button:GetTextWidth() + LABEL_PADDING))
     return button
 end
 
@@ -256,7 +271,7 @@ function CopyTextButton:Setup()
         end,
     }
 
-    local button = CreateIconButton(UIParent)
+    local button = CreateTextButton()
     if button.SetFrameStrata then
         button:SetFrameStrata("DIALOG")
     end

@@ -12,6 +12,7 @@ setfenv(1, VoiceOver)
 --   UI/DialogPlayButton.lua  Play/Stop button on quest and gossip windows
 --   Compatibility.lua      Play/Stop button on the quest-log details panel
 --   UI/ContributeButton.lua  Contribute button on quest and gossip windows
+--   UI/CopyTextButton.lua    Copy text button and its popup
 --   Contribute.lua         Contribute button tooltip
 --   ReportButton.lua       the copy-link dialog for reporting a line
 --   Player.lua             minimap menu entries and player settings link
@@ -134,6 +135,8 @@ L.OPT_CONTRIBUTE_TIP_LINE = "Spoken Quests doesn't have this line"
 L.OPT_CONTRIBUTE_TIP_QUEST = "Spoken Quests doesn't have this quest"
 L.OPT_CONTRIBUTE_TIP_SHARE = "Contribute your data by sharing data from your client"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nCopy this address and open it in your web browser."
+L.OPT_COPY_TEXT = "Copy text"
+L.OPT_COPY_TEXT_TIP = "Copy the text shown in this dialogue."
 
 --------------------------------------------------------------------------------
 -- Minimap menu and player settings link
