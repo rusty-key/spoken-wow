@@ -144,7 +144,7 @@ Z.PlaceAbove = audio.PlaceAbove
 local dressScrollBar = SpokenLayout.dressScrollBar
 dofile(here .. "/../../addons/Spoken/UI/Layout.lua")
 SpokenLayout.dressScrollBar = dressScrollBar
-for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/MapPanel" }) do
+for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/OpenMap", "UI/MapPanel" }) do
     assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z)
 end
 
@@ -718,6 +718,25 @@ mapPage.sub.scripts.OnClick(mapPage.sub)
 Expect("...and the line goes back to the zone's story", mapPage.title.text, "Durotar")
 Expect("a zone's line is Lore of Azeroth's: its continent, and how many areas", mapPage.sub.text.text,
     (Z:PlaceLine(1411)))
+
+-- OpenMap's map follows its view, so its map is Kalimdor while the view still shows Durotar.
+local displayedMap = Z.GetDisplayedMapID
+Z.GetDisplayedMapID = function() return 1414 end
+OpenMapAPI = { major = 1, version = 4, IsStitched = function() return true end }
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+Expect("on OpenMap's map an area clicked stays chosen as the map follows the view",
+    mapPage.title.text .. "|" .. mapPage.sub.text.text, "Valley of Trials|" .. Z.L.IN_ZONE_FMT:format("Durotar"))
+Z:SelectCity(1454, Z.Zones[1454])
+Expect("...and a city clicked there tells its own story, though its map is not the one shown",
+    mapPage.body.text.text, "The orcs' city.")
+OpenMapAPI = nil
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+Expect("without OpenMap, another map drops the area chosen", Z.selected == nil and mapPage.body.text.text,
+    "The western continent.")
+Z.GetDisplayedMapID = displayedMap
+Z:RefreshPanel()
 
 ---------------------------------------------------------------- Lore of Azeroth from the panel
 local opened

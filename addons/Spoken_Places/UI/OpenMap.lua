@@ -89,3 +89,86 @@ function SpokenPlaces:CursorArea()
 	end
 	return nil
 end
+
+--- Values that change whenever what is under the cursor may have: on OpenMap's map the world
+--- point under it, which moves as the view pans under a resting cursor while Blizzard's
+--- normalized cursor does not, and the zoom, which decides whether areas answer at all.
+function SpokenPlaces:MapCursor()
+	local om = self:OpenMap()
+	if om then
+		local ok, u, v = pcall(om.CursorPosition)
+		local okView, _, _, zoom = pcall(om.GetView)
+		return ok and u or nil, ok and v or nil, okView and zoom or nil
+	end
+	local container = WorldMapFrame and WorldMapFrame.ScrollContainer
+	if container then
+		local x, y = container:GetNormalizedCursorPosition()
+		return x, y, nil
+	end
+	return nil
+end
+
+--- The frame level for a frame meant to show over the map's explored areas at `level`: OpenMap
+--- puts its art in the levels just over them, so there it goes over that art instead (under
+--- OpenMap's own icons, which start above it).
+function SpokenPlaces:OverArtLevel(level)
+	local om = self:OpenMap()
+	if om and om.ArtTopLevel then
+		local ok, top = pcall(om.ArtTopLevel)
+		if ok and type(top) == "number" and top >= level then
+			return top + 1
+		end
+	end
+	return level
+end
+
+-- The rectangle of `zone`'s map on the map the canvas shows, in that map's 0..1.
+local function ZoneRect(om, zone, host)
+	local ok1, u0, v0 = pcall(om.WorldFromMap, zone, 0, 0)
+	local ok2, u1, v1 = pcall(om.WorldFromMap, zone, 1, 1)
+	if not (ok1 and ok2 and u0 and u1) then
+		return nil
+	end
+	local ok3, x0, y0 = pcall(om.MapFromWorld, host, u0, v0)
+	local ok4, x1, y1 = pcall(om.MapFromWorld, host, u1, v1)
+	if not (ok3 and ok4 and x0 and x1) then
+		return nil
+	end
+	return x0, y0, x1, y1
+end
+
+--- Lays `frame` over `zone`'s map on the canvas, sized in that zone's art pixels (`layer`), so
+--- what is drawn on it in those pixels lands on the zone wherever OpenMap shows it. False where
+--- the zone cannot be placed. Without OpenMap the zone is the map shown, which fills the canvas.
+function SpokenPlaces:PlaceOverZone(frame, canvas, zone, layer)
+	local om = self:OpenMap()
+	local host = WorldMapFrame and WorldMapFrame.mapID
+	if not om or not host or host == zone then
+		frame:ClearAllPoints()
+		frame:SetScale(1)
+		frame:SetAllPoints(canvas)
+		return true
+	end
+	local x0, y0, x1 = ZoneRect(om, zone, host)
+	local width = x0 and (x1 - x0) * canvas:GetWidth()
+	if not width or width <= 0 then
+		return false
+	end
+	local scale = width / layer.layerWidth
+	frame:ClearAllPoints()
+	frame:SetScale(scale)
+	frame:SetSize(layer.layerWidth, layer.layerHeight)
+	-- Offsets are in the frame's own, scaled units.
+	frame:SetPoint("TOPLEFT", canvas, "TOPLEFT", x0 * canvas:GetWidth() / scale, -y0 * canvas:GetHeight() / scale)
+	return true
+end
+
+--- On OpenMap's map a click on a city tells its story without opening its map: OpenMap's own
+--- click is already moving the view, and opening the city's map under it left the map on the
+--- city while the view went back to the zone (rusty-key/spoken-wow#921).
+function SpokenPlaces:SelectCity(city, entry)
+	self.selected = { mapID = city, city = true, entry = entry }
+	if self.RefreshPanel then
+		self:RefreshPanel()
+	end
+end

@@ -458,16 +458,26 @@ local function Refresh(mapID)
 		return
 	end
 
-	local zoneName = SpokenPlaces:GetMapName(mapID) or ("uiMapID " .. tostring(mapID))
-
 	-- A selection only applies to the map it was made on; navigating elsewhere drops it. Checking
 	-- here rather than on the map-changed callback keeps this independent of the order modules
-	-- register their callbacks.
+	-- register their callbacks. OpenMap changes the map as its view moves, and a click there
+	-- selects in whatever zone is under the cursor, so there the selection stays and is told
+	-- on the map it was made on.
 	local selected = SpokenPlaces.selected
 	if selected and selected.mapID ~= mapID then
-		SpokenPlaces.selected = nil
+		if SpokenPlaces:OpenMap() then
+			mapID = selected.mapID
+		else
+			SpokenPlaces.selected = nil
+			selected = nil
+		end
+	end
+	-- A city chosen on OpenMap's map is told as its own map is.
+	if selected and selected.city then
 		selected = nil
 	end
+
+	local zoneName = SpokenPlaces:GetMapName(mapID) or ("uiMapID " .. tostring(mapID))
 
 	if selected then
 		-- Prefer the name the client reported, which is what the player sees on the map ("The

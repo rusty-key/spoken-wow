@@ -1,5 +1,6 @@
 -- Clicks on the world map: an area of the zone shown opens its story, and a click on a continent
--- that opens a zone does not also open the area under the cursor on the zone's map.
+-- that opens a zone does not also open the area under the cursor on the zone's map. On OpenMap's
+-- stitched map, the area of whatever zone is under the cursor, and a drag is never a click.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local H = require("queue_helpers")
@@ -7,7 +8,8 @@ local Expect, Failures = H.Expecter(print)
 local PLACES = here .. "/../../addons/Spoken_Places/"
 
 local KALIMDOR, MULGORE = 1414, 1412
-local hooks, cursor = {}, { 0.5, 0.5 }
+local hooks, cursor, screen = {}, { 0.5, 0.5 }, { 400, 300 }
+GetCursorPosition = function() return screen[1], screen[2] end
 WorldMapFrame = {
     mapID = KALIMDOR,
     ScrollContainer = {
@@ -32,15 +34,17 @@ local Z = {
     SelectSubzone = function(_, mapID, name) opened = mapID .. ":" .. name end,
     MarkFound = function(_, mapID, key) marked = mapID .. "/" .. key end,
 }
+assert(loadfile(PLACES .. "UI/OpenMap.lua"))("Spoken_Places", Z)
 assert(loadfile(PLACES .. "UI/SubzoneClick.lua"))("Spoken_Places", Z)
 Z:SetupSubzoneClicks()
 
 local container = WorldMapFrame.ScrollContainer
-local function Click(mapAfter)
+local function Click(mapAfter, dragged)
     opened = nil
     hooks.OnMouseDown(container, "LeftButton")
     -- Blizzard's own handler runs first and may move the map to the zone clicked.
     WorldMapFrame.mapID = mapAfter or WorldMapFrame.mapID
+    if dragged then screen[1] = screen[1] + dragged end
     hooks.OnMouseUp(container, "LeftButton")
     return opened
 end
@@ -84,6 +88,46 @@ Expect("...and opens the city's own map, whose story the panel tells", shownMap,
 settings.mapPanelCollapsed = true
 Click()
 Expect("...and opens the panel when it is closed, as an area does", settings.mapPanelCollapsed, false)
+
+-- A drag that kept the same map point under the cursor, as OpenMap pans: the screen says it moved.
+Z.AreaAt = function(_, mapID)
+    if mapID == MULGORE then return "Bloodhoof Village", { name = "Bloodhoof Village" }, "bloodhoof village" end
+end
+Expect("a drag is not a click, though the map point under the cursor stayed", Click(nil, 200), nil)
+Expect("...while a click that barely moves still is", Click(nil, 2), MULGORE .. ":Bloodhoof Village")
+
+-- OpenMap's stitched map: its map is the continent while the view already shows a whole zone.
+local DUROTAR = 1411
+local zoneUnder, zoom = MULGORE, 6
+OpenMapAPI = {
+    major = 1, version = 4,
+    IsStitched = function() return true end,
+    GetView = function() return 0.3, 0.6, zoom end,
+    CursorPosition = function() return 0.3, 0.6 end,
+    MapAt = function() return zoneUnder end,
+    MapFromWorld = function() return 0.4, 0.5 end,
+}
+Z.AreaAt = function(_, mapID)
+    if mapID == MULGORE then return "Bloodhoof Village", { name = "Bloodhoof Village" }, "bloodhoof village" end
+    if mapID == DUROTAR then return "Razor Hill", { name = "Razor Hill" }, "razor hill" end
+end
+WorldMapFrame.mapID = KALIMDOR
+Expect("stitched, a click opens the area of the zone under the cursor on the continent's map",
+    Click(), MULGORE .. ":Bloodhoof Village")
+WorldMapFrame.mapID = MULGORE
+zoneUnder = DUROTAR
+Expect("...and of a neighbour of the zone the view is on", Click(), DUROTAR .. ":Razor Hill")
+zoom = 2
+Expect("...but not zoomed out to where OpenMap's click picks a zone", Click(), nil)
+zoom = 6
+zoneUnder = MULGORE
+shownMap, Z.selected = nil, nil
+Z.AreaAt = function(_, mapID)
+    if mapID == MULGORE then return "Thunder Bluff", { name = "Thunder Bluff" }, nil, THUNDER_BLUFF end
+end
+Click()
+Expect("a city tells its story without opening its map under OpenMap's moving view", shownMap, nil)
+Expect("...as its own map's story", Z.selected and Z.selected.city and Z.selected.mapID, THUNDER_BLUFF)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places map click tests passed")

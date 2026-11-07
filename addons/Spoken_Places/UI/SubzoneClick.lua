@@ -11,18 +11,24 @@ local _, SpokenPlaces = ...
 -- gesture counts as a map drag rather than a click. IsPanning() is unreliable by
 -- the time OnMouseUp fires, so compare positions instead.
 local DRAG_TOLERANCE = 0.01
+-- The same on screen, in UI units. A map that pans by moving its canvas with the cursor
+-- (OpenMap's) keeps the cursor on the same map point all through a drag, so the normalised
+-- position alone reads every drag as a click.
+local DRAG_PIXELS = 8
 
-local downX, downY, downMap
+local downX, downY, downMap, downScreenX, downScreenY
 
-local function HandleClick(x, y)
-	local mapID = WorldMapFrame.mapID
+local function ScreenCursor()
+	local x, y = GetCursorPosition()
+	local scale = UIParent and UIParent:GetEffectiveScale() or 1
+	return x / scale, y / scale
+end
+
+local function HandleClick()
+	-- On a continent or world map a click is navigation to a child zone; leave that to
+	-- Blizzard's own handlers rather than hijacking it. CursorArea gives no zone there.
+	local mapID, x, y = SpokenPlaces:CursorArea()
 	if not mapID then
-		return
-	end
-
-	-- On a continent or world map a click is navigation to a child zone; leave
-	-- that to Blizzard's own handlers rather than hijacking it.
-	if not SpokenPlaces:IsZoneMap(mapID) then
 		return
 	end
 
@@ -53,7 +59,9 @@ local function HandleClick(x, y)
 	if key and SpokenPlaces.MarkFound then SpokenPlaces:MarkFound(mapID, key) end
 	-- A city inside the zone (Stormwind City on Elwynn Forest's map) is a map of its own: the click
 	-- opens it, as one on a zone opens the zone from its continent, and the panel tells its story.
-	if city then
+	if city and SpokenPlaces:OpenMap() then
+		SpokenPlaces:SelectCity(city, entry)
+	elseif city then
 		if WorldMapFrame.SetMapID then WorldMapFrame:SetMapID(city) end
 	else
 		SpokenPlaces:SelectSubzone(mapID, areaName, entry)
@@ -80,6 +88,7 @@ function SpokenPlaces:SetupSubzoneClicks()
 	container:HookScript("OnMouseDown", function(self, button)
 		if button == "LeftButton" then
 			downX, downY = self:GetNormalizedCursorPosition()
+			downScreenX, downScreenY = ScreenCursor()
 			downMap = WorldMapFrame.mapID
 		end
 	end)
@@ -93,7 +102,7 @@ function SpokenPlaces:SetupSubzoneClicks()
 			return
 		end
 
-		local startX, startY, startMap = downX, downY, downMap
+		local startX, startY, startMap, startScreenX, startScreenY = downX, downY, downMap, downScreenX, downScreenY
 		downX, downY, downMap = nil, nil, nil
 		if not startX then
 			return
@@ -112,7 +121,11 @@ function SpokenPlaces:SetupSubzoneClicks()
 		if math.abs(x - startX) + math.abs(y - startY) > DRAG_TOLERANCE then
 			return -- the player was panning the map
 		end
+		local screenX, screenY = ScreenCursor()
+		if math.abs(screenX - startScreenX) + math.abs(screenY - startScreenY) > DRAG_PIXELS then
+			return
+		end
 
-		HandleClick(x, y)
+		HandleClick()
 	end)
 end
