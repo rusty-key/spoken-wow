@@ -273,7 +273,7 @@ function CopyTextButton:PositionStandard(frame)
             QuestsTab:PositionGiver()
         end
         button:ClearAllPoints()
-        button:SetPoint("RIGHT", compendium, "LEFT", -4, 0)
+        button:SetPoint("LEFT", compendium, "RIGHT", 4, 0)
         return
     end
     local close = CloseButtonOf(frame, frame == _G.QuestFrame and "QuestFrameCloseButton" or "GossipFrameCloseButton")
