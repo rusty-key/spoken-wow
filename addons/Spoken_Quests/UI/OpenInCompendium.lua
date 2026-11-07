@@ -80,7 +80,9 @@ function QuestsTab:PositionGiver()
     local frame = _G.QuestFrame
     giver:ClearAllPoints()
 
-    for _, owner in ipairs({ VO.DialogPlayButton, VO.ContributeButton }) do
+    -- Contribute positions itself relative to Compendium, so it must not be an anchor here.
+    -- DialogPlay has its own frame anchor and does not depend on this button.
+    for _, owner in ipairs({ VO.DialogPlayButton }) do
         local beside = type(owner) == "table" and owner.button
         if type(beside) == "table" and beside:IsShown() then
             giver:SetPoint("RIGHT", beside, "LEFT", -GAP, 0)
