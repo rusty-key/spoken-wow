@@ -190,14 +190,16 @@ SpokenReadablesSettings.readOnce = false
 B:StopReading()
 B:SetupPlayButton()
 local button = B.playButton
+local copy = B.copyButton
 Expect("the book frame carries a button", button ~= nil, true)
 
--- In the header strip, below the close button and aligned with the frame's right edge.
-Expect("...in the readable frame's header strip", button.anchor.relativeTo,
+-- In the header strip, below the close button, with Copy Text at the right edge and Play beside it.
+Expect("...in the readable frame's header strip", copy.anchor.relativeTo,
     _G.ItemTextFrame)
 Expect("...in its top-right corner",
-    button.anchor.point .. "/" .. button.anchor.relativePoint, "TOPRIGHT/TOPRIGHT")
-Expect("...inset below and inside the header", button.anchor.x < 0 and button.anchor.y < 0, true)
+    copy.anchor.point .. "/" .. copy.anchor.relativePoint, "TOPRIGHT/TOPRIGHT")
+Expect("...inset below and inside the header", copy.anchor.x < 0 and copy.anchor.y < 0, true)
+Expect("...with Play to its left", button.anchor.relativeTo == copy and button.anchor.point, "RIGHT")
 
 -- ITEM_TEXT_CLOSED is not handled for the button on purpose: it is the frame's child and
 -- goes with it. What is asserted here is the branch the addon does own -- asked to refresh
@@ -222,16 +224,15 @@ Expect("pressing it again reads the book", Reading(), 3)
 Expect("...whatever autoplay and read-once say", button.state, "stop")
 
 -- Open in Azeroth's Compendium beside it, for a writing whose page the Compendium shows.
-local copy = B.copyButton
 local open, opened = B.openButton, nil
 local has, show = B.CompendiumHas, B.ShowReadables
 B.CompendiumHas = function(_, book) return book ~= nil end
 B.ShowReadables = function(_, book) opened = book end
 B:RefreshPlayButton()
-Expect("Copy Text beside Play, for a page with readable text",
-    copy ~= nil and copy:IsShown() and copy.anchor.relativeTo == button and copy.anchor.point, "RIGHT")
-Expect("Open in Azeroth's Compendium beside Copy Text, for a writing the Compendium shows",
-    open ~= nil and open:IsShown() and open.anchor.relativeTo == copy and open.anchor.point, "RIGHT")
+Expect("Play beside Copy Text, for a page with readable text",
+    copy ~= nil and copy:IsShown() and button.anchor.relativeTo == copy and button.anchor.point, "RIGHT")
+Expect("Open in Azeroth's Compendium beside Play, for a writing the Compendium shows",
+    open ~= nil and open:IsShown() and open.anchor.relativeTo == button and open.anchor.point, "RIGHT")
 local savedGUID, savedCItem = stub.world.npcGUID, _G.C_Item
 stub.world.npcGUID = "Item-0-0-9550"
 _G.C_Item = { GetItemIDByGUID = function(guid) return guid == stub.world.npcGUID and 9550 or nil end }

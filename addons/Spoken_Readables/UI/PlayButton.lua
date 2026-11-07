@@ -10,7 +10,7 @@
 -- controls live, so the readable controls belong there too rather than on top of the page.
 --
 -- The page arrows and page number remain below it, in their own row. The controls are kept
--- together right-to-left as Play/Contribute, Copy Text, then Compendium when visible.
+-- together left-to-right as Compendium, Play/Stop, then Copy Text when visible.
 --
 local _, SpokenReadables = ...
 local L = SpokenReadables.L
@@ -87,8 +87,8 @@ function SpokenReadables:PositionReadableButtons()
 			table.insert(controls, button)
 		end
 	end
-	Add(self.playButton)
 	Add(self.copyButton)
+	Add(self.playButton)
 	Add(self.openButton)
 	if #controls == 0 then return end
 
