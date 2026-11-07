@@ -35,7 +35,7 @@ local HIDDEN_FIELDS = {
 
 local FIELD_LABELS = {
     quest = "Quest", event = "Event", npc = "NPC", title = "Title",
-    id = "ID", book = "Book", number = "Page",
+    id = "ID", item = "Item ID", book = "Book", number = "Page",
 }
 
 local SOURCE_LABELS = { quests = "Quests", readables = "Readables", places = "Places" }
