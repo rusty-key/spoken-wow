@@ -25,6 +25,7 @@ local Z = {
     IsPartOn = function() return true end,
     Get = function(_, key) return settings[key] end,
     SetMapPanelCollapsed = function(_, collapsed) settings.mapPanelCollapsed = collapsed end,
+    IsMapPanelOpen = function() return settings.showMapPanel and not settings.mapPanelCollapsed end,
     Print = function() end,
     IsZoneMap = function(_, mapID) return mapID ~= KALIMDOR end,
     AreaAt = function(_, mapID)
@@ -119,6 +120,12 @@ zoneUnder = DUROTAR
 Expect("...and of a neighbour of the zone the view is on", Click(), DUROTAR .. ":Razor Hill")
 zoom = 2
 Expect("...but not zoomed out to where OpenMap's click picks a zone", Click(), nil)
+zoom = 6
+-- With the panel not beside OpenMap's map, the click is OpenMap's alone, and the panel stays away.
+settings.mapPanelCollapsed = true
+Expect("stitched, with the panel folded away, a click opens nothing", Click(), nil)
+Expect("...and leaves the panel folded", settings.mapPanelCollapsed, true)
+settings.mapPanelCollapsed = false
 zoom = 6
 zoneUnder = MULGORE
 shownMap, Z.selected = nil, nil

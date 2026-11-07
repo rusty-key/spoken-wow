@@ -555,6 +555,12 @@ local function Refresh(mapID)
 		audio = { foundOn, nil }, report = { foundOn, nil }, lore = { foundOn, nil } })
 end
 
+--- Whether the panel is on screen beside the map: not folded away, turned off, or hidden by the
+--- maximized map.
+function SpokenPlaces:IsMapPanelOpen()
+	return panel ~= nil and panel:IsShown()
+end
+
 function SpokenPlaces:RefreshPanel()
 	Refresh(SpokenPlaces:GetDisplayedMapID())
 end

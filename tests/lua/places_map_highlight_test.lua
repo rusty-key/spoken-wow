@@ -37,6 +37,8 @@ local Z = {}
 local settings = { highlightOpacity = 0.35 }
 function Z:Get(key) return settings[key] end
 function Z:IsPartOn() return true end
+local panelOpen = true
+function Z:IsMapPanelOpen() return panelOpen end
 function Z:IsZoneMap(mapID) return mapID == 1411 end
 local asked = 0
 function Z:AreaAt(_, x, y)
@@ -108,6 +110,13 @@ WorldMapFrame.mapID = 1411
 Run()
 Expect("back on the zone map it lights again", state.frame:IsShown(), true)
 
+-- Without OpenMap the panel folded away changes nothing: a click there reopens it.
+panelOpen = false
+Point(250, 141)
+Run()
+Expect("without OpenMap, the panel folded away, it still lights", state.frame:IsShown(), true)
+panelOpen = true
+
 -- Area Highlight, on the Places page: how bright, and nothing at all at 0.
 settings.highlightOpacity = 0.6
 Z:RefreshMapHighlight()
@@ -151,6 +160,14 @@ Expect("...over OpenMap's art, which covers the explored areas", state.frame.lev
 Expect("...drawn at the zone's scale on the continent's canvas", math.abs(state.frame:GetScale() - 0.2) < 1e-9, true)
 local _, _, _, ax, ay = state.frame:GetPoint(1)
 Expect("...over the zone's place on it", math.abs(ax - 0.4 * 1002 / 0.2) < 1e-6 and math.abs(ay + 0.4 * 668 / 0.2) < 1e-6, true)
+panelOpen = false
+under[2] = under[2] + 1e-6
+Run()
+Expect("stitched, with the panel folded away, nothing lights: the map is OpenMap's", state.frame:IsShown(), false)
+panelOpen = true
+under[2] = under[2] - 1e-6
+Run()
+Expect("...and it lights again once the panel is back", state.frame:IsShown(), true)
 
 -- The view pans under a resting cursor: Blizzard's cursor on the canvas stays, the world point moves.
 under[1] = 0.6 + 0.1 * 120 / 1002

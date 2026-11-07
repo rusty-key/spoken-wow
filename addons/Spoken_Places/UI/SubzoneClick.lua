@@ -42,9 +42,6 @@ local function HandleClick()
 	if zoneOnly then
 		SpokenPlaces:SelectMap(mapID)
 		SpokenPlaces:FitZone(mapID)
-		if SpokenPlaces:Get("showMapPanel") and SpokenPlaces:Get("mapPanelCollapsed") then
-			SpokenPlaces:SetMapPanelCollapsed(false)
-		end
 		return
 	end
 
@@ -110,7 +107,7 @@ function SpokenPlaces:SetupSubzoneClicks()
 		if button ~= "LeftButton" then
 			return
 		end
-		if not SpokenPlaces:IsPartOn() then
+		if not SpokenPlaces:IsPartOn() or SpokenPlaces:MapLeftToOpenMap() then
 			downX, downY, downMap = nil, nil, nil
 			return
 		end

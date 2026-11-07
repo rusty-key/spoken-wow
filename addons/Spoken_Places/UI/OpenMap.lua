@@ -185,6 +185,13 @@ function SpokenPlaces:ViewMap(mapID)
 	return ok and u and v and ZoneAt(om, u, v) or mapID
 end
 
+--- Whether the map is left to OpenMap: on its map, with the panel not beside it, nothing lights
+--- and a click is OpenMap's alone. There every click already moves the view, and one that also
+--- reopened the panel put back what the player had put away.
+function SpokenPlaces:MapLeftToOpenMap()
+	return self:OpenMap() ~= nil and not self:IsMapPanelOpen()
+end
+
 --- Calls `fn` as OpenMap's view moves or its map turns on or off. Asked once the addons have
 --- loaded, as OpenMap may load after this.
 function SpokenPlaces:OnOpenMapView(fn)

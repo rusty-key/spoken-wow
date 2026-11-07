@@ -102,7 +102,7 @@ end
 --- The overlay to light under the cursor, with its zone's art layer and the zone: only over an
 --- area whose story a click would open.
 local function Target()
-	if not SpokenPlaces:IsPartOn() then
+	if not SpokenPlaces:IsPartOn() or SpokenPlaces:MapLeftToOpenMap() then
 		return nil
 	end
 	local container = WorldMapFrame.ScrollContainer
