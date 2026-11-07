@@ -142,6 +142,17 @@ describe("release route", () => {
     }
   });
 
+  it("answers 502 without dispatching when encoding the missing takes throws, and frees the lock", async () => {
+    encode.encodeMissingForPack.mockRejectedValueOnce(new Error("connection terminated"));
+    const failed = await press("frFR", { section: "quests" });
+    expect(failed.status).toBe(502);
+    expect((await failed.json()).error).toBe("connection terminated");
+    expect(github.dispatchRelease).not.toHaveBeenCalled();
+    const { recent } = await (await read("frFR")).json();
+    expect(recent[0]).toMatchObject({ state: "failed", error: "connection terminated" });
+    expect((await press("frFR", { section: "quests" })).status).toBe(202);
+  });
+
   it("answers 409 naming the active run, and does not dispatch again", async () => {
     await press("frFR", { section: "quests" });
     const response = await press("frFR", { section: "places" });

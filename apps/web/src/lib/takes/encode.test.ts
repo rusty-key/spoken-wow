@@ -115,7 +115,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
     }
   });
 
-  it("replaces an encoding that has no duration, which a release stops on as on a missing one", async () => {
+  it.each([null, 0])("replaces an encoding whose duration is %s, which a release stops on", async (duration) => {
     const bucket = memoryBlobs();
     const restore = useArchiveForTests(bucket, "r2");
     const master = fs.readFileSync(tone());
@@ -123,7 +123,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
     const file = `gossip/${Math.random().toString(16).slice(2)}encode-missing.mp3`;
     try {
       await commitTake("quests", file, master, { lineId: "g:encode-missing" });
-      await db().query(`update "take_encoding" set "durationSec" = null where "sha256" = $1`, [sha]);
+      await db().query(`update "take_encoding" set "durationSec" = $2 where "sha256" = $1`, [sha, duration]);
 
       await encodeMissingForPack("quests", "enUS");
       const { rows } = await db().query(`select "durationSec"::float8 as "d" from "take_encoding" where "sha256" = $1`, [sha]);
@@ -166,6 +166,15 @@ describe.skipIf(!tools)("encodeForPack", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({ lang: "enUS", source: "quests", lineId: "g:encode-missing", detail: { version: 1 } });
       expect(rows[0].detail.error).toMatch(/ffmpeg exited/);
+      expect(rows[0].detail.error).not.toContain(os.tmpdir());
+
+      // A press that fails on it again says nothing new, so the log keeps the one row.
+      await encodeMissingForPack("quests", "enUS");
+      const { rowCount } = await asSystem.query(
+        `select 1 from "activity" where "kind" = 'take.encode_failed' and "subject" = $1`,
+        [file],
+      );
+      expect(rowCount).toBe(1);
     } finally {
       restore();
       await asSystem.query(`delete from "activity" where "subject" = $1`, [file]);

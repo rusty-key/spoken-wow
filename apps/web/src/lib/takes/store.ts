@@ -239,6 +239,16 @@ export async function takePath(
   return located(source, file, lang, rows[0]);
 }
 
+/** The hash naming a take's master in the bucket; null where it was never put there. */
+export async function takeSha256(source: Source, file: string, version: number, lang: Lang): Promise<string | null> {
+  const rows = await readAs<{ sha256: string | null }>(
+    lang,
+    `select "sha256" from "take" where "source" = $1 and "file" = $2 and "lang" = $3 and "version" = $4`,
+    [source, file, lang, version],
+  );
+  return rows[0]?.sha256 ?? null;
+}
+
 /** The live take's bytes, the way takePath finds any take's. What the live audio routes play. */
 export async function livePath(source: Source, file: string, lang: Lang = BASE_LANG): Promise<TakeBytes> {
   const rows = await readAs<Located>(
