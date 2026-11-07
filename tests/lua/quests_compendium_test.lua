@@ -86,7 +86,8 @@ QuestMapFrame.DetailsFrame = CreateFrame("Frame", nil, QuestMapFrame)
 QuestMapFrame.DetailsFrame.BackFrame = CreateFrame("Frame", nil, QuestMapFrame.DetailsFrame)
 _G.QuestMapFrame_ShowQuestDetails = function(questID) QuestMapFrame.DetailsFrame.questID = questID end
 local ns = {}
-for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "Data/QuestFaces", "UI/QuestsTab", "UI/OpenInCompendium" }) do
+for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "Data/QuestFaces", "UI/QuestsTab", "UI/OpenInCompendium",
+    "UI/CopyTextButton" }) do
     assert(loadfile(QUESTS .. file .. ".lua"))("Spoken_Quests", ns)
 end
 -- The shipped data links each quest to the one before it in its chain: Lost Necklace, Pie for
@@ -1276,15 +1277,18 @@ Tab:Open(IRONDEEP)
 
 -- The quest giver's window: the Compendium's tome beside its controls, for a quest the tab lists.
 local giver = Tab.giverButton
-local copyHeader = stub.Widget("Button")
-copyHeader:Show()
-VO.CopyTextButton = { button = copyHeader }
 stub.world.questID = KOBOLDS
 stub.ShowPanel("QuestFrameDetailPanel")
 stub.FireEvent("QUEST_DETAIL")
 Expect("the quest giver's window has Open in Azeroth's Compendium", giver ~= nil and giver:IsShown(), true)
-Expect("the Compendium button is to the right of Copy Text", giver.anchor and giver.anchor.point .. " "
-    .. tostring(giver.anchor.relativeTo == copyHeader) .. " " .. giver.anchor.relativePoint, "LEFT true RIGHT")
+Expect("the Compendium button has a stable quest-frame anchor", giver.anchor and giver.anchor.point .. " "
+    .. tostring(giver.anchor.relativeTo == _G.QuestFrame) .. " " .. giver.anchor.relativePoint, "TOPRIGHT true TOPRIGHT")
+local copyHeader = VO.CopyTextButton:Setup()
+VO.CopyTextButton:PositionStandard(_G.QuestFrame)
+Expect("Copy Text is to the left of the Compendium button", VO.CopyTextButton.button.anchor
+    and VO.CopyTextButton.button.anchor.point .. " "
+    .. tostring(VO.CopyTextButton.button.anchor.relativeTo == giver) .. " " .. VO.CopyTextButton.button.anchor.relativePoint,
+    "RIGHT true LEFT")
 C:Hide()
 giver.scripts.OnClick(giver)
 Expect("...which opens the Compendium on that quest", C:IsOpen("quests") and page.title.text, "Kobold Camp Cleanup")

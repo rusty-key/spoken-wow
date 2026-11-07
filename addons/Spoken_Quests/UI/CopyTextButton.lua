@@ -269,6 +269,9 @@ function CopyTextButton:PositionStandard(frame)
     local button = self.button
     local compendium = QuestsTab and QuestsTab.giverButton
     if frame == _G.QuestFrame and compendium and compendium:IsShown() then
+        if QuestsTab.PositionGiver then
+            QuestsTab:PositionGiver()
+        end
         button:ClearAllPoints()
         button:SetPoint("RIGHT", compendium, "LEFT", -4, 0)
         return
