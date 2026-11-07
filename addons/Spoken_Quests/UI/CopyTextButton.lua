@@ -206,12 +206,12 @@ local function TextWithDiagnostics(text)
             AddQuestItems(lines, "reward", GetNumQuestRewards and GetNumQuestRewards(), seen)
         end
     elseif page == "QUEST_GREETING" or IsFrameVisible(QuestFrameGreetingPanel) then
-        AddDiagnostic(lines, "Greeting ID", GreetingID(npcID, text))
+        AddDiagnostic(lines, "Spoken greeting key", GreetingID(npcID, text))
         AddGreetingQuests(lines)
         AddGossipOptions(lines)
     else
         AddGossipOptions(lines)
-        AddDiagnostic(lines, "Greeting ID", GreetingID(npcID, text))
+        AddDiagnostic(lines, "Spoken greeting key", GreetingID(npcID, text))
     end
 
     if #lines == 0 then
