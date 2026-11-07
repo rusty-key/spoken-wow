@@ -16,7 +16,6 @@ local GAP = 4
 local STRIP_OFFSET, CORNER_INSET, INSET = 12, 32, 11
 -- The round button is 24 tall where those are 20: up by half the difference to share their middle.
 local LIFT = 2
-local COPY_FALLBACK_WIDTH = 24
 
 --- The button for `parent`, its quest set on `questID`. `tooltip`, where given, returns the
 --- tooltip to use: DialogueUI hides the game's with the rest of the interface.
@@ -59,38 +58,24 @@ local function GiverQuestOnScreen()
         or Visible(_G.QuestFrameRewardPanel)
 end
 
-local function CopyTextWidth()
-    if type(VO.CopyTextButton) ~= "table" then
-        return 0
-    end
-    local copy = VO.CopyTextButton.button
-    if type(copy) == "table" and copy.GetWidth then
-        local width = copy:GetWidth()
-        if type(width) == "number" and width > 0 then
-            return width
-        end
-    end
-    return COPY_FALLBACK_WIDTH
-end
-
--- Keep the Compendium button on a stable header anchor. Copy Text is positioned relative to it,
+-- Keep the Compendium button on a stable header anchor. Copy Text is positioned to its left,
 -- so this function must not anchor back to Copy Text.
 function QuestsTab:PositionGiver()
     local frame = _G.QuestFrame
     giver:ClearAllPoints()
 
     -- Contribute and DialogPlay are the rightmost text controls. They position independently
-    -- from the frame, so Compendium can sit to their left while reserving Copy Text's slot.
+    -- from the frame, so Compendium can sit directly to their left.
     for _, owner in ipairs({ VO.ContributeButton, VO.DialogPlayButton }) do
         local beside = type(owner) == "table" and owner.button
         if type(beside) == "table" and beside:IsShown() then
-            giver:SetPoint("RIGHT", beside, "LEFT", -(GAP + CopyTextWidth() + GAP), 0)
+            giver:SetPoint("RIGHT", beside, "LEFT", -GAP, 0)
             return
         end
     end
     local close = type(frame.CloseButton) == "table" and frame.CloseButton or _G.QuestFrameCloseButton
     local frameTop, closeBottom = frame:GetTop(), close and close.GetBottom and close:GetBottom()
-    local rightInset = INSET + CopyTextWidth() + GAP
+    local rightInset = INSET
     if type(frameTop) == "number" and type(closeBottom) == "number" then
         giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -rightInset, -(frameTop - closeBottom + STRIP_OFFSET) + LIFT)
     else

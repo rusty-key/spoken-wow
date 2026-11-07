@@ -1285,22 +1285,22 @@ Expect("the Compendium button has a stable quest-frame anchor", giver.anchor and
     .. tostring(giver.anchor.relativeTo == _G.QuestFrame) .. " " .. giver.anchor.relativePoint, "TOPRIGHT true TOPRIGHT")
 local copyHeader = VO.CopyTextButton:Setup()
 VO.CopyTextButton:PositionStandard(_G.QuestFrame)
-Expect("the Compendium leaves room for Copy Text", giver.anchor.x, -39)
-Expect("Copy Text is to the right of the Compendium button", VO.CopyTextButton.button.anchor
+Expect("the Compendium sits beside the rightmost playback control", giver.anchor.x, -11)
+Expect("Copy Text is to the left of the Compendium button", VO.CopyTextButton.button.anchor
     and VO.CopyTextButton.button.anchor.point .. " "
     .. tostring(VO.CopyTextButton.button.anchor.relativeTo == giver) .. " " .. VO.CopyTextButton.button.anchor.relativePoint,
-    "LEFT true RIGHT")
+    "RIGHT true LEFT")
 local contributeHeader = stub.Widget("Button")
 contributeHeader:Show()
 VO.ContributeButton = { button = contributeHeader }
 Tab:PositionGiver()
 Expect("the Compendium leaves room for Copy Text beside Contribute", giver.anchor.point .. " "
     .. tostring(giver.anchor.relativeTo == contributeHeader) .. " " .. giver.anchor.relativePoint .. " " .. giver.anchor.x,
-    "RIGHT true LEFT -32")
+    "RIGHT true LEFT -4")
 VO.CopyTextButton:PositionStandard(_G.QuestFrame)
 Expect("the three quest controls keep the readable spacing", VO.CopyTextButton.button.anchor.point .. " "
     .. tostring(VO.CopyTextButton.button.anchor.relativeTo == giver) .. " " .. VO.CopyTextButton.button.anchor.relativePoint,
-    "LEFT true RIGHT")
+    "RIGHT true LEFT")
 C:Hide()
 giver.scripts.OnClick(giver)
 Expect("...which opens the Compendium on that quest", C:IsOpen("quests") and page.title.text, "Kobold Camp Cleanup")

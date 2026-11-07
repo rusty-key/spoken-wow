@@ -262,7 +262,8 @@ end
 -- Reused on every Draw, which runs while the book view is open.
 local list = {}
 
---- Right to left from the book's close button, centred on it: Report, Skip, Play, whichever show.
+--- Right to left from the book's close button, centred on it: Report, Skip, Play, Compendium,
+--- Copy Text, whichever show.
 function Book:Place()
 	local view, row = View(), self.row
 	for i = #list, 1, -1 do
@@ -271,8 +272,8 @@ function Book:Place()
 	if row.report:IsShown() then table.insert(list, row.report) end
 	if row.skip:IsShown() then table.insert(list, row.skip) end
 	if row.play:IsShown() then table.insert(list, row.play) end
-	if row.copy and row.copy:IsShown() then table.insert(list, row.copy) end
 	if row.open and row.open:IsShown() then table.insert(list, row.open) end
+	if row.copy and row.copy:IsShown() then table.insert(list, row.copy) end
 	local close = view.CloseButton
 	row:Place(list, type(close) == "table" and close.GetObjectType and close or nil)
 end
