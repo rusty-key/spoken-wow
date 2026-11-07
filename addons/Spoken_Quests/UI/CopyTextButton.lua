@@ -1,8 +1,7 @@
 setfenv(1, VoiceOver)
 
--- The Copy text button on quest and gossip dialogue. DialogueUI has the best version of the
--- window already, so use it when it exposes its clipboard method; the Blizzard-frame button gets
--- the same selectable edit box through Spoken's Gathered Lines dialog style.
+-- The Copy text button on the game's quest and gossip frames. DialogueUI supplies its own copy
+-- control, so this button stays on the Blizzard frames and does not add a duplicate to DialogueUI.
 
 local BUTTON_SIZE = 24
 local STRIP_OFFSET = 12
@@ -222,21 +221,6 @@ local function TextWithDiagnostics(text)
     return table.concat(lines, "\n")
 end
 
-local function DialogueFrame()
-    local page = Utils:DialogueUIPage()
-    local frame = _G.DUIQuestFrame
-    if page and frame and IsFrameVisible(frame) then
-        return frame
-    end
-end
-
-local function TooltipFor(frame)
-    if ContributeButton and ContributeButton.DialogueUITooltip then
-        return ContributeButton:DialogueUITooltip(frame)
-    end
-    return GameTooltip
-end
-
 function CopyTextButton:ShowPopup(text)
     if not self.popup then
         self.popup = self:BuildPopup()
@@ -252,13 +236,6 @@ function CopyTextButton:ShowPopup(text)
 end
 
 function CopyTextButton:ShowText()
-    local frame = DialogueFrame()
-    if frame and type(frame.SendContentToClipboard) == "function" then
-        local ok = pcall(frame.SendContentToClipboard, frame)
-        if ok then
-            return
-        end
-    end
     local text = CurrentText()
     if text then
         self:ShowPopup(TextWithDiagnostics(text))
@@ -305,41 +282,15 @@ local function CreateIconButton(parent)
     return button
 end
 
-function CopyTextButton:PositionDialogue(frame)
-    local button = self.dialogueButton
-    local native = frame.CopyTextButton
-    button:ClearAllPoints()
-    if native and native.GetPoint then
-        -- If DialogueUI created its button but hid it, use the same slot and scale.
-        button:SetPoint("CENTER", native, "CENTER", 0, 0)
-    else
-        -- This is DialogueUI's own default position for its Copy Text button.
-        button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
-    end
-    button:SetScale(1)
-    button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-end
-
 function CopyTextButton:Refresh()
     if not self.button then
         return
     end
-
-    local dialogue = DialogueFrame()
-    if dialogue then
+    if _G.DUIQuestFrame and IsFrameVisible(_G.DUIQuestFrame) then
         self.button:Hide()
-        local native = dialogue.CopyTextButton
-        -- Do not draw a second icon when the player has enabled DialogueUI's own one.
-        if native and IsFrameVisible(native) then
-            self.dialogueButton:Hide()
-            return
-        end
-        self:PositionDialogue(dialogue)
-        self.dialogueButton:Show()
         return
     end
 
-    self.dialogueButton:Hide()
     local frame = QuestPanelOnScreen()
     if frame then
         frame = _G.QuestFrame
@@ -449,29 +400,6 @@ function CopyTextButton:Setup()
     button:SetScript("OnLeave", HideTooltip)
     self.button = button
 
-    local dialogueParent = _G.DUIQuestFrame or UIParent
-    local dialogueButton = CreateIconButton(dialogueParent)
-    dialogueButton:SetFrameStrata("FULLSCREEN")
-    dialogueButton:SetScript("OnClick", function()
-        CopyTextButton:ShowText()
-    end)
-    dialogueButton:SetScript("OnEnter", function(self)
-        local frame = DialogueFrame()
-        if not frame then
-            return
-        end
-        local tooltip = TooltipFor(frame)
-        if tooltip then
-            CopyTextButton.tooltip = tooltip
-            tooltip:SetOwner(self, "ANCHOR_RIGHT")
-            tooltip:SetText(COPY_TEXT)
-            tooltip:Show()
-        end
-    end)
-    dialogueButton:SetScript("OnLeave", HideTooltip)
-    dialogueButton:Hide()
-    self.dialogueButton = dialogueButton
-
     local watcher = CreateFrame("Frame")
     for _, event in ipairs(REFRESH_EVENTS) do
         pcall(watcher.RegisterEvent, watcher, event)
@@ -489,18 +417,6 @@ function CopyTextButton:Setup()
             end)
         end
     end
-
-    -- DialogueUI builds and resizes its page after the game event. The child driver runs only
-    -- while its window exists and keeps our icon in its header slot as that happens.
-    local driver = CreateFrame("Frame", nil, dialogueParent)
-    driver:SetScript("OnUpdate", function(_, elapsed)
-        self.elapsed = (self.elapsed or 0) + elapsed
-        if self.elapsed >= 0.1 then
-            self.elapsed = 0
-            CopyTextButton:Refresh()
-        end
-    end)
-    self.driver = driver
 
     if Spoken and Spoken.RegisterCallback then
         for _, event in ipairs({ "FRAME_SETTINGS_CHANGED", "REPORT_SETTINGS_CHANGED" }) do

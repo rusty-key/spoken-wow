@@ -120,11 +120,6 @@ function Book:Row()
 		end
 	end
 	row.open = open
-	local copy = SpokenReadables.NewCopyButton and SpokenReadables:NewCopyButton(row.frame, function() return Book:Tooltip() end)
-	if copy then
-		copy:SetFrameStrata("FULLSCREEN")
-		row.copy = copy
-	end
 	row.frame:SetScript("OnUpdate", function(_, elapsed)
 		since = since + elapsed
 		if since >= LOOK_EVERY then
@@ -262,8 +257,8 @@ end
 -- Reused on every Draw, which runs while the book view is open.
 local list = {}
 
---- Right to left from the book's close button, centred on it: Report, Skip, Play, Compendium,
---- Copy Text, whichever show.
+--- Right to left from the book's close button, centred on it: Report, Skip, Play and Compendium,
+--- whichever show. DialogueUI supplies Copy Text separately on the left.
 function Book:Place()
 	local view, row = View(), self.row
 	for i = #list, 1, -1 do
@@ -273,7 +268,6 @@ function Book:Place()
 	if row.skip:IsShown() then table.insert(list, row.skip) end
 	if row.play:IsShown() then table.insert(list, row.play) end
 	if row.open and row.open:IsShown() then table.insert(list, row.open) end
-	if row.copy and row.copy:IsShown() then table.insert(list, row.copy) end
 	local close = view.CloseButton
 	row:Place(list, type(close) == "table" and close.GetObjectType and close or nil)
 end
@@ -332,7 +326,6 @@ function Book:Draw()
 		row.open.bookId = shown and key or nil
 		if (row.open:IsShown() and true or false) ~= shown then row.open:SetShown(shown) end
 	end
-	if row.copy then row.copy:SetShown(first ~= nil or (SpokenReadables.HasCopyText and SpokenReadables:HasCopyText())) end
 	self:Place()
 	self:PlaceTheirs()
 end

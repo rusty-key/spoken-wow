@@ -25,10 +25,6 @@ local function CurrentText(self)
     end
 end
 
-function SpokenReadables:HasCopyText()
-    return CurrentText(self) ~= nil
-end
-
 local function CurrentPage(self)
     if not self.PageOnScreen then
         return self.lastPage
@@ -146,7 +142,7 @@ function SpokenReadables:ShowCopyText()
     self.copyPopup.editBox:HighlightText()
 end
 
-function SpokenReadables:NewCopyButton(parent, tooltip)
+function SpokenReadables:NewCopyButton(parent)
     if not (Spoken and Spoken.CreateRoundButton) then
         return nil
     end
@@ -154,7 +150,7 @@ function SpokenReadables:NewCopyButton(parent, tooltip)
     button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
     button:SetScript("OnClick", function() SpokenReadables:ShowCopyText() end)
     button:SetScript("OnEnter", function(self)
-        local tip = tooltip and tooltip() or GameTooltip
+        local tip = GameTooltip
         if not tip then return end
         tip:SetOwner(self, "ANCHOR_RIGHT")
         tip:SetText(L.COPY_TEXT)
