@@ -129,7 +129,6 @@ function ContributeButton:PositionAtCorner(frame, close)
     local button = self.button
     button:ClearAllPoints()
     button:SetWidth(BUTTON_WIDTH)
-
     local frameTop, closeBottom = frame.GetTop and frame:GetTop(), close and close.GetBottom and close:GetBottom()
     if type(frameTop) == "number" and type(closeBottom) == "number" then
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PlayButtonInset(), -(frameTop - closeBottom + STRIP_OFFSET))

@@ -16,7 +16,6 @@ local GAP = 4
 local STRIP_OFFSET, CORNER_INSET, INSET = 12, 32, 11
 -- The round button is 24 tall where those are 20: up by half the difference to share their middle.
 local LIFT = 2
-local COPY_GAP = 4
 local COPY_FALLBACK_WIDTH = 24
 
 --- The button for `parent`, its quest set on `questID`. `tooltip`, where given, returns the
@@ -85,13 +84,13 @@ function QuestsTab:PositionGiver()
     for _, owner in ipairs({ VO.ContributeButton, VO.DialogPlayButton }) do
         local beside = type(owner) == "table" and owner.button
         if type(beside) == "table" and beside:IsShown() then
-            giver:SetPoint("RIGHT", beside, "LEFT", -(GAP + CopyTextWidth() + COPY_GAP), 0)
+            giver:SetPoint("RIGHT", beside, "LEFT", -(GAP + CopyTextWidth() + GAP), 0)
             return
         end
     end
     local close = type(frame.CloseButton) == "table" and frame.CloseButton or _G.QuestFrameCloseButton
     local frameTop, closeBottom = frame:GetTop(), close and close.GetBottom and close:GetBottom()
-    local rightInset = INSET + CopyTextWidth() + COPY_GAP
+    local rightInset = INSET + CopyTextWidth() + GAP
     if type(frameTop) == "number" and type(closeBottom) == "number" then
         giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -rightInset, -(frameTop - closeBottom + STRIP_OFFSET) + LIFT)
     else
@@ -99,16 +98,12 @@ function QuestsTab:PositionGiver()
     end
 end
 
-local function PlaceGiver()
-    QuestsTab:PositionGiver()
-end
-
 function QuestsTab:RefreshGiverButton()
     if not giver then return end
     local id = GiverQuestOnScreen() and GetQuestID and VO.NotSecret(GetQuestID()) or nil
     local shown = self:Has(id)
     giver.questID = shown and id or nil
-    if id then PlaceGiver() end
+    if id then self:PositionGiver() end
     giver:SetShown(shown)
 end
 
