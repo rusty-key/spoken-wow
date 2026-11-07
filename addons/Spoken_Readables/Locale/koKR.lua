@@ -19,6 +19,7 @@ L.PLAY = "재생"
 L.STOP = "정지"
 L.PLAY_TIP = "소리 내어 읽기"
 L.STOP_TIP = "읽기 정지"
+L.COPY_TEXT = "텍스트 복사"
 -- DialogueUI's book view: Play's tooltip (UI/DialogueUIBook.lua).
 L.DUI_ON = "켜짐"
 L.DUI_OFF = "꺼짐"

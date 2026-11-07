@@ -19,6 +19,7 @@ L.PLAY = "Reproduzir"
 L.STOP = "Parar"
 L.PLAY_TIP = "Ler isto em voz alta"
 L.STOP_TIP = "Parar de ler isto"
+L.COPY_TEXT = "Copiar texto"
 -- DialogueUI's book view: Play's tooltip (UI/DialogueUIBook.lua).
 L.DUI_ON = "Ligado"
 L.DUI_OFF = "Desligado"

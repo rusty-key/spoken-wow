@@ -19,6 +19,7 @@ L.PLAY = "Abspielen"
 L.STOP = "Stopp"
 L.PLAY_TIP = "Dies laut vorlesen"
 L.STOP_TIP = "Aufhören, dies vorzulesen"
+L.COPY_TEXT = "Text kopieren"
 -- DialogueUI's book view: Play's tooltip (UI/DialogueUIBook.lua).
 L.DUI_ON = "An"
 L.DUI_OFF = "Aus"

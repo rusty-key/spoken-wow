@@ -19,6 +19,7 @@ L.PLAY = "Слушать"
 L.STOP = "Стоп"
 L.PLAY_TIP = "Прочитать это вслух"
 L.STOP_TIP = "Перестать читать это"
+L.COPY_TEXT = "Скопировать текст"
 -- DialogueUI's book view: Play's tooltip (UI/DialogueUIBook.lua).
 L.DUI_ON = "Вкл."
 L.DUI_OFF = "Выкл."

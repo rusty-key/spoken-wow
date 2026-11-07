@@ -27,6 +27,7 @@ L.PLAY = "Play"
 L.STOP = "Stop"
 L.PLAY_TIP = "Read this aloud"
 L.STOP_TIP = "Stop reading this"
+L.COPY_TEXT = "Copy text"
 -- DialogueUI's book view: Play's tooltip (UI/DialogueUIBook.lua).
 L.DUI_ON = "On"
 L.DUI_OFF = "Off"

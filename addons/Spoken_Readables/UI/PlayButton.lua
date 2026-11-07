@@ -159,6 +159,7 @@ end
 function SpokenReadables:RefreshPlayButton()
 	RefreshPlay(self)
 	self:RefreshOpenButton()
+	if self.RefreshCopyButton then self:RefreshCopyButton() end
 end
 
 --- Build the button, once, as soon as the client has a book frame to hang it on.
@@ -245,6 +246,11 @@ function SpokenReadables:SetupPlayButton()
 		self.openButton = open
 		-- Before ItemTextFrame closes: the Compendium opens beside the game's windows.
 		open.beforeOpen = function() if _G.CloseItemText then CloseItemText() end end
+	end
+	local copy = SpokenReadables.NewCopyButton and SpokenReadables:NewCopyButton(frame)
+	if copy then
+		copy:SetFrameLevel(button:GetFrameLevel())
+		self.copyButton = copy
 	end
 
 	-- Toggling the hide setting in the Spoken settings fires no game event.

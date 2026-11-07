@@ -4,8 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Copy text from NPC dialogue.** A Copy text button now opens the current quest or gossip text
-  in a selectable window, including useful quest, NPC, greeting, option and item IDs.
+- **Copy text from NPC dialogue and readable objects.** Copy text opens the current text in a
+  selectable window, including useful quest, NPC, greeting, option and item IDs. Readable objects
+  also have Copy Text and Open in Azeroth's Compendium controls beside Play.
 
 ## 3.8.3 — 2026-11-05
 
