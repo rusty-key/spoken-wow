@@ -242,7 +242,7 @@ _G.QuestFrameCloseButton = stub.Widget("Button", "QuestFrameCloseButton")
 stub.FireEvent("QUEST_COMPLETE")
 Expect("under the close button, where the client draws one", button.anchor and button.anchor.y, -12)
 Expect("...anchored to the close button so it does not readjust during layout",
-    button.anchor and button.anchor.relativeTo == _G.QuestFrameCloseButton and button.anchor.x, -4)
+    button.anchor and button.anchor.relativeTo == _G.QuestFrameCloseButton and button.anchor.x, -11)
 Expect("...by its top right corner", button.anchor and button.anchor.point, "TOPRIGHT")
 
 button:GetScript("OnEnter")(button)

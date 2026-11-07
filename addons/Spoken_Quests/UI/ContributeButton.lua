@@ -28,8 +28,8 @@ setfenv(1, VoiceOver)
 
 local BUTTON_HEIGHT = 20
 local BUTTON_WIDTH = 90
--- Keep the same four-pixel separation used by the readable header controls.
-local GAP = 4
+-- Keep the same right-edge inset used by the other quest header controls.
+local INSET = 11
 -- From the close button's bottom edge down into the middle of the strip under the title bar.
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
@@ -116,7 +116,7 @@ function ContributeButton:PositionAtCorner(frame, close)
     button:SetWidth(BUTTON_WIDTH)
     if close then
         -- The close button is stable while Blizzard finishes laying out the quest window.
-        button:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -GAP, -STRIP_OFFSET)
+        button:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -INSET, -STRIP_OFFSET)
     else
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
     end
