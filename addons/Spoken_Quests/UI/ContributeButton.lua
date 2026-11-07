@@ -129,6 +129,22 @@ function ContributeButton:PositionAtCorner(frame, close)
     local button = self.button
     button:ClearAllPoints()
     button:SetWidth(BUTTON_WIDTH)
+
+    -- The quest frame can now have both Copy Text and Compendium icons on this strip. Keep
+    -- Contribute to their left so the text button never covers either one.
+    if frame == _G.QuestFrame then
+        local copy = CopyTextButton and CopyTextButton.button
+        if copy and copy:IsShown() then
+            button:SetPoint("RIGHT", copy, "LEFT", -GAP, 0)
+            return true
+        end
+        local compendium = QuestsTab and QuestsTab.giverButton
+        if compendium and compendium:IsShown() then
+            button:SetPoint("RIGHT", compendium, "LEFT", -GAP, 0)
+            return true
+        end
+    end
+
     local frameTop, closeBottom = frame.GetTop and frame:GetTop(), close and close.GetBottom and close:GetBottom()
     if type(frameTop) == "number" and type(closeBottom) == "number" then
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PlayButtonInset(), -(frameTop - closeBottom + STRIP_OFFSET))
