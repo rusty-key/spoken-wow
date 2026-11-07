@@ -68,6 +68,160 @@ local function CurrentText()
     return ok and type(text) == "string" and text ~= "" and text or nil
 end
 
+local function AddDiagnostic(lines, label, value)
+    if value ~= nil and value ~= "" then
+        lines[#lines + 1] = format("[%s: %s]", label, tostring(value))
+    end
+end
+
+local function NPCInfo()
+    if not Utils then
+        return nil, nil
+    end
+    local name = Utils:GetNPCName()
+    local guid = Utils:GetNPCGUID()
+    local id
+    if guid and Utils.GetIDFromGUID then
+        local ok, value = pcall(Utils.GetIDFromGUID, Utils, guid)
+        if ok then id = value end
+    end
+    return id, name
+end
+
+local function QuestItemID(source, index)
+    if not GetQuestItemInfo then
+        return nil
+    end
+    local name, _, count, _, _, itemID = GetQuestItemInfo(source, index)
+    if not itemID and GetQuestItemLink then
+        local link = GetQuestItemLink(source, index)
+        itemID = link and tonumber(string.match(link, "item:(%d+)"))
+    end
+    return itemID, name, count
+end
+
+local function AddQuestItems(lines, source, count, seen)
+    if not (count and count > 0) then
+        return
+    end
+    for index = 1, count do
+        local hidden = IsQuestItemHidden and IsQuestItemHidden(index)
+        if hidden ~= 1 then
+            local itemID, name, quantity = QuestItemID(source, index)
+            if itemID and not seen[itemID] then
+                seen[itemID] = true
+                local suffix = quantity and quantity > 1 and format(" x%d", quantity) or ""
+                AddDiagnostic(lines, "ItemID", tostring(itemID) .. (name and " " .. name or "") .. suffix)
+            end
+        end
+    end
+end
+
+local function AddGreetingQuests(lines)
+    if GetNumAvailableQuests and GetAvailableTitle and GetAvailableQuestInfo then
+        for index = 1, (GetNumAvailableQuests() or 0) do
+            local title = GetAvailableTitle(index)
+            local _, _, _, _, questID = GetAvailableQuestInfo(index)
+            if questID and questID ~= 0 then
+                AddDiagnostic(lines, "Available Quest", tostring(questID) .. (title and " " .. title or ""))
+            end
+        end
+    end
+    if GetNumActiveQuests and GetActiveTitle and GetActiveQuestID then
+        for index = 1, (GetNumActiveQuests() or 0) do
+            local title = GetActiveTitle(index)
+            local questID = GetActiveQuestID(index)
+            if questID and questID ~= 0 then
+                AddDiagnostic(lines, "Active Quest", tostring(questID) .. (title and " " .. title or ""))
+            end
+        end
+    end
+end
+
+local function AddGossipOptions(lines)
+    local options
+    if C_GossipInfo and C_GossipInfo.GetOptions then
+        options = C_GossipInfo.GetOptions()
+    end
+    if not options then
+        return
+    end
+    for _, option in ipairs(options) do
+        local id = NotSecret(option.gossipOptionID)
+        local name = NotSecret(option.name)
+        if id then
+            AddDiagnostic(lines, "OptionID", tostring(id) .. (name and " " .. name or ""))
+        end
+    end
+end
+
+local function GreetingID(npcID, text)
+    if not (npcID and Spoken and Spoken.Contribute and Spoken.Contribute.Checksum) then
+        return nil
+    end
+    local sex = UnitSex and NotSecret(UnitSex("npc"))
+    local suffix = sex == 3 and ":f" or ""
+    return format("g:%d:%d%s", npcID, Spoken.Contribute:Checksum(text), suffix)
+end
+
+local function TextWithDiagnostics(text)
+    local lines = {}
+    local npcID, npcName = NPCInfo()
+    if npcID and npcName then
+        AddDiagnostic(lines, "NPC", tostring(npcID) .. " " .. npcName)
+    elseif npcName then
+        AddDiagnostic(lines, "NPC", npcName)
+    end
+
+    local page = Utils and Utils:DialogueUIPage()
+    local questID = GetQuestID and NotSecret(GetQuestID())
+    local title = GetTitleText and NotSecret(GetTitleText())
+    local questPanel = QuestPanelOnScreen()
+    local event = questPanel == QuestFrameDetailPanel and "accept"
+            or questPanel == QuestFrameProgressPanel and "progress"
+            or questPanel == QuestFrameRewardPanel and "complete"
+            or page == "QUEST_DETAIL" and "accept"
+            or page == "QUEST_PROGRESS" and "progress"
+            or page == "QUEST_COMPLETE" and "complete"
+    if event then
+        if questID and questID ~= 0 then
+            AddDiagnostic(lines, "Quest", tostring(questID) .. (title and " " .. title or ""))
+        elseif title and title ~= "" then
+            AddDiagnostic(lines, "Quest", title)
+        end
+        AddDiagnostic(lines, "Event", event)
+
+        local seen = {}
+        if questID and questID ~= 0 and Spoken and Spoken.QuestItem then
+            local itemID, itemName = Spoken:QuestItem(questID)
+            if itemID then
+                seen[itemID] = true
+                AddDiagnostic(lines, "ItemID", tostring(itemID) .. (itemName and " " .. itemName or ""))
+            end
+        end
+        if event == "progress" then
+            AddQuestItems(lines, "required", GetNumQuestItems and GetNumQuestItems(), seen)
+        elseif event == "complete" then
+            AddQuestItems(lines, "choice", GetNumQuestChoices and GetNumQuestChoices(), seen)
+            AddQuestItems(lines, "reward", GetNumQuestRewards and GetNumQuestRewards(), seen)
+        end
+    elseif page == "QUEST_GREETING" or IsFrameVisible(QuestFrameGreetingPanel) then
+        AddDiagnostic(lines, "Greeting ID", GreetingID(npcID, text))
+        AddGreetingQuests(lines)
+        AddGossipOptions(lines)
+    else
+        AddGossipOptions(lines)
+        AddDiagnostic(lines, "Greeting ID", GreetingID(npcID, text))
+    end
+
+    if #lines == 0 then
+        return text
+    end
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = text
+    return table.concat(lines, "\n")
+end
+
 local function DialogueFrame()
     local page = Utils:DialogueUIPage()
     local frame = _G.DUIQuestFrame
@@ -107,7 +261,7 @@ function CopyTextButton:ShowText()
     end
     local text = CurrentText()
     if text then
-        self:ShowPopup(text)
+        self:ShowPopup(TextWithDiagnostics(text))
     end
 end
 
