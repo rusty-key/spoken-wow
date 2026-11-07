@@ -240,6 +240,14 @@ function CopyTextButton:PositionStandard(frame)
         button:SetPoint("RIGHT", compendium, "LEFT", -4, 0)
         return
     end
+    for _, owner in ipairs({ ContributeButton, DialogPlayButton }) do
+        local control = owner and owner.button
+        if control and control:IsShown() then
+            button:ClearAllPoints()
+            button:SetPoint("RIGHT", control, "LEFT", -4, 0)
+            return
+        end
+    end
     local close = CloseButtonOf(frame, frame == _G.QuestFrame and "QuestFrameCloseButton" or "GossipFrameCloseButton")
     button:ClearAllPoints()
     if close then

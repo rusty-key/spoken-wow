@@ -303,6 +303,9 @@ function ContributeButton:Refresh()
     else
         button:Hide()
     end
+    if CopyTextButton and CopyTextButton.Refresh then
+        CopyTextButton:Refresh()
+    end
 end
 
 --- Build the button and its event frame, once, parented to UIParent so its own visibility
