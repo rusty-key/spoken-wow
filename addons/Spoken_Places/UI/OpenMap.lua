@@ -163,12 +163,36 @@ function SpokenPlaces:PlaceOverZone(frame, canvas, zone, layer)
 	return true
 end
 
---- On OpenMap's map a click on a city tells its story without opening its map: OpenMap's own
---- click is already moving the view, and opening the city's map under it left the map on the
---- city while the view went back to the zone (rusty-key/spoken-wow#921).
-function SpokenPlaces:SelectCity(city, entry)
-	self.selected = { mapID = city, city = true, entry = entry }
+--- Chooses a whole map's story for the panel on OpenMap's map, which shows no map of its own to
+--- tell: a city clicked there, whose map opened under OpenMap's moving view left the map on the
+--- city while the view went back to the zone (rusty-key/spoken-wow#921), or a zone.
+function SpokenPlaces:SelectMap(mapID)
+	self.selected = { mapID = mapID, map = true }
 	if self.RefreshPanel then
 		self:RefreshPanel()
 	end
+end
+
+--- The map whose story the panel tells while nothing is chosen: on OpenMap's map, zoomed in to a
+--- zone while the map is still the continent, the zone at the view's centre, as the panel tells
+--- the zone on Blizzard's zone map.
+function SpokenPlaces:ViewMap(mapID)
+	local om = self:OpenMap()
+	if not om or not mapID or self:IsZoneMap(mapID) or not CloseEnough(om) then
+		return mapID
+	end
+	local ok, u, v = pcall(om.GetView)
+	return ok and u and v and ZoneAt(om, u, v) or mapID
+end
+
+--- Calls `fn` as OpenMap's view moves or its map turns on or off. Asked once the addons have
+--- loaded, as OpenMap may load after this.
+function SpokenPlaces:OnOpenMapView(fn)
+	local om = API()
+	if not (om and om.RegisterCallback) then
+		return
+	end
+	local owner = {}
+	pcall(om.RegisterCallback, owner, "OpenMap_ViewChanged", function() fn() end)
+	pcall(om.RegisterCallback, owner, "OpenMap_StitchedChanged", function() fn() end)
 end

@@ -727,9 +727,28 @@ Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1
 Z:RefreshPanel()
 Expect("on OpenMap's map an area clicked stays chosen as the map follows the view",
     mapPage.title.text .. "|" .. mapPage.sub.text.text, "Valley of Trials|" .. Z.L.IN_ZONE_FMT:format("Durotar"))
-Z:SelectCity(1454, Z.Zones[1454])
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+mapPage.sub.scripts.OnClick(mapPage.sub)
+Expect("...its line goes back to the zone it is in, though the map is not that zone",
+    Z.selected and Z.selected.mapID == 1411 and mapPage.body.text.text, "Durotar is a cracked, red land.")
+Z:SelectMap(1454)
 Expect("...and a city clicked there tells its own story, though its map is not the one shown",
     mapPage.body.text.text, "The orcs' city.")
+-- Nothing chosen, zoomed in on Durotar while OpenMap's map is still Kalimdor: Durotar's story.
+local zoom = 6
+OpenMapAPI.GetView = function() return 0.3, 0.6, zoom end
+OpenMapAPI.MapAt = function() return 1411 end
+local isZoneMap = Z.IsZoneMap
+Z.IsZoneMap = function(_, mapID) return mapID == 1411 or mapID == 1454 end
+Z.selected = nil
+Z:RefreshPanel()
+Expect("nothing chosen, the zone at the view's centre, as on Blizzard's zone map", mapPage.body.text.text,
+    "Durotar is a cracked, red land.")
+zoom = 2
+Z:RefreshPanel()
+Expect("...and the continent zoomed out to it", mapPage.body.text.text, "The western continent.")
+Z.IsZoneMap = isZoneMap
 OpenMapAPI = nil
 Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
 Z:RefreshPanel()

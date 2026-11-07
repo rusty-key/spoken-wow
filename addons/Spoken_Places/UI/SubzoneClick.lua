@@ -36,6 +36,17 @@ local function HandleClick()
 	local areaName, entry, key, city = SpokenPlaces:AreaAt(mapID, x, y)
 	local debug = SpokenPlaces:Get("debug")
 
+	-- Anywhere else in a zone on OpenMap's map, the zone: its story is not on the panel already,
+	-- as the map there is the continent or the zone at the view's centre.
+	local zoneOnly = not entry and SpokenPlaces:OpenMap() and SpokenPlaces:GetLore(mapID)
+	if zoneOnly then
+		SpokenPlaces:SelectMap(mapID)
+		if SpokenPlaces:Get("showMapPanel") and SpokenPlaces:Get("mapPanelCollapsed") then
+			SpokenPlaces:SetMapPanelCollapsed(false)
+		end
+		return
+	end
+
 	if not areaName then
 		if debug then
 			SpokenPlaces:Print("no area under cursor on map %d", mapID)
@@ -60,7 +71,7 @@ local function HandleClick()
 	-- A city inside the zone (Stormwind City on Elwynn Forest's map) is a map of its own: the click
 	-- opens it, as one on a zone opens the zone from its continent, and the panel tells its story.
 	if city and SpokenPlaces:OpenMap() then
-		SpokenPlaces:SelectCity(city, entry)
+		SpokenPlaces:SelectMap(city)
 	elseif city then
 		if WorldMapFrame.SetMapID then WorldMapFrame:SetMapID(city) end
 	else

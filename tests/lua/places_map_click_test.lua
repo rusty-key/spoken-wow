@@ -127,7 +127,23 @@ Z.AreaAt = function(_, mapID)
 end
 Click()
 Expect("a city tells its story without opening its map under OpenMap's moving view", shownMap, nil)
-Expect("...as its own map's story", Z.selected and Z.selected.city and Z.selected.mapID, THUNDER_BLUFF)
+Expect("...as its own map's story", Z.selected and Z.selected.map and Z.selected.mapID, THUNDER_BLUFF)
+
+-- Anywhere in a zone with no area story under the cursor, the zone's own story.
+Z.GetLore = function(_, mapID) if mapID == MULGORE then return { name = "Mulgore" } end end
+Z.AreaAt = function(_, mapID) if mapID == MULGORE then return "Red Rocks" end end
+Z.selected = nil
+Click()
+Expect("stitched, a click off any area with a story chooses the zone's", Z.selected and Z.selected.map and Z.selected.mapID, MULGORE)
+Z.AreaAt = function() end
+Z.selected = nil
+Click()
+Expect("...as does one where no area is explored", Z.selected and Z.selected.mapID, MULGORE)
+OpenMapAPI = nil
+WorldMapFrame.mapID = MULGORE
+Z.selected = nil
+Click()
+Expect("without OpenMap the panel already tells the zone shown: nothing is chosen", Z.selected, nil)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places map click tests passed")

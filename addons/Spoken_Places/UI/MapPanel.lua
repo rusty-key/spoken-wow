@@ -435,6 +435,10 @@ end
 -- Content
 --------------------------------------------------------------------------------
 
+-- The map the panel last told the story of, so OpenMap's view moving refreshes it only when
+-- that changes.
+local shownMap
+
 local function Refresh(mapID)
 	if not panel then
 		return
@@ -472,8 +476,12 @@ local function Refresh(mapID)
 			selected = nil
 		end
 	end
-	-- A city chosen on OpenMap's map is told as its own map is.
-	if selected and selected.city then
+	if not selected then
+		mapID = SpokenPlaces:ViewMap(mapID)
+	end
+	shownMap = mapID
+	-- A city or zone chosen on OpenMap's map is told as its own map is.
+	if selected and selected.map then
 		selected = nil
 	end
 
@@ -493,7 +501,11 @@ local function Refresh(mapID)
 		local story = SpokenPlaces:StoryPlace(mapID, key)
 		local line = SpokenPlaces:PlaceLine(story, key or name)
 		-- The line under an area's name returns to its zone's story: nothing else on the panel does.
-		local back = function() SpokenPlaces:ClearSubzone() end
+		-- On OpenMap's map, to the zone the area is in, which may not be the one at the view's centre.
+		local zone = mapID
+		local back = function()
+			if SpokenPlaces:OpenMap() then SpokenPlaces:SelectMap(zone) else SpokenPlaces:ClearSubzone() end
+		end
 		-- Not found yet: named, and no more, as Azeroth's Compendium has it.
 		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(story, key) then
 			page:Show({ title = name, subtitle = line, onSubtitle = back, text = L.NOT_DISCOVERED })
@@ -593,6 +605,11 @@ function SpokenPlaces:SetupMapPanel()
 
 	SpokenPlaces:OnMapChanged(function(mapID)
 		Refresh(mapID)
+	end)
+	SpokenPlaces:OnOpenMapView(function()
+		if not SpokenPlaces.selected and SpokenPlaces:ViewMap(SpokenPlaces:GetDisplayedMapID()) ~= shownMap then
+			Refresh(SpokenPlaces:GetDisplayedMapID())
+		end
 	end)
 
 	-- Toggling "Hide the Contribute buttons" in the Spoken settings fires no game event.
