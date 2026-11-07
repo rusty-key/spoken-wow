@@ -161,6 +161,17 @@ B:NoteSoftInteract(nil)
 B:OnOpenerClosed()
 world.time = 0
 
+-- Forever exposes the item behind a readable through the unit GUID while the frame opens.
+-- That is the source DialogueUI uses for notes that were not opened from a bag slot.
+local savedGUID, savedCItem = world.npcGUID, _G.C_Item
+world.npcGUID = "Item-0-0-9550"
+_G.C_Item = { GetItemIDByGUID = function(guid) return guid == world.npcGUID and 9550 or nil end }
+B:OnTextBegin()
+Expect("the item GUID supplies a readable's item id", B.openedBy[1].kind .. " " .. B.openedBy[1].id, "item 9550")
+Expect("...and the GUID helper returns that id", B:ItemIDOfGUID(world.npcGUID), 9550)
+B:OnOpenerClosed()
+world.npcGUID, _G.C_Item = savedGUID, savedCItem
+
 ---------------------------------------------------------------- pages the client fills in
 -- The client writes the reader's name, class and gender word into a page, while the index is
 -- keyed on the page with its tokens. These are found by the words around what was filled in.

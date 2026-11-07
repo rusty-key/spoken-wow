@@ -39,6 +39,7 @@ end
 
 local function Diagnostics(self, text)
     local lines = {}
+    local seen = {}
     local page = CurrentPage(self)
     local book = page and self.PlaceOf and self:PlaceOf(page)
     local entry = book and self.BookById and self:BookById(book)
@@ -50,8 +51,21 @@ local function Diagnostics(self, text)
     AddLine(lines, "Title", title or (entry and entry.title))
     AddLine(lines, "Page", number or 1)
 
+    local function AddOpener(kind, id)
+        local key = kind .. ":" .. tostring(id)
+        if id ~= nil and not seen[key] then
+            seen[key] = true
+            AddLine(lines, kind == "item" and "Item ID" or "Object ID", id)
+        end
+    end
+
     for _, opener in ipairs(self.openedBy or {}) do
-        AddLine(lines, opener.kind == "item" and "Item ID" or "Object ID", opener.id)
+        AddOpener(opener.kind, opener.id)
+    end
+    -- If the addon was loaded after the book opened, openedBy is empty. The live unit GUID is
+    -- still the same source DialogueUI uses, so use it as a late fallback for the copy box.
+    if UnitGUID and self.ItemIDOfGUID then
+        AddOpener("item", self:ItemIDOfGUID(UnitGUID("npc")))
     end
 
     if self.ChecksumOf then
