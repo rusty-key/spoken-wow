@@ -1285,6 +1285,7 @@ Expect("the Compendium button has a stable quest-frame anchor", giver.anchor and
     .. tostring(giver.anchor.relativeTo == _G.QuestFrame) .. " " .. giver.anchor.relativePoint, "TOPRIGHT true TOPRIGHT")
 local copyHeader = VO.CopyTextButton:Setup()
 VO.CopyTextButton:PositionStandard(_G.QuestFrame)
+Expect("the Compendium leaves room for Copy Text", giver.anchor.x, -39)
 Expect("Copy Text is to the right of the Compendium button", VO.CopyTextButton.button.anchor
     and VO.CopyTextButton.button.anchor.point .. " "
     .. tostring(VO.CopyTextButton.button.anchor.relativeTo == giver) .. " " .. VO.CopyTextButton.button.anchor.relativePoint,
