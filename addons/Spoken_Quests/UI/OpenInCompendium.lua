@@ -74,12 +74,12 @@ function QuestsTab:PositionGiver()
         end
     end
     local close = type(frame.CloseButton) == "table" and frame.CloseButton or _G.QuestFrameCloseButton
-    local frameTop, closeBottom = frame:GetTop(), close and close.GetBottom and close:GetBottom()
-    local rightInset = INSET
-    if type(frameTop) == "number" and type(closeBottom) == "number" then
-        giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -rightInset, -(frameTop - closeBottom + STRIP_OFFSET) + LIFT)
+    if close then
+        -- The close button is the stable header anchor. Measuring the frame and close edges here
+        -- makes the button jump when Blizzard finishes laying out the quest window.
+        giver:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -GAP, -STRIP_OFFSET + LIFT)
     else
-        giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -rightInset, -CORNER_INSET + LIFT)
+        giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET, -CORNER_INSET + LIFT)
     end
 end
 

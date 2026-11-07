@@ -46,19 +46,6 @@ local function QuestPanelOnScreen()
     end
 end
 
-local function PlayButtonInset()
-    local details = _G.QuestMapFrame and QuestMapFrame.DetailsFrame
-    local header = details and (details.BackFrame or details)
-    local back = header and header.BackButton
-    if type(back) == "table" and back.GetPoint then
-        local _, _, _, x = back:GetPoint(1)
-        if type(x) == "number" and x > 0 then
-            return x
-        end
-    end
-    return 11
-end
-
 local function CurrentText()
     if not (Contribute and Contribute.CurrentText) then
         return nil
@@ -255,12 +242,7 @@ function CopyTextButton:PositionStandard(frame)
     end
     local close = CloseButtonOf(frame, frame == _G.QuestFrame and "QuestFrameCloseButton" or "GossipFrameCloseButton")
     button:ClearAllPoints()
-    local frameTop = frame.GetTop and frame:GetTop()
-    local closeBottom = close and close.GetBottom and close:GetBottom()
-    if type(frameTop) == "number" and type(closeBottom) == "number" then
-        button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PlayButtonInset(),
-            -(frameTop - closeBottom + STRIP_OFFSET))
-    elseif close then
+    if close then
         button:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -2, -STRIP_OFFSET)
     else
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
