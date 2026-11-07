@@ -117,6 +117,8 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
         what: num(d.from) ? `restored take v${version} over v${num(d.from)}` : `restored take v${version}`,
         quote: null,
       };
+    case "take.encode_failed":
+      return { what: `could not encode take v${version} for its pack`, quote: str(d.error) };
     case "recording.uploaded":
       return { what: `recorded v${version}`, quote: null };
     case "recording.removed":

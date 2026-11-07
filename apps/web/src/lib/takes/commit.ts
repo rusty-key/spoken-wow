@@ -130,7 +130,7 @@ export async function commitTake(
     });
     // After the row, so the take is live even when its pack encoding fails. Only for a
     // master in the bucket, which is where a build finds its encoding.
-    if (sha256) await encodeForPack(source, sha256, clip);
+    if (sha256) await encodeForPack(source, sha256, clip, { lang, file, version: next, lineId: fields.lineId });
     return { version: next, bytes: data.byteLength, archiveFile, sha256, durationSec };
   };
   return onDisk ? commit(archived) : withLocalCopy(data, "mp3", commit);
