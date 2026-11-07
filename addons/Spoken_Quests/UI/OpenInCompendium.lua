@@ -58,11 +58,15 @@ local function GiverQuestOnScreen()
         or Visible(_G.QuestFrameRewardPanel)
 end
 
--- Left of Listen or Contribute where one is shown, else in their corner.
-local function PlaceGiver()
+-- Keep the Compendium button on a stable header anchor. Copy Text is positioned to its left,
+-- so this function must not anchor back to Copy Text.
+function QuestsTab:PositionGiver()
     local frame = _G.QuestFrame
     giver:ClearAllPoints()
-    for _, owner in ipairs({ VO.DialogPlayButton, VO.ContributeButton }) do
+
+    -- Contribute and DialogPlay are the rightmost text controls. They position independently
+    -- from the frame, so Compendium can sit directly to their left.
+    for _, owner in ipairs({ VO.ContributeButton, VO.DialogPlayButton }) do
         local beside = type(owner) == "table" and owner.button
         if type(beside) == "table" and beside:IsShown() then
             giver:SetPoint("RIGHT", beside, "LEFT", -GAP, 0)
@@ -70,11 +74,12 @@ local function PlaceGiver()
         end
     end
     local close = type(frame.CloseButton) == "table" and frame.CloseButton or _G.QuestFrameCloseButton
-    local frameTop, closeBottom = frame:GetTop(), close and close.GetBottom and close:GetBottom()
-    if type(frameTop) == "number" and type(closeBottom) == "number" then
-        giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET, -(frameTop - closeBottom + STRIP_OFFSET) + LIFT)
+    if close then
+        -- The close button is the stable header anchor. Measuring the frame and close edges here
+        -- makes the button jump when Blizzard finishes laying out the quest window.
+        giver:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -INSET, -STRIP_OFFSET + LIFT)
     else
-        giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET + LIFT)
+        giver:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET, -CORNER_INSET + LIFT)
     end
 end
 
@@ -83,8 +88,13 @@ function QuestsTab:RefreshGiverButton()
     local id = GiverQuestOnScreen() and GetQuestID and VO.NotSecret(GetQuestID()) or nil
     local shown = self:Has(id)
     giver.questID = shown and id or nil
-    if id then PlaceGiver() end
+    if id then self:PositionGiver() end
     giver:SetShown(shown)
+    -- The copy control may have refreshed before the Compendium button settled on a new quest
+    -- panel. Refresh it after our own visibility and position are final.
+    if VO.CopyTextButton and VO.CopyTextButton.Refresh then
+        VO.CopyTextButton:Refresh()
+    end
 end
 
 local function SetupGiver()

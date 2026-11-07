@@ -34,6 +34,7 @@ stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
 _G.SpokenReadablesSettings = nil
 local env = stub.LoadSpoken(SPOKEN)
 env.Addon:Enable()
+local S = env.L
 
 -- DialogueUI's book view: no parent, drawn at 0.8, its close button in its top right, its own
 -- speaker in its top left.
@@ -156,7 +157,7 @@ Expect("...and turns to Stop while it reads", row.play.state, "stop")
 Expect("...Skip lit", row.skip:IsEnabled(), true)
 row.play.scripts.OnEnter(row.play)
 Expect("its tooltip names Stop", row.play.tooltip ~= nil and row.play.tooltip:GetParent() == view
-    and row.play.tooltip.text, B.L.STOP_TIP)
+    and row.play.tooltip.text, S.STOP)
 row.play.scripts.OnLeave(row.play)
 row.report.scripts.OnClick(row.report)
 local box = Spoken.ContributeBox
@@ -174,7 +175,10 @@ Book:Draw()
 row.play.scripts.OnClick(row.play, "LeftButton")
 Expect("Stop stops it", QueuedPages(), "")
 Book:Draw()
-Expect("...and Stop turns back to Play", row.play.state, "play")
+Expect("...and Stop turns into Replay", row.play.state, "replay")
+row.play.scripts.OnEnter(row.play)
+Expect("...and its tooltip names Replay", row.play.tooltip.text, S.REPLAY)
+row.play.scripts.OnLeave(row.play)
 local autoplay = SpokenReadablesSettings.autoplay
 row.play.scripts.OnClick(row.play, "RightButton")
 Expect("right-click switches Read Automatically", SpokenReadablesSettings.autoplay, not autoplay)

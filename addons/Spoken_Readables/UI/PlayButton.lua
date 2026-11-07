@@ -4,62 +4,29 @@
 -- book: the addon's two settings both mean "do not start by yourself", and neither should
 -- mean "give me no way to start it".
 --
--- A TEXT button, not an icon, for the reason the places side once gave: an
--- icon path cannot be verified without launching the client, and a texture that does not
--- exist on 11509 draws nothing at all -- an invisible button is a worse failure than a plain
--- one.
+-- A round Play/Stop icon, shared with Spoken's other playback controls.
 --
--- ON THE PAGE, in its bottom-right corner. Two placements came before it and both were on
--- the strip of frame above the page: outside the top-right corner, where it read as floating
--- beside the book rather than belonging to it, and then beside the previous-page arrow.
+-- IN THE HEADER STRIP, under the close button. The same strip is where the quest and gossip
+-- controls live, so the readable controls belong there too rather than on top of the page.
 --
--- THAT ROW HAS NO FREE SPACE, which is the reason this one is not on it. Reading the
--- measurements out of ItemTextFrame.xml in Gethe/wow-ui-source: the arrows are 32x32 centred
--- 75 in from the left and 23 in from the right; each carries a PREV / NEXT FontString
--- anchored to its inner edge, so the labels eat the space either side of them; and
--- ItemTextCurrentPage, which looks like the free middle, is a 192-wide FontString centred
--- across the row -- the digit you see sits in the middle of it while its left edge reaches
--- back under the previous-page arrow. Every part of that row is spoken for once a book has
--- more than one page, which the frame does not show you while you are looking at page one.
+-- The page arrows and page number remain below it, in their own row. The controls are kept
+-- together left-to-right as Copy Text, Compendium, Play/Stop, then Report when visible.
 --
--- ItemTextScrollFrame is the page itself, and the scrollbar hangs OUTSIDE its right edge:
--- the bar's textures anchor TOPLEFT to the frame's TOPRIGHT. So its bottom-right corner is
--- on the parchment, clear of the bar and clear of both arrows. Present and named the same in
--- the Classic frame Era and Anniversary load and the Mainline one Forever loads, so this
--- stays one anchor for three clients with no shims.
---
--- A long page's last line runs under the button. The alternative is a row where the button
--- collides with one of Blizzard's own controls on page two of every book.
---
--- ONE BUTTON, TWO STATES, not two buttons: this corner is the only free one on the frame (see
--- above), so a Contribute button would need it too. The two states never fight over it --
--- Contribute.lua's HasContributionGap is true only when PageOnScreen found nothing or only
--- guessed the page, and this button's Play/Stop state, which wins, exists only once
--- PageOnScreen found a page with audio (a guessed one is still gathered, unasked) -- so
--- re-labelling what is already here is the honest arrangement rather than a second control
--- stacked on space that does not exist.
-
 local _, SpokenReadables = ...
 local L = SpokenReadables.L
+local SharedL = _G.SpokenEnv and _G.SpokenEnv.L or {}
 
 local GAP = 4
-local BUTTON_WIDTH = 58
-local BUTTON_HEIGHT = 22
--- Room the button's end caps take either side of its label.
-local LABEL_PADDING = 24
+local STRIP_OFFSET = 12
+local CORNER_INSET = 32
 
---- Widen the button to fit the widest label it will ever show, never below BUTTON_WIDTH.
---- Measured once over every label rather than on each SetText, so flipping between Play,
---- Stop and Contribute keeps one width. BUTTON_WIDTH was sized to the English labels; a
---- translated one can be twice as long. The button is pinned by its right edge, so it
---- grows into the page, not off it.
-local function FitToLabels(button, labels)
-	local widest = 0
-	for _, label in ipairs(labels) do
-		button:SetText(label)
-		widest = math.max(widest, button:GetTextWidth())
+local function PlaybackLabel(state)
+	if state == "stop" then
+		return SharedL.OPT_STOP or L.STOP
+	elseif state == "replay" then
+		return SharedL.OPT_REPLAY or SharedL.REPLAY or L.PLAY
 	end
-	button:SetWidth(math.max(BUTTON_WIDTH, widest + LABEL_PADDING))
+	return SharedL.OPT_PLAY or L.PLAY
 end
 
 --- Open in Azeroth's Compendium: the Compendium's tome in the player's round button, as Quests
@@ -90,24 +57,75 @@ function SpokenReadables:NewOpenButton(parent, tooltip)
 	return button
 end
 
---- Open in Azeroth's Compendium on the book frame, left of Play where it shows, else in its corner:
---- only for a writing whose page the Compendium would show.
+--- Open in Azeroth's Compendium on the book frame, for a writing whose page the Compendium would
+--- show. PositionReadableButtons places it in the shared header row.
 function SpokenReadables:RefreshOpenButton()
-	local open, play = self.openButton, self.playButton
+	local open = self.openButton
 	if not open then return end
 	local book = self:IsPartOn() and self:PlaceOf(self:PageOnScreen()) or nil
 	local shown = self.CompendiumHas ~= nil and self:CompendiumHas(book)
 	open.bookId = shown and book or nil
-	open:ClearAllPoints()
-	if play and play:IsShown() then
-		open:SetPoint("RIGHT", play, "LEFT", -GAP, 0)
-	elseif _G.ItemTextScrollFrame then
-		open:SetPoint("BOTTOMRIGHT", ItemTextScrollFrame, "BOTTOMRIGHT", -6, 6)
-	else
-		-- Where SetupPlayButton puts Play on a book frame built some other way.
-		open:SetPoint("BOTTOMRIGHT", ItemTextFrame, "TOPRIGHT", -39, -412)
-	end
 	open:SetShown(shown)
+end
+
+local function ReportsHidden()
+	return _G.Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden() or false
+end
+
+function SpokenReadables:RefreshReportButton()
+	local report = self.reportButton
+	if not report then return end
+	local page = self:IsPartOn() and self:PageOnScreen() or nil
+	local shown = page ~= nil and not self:IsMail() and not ReportsHidden()
+	report.pageId = shown and page or nil
+	report:SetShown(shown)
+end
+
+local function CloseButtonOf(frame)
+	if frame and type(frame.CloseButton) == "table" then
+		return frame.CloseButton
+	end
+	return _G.ItemTextCloseButton or _G.ItemTextFrameCloseButton
+end
+
+--- Put the standard readable controls in the strip below the title bar. The visible controls
+--- are laid out from right to left so the text button never covers either icon.
+function SpokenReadables:PositionReadableButtons()
+	local frame = _G.ItemTextFrame
+	if not frame then return end
+
+	local controls = {}
+	local function Add(button)
+		if button and button:IsShown() then
+			table.insert(controls, button)
+		end
+	end
+	Add(self.reportButton)
+	Add(self.playButton)
+	Add(self.openButton)
+	Add(self.copyButton)
+	if #controls == 0 then return end
+
+	local close = CloseButtonOf(frame)
+	local frameTop = frame.GetTop and frame:GetTop()
+	local closeBottom = close and close.GetBottom and close:GetBottom()
+	local right = controls[1]
+	right:ClearAllPoints()
+	if type(frameTop) == "number" and type(closeBottom) == "number" then
+		right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -11,
+			-(frameTop - closeBottom + STRIP_OFFSET))
+	elseif close then
+		right:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -GAP, -STRIP_OFFSET)
+	else
+		right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
+	end
+
+	for i = 2, #controls do
+		local button = controls[i]
+		button:ClearAllPoints()
+		button:SetPoint("RIGHT", right, "LEFT", -GAP, 0)
+		right = button
+	end
 end
 
 --- Show, hide and re-label the button for whatever is on screen now.
@@ -132,13 +150,15 @@ local function RefreshPlay(self)
 		self.playButtonMode = "play"
 
 		local book = self:PlaceOf(pageId)
-		if self:IsNarrating(book) then
-			button:SetText(L.STOP)
-		else
-			button:SetText(L.PLAY)
+		if self.replayBook and self.replayBook ~= book then
+			self.replayBook = nil
 		end
+		local state = self:IsNarrating(book) and "stop"
+			or self.replayBook == book and "replay" or "play"
+		button:SetState(state)
 		return
 	end
+	self.replayBook = nil
 
 	-- No clip to play. The other thing this corner can mean: a page this corpus never saw,
 	-- offered back as something to send instead of something to hear. Guarded the same way
@@ -147,7 +167,7 @@ local function RefreshPlay(self)
 	-- asked to load.
 	if self.HasContributionGap and self:HasContributionGap() then
 		button:Show()
-		button:SetText(L.CONTRIBUTE)
+		button:SetState("play")
 		self.playButtonMode = "contribute"
 		return
 	end
@@ -159,6 +179,9 @@ end
 function SpokenReadables:RefreshPlayButton()
 	RefreshPlay(self)
 	self:RefreshOpenButton()
+	if self.RefreshCopyButton then self:RefreshCopyButton() end
+	self:RefreshReportButton()
+	self:PositionReadableButtons()
 end
 
 --- Build the button, once, as soon as the client has a book frame to hang it on.
@@ -176,27 +199,10 @@ function SpokenReadables:SetupPlayButton()
 		return nil
 	end
 
-	local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-	button:SetHeight(BUTTON_HEIGHT)
-	FitToLabels(button, { L.PLAY, L.STOP, L.CONTRIBUTE })
-	button:SetText(L.PLAY)
+	local button = Spoken:CreateRoundButton(frame, "play")
 	button:Hide()
 
-	local page = _G.ItemTextScrollFrame
-	if page then
-		button:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -6, 6)
-		-- The parchment is a texture layer of ItemTextFrame and a child frame always draws
-		-- over its parent's layers, but the page text lives in this scroll frame, which is
-		-- this button's SIBLING -- and siblings draw in frame-level order.
-		if button.SetFrameLevel and page.GetFrameLevel then
-			button:SetFrameLevel(page:GetFrameLevel() + 2)
-		end
-	else
-		-- A client whose book frame is built some other way. Derived from the same file, so
-		-- it lands where the corner would be rather than somewhere invented: the page is
-		-- anchored 33 in from the frame's top-right and 63 down, and is 355 tall.
-		button:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -39, -412)
-	end
+	button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
 
 	button:SetScript("OnClick", function()
 		if SpokenReadables.playButtonMode == "contribute" then
@@ -205,11 +211,13 @@ function SpokenReadables:SetupPlayButton()
 		end
 
 		local book = SpokenReadables:PlaceOf(SpokenReadables:PageOnScreen())
-		if book and SpokenReadables:IsNarrating(book) then
+		if book and button.state == "stop" and SpokenReadables:IsNarrating(book) then
 			SpokenReadables:StopReading(book)
+			SpokenReadables.replayBook = book
 		else
 			-- The same call `/spr read` makes, so a page with no clip explains itself here
 			-- exactly as it does in the chat frame.
+			SpokenReadables.replayBook = nil
 			SpokenReadables:ReadOrExplain()
 		end
 		SpokenReadables:RefreshPlayButton()
@@ -223,10 +231,8 @@ function SpokenReadables:SetupPlayButton()
 		if SpokenReadables.playButtonMode == "contribute" then
 			GameTooltip:SetText(L.NO_LINE)
 			GameTooltip:AddLine(L.NO_LINE_TIP, 1, 0.8, 0.2, true)
-		elseif self:GetText() == L.STOP then
-			GameTooltip:SetText(L.STOP_TIP)
 		else
-			GameTooltip:SetText(L.PLAY_TIP)
+			GameTooltip:SetText(PlaybackLabel(self.state))
 		end
 		GameTooltip:Show()
 	end)
@@ -246,12 +252,35 @@ function SpokenReadables:SetupPlayButton()
 		-- Before ItemTextFrame closes: the Compendium opens beside the game's windows.
 		open.beforeOpen = function() if _G.CloseItemText then CloseItemText() end end
 	end
+	local copy = SpokenReadables.NewCopyButton and SpokenReadables:NewCopyButton(frame)
+	if copy then
+		copy:SetFrameLevel(button:GetFrameLevel())
+		self.copyButton = copy
+	end
+	local report = Spoken:CreateRoundButton(frame, "report")
+	report:SetScript("OnClick", function()
+		if report.pageId then SpokenReadables:ShowReport(report.pageId) end
+	end)
+	report:SetScript("OnEnter", function(self)
+		if GameTooltip then
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L.REPORT_PROBLEM)
+			GameTooltip:Show()
+		end
+	end)
+	report:SetScript("OnLeave", function()
+		if GameTooltip then GameTooltip:Hide() end
+	end)
+	report:Hide()
+	self.reportButton = report
 
 	-- Toggling the hide setting in the Spoken settings fires no game event.
 	if _G.Spoken and Spoken.RegisterCallback then
-		Spoken:RegisterCallback("CONTRIBUTE_SETTINGS_CHANGED", function()
-			SpokenReadables:RefreshPlayButton()
-		end)
+		for _, event in ipairs({ "CONTRIBUTE_SETTINGS_CHANGED", "REPORT_SETTINGS_CHANGED" }) do
+			Spoken:RegisterCallback(event, function()
+				SpokenReadables:RefreshPlayButton()
+			end)
+		end
 	end
 
 	return button

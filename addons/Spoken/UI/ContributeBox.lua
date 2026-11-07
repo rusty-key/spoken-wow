@@ -28,6 +28,20 @@ local VIEW_MOST = 200
 local box
 local gatheredView
 
+local function RefreshDialogTint(frame)
+    if Spoken and Spoken.TintDialog then
+        if frame then Spoken:TintDialog(frame) end
+        if box then Spoken:TintDialog(box.frame) end
+        if gatheredView then Spoken:TintDialog(gatheredView.frame) end
+    end
+end
+
+if Spoken and Spoken.RegisterCallback then
+    for _, event in ipairs({ "FRAME_SETTINGS_CHANGED", "REPORT_SETTINGS_CHANGED" }) do
+        Spoken:RegisterCallback(event, RefreshDialogTint)
+    end
+end
+
 local HIDDEN_FIELDS = {
     addon = true, build = true, locale = true, pack = true, packVersion = true,
     model = true, displays = true, sex = true, creature = true,
@@ -105,6 +119,7 @@ local function NewDialog(name, width, height, titleText)
             insets = { left = 11, right = 12, top = 12, bottom = 11 },
         })
     end
+    RefreshDialogTint(frame)
     frame:Hide()
 
     local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
