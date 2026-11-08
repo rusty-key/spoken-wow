@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **OpenMap dungeon bosses now open their lore when clicked.** With Spoken Bosses installed, clicking
+  a boss in OpenMap's Bosses panel opens its story and portrait beside the map. OpenMap remains an
+  optional integration, so players without it see no change. *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.4 — 2026-11-08
 
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
