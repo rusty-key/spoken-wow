@@ -46,6 +46,7 @@ import {
   type ContributionStatus,
   type ResolveManyResult,
 } from "@/lib/contributions/contributions";
+import { bulkHold, bulkHoldSummary } from "@/lib/contributions/bulk";
 import type { ClientSummary } from "@/lib/contributions/client";
 import { flavorOptionsFor, summaryFromResolution } from "@/lib/contributions/speaker";
 import { Roster, type RosterData } from "@/lib/voices/roster";
@@ -470,11 +471,19 @@ export default function ContributionTable({
   // A row with no speaker would only come back refused, nor would a readables row the matcher can't
   // place: that one is accepted on its own.
   const notBulk = new Set(matching.filter((row) => !row.bulk).map((row) => row.id));
-  const selectedToAccept = changeable(
-    selectedRows.filter((row) => bucketOf(row, npcOf(row), roster) === "ready" && !notBulk.has(row.id)),
-    "accepted",
-  );
+  const holdOf = (row: ContributionRow) =>
+    bulkHold({
+      status: resolved[row.id] ?? row.status,
+      bucket: bucketOf(row, npcOf(row), roster),
+      bulk: !notBulk.has(row.id),
+      matchKind: row.book?.match.kind,
+    });
+  const selectedHolds = selectedRows.map(holdOf);
+  const selectedToAccept = selectedRows.filter((_, index) => selectedHolds[index] === null).map((row) => row.id);
+  const selectedHeldBack = bulkHoldSummary(selectedHolds);
   const selectedToReject = changeable(selectedRows, "rejected");
+  // A bare "(0)" beside a row of ticked boxes reads as a broken selection.
+  const ofSelected = (count: number) => (count === selectedRows.length ? `${count}` : `${count} of ${selectedRows.length}`);
   const allTicked = rows.length > 0 && selectedRows.length === rows.length;
 
   // Stable, like every callback a row is handed: a row redraws only when its own props change.
@@ -601,7 +610,7 @@ export default function ContributionTable({
                     disabled={selectedToAccept.length === 0}
                     onClick={() => void resolveMany(selectedToAccept, "accepted")}
                   >
-                    Accept selected ({selectedToAccept.length})
+                    Accept selected ({ofSelected(selectedToAccept.length)})
                   </Button>
                   <Button
                     size="sm"
@@ -610,11 +619,12 @@ export default function ContributionTable({
                     disabled={selectedToReject.length === 0}
                     onClick={() => void resolveMany(selectedToReject, "rejected")}
                   >
-                    Reject selected ({selectedToReject.length})
+                    Reject selected ({ofSelected(selectedToReject.length)})
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
                     Clear
                   </Button>
+                  {selectedHeldBack ? <span className="text-muted-foreground">{selectedHeldBack}</span> : null}
                 </>
               ) : null}
               {bulkOutcome ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
