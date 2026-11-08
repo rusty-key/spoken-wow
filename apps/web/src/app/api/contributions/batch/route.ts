@@ -17,6 +17,7 @@
  * page, and a file has none; the addon never gathers them, so one arriving is a hand-built file.
  */
 import { headers } from "next/headers";
+import { after } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
@@ -24,7 +25,7 @@ import { parseEnvelope } from "@/lib/contributions/envelope";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
-  storeSubmission,
+  resolveSpeakers,
   stringOrNull,
 } from "@/lib/contributions/intake";
 import { lineStates } from "@/lib/contributions/known";
@@ -39,6 +40,7 @@ import { MAX_ENVELOPES } from "@/lib/contributions/saved-variables";
 import {
   countRecentContributions,
   countRecentInstallUploads,
+  createContributions,
   recordContributionHit,
 } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
@@ -87,7 +89,6 @@ export async function POST(request: Request) {
   const refuse = (reason: string) => {
     refused[reason] = (refused[reason] ?? 0) + 1;
   };
-  const resolved = new Set<string>();
 
   for (const raw of envelopes) {
     if (typeof raw !== "string") {
@@ -118,20 +119,27 @@ export async function POST(request: Request) {
   // install id each is a line that player heard in silence, and is counted as one.
   const states = await lineStates(submissions);
   const hits: MissingAudioHit[] = [];
+  const unknown: Submission[] = [];
   let known = 0;
   for (const [index, submission] of submissions.entries()) {
     const state = states[index];
     if (state?.kind !== "known") {
-      await storeSubmission(submission, identity, resolved);
+      unknown.push(submission);
       continue;
     }
     known++;
     const hit = installId ? hitFrom(submission, state.lineId) : null;
     if (hit) hits.push(hit);
   }
+  await createContributions(unknown, identity);
   if (installId) await recordMissingAudio(installId, hits);
 
   await recordContributionHit(ip, installId);
+
+  // After the response, because Cloudflare gives up on an origin after 100 seconds and the
+  // player's lines are already safe by here. A restart that loses this leaves rows a moderator
+  // can still fix.
+  after(() => resolveSpeakers(unknown));
 
   return Response.json({
     ok: true,
