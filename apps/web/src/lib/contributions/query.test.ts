@@ -49,6 +49,12 @@ describe("contributionsHref", () => {
     );
   });
 
+  it("keeps a picked build across another filter's change, and drops it when cleared", () => {
+    const filters = { status: "new", bucket: "ready", client: "forever", build: "70790", source: "quests", stage: [], sort: DEFAULT_SORT } as const;
+    expect(contributionsHref(filters, { status: "accepted" })).toBe("/contributions/quests?status=accepted&client=forever&build=70790");
+    expect(contributionsHref(filters, { build: undefined })).toBe("/contributions/quests?status=new&client=forever");
+  });
+
   it("writes the bucket only when it is not the ready rows", () => {
     expect(
       contributionsHref({ status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT }, { bucket: "blocked" }),
