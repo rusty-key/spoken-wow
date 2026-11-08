@@ -100,8 +100,8 @@ local RACIAL_ART = {
         edgeV = TEXTURES .. "RaceTrim/GnomeEdgeV",
         join = TEXTURES .. "RaceTrim/GnomeJoin",
         edgeVPeriod = 8,
-        -- Gnome's muted copper-gray wash echoes the trim and avoids a hard color block at the fade.
-        tint = { .20, .16, .12, .60 },
+        -- Gnome's low-opacity copper-gray wash lets the original gradient control the fade.
+        tint = { .18, .14, .11, .40 },
     },
     Orc = {
         edge = TEXTURES .. "RaceTrim/OrcEdge",
