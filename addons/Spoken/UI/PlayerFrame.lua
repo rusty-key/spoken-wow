@@ -130,8 +130,8 @@ local RACIAL_ART = {
         edgeV = TEXTURES .. "RaceTrim/ForsakenEdgeV",
         join = TEXTURES .. "RaceTrim/ForsakenJoin",
         edgeVPeriod = 8,
-        -- Undead's muted stone-olive wash blends with the pale, weathered trim.
-        tint = { .14, .14, .12, .60 },
+        -- Undead's muted plum-violet wash matches the shared Forsaken trim without overpowering it.
+        tint = { .13, .10, .16, .60 },
     },
     Forsaken = {
         edge = TEXTURES .. "RaceTrim/ForsakenEdge",
