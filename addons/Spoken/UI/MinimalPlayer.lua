@@ -342,7 +342,8 @@ function MinimalPlayer:ConfigurePortrait()
 end
 
 function MinimalPlayer:ApplyRaceArt()
-    local look = PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip)
+    local isQuest = PlayerFrame.IsQuestClip and PlayerFrame.IsQuestClip(self.clip)
+    local look = isQuest and PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip) or nil
     local themed = look ~= nil and self.panel.spokenEllesmere ~= true
     if self.raceThemed ~= themed then
         self.raceThemed = themed
@@ -354,14 +355,18 @@ function MinimalPlayer:ApplyRaceArt()
         local bronze = Actions.Bronze()
         if bronze then
             self.panel:SetBackdropBorderColor(unpack(bronze))
+            self.ring:SetVertexColor(unpack(bronze))
         else
             self.panel:SetBackdropBorderColor(1, 1, 1, 1)
+            self.ring:SetVertexColor(1, 1, 1)
         end
         return
     end
     self.raceTint:SetColorTexture(unpack(look.tint))
     self:PaintRaceTrim(look)
     self.panel:SetBackdropBorderColor(1, 1, 1, 0)
+    -- Keep the race hue, but lift the dark window wash so the portrait ring remains visible.
+    self.ring:SetVertexColor(PlayerFrame.RaceRingColor(look))
 end
 
 function MinimalPlayer:PaintRaceTrim(look)

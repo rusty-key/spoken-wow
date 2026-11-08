@@ -67,6 +67,12 @@ ExpectOf("...said once: nothing after it", function() return F.frame.container.l
 quests:Enqueue(H.Clip({ text = "Los tauren hemos hecho un hogar de esta tierra.",
     present = { header = "Valiente Pluma de Viento", portrait = { kind = "model", creatureID = 9999 } } }))
 Expect("a Tauren line gets the Tauren racial treatment", F.frame.raceBorderFrame:IsShown(), true)
+local squareRing = F.frame.portrait.border.texture.vertexColor
+Expect("...and the square portrait ring follows its border color", string.format("%.3f %.3f %.3f",
+    squareRing[1], squareRing[2], squareRing[3]), "0.950 0.680 0.350")
+local squareBackground = F.frame.portrait.background.vertexColor
+Expect("...and its background uses the same color", string.format("%.3f %.3f %.3f",
+    squareBackground[1], squareBackground[2], squareBackground[3]), "0.950 0.680 0.350")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
 -- Skyborne model metadata is not always exposed through UnitRace. Its compact internal names
@@ -74,6 +80,10 @@ env.SoundQueue:RemoveAllSoundsFromQueue()
 quests:Enqueue(H.Clip({ npcBody = "skybourneelf-female", text = "Una bienvenida desde Skywall.",
     present = { header = "Ailee Corazón Lejano", portrait = { kind = "model", creatureID = 9998 } } }))
 Expect("a Skyborne model body gets the High Order racial treatment", F.frame.raceBorderFrame:IsShown(), true)
+squareRing = F.frame.portrait.border.texture.vertexColor
+Expect("...with a bright purple square portrait ring", string.format("%.3f %.3f %.3f",
+    squareRing[1], squareRing[2], squareRing[3]), "0.640 0.560 0.950")
+Expect("...with the brightening pass on the square ring", F.frame.portrait.border.highlight:IsShown(), true)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
 -- When the client exposes only the shared Skyborne name, the NPC's faction selects the variant.
@@ -84,6 +94,10 @@ _G.GetGuildInfo = function() return "Formavientos" end
 quests:Enqueue(H.Clip({ text = "Los vientos te acompañan.",
     present = { header = "Ailee Corazón Lejano", portrait = { kind = "model", creatureID = 9998 } } }))
 Expect("a Horde Skyborne unit gets the Windshaper racial treatment", F.frame.raceBorderFrame:IsShown(), true)
+squareRing = F.frame.portrait.border.texture.vertexColor
+Expect("...with a blue square portrait ring", string.format("%.3f %.3f %.3f",
+    squareRing[1], squareRing[2], squareRing[3]), "0.020 0.100 1.000")
+Expect("...with the blue brightening pass on the square ring", F.frame.portrait.border.highlight:IsShown(), true)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 _G.UnitRace, _G.UnitFactionGroup, _G.GetGuildInfo = unitRace, unitFaction, guildInfo
 
@@ -108,6 +122,11 @@ places:Enqueue(H.Clip({ key = "s:1436:moonbrook", present = { header = "Westfall
 ExpectOf("a subzone's story names the zone, then the subzone", function()
     return F.frame.container.name:GetText() .. " " .. F.frame.container.label:GetText()
 end, "Westfall · Moonbrook")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+places:Enqueue(H.Clip({ text = "Los tauren hemos hecho un hogar de esta tierra.",
+    present = { header = "Valiente Pluma de Viento", bullet = "zone", portrait = { kind = "none" } } }))
+Expect("a zone story remains in the places source", F:Current().source.key, "places")
+Expect("a zone story keeps the original frame art", F.frame.raceBorderFrame:IsShown(), false)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 -- A zone's own story is headed by its continent.
 places:Enqueue(H.Clip({ key = "z:1436", present = { header = "Eastern Kingdoms", label = "Westfall", bullet = "zone",

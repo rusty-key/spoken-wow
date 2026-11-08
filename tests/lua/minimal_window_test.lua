@@ -159,6 +159,7 @@ Expect("...with the Tauren border texture", M.raceTrim.topLeft.texture,
     [[Interface\AddOns\Spoken\Textures\RaceTrim/TaurenEdge]])
 Expect("...and the matching dark text treatment", M.name.colour .. " " .. tostring(M.paper.texture),
     "1.00 0.82 0.00 Interface\\AddOns\\Spoken\\Textures\\MinimalBackground")
+Expect("...the Tauren portrait ring uses its warm bronze color", M.ring.colour, "0.95 0.68 0.35")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
 -- The setting, on Spoken's page, for the small window only.

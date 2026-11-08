@@ -80,6 +80,7 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/NightElfJoin",
         -- Night Elf's muted violet restores the purple tone behind the leafy trim.
         tint = { .16, .07, .24, .72 },
+        ring = { .75, .95, .25 },
     },
     Human = {
         edge = TEXTURES .. "RaceTrim/HumanEdge",
@@ -87,13 +88,21 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/HumanJoin",
         -- Keep the Human navy tone while letting the box's original fade remain visible.
         tint = { .06, .11, .20, .72 },
+        -- Use the same neutral metal treatment as Orc; the Human texture supplies the silver tone.
+        ring = { 1.00, 1.00, 1.00 },
+        squareRing = { .42, .42, .42 },
+        desaturateSquare = true,
     },
     Dwarf = {
         edge = TEXTURES .. "RaceTrim/DwarfEdge",
         edgeV = TEXTURES .. "RaceTrim/DwarfEdgeV",
         join = TEXTURES .. "RaceTrim/DwarfJoin",
-        -- Warm bronze to match the Dwarf metalwork, with enough transparency to retain the fade.
+        -- Use the same neutral metal treatment as Human and Orc.
         tint = { .18, .11, .05, .72 },
+        ring = { 1.00, 1.00, 1.00 },
+        -- The large portrait atlas is warmer; neutralize it to the same dark silver.
+        squareRing = { .42, .42, .42 },
+        desaturateSquare = true,
     },
     Gnome = {
         edge = TEXTURES .. "RaceTrim/GnomeEdge",
@@ -102,6 +111,9 @@ local RACIAL_ART = {
         edgeVPeriod = 8,
         -- Gnome's low-opacity copper-gray wash lets the original gradient control the fade.
         tint = { .18, .14, .11, .72 },
+        ring = { 1.00, .80, .42 },
+        -- Lift the darker square atlas toward the small ring's bright copper.
+        squareRing = { .55, .45, .30 },
     },
     Orc = {
         edge = TEXTURES .. "RaceTrim/OrcEdge",
@@ -109,6 +121,11 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/OrcJoin",
         -- Orc's dark red wash reinforces the rugged metal trim without becoming too bright.
         tint = { .16, .04, .03, .72 },
+        -- The ring texture already carries Orc's silver metal; keep its natural color.
+        ring = { 1.00, 1.00, 1.00 },
+        -- The large portrait atlas is warmer and greener; desaturate it so the square border is silver too.
+        squareRing = { .58, .58, .58 },
+        desaturateSquare = true,
     },
     Tauren = {
         edge = TEXTURES .. "RaceTrim/TaurenEdge",
@@ -116,6 +133,8 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/TaurenJoin",
         -- A lighter ochre-brown keeps Tauren's earthy tone closer to the bright gold trim.
         tint = { .20, .14, .07, .72 },
+        -- The ring texture is silver; the bronze palette restores Tauren's warm trim color.
+        ring = { .95, .68, .35 },
     },
     Troll = {
         edge = TEXTURES .. "RaceTrim/TrollEdge",
@@ -123,6 +142,7 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/TrollJoin",
         -- Troll's muted earthy burgundy blends with the red-and-brown trim.
         tint = { .14, .07, .06, .72 },
+        ring = { .50, .30, .22 },
     },
     Undead = {
         -- Scourge uses the same trim as Forsaken; only the wash remains distinct.
@@ -132,12 +152,17 @@ local RACIAL_ART = {
         edgeVPeriod = 8,
         -- Undead's muted plum-violet wash matches the shared Forsaken trim without overpowering it.
         tint = { .13, .10, .16, .72 },
+        ring = { .68, .62, .54 },
+        -- Neutralize the large atlas's yellow cast before applying the muted bone palette.
+        squareRing = { .50, .47, .42 },
+        desaturateSquare = true,
     },
     Forsaken = {
         edge = TEXTURES .. "RaceTrim/ForsakenEdge",
         edgeV = TEXTURES .. "RaceTrim/ForsakenEdgeV",
         join = TEXTURES .. "RaceTrim/ForsakenJoin",
         tint = { .05, .03, .07, .72 },
+        ring = { .42, .36, .50 },
     },
     HighOrder = {
         edge = TEXTURES .. "RaceTrim/HighOrderEdge",
@@ -145,6 +170,9 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/HighOrderJoin",
         edgeVPeriod = 8,
         tint = { .08, .05, .16, .72 },
+        ring = { .90, .65, 1.00 },
+        -- The large portrait atlas mutes this purple; compensate so it matches the small ring.
+        squareRing = { .64, .56, .95 },
     },
     Windshapers = {
         edge = TEXTURES .. "RaceTrim/WindshapersEdge",
@@ -152,6 +180,10 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/WindshapersJoin",
         edgeVPeriod = 8,
         tint = { .03, .08, .11, .72 },
+        ring = { .24, .56, .72 },
+        -- The large portrait atlas is greener than the small ring texture; compensate to blue.
+        -- Suppress the atlas's strong green channel so the result is blue, not teal.
+        squareRing = { .02, .10, 1.00 },
     },
 }
 
@@ -357,8 +389,23 @@ local function RaceLook(clip)
     return race and RACIAL_ART[race]
 end
 
+local function IsQuestClip(clip)
+    return clip and clip.source and clip.source.key == "quests"
+end
+
+local function RaceRingColor(look, square)
+    local ring = square and (look.squareRing or look.ring) or look.ring
+    if ring then return unpack(ring) end
+    local tint = look.tint
+    local brightest = math.max(tint[1], tint[2], tint[3])
+    local lift = math.min(4, .55 / math.max(.01, brightest))
+    return tint[1] * lift, tint[2] * lift, tint[3] * lift
+end
+
 -- The Small Window uses the same authoritative speaker lookup and race palette.
 PlayerFrame.RaceLook = RaceLook
+PlayerFrame.IsQuestClip = IsQuestClip
+PlayerFrame.RaceRingColor = RaceRingColor
 
 local function FirstAtlas(names)
     for _, name in ipairs(names) do
@@ -451,6 +498,8 @@ function PlayerFrame:InitPortrait()
     self.frame.portrait.border:SetFrameLevel(self.frame.portrait:GetFrameLevel() + 3)
     self.frame.portrait.border:SetAllPoints()
     self.frame.portrait.border.texture = self.frame.portrait.border:CreateTexture(nil, "OVERLAY")
+    self.frame.portrait.border.highlight = self.frame.portrait.border:CreateTexture(nil, "OVERLAY", nil, 1)
+    self.frame.portrait.border.highlight:Hide()
 end
 
 function PlayerFrame:InitHeader()
@@ -560,13 +609,18 @@ end
 local function DrawArt(frame, art)
     local portrait = frame.portrait
     local border = portrait.border.texture
+    local highlight = portrait.border.highlight
     border:ClearAllPoints()
+    highlight:ClearAllPoints()
     if art then
         frame.background:SetAtlas(art.box)
         portrait.background:SetAtlas(art.face)
         border:SetAtlas(art.ring)
         border:SetSize(RING_SIZE, RING_SIZE)
         border:SetPoint("TOPLEFT", portrait, "TOPLEFT", RING_X - PORTRAIT_X, RING_Y - PORTRAIT_Y)
+        highlight:SetAtlas(art.ring)
+        highlight:SetSize(RING_SIZE, RING_SIZE)
+        highlight:SetPoint("TOPLEFT", portrait, "TOPLEFT", RING_X - PORTRAIT_X, RING_Y - PORTRAIT_Y)
         return
     end
     frame.background:SetTexture(TEXTURES .. "BackgroundGradient")
@@ -577,6 +631,10 @@ local function DrawArt(frame, art)
     border:SetTexCoord(0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE, 0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE)
     border:SetPoint("TOPLEFT", portrait, "TOPLEFT", -PORTRAIT_BORDER_OUTSET, PORTRAIT_BORDER_OUTSET)
     border:SetPoint("BOTTOMRIGHT", portrait, "BOTTOMRIGHT", PORTRAIT_BORDER_OUTSET, -PORTRAIT_BORDER_OUTSET)
+    highlight:SetTexture(TEXTURES .. "PortraitFrameAtlas")
+    highlight:SetTexCoord(0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE, 0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE)
+    highlight:SetPoint("TOPLEFT", portrait, "TOPLEFT", -PORTRAIT_BORDER_OUTSET, PORTRAIT_BORDER_OUTSET)
+    highlight:SetPoint("BOTTOMRIGHT", portrait, "BOTTOMRIGHT", PORTRAIT_BORDER_OUTSET, -PORTRAIT_BORDER_OUTSET)
 end
 
 --- The box and the portrait's art. Art that fails to draw leaves Spoken's own, and its error goes
@@ -595,12 +653,25 @@ function PlayerFrame:ApplyArt()
 end
 
 function PlayerFrame:ApplyRaceArt(clip)
-    local frame, look = self.frame, RaceLook(clip)
+    local frame, look = self.frame, IsQuestClip(clip) and RaceLook(clip) or nil
     frame.raceBorderFrame:SetShown(look ~= nil)
     frame.raceTint:SetShown(look ~= nil)
     if not look then
         frame:SetBackdropBorderColor(1, 1, 1, 1)
         frame.portrait.border.texture:SetAlpha(1)
+        if frame.portrait.border.texture.SetBlendMode then
+            frame.portrait.border.texture:SetBlendMode("BLEND")
+        end
+        if frame.portrait.border.texture.SetDesaturated then
+            frame.portrait.border.texture:SetDesaturated(false)
+            frame.portrait.border.highlight:SetDesaturated(false)
+        end
+        if frame.portrait.background.SetDesaturated then
+            frame.portrait.background:SetDesaturated(false)
+        end
+        frame.portrait.border.highlight:Hide()
+        frame.portrait.border.texture:SetVertexColor(1, 1, 1)
+        frame.portrait.background:SetVertexColor(1, 1, 1)
         return
     end
     frame.raceTint:ClearAllPoints()
@@ -612,6 +683,28 @@ function PlayerFrame:ApplyRaceArt(clip)
     frame:SetBackdropBorderColor(1, 1, 1, 0)
     -- The thin WC3 trim does not replace the portrait's own ring.
     frame.portrait.border.texture:SetAlpha(1)
+    if frame.portrait.border.texture.SetBlendMode then
+        frame.portrait.border.texture:SetBlendMode(look.squareRing and "ADD" or "BLEND")
+    end
+    if frame.portrait.border.texture.SetDesaturated then
+        frame.portrait.border.texture:SetDesaturated(look.desaturateSquare == true)
+        frame.portrait.border.highlight:SetDesaturated(look.desaturateSquare == true)
+    end
+    if frame.portrait.background.SetDesaturated then
+        frame.portrait.background:SetDesaturated(look.desaturateSquare == true)
+    end
+    local r, g, b = RaceRingColor(look)
+    local squareR, squareG, squareB = RaceRingColor(look, true)
+    frame.portrait.border.texture:SetVertexColor(squareR, squareG, squareB)
+    if look.squareRing then
+        frame.portrait.border.highlight:SetVertexColor(squareR, squareG, squareB)
+        frame.portrait.border.highlight:SetBlendMode("ADD")
+        frame.portrait.border.highlight:Show()
+    else
+        frame.portrait.border.highlight:Hide()
+    end
+    frame.portrait.background:SetVertexColor(look.squareRing and squareR or r,
+        look.squareRing and squareG or g, look.squareRing and squareB or b)
 end
 
 function PlayerFrame:PaintRaceTrim(look)
