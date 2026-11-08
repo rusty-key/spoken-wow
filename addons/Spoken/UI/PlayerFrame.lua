@@ -78,7 +78,7 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/NightElfEdge",
         edgeV = TEXTURES .. "RaceTrim/NightElfEdgeV",
         join = TEXTURES .. "RaceTrim/NightElfJoin",
-        tint = { .02, .05, .08, .88 },
+        tint = { .02, .05, .08, .72 },
     },
     Human = {
         edge = TEXTURES .. "RaceTrim/HumanEdge",
@@ -92,7 +92,7 @@ local RACIAL_ART = {
         edgeV = TEXTURES .. "RaceTrim/DwarfEdgeV",
         join = TEXTURES .. "RaceTrim/DwarfJoin",
         -- Warm bronze to match the Dwarf metalwork, with enough transparency to retain the fade.
-        tint = { .18, .11, .05, .78 },
+        tint = { .18, .11, .05, .72 },
     },
     Gnome = {
         edge = TEXTURES .. "RaceTrim/GnomeEdge",
@@ -107,46 +107,46 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/OrcEdge",
         edgeV = TEXTURES .. "RaceTrim/OrcEdgeV",
         join = TEXTURES .. "RaceTrim/OrcJoin",
-        tint = { .08, .03, .02, .88 },
+        tint = { .08, .03, .02, .72 },
     },
     Tauren = {
         edge = TEXTURES .. "RaceTrim/TaurenEdge",
         edgeV = TEXTURES .. "RaceTrim/TaurenEdgeV",
         join = TEXTURES .. "RaceTrim/TaurenJoin",
-        tint = { .09, .06, .03, .88 },
+        tint = { .09, .06, .03, .72 },
     },
     Troll = {
         edge = TEXTURES .. "RaceTrim/TrollEdge",
         edgeV = TEXTURES .. "RaceTrim/TrollEdgeV",
         join = TEXTURES .. "RaceTrim/TrollJoin",
-        tint = { .05, .06, .05, .88 },
+        tint = { .05, .06, .05, .72 },
     },
     Undead = {
         edge = TEXTURES .. "RaceTrim/UndeadEdge",
         edgeV = TEXTURES .. "RaceTrim/UndeadEdgeV",
         join = TEXTURES .. "RaceTrim/UndeadJoin",
         edgeVPeriod = 8,
-        tint = { .04, .02, .07, .90 },
+        tint = { .04, .02, .07, .72 },
     },
     Forsaken = {
         edge = TEXTURES .. "RaceTrim/ForsakenEdge",
         edgeV = TEXTURES .. "RaceTrim/ForsakenEdgeV",
         join = TEXTURES .. "RaceTrim/ForsakenJoin",
-        tint = { .05, .03, .07, .90 },
+        tint = { .05, .03, .07, .72 },
     },
     HighOrder = {
         edge = TEXTURES .. "RaceTrim/HighOrderEdge",
         edgeV = TEXTURES .. "RaceTrim/HighOrderEdgeV",
         join = TEXTURES .. "RaceTrim/HighOrderJoin",
         edgeVPeriod = 8,
-        tint = { .08, .05, .16, .88 },
+        tint = { .08, .05, .16, .72 },
     },
     Windshapers = {
         edge = TEXTURES .. "RaceTrim/WindshapersEdge",
         edgeV = TEXTURES .. "RaceTrim/WindshapersEdgeV",
         join = TEXTURES .. "RaceTrim/WindshapersJoin",
         edgeVPeriod = 8,
-        tint = { .03, .08, .11, .88 },
+        tint = { .03, .08, .11, .72 },
     },
 }
 
