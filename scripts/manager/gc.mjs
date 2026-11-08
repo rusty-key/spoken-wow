@@ -1,5 +1,4 @@
 // Deletes what no recent manifest needs. Run by hand (make manager-gc), never by publish.
-import { addonKey } from "./publish-addon.mjs";
 import { eachLimit } from "./publish.mjs";
 import { openJson, publicKeyOf } from "./sign.mjs";
 
@@ -45,19 +44,15 @@ export async function gc({ store, signingKey, now = new Date(), dryRun = false, 
     const o = await store.get(key);
     for (const f of openJson(o.body.toString("utf8"), publicKey).value.files) referenced.add(f.sha256);
   }
+  for (const { sha256 } of Object.values(index.addons ?? {}).flat()) referenced.add(sha256);
   const blobs = (await store.list("blobs/"))
     .filter(({ key, lastModified }) => !referenced.has(key.slice("blobs/".length)) && now - lastModified > BLOB_GRACE)
     .map(({ key }) => key);
 
-  const listed = new Set((index.addons?.spoken ?? []).map((e) => addonKey(e.sha256)));
-  const zips = (await store.list("addons/spoken/"))
-    .filter(({ key, lastModified }) => !listed.has(key) && now - lastModified > BLOB_GRACE)
-    .map(({ key }) => key);
-
-  log(`${drop.length} old manifests, ${blobs.length} unreferenced blobs, ${zips.length} old Spoken zips${dryRun ? " (dry run: nothing deleted)" : ""}`);
+  log(`${drop.length} old manifests, ${blobs.length} unreferenced blobs${dryRun ? " (dry run: nothing deleted)" : ""}`);
   if (!dryRun) {
     for (const key of drop) await store.delete(key);
-    await eachLimit([...blobs, ...zips], 16, (key) => store.delete(key));
+    await eachLimit(blobs, 16, (key) => store.delete(key));
   }
-  return { deleted: [...drop, ...blobs, ...zips] };
+  return { deleted: [...drop, ...blobs] };
 }

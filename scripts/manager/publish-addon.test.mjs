@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import { gc } from "./gc.mjs";
 import { IMMUTABLE, INDEX_CACHE, publish } from "./publish.mjs";
-import { addonKey, KEEP_ADDON_VERSIONS, publishAddon } from "./publish-addon.mjs";
+import { publishAddon } from "./publish-addon.mjs";
 import { generateKeys, openJson, sealJson, sha256Text } from "./sign.mjs";
 import { ConflictError, memoryStore } from "./store.mjs";
 
@@ -28,13 +28,13 @@ async function channel(value = { generatedAt: "2026-01-01T00:00:00.000Z", packs:
 }
 
 const run = (store, version, extra = {}) =>
-  publishAddon({ store, signingKey: keys.privateKey, zipPath: zip(version), version, log: quiet, clock: () => new Date("2026-11-08T00:00:00Z"), ...extra });
+  publishAddon({ store, signingKey: keys.privateKey, zipPath: zip(version), log: quiet, clock: () => new Date("2026-11-08T00:00:00Z"), ...extra });
 
 test("the zip goes up under its hash and the signed index lists it, packs untouched", async () => {
   const store = await channel();
   const out = await run(store, "3.8.3");
   const sha256 = sha256Text("zip 3.8.3");
-  assert.equal(out.key, addonKey(sha256));
+  assert.equal(out.key, `blobs/${sha256}`);
   assert.equal(store.objects.get(out.key).cacheControl, IMMUTABLE);
   assert.equal(store.objects.get("index.json").cacheControl, INDEX_CACHE);
   const value = index(store);
@@ -46,7 +46,7 @@ test("the zip goes up under its hash and the signed index lists it, packs untouc
 test("the index keeps the newest versions, newest first", async () => {
   const store = await channel();
   for (const v of ["3.8.0", "3.10.0", "3.9.0", "3.11.0"]) await run(store, v);
-  assert.deepEqual(index(store).addons.spoken.map((e) => e.version), ["3.11.0", "3.10.0", "3.9.0"].slice(0, KEEP_ADDON_VERSIONS));
+  assert.deepEqual(index(store).addons.spoken.map((e) => e.version), ["3.11.0", "3.10.0", "3.9.0"]);
 });
 
 test("running it twice for the same zip changes nothing", async () => {
@@ -68,7 +68,7 @@ test("a dry run sends nothing", async () => {
 test("betas and misnamed files are refused", async () => {
   const store = await channel();
   await assert.rejects(run(store, "3.9.0-beta.1"), /stable/);
-  await assert.rejects(run(store, "3.8.3", { zipPath: zip("3.8.2") }), /expected a file named/);
+  await assert.rejects(run(store, "3.8.3", { zipPath: "/tmp/other.zip" }), /stable/);
   assert.equal(store.objects.size, 1);
 });
 
@@ -115,8 +115,8 @@ test("a voice pack publish keeps the zips listed", async () => {
 test("gc deletes only the zips the index no longer lists, after the grace period", async () => {
   const store = await channel({ generatedAt: "", packs: {} });
   for (const v of ["3.0.0", "3.1.0", "3.2.0", "3.3.0"]) await run(store, v);
-  const dropped = addonKey(sha256Text("zip 3.0.0"));
-  const live = addonKey(sha256Text("zip 3.3.0"));
+  const dropped = `blobs/${sha256Text("zip 3.0.0")}`;
+  const live = `blobs/${sha256Text("zip 3.3.0")}`;
 
   const young = await gc({ store, signingKey: keys.privateKey, now: new Date(Date.now() + 1000), log: quiet });
   assert.deepEqual(young.deleted, []);

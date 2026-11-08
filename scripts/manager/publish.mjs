@@ -72,7 +72,7 @@ export async function latestSpokenRelease(fetchImpl = fetch, token = process.env
   return versions.sort(compareVersions).at(-1);
 }
 
-async function readSigned(store, key, publicKey) {
+export async function readSigned(store, key, publicKey) {
   const o = await store.get(key);
   if (!o) return null;
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };

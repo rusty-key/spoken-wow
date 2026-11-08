@@ -44,28 +44,28 @@ export function channelRelease(product: Product, index: ChannelIndex | null, bas
 export function withAddonCopies(product: Product, list: readonly ReleaseInfo[], copies: readonly ChannelAddon[], baseUrl: string): ReleaseInfo[] {
   const out = [...list]
   for (const copy of copies) {
-    const channel = { assetUrl: `${baseUrl}addons/${product.id}/${copy.sha256}.zip`, assetSize: copy.size, digest: `sha256:${copy.sha256}` }
     const at = out.findIndex((r) => r.version === copy.version)
-    if (at >= 0) {
-      out[at] = { ...out[at]!, ...channel, fallbackUrl: out[at]!.assetUrl }
-      continue
-    }
-    const tag = `${product.tagPrefix}/v${copy.version}`
-    const assetName = `Spoken-${copy.version}.zip`
-    out.push({
-      productId: product.id,
-      tag,
-      version: copy.version,
-      prerelease: false,
-      publishedAt: '',
-      notes: '',
-      assetName,
-      ...channel,
-      fallbackUrl: `https://github.com/${REPO}/releases/download/${tag}/${assetName}`,
-      htmlUrl: ''
-    })
+    const github = at >= 0 ? out[at]! : unlistedRelease(product, copy)
+    out[at >= 0 ? at : out.length] = { ...github, assetUrl: `${baseUrl}blobs/${copy.sha256}`, assetSize: copy.size, digest: `sha256:${copy.sha256}`, fallbackUrl: github.assetUrl }
   }
   return out.sort(compareReleases)
+}
+
+function unlistedRelease(product: Product, copy: ChannelAddon): ReleaseInfo {
+  const tag = `${product.tagPrefix}/v${copy.version}`
+  const assetName = `Spoken-${copy.version}.zip`
+  return {
+    productId: product.id,
+    tag,
+    version: copy.version,
+    prerelease: false,
+    publishedAt: '',
+    notes: '',
+    assetName,
+    assetSize: copy.size,
+    assetUrl: `https://github.com/${REPO}/releases/download/${tag}/${assetName}`,
+    htmlUrl: ''
+  }
 }
 
 /** The catalog with every voice product the channel fully carries offered from the channel instead of GitHub. */
@@ -73,7 +73,7 @@ export function withChannel(catalog: Catalog, products: readonly Product[], inde
   if (!index) return catalog
   const releases = { ...catalog.releases }
   for (const p of products) {
-    const copies = p.kind === 'addon' ? index.addons?.[p.id] : undefined
+    const copies = index.addons?.[p.id]
     if (copies) releases[p.id] = withAddonCopies(p, releases[p.id] ?? [], copies, baseUrl)
     const r = channelRelease(p, index, baseUrl)
     if (r) releases[p.id] = [r]

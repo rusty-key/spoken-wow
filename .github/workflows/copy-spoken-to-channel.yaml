@@ -44,13 +44,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - name: Download the release's zip from GitHub
+      - run: pnpm install --frozen-lockfile --filter spoken-manager-channel
+      - name: Copy the release's zip and list it in the signed index
         run: |
-          version="${TAG#spoken/v}"
-          echo "VERSION=$version" >> "$GITHUB_ENV"
-          gh release download "$TAG" --pattern "Spoken-$version.zip" --dir "$RUNNER_TEMP/addon"
-      - name: Upload it and list it in the signed index
-        run: node scripts/manager/cli.mjs addon "$RUNNER_TEMP/addon/Spoken-$VERSION.zip" "$VERSION" $DRY_RUN
+          zip="Spoken-${TAG#spoken/v}.zip"
+          gh release download "$TAG" --pattern "$zip" --dir "$RUNNER_TEMP/addon"
+          node scripts/manager/cli.mjs addon "$RUNNER_TEMP/addon/$zip" $DRY_RUN

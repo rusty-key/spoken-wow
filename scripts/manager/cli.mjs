@@ -4,7 +4,7 @@
 //
 //   node scripts/manager/cli.mjs publish [--dry-run] [--present] [--allow-removals]
 //   node scripts/manager/cli.mjs gc [--dry-run]
-//   node scripts/manager/cli.mjs addon <Spoken-x.y.z.zip> <x.y.z> [--dry-run]
+//   node scripts/manager/cli.mjs addon <path/to/Spoken-x.y.z.zip> [--dry-run]
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,8 +27,8 @@ try {
   if (command !== "publish" && command !== "gc" && command !== "addon") throw new Error("usage: cli.mjs publish|gc|addon [--dry-run] [--present] [--allow-removals]");
   await loadEnv();
   if (command === "addon") {
-    const [zipPath, version] = flags.filter((flag) => !flag.startsWith("--"));
-    await publishAddon({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), zipPath, version, dryRun });
+    const zipPath = flags.find((flag) => !flag.startsWith("--"));
+    await publishAddon({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), zipPath, dryRun });
   } else if (command === "publish") {
     const cacheFile = join(DIST, ".manager-hashes.json");
     const cache = loadHashCache(cacheFile);

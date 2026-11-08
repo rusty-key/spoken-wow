@@ -66,7 +66,7 @@ describe('withChannel: Spoken zips', () => {
 
   it('serves a listed version from the channel, with GitHub as the second source', () => {
     const [latest, older] = offered([gh('3.8.3'), gh('3.8.2')])
-    expect(latest).toMatchObject({ version: '3.8.3', assetUrl: `${BASE}addons/spoken/${sha}.zip`, assetSize: 72, digest: `sha256:${sha}`, fallbackUrl: 'https://github.example/3.8.3.zip', notes: 'notes' })
+    expect(latest).toMatchObject({ version: '3.8.3', assetUrl: `${BASE}blobs/${sha}`, assetSize: 72, digest: `sha256:${sha}`, fallbackUrl: 'https://github.example/3.8.3.zip', notes: 'notes' })
     expect(older).toEqual(gh('3.8.2'))
   })
 

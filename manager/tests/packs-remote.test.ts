@@ -22,12 +22,12 @@ describe('parseIndex: addons', () => {
     expect(parseIndex(text({ spoken: [good] })).addons).toEqual({ spoken: [good] })
   })
   it('has none on an index from before they existed', () => {
-    expect(parseIndex(JSON.stringify({ generatedAt: 'now', packs: {} }))).toEqual({ generatedAt: 'now', packs: {} })
+    expect(parseIndex(JSON.stringify({ generatedAt: 'now', packs: {} })).addons).toEqual({})
   })
   it('drops a bad copy and keeps the channel usable', () => {
     const bad = [{ ...good, sha256: 'nope' }, { ...good, size: 0 }, { ...good, version: '../x' }, null]
     expect(parseIndex(text({ spoken: [...bad, good], other: 'x' })).addons).toEqual({ spoken: [good] })
-    expect(parseIndex(text('x')).addons).toBeUndefined()
+    expect(parseIndex(text('x')).addons).toEqual({})
   })
 })
 

@@ -100,10 +100,9 @@ function parseAddons(raw: unknown): Record<string, ChannelAddon[]> {
   if (typeof raw !== 'object' || raw === null) return out
   for (const [id, list] of Object.entries(raw)) {
     if (!Array.isArray(list)) continue
-    const copies = (list as Partial<ChannelAddon>[]).filter(
-      (c): c is ChannelAddon => !!c && typeof c.version === 'string' && ADDON_VERSION.test(c.version) && typeof c.sha256 === 'string' && SHA.test(c.sha256) && isCount(c.size) && c.size > 0
-    )
-    if (copies.length > 0) out[id] = copies.map((c) => ({ version: c.version, sha256: c.sha256, size: c.size }))
+    out[id] = (list as Partial<ChannelAddon>[])
+      .filter((c): c is ChannelAddon => !!c && typeof c.version === 'string' && ADDON_VERSION.test(c.version) && typeof c.sha256 === 'string' && SHA.test(c.sha256) && isCount(c.size) && c.size > 0)
+      .map((c) => ({ version: c.version, sha256: c.sha256, size: c.size }))
   }
   return out
 }
@@ -128,8 +127,7 @@ export function parseIndex(signed: string): ChannelIndex {
     }
     packs[id] = { rev: x.rev, manifestSha256: x.manifestSha256, fileCount: x.fileCount, totalSize: x.totalSize, requires: { Spoken: x.requires.Spoken } }
   }
-  const addons = parseAddons(raw.addons)
-  return { generatedAt: raw.generatedAt, packs, ...(Object.keys(addons).length > 0 ? { addons } : {}) }
+  return { generatedAt: raw.generatedAt, packs, addons: parseAddons(raw.addons) }
 }
 
 export function parseManifest(signed: string, packId: string, pack: ChannelPack): ChannelManifest {
