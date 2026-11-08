@@ -691,7 +691,7 @@ function Addon:RetireOldFolders()
     for _, folder in ipairs(found) do
         if DisableAddOn then pcall(DisableAddOn, folder) end
     end
-    local text = format(L.OLD_FOLDERS_FMT, "• " .. table.concat(found, "\n• "))
+    local text = format(L.OLD_FOLDERS_FMT, "· " .. table.concat(found, "\n· "))
     print("|cff66bbffSpoken:|r " .. text)
     if StaticPopupDialogs and StaticPopup_Show and not self:IsGamepadUI() then
         -- Left-aligned while shown, for the list: the popup frames are shared by every addon and
