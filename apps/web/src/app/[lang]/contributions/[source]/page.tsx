@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth";
 import { bookFacets, catalogue } from "@/lib/readables/catalogue";
 import { pageKeyOf } from "@/lib/readables/tools";
 import { bulkAcceptable, loadBookCorpus, matchBook, type BookCorpusPage, type BookMatchResult } from "@/lib/contributions/book-match";
-import { clientFilterOf, clientOf, matchesClient } from "@/lib/contributions/client";
+import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "@/lib/contributions/client";
 import { corpusLookup } from "@/lib/contributions/existing";
 import { tabOf } from "@/lib/contributions/known";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
@@ -225,6 +225,7 @@ export default async function Page({
     status?: string;
     bucket?: string;
     client?: string;
+    build?: string;
     stage?: string;
     sort?: string;
     dir?: string;
@@ -275,6 +276,7 @@ export default async function Page({
     status: rawStatus,
     bucket: rawBucket,
     client: rawClient,
+    build: rawBuild,
     stage: rawStage,
     sort: rawSort,
     dir: rawDir,
@@ -308,10 +310,14 @@ export default async function Page({
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
   const npcs = await npcFor(contributions);
 
-  const filtered = contributions
+  const build = buildFilterOf(rawBuild);
+  const anyBuild = contributions
     .filter((row) => matchesClient(clientOf(row.build).family, client))
     .filter((row) => matchesStage(questFor(row), stage))
     .filter((row) => matchesSearch({ text: row.text, npc: npcs[row.id], quest: questFor(row) }, q, searchIn));
+  // Read before the build narrows the rows, or picking one would empty the dropdown of the others.
+  const builds = buildOptions(anyBuild.map((row) => clientOf(row.build)));
+  const filtered = anyBuild.filter((row) => matchesBuild(clientOf(row.build), build));
 
   // Counted after the other filters, so each tab's count matches what it shows.
   const hasSpeaker = await momentHasSpeaker(filtered);
@@ -399,6 +405,8 @@ export default async function Page({
           bucket={bucket}
           bucketCounts={bucketCounts}
           client={client}
+          build={build}
+          builds={builds}
           source={source}
           stage={stage}
           sort={sort}

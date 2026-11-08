@@ -21,7 +21,7 @@ import { useCallback, useState } from "react";
 import { useLang } from "@/components/LangProvider";
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
-import FilterChip from "@/components/FilterChip";
+import FilterChip, { type ChipOption } from "@/components/FilterChip";
 import MultiFilterChip from "@/components/MultiFilterChip";
 import { LiteButton } from "@/components/LiteControls";
 import { Refreshing } from "@/components/Loading";
@@ -80,11 +80,12 @@ const QUEST_STAGE_OPTIONS = STAGE_CHIP_OPTIONS.filter((option) => option.value !
 
 export type CorrectionSource = "quests" | "readables";
 
-type Filters = { status: ContributionStatus; client: ClientFilter; stage: StageFilter; q: string; searchIn: Filter };
+type Filters = { status: ContributionStatus; client: ClientFilter; build: string | undefined; stage: StageFilter; q: string; searchIn: Filter };
 
 function correctionsHref(source: CorrectionSource, filters: Filters): string {
   // Client always written, "all" included: left out, it means the Era and Forever default.
   const params = new URLSearchParams({ status: filters.status, client: filters.client });
+  if (filters.build) params.set("build", filters.build);
   if (filters.stage.length) params.set("stage", filters.stage.join(","));
   if (filters.q.trim()) params.set("q", filters.q.trim());
   if (filters.searchIn !== "any") params.set("filter", filters.searchIn);
@@ -97,6 +98,8 @@ export default function CorrectionTable({
   initial,
   status,
   client,
+  build,
+  builds,
   stage,
   q,
   searchIn,
@@ -105,6 +108,9 @@ export default function CorrectionTable({
   initial: CorrectionRow[];
   status: ContributionStatus;
   client: ClientFilter;
+  build: string | undefined;
+  /** The builds the rows in view came from. */
+  builds: ChipOption[];
   stage: StageFilter;
   q: string;
   searchIn: Filter;
@@ -112,7 +118,7 @@ export default function CorrectionTable({
   const when = useLocalDates();
   const lang = useLang();
   const { pending, push } = usePendingPush();
-  const filters: Filters = { status, client, stage, q, searchIn };
+  const filters: Filters = { status, client, build, stage, q, searchIn };
   const go = (next: Partial<Filters>) => push(localeHref(lang, correctionsHref(source, { ...filters, ...next })));
   const [query, setQuery] = useSearchBox(q, (next) => go({ q: next }));
   /** Statuses changed here since the page loaded, shown without waiting for a reload. */
@@ -226,7 +232,9 @@ export default function CorrectionTable({
           {initial.length} {initial.length === 1 ? "correction" : "corrections"}
         </span>
         {pending && <Refreshing />}
-        <ClientSelect value={client} onChange={(next) => go({ client: next })} />
+        <FilterChip label="build" value={build} options={builds} onChange={(next) => go({ build: next })} />
+        {/* The build goes with it: a build belongs to one client, so it would match nothing. */}
+        <ClientSelect value={client} onChange={(next) => go({ client: next, build: undefined })} />
       </nav>
 
       {status === "new" && initial.length > 0 ? (

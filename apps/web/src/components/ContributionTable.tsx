@@ -27,7 +27,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
-import FilterChip from "@/components/FilterChip";
+import FilterChip, { type ChipOption } from "@/components/FilterChip";
 import MultiFilterChip from "@/components/MultiFilterChip";
 import SortHeader from "@/components/SortHeader";
 import SpeakerCell, { ProvenanceBadge, type SpeakerAnswer } from "@/components/SpeakerCell";
@@ -147,6 +147,8 @@ export default function ContributionTable({
   bucket,
   bucketCounts,
   client,
+  build,
+  builds,
   source,
   stage,
   sort,
@@ -168,6 +170,9 @@ export default function ContributionTable({
   bucket: Bucket;
   bucketCounts: Record<Bucket, number>;
   client: ClientFilter;
+  build: string | undefined;
+  /** The builds the rows in view came from. */
+  builds: ChipOption[];
   /** The section shown: its rows only, and only the columns and filters that apply to it. */
   source: Section;
   stage: StageFilter;
@@ -495,7 +500,7 @@ export default function ContributionTable({
    * ReportTable.tsx's own `go`; the mapping itself is contributionsHref, pulled out to
    * lib/contributions/query.ts so it can be tested without rendering FilterChip or this table.
    */
-  const filters = { status, bucket, client, source, stage, sort, q, searchIn };
+  const filters = { status, bucket, client, build, source, stage, sort, q, searchIn };
   function go(next: FilterChange, toPage = 1) {
     push(localeHref(lang, contributionsHref(filters, next, toPage)));
   }
@@ -546,8 +551,10 @@ export default function ContributionTable({
             onChange={(next) => go({ stage: next as StageFilter | undefined })}
           />
         ) : null}
+        <FilterChip label="build" value={build} options={builds} onChange={(next) => go({ build: next })} />
         {pending && <Refreshing />}
-        <ClientSelect value={client} onChange={(next) => go({ client: next })} />
+        {/* The build goes with it: a build belongs to one client, so it would match nothing. */}
+        <ClientSelect value={client} onChange={(next) => go({ client: next, build: undefined })} />
       </nav>
 
       {rows.length > 0 ? (
