@@ -120,6 +120,11 @@ export type LineFilters = {
   minLevel?: number;
   maxLevel?: number;
   /**
+   * The player the line is heard by. A line that does not branch on the player is heard by both,
+   * so it stays in: leaving it out would make "male players first" skip most of the corpus.
+   */
+  playerGender?: "m" | "f";
+  /**
    * The live take's model, as lib/takes/made-by.ts labels it, and the id of who made it.
    * Both need `madeBy` in the context, which only somebody working in the language gets;
    * without it they match nothing.
@@ -461,6 +466,7 @@ export function matchingLines(
     broadcast,
     minLevel,
     maxLevel,
+    playerGender,
   }: LineFilters = {},
   {
     overrides,
@@ -491,6 +497,7 @@ export function matchingLines(
   if (race) lines = lines.filter((line) => line.race === race);
   if (gender) lines = lines.filter((line) => line.gender === gender);
   if (flavor) lines = lines.filter((line) => line.flavor === flavor);
+  if (playerGender) lines = lines.filter((line) => line.playerGender === null || line.playerGender === playerGender);
   if (voice) lines = lines.filter((line) => line.voice === voice);
   if (source?.length) lines = lines.filter((line) => source.includes(line.source));
   // After the source filter and not before it, so asking for progress explicitly still works:

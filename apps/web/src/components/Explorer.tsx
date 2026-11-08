@@ -93,6 +93,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.minLevel !== undefined) params.set("minLevel", String(filters.minLevel));
   if (filters.maxLevel !== undefined) params.set("maxLevel", String(filters.maxLevel));
   if (filters.broadcast) params.set("bt", filters.broadcast);
+  if (filters.playerGender) params.set("playerGender", filters.playerGender);
   return params;
 }
 
@@ -183,6 +184,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       broadcast: BROADCAST_STATUSES.find((value) => value === params.get("bt")),
       minLevel: levelFromParam(params.get("minLevel")),
       maxLevel: levelFromParam(params.get("maxLevel")),
+      playerGender: (["m", "f"] as const).find((value) => value === params.get("playerGender")),
     }),
     [params, urlQuery],
   );
@@ -348,6 +350,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("broadcast" in next ? { bt: next.broadcast } : {}),
         ...("minLevel" in next ? { minLevel: next.minLevel } : {}),
         ...("maxLevel" in next ? { maxLevel: next.maxLevel } : {}),
+        ...("playerGender" in next ? { playerGender: next.playerGender } : {}),
       });
     },
     [updateUrl],
