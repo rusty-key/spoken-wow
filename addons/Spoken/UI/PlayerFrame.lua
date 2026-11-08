@@ -173,7 +173,8 @@ local function RaceFromText(text, faction)
     if HasWord("troll") then return "Troll" end
     if HasWord("forsaken") then return "Forsaken" end
     if string.find(compact, "windshaper", 1, true)
-        or string.find(compact, "shendorei", 1, true) then
+        or string.find(compact, "shendorei", 1, true)
+        or string.find(compact, "formaviento", 1, true) then
         return "Windshapers"
     end
     if string.find(compact, "highorder", 1, true)
@@ -226,6 +227,40 @@ local function UnitFaction(unit)
     return ok and faction
 end
 
+local function UnitIdentity(unit)
+    local values = {}
+    local function Add(value)
+        if type(value) == "string" and value ~= "" then table.insert(values, value) end
+    end
+    if _G.UnitName then
+        local ok, name, realm = pcall(_G.UnitName, unit)
+        if ok then Add(name); Add(realm) end
+    end
+    if _G.UnitPVPName then
+        local ok, name = pcall(_G.UnitPVPName, unit)
+        if ok then Add(name) end
+    end
+    if _G.UnitTitle then
+        local ok, title = pcall(_G.UnitTitle, unit)
+        if ok then Add(title) end
+    end
+    if _G.GetGuildInfo then
+        local ok, guild, rank = pcall(_G.GetGuildInfo, unit)
+        if ok then Add(guild); Add(rank) end
+    end
+    return table.concat(values, " ")
+end
+
+local function ExplicitRaceFromUnitText(text)
+    if type(text) ~= "string" then return end
+    local compact = string.gsub(string.lower(text), "[^%a]", "")
+    if string.find(compact, "windshaper", 1, true)
+        or string.find(compact, "formaviento", 1, true) then
+        return "Windshapers"
+    end
+    if string.find(compact, "highorder", 1, true) then return "HighOrder" end
+end
+
 local function RaceFromUnitRace(name, file, raceID, faction)
     -- The numeric IDs are authoritative when available. The text fallback covers clients and
     -- NPC units that return only a localized name or an internal race file. A bare Skyborne name
@@ -249,10 +284,11 @@ local function SpeakerRace(clip)
     local function RaceForUnit(unit)
         if not UnitExists or not UnitExists(unit) then return end
         local guid = UnitGUID and NotSecret(UnitGUID(unit))
+        local faction = UnitFaction(unit)
+        local explicit = ExplicitRaceFromUnitText(UnitIdentity(unit))
+        if explicit then return explicit end
         if _G.UnitRace then
             local ok, name, file, raceID = pcall(_G.UnitRace, unit)
-            local faction
-            faction = UnitFaction(unit)
             local race = ok and RaceFromUnitRace(name, file, raceID, faction)
             if race then return race end
         end
@@ -285,6 +321,9 @@ local function SpeakerRace(clip)
     -- The prepared NPC body is more reliable than the words being spoken, and survives after
     -- the dialog's unit token has gone away.
     local faction = UnitFaction("questnpc") or UnitFaction("npc")
+    local identity = UnitIdentity("questnpc") .. " " .. UnitIdentity("npc")
+    race = ExplicitRaceFromUnitText(identity)
+    if race then return race end
     race = RaceFromText(clip and (clip.npcBody or clip.race), faction)
         or RaceFromText(portrait and portrait.body, faction)
     if race then return race end

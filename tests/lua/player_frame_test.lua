@@ -77,14 +77,15 @@ Expect("a Skyborne model body gets the High Order racial treatment", F.frame.rac
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
 -- When the client exposes only the shared Skyborne name, the NPC's faction selects the variant.
-local unitRace, unitFaction = _G.UnitRace, _G.UnitFactionGroup
-_G.UnitRace = function() return "Skyborne", "Skyborne" end
+local unitRace, unitFaction, guildInfo = _G.UnitRace, _G.UnitFactionGroup, _G.GetGuildInfo
+_G.UnitRace = function() return "Skyborne", "Skyborne", 95 end
 _G.UnitFactionGroup = function() return "Horde" end
+_G.GetGuildInfo = function() return "Formavientos" end
 quests:Enqueue(H.Clip({ text = "Los vientos te acompañan.",
     present = { header = "Ailee Corazón Lejano", portrait = { kind = "model", creatureID = 9998 } } }))
 Expect("a Horde Skyborne unit gets the Windshaper racial treatment", F.frame.raceBorderFrame:IsShown(), true)
 env.SoundQueue:RemoveAllSoundsFromQueue()
-_G.UnitRace, _G.UnitFactionGroup = unitRace, unitFaction
+_G.UnitRace, _G.UnitFactionGroup, _G.GetGuildInfo = unitRace, unitFaction, guildInfo
 
 -- A quest event with no title, neither a greeting nor gossip, has an empty label.
 quests:Enqueue(H.Clip({ key = "q:1", present = { header = "Thrall", label = "", portrait = { kind = "none" } } }))
