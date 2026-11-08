@@ -131,6 +131,8 @@ local modelLook = F.RaceLook({ present = { header = "Eagan Peltskinner" } }, 123
 Expect("a loaded quest portrait model supplies the speaker race", modelLook ~= nil, true)
 local legacyUndeadLook = F.RaceLook({ present = { header = "Willow" } }, 58)
 Expect("a legacy quest portrait model supplies the Undead race", legacyUndeadLook ~= nil, true)
+local legacyHumanLook = F.RaceLook({ present = { header = "Stoley", portrait = { displayID = 7027 } } }, 49)
+Expect("an ambiguous legacy portrait display supplies the Human race", legacyHumanLook ~= nil, true)
 _G.VoiceOver = { DataModules = { GetModules = function()
     return ipairs({ { FollowupLookupByNPCBody = {
         [3583] = { [1211] = { nightelf = "1211-nightelf-male-official" } },

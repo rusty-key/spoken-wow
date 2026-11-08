@@ -309,6 +309,16 @@ local function RaceFromModelFileID(modelFileID, faction)
     return legacyModelRaces[modelFileID]
 end
 
+local function RaceFromDisplayID(displayID)
+    -- Some original model families are shared by more than one race. The display is the
+    -- appearance-level discriminator in those cases; this is still shared portrait metadata,
+    -- not a per-NPC fallback. Stoley's display 7027 is the human appearance on model family 49.
+    local legacyDisplayRaces = {
+        [7027] = "Human",
+    }
+    return legacyDisplayRaces[displayID]
+end
+
 local function UnitForGUID(guid)
     if not guid or not UnitTokenFromGUID then return end
     local ok, unit = pcall(UnitTokenFromGUID, guid)
@@ -442,6 +452,8 @@ local function SpeakerRace(clip, modelFileID)
     -- Quest-log and tracker buttons can carry a synthetic GUID with no live questnpc unit. Once
     -- the portrait model has loaded, its file ID is a reliable body/race source in the voice pack.
     race = RaceFromModelFileID(modelFileID, faction)
+    if race then return race end
+    race = RaceFromDisplayID(portrait and portrait.displayID)
     if race then return race end
 
     -- Gossip/quest text is the final fallback. This covers NPCs whose Classic unit token does
