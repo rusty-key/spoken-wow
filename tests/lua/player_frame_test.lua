@@ -151,6 +151,10 @@ local legacyLarDisplayLook = F.RaceLook({ present = {
     header = "Lar Prowltusk", portrait = { displayID = 4070 },
 } })
 Expect("Lar's shipped portrait display supplies the Troll race", legacyLarDisplayLook ~= nil, true)
+local legacyVelrinDisplayLook = F.RaceLook({ present = {
+    header = "Vel'rin", portrait = { displayID = 4074 },
+} })
+Expect("Vel'rin's shipped portrait display supplies the Troll race", legacyVelrinDisplayLook ~= nil, true)
 local legacyVornalDisplayLook = F.RaceLook({ present = {
     header = "Master Vornal", portrait = { displayID = 4086 },
 } })

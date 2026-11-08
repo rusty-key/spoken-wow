@@ -314,11 +314,11 @@ local function RaceFromDisplayID(displayID)
     -- appearance-level discriminator in those cases; this is still shared portrait metadata,
     -- not a per-NPC fallback. Stoley's display 7027 is the human appearance on model family 49;
     -- Willow's display 13909 is the Undead appearance, and Zureetha's 1875 plus Thazz'rill's
-    -- 12089 and Furl's 1275 are Orc appearances, while Lar's 4070 and Vornal's 4086 are Troll
-    -- appearances; their hidden model probes are not reliable on every Classic client.
+    -- 12089 and Furl's 1275 are Orc appearances, while Lar's 4070, Vel'rin's 4074, and Vornal's
+    -- 4086 are Troll appearances; their hidden model probes are not reliable on every Classic client.
     local legacyDisplayRaces = {
         [7027] = "Human", [13909] = "Undead", [1875] = "Orc", [12089] = "Orc",
-        [1275] = "Orc", [4070] = "Troll", [4086] = "Troll",
+        [1275] = "Orc", [4070] = "Troll", [4074] = "Troll", [4086] = "Troll",
     }
     return legacyDisplayRaces[displayID]
 end
