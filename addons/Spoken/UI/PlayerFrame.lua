@@ -155,7 +155,7 @@ local RACIAL_ART = {
     },
 }
 
-local function RaceFromText(text)
+local function RaceFromText(text, faction)
     if type(text) ~= "string" then return end
     local value = string.lower(text)
     local compact = string.gsub(value, "[^%a]", "")
@@ -178,7 +178,13 @@ local function RaceFromText(text)
     end
     if string.find(compact, "highorder", 1, true)
         or string.find(compact, "skyborne", 1, true)
-        or HasWord("skyborne") then
+        or string.find(compact, "skybourne", 1, true)
+        or HasWord("skyborne")
+        or HasWord("skybourne") then
+        if faction == "Horde" and (string.find(compact, "skyborne", 1, true)
+            or string.find(compact, "skybourne", 1, true)) then
+            return "Windshapers"
+        end
         return "HighOrder"
     end
     if HasWord("scourge") or HasWord("undead") then
@@ -192,7 +198,7 @@ local function RaceFromText(text)
     end
 end
 
-local function RaceFromCreature(creature)
+local function RaceFromCreature(creature, faction)
     if not creature then return end
     local dataModules = VoiceOver and VoiceOver.DataModules
     if not dataModules or not dataModules.GetModules then return end
@@ -201,7 +207,7 @@ local function RaceFromCreature(creature)
         local bodies = module.NPCBodiesByNPCID and module.NPCBodiesByNPCID[creature]
         if bodies then
             for body in pairs(bodies) do
-                race = RaceFromText(body)
+                race = RaceFromText(body, faction)
                 if race then return race end
             end
         end
@@ -214,6 +220,12 @@ local function UnitForGUID(guid)
     return ok and NotSecret(unit)
 end
 
+local function UnitFaction(unit)
+    if not _G.UnitFactionGroup then return end
+    local ok, faction = pcall(_G.UnitFactionGroup, unit)
+    return ok and faction
+end
+
 local function RaceFromUnitRace(name, file, raceID, faction)
     -- The numeric IDs are authoritative when available. The text fallback covers clients and
     -- NPC units that return only a localized name or an internal race file. A bare Skyborne name
@@ -221,12 +233,7 @@ local function RaceFromUnitRace(name, file, raceID, faction)
     if raceID == 96 then return "Windshapers" end
     if raceID == 95 then return "HighOrder" end
     local text = (name or "") .. " " .. (file or "")
-    local race = RaceFromText(text)
-    local compact = string.gsub(string.lower(text), "[^%a]", "")
-    if faction == "Horde" and string.find(compact, "skyborne", 1, true) then
-        return "Windshapers"
-    end
-    return race
+    return RaceFromText(text, faction)
 end
 
 local function SpeakerRace(clip)
@@ -245,16 +252,13 @@ local function SpeakerRace(clip)
         if _G.UnitRace then
             local ok, name, file, raceID = pcall(_G.UnitRace, unit)
             local faction
-            if _G.UnitFactionGroup then
-                local factionOK, group = pcall(_G.UnitFactionGroup, unit)
-                faction = factionOK and group
-            end
+            faction = UnitFaction(unit)
             local race = ok and RaceFromUnitRace(name, file, raceID, faction)
             if race then return race end
         end
         if guid and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
             local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, guid)
-            local race = ok and RaceFromText(body)
+            local race = ok and RaceFromText(body, faction)
             if race then return race end
         end
         -- NPCs do not always expose UnitRace. Prime the existing model probe; its body becomes
@@ -280,12 +284,13 @@ local function SpeakerRace(clip)
 
     -- The prepared NPC body is more reliable than the words being spoken, and survives after
     -- the dialog's unit token has gone away.
-    race = RaceFromText(clip and (clip.npcBody or clip.race))
-        or RaceFromText(portrait and portrait.body)
+    local faction = UnitFaction("questnpc") or UnitFaction("npc")
+    race = RaceFromText(clip and (clip.npcBody or clip.race), faction)
+        or RaceFromText(portrait and portrait.body, faction)
     if race then return race end
     if clip and clip.unitGUID and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
         local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, clip.unitGUID)
-        race = ok and RaceFromText(body)
+        race = ok and RaceFromText(body, faction)
         if race then return race end
     end
 
@@ -295,17 +300,17 @@ local function SpeakerRace(clip)
         local ok, id = pcall(VoiceOver.Utils.GetCreatureIDFromGUID, VoiceOver.Utils, clip.unitGUID)
         creature = ok and id
     end
-    race = RaceFromCreature(creature)
+    race = RaceFromCreature(creature, faction)
     if race then return race end
 
     -- Gossip/quest text is the final fallback. This covers NPCs whose Classic unit token does
     -- not expose a race and whose model has not been cached yet (for example this Tauren line).
     -- It intentionally comes after the authoritative sources so mentioning another race does
     -- not change the speaker's treatment when the client already knows the speaker.
-    return RaceFromText(clip and clip.text)
-        or RaceFromText(present and present.transcript)
-        or RaceFromText(clip and clip.name)
-        or RaceFromText(present and present.header)
+    return RaceFromText(clip and clip.text, faction)
+        or RaceFromText(present and present.transcript, faction)
+        or RaceFromText(clip and clip.name, faction)
+        or RaceFromText(present and present.header, faction)
 end
 
 local function RaceLook(clip)

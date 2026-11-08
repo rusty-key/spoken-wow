@@ -71,7 +71,7 @@ env.SoundQueue:RemoveAllSoundsFromQueue()
 
 -- Skyborne model metadata is not always exposed through UnitRace. Its compact internal names
 -- still identify the matching Warcraft III-style trim without a creature-ID table.
-quests:Enqueue(H.Clip({ npcBody = "SkyborneFemale", text = "Una bienvenida desde Skywall.",
+quests:Enqueue(H.Clip({ npcBody = "skybourneelf-female", text = "Una bienvenida desde Skywall.",
     present = { header = "Ailee Corazón Lejano", portrait = { kind = "model", creatureID = 9998 } } }))
 Expect("a Skyborne model body gets the High Order racial treatment", F.frame.raceBorderFrame:IsShown(), true)
 env.SoundQueue:RemoveAllSoundsFromQueue()
