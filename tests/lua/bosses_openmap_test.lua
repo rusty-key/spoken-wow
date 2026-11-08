@@ -35,7 +35,7 @@ WorldMapFrame.mapID = 36
 WorldMapFrame.GetMapID = function(self) return self.mapID end
 local side = CreateFrame("Frame", nil, WorldMapFrame)
 local row = CreateFrame("Button", nil, side)
-row.item = { kind = "row", "|cff9988661.|r  Edwin VanCleef" }
+row.item = { kind = "row", "|cff9988668.|r  Edwin VanCleef" }
 
 local Bosses = { L = { BOSS_NOT_FOUND = "not found" } }
 function Bosses:StoryClip(map, key)
@@ -71,6 +71,15 @@ Expect("opening an OpenMap dungeon shows its lore", shown ~= nil, true)
 Expect("...on the dungeon map", shown and shown.map, 36)
 Expect("...with the dungeon title", shown and shown.entry.title, "The Deadmines")
 Expect("...with the dungeon story", shown and shown.entry.text, "Deadmines lore")
+
+stub.SetLocale("esES")
+_G.SpokenDungeons.dungeons[229] = { enUS = "Upper Blackrock Spire", esES = "Cumbre de Roca Negra Superior" }
+Bosses:OpenMapDungeonMapShown({ mapID = 229, instances = { { name = "Cumbre de Roca Negra Superior" } } })
+shown = nil
+Bosses:ShowOpenMapBoss(229, "Jefe de Guerra Desgarro Puño Negro", 11)
+Expect("a translated OpenMap boss name can use its dungeon position", shown ~= nil, true)
+Expect("...with the localized Rend title", shown and shown.entry.title, "Jefe de Guerra Rend Puño Negro")
+stub.SetLocale("enUS")
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll OpenMap boss map tests passed")

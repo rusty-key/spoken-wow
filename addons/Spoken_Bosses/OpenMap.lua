@@ -83,6 +83,7 @@ local function BossModel(map, key)
 end
 
 local currentInfo
+local activeDungeonID
 
 local function InstanceForOpenMapBoss(name)
 	if type(currentInfo) ~= "table" or type(currentInfo.instances) ~= "table" then return end
@@ -96,10 +97,16 @@ local function InstanceForOpenMapBoss(name)
 	end
 end
 
-local function BossFor(mapID, bossName)
+local function BossFor(mapID, bossName, bossIndex)
 	local wanted = BossNameKey(bossName)
 	if not wanted then return end
-	local preferred = InstanceForOpenMapBoss(bossName) or DungeonInstance(mapID)
+	local preferred = activeDungeonID or InstanceForOpenMapBoss(bossName) or DungeonInstance(mapID)
+	local positionMatch
+	if preferred and bossIndex then
+		local bosses = _G.SpokenBosses and SpokenBosses.maps[preferred]
+		local boss = bosses and bosses[bossIndex]
+		if boss then positionMatch = { map = preferred, key = boss.key, boss = boss } end
+	end
 	local found
 	for map, bosses in pairs(_G.SpokenBosses and SpokenBosses.maps or {}) do
 		for _, boss in ipairs(bosses) do
@@ -118,7 +125,7 @@ local function BossFor(mapID, bossName)
 			end
 		end
 	end
-	return found
+	return found or positionMatch
 end
 
 local function CurrentMapID()
@@ -172,11 +179,12 @@ local function RowBossName(item)
 	if type(item) ~= "table" or type(item[1]) ~= "string" then return end
 	local text = item[1]
 	text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-	return text:match("^%s*%d+%.%s+(.+)$")
+	local index, name = text:match("^%s*(%d+)%.%s+(.+)$")
+	return name, tonumber(index)
 end
 
-function Bosses:ShowOpenMapBoss(mapID, bossName)
-	local found = BossFor(mapID, bossName)
+function Bosses:ShowOpenMapBoss(mapID, bossName, bossIndex)
+	local found = BossFor(mapID, bossName, bossIndex)
 	if not found or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then return false end
 
 	local story = self:StoryClip(found.map, found.key)
@@ -219,8 +227,8 @@ local function HookRow(frame)
 	hooked[frame] = true
 	frame:HookScript("OnClick", function(self, button)
 		if button ~= "LeftButton" then return end
-		local name = RowBossName(RowOf(self))
-		if name then Bosses:ShowOpenMapBoss(CurrentMapID(), name) end
+		local name, index = RowBossName(RowOf(self))
+		if name then Bosses:ShowOpenMapBoss(CurrentMapID(), name, index) end
 	end)
 end
 
@@ -230,14 +238,17 @@ local function HookDungeonView(frame)
 	frame:HookScript("OnShow", function(self)
 		local inst = self.inst
 		local instanceID = type(inst) == "table" and inst[1]
+		activeDungeonID = instanceID
 		if instanceID then Bosses:ShowOpenMapDungeon(CurrentMapID(), instanceID) end
 	end)
 	frame:HookScript("OnHide", function()
+		activeDungeonID = nil
 		if _G.SpokenPlaces and SpokenPlaces.ClearMapStory then SpokenPlaces:ClearMapStory(CurrentMapID()) end
 	end)
 	if frame:IsShown() then
 		local inst = frame.inst
 		local instanceID = type(inst) == "table" and inst[1]
+		activeDungeonID = instanceID
 		if instanceID then Bosses:ShowOpenMapDungeon(CurrentMapID(), instanceID) end
 	end
 end
@@ -294,11 +305,13 @@ function Bosses:OpenMapDungeonMapShown(info)
 	ScanSoon()
 	local instance = info and info.instances and info.instances[1]
 	local instanceID = instance and DungeonInstanceByName(instance.name)
+	activeDungeonID = instanceID
 	if instanceID then self:ShowOpenMapDungeon(info.mapID or CurrentMapID(), instanceID) end
 end
 
 function Bosses:OpenMapDungeonMapHidden()
 	currentInfo = nil
+	activeDungeonID = nil
 	if _G.SpokenPlaces and SpokenPlaces.ClearMapStory then SpokenPlaces:ClearMapStory(CurrentMapID()) end
 end
 
