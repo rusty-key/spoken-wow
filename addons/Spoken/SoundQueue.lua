@@ -202,7 +202,8 @@ end
 
 --- Whether a stopped `clip` plays on from its sentence rather than from its start.
 function SoundQueue:Resumes(clip)
-    return clip ~= nil and PieceLengths(clip) ~= nil
+    -- A line of words alone restarts from 0 whatever its data says.
+    return clip ~= nil and not clip.textOnly and PieceLengths(clip) ~= nil
 end
 
 local function KeepPlace(clip)
@@ -621,18 +622,21 @@ local function WatchForCut(clip)
 end
 
 -- Starts piece `index` of `clip` and records its handle on the clip, so Stop and the cut watch
--- act on the piece speaking.
+-- act on the piece speaking. One refused leaves the last piece's, so Stop and Skip still work.
 local function PlayPiece(clip, index, channel)
     local pieces = PieceLengths(clip)
     local piece = { path = PiecePath(clip, index) }
     local willPlay = SoundUtils:PlaySound(piece, channel)
+    if not willPlay then return willPlay end
+    -- The piece before has played its length; whatever of it is left is the pause it ends in.
+    SoundUtils:StopSound(clip)
     clip.handle, clip.piece = piece.handle, index
     clip.pieceEndsAt = GetTime() + pieces[index]
     return willPlay
 end
 
--- Each piece is timed from when the line would have started, not from the last timer, so a
--- frame's lateness at one join is not carried into the next.
+-- Each piece is timed from when the line started, so a timer's own rounding is not added up over
+-- a long line. A join a frame hitch made late pushes the rest back, so no piece talks over the last.
 local function ScheduleNextPiece(clip, channel, lineStartedAt)
     local pieces = PieceLengths(clip)
     local index = clip.piece
@@ -642,9 +646,12 @@ local function ScheduleNextPiece(clip, channel, lineStartedAt)
             AfterSpoken(clip)
             return
         end
+        local late = math.max(0, GetTime() - nextAt)
+        lineStartedAt, clip.spokenAt = lineStartedAt + late, clip.spokenAt + late
         if not PlayPiece(clip, index + 1, channel) then
             -- A piece missing from the folder ends the line where it is, as the end of it would.
             Developer:Log("player", format("piece %d of %s is missing", index + 1, tostring(clip.key)))
+            clip.spokenAt = GetTime()
             AfterSpoken(clip)
             return
         end
@@ -858,7 +865,7 @@ function SoundQueue:Add(clip, source, front)
     end
 
     -- A line kept as pieces has no file of its own: its first piece stands for it.
-    local pieces = not clip.textOnly and PieceLengths(clip)
+    local pieces = not (clip.textOnly or source.textOnly) and PieceLengths(clip)
     if source.testBeforeQueue
         and not SoundUtils:TestSound(pieces and { path = PiecePath(clip, 1) } or clip, source:GetChannel()) then
         return nil, "missing"
@@ -867,7 +874,6 @@ function SoundQueue:Add(clip, source, front)
         -- The pieces' own sum, so the last one ends where the line's timer says it does.
         clip.length = PieceStart(pieces, #pieces + 1)
     end
-    clip.piece, clip.pieceEndsAt = nil, nil
 
     if IsQueued(clip.key) then
         return nil, "duplicate"
@@ -882,6 +888,8 @@ function SoundQueue:Add(clip, source, front)
         DropOutrankedWaiting()
     end
 
+    -- Only once admitted: a refused add of a line already queued must not lose its place.
+    clip.piece, clip.pieceEndsAt = nil, nil
     self.soundIdCounter = self.soundIdCounter + 1
     clip.id = self.soundIdCounter
     clip.source = source

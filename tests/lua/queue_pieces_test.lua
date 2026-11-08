@@ -279,6 +279,20 @@ Expect("...and kept where it already is", S:PageTimeFor(line, 4, 2.0), 2.0)
 Expect("...and pulled back from the next page", S:PageTimeFor(line, 4, 4.2) < 3.9, true)
 S.clip, S.pages = nil, nil
 
+---------------------------------------------------------------- captions released into a window still turning
+Fresh()
+T = env.Transcript
+local shown, coming = Said({ pieces = "2 2 2" }), Said({ pieces = "2 2 2" })
+T:SetClip(shown)
+T.startedAt = nil
+T.held, T.heldStart = true, { clip = coming, at = GetTime() }
+local holdFor = T.holdFor
+T.holdFor = function(clip) return clip == coming end
+local released = pcall(T.Release, T)
+Expect("captions released while the window still turns to the next line hold it again, without an error",
+    tostring(released) .. " " .. tostring(T.held), "true true")
+T.holdFor, T.held, T.heldStart = holdFor, nil, nil
+
 ---------------------------------------------------------------- Pause only where a line is kept as pieces
 Fresh()
 local whole = H.Clip({ length = 5 })
@@ -321,6 +335,68 @@ _G.SlashCmdList.SPOKEN("pause")
 Expect("/sp pause pauses", Q:HaltedBy(), "pause")
 _G.SlashCmdList.SPOKEN("resume")
 Expect("/sp resume resumes", Q:HaltedBy(), nil)
+_G.SlashCmdList.SPOKEN("resume")
+Expect("...and playing, it leaves the line playing", tostring(Q:HaltedBy()) .. " " .. tostring(Q:IsPaused()), "nil false")
+
+---------------------------------------------------------------- a join a frame hitch made late
+Fresh()
+line = H.Clip({ pieces = "2 3 1.5" })
+quests:Enqueue(line)
+-- One long frame: the timer due at 2 s fires at 2.8 s.
+stub.Advance(2.8, 2.8)
+Expect("a piece started late by a hitch", world.played[2], Piece(line, 2))
+Expect("...ends the piece before it, its pause all that was left", world.stopped[#world.stopped], 1)
+stub.Advance(2.9)
+Expect("...and the next waits for it to finish, not talking over it", world.played[3], nil)
+stub.Advance(0.1)
+Expect("...then follows it", world.played[3], Piece(line, 3))
+Expect("...the line's end pushed back as far", math.abs(Q:VoiceElapsed(line) - 5.0) < 1e-6, true)
+
+---------------------------------------------------------------- a piece missing mid-line
+Fresh()
+line = H.Clip({ pieces = "2 3 1.5" })
+world.missing[Piece(line, 2)] = true
+quests:Enqueue(line)
+quests:Enqueue(H.Clip())
+stub.Advance(2.05)
+Expect("the line a missing piece ended can still be stopped and skipped", Q:CanBePaused(), true)
+Expect("...its voice counted as over", Q:VoiceElapsed(line), line.length)
+
+---------------------------------------------------------------- added again while it waits
+Fresh()
+line = H.Clip({ pieces = "2 3 1.5" })
+quests:Enqueue(line)
+stub.Advance(3.0)
+Q:PauseQueue()
+local again, reason = quests:Enqueue(line)
+Expect("a line added again while queued is refused", tostring(again) .. " " .. tostring(reason), "nil duplicate")
+Q:ResumeQueue()
+Expect("...and keeps the sentence it was paused in", world.played[#world.played], Piece(line, 2))
+
+---------------------------------------------------------------- words alone
+Fresh()
+local words = env.Sources:Register("words", { title = "Words", addon = "Spoken_Quests", order = 4, textOnly = true })
+line = H.Clip({ pieces = "2 3 1.5", length = 9 })
+words:Enqueue(line)
+Expect("a line of words alone with pieces data plays no piece", world.played[1], nil)
+Expect("...keeps its own length", line.length, 9)
+Expect("...and offers no Pause, as it restarts from 0", Q:Resumes(line), false)
+
+---------------------------------------------------------------- the Stop or Replay buttons other windows have
+-- The Compendium's and the quest log's buttons call Spoken:TogglePause, named for when Stop was
+-- the only halt: it stops, and replays from the start, as it always has.
+Fresh()
+line = H.Clip({ pieces = "2 3 1.5" })
+quests:Enqueue(line)
+stub.Advance(3.0)
+_G.Spoken:TogglePause()
+Expect("Spoken:TogglePause stops, never pauses", Q:HaltedBy(), "stop")
+_G.Spoken:TogglePause()
+Expect("...and replays from the line's start", world.played[#world.played], Piece(line, 1))
+stub.Advance(3.0)
+Q:PauseQueue()
+_G.Spoken:TogglePause()
+Expect("...a line paused elsewhere too", world.played[#world.played], Piece(line, 1))
 
 ---------------------------------------------------------------- on each client Spoken is released for
 for _, client in ipairs({ "16001", "11509", "20506" }) do

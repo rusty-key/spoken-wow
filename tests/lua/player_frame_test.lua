@@ -1228,6 +1228,15 @@ env.SoundQueue:StopQueue()
 env.SoundQueue:TogglePauseQueue()
 Expect("...or, scrolled, the first sentence of the passage scrolled to", world.played[#world.played],
     F:Current().path:gsub("%.ogg$", "") .. string.format("\\%02d.ogg", top))
+-- A paragraph's gap at the top, as DialogueUI's style puts between paragraphs: a row of no words.
+T.manualScroll = true
+top = T.topTarget
+table.insert(T.lines, top, {})
+env.SoundQueue:StopQueue()
+env.SoundQueue:TogglePauseQueue()
+Expect("...past a paragraph's empty row at the top", world.played[#world.played],
+    F:Current().path:gsub("%.ogg$", "") .. string.format("\\%02d.ogg", top))
+table.remove(T.lines, top)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
 env.Addon:SetPlayerStyle("subtitle")

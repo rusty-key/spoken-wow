@@ -635,7 +635,8 @@ function Spoken:GetHeldReason(clip)
     return SoundQueue:GetHeldReason(clip)
 end
 
---- Pause is stop, and resume replays from the start: the client has no seek.
+--- Pause stops the voice; Resume plays the line again from its start, or from its sentence where
+--- the line is kept as pieces: the client has no seek.
 function Spoken:Pause()
     return SoundQueue:PauseQueue()
 end
@@ -644,8 +645,12 @@ function Spoken:Resume()
     return SoundQueue:ResumeQueue()
 end
 
+--- Stop, or Replay a halted line from its start, as the Stop or Replay buttons do.
 function Spoken:TogglePause()
-    return SoundQueue:TogglePauseQueue()
+    if SoundQueue:IsPaused() then
+        return SoundQueue:ReplayQueue()
+    end
+    return SoundQueue:StopQueue()
 end
 
 --- The player's round button, the same one its subtitle shows, for a feature addon's own

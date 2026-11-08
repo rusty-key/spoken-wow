@@ -13,7 +13,10 @@ SoundQueue:AddSectionFinder(function(clip)
     if Addon:DisplayStyle() == "subtitle" then return nil end
     if self.clip ~= clip or not self.lines or not frame then return nil end
     if not (frame.IsVisible and frame:IsVisible() or (not frame.IsVisible and frame:IsShown())) then return nil end
-    local line = self.lines[self.topTarget or 1]
+    -- A paragraph's gap is a row with no words; the text on screen starts below it, as Render draws it.
+    local index = self.topTarget or 1
+    while self.lines[index] and #self.lines[index] == 0 do index = index + 1 end
+    local line = self.lines[index]
     local first = line and line[1]
     local length = tonumber(clip.length)
     if not first or not length or not self.totalWeight or self.totalWeight <= 0 then return nil end
@@ -271,8 +274,11 @@ function Transcript:Release()
     self.heldStart = nil
     if start then
         self:Started(start.clip)
-        -- Counted from when it really started, held: the voice has gone on meanwhile.
-        self.startedAt = self.startedAt - (GetTime() - start.at)
+        -- Counted from when it really started, held: the voice has gone on meanwhile. Unless
+        -- Started held the words again, for a window still turning: then it is not started yet.
+        if not self.held and self.startedAt then
+            self.startedAt = self.startedAt - (GetTime() - start.at)
+        end
     end
     self:Sync()
 end

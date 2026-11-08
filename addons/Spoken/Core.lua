@@ -540,9 +540,11 @@ local function RegisterSlashCommand()
         -- play, pause and stop are the words Bindings.xml and players' macros send: kept.
         if command == "replay" or command == "play" or command == "" then
             SoundQueue:ToggleStopQueue()
-        elseif command == "pause" or command == "resume" then
+        elseif command == "pause" then
             -- On a line kept whole this is Stop, as "pause" always was.
             SoundQueue:TogglePauseQueue()
+        elseif command == "resume" then
+            SoundQueue:ResumeQueue()
         elseif command == "stopall" or command == "stop" then
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then
