@@ -144,7 +144,10 @@ local function Release(model)
 end
 
 local function DisplayFor(creature)
-    if displays[creature] then return displays[creature] end
+    -- A shipped quest face can already have a display while its model file is still unknown.
+    -- Keep probing in that case: the display is enough to draw the face, but the model file is
+    -- what lets the player window identify its race without a creature-specific table.
+    if displays[creature] and modelFileIDs[creature] then return displays[creature] end
     if not (SetPortraitTextureFromCreatureDisplayID and CreateFrame) then return end
     local now = GetTime()
     local times = asked[creature]
@@ -210,6 +213,7 @@ function StaticPortrait:Keep(entry, key, creature)
 end
 
 function StaticPortrait:FromCreature(creature, known)
+    if known and not modelFileIDs[creature] then DisplayFor(creature) end
     local display = known or DisplayFor(creature)
     if not display then return end
     local key = "creature:" .. creature
