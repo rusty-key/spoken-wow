@@ -112,7 +112,8 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/TaurenEdge",
         edgeV = TEXTURES .. "RaceTrim/TaurenEdgeV",
         join = TEXTURES .. "RaceTrim/TaurenJoin",
-        tint = { .09, .06, .03, .72 },
+        -- A lighter ochre-brown keeps Tauren's earthy tone closer to the bright gold trim.
+        tint = { .20, .14, .07, .72 },
     },
     Troll = {
         edge = TEXTURES .. "RaceTrim/TrollEdge",
