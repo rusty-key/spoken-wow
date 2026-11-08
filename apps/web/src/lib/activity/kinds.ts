@@ -43,6 +43,8 @@ export type ActivityDetail = {
     batchId?: string;
   };
   "take.restored": { version: number; from?: number | null };
+  /** The site could not make the Ogg a quests pack ships for this take; `error` says why. */
+  "take.encode_failed": { version: number; error: string };
   /** `groupId` when the take was one of several cleared in one click; the page folds it there. */
   "take.acked": { groupId?: string };
   "marks.cleared": { groupId: string; count: number };

@@ -16,6 +16,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - Stratholme's Balnazzar and the Four Horsemen use corrected models, and Scarlet Enclave's Balnazzar
   now has one.
   *([anon1231823](https://github.com/anon1231823))*
+- **Spoken's separators render on Chinese clients.** Visible separators now use the middle dot
+  (`·`), which the Chinese client renders where the previous bullet (`•`) could disappear.
+  *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.8.3 — 2026-11-05
 
