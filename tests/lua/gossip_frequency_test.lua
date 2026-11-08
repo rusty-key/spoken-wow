@@ -101,6 +101,22 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": a pick on the last visit does not carry over", Played(played), "(nothing)")
     Leave()
 
+    -- A respawn, a server restart or a layer change gives the same NPC a GUID with a new spawn number.
+    world.npcGUID = "Creature-0-1-0-7-12345-ABCDEF"
+    Talk()
+    Expect(client .. ": the same NPC after a respawn does not greet again", Played(played), "(nothing)")
+    Leave()
+    world.npcGUID = "Creature-0-0-0-0-12345-0"
+
+    -- A greeting saved under the full GUID, before greetings were kept by NPC ID, still counts.
+    local seen = VO.Addon.db.char.hasSeenGossipForNPC
+    Expect(client .. ": a heard greeting is kept under the NPC's ID", type(seen["Creature-12345"]), "table")
+    seen[world.npcGUID], seen["Creature-12345"] = seen["Creature-12345"], nil
+    Talk()
+    Expect(client .. ": a greeting heard under the old key does not play again", Played(played), "(nothing)")
+    Leave()
+    seen["Creature-12345"], seen[world.npcGUID] = seen[world.npcGUID], true
+
     -- The same NPC greeting with another of its lines reads that one, once.
     Talk(OTHER)
     Expect(client .. ": another greeting from the same NPC plays", Played(played), "other-hash")

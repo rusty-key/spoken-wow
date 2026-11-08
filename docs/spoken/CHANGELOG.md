@@ -4,6 +4,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Once per Greeting and Once for Quest Givers now hold for good.** An NPC's greeting was
+  remembered for that one spawn of the NPC, so it played again after a respawn, a server restart
+  or a layer change. Greetings are now remembered for the NPC itself, and ones already heard still
+  count. *([molkemon](https://github.com/molkemon))*
+
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
   its entrance shows the dungeon's lore, clicking a boss shows that boss's story with its 3D model,
   and right-clicking out returns to the zone's lore.

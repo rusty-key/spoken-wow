@@ -1293,20 +1293,37 @@ local function TextKey(text)
     return format("%08x", h)
 end
 
+--- Where an NPC's greetings are kept: its kind and NPC ID. A GUID ends in the spawn's own
+--- number, which changes with every respawn, server restart and layer, so keyed by the GUID the
+--- same guard greeted the character as a stranger again each time. Anything that is not a
+--- creature-style GUID keeps the GUID itself.
+local function GreetingNPCKey(guid)
+    local unitType, npcID = string.match(guid or "", "^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")
+    return npcID and (unitType .. "-" .. npcID) or guid or "unknown"
+end
+
 --- Whether this character has heard this NPC greet them with this text. An NPC that greets
---- with several texts reads each of them once. A GUID that holds anything but a table was
---- marked when only the NPC was remembered, and counts as unheard.
+--- with several texts reads each of them once. Greetings saved under a full GUID, before they
+--- were kept by NPC ID, still count. A GUID that holds anything but a table was marked when only
+--- the NPC was remembered, and counts as unheard.
 function Addon:HasHeardGreeting(guid, text)
     if not text then
         return false
     end
-    local heard = self.db.char.hasSeenGossipForNPC[guid or "unknown"]
-    return type(heard) == "table" and heard[TextKey(text)] == true
+    local seen = self.db.char.hasSeenGossipForNPC
+    local key = TextKey(text)
+    for _, npcKey in ipairs({ GreetingNPCKey(guid), guid or "unknown" }) do
+        local heard = seen[npcKey]
+        if type(heard) == "table" and heard[key] == true then
+            return true
+        end
+    end
+    return false
 end
 
 function Addon:MarkGreetingHeard(guid, text)
     local seen = self.db.char.hasSeenGossipForNPC
-    local npcKey = guid or "unknown"
+    local npcKey = GreetingNPCKey(guid)
     if type(seen[npcKey]) ~= "table" then
         seen[npcKey] = {}
     end
