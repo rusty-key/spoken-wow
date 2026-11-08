@@ -17,6 +17,7 @@ import type { NpcKind, NpcRowKind } from "@/lib/npc/npc";
 
 import type { ContributionStatus, Submission } from "./contributions";
 import type { EnvelopeSource } from "./envelope";
+import type { Identity } from "./intake";
 import { pageNotes } from "./notes";
 import { DEFAULT_SORT, type ContributionSort, type SortColumn } from "./query";
 
@@ -219,22 +220,13 @@ export async function fillContributionNpcs(
   return rows.map((row) => row.dedup);
 }
 
-type Sender = {
-  body: string | null;
-  name: string | null;
-  email: string | null;
-  userId: string | null;
-  ip: string | null;
-};
-
-export async function createContribution(input: Submission & Sender): Promise<void> {
+export async function createContribution(input: Submission & Identity): Promise<void> {
   await createContributions([input], input);
 }
 
 /**
  * One statement per occurrence of a dedup, because an upsert may not touch the same row twice.
- * Nearly every file is a single round, and a later copy still bumps the count or fills the NPC
- * exactly as a separate paste would.
+ * A later copy still bumps the count or fills the NPC as a separate paste would.
  */
 function roundsByDedup(submissions: readonly Submission[]): Submission[][] {
   const seen = new Map<string, number>();
@@ -248,10 +240,9 @@ function roundsByDedup(submissions: readonly Submission[]): Submission[][] {
 }
 
 /** A commit per line is most of what a full file costs on the droplet's disk. */
-export async function createContributions(submissions: readonly Submission[], sender: Sender): Promise<void> {
+export async function createContributions(submissions: readonly Submission[], sender: Identity): Promise<void> {
   for (const round of roundsByDedup(submissions)) {
-    // Returns nothing, as createReport does: the sender cannot read their submission back.
-    // A copy from somebody signed in or named is recorded beside the count (migration 0065).
+    // A copy from somebody signed in or named is recorded beside the count.
     await db().query(
       `with "stored" as (
          insert into "contribution"

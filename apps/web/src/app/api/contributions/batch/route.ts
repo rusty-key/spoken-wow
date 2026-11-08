@@ -26,6 +26,7 @@ import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
   resolveSpeakers,
+  speakersOf,
   stringOrNull,
 } from "@/lib/contributions/intake";
 import { lineStates } from "@/lib/contributions/known";
@@ -136,10 +137,10 @@ export async function POST(request: Request) {
 
   await recordContributionHit(ip, installId);
 
-  // After the response, because Cloudflare gives up on an origin after 100 seconds and the
-  // player's lines are already safe by here. A restart that loses this leaves rows a moderator
-  // can still fix.
-  after(() => resolveSpeakers(unknown));
+  // After the response: Cloudflare gives up on an origin at 100 seconds, and the lines are stored
+  // by now. Worked out first so the file's text is not held in memory for the whole run.
+  const speakers = speakersOf(unknown);
+  after(() => resolveSpeakers(speakers));
 
   return Response.json({
     ok: true,
