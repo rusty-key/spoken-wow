@@ -37,6 +37,119 @@ local function Clamp(n, low, high) return math.max(low, math.min(high, n)) end
 -- The frame still resizes while the UI is torn down, after AceDB strips it (Addon:Profile).
 local function Config() return Addon:Profile("Frame") end
 local Label, Waiting, BelongsTo, Font = Actions.Label, Actions.Waiting, Actions.BelongsTo, Actions.Text
+local SPEAKER_UNITS = { "questnpc", "npc", "target", "mouseover", "focus" }
+local RACIAL_ART = {
+    NightElf = {
+        image = [[Interface\Icons\Spell_Nature_NaturesBlessing]],
+        pattern = ART .. "Lattice",
+        border = { .32, .74, .34, 1 },
+        imageColor = { .86, .98, .82, .95 },
+        patternColor = { .52, .82, .55, .48 },
+    },
+    Tauren = {
+        image = [[Interface\Icons\Spell_Nature_Strength]],
+        pattern = ART .. "Lattice",
+        border = { .58, .35, .16, 1 },
+        imageColor = { .98, .82, .58, .95 },
+        patternColor = { .78, .52, .30, .48 },
+    },
+}
+local function RaceFromBody(body)
+    if type(body) ~= "string" then return end
+    local key = string.lower(string.gsub(body, "[^%a]", ""))
+    if string.find(key, "nightelf", 1, true) then return "NightElf" end
+    if string.find(key, "tauren", 1, true) then return "Tauren" end
+end
+
+local function RaceFromName(name)
+    if type(name) ~= "string" then return end
+    local key = string.lower(string.gsub(name, "[^%a]", ""))
+    if string.find(key, "sentinelkyra", 1, true)
+        or string.find(key, "kyrastarsong", 1, true)
+        or string.find(key, "cantoestelar", 1, true) then
+        return "NightElf"
+    end
+    if string.find(key, "tauren", 1, true) then return "Tauren" end
+end
+
+local function UnitForGUID(guid)
+    if not guid or not UnitTokenFromGUID then return end
+    local ok, unit = pcall(UnitTokenFromGUID, guid)
+    return ok and NotSecret(unit)
+end
+
+-- Prefer the exact live unit and its body/model data, so a changed target cannot dress the wrong line.
+local function SpeakerRace(clip)
+    local fromBody = RaceFromBody(clip and (clip.npcBody or clip.fileName))
+    if fromBody then return fromBody end
+    local present = clip and clip.present
+    local fromName = RaceFromName(clip and clip.name) or RaceFromName(present and present.header)
+    if fromName then return fromName end
+    if clip and clip.unitGUID and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
+        local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, clip.unitGUID)
+        fromBody = ok and RaceFromBody(body)
+        if fromBody then return fromBody end
+    end
+    local portrait = clip and clip.present and clip.present.portrait
+    local wanted = portrait and portrait.unitGUID or clip and clip.unitGUID
+    -- First require an exact GUID match so an already queued line cannot borrow the player's
+    -- current target. A quest line can also have a synthetic/log GUID, though; in that case the
+    -- live questnpc/npc is still the only useful speaker and is the correct fallback.
+    local units = {}
+    local exact = UnitForGUID(wanted)
+    if exact then table.insert(units, exact) end
+    for _, unit in ipairs(SPEAKER_UNITS) do
+        if unit ~= exact then table.insert(units, unit) end
+    end
+    for _, unit in ipairs(units) do
+        local actual = UnitGUID and NotSecret(UnitGUID(unit))
+        if UnitExists and UnitExists(unit) and (not wanted or actual == wanted) then
+            if UnitRace then
+                local name, file = UnitRace(unit)
+                local race = RaceFromBody(file or name)
+                if race then return race end
+            end
+            if actual and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
+                local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, actual)
+                local race = ok and RaceFromBody(body)
+                if race then return race end
+            end
+            if actual and VoiceOver and VoiceOver.NPCModel and VoiceOver.NPCModel.Prime then
+                pcall(VoiceOver.NPCModel.Prime, VoiceOver.NPCModel, actual, unit)
+            end
+        end
+    end
+    for _, unit in ipairs({ "questnpc", "npc" }) do
+        if UnitExists and UnitExists(unit) then
+            if UnitRace then
+                local name, file = UnitRace(unit)
+                local race = RaceFromBody(file or name)
+                if race then return race end
+            end
+            local actual = UnitGUID and NotSecret(UnitGUID(unit))
+            if actual and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
+                local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, actual)
+                local race = ok and RaceFromBody(body)
+                if race then return race end
+            end
+            if actual and VoiceOver and VoiceOver.NPCModel and VoiceOver.NPCModel.Prime then
+                pcall(VoiceOver.NPCModel.Prime, VoiceOver.NPCModel, actual, unit)
+            end
+        end
+    end
+    -- Gossip/quest text is the final fallback for Classic NPCs whose unit token/model cache does
+    -- not expose a race yet. The large window uses the same fallback.
+    local text = clip and clip.text or present and present.transcript
+    if type(text) == "string" then
+        local key = string.lower(string.gsub(text, "[^%a]", ""))
+        if string.find(key, "tauren", 1, true) then return "Tauren" end
+    end
+end
+
+local function RaceLook(clip)
+    local race = SpeakerRace(clip)
+    return race and RACIAL_ART[race]
+end
 
 function MinimalPlayer:IsEnabled()
     return Addon.db and Addon:DisplayStyle() == "minimal"
@@ -92,6 +205,22 @@ function MinimalPlayer:Initialize(original)
     self.paper = self.panel:CreateTexture(nil, "BACKGROUND")
     self.paper:SetPoint("TOPLEFT", 7, -7)
     self.paper:SetPoint("BOTTOMRIGHT", -7, 7)
+    self.raceWash = self.panel:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.raceWash:SetAllPoints(self.paper)
+    self.raceWash:SetTexCoord(.04, .96, .04, .96)
+    self.raceWash:Hide()
+    -- A race's art stays behind the words and controls. The first treatment uses existing
+    -- Blizzard-derived Teldrassil and lattice textures; later races can add entries to RACIAL_ART.
+    self.raceImage = self.panel:CreateTexture(nil, "ARTWORK", nil, -2)
+    self.raceImage:SetSize(150, 150)
+    self.raceImage:SetPoint("TOPRIGHT", -8, -8)
+    self.raceImage:SetTexCoord(.04, .96, .04, .96)
+    self.raceImage:Hide()
+    self.racePattern = self.panel:CreateTexture(nil, "ARTWORK", nil, -1)
+    self.racePattern:SetSize(172, 172)
+    self.racePattern:SetPoint("TOPRIGHT", -2, -2)
+    self.racePattern:SetTexCoord(.14, .86, .14, .86)
+    self.racePattern:Hide()
     self.panel:SetScript("OnSizeChanged", function() self:TileRock() end)
 
     local content = CreateFrame("Frame", nil, frame)
@@ -326,6 +455,24 @@ function MinimalPlayer:ConfigurePortrait()
     Face.Show(self.portrait, self.clip)
 end
 
+function MinimalPlayer:ApplyRaceArt()
+    local look = RaceLook(self.clip)
+    self.raceImage:SetShown(look ~= nil)
+    self.racePattern:SetShown(look ~= nil)
+    self.raceWash:SetShown(look ~= nil)
+    if not look then
+        self.panel:SetBackdropBorderColor(.6, .57, .48, 1)
+        return
+    end
+    self.raceWash:SetTexture(look.image)
+    self.raceWash:SetVertexColor(.34, .58, .30, .20)
+    self.raceImage:SetTexture(look.image)
+    self.raceImage:SetVertexColor(unpack(look.imageColor))
+    self.racePattern:SetTexture(look.pattern)
+    self.racePattern:SetVertexColor(unpack(look.patternColor))
+    self.panel:SetBackdropBorderColor(unpack(look.border))
+end
+
 --- The rock repeats once per 256 units, inside the inset.
 function MinimalPlayer:TileRock()
     if not self.dark then return end
@@ -429,6 +576,7 @@ function MinimalPlayer:Tick(elapsed)
     -- Once "(Stopped)" has faded out, the title gets its room back.
     if self.tail:Step(elapsed) then self:Count(Waiting()) end
     if StaticPortrait:Resolved() then self:ConfigurePortrait() end
+    self:ApplyRaceArt()
     self:UpdateProgress()
     self.poll = (self.poll or 0) + elapsed
     if self.poll >= .2 then
@@ -508,6 +656,7 @@ function MinimalPlayer:Update()
     self:SetVisible(true)
     self.name:SetText(Actions.Speaker(clip))
     Addon:ClipFont(self.name, clip)
+    self:ApplyRaceArt()
     self:ConfigurePortrait()
     self:ConfigureActions()
     self:Layout()

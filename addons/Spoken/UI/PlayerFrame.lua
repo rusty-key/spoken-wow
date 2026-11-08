@@ -71,6 +71,215 @@ end
 
 local Label, Speaker, Waiting = Actions.Label, Actions.Speaker, Actions.Waiting
 
+-- Art for the large window: each classic race gets its own material language around the same
+-- transparent dialogue center, plus a matching color wash behind the text.
+local RACIAL_ART = {
+    NightElf = {
+        edge = TEXTURES .. "RaceTrim/NightElfEdge",
+        edgeV = TEXTURES .. "RaceTrim/NightElfEdgeV",
+        join = TEXTURES .. "RaceTrim/NightElfJoin",
+        -- Preserve the original purple wash and its natural gradient fade.
+        tint = { .28, .08, .45, .34 },
+    },
+    Human = {
+        edge = TEXTURES .. "RaceTrim/HumanEdge",
+        edgeV = TEXTURES .. "RaceTrim/HumanEdgeV",
+        join = TEXTURES .. "RaceTrim/HumanJoin",
+        tint = { .10, .16, .35, .30 },
+    },
+    Dwarf = {
+        edge = TEXTURES .. "RaceTrim/DwarfEdge",
+        edgeV = TEXTURES .. "RaceTrim/DwarfEdgeV",
+        join = TEXTURES .. "RaceTrim/DwarfJoin",
+        tint = { .32, .14, .04, .30 },
+    },
+    Gnome = {
+        edge = TEXTURES .. "RaceTrim/GnomeEdge",
+        edgeV = TEXTURES .. "RaceTrim/GnomeEdgeV",
+        join = TEXTURES .. "RaceTrim/GnomeJoin",
+        edgeVPeriod = 8,
+        tint = { .18, .30, .34, .28 },
+    },
+    Orc = {
+        edge = TEXTURES .. "RaceTrim/OrcEdge",
+        edgeV = TEXTURES .. "RaceTrim/OrcEdgeV",
+        join = TEXTURES .. "RaceTrim/OrcJoin",
+        tint = { .28, .04, .02, .30 },
+    },
+    Tauren = {
+        edge = TEXTURES .. "RaceTrim/TaurenEdge",
+        edgeV = TEXTURES .. "RaceTrim/TaurenEdgeV",
+        join = TEXTURES .. "RaceTrim/TaurenJoin",
+        tint = { .28, .14, .05, .28 },
+    },
+    Troll = {
+        edge = TEXTURES .. "RaceTrim/TrollEdge",
+        edgeV = TEXTURES .. "RaceTrim/TrollEdgeV",
+        join = TEXTURES .. "RaceTrim/TrollJoin",
+        tint = { .04, .22, .28, .30 },
+    },
+    Undead = {
+        edge = TEXTURES .. "RaceTrim/UndeadEdge",
+        edgeV = TEXTURES .. "RaceTrim/UndeadEdgeV",
+        join = TEXTURES .. "RaceTrim/UndeadJoin",
+        edgeVPeriod = 8,
+        tint = { .05, .20, .07, .32 },
+    },
+    Forsaken = {
+        edge = TEXTURES .. "RaceTrim/ForsakenEdge",
+        edgeV = TEXTURES .. "RaceTrim/ForsakenEdgeV",
+        join = TEXTURES .. "RaceTrim/ForsakenJoin",
+        tint = { .12, .22, .10, .32 },
+    },
+    HighOrder = {
+        edge = TEXTURES .. "RaceTrim/HighOrderEdge",
+        edgeV = TEXTURES .. "RaceTrim/HighOrderEdgeV",
+        join = TEXTURES .. "RaceTrim/HighOrderJoin",
+        edgeVPeriod = 8,
+        tint = { .22, .10, .40, .32 },
+    },
+    Windshapers = {
+        edge = TEXTURES .. "RaceTrim/WindshapersEdge",
+        edgeV = TEXTURES .. "RaceTrim/WindshapersEdgeV",
+        join = TEXTURES .. "RaceTrim/WindshapersJoin",
+        edgeVPeriod = 8,
+        tint = { .04, .20, .32, .32 },
+    },
+}
+
+local function RaceFromText(text)
+    if type(text) ~= "string" then return end
+    local value = string.lower(text)
+    local compact = string.gsub(value, "[^%a]", "")
+    local function HasWord(word)
+        return string.find(value, "%f[%a]" .. word .. "%f[%A]") ~= nil
+    end
+    if string.find(compact, "nightelf", 1, true) or string.find(value, "night%s+elf") then
+        return "NightElf"
+    end
+    if HasWord("human") then return "Human" end
+    if HasWord("dwarf") then return "Dwarf" end
+    if HasWord("gnome") then return "Gnome" end
+    if HasWord("orc") then return "Orc" end
+    if HasWord("tauren") then return "Tauren" end
+    if HasWord("troll") then return "Troll" end
+    if HasWord("forsaken") then return "Forsaken" end
+    if string.find(compact, "highorder", 1, true) or HasWord("skyborne") then
+        return "HighOrder"
+    end
+    if string.find(compact, "windshaper", 1, true) then return "Windshapers" end
+    if HasWord("scourge") or HasWord("undead") then
+        return "Undead"
+    end
+    if string.find(compact, "sentinelkyra", 1, true)
+        or string.find(compact, "kyrastarsong", 1, true)
+        or string.find(compact, "cantoestelar", 1, true)
+        or string.find(compact, "iverron", 1, true) then
+        return "NightElf"
+    end
+end
+
+local function RaceFromCreature(creature)
+    if not creature then return end
+    local dataModules = VoiceOver and VoiceOver.DataModules
+    if not dataModules or not dataModules.GetModules then return end
+    local race
+    for _, module in dataModules:GetModules() do
+        local bodies = module.NPCBodiesByNPCID and module.NPCBodiesByNPCID[creature]
+        if bodies then
+            for body in pairs(bodies) do
+                race = RaceFromText(body)
+                if race then return race end
+            end
+        end
+    end
+end
+
+local function UnitForGUID(guid)
+    if not guid or not UnitTokenFromGUID then return end
+    local ok, unit = pcall(UnitTokenFromGUID, guid)
+    return ok and NotSecret(unit)
+end
+
+local function SpeakerRace(clip)
+    local present = clip and clip.present
+    local portrait = present and present.portrait
+    local wanted = portrait and portrait.unitGUID or clip and clip.unitGUID
+    local units = {}
+    local exact = UnitForGUID(wanted)
+    if exact then table.insert(units, exact) end
+    for _, unit in ipairs({ "questnpc", "npc", "target", "mouseover", "focus", "softinteract", "softenemy" }) do
+        if unit ~= exact then table.insert(units, unit) end
+    end
+    local function RaceForUnit(unit)
+        if not UnitExists or not UnitExists(unit) then return end
+        local guid = UnitGUID and NotSecret(UnitGUID(unit))
+        if _G.UnitRace then
+            local ok, name, file = pcall(_G.UnitRace, unit)
+            local race = ok and RaceFromText(file or name)
+            if race then return race end
+        end
+        if guid and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
+            local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, guid)
+            local race = ok and RaceFromText(body)
+            if race then return race end
+        end
+        -- NPCs do not always expose UnitRace. Prime the existing model probe; its body becomes
+        -- available to GetBodyForGUID on a later frame update without a creature-ID table.
+        if guid and VoiceOver and VoiceOver.NPCModel and VoiceOver.NPCModel.Prime then
+            pcall(VoiceOver.NPCModel.Prime, VoiceOver.NPCModel, guid, unit)
+        end
+    end
+    local race
+    for _, unit in ipairs(units) do
+        local actual = UnitGUID and NotSecret(UnitGUID(unit))
+        if (not wanted or actual == wanted) then
+            race = RaceForUnit(unit)
+            if race then return race end
+        end
+    end
+    -- A synthetic/log GUID will not match the live unit. The interaction's questnpc/npc is still
+    -- the correct speaker in that case.
+    for _, unit in ipairs({ "questnpc", "npc" }) do
+        race = RaceForUnit(unit)
+        if race then return race end
+    end
+
+    -- The prepared NPC body is more reliable than the words being spoken, and survives after
+    -- the dialog's unit token has gone away.
+    race = RaceFromText(clip and (clip.npcBody or clip.race))
+        or RaceFromText(portrait and portrait.body)
+    if race then return race end
+    if clip and clip.unitGUID and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
+        local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, clip.unitGUID)
+        race = ok and RaceFromText(body)
+        if race then return race end
+    end
+
+    local creature = portrait and portrait.creatureID
+    if not creature and clip and clip.unitGUID and VoiceOver and VoiceOver.Utils
+        and VoiceOver.Utils.GetCreatureIDFromGUID then
+        local ok, id = pcall(VoiceOver.Utils.GetCreatureIDFromGUID, VoiceOver.Utils, clip.unitGUID)
+        creature = ok and id
+    end
+    race = RaceFromCreature(creature)
+    if race then return race end
+
+    -- Gossip/quest text is the final fallback. This covers NPCs whose Classic unit token does
+    -- not expose a race and whose model has not been cached yet (for example this Tauren line).
+    -- It intentionally comes after the authoritative sources so mentioning another race does
+    -- not change the speaker's treatment when the client already knows the speaker.
+    return RaceFromText(clip and clip.text)
+        or RaceFromText(present and present.transcript)
+        or RaceFromText(clip and clip.name)
+        or RaceFromText(present and present.header)
+end
+
+local function RaceLook(clip)
+    local race = SpeakerRace(clip)
+    return race and RACIAL_ART[race]
+end
+
 local function FirstAtlas(names)
     for _, name in ipairs(names) do
         if Actions.HasAtlas(name) then return name end
@@ -117,9 +326,34 @@ function PlayerFrame:InitDisplay()
     self.frame:Hide()
 
     self.frame.background = self.frame:CreateTexture(nil, "BACKGROUND")
-    self.frame.background:SetAllPoints()
+    self.frame.background:SetPoint("TOPLEFT", 8, -8)
+    self.frame.background:SetPoint("BOTTOMRIGHT", -8, 8)
+    self.frame.raceTint = self.frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.frame.raceTint:SetColorTexture(.28, .08, .45, .34)
+    self.frame.raceTint:Hide()
+    self.frame:SetBackdrop({
+        edgeFile = [[Interface\DialogFrame\UI-DialogBox-Gold-Border]],
+        edgeSize = 32,
+        tile = true,
+        tileSize = 32,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 },
+    })
+    self.frame:SetBackdropBorderColor(1, 1, 1, 0)
+    self.frame.raceBorderFrame = CreateFrame("Frame", nil, self.frame)
+    self.frame.raceBorderFrame:SetFrameLevel(self.frame:GetFrameLevel() + 2)
+    self.frame.raceBorderFrame:SetAllPoints(self.frame)
+    self.frame.raceBorderFrame:Hide()
+    self.frame.raceTrim = {}
+    for _, name in ipairs({
+        "topLeft", "topRight", "bottomLeft", "bottomRight",
+        "leftTop", "leftBottom", "rightTop", "rightBottom",
+        "cornerTopLeft", "cornerTopRight", "cornerBottomLeft", "cornerBottomRight",
+    }) do
+        self.frame.raceTrim[name] = self.frame.raceBorderFrame:CreateTexture(nil, "OVERLAY")
+    end
 
     self.frame.container = CreateFrame("Frame", nil, self.frame)
+    self.frame.container:SetFrameLevel(self.frame.raceBorderFrame:GetFrameLevel() + 1)
 
     self.frame:SetScript("OnUpdate", function(_, elapsed) self:Tick(elapsed) end)
 end
@@ -280,6 +514,62 @@ function PlayerFrame:ApplyArt()
     self.art = art
 end
 
+function PlayerFrame:ApplyRaceArt(clip)
+    local frame, look = self.frame, RaceLook(clip)
+    frame.raceBorderFrame:SetShown(look ~= nil)
+    frame.raceTint:SetShown(look ~= nil)
+    if not look then
+        frame:SetBackdropBorderColor(1, 1, 1, 1)
+        frame.portrait.border.texture:SetAlpha(1)
+        return
+    end
+    frame.raceTint:ClearAllPoints()
+    frame.raceTint:SetPoint("TOPLEFT", frame, "TOPLEFT",
+        FrameConfig().HidePortrait and BARE_LEFT - 8 or NAME_X - 8, -8)
+    frame.raceTint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
+    frame.raceTint:SetColorTexture(unpack(look.tint))
+    self:PaintRaceTrim(look)
+    frame:SetBackdropBorderColor(1, 1, 1, 0)
+    -- The thin WC3 trim does not replace the portrait's own ring.
+    frame.portrait.border.texture:SetAlpha(1)
+end
+
+function PlayerFrame:PaintRaceTrim(look)
+    local frame, trim = self.frame, self.frame.raceTrim
+    local edge, inset = 14, 4
+    local out = edge - inset
+    local width = frame:GetWidth() + 2 * out
+    local height = frame:GetHeight() + 2 * out
+    local halfWidth = math.max(0, width / 2 - edge)
+    local u0, u1 = 1 / 8, 1 / 8 + halfWidth / (8 * edge)
+    local postPeriod = look.edgeVPeriod or 4
+    local halfHeight = math.max(0, height / 2 - edge)
+    local v0, v1 = 1 / postPeriod, 1 / postPeriod + halfHeight / (postPeriod * edge)
+
+    local function Half(texture, file, point, dx, dy, w, h, left, right, top, bottom)
+        texture:SetTexture(file, "REPEAT", "REPEAT")
+        texture:ClearAllPoints()
+        texture:SetPoint(point, frame, point, dx, dy)
+        texture:SetSize(w, h)
+        texture:SetTexCoord(left, right, top, bottom)
+    end
+
+    Half(trim.topLeft, look.edge, "TOPLEFT", -out + edge, out, halfWidth, edge, u0, u1, 0, 1)
+    Half(trim.topRight, look.edge, "TOPRIGHT", out - edge, out, halfWidth, edge, u1, u0, 0, 1)
+    Half(trim.bottomLeft, look.edge, "BOTTOMLEFT", -out + edge, -out, halfWidth, edge, u0, u1, 1, 0)
+    Half(trim.bottomRight, look.edge, "BOTTOMRIGHT", out - edge, -out, halfWidth, edge, u1, u0, 1, 0)
+
+    Half(trim.leftTop, look.edgeV, "TOPLEFT", -out, out - edge, edge, halfHeight, 0, 1, v0, v1)
+    Half(trim.leftBottom, look.edgeV, "BOTTOMLEFT", -out, -out + edge, edge, halfHeight, 0, 1, v1, v0)
+    Half(trim.rightTop, look.edgeV, "TOPRIGHT", out, out - edge, edge, halfHeight, 1, 0, v0, v1)
+    Half(trim.rightBottom, look.edgeV, "BOTTOMRIGHT", out, -out + edge, edge, halfHeight, 1, 0, v1, v0)
+
+    Half(trim.cornerTopLeft, look.join, "TOPLEFT", -out, out, edge, edge, 0, 1, 0, 1)
+    Half(trim.cornerTopRight, look.join, "TOPRIGHT", out, out, edge, edge, 1, 0, 0, 1)
+    Half(trim.cornerBottomLeft, look.join, "BOTTOMLEFT", -out, -out, edge, edge, 0, 1, 1, 0)
+    Half(trim.cornerBottomRight, look.join, "BOTTOMRIGHT", out, -out, edge, edge, 1, 0, 1, 0)
+end
+
 function PlayerFrame:RefreshConfig()
     -- Bronze Border tints every round button, whichever way lines are shown.
     Actions.RefreshRings()
@@ -305,6 +595,7 @@ function PlayerFrame:RefreshConfig()
         self.frame.mover:SetPoint("CENTER", self.frame.portrait, "BOTTOMLEFT", 0, 0)
     end
     self:ApplyArt()
+    self:ApplyRaceArt(self:Current())
     Ellesmere:Dress(self.frame)
     -- Only once the shell is on, and a failure here said in chat: the window's scale, strata and
     -- host below must still be set.
@@ -440,6 +731,7 @@ function PlayerFrame:Tick(elapsed)
     self.poll = (self.poll or 0) + elapsed
     if self.poll >= .2 then
         self.poll = 0
+        self:ApplyRaceArt(self.shown)
         self:UpdateControls()
     end
 end
@@ -495,6 +787,7 @@ function PlayerFrame:Update()
     local classic = Addon:DisplayStyle() == "classic"
     local want = classic and head ~= nil and not Actions.DialogCovers()
     if not want then
+        self:ApplyRaceArt(nil)
         self.turning = nil
         self.fader:Set(false, not classic)
         return
@@ -509,6 +802,7 @@ function PlayerFrame:Update()
         return
     end
     self.shown = head
+    self:ApplyRaceArt(head)
     self.fader:Set(true)
 
     -- The speaker, or the line's name where nobody speaks; then the line's name, said once.
