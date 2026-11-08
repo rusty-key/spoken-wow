@@ -226,7 +226,8 @@ export async function createContribution(input: Submission & Identity): Promise<
 
 /**
  * One statement per occurrence of a dedup, because an upsert may not touch the same row twice.
- * A later copy still bumps the count or fills the NPC as a separate paste would.
+ * A later copy still bumps the count or fills the NPC as a separate paste would. Sorted because
+ * two players' files hold the same lines in different orders, and would deadlock on their rows.
  */
 function roundsByDedup(submissions: readonly Submission[]): Submission[][] {
   const seen = new Map<string, number>();
@@ -236,7 +237,7 @@ function roundsByDedup(submissions: readonly Submission[]): Submission[][] {
     seen.set(submission.dedup, round + 1);
     (rounds[round] ??= []).push(submission);
   }
-  return rounds;
+  return rounds.map((round) => round.sort((a, b) => (a.dedup < b.dedup ? -1 : 1)));
 }
 
 /** A commit per line is most of what a full file costs on the droplet's disk. */

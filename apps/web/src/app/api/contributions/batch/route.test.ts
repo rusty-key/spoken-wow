@@ -110,6 +110,12 @@ describe("POST /api/contributions/batch", () => {
     }
   });
 
+  it("refuses a line Postgres cannot store and keeps the rest of the file", async () => {
+    const response = await POST(post({ envelopes: [gossip("Hail."), gossip("Fare\u0000well.")] }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ accepted: 1, refused: { malformed: 1 } });
+  });
+
   it("resolves each speaker once, however many of their lines arrive", async () => {
     await POST(post({ envelopes: [gossip("Hail."), gossip("Farewell."), gossip("Well met.")] }));
     expect(resolveNpc).not.toHaveBeenCalled();
