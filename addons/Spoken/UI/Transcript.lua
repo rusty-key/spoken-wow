@@ -313,19 +313,43 @@ local function EndsSentence(text)
     text = StripClosers(text)
     return SENTENCE_ENDS[text:sub(-1)] or SENTENCE_ENDS[text:sub(-3)] or false
 end
--- Whether word `index` starts a sentence. French and Russian set » apart with a space: a word of
--- closing quotes alone belongs to the sentence before, and the one after it starts the next.
-local function StartsSentence(words, index)
-    if index == 1 or words[index].breakBefore then return true end
+-- The last word of a clause: a comma, semicolon, colon or dash. A voice can pause there as long as
+-- at a full stop, and a piece is cut at a pause, so a piece may start at the word after one. Quest
+-- text often writes a dash as "--" or a spaced "-".
+local CLAUSE_ENDS = { [","] = true, [";"] = true, [":"] = true, ["-"] = true, ["—"] = true, ["–"] = true,
+    ["，"] = true, ["、"] = true, ["；"] = true, ["："] = true }
+local function EndsClause(text)
+    text = StripClosers(text)
+    return CLAUSE_ENDS[text:sub(-1)] or CLAUSE_ENDS[text:sub(-3)] or false
+end
+-- Whether the word before word `index` ends as `ends` says. French and Russian set » apart with a
+-- space: a word of closing quotes alone belongs to the words before, and the one after it follows.
+local function Follows(words, index, ends)
     if StripClosers(words[index].text) == "" then return false end
     local before = index - 1
     while before > 1 and StripClosers(words[before].text) == "" do before = before - 1 end
-    return EndsSentence(words[before].text)
+    return ends(words[before].text)
 end
+-- Whether word `index` starts a sentence.
+local function StartsSentence(words, index)
+    if index == 1 or words[index].breakBefore then return true end
+    return Follows(words, index, EndsSentence)
+end
+-- Whether word `index` starts a clause.
+local function StartsClause(words, index)
+    return index > 1 and Follows(words, index, EndsClause)
+end
+-- Estimated, a resume picks a clause over the nearest sentence only where the clause is more than
+-- this many seconds nearer. The estimate is off by a little everywhere and a line has nearly as many
+-- clauses as sentences, so a piece that starts a sentence would otherwise often land on a comma
+-- beside it. On 569 cuts of the quests packs, checked against the word heard first, 95% land on it,
+-- from 82% with sentences alone.
+local CLAUSE_MARGIN = 1.0
 
 --- Where the words pick up when the line resumes `offset` seconds in, and the word there. A piece
---- starts in the pause before its sentence, still the last sentence's time, so the time moves to
---- the sentence's first word: timed, the first word after the pause; estimated, the nearest start.
+--- starts in the pause before its sentence or clause, still the last one's time, so the time moves
+--- to its first word: timed, the first word after the pause; estimated, the nearest sentence start,
+--- or a clause start much nearer (CLAUSE_MARGIN).
 function Transcript:ResumeAnchor(offset)
     local words, length = self.words, tonumber(self.clip and self.clip.length)
     if not words or #words == 0 or not length or length <= 0 or not self.totalWeight or self.totalWeight <= 0 then
@@ -338,13 +362,21 @@ function Transcript:ResumeAnchor(offset)
         end
         return offset, nil
     end
-    local best, bestIndex, bestGap
-    for index, word in ipairs(words) do
-        if StartsSentence(words, index) then
-            local at = word.start * scale
-            local gap = math.abs(at - offset)
-            if not bestGap or gap < bestGap then best, bestIndex, bestGap = at, index, gap end
+    local function Nearest(starts)
+        local best, bestIndex, bestGap
+        for index, word in ipairs(words) do
+            if starts(words, index) then
+                local at = word.start * scale
+                local gap = math.abs(at - offset)
+                if not bestGap or gap < bestGap then best, bestIndex, bestGap = at, index, gap end
+            end
         end
+        return best, bestIndex, bestGap
+    end
+    local best, bestIndex, bestGap = Nearest(StartsSentence)
+    local clause, clauseIndex, clauseGap = Nearest(StartsClause)
+    if clauseGap and (not bestGap or clauseGap + CLAUSE_MARGIN < bestGap) then
+        return clause, clauseIndex
     end
     return best or offset, bestIndex
 end

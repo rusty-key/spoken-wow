@@ -269,6 +269,60 @@ Q:ResumeQueue()
 T:Started(line)
 Expect("resumed, the word lit is the sentence's first, never the one before", T:WordAt(T:GetProgress()), 4)
 
+---------------------------------------------------------------- a piece may start at a clause
+-- A voice can pause at a comma as long as at a full stop, and the converter cuts at pauses, so a
+-- piece may start after a comma, semicolon, colon or dash: its words pick up there too.
+local CLAUSES = "Listen well, stranger: the road north is dangerous. Take this blade, and go now."
+local function ClauseAnchor(text, place)
+    Fresh()
+    local clip = H.Clip({ pieces = "10 10", length = 20 })
+    clip.present.transcript = text
+    env.Transcript:SetClip(clip)
+    local words = env.Transcript.words
+    local scale = 20 / env.Transcript.totalWeight
+    local _, index = env.Transcript:ResumeAnchor(place(function(i) return words[i].start * scale end))
+    return index and words[index].text
+end
+Expect("estimated, a piece that starts after a colon picks up at the clause",
+    ClauseAnchor(CLAUSES, function(at) return at(4) end), "the")
+Expect("...after a comma, too",
+    ClauseAnchor(CLAUSES, function(at) return at(12) end), "and")
+-- Between "Take" and "and": a clause start more than a second nearer than the sentence's wins.
+Expect("...where the clause is over a second nearer than the sentence",
+    ClauseAnchor(CLAUSES, function(at) return (at(9) + at(12) + 1.1) / 2 end), "and")
+Expect("a clause under a second nearer leaves the sentence: the estimate is off by that much anywhere",
+    ClauseAnchor(CLAUSES, function(at) return (at(9) + at(12) + 0.9) / 2 end), "Take")
+Expect("a clause starts after closing quotes",
+    ClauseAnchor("\"I know,\" he said, \"where the key lies. Go now.\"", function(at) return at(3) end), "he")
+Expect("...and after a dash set apart with spaces",
+    ClauseAnchor("The key — hidden well — lies below. Find it.", function(at) return at(4) end), "hidden")
+Expect("...or written as two hyphens, as quest text often does",
+    ClauseAnchor("Slay the centaur -- our guards saw them. Go now.", function(at) return at(5) end), "our")
+Expect("...or one spaced hyphen",
+    ClauseAnchor("Seek out Nefarian - the cunning son of Deathwing. Go now.", function(at) return at(5) end), "the")
+Expect("...but a number with a comma in it starts nothing",
+    ClauseAnchor("Bring me 1,000 copper ore at once. Go now.", function(at) return at(4) end), "Bring")
+Expect("Chinese: a clause starts after ，",
+    (ClauseAnchor("你好，陌生人。我需要你的帮助。", function(at) return at(3) end) or ""):sub(1, 3), "陌")
+
+Fresh()
+T = env.Transcript
+line = H.Clip({ pieces = "5 5", length = 10 })
+line.present.transcript = CLAUSES
+T:SetClip(line)
+-- The second piece starts where the words estimate "the", the colon's clause, to start.
+local cut = T.words[4].start * 10 / T.totalWeight
+line = H.Clip({ pieces = string.format("%.3f %.3f", cut, 10 - cut) })
+line.present.transcript = CLAUSES
+quests:Enqueue(line)
+T:Started(line)
+stub.Advance(cut + 1)
+Q:PauseQueue()
+T:Sync()
+Q:ResumeQueue()
+T:Started(line)
+Expect("resumed in a piece cut at a colon, the word lit is the clause's first", T.words[T:WordAt(T:GetProgress())].text, "the")
+
 Fresh()
 local S = env.Subtitle
 line = Said({ pieces = "2 2 2" })
