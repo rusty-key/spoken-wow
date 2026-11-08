@@ -26,6 +26,10 @@ _G.SpokenPlaces = {
 }
 _G.SpokenDungeons = { dungeons = { [36] = { enUS = "The Deadmines" } } }
 _G.IsAddOnLoaded = function(name) return name == "OpenMap" end
+_G.OpenMapAPI = { callbacks = {} }
+function OpenMapAPI.RegisterCallback(owner, event, method)
+    OpenMapAPI.callbacks[event] = { owner = owner, method = method }
+end
 _G.WorldMapFrame = CreateFrame("Frame", "WorldMapFrame")
 WorldMapFrame.mapID = 36
 WorldMapFrame.GetMapID = function(self) return self.mapID end
@@ -49,6 +53,8 @@ stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(0.01)
 Expect("OpenMap setup watches the world map", WorldMapFrame.hooks.OnShow and #WorldMapFrame.hooks.OnShow > 0, true)
 Expect("OpenMap setup hooks the boss row", row.hooks.OnClick and #row.hooks.OnClick > 0, true)
+Expect("OpenMap shown callback is registered", OpenMapAPI.callbacks.OpenMap_DungeonMapShown.owner, Bosses)
+Expect("OpenMap hidden callback is registered", OpenMapAPI.callbacks.OpenMap_DungeonMapHidden.owner, Bosses)
 row:Click()
 Expect("an OpenMap boss row opens the map story", shown ~= nil, true)
 Expect("...on the current dungeon map", shown and shown.map, 36)

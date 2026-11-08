@@ -309,8 +309,10 @@ local function Setup()
 	WorldMapFrame:HookScript("OnShow", ScanSoon)
 	WorldMapFrame:HookScript("OnHide", function() currentInfo = nil end)
 	if _G.OpenMapAPI and OpenMapAPI.RegisterCallback then
-		OpenMapAPI:RegisterCallback(Bosses, "OpenMap_DungeonMapShown", "OpenMapDungeonMapShown")
-		OpenMapAPI:RegisterCallback(Bosses, "OpenMap_DungeonMapHidden", "OpenMapDungeonMapHidden")
+		-- CallbackHandler's RegisterCallback is called with the owner first, not as a method on
+		-- the library. Calling it with ':' makes the owner table look like the event name.
+		OpenMapAPI.RegisterCallback(Bosses, "OpenMap_DungeonMapShown", "OpenMapDungeonMapShown")
+		OpenMapAPI.RegisterCallback(Bosses, "OpenMap_DungeonMapHidden", "OpenMapDungeonMapHidden")
 	end
 	ScanSoon()
 end
