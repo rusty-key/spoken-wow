@@ -130,6 +130,44 @@ local function CurrentMapID()
 	return WorldMapFrame.mapID
 end
 
+local function DungeonStory(instanceID)
+	for _, dungeons in pairs(_G.SpokenPlaces and SpokenPlaces.Dungeons or {}) do
+		for _, dungeon in ipairs(dungeons) do
+			if dungeon.dungeon == instanceID or tostring(dungeon.dungeon) == tostring(instanceID) then
+				return dungeon.mapID, dungeon.key
+			end
+		end
+	end
+end
+
+function Bosses:ShowOpenMapDungeon(mapID, instanceID)
+	if not instanceID or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then return false end
+	local storyMap, storyKey = DungeonStory(instanceID)
+	local story = storyMap and SpokenPlaces.Subzones and SpokenPlaces.Subzones[storyMap]
+		and SpokenPlaces.Subzones[storyMap][storyKey]
+	if not story then return false end
+
+	local title = SpokenCompendium.DungeonName(instanceID)
+		or SpokenPlaces.GetMapName and SpokenPlaces:GetMapName(instanceID)
+		or tostring(instanceID)
+	local entry = {
+		title = title,
+		subtitle = SpokenPlaces.PlaceLine and SpokenPlaces:PlaceLine(storyMap, storyKey) or "",
+	}
+	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(storyMap, storyKey) then
+		entry.text = SpokenPlaces.L and SpokenPlaces.L.NOT_DISCOVERED or "You have not discovered this place yet."
+	elseif SpokenPlaces.IsPending and SpokenPlaces:IsPending(story) then
+		entry.contribute = { storyMap, storyKey }
+		entry.lore = { storyMap, storyKey }
+	else
+		entry.text = story.full or story.short or ""
+		entry.audio = { storyMap, storyKey }
+		entry.report = { storyMap, storyKey }
+		entry.lore = { storyMap, storyKey }
+	end
+	return SpokenPlaces:ShowMapStory(mapID or instanceID, entry)
+end
+
 local function RowBossName(item)
 	if type(item) ~= "table" or type(item[1]) ~= "string" then return end
 	local text = item[1]
@@ -165,6 +203,8 @@ end
 
 local hooked = setmetatable({}, { __mode = "k" })
 local watched = setmetatable({}, { __mode = "k" })
+local activityHooked = setmetatable({}, { __mode = "k" })
+local dungeonViews = setmetatable({}, { __mode = "k" })
 local ScanSoon
 
 local function RowOf(frame)
@@ -184,10 +224,34 @@ local function HookRow(frame)
 	end)
 end
 
+local function HookDungeonView(frame)
+	if frame ~= _G.OpenMapDungeonView or dungeonViews[frame] or not frame.HookScript then return end
+	dungeonViews[frame] = true
+	frame:HookScript("OnShow", function(self)
+		local inst = self.inst
+		local instanceID = type(inst) == "table" and inst[1]
+		if instanceID then Bosses:ShowOpenMapDungeon(CurrentMapID(), instanceID) end
+	end)
+	frame:HookScript("OnHide", function()
+		if _G.SpokenPlaces and SpokenPlaces.ClearMapStory then SpokenPlaces:ClearMapStory(CurrentMapID()) end
+	end)
+	if frame:IsShown() then
+		local inst = frame.inst
+		local instanceID = type(inst) == "table" and inst[1]
+		if instanceID then Bosses:ShowOpenMapDungeon(CurrentMapID(), instanceID) end
+	end
+end
+
 local function Watch(frame)
 	if watched[frame] or not frame.HookScript then return end
 	watched[frame] = true
 	frame:HookScript("OnShow", ScanSoon)
+	if not activityHooked[frame] and frame.GetObjectType and frame:GetObjectType() == "Button" then
+		activityHooked[frame] = true
+		-- OpenMap creates its dungeon view in the click handler for an entrance. Scan after every
+		-- map button click so the newly created private view is hooked before the next interaction.
+		frame:HookScript("OnClick", ScanSoon)
+	end
 end
 
 local function Scan(parent, seen)
@@ -196,6 +260,7 @@ local function Scan(parent, seen)
 	seen[parent] = true
 	Watch(parent)
 	HookRow(parent)
+	HookDungeonView(parent)
 	if not parent.GetChildren then return end
 	local ok, children = pcall(function() return { parent:GetChildren() } end)
 	if not ok then return end
@@ -227,10 +292,14 @@ end
 function Bosses:OpenMapDungeonMapShown(info)
 	currentInfo = info
 	ScanSoon()
+	local instance = info and info.instances and info.instances[1]
+	local instanceID = instance and DungeonInstanceByName(instance.name)
+	if instanceID then self:ShowOpenMapDungeon(info.mapID or CurrentMapID(), instanceID) end
 end
 
 function Bosses:OpenMapDungeonMapHidden()
 	currentInfo = nil
+	if _G.SpokenPlaces and SpokenPlaces.ClearMapStory then SpokenPlaces:ClearMapStory(CurrentMapID()) end
 end
 
 local setup

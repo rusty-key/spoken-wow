@@ -18,8 +18,13 @@ _G.SpokenCompendium = {
 _G.SpokenPlaces = {
     L = { BOSS_LORE_TITLE = "Boss Story" },
     Dungeons = { [1413] = { { dungeon = 36, mapID = 1436, key = "deadmines" } } },
+    Subzones = { [1436] = { deadmines = { full = "Deadmines lore" } } },
+    IsLocked = function() return false end,
+    IsPending = function() return false end,
+    PlaceLine = function() return "In Westfall" end,
     ShowMapStory = function(_, map, entry) shown = { map = map, entry = entry }; return true end,
 }
+_G.SpokenDungeons = { dungeons = { [36] = { enUS = "The Deadmines" } } }
 _G.IsAddOnLoaded = function(name) return name == "OpenMap" end
 _G.WorldMapFrame = CreateFrame("Frame", "WorldMapFrame")
 WorldMapFrame.mapID = 36
@@ -53,6 +58,13 @@ Expect("...with the boss story", shown and shown.entry.text, "36:edwin vancleef 
 Expect("...with the boss model creature", shown and shown.entry.model and shown.entry.model.creatureID, 639)
 Expect("...with the boss model display", shown and shown.entry.model and shown.entry.model.displayID, 2029)
 Expect("...without a Places report action", shown and shown.entry.reportAction, false)
+
+shown = nil
+Bosses:OpenMapDungeonMapShown({ mapID = 36, instances = { { name = "The Deadmines" } } })
+Expect("opening an OpenMap dungeon shows its lore", shown ~= nil, true)
+Expect("...on the dungeon map", shown and shown.map, 36)
+Expect("...with the dungeon title", shown and shown.entry.title, "The Deadmines")
+Expect("...with the dungeon story", shown and shown.entry.text, "Deadmines lore")
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll OpenMap boss map tests passed")
