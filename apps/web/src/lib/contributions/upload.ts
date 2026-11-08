@@ -41,12 +41,19 @@ export async function sendInChunks(
   envelopes: readonly string[],
   post: (chunk: string[]) => Promise<Response | null>,
   onProgress: (sent: number) => void = () => {},
+  /** What earlier tries of this file got through, so the totals cover the whole file. */
+  carried = { accepted: 0, refused: 0 },
 ): Promise<UploadOutcome> {
-  const outcome: UploadOutcome = { sent: 0, accepted: 0, refused: 0 };
+  const outcome: UploadOutcome = { sent: 0, ...carried };
   for (const chunk of chunksOf(envelopes)) {
     const response = await post(chunk);
     if (!response?.ok) return { ...outcome, failedWith: response?.status ?? null };
-    const body = (await response.json()) as { accepted: number; refused: Record<string, number> };
+    // A connection dropped after the headers, or a proxy's page answered with a 200.
+    const body = (await response.json().catch(() => null)) as {
+      accepted: number;
+      refused: Record<string, number>;
+    } | null;
+    if (!body?.refused) return { ...outcome, failedWith: null };
     outcome.sent += chunk.length;
     outcome.accepted += body.accepted;
     outcome.refused += Object.values(body.refused).reduce((total, count) => total + count, 0);

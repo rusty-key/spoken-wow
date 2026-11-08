@@ -48,4 +48,19 @@ describe("sendInChunks", () => {
   it("reports no response at all as null", async () => {
     expect(await sendInChunks(lines(1), async () => null)).toMatchObject({ sent: 0, failedWith: null });
   });
+
+  it("treats a success it cannot read as a failed request, without throwing", async () => {
+    const page = await sendInChunks(lines(1), async () => new Response("<html>"));
+    expect(page).toMatchObject({ sent: 0, failedWith: null });
+    const other = await sendInChunks(lines(1), async () => Response.json({ ok: true }));
+    expect(other).toMatchObject({ sent: 0, failedWith: null });
+  });
+
+  it("adds an earlier try's totals to this one", async () => {
+    const outcome = await sendInChunks(lines(2), async (chunk) => accepted(chunk), undefined, {
+      accepted: 2000,
+      refused: 300,
+    });
+    expect(outcome).toEqual({ sent: 2, accepted: 2002, refused: 300 });
+  });
 });

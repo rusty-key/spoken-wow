@@ -40,10 +40,13 @@ function summarise(candidates: readonly string[]): Loaded {
   return { envelopes, counts, unreadable, titles: [...titles] };
 }
 
+const NOTHING_CARRIED = { accepted: 0, refused: 0 };
+
 export default function UploadGathered({ signedInAs }: { signedInAs: string | null }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [carried, setCarried] = useState(NOTHING_CARRIED);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ accepted: number; refused: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -51,8 +54,11 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
   const input = useRef<HTMLInputElement>(null);
 
   async function read(file: File | undefined) {
+    // A send finishing would overwrite whatever was picked while it ran.
+    if (busy) return;
     setError(null);
     setResult(null);
+    setCarried(NOTHING_CARRIED);
     if (!file) return;
     setFileName(file.name);
     const next = summarise(envelopesFromSavedVariables(await file.text()));
@@ -89,11 +95,13 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
           }),
         }).catch(() => null),
       setProgress,
+      carried,
     );
     setBusy(false);
 
     if (outcome.failedWith === undefined) {
       setResult({ accepted: outcome.accepted, refused: outcome.refused });
+      setCarried(NOTHING_CARRIED);
       setLoaded(null);
       return;
     }
@@ -105,7 +113,9 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     // Only what did not arrive stays, so nobody is told to clear lines the site never got.
     const rest = loaded.envelopes.slice(outcome.sent);
     setLoaded(summarise(rest));
-    setError(`${outcome.sent} lines arrived. ${message} The other ${rest.length} are still here to send.`);
+    setCarried({ accepted: outcome.accepted, refused: outcome.refused });
+    const unused = outcome.refused ? ` ${outcome.refused} could not be used.` : "";
+    setError(`${outcome.accepted} lines arrived.${unused} ${message} The other ${rest.length} are still here to send.`);
   }
 
   if (result) {
