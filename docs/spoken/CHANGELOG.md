@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.8.4 — 2026-11-08
 
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
   its entrance shows the dungeon's lore, clicking a boss shows that boss's story with its 3D model,
