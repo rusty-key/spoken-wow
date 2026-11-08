@@ -640,8 +640,8 @@ export async function installProduct(
   }
 
   rep.send('downloading')
-  const downloaded = await downloadAsset({
-    url: release.assetUrl,
+  const download = (url: string): ReturnType<typeof downloadAsset> => downloadAsset({
+    url,
     dir: ctx.downloadsPath,
     baseName,
     expectedSize: release.assetSize,
@@ -656,6 +656,12 @@ export async function installProduct(
       rep.send('downloading')
     },
     onVerify: () => rep.send('verifying', 'Checking the download')
+  })
+  const downloaded = await download(release.assetUrl).catch((err: unknown) => {
+    // Only PlainError means the source failed; a cancel or a full disk would fail the same way from the other source.
+    if (!release.fallbackUrl || !(err instanceof PlainError)) throw err
+    log(`${release.assetUrl} failed, trying ${release.fallbackUrl}: ${err.message}`)
+    return download(release.fallbackUrl)
   })
 
   try {

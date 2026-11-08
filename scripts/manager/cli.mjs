@@ -4,6 +4,7 @@
 //
 //   node scripts/manager/cli.mjs publish [--dry-run] [--present] [--allow-removals]
 //   node scripts/manager/cli.mjs gc [--dry-run]
+//   node scripts/manager/cli.mjs addon <path/to/Spoken-x.y.z.zip> [--dry-run]
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,7 @@ import { managerFolders } from "../lib/packs.mjs";
 import { errorText, publishFromEnv, signingKeyFromEnv } from "./channel.mjs";
 import { gc } from "./gc.mjs";
 import { loadHashCache, saveHashCache } from "./manifest.mjs";
+import { publishAddon } from "./publish-addon.mjs";
 import { r2Store } from "./store.mjs";
 
 const DIST = join(dirname(fileURLToPath(import.meta.url)), "../../dist");
@@ -22,9 +24,12 @@ const onlyPresent = flags.includes("--present");
 const allowRemovals = flags.includes("--allow-removals");
 
 try {
-  if (command !== "publish" && command !== "gc") throw new Error("usage: cli.mjs publish|gc [--dry-run] [--present] [--allow-removals]");
+  if (command !== "publish" && command !== "gc" && command !== "addon") throw new Error("usage: cli.mjs publish|gc|addon [--dry-run] [--present] [--allow-removals]");
   await loadEnv();
-  if (command === "publish") {
+  if (command === "addon") {
+    const zipPath = flags.find((flag) => !flag.startsWith("--"));
+    await publishAddon({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), zipPath, dryRun });
+  } else if (command === "publish") {
     const cacheFile = join(DIST, ".manager-hashes.json");
     const cache = loadHashCache(cacheFile);
     try {

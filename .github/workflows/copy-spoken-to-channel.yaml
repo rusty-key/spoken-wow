@@ -1,0 +1,52 @@
+# A Spoken release goes to packs.spoken.quest when its GitHub draft is published, never at the tag:
+# the channel is what the Manager offers first, and a draft has not been looked at yet.
+#
+# Dispatch it with a tag to copy a release that is already out.
+name: Copy Spoken to the Manager channel
+run-name: Copy ${{ inputs.tag || github.event.release.tag_name }} to the Manager channel
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release to copy, such as spoken/v3.8.3
+        required: true
+      dry_run:
+        description: Hash it and show the new index, and upload nothing
+        type: boolean
+        default: true
+
+# Publishes retry a lost index race only a few times, so two of these should not compete as well.
+concurrency: copy-spoken-to-channel
+
+jobs:
+  copy:
+    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.event.release.tag_name, 'spoken/v') && !github.event.release.prerelease) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+      GH_TOKEN: ${{ github.token }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      SPOKEN_PACKS_SIGNING_KEY: ${{ secrets.SPOKEN_PACKS_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile --filter spoken-manager-channel
+      - name: Copy the release's zip and list it in the signed index
+        run: |
+          zip="Spoken-${TAG#spoken/v}.zip"
+          gh release download "$TAG" --pattern "$zip" --dir "$RUNNER_TEMP/addon"
+          node scripts/manager/cli.mjs addon "$RUNNER_TEMP/addon/$zip" $DRY_RUN

@@ -14,6 +14,23 @@ afterEach(async () => {
 const keys = channelKeys()
 const pack = { packId: 'SpokenPlacesAudio_deDE', rev: '20261018T000000Z', files: { 'SpokenPlacesAudio_deDE.toc': 'toc', 'Sounds/1.ogg': 'one' } }
 
+describe('parseIndex: addons', () => {
+  const good = { version: '3.8.3', sha256: 'c'.repeat(64), size: 9 }
+  const text = (addons: unknown): string => JSON.stringify({ generatedAt: 'now', packs: {}, addons })
+
+  it('reads the copies of an addon', () => {
+    expect(parseIndex(text({ spoken: [good] })).addons).toEqual({ spoken: [good] })
+  })
+  it('has none on an index from before they existed', () => {
+    expect(parseIndex(JSON.stringify({ generatedAt: 'now', packs: {} })).addons).toEqual({})
+  })
+  it('drops a bad copy and keeps the channel usable', () => {
+    const bad = [{ ...good, sha256: 'nope' }, { ...good, size: 0 }, { ...good, version: '../x' }, null]
+    expect(parseIndex(text({ spoken: [...bad, good], other: 'x' })).addons).toEqual({ spoken: [good] })
+    expect(parseIndex(text('x')).addons).toEqual({})
+  })
+})
+
 describe('openEnvelope', () => {
   it('returns the signed text when the signature checks out', () => {
     expect(openEnvelope(seal({ a: 1 }, keys).text, keys.publicKey)).toBe('{"a":1}')

@@ -33,9 +33,16 @@ export interface ChannelPack {
   totalSize: number
   requires: ChannelRequires
 }
+export interface ChannelAddon {
+  version: string
+  sha256: string
+  size: number
+}
 export interface ChannelIndex {
   generatedAt: string
   packs: Record<string, ChannelPack>
+  /** The channel's copies of an addon's release zips, by product id. */
+  addons?: Record<string, ChannelAddon[]>
 }
 export interface ChannelOptions {
   baseUrl?: string
@@ -49,6 +56,7 @@ const SHA = /^[0-9a-f]{64}$/
 const REV = /^\d{8}T\d{6}Z$/
 const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/
 const REQUIRES = /^>=\d+\.\d+\.\d+$/
+const ADDON_VERSION = /^\d+\.\d+\.\d+$/
 const BAD_CHARS = /[\0<>:"|?*\\\x01-\x1f]/
 
 function refuse(why: string): never {
@@ -86,8 +94,21 @@ function isRequires(r: unknown): r is ChannelRequires {
 }
 const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0
 
+// Dropped rather than refused, unlike a bad pack entry: GitHub still has the file, and refusing would hide every voice pack.
+function parseAddons(raw: unknown): Record<string, ChannelAddon[]> {
+  const out: Record<string, ChannelAddon[]> = {}
+  if (typeof raw !== 'object' || raw === null) return out
+  for (const [id, list] of Object.entries(raw)) {
+    if (!Array.isArray(list)) continue
+    out[id] = (list as Partial<ChannelAddon>[])
+      .filter((c): c is ChannelAddon => !!c && typeof c.version === 'string' && ADDON_VERSION.test(c.version) && typeof c.sha256 === 'string' && SHA.test(c.sha256) && isCount(c.size) && c.size > 0)
+      .map((c) => ({ version: c.version, sha256: c.sha256, size: c.size }))
+  }
+  return out
+}
+
 export function parseIndex(signed: string): ChannelIndex {
-  const raw = JSON.parse(signed) as { generatedAt?: unknown; packs?: unknown }
+  const raw = JSON.parse(signed) as { generatedAt?: unknown; packs?: unknown; addons?: unknown }
   if (typeof raw.generatedAt !== 'string' || typeof raw.packs !== 'object' || raw.packs === null) return refuse('index shape')
   const packs: Record<string, ChannelPack> = {}
   for (const [id, entry] of Object.entries(raw.packs as Record<string, unknown>)) {
@@ -106,7 +127,7 @@ export function parseIndex(signed: string): ChannelIndex {
     }
     packs[id] = { rev: x.rev, manifestSha256: x.manifestSha256, fileCount: x.fileCount, totalSize: x.totalSize, requires: { Spoken: x.requires.Spoken } }
   }
-  return { generatedAt: raw.generatedAt, packs }
+  return { generatedAt: raw.generatedAt, packs, addons: parseAddons(raw.addons) }
 }
 
 export function parseManifest(signed: string, packId: string, pack: ChannelPack): ChannelManifest {
