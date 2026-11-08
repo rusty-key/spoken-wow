@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- Keep Korean and other non-Latin text readable when custom fonts replace Spoken's explicit font files.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.4 — 2026-11-08
 
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking

@@ -245,6 +245,14 @@ Expect("H. ...written in that font", Font(_G.GameFontHighlight, "ruRU"), "Fonts\
 Expect("H. it offers Korean, which its font cannot draw, in the client's Korean font",
     tostring(Z:CanRenderLanguage("koKR")) .. " " .. Font(_G.GameFontHighlight, "koKR"),
     "true Fonts\\2002.TTF")
+Z = InstallOn("koKR", nil)
+Reset()
+Expect("H. a Korean client also falls back from a Latin-only explicit face to its Korean font",
+    Font(_G.GameFontHighlight, "koKR"), "Fonts\\2002.TTF")
+Expect("H. ...and still renders Korean when both font objects start on Latin faces",
+    Z:CanRenderLanguage("koKR"), true)
+Expect("H. Spoken's shared UI font fallback chooses the Korean face too",
+    SpokenEnv.Options:FontFor("Fonts\\FRIZQT__.TTF", "koKR"), "Fonts\\2002.TTF")
 Expect("H. ...and Chinese in its Chinese fonts", Font(_G.QuestFont, "zhCN") .. " "
     .. Font(_G.QuestFont, "zhTW"), "Fonts\\ARKai_T.ttf Fonts\\blei00d.TTF")
 Expect("H. Traditional Chinese is offered though its font has private-use glyphs as wide as its Han",

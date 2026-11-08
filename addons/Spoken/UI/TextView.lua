@@ -89,8 +89,10 @@ end
 local function FontFile(view, fontObject)
 	fontObject = view.faceObject or fontObject
 	local owner = view.owner
-	return owner and owner.FontFor and owner:FontFor(fontObject)
-		or (fontObject and fontObject.GetFont and fontObject:GetFont())
+	if owner and owner.FontFor then return owner:FontFor(fontObject) end
+	local path = fontObject and fontObject.GetFont and fontObject:GetFont()
+	local options = SpokenEnv and SpokenEnv.Options
+	return options and options.FontFor and (options:FontFor(path) or path) or path
 end
 
 --------------------------------------------------------------------------------

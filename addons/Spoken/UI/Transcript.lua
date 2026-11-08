@@ -677,7 +677,9 @@ function Transcript:ApplyFont()
     -- EllesmereUI's font in its look, but on the DialogueUI window, which keeps DialogueUI's.
     local own = (Addon:DisplayStyle() ~= "dialogueui" and Ellesmere:Font()) or (self.style or {}).font
         or GameFontNormal:GetFont()
-    local face, size = present and present.font or own, FontSize()
+    local requested = present and present.font or own
+    local face = Options and Options.FontFor and (Options:FontFor(requested) or requested) or requested
+    local size = FontSize()
     if face == self.face and size == self.faceSize then return end
     -- A face the client cannot load: false on current clients, no face reported on older ones.
     if self.measure:SetFont(face, size, "") == false or not self.measure:GetFont() then

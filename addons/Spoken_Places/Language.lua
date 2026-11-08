@@ -161,10 +161,6 @@ function SpokenPlaces:FontFor(fontObject, code)
 	if not path or not locale or locale.script == "latin" then
 		return path
 	end
-	local client = byCode[self.clientLocale]
-	if client ~= nil and client.script == locale.script then
-		return path
-	end
 	self.fonts = self.fonts or {}
 	local key = path .. "|" .. locale.code
 	if self.fonts[key] == nil then
@@ -193,10 +189,6 @@ function SpokenPlaces:CanRenderLanguage(code)
 		return false
 	end
 	if locale.script == "latin" then
-		return true
-	end
-	local client = byCode[self.clientLocale]
-	if client ~= nil and client.script == locale.script then
 		return true
 	end
 	self.drawable = self.drawable or {}
