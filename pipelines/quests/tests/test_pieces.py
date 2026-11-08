@@ -1,5 +1,7 @@
 """Sentence pieces: a pack cut at its full stops plays the same line, in pieces that resume."""
+import gzip
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -38,6 +40,93 @@ class TestLongPieces:
     def test_the_second_cut_can_be_turned_off(self):
         pauses = [(3.0, 3.6), (14.0, 14.35)]
         assert pieces.choose_cuts(pauses, 25.0, min_pause=0.45, max_piece=12, fallback_pause=0) == [3.3]
+
+
+class TestSentenceStarts:
+    def test_a_sentence_starts_after_a_full_stop_question_or_exclamation(self):
+        assert pieces.sentence_starts("One two. Three four? Five six! Seven")[0] == [2, 4, 6]
+
+    def test_an_abbreviation_or_an_initial_ends_no_sentence(self):
+        assert pieces.sentence_starts("Ask Mr. Smith and J. Doe. Then go")[0] == [6]
+
+    def test_an_ellipsis_before_a_lower_case_word_is_inside_its_sentence(self):
+        assert pieces.sentence_starts("I think... maybe not. Go")[0] == [4]
+
+    def test_a_paragraph_starts_a_sentence_whatever_ends_the_one_before(self):
+        assert pieces.sentence_starts("Hear me\n\nfriend")[0] == [2]
+
+    def test_quotes_around_a_stop_or_a_word_are_looked_through(self):
+        assert pieces.sentence_starts('He said "Go." "Wait," she cried')[0] == [3]
+
+    def test_commas_semicolons_colons_and_dashes_start_clauses(self):
+        assert pieces.sentence_starts("One, two; three: four \u2014 five")[1] == [1, 2, 3, 5]
+
+
+SAID = "One two three. Four five six. Seven eight nine."
+SAID_TIMES = [0, .5, 1, 2.5, 3, 3.5, 5, 5.5, 6]
+
+
+class TestTimedCuts:
+    def test_a_cut_goes_just_before_each_sentences_first_word(self):
+        lead = pieces.WORD_LEAD
+        assert pieces.choose_timed_cuts(SAID, SAID_TIMES, 7.5) == [round(2.5 - lead, 3), round(5 - lead, 3)]
+
+    def test_a_cut_never_falls_nearer_the_word_before_than_halfway(self):
+        assert pieces.choose_timed_cuts("One. Two", [0, .3], 1.0, min_piece=0, min_tail=0) == [0.15]
+
+    def test_a_short_sentence_stays_with_the_next(self):
+        assert pieces.choose_timed_cuts(SAID, [0, .3, .6, 1, 1.3, 1.6, 5, 5.5, 6], 7.5) == [round(5 - pieces.WORD_LEAD, 3)]
+
+    def test_times_that_do_not_fit_the_text_measure_the_line_instead(self):
+        assert pieces.choose_timed_cuts(SAID, SAID_TIMES[:-1], 7.5) is None
+        assert pieces.choose_timed_cuts(SAID, [0, .5, 1, 2.5, 2, 3.5, 5, 5.5, 6], 7.5) is None
+        assert pieces.choose_timed_cuts(SAID, SAID_TIMES, 6.0) is None
+        assert pieces.choose_timed_cuts("", [], 6.0) is None
+
+    def test_a_piece_too_long_is_cut_at_the_clause_whose_words_are_furthest_apart(self):
+        # Two clauses would each do: the one at 9.5 s is nearer the middle, but the pause before the
+        # one at 11.5 s is longer, as its words' starts 1.5 s apart say.
+        words = [f"w{i}," if i in (9, 11) else f"w{i}" for i in range(20)]
+        times = [*range(10), 9.75, 10.25, 11.75, *[12.5 + i for i in range(7)]]
+        assert pieces.choose_timed_cuts(" ".join(words), times, 20.0, max_piece=12) == [11.5]
+        assert pieces.choose_timed_cuts(" ".join(words), times, 20.0, max_piece=12, cut_clauses=False) == []
+
+
+TIMES_TABLE = ('if not VoiceOver or not VoiceOver.DataModules then return end\n'
+               'SpokenQuestsAudioTest.WordTimesByFileName = {\n'
+               '    ["2-accept"] = "0 .5 1 2.5 3 3.5 5 5.5 6",\n'
+               '    ["f-3-complete"] = "0 .4",\n'
+               '}\n')
+
+
+def _corpus(path, lines):
+    with gzip.open(path, "wt", encoding="utf-8") as f:
+        json.dump({"lines": [{"fileName": name, "text": text} for name, text in lines]}, f)
+    return str(path)
+
+
+class TestWordTimesAndText:
+    def test_the_pack_table_reads_as_seconds_by_line(self):
+        assert pieces.parse_word_times(TIMES_TABLE) == {"2-accept": SAID_TIMES, "f-3-complete": [0, .4]}
+
+    def test_a_name_two_texts_share_is_left_out(self, tmp_path):
+        corpus = _corpus(tmp_path / "c.json.gz", [("2-accept", SAID), ("2-accept", SAID),
+                                                  ("4-accept", "One."), ("4-accept", "Another.")])
+        assert pieces.load_texts(corpus) == {"2-accept": SAID}
+
+    def test_a_line_is_timed_where_the_pack_has_its_times_and_the_corpus_its_text(self, tmp_path):
+        (tmp_path / "generated").mkdir()
+        (tmp_path / "generated" / pieces.WORD_TIMES_FILE).write_text(TIMES_TABLE)
+        corpus = _corpus(tmp_path / "c.json.gz", [("2-accept", SAID), ("9-accept", "Nine.")])
+        assert pieces.timed_lines(str(tmp_path), TOC, corpus) == {"2-accept": (SAID, SAID_TIMES)}
+        english = f"## {pieces.LANGUAGE_KEY}: enUS\n" + TOC
+        assert pieces.timed_lines(str(tmp_path), english, corpus) == {"2-accept": (SAID, SAID_TIMES)}
+
+    def test_a_pack_in_another_language_is_measured(self, tmp_path):
+        (tmp_path / "generated").mkdir()
+        (tmp_path / "generated" / pieces.WORD_TIMES_FILE).write_text(TIMES_TABLE)
+        corpus = _corpus(tmp_path / "c.json.gz", [("2-accept", SAID)])
+        assert pieces.timed_lines(str(tmp_path), f"## {pieces.LANGUAGE_KEY}: deDE\n" + TOC, corpus) == {}
 
 
 class TestPackLengths:
@@ -180,6 +269,50 @@ class TestConvertPack:
     def test_encode_mode_also_cuts_at_the_sentences(self, pack, tmp_path):
         results = pieces.convert_pack(str(pack), str(tmp_path / "out"), pieces.Settings(mode="encode"))
         assert [len(r.lengths) for r in results] == [1, 3]
+
+
+@pytest.fixture
+def timed_pack(pack, tmp_path):
+    """The pack, with a line spoken without a pause anywhere, and its word times and text."""
+    _speech(pack / "generated" / "sounds" / "quests" / "2-accept.ogg", [("tone", 7.5)])
+    (pack / "generated" / pieces.WORD_TIMES_FILE).write_text(TIMES_TABLE)
+    corpus = _corpus(tmp_path / "corpus.json.gz", [("2-accept", SAID), ("1-accept", "Too few words.")])
+    return pack, corpus
+
+
+@needs_ffmpeg
+class TestTimedPack:
+    def test_a_line_with_word_times_is_cut_at_its_sentences_without_a_pause_to_find(self, timed_pack, tmp_path):
+        pack, corpus = timed_pack
+        results = pieces.convert_pack(str(pack), str(tmp_path / "out"), corpus=corpus)
+        line = next(r for r in results if r.name == "2-accept")
+        assert line.method == "times"
+        folder = tmp_path / "out" / pack.name / "generated" / "sounds" / "quests" / "2-accept"
+        assert sorted(os.listdir(folder)) == ["01.ogg", "02.ogg", "03.ogg"]
+        lead = pieces.WORD_LEAD
+        assert line.lengths == pytest.approx([2.5 - lead, 2.5, 2.5 + lead], abs=0.05)
+        assert pieces.summarise(results)["lines_timed"] == 1
+
+    def test_a_line_whose_times_do_not_fit_its_text_is_measured(self, timed_pack, tmp_path):
+        pack, corpus = timed_pack
+        table = TIMES_TABLE.replace('}\n', '    ["1-accept"] = "0 .5",\n}\n')
+        (pack / "generated" / pieces.WORD_TIMES_FILE).write_text(table)
+        results = pieces.convert_pack(str(pack), str(tmp_path / "out"), corpus=corpus)
+        line = next(r for r in results if r.name == "1-accept")
+        assert line.method == "pauses" and len(line.lengths) == 3
+
+    def test_without_a_corpus_every_line_is_measured(self, timed_pack, tmp_path):
+        pack, _ = timed_pack
+        results = pieces.convert_pack(str(pack), str(tmp_path / "out"), corpus=None)
+        assert {r.method for r in results} == {"pauses"}
+        assert len(next(r for r in results if r.name == "2-accept").lengths) == 1
+
+    def test_a_dry_run_cuts_where_the_run_does(self, timed_pack, tmp_path):
+        pack, corpus = timed_pack
+        dry = pieces.convert_pack(str(pack), str(tmp_path / "out"), dry_run=True, corpus=corpus)
+        lead = pieces.WORD_LEAD
+        assert next(r for r in dry if r.name == "2-accept").lengths == pytest.approx([2.5 - lead, 2.5, 2.5 + lead],
+                                                                                      abs=0.05)
 
 
 LOOKUP = '''local ADDON_NAME = ...
