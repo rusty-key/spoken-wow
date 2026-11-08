@@ -28,8 +28,10 @@
 // no node_modules.
 //
 // SPOKEN_CLIP_POINTERS=1 writes pointers instead (scripts/lib/clip-pointer.mjs), for a Manager
-// pack built without its clips on this machine. A quests pointer names the take's encoding, the Ogg
-// its pack ships, and durations.json carries what the build would otherwise read from the clips.
+// pack built without most of its clips on this machine. A quests pointer names the take's encoding,
+// the Ogg its pack ships, and durations.json carries what the build would otherwise read from the
+// clips. Old takes that still live only on the droplet have no hash and are copied as real clips;
+// the Manager publisher can upload a pack containing both forms.
 import { execFileSync } from "node:child_process";
 import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
@@ -193,18 +195,37 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
     process.exit(1);
   }
   const unhashed = live.filter((take) => take.archived && !take.sha256);
-  if (unhashed.length) {
-    console.error(`${unhashed.length} live takes are only on the droplet's volume, e.g. ${unhashed[0].file}: build with their clips instead`);
+  if (section === "quests" && unhashed.length) {
+    console.error(`${unhashed.length} live quests takes are only on the droplet's volume, e.g. ${unhashed[0].file}: they need an Ogg encoding before a pointer build`);
     process.exit(1);
   }
   const pointed = live.filter((take) => take.sha256);
   await Promise.all([...new Set(pointed.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
+  const missing = [];
+  let copied = 0;
+  for (const { file, stem, archived } of unhashed) {
+    const source = join(paths.archive, archived);
+    const target = join(paths.out, `${stem}.mp3`);
+    await mkdir(dirname(target), { recursive: true });
+    try {
+      await copyFile(source, target, constants.COPYFILE_FICLONE);
+      copied++;
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      missing.push({ file, source });
+    }
+  }
+  if (missing.length) {
+    console.error(`  ${missing.length} live takes are only on the droplet's volume and were not found, e.g.:`);
+    for (const { file, source } of missing.slice(0, 5)) console.error(`    ${file}: ${source}`);
+    process.exit(1);
+  }
   let absent = [];
   if (section === "quests") {
     await writeEncodingPointers(pointed);
     await writeWordTimes();
   } else absent = await writePointers(pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) })), process.env.SPOKEN_ARCHIVE_URL);
-  console.log(`${section}: ${pointed.length - absent.length} pointers in ${paths.out.slice(ROOT.length + 1)}`);
+  console.log(`${section}: ${pointed.length - absent.length} pointers and ${copied} clips in ${paths.out.slice(ROOT.length + 1)}`);
   if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
   if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
   if (absent.length) {
