@@ -205,12 +205,19 @@ local function UnitForGUID(guid)
     return ok and NotSecret(unit)
 end
 
-local function RaceFromUnitRace(name, file, raceID)
+local function RaceFromUnitRace(name, file, raceID, faction)
     -- The numeric IDs are authoritative when available. The text fallback covers clients and
-    -- NPC units that return only a localized name or an internal race file.
+    -- NPC units that return only a localized name or an internal race file. A bare Skyborne name
+    -- is faction-specific in practice: Alliance is High Order, Horde is Windshapers.
     if raceID == 96 then return "Windshapers" end
     if raceID == 95 then return "HighOrder" end
-    return RaceFromText((name or "") .. " " .. (file or ""))
+    local text = (name or "") .. " " .. (file or "")
+    local race = RaceFromText(text)
+    local compact = string.gsub(string.lower(text), "[^%a]", "")
+    if faction == "Horde" and string.find(compact, "skyborne", 1, true) then
+        return "Windshapers"
+    end
+    return race
 end
 
 local function SpeakerRace(clip)
@@ -228,7 +235,12 @@ local function SpeakerRace(clip)
         local guid = UnitGUID and NotSecret(UnitGUID(unit))
         if _G.UnitRace then
             local ok, name, file, raceID = pcall(_G.UnitRace, unit)
-            local race = ok and RaceFromUnitRace(name, file, raceID)
+            local faction
+            if _G.UnitFactionGroup then
+                local factionOK, group = pcall(_G.UnitFactionGroup, unit)
+                faction = factionOK and group
+            end
+            local race = ok and RaceFromUnitRace(name, file, raceID, faction)
             if race then return race end
         end
         if guid and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
