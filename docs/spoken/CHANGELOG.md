@@ -78,7 +78,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Classic race borders in the player window.** Spoken uses the Warcraft III race trim for each
   supported race and resolves the speaker from live unit and model data, including compact
   Skyborne model names and faction-specific Skyborne variants, with localized text only as a last
-  resort.
+  resort. Gnome windows use a lighter, translucent steel-blue wash so their background fade stays
+  visible.
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.8.3 — 2026-11-05

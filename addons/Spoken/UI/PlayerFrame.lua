@@ -97,7 +97,9 @@ local RACIAL_ART = {
         edgeV = TEXTURES .. "RaceTrim/GnomeEdgeV",
         join = TEXTURES .. "RaceTrim/GnomeJoin",
         edgeVPeriod = 8,
-        tint = { .04, .06, .08, .88 },
+        -- Gnome's steel-blue wash is deliberately lighter and more transparent so the box's
+        -- existing edge fade remains visible instead of reading as a black rectangle.
+        tint = { .10, .18, .23, .72 },
     },
     Orc = {
         edge = TEXTURES .. "RaceTrim/OrcEdge",
