@@ -131,7 +131,7 @@ local RACIAL_ART = {
         join = TEXTURES .. "RaceTrim/ForsakenJoin",
         edgeVPeriod = 8,
         -- Undead's muted plum-violet wash matches the shared Forsaken trim without overpowering it.
-        tint = { .13, .10, .16, .60 },
+        tint = { .13, .10, .16, .72 },
     },
     Forsaken = {
         edge = TEXTURES .. "RaceTrim/ForsakenEdge",
