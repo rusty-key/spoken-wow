@@ -69,6 +69,13 @@ quests:Enqueue(H.Clip({ text = "Los tauren hemos hecho un hogar de esta tierra."
 Expect("a Tauren line gets the Tauren racial treatment", F.frame.raceBorderFrame:IsShown(), true)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
+-- Skyborne model metadata is not always exposed through UnitRace. Its compact internal names
+-- still identify the matching Warcraft III-style trim without a creature-ID table.
+quests:Enqueue(H.Clip({ npcBody = "SkyborneFemale", text = "Una bienvenida desde Skywall.",
+    present = { header = "Ailee Corazón Lejano", portrait = { kind = "model", creatureID = 9998 } } }))
+Expect("a Skyborne model body gets the High Order racial treatment", F.frame.raceBorderFrame:IsShown(), true)
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
 -- A quest event with no title, neither a greeting nor gossip, has an empty label.
 quests:Enqueue(H.Clip({ key = "q:1", present = { header = "Thrall", label = "", portrait = { kind = "none" } } }))
 ExpectOf("an empty label is no label: the speaker alone, no dot after him", function()

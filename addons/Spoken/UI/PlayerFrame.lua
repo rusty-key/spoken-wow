@@ -163,8 +163,13 @@ local function RaceFromText(text)
     if HasWord("tauren") then return "Tauren" end
     if HasWord("troll") then return "Troll" end
     if HasWord("forsaken") then return "Forsaken" end
-    if string.find(compact, "windshaper", 1, true) then return "Windshapers" end
-    if string.find(compact, "highorder", 1, true) or HasWord("skyborne") then
+    if string.find(compact, "windshaper", 1, true)
+        or string.find(compact, "shendorei", 1, true) then
+        return "Windshapers"
+    end
+    if string.find(compact, "highorder", 1, true)
+        or string.find(compact, "skyborne", 1, true)
+        or HasWord("skyborne") then
         return "HighOrder"
     end
     if HasWord("scourge") or HasWord("undead") then
@@ -200,6 +205,14 @@ local function UnitForGUID(guid)
     return ok and NotSecret(unit)
 end
 
+local function RaceFromUnitRace(name, file, raceID)
+    -- The numeric IDs are authoritative when available. The text fallback covers clients and
+    -- NPC units that return only a localized name or an internal race file.
+    if raceID == 96 then return "Windshapers" end
+    if raceID == 95 then return "HighOrder" end
+    return RaceFromText((name or "") .. " " .. (file or ""))
+end
+
 local function SpeakerRace(clip)
     local present = clip and clip.present
     local portrait = present and present.portrait
@@ -215,9 +228,7 @@ local function SpeakerRace(clip)
         local guid = UnitGUID and NotSecret(UnitGUID(unit))
         if _G.UnitRace then
             local ok, name, file, raceID = pcall(_G.UnitRace, unit)
-            local race = ok and (raceID == 96 and "Windshapers"
-                or raceID == 95 and "HighOrder"
-                or RaceFromText(file or name))
+            local race = ok and RaceFromUnitRace(name, file, raceID)
             if race then return race end
         end
         if guid and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
