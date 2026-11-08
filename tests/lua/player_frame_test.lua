@@ -1186,5 +1186,63 @@ env.SoundQueue:RemoveAllSoundsFromQueue()
 env.Addon:SetPlayerStyle("classic")
 _G.IsShiftKeyDown = hadShift
 
+---------------------------------------------------------------- Pause, where a line is kept as pieces
+-- Twelve sentences of a few seconds each, a piece to each sentence: more lines than the
+-- window's captions show at once.
+local function Kept(pieces)
+    local said = {}
+    for n = 1, 12 do said[n] = "Sentence number " .. n .. " has a few more words in it." end
+    return H.Clip({ pieces = pieces, length = 36, present = { header = "Grull", transcript = table.concat(said, " "),
+        portrait = { kind = "none" } } })
+end
+env, quests, places = Boot(); F = env.PlayerFrame
+quests:Enqueue(Kept(nil))
+ExpectOf("a line kept whole: Stop leads the window's buttons, and no Pause", function()
+    return tostring(F.row[1] == F.play) .. " " .. tostring(F.pauseButton:IsShown()) end, "true false")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+quests:Enqueue(Kept("3 3 3 3 3 3 3 3 3 3 3 3"))
+ExpectOf("a line kept as pieces: Pause first, then Stop", function()
+    return tostring(F.row[1] == F.pauseButton) .. " " .. tostring(F.row[2] == F.play) .. " "
+        .. tostring(F.pauseButton:IsShown()) end, "true true true")
+stub.Advance(31)
+env.SoundQueue:TogglePauseQueue()
+ExpectOf("...paused, the window says Paused", function() return F.tail.stopped:GetText() end,
+    "• (" .. env.L.SUBTITLE_PAUSED .. ")")
+env.SoundQueue:TogglePauseQueue()
+Expect("...and Play starts the sentence it was paused in", world.played[#world.played],
+    F:Current().path:gsub("%.ogg$", "") .. "\\11.ogg")
+env.SoundQueue:StopQueue()
+ExpectOf("stopped, it says Stopped", function() return F.tail.stopped:GetText() end, "• (" .. env.L.SUBTITLE_STOPPED .. ")")
+-- Following the voice, the captions show the lines up to the eleventh sentence; one sentence to a line.
+local T = env.Transcript
+local top = T.topTarget
+Expect("...the captions following the voice down the line", top > 1 and top < 11, true)
+env.SoundQueue:TogglePauseQueue()
+Expect("...and Play goes back to the first sentence the captions show", world.played[#world.played],
+    F:Current().path:gsub("%.ogg$", "") .. string.format("\\%02d.ogg", top))
+-- Scrolled back up a page, by the wheel.
+T:TurnPage(1)
+Expect("...scrolled up", T.topTarget < top, true)
+top = T.topTarget
+env.SoundQueue:StopQueue()
+env.SoundQueue:TogglePauseQueue()
+Expect("...or, scrolled, the first sentence of the passage scrolled to", world.played[#world.played],
+    F:Current().path:gsub("%.ogg$", "") .. string.format("\\%02d.ogg", top))
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
+env.Addon:SetPlayerStyle("subtitle")
+local S = env.Subtitle
+quests:Enqueue(Kept(nil))
+S:UpdatePause()
+ExpectOf("the subtitles: no Pause for a line kept whole, and Stop where Pause would be", function()
+    return tostring(S.pauseButton:IsShown()) .. " " .. tostring(S.pause.anchor.relativeTo == S.controls) end, "false true")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+quests:Enqueue(Kept("3 3 3 3 3 3 3 3 3 3 3 3"))
+S:UpdatePause()
+ExpectOf("...and for a line kept as pieces, Pause, with Stop after it", function()
+    return tostring(S.pauseButton:IsShown()) .. " " .. tostring(S.pause.anchor.relativeTo == S.pauseButton) end, "true true")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+env.Addon:SetPlayerStyle("classic")
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")

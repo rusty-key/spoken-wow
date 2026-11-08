@@ -75,6 +75,17 @@ local sub = Z:NewLoreSound(1411, "valley of trials")
 Expect("a subzone clip keeps the frozen line id", sub.key, "s:1411:valley of trials")
 Expect("...header is the zone, label the subzone", sub.present.header .. " / " .. sub.present.label, "Durotar / Valley of Trials")
 Expect("no pack entry, no clip", Z:NewLoreSound(1426, nil), nil)
+Expect("a place kept whole has no pieces", zone.pieces, nil)
+local valley = _G.ZoneLoreAudioPacks.ZoneLoreAudio.subzones[1411]["valley of trials"]
+valley.pieces = "12 9.5 13.5"
+sub = Z:NewLoreSound(1411, "valley of trials")
+Expect("one kept as sentence pieces carries them", sub.pieces, "12 9.5 13.5")
+world.played = {}
+Z:EnqueueLore(sub)
+Expect("...and plays from its first piece", world.played[1],
+    [[Interface\AddOns\ZoneLoreAudio\Sounds\1411\valley-of-trials\01.mp3]])
+Spoken:StopAll()
+valley.pieces = nil
 Expect("a place with no picture sends none", zone.present.picture, nil)
 Z.Picture = function(_, mapID, key) if mapID == 1411 and not key then return "Pictures/1411", "Pictures/Mask3" end end
 local pictured = Z:NewLoreSound(1411, nil)

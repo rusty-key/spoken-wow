@@ -10,8 +10,8 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
 local env, quests, places, Q, rec
-local function Fresh()
-    env, quests, places = H.Fresh(stub, SPOKEN)
+local function Fresh(client)
+    env, quests, places = H.Fresh(stub, SPOKEN, client)
     Q = env.SoundQueue
     rec = H.Recorder(env)
 end
@@ -321,6 +321,40 @@ _G.SlashCmdList.SPOKEN("pause")
 Expect("/sp pause pauses", Q:HaltedBy(), "pause")
 _G.SlashCmdList.SPOKEN("resume")
 Expect("/sp resume resumes", Q:HaltedBy(), nil)
+
+---------------------------------------------------------------- on each client Spoken is released for
+for _, client in ipairs({ "16001", "11509", "20506" }) do
+    local function On(scenario) return client .. ": " .. scenario end
+    Fresh(client)
+    line = H.Clip({ pieces = "2 3 1.5" })
+    quests:Enqueue(line)
+    Expect(On("a line kept as pieces starts with its first"), world.played[1], Piece(line, 1))
+    stub.Advance(3.0)
+    Expect(On("...and plays the next after it"), world.played[2], Piece(line, 2))
+    Q:TogglePauseQueue()
+    Expect(On("Pause stops the piece speaking"), world.stopped[#world.stopped], 2)
+    Q:TogglePauseQueue()
+    Expect(On("...and Play starts that sentence again"), world.played[#world.played], Piece(line, 2))
+    Q:ToggleStopQueue()
+    Q:ToggleStopQueue()
+    Expect(On("Stop then Replay starts the line over"), world.played[#world.played], Piece(line, 1))
+
+    Fresh(client)
+    Q:AddSectionFinder(function() return 2.1 end)
+    line = H.Clip({ pieces = "2 3 1.5 2" })
+    quests:Enqueue(line)
+    stub.Advance(6.0)
+    Q:ToggleStopQueue()
+    Q:TogglePauseQueue()
+    Expect(On("Play after Stop goes back to the section on screen"), world.played[#world.played], Piece(line, 2))
+
+    Fresh(client)
+    local kept = H.Clip({ length = 5 })
+    quests:Enqueue(kept)
+    stub.Advance(1.0)
+    Q:TogglePauseQueue()
+    Expect(On("a line kept whole is only ever stopped"), Q:HaltedBy() .. " " .. env.Actions.HeadState(), "stop replay")
+end
 
 ---------------------------------------------------------------- on clients in other languages
 for _, case in ipairs({ { "deDE", "Pausiert" }, { "frFR", "En pause" }, { "zhCN", "已暂停" }, { "koKR", "일시정지됨" } }) do

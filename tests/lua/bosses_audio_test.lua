@@ -92,5 +92,18 @@ clip = Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAud
     Future = { version = 2, addon = "Future", language = "enUS", bitrate = 320, bosses = { [36] = { ["edwin vancleef"] = EDWIN } } } })
 Expect("a pack of another format is passed over", clip.path, ENGLISH_PATH)
 
+local SPLIT = { file = "36\\edwin-vancleef", len = 41.2, times = "0 1 2", pieces = "20 21.5" }
+local SPLIT_BOSSES = { [36] = { ["edwin vancleef"] = SPLIT } }
+clip = Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128, SPLIT_BOSSES) })
+Expect("a recording kept as sentence pieces: the clip carries them", clip.pieces, "20 21.5")
+Expect("...a recording kept whole carries none",
+    Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128) }).pieces, nil)
+Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128, SPLIT_BOSSES) })
+stub.ResetSound()
+Bosses:PlayStory(36, "edwin vancleef")
+Expect("...and plays from its first piece", stub.world.played[1],
+    "Interface\\AddOns\\SpokenBossesAudio\\Sounds\\36\\edwin-vancleef\\01.mp3")
+_G.Spoken:StopAll()
+
 stub.SetLocale("enUS")
 if Failures() > 0 then os.exit(1) end

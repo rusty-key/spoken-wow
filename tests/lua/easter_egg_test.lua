@@ -34,10 +34,12 @@ Expect("option off keeps the pack's path", soundData.filePath, "pack-path")
 
 VO.Addon.db.profile.Audio.OGThrall = true
 
-soundData = { fileName = THRALL, filePath = "pack-path", length = 1,
+soundData = { fileName = THRALL, filePath = "pack-path", length = 1, pieces = "0.4 0.6",
     module = { METADATA = { AddonName = "TestPack" } } }
 Expect("option on swaps the path", VO.EasterEggs:Apply(soundData) and soundData.filePath, EGG_PATH)
 Expect("option on swaps the length", soundData.length, 33.802375)
+-- The egg is one file of its own: the pack's sentence pieces are of another recording.
+Expect("option on drops the pack's sentence pieces", soundData.pieces, nil)
 
 -- A line nobody wrote an egg for keeps whatever the pack resolved.
 soundData = { fileName = "1234-accept", filePath = "pack-path" }
@@ -53,6 +55,7 @@ Expect("egg without a pack names an addon", soundData.module.METADATA.AddonName,
 -- quest file name here only because that is the one PrepareSound can be handed directly.
 VO.DataModules:Register("TestPack", {
     SoundLengthLookupByFileName = { ["4949-accept"] = 1 },
+    SoundPiecesByFileName = { ["4949-accept"] = "0.4 0.6" },
     GetSoundPath = function(_, fileName) return "quests\\" .. fileName .. ".ogg" end,
 })
 VO.EasterEggs.alternates["4949-accept"] =
@@ -60,6 +63,7 @@ VO.EasterEggs.alternates["4949-accept"] =
 soundData = { event = VO.Enums.SoundEvent.QuestAccept, questID = 4949 }
 Expect("PrepareSound applies the swap",
     VO.DataModules:PrepareSound(soundData) and soundData.filePath, EGG_PATH)
+Expect("...with none of the pack's pieces", soundData.pieces, nil)
 
 print(failures == 0 and "\nAll easter egg tests passed" or string.format("\n%d test(s) failed", failures))
 os.exit(failures == 0 and 0 or 1)
