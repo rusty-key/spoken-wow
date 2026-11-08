@@ -147,6 +147,10 @@ local legacyFurlDisplayLook = F.RaceLook({ present = {
     header = "Furl Scornbrow", portrait = { displayID = 1275 },
 } })
 Expect("Furl's shipped portrait display supplies the Orc race", legacyFurlDisplayLook ~= nil, true)
+local legacyVornalDisplayLook = F.RaceLook({ present = {
+    header = "Master Vornal", portrait = { displayID = 4086 },
+} })
+Expect("Vornal's shipped portrait display supplies the Troll race", legacyVornalDisplayLook ~= nil, true)
 local legacyHumanLook = F.RaceLook({ present = { header = "Stoley", portrait = { displayID = 7027 } } }, 49)
 Expect("an ambiguous legacy portrait display supplies the Human race", legacyHumanLook ~= nil, true)
 _G.VoiceOver = { DataModules = { GetModules = function()
