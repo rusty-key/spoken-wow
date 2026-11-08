@@ -780,6 +780,9 @@ do
     Expect("...using the model display ID", fresh.body.model.displayID, 2029)
     Expect("...with DBM-like model settings", fresh.body.model.portraitZoom .. "|" .. fresh.body.model.sequence,
         "0.4|4")
+    fresh.body.model.sequence = "still playing"
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("...left playing when the page is shown again", fresh.body.model.sequence, "still playing")
     fresh:Show({ title = "A place", text = "Place lore." })
     Expect("a page without a model hides the old one", fresh.body.model:IsShown(), false)
 

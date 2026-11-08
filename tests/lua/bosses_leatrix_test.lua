@@ -138,6 +138,8 @@ Expect("a boss pin created before the Leatrix overlay shows is hooked", shown ~=
 local entrance = CreateFrame("Button", nil, overlay)
 entrance.row = { "entrance", 0.5, 0.5 }
 overlay:Hide()
+-- Hiding the overlay ends the menu's Gnomeregan preview, as it does in the client.
+for _, hook in ipairs(overlay.hooks.OnHide or {}) do hook(overlay) end
 overlay:Show()
 stub.Advance(0.01)
 shown = nil
@@ -196,8 +198,7 @@ overlay:Hide()
 for _, hook in ipairs(overlay.hooks.OnHide or {}) do hook(overlay) end
 Expect("leaving the dungeon map clears the selected lore", clearedMap, 1426)
 
--- The actual zone-map path is handled by ScrollContainer:OnMouseUp. Spoken identifies the
--- hovered dungeon from Leatrix's tooltip owner, without touching Leatrix's private controls.
+-- Zone-map icons click through ScrollContainer:OnMouseUp, named by Leatrix's tooltip owner.
 local dungeonPOI = CreateFrame("Frame")
 dungeonPOI.data = { "Dungeon", 0.5, 0.5, "Gnomeregan" }
 _G.LeaMapsPOITooltip = { GetOwner = function() return dungeonPOI end }
@@ -208,6 +209,25 @@ for _, hook in ipairs(WorldMapFrame.ScrollContainer.hooks.OnMouseUp or {}) do ho
 stub.Advance(0.01)
 Expect("the zone-map POI click opens lore from the hovered dungeon destination", shown ~= nil, true)
 Expect("...with the hovered dungeon's story", shown and shown.entry.text, "Gnomeregan lore")
+
+-- Pressing on an icon and dragging moves the map; no preview opens.
+local cursorX = 100
+_G.GetCursorPosition = function() return cursorX, 100 end
+shown = nil
+for _, hook in ipairs(WorldMapFrame.ScrollContainer.hooks.OnMouseDown or {}) do hook(WorldMapFrame.ScrollContainer, "LeftButton") end
+cursorX = 200
+for _, hook in ipairs(WorldMapFrame.ScrollContainer.hooks.OnMouseUp or {}) do hook(WorldMapFrame.ScrollContainer, "LeftButton") end
+stub.Advance(0.01)
+Expect("dragging the map from a dungeon icon opens no lore", shown, nil)
+_G.GetCursorPosition = nil
+
+-- A hidden tooltip keeps its owner after the cursor has left the icon.
+_G.LeaMapsPOITooltip = { GetOwner = function() return dungeonPOI end, IsShown = function() return false end }
+shown = nil
+for _, hook in ipairs(WorldMapFrame.ScrollContainer.hooks.OnMouseDown or {}) do hook(WorldMapFrame.ScrollContainer, "LeftButton") end
+for _, hook in ipairs(WorldMapFrame.ScrollContainer.hooks.OnMouseUp or {}) do hook(WorldMapFrame.ScrollContainer, "LeftButton") end
+stub.Advance(0.01)
+Expect("a hidden tooltip's old owner opens no lore", shown, nil)
 _G.LeaMapsPOITooltip = nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

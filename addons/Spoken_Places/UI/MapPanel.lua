@@ -15,9 +15,7 @@ local Art = SpokenPlaces.Art
 
 local panel, page, toggle
 
--- A feature module may temporarily replace the place story with its own entry (for example, a boss
--- selected on an external dungeon map). The entry belongs to the displayed map and is discarded
--- when the player navigates elsewhere.
+-- A feature module's entry shown in place of the story, tied to the map displayed when it opened.
 local externalStory
 
 -- What the map's alpha is at when the player stands still. The fader's last step may stop a hair
@@ -446,16 +444,6 @@ end
 -- Content
 --------------------------------------------------------------------------------
 
-local function DungeonStory(mapID)
-	for _, dungeons in pairs(SpokenPlaces.Dungeons or {}) do
-		for _, dungeon in ipairs(dungeons) do
-			if dungeon.dungeon == mapID or tostring(dungeon.dungeon) == tostring(mapID) then
-				return dungeon.mapID, dungeon.key
-			end
-		end
-	end
-end
-
 local function Refresh(mapID)
 	if not panel then
 		return
@@ -480,7 +468,9 @@ local function Refresh(mapID)
 	end
 
 	local zoneName = SpokenPlaces:GetMapName(mapID) or ("uiMapID " .. tostring(mapID))
-	if externalStory and externalStory.mapID ~= mapID then
+	-- ShowMapStory drops the selection, so one present here was made after the story opened. Keeping
+	-- the story would swallow that click on the map.
+	if externalStory and (externalStory.mapID ~= mapID or SpokenPlaces.selected) then
 		externalStory = nil
 	end
 	if externalStory then
@@ -489,30 +479,6 @@ local function Refresh(mapID)
 		return
 	end
 	SetPanelTitle()
-
-	-- A dungeon map is not the map where its story is stored: Dungeons.lua keeps the text on the
-	-- entrance zone's area. Show that dungeon before falling back through the map tree to the zone.
-	local dungeonMap, dungeonKey = DungeonStory(mapID)
-	local dungeonTitle = zoneName
-	local dungeonEntry = dungeonMap and SpokenPlaces.Subzones[dungeonMap]
-	dungeonEntry = dungeonEntry and dungeonEntry[dungeonKey]
-	if dungeonEntry then
-		local caption = SpokenPlaces:PlaceLine(dungeonMap, dungeonKey)
-		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(dungeonMap, dungeonKey) then
-			page:Show({ title = dungeonTitle, subtitle = caption, text = L.NOT_DISCOVERED })
-			return
-		end
-		if SpokenPlaces:IsPending(dungeonEntry) then
-			page:Show({ title = dungeonTitle, subtitle = caption,
-				contribute = { dungeonMap, dungeonKey }, lore = { dungeonMap, dungeonKey } })
-			return
-		end
-		page:Show({ title = dungeonTitle, subtitle = caption,
-			text = dungeonEntry.full or dungeonEntry.short or "",
-			audio = { dungeonMap, dungeonKey }, report = { dungeonMap, dungeonKey },
-			lore = { dungeonMap, dungeonKey } })
-		return
-	end
 
 	-- A selection only applies to the map it was made on; navigating elsewhere drops it. Checking
 	-- here rather than on the map-changed callback keeps this independent of the order modules
@@ -591,9 +557,8 @@ function SpokenPlaces:RefreshPanel()
 	Refresh(SpokenPlaces:GetDisplayedMapID())
 end
 
---- Shows a feature module's story in the panel beside the map. `entry` is the same shape accepted
---- by the map lore page, with `target`, `play`, and `reportAction` available for the module's own
---- source. The story is cleared when the displayed map changes.
+--- `entry` is what the map lore page takes, with `target`, `play` and `reportAction` for the
+--- module's own source. A map change or an area click clears it.
 function SpokenPlaces:ShowMapStory(mapID, entry)
 	if not mapID or type(entry) ~= "table" or not panel then
 		return false
@@ -608,7 +573,6 @@ function SpokenPlaces:ShowMapStory(mapID, entry)
 	return panel:IsShown()
 end
 
---- Clears a story selected by another module and redraws the normal map lore.
 function SpokenPlaces:ClearMapStory(mapID)
 	if not externalStory or (mapID and externalStory.mapID ~= mapID) then
 		return false

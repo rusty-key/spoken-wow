@@ -2215,9 +2215,7 @@ function C.NewPage(parent, addon, play, report, look)
 	return self
 end
 
---- Changes the actions for the next page shown. Feature modules can reuse a Places page in the
---- map panel while keeping their own source and report behaviour; omitting either action restores
---- the action the page was built with.
+--- Changes the actions for the next page shown; nil restores the one the page was built with.
 function Page:SetActions(play, report)
 	self.playing = play == nil and self.defaultPlaying or play
 	self.reporting = report == nil and self.defaultReporting or report

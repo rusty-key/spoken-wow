@@ -40,8 +40,7 @@ local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 -- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
 -- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
 local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
--- A creature model above the words, sized for the narrow map panel and capped for the wider
--- Compendium page. It uses the same display ID and PlayerModel settings as DBM's boss preview.
+-- A creature model fits the narrow map panel at this size, and stops here on the wider Compendium.
 local MODEL_MOST, MODEL_GAP = 150, 10
 -- A clean picture, with straight edges, loses this share of each side: past it no pixel of
 -- any shipped picture is thinned toward the parchment by more than 1%, measured from the shipped
@@ -788,11 +787,16 @@ function TextView:SetParts(parts)
 	self:UpdateFade()
 end
 
---- A creature model above the text from the next SetText on: `displayID` is the client's model
---- display ID, as DBM's boss model preview uses. `creatureID` is kept as a fallback for clients that
---- can draw the creature but cannot draw the display directly. nil for none.
+--- A creature model above the text from the next SetText on, nil for none. `creatureID` is the
+--- fallback for clients that cannot draw `displayID` directly.
 function TextView:SetModel(model)
-	self.modelDisplayID = model and model.displayID or nil
+	local displayID = model and model.displayID or nil
+	-- A page is shown again on every refresh, and reloading restarts the model's animation. A model
+	-- out of sight is reloaded, since the client can drop it while hidden.
+	if displayID and displayID == self.modelDisplayID and self.model.IsVisible and self.model:IsVisible() then
+		return
+	end
+	self.modelDisplayID = displayID
 	if not self.modelDisplayID and not (model and model.creatureID) then
 		if self.model then
 			self.model:Hide()

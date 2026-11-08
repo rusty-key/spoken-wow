@@ -88,7 +88,7 @@ _G.GameFontHighlight = _G.GameFontHighlight or { GetFont = function() return "fo
 local Z = H.NewZoneLore()
 -- The world's name is the client's: no story of its own to take it from.
 local mapName = Z.GetMapName
-function Z:GetMapName(id) return id == 947 and "Azeroth" or id == 36 and "Deadmines" or mapName(self, id) end
+function Z:GetMapName(id) return id == 947 and "Azeroth" or mapName(self, id) end
 Z.Zones = { [1411] = { name = "Durotar", full = "Durotar is a cracked, red land." },
     [1426] = { name = "Dun Morogh", pending = true },
     -- A city: a zone of its own, listed inside the zone around it.
@@ -107,8 +107,6 @@ Z.Subzones = { [1411] = { ["valley of trials"] = { name = "Valley of Trials", fu
     ["sen'jin village"] = { name = "Sen'jin Village", pending = true },
     -- An area only Forever has: this client, Era, never lists it.
     ["camp forever"] = { name = "Camp Forever", full = "Only on Forever." } } }
-Z.Subzones[1436] = { deadmines = { name = "Deadmines", full = "The Defias' mine." } }
-Z.Dungeons = { [1436] = { { mapID = 1436, key = "deadmines", dungeon = 36 } } }
 Z.ForeverOnlyAreas = { [1411] = { ["camp forever"] = true } }
 function Z:GetLore(mapID) return self.Zones[mapID] end
 function Z:IsPending(entry) return entry and entry.pending or false end
@@ -741,14 +739,14 @@ local displayed = Z.GetDisplayedMapID
 Z.GetDisplayedMapID = function() return 9999 end
 Z:RefreshPanel()
 Expect("...and a map with no entry at all offers nothing to open", mapPage.open:IsShown(), false)
-Z.GetDisplayedMapID = function() return 36 end
-Z:RefreshPanel()
-Expect("a dungeon map shows the dungeon's story before its parent zone's", mapPage.title.text .. ": " .. mapPage.body.text.text,
-    "Deadmines: The Defias' mine.")
-Expect("...and its lore button opens the dungeon entry", mapPage.open:IsShown(), true)
 Z.GetDisplayedMapID = function() return 1411 end
-Z:ShowMapStory(36, { title = "Edwin VanCleef", panelTitle = "Boss Story", text = "Boss story." })
+Z:ShowMapStory(1411, { title = "Edwin VanCleef", panelTitle = "Boss Story", text = "Boss story." })
 Expect("a boss opened from a Leatrix map has its own panel title", panel.title, "Boss Story")
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+Expect("...and choosing an area on that map replaces the boss's story", mapPage.title.text, "Valley of Trials")
+Expect("...under the panel's own title", panel.title, Z.L.LORE_PANEL_TITLE)
+Z.selected = nil
 Z.Zones[947] = { name = "Azeroth", full = "The world." }
 Z.GetDisplayedMapID = function() return 947 end
 Z:RefreshPanel()

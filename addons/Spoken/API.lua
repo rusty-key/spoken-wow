@@ -324,7 +324,6 @@ local PACK_PAGES = {
     readables = { deDE = "spoken-german-audio-readables", esES = "spoken-spanish-eu-audio-readables", esMX = "spoken-spanish-al-audio-readables",
         frFR = "spoken-french-audio-readables", koKR = "spoken-korean-audio-readables", ptBR = "spoken-portuguese-audio-readables",
         ruRU = "spoken-russian-audio-readables", zhCN = "spoken-chinese-simplified-audio-readables", zhTW = "spoken-chinese-traditional-audio-readables" },
-    bosses = { deDE = "spoken-german-audio-bosses", esES = "spoken-spanish-eu-audio-bosses", esMX = "spoken-spanish-al-audio-bosses" },
 }
 -- A language's Bosses with no CurseForge project yet is got from its releases on GitHub.
 local BOSSES_PAGES = { deDE = "spoken-german-audio-bosses", esES = "spoken-spanish-eu-audio-bosses",

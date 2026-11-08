@@ -1,8 +1,5 @@
--- Spoken Bosses -- optional clicks on Leatrix Maps' dungeon boss pins.
---
--- Leatrix Maps keeps its dungeon overlay and pins private, but each boss pin carries the row that
--- created it. Discover those buttons after the overlay has refreshed and leave every other map
--- control, including Leatrix's own click handler, alone.
+-- Optional clicks on Leatrix Maps' dungeon pins. Leatrix keeps its overlay and pins private, but
+-- each pin carries the row that created it.
 
 local _, Bosses = ...
 
@@ -58,8 +55,7 @@ local function BossFor(mapID, creatureID, bossName)
 				if creature then
 					byMapCreature[map] = byMapCreature[map] or {}
 					byMapCreature[map][creature] = { map = map, key = boss.key, boss = boss }
-					-- A creature id is globally unique in the committed data. Keep the fallback guarded
-					-- anyway, so a future data import cannot open the wrong boss on an unknown map.
+					-- False keeps a future import with a repeated id from opening the wrong boss.
 					if byCreature[creature] ~= nil then
 						byCreature[creature] = false
 					else
@@ -80,9 +76,8 @@ local function BossFor(mapID, creatureID, bossName)
 	local found = (byMapCreature[mapID] and byMapCreature[mapID][creatureID]) or byCreature[creatureID]
 	if found then return found end
 
-	-- Leatrix's Balnazzar pin uses the alternate phase creature 10813, while Spoken's data uses
-	-- 10812. Names are the only stable fallback for such phase aliases; prefer the current map so
-	-- duplicate names in separate instances (Balnazzar is one) do not open the wrong story.
+	-- Names are the only fallback for a creature id Spoken lacks. Prefer the current map, so a name
+	-- shared by two instances (Balnazzar's is) does not open the wrong story.
 	local wanted = BossNameKey(bossName)
 	if not wanted then return end
 	local any
@@ -109,9 +104,7 @@ local function DungeonZone(mapID)
 	end
 	local zone = Find(mapID)
 	if zone then return zone end
-	-- Leatrix uses a separate map ID for some dungeon floors. Walk the map's parents back to
-	-- the instance map so an entrance on a floor (Gnomeregan 226/228, for example) still has
-	-- the same zone story as the dungeon's main map.
+	-- Some dungeon floors have their own map ID (Gnomeregan 226/228), so walk up to the instance.
 	if not C_Map or not C_Map.GetMapInfo then return end
 	local seen = {}
 	local current = mapID
@@ -165,13 +158,13 @@ local function DungeonInstanceByName(name)
 	end
 end
 
--- Leatrix's zone-map dungeon icons are display-only frames. The map container receives their
--- click, and the icon's destination is only available through the private tooltip owner while
--- the cursor is over it. Remember a single-instance destination at mouse-down so the matching
--- lore can be opened even when Leatrix's public preview callback is missed.
+-- Leatrix's zone-map dungeon icons are display-only: the map container gets their click, and the
+-- destination is readable only from the private tooltip's owner while the cursor is over it.
 local function DungeonPOIAtCursor()
 	local tooltip = _G.LeaMapsPOITooltip
 	if not tooltip or type(tooltip.GetOwner) ~= "function" then return end
+	-- A hidden tooltip keeps its last owner, which is not what the cursor is over now.
+	if type(tooltip.IsShown) == "function" and not tooltip:IsShown() then return end
 	local ok, owner = pcall(tooltip.GetOwner, tooltip)
 	if not ok or not owner then return end
 	local info = owner.data
@@ -203,10 +196,9 @@ local function CurrentMapID()
 end
 
 local function ShowLeatrixEntrance(mapID)
-	-- During a dungeon preview Leatrix leaves the world map on the entrance zone while its
-	-- overlay draws the instance map. Prefer a real dungeon map ID, then use the selected dungeon
-	-- for the overlay, while keeping `mapID` as the panel map beside it.
-	local instanceID = DungeonInstance(mapID) or activeDungeonID
+	-- During a preview the world map stays on the entrance zone. The selected dungeon goes first:
+	-- instance IDs and UI map IDs are separate numberings, so equal numbers prove nothing.
+	local instanceID = activeDungeonID or DungeonInstance(mapID)
 	local dungeonMapID = instanceID or mapID
 	if instanceID then
 		local shown = ShowLeatrixDungeon(mapID, instanceID)
@@ -277,11 +269,10 @@ ShowLeatrixDungeon = function(mapID, instanceID)
 	return SpokenPlaces:ShowMapStory(mapID, entry)
 end
 
---- Opens the boss lore belonging to a Leatrix dungeon pin, if Spoken has that boss.
 function Bosses:ShowLeatrixBoss(mapID, creatureID, bossName)
 	-- A preview keeps the world map on the entrance zone while Leatrix draws the dungeon floor
 	-- itself. Use its instance ID to disambiguate bosses with the same name in different dungeons.
-	local found = BossFor(DungeonInstance(mapID) or activeDungeonID or mapID, creatureID, bossName)
+	local found = BossFor(activeDungeonID or DungeonInstance(mapID) or mapID, creatureID, bossName)
 	if not found or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then
 		return false
 	end
@@ -354,8 +345,7 @@ HookDungeonMenuButton = function(button)
 	button:HookScript("OnClick", function(self)
 		local instanceID = DungeonInstanceByName(self.Text and self.Text:GetText())
 		if instanceID then
-			-- Leatrix changes its private preview state in its click handler first. Run after that
-			-- handler so Spoken's panel follows the newly selected dungeon map.
+			-- Wait for Leatrix's own click handler to change its private preview state.
 			C_Timer.After(0, function() ShowLeatrixPreview(instanceID) end)
 		end
 	end)
@@ -409,6 +399,20 @@ end
 
 local setup
 local clickedDungeonID
+local clickedX, clickedY
+-- In the cursor's own units. A press on an icon that moves further than this dragged the map.
+local DRAG_DISTANCE = 5
+
+local function RememberCursor()
+	clickedX, clickedY = nil, nil
+	if GetCursorPosition then clickedX, clickedY = GetCursorPosition() end
+end
+
+local function CursorMoved()
+	if not clickedX or not GetCursorPosition then return false end
+	local x, y = GetCursorPosition()
+	return math.abs(x - clickedX) > DRAG_DISTANCE or math.abs(y - clickedY) > DRAG_DISTANCE
+end
 
 ShowLeatrixPreview = function(instanceID)
 	if not instanceID then return end
@@ -436,18 +440,18 @@ local function Setup()
 			if button == "LeftButton" then
 				suppressPreviewFallback = nil
 				clickedDungeonID = DungeonPOIAtCursor()
+				RememberCursor()
 			end
 		end)
-		-- Leatrix handles zone-map dungeon icons from the scroll container's mouse-up script. Run
-		-- after it has opened the preview as a fallback for clients where its public API is not
-		-- hookable or was created after Spoken's setup.
+		-- Leatrix opens a zone-map dungeon icon's preview from this mouse-up script; wait until it has.
 		WorldMapFrame.ScrollContainer:HookScript("OnMouseUp", function(_, button)
 			if button == "LeftButton" then
+				local dungeonID = not CursorMoved() and clickedDungeonID or nil
 				C_Timer.After(0, function()
 					if suppressPreviewFallback then
 						suppressPreviewFallback = nil
 					else
-						ShowLeatrixPreview(clickedDungeonID)
+						ShowLeatrixPreview(dungeonID)
 					end
 					clickedDungeonID = nil
 				end)

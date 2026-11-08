@@ -176,8 +176,7 @@ local function Creature(map, key)
 	return known and known[map] and known[map][key]
 end
 
--- The model shown above a boss's words, using the same display ID as the DBM preview where one
--- is known. Keep the creature as a fallback for clients that cannot set a display directly.
+-- The creature is the fallback for clients that cannot set a display directly.
 local function Model(map, key)
 	local entry = Creature(map, key)
 	return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
