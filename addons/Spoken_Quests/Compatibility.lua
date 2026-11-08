@@ -519,32 +519,19 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
 
 end
 
--- Play on the objective tracker's quests, at the right end of each quest's title as the quest log has
--- it: the same square button. The tracker pools its blocks, so a block keeps one button and rebinds it
--- to the quest it shows. Where the client has no such tracker nothing is hooked. A setting on the
--- Quests page takes them all away.
+-- Play on the objective tracker's quests. The tracker pools its blocks, so a block keeps one button
+-- and rebinds it to the quest it shows.
 do
     local MODULES = { "QuestObjectiveTracker", "CampaignQuestObjectiveTracker" }
     -- The quest log's tracking checkbox, as it draws on this client (what its Play button matches).
     local BOX, SIZE = "QuestLog-icon-ticksquare", 14
     local buttons, hooked = {}, {}
 
-    -- The client lays a quest's own buttons (its item, a find-group button) out from the block's top
-    -- right, one left of the next. Play goes under the first of them, the one against the block's
-    -- edge; with none it takes the corner. Only this button is anchored, to the client's frame:
-    -- nothing of the client's is called or changed.
+    -- Writing the block's right edge offset from addon code taints what the client reads to set up
+    -- the item button, which can block a click on the item. So Play reserves no room: it can reach
+    -- past a short block, or cover a long title on a quest with no button.
     local function Place(block, button)
-        local frame = block.rightEdgeFrame
-        local edge
-        for _ = 1, 4 do
-            if type(frame) ~= "table" or not frame.GetPoint then break end
-            local _, relativeTo = frame:GetPoint(1)
-            if relativeTo == block then
-                edge = frame
-                break
-            end
-            frame = relativeTo
-        end
+        local edge = block.rightEdgeFrame
         button:ClearAllPoints()
         if edge and edge:IsShown() then
             button:SetPoint("TOPRIGHT", edge, "BOTTOMRIGHT", 0, -2)

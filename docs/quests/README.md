@@ -1974,7 +1974,8 @@ Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in two shap
 `QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
 switched and when the setting changes, and a profile change redraws the quest log and the trackers.
 Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
-each block keeps one square button at its title's right. Classic Era's tracker writes each title
+each block keeps one square button under the quest's item button, or under its find-group button
+when it has no item, or at the block's top right when it has neither. Classic Era's tracker writes each title
 into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
 watched quest's title text to a shown line and puts the round button left of it, so a title some
 other addon rewrites gets no button. A failing adapter is logged and never raises inside the
