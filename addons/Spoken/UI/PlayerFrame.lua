@@ -452,6 +452,14 @@ local function IsQuestClip(clip)
     return clip and clip.source and clip.source.key == "quests"
 end
 
+-- Racial art belongs to NPC speech, not location or readable narration. Keep places and other
+-- non-NPC sources on their original art while allowing gossip lines such as Innkeeper Allison's
+-- to use the same race metadata as quest lines.
+local function IsRaceClip(clip)
+    local key = clip and clip.source and clip.source.key
+    return key == "quests" or key == "gossip" or key == "chatter"
+end
+
 local function RaceRingColor(look, square)
     local ring = square and (look.squareRing or look.ring) or look.ring
     if ring then return unpack(ring) end
@@ -464,6 +472,7 @@ end
 -- The Small Window uses the same authoritative speaker lookup and race palette.
 PlayerFrame.RaceLook = RaceLook
 PlayerFrame.IsQuestClip = IsQuestClip
+PlayerFrame.IsRaceClip = IsRaceClip
 PlayerFrame.ModelFileID = ModelFileID
 PlayerFrame.RaceRingColor = RaceRingColor
 
@@ -722,7 +731,7 @@ function PlayerFrame:ApplyRaceArt(clip)
             modelFileID = StaticPortrait:GetModelFileID(creature)
         end
     end
-    local frame, look = self.frame, IsQuestClip(clip) and RaceLook(clip, modelFileID) or nil
+    local frame, look = self.frame, IsRaceClip(clip) and RaceLook(clip, modelFileID) or nil
     frame.raceBorderFrame:SetShown(look ~= nil)
     frame.raceTint:SetShown(look ~= nil)
     if not look then

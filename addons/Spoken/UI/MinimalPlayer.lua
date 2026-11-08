@@ -342,7 +342,7 @@ function MinimalPlayer:ConfigurePortrait()
 end
 
 function MinimalPlayer:ApplyRaceArt()
-    local isQuest = PlayerFrame.IsQuestClip and PlayerFrame.IsQuestClip(self.clip)
+    local isRaceClip = PlayerFrame.IsRaceClip and PlayerFrame.IsRaceClip(self.clip)
     local modelFileID = PlayerFrame.ModelFileID and PlayerFrame.ModelFileID(self.viewport and self.viewport.model)
     if not modelFileID then
         local portrait = self.clip and self.clip.present and self.clip.present.portrait
@@ -351,7 +351,7 @@ function MinimalPlayer:ApplyRaceArt()
             modelFileID = StaticPortrait:GetModelFileID(creature)
         end
     end
-    local look = isQuest and PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip, modelFileID) or nil
+    local look = isRaceClip and PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip, modelFileID) or nil
     local themed = look ~= nil and self.panel.spokenEllesmere ~= true
     if self.raceThemed ~= themed then
         self.raceThemed = themed

@@ -42,6 +42,9 @@ do
     Expect("a slider greys out where sliders have no SetEnabled", ok and slider.layoutSlider.enabled, false)
 end
 local F = env.PlayerFrame
+Expect("quest clips use racial art", F.IsRaceClip({ source = { key = "quests" } }), true)
+Expect("gossip clips use racial art", F.IsRaceClip({ source = { key = "gossip" } }), true)
+Expect("place clips keep their original art", F.IsRaceClip({ source = { key = "places" } }), false)
 Expect("the frame exists after Enable", F.frame ~= nil, true)
 Expect("hidden while the queue is empty", F.frame:IsShown(), false)
 local a = H.Clip({ present = { header = "Eagan Peltskinner", label = "Wolves Across the Border",
