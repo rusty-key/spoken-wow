@@ -62,6 +62,7 @@ L.OPT_NEVER_TIP = "Spoken 设置的“闲聊”页面中，“朗读问候”设
 L.OPT_CONTRIBUTE = "贡献"
 L.OPT_REPORT = "报告"
 L.OPT_REPORT_COPY = "Spoken Quests|n|n复制此地址并在浏览器中打开。"
+L.OPT_COPY_TEXT = "复制文本"
 L.OPT_MINIMAP_SETTINGS = "任务设置"
 L.OPT_PACK_ALL = "全部任务"
 L.OPT_PACK_ALLIANCE = "English (联盟)"

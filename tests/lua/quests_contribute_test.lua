@@ -240,11 +240,9 @@ Expect("...of the quest frame itself", button.anchor and button.anchor.relativeT
 
 _G.QuestFrameCloseButton = stub.Widget("Button", "QuestFrameCloseButton")
 stub.FireEvent("QUEST_COMPLETE")
--- The stub lays every frame out from 100 at the top to 0 at the bottom, so the close button's
--- bottom edge is 100 below the frame's top: 12 more puts the button in the strip under it.
-Expect("under the close button, where the client draws one", button.anchor and button.anchor.y, -112)
-Expect("...in from the frame's right edge as far as the details Play is from its own",
-    button.anchor and button.anchor.relativeTo == _G.QuestFrame and button.anchor.x, -11)
+Expect("under the close button, where the client draws one", button.anchor and button.anchor.y, -12)
+Expect("...anchored to the close button so it does not readjust during layout",
+    button.anchor and button.anchor.relativeTo == _G.QuestFrameCloseButton and button.anchor.x, -11)
 Expect("...by its top right corner", button.anchor and button.anchor.point, "TOPRIGHT")
 
 button:GetScript("OnEnter")(button)

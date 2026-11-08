@@ -26,7 +26,7 @@ local REGISTRY_2 = "Magistrate Rutherford Burnside\nAll debts settled.\n\nBlacks
 local function LoadReadables()
     local SpokenReadables = {}
     for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Opener", "Reader", "Audio", "Playlist",
-        "UI/PlayButton", "Events", "Commands" }) do
+        "UI/PlayButton", "UI/CopyTextButton", "Events", "Commands" }) do
         local chunk = assert(loadfile(READABLES .. file .. ".lua"))
         chunk("Spoken_Readables", SpokenReadables)
     end
@@ -190,19 +190,17 @@ SpokenReadablesSettings.readOnce = false
 B:StopReading()
 B:SetupPlayButton()
 local button = B.playButton
+local copy = B.copyButton
+local report = B.reportButton
 Expect("the book frame carries a button", button ~= nil, true)
 
--- On the page, bottom right. Twice it was on the strip above the page instead -- off the
--- frame's corner, then beside the previous-page arrow -- and that row has no free space: the
--- arrows carry PREV and NEXT labels on their inner edges, and ItemTextCurrentPage is a
--- 192-wide FontString reaching back under the left arrow. The scrollbar hangs outside the
--- page's right edge, so this corner is clear of it too.
-Expect("...on the page, not on the row above it", button.anchor.relativeTo,
-    _G.ItemTextScrollFrame)
-Expect("...in its bottom-right corner",
-    button.anchor.point .. "/" .. button.anchor.relativePoint, "BOTTOMRIGHT/BOTTOMRIGHT")
-Expect("...inset, so it sits on the parchment rather than over its edge",
-    button.anchor.x < 0 and button.anchor.y > 0, true)
+-- In the header strip, below the close button, with Report at the right edge and Copy Text at the left.
+Expect("...in the readable frame's header strip", report.anchor.relativeTo,
+    _G.ItemTextFrame)
+Expect("...in its top-right corner",
+    report.anchor.point .. "/" .. report.anchor.relativePoint, "TOPRIGHT/TOPRIGHT")
+Expect("...inset below and inside the header", report.anchor.x < 0 and report.anchor.y < 0, true)
+Expect("...with Play to its left", button.anchor.relativeTo == report and button.anchor.point, "RIGHT")
 
 -- ITEM_TEXT_CLOSED is not handled for the button on purpose: it is the frame's child and
 -- goes with it. What is asserted here is the branch the addon does own -- asked to refresh
@@ -216,15 +214,15 @@ Expect("...hidden when there is no page to read", button:IsShown(), false)
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 1, text = REGISTRY_1, hasNext = true })
 stub.FireEvent("ITEM_TEXT_READY")
 Expect("shown on a page the pack can narrate", button:IsShown(), true)
-Expect("...offering Stop while that book is being read", button:GetText(), "Stop")
+Expect("...offering Stop while that book is being read", button.state, "stop")
 
 button.scripts.OnClick(button)
 Expect("pressing it stops the book", #QueuedPages(), 0)
-Expect("...and offers to start it again", button:GetText(), "Play")
+Expect("...and offers to repeat it", button.state, "replay")
 
 button.scripts.OnClick(button)
 Expect("pressing it again reads the book", Reading(), 3)
-Expect("...whatever autoplay and read-once say", button:GetText(), "Stop")
+Expect("...whatever autoplay and read-once say", button.state, "stop")
 
 -- Open in Azeroth's Compendium beside it, for a writing whose page the Compendium shows.
 local open, opened = B.openButton, nil
@@ -232,8 +230,23 @@ local has, show = B.CompendiumHas, B.ShowReadables
 B.CompendiumHas = function(_, book) return book ~= nil end
 B.ShowReadables = function(_, book) opened = book end
 B:RefreshPlayButton()
-Expect("Open in Azeroth's Compendium beside Play, for a writing the Compendium shows",
+Expect("Copy Text is left of the Compendium, for a page with readable text",
+    copy ~= nil and copy:IsShown() and copy.anchor.relativeTo == open and copy.anchor.point, "RIGHT")
+Expect("Open in Azeroth's Compendium is left of Play, for a writing the Compendium shows",
     open ~= nil and open:IsShown() and open.anchor.relativeTo == button and open.anchor.point, "RIGHT")
+local savedShowReport, reported = B.ShowReport, nil
+B.ShowReport = function(_, page) reported = page end
+report.scripts.OnClick(report)
+Expect("Report opens the current readable's report", reported, B:PageOnScreen())
+B.ShowReport = savedShowReport
+local savedGUID, savedCItem = stub.world.npcGUID, _G.C_Item
+stub.world.npcGUID = "Item-0-0-9550"
+_G.C_Item = { GetItemIDByGUID = function(guid) return guid == stub.world.npcGUID and 9550 or nil end }
+B.openedBy = nil
+B:ShowCopyText()
+Expect("Copy Text includes an item opened through the unit GUID",
+    B.copyPopup.payload:find("[Item ID: 9550]", 1, true) ~= nil, true)
+stub.world.npcGUID, _G.C_Item = savedGUID, savedCItem
 open.scripts.OnClick(open)
 Expect("...opening its tab on the book", opened ~= nil and opened == B:PlaceOf(B:PageOnScreen()), true)
 B.CompendiumHas = function() return false end

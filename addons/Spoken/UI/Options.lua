@@ -425,7 +425,11 @@ local function Build()
     local function Subtitles() return Style() == "subtitle" end
     local function DUI() return Style() == "dialogueui" end
     local function Narrator() return transcript().Enabled end
-    local refresh = function() PlayerFrame:RefreshConfig(); Options:UpdateRows() end
+    local refresh = function()
+        PlayerFrame:RefreshConfig()
+        Callbacks:Fire("FRAME_SETTINGS_CHANGED")
+        Options:UpdateRows()
+    end
     local refreshTranscript = function() Transcript:RefreshConfig(); Options:UpdateRows() end
     -- The subtitle's own: redrawing it is enough, on every step of a drag, without the captions'
     -- full refresh and every row's.

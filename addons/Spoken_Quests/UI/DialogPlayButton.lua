@@ -75,7 +75,7 @@ local function IsFrameVisible(frame)
 end
 
 
--- ContributeButton.lua's CloseButtonOf and PlayButtonInset, for the reason in the header.
+-- ContributeButton.lua's CloseButtonOf, for the reason in the header.
 local function CloseButtonOf(frame, global)
     if frame and type(frame.CloseButton) == "table" then
         return frame.CloseButton
@@ -83,28 +83,12 @@ local function CloseButtonOf(frame, global)
     return _G[global]
 end
 
-local function PlayButtonInset()
-    local details = _G.QuestMapFrame and QuestMapFrame.DetailsFrame
-    local header = details and (details.BackFrame or details)
-    local back = header and header.BackButton
-    if type(back) == "table" and back.GetPoint then
-        local _, _, _, x = back:GetPoint(1)
-        if type(x) == "number" and x > 0 then
-            return x
-        end
-    end
-    return 11
-end
-
 function DialogPlayButton:Position(frameName)
     local frame = _G[frameName]
     local close = CloseButtonOf(frame, frameName .. "CloseButton")
     local button = self.button
     button:ClearAllPoints()
-    local frameTop, closeBottom = frame.GetTop and frame:GetTop(), close and close.GetBottom and close:GetBottom()
-    if type(frameTop) == "number" and type(closeBottom) == "number" then
-        button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PlayButtonInset(), -(frameTop - closeBottom + STRIP_OFFSET))
-    elseif close then
+    if close then
         button:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -GAP, -STRIP_OFFSET)
     else
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)

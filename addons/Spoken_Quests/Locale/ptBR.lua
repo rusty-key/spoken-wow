@@ -62,6 +62,7 @@ L.OPT_NEVER_TIP = "“Ler saudações” está em “Nunca” na página Convers
 L.OPT_CONTRIBUTE = "Contribuir"
 L.OPT_REPORT = "Informar"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nCopie este endereço e abra-o no navegador."
+L.OPT_COPY_TEXT = "Copiar texto"
 L.OPT_MINIMAP_SETTINGS = "Configurações de Missões"
 L.OPT_PACK_ALL = "Todas as missões"
 L.OPT_PACK_ALLIANCE = "English (Aliança)"

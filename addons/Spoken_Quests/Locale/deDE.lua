@@ -62,6 +62,7 @@ L.OPT_NEVER_TIP = "„Begrüßungen vorlesen“ steht auf der Seite „Gespräch
 L.OPT_CONTRIBUTE = "Mitwirken"
 L.OPT_REPORT = "Melden"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nKopiere diese Adresse und öffne sie in deinem Webbrowser."
+L.OPT_COPY_TEXT = "Text kopieren"
 L.OPT_MINIMAP_SETTINGS = "Einstellungen für Quests"
 L.OPT_PACK_ALL = "Alle Quests"
 L.OPT_PACK_ALLIANCE = "English (Allianz)"

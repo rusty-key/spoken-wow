@@ -657,6 +657,20 @@ function Spoken:CreateRoundButton(parent, kind, name, icon)
     return Actions.NewRound(parent, kind, name, icon)
 end
 
+--- Apply the player's Bronze Border choice to a dialog made with the game's standard backdrop.
+--- Feature addons use this for copy windows so their borders match Spoken's Gathered Lines window.
+function Spoken:TintDialog(frame)
+    if not (frame and frame.SetBackdropBorderColor) then
+        return
+    end
+    local bronze = Actions.Bronze and Actions.Bronze()
+    if bronze then
+        frame:SetBackdropBorderColor(bronze[1], bronze[2], bronze[3], 1)
+    else
+        frame:SetBackdropBorderColor(1, 1, 1, 1)
+    end
+end
+
 --- `button`, a Button the caller made, dressed as a square Play button with the game's checkbox for
 --- its border (`button:SetState("play" | "stop")`, `button:MatchBox(checkbox)`): the quest log's rows.
 function Spoken:DressBoxButton(button)
@@ -796,6 +810,7 @@ end
 --   SOURCE_REGISTERED  (source)
 --   CONTRIBUTE_SETTINGS_CHANGED ()          the hide-Contribute-buttons setting was toggled
 --   REPORT_SETTINGS_CHANGED     ()          the hide-Report-buttons setting was toggled
+--   FRAME_SETTINGS_CHANGED      ()          a Spoken frame setting changed
 --   VOICE_PACKS_LOADED          ()          the quest and gossip voice packs found at login have loaded
 --   COMPENDIUM_FONT_CHANGED     ()          the Compendium's Text Size changed (Spoken:CompendiumFontSize)
 

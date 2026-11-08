@@ -62,6 +62,7 @@ L.OPT_NEVER_TIP = "«Читать приветствия» установлен�
 L.OPT_CONTRIBUTE = "Помочь"
 L.OPT_REPORT = "Сообщить"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nСкопируйте этот адрес и откройте его в браузере."
+L.OPT_COPY_TEXT = "Копировать текст"
 L.OPT_MINIMAP_SETTINGS = "Настройки раздела «Задания»"
 L.OPT_PACK_ALL = "Все задания"
 L.OPT_PACK_ALLIANCE = "English (Альянс)"
