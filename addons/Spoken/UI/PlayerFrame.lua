@@ -100,8 +100,8 @@ local RACIAL_ART = {
         edgeV = TEXTURES .. "RaceTrim/GnomeEdgeV",
         join = TEXTURES .. "RaceTrim/GnomeJoin",
         edgeVPeriod = 8,
-        -- Gnome's light muted gunmetal wash keeps the panel from becoming a black contrast block.
-        tint = { .24, .23, .20, .72 },
+        -- Gnome's softer iron-gray wash avoids a hard color block at the fade edge.
+        tint = { .18, .17, .16, .60 },
     },
     Orc = {
         edge = TEXTURES .. "RaceTrim/OrcEdge",
