@@ -12,6 +12,7 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { envelopesFromSavedVariables, MAX_ENVELOPES } from "@/lib/contributions/saved-variables";
+import { sendFailureMessage } from "@/lib/contributions/send-failure";
 
 import { previewOf } from "./ContributeForm";
 
@@ -90,11 +91,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
       setLoaded(null);
       return;
     }
-    setError(
-      response?.status === 429
-        ? "That is a lot of sending for one hour. Try again later."
-        : "That did not go through. Try again in a minute.",
-    );
+    setError(sendFailureMessage(response?.status ?? null));
   }
 
   if (result) {
