@@ -90,7 +90,8 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/DwarfEdge",
         edgeV = TEXTURES .. "RaceTrim/DwarfEdgeV",
         join = TEXTURES .. "RaceTrim/DwarfJoin",
-        tint = { .07, .05, .04, .88 },
+        -- Warm bronze to match the Dwarf metalwork, with enough transparency to retain the fade.
+        tint = { .18, .11, .05, .78 },
     },
     Gnome = {
         edge = TEXTURES .. "RaceTrim/GnomeEdge",
