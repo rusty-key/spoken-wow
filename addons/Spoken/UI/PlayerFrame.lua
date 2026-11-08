@@ -163,10 +163,10 @@ local function RaceFromText(text)
     if HasWord("tauren") then return "Tauren" end
     if HasWord("troll") then return "Troll" end
     if HasWord("forsaken") then return "Forsaken" end
+    if string.find(compact, "windshaper", 1, true) then return "Windshapers" end
     if string.find(compact, "highorder", 1, true) or HasWord("skyborne") then
         return "HighOrder"
     end
-    if string.find(compact, "windshaper", 1, true) then return "Windshapers" end
     if HasWord("scourge") or HasWord("undead") then
         return "Undead"
     end
@@ -214,8 +214,10 @@ local function SpeakerRace(clip)
         if not UnitExists or not UnitExists(unit) then return end
         local guid = UnitGUID and NotSecret(UnitGUID(unit))
         if _G.UnitRace then
-            local ok, name, file = pcall(_G.UnitRace, unit)
-            local race = ok and RaceFromText(file or name)
+            local ok, name, file, raceID = pcall(_G.UnitRace, unit)
+            local race = ok and (raceID == 96 and "Windshapers"
+                or raceID == 95 and "HighOrder"
+                or RaceFromText(file or name))
             if race then return race end
         end
         if guid and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
