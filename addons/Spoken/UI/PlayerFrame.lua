@@ -99,8 +99,8 @@ local RACIAL_ART = {
         edgeV = TEXTURES .. "RaceTrim/GnomeEdgeV",
         join = TEXTURES .. "RaceTrim/GnomeJoin",
         edgeVPeriod = 8,
-        -- Gnome's neutral charcoal wash lets the copper-and-blue mechanical trim carry the color.
-        tint = { .14, .15, .15, .72 },
+        -- Gnome's light muted gunmetal wash keeps the panel from becoming a black contrast block.
+        tint = { .24, .23, .20, .72 },
     },
     Orc = {
         edge = TEXTURES .. "RaceTrim/OrcEdge",
