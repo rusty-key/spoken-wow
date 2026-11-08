@@ -15,6 +15,9 @@ local Art = SpokenPlaces.Art
 
 local panel, page, toggle
 
+-- A feature module's entry shown in place of the story, tied to the map displayed when it opened.
+local externalStory
+
 -- What the map's alpha is at when the player stands still. The fader's last step may stop a hair
 -- short of 1.
 local CLEAR = 0.99
@@ -146,6 +149,12 @@ local function NewPanel()
 		})
 	end
 	return frame
+end
+
+local function SetPanelTitle(title)
+	if panel and panel.SetTitle then
+		panel:SetTitle(title or L.LORE_PANEL_TITLE)
+	end
 end
 
 local function BuildPanel()
@@ -459,6 +468,17 @@ local function Refresh(mapID)
 	end
 
 	local zoneName = SpokenPlaces:GetMapName(mapID) or ("uiMapID " .. tostring(mapID))
+	-- ShowMapStory drops the selection, so one present here was made after the story opened. Keeping
+	-- the story would swallow that click on the map.
+	if externalStory and (externalStory.mapID ~= mapID or SpokenPlaces.selected) then
+		externalStory = nil
+	end
+	if externalStory then
+		SetPanelTitle(externalStory.entry.panelTitle)
+		page:Show(externalStory.entry)
+		return
+	end
+	SetPanelTitle()
 
 	-- A selection only applies to the map it was made on; navigating elsewhere drops it. Checking
 	-- here rather than on the map-changed callback keeps this independent of the order modules
@@ -535,6 +555,31 @@ end
 
 function SpokenPlaces:RefreshPanel()
 	Refresh(SpokenPlaces:GetDisplayedMapID())
+end
+
+--- `entry` is what the map lore page takes, with `target`, `play` and `reportAction` for the
+--- module's own source. A map change or an area click clears it.
+function SpokenPlaces:ShowMapStory(mapID, entry)
+	if not mapID or type(entry) ~= "table" or not panel then
+		return false
+	end
+	externalStory = { mapID = mapID, entry = entry }
+	SpokenPlaces.selected = nil
+	if self:Get("showMapPanel") and self:Get("mapPanelCollapsed") then
+		self:SetMapPanelCollapsed(false)
+	else
+		Refresh(mapID)
+	end
+	return panel:IsShown()
+end
+
+function SpokenPlaces:ClearMapStory(mapID)
+	if not externalStory or (mapID and externalStory.mapID ~= mapID) then
+		return false
+	end
+	externalStory = nil
+	Refresh(mapID)
+	return true
 end
 
 function SpokenPlaces:SetMapPanelCollapsed(collapsed)

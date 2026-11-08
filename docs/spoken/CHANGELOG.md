@@ -4,6 +4,18 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
+  its entrance shows the dungeon's lore, clicking a boss shows that boss's story with its 3D model,
+  and right-clicking out returns to the zone's lore.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Boss lore in the Compendium shows the boss's 3D model** above the story.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Unlock Undiscovered Places and Unlock Unfound Bosses now show everything in the Compendium**, even
+  with Discovered Only or Found Only on.
+  *([anon1231823](https://github.com/anon1231823))*
+- Stratholme's Balnazzar and the Four Horsemen use corrected models, and Scarlet Enclave's Balnazzar
+  now has one.
+  *([anon1231823](https://github.com/anon1231823))*
 - **Spoken's separators render on Chinese clients.** Visible separators now use the middle dot
   (`·`), which the Chinese client renders where the previous bullet (`•`) could disappear.
   *([anon1231823](https://github.com/anon1231823))*

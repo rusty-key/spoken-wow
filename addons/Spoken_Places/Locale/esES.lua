@@ -91,6 +91,7 @@ L.OPT_LATER = "Más tarde"
 -- Lore of Azeroth and Zone Lore
 L.COMPENDIUM_PLACES = "Lugares"
 L.LORE_PANEL_TITLE = "Historia del lugar"
+L.BOSS_LORE_TITLE = "Historia del jefe"
 L.MAP_PANEL_EXPAND = "Mostrar historia del lugar"
 L.PANEL_SHOWN = "Historia junto al mapa: activada"
 L.PANEL_HIDDEN = "Historia junto al mapa: desactivada"
