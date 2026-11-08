@@ -11,8 +11,9 @@
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { envelopesFromSavedVariables, MAX_ENVELOPES } from "@/lib/contributions/saved-variables";
+import { envelopesFromSavedVariables } from "@/lib/contributions/saved-variables";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
+import { sendInChunks } from "@/lib/contributions/upload";
 
 import { previewOf } from "./ContributeForm";
 
@@ -20,13 +21,12 @@ const SOURCE_LABELS: Record<string, string> = { quests: "quest and conversation 
 
 type Loaded = { envelopes: string[]; counts: Record<string, number>; unreadable: number; titles: string[] };
 
-function load(text: string): Loaded {
+function summarise(candidates: readonly string[]): Loaded {
   const counts: Record<string, number> = {};
   const titles = new Set<string>();
   const envelopes: string[] = [];
   let unreadable = 0;
-  // Cut to the cap first, so the preview counts exactly what Send will send.
-  for (const envelope of envelopesFromSavedVariables(text).slice(0, MAX_ENVELOPES)) {
+  for (const envelope of candidates) {
     const preview = previewOf(envelope);
     if (!preview.ok) {
       unreadable += 1;
@@ -43,6 +43,7 @@ function load(text: string): Loaded {
 export default function UploadGathered({ signedInAs }: { signedInAs: string | null }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ accepted: number; refused: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -54,7 +55,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     setResult(null);
     if (!file) return;
     setFileName(file.name);
-    const next = load(await file.text());
+    const next = summarise(envelopesFromSavedVariables(await file.text()));
     if (next.envelopes.length === 0) {
       setLoaded(null);
       setError(
@@ -71,27 +72,41 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     event.preventDefault();
     if (!loaded) return;
     setBusy(true);
+    setProgress(0);
     setError(null);
     const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/contributions/batch", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        envelopes: loaded.envelopes,
-        name: signedInAs ? null : data.get("name"),
-        email: signedInAs ? null : data.get("email"),
-        website: data.get("website"),
-      }),
-    }).catch(() => null);
+    const outcome = await sendInChunks(
+      loaded.envelopes,
+      (envelopes) =>
+        fetch("/api/contributions/batch", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            envelopes,
+            name: signedInAs ? null : data.get("name"),
+            email: signedInAs ? null : data.get("email"),
+            website: data.get("website"),
+          }),
+        }).catch(() => null),
+      setProgress,
+    );
     setBusy(false);
 
-    if (response?.ok) {
-      const body = (await response.json()) as { accepted: number; refused: Record<string, number> };
-      setResult({ accepted: body.accepted, refused: Object.values(body.refused).reduce((a, b) => a + b, 0) });
+    if (outcome.failedWith === undefined) {
+      setResult({ accepted: outcome.accepted, refused: outcome.refused });
       setLoaded(null);
       return;
     }
-    setError(sendFailureMessage(response?.status ?? null));
+    const message = sendFailureMessage(outcome.failedWith);
+    if (outcome.sent === 0) {
+      setError(message);
+      return;
+    }
+    // What arrived leaves the list, so another press sends only the rest, and the player is not
+    // told to clear lines the site never got.
+    const rest = loaded.envelopes.slice(outcome.sent);
+    setLoaded(summarise(rest));
+    setError(`${outcome.sent} lines arrived. ${message} The other ${rest.length} are still here to send.`);
   }
 
   if (result) {
@@ -194,7 +209,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
       {loaded ? (
         <div>
           <Button type="submit" disabled={busy}>
-            {busy ? "Sending…" : `Send ${loaded.envelopes.length} ${loaded.envelopes.length === 1 ? "line" : "lines"}`}
+            {busy ? `Sending…${progress ? ` ${progress}/${loaded.envelopes.length}` : ""}` : `Send ${loaded.envelopes.length} ${loaded.envelopes.length === 1 ? "line" : "lines"}`}
           </Button>
         </div>
       ) : null}
