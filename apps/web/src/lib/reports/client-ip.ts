@@ -11,5 +11,18 @@
  * on purpose: a misconfigured proxy should throttle, not wave everything through.
  */
 export function clientIp(request: Request): string {
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  const ip = request.headers.get("x-real-ip")?.trim() || "unknown";
+  return ip.includes(":") ? ipv6Bucket(ip) : ip;
+}
+
+/** One subscriber holds a whole /64, so a bucket per address is a fresh limit per request. */
+function ipv6Bucket(ip: string): string {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if (mapped?.[1]) return mapped[1];
+  const [head = "", tail] = ip.toLowerCase().split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const zeros = tail === undefined ? [] : Array<string>(Math.max(0, 8 - left.length - right.length)).fill("0");
+  const prefix = [...left, ...zeros, ...right].slice(0, 4).map((group) => group.replace(/^0+(?=.)/, ""));
+  return `${prefix.join(":")}::/64`;
 }
