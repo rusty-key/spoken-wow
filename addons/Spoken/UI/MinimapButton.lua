@@ -14,7 +14,8 @@ local ldbObject, menuFrame, minimapButton
 -- The player's own entries: the same playback rows as the Small Window's menu, then the
 -- Compendium and the settings.
 local PLAYER_ENTRIES = {
-    { id = "PlayPause", text = L.STOP_REPLAY,  order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
+    { id = "PlayPause", text = L.BIND_PLAYPAUSE, order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
+    { id = "StopReplay", text = L.STOP_REPLAY, order = 1.5, onClick = function() SoundQueue:ToggleStopQueue() end },
     { id = "Skip",      text = L.MIN_SKIP,     order = 2, onClick = function() SoundQueue:Skip() end },
     { id = "Stop",      text = L.MIN_STOP_ALL, order = 3, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
     -- Azeroth's Compendium, whichever parts have a tab in it (UI/Compendium.lua in each).

@@ -113,7 +113,7 @@ ExpectOf("...and pointing at it shows the whole of it", function()
     return tostring(hover:IsShown()) .. " " .. _G.GameTooltip.text
 end, "true " .. long)
 env.SoundQueue:RemoveAllSoundsFromQueue()
-Row("Gryan Stoutmantle", "Wolves Across the Border")
+Row("Gryan Stoutmantle", "Wolves Across")
 ExpectOf("...which a line's name in full does not need", function() return F.frame.container.labelHover:IsShown() end, false)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 Row(string.rep("W", math.floor((room - 27) / 7)), long)
@@ -343,15 +343,15 @@ places:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", por
 Expect("two actions make two buttons", #F.frame.actions.buttons, 2)
 Expect("...each its round icon", F.frame.actions.buttons[1].glyph:GetTexture() .. "|"
     .. F.frame.actions.buttons[2].glyph:GetTexture(), "Read|Report")
-ExpectOf("...in the header's controls after Stop and Skip", function()
-    return #F.row == 4 and F.row[1] == F.play and F.row[2] == F.skip
-        and F.row[3] == F.frame.actions.buttons[1] and F.row[4]:GetParent() == F.controls
+ExpectOf("...in the header's controls after Pause, Stop and Skip", function()
+    return #F.row == 5 and F.row[1] == F.pauseButton and F.row[2] == F.play and F.row[3] == F.skip
+        and F.row[4] == F.frame.actions.buttons[1] and F.row[5]:GetParent() == F.controls
 end, true)
 F.frame.actions.buttons[1]:Click()
 Expect("clicking passes the clip", clicked ~= nil and clicked:sub(1, 5), "read:")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 quests:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", portrait = { kind = "none" } } }))
-ExpectOf("no actions, Stop and Skip alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 2")
+ExpectOf("no actions, Pause, Stop and Skip alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 3")
 
 ---------------------------------------------------------------- the Talking Head's layout
 -- The window is the game's Talking Head frame as TalkingHeadUI.xml lays it out: 570 by 155, the
@@ -390,10 +390,10 @@ end, "3 false")
 ExpectOf("...above the progress line", function()
     return WordsTop() + 3 * 20 <= column:GetHeight() - F.progress.height
 end, true)
-ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Stop or Replay then Skip", function()
+ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Pause, Stop or Replay, then Skip", function()
     local anchor = F.controls.anchor
     return anchor.point .. " " .. tostring(anchor.relativeTo == F.frame) .. " " .. anchor.x .. " " .. anchor.y
-        .. " " .. tostring(F.row[1] == F.play and F.row[2] == F.skip) .. " " .. F.play.state
+        .. " " .. tostring(F.row[1] == F.pauseButton and F.row[2] == F.play and F.row[3] == F.skip) .. " " .. F.play.state
 end, "TOPRIGHT true -22 -25 true stop")
 ExpectOf("...Skip in the subtitle's art", function() return F.skip.bar ~= nil end, true)
 ExpectOf("the progress line along the column's foot, as wide as the words", function()
@@ -402,6 +402,12 @@ ExpectOf("the progress line along the column's foot, as wide as the words", func
 end, true)
 env.SoundQueue:TogglePauseQueue()
 pcall(F.UpdateControls, F)
+ExpectOf("Pause halts the line, its glyph turning to Play", function() return F.pauseButton.state end, "play")
+ExpectOf("...Stop still offering to stop it", function() return F.play.state end, "stop")
+ExpectOf("...and the header says it is paused", function() return F.stopped:GetText() end, "• (" .. env.L.SUBTITLE_PAUSED .. ")")
+env.SoundQueue:TogglePauseQueue()
+env.SoundQueue:ToggleStopQueue()
+pcall(F.UpdateControls, F)
 ExpectOf("Stop stops the line, its glyph turning to Replay", function() return F.play.state end, "replay")
 ExpectOf("...and the header says it is stopped, after the name and a dot", function()
     return tostring(F.stopped:IsShown()) .. "|" .. F.stopped:GetText() .. "|" .. tostring(F.stopped.anchor.relativeTo == column.name)
@@ -409,7 +415,7 @@ end, "true|· (" .. env.L.SUBTITLE_STOPPED .. ")|true")
 ExpectOf("...fading in", function() return F.stopped:GetAlpha() < 1 end, true)
 pcall(F.Tick, F, 0.3)
 ExpectOf("...all the way", function() return F.stopped:GetAlpha() end, 1)
-env.SoundQueue:TogglePauseQueue()
+env.SoundQueue:ToggleStopQueue()
 pcall(F.UpdateControls, F)
 pcall(F.Tick, F, 0.1)
 ExpectOf("...fading out as it plays again", function() return F.stopped:IsShown() and F.stopped:GetAlpha() < 1 end, true)
@@ -502,9 +508,9 @@ local menu = env.Minimap:BuildMenu()
 local labels = {}
 for _, entry in ipairs(menu) do table.insert(labels, entry.text) end
 Expect("the menu is the player's entries then each source's in order", table.concat(labels, "|"),
-    "Stop or Replay|Skip Line|Stop All|Settings|Quest settings|Open lore window")
+    "Pause or Resume|Stop or Replay|Skip Line|Stop All|Settings|Quest settings|Open lore window")
 env.Minimap:RemoveEntry("places", "lore")
-Expect("RemoveEntry", getn(env.Minimap:BuildMenu()), 5)
+Expect("RemoveEntry", getn(env.Minimap:BuildMenu()), 6)
 
 -- A click on the icon opens the settings at once; the menu is a right-click away.
 local openSettings, settingsOpened = env.Options.Open, false
@@ -529,7 +535,7 @@ end
 -- A rule before each addon's heading. Without one the headings are the only thing
 -- separating the groups, and a heading reads as a row of the group above it.
 Expect("...listing the player's entries, then each source's under its name, ruled apart",
-    table.concat(shown, "|"), "Stop or Replay|Skip Line|Stop All|Settings|---|[Quests]|Quest settings")
+    table.concat(shown, "|"), "Pause or Resume|Stop or Replay|Skip Line|Stop All|Settings|---|[Quests]|Quest settings")
 Expect("...anchored to the button", stub.openDropDown.dropdownAnchor, mmButton)
 
 -- The menu opens under the cursor, which is still on the button, so the button's tooltip
@@ -839,7 +845,7 @@ Expect("...showing its icon, not a word, in the player's round button", corner.g
 Expect("...the ring round it, as the subtitle's controls have", corner.ring ~= nil, true)
 Expect("...with no label", corner:GetText() or "", "")
 ExpectOf("...in the header after Skip, as the DialogueUI window shows it", function()
-    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[3] == corner
+    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[4] == corner
 end, true)
 -- Sized to be aimed at. Pinned as a floor rather than a number, so it can be tuned but
 -- cannot drift back to something you have to hunt for.

@@ -5,6 +5,21 @@ setfenv(1, SpokenEnv)
 -- brings its own (present.timings).
 Transcript = { elapsed = 0, manualScroll = false }
 
+-- In a window, Stop's section is the text on screen: it starts with the first line shown.
+SoundQueue:AddSectionFinder(function(clip)
+    local self = Transcript
+    local frame = self.frame
+    -- The subtitle answers for its own pages.
+    if Addon:DisplayStyle() == "subtitle" then return nil end
+    if self.clip ~= clip or not self.lines or not frame then return nil end
+    if not (frame.IsVisible and frame:IsVisible() or (not frame.IsVisible and frame:IsShown())) then return nil end
+    local line = self.lines[self.topTarget or 1]
+    local first = line and line[1]
+    local length = tonumber(clip.length)
+    if not first or not length or not self.totalWeight or self.totalWeight <= 0 then return nil end
+    return first.start / self.totalWeight * length
+end)
+
 local GAP = 4
 local EXPANDED_LINES = 8
 local BUTTON_SIZE = 14
@@ -256,7 +271,8 @@ function Transcript:Release()
     self.heldStart = nil
     if start then
         self:Started(start.clip)
-        self.startedAt = start.at
+        -- Counted from when it really started, held: the voice has gone on meanwhile.
+        self.startedAt = self.startedAt - (GetTime() - start.at)
     end
     self:Sync()
 end
@@ -269,11 +285,94 @@ local function HeldFor(self, clip)
     return clip ~= nil and clip ~= self.clip and self.holdFor ~= nil and self.holdFor(clip) and true or false
 end
 
+-- The last word of a sentence: the next word starts one. Closing quotes and brackets are looked past.
+local SENTENCE_ENDS = { ["."] = true, ["!"] = true, ["?"] = true, ["…"] = true, ["。"] = true,
+    ["！"] = true, ["？"] = true }
+-- Closing quotes as each locale writes them: German “ and ‘, French and Russian » and ›, Chinese 」 and 』.
+local CLOSERS = { "\"", "'", ")", "]", "”", "’", "“", "‘", "»", "›", "」", "』", "）" }
+local function StripClosers(text)
+    text = text or ""
+    local stripped = true
+    while stripped and text ~= "" do
+        stripped = false
+        for _, closer in ipairs(CLOSERS) do
+            if text:sub(-#closer) == closer then
+                text, stripped = text:sub(1, -#closer - 1), true
+            end
+        end
+    end
+    return text
+end
+local function EndsSentence(text)
+    text = StripClosers(text)
+    return SENTENCE_ENDS[text:sub(-1)] or SENTENCE_ENDS[text:sub(-3)] or false
+end
+-- Whether word `index` starts a sentence. French and Russian set » apart with a space: a word of
+-- closing quotes alone belongs to the sentence before, and the one after it starts the next.
+local function StartsSentence(words, index)
+    if index == 1 or words[index].breakBefore then return true end
+    if StripClosers(words[index].text) == "" then return false end
+    local before = index - 1
+    while before > 1 and StripClosers(words[before].text) == "" do before = before - 1 end
+    return EndsSentence(words[before].text)
+end
+
+--- Where the words pick up when the line resumes `offset` seconds in, and the word there. A piece
+--- starts in the pause before its sentence, still the last sentence's time, so the time moves to
+--- the sentence's first word: timed, the first word after the pause; estimated, the nearest start.
+function Transcript:ResumeAnchor(offset)
+    local words, length = self.words, tonumber(self.clip and self.clip.length)
+    if not words or #words == 0 or not length or length <= 0 or not self.totalWeight or self.totalWeight <= 0 then
+        return offset, nil
+    end
+    local scale = length / self.totalWeight
+    if self.timed then
+        for index, word in ipairs(words) do
+            if word.start * scale >= offset - 0.001 then return word.start * scale, index end
+        end
+        return offset, nil
+    end
+    local best, bestIndex, bestGap
+    for index, word in ipairs(words) do
+        if StartsSentence(words, index) then
+            local at = word.start * scale
+            local gap = math.abs(at - offset)
+            if not bestGap or gap < bestGap then best, bestIndex, bestGap = at, index, gap end
+        end
+    end
+    return best or offset, bestIndex
+end
+
+--- The captions straight at word `index`, with no glide down from the top.
+function Transcript:ShowWord(index)
+    if not index or not self.segments then return end
+    for _, segment in ipairs(self.segments) do
+        if segment.word == index then
+            self.topTarget = self:Snap(self:TargetFor(segment.line))
+            self.top = self.topTarget
+            return
+        end
+    end
+end
+
 function Transcript:Started(clip)
     if not self.held and HeldFor(self, clip) then self.held = true end
     if self.held then self.heldStart = { clip = clip, at = GetTime() }; return end
-    self.elapsed, self.startedAt = 0, GetTime()
-    self:SetClip(clip)
+    -- A line kept as pieces resumes from its sentence, and its words pick up there, not at the top.
+    local offset = SoundQueue:PieceOffset(clip)
+    -- The same words resumed stay laid out as they are: laid out again they start at the top.
+    local resumed = offset > 0 and clip == self.clip and self.words ~= nil
+    if not resumed then self:SetClip(clip) end
+    local at, word = 0, nil
+    if offset > 0 then
+        at, word = self:ResumeAnchor(offset)
+        if Subtitle and Subtitle.PageTimeFor then at = Subtitle:PageTimeFor(clip, word, at) end
+        -- Just inside the word, so the search for the word at this time lands on it, not before it.
+        at = at + 0.01
+        self.manualScroll = false
+        self:ShowWord(word)
+    end
+    self.elapsed, self.startedAt = at, GetTime() - at
     self.hasStarted = true
     -- CLIP_STARTED precedes installation of the queue's timer. AUDIO_CHANGED
     -- follows it and supplies the final playback state.
@@ -293,8 +392,8 @@ function Transcript:Sync()
         self.elapsed, self.startedAt = 0, nil
         self:SetClip(current)
     elseif self.startedAt and not SoundQueue:IsPlaying(current) then
-        -- Pausing stops the sound. Keep its position. Resume starts the file over and fires
-        -- CLIP_STARTED again.
+        -- Pausing stops the sound. Keep its position. Resume starts the file over, or the piece it
+        -- was stopped in, and fires CLIP_STARTED again.
         self.elapsed = GetTime() - self.startedAt
         self.startedAt = nil
     end

@@ -68,6 +68,7 @@ local LOAD_ALL_MODULES = true
 ---@field ItemNameLookupByItemID table<number, string> Maps Item ID to Item name
 ---@field SoundLengthLookupByFileName table<string, number> Maps sound filenames to their duration in seconds
 ---@field WordTimesByFileName? table<string, string> Maps sound filenames to when each word of their line starts, packed as clip.present.timings takes them
+---@field SoundPiecesByFileName? table<string, string> Maps sound filenames kept as sentence pieces to each piece's seconds, packed as clip.pieces takes them
 ---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
 ---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 ---@field GossipFileLookupByNPCSex? table<number, table<number, table<string, string>>> Maps a split Creature ID, the sex it is drawn as (UnitSex) and a gossip line's hash to the file that sex hears
@@ -1156,6 +1157,7 @@ function DataModules:ResolveSoundFile(soundData, instead)
                         -- client's own language.
                         soundData.timings = language == Language:GetClientLanguage()
                             and module.WordTimesByFileName and module.WordTimesByFileName[fileName] or nil
+                        soundData.pieces = module.SoundPiecesByFileName and module.SoundPiecesByFileName[fileName] or nil
                         soundData.module = module
                         soundData.language = language
                         EasterEggs:Apply(soundData)

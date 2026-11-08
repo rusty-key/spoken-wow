@@ -516,7 +516,8 @@ local function RegisterSlashCommand()
     -- page. The words before the colon are the command's own.
     local function Help()
         local lines = {
-            { "/sp replay", L.BIND_PLAYPAUSE },
+            { "/sp pause", L.BIND_PLAYPAUSE },
+            { "/sp replay", L.BIND_STOPREPLAY },
             { "/sp skip", L.BIND_SKIP },
             { "/sp stopall", L.BIND_STOP },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
@@ -537,8 +538,10 @@ local function RegisterSlashCommand()
         local command = strlower(strtrim(input or ""))
         local _, _, verb, rest = string.find(command, "^(%S*)%s*(.-)$")
         -- play, pause and stop are the words Bindings.xml and players' macros send: kept.
-        if command == "replay" or command == "play" or command == "pause" or command == "" then
+        if command == "play" or command == "pause" or command == "resume" or command == "" then
             SoundQueue:TogglePauseQueue()
+        elseif command == "replay" then
+            SoundQueue:ToggleStopQueue()
         elseif command == "stopall" or command == "stop" then
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then

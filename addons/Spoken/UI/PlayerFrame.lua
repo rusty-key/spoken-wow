@@ -175,10 +175,12 @@ function PlayerFrame:InitHeader()
     self.controls = CreateFrame("Frame", nil, container)
     self.controls:SetHeight(1)
     self.controls:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -CORNER_X, -CORNER_Y)
+    self.pauseButton = Actions.PauseButton(self.controls, function() return self:Current() ~= nil end,
+        function() self:UpdateControls() end)
     self.play = Actions.StopButton(self.controls, function() return self:Current() ~= nil end,
         function() self:UpdateControls() end)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.skip }
+    self.buttons = { self.pauseButton, self.play, self.skip }
 
     self.progress = Actions.ProgressBar(container)
     self.progress.track:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)
@@ -414,6 +416,7 @@ function PlayerFrame:UpdateControls()
     local head = self:Current()
     if not head then return end
     Actions.SetPlayGlyph(self.play, Actions.HeadState())
+    Actions.SetPauseGlyph(self.pauseButton)
     self.tail:SetHeld(SoundQueue:GetHeldReason(head))
     self.tail:SetStopped(SoundQueue:IsPaused())
     self.tail:SetCount(Waiting())

@@ -416,7 +416,7 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		end
 		if clip and clip.file then
 			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. ".mp3",
-				clip.len, pack, clip.file, clip.times
+				clip.len, pack, clip.file, clip.times, clip.pieces
 		end
 	end
 
@@ -476,7 +476,7 @@ end
 -- s:{mapID}:{key} -- and it is frozen: it is what the player dedups on, what a report
 -- names, and what audio-history is keyed by.
 function SpokenPlaces:NewLoreSound(mapID, areaKey)
-	local path, length, pack, fileName, times = self:GetAudioClip(mapID, areaKey)
+	local path, length, pack, fileName, times, pieces = self:GetAudioClip(mapID, areaKey)
 	if not path then
 		return nil
 	end
@@ -511,6 +511,7 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 		key = areaKey and ("s:" .. mapID .. ":" .. areaKey) or ("z:" .. mapID),
 		path = path,
 		length = length,
+		pieces = pieces,
 		fileName = fileName,
 		pack = pack,
 		mapID = mapID,

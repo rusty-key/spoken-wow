@@ -120,10 +120,12 @@ function MinimalPlayer:Initialize(original)
     self.controls:SetHeight(1)
     self.controls:SetFrameLevel(content:GetFrameLevel() + 3)
     self.controls:SetPoint("RIGHT", content, "TOPRIGHT", 0, -(NAME_HEIGHT + TITLE_HEIGHT) / 2)
+    self.pauseButton = Actions.PauseButton(self.controls, function() return self:HasClip() end,
+        function() self:UpdateControls() end)
     self.play = Actions.StopButton(self.controls, function() return self:HasClip() end,
         function() self:UpdateControls() end)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.skip }
+    self.buttons = { self.pauseButton, self.play, self.skip }
 
     self.name = Font(self.header, 16, 1, .82, 0)
     self.name:SetHeight(NAME_HEIGHT)
@@ -210,7 +212,8 @@ function MinimalPlayer:BuildMenu()
         table.insert(self.menuButtons, button)
         return button
     end
-    self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
+    self.menuPause = Item(L.PAUSE, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
+    self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:ToggleStopQueue() end end)
     self.menuSkip = Item(L.MIN_SKIP, function() SoundQueue:Skip() end)
     self.menuStop = Item(L.MIN_STOP_ALL, function() SoundQueue:RemoveAllSoundsFromQueue() end)
     -- The minimap menu's rows too: the Compendium and the settings.
@@ -364,14 +367,16 @@ function MinimalPlayer:UpdateControls()
     if not self.clip then return end
     local paused = SoundQueue:IsPaused()
     Actions.SetPlayGlyph(self.play, Actions.HeadState())
+    Actions.SetPauseGlyph(self.pauseButton)
     self.title.text:SetText(Label(self.clip))
     Addon:ClipFont(self.title.text, self.clip)
     self.tail:SetHeld(SoundQueue:GetHeldReason(self.clip))
     self.tail:SetStopped(paused)
     self:Count(Waiting())
     local pausable = Actions.SetPausable(self.buttons)
-    self.menuPlay.text:SetText(paused and L.REPLAY or L.STOP)
-    for _, button in ipairs({ self.menuPlay, self.menuSkip, self.menuStop }) do
+    self.menuPause.text:SetText(paused and L.RESUME or L.PAUSE)
+    self.menuPlay.text:SetText(SoundQueue:HaltedBy() == "stop" and L.REPLAY or L.STOP)
+    for _, button in ipairs({ self.menuPause, self.menuPlay, self.menuSkip, self.menuStop }) do
         if pausable then button:Enable(); button.text:SetAlpha(1)
         else button:Disable(); button.text:SetAlpha(.35) end
     end

@@ -2,6 +2,16 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Pause picks up where you were.** A Pause button sits beside Stop in every window and on the
+  subtitle. Where a voice pack keeps its lines as sentences, Play after Pause starts the current
+  sentence again, Play after Stop goes back to the start of the text on screen, and Replay starts
+  the line again; the captions pick up at that sentence. Lines kept whole play as before, and
+  Pause there replays them from the start. `/sp` and its key binding now pause and resume;
+  `/sp replay` and a new Stop or Replay binding stop and replay.
+  *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
+
 ## 3.8.4 — 2026-11-08
 
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking

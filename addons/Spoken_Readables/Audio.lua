@@ -259,6 +259,7 @@ function SpokenReadables:ClipFor(pageId)
 				return {
 					key = "b:" .. pageId,
 					path = [[Interface\AddOns\]] .. pack.addon .. [[\Sounds\]] .. entry.file .. ".mp3",
+					pieces = entry.pieces,
 					-- 0 means the pack recorded no duration -- an imported take rather than one
 					-- this project cut. The player falls back to its own timer; a wrong number
 					-- here would reset the Play button mid-sentence.
