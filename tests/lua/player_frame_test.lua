@@ -101,6 +101,17 @@ Expect("...with the blue brightening pass on the square ring", F.frame.portrait.
 env.SoundQueue:RemoveAllSoundsFromQueue()
 _G.UnitRace, _G.UnitFactionGroup, _G.GetGuildInfo = unitRace, unitFaction, guildInfo
 
+-- Quest-log and tracker playback can have a synthetic creature GUID but no live questnpc unit.
+-- Once the portrait model loads, its file ID/body metadata must still identify the race.
+local oldVoiceOver = _G.VoiceOver
+local modelModules = { { BodyByModelFileID = { [12345] = "human-male" } } }
+_G.VoiceOver = { DataModules = { GetModules = function()
+    return ipairs(modelModules)
+end } }
+local modelLook = F.RaceLook({ present = { header = "Eagan Peltskinner" } }, 12345)
+Expect("a loaded quest portrait model supplies the speaker race", modelLook ~= nil, true)
+_G.VoiceOver = oldVoiceOver
+
 -- A quest event with no title, neither a greeting nor gossip, has an empty label.
 quests:Enqueue(H.Clip({ key = "q:1", present = { header = "Thrall", label = "", portrait = { kind = "none" } } }))
 ExpectOf("an empty label is no label: the speaker alone, no dot after him", function()

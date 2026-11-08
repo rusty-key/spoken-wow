@@ -247,6 +247,17 @@ local function RaceFromCreature(creature, faction)
     end
 end
 
+local function RaceFromModelFileID(modelFileID, faction)
+    if not modelFileID then return end
+    local dataModules = VoiceOver and VoiceOver.DataModules
+    if not dataModules or not dataModules.GetModules then return end
+    for _, module in dataModules:GetModules() do
+        local body = module.BodyByModelFileID and module.BodyByModelFileID[modelFileID]
+        local race = RaceFromText(body, faction)
+        if race then return race end
+    end
+end
+
 local function UnitForGUID(guid)
     if not guid or not UnitTokenFromGUID then return end
     local ok, unit = pcall(UnitTokenFromGUID, guid)
@@ -303,7 +314,7 @@ local function RaceFromUnitRace(name, file, raceID, faction)
     return RaceFromText(text, faction)
 end
 
-local function SpeakerRace(clip)
+local function SpeakerRace(clip, modelFileID)
     local present = clip and clip.present
     local portrait = present and present.portrait
     local wanted = portrait and portrait.unitGUID or clip and clip.unitGUID
@@ -374,6 +385,11 @@ local function SpeakerRace(clip)
     race = RaceFromCreature(creature, faction)
     if race then return race end
 
+    -- Quest-log and tracker buttons can carry a synthetic GUID with no live questnpc unit. Once
+    -- the portrait model has loaded, its file ID is a reliable body/race source in the voice pack.
+    race = RaceFromModelFileID(modelFileID, faction)
+    if race then return race end
+
     -- Gossip/quest text is the final fallback. This covers NPCs whose Classic unit token does
     -- not expose a race and whose model has not been cached yet (for example this Tauren line).
     -- It intentionally comes after the authoritative sources so mentioning another race does
@@ -384,9 +400,15 @@ local function SpeakerRace(clip)
         or RaceFromText(present and present.header, faction)
 end
 
-local function RaceLook(clip)
-    local race = SpeakerRace(clip)
+local function RaceLook(clip, modelFileID)
+    local race = SpeakerRace(clip, modelFileID)
     return race and RACIAL_ART[race]
+end
+
+local function ModelFileID(model)
+    if not model or not model.GetModelFileID then return end
+    local ok, fileID = pcall(model.GetModelFileID, model)
+    return ok and fileID or nil
 end
 
 local function IsQuestClip(clip)
@@ -405,6 +427,7 @@ end
 -- The Small Window uses the same authoritative speaker lookup and race palette.
 PlayerFrame.RaceLook = RaceLook
 PlayerFrame.IsQuestClip = IsQuestClip
+PlayerFrame.ModelFileID = ModelFileID
 PlayerFrame.RaceRingColor = RaceRingColor
 
 local function FirstAtlas(names)
@@ -653,7 +676,9 @@ function PlayerFrame:ApplyArt()
 end
 
 function PlayerFrame:ApplyRaceArt(clip)
-    local frame, look = self.frame, IsQuestClip(clip) and RaceLook(clip) or nil
+    local model = self.frame.portrait.model
+    local modelFileID = ModelFileID(model)
+    local frame, look = self.frame, IsQuestClip(clip) and RaceLook(clip, modelFileID) or nil
     frame.raceBorderFrame:SetShown(look ~= nil)
     frame.raceTint:SetShown(look ~= nil)
     if not look then

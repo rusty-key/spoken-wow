@@ -343,7 +343,8 @@ end
 
 function MinimalPlayer:ApplyRaceArt()
     local isQuest = PlayerFrame.IsQuestClip and PlayerFrame.IsQuestClip(self.clip)
-    local look = isQuest and PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip) or nil
+    local modelFileID = PlayerFrame.ModelFileID and PlayerFrame.ModelFileID(self.viewport and self.viewport.model)
+    local look = isQuest and PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip, modelFileID) or nil
     local themed = look ~= nil and self.panel.spokenEllesmere ~= true
     if self.raceThemed ~= themed then
         self.raceThemed = themed
