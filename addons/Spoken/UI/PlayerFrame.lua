@@ -357,6 +357,9 @@ local function RaceLook(clip)
     return race and RACIAL_ART[race]
 end
 
+-- The Small Window uses the same authoritative speaker lookup and race palette.
+PlayerFrame.RaceLook = RaceLook
+
 local function FirstAtlas(names)
     for _, name in ipairs(names) do
         if Actions.HasAtlas(name) then return name end
@@ -920,6 +923,10 @@ end
 --- In EllesmereUI's look the portrait round whatever it shows, but a 3D model, which no mask cuts.
 function PlayerFrame:FitPortrait()
     local portrait = self.frame and self.frame.portrait
+    if portrait and self.frame.spokenEllesmere == true then
+        portrait.border.texture:SetAlpha(0)
+        portrait.background:SetAlpha(0)
+    end
     if not (portrait and portrait.box) then return end
     local round = portrait.active ~= "model"
     Ellesmere.Shape(portrait.box, portrait.disc, round)

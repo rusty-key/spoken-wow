@@ -126,6 +126,8 @@ M, T, L = env.MinimalPlayer, env.Transcript, env.L
 local frame = env.Addon.db.profile.Frame
 Expect("the small window is on parchment unless the player chooses otherwise", frame.MinimalBackground, "parchment")
 for _, part in ipairs({ M.paper, M.name, M.title.text, M.count, M.ring }) do Record(part) end
+Record(M.raceTint)
+Record(M.raceTrim.topLeft)
 quests:Enqueue(Line("One", "Grull"))
 env.PlayerFrame:RefreshConfig()
 Expect("...Spoken's own parchment, which every client draws: the retail atlases are listed without their art",
@@ -146,6 +148,17 @@ frame.MinimalBackground = "parchment"
 env.PlayerFrame:RefreshConfig()
 Expect("...back on its parchment from the rock, whole, not tiled", tostring(M.paper.texture) .. " " .. tostring(M.paper.horizTile),
     [[Interface\AddOns\Spoken\Textures\MinimalParchment nil]])
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
+local tauren = H.Clip({ npcBody = "tauren-male", text = "Los tauren hemos hecho un hogar.",
+    present = { header = "Valiente Pluma de Viento", portrait = { kind = "none" } } })
+quests:Enqueue(tauren)
+Expect("the small window gets the shared Tauren trim", M.raceBorderFrame:IsShown(), true)
+Expect("...and the shared Tauren background color", M.raceTint.colour, "0.20 0.14 0.07")
+Expect("...with the Tauren border texture", M.raceTrim.topLeft.texture,
+    [[Interface\AddOns\Spoken\Textures\RaceTrim/TaurenEdge]])
+Expect("...and the matching dark text treatment", M.name.colour .. " " .. tostring(M.paper.texture),
+    "1.00 0.82 0.00 Interface\\AddOns\\Spoken\\Textures\\MinimalBackground")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
 -- The setting, on Spoken's page, for the small window only.

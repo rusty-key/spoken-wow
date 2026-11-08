@@ -494,8 +494,9 @@ ExpectOf("...the portrait frame 143 across, 5 in and 6 down from the window's co
     local ring = F.frame.portrait.border.texture
     return ring:GetWidth() .. " " .. (21 + ring.anchor.x) .. " " .. (-21 + ring.anchor.y)
 end, "143 5 -6")
-ExpectOf("...the box behind the whole window", function()
-    return tostring(F.frame.background.allPoints or F.frame.background.anchor == nil)
+ExpectOf("...the box sits inside the window border", function()
+    local point, _, _, x, y = F.frame.background:GetPoint()
+    return tostring(point == "BOTTOMRIGHT" and x == -8 and y == 8)
 end, "true")
 env.Addon.db.profile.Frame.BronzeTint = false
 F:RefreshConfig()
