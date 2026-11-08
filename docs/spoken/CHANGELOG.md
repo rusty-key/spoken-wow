@@ -80,7 +80,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   Skyborne model names and faction-specific Skyborne variants, with localized text only as a last
   resort. Gnome windows use a lighter, translucent steel-blue wash so their background fade stays
   visible, Dwarf windows use a warmer bronze wash to match their metal trim, Gnome windows use a
-  distinct cool teal, and every race uses the same translucent wash strength so the fade remains
+  muted steel wash, and every race uses the same translucent wash strength so the fade remains
   visible.
   *([anon1231823](https://github.com/anon1231823))*
 
