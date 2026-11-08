@@ -246,9 +246,13 @@ local function RaceFromCreature(creature, faction, clip)
         end
         local fileBodies = clip and clip.fileName and module.QuestFileLookupByNPCBody
             and module.QuestFileLookupByNPCBody[clip.fileName]
-        local fileBody = fileBodies and fileBodies[creature]
-        race = RaceFromText(fileBody, faction)
-        if race then return race end
+        local fileBodiesForCreature = fileBodies and fileBodies[creature]
+        if fileBodiesForCreature then
+            for body in pairs(fileBodiesForCreature) do
+                race = RaceFromText(body, faction)
+                if race then return race end
+            end
+        end
         local gossipBodies = module.GossipFileLookupByNPCBody
             and module.GossipFileLookupByNPCBody[creature]
         if gossipBodies then
@@ -260,7 +264,19 @@ local function RaceFromCreature(creature, faction, clip)
         local followups = module.FollowupLookupByNPCBody
             and module.FollowupLookupByNPCBody[creature]
         if followups then
-            for _, file in pairs(followups) do
+            for _, filesByBody in pairs(followups) do
+                for body in pairs(filesByBody) do
+                    race = RaceFromText(body, faction)
+                    if race then return race end
+                end
+            end
+        end
+        -- A quest pack can have only the generic follow-up lookup. Its filename still carries
+        -- the speaker body (for example, 1211-nightelf-male-official), so it remains useful for
+        -- synthetic quest-log and tracker clips whose model never became a live unit.
+        local genericFollowups = module.FollowupLookup and module.FollowupLookup[creature]
+        if genericFollowups then
+            for _, file in pairs(genericFollowups) do
                 race = RaceFromText(file, faction)
                 if race then return race end
             end
