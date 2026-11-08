@@ -3,9 +3,10 @@
 A small app for Windows, macOS and Linux that installs and updates the Spoken addon and its voice
 packs for World of Warcraft: Forever, Classic Era and Anniversary. It finds your game, shows what
 is installed and what is new, and installs, updates or removes it with one button. It has no
-account and no login. The network traffic is GitHub (the release list, Spoken and the manager's
-own updates) and packs.spoken.quest (the voice packs, updated file by file), plus, only when
-you turn on Sharing, spoken.quest (see [Sharing](#sharing)).
+account and no login. The network traffic is GitHub (the release list, older versions of Spoken,
+a retry when packs.spoken.quest fails, and the manager's own updates) and packs.spoken.quest
+(recent versions of Spoken, and the voice packs, updated file by file), plus, only when you turn
+on Sharing, spoken.quest (see [Sharing](#sharing)).
 
 The plan and the rules the installer follows are in [PLAN.md](PLAN.md).
 

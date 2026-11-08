@@ -2,7 +2,9 @@
 // "release" whose tag names the rev of each of its folders, so a status is a tag comparison.
 import { channelTag } from '../shared/channel'
 import type { Catalog, Product, ReleaseInfo } from '../shared/types'
-import type { ChannelIndex } from './packs-remote'
+import { compareReleases } from './catalog'
+import { REPO } from './github'
+import type { ChannelAddon, ChannelIndex } from './packs-remote'
 
 /** The newest of a set of revs; they sort as text. */
 export function newestRev(revs: string[]): string {
@@ -35,11 +37,44 @@ export function channelRelease(product: Product, index: ChannelIndex | null, bas
   }
 }
 
+/**
+ * A product's releases with the channel's zips as their first source and GitHub as their second. A version GitHub's
+ * list lacks is added, so a new release still shows when that list cannot be fetched.
+ */
+export function withAddonCopies(product: Product, list: readonly ReleaseInfo[], copies: readonly ChannelAddon[], baseUrl: string): ReleaseInfo[] {
+  const out = [...list]
+  for (const copy of copies) {
+    const channel = { assetUrl: `${baseUrl}addons/${product.id}/${copy.sha256}.zip`, assetSize: copy.size, digest: `sha256:${copy.sha256}` }
+    const at = out.findIndex((r) => r.version === copy.version)
+    if (at >= 0) {
+      out[at] = { ...out[at]!, ...channel, fallbackUrl: out[at]!.assetUrl }
+      continue
+    }
+    const tag = `${product.tagPrefix}/v${copy.version}`
+    const assetName = `Spoken-${copy.version}.zip`
+    out.push({
+      productId: product.id,
+      tag,
+      version: copy.version,
+      prerelease: false,
+      publishedAt: '',
+      notes: '',
+      assetName,
+      ...channel,
+      fallbackUrl: `https://github.com/${REPO}/releases/download/${tag}/${assetName}`,
+      htmlUrl: ''
+    })
+  }
+  return out.sort(compareReleases)
+}
+
 /** The catalog with every voice product the channel fully carries offered from the channel instead of GitHub. */
 export function withChannel(catalog: Catalog, products: readonly Product[], index: ChannelIndex | null, baseUrl: string): Catalog {
   if (!index) return catalog
   const releases = { ...catalog.releases }
   for (const p of products) {
+    const copies = p.kind === 'addon' ? index.addons?.[p.id] : undefined
+    if (copies) releases[p.id] = withAddonCopies(p, releases[p.id] ?? [], copies, baseUrl)
     const r = channelRelease(p, index, baseUrl)
     if (r) releases[p.id] = [r]
   }
