@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bookMatchOf, indexCorpus, matchBook, type BookCorpus, type BookMatchInput } from "./book-match";
+import { bookCandidates, bookMatchOf, indexCorpus, matchBook, type BookCorpus, type BookMatchInput } from "./book-match";
 
 function page(lineId: string, bookId: string, pageNumber: number, texts: Record<string, string>, titles: Record<string, string>, owner?: [ "object" | "item", number ]) {
   return {
@@ -28,6 +28,34 @@ const corpus: BookCorpus = indexCorpus([
 function row(over: Partial<BookMatchInput>): BookMatchInput {
   return { locale: "esES", text: null, meta: {}, matchLineId: null, matchBookId: null, matchPageNumber: null, matchNewBook: false, ...over };
 }
+
+describe("bookCandidates", () => {
+  it("is empty for a match that is not ambiguous", () => {
+    expect(bookCandidates({ kind: "known", lineId: "b:38", via: "text" }, corpus, row({}))).toEqual([]);
+  });
+
+  it("answers with the page when the words matched, and tells same-titled pages apart", () => {
+    const found = bookCandidates({ kind: "ambiguous", candidates: ["b:340", "b:341"] }, corpus, row({ locale: "esMX" }));
+    expect(found.map((c) => c.answer)).toEqual([{ lineId: "b:340" }, { lineId: "b:341" }]);
+    expect(found.map((c) => c.owner)).toEqual([{ kind: "item", id: 7 }, { kind: "item", id: 8 }]);
+    expect(found[0]).toMatchObject({ label: "Registro de Reclutamiento p.1", bookId: "340", excerpt: "Carta de reclutamiento" });
+  });
+
+  it("answers with the book and the row's page number when only the title matched", () => {
+    const found = bookCandidates({ kind: "ambiguous", candidates: ["500", "600"] }, corpus, row({ locale: "enUS", meta: { number: "1" } }));
+    expect(found.map((c) => c.answer)).toEqual([{ bookId: "500", pageNumber: 1 }, { bookId: "600", pageNumber: 1 }]);
+    expect(found.map((c) => c.excerpt)).toEqual(["Dust one.", "Dust two."]);
+  });
+
+  it("shows the book's first page and says so when the book has no such page", () => {
+    const [found] = bookCandidates({ kind: "ambiguous", candidates: ["500"] }, corpus, row({ locale: "enUS", meta: { number: "3" } }));
+    expect(found).toMatchObject({ label: "A Dusty Tome p.3 (new page)", lineId: "b:500", answer: { bookId: "500", pageNumber: 3 } });
+  });
+
+  it("leaves out a candidate the corpus no longer has", () => {
+    expect(bookCandidates({ kind: "ambiguous", candidates: ["b:12345", "12345"] }, corpus, row({}))).toEqual([]);
+  });
+});
 
 describe("matchBook", () => {
   it("finds a page by another language's exact words, as a correction where this language differs", () => {
