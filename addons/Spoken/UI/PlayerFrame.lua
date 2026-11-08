@@ -312,9 +312,11 @@ end
 local function RaceFromDisplayID(displayID)
     -- Some original model families are shared by more than one race. The display is the
     -- appearance-level discriminator in those cases; this is still shared portrait metadata,
-    -- not a per-NPC fallback. Stoley's display 7027 is the human appearance on model family 49.
+    -- not a per-NPC fallback. Stoley's display 7027 is the human appearance on model family 49;
+    -- Willow's display 13909 is the Undead appearance whose hidden model probe is not reliable
+    -- on every Classic client.
     local legacyDisplayRaces = {
-        [7027] = "Human",
+        [7027] = "Human", [13909] = "Undead",
     }
     return legacyDisplayRaces[displayID]
 end
