@@ -1237,6 +1237,28 @@ env.SoundQueue:TogglePauseQueue()
 Expect("...past a paragraph's empty row at the top", world.played[#world.played],
     F:Current().path:gsub("%.ogg$", "") .. string.format("\\%02d.ogg", top))
 table.remove(T.lines, top)
+-- Nothing but empty rows from the top down: no text on screen, so Stop backs up as far as Pause.
+local lines, speaking = T.lines, nil
+T.lines = {}
+for i = 1, top do T.lines[i] = {} end
+env.SoundQueue:TogglePauseQueue()
+speaking = F:Current().piece
+local stopped = pcall(env.SoundQueue.StopQueue, env.SoundQueue)
+env.SoundQueue:TogglePauseQueue()
+Expect("...and with only empty rows on screen, the sentence it was in", tostring(stopped) .. " " .. world.played[#world.played],
+    "true " .. F:Current().path:gsub("%.ogg$", "") .. string.format("\\%02d.ogg", speaking))
+T.lines = lines
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
+-- A join a frame hitch made late holds the voice back; the captions wait as long, or their words
+-- and the subtitle's pages run ahead of it for the rest of the line.
+local late = Kept("2 3 1.5")
+quests:Enqueue(late)
+stub.Advance(2.8, 2.8)
+Expect("a join a hitch made late: the captions wait as long as the voice",
+    string.format("%.3f %.3f", T:AudioElapsed(), env.SoundQueue:VoiceElapsed(late)), "2.000 2.000")
+stub.Advance(1.0)
+Expect("...and keep pace after", string.format("%.3f", T:AudioElapsed()), "3.000")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
 env.Addon:SetPlayerStyle("subtitle")

@@ -385,6 +385,17 @@ function Transcript:Started(clip)
     self:Update()
 end
 
+--- A line kept as pieces whose next piece started `seconds` late: its words wait as long, or they
+--- would run ahead of the voice for the rest of the line.
+function Transcript:Delayed(clip, seconds)
+    local start = self.heldStart
+    if start and start.clip == clip then
+        start.at = start.at + seconds
+    elseif clip == self.clip and self.startedAt then
+        self.startedAt = self.startedAt + seconds
+    end
+end
+
 function Transcript:Sync()
     if self.held then return end
     -- The line playing, or the sample a window previews.
@@ -888,6 +899,7 @@ function Transcript:Initialize()
     end)
     Callbacks:Register("CLIP_STARTED", function(clip) self:Started(clip) end)
     Callbacks:Register("AUDIO_CHANGED", function() self:Sync() end)
+    Callbacks:Register("VOICE_DELAYED", function(clip, seconds) self:Delayed(clip, seconds) end)
     self:RefreshConfig()
     self:Sync()
 end

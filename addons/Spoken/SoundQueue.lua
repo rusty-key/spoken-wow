@@ -647,7 +647,11 @@ local function ScheduleNextPiece(clip, channel, lineStartedAt)
             return
         end
         local late = math.max(0, GetTime() - nextAt)
-        lineStartedAt, clip.spokenAt = lineStartedAt + late, clip.spokenAt + late
+        if late > 0 then
+            lineStartedAt, clip.spokenAt = lineStartedAt + late, clip.spokenAt + late
+            -- The words keep their own clock; they wait as long as the voice did.
+            Callbacks:Fire("VOICE_DELAYED", clip, late)
+        end
         if not PlayPiece(clip, index + 1, channel) then
             -- A piece missing from the folder ends the line where it is, as the end of it would.
             Developer:Log("player", format("piece %d of %s is missing", index + 1, tostring(clip.key)))

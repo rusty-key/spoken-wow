@@ -398,6 +398,54 @@ Q:PauseQueue()
 _G.Spoken:TogglePause()
 Expect("...a line paused elsewhere too", world.played[#world.played], Piece(line, 1))
 
+---------------------------------------------------------------- the sentence to resume in gone from the folder
+Fresh()
+line = H.Clip({ pieces = "2 3 1.5" })
+quests:Enqueue(line)
+after = H.Clip()
+quests:Enqueue(after)
+stub.Advance(3.0)
+Q:PauseQueue()
+world.missing[Piece(line, 2)] = true
+local resumed = pcall(Q.ResumeQueue, Q)
+Expect("Play on a sentence whose piece has gone drops the line as missing, without an error",
+    tostring(resumed) .. " " .. tostring(Q:GetCurrentSound() == line), "true false")
+Expect("...and the next line plays", world.played[#world.played], after.path)
+
+---------------------------------------------------------------- /sp resume from a Stop, and with nothing to resume
+Fresh()
+line = H.Clip({ pieces = "2 3 1.5" })
+quests:Enqueue(line)
+stub.Advance(3.0)
+Q:StopQueue()
+_G.SlashCmdList.SPOKEN("resume")
+Expect("/sp resume after Stop plays as Play does, from the section (here the sentence)",
+    world.played[#world.played], Piece(line, 2))
+Q:RemoveAllSoundsFromQueue()
+local played = #world.played
+local quiet = pcall(_G.SlashCmdList.SPOKEN, "resume")
+Expect("...and with nothing queued it does nothing, without an error",
+    tostring(quiet) .. " " .. tostring(#world.played == played), "true true")
+
+---------------------------------------------------------------- a line marked as words alone, from any source
+Fresh()
+line = H.Clip({ pieces = "2 3 1.5", length = 9, textOnly = true })
+quests:Enqueue(line)
+Expect("a line itself marked words alone plays no piece", world.played[1], nil)
+Expect("...keeps its own length", line.length, 9)
+Expect("...and offers no Pause", Q:Resumes(line), false)
+
+---------------------------------------------------------------- captions held while the voice is late
+Fresh()
+T = env.Transcript
+local held, other = Said({ pieces = "2 3" }), Said({ pieces = "2 3" })
+T.heldStart = { clip = held, at = 10 }
+T:Delayed(held, 0.5)
+Expect("words held for a window still turning wait as long as their voice was late", T.heldStart.at, 10.5)
+T:Delayed(other, 0.5)
+Expect("...and another line's lateness moves nothing", T.heldStart.at, 10.5)
+T.heldStart = nil
+
 ---------------------------------------------------------------- on each client Spoken is released for
 for _, client in ipairs({ "16001", "11509", "20506" }) do
     local function On(scenario) return client .. ": " .. scenario end
