@@ -84,7 +84,8 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/HumanEdge",
         edgeV = TEXTURES .. "RaceTrim/HumanEdgeV",
         join = TEXTURES .. "RaceTrim/HumanJoin",
-        tint = { .02, .04, .10, .88 },
+        -- Keep the Human navy tone while letting the box's original fade remain visible.
+        tint = { .06, .11, .20, .72 },
     },
     Dwarf = {
         edge = TEXTURES .. "RaceTrim/DwarfEdge",

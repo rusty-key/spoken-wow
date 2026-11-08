@@ -79,7 +79,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   supported race and resolves the speaker from live unit and model data, including compact
   Skyborne model names and faction-specific Skyborne variants, with localized text only as a last
   resort. Gnome windows use a lighter, translucent steel-blue wash so their background fade stays
-  visible, and Dwarf windows use a warmer bronze wash to match their metal trim.
+  visible, Dwarf windows use a warmer bronze wash to match their metal trim, and Human windows keep
+  their navy wash translucent enough for the fade to show.
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.8.3 — 2026-11-05
