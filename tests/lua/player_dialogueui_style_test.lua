@@ -757,7 +757,7 @@ Expect("a line kept as pieces: Pause first, then Stop and Skip",
 stub.Advance(12)
 Skin.pauseButton.scripts.OnClick(Skin.pauseButton)
 Expect("...Pause pauses, and the title says Paused", env.SoundQueue:HaltedBy() .. "|" .. Skin.stopped:GetText(),
-    "pause|• (" .. env.L.SUBTITLE_PAUSED .. ")")
+    "pause|· (" .. env.L.SUBTITLE_PAUSED .. ")")
 Skin.pauseButton.scripts.OnClick(Skin.pauseButton)
 Expect("...and pressed again, plays on from the sentence it was paused in", tostring(env.SoundQueue:HaltedBy()) .. " "
     .. tostring(stub.world.played[#stub.world.played]:match("\\(%d%d)%.ogg$")), "nil 02")

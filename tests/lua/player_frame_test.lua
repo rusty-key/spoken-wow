@@ -1207,12 +1207,12 @@ ExpectOf("a line kept as pieces: Pause first, then Stop", function()
 stub.Advance(31)
 env.SoundQueue:TogglePauseQueue()
 ExpectOf("...paused, the window says Paused", function() return F.tail.stopped:GetText() end,
-    "• (" .. env.L.SUBTITLE_PAUSED .. ")")
+    "· (" .. env.L.SUBTITLE_PAUSED .. ")")
 env.SoundQueue:TogglePauseQueue()
 Expect("...and Play starts the sentence it was paused in", world.played[#world.played],
     F:Current().path:gsub("%.ogg$", "") .. "\\11.ogg")
 env.SoundQueue:StopQueue()
-ExpectOf("stopped, it says Stopped", function() return F.tail.stopped:GetText() end, "• (" .. env.L.SUBTITLE_STOPPED .. ")")
+ExpectOf("stopped, it says Stopped", function() return F.tail.stopped:GetText() end, "· (" .. env.L.SUBTITLE_STOPPED .. ")")
 -- Following the voice, the captions show the lines up to the eleventh sentence; one sentence to a line.
 local T = env.Transcript
 local top = T.topTarget

@@ -380,7 +380,7 @@ function Tail:SetStopped(stopped)
         local word = Actions.HaltWord()
         if word ~= self.word then
             self.word = word
-            self.stopped:SetText(format("• (%s)", word))
+            self.stopped:SetText(format("· (%s)", word))
         end
     end
 end
