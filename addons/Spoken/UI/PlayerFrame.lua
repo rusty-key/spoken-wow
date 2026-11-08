@@ -78,7 +78,8 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/NightElfEdge",
         edgeV = TEXTURES .. "RaceTrim/NightElfEdgeV",
         join = TEXTURES .. "RaceTrim/NightElfJoin",
-        tint = { .02, .05, .08, .72 },
+        -- Night Elf's muted violet restores the purple tone behind the leafy trim.
+        tint = { .16, .07, .24, .72 },
     },
     Human = {
         edge = TEXTURES .. "RaceTrim/HumanEdge",
