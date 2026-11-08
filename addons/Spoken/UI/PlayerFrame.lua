@@ -125,9 +125,10 @@ local RACIAL_ART = {
         tint = { .14, .07, .06, .72 },
     },
     Undead = {
-        edge = TEXTURES .. "RaceTrim/UndeadEdge",
-        edgeV = TEXTURES .. "RaceTrim/UndeadEdgeV",
-        join = TEXTURES .. "RaceTrim/UndeadJoin",
+        -- Scourge uses the same trim as Forsaken; only the wash remains distinct.
+        edge = TEXTURES .. "RaceTrim/ForsakenEdge",
+        edgeV = TEXTURES .. "RaceTrim/ForsakenEdgeV",
+        join = TEXTURES .. "RaceTrim/ForsakenJoin",
         edgeVPeriod = 8,
         -- Undead's muted stone-olive wash blends with the pale, weathered trim.
         tint = { .14, .14, .12, .60 },
