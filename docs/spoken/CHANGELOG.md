@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **A follow-up quest that another addon accepts at once is read.** When Polestar or an auto-accept
+  addon took the follow-up the moment the giver offered it after a turn-in, Spoken read the turn-in
+  and stayed silent for the follow-up. *([molkemon](https://github.com/molkemon))*
+
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
   its entrance shows the dungeon's lore, clicking a boss shows that boss's story with its 3D model,
   and right-clicking out returns to the zone's lore.

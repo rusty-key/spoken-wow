@@ -329,8 +329,9 @@ stub.Advance(5)
 Expect("a follow-up recorded from the turn-in's globals, read in the window, leaves the turn-in's pages",
     string.format("%d-accept, %d-progress, %d-complete", followUp, full, full))
 
--- The same record, never read in a window: it holds the turn-in's text under the turn-in's quest
--- ID, so it is not read as that quest's offer once the quest is handed in.
+-- The same record, never read in a window: an addon accepted the follow-up in the frame it opened.
+-- The record holds the turn-in's text under the turn-in's quest ID, so it is not read as that
+-- quest's offer once the quest is handed in. The follow-up's accept is read by its own ID.
 StartScenario()
 world.questID = full
 stub.FireEvent("QUEST_PROGRESS")
@@ -341,7 +342,20 @@ stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.FireEvent("QUEST_ACCEPTED", followUp)
 stub.Advance(5)
-Expect("an offer recorded after its quest's own pages is not read as that quest's offer",
+Expect("an offer recorded after its quest's own pages reads the accepted follow-up, not that quest's offer",
+    string.format("%d-progress, %d-complete, %d-accept", full, full, followUp))
+
+-- The same follow-up declined: no accept event comes, and nothing is read for it.
+StartScenario()
+world.questID = full
+stub.FireEvent("QUEST_PROGRESS")
+stub.FireEvent("QUEST_COMPLETE")
+stub.FireEvent("QUEST_DETAIL")
+world.questID = 0
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a follow-up recorded under the quest handed in and declined reads nothing for it",
     string.format("%d-progress, %d-complete", full, full))
 
 -- Offers opened and closed unread: the last is the one the player was left with.

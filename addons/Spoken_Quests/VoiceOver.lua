@@ -747,6 +747,42 @@ function Addon:OnInitialize()
         end
     end
 
+    --- A follow-up accepted in the frame its offer opened in (Polestar, Leatrix Plus) leaves only a
+    --- record made from the globals of the quest just handed in, which IsStaleOffer keeps from being
+    --- read as that quest's offer, so the follow-up's accept was never read. It is read here by the
+    --- accepted quest's own ID, under the NPC of that record, with the text the quest log has for it:
+    --- the record's own text is the turn-in's.
+    local function ReadFollowUpAccept(questID)
+        PruneQuestSnapshots()
+        for i = #questSnapshots, 1, -1 do
+            local offer = questSnapshots[i]
+            if offer.event == "QUEST_DETAIL" and offer.questID ~= questID and not offer.dispatched
+                and IsStaleOffer(i) then
+                offer.dispatched = true
+                local title = C_QuestLog and C_QuestLog.GetTitleForQuestID
+                    and NotSecret(C_QuestLog.GetTitleForQuestID(questID)) or ""
+                local text = ""
+                local index = C_QuestLog and C_QuestLog.GetLogIndexForQuestID
+                    and C_QuestLog.GetLogIndexForQuestID(questID)
+                if index and GetQuestLogQuestText then
+                    local succeeded, description = pcall(GetQuestLogQuestText, index)
+                    text = succeeded and NotSecret(description) or ""
+                end
+                ReplaySnapshot({
+                    event = "QUEST_DETAIL",
+                    at = GetTime(),
+                    questID = questID,
+                    title = title,
+                    text = text,
+                    guid = offer.guid,
+                    targetName = offer.targetName,
+                    isObjectOrItem = offer.isObjectOrItem,
+                }, "QUEST_ACCEPTED of a follow-up recorded under the quest handed in")
+                return
+            end
+        end
+    end
+
     local function PollAutomaticQuest()
         local state = self.autoQuestState
         if self.dataModulesPending then
@@ -909,6 +945,12 @@ function Addon:OnInitialize()
             local succeeded, replayError = pcall(ReplayQuestSnapshots, event, questID, REPLAYED_ON[event])
             if not succeeded then
                 Debug:Record("auto-watcher-error", tostring(replayError))
+            end
+            if event == "QUEST_ACCEPTED" then
+                succeeded, replayError = pcall(ReadFollowUpAccept, questID)
+                if not succeeded then
+                    Debug:Record("auto-watcher-error", tostring(replayError))
+                end
             end
         else
             lastQuestEvent = event

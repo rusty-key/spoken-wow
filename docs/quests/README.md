@@ -1905,7 +1905,11 @@ pages, found by the quest ID in the event. That ID is the first argument on the 
 and the second on Classic clients, which send the quest log index first; a secret ID replays
 nothing. They cover a client that keeps reporting the quest ID after the dialog closed. A page
 recorded with neither a quest ID nor a title names no quest and is not kept, since no later
-event could tie it to one. A declined quest sends neither event, so a decline reads what it did
+event could tie it to one. An offer recorded after its own quest's pages is the follow-up an addon
+accepted in the frame it opened (Polestar does this after its own turn-ins). It is never read as
+the handed-in quest's offer, but the `QUEST_ACCEPTED` that follows reads the accepted quest by its
+own ID, under that record's NPC and with the quest log's text, since the record's text is the
+turn-in's. A declined quest sends neither event, so a decline reads what it did
 before. Records live ten seconds. It is a fallback, not a second dispatcher: a page the player
 reads in the open dialog is dispatched by the watcher as before. That page is the newest record
 of its event, whatever quest the globals named when the event arrived, and it and the earlier
