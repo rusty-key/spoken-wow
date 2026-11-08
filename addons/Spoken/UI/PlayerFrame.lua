@@ -120,7 +120,8 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/TrollEdge",
         edgeV = TEXTURES .. "RaceTrim/TrollEdgeV",
         join = TEXTURES .. "RaceTrim/TrollJoin",
-        tint = { .05, .06, .05, .72 },
+        -- Troll's muted earthy burgundy blends with the red-and-brown trim.
+        tint = { .14, .07, .06, .72 },
     },
     Undead = {
         edge = TEXTURES .. "RaceTrim/UndeadEdge",
