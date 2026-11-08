@@ -287,12 +287,26 @@ end
 local function RaceFromModelFileID(modelFileID, faction)
     if not modelFileID then return end
     local dataModules = VoiceOver and VoiceOver.DataModules
-    if not dataModules or not dataModules.GetModules then return end
-    for _, module in dataModules:GetModules() do
-        local body = module.BodyByModelFileID and module.BodyByModelFileID[modelFileID]
-        local race = RaceFromText(body, faction)
-        if race then return race end
+    if dataModules and dataModules.GetModules then
+        for _, module in dataModules:GetModules() do
+            local body = module.BodyByModelFileID and module.BodyByModelFileID[modelFileID]
+            local race = RaceFromText(body, faction)
+            if race then return race end
+        end
     end
+
+    -- Classic quest portraits can expose the client's original creature-model ids instead of
+    -- the newer model-file ids exported by the voice packs. These are model families, not NPC
+    -- exceptions: a shipped display such as Willow's resolves to 58, which is the shared
+    -- Scourge model family. Keep ambiguous families out so a model cannot invent a race.
+    local legacyModelRaces = {
+        [50] = "Human", [51] = "Orc", [52] = "Orc", [53] = "Dwarf", [54] = "Dwarf",
+        [55] = "NightElf", [56] = "NightElf", [57] = "Undead", [58] = "Undead",
+        [59] = "Tauren", [60] = "Tauren", [79] = "Human", [80] = "Human",
+        [130] = "Undead", [144] = "Undead", [182] = "Gnome", [183] = "Gnome",
+        [185] = "Troll", [186] = "Troll",
+    }
+    return legacyModelRaces[modelFileID]
 end
 
 local function UnitForGUID(guid)
