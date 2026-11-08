@@ -1,12 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { MAX_ENVELOPES } from "./saved-variables";
-import { sendInChunks } from "./upload";
+import { chunksOf, sendInChunks } from "./upload";
 
 const accepted = (chunk: string[]) =>
   Response.json({ accepted: chunk.length, refused: {} });
 
 const lines = (count: number) => Array.from({ length: count }, (_, i) => `line ${i}`);
+
+describe("chunksOf", () => {
+  it("splits by count and by size", () => {
+    expect(chunksOf(["a", "b", "c"], 2).map((c) => c.length)).toEqual([2, 1]);
+    expect(chunksOf(["aaaa", "bbbb", "cccc"], 10, 10).map((c) => c.length)).toEqual([1, 1, 1]);
+    expect(chunksOf([])).toEqual([]);
+  });
+});
 
 describe("sendInChunks", () => {
   it("sends every line of a file past one request's cap", async () => {

@@ -102,8 +102,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
       setError(message);
       return;
     }
-    // What arrived leaves the list, so another press sends only the rest, and the player is not
-    // told to clear lines the site never got.
+    // Only what did not arrive stays, so nobody is told to clear lines the site never got.
     const rest = loaded.envelopes.slice(outcome.sent);
     setLoaded(summarise(rest));
     setError(`${outcome.sent} lines arrived. ${message} The other ${rest.length} are still here to send.`);
@@ -118,6 +117,8 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
       </p>
     );
   }
+
+  const total = loaded?.envelopes.length ?? 0;
 
   return (
     <form onSubmit={submit} className="flex max-w-xl flex-col gap-4">
@@ -209,7 +210,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
       {loaded ? (
         <div>
           <Button type="submit" disabled={busy}>
-            {busy ? `Sending…${progress ? ` ${progress}/${loaded.envelopes.length}` : ""}` : `Send ${loaded.envelopes.length} ${loaded.envelopes.length === 1 ? "line" : "lines"}`}
+            {busy ? `Sending…${progress ? ` ${progress}/${total}` : ""}` : `Send ${total} ${total === 1 ? "line" : "lines"}`}
           </Button>
         </div>
       ) : null}

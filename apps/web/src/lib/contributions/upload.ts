@@ -1,12 +1,35 @@
-/**
- * Sending a gathered file request by request, stopping at the first the site does not take.
- *
- * Browser-safe: UploadGathered runs it. `sent` counts from the start of the list, so what is left
- * is `envelopes.slice(sent)`, and a player can send that without repeating what already arrived.
- */
-import { chunksOf } from "./saved-variables";
+/** Both the page and the Spoken Manager import this, so it stays free of Node and of site aliases. */
+import { MAX_ENVELOPES } from "./saved-variables";
 
-export type UploadOutcome = {
+/** Under nginx's 16 MB limit on the batch route, with room to spare. */
+const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
+
+const encoder = new TextEncoder();
+
+export function chunksOf(
+  envelopes: readonly string[],
+  maxCount = MAX_ENVELOPES,
+  maxBytes = MAX_REQUEST_BYTES,
+): string[][] {
+  const out: string[][] = [];
+  let current: string[] = [];
+  let bytes = 0;
+  for (const envelope of envelopes) {
+    const size = encoder.encode(envelope).length + 4;
+    if (current.length > 0 && (current.length >= maxCount || bytes + size > maxBytes)) {
+      out.push(current);
+      current = [];
+      bytes = 0;
+    }
+    current.push(envelope);
+    bytes += size;
+  }
+  if (current.length > 0) out.push(current);
+  return out;
+}
+
+type UploadOutcome = {
+  /** Counted from the start of the list, so what is left is `envelopes.slice(sent)`. */
   sent: number;
   accepted: number;
   refused: number;

@@ -20,9 +20,6 @@ const ENVELOPE_PREFIX = "!SPOKEN";
 /** Gather.lua's CAP, and the most one request to the batch route takes. */
 export const MAX_ENVELOPES = 2000;
 
-/** Under nginx's 16 MB limit on the batch route, with room to spare. */
-const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
-
 // A double-quoted Lua string: anything but a quote or backslash, or a backslash and whatever
 // it escapes, a real newline included (Lua's own %q writes one after a backslash). The game
 // writes double quotes only, so long brackets and single quotes are not looked for.
@@ -84,29 +81,6 @@ export function decodeLuaString(body: string): string {
     offset += part.length;
   }
   return decoder.decode(joined);
-}
-
-/** Splits envelopes, in order, into requests the batch route will take. */
-export function chunksOf(
-  envelopes: readonly string[],
-  maxCount = MAX_ENVELOPES,
-  maxBytes = MAX_REQUEST_BYTES,
-): string[][] {
-  const out: string[][] = [];
-  let current: string[] = [];
-  let bytes = 0;
-  for (const envelope of envelopes) {
-    const size = encoder.encode(envelope).length + 4;
-    if (current.length > 0 && (current.length >= maxCount || bytes + size > maxBytes)) {
-      out.push(current);
-      current = [];
-      bytes = 0;
-    }
-    current.push(envelope);
-    bytes += size;
-  }
-  if (current.length > 0) out.push(current);
-  return out;
 }
 
 /** Every distinct envelope in the file, in the order the file holds them. */
