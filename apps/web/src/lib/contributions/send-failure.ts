@@ -1,8 +1,6 @@
 /**
- * What to tell a player whose contribution did not arrive, from the HTTP status alone: an error
- * from Cloudflare or nginx is an HTML page with no body to read. `null` is no response at all.
- *
- * The number is in the text so a player's report can say which failure they met.
+ * From the HTTP status alone: an error from Cloudflare or nginx is an HTML page with no body to
+ * read. `null` is no response at all. The number is in the text so a report can name the failure.
  */
 export function sendFailureMessage(status: number | null): string {
   if (status === null) {
