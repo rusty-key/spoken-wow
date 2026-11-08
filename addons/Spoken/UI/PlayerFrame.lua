@@ -408,7 +408,8 @@ function PlayerFrame:LayoutHeader()
 end
 
 function PlayerFrame:ConfigureActions(clip)
-    self.row = Actions:HeaderControls(self.frame, self.controls, self.buttons, clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls,
+        Actions.WithPause(self.pauseButton, { self.play, self.skip }, clip), clip)
     Actions.LayOutRow(self.controls, self.row, ROUND_GAP)
 end
 

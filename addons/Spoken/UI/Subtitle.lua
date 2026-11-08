@@ -942,7 +942,7 @@ function Subtitle:Corner(clip)
         self.report = nil
     end
     -- As wide as the buttons it shows, so the row stays centred under the subtitle.
-    local count = action and 4 or 3
+    local count = (action and 3 or 2) + (SoundQueue:Resumes(clip) and 1 or 0)
     self.controls:SetWidth(CONTROL_SIZE * count + CONTROL_GAP * (count - 1))
 end
 
@@ -997,6 +997,14 @@ function Subtitle:Wheel(delta)
 end
 
 function Subtitle:UpdatePause()
+    local resumes = SoundQueue:Resumes(self.clip)
+    self.pauseButton:SetShown(resumes)
+    self.pause:ClearAllPoints()
+    if resumes then
+        self.pause:SetPoint("LEFT", self.pauseButton, "RIGHT", CONTROL_GAP, 0)
+    else
+        self.pause:SetPoint("LEFT", self.controls, "LEFT", 0, 0)
+    end
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
     Actions.SetPauseGlyph(self.pauseButton)
     Actions.SetPausable({ self.pauseButton, self.pause, self.skip })

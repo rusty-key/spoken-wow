@@ -279,6 +279,49 @@ Expect("...and kept where it already is", S:PageTimeFor(line, 4, 2.0), 2.0)
 Expect("...and pulled back from the next page", S:PageTimeFor(line, 4, 4.2) < 3.9, true)
 S.clip, S.pages = nil, nil
 
+---------------------------------------------------------------- Pause only where a line is kept as pieces
+Fresh()
+local whole = H.Clip({ length = 5 })
+quests:Enqueue(whole)
+stub.Advance(1.0)
+Q:TogglePauseQueue()
+Expect("a line kept whole is stopped by Pause, as before", Q:HaltedBy() .. " " .. env.Actions.HeadState(), "stop replay")
+Expect("...and says Stopped", env.Actions.HaltWord(), env.L.SUBTITLE_STOPPED)
+
+local function Button()
+    local b = { shown = nil }
+    function b:SetShown(on) self.shown = on end
+    return b
+end
+local pauseButton, stopButton, skipButton = Button(), Button(), Button()
+local row = env.Actions.WithPause(pauseButton, { stopButton, skipButton }, whole)
+Expect("a window shows no Pause for a line kept whole", #row .. " " .. tostring(row[1] == stopButton) .. " " .. tostring(pauseButton.shown), "2 true false")
+row = env.Actions.WithPause(pauseButton, { stopButton, skipButton }, H.Clip({ pieces = "2 3" }))
+Expect("...and Pause first for a line kept as pieces", #row .. " " .. tostring(row[1] == pauseButton) .. " " .. tostring(pauseButton.shown), "3 true true")
+
+local function MenuWords()
+    local words = {}
+    for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(words, entry.text) end
+    return table.concat(words, "|")
+end
+Expect("the minimap menu has no Pause for a line kept whole", MenuWords():find(env.L.BIND_PAUSE, 1, true), nil)
+Fresh()
+quests:Enqueue(H.Clip({ pieces = "2 3" }))
+Expect("...and Pause or Resume first for a line kept as pieces", MenuWords():sub(1, #env.L.BIND_PAUSE + 1), env.L.BIND_PAUSE .. "|")
+
+---------------------------------------------------------------- /sp stops as it always has; /sp pause pauses
+Fresh()
+env.Addon:Enable()
+quests:Enqueue(H.Clip({ pieces = "2 3 1.5" }))
+stub.Advance(3.0)
+_G.SlashCmdList.SPOKEN("")
+Expect("/sp stops", Q:HaltedBy(), "stop")
+_G.SlashCmdList.SPOKEN("")
+_G.SlashCmdList.SPOKEN("pause")
+Expect("/sp pause pauses", Q:HaltedBy(), "pause")
+_G.SlashCmdList.SPOKEN("resume")
+Expect("/sp resume resumes", Q:HaltedBy(), nil)
+
 ---------------------------------------------------------------- on clients in other languages
 for _, case in ipairs({ { "deDE", "Pausiert" }, { "frFR", "En pause" }, { "zhCN", "已暂停" }, { "koKR", "일시정지됨" } }) do
     stub.SetLocale(case[1])

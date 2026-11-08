@@ -279,6 +279,17 @@ function Actions.PauseButton(parent, allowed, after)
     return pause
 end
 
+--- `rest` with the Pause button before it where `clip` is kept as pieces. On a line kept whole Pause
+--- would only do what Stop does, so it is hidden.
+function Actions.WithPause(pause, rest, clip)
+    local shown = SoundQueue:Resumes(clip)
+    pause:SetShown(shown)
+    if not shown then return rest end
+    local row = { pause }
+    for _, button in ipairs(rest) do row[#row + 1] = button end
+    return row
+end
+
 function Actions.SetPauseGlyph(button)
     local state = Actions.PauseState()
     Actions.Glyph(button.glyph, state)

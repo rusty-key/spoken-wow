@@ -120,10 +120,11 @@ function SoundQueue:SetPaused(value)
     end
 end
 
---- "pause" or "stop" while the queue is halted, nil while it is not. A halt nobody named (the
---- client cutting the voice, the public API's Pause) is a pause.
+--- "pause" or "stop" while the queue is halted, nil while it is not. A line kept whole cannot
+--- resume part-way, so its halt is always a stop: until a pack has pieces, Spoken is as it was.
 function SoundQueue:HaltedBy()
     if not self:IsPaused() then return nil end
+    if not self:Resumes(self:GetCurrentSound()) then return "stop" end
     return haltedBy or "pause"
 end
 

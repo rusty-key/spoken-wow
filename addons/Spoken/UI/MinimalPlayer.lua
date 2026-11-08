@@ -223,10 +223,15 @@ function MinimalPlayer:BuildMenu()
 end
 
 --- A row of the menu, `index` rows down; `fn(row)` runs on click while a clip plays.
-function MinimalPlayer:MenuItem(index, fn)
-    local button = CreateFrame("Button", nil, self.menu)
+local function PlaceMenuRow(button, index)
+    button:ClearAllPoints()
     button:SetPoint("TOPLEFT", 10, -8 - (index - 1) * 23)
     button:SetPoint("TOPRIGHT", -10, -8 - (index - 1) * 23)
+end
+
+function MinimalPlayer:MenuItem(index, fn)
+    local button = CreateFrame("Button", nil, self.menu)
+    PlaceMenuRow(button, index)
     button:SetHeight(23)
     button.text = Font(button, 12, 1, .82, 0)
     button.text:SetPoint("LEFT", 4, 0)
@@ -257,8 +262,10 @@ function MinimalPlayer:ActionRow(index)
 end
 
 function MinimalPlayer:ConfigureActions()
-    self.row = Actions:HeaderControls(self.frame, self.controls, self.buttons, self.clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls,
+        Actions.WithPause(self.pauseButton, { self.play, self.skip }, self.clip), self.clip)
     Actions.LayOutRow(self.controls, self.row, ROUND_GAP)
+    self.menuPause:SetShown(SoundQueue:Resumes(self.clip))
     local rows = 0
     for _, button in ipairs(self.frame.actions.buttons) do
         local action = button.action
@@ -272,7 +279,16 @@ function MinimalPlayer:ConfigureActions()
         end
     end
     for index = rows + 1, getn(self.actionRows) do self.actionRows[index]:Hide() end
-    self.menu:SetHeight(8 + (getn(self.menuButtons) + rows) * 23 + 9)
+    -- The rows close up over Pause where it is hidden.
+    local shown = 0
+    for _, button in ipairs(self.menuButtons) do
+        if button:IsShown() then
+            shown = shown + 1
+            PlaceMenuRow(button, shown)
+        end
+    end
+    for index = 1, rows do PlaceMenuRow(self.actionRows[index], shown + index) end
+    self.menu:SetHeight(8 + (shown + rows) * 23 + 9)
 end
 
 function MinimalPlayer:ToggleMenu()

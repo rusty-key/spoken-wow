@@ -378,7 +378,7 @@ function Skin:Initialize()
     local play = Actions.StopButton(self.controls, function() return self:HasClip() end,
         function() self:UpdateControls() end)
     self.play, self.skip = play, Actions.SkipButton(self.controls)
-    self.buttons = { self.pauseButton, self.play, self.skip }
+    self.buttons = { self.play, self.skip }
     Actions:Build(frame)
 
     -- No scrollbar: the captions scroll themselves on the wheel.
@@ -566,7 +566,8 @@ function Skin:ConfigurePortrait()
 end
 
 function Skin:ConfigureActions()
-    self.row = Actions:HeaderControls(self.frame, self.controls, { self.pauseButton, self.play, self.skip }, self.clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls,
+        Actions.WithPause(self.pauseButton, { self.play, self.skip }, self.clip), self.clip)
     self:LayoutControls()
 end
 
@@ -607,6 +608,7 @@ function Skin:UpdateControls(relayout)
     self.tail:SetStopped(paused)
     self:Count(Waiting())
     Actions.SetPausable(self.buttons)
+    Actions.SetPausable({ self.pauseButton })
     if relayout then self:LayoutControls() end
 end
 

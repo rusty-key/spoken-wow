@@ -62,8 +62,8 @@ Spoken Quests, Spoken Zones (now Spoken Places) and Spoken Books are no longer s
 Game Menu → Options → AddOns → **Spoken**, or `/sp settings`.
 
 ```
-/sp            pause or resume the line
-/sp replay     stop, or replay the line from its start
+/sp            stop or replay the line
+/sp pause      pause or resume the line
 /sp skip       skip the current line
 /sp stopall    stop and clear the queue
 /sp compendium open Azeroth's Compendium
