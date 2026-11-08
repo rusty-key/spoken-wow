@@ -45,6 +45,22 @@ local F = env.PlayerFrame
 Expect("quest clips use racial art", F.IsRaceClip({ source = { key = "quests" } }), true)
 Expect("gossip clips use racial art", F.IsRaceClip({ source = { key = "gossip" } }), true)
 Expect("place clips keep their original art", F.IsRaceClip({ source = { key = "places" } }), false)
+local savedRaceVoiceOver = _G.VoiceOver
+_G.VoiceOver = { DataModules = { GetModules = function()
+    return ipairs({ { NPCBodiesByNPCID = {
+        [15102] = { ["nightelf-female"] = true },
+    } } })
+end } }
+local silverwingLook = F.RaceLook({ source = { key = "gossip" }, present = {
+    header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 },
+} })
+Expect("Silverwing Emissary uses the Night Elf metadata", silverwingLook ~= nil, true)
+local itemLook = F.RaceLook({ source = { key = "quests" }, unitIsObjectOrItem = true,
+    text = "The Night Elves left a radiant shard.", present = {
+        header = "Radiant Shard", portrait = { kind = "texture", texture = "item" },
+    } })
+Expect("an item never receives racial art", itemLook, nil)
+_G.VoiceOver = savedRaceVoiceOver
 Expect("the frame exists after Enable", F.frame ~= nil, true)
 Expect("hidden while the queue is empty", F.frame:IsShown(), false)
 local a = H.Clip({ present = { header = "Eagan Peltskinner", label = "Wolves Across the Border",

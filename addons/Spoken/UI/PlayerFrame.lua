@@ -354,6 +354,9 @@ end
 local function SpeakerRace(clip, modelFileID)
     local present = clip and clip.present
     local portrait = present and present.portrait
+    -- Items and game objects use a texture portrait and must never inherit a race from their
+    -- quest text, the current target, or a previous NPC line.
+    if clip.unitIsObjectOrItem or (portrait and portrait.kind == "texture") then return end
     local wanted = portrait and portrait.unitGUID or clip and clip.unitGUID
     local units = {}
     local exact = UnitForGUID(wanted)
