@@ -128,7 +128,7 @@ function bookLabels(books: readonly BookChoice[]): BookLabels {
 }
 
 /** What a moderator says a readables row is, as api/contributions/page takes it; null clears it. */
-type MatchAnswer = { bookId: string; pageNumber: number } | { newBook: true } | null;
+type MatchAnswer = { lineId: string } | { bookId: string; pageNumber: number } | { newBook: true } | null;
 
 const STATUS_LABELS: Record<ContributionStatus, string> = {
   new: "New",
@@ -1201,6 +1201,45 @@ function MatchCell({
           {book.label}
         </span>
       )}
+      {book.candidates.length > 0 ? (
+        <ul className="flex max-h-56 max-w-[14rem] flex-col gap-2 overflow-y-auto whitespace-normal">
+          {book.candidates.map((candidate) => (
+            <li key={candidate.key} className="border-l pl-2">
+              <div className="flex flex-wrap items-baseline gap-x-1">
+                {candidate.href ? (
+                  <a href={candidate.href} className="hover:underline">
+                    {candidate.label}
+                  </a>
+                ) : (
+                  <span>{candidate.label}</span>
+                )}
+                <span className="text-muted-foreground">#{candidate.bookId}</span>
+                {candidate.owner ? (
+                  <a
+                    href={wowheadEntityUrl(candidate.owner.kind === "object" ? "gameobject" : "item", candidate.owner.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:underline"
+                  >
+                    {candidate.owner.kind} {candidate.owner.id} wh↗
+                  </a>
+                ) : null}
+              </div>
+              {candidate.excerpt ? <p className="text-muted-foreground line-clamp-2">{candidate.excerpt}</p> : null}
+              {locked ? null : (
+                <LiteButton
+                  variant="outline"
+                  className="mt-0.5 h-6 px-2 text-xs"
+                  disabled={busy}
+                  onClick={() => onSave(candidate.answer)}
+                >
+                  This one
+                </LiteButton>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {locked ? null : (
         <form
           className="flex flex-wrap items-center gap-1"
@@ -1232,6 +1271,17 @@ function MatchCell({
           <LiteButton type="submit" variant="outline" className="h-7 px-2 text-xs" disabled={busy || !valid}>
             Match
           </LiteButton>
+          {book.match.kind !== "new-book" ? (
+            <LiteButton
+              variant="ghost"
+              className="h-7 px-1.5 text-xs"
+              disabled={busy}
+              title="None of these: accepting this row starts a new book"
+              onClick={() => onSave({ newBook: true })}
+            >
+              New book
+            </LiteButton>
+          ) : null}
           {moderated ? (
             <LiteButton variant="ghost" className="h-7 px-1.5 text-xs" disabled={busy} onClick={() => onSave(null)}>
               Clear
