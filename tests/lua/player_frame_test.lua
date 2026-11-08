@@ -110,6 +110,13 @@ _G.VoiceOver = { DataModules = { GetModules = function()
 end } }
 local modelLook = F.RaceLook({ present = { header = "Eagan Peltskinner" } }, 12345)
 Expect("a loaded quest portrait model supplies the speaker race", modelLook ~= nil, true)
+_G.VoiceOver = { DataModules = { GetModules = function()
+    return ipairs({ { FollowupLookupByNPCBody = {
+        [3583] = { [1211] = "1211-nightelf-male-official" },
+    } } })
+end } }
+local bodyLook = F.RaceLook({ present = { portrait = { creatureID = 3583 } } })
+Expect("quest body metadata supplies a race without a generic NPC entry", bodyLook ~= nil, true)
 _G.VoiceOver = oldVoiceOver
 
 -- A quest event with no title, neither a greeting nor gossip, has an empty label.

@@ -231,7 +231,7 @@ local function RaceFromText(text, faction)
     end
 end
 
-local function RaceFromCreature(creature, faction)
+local function RaceFromCreature(creature, faction, clip)
     if not creature then return end
     local dataModules = VoiceOver and VoiceOver.DataModules
     if not dataModules or not dataModules.GetModules then return end
@@ -241,6 +241,27 @@ local function RaceFromCreature(creature, faction)
         if bodies then
             for body in pairs(bodies) do
                 race = RaceFromText(body, faction)
+                if race then return race end
+            end
+        end
+        local fileBodies = clip and clip.fileName and module.QuestFileLookupByNPCBody
+            and module.QuestFileLookupByNPCBody[clip.fileName]
+        local fileBody = fileBodies and fileBodies[creature]
+        race = RaceFromText(fileBody, faction)
+        if race then return race end
+        local gossipBodies = module.GossipFileLookupByNPCBody
+            and module.GossipFileLookupByNPCBody[creature]
+        if gossipBodies then
+            for body in pairs(gossipBodies) do
+                race = RaceFromText(body, faction)
+                if race then return race end
+            end
+        end
+        local followups = module.FollowupLookupByNPCBody
+            and module.FollowupLookupByNPCBody[creature]
+        if followups then
+            for _, file in pairs(followups) do
+                race = RaceFromText(file, faction)
                 if race then return race end
             end
         end
@@ -382,7 +403,7 @@ local function SpeakerRace(clip, modelFileID)
         local ok, id = pcall(VoiceOver.Utils.GetCreatureIDFromGUID, VoiceOver.Utils, clip.unitGUID)
         creature = ok and id
     end
-    race = RaceFromCreature(creature, faction)
+    race = RaceFromCreature(creature, faction, clip)
     if race then return race end
 
     -- Quest-log and tracker buttons can carry a synthetic GUID with no live questnpc unit. Once
