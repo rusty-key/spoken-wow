@@ -17,7 +17,7 @@
 
 const ENVELOPE_PREFIX = "!SPOKEN";
 
-/** Gather.lua's CAP: the most a file the addon wrote can hold, and so the most one upload takes. */
+/** Gather.lua's CAP, and the most one request to the batch route takes. */
 export const MAX_ENVELOPES = 2000;
 
 // A double-quoted Lua string: anything but a quote or backslash, or a backslash and whatever
