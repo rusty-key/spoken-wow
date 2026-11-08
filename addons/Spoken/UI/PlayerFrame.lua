@@ -107,7 +107,8 @@ local RACIAL_ART = {
         edge = TEXTURES .. "RaceTrim/OrcEdge",
         edgeV = TEXTURES .. "RaceTrim/OrcEdgeV",
         join = TEXTURES .. "RaceTrim/OrcJoin",
-        tint = { .08, .03, .02, .72 },
+        -- Orc's dark red wash reinforces the rugged metal trim without becoming too bright.
+        tint = { .16, .04, .03, .72 },
     },
     Tauren = {
         edge = TEXTURES .. "RaceTrim/TaurenEdge",

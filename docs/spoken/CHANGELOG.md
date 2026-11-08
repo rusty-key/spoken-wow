@@ -81,8 +81,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   resort. Gnome windows use a lighter, translucent steel-blue wash so their background fade stays
   visible, Dwarf windows use a warmer bronze wash to match their metal trim, Gnome windows use a
   lighter muted gunmetal wash, Night Elf windows retain their violet tone, Tauren windows use a
-  lighter ochre-brown against their gold trim, Troll windows use a muted earthy burgundy, and
-  every race uses the same translucent wash strength so the fade remains visible.
+  lighter ochre-brown against their gold trim, Troll windows use a muted earthy burgundy, Orc
+  windows use a restrained dark red, and every race uses the same translucent wash strength so the
+  fade remains visible.
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.8.3 — 2026-11-05
