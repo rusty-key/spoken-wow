@@ -19,4 +19,8 @@ describe("sendFailureMessage", () => {
     expect(sendFailureMessage(413)).toContain("error 413");
     expect(sendFailureMessage(400)).toContain("error 400");
   });
+
+  it("names the route's own error when it sent one", () => {
+    expect(sendFailureMessage(400, "checksum")).toContain("error 400: checksum");
+  });
 });

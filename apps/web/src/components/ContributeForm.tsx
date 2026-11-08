@@ -157,7 +157,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     setError(
       failure?.error === "describe"
         ? `Describe the place in a sentence or two -- at least ${DESCRIPTION_MIN} characters.`
-        : sendFailureMessage(response?.status ?? null),
+        : sendFailureMessage(response?.status ?? null, failure?.error),
     );
   }
 
