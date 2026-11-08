@@ -311,7 +311,7 @@ local playerTop=M.frame:GetTop()
 local extra={}
 for i=1,6 do extra[i]=Clip('extra'..i,'Later dialogue',10); source:Enqueue(extra[i]) end
 M:UpdateControls()
-Check(M.count:IsShown() and M.count:GetText()=='• +6' and M.drawer==nil,'the title counts the lines waiting, with no list of them')
+Check(M.count:IsShown() and M.count:GetText()=='· +6' and M.drawer==nil,'the title counts the lines waiting, with no list of them')
 T.expand:Fire('OnClick')
 Check(T.frame:GetBottom()>M.panel:GetBottom() and M.progress.track:GetBottom()>M.panel:GetBottom(),
     'the panel encloses expanded captions and the progress line under them')
@@ -511,7 +511,7 @@ do
     local _,_,_,nameX=S.title:GetPoint(1)
     Check(pictureX<nameX,'...before the name')
 end
-Check(S.dot:GetText()=='•' and select(2,S.dot:GetPoint(1))==S.title,'a dot follows the name')
+Check(S.dot:GetText()=='·' and select(2,S.dot:GetPoint(1))==S.title,'a dot follows the name')
 Check(S.label:GetText()=='Quest sub' and select(2,S.label:GetPoint(1))==S.dot,"...and the quest's title the dot")
 Check(S.frame:GetAlpha()==0 and Typed():gsub('%s','')=='','a new line fades in and types from nothing')
 Check(math.abs(S.frame:GetCenter()-UIParent:GetWidth()/2)<.001,'the subtitle is centred until moved')

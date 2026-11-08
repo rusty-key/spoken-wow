@@ -50,7 +50,7 @@ local WINDOW_WIDTH = 920
 local WINDOW_HEIGHT = 600
 local WINDOW_MIN_HEIGHT = 360
 -- Room for the longest zone name in any language (Portuguese's Cordilheira das Torres de
--- Pedra) beside its count, found out of all and the share: 27/27 • 100%.
+-- Pedra) beside its count, found out of all and the share: 27/27 · 100%.
 local LIST_WIDTH = 345
 -- The narrowest the page beside the list lays out at.
 local PAGE_MIN_WIDTH = 278
@@ -1026,7 +1026,7 @@ local function Numbers(item, total, ratio, ticked)
 	if total <= 0 then return "" end
 	local numbers = Number(item.count) .. "/" .. Number(total)
 	if not ticked then
-		numbers = numbers .. string.format(" \226\128\162 %d%%", math.floor(100 * ratio + 1e-6))
+		numbers = numbers .. string.format(" \194\183 %d%%", math.floor(100 * ratio + 1e-6))
 	end
 	local going = item.goingCount or 0
 	if going > 0 then numbers = "|T" .. ACTIVE .. ":12:12:0:0|t" .. Number(going) .. "   " .. numbers end
