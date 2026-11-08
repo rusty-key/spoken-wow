@@ -484,6 +484,10 @@ other line, but nothing will voice it, so it is not a gap to close.
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
 known level is in no range, so setting either bound hides gossip and quests the extract lacks.
 
+**The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
+that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
+from the page uses it too.
+
 **Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
 Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
 lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking
