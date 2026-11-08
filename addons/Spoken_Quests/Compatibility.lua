@@ -519,15 +519,26 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
 
 end
 
--- Play on the objective tracker's quests, at the right end of each quest's title as the quest log has
--- it: the same square button. The tracker pools its blocks, so a block keeps one button and rebinds it
--- to the quest it shows. Where the client has no such tracker nothing is hooked. A setting on the
--- Quests page takes them all away.
+-- Play on the objective tracker's quests. The tracker pools its blocks, so a block keeps one button
+-- and rebinds it to the quest it shows.
 do
     local MODULES = { "QuestObjectiveTracker", "CampaignQuestObjectiveTracker" }
     -- The quest log's tracking checkbox, as it draws on this client (what its Play button matches).
     local BOX, SIZE = "QuestLog-icon-ticksquare", 14
     local buttons, hooked = {}, {}
+
+    -- Writing the block's right edge offset from addon code taints what the client reads to set up
+    -- the item button, which can block a click on the item. So Play reserves no room: it can reach
+    -- past a short block, or cover a long title on a quest with no button.
+    local function Place(block, button)
+        local edge = block.rightEdgeFrame
+        button:ClearAllPoints()
+        if edge and edge:IsShown() then
+            button:SetPoint("TOPRIGHT", edge, "BOTTOMRIGHT", 0, -2)
+        else
+            button:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
+        end
+    end
 
     local function Dress(block)
         local questID = block.id
@@ -555,9 +566,9 @@ do
             back:SetPoint("BOTTOMRIGHT", -1, 1)
             back:SetColorTexture(0, 0, 0, 0.6)
             button:SetFrameLevel(block:GetFrameLevel() + 3)
-            button:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
             buttons[block] = button
         end
+        Place(block, button)
         if button.questID ~= questID then button.soundData = nil end
         QuestOverlayUI:BindPlayButton(button, questID, C_QuestLog.GetTitleForQuestID(questID) or "",
             "the objective tracker's Play button")

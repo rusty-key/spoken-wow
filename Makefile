@@ -61,6 +61,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/gossip_frequency_test.lua
 	@$(LUA) tests/lua/gossip_variant_test.lua
 	@$(LUA) tests/lua/quest_overlay_test.lua
+	@$(LUA) tests/lua/tracker_play_button_test.lua
 	@$(LUA) tests/lua/quest_overlay_classic_test.lua
 	@$(LUA) tests/lua/quest_tracker_adapters_test.lua
 	@$(LUA) tests/lua/quest_followup_test.lua
