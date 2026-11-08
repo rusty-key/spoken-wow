@@ -678,6 +678,13 @@ end
 function PlayerFrame:ApplyRaceArt(clip)
     local model = self.frame.portrait.model
     local modelFileID = ModelFileID(model)
+    if not modelFileID then
+        local portrait = clip and clip.present and clip.present.portrait
+        local creature = portrait and portrait.creatureID
+        if creature and StaticPortrait and StaticPortrait.GetModelFileID then
+            modelFileID = StaticPortrait:GetModelFileID(creature)
+        end
+    end
     local frame, look = self.frame, IsQuestClip(clip) and RaceLook(clip, modelFileID) or nil
     frame.raceBorderFrame:SetShown(look ~= nil)
     frame.raceTint:SetShown(look ~= nil)

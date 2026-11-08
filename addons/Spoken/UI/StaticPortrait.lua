@@ -63,7 +63,7 @@ end
 -- rather than waiting for a timer; one that never replies keeps the book. `asked` holds when
 -- a creature was first and last asked: the watcher below captures on every mouseover, and
 -- each of those must not become another SetCreature.
-local displays, asked = {}, {}
+local displays, asked, modelFileIDs = {}, {}, {}
 local RETRY_SECONDS = 0.05
 local GIVE_UP_SECONDS = 5
 
@@ -157,6 +157,10 @@ local function DisplayFor(creature)
     local model = TakeModel(creature)
     if not model then return end
     local display = model:GetDisplayInfo()
+    if model.GetModelFileID then
+        local fileID = model:GetModelFileID()
+        if type(fileID) == "number" and fileID > 0 then modelFileIDs[creature] = fileID end
+    end
     local answered = type(display) == "number" and display > 0
     local own, blank
     if answered then own, blank = Defaults() end
@@ -180,6 +184,11 @@ end
 --- over by the click. Returns the creature's appearance once the client has it, else nil.
 function StaticPortrait:Prime(creature)
     return DisplayFor(creature)
+end
+
+--- The model file used for a creature's cached quest-log portrait, when the client exposed it.
+function StaticPortrait:GetModelFileID(creature)
+    return modelFileIDs[creature]
 end
 
 --- Whether the creature the viewport fell back to the book for has an appearance now. Asked

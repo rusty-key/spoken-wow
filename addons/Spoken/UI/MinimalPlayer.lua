@@ -344,6 +344,13 @@ end
 function MinimalPlayer:ApplyRaceArt()
     local isQuest = PlayerFrame.IsQuestClip and PlayerFrame.IsQuestClip(self.clip)
     local modelFileID = PlayerFrame.ModelFileID and PlayerFrame.ModelFileID(self.viewport and self.viewport.model)
+    if not modelFileID then
+        local portrait = self.clip and self.clip.present and self.clip.present.portrait
+        local creature = portrait and portrait.creatureID
+        if creature and StaticPortrait and StaticPortrait.GetModelFileID then
+            modelFileID = StaticPortrait:GetModelFileID(creature)
+        end
+    end
     local look = isQuest and PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip, modelFileID) or nil
     local themed = look ~= nil and self.panel.spokenEllesmere ~= true
     if self.raceThemed ~= themed then
