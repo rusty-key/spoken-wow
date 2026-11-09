@@ -170,7 +170,7 @@ local function CoreStory(map, key)
 	return text, language
 end
 
--- A boss's story as it shows: a pack's words in the client's language first, on a boss core has.
+-- A pack's words win only on a boss core already has.
 local function Story(map, key)
 	local text, language = CoreStory(map, key)
 	if not text then return nil end

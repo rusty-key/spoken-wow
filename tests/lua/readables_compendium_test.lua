@@ -552,8 +552,6 @@ do
     stub.world.playerName, stub.world.playerClass, stub.world.unitSex = nil, nil, 2
     B:ShowReadables(KURDRAN)
 end
--- An English pack's words show on an English client, over the corpus; an English pack on a client
--- in another language changes nothing.
 do
     local first = SpokenReadablesData.books[KURDRAN].pages[1]
     local packs, locale = _G.SpokenReadablesAudioPacks, _G.GetLocale

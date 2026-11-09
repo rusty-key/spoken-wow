@@ -67,7 +67,7 @@ export type TakeFields = {
   createdBy?: string | null;
   /** One start per word the addon shows, in seconds (lib/generation/word-times.ts). */
   wordTimes?: number[] | null;
-  /** The words as players read them (lib/generation/files.ts shownTextOf). A pack shows these. */
+  /** Never a rewrite or a pronunciation spelling: a pack shows these to players. */
   shownText?: string | null;
 };
 

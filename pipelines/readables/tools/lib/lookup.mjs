@@ -103,8 +103,7 @@ export function packLua(lang, clips, entries = null) {
     // Null only for a take imported from a store this app did not cut. Written as 0 so
     // the addon can tell "unknown" from "short" and fall back to its own timer.
     const len = row.durationSec === null ? 0 : row.durationSec;
-    // What the pack shows: the words the take was voiced from, else the page's today. English's
-    // too, about 440 KB more, or an English reader sees Books.lua over a newer voice.
+    // English's too, about 440 KB more, or an English reader sees Books.lua over a newer voice.
     const words = row.shownText ?? (row.text == null ? null : shownPage(row.text, lang));
     const text = words ? `, text = ${quote(words)}` : "";
     // Absent for a take with no times: the captions then estimate.

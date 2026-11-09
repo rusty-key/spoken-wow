@@ -36,8 +36,7 @@ export function fields(row) {
   return `file = ${luaPath(row.file)}, len = ${row.len}${times}${text}`;
 }
 
-// What the pack shows: the words the take was voiced from, else the line's today. With neither the
-// field is left out, and the addon falls back to its own lore.
+// With neither text the field is left out, and the addon falls back to its own lore.
 export function packRow(record, currentText) {
   return {
     file: record.file,

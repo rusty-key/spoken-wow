@@ -60,7 +60,6 @@ function Bosses:PackNames()
 	return names
 end
 
---- The words a pack in `language` carries for a boss's story, or nil.
 function Bosses:PackStoryText(map, key, language)
 	for _, pack in ipairs(self:GetAudioPacks(language)) do
 		local entry = pack.bosses and pack.bosses[map] and pack.bosses[map][key]

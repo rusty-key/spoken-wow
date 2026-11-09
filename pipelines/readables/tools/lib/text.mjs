@@ -105,10 +105,7 @@ export function spokenText(text) {
     .replace(ENTITY, (_, name) => ENTITIES[name]);
 }
 
-/**
- * A page as a pack shows it: the words the narrator was given, tokens as the voice says them and
- * paragraphs kept, because spokenText's single flowing line reads badly on screen.
- */
+/** Paragraphs kept, because spokenText's single flowing line reads badly on screen. */
 export function shownPage(text, lang) {
   return normaliseText(speakPlayerTokens(text, lang))
     .replace(NAME_PLACEHOLDER, " ")

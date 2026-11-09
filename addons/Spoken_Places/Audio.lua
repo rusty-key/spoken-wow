@@ -387,8 +387,7 @@ local function ClipIn(pack, mapID, areaKey)
 	return pack.zones and pack.zones[mapID]
 end
 
---- The words a pack in `language` carries for a place, or nil. Kept out of the lore tables, which
---- the Text Language switch reads and packs may load after: this is display only.
+--- Kept out of the lore tables, which the Text Language switch reads and packs may load after.
 function SpokenPlaces:PackLoreText(mapID, areaKey, language)
 	for _, pack in ipairs(self:GetAudioPacks(language)) do
 		local clip = ClipIn(pack, mapID, areaKey)

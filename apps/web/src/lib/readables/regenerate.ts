@@ -50,8 +50,7 @@ export async function regenerateBookLine(
 
   return regenerateNarrated(
     "readables",
-    // The caption the addon shows is the page's markup and $B breaks cleaned the same way, and word
-    // times count on whitespace, so its paragraphs change nothing.
+    // Word times count on whitespace, so this form's paragraphs change nothing.
     { lineId: page.id, file: page.file, spoken: page.spoken, shown: shownPage(page.text, lang), hash: page.hash },
     createdBy,
     { ...options, lang },

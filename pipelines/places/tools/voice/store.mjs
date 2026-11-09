@@ -147,10 +147,7 @@ async function loadFromDatabase() {
   return manifest;
 }
 
-/**
- * This language's lore today by line id, for a take with no words of its own. From the table, as
- * the committed lore files can lag it. Empty with no database: those takes then ship no words.
- */
+/** From the table, as the committed lore files can lag it. With no database those takes ship no words. */
 export async function loadCurrentLore() {
   if (!db.isEnabled()) return new Map();
   const { rows } = await db.query(

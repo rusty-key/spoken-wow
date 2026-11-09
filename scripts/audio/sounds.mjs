@@ -171,7 +171,6 @@ async function writeWordTimes() {
   await writeFile(join(paths.out, "word-times.json"), `${JSON.stringify(times)}\n`);
 }
 
-// What each clip's pack shows: what its take was voiced from, else its line's words today.
 async function writeTakeText() {
   const rows = psql(CURRENT_TEXT_SQL).map((row) => {
     const [stem, text, playerGender] = row.split("\t");
