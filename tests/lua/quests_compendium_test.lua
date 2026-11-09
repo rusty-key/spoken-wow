@@ -1397,15 +1397,11 @@ stub.SetLocale("esMX")
 -- seam without making the main addon load a locale's export, or every locale at once.
 SpokenQuestsLocalizedText = {
     esMX = {
-        [2] = { accept = "El poderoso hipogrifo Garfafilada ha sido asesinado." },
         [47] = {
             title = "Intercambio de polvo de oro",
             accept = "Los kóbolds de esa zona a veces llevan polvo de oro.",
             complete = "Gracias por el Polvo de oro, Tester.",
         },
-    },
-    esES = {
-        [47] = { accept = "Los kobolds de esa zona a veces llevan polvo de oro." },
     },
 }
 C:Tab("quests").unlock.set(true)
@@ -1416,10 +1412,6 @@ local spanishWords = PageWords() or ""
 Expect("Spanish quest title uses the localized fallback", page.title.text, "Intercambio de polvo de oro")
 Expect("...and its description is localized", spanishWords:find("Los kóbolds de esa zona", 1, true) ~= nil, true)
 Expect("...and its conclusion is localized", spanishWords:find("Gracias por el Polvo de oro, Tester.", 1, true) ~= nil, true)
-Expect("the esMX corpus wording overrides the esES wording",
-    SpokenQuestsLocalizedText.esMX[2].accept:find("ha sido asesinado", 1, true) ~= nil, true)
-Expect("the esES table keeps its own locale wording",
-    SpokenQuestsLocalizedText.esES[47].accept:find("Los kobolds de esa zona", 1, true) ~= nil, true)
 
 stub.SetLocale("enUS")
 SpokenQuestsLocalizedText = nil

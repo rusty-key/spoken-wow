@@ -83,8 +83,6 @@ clxt = subparsers.add_parser(
 clxt.add_argument("--lang", required=True, help="e.g. esMX")
 clxt.add_argument("--out", required=True,
                    help="e.g. build/quests/esMX/compendium-text.json.gz")
-clxt.add_argument("--compendium", default=None,
-                   help="Compendium.lua to restrict the export to its quest ids")
 clxt.add_argument("--corpus", default=DEFAULT_CORPUS_PATH)
 
 gvn = subparsers.add_parser(
@@ -200,7 +198,7 @@ elif args.mode == "export-locale-text":
 
 elif args.mode == "export-compendium-locale-text":
     from tts_cli.corpus_db import export_compendium_locale_text
-    export_compendium_locale_text(args.lang, args.out, args.compendium, args.corpus)
+    export_compendium_locale_text(args.lang, args.out, args.corpus)
 
 elif args.mode == "export-giver-names":
     from tts_cli.corpus_db import export_giver_names

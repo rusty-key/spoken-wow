@@ -83,6 +83,22 @@ def left_out(corpus: dict, ignored=(), removed=()) -> set:
     return out | {quest for quest, every in ignored_only.items() if every}
 
 
+def select_moments(moments: dict, has_english_moment: bool = False) -> dict:
+    """{moment: text} from {source: [each line's text]}: the wording most lines have, the first
+    on a tie. Progress stands in as the offer only for a quest with neither moment, which a
+    translation lacking them is not when `has_english_moment`."""
+    if PROGRESS in moments and not has_english_moment \
+            and not any(moment in moments for moment in MOMENTS):
+        moments = {"accept": moments[PROGRESS]}
+    out = {}
+    for moment in MOMENTS:
+        if moment in moments:
+            counts = Counter(moments[moment])
+            # max keeps the first of equals, and a Counter keeps the order texts were met in.
+            out[moment] = max(counts, key=counts.get)
+    return out
+
+
 def quest_text(corpus: dict, ignored=(), removed=(), amounts=None) -> dict:
     """{questID: {moment: text}} for every quest the corpus has words for, save those
     left_out. `amounts` is objective_amounts'."""
@@ -96,17 +112,7 @@ def quest_text(corpus: dict, ignored=(), removed=(), amounts=None) -> dict:
         text = fill_amounts(text, (amounts or {}).get(line["questId"]))
         if text:
             texts.setdefault(line["questId"], {}).setdefault(moment, []).append(text)
-    out = {}
-    for quest, moments in texts.items():
-        if not any(moment in moments for moment in MOMENTS):
-            moments = {"accept": moments[PROGRESS]}
-        out[quest] = {}
-        for moment in MOMENTS:
-            if moment in moments:
-                counts = Counter(moments[moment])
-                # max keeps the first of equals, and a Counter keeps the order texts were met in.
-                out[quest][moment] = max(counts, key=counts.get)
-    return out
+    return {quest: select_moments(moments) for quest, moments in texts.items()}
 
 
 def lua_string(text: str) -> str:

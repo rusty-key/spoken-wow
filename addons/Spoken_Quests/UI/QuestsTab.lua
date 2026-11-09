@@ -114,7 +114,7 @@ end
 local function Localized(id)
     local localized = _G.SpokenQuestsLocalizedText
     localized = localized and localized[Locale()]
-    return localized and localized[id] or nil
+    return localized and localized[id]
 end
 
 local function Global()
@@ -158,12 +158,13 @@ local titles, asked = {}, {}
 local function Title(id, ask)
     local localized = Localized(id)
     local quest = Quests()[id]
+    local englishTitle = quest and quest[1]
     -- QUEST_DETAIL can cache the English title before the Compendium is opened. Do not let
     -- that transient cache hide a shipped title for a client whose quest window is English.
-    if titles[id] and not (localized and quest and titles[id] == quest[1]) then return titles[id] end
+    if titles[id] and not (localized and titles[id] == englishTitle) then return titles[id] end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
-    if title and quest and title == quest[1] then title = nil end
+    if title == englishTitle then title = nil end
     title = title or localized and localized.title
     if not title and Locale() ~= "enUS" and C_QuestLog and C_QuestLog.GetTitleForQuestID then
         title = C_QuestLog.GetTitleForQuestID(id)
@@ -176,7 +177,7 @@ local function Title(id, ask)
         titles[id] = title
         return title
     end
-    return quest and quest[1] or tostring(id)
+    return englishTitle or tostring(id)
 end
 
 local function SortName(sort)
@@ -980,14 +981,14 @@ local function Stored(id, moment)
     local kept = Kept()
     kept = kept and kept[id]
     local own = kept and kept[moment]
-    local text = localized and localized[moment] or english[moment]
+    local localizedText = localized and localized[moment]
+    local text = localizedText or english[moment]
     -- If the corpus has no translation, the client shows English and keeping that fallback
     -- would only duplicate the English table.
-    local hasLocalizedFallback = localized and localized[moment]
     if type(own) == "table" and own.text then
         -- Kept words have the client's line breaks and $G already filled, so both sides are
         -- filled to compare: the raw English never equals them.
-        local isEnglishCopy = hasLocalizedFallback and english[moment]
+        local isEnglishCopy = localizedText and english[moment]
             and QuestsTab:Fill(own.text) == QuestsTab:Fill(english[moment])
         if not isEnglishCopy and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
             text = own.text
@@ -1049,7 +1050,12 @@ end
 -- Whether the page has words to show: the offer's, or the hand-in's where it shows. Looks at the
 -- stored text only, so a row can ask it on every render.
 function QuestsTab:HasWords(id)
-    return Stored(id, "accept") ~= nil or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
+    local localized = Localized(id)
+    -- Shipped words settle it without Stored's comparison, which fills both texts per row.
+    local function Has(moment)
+        return (localized and localized[moment]) ~= nil or Stored(id, moment) ~= nil
+    end
+    return Has("accept") or (Shows(id, "complete") and Has("complete"))
 end
 
 -- Who says one moment of a quest: the hand-in is said by the one it is handed

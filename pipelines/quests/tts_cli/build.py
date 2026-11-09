@@ -403,6 +403,12 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
             for kind, (filename, table_name) in LOCALE_TABLES.items()}
 
 
+def client_locale_guard(lang: str) -> str:
+    """The Lua line that stops a file on a client in any other language."""
+    return ("if not VoiceOver.Language or "
+            f'VoiceOver.Language:GetClientLanguage() ~= "{lang}" then return end\n')
+
+
 def write_lua_table(path: str, module_name: str, table_name: str, data,
                     lang: str = None) -> None:
     """One generated table. With `lang`, a copy that exists only on a client in that locale.
@@ -416,8 +422,7 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
         f.write(GUARD + "\n")
         target = f"{module_name}.{table_name}"
         if lang:
-            f.write("if not VoiceOver.Language or "
-                    f'VoiceOver.Language:GetClientLanguage() ~= "{lang}" then return end\n')
+            f.write(client_locale_guard(lang))
             f.write(f"{module_name}.ClientLocaleLookups = "
                     f"{module_name}.ClientLocaleLookups or {{}}\n")
             target = f"{module_name}.ClientLocaleLookups.{table_name}"
@@ -426,7 +431,7 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
         f.write("\n")
 
 
-def write_compendium_text(path: str, lang: str, data: dict) -> None:
+def write_compendium_lua(path: str, lang: str, data: dict) -> None:
     """Write localized Compendium wording guarded by the client's locale.
 
     This is deliberately a global: the Compendium is part of Spoken, while the data is
@@ -435,8 +440,7 @@ def write_compendium_text(path: str, lang: str, data: dict) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(GUARD + "\n")
-        f.write("if not VoiceOver.Language or "
-                f'VoiceOver.Language:GetClientLanguage() ~= "{lang}" then return end\n')
+        f.write(client_locale_guard(lang))
         f.write("SpokenQuestsLocalizedText = SpokenQuestsLocalizedText or {}\n")
         f.write(f'SpokenQuestsLocalizedText["{lang}"] = {{\n')
         # Not lua.encode: slpp leaves backslashes as they are, and one in a quest's text makes
@@ -542,11 +546,11 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
             locale_rows[f"{language}/{filename}"] = len(data)
 
     if compendium_text is not None:
-        filename = "compendium_localized_quest_text.lua"
-        write_compendium_text(os.path.join(generated_dir, language, filename), language,
-                              compendium_text)
-        written.append(f"{language}\\{filename}")
-        locale_rows[f"{language}/compendium_localized_quest_text"] = len(compendium_text)
+        filename = "compendium_localized_quest_text"
+        write_compendium_lua(os.path.join(generated_dir, language, filename + ".lua"), language,
+                             compendium_text)
+        written.append(f"{language}\\{filename}.lua")
+        locale_rows[f"{language}/{filename}"] = len(compendium_text)
 
     # Durations come from the copied files, so the table can never disagree with them; a store of
     # pointers has none to read, and lists what take_encoding recorded when the Ogg was made.

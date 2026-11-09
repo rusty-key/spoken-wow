@@ -110,15 +110,9 @@ if [ "$CLIENT_LANGUAGE" = no ]; then
   LOCALE_TEXT=""
   COMPENDIUM_TEXT=""
 fi
-if [ "$LANGUAGE" != enUS ] && [ -n "$LOCALE_TEXT" ] && [[ " $PACKS " == *" gossip "* ]] \
-    && [ ! -f "$LOCALE_TEXT" ]; then
-  echo "error: no $LANGUAGE gossip text at $LOCALE_TEXT -- run: make quests-export-locale-text LOCALE=$LANGUAGE" >&2
-  exit 1
-fi
-if [ "$LANGUAGE" != enUS ] && [ -n "$COMPENDIUM_TEXT" ] && [[ " $PACKS " == *" gossip "* ]] \
-    && [ ! -f "$COMPENDIUM_TEXT" ]; then
-  echo "error: no $LANGUAGE Compendium text at $COMPENDIUM_TEXT -- run: make quests-export-compendium-locale-text LOCALE=$LANGUAGE" >&2
-  exit 1
+if [ "$LANGUAGE" != enUS ] && [ -n "$LOCALE_TEXT" ] && [[ " $PACKS " == *" gossip "* ]]; then
+  [ -f "$LOCALE_TEXT" ] || { echo "error: no $LANGUAGE gossip text at $LOCALE_TEXT -- run: make quests-export-locale-text LOCALE=$LANGUAGE" >&2; exit 1; }
+  [ -f "$COMPENDIUM_TEXT" ] || { echo "error: no $LANGUAGE Compendium text at $COMPENDIUM_TEXT -- run: make quests-export-compendium-locale-text LOCALE=$LANGUAGE" >&2; exit 1; }
 fi
 pack_field() { node "$REPO/scripts/lib/packs.mjs" get quests "$LANGUAGE" "$1" "$2"; }
 
@@ -318,8 +312,7 @@ for pack in $PACKS; do
     title="$(pack_field "$pack" name)"
     version="$(pack_field "$pack" version)"
     language_args=(--language "$LANGUAGE")
-    if [ -n "$LOCALE_TEXT" ] && [ "$pack" = gossip ]; then language_args+=(--locale-text "$LOCALE_TEXT"); fi
-    if [ -n "$COMPENDIUM_TEXT" ] && [ "$pack" = gossip ]; then language_args+=(--compendium-text "$COMPENDIUM_TEXT"); fi
+    if [ -n "$LOCALE_TEXT" ] && [ "$pack" = gossip ]; then language_args+=(--locale-text "$LOCALE_TEXT" --compendium-text "$COMPENDIUM_TEXT"); fi
   fi
 
   echo

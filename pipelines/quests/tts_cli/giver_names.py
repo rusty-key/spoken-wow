@@ -28,6 +28,7 @@ import re
 
 from tts_cli.build import build_tables
 from tts_cli.naming import split_voice
+from tts_cli.quest_text import MOMENTS, PROGRESS
 
 LANG_FILE = re.compile(r"^[a-z]{2}[A-Z]{2}\.lua$")
 
@@ -67,22 +68,15 @@ def givers(corpus: dict, ignored=()) -> dict:
     """
     tables = build_tables(corpus, ignored)
     found = {}
-    for kind, (questlog, names) in PACK_TABLES.items():
-        english = tables[names][1]
+    english_names = {kind: tables[names][1] for kind, (_, names) in PACK_TABLES.items()}
+    for kind, (questlog, _) in PACK_TABLES.items():
         for entity_id in set(tables[questlog][1].values()):
-            found[(kind, str(entity_id))] = english.get(entity_id)
-    english_names = {kind: tables[filename][1]
-                     for kind, filename in (("creature", "npc_name_lookups"),
-                                             ("gameobject", "object_name_lookups"),
-                                             ("item", "item_name_lookups"))}
+            found[(kind, str(entity_id))] = english_names[kind].get(entity_id)
     for line in corpus["lines"]:
-        if line.get("source") not in ("accept", "progress", "complete"):
+        if line.get("source") not in MOMENTS + (PROGRESS,):
             continue
-        if split_voice(line["lineId"])[0] in ignored or not line.get("npcType") \
-                or not line.get("npcId"):
-            continue
-        kind, entity_id = line["npcType"], line["npcId"]
-        if kind in english_names:
+        kind, entity_id = line.get("npcType"), line.get("npcId")
+        if kind in english_names and entity_id and split_voice(line["lineId"])[0] not in ignored:
             found.setdefault((kind, str(entity_id)), english_names[kind].get(entity_id))
     return found
 
