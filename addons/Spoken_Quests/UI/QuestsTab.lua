@@ -155,7 +155,11 @@ end
 -- The client's title once it has one, else the English; asked for once where it is not loaded,
 -- and the list drawn again when it arrives (QUEST_DATA_LOAD_RESULT).
 local titles, asked = {}, {}
+local titlesShipped
 local function Title(id, ask)
+    -- A language pack's table arrives after login; what was cached before it may be English.
+    local shipped = _G.SpokenQuestsLocalizedText
+    if shipped ~= titlesShipped then titles, titlesShipped = {}, shipped end
     if titles[id] then return titles[id] end
     local localized = Localized(id)
     local quest = Quests()[id]
@@ -988,7 +992,8 @@ local function Stored(id, moment)
         -- filled to compare: the raw English never equals them.
         local isEnglishCopy = localizedText and english[moment]
             and QuestsTab:Fill(own.text) == QuestsTab:Fill(english[moment])
-        if not isEnglishCopy and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
+        local variesBySex = (text or ""):find("%$[Gg]") or (english[moment] or ""):find("%$[Gg]")
+        if not isEnglishCopy and not (own.sex ~= Sex() and variesBySex) then
             text = own.text
         end
     end

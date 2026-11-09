@@ -1393,6 +1393,11 @@ Tab:Refresh()
 Expect("...and to a woman, the English, with her word", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)
 stub.world.unitSex = 2
 stub.SetLocale("esMX")
+-- A title asked for before the pack has loaded, while the client still answers in English.
+local clientLog = C_QuestLog
+C_QuestLog = { GetTitleForQuestID = function() return SpokenQuestsCompendium.quests[47][1] end }
+Tab:Title(47)
+C_QuestLog = clientLog
 -- Language packs provide this table. Keeping the fixture here makes the player test cover the
 -- seam without making the main addon load a locale's export, or every locale at once.
 SpokenQuestsLocalizedText = {
@@ -1402,6 +1407,7 @@ SpokenQuestsLocalizedText = {
             accept = "Los kóbolds de esa zona a veces llevan polvo de oro.",
             complete = "Gracias por el Polvo de oro, Tester.",
         },
+        [CANDLES] = { accept = "Hola, gente de bien." },
     },
 }
 C:Tab("quests").unlock.set(true)
@@ -1412,6 +1418,17 @@ local spanishWords = PageWords() or ""
 Expect("Spanish quest title uses the localized fallback", page.title.text, "Intercambio de polvo de oro")
 Expect("...and its description is localized", spanishWords:find("Los kóbolds de esa zona", 1, true) ~= nil, true)
 Expect("...and its conclusion is localized", spanishWords:find("Gracias por el Polvo de oro, Tester.", 1, true) ~= nil, true)
+stub.world.questID = CANDLES
+stub.world.title = "Velas"
+stub.world.questText = "Hola, noble señor."
+stub.FireEvent("QUEST_DETAIL")
+stub.world.questID = 0
+Tab:Open(CANDLES)
+Expect("words kept from a man's window, shown to a man", (PageWords() or ""):find("Hola, noble señor.", 1, true) ~= nil, true)
+stub.world.unitSex = 3
+Tab:Refresh()
+Expect("...and to a woman, the shipped words, not his", (PageWords() or ""):find("Hola, gente de bien.", 1, true) ~= nil, true)
+stub.world.unitSex = 2
 
 stub.SetLocale("enUS")
 SpokenQuestsLocalizedText = nil

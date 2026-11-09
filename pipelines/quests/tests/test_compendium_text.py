@@ -70,6 +70,16 @@ def test_an_ignored_line_is_left_out():
     }
 
 
+def test_a_gendered_translation_of_an_ignored_line_is_left_out():
+    corpus = {"lines": [_line(7, "accept"), _line(7, "complete")]}
+    rows = [_row(7, "accept", "Muerto", "q:7:accept:m"), _row(7, "accept", "Muerta", "q:7:accept:f"),
+            _row(7, "complete", "Entrega")]
+
+    assert localized_quest_text(rows, {}, {7}, corpus, {"q:7:accept": "dead"}) == {
+        7: {"complete": "Entrega"},
+    }
+
+
 def test_objective_amounts_are_written_in():
     corpus = {"lines": [_line(7, "accept")]}
     rows = [_row(7, "accept", "Trae $2oa balas, $1oa flechas y $3oa más.")]

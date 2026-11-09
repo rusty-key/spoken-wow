@@ -8,7 +8,7 @@ from pathlib import Path
 
 from tts_cli.corpus import load_corpus, write_corpus
 from tts_cli.factions import DEFAULT_COMPENDIUM_PATH, compendium_sides
-from tts_cli.naming import split_voice
+from tts_cli.naming import moment_of, split_voice
 from tts_cli.quest_text import (AMOUNT, MOMENTS, PROGRESS, SOURCES, fill_amounts,
                                 objective_amounts, select_moments)
 
@@ -62,8 +62,10 @@ def localized_quest_text(rows: list[dict], names: dict[int, str], quest_ids: set
     for row in rows:
         quest_id = int(row["questId"])
         source = row["source"]
+        # A language's own $G can split a line English has as one, so its ids carry :m and :f.
+        line_id = split_voice(row["lineId"])[0]
         if quest_id not in quest_ids or source not in SOURCES \
-                or split_voice(row["lineId"])[0] in ignored \
+                or line_id in ignored or moment_of(line_id) in ignored \
                 or (source == PROGRESS and quest_id in with_moments):
             continue
         text = clean(row.get("localeText"))

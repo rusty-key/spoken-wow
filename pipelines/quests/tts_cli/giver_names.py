@@ -28,7 +28,7 @@ import re
 
 from tts_cli.build import build_tables
 from tts_cli.naming import split_voice
-from tts_cli.quest_text import SOURCES
+from tts_cli.quest_text import SOURCES, lua_string
 
 LANG_FILE = re.compile(r"^[a-z]{2}[A-Z]{2}\.lua$")
 
@@ -93,13 +93,6 @@ def localized_names(givers: dict, names: dict) -> dict:
             kind, entity_id = key
             table[kind][int(entity_id)] = name
     return table
-
-
-def lua_string(text: str) -> str:
-    """A Lua string literal. slpp leaves backslashes as they are, which a name may hold."""
-    escaped = (text.replace("\\", "\\\\").replace('"', '\\"')
-               .replace("\r", "\\r").replace("\n", "\\n"))
-    return f'"{escaped}"'
 
 
 def render(lang: str, table: dict) -> str:
