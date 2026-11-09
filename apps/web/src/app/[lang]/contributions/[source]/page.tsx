@@ -56,6 +56,7 @@ import {
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import { getResolutions, getResolutionsById, resolutionKey, type NpcRowKind } from "@/lib/npc/store";
 import { BASE_LANG, isClientLang, isLang, langName, localeHref, type Lang } from "@/lib/lang";
+import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { can, isAdmin } from "@/lib/permissions";
 import { lineByPath } from "@/lib/places/catalogue";
@@ -138,8 +139,11 @@ async function bookMatchesFor(contributions: Contribution[]) {
  * moderator or the resolver looked and found no race to assign (a narrator, say). Absent
  * entirely means the envelope never named an NPC at all -- places and readables never do, and a
  * quests envelope keyed on quest+event rather than npc doesn't either.
+ *
+ * `roster` must be the language of every row: a row of another team's would be offered this
+ * team's flavors.
  */
-async function npcFor(contributions: Contribution[]): Promise<Record<number, NpcSummary>> {
+async function npcFor(contributions: Contribution[], roster: Roster): Promise<Record<number, NpcSummary>> {
   const found: Record<number, NpcSummary> = {};
 
   // build and a moderator-chosen kind are columns of their own on a stored contribution, not
@@ -209,11 +213,11 @@ async function npcFor(contributions: Contribution[]): Promise<Record<number, Npc
       o.npcKind !== null
         ? { resolution: resolutions.get(resolutionKey(o.npcKind, o.npcId)), conflict: [] }
         : idOnlyResolution(idOnly.get(o.npcId));
-    found[row.id] = await npcSummaryFrom(
+    found[row.id] = npcSummaryFrom(
+      roster,
       { npcKind: o.npcKind, npcId: o.npcId, npcName: o.npcName },
       lookup.resolution,
       lookup.conflict,
-      isLang(row.locale) ? row.locale : BASE_LANG,
     );
   }
 
@@ -316,10 +320,13 @@ export default async function Page({
 
   // Lines the corpus already has are not this queue's: a different text is a correction, on
   // its own tab, and the same text is nothing to triage at all (known.ts's tabOf).
-  const { listed, states, pending } = await listedWithPending(status, lang, sort, source);
+  const [{ listed, states, pending }, roster] = await Promise.all([
+    listedWithPending(status, lang, sort, source),
+    loadRoster(lang),
+  ]);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
-  const npcs = await npcFor(contributions);
+  const npcs = await npcFor(contributions, roster);
 
   const build = buildFilterOf(rawBuild);
   const anyBuild = contributions
@@ -332,7 +339,6 @@ export default async function Page({
 
   // Counted after the other filters, so each tab's count matches what it shows.
   const hasSpeaker = await momentHasSpeaker(filtered);
-  const roster = await loadRoster(lang);
   const bucketCounts: Record<Bucket, number> = { ready: 0, blocked: 0 };
   const matching = filtered.filter((row) => {
     const own = bucketOf({ ...row, quest: questFor(row), hasSpeaker: hasSpeaker.has(row.id) }, npcs[row.id] ?? null, roster);

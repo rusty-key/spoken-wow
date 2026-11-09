@@ -65,9 +65,6 @@ import {
 } from "@/lib/contributions/query";
 import type { Contribution } from "@/lib/contributions/store";
 import { textHints } from "@/lib/contributions/text-hints";
-// Both are computed server-side (npcSummaryFrom reads the roster store) -- `import
-// type` erases the whole thing at compile time, so none of that follows the type in here. The
-// same split existing.ts's `existing` prop already draws.
 import type { BookSummary, NpcConflictOption, NpcSummary, QuestSummary } from "@/lib/contributions/triage";
 // From npc.ts, not npc/store.ts: store.ts imports @/lib/db, and pulling NPC_ROW_KINDS
 // (values, not just types) out of it would drag Postgres's own node built-ins into this bundle.
