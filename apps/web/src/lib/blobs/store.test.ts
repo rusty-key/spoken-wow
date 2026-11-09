@@ -75,6 +75,33 @@ describe("writing to R2", () => {
     code = "OperationAborted";
     await expect(bucket.put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).rejects.toThrow("HTTP 409");
   });
+
+  const retrying = () =>
+    r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/", putRetryDelaysMs: [0, 0] });
+
+  it("sends again after a connection failure and a 5xx", async () => {
+    const answers = [() => Promise.reject(new TypeError("fetch failed")), () => new Response("busy", { status: 503 }), () => new Response(null, { status: 200 })];
+    const sent = vi.fn(async () => answers.shift()!());
+    vi.stubGlobal("fetch", sent);
+    await expect(retrying().put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).resolves.toBeUndefined();
+    expect(sent).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives up after its last attempt with that attempt's failure", async () => {
+    const sent = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+    vi.stubGlobal("fetch", sent);
+    await expect(retrying().put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).rejects.toThrow("fetch failed");
+    expect(sent).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not send again when R2 refuses the request", async () => {
+    const sent = vi.fn(async () => new Response("denied", { status: 403 }));
+    vi.stubGlobal("fetch", sent);
+    await expect(retrying().put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).rejects.toThrow("HTTP 403");
+    expect(sent).toHaveBeenCalledOnce();
+  });
 });
 
 describe("reading a range", () => {
