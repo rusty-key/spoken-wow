@@ -2,15 +2,9 @@
  * Pure projections /contributions's page.tsx turns a stored envelope into, split out so they
  * can be unit tested without spinning up the page's own database calls -- the same reason
  * lib/npc/resolve.ts's observedFrom is a free function rather than inlined where it's used.
- *
- * npcSummaryFrom reads the roster store (roster-store.ts), so this file is not node-free the way
- * envelope.ts/contributions.ts are -- ContributionTable.tsx only ever takes NpcSummary/
- * QuestSummary as `import type`, which TypeScript erases entirely, so the client bundle never
- * sees this module's own imports.
  */
 import { flavorOptionsFor } from "@/lib/contributions/speaker";
-import { BASE_LANG, type Lang } from "@/lib/lang";
-import { loadRoster } from "@/lib/voices/roster-store";
+import type { Roster } from "@/lib/voices/roster";
 import type { NpcResolution, NpcRowKind, Provenance } from "@/lib/npc/store";
 import type { BookCandidate, BookMatchResult } from "./book-match";
 import { isQuestStage, type QuestStage } from "./query";
@@ -187,13 +181,14 @@ export function idOnlyResolution(rows: NpcResolution[] | undefined): IdOnlyLooku
  * NPC in English (the corpus's name, or whichever envelope resolved it first). The resolution's
  * name is only the fallback for an envelope that named none.
  */
-export async function npcSummaryFrom(
+export function npcSummaryFrom(
+  // The caller's, loaded once: checking a roster is current takes four round trips, and a queue
+  // of thousands of rows paid them per row.
+  roster: Roster,
   observed: { npcKind: NpcRowKind | null; npcId: number; npcName: string | null },
   resolution: NpcResolution | undefined,
   conflict: NpcResolution[] = [],
-  // The row's language, whose team's roster offers the flavors.
-  lang: Lang = BASE_LANG,
-): Promise<NpcSummary> {
+): NpcSummary {
   return {
     npcKind: resolution?.npcKind ?? observed.npcKind,
     npcId: observed.npcId,
@@ -205,7 +200,7 @@ export async function npcSummaryFrom(
     confirmed: resolution?.confirmed ?? false,
     doubtful: resolution?.doubtful ?? false,
     flavorOptions:
-      flavorOptionsFor(resolution?.race ?? null, resolution?.gender ?? null, await loadRoster(lang)),
+      flavorOptionsFor(resolution?.race ?? null, resolution?.gender ?? null, roster),
     conflict: conflict.map(({ npcKind, race, gender, flavor, provenance, doubtful }) => ({
       npcKind,
       race,

@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+import { BASE_LANG } from "@/lib/lang";
+import type { Roster } from "@/lib/voices/roster";
+import { loadRoster } from "@/lib/voices/roster-store";
 
 import type { BookMatchResult } from "./book-match";
 import { bookFor, idOnlyResolution, labelOf, npcSummaryFrom, packHeard, questFor, resolveMissing } from "./triage";
@@ -49,7 +53,7 @@ describe("questFor", () => {
   });
 });
 
-function resolution(overrides: Partial<Parameters<typeof npcSummaryFrom>[1] & object> = {}) {
+function resolution(overrides: Partial<Parameters<typeof npcSummaryFrom>[2] & object> = {}) {
   return {
     npcKind: "creature" as const,
     npcId: 288,
@@ -72,11 +76,16 @@ function resolution(overrides: Partial<Parameters<typeof npcSummaryFrom>[1] & ob
 }
 
 describe("npcSummaryFrom", () => {
+  let roster: Roster;
+  beforeAll(async () => {
+    roster = await loadRoster(BASE_LANG);
+  });
+
   // The exact hardest case this table was designed against: the three real rows in the local
   // database, none of which carry `kind` at all (filed before the addon reported it).
   it("is fully unresolved for a kind-less observation with no resolution", async () => {
     expect(
-      await npcSummaryFrom({ npcKind: null, npcId: 205729, npcName: "Boarton Shadetotem" }, undefined),
+      npcSummaryFrom(roster, { npcKind: null, npcId: 205729, npcName: "Boarton Shadetotem" }, undefined),
     ).toEqual({
       npcKind: null,
       npcId: 205729,
@@ -95,7 +104,7 @@ describe("npcSummaryFrom", () => {
   it("carries a conflict's answers without their bookkeeping", async () => {
     const other = resolution({ npcKind: "gameobject", race: "tauren", provenance: "moderator" });
     expect(
-      (await npcSummaryFrom({ npcKind: null, npcId: 288, npcName: "Jitters" }, undefined, [other, resolution()])).conflict,
+      npcSummaryFrom(roster, { npcKind: null, npcId: 288, npcName: "Jitters" }, undefined, [other, resolution()]).conflict,
     ).toEqual([
       { npcKind: "gameobject", race: "tauren", gender: "male", flavor: "standard", provenance: "moderator", doubtful: false },
       { npcKind: "creature", race: "human", gender: "male", flavor: "standard", provenance: "corpus", doubtful: false },
@@ -104,12 +113,13 @@ describe("npcSummaryFrom", () => {
 
   it("is fully unresolved for a known-kind observation with no resolution either", async () => {
     expect(
-      await npcSummaryFrom({ npcKind: "creature", npcId: 999, npcName: "Some Guard" }, undefined),
+      npcSummaryFrom(roster, { npcKind: "creature", npcId: 999, npcName: "Some Guard" }, undefined),
     ).toMatchObject({ npcKind: "creature", provenance: "none", confirmed: false, flavorOptions: [] });
   });
 
   it("carries the resolution's own answer, and derives its flavor options from it", async () => {
-    const summary = await npcSummaryFrom(
+    const summary = npcSummaryFrom(
+      roster,
       { npcKind: "creature", npcId: 288, npcName: "Jitters" },
       resolution(),
     );
@@ -122,7 +132,8 @@ describe("npcSummaryFrom", () => {
   // same NPC -- carried a kind; that makes it strictly more informed than the current envelope's
   // own kind, which may be null.
   it("prefers the resolution's kind over a kind-less observation's", async () => {
-    const summary = await npcSummaryFrom(
+    const summary = npcSummaryFrom(
+      roster,
       { npcKind: null, npcId: 205729, npcName: "Boarton Shadetotem" },
       resolution({ npcKind: "creature", npcId: 205729, race: "tauren", gender: "male", flavor: "warrior", provenance: "client", confirmed: false }),
     );
@@ -132,7 +143,8 @@ describe("npcSummaryFrom", () => {
   // The resolution is shared across languages and named in English; the envelope's name is what
   // this row's own client called the NPC.
   it("keeps the envelope's own, localised name over the resolution's", async () => {
-    const summary = await npcSummaryFrom(
+    const summary = npcSummaryFrom(
+      roster,
       { npcKind: "creature", npcId: 288, npcName: "Nervioso" },
       resolution(),
     );
@@ -140,12 +152,13 @@ describe("npcSummaryFrom", () => {
   });
 
   it("falls back to the resolution's name when the envelope named none", async () => {
-    const summary = await npcSummaryFrom({ npcKind: "creature", npcId: 288, npcName: null }, resolution());
+    const summary = npcSummaryFrom(roster, { npcKind: "creature", npcId: 288, npcName: null }, resolution());
     expect(summary.npcName).toBe("Jitters");
   });
 
   it("has no flavor options when the resolution names no race or gender", async () => {
-    const summary = await npcSummaryFrom(
+    const summary = npcSummaryFrom(
+      roster,
       { npcKind: "creature", npcId: 1, npcName: "A Narrator" },
       resolution({ race: null, gender: null, flavor: null, provenance: "none", confirmed: false }),
     );
