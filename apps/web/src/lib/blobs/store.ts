@@ -58,8 +58,8 @@ export function blobKey(prefix: BlobPrefix, sha256: string): string {
  * key is the bytes' hash and the PUT never overwrites. fetch rejects with a TypeError when no
  * response came back.
  */
-async function sendWithRetries(send: () => Promise<Response>, delaysMs: readonly number[]): Promise<Response> {
-  for (const delay of delaysMs) {
+async function sendWithRetries(send: () => Promise<Response>): Promise<Response> {
+  for (const delay of [1000, 3000]) {
     try {
       const res = await send();
       if (res.status < 500) return res;
@@ -78,7 +78,6 @@ export function r2Blobs(env: {
   secretAccessKey: string;
   bucket: string;
   publicUrl: string;
-  putRetryDelaysMs?: readonly number[];
 }): BlobStore {
   let client: import("aws4fetch").AwsClient | undefined;
   const signed = async (input: string, init?: RequestInit) => {
@@ -121,7 +120,7 @@ export function r2Blobs(env: {
           "if-none-match": "*",
         },
       });
-      const res = await sendWithRetries(send, env.putRetryDelaysMs ?? [1000, 3000]);
+      const res = await sendWithRetries(send);
       if (res.status === 412) return void (await res.body?.cancel());
       // R2 checks a lock rule before the condition, so on a locked prefix an existing key
       // answers 409 rather than 412. A lock only ever holds an object that is already there.

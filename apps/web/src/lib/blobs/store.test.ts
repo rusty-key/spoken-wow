@@ -6,7 +6,10 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 import { keep, memoryBlobs, r2Blobs, sha256Of, useArchiveForTests } from "./store";
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "blobs-keep-"));
+vi.mock("node:timers/promises", () => ({ setTimeout: async () => {} }));
+
+const R2 = { accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" };
+const dir =fs.mkdtempSync(path.join(os.tmpdir(), "blobs-keep-"));
 const data = Buffer.from("kept bytes");
 const sha = sha256Of(data);
 
@@ -60,7 +63,7 @@ describe("writing to R2", () => {
       conditions.push(new Headers(init.headers).get("if-none-match"));
       return new Response("PreconditionFailed", { status: 412 });
     });
-    const bucket = r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" });
+    const bucket = r2Blobs(R2);
     await expect(bucket.put("recordings/x", Buffer.from("same bytes"), "audio/ogg")).resolves.toBeUndefined();
     expect(conditions).toEqual(["*"]);
     // Bytes, not a stream, so fetch sends the Content-Length R2 requires.
@@ -70,36 +73,35 @@ describe("writing to R2", () => {
   it("takes a locked object as written, and fails on any other conflict", async () => {
     let code = "ObjectLockedByBucketPolicy";
     vi.stubGlobal("fetch", async () => new Response(`<Error><Code>${code}</Code></Error>`, { status: 409 }));
-    const bucket = r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" });
+    const bucket = r2Blobs(R2);
     await expect(bucket.put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).resolves.toBeUndefined();
     code = "OperationAborted";
     await expect(bucket.put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).rejects.toThrow("HTTP 409");
   });
 
-  const retrying = () =>
-    r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/", putRetryDelaysMs: [0, 0] });
+  const putAnswering = (sent: typeof fetch) => {
+    vi.stubGlobal("fetch", sent);
+    return r2Blobs(R2).put("takes/x", Buffer.from("same bytes"), "audio/mpeg");
+  };
 
   it("sends again after a connection failure and a 5xx", async () => {
-    const answers = [() => Promise.reject(new TypeError("fetch failed")), () => new Response("busy", { status: 503 }), () => new Response(null, { status: 200 })];
-    const sent = vi.fn(async () => answers.shift()!());
-    vi.stubGlobal("fetch", sent);
-    await expect(retrying().put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).resolves.toBeUndefined();
+    const sent = vi.fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    await expect(putAnswering(sent)).resolves.toBeUndefined();
     expect(sent).toHaveBeenCalledTimes(3);
   });
 
   it("gives up after its last attempt with that attempt's failure", async () => {
-    const sent = vi.fn(async () => {
-      throw new TypeError("fetch failed");
-    });
-    vi.stubGlobal("fetch", sent);
-    await expect(retrying().put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).rejects.toThrow("fetch failed");
+    const sent = vi.fn<typeof fetch>().mockRejectedValue(new TypeError("fetch failed"));
+    await expect(putAnswering(sent)).rejects.toThrow("fetch failed");
     expect(sent).toHaveBeenCalledTimes(3);
   });
 
   it("does not send again when R2 refuses the request", async () => {
-    const sent = vi.fn(async () => new Response("denied", { status: 403 }));
-    vi.stubGlobal("fetch", sent);
-    await expect(retrying().put("takes/x", Buffer.from("same bytes"), "audio/mpeg")).rejects.toThrow("HTTP 403");
+    const sent = vi.fn<typeof fetch>().mockResolvedValue(new Response("denied", { status: 403 }));
+    await expect(putAnswering(sent)).rejects.toThrow("HTTP 403");
     expect(sent).toHaveBeenCalledOnce();
   });
 });
@@ -126,7 +128,7 @@ describe("reading a range", () => {
         headers: { "content-type": "audio/mpeg", "content-range": "bytes 0-1/4096" },
       });
     });
-    const bucket = r2Blobs({ accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" });
+    const bucket = r2Blobs(R2);
     const part = await bucket.get("takes/x", { start: 0, end: 1 });
     expect(asked).toEqual(["bytes=0-1"]);
     expect(part).toMatchObject({ size: 4096, contentType: "audio/mpeg", range: { start: 0, end: 1 } });
