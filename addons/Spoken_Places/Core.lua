@@ -57,6 +57,11 @@ local defaults = {
 	-- A new character hears its zone right after its valley at login, and a place it has heard,
 	-- from the Play button too, is not read again when the game announces its discovery.
 	autoplayExplored = true,
+	-- Off: reading a place every time the player arrives is a choice, not something to spring on
+	-- everyone who has the once-per-place behaviour (Autoplay.lua, Read Every Visit).
+	autoplayEveryVisit = false,
+	-- Seconds, one of EVERY_VISIT_GAPS (Autoplay.lua).
+	autoplayEveryVisitGap = 30 * 60,
 	-- Off, so a player cannot end up reading an unfinished translation without
 	-- having asked for one (Spoken > Developer). See Language.lua.
 	languagePreview = false,

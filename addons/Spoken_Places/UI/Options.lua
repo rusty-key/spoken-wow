@@ -95,7 +95,25 @@ function SpokenPlaces:SetupOptions()
 		Get("autoplaySubzones"), Set("autoplaySubzones"))
 	local before = layout:Checkbox(L.OPT_AUTOPLAY_EXPLORED, nil,
 		Get("autoplayExplored"), Set("autoplayExplored"))
-	for _, row in ipairs({ smaller, before }) do
+	local again = layout:Checkbox(L.OPT_AUTOPLAY_EVERY_VISIT, nil,
+		Get("autoplayEveryVisit"), Set("autoplayEveryVisit"), refresh)
+	-- Shown only with Read Every Visit on: off, it is a setting for nothing.
+	local GAP_LABELS = { L.OPT_GAP_30M, L.OPT_GAP_2H, L.OPT_GAP_12H, L.OPT_GAP_1D, L.OPT_GAP_1W }
+	local gapMenu = layout:Dropdown(L.OPT_AUTOPLAY_GAP, nil,
+		SpokenPlaces.EVERY_VISIT_GAPS,
+		function() return SpokenPlaces:EveryVisitGap() end,
+		Set("autoplayEveryVisitGap"),
+		refresh,
+		function(gap)
+			for i, value in ipairs(SpokenPlaces.EVERY_VISIT_GAPS) do
+				if value == gap then
+					return GAP_LABELS[i]
+				end
+			end
+			return tostring(gap)
+		end)
+	layout:ShowWhen(gapMenu, Get("autoplayEveryVisit"))
+	for _, row in ipairs({ smaller, before, again, gapMenu }) do
 		layout:Requires(row, voiced, L.REASON_VOICE)
 		layout:Requires(row, discovering, L.REASON_DISCOVERY)
 	end

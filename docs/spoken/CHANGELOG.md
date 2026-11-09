@@ -2,6 +2,13 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Places can read a zone every time you arrive.** Turn on Read Every Visit under Places, When to
+  Read, and choose how long to wait before the same place is read again: 30 minutes, 2 hours,
+  12 hours, a day or a week. Off by default, so places are still read once per character.
+  *([belarusrulez](https://github.com/belarusrulez))*
+
 ## 3.8.4 — 2026-11-08
 
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
