@@ -390,6 +390,22 @@ stub.Secrets(world.npcGUID)
 VO.Addon:MuteGreetingOnClick("RightButton")
 stub.Secrets()
 Expect("a GUID the client keeps secret mutes nothing and raises nothing", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+world.npcFriendly = nil
+stub.Secrets(true)
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Secrets()
+Expect("a secret answer to whether it can be attacked reads as no answer", Dialog(), "0")
+
+VO, env, Spoken = ClickBoot()
+Spoken:RegisterSource("words", { title = "Words", addon = "Spoken_Bosses", textOnly = true }):Enqueue(H.Clip({ length = 10 }))
+stub.Advance(0.1)
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("a right-click during a line of words alone still mutes ahead", Dialog(), "0")
+stub.Advance(2)
+Expect("...and the deadline gives the voice back, the line holding no mute", Spoken:IsPlaying() and Dialog(), "1")
+Spoken:StopAll()
 world.npcFriendly = nil
 VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerQuestNPC
 

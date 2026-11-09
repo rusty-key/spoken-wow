@@ -1418,7 +1418,7 @@ function Addon:MuteGreetingOnClick(button)
     end
     local unit = "mouseover"
     local guid = NotSecret(UnitGUID(unit))
-    if not guid or UnitCanAttack("player", unit) or UnitIsDead(unit) then
+    if not guid or NotSecret(UnitCanAttack("player", unit)) or NotSecret(UnitIsDead(unit)) then
         return
     end
     if self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Always and self:HasHeardAnyGreeting(guid) then
