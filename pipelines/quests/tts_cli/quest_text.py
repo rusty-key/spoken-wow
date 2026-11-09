@@ -29,6 +29,8 @@ from collections import Counter
 MOMENTS = ("accept", "complete")
 #: Read only for a quest with neither of those.
 PROGRESS = "progress"
+#: Every source a quest's page can read.
+SOURCES = MOMENTS + (PROGRESS,)
 #: `$2oa`: the amount of the quest's second objective.
 AMOUNT = re.compile(r"\$(\d+)oa")
 
@@ -75,7 +77,7 @@ def left_out(corpus: dict, ignored=(), removed=()) -> set:
     out, ignored_only = set(removed), {}
     for line in corpus["lines"]:
         quest = line.get("questId")
-        if not quest or line["source"] not in MOMENTS + (PROGRESS,):
+        if not quest or line["source"] not in SOURCES:
             continue
         if not in_game(quest, line.get("questTitle")):
             out.add(quest)
@@ -83,12 +85,10 @@ def left_out(corpus: dict, ignored=(), removed=()) -> set:
     return out | {quest for quest, every in ignored_only.items() if every}
 
 
-def select_moments(moments: dict, has_english_moment: bool = False) -> dict:
+def select_moments(moments: dict) -> dict:
     """{moment: text} from {source: [each line's text]}: the wording most lines have, the first
-    on a tie. Progress stands in as the offer only for a quest with neither moment, which a
-    translation lacking them is not when `has_english_moment`."""
-    if PROGRESS in moments and not has_english_moment \
-            and not any(moment in moments for moment in MOMENTS):
+    on a tie. Progress stands in as the offer only for a quest with neither moment."""
+    if PROGRESS in moments and not any(moment in moments for moment in MOMENTS):
         moments = {"accept": moments[PROGRESS]}
     out = {}
     for moment in MOMENTS:
@@ -106,7 +106,7 @@ def quest_text(corpus: dict, ignored=(), removed=(), amounts=None) -> dict:
     texts = {}
     for line in corpus["lines"]:
         moment = line["source"]
-        if moment not in MOMENTS + (PROGRESS,) or line["lineId"] in ignored or line["questId"] in dropped:
+        if moment not in SOURCES or line["lineId"] in ignored or line["questId"] in dropped:
             continue
         text = (line.get("originalText") or "").replace("\r\n", "\n").replace("\r", "\n")
         text = fill_amounts(text, (amounts or {}).get(line["questId"]))

@@ -108,7 +108,6 @@ COMPENDIUM_TEXT="$REPO/build/quests/$LANGUAGE/compendium-text.json.gz"
 CLIENT_LANGUAGE="$(node --input-type=module -e 'const { isClientLocale } = await import(process.argv[1]); console.log(isClientLocale(process.argv[2]) ? "yes" : "no")' "$REPO/pipelines/lib/locales.mjs" "$LANGUAGE")"
 if [ "$CLIENT_LANGUAGE" = no ]; then
   LOCALE_TEXT=""
-  COMPENDIUM_TEXT=""
 fi
 if [ "$LANGUAGE" != enUS ] && [ -n "$LOCALE_TEXT" ] && [[ " $PACKS " == *" gossip "* ]]; then
   [ -f "$LOCALE_TEXT" ] || { echo "error: no $LANGUAGE gossip text at $LOCALE_TEXT -- run: make quests-export-locale-text LOCALE=$LANGUAGE" >&2; exit 1; }

@@ -28,7 +28,7 @@ import re
 
 from tts_cli.build import build_tables
 from tts_cli.naming import split_voice
-from tts_cli.quest_text import MOMENTS, PROGRESS
+from tts_cli.quest_text import SOURCES
 
 LANG_FILE = re.compile(r"^[a-z]{2}[A-Z]{2}\.lua$")
 
@@ -73,7 +73,7 @@ def givers(corpus: dict, ignored=()) -> dict:
         for entity_id in set(tables[questlog][1].values()):
             found[(kind, str(entity_id))] = english_names[kind].get(entity_id)
     for line in corpus["lines"]:
-        if line.get("source") not in MOMENTS + (PROGRESS,):
+        if line.get("source") not in SOURCES:
             continue
         kind, entity_id = line.get("npcType"), line.get("npcId")
         if kind in english_names and entity_id and split_voice(line["lineId"])[0] not in ignored:

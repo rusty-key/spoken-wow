@@ -156,12 +156,10 @@ end
 -- and the list drawn again when it arrives (QUEST_DATA_LOAD_RESULT).
 local titles, asked = {}, {}
 local function Title(id, ask)
+    if titles[id] then return titles[id] end
     local localized = Localized(id)
     local quest = Quests()[id]
     local englishTitle = quest and quest[1]
-    -- QUEST_DETAIL can cache the English title before the Compendium is opened. Do not let
-    -- that transient cache hide a shipped title for a client whose quest window is English.
-    if titles[id] and not (localized and titles[id] == englishTitle) then return titles[id] end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
     if title == englishTitle then title = nil end
@@ -1011,7 +1009,8 @@ function QuestsTab:Keep(moment, text, title)
     kept[id] = kept[id] or {}
     if type(title) == "string" and title ~= "" then
         kept[id].title = title
-        titles[id] = title
+        -- A window still in English must not hide a shipped title behind the cache.
+        if title ~= Quests()[id][1] then titles[id] = title end
     end
     if type(text) == "string" and text ~= "" then
         kept[id][moment] = { text = Generalise(text, English(id)[moment]), sex = Sex() }
@@ -1047,15 +1046,16 @@ local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
 end
 
+-- Shipped words settle it without Stored's comparison, which fills both texts per row.
+local function HasMomentWords(id, moment)
+    local localized = Localized(id)
+    return (localized and localized[moment]) ~= nil or Stored(id, moment) ~= nil
+end
+
 -- Whether the page has words to show: the offer's, or the hand-in's where it shows. Looks at the
 -- stored text only, so a row can ask it on every render.
 function QuestsTab:HasWords(id)
-    local localized = Localized(id)
-    -- Shipped words settle it without Stored's comparison, which fills both texts per row.
-    local function Has(moment)
-        return (localized and localized[moment]) ~= nil or Stored(id, moment) ~= nil
-    end
-    return Has("accept") or (Shows(id, "complete") and Has("complete"))
+    return HasMomentWords(id, "accept") or (Shows(id, "complete") and HasMomentWords(id, "complete"))
 end
 
 -- Who says one moment of a quest: the hand-in is said by the one it is handed

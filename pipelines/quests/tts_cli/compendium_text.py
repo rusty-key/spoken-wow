@@ -3,38 +3,28 @@
 The website corpus is authoritative here.  The database exporter writes a small per-language
 snapshot, and the sound-pack builder turns that snapshot into a client-locale guarded Lua table.
 """
-import re
 import sys
 from pathlib import Path
 
 from tts_cli.corpus import load_corpus, write_corpus
-from tts_cli.factions import DEFAULT_COMPENDIUM_PATH
+from tts_cli.factions import DEFAULT_COMPENDIUM_PATH, compendium_sides
 from tts_cli.naming import split_voice
-from tts_cli.quest_text import (AMOUNT, MOMENTS, PROGRESS, fill_amounts, objective_amounts,
-                                select_moments)
-
-SOURCES = MOMENTS + (PROGRESS,)
+from tts_cli.quest_text import (AMOUNT, MOMENTS, PROGRESS, SOURCES, fill_amounts,
+                                objective_amounts, select_moments)
 
 
 def compendium_ids(path=DEFAULT_COMPENDIUM_PATH) -> set[int]:
     """Quest ids present in the generated Compendium index."""
-    text = Path(path).read_text(encoding="utf-8")
-    quests = re.search(r"^\tquests = \{\n(?P<body>.*?)^\t\},\n(?:\n)?\tsorts = \{", text,
-                       re.MULTILINE | re.DOTALL)
-    if not quests:
+    sides = compendium_sides(str(path))
+    if not sides:
         raise ValueError(f"{path}: could not find the Compendium quests table")
-    return {int(match.group(1)) for match in re.finditer(
-        r"^\s*\[(\d+)\]\s*=\s*\{", quests.group("body"), re.MULTILINE)}
+    return set(sides)
 
 
 def clean(text: str | None) -> str | None:
-    if not text:
-        return None
     # Stripped before the line breaks become $B, which strip() would not take off the ends.
-    text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-    if not text:
-        return None
-    return text.replace("\n", "$B").replace("$b", "$B")
+    text = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    return text.replace("\n", "$B").replace("$b", "$B") or None
 
 
 def needs_amounts(rows: list[dict]) -> bool:
@@ -43,7 +33,7 @@ def needs_amounts(rows: list[dict]) -> bool:
 
 
 def forever_amounts() -> dict:
-    """Each quest's objective amounts in Forever's client data; fetched once, then cached."""
+    """Each quest's objective amounts in Forever's client data."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
     from export_compendium import eg_datasets
     return objective_amounts(eg_datasets("quests.enUS"))
@@ -73,7 +63,8 @@ def localized_quest_text(rows: list[dict], names: dict[int, str], quest_ids: set
         quest_id = int(row["questId"])
         source = row["source"]
         if quest_id not in quest_ids or source not in SOURCES \
-                or split_voice(row["lineId"])[0] in ignored:
+                or split_voice(row["lineId"])[0] in ignored \
+                or (source == PROGRESS and quest_id in with_moments):
             continue
         text = clean(row.get("localeText"))
         if text:
@@ -82,7 +73,7 @@ def localized_quest_text(rows: list[dict], names: dict[int, str], quest_ids: set
 
     out = {}
     for quest_id in (set(texts) | set(names)) & quest_ids:
-        chosen = select_moments(texts.get(quest_id, {}), quest_id in with_moments)
+        chosen = select_moments(texts.get(quest_id, {}))
         title = names.get(quest_id)
         if title and title not in english_titles.get(quest_id, ()):
             chosen["title"] = title

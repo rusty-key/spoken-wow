@@ -1070,12 +1070,11 @@ def export_locale_text(lang, path, verbose=True):
     return lines
 
 
-def export_compendium_locale_text(lang, path, corpus_path, verbose=True):
+def export_compendium_locale_text(lang, path, corpus_path):
     """Compendium quest wording and titles from the corpus database.
 
     The addon cannot query Postgres at runtime, so this writes the client-locale snapshot that
-    the language sound pack carries.  TDB, pfQuest and client caches belong in import-locale;
-    they are never read by this export. A title is the newest *extracted* version: a translator's
+    the language sound pack carries. A title is the newest *extracted* version: a translator's
     edit changes how it is spoken, and what the addon shows must be what the client shows.
     """
     from tts_cli.compendium_text import (SOURCES, compendium_ids, forever_amounts,
@@ -1115,9 +1114,7 @@ def export_compendium_locale_text(lang, path, corpus_path, verbose=True):
     quests = localized_quest_text(rows, names, quest_ids, corpus, load_pack_ignored(corpus),
                                   forever_amounts() if needs_amounts(rows) else None)
     write_compendium_text(path, lang, quests)
-    if verbose:
-        print(f"wrote {path}: {len(quests)} localized Compendium quest records")
-    return quests
+    print(f"wrote {path}: {len(quests)} localized Compendium quest records")
 
 
 def export_giver_names(corpus_path, out_dir, verbose=True):

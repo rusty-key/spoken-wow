@@ -21,9 +21,9 @@ def test_only_compendium_quests_are_selected(tmp_path):
     assert compendium_ids(path) == {7}
 
 
-def _line(quest, source, text="English.", title="Quest"):
+def _line(quest, source, title="Quest"):
     return {"questId": quest, "source": source, "lineId": f"q:{quest}:{source}",
-            "originalText": text, "questTitle": title}
+            "originalText": "English.", "questTitle": title}
 
 
 def _row(quest, source, text, line_id=None):

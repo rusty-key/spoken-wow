@@ -497,10 +497,9 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     written only into the language pack that holds its gossip, and its file returns unless the
     client runs in that language.
     """
-    if locale_text is not None and (not language or language == "enUS"):
-        raise ValueError("locale text belongs to a language pack; pass its language")
-    if compendium_text is not None and (not language or language == "enUS"):
-        raise ValueError("Compendium text belongs to a language pack; pass its language")
+    if (locale_text is not None or compendium_text is not None) \
+            and (not language or language == "enUS"):
+        raise ValueError("locale and Compendium text belong to a language pack; pass its language")
     module_dir = os.path.join(dist_dir, module_name)
     generated_dir = os.path.join(module_dir, "generated")
     sounds_dir = os.path.join(generated_dir, "sounds")
