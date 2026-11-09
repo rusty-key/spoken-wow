@@ -54,9 +54,9 @@ export function blobKey(prefix: BlobPrefix, sha256: string): string {
 }
 
 /**
- * A single connect timeout used to leave a take with no object and no hash, which stops every
- * later release of its language. Sending again is safe: the key is the bytes' hash and the PUT
- * never overwrites. fetch rejects with a TypeError when no response came back.
+ * A take whose PUT fails has no hash, and its language cannot release. Sending again is safe: the
+ * key is the bytes' hash and the PUT never overwrites. fetch rejects with a TypeError when no
+ * response came back.
  */
 async function sendWithRetries(send: () => Promise<Response>, delaysMs: readonly number[]): Promise<Response> {
   for (const delay of delaysMs) {
