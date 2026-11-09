@@ -496,7 +496,7 @@ local gossipOptionPicked
 -- The gossip or greeting event whose window took a mute ahead, until the next window opens, it
 -- closes, or a read gives the NPC its voice back; and how often it has been read again for its text.
 local greetingMutedFor
--- A right-click took a mute ahead, and no window has opened since to say whether it was needed.
+-- A right-click took a mute ahead that no window has ruled on yet.
 local clickTookMute
 local greetingTextTries = 0
 local GREETING_TEXT_TRIES, GREETING_TEXT_WAIT = 5, 0.2
@@ -1307,7 +1307,7 @@ function Addon:HasHeardGreeting(guid, text)
     return type(heard) == "table" and heard[TextKey(text)] == true
 end
 
---- For when the text is not known yet, as at a click on the NPC.
+--- For when the text is not known yet.
 function Addon:HasHeardAnyGreeting(guid)
     return type(self.db.char.hasSeenGossipForNPC[guid]) == "table"
 end
@@ -1400,17 +1400,15 @@ end
 ---@param event string
 function Addon:MuteGreetingAhead(event)
     local muted = TakeGreetingMute(self, event)
-    -- The click could only guess at the window. One with nothing to read keeps its greeting.
+    -- The click only guessed: a window with nothing to read keeps its greeting.
     if clickTookMute and not muted then
         Spoken:EndMuteGameDialogueAhead()
     end
     clickTookMute = nil
 end
 
---- The greeting can start before any event says a window is opening, and on a first talk that
---- gap is heard, so a right-click on an NPC a pack voices mutes ahead of the window. A click that
---- opens nothing costs at most the mute's own deadline. Which text the NPC will say is not known
---- yet, so under the once-per settings an NPC already heard keeps its greeting.
+--- A greeting can start before any window event, and on a first talk that gap is heard. The text
+--- is not known yet at the click, so under the once-per settings an NPC already heard keeps its greeting.
 ---@param button string
 function Addon:MuteGreetingOnClick(button)
     if button ~= "RightButton" or not Spoken.MuteGameDialogueAhead or not self:IsPageOn("GOSSIP_SHOW")

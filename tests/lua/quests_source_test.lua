@@ -301,8 +301,7 @@ Expect("...and expects no line to hold the words back for", VO.Addon:ExpectedLin
 Spoken:SetPartOn("quests", true)
 
 ---------------------------------------------------------------- muting at the click
--- A first talk's greeting can be heard before the window's event arrives, so a right-click on a
--- voiced NPC takes the same mute ahead the window would.
+-- A first talk's greeting can be heard before the window's event arrives.
 local function ClickBoot()
     local VO, env, Spoken = MuteBoot()
     VO.Addon.db.char.hasSeenGossipForNPC = {}
