@@ -20,20 +20,28 @@ function Utils:GetIDFromGUID(guid)
     return assert(tonumber((select(5, strsplit("-", rest)))), format([[Failed to retrieve ID from GUID "%s"]], guid))
 end
 
---- Returns the creature ID a GUID names, or nil for any other object or a GUID the helpers
---- above reject. Guarded with pcall because those helpers assert, and the callers run on chat
---- and playback events.
-function Utils:GetCreatureIDFromGUID(guid)
+--- Guarded with pcall: a malformed GUID asserts, and the callers run on chat and playback events.
+---@return number|nil id
+---@return GUID|nil guidType
+function Utils:ReadIDFromGUID(guid)
     guid = NotSecret(guid)
     if type(guid) ~= "string" or guid == "" then
         return nil
     end
     local okType, guidType = pcall(self.GetGUIDType, self, guid)
-    if not (okType and guidType and Enums.GUID:IsCreature(guidType) and Enums.GUID:CanHaveID(guidType)) then
+    if not (okType and guidType and Enums.GUID:CanHaveID(guidType)) then
         return nil
     end
     local okID, id = pcall(self.GetIDFromGUID, self, guid)
-    return okID and id or nil
+    if okID and id then
+        return id, guidType
+    end
+end
+
+--- Returns the creature ID a GUID names, or nil for any other object or a malformed GUID.
+function Utils:GetCreatureIDFromGUID(guid)
+    local id, guidType = self:ReadIDFromGUID(guid)
+    return id and Enums.GUID:IsCreature(guidType) and id or nil
 end
 
 --- Returns a dummy WorldObject GUID using the provided `Enums.GUID` type and ID.
