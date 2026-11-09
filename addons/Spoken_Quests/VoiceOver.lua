@@ -1294,10 +1294,8 @@ local function TextKey(text)
     return format("%08x", h)
 end
 
--- Greetings heard are kept under the speaker's ID, not its GUID: the GUID's last part is the
--- spawn, new on a respawn or a server restart, and Forever clients see one that holds only for
--- the session. Each new one would greet as a stranger. Object IDs overlap creature IDs, so an
--- object's key is a string where a creature's is a number.
+-- Keyed by ID because a GUID's last part is the spawn: new on a respawn, a server restart and,
+-- on Forever, each session. Object IDs overlap creature IDs, so an object's key is a string.
 local function LastingSpeakerKey(guid)
     local id, guidType = Utils:ReadIDFromGUID(guid)
     if guidType == Enums.GUID.GameObject then
@@ -1317,9 +1315,7 @@ local function HeardTexts(seen, key)
     return seen[key]
 end
 
---- Whether this character has heard this NPC greet them with this text. An NPC that greets
---- with several texts reads each of them once. A key that holds anything but a table was
---- marked when only the NPC was remembered, and counts as unheard.
+--- A key that holds anything but a table names no text, so it counts as unheard.
 function Addon:HasHeardGreeting(guid, text)
     if not text then
         return false
@@ -1328,8 +1324,8 @@ function Addon:HasHeardGreeting(guid, text)
     return type(heard) == "table" and heard[TextKey(text)] == true
 end
 
---- Moves greetings heard from a speaker's GUID to its lasting key, so a character does not hear
---- them again. A GUID marked `true` holds no text and counts as unheard anyway, so it goes.
+--- Keeps greetings heard under GUIDs from playing again. A GUID marked `true` holds no text and
+--- counts as unheard anyway, so it goes.
 function Addon:FoldGreetingsHeardByGUID()
     local seen = self.db.char.hasSeenGossipForNPC
     local lastingKeyOf = {}

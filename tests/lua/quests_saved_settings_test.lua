@@ -1,8 +1,7 @@
 -- What a player of the develop build already has saved: SpokenQuestsSettings with two characters on
 -- two profiles. Gossip is a part inside the Quests addon and adds no saved variable, so every one of
 -- these values has to come back untouched, and nothing the part adds may be written over them.
--- Greetings heard are the exception: they move from each spawn's GUID to the NPC's ID, so the
--- character does not hear them again.
+-- Greetings heard are the exception: they move from each spawn's GUID to the NPC's ID.
 -- Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
@@ -14,8 +13,7 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
 local SEEN = "Creature-0-0-0-0-12345-0"
--- Greetings heard under each spawn's GUID, two spawns of one NPC. Both characters hold them, since
--- the test client's AceDB may hand back either record.
+-- Both characters hold these: the test client's AceDB may hand back either record.
 local function HeardByGUID()
     return {
         [SEEN] = true,

@@ -20,8 +20,7 @@ function Utils:GetIDFromGUID(guid)
     return assert(tonumber((select(5, strsplit("-", rest)))), format([[Failed to retrieve ID from GUID "%s"]], guid))
 end
 
---- Returns the ID a GUID carries and its `Enums.GUID` type, or nil. Guarded with pcall: a malformed
---- GUID asserts, and the callers run on chat and playback events.
+--- Guarded with pcall: a malformed GUID asserts, and the callers run on chat and playback events.
 ---@return number|nil id
 ---@return GUID|nil guidType
 function Utils:ReadIDFromGUID(guid)

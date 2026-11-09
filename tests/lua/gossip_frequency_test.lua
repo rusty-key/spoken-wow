@@ -112,8 +112,6 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": ...and the first greeting is still held back", Played(played), "(nothing)")
     Leave()
 
-    -- An NPC's GUID changes on a respawn or a server restart, and on Forever with the session.
-    -- Its creature ID stays, and so does what the character has heard from it.
     local firstSpawn = world.npcGUID
     world.npcGUID = "Creature-0-0-0-0-12345-1"
     Talk()
