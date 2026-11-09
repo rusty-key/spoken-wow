@@ -72,6 +72,18 @@ export const norm = (sql: string) => `lower(regexp_replace(btrim(${sql}), '\\s+'
  */
 export const branch = (sql: string, side: 1 | 2) => `regexp_replace(${sql}, '\\$[gu]([^:;]*):([^;]*);', '\\${side}', 'gi')`;
 
+const MALE_FORM = `coalesce(nullif(b."text", ''), b."text1")`;
+const FEMALE_FORM = `coalesce(nullif(b."text1", ''), b."text")`;
+
+/** A form as it reads whole and down each side of its branches. */
+const readings = (form: string) => [norm(form), norm(branch(form, 1)), norm(branch(form, 2))];
+
+/** Every reading of a row. Must match migration 0104's index, or the lookup reads the whole language. */
+export const BROADCAST_READINGS = `array[${[...readings(MALE_FORM), ...readings(FEMALE_FORM)].join(", ")}]`;
+
+/** What linesByText compares. Must match migration 0104's index, as above. */
+export const GOSSIP_LOCALE_TEXT = norm(`coalesce("localeText", '')`);
+
 /**
  * The lowest BroadcastText id whose text in `lang` reads as `text` does, in the form a speaker of
  * this sex shows. One text can sit under several ids, and they read alike. The unbranched form
@@ -83,16 +95,16 @@ export async function broadcastIdFor(
   text: string,
   gender: string,
 ): Promise<number | null> {
-  const form = `case when $3 = 'female' then coalesce(nullif(b."text1", ''), b."text")
-                     else coalesce(nullif(b."text", ''), b."text1") end`;
+  const form = readings(gender === "female" ? FEMALE_FORM : MALE_FORM);
   const { rows } = await q.query<{ id: number }>(
     `select b."broadcastTextId" as "id"
        from "broadcast_text" b
       where b."lang" = $1
-        and $2 in (${norm(form)}, ${norm(branch(form, 1))}, ${norm(branch(form, 2))})
+        and ${BROADCAST_READINGS} @> array[$2::text]
+        and $2 in (${form.join(", ")})
       order by 1
       limit 1`,
-    [lang, normalised(text), gender],
+    [lang, normalised(text)],
   );
   return rows[0]?.id ?? null;
 }
@@ -157,7 +169,7 @@ export function linesByText(q: Queryable, lang: Lang, text: string, speaker: Gos
   return momentLines(
     q,
     `select "lineId" from "quest_line"
-      where "lang" = $1 and "source" = 'gossip' and ${norm(`coalesce("localeText", '')`)} = $2`,
+      where "lang" = $1 and "source" = 'gossip' and ${GOSSIP_LOCALE_TEXT} = $2`,
     [lang, normalised(text)],
     lang,
     speaker,
