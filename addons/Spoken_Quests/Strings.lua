@@ -35,7 +35,6 @@ L.OPT_GROUP_AUDIO = "Audio"
 L.OPT_DEBUG = "Quests Debug Messages"
 -- Spoken > Developer: every quest line taken for one no pack has (DataModules:PrepareSound).
 L.OPT_DEV_MOCK_MISSING = "Mock Missing Voice Over"
-L.OPT_DEV_MOCK_MISSING_TIP = "No quest line plays, to show a quest without a voice."
 L.OPT_DEV_MOCK_ON = "Mock Missing Voice Over is on: no quest line plays. Turn it off in Spoken > Developer."
 
 --------------------------------------------------------------------------------

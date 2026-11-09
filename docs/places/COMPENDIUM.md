@@ -87,8 +87,9 @@ story.` under its name and line. `SpokenPlaces:IsLocked` decides, and `QueueLore
 place.
 
 Unlock Undiscovered Places (`showUndiscovered`) opens every area and tells every story. The counts
-and greyed zones still say what this character has found. Discovered Only, on by default, leaves out zones with
-nothing found and areas not found.
+and greyed zones still say what this character has found. It also shows the complete list even when
+Discovered Only is on. With Unlock Undiscovered Places off, Discovered Only, on by default, leaves out
+zones with nothing found and areas not found.
 
 ## Areas listed in another zone
 

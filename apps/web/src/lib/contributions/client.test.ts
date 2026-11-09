@@ -1,6 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { clientFilterOf, clientOf, matchesClient } from "./client";
+import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "./client";
+
+describe("the build filter", () => {
+  it("reads only a build number off the query string", () => {
+    expect(buildFilterOf("70790")).toBe("70790");
+    expect(buildFilterOf("latest")).toBeUndefined();
+    expect(buildFilterOf(undefined)).toBeUndefined();
+  });
+
+  it("keeps every row when no build is picked, and only that build's when one is", () => {
+    const row = clientOf("1.60.1/70790");
+    expect(matchesBuild(row, undefined)).toBe(true);
+    expect(matchesBuild(row, "70790")).toBe(true);
+    expect(matchesBuild(row, "69913")).toBe(false);
+    expect(matchesBuild(clientOf(undefined), "70790")).toBe(false);
+  });
+
+  it("offers each build once, newest first, with its row count", () => {
+    expect(buildOptions(["1.60.1/9999", "1.60.1/70790", "1.60.1/70790", "?/?"].map(clientOf))).toEqual([
+      { value: "70790", label: "70790 · Forever 1.60.1 (2)" },
+      { value: "9999", label: "9999 · Forever 1.60.1 (1)" },
+    ]);
+  });
+});
 
 describe("clientOf", () => {
   it.each([

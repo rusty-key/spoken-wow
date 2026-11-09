@@ -55,6 +55,11 @@ const SCOPE_OPTIONS: ChipOption[] = [
   { value: "text", label: "Line text only" },
 ];
 
+const PLAYER_GENDER_OPTIONS: ChipOption[] = [
+  { value: "m", label: "male" },
+  { value: "f", label: "female" },
+];
+
 const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable },
   ref,
@@ -125,6 +130,12 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           value={filters.gender}
           options={plainOptions(facets.genders)}
           onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })}
+        />
+        <FilterChip
+          label="player"
+          value={filters.playerGender}
+          options={PLAYER_GENDER_OPTIONS}
+          onChange={(playerGender) => onFilters({ playerGender: playerGender as LineFilters["playerGender"] })}
         />
         <FilterChip
           label="flavor"

@@ -24,6 +24,7 @@ import {
   type ParseError,
   takeFragment,
 } from "@/lib/contributions/envelope";
+import { sendFailureMessage } from "@/lib/contributions/send-failure";
 
 const FIELD_LABELS: Record<string, string> = {
   quest: "Quest",
@@ -156,7 +157,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     setError(
       failure?.error === "describe"
         ? `Describe the place in a sentence or two -- at least ${DESCRIPTION_MIN} characters.`
-        : "That did not go through. Try again in a minute.",
+        : sendFailureMessage(response?.status ?? null, failure?.error),
     );
   }
 

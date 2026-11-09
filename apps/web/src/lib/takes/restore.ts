@@ -25,7 +25,7 @@ import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 
 import { encodeArchivedForPack } from "./encode";
-import { setLiveTake, takePath } from "./store";
+import { setLiveTake, takePath, takeSha256 } from "./store";
 
 export async function restoreTake(
   source: Source,
@@ -40,5 +40,8 @@ export async function restoreTake(
     throw new Error(`the audio of version ${version} of ${file} was not kept, so it cannot be restored`);
   }
   await setLiveTake(source, file, version, lang, by);
-  if (bytes.kind === "blob") await encodeArchivedForPack(source, bytes.key.slice(bytes.key.indexOf("/") + 1));
+  // By its hash rather than by where it is read from: in dual mode a take is read from disk, but
+  // its master is in the bucket too, which is all an encoding needs.
+  const sha256 = await takeSha256(source, file, version, lang);
+  if (sha256) await encodeArchivedForPack(source, sha256, { lang, file, version });
 }

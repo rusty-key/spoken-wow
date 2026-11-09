@@ -101,7 +101,7 @@ Expect("starting marks the area heard in the per-character record", Z:HasHeard(1
 
 local F = env.PlayerFrame
 Expect("the player frame shows where the zone is, then its name", F.frame.container.name:GetText() .. " "
-    .. tostring(F.frame.container.label:GetText()), "Kalimdor • Durotar")
+    .. tostring(F.frame.container.label:GetText()), "Kalimdor · Durotar")
 Z.GetMapName = GetMapName
 -- Report only, as an icon among the header's controls. Reading the text is reached from the map,
 -- the minimap menu and /spz; a button on the player that opened a window over the thing being

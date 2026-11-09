@@ -12,7 +12,7 @@ import { flavorOptionsFor } from "@/lib/contributions/speaker";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { loadRoster } from "@/lib/voices/roster-store";
 import type { NpcResolution, NpcRowKind, Provenance } from "@/lib/npc/store";
-import type { BookMatchResult } from "./book-match";
+import type { BookCandidate, BookMatchResult } from "./book-match";
 import { isQuestStage, type QuestStage } from "./query";
 
 /**
@@ -59,6 +59,8 @@ export type BookSummary = {
   label: string;
   /** The explorer page the match names, where it names one. */
   href: string | null;
+  /** What an ambiguous match may be; empty for any other. */
+  candidates: (BookCandidate & { href: string | null })[];
 };
 
 export function bookFor(
@@ -66,6 +68,7 @@ export function bookFor(
   match: BookMatchResult,
   describe: (lineId: string) => string,
   hrefOf?: (lineId: string) => string,
+  candidates: readonly BookCandidate[] = [],
 ): BookSummary | null {
   if (row.source !== "readables") return null;
   const number = Number(row.meta.number);
@@ -75,6 +78,7 @@ export function bookFor(
     match,
     label: labelOf(match, describe),
     href: hrefOf && "lineId" in match ? hrefOf(match.lineId) : null,
+    candidates: candidates.map((candidate) => ({ ...candidate, href: hrefOf?.(candidate.lineId) ?? null })),
   };
 }
 

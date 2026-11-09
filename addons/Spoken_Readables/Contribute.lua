@@ -26,9 +26,26 @@ local function CoreIsCurrent()
 	return contribute and contribute.NameWords and contribute.ReplaceWord and true or false
 end
 
+--- The item whose text is open, if the opener logic could identify it.
+---
+--- `openedBy` is the primary source: it records the item that opened the frame before the
+--- server supplied its text. The UnitGUID fallback covers clients that expose the item only
+--- through the unit while the note is open, which is also how the copy-text diagnostics find it.
+local function OpenedItemID(self)
+	for _, opener in ipairs(self.openedBy or {}) do
+		if opener.kind == "item" and type(opener.id) == "number" then
+			return opener.id
+		end
+	end
+
+	if UnitGUID and self.ItemIDOfGUID then
+		return self:ItemIDOfGUID(UnitGUID("npc"))
+	end
+end
+
 --- The fields every readables envelope starts with: which addon, which client, which language.
 local function BaseFields(self)
-	return
+	local fields =
 	{
 		{ "addon", format("%s/%s", ADDON_NAME, self.version or "dev") },
 		{ "build", format("%s/%s", (GetBuildInfo and select(1, GetBuildInfo())) or "?",
@@ -39,6 +56,11 @@ local function BaseFields(self)
 		{ "pack", self:GetPackLanguage() },
 		{ "packVersion", self:GetPackVersion(self:GetPackLanguage()) },
 	}
+	local itemID = OpenedItemID(self)
+	if itemID then
+		fields[#fields + 1] = { "item", itemID }
+	end
+	return fields
 end
 
 --- The page with this character's name, class and race put back as the game's tokens, as

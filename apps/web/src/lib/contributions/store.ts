@@ -17,6 +17,7 @@ import type { NpcKind, NpcRowKind } from "@/lib/npc/npc";
 
 import type { ContributionStatus, Submission } from "./contributions";
 import type { EnvelopeSource } from "./envelope";
+import type { Identity } from "./intake";
 import { pageNotes } from "./notes";
 import { DEFAULT_SORT, type ContributionSort, type SortColumn } from "./query";
 
@@ -219,48 +220,65 @@ export async function fillContributionNpcs(
   return rows.map((row) => row.dedup);
 }
 
-export async function createContribution(
-  input: Submission & {
-    body: string | null;
-    name: string | null;
-    email: string | null;
-    userId: string | null;
-    ip: string | null;
-  },
-): Promise<void> {
-  // Returns nothing, as createReport does: the sender cannot read their submission back.
-  // A copy from somebody signed in or named is recorded beside the count (migration 0065).
-  await db().query(
-    `with "stored" as (
-       insert into "contribution"
-         ("source", "key", "locale", "build", "text", "meta", "raw", "dedup",
-          "body", "name", "email", "userId", "ip")
-       values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13)
-       on conflict ("dedup") do update
-         set "count" = "contribution"."count" + 1,
-             ${FILL_NPC_SET},
-             "updatedAt" = now()
-       returning "id"
-     )
-     insert into "contribution_sender" ("contributionId", "userId", "name")
-     select "id", $12::text, $10::text from "stored"
-      where $12::text is not null or $10::text is not null`,
-    [
-      input.source,
-      input.key,
-      input.locale,
-      input.build,
-      input.text,
-      JSON.stringify(input.meta),
-      input.raw,
-      input.dedup,
-      input.body,
-      input.name,
-      input.email,
-      input.userId,
-      input.ip,
-    ],
-  );
+export async function createContribution(input: Submission & Identity): Promise<void> {
+  await createContributions([input], input);
+}
+
+/**
+ * One statement per occurrence of a dedup, because an upsert may not touch the same row twice.
+ * A later copy still bumps the count or fills the NPC as a separate paste would. Sorted because
+ * two players' files hold the same lines in different orders, and would deadlock on their rows.
+ */
+function roundsByDedup(submissions: readonly Submission[]): Submission[][] {
+  const seen = new Map<string, number>();
+  const rounds: Submission[][] = [];
+  for (const submission of submissions) {
+    const round = seen.get(submission.dedup) ?? 0;
+    seen.set(submission.dedup, round + 1);
+    (rounds[round] ??= []).push(submission);
+  }
+  return rounds.map((round) => round.sort((a, b) => (a.dedup < b.dedup ? -1 : 1)));
+}
+
+/** A commit per line is most of what a full file costs on the droplet's disk. */
+export async function createContributions(submissions: readonly Submission[], sender: Identity): Promise<void> {
+  for (const round of roundsByDedup(submissions)) {
+    // A copy from somebody signed in or named is recorded beside the count.
+    await db().query(
+      `with "stored" as (
+         insert into "contribution"
+           ("source", "key", "locale", "build", "text", "meta", "raw", "dedup",
+            "body", "name", "email", "userId", "ip")
+         select i."source", i."key", i."locale", i."build", i."text", i."meta"::jsonb, i."raw", i."dedup",
+                $9::text, $10::text, $11::text, $12::text, $13::text
+           from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[])
+                as i ("source", "key", "locale", "build", "text", "meta", "raw", "dedup")
+         on conflict ("dedup") do update
+           set "count" = "contribution"."count" + 1,
+               ${FILL_NPC_SET},
+               "updatedAt" = now()
+         returning "id"
+       )
+       insert into "contribution_sender" ("contributionId", "userId", "name")
+       select "id", $12::text, $10::text from "stored"
+        where $12::text is not null or $10::text is not null`,
+      [
+        round.map((submission) => submission.source),
+        round.map((submission) => submission.key),
+        round.map((submission) => submission.locale),
+        round.map((submission) => submission.build),
+        round.map((submission) => submission.text),
+        round.map((submission) => JSON.stringify(submission.meta)),
+        round.map((submission) => submission.raw),
+        round.map((submission) => submission.dedup),
+        sender.body,
+        sender.name,
+        sender.email,
+        sender.userId,
+        sender.ip,
+      ],
+    );
+  }
 }
 
 /** Signed-in senders appear under their account's name. Never an email. */

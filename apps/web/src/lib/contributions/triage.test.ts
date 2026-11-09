@@ -238,7 +238,7 @@ describe("bookFor", () => {
   it("summarises a readables row, with a link where the match names a page", () => {
     const row = { source: "readables", meta: { book: " Livro ", number: "2" } };
     expect(bookFor(row, match, (id) => id, (id) => `/readables/r/${id}`)).toEqual({
-      title: "Livro", number: 2, match, label: "Translation · b:1", href: "/readables/r/b:1",
+      title: "Livro", number: 2, match, label: "Translation · b:1", href: "/readables/r/b:1", candidates: [],
     });
     expect(bookFor(row, { kind: "new-book", title: "Livro", pageNumber: 2, via: "none" }, (id) => id, (id) => id)?.href).toBeNull();
   });

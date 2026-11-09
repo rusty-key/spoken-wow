@@ -302,7 +302,14 @@ local function Widget(kind, name)
         return animation
     end
     function w:SetCreature(idv) self.creature = idv; self.model = "creature/" .. tostring(idv) end
+    function w:SetDisplayInfo(idv) self.displayID = idv; self.model = "display/" .. tostring(idv) end
     function w:ClearModel() self.creature = nil; self.model = nil end
+    function w:SetModelScale(v) self.modelScale = v end
+    function w:SetPortraitZoom(v) self.portraitZoom = v end
+    function w:SetRotation(v) self.rotation = v end
+    function w:SetPosition(x, y, z) self.position = { x, y, z } end
+    function w:SetFacing(v) self.facing = v end
+    function w:SetSequence(v) self.sequence = v end
     -- Model:GetModel returned a path and was removed; asking for it is an error rather than a
     -- nil, which is what absentAPI keeps the catch-all below from hiding.
     function w:GetModelFileID() return self.creature and 119940 or nil end
