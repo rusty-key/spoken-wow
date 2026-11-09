@@ -496,6 +496,8 @@ local gossipOptionPicked
 -- The gossip or greeting event whose window took a mute ahead, until the next window opens, it
 -- closes, or a read gives the NPC its voice back; and how often it has been read again for its text.
 local greetingMutedFor
+-- A right-click took a mute ahead, and no window has opened since to say whether it was needed.
+local clickTookMute = false
 local greetingTextTries = 0
 local GREETING_TEXT_TRIES, GREETING_TEXT_WAIT = 5, 0.2
 -- Moved on whenever a wait ends, so a read again for one window never runs in the next: a quest
@@ -546,6 +548,7 @@ function Addon:OnInitialize()
 
     Player:Setup()
     GreetingFirst:Setup()
+    WorldFrame:HookScript("OnMouseDown", function(_, button) self:MuteGreetingOnClick(button) end)
     -- The copy-link popup behind the Report button. Guarded because a failure to build a
     -- dialog must not stop playback initializing.
     local reportButtonReady, reportButtonError = pcall(ReportButton.Initialize, ReportButton)
@@ -1359,7 +1362,8 @@ end
 --- in the frame the dialog opened, and the greeting is not heard at all. A dialog nothing
 --- will be read for keeps its greeting: that is what the lookups below are for.
 ---@param event string
-function Addon:MuteGreetingAhead(event)
+---@return boolean? muted
+function Addon:TakeGreetingMute(event)
     EndGreetingTextWait()
     if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:IsAutoplayOn() or self.dataModulesPending
         or not Player.source then
@@ -1384,6 +1388,45 @@ function Addon:MuteGreetingAhead(event)
     if (quest and (not questID or questID == 0)) or self:ExpectedLine(event) then
         local muted = Spoken:MuteGameDialogueAhead(self:PartOfPage(event) == "gossip" and Player.gossipSource or Player.source)
         greetingMutedFor = muted and SPEECH_EVENTS[event] and event or nil
+        return muted
+    end
+end
+
+---@param event string
+function Addon:MuteGreetingAhead(event)
+    local muted = self:TakeGreetingMute(event)
+    if SPEECH_EVENTS[event] or QUEST_EVENTS[event] then
+        -- The click could only guess at the window. One with nothing to read keeps its greeting.
+        if clickTookMute and not muted then
+            Spoken:EndMuteGameDialogueAhead()
+        end
+        clickTookMute = false
+    end
+end
+
+--- The greeting can start before any event says a window is opening, and on a first talk that
+--- gap is heard, so a right-click on an NPC a pack voices mutes ahead of the window. A click that
+--- opens nothing costs at most the mute's own deadline. Which text the NPC will say is not known
+--- yet, so under the once-per settings an NPC already heard keeps its greeting.
+---@param button string
+function Addon:MuteGreetingOnClick(button)
+    if button ~= "RightButton" or not Spoken.MuteGameDialogueAhead or not self:IsPageOn("GOSSIP_SHOW")
+        or not self:IsAutoplayOn() or self:IsNever() or self.dataModulesPending or not Player.gossipSource
+        or GreetingFirst:IsOn() then
+        return
+    end
+    local unit = "mouseover"
+    local guid = NotSecret(UnitGUID(unit))
+    if not guid or UnitIsPlayer(unit) or UnitCanAttack("player", unit) or UnitIsDead(unit) then
+        return
+    end
+    local heard = self.db.char.hasSeenGossipForNPC[guid]
+    if self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Always
+        and type(heard) == "table" and next(heard) then
+        return
+    end
+    if DataModules:HasGossipFor({ unitGUID = guid, name = NotSecret(UnitName(unit)), unitIsObjectOrItem = false }) then
+        clickTookMute = Spoken:MuteGameDialogueAhead(Player.gossipSource) == true
     end
 end
 

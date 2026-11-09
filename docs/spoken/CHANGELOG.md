@@ -8,6 +8,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   was already playing when a fight began used to talk through the whole fight, in PvP too. It now
   stops and plays again from the start once combat ends. A story you started with Play keeps going.
   *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
+- **An NPC's own greeting no longer slips out before Spoken's line on a first talk.** Right-clicking
+  an NPC with a recorded greeting silences its voice before the window opens. If no window opens, or
+  there is nothing to read, the voice comes back. Reported by
+  *([banoliver](https://github.com/banoliver))*
 
 ## 3.8.4 — 2026-11-08
 
