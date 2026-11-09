@@ -1299,12 +1299,22 @@ end
 -- the session. Each new one would greet as a stranger. Object IDs overlap creature IDs, so an
 -- object's key is a string where a creature's is a number.
 local function LastingSpeakerKey(guid)
-    local objectID = Utils:GetObjectIDFromGUID(guid)
-    return Utils:GetCreatureIDFromGUID(guid) or (objectID and "o" .. objectID)
+    local id, guidType = Utils:ReadIDFromGUID(guid)
+    if guidType == Enums.GUID.GameObject then
+        return "o" .. id
+    end
+    return id
 end
 
 local function SpeakerKey(guid)
     return LastingSpeakerKey(guid) or guid or "unknown"
+end
+
+local function HeardTexts(seen, key)
+    if type(seen[key]) ~= "table" then
+        seen[key] = {}
+    end
+    return seen[key]
 end
 
 --- Whether this character has heard this NPC greet them with this text. An NPC that greets
@@ -1318,14 +1328,13 @@ function Addon:HasHeardGreeting(guid, text)
     return type(heard) == "table" and heard[TextKey(text)] == true
 end
 
---- Moves greetings heard under a speaker's GUID, as they were kept before, to its lasting key,
---- so a character does not hear them again. A GUID marked `true` holds no text and counts as
---- unheard anyway, so it goes.
+--- Moves greetings heard from a speaker's GUID to its lasting key, so a character does not hear
+--- them again. A GUID marked `true` holds no text and counts as unheard anyway, so it goes.
 function Addon:FoldGreetingsHeardByGUID()
     local seen = self.db.char.hasSeenGossipForNPC
     local lastingKeyOf = {}
     for key in pairs(seen) do
-        local lastingKey = type(key) == "string" and LastingSpeakerKey(key)
+        local lastingKey = LastingSpeakerKey(key)
         if lastingKey then
             lastingKeyOf[key] = lastingKey
         end
@@ -1335,23 +1344,16 @@ function Addon:FoldGreetingsHeardByGUID()
         local texts = seen[guid]
         seen[guid] = nil
         if type(texts) == "table" then
-            if type(seen[lastingKey]) ~= "table" then
-                seen[lastingKey] = {}
-            end
+            local merged = HeardTexts(seen, lastingKey)
             for textKey, heard in pairs(texts) do
-                seen[lastingKey][textKey] = heard
+                merged[textKey] = heard
             end
         end
     end
 end
 
 function Addon:MarkGreetingHeard(guid, text)
-    local seen = self.db.char.hasSeenGossipForNPC
-    local npcKey = SpeakerKey(guid)
-    if type(seen[npcKey]) ~= "table" then
-        seen[npcKey] = {}
-    end
-    seen[npcKey][TextKey(text)] = true
+    HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
 end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options

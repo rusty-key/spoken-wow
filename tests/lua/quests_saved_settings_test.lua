@@ -14,8 +14,8 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
 local SEEN = "Creature-0-0-0-0-12345-0"
--- Greetings heard as they were kept before: under each spawn's GUID, two spawns of one NPC. Both
--- characters hold them, since the test client's AceDB may hand back either record.
+-- Greetings heard under each spawn's GUID, two spawns of one NPC. Both characters hold them, since
+-- the test client's AceDB may hand back either record.
 local function HeardByGUID()
     return {
         [SEEN] = true,
