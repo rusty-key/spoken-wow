@@ -103,6 +103,15 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Merci, $Ns.", "frFR")).toBe("Merci, $Ns.");
   });
 
+  it("speaks frFR's class plural $cs as the plural of the reader's word", () => {
+    expect(speakPlayerTokens("Les $cs du marais vous attendent.", "frFR")).toBe("Les aventuriers du marais vous attendent.");
+    expect(speakPlayerTokens("Les $cs du marais vous attendent.", "frFR", "f")).toBe("Les aventurières du marais vous attendent.");
+    expect(speakPlayerTokens("Merci. $cs, en avant !", "frFR")).toBe("Merci. Aventuriers, en avant !");
+    expect(speakPlayerTokens("Les $rs du marais.", "frFR")).toBe("Les $rs du marais.");
+    expect(speakPlayerTokens("Les $$cs du marais.", "frFR")).toBe("Les aventuriers du marais.");
+    expect(speakPlayerTokens("Les $cs'il le faut.", "frFR")).toBe("Les $cs'il le faut.");
+  });
+
   it("speaks English's own word, for the book pages that still carry tokens", () => {
     expect(speakPlayerTokens("$N, bring me my hammer, $gBrother:Sister;.", "enUS")).toBe(
       "Adventurer, bring me my hammer, Brother.",
@@ -154,5 +163,10 @@ describe("the text gate on a translation", () => {
     expect(skipReasonFor("complete", "Merci, $N.", "frFR")).toBeNull();
     expect(skipReasonFor("complete", "Merci, $Nama.", "frFR")).toBe("invalid-chars");
     expect(skipReasonFor("progress", "Merci, $N.", "frFR")).toBe("progress");
+  });
+
+  it("voices a frFR line with the class plural $cs", () => {
+    expect(skipReasonFor("accept", "Les $cs de Comté-du-Nord vous attendent, $n.", "frFR")).toBeNull();
+    expect(skipReasonFor("accept", "Les $cs de Comté-du-Nord vous attendent, $n.", "frFR", "f")).toBeNull();
   });
 });
