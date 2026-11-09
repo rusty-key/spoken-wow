@@ -61,6 +61,13 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   *([anon1231823](https://github.com/anon1231823))*
 - **The Bosses page lists its voice pack in your language**, in every language but Italian, which
   has none yet. *([rusty-key](https://github.com/rusty-key))*
+- **A greeting heard once stays heard after you log out.** With Read Greetings set to Once per
+  Greeting, an NPC such as a flight master or an innkeeper no longer greets you again after a relog
+  or a server restart, and neither does a quest giver under Once for Quest Givers. Voiced objects
+  stay quiet the same way. What you hear is now shared by every copy of an NPC: a greeting heard
+  from one city guard counts for the other guards of that kind. Greetings you have already heard
+  are kept.
+  *([Devilquest](https://github.com/Devilquest))*
 
 ## 3.8.0 — 2026-11-02
 
