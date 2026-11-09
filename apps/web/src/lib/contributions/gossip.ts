@@ -78,10 +78,10 @@ const FEMALE_FORM = `coalesce(nullif(b."text1", ''), b."text")`;
 /** A form as it reads whole and down each side of its branches. */
 const readings = (form: string) => [norm(form), norm(branch(form, 1)), norm(branch(form, 2))];
 
-/** Every reading of a row. Must match migration 0104's index, or the lookup reads the whole language. */
+/** Must match migration 0104's index, or the lookup reads the whole language. */
 export const BROADCAST_READINGS = `array[${[...readings(MALE_FORM), ...readings(FEMALE_FORM)].join(", ")}]`;
 
-/** What linesByText compares. Must match migration 0104's index, as above. */
+/** Must match migration 0104's index, or the lookup reads the whole language. */
 export const GOSSIP_LOCALE_TEXT = norm(`coalesce("localeText", '')`);
 
 /**

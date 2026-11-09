@@ -4,7 +4,7 @@ import { closeDb, db } from "@/lib/db";
 
 import { BROADCAST_READINGS, GOSSIP_LOCALE_TEXT } from "./gossip";
 
-/** The plan of `sql` with only bitmap scans allowed, so a usable index is the one that shows. */
+/** Only bitmap scans are allowed, so a usable index is the one that shows. */
 async function planOf(sql: string): Promise<string> {
   const client = await db().connect();
   try {
