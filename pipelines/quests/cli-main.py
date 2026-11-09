@@ -85,6 +85,7 @@ clxt.add_argument("--out", required=True,
                    help="e.g. build/quests/esMX/compendium-text.json.gz")
 clxt.add_argument("--compendium", default=None,
                    help="Compendium.lua to restrict the export to its quest ids")
+clxt.add_argument("--corpus", default=DEFAULT_CORPUS_PATH)
 
 gvn = subparsers.add_parser(
     "export-giver-names",
@@ -130,7 +131,7 @@ bld.add_argument("--locale-text", default=None,
                       "gossip tables, loaded only on a client in it. Gossip pack only.")
 bld.add_argument("--compendium-text", default=None,
                  help="A file export-compendium-locale-text wrote for --language; adds the "
-                      "localized Compendium quest text. All pack only.")
+                      "localized Compendium quest text. Gossip or all pack only.")
 
 ins = subparsers.add_parser(
     "install", help="Copy the built module into a WoW AddOns folder.")
@@ -199,7 +200,7 @@ elif args.mode == "export-locale-text":
 
 elif args.mode == "export-compendium-locale-text":
     from tts_cli.corpus_db import export_compendium_locale_text
-    export_compendium_locale_text(args.lang, args.out, args.compendium)
+    export_compendium_locale_text(args.lang, args.out, args.compendium, args.corpus)
 
 elif args.mode == "export-giver-names":
     from tts_cli.corpus_db import export_giver_names
@@ -231,8 +232,8 @@ elif args.mode == "build":
             print(f"warning: no {lang} gossip lines with client text; on a {lang} client "
                   "gossip will be matched against the English text")
     if args.compendium_text:
-        if args.pack != "all":
-            raise SystemExit("--compendium-text is for the all pack, not "
+        if args.pack not in ("gossip", "all"):
+            raise SystemExit("--compendium-text is for the gossip or all pack, not "
                              f"'{args.pack}'")
         if not args.language or args.language == "enUS":
             raise SystemExit("--compendium-text belongs to a language pack; pass --language")

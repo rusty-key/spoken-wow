@@ -1409,7 +1409,8 @@ SpokenQuestsLocalizedText = {
     },
 }
 C:Tab("quests").unlock.set(true)
-Tab:Keep("accept", SpokenQuestsText[47].accept, SpokenQuestsCompendium.quests[47][1])
+-- As the client hands it over: $B already a line break, the player's tokens filled.
+Tab:Keep("accept", Tab:Fill(SpokenQuestsText[47].accept), SpokenQuestsCompendium.quests[47][1])
 Tab:Open(47)
 local spanishWords = PageWords() or ""
 Expect("Spanish quest title uses the localized fallback", page.title.text, "Intercambio de polvo de oro")

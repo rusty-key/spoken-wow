@@ -1749,10 +1749,13 @@ language's localized wording is a separate export in that language's sound pack:
 - Localized quest titles, accept text and complete text come from the corpus database's
   `entity_name` and `quest_line.localeText` rows. `make quests-export-compendium-locale-text
   LOCALE=esMX` writes the snapshot used by `make quests-package-audio LOCALE=esMX`; the
-  language pack loads it only when the client is in that locale. Progress is used as the accept
-  text only when the quest has neither accept nor complete text. If the corpus has no
+  language's Gossip pack loads it only when the client is in that locale. Progress is used as
+  the accept text only when the English quest has neither accept nor complete text. Ignored
+  lines are left out and `$<n>oa` amounts are written in, as for the English. A title is the
+  newest extracted one, and is left out when it equals the English. If the corpus has no
   translation, the Compendium keeps the client's English wording; the English client does not
-  load a localized table.
+  load a localized table. The text follows the voice pack: a client in another language with
+  only English packs, or none, has no table and sees what it kept or the English.
 
 The tab lists only the quests this character's race and class may take. A quest is found once
 the client says it is completed (`C_QuestLog.GetAllCompletedQuestIDs`, else

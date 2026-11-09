@@ -35,8 +35,8 @@ import os
 from collections import Counter
 from datetime import datetime, timezone
 
-from tts_cli.corpus import (GENERIC_TYPES, INVALID_CHARS, NO_VOICE, SCHEMA_VERSION, load_corpus,
-                            write_corpus)
+from tts_cli.corpus import (DEFAULT_CORPUS_PATH, GENERIC_TYPES, INVALID_CHARS, NO_VOICE,
+                            SCHEMA_VERSION, load_corpus, write_corpus)
 from tts_cli.flavors import fallback_flavors, is_model_voice
 from tts_cli.naming import moment_of
 from tts_cli.npc_bodies import body_name
@@ -1070,17 +1070,22 @@ def export_locale_text(lang, path, verbose=True):
     return lines
 
 
-def export_compendium_locale_text(lang, path, compendium_path=None, verbose=True):
+def export_compendium_locale_text(lang, path, compendium_path=None,
+                                  corpus_path=DEFAULT_CORPUS_PATH, verbose=True):
     """Compendium quest wording and titles from the corpus database.
 
     The addon cannot query Postgres at runtime, so this writes the client-locale snapshot that
     the language sound pack carries.  TDB, pfQuest and client caches belong in import-locale;
-    they are never read by this export.
+    they are never read by this export. A title is the newest *extracted* version, for the
+    reason export_giver_names gives: what the addon shows must be what the client shows.
     """
-    from tts_cli.compendium_text import (DEFAULT_COMPENDIUM_PATH, compendium_ids,
-                                         localized_quest_text, write_compendium_text)
+    from tts_cli.compendium_text import (DEFAULT_COMPENDIUM_PATH, compendium_ids, forever_amounts,
+                                         localized_quest_text, needs_amounts,
+                                         write_compendium_text)
+    from tts_cli.ignores import load_pack_ignored
 
     quest_ids = compendium_ids(compendium_path or DEFAULT_COMPENDIUM_PATH)
+    corpus = load_corpus(corpus_path)
     conn = connect()
     try:
         with conn, conn.cursor() as cur:
@@ -1090,22 +1095,26 @@ def export_compendium_locale_text(lang, path, compendium_path=None, verbose=True
                     where "lang" = %s and "isCurrent"
                       and "source" = any(%s) and "questId" = any(%s)
                       and coalesce("localeText", '') <> ''
-                    order by "questId", "source", "lineId", "variant""",
+                    order by "questId", "source", "lineId", "variant"
+                """,
                 (lang, ["accept", "complete", "progress"], list(quest_ids)),
             )
             rows = [dict(zip(("questId", "source", "lineId", "localeText"), row))
                     for row in cur.fetchall()]
             cur.execute(
-                """select "entityId", "name" from "entity_name"
-                    where "lang" = %s and "kind" = 'quest' and "isCurrent"
-                      and "entityId" = any(%s)""",
+                """select distinct on ("entityId") "entityId", "name"
+                     from "entity_name"
+                    where "lang" = %s and "kind" = 'quest' and "origin" = 'extracted'
+                      and "entityId" = any(%s)
+                    order by "entityId", "version" desc""",
                 (lang, [str(quest_id) for quest_id in quest_ids]),
             )
             names = {int(entity_id): name for entity_id, name in cur.fetchall()}
     finally:
         conn.close()
 
-    quests = localized_quest_text(rows, names, quest_ids)
+    quests = localized_quest_text(rows, names, quest_ids, corpus, load_pack_ignored(corpus),
+                                  forever_amounts() if needs_amounts(rows) else None)
     write_compendium_text(path, lang, quests)
     if verbose:
         print(f"wrote {path}: {len(quests)} localized Compendium quest records")

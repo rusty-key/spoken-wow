@@ -6,13 +6,16 @@ snapshot, and the sound-pack builder turns that snapshot into a client-locale gu
 import gzip
 import json
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
+from tts_cli.naming import split_voice
+from tts_cli.quest_text import AMOUNT, MOMENTS, PROGRESS, fill_amounts, objective_amounts
+
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_COMPENDIUM_PATH = ROOT / "addons" / "Spoken_Quests" / "Data" / "Compendium.lua"
-MOMENTS = ("accept", "complete")
-SOURCES = MOMENTS + ("progress",)
+SOURCES = MOMENTS + (PROGRESS,)
 
 
 def compendium_ids(path=DEFAULT_COMPENDIUM_PATH) -> set[int]:
@@ -29,27 +32,57 @@ def compendium_ids(path=DEFAULT_COMPENDIUM_PATH) -> set[int]:
 def clean(text: str | None) -> str | None:
     if not text:
         return None
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = text.replace("\n", "$B")
-    text = re.sub(r"\$b", "$B", text)
-    return text.strip() or None
+    # Stripped before the line breaks become $B, which strip() would not take off the ends.
+    text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return None
+    return re.sub(r"\$b", "$B", text.replace("\n", "$B"))
 
 
-def localized_quest_text(rows: list[dict], names: dict[int, str], quest_ids: set[int]) -> dict:
+def needs_amounts(rows: list[dict]) -> bool:
+    """Whether any row has a `$<n>oa` token, so the objective amounts are worth loading."""
+    return any(AMOUNT.search(row.get("localeText") or "") for row in rows)
+
+
+def forever_amounts() -> dict:
+    """objective_amounts from the Efficient Games data QuestText.lua's export reads, fetched
+    once and cached by export_compendium."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    from export_compendium import eg_datasets
+    return objective_amounts(eg_datasets("quests.enUS"))
+
+
+def localized_quest_text(rows: list[dict], names: dict[int, str], quest_ids: set[int],
+                         corpus: dict, ignored=(), amounts=None) -> dict:
     """Select the Compendium's localized title, accept and complete text.
 
     Accept and complete are the page's moments. Progress is used as accept only for a quest
-    that has neither of those moments, matching tts_cli.quest_text.quest_text(). Multiple
-    corpus rows are reduced to the wording most often present, with input order breaking ties.
+    whose English has neither, matching tts_cli.quest_text.quest_text(): where the English has
+    an offer, a translated progress line is not one. Multiple corpus rows are reduced to the
+    wording most often present, with input order breaking ties. Ignored lines are left out
+    and `$<n>oa` is written in, as quest_text() does for the English. A title identical to the
+    English is left out, so the client's own title answers for it.
     """
+    with_moments, english_titles = set(), {}
+    for line in corpus["lines"]:
+        quest_id = line.get("questId")
+        if not quest_id or line.get("source") not in SOURCES:
+            continue
+        english_titles.setdefault(quest_id, set()).add(line.get("questTitle"))
+        if line["source"] in MOMENTS and (line.get("originalText") or "") \
+                and split_voice(line["lineId"])[0] not in ignored:
+            with_moments.add(quest_id)
+
     texts: dict[int, dict[str, list[str]]] = {}
     for row in rows:
         quest_id = int(row["questId"])
         source = row["source"]
-        if quest_id not in quest_ids or source not in SOURCES:
+        if quest_id not in quest_ids or source not in SOURCES \
+                or split_voice(row["lineId"])[0] in ignored:
             continue
         text = clean(row.get("localeText"))
         if text:
+            text = fill_amounts(text, (amounts or {}).get(quest_id))
             texts.setdefault(quest_id, {}).setdefault(source, []).append(text)
 
     out = {}
@@ -60,10 +93,11 @@ def localized_quest_text(rows: list[dict], names: dict[int, str], quest_ids: set
             candidates = moments.get(moment, [])
             if candidates:
                 chosen[moment] = Counter(candidates).most_common(1)[0][0]
-        if not chosen and moments.get("progress"):
-            chosen["accept"] = Counter(moments["progress"]).most_common(1)[0][0]
-        if quest_id in names:
-            chosen["title"] = names[quest_id]
+        if not chosen and quest_id not in with_moments and moments.get(PROGRESS):
+            chosen["accept"] = Counter(moments[PROGRESS]).most_common(1)[0][0]
+        title = names.get(quest_id)
+        if title and title not in english_titles.get(quest_id, ()):
+            chosen["title"] = title
         if chosen:
             out[quest_id] = {
                 key: chosen[key] for key in ("title", "accept", "complete") if key in chosen

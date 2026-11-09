@@ -391,7 +391,18 @@ def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
     assert "ClientLocaleLookups" not in _toc(tmp_path)
 
 
-def test_an_all_language_pack_gets_its_compendium_text(tmp_path):
+def test_compendium_text_escapes_backslashes_and_quotes(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    localized = {5: {"accept": 'forma...\\ "hola"'}}
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                 compendium_text=localized)
+
+    table = _generated(tmp_path, "esMX", "compendium_localized_quest_text.lua")
+    assert r'accept = "forma...\\ \"hola\""' in table
+
+
+def test_a_language_pack_gets_its_compendium_text(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
     localized = {5: {"title": "Tripas de Jitters", "accept": "Busca mi manada."}}
 

@@ -984,10 +984,14 @@ local function Stored(id, moment)
     -- If the corpus has no translation, the client shows English and keeping that fallback
     -- would only duplicate the English table.
     local hasLocalizedFallback = localized and localized[moment]
-    local isEnglishCopy = hasLocalizedFallback and own and own.text == english[moment]
-    if type(own) == "table" and own.text and not isEnglishCopy
-        and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
-        text = own.text
+    if type(own) == "table" and own.text then
+        -- Kept words have the client's line breaks and $G already filled, so both sides are
+        -- filled to compare: the raw English never equals them.
+        local isEnglishCopy = hasLocalizedFallback and english[moment]
+            and QuestsTab:Fill(own.text) == QuestsTab:Fill(english[moment])
+        if not isEnglishCopy and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
+            text = own.text
+        end
     end
     if text and text ~= "" then return text end
 end
