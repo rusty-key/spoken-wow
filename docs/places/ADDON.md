@@ -124,8 +124,8 @@ the zone's icon as the face (Spoken's book without one), the place's picture and
 - Before a clip starts, Places' gate (`Autoplay.lua`, `HoldReason`) holds what reading on discovery
   queued while reading is off, in combat or during a cinematic. A held line waits and shows why.
   Play and shift-click lines are never held.
-- A cinematic that starts after a clip has stops it, and it replays from the start when the
-  cinematic ends.
+- A cinematic or combat that starts after a clip has stops it, and it replays from the start when
+  the cinematic or the fight ends. Only a line reading on discovery queued: Play keeps speaking.
 - Reading on discovery queues nothing while the player is on a taxi or flying, and nothing for a
   continent.
 - The client can start and stop a sound file and nothing in between. Stop and Replay exist, Pause

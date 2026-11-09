@@ -1,0 +1,69 @@
+# Area labels for pull requests, by the files they change (.github/workflows/auto-label.yaml).
+# Section docs stay out: nearly every addon PR touches docs/spoken/CHANGELOG.md, and a site fix
+# can touch docs/quests, so a doc path says little about the area. scripts/lib/auto-label.mjs
+# reads these keys to know which labels say nothing about a person having triaged the PR.
+
+"Addon / Spoken Player":
+  - changed-files:
+      - any-glob-to-any-file:
+          - addons/Spoken/**
+
+"Addon / Spoken Quests":
+  - changed-files:
+      - any-glob-to-any-file:
+          - addons/Spoken_Quests/**
+          - pipelines/quests/**
+
+# The label keeps the section's old name: Books is now Readables.
+"Addon / Spoken Books":
+  - changed-files:
+      - any-glob-to-any-file:
+          - addons/Spoken_Readables/**
+          - addons/SpokenReadablesAudio/**
+          - pipelines/readables/**
+
+# The label keeps the section's old name: Zones is now Places.
+"Addon / Spoken Zones":
+  - changed-files:
+      - any-glob-to-any-file:
+          - addons/Spoken_Places/**
+          - addons/SpokenPlacesAudio/**
+          - pipelines/places/**
+
+"Addon / Spoken Bosses":
+  - changed-files:
+      - any-glob-to-any-file:
+          - addons/Spoken_Bosses/**
+          - addons/SpokenBossesAudio/**
+          - scripts/bosses/**
+
+"Web UI":
+  - changed-files:
+      - any-glob-to-any-file:
+          - apps/web/**
+
+Manager:
+  - changed-files:
+      - any-glob-to-any-file:
+          - manager/**
+          - scripts/manager/**
+
+# Only the list: community/README.md also changes when Spoken learns a language.
+"Community pack":
+  - changed-files:
+      - any-glob-to-any-file:
+          - community/packs.json
+
+"Release & CI":
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - deploy/**
+          - scripts/audio/**
+          - scripts/spoken/**
+
+# Every changed file has to be Markdown, or each changelog line would earn this label.
+documentation:
+  - changed-files:
+      - all-globs-to-all-files:
+          - "**/*.md"
