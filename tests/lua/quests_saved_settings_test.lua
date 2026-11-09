@@ -21,6 +21,8 @@ local function HeardByGUID()
         [SEEN] = true,
         ["Creature-0-0-0-0-4567-1"] = { ["0000aaaa"] = true },
         ["Creature-0-0-0-0-4567-2"] = { ["0000bbbb"] = true },
+        -- An object with the same ID as the NPC above: a different speaker.
+        ["GameObject-0-0-0-0-4567-1"] = { ["0000cccc"] = true },
     }
 end
 local function Seed()
@@ -67,6 +69,17 @@ Expect("greetings heard under two spawns' GUIDs are kept under the NPC's ID",
 Expect("...and the GUIDs are gone", heard["Creature-0-0-0-0-4567-1"] == nil
     and heard["Creature-0-0-0-0-4567-2"] == nil, true)
 Expect("...as is a GUID marked before texts were told apart", heard[SEEN], nil)
+Expect("an object's greetings move to a key of their own", type(heard.o4567) == "table"
+    and heard.o4567["0000cccc"], true)
+Expect("...and its GUID is gone", heard["GameObject-0-0-0-0-4567-1"], nil)
+Expect("...and it shares nothing with the NPC of its ID", heard[4567]["0000cccc"] == nil
+    and heard.o4567["0000aaaa"] == nil, true)
+
+VO.Addon:MarkGreetingHeard("GameObject-0-0-0-0-4567-2", "A voiced plaque.")
+Expect("an object's greeting stays heard under a new GUID",
+    VO.Addon:HasHeardGreeting("GameObject-0-0-0-0-4567-3", "A voiced plaque."), true)
+Expect("...and is not heard from the NPC of its ID",
+    VO.Addon:HasHeardGreeting("Creature-0-0-0-0-4567-1", "A voiced plaque."), false)
 
 VO.Addon.db:SetProfile("Second")
 local second = VO.Addon.db.profile.Audio

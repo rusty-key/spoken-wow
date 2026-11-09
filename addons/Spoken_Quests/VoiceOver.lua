@@ -1294,12 +1294,17 @@ local function TextKey(text)
     return format("%08x", h)
 end
 
--- Greetings heard are kept under the creature's ID, not its GUID: the GUID's last part is the
+-- Greetings heard are kept under the speaker's ID, not its GUID: the GUID's last part is the
 -- spawn, new on a respawn or a server restart, and Forever clients see one that holds only for
--- the session. Each new one would greet as a stranger. A speaker that is not a creature keeps
--- its GUID.
+-- the session. Each new one would greet as a stranger. Object IDs overlap creature IDs, so an
+-- object's key is a string where a creature's is a number.
+local function LastingSpeakerKey(guid)
+    local objectID = Utils:GetObjectIDFromGUID(guid)
+    return Utils:GetCreatureIDFromGUID(guid) or (objectID and "o" .. objectID)
+end
+
 local function SpeakerKey(guid)
-    return Utils:GetCreatureIDFromGUID(guid) or guid or "unknown"
+    return LastingSpeakerKey(guid) or guid or "unknown"
 end
 
 --- Whether this character has heard this NPC greet them with this text. An NPC that greets
@@ -1313,28 +1318,28 @@ function Addon:HasHeardGreeting(guid, text)
     return type(heard) == "table" and heard[TextKey(text)] == true
 end
 
---- Moves greetings heard under a creature's GUID, as they were kept before, to its ID, so a
---- character does not hear them again. A GUID marked `true` holds no text and counts as unheard
---- anyway, so it goes.
+--- Moves greetings heard under a speaker's GUID, as they were kept before, to its lasting key,
+--- so a character does not hear them again. A GUID marked `true` holds no text and counts as
+--- unheard anyway, so it goes.
 function Addon:FoldGreetingsHeardByGUID()
     local seen = self.db.char.hasSeenGossipForNPC
-    local idOf = {}
+    local lastingKeyOf = {}
     for key in pairs(seen) do
-        local id = type(key) == "string" and Utils:GetCreatureIDFromGUID(key)
-        if id then
-            idOf[key] = id
+        local lastingKey = type(key) == "string" and LastingSpeakerKey(key)
+        if lastingKey then
+            lastingKeyOf[key] = lastingKey
         end
     end
     -- Collected first: a key added to a table while `pairs` walks it breaks the walk.
-    for guid, id in pairs(idOf) do
+    for guid, lastingKey in pairs(lastingKeyOf) do
         local texts = seen[guid]
         seen[guid] = nil
         if type(texts) == "table" then
-            if type(seen[id]) ~= "table" then
-                seen[id] = {}
+            if type(seen[lastingKey]) ~= "table" then
+                seen[lastingKey] = {}
             end
             for textKey, heard in pairs(texts) do
-                seen[id][textKey] = heard
+                seen[lastingKey][textKey] = heard
             end
         end
     end
