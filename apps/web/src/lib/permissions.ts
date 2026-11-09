@@ -10,7 +10,7 @@
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
-import { BASE_LANG, CODES, type Lang } from "@/lib/lang";
+import { CODES, type Lang } from "@/lib/lang";
 
 const statement = {
   ...defaultStatements,
@@ -70,7 +70,8 @@ export function canConfigureGeneration(role: string | null | undefined): boolean
  *
  * `text` is a text maintainer: the language's original text and its contributions, whichever
  * team voices it. The rest are capabilities inside a team, and `edit` among them is the team's
- * audio reports and missing audio.
+ * audio reports and missing audio. What a team speaks in place of the original is an override,
+ * which `regenerate` writes.
  *
  * `admin` in a language is every team capability there and hands them out, `admin` included.
  * It is not `text`: only a global admin appoints a text maintainer, because the original text is
@@ -96,6 +97,24 @@ const CAPABILITY_LABELS: Record<Capability, string> = {
 
 export function capabilityLabel(capability: Capability): string {
   return CAPABILITY_LABELS[capability];
+}
+
+/**
+ * What /admin says each capability lets its holder do, so an admin handing one out does not
+ * have to know the code. Total, so a capability added without its words is a type error.
+ */
+const CAPABILITY_HINTS: Record<Capability, string> = {
+  text: "Looks after the language's original text and the contributions to it, whichever team voices it.",
+  edit: "Works through the team's audio reports and missing audio.",
+  regenerate: "Cuts new takes, paid from their own ElevenLabs or fish.audio key.",
+  configure: "Changes the language's generation settings and lexicon.",
+  ignore: "Marks a line as never voiced in this language.",
+  admin: "Everything the team may do here, and hands out access in this language.",
+  record: "Records takes in their own voice.",
+};
+
+export function capabilityHint(capability: Capability): string {
+  return CAPABILITY_HINTS[capability];
 }
 
 export function isCapability(value: unknown): value is Capability {
@@ -158,11 +177,12 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
 }
 
 /**
- * English quest text is rewritten through an override, which is guarded as regeneration is; every
- * other language's is the original.
+ * Whether this removal is a language admin taking away their own admin: it is what lets them
+ * reach /admin at all, so doing it would lock them out of the page that gives it back. Another
+ * admin, or a site admin, can.
  */
-export function questTextCapability(lang: Lang): Capability {
-  return lang === BASE_LANG ? "regenerate" : "text";
+export function removesOwnAdmin(viewer: Viewer, viewerId: string, userId: string, capability: Capability): boolean {
+  return userId === viewerId && capability === "admin" && !isAdmin(viewer.role);
 }
 
 /** Whether somebody holds anything at all in a language, which lets them see it switched off. */

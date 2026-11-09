@@ -78,6 +78,10 @@ async function main() {
     }
     if (!onDisk.has(record.file)) problem(`${id}: manifest says ${record.file}.mp3, which is not on disk`);
   }
+  // A manifest export with no database writes nothing, and an empty lookup then agrees with it.
+  if (onDisk.size > 0 && manifestFiles.size === 0) {
+    problem(`${onDisk.size} clips on disk and an empty manifest: the pack would play nothing. Was DATABASE_URL set for its lookup?`);
+  }
   for (const file of onDisk) {
     if (!manifestFiles.has(file)) note(`${file}.mp3 is on disk with no manifest entry (orphan)`);
     else if (!shippedFiles.has(file)) problem(`${file}.mp3 is on disk but no place with words plays it`);

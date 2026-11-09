@@ -1,9 +1,9 @@
 // A believable fake ManagerApi, used only when `window.manager` is missing (a plain browser:
 // `npm run dev:web`). Address options: ?offline=1, ?empty=1 (no games), ?empty=packs (an empty community
-// list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered).
+// list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered), ?contrib=out|fail|nonadmin|result|expire|unreachable (Contributor: start signed out, sign-in refused, an account without admin rights, a finished release to show, a session that ends after a few seconds, a site that answers Retry only after ten seconds).
 import type { AddGameResult, InstallOptions, ManagerApi, UpdaterState } from '@shared/api'
-import { PRODUCTS, SPOKEN_FOLDERS, productById } from '@shared/products'
-import type { Catalog, CommunityCatalog, CommunityPack, GameInstall, JobProgress, Product, ProductStatus, ReleaseInfo, Settings, SharingStatus, Snapshot } from '@shared/types'
+import { LANGUAGES, PRODUCTS, languageFolders, SPOKEN_FOLDERS, productById } from '@shared/products'
+import type { Catalog, CommunityCatalog, CommunityPack, ContributorView, GameInstall, JobProgress, Product, PublishResult, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, communityFolder } from '@shared/types'
 import { compareVersions } from '@shared/version'
 
@@ -289,6 +289,34 @@ export function createMockApi(): ManagerApi {
   let maximized = false
   const running = new Map<string, { timer: number; cancel: () => void }>()
   let seq = 0
+  // Signed in as an admin of every language, with one store set up, so the screens show without a site.
+  const contribMode = q.get('contrib')
+  const sentResult: PublishResult = {
+    store: 'curseforge',
+    lang: 'deDE',
+    published: [{ folder: 'SpokenQuestsAudioAlliance_deDE', version: '1.5.0', link: 'https://www.curseforge.com/projects/1234567' }],
+    skipped: [{ folder: 'SpokenQuestsAudioHorde_deDE', reason: 'awaiting' }, { folder: 'SpokenQuestsAudioGossip_deDE', reason: 'already-there' }],
+    failed: [{ folder: 'SpokenPlacesAudio_deDE', reason: 'CurseForge answered 400: the file is too large.' }],
+    stoppedEarly: false
+  }
+  let contributor: ContributorView = {
+    account: contribMode === 'out' || contribMode === 'fail' || contribMode === 'expire' || contribMode === 'unreachable' ? null : { email: 'admin@example.com', adminLangs: contribMode === 'nonadmin' ? [] : LANGUAGES.map((l) => l.code) },
+    config: { projects: { SpokenQuestsAudio_deDE: '1234567' }, repo: 'example/spoken-packs', gameVersions: '1.15.9 2.5.6 1.60.1', hasCfToken: true, hasGhToken: false },
+    siteUnreachable: contribMode === 'unreachable',
+    sessionExpired: false,
+    lastRuns: contribMode === 'result' ? { curseforge: sentResult } : {}
+  }
+  const siteBackAt = Date.now() + 10_000
+  // Folders the mock has uploaded, so the next list shows them as waiting.
+  const uploaded = new Set<string>()
+  const contributorListeners = new Set<(v: ContributorView) => void>()
+  // Like the main process: calls return the new view and emit nothing; only a session the site ended
+  // and the end of a run are announced.
+  const setContributor = (next: ContributorView, announce = false): ContributorView => {
+    contributor = next
+    if (announce) contributorListeners.forEach((l) => l(next))
+    return next
+  }
   let cleared = false
   let pick = 0
   const failedOnce = new Set<string>()
@@ -404,6 +432,23 @@ export function createMockApi(): ManagerApi {
     return jobId
   }
 
+  const contributorRows = (lang: string): ReleaseRow[] => {
+    const [alliance, horde, shared, gossip, places, readables, bosses] = languageFolders(lang)
+    const rows: [string, ReleaseRow['state'], Partial<ReleaseRow>][] = [
+      [alliance!, 'unreleased', { version: '1.5.0' }],
+      [horde!, 'unreleased', { version: '1.5.0' }],
+      [shared!, 'awaiting', { version: '1.4.0' }],
+      [gossip!, 'live', { version: '1.4.0', link: 'https://www.curseforge.com/wow/addons/example' }],
+      [places!, 'unchecked', { version: '1.4.0' }],
+      [readables!, 'update-first', { version: '1.2.0' }],
+      [`SpokenQuestsAudioLongNameForFit${lang === 'enUS' ? '' : `_${lang}`}`, 'linked', { version: '1.0.0' }],
+      [bosses!, 'no-project', { version: '1.0.0' }]
+    ]
+    return rows.map(([folder, state, extra]) =>
+      uploaded.has(folder) ? { folder, state: 'awaiting' as const, version: '1.5.0' } : { folder, state, ...extra }
+    )
+  }
+
   const api: ManagerApi = {
     async snapshot(): Promise<Snapshot> {
       await sleep(250)
@@ -481,7 +526,11 @@ export function createMockApi(): ManagerApi {
     async openLogs() {
       console.info('[mock] openLogs')
     },
-    async checkManagerUpdate() {
+    async restartManager() {
+      console.info('[mock] restartManager')
+    },
+    async checkManagerUpdate(background) {
+      if (background) return
       const emit = (s: UpdaterState): void => updaterListeners.forEach((l) => l(s))
       emit({ state: 'checking' })
       await sleep(900)
@@ -507,6 +556,93 @@ export function createMockApi(): ManagerApi {
     async resetShareId() {
       console.info('[mock] resetShareId')
     },
+    async contributorView() {
+      if (contributor.siteUnreachable && Date.now() >= siteBackAt) {
+        return setContributor({ ...contributor, siteUnreachable: false, account: { email: 'admin@example.com', adminLangs: LANGUAGES.map((l) => l.code) } })
+      }
+      return contributor
+    },
+    async contributorSignIn(email) {
+      await sleep(400)
+      if (contribMode === 'fail') throw new Error('The email or the password is wrong.')
+      if (contribMode === 'expire') window.setTimeout(() => setContributor({ ...contributor, account: null, sessionExpired: true }, true), 6000)
+      return setContributor({ ...contributor, sessionExpired: false, account: { email, adminLangs: contribMode === 'nonadmin' ? [] : LANGUAGES.map((l) => l.code) } })
+    },
+    async contributorSignOut() {
+      return setContributor({ ...contributor, account: null, siteUnreachable: false, sessionExpired: false })
+    },
+    async contributorSaveStore(input) {
+      const { config } = contributor
+      // Merged over the saved ids as main does: only '' removes one, and no two packs may share one.
+      const projects = { ...config.projects }
+      for (const [folder, raw] of Object.entries(input.projects ?? {})) {
+        const id = raw.trim()
+        if (id === '') delete projects[folder]
+        else if (/^\d+$/.test(id)) projects[folder] = id
+        else throw new Error(`The CurseForge project id for ${folder} must be digits only.`)
+      }
+      const holder = new Map<string, string>()
+      for (const [folder, id] of Object.entries(projects)) {
+        if (holder.has(id)) throw new Error(`${holder.get(id)} and ${folder} have the same CurseForge project id, ${id}. Each pack needs its own project.`)
+        holder.set(id, folder)
+      }
+      return setContributor({
+        ...contributor,
+        config: {
+          ...config,
+          projects,
+          repo: input.repo ?? config.repo,
+          gameVersions: input.gameVersions ?? config.gameVersions,
+          ...(input.store === 'curseforge' && input.token !== undefined ? { hasCfToken: input.token !== '' } : {}),
+          ...(input.store === 'github' && input.token !== undefined ? { hasGhToken: input.token !== '' } : {})
+        }
+      })
+    },
+    async contributorRows(_gameId, lang) {
+      await sleep(200)
+      return contributorRows(lang)
+    },
+    async contributorPublish(gameId, lang, store, only) {
+      const jobId = `job-${++seq}`
+      const folders = only ? [only] : contributorRows(lang).filter((r) => r.state === 'unreleased').map((r) => r.folder)
+      const base: JobProgress = { jobId, gameId, productId: `publish/${store}`, action: 'publish', phase: 'queued', received: 0, total: 0, bytesPerSecond: 0 }
+      const size = 180 * 1024 * 1024
+      const ticksPerPack = 6
+      emit({ ...base, phase: 'installing', message: `1/${folders.length} ${folders[0] ?? ''}: zipping` })
+      let tick = 0
+      const handle = {
+        timer: 0,
+        cancel: () => {
+          window.clearInterval(handle.timer)
+          running.delete(jobId)
+          emit({ ...base, phase: 'cancelled' })
+        }
+      }
+      running.set(jobId, handle)
+      handle.timer = window.setInterval(() => {
+        tick++
+        const n = Math.floor(tick / ticksPerPack)
+        if (n < folders.length) {
+          const step = tick % ticksPerPack
+          const label = `${n + 1}/${folders.length} ${folders[n]}`
+          if (step === 0) return void emit({ ...base, phase: 'installing', message: `${label}: zipping` })
+          if (step === ticksPerPack - 1) return void emit({ ...base, phase: 'installing', message: `${label}: waiting for ${store === 'github' ? 'GitHub' : 'CurseForge'}` })
+          return void emit({ ...base, phase: 'installing', received: (size * step) / (ticksPerPack - 1), total: size, bytesPerSecond: 12 * 1024 * 1024, message: `${label}: uploading` })
+        }
+        window.clearInterval(handle.timer)
+        running.delete(jobId)
+        folders.forEach((f) => uploaded.add(f))
+        const link = (folder: string): string => (store === 'github' ? `https://github.com/${contributor.config.repo}/releases/tag/${folder}/v1.5.0` : 'https://www.curseforge.com/projects/1234567')
+        const skipped = only ? [] : contributorRows(lang).filter((r) => !folders.includes(r.folder)).map((r) => ({ folder: r.folder, reason: r.state as Exclude<ReleaseRow['state'], 'unreleased'> }))
+        contributor = {
+          ...contributor,
+          lastRuns: { ...contributor.lastRuns, [store]: { store, lang, published: folders.map((folder) => ({ folder, version: '1.5.0', link: link(folder) })), skipped, failed: [], stoppedEarly: false, finishedAt: new Date().toISOString() } }
+        }
+        contributorListeners.forEach((l) => l(contributor))
+        emit({ ...base, phase: 'done' })
+      }, 500)
+      return jobId
+    },
     async windowMinimize() {
       console.info('[mock] windowMinimize')
     },
@@ -519,6 +655,10 @@ export function createMockApi(): ManagerApi {
     },
     async windowIsMaximized() {
       return maximized
+    },
+    onContributorChanged(l) {
+      contributorListeners.add(l)
+      return () => void contributorListeners.delete(l)
     },
     onJob(l) {
       jobListeners.add(l)

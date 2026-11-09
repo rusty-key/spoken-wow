@@ -8,14 +8,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { GrantRow } from "@/lib/grants/store";
 import { CODES, isLang, langName, type Lang } from "@/lib/lang";
-import { CAPABILITIES, canGrant, capabilityLabel, type Capability, type Viewer } from "@/lib/permissions";
+import { CAPABILITIES, capabilityLabel, type Capability } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 /**
  * A tint per capability, so who can do what reads down the column without reading the
  * words. The heavier the capability, the warmer: admin is the only red one.
  */
-const CAPABILITY_COLOURS: Record<Capability, string> = {
+export const CAPABILITY_COLOURS: Record<Capability, string> = {
   text: "border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300",
   edit: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   regenerate: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300",
@@ -26,23 +26,16 @@ const CAPABILITY_COLOURS: Record<Capability, string> = {
 };
 
 /**
- * One person's languages: what they hold in each, every capability removable, and a way to
- * add another.
- *
- * Offers only what `viewer` may hand out (lib/permissions.ts `canGrant`), so a language
- * admin sees the team capabilities in their own languages and nothing else. The server
- * refuses anything else whatever this offers.
+ * One person's languages for the site admin's user list: what they hold in each, every
+ * capability removable, and a way to add another.
  */
 export default function GrantCell({
   grants,
-  viewer,
   busy,
   onGrant,
   onRevoke,
 }: {
-  /** This person's grants, as far as the viewer may see them. */
   grants: readonly GrantRow[];
-  viewer: Viewer;
   busy: boolean;
   onGrant: (lang: Lang, capabilities: Capability[]) => Promise<boolean>;
   onRevoke: (lang: Lang, capability: Capability) => void;
@@ -56,37 +49,27 @@ export default function GrantCell({
     if (held) held.push(grant.capability);
     else byLang.set(grant.lang, [grant.capability]);
   }
-  const offer = (lang: Lang) =>
-    CAPABILITIES.filter((cap) => canGrant(viewer, cap, lang) && !byLang.get(lang)?.includes(cap));
+  const offer = (lang: Lang) => CAPABILITIES.filter((cap) => !byLang.get(lang)?.includes(cap));
 
   return (
     <div className="flex flex-col items-start gap-1">
       {[...byLang].map(([lang, capabilities]) => (
         <div key={lang} className="flex flex-wrap items-center gap-1">
           <span className="text-muted-foreground min-w-24 text-xs">{langName(lang)}</span>
-          {capabilities.map((capability) => {
-            const removable = canGrant(viewer, capability, lang);
-            return (
-              <Badge
-                key={capability}
-                variant="outline"
-                className={cn(CAPABILITY_COLOURS[capability], removable && "pr-0.5")}
+          {capabilities.map((capability) => (
+            <Badge key={capability} variant="outline" className={cn(CAPABILITY_COLOURS[capability], "pr-0.5")}>
+              {capabilityLabel(capability)}
+              <button
+                type="button"
+                disabled={busy}
+                aria-label={`Remove ${capabilityLabel(capability)} in ${langName(lang)}`}
+                className="rounded-full px-1 opacity-60 hover:opacity-100 disabled:opacity-30"
+                onClick={() => onRevoke(lang, capability)}
               >
-                {capabilityLabel(capability)}
-                {removable ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    aria-label={`Remove ${capabilityLabel(capability)} in ${langName(lang)}`}
-                    className="rounded-full px-1 opacity-60 hover:opacity-100 disabled:opacity-30"
-                    onClick={() => onRevoke(lang, capability)}
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </Badge>
-            );
-          })}
+                ×
+              </button>
+            </Badge>
+          ))}
           {offer(lang).length > 0 ? (
             <GrantPopover
               open={open === lang}
@@ -172,19 +155,16 @@ function GrantPopover({
  * left out, and changing the language clears what was ticked. `lang` fixes the language and
  * hides its select, for adding to one somebody already holds.
  */
-export function GrantPicker({
+function GrantPicker({
   offer,
   lang: fixed,
   busy,
   onPick,
-  children,
 }: {
   offer: (lang: Lang) => readonly Capability[];
   lang?: Lang;
   busy: boolean;
   onPick: (lang: Lang, capabilities: Capability[]) => void;
-  /** Anything to put before the selects, such as an email field; the whole is one form. */
-  children?: React.ReactNode;
 }) {
   const langs = CODES.filter((code) => offer(code).length > 0);
   const [lang, setLang] = useState(fixed ?? langs[0]);
@@ -207,7 +187,6 @@ export function GrantPicker({
         if (lang && picked.size) onPick(lang, offered.filter((cap) => picked.has(cap)));
       }}
     >
-      {children}
       {fixed ? null : (
         <Select
           value={lang}

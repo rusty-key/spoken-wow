@@ -130,9 +130,9 @@ RoundTrips("an escaped >> fence line", fenced)
 Expect("Encode refuses a nil envelope", C:Encode(nil), nil)
 Expect("Encode refuses an empty envelope", C:Encode(""), nil)
 
-local link = C:Link("https://spoken.rusty.one/contribute", written)
-Expect("Link carries the base URL", link:match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
-Expect("Link's fragment is exactly Encode's output", link, "https://spoken.rusty.one/contribute#e1=" .. C:Encode(written))
+local link = C:Link("https://spoken.quest/contribute", written)
+Expect("Link carries the base URL", link:match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
+Expect("Link's fragment is exactly Encode's output", link, "https://spoken.quest/contribute#e1=" .. C:Encode(written))
 Expect("Link refuses when Encode would", C:Link("https://x", nil), nil)
 
 -- A cap with no boundary is not a cap: this pins that an oversized encode is refused rather

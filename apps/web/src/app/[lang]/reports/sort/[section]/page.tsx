@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import SortQueue from "@/components/reports/SortQueue";
 import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
-import { can, isAdmin, questTextCapability } from "@/lib/permissions";
+import { can, isAdmin } from "@/lib/permissions";
 import { queuesOf } from "@/lib/reports/reports";
 import { sortQueue } from "@/lib/reports/sort";
 import { listReports, skippedIds } from "@/lib/reports/store";
@@ -37,7 +37,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
       source={section}
       groups={groups}
       canRegenerate={canRegenerate}
-      canEditText={can(viewer, section === "quests" ? questTextCapability(lang) : "text", lang)}
+      canEditText={can(viewer, section === "quests" ? "regenerate" : "text", lang)}
       showNpcPage={isAdmin(session.user.role)}
     />
   );

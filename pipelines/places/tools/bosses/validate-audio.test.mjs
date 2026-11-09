@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { renderLookup } from "./build-lookup.mjs";
-import { checkPack, parseLookup } from "./validate-audio.mjs";
+import { checkPack, parseLookup, refuseEmpty } from "./validate-audio.mjs";
 
 const entry = { map: 36, key: "edwin vancleef", file: "36/edwin-vancleef", len: 41.2 };
 const take = { lineId: "boss:36:edwin vancleef", file: "36/edwin-vancleef", durationSec: "41.2", spokenHash: "h1" };
@@ -35,6 +35,11 @@ test("a pack whose lookup, files and takes agree passes", () => {
   const { problems, notes } = check();
   assert.deepEqual(problems, []);
   assert.deepEqual(notes, []);
+});
+
+test("a pack with no voices is refused", () => {
+  assert.throws(() => refuseEmpty(parseLookup(renderLookup([])), "ptBR"), /ptBR has no live boss takes/);
+  assert.doesNotThrow(() => refuseEmpty(parseLookup(renderLookup([entry])), "ptBR"));
 });
 
 test("a lookup entry whose mp3 is missing fails", () => {

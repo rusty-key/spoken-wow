@@ -216,15 +216,10 @@ if ! english; then
   for t in ${targets[@]+"${targets[@]}"}; do
     [[ "$t" == audio-* || "$t" == spoken-all ]] || { echo "error: --lang=$LANG_CODE releases sound packs; '$t' has one project for every language" >&2; exit 1; }
   done
-  # The language's packs on CurseForge, less any dormant (scripts/lib/packs.mjs): a language
-  # not split by side ships Shared and Gossip alone.
+  # The language's packs on CurseForge.
   if (( ${#targets[@]} == 0 )); then
     for p in $(node "$REPO/scripts/lib/packs.mjs" list quests "$LANG_CODE" curseforge); do targets+=("audio-$p"); done
   fi
-  for t in "${targets[@]}"; do
-    [[ "$t" == spoken-all ]] && continue
-    [[ "$(pack_field "$t" dormant)" == false ]] || { echo "error: the $LANG_CODE $t pack is dormant: its lines ship in Shared" >&2; exit 1; }
-  done
 fi
 
 # Asked once, answered at each of the places below that only concern one store.

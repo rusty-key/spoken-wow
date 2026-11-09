@@ -6,7 +6,9 @@ deploying on every push to `master` that touches `apps/web/`, `pipelines/`,
 
 It replaced two separate deployments, whose names are now redirect vhosts pointing here —
 see `nginx-voiceover-redirect.conf` and `nginx-lore-redirect.conf`, which exist so that
-every address the addons have ever emitted still resolves.
+every address the addons have ever emitted still resolves. `spoken.rusty.one` stays up the
+same way (`nginx-spoken-rusty-redirect.conf`): its pages redirect and its API is proxied,
+because installed Managers refuse redirects.
 
 ```
 /srv/spoken/
@@ -97,7 +99,7 @@ no longer lives in is one somebody sets on the wrong box.
 | `SPOKEN_BOSSES_AUDIO_HISTORY` | `shared/audio-history/bosses` | shared; **must be set**, for the reason the quests one must |
 | `SPOKEN_PLACES_MANIFEST` | `shared/manifest.json` | shared; the app rewrites it whenever a batch drains |
 
-Six more come from `shared/app.env`, which `ecosystem.config.js` parses and merges into the
+Eight more come from `shared/app.env`, which `ecosystem.config.js` parses and merges into the
 pm2 environment. They are secrets, and that file is the only place they exist:
 
 | Env var | Value | Notes |
@@ -105,9 +107,11 @@ pm2 environment. They are secrets, and that file is the only place they exist:
 | `DATABASE_URL` | `postgres://spoken:…@127.0.0.1:5432/spoken` | localhost only. The owner: `migrate.sh`, backups and scripts use it |
 | `APP_DATABASE_URL` | `postgres://spoken_app:…@127.0.0.1:5432/spoken` | what the app logs in as; `ecosystem.config.js` hands it to the app as its `DATABASE_URL`. Row-level security binds it, so a query that misses its team reads nothing. Unset, the app uses the owner's |
 | `BETTER_AUTH_SECRET` | 32 random bytes | signs session cookies; rotating it signs everyone out |
-| `BETTER_AUTH_URL` | `https://spoken.rusty.one` | **must match the public origin exactly** |
+| `BETTER_AUTH_URL` | `https://spoken.quest` | **must match the public origin exactly** |
 | `SPOKEN_SECRET_KEY` | 32 bytes, base64 | the master key stored ElevenLabs credentials are sealed under |
 | `ELEVENLABS_DICTIONARY_ID` | an id from your ElevenLabs account | the pronunciation dictionary `/lexicon` updates in place. **Must not change**: unset, every save creates a new one |
+| `RESEND_API_KEY` | a sending key from Resend | sends password reset emails. Unset, `/forgot-password` still says a link is on its way, sends nothing and logs an error |
+| `RESEND_FROM` | `Spoken <noreply@spoken.quest>` | the sender; its domain must be verified in Resend |
 
 **`SPOKEN_SECRET_KEY` cannot be rotated casually.** Every stored ElevenLabs credential is
 sealed under it, and AES-GCM offers no way to re-seal a credential nothing can open. Change
@@ -124,8 +128,7 @@ references stream through the site, and the volume is no longer read or written.
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
 (`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its
 pack's Ogg when it is committed (`apps/web/src/lib/takes/encode.ts`). Without it the take
-still commits, but the release workflow (`.github/workflows/release-packs.yaml`) must encode
-every take instead.
+still commits, but a Manager release stops and names the takes that have no Ogg.
 
 `app.env` may also set **`QUEUE_MAX_ACTIVE`**, which is not a secret: how many people's
 regeneration queues drain at once. Default 3. Each queue runs at its own key's plan width,
@@ -146,7 +149,7 @@ cat > /srv/spoken/shared/app.env <<EOF
 DATABASE_URL=postgres://spoken:$PGPW@127.0.0.1:5432/spoken
 APP_DATABASE_URL=postgres://spoken_app:$APPPW@127.0.0.1:5432/spoken
 BETTER_AUTH_SECRET=$(openssl rand -base64 32)
-BETTER_AUTH_URL=https://spoken.rusty.one
+BETTER_AUTH_URL=https://spoken.quest
 SPOKEN_SECRET_KEY=$(openssl rand -base64 32)   # once, and never again: see above
 ELEVENLABS_DICTIONARY_ID=<the dictionary id from your ElevenLabs account>
 EOF
@@ -168,19 +171,21 @@ ssh -L 3002:127.0.0.1:3002 "$SPOKEN_DROPLET"     # then http://127.0.0.1:3002
 ### Checking it
 
 ```bash
-curl -fsS 'https://spoken.rusty.one/api/quests/search?q=thrall&filter=npc' | grep Thrall
-curl -fsS 'https://spoken.rusty.one/api/places/search' | head -c 200
-curl -sI -H 'Range: bytes=0-1' 'https://spoken.rusty.one/api/quests/audio/quests/5-accept.mp3' | head -1   # 206
-curl -sI 'https://spoken.rusty.one/api/places/audio/1411/zone.mp3' | head -1
+curl -fsS 'https://spoken.quest/api/quests/search?q=thrall&filter=npc' | grep Thrall
+curl -fsS 'https://spoken.quest/api/places/search' | head -c 200
+curl -sI -H 'Range: bytes=0-1' 'https://spoken.quest/api/quests/audio/quests/5-accept.mp3' | head -1   # 206
+curl -sI 'https://spoken.quest/api/places/audio/1411/zone.mp3' | head -1
 
 # every address shape the two addons have ever emitted
+curl -sI 'https://spoken.rusty.one/quests' | grep -i location                 # https://spoken.quest/quests
+curl -s -o /dev/null -w '%{http_code}\n' 'https://spoken.rusty.one/api/places/search'  # 200, no redirect
 curl -sI 'https://voiceover.rusty.one/r/quest/5/accept'      | grep -i location  # /quests/r/quest/5/accept
 curl -sI 'https://lore.rusty.one/enUS/r/1411/razor-hill'     | grep -i location  # /places/r/1411/razor-hill
 curl -sI 'https://lore.rusty.one/r/1411/razor-hill'          | grep -i location  # the same
 curl -sI 'https://lore.rusty.one/deDE/r/1411/razor-hill'     | grep -i location  # /deDE/places/r/1411/razor-hill
 curl -sI 'https://lore.rusty.one/?q=razor'                   | grep -i location  # /places?q=razor
 curl -sI 'https://voiceover.rusty.one/?q=thrall'             | grep -i location  # /quests?q=thrall
-curl -sI 'https://spoken.rusty.one/downloads/SpokenQuestsAudioComplete-latest.zip' | grep -i location  # the meta addon's page
+curl -sI 'https://spoken.quest/downloads/SpokenQuestsAudioComplete-latest.zip' | grep -i location  # the meta addon's page
 ```
 
 Then sign in and regenerate one line in each section with a key set on `/profile`.
@@ -532,6 +537,28 @@ deploying this release again:
 psql "$PROD_DATABASE_URL" -c "select grant_text_maintainers()"
 ```
 
+### Overrides in every language
+
+Migration 0096 adds `lang` to `line_override` and to its primary key. The previous release's save
+names the old key, so for the seconds between migrating and the symlink swap saving an override
+fails. Nothing else does.
+
+**After a rollback, run this at once**, or English overrides cannot be saved. The other languages'
+overrides stay in the table and come back on the next deploy. The previous release does not read
+them, unless the English team also holds that language: it reads every row its team can see, so
+such a row would replace English's text for that file. Delete those first.
+
+```bash
+psql "$PROD_DATABASE_URL" -c 'alter table line_override add constraint line_override_team_file unique ("teamId", "file")'
+```
+
+It fails if one team holds overrides on the same file in two languages. Delete the ones you can
+spare first. Before deploying again:
+
+```bash
+psql "$PROD_DATABASE_URL" -c 'alter table line_override drop constraint line_override_team_file'
+```
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the
@@ -546,6 +573,103 @@ psql "$(grep ^DATABASE_URL /srv/spoken/shared/app.env | cut -d= -f2-)" \
 `user` is quoted because it is a reserved word — that is Better Auth's default table name.
 Every role after this one is handed out from `/admin`, which will not let an admin demote
 themselves.
+
+## The Release button
+
+`/admin/release?lang=xx` lets a team admin publish one section and language to the Manager channel
+and follow it by step. One release runs at a time, site-wide. Every section runs on the droplet once
+`SPOKEN_RELEASE_ENV` is set; when it is unset, a press dispatches the `release-packs.yaml` workflow.
+
+### On the droplet
+
+A press forks `release-tools/scripts/manager/release-job.mjs` out of the worker's process tree, so a
+deploy's pm2 reload does not kill it. It works in a scratch copy of the release's `release-tools/`,
+copies only the clips the channel lacks from the archive to the packs bucket, and reports through
+`shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`). The last 30 runs are kept. The page
+shows the step and the end of the log; the whole log is in that directory.
+
+A press never commits, so a pack's version is the one in its `.toc` on the channel. The button is a
+patch release, its dropdown offers minor and major, and the folders that changed get the highest
+live version of the press bumped by that, so a folder with no changes keeps its own. A `.toc`
+version, a page's `version:` or `docs/quests/CHANGELOG.md` counts only for a pack not on the channel
+yet. A press that changes nothing, or that fails, releases nothing, and the page says so.
+
+Quests needs `python3` with psycopg2, once, as root: `apt-get install python3-psycopg2`. Its other
+imports ship in `release-tools/`. Its clips are the Oggs in `take_encoding`, so nothing is encoded
+during a release. A press first spends up to 30 seconds encoding, on the site and newest first, the
+language's live takes whose encoding failed at commit or has no duration. A live take still without
+either stops the release with its name, and the next press carries on. Each failed encode is in the
+language's activity log with its error.
+
+1. Create `/srv/spoken/shared/release.env`, owned by `deploy`, mode 600:
+
+   ```
+   SPOKEN_PACKS_SIGNING_KEY=<the channel's existing key, never a new one>
+   R2_ACCESS_KEY_ID=<a token scoped to the packs bucket alone>
+   R2_SECRET_ACCESS_KEY=<its secret>
+   R2_BUCKET=spoken-packs
+   ```
+
+   It stays out of `app.env` because pm2 merges that file into every site worker, and the Manager
+   trusts whatever this key signs. A new key makes every installed Manager reject the channel.
+2. Add to `app.env`, where `DATABASE_URL` (the owner's login), `R2_ACCOUNT_ID` and
+   `SPOKEN_ARCHIVE_URL` must already be, as the job reads those three from it:
+
+   ```
+   SPOKEN_RELEASE_ENV=/srv/spoken/shared/release.env
+   ```
+3. Restart as below. To go back to Actions, remove that line and restart.
+
+A job that stops beating for 3 minutes, from a reboot or an out-of-memory kill, fails on the page's
+next look and frees the lock.
+
+### On GitHub Actions
+
+1. Create a **fine-grained** GitHub token for this repository only, with the repository
+   permission **Actions: Read and write** (`actions: write`) and nothing else.
+2. Add to `/srv/spoken/shared/app.env`:
+
+   ```
+   SPOKEN_RELEASE_GITHUB_TOKEN=<the token>
+   SPOKEN_RELEASE_GITHUB_REPO=<owner>/<repo>
+   ```
+
+   `SPOKEN_RELEASE_GITHUB_REF` is optional and defaults to `master`: the branch the workflow is
+   dispatched on. Unset token or repo, a press fails at once and the run is marked failed.
+   `SPOKEN_RELEASE_CHANNEL` is optional too. Unset means the `production` environment; a checkout
+   testing the button sets `staging`.
+3. Restart so pm2 reads the file:
+
+   ```bash
+   pm2 startOrReload /srv/spoken/shared/ecosystem.config.js --update-env
+   ```
+
+**The GitHub environment holds the run's secrets.** The workflow reads them from the environment its
+`channel` input names, and fails in its first steps if one is missing. `production` and `staging` each
+need `DO_SSH_KEY`, `DO_KNOWN_HOSTS` (with an entry for `DO_HOST`), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET` and `SPOKEN_PACKS_SIGNING_KEY`, their R2 token scoped to their own
+bucket. `DO_USER` and `DO_HOST` are repository secrets. A manual CurseForge upload also needs
+`CURSEFORGE_TOKEN` in `production`.
+
+**A publish that would empty a pack is refused.** A pack losing more than 5 files and more than 5% of
+them stops the run, since that is what a short sync or pull looks like. If the loss is meant, dispatch
+the workflow by hand with `allow_removals`.
+
+**Deploy and the workflow go together.** The workflow file on the default branch must already
+have the `manager_only` and `release_id` inputs, or GitHub rejects the dispatch and every press
+fails. They arrive in the same merge as the site; do not set the token before it is deployed.
+Migration `0095_release_run.sql` arrives with that deploy (`activate.sh` runs it).
+
+**A stuck run** needs no `make` target: if GitHub has not started a run 15 minutes after the
+press, the page fails it itself ("GitHub never started it") and frees the lock. A run that
+GitHub reports as finished is settled the next time anyone opens the page. If every check gets an
+error, as with an expired token, the lock holds for 9 hours and the only sign is in the server log,
+so replace the token rather than waiting.
+
+**The first real release.** Pick a small language and a small section, press Release, watch the
+run's step on the page and the run itself through its link, then check the Manager lists the new
+rev for that pack. Nothing else should have changed: one release publishes only the folders that
+build produced.
 
 ## Downloads
 
@@ -564,6 +688,10 @@ make quests-history-status         # archive parity between local and droplet
 make places-history-status
 make web-logs                      # pm2 logs spoken
 ```
+
+A deploy does not install nginx config. After a change to `nginx-spoken-api.conf`, such as the
+`/api/v1/` location the contributors' text API needs for long runs, copy it as its header says and
+run `sudo nginx -t && sudo systemctl reload nginx`.
 
 Rollback walks strictly backwards in time, so running it repeatedly keeps stepping to older
 releases instead of bouncing between the newest two.

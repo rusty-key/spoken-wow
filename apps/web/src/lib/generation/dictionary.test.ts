@@ -12,7 +12,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 const { closeDb } = await import("@/lib/db");
 const { asSystem } = await import("@/lib/teams/testing");
-const { currentLocator, readLexicon, resync, sync, writeLexicon } = await import("./dictionary");
+const { dictionaryFor, readLexicon, resync, sync, writeLexicon } = await import("./dictionary");
 
 const ENTRIES = [
   {
@@ -99,6 +99,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
+  await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" in ('enUS', 'deDE')`);
   // Every save here diffs ENTRIES against the real lexicon and logs the other ~145 words as
   // removed, and the restore below is a raw write that logs nothing to say they came back.
   // Left behind, those rows told the dirty check every word had just moved -- marking most of
@@ -172,7 +173,7 @@ describe("readLexicon", () => {
           set "dictionaryId" = null, "versionId" = null, "syncedAt" = null where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     expect((await readLexicon()).sync).toBe("never");
-    expect(await currentLocator()).toBeNull();
+    expect((await readLexicon()).locator).toBeNull();
   });
 
   /**
@@ -199,7 +200,6 @@ describe("writeLexicon", () => {
     expect(lexicon.sync).toBe("synced");
     expect(lexicon.entries).toEqual(ENTRIES);
     expect(lexicon.locator).toEqual({ dictionaryId: "dict-abc", versionId: "ver-1" });
-    expect(await currentLocator()).toEqual({ dictionaryId: "dict-abc", versionId: "ver-1" });
   });
 
   /**
@@ -262,7 +262,6 @@ describe("writeLexicon", () => {
     expect(lexicon.sync).toBe("pending");
     expect(lexicon.entries).toEqual(edited);
     expect(lexicon.locator).toEqual({ dictionaryId: "dict-abc", versionId: "ver-1" });
-    expect(await currentLocator()).toEqual({ dictionaryId: "dict-abc", versionId: "ver-1" });
   });
 });
 
@@ -309,7 +308,6 @@ describe("what is in force", () => {
     // Still in force, and still what generation must use: the rules ElevenLabs holds have
     // not changed, only the ones this row now describes.
     expect(lexicon.locator).toEqual({ dictionaryId: "dict-abc", versionId: "ver-1" });
-    expect(await currentLocator()).toEqual({ dictionaryId: "dict-abc", versionId: "ver-1" });
   });
 
   /** The other half: re-saving the same entries is still synced, not a new pending state. */
@@ -349,7 +347,7 @@ describe("concurrent saves", () => {
     // Neither upload landed a locator, so nothing is in force - see the note above about
     // never vs pending.
     expect(lexicon.sync).toBe("never");
-    expect(await currentLocator()).toBeNull();
+    expect((await readLexicon()).locator).toBeNull();
   });
 });
 
@@ -485,7 +483,6 @@ describe("the pinned dictionary", () => {
     expect(syncError).toBeNull();
     expect(lexicon.locator?.dictionaryId).toBe(PINNED);
     expect(seen.map((call) => call.endpoint)).toEqual(["add-rules"]);
-    expect(await currentLocator()).toEqual(lexicon.locator);
   });
 
   /**
@@ -534,5 +531,175 @@ describe("the pinned dictionary", () => {
     expect(syncError).toMatch(/returned no rules/);
     expect(lexicon.entries).toEqual(ENTRIES);
     expect(lexicon.locator).toBeNull();
+  });
+});
+
+/** A dictionary answers only the key that created it, as ElevenLabs' does across accounts. */
+describe("a lexicon voiced from several accounts", () => {
+  function elevenLabs() {
+    const owners = new Map<string, string>();
+    const created: string[] = [];
+    const ruleWrites: string[] = [];
+    let versions = 0;
+    let sent = 0;
+
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      const target = String(url);
+      const key = new Headers(init?.headers).get("xi-api-key")!;
+      const id = target.match(/pronunciation-dictionaries\/([^/]+)/)?.[1];
+
+      if (target.endsWith("/add-from-rules")) {
+        const made = `dict-${key}-${created.length}`;
+        owners.set(made, key);
+        created.push(made);
+        sent = JSON.parse(String(init?.body)).rules.length;
+        return Response.json({ id: made, version_id: `ver-${++versions}` });
+      }
+      if (id && owners.get(id) !== key) return new Response("not found", { status: 404 });
+      if (target.endsWith("/download")) return new Response(pls(sent));
+      if (target.endsWith("/add-rules")) {
+        ruleWrites.push(id!);
+        sent = JSON.parse(String(init?.body)).rules.length;
+        return Response.json({ id, version_id: `ver-${++versions}` });
+      }
+      return Response.json({ id, latest_version_id: `ver-${versions}`, rules: [] });
+    }) as unknown as typeof globalThis.fetch;
+
+    const as = (apiKey: string) => ({ apiKey, baseUrl: "https://stub.invalid", fetchImpl });
+    return { as, created, ruleWrites, owners };
+  }
+
+  const LANG = "deDE";
+
+  const EDITED = [{ ...ENTRIES[0], grapheme: "Ysera" }];
+
+  async function savedBy(
+    service: ReturnType<typeof elevenLabs>,
+    apiKey: string,
+    entries: typeof ENTRIES = ENTRIES,
+  ) {
+    const { lexicon, syncError } = await writeLexicon(
+      entries,
+      null as unknown as string,
+      service.as(apiKey),
+      LANG,
+    );
+    expect(syncError).toBeNull();
+    return lexicon.locator!;
+  }
+
+  const clear = () =>
+    asSystem.query(`delete from "pronunciation_lexicon_locale" where "lang" = $1`, [LANG]);
+
+  beforeEach(clear);
+  afterEach(clear);
+
+  it("gives an account that cannot read the language's dictionary one of its own", async () => {
+    const service = elevenLabs();
+    const owner = await savedBy(service, "owner");
+
+    const locator = await dictionaryFor(LANG, service.as("other"));
+
+    expect(locator!.dictionaryId).not.toBe(owner.dictionaryId);
+    expect(service.owners.get(locator!.dictionaryId)).toBe("other");
+    expect((await readLexicon(LANG)).locator).toEqual(owner);
+  });
+
+  it("creates it once, however many lines start together, and reuses it", async () => {
+    const service = elevenLabs();
+    await savedBy(service, "owner");
+
+    const first = await Promise.all(
+      Array.from({ length: 5 }, () => dictionaryFor(LANG, service.as("other"))),
+    );
+    const later = await dictionaryFor(LANG, service.as("other"));
+
+    expect(new Set(first.map((locator) => locator!.dictionaryId)).size).toBe(1);
+    expect(later).toEqual(first[0]);
+    expect(service.created.filter((id) => service.owners.get(id) === "other")).toHaveLength(1);
+  });
+
+  it("uses the owner's dictionary as it stands, without minting a version", async () => {
+    const service = elevenLabs();
+    const owner = await savedBy(service, "owner");
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = $1`, [LANG]);
+
+    expect(await dictionaryFor(LANG, service.as("owner"))).toEqual(owner);
+    expect(service.ruleWrites).toEqual([]);
+    expect(service.created).toHaveLength(1);
+  });
+
+  it("brings every account's copy up to date after a save", async () => {
+    const service = elevenLabs();
+    await savedBy(service, "owner");
+    const before = await dictionaryFor(LANG, service.as("other"));
+
+    await savedBy(service, "owner", EDITED);
+    const after = await dictionaryFor(LANG, service.as("other"));
+
+    expect(after!.dictionaryId).toBe(before!.dictionaryId);
+    expect(after!.versionId).not.toBe(before!.versionId);
+  });
+
+  it("lets a second collaborator save without touching or failing on the first's", async () => {
+    const service = elevenLabs();
+    const owner = await savedBy(service, "owner");
+    const second = await savedBy(service, "other");
+
+    expect(second.dictionaryId).not.toBe(owner.dictionaryId);
+    expect((await readLexicon(LANG)).sync).toBe("synced");
+    expect(service.ruleWrites).not.toContain(owner.dictionaryId);
+    expect((await dictionaryFor(LANG, service.as("owner")))!.dictionaryId).toBe(owner.dictionaryId);
+  });
+
+  it("throws when the account can hold no copy, and keeps an older one when it has it", async () => {
+    const service = elevenLabs();
+    await savedBy(service, "owner");
+    const down = { ...service.as("other"), fetchImpl: refuses().fetchImpl };
+
+    await expect(dictionaryFor(LANG, down)).rejects.toThrow(/429/);
+
+    const before = await dictionaryFor(LANG, service.as("other"));
+    await savedBy(service, "owner", EDITED);
+    expect(await dictionaryFor(LANG, down)).toEqual(before);
+  });
+
+  it("keeps every account on the version it has while a save is pending", async () => {
+    const service = elevenLabs();
+    const owner = await savedBy(service, "owner");
+    const other = await dictionaryFor(LANG, service.as("other"));
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = $1 and "dictionaryId" = $2`, [
+      LANG,
+      owner.dictionaryId,
+    ]);
+    const writes = service.ruleWrites.length;
+
+    const { syncError } = await writeLexicon(
+      EDITED,
+      null as unknown as string,
+      { ...service.as("owner"), fetchImpl: refuses().fetchImpl },
+      LANG,
+    );
+    expect(syncError).toMatch(/429/);
+    expect((await readLexicon(LANG)).sync).toBe("pending");
+
+    expect(await dictionaryFor(LANG, service.as("other"))).toEqual(other);
+    expect(await dictionaryFor(LANG, service.as("owner"))).toEqual(owner);
+    expect(service.ruleWrites).toHaveLength(writes);
+
+    // The save lands, and the adopted copy turns out older than the lexicon.
+    const landed = await savedBy(service, "other", EDITED);
+    expect((await dictionaryFor(LANG, service.as("owner")))!.versionId).not.toBe(owner.versionId);
+    expect(landed.dictionaryId).toBe(other!.dictionaryId);
+  });
+
+  it("does not create a copy over a read that failed for another reason", async () => {
+    const service = elevenLabs();
+    await savedBy(service, "owner");
+    const created = service.created.length;
+    const down = { ...service.as("other"), fetchImpl: refuses().fetchImpl };
+
+    await expect(dictionaryFor(LANG, down)).rejects.toThrow();
+    expect(service.created).toHaveLength(created);
   });
 });

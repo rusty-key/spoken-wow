@@ -9,6 +9,9 @@ import { log } from './state'
 
 const STALE_PART_MS = 7 * 24 * 60 * 60 * 1000
 
+/** Under the data folder: where a publish run zips each pack. */
+export const CONTRIBUTOR_TMP = 'contributor-tmp'
+
 /**
  * Run at start, with no job running and after interrupted swaps were undone: empties each game's
  * `.spoken-manager\staging` (an install that died half way leaves its extracted files there) and half-finished downloads that nobody
@@ -59,6 +62,16 @@ export async function cleanLeftovers(games: GameInstall[], downloadsPath: string
     }
   } catch {
     /* no downloads folder yet */
+  }
+}
+
+/** Run at start, with no job running: a quit during a publish leaves its temp zip behind. */
+export async function cleanContributorTmp(dataPath: string): Promise<void> {
+  const tmp = path.join(dataPath, CONTRIBUTOR_TMP)
+  try {
+    await fs.promises.rm(tmp, { recursive: true, force: true })
+  } catch (err) {
+    log(`Could not clean ${tmp}:`, err)
   }
 }
 

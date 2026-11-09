@@ -7,7 +7,7 @@
  */
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { memoByLang } from "@/lib/memo";
-import type { CorpusLine } from "./corpus";
+import type { Corpus, CorpusLine } from "./corpus";
 import { corpus } from "./quests/catalogue";
 
 export const SUBFOLDERS = ["quests", "gossip", "followup"] as const;
@@ -50,7 +50,11 @@ const fileIndexKey = Symbol.for("wow-voiceover.file-index.by-lang");
 
 /** Per language, since a file is the same in every one but the line's text is not. */
 export async function fileIndex(lang: Lang = BASE_LANG): Promise<Map<string, CorpusLine>> {
-  const lines = (await corpus(lang)).lines;
+  return fileIndexOf(await corpus(lang), lang);
+}
+
+/** fileIndex of a corpus the caller already read, which saves the stamp check that read costs. */
+export function fileIndexOf({ lines }: Corpus, lang: Lang = BASE_LANG): Map<string, CorpusLine> {
   return memoByLang(fileIndexKey, lang, lines, () => {
     const index = new Map<string, CorpusLine>();
     for (const line of lines) {

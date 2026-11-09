@@ -4,12 +4,11 @@ release: quests-audio-shared-ptBR
 section: quests
 lang: ptBR
 pack: shared
-holds: quests
 version: 0.0.3
 github: false
 slug: spoken-portuguese-audio-quests-shared
-name: Spoken Portuguese Audio: Quests
-summary: Every quest's dialogue, for both factions, voiced in Portuguese. NPC gossip is a separate pack. Needs Spoken.
+name: Spoken Portuguese Audio: Quests - Shared
+summary: Quest dialogue both factions can hear, voiced in Portuguese. Install alongside the Alliance or Horde pack. Needs Spoken.
 categories:
   - Audio & Video
   - Roleplay
@@ -17,20 +16,27 @@ categories:
 license: MIT
 ---
 
-This is the Portuguese audio pack for quest dialogue: every quest, whichever side your character is on, voiced in Portuguese.
+This is the Portuguese audio pack for the quests **both factions** can take, voiced in Portuguese. Neutral hubs like Booty Bay, Gadgetzan, Everlook and Ratchet live here, along with every other quest whose giver talks to either side.
 
-**You need one more addon for this to do anything:**
+**Everyone wants this pack**, and on its own it is only part of the story. Pair it with your side, and with the player:
 
 1. **[Spoken](https://www.curseforge.com/wow/addons/spoken)** — the player. Without it no pack plays.
+2. **[Spoken Portuguese Audio: Quests - Alliance](https://www.curseforge.com/wow/addons/spoken-portuguese-audio-quests-alliance)** or **[(Horde)](https://www.curseforge.com/wow/addons/spoken-portuguese-audio-quests-horde)** — whichever side your character is on.
 
 ## The packs
 
 | Pack | Holds | |
 | --- | --- | --- |
-| **Quests** | every quest, both factions | **this pack** |
+| [Alliance](https://www.curseforge.com/wow/addons/spoken-portuguese-audio-quests-alliance) | Alliance-only quests | |
+| [Horde](https://www.curseforge.com/wow/addons/spoken-portuguese-audio-quests-horde) | Horde-only quests | |
+| **Shared** | quests both factions can take | **this pack** |
 | [Gossip](https://www.curseforge.com/wow/addons/spoken-portuguese-audio-gossip) | NPC gossip chatter | |
 
 Gossip — the chatter NPCs give you when you talk to them without a quest — is optional on top.
+
+## Why the pack is split
+
+The whole thing is a large download, and a good part of it is dialogue your character can never reach. A quest belongs to a side when its questgiver does — hostile to the Horde means an Alliance quest, and the other way round. A giver who talks to both sides has no faction to sort by, so those quests are here, where both packs can reach them.
 
 ## Voiced with care
 

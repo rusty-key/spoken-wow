@@ -13,6 +13,7 @@ export const LANGUAGES: { code: string; name: string }[] = [
   { code: 'esMX', name: 'Español (Latinoamérica)' },
   { code: 'frFR', name: 'Français' },
   { code: 'itIT', name: 'Italiano' },
+  { code: 'plPL', name: 'Polski' },
   { code: 'ptBR', name: 'Português (Brasil)' },
   { code: 'ruRU', name: 'Русский' },
   { code: 'koKR', name: '한국어' },
@@ -22,6 +23,21 @@ export const LANGUAGES: { code: string; name: string }[] = [
 
 export function languageName(code: string): string {
   return LANGUAGES.find((l) => l.code === code)?.name ?? code
+}
+
+const RELEASE_PACKS = [
+  'SpokenQuestsAudioAlliance',
+  'SpokenQuestsAudioHorde',
+  'SpokenQuestsAudioShared',
+  'SpokenQuestsAudioGossip',
+  'SpokenPlacesAudio',
+  'SpokenReadablesAudio',
+  'SpokenBossesAudio'
+]
+
+/** The folders a language's release covers: English folders carry no suffix. */
+export function languageFolders(lang: string): string[] {
+  return RELEASE_PACKS.map((p) => (lang === 'enUS' ? p : `${p}_${lang}`))
 }
 
 const SIDES: Record<Exclude<QuestsPack, 'all'>, string> = {
@@ -77,14 +93,15 @@ function voices(section: Section, lang: string, pack: QuestsPack): Product {
   let base: string
   let legacy: Product['legacy']
   if (section === 'quests') {
-    if (english) {
-      id = pack === 'all' ? 'quests-audio' : `quests-audio-${pack}`
-      folder = pack === 'all' ? '' : `SpokenQuestsAudio${SIDES[pack as Exclude<QuestsPack, 'all'>]}`
-      base = pack === 'all' ? 'SpokenQuestsAudioAll' : folder
-    } else {
-      id = `quests-audio-${lang}`
-      folder = `SpokenQuestsAudio_${lang}`
-      base = folder
+    const code = english ? '' : `_${lang}`
+    const suffix = english ? '' : `-${lang}`
+    id = pack === 'all' ? `quests-audio${suffix}` : `quests-audio-${pack}${suffix}`
+    folder = pack === 'all' ? '' : `SpokenQuestsAudio${SIDES[pack as Exclude<QuestsPack, 'all'>]}${code}`
+    base = pack === 'all' ? `SpokenQuestsAudioAll${code}` : folder
+    // A language's quests were one folder before they were split as English's are.
+    if (!english && pack === 'all') {
+      const old = `SpokenQuestsAudio${code}`
+      legacy = { id, tagPrefix: id, folders: [old], assetPattern: zip(old) }
     }
   } else {
     const name = FOLDER[section]
@@ -98,17 +115,17 @@ function voices(section: Section, lang: string, pack: QuestsPack): Product {
       legacy = { id: `${old.section}-audio${suffix}`, tagPrefix: `${old.section}-audio${suffix}`, folders: [oldFolder], assetPattern: zip(oldFolder) }
     }
   }
-  // English's "all" is a bundle holding the four split packs' folders, as the store installs them.
+  // "all" is a bundle holding the four split packs' folders, as the store installs them.
   const folders =
-    section === 'quests' && english && pack === 'all'
-      ? Object.values(SIDES).map((s) => `SpokenQuestsAudio${s}`)
+    section === 'quests' && pack === 'all'
+      ? Object.values(SIDES).map((s) => `SpokenQuestsAudio${s}${english ? '' : `_${lang}`}`)
       : [folder]
   const title = `${SECTION_TITLE[section]} voices`
   return {
     id,
     kind: 'voices',
     title,
-    description: section === 'quests' && english ? SIDE_BLURB[pack] : SECTION_BLURB[section],
+    description: section === 'quests' ? SIDE_BLURB[pack] : SECTION_BLURB[section],
     section,
     lang,
     pack: section === 'quests' ? pack : undefined,
@@ -132,11 +149,7 @@ const SPOKEN: Product = {
 function build(): Product[] {
   const out: Product[] = [SPOKEN]
   for (const { code } of LANGUAGES) {
-    if (code === BASE_LANGUAGE) {
-      for (const pack of ['all', 'alliance', 'horde', 'shared', 'gossip'] as QuestsPack[]) out.push(voices('quests', code, pack))
-    } else {
-      out.push(voices('quests', code, 'all'))
-    }
+    for (const pack of ['all', 'alliance', 'horde', 'shared', 'gossip'] as QuestsPack[]) out.push(voices('quests', code, pack))
     // Italian has quests voices only, so far, and bosses English only. With no release in a
     // language, the voice packs page still shows that language's first product.
     out.push(voices('places', code, 'all'), voices('readables', code, 'all'), voices('bosses', code, 'all'))

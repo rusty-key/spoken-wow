@@ -33,8 +33,8 @@ node pipelines/places/tools/voice/generate.mjs --zone Durotar --limit 20
 
 Selectors: `--zone <id|name>` (repeatable; a zone selects its areas too), `--zones-only`,
 `--subzones-only`, `--missing` (no audio yet), `--stale` (the spoken text changed since the take
-was cut), `--dictionary-drift` (cut with another pronunciation dictionary than the one in use;
-needs `DATABASE_URL`), `--older-than <date>`, `--all`, `--limit <n>` and `--list`. The credit
+was cut), `--dictionary-drift` (cut with another pronunciation dictionary than the one last
+uploaded, which also matches every take from another ElevenLabs account; needs `DATABASE_URL`), `--older-than <date>`, `--all`, `--limit <n>` and `--list`. The credit
 estimate uses the rate measured from the manifest, and falls back to `creditRate` in
 `pipelines/places/tools/voice/config.json`, the only thing that file holds.
 

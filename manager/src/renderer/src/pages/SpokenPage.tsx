@@ -3,7 +3,7 @@ import type { GameInstall, ReleaseInfo } from '@shared/types'
 import { compareVersions } from '@shared/version'
 import { api } from '../api'
 import { jobBusy, releasesFor, statusOf } from '../catalog'
-import { Wordmark } from '../components/Brand'
+import { RailTop } from '../components/Brand'
 import { CopyText, Menu, Select } from '../components/Controls'
 import { NoGame } from '../components/EmptyGames'
 import { IconAlert, IconCheck, IconExternal, IconFolder, IconGear, IconLink, IconRefresh, IconX } from '../components/Icons'
@@ -63,10 +63,7 @@ function SpokenFor({ game }: { game: GameInstall }): ReactNode {
   return (
     <div className="frame">
       <aside className="rail scroll" aria-label="Spoken on this game">
-        <div className="rail-top">
-          <Wordmark flavor={game.flavor} kicker />
-          <p className="rail-game">{game.gameVersion ? `${game.label} · ${game.gameVersion}` : game.label}</p>
-        </div>
+        <RailTop game={game} />
         <div className="rail-bottom">
           <Select label={S.spoken.channel} value={selected} onChange={setPicked} disabled={releases.length === 0}>
             {versionOptions.length === 0 && <option value="">{S.spoken.noRelease}</option>}

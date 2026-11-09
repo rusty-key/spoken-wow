@@ -3,10 +3,13 @@
 // conditional, so two publishes racing cannot both win. Spec:
 // docs/superpowers/specs/2026-10-18-manager-delta-packs-design.md
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { readPointer } from "../lib/clip-pointer.mjs";
+import { archiveBase, fetchRetrying } from "../lib/download.mjs";
 import { buildManifest, caseDuplicate, diffFiles, hashFolder, revOf } from "./manifest.mjs";
+import { bumpVersion, tocVersion, withTocVersion } from "./pack-version.mjs";
 import { openJson, publicKeyOf, sealJson, sha256Text } from "./sign.mjs";
 
 // The pack ids the manager accepts: an index entry it rejects hides the whole channel.
@@ -14,6 +17,10 @@ const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/;
 
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const INDEX_CACHE = "public, max-age=60";
+
+// A sync or pull that came up short looks like a pack losing its clips, and players would lose them.
+const MAX_REMOVED_FILES = 5;
+const MAX_REMOVED_SHARE = 0.05;
 
 export function compareVersions(a, b) {
   const x = a.split(".").map(Number);
@@ -45,7 +52,7 @@ export async function eachLimit(items, limit, fn) {
 
 // The releases list is newest first and mixes in per-language audio releases, so spoken/v tags can
 // sit past page 1. Pages are read until one holds a spoken/v release, the list runs out, or 10 pages.
-export async function latestSpokenRelease(fetchImpl = fetch, token = process.env.GITHUB_TOKEN) {
+export async function latestSpokenRelease(fetchImpl = fetch, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN) {
   const versions = [];
   for (let page = 1; page <= 10; page++) {
     const res = await fetchImpl(`https://api.github.com/repos/rusty-key/spoken-wow/releases?per_page=100&page=${page}`, {
@@ -65,14 +72,53 @@ export async function latestSpokenRelease(fetchImpl = fetch, token = process.env
   return versions.sort(compareVersions).at(-1);
 }
 
-async function readSigned(store, key, publicKey) {
+export async function readSigned(store, key, publicKey) {
   const o = await store.get(key);
   if (!o) return null;
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };
 }
 
-export async function publish({ store, packs, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, log = console.log }) {
+// A pointer's manifest entry is the clip it names, never the pointer's own bytes.
+async function resolvePointers(root, files, archived) {
+  for (const f of files) {
+    const pointer = /\.(mp3|ogg)$/.test(f.path) ? await readPointer(join(root, ...f.path.split("/"))) : null;
+    if (!pointer) continue;
+    f.sha256 = pointer.sha256;
+    f.size = pointer.size;
+    archived.set(pointer.sha256, pointer);
+  }
+}
+
+async function archivedBytes({ key, sha256, size }, archiveUrl, fetchImpl) {
+  const res = await fetchRetrying(`${archiveBase(archiveUrl)}${key}`, fetchImpl);
+  if (!res.ok) throw new Error(`${key}: HTTP ${res.status} from the archive`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.length !== size || sha256Text(bytes) !== sha256) throw new Error(`${key}: the archive's bytes do not match their name`);
+  return bytes;
+}
+
+async function liveVersion(store, folder, files) {
+  const toc = files.find((f) => f.path === `${folder}.toc`);
+  const blob = toc && (await store.get(`blobs/${toc.sha256}`));
+  if (!blob) throw new Error(`${folder} has no .toc on the channel to read its version from`);
+  return tocVersion(blob.body.toString("utf8"));
+}
+
+// The press's one version: past the highest live one, or as staged for packs with none live yet.
+function nextVersion(liveVersions, stagedVersions, bump) {
+  const highest = (versions) => [...versions].sort(compareVersions).at(-1);
+  return liveVersions.length > 0 ? bumpVersion(highest(liveVersions), bump) : highest(stagedVersions);
+}
+
+// With `bump`, a changed pack gets a new version in its .toc, and the version alone never counts as a change.
+export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, archiveUrl, fetchImpl = fetch, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
+  // The bucket's name is masked in CI logs; this says which channel a run signed for.
+  log(`signing with ${publicKey}`);
+
+  // A one-section build leaves the other sections' folders absent, which is not an error there.
+  const packs = onlyPresent ? allPacks.filter((p) => existsSync(join(distDir, p.folder))) : allPacks;
+  if (onlyPresent && packs.length === 0) throw new Error("nothing in dist/ to publish: build a pack first");
 
   // Every folder and every requirement is checked before anything is read from or sent to R2.
   for (const { folder, section } of packs) {
@@ -94,12 +140,10 @@ export async function publish({ store, packs, distDir, signingKey, minSpoken, la
   const live = current?.value.packs ?? {};
   const known = new Set();
   const changes = [];
+  const archived = new Map();
+  const liveVersions = [];
+  const stagedVersions = [];
   for (const { folder, section } of packs) {
-    log(`${folder}: hashing`);
-    const files = await hashFolder(join(distDir, folder), cache);
-    // Windows and macOS fold case, so paths differing only in case would be one file there.
-    const dup = caseDuplicate(files);
-    if (dup) throw new Error(`${folder} lists ${dup} twice, differing only in case`);
     const requires = { Spoken: `>=${minSpoken[section]}` };
     let before = [];
     const entry = live[folder];
@@ -109,13 +153,46 @@ export async function publish({ store, packs, distDir, signingKey, minSpoken, la
       before = m.value.files;
       for (const f of before) known.add(f.sha256);
     }
+    const tocPath = join(distDir, folder, `${folder}.toc`);
+    if (bump) {
+      const toc = await readFile(tocPath, "utf8");
+      stagedVersions.push(tocVersion(toc));
+      if (entry) {
+        const version = await liveVersion(store, folder, before);
+        liveVersions.push(version);
+        await writeFile(tocPath, withTocVersion(toc, version));
+      }
+    }
+    log(`${folder}: hashing`);
+    const files = await hashFolder(join(distDir, folder), cache);
+    await resolvePointers(join(distDir, folder), files, archived);
+    if (archived.size > 0 && !archiveUrl) throw new Error(`dist/${folder} holds clip pointers: set SPOKEN_ARCHIVE_URL`);
+    // Windows and macOS fold case, so paths differing only in case would be one file there.
+    const dup = caseDuplicate(files);
+    if (dup) throw new Error(`${folder} lists ${dup} twice, differing only in case`);
     const diff = diffFiles(before, files);
     if (diff.same && entry?.requires.Spoken === requires.Spoken) {
       log(`${folder}: unchanged`);
       continue;
     }
     log(`${folder}: +${diff.added} ~${diff.changed} -${diff.removed}`);
+    if (!allowRemovals && diff.removed > MAX_REMOVED_FILES && diff.removed > before.length * MAX_REMOVED_SHARE) {
+      throw new Error(`${folder} would lose ${diff.removed} of its ${before.length} files: check the build, or allow it with --allow-removals`);
+    }
     changes.push({ folder, files, requires });
+  }
+
+  const version = bump && changes.length > 0 ? nextVersion(liveVersions, stagedVersions, bump) : null;
+  if (version) {
+    for (const { folder, files } of changes) {
+      const tocPath = join(distDir, folder, `${folder}.toc`);
+      const toc = withTocVersion(await readFile(tocPath, "utf8"), version);
+      await writeFile(tocPath, toc);
+      const file = files.find((f) => f.path === `${folder}.toc`);
+      file.sha256 = sha256Text(toc);
+      file.size = Buffer.byteLength(toc);
+      log(`${folder}: version ${version}`);
+    }
   }
 
   const blobs = new Map();
@@ -126,22 +203,24 @@ export async function publish({ store, packs, distDir, signingKey, minSpoken, la
   }
   const bytes = [...blobs.values()].reduce((n, b) => n + b.size, 0);
   log(`${blobs.size} new blobs, ${bytes} bytes${dryRun ? " (dry run: nothing sent)" : ""}`);
-  const result = { changed: changes.map((c) => c.folder), blobs: blobs.size, bytes, rev: null };
+  const result = { changed: changes.map((c) => c.folder), blobs: blobs.size, bytes, rev: null, version };
   if (dryRun || changes.length === 0) return result;
 
   let done = 0;
   await eachLimit([...blobs], 16, async ([sha, b]) => {
     if (!(await store.head(`blobs/${sha}`))) {
-      const bytes = await readFile(b.abs);
       // A blob under an immutable, year-cached key cannot be corrected, so its bytes are checked
       // against the key first (a stale hash-cache entry would otherwise store the wrong bytes).
+      const pointer = archived.get(sha);
+      const bytes = pointer ? await archivedBytes(pointer, archiveUrl, fetchImpl) : await readFile(b.abs);
       if (sha256Text(bytes) !== sha) {
         throw new Error(`${b.abs} changed while publishing; run it again`);
       }
       await store.put(`blobs/${sha}`, bytes, { contentType: "application/octet-stream", cacheControl: IMMUTABLE });
     }
-    if (++done % 1000 === 0) log(`  ${done}/${blobs.size} blobs`);
+    if (++done % 100 === 0) log(`  ${done}/${blobs.size} blobs`);
   });
+  log(`${done} blobs in place`);
 
   const rev = revOf(now);
   const nextPacks = { ...live };
@@ -153,7 +232,8 @@ export async function publish({ store, packs, distDir, signingKey, minSpoken, la
     await store.put(`packs/${c.folder}/${rev}.json`, sealed.text, { contentType: "application/json", cacheControl: IMMUTABLE, ifNoneMatch: "*" });
     nextPacks[c.folder] = { rev, manifestSha256: sha256Text(sealed.signed), fileCount: manifest.fileCount, totalSize: manifest.totalSize, requires: c.requires };
   }
-  const sealedIndex = sealJson({ generatedAt: now.toISOString(), packs: nextPacks }, signingKey);
+  // The spread keeps Spoken's own zips, which this publish knows nothing about, listed.
+  const sealedIndex = sealJson({ ...current?.value, generatedAt: now.toISOString(), packs: nextPacks }, signingKey);
   await store.put("index.json", sealedIndex.text, {
     contentType: "application/json", cacheControl: INDEX_CACHE,
     ...(current ? { ifMatch: current.etag } : { ifNoneMatch: "*" }),

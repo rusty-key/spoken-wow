@@ -4,7 +4,6 @@ release: quests-audio-horde-ptBR
 section: quests
 lang: ptBR
 pack: horde
-dormant: true
 version: 0.0.3
 github: false
 slug: spoken-portuguese-audio-quests-horde
@@ -22,7 +21,7 @@ This is the Portuguese audio pack for Horde quest dialogue: the quests only a Ho
 **You need two more addons for this to do anything:**
 
 1. **[Spoken](https://www.curseforge.com/wow/addons/spoken)** — the player. Without it no pack plays.
-2. **[Spoken Portuguese Audio: Quests](https://www.curseforge.com/wow/addons/spoken-portuguese-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it a Horde character hears only part of their quests.
+2. **[Spoken Portuguese Audio: Quests - Shared](https://www.curseforge.com/wow/addons/spoken-portuguese-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it a Horde character hears only part of their quests.
 
 ## The packs
 

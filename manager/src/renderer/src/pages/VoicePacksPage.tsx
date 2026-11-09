@@ -3,7 +3,7 @@ import type { Product, ProductStatus, Section } from '@shared/types'
 import { isChannelRelease } from '@shared/channel'
 import { BASE_LANGUAGE, LANGUAGES, languageName } from '@shared/products'
 import { jobBusy, latestOf, releasesFor, statusOf } from '../catalog'
-import { Wordmark } from '../components/Brand'
+import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
 import { PackRow } from '../components/PackRow'
 import { formatBytes, formatDate } from '../format'
@@ -28,13 +28,12 @@ export function VoicePacksPage(): ReactNode {
 
   const inLang = voices.filter((p) => p.lang === chosen)
   const statusFor = (p: Product): ProductStatus | undefined => statusOf(state, game.id, p.id)
-  const english = chosen === BASE_LANGUAGE
 
-  // Everything of the language that is not installed. English takes the one "All quests"
-  // bundle instead of its four split packs.
+  // Everything of the language that is not installed: the one "All quests" bundle instead of its
+  // four split packs.
   const todo = inLang.filter((p) => {
     if (!released(p)) return false
-    if (english && p.section === 'quests' && p.pack !== 'all') return false
+    if (p.section === 'quests' && p.pack !== 'all') return false
     const s = statusFor(p)
     if (s?.state === 'linked' || jobBusy(state.jobs[jobKey(game.id, p.id)])) return false
     return (s?.state ?? 'not-installed') === 'not-installed'
@@ -52,10 +51,7 @@ export function VoicePacksPage(): ReactNode {
   return (
     <div className="frame">
       <aside className="rail scroll" aria-label={S.voices.title}>
-        <div className="rail-top">
-          <Wordmark flavor={game.flavor} kicker />
-          <p className="rail-game">{game.gameVersion ? `${game.label} · ${game.gameVersion}` : game.label}</p>
-        </div>
+        <RailTop game={game} />
         <div className="rail-bottom">
           {showInstallAll &&
             (confirmAll ? (
@@ -148,7 +144,7 @@ export function VoicePacksPage(): ReactNode {
 }
 
 function packName(p: Product): string {
-  if (p.section === 'quests' && p.lang === BASE_LANGUAGE && p.pack) return S.voices.packNames[p.pack]
+  if (p.section === 'quests' && p.pack) return S.voices.packNames[p.pack]
   return S.voices.sections[p.section ?? 'quests'].title
 }
 

@@ -18,7 +18,8 @@ production (`one-off/2026-10-archive-to-r2/README.md`).
 1. The archive bucket is public. Objects are named by their hash, so an address is only known
    to whoever was given it. Only shared takes are served from it directly; recordings, voice
    clips and references go through the site, because a bucket URL outlives a revoked grant.
-2. GitHub Actions holds the pack signing key (`.github/workflows/release-packs.yaml`).
+2. The droplet holds the pack signing key (`scripts/manager/release-job.mjs`, in
+   `shared/release.env`, never `app.env`).
 3. Quests takes are encoded to the pack's Ogg when they are committed.
 
 ## Phase 1: the archive is a bucket
@@ -54,8 +55,9 @@ any blob no manifest names and would delete the archive in a shared bucket.
 
 - Each quests take is encoded at commit (`apps/web/src/lib/takes/encode.ts`) with the build's
   own recipe (ffmpeg decodes, `oggenc -q 0` encodes), put at `encodings/<sha>`, and recorded in
-  `take_encoding` (migration 0086) with its duration. Best effort: a droplet without `oggenc`
-  commits the take and the build encodes it.
+  `take_encoding` (migration 0086) with the Ogg's duration, which a Manager release lists without
+  reading the clip. Best effort: a droplet without `oggenc` commits the take, and a Manager release
+  stops on it until it has one.
 - `scripts/audio/fetch-encodings.mjs` lays those into `package-audio.sh`'s transcode cache, keyed
   by each master's md5, so a release downloads its encodes instead of making them.
 - `.github/workflows/release-packs.yaml` runs a whole release on a runner: production's rows over

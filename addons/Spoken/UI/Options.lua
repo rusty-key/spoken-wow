@@ -155,6 +155,7 @@ LANGUAGES = {
     { code = "frFR", native = "Français", english = "French" },
     -- No client runs in Italian, so "Auto" never lands on it; a player picks it by hand.
     { code = "itIT", native = "Italiano", english = "Italian" },
+    { code = "plPL", native = "Polski", english = "Polish" },
     { code = "ptBR", native = "Português", english = "Portuguese (Brazil)" },
     { code = "ruRU", native = "Русский", english = "Russian", script = "cyrillic" },
     { code = "koKR", native = "한국어", english = "Korean", script = "korean" },
@@ -258,7 +259,7 @@ end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
 -- unable to open a web page.
-local WEBSITE = "https://spoken.rusty.one"
+local WEBSITE = "https://spoken.quest"
 local function WebsiteURL()
     local language = Options:ClientLanguage()
     return language == "enUS" and WEBSITE or WEBSITE .. "/" .. language

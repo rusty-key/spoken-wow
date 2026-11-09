@@ -1,9 +1,10 @@
 "use client";
 
-import { lineTextSubject, nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { isTypingTarget } from "@/lib/keyboard";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
+import { clientFilterOf, DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -27,7 +28,7 @@ import RecordingDropZone from "@/components/RecordingDropZone";
 import { RECORDED, type Recorded } from "@/lib/recordings/live";
 import { BROADCAST_STATUSES } from "@/lib/broadcast/status";
 import type { Facets } from "@/lib/facets";
-import { sourcesFromParam } from "@/lib/line-fields";
+import { levelFromParam, sourcesFromParam } from "@/lib/line-fields";
 import { NARRATOR_VOICE } from "@/lib/generation/narration";
 import { PROVIDER_NAME } from "@/lib/generation/providers";
 import {
@@ -51,7 +52,6 @@ import type { Filter, LineFilters, ResultLine, SearchResult } from "@/lib/search
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { type Pending, receive, target, write } from "@/lib/url-echo";
 import { triages } from "@/lib/reports/reports";
-import { questTextCapability } from "@/lib/permissions";
 
 /** What a line's Regenerate button is doing, keyed by lineId. */
 export type LineState =
@@ -78,6 +78,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.source?.length) params.set("source", filters.source.join(","));
   if (filters.npcType) params.set("type", filters.npcType);
   if (filters.includeProgress) params.set("progress", "1");
+  if (filters.client && filters.client !== DEFAULT_CLIENT_FILTER) params.set("client", filters.client);
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
   if (filters.overridden) params.set("overridden", "1");
@@ -89,7 +90,10 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.model) params.set("model", filters.model);
   if (filters.author) params.set("author", filters.author);
   if (filters.recorded) params.set("rec", filters.recorded);
+  if (filters.minLevel !== undefined) params.set("minLevel", String(filters.minLevel));
+  if (filters.maxLevel !== undefined) params.set("maxLevel", String(filters.maxLevel));
   if (filters.broadcast) params.set("bt", filters.broadcast);
+  if (filters.playerGender) params.set("playerGender", filters.playerGender);
   return params;
 }
 
@@ -137,7 +141,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
   // LineRows and the answer is the same for all of them.
   const may = useCan();
   const showRegenerate = may("regenerate");
-  const canEdit = may(questTextCapability(lang));
+  const canName = may("text");
   const canTriage = triages(may);
   // Ignoring hides a line from everyone and takes it out of the module, which is the reach
   // the generation settings have rather than the reach a rewrite has. Same gate as the API.
@@ -165,6 +169,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       source: sourcesFromParam(params.get("source")),
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
       includeProgress: params.get("progress") === "1",
+      client: clientFilterOf(params.get("client")),
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
       overridden: params.get("overridden") === "1",
@@ -177,6 +182,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
       author: params.get("author") ?? undefined,
       recorded: RECORDED.find((value) => value === params.get("rec")),
       broadcast: BROADCAST_STATUSES.find((value) => value === params.get("bt")),
+      minLevel: levelFromParam(params.get("minLevel")),
+      maxLevel: levelFromParam(params.get("maxLevel")),
+      playerGender: (["m", "f"] as const).find((value) => value === params.get("playerGender")),
     }),
     [params, urlQuery],
   );
@@ -204,23 +212,12 @@ export default function Explorer({ facets }: { facets: Facets }) {
   const { cleared, clear: clearDirty } = useClearDirty("quests");
   // The line whose spoken text is being rewritten, or null.
   const [editing, setEditing] = useState<ResultLine | null>(null);
-  // Another language's text or names, which are written as versions rather than as
-  // English's overrides. See TranslateDialog.
+  // Another language's names, which are written as versions.
   // `touches` picks the rows on this page that show what is being translated.
   const [translating, setTranslating] = useState<{
     subject: TranslateSubject;
     touches: (row: ResultLine) => boolean;
   } | null>(null);
-  const editText = useCallback(
-    (line: ResultLine) => {
-      if (lang === BASE_LANG) {
-        setEditing(line);
-        return;
-      }
-      setTranslating({ subject: lineTextSubject(line), touches: (row) => row.lineId === line.lineId });
-    },
-    [lang],
-  );
   const rename = useCallback((line: ResultLine, what: "npc" | "quest") => {
     setTranslating({
       touches:
@@ -228,22 +225,22 @@ export default function Explorer({ facets }: { facets: Facets }) {
           ? (row) => row.npcType === line.npcType && row.npcId === line.npcId
           : (row) => row.questId === line.questId,
       subject: what === "npc"
-        ? nameSubject({
+        ? {
             kind: line.npcType,
             entityId: String(line.npcId),
             title: line.npcName,
             subtitle: `${line.npcType} ${line.npcId}`,
             english: line.english?.npcName ?? "",
             current: line.missing?.npcName ? null : line.npcName,
-          })
-        : nameSubject({
+          }
+        : {
             kind: "quest",
             entityId: String(line.questId),
             title: line.questTitle ?? `quest ${line.questId}`,
             subtitle: `quest ${line.questId}`,
             english: line.english?.questTitle ?? "",
             current: line.missing?.questTitle ? null : line.questTitle,
-          }),
+          },
     });
   }, []);
   const [ignoring, setIgnoring] = useState<ResultLine | null>(null);
@@ -298,8 +295,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
 
       for (const [key, value] of Object.entries(next)) {
         if (key === "page") continue;
-        if (value) search.set(key, String(value));
-        else search.delete(key);
+        if (value === undefined || value === "") search.delete(key);
+        else search.set(key, String(value));
       }
 
       if (next.page !== undefined && next.page > 1) search.set("page", String(next.page));
@@ -339,6 +336,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("includeProgress" in next
           ? { progress: next.includeProgress ? "1" : undefined }
           : {}),
+        ...("client" in next ? { client: next.client === DEFAULT_CLIENT_FILTER ? undefined : next.client } : {}),
         ...("line" in next ? { line: next.line } : {}),
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),
         ...("dirty" in next ? { dirty: next.dirty ? "1" : undefined } : {}),
@@ -350,6 +348,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("author" in next ? { author: next.author } : {}),
         ...("recorded" in next ? { rec: next.recorded } : {}),
         ...("broadcast" in next ? { bt: next.broadcast } : {}),
+        ...("minLevel" in next ? { minLevel: next.minLevel } : {}),
+        ...("maxLevel" in next ? { maxLevel: next.maxLevel } : {}),
+        ...("playerGender" in next ? { playerGender: next.playerGender } : {}),
       });
     },
     [updateUrl],
@@ -980,7 +981,6 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   showRecordings={showRecordings}
                   onRecordingChanged={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
                   canRegenerate={showRegenerate}
-                  canEdit={canEdit}
                   canTriage={canTriage}
                   onOverrideAnswered={(l) =>
                     void refreshRows((row) => row.driftedOverride?.file === l.driftedOverride?.file)
@@ -993,8 +993,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   dirty={line.dirty && !cleared.has(line.audioPath)}
                   onClearDirty={(l) => clearDirty([l.audioPath])}
                   onPlay={play}
-                  onEditText={editText}
-                  onRename={lang !== BASE_LANG && canEdit ? rename : null}
+                  onEditText={setEditing}
+                  onRename={lang !== BASE_LANG && canName ? rename : null}
                   onIgnore={canIgnore ? setIgnoring : null}
                   onAddSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: false }) : null}
                   onReplaceSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: true }) : null}

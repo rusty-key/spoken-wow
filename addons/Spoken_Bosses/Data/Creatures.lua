@@ -74,7 +74,7 @@ SpokenBossCreatures = {
 	[90] = {
 		["crowd pummeler 9 60"] = { creature = 6229, display = 6774 },
 		["electrocutioner 6000"] = { creature = 6235, display = 6915 },
-		["grubbis"] = { creature = 7361, display = 144378 },
+		["grubbis"] = { creature = 7361, display = 6533 },
 		["mekgineer thermaplugg"] = { creature = 7800, display = 6980 },
 		["viscous fallout"] = { creature = 7079, display = 5497 },
 	},
@@ -145,8 +145,10 @@ SpokenBossCreatures = {
 		["lord roccor"] = { creature = 9025, display = 5781 },
 		["magmus"] = { creature = 9938, display = 12162 },
 		["phalanx"] = { creature = 9502, display = 8177 },
+		["plugger spazzring"] = { creature = 9499, display = 8652 },
 		["princess moira bronzebeard"] = { creature = 8929, display = 8705 },
 		["pyromancer loregrain"] = { creature = 9024, display = 8762 },
+		["ribbly screwspigot"] = { creature = 9543, display = 8667 },
 		["ring of law"] = { creature = 10096, display = 9329 },
 		["the seven"] = { creature = 9034, display = 8690 },
 		["warder stilgiss"] = { creature = 9041, display = 9089 },
@@ -184,7 +186,7 @@ SpokenBossCreatures = {
 	},
 	[329] = {
 		["archivist galford"] = { creature = 10811, display = 10544 },
-		["balnazzar"] = { creature = 10812, display = 10545 },
+		["balnazzar"] = { creature = 10812, display = 10691 },
 		["baron rivendare"] = { creature = 10440, display = 10729 },
 		["baroness anastari"] = { creature = 10436, display = 10698 },
 		["black guard swordsmith"] = { creature = 11121, display = 775 },
@@ -296,7 +298,7 @@ SpokenBossCreatures = {
 		["patchwerk"] = { creature = 16028, display = 16174 },
 		["sapphiron"] = { creature = 15989, display = 16033 },
 		["thaddius"] = { creature = 15928, display = 16137 },
-		["the four horsemen"] = { creature = 16062, display = 16139 },
+		["the four horsemen"] = { creature = 16062, display = 10729 },
 	},
 	[2789] = {
 		["lord kazzak"] = { creature = 12397, display = 12449 },
@@ -312,6 +314,9 @@ SpokenBossCreatures = {
 		["lethon"] = { creature = 14888, display = 15365 },
 		["taerar"] = { creature = 14890, display = 15363 },
 		["ysondre"] = { creature = 14887, display = 15364 },
+	},
+	[2856] = {
+		["balnazzar"] = { creature = nil, display = 10545 },
 	},
 	[2875] = {
 		["kaigy maryla"] = { creature = 256275, display = 139545 },

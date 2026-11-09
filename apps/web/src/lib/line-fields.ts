@@ -49,3 +49,9 @@ export function listParam<T extends string>(value: unknown, allowed: readonly T[
   const picked = typeof value === "string" ? value.split(",") : [];
   return allowed.filter((option) => picked.includes(option));
 }
+
+export const LEVEL_PARAM = /^\d{1,3}$/;
+
+export function levelFromParam(value: string | null): number | undefined {
+  return value && LEVEL_PARAM.test(value) ? Number(value) : undefined;
+}

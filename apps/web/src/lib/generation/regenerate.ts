@@ -113,9 +113,6 @@ export async function regenerateLine(
   // read inside the lock below: someone rewriting a line mid-batch should affect the lines
   // after the save. Read *before* the gate because an override is what decides whether this
   // line is voiceable at all - the corpus's own flag was computed from text nobody could edit.
-  //
-  // English only: an override rewrites the English corpus. Another language's rewrites are
-  // versions of its own text, which `line` already is.
   const overrides = await readOverrides(lang);
   const source = overrideOf(overrides, file)?.text ?? line.text;
 

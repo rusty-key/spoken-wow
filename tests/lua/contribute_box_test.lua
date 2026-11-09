@@ -34,14 +34,14 @@ box.editBox.handlers.OnTextChanged(box.editBox)
 Expect("a keystroke restores the envelope", box.editBox:GetText(), envelope)
 
 ------------------------------------------------------------------------------- the link case
-local link = "https://spoken.rusty.one/contribute#e1=abc"
+local link = "https://spoken.quest/contribute#e1=abc"
 Expect("a link is shown", Spoken:ShowContribution(link, "https://x", true), true)
 Expect("the box holds the link itself", box.editBox:GetText(), link)
 Expect("...with the link-specific hint", box.hint:GetText(), "Copy this and open it in your browser:")
 Expect("...and no redundant address line, since the link already carries it", box.address:GetText(), "")
 
 ------------------------------------------------------------------------------- a report
-local report = "https://spoken.rusty.one/quests/r/quest/5/accept"
+local report = "https://spoken.quest/quests/r/quest/5/accept"
 Expect("a report is shown", Spoken:ShowReport(report, function() return envelope end), true)
 local address, carried = H.SplitReportLink(box.editBox:GetText())
 Expect("...at its own address", address, report)
@@ -62,6 +62,12 @@ Expect("the collected window formats the source and field",
 Expect("...and shows the gathered text instead of the raw envelope",
     gathered.view.text:GetText():match("Text:\nWords%.") ~= nil
         and gathered.view.text:GetText():find("!SPOKEN", 1, true) == nil, true)
+
+local readable = Spoken.Contribute:Envelope("readables",
+    { { "book", "Runa codificada" }, { "item", "9550" }, { "number", "1" } }, "A note.")
+Spoken.Gather:Add("b:9550", readable)
+Spoken:RefreshGatheredText()
+Expect("the collected window labels a readable's item source", gathered.view.text:GetText():match("Item ID: 9550") ~= nil, true)
 
 Spoken.Gather:Clear()
 Spoken:RefreshGatheredText()

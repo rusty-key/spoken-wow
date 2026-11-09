@@ -7,7 +7,9 @@ import { SUPPORTED_FLAVORS } from '@shared/types'
 import { useGame, useStore, useSupportedGames, type Page } from '../store'
 import { S } from '../strings'
 import { flavorLook } from '../catalog'
+import { releaseAvailable } from '../contributor'
 import { GameIcon } from './Brand'
+import { RestartButton } from './RestartButton'
 import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
 
 const TABS: { page: Page; label: string }[] = [
@@ -20,6 +22,7 @@ const TABS: { page: Page; label: string }[] = [
 export function TopBar(): ReactNode {
   const { state, actions } = useStore()
   const { catalog } = state
+  const tabs = releaseAvailable(state.contributor) ? [...TABS, { page: 'release' as Page, label: S.tabs.release }] : TABS
   const tip = state.refreshing
     ? S.common.loading
     : catalog.offline
@@ -33,7 +36,7 @@ export function TopBar(): ReactNode {
         <img src={icon} alt="" width={40} height={40} />
       </button>
       <nav className="tabs-main" aria-label="Main">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.page} type="button" className="tab" aria-current={state.page === t.page ? 'page' : undefined} onClick={() => actions.navigate(t.page)}>
             {t.label}
           </button>
@@ -105,7 +108,7 @@ export function GamesStrip(): ReactNode {
   const games = useSupportedGames()
   const game = useGame()
   if (!state.ready || state.page === 'settings') return null
-  const onGamePage = state.page === 'spoken' || state.page === 'voices' || state.page === 'community'
+  const onGamePage = state.page === 'spoken' || state.page === 'voices' || state.page === 'community' || state.page === 'release'
   return (
     <nav className="strip" aria-label={S.home.title}>
       <span className="strip-label">{S.home.title}</span>
@@ -174,8 +177,9 @@ export function Banners(): ReactNode {
         </div>
       )}
       {updater.state === 'ready' && (
-        <div className="banner banner-info" role="status">
-          {S.banners.updateReady(updater.version)}
+        <div className="banner banner-info banner-action" role="status">
+          {updater.message ?? S.banners.updateReady(updater.version)}
+          <RestartButton className="btn btn-sm" />
         </div>
       )}
       {updater.state === 'downloading' && (

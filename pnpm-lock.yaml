@@ -116,6 +116,9 @@ importers:
       aws4fetch:
         specifier: 1.0.20
         version: 1.0.20
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
 
 packages:
 

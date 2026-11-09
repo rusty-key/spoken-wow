@@ -42,18 +42,18 @@ function fresh() {
 describe("writeOverride", () => {
   it("is visible to the next read, in the worker that wrote it", async () => {
     fresh();
-    await readOverrides(); // warm the memo, so a stale one would be served
-    await writeOverride(file, "q:1155:accept", "A crystal fragment.", null);
+    await readOverrides("enUS"); // warm the memo, so a stale one would be served
+    await writeOverride("enUS", file, "q:1155:accept", "A crystal fragment.", null);
 
-    expect((await readOverrides()).get(file)?.text).toBe("A crystal fragment.");
+    expect((await readOverrides("enUS")).get(file)?.text).toBe("A crystal fragment.");
   });
 
   it("replaces rather than accumulates - one file says one thing", async () => {
     fresh();
-    await writeOverride(file, "q:1155:accept", "first", null);
-    await writeOverride(file, "q:1155:accept", "second", null);
+    await writeOverride("enUS", file, "q:1155:accept", "first", null);
+    await writeOverride("enUS", file, "q:1155:accept", "second", null);
 
-    const stored = await readOverrides();
+    const stored = await readOverrides("enUS");
     expect(stored.get(file)?.text).toBe("second");
     const { rows } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [file]);
     expect(rows).toHaveLength(1);
@@ -63,16 +63,16 @@ describe("writeOverride", () => {
 describe("clearOverride", () => {
   it("is noticed by a warm memo, which max(updatedAt) alone would not be", async () => {
     fresh();
-    await writeOverride(file, "q:1155:accept", "A crystal fragment.", null);
-    await readOverrides();
+    await writeOverride("enUS", file, "q:1155:accept", "A crystal fragment.", null);
+    await readOverrides("enUS");
 
-    expect(await clearOverride(file, null)).toBe(true);
-    expect((await readOverrides()).get(file)).toBeUndefined();
+    expect(await clearOverride("enUS", file, null)).toBe(true);
+    expect((await readOverrides("enUS")).get(file)).toBeUndefined();
   });
 
   it("reports that there was nothing to clear", async () => {
     fresh();
-    expect(await clearOverride(file, null)).toBe(false);
+    expect(await clearOverride("enUS", file, null)).toBe(false);
   });
 });
 
@@ -85,5 +85,27 @@ describe("effectiveText", () => {
 
     expect(effectiveText(line, "quests/1155-accept.mp3", overrides)).toBe("A crystal fragment.");
     expect(effectiveText(line, "quests/33-accept.mp3", overrides)).toBe("x");
+  });
+});
+
+describe("an override's language", () => {
+  it("keeps one file's overrides apart per language", async () => {
+    fresh();
+    await writeOverride("enUS", file, "q:1155:accept", "In English.", null);
+    await writeOverride("deDE", file, "q:1155:accept", "Auf Deutsch.", null);
+
+    expect((await readOverrides("enUS")).get(file)?.text).toBe("In English.");
+    expect((await readOverrides("deDE")).get(file)?.text).toBe("Auf Deutsch.");
+
+    await clearOverride("deDE", file, null);
+    expect((await readOverrides("deDE")).has(file)).toBe(false);
+    expect((await readOverrides("enUS")).get(file)?.text).toBe("In English.");
+  });
+
+  it("logs the override under its language", async () => {
+    fresh();
+    await writeOverride("deDE", file, "q:1155:accept", "Auf Deutsch.", null);
+    const { rows } = await asSystem.query(`select "lang" from "activity" where "subject" = $1 and "kind" = 'override.set'`, [file]);
+    expect(rows).toEqual([{ lang: "deDE" }]);
   });
 });

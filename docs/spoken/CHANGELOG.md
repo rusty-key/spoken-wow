@@ -8,7 +8,83 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   speakers that are not quest starters, such as festival elders.
   *([anon1231823](https://github.com/anon1231823))*
 - **Localized Compendium quests follow the corpus.** Titles, offers and hand-ins are exported
-  from the corpus into the matching language pack; clients without a translation keep English.
+  from the corpus into the matching language's Gossip pack; clients without a translation keep
+  English. *([anon1231823](https://github.com/anon1231823))*
+- **Place stories that started on their own stop when you enter combat.** A zone or area story that
+  was already playing when a fight began used to talk through the whole fight, in PvP too. It now
+  stops and plays again from the start once combat ends. A story you started with Play keeps going.
+  *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
+
+## 3.8.4 — 2026-11-08
+
+- **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
+  its entrance shows the dungeon's lore, clicking a boss shows that boss's story with its 3D model,
+  and right-clicking out returns to the zone's lore.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Boss lore in the Compendium shows the boss's 3D model** above the story.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Unlock Undiscovered Places and Unlock Unfound Bosses now show everything in the Compendium**, even
+  with Discovered Only or Found Only on.
+  *([anon1231823](https://github.com/anon1231823))*
+- Stratholme's Balnazzar and the Four Horsemen use corrected models, and Scarlet Enclave's Balnazzar
+  now has one.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Spoken's separators render on Chinese clients.** Visible separators now use the middle dot
+  (`·`), which the Chinese client renders where the previous bullet (`•`) could disappear.
+  *([anon1231823](https://github.com/anon1231823))*
+- **A quest's Play button in the objective tracker no longer covers the quest's item button.** The
+  item stays where the game puts it and Play sits below it. *([Nucabe](https://github.com/Nucabe))*
+
+## 3.8.3 — 2026-11-05
+
+- **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice
+  pack made in Polish, such as the community's Spoken Polski. No game client runs in Polish, so
+  Spoken never picks it by itself. *([zaxcer](https://github.com/zaxcer))*
+
+## 3.8.2 — 2026-11-05
+
+- **Updated texts.** Place stories in English, German and Portuguese, boss stories and boss names
+  have the latest edits from the site, and gossip matches more lines on clients in other languages.
+  Razorfen Kraul and the Hall of Thanes now have stories on their dungeon cards.
+  *([rusty-key](https://github.com/rusty-key))*
+- **The Bosses page links German, Spanish and Portuguese voice packs to CurseForge**, where they
+  now live, instead of GitHub. *([rusty-key](https://github.com/rusty-key))*
+- **Spoken no longer adds a Play button to Questie's tracker.** The Questie team asked for this
+  so Spoken stops depending on their tracker's internals, and they plan to add Spoken support on
+  their side. Until then, Questie's tracker has no Play button; the Quest Log and Blizzard's
+  tracker keep theirs.
+  *([anon1231823](https://github.com/anon1231823))*
+
+## 3.8.1 — 2026-11-03
+
+- **Spoken's website is now [spoken.quest](https://spoken.quest).** Report and Contribute links and
+  the Settings website link use it. Links from older versions still work.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Grubbis has its own portrait** in Spoken Bosses on Classic Era, using its Classic display ID
+  instead of Forever's display ID.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Plugger Spazzring and Ribbly Screwspigot have portraits** in Spoken Bosses.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The Bosses page lists its voice pack in your language**, in every language but Italian, which
+  has none yet. *([rusty-key](https://github.com/rusty-key))*
+- **A greeting heard once stays heard after you log out.** With Read Greetings set to Once per
+  Greeting, an NPC such as a flight master or an innkeeper no longer greets you again after a relog
+  or a server restart, and neither does a quest giver under Once for Quest Givers. Voiced objects
+  stay quiet the same way. What you hear is now shared by every copy of an NPC: a greeting heard
+  from one city guard counts for the other guards of that kind. Greetings you have already heard
+  are kept.
+  *([Devilquest](https://github.com/Devilquest))*
+
+## 3.8.0 — 2026-11-02
+
+- **Every language's quest audio comes in four parts, as English's does:** Alliance, Horde, Shared
+  and Gossip. Spoken's settings list each part with its own download, and once all four are
+  installed, Spoken names the old single pack so you can remove it.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Play buttons in the Classic Era quest log.** Each quest in the list has its Play button, and it
+  stays ahead of the title when another addon, such as Leatrix Plus, rewrites the title.
+  *([anon1231823](https://github.com/anon1231823))*
+- **The Bosses page shows the right icon** before a boss is selected.
   *([anon1231823](https://github.com/anon1231823))*
 - **DialogueUI's text types out letter by letter.** Type Out By now applies to DialogueUI's
   quest, gossip and book text as it does to the captions, so it types letter by letter, the

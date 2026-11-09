@@ -39,7 +39,7 @@ import { fileURLToPath } from "node:url";
 import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
 import { luaString } from "../../pipelines/places/tools/lib/wiki.mjs";
 import { archiveOf, sourceOf } from "../lib/archives.mjs";
-import { actedFolder, audioFamily, languageFolder } from "../lib/packs.mjs";
+import { actedFolder, audioFamily, englishFolder } from "../lib/packs.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -213,7 +213,7 @@ function interfaceOf(section) {
   const source =
     section === "quests"
       ? join(ROOT, "pipelines/quests/tts_cli/build.py")
-      : join(ROOT, "addons", languageFolder(section, "all"), `${languageFolder(section, "all")}.toc`);
+      : join(ROOT, "addons", englishFolder(section), `${englishFolder(section)}.toc`);
   // Not anchored: in build.py the line opens a string literal, `TOC_HEADER = """## Interface: …`.
   const found = readFileSync(source, "utf8").match(/## Interface: (.+)$/m);
   if (!found) throw new Error(`no ## Interface line in ${source}`);

@@ -87,8 +87,9 @@ story.` under its name and line. `SpokenPlaces:IsLocked` decides, and `QueueLore
 place.
 
 Unlock Undiscovered Places (`showUndiscovered`) opens every area and tells every story. The counts
-and greyed zones still say what this character has found. Discovered Only, on by default, leaves out zones with
-nothing found and areas not found.
+and greyed zones still say what this character has found. It also shows the complete list even when
+Discovered Only is on. With Unlock Undiscovered Places off, Discovered Only, on by default, leaves out
+zones with nothing found and areas not found.
 
 ## Areas listed in another zone
 
@@ -132,9 +133,9 @@ make dungeons                          # from the repository root
 node pipelines/lib/dungeons.mjs --check
 ```
 
-The table lists 29 dungeons and raids, and 18 have a `story`. The rest (Stormwind Stockade,
-Razorfen Kraul, Blackrock Spire, Blackrock Depths, Maraudon, the Molten Core, Blackwing Lair, both
-Ahn'Qiraj instances, Naxxramas and the Hall of Thanes) have no area story, so no line. Forever's City
+The table lists 29 dungeons and raids, and 20 have a `story`. The rest (Stormwind Stockade,
+Blackrock Spire, Blackrock Depths, Maraudon, the Molten Core, Blackwing Lair, both
+Ahn'Qiraj instances and Naxxramas) have no area story, so no line. Forever's City
 of Dalaran is the `dalaran` area of Alterac Mountains, and its Ruins of Lordaeron Tirisfal Glades'
 `ruins of lordaeron`, the surface ruins its entrance is in. Run `make dungeons`, then the Quests and Readables exporters, after editing
 the JSON. `tests/lua/places_dungeons_test.lua` checks the table against the stories and the Quests

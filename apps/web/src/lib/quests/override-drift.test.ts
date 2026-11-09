@@ -35,24 +35,24 @@ afterEach(async () => {
 
 afterAll(closeDb);
 
-const drifted = async () => hasDrifted((await readOverrides()).get(file), originals.get(file)!.text);
+const drifted = async () => hasDrifted((await readOverrides("enUS")).get(file), originals.get(file)!.text);
 
 describe("hasDrifted, over what writeOverride stored", () => {
   it("leaves an override written over the current original alone", async () => {
-    await writeOverride(file, "q:1:accept", "Mine.", null);
+    await writeOverride("enUS", file, "q:1:accept", "Mine.", null);
     expect(await drifted()).toBe(false);
   });
 
   it("names an override once the original under it changes", async () => {
-    await writeOverride(file, "q:1:accept", "Mine.", null);
+    await writeOverride("enUS", file, "q:1:accept", "Mine.", null);
     originals.set(file, { text: "Text B." });
     expect(await drifted()).toBe(true);
   });
 
   it("clears when the override is saved again, until the original changes again", async () => {
-    await writeOverride(file, "q:1:accept", "Mine.", null);
+    await writeOverride("enUS", file, "q:1:accept", "Mine.", null);
     originals.set(file, { text: "Text B." });
-    await writeOverride(file, "q:1:accept", "Mine.", null);
+    await writeOverride("enUS", file, "q:1:accept", "Mine.", null);
     expect(await drifted()).toBe(false);
     originals.set(file, { text: "Text C." });
     expect(await drifted()).toBe(true);

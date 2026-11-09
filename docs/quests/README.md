@@ -348,21 +348,22 @@ Uploading a file cannot change the page around it: descriptions, relations and p
 settings live in the web UI, and a script that rewrote them each release would be one that
 could quietly undo an edit made there.
 
-### A language's pack
+### A language's packs
 
-A language other than English has one pack, holding both factions' quests and the gossip. It
-exists because its page does: `publishers/quests/audio-<lang>.md` (`pack: all`) names the
-project, version, folder and title that `scripts/lib/packs.mjs` reads instead of a case added to
-a script per language. `LOCALE=` moves the chain — pull, assemble, build — to that language,
+A language other than English has English's four packs, each folder plus `_<lang>`. They exist
+because their pages do: `publishers/quests/audio-<pack>-<lang>.md` names the project, version,
+folder and title that `scripts/lib/packs.mjs` reads instead of a case added to a script per
+language, and `publishers/quests/audio-<lang>.md` (`pack: all`) is the bundle of the four.
+`LOCALE=` moves the chain — pull, assemble, build — to that language,
 staged under `build/quests/<lang>/audio/` rather than English's `pipelines/quests/audio/`:
 
 ```bash
 make quests-pull-live LOCALE=esMX          # this language's live takes
 make quests-sounds LOCALE=esMX             # build/quests/esMX/audio, assembled from the archive
-make quests-package-audio LOCALE=esMX      # SpokenQuestsAudio_esMX, encoded, into dist/
+make quests-package-audio LOCALE=esMX      # its four folders, encoded, into dist/
 ```
 
-The zip goes to GitHub under the tag `quests-audio-<lang>/v<version>`
+The bundle of the four goes to GitHub under the tag `quests-audio-<lang>/v<version>`
 (`scripts/audio-github-release.sh quests esMX`).
 
 The client never says which gossip line is on screen, only who is speaking and the words, and
@@ -386,11 +387,9 @@ rule. A plain line made from a split English line is read beside English's male 
 
 A player's client has already picked one side of any `$G`, so a contribution is one plain line.
 A moderator splits it by writing the `$G` back in the explorer: the plain line stops being
-current and `:m` and `:f` take its place, both holding the template. Edited without a `$G`, a
-side of a split moment changes alone; putting the plain version back undoes the split. English
-splits the same way: a rewrite or an accepted correction holding a `$G` makes a plain line,
-extracted or not, its `:m` and `:f`, each holding its own reader's words
-(`apps/web/src/lib/quests/english-rewrite.ts`), and on a split moment it rewrites both sides. The site decides the shape: `extract` leaves out a dump
+current and `:m` and `:f` take its place, both holding the template. English splits the same way,
+except that each side holds its own reader's words. On a moment already split, a rewrite holding a
+`$G` overrides both sides and an accepted correction writes both (`apps/web/src/lib/quests/moment-rewrite.ts`). The site decides the shape: `extract` leaves out a dump
 line the site split and gives its speakers to both sides (`split_here` in
 `tts_cli/corpus_db.py`).
 
@@ -476,7 +475,35 @@ act on. **Show progress text** brings them back, and `?progress=1` says the same
 URL; absence means hidden, so a bare link is the useful view. Ticking `progress` in the
 source filter also counts as asking for them, since otherwise that choice would return
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
-them, and clearing filters returns it to hidden.
+them, and clearing filters returns it to hidden. The Missing audio ranking (`/missing-audio`
+and its dashboard tile) leaves progress text out too: the addon reports it as silent like any
+other line, but nothing will voice it, so it is not a gap to close.
+
+**The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
+`?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
+too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
+known level is in no range, so setting either bound hides gossip and quests the extract lacks.
+
+**The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
+that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
+from the page uses it too.
+
+**Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
+Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
+lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking
+(`/missing-audio` and its dashboard tile) leave them out unless the client filter asks for
+them. The filter takes the Contributions pages' bins (`?client=low-effort`, `?client=anniversary`,
+`?client=all`; absent is `focus`, Era + Forever). A lookup by `?line=` finds a line whatever its
+client. Nothing stores the client: `lib/quests/line-client.ts` derives it per row when the
+catalogue is built. A speaker the extract wrote has none and counts as focus, and so does every
+row of a quest the extract has, whoever sent its speaker. Any other speaker a contribution wrote
+has that contribution's `build`; one with no build counts as focus. A line keeps the client of
+whoever sent it first, since a later identical upload only counts on that row. A quest the
+Classic extract has no row for,
+with an id below 13000, is TBC Anniversary whatever sent it (the extract ends at 9665, Season of
+Discovery starts at 78000, Forever's own quests at 80000), which catches the Wowhead imports and
+their Forever build. Gossip has no quest id, so gossip scraped from Wowhead's TBC pages still
+reads as Forever.
 
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.
@@ -495,13 +522,17 @@ hashes, which go through one function (`sentText`) so they cannot disagree. Case
 position, not the token: lowercase mid-sentence, capitalised at a sentence's start and always
 in German. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
-German's own templates write, is read the same way in every language. English quest text has
-nothing left for it to replace, its words having been written in at extraction; a book page
-in any language, English included, goes through the same table (`docs/readables/README.md`). A
-token glued to a following letter (`$Nama`) is left in, so the line stays unvoiceable until a
-translator rewrites it. German's genitive `s` is the one exception: `$Ns` and `$Cs` read as
-`Abenteurers`, or `Abenteurerin` on the female variant. A branch never spans a sentence's end,
-so one whose `;` was lost stays in as a token instead of swallowing the text up to a later `;`.
+German's own templates write, is read the same way in every language, and so is Forever's deDE
+gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, a letter on either
+side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send
+some lines) reads as the token. English quest text has nothing left for it to replace, its
+words having been written in at extraction; a book page in any language, English included,
+goes through the same table (`docs/readables/README.md`). A token glued to a following letter
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. Two glued
+`s` are exceptions. German's genitive: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+on the female variant. French's class plural: `$cs` reads as `aventuriers`, or `aventurières`
+on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
+in as a token instead of swallowing the text up to a later `;`.
 A Craftsman's Writ's `$2oa`, the item count the client fills in, reads as "an order of" in
 English, "algumas unidades de" in ptBR, and "несколько" plus the second of ruRU's two written
 forms (`порции:порций`); a language without words for it keeps the token and stays
@@ -671,6 +702,18 @@ immutable and every request still pins one, so generation already in flight is u
 With the id unset the old behaviour returns: a dictionary is created, and its id is logged as
 the value to configure.
 
+**Each ElevenLabs account holds its own copy.** ElevenLabs refuses a request naming a dictionary
+the key's account cannot read, and every collaborator generates on their own key. So the row
+records what the editor last uploaded, and `lexicon_account_dictionary` records, per language and
+per key, where that account holds the lexicon. On a line's way out, an account with no copy adopts
+the row's dictionary if it can read it, and otherwise gets a new one. A copy older than the
+lexicon is brought up to date first, unless the row is `pending`, when every account stays on the
+version it has. An account that cannot get a copy and has no older one fails the line before any
+credit is spent: sending none would voice the language's names wrong with nothing marking those
+takes for a redo. Takes record the id they were sent, so they differ by account.
+`ELEVENLABS_DICTIONARY_ID` still goes first for English, and a save by an account that cannot read
+it goes to that account's own copy, which leaves `../wow-lore`'s dictionary as it was.
+
 #### What the corpus scan found
 
 `tools/scan_corpus_hiccups.py` reads the corpus and lists every token or fragment likely to
@@ -687,10 +730,19 @@ a reload replaces every detection while leaving every verdict (`open`, `fixed`,
 
 **Some lines cannot be fixed by pronunciation.** `q:1155:accept` is the single letter `x`;
 `q:257:complete` says "adventurerama", because Blizzard wrote `$Nama` and the token
-substitutes to a fixed word. For those a collaborator rewrites what the line *says*, and the
-explorer marks it **rewritten**. An override changes the spoken text only: the filename and
-every addon lookup key derive from the original text, so a rewrite can never rename a file or
-make the addon miss it. It also reopens the `invalid-chars` gate — stripping a `$` or a `<>`
+substitutes to a fixed word. For those a voice maintainer rewrites what the line *says*, with
+the explorer's pencil, in any language: `regenerate` in that language lets them. The explorer
+marks the line **rewritten**. This is also where a line gets its stage directions and one-off
+respellings. An override changes the spoken text only: the filename and every addon lookup key
+derive from the original text, so a rewrite can never rename a file or make the addon miss it.
+A line with no text in that language has nothing to rewrite, and no pencil: a contribution
+fills it in.
+
+The original text is a different thing. It changes through imports and accepted corrections,
+which a text maintainer answers, and the team's override stays above it, flagged as
+"original changed since your override" until the team keeps or drops it. A correction accepted
+before this was an override, and stays one.
+ It also reopens the `invalid-chars` gate — stripping a `$` or a `<>`
 makes an otherwise unvoiceable line voiceable — while `progress` lines stay skipped, because
 that is policy rather than a text defect. The one token a rewrite may hold is a
 `$gmale:female;` branch, which splits the line by player gender instead of overriding it.
@@ -1935,19 +1987,17 @@ own, which is what `SetPlayButtonState` calls instead of swapping the icon.
 
 Play is also on each quest in the objective tracker. The Quests page's Show Play Button section
 switches the two places apart: Quest Log (`QuestLogPlayButton`, which also takes away the log's
-Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in three shapes, so
-`Compatibility.lua` has one adapter for each, registered with `RegisterTrackerUpdater`.
+Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in two shapes, so
+`Compatibility.lua` has an adapter for each, registered with `RegisterTrackerUpdater`.
 `QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
 switched and when the setting changes, and a profile change redraws the quest log and the trackers.
 Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
-each block keeps one square button at its title's right. Classic Era's tracker writes each title
+each block keeps one square button under the quest's item button, or under its find-group button
+when it has no item, or at the block's top right when it has neither. Classic Era's tracker writes each title
 into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
 watched quest's title text to a shown line and puts the round button left of it, so a title some
-other addon rewrites gets no button. Questie draws its own tracker, and its built-in Play answers
-only the retired AI_VoiceOver addon. Each Questie title line gets a separate Spoken button left of
-its minimize button, swept after `TrackerUtils:UpdateVoiceOverPlayButtons`, the last call of
-Questie's layout. A failing adapter is logged and never raises inside the tracker's own update.
-`tests/lua/quest_tracker_adapters_test.lua` covers the Era and Questie adapters.
+other addon rewrites gets no button. A failing adapter is logged and never raises inside the
+tracker's own update. `tests/lua/quest_tracker_adapters_test.lua` covers the Era adapter.
 
 The web suite runs against a **real Postgres**, because the invariants it protects — archive
 the current take before anything overwrites it, never hand the same file to two jobs — live in

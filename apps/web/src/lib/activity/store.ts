@@ -249,18 +249,30 @@ export async function listActivity(
        limit ${n})`;
 
   // A batch's count is of the takes in the range, so that it matches what opening it lists.
+  // Counted for the whole page at once, on the language's index from the oldest batch on: a
+  // batch's takes are in its language and cut after it was queued. Under the team policy the
+  // batch index is never used, and a count per batch read the whole log once for each.
   const rows = await readAs<Row>(
     filter.lang,
-    `select ${COLUMNS},
-            case when a."kind" = 'batch.queued' then (
-              select count(*)::int from "activity" t
-               where t."kind" = 'take.generated' and t."detail"->>'batchId' = a."detail"->>'batchId'
-                 ${from || to ? `and ${cut("t")}` : ""}
-            ) end as "takes"
-       from (${branch(`a."lang" = $1`)} union all ${branch(`a."lang" is null`)}) a
+    `with "page" as (
+       select * from (${branch(`a."lang" = $1`)} union all ${branch(`a."lang" is null`)}) a
+        order by a."at" desc, a."id" desc
+        limit ${n}
+     ), "batches" as (
+       select t."detail"->>'batchId' as "batchId", count(*)::int as "takes"
+         from "activity" t
+        where t."kind" = 'take.generated' and t."lang" = $1
+          and t."at" >= (select min(p."at") from "page" p where p."kind" = 'batch.queued')
+          and t."detail"->>'batchId' in (select p."detail"->>'batchId' from "page" p where p."kind" = 'batch.queued')
+          ${from || to ? `and ${cut("t")}` : ""}
+        group by 1
+     )
+     select ${COLUMNS},
+            case when a."kind" = 'batch.queued' then coalesce(b."takes", 0) end as "takes"
+       from "page" a
+       left join "batches" b on a."kind" = 'batch.queued' and b."batchId" = a."detail"->>'batchId'
        ${JOINS}
-      order by a."at" desc, a."id" desc
-      limit ${n}`,
+      order by a."at" desc, a."id" desc`,
     values,
   );
 

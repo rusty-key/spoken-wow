@@ -37,11 +37,8 @@ DEFAULT_COMPENDIUM_PATH = os.path.normpath(os.path.join(
 #: Night Elf, Gnome and High Order Skyborne; Orc, Undead, Tauren, Troll and Windshaper Skyborne.
 SIDE_RACES = {"alliance": 1 | 4 | 8 | 64 | 1 << 32, "horde": 2 | 16 | 32 | 128 | 1 << 33}
 
-#: 'all' is every line; the next four partition the same set. 'quests' is every line but gossip
-#: - Alliance, Horde and Shared in one - for a language with too few players yet to be worth
-#: three quest packs: it ships in that language's Shared folder, so when the language is split
-#: later its players keep the folder and add their side (scripts/lib/packs.mjs, `holds: quests`).
-PACKS = ("all", "alliance", "horde", "shared", "gossip", "quests")
+#: 'all' is every line; the next four partition the same set.
+PACKS = ("all", "alliance", "horde", "shared", "gossip")
 
 #: Appended to the module name to make each pack's addon folder. Every pack carries one,
 #: including 'all': a bare VoiceOverReduxAudio is the single-format pack that shipped before
@@ -52,7 +49,6 @@ PACK_SUFFIXES = {
     "horde": "Horde",
     "shared": "Shared",
     "gossip": "Gossip",
-    "quests": "Quests",
 }
 
 #: The half of a title that names the pack. What comes before it is the family - see
@@ -63,7 +59,6 @@ PACK_LABELS = {
     "horde": "Quests - Horde",
     "shared": "Quests - Shared",
     "gossip": "Gossip",
-    "quests": "Quests",
 }
 
 #: The family every pack belongs to unless told otherwise: English's. Another language's is
@@ -133,6 +128,10 @@ def pack_stems(corpus: dict, sides: dict, pack: str, aliases: dict = None) -> se
     `aliases` is GossipAliases ({stem: [stems]}, tts_cli/gossip_text.py): a gossip file's
     aliases ship beside it, since the addon plays one when the file itself has no take, and a
     merged line's file is only reachable that way.
+
+    A stem's player-gender forms ship with it, whichever form the corpus names: the addon tries a
+    player's m-/f- file and then the plain one, and a language's store holds the forms of its own
+    text, which need not be English's.
     """
     if pack not in PACKS:
         raise ValueError(f"unknown pack '{pack}' (expected: {', '.join(PACKS)})")
@@ -146,14 +145,11 @@ def pack_stems(corpus: dict, sides: dict, pack: str, aliases: dict = None) -> se
 
     if pack == "all":
         stems = set(packs_by_stem)
-    elif pack == "quests":
-        stems = {stem for stem, found in packs_by_stem.items() if found != "gossip"}
     else:
         stems = {stem for stem, found in packs_by_stem.items() if found == pack}
     for stem in list(stems):
         folder, name = stem.split("/", 1)
-        if folder != "gossip":
-            continue
-        for alias in (aliases or {}).get(re.sub(r"^[mf]-", "", name), ()):
-            stems.update(f"gossip/{prefix}{alias}" for prefix in ("", "m-", "f-"))
+        plain = re.sub(r"^[mf]-", "", name)
+        files = [plain, *((aliases or {}).get(plain, ()) if folder == "gossip" else ())]
+        stems.update(f"{folder}/{prefix}{file}" for file in files for prefix in ("", "m-", "f-"))
     return stems

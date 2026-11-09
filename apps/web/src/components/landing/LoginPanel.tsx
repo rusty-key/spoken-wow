@@ -111,6 +111,8 @@ export default function LoginPanel() {
       </button>
       <p className="bn-login-foot">
         No account yet? <Link href="/register">Register</Link>
+        {" · "}
+        <Link href="/forgot-password">Forgot your password?</Link>
       </p>
     </form>
   );

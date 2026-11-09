@@ -77,7 +77,8 @@ def connect():
             "Producing audio and building a pack still need no database; this command does."
         )
     # Here rather than at the top, so the module's pure parts (split_contributed) load and are
-    # tested without psycopg2, which only requirements-extract.txt installs.
+    # tested without psycopg2, which only requirements-extract.txt installs, and the droplet's
+    # python3-psycopg2 package.
     import psycopg2
 
     return psycopg2.connect(url)
@@ -126,7 +127,7 @@ def with_answered_voices(lines, answers):
 
 def split_here(variants, live):
     """The dump's plain lines the site split by player gender: (lineId, variant) whose own row
-    is not current while its `:m` or `:f` is (apps/web/src/lib/quests/english-rewrite.ts).
+    is not current while its `:m` or `:f` is (apps/web/src/lib/quests/moment-rewrite.ts).
 
     The site is the corpus. Such a line is left out, never promoted back beside its split, and
     its speakers are written onto the two sides.

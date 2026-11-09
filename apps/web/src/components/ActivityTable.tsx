@@ -98,7 +98,7 @@ function change(before: string | null, after: string | null): string | null {
  * What one row says happened, in words, plus the text it quotes. The quoted part is kept
  * apart so the row can clamp it without clamping the verb.
  */
-function describe(row: ActivityRow): { what: string; quote: string | null } {
+export function describe(row: ActivityRow): { what: string; quote: string | null } {
   const d = row.detail;
   const version = num(d.version);
   switch (row.kind) {
@@ -117,6 +117,8 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         what: num(d.from) ? `restored take v${version} over v${num(d.from)}` : `restored take v${version}`,
         quote: null,
       };
+    case "take.encode_failed":
+      return { what: `could not encode take v${version} for its pack`, quote: str(d.error) };
     case "recording.uploaded":
       return { what: `recorded v${version}`, quote: null };
     case "recording.removed":
@@ -154,8 +156,14 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: version ? `edited the text (v${version})` : "edited the text", quote: str(d.text) };
     case "text.restored":
       return { what: `restored text v${version}`, quote: null };
+    case "text.retired":
+      return { what: `took back text v${version}`, quote: null };
     case "name.edited":
       return { what: "renamed", quote: str(d.name) };
+    case "name.restored":
+      return { what: `restored name v${version}`, quote: null };
+    case "name.retired":
+      return { what: `took back name v${version}`, quote: null };
     case "lexicon.added":
       return { what: `added a pronunciation for “${row.subject}”`, quote: str(d.after) };
     case "lexicon.edited":
@@ -252,6 +260,13 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
       return { what: "renamed the team", quote: str(d.name) };
     case "team.language_moved":
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
+    case "release.started":
+      return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
+    case "release.finished":
+      return {
+        what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : d.state === "unchanged" ? "found nothing to release" : "finished"}`,
+        quote: str(d.version),
+      };
     case "contribution.resolved":
       return {
         what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,

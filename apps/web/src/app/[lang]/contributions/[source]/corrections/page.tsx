@@ -5,10 +5,10 @@ import { notFound } from "next/navigation";
 import ContributionsTabs from "@/components/ContributionsTabs";
 import CorrectionTable, { type CorrectionRow, type CorrectionSource } from "@/components/CorrectionTable";
 import { auth } from "@/lib/auth";
-import { clientFilterOf, clientOf, matchesClient } from "@/lib/contributions/client";
+import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "@/lib/contributions/client";
 import { readable } from "@/lib/contributions/compare";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
-import { lineStates, tabOf } from "@/lib/contributions/known";
+import { tabOf } from "@/lib/contributions/known";
 import {
   isQuestStage,
   isSearchIn,
@@ -18,8 +18,8 @@ import {
   type ClientFilter,
   type StageFilter,
 } from "@/lib/contributions/query";
-import { pendingCounts } from "@/lib/contributions/pending";
-import { listContributions, observationMeta } from "@/lib/contributions/store";
+import { listedWithPending } from "@/lib/contributions/pending";
+import { observationMeta } from "@/lib/contributions/store";
 import { explorerHref } from "@/lib/links";
 import { observedFrom } from "@/lib/npc/resolve";
 import { questFor } from "@/lib/contributions/triage";
@@ -47,7 +47,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ lang: string; source: string }>;
-  searchParams: Promise<{ status?: string; client?: string; stage?: string; q?: string; filter?: string }>;
+  searchParams: Promise<{ status?: string; client?: string; build?: string; stage?: string; q?: string; filter?: string }>;
 }) {
   const lang = await pageLang(params);
   // Only quests and readables have text a contribution can disagree with word for word.
@@ -57,7 +57,8 @@ export default async function Page({
   const viewer = await viewerOf(session);
   if (!session || !can(viewer, "text", lang)) notFound();
 
-  const { status: rawStatus, client: rawClient, stage: rawStage, q: rawQ, filter: rawFilter } = await searchParams;
+  const { status: rawStatus, client: rawClient, build: rawBuild, stage: rawStage, q: rawQ, filter: rawFilter } = await searchParams;
+  const build = buildFilterOf(rawBuild);
   const status: ContributionStatus = isStatus(rawStatus) ? rawStatus : "new";
   // Era and Forever by default: every other client is the low-effort bin, shown only on request.
   const client: ClientFilter = clientFilterOf(rawClient);
@@ -66,15 +67,11 @@ export default async function Page({
   const q = typeof rawQ === "string" ? rawQ.trim() : "";
   const searchIn = isSearchIn(rawFilter) ? rawFilter : "any";
 
-  const [all, pending] = await Promise.all([
-    listContributions(status, lang, undefined, source),
-    pendingCounts(lang),
-  ]);
-  const listed = all.filter((row) => matchesClient(clientOf(row.build).family, client));
-  const states = await lineStates(listed);
+  const { listed, states, pending } = await listedWithPending(status, lang, undefined, source);
 
   // Only what crosses into the client component, as page.tsx's ContributionRow projection says.
-  const rows: CorrectionRow[] = listed.flatMap((row, index) => {
+  const anyBuild: CorrectionRow[] = listed.flatMap((row, index) => {
+    if (!matchesClient(clientOf(row.build).family, client)) return [];
     const state = states[index];
     if (state.kind !== "changed" || tabOf(row.status, state) !== "corrections") return [];
     const quest = source === "quests" ? questFor(row) : null;
@@ -105,6 +102,9 @@ export default async function Page({
       },
     ];
   });
+  // Read before the build narrows the rows, or picking one would empty the dropdown of the others.
+  const builds = buildOptions(anyBuild.map((row) => row.client));
+  const rows = anyBuild.filter((row) => matchesBuild(row.client, build));
 
   return (
     <main className="pt-6 pb-24">
@@ -118,7 +118,7 @@ export default async function Page({
       </Contained>
       <Wide>
         <ContributionsTabs lang={lang} section={source} view="corrections" pending={pending} />
-        <CorrectionTable source={source as CorrectionSource} initial={rows} status={status} client={client} stage={stage} q={q} searchIn={searchIn} />
+        <CorrectionTable source={source as CorrectionSource} initial={rows} status={status} client={client} build={build} builds={builds} stage={stage} q={q} searchIn={searchIn} />
       </Wide>
     </main>
   );

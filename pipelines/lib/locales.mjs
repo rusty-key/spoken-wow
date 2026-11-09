@@ -44,6 +44,7 @@ export const LOCALES = [
   { code: "esMX", name: "Spanish (AL)", script: "latin", elevenLabs: "es", bcp47: "es-MX", vmangos: 7 },
   { code: "frFR", name: "French", script: "latin", elevenLabs: "fr", bcp47: "fr-FR", vmangos: 2 },
   { code: "itIT", name: "Italian", script: "latin", elevenLabs: "it", bcp47: "it-IT", vmangos: null, client: false },
+  { code: "plPL", name: "Polish", script: "latin", elevenLabs: "pl", bcp47: "pl-PL", vmangos: null, client: false },
   { code: "ptBR", name: "Portuguese", script: "latin", elevenLabs: "pt", bcp47: "pt-BR", vmangos: 9 },
   { code: "ruRU", name: "Russian", script: "cyrillic", elevenLabs: "ru", bcp47: "ru-RU", vmangos: 8 },
   { code: "koKR", name: "Korean", script: "korean", elevenLabs: "ko", bcp47: "ko-KR", vmangos: 1 },

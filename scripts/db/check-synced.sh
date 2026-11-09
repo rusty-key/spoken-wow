@@ -9,7 +9,8 @@
 #
 # Asks rather than deciding, because the droplet being unreachable is not the same thing as
 # the data being wrong. With no droplet configured it says so and continues -- a clone with
-# no access still has to be able to build. With no TTY, as in CI, the prompt fails closed.
+# no access still has to be able to build. With no TTY, as in CI, the prompt fails closed;
+# SYNC_CHECK=warn continues without asking, for a run that has only just synced.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
@@ -45,6 +46,7 @@ echo "the local $section data and production's disagree:"
 echo "  local:      ${here:-(unreadable)}"
 echo "  production: $there"
 echo "Run 'make $section-sync' first, or continue and ship what is here."
+[ "${SYNC_CHECK:-}" = warn ] && exit 0
 printf 'Continue anyway? [y/N] '
 read -r answer || answer=
 [ "$answer" = y ] || { echo aborted; exit 1; }

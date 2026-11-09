@@ -134,7 +134,7 @@ Expect("...headed by Alterac Mountains, where it is listed", clip and clip.prese
 Expect("...with its picture", clip and clip.present.picture and clip.present.picture.file,
     [[Interface\AddOns\Spoken_Places\Textures\Pictures\1424-strahnbrad]])
 Expect("...and its report names the story's map", clip and Z:ReportURL(clip.mapID, clip.areaKey),
-    "https://spoken.rusty.one/places/r/1424/strahnbrad")
+    "https://spoken.quest/places/r/1424/strahnbrad")
 Expect("...the visit recorded in Alterac Mountains, where it is found",
     tostring(SpokenPlacesCharacter.visited["1416/strahnbrad"]) .. "|" .. tostring(Z:IsFound(HILLSBRAD, "strahnbrad")),
     "true|true")

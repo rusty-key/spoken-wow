@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "../globals.css";
-import { Geist } from "next/font/google";
+import localFont from "next/font/local";
 import Image from "next/image";
 import Script from "next/script";
 import { Suspense } from "react";
@@ -16,7 +16,8 @@ import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
 import { Contained } from "@/components/Width";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+// The whole font rather than a subset: Russian pages render in it too.
+const geist = localFont({ src: "../../fonts/geist-sans.woff2", weight: "100 900", variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Spoken",

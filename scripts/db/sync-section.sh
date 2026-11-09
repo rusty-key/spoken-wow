@@ -32,8 +32,10 @@ tables=("$@")
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
 # take_encoding is each take's clip as its pack ships it.
 shared=(take recording take_encoding)
-# The per-team shared tables, whose "teamId" is remapped to this database's teams after the copy.
-teamed=(take recording take_ack)
+# The staged tables with a per-team "teamId", remapped to this database's teams after the copy.
+# line_ignore's is nullable, so the foreign-key pass blanks it, and its check constraint refuses a
+# language's row with no team.
+teamed=(take recording take_ack line_ignore)
 # The shared tables with an id, which is one sequence across every section.
 serial=(take recording)
 
@@ -122,6 +124,7 @@ begin
   -- bring, blanked where the row it names is not on this machine. Found from the catalog
   -- rather than listed, so the next such column -- contributionId was the second, after the
   -- authors -- cannot fail a sync again.
+  -- A required column cannot be blanked: "teamId" is remapped below instead.
   for fk in
     select src.relname as tbl, a.attname as col, dst.relname as ref, ra.attname as refcol
       from pg_constraint c
@@ -133,6 +136,7 @@ begin
        and c.connamespace = 'public'::regnamespace
        and to_regclass(format('$staging.%I', src.relname)) is not null
        and to_regclass(format('$staging.%I', dst.relname)) is null
+       and not a.attnotnull
   loop
     execute format(
       'update $staging.%I set %I = null where %I is not null and %I not in (select %I from public.%I)',

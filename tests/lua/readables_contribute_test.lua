@@ -11,7 +11,7 @@ local Expect, Failures = H.Expecter(print)
 
 local function LoadReadables()
     local SpokenReadables = {}
-    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader", "Audio", "Contribute" }) do
+    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Opener", "Reader", "Audio", "Contribute" }) do
         local chunk = assert(loadfile(READABLES .. file .. ".lua"))
         chunk("Spoken_Readables", SpokenReadables)
     end
@@ -43,6 +43,25 @@ Expect("the text is carried", envelope:match("\nA page no corpus has ever held%.
 Expect("the locale is the client's", envelope:match("\nlocale=enUS\n") ~= nil, true)
 Expect("...and the packs' language goes beside it", envelope:match("\npack=enUS\n") ~= nil, true)
 Expect("...with the version of the pack speaking it, or none", envelope:match("\npackVersion=[^\n]+\n") ~= nil, true)
+
+-- The item that opened a note is source metadata, not just a copy-text diagnostic. Keep it in
+-- the contribution so the site can identify the book even when its title is shared.
+B.openedBy = { { kind = "item", id = 9550 } }
+local openedByItem = B:CaptureContribution()
+Expect("the contribution carries the item that opened the note",
+    openedByItem:match("\nitem=9550\n") ~= nil, true)
+
+-- On clients that expose the opened item only through the unit GUID, the same field is still
+-- available. This is the path used by the copy-text diagnostics as well.
+local savedGUID, savedCItem = stub.world.npcGUID, _G.C_Item
+stub.world.npcGUID = "Item-0-0-9550"
+_G.C_Item = { GetItemIDByGUID = function(guid) return guid == stub.world.npcGUID and 9550 or nil end }
+B.openedBy = nil
+local openedByGUID = B:CaptureContribution()
+Expect("the contribution falls back to the item unit GUID",
+    openedByGUID:match("\nitem=9550\n") ~= nil, true)
+stub.world.npcGUID, _G.C_Item = savedGUID, savedCItem
+B.openedBy = nil
 
 -- The client writes the reader's name, class and race into a page: they go back as tokens, so
 -- no character's name reaches the site and every character's copy is one page.
@@ -159,7 +178,7 @@ B:ShowContribution()
 Expect("...only Show() does", encodeCalls, 1)
 local box = env.Spoken.ContributeBox
 Expect("Show() puts a link in the box, not the raw envelope",
-    box.editBox:GetText():match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
+    box.editBox:GetText():match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
 Expect("...with the link hint", box.hint:GetText(), "Copy this and open it in your browser:")
 env.Spoken.Contribute.Encode = realEncode
 
@@ -169,7 +188,7 @@ B:ShowContribution()
 Expect("...falls back to the raw envelope when Encode is absent",
     box.editBox:GetText():match("^!SPOKEN1 readables\n") ~= nil, true)
 Expect("...with the old two-copy hint", box.hint:GetText(), "Press Ctrl+C, then paste it at:")
-Expect("...and the address shown again", box.address:GetText(), "https://spoken.rusty.one/contribute")
+Expect("...and the address shown again", box.address:GetText(), "https://spoken.quest/contribute")
 env.Spoken.Contribute.Encode = realEncode
 
 os.exit(Failures() == 0 and 0 or 1)

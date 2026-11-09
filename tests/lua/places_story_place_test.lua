@@ -64,7 +64,7 @@ local clip = Spoken:GetCurrent()
 Expect("standing at its entrance plays its story by its own id", clip and clip.key, "s:1441:razorfen downs")
 Expect("...headed by The Barrens, where its entrance is", clip and clip.present.header, "The Barrens")
 Expect("...and its report names the story's map", clip and Z:ReportURL(clip.mapID, clip.areaKey),
-    "https://spoken.rusty.one/places/r/1441/razorfen-downs")
+    "https://spoken.quest/places/r/1441/razorfen-downs")
 Expect("...and the visit is recorded at its entrance, where it is found",
     tostring(SpokenPlacesCharacter.visited["1413/razorfen downs"]) .. "|" .. tostring(Z:IsFound(NEEDLES, "razorfen downs")),
     "true|true")

@@ -2,45 +2,46 @@
 // make manager-publish / manager-gc. Everything comes from the repo-root .env or the environment
 // (which wins); nothing prompts, so a scheduled job can run the same command later.
 //
-//   node scripts/manager/cli.mjs publish [--dry-run]
+//   node scripts/manager/cli.mjs publish [--dry-run] [--present] [--allow-removals]
 //   node scripts/manager/cli.mjs gc [--dry-run]
+//   node scripts/manager/cli.mjs addon <path/to/Spoken-x.y.z.zip> [--dry-run]
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadEnv } from "../../pipelines/lib/env.mjs";
-import { managerFolders, MIN_SPOKEN } from "../lib/packs.mjs";
+import { managerFolders } from "../lib/packs.mjs";
+import { errorText, publishFromEnv, signingKeyFromEnv } from "./channel.mjs";
 import { gc } from "./gc.mjs";
 import { loadHashCache, saveHashCache } from "./manifest.mjs";
-import { latestSpokenRelease, publish } from "./publish.mjs";
-import { ConflictError, r2Store } from "./store.mjs";
+import { publishAddon } from "./publish-addon.mjs";
+import { r2Store } from "./store.mjs";
 
 const DIST = join(dirname(fileURLToPath(import.meta.url)), "../../dist");
 const [command, ...flags] = process.argv.slice(2);
 const dryRun = flags.includes("--dry-run");
+const onlyPresent = flags.includes("--present");
+const allowRemovals = flags.includes("--allow-removals");
 
 try {
-  if (command !== "publish" && command !== "gc") throw new Error("usage: cli.mjs publish|gc [--dry-run]");
+  if (command !== "publish" && command !== "gc" && command !== "addon") throw new Error("usage: cli.mjs publish|gc|addon [--dry-run] [--present] [--allow-removals]");
   await loadEnv();
-  const store = r2Store(process.env);
-  const signingKey = process.env.SPOKEN_PACKS_SIGNING_KEY;
-  if (!signingKey) throw new Error("missing SPOKEN_PACKS_SIGNING_KEY");
-  if (command === "publish") {
+  if (command === "addon") {
+    const zipPath = flags.find((flag) => !flag.startsWith("--"));
+    await publishAddon({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), zipPath, dryRun });
+  } else if (command === "publish") {
     const cacheFile = join(DIST, ".manager-hashes.json");
     const cache = loadHashCache(cacheFile);
     try {
-      await publish({ store, packs: managerFolders(), distDir: DIST, signingKey, minSpoken: MIN_SPOKEN,
-        latestSpoken: await latestSpokenRelease(), cache, dryRun });
+      await publishFromEnv({ packs: managerFolders(), distDir: DIST, cache, dryRun, onlyPresent, allowRemovals });
     } finally {
       // Without dist/ there is nothing to cache, and the write would hide publish's own error.
       if (existsSync(DIST)) saveHashCache(cacheFile, cache);
     }
   } else {
-    await gc({ store, signingKey, dryRun });
+    await gc({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), dryRun });
   }
 } catch (err) {
-  console.error(err instanceof ConflictError
-    ? `error: ${err.message} was written by another publish while this one ran; run it again`
-    : `error: ${err.message}`);
+  console.error(errorText(err));
   process.exit(1);
 }

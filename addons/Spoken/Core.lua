@@ -647,9 +647,14 @@ end
 -- The sound packs were SpokenZonesAudio* and SpokenBooksAudio* before their modules were Places and
 -- Readables. One is old only once its SpokenPlacesAudio* or SpokenReadablesAudio* replacement is
 -- loaded beside it, the same pack one release later; alone it is the player's pack, and stays.
+--
+-- A language's quests were one folder, SpokenQuestsAudio_<lang>, before they were split as English's
+-- are. It is old once all four replacements are installed. Those load on demand, after this runs, so
+-- it goes by what is on disk, and one already switched off is not named again at every login.
 local OLD_FOLDERS = { "SpokenPlayer", "VoiceOverRedux", "ZoneLore", "SpokenQuests", "SpokenZones", "SpokenBooks",
     "Spoken_Books", "Spoken_Zones", "Spoken_Writings", "Spoken_NPCs" }
 local RENAMED_PACKS = { SpokenZonesAudio = "SpokenPlacesAudio", SpokenBooksAudio = "SpokenReadablesAudio" }
+local QUESTS_SPLIT = { "Alliance", "Horde", "Shared", "Gossip" }
 function Addon:FindOldFolders()
     local found = {}
     if not IsAddOnLoaded then return found end
@@ -658,11 +663,24 @@ function Addon:FindOldFolders()
     end
     local count = (C_AddOns and C_AddOns.GetNumAddOns) or GetNumAddOns
     local info = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
+    local installed = {}
     for index = 1, (count and info) and count() or 0 do
         local folder = info(index)
+        if type(folder) == "string" then installed[folder] = true end
+    end
+    for index = 1, (count and info) and count() or 0 do
+        local folder, _, _, loadable, reason = info(index)
         for old, new in pairs(RENAMED_PACKS) do
             local rest = type(folder) == "string" and folder:match("^" .. old .. "(.*)$")
             if rest and IsAddOnLoaded(folder) and IsAddOnLoaded(new .. rest) then table.insert(found, folder) end
+        end
+        local lang = type(folder) == "string" and folder:match("^SpokenQuestsAudio_(%a%a%a%a)$")
+        if lang and (loadable or reason ~= "DISABLED") then
+            local split = true
+            for _, side in ipairs(QUESTS_SPLIT) do
+                split = split and installed["SpokenQuestsAudio" .. side .. "_" .. lang]
+            end
+            if split then table.insert(found, folder) end
         end
     end
     return found
@@ -673,7 +691,7 @@ function Addon:RetireOldFolders()
     for _, folder in ipairs(found) do
         if DisableAddOn then pcall(DisableAddOn, folder) end
     end
-    local text = format(L.OLD_FOLDERS_FMT, "• " .. table.concat(found, "\n• "))
+    local text = format(L.OLD_FOLDERS_FMT, "· " .. table.concat(found, "\n· "))
     print("|cff66bbffSpoken:|r " .. text)
     if StaticPopupDialogs and StaticPopup_Show and not self:IsGamepadUI() then
         -- Left-aligned while shown, for the list: the popup frames are shared by every addon and

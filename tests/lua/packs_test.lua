@@ -26,12 +26,11 @@ local function Page(path)
 end
 local CODES = { "deDE", "esES", "esMX", "frFR", "itIT", "koKR", "ptBR", "ruRU", "zhCN", "zhTW" }
 local PAGES = {
-    quests = function(code) return "quests/audio-" .. code:lower() .. ".md" end,
     places = function(code) return "places/spoken-places-audio-" .. code:lower() .. ".md" end,
     readables = function(code) return "readables/spoken-readables-audio-" .. code:lower() .. ".md" end,
     bosses = function(code) return "bosses/spoken-bosses-audio-" .. code:lower() .. ".md" end,
 }
-local FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio",
+local FOLDERS = { places = "SpokenPlacesAudio", readables = "SpokenReadablesAudio",
     bosses = "SpokenBossesAudio" }
 
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
@@ -50,6 +49,18 @@ for module, page in pairs(PAGES) do
         end
     end
 end
+
+for _, code in ipairs(CODES) do
+    local packs = _G.Spoken:QuestsVoicePacks(code)
+    for _, pack in ipairs(packs) do
+        local meta = Page(PUBLISHERS .. "quests/audio-" .. pack.side .. "-" .. code:lower() .. ".md")
+        Expect("quests " .. pack.side .. " in " .. code .. ": the page's address", pack.url,
+            "https://www.curseforge.com/wow/addons/" .. meta.slug)
+        Expect("...and the folder it installs as", string.find(pack.folder, "_" .. code .. "$") ~= nil, true)
+    end
+    Expect("...and VoicePack answers with Shared", (_G.Spoken:VoicePack("quests", code)), packs[3].folder)
+end
+Expect("a language with no quests has no packs", _G.Spoken:QuestsVoicePacks("xxXX"), nil)
 
 ---------------------------------------------------------------- the Quests page
 local function Shown(locale)
@@ -86,14 +97,15 @@ Expect("an English client is offered English's packs, then one it has that the l
         Name(L, L.OPT_PACK_SHARED), Name(L, L.OPT_PACK_GOSSIP), Name(L, "TestPack") }, "|"))
 Expect("...English's named by their language and faction", L.OPT_PACK_HORDE, "English (Horde)")
 local spanish, ES = Shown("esES")
-Expect("a Spanish client is offered the Spanish pack first", spanish[1], Name(ES, "Español (España)"))
+Expect("a Spanish client is offered the Spanish packs first, by side", spanish[1], "Español ES (Alianza)")
+Expect("...Gossip last of them", spanish[4], "Español ES (Charlas)")
 -- Not English's to get, though English is what it falls back on: on an esMX client its five rows
--- buried the one that mattered. A pack installed is listed whatever its language.
-Expect("...then only the pack it has installed, not English's to get", table.concat(spanish, "|", 2),
+-- buried the ones that mattered. A pack installed is listed whatever its language.
+Expect("...then only the pack it has installed, not English's to get", table.concat(spanish, "|", 5),
     Name(ES, "TestPack"))
 -- Every client language has a quests pack of its own now, Chinese included.
 local chinese, CN = Shown("zhCN")
-Expect("a Chinese client is offered the Chinese pack first, like any other",
-    table.concat(chinese, "|"), table.concat({ Name(CN, "Chinese (Simplified)"), Name(CN, "TestPack") }, "|"))
+Expect("a Chinese client is offered the Chinese packs first, like any other", chinese[1], "Chinese CN (联盟)")
+Expect("...then the pack it has installed", chinese[5], Name(CN, "TestPack"))
 
 if Failures() > 0 then stub.print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

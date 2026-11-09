@@ -17,12 +17,12 @@ function gameFolderExample(platform: Platform): string {
 }
 
 export const REPO_URL = 'https://github.com/rusty-key/spoken-wow'
-export const SITE_URL = 'https://spoken.rusty.one'
+export const SITE_URL = 'https://spoken.quest'
 export const COMMUNITY_README_URL = 'https://github.com/rusty-key/spoken-wow/blob/master/community/README.md'
 
 export const S = {
   appName: 'Spoken Manager',
-  tabs: { home: 'Home', spoken: 'Spoken', voices: 'Voice Packs', community: 'Community', settings: 'Settings' },
+  tabs: { home: 'Home', spoken: 'Spoken', voices: 'Voice Packs', community: 'Community', release: 'Release', settings: 'Settings' },
   refresh: {
     idle: 'Check for New Versions',
     last: (time: string) => `Last checked ${time}`,
@@ -34,7 +34,9 @@ export const S = {
     updateReady: (v: string) => `Update ready: restart to use ${v}`,
     updating: (pct: number) => `Downloading a manager update: ${pct}%`,
     updateAvailable: (v: string) => `Version ${v} is available.`,
-    download: 'Download'
+    download: 'Download',
+    restart: 'Restart',
+    restartBusy: 'Available when the running downloads and installs finish'
   },
   common: {
     loading: 'Loading',
@@ -234,13 +236,14 @@ export const S = {
     keepZipsText: 'Saves a copy of each pack, so a reinstall does not download it again. Packs are large.',
     sharing: 'Sharing',
     sharingSwitch: 'Send What Spoken Collects',
-    sharingText: 'Sent to spoken.rusty.one after each logout, with your pack versions and a random id. Nothing about your account.',
+    sharingText: 'Sent to spoken.quest after each logout, with your pack versions and a random id. Nothing about your account.',
     lastSent: (count: number, when: string) => `Last sent: ${count} line${count === 1 ? '' : 's'}, ${when}`,
     neverSent: 'Nothing sent yet.',
     sending: 'Sending',
     sendNow: 'Send Now',
     resetId: 'Reset Id',
     resetDone: 'This manager has a new id. Lines already sent are not sent again.',
+    contributor: 'Contributor',
     about: 'About',
     disclaimer: 'World of Warcraft and its logos and artwork are trademarks and works of Blizzard Entertainment. Spoken is a fan project and is not affiliated with or endorsed by Blizzard Entertainment.',
     version: 'Manager Version',
@@ -248,5 +251,78 @@ export const S = {
     openLogs: 'Open Log Folder',
     repository: 'GitHub Repository',
     site: 'Project Site'
+  },
+  contributor: {
+    signInText: 'Sign in with your Spoken web account to publish the voice packs of a language you administer.',
+    email: 'Email',
+    password: 'Password',
+    keychainHint: 'macOS may ask to use your keychain so you stay signed in. Choose Always Allow to not be asked again.',
+    signIn: 'Sign In',
+    signingIn: 'Signing in',
+    signOut: 'Sign Out',
+    expired: 'You were signed out. Sign in again; your tokens and project ids are kept.',
+    siteUnreachable: 'The site could not be reached, so your account could not be checked. You are still signed in, and your tokens and project ids are kept.',
+    noAdmin: 'This account has no admin rights in any language.',
+    noGame: 'Choose a game in the Manager first: the packs released are the ones installed there.',
+    releaseIntro: 'Send the installed packs of a language you administer to your own CurseForge projects or GitHub repository.',
+    releaseUnavailable: 'Sign in and set up a store under Settings, Contributor, to release from here.',
+    openSettings: 'Open Settings',
+    openRelease: 'Open Release',
+    releaseHint: 'Release appears next to Community once a store is set up: CurseForge needs a token and at least one project id, GitHub a token and a repository.',
+    signedInAs: (email: string) => `Signed in as ${email}`,
+    curseforge: 'CurseForge',
+    github: 'GitHub',
+    token: 'Token',
+    tokenSet: 'A token is saved. Leave this empty to keep it.',
+    tokenNotSet: 'No token saved.',
+    tokenPlaceholderSet: 'Saved',
+    removeToken: 'Remove Token',
+    projectIds: 'Project Ids',
+    projectIdsText: 'One CurseForge project per pack, each pack with its own. Leave empty a pack that has none. Save keeps the ids of every language.',
+    repo: 'Repository',
+    repoText: 'owner/repo, one for every language.',
+    gameVersions: 'Game Versions',
+    gameVersionsText: 'Names as CurseForge lists them, separated by spaces.',
+    save: 'Save',
+    saving: 'Saving',
+    saved: 'Saved.',
+    refresh: 'Refresh',
+    loading: 'Checking the stores',
+    noRows: 'No packs to show.',
+    release: (n: number) => `Release ${n} Pack${n === 1 ? '' : 's'}`,
+    upload: 'Upload',
+    uploadAgain: 'Upload Again',
+    nothingToRelease: 'Nothing is unreleased on this store.',
+    sentOf: (speed: string, sent: string, total: string) => `${speed} · ${sent} of ${total}`,
+    starting: 'Starting',
+    runDone: 'Finished.',
+    runCancelled: 'Cancelled.',
+    runFailed: 'The release stopped.',
+    stoppedEarly: 'The run stopped early, so some packs are in none of the lists below.',
+    resultTitle: (store: string, language: string) => `Last release to ${store}: ${language}`,
+    published: 'Published',
+    skipped: 'Skipped',
+    failed: 'Failed',
+    alreadyThere: 'Already on this store',
+    state: {
+      unreleased: 'Unreleased',
+      awaiting: 'Uploaded, awaiting CurseForge',
+      live: 'Live',
+      unchecked: 'Could not check',
+      'not-installed': 'Not installed',
+      'update-first': 'Not on the newest version from the Manager',
+      linked: "Developer's checkout",
+      'no-project': 'No project id'
+    },
+    hintUnchecked: (store: string) => `${store} could not be asked, and nothing is recorded. Upload again only if you know it is missing.`,
+    hint: {
+      unreleased: 'The installed version is not on this store yet.',
+      awaiting: 'Sent by this Manager and not public yet. CurseForge may have rejected it: if it never appears, upload it again.',
+      live: 'This version is public.',
+      'not-installed': 'Not installed in the selected game.',
+      'update-first': 'Update it in the Manager. If the channel could not be read, refresh this list. A folder the channel does not carry stays here.',
+      linked: 'A link to a development folder. These are never published.',
+      'no-project': 'Add this pack\'s project id under Stores.'
+    }
   }
 }

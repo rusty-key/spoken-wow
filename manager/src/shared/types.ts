@@ -125,7 +125,9 @@ export interface ReleaseInfo {
   assetName: string
   assetSize: number
   assetUrl: string
-  /** `sha256:<hex>` from GitHub, when it gives one. */
+  /** Where the same zip can be fetched when `assetUrl` fails. */
+  fallbackUrl?: string
+  /** `sha256:<hex>` from GitHub or the signed channel index, when there is one. */
   digest?: string
   htmlUrl: string
 }
@@ -232,9 +234,9 @@ export interface JobProgress {
   gameId: string
   productId: string
   /** A repair is an install of the version already there. */
-  action: 'install' | 'repair' | 'uninstall'
+  action: 'install' | 'repair' | 'uninstall' | 'publish'
   phase: JobPhase
-  /** Bytes of the download so far and its total. */
+  /** Bytes of the download or upload so far and its total. */
   received: number
   total: number
   bytesPerSecond: number
@@ -258,4 +260,65 @@ export interface Snapshot {
   /** The manager's own update, as last sent: a window opened later still shows it. */
   updater?: import('./api').UpdaterState
   sharingStatus?: SharingStatus
+}
+
+export type StoreId = 'curseforge' | 'github'
+
+/** A language admin's store settings. Secrets stay in the main process; the window sees only whether one is kept. */
+export interface ContributorConfig {
+  projects: Record<string, string>
+  repo: string
+  gameVersions: string
+  hasCfToken: boolean
+  hasGhToken: boolean
+}
+
+/** A store is configured with a token, and a repo for GitHub or at least one project id for CurseForge. */
+export function storeConfigured(store: StoreId, c: ContributorConfig): boolean {
+  if (store === 'curseforge') return c.hasCfToken && Object.keys(c.projects).length > 0
+  return c.hasGhToken && c.repo !== ''
+}
+
+export interface ContributorView {
+  /** Null when signed out. An account with no admin languages is still an account, so the window can say so. */
+  account: { email: string; adminLangs: string[] } | null
+  config: ContributorConfig
+  /** A stored session the site could not confirm just now. With no account known, a sign-in is not what is missing. */
+  siteUnreachable: boolean
+  /** The site ended a session the user had not asked to end. */
+  sessionExpired: boolean
+  /** Each store's own last run, so a run to one does not take away the links of the other. */
+  lastRuns: Partial<Record<StoreId, PublishResult>>
+}
+
+export interface PublishResult {
+  store: StoreId
+  lang: string
+  published: { folder: string; version: string; link: string }[]
+  skipped: { folder: string; reason: SkipReason }[]
+  failed: { folder: string; reason: string }[]
+  /** A cancel or a failure of the whole run, so folders may be in none of the lists. */
+  stoppedEarly: boolean
+  /** Tells a new run from the same result sent again; the window reloads its rows on a new one. */
+  finishedAt?: string
+}
+
+export type RowState =
+  | 'unreleased'
+  | 'awaiting'
+  | 'live'
+  | 'unchecked'
+  | 'not-installed'
+  | 'update-first'
+  | 'linked'
+  | 'no-project'
+
+/** Why a run left a folder out: the row's state, or a store that turned out to hold the file when the upload began. */
+export type SkipReason = Exclude<RowState, 'unreleased'> | 'already-there'
+
+export interface ReleaseRow {
+  folder: string
+  version?: string
+  state: RowState
+  link?: string
 }

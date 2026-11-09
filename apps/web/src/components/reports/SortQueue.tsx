@@ -18,7 +18,6 @@ import OutdatedNote from "@/components/OutdatedNote";
 import LineHeading from "@/components/reports/LineHeading";
 import QuestsPlayer from "@/components/Player";
 import TakeSelector from "@/components/TakeSelector";
-import { lineTextSubject, TranslateDialog } from "@/components/TranslateDialog";
 import { PageTextDialog } from "@/components/readables/PageTextDialog";
 import { Player as ReadablesPlayer } from "@/components/readables/Player";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
@@ -27,7 +26,7 @@ import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player as PlacesPlayer } from "@/components/places/Player";
 import type { ResultLine as BookLine } from "@/lib/readables/search";
 import { isTypingTarget } from "@/lib/keyboard";
-import { BASE_LANG, withLang, type Lang } from "@/lib/lang";
+import { withLang, type Lang } from "@/lib/lang";
 import { explorerHref } from "@/lib/links";
 import { resolveReport } from "@/lib/reports/client";
 import { detailOf, fileOf, regenerateLine, searchPath, type SourceLine } from "@/lib/reports/detail";
@@ -226,7 +225,8 @@ export default function SortQueue({
     if (index > 0 && !busy) goTo(index - 1);
   }
 
-  const canEdit = canEditText && line !== null;
+  // A quest line with no text in the language has nothing to override.
+  const canEdit = canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text);
   // An unwritten boss has nothing to voice, and the server would refuse it.
   const canRegenerateLine = canRegenerate && line !== null && detail?.text !== null;
 
@@ -474,7 +474,6 @@ export default function SortQueue({
       {editing && line && lineId ? (
         <EditDialog
           source={source}
-          lang={lang}
           line={line}
           onClose={() => setEditing(false)}
           onSaved={() => void load(lineId)}
@@ -505,16 +504,13 @@ function SourcePlayer({
   return <ReadablesPlayer audioRef={audio} line={line as BookLine | null} version={version} />;
 }
 
-/** Each section's own editor: English quest text is an override, other quest text a translation. */
 function EditDialog({
   source,
-  lang,
   line,
   onClose,
   onSaved,
 }: {
   source: Source;
-  lang: Lang;
   line: SourceLine;
   onClose: () => void;
   onSaved: () => void;
@@ -526,9 +522,6 @@ function EditDialog({
     return <LoreDialog section={BOSSES} line={line as BossLine} onClose={onClose} onSaved={onSaved} />;
   }
   if (source === "readables") return <PageTextDialog line={line as BookLine} onClose={onClose} onSaved={onSaved} />;
-  if (lang !== BASE_LANG) {
-    return <TranslateDialog subject={lineTextSubject(line as QuestLine)} onClose={onClose} onSaved={onSaved} />;
-  }
   const done = () => {
     onClose();
     onSaved();

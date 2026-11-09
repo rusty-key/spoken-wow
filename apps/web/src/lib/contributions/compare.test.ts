@@ -53,6 +53,22 @@ describe("sameLine", () => {
   it("does not let a slot swallow punctuation", () => {
     expect(sameLine("Hello, $N!", "Hello, friend, you!")).toBe(false);
   });
+
+  it("lets frFR's $cs stand for the class plural the client printed", () => {
+    expect(sameLine("Les $cs de la Main d'argent.", "Les paladins de la Main d'argent.")).toBe(true);
+    expect(sameLine("Les $cs de la Main d'argent.", "Les démonistes de la Main d'argent.")).toBe(true);
+  });
+
+  it("still asks for the s of $cs", () => {
+    expect(sameLine("Les $cs sont là.", "Les paladin sont là.")).toBe(false);
+    expect(sameLine("Les $cs sont là.", "Les s sont là.")).toBe(false);
+    // A paladin's client puts back "paladin", without the s, as $C.
+    expect(sameLine("Les $cs sont là.", "Les $C sont là.")).toBe(false);
+  });
+
+  it("leaves a plain $c as it was", () => {
+    expect(sameLine("Salut, $c.", "Salut, paladin.")).toBe(true);
+  });
 });
 
 describe("readable", () => {

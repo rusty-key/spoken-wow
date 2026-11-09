@@ -27,7 +27,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
         bosses-full-release \
         audio-release audio-release-dry \
-        manager-publish manager-publish-dry manager-gc manager-gc-dry
+        manager-publish manager-publish-dry manager-release manager-gc manager-gc-dry
 
 help: ## Show this help
 	@printf 'Spoken\n\n'
@@ -61,6 +61,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/gossip_frequency_test.lua
 	@$(LUA) tests/lua/gossip_variant_test.lua
 	@$(LUA) tests/lua/quest_overlay_test.lua
+	@$(LUA) tests/lua/tracker_play_button_test.lua
 	@$(LUA) tests/lua/quest_overlay_classic_test.lua
 	@$(LUA) tests/lua/quest_tracker_adapters_test.lua
 	@$(LUA) tests/lua/quest_followup_test.lua
@@ -155,6 +156,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_city_test.lua
 	@$(LUA) tests/lua/places_dungeons_test.lua
 	@$(LUA) tests/lua/bosses_test.lua
+	@$(LUA) tests/lua/bosses_leatrix_test.lua
 	@$(LUA) tests/lua/bosses_audio_test.lua
 	@$(LUA) tests/lua/places_story_place_test.lua
 	@$(LUA) tests/lua/places_area_zones_test.lua
@@ -184,7 +186,7 @@ contribute-fixtures:
 
 test: test-player ## Everything: the site, the Node and Python pipelines, the addons
 	@pnpm -r test
-	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs pipelines/lib/*.test.mjs
+	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs pipelines/lib/*.test.mjs
 	@[ -x pipelines/quests/.venv/bin/python ] || { \
 	  echo "No venv at pipelines/quests/.venv -- see the comment above 'test' in the Makefile"; \
 	  exit 1; }
@@ -319,11 +321,17 @@ audio-release: ## Publish the built sound packs as GitHub releases (needs gh; SE
 # The manager's channel (scripts/manager/): what dist/ holds, uploaded to R2 as changed files only.
 # Build first with the <section>-package-audio targets. Needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
 # R2_SECRET_ACCESS_KEY, R2_BUCKET and SPOKEN_PACKS_SIGNING_KEY, in the repo-root .env.
-manager-publish-dry: ## Show what the manager channel would get from dist/
-	@node scripts/manager/cli.mjs publish --dry-run
+# ONLY_PRESENT=1 publishes just the folders dist/ holds, for a build of one section and language;
+# without it a missing folder stops the run, so a partial build cannot pass for a full one.
+# ALLOW_REMOVALS=1 lets a pack lose more files than publish.mjs accepts unasked.
+manager-publish-dry: ## Show what the manager channel would get from dist/ (ONLY_PRESENT=1: only what is built)
+	@node scripts/manager/cli.mjs publish --dry-run $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
 
-manager-publish: ## Publish dist/'s manager packs to the manager channel
-	@node scripts/manager/cli.mjs publish
+manager-publish: ## Publish dist/'s manager packs to the manager channel (ONLY_PRESENT=1: only what is built)
+	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
+
+manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, DRY_RUN=1)
+	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
 
 manager-gc-dry: ## Show what manager-gc would delete
 	@node scripts/manager/cli.mjs gc --dry-run

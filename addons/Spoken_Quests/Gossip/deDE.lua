@@ -78,6 +78,7 @@ GossipText = {
             ["Typisch Zwerge: Schicken extra einen Minenspezialisten aus Ironforge, um uns beizubringen, wie man Bergbau betreibt. Wie schwer kann es schon sein, eine Hacke in die Hand zu nehmen und auf ein paar Felsen einzuhauen? Na, jedenfalls ist er hier, also solltet Ihr Euch wohl auch mit ihm unterhalten. Er heißt Gelman und wohnt drüben im Zwergendistrikt."] = "64070f95813e914bdca6f15e390c919e",
             ["Und ich wünschte, ich könnte Euch begleiten, $N. Begebt Euch zur Burg Stormwind, dort werdet Ihr Thelman Slatefist im königlichen Audienzsaal finden. Er wird Euch helfen, den Weg ins Alteractal zu finden."] = "5da822272073a4d726872184c3421ca6",
             ["Versteckt im Magierviertel liegt ein kleiner Laden namens 'Alchimiebedarf'. Auf Eurem Weg durch das Magierviertel werdet Ihr jede Menge seltsame Läden sehen, aber wenn Ihr am äußeren Rand entlanggeht, dann könnt Ihr ihn nicht verfehlen."] = "8651024fca6f7bd42a0336d52e7d69fc",
+            ["Was? Ich weiß nichts über Hexenmeisterlehrer in Stormwind.     Obwohl... beim Geschlachteten Lamm drüben im Magierviertel gab es Sichtungen dämonischer Aktivitäten. Ihr solltet vielleicht dort einmal nachschauen."] = "f6a52f523eecff532c9530eae7d0e89a",
             ["Was? Ich weiß nichts über Hexenmeisterlehrer in Stormwind.   Obwohl... beim Geschlachteten Lamm drüben im Magierviertel gab es Sichtungen dämonischer Aktivitäten. Ihr solltet vielleicht dort einmal nachschauen."] = "f6a52f523eecff532c9530eae7d0e89a",
             ["Wenn Ihr Ausbildung in Alchimie benötigt, gibt es in Stormwind nur einen Ort dafür... den Alchimiebedarf. Ihr findet ihn im Magierviertel am äußeren Ladenring."] = "7034523efe4bfc8203b790a1d127dca2",
             ["Wenn Ihr Euer Tier unterbringen müsst, während Ihr ein anderes ausbildet, dann solltet Ihr mit Jenova Stoneshield drüben im Zwergendistrikt sprechen."] = "b68ea919378ae726f910e862a386d16f",
@@ -96,6 +97,7 @@ GossipText = {
             ["Woo Pings Ausdauer ist einfach erstaunlich. Ich habe schon gesehen, wie er stundenlang an seinen Techniken gefeilt hat, dass mir die Übungspuppe fast schon leid getan hat. Ich kann mir niemanden vorstellen, der besser dafür geeignet wäre, Euch im bewaffneten Kampf zu unterrichten."] = "312810e5deb14cd60aa19428f7f51227",
         },
         [167] = {
+            ["Seid gegrüßt, $uBürger:Bürgerin;."] = "b302043-dwarf-male-guard",
             ["Seid gegrüßt."] = "551b9295c0119ec334ab1eebcbac2bee",
         },
         [197] = {
@@ -154,6 +156,7 @@ GossipText = {
             ["Dieser Schild ist in der Tat ziemlich interessant. Ich habe das Familienwappen in meinen Büchern gefunden und tatsächlich geht es auf eine Abstammungslinie zurück, die als die Valors bekannt ist.  Diese Familie scheint etwas undurchsichtig zu sein, aber wer auch immer das Buch geschrieben hat, das Ihr gefunden habt, scheint sie hoch zu schätzen."] = "deDE-daae32b67f59caaa0e5e303c0618777d",
             ["Grüße, $C! Ich kenne nur ein Ziel: die Aufzeichnung und Katalogisierung allen Wissens über die Geschichte des Dämmerwalds und Dunkelhain. Würdet Ihr mir dabei behilflich sein?"] = "deDE-8ba7589571c909c181ea48eb92c76ac8",
             ["Ich weiß nicht viel mehr über die Familie Valor, als in dem Buch steht, das Ihr mir gebracht habt.  Vielleicht könnte es uns einige Hinweise darauf geben, wo wir suchen sollen."] = "deDE-56a83d05714852224e048201720496ec",
+            ["Ich weiß nicht, ob ich es ihrer zurückgezogenen Art zuschreiben soll, aber ich scheine nichts über Ira Valor herausfinden zu können.  Als ich in der Stadt herumgefragt habe, habe ich nicht viel über mysteriöse Rettungsaktionen im Wald gehört. Ein Händler schien zu glauben, er habe irgendwann eine Frau im Wald gesehen, aber das ist viel zu vage, um es als Beweis zu verwenden."] = "deDE-58e0491f96d32db1395ad9d837bde7cb",
         },
         [272] = {
             ["Hallo, hallo!  Willkommen in meiner Küche, $g Herr : Dame;!  Hier werden die feinsten Köstlichkeiten der Scharlachroten Raben Taverne zubereitet.  Ah, riechen Sie nur das wunderbare Aroma!"] = "8d1d7ec8e88045e7ac9d23a49fb86f88",
@@ -375,6 +378,7 @@ GossipText = {
             ["Nun, hallo. Du scheinst nicht abgeneigt zu sein, etwas Geld zu verdienen, hm? Das sehe ich an Eurem Blick. Ich bin Mogul Kebok, Aufseher über Operationen in Azeroth, und wenn Ihr Reichtümer sucht, kann ich vielleicht etwas arrangieren."] = "bed5db7c19da9db7ec35938ca77ad72e",
         },
         [738] = {
+            ["Das hier ist ein gefährlicher Ort, $N. Seid lieber vorsichtig."] = "a765bd81d4444d7fa3d03cdef9f00bd6",
             ["Das hier ist ein gefährlicher Ort, $n. Seid lieber vorsichtig."] = "a765bd81d4444d7fa3d03cdef9f00bd6",
         },
         [773] = {
@@ -391,6 +395,7 @@ GossipText = {
         },
         [837] = {
             ["Das Licht möge Euch beschützen, $C."] = "852369f0d2fbc11e555e75fe5a433853",
+            ["Dient dem Licht gut, $C."] = "852369f0d2fbc11e555e75fe5a433853",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["Ich hoffe, das Licht ist mit Euch, $n. Gibt es irgendetwas, das ich für Euch tun kann?"] = "238a7cdf16a7d258e1b3789d98c5e7fb",
         },
@@ -484,6 +489,7 @@ GossipText = {
             ["Seh ich aus, als hätte ich Zeit zum Quatschen?"] = "a14f5faf742204672310f8f5b8263cb5",
         },
         [963] = {
+            ["Hallo, $C. Ich hoffe, Ihr seid gekommen, um unsere Truppen zu verstärken. Bestien und Diebe dringen in unser geliebtes Elwynn ein und wir haben kaum ausreichend Männer, um die Straßen zu sichern!  Und falls Ihr es noch nicht getan habt, lest die Information über Hogger. Das ist eine Bestie in jenem Walde dort, derer man sich annehmen muss."] = "deDE-064c1812db7502730c159564fdd7ca28",
             ["Ich kann die Führung von Stormwind nicht verstehen. Sie schickt den Großteil unserer Armee weg... wo unsere Heimat so sehr bedrängt wird!$B$BVon Westfall kommen Diebe, aus Ost und West nähern sich Gnolle - es ist ein Wunder, dass Stormwind selbst nicht belagert wird."] = "e03d3aaa8df7e98fcb210403aad69ebd",
         },
         [985] = {
@@ -529,6 +535,7 @@ GossipText = {
         },
         [1156] = {
             ["Besorgt Euch diesen Kopf und er wird Daryl mit Sicherheit kräftig erschrecken. Das hat er auch echt verdient, dieser verdammte arrogante Mistkerl. Oh ja! Ich kann es kaum erwarten, sein Gesicht zu sehen, wenn Ihr ihm den Kopf zeigt!"] = "675474e0619645670f8ac5fe9a9fadbf",
+            ["Willkommen in der Jagdhütte der Weltenwanderer, $N."] = "deDE-6fea938dafe1d39b5ecbbcc5b0323bc2",
             ["Willkommen in der Weitschreiter-Lodge, $N."] = "acbe16ea3d149deb13ccd9048db985c9",
         },
         [1215] = {
@@ -538,7 +545,7 @@ GossipText = {
         },
         [1226] = {
             ["Das Licht möge Euch beschützen, $C."] = "852369f0d2fbc11e555e75fe5a433853",
-            ["Dient dem Licht gut, $C."] = "deDE-cebc73a9fd2a76dc8458e534c6e051f7",
+            ["Dient dem Licht gut, $C."] = "852369f0d2fbc11e555e75fe5a433853",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["Ich hoffe, das Licht ist mit Euch, $n. Gibt es irgendetwas, das ich für Euch tun kann?"] = "238a7cdf16a7d258e1b3789d98c5e7fb",
         },
@@ -712,6 +719,7 @@ GossipText = {
         [1317] = {
             ["Ein wahrer Profi kennt seine Grenzen und ich schäme mich nicht zuzugeben, dass Eure Fertigkeiten die meinen übersteigen. Ich möchte, dass Ihr Kitta Firewind am Turm von Azora besucht. Sie ist sehr berühmt und das mit gutem Grund."] = "26d3bfbb22d8a54e39ab79db7fab0284",
             ["Eure Zuversicht ist wohl begründet. Jetzt kann Eure wahre Ausbildung beginnen!"] = "c1383f7b48e9dcb2540129e0a8e3528b",
+            ["Ihr scheint recht selbstsicher zu sein. Da seid Ihr doch bestimmt mit einem Test Eurer Fertigkeiten einverstanden..."] = "b7896-human-male-standard",
             ["Ihr seid nicht bereit. Sprecht mit Betty Quinn, sie steht dort drüben an der Treppe. Kehrt zu mir zurück, wenn Ihr eine höhere Erleuchtung erreicht habt."] = "a4f377c48a85cd98cb6b0a714f4f8dfb",
             ["Wenn Ihr habt, was nötig ist, werde ich Euch gern den Weg weisen."] = "442191b2cfb08109059d8086031cf4ea",
         },
@@ -955,6 +963,8 @@ GossipText = {
         },
         [1466] = {
             ["Ah, welch Unglück! Meine Fertigkeiten sind nicht gut genug, um Euch von Nutzen zu sein. Kann man nicht ändern. Sprecht mit Fimble Finespindle dort drüben beim Webstuhl. Er arbeitet schon länger als ich mit Leder."] = "b7959-gnome-female-standard",
+            ["Au prima, endlich was zu tun während der Wartezeit. Ihr rettet mir wahrlich das Leben, $N!"] = "b7960-gnome-female-standard",
+            ["Au prima, endlich was zu tun während der Wartezeit. Ihr rettet mir wahrlich das Leben, $n!"] = "b7960-gnome-female-standard",
             ["Dieser Balg ist noch nicht bereit zur Verarbeitung. Ich wünschte, es würde nicht so lange dauern, Leder herzustellen. Es muss doch eine Möglichkeit geben, diese ganze Warterei zu verkürzen. Das kann doch für meine Gesundheit nicht gut sein, oder?"] = "d66a2bc101b5a2594db0e958f8da478a",
         },
         [1470] = {
@@ -972,6 +982,7 @@ GossipText = {
             ["Bowen Brisboise ist der Richtige für Euch. Ihr findet ihn in seinem Haus südwestlich von Brill, auf der anderen Seite der Brücke beim Coldhearth-Anwesen."] = "a05a273555c4e438987174be83fe9a2d",
             ["Carolai Anise ist bestimmt wieder mal dabei, ihr Haus am nordwestlichen Ende der Stadt in die Luft zu jagen. Warum seht Ihr nicht mal nach, ob Ihr ihr helfen könnt?"] = "de06a1722b12d439c9afc5bbb2bda105",
             ["Clyde Kellen, unser örtlicher Barschfänger, angelt am liebsten im Blendwassersee, ein kleines Stück östlich von Brill."] = "c8c457f00ba68e930345dc9a61425874",
+            ["Dann nehmt ihn Euch. Offenbar ist Zygand zu beschäftigt für den mühevollen Weg hierher, um ihn selbst zu holen."] = "b326573-scourge-male-warrior",
             ["Dann solltet Ihr mit Rupert Boch sprechen. Er und seine Leute haben ein Zimmer im ersten Stock der Taverne Zur Galgenschlinge am südöstlichen Ende von Brill."] = "4d833ba2be9a9ed29ed79a621d6ebcce",
             ["Das dürfte Shelene Rhobart sein. Folgt der Straße Richtung Südosten aus Brill hinaus und wendet Euch an der Kreuzung nach Osten. Sie ist in einem Lager an der Straße."] = "d527ff651e5c8f5b38b73526706b5b23",
             ["Den Magielehrer Cain Firesong findet Ihr in der Taverne Zur Galgenschlinge am südöstlichen Ende von Brill, und zwar oben im ersten Stock auf dem Treppenabsatz. Ich vermute mal, er ist zu spät angekommen, und es war kein Zimmer mehr frei."] = "fd95ca0767fb6854229c17e46878eea4",
@@ -1100,6 +1111,7 @@ GossipText = {
         [1676] = {
             ["Hmmm, nein, noch kann ich Euch leider nicht helfen. Ihr müsst erst die Grundlagen lernen. Warum sprecht Ihr nicht mal mit Sprite Jumpsprocket in Stormwind?"] = "53a615c56f1bceea727ec102f86c7525",
             ["Ich bin nie zu beschäftigt, um mit Fremden zu sprechen! Fast nie jedenfalls..."] = "6fa11f689cf6d10432a1f4a482d4c9d4",
+            ["Ich kann Euch ein paar Tricks beibringen... wenn es Euch nichts ausmacht, erst eine kleinwinzige Kleinigkeit für mich zu erledigen, versteht sich."] = "b7828-gnome-male-zany",
             ["Ihr seid jetzt auf einer höheren Stufe, als ich es zurzeit bin! Ihr solltet mit Springspindle Fizzlegear in Ironforge reden. Da lernt Ihr mehr, als ich Euch je beibringen könnte!"] = "3be14b269e4a2e88daaa7b79a48ea9d8",
             ["Phantastisch! Mann, seid Ihr aber fleißig! Also gut, dann fangen wir mal an, wie?"] = "25a871b4543c5397d1451590a62e502d",
         },
@@ -1500,6 +1512,7 @@ GossipText = {
             ["Ihr seid kein Krieger... Wie wollt Ihr mehr als einen Tag unter meiner Ausbildung bestehen?$B$BEin $C, der sich für einen Krieger hält. Ha!"] = "64a04066374cb355ff1adeae11f4ae82",
         },
         [1937] = {
+            ["Die Dunkle Fürstin hat die Herausforderung gestellt. Jetzt liegt es an der Königlichen Apothekervereinigung, eine neue Seuche zu entwickeln. Wir werden Arthas und seine jämmerliche Armee in die Knie zwingen."] = "8bf2a497dfd2a2114570b31ad8edc3e5",
             ["Die Dunkle Lady hat die Herausforderung angenommen.  Nun liegt es an der Königlichen Apothekergesellschaft, eine neue Seuche zu entwickeln.  Wir werden Arthas und seine erbärmliche Armee in die Knie zwingen."] = "8bf2a497dfd2a2114570b31ad8edc3e5",
         },
         [1938] = {
@@ -1579,6 +1592,7 @@ GossipText = {
             ["Typisch Zwerge: Schicken extra einen Minenspezialisten aus Ironforge, um uns beizubringen, wie man Bergbau betreibt. Wie schwer kann es schon sein, eine Hacke in die Hand zu nehmen und auf ein paar Felsen einzuhauen? Na, jedenfalls ist er hier, also solltet Ihr Euch wohl auch mit ihm unterhalten. Er heißt Gelman und wohnt drüben im Zwergendistrikt."] = "64070f95813e914bdca6f15e390c919e",
             ["Und ich wünschte, ich könnte Euch begleiten, $N. Begebt Euch zur Burg Stormwind, dort werdet Ihr Thelman Slatefist im königlichen Audienzsaal finden. Er wird Euch helfen, den Weg ins Alteractal zu finden."] = "5da822272073a4d726872184c3421ca6",
             ["Versteckt im Magierviertel liegt ein kleiner Laden namens 'Alchimiebedarf'. Auf Eurem Weg durch das Magierviertel werdet Ihr jede Menge seltsame Läden sehen, aber wenn Ihr am äußeren Rand entlanggeht, dann könnt Ihr ihn nicht verfehlen."] = "8651024fca6f7bd42a0336d52e7d69fc",
+            ["Was? Ich weiß nichts über Hexenmeisterlehrer in Stormwind.     Obwohl... beim Geschlachteten Lamm drüben im Magierviertel gab es Sichtungen dämonischer Aktivitäten. Ihr solltet vielleicht dort einmal nachschauen."] = "f6a52f523eecff532c9530eae7d0e89a",
             ["Was? Ich weiß nichts über Hexenmeisterlehrer in Stormwind.   Obwohl... beim Geschlachteten Lamm drüben im Magierviertel gab es Sichtungen dämonischer Aktivitäten. Ihr solltet vielleicht dort einmal nachschauen."] = "f6a52f523eecff532c9530eae7d0e89a",
             ["Wenn Ihr Ausbildung in Alchimie benötigt, gibt es in Stormwind nur einen Ort dafür... den Alchimiebedarf. Ihr findet ihn im Magierviertel am äußeren Ladenring."] = "7034523efe4bfc8203b790a1d127dca2",
             ["Wenn Ihr Euer Tier unterbringen müsst, während Ihr ein anderes ausbildet, dann solltet Ihr mit Jenova Stoneshield drüben im Zwergendistrikt sprechen."] = "b68ea919378ae726f910e862a386d16f",
@@ -1953,6 +1967,7 @@ GossipText = {
         },
         [2425] = {
             ["Seid nicht so vermessen zu glauben, dass Ihr zu mir sprechen könnt, als wärt Ihr mir ebenbürtig, $C. Sylvanas ist meine Königin und ich werde tun, was sie mir befiehlt.  Wenn Ihr nicht den gebührenden Respekt zeigt, dann, so kann ich Euch versichern, ist es uns ein Leichtes, einen mehr als passenden Platz im wirbelnden Nether für Euch zu finden.  Doch es gibt keinen Grund, warum wir nicht miteinander sprechen können, wenn Ihr der dunklen Fürstin zu dienen wünscht..."] = "deDE-017909b138a134050ac26af2b2578e6a",
+            ["Seid nicht so vermessen zu glauben, dass Ihr zu mir sprechen könnt, als wärt Ihr mir ebenbürtig, $C. Sylvanas ist meine Königin und ich werde tun, was sie mir befiehlt.  Wenn Ihr nicht den gebührenden Respekt zeigt, kann ich Euch versichern, ist es uns ein Leichtes, einen mehr als passenden Platz im wirbelnden Nether für Euch zu finden.  Doch es gibt keinen Grund, warum wir nicht miteinander sprechen können, wenn Ihr der dunklen Fürstin zu dienen wünscht..."] = "deDE-51c43149531e80894a9b21fd655b317d",
             ["Seid nicht so vermessen zu glauben, dass Ihr zu mir sprechen könnt, als wärt Ihr mir ebenbürtig, $C. Sylvanas ist meine Königin und ich werde tun, was sie mir befiehlt.$B$BWenn Ihr nicht den gebührenden Respekt zeigt, dann, so kann ich Euch versichern, ist es uns ein Leichtes, einen mehr als passenden Platz im wirbelnden Nether für Euch zu finden.$B$BDoch es gibt keinen Grund, warum wir nicht miteinander sprechen können, wenn Ihr der dunklen Fürstin zu dienen wünscht..."] = "df026ba116c46347a0f53bb2c2836f20",
         },
         [2432] = {
@@ -2035,6 +2050,7 @@ GossipText = {
             ["Zurückbleiben!  Bleibt zurück!  Ich habe einen Rucksack voll mit Sprengpulver und ich habe keine Angst, es zu benutzen!  Ich werde uns alle wegpusten!$B$BOh, vergiss es.  Ich dachte, du wärst jemand anderes. ...."] = "91c4313b56ed5abecc4be72cfbade940",
         },
         [2786] = {
+            ["Willkommen bei 'Bonegrips Runen und Verdammnisse', $C. Ihr dürft Euch umsehen, aber bitte fasst nichts an.  Nicht alles Wissen hier ist für... Nichteingeweihte geeignet."] = "deDE-1d9e39b19bbca3ba29d0e3f570786520",
             ["Willkommen bei 'Bonegrips Runen und Verdammnisse', $C. Ihr dürft Euch umsehen, aber bitte fasst nichts an.$B$BNicht alles Wissen hier ist für... Nichteingeweihte geeignet."] = "e9122556274f96f9c44be0119beaa6bc",
             ["Willkommen bei Bonegrip's Runes and Dooms, $c.  Du darfst schauen, aber nicht anfassen.$B$BEiniges von dem Wissen hier ist nicht für die... Uneingeweihten bestimmt."] = "e9122556274f96f9c44be0119beaa6bc",
         },
@@ -2127,6 +2143,7 @@ GossipText = {
             ["Hallo, $N.$B$BLotwil ist nicht der scharfsinnigste Chef, den ich je hatte. Er engagiert sich wirklich sehr für seine Arbeit. So sehr, dass seine Angestellten manchmal nichts zu essen bekommen oder nicht bezahlt werden.$B$B<Lucien runzelt die Stirn zu Lotwil.>$B$BAber das heißt nicht, dass du leiden sollst."] = "c73828e632b03b29b139443cc995766d",
         },
         [2921] = {
+            ["Wie gut, dass Ihr vorbeikommt, $C.  Ich heiße Lotwil Veriatus, Gründungsmitglied der Erleuchteten Versammlung für Arkanologie, Alchimie und Ingenieurwissenschaften: Unser Streben ist, die hohen Wissenschaften von Azeroth zu einer umfassenden Schule zu verschmelzen."] = "deDE-2a281d4bab2fa8213ed4023711979eb5",
             ["Wie schön, dass du vorbeikommst, $c.$B$BMein Name ist Lotwil Veriatus, Gründungsmitglied der Erleuchteten Versammlung für Arkanologie, Alchemie und Ingenieurwissenschaften: Wir versuchen, die intelligenten Wissenschaften Azeroths in einer umfassenden Schule zu vereinen."] = "a0542cde795fdfada26ec0e05b2638e8",
         },
         [2930] = {
@@ -2157,6 +2174,8 @@ GossipText = {
             ["Wenn man auf dem Rücken eines Windreiters reitet, sieht man, dass sein Ruf von Kraft und Tempo wohl verdient ist."] = "162e14a98f2a88c099856abef92342b8",
         },
         [2998] = {
+            ["Alles hat einen Geist, und wenn Ihr lernt, darauf zu hören, dann könnt Ihr diesen Geist nach Eurem Willen formen. Bei der Schmiedekunst geht es nicht darum, auf Metall herumzuschlagen und ihm den eigenen Willen aufzuzwingen. Es geht darum, auf den Geist im Stahl zu hören und ihn in die Form zu leiten, die er annehmen will."] = "b3954-tauren-male-elder",
+            ["Ihr habt ein großes Potenzial, doch zuvörderst müsst Ihr verstehen. Ihr müsst die Geister akzeptieren und auf ihre Rufe hören. Erst dann werdet Ihr für den Weg bereit sein, den Ihr einschlagen müsst. Sprecht mit Thrag. Ich glaube, Ihr könnt viel voneinander lernen."] = "b5808-tauren-male-elder",
             ["Ihr seht mir aus wie $gein Mann:eine Frau; auf der Suche nach Wissen. Vielleicht sucht Ihr sogar die Lehre von Schmiede und Hammer. Vielleicht kann ich Euch auf diesem Weg geleiten. Aber erst müsst Ihr die Geister akzeptiert und ihre Rufe gehört haben."] = "b0b47cf8dcffc971f677db7811e6e84d",
         },
         [3001] = {
@@ -2853,7 +2872,7 @@ GossipText = {
             ["Hmmm, ich glaube, Ihr müsst nach Thunder Bluff, wenn Ihr das lernen wollt. Verlasst Bloodhoof auf der Straße gen Norden. So kommt Ihr zum Fuß der Thunder Bluff-Klippen. Nehmt den Aufzug nach oben. Dort sollte Euch jeder Behüter von Thunder Bluff weiterhelfen können."] = "bd7be540acfdb0455e58364636e73dda",
             ["Ich habe gehört, dass es in Thunder Bluff im Norden einen Bergbaulehrer gibt. Folgt der Straße aus dem Dorf hinaus nach Norden und nehmt am Fuße des Steilhanges den Aufzug hinauf auf das Plateau. Jeder Behüter von Thunder Bluff sollte Euch von dort aus weiterhelfen können."] = "e6cb4ccc587cd2a258b3ded78ae7a3f0",
             ["Ihr könnt Yonn Deepcut in dem großen Zelt im Nordwesten von Bloodhoof finden."] = "951cf972b72fa8a3afed83790bceb3f0",
-            ["Ihr sucht doch etwas. Was ist es?"] = "b3d11178772212cc804676804bb92ca1",
+            ["Ihr sucht doch etwas. Was ist es?"] = "b4857-tauren-male-warrior",
             ["Ihr wünscht, die Knochen der Erdenmutter zu Werkzeugen zu formen, die der Horde helfen können. Gut, gut. Folgt der Straße aus Bloodhoof hinaus und nach Norden, bis Ihr zu dem Aufzug kommt, der auf das Plateau von Thunder Bluff führt. Dort wird Euch ein Behüter von Thunder Bluff weiterhelfen."] = "e150bdb40bb2ad6d87a0d8460847996a",
             ["Im Dorf lebt ein Weiser namens Narm Skychaser. Er kann Eure Ausbildung zum Schamanen weiterführen."] = "af5b82f4f5903c5285a8c966bbd9396d",
             ["Im Osten von Bloodhoof steht ein großes Zelt. Dort wartet Narm Skychaser auf Euch."] = "460e9ebf106048fdb04f6a2f81157b23",
@@ -2971,6 +2990,7 @@ GossipText = {
         },
         [3230] = {
             ["Benehmt Euch in der Anwesenheit des Kriegshäuptlings, $C. Die Kor'kron werden hier keine Unverschämtheiten oder Beleidigungen dulden."] = "deDE-256cf0f90a98af72c11e63006c3149d7",
+            ["So, Ihr seid also erst kürzlich aus Azeroth hier eingetroffen, mh? Macht Euch auf einiges gefasst, $C - In diesem Land lauern weit schlimmere Gefahren, als alles, dem sich die Horde je stellen musste. Ich bin Nazgrel, die rechte Hand unseres mächtigen Kriegshäuptlings, Thrall. Er übertrug mir die ehrenvolle Aufgabe, diese mutige Expedition zu schützen, und bei allen Geistern, das werde ich!"] = "deDE-adddff2cb76340fbd5f62c985e2f43d4",
         },
         [3290] = {
             ["Es wäre mir ein Vergnügen, Euch bei der Verfolgung Eurer Ziele behilflich sein zu dürfen! Ich schnappe mir nur schnell meinen Spinner, dann fangen wir an..."] = "f0c3fcd8e5d2ce42560cdd3636e4af9e",
@@ -2997,6 +3017,7 @@ GossipText = {
             ["Geht zum Tal der Stärke und sucht die Bank von Orgrimmar südlich des Himmelsturms auf."] = "3b2d3f4253346fe54a8af9329b9583ef",
             ["Geht zur Halle der Kriegerhelden. Dort werdet Ihr den Entweihten, Deze Snowbane finden, die Euch helfen wird zum Arathibecken zu gelangen."] = "d79187c46c1d132053867c2cbc1e9e3e",
             ["Geht zur Jägerhalle im Tal der Ehre, westlich des Kolosseums. Sprecht dort mit Ormak Grimshot."] = "2cf644ba2f510e7a4b8706d23090659a",
+            ["Geht zur Kluft der Schatten und sprecht dort mit Spruchwirkerin Mon'ye, in der Nähe des Zentrums des Distrikts."] = "deDE-0babcd4ccc0a4507716faa8f7ca67e3c",
             ["Haben wir uns nicht gerade erst von der Brennenden Legion befreit, und schon lasst Ihr Euch wieder mit Dämonen ein? Die Darkfire-Enklave ist in der unterirdischen Höhle namens Kluft der Schatten zu finden. Von der Gasse aus führt ein Tunnel hinunter."] = "65f8dda67d9c8c8f969b388ee0edf169",
             ["Heilung ist für jene, die keinen Schmerz ertragen können. Aber wenn es denn unbedingt sein muss, dann geht zur Geisterlodge am See im Tal der Geister, über dem Tal der Stärke im Westen."] = "03d023b4146dbfca47b38d4edcaa7764",
             ["Ich schätze, jemand muss uns Krieger nach den Kämpfen verbinden. Sucht Arnok in der 'Der Stärkste überlebt'-Hütte neben der Geisterlodge im Tal der Geister auf. Haltet westlich über dem Tal der Stärke nach einem See Ausschau. Da müsste er zu finden sein."] = "6be79c4541f77d8d29acbf888f562299",
@@ -3126,6 +3147,7 @@ GossipText = {
             ["Die Geister haben Euch zu mir geführt. Wie kann ich Euch zu Diensten sein?"] = "93ff0e2abb20dcd5c4b04b86b60d8ab3",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "28f6b8de934060edb89ab0339b080fcf",
             ["Mögen die Geister mit Euch sein."] = "7be5b41b6547e9fda9b4b9cb85616226",
+            ["Wenn Ihr es wünscht, dann liegt es neben der Ausbildung in meiner Macht, das Wissen über Eure Talente aus Eurem Gehirn zu löschen. Doch ich warne Euch: Diese Prozedur wird mit jeder Durchführung schwieriger und daher auch teurer."] = "b8263-orc-female-shaman",
         },
         [3345] = {
             ["Einige Abenteurer glauben, dass die Verzauberei nicht funktioniere. Im Allgemeinen ändern sie ihre Meinung, wenn ich sie zum Kampf herausfordere!"] = "3c96e38d8275bcb879a7e7eb43dca519",
@@ -3159,6 +3181,7 @@ GossipText = {
             ["Solche wie Euch bilde ich nicht aus, $C. Sucht Euch einen anderen Lehrer, ehe ich wütend werde."] = "5c32ac92759b0e79eade7dc21f7e569f",
         },
         [3355] = {
+            ["Das ist kein Spiel zum Herumalbern! Geht und sprecht mit Snarl da draußen. Er mag eine Schlange in meinem Unterschlupf sein, aber er kann mit dem Amboss umgehen."] = "b5817-orc-male-guard",
             ["Was führt Euch in meine Schmiede? Eine Ausbildung? Oder ist es das Geheimnis des Stahls? Die Rätsel der Schmiede? Sprecht!"] = "03b20e4ae05f8ecd44ff03f0c3561c3f",
         },
         [3362] = {
@@ -3216,6 +3239,7 @@ GossipText = {
             ["Dem Geistern soll'n Euch beistehen, Mann. Was kann demme Troll da für Euch tun?"] = "6c82842b379af58a9a58e28cb35a4d49",
             ["Dem Geistern soll'n Euch beschütz'n, Mann."] = "5bcfe44c67f5e0a247451c8d54a13c74",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "857ea30c7f6e11d987a132b4e84da4dc",
+            ["Wenn Ihr es wünscht, dann liegt es neben der Ausbildung in meiner Macht, das Wissen über Eure Talente aus Eurem Gehirn zu löschen. Doch ich warne Euch: Diese Prozedur wird mit jeder Durchführung schwieriger und daher auch teurer."] = "b8263-troll-female-old",
         },
         [3406] = {
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "5016339405f25a1000a29e26a0caf19c",
@@ -3247,6 +3271,7 @@ GossipText = {
             ["Willkommen in Crossroads, $C. Mein Name ist Thork - ich befehlige hier im Namen des Kriegshäuptlings die Verteidigung.$B$BBitte fühlt Euch ganz wie zu Hause. Solange Ihr Euch nur um Euren eigenen Kram kümmert, dürfte es keinen stören, wenn Ihr etwas Platz beansprucht.$B$BUnsere Sicherheit hier wird auf viele Weise bedroht. Wenn Ihr bereits mit dem Land vertraut seid, sprecht mit den anderen hier - vielleicht haben sie Aufgaben für Euch."] = "bc68f87f28d14f99d8f8ff4c267ffea2",
         },
         [3430] = {
+            ["Ihr da! $R! Kommt her. <schnaubt>  Die Zeit ist knapp und mein Ende <schnaubt> naht. Quetschzahn wird siegen, Ihr werdet schon sehen. <schnaubt>  Meine Gefangennahme kann meinem Volk <schnaubt> immer noch nützen. Der Stamm der Grimmhauer ist mächtiger als der der Borstennacken!  Die Horde will herausfinden, wer die Angriffe auf ihr Volk verübt. Wenn Ihr <schnaubt> Quetschzahn helft, dann gebe ich Euch Informationen, die keiner außer mir hat. Quetschzahn kann Euch helfen! <schnaubt> Aber Ihr müsst auch Quetschzahn helfen."] = "deDE-50839f8ab803c50c3e2b9351ea15b3a5",
             ["Ihr da! $R! Kommt her. <schnaubt>$B$BDie Zeit ist knapp und mein Ende <schnaubt> naht. Quetschzahn wird siegen, Ihr werdet schon sehen. <schnaubt>$B$BMeine Gefangennahme kann meinem Volk <schnaubt> immer noch nützen. Der Stamm der Grimmhauer ist mächtiger als der der Borstennacken!$B$BDie Horde will herausfinden, wer die Angriffe auf ihr Volk verübt. Wenn Ihr <schnaubt> Quetschzahn helft, dann gebe ich Euch Informationen, die keiner außer mir hat. Quetschzahn kann Euch helfen! <schnaubt> Aber Ihr müsst auch Quetschzahn helfen."] = "0ca78d01ff421bd9965061499907f558",
             ["Ihr habt <schnaubt> Quetschzahn mehr geholfen, als ich es mir erträumt hätte, $R.  Danke.  Solange ich noch hier gefangen bin, könnt Ihr mir Blutsplitter von den Stachelebern der Borstennacken bringen, dann segne ich Euch mit Agammagans Macht."] = "deDE-12e1c5b2aeaa8cdc017ef67ce45c1877",
             ["Ihr habt <schnaubt> Quetschzahn mehr geholfen, als ich es mir erträumt hätte, $R.$B$BDanke.$B$BSolange ich noch hier gefangen bin, könnt Ihr mir Blutsplitter von den Stachelebern der Borstennacken bringen, dann segne ich Euch mit Agammagans Macht."] = "0da686edfe28493d263fb69e6f40dad9",
@@ -3614,6 +3639,7 @@ GossipText = {
             ["Nein, ich nicht, aber jede Menge anderer Leute suchen nach Liebe. Ihr solltet meine Zeichen der Liebe kaufen, etwas Parfüm oder Duftwasser auflegen und sie dann verteilen!"] = "a70be99ff08d4df4c93b09b77588a051",
             ["Uldaman ist ein uraltes titanisches Gewölbe, das schon seit Anbeginn der Zeit verborgen in den Tiefen der Erde lag. Ausgrabungen der Zwerge haben erst neulich die ersten fehlgeschlagenen Wesen der Titanen zu Tage gebracht: die Troggs. Die Legenden besagen, dass die Titanen, wissend, dass das Experiment mit den Troggs fehlschlug, einen neuen Versuch starteten und so das Zwergenvolk erschufen. Diese Geheimnisse wurden in die besagten Scheiben von Norgannon geprägt; gewaltige Artefakte, die auf dem Grund der alten Stadt liegen und von riesigen Konstrukten aus lebendigem Stein beschützt werden."] = "991c35a1c8f32e2d36fef5a051a928bf",
             ["Uldaman liegt am nördlichen Ende des Ödlands."] = "af158d110faf65cf2c8cfe5981eddc3e",
+            ["Unsere uralten Lande liegen im Nordosten der Östlichen Königreiche. Benannt nach Lordain, war es einst ein stolzes und mächtiges Königreich. Seine Geschichte ist reich und gehört zum Unterrichtsstoff vieler aufstrebender Adliger und Könige. Einer der entscheidenden Momente des Königreichs war, als es dabei half, den Grundstock dessen zu legen, was wir heute als die Allianz kennen.    Leider hat seine Geschichte auch eine düstere Seite. Seine derzeitigen Einwohner besudeln die Lande des Königreichs Tag um Tag. In den Ruinen, die über Undercity ruhen, befindet sich nach wie vor vieles von Bedeutung. Doch es wäre närrisch, diese Reise auf sich zu nehmen und zu erwarten, bei lebendigem Leibe zurückzukehren."] = "deDE-58429736adedcd5b0485c6eb33c103c8",
             ["Unsere uralten Lande liegen im Nordosten der Östlichen Königreiche. Benannt nach Lordain, war es einst ein stolzes und mächtiges Königreich. Seine Geschichte ist reich und gehört zum Unterrichtsstoff vieler aufstrebender Adliger und Könige. Einer der entscheidenden Momente des Königreichs war, als es dabei half, den Grundstock dessen zu legen, was wir heute als die Allianz kennen.  Leider hat seine Geschichte auch eine düstere Seite. Seine derzeitigen Einwohner besudeln die Lande des Königreichs Tag um Tag. In den Ruinen, die über Undercity ruhen, befindet sich nach wie vor vieles von Bedeutung. Doch es wäre närrisch, diese Reise auf sich zu nehmen und zu erwarten, bei lebendigem Leibe zurückzukehren."] = "deDE-58429736adedcd5b0485c6eb33c103c8",
             ["Vor mehr als zwölf tausend Jahren von einer geheimen Sekte von Nachtelfen Zauberhexern erbaut, beherbergte und beschützte die uralte Stadt Eldre'Thalas Königin Azsharas wertvollste arkane Geheimnisse. Obwohl sie von der großen Teilung der Welt verwüstet wurde, steht ein Großteil der wundersamen Stadt noch immer im eindrucksvollen Düsterbruch. Die drei Teile wurden von allerlei Kreaturen überrannt - besonders von den geisterhaften Hochgeborenen, üblen Satyrn und bestialischen Ogern."] = "a5bb313bf3bd25a50fb0157cbb68e362",
             ["Vor tausend Jahren versuchte eine Gruppe von Trollpriestern, die als die Atal'ai bekannt waren, einen uralten Blutgott namens Hakkar der Seelenschinder wiederzubeleben. Nach dem folgenden Bürgerkrieg waren die Priester geschlagen und wählten die Sümpfe des Elends als ihr Exil. Dort errichteten sie einen Tempel für Hakkar, um seine Ankunft in der physischen Welt vorzubereiten. Der Drachenaspekt Ysera erfuhr schnell von den Plänen der Atal'ai und zerstörte den Tempel in den Sümpfen. Bis zu dem heutigen Tag werden die Tempelruinen von mächtigen grünen Drachen bewacht."] = "5f4d64e508e2e540625383eeae8529e5",
@@ -3799,6 +3825,7 @@ GossipText = {
         [4219] = {
             ["Der Segen von Cenarius möge Euch begleiten, $C. Unser Anführer, Erzdruide Staghelm, führt uns und ganz Teldrassil in ein neues Leben!"] = "04deb31038105cfd74ab05f52c151823",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "30ee103c545f987ab518c70f6d3e640e",
+            ["Wenn Ihr es wünscht, dann liegt es neben der Ausbildung in meiner Macht, das Wissen über Eure Talente aus Eurem Gehirn zu löschen. Doch ich warne Euch: Diese Prozedur wird mit jeder Durchführung schwieriger und daher auch teurer."] = "d8d678c1fa7a5d0ec00c8daf69cd26f9",
             ["Willkommen, $g mein Bruder:meine Schwester;. Wenn Ihr hier seid um zu lernen, dann bin ich nur zu gern bereit, Euch auszubilden.$B$BEs gehen Gerüchte um von Zwistigkeiten innerhalb des Zirkels des Cenarius, aber Ihr solltet solch leichtfertigem Gerede keinen Glauben schenken. Unser Erzdruide, Fandral Staghelm, führt uns und ganz Teldrassil zum Ruhm!"] = "765d7c8eab15fae760b184c664fb9e9a",
         },
         [4241] = {
@@ -4087,6 +4114,7 @@ GossipText = {
         [4606] = {
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "0d64590eddacb5c6f64026dd45e8d2c8",
             ["Ja, $C?"] = "6cb32b3bfd2cfbdde35f3652a10058c8",
+            ["Was kann dieser unbedeutende Diener für Euch tun, $N? Euch Unterricht geben, vielleicht?"] = "65a3b6b9d50c63563e6e4c3211a93148",
             ["Was kann dieser unbedeutende Diener für Euch tun, $n? Euch Unterricht geben, vielleicht?"] = "65a3b6b9d50c63563e6e4c3211a93148",
         },
         [4607] = {
@@ -4111,6 +4139,9 @@ GossipText = {
             ["Unglaublich. Eure Tränke zeugen von einem Wissen, das dem meinen gleichkommt. Ich kann Euch nicht weiter ausbilden. Sprecht lieber mit dem Orc Rogvar - Ihr findet ihn in Stonard in den Sümpfen des Elends. Er ist für seine bahnbrechenden Experimente bekannt."] = "f578ceea65698599fa038d8a9a944952",
             ["Wollt Ihr etwas lernen? Dann konzentriert Euch, $n. Es gilt, viel Stoff durchzunehmen!"] = "6785653724e3b6091cc91439955fe110",
         },
+        [4612] = {
+            ["Sssschleime!! Raaaargh..."] = "deDE-95cf4a2ae50b4e097bd82beb1cb01cdb",
+        },
         [4613] = {
             ["Willkommen bei der Gildenregistratur von Undercity. Was wollt Ihr?"] = "3fa902384e7e58171d9d75b73691b44d",
         },
@@ -4124,6 +4155,7 @@ GossipText = {
             ["Was für ein toller Renntag! Oh, wem mache ich Witze? Jeder Tag ist ein toller Renntag!"] = "f80c9ed59fef3421a73483b0b7d8d3ce",
         },
         [4631] = {
+            ["Ich sehe hier am Hafen einige interessante Leute kommen und gehen. Passt auf Euch auf, $N. Man weiß nie genau, wem man vertrauen kann, bei den ganzen zwielichtigen Aktivitäten, die hier ablaufen..."] = "dcf0c1ee4db440b6fbbc86387f776c61",
             ["Ich sehe hier am Hafen einige interessante Leute kommen und gehen. Passt auf Euch auf, $n. Man weiß nie genau, wem man vertrauen kann, bei den ganzen zwielichtigen Aktivitäten, die hier ablaufen..."] = "dcf0c1ee4db440b6fbbc86387f776c61",
         },
         [4700] = {
@@ -4222,6 +4254,7 @@ GossipText = {
             ["Gebt mir ein paar Minuten, $n. Eben gab es hier einige Aufregung und ich will rasch schauen, ob alles wieder ruhig ist. Ich setze mich bald mit Euch in Verbindung."] = "50ab02f29a0ca84f2eb232e907640d8b",
         },
         [4967] = {
+            ["Grüße, $N. Fasst Euch kurz, denn es gibt viel zu tun."] = "96a3daa8a4f7ab7babfc5a1c8d9f5ca1",
             ["Grüße, $n. Fasst Euch kurz, denn es gibt viel zu tun."] = "96a3daa8a4f7ab7babfc5a1c8d9f5ca1",
         },
         [4968] = {
@@ -4320,20 +4353,24 @@ GossipText = {
             ["Viel zu tun! Ich war nicht mehr so beschäftigt, seit mein Cousin aus Versehen allen Stoff und alles Leder in Gnomeregan verdampfen ließ. Mein Gott, war das hier vielleicht zugig danach. Ja, ja, $n, das waren noch Zeiten..."] = "844d2fb5a4d4d41fdd8a5e1cfc1061ab",
         },
         [5130] = {
+            ["Ihr seht wahrlich wie ein Anführer aus. Seid Ihr gekommen um eine Gilde zu organisieren, um für die Allianz zu Kämpfen?"] = "f775a0450139eacb7f76a973d4915e00",
             ["Ihr seht wahrlich wie ein Anführer aus. Seid Ihr gekommen um eine Gilde zu organisieren, um für die Allianz zu kämpfen?"] = "f775a0450139eacb7f76a973d4915e00",
         },
         [5141] = {
             ["Das Licht möge Euch beschützen, $C."] = "852369f0d2fbc11e555e75fe5a433853",
+            ["Dient dem Licht gut, $C."] = "852369f0d2fbc11e555e75fe5a433853",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["Ich hoffe, das Licht ist mit Euch, $n. Gibt es irgendetwas, das ich für Euch tun kann?"] = "238a7cdf16a7d258e1b3789d98c5e7fb",
         },
         [5142] = {
             ["Das Licht möge Euch beschützen, $C."] = "a2d6560ac0ea81674c83c91abf44c3ec",
+            ["Dient dem Licht gut, $C."] = "a2d6560ac0ea81674c83c91abf44c3ec",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "125a186cc1dc5f89644a87549bcf2140",
             ["Ich hoffe, das Licht ist mit Euch, $n. Gibt es irgendetwas, das ich für Euch tun kann?"] = "4aab004f4103403f80277e098e208dd0",
         },
         [5143] = {
             ["Das Licht möge Euch beschützen, $C."] = "852369f0d2fbc11e555e75fe5a433853",
+            ["Dient dem Licht gut, $C."] = "852369f0d2fbc11e555e75fe5a433853",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["Ich hoffe, das Licht ist mit Euch, $n. Gibt es irgendetwas, das ich für Euch tun kann?"] = "238a7cdf16a7d258e1b3789d98c5e7fb",
         },
@@ -4455,6 +4492,7 @@ GossipText = {
             ["Ein Gott der Atal'ai Trolle ist dafür verantwortlich. Wir haben die körperliche Manifestation des Gottes vernichtet und seinen Tempel versenkt, aber der Gott war viel stärker, als wir es erwartet hatten. Die Saat der Verderbnis wurzelt tief und befällt alles, was ihr in die Quere kommt.$B$BEranikus wurde damit betraut, den versunkenen Tempel zu bewachen und aufzupassen, dass weder die einfachen Atal'ai noch ihr Gott wiederkehren. Er war ein unschuldiges Opfer der Verderbtheit und wir unterschätzten ihre Wirkung."] = "388deaccc505575f8d4973ea40758234",
             ["Ich heiße Euch herzlich willkommen, $R. Ihr habt die normalen Pfade weit hinter Euch gelassen, nur um mit jemandem zu sprechen, der in einer Höhle haust. Ich vermute, Euer unerwarteter Besuch hier hat einen Grund. Ja?"] = "fcd36466f88721a3043aa203cab6fdaa",
             ["Ich weiß, wer Ihr seid, $n. Das Schicksal und Kräfte, stärker noch als das Schicksal, haben Euch zu mir geführt. Dies hat einen Grund, wenn er mir auch nicht gefallen will. Ihr werdet in Zukunft viele Entscheidungen fällen und ich hoffe, Ihr seid weise genug, das Richtige zu tun.$B$BGlaubt mir, $R, wenn ich Euch versichere: Es ist möglich, die richtige Wahl zu treffen."] = "89defc6255de548061e4c860609dfe75",
+            ["Ihr seid ziemlich neugierig, aber eine solche Neugier deutet auch immer auf einen Mangel an Verständnis hin. Ich sage dies, weil die von Euch gestellte Frage sinnlos wäre, hätte Euer Hiersein einen Sinn.  Damit wünsche ich Euch einen guten Tag."] = "deDE-3b0525d18ddeb7ed23baccfa5466d299",
             ["Ihr seid ziemlich neugierig, aber eine solche Neugier deutet auch immer auf einen Mangel an Verständnis hin. Ich sage dies, weil die von Euch gestellte Frage sinnlos wäre, hätte Euer Hiersein einen Sinn. $B$BDamit wünsche ich Euch einen guten Tag."] = "b28604b7e0e80e98d64dd0ae9304994e",
             ["Ihr wisst, dass ich Eranikus kenne, sterbliches Wesen. Ich versuche nicht, Euch etwas vorzumachen, und rate Euch, es mir gleichzutun.$B$BIhr seid hier, weil Ihr wisst, dass Euch das, was Ihr im Versunkenen Tempel von Atal'al in Euren Besitz gebracht habt, zu einem bestimmten Zweck zu mir geführt hat. Dieser Zweck ist, meinen Gefährten... meinen Bruder zur Ruhe zu betten. Er ist in einem Alptraum innerhalb eines Traums gefangen. Und allein kann er sich nicht befreien."] = "c42d46a2ba786cd83cee9bdac9fef3d2",
         },
@@ -4468,6 +4506,7 @@ GossipText = {
             ["Die Allianz hat viele Interessen in Desolace, und unsere Position hier ist instabil.$B$BWerdet Ihr uns helfen?"] = "eac41b497f36241ca7bb4b51e012da27",
         },
         [5411] = {
+            ["Willkommen in Tanaris, $N. Wie kann ich Euch heute dienlich sein? Ihr seht mir nicht wie ein Schmied aus, aber das Aussehen kann täuschen."] = "c6a4de2224006b677c95b27def90d917",
             ["Willkommen in Tanaris, $n. Wie kann ich Euch heute dienlich sein? Ihr seht mir nicht wie ein Schmied aus, aber das Aussehen kann täuschen."] = "c6a4de2224006b677c95b27def90d917",
         },
         [5412] = {
@@ -4485,6 +4524,7 @@ GossipText = {
         },
         [5482] = {
             ["Bei mir schauen nicht oft andere Köche wegen einer Ausbildung vorbei, aber ich kann Euch wohl das eine oder andere beibringen, wenn Ihr bereit seid."] = "b3341-human-male-warrior",
+            ["Dirge Quikcleave von Gadgetzan ist ein Meister der Kochkunst. Um Euch verbessern zu können, werdet Ihr ihn ausfindig machen müssen."] = "46bd22a73f998050e4834380890f65e5",
             ["Sehe ich vielleicht aus, als hätte ich die Zeit, jeden Touristen zu verhätscheln, der seinen Kopf durch diese Tür steckt? Sagt mir, was Ihr wollt, und fasst Euch kurz!"] = "ba9110b33785b226537ef9b18e3923a1",
             ["Sucht nach Shandrina in der Silberwindzuflucht. Sie kann Euch das 'Expertenkochbuch' verkaufen."] = "6adb3f498e428354df52f9e4254cab21",
         },
@@ -4587,6 +4627,7 @@ GossipText = {
             ["Lasst Euch von den Menschen auf dem Basar nicht über den Tisch ziehen, $gBursche:Mädel;. Mit der von den Gnomen gebauten Untergrundbahn ist es leichter, als Ihr vielleicht glaubt, Waren von Ironforge hierher zu schaffen. Wenn sie Euch was von Importzöllen erzählen wollen, sagt Ihr einfach, Ihr kauft Eure Sachen bei mir."] = "5fa2b9d7e0e76cd011e8acc323829e46",
         },
         [5511] = {
+            ["Ihr könnt einigermaßen mit Hammer und Amboss umgehen, aber nicht gut genug. Sprecht mit Dane Lindgren, er bereitet Euch darauf vor, das zu erlernen, was ich Euch lehren kann."] = "b5780-dwarf-male-guard",
             ["Ihr seht mir wahrlich wie ein Schmied aus. Ruß unter den Nägeln, Stahl in den Knochen. Aye, in Euren Adern fließt sehr wohl das Blut eines Schmieds. Was bedeutet, Ihr wollt von mir ein oder zwei Dinge lernen. Nun, $gBursche:Mädel;, schnappt Euch einen Hammer. Und dann lasst uns mal sehen, was ich Euch noch so alles beibringen kann."] = "6d836253374e7258f1d26abac7475d18",
             ["Schmied wollt Ihr also werden? Dann schnappt Euch mal Hammer und Schürze, $gBursche:Mädchen;, und lasst mich sehen, was Ihr draufhabt."] = "fb6579870c6584e03dfb38ef8bc3ee7e",
         },
@@ -6013,21 +6054,36 @@ GossipText = {
             ["Die Maschine springt bei Eurer Berührung an."] = "4ac3a4137af0c7089446ec97edd9fe00",
         },
         [7172] = {
+            ["Beginne mit optischer Hilfsdarstellung zwei.  Die zweite resultierende Abweichung von der Matrix für die Irdenen weist im Vergleich zur Standardmatrix der unterirdischen Lebewesen viele erwünschte Elemente auf. In der Regel wird diese Form als '$R' bezeichnet.  Diese Form weist Stärke und Ausdauer der Irdenen auf. In einigen Fällen übersteigen die kognitiven Fähigkeiten der Zwerge sogar die der eigentlichen Matrix. Allerdings enthalten die Zwerge nicht mehr das ursprüngliche Steinmaterial aus dem Inneren Azeroths."] = "deDE-dd61aa76b8b7a48e1377294abd7325e2",
             ["Beginne mit optischer Hilfsdarstellung zwei.$B$BDie zweite resultierende Abweichung von der Matrix für die Irdenen weist im Vergleich zur Standardmatrix der unterirdischen Lebewesen viele erwünschte Elemente auf. In der Regel wird diese Form als 'Zwerg' bezeichnet.$B$BDiese Form weist Stärke und Ausdauer der Irdenen auf. In einigen Fällen übersteigen die kognitiven Fähigkeiten der Zwerge sogar die der eigentlichen Matrix. Allerdings enthalten die Zwerge nicht mehr das ursprüngliche Steinmaterial aus dem Inneren Azeroths."] = "0b4c728c913c2793ef79f9e545dbefa8",
+            ["Das einzige Problem bei den Irdenen besteht in ihrer tendenziellen Instabilität unter hohem Stressdruck.  Addendum: Die neue Matrix war speziell für die Formung tiefer Erdschichten geschaffen worden und erfüllte folglich niemals Anforderungen zur Duplizierung einer Hochstressdruckumgebung.  Doch diese Destabilisierung wurde erst lange nach Beginn des ersten Dienstleistungszyklus' für die Schöpfer festgestellt. Die Schöpfer nahmen nachträgliche Änderungen vor, statt noch einmal von vorn zu beginnen."] = "deDE-e7d516f6ee8a4e528b34f0e5fef42074",
             ["Das einzige Problem bei den Irdenen besteht in ihrer tendenziellen Instabilität unter hohem Stressdruck.$B$BAddendum: Die neue Matrix war speziell für die Formung tiefer Erdschichten geschaffen worden und erfüllte folglich niemals Anforderungen zur Duplizierung einer Hochstressdruckumgebung.$B$BDoch diese Destabilisierung wurde erst lange nach Beginn des ersten Dienstleistungszyklus' für die Schöpfer festgestellt. Die Schöpfer nahmen nachträgliche Änderungen vor, statt noch einmal von vorn zu beginnen."] = "48009dc1bdade49cb9d5b7fb76c93652",
+            ["Die Irdenen sind ein von den Schöpfern künstlich geschaffenes Volk. Sie fungierten in der Welt Azeroth ursprünglich einmal als eines der Stammvölker. Die Irdenen dienten den Schöpfern als Helfer bei der Formung der Tiefen dieser Welt.  Sie stellen eine Abwandlung der Standardmatrix für unterirdische Lebewesen dar, wie sie die Schöpfer auf anderen Welten benutzt haben. Bei der Konstruktion dieses Prototyps entstanden diverse Anomalien, die allerdings erst später bemerkt wurden."] = "deDE-3fb0db1412d9c0b5d1cf3981b7fd4045",
             ["Die Irdenen sind ein von den Schöpfern künstlich geschaffenes Volk. Sie fungierten in der Welt Azeroth ursprünglich einmal als eines der Stammvölker. Die Irdenen dienten den Schöpfern als Helfer bei der Formung der Tiefen dieser Welt.$B$BSie stellen eine Abwandlung der Standardmatrix für unterirdische Lebewesen dar, wie sie die Schöpfer auf anderen Welten benutzt haben. Bei der Konstruktion dieses Prototyps entstanden diverse Anomalien, die allerdings erst später bemerkt wurden."] = "5ea2eb7d04bbd772dcd284e8a228cdc0",
+            ["Die Schöpfer sind sich der Fülle der in diesem Speicher enthaltenen Angaben bewusst. Folglich wird Euch eine tragbare Ausgabe der hier gespeicherten Daten zur Verfügung gestellt, sobald Ihr Euch mit den Scheiben von Norgannon vertraut gemacht habt.  Bitte betrachtet Euren oberflächlichen Wissensdurst hiermit als gestillt. Greift bei Bedarf auf die Scheiben von Norgannon zu, um mit der Synthese Eurer Scheiben zu beginnen."] = "deDE-cbac0ba0e3ce9712288cbeaa97470f20",
             ["Die Schöpfer sind sich der Fülle der in diesem Speicher enthaltenen Angaben bewusst. Folglich wird Euch eine tragbare Ausgabe der hier gespeicherten Daten zur Verfügung gestellt, sobald Ihr Euch mit den Scheiben von Norgannon vertraut gemacht habt.$B$BBitte betrachtet Euren oberflächlichen Wissensdurst hiermit als gestillt. Greift bei Bedarf auf die Scheiben von Norgannon zu, um mit der Synthese Eurer Scheiben zu beginnen."] = "3bd8bcc4c6e17e85a778b609224cbf8b",
+            ["Die Schöpfer sind... die Schöpfer.  Sie sind die Wesen, die diese Welt angelegt und geformt haben. Sie sind der Grund für das Dasein dieser und vieler anderer Welten. Sie sind der Quell, aus dem Azeroth entspringt."] = "deDE-fbb8b20fced2eae23a9a0537bcc8920c",
             ["Die Schöpfer sind... die Schöpfer.$B$BSie sind die Wesen, die diese Welt angelegt und geformt haben. Sie sind der Grund für das Dasein dieser und vieler anderer Welten. Sie sind der Quell, aus dem Azeroth entspringt."] = "bf997e7d7e8b66fa338d4ea69a80a25f",
+            ["Die hier gespeicherten Daten korrelieren nicht mit Eurer klugen Anmerkung.  Zwerge weisen nach wie vor eine Vorliebe für die steinerne Zusammensetzung Azeroths auf, doch aufgrund der unter hohem Druck auftretenden Anomalien in der Synthesematrix für die Irdenen sind Zwerge nicht mehr als Standardbiomasse.  Folglich weisen Zwerge auch nicht die Degenerierungen der Schöpfungsmatrix der Irdenen auf, wie Ihr mit Eurer Frage vielleicht andeuten wolltet."] = "deDE-2e3a2243b62863aed25e0c6e235c1f17",
             ["Die hier gespeicherten Daten korrelieren nicht mit Eurer klugen Anmerkung.$B$BZwerge weisen nach wie vor eine Vorliebe für die steinerne Zusammensetzung Azeroths auf, doch aufgrund der unter hohem Druck auftretenden Anomalien in der Synthesematrix für die Irdenen sind Zwerge nicht mehr als Standardbiomasse.$B$BFolglich weisen Zwerge auch nicht die Degenerierungen der Schöpfungsmatrix der Irdenen auf, wie Ihr mit Eurer Frage vielleicht andeuten wolltet."] = "fdb44904a5784053fc727e8ac1ab05be",
+            ["Es gibt zwei mögliche Ergebnisse, wenn sich die Synthesematrix der Irdenen destabilisiert. Beginne mit optischer Hilfsdarstellung eins.  Die erste Matrixvariante ist ein degeneratives Syntheseprodukt, für gewöhnlich als 'Trogg' bezeichnet. Diese Variante ist ähnlich stark und ausdauernd wie die Irdenen, die kognitiven Fähigkeiten sind jedoch fast vollständig ausgelöscht. Triebfedern eines Troggs sind einzig seine starke Willenskraft und Schlauheit."] = "deDE-ecbfcfa202d987aba61b1245b3a73696",
             ["Es gibt zwei mögliche Ergebnisse, wenn sich die Synthesematrix der Irdenen destabilisiert. Beginne mit optischer Hilfsdarstellung eins.$B$BDie erste Matrixvariante ist ein degeneratives Syntheseprodukt, für gewöhnlich als 'Trogg' bezeichnet. Diese Variante ist ähnlich stark und ausdauernd wie die Irdenen, die kognitiven Fähigkeiten sind jedoch fast vollständig ausgelöscht. Triebfedern eines Troggs sind einzig seine starke Willenskraft und Schlauheit."] = "bc8095b226d97c93f029c53dad5cc573",
+            ["Es handelt sich um eine der Synthesematrizen, die die Schöpfer beim Anlegen einer Welt verwenden. Jede Synthesematrix dient dabei einem Ziel der Schöpfer. Für Azeroth wurde die Matrix für unterirdische Lebewesen so modifizeirt, dass ein ausdauerndes Wesen mit einer Vorliebe für die Formung tiefer Regionen entstand: Die Irdenen sind das Ergebnis dieser Modifkation.  Nachdem die Irdenen den Dienst für die Schöpfer aufgenommen hatten, kam es zu unvorhergesehenen Problemen, wenn die Synthesematrix unter hohen Stressdruck geriet."] = "deDE-3c53795daa3d0549ca4b76ff10df0439",
             ["Es handelt sich um eine der Synthesematrizen, die die Schöpfer beim Anlegen einer Welt verwenden. Jede Synthesematrix dient dabei einem Ziel der Schöpfer. Für Azeroth wurde die Matrix für unterirdische Lebewesen so modifizeirt, dass ein ausdauerndes Wesen mit einer Vorliebe für die Formung tiefer Regionen entstand: Die Irdenen sind das Ergebnis dieser Modifkation.$B$BNachdem die Irdenen den Dienst für die Schöpfer aufgenommen hatten, kam es zu unvorhergesehenen Problemen, wenn die Synthesematrix unter hohen Stressdruck geriet."] = "37596dc24f9b36a845967560c770eb24",
+            ["Es ist das Grundmaterial für die Schaffung ganzer Völker. Für die Schaffung der Irdenen wurde statt der üblichen Biomasse ein Querschnitt der Erdoberfläche Azeroths verwendet.  Eine Analyse der Zusammensetzung der Welt hatte die Schöpfer zu der Theorie geführt, dass sie daraus ein intensiviertes Lebewesen erschaffen könnten, das die Widerstandsfähigkeit der Essenz dieser Welt hat. Dies erreichten sie durch eine Mischung des Gesteinsmaterials von Azeroth als Grundlage."] = "deDE-3d5847202113afe14e0ab6252dba0c44",
             ["Es ist das Grundmaterial für die Schaffung ganzer Völker. Für die Schaffung der Irdenen wurde statt der üblichen Biomasse ein Querschnitt der Erdoberfläche Azeroths verwendet.$B$BEine Analyse der Zusammensetzung der Welt hatte die Schöpfer zu der Theorie geführt, dass sie daraus ein intensiviertes Lebewesen erschaffen könnten, das die Widerstandsfähigkeit der Essenz dieser Welt hat. Dies erreichten sie durch eine Mischung des Gesteinsmaterials von Azeroth als Grundlage."] = "fa2c8acc870a2f11dc9e80c495429060",
+            ["Hierzu muss man unbedingt wissen, dass die Schöpfer ein Volk schaffen wollten, das lange nach ihrer Abreise noch integraler Bestandteil des Entwicklungszyklus' der Welt sein würde. Dieses Volk sollte die langfristigen Entwicklungsziele für Azeroth erfüllen.  Der Name 'die Irdenen' schien den Schöpfern angesichts der Zusammensetzung des neuen Volks im Übrigen nur passend."] = "deDE-a05c24fd9c92b030adadd072df905f38",
             ["Hierzu muss man unbedingt wissen, dass die Schöpfer ein Volk schaffen wollten, das lange nach ihrer Abreise noch integraler Bestandteil des Entwicklungszyklus' der Welt sein würde. Dieses Volk sollte die langfristigen Entwicklungsziele für Azeroth erfüllen. $B$BDer Name 'die Irdenen' schien den Schöpfern angesichts der Zusammensetzung des neuen Volks im Übrigen nur passend."] = "08dff474198889f264fcd3a4613a7841",
+            ["Um diese Frage korrekt zu beantworten, müsst Ihr noch einiges zum Hintergrund der Irdenen wissen.  Berechnung läuft.  Die Anomalien der Irdenen erklären sich aus dem Zweck, zu dem sie geschaffen wurden. Die Irdenen sind ein Versuch der Schöpfer, die Standardmatrix für unterirdische Lebewesen überlebensfähiger zu machen. Zu diesem Zweck wurde besagter Matrix ureigenstes widerstandsfähiges Material aus der Welt hinzugefügt."] = "deDE-36af8f4113632dad1f268a28e0cab2d8",
             ["Um diese Frage korrekt zu beantworten, müsst Ihr noch einiges zum Hintergrund der Irdenen wissen.$B$BBerechnung läuft.$B$BDie Anomalien der Irdenen erklären sich aus dem Zweck, zu dem sie geschaffen wurden. Die Irdenen sind ein Versuch der Schöpfer, die Standardmatrix für unterirdische Lebewesen überlebensfähiger zu machen. Zu diesem Zweck wurde besagter Matrix ureigenstes widerstandsfähiges Material aus der Welt hinzugefügt."] = "437e3e9566ba28be3f2648550e177a59",
+            ["Vereinfacht ausgedrückt trifft dies zu.  Rein äußerlich betrachtet gleichen die Irdenen klein gewachsenen Humanoiden, aber sie bestehen aus den diversen Komponenten des Gesteinsmaterials Azeroths. Dadurch wurden Kraft und Ausdauer maximiert, ohne dass dies zu Lasten ihrer kognitiven Fähigkeiten ging. Haut und Muskulatur sind praktisch nicht zu beschädigen, und mit nur sehr schwachen Modifikationen zeigen die Irdenen erstaunliche Widerstandsfähigkeit gegen Magie."] = "deDE-0ab3c246e8d9455d7ef0e52a0bb00303",
             ["Vereinfacht ausgedrückt trifft dies zu.$B$BRein äußerlich betrachtet gleichen die Irdenen klein gewachsenen Humanoiden, aber sie bestehen aus den diversen Komponenten des Gesteinsmaterials Azeroths. Dadurch wurden Kraft und Ausdauer maximiert, ohne dass dies zu Lasten ihrer kognitiven Fähigkeiten ging. Haut und Muskulatur sind praktisch nicht zu beschädigen, und mit nur sehr schwachen Modifikationen zeigen die Irdenen erstaunliche Widerstandsfähigkeit gegen Magie."] = "6630fedd4b1c9dd3fe5a3f8c9ac08c4f",
             ["Willkommen. Meine Aufgabe besteht darin, Euch Zugang und, falls erlaubt, auch Einblick in das Werk der Schöpfer zu gewähren, die für die Welt Azeroth die Irdenen geschaffen haben. Ich kann Euch diese Dinge nun anvertrauen, wenn Ihr bereit seid."] = "dbe98f46130325b3158beee50f932dba",
+            ["Zu meinem Bedauern bin ich nicht in der Lage, Euren Zeitbezug mit den hier aufgezeichneten Daten abzugleichen.  Der Trogg enthält verschiedenes Steinmaterial von Azeroth, aber die fehlenden kognitiven Fähigkeiten machen diese Abweichung für die Schöpfer inakzeptabel.  Ein Trogg vermehrt sich so wie eine Standardbiomasse. In der Regel frisst er Steine und alles andere, auch andere Troggs. Kannibalismus ist für die Schöpfer jedoch inakzeptabel."] = "deDE-3c3f21c89f955aabedc7908c82046056",
+            ["Zu meinem Bedauern bin ich nicht in der Lage, Euren Zeitbezug mit den hier aufgezeichneten Daten abzugleichen.  Zwar weisen Zwerge größtenteils die geistige Verbundenheit der Irdenen mit dem Steinmaterial aus den Tiefen Azeroths auf, aber ihre Rückentwicklung in lebende Biomasse stellt die Hauptdegeneration der Matrix dar. Zwerge essen und vermehren sich auf für Standardbiomasse typische Weise.  Die Schöpfer sehen die Zwerge als akzeptable Variante an, die einer eigenen Schöpfungsgeschichte würdig ist."] = "deDE-cbb00dfc62cf1a52a5d3278535530cd2",
             ["Zu meinem Bedauern bin ich nicht in der Lage, Euren Zeitbezug mit den hier aufgezeichneten Daten abzugleichen.$B$BDer Trogg enthält verschiedenes Steinmaterial von Azeroth, aber die fehlenden kognitiven Fähigkeiten machen diese Abweichung für die Schöpfer inakzeptabel.$B$BEin Trogg vermehrt sich so wie eine Standardbiomasse. In der Regel frisst er Steine und alles andere, auch andere Troggs. Kannibalismus ist für die Schöpfer jedoch inakzeptabel."] = "b882cb8e6da080b30e60116f3c0872e7",
             ["Zu meinem Bedauern bin ich nicht in der Lage, Euren Zeitbezug mit den hier aufgezeichneten Daten abzugleichen.$B$BZwar weisen Zwerge größtenteils die geistige Verbundenheit der Irdenen mit dem Steinmaterial aus den Tiefen Azeroths auf, aber ihre Rückentwicklung in lebende Biomasse stellt die Hauptdegeneration der Matrix dar. Zwerge essen und vermehren sich auf für Standardbiomasse typische Weise.$B$BDie Schöpfer sehen die Zwerge als akzeptable Variante an, die einer eigenen Schöpfungsgeschichte würdig ist."] = "ce7366515725bfde3e0373c2238835ac",
+            ["[Nach der Frage folgt eine merkliche Pause.]  Die gewünschte Auskunft ist momentan in diesem Datenspeicher nicht verfügbar. Dies bedaure ich zutiefst.  Bitte richtet die Anfrage erneut an mich, wenn der Informationsdatenspeicher aktualisiert worden ist. Oder fragt die gewünschte Auskunft von einem anderen Datenspeicher in Azeroth ab."] = "deDE-1648707b067d354f980673598f458925",
             ["[Nach der Frage folgt eine merkliche Pause.]$B$BDie gewünschte Auskunft ist momentan in diesem Datenspeicher nicht verfügbar. Dies bedaure ich zutiefst.$B$BBitte richtet die Anfrage erneut an mich, wenn der Informationsdatenspeicher aktualisiert worden ist. Oder fragt die gewünschte Auskunft von einem anderen Datenspeicher in Azeroth ab."] = "69b3db29ce2f9befad2ca9b0d63c76d0",
         },
         [7207] = {
@@ -6079,6 +6135,10 @@ GossipText = {
         },
         [7505] = {
             ["Die Wildtiere in den Verwüsteten Landen weisen übernatürliche Attribute auf, die man bislang in der Natur nicht kannte.$B$BWir vermuten, dass die bei der Öffnung des Dunklen Portals freigesetzte Energie aus den Kreaturen das gemacht hat, was sie heute sind.$B$BDie Wildtiere sind fürchterlich, aber sie können uns sicher bei unseren Studien auch nützlich sein.$B$BVielleicht wollt Ihr uns ja beim Studium dieser Wildtiere helfen, $n..."] = "2c15e08c540b676fc549c879290f0597",
+            ["Die Wildtiere in den verwüsteten Landen weisen übernatürliche Attribute auf, die man bislang in der Natur nicht kannte.  Wir vermuten, dass die bei der Öffnung des Dunklen Portals freigesetzte Energie aus den Kreaturen das gemacht hat, was sie heute sind.  Die Wildtiere sind fürchterlich, aber sie können uns sicher bei unseren Studien auch nützlich sein.  Vielleicht wollt Ihr uns ja beim Studium dieser Wildtiere helfen, $N..."] = "deDE-71fcb100fa23f11b618846c6969d7016",
+        },
+        [7506] = {
+            ["Während sich mein Bruder Drazial auf die körperlichen Merkmale der Wildtiere in den verwüsteten Landen konzentriert, widme ich mich mehr den spirituellen Aspekten.  Denn es stimmt, dass die Wildtiere extrem ungewöhnliche Kraft, Beweglichkeit und Ausdauer an den Tag legen, aber einige sind zudem sehr intelligent und haben große Regenerationsfähigkeiten.  Vielleicht wollt Ihr mir ja helfen, meine Forschung voranzutreiben, $R..."] = "deDE-2a02d86fff85cb5e8f2e9c741309836a",
         },
         [7564] = {
             ["Das Leben in der Wüste ist hart! Wenn ich da draußen in der Sonne stehe, werde ich immer so durstig."] = "1d3cd34903e040de6b0c73c1aa2fb0df",
@@ -6094,6 +6154,9 @@ GossipText = {
             ["Wenn Ihr das Regiment befreien wollt, müsst ihr die Steine der Bindung zerstören! Wie ich bereits sagte: Kirith hatte einen Plan.$B$BJeder der Diener hat eine Schwachstelle. Schädigt ihre Körper in der Nähe der jeweiligen Steine, bis sie kurz vor der Auflösung stehen. An diesem Punkt, und nur an diesem Punkt, sind die Steine angreifbar. Ihr müsst Euch indes beeilen, die Steine zu zerstören, denn wenn sich die Versklavten erst einmal erholt haben, sind sie wieder unverwundbar."] = "3a9fc293da7b2666f2755c04e234a703",
             ["Wir beide können uns wohl kaum vorstellen, wie schlimm es ist, wenn einem die Seele herausgerissen wird.  Man ist nicht tot, aber lebendig ist man erst recht nicht. Stattdessen wandelt man umher als Diener jener, die einen an diese Welt gebunden haben.$B$BLord Razelikh, der dämonische Oberanführer dieser Lande, hat sie alle versklavt. Neun beanspruchte er für sich selbst. Er platzierte Steine der Bindung in der Nähe des Dunklen Portals. Die anderen neun wurden unter seinen Untergebenen aufgeteilt."] = "e80fa3ad4ec81953dd42b32b58f4bb3d",
             ["Würdet Ihr glauben, dass ich versagt habe... in meiner dunkelsten Stunde und auf dem Höhepunkt meines Lebens?$B$BAls ich vor der Übermacht der gegnerischen Soldaten floh, konnte ich nur die Schreie meiner Leute und das Klopfen meines eigenen Herzens hören.$B$BKurz darauf kehrte ich in die Verwüsteten Lande zurück in der Hoffnung, meine Männer retten und meine Ehre wiederherstellen zu können. Aber ich wurde gefangen und totgeschlagen.$B$BEs war schrecklich, was ich während meiner Befragung und der anschließenden Folter herausfand."] = "7e860e6ffee6f60c2945a58e828890a1",
+        },
+        [7604] = {
+            ["Hilfe! Meine Gruppe und ich wurden von Trollen gefangen und sie wollen uns opfern!  Helft uns hier raus und ich gebe Euch alles, was Ihr wollt!"] = "deDE-12087b5a6d567254279655dfb9b4e74d",
         },
         [7683] = {
             ["Willkommen bei 'Blaumond Dies-und-Das', $C. Lasst es mich wissen, wenn Ihr Fragen habt."] = "e64b23275f5f92fd2f9a00db491593ba",
@@ -6381,6 +6444,7 @@ GossipText = {
         },
         [7766] = {
             ["Ach, wenn ich doch nur einen Ast hätte, um ihn vor mich zu halten. Dann würden die Wachen mich nicht sehen."] = "07770c2ddd975789dc652f86f33ee458",
+            ["Ihr müsst Geduld mit mir haben, $N. Mein Spionagebot ist da drin und arbeitet an einer heiklen Sache. Ich bin sofort bei Euch.$B$BOh, und tut mir einen Gefallen, lasst Euch nicht von Lescovar sehen... wir wollen ihn in einen Hinterhalt locken."] = "63ffa6f99e7677f212b497febf231182",
             ["Ihr müsst Geduld mit mir haben, $n. Mein Spionagebot ist da drin und arbeitet an einer heiklen Sache. Ich bin sofort bei Euch.$B$BOh, und tut mir einen Gefallen, lasst Euch nicht von Lescovar sehen... wir wollen ihn in einen Hinterhalt locken."] = "63ffa6f99e7677f212b497febf231182",
         },
         [7771] = {
@@ -6519,6 +6583,10 @@ GossipText = {
             ["Wenn Ihr nach einem schnellen und sicheren Fortbewegungsmittel sucht, dann seid Ihr am richtigen Ort! Erst kürzlich sind die neuesten Modelle des Roboschreiters eingetroffen, und ich zeige Euch gern alles, was sie zu bieten haben!"] = "299711f9bfc91cd6e18b4f2a9bc2baae",
             ["Äh... Ich glaube, Ihr seid ein klein wenig zu groß, um auf einem Roboschreiter zu reiten, $gmein Herr:meine Dame;. Ihr würdet vermutlich die präzise eingestellten Servoausgleichswellen zerquetschen!"] = "65e354785b26bc4ab909aec7cd4f43eb",
             ["Ähm... So gut kenne ich Euch leider nicht, tut mir leid. Will sagen, ich bin offizieller Vertragshändler für Roboschreiter, und da kann ich meine Reittiere wirklich nur an Leute verkaufen, die von den Gnomen mit Ehrfurcht bedacht werden. Wenn die Gnome von Gnomeregan Euch mit Ehrfurcht begegnen, zeige ich Euch gern, was ich auf Lager habe."] = "19b68fb6acf9660f5027bc5ba4f9e9ad",
+        },
+        [7998] = {
+            ["Dem Licht sei Dank, dass Ihr hier seid! Im Augenblick würde ich auch Hilfe von einem zweiköpfigen Oger annehmen.    Die Stadt ist von Troggs überrannt worden! Versuche, sie zu vernichten, endeten mit einer Massenverseuchung. Aber noch gibt es Hoffnung.    Unsere nach Ironforge evakuierten Wissenschaftler arbeiten an einem Heilmittel für die durch die Ablagerung ausgelöste Erkrankung. Wenn Ihr mir helft, die Invasion der Troggs aufzuhalten, können wir in der Zwischenzeit vielleicht die Stadt zurückerobern."] = "b4083-gnome-female-nerdy",
+            ["Dem Licht sei Dank, dass Ihr hier seid! Im Augenblick würde ich auch Hilfe von einem zweiköpfigen Oger annehmen.  Die Stadt ist von Troggs überrannt worden! Versuche, sie zu vernichten, endeten mit einer Massenverseuchung. Aber noch gibt es Hoffnung.  Unsere nach Ironforge evakuierten Wissenschaftler arbeiten an einem Heilmittel für die durch die Ablagerung ausgelöste Erkrankung. Wenn Ihr mir helft, die Invasion der Troggs aufzuhalten, können wir in der Zwischenzeit vielleicht die Stadt zurückerobern."] = "b4083-gnome-female-nerdy",
         },
         [7999] = {
             ["Es freut mich sehr, endlich jemanden von Eurem Volk zu treffen. Ich habe viel über die Shen'dorei und Eure lange Geschichte gehört, und es freut mich zu sehen, dass unsere Vettern endlich nach Kalimdor nach Hause kommen.    Ich gebe zu, dass unser Volk eine... komplizierte Beziehung mit den Hochgeborenen hat. Einige der Nachtelfen misstrauen jenen mit Hochgeborenenabstammung schnell, wie denen in Eurem Hohen Orden. Aber ich versichere Euch, dass wir Euch allergrößten Respekt entgegenbringen werden, während Ihr ein Gast in unserer Stadt seid.    Bitte fühlt Euch hier wie zu Hause. Ich empfehle Euch, die Stadt zu erkunden und Euch selbst mit unserer Kultur vertraut zu machen. In gewisser Weise ist sie schließlich auch Eure Kultur."] = "a28116c165b329fe646b70fff5ad55de",
@@ -6698,6 +6766,7 @@ GossipText = {
             ["Der Versunkene Tempel liegt inmitten eines großen Sees in den östlichen Sümpfen des Elends."] = "75ed2903e0af8abe0c91025f4d1a631e",
             ["Die Blackfathom-Tiefen befinden sich am nördlichen Ende des Zoramstrands entlang der Küste von Ashenvale."] = "2d41c6e84da0f60aa520a4acc8919f87",
             ["Die Burg Shadowfang befindet sich im südlichen Silberwald, leicht nördlich von Pyrewood."] = "17d13be0366794572061fb3fbb409ee6",
+            ["Die Halle der Thanen ist verschlossen. Wer keine Audienz bei König Magni Bronzebeard hat, muss sich sein Vertrauen und seine Anerkennung verdienen, um Zugang zu den Tiefen der Altstadt von Ironforge zu erhalten."] = "b311236-human-female-official",
             ["Die Hügel von Razorfen liegen weit im Süden des Brachlands, auf der östlichen Seite der Straße."] = "ae45cd449d9b601c1faa2ad7d470e04a",
             ["Die Ruinen von Düsterbruch liegen in der Mitte von Feralas."] = "863a0466292f35423e25fb6b1e18e872",
             ["Die Ruinen von Zul'Farrak liegen in der nordwestlichen Ecke der Tanariswüste."] = "5521f2e5d2e37d7012ea87b75badcb01",
@@ -6910,6 +6979,9 @@ GossipText = {
         },
         [9467] = {
             ["Grummel, grummel..."] = "607a3644b8ff49831028594868a51c18",
+        },
+        [9500] = {
+            ["Mein Meister, Stöpsel Zapfring, ist ein guter Boss. Und er verdient eine Menge Geld. Seine Taschen platzen förmlich!"] = "deDE-719cdce516f4791e681359b9b43995f6",
         },
         [9501] = {
             ["Aus denselben Ranken wie der Kral von Razorfen erwachsen, bilden die Hügel von Razorfen die traditionelle Hauptstadt der Stacheleber. Das ausgedehnte, dornige Labyrinth beherbergt ein ganzes Heer an loyalen Stachelebern, sowie deren Hohepriester - den Totenkopfstamm. Doch seit Neuestem fällt ein Schatten auf das grobe Lager. Agenten der Geißel, angeführt von einem Lich namens Amnennar der Kältebringer, übernahmen die Kontrolle über das Volk der Stacheleber und verwandelten den Dornenhaufen in eine Bastion untoter Macht."] = "1efdcf0d1f0182cadd7e556c2271b952",
@@ -7885,11 +7957,13 @@ GossipText = {
         },
         [11406] = {
             ["Das Licht möge Euch beschützen, $C."] = "852369f0d2fbc11e555e75fe5a433853",
+            ["Dient dem Licht gut, $C."] = "852369f0d2fbc11e555e75fe5a433853",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["Ich hoffe, das Licht ist mit Euch, $n. Gibt es irgendetwas, das ich für Euch tun kann?"] = "238a7cdf16a7d258e1b3789d98c5e7fb",
             ["Wenn Ihr es wünscht, dann liegt es neben der Ausbildung in meiner Macht, das Wissen über Eure Talente aus Eurem Gehirn zu löschen. Doch ich warne Euch: Diese Prozedur wird mit jeder Durchführung schwieriger und daher auch teurer."] = "4145716fbb2d791ea5392285fe65f1b1",
         },
         [11407] = {
+            ["Ich bin 'n Bote aus'n östlichen Königreichen, $N. Die ha'm mich hergeschickt, um zu guggen, dass die $C, wo herkommen tun, auch richtich den Weg gezeicht krieg'n."] = "deDE-73dbe48bafc9695f666b96b2deba45e4",
             ["Ich bin auf der Suche nach wem, $C. Also lasst mich doch bitte in Ruh - es is' wirklich wichtig, dass ich den find."] = "139d2506ed562303b66f560b7502291c",
         },
         [11441] = {
@@ -7967,6 +8041,7 @@ GossipText = {
             ["Seid gegrüßt, $C.$B$BDie Schildwachen da drüben haben mir erlaubt, mich in ihrem Lager aufzuhalten, aber ich musste ihnen versprechen, dass es keinen Ärger geben würde. Ich bin sicher, Ihr versteht, dass hier ein wenig... Diplomatie angebracht ist, ja?$B$BIch untersuche gewisse Störungen, denen das Land unterworfen ist, und weil dies auch ihre Sache fördert, stimmten die Schildwachen zu, dass meine Gegenwart hier der unsicheren Allianz zwischen allen Völkern von Azeroth nur zugute kommen könne. Wenn Ihr mir helfen möchtet, dann weiß ich das zu schätzen, aber dennoch: Versucht bitte, keinen Ärger zu verursachen."] = "f54143d6861ddef271769d60b550b493",
         },
         [11554] = {
+            ["Wir sind die letzten Angehörigen des Volks der Furbolgs... Noch ist der Stamm der Holzschlundfeste zwar nicht verderbt, doch von Fremden schlägt uns dieselbe Feindseligkeit entgegen wie den anderen. Die meisten Leute glauben, es sei gar nicht möglich, dass es Furbolgs geben könnte, die der Verderbnis entgangen sind...  In ihrer Wut auf all diejenigen, die sich übereilt Feinde machen, greifen meine Brüder jetzt alle an, die sich ihnen nähern. Sie trauen niemandem mehr.  Aber wenn Ihr Euch ihnen gegenüber bewusst friedlich verhaltet, dann sehen sie Euch vielleicht als Verbündeten an."] = "deDE-f99d5c699bfba55057b7a3f7b76aee6e",
             ["Wir sind die letzten Angehörigen des Volks der Furbolgs... Noch ist der Stamm der Holzschlundfeste zwar nicht verderbt, doch von Fremden schlägt uns dieselbe Feindseligkeit entgegen wie den anderen. Die meisten Leute glauben, es sei gar nicht möglich, dass es Furbolgs geben könnte, die der Verderbnis entgangen sind...$B$BIn ihrer Wut auf all diejenigen, die sich übereilt Feinde machen, greifen meine Brüder jetzt alle an, die sich ihnen nähern. Sie trauen niemandem mehr.$B$BAber wenn Ihr Euch ihnen gegenüber bewusst friedlich verhaltet, dann sehen sie Euch vielleicht als Verbündeten an."] = "55587c19d0d40ee66828beeb209d1661",
         },
         [11555] = {
@@ -8114,6 +8189,8 @@ GossipText = {
             ["Es bleibt abzuwarten, ob Ihr bereit seid, Kind. Sogar die weisesten und ältesten Druiden sind nie völlig bereit, wenn der Moment kommt, in dem sie zur letzten Prüfung antreten müssen.  Ihr habt meine Worte gehört, nun müsst Ihr weiterziehen. Beherzigt, was ich Euch gelehrt habe. Die Zeit wird kommen, da Eure Kraft einer Prüfung unterzogen wird. Dann müsst Ihr Euch Eurem Feind stellen, wie auch ein Bär dies täte - mit starkem Körper und starkem Herzen. Lernt aus dem Kampf, junge $C. Und nun geht... mit meinem Segen."] = "deDE-fb0221e3094c9bc27da45cf894690576",
             ["Es bleibt abzuwarten, ob Ihr bereit seid, Kind. Sogar die weisesten und ältesten Druiden sind nie völlig bereit, wenn der Moment kommt, in dem sie zur letzten Prüfung antreten müssen.$B$BIhr habt meine Worte gehört, nun müsst Ihr weiterziehen. Beherzigt, was ich Euch gelehrt habe. Die Zeit wird kommen, da Eure Kraft einer Prüfung unterzogen wird. Dann müsst Ihr Euch Eurem Feind stellen, wie auch ein Bär dies täte - mit starkem Körper und starkem Herzen. Lernt aus dem Kampf, $gjunger Druide:junge Druidin;. Und nun geht... mit meinem Segen."] = "6cd1be498e0d68b7c13f9810db056810",
             ["Ich stelle die Kraft dar, die Euch als $gjungen Druiden:junge Druidin; stärkt. Ihr seid zu mir gekommen, um diese Kraft zu erlernen, Kind, und ich werde sie Euch lehren. Ich werde Euch alles lehren, was den Geisterbären ausmacht, so Ihr denn zuhört und versteht.$B$BUm zu wissen, was es heißt, auf meinen Geist zurückzugreifen, müsst Ihr verstehen, wie wichtig die Kraft des Körpers und auch die Kraft des Herzens sind."] = "b8f813269aaa11acc499b0c1f173ed51",
+            ["Ich stelle die Kraft dar, die Euch als junge $C stärkt. Ihr seid zu mir gekommen, um diese Kraft zu erlernen, Kind, und ich werde sie Euch lehren. Ich werde Euch alles lehren, was den Geisterbären ausmacht, so Ihr denn zuhört und versteht.  Um zu wissen, was es heißt, auf meinen Geist zurückzugreifen, müsst Ihr verstehen, wie wichtig die Kraft des Körpers und auch die Kraft des Herzens sind."] = "deDE-b4002f722df17ee70940353a16d6b0c0",
+            ["Ich stelle die Kraft dar, die Euch als jungen Druiden stärkt. Ihr seid zu mir gekommen, um diese Kraft zu erlernen, Kind, und ich werde sie Euch lehren. Ich werde Euch alles lehren, was den Geisterbären ausmacht, so Ihr denn zuhört und versteht.  Um zu wissen, was es heißt, auf meinen Geist zurückzugreifen, müsst Ihr verstehen, wie wichtig die Kraft des Körpers und auch die Kraft des Herzens sind."] = "deDE-95e1a5ecc6648f47e2636fe8248f7f8e",
         },
         [12018] = {
             ["Einst herrschten der Feuerlord und seine Brüder über die ganze Welt, sterbliches Wesen. Er war ein Diener der Alten Götter und am Kampf gegen die Titanen um die Herrschaft über diese Welt beteiligt. Die siegreichen Titanen verbannten meinen Meister und seine Brüder auf die Ebene der Elementare, auf der sie bis zum Ende aller Zeiten verbleiben sollten."] = "2441a9b6df24d37314c4606d699518bc",
@@ -8134,6 +8211,10 @@ GossipText = {
         [12042] = {
             ["Selbst innerhalb solch kalter steinerner Mauern wie denjenigen, die diese Stadt umgeben, lassen sich Ruhe und Frieden finden. Um genau zu sein, lassen sie sich an jedem Ort finden, an dem Ihr Euch aufhaltet - Ihr müsst einfach nur in Euch hineinhorchen, um das Gleichgewicht zu erlangen."] = "922a94a8f826437fe0370bdcd6a587ac",
             ["Willkommen, $g mein Bruder:meine Schwester;. Wenn Ihr hier seid um zu lernen, dann bin ich nur zu gern bereit, Euch auszubilden.$B$BSchon bald wird die Zeit kommen, da sich der Smaragdgrüne Traum Eurer bemächtigen wird. Dann werdet Ihr viele Jahre lang eine Art Winterschlaf halten und unter den reinsten aller Formen wandeln. Dann und dort werdet Ihr Eure endgültige Ausbildung erhalten."] = "1d12fd8e421d229eea70c7677a2daeca",
+        },
+        [12097] = {
+            ["Einige sagen, dass Stärke und Tapferkeit das Wichtigste für den Erfolg einer Armee sind. Und das ist wahr! Doch braucht eine Armee auch Vorräte, um in guter Verfassung zu bleiben, und es ist meine Aufgabe, dafür zu sorgen, dass sie das bekommen, was sie benötigen."] = "b8855-orc-male-standard",
+            ["Wir haben kaum noch Vorräte. Wenn wir einen Bodenangriff im Feld des Kampfes starten wollen, werden wir noch sehr viel mehr Vorräte brauchen."] = "b9114-orc-male-standard",
         },
         [12136] = {
             ["Hallo, $g Süßer:Süße;, wollt Ihr vielleicht nach Grom'gol? Ich hab gehört, da unten im Dschungel wird's ganz schön heiß und schwül. Vielleicht könnt ich ja für 'n kleinen Kurzurlaub zu Euch stoßen, Euch mal 'ne richtige Dschungelkatze zeigen. Kommt und reist in den wunderbaren, herrlichen tropischen Dschungel des Schlingendorntals. Ja, genau, auch Ihr könnt Eure Zeit mit Sonnenbaden an kristallklaren, blauen Stränden verbringen, während ich den ganzen Tag lang in dieser unerträglichen Hitze rumstehen muss und niemanden zum Ansehen habe außer meinen Bruder Frezza! Gute Reise!"] = "808af6c85a55d2308db805b9fb00b368",
@@ -8323,6 +8404,7 @@ GossipText = {
             ["Ausbildung in den magischen Künsten könnt Ihr ganz sicher drüben in der Halle der Mysterien nördlich des Stadttors von Ironforge bekommen. Juli Stormkettle ist dort und hat ständig die Nase in einem Buch."] = "7e98ceebc9414083a4cc3fb3ae42f394",
             ["Balthus Stoneflayer muss man konsultieren, wenn es um die Kürschnerei geht. Wenn man etwas häuten kann, dann zeigt er Euch, wie es geht. Wandert einfach zu 'Lederwaren Finespindle' auf der Nordseite der großen Schmiede."] = "19d7a62aa644748c5d13eaad7341a221",
             ["Bink, die kleine Hexenbraut drüben in der Halle der Mysterien, kann Euch wahrscheinlich in allen magischen Belangen weiterhelfen.   Die Halle der Mysterien liegt gleich nördlich des Stadttors von Ironforge."] = "8d292d1b067d993333147a509e6e409c",
+            ["Bink, die kleine Hexenbraut drüben in der Halle der Mysterien, kann Euch wahrscheinlich in allen magischen Belangen weiterhelfen.  Die Halle der Mysterien liegt gleich nördlich des Stadttors von Ironforge."] = "8d292d1b067d993333147a509e6e409c",
             ["Blumen und Samenkörner und dergleichen? Das wäre Reyna Stonebranchs Fachgebiet. Sie hegt und pflegt ihre Pflanzen beim 'Heiler von Ironforge' auf der Südseite der großen Schmiede."] = "9341074330c1dbc19f8fdf714badbebf",
             ["Brandur Ironhammer ist Euer Mann. Ihr findet ihn in der Halle der Mysterien, nördlich des Stadttors von Ironforge."] = "31c78e407d6e78277f84d7122edc2533",
             ["Das Gasthaus? Ah, Ihr wollt ein paar der besten Bierchen wegkippen, die Ironforge zu bieten hat, was? Dann müsst Ihr Euch auf den Weg zur Stonefire-Taverne machen. $B$BIhr findet sie links vom Eingang von Ironforge, wenn Ihr von draußen kommt, oder rechts, wenn Ihr die Stadt verlasst."] = "886fa9ce5bf2e50d6df39dca00c5e72c",
@@ -8349,6 +8431,7 @@ GossipText = {
             ["Grimnur Stonebrand wird Euch Geschichten über Fische, die ihm entkommen sind, auftischen, dass sich die Balken biegen, aber er ist trotzdem einer der besten Angler in der Gegend. Er hat im düsteren Viertel einen Laden, der 'Reisender Angler' heißt."] = "0ddcbbb7af1ef15099416e16690edff4",
             ["Habt Ihr das Potenzial, $gein fähiger Jäger:eine fähige Jägerin; zu werden? Tja, $gJungchen:Mädel;, das wird nur die Zeit zeigen. Haltet Euch einfach ein bisschen zurück und schießt nicht auf Äpfel auf anderer Leute Köpfe, solange Ihr nicht mit Regnus drüben in der Halle der Waffen geredet habt."] = "4ee53decdddf5b8264e87b7865aae7ab",
             ["Habt Ihr neue Schätze, die Ihr sicher aufbewahren wollt? Dann solltet Ihr sie bei den Stonemantles im 'Gewölbe' einlagern.   Ihr findet 'Das Gewölbe' knapp einen Hammerwurf nordöstlich vom Eingang nach Ironforge."] = "d3430aba4fb0b400b8dca87cf1df8b15",
+            ["Habt Ihr neue Schätze, die Ihr sicher aufbewahren wollt? Dann solltet Ihr sie bei den Stonemantles im 'Gewölbe' einlagern. Ihr findet 'Das Gewölbe' knapp einen Hammerwurf nordöstlich vom Eingang nach Ironforge."] = "d3430aba4fb0b400b8dca87cf1df8b15",
             ["Hey! Dieser Darly Riknussun is' 'n genialer Koch! Der macht 'n Chili, mit dem könnt man Stahl härten! Ich glaub nich', dass er Euch das Rezept verrät, aber er kann Euch garantiert dabei helfen, $g'n guter Koch:'ne gute Köchin; zu werden. Ihr findet ihn im 'Bronzekessel' auf der nordöstlichen Seite von der Großen Schmiede."] = "5a9c20e893c2fd018c67b13bea773ae2",
             ["Hey! Dieser Darly Riknussun is' 'n genialer Koch! Der macht 'n Chili, mit dem könnt man Stahl härten! Ich glaub nich', dass er Euch das Rezept verrät, aber er kann Euch garantiert dabei helfen, $g'n guter Koch:'ne gute Köchin; zu werden. Ihr findet ihn im 'Bronzekessel' auf der nordöstlichen Seite von der großen Schmiede."] = "5a9c20e893c2fd018c67b13bea773ae2",
             ["Hey! Ihr solltet aufpassen, was Ihr Euch verzaubern lasst, $GJungchen:Mädel;. Ich hab meinen Becher verzaubern lassen, damit nix verschütt' geht, und jetzt kann ich nich' mehr draus trinken! Echt tragisch, das.   Vergesst das bloß nich', wenn Ihr bei Gimble seid. Er is' in sei'm Laden direkt beim Greifenmeister an der großen Schmiede."] = "5906a29765d2173d53b9ab776005d62b",
@@ -8401,11 +8484,24 @@ GossipText = {
             ["Buliwyf, der zwergische Waffenmeister hier bei Schlachtholzwaffen, kann Euch im Umgang mit Faustwaffen, Schusswaffen, Ein- und Zweihandäxten sowie Ein- und Zweihandstreitkolben unterrichten.  Ilyenia, die Waffenmeisterin der Nachtelfen auf der Terrasse der Krieger in Darnassus, kann Euch im Umgang mit Bogen, Dolchen, Faustwaffen, Stäben und Wurfwaffen unterrichten.  Woo Ping, der Waffenmeister aus den Reihen der Menschen bei Wellers Arsenal in Stormwind, kann Euch in Armbrüsten, Dolchen, Ein- und Zweihandschwertern, Stangenwaffen sowie Stäben unterrichten."] = "24fbc29bbfa684d547e89fb18cc02719",
             ["Hallo auch! Seid Ihr hier, um die Feinheiten im Umgang mit einer neuen Waffe zu erlernen?"] = "aca797c5fc53636876bb9796d70dee29",
         },
+        [13154] = {
+            ["Ihr sucht Anleitung in der Kriegskunst, $R? Dann seid Ihr hier falsch."] = "b9069-scourge-male-warrior",
+        },
+        [13176] = {
+            ["Ich brauche sehr viel mehr Vorräte, um unsere Truppen aufzurüsten."] = "b9132-orc-male-standard",
+            ["Unsere Einheiten sind nicht ausgebaut und ich habe nicht genug Vorräte, um sie auszubauen."] = "b8802-orc-male-standard",
+        },
         [13177] = {
             ["Wohin würdet Ihr gerne fliegen?"] = "f686b3319d4af5004c6ee3403aea3f5e",
         },
+        [13180] = {
+            ["Wurde auch Zeit, dass mal jemand kommt. Was hat Euch so lange aufgehalten? Ach, egal. Gebt mir Deckung, Soldat. Ich muss zum Stützpunkt zurück!"] = "b8637-scourge-female-standard",
+        },
         [13220] = {
             ["In diesen Wüsten lebt die Vergangenheit, $C. Wir müssen vorsichtig sein, damit wir sie nicht wecken."] = "72d9e590ddf6bf219b208c8b157ddb5c",
+        },
+        [13236] = {
+            ["Das Blut unserer Feinde soll das Schlachtfeld tränken. Die großen Elementare werden unserem Ruf folgen und alles zerschmettern, was sich uns in den Weg stellt."] = "b8621-tauren-female-shaman",
         },
         [13278] = {
             ["Es ist schön, Euch zu sehen, $n. Unser Krieg gegen die Lords der Elementare wütet noch immer, aber Dank Eurer Bemühungen werden wir uns den Sieg sichern können."] = "a59a3d642f5997f5088b9bc70f086a13",
@@ -8553,6 +8649,9 @@ GossipText = {
         [13447] = {
             ["$n, es tut gut, Veteranen wie Euch in der Schlacht zu sehen! Ich muss Euch leider mitteilen, dass unsere Vorräte im Moment zu gering sind, um einen Bodenangriff gegen die Horde starten zu können.$B$BSprecht mit unserem Rüstmeister; er hat Missionen zur Vorratsbeschaffung für Euch."] = "be7b74ece350a6df351c868dce888f81",
         },
+        [13448] = {
+            ["Es ist gut, Veteranan wie Euch im Alteractal zu sehen, $n. Wir haben zu wenig Vorräte, um einen Bodenangriff durch das Tal zu starten. Redet mit unserem Rüstmeister - er wird Euch erklären, wie wir unsere Vorräte auffrischen können."] = "b8989-orc-female-warrior",
+        },
         [13616] = {
             ["Gut gemacht, Soldat. Noch ein paar mehr und unsere Ställe werden vor Reittieren überquellen, auf denen unsere Kavallerie in die Schlacht ziehen kann!"] = "28607f3a0d29a8585b7a800ababa8406",
             ["Seid gegrüßt, Soldat. Seid Ihr hier, um der Sache zu dienen?"] = "b39eb5c882dee150f724b5b3066bf272",
@@ -8615,7 +8714,9 @@ GossipText = {
             ["Ihr de' Boss jetzt, richtig? Lang leben de' neue König!$B$BKreeg zeigt Euch Alkohol der Gordok. Ogeralkohol, bester von allen Alkohol und Alkohol der Gordok ist beste von allen Ogeralkohol! Vielleicht Ihr kaufen einigen von mir, Boss?!"] = "7517da6c4a86b6587d22d65089fd3dc3",
         },
         [14323] = {
+            ["Boss, du mich gefunden! Wie du hast Slip'kik gefunden??  Ich schlau und nächstes Mal besser aufpassen! Har har!  Niemand wird Slip'kik mehr reinlegen. Slip'kik versprechen!"] = "deDE-9fa7a6309acab4d94751242f4822bcd1",
             ["Boss, du mich gefunden! Wie du hast Slip'kik gefunden??  Ich schlau und nächstes Mal besser aufpassen! Har har!$B$BNiemand wird Slip'kik mehr reinlegen. Slip'kik versprechen!"] = "97fedb414dc8b96c6e85fd55b553c3fd",
+            ["Ich zeigen Euch wie schlau ich bin, Boss!  Ihr werden jetzt sein besonders schlau, mit mächtigen magischen Mojo!  Um... vielleicht benutzt Slip'kik Magie auf sich selbst. Das klingt wie gute Idee..."] = "deDE-9c6f92234e7ed4b5b6504098505a5986",
             ["Ich zeigen Euch wie schlau ich bin, Boss!  Ihr werden jetzt sein besonders schlau, mit mächtigen magischen Mojo!$B$BUm... vielleicht benutzt Slip'kik Magie auf sich selbst. Das klingt wie gute Idee..."] = "824cfa14793b8d40797f9c0cf80658f3",
         },
         [14324] = {
@@ -8654,8 +8755,10 @@ GossipText = {
             ["Ich studiere die bekannten und unbekannten Elemente unserer Welt."] = "a7fc71d65a41413f50c42397741d69fc",
         },
         [14353] = {
+            ["Alle Gefolgsleute von de' Boss - Stampfer Kreeg, alle drei von de' Wache, Captain Kromcrush und der Beobachter - gebt Tribut an de' neue Boss. Wenn Ihr Gefolgsmann tötet, dann er nicht geben können Tribut. Jeden den Ihr am Leben lassen wird Euch mehr Tribut geben. Lassen alle leben und Ihr kriegen den GROSSEN Tribut!  Yeah!"] = "deDE-c152005a1900a589b4d18246c6b33c32",
             ["Alle Gefolgsleute von de' Boss - Stampfer Kreeg, alle drei von de' Wache, Captain Kromcrush und der Beobachter - gebt Tribut an de' neue Boss. Wenn Ihr Gefolgsmann tötet, dann er nicht geben können Tribut. Jeden den Ihr am Leben lassen wird Euch mehr Tribut geben. Lassen alle leben und Ihr kriegen den GROSSEN Tribut!$B$BYeah!"] = "6a90057cbf7f1d77b21eece8f1256afc",
             ["Ihr jetzt Big Boss! Ihr König!  Lang lebe $G König :Königin; $N, $G König :Königin; der Gordok!$B$BNun da Ihr de' Boss, alle Gefolgsleute Euch Tribut zahlen werden! Ihr doch welche am Leben gelassen haben, oder Boss?"] = "f7062c57e81ab7396be9bfca9bebd668",
+            ["Ihr jetzt Big Boss! Ihr König!  Lang lebe König $N, König der Gordok!  Nun da Ihr de' Boss, alle Gefolgsleute Euch Tribut zahlen werden! Ihr doch welche am Leben gelassen haben, oder Boss?"] = "deDE-cb8752dbdcb49c18b69088454dbdd9e8",
             ["OK Boss, wenn du bereit für de' Tribut deiner Gefolgsleute, du mir sagen!"] = "ab743cf28912d8a59982fd23fe474add",
             ["Um, Ihr König getötet, jaa? Das heißt, Ihr einnehmen seinen Platz! Das machen Euch neuer Boss! Lang leben de' König!"] = "d6d7ce26d361f3b6dde70ba12e4e6d7d",
         },
@@ -8768,6 +8871,13 @@ GossipText = {
         [14524] = {
             ["Seid gegrüßt, $n."] = "00ee25dc8ec2b9d495d1538ceae07d8e",
         },
+        [14527] = {
+            ["Ein herrlicher Tag, um am Leben zu sein! Seht Euch nur diese prächtige Schönheit um Euch herum an, $g mein Freund:meine Freundin;. Genießt, was das Leben Euch bietet!"] = "b9744-troll-female-laidback",
+            ["Ein herrlicher Tag, um am Leben zu sein! Seht Euch nur diese prächtige Schönheit um Euch herum an, mein Freund. Genießt, was das Leben Euch bietet!"] = "b9744-troll-female-laidback",
+        },
+        [14528] = {
+            ["*GRRRR* *RUFF* *RUFF*"] = "deDE-4a384e073e6a50a80abb7b3335f0821a",
+        },
         [14531] = {
             ["Es ist schön jemanden in dieser weit abgelegenen Region der Welt zu treffen. Kommt, gehen wir ein wenig spazieren. Unsere Körper sollen sich gegenseitig Wärme schenken."] = "592e299bd0edf1ea20bdb5dabf705526",
         },
@@ -8804,7 +8914,7 @@ GossipText = {
         [14721] = {
             ["Der Herrscher von Blackrock hängt von den Bögen herab!"] = "aa0728703583d7c72b23dd2cc8c351cc",
             ["Geht weiter Mitbürger, es gibt hier nichts zu sehen."] = "44f7bf8eff87d3a469dce6889fc22ef9",
-            ["Geht weiter, Mitbürger, es gibt hier nichts zu sehen."] = "44f7bf8eff87d3a469dce6889fc22ef9",
+            ["Geht weiter, Mitbürger, es gibt hier nichts zu sehen."] = "deDE-7581358b8c7d6575f56d99c2a0d5ee8c",
         },
         [14722] = {
             ["Freund - Stormwind braucht Eure Unterstützung und Eure Großzügigkeit!$B$BUnser einst großer Vorrat an Textilien ist enorm geschrumpft. Wir bemühen uns gerade diese Vorräte wieder aufzubauen, um wieder Bandagen und Stoffe herstellen zu können. Eure Spende an Stoff würde uns immens helfen und Euch den Respekt der gesamten Bevölkerung einbringen!"] = "57a0cf3e383340429113af3746750413",
@@ -9119,6 +9229,7 @@ GossipText = {
             ["Hinter mir ist der Altar von Zanza, ein heiliger Ort für uns Zandalarianer. Wir beten hier, um unsere Entschlossenheit hinsichtlich der Kriegsvorbereitungen gegen den Blutgott Hakkar zu stärken.$B$BBeweist Euch dem Stamm als würdig, indem Ihr den Altar nutzt, um alle Schmuckstücke der Hakkari zu zerstören, die Ihr in Zul'Gurub finden könnt. Ich werde Euch auch Ehrenmünzen im Tausch gegen Münzsätze geben, die Ihr in Zul'Gurub findet und die von unserem Stamm verwendet werden. Bringt mir die Münzen, nach denen ich verlange, und Ihr sollt belohnt werden!"] = "146cded4f6f6a9fde55acea952be56eb",
         },
         [15076] = {
+            ["Wir, die zandalarianischen Trolle, sind hierher von weit entfernten Inseln gereist, denn wir können uns der Bedrohung, die sich unserer Welt stellt, nicht entziehen."] = "b10618-troll-male-dark",
             ["Wir, die zandalarianischen Trolle, sind hierher von weit entfernten Inseln gereist, denn wir können uns der Bedrohung, die sich unserer Welt stellt, nicht entziehen.$B$BDer Anführer unserer Expedition, Molthor, brachte uns zu der Insel Yojamba, die entlang der nördlichen Küste des Schlingendorntals liegt. Selbst jetzt stellt er noch mutige Helden ein, die sich in die uralte Stadt der Trolle wagen... Zul'Gurub."] = "2b07aacfb7ec7aa8d2c6dc58fbefae37",
         },
         [15077] = {
@@ -9263,6 +9374,7 @@ GossipText = {
             ["Ihr jagt Totenstachel, $n? Ich bin beeindruckt. Allein diese Woche habe ich zwei Männer an ihn verloren. Hoffen wir, dass Ihr mehr Glück habt als sie."] = "a8ee595039d5f688ef88300a94ae9a8a",
         },
         [15183] = {
+            ["Kein Glück mit dem Deserteur der Twilight-Hammer? Sucht eingehend in den Bergen im Südosten. Es kursieren zahlreiche Gerüchte über einen geheimnisvollen Einsiedler dort."] = "b10689-dwarf-female-maternal",
             ["Könnt Ihr es hören, Fremder? Das Brummen wird mit jedem Tag lauter. Es müssen diese Kristalle sein, die die Käfer so verrückt machen."] = "923b9f247d112d5c467bec4f859d29b2",
         },
         [15190] = {
@@ -9294,8 +9406,20 @@ GossipText = {
         [15270] = {
             ["Die Geister von Silithus rufen nach uns, $n. Das Land stöhnt, es hat eine traurige Geschichte zu erzählen..."] = "81fa3f4ee4a97d65004b878d5bb8a931",
         },
+        [15280] = {
+            ["Ihr wünscht mehr darüber zu lernen, wie man die Macht der Naaru manipuliert, $N?"] = "deDE-1d481ca6cc19a516de2dea92ed13b198",
+        },
+        [15281] = {
+            ["Eure fortgesetzten Dienste an den Blutelfen sind für uns überlebenswichtig! Wir müssen uns alle zusammentun, um einen Ausweg aus dieser Notlage zu finden.  Wenn Ihr bereit seid, dann lasst uns loslegen."] = "deDE-0d26832d87a26cf1879eaf29b9d4383d",
+        },
         [15282] = {
             ["Der Zirkel des Cenarius ist weise und hat sich mit zahlreichen Geheimnissen der Erde befasst. Handwerker würden gut daran tun, wenn sie den Worten dieser Druiden Beachtung schenken würden."] = "43c3056caad01325e42ca64695ace0f9",
+        },
+        [15295] = {
+            ["Früher bot sich vom Sonnenturm aus eine wunderschöne Aussicht auf den Sonnenbrunnen. Doch nun hat sich unser Leben ins Gegenteil verkehrt, $N. Aber wir machen trotzdem weiter. Wir sind hart im Nehmen, das ist unsere Art.  Wenn Ihr diese Zeit des Umsturzes überstehen wollt, müsst Ihr lernen, unter diesen Bedingungen zu überleben. Alle Blutelfen müssen das. Ihr müsst Herr über Euren unstillbaren Hunger nach Magie werden, bevor der Hunger Herr über Euch wird."] = "deDE-8b9c586b96c9a0cbabf7d15187bcd8ad",
+        },
+        [15296] = {
+            ["Ihr habt mich in einem kritischen Stadium meiner Forschungen erwischt! Ihr könnt mir dabei ruhig Gesellschaft leisten, aber die Betonung liegt auf 'Ruhe', wenn Ihr versteht, was ich meine..."] = "deDE-ba4b8c742404f619ccd47a462c4f5f05",
         },
         [15303] = {
             ["Oh, das ist einfach! Ihr verwendet sie wie alles andere, das man aktivieren muss. Keine Sorge, ich kümmere mich um den Zünder. Sobald Ihr in der Luft seid, werdet Ihr feststellen, dass Ihr zu 'schweben' scheint, aber das hält nicht ewig an. Ihr müsst ein Ziel weit hinten auf dem See anvisieren. Vergesst nicht Euren Landeanflug zur richtigen Zeit zu beginnen, indem Ihr Eure 'Flügel' ausbreitet, um auch im Wasser zu landen... mh, ja, ich verkaufe keine Lebensversicherungen."] = "f2c53cf52adbcab179b2f133e834e2bd",
@@ -9315,6 +9439,7 @@ GossipText = {
             ["Es herrscht Krieg, $n! Es ist an der Zeit, dass ein jedes Mitglied der Horde dem Ruf der Waffen folgt, um den Kampf mit der feigen Allianz aufzunehmen."] = "500674c7da105457382c51908165838f",
         },
         [15351] = {
+            ["Der Krieg gegen die Horde hat enorme Ausmaße angenommen, $N. Dies ist eine Zeit der Prüfungen für die Allianz und ein jeder von uns sollte seinen Beitrag leisten!"] = "59639744f57566c294774d64cbef1436",
             ["Der Krieg gegen die Horde hat enorme Ausmaße angenommen, $n. Dies ist eine Zeit der Prüfungen für die Allianz und ein jeder von uns sollte seinen Beitrag leisten!"] = "59639744f57566c294774d64cbef1436",
         },
         [15353] = {
@@ -9909,6 +10034,7 @@ GossipText = {
             ["Es ist die letzte Nacht des Mondfests. Möge das Glück mit Euch sein."] = "ea6aed234baf22eb98af03d184469b13",
             ["Es wird die ganze Nacht lang Feuerwerke geben. Von 18 Uhr bis zum Morgengrauen wird der Himmel über dem Elune'ara See in den schönsten Farben glitzern."] = "3ebd4c9fbc15b539397a05f7c7e9bfb7",
             ["Mögen Eure Ahnen Euch segnen, $n, und Euch im nächsten Jahr Glück bescheren."] = "5e8efcc987de096a86113fbf1f74025c",
+            ["Mögen Eure Urahnen Euch segnen, $n, und Euch im neuen Jahr Glück bringen."] = "5e8efcc987de096a86113fbf1f74025c",
         },
         [16012] = {
             ["Thrall hat mir große Güte gezeigt, als er mir Schutz in seinem Reich anbot. Ich will nicht langer hier verweilen, als ich willkommen bin. Es ware eine große Schmach für mich, wenn ich unseren Anführer in Gefahr bringen sollte."] = "b9ca2ade5c180a21e305ffe165d2771c",
@@ -10034,6 +10160,9 @@ GossipText = {
         [16230] = {
             ["Dieser Kultist befindet sich in einer tiefen Trance..."] = "73f0462573697c404b28308bec6f882a",
         },
+        [16231] = {
+            ["Es ist von größter Wichtigkeit, dass wir herausfinden, was die Nachtelfen vorhaben, $C! Bitte konzentriert all Eure Anstrengungen auf dieses Ziel."] = "deDE-17c282d1df9c8eade6c611ddd46bde98",
+        },
         [16254] = {
             ["<Feldmarschall Chambers knurrt.>$B$BIhr seid also das Gesindel, das Didier dabei geholfen hat, die Vorräte in einem Stück hierher zu bringen. Wo ist der Rest von Euch? Da müssen doch noch mehr von Euch sein! Rumtreiber wie Ihr kommen doch selten alleine daher.$B$BBah, gebt mir diesen verdammten Wisch und ich unterschreibe ihn für Euch."] = "51a682137b7a6db94a26971a20130651",
         },
@@ -10082,6 +10211,9 @@ GossipText = {
             ["Während dem Krieg der Urtume, nahte der Halbgott Agamaggan, um die Brennende Legion zu bekämpfen. Der Kolossale Eber wurde geschlagen und mit der Zeit wuchsen an den Orten, die sein Blut getränkt hatte, massive dornige Ranken. Die Stacheleber kamen und bevölkerten diese Gegenden und verehrten sie als heilig. Das Herz dieser massiven Dornenkolonien ist der Razorfen. Der Kral von Razorfen wurde von der Greisin Charlga Razorflank erobert, von der einige behaupten, sie stünde in Verhandlungen mit einigen Agenten der Geißel."] = "13d77ffe00e095b4ad42eef5a8aaebfb",
             ["Würdet Ihr gerne einen dieser Dungeons erkunden?"] = "9211a5a83384bc6bf667f9e87661f2b5",
             ["Zeichen der Liebe sind kleine Zeichen der Zuneigung, die Ihr bestimmten Dorf- und Stadtbewohnern geben könnt. Zum Dank erhaltet Ihr dafür ein Geschenk der Verehrung.$B$BWenn Ihr bereits von jemandem verehrt werdet, erhaltet Ihr ein Geschenk der Freundschaft."] = "cd40129110d4c4917a537fef57180329",
+        },
+        [16263] = {
+            ["Wie kann ich Euch helfen?"] = "b325028-bloodelf-male",
         },
         [16281] = {
             ["Die Argentumdämmerung wird niemanden abweisen, der bereit ist, sich für unsere Sache zu opfern."] = "2d797fe5a1485500fb40042caafdefe8",
@@ -10226,6 +10358,12 @@ GossipText = {
             ["Ah, Ihr seid also der Finder des Briefs. Ich schätze, ich bin Euch für diese Neuigkeiten über meine Familie zu Dank verpflichtet. Bitte, nehmt Euch ruhig von all den Speisen und Getränken."] = "db0fd82a2e87168de7f37ba74147a476",
             ["Seid draußen in der Wüste vorsichtig, $C."] = "ba66fca13d25f11aec60b7a40abc3055",
         },
+        [16583] = {
+            ["Ihr möchtet von mir lernen? Nun, ich hoffe, dass Ihr Eure Fertigkeiten vorher ausreichend perfektioniert habt!"] = "deDE-a69615610731f5e609bd331dae320c29",
+        },
+        [16587] = {
+            ["Wohin würdet Ihr gerne fliegen?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
         [16786] = {
             ["Seid gegrüßt, $n. Wenn Ihr mir nekrotische Steine von den untoten Invasoren bringt, kann ich Euch Zugang zu den Läden der Argentumdämmerung verschaffen."] = "58b18aa4a206e098e7239f5a128d11eb",
         },
@@ -10245,6 +10383,45 @@ GossipText = {
         [16818] = {
             ["Genießt Ihr das Fest, $R?$b$bWährend die Flammenbewahrer sich den Feuern der Gegenwart widmen, bin ich eher ein Historiker, der sich der Vergangenheit dieses Festes verschrieben hat. Natürlich dokumentiere ich auch die diesjährigen Feierlichkeiten. Alles scheint seinen gewohnten Gang zu gehen, meint Ihr nicht?$b$bWisst Ihr, $N, jedem Freudenfeuer wohnt während dieses Fests eine besondere Kraft inne. Wir tragen Sorge für unsere, doch ich bin sicher, dass tief in den Städten unserer Feinde ebenfalls heilige Flammen die Nacht erhellen..."] = "0b4060988eee47f0f6a9f5aadfb007a3",
         },
+        [16819] = {
+            ["$N, zwei Jahrzehnte lang haben die Söhne Lothars auf der Höllenfeuerhalbinsel gekämpft. Von allen Seiten wurden wir durch die einheimischen Orcs und den finsteren Dämonen des Brennenden Kreuzzuges belagert. Auch wenn unsere Zahl im Laufe der Zeit stark abgenommen hat, schlagen unsere tapferen Herzen nach wie vor.  Dennoch, Ihr, und das Eintreffen von Azeroths neuer Heldengeneration sind ein willkommener Anblick!"] = "deDE-dd71aacac38e65047c0a22d46d21f1b8",
+            ["Ah, ein neuer Held, der für unsere Sache kämpfen möchte? Was sagt Ihr, $N?"] = "deDE-10f30f2aad078dadebe044d61f095b98",
+            ["Die Männer und Frauen der Ehrenfeste haben so viel Blut vergossen und ihre Jugend in diesem monströsen Land verloren... und dennoch geben sie nicht auf!  Jetzt, da Ihr und die Heerscharen von Azeroth eingetroffen sind, könnt Ihr uns helfen, das Schlachtenglück zu wenden. Dank Euch besteht wieder Hoffnung, dass wir eines Tages in die Heimat zurückkehren können."] = "deDE-76ecf797b1e6b4c82d37fb384ca91150",
+        },
+        [16820] = {
+            ["Seid gegrüßt, $N! Ich und die anderen Söhne Lothars sind schon seit beinahe zwanzig Jahren auf dieser jämmerlichen Welt gestrandet. Wir haben so gut durchgehalten, wie wir konnten, trotzdem überrascht es mich immer wieder, dass die Gefahren, denen wir heute gegenüber stehen nichts anderes sind, als die Schatten unserer Fehler der Vergangenheit.  Möglicherweise könnt Ihr uns dabei helfen, sie zu korrigieren?"] = "deDE-6449a838e47f40309d6b2d4112a3cbac",
+        },
+        [16822] = {
+            ["Wohin würdet Ihr gerne fliegen?"] = "43540ff7458382b18eb66468d4ff2856",
+        },
+        [16823] = {
+            ["Ich nehme an, dass Ihr keine Neuigkeiten über die Minen habt, oder?"] = "deDE-756ad30b135ca0daddf2b317cd2ceccc",
+        },
+        [16826] = {
+            ["Sid ist mein Name. Schön, ein paar neue Gesichter zu sehen. Was kann ich für Euch tun?"] = "deDE-6bc2a185c75f0a1e9dea95b666cab8ba",
+        },
+        [16827] = {
+            ["Vor ungefähr zwanzig Jahren schickte die Allianz eine erste Expedition auf diese Welt, in der Hoffnung, die Orcs für immer auszulöschen. Es war ein... schrecklicher Konflikt. Zahlreiche mutige Seelen fanden den Tod, um Azeroth zu schützen.  Nur einige wenige sind noch am Leben... gefangen in einem ewigen Kampf."] = "deDE-8cfd1d281dd65961c5eb735ad16d8d4f",
+        },
+        [16829] = {
+            ["Seid Ihr nicht der Korrespondent von der Gadgetzan Gazette? Wenn Ihr mir einfach folgen würdet, ich werde Euch meinen experimentellen Apparat vorführen....  <Ihr erklärt der Magierin, dass Ihr nicht der Reporter seid, den sie offenbar erwartet.>  Oh, seid Ihr nicht? Na dann... wenn Ihr Reagenzien benötigt, zögert nicht lange und nehmt Euch was Ihr braucht. Aber beeilt Euch, ich erwarte noch jemanden."] = "deDE-a9077dc45d716d3c52293f886269fb11",
+        },
+        [16830] = {
+            ["Die Heldentaten der Trollbannblutlinie sind legendär. Ich verehre diesen Mann zutiefst.  Und ihn lebend anzutreffen, hier in der Scherbenwelt...  <Romus scheint durch Euch hindurch zu starren.>  Ich wäre beinahe in Ohnmacht gefallen, als ich ihn das erste Mal sah. Ein überwältigender Schock. Als ich vor ihm kniete fiel es mir schwer meine Tränen zu unterdrücken.  Ihr könnt Euren Hintern darauf verwetten, dass ich alles in meiner Macht stehende tun werde, um die Söhne Lothars zu beschützen."] = "deDE-a0691c2839830e8e5f0b53adf331ac32",
+        },
+        [16837] = {
+            ["Ich habe nicht viel Zeit für Geschwätz, $R. Oder wollt Ihr mir mit meinem Problemchen hier helfen?"] = "deDE-78940f7272337161a4cb716eee7bd0d8",
+            ["Kann Euch nicht genug dafür danken, dass Ihr mir mit den Minen geholfen habt. Nun müssen nur noch die Minenarbeiter überzeugt werden, wieder an die Arbeit zu gehen."] = "deDE-bfd2fe0cb7616ffc2451af241684e9a0",
+        },
+        [16841] = {
+            ["Vor nicht allzu langer Zeit war dieser Ort der Schauplatz einer schrecklichen Schlacht. Die Verteidiger von Nethergarde und die Argentumdämmerung hielten gemeinsam die Dämonen in Schach, welche in schier endloser Zahl durch das Dunkle Portal drängten.  Es waren finstere Zeiten, voller Blutvergießen und Verzweiflung...  Doch wenig später trafen die Armeen der Königreiche von Azeroth ein und sie drängten die Monster zurück! Der Kampf wird nun auf der anderen Seite des Portals fortgesetzt...  Es ist nun ruhig hier, in diesem Lager. Allerdings fürchte ich, dass die jetzige Ruhe den Wahnsinn Lügen straft, welcher hinter dem höllischen Portal lauert."] = "deDE-5173291979f3d527e701c949cf0c6907",
+        },
+        [16886] = {
+            ["Ich war noch ein Kind, als mein Vater in dieses Ödland abkommandiert wurde. Alles, was ich von ihm weiß, haben mir andere berichtet.  Ändern sich Eure Träume, $N? Meine nicht. Immer und immer wieder habe ich denselben Traum: Ein roter Himmel umgibt alles, um mich herum zahllose Soldaten, in der Ferne tobt eine Schlacht. Ich knie vor dem zerschundenen Körper eines Mannes, meinem Vater, und weine. Er ringt nach Luft, sein Lebenswille droht ihn zu verlassen und er flüstert mir irgendetwas zu. Ich versuche zuzuhören, doch das Gesagte ist zu leise, als dass ich es verstehen könnte."] = "deDE-d0f0731b29c5e4964b79d16ce6273f29",
+        },
+        [16915] = {
+            ["Nur Muskeln, kein Hirn, das sind die Peons! Sie sind großartig, wenn sie motiviert sind, aber sie brauchen einen An-Tritt um loszulegen, wenn Ihr versteht, was ich meine."] = "deDE-11f563194b5dd0f34e51d564bd30dcfb",
+        },
         [16999] = {
             ["Greetings, $N. I am Johnny McWeaksauce. I am used as a tool by developers to carry out specific functions for the purpose of testing. For this test period, I am set to do two specific things:$B$B(1) Flag you as having done the Naxxramas attunement quest so that you are able to accept the next quest, 'Echoes of War' from Commander Eligor Dawnbringer. You must first complete that quest to be able to access the quests for your Tier 3 armor set.$B$B(2) Teleport you to Naxxramas.$B$BWhat is it that you require?"] = "38921cd829ce0256aece4a48c2339b21",
             ["Hallo, $N. Wie ich sehe, seid Ihr bereits so markiert, als hättet Ihr die Quest, die Euch Zugang zu Naxxramas gewährt, bereits abgeschlossen. Sprecht mit Kommandant Eligor Dawnbringer bei der Kapelle des hoffnungsvollen Lichts in den östlichen Pestländern, um die Quest 'Echo des Krieges' zu erhalten. Ihr müsst diese Quest zunächst abschließen, um die Folgequest für Euer Rang 3-Rüstungsset starten zu können.$B$BIch kann Euch direkt nach Naxxramas teleportieren. Alternativ könnt Ihr auch das Portal im Westen des Pestwalds verwenden."] = "6a5bb71550a304cc28b7d2bae4771a81",
@@ -10255,6 +10432,12 @@ GossipText = {
         [17249] = {
             ["Willkommen, $N. Ich bin Landro Fernblick, Geschäftsführer der Schwarzen Flamme. Möglicherweise habt Ihr noch nie von der Schwarzen Flamme gehört. Das überrascht mich nicht; Wir arbeiten hart daran, dass das so bleibt. Wir würden gern... Verwicklungen mit Fraktionen vermeiden.  Seien es seltene Artefakte, Gladiatorenkämpfe oder lukratives Glücksspiel, die Schwarze Flamme hat sich darauf spezialisiert, nur die besten Dienstleistungen und Unterhaltungsmöglichkeiten anzubieten, die für Geld zu haben sind.  Sucht Ihr etwas Bestimmtes?"] = "deDE-07ca43b7d13f1e57bd2e6442dc10c44d",
         },
+        [17585] = {
+            ["Willkommen in Thrallmar, $N! Dient auch weiterhin unserer Sache und ich werde Euch den Zugriff auf weitere unserer Vorräte erlauben."] = "deDE-196cca79006272273c5cac1f8868ffed",
+        },
+        [17657] = {
+            ["Seid gegrüßt, $N. Je mehr Euer Ansehen bei den Streitkräften der Ehrenfeste steigt, desto mehr unserer Vorräte kann ich Euch zugänglich machen."] = "deDE-d1d9012571e4864c3277d077b01a8c0c",
+        },
         [17804] = {
             ["Seid gegrüßt, Bürger. Bitte geht weiter, wenn ich Euch nicht behilflich sein kann."] = "b14385-human-male-warrior",
         },
@@ -10263,6 +10446,18 @@ GossipText = {
         },
         [18072] = {
             ["Wie kann mein Volk kämpfen, wenn die Elemente so in Aufruhr sind? Verstehen sie nicht, dass die Welt ohne die Unterstützung der Elemente einfach nicht existieren kann?"] = "deDE-99287c0cc252fb0c5c25674a783ada9b",
+        },
+        [18165] = {
+            ["Lasst Euch von den Ruinen um uns herum nicht täuschen, $C. Dalaran ist so stark wie eh und je."] = "deDE-acc3de2ddbc75933e67f4bdf6e0bdf2d",
+        },
+        [18180] = {
+            ["Ihr habt bewiesen, dass Ihr ein sehr fähiger Großwildjäger seid, $N. Aber es gibt immer noch ein Wildtier, von dem Ihr nur träumen könnt... Zahna!"] = "deDE-f457705f4125566b5a0d16f1700d7a9e",
+        },
+        [18200] = {
+            ["Der große $C, $N, ist zurückgekehrt. Erzählt mir von Eurer neuesten Beute."] = "deDE-49f8a06fcd91545c8ca6d0cc4225ce0e",
+        },
+        [18218] = {
+            ["Ja, ja, ich fühle mich besser, aber irgendwie mag ich es hier unten."] = "deDE-b4cde363242e27445ebf7ae94482e98e",
         },
         [18261] = {
             ["<Lantresor lacht herzhaft.>  Wisst Ihr wo Ihr seid, Narr? Dies ist Ogerland. Vor den Orcs, vor den Draenei waren hier die Oger. Trotzdem wollt Ihr einen Krieg, den Ihr unabwendbar verlieren werdet? Die Felsfäuste werden Euch zerschmettern. Und wenn die Felsfäuste Euch nicht zerstören, werden es die Totschläger tun...  Aber ich glaube, Eure Anführer wissen das bereits..."] = "deDE-adba979d6d4447fb7bc172f561c930bb",
@@ -10275,28 +10470,189 @@ GossipText = {
             ["Und was will Euer Volk von Lantresor, $R?"] = "deDE-630b2640b090528146b0435447fed8fc",
             ["Wer wagt es, Lantresor von der Klinge entgegenzutreten? Erkennt Ihr den Tod nicht, wenn Ihr ihm gegenübersteht, Kleiner?"] = "deDE-3fd0993fd383414582252c0cd7ed41e0",
         },
+        [18266] = {
+            ["Jahrelang war die Ehrenfeste die letzte Bastion gegen die Schrecken der Höllenfeuerhalbinsel. Doch jetzt, wo sich das Dunkle Portal erneut geöffnet hat und beständig Entsatz aus Azeroth eintrifft, findet dieser blutige Kampf vielleicht endlich ein Ende."] = "deDE-ed56830e76d4159ea5255d0bc89c12d4",
+        },
+        [18267] = {
+            ["Es ist bedauerlich, dass sich unter all unseren Feinden auf der Höllenfeuerhalbinsel auch die Orcs der Höllenfeuerzitadelle befinden.  Doch wer vermag die Horde besser herauszufordern als... Orcs!"] = "deDE-6e8fb03d0dd481272449b74abff8446b",
+        },
+        [18278] = {
+            ["Wir wären nicht abgestürzt, wenn Hemet lernen könnte, nicht durch das Querruder zu schießen, wenn er auf Beute am Boden aus ist.  Aber keine Sorge, ich werde das schnell reparieren."] = "deDE-e6f35f50779ad61e97d8976ebcafb841",
+        },
+        [18407] = {
+            ["Schaut auf den Aushang, wenn Ihr Arbeit sucht, $R."] = "deDE-275a0c0b243befa9e90872c9f15a3188",
+        },
+        [18414] = {
+            ["Sie haben keinen Respekt für die Toten, $R. Den Ogern muss eine Lektion erteilt werden."] = "deDE-7bca77b338fcb82fe0341190dec7a85e",
+        },
+        [18415] = {
+            ["Wir müssen nach Überlebenden suchen. Wenn noch jemand am Leben ist, müssen wir zumindest versuchen, sie zurückzuholen."] = "deDE-0ee423d78fd4ffadb56d9ba5160a14e6",
+        },
+        [18417] = {
+            ["Die Informationen, die Ihr gesammelt habt, führen zu folgender Erkenntnis.  Es gibt zwei Hauptkonstruktionslager: das Konstruktionslager: Hass direkt westlich von uns und das Konstruktionslager: Furcht im Südwesten. Jedes Lager verfügt über einen Transporter der Legion, eine Schmiede und mehrere Zauberschutztürme. Dazu werden die Lager von Teufelskanonen, die von Zornwächtern bedient werden, bewacht. Zu guter Letzt gibt es in jedem Lager einen Grubenlord.  Das sollte also kein Problem sein...  <Altruis lacht.>"] = "deDE-db2254b22267d622452bbc385b246ddd",
+        },
         [18723] = {
             ["Hier sind noch einige von den Bomben, $N. Seid vorsichtig damit, wenn man sie falsch benutzt, können sie das Zeitgefüge ganz leicht durcheinander bringen."] = "deDE-826d4d7328662cde9bcc513c830dc46d",
             ["Ihr müsst die Brandsätze auf den Fässern in den Internierungsbaracken von Burg Durnholde platzieren. Sobald fünf Bomben gezündet wurden und die Wachen dadurch abgelenkt sind, sollte der Weg in das Kellergefängnis von Burg Durnholde frei sein. Sucht dort nach Thrall und befreit ihn. Begleitet ihn anschließend auf seiner Flucht und stellt sicher, dass er nicht stirbt!  Sobald Ihr bereit seid, wird Euch Brazen aus Durnholde herausfliegen."] = "deDE-5b728efd452b7dbcea2113e868dfe8af",
         },
+        [18747] = {
+            ["Ich kann Euch das Handwerk des Bergbaus beibringen. Seid Ihr interessiert?"] = "deDE-470c1beac5aa087044ca571e1e88acaf",
+        },
+        [18752] = {
+            ["Ihr möchtet von mir lernen? Nun, ich hoffe, dass Ihr Eure Fertigkeiten vorher ausreichend perfektioniert habt!"] = "deDE-5d57b3284548bc3f0d5077a53df563ca",
+        },
+        [18773] = {
+            ["Ihr möchtet von mir lernen? Nun, ich hoffe, dass Ihr Eure Fertigkeiten vorher ausreichend perfektioniert habt!"] = "deDE-8a72975337ffa5f117ef6b369aaa489a",
+        },
+        [18774] = {
+            ["Ich kann Euch im Juwelenschleifen unterweisen. Seid Ihr interessiert?"] = "deDE-2dec1e96de78964845089f40549ab492",
+        },
+        [18776] = {
+            ["Ich kann Euch in der Kräuterkunde unterweisen. Seid Ihr interessiert?"] = "deDE-8b2fe4f46ba073e36b25fa86ad34f61b",
+        },
+        [18777] = {
+            ["Ich kann Euch die Kunst der Kürschnerei beibringen. Seid Ihr interessiert?"] = "deDE-824a43dfd8951be85605a1d58b8f6efd",
+        },
+        [18779] = {
+            ["Ich kann Euch das Handwerk des Bergbaus beibringen. Seid Ihr interessiert?"] = "deDE-f39b01c96749cd19659fa9d627139d9e",
+        },
+        [18802] = {
+            ["Ihr möchtet von mir lernen? Nun, ich hoffe, dass Ihr Eure Fertigkeiten vorher ausreichend perfektioniert habt!"] = "deDE-eda05f4f7f7af656e9ec4b1af4967494",
+        },
+        [18816] = {
+            ["Wenn Ihr nicht hier seid, um der Sache zu helfen, verschwindet."] = "deDE-0710178d955663670f0d35a914aa7c8e",
+        },
+        [18931] = {
+            ["Oh, ein weiterer Soldat auf dem Weg zur Ehrenfeste... bei Kurdrans Bart, sie können dort jede Hilfe brauchen!"] = "deDE-7beffc8bf7015ec121404cc9767733f5",
+        },
         [18938] = {
             ["Wohin würdet Ihr gerne fliegen?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [18987] = {
+            ["Ihr möchtet von mir lernen? Nun, ich hoffe, dass Ihr Eure Fertigkeiten vorher ausreichend perfektioniert habt!"] = "deDE-8a72975337ffa5f117ef6b369aaa489a",
+        },
+        [19011] = {
+            ["Um in Nagrand Ruhe und Frieden wiederherzustellen, braucht es eine scharfe Klinge und verstärkte Rüstung. Soll ich Eure Ausrüstung reparieren, damit Ihr Gerechtigkeit walten lassen könnt?"] = "deDE-ca7fc280f90d8527e01f614f3b415443",
         },
         [19035] = {
             ["Es treibt mich in den Wahnsinn. Ich kann diese verdammten Eier nicht erreichen!"] = "deDE-982e1fe1a5bbc548405348adc2064397",
             ["Gut, Euch wiederzusehen, $N. Nur ein paar Feineinstellungen mehr, und die Richtung des Sprungs sollte perfekt sein!"] = "deDE-7a96c6494cc5cb29f912bc44152f31db",
         },
+        [19175] = {
+            ["Die Verlassenen haben allen Grund Ihre Freiheit zu feiern. Es gibt schließlich nichts Wichtigeres auf der Welt!"] = "deDE-311864ff103366f1a3f7af9d0e3991f7",
+        },
         [19178] = {
             ["Während der Schlotternächte feiern wir den Tag, an dem die Bansheekönigin uns höchst persönlich aus dem Griff des Lichkönigs und der Geißel befreit hat. Verpasst auf keinen Fall das Fest des Weidenmannes, das jeden Abend außerhalb von Unterstadt stattfindet."] = "deDE-c599fc0d0e33d756aaf2ea4075736d81",
+        },
+        [19217] = {
+            ["Erzmagier Vargoth hat mir seinen Stab anvertraut, als er mir befahl, vor dem Angriff der Blutelfen auf den violetten Turm zu flüchten. Ich habe getan, was er mir befohlen hat, und gehofft, dass ich in der alten Draeneisiedlung in Arklon Zuflucht finden kann.  Doch mir war keine Ruhepause vergönnt. Ich rannte der Streitmacht der Brennenden Legion direkt in die Arme. Die Dämonen haben mir den Stab entrissen, doch ich konnte mit heiler Haut fliehen.  Auch wenn mein Meister nichts von meinem Versagen weiß, bin ich darüber sehr beschämt."] = "deDE-3cd5c8c9073d9de01e2db9bfd0fda022",
+        },
+        [19227] = {
+            ["Ahaha, seht Ihr das? Gaunah ist wieder ZURÜCK! Zurück an meinem Stand, zurück mit meinen alten Waren und bereit, Geschäfte mit Euch zu machen!  Wollt Ihr besser, stärker, schneller sein? Ich garantiere Euch, dass ein jedes dieser Amulette genau das kann, was es verspricht. Kommt näher und erwerbt eines dieser fantastischen Schmuckstücke! Doppelt so teuer sogar noch billig!"] = "deDE-baef37adabbea271c6f30d785efa5c0b",
+        },
+        [19310] = {
+            ["Der Expeditionsposten der Allianz liegt der Legionsfront am nächsten. Nördlich von hier gibt es nichts anderes als Dämonen über Dämonen. Reist am besten mit einem Freund."] = "deDE-fe97e58cf30a9d05dfa220126acbf470",
+        },
+        [19314] = {
+            ["Die Höllenfeuerhalbinsel ist ein geschundenes Land, hart und unbarmherzig zu seinen Einwohnern. Ihr solltet auf jeden Fall Eure Ausrüstung reparieren und Eure Vorräte auffüllen, bevor Ihr los zieht."] = "deDE-e49cc57f1b04b70bef522257cde91747",
+        },
+        [19344] = {
+            ["Schrecklich... einfach schrecklich!  Wir gingen unseren Geschäften nach und waren auf dem Weg zur Area 52 im Nethersturm, als sie uns einfach abschossen! Ich habe es gewusst! Niemals hätten wir diese Abkürzung durch die Wälder von Terokkar nehmen sollen!"] = "deDE-81ea77eb461bf5c6fe6eea3120da18b8",
+        },
+        [19367] = {
+            ["Ich schwöre, dass ich nie wieder eine Abkürzung nehmen werde! Wie hätte ich denn auch wissen können, dass der Himmel über der Höllenfeuerhalbinsel dermaßen gefährlich ist?"] = "deDE-780d91a1a6e4d274a41b500847ba5acd",
+        },
+        [19409] = {
+            ["Verschwindet, wenn Ihr nichts mit der Luftflotte zu besprechen habt."] = "deDE-e1e8f32cb251078e52a4cbb18385c77b",
+        },
+        [19481] = {
+            ["<Erzmagier Vargoth schenkt Euch ein schiefes Lächeln.>  Ich habe viel Platz hier im verfluchten violetten Turm.  Ihr könnt mich das ganze Jahr über hier finden."] = "deDE-61203c0fe99f13a6ab1b24b64ffd7cfe",
+            ["Mit der Kugel hinter mir konnte ich einst einen Blick darauf werfen, was in Azeroth vor sich geht.  Kael'thas Fluch hat das alles natürlich verändert, aber in den Jahren meiner Isolation haben viele Magier in ihren Bildern Trost gefunden.  Manche spähen, um sich zu erinnern, manche um zu vergessen."] = "deDE-e7348b4bdf79be9e0376a86ccb8a77c9",
+        },
+        [19488] = {
+            ["Kirin'Var war 20 Jahre lang unzählbaren Angriffen der Orcs ausgesetzt, aber Kael'thas' Streitkräften konnte es nicht standhalten. Ein Mann, der sich einst ein Mitglied der Kirin Tor nannte, hat uns alle bis auf Einen getötet.  Erzmagier Vargoth hat den Angriff überlebt. Daraufhin hat Kael'thas ihn im violetten Turm eingesperrt und diesen mit einer Magie versiegelt, die allen Kirin Tor den Zugang dazu versperrt."] = "deDE-aa00cbda9686b4470f8308fa28f2d913",
+        },
+        [19489] = {
+            ["Seid vorsichtig in den Ruinen, $C. Die Geister der Kirin Tor, auf die Ihr dort treffen werdet, betrachten Euch nicht als Freund.  Der Hüter und ich sind die Einzigen, deren Geister stark genug an diesen Ort gebunden sind, dass wir auch als Geister unsere volle Identität beibehalten haben."] = "deDE-ceba22e8674c66067421a88388157df3",
+        },
+        [19571] = {
+            ["Diese Leute sind vor ein paar Nächten aus Shattrath gekommen und haben seitdem nicht aufgehört zu streiten.  Ich bin froh, dass das Euch nicht verscheucht hat. Ich hatte schon Angst, dass sie mir mögliche Kunden verjagen."] = "deDE-9dcd54be49b3e832242afb33e2e3ec16",
+            ["Ich hoffe, die Leute aus Shattrath hören bald auf zu kämpfen. Sie gehen mir langsam auf die Nerven.  Wie kann ich Euch helfen?"] = "deDE-2e7adc4bfa96c35ca357fcbd4a4d3607",
+        },
+        [19583] = {
+            ["Wohin würdet Ihr gerne fliegen?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [19617] = {
+            ["Was möchtet Ihr? Schnappt Euch einen Stuhl und kippt einen oder zwei.  Ich bin Stiefels, leitender Mixologe von B.U.M.M. und außergewöhnlicher Schankkellner!  Wenn es kickt, kann der alte Stiefels es Euch besorgen!"] = "deDE-496de2ab9923b7501d11b354442c0161",
+        },
+        [19634] = {
+            ["Strahlung?!  Nein, darüber müsst Ihr Euch keine Sorgen machen! Pfff, was die Leute heutzutage alles glauben.  Was haltet Ihr von unserer Operation hier unten? Topmodern, Schätzchen! Das könnt Ihr ruhig glauben."] = "deDE-fda4a5b1c0551417a9ac43aaad085d73",
+        },
+        [19644] = {
+            ["<Der Kopf des Bilds wird unscharf, als er sich dreht, um die Umgebung zu erkunden.>  Wenn Ihr die Weiten von Farahlon gesehen hättet, würdet Ihr nicht glauben, dass es sich um denselben Ort handelt. Vor ein paar Monaten nur hätten diese Felder genauso gut in Westfall liegen können.  All das ist jetzt Vergangenheit. Aber wie und warum?"] = "deDE-afb6bc039e45e41000ad62abc1607ec1",
+            ["Das Land befindet sich ein einem schlimmeren Zustand, als ich befürchtet habe. Wenn der Schaden so weitergeht, wird Farahlon -äh, der Nethersturm sehr bald nicht mehr als kosmischer Kies sein.  Ich frage mich, wo das ein Ende haben soll. Vielleicht sollte die Frage besser lauten, ob es ein Ende haben wird."] = "deDE-eca12306fde13c7bfee5ea364e610b9f",
+            ["Ich werde mich an Kael'thas für seine Vergehen an den Kirin Tor rächen! Einst wandelte er als Bruder unter uns, doch wir sind keine Brüder mehr!  Der Tag der Abrechnung wird kommen.  <Der Erzmagier nickt wütend.>  Kael'thas ist mehr als nur ein böser Magier. Sobald ich aus diesem Turm frei bin, werden Ravandwyr und ich jeden unterstützen, der sich ihm in den Weg stellt."] = "deDE-faaaad55e6a2631007f71610b4c2e2c5",
+        },
+        [19645] = {
+            ["Schredder?! Die schneiden einfach nicht mehr. Sie sind so was von von gestern!  Wenn wir Raketen bauen und die X-52 zum Abheben bringen wollen, brauchen wir bessere Technologie!"] = "deDE-ab4c03f68cba1716bad876a85ab0ecf2",
+        },
+        [19690] = {
+            ["Still! Ich möchte nicht, dass mich hier jemand sieht.  Oh, das regt mich wirklich auf. Für wen halten sich diese Astralen eigentlich?  Das ist MEIN Gebiet!"] = "deDE-c3e5bb7bbb70043ee43d7477960bada6",
+        },
+        [19709] = {
+            ["Als Raketenchef Doppeldecker nach Freiwilligen für den Bau der X-52 Netherrakete gesucht hat, habe ich mich als Wachmann beworben.  Unglücklicherweise war nun noch die Stelle als Chefingenieur übrig. Zum Glück schaut mir Xyrol hier ab und zu über die Schulter."] = "deDE-f82783b5cfced57a014255146bacac93",
+        },
+        [19728] = {
+            ["Könnt Ihr diese astrale Technologie fassen?!  Ich bin so froh, dass sie mich mit ihr hier draußen gelassen haben. Ich werde viel lernen... und vielleicht ein wenig davon für mich abzweigen!"] = "deDE-b820c83fca54cdb87d3ed8338ff0e849",
         },
         [19935] = {
             ["Ich freue mich, dass Ihr Euch entschieden habt, Euch unserer Sache anzuschließen. Als Belohnung werde ich einen Ring mit den Resten aus dem Brunnen der Ewigkeit, die Ihr mir gebracht habt, verstärken.  Ich biete Euch vier verschiedene Pfade an, über die Ihr seine Macht entfesseln könnt. Wählt weise, $N. Die Sande der Zeit fließen nie nur ein eine Richtung."] = "deDE-0447d246355a5c573b7f206be6edf127",
         },
+        [20102] = {
+            ["Die ganzen kostenlosen Süßigkeiten sind schlecht fürs Geschäft, ich sag's Euch. Oder... vielleicht ist es auch nur ein Lockmittel... damit bringen sie Euch ins Gasthaus und ziehen Euch dort das letzte Hemd aus... Genial!"] = "deDE-c3c636ef0e37a5a4b3109083587d72a9",
+        },
         [20201] = {
             ["Ah, willkommen zurück, Held. Ihr seid also zurückgekehrt, um den Wächter erneut zu schützen? Vergesst nicht, ein Chronosignal mitzunehmen!"] = "deDE-5b23fea681e76a1f313adea4822a8c9d",
         },
+        [20231] = {
+            ["Meine Brüder in Sturmwind haben mir gesagt, ich sollte nicht in die Armee eintreten... ich bin froh, dass ich nicht auf sie gehört habe!"] = "deDE-77b89862852bf539a56047e24b74e1ec",
+        },
+        [20232] = {
+            ["Wenn Ihr Euch unwohl fühlt, sprecht mit Pestle. Er könnte etwas gegen die Flugkrankheit haben."] = "deDE-9af5683c65b75af759ca0cb7c4df92cb",
+        },
+        [20234] = {
+            ["Der Trümmerposten ist ein großartiger Ort für einen Wildhammerzwerg. Ich hatte noch nie so viel Spaß in der Luft!"] = "deDE-c6d22d348b192a6e8ea57309e31d4b8f",
+        },
+        [20235] = {
+            ["Der Trümmerposten ist ein großartiger Ort für einen Wildhammerzwerg. Ich hatte noch nie so viel Spaß in der Luft!"] = "deDE-c941131174d0e8a478ac93124e3185b8",
+        },
+        [20463] = {
+            ["<Der Lehrling wirft gelegentlich einen Blick über die Schulter. Anscheinend reagiert er auf Geräusche, die Ihr nicht hören könnt.>  Guten Tag, $N. Verzeiht, wenn ich etwas abgelenkt erscheine, aber ich stecke grad mitten in einer Arbeit für Bauer Natin. Ich möchte alle seine Pferde beschlagen, bis er vom Rathaus zurück kommt. Wie kann ich Euch helfen?"] = "deDE-5de1865d37cb91d4ea8ec8f954965115",
+        },
+        [20515] = {
+            ["Wohin würdet Ihr gerne fliegen?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [21133] = {
+            ["Wie findet Ihr den Krieg, $N? Denkt immer daran, warum wir hier sind, das macht das Kämpfen einfacher... und das Sterben auch."] = "deDE-d3144f88f0e5e59854a73476c5b516e6",
+        },
+        [21209] = {
+            ["Die Söhne Lothars kämpften einen Krieg ohne Ende. Ich bin erstaunt, dass unsere Ausrüstung noch in einem so guten Zustand ist."] = "deDE-ba7268a9a82544ff768309bf2c02bc28",
+        },
         [21752] = {
             ["<Kriegshäuptling Schwarzfausts Präsenz dominiert das Feld.>"] = "deDE-428fdab3977b2437494c7c845c1e1a76",
+        },
+        [22432] = {
+            ["Habt vielen Dank! Der Schleier der Finsternis, welcher auf meiner Seele lag, ist verschwunden! Ich kann wieder klar sehen... und erblicke das Antlitz meines Retters!"] = "deDE-f9dd80e94c7f2cc353c7ead00f3649f8",
+            ["Verschwindet, $C! Lasst uns gewähren, oder Ihr seid als nächstes dran und dann werdet Ihr wahre Verzweiflung erfahren!"] = "deDE-9d91ef0b6ba6cc858d0a57f04546c353",
+        },
+        [22931] = {
+            ["Wohin würdet Ihr gerne fliegen?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
+        [23048] = {
+            ["Es interessiert mich nicht, wer Ihr außerhalb der Himmelswache seid oder was Ihr dort macht. Solange Ihr hier seid, macht Ihr, was ich sage."] = "deDE-86308fb54242cb2ef48f2565a9a4f808",
+        },
+        [23612] = {
+            ["Wohin würdet Ihr gerne fliegen?"] = "3e057055259d660918d6daacb764fb05",
         },
         [23904] = {
             ["Lange war ich verloren. Doch nun erkenne ich endlich, wie sehr sich meine Seele verfinstert hat."] = "deDE-eca7ed0a6144b42806104063da5e275f",
@@ -10305,15 +10661,34 @@ GossipText = {
             ["Der Verstand des kopflosen Reiters ist dem Wahnsinn verfallen! Während der Schlotternächte könnte er das Dorf jede Sekunde angreifen."] = "deDE-ac3dd4d5a6c154fe78966d6a19b6a555",
             ["Der kopflose Reiter greift an! Die Flammen drohen das ganze Dorf zu verschlingen! Was sollen wir bloß tun?"] = "deDE-f97480b8e51e4e72a8f7a84e5c83303b",
             ["Der kopflose Reiter greift das Dorf an! Jemand muss ihn aufhalten und die Kinder retten!"] = "deDE-c6a714db53e238055fc57b928e663771",
+            ["Der kopflose Reiter hat das Dorf in Brand gesteckt! Wir müssen die Kinder beschützen!"] = "deDE-ad2b271979b15d00c16d12b070660ac3",
+            ["Der kopflose Reiter war einst ein Ritter der Silbernen Hand und ein angesehener Held unter den Paladinen, doch dann ereilte ihn ein Fluch. Im Scharlachroten Kloster verfiel er dem Wahnsinn und ist seitdem der festen Überzeugung, er alleine sei am Leben und alle anderen wären tot.  Sein Eifer steht nicht länger im Dienste des Lichts. Nun, da die Schlotternächte vor der Tür stehen, verbreitet er wieder Angst und Schrecken in den Dörfern Azeroths."] = "deDE-0dc09701c9ced0d720968cc71d22a384",
             ["Fürs Erste sind wir vor dem Schrecken des kopflosen Reiters sicher. Doch können wir erst wieder in Frieden leben, wenn er wieder mit seinem Kopf vereint und anschließend besiegt wird. Bis dahin kehrt er immer wieder zurück."] = "deDE-3e3b1387f83086e9ac542d062ec9be53",
             ["Habt Ihr den kopflosen Reiter gesehen? Wenn er sich hierher traut, werde ich gegen ihn kämpfen und ihm seinen Kürbis klauen!"] = "deDE-4d7c92f24a9fad0d3c992034ed25ee22",
         },
+        [24366] = {
+            ["Wohin würdet Ihr gerne fliegen?"] = "3e057055259d660918d6daacb764fb05",
+        },
         [24519] = {
+            ["Der kopflose Reiter greift an! Die Flammen drohen das ganze Dorf zu verschlingen! Was sollen wir bloß tun?"] = "deDE-2e06ab1b74bc7d8b2b6c9e92e4d53f18",
+            ["Der kopflose Reiter greift das Dorf an! Jemand muss ihn aufhalten und die Kinder retten!"] = "deDE-b813ed8f98cc5c0212b9a92fd51d7edc",
             ["Der kopflose Reiter war einst ein Ritter der Silbernen Hand und ein angesehener Held unter den Paladinen, doch dann ereilte ihn ein Fluch. Im Scharlachroten Kloster verfiel er dem Wahnsinn und ist seitdem der festen Überzeugung, er alleine sei am Leben und alle anderen wären tot.  Sein Eifer steht nicht länger im Dienste des Lichts. Nun, da die Schlotternächte vor der Tür stehen, verbreitet er wieder Angst und Schrecken in den Dörfern Azeroths."] = "deDE-9e2221653caaa4692f772554cf362339",
+        },
+        [28067] = {
+            ["Das ist echt guter Stoff! Jedoch etwas zu schwach. Ich denke, da sollte ich noch mehr Knoblauchatem zugeben..."] = "deDE-06e4ada9d37ae91bf73bbae03d227ff1",
+            ["Das wird immer besser! Es wärmt wirklich den Magen! Und, $N, Ihr seid wirklich ein heißer Feger!"] = "deDE-bb92397aa905b77a44fb8594d8219d8c",
+            ["Oh... ich fühl' mich ein wenig groggy..."] = "deDE-c43707f70c09354a81ecead30ca82ba9",
+            ["Singen wir doch mal was!  Hau wech, hau drauf! Wir Zwerge haben's gut!  Haha! Ich mag Euch, $N!"] = "deDE-cedc6d60c943888b410d6e958eb356fa",
+        },
+        [28126] = {
+            ["Beachtet mich gar nicht. Ich bin nur ein alter Mann und warte auf einen alten... Freund."] = "deDE-220f08f7babfae00ca1b39514b472f5a",
         },
         [28989] = {
             ["Ich hoffe, ich werde bald meinen eigenen Laden aufmachen! Möchtet Ihr in der Zwischenzeit etwas kaufen?    Jeder kleinste Beitrag trägt zu meinem Traum bei!"] = "cbca42c4de87472daaebfb21b58007c1",
             ["Ich hoffe, ich werde bald meinen eigenen Laden aufmachen! Möchtet Ihr in der Zwischenzeit etwas kaufen?  Jeder kleinste Beitrag trägt zu meinem Traum bei!"] = "cbca42c4de87472daaebfb21b58007c1",
+        },
+        [31282] = {
+            ["Seid wachsam, denn in der Nähe lauert das Böse des Lichkönigs."] = "deDE-e5848d58299fedd8b080d1edadd7aa14",
         },
         [32413] = {
             ["Willkommen in meinem Gasthaus, müder Reisender. Was kann ich für Euch tun?"] = "b2821-nightelf-female-standard",
@@ -10326,6 +10701,9 @@ GossipText = {
         },
         [210845] = {
             ["Hey, $C, was gibt's?"] = "deDE-962559e9b49fa1bc93fc91ffb2e2c800",
+        },
+        [214099] = {
+            ["Wir haben in ganz Azeroth Probleme mit Lieferungen, die verloren gehen. Falls Ihr welche findet, dann wäre ich Euch dankbar, wenn Ihr sie mir zurückbringen könntet."] = "deDE-39668a6393fbafd0d2a6e1d64259d33f",
         },
         [214529] = {
             ["Jetzt, da ich dieses Land gesehen und die Geräusche der Erde hier gehört habe, bin ich froh, mich auf die Reise gemacht zu haben.  Ah, verzeiht. Ich denke nur laut. Man nennt mich Stonetorch, und ich bin auf der Suche nach einem strahlenden weißen Stein hergekommen, der vom Himmel gefallen und in den Hügeln dort zur Ruhe gekommen sein soll. Einige meines Volkes glauben, es sei eine Träne von An'she, dem Auge der Erdenmutter selbst.  Ich weiß nicht, ob ich es selbst glaube, aber ich bin dennoch entschlossen, dieses Phänomen selbst zu sehen und mir eine eigene Meinung zu bilden."] = "deDE-af98144f06a647d001a4ac7f8faf2e2f",
@@ -10342,11 +10720,17 @@ GossipText = {
         [230319] = {
             ["Bleibt unauffällig, ich warte darauf, dass der König mir eine Audienz gewährt. Das Warten macht mir aber nichts aus, ich fühle mich zwischen all diesen stämmigen Wachen recht sicher."] = "f555efebf575408048587026c0aa3577",
         },
+        [238376] = {
+            ["Wenn man ihren Schädel aufbricht, findet man dort kein Gehirn, aber jeder Ghul, jeder Schemen, Zombie, jedes Skelett, jede Banshee und Monstrosität hat eine Seele. Sie ALLE haben eine... und sie waren mir und Euch gar nicht so unähnlich.  Jedes Mal, wenn Ihr eine solche Geißel in ein Häufchen Asche verwandelt... All diese Erinnerungen, Erfahrungen, Gedanken, Gefühle... all diese Jahre. Fort. Für immer.  Und die Monstrositäten... habt Ihr Euch je gefragt, wie viele Körper es braucht, um einen Fleischgolem zu erschaffen? All das Fleisch, in eine Hülle aus Haut gestopft. Vernagelt, vernäht, vernietet... Ich habe es gesehen. Ich habe beobachtet, wie es geschah. Ich habe gehört, wessen Namen sie in ihren letzten Momenten ausrufen.  Ich bete für ihre Seelen. Ich bete für sie alle."] = "deDE-bd8d601c70e575d4c1a336a7800c9a53",
+        },
+        [238415] = {
+            ["Ich bin Grok'lo, Sohn von Mok'lo.  Es ist eine Ehre, an der gefährlichsten Stelle des Lagers stationiert zu sein. Meine Friedenssicherung? Unübertroffen. Kug und ich haben früher die mächtigen Tore Orgrimmars bewacht. Wir haben die 'Gute Wache, böse Wache'-Routine perfektioniert.  Kug machte auf freundlich, verständnisvoll, herzensgut.  <Grok'lo schüttelt den Kopf.>  Er war eine schlechte Wache.  Dann kam Grok'lo und ZERSCHMETTERTE sie!  <Grok'lo nickt.>  Gute Wache.  Stärke gibt recht. Und ich bin gerecht."] = "deDE-e7fd83fda88d69f7f179cec5e257434f",
+        },
         [243815] = {
             ["Euer Körper sieht geschwächt und Euer Geist sieht müde aus. Ruht Euch unter unserem Dach aus und erlaubt es Elune, Eure Träume zu führen."] = "88ed28bad52992326e81df54efce5146",
         },
         [244808] = {
-            ["Ihr mögt kein Paladin sein, aber das Licht vermag Euch vielleicht trotzdem Trost zu spenden, wenn Ihr dies wünscht."] = "deDE-3187964ff1e986e881c9a187fa4182c7",
+            ["Ihr mögt kein Paladin sein, aber das Licht vermag Euch vielleicht trotzdem Trost zu spenden, wenn Ihr dies wünscht."] = "abc0bc3774958d865a2dfe9eb652c17d",
             ["Willkommen zurück im Licht. Benötigt Ihr Unterweisung?"] = "deDE-cbc8319002b5e4ebcc238cec5de37aae",
         },
         [246143] = {
@@ -10356,7 +10740,7 @@ GossipText = {
         [246152] = {
             ["Das Licht ist ein Leuchtfeuer, das für jeden erstrahlt. Was kann ich für Euch tun, $C?"] = "5214953ffc58367673f42ef84358ed00",
             ["Ich kann Euch die Feinheiten des Reitens auf Skelettpferden beibringen, vorausgesetzt, Ihr verfügt über die nötige Barschaft, um die Stunde bezahlen zu können!"] = "2e65eb1fa48fb06278bb020f60a84d34",
-            ["Ihr mögt kein Paladin sein, aber das Licht vermag Euch vielleicht trotzdem Trost zu spenden, wenn Ihr dies wünscht."] = "deDE-89a7d50bc64fe0b5cdcf5eaf164de7e8",
+            ["Ihr mögt kein Paladin sein, aber das Licht vermag Euch vielleicht trotzdem Trost zu spenden, wenn Ihr dies wünscht."] = "41bde45e0819c686a439bedd874fbea9",
         },
         [246344] = {
             ["Willkommen zurück im Licht. Benötigt Ihr Unterweisung?"] = "deDE-cbc8319002b5e4ebcc238cec5de37aae",
@@ -10378,7 +10762,7 @@ GossipText = {
         },
         [246394] = {
             ["Hauptsächlich die üblichen. Murlocüberfälle, ein gelegentliches Scharmützel mit dem Scharlachroten Kreuzzug. Es gibt sogar ein paar Paladine, die sich nicht mit dem Leben als Verlassene arrangieren können. Viel zu oft müssen wir jene töten, die ihre Klingen gegen ihre Brüder wenden.  Das Allerschlimmste ist es, wenn einer dieser willenlosen Diener zu nah herankommt. Murlocs kann ich den ganzen Tag töten, aber einige der Geißel, die ich vernichten musste, waren früher meine Freunde. Manche gehörten sogar zu meiner Familie.  Ich erlöse sie zwar lieber selbst, als das irgendeinem Abenteurer zu überlassen, aber es schmerzt mich trotzdem."] = "deDE-e6f1336e9d4c27f6d3601c8f27ecb627",
-            ["In meinem vorherigen Leben wohnte ich hier in der Nähe. Ich spaziere manchmal noch über die Felder des Bauernhofs meiner Kindheit. Es macht mich traurig zu sehen, wie Leute, die ich einst kannte und liebte, als hirnlose Sklaven umherschlurfen. Es schmerzt mich, aber gerade dieser Schmerz verleiht mir meine Stärke und Entschlossenheit."] = "deDE-c2a94c0727f4cbe3fd1cd1a5c5ce7cb7",
+            ["In meinem vorherigen Leben wohnte ich hier in der Nähe. Ich spaziere manchmal noch über die Felder des Bauernhofs meiner Kindheit. Es macht mich traurig zu sehen, wie Leute, die ich einst kannte und liebte, als hirnlose Sklaven umherschlurfen. Es schmerzt mich, aber gerade dieser Schmerz verleiht mir meine Stärke und Entschlossenheit."] = "5b8d8a89e020dc2fa9b656115e4a9cb4",
         },
         [246752] = {
             ["Leider sind die Gerüchte über unser Problem wahr. Unterbrechungen in unseren Leylinien haben eine Störung der arkanen Kräfte unserer Stadt offenbart.    Jetzt da Dalaran kurz davor ist, seine Grenzen erneut für unsere Verbündeten zu öffnen, brauchen wir unbedingt schnelle Lösungen."] = "b299703-human-male-standard",
@@ -10397,6 +10781,7 @@ GossipText = {
         },
         [247229] = {
             ["Berufe unterteilen sich in zwei Kategorien: Haupt- und Nebenberufe.    Ihr könnt höchsten zwei Hauptberufe auf einmal ausüben. Zwar könnt Ihr einen Beruf jederzeit aufgeben, Eure darin gesammelte Erfahrung geht dann aber verloren. Wenn Ihr Euch entscheidet, wieder zu einem früheren Beruf zurückzukehren, müsst Ihr ihn von Grund auf neu erlernen, inklusive der Rezepte, die Ihr bereits kanntet.    Für Zweitberufe gelten diese Einschränkungen nicht. Diese Fertigkeiten dienen eher Eurer Unabhängigkeit und allem, was Ihr zum Überleben braucht. Ihr könnt sie alle erlernen, aber sie sind wahrscheinlich weniger lukrativ für Euch."] = "5f0f285172f8b3fead4c49f9c56d6553",
+            ["Berufe unterteilen sich in zwei Kategorien: Haupt- und Nebenberufe.  Ihr könnt höchsten zwei Hauptberufe auf einmal ausüben. Zwar könnt Ihr einen Beruf jederzeit aufgeben, Eure darin gesammelte Erfahrung geht dann aber verloren. Wenn Ihr Euch entscheidet, wieder zu einem früheren Beruf zurückzukehren, müsst Ihr ihn von Grund auf neu erlernen, inklusive der Rezepte, die Ihr bereits kanntet.  Für Zweitberufe gelten diese Einschränkungen nicht. Diese Fertigkeiten dienen eher Eurer Unabhängigkeit und allem, was Ihr zum Überleben braucht. Ihr könnt sie alle erlernen, aber sie sind wahrscheinlich weniger lukrativ für Euch."] = "5f0f285172f8b3fead4c49f9c56d6553",
             ["Eine hervorragende Wahl. Ich habe die Position auf Eurer Karte markiert."] = "b316839-human-male-standard",
             ["Es freut mich, dass Ihr fragt!    Berufe umfassen Fertigkeiten wie Handwerkskunst, das Sammeln von Zutaten und allgemeine Überlebensfähigkeiten. Es gibt eine große Auswahl, und alle haben ihre eigenen Vorteile und Gelegenheiten zum Geldverdienen. Ob Ihr nun Wohlstand erlangen wollt, nach einer Möglichkeit sucht, das Lagerhaus Eurer Gilde mit nützlichen Gegenständen zu füllen oder einfach das gute Gefühl haben wollt, selbst hergestellte Ausrüstung zu tragen, für alles gibt es den richtigen Beruf.    Herstellungsrezepte könnt Ihr von Ausbildern wie diesen hier lernen, aber auch aus allen möglichen anderen Quellen überall auf Azeroth. Wenn Ihr ein Rezept einmal gelernt habt, könnt Ihr es so oft anwenden, wie Ihr wollt, vorausgesetzt, Ihr habt die benötigten Materialien."] = "b292959-human-male-standard",
             ["Es freut mich, dass Ihr fragt!  Berufe umfassen Fertigkeiten wie Handwerkskunst, das Sammeln von Zutaten und allgemeine Überlebensfähigkeiten. Es gibt eine große Auswahl, und alle haben ihre eigenen Vorteile und Gelegenheiten zum Geldverdienen. Ob Ihr nun Wohlstand erlangen wollt, nach einer Möglichkeit sucht, das Lagerhaus Eurer Gilde mit nützlichen Gegenständen zu füllen oder einfach das gute Gefühl haben wollt, selbst hergestellte Ausrüstung zu tragen, für alles gibt es den richtigen Beruf.  Herstellungsrezepte könnt Ihr von Ausbildern wie diesen hier lernen, aber auch aus allen möglichen anderen Quellen überall auf Azeroth. Wenn Ihr ein Rezept einmal gelernt habt, könnt Ihr es so oft anwenden, wie Ihr wollt, vorausgesetzt, Ihr habt die benötigten Materialien."] = "b292959-human-male-standard",
@@ -10417,7 +10802,7 @@ GossipText = {
             ["Was kann ich'n für Euch tun?"] = "ff4c1db50d39977890db3fe889ea21ae",
         },
         [249363] = {
-            ["Die Windgeister haben uns verlassen.     Nun bleiben nur geistlose Echos zurück. Seid jedoch auf der Hut. Diese Winde sind auch nicht gerade freundlich oder sanft."] = "esMX-8ea1947ddf1ff06f840b8522e9a6eb76",
+            ["Die Windgeister haben uns verlassen.     Nun bleiben nur geistlose Echos zurück. Seid jedoch auf der Hut. Diese Winde sind auch nicht gerade freundlich oder sanft."] = "esES-aad6f5e6d33ffeb0509ae9a20c763e56",
         },
         [249713] = {
             ["Pssst! Ihr verratet mein Versteck!"] = "b296775-human-female-standard",
@@ -10430,7 +10815,9 @@ GossipText = {
         },
         [251001] = {
             ["Bitte sorgt dafür, dass er ihn so bald wie möglich liest. Ich fürchte, dass unser Geißelproblem gerade erst begonnen hat.    Kehrt anschließend schnell zu mir zurück. Ich glaube, dass ich etwas aufgedeckt habe, bei dem ich die Hilfe einer gewillten Klinge benötigen könnte."] = "312d3576ca8a4cae2c1cad9d65ab17bb",
+            ["Bitte sorgt dafür, dass er ihn so bald wie möglich liest. Ich fürchte, dass unser Geißelproblem gerade erst begonnen hat.  Kehrt anschließend schnell zu mir zurück. Ich glaube, dass ich etwas aufgedeckt habe, bei dem ich die Hilfe einer gewillten Klinge benötigen könnte."] = "312d3576ca8a4cae2c1cad9d65ab17bb",
             ["Ihr sucht doch etwas. Was ist es?"] = "2496e7dedec4748fa10b50cbb971b275",
+            ["Welcher Beruf?"] = "68b0bdb01281865de220bb8ce19e964a",
         },
         [251361] = {
             ["Was wollt Ihr von mir, Kind von Zephras?"] = "1394be9de1e0b36dc8ca9962d38734d0",
@@ -10444,6 +10831,7 @@ GossipText = {
             ["Ah, eine weitere Initiandin des Hohen Ordens. Seid gegrüßt!"] = "deDE-226b845a3b2abb6ba73805edeae7ef78",
             ["Mit Magie lässt sich fast alles erreichen, aber Stagnation und Untätigkeit haben dazu geführt, dass wir in den Tausenden von Jahren, seit wir Kalimdor verließen, viel von unserer Identität verloren haben. Der Hohe Orden möchte das Erbe der Hochgeborenen zurückgewinnen und die Gestaltung unseres Schicksals wieder in die Hand nehmen.    Die Windformer halten uns schlicht für leichtsinnig und arrogant. Absolut scheinheilig, wenn Ihr mich fragt. Sie ziehen selbst in dieser Krise nur ihre eigenen Ideen in Betracht. Wer ist nun also wirklich arrogant?"] = "dadcb63a8ca0a60db74bbb61c6c34baa",
             ["Mit Magie lässt sich fast alles erreichen, aber Stagnation und Untätigkeit haben dazu geführt, dass wir in den Tausenden von Jahren, seit wir Kalimdor verließen, viel von unserer Identität verloren haben. Der Hohe Orden möchte das Erbe der Hochgeborenen zurückgewinnen und die Gestaltung unseres Schicksals wieder in die Hand nehmen.  Die Windformer halten uns schlicht für leichtsinnig und arrogant. Absolut scheinheilig, wenn Ihr mich fragt. Sie ziehen selbst in dieser Krise nur ihre eigenen Ideen in Betracht. Wer ist nun also wirklich arrogant?"] = "deDE-9668eb4df3e1b59fc186dc33598ee988",
+            ["Seid gegrüßt... Windformerin.  Ihr wisst sicher, dass es wenig Gemeinsamkeiten zwischen Eurem Orden und dem Hohen Orden gibt. Außerhalb des relativ harmonischen Thendalhains sind die Fronten sehr verhärtet, und die Rivalität kann in einigen Fällen in offene Gewalt umschlagen.  Das ist alles, was ich dazu zu sagen habe, außer dass Ihr Euch nicht in die Angelegenheiten des Hohen Ordens einmischen solltet, wenn Ihr den Hain verlasst. Diese Warnung erhaltet ihr nur einmal."] = "deDE-52247d4652300087cbc175253b46cf09",
             ["Zephras befindet sich in großer Gefahr. Die elementaren Windgeister, die uns vor vielen tausend Jahren hier zum Himmelswall brachten, haben uns verlassen und schutzlos in diesem instabilen Reich zurückgelassen. Unsere einst stabile Gesellschaft umfasste mehrere Inselzufluchten in unserer Ecke des Himmelswalls. Doch mittlerweile sind wir nicht einmal sicher, ob es jenseits dieser kleinen Insel überhaupt noch Shen'dorei gibt.    Die Lage ist ernst, doch der Hohe Orden ist entschlossen, sich dieser Herausforderung zu stellen."] = "0ad0b46c05f2db722e3b617913228055",
             ["Zephras befindet sich in großer Gefahr. Die elementaren Windgeister, die uns vor vielen tausend Jahren hier zum Himmelswall brachten, haben uns verlassen und schutzlos in diesem instabilen Reich zurückgelassen. Unsere einst stabile Gesellschaft umfasste mehrere Inselzufluchten in unserer Ecke des Himmelswalls. Doch mittlerweile sind wir nicht einmal sicher, ob es jenseits dieser kleinen Insel überhaupt noch Shen'dorei gibt.  Die Lage ist ernst, doch der Hohe Orden ist entschlossen, sich dieser Herausforderung zu stellen."] = "deDE-6a73fa27c80cce6535dad38214da8848",
         },
@@ -10506,6 +10894,7 @@ GossipText = {
             ["Hallo, $ujunger:junge:c; $C. Ich bin Rathiril Sunlance, Ältester Magister des Hohen Ordens hier auf der Insel Zephras. Es ist stets eine Freude, aufgeweckte junge Shen'dorei zu treffen, die bereit sind, ihrer Heimat zu dienen.    Aber lasst Euch nicht von einem verstaubten alten Magier aufhalten. Sicher warten viele Abenteuer auf Euch. Kommt später vorbei, wenn Ihr Euch unterhalten wollt."] = "esMX-0193b3ca4091ce2b6bebbb7b78a5234b",
             ["Hallo, junge $C. Ich bin Rathiril Sunlance, Ältester Magister des Hohen Ordens hier auf der Insel Zephras. Es ist stets eine Freude, aufgeweckte junge Shen'dorei zu treffen, die bereit sind, ihrer Heimat zu dienen.  Aber lasst Euch nicht von einem verstaubten alten Magier aufhalten. Sicher warten viele Abenteuer auf Euch. Kommt später vorbei, wenn Ihr Euch unterhalten wollt."] = "deDE-ba65d130ba4de35cffb7b23a0e6596b9",
             ["Hallo, junger $C. Ich bin Rathiril Sunlance, Ältester Magister des Hohen Ordens hier auf der Insel Zephras. Es ist stets eine Freude, aufgeweckte junge Shen'dorei zu treffen, die bereit sind, ihrer Heimat zu dienen.  Aber lasst Euch nicht von einem verstaubten alten $C aufhalten. Sicher warten viele Abenteuer auf Euch. Kommt später vorbei, wenn Ihr Euch unterhalten wollt."] = "deDE-cca1060777c8e6130845446539b5b643",
+            ["Ich habe persönlich nichts gegen Mitglieder der Windformer wie Euch, aber ich muss auch keine Unterhaltung mit ihnen führen. Geht Euren Angelegenheiten nach. Aber ich rate Euch, bei Euren Reisen auf Zephras einen weiten Bogen um den Hohen Orden und unsere Agenten zu machen.  Der Hohe Orden sucht keinen Streit... aber wir werden uns entschieden wehren, wenn wir in einen verwickelt werden. Haltet Euch von uns fern!"] = "deDE-adefca6ba4b9118700bf6aa084e09e99",
             ["Ihr müsst bedenken, dass dieses Reich zwar seit Jahrtausenden unsere Heimat ist, wir uns an diesem Ort aber trotzdem immer irgendwie fremd fühlen werden. Wir sind nicht in der terrestrischen Welt, der unser Volk entsprang. Wir befinden uns im Reich des Himmelswalls, der elementaren Ebene der Luft.    Wir kamen als Gäste der Geister hier an, mit denen wir in vergangenen Zeiten verbunden waren. Nun, da wir Shen'dorei ihrer Anwesenheit und möglicherweise auch ihres Schutzes beraubt sind, ist nicht abzusehen, wie die anderen Bewohner dieser Ebene uns gegenüber wohl eingestellt sind."] = "ccef18929dc3288b617faafc9eb54a48",
             ["Ihr müsst bedenken, dass dieses Reich zwar seit Jahrtausenden unsere Heimat ist, wir uns an diesem Ort aber trotzdem immer irgendwie fremd fühlen werden. Wir sind nicht in der terrestrischen Welt, der unser Volk entsprang. Wir befinden uns im Reich des Himmelswalls, der elementaren Ebene der Luft.  Wir kamen als Gäste der Geister hier an, mit denen wir in vergangenen Zeiten verbunden waren. Nun, da wir Shen'dorei ihrer Anwesenheit und möglicherweise auch ihres Schutzes beraubt sind, ist nicht abzusehen, wie die anderen Bewohner dieser Ebene uns gegenüber wohl eingestellt sind."] = "esMX-bf218f5bf83b51ff364c8a804d39410c",
             ["Selbst die Windformer werden Euch sagen, dass die Geister niemals von einem übergeordneten Wesen in ihrer Mitte sprachen. Sie erkannten die Existenz eines Wesens namens Al'Akir an, doch sie vermieden es, seinen Namen auszusprechen, fast als würden sie ihn fürchten.    Selbst wenn dieser Al'Akir ein allmächtiger 'Windlord' oder Herrscher der Windelementare ist: Unsere Abhängigkeit von Elementaren hat uns ja erst diesen Schlamassel eingebrockt. Wir müssen uns jetzt selber weiterhelfen."] = "64bcc159fe14a8f3925e4b50f47a55e3",
@@ -10530,6 +10919,7 @@ GossipText = {
             ["Ihr seid nicht schlecht, aber ich werde Euch ein paar Tricks zeigen, die recht praktisch sind."] = "26ed40a424790a3c88b546813bd8632c",
         },
         [251964] = {
+            ["Ein zögernder $C ist ein toter $C. Wenn Ihr dem Tod als $C ins Gesicht sehen wollt, werde ich Euch lehren, nicht zu zögern."] = "deDE-6040947b921aa6d8925267f0e7447c21",
             ["Ein zögernder Krieger ist ein toter Krieger. Wenn Ihr dem Tod als Krieger ins Gesicht sehen wollt, werde ich Euch lehren, nicht zu zögern."] = "8e72071ac74c912ab2cf7088a192e1e1",
         },
         [251968] = {
@@ -10570,6 +10960,7 @@ GossipText = {
         [252359] = {
             ["Wenn Ihr es wünscht, dann liegt es neben der Ausbildung in meiner Macht, das Wissen über Eure Talente aus Eurem Gehirn zu löschen. Doch ich warne Euch: Diese Prozedur wird mit jeder Durchführung schwieriger und daher auch teurer."] = "b8263-skybourneelf-male-3776",
             ["Wir sind nur noch wenige, aber einige unter den Shen'dorei träumen noch smaragdgrüne Träume."] = "949dd3bb37d6e5d2118d83c5e2befb83",
+            ["Wir sind nur noch wenige, aber einige unter den Shen'dorei träumen noch smaragdgrüne Träume.  Haltet Eure Augen im Wald offen. Das richtige Licht kann offenbaren, was verborgen liegt, geschützt vom Nordwind."] = "deDE-5b0be2b3ede06cf5586a8496b706f3ac",
         },
         [252373] = {
             ["Wir Verfechter der alten Wege der Hochgeborenen dürsten danach, uns Wissen anzueignen, und brennen darauf, Verlorenes zurückzugewinnen. Wenn Ihr die arkanen Mächte beherrschen wollt und das nötige Talent besitzt, kann ich Euch bei den nächsten Schritten behilflich sein."] = "deDE-8c3555ecf533d6642e2ffef649b9517c",
@@ -10634,6 +11025,7 @@ GossipText = {
             ["Die Bank und das Auktionshaus befinden sich auf der westlichen Seite von Valanaar, in der Nähe des Docks der Himmelssegler der Windformer."] = "b315467-skybourneelf-male-3776",
             ["Einen Lehrer für welche Klasse sucht Ihr?"] = "2460af8e9e9e3105d631e90f11310908",
             ["Ihr solltet Euch zur Halle der Waffen auf der nördlichen Seite von Valanaar begeben."] = "deDE-61698456dd9d40b8faf0588fe7395b54",
+            ["Ihr sucht doch etwas. Was ist es?"] = "b3425-skybourneelf-male-3776",
             ["Kann ich Euch bei der Orientierung behilflich sein, $uBürger:Bürgerin;?"] = "827622580df32f9f325f4c57cdaf35e5",
             ["Kann ich Euch dabei helfen, irgendetwas zu finden?"] = "3e7fde842b8f5cb2598b0db02605dab3",
             ["Seid gegrüßt, $uBürger:Bürgerin;."] = "5875ba8782b9c88fccbb0ac99305a130",
@@ -10737,10 +11129,13 @@ GossipText = {
         },
         [254100] = {
             ["Der Kult der Al'Aketh behauptet, dass Al'Akir, der 'Windlord', uns aus unserer aktuellen Notlage hier auf Zephras befreien wird. Wenn Al'Akir real und wirklich der Herrscher des Himmelwalls ist, warum haben die Windgeister sich dann so lange geweigert, mit ihm zu sprechen?  Entweder er ist nicht real, oder noch schlimmer, er ist real und nicht so wohlwollend wie uns der Kult glauben machen will. Wie auch immer, nichts an dem, was der Kult so treibt, ist gut für uns gewöhnliche Bürger."] = "deDE-905e099ac00471a7f01c21e7636defcd",
+            ["Der Kult der Al'Aketh wird zu einem riesigen Problem und die Friedensbewahrer scheinen ihnen gegenüber machtlos zu sein. Wir können nur hoffen, dass die Windformer und der Hohe Orden endlich ihre Streitigkeiten begraben und uns gemeinsam mit den Friedensbewahrern beschützen.  Ich will auf keinen Fall irgendeinem Kult beitreten!"] = "deDE-d319b7e99be4b3175f1052e56fe4659e",
             ["Die Windformer und der Hohe Orden haben etwas vor. Es kursieren Gerüchte, dass beide Gruppen planen, die Himmelssegler wieder zum Laufen zu kriegen und damit den Himmelswall zu verlassen. DEN HIMMELSWALL VERLASSEN? Wie absurd. Wo sollten sie überhaupt hin?"] = "deDE-f5d2d362362a6e30736a7883ac4f8739",
+            ["Habt Ihr gehört, was aus Ban'aethal geworden ist? Die Friedensbewahrer warnen die Leute, sich komplett von den Ruinen und dem Schattenwindwald fernzuhalten.  Im Gasthaus hat jemand behauptet, bösartige Windgeister gesehen zu haben, die lediglich als vage Schemen zu erkennen waren, als ob sie... irgendwie ausgehöhlt worden wären.  Allein der Gedanke daran bereitet mir eine Gänsehaut."] = "deDE-01dd8824870a39cd255961ef1a9eaef1",
             ["Habt Ihr sie gesehen? Die Himmelssegler fliegen wieder! Allerdings scheinen wir immer noch keinen Kontakt zu den anderen Inseln der Shen'dorei zu haben.  Ich hoffe, wir stellen die Verbindung zu Shen'dramar und Eldranaar bald wieder her... wenn es sie überhaupt noch gibt."] = "deDE-081d65254528b3e990d88d46dd361496",
             ["Hütet Euch vor Leuten mit grauen Roben und Glatze. Sie bezeichnen sich selbst als die Al'Aketh und sie sind eine Bedrohung.  Ich habe sogar gehört, dass sie etwas mit den Ankerpylonen rund um die Insel anstellen.  Wenn es stimmt, was die Windformer sagen, dann sind diese Pylonen das einzige, was Zephras hier in der elementaren Ebene in der Luft hält. Es wäre Wahnsinn, sie zu manipulieren!"] = "deDE-b326e297db860ec4c4ced4a8a0336e12",
             ["Ich sehe in letzter Zeit immer mehr Himmelssegler am Himmel. Es ist gut zu wissen, dass sie wieder funktionieren. Wenn die Ältesten uns doch nur erzählen würden, was vor sich geht. Sie sagen uns nur, dass sich nichts geändert hat und dass wir immer noch keinen Kontakt zu den anderen Inseln haben.  Ich frage mich, was das bedeutet..."] = "deDE-98ce77fd09e1c3ff2df314c8715559d2",
+            ["Wenn der Kult der Al'Aketh nicht bald aufgehalten wird, werden wir alle gezwungen, uns diesen Fanatikern anzuschließen. Ich sehe NICHT gut aus mit einer Glatze."] = "deDE-8e1fb7773841024f07913e71f612c7ff",
         },
         [254128] = {
             ["<Die beiden Kultisten in der Nähe unterhalten sich. Vielleicht könnt Ihr etwas lernen, wenn Ihr Euch hinter diesem Schrank versteckt und sie belauscht.>"] = "4861f2bcaadd883678fb64efdf66c73d",
@@ -10767,11 +11162,24 @@ GossipText = {
         [255877] = {
             ["Ihr könnt bei mir Eure Angelfertigkeit verbessern."] = "b285645e1bdb1be37d7bfdc440534eec",
         },
+        [255894] = {
+            ["Ah, ein welterfahrener Entdecker!  Riecht Ihr diese frische Seeluft? Atmet sie aber nicht zu tief ein, manchmal stinkt sie nach Fisch."] = "deDE-65fe3d8d4b94905917c904aaf31feca9",
+        },
+        [255895] = {
+            ["Hey, hey! Was kann ich für Euch tun?"] = "deDE-202902593241bbeac93cf22a0def4535",
+        },
+        [255897] = {
+            ["Benötigt Ihr etwas?"] = "deDE-9d604d2ef00cbe3722890449ac4bb133",
+        },
         [255940] = {
             ["Willkommen im Gasthaus Calmbreeze! Möchtet Ihr eine kleine Erfrischung?"] = "92f5764071224797e5f9ed7dc4b1a23e",
         },
         [256083] = {
             ["<Riaani scheint völlig in seine Arbeit an dem Windkonstrukt vertieft zu sein.>"] = "a737aa6fce1609bef044e8192877549b",
+            ["Habt Ihr schon gefunden, was wir benötigen?"] = "deDE-819e98da2b3ffa52f3ef76209f26b4ca",
+        },
+        [256247] = {
+            ["Was treibt Ihr da? Verlasst sofort diesen Ort. Ihr werdet noch alles ruinieren!"] = "deDE-838a5ce29a8f7ac0e29030a40d186e50",
         },
         [256306] = {
             ["Willkommen in Dalaran, $C.  Bitte lasst Euch nicht davon stören, dass einiges sich noch im Aufbau befindet. Oh, und falls Euch eine außer Kontrolle geratene Arkananomalie, ein Dämon oder andere bösartige Wesen begegnen, dann bittet ein Mitglied der Kirin Tor in der Nähe um Unterstützung und flüchtet – äh, begebt Euch – in geordneter Manier zum nächsten Ausgang!  <Arkanistin Laurain lacht nervös.>  Vielen Dank für Euren Besuch!"] = "deDE-286ea718092153e113fb63e37d0e8db6",
@@ -10795,6 +11203,9 @@ GossipText = {
             ["Not every order goes according to plan. While we strive to ensure that each delivery arrives intact and efficiently, a recent rise of beasts, bandits, and even Horde attacks, unfortunately causes some unavoidable loss of goods.    Should you find any lost shipments and are feeling particularly helpful, you can take a look over the label and identify its expected contents. It is not your responsibility to deal with our shortcomings of course, but if you complete the shipment, you will be rewarded in kind.    Ms. Baker near the crates will handle your compensation, and we will take care of the logistics from there."] = "72e5b032a440dc057397347d60c7e3c2",
             ["We have rapidly expanded our business in recent months, but we are still developing the means to ensure swift communication between clients across all corners of the world. As such, we have to keep our eyes out for opportunities to keep our craftsmen's hands busy. We depend on couriers or other brave souls to bring crafting orders directly to us.    You can probably imagine that business model brings about challenges. In the meantime, we strongly encourage our crafters to satisfy these orders and deliver the goods directly to the customers themselves, wherever they may currently be. Fret not, friend, you will be fairly compensated for your troubles and earn our respect!"] = "b736a7aa10477774411b4cc5539fe0e5",
             ["Wir haben unser Unternehmen in den letzten Monaten massiv ausgebaut, aber derzeit entwickeln wir noch ein System zur schnellen weltweiten Kundenkommunikation. Wir sind ständig auf der Suche nach Aufgaben für unsere Handwerker. Dabei sind wir auf Kuriere oder andere tapfere Seelen angewiesen, die Handwerksaufträge direkt zu uns bringen.  Ihr könnt Euch sicher vorstellen, dass dieses Geschäftsmodell Herausforderungen mit sich bringt. In der Zwischenzeit ermutigen wir unsere Handwerker dazu, die Aufträge zu erledigen und selbst an die Kunden auszuliefern, wo auch immer diese sich aufhalten mögen. Keine Sorge, meine Liebe! Ihr werdet für Eure Mühen gerecht entlohnt und verdient Euch unseren Respekt!"] = "deDE-de1ee7cb84c15e9583324b9a2784a862",
+        },
+        [256438] = {
+            ["Ah, nichts ist schöner als frische Luft mit einem Hauch von süßem Saft."] = "deDE-3a35a23468549bbca979ccac71b4d9d1",
         },
         [256514] = {
             ["<Ein einsamer Räuber sitzt am Rand der Klippen. Er ist tief in Gedanken versunken. Falls er Euch bemerkt, scheint er kein Interesse daran zu haben, Euch anzugreifen.>"] = "deDE-15b8e0bf604132f129cebafc9d92d324",
@@ -10864,6 +11275,7 @@ GossipText = {
             ["Stürmische Grüße, $umein Freund:meine Freundin;. Kann ich Euch behilflich sein?"] = "esMX-53e476f8c8ec9f9693764b02e4f86356",
         },
         [257006] = {
+            ["Anscheinend haben die Winde Euch zu mir geführt! Ich unterrichte Euch gerne in der Kunst des Kochens, wenn Ihr etwas lernen wollt."] = "deDE-4c612465a30bc1b9c94f56149083abe4",
             ["Bei mir schauen nicht oft andere Köche wegen einer Ausbildung vorbei, aber ich kann Euch wohl das eine oder andere beibringen, wenn Ihr bereit seid."] = "c79cc83d99b9f2d5d4f2e8a8afa4e9e3",
             ["Kochen auf Zephras mag auf das ungeübte Auge schwierig wirken, aber ich genieße die Kreation jedes einzelnen Gerichts. Obwohl es uns in unserem schwindenden Heim an vielen der traditionellen Zutaten der Kaldorei mangelt, hat es Spaß gemacht, neue Variationen der Rezepte unserer Vorfahren zu kreieren.    Ich hoffe, dass diese Rezepte Euch an die Heimat erinnern, ganz gleich, wohin die Winde Euch führen."] = "b33427bc317d9047f51652a9631af772",
             ["Kochen auf Zephras mag auf das ungeübte Auge schwierig wirken, aber ich genieße die Kreation jedes einzelnen Gerichts. Obwohl es uns in unserem schwindenden Heim an vielen der traditionellen Zutaten der Kaldorei mangelt, hat es Spaß gemacht, neue Variationen der Rezepte unserer Vorfahren zu kreieren.  Ich hoffe, dass diese Rezepte Euch an die Heimat erinnern, ganz gleich, wohin die Winde Euch führen."] = "b33427bc317d9047f51652a9631af772",
@@ -10904,6 +11316,7 @@ GossipText = {
         [257020] = {
             ["Des Windes Kunde. Wie kann ich Euch helfen?"] = "cb3388b4766bf50c80bb641b1201c18d",
             ["Ich hoffe, Ihr habt einen guten Grund für Eure Störung, ich war gerade mitten bei der Arbeit."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["Ich hoffe, Ihr habt einen guten Grund für Eure Störung. Ich war gerade mitten bei der Arbeit."] = "b306273-skybourneelf-female-3773",
             ["Oh, hallo. Ihr seht so aus, als hättet Ihr eine Frage an mich."] = "1373e5b71bcab7f7f19fe2a14fa4d10d",
             ["Stürmische Grüße, $umein Freund:meine Freundin;. Kann ich Euch behilflich sein?"] = "5a56faeceb0518e365bb866d2f122071",
             ["Stürmische Grüße, mein Freund. Kann ich Euch behilflich sein?"] = "5a56faeceb0518e365bb866d2f122071",
@@ -10922,6 +11335,7 @@ GossipText = {
         },
         [257024] = {
             ["Bei mir schauen nicht oft andere Kürschner wegen einer Ausbildung vorbei, aber ich kann Euch wohl das eine oder andere beibringen, wenn Ihr bereit seid."] = "fc47ea411175750a7d770f6b3bb182ef",
+            ["Des Windes Kunde. Wie kann ich Euch helfen?"] = "bd332f5d7d3458235a87a234fc01b179",
             ["Ich hoffe, Ihr habt einen guten Grund für Eure Störung, ich war gerade mitten bei der Arbeit."] = "18f39204b5258528e030327d79360cad",
             ["Oh, hallo. Ihr seht so aus, als hättet Ihr eine Frage an mich."] = "e8bc55b3146d4148b0aa9367e4b085a5",
         },
@@ -10949,7 +11363,23 @@ GossipText = {
             ["Seid gegrüßt, $C. Als Beraterin von Demar beantworte ich gern all Eure Fragen zu Burg Farholde."] = "deDE-853b868c167298343185cc469c5375cb",
         },
         [257595] = {
+            ["Das Königreich von Dalaran befindet sich westlich des Alteracgebirges. Begebt Euch zu den Feldern von Hillsbrad und reist nach Norden. Ihr solltet die hochragenden Türme der Kirin Tor nicht übersehen können."] = "deDE-0fb279d2e82dbd52be6272e4cf80c243",
+            ["Das Verlies ist ein Hochsicherheitsgefängniskomplex, das unterhalb des Kanaldistrikts in Stormwind zu finden ist. Von Aufseher Thelwater überwacht, bildet das Verlies das Zuhause von unbedeutenden Ganoven, politischen Aufständischen, Mördern und einer Reihe der gefährlichsten Kriminellen im ganzen Land. Kürzlich führte eine Revolte der Insassen zu einem enormen Tumult im Verlies - die Wachen wurden vertrieben und die Häftlinge bewegen sich nun frei herum."] = "39cefc621bbcaa9de4f15bf64910a0dd",
+            ["Das Verlies von Stormwind liegt nahe des Magieviertels in Stormwind."] = "9cd348728ba38505c5456af01f1ea6f5",
+            ["Das einst florierende und stolze Königreich von Dalaran ereilte ein übles Schicksal, als die Brennende Legion erschien. Die mächtigen Kirin Tor arbeiteten unerlässlich daran, der Stadt der Magier zu alter Pracht zu verhelfen. Die hochragenden Türme werfen selbst auf die höchsten Berge in Alterac einen Schatten.  Der arkane Schild, der zum Schutze der Stadt und seiner Einwohner errichtet wurde, hat seinen Zweck erfüllt. Und auch wenn die Stadt ihre Tore noch nicht für alle Verbündeten geöffnet hat, heißt sie doch jeden willkommen, der gewillt ist, dabei zu helfen, ihre Exzellenz erneut aufblühen zu lassen."] = "deDE-95ac18cc5495a731133634724ffc8777",
+            ["Der Eingang zu Whelgars Ausgrabungsstätte lässt sich im südlichen Tal des Sumpflands finden. Eine Höhle entlang des westlichen Bergkamms markiert den Pass."] = "deDE-206609516bf744870d2b262a65c43cd9",
+            ["Der Kral von Razorfen liegt bei der Südspitze des Brachlands, an der westlichen Seite der Straße."] = "e581a9ed3de8105b6729f7dc085e1c17",
+            ["Die Blackfathom-Tiefen befinden sich am nördlichen Ende des Zoramstrands entlang der Küste von Ashenvale."] = "9b605670acd65783140b807060cc5459",
+            ["Entlang des Zoramstrandes in Ashenvale gelegen, waren die Blackfathom-Tiefen einst ein glorreicher Tempel, der der Mondgöttin der Nachtelfen, Elune, gewidmet war. Es war die große Teilung, die den Tempel zerstörte und ihn unterhalb der Wellen des verhüllten Meeres sinken ließ. Dort blieb er unberührt, bis - angezogen von seinen magischen Kräften - die Naga und Satyrn ausströmten, um seine Geheimnisse zu erforschen. Die Legenden besagen, dass ein uraltes Wesen, Aku'mai, sein Lager in den Tempelruinen aufgeschlagen hat."] = "4770f436e4721b1e363a54416ff3594f",
+            ["Gnomeregan liegt im westlichen Dun Morogh."] = "ad9e028bbf4d1db826c98feaf297f9c3",
+            ["Gnomeregan, in Dun Morogh gelegen, war schon seit Generationen die Hauptstadt der Gnome, obgleich sie kürzlich von Trogg-Mutanten verseucht wurde. In einem verzweifelten Versuch Rache zu nehmen, befahl Hochtüftler Mekkatorque die Notfallöffnung der Tanks für den radioaktiven Abfall. Die Troggs wurden dadurch zwar bestrahlt, doch hielt ihre Belagerung dem stand und die Gnome sahen sich gezwungen in die Zwergenstadt Ironforge zu fliehen, wo Hochtüftler Mekkatorque nun mutige Seelen rekrutiert, um seinem Volk zu helfen ihre geliebte Stadt zurückzuerobern."] = "b414305e416528da2000301e3515fa68",
             ["Willkommen in meinem Gasthaus, müder Reisender. Was kann ich für Euch tun?"] = "e3e01e02de026cbe5e2560a468bbdebb",
+            ["Wir haben nicht viel zur Geschichte oder Vergangenheit der Ausgrabungsstätte des Sumpflands, doch wir wissen, dass ein Bergbautrupp von tödlicher Überheblichkeit versucht hat, einen Pfad in die südlichen Berge zu sprengen, die Dun Morogh überblicken. Im Schatten eines verlorenen Titanenhüters ist ein Sumpfgebiet in Vergessenheit geraten. Es wurden viele Kräfte entsandt, um das Schicksal der verlorenen Bergarbeiter aufzudecken."] = "deDE-bdd7b20a6a1856ac67c17c6b6d4baaaf",
+            ["Während dem Krieg der Urtume, nahte der Halbgott Agamaggan, um die Brennende Legion zu bekämpfen. Der Kolossale Eber wurde geschlagen und mit der Zeit wuchsen an den Orten, die sein Blut getränkt hatte, massive dornige Ranken. Die Stacheleber kamen und bevölkerten diese Gegenden und verehrten sie als heilig. Das Herz dieser massiven Dornenkolonien ist der Razorfen. Der Kral von Razorfen wurde von der Greisin Charlga Razorflank erobert, von der einige behaupten, sie stünde in Verhandlungen mit einigen Agenten der Geißel."] = "0b5e7969b8b45594985feae2eb2ed564",
+            ["Würdet Ihr gerne einen dieser Dungeons erkunden?"] = "338674bfb1edb2117c563bae8305e5f2",
+        },
+        [257597] = {
+            ["Um Licht zu spenden, muss man brennen."] = "deDE-e0cc99e2f8164a708c56f0b48ecded81",
         },
         [257655] = {
             ["<Todeswache Billmuth zuckt unwillkürlich zusammen, während er sich nervös umsieht. Er fühlt sich hier offensichtlich überhaupt nicht wohl.>"] = "deDE-861b1bbaf61d9719f8f7f3e61bac4df7",
@@ -10985,6 +11415,10 @@ GossipText = {
         [258572] = {
             ["Viel vom Grundbedarf der Handwerker ist in der Welt zu finden. Von dem, was nicht zu finden ist, biete ich einige Stücke zu einem guten Preis an."] = "7da2e914119cbb34e9c1d90ccae3ddca",
         },
+        [258785] = {
+            ["Gebt Euch dem Licht hin, $N. Wie kann ich Euch heute helfen zu dienen?"] = "deDE-152e70a5b1702bf2f24d09584039d7d0",
+            ["Wenn Ihr es wünscht, dann liegt es neben der Ausbildung in meiner Macht, das Wissen über Eure Talente aus Eurem Gehirn zu löschen. Doch ich warne Euch: Diese Prozedur wird mit jeder Durchführung schwieriger und daher auch teurer."] = "b8263-gnome-female-standard",
+        },
         [258930] = {
             ["Ah, ich helfe nur Jägern und ihren Tieren."] = "b8407-human-male-standard",
             ["Ihr seid zur Ausbildung hergekommen, um sie an Eure Tiere weiterzugeben?"] = "530f50b228568790a32debd04b5b6e3e",
@@ -11009,14 +11443,38 @@ GossipText = {
         [259287] = {
             ["Euer Fortschritt ist ziemlich beeindruckend. Sollen wir mit Eurem Training fortfahren?"] = "deDE-da1cf79fb9d0629ad6daf8478d05ca11",
         },
+        [260080] = {
+            ["Lieber gut vorbereitet als tot."] = "deDE-b8a8db5490bf98b9942680ebece74bf4",
+        },
         [260093] = {
+            ["Benötigt Ihr Unterweisung in den Wegen des Lichts?"] = "deDE-285818e54072545949331f07b9665891",
             ["Durch rigoroses Abtrainieren musste ich vielen Schülern das abgewöhnen, was sie bisher gelernt hatten, damit ich sie von neuem unterrichten konnte. Der Dienst, den ich anbiete, ist jedes Mal schwieriger durchzuführen. Aus diesem Grunde wird er mit jeder Umschulung teurer. Wünscht Ihr, dass ich Euch die Talente nehme, die Ihr erlernt habt?"] = "a54fabb9fc0936c92134f8611f4e5e8b",
+        },
+        [260359] = {
+            ["Wenn Ihr eine Transportmöglichkeit zum Steamwheedle-Kartell in Tanaris sucht, seid Ihr hier richtig."] = "deDE-3e956ade167566007993cc8c784866a2",
+        },
+        [260405] = {
+            ["Es gibt keine bessere Transportmöglichkeit zu den Östlichen Königreichen als meine Schiffe. Von hier aus könnt Ihr direkt zum Hafen von Powderfuse an der Küste der Flusslande reisen. Garantiert piratensicher, oder fast zumindest!"] = "deDE-efe6848390af413852c756ba5a385ace",
+        },
+        [260487] = {
+            ["He, Ihr! Passt auf, wo Ihr Euren Dreck hinterlasst.  Ich versuche, hier ein stilvolles Etablissement zu führen!"] = "deDE-a380222cc6408eda8a1ad4e4f0c24d49",
         },
         [260558] = {
             ["Ihr könnt bei mir Eure Angelfertigkeit verbessern."] = "2d127f614bfaf60be0fcf5c914c9f116",
+            ["Ihr müsst Nat Pagle in den Marschen von Dustwallow finden, um Euch überhaupt verbessern zu können."] = "0bf837bea513c0c82387777d0998bdfb",
+        },
+        [260559] = {
+            ["Seht Euch diese Aussicht an! Das ist schwer zu übertreffen."] = "deDE-7ae7c61a05c41e4a4d40ff41c6ffbceb",
+        },
+        [260566] = {
+            ["Nichts wird jemals mit dem Geruch von frischem Schießpulver vergleichbar sein, mein Freund."] = "deDE-0c6b3eceb50eb83af680a10e0dd9dcf4",
         },
         [260568] = {
             ["Heute finden keine Kämpfe statt. Horde und Allianz sind zu sehr damit beschäftigt, sich da draußen die Köpfe einzuschlagen. Dabei könnten sie hier in meiner Arena wenigstens Geld damit verdienen! Nicht zu fassen!    Kommt wieder vorbei, wenn ich hier alles zum Laufen gebracht habe."] = "c47745487b8785a2b025de0216199676",
+            ["Heute finden keine Kämpfe statt. Horde und Allianz sind zu sehr damit beschäftigt, sich da draußen die Köpfe einzuschlagen. Dabei könnten sie hier in meiner Arena wenigstens Geld damit verdienen! Nicht zu fassen!  Kommt wieder vorbei, wenn ich hier alles zum Laufen gebracht habe."] = "c47745487b8785a2b025de0216199676",
+        },
+        [260570] = {
+            ["Seid Ihr auf der Suche nach neuen Gewändern? Dann seid Ihr hier genau richtig."] = "deDE-dfe7180d90953b3ae9c4cefaf0f1ef2c",
         },
         [261366] = {
             ["Wie kann ich Euch helfen, $R?"] = "deDE-d3d535c786bdc58e55b34d5c59f5209e",
@@ -11039,6 +11497,9 @@ GossipText = {
         [263113] = {
             ["Es kann hier oben recht eintönig werden, wisst Ihr? Ständig den alten Langweiler Halaan zu ärgern, verliert irgendwann auch seinen Reiz."] = "36bb26fecf6b2a6dee69ac2dad990d3a",
         },
+        [263120] = {
+            ["Was zum Teufel wollt Ihr denn? Ihr seht doch, dass ich beschäftigt bin!  Macht Euch lieber nützlich und sagt Zizplink, dass sie mir noch eins einschenken soll. Ich sitz gleich auf dem Trockenen."] = "deDE-a0824739f476b54cf77585cd61ae0404",
+        },
         [263349] = {
             ["Es tut mir leid, $C, aber Ihr seid noch nicht erfahren genug, um die Darkspear-Inseln betreten zu können."] = "b312929-human-male-official",
             ["Seid gegrüßt, $N. Möchtet Ihr Euch einem Kampf auf den Darkspear-Inseln anschließen?"] = "deDE-ea633f184609cec84f6fe26e2fdc926b",
@@ -11052,6 +11513,7 @@ GossipText = {
         },
         [263643] = {
             ["Es tut mir leid, $C, aber Ihr seid noch nicht erfahren genug, um die Darkspear-Inseln betreten zu können."] = "b312929-human-male-official",
+            ["Seid gegrüßt, $N. Möchtet Ihr Euch einem Kampf auf den Darkspear-Inseln anschließen?"] = "deDE-ea633f184609cec84f6fe26e2fdc926b",
         },
         [263644] = {
             ["Es tut mir leid, $C, aber Ihr seid noch nicht erfahren genug, um die Darkspear-Inseln betreten zu können."] = "b312929-human-male-official",
@@ -11145,16 +11607,18 @@ GossipText = {
             ["Sie haben sie Bandarionfestung genannt. Ich frage mich, was Garek davon halten würde."] = "deDE-ca986ebf663ebc3f0021f203265f3981",
         },
         [267009] = {
-            ["Seid vorsichtig, $C. Es sind Kultisten in der Nähe."] = "deDE-686cd9394db7501391c6a4507d2673bd",
+            ["Seid vorsichtig, $C. Es sind Kultisten in der Nähe."] = "ce9f8a149cf026469096f4e33886943a",
         },
         [267279] = {
             ["Berufe unterteilen sich in zwei Kategorien: Haupt- und Nebenberufe.    Ihr könnt höchsten zwei Hauptberufe auf einmal ausüben. Zwar könnt Ihr einen Beruf jederzeit aufgeben, Eure darin gesammelte Erfahrung geht dann aber verloren. Wenn Ihr Euch entscheidet, wieder zu einem früheren Beruf zurückzukehren, müsst Ihr ihn von Grund auf neu erlernen, inklusive der Rezepte, die Ihr bereits kanntet.    Für Zweitberufe gelten diese Einschränkungen nicht. Diese Fertigkeiten dienen eher Eurer Unabhängigkeit und allem, was Ihr zum Überleben braucht. Ihr könnt sie alle erlernen, aber sie sind wahrscheinlich weniger lukrativ für Euch."] = "frFR-17a391fd8248a22663b4c1a9d3af0cb4",
+            ["Berufe unterteilen sich in zwei Kategorien: Haupt- und Nebenberufe.  Ihr könnt höchsten zwei Hauptberufe auf einmal ausüben. Zwar könnt Ihr einen Beruf jederzeit aufgeben, Eure darin gesammelte Erfahrung geht dann aber verloren. Wenn Ihr Euch entscheidet, wieder zu einem früheren Beruf zurückzukehren, müsst Ihr ihn von Grund auf neu erlernen, inklusive der Rezepte, die Ihr bereits kanntet.  Für Zweitberufe gelten diese Einschränkungen nicht. Diese Fertigkeiten dienen eher Eurer Unabhängigkeit und allem, was Ihr zum Überleben braucht. Ihr könnt sie alle erlernen, aber sie sind wahrscheinlich weniger lukrativ für Euch."] = "frFR-17a391fd8248a22663b4c1a9d3af0cb4",
             ["Eine hervorragende Wahl. Ich habe die Position auf Eurer Karte markiert."] = "b316839-dwarf-male-standard",
             ["Es freut mich, dass Ihr fragt!    Berufe umfassen Fertigkeiten wie Handwerkskunst, das Sammeln von Zutaten und allgemeine Überlebensfähigkeiten. Es gibt eine große Auswahl, und alle haben ihre eigenen Vorteile und Gelegenheiten zum Geldverdienen. Ob Ihr nun Wohlstand erlangen wollt, nach einer Möglichkeit sucht, das Lagerhaus Eurer Gilde mit nützlichen Gegenständen zu füllen oder einfach das gute Gefühl haben wollt, selbst hergestellte Ausrüstung zu tragen, für alles gibt es den richtigen Beruf.    Herstellungsrezepte könnt Ihr von Ausbildern wie diesen hier lernen, aber auch aus allen möglichen anderen Quellen überall auf Azeroth. Wenn Ihr ein Rezept einmal gelernt habt, könnt Ihr es so oft anwenden, wie Ihr wollt, vorausgesetzt, Ihr habt die benötigten Materialien."] = "b292959-dwarf-male-standard",
             ["Es freut mich, dass Ihr fragt!  Berufe umfassen Fertigkeiten wie Handwerkskunst, das Sammeln von Zutaten und allgemeine Überlebensfähigkeiten. Es gibt eine große Auswahl, und alle haben ihre eigenen Vorteile und Gelegenheiten zum Geldverdienen. Ob Ihr nun Wohlstand erlangen wollt, nach einer Möglichkeit sucht, das Lagerhaus Eurer Gilde mit nützlichen Gegenständen zu füllen oder einfach das gute Gefühl haben wollt, selbst hergestellte Ausrüstung zu tragen, für alles gibt es den richtigen Beruf.  Herstellungsrezepte könnt Ihr von Ausbildern wie diesen hier lernen, aber auch aus allen möglichen anderen Quellen überall auf Azeroth. Wenn Ihr ein Rezept einmal gelernt habt, könnt Ihr es so oft anwenden, wie Ihr wollt, vorausgesetzt, Ihr habt die benötigten Materialien."] = "b292959-dwarf-male-standard",
             ["Hallo, $N! Habt Ihr schon darüber nachgedacht, einen Beruf zu erlernen?  Ich beantworte Euch gern alle Fragen oder beschreibe Euch den Weg zu den Ausbildern vor Ort.  Es macht aber auch nichts, wenn Euch das alles zu viel auf einmal ist! Ihr könnt jederzeit hierher zurückkommen oder Ausbilder in den Hauptstädten besuchen, um Euren beruflichen Werdegang zu starten."] = "f2b255bf99830e58fd3542f57058da15",
             ["Hallo, $n! Habt Ihr schon darüber nachgedacht, einen Beruf zu erlernen?    Ich beantworte Euch gern alle Fragen oder beschreibe Euch den Weg zu den Ausbildern vor Ort.    Es macht aber auch nichts, wenn Euch das alles zu viel auf einmal ist! Ihr könnt jederzeit hierher zurückkommen oder Ausbilder in den Hauptstädten besuchen, um Euren beruflichen Werdegang zu starten."] = "f2b255bf99830e58fd3542f57058da15",
             ["Natürlich! Welchen Berufsausbilder wollt Ihr aufsuchen?    Ich markiere die Position des Ausbilders Eurer Wahl auf Eurer Karte. Denkt daran, dass Ihr Ausbilder in den Hauptstädten aufsuchen könnt, um Eure Ausbildung weiter zu vertiefen."] = "b292988-dwarf-male-standard",
+            ["Natürlich! Welchen Berufsausbilder wollt Ihr aufsuchen?  Ich markiere die Position des Ausbilders Eurer Wahl auf Eurer Karte. Denkt daran, dass Ihr Ausbilder in den Hauptstädten aufsuchen könnt, um Eure Ausbildung weiter zu vertiefen."] = "b292988-dwarf-male-standard",
         },
         [267287] = {
             ["Eine hervorragende Wahl. Ich habe die Position auf Eurer Karte markiert."] = "4d633193bdbc10f7c1140dfdb4508a77",
@@ -11176,6 +11640,7 @@ GossipText = {
         },
         [267323] = {
             ["Berufe unterteilen sich in zwei Kategorien: Haupt- und Nebenberufe.    Ihr könnt höchsten zwei Hauptberufe auf einmal ausüben. Zwar könnt Ihr einen Beruf jederzeit aufgeben, Eure darin gesammelte Erfahrung geht dann aber verloren. Wenn Ihr Euch entscheidet, wieder zu einem früheren Beruf zurückzukehren, müsst Ihr ihn von Grund auf neu erlernen, inklusive der Rezepte, die Ihr bereits kanntet.    Für Zweitberufe gelten diese Einschränkungen nicht. Diese Fertigkeiten dienen eher Eurer Unabhängigkeit und allem, was Ihr zum Überleben braucht. Ihr könnt sie alle erlernen, aber sie sind wahrscheinlich weniger lukrativ für Euch."] = "b292961-scourge-male-standard",
+            ["Hallo, $N! Habt Ihr schon darüber nachgedacht, einen Beruf zu erlernen?  Ich beantworte Euch gern alle Fragen oder beschreibe Euch den Weg zu den Ausbildern vor Ort.  Es macht aber auch nichts, wenn Euch das alles zu viel auf einmal ist! Ihr könnt jederzeit hierher zurückkommen oder Ausbilder in den Hauptstädten besuchen, um Euren beruflichen Werdegang zu starten."] = "268b520ae32f6604b9459bcf3825be70",
             ["Hallo, $n! Habt Ihr schon darüber nachgedacht, einen Beruf zu erlernen?    Ich beantworte Euch gern alle Fragen oder beschreibe Euch den Weg zu den Ausbildern vor Ort.    Es macht aber auch nichts, wenn Euch das alles zu viel auf einmal ist! Ihr könnt jederzeit hierher zurückkommen oder Ausbilder in den Hauptstädten besuchen, um Euren beruflichen Werdegang zu starten."] = "268b520ae32f6604b9459bcf3825be70",
             ["Natürlich! Welchen Berufsausbilder wollt Ihr aufsuchen?    Ich markiere die Position des Ausbilders Eurer Wahl auf Eurer Karte. Denkt daran, dass Ihr Ausbilder in den Hauptstädten aufsuchen könnt, um Eure Ausbildung weiter zu vertiefen."] = "b292988-scourge-male-standard",
         },
@@ -11184,7 +11649,7 @@ GossipText = {
         },
         [267325] = {
             ["Kann ich Euch helfen?"] = "b9531-scourge-male-warrior",
-            ["Wie kann ich Euch helfen?"] = "a62dbbcac0879e2964c0e3e181dd44a1",
+            ["Wie kann ich Euch helfen?"] = "b325028-scourge-male-warrior",
         },
         [267327] = {
             ["Seid Ihr interessiert daran, zu lernen, wie man das Leder getöteter Bestien sammelt? Oder braucht Ihr neue Werkzeuge?"] = "b293818-orc-male-guard",
@@ -11196,12 +11661,14 @@ GossipText = {
             ["Seid Ihr interessiert daran, zu lernen, wie man das Leder getöteter Bestien sammelt? Oder braucht Ihr neue Werkzeuge?"] = "b293818-tauren-female-shaman",
         },
         [267331] = {
+            ["Also, wie kann ich helfen?"] = "b9724-tauren-female-standard",
             ["Wie kann ich Euch helfen?"] = "9b44465789a930be0794cd177cfa8d89",
         },
         [267333] = {
             ["Seid Ihr interessiert daran, zu lernen, wie man das Leder getöteter Bestien sammelt? Oder braucht Ihr neue Werkzeuge?"] = "8dc3ebd11bd6b9260124d94a023ee95a",
         },
         [267334] = {
+            ["Was kann ich für Euch tun?"] = "b1529-nightelf-male-official",
             ["Wie kann ich Euch helfen?"] = "de5edfa25096a2a517a954307d8a896e",
         },
         [267336] = {
@@ -11209,6 +11676,7 @@ GossipText = {
         },
         [267337] = {
             ["Also, wie kann ich helfen?"] = "b9724-gnome-female-nerdy",
+            ["Kann ich Euch helfen?"] = "b9531-gnome-female-nerdy",
             ["Wie kann ich Euch helfen?"] = "b325028-gnome-female-nerdy",
         },
         [267354] = {
@@ -11249,6 +11717,9 @@ GossipText = {
             ["Seid gegrüßt, $C.    Ich kann Euch zeigen, wie Ihr Magie um Euch selbst weben könnt, um das Aussehen Eurer Ausrüstung zu verändern, wenn Ihr das wünscht. Möchtet Ihr meine Dienste in Anspruch nehmen?"] = "b321055-nightelf-male-standard",
             ["Seid gegrüßt, $C.  Ich kann Euch zeigen, wie Ihr Magie um Euch selbst weben könnt, um das Aussehen Eurer Ausrüstung zu verändern, wenn Ihr das wünscht. Möchtet Ihr meine Dienste in Anspruch nehmen?"] = "b321055-nightelf-male-standard",
         },
+        [270570] = {
+            ["Ich führe nur die beste Ausrüstung, geprüft und echt. Die Preise stehen fest. Wenn Ihr also feilschen wollt, sucht Euch einen Goblin."] = "1d035ef80655c9d2cd4e435e275a7bba",
+        },
         [270581] = {
             ["Seid gegrüßt, $C.    Ich kann Euch zeigen, wie Ihr Magie um Euch selbst weben könnt, um das Aussehen Eurer Ausrüstung zu verändern, wenn Ihr das wünscht. Möchtet Ihr meine Dienste in Anspruch nehmen?"] = "7daa88a73732c05396945623649a82b5",
             ["Seid gegrüßt, $C.  Ich kann Euch zeigen, wie Ihr Magie um Euch selbst weben könnt, um das Aussehen Eurer Ausrüstung zu verändern, wenn Ihr das wünscht. Möchtet Ihr meine Dienste in Anspruch nehmen?"] = "7daa88a73732c05396945623649a82b5",
@@ -11261,6 +11732,7 @@ GossipText = {
             ["Grüße, $C. Benötigt Ihr Waffen?  Ich wurde von Antarion von Ban'aethal ausgebildet und in die von den alten Magierschmiedemeistern von Kalimdor überlieferten Geheimnisse eingeweiht.  Ihr werdet auf Zephras keine besseren Waffen finden."] = "deDE-e1d2460271e4fd1bca00c053e453162f",
         },
         [271546] = {
+            ["Auf der Suche nach dem Kurier? Ist gerade fortgeflogen wie ein kleiner Vogel.    Kann nicht sagen, dass ich es dem armen Kerl verüble. Diese Wendigos sind ziemlich übel."] = "682af36b98761a235fc70a1a7114c7e1",
             ["Auf der Suche nach dem Kurier? Ist gerade fortgeflogen wie ein kleiner Vogel.  Kann nicht sagen, dass ich es dem armen Kerl verüble. Diese Wendigos sind ziemlich übel."] = "deDE-00407f392f01ee9beb15d9462286166e",
         },
         [271613] = {
@@ -11289,6 +11761,7 @@ GossipText = {
             ["Sucht Ihr etwas? Kann ich helfen?"] = "deDE-e0b4f3b6cc6411f8a77b9539a80b9edb",
         },
         [274757] = {
+            ["Den größten Teil meiner Ausbildung an der Waffe habe ich von Ilyenia Moonfire auf der Terrasse der Krieger erhalten. Wenn Ihr den Kampf mit einer neuen Waffe lernen wollt, so tätet Ihr gut daran, sie aufzusuchen."] = "3fdb5882d52420a10cedda5c6704aa3b",
             ["Hier in Darnassus findet Ihr versierte Lehrer, die ihre Fertigkeiten in ihrer gewählten Klasse durch jahrelange Ausbildung und Hingabe vervollkommnet haben. Ich führe Euch zu einem, der Euer Mentor werden kann, Ihr müsst nur den Weg nennen, den Ihr einschlagen möchtet."] = "05f41dc20d172bc58dcbca463c852a7a",
             ["Natürlich wollen manche den Weg des Schurken einschlagen, doch nur die Nachtelfen sind die wahren Geschöpfe der Nacht. Wenn Ihr den Weg des Schattens wählen wollt, dann sucht Syurna in der Enklave des Cenarius auf."] = "9955006745f984da2926e3193c72c1bf",
             ["Zu welchem der vielen wundersamen Orte in Darnassus darf ich Euch geleiten?"] = "5f49a0ce5b3654379f0db519a20b64a4",
@@ -11357,6 +11830,7 @@ GossipText = {
         },
         [277037] = {
             ["Welcome to my barbershop! We offer cuts, colorings, and more.    We can groom facial hair, perform piercings, ink night elf tattoos, anything you might need.    Have a seat and we'll get to work."] = "1f931052f37e56b5ede89b091bcd05be",
+            ["Willkommen in meinem Barbierladen! Wir schneiden, färben und mehr.  Wir können Bärte trimmen, Piercings machen, Nachtelfentätowierungen stechen, alles, was Ihr braucht.  Setzt Euch, dann fangen wir an."] = "deDE-5260ea4f3d37ccc610497016950fe3ae",
         },
         [277042] = {
             ["Welcome to my barbershop! We offer cuts, colorings, and more.    We can groom facial hair, perform piercings, ink night elf tattoos, anything you might need.    Have a seat and we'll get to work."] = "52e905623fa66a4a3ac455e3f4c100d4",
@@ -11369,6 +11843,9 @@ GossipText = {
         },
         [278305] = {
             ["<Der Wilde Gott, der vor Euch liegt, ist transparent und immateriell. Als würde er einfach... verblassen. Er bewegt sich leicht, als Ihr Euch ihm nähert, während seine glasigen Augen schwach Euren Bewegungen folgen.>"] = "b329728-narrator-male",
+        },
+        [278680] = {
+            ["What can I do for ya?"] = "b330058-goblin-female-zany",
         },
     },
     GossipLookupByObjectID = {
@@ -11397,21 +11874,28 @@ GossipText = {
             ["Diese Scherben glitzern mit einem unnatürlichen Schimmer.  Es ist klar, dass sie eine tiefe Macht in sich bergen."] = "0bb4ea429a6648cd1a3a092485b0d1df",
         },
         [142345] = {
+            ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-A, einem Sicherheitsterminal der Stufe Alpha.$B$BFür den Zugriff auf die Terminalfunktionen wird eine weiße Lochkarte benötigt.    01000100 01101111 01110111 01101110 00100000 01110111 01101001 01110100 01101000 00100000 01110100 01101000 01100101 00100000 01101000 01101111 01110010 01100100 01100101 00100001"] = "76aaa54e5e30fd41bd34c2fe44645123",
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-A, einem Sicherheitsterminal der Stufe Alpha.$B$BFür den Zugriff auf die Terminalfunktionen wird eine weiße Lochkarte benötigt.  01000100 01101111 01110111 01101110 00100000 01110111 01101001 01110100 01101000 00100000 01110100 01101000 01100101 00100000 01101000 01101111 01110010 01100100 01100101 00100001"] = "76aaa54e5e30fd41bd34c2fe44645123",
+            ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-A, einem Sicherheitsterminal der Stufe Alpha.$B$BWeiße Lochkarte erfasst. Zugriff gewährt.    01010100 01100101 01101100 01101100 00100000 01111001 01101111 01110101 01110010 00100000 01100110 01110010 01101001 01100101 01101110 01100100 01110011 00100000 01110100 01101111 00100000 01110000 01101100 01100001 01111001 00100000 01010111 01101111 01010111"] = "5899e16466b0cfc8aa73b7cd3df8170b",
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-A, einem Sicherheitsterminal der Stufe Alpha.$B$BWeiße Lochkarte erfasst. Zugriff gewährt.  01010100 01100101 01101100 01101100 00100000 01111001 01101111 01110101 01110010 00100000 01100110 01110010 01101001 01100101 01101110 01100100 01110011 00100000 01110100 01101111 00100000 01110000 01101100 01100001 01111001 00100000 01010111 01101111 01010111"] = "5899e16466b0cfc8aa73b7cd3df8170b",
+            ["Einführen der weißen Lochkarte erfolgreich...$B$BEs erfolgt Ausgabe einer Einheit der Sicherheitsstufe Beta.    01010000 01101100 01100001 01111001 00100000 01110100 01101000 01100101 00100000 01010111 01100001 01110010 01100011 01100001 01110010 01100110 01110100 00100000 01110010 01101111 01101100 01100101 01110000 01101100 01100001 01111001 01101001 01101110 01100111 00100000 01100111 01100001 01101101 01100101"] = "6aeeb85288821aec717d313e06a57c8a",
             ["Einführen der weißen Lochkarte erfolgreich...$B$BEs erfolgt Ausgabe einer Einheit der Sicherheitsstufe Beta.  01010000 01101100 01100001 01111001 00100000 01110100 01101000 01100101 00100000 01010111 01100001 01110010 01100011 01100001 01110010 01100110 01110100 00100000 01110010 01101111 01101100 01100101 01110000 01101100 01100001 01111001 01101001 01101110 01100111 00100000 01100111 01100001 01101101 01100101"] = "6aeeb85288821aec717d313e06a57c8a",
         },
         [142475] = {
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-B, einem Sicherheitsterminal der Stufe Beta.$B$BFür den Zugriff auf die Terminalfunktionen wird eine gelbe Lochkarte benötigt.  01000111 01101110 01101111 01101101 01100101 01110010 01100011 01111001 00100001"] = "f965fd5462e15845678ce52c9a61aa55",
+            ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-B, einem Sicherheitsterminal der Stufe Beta.$B$BGelbe Lochkarte erfasst. Zugriff gewährt.    01001011 01101001 01110011 01110011 00100000 01101101 01100101 00101100 00100000 01001001 00100111 01101101 00100000 01100111 01101110 01101111 01101101 01101001 01110011 01101000 00100001"] = "411534682daaf09511478caf8c28d14f",
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-B, einem Sicherheitsterminal der Stufe Beta.$B$BGelbe Lochkarte erfasst. Zugriff gewährt.  01001011 01101001 01110011 01110011 00100000 01101101 01100101 00101100 00100000 01001001 00100111 01101101 00100000 01100111 01101110 01101111 01101101 01101001 01110011 01101000 00100001"] = "411534682daaf09511478caf8c28d14f",
             ["Der Technologie-Wahrheitsdetektor des Matrix-Prägographen hat Euer Können in Sachen Ingenieurskunst bestätigt. Wählt nun unter einer der folgenden Optionen:  01000111 01101111 00100000 01100111 01101111 00100000 01100111 01101111 00100001 00100001"] = "2b848ce2c7406be289254849c2fcae75",
+            ["Einführen der gelben Lochkarte erfolgreich... Es erfolgt Ausgabe einer Einheit der Sicherheitsstufe Chi.    01010100 01101000 01100101 00100000 01001100 01101001 01100011 01101000 00100000 01001011 01101001 01101110 01100111 00100000 01101100 01101001 01110110 01100101 01110011 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001"] = "2aee0781189cd0b6e9f66a34a29aad6b",
             ["Einführen der gelben Lochkarte erfolgreich... Es erfolgt Ausgabe einer Einheit der Sicherheitsstufe Chi.  01010100 01101000 01100101 00100000 01001100 01101001 01100011 01101000 00100000 01001011 01101001 01101110 01100111 00100000 01101100 01101001 01110110 01100101 01110011 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001 00100001"] = "2aee0781189cd0b6e9f66a34a29aad6b",
             ["Zugriff auf Daten gewährt. Einen schönen Tag noch!  01001110 01100001 01110100 01100001 01101100 01101001 01100101 00100000 01010000 01101111 01110010 01110100 01101101 01100001 01101110 00100000 01010010 01101111 01100011 01101011 01110011"] = "fc3083d846e2925d50011736f2c91202",
             ["Zugriff...  Ungültig - Ingenieur <#skill_level == n3wb>   01000111 01100001 01101101 01100101 00100000 01001111 01110110 01100101 01110010  ZUGRIFF VERWEIGERT!"] = "c0b813d22da57212ba256d026ec015ec",
         },
         [142476] = {
+            ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-C, einem Sicherheitsterminal der Stufe Chi.$B$BBlaue Lochkarte erfasst. Zugriff gewährt.    01000111 01101110 01101111 01101101 01100101 01110010 01100101 01100111 01100001 01101110 00100000 01100110 01101111 01110010 01100101 01110110 01100101 01110010 00100001"] = "69ec3f694a4c97690ecb6baed8808681",
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-C, einem Sicherheitsterminal der Stufe Chi.$B$BBlaue Lochkarte erfasst. Zugriff gewährt.  01000111 01101110 01101111 01101101 01100101 01110010 01100101 01100111 01100001 01101110 00100000 01100110 01101111 01110010 01100101 01110110 01100101 01110010 00100001"] = "69ec3f694a4c97690ecb6baed8808681",
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-C, einem Sicherheitsterminal der Stufe Chi.$B$BFür den Zugriff auf die Terminalfunktionen wird eine blaue Lochkarte benötigt.  01010010 01100101 01100011 01101001 01110000 01100101 00111010 00100000 01001101 01100101 01100011 01101000 01100001 01101110 01101001 01100011 01100001 01101100 00100000 01000011 01101000 01101001 01100011 01101011 01100101 01101110 00100000 01010011 01101111 01110101 01110000"] = "f9dff1eba81b73fd231bd745abd765c7",
+            ["Einführen der blauen Lochkarte erfolgreich... Es erfolgt Ausgabe einer Einheit der Sicherheitsstufe Delta.    01010000 01101100 01100001 01111001 00100000 01001101 01101111 01110010 01100101 00100000 01010111 01101111 01010111"] = "beeebc97327918e5cefc7e3a0d2dd137",
             ["Einführen der blauen Lochkarte erfolgreich... Es erfolgt Ausgabe einer Einheit der Sicherheitsstufe Delta.  01010000 01101100 01100001 01111001 00100000 01001101 01101111 01110010 01100101 00100000 01010111 01101111 01010111"] = "beeebc97327918e5cefc7e3a0d2dd137",
         },
         [142487] = {
@@ -11419,8 +11903,10 @@ GossipText = {
         },
         [142696] = {
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-D, einem Sicherheitsterminal der Stufe Delta.$B$BFür den Zugriff auf die Terminalfunktionen wird eine rote Lochkarte benötigt.  01010011 01101000 01101111 01110010 01110100 00100000 01100001 01101110 01100100 00100000 01110011 01110111 01100101 01100101 01110100"] = "b049659712ff4a6dae12ce1519d7470a",
+            ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-D, einem Sicherheitsterminal der Stufe Delta.$B$BRote Lochkarte erfasst. Zugriff gewährt.    01001000 01101111 01110111 00100000 01100001 01101101 00100000 01001001 00100000 01100100 01110010 01101001 01110110 01101001 01101110 01100111 00111111"] = "a12254ed4eafe35d7fbe02ee0a46d1b5",
             ["Brzzzzt!$B$BWillkomen beim Matrix-Prägographen 3005-D, einem Sicherheitsterminal der Stufe Delta.$B$BRote Lochkarte erfasst. Zugriff gewährt.  01001000 01101111 01110111 00100000 01100001 01101101 00100000 01001001 00100000 01100100 01110010 01101001 01110110 01101001 01101110 01100111 00111111"] = "a12254ed4eafe35d7fbe02ee0a46d1b5",
             ["Der Technologie-Wahrheitsdetektor des Matrix-Prägographen hat Euer Können in Sachen Ingenieurskunst bestätigt. Wählt nun unter einer der folgenden Optionen:  01000111 01101111 00100000 01100111 01101111 00100000 01100111 01101111 00100001 00100001"] = "2b848ce2c7406be289254849c2fcae75",
+            ["Einführen der roten Lochkarte erfolgreich... Es erfolgt Ausgabe einer Datenkarte der Sicherheitsstufe Delta.    00111100 01101001 01101110 01110011 01100101 01110010 01110100 00100000 01100110 01110101 01101110 01101110 01111001 00100000 01101101 01100101 01110011 01110011 01100001 01100111 01100101 00100000 01101000 01100101 01110010 01100101 00111110"] = "429864f19e4aae8eeb214e94d86bc2a8",
             ["Einführen der roten Lochkarte erfolgreich... Es erfolgt Ausgabe einer Datenkarte der Sicherheitsstufe Delta.  00111100 01101001 01101110 01110011 01100101 01110010 01110100 00100000 01100110 01110101 01101110 01101110 01111001 00100000 01101101 01100101 01110011 01110011 01100001 01100111 01100101 00100000 01101000 01100101 01110010 01100101 00111110"] = "429864f19e4aae8eeb214e94d86bc2a8",
             ["Zugriff auf Daten gewährt. Einen schönen Tag noch!  01001110 01100001 01110100 01100001 01101100 01101001 01100101 00100000 01010000 01101111 01110010 01110100 01101101 01100001 01101110 00100000 01010010 01101111 01100011 01101011 01110011"] = "fc3083d846e2925d50011736f2c91202",
             ["Zugriff...  Ungültig - Ingenieur <#skill_level == n3wb>   01000111 01100001 01101101 01100101 00100000 01001111 01110110 01100101 01110010  ZUGRIFF VERWEIGERT!"] = "c0b813d22da57212ba256d026ec015ec",
@@ -11581,6 +12067,7 @@ GossipText = {
             ["Die stabile Kiste steht in der Mitte des Sägewerks, umgeben von Trümmern und äußerst eifrigen Anhängern des Scharlachroten Kreuzzugs."] = "c6e0746701f75c4143389544cdc0709b",
         },
         [177787] = {
+            ["Mein Name ist Ulysses Rackmore, ich bin Kapitän der GALLANT. Und dies ist das Logbuch, in dem die letzten Tage meines dem Untergang geweihten Schiffes verzeichnet sind.  Wir waren mit einer Lieferung Vorräte unterwegs zur Mondfederfeste, als Naga die Seiten der GALLANT angriffen. Wir konnten den Angriff abwehren, aber wir wussten, dass sie zurückkommen würden. Da ich den Verlust meiner wertvollen Besitztümer fürchtete, segelte ich die GALLANT zu einer Insel vor der Küste von Desolace - einer Insel, auf der Ruinen von alten Gebäuden der Nachtelfen zu finden sind. Und dort habe ich meine Schatztruhe zurückgelassen."] = "deDE-725c674921c2ca4d19906eb35905db7a",
             ["Mein Name ist Ulysses Rackmore, ich bin Kapitän der GALLANT. Und dies ist das Logbuch, in dem die letzten Tage meines dem Untergang geweihten Schiffes verzeichnet sind.$B$BWir waren mit einer Lieferung Vorräte unterwegs zur Festung Feathermoon, als Naga die Seiten der GALLANT angriffen. Wir konnten den Angriff abwehren, aber wir wussten, dass sie zurückkommen würden. Da ich den Verlust meiner wertvollen Besitztümer fürchtete, segelte ich die GALLANT zu einer Insel vor der Küste von Desolace - einer Insel, auf der Ruinen von alten Gebäuden der Nachtelfen zu finden sind. Und dort habe ich meine Schatztruhe zurückgelassen."] = "c59de48f730da3b5d7c895e1e6639450",
             ["Meine Truhe ist eine geniale Konstruktion: Man benötigt zwei Schlüssel, um sie zu öffnen, einen aus Gold und einen aus Silber. Den ersten Schlüssel, den aus Silber, gab ich meinem Ersten Maat; den goldenen Schlüssel behielt ich selbst.$B$BDoch wir waren dazu verdammt, beide zu verlieren. Ich verlor meinen Schlüssel während des nächsten Nagaangriffs, und der meines Ersten Maats ging am nächsten Tag verloren, als wir von Kaltschnappmakruras angegriffen wurden und diese ihn mit sich in die Tiefe zogen.$B$BIch bin sicher, dass die Naga und Makruras die Schlüssel haben. Ich bin nur froh, dass die beiden Völker verfeindet sind und deswegen die Schlüssel nicht gemeinsam verwenden werden."] = "4737220be29ed0b0905a27df23942c8f",
             ["Nach dem Angriff der Makruras wussten wir, dass die GALLANT keinem weiteren Angriff standhalten würde. Und so gaben die wenigen überlebenden Matrosen und ich mein Schiff auf.$B$BWir befinden uns jetzt am Strand und werden bald in Richtung Stadt Nijelspitze aufbrechen, doch wir wissen, dass große Gefahren zwischen uns und dieser Zuflucht liegen, und ich fürchte, dass Desolace uns verschlingen wird.$B$BIch schreibe dies jetzt in der Hoffnung, dass jemand von unserer Not erfährt und eines Tages Rache an diesen Satanskreaturen aus dem Meer nehmen wird, die unseren Untergang bedeuteten."] = "b7584554dd225ef7e529ef1bd508f29b",
@@ -11707,6 +12194,7 @@ GossipText = {
         [180665] = {
             ["Eure Bemühungen Drachisch zu erlernen sind sinnlos, Sterblicher. Und weshalb strebt Ihr überhaubt danach, diese uralte Sprache zu erlernen? In der Tat verwunderlich…"] = "26d2095bf010d5921e9b8e83bc514a84",
             ["Orah Ashjrakama Kanrethad re amanalar alar karaman, Archimtiros. Kar rethule mishun Lok matheredo rakkas, rakir kazile Faralos re amanalar? Re daz Laz"] = "deDE-fbc3161caa6f357bf497863406718bd6",
+            ["Rikk Zekulrakka Naztheros ur ashjraka maev rethule, Ashjrakamas. Gul danashj karkun Daz kamilgola mannor, buras rethul Belaros ur ashjraka? Ur asj Maz"] = "deDE-b67c19a019ed980432e444635df2ab80",
         },
         [180666] = {
             ["Eure Bemühungen Drachisch zu erlernen sind sinnlos, Sterblicher. Und weshalb strebt Ihr überhaubt danach, diese uralte Sprache zu erlernen? In der Tat verwunderlich…"] = "26d2095bf010d5921e9b8e83bc514a84",
@@ -11731,11 +12219,22 @@ GossipText = {
         [182393] = {
             ["Eingeschriebene müssen zuerst mit Aufseher Moi'bff Jill sprechen, bevor sie Aufgaben bekannt geben können.  Unerlaubte Bekanntmachungen werden bestraft.  Keine Rechnungen veröffentlichen."] = "deDE-1e39451428c11bd200d9fca68ddbd077",
         },
+        [183770] = {
+            ["Als Ihr Euch der Konsole nähert, beginnt der Zugangskristall, den Ihr bei Euch tragt, sanft zu summen und pulsierend zu leuchten.  Eine Flut von Informationen überkommt Euren Geist. Ihr seid Euch der Produktionsebenen, der Stabilität und der Mengen, die durch die verschiedenen Rohrleitungen fließen, bewusst. Die Konsole erwartet Euren Befehl."] = "deDE-d52058046bafc887d7104845ca34e930",
+            ["Das Gebilde aus Kristall summt vor Energie. Merkwürdige Glyphen werden vor Euch projiziert und laufen schnell vor Euren Augen ab."] = "deDE-218e3d35a7bf66625040706a3f6a697f",
+        },
+        [183811] = {
+            ["Zwei Zettel auf dem Brett fallen Euch ins Auge. Einer stammt von Papa Mauschel, der andere von Raketenchef Doppeldecker.  Wie es scheint, ist Papa auf der Suche nach einem Maschinenteil. Der Raketenchef hat ein Kopfgeld auf einen enormen Bergriesen ausgesetzt.  Die Einzelheiten sind mit sehr kleiner Goblinhandschrift geschrieben, die natürlich kaum lesbar ist."] = "deDE-0992701374ebeac9da843d869a0677c1",
+        },
         [186267] = {
             ["Der Kürbiskopf glüht in düsterer Vorahnung..."] = "deDE-46e03f705d130b950e0cb0f559b67bae",
         },
         [186887] = {
             ["Der Kürbis wurde zertrümmert und enthält keine weiteren Schätze."] = "deDE-942f029358f697fe79dbbff75c84eefd",
+            ["Diese große Kürbislaterne steht inmitten des Dorfes."] = "deDE-ddd73fb1a527489e411bb56e91dee3e5",
+        },
+        [581822] = {
+            ["<Im Dreck liegt ein staubiger, aber hochwertiger Ranzen.>"] = "deDE-2831d77fda714b10565a0b60dfce2dc3",
         },
         [619896] = {
             ["Das markante Zeichen, das auf mysteriöse Weise in diesen Stein aus unbekanntem Material geritzt wurde, steht für das Element Wasser."] = "deDE-cde2ea0e948306bdae026dab65ce50a3",

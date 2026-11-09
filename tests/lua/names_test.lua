@@ -94,11 +94,25 @@ do
         SpokenZonesAudioActed_frFR = true, SpokenPlacesAudioActed_frFR = true }
     Expect("an old pack beside its replacement is found, and one alone is not",
         table.concat(env.Addon:FindOldFolders(), " "), "SpokenZonesAudio_deDE SpokenZonesAudioActed_frFR")
+    -- A language's one quests folder is old beside all four of its split packs, loaded or not.
+    local split = function(lang)
+        return { { folder = "SpokenQuestsAudioAlliance_" .. lang }, { folder = "SpokenQuestsAudioHorde_" .. lang },
+            { folder = "SpokenQuestsAudioShared_" .. lang }, { folder = "SpokenQuestsAudioGossip_" .. lang } }
+    end
+    loaded = {}
+    stub.addons = split("deDE")
+    table.insert(stub.addons, { folder = "SpokenQuestsAudio_deDE" })
+    table.insert(stub.addons, { folder = "SpokenQuestsAudio_frFR" })
+    table.insert(stub.addons, { folder = "SpokenQuestsAudioShared_frFR" })
+    Expect("a language's one quests folder beside its four packs is found, and one beside fewer is not",
+        table.concat(env.Addon:FindOldFolders(), " "), "SpokenQuestsAudio_deDE")
+    stub.addons[5].loadable, stub.addons[5].reason = false, "DISABLED"
+    Expect("...and it is not named again once it is switched off", table.concat(env.Addon:FindOldFolders(), " "), "")
     stub.addons, loaded, stub.disabledAddOns = addons, wasLoaded, wasDisabled
 end
 Expect("...names them in a popup", popup and popup.key, "SPOKEN_OLD_FOLDERS")
 Expect("...that offers the reload which finishes it", popup and popup.dialog.button1, "Reload Now")
-Expect("...listing them one to a line", string.find(popup.dialog.text, "\n\n• SpokenPlayer\n• VoiceOverRedux\n", 1, true) ~= nil, true)
+Expect("...listing them one to a line", string.find(popup.dialog.text, "\n\n· SpokenPlayer\n· VoiceOverRedux\n", 1, true) ~= nil, true)
 local justify = "CENTER"
 local shown = { text = { SetJustifyH = function(_, value) justify = value end } }
 popup.dialog.OnShow(shown)

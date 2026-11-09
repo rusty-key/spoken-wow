@@ -24,17 +24,17 @@
 import "server-only";
 
 import { resolveContribution } from "@/lib/contributions/accept";
-import { closeness, readable, sameLine } from "@/lib/contributions/compare";
+import { readable } from "@/lib/contributions/compare";
 import type { ContributionStatus, Submission } from "@/lib/contributions/contributions";
 import { acceptAsWording, acceptCorrection, type WordingPick } from "@/lib/contributions/correction";
 import { formatEnvelope, isEnvelopeSource } from "@/lib/contributions/envelope";
 import { storeSubmission } from "@/lib/contributions/intake";
-import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/known";
+import { lineStates, stateOfMoment, type LineState } from "@/lib/contributions/known";
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
 import { contributionByDedup, type Contribution } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
-import { BASE_LANG, type Lang } from "@/lib/lang";
-import { readAs } from "@/lib/teams/store";
+import { query } from "@/lib/db";
+import type { Lang } from "@/lib/lang";
 
 import type { Report } from "./reports";
 import { setStatus } from "./store";
@@ -145,29 +145,20 @@ export async function contributeReport(
 
 /**
  * The report's text against the corpus: known.ts's answer, except that a quest moment's wordings
- * are compared on what they speak -- the English override where one is set, else the line's own
- * text -- in the order and shape known.ts lists them.
+ * are compared on their text rather than what they print. Never on a team's override: a correction
+ * changes the original, which the override sits above.
  */
 async function reportState(submission: Submission): Promise<LineState> {
   const [state] = await lineStates([submission]);
   const { quest, event } = submission.meta;
   if (state.kind === "missing" || submission.source !== "quests" || !quest || !event || !submission.text) return state;
 
-  // As English: the overrides are English's, and so its team's.
-  const rows = await readAs<{ lineId: string; variant: number; text: string }>(
-    BASE_LANG,
-    `select l."lineId", l."variant", coalesce(o."text", l."text") as "text"
-       from "quest_line" l
-       left join "line_override" o on o."lineId" = l."lineId" and l."lang" = $3
-      where l."lang" = $2 and l."isCurrent" and ${wordingsOfMomentSql(`l."questId"`, `l."source"`, "$1")}
-      order by l."lineId" ~ ':w[0-9]+(:[mf])?$', l."lineId", l."variant"`,
-    [`q:${quest}:${event}`, submission.locale, BASE_LANG],
+  const rows = await query<{ lineId: string; variant: number; text: string }>(
+    `select "lineId", "variant", "text"
+       from "quest_line"
+      where "lang" = $2 and "isCurrent" and ${wordingsOfMomentSql(`"questId"`, `"source"`, "$1")}
+      order by "lineId" ~ ':w[0-9]+(:[mf])?$', "lineId", "variant"`,
+    [`q:${quest}:${event}`, submission.locale],
   );
-  const text = submission.text;
-  if (rows.length === 0) return state;
-  const same = rows.find((row) => sameLine(row.text, text));
-  if (same) return { kind: "known", lineId: same.lineId };
-  const wordings = oneLineEach(rows);
-  const scores = wordings.map((line) => closeness(line.text, text));
-  return { kind: "changed", wordings, closest: scores.indexOf(Math.max(...scores)) };
+  return rows.length === 0 ? state : stateOfMoment(rows, submission.text);
 }

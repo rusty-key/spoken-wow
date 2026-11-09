@@ -35,6 +35,8 @@ function toInfo(release: GithubRelease, product: Product): ReleaseInfo | null {
   const version = current ?? (legacy ? versionOfTag(release.tag_name, legacy.tagPrefix) : null)
   if (!version || compareVersions(version, version) === null) return null
   const asset = pickAsset(release, current !== null || !legacy ? product.assetPattern : legacy.assetPattern)
+    // A language's quests kept their tag when they were split, so its old zip can be under it.
+    ?? (legacy?.tagPrefix === product.tagPrefix ? pickAsset(release, legacy.assetPattern) : undefined)
   if (!asset) return null
   const digest = cleanDigest(asset.digest)
   return {
@@ -53,7 +55,7 @@ function toInfo(release: GithubRelease, product: Product): ReleaseInfo | null {
 }
 
 /** Newest first; at equal versions a stable release comes before a pre-release, then the later date. */
-function compareReleases(a: ReleaseInfo, b: ReleaseInfo): number {
+export function compareReleases(a: ReleaseInfo, b: ReleaseInfo): number {
   const v = compareVersions(b.version, a.version) ?? 0
   if (v !== 0) return v
   if (a.prerelease !== b.prerelease) return a.prerelease ? 1 : -1

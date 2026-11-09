@@ -16,6 +16,11 @@
  * and letter case never count: the corpus carries trailing and doubled spaces the client never
  * shows, and a line recapitalised between game versions sounds the same.
  *
+ * frFR writes a class plural as `$cs`, and the client prints the s onto the class: "paladins",
+ * one word, which the addon does not put back as a slot. So `$cs` is one slot whose run must end
+ * in an s. Only `$cs` is read this way: the corpus's other glued forms, `$rs` and `$Ns`, still
+ * split into a slot and a stray "s", and never match.
+ *
  * Node-free, so the corrections tab's client component can split a line the same way.
  */
 
@@ -24,7 +29,7 @@ export type Token = { kind: "word" | "mark" | "slot"; value: string };
 /** The most words a `$N`/`$C`/`$R` slot stands for. */
 const SLOT_WORDS = 3;
 
-const TOKEN = /\$[nNcCrR]|[\p{L}\p{N}\p{M}]+(?:['’\-][\p{L}\p{N}\p{M}]+)*|[^\s\p{L}\p{N}\p{M}]/gu;
+const TOKEN = /\$[cC][sS](?![\p{L}\p{N}\p{M}])|\$[nNcCrR]|[\p{L}\p{N}\p{M}]+(?:['’\-][\p{L}\p{N}\p{M}]+)*|[^\s\p{L}\p{N}\p{M}]/gu;
 
 const GENDER = /\$[gGuU]\s*([^:;]*?)\s*:\s*([^;]*?)\s*;/g;
 
@@ -49,6 +54,11 @@ export function genderForms(text: string): string[] {
   return [text.replace(GENDER, "$1"), text.replace(GENDER, "$2"), text];
 }
 
+/** A `$cs` run ends in an s after the class, or "Les s" would pass for "Les $cs". */
+function endsRun(word: string, slot: Token): boolean {
+  return slot.value !== "$CS" || (word.length > 1 && /s$/i.test(word));
+}
+
 function matches(a: Token[], b: Token[]): boolean {
   const memo = new Map<number, boolean>();
   const go = (i: number, j: number): boolean => {
@@ -68,6 +78,7 @@ function matches(a: Token[], b: Token[]): boolean {
     ] as const) {
       if (result || slotSide.kind !== "slot") continue;
       for (let n = 1; n <= SLOT_WORDS && at + n <= words.length && words[at + n - 1].kind === "word"; n++) {
+        if (!endsRun(words[at + n - 1].value, slotSide)) continue;
         if (step(n)) {
           result = true;
           break;

@@ -2,16 +2,15 @@
  * Accepting a correction: a quest line or book page the corpus has, sent back by a player's client with
  * different text (known.ts's "changed"), taken as what the line now speaks.
  *
- * It is the explorer's text edit done in one click, not resolve's accept: that writes a line
- * that is missing (accept.ts), and this line is not. So it writes what the explorer's editor
- * would -- an English line's spoken rewrite (line_override, keyed by its file), another
- * language's new text version -- and marks the contribution accepted. The printed text the
- * correction was compared on (originalText, localeText) is left as the extract had it, as an
- * editor's fix leaves it: it is what names the file and what the addon matches on. The row
- * stays on the corrections tab, accepted (known.ts's tabOf).
+ * Not resolve's accept: that writes a line that is missing (accept.ts), and this line is not. It
+ * writes a new version of the original text, in any language, and marks the contribution
+ * accepted. A team's override stays above it, flagged as drifted. The printed text the
+ * correction was compared on (originalText, localeText) is left as the extract had it: it is
+ * what names the file and what the addon matches on. The row stays on the corrections tab,
+ * accepted (known.ts's tabOf).
  *
- * Both writes say where the text came from: the activity log names the contribution, and a
- * translation's version carries it in its note. line_override has no column for it.
+ * Both writes say where the text came from: the activity log names the contribution, and the
+ * version carries it in its note.
  *
  * The English text is the template made spoken (tokens.ts), as accept.ts writes a contributed
  * line; another language keeps its $N, $C and $R, as accept does, for player-words.ts
@@ -40,7 +39,7 @@ import { db, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
-import { englishMomentLines, rewriteEnglish } from "@/lib/quests/english-rewrite";
+import { momentLines, writeEnglishOriginal } from "@/lib/quests/moment-rewrite";
 import { OverrideError } from "@/lib/quests/override";
 import { QuestTextConflict, QuestTextMissing, saveQuestText } from "@/lib/quests/text";
 
@@ -220,7 +219,7 @@ async function markAccepted(
 }
 
 /**
- * An English correction, written to every line the moment has (quests/english-rewrite.ts).
+ * An English correction, written to every line the moment has.
  *
  * A template without `$G` for a moment split by player gender is refused: the client resolves
  * `$G` before sending (Contribute.lua's Detemplate does not restore it) and the envelope does
@@ -233,7 +232,7 @@ async function correctEnglish(
   contributionId: number,
   userId: string,
 ): Promise<Extract<CorrectionOutcome, { ok: false }> | null> {
-  const rows = await englishMomentLines(moment, variant);
+  const rows = await momentLines(BASE_LANG, moment, variant);
   if (rows.length === 0) {
     return { ok: false, reason: "not-a-correction", message: `${moment} is not a line the corpus has` };
   }
@@ -246,10 +245,8 @@ async function correctEnglish(
       message: "This line has a side for each player gender, and the correction is one player's words. Edit it in the explorer.",
     };
   }
-  await rewriteEnglish(rows, variant, {
-    text,
+  await writeEnglishOriginal(rows, variant, text, userId, {
     originalText: template,
-    userId,
     contributionId,
     note: correctionNote(contributionId),
   });

@@ -25,7 +25,7 @@ import { readOverrides } from "@/lib/quests/overrides";
 import { queryAs, readAs } from "@/lib/teams/store";
 
 import type { ReportContext } from "./context";
-import { CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
+import { CATEGORIES, CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
 import type { Source } from "@/lib/sections";
 
 // Timestamps are cast to text so a Report is the same shape in Postgres, over JSON and in the
@@ -129,6 +129,19 @@ export async function listReports(
       limit $1`,
     params,
   );
+}
+
+/** Open reports per category in `queues`, as listReports would list them, with no rows to carry. */
+export async function openReportCounts(lang: Lang, queues: readonly Queue[]): Promise<Record<Category, number>> {
+  const rows = await readAs<{ category: Category; count: string }>(
+    lang,
+    `select "category", count(*) as "count" from "report"
+      where "lang" = $1 and "queue" = any($2::text[]) and "status" = 'open' group by "category"`,
+    [lang, queues],
+  );
+  const counts = Object.fromEntries(CATEGORIES.map((category) => [category, 0])) as Record<Category, number>;
+  for (const row of rows) counts[row.category] = Number(row.count);
+  return counts;
 }
 
 export async function reportsForLine(

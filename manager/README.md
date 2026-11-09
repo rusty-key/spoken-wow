@@ -3,9 +3,10 @@
 A small app for Windows, macOS and Linux that installs and updates the Spoken addon and its voice
 packs for World of Warcraft: Forever, Classic Era and Anniversary. It finds your game, shows what
 is installed and what is new, and installs, updates or removes it with one button. It has no
-account and no login. The network traffic is GitHub (the release list, Spoken and the manager's
-own updates) and spoken-packs.rusty.one (the voice packs, updated file by file), plus, only when
-you turn on Sharing, spoken.rusty.one (see [Sharing](#sharing)).
+account and no login. The network traffic is GitHub (the release list, older versions of Spoken,
+a retry when packs.spoken.quest fails, and the manager's own updates) and packs.spoken.quest
+(recent versions of Spoken, and the voice packs, updated file by file), plus, only when you turn
+on Sharing, spoken.quest (see [Sharing](#sharing)).
 
 The plan and the rules the installer follows are in [PLAN.md](PLAN.md).
 
@@ -95,7 +96,7 @@ folder is Sharing's: the manager's random id and a fingerprint of each line alre
 
 Spoken keeps every quest, gossip and book line it had no voice for in
 `WTF/Account/<account>/SavedVariables/SpokenContributions.lua`. You can upload that file at
-spoken.rusty.one/contribute, or let the manager send it: the first time it starts it asks, and
+spoken.quest/contribute, or let the manager send it: the first time it starts it asks, and
 Settings > Sharing changes the answer. It is off until you say yes.
 
 With Sharing on, the manager reads that file of each account of each game (it never writes it)

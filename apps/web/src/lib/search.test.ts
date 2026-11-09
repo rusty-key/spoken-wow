@@ -643,6 +643,61 @@ describe("reported lines", () => {
   });
 });
 
+describe("quest level", () => {
+  const quests = [...new Set(corpus.lines.flatMap((line) => line.questId ?? []))];
+  const [low, high, unknown] = quests;
+  const levels = new Map([[low, 5], [high, 40]]);
+  const context = { overrides: new Map(), levels };
+  const questsIn = (filters: { minLevel?: number; maxLevel?: number }) =>
+    new Set(matchingLines(corpus, store, filters, context).map((line) => line.questId));
+
+  it("includes both bounds, and takes either alone", () => {
+    expect(questsIn({ minLevel: 5, maxLevel: 40 })).toEqual(new Set([low, high]));
+    expect(questsIn({ maxLevel: 5 })).toEqual(new Set([low]));
+    expect(questsIn({ minLevel: 6 })).toEqual(new Set([high]));
+  });
+
+  it("treats a bound of 0 as a bound", () => {
+    expect(questsIn({ maxLevel: 0 })).toEqual(new Set());
+  });
+
+  it("hides gossip and quests with no known level", () => {
+    const found = questsIn({ minLevel: 0 });
+    expect(found.has(unknown)).toBe(false);
+    expect(found.has(null)).toBe(false);
+  });
+
+  it("matches nothing when the levels were never fetched, so a batch cannot widen", () => {
+    expect(matchingLines(corpus, store, { maxLevel: 60 })).toEqual([]);
+  });
+
+  it("filters nothing with no bound", () => {
+    expect(matchingLines(corpus, store, {}, context)).toEqual(matchingLines(corpus, store, {}));
+  });
+});
+
+describe("player gender", () => {
+  const [plain, male, female] = matchingLines(corpus, store, {});
+  const split = {
+    ...corpus,
+    lines: [
+      { ...plain, playerGender: null },
+      { ...male, playerGender: "m" as const },
+      { ...female, playerGender: "f" as const },
+    ],
+  };
+  const heardBy = (playerGender?: "m" | "f") => new Set(matchingLines(split, store, { playerGender }).map((line) => line.lineId));
+
+  it("keeps the chosen side and the lines heard by both", () => {
+    expect(heardBy("m")).toEqual(new Set([plain.lineId, male.lineId]));
+    expect(heardBy("f")).toEqual(new Set([plain.lineId, female.lineId]));
+  });
+
+  it("filters nothing when no side is chosen", () => {
+    expect(heardBy()).toEqual(new Set([plain.lineId, male.lineId, female.lineId]));
+  });
+});
+
 describe("broadcast id status", () => {
   const gossip = corpus.lines.filter((line) => line.source === "gossip");
   const [exact, guessed] = gossip.map((line) => line.lineId).filter((id, i, ids) => ids.indexOf(id) === i);

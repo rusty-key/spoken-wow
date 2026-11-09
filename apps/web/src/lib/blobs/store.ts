@@ -12,6 +12,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { resolveRange, type Range, type RangeRequest } from "@/lib/range";
 import { writeAtomic } from "@/lib/takes/bytes";
@@ -52,6 +53,25 @@ export function blobKey(prefix: BlobPrefix, sha256: string): string {
   return `${prefix}/${sha256}`;
 }
 
+/**
+ * A take whose PUT fails has no hash, and its language cannot release. Sending again is safe: the
+ * key is the bytes' hash and the PUT never overwrites. fetch rejects with a TypeError when no
+ * response came back.
+ */
+async function sendWithRetries(send: () => Promise<Response>): Promise<Response> {
+  for (const delay of [1000, 3000]) {
+    try {
+      const res = await send();
+      if (res.status < 500) return res;
+      await res.body?.cancel();
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+    }
+    await sleep(delay);
+  }
+  return send();
+}
+
 export function r2Blobs(env: {
   accountId: string;
   accessKeyId: string;
@@ -88,7 +108,7 @@ export function r2Blobs(env: {
 
   return {
     async put(key, data, contentType) {
-      const res = await signed(at(key), {
+      const send = () => signed(at(key), {
         method: "PUT",
         body: new Uint8Array(data),
         headers: {
@@ -100,6 +120,7 @@ export function r2Blobs(env: {
           "if-none-match": "*",
         },
       });
+      const res = await sendWithRetries(send);
       if (res.status === 412) return void (await res.body?.cancel());
       // R2 checks a lock rule before the condition, so on a locked prefix an existing key
       // answers 409 rather than 412. A lock only ever holds an object that is already there.

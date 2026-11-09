@@ -11,6 +11,8 @@ export interface JobSpec {
   /** The work. Emits its own progress and `done`; throws to fail. */
   run: (ctx: { jobId: string; signal: AbortSignal; emit: (p: JobProgress) => void }) => Promise<void>
   version?: string
+  /** Called when the job is cancelled while queued, since `run` will then never be called. */
+  onDropped?: () => void
 }
 
 interface Job {
@@ -62,6 +64,7 @@ export class JobManager {
       )
       job.state = 'finished'
       this.jobs.delete(job.id)
+      job.spec.onDropped?.()
       this.publish(job, 'cancelled', 'Cancelled.')
       this.settle()
       return true

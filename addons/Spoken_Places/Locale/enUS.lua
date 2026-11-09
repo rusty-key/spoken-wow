@@ -118,6 +118,7 @@ L.DUNGEONS = "Dungeons and Raids"
 -- The window browses every place; the panel beside the map tells the zone it shows.
 L.COMPENDIUM_PLACES = "Places"
 L.LORE_PANEL_TITLE = "Place Story"
+L.BOSS_LORE_TITLE = "Boss Story"
 L.MAP_PANEL_EXPAND = "Show Place Story"
 L.PANEL_SHOWN = "Show Story Beside Map: on"
 L.PANEL_HIDDEN = "Show Story Beside Map: off"

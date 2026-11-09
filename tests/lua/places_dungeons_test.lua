@@ -80,7 +80,7 @@ Expect("Forever's City of Dalaran is Alterac Mountains' Dalaran, and Ruins of Lo
 Expect("the Sunken Temple is the Temple of Atal'Hakkar's area", dungeons[1435][1].key .. "|" .. dungeons[1435][1].dungeon,
     "temple of atalhakkar|109")
 Expect("Razorfen Downs is listed in The Barrens, its story kept under Thousand Needles",
-    dungeons[1413][2].key .. "|" .. dungeons[1413][2].mapID, "razorfen downs|1441")
+    dungeons[1413][3].key .. "|" .. dungeons[1413][3].mapID, "razorfen downs|1441")
 
 ---------------------------------------------------------------- the list
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
@@ -237,7 +237,7 @@ Click("The Barrens")
 Expect("a zone with several has a Dungeons and Raids line, closed, before its areas", Shown(),
     "Eastern Kingdoms|Westfall|Deadmines|Moonbrook|Kalimdor|The Barrens|Dungeons and Raids|Crossroads|Durotar|Thousand Needles")
 Expect("...a line with no dungeon of its own", RowFor("Dungeons and Raids").row.style .. "|" .. RowFor("Dungeons and Raids").row.nest, "group|1")
-Expect("...counting its dungeons found out of all", RowFor("Dungeons and Raids").count.text, "0/2 • 0%")
+Expect("...counting its dungeons found out of all", RowFor("Dungeons and Raids").count.text, "0/2 · 0%")
 Expect("...a story under Thousand Needles counted in the zone of its entrance",
     RowFor("The Barrens").count.text:match("/(%d+)") .. "|" .. RowFor("Thousand Needles").count.text:match("/(%d+)"), "3|1")
 Click("Dungeons and Raids")
@@ -308,9 +308,9 @@ local filters = stub.OpenDropdown(window.filterMenu)
 found = { ["1413"] = true, ["1413/wailing caverns"] = true, ["1413/crossroads"] = true }
 filters[1].func()
 Click("Dungeons and Raids")
-Expect("Discovered Only leaves out the dungeons not found", Shown(),
-    "Kalimdor|The Barrens|Dungeons and Raids|Wailing Caverns|Crossroads")
-Expect("...the line still counting them, as a zone's card does", RowFor("Dungeons and Raids").count.text, "1/2 • 50%")
+Expect("Unlock Undiscovered Places keeps every dungeon despite Discovered Only", Shown(),
+    "Eastern Kingdoms|Westfall|Deadmines|Moonbrook|Kalimdor|The Barrens|Dungeons and Raids|Razorfen Downs|Wailing Caverns|Crossroads|Durotar|Thousand Needles")
+Expect("...the line still counting them, as a zone's card does", RowFor("Dungeons and Raids").count.text, "1/2 · 50%")
 filters[1].func()
 found = {}
 local hasAudio = Z.HasAudio
@@ -318,7 +318,7 @@ Z.HasAudio = function(_, mapID, key) return mapID == 1441 and key == "razorfen d
 stub.OpenDropdown(window.filterMenu)[2].func()
 Expect("Voiced Only keeps a zone whose dungeon has a recording, and only that", Shown(),
     "Kalimdor|The Barrens|Dungeons and Raids|Razorfen Downs")
-Expect("...counting only it", RowFor("Dungeons and Raids").count.text .. "|" .. RowFor("The Barrens").count.text, "0/1 • 0%|0/1 • 0%")
+Expect("...counting only it", RowFor("Dungeons and Raids").count.text .. "|" .. RowFor("The Barrens").count.text, "0/1 · 0%|0/1 · 0%")
 stub.OpenDropdown(window.filterMenu)[2].func()
 Z.HasAudio = hasAudio
 

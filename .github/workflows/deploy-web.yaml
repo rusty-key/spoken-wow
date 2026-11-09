@@ -30,6 +30,21 @@ on:
       - "addons/Spoken_Places/Data/**"
       # Its version is read into the bundle, so a report page knows what the latest release is.
       - "addons/Spoken/Spoken.toc"
+      # What the Release button runs on the droplet. A pack's version is on its store page, so
+      # a page changed without a deploy would publish the old one.
+      - "scripts/manager/**"
+      - "scripts/lib/**"
+      - "scripts/audio/**"
+      - "publishers/**"
+      - "addons/SpokenPlacesAudio/**"
+      - "addons/SpokenReadablesAudio/**"
+      - "addons/SpokenBossesAudio/**"
+      - "pipelines/quests/cli-main.py"
+      - "pipelines/quests/tts_cli/**"
+      - "pipelines/quests/assets/icon/**"
+      - "pipelines/quests/requirements-release.txt"
+      - "addons/Spoken_Quests/Data/Compendium.lua"
+      - "docs/quests/CHANGELOG.md"
       - "deploy/web/**"
       - ".github/workflows/deploy-web.yaml"
   workflow_dispatch:
@@ -39,17 +54,14 @@ on:
 # a push that modifies it, so a freshly cloned or recreated repo needs one such push before
 # dispatch works.
 
-# Never let two deploys interleave a symlink swap. The group is shared with the two frozen
-# workflows on purpose: while they can still be dispatched against the freeze tag, a hotfix
-# to an old site and a deploy of this one must not swap symlinks at the same moment.
-concurrency:
-  group: deploy-web
-  cancel-in-progress: false
-
+# Two jobs, so an approval on the production environment comes after the proof and before the
+# droplet: GitHub can only pause a whole job. build holds no secrets, and ship runs nothing from
+# the repository, only this file and the bundle.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment: production
+    outputs:
+      stamp: ${{ steps.stamp.outputs.stamp }}
 
     # A throwaway database for the build and the smoke test. The droplet's real one is
     # bound to localhost and unreachable from here, which is the point: CI proves the
@@ -185,6 +197,9 @@ jobs:
           # release directory, so without this a deploy has nothing to apply.
           cp -a apps/web/migrations "$R"/migrations
 
+          deploy/web/assemble-release-tools.sh "$R"/release-tools
+
+          test -f "$R"/release-tools/scripts/manager/release-job.mjs
           test -f "$R"/apps/web/server.js
           test -f "$R"/apps/web/public/icons/places.png   # public/ survived the copy
           test -L "$R"/apps/web/node_modules/next   # symlink survived the copy
@@ -289,7 +304,49 @@ jobs:
           echo "bundle boots and serves"
 
       - name: Set release name
-        run: echo "STAMP=$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+        id: stamp
+        run: echo "stamp=$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # A tar, because upload-artifact drops symlinks and the bundle dies at boot without
+      # node_modules/next. Artifacts of a public repository can be downloaded by anyone, which
+      # the env-file check in "Assemble release" is what makes acceptable.
+      - name: Pack release
+        run: tar -czf release.tar.gz release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          # Long enough to outlast a weekend's wait for approval.
+          retention-days: 7
+
+  ship:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    # Never let two deploys interleave a symlink swap. The group is shared with the two frozen
+    # workflows on purpose: while they can still be dispatched against the freeze tag, a hotfix
+    # to an old site and a deploy of this one must not swap symlinks at the same moment. It sits
+    # on this job so that builds do not queue behind a deploy waiting for approval.
+    concurrency:
+      group: deploy-web
+      cancel-in-progress: false
+    env:
+      STAMP: ${{ needs.build.outputs.stamp }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+
+      # Checked here, before anything touches the droplet.
+      - name: Unpack release
+        run: |
+          tar -xzf release.tar.gz
+          test -L release/apps/web/node_modules/next
+          test -f release/apps/web/server.js
 
       # The key goes to a file rather than into an agent so the workflow controls its exact
       # bytes: a secret pasted through a browser commonly loses its trailing newline or

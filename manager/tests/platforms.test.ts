@@ -251,7 +251,7 @@ describe('the window frame', () => {
 
 function fakeUpdater() {
   const handlers = new Map<string, (arg: never) => void>()
-  const record = { feeds: [] as unknown[], checks: 0, downloads: 0 }
+  const record = { feeds: [] as unknown[], checks: 0, downloads: 0, installs: [] as unknown[][] }
   const emit = (event: string, arg?: unknown): void => handlers.get(event)?.(arg as never)
   const u: UpdaterLike & { downloadUpdate: () => void } = {
     setFeedURL: (o) => {
@@ -266,6 +266,9 @@ function fakeUpdater() {
     },
     downloadUpdate: () => {
       record.downloads++
+    },
+    quitAndInstall: (...args) => {
+      record.installs.push(args)
     },
     async checkForUpdates() {
       record.checks++
@@ -284,7 +287,7 @@ function fakeUpdater() {
 function runUpdater(
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,
-  extra: { error?: Error; packaged?: boolean; appVersion?: string; feed?: string | Error } = {}
+  extra: { error?: Error; packaged?: boolean; appVersion?: string; feed?: string | Error; autoUpdate?: boolean } = {}
 ) {
   const f = fakeUpdater()
   const fetched: string[] = []
@@ -297,7 +300,7 @@ function runUpdater(
   const updater = new ManagerUpdater({
     isPackaged: extra.packaged ?? true,
     appVersion: extra.appVersion ?? '0.1.0',
-    autoUpdateManager: () => true,
+    autoUpdateManager: () => extra.autoUpdate ?? true,
     fetchText: async (url) => {
       fetched.push(url)
       if (extra.feed instanceof Error) throw extra.feed
@@ -444,6 +447,80 @@ describe('manager updates per platform', () => {
     const asked = runUpdater('win32', {}, { error: new Error('offline') })
     await asked.updater.checkNow()
     expect(asked.states.at(-1)).toMatchObject({ state: 'error' })
+  })
+
+  it('a background check finds an update, stays quiet when it fails, and respects the setting and a dev build', async () => {
+    const found = runUpdater('win32', {})
+    await found.updater.checkInBackground()
+    expect(found.states.at(-1)).toEqual({ state: 'ready', version: '0.2.0' })
+
+    const quiet = runUpdater('win32', {}, { error: new Error('offline') })
+    await quiet.updater.checkInBackground()
+    expect(quiet.states).toEqual([{ state: 'idle' }])
+
+    for (const extra of [{ autoUpdate: false }, { packaged: false }]) {
+      const skipped = runUpdater('win32', {}, extra)
+      await skipped.updater.checkInBackground()
+      expect(skipped.record.checks).toBe(0)
+      expect(skipped.states).toEqual([])
+    }
+  })
+
+  it('no check starts while an update is ready, downloading or about to download', async () => {
+    const ready = runUpdater('win32', {})
+    await ready.updater.start()
+    await ready.updater.checkInBackground()
+    await ready.updater.checkNow()
+    expect(ready.record.checks).toBe(1)
+    expect(ready.states.at(-1)).toEqual({ state: 'ready', version: '0.2.0' })
+
+    for (const event of [['update-available', { version: '0.2.0' }], ['download-progress', { percent: 5 }]] as const) {
+      const going = runUpdater('win32', {})
+      going.u.checkForUpdates = async () => {
+        going.record.checks++
+        going.emit(event[0], event[1])
+      }
+      await going.updater.start()
+      await going.updater.checkNow()
+      expect(going.record.checks).toBe(1)
+    }
+  })
+
+  it('a download page does not stop the next check', async () => {
+    const r = runUpdater('linux', {})
+    await r.updater.start()
+    await r.updater.checkNow()
+    expect(r.fetched).toHaveLength(2)
+  })
+
+  it('Restart installs silently and starts the new version, only when an update is ready', async () => {
+    const r = runUpdater('win32', {})
+    r.updater.restart()
+    expect(r.record.installs).toEqual([])
+    await r.updater.start()
+    r.updater.restart()
+    expect(r.record.installs).toEqual([[true, true]])
+
+    const manual = runUpdater('linux', {})
+    await manual.updater.start()
+    manual.updater.restart()
+    expect(manual.record.installs).toEqual([])
+  })
+
+  it('a failed install keeps the update ready and says so, whether it throws or emits an error', async () => {
+    const thrown = runUpdater('win32', {})
+    await thrown.updater.start()
+    thrown.u.quitAndInstall = () => {
+      throw new Error('no installer')
+    }
+    thrown.updater.restart()
+    expect(thrown.states.at(-1)).toMatchObject({ state: 'ready', version: '0.2.0', message: expect.stringContaining('Could not install') })
+
+    const emitted = runUpdater('win32', {})
+    await emitted.updater.start()
+    emitted.u.quitAndInstall = () => emitted.emit('error', new Error('no installer'))
+    emitted.updater.restart()
+    expect(emitted.states.at(-1)).toMatchObject({ state: 'ready', version: '0.2.0', message: expect.stringContaining('Could not install') })
   })
 })
 

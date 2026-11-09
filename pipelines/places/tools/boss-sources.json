@@ -914,6 +914,22 @@
  },
  {
   "map": 230,
+  "key": "ribbly screwspigot",
+  "wikiTitle": "Ribbly Screwspigot",
+  "npcIds": [
+   9543
+  ]
+ },
+ {
+  "map": 230,
+  "key": "plugger spazzring",
+  "wikiTitle": "Plugger Spazzring",
+  "npcIds": [
+   9499
+  ]
+ },
+ {
+  "map": 230,
   "key": "ambassador flamelash",
   "wikiTitle": "Ambassador Flamelash",
   "npcIds": [

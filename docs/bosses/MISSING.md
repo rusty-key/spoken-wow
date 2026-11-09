@@ -30,18 +30,22 @@ target there. What it lacks is its face.
 - Story: written from the wiki's lore, as the others are (`build-boss-stories.mjs`,
   `apply-boss-stories.mjs` into the `boss_line` table, then `make bosses-export`), Classic-era events only.
 
-## No creature and no portrait (28)
+## No creature and no portrait (27)
 
 | Dungeon | Bosses | Why |
 | --- | --- | --- |
-| Blackrock Depths (230) | Ribbly Screwspigot, Plugger Spazzring | The database has both (9543, 9499), each spawned once on the map, but `boss-sources.json` does not yet name them and the creature tools have not been run for them. |
 | Demon Fall Canyon (2784) | Grimroot, Destructor's Wraith, Zilbagob, Pyranis, Diathorus the Seeker, Hellscream's Phantom, Azgaloth | The database has no spawns on the map and none of the wiki's ids. Efficient Games recorded no fight there. The database's Diathorus the Seeker (6072) is the Ashenvale elite. |
 | Scarlet Enclave (2856) | Beatrix, Beastmaster, Solistrasza, Mason, Reborn Council, Lillian Voss, Caldoran | As for Demon Fall Canyon. The database's Beastmasters (26307, 133390) are retail creatures. |
-| Scarlet Enclave (2856) | Balnazzar | The only Balnazzar in the database is Stratholme's (10813), whose model the client lacks. The wiki's id, 240811, is not in the database. |
 | Karazhan Crypts (2875) | Harbinger of Sin, Creeping Malison, Dark Rider, Kharon, Unk'omon, Hans and Greta, The Ugly Goblin, Barian Maryla | As for Demon Fall Canyon. The database's Dark Riders (99871 and up) are retail creatures. Efficient Games has Kaigy and Sairuh Maryla, not Barian. |
 | City of Dalaran (2959) | Mana Elemental | Efficient Games' encounter 3301 names no creature, and no build has one of that name. The database's 14689 has no spawn and wears Dire Maul's Arcane Aberration model. |
 | Ruins of Lordaeron (2999) | Lordaeron Captain | The database's 32414 is a Wrath of the Lich King creature with a model the client lacks. No captain spawned on the map matches; Captain Truman (265701) is there, but not elite. The wiki calls the boss a rare. No creature, dialogue or scripted summon in the repack names it: the boss is on Forever's live server only. The client hides an instance's units from addons, so the target cannot record them. |
 | Ruins of Lordaeron (2999) | Viktor the Vile | In neither the database nor Efficient Games. No ghoul spawned on the map matches, and no dialogue or scripted summon names it: the boss is on Forever's live server only. The client hides an instance's units from addons, so the target cannot record them. |
+
+## No creature but a portrait (1)
+
+| Dungeon | Boss | Why |
+| --- | --- | --- |
+| Scarlet Enclave (2856) | Balnazzar | DBM-Dungeons uses display 10545 for Balnazzar. The encounter has no creature id in Forever's database. |
 
 ## A creature but no portrait (1)
 
@@ -67,7 +71,7 @@ gave lore for them.
 | --- | --- | --- |
 | Deadmines (36) | Miner Johnson | |
 | Razorfen Downs (129) | Ragglesnout | |
-| Blackrock Depths (230) | Ribbly Screwspigot, Plugger Spazzring | Not yet looked for. |
+| Blackrock Depths (230) | Ribbly Screwspigot | Not yet looked for. |
 | Stratholme (329) | Skul, Stonespine | |
 | Ahn'Qiraj Temple (531) | Viscidus | |
 | Karazhan Crypts (2875) | Creeping Malison, Hans and Greta, The Ugly Goblin, Barian Maryla | The wiki has event pages (Opera of Malediction, The Failed Apprentice), not the bosses'. |

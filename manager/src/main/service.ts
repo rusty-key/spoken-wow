@@ -9,7 +9,9 @@ import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
 import { COMMUNITY_PREFIX, communityProduct, communityRelease, fetchCommunity, isCommunityProductId, loadCommunity, saveCommunity } from './community'
 import { PlainError } from './errors'
 import { checkDownloadsPath } from './guard'
-import { cleanLeftovers, clearDownloads } from './cleanup'
+import { cleanContributorTmp, cleanLeftovers, clearDownloads } from './cleanup'
+import { ContributorService, NO_SECRET_BOX, withUserAgent } from './contributor'
+import type { SecretBox } from './contributor-store'
 import { addGame, notSupportedMessage, removeGame, scanGames } from './games'
 import { fetchReleases } from './github'
 import { installProduct, recoverInterrupted, uninstallProduct, type FsOps, type JobContext } from './install'
@@ -47,6 +49,12 @@ export interface ServiceOptions {
   packsTimeoutMs?: number
   /** Replaces the site's contributions address (tests, and SPOKEN_SHARE_URL in a dev build). */
   shareUrl?: string
+  /** Replaces the site's address (tests, and SPOKEN_SITE_URL in a dev build). */
+  siteUrl?: string
+  /** Seals the contributor's tokens and cookie; without one, none can be saved. */
+  secretBox?: SecretBox
+  /** The fetch for the site and the stores, when it must differ from `fetchImpl`. */
+  contributorFetch?: typeof fetch
 }
 
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
@@ -62,7 +70,11 @@ export class ManagerService {
   settings: Settings
   catalog: Catalog
   readonly jobs: JobManager
+  readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
+  private refreshingChannel: Promise<void> | null = null
+  /** When the server last gave a verified index; 0 until then. */
+  private channelFetchedAt = 0
   private refreshingCommunity: Promise<CommunityCatalog> | null = null
   community: CommunityCatalog
   /** The channel's index: the last verified one, until a refresh brings a newer one. */
@@ -83,6 +95,17 @@ export class ManagerService {
     this.community = loadCommunity(opts.dataPath)
     this.channel = loadCachedIndex(opts.dataPath, opts.packsPublicKey)
     this.jobs = new JobManager((p: JobProgress) => opts.send(CHANNELS.jobProgress, p))
+    this.contributor = new ContributorService({
+      dataPath: opts.dataPath,
+      box: opts.secretBox ?? NO_SECRET_BOX,
+      fetchImpl: withUserAgent(opts.contributorFetch ?? opts.fetchImpl ?? fetch, opts.appVersion),
+      ...(opts.siteUrl ? { siteUrl: opts.siteUrl } : {}),
+      jobs: this.jobs,
+      game: (gameId) => this.requireGame(gameId),
+      channel: () => this.channel,
+      refreshChannel: (options) => this.refreshChannel(options),
+      changed: (view) => opts.send(CHANNELS.contributorChanged, view)
+    })
     this.ledger = loadLedger(opts.dataPath)
     this.sharingStatus = { sending: false, ...(this.ledger.lastSent ? { lastSent: this.ledger.lastSent } : {}) }
   }
@@ -105,6 +128,7 @@ export class ManagerService {
           if (failed.length > 0) log(`Could not restore ${failed.join(', ')} on ${game.label}; the backup is kept.`)
         }
         await cleanLeftovers(this.games, this.downloadsPath())
+        await cleanContributorTmp(this.opts.dataPath)
       })
       .then(
         () => undefined,
@@ -117,7 +141,7 @@ export class ManagerService {
     return {
       games: this.games,
       settings: this.settings,
-      catalog: this.catalog,
+      catalog: this.effectiveCatalog(),
       community: this.community,
       products: PRODUCTS,
       appVersion: this.opts.appVersion,
@@ -166,7 +190,7 @@ export class ManagerService {
     if (this.refreshing) return this.refreshing
     if (!force && this.catalog.fetchedAt && !this.catalog.offline) {
       const age = Date.now() - Date.parse(this.catalog.fetchedAt)
-      if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.catalog)
+      if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.effectiveCatalog())
     }
     this.refreshing = this.doRefresh().finally(() => {
       this.refreshing = null
@@ -185,6 +209,7 @@ export class ManagerService {
       fetchIndex(this.opts.dataPath, this.channelOptions())
     ])
     if (ch.index) this.channel = ch.index
+    if (!ch.offline) this.channelFetchedAt = Date.now()
     // When the request failed and nothing was cached, keep what the catalog already held.
     const keepOld = res.offline && res.releases.length === 0
     const next = keepOld
@@ -200,9 +225,18 @@ export class ManagerService {
     } catch (err) {
       log('Could not save the catalog:', err)
     }
-    this.opts.send(CHANNELS.catalogChanged, next)
-    // Warm the manifest cache of installed channel packs so the Update label can be computed offline. The window has
-    // the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
+    // The file keeps GitHub's list alone; the window is offered what can be installed, channel packs too.
+    const offered = this.effectiveCatalog()
+    this.opts.send(CHANNELS.catalogChanged, offered)
+    await this.warmManifests(offered)
+    return offered
+  }
+
+  /**
+   * Warms the manifest cache of installed channel packs so the Update label can be computed offline. The window has
+   * the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
+   */
+  private async warmManifests(offered: Catalog): Promise<void> {
     const wanted = new Map<string, ChannelPack>()
     for (const game of this.games) {
       for (const p of PRODUCTS) {
@@ -226,9 +260,36 @@ export class ManagerService {
           )
         )
       )
-      if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, next)
+      if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, offered)
     }
-    return next
+  }
+
+  /**
+   * Fetches the channel's index alone, without GitHub's list. With `maxAgeMs`, an index that recent will do, and callers
+   * at once share one request. Without it a new request is always made, which `signal` can cancel. Rejects when the
+   * server gave no verified index, and the last verified one stays.
+   */
+  refreshChannel(options: { maxAgeMs?: number; signal?: AbortSignal } = {}): Promise<void> {
+    if (options.maxAgeMs === undefined) return this.fetchChannel(options.signal)
+    if (this.refreshingChannel) return this.refreshingChannel
+    if (Date.now() - this.channelFetchedAt < options.maxAgeMs) return Promise.resolve()
+    this.refreshingChannel = this.fetchChannel().finally(() => {
+      this.refreshingChannel = null
+    })
+    return this.refreshingChannel
+  }
+
+  private async fetchChannel(signal?: AbortSignal): Promise<void> {
+    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal))
+    if (ch.offline || !ch.index) throw new PlainError('The voice pack channel could not be read.')
+    const changed = ch.index.generatedAt !== this.channel?.generatedAt
+    this.channel = ch.index
+    this.channelFetchedAt = Date.now()
+    if (!changed) return
+    // A row saying "update first" needs the update it points at to be on offer.
+    const offered = this.effectiveCatalog()
+    this.opts.send(CHANNELS.catalogChanged, offered)
+    void this.warmManifests(offered).catch((err) => log('Manifests of the channel:', err))
   }
 
   // ---------------------------------------------------------------- community

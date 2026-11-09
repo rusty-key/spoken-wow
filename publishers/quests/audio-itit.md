@@ -6,7 +6,7 @@ pack: all
 version: 0.0.2
 slug: spoken-quests-audio-itit
 name: Spoken Quests Audio: Italian
-summary: Quest and gossip lines for Spoken, voiced in Italian from the QuestIT community translation. One pack, both factions. Partial. Needs Spoken.
+summary: Quest and gossip lines for Spoken, voiced in Italian from the QuestIT community translation. All four packs in one download. Partial. Needs Spoken.
 categories:
   - Audio & Video
   - Roleplay
@@ -19,15 +19,15 @@ Voiced quest dialogue for **[Spoken](https://www.curseforge.com/wow/addons/spoke
 
 **Experimental.** This is a first cut, numbered 0.x until it has been listened through: expect lines to be re-recorded, and report the ones that sound wrong.
 
-The Italian text is the **QuestIT** community translation, which keeps growing; the Italian community looks after these recordings from here on. One pack holds everything: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. It installs beside the English packs rather than replacing them.
+The Italian text is the **QuestIT** community translation, which keeps growing; the Italian community looks after these recordings from here on. One download holds all four packs, each in its own folder: Alliance quests, Horde quests, the quests both sides share, and NPC gossip. They install beside the English packs rather than replacing them.
 
 **It is not complete.** It voices the quests QuestIT has translated so far. Set **If a Voice Is Missing** to English to hear the rest in English rather than silence.
 
 ## Installing
 
-Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped (`SpokenQuestsAudio_itIT`) — Spoken finds packs by folder name.
+Install **Spoken** first; these packs are inert without it. Extract into `Interface/AddOns` and leave the folder names as shipped (`SpokenQuestsAudioAlliance_itIT`, `SpokenQuestsAudioHorde_itIT`, `SpokenQuestsAudioShared_itIT`, `SpokenQuestsAudioGossip_itIT`) — Spoken finds packs by folder name.
 
-No game client runs in Italian, so Spoken Quests never picks this pack on its own: choose **Italian** under **Voice Language** on Spoken's settings page. **If a Voice Is Missing** decides what plays for a line this pack does not hold.
+No game client runs in Italian, so Spoken Quests never picks this pack on its own: choose **Italian** under **Voice Language** on Spoken's settings page. **If a Voice Is Missing** decides what plays for a line these packs do not hold.
 
 ## Compatibility
 

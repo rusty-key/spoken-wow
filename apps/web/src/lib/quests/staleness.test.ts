@@ -83,7 +83,7 @@ afterEach(async () => {
       deposed,
     ]);
   }
-  await clearOverride(file, null);
+  await clearOverride("enUS", file, null);
 });
 
 afterAll(async () => {
@@ -98,13 +98,13 @@ describe("staleFiles", () => {
 
   it("catches a take made before the text was rewritten", async () => {
     await liveTake(await currentHash());
-    await writeOverride(file, LINE, "Something else entirely.", null);
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
 
     expect(await staleFiles([file])).toEqual(new Set([file]));
   });
 
   it("clears once a take is made from the new text", async () => {
-    await writeOverride(file, LINE, "Something else entirely.", null);
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
     await liveTake(spokenHash(applyPronunciation("Something else entirely.", fileDefaults().rules)));
 
     expect(await staleFiles([file])).toEqual(new Set());
@@ -121,8 +121,17 @@ describe("staleFiles", () => {
     await liveTake(await currentHash("fish"), "fish");
     expect(await staleFiles([file])).toEqual(new Set());
 
-    await writeOverride(file, LINE, "Something else entirely.", null);
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
     expect(await staleFiles([file])).toEqual(new Set([file]));
+  });
+
+  it("judges by the index a caller hands it", async () => {
+    await liveTake(await currentHash());
+    const line = (await fileIndex()).get(file)!;
+
+    const changed = new Map([[file, { ...line, text: "Something else entirely." }]]);
+
+    expect(await staleFiles([file], "enUS", undefined, changed)).toEqual(new Set([file]));
   });
 
   it("says nothing about a file with no take at all", async () => {

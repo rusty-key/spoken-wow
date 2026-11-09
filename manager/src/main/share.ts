@@ -11,20 +11,18 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { envelopesFromSavedVariables, MAX_ENVELOPES } from '@site-contributions/saved-variables'
+import { envelopesFromSavedVariables } from '@site-contributions/saved-variables'
+import { chunksOf } from '@site-contributions/upload'
 import type { GameInstall } from '../shared/types'
 import { findEntrySync, isLinked } from './guard'
 import type { LocalFile } from './packs-plan'
 import { sha256Text } from './packs-remote'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
-export const SHARE_URL = 'https://spoken.rusty.one/api/contributions/batch'
+export const SHARE_URL = 'https://spoken.quest/api/contributions/batch'
 
 /** Hashes kept; the oldest go first. Far more than one file holds (MAX_ENVELOPES). */
 export const LEDGER_CAP = 20000
-
-/** Under the site's 16 MB request limit, with room to spare. */
-const CHUNK_BYTES = 8 * 1024 * 1024
 
 /** The site may take five minutes for a full file (nginx's proxy_read_timeout on the route). */
 const POST_TIMEOUT_MS = 310 * 1000
@@ -119,25 +117,6 @@ export type SendResult =
   | { outcome: 'nothing' }
   | { outcome: 'rate-limited'; count: number }
   | { outcome: 'failed'; count: number; error: string }
-
-/** Splits envelopes into requests of at most MAX_ENVELOPES and CHUNK_BYTES. */
-export function chunksOf(envelopes: string[], maxCount = MAX_ENVELOPES, maxBytes = CHUNK_BYTES): string[][] {
-  const out: string[][] = []
-  let current: string[] = []
-  let bytes = 0
-  for (const e of envelopes) {
-    const size = Buffer.byteLength(e, 'utf8') + 4
-    if (current.length > 0 && (current.length >= maxCount || bytes + size > maxBytes)) {
-      out.push(current)
-      current = []
-      bytes = 0
-    }
-    current.push(e)
-    bytes += size
-  }
-  if (current.length > 0) out.push(current)
-  return out
-}
 
 function remember(ledger: ShareLedger, hashes: Iterable<string>, at: string): void {
   for (const h of hashes) {

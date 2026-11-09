@@ -2,12 +2,12 @@
 // nothing here guesses the result of an install before the job says so.
 import { createContext, createElement, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react'
 import type { AddGameResult, UpdaterState } from '@shared/api'
-import type { Catalog, CommunityCatalog, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot } from '@shared/types'
+import type { Catalog, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
 import { api, errorText } from './api'
 import type { Platform } from './strings'
 
-export type Page = 'home' | 'spoken' | 'voices' | 'community' | 'settings'
+export type Page = 'home' | 'spoken' | 'voices' | 'community' | 'release' | 'settings'
 export type SpokenTab = 'modules' | 'changelog'
 
 export interface State {
@@ -31,6 +31,9 @@ export interface State {
   page: Page
   gameId: string
   spokenTab: SpokenTab
+  /** Null until the first answer; the top bar and Settings both read it, so a save shows in both at once. */
+  contributor: ContributorView | null
+  contributorError: string
 }
 
 type Action =
@@ -47,6 +50,8 @@ type Action =
   | { type: 'sharing'; status: SharingStatus }
   | { type: 'refreshing'; on: boolean }
   | { type: 'nav'; page: Page; gameId?: string; tab?: SpokenTab }
+  | { type: 'contributor'; view: ContributorView }
+  | { type: 'contributorError'; message: string }
 
 export const jobKey = (gameId: string, productId: string): string => `${gameId}|${productId}`
 
@@ -70,7 +75,9 @@ const initial: State = {
   refreshing: false,
   page: 'home',
   gameId: '',
-  spokenTab: 'modules'
+  spokenTab: 'modules',
+  contributor: null,
+  contributorError: ''
 }
 
 function reducer(s: State, a: Action): State {
@@ -130,10 +137,14 @@ function reducer(s: State, a: Action): State {
       return { ...s, refreshing: a.on }
     case 'nav':
       return { ...s, page: a.page, gameId: a.gameId ?? s.gameId, spokenTab: a.tab ?? s.spokenTab }
+    case 'contributor':
+      return { ...s, contributor: a.view, contributorError: '' }
+    case 'contributorError':
+      return { ...s, contributorError: a.message }
   }
 }
 
-const PAGES: Page[] = ['home', 'spoken', 'voices', 'community', 'settings']
+const PAGES: Page[] = ['home', 'spoken', 'voices', 'community', 'release', 'settings']
 
 function parseHash(): { page: Page; gameId?: string; tab?: SpokenTab } {
   const [, page, gameId, tab] = location.hash.split('/')
@@ -147,7 +158,7 @@ function parseHash(): { page: Page; gameId?: string; tab?: SpokenTab } {
 
 function formatHash(page: Page, gameId: string, tab: SpokenTab): string {
   if (page === 'spoken') return `#/spoken/${encodeURIComponent(gameId)}${tab === 'changelog' ? '/changelog' : ''}`
-  return page === 'voices' || page === 'community' ? `#/${page}/${encodeURIComponent(gameId)}` : `#/${page}`
+  return page === 'voices' || page === 'community' || page === 'release' ? `#/${page}/${encodeURIComponent(gameId)}` : `#/${page}`
 }
 
 export interface Actions {
@@ -158,6 +169,7 @@ export interface Actions {
   /** Puts the installed version back, over what is there. */
   repair(gameId: string, productId: string): Promise<void>
   checkManagerUpdate(): Promise<void>
+  restartManager(): void
   cancel(jobId: string): void
   dismissJob(key: string): void
   refresh(): Promise<void>
@@ -168,6 +180,8 @@ export interface Actions {
   setSettings(patch: Partial<Settings>): Promise<void>
   /** Sends the collected lines now; the result comes through `state.sharing`. */
   shareNow(): Promise<void>
+  applyContributor(view: ContributorView): void
+  refreshContributor(): Promise<void>
 }
 
 function localError(gameId: string, productId: string, action: JobProgress['action'], message: string): JobProgress {
@@ -216,6 +230,7 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
         dispatch({ type: 'updater', state: { state: 'error', message: errorText(e) } })
       }
     },
+    restartManager: () => void api().restartManager(),
     async uninstall(gameId, productId) {
       dispatch({ type: 'dismiss', key: jobKey(gameId, productId) })
       try {
@@ -228,6 +243,10 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
     dismissJob: (key) => dispatch({ type: 'dismiss', key }),
     async refresh() {
       dispatch({ type: 'refreshing', on: true })
+      // Not awaited: its result comes through onUpdater, and a stalled feed must not hold back the catalog.
+      void api()
+        .checkManagerUpdate(true)
+        .catch(() => undefined)
       try {
         const [catalog] = await Promise.all([
           api().refreshCatalog(true),
@@ -280,6 +299,14 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
       } catch (e) {
         dispatch({ type: 'sharing', status: { ...get().sharing, sending: false, error: errorText(e) } })
       }
+    },
+    applyContributor: (view) => dispatch({ type: 'contributor', view }),
+    async refreshContributor() {
+      try {
+        dispatch({ type: 'contributor', view: await api().contributorView() })
+      } catch (e) {
+        dispatch({ type: 'contributorError', message: errorText(e) })
+      }
     }
   }
 }
@@ -318,6 +345,7 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
         const usable = snap.games.filter((g) => isSupportedFlavor(g.flavor))
         const gameId = [route.gameId, snap.settings.lastGameId].find((id) => usable.some((g) => g.id === id)) ?? usable[0]?.id ?? snap.games[0]?.id ?? ''
         dispatch({ type: 'init', snap, statuses: Object.fromEntries(entries), page: route.page, gameId, tab: route.tab })
+        void actions.refreshContributor()
       } catch (e) {
         if (alive) dispatch({ type: 'fatal', message: errorText(e) })
       }
@@ -338,7 +366,8 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
       }),
       a.onCommunityChanged((community) => dispatch({ type: 'community', community })),
       a.onUpdater((u) => dispatch({ type: 'updater', state: u })),
-      a.onSharing((status) => dispatch({ type: 'sharing', status }))
+      a.onSharing((status) => dispatch({ type: 'sharing', status })),
+      a.onContributorChanged((view) => dispatch({ type: 'contributor', view }))
     ]
     const onHash = (): void => {
       const route = parseHash()
@@ -350,7 +379,7 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
       offs.forEach((off) => off())
       window.removeEventListener('hashchange', onHash)
     }
-  }, [])
+  }, [actions])
 
   // Keep the address in step with the page, so a reload comes back to it.
   useEffect(() => {

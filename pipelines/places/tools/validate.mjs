@@ -25,7 +25,8 @@ const DATA = join(ROOT, "addons/Spoken_Places/Data");
 // lower-case word is legitimate vanilla lore ("the black dragonflight").
 const FORBIDDEN = [
   /\bcataclysm\b/i,
-  /\bDeathwing\b/,
+  // Onyxia's parentage is Classic lore (Onyxia's Lair, Wyrmbog); Deathwing's return is not.
+  /(?<!daughter of |Tochter von )\bDeathwing\b/,
   /\bPandaria\b/,
   /\bShadowlands\b/,
   /\bGarrosh\b/,
@@ -430,7 +431,7 @@ for (const lang of languages) {
 //------------------------------------------------------------------------------
 // Report URL slugs
 //
-// SpokenPlaces:ReportURL builds spoken.rusty.one/{lang}/places/r/{mapID}/{slug} in Lua, and the site
+// SpokenPlaces:ReportURL builds spoken.quest/{lang}/places/r/{mapID}/{slug} in Lua, and the site
 // resolves that path back to a line by looking it up among the file paths
 // naming.mjs assigns. That only works while every slug is derivable from the key
 // alone: assignFiles has a hash fallback for collisions, and the addon has no way

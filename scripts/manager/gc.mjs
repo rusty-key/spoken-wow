@@ -44,6 +44,7 @@ export async function gc({ store, signingKey, now = new Date(), dryRun = false, 
     const o = await store.get(key);
     for (const f of openJson(o.body.toString("utf8"), publicKey).value.files) referenced.add(f.sha256);
   }
+  for (const { sha256 } of Object.values(index.addons ?? {}).flat()) referenced.add(sha256);
   const blobs = (await store.list("blobs/"))
     .filter(({ key, lastModified }) => !referenced.has(key.slice("blobs/".length)) && now - lastModified > BLOB_GRACE)
     .map(({ key }) => key);

@@ -384,7 +384,7 @@ if contribute then
     local box = Spoken.ContributeBox
     Expect("clicking it opens the contribute box", box and box.frame:IsShown(), true)
     local link = box and box.editBox:GetText() or ""
-    Expect("...holding a link to the contribute page", link:match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
+    Expect("...holding a link to the contribute page", link:match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
     local envelope = VO.Contribute:CaptureFromLog(96130, "Chakuyak")
     Expect("the log's envelope carries the quest", envelope:match("\nquest=96130\n") ~= nil, true)
     Expect("...as its accept moment", envelope:match("\nevent=accept\n") ~= nil, true)

@@ -68,3 +68,18 @@ export async function listUsers({
     total,
   };
 }
+
+/**
+ * Display names for ids, for lists a language admin reads: their teammates' takes and runs, but
+ * also a site admin's or a former member's. Names only, as the activity log shows them; an
+ * address is not theirs to learn, so somebody without a name is absent from the map.
+ */
+export async function namesOf(ids: readonly (string | null)[]): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids.filter((id): id is string => id !== null))];
+  if (wanted.length === 0) return new Map();
+  const rows = await query<{ id: string; name: string }>(
+    `select "id", "name" from "user" where "id" = any($1::text[]) and coalesce("name", '') <> ''`,
+    [wanted],
+  );
+  return new Map(rows.map((row) => [row.id, row.name]));
+}

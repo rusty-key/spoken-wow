@@ -26,6 +26,20 @@ test("r2Store names every missing variable", () => {
   assert.throws(() => r2Store({ R2_BUCKET: "b" }), /R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY/);
 });
 
+test("r2Store survives a dropped connection", async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    if (++calls === 1) throw new TypeError("fetch failed");
+    return new Response(null, { status: 200, headers: { etag: '"abc"' } });
+  });
+  const store = r2Store(
+    { R2_ACCOUNT_ID: "a", R2_ACCESS_KEY_ID: "k", R2_SECRET_ACCESS_KEY: "s", R2_BUCKET: "b" },
+    { wait: async () => {} },
+  );
+  assert.deepEqual(await store.head("blobs/1"), { etag: '"abc"' });
+  assert.equal(calls, 2);
+});
+
 test("strongEtag drops the weak prefix R2 puts on compressed JSON", () => {
   assert.equal(strongEtag('W/"abc"'), '"abc"');
   assert.equal(strongEtag('"abc"'), '"abc"');

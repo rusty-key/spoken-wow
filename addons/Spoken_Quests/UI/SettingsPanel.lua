@@ -82,7 +82,6 @@ function SettingsPanel:Setup()
     local function HasObjectiveTracker()
         return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
             or QuestWatch_Update ~= nil
-            or (_G.QuestieLoader and _G.QuestieLoader.ImportModule ~= nil)
     end
     layout:Section(L.OPT_SECTION_TRACKER)
     local questLogPlay = layout:Checkbox(L.OPT_TRACKER_QUEST_LOG, nil,
@@ -112,6 +111,7 @@ function SettingsPanel:Setup()
     -- a link, so the button hands over one to copy.
     layout:Section(W.PART_VOICE)
     local ALL = "SpokenQuestsAudioAll"
+    local SIDE_LABELS = { alliance = "OPT_PACK_ALLIANCE", horde = "OPT_PACK_HORDE", shared = "OPT_PACK_SHARED" }
     local function Present(name)
         for _, module in DataModules:GetPresentModules() do
             if module.AddonName == name then return module end
@@ -152,10 +152,15 @@ function SettingsPanel:Setup()
         end, W.MODULE_DOWNLOAD, function() ReportButton:ShowAddress(module.URL) end)
     end
     for _, locale in ipairs(Language.LOCALES) do
-        local folder, url = Spoken:VoicePack("quests", locale.code)
-        if folder then
-            local code = locale.code
-            layout:ShowWhen(PackRow({ AddonName = folder, URL = url }, LanguageName(code)),
+        local code = locale.code
+        for _, pack in ipairs(Spoken:QuestsVoicePacks(code) or {}) do
+            local folder = pack.folder
+            local side = pack.side == "gossip" and L.OPT_PACK_GOSSIP
+                or string.match(L[SIDE_LABELS[pack.side]], "%((.*)%)$")
+            -- "Español (América Latina) (Alianza)" does not fit a row, so the region is its code.
+            local name, regions = string.gsub(LanguageName(code), "%s*%b()", "")
+            if regions > 0 then name = name .. " " .. string.sub(code, 3) end
+            layout:ShowWhen(PackRow({ AddonName = folder, URL = pack.url }, format("%s (%s)", name, side)),
                 function() return Wanted(code, folder) end)
         end
     end

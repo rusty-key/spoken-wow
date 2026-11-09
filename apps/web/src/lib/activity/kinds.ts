@@ -14,6 +14,24 @@
  */
 import type { Capability } from "@/lib/permissions";
 
+export type ApiAudit = { tokenId: string; batchId?: string };
+
+/**
+ * `apiBatchId` is not `batchId`, which already means a voice queue batch in this log. `previous`
+ * is the version the edit replaced, because the version number below it may not be: a restore
+ * moves the live version without writing a row.
+ */
+type ApiAuditDetail = { previous?: number | null; apiTokenId?: string; apiBatchId?: string };
+
+export function auditDetail(audit: ApiAudit | undefined, previous: number | null): ApiAuditDetail {
+  if (!audit) return {};
+  return {
+    previous,
+    apiTokenId: audit.tokenId,
+    ...(audit.batchId ? { apiBatchId: audit.batchId } : {}),
+  };
+}
+
 export type ActivityDetail = {
   // Audio.
   "take.generated": {
@@ -25,6 +43,8 @@ export type ActivityDetail = {
     batchId?: string;
   };
   "take.restored": { version: number; from?: number | null };
+  /** The site could not make the Ogg a quests pack ships for this take; `error` says why. */
+  "take.encode_failed": { version: number; error: string };
   /** `groupId` when the take was one of several cleared in one click; the page folds it there. */
   "take.acked": { groupId?: string };
   "marks.cleared": { groupId: string; count: number };
@@ -56,9 +76,13 @@ export type ActivityDetail = {
     replaces?: string[];
     /** The contribution whose text this is, for a correction accepted from the game. */
     contribution?: number;
-  };
+  } & ApiAuditDetail;
   "text.restored": { version: number; from?: number | null };
-  "name.edited": { version: number; name?: string; note?: string | null };
+  /** An undone first translation: the line has no current version in the language any more. */
+  "text.retired": { version: number };
+  "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
+  "name.restored": { version: number; from?: number | null };
+  "name.retired": { version: number };
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
@@ -125,6 +149,10 @@ export type ActivityDetail = {
   /** Between a language's text maintainers and its team. */
   "report.passed": { to: "text" | "audio" };
 
+  // Releases.
+  "release.started": { section: string };
+  "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
+
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every
   // language's, so a global admin's alone to read: see `global` in store.ts.
   /** `role` as set-role received it: one role, or several joined with ", ". */
@@ -189,6 +217,7 @@ const CATEGORY_OF: Record<string, Category> = {
   grant: "admin",
   language: "admin",
   team: "admin",
+  release: "admin",
   contribution: "admin",
   report: "admin",
   user: "admin",

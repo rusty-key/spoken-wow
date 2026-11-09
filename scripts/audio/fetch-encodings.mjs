@@ -12,12 +12,10 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { archiveOf } from "../lib/archives.mjs";
+import { archiveOf, ENCODING_PROFILE as PROFILE } from "../lib/archives.mjs";
 import { archiveBase, downloadVerified, eachParallel } from "../lib/download.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-// Must match package-audio.sh's default profile and cache directory naming.
-const PROFILE = "ogg-q0-44k";
 
 export function cacheDir(lang, root = process.env.CACHE_ROOT ?? join(ROOT, "pipelines/quests/audio-transcoded")) {
   return join(root, lang === "enUS" ? PROFILE : `${lang}-${PROFILE}`);

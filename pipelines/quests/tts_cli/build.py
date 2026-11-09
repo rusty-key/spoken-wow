@@ -22,7 +22,8 @@ from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossi
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import SUBFOLDERS, audio_extension, stored_files, word_times
+from tts_cli.quest_text import lua_string
+from tts_cli.store import SUBFOLDERS, audio_extension, durations, stored_files, word_times
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -437,9 +438,14 @@ def write_compendium_text(path: str, lang: str, data: dict) -> None:
         f.write("if not VoiceOver.Language or "
                 f'VoiceOver.Language:GetClientLanguage() ~= "{lang}" then return end\n')
         f.write("SpokenQuestsLocalizedText = SpokenQuestsLocalizedText or {}\n")
-        f.write(f"SpokenQuestsLocalizedText[{lua.encode(lang)}] = ")
-        f.write(lua.encode(data))
-        f.write("\n")
+        f.write(f'SpokenQuestsLocalizedText["{lang}"] = {{\n')
+        # Not lua.encode: slpp leaves backslashes as they are, and one in a quest's text makes
+        # the whole file fail to load.
+        for quest_id in sorted(data):
+            fields = ", ".join(f"{key} = {lua_string(value)}"
+                               for key, value in data[quest_id].items())
+            f.write(f"\t[{quest_id}] = {{ {fields} }},\n")
+        f.write("}\n")
 
 
 def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
@@ -484,8 +490,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     are written either way: they are what matches on an English client.
 
     `compendium_text` is the corpus's localized quest title and wording snapshot. It is
-    written only into the language pack's all slice, and its file returns unless the client
-    has that language selected.
+    written only into the language pack that holds its gossip, and its file returns unless the
+    client runs in that language.
     """
     if locale_text is not None and (not language or language == "enUS"):
         raise ValueError("locale text belongs to a language pack; pass its language")
@@ -542,8 +548,9 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         written.append(f"{language}\\{filename}")
         locale_rows[f"{language}/compendium_localized_quest_text"] = len(compendium_text)
 
-    # Durations come from the copied files, so the table can never disagree with them.
-    write_sound_length_table_lua(module_name, sounds_dir, generated_dir)
+    # Durations come from the copied files, so the table can never disagree with them; a store of
+    # pointers has none to read, and lists what take_encoding recorded when the Ogg was made.
+    write_sound_length_table_lua(module_name, sounds_dir, generated_dir, durations(store_dir))
     written.append("sound_length_table.lua")
 
     # Keyed like the length table, and only for audio this pack carries: the other packs'

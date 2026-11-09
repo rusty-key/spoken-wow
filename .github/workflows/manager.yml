@@ -247,6 +247,13 @@ jobs:
           case "${GITHUB_REF_NAME}" in
             *-*) echo "Pre-release tag: manager-latest is left alone."; exit 0 ;;
           esac
+          # The site's download buttons link to these names, so a release cannot leave them on a
+          # version this release has just deleted. A renamed installer fails here, before the upload.
+          version="${GITHUB_REF_NAME#manager/v}"
+          cp "dist/Spoken-Manager-Setup-$version.exe" dist/Spoken-Manager-Setup.exe
+          cp "dist/Spoken-Manager-$version-mac-arm64.dmg" dist/Spoken-Manager-mac-arm64.dmg
+          cp "dist/Spoken-Manager-$version-mac-x64.dmg" dist/Spoken-Manager-mac-x64.dmg
+          cp "dist/Spoken-Manager-$version-linux.AppImage" dist/Spoken-Manager-linux.AppImage
           if gh release view manager-latest >/dev/null 2>&1; then
             # Upload first, then drop what the new version no longer ships, so a failed upload
             # leaves the old feed working and a re-run picks up from there.

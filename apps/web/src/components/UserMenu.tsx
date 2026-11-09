@@ -2,8 +2,9 @@
 
 import Link from "@/components/LocaleLink";
 import { useGrants } from "@/components/GrantsProvider";
+import { useLang } from "@/components/LangProvider";
 import { useCan } from "@/components/useCan";
-import { Menu } from "lucide-react";
+import { Menu, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -15,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { signOut, useSession } from "@/lib/auth-client";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { triages } from "@/lib/reports/reports";
+import { cn } from "@/lib/utils";
 
 /**
  * What every visitor gets, signed in or not: the explorers, and the page an addon's
@@ -29,13 +31,21 @@ const SECTIONS = [
   { href: "/contribute", label: "Contribute" },
 ];
 
-type MenuLink = { href: string; label: string };
+type MenuLink = { href: string; label: string; admin?: boolean };
 
 /** A column of links for the burger, or a row for the header. */
 function Links({ links, column, onPick }: { links: MenuLink[]; column?: boolean; onPick?: () => void }) {
   return links.map((link) => (
-    <Button key={link.href} asChild variant="ghost" size="sm" className={column ? "justify-start" : undefined}>
+    <Button
+      key={link.href}
+      asChild
+      variant="ghost"
+      size="sm"
+      className={cn(column && "justify-start", link.admin && "text-primary-ink hover:text-primary-ink")}
+    >
       <Link href={link.href} onClick={onPick}>
+        {/* Gold and a shield, so the way into the admin pages does not read as one more section. */}
+        {link.admin && <ShieldCheck aria-hidden />}
         {link.label}
       </Link>
     </Button>
@@ -61,6 +71,7 @@ export default function UserMenu() {
   // on an English page is a member there, and is offered what a member is.
   const may = useCan();
   const grants = useGrants();
+  const lang = useLang();
 
   // Rendering nothing until the session resolves avoids a "Sign in" flash for a user who
   // is in fact signed in.
@@ -88,16 +99,31 @@ export default function UserMenu() {
         isAdmin(role) && { href: "/npcs", label: "NPCs" },
         // Who did what in this language: for whoever answers for the grants in it.
         may("admin") && { href: "/activity", label: "Activity" },
-        // Any language the viewer looks after, not the page's alone: /admin shows them all, and
-        // is gated the same way.
-        langsWhere({ role, grants }, "admin").length > 0 && {
-          href: "/admin",
-          label: "Users",
-        },
         // Everyone signed in has one, and for somebody who may regenerate it is where their key
         // lives - which is the thing standing between them and the Regenerate button.
         { href: "/profile", label: "Profile" },
       ].filter((link): link is MenuLink => Boolean(link));
+
+  // In the header row rather than the menu: it is where an admin works, not a setting. Any
+  // language the viewer looks after counts, as /admin's own gate does, and it opens that
+  // language's dashboard when the page is in one of them.
+  const administered = session ? langsWhere({ role, grants }, "admin") : [];
+  const admin: MenuLink[] =
+    administered.length > 0
+      ? [
+          {
+            // A site admin administers every language, and their way in is the list of everyone; a
+            // team's admin lands on their team's dashboard.
+            href: isAdmin(role)
+              ? "/admin"
+              : administered.includes(lang)
+                ? `/admin/dashboard?lang=${lang}`
+                : "/admin/dashboard",
+            label: "Admin",
+            admin: true,
+          },
+        ]
+      : [];
 
   function signOutAndRefresh() {
     setOpen(false);
@@ -133,7 +159,7 @@ export default function UserMenu() {
           {session ? (
             <>
               {account}
-              <Links links={links} column onPick={() => setBurger(false)} />
+              <Links links={[...admin, ...links]} column onPick={() => setBurger(false)} />
               <Button variant="ghost" size="sm" className="justify-start" onClick={signOutAndRefresh}>
                 Sign out
               </Button>
@@ -164,6 +190,7 @@ export default function UserMenu() {
       ) : (
         <nav className="hidden items-center gap-1 md:flex">
           <Links links={SECTIONS} />
+          <Links links={admin} />
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="ml-1">

@@ -9,10 +9,19 @@ import ContributionsTabs from "@/components/ContributionsTabs";
 import { auth } from "@/lib/auth";
 import { bookFacets, catalogue } from "@/lib/readables/catalogue";
 import { pageKeyOf } from "@/lib/readables/tools";
-import { bulkAcceptable, loadBookCorpus, matchBook, type BookCorpusPage, type BookMatchResult } from "@/lib/contributions/book-match";
-import { clientFilterOf, clientOf, matchesClient } from "@/lib/contributions/client";
+import {
+  bookCandidates,
+  bulkAcceptable,
+  loadBookCorpus,
+  matchBook,
+  titleIn,
+  type BookCandidate,
+  type BookCorpusPage,
+  type BookMatchResult,
+} from "@/lib/contributions/book-match";
+import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "@/lib/contributions/client";
 import { corpusLookup } from "@/lib/contributions/existing";
-import { lineStates, tabOf } from "@/lib/contributions/known";
+import { tabOf } from "@/lib/contributions/known";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
 import { linesInExplorer, momentHasSpeaker } from "@/lib/contributions/accept";
 import {
@@ -33,8 +42,8 @@ import {
   type Bucket,
   type StageFilter,
 } from "@/lib/contributions/query";
-import { pendingCounts } from "@/lib/contributions/pending";
-import { listContributions, observationMeta, type Contribution } from "@/lib/contributions/store";
+import { listedWithPending } from "@/lib/contributions/pending";
+import { observationMeta, type Contribution } from "@/lib/contributions/store";
 import {
   bookFor,
   npcSummaryFrom,
@@ -47,6 +56,7 @@ import {
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import { getResolutions, getResolutionsById, resolutionKey, type NpcRowKind } from "@/lib/npc/store";
 import { BASE_LANG, isClientLang, isLang, langName, localeHref, type Lang } from "@/lib/lang";
+import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { can, isAdmin } from "@/lib/permissions";
 import { lineByPath } from "@/lib/places/catalogue";
@@ -96,7 +106,11 @@ async function existingTextFor(
 async function bookMatchesFor(contributions: Contribution[]) {
   const readables = contributions.filter((row) => row.source === "readables");
   if (readables.length === 0) {
-    return { matches: new Map<number, BookMatchResult>(), describe: (_lang: string) => (id: string) => id };
+    return {
+      matches: new Map<number, BookMatchResult>(),
+      describe: (_lang: string) => (id: string) => id,
+      candidatesOf: (_row: Contribution, _match: BookMatchResult): BookCandidate[] => [],
+    };
   }
   const corpus = await loadBookCorpus();
   const matches = new Map(readables.map((row) => [row.id, matchBook(row, corpus)]));
@@ -106,14 +120,12 @@ async function bookMatchesFor(contributions: Contribution[]) {
     const first = firstOf.get(p.bookId);
     if (!first || p.pageNumber < first.pageNumber) firstOf.set(p.bookId, p);
   }
-  const titleIn = (p: BookCorpusPage | undefined, lang: string) =>
-    p?.titles.get(lang)?.[0] ?? p?.titles.get(BASE_LANG)?.[0] ?? [...(p?.titles.values() ?? [])][0]?.[0] ?? "untitled";
   const describe = (lang: string) => (id: string) => {
     if (id.startsWith("book:")) return titleIn(firstOf.get(id.slice(5)), lang);
     const page = byLine.get(id);
     return page ? `${titleIn(page, lang)} p.${page.pageNumber}` : id;
   };
-  return { matches, describe };
+  return { matches, describe, candidatesOf: (row: Contribution, match: BookMatchResult) => bookCandidates(match, corpus, row) };
 }
 
 /**
@@ -127,8 +139,11 @@ async function bookMatchesFor(contributions: Contribution[]) {
  * moderator or the resolver looked and found no race to assign (a narrator, say). Absent
  * entirely means the envelope never named an NPC at all -- places and readables never do, and a
  * quests envelope keyed on quest+event rather than npc doesn't either.
+ *
+ * `roster` must be the language of every row: a row of another team's would be offered this
+ * team's flavors.
  */
-async function npcFor(contributions: Contribution[]): Promise<Record<number, NpcSummary>> {
+async function npcFor(contributions: Contribution[], roster: Roster): Promise<Record<number, NpcSummary>> {
   const found: Record<number, NpcSummary> = {};
 
   // build and a moderator-chosen kind are columns of their own on a stored contribution, not
@@ -198,11 +213,11 @@ async function npcFor(contributions: Contribution[]): Promise<Record<number, Npc
       o.npcKind !== null
         ? { resolution: resolutions.get(resolutionKey(o.npcKind, o.npcId)), conflict: [] }
         : idOnlyResolution(idOnly.get(o.npcId));
-    found[row.id] = await npcSummaryFrom(
+    found[row.id] = npcSummaryFrom(
+      roster,
       { npcKind: o.npcKind, npcId: o.npcId, npcName: o.npcName },
       lookup.resolution,
       lookup.conflict,
-      isLang(row.locale) ? row.locale : BASE_LANG,
     );
   }
 
@@ -225,6 +240,7 @@ export default async function Page({
     status?: string;
     bucket?: string;
     client?: string;
+    build?: string;
     stage?: string;
     sort?: string;
     dir?: string;
@@ -275,6 +291,7 @@ export default async function Page({
     status: rawStatus,
     bucket: rawBucket,
     client: rawClient,
+    build: rawBuild,
     stage: rawStage,
     sort: rawSort,
     dir: rawDir,
@@ -303,23 +320,25 @@ export default async function Page({
 
   // Lines the corpus already has are not this queue's: a different text is a correction, on
   // its own tab, and the same text is nothing to triage at all (known.ts's tabOf).
-  const [listed, pending] = await Promise.all([
-    listContributions(status, lang, sort, source),
-    pendingCounts(lang),
+  const [{ listed, states, pending }, roster] = await Promise.all([
+    listedWithPending(status, lang, sort, source),
+    loadRoster(lang),
   ]);
-  const states = await lineStates(listed);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
-  const npcs = await npcFor(contributions);
+  const npcs = await npcFor(contributions, roster);
 
-  const filtered = contributions
+  const build = buildFilterOf(rawBuild);
+  const anyBuild = contributions
     .filter((row) => matchesClient(clientOf(row.build).family, client))
     .filter((row) => matchesStage(questFor(row), stage))
     .filter((row) => matchesSearch({ text: row.text, npc: npcs[row.id], quest: questFor(row) }, q, searchIn));
+  // Read before the build narrows the rows, or picking one would empty the dropdown of the others.
+  const builds = buildOptions(anyBuild.map((row) => clientOf(row.build)));
+  const filtered = anyBuild.filter((row) => matchesBuild(clientOf(row.build), build));
 
   // Counted after the other filters, so each tab's count matches what it shows.
   const hasSpeaker = await momentHasSpeaker(filtered);
-  const roster = await loadRoster(lang);
   const bucketCounts: Record<Bucket, number> = { ready: 0, blocked: 0 };
   const matching = filtered.filter((row) => {
     const own = bucketOf({ ...row, quest: questFor(row), hasSpeaker: hasSpeaker.has(row.id) }, npcs[row.id] ?? null, roster);
@@ -335,7 +354,7 @@ export default async function Page({
   const page = Math.min(pageOf(rawPage), pages);
   const shown = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   // Every matching row's, not just this page's: "Accept all" leaves out the ones the matcher can't place.
-  const { matches: bookMatches, describe } = await bookMatchesFor(matching);
+  const { matches: bookMatches, describe, candidatesOf } = await bookMatchesFor(matching);
   const [existing, linedIds] = await Promise.all([existingTextFor(shown, bookMatches), linesInExplorer(shown)]);
   // Every language's books, for placing a row in one -- only when this page shows a readables row.
   const books = shown.some((row) => row.source === "readables")
@@ -363,8 +382,13 @@ export default async function Page({
     quest: questFor(row),
     book:
       row.source === "readables"
-        ? bookFor(row, bookMatches.get(row.id)!, describe(row.locale), (lineId) =>
-            localeHref(lang, `/readables/r/${pageKeyOf(lineId)}`))
+        ? bookFor(
+            row,
+            bookMatches.get(row.id)!,
+            describe(row.locale),
+            (lineId) => localeHref(lang, `/readables/r/${pageKeyOf(lineId)}`),
+            candidatesOf(row, bookMatches.get(row.id)!),
+          )
         : null,
     hasLine: linedIds.has(row.id),
     hasSpeaker: hasSpeaker.has(row.id),
@@ -403,6 +427,8 @@ export default async function Page({
           bucket={bucket}
           bucketCounts={bucketCounts}
           client={client}
+          build={build}
+          builds={builds}
           source={source}
           stage={stage}
           sort={sort}

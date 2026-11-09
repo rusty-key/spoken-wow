@@ -26,6 +26,10 @@
 // next to no time, and unlike a hard link, a tool that later writes into Sounds/ cannot
 // reach the archive. The database is asked through psql, as scripts/db/ does, so this needs
 // no node_modules.
+//
+// SPOKEN_CLIP_POINTERS=1 writes pointers instead (scripts/lib/clip-pointer.mjs), for a Manager
+// pack built without its clips on this machine. A quests pointer names the take's encoding, the Ogg
+// its pack ships, and durations.json carries what the build would otherwise read from the clips.
 import { execFileSync } from "node:child_process";
 import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
@@ -35,7 +39,9 @@ import { fileURLToPath } from "node:url";
 import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mjs";
 import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
-import { archiveOf, sourceOf } from "../lib/archives.mjs";
+import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
+import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
+import { eachParallel } from "../lib/download.mjs";
 import { NAMED_QUESTS_SQL, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -81,28 +87,34 @@ if (!database) {
 function psql(sql) {
   return execFileSync(
     "psql",
-    [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-f", "-"],
+    [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-v", `profile=${ENCODING_PROFILE}`, "-f", "-"],
     { input: sql, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   )
     .split("\n")
     .filter(Boolean);
 }
 
-// file <tab> archiveFile <tab> wordTimes <tab> sha256, for every live take. A quests file carries
-// its extension and the other two do not; the archive directory is the file without it either way.
-const listing = psql(`select "file", coalesce("archiveFile", ''),
-                             coalesce(array_to_json("wordTimes")::text, ''), coalesce("sha256", '')
-                        from "take"
-                       where "source" = :'source' and "lang" = :'lang' and "isCurrent"
-                         and "teamId" = team_of_lang(:'lang')
-                       order by "file"`);
+// A quests file carries its extension and the other two do not; the archive directory is the file
+// without it either way. Only quests takes have an Ogg.
+const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
+                             coalesce(array_to_json(t."wordTimes")::text, ''), coalesce(t."sha256", ''),
+                             coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, '')
+                        from "take" t
+                        left join "take_encoding" e
+                          on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
+                       where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
+                         and t."teamId" = team_of_lang(:'lang')
+                       order by t."file"`);
 
 // A live take's archive path: its bucket object, or the take's own directory (its file without
 // the extension) holding the archive file. Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
-  const [file, name, times, sha256] = row.split("\t");
+  const [file, name, times, sha256, encodedSha256, bytes, durationSec] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
-  return { file, stem, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times };
+  return {
+    file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times,
+    encodedSha256, bytes, durationSec,
+  };
 });
 
 // Quests carry only the audio a current line names (relevant.mjs), and places only the areas the
@@ -149,6 +161,60 @@ await rm(paths.out, { recursive: true, force: true });
 await mkdir(paths.out, { recursive: true });
 await writeFile(marker, "");
 
+// The quests build reads no database (tts_cli/build.py), so the takes' word times go beside
+// their clips; places and readables read them from the take table when they write their lookup.
+async function writeWordTimes() {
+  const times = Object.fromEntries(
+    live.filter((take) => take.times).map((take) => [take.stem, packTimes(JSON.parse(take.times))]),
+  );
+  await writeFile(join(paths.out, "word-times.json"), `${JSON.stringify(times)}\n`);
+}
+
+async function writeEncodingPointers(pointed) {
+  // Encoding one here instead would make players download it again: oggenc's bytes differ every run.
+  const lacking = pointed.filter((take) => !take.encodedSha256 || !take.durationSec);
+  if (lacking.length) {
+    console.error(`error: ${lacking.length} live takes have no Ogg in take_encoding or no duration on it, e.g. ${lacking[0].file}`);
+    for (const { file, sha256 } of lacking.slice(0, 10)) console.error(`  ${file} (${sha256})`);
+    process.exit(1);
+  }
+  let done = 0;
+  await eachParallel(pointed, async ({ stem, encodedSha256, bytes }) => {
+    await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
+    if (++done % 5000 === 0) console.log(`  ${done}/${pointed.length} pointers`);
+  });
+  const durations = Object.fromEntries(pointed.map(({ stem, durationSec }) => [stem, Number(durationSec)]));
+  await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
+}
+
+if (process.env.SPOKEN_CLIP_POINTERS) {
+  if (!process.env.SPOKEN_ARCHIVE_URL) {
+    console.error("SPOKEN_CLIP_POINTERS needs SPOKEN_ARCHIVE_URL");
+    process.exit(1);
+  }
+  const unhashed = live.filter((take) => take.archived && !take.sha256);
+  if (unhashed.length) {
+    console.error(`${unhashed.length} live takes are only on the droplet's volume, e.g. ${unhashed[0].file}: build with their clips instead`);
+    process.exit(1);
+  }
+  const pointed = live.filter((take) => take.sha256);
+  await Promise.all([...new Set(pointed.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
+  let absent = [];
+  if (section === "quests") {
+    await writeEncodingPointers(pointed);
+    await writeWordTimes();
+  } else absent = await writePointers(pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) })), process.env.SPOKEN_ARCHIVE_URL);
+  console.log(`${section}: ${pointed.length - absent.length} pointers in ${paths.out.slice(ROOT.length + 1)}`);
+  if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
+  if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
+  if (absent.length) {
+    console.error(`  ${absent.length} live takes are not in the archive, e.g.:`);
+    for (const { target, reason } of absent.slice(0, 5)) console.error(`    ${target}: ${reason}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
 let copied = 0;
 const gone = [];
 const missing = [];
@@ -174,14 +240,7 @@ for (const { file, stem, archived } of live) {
   }
 }
 
-// The quests build reads no database (tts_cli/build.py), so the takes' word times go beside
-// their clips; places and readables read them from the take table when they write their lookup.
-if (section === "quests") {
-  const times = Object.fromEntries(
-    live.filter((take) => take.times).map((take) => [take.stem, packTimes(JSON.parse(take.times))]),
-  );
-  await writeFile(join(paths.out, "word-times.json"), `${JSON.stringify(times)}\n`);
-}
+if (section === "quests") await writeWordTimes();
 
 console.log(`${section}: ${copied} clips in ${paths.out.slice(ROOT.length + 1)}`);
 if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);

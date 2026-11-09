@@ -23,10 +23,17 @@ const api: ManagerApi = {
   openPath: (path) => ipcRenderer.invoke(CHANNELS.openPath, path),
   openExternal: (url) => ipcRenderer.invoke(CHANNELS.openExternal, url),
   openLogs: () => ipcRenderer.invoke(CHANNELS.openLogs),
-  checkManagerUpdate: () => ipcRenderer.invoke(CHANNELS.checkManagerUpdate),
+  checkManagerUpdate: (background) => ipcRenderer.invoke(CHANNELS.checkManagerUpdate, background),
+  restartManager: () => ipcRenderer.invoke(CHANNELS.restartManager),
   clearDownloads: () => ipcRenderer.invoke(CHANNELS.clearDownloads),
   shareNow: () => ipcRenderer.invoke(CHANNELS.shareNow),
   resetShareId: () => ipcRenderer.invoke(CHANNELS.resetShareId),
+  contributorView: () => ipcRenderer.invoke(CHANNELS.contributorView),
+  contributorSignIn: (email, password) => ipcRenderer.invoke(CHANNELS.contributorSignIn, email, password),
+  contributorSignOut: () => ipcRenderer.invoke(CHANNELS.contributorSignOut),
+  contributorSaveStore: (input) => ipcRenderer.invoke(CHANNELS.contributorSaveStore, input),
+  contributorRows: (gameId, lang, store) => ipcRenderer.invoke(CHANNELS.contributorRows, gameId, lang, store),
+  contributorPublish: (gameId, lang, store, only) => ipcRenderer.invoke(CHANNELS.contributorPublish, gameId, lang, store, only),
   windowMinimize: () => ipcRenderer.invoke(CHANNELS.windowMinimize),
   windowToggleMaximize: () => ipcRenderer.invoke(CHANNELS.windowToggleMaximize),
   windowClose: () => ipcRenderer.invoke(CHANNELS.windowClose),
@@ -37,6 +44,7 @@ const api: ManagerApi = {
   onCommunityChanged: (l) => listen(CHANNELS.communityChanged, l),
   onUpdater: (l) => listen(CHANNELS.updaterState, l),
   onSharing: (l) => listen(CHANNELS.sharingChanged, l),
+  onContributorChanged: (l) => listen(CHANNELS.contributorChanged, l),
   onWindowMaximized: (l) => listen(CHANNELS.windowMaximized, l)
 }
 

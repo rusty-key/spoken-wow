@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0091 applied. */
+/** Needs DATABASE_URL and migrations through 0095 applied. */
 import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import { asSystem, dropTeam, ownTeam, runningJob, systemRows, testUser } from ".
 /** Tables the target may end up with rows in beyond what dropTeam deletes, children first. */
 const TARGET_ROWS = [
   "line_issue_line", "line_issue", "voice_sample", "voice_clone", "report", "take", "regeneration_job",
-  "regeneration_batch",
+  "regeneration_batch", "release_run",
 ];
 
 let source: Awaited<ReturnType<typeof ownTeam>>;
@@ -77,6 +77,26 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("move_team_lang", () => {
+  it("moves the language's overrides and leaves a same-named file's in another language", async () => {
+    const file = `quests/${tag}-move.mp3`;
+    const insert = `insert into "line_override" ("teamId", "lang", "file", "lineId", "text") values ($1, $2, $3, 'q:1:accept', 'x')`;
+    await asSystem.query(insert, [source.team, "deDE", file]);
+    await asSystem.query(insert, [source.team, "frFR", file]);
+    try {
+      await move("deDE", target);
+      const rows = await systemRows<{ lang: string; teamId: string }>(
+        `select "lang", "teamId" from "line_override" where "file" = $1 order by "lang"`,
+        [file],
+      );
+      expect(rows).toEqual([
+        { lang: "deDE", teamId: target },
+        { lang: "frFR", teamId: source.team },
+      ]);
+    } finally {
+      await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
+    }
+  });
+
   it("moves every row of the language to the new team", async () => {
     const team = source.team;
     const take = await systemRows<{ id: string }>(
@@ -113,8 +133,13 @@ describe("move_team_lang", () => {
       [team, user.id],
     );
 
+    const release = await systemRows<{ id: string }>(
+      `insert into "release_run" ("section", "lang", "state", "teamId") values ('quests', 'deDE', 'done', $1) returning "id"`,
+      [team],
+    );
+
     const { rows } = await move("deDE", target);
-    expect(rows[0].moved).toBe(7);
+    expect(rows[0].moved).toBe(8);
 
     const teams = await systemRows<{ team: string }>(
       `select "teamId" as "team" from "take" where "id" = $1
@@ -123,10 +148,11 @@ describe("move_team_lang", () => {
        union all select "teamId" from "voice_sample" where "clone" = $3 || '@deDE'
        union all select "teamId" from "line_issue" where "id" = $4
        union all select "teamId" from "line_issue_line" where "issueId" = $4
-      union all select "teamId" from "team_member" where "userId" = $5`,
-      [take[0].id, report[0].id, `move-${tag}`, issue[0].id, user.id],
+      union all select "teamId" from "team_member" where "userId" = $5
+       union all select "teamId" from "release_run" where "id" = $6`,
+      [take[0].id, report[0].id, `move-${tag}`, issue[0].id, user.id, release[0].id],
     );
-    expect(teams.map((row) => row.team)).toEqual(Array(7).fill(target));
+    expect(teams.map((row) => row.team)).toEqual(Array(8).fill(target));
     expect(await teamOfLang("deDE")).toBe(target);
   });
 

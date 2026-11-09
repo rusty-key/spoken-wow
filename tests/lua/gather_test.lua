@@ -340,7 +340,7 @@ Expect("...explaining both", box.body:GetText(), SpokenEnv.L.CONTRIBUTE_INTRO)
 Expect("...with no payload to copy yet", box.scroll:IsShown(), false)
 
 box.justThis:Click()
-Expect("choosing one line shows the link", box.editBox:GetText():match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
+Expect("choosing one line shows the link", box.editBox:GetText():match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
 Expect("...and hides the choice", box.gather:IsShown(), false)
 Expect("...without turning gathering on", Gather:IsEnabled(), false)
 

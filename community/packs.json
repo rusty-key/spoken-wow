@@ -1,3 +1,19 @@
 {
-  "packs": []
+  "packs": [
+    {
+      "id": "polski",
+      "title": "Spoken Polski",
+      "author": "zaxcer",
+      "description": "Polish quest voiceover for levels 1-58, both sides: every starting zone and levelling zone up to Western Plaguelands (11 773 recordings with male and female variants). Translation entirely by the WoWPoPolskuForever team led by Loe'Aner, used with permission. Voices designed with ElevenLabs Voice Design, lines by ElevenLabs v4 Turbo.",
+      "lang": "plPL",
+      "section": "quests",
+      "version": "0.3.0",
+      "size": 1293995350,
+      "sha256": "2db65466b8c0cc5a6a74b63f8fffcf812904df667fcde86a650b91009392769a",
+      "url": "https://github.com/zaxcer/spoken-polish/releases/download/v0.3.0/SpokenCommunity_polski-0.3.0.zip",
+      "homepage": "https://github.com/zaxcer/spoken-polish",
+      "license": "Non-commercial; text WoWPoPolskuForever",
+      "addedAt": "2026-11-05"
+    }
+  ]
 }
