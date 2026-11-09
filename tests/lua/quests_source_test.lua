@@ -363,14 +363,11 @@ Expect("an NPC already heard keeps its greeting under a once-per setting", Dialo
 VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
 VO.Addon:MuteGreetingOnClick("RightButton")
 Expect("...and is muted when greetings always read", Dialog(), "0")
-stub.Advance(2)
-VO.Addon.db.char.hasSeenGossipForNPC = {}
 
 VO, env, Spoken = ClickBoot()
 world.npcGUID = "Creature-0-0-0-0-9999-0"
 VO.Addon:MuteGreetingOnClick("RightButton")
 Expect("an NPC no pack voices keeps its greeting at the click", Dialog(), "1")
-world.npcGUID = "Creature-0-0-0-0-1234-0"
 
 VO, env, Spoken = ClickBoot()
 world.npcFriendly = nil
