@@ -9,8 +9,17 @@ import ContributionsTabs from "@/components/ContributionsTabs";
 import { auth } from "@/lib/auth";
 import { bookFacets, catalogue } from "@/lib/readables/catalogue";
 import { pageKeyOf } from "@/lib/readables/tools";
-import { bulkAcceptable, loadBookCorpus, matchBook, type BookCorpusPage, type BookMatchResult } from "@/lib/contributions/book-match";
-import { clientFilterOf, clientOf, matchesClient } from "@/lib/contributions/client";
+import {
+  bookCandidates,
+  bulkAcceptable,
+  loadBookCorpus,
+  matchBook,
+  titleIn,
+  type BookCandidate,
+  type BookCorpusPage,
+  type BookMatchResult,
+} from "@/lib/contributions/book-match";
+import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "@/lib/contributions/client";
 import { corpusLookup } from "@/lib/contributions/existing";
 import { tabOf } from "@/lib/contributions/known";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
@@ -96,7 +105,11 @@ async function existingTextFor(
 async function bookMatchesFor(contributions: Contribution[]) {
   const readables = contributions.filter((row) => row.source === "readables");
   if (readables.length === 0) {
-    return { matches: new Map<number, BookMatchResult>(), describe: (_lang: string) => (id: string) => id };
+    return {
+      matches: new Map<number, BookMatchResult>(),
+      describe: (_lang: string) => (id: string) => id,
+      candidatesOf: (_row: Contribution, _match: BookMatchResult): BookCandidate[] => [],
+    };
   }
   const corpus = await loadBookCorpus();
   const matches = new Map(readables.map((row) => [row.id, matchBook(row, corpus)]));
@@ -106,14 +119,12 @@ async function bookMatchesFor(contributions: Contribution[]) {
     const first = firstOf.get(p.bookId);
     if (!first || p.pageNumber < first.pageNumber) firstOf.set(p.bookId, p);
   }
-  const titleIn = (p: BookCorpusPage | undefined, lang: string) =>
-    p?.titles.get(lang)?.[0] ?? p?.titles.get(BASE_LANG)?.[0] ?? [...(p?.titles.values() ?? [])][0]?.[0] ?? "untitled";
   const describe = (lang: string) => (id: string) => {
     if (id.startsWith("book:")) return titleIn(firstOf.get(id.slice(5)), lang);
     const page = byLine.get(id);
     return page ? `${titleIn(page, lang)} p.${page.pageNumber}` : id;
   };
-  return { matches, describe };
+  return { matches, describe, candidatesOf: (row: Contribution, match: BookMatchResult) => bookCandidates(match, corpus, row) };
 }
 
 /**
@@ -225,6 +236,7 @@ export default async function Page({
     status?: string;
     bucket?: string;
     client?: string;
+    build?: string;
     stage?: string;
     sort?: string;
     dir?: string;
@@ -275,6 +287,7 @@ export default async function Page({
     status: rawStatus,
     bucket: rawBucket,
     client: rawClient,
+    build: rawBuild,
     stage: rawStage,
     sort: rawSort,
     dir: rawDir,
@@ -308,10 +321,14 @@ export default async function Page({
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
   const npcs = await npcFor(contributions);
 
-  const filtered = contributions
+  const build = buildFilterOf(rawBuild);
+  const anyBuild = contributions
     .filter((row) => matchesClient(clientOf(row.build).family, client))
     .filter((row) => matchesStage(questFor(row), stage))
     .filter((row) => matchesSearch({ text: row.text, npc: npcs[row.id], quest: questFor(row) }, q, searchIn));
+  // Read before the build narrows the rows, or picking one would empty the dropdown of the others.
+  const builds = buildOptions(anyBuild.map((row) => clientOf(row.build)));
+  const filtered = anyBuild.filter((row) => matchesBuild(clientOf(row.build), build));
 
   // Counted after the other filters, so each tab's count matches what it shows.
   const hasSpeaker = await momentHasSpeaker(filtered);
@@ -331,7 +348,7 @@ export default async function Page({
   const page = Math.min(pageOf(rawPage), pages);
   const shown = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   // Every matching row's, not just this page's: "Accept all" leaves out the ones the matcher can't place.
-  const { matches: bookMatches, describe } = await bookMatchesFor(matching);
+  const { matches: bookMatches, describe, candidatesOf } = await bookMatchesFor(matching);
   const [existing, linedIds] = await Promise.all([existingTextFor(shown, bookMatches), linesInExplorer(shown)]);
   // Every language's books, for placing a row in one -- only when this page shows a readables row.
   const books = shown.some((row) => row.source === "readables")
@@ -359,8 +376,13 @@ export default async function Page({
     quest: questFor(row),
     book:
       row.source === "readables"
-        ? bookFor(row, bookMatches.get(row.id)!, describe(row.locale), (lineId) =>
-            localeHref(lang, `/readables/r/${pageKeyOf(lineId)}`))
+        ? bookFor(
+            row,
+            bookMatches.get(row.id)!,
+            describe(row.locale),
+            (lineId) => localeHref(lang, `/readables/r/${pageKeyOf(lineId)}`),
+            candidatesOf(row, bookMatches.get(row.id)!),
+          )
         : null,
     hasLine: linedIds.has(row.id),
     hasSpeaker: hasSpeaker.has(row.id),
@@ -399,6 +421,8 @@ export default async function Page({
           bucket={bucket}
           bucketCounts={bucketCounts}
           client={client}
+          build={build}
+          builds={builds}
           source={source}
           stage={stage}
           sort={sort}

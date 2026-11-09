@@ -64,6 +64,11 @@ describe("parseEnvelope", () => {
     expect(parseEnvelope(wrong)).toEqual({ ok: false, error: "source" });
   });
 
+  it("refuses a NUL byte, which Postgres text cannot store", () => {
+    const body = "!SPOKEN1 quests\nnpc=1 X\ntext<<\nHa\u0000il.\n>>\n";
+    expect(parseEnvelope(`${body}sum=${checksum(body)}\n`)).toEqual({ ok: false, error: "malformed" });
+  });
+
   it("refuses an oversize paste before parsing it", () => {
     expect(parseEnvelope("!SPOKEN1 books\n" + "x".repeat(70_000))).toEqual({
       ok: false,

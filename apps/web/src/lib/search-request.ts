@@ -66,6 +66,7 @@ export async function filtersFromParams(params: URLSearchParams, lang: Lang): Pr
     broadcast: oneOf(params.get("bt"), BROADCAST_STATUSES),
     minLevel: levelFromParam(params.get("minLevel")),
     maxLevel: levelFromParam(params.get("maxLevel")),
+    playerGender: oneOf(params.get("playerGender"), ["m", "f"] as const),
   };
 }
 

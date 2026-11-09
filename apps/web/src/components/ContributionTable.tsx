@@ -27,7 +27,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
-import FilterChip from "@/components/FilterChip";
+import FilterChip, { type ChipOption } from "@/components/FilterChip";
 import MultiFilterChip from "@/components/MultiFilterChip";
 import SortHeader from "@/components/SortHeader";
 import SpeakerCell, { ProvenanceBadge, type SpeakerAnswer } from "@/components/SpeakerCell";
@@ -46,6 +46,7 @@ import {
   type ContributionStatus,
   type ResolveManyResult,
 } from "@/lib/contributions/contributions";
+import { bulkHold, bulkHoldSummary } from "@/lib/contributions/bulk";
 import type { ClientSummary } from "@/lib/contributions/client";
 import { flavorOptionsFor, summaryFromResolution } from "@/lib/contributions/speaker";
 import { Roster, type RosterData } from "@/lib/voices/roster";
@@ -127,7 +128,7 @@ function bookLabels(books: readonly BookChoice[]): BookLabels {
 }
 
 /** What a moderator says a readables row is, as api/contributions/page takes it; null clears it. */
-type MatchAnswer = { bookId: string; pageNumber: number } | { newBook: true } | null;
+type MatchAnswer = { lineId: string } | { bookId: string; pageNumber: number } | { newBook: true } | null;
 
 const STATUS_LABELS: Record<ContributionStatus, string> = {
   new: "New",
@@ -147,6 +148,8 @@ export default function ContributionTable({
   bucket,
   bucketCounts,
   client,
+  build,
+  builds,
   source,
   stage,
   sort,
@@ -168,6 +171,9 @@ export default function ContributionTable({
   bucket: Bucket;
   bucketCounts: Record<Bucket, number>;
   client: ClientFilter;
+  build: string | undefined;
+  /** The builds the rows in view came from. */
+  builds: ChipOption[];
   /** The section shown: its rows only, and only the columns and filters that apply to it. */
   source: Section;
   stage: StageFilter;
@@ -470,11 +476,19 @@ export default function ContributionTable({
   // A row with no speaker would only come back refused, nor would a readables row the matcher can't
   // place: that one is accepted on its own.
   const notBulk = new Set(matching.filter((row) => !row.bulk).map((row) => row.id));
-  const selectedToAccept = changeable(
-    selectedRows.filter((row) => bucketOf(row, npcOf(row), roster) === "ready" && !notBulk.has(row.id)),
-    "accepted",
-  );
+  const holdOf = (row: ContributionRow) =>
+    bulkHold({
+      status: resolved[row.id] ?? row.status,
+      bucket: bucketOf(row, npcOf(row), roster),
+      bulk: !notBulk.has(row.id),
+      matchKind: row.book?.match.kind,
+    });
+  const selectedHolds = selectedRows.map(holdOf);
+  const selectedToAccept = selectedRows.filter((_, index) => selectedHolds[index] === null).map((row) => row.id);
+  const selectedHeldBack = bulkHoldSummary(selectedHolds);
   const selectedToReject = changeable(selectedRows, "rejected");
+  // A bare "(0)" beside a row of ticked boxes reads as a broken selection.
+  const ofSelected = (count: number) => (count === selectedRows.length ? `${count}` : `${count} of ${selectedRows.length}`);
   const allTicked = rows.length > 0 && selectedRows.length === rows.length;
 
   // Stable, like every callback a row is handed: a row redraws only when its own props change.
@@ -495,7 +509,7 @@ export default function ContributionTable({
    * ReportTable.tsx's own `go`; the mapping itself is contributionsHref, pulled out to
    * lib/contributions/query.ts so it can be tested without rendering FilterChip or this table.
    */
-  const filters = { status, bucket, client, source, stage, sort, q, searchIn };
+  const filters = { status, bucket, client, build, source, stage, sort, q, searchIn };
   function go(next: FilterChange, toPage = 1) {
     push(localeHref(lang, contributionsHref(filters, next, toPage)));
   }
@@ -546,8 +560,10 @@ export default function ContributionTable({
             onChange={(next) => go({ stage: next as StageFilter | undefined })}
           />
         ) : null}
+        <FilterChip label="build" value={build} options={builds} onChange={(next) => go({ build: next })} />
         {pending && <Refreshing />}
-        <ClientSelect value={client} onChange={(next) => go({ client: next })} />
+        {/* The build goes with it: a build belongs to one client, so it would match nothing. */}
+        <ClientSelect value={client} onChange={(next) => go({ client: next, build: undefined })} />
       </nav>
 
       {rows.length > 0 ? (
@@ -601,7 +617,7 @@ export default function ContributionTable({
                     disabled={selectedToAccept.length === 0}
                     onClick={() => void resolveMany(selectedToAccept, "accepted")}
                   >
-                    Accept selected ({selectedToAccept.length})
+                    Accept selected ({ofSelected(selectedToAccept.length)})
                   </Button>
                   <Button
                     size="sm"
@@ -610,11 +626,12 @@ export default function ContributionTable({
                     disabled={selectedToReject.length === 0}
                     onClick={() => void resolveMany(selectedToReject, "rejected")}
                   >
-                    Reject selected ({selectedToReject.length})
+                    Reject selected ({ofSelected(selectedToReject.length)})
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
                     Clear
                   </Button>
+                  {selectedHeldBack ? <span className="text-muted-foreground">{selectedHeldBack}</span> : null}
                 </>
               ) : null}
               {bulkOutcome ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
@@ -1184,6 +1201,45 @@ function MatchCell({
           {book.label}
         </span>
       )}
+      {book.candidates.length > 0 ? (
+        <ul className="flex max-h-56 max-w-[14rem] flex-col gap-2 overflow-y-auto whitespace-normal">
+          {book.candidates.map((candidate) => (
+            <li key={candidate.key} className="border-l pl-2">
+              <div className="flex flex-wrap items-baseline gap-x-1">
+                {candidate.href ? (
+                  <a href={candidate.href} className="hover:underline">
+                    {candidate.label}
+                  </a>
+                ) : (
+                  <span>{candidate.label}</span>
+                )}
+                <span className="text-muted-foreground">#{candidate.bookId}</span>
+                {candidate.owner ? (
+                  <a
+                    href={wowheadEntityUrl(candidate.owner.kind === "object" ? "gameobject" : "item", candidate.owner.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:underline"
+                  >
+                    {candidate.owner.kind} {candidate.owner.id} wh↗
+                  </a>
+                ) : null}
+              </div>
+              {candidate.excerpt ? <p className="text-muted-foreground line-clamp-2">{candidate.excerpt}</p> : null}
+              {locked ? null : (
+                <LiteButton
+                  variant="outline"
+                  className="mt-0.5 h-6 px-2 text-xs"
+                  disabled={busy}
+                  onClick={() => onSave(candidate.answer)}
+                >
+                  This one
+                </LiteButton>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {locked ? null : (
         <form
           className="flex flex-wrap items-center gap-1"
@@ -1215,6 +1271,17 @@ function MatchCell({
           <LiteButton type="submit" variant="outline" className="h-7 px-2 text-xs" disabled={busy || !valid}>
             Match
           </LiteButton>
+          {book.match.kind !== "new-book" ? (
+            <LiteButton
+              variant="ghost"
+              className="h-7 px-1.5 text-xs"
+              disabled={busy}
+              title="None of these: accepting this row starts a new book"
+              onClick={() => onSave({ newBook: true })}
+            >
+              New book
+            </LiteButton>
+          ) : null}
           {moderated ? (
             <LiteButton variant="ghost" className="h-7 px-1.5 text-xs" disabled={busy} onClick={() => onSave(null)}>
               Clear

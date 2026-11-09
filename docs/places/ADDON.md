@@ -16,7 +16,9 @@ What Places adds to Spoken:
 - A Report button on each line being read. There is no Read button of its own.
 - A global, `SpokenPlaces`, for other addons, as `SpokenBossesAddon` is: whether a place has a
   story (`GetLore`, `GetSubzoneLore`), whether it is found (`IsLocked`) and voiced (`HasAudio`),
-  and reading it (`PlayLore`, `StopLore`, `IsPlayingLore`) or showing it (`ShowLoreFor`).
+  and reading it (`PlayLore`, `StopLore`, `IsPlayingLore`) or showing it (`ShowLoreFor`). Feature
+  modules can also reuse the story panel beside the map with `ShowMapStory(mapID, entry)`, where
+  `entry` may provide its own `target`, `play` and `reportAction` actions.
   `PlayLore` and `ShowLoreFor` check neither the lock nor the part, so an addon checks
   `Spoken:IsPartOn("places")` and `IsLocked` before calling them.
 

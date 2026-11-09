@@ -484,6 +484,10 @@ other line, but nothing will voice it, so it is not a gap to close.
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
 known level is in no range, so setting either bound hides gossip and quests the extract lacks.
 
+**The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
+that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
+from the page uses it too.
+
 **Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
 Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
 lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking
@@ -1974,7 +1978,8 @@ Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in two shap
 `QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
 switched and when the setting changes, and a profile change redraws the quest log and the trackers.
 Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
-each block keeps one square button at its title's right. Classic Era's tracker writes each title
+each block keeps one square button under the quest's item button, or under its find-group button
+when it has no item, or at the block's top right when it has neither. Classic Era's tracker writes each title
 into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
 watched quest's title text to a shown line and puts the round button left of it, so a title some
 other addon rewrites gets no button. A failing adapter is logged and never raises inside the

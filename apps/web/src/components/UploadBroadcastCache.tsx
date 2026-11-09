@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useFileDrop } from "@/components/useFileDrop";
 import type { RecordedTexts } from "@/lib/broadcast/store";
 import { parseBroadcastCache, type CachedBroadcastText } from "@/lib/broadcast/cache";
+import { sendFailureMessage } from "@/lib/contributions/send-failure";
 import { BASE_LANG, isClientLang, LOCALES, type Lang } from "@/lib/lang";
 
 const CLIENT_LOCALES = LOCALES.filter((locale) => isClientLang(locale.code));
@@ -99,7 +100,7 @@ export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boo
       }).catch(() => null);
       const body = await response?.json().catch(() => null);
       if (!response?.ok) {
-        setError(body?.error ?? "That did not go through. Try again in a minute.");
+        setError(body?.error ?? sendFailureMessage(response?.status ?? null));
         setBusy(false);
         return;
       }

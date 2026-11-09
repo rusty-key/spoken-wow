@@ -8,6 +8,7 @@ import { pendingChanges } from "@/lib/releases/pending";
 import { ReleaseBusyError, lastReleasedAt, startRun, updateRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 import { releaseView } from "@/lib/releases/view";
+import { encodeMissingForPack } from "@/lib/takes/encode";
 import { NoTeamError } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,8 @@ export async function POST(request: Request) {
   }
 
   try {
+    // After startRun, which holds the lock, so a second press cannot encode the same takes.
+    await encodeMissingForPack(run.section, run.lang);
     await (runsOnDroplet() ? startDropletRun(run, bump) : dispatchRelease(run));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "the release could not be started";

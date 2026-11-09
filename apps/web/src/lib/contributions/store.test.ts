@@ -14,6 +14,7 @@ import {
   contributionSenders,
   countRecentContributions,
   createContribution,
+  createContributions,
   fillContributionNpcs,
   listContributions,
   observationMeta,
@@ -95,6 +96,19 @@ afterEach(async () => {
 afterAll(async () => {
   await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
+});
+
+describe("createContributions", () => {
+  it("does not deadlock two files holding the same lines in opposite orders", async () => {
+    const rows = Array.from({ length: 500 }, (_, i) => submission({ dedup: `${dedup}-${i}` }));
+    const sender = { body: null, name: null, email: null, userId: null, ip };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await Promise.all([createContributions(rows, sender), createContributions([...rows].reverse(), sender)]);
+    }
+    const counts = ours(await listContributions("new")).map((row) => row.count);
+    expect(counts).toHaveLength(500);
+    expect(new Set(counts)).toEqual(new Set([10]));
+  });
 });
 
 describe("createContribution", () => {

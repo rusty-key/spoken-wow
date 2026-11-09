@@ -112,7 +112,7 @@ do
 end
 Expect("...names them in a popup", popup and popup.key, "SPOKEN_OLD_FOLDERS")
 Expect("...that offers the reload which finishes it", popup and popup.dialog.button1, "Reload Now")
-Expect("...listing them one to a line", string.find(popup.dialog.text, "\n\n• SpokenPlayer\n• VoiceOverRedux\n", 1, true) ~= nil, true)
+Expect("...listing them one to a line", string.find(popup.dialog.text, "\n\n· SpokenPlayer\n· VoiceOverRedux\n", 1, true) ~= nil, true)
 local justify = "CENTER"
 local shown = { text = { SetJustifyH = function(_, value) justify = value end } }
 popup.dialog.OnShow(shown)
