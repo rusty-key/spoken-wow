@@ -153,6 +153,42 @@ stub.Advance(1)
 Expect("leaving combat, the retry tick starts it", Spoken:IsPlaying(held), true)
 Spoken:StopAll()
 
+-- Holding at the door is not enough: a narration already speaking when a fight starts
+-- must stop for it, or it talks through the whole pull (#938).
+env, Z = Boot(); Spoken = _G.Spoken
+local narration = Z:NewLoreSound(1411, "valley of trials"); narration.autoplay = true
+Z:EnqueueLore(narration)
+Expect("out of combat, the narration speaks", Spoken:IsPlaying(narration), true)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("PLAYER_REGEN_DISABLED stops an autoplayed clip already speaking", Spoken:IsPlaying(), false)
+Expect("...and keeps it queued", Spoken:GetCurrent(), narration)
+Expect("...held for combat", Spoken:GetHeldReason(narration), "Waiting for combat to end.")
+stub.Advance(30)
+Expect("...for as long as the fight lasts", Spoken:IsPlaying(), false)
+world.inCombat = false
+stub.Advance(1)
+Expect("the fight over, it replays", Spoken:IsPlaying(narration), true)
+Spoken:StopAll()
+
+env, Z = Boot(); Spoken = _G.Spoken
+Expect("a clicked clip plays", Z:PlayLore(1411, nil), true)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("...and is not cut off by combat", Spoken:IsPlaying(), true)
+Spoken:StopAll()
+
+env, Z = Boot(); Spoken = _G.Spoken
+local questSource = Spoken:RegisterSource("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
+local questLine = H.Clip()
+questSource:Enqueue(questLine)
+Expect("a quest line speaks", Spoken:IsPlaying(questLine), true)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("...and combat leaves another source's line alone", Spoken:IsPlaying(questLine), true)
+Spoken:StopAll()
+world.inCombat = false
+
 ---------------------------------------------------------------- the cinematic gate
 -- The greeting fires two seconds after load, and a new character's intro can start after
 -- that. Holding at the door is not enough: a clip already speaking must stop for it.

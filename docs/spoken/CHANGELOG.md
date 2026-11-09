@@ -2,6 +2,13 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Place stories that started on their own stop when you enter combat.** A zone or area story that
+  was already playing when a fight began used to talk through the whole fight, in PvP too. It now
+  stops and plays again from the start once combat ends. A story you started with Play keeps going.
+  *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
+
 ## 3.8.4 — 2026-11-08
 
 - **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
