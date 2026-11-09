@@ -182,8 +182,6 @@ export function idOnlyResolution(rows: NpcResolution[] | undefined): IdOnlyLooku
  * name is only the fallback for an envelope that named none.
  */
 export function npcSummaryFrom(
-  // The caller's, loaded once: checking a roster is current takes four round trips, and a queue
-  // of thousands of rows paid them per row.
   roster: Roster,
   observed: { npcKind: NpcRowKind | null; npcId: number; npcName: string | null },
   resolution: NpcResolution | undefined,

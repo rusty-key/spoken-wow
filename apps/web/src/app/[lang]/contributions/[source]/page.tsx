@@ -139,6 +139,9 @@ async function bookMatchesFor(contributions: Contribution[]) {
  * moderator or the resolver looked and found no race to assign (a narrator, say). Absent
  * entirely means the envelope never named an NPC at all -- places and readables never do, and a
  * quests envelope keyed on quest+event rather than npc doesn't either.
+ *
+ * `roster` must be the language of every row: a row of another team's would be offered this
+ * team's flavors.
  */
 async function npcFor(contributions: Contribution[], roster: Roster): Promise<Record<number, NpcSummary>> {
   const found: Record<number, NpcSummary> = {};
@@ -317,11 +320,12 @@ export default async function Page({
 
   // Lines the corpus already has are not this queue's: a different text is a correction, on
   // its own tab, and the same text is nothing to triage at all (known.ts's tabOf).
-  const { listed, states, pending } = await listedWithPending(status, lang, sort, source);
+  const [{ listed, states, pending }, roster] = await Promise.all([
+    listedWithPending(status, lang, sort, source),
+    loadRoster(lang),
+  ]);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
-  // This language's alone will do: every row listed is in the language of the page.
-  const roster = await loadRoster(lang);
   const npcs = await npcFor(contributions, roster);
 
   const build = buildFilterOf(rawBuild);
