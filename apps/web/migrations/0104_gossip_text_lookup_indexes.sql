@@ -1,27 +1,38 @@
 -- Accepting a greeting compares normalised text that no index held, so each lookup ran its
 -- regular expressions over a whole language.
 --
--- These expressions must match lib/contributions/gossip.ts exactly, or Postgres cannot use the
--- index. gossip.test.ts checks that.
+-- The normalisation lives in these functions so that the indexes and the queries share it.
 --
--- GIN because a text matches on any of three forms, of either gender's text.
---
--- Not CONCURRENTLY, because migrate.sh runs every file in a transaction.
+-- Not CONCURRENTLY, because migrate.sh runs every file in a transaction. broadcast_text goes
+-- first because the locks last until commit, and greetings are accepted into quest_line.
 
-create index if not exists "quest_line_gossip_text_idx"
-  on "quest_line" ("lang", (lower(regexp_replace(btrim(coalesce("localeText", '')), '\s+', ' ', 'g'))))
-  where "source" = 'gossip';
+-- Case and runs of whitespace aside.
+create or replace function "gossip_norm"("value" text) returns text
+language sql immutable as $$
+  select lower(regexp_replace(btrim("value"), '\s+', ' ', 'g'))
+$$;
 
+-- A text whole and down each side of its `$g male:female;` and `$u` branches. Whole too, because
+-- the client sends a `$u` branch unresolved. Schema-qualified because pg_dump restores with an
+-- empty search_path, and rebuilding the index below calls this.
+create or replace function "gossip_readings"("value" text) returns text[]
+language sql immutable as $$
+  select array[
+    public."gossip_norm"("value"),
+    public."gossip_norm"(regexp_replace("value", '\$[gu]([^:;]*):([^;]*);', '\1', 'gi')),
+    public."gossip_norm"(regexp_replace("value", '\$[gu]([^:;]*):([^;]*);', '\2', 'gi'))
+  ]
+$$;
+
+-- Both columns' readings: a query narrows to the speaker's gender after the index.
 create index if not exists "broadcast_text_readings_idx"
-  on "broadcast_text" using gin ((array[
-    lower(regexp_replace(btrim(coalesce(nullif("text", ''), "text1")), '\s+', ' ', 'g')),
-    lower(regexp_replace(btrim(regexp_replace(coalesce(nullif("text", ''), "text1"), '\$[gu]([^:;]*):([^;]*);', '\1', 'gi')), '\s+', ' ', 'g')),
-    lower(regexp_replace(btrim(regexp_replace(coalesce(nullif("text", ''), "text1"), '\$[gu]([^:;]*):([^;]*);', '\2', 'gi')), '\s+', ' ', 'g')),
-    lower(regexp_replace(btrim(coalesce(nullif("text1", ''), "text")), '\s+', ' ', 'g')),
-    lower(regexp_replace(btrim(regexp_replace(coalesce(nullif("text1", ''), "text"), '\$[gu]([^:;]*):([^;]*);', '\1', 'gi')), '\s+', ' ', 'g')),
-    lower(regexp_replace(btrim(regexp_replace(coalesce(nullif("text1", ''), "text"), '\$[gu]([^:;]*):([^;]*);', '\2', 'gi')), '\s+', ' ', 'g'))
-  ]));
+  on "broadcast_text" using gin ((public."gossip_readings"("text") || public."gossip_readings"("text1")));
 
 -- The planner has no statistics on an indexed expression until the table is analyzed.
-analyze "quest_line";
 analyze "broadcast_text";
+
+create index if not exists "quest_line_gossip_text_idx"
+  on "quest_line" ("lang", (public."gossip_norm"(coalesce("localeText", ''))))
+  where "source" = 'gossip';
+
+analyze "quest_line";
