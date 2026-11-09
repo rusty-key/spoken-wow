@@ -611,28 +611,32 @@ local DISCOVERY_EVENTS = {
 	"UI_ERROR_MESSAGE",
 }
 
--- A cinematic can start after a clip has. The hold above is asked only before a clip
--- starts, and the login greeting fires two seconds after load -- before a new
--- character's intro, often enough -- so without these it narrates over the whole thing.
-local CINEMATIC_EVENTS = {
+-- A cinematic or a fight can start after a clip has. The hold above is asked only
+-- before a clip starts, and the login greeting fires two seconds after load -- before a
+-- new character's intro, often enough -- so without these it narrates over the whole
+-- thing. Combat is the same: a narration that began as the player rode into an area
+-- would talk through the pull, or through a PvP fight.
+local HOLD_EVENTS = {
 	CINEMATIC_START = true,
 	PLAY_MOVIE = true,
+	PLAYER_REGEN_DISABLED = true,
 }
 
 -- Stops our clip if the hold now applies to it, keeping it queued to replay once the
--- cinematic ends. Asked twice: now, and a frame later, because MovieFrame shows itself
--- from its own PLAY_MOVIE handler and the order frames receive an event in is not
--- defined. InCinematic covers CINEMATIC_START on the first ask.
-local function RecheckForCinematic()
+-- cinematic or the fight ends. Asked twice: now, and a frame later, because MovieFrame
+-- shows itself from its own PLAY_MOVIE handler and the order frames receive an event in
+-- is not defined. InCinematic covers CINEMATIC_START on the first ask, and
+-- UnitAffectingCombat PLAYER_REGEN_DISABLED.
+local function RecheckHolds()
 	local source = SpokenPlaces.source
 	if source and source.RecheckGates then
 		source:RecheckGates()
 	end
 end
 
-local function OnCinematicStart()
-	RecheckForCinematic()
-	C_Timer.After(0, RecheckForCinematic)
+local function OnHoldStart()
+	RecheckHolds()
+	C_Timer.After(0, RecheckHolds)
 end
 
 -- The payload is not in the same position across those events: CHAT_MSG_* put the
@@ -655,15 +659,15 @@ function SpokenPlaces:SetupAutoplay()
 	for _, event in ipairs(DISCOVERY_EVENTS) do
 		frame:RegisterEvent(event)
 	end
-	for event in pairs(CINEMATIC_EVENTS) do
+	for event in pairs(HOLD_EVENTS) do
 		frame:RegisterEvent(event)
 	end
 	-- Every loading screen, an instance's included. Core's own frame stops listening after login.
 	frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	frame:SetScript("OnEvent", function(_, event, ...)
-		if CINEMATIC_EVENTS[event] then
-			OnCinematicStart()
+		if HOLD_EVENTS[event] then
+			OnHoldStart()
 			return
 		end
 		if event == "PLAYER_ENTERING_WORLD" then
