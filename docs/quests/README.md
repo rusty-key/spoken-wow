@@ -528,8 +528,9 @@ side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary a
 some lines) reads as the token. English quest text has nothing left for it to replace, its
 words having been written in at extraction; a book page in any language, English included,
 goes through the same table (`docs/readables/README.md`). A token glued to a following letter
-(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. German's
-genitive `s` is the one exception: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. Two glued
+`s` are exceptions. German's genitive: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+on the female variant. French's class plural: `$cs` reads as `aventuriers`, or `aventurières`
 on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
 in as a token instead of swallowing the text up to a later `;`.
 A Craftsman's Writ's `$2oa`, the item count the client fills in, reads as "an order of" in
