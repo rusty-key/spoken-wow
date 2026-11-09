@@ -535,6 +535,7 @@ function Addon:OnInitialize()
         global.startedOnlyDefaultOn = true
         if global.Compendium then global.Compendium.FoundOnly = nil end
     end
+    self:FoldGreetingsHeardByGUID()
     self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
     self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
 
@@ -1296,29 +1297,67 @@ local function TextKey(text)
     return format("%08x", h)
 end
 
---- Whether this character has heard this NPC greet them with this text. An NPC that greets
---- with several texts reads each of them once. A GUID that holds anything but a table was
---- marked when only the NPC was remembered, and counts as unheard.
+-- Keyed by ID because a GUID's last part is the spawn: new on a respawn, a server restart and,
+-- on Forever, each session. Object IDs overlap creature IDs, so an object's key is a string.
+local function LastingSpeakerKey(guid)
+    local id, guidType = Utils:ReadIDFromGUID(guid)
+    if guidType == Enums.GUID.GameObject then
+        return "o" .. id
+    end
+    return id
+end
+
+local function SpeakerKey(guid)
+    return LastingSpeakerKey(guid) or guid or "unknown"
+end
+
+local function HeardTexts(seen, key)
+    if type(seen[key]) ~= "table" then
+        seen[key] = {}
+    end
+    return seen[key]
+end
+
+--- A key that holds anything but a table names no text, so it counts as unheard.
 function Addon:HasHeardGreeting(guid, text)
     if not text then
         return false
     end
-    local heard = self.db.char.hasSeenGossipForNPC[guid or "unknown"]
+    local heard = self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]
     return type(heard) == "table" and heard[TextKey(text)] == true
 end
 
 --- For when the text is not known yet.
 function Addon:HasHeardAnyGreeting(guid)
-    return type(self.db.char.hasSeenGossipForNPC[guid]) == "table"
+    return type(self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]) == "table"
+end
+
+--- Keeps greetings heard under GUIDs from playing again. A GUID marked `true` holds no text and
+--- counts as unheard anyway, so it goes.
+function Addon:FoldGreetingsHeardByGUID()
+    local seen = self.db.char.hasSeenGossipForNPC
+    local lastingKeyOf = {}
+    for key in pairs(seen) do
+        local lastingKey = LastingSpeakerKey(key)
+        if lastingKey then
+            lastingKeyOf[key] = lastingKey
+        end
+    end
+    -- Collected first: a key added to a table while `pairs` walks it breaks the walk.
+    for guid, lastingKey in pairs(lastingKeyOf) do
+        local texts = seen[guid]
+        seen[guid] = nil
+        if type(texts) == "table" then
+            local merged = HeardTexts(seen, lastingKey)
+            for textKey, heard in pairs(texts) do
+                merged[textKey] = heard
+            end
+        end
+    end
 end
 
 function Addon:MarkGreetingHeard(guid, text)
-    local seen = self.db.char.hasSeenGossipForNPC
-    local npcKey = guid or "unknown"
-    if type(seen[npcKey]) ~= "table" then
-        seen[npcKey] = {}
-    end
-    seen[npcKey][TextKey(text)] = true
+    HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
 end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options
