@@ -63,19 +63,12 @@ export type GossipPlan =
   | { kind: "translation"; lineId: string; addSpeaker: boolean; broadcastTextId: number | null }
   | { kind: "line"; identity: LineIdentity; broadcastTextId: number | null };
 
-/** The one-off's normalisation (fill-gossip-broadcast.py): case and runs of whitespace aside. */
-export const norm = (sql: string) => `lower(regexp_replace(btrim(${sql}), '\\s+', ' ', 'g'))`;
-
-/**
- * A `$g male:female;` branch, or `$u`, the same, either side: the client shows the one the
- * player's sex picks.
- */
-export const branch = (sql: string, side: 1 | 2) => `regexp_replace(${sql}, '\\$[gu]([^:;]*):([^;]*);', '\\${side}', 'gi')`;
+export const MALE_FORM = `coalesce(nullif(b."text", ''), b."text1")`;
+export const FEMALE_FORM = `coalesce(nullif(b."text1", ''), b."text")`;
 
 /**
  * The lowest BroadcastText id whose text in `lang` reads as `text` does, in the form a speaker of
- * this sex shows. One text can sit under several ids, and they read alike. The unbranched form
- * too: the client sends a `$u` branch unresolved.
+ * this sex shows. One text can sit under several ids, and they read alike.
  */
 export async function broadcastIdFor(
   q: Queryable,
@@ -83,23 +76,18 @@ export async function broadcastIdFor(
   text: string,
   gender: string,
 ): Promise<number | null> {
-  const form = `case when $3 = 'female' then coalesce(nullif(b."text1", ''), b."text")
-                     else coalesce(nullif(b."text", ''), b."text1") end`;
+  const form = gender === "female" ? FEMALE_FORM : MALE_FORM;
   const { rows } = await q.query<{ id: number }>(
     `select b."broadcastTextId" as "id"
        from "broadcast_text" b
       where b."lang" = $1
-        and $2 in (${norm(form)}, ${norm(branch(form, 1))}, ${norm(branch(form, 2))})
+        and (gossip_readings(b."text") || gossip_readings(b."text1")) @> array[gossip_norm($2)]
+        and gossip_norm($2) = any(gossip_readings(${form}))
       order by 1
       limit 1`,
-    [lang, normalised(text), gender],
+    [lang, text],
   );
   return rows[0]?.id ?? null;
-}
-
-/** norm() on this side, so the parameter compares equal to the column's form. */
-function normalised(text: string): string {
-  return text.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 /**
@@ -157,8 +145,8 @@ export function linesByText(q: Queryable, lang: Lang, text: string, speaker: Gos
   return momentLines(
     q,
     `select "lineId" from "quest_line"
-      where "lang" = $1 and "source" = 'gossip' and ${norm(`coalesce("localeText", '')`)} = $2`,
-    [lang, normalised(text)],
+      where "lang" = $1 and "source" = 'gossip' and gossip_norm(coalesce("localeText", '')) = gossip_norm($2)`,
+    [lang, text],
     lang,
     speaker,
   );
