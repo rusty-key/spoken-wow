@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.8.6 — 2026-11-10
 
 - **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new
   setting is under Read Automatically on the Places page. On, a story that started on its own
