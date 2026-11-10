@@ -73,9 +73,11 @@ local NEST_AFTER = 2          -- more under an open group's contents, for each o
 local NEST_STEP = 16          -- what an open group holds, this far in under it
 -- The line down an open group's contents, this far into the step.
 local RAIL_X = 12
-local FOOT, BANNER_FOOT = 3, -0.5
--- A line's name and numbers stand this much over its middle, which the font's own spacing leaves a little low.
-local TEXT_LIFT = 1
+local FOOT, BANNER_FOOT = 3, 0
+-- A line's name stands this much over its middle, which the font's own spacing leaves a little low; its
+-- numbers, in a smaller face, one more so that their foot is the name's, and its tick or quest mark as
+-- far as the name.
+local TEXT_LIFT, COUNT_LIFT = 1, 2
 local LIST_LEFT, LIST_RIGHT = 6, 6
 -- The scroll bar stands BAR_SIDE in from the scroll frame's right, BAR_HEAD down from its top and BAR_FOOT
 -- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
@@ -1544,7 +1546,7 @@ local function DrawBanner(row, item, onlyFound)
 	row.bannerArt = not flatBanners
 	if row.bannerArt then
 		-- The ends keep their shape at any row height: BAR_CAP texels of the bar's BAR_HEIGHT.
-		local cap = BANNER_ROW * BAR_CAP / BAR_HEIGHT
+		local cap = Pixels(row, BANNER_ROW, 1) * BAR_CAP / BAR_HEIGHT
 		for i, piece in ipairs(BAR_PIECES) do
 			for _, part in ipairs({ { row.headLeft, row.headMiddle, row.headRight }, row.glow }) do
 				part[i]:SetTexture(BAR_FILE)
@@ -1583,7 +1585,7 @@ local function DrawBanner(row, item, onlyFound)
 	local locked = item.locked and row.hasLock
 	-- The numbers and padlock in the column the lines' numbers end in.
 	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
-	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
+	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, row.bannerArt and TEXT_LIFT or 0)
 	row.lock:SetShown(locked and true or false)
 	row.count:SetShown(not locked)
 	RowFont(row, "banner", "GameFontNormal", "GameFontHighlightSmall")
@@ -1617,15 +1619,15 @@ local function DrawGroup(row, item, indent, onlyFound)
 	if ticked then
 		Ticked(row.status)
 		row.status:ClearAllPoints()
-		row.status:SetPoint("CENTER", row, "RIGHT", edge, 0)
+		row.status:SetPoint("CENTER", row, "RIGHT", edge, TEXT_LIFT)
 	end
 	row.status:SetShown(ticked)
 	RowFont(row, "group", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, SHARE_INK)
 	if ticked then
-		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, TEXT_LIFT)
+		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, COUNT_LIFT - TEXT_LIFT)
 	else
-		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, TEXT_LIFT)
+		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, COUNT_LIFT)
 	end
 	local numbers = Numbers(item, total, ratio, ticked)
 	row.count:SetText(numbers)
@@ -1635,7 +1637,7 @@ local function DrawGroup(row, item, indent, onlyFound)
 	local stop = locked and row.lock or (numbers ~= "" and row.count) or row
 	-- The numbers are lifted already; the padlock and the row's edge are not.
 	row.label:SetPoint("RIGHT", stop, locked and "LEFT"
-		or (numbers ~= "" and "LEFT") or "RIGHT", -8, stop == row.count and 0 or TEXT_LIFT)
+		or (numbers ~= "" and "LEFT") or "RIGHT", -8, stop == row.count and TEXT_LIFT - COUNT_LIFT or TEXT_LIFT)
 	NameInk(row.label, item)
 	row.label:SetText(item.label)
 end
@@ -1655,7 +1657,7 @@ local function DrawLeaf(row, item, indent)
 	end
 	-- At the row's end, where a padlock goes: one place for what a row's state is.
 	row.status:ClearAllPoints()
-	row.status:SetPoint("CENTER", row, "RIGHT", -(ROW_END + 6), 0)
+	row.status:SetPoint("CENTER", row, "RIGHT", -(ROW_END + 6), TEXT_LIFT)
 	row.status:SetShown(status ~= nil)
 
 	local locked = item.locked and row.hasLock
@@ -1685,7 +1687,9 @@ function List:Render()
 	local onlyFound = self.opts.onlyGet and self.opts.onlyGet()
 	local unlock = self.panel.tab and self.panel.tab.unlock
 	local unlocked = unlock and unlock.get and unlock.get()
-	local y = LIST_TOP
+	-- Every height and gap in whole screen pixels, as the rows are drawn: at a scale that cuts 28 into 33.6 pixels,
+	-- bars came out 33 pixels tall here and 34 there.
+	local y = Pixels(self.child, LIST_TOP, 0)
 	local underBanner = false
 	for i, item in ipairs(items) do
 		if unlocked then item.none = false end
@@ -1693,7 +1697,8 @@ function List:Render()
 		local row = self:AcquireRow(i)
 		row.row = item
 		local gap, held = GapAbove(items, i)
-		local height = RowHeight(item)
+		gap = Pixels(self.child, gap, 0)
+		local height = Pixels(self.child, RowHeight(item), 1)
 		y = y + gap
 		row:SetHeight(height)
 		row:ClearAllPoints()
@@ -1757,10 +1762,10 @@ end
 --- something or the list is filtered again: doing it on every refresh would yank the list out
 --- from under a click.
 function List:ScrollToSelection(items)
-	local y = LIST_TOP
+	local y = Pixels(self.child, LIST_TOP, 0)
 	for i, item in ipairs(items) do
-		y = y + GapAbove(items, i)
-		local height = RowHeight(item)
+		y = y + Pixels(self.child, (GapAbove(items, i)), 0)
+		local height = Pixels(self.child, RowHeight(item), 1)
 		if self.opts.isSelected and self.opts.isSelected(item) then
 			local viewHeight = self.scroll:GetHeight() or 0
 			-- GetVerticalScrollRange is stale until the next layout pass, right after
