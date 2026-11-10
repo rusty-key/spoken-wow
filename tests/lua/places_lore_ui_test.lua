@@ -153,6 +153,7 @@ end
 ---------------------------------------------------------------- the lore window
 Z:SetupLoreWindow()
 -- The places are a tab of Azeroth's Compendium (UI/Compendium.lua); Z.window is the tab.
+_G.SpokenCompendium.treeLines = true
 local compendium = _G.SpokenCompendium.window
 local window = Z.window
 Expect("built at login, hidden, and not made the tab the window first opens on",

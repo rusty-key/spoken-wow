@@ -27,6 +27,8 @@
 -- up in the calling function's environment.
 
 local C = { tabs = {} }
+-- The faint lines down what an open group holds. Off: the steps in and the plus and minus show the levels.
+C.treeLines = false
 SpokenCompendium = C
 
 --- Runs `dress(skin)`, with EllesmereUI's skinning API, while Spoken's windows wear its look; never
@@ -1460,7 +1462,7 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 		row.bannerRail:ClearAllPoints()
 		Hang(row.bannerRail, Pixels(row, BANNER_RAIL_X, 0), (afterBanner and not flat) and BANNER_FOOT or 0)
 		row.bannerRail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", Pixels(row, BANNER_RAIL_X, 0), 0)
-		row.bannerRail:SetShown(underBanner and true or false)
+		row.bannerRail:SetShown(C.treeLines and underBanner and true or false)
 	end
 	row.rails = row.rails or {}
 	for i = 1, math.max(count, #row.rails) do
@@ -1476,7 +1478,7 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 			rail:ClearAllPoints()
 			Hang(rail, x, (i <= held or flat) and 0 or (foot or FOOT))
 			rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
-			rail:Show()
+			rail:SetShown(C.treeLines)
 		elseif rail then
 			rail:Hide()
 		end

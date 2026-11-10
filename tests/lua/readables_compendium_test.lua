@@ -111,6 +111,7 @@ SpokenReadablesCharacter.found[KURDRAN] = true
 B:SetupReadables()
 stub.SetZone({ map = 1436 })
 B:ShowReadables()
+_G.SpokenCompendium.treeLines = true
 local window = _G.SpokenCompendium.window
 local panel = B.readables
 Expect("the readables are a tab of Azeroth's Compendium", window.title, SpokenEnv.L.OPT_COMPENDIUM_TITLE)

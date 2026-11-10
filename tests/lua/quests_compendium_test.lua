@@ -136,6 +136,8 @@ Expect("Era does not list Forever quests", Tab:Lists(ERA_FOREVER_QUEST), false)
 -- A map with no quests and nothing above it.
 stub.world.playerMapID = 9999
 Tab:Open()
+Expect("the lines down what an open group holds are off unless asked for", _G.SpokenCompendium.treeLines, false)
+_G.SpokenCompendium.treeLines = true
 local panel = Tab.panel
 local page = panel.page
 local function StartedOnlyTicked() return stub.OpenDropdown(panel.filterMenu)[1].checked and true or false end
@@ -347,6 +349,12 @@ local city = RowFor("Stormwind City")
 Expect("a city is a line inside its zone's line", city ~= nil and city.row.style == "group" and city.row.nest, 1)
 Expect("...indented under it, 16 further in", city.indent - elwynn.indent, 16)
 Expect("...with the line down the open zone's contents beside it", city.rails[1]:IsShown() and city.rails[1].anchor.x, 32.4)
+_G.SpokenCompendium.treeLines = false
+Tab:Refresh()
+Expect("...and none of the lines drawn with them off, the rows as they were", RowFor("Stormwind City").rails[1]:IsShown() == false
+    and RowFor("Eastern Kingdoms").bannerRail == nil or not RowFor("Eastern Kingdoms").bannerRail:IsShown(), true)
+_G.SpokenCompendium.treeLines = true
+Tab:Refresh()
 Expect("...not chosen or under the pointer, no light on it", city.wash:IsShown(), false)
 city.scripts.OnEnter(city)
 Expect("...under the pointer, the list's light over it", city.wash:IsShown(), true)
