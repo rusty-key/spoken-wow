@@ -295,7 +295,8 @@ function Bosses:ShowLeatrixBoss(mapID, creatureID, bossName)
 		face = true,
 		-- The page of a boss not shown has no row to land on.
 		open = revealed and function() self:ShowBoss(found.map, found.key) end or nil,
-		model = BossModel(found.map, found.key),
+		-- A boss not met shows no model, as its page in the Compendium shows none.
+		model = revealed and BossModel(found.map, found.key) or nil,
 		text = text,
 		target = target,
 		play = PLAY,

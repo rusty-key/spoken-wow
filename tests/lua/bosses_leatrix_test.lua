@@ -255,5 +255,21 @@ stub.Advance(0.01)
 Expect("a hidden tooltip's old owner opens no lore", shown, nil)
 _G.LeaMapsPOITooltip = nil
 
+-- A boss the player has not met: its words say so, and its model is not drawn.
+WorldMapFrame.mapID = 36
+pin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
+local found = Bosses.IsBossFound
+function Bosses:IsBossFound() return false end
+shown = nil
+pin:Click()
+Expect("a boss not met opens its panel saying so", shown and shown.entry.text, "not found")
+Expect("...with no 3D model", shown and shown.entry.model, nil)
+_G.SpokenBossesSettings = { unlockUnfound = true }
+shown = nil
+pin:Click()
+Expect("...with Unlock Unfound Bosses on, its model drawn", shown and shown.entry.model and shown.entry.model.displayID, 2029)
+_G.SpokenBossesSettings = nil
+Bosses.IsBossFound = found
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll Leatrix boss map tests passed")
