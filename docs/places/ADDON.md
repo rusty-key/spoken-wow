@@ -36,7 +36,7 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | | Include Places Found Before | `autoplayExplored` | on |
 | | Stop When Combat Starts | `autoplayStopInCombat` | off |
 | | Read Every Visit | `autoplayEveryVisit` | off |
-| | Read Again After (shown with Read Every Visit on) | `autoplayEveryVisitGap` | 12 hours |
+| | Read Again After (shown with Read Every Visit on) | `autoplayEveryVisitGap` | 1 day |
 | Stories | Show Story Beside Map | `showMapPanel` | on |
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
@@ -189,9 +189,9 @@ The game announces a discovery once per character, and Places reads that message
   character standing in one of the six starting areas (`STARTING_AREAS`). `greeted` in
   `SpokenPlacesCharacter` makes it happen once, and `/spp forget` clears it.
 - Read Every Visit reads the zone, and the area with Include Smaller Areas on, on every zone change
-  and on entering a dungeon, unless that place started reading within the chosen wait: 12 hours,
-  1 day, 1 week or 1 month of 30 days (`EVERY_VISIT_GAPS` in `Autoplay.lua`). Without the wait,
-  riding along a zone border reads both zones over and over, and nothing shorter than half a day
+  and on entering a dungeon, unless that place started reading within the chosen wait: 1 day,
+  1 week or 1 month of 30 days (`EVERY_VISIT_GAPS` in `Autoplay.lua`). Without the wait,
+  riding along a zone border reads both zones over and over, and nothing shorter than a day
   is offered for the same reason. `readAt` keeps when each place last
   started reading, from any route, by the wall clock (`time()`): `GetTime()` starts from zero at
   every restart, and a month outlasts one. A time ahead of the clock counts as long ago. With it on,

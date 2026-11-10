@@ -5,8 +5,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 ## Unreleased
 
 - **Places can read a zone every time you arrive.** Turn on Read Every Visit under Places, When to
-  Read, and choose how long to wait before the same place is read again: 12 hours, a day, a week
-  or a month. Off by default, so places are still read once per character.
+  Read, and choose how long to wait before the same place is read again: a day, a week or a
+  month. Off by default, so places are still read once per character.
   *([belarusrulez](https://github.com/belarusrulez))*
 
 ## 3.8.6 — 2026-11-10

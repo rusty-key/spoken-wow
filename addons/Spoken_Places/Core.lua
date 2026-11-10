@@ -63,7 +63,7 @@ local defaults = {
 	-- everyone who has the once-per-place behaviour (Autoplay.lua, Read Every Visit).
 	autoplayEveryVisit = false,
 	-- Seconds, one of EVERY_VISIT_GAPS (Autoplay.lua).
-	autoplayEveryVisitGap = 12 * 3600,
+	autoplayEveryVisitGap = 24 * 3600,
 	-- Off, so a player cannot end up reading an unfinished translation without
 	-- having asked for one (Spoken > Developer). See Language.lua.
 	languagePreview = false,

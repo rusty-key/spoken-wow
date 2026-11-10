@@ -25,7 +25,6 @@ L.OPT_AUTOPLAY_EXPLORED = "Включать места, открытые ран�
 L.OPT_AUTOPLAY_COMBAT = "Останавливать в начале боя"
 L.OPT_AUTOPLAY_EVERY_VISIT = "Читать при каждом посещении"
 L.OPT_AUTOPLAY_GAP = "Перерыв между чтениями"
-L.OPT_GAP_12H = "12 часов"
 L.OPT_GAP_1D = "1 день"
 L.OPT_GAP_1W = "1 неделя"
 L.OPT_GAP_1MO = "1 месяц"

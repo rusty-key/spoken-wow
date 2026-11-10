@@ -100,7 +100,7 @@ function SpokenPlaces:SetupOptions()
 	local again = layout:Checkbox(L.OPT_AUTOPLAY_EVERY_VISIT, nil,
 		Get("autoplayEveryVisit"), Set("autoplayEveryVisit"), refresh)
 	-- Shown only with Read Every Visit on: off, it is a setting for nothing.
-	local GAP_LABELS = { L.OPT_GAP_12H, L.OPT_GAP_1D, L.OPT_GAP_1W, L.OPT_GAP_1MO }
+	local GAP_LABELS = { L.OPT_GAP_1D, L.OPT_GAP_1W, L.OPT_GAP_1MO }
 	local gapMenu = layout:Dropdown(L.OPT_AUTOPLAY_GAP, nil,
 		SpokenPlaces.EVERY_VISIT_GAPS,
 		function() return SpokenPlaces:EveryVisitGap() end,
