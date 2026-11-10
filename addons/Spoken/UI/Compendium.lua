@@ -79,7 +79,7 @@ local LIST_LEFT, LIST_RIGHT = 6, 6
 -- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
 -- inset's border and the rows, between the border and the bar, and between the rows and the bar.
 -- The rows end BAR_ROOM short of the bar, plus LIST_RIGHT.
-local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 9, 4, 7
+local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 8, 4, 7
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
