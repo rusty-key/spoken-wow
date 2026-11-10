@@ -32,7 +32,7 @@ import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
 import type { ClientSummary } from "@/lib/contributions/client";
-import { wordDiff, type DiffPart } from "@/lib/contributions/compare";
+import { hasClassSlot, wordDiff, type DiffPart } from "@/lib/contributions/compare";
 import type { ContributionStatus } from "@/lib/contributions/contributions";
 import { type ClientFilter, type QuestStage, type StageFilter } from "@/lib/contributions/query";
 import { localeHref } from "@/lib/lang";
@@ -80,9 +80,6 @@ export type CorrectionRow = {
  * the moderator's edit of the player's text where there is one.
  */
 type Accept = ({ lineId: string; variant: number } | { as: "wording" }) & { text?: string };
-
-/** The addon's slot for the reader's class, which a quest marked as naming a class gets back. */
-const CLASS_SLOT = /\$[cC](?![\p{L}\p{N}\p{M}])/u;
 
 /** Corrections are quest panels only, so gossip is not offered. */
 const QUEST_STAGE_OPTIONS = STAGE_CHIP_OPTIONS.filter((option) => option.value !== "gossip");
@@ -150,30 +147,37 @@ export default function CorrectionTable({
   /** "Accept all" asks twice: every row it accepts writes a line's or page's text. */
   const [confirmAll, setConfirmAll] = useState(false);
 
+  /** A row's POST: its answer's body, or null with the refusal shown under the row. */
+  const post = useCallback(async (url: string, id: number, payload: object): Promise<Record<string, unknown> | null> => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, ...payload }),
+    }).catch(() => null);
+    const body = await response?.json().catch(() => null);
+    if (response?.ok) {
+      setRefusals(({ [id]: _, ...rest }) => rest);
+      return body ?? {};
+    }
+    const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
+    setRefusals((current) => ({ ...current, [id]: message }));
+    return null;
+  }, []);
+
   // Accepting writes the player's text as the picked wording's, or beside them as another
   // (api/contributions/correction); rejecting and reopening are resolve's plain status flips.
-  const send = useCallback(async (id: number, next: ContributionStatus, as?: Accept): Promise<boolean> => {
-    const response = await fetch(
-      next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve",
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, status: next, ...as }),
-      },
-    ).catch(() => null);
-    if (response?.ok) {
+  const send = useCallback(
+    async (id: number, next: ContributionStatus, as?: Accept): Promise<boolean> => {
+      const url = next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve";
+      if (!(await post(url, id, { status: next, ...as }))) return false;
       setResolved((current) => ({ ...current, [id]: next }));
       const text = as?.text;
       if (text !== undefined) setTexts((current) => ({ ...current, [id]: text }));
       setDrafts(({ [id]: _, ...rest }) => rest);
-      setRefusals(({ [id]: _, ...rest }) => rest);
       return true;
-    }
-    const body = await response?.json().catch(() => null);
-    const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
-    setRefusals((current) => ({ ...current, [id]: message }));
-    return false;
-  }, []);
+    },
+    [post],
+  );
 
   const resolve = useCallback(
     async (id: number, next: ContributionStatus, as?: Accept) => {
@@ -206,24 +210,18 @@ export default function CorrectionTable({
     [send],
   );
 
-  const markClassWord = useCallback(async (id: number, questId: number, kept: boolean) => {
-    setBusy(id);
-    const response = await fetch("/api/contributions/class-word", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, kept }),
-    }).catch(() => null);
-    const body = await response?.json().catch(() => null);
-    if (response?.ok) {
-      setClassWords((current) => ({ ...current, [questId]: kept }));
-      setTexts((current) => ({ ...current, ...(body?.texts as Record<number, string>) }));
-      setRefusals(({ [id]: _, ...rest }) => rest);
-    } else {
-      const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
-      setRefusals((current) => ({ ...current, [id]: message }));
-    }
-    setBusy(null);
-  }, []);
+  const markClassWord = useCallback(
+    async (id: number, questId: number, kept: boolean) => {
+      setBusy(id);
+      const body = await post("/api/contributions/class-word", id, { kept });
+      if (body) {
+        setClassWords((current) => ({ ...current, [questId]: kept }));
+        setTexts((current) => ({ ...current, ...(body.texts as Record<number, string>) }));
+      }
+      setBusy(null);
+    },
+    [post],
+  );
 
   /** The player's text as it now stands, or as typed where the row is open for editing. */
   const savedOf = (row: CorrectionRow): string => texts[row.id] ?? row.after;
@@ -428,7 +426,7 @@ export default function CorrectionTable({
                     ) : (
                       <Marked parts={diff.after} tone="added" />
                     )}
-                    {row.quest && current === "new" && (classWord || CLASS_SLOT.test(after)) ? (
+                    {row.quest && current === "new" && (classWord || hasClassSlot(after)) ? (
                       <button
                         type="button"
                         disabled={busy === row.id || bulk !== null}

@@ -161,11 +161,11 @@ async function contributeMissing(
   if (envelope.source === "places") return;
   const sent = submissionFrom(envelope, raw);
   if (!sent) return;
-  const [submission] = await keepClassWords([sent]);
-  const [recent, [known]] = await Promise.all([
+  const [recent, [submission]] = await Promise.all([
     countRecentContributions(identity.ip, CONTRIBUTION_WINDOW_MS),
-    knownSubmissions([submission]),
+    keepClassWords([sent]),
   ]);
+  const [known] = await knownSubmissions([submission]);
   if (recent >= CONTRIBUTIONS_PER_HOUR) return;
   if (!known) {
     await storeSubmission(submission, { ...identity, body: complaint });

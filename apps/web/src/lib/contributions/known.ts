@@ -62,7 +62,7 @@ const MISSING: LineState = { kind: "missing" };
  * The quest moment a contribution names, `q:{quest}:{event}`, or null for a greeting. Past the
  * integer ceiling the quest is no id quest_line could hold, and names no moment.
  */
-function momentNamed(row: Comparable): string | null {
+export function momentNamed(row: Pick<Comparable, "meta">): string | null {
   const { quest, event } = row.meta;
   return quest && event && /^\d+$/.test(quest) && Number(quest) <= 2_147_483_647 ? `q:${quest}:${event}` : null;
 }
@@ -98,8 +98,13 @@ export function stateOfMoment(lines: CorpusText[], text: string): LineState {
   const same = lines.find((line) => sameLine(line.text, text));
   if (same) return { kind: "known", lineId: same.lineId };
   const wordings = oneLineEach(lines);
+  return { kind: "changed", wordings, closest: closestOf(wordings, text) };
+}
+
+/** The index of the wording nearest `text`, the first on a tie. */
+export function closestOf(wordings: readonly CorpusText[], text: string): number {
   const scores = wordings.map((line) => closeness(line.text, text));
-  return { kind: "changed", wordings, closest: scores.indexOf(Math.max(...scores)) };
+  return scores.indexOf(Math.max(...scores));
 }
 
 /**

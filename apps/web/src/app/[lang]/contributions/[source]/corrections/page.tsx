@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "@/lib/contributions/client";
 import { readable } from "@/lib/contributions/compare";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
-import { classWordQuests } from "@/lib/contributions/class-words";
+import { classWordQuests, questIdOf } from "@/lib/contributions/class-words";
 import { tabOf } from "@/lib/contributions/known";
 import {
   isQuestStage,
@@ -69,9 +69,7 @@ export default async function Page({
   const searchIn = isSearchIn(rawFilter) ? rawFilter : "any";
 
   const { listed, states, pending } = await listedWithPending(status, lang, undefined, source);
-  const kept = await classWordQuests(
-    source === "quests" ? listed.flatMap((row) => (/^\d+$/.test(row.meta.quest ?? "") ? [Number(row.meta.quest)] : [])) : [],
-  );
+  const kept = await classWordQuests(listed.flatMap((row) => questIdOf(row) ?? []));
 
   // Only what crosses into the client component, as page.tsx's ContributionRow projection says.
   const anyBuild: CorrectionRow[] = listed.flatMap((row, index) => {

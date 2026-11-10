@@ -25,12 +25,13 @@ export async function POST(request: Request) {
   const locale = await contributionLocale(id);
   const { session, denied } = await requireCapability("text", isLang(locale) ? locale : BASE_LANG);
   if (denied) return denied;
+  if (locale === null) {
+    return Response.json({ error: "unknown contribution" }, { status: 404 });
+  }
 
-  const outcome = locale === null ? ({ ok: false, reason: "not-found" } as const) : await markClassWord(id, body.kept, session.user.id);
+  const outcome = await markClassWord(id, body.kept, session.user.id);
   if (!outcome.ok) {
-    return outcome.reason === "not-found"
-      ? Response.json({ error: "unknown contribution" }, { status: 404 })
-      : Response.json({ error: "This contribution names no quest." }, { status: 409 });
+    return Response.json({ error: "This contribution names no quest." }, { status: 409 });
   }
   return Response.json({ questId: outcome.questId, texts: outcome.texts });
 }

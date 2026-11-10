@@ -281,6 +281,25 @@ export async function createContributions(submissions: readonly Submission[], se
   }
 }
 
+/**
+ * New text for rows still waiting on triage, in one statement: a moderator's edit, or a class
+ * word put back (class-words.ts). `raw` keeps the paste as sent, and the dedup is left alone so
+ * another copy of that paste still counts on the row. Answers the rows it changed.
+ */
+export async function rewriteWaitingTexts(
+  texts: readonly { id: number; text: string }[],
+): Promise<Pick<Contribution, "id" | "source" | "locale">[]> {
+  if (texts.length === 0) return [];
+  const { rows } = await db().query<Pick<Contribution, "id" | "source" | "locale">>(
+    `update "contribution" c set "text" = v."text", "updatedAt" = now()
+       from unnest($1::int[], $2::text[]) as v ("id", "text")
+      where c."id" = v."id" and c."status" = 'new' and c."text" is distinct from v."text"
+      returning c."id", c."source", c."locale"`,
+    [texts.map((each) => each.id), texts.map((each) => each.text)],
+  );
+  return rows;
+}
+
 /** Signed-in senders appear under their account's name. Never an email. */
 export async function contributionSenders(
   id: number,

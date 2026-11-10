@@ -15,13 +15,11 @@ import { recordActivity } from "@/lib/activity/store";
 import { db } from "@/lib/db";
 import { isLang } from "@/lib/lang";
 
-import { closeness, restoreClassWords } from "./compare";
+import { hasClassSlot, restoreClassWords } from "./compare";
 import type { Submission } from "./contributions";
-import { momentTexts, oneLineEach } from "./known";
-import { CONTRIBUTION_COLUMNS, type Contribution } from "./store";
+import { closestOf, momentNamed, momentTexts, oneLineEach } from "./known";
+import { CONTRIBUTION_COLUMNS, rewriteWaitingTexts, type Contribution } from "./store";
 import { dedupOf } from "./submission";
-
-const CLASS_SLOT = /\$[cC](?![\p{L}\p{N}\p{M}])/u;
 
 type Row = Pick<Submission, "source" | "locale" | "text" | "meta">;
 
@@ -45,27 +43,22 @@ export async function classWordQuests(questIds: readonly number[]): Promise<Set<
 
 /** Each row's text with its class slots put back where its quest is marked; null where none changed. */
 async function restoredTexts(rows: readonly Row[]): Promise<(string | null)[]> {
-  const candidates = rows.map((row) => {
-    const questId = questIdOf(row);
-    return questId !== null && row.meta.event && row.text && CLASS_SLOT.test(row.text) ? questId : null;
-  });
-  const marked = await classWordQuests(candidates.filter((id): id is number => id !== null));
+  const slotted = rows.map((row) => (row.text && hasClassSlot(row.text) ? questIdOf(row) : null));
+  const marked = await classWordQuests(slotted.filter((id): id is number => id !== null));
   if (marked.size === 0) return rows.map(() => null);
 
-  const pairs = rows.flatMap((row, index) => {
-    const questId = candidates[index];
-    return questId !== null && marked.has(questId) ? [{ locale: row.locale, moment: `q:${questId}:${row.meta.event}` }] : [];
+  const moments = rows.map((row, index) => {
+    const questId = slotted[index];
+    return questId !== null && marked.has(questId) ? momentNamed(row) : null;
   });
-  const byMoment = await momentTexts(pairs);
+  const byMoment = await momentTexts(
+    rows.flatMap((row, index) => (moments[index] ? [{ locale: row.locale, moment: moments[index] }] : [])),
+  );
   return rows.map((row, index) => {
-    const questId = candidates[index];
-    if (questId === null || !marked.has(questId) || !row.text) return null;
-    const lines = oneLineEach(byMoment.get(`${row.locale}|q:${questId}:${row.meta.event}`) ?? []);
-    if (lines.length === 0) return null;
-    const text = row.text;
-    const closest = lines.reduce((best, line) => (closeness(line.text, text) > closeness(best.text, text) ? line : best));
-    const restored = restoreClassWords(text, closest.text);
-    return restored === text ? null : restored;
+    const lines = oneLineEach(byMoment.get(`${row.locale}|${moments[index]}`) ?? []);
+    if (!moments[index] || !row.text || lines.length === 0) return null;
+    const restored = restoreClassWords(row.text, lines[closestOf(lines, row.text)].text);
+    return restored === row.text ? null : restored;
   });
 }
 
@@ -79,21 +72,18 @@ export async function keepClassWords(submissions: Submission[]): Promise<Submiss
   });
 }
 
-export type ClassWordOutcome =
-  | { ok: true; questId: number; texts: Record<number, string> }
-  | { ok: false; reason: "not-found" | "no-quest" };
+export type ClassWordOutcome = { ok: true; questId: number; texts: Record<number, string> } | { ok: false };
 
 /**
- * Marks or unmarks the quest contribution `id` names. Marking also puts the word back in that
- * quest's rows waiting on triage, and answers with their new texts by id. Their dedup is left
- * as the paste had it, so another copy of that paste still counts on the row.
+ * Marks or unmarks the quest contribution `id` names; not ok for one that names none. Marking
+ * also puts the word back in that quest's rows waiting on triage, and answers with their new
+ * texts by id.
  */
 export async function markClassWord(id: number, kept: boolean, userId: string): Promise<ClassWordOutcome> {
   const { rows } = await db().query<Contribution>(`select ${CONTRIBUTION_COLUMNS} from "contribution" where "id" = $1`, [id]);
   const contribution = rows[0];
-  if (!contribution) return { ok: false, reason: "not-found" };
-  const questId = questIdOf(contribution);
-  if (questId === null) return { ok: false, reason: "no-quest" };
+  const questId = contribution ? questIdOf(contribution) : null;
+  if (!contribution || questId === null) return { ok: false };
 
   if (kept) {
     await db().query(
@@ -115,21 +105,17 @@ export async function markClassWord(id: number, kept: boolean, userId: string): 
   }
   if (!kept) return { ok: true, questId, texts: {} };
 
+  // Loose on purpose: hasClassSlot decides, on the few rows this finds.
   const waiting = await db().query<Contribution>(
     `select ${CONTRIBUTION_COLUMNS} from "contribution"
       where "source" = 'quests' and "status" = 'new' and "meta"->>'quest' = $1 and "text" ~ '\\$[cC]'`,
     [String(questId)],
   );
   const restored = await restoredTexts(waiting.rows);
-  const texts: Record<number, string> = {};
-  for (const [index, row] of waiting.rows.entries()) {
+  const changes = waiting.rows.flatMap((row, index) => {
     const text = restored[index];
-    if (text === null) continue;
-    await db().query(`update "contribution" set "text" = $2, "updatedAt" = now() where "id" = $1 and "status" = 'new'`, [
-      row.id,
-      text,
-    ]);
-    texts[row.id] = text;
-  }
-  return { ok: true, questId, texts };
+    return text === null ? [] : [{ id: row.id, text }];
+  });
+  const changed = new Set((await rewriteWaitingTexts(changes)).map((row) => row.id));
+  return { ok: true, questId, texts: Object.fromEntries(changes.filter((each) => changed.has(each.id)).map((each) => [each.id, each.text])) };
 }

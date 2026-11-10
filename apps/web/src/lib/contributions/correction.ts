@@ -48,7 +48,7 @@ import { QuestTextConflict, QuestTextMissing, saveQuestText } from "@/lib/quests
 import { writeWording } from "./accept";
 import { lineStates, type CorpusText, type LineState } from "./known";
 import { momentOf } from "./naming";
-import { CONTRIBUTION_COLUMNS, type Contribution } from "./store";
+import { CONTRIBUTION_COLUMNS, rewriteWaitingTexts, type Contribution } from "./store";
 import { correctionNote } from "./notes";
 import { spokenFromTemplate } from "./tokens";
 
@@ -179,14 +179,9 @@ export async function acceptAsWording(id: number, userId: string): Promise<Corre
 }
 
 /**
- * Whether this contribution's correction is already the page's current text in its language:
- * the text was saved and the status flip after it failed, so the row now reads as known.
- */
-/**
  * A moderator's fix to the player's text before it is accepted: what the client sent is mostly
  * right and one word is not, and the explorer is a page away. Only a row still waiting is
- * edited, and `raw` keeps the paste as it came. The dedup is left alone, so another copy of
- * that paste still counts on this row.
+ * edited (rewriteWaitingTexts).
  */
 export async function editCorrectionText(
   id: number,
@@ -195,18 +190,12 @@ export async function editCorrectionText(
 ): Promise<{ ok: true } | { ok: false; reason: "malformed"; message: string }> {
   const normalised = normaliseText(text);
   if (!normalised) return { ok: false, reason: "malformed", message: "The text is empty." };
-  const { rows } = await db().query<Pick<Contribution, "source" | "locale" | "text">>(
-    `update "contribution" set "text" = $2, "updatedAt" = now()
-      where "id" = $1 and "status" = 'new' and "text" is distinct from $2
-      returning "source", "locale", "text"`,
-    [id, normalised],
-  );
-  const row = rows[0];
-  if (row && isLang(row.locale)) {
+  const [changed] = await rewriteWaitingTexts([{ id, text: normalised }]);
+  if (changed && isLang(changed.locale)) {
     await recordActivity({
       kind: "contribution.edited",
-      lang: row.locale,
-      source: row.source,
+      lang: changed.locale,
+      source: changed.source,
       subject: String(id),
       actorId: userId,
       detail: { field: "text" },
@@ -215,6 +204,10 @@ export async function editCorrectionText(
   return { ok: true };
 }
 
+/**
+ * Whether this contribution's correction is already the page's current text in its language:
+ * the text was saved and the status flip after it failed, so the row now reads as known.
+ */
 async function bookCorrectionWritten(id: number, lang: string): Promise<boolean> {
   const { rowCount } = await db().query(
     `select 1 from "book_line" where "note" = $1 and "lang" = $2 and "isCurrent"`,

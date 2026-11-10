@@ -119,6 +119,34 @@ export function readable(template: string): string {
   return template.replace(/\$[bB]/g, "\n");
 }
 
+/**
+ * Each of `a`'s items' index in `b` along their longest common sequence, or -1 where it has
+ * none. Letter case aside.
+ */
+function lcsPairs(a: readonly string[], b: readonly string[]): Int32Array {
+  const x = a.map((item) => item.toLocaleLowerCase());
+  const y = b.map((item) => item.toLocaleLowerCase());
+  // lcs[i][j]: the longest common sequence of x from i and y from j.
+  const lcs = Array.from({ length: x.length + 1 }, () => new Uint16Array(y.length + 1));
+  for (let i = x.length - 1; i >= 0; i--) {
+    for (let j = y.length - 1; j >= 0; j--) {
+      lcs[i][j] = x[i] === y[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const pair = new Int32Array(x.length).fill(-1);
+  for (let i = 0, j = 0; i < x.length && j < y.length; ) {
+    if (x[i] === y[j]) pair[i++] = j++;
+    else if (lcs[i + 1][j] >= lcs[i][j + 1]) i++;
+    else j++;
+  }
+  return pair;
+}
+
+/** Whether a text holds the addon's `$c`/`$C` slot for the reader's class. */
+export function hasClassSlot(text: string): boolean {
+  return tokensOf(text).some((token) => token.value === "$C");
+}
+
 /** A run of one side's text, and whether the other side lacks it. */
 export type DiffPart = { text: string; changed: boolean };
 
@@ -131,24 +159,16 @@ export function wordDiff(before: string, after: string): { before: DiffPart[]; a
   const a = before.split(/(\s+)/);
   const b = after.split(/(\s+)/);
   // Case-blind, as sameLine is: `$n` against `$N` is not a difference worth marking.
-  const wordsA = a.filter((_, index) => index % 2 === 0).map((word) => word.toLocaleLowerCase());
-  const wordsB = b.filter((_, index) => index % 2 === 0).map((word) => word.toLocaleLowerCase());
-
-  // lcs[i][j]: the longest common sequence of wordsA from i and wordsB from j.
-  const lcs = Array.from({ length: wordsA.length + 1 }, () => new Uint16Array(wordsB.length + 1));
-  for (let i = wordsA.length - 1; i >= 0; i--) {
-    for (let j = wordsB.length - 1; j >= 0; j--) {
-      lcs[i][j] = wordsA[i] === wordsB[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
-    }
-  }
+  const pair = lcsPairs(
+    a.filter((_, index) => index % 2 === 0),
+    b.filter((_, index) => index % 2 === 0),
+  );
   const keptA = new Set<number>();
   const keptB = new Set<number>();
-  for (let i = 0, j = 0; i < wordsA.length && j < wordsB.length; ) {
-    if (wordsA[i] === wordsB[j]) {
-      keptA.add(i++);
-      keptB.add(j++);
-    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) i++;
-    else j++;
+  for (const [i, j] of pair.entries()) {
+    if (j === -1) continue;
+    keptA.add(i);
+    keptB.add(j);
   }
 
   const parts = (pieces: string[], kept: Set<number>): DiffPart[] => {
@@ -181,23 +201,10 @@ export function wordDiff(before: string, after: string): { before: DiffPart[]; a
 export function restoreClassWords(contributed: string, corpus: string): string {
   const theirs = Array.from(contributed.matchAll(TOKEN), (match) => ({ value: match[0], at: match.index }));
   const ours = tokensOf(corpus);
-  const key = (value: string) => value.toLocaleLowerCase();
-  const a = theirs.map((token) => key(token.value));
-  const b = ours.map((token) => key(token.value));
-
-  const lcs = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1));
-  for (let i = a.length - 1; i >= 0; i--) {
-    for (let j = b.length - 1; j >= 0; j--) {
-      lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
-    }
-  }
-  // pair[i]: the corpus token the contributed token i lines up with, or -1.
-  const pair = new Int32Array(a.length).fill(-1);
-  for (let i = 0, j = 0; i < a.length && j < b.length; ) {
-    if (a[i] === b[j]) pair[i++] = j++;
-    else if (lcs[i + 1][j] >= lcs[i][j + 1]) i++;
-    else j++;
-  }
+  const pair = lcsPairs(
+    theirs.map((token) => token.value),
+    ours.map((token) => token.value),
+  );
 
   let out = contributed;
   // From the end, so each splice leaves the earlier offsets as they were.

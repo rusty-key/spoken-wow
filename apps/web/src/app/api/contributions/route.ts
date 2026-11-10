@@ -67,7 +67,6 @@ export async function POST(request: Request) {
   if (!sent) {
     return Response.json({ error: "incomplete" }, { status: 400 });
   }
-  const [submission] = await keepClassWords([sent]);
 
   const complaint = typeof body.body === "string" ? body.body.trim().slice(0, COMPLAINT_MAX) : "";
 
@@ -79,7 +78,10 @@ export async function POST(request: Request) {
   // Identity from the session when there is one, and the typed fields dropped rather than
   // merged -- the reports route's reasoning: signing in and typing someone else's name is a
   // way to put words in their mouth.
-  const session = await auth.api.getSession({ headers: await headers() });
+  const [session, [submission]] = await Promise.all([
+    auth.api.getSession({ headers: await headers() }),
+    keepClassWords([sent]),
+  ]);
 
   // A line the corpus already has is thanked for and dropped, the same answer as a stored one:
   // the player did nothing wrong, there is just nothing to triage. A complaint about it is
