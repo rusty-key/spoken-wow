@@ -1321,5 +1321,11 @@ env.SoundQueue:RemoveAllSoundsFromQueue()
 env.Addon:SetPlayerStyle("classic")
 _G.IsShiftKeyDown = hadShift
 
+stub.SetAddOns({ { folder = "ReforgedUI" } })
+env, quests, places = Boot(); F = env.PlayerFrame
+Expect("Reforged UI makes Warcraft III the automatic narrator skin", env.Addon:NarratorSkin(), "warcraft3")
+env.Addon:SetNarratorSkin("default")
+Expect("Default remains available as an explicit narrator skin", env.Addon:NarratorSkin(), "default")
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")

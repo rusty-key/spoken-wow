@@ -28,8 +28,11 @@ Defaults = {
             -- "subtitle", "minimal" (Small Window), "classic" (Large Window), "dialogueui" or
             -- "none" (the voice alone).
             Style = "subtitle",
-            -- The narrator window's visual treatment: "default" or "warcraft3".
-            NarratorSkin = "default",
+            -- The narrator window's visual treatment: "auto", "default" or "warcraft3".
+            -- Auto uses Warcraft III when Reforged UI is installed.
+            NarratorSkin = "auto",
+            -- False means the automatic choice is still active; true records a menu choice.
+            NarratorSkinExplicit = false,
             -- The windows' metal in the bronze the Forever client's frames wear.
             BronzeTint = true,
             -- The small window's background: "parchment" or "dark" (the rock).
@@ -169,6 +172,16 @@ local function MoveKeys(saved, renamed)
     end
 end
 
+local function ReforgedUIInstalled()
+    if IsAddOnLoaded and IsAddOnLoaded("ReforgedUI") then return true end
+    local count = (C_AddOns and C_AddOns.GetNumAddOns) or GetNumAddOns
+    local info = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
+    for index = 1, (count and info) and count() or 0 do
+        if info(index) == "ReforgedUI" then return true end
+    end
+    return false
+end
+
 --- Idempotent, so the test harness and ADDON_LOADED can both call it.
 function Addon:InitDB()
     if self.db then
@@ -205,6 +218,15 @@ function Addon:InitDB()
         -- Style replaces three old switches: SubtitlePlayer, then HideFrame, then MinimalPlayer
         -- choosing the window. Read raw, so an absent switch is its old default.
         local frame = type(profile) == "table" and profile.Frame
+        -- NarratorSkin was first shipped with "default" as its default. Treat that unmarked
+        -- value as the old automatic choice, while preserving choices made with this version.
+        if type(frame) == "table" then
+            if frame.NarratorSkin == "default" and frame.NarratorSkinExplicit == nil then
+                frame.NarratorSkin = "auto"
+            elseif frame.NarratorSkin == "warcraft3" and frame.NarratorSkinExplicit == nil then
+                frame.NarratorSkinExplicit = true
+            end
+        end
         if type(frame) == "table" and frame.Style == nil
             and (frame.SubtitlePlayer ~= nil or frame.HideFrame ~= nil or frame.MinimalPlayer ~= nil) then
             local subtitles = frame.SubtitlePlayer
@@ -471,13 +493,20 @@ function Addon:SetPlayerStyle(style)
     self.db.profile.Frame.Style = style
 end
 
---- The narrator window's visual treatment, with a safe fallback for older profiles.
+--- The narrator window's visual treatment, with Warcraft III selected automatically when Reforged UI
+--- is installed and a safe fallback for older profiles.
 function Addon:NarratorSkin()
-    return self:Profile("Frame").NarratorSkin == "warcraft3" and "warcraft3" or "default"
+    local frame = self:Profile("Frame")
+    if frame.NarratorSkin == "auto" and frame.NarratorSkinExplicit ~= true then
+        return ReforgedUIInstalled() and "warcraft3" or "default"
+    end
+    return frame.NarratorSkin == "warcraft3" and "warcraft3" or "default"
 end
 
 function Addon:SetNarratorSkin(skin)
-    self.db.profile.Frame.NarratorSkin = skin == "warcraft3" and "warcraft3" or "default"
+    local frame = self.db.profile.Frame
+    frame.NarratorSkin = skin == "warcraft3" and "warcraft3" or "default"
+    frame.NarratorSkinExplicit = true
 end
 
 --- What Spoken itself says for a report: its version, the queue, the window and the modules

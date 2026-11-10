@@ -20,7 +20,7 @@ local D = env.Defaults.profile
 ---------------------------------------------------------------- the player
 Expect("every module on", next(D.Parts), nil)
 Expect("Subtitles Only", D.Frame.Style, "subtitle")
-Expect("Default narrator skin", D.Frame.NarratorSkin, "default")
+Expect("Narrator skin follows the installed UI automatically", D.Frame.NarratorSkin, "auto")
 Expect("...listed first among the narrator styles", env.Options:Styles()[1], "subtitle")
 Expect("Show Narrator on", D.Transcript.Enabled, true)
 Expect("Highlight Words on", D.Transcript.HighlightWord, true)
