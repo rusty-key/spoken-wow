@@ -73,7 +73,7 @@ local NEST_AFTER = 2          -- more under an open group's contents, for each o
 local NEST_STEP = 16          -- what an open group holds, this far in under it
 -- The line down an open group's contents, this far into the step.
 local RAIL_X = 12
-local FOOT, BANNER_FOOT = 3, 2.5
+local FOOT, BANNER_FOOT = 3, -0.5
 local LIST_LEFT, LIST_RIGHT = 6, 6
 -- The scroll bar stands BAR_SIDE in from the scroll frame's right, BAR_HEAD down from its top and BAR_FOOT
 -- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
