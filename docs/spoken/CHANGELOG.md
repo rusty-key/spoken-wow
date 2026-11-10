@@ -4,6 +4,15 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new
+  setting is under Read Automatically on the Places page. On, a story that started on its own
+  stops when a fight begins and plays again from the start once it ends, as in 3.8.5. A story
+  that has not started yet still waits for the fight to end either way.
+  *([rusty-key](https://github.com/rusty-key))*
+- **An NPC's own greeting no longer slips out before Spoken's line on a first talk.** Right-clicking
+  an NPC with a recorded greeting silences its voice before the window opens. If no window opens, or
+  there is nothing to read, the voice comes back. Reported by
+  *([banoliver](https://github.com/banoliver))*
 - **Boss stories have a Report button**, on a boss's page in the Compendium, on the narrator when a
   story plays after a kill, and in the Leatrix Maps boss panel. It opens the story's report page in
   the language you were reading, or, from the narrator, the language you heard it in.
