@@ -47,6 +47,19 @@ function Bosses.Key(map, key)
 end
 local Key = Bosses.Key
 
+-- The site's report page uses the same map/slug path as the boss voice files. Boss keys are
+-- already canonical, so this is the same safe path form used by the voice pipeline.
+local function ReportSlug(key)
+	local slug = key:gsub("%s+", "-"):gsub("[^a-z0-9%-]", "")
+	return slug ~= "" and slug or key
+end
+
+--- The report address for a boss's story, optionally in the language shown on the page.
+function Bosses:ReportURL(map, key, language)
+	if not (map and key and Spoken and Spoken.ReportURL) then return nil end
+	return Spoken:ReportURL("bosses", ("%d/%s"):format(map, ReportSlug(key)), language)
+end
+
 -- [encounter id] = { { map, key }, ... }, from Data/Bosses.lua, built on first use. A fight against
 -- two bosses at once (the Weaver and Dreamscythe) is one encounter of both.
 local byEncounter

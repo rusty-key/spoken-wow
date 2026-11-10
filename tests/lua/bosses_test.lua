@@ -323,6 +323,12 @@ Expect("...and a greyed Play", page.play:IsShown() and not page.play:IsEnabled()
 _G.SpokenBossStories[36] = { ["edwin vancleef"] = "He led the Brotherhood.", _ = "Mines under Moonbrook." }
 Click("Edwin VanCleef")
 Expect("...or the story where there is one", page.body.text.text, "He led the Brotherhood.")
+Expect("...and a Report button", page.report:IsShown(), true)
+local showReport, reported = Spoken.ShowReport, nil
+Spoken.ShowReport = function(_, url) reported = url end
+page.report.scripts.OnClick(page.report)
+Expect("...Report opens the boss story address", reported, "https://spoken.quest/bosses/r/36/edwin-vancleef")
+Spoken.ShowReport = showReport
 Expect("...its row lit as chosen", RowFor("Edwin VanCleef").selected, true)
 _G.SpokenBossStories[36]["edwin vancleef"] = { "He led the Brotherhood.", deDE = "Er führte die Bruderschaft.", [2] = nil }
 Click("Edwin VanCleef")
@@ -532,6 +538,12 @@ Expect("with no pack, a boss's story is a line with no recording", tostring(clip
 Expect("...headed by its dungeon, named for the boss", clip.present.header .. "|" .. clip.present.label, "Deadmines|Edwin VanCleef")
 Expect("...with its story and its face", clip.present.transcript .. "|" .. tostring(clip.present.portrait.creatureID),
     "He led the Brotherhood.|639")
+Expect("...with a Report action in the narrator", clip.present.actions and clip.present.actions[1].id, "report")
+local showReport, reported = Spoken.ShowReport, nil
+Spoken.ShowReport = function(_, url) reported = url end
+clip.present.actions[1].onClick(clip)
+Expect("...whose Report opens the boss story address", reported, "https://spoken.quest/bosses/r/36/edwin-vancleef")
+Spoken.ShowReport = showReport
 Expect("...shown for six seconds at least", clip.length, 6)
 Expect("a boss with no story has no line", Bosses:StoryClip(36, "no such boss"), nil)
 

@@ -335,8 +335,17 @@ local PLAY = {
 	find = function(target) return Bosses:QueuedStory(target[1], target[2]) end,
 	start = function(target) Bosses:PlayStory(target[1], target[2]) end,
 }
--- Nothing to report from the page yet.
-local REPORT = { has = function() return false end, open = function() end, title = "" }
+local REPORT = {
+	has = function(target) return target and Bosses:ReportURL(target[1], target[2]) ~= nil end,
+	open = function(target)
+		if not (target and Spoken and Spoken.ShowReport) then return end
+		local _, language = Story(target[1], target[2])
+		local url = Bosses:ReportURL(target[1], target[2], language)
+		if url then Spoken:ShowReport(url, function() return nil end) end
+	end,
+	title = SpokenEnv and SpokenEnv.L and SpokenEnv.L.DIALOGUE_REPORT_PROBLEM or "Report a Problem",
+}
+Bosses.ReportAction = REPORT
 
 local function Boss(map, key)
 	return Index().byKey[map .. ":" .. key]
@@ -374,6 +383,9 @@ function Bosses:StoryClip(map, key)
 	local model = Model(map, key)
 	local clip = {
 		key = "boss:" .. map .. ":" .. key,
+		mapID = map,
+		bossKey = key,
+		language = language,
 		length = math.max(LEAST_SECONDS, words / READING_SPEED),
 		present = {
 			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
@@ -382,6 +394,7 @@ function Bosses:StoryClip(map, key)
 			bullet = BossBullet(map),
 			portrait = model and { kind = "model", creatureID = model.creatureID, displayID = model.displayID }
 				or { kind = "texture", texture = SKULLS[BossBullet(map)] },
+			actions = Bosses.NarratorReportAction and { Bosses.NarratorReportAction } or nil,
 		},
 	}
 	local recording = self.GetAudioClip and self:GetAudioClip(map, key)
