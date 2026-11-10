@@ -74,6 +74,8 @@ local NEST_STEP = 16          -- what an open group holds, this far in under it
 -- The line down an open group's contents, this far into the step.
 local RAIL_X = 12
 local FOOT, BANNER_FOOT = 3, -0.5
+-- A line's name and numbers stand this much over its middle, which the font's own spacing leaves a little low.
+local TEXT_LIFT = 1
 local LIST_LEFT, LIST_RIGHT = 6, 6
 -- The scroll bar stands BAR_SIDE in from the scroll frame's right, BAR_HEAD down from its top and BAR_FOOT
 -- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
@@ -1608,17 +1610,19 @@ local function DrawGroup(row, item, indent, onlyFound)
 	RowFont(row, "group", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, SHARE_INK)
 	if ticked then
-		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, 0)
+		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, TEXT_LIFT)
 	else
-		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
+		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, TEXT_LIFT)
 	end
 	local numbers = Numbers(item, total, ratio, ticked)
 	row.count:SetText(numbers)
 	row.count:SetShown(not locked and numbers ~= "")
 
-	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, 0)
-	row.label:SetPoint("RIGHT", locked and row.lock or (numbers ~= "" and row.count) or row, locked and "LEFT"
-		or (numbers ~= "" and "LEFT") or "RIGHT", -8, 0)
+	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, TEXT_LIFT)
+	local stop = locked and row.lock or (numbers ~= "" and row.count) or row
+	-- The numbers are lifted already; the padlock and the row's edge are not.
+	row.label:SetPoint("RIGHT", stop, locked and "LEFT"
+		or (numbers ~= "" and "LEFT") or "RIGHT", -8, stop == row.count and 0 or TEXT_LIFT)
 	NameInk(row.label, item)
 	row.label:SetText(item.label)
 end
@@ -1647,9 +1651,9 @@ local function DrawLeaf(row, item, indent)
 	row.count:SetText("")
 	row.count:Hide()
 	RowFont(row, "leaf", "GameFontHighlight")
-	row.label:SetPoint("LEFT", row, "LEFT", indent + 12, 0)
+	row.label:SetPoint("LEFT", row, "LEFT", indent + 12, TEXT_LIFT)
 	-- Clear of the tick, quest mark or padlock at the row's end, which reach 25.5 in.
-	row.label:SetPoint("RIGHT", row, "RIGHT", -28, 0)
+	row.label:SetPoint("RIGHT", row, "RIGHT", -28, TEXT_LIFT)
 	-- Something with nothing to read yet, greyed a little: still there to choose. One not yet
 	-- found, greyer: listed, but it does not open.
 	if item.locked then

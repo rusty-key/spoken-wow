@@ -316,6 +316,8 @@ Expect("...a minus on it while open, white art in the bar's gold", banner.toggle
     [[Interface\AddOns\Spoken\Textures\HeaderMinus]] .. "|1,0.82,0")
 Expect("...its numbers ending in the column a zone line's do", banner.count.anchor.point .. " " .. banner.count.anchor.x .. "|"
     .. RowFor("Elwynn Forest").count.anchor.point .. " " .. RowFor("Elwynn Forest").count.anchor.x, "RIGHT -12|RIGHT -12")
+Expect("...a zone's numbers 1 over its line's middle, its name from the same height",
+    RowFor("Elwynn Forest").count.anchor.y .. " " .. RowFor("Elwynn Forest").label.anchor.y, "1 0")
 Expect("...each zone a line inside it, with no picture or bar", RowFor("Elwynn Forest").row.style == "group" and RowFor("Elwynn Forest").row.nest, 0)
 Expect("...then a banner each for the quests no zone holds: Classes, Professions, Holidays and Events, Other",
     list:find("|Classes|Professions|Holidays and Events|Other$") ~= nil and not Has(list, "Mage")
