@@ -171,6 +171,21 @@ stub.Advance(1)
 Expect("the fight over, it replays", Spoken:IsPlaying(narration), true)
 Spoken:StopAll()
 
+-- Stop When Combat Starts off: the speaking narration plays through the fight.
+env, Z = Boot(); Spoken = _G.Spoken
+Z:Set("autoplayStopInCombat", false)
+narration = Z:NewLoreSound(1411, "valley of trials"); narration.autoplay = true
+Z:EnqueueLore(narration)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("with the setting off, combat leaves an autoplayed clip speaking", Spoken:IsPlaying(narration), true)
+Spoken:StopAll()
+held = Z:NewLoreSound(1411, nil); held.autoplay = true
+Z:EnqueueLore(held)
+Expect("...but one not yet started still waits for the fight", Spoken:GetHeldReason(held), "Waiting for combat to end.")
+Spoken:StopAll()
+world.inCombat = false
+
 env, Z = Boot(); Spoken = _G.Spoken
 Expect("a clicked clip plays", Z:PlayLore(1411, nil), true)
 world.inCombat = true

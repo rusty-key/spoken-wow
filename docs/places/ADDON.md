@@ -34,6 +34,7 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | When to Read | Read Automatically | `autoplay` | on |
 | | Include Smaller Areas | `autoplaySubzones` | on |
 | | Include Places Found Before | `autoplayExplored` | on |
+| | Stop When Combat Starts | `autoplayStopInCombat` | on |
 | Stories | Show Story Beside Map | `showMapPanel` | on |
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
@@ -124,6 +125,8 @@ the zone's icon as the face (Spoken's book without one), the place's picture and
   Play and shift-click lines are never held.
 - A cinematic or combat that starts after a clip has stops it, and it replays from the start when
   the cinematic or the fight ends. Only a line reading on discovery queued: Play keeps speaking.
+  With Stop When Combat Starts off, combat stops nothing already speaking; a line not yet started
+  still waits for the fight to end.
 - Reading on discovery queues nothing while the player is on a taxi or flying, and nothing for a
   continent.
 - The client can start and stop a sound file and nothing in between. Stop and Replay exist, Pause
