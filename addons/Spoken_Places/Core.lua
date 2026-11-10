@@ -57,6 +57,8 @@ local defaults = {
 	-- A new character hears its zone right after its valley at login, and a place it has heard,
 	-- from the Play button too, is not read again when the game announces its discovery.
 	autoplayExplored = true,
+	-- Off, so a story that started on its own plays through a fight. On, it stops and replays after.
+	autoplayStopInCombat = false,
 	-- Off, so a player cannot end up reading an unfinished translation without
 	-- having asked for one (Spoken > Developer). See Language.lua.
 	languagePreview = false,
