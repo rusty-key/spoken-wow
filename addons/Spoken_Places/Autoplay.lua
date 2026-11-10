@@ -728,7 +728,11 @@ function SpokenPlaces:SetupAutoplay()
 
 	frame:SetScript("OnEvent", function(_, event, ...)
 		if HOLD_EVENTS[event] then
-			OnHoldStart()
+			-- Off, a story already speaking plays through the fight. One not yet started still
+			-- waits for combat to end (HoldReason).
+			if event ~= "PLAYER_REGEN_DISABLED" or SpokenPlaces:Get("autoplayStopInCombat") then
+				OnHoldStart()
+			end
 			return
 		end
 		if event == "PLAYER_ENTERING_WORLD" then

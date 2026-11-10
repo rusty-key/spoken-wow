@@ -106,8 +106,8 @@ end
 --- The parts of the Places addon's Core.lua that its playback files read, as a fake.
 function M.NewZoneLore()
     local cfg = { voiceEnabled = true, autoplay = true, autoplaySubzones = true,
-        autoplayExplored = false, autoplayEveryVisit = false, autoplayEveryVisitGap = 30 * 60,
-        debug = false,
+        autoplayExplored = false, autoplayStopInCombat = false,
+        autoplayEveryVisit = false, autoplayEveryVisitGap = 30 * 60, debug = false,
         -- What the options panel reads, as well as what the playback files do.
         showMapPanel = true, panelSide = "RIGHT",
         panelWidth = 320, fontSize = 12, highlightOpacity = 0.35 }

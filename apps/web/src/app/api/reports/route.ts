@@ -20,6 +20,7 @@ import { langParam } from "@/lib/lang-server";
 import { countRecent, createReport } from "@/lib/reports/store";
 import { envelopeFor } from "@/lib/reports/context";
 import type { Envelope } from "@/lib/contributions/envelope";
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import {
   CONTRIBUTION_WINDOW_MS,
@@ -158,13 +159,14 @@ async function contributeMissing(
   identity: Omit<Identity, "body"> & { ip: string },
 ): Promise<void> {
   if (envelope.source === "places") return;
-  const submission = submissionFrom(envelope, raw);
-  if (!submission) return;
-  const [recent, [known]] = await Promise.all([
+  const sent = submissionFrom(envelope, raw);
+  if (!sent) return;
+  const [recent, [submission]] = await Promise.all([
     countRecentContributions(identity.ip, CONTRIBUTION_WINDOW_MS),
-    knownSubmissions([submission]),
+    keepClassWords([sent]),
   ]);
   if (recent >= CONTRIBUTIONS_PER_HOUR) return;
+  const [known] = await knownSubmissions([submission]);
   if (!known) {
     await storeSubmission(submission, { ...identity, body: complaint });
   }

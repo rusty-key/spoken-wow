@@ -95,6 +95,8 @@ function SpokenPlaces:SetupOptions()
 		Get("autoplaySubzones"), Set("autoplaySubzones"))
 	local before = layout:Checkbox(L.OPT_AUTOPLAY_EXPLORED, nil,
 		Get("autoplayExplored"), Set("autoplayExplored"))
+	local combat = layout:Checkbox(L.OPT_AUTOPLAY_COMBAT, nil,
+		Get("autoplayStopInCombat"), Set("autoplayStopInCombat"))
 	local again = layout:Checkbox(L.OPT_AUTOPLAY_EVERY_VISIT, nil,
 		Get("autoplayEveryVisit"), Set("autoplayEveryVisit"), refresh)
 	-- Shown only with Read Every Visit on: off, it is a setting for nothing.
@@ -113,7 +115,7 @@ function SpokenPlaces:SetupOptions()
 			return tostring(gap)
 		end)
 	layout:ShowWhen(gapMenu, Get("autoplayEveryVisit"))
-	for _, row in ipairs({ smaller, before, again, gapMenu }) do
+	for _, row in ipairs({ smaller, before, combat, again, gapMenu }) do
 		layout:Requires(row, voiced, L.REASON_VOICE)
 		layout:Requires(row, discovering, L.REASON_DISCOVERY)
 	end

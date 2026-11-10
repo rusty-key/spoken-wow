@@ -57,6 +57,8 @@ local defaults = {
 	-- A new character hears its zone right after its valley at login, and a place it has heard,
 	-- from the Play button too, is not read again when the game announces its discovery.
 	autoplayExplored = true,
+	-- Off, so a story that started on its own plays through a fight. On, it stops and replays after.
+	autoplayStopInCombat = false,
 	-- Off: reading a place every time the player arrives is a choice, not something to spring on
 	-- everyone who has the once-per-place behaviour (Autoplay.lua, Read Every Visit).
 	autoplayEveryVisit = false,

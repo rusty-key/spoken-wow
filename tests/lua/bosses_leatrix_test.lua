@@ -81,6 +81,7 @@ function Bosses:IsBossFound() return true end
 function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
 function Bosses:PlayStory() end
+Bosses.ReportAction = { has = function() return true end, open = function() end, title = "Report a Problem" }
 local load = assert(loadfile(here .. "/../../addons/Spoken_Bosses/Leatrix.lua"))
 load("Spoken_Bosses", Bosses)
 
@@ -102,7 +103,7 @@ Expect("...with the boss story", shown and shown.entry.text, "36:edwin vancleef 
 Expect("...with the boss model creature", shown and shown.entry.model and shown.entry.model.creatureID, 639)
 Expect("...with the boss model display", shown and shown.entry.model and shown.entry.model.displayID, 2029)
 Expect("...without a boss header portrait", shown and shown.entry.icon, nil)
-Expect("...without a Places report action", shown and shown.entry.reportAction, false)
+Expect("...with the boss report action", shown and shown.entry.reportAction, Bosses.ReportAction)
 
 -- Leatrix uses Balnazzar's alternate phase creature 10813, while Spoken stores 10812.
 WorldMapFrame.mapID = 317
