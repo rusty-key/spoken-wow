@@ -3,13 +3,15 @@
 // Sharing on, the lines Spoken collected, sent to spoken.quest (share.ts), and, only for a
 // language admin who signs in, the site and that admin's stores (contributor.ts).
 import path from 'node:path'
-import { app, BrowserWindow, Menu, net, safeStorage, session, shell } from 'electron'
+import { app, BrowserWindow, Menu, nativeImage, net, safeStorage, session, shell, Tray } from 'electron'
 import { CHANNELS, type UpdaterState } from '../shared/api'
+import type { Settings } from '../shared/types'
 import { windowChrome } from './chrome'
 import type { SecretBox } from './contributor-store'
 import { isAllowedExternalUrl } from './external'
 import { registerIpc } from './ipc'
 import { ManagerService } from './service'
+import { HIDDEN_ARG, startedHidden, updateLinuxAutostart } from './startup'
 import { initLog, log } from './state'
 import { isOurPage as isOurPageUrl, type AppPage } from './trust'
 import { startUpdater } from './updater'
@@ -22,6 +24,7 @@ const DEV_URL = process.env.ELECTRON_RENDERER_URL
 
 let service: ManagerService | null = null
 let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
 // Each state is sent once, so a window opened later (macOS, from the Dock) reads it from the snapshot.
 let updaterState: UpdaterState = { state: 'idle' }
 
@@ -81,7 +84,49 @@ function setUpMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]))
 }
 
-function createWindow(): BrowserWindow {
+function applyAutoStart(settings: Settings): void {
+  try {
+    if (process.platform === 'linux') {
+      updateLinuxAutostart(app.getPath('appData'), process.execPath, settings.startAtLogin, settings.minimizeToTray)
+    } else {
+      app.setLoginItemSettings({
+        openAtLogin: settings.startAtLogin,
+        ...(process.platform === 'win32' ? { path: process.execPath, args: settings.minimizeToTray ? [HIDDEN_ARG] : [], name: 'Spoken Manager' } : {})
+      })
+    }
+  } catch (err) {
+    log('Could not update startup settings:', err)
+  }
+}
+
+function showWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    mainWindow = createWindow(false)
+    return
+  }
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function toggleWindow(): void {
+  if (mainWindow?.isVisible()) mainWindow.hide()
+  else showWindow()
+}
+
+function setUpTray(): void {
+  tray = new Tray(nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.png')))
+  tray.setToolTip('Spoken Manager')
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Show Spoken Manager', click: showWindow },
+      { type: 'separator' },
+      { label: 'Quit Spoken Manager', click: () => app.quit() }
+    ])
+  )
+  tray.on('click', toggleWindow)
+}
+
+function createWindow(startHidden: boolean): BrowserWindow {
   const chrome = windowChrome(process.platform)
   const win = new BrowserWindow({
     width: 1180,
@@ -108,13 +153,18 @@ function createWindow(): BrowserWindow {
     }
   })
   if (process.platform !== 'darwin') win.removeMenu()
+  win.on('minimize', () => {
+    if (service?.settings.minimizeToTray) win.hide()
+  })
   win.on('maximize', () => win.webContents.send(CHANNELS.windowMaximized, true))
   win.on('unmaximize', () => win.webContents.send(CHANNELS.windowMaximized, false))
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    if (!startHidden) win.show()
+  })
   win.webContents.on('did-fail-load', (_e, code, description) => {
     log(`Window failed to load (${code}): ${description}`)
-    if (!win.isDestroyed()) win.show()
+    if (!win.isDestroyed() && !startHidden) win.show()
   })
 
   // Links open in the browser, only when they are GitHub's; nothing opens a new window.
@@ -152,7 +202,7 @@ if (!app.requestSingleInstanceLock()) {
     if (process.platform !== 'darwin') app.quit()
   })
   app.on('activate', () => {
-    if (service && BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
+    if (service && BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow(false)
   })
 
   // Quitting with a job running: stop it and wait for its rollback first, so the quit (and an
@@ -193,11 +243,14 @@ if (!app.requestSingleInstanceLock()) {
       ...(shareUrl ? { shareUrl } : {}),
       ...(siteUrl ? { siteUrl } : {})
     })
-    registerIpc(service, PAGE, () => updaterState)
+    applyAutoStart(service.settings)
+    registerIpc(service, PAGE, () => updaterState, applyAutoStart)
     void service.init()
     service.startSharing()
 
-    mainWindow = createWindow()
+    setUpTray()
+    const loginHidden = process.platform === 'darwin' && service.settings.startAtLogin && service.settings.minimizeToTray && app.getLoginItemSettings().wasOpenedAtLogin
+    mainWindow = createWindow(startedHidden(process.argv) || loginHidden)
 
     if (service.settings.checkOnStart) {
       void service.ready.then(() => service?.refreshCatalog(false)).catch((err) => log('Catalog refresh failed:', err))

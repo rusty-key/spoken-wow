@@ -147,6 +147,8 @@ function UpdatesSection(): ReactNode {
         <Switch checked={settings.includePrereleases} onChange={(v) => set({ includePrereleases: v })} label={S.settings.prereleases} text={S.settings.prereleasesText} />
         <Switch checked={settings.checkOnStart} onChange={(v) => set({ checkOnStart: v })} label={S.settings.checkOnStart} text={S.settings.checkOnStartText} />
         <Switch checked={settings.autoUpdateManager} onChange={(v) => set({ autoUpdateManager: v })} label={S.settings.autoUpdate} text={S.settings.autoUpdateText} />
+        <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
+        <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
       </div>
     </section>
   )

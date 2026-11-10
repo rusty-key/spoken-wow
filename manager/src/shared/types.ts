@@ -168,6 +168,10 @@ export interface Settings {
   checkOnStart: boolean
   /** The manager's own updates. */
   autoUpdateManager: boolean
+  /** Start the manager when the user logs in. */
+  startAtLogin: boolean
+  /** Hide the window in the system tray when it is minimized. */
+  minimizeToTray: boolean
   /** Where downloads are kept; empty means the app's own folder. */
   downloadsPath: string
   keepDownloads: boolean
@@ -197,6 +201,8 @@ export const DEFAULT_SETTINGS: Settings = {
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
+  startAtLogin: false,
+  minimizeToTray: false,
   downloadsPath: '',
   keepDownloads: false,
   voiceLanguage: 'enUS',
