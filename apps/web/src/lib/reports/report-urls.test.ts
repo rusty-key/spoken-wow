@@ -52,8 +52,7 @@ type Section = keyof typeof PAGES;
 /** What a section's page takes after /r/, or null for an address it would not open. */
 function kindOf(section: Section, rest: string): string | null {
   if (section === "quests") return parseTarget(rest.split("/"))?.kind ?? null;
-  if (section === "places") return /^\d+\/[a-z0-9-]+$/.test(rest) ? "places" : null;
-  if (section === "bosses") return /^\d+\/[a-z0-9-]+$/.test(rest) ? "bosses" : null;
+  if (section === "places" || section === "bosses") return /^\d+\/[a-z0-9-]+$/.test(rest) ? section : null;
   return /^\d+$/.test(rest) ? "readables" : null;
 }
 

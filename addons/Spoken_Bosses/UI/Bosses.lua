@@ -335,17 +335,26 @@ local PLAY = {
 	find = function(target) return Bosses:QueuedStory(target[1], target[2]) end,
 	start = function(target) Bosses:PlayStory(target[1], target[2]) end,
 }
+local REPORT_LABEL = SpokenEnv.L.DIALOGUE_REPORT_PROBLEM
+-- The page's Report is about the words on screen, so it files under their language.
 local REPORT = {
-	has = function(target) return target and Bosses:ReportURL(target[1], target[2]) ~= nil end,
+	has = function() return true end,
 	open = function(target)
-		if not (target and Spoken and Spoken.ShowReport) then return end
 		local _, language = Story(target[1], target[2])
-		local url = Bosses:ReportURL(target[1], target[2], language)
-		if url then Spoken:ShowReport(url, function() return nil end) end
+		Bosses:ShowReport(target[1], target[2], language)
 	end,
-	title = SpokenEnv and SpokenEnv.L and SpokenEnv.L.DIALOGUE_REPORT_PROBLEM or "Report a Problem",
+	title = REPORT_LABEL,
 }
 Bosses.ReportAction = REPORT
+-- The narrator's Report is about what was heard, so it files under the clip's language.
+local NARRATOR_REPORT = {
+	id = "report",
+	icon = [[Interface\HelpFrame\HelpIcon-Bug]],
+	label = REPORT_LABEL,
+	anchor = "topright",
+	tooltip = function(tooltip) tooltip:SetText(REPORT_LABEL) end,
+	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language) end,
+}
 
 local function Boss(map, key)
 	return Index().byKey[map .. ":" .. key]
@@ -385,7 +394,6 @@ function Bosses:StoryClip(map, key)
 		key = "boss:" .. map .. ":" .. key,
 		mapID = map,
 		bossKey = key,
-		language = language,
 		length = math.max(LEAST_SECONDS, words / READING_SPEED),
 		present = {
 			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
@@ -394,15 +402,13 @@ function Bosses:StoryClip(map, key)
 			bullet = BossBullet(map),
 			portrait = model and { kind = "model", creatureID = model.creatureID, displayID = model.displayID }
 				or { kind = "texture", texture = SKULLS[BossBullet(map)] },
-			actions = Bosses.NarratorReportAction and { Bosses.NarratorReportAction } or nil,
+			actions = { NARRATOR_REPORT },
 		},
 	}
 	local recording = self.GetAudioClip and self:GetAudioClip(map, key)
+	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
-		-- Reported under the language heard: a German take complained about belongs beside the
-		-- German line, whatever language the words on screen are in.
-		clip.language = recording.language
 		-- Timed to the recording's own words, so not under a story in another language.
 		if language == recording.language then clip.present.timings = recording.times end
 	else

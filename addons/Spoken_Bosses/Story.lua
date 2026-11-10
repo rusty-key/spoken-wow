@@ -8,22 +8,6 @@ local L = Bosses.L
 
 local source
 
-local NARRATOR_REPORT = {
-	id = "report",
-	icon = [[Interface\HelpFrame\HelpIcon-Bug]],
-	label = SpokenEnv and SpokenEnv.L and SpokenEnv.L.DIALOGUE_REPORT_PROBLEM or "Report a Problem",
-	anchor = "topright",
-	tooltip = function(tooltip)
-		tooltip:SetText(SpokenEnv and SpokenEnv.L and SpokenEnv.L.DIALOGUE_REPORT_PROBLEM or "Report a Problem")
-	end,
-	onClick = function(clip)
-		if not (clip and Spoken and Spoken.ShowReport) then return end
-		local url = Bosses:ReportURL(clip.mapID, clip.bossKey, clip.language)
-		if url then Spoken:ShowReport(url, function() return nil end) end
-	end,
-}
-Bosses.NarratorReportAction = NARRATOR_REPORT
-
 -- [creature id] = { map, key } of the world bosses (`worldBosses` in Spoken's Data/Dungeons.lua), from
 -- Data/Creatures.lua, built on first use. Their rows are on instanced maps while Forever spawns them in
 -- the open world, so their fight starts no encounter.
