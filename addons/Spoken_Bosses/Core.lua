@@ -54,7 +54,6 @@ function Bosses:ReportURL(map, key, language)
 	return Spoken:ReportURL("bosses", ("%d/%s"):format(map, slug), language)
 end
 
---- Opens the report for a boss's story in `language`.
 function Bosses:ShowReport(map, key, language)
 	Spoken:ShowReport(self:ReportURL(map, key, language))
 end
