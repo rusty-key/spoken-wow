@@ -35,16 +35,17 @@ function submission(text: string): Submission {
   };
 }
 
-async function waiting(text: string): Promise<number> {
+async function waiting(text: string, locale = "enUS"): Promise<number> {
   const { rows } = await asSystem.query<{ id: number }>(
     `insert into "contribution" ("source", "key", "locale", "raw", "dedup", "text", "ip", "meta")
-     values ('quests', $1, 'enUS', 'raw', $2, $3, $4, $5::jsonb) returning "id"`,
+     values ('quests', $1, $6, 'raw', $2, $3, $4, $5::jsonb) returning "id"`,
     [
       `${quest}:accept`,
       `${ip}-${Math.random().toString(36).slice(2, 10)}`,
       text,
       ip,
       JSON.stringify({ quest: String(quest), event: "accept", title: "Test" }),
+      locale,
     ],
   );
   return rows[0].id;
@@ -84,16 +85,25 @@ describe("class words", () => {
     expect(kept.text).toBe(SENT);
   });
 
-  it("marking puts the word back in waiting rows, and intake puts it back after", async () => {
+  it("marking puts the word back in its language's waiting rows, and intake puts it back after", async () => {
     const id = await waiting(SENT);
+    const german = await waiting(SENT, "deDE");
     const outcome = await markClassWord(id, true, MARKER);
     expect(outcome).toEqual({ ok: true, questId: quest, texts: { [id]: RESTORED } });
-    const { rows } = await asSystem.query<{ text: string }>(`select "text" from "contribution" where "id" = $1`, [id]);
-    expect(rows[0].text).toBe(RESTORED);
+    const { rows } = await asSystem.query<{ id: number; text: string; dedup: string }>(
+      `select "id", "text", "dedup" from "contribution" where "id" = any($1::int[])`,
+      [[id, german]],
+    );
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    // Filed under the restored text's dedup, where intake now files the same paste.
+    expect(byId.get(id)).toMatchObject({ text: RESTORED, dedup: submission(RESTORED).dedup });
+    expect(byId.get(german)?.text).toBe(SENT);
 
     const [kept] = await keepClassWords([submission(SENT)]);
     expect(kept.text).toBe(RESTORED);
     expect(kept.dedup).toBe(submission(RESTORED).dedup);
+    const [elsewhere] = await keepClassWords([{ ...submission(SENT), locale: "deDE" }]);
+    expect(elsewhere.text).toBe(SENT);
   });
 
   it("unmarking stops the restoring", async () => {

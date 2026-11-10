@@ -142,9 +142,9 @@ function lcsPairs(a: readonly string[], b: readonly string[]): Int32Array {
   return pair;
 }
 
-/** Whether a text holds the addon's `$c`/`$C` slot for the reader's class. */
+/** Whether a text holds the addon's slot for the reader's class: `$c`, or frFR's plural `$cs`. */
 export function hasClassSlot(text: string): boolean {
-  return tokensOf(text).some((token) => token.value === "$C");
+  return tokensOf(text).some((token) => token.value === "$C" || token.value === "$CS");
 }
 
 /** A run of one side's text, and whether the other side lacks it. */
@@ -209,12 +209,14 @@ export function restoreClassWords(contributed: string, corpus: string): string {
   let out = contributed;
   // From the end, so each splice leaves the earlier offsets as they were.
   for (let i = theirs.length - 1; i >= 0; i--) {
-    if (theirs[i].value.toLowerCase() !== "$c" || pair[i] !== -1) continue;
+    const slot: Token = { kind: "slot", value: theirs[i].value.toUpperCase() };
+    if ((slot.value !== "$C" && slot.value !== "$CS") || pair[i] !== -1) continue;
     const before = i === 0 ? -1 : pair[i - 1];
     const after = i === theirs.length - 1 ? ours.length : pair[i + 1];
     if ((i > 0 && before === -1) || after === -1) continue;
     const gap = ours.slice(before + 1, after);
     if (gap.length === 0 || gap.length > SLOT_WORDS || gap.some((token) => token.kind !== "word")) continue;
+    if (!endsRun(gap[gap.length - 1].value, slot)) continue;
     const word = gap.map((token) => token.value).join(" ");
     out = out.slice(0, theirs[i].at) + word + out.slice(theirs[i].at + theirs[i].value.length);
   }

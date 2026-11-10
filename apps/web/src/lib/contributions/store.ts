@@ -283,19 +283,31 @@ export async function createContributions(submissions: readonly Submission[], se
 
 /**
  * New text for rows still waiting on triage, in one statement: a moderator's edit, or a class
- * word put back (class-words.ts). `raw` keeps the paste as sent, and the dedup is left alone so
- * another copy of that paste still counts on the row. Answers the rows it changed.
+ * word put back (class-words.ts). `raw` keeps the paste as sent. The dedup changes only where
+ * one is given and no other row holds it; otherwise another copy of the paste as sent still
+ * counts on the row. Answers the rows it changed.
  */
 export async function rewriteWaitingTexts(
-  texts: readonly { id: number; text: string }[],
-): Promise<Pick<Contribution, "id" | "source" | "locale">[]> {
+  texts: readonly { id: number; text: string; dedup?: string }[],
+): Promise<Pick<Contribution, "id" | "source" | "locale" | "text">[]> {
   if (texts.length === 0) return [];
-  const { rows } = await db().query<Pick<Contribution, "id" | "source" | "locale">>(
-    `update "contribution" c set "text" = v."text", "updatedAt" = now()
-       from unnest($1::int[], $2::text[]) as v ("id", "text")
+  // One new dedup per value, or the statement would write it to two rows.
+  const claimed = new Set<string>();
+  const dedups = texts.map(({ dedup }) => {
+    if (!dedup || claimed.has(dedup)) return null;
+    claimed.add(dedup);
+    return dedup;
+  });
+  const { rows } = await db().query<Pick<Contribution, "id" | "source" | "locale" | "text">>(
+    `update "contribution" c
+        set "text" = v."text", "updatedAt" = now(),
+            "dedup" = case when v."dedup" is not null
+                            and not exists (select 1 from "contribution" o where o."dedup" = v."dedup")
+                           then v."dedup" else c."dedup" end
+       from unnest($1::int[], $2::text[], $3::text[]) as v ("id", "text", "dedup")
       where c."id" = v."id" and c."status" = 'new' and c."text" is distinct from v."text"
-      returning c."id", c."source", c."locale"`,
-    [texts.map((each) => each.id), texts.map((each) => each.text)],
+      returning c."id", c."source", c."locale", c."text"`,
+    [texts.map((each) => each.id), texts.map((each) => each.text), dedups],
   );
   return rows;
 }

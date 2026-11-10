@@ -129,6 +129,11 @@ describe("restoreClassWords", () => {
     expect(restoreClassWords("Every $c knows it.", "Every demon hunter knows it.")).toBe("Every demon hunter knows it.");
   });
 
+  it("puts back frFR's plural slot only where the corpus word ends in an s", () => {
+    expect(restoreClassWords("Les $cs de l'Alliance.", "Les paladins de l'Alliance.")).toBe("Les paladins de l'Alliance.");
+    expect(restoreClassWords("Les $cs de l'Alliance.", "Les paladin de l'Alliance.")).toBe("Les $cs de l'Alliance.");
+  });
+
   it("leaves a slot whose neighbours the corpus does not have", () => {
     expect(restoreClassWords("A new line for the $c alone.", corpus)).toBe("A new line for the $c alone.");
   });

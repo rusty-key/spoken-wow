@@ -46,6 +46,7 @@ import { OverrideError } from "@/lib/quests/override";
 import { QuestTextConflict, QuestTextMissing, saveQuestText } from "@/lib/quests/text";
 
 import { writeWording } from "./accept";
+import { MAX_BYTES } from "./envelope";
 import { lineStates, type CorpusText, type LineState } from "./known";
 import { momentOf } from "./naming";
 import { CONTRIBUTION_COLUMNS, rewriteWaitingTexts, type Contribution } from "./store";
@@ -181,17 +182,26 @@ export async function acceptAsWording(id: number, userId: string): Promise<Corre
 /**
  * A moderator's fix to the player's text before it is accepted: what the client sent is mostly
  * right and one word is not, and the explorer is a page away. Only a row still waiting is
- * edited (rewriteWaitingTexts).
+ * edited (rewriteWaitingTexts), and under the cap a paste has. Answers the text it replaced, for
+ * the caller to put back if the accept after it is refused; null where nothing changed.
  */
 export async function editCorrectionText(
   id: number,
   text: string,
   userId: string,
-): Promise<{ ok: true } | { ok: false; reason: "malformed"; message: string }> {
+): Promise<{ ok: true; previous: string | null } | { ok: false; reason: "malformed"; message: string }> {
   const normalised = normaliseText(text);
   if (!normalised) return { ok: false, reason: "malformed", message: "The text is empty." };
+  if (new TextEncoder().encode(normalised).length > MAX_BYTES) {
+    return { ok: false, reason: "malformed", message: "The text is longer than any line the addon sends." };
+  }
+  const { rows } = await db().query<{ text: string | null }>(
+    `select "text" from "contribution" where "id" = $1 and "status" = 'new'`,
+    [id],
+  );
   const [changed] = await rewriteWaitingTexts([{ id, text: normalised }]);
-  if (changed && isLang(changed.locale)) {
+  if (!changed) return { ok: true, previous: null };
+  if (isLang(changed.locale)) {
     await recordActivity({
       kind: "contribution.edited",
       lang: changed.locale,
@@ -201,7 +211,7 @@ export async function editCorrectionText(
       detail: { field: "text" },
     });
   }
-  return { ok: true };
+  return { ok: true, previous: rows[0]?.text ?? null };
 }
 
 /**

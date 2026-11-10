@@ -165,8 +165,8 @@ async function contributeMissing(
     countRecentContributions(identity.ip, CONTRIBUTION_WINDOW_MS),
     keepClassWords([sent]),
   ]);
-  const [known] = await knownSubmissions([submission]);
   if (recent >= CONTRIBUTIONS_PER_HOUR) return;
+  const [known] = await knownSubmissions([submission]);
   if (!known) {
     await storeSubmission(submission, { ...identity, body: complaint });
   }

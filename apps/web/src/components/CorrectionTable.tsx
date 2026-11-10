@@ -169,10 +169,12 @@ export default function CorrectionTable({
   const send = useCallback(
     async (id: number, next: ContributionStatus, as?: Accept): Promise<boolean> => {
       const url = next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve";
-      if (!(await post(url, id, { status: next, ...as }))) return false;
+      const body = await post(url, id, { status: next, ...as });
+      if (!body) return false;
       setResolved((current) => ({ ...current, [id]: next }));
-      const text = as?.text;
-      if (text !== undefined) setTexts((current) => ({ ...current, [id]: text }));
+      // The text as the server saved it, normalised, rather than as typed.
+      const saved = (body.contribution as { text?: unknown } | undefined)?.text;
+      if (as?.text !== undefined && typeof saved === "string") setTexts((current) => ({ ...current, [id]: saved }));
       setDrafts(({ [id]: _, ...rest }) => rest);
       return true;
     },
@@ -215,8 +217,11 @@ export default function CorrectionTable({
       setBusy(id);
       const body = await post("/api/contributions/class-word", id, { kept });
       if (body) {
+        const rewritten = body.texts as Record<number, string>;
         setClassWords((current) => ({ ...current, [questId]: kept }));
-        setTexts((current) => ({ ...current, ...(body.texts as Record<number, string>) }));
+        setTexts((current) => ({ ...current, ...rewritten }));
+        // An open edit of a rewritten row holds the slot just put back, and Accept would send it.
+        setDrafts((current) => Object.fromEntries(Object.entries(current).filter(([open]) => !(open in rewritten))));
       }
       setBusy(null);
     },

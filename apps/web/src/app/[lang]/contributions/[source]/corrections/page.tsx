@@ -8,8 +8,8 @@ import { auth } from "@/lib/auth";
 import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "@/lib/contributions/client";
 import { readable } from "@/lib/contributions/compare";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
-import { classWordQuests, questIdOf } from "@/lib/contributions/class-words";
-import { tabOf } from "@/lib/contributions/known";
+import { classWordQuests } from "@/lib/contributions/class-words";
+import { questIdOf, tabOf } from "@/lib/contributions/known";
 import {
   isQuestStage,
   isSearchIn,
@@ -69,7 +69,12 @@ export default async function Page({
   const searchIn = isSearchIn(rawFilter) ? rawFilter : "any";
 
   const { listed, states, pending } = await listedWithPending(status, lang, undefined, source);
-  const kept = await classWordQuests(listed.flatMap((row) => questIdOf(row) ?? []));
+  const kept = await classWordQuests(
+    listed.flatMap((row) => {
+      const questId = row.source === "quests" ? questIdOf(row) : null;
+      return questId === null ? [] : [{ lang: row.locale, questId }];
+    }),
+  );
 
   // Only what crosses into the client component, as page.tsx's ContributionRow projection says.
   const anyBuild: CorrectionRow[] = listed.flatMap((row, index) => {
@@ -91,7 +96,7 @@ export default async function Page({
         id: row.id,
         wordings,
         closest: state.closest,
-        quest: quest === "gossip" || quest === null ? null : { ...quest, classWord: kept.has(quest.questId) },
+        quest: quest === "gossip" || quest === null ? null : { ...quest, classWord: kept.has(`${row.locale}|${quest.questId}`) },
         title: source === "readables" ? bookTitleOf(row.meta) : null,
         client: clientOf(row.build),
         locale: row.locale,

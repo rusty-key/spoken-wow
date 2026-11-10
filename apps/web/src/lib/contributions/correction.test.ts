@@ -316,7 +316,7 @@ describe("acceptCorrection: a readables page", () => {
 describe("editCorrectionText", () => {
   it("accepts the moderator's edit of the player's text, keeping the paste as sent", async () => {
     const id = await contribution("enUS", "Greetings, $c.");
-    expect(await editCorrectionText(id, "Greetings, priest.", ACCEPTER)).toEqual({ ok: true });
+    expect(await editCorrectionText(id, "Greetings, priest.", ACCEPTER)).toEqual({ ok: true, previous: "Greetings, $c." });
     const outcome = await acceptCorrection(id, ACCEPTER);
     expect(outcome.ok && outcome.contribution.text).toBe("Greetings, priest.");
     expect(outcome.ok && outcome.contribution.raw).toBe("raw");
@@ -325,13 +325,14 @@ describe("editCorrectionText", () => {
       [lineId],
     );
     expect(rows[0].text).toBe("Greetings, priest.");
-    expect(await editCorrectionText(id, "Too late.", ACCEPTER)).toEqual({ ok: true });
+    expect(await editCorrectionText(id, "Too late.", ACCEPTER)).toEqual({ ok: true, previous: null });
     const after = await asSystem.query<{ text: string }>(`select "text" from "contribution" where "id" = $1`, [id]);
     expect(after.rows[0].text).toBe("Greetings, priest.");
   });
 
-  it("refuses an empty edit", async () => {
+  it("refuses an empty edit and one past a paste's cap", async () => {
     const id = await contribution("enUS", "Greetings, $c.");
     expect(await editCorrectionText(id, "   ", ACCEPTER)).toMatchObject({ ok: false, reason: "malformed" });
+    expect(await editCorrectionText(id, "a".repeat(70_000), ACCEPTER)).toMatchObject({ ok: false, reason: "malformed" });
   });
 });

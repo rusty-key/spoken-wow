@@ -11,7 +11,7 @@
  * edit of the player's text, saved on the row before it is accepted.
  */
 import { acceptAsWording, acceptCorrection, editCorrectionText } from "@/lib/contributions/correction";
-import { contributionLocale } from "@/lib/contributions/store";
+import { contributionLocale, rewriteWaitingTexts } from "@/lib/contributions/store";
 import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG, isLang } from "@/lib/lang";
 
@@ -40,9 +40,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "unknown contribution" }, { status: 404 });
   }
 
+  let previous: string | null = null;
   if (typeof body.text === "string") {
     const edited = await editCorrectionText(id, body.text, session.user.id);
     if (!edited.ok) return Response.json({ error: edited.message, kind: edited.reason }, { status: 400 });
+    previous = edited.previous;
   }
 
   const pick =
@@ -54,6 +56,8 @@ export async function POST(request: Request) {
       ? await acceptAsWording(id, session.user.id)
       : await acceptCorrection(id, session.user.id, pick);
   if (!outcome.ok) {
+    // A refused accept leaves the row as it was, the edit with it.
+    if (previous !== null) await rewriteWaitingTexts([{ id, text: previous }]);
     if (outcome.reason === "not-found") {
       return Response.json({ error: "unknown contribution" }, { status: 404 });
     }
