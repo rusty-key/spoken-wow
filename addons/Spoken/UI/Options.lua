@@ -223,10 +223,32 @@ local function Locale(code)
     end
 end
 
+-- Explicit font files do not carry the fallback faces that the game's font objects do. Keep the
+-- stock faces here so a custom Latin-only override cannot turn a client's own script into boxes.
+local SCRIPT_FONTS = {
+    cyrillic = { [[Fonts\FRIZQT___CYR.TTF]] },
+    korean = { [[Fonts\2002.TTF]] },
+    han = { [[Fonts\ARKai_T.ttf]], [[Fonts\blei00d.TTF]], [[Fonts\bKAI00M.TTF]] },
+    vietnamese = { [[Fonts\ARIALN.TTF]] },
+}
+
 -- Whether a font draws the language `code`: its own name, and the characters only it has.
 function Options:LanguageDraws(code, path)
     local locale = Locale(code)
     return locale ~= nil and FontDraws(locale.native .. (locale.sample or ""), path)
+end
+
+--- The explicit file to draw `code`, or the first stock face that does. Font objects carry these
+--- fallbacks themselves, but SetFont does not; the returned path keeps the caller's size and style.
+function Options:FontFor(path, code)
+    if type(path) ~= "string" then return path end
+    local locale = Locale(code or self:ClientLanguage())
+    if not locale or not locale.script then return path end
+    if self:LanguageDraws(locale.code, path) then return path end
+    for _, fallback in ipairs(SCRIPT_FONTS[locale.script] or {}) do
+        if self:LanguageDraws(locale.code, fallback) then return fallback end
+    end
+    return path
 end
 
 --- A language's name in the lists, one for every module: its own, and in English where this

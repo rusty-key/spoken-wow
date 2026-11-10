@@ -322,11 +322,17 @@ function Addon:ClipFont(fontString, clip)
     -- Anything but the face this set last is the player's own (a skin, a resize), so it is
     -- the one to go back to.
     if face ~= fontString.spokenClipFace then fontString.spokenOwnFace = face end
-    local want = clip and clip.present and clip.present.font or fontString.spokenOwnFace
+    local requested = clip and clip.present and clip.present.font or fontString.spokenOwnFace
     -- Asked for last time and still on: done, also when that face failed and the player's
     -- own stands in, rather than trying it again on every update.
-    if face == fontString.spokenClipFace and want == fontString.spokenClipWant then return end
-    local asked = want
+    if face == fontString.spokenClipFace and requested == fontString.spokenClipWant then return end
+    local want = requested
+    -- Resolve only the player's own face. A clip's explicit face is intentional: it may be a
+    -- script-specific font chosen by the recording, and must not be replaced by the client font.
+    if not (clip and clip.present and clip.present.font) and Options and Options.FontFor then
+        want = Options:FontFor(want)
+    end
+    local asked = requested
     -- A face the client cannot load: current clients answer false, older ones nil or nothing, so
     -- the face it reports afterwards is asked too. Back to the player's own rather than a
     -- string with no font.

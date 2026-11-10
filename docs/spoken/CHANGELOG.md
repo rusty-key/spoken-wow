@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- Keep Korean and other non-Latin text readable when custom fonts replace Spoken's explicit font files.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.5 — 2026-11-10
 
 - **Place stories that started on their own stop when you enter combat.** A zone or area story that
