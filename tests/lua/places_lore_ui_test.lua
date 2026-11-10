@@ -1172,8 +1172,8 @@ do
         .. tostring(banner.label.justifyV) .. " | " .. banner.count.anchor.point .. " " .. banner.count.anchor.y .. " "
         .. tostring(banner.count.justifyV) .. " | " .. banner.toggle.anchor.point .. " " .. banner.toggle.anchor.y,
         "RIGHT>LEFT 0 MIDDLE | RIGHT 0 MIDDLE | LEFT -1.5")
-    -- A line reaches up through the gap above its row, 4 at most (under a banner), to the foot of the
-    -- box above, and no further: inside it, it crossed the box's edge or the group's plus or minus.
+    -- A line hangs from the foot of the row above, no higher than it: inside it, it crossed the box's
+    -- edge or the group's plus or minus. Anchored to that row, it meets it at any interface scale.
     local railed, reach = 0, 0
     for _, row in ipairs(rows) do
         local lines = { row.bannerRail }
@@ -1186,7 +1186,7 @@ do
         end
     end
     Expect("...its tree lines drawn, each from the foot of the box above its row, never into it",
-        tostring(railed > 0) .. " " .. reach, "true 4")
+        tostring(railed > 0) .. " " .. reach, "true 0")
     banner.selected = true
     banner.scripts.OnEnter(banner)
     Expect("...a chosen row lit flat, with the accent edge, no streak",

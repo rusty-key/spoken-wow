@@ -1420,7 +1420,17 @@ end
 -- Each row draws its share of the line, `gap` up to the row above; a group's or banner's first row
 -- draws it on up to that group or banner. The row a line ends at fades it out: the first
 -- `goesOn` lines go on into the next row, and the banner's with `bannerGoesOn`.
-local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goesOn, bannerGoesOn)
+-- A line's top hangs from the foot of `above`, the row over this one, so that it meets that row's art at any
+-- interface scale: placed from this row's own top, it fell a pixel short or over where the rows' fractions
+-- rounded apart.
+local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goesOn, bannerGoesOn, above)
+	local function Hang(rail, x, extra)
+		if above then
+			rail:SetPoint("TOPLEFT", above, "BOTTOMLEFT", x, extra)
+		else
+			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, gap + extra)
+		end
+	end
 	-- In EllesmereUI's look a line starts at the foot of its banner's or group's box, not inside it,
 	-- where it would cross the box's edge or run into the group's plus or minus.
 	local flat = flatBanners
@@ -1431,8 +1441,7 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 	if row.bannerRail then
 		PaintRail(row.bannerRail, not bannerGoesOn)
 		row.bannerRail:ClearAllPoints()
-		row.bannerRail:SetPoint("TOPLEFT", row, "TOPLEFT", Pixels(row, BANNER_RAIL_X, 0),
-			gap + ((afterBanner and not flat) and BANNER_FOOT or 0))
+		Hang(row.bannerRail, Pixels(row, BANNER_RAIL_X, 0), (afterBanner and not flat) and BANNER_FOOT or 0)
 		row.bannerRail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", Pixels(row, BANNER_RAIL_X, 0), 0)
 		row.bannerRail:SetShown(underBanner and true or false)
 	end
@@ -1448,7 +1457,7 @@ local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goes
 			PaintRail(rail, i > (goesOn or 0))
 			local x = Pixels(row, (underBanner and UNDER_BANNER_IN or 0) + (i - 1) * NEST_STEP + RAIL_X, 0)
 			rail:ClearAllPoints()
-			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, (i <= held or flat) and gap or gap + (foot or FOOT))
+			Hang(rail, x, (i <= held or flat) and 0 or (foot or FOOT))
 			rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
 			rail:Show()
 		elseif rail then
@@ -1682,7 +1691,7 @@ function List:Render()
 		if after and after.style ~= "banner" then _, goesOn = GapAbove(items, i + 1) end
 		Rails(row, nest, gap, held, item.style ~= "banner" and underBanner,
 			before and before.style == "banner", before and before.style == "group" and GROUP_FOOT or FOOT,
-			goesOn, after ~= nil and after.style ~= "banner")
+			goesOn, after ~= nil and after.style ~= "banner", self.rows[i - 1])
 		local indent = (underBanner and UNDER_BANNER_IN or 0) + nest * NEST_STEP
 		row.indent = indent
 		row.label:ClearAllPoints()
@@ -1704,7 +1713,7 @@ function List:Render()
 		row.wash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
 		row.edge:ClearAllPoints()
 		row.edge:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
-		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, 0)
+		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, Pixels(row, 2, 0))
 		-- Clicks on the row, not on the room beside its line.
 		if row.SetHitRectInsets then row:SetHitRectInsets(indent, 0, 0, 0) end
 
