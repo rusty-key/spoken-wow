@@ -107,7 +107,7 @@ end
 function M.NewZoneLore()
     local cfg = { voiceEnabled = true, autoplay = true, autoplaySubzones = true,
         autoplayExplored = false, autoplayStopInCombat = false,
-        autoplayEveryVisit = false, autoplayEveryVisitGap = 30 * 60, debug = false,
+        autoplayEveryVisit = false, autoplayEveryVisitGap = 12 * 3600, debug = false,
         -- What the options panel reads, as well as what the playback files do.
         showMapPanel = true, panelSide = "RIGHT",
         panelWidth = 320, fontSize = 12, highlightOpacity = 0.35 }
@@ -161,7 +161,7 @@ function M.NewZoneLore()
     -- What UI/Options.lua asks the rest of the addon. The panel is the one part that
     -- reports what is installed, so the answers live here rather than in each test.
     function Z:SiteURL() return "https://spoken.test" end
-    Z.EVERY_VISIT_GAPS = { 30 * 60, 2 * 3600, 12 * 3600, 24 * 3600, 7 * 24 * 3600 }
+    Z.EVERY_VISIT_GAPS = { 12 * 3600, 24 * 3600, 7 * 24 * 3600, 30 * 24 * 3600 }
     function Z:EveryVisitGap() return cfg.autoplayEveryVisitGap end
     function Z:GetAudioPacks() return {} end
     function Z:GetActiveAudioPack() return nil end

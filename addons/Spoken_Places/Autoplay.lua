@@ -275,13 +275,13 @@ local function HeardSet()
 end
 
 -- When each place last started reading, for Read Every Visit, by the wall clock: a wait can be a
--- week, longer than the computer stays on, and GetTime() starts again from zero at every restart.
+-- month, longer than the computer stays on, and GetTime() starts again from zero at every restart.
 -- A time ahead of now (the clock set back) counts as long ago, so the place is not silenced for good.
 --
--- The waits the player can choose, in seconds. Without one, riding along a zone border reads both
--- zones over and over.
-SpokenPlaces.EVERY_VISIT_GAPS = { 30 * 60, 2 * 3600, 12 * 3600, 24 * 3600, 7 * 24 * 3600 }
-local DEFAULT_GAP = 30 * 60
+-- The waits the player can choose, in seconds; a month is 30 days. Half a day at the least: a
+-- shorter wait reads the same stories over and over to a player who only rides back and forth.
+SpokenPlaces.EVERY_VISIT_GAPS = { 12 * 3600, 24 * 3600, 7 * 24 * 3600, 30 * 24 * 3600 }
+local DEFAULT_GAP = 12 * 3600
 
 -- The client's time(); os.time where it has none, as under the luajit tests.
 local function Now()
@@ -818,7 +818,7 @@ function SpokenPlaces:DescribeAutoplay()
 			self:HeardCount())
 	end
 	if self:Get("autoplayEveryVisit") then
-		self:Print("every visit -- a place is read again %d minutes after it was last read",
-			self:EveryVisitGap() / 60)
+		self:Print("every visit -- a place is read again %d hours after it was last read",
+			self:EveryVisitGap() / 3600)
 	end
 end

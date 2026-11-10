@@ -68,16 +68,26 @@ clock = clock + 30 * DAY
 ZoneChanged(Z)
 Expect("...and never again, however long after", Spoken:GetQueueSize(), 0)
 
--- On, with the default wait of 30 minutes.
+-- On, with the default wait of 12 hours.
 Z = Boot({ autoplayExplored = true, autoplayEveryVisit = true })
-Expect("the wait is 30 minutes unless chosen", Z:EveryVisitGap(), 30 * 60)
+Expect("the wait is 12 hours unless chosen", Z:EveryVisitGap(), 12 * HOUR)
 Expect("on, arriving reads the zone and the area", ArriveAndListen(Z), 2)
-clock = clock + 10 * 60
+clock = clock + 2 * HOUR
 ZoneChanged(Z)
-Expect("...not again ten minutes later", Spoken:GetQueueSize(), 0)
-clock = clock + 25 * 60
+Expect("...not again two hours later", Spoken:GetQueueSize(), 0)
+clock = clock + 11 * HOUR
 ZoneChanged(Z)
-Expect("...but again once the half hour has passed", Spoken:GetQueueSize(), 2)
+Expect("...but again once the 12 hours have passed", Spoken:GetQueueSize(), 2)
+
+-- A month's wait.
+Z = Boot({ autoplayExplored = true, autoplayEveryVisit = true, autoplayEveryVisitGap = 30 * DAY })
+ArriveAndListen(Z)
+clock = clock + 20 * DAY
+ZoneChanged(Z)
+Expect("with a month's wait, not twenty days later", Spoken:GetQueueSize(), 0)
+clock = clock + 11 * DAY
+ZoneChanged(Z)
+Expect("...but thirty-one days later", Spoken:GetQueueSize(), 2)
 
 -- A week's wait.
 Z = Boot({ autoplayExplored = true, autoplayEveryVisit = true, autoplayEveryVisitGap = 7 * DAY })
@@ -89,9 +99,12 @@ clock = clock + 6 * DAY
 ZoneChanged(Z)
 Expect("...but eight days later", Spoken:GetQueueSize(), 2)
 
--- A saved wait that is not one of the choices reads as the default.
+-- A saved wait that is not one of the choices reads as the default, as is 30 minutes, which an
+-- early build offered.
 Z = Boot({ autoplayEveryVisit = true, autoplayEveryVisitGap = 5 })
-Expect("a wait that is not offered falls back to 30 minutes", Z:EveryVisitGap(), 30 * 60)
+Expect("a wait that is not offered falls back to 12 hours", Z:EveryVisitGap(), 12 * HOUR)
+Z = Boot({ autoplayEveryVisit = true, autoplayEveryVisitGap = 30 * 60 })
+Expect("...30 minutes too", Z:EveryVisitGap(), 12 * HOUR)
 
 -- Read Every Visit reads on arrival by itself, with Include Places Found Before off.
 Z = Boot({ autoplayExplored = false, autoplayEveryVisit = true })
