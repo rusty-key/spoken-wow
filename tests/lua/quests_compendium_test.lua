@@ -303,22 +303,19 @@ Expect("...a banner across the list, its name as it is", RowFor("Eastern Kingdom
     and RowFor("Eastern Kingdoms").label.text, "Eastern Kingdoms")
 Expect("...counting the quests completed out of all", RowFor("Eastern Kingdoms").count.text:match("^1/%d+$") ~= nil, true)
 local banner = RowFor("Eastern Kingdoms")
-Expect("...drawn as the objective tracker's campaign header, the Alliance's for an Alliance character",
-    banner.headMiddle:IsShown() and banner.headMiddle.texture, "file:Objective-Header-CampaignAlliance")
-Expect("...without the crest at its left end: its middle from past it", banner.headMiddle.texCoord[1], 64 / 274)
-Expect("...its left end the right one turned round", banner.headLeft.texCoord[1] == banner.headRight.texCoord[2]
-    and banner.headLeft.texCoord[2] == banner.headRight.texCoord[1] and banner.headLeft.texCoord[1] > banner.headLeft.texCoord[2]
+Expect("...drawn as the professions window's header bar", banner.headMiddle:IsShown() and banner.headMiddle.texture,
+    [[Interface\AddOns\Spoken\Textures\HeaderBar]])
+Expect("...its middle between the rounded ends, 24 texels of 256 each", banner.headMiddle.texCoord[1] .. " " .. banner.headMiddle.texCoord[2],
+    24 / 256 .. " " .. 232 / 256)
+Expect("...its ends the bar's own, not turned round", banner.headLeft.texCoord[1] == 0 and banner.headLeft.texCoord[2] == 24 / 256
+    and banner.headRight.texCoord[1] == 232 / 256 and banner.headRight.texCoord[2] == 1
     and banner.headLeft:IsShown() and banner.headRight:IsShown(), true)
-Expect("...the quest log's collapse on it while open",
-    SpokenEnv.Version.Variant == "era" and banner.toggle.texture or banner.toggle.atlas,
-    SpokenEnv.Version.Variant == "era" and [[Interface\Buttons\UI-MinusButton-Up]] or "questlog-icon-shrink")
+Expect("...the ends as wide as the bar's rounding at the row's height: 24 of 64 texels", banner.headLeft.width .. " " .. banner.headLeft.height,
+    28 * 24 / 64 .. " 28")
+Expect("...a minus on it while open, white art in the bar's gold", banner.toggle.texture .. "|" .. table.concat(banner.toggle.vertexColor, ","),
+    [[Interface\AddOns\Spoken\Textures\HeaderMinus]] .. "|1,0.82,0")
 Expect("...its numbers ending in the column a zone line's do", banner.count.anchor.point .. " " .. banner.count.anchor.x .. "|"
     .. RowFor("Elwynn Forest").count.anchor.point .. " " .. RowFor("Elwynn Forest").count.anchor.x, "RIGHT -12|RIGHT -12")
-faction = "Horde"
-Tab:Refresh()
-Expect("...the Horde's for a Horde character", RowFor("Eastern Kingdoms").headMiddle.texture, "file:Objective-Header-CampaignHorde")
-faction = "Alliance"
-Tab:Refresh()
 Expect("...each zone a line inside it, with no picture or bar", RowFor("Elwynn Forest").row.style == "group" and RowFor("Elwynn Forest").row.nest, 0)
 Expect("...then a banner each for the quests no zone holds: Classes, Professions, Holidays and Events, Other",
     list:find("|Classes|Professions|Holidays and Events|Other$") ~= nil and not Has(list, "Mage")
@@ -1427,9 +1424,9 @@ end
 _G.C_Texture = { GetAtlasInfo = function() return nil end }
 Tab:Open(KOBOLDS)
 local plainBanner, plainCard = RowFor("Eastern Kingdoms"), RowFor("Elwynn Forest")
-Expect("with no campaign header, a banner is a dark band with gold edges", plainBanner.bannerFill:IsShown()
-    and plainBanner.headMiddle:IsShown(), false)
-Expect("...its plus or minus the older buttons", plainBanner.toggle.texture, [[Interface\Buttons\UI-MinusButton-Up]])
+Expect("with no atlases, a banner is still the shipped bar", plainBanner.headMiddle:IsShown(), true)
+Expect("...not a dark band", plainBanner.bannerFill:IsShown(), false)
+Expect("...its minus the shipped one", plainBanner.toggle.texture, [[Interface\AddOns\Spoken\Textures\HeaderMinus]])
 Click("Elwynn Forest")
 plainCard = RowFor("Elwynn Forest")
 Expect("...chosen, the list's own light full with its gold edge", plainCard.selected and plainCard.wash:IsShown()

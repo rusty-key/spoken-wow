@@ -1793,9 +1793,10 @@ The tab lands on the player's zone, opened; where it has no quests, or Started O
 Only leaves it out, on the player's continent, as Places and Readables land, else on the first continent
 listed (there is no Azeroth row). A switch in the filter menu that leaves out the chosen row
 (`onHidden`) lands again where the tab chose it, and otherwise chooses the nearest row above it
-that is still listed: a quest's zone or group, a zone's continent. The list is drawn in the game's own art
-(`UI/Compendium.lua`, plain colours where a client lacks an atlas): a banner is the objective
-tracker's campaign header for the player's faction, without its crest. A zone's or a dungeon's line has its
+that is still listed: a quest's zone or group, a zone's continent. The list stands on the professions list's
+background (`UI/Compendium.lua`; Era keeps the marble), and a banner is the professions window's header
+bar (`Textures/HeaderBar.tga`, drawn in three pieces so its rounded ends keep their shape) with a gold
+plus or minus (`HeaderPlus.tga`, `HeaderMinus.tga`). A zone's or a dungeon's line has its
 plus or minus and its name, and on its right the quest mark with how many of its quests
 are in progress, the quests completed out of all and the share completed (or, once all are, the
 quest log's gold tick). Its picture is on its page. A banner counts

@@ -5,8 +5,8 @@
 -- Spoken's, so every module's tab shares one window. The window is the game's portrait frame, resizable from its corner
 -- and folding down to the list. The list is a search box over an inset of rows, with the tab's
 -- switches (Started Only, Discovered Only, Found Only and the like) in the filter menu beside the
--- search. Its rows are drawn in the game's own art: the objective tracker's campaign bar across
--- the list for a banner (a continent, a section, a type of writing), and a line for everything
+-- search. Its rows are drawn in the professions window's look: its header bar across the list for
+-- a banner (a continent, a section, a type of writing), and a line for everything
 -- else: a group of lines (a place, a chain, a kind of quest or of writing) with its plus or minus
 -- and numbers, and each single thing with its tick, quest mark or padlock. What is inside an open
 -- group is indented under it, a faint gold line down its left. What the rows are, what a click
@@ -54,10 +54,10 @@ local WINDOW_MIN_HEIGHT = 360
 local LIST_WIDTH = 345
 -- The narrowest the page beside the list lays out at.
 local PAGE_MIN_WIDTH = 278
-local BANNER_ROW = 36
+local BANNER_ROW = 28
 local BANNER_GAP = 14         -- above each banner but the first
 local BANNER_IN = 10          -- a banner's plus or minus from its left
-local BANNER_DROP = 1.5       -- the banner's art sits this much under its row's middle
+local BANNER_DROP = 1.5       -- a flat banner's plus or minus sits this much under its row's middle
 local BANNER_TEXT = 32        -- a banner's name from its left
 local FIRST_GAP = 2           -- above the first row
 local LEAF_ROW = 22
@@ -153,16 +153,6 @@ local function AtlasSpot(atlas)
 		return nil
 	end
 	return info
-end
-
--- `texture` showing the part of the atlas at `spot` from x1 to x2 and y1 to y2, in the atlas's own
--- pixels; turned left to right with `mirror`.
-local function AtlasCut(texture, spot, x1, x2, y1, y2, mirror)
-	local l, r, t, b = spot.leftTexCoord, spot.rightTexCoord, spot.topTexCoord, spot.bottomTexCoord
-	local u1, u2 = l + (r - l) * x1 / spot.width, l + (r - l) * x2 / spot.width
-	if mirror then u1, u2 = u2, u1 end
-	texture:SetTexture(spot.file or spot.filename)
-	texture:SetTexCoord(u1, u2, t + (b - t) * y1 / spot.height, t + (b - t) * y2 / spot.height)
 end
 
 local function Sound(kit)
@@ -911,11 +901,18 @@ local CHECK = "questlog-icon-checkmark-yellow"
 -- One size for every tick in the column down the list's right, on every line.
 local TICK_WIDTH, TICK_HEIGHT = 15, 13
 
--- The campaign header's bar, in its atlas's own pixels: its crest sits half outside the bar at
--- the left end and looked cut off, so the left end is the right one turned round.
-local BAR_HORDE, BAR_ALLIANCE = "Objective-Header-CampaignHorde", "Objective-Header-CampaignAlliance"
-local BAR_TOP, BAR_BOTTOM = 3, 40
-local BAR_MIDDLE, BAR_END = 64, 250
+-- A banner is the professions window's header bar. HeaderBar is 256x64 with rounded ends BAR_CAP texels
+-- wide, drawn in three pieces so the ends are not stretched; HeaderPlus and HeaderMinus are white, tinted
+-- to the banner's gold.
+local BAR_FILE = [[Interface\AddOns\Spoken\Textures\HeaderBar]]
+local SIGN_FILES = { [true] = [[Interface\AddOns\Spoken\Textures\HeaderMinus]],
+	[false] = [[Interface\AddOns\Spoken\Textures\HeaderPlus]] }
+local BAR_WIDTH, BAR_HEIGHT, BAR_CAP = 256, 64, 24
+local BAR_PIECES = { { 0, BAR_CAP }, { BAR_CAP, BAR_WIDTH - BAR_CAP }, { BAR_WIDTH - BAR_CAP, BAR_WIDTH } }
+local SIGN_SIZE = 14
+local SIGN_INK = { 1, 0.82, 0 }
+-- The professions list's own background, under the rows.
+local LIST_BACKGROUND = "Professions-background-summarylist"
 
 local ROW_END = 12            -- from a row's right side to its numbers
 local SHARE_INK = { 0.80, 0.76, 0.70 }
@@ -1116,6 +1113,11 @@ function C.NewList(panel, opts)
 		inset.Bg:SetTexture([[Interface\FrameGeneral\UI-Background-Marble]], "REPEAT", "REPEAT")
 		if inset.Bg.SetHorizTile then inset.Bg:SetHorizTile(true); inset.Bg:SetVertTile(true) end
 		if inset.Bg.SetVertexColor then inset.Bg:SetVertexColor(1, 1, 1, 1) end
+		-- Forever has the professions list's background; Era keeps the marble.
+		if not IS_ERA and Atlas(inset.Bg, LIST_BACKGROUND) and inset.Bg.SetHorizTile then
+			inset.Bg:SetHorizTile(false)
+			inset.Bg:SetVertTile(false)
+		end
 	end
 	inset:SetPoint("TOPLEFT", panel, "TOPLEFT", left, top - 38)
 	-- Down to the window's foot, level with the page beside it.
@@ -1444,7 +1446,7 @@ end
 -- opens -- locked, empty, or none found with the tab's only switch on -- greyed, as the name
 -- beside it is. `found`, where an item counts something narrower than what it holds (the quests
 -- completed, not those in progress too).
-local function Toggle(row, item, onlyFound)
+local function Toggle(row, item, onlyFound, bar)
 	local count = item.found or item.count or 0
 	-- A card with nothing inside it (a dungeon's, a city with no areas) has nothing to open: no
 	-- button, rather than a disabled one that does nothing.
@@ -1453,6 +1455,19 @@ local function Toggle(row, item, onlyFound)
 		return
 	end
 	local opens = not item.locked and not (onlyFound and count == 0)
+	if bar then
+		-- The banner's own sign, white art in the bar's gold, dim where there is nothing to open.
+		row.toggle:SetSize(SIGN_SIZE, SIGN_SIZE)
+		row.toggle:SetTexture(SIGN_FILES[opens and item.open and true or false])
+		row.toggle:SetTexCoord(0, 1, 0, 1)
+		if row.toggle.SetDesaturated then row.toggle:SetDesaturated(false) end
+		row.toggle:SetVertexColor(SIGN_INK[1], SIGN_INK[2], SIGN_INK[3])
+		row.toggle:SetAlpha(opens and 1 or 0.45)
+		row.toggle:Show()
+		return
+	end
+	row.toggle:SetSize(16, 16)
+	row.toggle:SetVertexColor(1, 1, 1)
 	local atlas = opens and item.open and "questlog-icon-shrink" or "questlog-icon-expand"
 	-- Era exposes these modern atlas names even though their backing textures are not present. Using
 	-- them paints the missing-texture green square; its older button files are still available.
@@ -1487,60 +1502,57 @@ end
 
 local function DrawBanner(row, item, onlyFound)
 	BannerParts(row)
-	local horde = UnitFactionGroup and UnitFactionGroup("player") == "Horde"
-	local spot = (not flatBanners) and AtlasSpot(horde and BAR_HORDE or BAR_ALLIANCE) or nil
-	row.bannerArt = spot ~= nil
-	if spot then
-		local width = spot.width
-		local cap = math.floor((width - BAR_END) * BANNER_ROW / (BAR_BOTTOM - BAR_TOP) + 0.5)
-		local pieces = { { row.headLeft, BAR_END, width, true }, { row.headMiddle, BAR_MIDDLE, BAR_END },
-			{ row.headRight, BAR_END, width } }
-		for i, piece in ipairs(pieces) do
-			AtlasCut(piece[1], spot, piece[2], piece[3], BAR_TOP, BAR_BOTTOM, piece[4])
-			AtlasCut(row.glow[i], spot, piece[2], piece[3], BAR_TOP, BAR_BOTTOM, piece[4])
-			piece[1]:ClearAllPoints()
+	row.bannerArt = not flatBanners
+	if row.bannerArt then
+		-- The ends keep their shape at any row height: BAR_CAP texels of the bar's BAR_HEIGHT.
+		local cap = BANNER_ROW * BAR_CAP / BAR_HEIGHT
+		for i, piece in ipairs(BAR_PIECES) do
+			for _, part in ipairs({ { row.headLeft, row.headMiddle, row.headRight }, row.glow }) do
+				part[i]:SetTexture(BAR_FILE)
+				part[i]:SetTexCoord(piece[1] / BAR_WIDTH, piece[2] / BAR_WIDTH, 0, 1)
+			end
 		end
+		row.headLeft:ClearAllPoints()
 		row.headLeft:SetSize(cap, BANNER_ROW)
 		row.headLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+		row.headRight:ClearAllPoints()
 		row.headRight:SetSize(cap, BANNER_ROW)
 		row.headRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+		row.headMiddle:ClearAllPoints()
 		row.headMiddle:SetPoint("TOPLEFT", row.headLeft, "TOPRIGHT", 0, 0)
 		row.headMiddle:SetPoint("BOTTOMRIGHT", row.headRight, "BOTTOMLEFT", 0, 0)
-		for i, piece in ipairs(pieces) do row.glow[i]:SetAllPoints(piece[1]) end
+		for i, parts in ipairs({ row.headLeft, row.headMiddle, row.headRight }) do row.glow[i]:SetAllPoints(parts) end
 	end
-	ShowAll({ row.headLeft, row.headMiddle, row.headRight }, spot ~= nil)
-	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, spot == nil)
+	ShowAll({ row.headLeft, row.headMiddle, row.headRight }, row.bannerArt)
+	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, false)
 	ShowAll({ row.bannerLeft, row.bannerRight }, flatBanners)
 	if flatBanners then
 		-- A faint box with a faint edge all round, as EllesmereUI's flat plates are.
 		row.bannerFill:SetColorTexture(1, 1, 1, 0.05)
+		ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, true)
 		for _, line in ipairs({ row.bannerTop, row.bannerBottom, row.bannerLeft, row.bannerRight }) do
 			line:SetColorTexture(1, 1, 1, 0.12)
 		end
 	end
 
 	row.toggle:ClearAllPoints()
-	-- The plus or minus as far in from the banner's edge as it is from its top and its foot, all
-	-- measured from the banner's gold line, whose middle is 1.5 under the row's.
-	-- The campaign bar's gold line sits under the row's middle; a flat box has its middle. The quest
-	-- log's minus and plus draw their bar 1.5 above their picture's middle (measured in game: the
-	-- minus 1.5 px over the box's middle, the name and the count on it), so the sign alone drops.
-	local drop = flatBanners and 0 or BANNER_DROP
-	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or BANNER_DROP
+	-- A flat box's sign sits BANNER_DROP under its middle, where the quest log's minus has its bar; the
+	-- bar is level, and so is its sign.
+	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or 0
 	row.toggle:SetPoint("LEFT", row, "LEFT", BANNER_IN, -sign)
-	Toggle(row, item, onlyFound)
+	Toggle(row, item, onlyFound, row.bannerArt)
 	local locked = item.locked and row.hasLock
 	-- The numbers and padlock in the column the lines' numbers end in.
-	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, -drop)
-	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, flatBanners and 0 or -1)
+	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
+	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
 	row.lock:SetShown(locked and true or false)
 	row.count:SetShown(not locked)
 	RowFont(row, "banner", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, BANNER_INK)
 	row.count:SetText(item.total and item.total > 0 and (Number(item.count) .. "/" .. Number(item.total)) or "")
-	-- Both on the box's middle line, by their own middle.
-	if flatBanners and row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
-	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, flatBanners and 0 or -1)
+	-- Both on the bar's middle line, by their own middle.
+	if row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
+	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, 0)
 	row.label:SetPoint("RIGHT", locked and row.lock or row.count, "LEFT", -8, 0)
 	if item.locked then Tint(row.label, LOCKED_INK) else Tint(row.label, NAME_INK) end
 	row.label:SetShadowColor(0, 0, 0, 1)

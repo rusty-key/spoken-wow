@@ -175,6 +175,7 @@ Reopen(9004)
 Expect("...inside one with nothing to read, on the zone", panel.page.title.text, "Cragmoor")
 _G.GetInstanceInfo = nil
 Reopen(9003)
+Expect("the list sits on the professions list's background", panel.inset.Bg.atlas, "Professions-background-summarylist")
 -- Landing far down the list, from the window closed and never laid out: the client's scroll frame
 -- takes an offset only within the range it last measured, and has no height until the window is
 -- laid out, a frame after it is shown.

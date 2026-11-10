@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **The Compendium's lists use the professions window's look.** Each category is a header bar with a gold
+  plus or minus, over the professions list's background. *([Nucabe](https://github.com/Nucabe))*
+
 ## 3.8.6 — 2026-11-10
 
 - **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new
