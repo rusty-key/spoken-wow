@@ -4,9 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Stop When Combat Starts, a new Places setting under Read Automatically.** On by default, a place
-  story that started on its own stops when a fight begins and plays again once it ends. Turn it off
-  to let the story play through the fight.
+- **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new
+  setting is under Read Automatically on the Places page. On, a story that started on its own
+  stops when a fight begins and plays again from the start once it ends, as in 3.8.5. A story
+  that has not started yet still waits for the fight to end either way.
   *([rusty-key](https://github.com/rusty-key))*
 - **An NPC's own greeting no longer slips out before Spoken's line on a first talk.** Right-clicking
   an NPC with a recorded greeting silences its voice before the window opens. If no window opens, or

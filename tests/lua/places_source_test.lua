@@ -156,6 +156,7 @@ Spoken:StopAll()
 -- Holding at the door is not enough: a narration already speaking when a fight starts
 -- must stop for it, or it talks through the whole pull (#938).
 env, Z = Boot(); Spoken = _G.Spoken
+Z:Set("autoplayStopInCombat", true)
 local narration = Z:NewLoreSound(1411, "valley of trials"); narration.autoplay = true
 Z:EnqueueLore(narration)
 Expect("out of combat, the narration speaks", Spoken:IsPlaying(narration), true)
@@ -171,9 +172,8 @@ stub.Advance(1)
 Expect("the fight over, it replays", Spoken:IsPlaying(narration), true)
 Spoken:StopAll()
 
--- Stop When Combat Starts off: the speaking narration plays through the fight.
+-- Stop When Combat Starts off, the default: the speaking narration plays through the fight.
 env, Z = Boot(); Spoken = _G.Spoken
-Z:Set("autoplayStopInCombat", false)
 narration = Z:NewLoreSound(1411, "valley of trials"); narration.autoplay = true
 Z:EnqueueLore(narration)
 world.inCombat = true
@@ -187,6 +187,7 @@ Spoken:StopAll()
 world.inCombat = false
 
 env, Z = Boot(); Spoken = _G.Spoken
+Z:Set("autoplayStopInCombat", true)
 Expect("a clicked clip plays", Z:PlayLore(1411, nil), true)
 world.inCombat = true
 stub.FireEvent("PLAYER_REGEN_DISABLED")
@@ -194,6 +195,7 @@ Expect("...and is not cut off by combat", Spoken:IsPlaying(), true)
 Spoken:StopAll()
 
 env, Z = Boot(); Spoken = _G.Spoken
+Z:Set("autoplayStopInCombat", true)
 local questSource = Spoken:RegisterSource("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
 local questLine = H.Clip()
 questSource:Enqueue(questLine)
