@@ -543,6 +543,13 @@ local showReport, reported = Spoken.ShowReport, nil
 Spoken.ShowReport = function(_, url) reported = url end
 clip.present.actions[1].onClick(clip)
 Expect("...whose Report opens the boss story address", reported, "https://spoken.quest/bosses/r/36/edwin-vancleef")
+local getAudioClip = Bosses.GetAudioClip
+Bosses.GetAudioClip = function() return { path = "x.mp3", len = 41.2, language = "deDE" } end
+local voiced = Bosses:StoryClip(36, "edwin vancleef")
+voiced.present.actions[1].onClick(voiced)
+Expect("...filed under the language heard, not the one on screen", reported,
+    "https://spoken.quest/deDE/bosses/r/36/edwin-vancleef")
+Bosses.GetAudioClip = getAudioClip
 Spoken.ShowReport = showReport
 Expect("...shown for six seconds at least", clip.length, 6)
 Expect("a boss with no story has no line", Bosses:StoryClip(36, "no such boss"), nil)
