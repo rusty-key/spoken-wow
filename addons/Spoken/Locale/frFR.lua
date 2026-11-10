@@ -91,6 +91,9 @@ L.REASON_NOT_INSTALLED = "Non installé. Installez ce module de Spoken pour l'ut
 
 -- Narrator style
 L.OPT_PLAYER_STYLE = "Style du narrateur"
+L.OPT_NARRATOR_SKIN = "Apparence du narrateur"
+L.OPT_SKIN_DEFAULT = "Par défaut"
+L.OPT_SKIN_WARCRAFT3 = "Warcraft III"
 L.OPT_LOOK_TITLE = "Apparence"
 L.OPT_STYLE_MINIMAL = "Petite fenêtre"
 L.OPT_STYLE_CLASSIC = "Grande fenêtre"

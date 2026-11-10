@@ -42,10 +42,14 @@ do
     Expect("a slider greys out where sliders have no SetEnabled", ok and slider.layoutSlider.enabled, false)
 end
 local F = env.PlayerFrame
+Expect("the default narrator skin keeps the original art", env.Addon:NarratorSkin(), "default")
 Expect("quest clips use racial art", F.IsRaceClip({ source = { key = "quests" } }), true)
 Expect("gossip clips use racial art", F.IsRaceClip({ source = { key = "gossip" } }), true)
 Expect("place clips keep their original art", F.IsRaceClip({ source = { key = "places" } }), false)
 local savedRaceVoiceOver = _G.VoiceOver
+env.Addon:SetNarratorSkin("warcraft3")
+F:RefreshConfig()
+Expect("Warcraft III narrator skin enables racial art", env.Addon:NarratorSkin(), "warcraft3")
 _G.VoiceOver = { DataModules = { GetModules = function()
     return ipairs({ { NPCBodiesByNPCID = {
         [15102] = { ["nightelf-female"] = true },
@@ -180,6 +184,10 @@ end } }
 local genericFollowupLook = F.RaceLook({ present = { portrait = { creatureID = 3583 } } })
 Expect("generic quest follow-up metadata supplies a race from its filename", genericFollowupLook ~= nil, true)
 _G.VoiceOver = oldVoiceOver
+env.Addon:SetNarratorSkin("default")
+Expect("Default narrator skin disables Warcraft III racial art", F.RaceLook({ source = { key = "quests" },
+    present = { header = "Thrall" } }), nil)
+F:RefreshConfig()
 
 -- A quest event with no title, neither a greeting nor gossip, has an empty label.
 quests:Enqueue(H.Clip({ key = "q:1", present = { header = "Thrall", label = "", portrait = { kind = "none" } } }))

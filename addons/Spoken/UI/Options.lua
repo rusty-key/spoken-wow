@@ -36,6 +36,12 @@ local STYLE_LABELS = {
     none = L.OPT_STYLE_NONE,
 }
 
+local NARRATOR_SKINS = { "default", "warcraft3" }
+local NARRATOR_SKIN_LABELS = {
+    default = L.OPT_SKIN_DEFAULT,
+    warcraft3 = L.OPT_SKIN_WARCRAFT3,
+}
+
 -- The game's key bindings list these in a Spoken category (Bindings.xml). The category is
 -- the name of a string global the client shows as its title. Set here, after the locale
 -- files, so the names are in the player's language.
@@ -495,6 +501,14 @@ local function Build()
             Options:StyleChosen()
         end,
         { choose = L.STYLE_CHOOSE })
+    local narratorSkin = layout:Dropdown(L.OPT_NARRATOR_SKIN, nil, NARRATOR_SKINS,
+        function() return Addon:NarratorSkin() end,
+        function(v) Addon:SetNarratorSkin(v) end, refresh,
+        function(v) return NARRATOR_SKIN_LABELS[v] end)
+    Only(narratorSkin, function()
+        local style = Style()
+        return style == "minimal" or style == "classic"
+    end)
     layout:Section(nil)
     -- Search names these rows' section as the tiles' own.
     layout.section = L.OPT_PLAYER_STYLE

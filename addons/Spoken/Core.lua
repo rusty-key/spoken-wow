@@ -28,6 +28,8 @@ Defaults = {
             -- "subtitle", "minimal" (Small Window), "classic" (Large Window), "dialogueui" or
             -- "none" (the voice alone).
             Style = "subtitle",
+            -- The narrator window's visual treatment: "default" or "warcraft3".
+            NarratorSkin = "default",
             -- The windows' metal in the bronze the Forever client's frames wear.
             BronzeTint = true,
             -- The small window's background: "parchment" or "dark" (the rock).
@@ -467,6 +469,15 @@ end
 
 function Addon:SetPlayerStyle(style)
     self.db.profile.Frame.Style = style
+end
+
+--- The narrator window's visual treatment, with a safe fallback for older profiles.
+function Addon:NarratorSkin()
+    return self:Profile("Frame").NarratorSkin == "warcraft3" and "warcraft3" or "default"
+end
+
+function Addon:SetNarratorSkin(skin)
+    self.db.profile.Frame.NarratorSkin = skin == "warcraft3" and "warcraft3" or "default"
 end
 
 --- What Spoken itself says for a report: its version, the queue, the window and the modules

@@ -104,6 +104,9 @@ L.REASON_UNTYPED = "Desactiva «Ir escribiendo el texto» para usar esto con sub
 
 -- Display: narrator style
 L.OPT_PLAYER_STYLE = "Estilo del narrador"
+L.OPT_NARRATOR_SKIN = "Aspecto del narrador"
+L.OPT_SKIN_DEFAULT = "Predeterminado"
+L.OPT_SKIN_WARCRAFT3 = "Warcraft III"
 L.OPT_LOOK_TITLE = "Aspecto"
 L.OPT_STYLE_MINIMAL = "Ventana pequeña"
 L.OPT_STYLE_CLASSIC = "Ventana grande"

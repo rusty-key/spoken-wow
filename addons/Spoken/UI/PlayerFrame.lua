@@ -472,6 +472,7 @@ local function SpeakerRace(clip, modelFileID)
 end
 
 local function RaceLook(clip, modelFileID)
+    if Addon:NarratorSkin() ~= "warcraft3" then return nil end
     local race = SpeakerRace(clip, modelFileID)
     return race and RACIAL_ART[race]
 end
