@@ -33,6 +33,8 @@
  */
 import "server-only";
 
+import { normaliseText } from "@readables-tools/lib/text.mjs";
+
 import { recordActivity } from "@/lib/activity/store";
 import { BookConflict, BookMissing, saveBookText } from "@/lib/readables/text";
 import { db, withTeam } from "@/lib/db";
@@ -180,6 +182,39 @@ export async function acceptAsWording(id: number, userId: string): Promise<Corre
  * Whether this contribution's correction is already the page's current text in its language:
  * the text was saved and the status flip after it failed, so the row now reads as known.
  */
+/**
+ * A moderator's fix to the player's text before it is accepted: what the client sent is mostly
+ * right and one word is not, and the explorer is a page away. Only a row still waiting is
+ * edited, and `raw` keeps the paste as it came. The dedup is left alone, so another copy of
+ * that paste still counts on this row.
+ */
+export async function editCorrectionText(
+  id: number,
+  text: string,
+  userId: string,
+): Promise<{ ok: true } | { ok: false; reason: "malformed"; message: string }> {
+  const normalised = normaliseText(text);
+  if (!normalised) return { ok: false, reason: "malformed", message: "The text is empty." };
+  const { rows } = await db().query<Pick<Contribution, "source" | "locale" | "text">>(
+    `update "contribution" set "text" = $2, "updatedAt" = now()
+      where "id" = $1 and "status" = 'new' and "text" is distinct from $2
+      returning "source", "locale", "text"`,
+    [id, normalised],
+  );
+  const row = rows[0];
+  if (row && isLang(row.locale)) {
+    await recordActivity({
+      kind: "contribution.edited",
+      lang: row.locale,
+      source: row.source,
+      subject: String(id),
+      actorId: userId,
+      detail: { field: "text" },
+    });
+  }
+  return { ok: true };
+}
+
 async function bookCorrectionWritten(id: number, lang: string): Promise<boolean> {
   const { rowCount } = await db().query(
     `select 1 from "book_line" where "note" = $1 and "lang" = $2 and "isCurrent"`,

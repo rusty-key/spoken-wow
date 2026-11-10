@@ -1071,7 +1071,13 @@ and hashed on the template when it is gossip. Class and race are swapped whereve
 whole words, so a warrior's "a warrior's discipline" arrives as "a `$c`'s discipline"; that
 false positive is accepted over voicing one player's class at everyone, except on a quest only
 that class can take (the Compendium's `classes` is that one class), where the class is left as
-written. The contribution's id on its speaker row, or its note on the first
+written. A quest whose text names a class as a word of its own ("There's a priest out in the
+mountains") is marked from its row on the corrections tab (`quest_class_word`, migration 0105).
+From then on intake puts the word back wherever a `$c` lines up with one to three plain words in
+the corpus line, before the row is deduplicated, and marking does the same to the quest's rows
+still waiting (`lib/contributions/class-words.ts`). A `$c` in a sentence the corpus lacks stays.
+On that tab a moderator can also edit the player's text in place before accepting it; `raw`
+keeps the paste as sent. The contribution's id on its speaker row, or its note on the first
 version of a line it wrote without one, is the mark, not the line's origin, because an edit
 puts an `edited` version on top. A contributed speaker is what `corpus_db.py`'s import leaves
 alone when it replaces every extracted speaker, and it numbers from 1,000,000 so a re-import

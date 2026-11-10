@@ -12,7 +12,7 @@ import { saveBookText } from "@/lib/readables/text";
 
 import { createContribution } from "./store";
 
-import { acceptCorrection } from "./correction";
+import { acceptCorrection, editCorrectionText } from "./correction";
 import { correctionNote } from "./notes";
 import { lineStates } from "./known";
 
@@ -94,7 +94,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await asSystem.query(
     `delete from "activity" where "lineId" = $1
-        or ("kind" = 'contribution.resolved'
+        or ("kind" in ('contribution.resolved', 'contribution.edited')
             and "subject" in (select "id"::text from "contribution" where "ip" = $2))`,
     [lineId, ip],
   );
@@ -309,5 +309,29 @@ describe("acceptCorrection: a readables page", () => {
     const before = await versions();
     expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({ ok: true, contribution: { status: "accepted" } });
     expect(await versions()).toEqual(before);
+  });
+});
+
+// Last: it writes the English line the tests above read.
+describe("editCorrectionText", () => {
+  it("accepts the moderator's edit of the player's text, keeping the paste as sent", async () => {
+    const id = await contribution("enUS", "Greetings, $c.");
+    expect(await editCorrectionText(id, "Greetings, priest.", ACCEPTER)).toEqual({ ok: true });
+    const outcome = await acceptCorrection(id, ACCEPTER);
+    expect(outcome.ok && outcome.contribution.text).toBe("Greetings, priest.");
+    expect(outcome.ok && outcome.contribution.raw).toBe("raw");
+    const { rows } = await asSystem.query<{ text: string }>(
+      `select "text" from "quest_line" where "lineId" = $1 and "lang" = 'enUS' and "isCurrent"`,
+      [lineId],
+    );
+    expect(rows[0].text).toBe("Greetings, priest.");
+    expect(await editCorrectionText(id, "Too late.", ACCEPTER)).toEqual({ ok: true });
+    const after = await asSystem.query<{ text: string }>(`select "text" from "contribution" where "id" = $1`, [id]);
+    expect(after.rows[0].text).toBe("Greetings, priest.");
+  });
+
+  it("refuses an empty edit", async () => {
+    const id = await contribution("enUS", "Greetings, $c.");
+    expect(await editCorrectionText(id, "   ", ACCEPTER)).toMatchObject({ ok: false, reason: "malformed" });
   });
 });

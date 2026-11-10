@@ -17,6 +17,7 @@ import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
 import { COMPLAINT_MAX, descriptionFrom } from "@/lib/contributions/contributions";
 import { MAX_BYTES, parseEnvelope } from "@/lib/contributions/envelope";
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import {
   CONTRIBUTION_WINDOW_MS,
@@ -62,10 +63,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "describe" }, { status: 400 });
   }
 
-  const submission = submissionFrom(parsed.value, raw, description);
-  if (!submission) {
+  const sent = submissionFrom(parsed.value, raw, description);
+  if (!sent) {
     return Response.json({ error: "incomplete" }, { status: 400 });
   }
+  const [submission] = await keepClassWords([sent]);
 
   const complaint = typeof body.body === "string" ? body.body.trim().slice(0, COMPLAINT_MAX) : "";
 

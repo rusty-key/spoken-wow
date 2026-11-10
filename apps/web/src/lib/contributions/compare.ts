@@ -167,3 +167,49 @@ export function wordDiff(before: string, after: string): { before: DiffPart[]; a
   };
   return { before: parts(a, keptA), after: parts(b, keptB) };
 }
+
+/**
+ * `contributed` with each `$c`/`$C` put back as the word the corpus line has in its place, for a
+ * quest whose class word is the quest's own (class-words.ts). The addon turns the reader's
+ * class into a slot wherever it appears, so a priest sends "a $c out in the mountains" for a
+ * line about a priest; the corpus line still says which word it was.
+ *
+ * A slot is put back only where the words on both sides of it line up with the corpus, and
+ * the corpus has one to three plain words between them. A slot the corpus also has, or one in
+ * a sentence the corpus lacks, stays a slot.
+ */
+export function restoreClassWords(contributed: string, corpus: string): string {
+  const theirs = Array.from(contributed.matchAll(TOKEN), (match) => ({ value: match[0], at: match.index }));
+  const ours = tokensOf(corpus);
+  const key = (value: string) => value.toLocaleLowerCase();
+  const a = theirs.map((token) => key(token.value));
+  const b = ours.map((token) => key(token.value));
+
+  const lcs = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1));
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) {
+      lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  // pair[i]: the corpus token the contributed token i lines up with, or -1.
+  const pair = new Int32Array(a.length).fill(-1);
+  for (let i = 0, j = 0; i < a.length && j < b.length; ) {
+    if (a[i] === b[j]) pair[i++] = j++;
+    else if (lcs[i + 1][j] >= lcs[i][j + 1]) i++;
+    else j++;
+  }
+
+  let out = contributed;
+  // From the end, so each splice leaves the earlier offsets as they were.
+  for (let i = theirs.length - 1; i >= 0; i--) {
+    if (theirs[i].value.toLowerCase() !== "$c" || pair[i] !== -1) continue;
+    const before = i === 0 ? -1 : pair[i - 1];
+    const after = i === theirs.length - 1 ? ours.length : pair[i + 1];
+    if ((i > 0 && before === -1) || after === -1) continue;
+    const gap = ours.slice(before + 1, after);
+    if (gap.length === 0 || gap.length > SLOT_WORDS || gap.some((token) => token.kind !== "word")) continue;
+    const word = gap.map((token) => token.value).join(" ");
+    out = out.slice(0, theirs[i].at) + word + out.slice(theirs[i].at + theirs[i].value.length);
+  }
+  return out;
+}

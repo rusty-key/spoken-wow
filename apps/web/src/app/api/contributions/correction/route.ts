@@ -7,9 +7,10 @@
  *
  * `as: "wording"` keeps the corpus text and adds the player's as another wording of the
  * moment (acceptAsWording). Otherwise `lineId` and `variant`, where given, name the wording the
- * correction fixes; without them it is the closest one.
+ * correction fixes; without them it is the closest one. `text`, where given, is the moderator's
+ * edit of the player's text, saved on the row before it is accepted.
  */
-import { acceptAsWording, acceptCorrection } from "@/lib/contributions/correction";
+import { acceptAsWording, acceptCorrection, editCorrectionText } from "@/lib/contributions/correction";
 import { contributionLocale } from "@/lib/contributions/store";
 import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG, isLang } from "@/lib/lang";
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     as?: unknown;
     lineId?: unknown;
     variant?: unknown;
+    text?: unknown;
   };
 
   const id = Number(body.id);
@@ -36,6 +38,11 @@ export async function POST(request: Request) {
   if (denied) return denied;
   if (locale === null) {
     return Response.json({ error: "unknown contribution" }, { status: 404 });
+  }
+
+  if (typeof body.text === "string") {
+    const edited = await editCorrectionText(id, body.text, session.user.id);
+    if (!edited.ok) return Response.json({ error: edited.message, kind: edited.reason }, { status: 400 });
   }
 
   const pick =

@@ -56,8 +56,11 @@ export type CorrectionRow = {
   wordings: CorrectionWording[];
   /** The index in `wordings` of the one closest to `after`. */
   closest: number;
-  /** Null for a book page, and for stored meta naming no quest, which a quest correction always does. */
-  quest: { title: string; questId: number; stage: QuestStage | null } | null;
+  /**
+   * Null for a book page, and for stored meta naming no quest, which a quest correction always
+   * does. `classWord`: the quest names a class as a word of its own (lib/contributions/class-words.ts).
+   */
+  quest: { title: string; questId: number; stage: QuestStage | null; classWord: boolean } | null;
   /** Who the player's client said speaks the line; null when the envelope named nobody. */
   npc: { npcId: number; npcName: string | null } | null;
   client: ClientSummary;
@@ -72,8 +75,14 @@ export type CorrectionRow = {
   body: string | null;
 };
 
-/** What an accept sends beside the id: the wording it fixes, or that it is another wording. */
-type Accept = { lineId: string; variant: number } | { as: "wording" };
+/**
+ * What an accept sends beside the id: the wording it fixes, or that it is another wording, and
+ * the moderator's edit of the player's text where there is one.
+ */
+type Accept = ({ lineId: string; variant: number } | { as: "wording" }) & { text?: string };
+
+/** The addon's slot for the reader's class, which a quest marked as naming a class gets back. */
+const CLASS_SLOT = /\$[cC](?![\p{L}\p{N}\p{M}])/u;
 
 /** Corrections are quest panels only, so gossip is not offered. */
 const QUEST_STAGE_OPTIONS = STAGE_CHIP_OPTIONS.filter((option) => option.value !== "gossip");
@@ -127,6 +136,12 @@ export default function CorrectionTable({
   const [refusals, setRefusals] = useState<Record<number, string>>({});
   /** The wording each row is set against, where a moderator picked one other than the closest. */
   const [picked, setPicked] = useState<Record<number, number>>({});
+  /** Player texts changed on the server since the page loaded: edited, or a class word put back. */
+  const [texts, setTexts] = useState<Record<number, string>>({});
+  /** Rows whose player text is open for editing, with the text as typed so far. */
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  /** Quests marked or unmarked here since the page loaded. */
+  const [classWords, setClassWords] = useState<Record<number, boolean>>({});
 
   /** An "Accept all" run in flight, for its progress line and to hold every row's buttons still. */
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
@@ -148,6 +163,9 @@ export default function CorrectionTable({
     ).catch(() => null);
     if (response?.ok) {
       setResolved((current) => ({ ...current, [id]: next }));
+      const text = as?.text;
+      if (text !== undefined) setTexts((current) => ({ ...current, [id]: text }));
+      setDrafts(({ [id]: _, ...rest }) => rest);
       setRefusals(({ [id]: _, ...rest }) => rest);
       return true;
     }
@@ -188,11 +206,39 @@ export default function CorrectionTable({
     [send],
   );
 
+  const markClassWord = useCallback(async (id: number, questId: number, kept: boolean) => {
+    setBusy(id);
+    const response = await fetch("/api/contributions/class-word", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, kept }),
+    }).catch(() => null);
+    const body = await response?.json().catch(() => null);
+    if (response?.ok) {
+      setClassWords((current) => ({ ...current, [questId]: kept }));
+      setTexts((current) => ({ ...current, ...(body?.texts as Record<number, string>) }));
+      setRefusals(({ [id]: _, ...rest }) => rest);
+    } else {
+      const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
+      setRefusals((current) => ({ ...current, [id]: message }));
+    }
+    setBusy(null);
+  }, []);
+
+  /** The player's text as it now stands, or as typed where the row is open for editing. */
+  const savedOf = (row: CorrectionRow): string => texts[row.id] ?? row.after;
+  const afterOf = (row: CorrectionRow): string => drafts[row.id] ?? savedOf(row);
+  /** The edit an accept sends, where the text was edited and differs from what is saved. */
+  const editOf = (row: CorrectionRow): { text?: string } =>
+    drafts[row.id] !== undefined && drafts[row.id] !== savedOf(row) ? { text: drafts[row.id] } : {};
+  const classWordOf = (row: CorrectionRow): boolean =>
+    row.quest ? (classWords[row.quest.questId] ?? row.quest.classWord) : false;
+
   /** The wording a row is set against, and its Accept fixes: the one picked, or the closest. */
   const chosenOf = (row: CorrectionRow): number => picked[row.id] ?? row.closest;
   const fixOf = (row: CorrectionRow): Accept => {
     const { lineId, variant } = row.wordings[chosenOf(row)];
-    return { lineId, variant };
+    return { lineId, variant, ...editOf(row) };
   };
   const toAccept = initial
     .filter((row) => (resolved[row.id] ?? row.status) === "new")
@@ -293,7 +339,10 @@ export default function CorrectionTable({
               const current = resolved[row.id] ?? row.status;
               const chosen = chosenOf(row);
               const wording = row.wordings[chosen];
-              const diff = wordDiff(wording.before, row.after);
+              const after = afterOf(row);
+              const diff = wordDiff(wording.before, after);
+              const editing = drafts[row.id] !== undefined;
+              const classWord = classWordOf(row);
               return (
                 <tr
                   key={row.id}
@@ -368,7 +417,32 @@ export default function CorrectionTable({
                     )}
                   </td>
                   <td className="pr-3">
-                    <Marked parts={diff.after} tone="added" />
+                    {editing ? (
+                      <textarea
+                        value={after}
+                        aria-label="The player's text"
+                        rows={Math.max(3, after.split("\n").length + 1)}
+                        className="border-input bg-background w-full resize-y rounded-md border px-2 py-1 leading-5"
+                        onChange={(event) => setDrafts((all) => ({ ...all, [row.id]: event.target.value }))}
+                      />
+                    ) : (
+                      <Marked parts={diff.after} tone="added" />
+                    )}
+                    {row.quest && current === "new" && (classWord || CLASS_SLOT.test(after)) ? (
+                      <button
+                        type="button"
+                        disabled={busy === row.id || bulk !== null}
+                        title={
+                          classWord
+                            ? "Stop putting this quest's class word back in contributions"
+                            : "This quest names a class as a word of its own, not the reader's class: put the word back in this quest's waiting and future contributions"
+                        }
+                        className="text-muted-foreground hover:text-foreground mt-1 text-xs underline-offset-2 hover:underline"
+                        onClick={() => row.quest && void markClassWord(row.id, row.quest.questId, !classWord)}
+                      >
+                        {classWord ? "Class word kept for this quest · undo" : "$c is this quest's own word"}
+                      </button>
+                    ) : null}
                     {row.body ? (
                       <div className="mt-2 rounded border p-2">
                         <p className="text-muted-foreground text-xs font-medium">What they said was wrong:</p>
@@ -388,6 +462,18 @@ export default function CorrectionTable({
                       {current === "new" ? (
                         <>
                           <LiteButton
+                            variant="ghost"
+                            disabled={busy === row.id || bulk !== null}
+                            title={editing ? "Drop the edit" : "Edit the player's text here; Accept takes it as edited"}
+                            onClick={() =>
+                              setDrafts(({ [row.id]: open, ...rest }) =>
+                                open === undefined ? { ...rest, [row.id]: savedOf(row) } : rest,
+                              )
+                            }
+                          >
+                            {editing ? "Cancel edit" : "Edit text"}
+                          </LiteButton>
+                          <LiteButton
                             variant="accept"
                             disabled={busy === row.id || bulk !== null}
                             title={source === "readables" ? "Take the player's text as this page's words" : "Take the player's text as what this line speaks"}
@@ -400,7 +486,7 @@ export default function CorrectionTable({
                               variant="accept"
                               disabled={busy === row.id || bulk !== null}
                               title="Keep the corpus text and add the player's as another wording of this moment"
-                              onClick={() => void resolve(row.id, "accepted", { as: "wording" })}
+                              onClick={() => void resolve(row.id, "accepted", { as: "wording", ...editOf(row) })}
                             >
                               Accept as new line
                             </LiteButton>
