@@ -1053,9 +1053,11 @@ local function Light(row)
 		row.wash:SetColorTexture(1, 1, 1, 0.08)
 		row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
 	end
-	row.wash:SetShown(flat and (over or chosen))
+	-- The pointer's light white, the chosen row's yellow; EllesmereUI's look keeps its one light and its edge.
+	row.wash:SetShown(flat and (flatBanners and (over or chosen) or (over and not chosen)))
 	row.wash:SetAlpha(chosen and 1 or 0.55)
-	row.edge:SetShown(flat and chosen)
+	row.chosenWash:SetShown(flat and chosen and not flatBanners)
+	row.edge:SetShown(flat and chosen and flatBanners)
 	if row.glow then
 		ShowAll(row.glow, style == "banner" and row.bannerArt and (over or chosen))
 		for _, part in ipairs(row.glow) do part:SetAlpha(chosen and 0.25 or 0.15) end
@@ -1318,6 +1320,17 @@ function List:AcquireRow(index)
 		row.wash:SetColorTexture(1, 1, 1, 0.1)
 	end
 	row.wash:Hide()
+	-- The chosen row's light is yellow, as the professions list's is: its own picture where the client has it,
+	-- else the hover light in the list's gold.
+	row.chosenWash = row:CreateTexture(nil, "BACKGROUND")
+	if not Atlas(row.chosenWash, "Professions_Recipe_Active", false) then
+		if Atlas(row.chosenWash, "Professions_Recipe_Hover", false) then
+			row.chosenWash:SetVertexColor(1, 0.82, 0)
+		else
+			row.chosenWash:SetColorTexture(1, 0.82, 0, 0.3)
+		end
+	end
+	row.chosenWash:Hide()
 	row.edge = row:CreateTexture(nil, "ARTWORK")
 	row.edge:SetWidth(Pixels(row, 2))
 	row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
@@ -1715,6 +1728,9 @@ function List:Render()
 		row.wash:ClearAllPoints()
 		row.wash:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
 		row.wash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+		row.chosenWash:ClearAllPoints()
+		row.chosenWash:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
+		row.chosenWash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
 		row.edge:ClearAllPoints()
 		row.edge:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
 		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, Pixels(row, 2, 0))

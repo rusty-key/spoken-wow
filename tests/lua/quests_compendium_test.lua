@@ -329,8 +329,8 @@ Expect("...with no picture or bar of its own: its picture is on its page",
     elwynn.icon == nil and elwynn.track == nil and elwynn.fill == nil and elwynn.face == nil, true)
 Expect("...a plus or minus before its name", elwynn.toggle:IsShown(), true)
 Expect("...a step in from the continent's banner", elwynn.indent, 20.4)
-Expect("...chosen, the list's own light full with its gold edge", elwynn.selected and elwynn.wash:IsShown()
-    and elwynn.wash.alpha == 1 and elwynn.edge:IsShown(), true)
+Expect("...chosen, a yellow light of its own over it, not the pointer's white, and no gold edge",
+    elwynn.selected and elwynn.chosenWash:IsShown() and not elwynn.wash:IsShown() and not elwynn.edge:IsShown(), true)
 local elwynnTotal = tonumber(elwynn.count.text:match("/(%d+)"))
 Expect("...the share completed after them", elwynn.count.text, "1/" .. elwynnTotal .. " · " .. math.floor(100 / elwynnTotal) .. "%")
 _G.BreakUpLargeNumbers = function(n) return "<" .. n .. ">" end
@@ -1431,8 +1431,8 @@ Expect("...not a dark band", plainBanner.bannerFill:IsShown(), false)
 Expect("...its minus the shipped one", plainBanner.toggle.texture, [[Interface\AddOns\Spoken\Textures\HeaderMinus]])
 Click("Elwynn Forest")
 plainCard = RowFor("Elwynn Forest")
-Expect("...chosen, the list's own light full with its gold edge", plainCard.selected and plainCard.wash:IsShown()
-    and plainCard.wash.alpha == 1 and plainCard.edge:IsShown(), true)
+Expect("...chosen, a yellow light of its own, not the pointer's", plainCard.selected and plainCard.chosenWash:IsShown()
+    and not plainCard.wash:IsShown(), true)
 _G.C_Texture = { GetAtlasInfo = stub.ListAtlas }
 
 ---------------------------------------------------------------- the page in EllesmereUI's look
