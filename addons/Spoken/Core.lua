@@ -327,9 +327,11 @@ function Addon:ClipFont(fontString, clip)
     -- own stands in, rather than trying it again on every update.
     if face == fontString.spokenClipFace and requested == fontString.spokenClipWant then return end
     local want = requested
-    -- A clip or a skin may name one explicit file. Resolve it before SetFont, which otherwise
-    -- loses the client's fallback face when that file is a custom Latin-only override.
-    if Options and Options.FontFor then want = Options:FontFor(want) or want end
+    -- Resolve only the player's own face. A clip's explicit face is intentional: it may be a
+    -- script-specific font chosen by the recording, and must not be replaced by the client font.
+    if not (clip and clip.present and clip.present.font) and Options and Options.FontFor then
+        want = Options:FontFor(want)
+    end
     local asked = requested
     -- A face the client cannot load: current clients answer false, older ones nil or nothing, so
     -- the face it reports afterwards is asked too. Back to the player's own rather than a

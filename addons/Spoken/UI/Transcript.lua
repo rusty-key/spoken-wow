@@ -678,7 +678,10 @@ function Transcript:ApplyFont()
     local own = (Addon:DisplayStyle() ~= "dialogueui" and Ellesmere:Font()) or (self.style or {}).font
         or GameFontNormal:GetFont()
     local requested = present and present.font or own
-    local face = Options and Options.FontFor and (Options:FontFor(requested) or requested) or requested
+    local face = requested
+    -- A clip's explicit face is intentional; only resolve the player's own face, whose fallback
+    -- chain is lost when a custom Latin-only file is applied directly.
+    if not (present and present.font) and Options and Options.FontFor then face = Options:FontFor(own) end
     local size = FontSize()
     if face == self.face and size == self.faceSize then return end
     -- A face the client cannot load: false on current clients, no face reported on older ones.

@@ -85,10 +85,10 @@ local function FontOf(name, size)
     local font = _G[name]
     local ok, face, height = pcall(function() return font:GetFont() end)
     if ok and type(face) == "string" and type(height) == "number" and height > 0 then
-        return Options and Options.FontFor and (Options:FontFor(face) or face) or face, height
+        return Options and Options.FontFor and Options:FontFor(face) or face, height
     end
     local fallback, fallbackSize = GameFontNormal:GetFont()
-    return Options and Options.FontFor and (Options:FontFor(fallback) or fallback) or fallback, size or fallbackSize
+    return Options and Options.FontFor and Options:FontFor(fallback) or fallback, size or fallbackSize
 end
 
 --- DialogueUI's paragraph, quest title and subtitle fonts; the sizes follow its Font Size setting.

@@ -191,6 +191,10 @@ function SpokenPlaces:CanRenderLanguage(code)
 	if locale.script == "latin" then
 		return true
 	end
+	local client = byCode[self.clientLocale]
+	if client ~= nil and client.script == locale.script then
+		return true
+	end
 	self.drawable = self.drawable or {}
 	if self.drawable[code] == nil then
 		local tried, drawn = false, true

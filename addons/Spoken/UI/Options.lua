@@ -248,7 +248,7 @@ function Options:FontFor(path, code)
     for _, fallback in ipairs(SCRIPT_FONTS[locale.script] or {}) do
         if self:LanguageDraws(locale.code, fallback) then return fallback end
     end
-    return nil
+    return path
 end
 
 --- A language's name in the lists, one for every module: its own, and in English where this
