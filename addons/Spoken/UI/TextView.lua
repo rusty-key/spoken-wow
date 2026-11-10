@@ -114,7 +114,7 @@ function TextView:UpdateScrollBar()
 	-- A caller's scroll child (AddScrollBar) as wide as the frame, less the bar's room only while
 	-- there is something to scroll: rows reach the edge when the bar is not there.
 	if self.fitsChild then
-		local width = (self.frame:GetWidth() or 0) - (scrollable and (self.barWidth + 6) or 0)
+		local width = (self.frame:GetWidth() or 0) - (scrollable and (self.barWidth + (self.sideGap or 6)) or 0)
 		if width > 0 and math.abs((self.child:GetWidth() or 0) - width) > 0.5 then self.child:SetWidth(width) end
 	end
 

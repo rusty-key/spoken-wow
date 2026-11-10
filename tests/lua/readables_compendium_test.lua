@@ -176,6 +176,14 @@ Expect("...inside one with nothing to read, on the zone", panel.page.title.text,
 _G.GetInstanceInfo = nil
 Reopen(9003)
 Expect("the list sits on the professions list's background", panel.inset.Bg.atlas, "Professions-background-summarylist")
+do
+    local bar
+    for _, child in ipairs(panel.inset.children or {}) do
+        if child.frameType == "Frame" and (child:GetWidth() == 8 or child:GetWidth() == 6) then bar = child end
+    end
+    Expect("...its scroll bar in from the list's border by as much as the rows are, and up from its foot",
+        bar and (bar.anchor.point .. " " .. bar.anchor.x .. " " .. bar.anchor.y), "BOTTOMRIGHT -7 5")
+end
 -- Landing far down the list, from the window closed and never laid out: the client's scroll frame
 -- takes an offset only within the range it last measured, and has no height until the window is
 -- laid out, a frame after it is shown.

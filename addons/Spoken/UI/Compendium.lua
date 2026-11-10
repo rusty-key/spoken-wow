@@ -75,6 +75,10 @@ local NEST_STEP = 16          -- what an open group holds, this far in under it
 local RAIL_X = 12
 local FOOT, BANNER_FOOT = 3, 2.5
 local LIST_LEFT, LIST_RIGHT = 6, 7
+-- The scroll bar stands BAR_SIDE in from the scroll frame's right, level with the first row at its top and
+-- BAR_FOOT up from its foot, which leaves it as far from the inset's border as the rows are on the other
+-- sides. The rows end BAR_ROOM short of it, plus LIST_RIGHT.
+local BAR_SIDE, BAR_FOOT, BAR_ROOM = 7, 5, 5
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
@@ -1152,7 +1156,17 @@ function C.NewList(panel, opts)
 	scroll:SetScrollChild(child)
 	list.child = child
 	-- The game's minimal scroll bar down the list's right side, as each part draws its pages'.
-	if opts.addScrollBar then list.bar = opts.addScrollBar(scroll, child, inset) end
+	if opts.addScrollBar then
+		list.bar = opts.addScrollBar(scroll, child, inset)
+		local bar = list.bar
+		if type(bar) == "table" and bar.bar then
+			bar.bar:ClearAllPoints()
+			bar.bar:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", -BAR_SIDE, -FIRST_GAP)
+			bar.bar:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", -BAR_SIDE, BAR_FOOT)
+			bar.sideGap = BAR_ROOM
+			bar:UpdateScrollBar()
+		end
+	end
 
 	-- The filter menu.
 	local function Listed()
