@@ -1308,7 +1308,7 @@ local function LastingSpeakerKey(guid)
 end
 
 local function SpeakerKey(guid)
-    return LastingSpeakerKey(guid) or guid or "unknown"
+    return LastingSpeakerKey(guid) or NotSecret(guid) or "unknown"
 end
 
 local function HeardTexts(seen, key)
@@ -1362,7 +1362,7 @@ end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options
 function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
-    local npcKey = guid or "unknown"
+    local npcKey = SpeakerKey(guid)
 
     -- Asked for by name, so having heard it before does not stand in the way.
     if manual then

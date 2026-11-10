@@ -114,8 +114,14 @@ for _, client in ipairs({ "11509", "16001" }) do
 
     local firstSpawn = world.npcGUID
     world.npcGUID = "Creature-0-0-0-0-12345-1"
+    local logged = {}
+    local log = _G.Spoken.Log
+    _G.Spoken.Log = function(_, _, message, ...) table.insert(logged, format(message, ...)) end
     Talk()
+    _G.Spoken.Log = log
     Expect(client .. ": the same NPC spawned again does not greet a second time", Played(played), "(nothing)")
+    -- Notes are keyed like the heard state, so a respawn repeats none naming its spawn.
+    Expect(client .. ": ...and the log notes no spawn", tostring(table.concat(logged, "\n"):find("Creature%-") ~= nil), "false")
     Leave()
     world.npcGUID = firstSpawn
 
