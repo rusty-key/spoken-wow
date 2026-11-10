@@ -23,14 +23,23 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
     )
   ]
   const updates = voice.filter((s) => s.state === 'update-available').length
+  const updateProducts = [
+    ...(spokenState === 'update-available' ? ['spoken'] : []),
+    ...voice.filter((s) => s.state === 'update-available').map((s) => s.productId)
+  ]
+  const updateAll = async (): Promise<void> => {
+    for (const productId of updateProducts) await actions.install(game.id, productId)
+  }
 
   const primary =
     spokenState === 'not-installed'
       ? { text: S.home.installSpoken, run: () => void actions.install(game.id, 'spoken') }
-      : spokenState === 'update-available'
-        ? { text: S.home.update, run: () => void actions.install(game.id, 'spoken') }
+      : updateProducts.length > 0
+        ? { text: S.home.update, run: () => void updateAll() }
         : { text: S.home.manage, run: () => actions.navigate('spoken', game.id) }
-  const canInstall = game.writable && !!status?.latest
+  const canInstall =
+    game.writable &&
+    (primary.text === S.home.installSpoken ? !!status?.latest : updateProducts.every((id) => !!statusOf(state, game.id, id)?.latest))
 
   return (
     <article className="card game-card">
