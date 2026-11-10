@@ -2,6 +2,13 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **An NPC's own greeting no longer slips out before Spoken's line on a first talk.** Right-clicking
+  an NPC with a recorded greeting silences its voice before the window opens. If no window opens, or
+  there is nothing to read, the voice comes back. Reported by
+  *([banoliver](https://github.com/banoliver))*
+
 ## 3.8.5 — 2026-11-10
 
 - **Place stories that started on their own stop when you enter combat.** A zone or area story that
