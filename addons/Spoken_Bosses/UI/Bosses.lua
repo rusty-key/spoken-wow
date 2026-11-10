@@ -335,8 +335,26 @@ local PLAY = {
 	find = function(target) return Bosses:QueuedStory(target[1], target[2]) end,
 	start = function(target) Bosses:PlayStory(target[1], target[2]) end,
 }
--- Nothing to report from the page yet.
-local REPORT = { has = function() return false end, open = function() end, title = "" }
+local REPORT_LABEL = SpokenEnv.L.DIALOGUE_REPORT_PROBLEM
+-- The page's Report is about the words on screen, so it files under their language.
+local REPORT = {
+	has = function() return true end,
+	open = function(target)
+		local _, language = Story(target[1], target[2])
+		Bosses:ShowReport(target[1], target[2], language)
+	end,
+	title = REPORT_LABEL,
+}
+Bosses.ReportAction = REPORT
+-- The narrator's Report is about what was heard, so it files under the clip's language.
+local NARRATOR_REPORT = {
+	id = "report",
+	icon = [[Interface\HelpFrame\HelpIcon-Bug]],
+	label = REPORT_LABEL,
+	anchor = "topright",
+	tooltip = function(tooltip) tooltip:SetText(REPORT_LABEL) end,
+	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language) end,
+}
 
 local function Boss(map, key)
 	return Index().byKey[map .. ":" .. key]
@@ -374,6 +392,8 @@ function Bosses:StoryClip(map, key)
 	local model = Model(map, key)
 	local clip = {
 		key = "boss:" .. map .. ":" .. key,
+		mapID = map,
+		bossKey = key,
 		length = math.max(LEAST_SECONDS, words / READING_SPEED),
 		present = {
 			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
@@ -382,9 +402,11 @@ function Bosses:StoryClip(map, key)
 			bullet = BossBullet(map),
 			portrait = model and { kind = "model", creatureID = model.creatureID, displayID = model.displayID }
 				or { kind = "texture", texture = SKULLS[BossBullet(map)] },
+			actions = { NARRATOR_REPORT },
 		},
 	}
 	local recording = self.GetAudioClip and self:GetAudioClip(map, key)
+	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
 		-- Timed to the recording's own words, so not under a story in another language.
