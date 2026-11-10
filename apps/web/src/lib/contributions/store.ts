@@ -285,11 +285,11 @@ export async function createContributions(submissions: readonly Submission[], se
  * New text for rows still waiting on triage, in one statement: a moderator's edit, or a class
  * word put back (class-words.ts). `raw` keeps the paste as sent. The dedup changes only where
  * one is given and no other row holds it; otherwise another copy of the paste as sent still
- * counts on the row. Answers the rows it changed.
+ * counts on the row. Answers the rows it changed, with the text each had before.
  */
 export async function rewriteWaitingTexts(
   texts: readonly { id: number; text: string; dedup?: string }[],
-): Promise<Pick<Contribution, "id" | "source" | "locale" | "text">[]> {
+): Promise<(Pick<Contribution, "id" | "source" | "locale" | "text"> & { previous: string | null })[]> {
   if (texts.length === 0) return [];
   // One new dedup per value, or the statement would write it to two rows.
   const claimed = new Set<string>();
@@ -298,15 +298,16 @@ export async function rewriteWaitingTexts(
     claimed.add(dedup);
     return dedup;
   });
-  const { rows } = await db().query<Pick<Contribution, "id" | "source" | "locale" | "text">>(
-    `update "contribution" c
+  const { rows } = await db().query<Pick<Contribution, "id" | "source" | "locale" | "text"> & { previous: string | null }>(
+    `with "old" as (select "id", "text" from "contribution" where "id" = any($1::int[]) for update)
+     update "contribution" c
         set "text" = v."text", "updatedAt" = now(),
             "dedup" = case when v."dedup" is not null
                             and not exists (select 1 from "contribution" o where o."dedup" = v."dedup")
                            then v."dedup" else c."dedup" end
-       from unnest($1::int[], $2::text[], $3::text[]) as v ("id", "text", "dedup")
-      where c."id" = v."id" and c."status" = 'new' and c."text" is distinct from v."text"
-      returning c."id", c."source", c."locale", c."text"`,
+       from unnest($1::int[], $2::text[], $3::text[]) as v ("id", "text", "dedup"), "old"
+      where c."id" = v."id" and "old"."id" = c."id" and c."status" = 'new' and c."text" is distinct from v."text"
+      returning c."id", c."source", c."locale", c."text", "old"."text" as "previous"`,
     [texts.map((each) => each.id), texts.map((each) => each.text), dedups],
   );
   return rows;

@@ -195,10 +195,6 @@ export async function editCorrectionText(
   if (new TextEncoder().encode(normalised).length > MAX_BYTES) {
     return { ok: false, reason: "malformed", message: "The text is longer than any line the addon sends." };
   }
-  const { rows } = await db().query<{ text: string | null }>(
-    `select "text" from "contribution" where "id" = $1 and "status" = 'new'`,
-    [id],
-  );
   const [changed] = await rewriteWaitingTexts([{ id, text: normalised }]);
   if (!changed) return { ok: true, previous: null };
   if (isLang(changed.locale)) {
@@ -211,7 +207,7 @@ export async function editCorrectionText(
       detail: { field: "text" },
     });
   }
-  return { ok: true, previous: rows[0]?.text ?? null };
+  return { ok: true, previous: changed.previous };
 }
 
 /**

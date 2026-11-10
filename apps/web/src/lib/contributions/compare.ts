@@ -55,8 +55,8 @@ export function genderForms(text: string): string[] {
 }
 
 /** A `$cs` run ends in an s after the class, or "Les s" would pass for "Les $cs". */
-function endsRun(word: string, slot: Token): boolean {
-  return slot.value !== "$CS" || (word.length > 1 && /s$/i.test(word));
+function endsRun(word: string, slot: string): boolean {
+  return slot !== "$CS" || (word.length > 1 && /s$/i.test(word));
 }
 
 function matches(a: Token[], b: Token[]): boolean {
@@ -78,7 +78,7 @@ function matches(a: Token[], b: Token[]): boolean {
     ] as const) {
       if (result || slotSide.kind !== "slot") continue;
       for (let n = 1; n <= SLOT_WORDS && at + n <= words.length && words[at + n - 1].kind === "word"; n++) {
-        if (!endsRun(words[at + n - 1].value, slotSide)) continue;
+        if (!endsRun(words[at + n - 1].value, slotSide.value)) continue;
         if (step(n)) {
           result = true;
           break;
@@ -144,6 +144,8 @@ function lcsPairs(a: readonly string[], b: readonly string[]): Int32Array {
 
 /** Whether a text holds the addon's slot for the reader's class: `$c`, or frFR's plural `$cs`. */
 export function hasClassSlot(text: string): boolean {
+  // Nearly every line a gathered file holds has none, and tokenising each is the cost.
+  if (!/\$[cC]/.test(text)) return false;
   return tokensOf(text).some((token) => token.value === "$C" || token.value === "$CS");
 }
 
@@ -209,8 +211,8 @@ export function restoreClassWords(contributed: string, corpus: string): string {
   let out = contributed;
   // From the end, so each splice leaves the earlier offsets as they were.
   for (let i = theirs.length - 1; i >= 0; i--) {
-    const slot: Token = { kind: "slot", value: theirs[i].value.toUpperCase() };
-    if ((slot.value !== "$C" && slot.value !== "$CS") || pair[i] !== -1) continue;
+    const slot = theirs[i].value.toUpperCase();
+    if ((slot !== "$C" && slot !== "$CS") || pair[i] !== -1) continue;
     const before = i === 0 ? -1 : pair[i - 1];
     const after = i === theirs.length - 1 ? ours.length : pair[i + 1];
     if ((i > 0 && before === -1) || after === -1) continue;
