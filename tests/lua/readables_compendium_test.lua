@@ -182,7 +182,7 @@ do
         if child.frameType == "Frame" and (child:GetWidth() == 8 or child:GetWidth() == 6) then bar = child end
     end
     Expect("...its scroll bar in from the list's border by as much as the rows are, and up from its foot",
-        bar and (bar.anchor.point .. " " .. bar.anchor.x .. " " .. bar.anchor.y), "BOTTOMRIGHT -7 5")
+        bar and (bar.anchor.point .. " " .. bar.anchor.x .. " " .. bar.anchor.y), "BOTTOMRIGHT -6 4")
 end
 -- Landing far down the list, from the window closed and never laid out: the client's scroll frame
 -- takes an offset only within the range it last measured, and has no height until the window is

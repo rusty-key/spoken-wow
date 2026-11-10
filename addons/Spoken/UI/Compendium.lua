@@ -74,11 +74,12 @@ local NEST_STEP = 16          -- what an open group holds, this far in under it
 -- The line down an open group's contents, this far into the step.
 local RAIL_X = 12
 local FOOT, BANNER_FOOT = 3, 2.5
-local LIST_LEFT, LIST_RIGHT = 6, 7
--- The scroll bar stands BAR_SIDE in from the scroll frame's right, level with the first row at its top and
--- BAR_FOOT up from its foot, which leaves it as far from the inset's border as the rows are on the other
--- sides. The rows end BAR_ROOM short of it, plus LIST_RIGHT.
-local BAR_SIDE, BAR_FOOT, BAR_ROOM = 7, 5, 5
+local LIST_LEFT, LIST_RIGHT = 6, 6
+-- The scroll bar stands BAR_SIDE in from the scroll frame's right, BAR_HEAD down from its top and BAR_FOOT
+-- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
+-- inset's border and the rows, between the border and the bar, and between the rows and the bar.
+-- The rows end BAR_ROOM short of the bar, plus LIST_RIGHT.
+local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 9, 4, 7
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
@@ -1140,7 +1141,7 @@ function C.NewList(panel, opts)
 	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, inset)
-	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -1)
+	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -2)
 	scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -4, 4)
 	if scroll.SetClipsChildren then scroll:SetClipsChildren(true) end
 	scroll:EnableMouseWheel(true)
@@ -1161,7 +1162,7 @@ function C.NewList(panel, opts)
 		local bar = list.bar
 		if type(bar) == "table" and bar.bar then
 			bar.bar:ClearAllPoints()
-			bar.bar:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", -BAR_SIDE, -FIRST_GAP)
+			bar.bar:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", -BAR_SIDE, -BAR_HEAD)
 			bar.bar:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", -BAR_SIDE, BAR_FOOT)
 			bar.sideGap = BAR_ROOM
 			bar:UpdateScrollBar()
