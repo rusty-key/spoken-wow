@@ -51,7 +51,7 @@ local WINDOW_HEIGHT = 600
 local WINDOW_MIN_HEIGHT = 360
 -- Room for the longest zone name in any language (Portuguese's Cordilheira das Torres de
 -- Pedra) beside its count, found out of all and the share: 27/27 · 100%.
-local LIST_WIDTH = 345
+local LIST_WIDTH = 353
 -- The narrowest the page beside the list lays out at.
 local PAGE_MIN_WIDTH = 278
 local BANNER_ROW = 28
@@ -74,7 +74,7 @@ local NEST_STEP = 16          -- what an open group holds, this far in under it
 -- The line down an open group's contents, this far into the step.
 local RAIL_X = 12
 local FOOT, BANNER_FOOT = 3, 2.5
-local LIST_LEFT, LIST_RIGHT = 3, 2
+local LIST_LEFT, LIST_RIGHT = 6, 7
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
@@ -1136,7 +1136,7 @@ function C.NewList(panel, opts)
 	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, inset)
-	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -4)
+	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -1)
 	scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -4, 4)
 	if scroll.SetClipsChildren then scroll:SetClipsChildren(true) end
 	scroll:EnableMouseWheel(true)

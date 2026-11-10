@@ -1195,9 +1195,9 @@ do
     banner.scripts.OnLeave(banner)
     local search
     for _, child in ipairs(window.children or {}) do if child.template == "SearchBoxTemplate" then search = child end end
-    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 3), to the arrow's 26.
+    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 6), to the arrow's 26.
     Expect("the search box level with the rows, to the filter menu's arrow, with no tome over its corner",
-        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "13 312")
+        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "16 317")
     _G.SpokenCompendium:Select("places")
     local tab, other
     for i = 1, 6 do
