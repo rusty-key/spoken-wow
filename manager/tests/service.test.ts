@@ -81,6 +81,19 @@ function waitFor(sent: { channel: string; payload: unknown }[], jobId: string): 
   })
 }
 
+async function waitForJob(sent: { channel: string; payload: unknown }[], productId: string): Promise<string> {
+  const started = Date.now()
+  while (Date.now() - started <= 10000) {
+    const job = sent
+      .filter((s) => s.channel === CHANNELS.jobProgress)
+      .map((s) => s.payload as JobProgress)
+      .find((p) => p.productId === productId)
+    if (job) return job.jobId
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  throw new Error(`timed out waiting for ${productId} job`)
+}
+
 describe('ManagerService', () => {
   it('scans, refreshes the catalog, reports statuses, installs and removes', async () => {
     const { svc, game, sent, data } = await setup()
@@ -117,6 +130,22 @@ describe('ManagerService', () => {
     expect(githubCalls()).toBe(1)
     await svc.refreshCatalog(true)
     expect(githubCalls()).toBe(2)
+  })
+
+  it('automatically updates installed official content when enabled', async () => {
+    const { svc, game, sent } = await setup()
+    fs.mkdirSync(path.join(game.addOnsPath, 'Spoken'), { recursive: true })
+    fs.writeFileSync(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), toc('Spoken', '3.4.0'))
+
+    svc.setSettings({ autoUpdateContent: true })
+    await svc.refreshCatalog(true)
+
+    const job = await waitForJob(sent, 'spoken')
+    expect((await waitFor(sent, job)).phase).toBe('done')
+    expect((await svc.statuses(game.id)).find((s) => s.productId === 'spoken')).toMatchObject({
+      state: 'up-to-date',
+      installedVersion: '3.5.0'
+    })
   })
 
   it('turns "no release yet" and an unknown version into an error job, not a rejection', async () => {

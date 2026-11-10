@@ -72,6 +72,7 @@ export class ManagerService {
   readonly jobs: JobManager
   readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
+  private autoUpdating: Promise<void> | null = null
   private refreshingChannel: Promise<void> | null = null
   /** When the server last gave a verified index; 0 until then. */
   private channelFetchedAt = 0
@@ -190,7 +191,10 @@ export class ManagerService {
     if (this.refreshing) return this.refreshing
     if (!force && this.catalog.fetchedAt && !this.catalog.offline) {
       const age = Date.now() - Date.parse(this.catalog.fetchedAt)
-      if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.effectiveCatalog())
+      if (age >= 0 && age < FRESH_MS) {
+        this.scheduleAutoUpdates()
+        return Promise.resolve(this.effectiveCatalog())
+      }
     }
     this.refreshing = this.doRefresh().finally(() => {
       this.refreshing = null
@@ -229,7 +233,28 @@ export class ManagerService {
     const offered = this.effectiveCatalog()
     this.opts.send(CHANNELS.catalogChanged, offered)
     await this.warmManifests(offered)
+    this.scheduleAutoUpdates()
     return offered
+  }
+
+  /** Queues updates for installed official products after a release check. */
+  private scheduleAutoUpdates(): void {
+    if (!this.settings.autoUpdateContent || this.autoUpdating) return
+    this.autoUpdating = Promise.all(
+      this.games.map(async (game) => {
+        const statuses = await this.statuses(game.id)
+        const updates = statuses
+          .filter((status) => status.state === 'update-available')
+          .filter((status) => !status.productId.startsWith(COMMUNITY_PREFIX))
+          .sort((a, b) => (a.productId === 'spoken' ? -1 : b.productId === 'spoken' ? 1 : 0))
+        for (const status of updates) this.install(game.id, status.productId)
+      })
+    )
+      .then(() => undefined)
+      .catch((err) => log('Automatic content update check failed:', err))
+      .finally(() => {
+        this.autoUpdating = null
+      })
   }
 
   /**
@@ -658,6 +683,9 @@ export class ManagerService {
       log('Could not save the settings:', err)
     }
     this.sharingChanged(wasSharing)
+    // Do not occupy the scheduler before the first catalog has been fetched. If a player enables
+    // this while the catalog is empty, the first real refresh must still be allowed to queue updates.
+    if (this.settings.autoUpdateContent && this.catalog.fetchedAt) this.scheduleAutoUpdates()
     return this.settings
   }
 }

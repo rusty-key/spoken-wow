@@ -168,6 +168,8 @@ export interface Settings {
   checkOnStart: boolean
   /** The manager's own updates. */
   autoUpdateManager: boolean
+  /** Installed Spoken and official voice packs, after the catalog is checked. */
+  autoUpdateContent: boolean
   /** Where downloads are kept; empty means the app's own folder. */
   downloadsPath: string
   keepDownloads: boolean
@@ -197,6 +199,7 @@ export const DEFAULT_SETTINGS: Settings = {
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
+  autoUpdateContent: false,
   downloadsPath: '',
   keepDownloads: false,
   voiceLanguage: 'enUS',

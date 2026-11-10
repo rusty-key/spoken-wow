@@ -199,7 +199,7 @@ if (!app.requestSingleInstanceLock()) {
 
     mainWindow = createWindow()
 
-    if (service.settings.checkOnStart) {
+    if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
       void service.ready.then(() => service?.refreshCatalog(false)).catch((err) => log('Catalog refresh failed:', err))
       void service.ready.then(() => service?.refreshCommunity(false)).catch((err) => log('Community refresh failed:', err))
     }

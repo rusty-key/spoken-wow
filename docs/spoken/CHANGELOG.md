@@ -1,5 +1,10 @@
 # Changelog — Spoken
 
+## Unreleased
+
+- **The Spoken Manager can keep installed Spoken and official voice packs up to date automatically.**
+  Turn it on under Settings, Updates. Community packs and linked development folders are not changed.
+
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
 ## 3.8.5 — 2026-11-10
