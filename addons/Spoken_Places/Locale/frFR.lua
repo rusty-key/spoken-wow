@@ -44,7 +44,6 @@ L.CONTINENT_COUNT_ONE = "1 continent"
 
 L.QUEUE_HELD_COMBAT = "En attente de la fin du combat."
 L.QUEUE_HELD_CINEMATIC = "En attente de la fin de la cinématique."
-L.QUEUE_HELD_DEAD = "En attente de votre résurrection."
 L.QUEUE_HELD_OFF = "La narration est désactivée."
 L.NOT_DISCOVERED = "Vous n'avez pas encore découvert ce lieu. Rendez-vous sur place pour lire son récit."
 L.MAP_LORE_FOR_FMT = "récit de %1$s"

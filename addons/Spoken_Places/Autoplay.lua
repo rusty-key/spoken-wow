@@ -126,8 +126,6 @@ local function CinematicUp()
 		or false
 end
 
--- Asked of the client each time: a res taken before releasing fires PLAYER_ALIVE but never
--- PLAYER_UNGHOST.
 function SpokenPlaces:IsPlayerDead()
 	return UnitIsDeadOrGhost("player") and true or false
 end
@@ -148,9 +146,6 @@ local function HoldReason(item)
 	end
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
 		return SpokenPlaces.L.QUEUE_HELD_OFF
-	end
-	if SpokenPlaces:IsPlayerDead() then
-		return SpokenPlaces.L.QUEUE_HELD_DEAD
 	end
 	if UnitAffectingCombat("player") then
 		return SpokenPlaces.L.QUEUE_HELD_COMBAT
@@ -196,6 +191,7 @@ end
 -- Returns whether the entry was queued, which the login greeting needs: a greeting that
 -- resolved nothing must not count as having greeted.
 local function Enqueue(mapID, areaKey)
+	-- A ghost's run back to the corpse discovers nothing.
 	if SpokenPlaces:IsPlayerDead() then
 		return false
 	end
@@ -632,9 +628,6 @@ local DISCOVERY_EVENTS = {
 local HOLD_EVENTS = {
 	CINEMATIC_START = true,
 	PLAY_MOVIE = true,
-	PLAYER_DEAD = true,
-	PLAYER_ALIVE = true,
-	PLAYER_UNGHOST = true,
 	PLAYER_REGEN_DISABLED = true,
 }
 

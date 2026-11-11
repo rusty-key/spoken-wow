@@ -147,35 +147,25 @@ Expect("a dead player gets no explored-zone narration", Spoken:GetQueueSize(), 0
 Expect("manual lore still plays while dead", Z:PlayLore(1411), true)
 Spoken:StopAll()
 
--- A line queued before death is held too, or it starts during the ghost run.
-local function DieWhileNarrating()
-    Z = Boot("16001", false, false)
-    Z:Set("autoplayExplored", true)
-    stub.Advance(2)
-    stub.FireEvent("ZONE_CHANGED")
-    Expect("autoplay starts before death", Spoken:IsPlaying(), true)
-    world.playerDead = true
-    stub.FireEvent("PLAYER_DEAD")
-    Expect("death stops active autoplay", Spoken:IsPlaying(), false)
-end
+-- Only discovery stops: a line already speaking plays on through a death.
+Z = Boot("16001", false, false)
+Z:Set("autoplayExplored", true)
+stub.Advance(2)
+stub.FireEvent("ZONE_CHANGED")
+world.playerDead = true
+stub.FireEvent("PLAYER_DEAD")
+Expect("a line speaking at death keeps playing", Spoken:IsPlaying(), true)
+Spoken:StopAll()
 
-DieWhileNarrating()
-local current = Spoken:GetCurrent()
-Expect("dead autoplay is held", current and Spoken:GetHeldReason(current) or nil, Z.L.QUEUE_HELD_DEAD)
-stub.FireEvent("PLAYER_ALIVE")
-stub.Advance(1.1)
-Expect("releasing the corpse keeps autoplay held", Spoken:IsPlaying(), false)
-world.playerDead = false
-stub.FireEvent("PLAYER_UNGHOST")
-stub.Advance(1.1)
-Expect("autoplay resumes after becoming alive", Spoken:IsPlaying(), true)
-
--- A res taken on the corpse, before releasing, fires PLAYER_ALIVE and never PLAYER_UNGHOST.
-DieWhileNarrating()
+-- Alive again by any route, a res on the corpse included, discovery narrates once more.
+Z = Boot("16001", false, false)
+Z:Set("autoplayExplored", true)
+world.playerDead = true
+stub.Advance(2)
 world.playerDead = false
 stub.FireEvent("PLAYER_ALIVE")
-stub.Advance(1.1)
-Expect("a res before releasing resumes autoplay", Spoken:IsPlaying(), true)
+stub.FireEvent("ZONE_CHANGED")
+Expect("alive again, discovery narrates", Spoken:IsPlaying(), true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places flight tests passed")
