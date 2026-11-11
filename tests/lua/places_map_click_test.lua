@@ -7,7 +7,8 @@ local Expect, Failures = H.Expecter(print)
 local PLACES = here .. "/../../addons/Spoken_Places/"
 
 local KALIMDOR, MULGORE = 1414, 1412
-local hooks, cursor = {}, { 0.5, 0.5 }
+local hooks, cursor, screen = {}, { 0.5, 0.5 }, { 400, 300 }
+_G.GetCursorPosition = function() return screen[1], screen[2] end
 WorldMapFrame = {
     mapID = KALIMDOR,
     ScrollContainer = {
@@ -36,12 +37,15 @@ assert(loadfile(PLACES .. "UI/SubzoneClick.lua"))("Spoken_Places", Z)
 Z:SetupSubzoneClicks()
 
 local container = WorldMapFrame.ScrollContainer
-local function Click(mapAfter)
+local function Click(mapAfter, dragBy)
     opened = nil
     hooks.OnMouseDown(container, "LeftButton")
     -- Blizzard's own handler runs first and may move the map to the zone clicked.
     WorldMapFrame.mapID = mapAfter or WorldMapFrame.mapID
+    local x = screen[1]
+    screen[1] = x + (dragBy or 0)
     hooks.OnMouseUp(container, "LeftButton")
+    screen[1] = x
     return opened
 end
 
@@ -84,6 +88,19 @@ Expect("...and opens the city's own map, whose story the panel tells", shownMap,
 settings.mapPanelCollapsed = true
 Click()
 Expect("...and opens the panel when it is closed, as an area does", settings.mapPanelCollapsed, false)
+
+-- OpenMap pans its own map without moving Blizzard's scroll container, so the position on the map
+-- under a drag stays the same (#921): the cursor's travel on the screen tells the drag.
+shownMap = nil
+Expect("a drag across the screen that ends where it began on the map opens nothing", Click(nil, 40) or shownMap, nil)
+Click(nil, 3)
+Expect("...while a press that wobbles a pixel or two is still a click", shownMap, THUNDER_BLUFF)
+-- OpenMap zooms into the city with its own click.
+_G.OpenMapAPI = {}
+shownMap = nil
+Click()
+Expect("with OpenMap a click on a city leaves the zoom to OpenMap", shownMap, nil)
+_G.OpenMapAPI = nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places map click tests passed")

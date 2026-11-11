@@ -569,6 +569,20 @@ function SpokenPlaces:CityAt(mapID, areaName)
 	return nil
 end
 
+-- A city's area on its zone's map reaches far past its walls: Ironforge's took clicks across much
+-- of Dun Morogh's mountains (#921). Its own map's rectangle on the zone bounds it. Where the client
+-- gives no rectangle, the area alone decides.
+local function OnCity(city, mapID, x, y)
+	if not (C_Map and C_Map.GetMapRectOnMap) then
+		return true
+	end
+	local ok, left, right, top, bottom = pcall(C_Map.GetMapRectOnMap, city, mapID)
+	if not ok or not left or not right or right <= left or not top or not bottom or bottom <= top then
+		return true
+	end
+	return x >= left and x <= right and y >= top and y <= bottom
+end
+
 --- The area at a normalised canvas position on the zone map `mapID`: the name the game gives it,
 --- and the zone's story for that name and its key; or, for a city inside the zone, the city's own
 --- story and its map (name, entry, nil, cityMapID). The click (UI/SubzoneClick.lua) and the map
@@ -587,7 +601,7 @@ function SpokenPlaces:AreaAt(mapID, x, y)
 		return areaName, entry, key
 	end
 	local city, cityEntry = self:CityAt(mapID, areaName)
-	if city and cityEntry then
+	if city and cityEntry and OnCity(city, mapID, x, y) then
 		return areaName, cityEntry, nil, city
 	end
 	return areaName

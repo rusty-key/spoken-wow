@@ -34,5 +34,18 @@ Expect("the city on its zone's map is the city's own story", entry, lore[STORMWI
 Expect("...as the city's map, which a click opens", mapID, STORMWIND)
 Expect("...under the area's name, with no area key of the zone's", name == "Stormwind City" and key == nil, true)
 
+-- A city's area reaches far past its walls (Ironforge's over much of Dun Morogh's mountains, #921):
+-- its own map's rectangle on the zone bounds it.
+_G.C_Map.GetMapRectOnMap = function(city, zone)
+    if city == STORMWIND and zone == ELWYNN then return 0.2, 0.4, 0.2, 0.4 end
+end
+local _, _, _, outside = Z:AreaAt(ELWYNN, 0.6, 0.3)
+Expect("outside the city's own rectangle on the zone, its area opens no city", outside, nil)
+Expect("...and has no story to light", select(2, Z:AreaAt(ELWYNN, 0.6, 0.3)), nil)
+Expect("...while inside it the city still opens", select(4, Z:AreaAt(ELWYNN, 0.3, 0.3)), STORMWIND)
+_G.C_Map.GetMapRectOnMap = function() return nil end
+Expect("where the client gives no rectangle, the area alone decides", select(4, Z:AreaAt(ELWYNN, 0.6, 0.3)), STORMWIND)
+_G.C_Map.GetMapRectOnMap = nil
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places city tests passed")

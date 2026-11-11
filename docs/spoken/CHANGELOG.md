@@ -2,6 +2,15 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Dragging the world map no longer opens a city's map, and Ironforge only opens from Ironforge.**
+  With OpenMap, letting go of a drag over a city (Ironforge, on Dun Morogh) or the first click on
+  the map could jump to the city's map. A city now opens only from inside its own map's outline on
+  the zone, so Ironforge no longer takes clicks across Dun Morogh's mountains, with or without
+  OpenMap.
+  *([tworekj](https://github.com/tworekj))*
+
 ## 3.8.6 — 2026-11-10
 
 - **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new

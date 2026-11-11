@@ -7,10 +7,11 @@
 
 local _, SpokenPlaces = ...
 
--- Normalised-coordinate slop allowed between mouse-down and mouse-up before the
--- gesture counts as a map drag rather than a click. IsPanning() is unreliable by
--- the time OnMouseUp fires, so compare positions instead.
-local DRAG_TOLERANCE = 0.01
+-- In the cursor's own units: a press that moves further than this before it is let go dragged the
+-- map. IsPanning() is unreliable by the time OnMouseUp fires, so compare positions instead. On the
+-- screen, not on the map: OpenMap pans its own map without moving Blizzard's scroll container, so
+-- the map position under a drag barely changes and the drag read as a click (#921).
+local DRAG_DISTANCE = 5
 
 local downX, downY, downMap
 
@@ -54,7 +55,8 @@ local function HandleClick(x, y)
 	-- A city inside the zone (Stormwind City on Elwynn Forest's map) is a map of its own: the click
 	-- opens it, as one on a zone opens the zone from its continent, and the panel tells its story.
 	if city then
-		if WorldMapFrame.SetMapID then WorldMapFrame:SetMapID(city) end
+		-- OpenMap, drawn over Blizzard's map, zooms into the city with its own click (#921).
+		if WorldMapFrame.SetMapID and not OpenMapAPI then WorldMapFrame:SetMapID(city) end
 	else
 		SpokenPlaces:SelectSubzone(mapID, areaName, entry)
 	end
@@ -79,7 +81,7 @@ function SpokenPlaces:SetupSubzoneClicks()
 
 	container:HookScript("OnMouseDown", function(self, button)
 		if button == "LeftButton" then
-			downX, downY = self:GetNormalizedCursorPosition()
+			downX, downY = GetCursorPosition()
 			downMap = WorldMapFrame.mapID
 		end
 	end)
@@ -104,13 +106,14 @@ function SpokenPlaces:SetupSubzoneClicks()
 			return
 		end
 
+		local screenX, screenY = GetCursorPosition()
+		if math.abs(screenX - startX) > DRAG_DISTANCE or math.abs(screenY - startY) > DRAG_DISTANCE then
+			return -- the player was panning the map
+		end
+
 		local x, y = self:GetNormalizedCursorPosition()
 		if not x then
 			return
-		end
-
-		if math.abs(x - startX) + math.abs(y - startY) > DRAG_TOLERANCE then
-			return -- the player was panning the map
 		end
 
 		HandleClick(x, y)
