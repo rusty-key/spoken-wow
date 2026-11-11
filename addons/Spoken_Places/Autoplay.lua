@@ -126,8 +126,8 @@ local function CinematicUp()
 		or false
 end
 
--- Dead or a ghost, asked of the client each time: a res taken before releasing fires
--- PLAYER_ALIVE but never PLAYER_UNGHOST, so no flag kept from the events stays right.
+-- Asked of the client each time: a res taken before releasing fires PLAYER_ALIVE but never
+-- PLAYER_UNGHOST.
 function SpokenPlaces:IsPlayerDead()
 	return UnitIsDeadOrGhost("player") and true or false
 end

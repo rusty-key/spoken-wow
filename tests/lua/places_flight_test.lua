@@ -135,8 +135,7 @@ Expect("...nor prints a field after it as the message", printed[1], nil)
 stub.FireEvent("CHAT_MSG_SYSTEM", "Discovered Durotar.")
 Expect("the same message, not secret, still discovers", Spoken:IsPlaying(), true)
 
--- Dead and ghost players should get the world's quiet soundscape while travelling back to a
--- corpse. This only suppresses autoplay: a player who asks for a story explicitly can still hear it.
+-- Dead or a ghost, only autoplay is silent: a story the player asks for still plays.
 Z = Boot("16001", false, false)
 Z:Set("autoplayExplored", true)
 world.playerDead = true
@@ -148,8 +147,7 @@ Expect("a dead player gets no explored-zone narration", Spoken:GetQueueSize(), 0
 Expect("manual lore still plays while dead", Z:PlayLore(1411), true)
 Spoken:StopAll()
 
--- A place queued before death must be held as well; otherwise its sound can start while the
--- player is running back as a ghost.
+-- A line queued before death is held too, or it starts during the ghost run.
 local function DieWhileNarrating()
     Z = Boot("16001", false, false)
     Z:Set("autoplayExplored", true)
