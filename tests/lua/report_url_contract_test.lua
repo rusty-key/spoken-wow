@@ -15,6 +15,7 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 local QUESTS = here .. "/../../addons/Spoken_Quests/"
 local PLACES = here .. "/../../addons/Spoken_Places/"
 local READABLES = here .. "/../../addons/Spoken_Readables/"
+local BOSSES = here .. "/../../addons/Spoken_Bosses/"
 local FIXTURE = here .. "/../fixtures/report-urls.txt"
 local Expect, Failures = H.Expecter(print)
 
@@ -26,6 +27,8 @@ local B = {}
 for _, file in ipairs({ "Locale/enUS", "Checksum", "Core" }) do
     assert(loadfile(READABLES .. file .. ".lua"))("Spoken_Readables", B)
 end
+local D = {}
+assert(loadfile(BOSSES .. "Core.lua"))("Spoken_Bosses", D)
 
 -- English, a language of each script, and Italian, which no client runs in.
 local urls = {
@@ -39,6 +42,8 @@ local urls = {
     Z:ReportURL(1413, "razorfen downs", "koKR"),
     B:ReportURL(261),
     B:ReportURL(261, "itIT"),
+    D:ReportURL(36, "edwin vancleef"),
+    D:ReportURL(409, "majordomo executus", "frFR"),
 }
 local built = table.concat(urls, "\n") .. "\n"
 
@@ -52,6 +57,6 @@ local file = assert(io.open(FIXTURE, "rb"))
 local kept = file:read("*a"):gsub("\r\n", "\n")
 file:close()
 Expect("every address is one the site is tested against (make contribute-fixtures)", built, kept)
-Expect("...ten of them, none missing", #urls, 10)
+Expect("...twelve of them, none missing", #urls, 12)
 
 os.exit(Failures() == 0 and 0 or 1)

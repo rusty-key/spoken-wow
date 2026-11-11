@@ -676,6 +676,28 @@ describe("quest level", () => {
   });
 });
 
+describe("player gender", () => {
+  const [plain, male, female] = matchingLines(corpus, store, {});
+  const split = {
+    ...corpus,
+    lines: [
+      { ...plain, playerGender: null },
+      { ...male, playerGender: "m" as const },
+      { ...female, playerGender: "f" as const },
+    ],
+  };
+  const heardBy = (playerGender?: "m" | "f") => new Set(matchingLines(split, store, { playerGender }).map((line) => line.lineId));
+
+  it("keeps the chosen side and the lines heard by both", () => {
+    expect(heardBy("m")).toEqual(new Set([plain.lineId, male.lineId]));
+    expect(heardBy("f")).toEqual(new Set([plain.lineId, female.lineId]));
+  });
+
+  it("filters nothing when no side is chosen", () => {
+    expect(heardBy()).toEqual(new Set([plain.lineId, male.lineId, female.lineId]));
+  });
+});
+
 describe("broadcast id status", () => {
   const gossip = corpus.lines.filter((line) => line.source === "gossip");
   const [exact, guessed] = gossip.map((line) => line.lineId).filter((id, i, ids) => ids.indexOf(id) === i);

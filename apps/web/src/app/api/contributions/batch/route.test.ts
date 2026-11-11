@@ -10,6 +10,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { closeDb, db } from "@/lib/db";
 import { MAX_ENVELOPES } from "@/lib/contributions/saved-variables";
 
+const afterResponse = vi.hoisted(() => [] as (() => unknown)[]);
+vi.mock("next/server", () => ({ after: (task: () => unknown) => afterResponse.push(task) }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/auth", () => ({ auth: { api: { getSession: async () => null } } }));
 vi.mock("@/lib/npc/resolve", async (importOriginal) => {
@@ -47,6 +49,7 @@ const installId = crypto.randomUUID();
 
 afterEach(async () => {
   vi.mocked(resolveNpc).mockClear();
+  afterResponse.length = 0;
   await db().query(`delete from "missing_audio_hit" where "installId" = $1`, [installId]);
   await db().query(`delete from "contribution_hit" where "installId" = $1`, [installId]);
   await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
@@ -107,9 +110,35 @@ describe("POST /api/contributions/batch", () => {
     }
   });
 
+  it("refuses a line Postgres cannot store and keeps the rest of the file", async () => {
+    const response = await POST(post({ envelopes: [gossip("Hail."), gossip("Fare\u0000well.")] }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ accepted: 1, refused: { malformed: 1 } });
+  });
+
   it("resolves each speaker once, however many of their lines arrive", async () => {
     await POST(post({ envelopes: [gossip("Hail."), gossip("Farewell."), gossip("Well met.")] }));
+    expect(resolveNpc).not.toHaveBeenCalled();
+    for (const task of afterResponse.splice(0)) await task();
     expect(resolveNpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts two copies of one line in a file as two sends", async () => {
+    const noted = (extra: string) => {
+      const body = `!SPOKEN1 quests\naddon=SpokenQuests/2.1.0\nbuild=1.60.1/69913\nlocale=enUS\nquest=9123\nevent=accept\n${extra}title=Dup\ntext<<\nThe same words twice.\n>>\n`;
+      return `${body}sum=${checksum(body)}\n`;
+    };
+    const response = await POST(post({ envelopes: [noted(""), noted("npc=9123 Tester\nkind=creature\n")], name: "Tester" }));
+    expect(await response.json()).toMatchObject({ accepted: 2, known: 0 });
+
+    const { rows } = await db().query<{ id: number; count: number; npc: string | null }>(
+      `select "id", "count", "meta"->>'npc' as "npc" from "contribution" where "ip" = $1`,
+      [ip],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ count: 2, npc: "9123 Tester" });
+    const senders = await db().query(`select 1 from "contribution_sender" where "contributionId" = $1`, [rows[0]?.id]);
+    expect(senders.rows).toHaveLength(2);
   });
 
   it("counts one upload as one hit against the shared limit", async () => {

@@ -9,6 +9,7 @@
  * and on two of the three sections that destroyed the only archived copy of the take being
  * restored. Now a restore moves the live flag and nothing else.
  */
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -18,6 +19,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "restore-proof-"));
 process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
 const { closeDb } = await import("@/lib/db");
+const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
 const { asSystem } = await import("@/lib/teams/testing");
 const { commitTake } = await import("@/lib/takes/commit");
 const { restoreTake } = await import("@/lib/takes/restore");
@@ -79,6 +81,39 @@ it("puts a take back by moving the flag, touching no file and adding no take", a
   await restoreTake("quests", file, 3, "enUS", null);
   expect(snapshot()).toEqual(before);
   expect(await live()).toBe("take three");
+});
+
+const encoders = (() => {
+  try {
+    execFileSync("ffmpeg", ["-version"], { stdio: "ignore" });
+    execFileSync("oggenc", ["--version"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+it.skipIf(!encoders)("encodes a take put back live in dual mode, where it is read from disk", async () => {
+  const bucket = memoryBlobs();
+  const restore = useArchiveForTests(bucket, "dual");
+  const tone = path.join(root, "tone.mp3");
+  execFileSync("ffmpeg", ["-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=330:duration=1", "-b:a", "128k", tone]);
+  const master = fs.readFileSync(tone);
+  const sha = sha256Of(master);
+  try {
+    await commitTake("quests", file, master, { lineId: "g:proof" });
+    await take("take two");
+    await asSystem.query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+
+    await restoreTake("quests", file, 1, "enUS", null);
+    const { rows } = await asSystem.query(`select "durationSec"::float8 as "d" from "take_encoding" where "sha256" = $1`, [sha]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].d).toBeGreaterThan(0.9);
+  } finally {
+    restore();
+    await asSystem.query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+    await asSystem.query(`delete from "activity" where "subject" = $1`, [file]);
+  }
 });
 
 it("refuses a take whose clip was not kept, and leaves the live one alone", async () => {

@@ -4,16 +4,31 @@
       "id": "polski",
       "title": "Spoken Polski",
       "author": "zaxcer",
-      "description": "Polish quest voiceover, growing zone by zone (now Durotar, Mulgore and the Barrens: 1565 recordings with male and female variants). Translation entirely by the WoWPoPolskuForever team led by Loe'Aner, used with permission. Voices designed with ElevenLabs Voice Design, lines by ElevenLabs v4 Turbo.",
+      "description": "Polish quest voiceover for levels 1-58, both sides: every starting zone and levelling zone up to Western Plaguelands (11 773 recordings with male and female variants). Translation entirely by the WoWPoPolskuForever team led by Loe'Aner, used with permission. Voices designed with ElevenLabs Voice Design, lines by ElevenLabs v4 Turbo.",
       "lang": "plPL",
       "section": "quests",
-      "version": "0.2.0",
-      "size": 177832689,
-      "sha256": "b69af215bb694e34b62fc1dde66a4d534dee712276c30363ddb64b70bcd52aef",
-      "url": "https://github.com/zaxcer/spoken-polish/releases/download/v0.2.0/SpokenCommunity_polski-0.2.0.zip",
+      "version": "0.3.0",
+      "size": 1293995350,
+      "sha256": "2db65466b8c0cc5a6a74b63f8fffcf812904df667fcde86a650b91009392769a",
+      "url": "https://github.com/zaxcer/spoken-polish/releases/download/v0.3.0/SpokenCommunity_polski-0.3.0.zip",
       "homepage": "https://github.com/zaxcer/spoken-polish",
       "license": "Non-commercial; text WoWPoPolskuForever",
       "addedAt": "2026-11-05"
+    },
+    {
+      "id": "ivrit",
+      "title": "Spoken Hebrew (Ivrit)",
+      "author": "renanbazinin",
+      "description": "Hebrew quest and gossip voiceover, growing zone by zone (now the six starting zones, the six capitals and most zones up to level 30: about 5,100 recordings). Fan translation made for the pack with a shared glossary. Voices are ElevenLabs clones of each race's NPC voices, lines by ElevenLabs v4 and v4 Turbo. Captions read right to left in Noto Sans Hebrew.",
+      "lang": "heIL",
+      "section": "quests",
+      "version": "0.6.3",
+      "size": 471609008,
+      "sha256": "5d43061d748c809925e41625f16504e337c963331b28fb7674fabda7c3a33a81",
+      "url": "https://github.com/renanbazinin/spoken-ivrit/releases/download/v0.6.3/SpokenCommunity_ivrit-0.6.3.zip",
+      "homepage": "https://github.com/renanbazinin/spoken-ivrit",
+      "license": "Non-commercial fan work",
+      "addedAt": "2026-11-07"
     }
   ]
 }

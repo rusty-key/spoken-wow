@@ -336,9 +336,10 @@ function SpokenPlaces:IsLocked(mapID, key)
 	return not self:IsFound(mapID, key)
 end
 
--- Discovered Only, in the filter menu: the places not found are left out of the list.
+-- Discovered Only, in the filter menu: the places not found are left out of the list unless
+-- Unlock Undiscovered Places is on, since that setting means the player wants the complete list.
 local function OnlyFound()
-	return SpokenPlaces:Get("loreDiscoveredOnly") == true
+	return not SpokenPlaces:ShowsUndiscovered() and SpokenPlaces:Get("loreDiscoveredOnly") == true
 end
 
 -- Voiced Only, under it: the places no installed voice pack reads are left out. A zone stays while

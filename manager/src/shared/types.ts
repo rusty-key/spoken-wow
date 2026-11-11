@@ -125,7 +125,9 @@ export interface ReleaseInfo {
   assetName: string
   assetSize: number
   assetUrl: string
-  /** `sha256:<hex>` from GitHub, when it gives one. */
+  /** Where the same zip can be fetched when `assetUrl` fails. */
+  fallbackUrl?: string
+  /** `sha256:<hex>` from GitHub or the signed channel index, when there is one. */
   digest?: string
   htmlUrl: string
 }

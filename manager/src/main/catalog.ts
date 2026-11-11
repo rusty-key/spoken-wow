@@ -55,7 +55,7 @@ function toInfo(release: GithubRelease, product: Product): ReleaseInfo | null {
 }
 
 /** Newest first; at equal versions a stable release comes before a pre-release, then the later date. */
-function compareReleases(a: ReleaseInfo, b: ReleaseInfo): number {
+export function compareReleases(a: ReleaseInfo, b: ReleaseInfo): number {
   const v = compareVersions(b.version, a.version) ?? 0
   if (v !== 0) return v
   if (a.prerelease !== b.prerelease) return a.prerelease ? 1 : -1

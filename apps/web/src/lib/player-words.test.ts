@@ -52,6 +52,15 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Olá, $Nama.", "ptBR")).toBe("Olá, $Nama.");
   });
 
+  it("speaks a token in Chinese or Korean text, which puts no space after it", () => {
+    expect(speakPlayerTokens("不过，你这$c似乎是正想找点什么事情做做呀。", "zhCN")).toBe(
+      "不过，你这冒险者似乎是正想找点什么事情做做呀。",
+    );
+    expect(speakPlayerTokens("$N們，快去吧。", "zhTW")).toBe("冒險者們，快去吧。");
+    expect(speakPlayerTokens("고맙네, $N님.", "koKR")).toBe("고맙네, 모험가님.");
+    expect(speakPlayerTokens("你好，$$N朋友。", "zhCN")).toBe("你好，冒险者朋友。");
+  });
+
   it("reads $u as the gender branch $g is, in every language", () => {
     // q:87288:accept and q:98321:accept, as the client sent them.
     expect(speakPlayerTokens("Seid gegrüßt, $uReisender:Reisende;.", "deDE")).toBe("Seid gegrüßt, Reisender.");
@@ -101,6 +110,15 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("$Rs", "deDE")).toBe("$Rs");
     expect(speakPlayerTokens("$Nse", "deDE")).toBe("$Nse");
     expect(speakPlayerTokens("Merci, $Ns.", "frFR")).toBe("Merci, $Ns.");
+  });
+
+  it("speaks frFR's class plural $cs as the plural of the reader's word", () => {
+    expect(speakPlayerTokens("Les $cs du marais vous attendent.", "frFR")).toBe("Les aventuriers du marais vous attendent.");
+    expect(speakPlayerTokens("Les $cs du marais vous attendent.", "frFR", "f")).toBe("Les aventurières du marais vous attendent.");
+    expect(speakPlayerTokens("Merci. $cs, en avant !", "frFR")).toBe("Merci. Aventuriers, en avant !");
+    expect(speakPlayerTokens("Les $rs du marais.", "frFR")).toBe("Les $rs du marais.");
+    expect(speakPlayerTokens("Les $$cs du marais.", "frFR")).toBe("Les aventuriers du marais.");
+    expect(speakPlayerTokens("Les $cs'il le faut.", "frFR")).toBe("Les $cs'il le faut.");
   });
 
   it("speaks English's own word, for the book pages that still carry tokens", () => {
@@ -154,5 +172,10 @@ describe("the text gate on a translation", () => {
     expect(skipReasonFor("complete", "Merci, $N.", "frFR")).toBeNull();
     expect(skipReasonFor("complete", "Merci, $Nama.", "frFR")).toBe("invalid-chars");
     expect(skipReasonFor("progress", "Merci, $N.", "frFR")).toBe("progress");
+  });
+
+  it("voices a frFR line with the class plural $cs", () => {
+    expect(skipReasonFor("accept", "Les $cs de Comté-du-Nord vous attendent, $n.", "frFR")).toBeNull();
+    expect(skipReasonFor("accept", "Les $cs de Comté-du-Nord vous attendent, $n.", "frFR", "f")).toBeNull();
   });
 });

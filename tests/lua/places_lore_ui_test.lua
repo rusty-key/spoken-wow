@@ -56,6 +56,8 @@ _G.CreateFrame = function(kind, name, parent, template)
         frame.MinimizeButton, frame.MaximizeButton = createFrame("Button", nil, frame), createFrame("Button", nil, frame)
         frame:SetSize(28, 28)
         maxMin = frame
+    elseif template == "DefaultPanelFlatTemplate" then
+        function frame:SetTitle(text) self.title = text end
     end
     frame.template = template
     -- A colour painted on a texture, kept to be read back: a page with no art is one.
@@ -289,7 +291,7 @@ Expect("a continent is a banner across the list, its name as it is", RowFor("Kal
     and RowFor("Kalimdor").label.text, "Kalimdor")
 Expect("a zone is a line under it, with no picture or bar", RowFor("Durotar").row.style == "group" and RowFor("Durotar").row.nest, 0)
 Expect("...the places found in it out of all and the share, beside its name", RowFor("Durotar").count.text,
-    "0/3 • 0%")
+    "0/3 · 0%")
 Expect("...greyed with none found", RowFor("Durotar").row.none, true)
 Expect("...its areas rows inside it", RowFor("Valley of Trials").row.leaf and RowFor("Valley of Trials").row.nest, 1)
 
@@ -775,6 +777,14 @@ local displayed = Z.GetDisplayedMapID
 Z.GetDisplayedMapID = function() return 9999 end
 Z:RefreshPanel()
 Expect("...and a map with no entry at all offers nothing to open", mapPage.open:IsShown(), false)
+Z.GetDisplayedMapID = function() return 1411 end
+Z:ShowMapStory(1411, { title = "Edwin VanCleef", panelTitle = "Boss Story", text = "Boss story." })
+Expect("a boss opened from a Leatrix map has its own panel title", panel.title, "Boss Story")
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+Expect("...and choosing an area on that map replaces the boss's story", mapPage.title.text, "Valley of Trials")
+Expect("...under the panel's own title", panel.title, Z.L.LORE_PANEL_TITLE)
+Z.selected = nil
 Z.Zones[947] = { name = "Azeroth", full = "The world." }
 Z.GetDisplayedMapID = function() return 947 end
 Z:RefreshPanel()
@@ -842,7 +852,7 @@ Expect("...a place found marked with the quest log's gold tick, as a completed q
     RowFor("Valley of Trials").status.shown ~= false and RowFor("Sen'jin Village").status.shown == false, true)
 RowFor("Sen'jin Village").scripts.OnEnter(RowFor("Sen'jin Village"))
 Expect("...not lit under the pointer", RowFor("Sen'jin Village").over, false)
-Expect("...a zone's line its areas found out of all, and the share of them", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...a zone's line its areas found out of all, and the share of them", RowFor("Durotar").count.text, "1/3 · 33%")
 Expect("...not greyed with some found", RowFor("Durotar").row.none, false)
 Expect("...a continent's banner the places its zones' cards count, found out of all", RowFor("Kalimdor").count.text, "1/3")
 RowFor("Eastern Kingdoms").scripts.OnClick(RowFor("Eastern Kingdoms"))
@@ -878,7 +888,7 @@ Expect("a place not discovered, opened from elsewhere, says so and to go there t
     "Sen'jin Village: You have not discovered this place yet. Go there to read its story.")
 Expect("...with nothing to play", page.target, nil)
 Shown()
-Expect("...and is not counted found for being chosen", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...and is not counted found for being chosen", RowFor("Durotar").count.text, "1/3 · 33%")
 Expect("...still locked in the list", RowFor("Sen'jin Village").row.locked, true)
 Z.selected = { mapID = 1411, areaName = "Sen'jin Village", entry = Z.Subzones[1411]["sen'jin village"] }
 Z:RefreshPanel()
@@ -916,9 +926,15 @@ showAll = true
 Z:RefreshLoreWindow()
 Expect("Unlock Undiscovered Places opens every area", Locked(), "")
 Expect("...the places not found still greyed", Greyed(), "Dun Morogh|Orgrimmar")
-Expect("...the counts still what this character has found", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...the counts still what this character has found", RowFor("Durotar").count.text, "1/3 · 33%")
+Z:Set("loreDiscoveredOnly", true)
+Z:RefreshLoreWindow()
+Expect("Unlock Undiscovered Places shows every zone despite Discovered Only", Shown(),
+    "Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|Sen'jin Village|Valley of Trials")
+Z:Set("loreDiscoveredOnly", false)
+Z:RefreshLoreWindow()
 RowFor("Sen'jin Village").scripts.OnClick(RowFor("Sen'jin Village"))
-Expect("...and when a place not found is chosen", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...and when a place not found is chosen", RowFor("Durotar").count.text, "1/3 · 33%")
 Expect("...its story told", page.body.text.text, _G.SpokenCompendium.NotWritten())
 RowFor("Dun Morogh").scripts.OnClick(RowFor("Dun Morogh"))
 Expect("...a zone not found tells its story", page.body.text.text, _G.SpokenCompendium.NotWritten())
@@ -927,7 +943,8 @@ RowFor("Dun Morogh").scripts.OnClick(RowFor("Dun Morogh"))
 Z:ShowLoreFor(1411, nil)
 showAll = false
 
--- Discovered Only, in the filter menu beside the search box, leaves the places not found out of it.
+-- Discovered Only, in the filter menu beside the search box, leaves the places not found out of it
+-- when Unlock Undiscovered Places is off.
 local function Only() return stub.OpenDropdown(window.filterMenu)[1] end
 Expect("the filter menu holds Discovered Only, a checkbox", Only().text == Z.L.LORE_DISCOVERED_ONLY and Only().isNotRadio, true)
 Expect("...which is off here, the mock's settings having no default", Only().checked and true or false, false)

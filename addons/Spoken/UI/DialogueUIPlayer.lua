@@ -352,7 +352,7 @@ function Skin:Initialize()
     -- Why the line waits, Stopped and the lines waiting, after the title: each its own text, so
     -- each fades by itself.
     self.stopped = Font(self.title, 12, 1, 1, 1)
-    self.stopped:SetText(format("• (%s)", L.SUBTITLE_STOPPED))
+    self.stopped:SetText(format("· (%s)", L.SUBTITLE_STOPPED))
     self.stopped:Hide()
     self.count = Font(self.title, 12, 1, 1, 1)
     self.count:Hide()
@@ -852,8 +852,8 @@ function Skin:EndFade()
     end
 end
 
---- After the title: why the line waits, "• (Stopped)" while it is stopped, and the lines waiting
---- behind it, "• +N". The title is cut short, not these.
+--- After the title: why the line waits, "· (Stopped)" while it is stopped, and the lines waiting
+--- behind it, "· +N". The title is cut short, not these.
 function Skin:Count(waiting)
     local tail = self.tail
     tail:SetCount(waiting)

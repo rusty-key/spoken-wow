@@ -15,6 +15,7 @@ local world = {
     npcName = "Innkeeper Test",
     npcGUID = "Creature-0-0-0-0-1234-0",
     npcFriendly = false,  -- UnitCanAttack: false for townsfolk the player cannot fight
+    playerDead = false,   -- UnitIsDeadOrGhost: dead or released as a ghost
     modelFileID = nil,    -- what a loaded PlayerModel answers for the unit on screen
     -- True between SetUnit and the model actually finishing loading: makes GetModelFileID
     -- answer nil even though the probe is shown, the way a real model does for however long
@@ -302,7 +303,14 @@ local function Widget(kind, name)
         return animation
     end
     function w:SetCreature(idv) self.creature = idv; self.model = "creature/" .. tostring(idv) end
+    function w:SetDisplayInfo(idv) self.displayID = idv; self.model = "display/" .. tostring(idv) end
     function w:ClearModel() self.creature = nil; self.model = nil end
+    function w:SetModelScale(v) self.modelScale = v end
+    function w:SetPortraitZoom(v) self.portraitZoom = v end
+    function w:SetRotation(v) self.rotation = v end
+    function w:SetPosition(x, y, z) self.position = { x, y, z } end
+    function w:SetFacing(v) self.facing = v end
+    function w:SetSequence(v) self.sequence = v end
     -- Model:GetModel returned a path and was removed; asking for it is an error rather than a
     -- nil, which is what absentAPI keeps the catch-all below from hiding.
     function w:GetModelFileID() return self.creature and 119940 or nil end
@@ -401,6 +409,7 @@ function M.SetClient(label)
     if M.SetMenuAPI then M.SetMenuAPI(true) end
 end
 _G.UIParent = MakeFrame("UIParent")
+_G.WorldFrame = MakeFrame("WorldFrame")
 _G.WOW_PROJECT_CLASSIC = 2
 _G.WOW_PROJECT_BURNING_CRUSADE_CLASSIC = 5
 _G.WOW_PROJECT_WRATH_CLASSIC = 11
@@ -424,6 +433,7 @@ function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
 function _G.UnitSex() return world.unitSex end
 function _G.UnitIsDead() return false end
+function _G.UnitIsDeadOrGhost() return world.playerDead end
 function _G.UnitIsUnit(a, b) return a == b end
 function _G.UnitCreatureType() return world.creatureType end
 -- The mouse UI unless a test turns the gamepad's on: read as "1", every popup an addon raises
