@@ -158,6 +158,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_dungeons_test.lua
 	@$(LUA) tests/lua/bosses_test.lua
 	@$(LUA) tests/lua/bosses_leatrix_test.lua
+	@$(LUA) tests/lua/bosses_openmap_test.lua
 	@$(LUA) tests/lua/bosses_audio_test.lua
 	@$(LUA) tests/lua/places_story_place_test.lua
 	@$(LUA) tests/lua/places_area_zones_test.lua
