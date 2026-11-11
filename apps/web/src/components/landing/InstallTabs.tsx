@@ -3,11 +3,14 @@
 import { useState } from "react";
 
 import type { Lang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
+import WithLink from "@/lib/site-text/WithLink";
 
 import BrandIcon from "./BrandIcon";
 import { CURSEFORGE } from "./links";
+import { useSiteText } from "./SiteTextProvider";
 
-export type InstallLink = { label: string; href: string };
+export type InstallLink = { kind: "curseforge" | "wago" | "github"; label: string; href: string };
 export type InstallRow = { name: string; note: string; links: InstallLink[] };
 export type InstallLanguage = {
   code: Lang;
@@ -20,16 +23,11 @@ export type InstallLanguage = {
 
 type Tab = "manager" | "curseforge" | "manual";
 
-const TABS: { id: Tab; label: string; icon: "spoken" | "curseforge" | "github" }[] = [
-  { id: "manager", label: "Spoken Manager", icon: "spoken" },
-  { id: "curseforge", label: "CurseForge", icon: "curseforge" },
-  { id: "manual", label: "By hand", icon: "github" },
+const TABS: { id: Tab; icon: "spoken" | "curseforge" | "github" }[] = [
+  { id: "manager", icon: "spoken" },
+  { id: "curseforge", icon: "curseforge" },
+  { id: "manual", icon: "github" },
 ];
-
-const NEW_TAB = <span className="sr-only"> (opens in a new tab)</span>;
-
-/** No game client runs in Italian, so its pack plays only once the language is chosen in Spoken. */
-const ITALIAN_NOTE = "No game client runs in Italian: install the pack, then choose the language under Voice Language in Spoken's settings.";
 
 /**
  * The three ways in: the Manager, a CurseForge meta addon per language, or a zip per pack.
@@ -46,15 +44,19 @@ export default function InstallTabs({
   managerUrl: string;
   downloads: { windows: string; mac: string; macIntel: string; linux: string };
 }) {
+  const text = useSiteText();
+  const t = text.install;
+  const newTab = <span className="sr-only">{text.newTab}</span>;
   const [tab, setTab] = useState<Tab>("manager");
   const [lang, setLang] = useState<Lang>(initial);
   const chosen = languages.find((entry) => entry.code === lang) ?? languages[0];
   const maintained = languages.filter((entry) => entry.curseforge && entry.code !== "itIT");
   const italian = languages.find((entry) => entry.code === "itIT");
+  const tabLabel = { manager: t.tabManager, curseforge: t.tabCurseforge, manual: t.tabManual };
 
   return (
     <div>
-      <div className="bn-tabs" role="tablist" aria-label="Ways to install Spoken">
+      <div className="bn-tabs" role="tablist" aria-label={t.waysLabel}>
         {TABS.map((entry) => (
           <button
             key={entry.id}
@@ -83,8 +85,8 @@ export default function InstallTabs({
             ) : (
               <BrandIcon name={entry.icon} />
             )}
-            {entry.label}
-            {entry.id === "manager" && <span className="bn-tag">Recommended</span>}
+            {tabLabel[entry.id]}
+            {entry.id === "manager" && <span className="bn-tag">{t.recommended}</span>}
           </button>
         ))}
       </div>
@@ -92,60 +94,54 @@ export default function InstallTabs({
       <div className="bn-panel" role="tabpanel" id="bn-panel" aria-labelledby={`bn-tab-${tab}`}>
         {tab === "manager" && (
           <>
-            <p>
-              Download the Manager, open it and press Install. It finds your game folder, installs Spoken
-              and the voice packs for the languages you pick, and updates them when a new version comes
-              out. An update downloads only the files that changed, so a new recording does not mean
-              downloading the whole pack again.
-            </p>
+            <p>{t.managerText}</p>
             <ul className="bn-pros">
-              <li>Finds your game folder</li>
-              <li>Updates download only what changed, not the whole pack</li>
-              <li>Installs every pack, in any language</li>
-              <li>Optional sharing sends the lines you collect, a few minutes after you log out</li>
-              <li>Lists community voice packs</li>
+              {t.managerPros.map((pro) => (
+                <li key={pro}>{pro}</li>
+              ))}
             </ul>
             <div className="bn-dl">
               <a className="bn-btn bn-btn-primary" href={downloads.windows}>
                 <BrandIcon name="windows" />
-                Windows (.exe)
+                {t.windows}
               </a>
               <a className="bn-btn" href={downloads.mac}>
                 <BrandIcon name="apple" />
-                macOS, Apple silicon (.dmg)
+                {t.macArm}
               </a>
               <a className="bn-btn" href={downloads.macIntel}>
                 <BrandIcon name="apple" />
-                macOS, Intel (.dmg)
+                {t.macIntel}
               </a>
               <a className="bn-btn" href={downloads.linux}>
                 <BrandIcon name="linux" />
-                Linux (.AppImage)
+                {t.linux}
               </a>
             </div>
             <p className="bn-note">
-              Other files are on the{" "}
-              <a href={managerUrl} target="_blank" rel="noreferrer">
-                release page{NEW_TAB}
-              </a>
-              . If Windows SmartScreen stops the installer, choose More info, then Run anyway.
+              <WithLink
+                text={t.otherFiles}
+                link={
+                  <a href={managerUrl} target="_blank" rel="noreferrer">
+                    {t.releasePage}
+                    {newTab}
+                  </a>
+                }
+              />
             </p>
-            <p className="bn-note">For Italian, choose the language under Voice Language in Spoken&apos;s settings.</p>
+            <p className="bn-note">{t.italianVoice}</p>
           </>
         )}
 
         {tab === "curseforge" && (
           <>
-            <p>
-              Install the Spoken addon for your language in the CurseForge app. It pulls in Spoken and
-              every voice pack for that language. It only works through the app: the website download
-              of a meta addon is empty.
-            </p>
+            <p>{t.curseforgeText}</p>
             <ul className="bn-pros">
-              <li>One meta addon per language</li>
-              <li>Updates through the CurseForge app</li>
-              <li className="no">Works only through the app</li>
-              <li className="no">New packs can take longer to appear</li>
+              {t.curseforgePros.map((pro, i) => (
+                <li key={pro} className={i >= 2 ? "no" : undefined}>
+                  {pro}
+                </li>
+              ))}
             </ul>
             <div className="bn-langs">
               {maintained.map((entry) => (
@@ -158,17 +154,21 @@ export default function InstallTabs({
                 >
                   <BrandIcon name="curseforge" />
                   {entry.name}
-                  {NEW_TAB}
+                  {newTab}
                 </a>
               ))}
             </div>
             {italian?.curseforge && (
               <p className="bn-note">
-                Italian is made by others and not maintained here:{" "}
-                <a href={`${CURSEFORGE}/${italian.curseforge}`} target="_blank" rel="noreferrer">
-                  Spoken Italian{NEW_TAB}
-                </a>
-                . {ITALIAN_NOTE}
+                <WithLink
+                  text={fill(t.italianOthers, { note: t.italianNote })}
+                  link={
+                    <a href={`${CURSEFORGE}/${italian.curseforge}`} target="_blank" rel="noreferrer">
+                      {t.italianLink}
+                      {newTab}
+                    </a>
+                  }
+                />
               </p>
             )}
           </>
@@ -176,19 +176,17 @@ export default function InstallTabs({
 
         {tab === "manual" && (
           <>
-            <p>Pick your language, download each zip and unzip them into Interface/AddOns.</p>
+            <p>{t.manualText}</p>
             <ul className="bn-pros">
-              <li>Plain zips from GitHub</li>
-              <li>The only route for the 1.12 and 3.3.5 clients</li>
-              <li className="no">You update every zip yourself</li>
+              {t.manualPros.map((pro, i) => (
+                <li key={pro} className={i === 2 ? "no" : undefined}>
+                  {pro}
+                </li>
+              ))}
             </ul>
             <label>
-              <span className="sr-only">Language</span>
-              <select
-                className="bn-select"
-                value={lang}
-                onChange={(event) => setLang(event.target.value as Lang)}
-              >
+              <span className="sr-only">{text.nav.language}</span>
+              <select className="bn-select" value={lang} onChange={(event) => setLang(event.target.value as Lang)}>
                 {languages.map((entry) => (
                   <option key={entry.code} value={entry.code}>
                     {entry.name}
@@ -197,35 +195,33 @@ export default function InstallTabs({
               </select>
             </label>
             <div className="bn-manual">
-              {chosen.rows.map((row) => (
-                <div key={row.name} className="bn-pack">
-                  <div>
-                    <b>{row.name}</b>
-                    <small>{row.note}</small>
+              {chosen.rows.map((row) => {
+                const downloads = row.links.filter((link) => link.kind !== "curseforge");
+                return (
+                  <div key={row.name} className="bn-pack">
+                    <div>
+                      <b>{row.name}</b>
+                      <small>{row.note}</small>
+                    </div>
+                    <div className="bn-links-row">
+                      {row.links.some((link) => link.kind === "github") ? (
+                        downloads.map((link) => (
+                          <a key={link.href} className="bn-btn bn-btn-sm" href={link.href} target="_blank" rel="noreferrer">
+                            {link.kind === "github" && <BrandIcon name="github" size={16} />}
+                            {link.label}
+                            {newTab}
+                          </a>
+                        ))
+                      ) : (
+                        <span className="none">{t.noPack}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="bn-links-row">
-                    {row.links.some((link) => link.label.startsWith("GitHub")) ? (
-                      row.links.filter((link) => link.label.startsWith("GitHub") || link.label === "Wago").map((link) => (
-                        <a key={link.href} className="bn-btn bn-btn-sm" href={link.href} target="_blank" rel="noreferrer">
-                          {link.label !== "Wago" && <BrandIcon name="github" size={16} />}
-                          {link.label}
-                          {NEW_TAB}
-                        </a>
-                      ))
-                    ) : (
-                      <span className="none">No pack in this language yet</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            {chosen.code === "itIT" && (
-              <p className="bn-note">{ITALIAN_NOTE}</p>
-            )}
-            <p className="bn-note">
-              On the 1.12 and 3.3.5 clients, take the Spoken Quests zip from the release page.
-              Spoken is inside it.
-            </p>
+            {chosen.code === "itIT" && <p className="bn-note">{t.italianNote}</p>}
+            <p className="bn-note">{t.oldClients}</p>
           </>
         )}
       </div>

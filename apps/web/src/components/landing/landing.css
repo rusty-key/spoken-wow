@@ -866,6 +866,24 @@ html:has(.bn) {
 .bn-select:hover {
   background-color: var(--btn-hover);
 }
+.bn-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.bn-select:disabled {
+  cursor: default;
+  opacity: 1;
+}
+/* The language switch in the top bar: the same select at the height of the bar's buttons. */
+.bn-select-nav {
+  min-width: 0;
+  height: 40px;
+  padding: 0 40px 0 14px;
+  background-position: right 12px center;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
 .bn-select option {
   background: var(--panel);
   color: var(--text);
@@ -1462,6 +1480,10 @@ html:has(.bn) {
   .bn-btn-sm,
   .bn-nav-end .bn-btn-sm {
     min-height: 44px;
+  }
+  .bn-select-nav {
+    height: 44px;
+    max-width: 150px;
   }
   .bn-parts {
     grid-template-columns: minmax(0, 1fr);
@@ -2122,4 +2144,69 @@ html:has(.bn) {
 /* Narrator bar follows the words */
 .bn-line-bar i {
   transition: width 0.24s linear;
+}
+
+/*
+ * Both of the page's faces are Latin subsets: fonts.ts names the fallback for Cyrillic and
+ * Vietnamese, and Korean and Chinese take the system's face for their script, named here.
+ * Chinese and Korean take no capitals and no letter spacing, which only spreads their characters.
+ */
+:lang(ko-KR) {
+  --bn-fallback: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Noto Sans CJK KR";
+}
+:lang(zh-CN) {
+  --bn-fallback: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Noto Sans CJK SC";
+}
+:lang(zh-TW) {
+  --bn-fallback: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", "Noto Sans CJK TC";
+}
+:lang(ko-KR) .bn,
+:lang(zh-CN) .bn,
+:lang(zh-TW) .bn {
+  font-family: var(--bn-body), var(--bn-fallback), sans-serif;
+}
+:lang(ko-KR) .bn-display,
+:lang(zh-CN) .bn-display,
+:lang(zh-TW) .bn-display {
+  font-family: var(--bn-display), var(--bn-fallback), serif;
+}
+:lang(ko-KR) .bn,
+:lang(zh-CN) .bn,
+:lang(zh-TW) .bn {
+  letter-spacing: 0;
+}
+:lang(ko-KR) .bn *,
+:lang(zh-CN) .bn *,
+:lang(zh-TW) .bn * {
+  letter-spacing: 0;
+}
+/* The Latin wordmark and headings keep their capitals, as in the other languages. */
+:lang(ko-KR) .bn *:not(.bn-brand-name, .bn-display),
+:lang(zh-CN) .bn *:not(.bn-brand-name, .bn-display),
+:lang(zh-TW) .bn *:not(.bn-brand-name, .bn-display) {
+  text-transform: none;
+}
+:lang(ko-KR) .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button),
+:lang(zh-CN) .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button),
+:lang(zh-TW) .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button) {
+  font-family: var(--bn-body), var(--bn-fallback), sans-serif;
+}
+
+/* A phone: the bar holds the logo, the language, the sign-in button and the menu, and the longest
+   words (Iniciar sesión, Anmelden) need the room the name takes. */
+@media (max-width: 520px) {
+  .bn-nav .bn-brand-name {
+    display: none;
+  }
+  .bn-nav-end {
+    gap: 8px;
+  }
+  .bn-nav-end .bn-btn-sm {
+    padding: 0 12px;
+  }
+  .bn-select-nav {
+    max-width: 104px;
+    padding: 0 26px 0 10px;
+    background-position: right 8px center;
+  }
 }
