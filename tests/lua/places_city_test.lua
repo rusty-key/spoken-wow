@@ -39,9 +39,9 @@ Expect("...under the area's name, with no area key of the zone's", name == "Stor
 _G.C_Map.GetMapRectOnMap = function(city, zone)
     if city == STORMWIND and zone == ELWYNN then return 0.2, 0.4, 0.2, 0.4 end
 end
-local _, _, _, outside = Z:AreaAt(ELWYNN, 0.6, 0.3)
+local _, outsideEntry, _, outside = Z:AreaAt(ELWYNN, 0.6, 0.3)
 Expect("outside the city's own rectangle on the zone, its area opens no city", outside, nil)
-Expect("...and has no story to light", select(2, Z:AreaAt(ELWYNN, 0.6, 0.3)), nil)
+Expect("...and has no story to light", outsideEntry, nil)
 Expect("...while inside it the city still opens", select(4, Z:AreaAt(ELWYNN, 0.3, 0.3)), STORMWIND)
 _G.C_Map.GetMapRectOnMap = function() return nil end
 Expect("where the client gives no rectangle, the area alone decides", select(4, Z:AreaAt(ELWYNN, 0.6, 0.3)), STORMWIND)

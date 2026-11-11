@@ -577,7 +577,7 @@ local function OnCity(city, mapID, x, y)
 		return true
 	end
 	local ok, left, right, top, bottom = pcall(C_Map.GetMapRectOnMap, city, mapID)
-	if not ok or not left or not right or right <= left or not top or not bottom or bottom <= top then
+	if not (ok and left) or right <= left or bottom <= top then
 		return true
 	end
 	return x >= left and x <= right and y >= top and y <= bottom
