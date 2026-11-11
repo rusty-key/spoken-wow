@@ -1,10 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { Catalog, JobProgress } from '../src/shared/types'
 import { ManagerService } from '../src/main/service'
-import { loadSettings } from '../src/main/state'
+import { loadSettings, saveState } from '../src/main/state'
 import { makeGame, makeGameFolders, serveBuffer, sha256, startServer, tmpDir, toc, write, yazlZip, type TestServer } from './helpers'
 
 let server: TestServer | null = null
@@ -83,18 +83,8 @@ function waitFor(sent: { channel: string; payload: unknown }[], jobId: string): 
   })
 }
 
-async function waitForJob(sent: { channel: string; payload: unknown }[], productId: string): Promise<string> {
-  const started = Date.now()
-  while (Date.now() - started <= 10000) {
-    const job = sent
-      .filter((s) => s.channel === CHANNELS.jobProgress)
-      .map((s) => s.payload as JobProgress)
-      .find((p) => p.productId === productId)
-    if (job) return job.jobId
-    await new Promise((resolve) => setTimeout(resolve, 10))
-  }
-  throw new Error(`timed out waiting for ${productId} job`)
-}
+const jobsFor = (sent: { channel: string; payload: unknown }[], productId: string): JobProgress[] =>
+  sent.filter((s) => s.channel === CHANNELS.jobProgress && (s.payload as JobProgress).productId === productId).map((s) => s.payload as JobProgress)
 
 describe('ManagerService', () => {
   it('scans, refreshes the catalog, reports statuses, installs and removes', async () => {
@@ -135,13 +125,8 @@ describe('ManagerService', () => {
   })
 
   describe('automatic content updates', () => {
-    const spokenJobs = (sent: { channel: string; payload: unknown }[]) =>
-      sent.filter((s) => s.channel === CHANNELS.jobProgress && (s.payload as JobProgress).productId === 'spoken').map((s) => s.payload as JobProgress)
-
-    function oldSpoken(dir: string): void {
-      fs.mkdirSync(dir, { recursive: true })
-      fs.writeFileSync(path.join(dir, 'Spoken.toc'), toc('Spoken', '3.4.0'))
-    }
+    const spokenJobs = (sent: { channel: string; payload: unknown }[]) => jobsFor(sent, 'spoken')
+    const oldSpoken = (dir: string) => write(path.join(dir, 'Spoken.toc'), toc('Spoken', '3.4.0'))
 
     it('updates installed official content after a release check', async () => {
       const { svc, game, sent } = await setup()
@@ -150,7 +135,7 @@ describe('ManagerService', () => {
       svc.setSettings({ autoUpdateContent: true })
       await svc.refreshCatalog(true)
 
-      const job = await waitForJob(sent, 'spoken')
+      const job = spokenJobs(sent)[0]!.jobId
       expect((await waitFor(sent, job)).phase).toBe('done')
       expect((await svc.statuses(game.id)).find((s) => s.productId === 'spoken')).toMatchObject({
         state: 'up-to-date',
@@ -165,7 +150,8 @@ describe('ManagerService', () => {
       expect(spokenJobs(sent)).toHaveLength(0)
 
       svc.setSettings({ autoUpdateContent: true })
-      expect((await waitFor(sent, await waitForJob(sent, 'spoken'))).phase).toBe('done')
+      await vi.waitFor(() => expect(spokenJobs(sent)).not.toHaveLength(0))
+      expect((await waitFor(sent, spokenJobs(sent)[0]!.jobId)).phase).toBe('done')
     })
 
     it('does nothing while the setting is off', async () => {
@@ -190,15 +176,12 @@ describe('ManagerService', () => {
     it('leaves a version the player picked', async () => {
       const { svc, game, sent, data } = await setup()
       oldSpoken(path.join(game.addOnsPath, 'Spoken'))
-      fs.writeFileSync(
-        path.join(data, 'state.json'),
-        JSON.stringify({
-          version: 1,
-          manualGames: [],
-          hiddenGames: [],
-          installs: { [game.id]: { spoken: { version: '3.4.0', folders: ['Spoken'], installedAt: '', tag: 'spoken/v3.4.0', pinned: true } } }
-        })
-      )
+      saveState(data, {
+        version: 1,
+        manualGames: [],
+        hiddenGames: [],
+        installs: { [game.id]: { spoken: { version: '3.4.0', folders: ['Spoken'], installedAt: '', tag: 'spoken/v3.4.0', pinned: true } } }
+      })
       svc.setSettings({ autoUpdateContent: true })
       await svc.refreshCatalog(true)
       await svc.autoUpdate()
@@ -221,7 +204,7 @@ describe('ManagerService', () => {
       svc.setSettings({ autoUpdateContent: true })
       await svc.refreshCatalog(true)
 
-      const first = await waitForJob(sent, 'spoken')
+      const first = spokenJobs(sent)[0]!.jobId
       svc.jobs.cancel(first)
       open()
       expect((await waitFor(sent, first)).phase).toBe('cancelled')

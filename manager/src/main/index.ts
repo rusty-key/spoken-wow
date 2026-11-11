@@ -200,7 +200,6 @@ if (!app.requestSingleInstanceLock()) {
     mainWindow = createWindow()
 
     if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
-      // A catalog fresh from the last run is not fetched again, so the updates are queued here too.
       void service.ready
         .then(() => service?.refreshCatalog(false))
         .then(() => service?.autoUpdate())

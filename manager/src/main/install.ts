@@ -712,7 +712,8 @@ export async function installProduct(
         folders,
         installedAt: new Date().toISOString(),
         tag: release.tag,
-        ...(ctx.pinned ? { pinned: true } : {})
+        // A repair puts back the same version, so it stays pinned if it was.
+        pinned: ctx.pinned || (ctx.repair && getRecord(s, game.id, product.id)?.pinned) || undefined
       })
     )
     log(`Installed ${product.id} ${release.version} on ${game.label} (${folders.join(', ')}).`)

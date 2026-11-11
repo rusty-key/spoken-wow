@@ -15,7 +15,7 @@ import type { SecretBox } from './contributor-store'
 import { addGame, notSupportedMessage, removeGame, scanGames } from './games'
 import { fetchReleases } from './github'
 import { installProduct, recoverInterrupted, uninstallProduct, type FsOps, type JobContext } from './install'
-import { JobManager } from './jobs'
+import { JobManager, type JobSpec } from './jobs'
 import { isChannelRelease } from '../shared/channel'
 import { channelRelease, withChannel } from './packs-catalog'
 import { PACKS_BASE_URL } from './packs-key'
@@ -72,13 +72,8 @@ export class ManagerService {
   readonly jobs: JobManager
   readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
-  private autoUpdating: Promise<void> | null = null
-  /** Jobs the automatic updates queued, by id, to `gameId:productId`. */
-  private autoJobs = new Map<string, string>()
-  /** Automatic updates cancelled or failed this session; left until the player checks by hand. */
+  /** Automatic updates (`gameId:productId`) cancelled or failed this session; left until the player checks by hand. */
   private autoSkip = new Set<string>()
-  /** Asked again while a pass ran: it may have read the catalog from before a refresh. */
-  private autoAgain = false
   private refreshingChannel: Promise<void> | null = null
   /** When the server last gave a verified index; 0 until then. */
   private channelFetchedAt = 0
@@ -101,10 +96,7 @@ export class ManagerService {
     this.catalog = loadCatalog(opts.dataPath)
     this.community = loadCommunity(opts.dataPath)
     this.channel = loadCachedIndex(opts.dataPath, opts.packsPublicKey)
-    this.jobs = new JobManager((p: JobProgress) => {
-      this.noteAutoJob(p)
-      opts.send(CHANNELS.jobProgress, p)
-    })
+    this.jobs = new JobManager((p: JobProgress) => opts.send(CHANNELS.jobProgress, p))
     this.contributor = new ContributorService({
       dataPath: opts.dataPath,
       box: opts.secretBox ?? NO_SECRET_BOX,
@@ -202,12 +194,16 @@ export class ManagerService {
       const age = Date.now() - Date.parse(this.catalog.fetchedAt)
       if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.effectiveCatalog())
     }
-    // A check by hand offers again the updates the player cancelled or that failed.
-    if (force) this.autoSkip.clear()
     this.refreshing = this.doRefresh().finally(() => {
       this.refreshing = null
     })
-    return this.refreshing
+    if (!force) return this.refreshing
+    // A check by hand offers again the updates the player cancelled or that failed.
+    this.autoSkip.clear()
+    return this.refreshing.then(async (catalog) => {
+      await this.autoUpdate()
+      return catalog
+    })
   }
 
   private async doRefresh(): Promise<Catalog> {
@@ -241,7 +237,6 @@ export class ManagerService {
     const offered = this.effectiveCatalog()
     this.opts.send(CHANNELS.catalogChanged, offered)
     await this.warmManifests(offered)
-    void this.autoUpdate()
     return offered
   }
 
@@ -249,41 +244,24 @@ export class ManagerService {
    * Queues updates of the installed official products, when the setting is on. Leaves what cannot be
    * written, a version the player picked over the newest, and an update cancelled or failed this session.
    */
-  autoUpdate(): Promise<void> {
-    if (!this.settings.autoUpdateContent) return Promise.resolve()
-    if (this.autoUpdating) {
-      this.autoAgain = true
-      return this.autoUpdating
+  async autoUpdate(): Promise<void> {
+    if (!this.settings.autoUpdateContent) return
+    try {
+      const state = loadState(this.opts.dataPath)
+      const catalog = this.effectiveCatalog()
+      for (const game of this.games.filter((g) => isSupportedFlavor(g.flavor))) {
+        for (const status of await computeStatuses(game, catalog, this.settings, state, this.allProducts())) {
+          const key = `${game.id}:${status.productId}`
+          if (status.state !== 'update-available' || status.blockedReason || isCommunityProductId(status.productId)) continue
+          if (getRecord(state, game.id, status.productId)?.pinned || this.autoSkip.has(key)) continue
+          this.install(game.id, status.productId, undefined, (phase) => {
+            if (phase !== 'done') this.autoSkip.add(key)
+          })
+        }
+      }
+    } catch (err) {
+      log('Automatic content update check failed:', err)
     }
-    this.autoUpdating = Promise.all(
-      this.games
-        .filter((game) => isSupportedFlavor(game.flavor))
-        .map(async (game) => {
-          const records = loadState(this.opts.dataPath).installs[game.id] ?? {}
-          for (const status of await this.statuses(game.id)) {
-            const key = `${game.id}:${status.productId}`
-            if (status.state !== 'update-available' || status.blockedReason || isCommunityProductId(status.productId)) continue
-            if (records[status.productId]?.pinned || this.autoSkip.has(key)) continue
-            this.autoJobs.set(this.install(game.id, status.productId), key)
-          }
-        })
-    )
-      .then(() => undefined)
-      .catch((err) => log('Automatic content update check failed:', err))
-      .finally(() => {
-        this.autoUpdating = null
-        if (!this.autoAgain) return
-        this.autoAgain = false
-        return this.autoUpdate()
-      })
-    return this.autoUpdating
-  }
-
-  private noteAutoJob(p: JobProgress): void {
-    const key = this.autoJobs.get(p.jobId)
-    if (!key) return
-    if (p.phase === 'cancelled' || p.phase === 'error') this.autoSkip.add(key)
-    if (p.phase === 'cancelled' || p.phase === 'error' || p.phase === 'done') this.autoJobs.delete(p.jobId)
   }
 
   /**
@@ -528,7 +506,7 @@ export class ManagerService {
     return release
   }
 
-  install(gameId: string, productId: string, options?: InstallOptions): string {
+  install(gameId: string, productId: string, options?: InstallOptions, onEnded?: JobSpec['onEnded']): string {
     const game = this.requireGame(gameId)
     const product = this.findProduct(productId)
     if (!product) throw new Error('Unknown product')
@@ -537,10 +515,11 @@ export class ManagerService {
     const wanted = repair ? undefined : options?.version
     const release = repair ? undefined : this.pickRelease(productId, wanted)
     const channel = channelRelease(product, this.channel, this.packsBase())
-    const pinned = !!release && release.version !== this.pickRelease(productId)?.version
+    const pinned = !!wanted && !!release && release.version !== this.pickRelease(productId)?.version
     return this.jobs.enqueue({
       gameId,
       productId,
+      ...(onEnded ? { onEnded } : {}),
       action: repair ? 'repair' : 'install',
       ...(release ? { version: release.version } : {}),
       run: async (ctx) => {
@@ -551,9 +530,8 @@ export class ManagerService {
         }
         if (repair) {
           const again = await this.releaseToRepair(game.id, product)
-          const kept = getRecord(loadState(this.opts.dataPath), game.id, product.id)?.pinned === true
           this.dropChannelState(game, product)
-          await installProduct(game, product, again, { ...this.jobContext(ctx.jobId, ctx.signal, ctx.emit), repair: true, pinned: kept })
+          await installProduct(game, product, again, { ...this.jobContext(ctx.jobId, ctx.signal, ctx.emit), repair: true })
           return
         }
         if (!release) {

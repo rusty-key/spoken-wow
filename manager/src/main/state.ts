@@ -120,7 +120,7 @@ export function sanitizeState(raw: unknown): StateFile {
           folders: strings(x.folders),
           installedAt: typeof x.installedAt === 'string' ? x.installedAt : '',
           tag: typeof x.tag === 'string' ? x.tag : '',
-          ...(x.pinned === true ? { pinned: true } : {})
+          pinned: x.pinned === true || undefined
         }
       }
       out.installs[gameId] = perGame

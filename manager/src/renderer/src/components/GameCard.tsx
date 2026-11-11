@@ -35,7 +35,7 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
       : toUpdate.length > 0
         ? { text: S.home.update, run: () => toUpdate.forEach((id) => void actions.install(game.id, id)) }
         : { text: S.home.manage, run: () => actions.navigate('spoken', game.id) }
-  const canInstall = game.writable && (spokenState === 'not-installed' ? !!status?.latest : true)
+  const canInstall = game.writable && (spokenState !== 'not-installed' || !!status?.latest)
 
   return (
     <article className="card game-card">
