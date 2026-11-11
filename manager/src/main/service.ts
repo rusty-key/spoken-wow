@@ -55,7 +55,6 @@ export interface ServiceOptions {
   secretBox?: SecretBox
   /** The fetch for the site and the stores, when it must differ from `fetchImpl`. */
   contributorFetch?: typeof fetch
-  /** Called after every settings change, with the settings before it. */
   settingsChanged?: (settings: Settings, previous: Settings) => void
 }
 

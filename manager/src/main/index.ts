@@ -121,7 +121,6 @@ function trayIcon(): NativeImage {
   return process.platform === 'darwin' ? icon.resize({ width: 16, height: 16 }) : icon
 }
 
-/** The tray is there only while the setting is on. */
 function syncTray(enabled: boolean): void {
   if (!enabled) {
     tray?.destroy()

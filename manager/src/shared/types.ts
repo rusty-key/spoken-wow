@@ -170,9 +170,7 @@ export interface Settings {
   autoUpdateManager: boolean
   /** Installed Spoken and official voice packs, after the catalog is checked. */
   autoUpdateContent: boolean
-  /** Start the manager when the user logs in. */
   startAtLogin: boolean
-  /** Hide the window in the system tray when it is minimized. */
   minimizeToTray: boolean
   /** Where downloads are kept; empty means the app's own folder. */
   downloadsPath: string
