@@ -11,6 +11,7 @@ export function linuxAutostartFile(appDataPath: string): string {
   return path.join(appDataPath, 'autostart', 'spoken-manager.desktop')
 }
 
+// Escapes only " and \: a path holding $, ` or % would need the spec's further escaping.
 function desktopQuote(value: string): string {
   return `"${value.replace(/([\\"])/g, '\\$1')}"`
 }

@@ -5,16 +5,17 @@ import { GameIcon } from '../components/Brand'
 import { Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
 import { RestartButton } from '../components/RestartButton'
-import { IconChevron, IconChevronRight, IconDownload, IconGames, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
+import { IconChevron, IconChevronRight, IconDownload, IconGames, IconGear, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
 import { useStore } from '../store'
 import { ContributorSection } from './ContributorSection'
 import { REPO_URL, S, SITE_URL } from '../strings'
 
-type Section = 'games' | 'updates' | 'downloads' | 'sharing' | 'contributor' | 'about'
+type Section = 'games' | 'updates' | 'startup' | 'downloads' | 'sharing' | 'contributor' | 'about'
 
 const NAV: { id: Section; label: string; icon: ReactNode }[] = [
   { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
   { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
+  { id: 'startup', label: S.settings.startup, icon: <IconGear size={18} /> },
   { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
   { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
   { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
@@ -42,6 +43,7 @@ export function SettingsPage(): ReactNode {
           <div className="settings-inner">
             {section === 'games' && <GamesSection />}
             {section === 'updates' && <UpdatesSection />}
+            {section === 'startup' && <StartupSection />}
             {section === 'downloads' && <DownloadsSection />}
             {section === 'sharing' && <SharingSection />}
             {section === 'contributor' && <ContributorSection />}
@@ -148,6 +150,21 @@ function UpdatesSection(): ReactNode {
         <Switch checked={settings.checkOnStart} onChange={(v) => set({ checkOnStart: v })} label={S.settings.checkOnStart} text={S.settings.checkOnStartText} />
         <Switch checked={settings.autoUpdateContent} onChange={(v) => set({ autoUpdateContent: v })} label={S.settings.autoUpdateContent} text={S.settings.autoUpdateContentText} />
         <Switch checked={settings.autoUpdateManager} onChange={(v) => set({ autoUpdateManager: v })} label={S.settings.autoUpdate} text={S.settings.autoUpdateText} />
+      </div>
+    </section>
+  )
+}
+
+function StartupSection(): ReactNode {
+  const { state, actions } = useStore()
+  const { settings } = state
+  const set = (patch: Parameters<typeof actions.setSettings>[0]): void => void actions.setSettings(patch).catch(() => undefined)
+  return (
+    <section aria-labelledby="set-startup">
+      <h2 id="set-startup" className="settings-h">
+        {S.settings.startup}
+      </h2>
+      <div className="switches">
         <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
         <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
       </div>

@@ -3,7 +3,7 @@
 // Sharing on, the lines Spoken collected, sent to spoken.quest (share.ts), and, only for a
 // language admin who signs in, the site and that admin's stores (contributor.ts).
 import path from 'node:path'
-import { app, BrowserWindow, Menu, nativeImage, net, safeStorage, session, shell, Tray } from 'electron'
+import { app, BrowserWindow, Menu, nativeImage, net, safeStorage, session, shell, Tray, type NativeImage } from 'electron'
 import { CHANNELS, type UpdaterState } from '../shared/api'
 import type { Settings } from '../shared/types'
 import { windowChrome } from './chrome'
@@ -85,10 +85,14 @@ function setUpMenu(): void {
 }
 
 function applyAutoStart(settings: Settings): void {
+  // A dev run would register the bare Electron binary.
+  if (!app.isPackaged) return
   try {
     if (process.platform === 'linux') {
-      updateLinuxAutostart(app.getPath('appData'), process.execPath, settings.startAtLogin, settings.minimizeToTray)
+      // Inside an AppImage, execPath is its temporary mount; APPIMAGE is the file itself.
+      updateLinuxAutostart(app.getPath('appData'), process.env.APPIMAGE ?? process.execPath, settings.startAtLogin, settings.minimizeToTray)
     } else {
+      // macOS login items take no arguments, so the window always opens there.
       app.setLoginItemSettings({
         openAtLogin: settings.startAtLogin,
         ...(process.platform === 'win32' ? { path: process.execPath, args: settings.minimizeToTray ? [HIDDEN_ARG] : [], name: 'Spoken Manager' } : {})
@@ -100,21 +104,31 @@ function applyAutoStart(settings: Settings): void {
 }
 
 function showWindow(): void {
+  if (!service) return
   if (!mainWindow || mainWindow.isDestroyed()) {
     mainWindow = createWindow(false)
     return
   }
+  if (mainWindow.isMinimized()) mainWindow.restore()
   mainWindow.show()
   mainWindow.focus()
 }
 
-function toggleWindow(): void {
-  if (mainWindow?.isVisible()) mainWindow.hide()
-  else showWindow()
+function trayIcon(): NativeImage {
+  const icon = nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.png'))
+  // The menu bar draws the image at its own size.
+  return process.platform === 'darwin' ? icon.resize({ width: 16, height: 16 }) : icon
 }
 
-function setUpTray(): void {
-  tray = new Tray(nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.png')))
+/** The tray is there only while the setting is on. */
+function syncTray(enabled: boolean): void {
+  if (!enabled) {
+    tray?.destroy()
+    tray = null
+    return
+  }
+  if (tray) return
+  tray = new Tray(trayIcon())
   tray.setToolTip('Spoken Manager')
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -123,7 +137,12 @@ function setUpTray(): void {
       { label: 'Quit Spoken Manager', click: () => app.quit() }
     ])
   )
-  tray.on('click', toggleWindow)
+  tray.on('click', showWindow)
+}
+
+function applyStartupSettings(settings: Settings): void {
+  applyAutoStart(settings)
+  syncTray(settings.minimizeToTray)
 }
 
 function createWindow(startHidden: boolean): BrowserWindow {
@@ -191,11 +210,8 @@ function createWindow(startHidden: boolean): BrowserWindow {
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
-  })
+  // Also the way back to a window hidden in the tray when the desktop shows no tray icons.
+  app.on('second-instance', showWindow)
 
   // macOS apps stay open without a window (Cmd+Q quits, a click on the Dock icon opens the window again).
   app.on('window-all-closed', () => {
@@ -243,14 +259,12 @@ if (!app.requestSingleInstanceLock()) {
       ...(shareUrl ? { shareUrl } : {}),
       ...(siteUrl ? { siteUrl } : {})
     })
-    applyAutoStart(service.settings)
-    registerIpc(service, PAGE, () => updaterState, applyAutoStart)
+    applyStartupSettings(service.settings)
+    registerIpc(service, PAGE, () => updaterState, applyStartupSettings)
     void service.init()
     service.startSharing()
 
-    setUpTray()
-    const loginHidden = process.platform === 'darwin' && service.settings.startAtLogin && service.settings.minimizeToTray && app.getLoginItemSettings().wasOpenedAtLogin
-    mainWindow = createWindow(startedHidden(process.argv) || loginHidden)
+    mainWindow = createWindow(startedHidden(process.argv) && service.settings.minimizeToTray)
 
     if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
       void service.ready

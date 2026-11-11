@@ -106,7 +106,7 @@ function trusted(event: IpcMainInvokeEvent, page: AppPage): boolean {
   return isOurPage(frame.url, page)
 }
 
-export function registerIpc(service: ManagerService, page: AppPage, updater: () => UpdaterState, onSettings?: (settings: Settings) => void): void {
+export function registerIpc(service: ManagerService, page: AppPage, updater: () => UpdaterState, onStartupSettings?: (settings: Settings) => void): void {
   const handle = (channel: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void => {
     ipcMain.handle(channel, async (event, ...args) => {
       if (!trusted(event, page)) {
@@ -131,12 +131,7 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
     }
     return BrowserWindow.fromWebContents(event.sender)
   }
-  ipcMain.handle(CHANNELS.windowMinimize, (event) => {
-    const win = windowOf(event)
-    if (!win) return
-    if (service.settings.minimizeToTray) win.hide()
-    else win.minimize()
-  })
+  ipcMain.handle(CHANNELS.windowMinimize, (event) => void windowOf(event)?.minimize())
   ipcMain.handle(CHANNELS.windowToggleMaximize, (event) => {
     const win = windowOf(event)
     if (win) win.isMaximized() ? win.unmaximize() : win.maximize()
@@ -157,8 +152,9 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
   handle(CHANNELS.uninstall, (_e, gameId, pid) => service.uninstall(id(gameId, 'game id'), productId(pid)))
   handle(CHANNELS.cancel, (_e, jobId) => service.cancel(id(jobId, 'job id')))
   handle(CHANNELS.setSettings, (_e, patch) => {
-    const settings = service.setSettings(settingsPatch(patch))
-    onSettings?.(settings)
+    const changes = settingsPatch(patch)
+    const settings = service.setSettings(changes)
+    if ('startAtLogin' in changes || 'minimizeToTray' in changes) onStartupSettings?.(settings)
     return settings
   })
 
