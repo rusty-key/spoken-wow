@@ -225,6 +225,14 @@ local function Widget(kind, name)
         return (#text + boxes) * 7
     end
     function w:SetWordWrap(on) self.wordWrap = on and true or false end
+    -- A font file the client cannot load is refused, as the real one does by returning false; a
+    -- suite lists such paths in M.refusedFonts. Every other file loads.
+    function w:SetFont(path, size, flags)
+        if M.refusedFonts and M.refusedFonts[path] then return false end
+        self.fontFile, self.fontSize, self.fontFlags = path, size, flags
+        return true
+    end
+    function w:GetFont() return self.fontFile, self.fontSize, self.fontFlags end
     function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
     function w:GetTop() return 100 end
     function w:GetBottom() return 0 end

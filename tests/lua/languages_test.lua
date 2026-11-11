@@ -126,6 +126,46 @@ Spoken:DeclareLanguage("itIT", "SpokenReadablesAudio_itIT")
 Expect("the API declares", #Spoken:InstalledLanguages(), 2)
 Expect("the API tests a code", Spoken:IsLanguageCode("heIL"), true)
 
+-- Spoken's menus list what is installed, named as this client can draw it.
+local function HebrewInstalled(meta)
+    local m = { ["X-SpokenQuests-Language"] = "heIL" }
+    for k, v in pairs(meta or {}) do m[k] = v end
+    return Install({ Pack("SpokenCommunity_ivrit", m), Pack("SpokenCommunity_deutsch", { ["X-SpokenQuests-Language"] = "deDE" }) })
+end
+local function List(list) return table.concat(list, ",") end
+env = HebrewInstalled(HEBREW)
+Expect("voice choices", List(env.Options:VoiceChoices()), "auto,deDE,heIL")
+Expect("fallback choices", List(env.Options:FallbackChoices()), "none,deDE,heIL")
+env = Install({})
+Expect("no packs: only auto", List(env.Options:VoiceChoices()), "auto")
+env = HebrewInstalled()
+Expect("a pack without names shows its code", env.Options:LanguageName("heIL"), "heIL")
+Expect("an unknown language shows its code", env.Options:LanguageName("itIT"), "itIT")
+Expect("a built-in Latin language shows its native name", env.Options:LanguageName("deDE"), "Deutsch")
+Expect("a language the registry lacks draws nothing", env.Options:LanguageDraws("itIT"), false)
+
+-- Every glyph but ASCII is a box here, so only a pack's own font can draw Hebrew.
+stub.TextWidth = function(fs)
+    local width = 0
+    for ch in tostring(fs.text or ""):gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+        width = width + ((fs.fontFile == "Interface\\AddOns\\SpokenCommunity_ivrit\\Fonts\\Hebrew.ttf"
+            and #ch > 1 and ch ~= "\205\184") and 7 or (#ch > 1 and 10 or 7))
+    end
+    return width
+end
+env = HebrewInstalled(HEBREW)
+local drawn = env.Options:LanguageName("heIL")
+Expect("the pack's font draws the native name", drawn, "עברית")
+Expect("...and is offered for the menu", env.Options:LanguageFace("heIL"),
+    "Interface\\AddOns\\SpokenCommunity_ivrit\\Fonts\\Hebrew.ttf")
+Expect("a Latin language needs no face", env.Options:LanguageFace("deDE"), nil)
+
+stub.refusedFonts = { ["Interface\\AddOns\\SpokenCommunity_ivrit\\Fonts\\Hebrew.ttf"] = true }
+env = HebrewInstalled(HEBREW)
+Expect("a font the client cannot load falls back to the English name", env.Options:LanguageName("heIL"), "Hebrew")
+Expect("...and offers no face", env.Options:LanguageFace("heIL"), nil)
+stub.refusedFonts, stub.TextWidth = nil, nil
+
 stub.ResetAddOns()
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll language registry tests passed")

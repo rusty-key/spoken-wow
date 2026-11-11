@@ -279,6 +279,8 @@ fontHas["Fonts\\blei00d.TTF"] = blei
 Reset()
 Expect("H. a Latin language needs no asking", Z:CanRenderLanguage("frFR"), true)
 Expect("H. ...and keeps the page's font", Font(_G.GameFontHighlight, "frFR"), "Fonts\\FRIZQT__.TTF")
+-- Vietnamese is no built-in language: its pack declares it and its name.
+Spoken:DeclareLanguage("viVN", "SpokenPlacesAudio_viVN", { name = "Vietnamese", native = "Tiếng Việt" })
 Expect("H. Vietnamese, which the page's font cannot draw, is written in Arial Narrow",
     tostring(Z:CanRenderLanguage("viVN")) .. " " .. Font(_G.GameFontHighlight, "viVN"),
     "true Fonts\\ARIALN.TTF")

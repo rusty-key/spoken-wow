@@ -229,6 +229,8 @@ local spoken = _G.SpokenOptionsPanel.content or _G.SpokenOptionsPanel
 local voice, fallback = Dropdown(spoken, "Voice Language"), Dropdown(spoken, "If a Voice Is Missing")
 Expect("the voice language is chosen on Spoken's page", voice ~= nil, true)
 Expect("...Auto by default, named with the client's language", voice and voice.dropdownText, "Auto (English)")
+-- The menu lists the languages an installed pack declares.
+for _, code in ipairs({ "deDE", "frFR" }) do _G.SpokenEnv.Languages:Declare(code, "SpokenQuestsAudio_" .. code) end
 VO.Addon.db.profile.Audio.VoiceLanguage = "frFR"
 Expect("...and until it is, Quests keeps the choice it had", VO.Language:GetVoiceLanguage(), "frFR")
 Expect("...a language can be picked", stub.PickDropdown(voice, "Deutsch"), true)

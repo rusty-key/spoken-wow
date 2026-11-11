@@ -136,20 +136,4 @@ Expect("with nothing old loaded, nothing is disabled and nothing pops up",
     table.getn(stub.disabledAddOns) + table.getn(stub.popups), 0)
 _G.IsAddOnLoaded = realLoaded
 
----------------------------------------------------------------- one list of languages
--- Spoken's list replaces each module's own, so it has to offer every language they do.
-local function Codes(list)
-    local codes = {}
-    for _, locale in ipairs(list) do table.insert(codes, locale.code) end
-    return table.concat(codes, " ")
-end
-local function CodesIn(path)
-    local block = string.match(Read(path), "LOCALES = (%b{})")
-    local codes = {}
-    for code in string.gmatch(block, 'code = "(%a+)"') do table.insert(codes, code) end
-    return table.concat(codes, " ")
-end
-Expect("Spoken's languages are Quests', in the same order", Codes(env.LANGUAGES), CodesIn(QUESTS .. "Language.lua"))
-Expect("...and Readables'", Codes(env.LANGUAGES), CodesIn(ADDONS .. "Spoken_Readables/Language.lua"))
-
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
