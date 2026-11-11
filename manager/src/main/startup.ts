@@ -3,11 +3,7 @@ import path from 'node:path'
 
 export const HIDDEN_ARG = '--hidden'
 
-export function startedHidden(argv: readonly string[]): boolean {
-  return argv.includes(HIDDEN_ARG)
-}
-
-export function linuxAutostartFile(appDataPath: string): string {
+function linuxAutostartFile(appDataPath: string): string {
   return path.join(appDataPath, 'autostart', 'spoken-manager.desktop')
 }
 
@@ -16,7 +12,7 @@ function desktopQuote(value: string): string {
   return `"${value.replace(/([\\"])/g, '\\$1')}"`
 }
 
-export function linuxAutostartEntry(executable: string, hidden: boolean): string {
+function linuxAutostartEntry(executable: string, hidden: boolean): string {
   return [
     '[Desktop Entry]',
     'Type=Application',
@@ -34,6 +30,8 @@ export function updateLinuxAutostart(appDataPath: string, executable: string, en
     fs.rmSync(file, { force: true })
     return
   }
+  const entry = linuxAutostartEntry(executable, hidden)
+  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === entry) return
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, linuxAutostartEntry(executable, hidden), 'utf8')
+  fs.writeFileSync(file, entry, 'utf8')
 }

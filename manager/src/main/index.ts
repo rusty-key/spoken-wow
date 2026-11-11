@@ -11,7 +11,7 @@ import type { SecretBox } from './contributor-store'
 import { isAllowedExternalUrl } from './external'
 import { registerIpc } from './ipc'
 import { ManagerService } from './service'
-import { HIDDEN_ARG, startedHidden, updateLinuxAutostart } from './startup'
+import { HIDDEN_ARG, updateLinuxAutostart } from './startup'
 import { initLog, log } from './state'
 import { isOurPage as isOurPageUrl, type AppPage } from './trust'
 import { startUpdater } from './updater'
@@ -25,6 +25,7 @@ const DEV_URL = process.env.ELECTRON_RENDERER_URL
 let service: ManagerService | null = null
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+const iconPath = (): string => path.join(app.getAppPath(), 'build', 'icon.png')
 // Each state is sent once, so a window opened later (macOS, from the Dock) reads it from the snapshot.
 let updaterState: UpdaterState = { state: 'idle' }
 
@@ -106,7 +107,7 @@ function applyAutoStart(settings: Settings): void {
 function showWindow(): void {
   if (!service) return
   if (!mainWindow || mainWindow.isDestroyed()) {
-    mainWindow = createWindow(false)
+    mainWindow = createWindow()
     return
   }
   if (mainWindow.isMinimized()) mainWindow.restore()
@@ -115,7 +116,7 @@ function showWindow(): void {
 }
 
 function trayIcon(): NativeImage {
-  const icon = nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.png'))
+  const icon = nativeImage.createFromPath(iconPath())
   // The menu bar draws the image at its own size.
   return process.platform === 'darwin' ? icon.resize({ width: 16, height: 16 }) : icon
 }
@@ -140,12 +141,13 @@ function syncTray(enabled: boolean): void {
   tray.on('click', showWindow)
 }
 
-function applyStartupSettings(settings: Settings): void {
+function startupSettingsChanged(settings: Settings, previous: Settings): void {
+  if (settings.startAtLogin === previous.startAtLogin && settings.minimizeToTray === previous.minimizeToTray) return
   applyAutoStart(settings)
   syncTray(settings.minimizeToTray)
 }
 
-function createWindow(startHidden: boolean): BrowserWindow {
+function createWindow(startHidden = false): BrowserWindow {
   const chrome = windowChrome(process.platform)
   const win = new BrowserWindow({
     width: 1180,
@@ -155,7 +157,7 @@ function createWindow(startHidden: boolean): BrowserWindow {
     backgroundColor: BACKGROUND,
     show: false,
     title: 'Spoken Manager',
-    icon: path.join(app.getAppPath(), 'build', 'icon.png'),
+    icon: iconPath(),
     autoHideMenuBar: true,
     titleBarStyle: chrome.titleBarStyle,
     ...(chrome.frame === false ? { frame: false } : {}),
@@ -217,9 +219,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
-  app.on('activate', () => {
-    if (service && BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow(false)
-  })
+  app.on('activate', showWindow)
 
   // Quitting with a job running: stop it and wait for its rollback first, so the quit (and an
   // update installed on quit) never lands in the middle of swapping folders.
@@ -257,14 +257,17 @@ if (!app.requestSingleInstanceLock()) {
       contributorFetch: fetch,
       secretBox,
       ...(shareUrl ? { shareUrl } : {}),
-      ...(siteUrl ? { siteUrl } : {})
+      ...(siteUrl ? { siteUrl } : {}),
+      settingsChanged: startupSettingsChanged
     })
-    applyStartupSettings(service.settings)
-    registerIpc(service, PAGE, () => updaterState, applyStartupSettings)
+    syncTray(service.settings.minimizeToTray)
+    // Refreshes the login item's path, which an update or reinstall can move.
+    if (service.settings.startAtLogin) applyAutoStart(service.settings)
+    registerIpc(service, PAGE, () => updaterState)
     void service.init()
     service.startSharing()
 
-    mainWindow = createWindow(startedHidden(process.argv) && service.settings.minimizeToTray)
+    mainWindow = createWindow(process.argv.includes(HIDDEN_ARG) && service.settings.minimizeToTray)
 
     if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
       void service.ready

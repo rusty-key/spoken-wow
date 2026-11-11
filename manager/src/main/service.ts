@@ -55,6 +55,8 @@ export interface ServiceOptions {
   secretBox?: SecretBox
   /** The fetch for the site and the stores, when it must differ from `fetchImpl`. */
   contributorFetch?: typeof fetch
+  /** Called after every settings change, with the settings before it. */
+  settingsChanged?: (settings: Settings, previous: Settings) => void
 }
 
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
@@ -679,16 +681,16 @@ export class ManagerService {
       const problem = checkDownloadsPath(clean.downloadsPath, this.games)
       if (problem) throw new PlainError(problem)
     }
-    const wasSharing = this.settings.sharing
-    const wasAutoUpdating = this.settings.autoUpdateContent
+    const previous = this.settings
     this.settings = { ...this.settings, ...clean }
     try {
       saveSettings(this.opts.dataPath, this.settings)
     } catch (err) {
       log('Could not save the settings:', err)
     }
-    this.sharingChanged(wasSharing)
-    if (!wasAutoUpdating && this.settings.autoUpdateContent) void this.ready.then(() => this.autoUpdate())
+    this.sharingChanged(previous.sharing)
+    if (!previous.autoUpdateContent && this.settings.autoUpdateContent) void this.ready.then(() => this.autoUpdate())
+    this.opts.settingsChanged?.(this.settings, previous)
     return this.settings
   }
 }

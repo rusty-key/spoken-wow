@@ -106,7 +106,7 @@ function trusted(event: IpcMainInvokeEvent, page: AppPage): boolean {
   return isOurPage(frame.url, page)
 }
 
-export function registerIpc(service: ManagerService, page: AppPage, updater: () => UpdaterState, onStartupSettings?: (settings: Settings) => void): void {
+export function registerIpc(service: ManagerService, page: AppPage, updater: () => UpdaterState): void {
   const handle = (channel: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void => {
     ipcMain.handle(channel, async (event, ...args) => {
       if (!trusted(event, page)) {
@@ -151,12 +151,7 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
   )
   handle(CHANNELS.uninstall, (_e, gameId, pid) => service.uninstall(id(gameId, 'game id'), productId(pid)))
   handle(CHANNELS.cancel, (_e, jobId) => service.cancel(id(jobId, 'job id')))
-  handle(CHANNELS.setSettings, (_e, patch) => {
-    const changes = settingsPatch(patch)
-    const settings = service.setSettings(changes)
-    if ('startAtLogin' in changes || 'minimizeToTray' in changes) onStartupSettings?.(settings)
-    return settings
-  })
+  handle(CHANNELS.setSettings, (_e, patch) => service.setSettings(settingsPatch(patch)))
 
   // Sign-in and the store form carry secrets: handle() logs the thrown error and never the arguments.
   handle(CHANNELS.contributorView, () => service.contributor.view())
