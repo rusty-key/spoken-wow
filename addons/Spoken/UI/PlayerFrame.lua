@@ -557,19 +557,12 @@ function PlayerFrame:InitDisplay()
     self.frame:Hide()
 
     self.frame.background = self.frame:CreateTexture(nil, "BACKGROUND")
-    self.frame.background:SetPoint("TOPLEFT", 8, -8)
-    self.frame.background:SetPoint("BOTTOMRIGHT", -8, 8)
+    -- Keep the default narrator's client/Spoken art exactly on the master frame. Warcraft III
+    -- trim is an overlay; it must not change the box's size or introduce a shell underneath it.
+    self.frame.background:SetAllPoints()
     self.frame.raceTint = self.frame:CreateTexture(nil, "BACKGROUND", nil, 1)
     self.frame.raceTint:SetColorTexture(.28, .08, .45, .34)
     self.frame.raceTint:Hide()
-    self.frame:SetBackdrop({
-        edgeFile = [[Interface\DialogFrame\UI-DialogBox-Gold-Border]],
-        edgeSize = 32,
-        tile = true,
-        tileSize = 32,
-        insets = { left = 8, right = 8, top = 8, bottom = 8 },
-    })
-    self.frame:SetBackdropBorderColor(1, 1, 1, 0)
     self.frame.raceBorderFrame = CreateFrame("Frame", nil, self.frame)
     self.frame.raceBorderFrame:SetFrameLevel(self.frame:GetFrameLevel() + 2)
     self.frame.raceBorderFrame:SetAllPoints(self.frame)
@@ -584,7 +577,6 @@ function PlayerFrame:InitDisplay()
     end
 
     self.frame.container = CreateFrame("Frame", nil, self.frame)
-    self.frame.container:SetFrameLevel(self.frame.raceBorderFrame:GetFrameLevel() + 1)
 
     self.frame:SetScript("OnUpdate", function(_, elapsed) self:Tick(elapsed) end)
 end
@@ -770,23 +762,31 @@ function PlayerFrame:ApplyRaceArt(clip)
     frame.raceBorderFrame:SetShown(look ~= nil)
     frame.raceTint:SetShown(look ~= nil)
     if not look then
-        frame:SetBackdropBorderColor(1, 1, 1, 1)
-        frame.portrait.border.texture:SetAlpha(1)
-        if frame.portrait.border.texture.SetBlendMode then
-            frame.portrait.border.texture:SetBlendMode("BLEND")
+        -- Nothing in the default path is painted here. If a Warcraft III line just ended, restore
+        -- the portrait state that master leaves behind; otherwise leave the stock path untouched.
+        if self.raceArtApplied then
+            frame.portrait.border.texture:SetAlpha(1)
+            if frame.portrait.border.texture.SetBlendMode then
+                frame.portrait.border.texture:SetBlendMode("BLEND")
+            end
+            if frame.portrait.border.texture.SetDesaturated then
+                frame.portrait.border.texture:SetDesaturated(false)
+                frame.portrait.border.highlight:SetDesaturated(false)
+            end
+            if frame.portrait.background.SetDesaturated then
+                frame.portrait.background:SetDesaturated(false)
+            end
+            frame.portrait.border.highlight:Hide()
+            frame.portrait.border.texture:SetVertexColor(1, 1, 1)
+            frame.portrait.background:SetVertexColor(1, 1, 1)
+            frame.container:SetFrameLevel(frame:GetFrameLevel() + 1)
+            self.raceArtApplied = nil
         end
-        if frame.portrait.border.texture.SetDesaturated then
-            frame.portrait.border.texture:SetDesaturated(false)
-            frame.portrait.border.highlight:SetDesaturated(false)
-        end
-        if frame.portrait.background.SetDesaturated then
-            frame.portrait.background:SetDesaturated(false)
-        end
-        frame.portrait.border.highlight:Hide()
-        frame.portrait.border.texture:SetVertexColor(1, 1, 1)
-        frame.portrait.background:SetVertexColor(1, 1, 1)
         return
     end
+    -- The Warcraft III trim sits above the captions; the default narrator keeps the master's
+    -- implicit child level because the trim is hidden there.
+    frame.container:SetFrameLevel(frame.raceBorderFrame:GetFrameLevel() + 1)
     frame.raceTint:ClearAllPoints()
     frame.raceTint:SetPoint("TOPLEFT", frame, "TOPLEFT",
         FrameConfig().HidePortrait and BARE_LEFT - 8 or NAME_X - 8, -8)
@@ -818,6 +818,7 @@ function PlayerFrame:ApplyRaceArt(clip)
     end
     frame.portrait.background:SetVertexColor(look.squareRing and squareR or r,
         look.squareRing and squareG or g, look.squareRing and squareB or b)
+    self.raceArtApplied = true
 end
 
 function PlayerFrame:PaintRaceTrim(look)

@@ -43,6 +43,7 @@ do
 end
 local F = env.PlayerFrame
 Expect("the default narrator skin keeps the original art", env.Addon:NarratorSkin(), "default")
+Expect("the default narrator frame keeps master's borderless shell", F.frame:GetBackdrop(), nil)
 Expect("quest clips use racial art", F.IsRaceClip({ source = { key = "quests" } }), true)
 Expect("gossip clips use racial art", F.IsRaceClip({ source = { key = "gossip" } }), true)
 Expect("place clips keep their original art", F.IsRaceClip({ source = { key = "places" } }), false)
@@ -601,10 +602,7 @@ ExpectOf("...the portrait frame 143 across, 5 in and 6 down from the window's co
     local ring = F.frame.portrait.border.texture
     return ring:GetWidth() .. " " .. (21 + ring.anchor.x) .. " " .. (-21 + ring.anchor.y)
 end, "143 5 -6")
-ExpectOf("...the box sits inside the window border", function()
-    local point, _, _, x, y = F.frame.background:GetPoint()
-    return tostring(point == "BOTTOMRIGHT" and x == -8 and y == 8)
-end, "true")
+Expect("...the box keeps master's full-frame fade", F.frame.background:GetPoint(), nil)
 env.Addon.db.profile.Frame.BronzeTint = false
 F:RefreshConfig()
 Expect("Bronze Border off: the same art", ArtOf(F.frame),
