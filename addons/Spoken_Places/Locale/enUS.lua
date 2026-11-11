@@ -39,6 +39,7 @@ local L = {}
 -- pull looks exactly like narration that failed.
 L.QUEUE_HELD_COMBAT = "Waiting for combat to end."
 L.QUEUE_HELD_CINEMATIC = "Waiting for the cinematic to end."
+L.QUEUE_HELD_DEAD = "Waiting until you are alive."
 L.QUEUE_HELD_OFF = "Narration is turned off."
 
 --------------------------------------------------------------------------------

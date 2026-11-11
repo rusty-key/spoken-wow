@@ -47,6 +47,7 @@ L.CONTINENT_COUNT_ONE = "1 continente"
 
 L.QUEUE_HELD_COMBAT = "Esperando que termine el combate."
 L.QUEUE_HELD_CINEMATIC = "Esperando que termine la cinemática."
+L.QUEUE_HELD_DEAD = "Esperando a que revivas."
 L.QUEUE_HELD_OFF = "La narración está desactivada."
 L.NOT_DISCOVERED = "Aún no has descubierto este lugar. Ve allí para leer su historia."
 L.MAP_LORE_FOR_FMT = "historia de %1$s"

@@ -44,6 +44,7 @@ L.CONTINENT_COUNT_ONE = "1 Kontinent"
 
 L.QUEUE_HELD_COMBAT = "Wartet auf Kampfende."
 L.QUEUE_HELD_CINEMATIC = "Wartet auf das Ende der Zwischensequenz."
+L.QUEUE_HELD_DEAD = "Warten, bis du wieder lebendig bist."
 L.QUEUE_HELD_OFF = "Vertonung ist ausgeschaltet."
 L.NOT_DISCOVERED = "Diesen Ort hast du noch nicht entdeckt. Geh hin, um seine Geschichte zu lesen."
 L.MAP_LORE_FOR_FMT = "Geschichte von %1$s"

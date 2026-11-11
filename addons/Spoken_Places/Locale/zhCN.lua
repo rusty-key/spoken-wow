@@ -44,6 +44,7 @@ L.CONTINENT_COUNT_ONE = "1 块大陆"
 
 L.QUEUE_HELD_COMBAT = "等待战斗结束。"
 L.QUEUE_HELD_CINEMATIC = "等待过场动画结束。"
+L.QUEUE_HELD_DEAD = "等待复活。"
 L.QUEUE_HELD_OFF = "旁白已关闭。"
 L.NOT_DISCOVERED = "你还没有发现这个地点。前往那里即可阅读它的剧情。"
 L.MAP_LORE_FOR_FMT = "%1$s的剧情"

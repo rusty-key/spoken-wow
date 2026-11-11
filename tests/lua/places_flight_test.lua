@@ -149,5 +149,22 @@ Expect("manual lore still plays while dead", Z:PlayLore(1411), true)
 Spoken:StopAll()
 world.playerDead = false
 
+-- A place queued before death must be held as well; otherwise its sound can start while the
+-- player is running back as a ghost.
+Z = Boot("16001", false, false)
+Z:Set("autoplayExplored", true)
+stub.Advance(2)
+stub.FireEvent("ZONE_CHANGED")
+Expect("autoplay starts before death", Spoken:IsPlaying(), true)
+world.playerDead = true
+stub.FireEvent("PLAYER_DEAD")
+Expect("death stops active autoplay", Spoken:IsPlaying(), false)
+local current = Spoken:GetCurrent()
+Expect("dead autoplay is held", current and Spoken:GetHeldReason(current) or nil, Z.L.QUEUE_HELD_DEAD)
+world.playerDead = false
+stub.FireEvent("PLAYER_ALIVE")
+stub.Advance(1.1)
+Expect("autoplay resumes after becoming alive", Spoken:IsPlaying(), true)
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places flight tests passed")

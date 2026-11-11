@@ -44,6 +44,7 @@ L.CONTINENT_COUNT_ONE = "대륙 1개"
 
 L.QUEUE_HELD_COMBAT = "전투 종료 대기 중."
 L.QUEUE_HELD_CINEMATIC = "시네마틱 종료 대기 중."
+L.QUEUE_HELD_DEAD = "부활할 때까지 기다리는 중."
 L.QUEUE_HELD_OFF = "내레이션이 꺼져 있습니다."
 L.NOT_DISCOVERED = "아직 발견하지 못한 곳입니다. 그곳에 가 보면 이야기를 읽을 수 있습니다."
 L.MAP_LORE_FOR_FMT = "%1$s의 이야기"

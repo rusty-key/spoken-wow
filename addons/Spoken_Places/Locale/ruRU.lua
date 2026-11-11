@@ -44,6 +44,7 @@ L.CONTINENT_COUNT_ONE = "1 континент"
 
 L.QUEUE_HELD_COMBAT = "Ожидание конца боя."
 L.QUEUE_HELD_CINEMATIC = "Ожидание конца ролика."
+L.QUEUE_HELD_DEAD = "Ожидание воскрешения."
 L.QUEUE_HELD_OFF = "Озвучка выключена."
 L.NOT_DISCOVERED = "Вы ещё не открыли это место. Побывайте там, чтобы прочитать его историю."
 L.MAP_LORE_FOR_FMT = "история: %1$s"

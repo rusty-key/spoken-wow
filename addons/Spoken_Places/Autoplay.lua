@@ -128,7 +128,12 @@ end
 
 -- A ghost travelling back to the corpse should have the world's quiet soundscape. Keep this
 -- guard in the autoplay path so manually requested lore still works while dead.
+local deadEvent = false
+
 local function PlayerIsDead()
+	if deadEvent then
+		return true
+	end
 	if UnitIsDeadOrGhost then
 		return UnitIsDeadOrGhost("player") and true or false
 	end
@@ -151,6 +156,9 @@ local function HoldReason(item)
 	end
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
 		return SpokenPlaces.L.QUEUE_HELD_OFF
+	end
+	if PlayerIsDead() then
+		return SpokenPlaces.L.QUEUE_HELD_DEAD
 	end
 	if UnitAffectingCombat("player") then
 		return SpokenPlaces.L.QUEUE_HELD_COMBAT
@@ -632,6 +640,9 @@ local DISCOVERY_EVENTS = {
 local HOLD_EVENTS = {
 	CINEMATIC_START = true,
 	PLAY_MOVIE = true,
+	PLAYER_DEAD = true,
+	PLAYER_ALIVE = true,
+	PLAYER_UNGHOST = true,
 	PLAYER_REGEN_DISABLED = true,
 }
 
@@ -679,6 +690,11 @@ function SpokenPlaces:SetupAutoplay()
 	frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	frame:SetScript("OnEvent", function(_, event, ...)
+		if event == "PLAYER_DEAD" then
+			deadEvent = true
+		elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+			deadEvent = false
+		end
 		if HOLD_EVENTS[event] then
 			-- Off, a story already speaking plays through the fight. One not yet started still
 			-- waits for combat to end (HoldReason).

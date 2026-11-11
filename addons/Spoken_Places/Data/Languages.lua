@@ -6,21 +6,22 @@
 -- Interface strings and audio are counted but not required; strings fall
 -- back to English per key.
 --
--- Measured against English: 841 lore lines, 68 interface strings.
+-- Measured against English: 925 lore lines, 71 interface strings.
 
 local _, SpokenPlaces = ...
 
 SpokenPlaces.Languages = {
-	{ code = "enUS", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 0, audio = true, ready = true },
-	{ code = "deDE", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 774, audio = true, ready = true },
-	{ code = "esES", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 837, audio = true, ready = true },
-	{ code = "esMX", lore = { done = 841, total = 841 }, strings = { done = 0, total = 68 }, aliases = 805, audio = true, ready = true },
-	{ code = "frFR", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 850, audio = true, ready = true },
-	{ code = "itIT", lore = { done = 0, total = 841 }, strings = { done = 0, total = 68 }, aliases = 0, audio = false, ready = false },
-	{ code = "ptBR", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 808, audio = true, ready = true },
-	{ code = "ruRU", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 857, audio = true, ready = true },
-	{ code = "koKR", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 860, audio = true, ready = true },
-	{ code = "zhCN", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 860, audio = true, ready = true },
-	{ code = "zhTW", lore = { done = 841, total = 841 }, strings = { done = 68, total = 68 }, aliases = 868, audio = true, ready = true },
-	{ code = "viVN", lore = { done = 0, total = 841 }, strings = { done = 0, total = 68 }, aliases = 0, audio = false, ready = false },
+	{ code = "enUS", lore = { done = 925, total = 925 }, strings = { done = 71, total = 71 }, aliases = 0, audio = true, ready = true },
+	{ code = "deDE", lore = { done = 897, total = 925 }, strings = { done = 71, total = 71 }, aliases = 774, audio = true, ready = false },
+	{ code = "esES", lore = { done = 841, total = 925 }, strings = { done = 71, total = 71 }, aliases = 837, audio = true, ready = false },
+	{ code = "esMX", lore = { done = 841, total = 925 }, strings = { done = 0, total = 71 }, aliases = 805, audio = true, ready = false },
+	{ code = "frFR", lore = { done = 841, total = 925 }, strings = { done = 71, total = 71 }, aliases = 850, audio = true, ready = false },
+	{ code = "itIT", lore = { done = 0, total = 925 }, strings = { done = 0, total = 71 }, aliases = 0, audio = false, ready = false },
+	{ code = "plPL", lore = { done = 0, total = 925 }, strings = { done = 0, total = 71 }, aliases = 0, audio = false, ready = false },
+	{ code = "ptBR", lore = { done = 841, total = 925 }, strings = { done = 71, total = 71 }, aliases = 808, audio = true, ready = false },
+	{ code = "ruRU", lore = { done = 841, total = 925 }, strings = { done = 71, total = 71 }, aliases = 857, audio = true, ready = false },
+	{ code = "koKR", lore = { done = 841, total = 925 }, strings = { done = 71, total = 71 }, aliases = 860, audio = true, ready = false },
+	{ code = "zhCN", lore = { done = 841, total = 925 }, strings = { done = 71, total = 71 }, aliases = 860, audio = true, ready = false },
+	{ code = "zhTW", lore = { done = 841, total = 925 }, strings = { done = 71, total = 71 }, aliases = 868, audio = true, ready = false },
+	{ code = "viVN", lore = { done = 0, total = 925 }, strings = { done = 0, total = 71 }, aliases = 0, audio = false, ready = false },
 }
