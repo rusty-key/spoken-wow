@@ -1,10 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { Catalog, JobProgress } from '../src/shared/types'
 import { ManagerService } from '../src/main/service'
-import { loadSettings } from '../src/main/state'
+import { loadSettings, saveState } from '../src/main/state'
 import { makeGame, makeGameFolders, serveBuffer, sha256, startServer, tmpDir, toc, write, yazlZip, type TestServer } from './helpers'
 
 let server: TestServer | null = null
@@ -13,7 +13,7 @@ afterEach(async () => {
   server = null
 })
 
-async function setup() {
+async function setup(opts: { gate?: Promise<void> } = {}) {
   const base = tmpDir()
   const game = await makeGame(base)
   const zip = await yazlZip([
@@ -21,6 +21,7 @@ async function setup() {
     { name: 'Spoken/Spoken.lua', data: 'x' }
   ])
   server = await startServer((req, res) => serveBuffer(req, res, zip))
+  const downloads = server.url
   const releases = [
     {
       tag_name: 'spoken/v3.5.0',
@@ -47,6 +48,7 @@ async function setup() {
       githubCalls++
       return new Response(JSON.stringify(releases), { status: 200, headers: { etag: '"x"', 'content-type': 'application/json' } })
     }
+    if (opts.gate && String(url).startsWith(downloads)) await opts.gate
     return fetch(url, init)
   }) as unknown as typeof fetch
   const sent: { channel: string; payload: unknown }[] = []
@@ -80,6 +82,9 @@ function waitFor(sent: { channel: string; payload: unknown }[], jobId: string): 
     }, 10)
   })
 }
+
+const jobsFor = (sent: { channel: string; payload: unknown }[], productId: string): JobProgress[] =>
+  sent.filter((s) => s.channel === CHANNELS.jobProgress && (s.payload as JobProgress).productId === productId).map((s) => s.payload as JobProgress)
 
 describe('ManagerService', () => {
   it('scans, refreshes the catalog, reports statuses, installs and removes', async () => {
@@ -117,6 +122,104 @@ describe('ManagerService', () => {
     expect(githubCalls()).toBe(1)
     await svc.refreshCatalog(true)
     expect(githubCalls()).toBe(2)
+  })
+
+  describe('automatic content updates', () => {
+    const spokenJobs = (sent: { channel: string; payload: unknown }[]) => jobsFor(sent, 'spoken')
+    const oldSpoken = (dir: string) => write(path.join(dir, 'Spoken.toc'), toc('Spoken', '3.4.0'))
+
+    it('updates installed official content after a release check', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+
+      const job = spokenJobs(sent)[0]!.jobId
+      expect((await waitFor(sent, job)).phase).toBe('done')
+      expect((await svc.statuses(game.id)).find((s) => s.productId === 'spoken')).toMatchObject({
+        state: 'up-to-date',
+        installedVersion: '3.5.0'
+      })
+    })
+
+    it('updates when turned on with a catalog already loaded', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      await svc.refreshCatalog(true)
+      expect(spokenJobs(sent)).toHaveLength(0)
+
+      svc.setSettings({ autoUpdateContent: true })
+      await vi.waitFor(() => expect(spokenJobs(sent)).not.toHaveLength(0))
+      expect((await waitFor(sent, spokenJobs(sent)[0]!.jobId)).phase).toBe('done')
+    })
+
+    it('does nothing while the setting is off', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      expect(spokenJobs(sent)).toHaveLength(0)
+    })
+
+    it('leaves a linked folder alone', async () => {
+      const { svc, game, sent } = await setup()
+      const checkout = path.join(tmpDir(), 'Spoken')
+      oldSpoken(checkout)
+      fs.symlinkSync(checkout, path.join(game.addOnsPath, 'Spoken'), 'dir')
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      expect(spokenJobs(sent)).toHaveLength(0)
+    })
+
+    it('leaves a version the player picked', async () => {
+      const { svc, game, sent, data } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      saveState(data, {
+        version: 1,
+        manualGames: [],
+        hiddenGames: [],
+        installs: { [game.id]: { spoken: { version: '3.4.0', folders: ['Spoken'], installedAt: '', tag: 'spoken/v3.4.0', pinned: true } } }
+      })
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      expect(spokenJobs(sent)).toHaveLength(0)
+    })
+
+    it('pins only a version older than the newest', async () => {
+      const { svc, game, sent, data } = await setup()
+      await svc.refreshCatalog(true)
+      expect((await waitFor(sent, svc.install(game.id, 'spoken', { version: '3.5.0' }))).phase).toBe('done')
+      const state = JSON.parse(fs.readFileSync(path.join(data, 'state.json'), 'utf8'))
+      expect(state.installs[game.id].spoken.pinned).toBeUndefined()
+    })
+
+    it('does not queue a cancelled update again until the player checks by hand', async () => {
+      let open!: () => void
+      const gate = new Promise<void>((resolve) => (open = resolve))
+      const { svc, game, sent } = await setup({ gate })
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+
+      const first = spokenJobs(sent)[0]!.jobId
+      svc.jobs.cancel(first)
+      open()
+      expect((await waitFor(sent, first)).phase).toBe('cancelled')
+
+      svc.setSettings({ lastGameId: game.id })
+      await svc.refreshCatalog(false)
+      await svc.autoUpdate()
+      expect(new Set(spokenJobs(sent).map((p) => p.jobId))).toEqual(new Set([first]))
+
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      const again = spokenJobs(sent).find((p) => p.jobId !== first)
+      expect(again).toBeDefined()
+      expect((await waitFor(sent, again!.jobId)).phase).toBe('done')
+    })
   })
 
   it('turns "no release yet" and an unknown version into an error job, not a rejection', async () => {
