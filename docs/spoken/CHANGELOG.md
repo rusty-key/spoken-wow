@@ -9,7 +9,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   opens the boss's story, portrait and Report button. OpenMap remains an optional integration, so
   players without it see no change. *([anon1231823](https://github.com/anon1231823))*
 - **Boss models show in the story panel beside the map on WoW Forever**, from Leatrix Maps too. The
-  Forever client drew the map as one picture, and a 3D model inside it stayed blank.
+  Forever client left them blank there.
   *([rusty-key](https://github.com/rusty-key))*
 - **Place stories work on [OpenMap](https://github.com/openmap-world/openmap)'s world map.**
   Areas light up under the cursor again, in any zone on screen, and a click opens the story of

@@ -27,17 +27,9 @@ local function IsGamepadUI()
 	return GetCVar("InputDeviceInterfaceStyle") == "1"
 end
 
--- Whether the map is drawn as one picture (Forever's: frameBuffer in Blizzard_WorldMap.xml). A
--- 3D model inside it draws nothing: a boss's model beside the map stayed blank.
-local function MapBuffered()
-	if not WorldMapFrame.IsFrameBuffer then return false end
-	local ok, buffered = pcall(WorldMapFrame.IsFrameBuffer, WorldMapFrame)
-	return ok and buffered == true
-end
-
--- Inside the map, unless the gamepad UI is on (NewPanel) or the map is drawn as one picture.
+-- Inside the map, unless the gamepad UI is on (NewPanel).
 local function Host()
-	if IsGamepadUI() or MapBuffered() then return UIParent end
+	if IsGamepadUI() then return UIParent end
 	return WorldMapFrame
 end
 
@@ -193,6 +185,26 @@ local function BuildPanel()
 	end
 	page = SpokenPlaces:CreateLorePage(holder, "log")
 	panel.page = page
+	-- A boss's 3D model draws nothing while it is under the panel on the Forever client, in the map
+	-- or beside it, nor below HIGH strata, though the Compendium's shows; why is not known. It draws
+	-- on a stage of its own under UIParent, at HIGH as the Compendium is, laid over the page's text
+	-- and clipped to it as the text's scroll frame would. It follows the panel's scale and alpha
+	-- (FollowMap, its OnUpdate).
+	local body = page.body
+	if body.model and body.frame then
+		local stage = CreateFrame("Frame", nil, UIParent)
+		stage:SetFrameStrata("HIGH")
+		stage:SetAllPoints(body.frame)
+		if stage.SetClipsChildren then stage:SetClipsChildren(true) end
+		stage:SetShown(body.frame:IsVisible())
+		body.frame:HookScript("OnShow", function() stage:Show() end)
+		body.frame:HookScript("OnHide", function() stage:Hide() end)
+		body.model:SetParent(stage)
+		-- Not the map's child, so it fades with the map itself: the movement fader changes the map's
+		-- alpha every frame as the player walks.
+		stage:SetScript("OnUpdate", function(self) self:SetAlpha(WorldMapFrame:GetAlpha() or 1) end)
+		panel.stage = stage
+	end
 
 	-- The rim on a frame of its own above the page: drawn on the panel itself it would sit under
 	-- the page, which, being a child, is drawn over everything its parent draws.
@@ -335,6 +347,9 @@ local function FollowMap()
 		elseif mapScale and uiScale and uiScale > 0 then
 			frame:SetScale(mapScale / uiScale)
 		end
+	end
+	if panel.stage and uiScale and uiScale > 0 then
+		panel.stage:SetScale(panel:GetEffectiveScale() / uiScale)
 	end
 	FollowAlpha()
 end
