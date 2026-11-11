@@ -21,8 +21,13 @@ Expect("a Discord provider that is not connected is not an active voice session"
     Spoken:IsDiscordVoiceActive(), false)
 
 stub.voice.provider, stub.voice.connected, stub.voice.channel = 2, true, nil
+stub.FireEvent("VOICE_CHAT_CHANNEL_ACTIVATED", 7)
 stub.FireEvent("VOICE_CHAT_ACTIVE_VOICE_PROVIDER_CHANGED", 2)
 Expect("a connected Discord provider is detected without a channel ID", Spoken:IsDiscordVoiceActive(), true)
+
+stub.FireEvent("VOICE_CHAT_CHANNEL_DEACTIVATED", 7)
+Expect("leaving the channel clears the active Discord state", Spoken:IsDiscordVoiceActive(), false)
+stub.FireEvent("VOICE_CHAT_CHANNEL_ACTIVATED", 7)
 
 local held = H.Clip()
 source:Enqueue(held)

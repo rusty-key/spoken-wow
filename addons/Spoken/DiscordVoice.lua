@@ -5,6 +5,7 @@ setfenv(1, SpokenEnv)
 -- channel, and only the latter should silence Spoken.
 DiscordVoice = {
     active = false,
+    channelActive = false,
 }
 
 local EVENTS = {
@@ -36,7 +37,7 @@ end
 
 -- This is deliberately stricter than checking the selected provider. A linked Discord account
 -- or a provider selected in settings is not an active voice session until the client reports a
--- connected voice service.
+-- connected service and an activated channel.
 function DiscordVoice:IsActive()
     if not self:IsAvailable() then
         return false
@@ -56,21 +57,13 @@ function DiscordVoice:IsActive()
         end
     end
 
-    local channel = C_VoiceChat.GetActiveChannelID
-    if type(channel) == "function" then
-        -- Discord voice can report a connected provider without exposing a channel ID.
-        -- The connection state above is the authoritative live-session signal.
-        ok = pcall(channel)
-        if not ok then
-            return false
-        end
-    elseif not hasConnectionState then
+    if not hasConnectionState and not self.channelActive then
         -- Without either signal there is no safe way to distinguish a configured provider
         -- from a live voice session.
         return false
     end
 
-    return true
+    return self.channelActive
 end
 
 function DiscordVoice:IsEnabled()
@@ -109,7 +102,12 @@ for _, event in ipairs(EVENTS) do
     -- Some clients do not know the Forever-only event names.
     pcall(frame.RegisterEvent, frame, event)
 end
-frame:SetScript("OnEvent", function()
+frame:SetScript("OnEvent", function(_, event)
+    if event == "VOICE_CHAT_CHANNEL_ACTIVATED" then
+        DiscordVoice.channelActive = true
+    elseif event == "VOICE_CHAT_CHANNEL_DEACTIVATED" or event == "VOICE_CHAT_LOGOUT" then
+        DiscordVoice.channelActive = false
+    end
     DiscordVoice:Refresh()
 end)
 
