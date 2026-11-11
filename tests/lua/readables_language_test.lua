@@ -316,14 +316,20 @@ Expect("an English clip says so for its subtitle", B:ClipFor(ONLY_ENGLISH).prese
 SpokenReadablesSettings.voiceLanguage = "auto"
 Expect("Auto never lands on it", B:GetVoiceLanguage(), "enUS")
 
--- A pack released before the .toc key has only its Lua to say so: the registry knows it from the
--- addon's own load, before any menu lists the packs.
-B = Install({ ENGLISH, HEBREW }, "enUS")
+-- A pack released before the .toc key has only its Lua to say so, and loads after the addon: the
+-- registry knows it once the player has logged in, before any menu lists the packs.
+B = Install({ ENGLISH }, "enUS")
 assert(loadfile(READABLES .. "Events.lua"))("Spoken_Readables", B)
 stub.FireEvent("ADDON_LOADED", "Spoken_Readables")
+_G.SpokenReadablesAudioPacks[HEBREW.addon] = { version = 1, addon = HEBREW.addon,
+    language = "heIL", pages = HEBREW.pages }
 codes = {}
 for _, locale in ipairs(Spoken:InstalledLanguages()) do table.insert(codes, locale.code) end
-Expect("a Lua-only pack's language is declared when the addon loads", table.concat(codes, " "), "enUS heIL")
+Expect("a Lua-only pack is not known before the login", table.concat(codes, " "), "enUS")
+stub.FireEvent("PLAYER_LOGIN")
+codes = {}
+for _, locale in ipairs(Spoken:InstalledLanguages()) do table.insert(codes, locale.code) end
+Expect("a Lua-only pack's language is declared at login", table.concat(codes, " "), "enUS heIL")
 B:BuildAudioPacks()
 Expect("...and listing the packs again declares nothing twice", #Spoken:Language("heIL").folders, 1)
 

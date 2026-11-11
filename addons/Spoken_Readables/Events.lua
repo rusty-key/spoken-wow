@@ -25,6 +25,7 @@ local frame = CreateFrame("Frame")
 SpokenReadables.eventFrame = frame
 
 frame:RegisterEvent("ADDON_LOADED")
+frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("ITEM_TEXT_BEGIN")
 frame:RegisterEvent("ITEM_TEXT_READY")
@@ -150,12 +151,14 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		-- Every addon's load fires this; only this addon's own restores SpokenReadablesSettings.
 		if payload == ADDON_NAME then
 			SpokenReadables:InitDB()
-			-- Listing the packs tells Spoken's registry the language of each one whose .toc names
-			-- none, which every pack released before that key is. Done here, the packs having loaded
-			-- first, so that no menu is built before they are known.
-			SpokenReadables:GetAudioPacks()
 			frame:UnregisterEvent("ADDON_LOADED")
 		end
+	elseif name == "PLAYER_LOGIN" then
+		-- Listing the packs tells Spoken's registry the language of each one whose .toc names none,
+		-- which every pack released before that key is. Not at this addon's own load: the language
+		-- and community packs load after it and have declared nothing yet. Every addon has loaded
+		-- by now, and no menu has been built.
+		SpokenReadables:GetAudioPacks()
 	elseif name == "PLAYER_ENTERING_WORLD" then
 		SpokenReadables:SetupSource()
 		if SpokenReadables.SetupOpeners then
