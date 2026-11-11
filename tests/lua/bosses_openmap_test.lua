@@ -61,6 +61,13 @@ function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
 function Bosses:PlayStory() end
 
+-- UI/Bosses.lua's, which MapLore.lua reuses.
+Bosses.Name = function(entry) return entry[GetLocale()] or entry[1] end
+Bosses.Model = function(map, key)
+    local entry = SpokenBossCreatures[map] and SpokenBossCreatures[map][key]
+    return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
+end
+Bosses.Unlocked = function() return false end
 assert(loadfile(here .. "/../../addons/Spoken_Bosses/MapLore.lua"))("Spoken_Bosses", Bosses)
 assert(loadfile(here .. "/../../addons/Spoken_Bosses/OpenMap.lua"))("Spoken_Bosses", Bosses)
 stub.FireEvent("PLAYER_ENTERING_WORLD")

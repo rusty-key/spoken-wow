@@ -6,7 +6,7 @@ local _, Bosses = ...
 local M = {}
 Bosses.MapLore = M
 
-M.PLAY = {
+local PLAY = {
 	has = function(target)
 		return Bosses.GetAudioClip ~= nil and Bosses:GetAudioClip(target[1], target[2]) ~= nil
 	end,
@@ -14,9 +14,7 @@ M.PLAY = {
 	start = function(target) Bosses:PlayStory(target[1], target[2]) end,
 }
 
-function M.BossName(boss)
-	return boss[GetLocale and GetLocale() or "enUS"] or boss[1]
-end
+M.BossName = Bosses.Name
 
 function M.BossNameKey(name)
 	if type(name) ~= "string" then return end
@@ -61,21 +59,35 @@ local function DungeonEntry(instanceID)
 end
 
 --- The instance whose map `mapID` is, walking up from a floor with its own map ID (Gnomeregan
---- 226/228). Only for a map the client has open on that instance: instance IDs and UI map IDs are
---- separate numberings, so equal numbers elsewhere prove nothing.
-function M.DungeonInstance(mapID)
+--- 226/228), and the zone listing it. Only for a map the client has open on that instance:
+--- instance IDs and UI map IDs are separate numberings, so equal numbers elsewhere prove nothing.
+function M.DungeonAt(mapID)
 	for _, map in ipairs(MapChain(mapID)) do
-		local dungeon = DungeonEntry(map)
-		if dungeon then return dungeon.dungeon end
+		local dungeon, zone = DungeonEntry(map)
+		if dungeon then return dungeon.dungeon, zone end
 	end
 end
 
---- The zone listing the dungeon whose map `mapID` is, as DungeonInstance finds it.
-function M.DungeonZone(mapID)
-	for _, map in ipairs(MapChain(mapID)) do
-		local _, zone = DungeonEntry(map)
-		if zone then return zone end
+--- A boss as the adapters pass it around.
+function M.Found(map, boss)
+	return { map = map, key = boss.key, boss = boss }
+end
+
+--- The boss named `name` (a key from BossNameKey): the one on a map `prefer(map)` accepts, else
+--- the only one of that name, else nil.
+function M.BossByName(wanted, prefer)
+	if not wanted then return end
+	local any
+	for map, bosses in pairs(_G.SpokenBosses and SpokenBosses.maps or {}) do
+		for _, boss in ipairs(bosses) do
+			if M.BossNameKey(M.BossName(boss)) == wanted then
+				if prefer and prefer(map) then return M.Found(map, boss) end
+				if any then return end
+				any = M.Found(map, boss)
+			end
+		end
 	end
+	return any
 end
 
 function M.DungeonInstanceByName(name)
@@ -88,13 +100,6 @@ function M.DungeonInstanceByName(name)
 	end
 end
 
-function M.BossModel(map, key)
-	local entry = _G.SpokenBossCreatures and SpokenBossCreatures[map]
-	entry = entry and entry[key]
-	if entry and entry.display then
-		return { creatureID = entry.creature, displayID = entry.display }
-	end
-end
 
 function M.CurrentMapID()
 	if not WorldMapFrame then return end
@@ -105,10 +110,38 @@ function M.CurrentMapID()
 	return WorldMapFrame.mapID
 end
 
+-- The map the last story was shown beside: clearing it there still works after the map moved.
+local shownOn
+
+function M.Show(mapID, entry)
+	shownOn = mapID
+	return SpokenPlaces:ShowMapStory(mapID, entry)
+end
+
 function M.ClearStory()
 	if _G.SpokenPlaces and SpokenPlaces.ClearMapStory then
-		SpokenPlaces:ClearMapStory(M.CurrentMapID())
+		SpokenPlaces:ClearMapStory(shownOn or M.CurrentMapID())
 	end
+	shownOn = nil
+end
+
+--- Fills a place's story into a panel `entry`: locked, pending or told. `place, key` is the story,
+--- `toldOn` the place whose words are played and reported (a zone's fallback), else `place, key`.
+function M.PlaceEntry(entry, story, place, key, toldOn)
+	local toldKey = key
+	if toldOn then toldKey = nil else toldOn = place end
+	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(place, key) then
+		entry.text = SpokenPlaces.L and SpokenPlaces.L.NOT_DISCOVERED or "You have not discovered this place yet."
+	elseif SpokenPlaces.IsPending and SpokenPlaces:IsPending(story) then
+		entry.contribute = { place, key }
+		entry.lore = { place, key }
+	else
+		entry.text = story.full or story.short or ""
+		entry.audio = { toldOn, toldKey }
+		entry.report = { toldOn, toldKey }
+		entry.lore = { toldOn, toldKey }
+	end
+	return entry
 end
 
 --- Shows instance `instanceID`'s story in the panel beside map `mapID`. False where it has none.
@@ -124,45 +157,32 @@ function M.ShowDungeon(mapID, instanceID)
 
 	local title = SpokenCompendium and SpokenCompendium.DungeonName and SpokenCompendium.DungeonName(instanceID)
 		or tostring(instanceID)
-	local entry = {
+	return M.Show(mapID, M.PlaceEntry({
 		title = title,
 		subtitle = SpokenPlaces.PlaceLine and SpokenPlaces:PlaceLine(storyMap, storyKey) or "",
-	}
-	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(storyMap, storyKey) then
-		entry.text = SpokenPlaces.L and SpokenPlaces.L.NOT_DISCOVERED or "You have not discovered this place yet."
-	elseif SpokenPlaces.IsPending and SpokenPlaces:IsPending(story) then
-		entry.contribute = { storyMap, storyKey }
-		entry.lore = { storyMap, storyKey }
-	else
-		entry.text = story.full or story.short or ""
-		entry.audio = { storyMap, storyKey }
-		entry.report = { storyMap, storyKey }
-		entry.lore = { storyMap, storyKey }
-	end
-	return SpokenPlaces:ShowMapStory(mapID, entry)
+	}, story, storyMap, storyKey))
 end
 
 --- Shows a boss's story (`found`: { map, key, boss }) in the panel beside map `mapID`.
 function M.ShowBoss(mapID, found)
-	if not mapID or not found or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then
+	if not mapID or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then
 		return false
 	end
 	local story = Bosses:StoryClip(found.map, found.key)
 	local target = story and { found.map, found.key } or nil
 	local text = story and story.present and story.present.transcript or SpokenCompendium.NotWritten()
-	if not Bosses:IsBossFound(found.map, found.key)
-		and not (SpokenBossesSettings and SpokenBossesSettings.unlockUnfound) then
+	if not Bosses:IsBossFound(found.map, found.key) and not Bosses.Unlocked() then
 		text = Bosses.L.BOSS_NOT_FOUND
 		target = nil
 	end
-	return SpokenPlaces:ShowMapStory(mapID, {
+	return M.Show(mapID, {
 		title = M.BossName(found.boss),
 		subtitle = SpokenCompendium.DungeonName(found.map) or "",
 		panelTitle = SpokenPlaces.L and SpokenPlaces.L.BOSS_LORE_TITLE or "Boss lore",
-		model = M.BossModel(found.map, found.key),
+		model = Bosses.Model(found.map, found.key),
 		text = text,
 		target = target,
-		play = M.PLAY,
+		play = PLAY,
 		reportAction = Bosses.ReportAction,
 	})
 end

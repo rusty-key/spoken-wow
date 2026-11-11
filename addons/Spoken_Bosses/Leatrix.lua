@@ -3,8 +3,7 @@
 
 local _, Bosses = ...
 local M = Bosses.MapLore
-local BossName, BossNameKey, IsMapOrChild = M.BossName, M.BossNameKey, M.IsMapOrChild
-local DungeonInstance, DungeonInstanceByName, DungeonZone = M.DungeonInstance, M.DungeonInstanceByName, M.DungeonZone
+local Found, IsMapOrChild, DungeonAt, DungeonInstanceByName = M.Found, M.IsMapOrChild, M.DungeonAt, M.DungeonInstanceByName
 local CurrentMapID = M.CurrentMapID
 
 local byMapCreature
@@ -23,12 +22,12 @@ local function BossFor(mapID, creatureID, bossName)
 				creature = creature and creature[boss.key] and creature[boss.key].creature
 				if creature then
 					byMapCreature[map] = byMapCreature[map] or {}
-					byMapCreature[map][creature] = { map = map, key = boss.key, boss = boss }
+					byMapCreature[map][creature] = Found(map, boss)
 					-- False keeps a future import with a repeated id from opening the wrong boss.
 					if byCreature[creature] ~= nil then
 						byCreature[creature] = false
 					else
-						byCreature[creature] = { map = map, key = boss.key, boss = boss }
+						byCreature[creature] = Found(map, boss)
 					end
 				end
 			end
@@ -37,9 +36,7 @@ local function BossFor(mapID, creatureID, bossName)
 	local alias = LEATRIX_CREATURE_ALIASES[creatureID]
 	if alias and _G.SpokenBosses and SpokenBosses.maps[alias.map] then
 		for _, boss in ipairs(SpokenBosses.maps[alias.map]) do
-			if boss.key == alias.key then
-				return { map = alias.map, key = boss.key, boss = boss }
-			end
+			if boss.key == alias.key then return Found(alias.map, boss) end
 		end
 	end
 	local found = (byMapCreature[mapID] and byMapCreature[mapID][creatureID]) or byCreature[creatureID]
@@ -47,20 +44,7 @@ local function BossFor(mapID, creatureID, bossName)
 
 	-- Names are the only fallback for a creature id Spoken lacks. Prefer the current map, so a name
 	-- shared by two instances (Balnazzar's is) does not open the wrong story.
-	local wanted = BossNameKey(bossName)
-	if not wanted then return end
-	local any
-	for map, bosses in pairs(_G.SpokenBosses and SpokenBosses.maps or {}) do
-		for _, boss in ipairs(bosses) do
-			if BossNameKey(BossName(boss)) == wanted then
-				local candidate = { map = map, key = boss.key, boss = boss }
-				if IsMapOrChild(mapID, map) then return candidate end
-				if any then return end
-				any = candidate
-			end
-		end
-	end
-	return any
+	return M.BossByName(M.BossNameKey(bossName), function(map) return IsMapOrChild(mapID, map) end)
 end
 
 -- Leatrix's zone-map dungeon icons are display-only: the map container gets their click, and the
@@ -79,49 +63,37 @@ local function DungeonPOIAtCursor()
 	return DungeonInstanceByName(info[4])
 end
 
-local ShowLeatrixDungeon = M.ShowDungeon
 local suppressPreviewFallback
 local activeDungeonID
 
 local function ShowLeatrixEntrance(mapID)
 	-- During a preview the world map stays on the entrance zone. The selected dungeon goes first:
 	-- instance IDs and UI map IDs are separate numberings, so equal numbers prove nothing.
-	local instanceID = activeDungeonID or DungeonInstance(mapID)
+	local instanceID = activeDungeonID or DungeonAt(mapID)
 	local dungeonMapID = instanceID or mapID
 	if instanceID then
-		local shown = ShowLeatrixDungeon(mapID, instanceID)
+		local shown = M.ShowDungeon(mapID, instanceID)
 		if shown then suppressPreviewFallback = true; return true end
 	end
 	if not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory or not SpokenPlaces.GetLoreWithFallback then
 		return false
 	end
-	local zone = DungeonZone(dungeonMapID)
+	local zone = select(2, DungeonAt(dungeonMapID))
 	local story, foundOn = zone and SpokenPlaces:GetLoreWithFallback(zone)
 	if not zone or not story then return false end
 
-	local entry = {
+	local entry = M.PlaceEntry({
 		title = SpokenPlaces:GetMapName(zone) or tostring(zone),
 		subtitle = SpokenPlaces.PlaceLine and SpokenPlaces:PlaceLine(zone) or "",
-	}
-	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(zone) then
-		entry.text = SpokenPlaces.L and SpokenPlaces.L.NOT_DISCOVERED or "You have not discovered this place yet."
-	elseif SpokenPlaces.IsPending and SpokenPlaces:IsPending(story) then
-		entry.contribute = { zone, nil }
-		entry.lore = { zone, nil }
-	else
-		entry.text = story.full or story.short or ""
-		entry.audio = { foundOn, nil }
-		entry.report = { foundOn, nil }
-		entry.lore = { foundOn, nil }
-	end
+	}, story, zone, nil, foundOn)
 	if SpokenCompendium and SpokenCompendium.PlaceIcon then entry.icon = SpokenCompendium.PlaceIcon(zone) end
-	return SpokenPlaces:ShowMapStory(mapID, entry)
+	return M.Show(mapID, entry)
 end
 
 function Bosses:ShowLeatrixBoss(mapID, creatureID, bossName)
 	-- A preview keeps the world map on the entrance zone while Leatrix draws the dungeon floor
 	-- itself. Use its instance ID to disambiguate bosses with the same name in different dungeons.
-	local found = BossFor(activeDungeonID or DungeonInstance(mapID) or mapID, creatureID, bossName)
+	local found = BossFor(activeDungeonID or DungeonAt(mapID) or mapID, creatureID, bossName)
 	if not found then return false end
 	suppressPreviewFallback = true
 	return M.ShowBoss(mapID, found)
@@ -243,7 +215,7 @@ end
 ShowLeatrixPreview = function(instanceID)
 	if not instanceID then return end
 	activeDungeonID = instanceID
-	ShowLeatrixDungeon(CurrentMapID(), instanceID)
+	M.ShowDungeon(CurrentMapID(), instanceID)
 end
 
 local function Setup()

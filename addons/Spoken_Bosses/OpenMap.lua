@@ -6,7 +6,7 @@
 
 local _, Bosses = ...
 local M = Bosses.MapLore
-local BossName, BossNameKey, DungeonInstanceByName = M.BossName, M.BossNameKey, M.DungeonInstanceByName
+local BossName, BossNameKey, DungeonInstanceByName, Found = M.BossName, M.BossNameKey, M.DungeonInstanceByName, M.Found
 local CurrentMapID = M.CurrentMapID
 
 -- What DungeonMapShown last reported, while Blizzard's dungeon map is up.
@@ -34,40 +34,26 @@ local function InstanceListing(bossName)
 	end
 end
 
-local function Found(map, boss)
-	return { map = map, key = boss.key, boss = boss }
-end
-
 -- The boss of a row: in the dungeon shown, by name, else by its place in the list, as OpenMap
 -- numbers its rows in the order Spoken lists them; with no dungeon known, a name no other
 -- dungeon shares.
 local function BossFor(bossName, bossIndex)
 	local wanted = BossNameKey(bossName)
 	if not wanted then return end
-	local maps = _G.SpokenBosses and SpokenBosses.maps or {}
 	local instanceID = InstanceListing(bossName) or activeDungeonID
 	if instanceID then
-		local bosses = maps[instanceID] or {}
+		local bosses = _G.SpokenBosses and SpokenBosses.maps[instanceID] or {}
 		for _, boss in ipairs(bosses) do
 			if BossNameKey(BossName(boss)) == wanted then return Found(instanceID, boss) end
 		end
 		local boss = bossIndex and bosses[bossIndex]
 		return boss and Found(instanceID, boss) or nil
 	end
-	local found
-	for map, bosses in pairs(maps) do
-		for _, boss in ipairs(bosses) do
-			if BossNameKey(BossName(boss)) == wanted then
-				if found then return end
-				found = Found(map, boss)
-			end
-		end
-	end
-	return found
+	return M.BossByName(wanted)
 end
 
-local function ShowDungeon(instanceID)
-	if activeDungeonID == instanceID then return end
+local function ShowDungeon(instanceID, again)
+	if activeDungeonID == instanceID and not again then return end
 	activeDungeonID = instanceID
 	if instanceID then M.ShowDungeon(CurrentMapID(), instanceID) end
 end
@@ -140,6 +126,11 @@ end
 
 local events = CreateFrame("Frame")
 
+local function ClearDungeon()
+	activeDungeonID = nil
+	M.ClearStory()
+end
+
 -- OpenMap builds its view the first time a dungeon is opened.
 local function FindView()
 	local frame = _G.OpenMapDungeonView
@@ -148,24 +139,19 @@ local function FindView()
 	events:UnregisterEvent("GLOBAL_MOUSE_UP")
 	frame:HookScript("OnShow", ViewShown)
 	if hooksecurefunc then hooksecurefunc(frame, "Show", ViewShown) end
-	frame:HookScript("OnHide", function()
-		activeDungeonID = nil
-		M.ClearStory()
-	end)
+	frame:HookScript("OnHide", ClearDungeon)
 	if frame:IsShown() then ViewShown() end
 end
 
 function Bosses:OpenMapDungeonMapShown(_, info)
 	currentInfo = info
 	local instance = type(info) == "table" and type(info.instances) == "table" and info.instances[1]
-	activeDungeonID = nil
-	ShowDungeon(instance and DungeonInstanceByName(instance.name))
+	ShowDungeon(instance and DungeonInstanceByName(instance.name), true)
 end
 
 function Bosses:OpenMapDungeonMapHidden()
 	currentInfo = nil
-	activeDungeonID = nil
-	M.ClearStory()
+	ClearDungeon()
 end
 
 local function OpenMapLoaded()
