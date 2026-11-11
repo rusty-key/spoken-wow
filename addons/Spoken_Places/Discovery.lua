@@ -178,6 +178,9 @@ end
 
 -- Where the character stands, recorded on every zone change.
 local function RecordVisit()
+	if SpokenPlaces:IsPlayerDead() then
+		return
+	end
 	local _, mapID = SpokenPlaces:GetLoreWithFallback(SpokenPlaces:GetPlayerMapID())
 	if not mapID then
 		return

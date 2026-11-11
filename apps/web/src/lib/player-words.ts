@@ -67,8 +67,12 @@ const WORDS: Partial<Record<Lang, { m: Words; f: Words }>> = {
 /** German capitalises every noun; the rest only at the start of a sentence. */
 const ALWAYS_CAPITAL: ReadonlySet<Lang> = new Set(["deDE"]);
 
-// Not followed by a letter: see "glued" above.
-const TOKEN = /\$([NnCcRr])(?!\p{L})/gu;
+// A letter that glues to a token. Chinese and Japanese write no spaces at all, and Korean
+// attaches its particles ("$N님"), so a character of theirs after a token is the next word,
+// not the same one.
+const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakana}])\p{L}`;
+// Not followed by a glued letter: see "glued" above.
+const TOKEN = new RegExp(String.raw`\$([NnCcRr])(?!${GLUED})`, "gu");
 // Not $R: "des Reisenden" is no glued s, so "$Rs" stays refused.
 const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
 // Not $N or $R: the class is the only glued plural seen in frFR text. Not before an apostrophe
@@ -92,7 +96,7 @@ const SWAPPED = new RegExp(String.raw`\$[Uu]\s*(${FIELD}+?)(?<=\p{L});(?=\p{L})(
 const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`, "u");
 // TBC Anniversary and Forever send some lines with the token's $ doubled ("$$N, …"), which the
 // client reads as the token itself. Left doubled, a genitive "$$Ns" would say "$Abenteurers".
-const DOUBLED = /\$\$(?=[NnCcRr](?!\p{L})|[NnCc]s(?!\p{L}))/gu;
+const DOUBLED = new RegExp(String.raw`\$\$(?=[NnCcRr](?!${GLUED})|[NnCc]s(?!\p{L}))`, "gu");
 // Whatever may stand between a sentence's end and its first word: space, a line break, an
 // opening quote or Spanish's inverted marks.
 const SENTENCE_START = new RegExp(String.raw`(?:^|[${ENDS}]|\n)[\s"'«„“¡¿]*$`, "u");

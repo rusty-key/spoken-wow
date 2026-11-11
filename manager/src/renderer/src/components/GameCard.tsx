@@ -13,8 +13,6 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
   const { state, actions } = useStore()
   const status = statusOf(state, game.id, 'spoken')
   const spokenState = status?.state ?? 'not-installed'
-  const job = state.jobs[jobKey(game.id, 'spoken')]
-  const busy = jobBusy(job)
 
   const voice = (state.statuses[game.id] ?? []).filter((s) => s.productId !== 'spoken' && s.state !== 'not-installed')
   const langs = [
@@ -22,20 +20,25 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
       voice.map((s) => state.products.find((p) => p.id === s.productId)?.lang).filter((l): l is string => !!l)
     )
   ]
-  const updates = voice.filter((s) => s.state === 'update-available').length
-  // Spoken first: the queue runs a game's jobs in order.
-  const toUpdate = [
-    ...(spokenState === 'update-available' ? ['spoken'] : []),
-    ...voice.filter((s) => s.state === 'update-available' && !s.blockedReason).map((s) => s.productId)
-  ]
+  const outdated = voice.filter((s) => s.state === 'update-available')
+  const updateProducts = [...(spokenState === 'update-available' ? ['spoken'] : []), ...outdated.map((s) => s.productId)]
+  // Update queues one job per product, so show whichever runs, else one that failed.
+  const gameJobs = Object.values(state.jobs).filter((j) => j.gameId === game.id)
+  const job =
+    gameJobs.find(jobBusy) ??
+    gameJobs.find((j) => j.phase === 'error' && updateProducts.includes(j.productId)) ??
+    gameJobs.find((j) => j.productId === 'spoken')
+  const busy = jobBusy(job)
+  const updateAll = async (): Promise<void> => {
+    for (const productId of updateProducts) await actions.install(game.id, productId)
+  }
 
   const primary =
     spokenState === 'not-installed'
-      ? { text: S.home.installSpoken, run: () => void actions.install(game.id, 'spoken') }
-      : toUpdate.length > 0
-        ? { text: S.home.update, run: () => toUpdate.forEach((id) => void actions.install(game.id, id)) }
-        : { text: S.home.manage, run: () => actions.navigate('spoken', game.id) }
-  const canInstall = game.writable && (spokenState !== 'not-installed' || !!status?.latest)
+      ? { text: S.home.installSpoken, disabled: !game.writable || !status?.latest, run: () => void actions.install(game.id, 'spoken') }
+      : updateProducts.length > 0
+        ? { text: S.home.update, disabled: !game.writable, run: () => void updateAll() }
+        : { text: S.home.manage, disabled: false, run: () => actions.navigate('spoken', game.id) }
 
   return (
     <article className="card game-card">
@@ -57,7 +60,7 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
               <p className="status status-error" role="alert">
                 <IconAlert size={14} />
                 <span>{job.message ?? S.jobs.error}</span>
-                <button type="button" className="icon-btn icon-btn-sm" aria-label={S.common.dismiss} onClick={() => actions.dismissJob(jobKey(game.id, 'spoken'))}>
+                <button type="button" className="icon-btn icon-btn-sm" aria-label={S.common.dismiss} onClick={() => actions.dismissJob(jobKey(game.id, job.productId))}>
                   <IconX size={13} />
                 </button>
               </p>
@@ -80,12 +83,12 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
             <span className="flag flag-muted">{S.home.noVoice}</span>
           )}
         </div>
-        {updates > 0 && <p className="flag-line">{S.home.packUpdates(updates)}</p>}
+        {outdated.length > 0 && <p className="flag-line">{S.home.packUpdates(outdated.length)}</p>}
         {!game.writable && <p className="flag-line flag-line-red">{S.common.readOnly}</p>}
 
         <div className="game-actions">
           {!busy && (
-            <button type="button" className="btn btn-primary" disabled={primary.text !== S.home.manage && !canInstall} onClick={primary.run}>
+            <button type="button" className="btn btn-primary" disabled={primary.disabled} onClick={primary.run}>
               {primary.text}
             </button>
           )}
