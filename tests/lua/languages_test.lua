@@ -166,6 +166,72 @@ Expect("a font the client cannot load falls back to the English name", env.Optio
 Expect("...and offers no face", env.Options:LanguageFace("heIL"), nil)
 stub.refusedFonts, stub.TextWidth = nil, nil
 
+-- Layout:Dropdown draws an entry in its own font where `fontOf` gives one, and puts the font back
+-- where it does not: the game's menu buttons are pooled, so a face must not outlive its entry.
+local FACE, OWN = "Interface\\AddOns\\SpokenCommunity_ivrit\\Fonts\\Hebrew.ttf", "Fonts\\FRIZQT__.TTF"
+local function FaceOf(value) return value == "heIL" and FACE or nil end
+local function Layout() return env.SpokenLayout or _G.SpokenLayout end
+env = Install({})
+-- The classic menu.
+local closedText = stub.Widget("FontString", "SpokenLayoutDropdown1Text")
+closedText:SetFont(OWN, 12, "")
+_G.SpokenLayoutDropdown1Text = closedText
+local chosen = "heIL"
+local classic = Layout().New(stub.Widget("Frame"), 25, -16)
+local control = classic:Dropdown("Language", nil, { "deDE", "heIL" }, function() return chosen end,
+    function(v) chosen = v end, nil, tostring, FaceOf)
+-- The stub's widgets do not name themselves, as the game's do.
+function control:GetName() return "SpokenLayoutDropdown1" end
+control.layoutSync()
+local entries = stub.OpenDropdown(control)
+Expect("classic: an entry with a face gets a font object", entries[2].fontObject ~= nil, true)
+Expect("classic: an entry without one gets none", entries[1].fontObject, nil)
+Expect("classic: the closed text wears the chosen entry's face", closedText.fontFile, FACE)
+chosen = "deDE"
+control.layoutSync()
+Expect("classic: ...and gets its own font back", closedText.fontFile, OWN)
+_G.SpokenLayoutDropdown1Text = nil
+
+-- The modern menu: a radio's initializer is added for every entry, and refonts its pooled button.
+local realCreate, realMenu = _G.CreateFrame, _G.MenuUtil
+_G.MenuUtil = {}
+local initializers = {}
+local dropdown = stub.Widget("Frame")
+dropdown.Text = stub.Widget("FontString")
+dropdown.Text:SetFont(OWN, 12, "")
+function dropdown:SetupMenu(generator) self.generator = generator end
+function dropdown:GenerateMenu()
+    initializers = {}
+    self.generator(self, { CreateRadio = function(_, text)
+        local element = { text = text }
+        function element:AddInitializer(fn) initializers[text] = fn end
+        return element
+    end })
+end
+_G.CreateFrame = function(kind, name, parent, template)
+    if template == "SettingsDropdownWithButtonsTemplate" then
+        local frame = stub.Widget("Frame")
+        frame.Dropdown = dropdown
+        return frame
+    end
+    return realCreate(kind, name, parent, template)
+end
+chosen = "heIL"
+local modern = Layout().New(stub.Widget("Frame"), 25, -16)
+local modernControl = modern:Dropdown("Language", nil, { "deDE", "heIL" }, function() return chosen end,
+    function(v) chosen = v end, nil, tostring, FaceOf)
+local button = { fontString = stub.Widget("FontString") }
+button.fontString:SetFont(OWN, 12, "")
+initializers.heIL(button)
+Expect("modern: an entry with a face draws in it", button.fontString.fontFile, FACE)
+initializers.deDE(button)
+Expect("modern: a pooled button reused for an entry without one gets its font back", button.fontString.fontFile, OWN)
+Expect("modern: the closed text wears the chosen entry's face", dropdown.Text.fontFile, FACE)
+chosen = "deDE"
+modernControl.layoutSync()
+Expect("modern: ...and gets its own font back", dropdown.Text.fontFile, OWN)
+_G.CreateFrame, _G.MenuUtil = realCreate, realMenu
+
 stub.ResetAddOns()
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll language registry tests passed")

@@ -1221,8 +1221,10 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
             for _, value in ipairs(Resolve(values)) do
                 local element = root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
-                local face = fontOf and fontOf(value)
-                if face and element and element.AddInitializer then
+                -- Menu buttons are pooled, so an entry with no face must put back the font a
+                -- previous entry's face replaced.
+                if fontOf and element and element.AddInitializer then
+                    local face = fontOf(value)
                     element:AddInitializer(function(button) Refont(button.fontString, face) end)
                 end
             end
