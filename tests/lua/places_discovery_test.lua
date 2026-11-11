@@ -47,9 +47,8 @@ local Z = { Zones = { [1411] = {}, [1426] = {}, [1454] = {}, [1450] = {}, [1416]
     [1426] = { ["coldridge valley"] = {} } }, CityIn = { [1454] = 1411 } }
 local names = { [1411] = "Durotar", [1426] = "Dun Morogh", [1454] = "Orgrimmar", [1450] = "Moonglade" }
 local settings = {}
-local playerDead = false
 function Z:Get(key) return settings[key] end
-function Z:IsPlayerDead() return playerDead end
+function Z:IsPlayerDead() return stub.world.playerDead end
 function Z:GetMapName(mapID) return names[mapID] end
 function Z:ResolveAreaKey(name) return name and string.lower(name) end
 function Z:GetPlayerMapID() return where.map end
@@ -116,10 +115,10 @@ onZone()
 Expect("...a zone's still does", SpokenPlacesCharacter.visited["1426"], true)
 
 where.map, where.subzone = 1450, ""
-playerDead = true
+stub.world.playerDead = true
 onZone()
 Expect("a dead player does not record a new place", SpokenPlacesCharacter.visited["1450"], nil)
-playerDead = false
+stub.world.playerDead = false
 onZone()
 Expect("the same place is recorded once alive", SpokenPlacesCharacter.visited["1450"], true)
 

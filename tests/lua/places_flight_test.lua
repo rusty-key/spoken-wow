@@ -147,18 +147,21 @@ stub.FireEvent("ZONE_CHANGED_NEW_AREA")
 Expect("a dead player gets no explored-zone narration", Spoken:GetQueueSize(), 0)
 Expect("manual lore still plays while dead", Z:PlayLore(1411), true)
 Spoken:StopAll()
-world.playerDead = false
 
 -- A place queued before death must be held as well; otherwise its sound can start while the
 -- player is running back as a ghost.
-Z = Boot("16001", false, false)
-Z:Set("autoplayExplored", true)
-stub.Advance(2)
-stub.FireEvent("ZONE_CHANGED")
-Expect("autoplay starts before death", Spoken:IsPlaying(), true)
-world.playerDead = true
-stub.FireEvent("PLAYER_DEAD")
-Expect("death stops active autoplay", Spoken:IsPlaying(), false)
+local function DieWhileNarrating()
+    Z = Boot("16001", false, false)
+    Z:Set("autoplayExplored", true)
+    stub.Advance(2)
+    stub.FireEvent("ZONE_CHANGED")
+    Expect("autoplay starts before death", Spoken:IsPlaying(), true)
+    world.playerDead = true
+    stub.FireEvent("PLAYER_DEAD")
+    Expect("death stops active autoplay", Spoken:IsPlaying(), false)
+end
+
+DieWhileNarrating()
 local current = Spoken:GetCurrent()
 Expect("dead autoplay is held", current and Spoken:GetHeldReason(current) or nil, Z.L.QUEUE_HELD_DEAD)
 stub.FireEvent("PLAYER_ALIVE")
@@ -170,13 +173,7 @@ stub.Advance(1.1)
 Expect("autoplay resumes after becoming alive", Spoken:IsPlaying(), true)
 
 -- A res taken on the corpse, before releasing, fires PLAYER_ALIVE and never PLAYER_UNGHOST.
-Z = Boot("16001", false, false)
-Z:Set("autoplayExplored", true)
-stub.Advance(2)
-stub.FireEvent("ZONE_CHANGED")
-world.playerDead = true
-stub.FireEvent("PLAYER_DEAD")
-Expect("death holds autoplay", Spoken:IsPlaying(), false)
+DieWhileNarrating()
 world.playerDead = false
 stub.FireEvent("PLAYER_ALIVE")
 stub.Advance(1.1)

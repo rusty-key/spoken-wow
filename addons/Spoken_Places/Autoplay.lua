@@ -126,9 +126,8 @@ local function CinematicUp()
 		or false
 end
 
--- A ghost travelling back to the corpse should have the world's quiet soundscape. Keep this
--- guard in the autoplay path so manually requested lore still works while dead. Asked of the
--- client each time: a res taken before releasing fires PLAYER_ALIVE but never PLAYER_UNGHOST.
+-- Dead or a ghost, asked of the client each time: a res taken before releasing fires
+-- PLAYER_ALIVE but never PLAYER_UNGHOST, so no flag kept from the events stays right.
 function SpokenPlaces:IsPlayerDead()
 	return UnitIsDeadOrGhost("player") and true or false
 end
