@@ -15,6 +15,16 @@ def test_pfquest_tables_are_read_with_their_escapes():
     }
 
 
+def test_pfquest_tables_spread_over_lines_are_read_whole():
+    source = ('pfDB["quests"]["ptBR"] = {\n'
+              '  [2] = {\n    ["D"] = "Fecha },\\n e segue.",\n    ["T"] = "Garra",\n  },\n'
+              '  [3] = { ["T"] = "Sem vírgula" }\n}')
+    assert read_quests(source) == {
+        2: {"Details": "Fecha },\n e segue.", "Title": "Garra"},
+        3: {"Title": "Sem vírgula"},
+    }
+
+
 ENGLISH = {1: {"Details": {"It's no secret that the Defias Gang wear red bandanas, $n."},
                "Title": {"Red Silk Bandanas"}}}
 PORTUGUESE = "Não é segredo que a gangue Défias usa bandanas vermelhas, $n."

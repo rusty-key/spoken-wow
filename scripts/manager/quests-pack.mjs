@@ -16,7 +16,7 @@ export function englishVersion(changelog) {
 }
 
 /** Each folder with the arguments of its `cli-main.py build`, past its store and dist. */
-export function buildArgs(lang, folders, { version, localeText }) {
+export function buildArgs(lang, folders, { version, localeText, compendiumText }) {
   const packs = packsFor("quests", lang);
   return folders.map((folder) => {
     const pack = packs.find((p) => p.folder === folder);
@@ -30,7 +30,7 @@ export function buildArgs(lang, folders, { version, localeText }) {
         "--version", pack.version,
         "--module-title", pack.name,
         "--language", lang,
-        ...(localeText && pack.pack === "gossip" ? ["--locale-text", localeText] : []),
+        ...(localeText && pack.pack === "gossip" ? ["--locale-text", localeText, "--compendium-text", compendiumText] : []),
       ],
     };
   });
@@ -41,6 +41,7 @@ export async function questsSteps(lang, { root, folders, run }) {
   const english = lang === BASE_LOCALE;
   const store = english ? join(quests, "audio") : join(root, "build/quests", lang, "audio");
   const localeText = !english && isClientLocale(lang) ? join(root, "build/quests", lang, "locale-text.json.gz") : null;
+  const compendiumText = localeText && join(root, "build/quests", lang, "compendium-text.json.gz");
   const version = english ? englishVersion(await readFile(join(root, "docs/quests/CHANGELOG.md"), "utf8")) : null;
   const venv = join(quests, ".venv/bin/python");
   const env = {
@@ -56,9 +57,10 @@ export async function questsSteps(lang, { root, folders, run }) {
       ? [["export the gossip text", async () => {
           await mkdir(dirname(localeText), { recursive: true });
           python(["export-locale-text", "--lang", lang, "--out", localeText]);
-        }]]
+        }],
+        ["export the Compendium text", () => python(["export-compendium-locale-text", "--lang", lang, "--out", compendiumText])]]
       : []),
-    ...buildArgs(lang, folders, { version, localeText }).map(({ folder, args }) => [
+    ...buildArgs(lang, folders, { version, localeText, compendiumText }).map(({ folder, args }) => [
       `build ${folder}`,
       () => python(["build", "--store", store, "--dist", join(root, "dist"), ...args]),
     ]),

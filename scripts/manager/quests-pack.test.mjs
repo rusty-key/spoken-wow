@@ -20,10 +20,10 @@ test("English builds its four folders, each its own slice, under one version", (
   }
 });
 
-test("every language builds English's four folders from their pages, its gossip text with Gossip", () => {
+test("every language builds English's four folders from their pages, its gossip and Compendium text with Gossip", () => {
   for (const lang of ["deDE", "esES", "esMX", "frFR", "itIT", "koKR", "ptBR", "ruRU", "zhCN", "zhTW"]) {
     const pages = packsFor("quests", lang);
-    const builds = buildArgs(lang, foldersOf(lang), { localeText: "/tmp/text.json.gz" });
+    const builds = buildArgs(lang, foldersOf(lang), { localeText: "/tmp/text.json.gz", compendiumText: "/tmp/compendium.json.gz" });
     assert.deepEqual(builds.map(({ folder }) => folder), ["Alliance", "Horde", "Shared", "Gossip"].map((side) => `SpokenQuestsAudio${side}_${lang}`));
     for (const { folder, args } of builds) {
       const page = pages.find((p) => p.folder === folder);
@@ -33,7 +33,7 @@ test("every language builds English's four folders from their pages, its gossip 
         "--version", page.version,
         "--module-title", page.name,
         "--language", lang,
-        ...(page.pack === "gossip" ? ["--locale-text", "/tmp/text.json.gz"] : []),
+        ...(page.pack === "gossip" ? ["--locale-text", "/tmp/text.json.gz", "--compendium-text", "/tmp/compendium.json.gz"] : []),
       ]);
     }
   }

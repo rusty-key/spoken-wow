@@ -1070,6 +1070,57 @@ def export_locale_text(lang, path, verbose=True):
     return lines
 
 
+def export_compendium_locale_text(lang, path, corpus_path):
+    """Compendium quest wording and titles from the corpus database.
+
+    The addon cannot query Postgres at runtime, so this writes the client-locale snapshot that
+    the language sound pack carries. Text is the newest version that has any, as a translator's
+    correction changes what is voiced and not what the client shows. A title is the newest
+    *extracted* version: a translator's
+    edit changes how it is spoken, and what the addon shows must be what the client shows.
+    """
+    from tts_cli.compendium_text import (SOURCES, compendium_ids, forever_amounts,
+                                         localized_quest_text, needs_amounts,
+                                         write_compendium_text)
+    from tts_cli.ignores import load_pack_ignored
+
+    quest_ids = compendium_ids()
+    corpus = load_corpus(corpus_path)
+    conn = connect()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """select "questId", "source", "lineId", "localeText"
+                     from (select distinct on ("lineId", "variant")
+                                  "questId", "source", "lineId", "variant", "localeText"
+                             from "quest_line"
+                            where "lang" = %s and "source" = any(%s) and "questId" = any(%s)
+                              and coalesce("localeText", '') <> ''
+                            order by "lineId", "variant", "version" desc) as newest
+                    order by "questId", "source", "lineId", "variant"
+                """,
+                (lang, list(SOURCES), list(quest_ids)),
+            )
+            rows = [dict(zip(("questId", "source", "lineId", "localeText"), row))
+                    for row in cur.fetchall()]
+            cur.execute(
+                """select distinct on ("entityId") "entityId", "name"
+                     from "entity_name"
+                    where "lang" = %s and "kind" = 'quest' and "origin" = 'extracted'
+                      and "entityId" = any(%s)
+                    order by "entityId", "version" desc""",
+                (lang, [str(quest_id) for quest_id in quest_ids]),
+            )
+            names = {int(entity_id): name for entity_id, name in cur.fetchall()}
+    finally:
+        conn.close()
+
+    quests = localized_quest_text(rows, names, quest_ids, corpus, load_pack_ignored(corpus),
+                                  forever_amounts() if needs_amounts(rows) else None)
+    write_compendium_text(path, lang, quests)
+    print(f"wrote {path}: {len(quests)} localized Compendium quest records")
+
+
 def export_giver_names(corpus_path, out_dir, verbose=True):
     """Every other language's quest-giver names -> one addon Lua file per language.
 

@@ -52,8 +52,8 @@ FIELDS = {
 #------------------------------------------------------------------------------
 
 _STRING = r'"((?:[^"\\]|\\.)*)"'
-_QUEST = re.compile(r'\[(\d+)\]=\{((?:\["[A-Z]"\]=' + _STRING + r',)*)\}')
-_FIELD = re.compile(r'\["([A-Z])"\]=' + _STRING)
+_QUEST = re.compile(r'\[(\d+)\]\s*=\s*\{\s*((?:\["[A-Z]"\]\s*=\s*' + _STRING + r'\s*(?:,\s*)?)*)\}')
+_FIELD = re.compile(r'\["([A-Z])"\]\s*=\s*' + _STRING)
 _ESCAPE = re.compile(r"\\(.)")
 
 

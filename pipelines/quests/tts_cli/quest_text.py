@@ -29,6 +29,8 @@ from collections import Counter
 MOMENTS = ("accept", "complete")
 #: Read only for a quest with neither of those.
 PROGRESS = "progress"
+#: Every source a quest's page can read.
+SOURCES = MOMENTS + (PROGRESS,)
 #: `$2oa`: the amount of the quest's second objective.
 AMOUNT = re.compile(r"\$(\d+)oa")
 
@@ -75,12 +77,26 @@ def left_out(corpus: dict, ignored=(), removed=()) -> set:
     out, ignored_only = set(removed), {}
     for line in corpus["lines"]:
         quest = line.get("questId")
-        if not quest or line["source"] not in MOMENTS + (PROGRESS,):
+        if not quest or line["source"] not in SOURCES:
             continue
         if not in_game(quest, line.get("questTitle")):
             out.add(quest)
         ignored_only[quest] = ignored_only.get(quest, True) and line["lineId"] in ignored
     return out | {quest for quest, every in ignored_only.items() if every}
+
+
+def select_moments(moments: dict) -> dict:
+    """{moment: text} from {source: [each line's text]}: the wording most lines have, the first
+    on a tie. Progress stands in as the offer only for a quest with neither moment."""
+    if PROGRESS in moments and not any(moment in moments for moment in MOMENTS):
+        moments = {"accept": moments[PROGRESS]}
+    out = {}
+    for moment in MOMENTS:
+        if moment in moments:
+            counts = Counter(moments[moment])
+            # max keeps the first of equals, and a Counter keeps the order texts were met in.
+            out[moment] = max(counts, key=counts.get)
+    return out
 
 
 def quest_text(corpus: dict, ignored=(), removed=(), amounts=None) -> dict:
@@ -90,23 +106,13 @@ def quest_text(corpus: dict, ignored=(), removed=(), amounts=None) -> dict:
     texts = {}
     for line in corpus["lines"]:
         moment = line["source"]
-        if moment not in MOMENTS + (PROGRESS,) or line["lineId"] in ignored or line["questId"] in dropped:
+        if moment not in SOURCES or line["lineId"] in ignored or line["questId"] in dropped:
             continue
         text = (line.get("originalText") or "").replace("\r\n", "\n").replace("\r", "\n")
         text = fill_amounts(text, (amounts or {}).get(line["questId"]))
         if text:
             texts.setdefault(line["questId"], {}).setdefault(moment, []).append(text)
-    out = {}
-    for quest, moments in texts.items():
-        if not any(moment in moments for moment in MOMENTS):
-            moments = {"accept": moments[PROGRESS]}
-        out[quest] = {}
-        for moment in MOMENTS:
-            if moment in moments:
-                counts = Counter(moments[moment])
-                # max keeps the first of equals, and a Counter keeps the order texts were met in.
-                out[quest][moment] = max(counts, key=counts.get)
-    return out
+    return {quest: select_moments(moments) for quest, moments in texts.items()}
 
 
 def lua_string(text: str) -> str:

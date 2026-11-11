@@ -111,6 +111,12 @@ local function Locale()
     return GetLocale and GetLocale() or "enUS"
 end
 
+local function Localized(id)
+    local localized = _G.SpokenQuestsLocalizedText
+    localized = localized and localized[Locale()]
+    return localized and localized[id]
+end
+
 local function Global()
     local db = VO.Addon.db and VO.Addon.db.global
     if not db then return {} end
@@ -149,10 +155,19 @@ end
 -- The client's title once it has one, else the English; asked for once where it is not loaded,
 -- and the list drawn again when it arrives (QUEST_DATA_LOAD_RESULT).
 local titles, asked = {}, {}
+local titlesShipped
 local function Title(id, ask)
+    -- A language pack's table arrives after login; what was cached before it may be English.
+    local shipped = _G.SpokenQuestsLocalizedText
+    if shipped ~= titlesShipped then titles, titlesShipped = {}, shipped end
     if titles[id] then return titles[id] end
+    local localized = Localized(id)
+    local quest = Quests()[id]
+    local englishTitle = quest and quest[1]
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
+    if title == englishTitle then title = nil end
+    title = title or localized and localized.title
     if not title and Locale() ~= "enUS" and C_QuestLog and C_QuestLog.GetTitleForQuestID then
         title = C_QuestLog.GetTitleForQuestID(id)
         if (type(title) ~= "string" or title == "") and ask and not asked[id] and C_QuestLog.RequestLoadQuestByID then
@@ -164,8 +179,7 @@ local function Title(id, ask)
         titles[id] = title
         return title
     end
-    local quest = Quests()[id]
-    return quest and quest[1] or tostring(id)
+    return englishTitle or tostring(id)
 end
 
 local function SortName(sort)
@@ -965,12 +979,23 @@ end
 -- Kept words filled for the other sex are not used where the English has a word for each.
 local function Stored(id, moment)
     local english = English(id)
+    local localized = Localized(id)
     local kept = Kept()
     kept = kept and kept[id]
     local own = kept and kept[moment]
-    local text = english[moment]
-    if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
-        text = own.text
+    local localizedText = localized and localized[moment]
+    local text = localizedText or english[moment]
+    -- If the corpus has no translation, the client shows English and keeping that fallback
+    -- would only duplicate the English table.
+    if type(own) == "table" and own.text then
+        -- Kept words have the client's line breaks and $G already filled, so both sides are
+        -- filled to compare: the raw English never equals them.
+        local isEnglishCopy = localizedText and english[moment]
+            and QuestsTab:Fill(own.text) == QuestsTab:Fill(english[moment])
+        local variesBySex = (text or ""):find("%$[Gg]") or (english[moment] or ""):find("%$[Gg]")
+        if not isEnglishCopy and not (own.sex ~= Sex() and variesBySex) then
+            text = own.text
+        end
     end
     if text and text ~= "" then return text end
 end
@@ -989,7 +1014,8 @@ function QuestsTab:Keep(moment, text, title)
     kept[id] = kept[id] or {}
     if type(title) == "string" and title ~= "" then
         kept[id].title = title
-        titles[id] = title
+        -- A window still in English must not hide a shipped title behind the cache.
+        if title ~= Quests()[id][1] then titles[id] = title end
     end
     if type(text) == "string" and text ~= "" then
         kept[id][moment] = { text = Generalise(text, English(id)[moment]), sex = Sex() }
@@ -1025,10 +1051,16 @@ local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
 end
 
+-- Shipped words settle it without Stored's comparison, which fills both texts per row.
+local function HasMomentWords(id, moment)
+    local localized = Localized(id)
+    return (localized and localized[moment]) ~= nil or Stored(id, moment) ~= nil
+end
+
 -- Whether the page has words to show: the offer's, or the hand-in's where it shows. Looks at the
 -- stored text only, so a row can ask it on every render.
 function QuestsTab:HasWords(id)
-    return Stored(id, "accept") ~= nil or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
+    return HasMomentWords(id, "accept") or (Shows(id, "complete") and HasMomentWords(id, "complete"))
 end
 
 -- Who says one moment of a quest: the hand-in is said by the one it is handed
