@@ -126,6 +126,15 @@ local function CinematicUp()
 		or false
 end
 
+-- A ghost travelling back to the corpse should have the world's quiet soundscape. Keep this
+-- guard in the autoplay path so manually requested lore still works while dead.
+local function PlayerIsDead()
+	if UnitIsDeadOrGhost then
+		return UnitIsDeadOrGhost("player") and true or false
+	end
+	return UnitIsDead and UnitIsDead("player") and true or false
+end
+
 -- Why a queued clip may not start yet. Registered onto the queue at setup, and
 -- consulted every time it tries to advance.
 --
@@ -187,6 +196,10 @@ end
 -- Returns whether the entry was queued, which the login greeting needs: a greeting that
 -- resolved nothing must not count as having greeted.
 local function Enqueue(mapID, areaKey)
+	if PlayerIsDead() then
+		return false
+	end
+
 	-- Skip flyover lore so it cannot queue up for landing.
 	if (UnitOnTaxi and UnitOnTaxi("player")) or (IsFlying and IsFlying()) then
 		return false
