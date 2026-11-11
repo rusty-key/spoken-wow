@@ -300,5 +300,37 @@ env.PlayerFrame:RefreshConfig()
 Expect("on Classic Era, its own colours with Bronze Border on", Tints(), WHITE .. "|" .. WHITE .. "|" .. WHITE)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
+---------------------------------------------------------------- Pause, where a line is kept as pieces
+env, quests = Boot()
+M, L = env.MinimalPlayer, env.L
+-- A row's place in the menu: its offset down from the top, 23 to a row.
+local function RowAt(button) return button.anchor and (-8 - button.anchor.y) / 23 + 1 end
+local whole = Line("Whole")
+quests:Enqueue(whole)
+M:ToggleMenu()
+Expect("a line kept whole: no Pause in the header", Try(function()
+    return tostring(M.row[1] == M.play) .. " " .. tostring(M.pauseButton:IsShown()) end), "true false")
+Expect("...nor in the menu, whose rows close up over it", Try(function()
+    return tostring(M.menuPause:IsShown()) .. " " .. RowAt(M.menuPlay) .. " " .. RowAt(M.menuSkip) end), "false 1 2")
+local closedUp = Try(function() return M.menu:GetHeight() end)
+M:ToggleMenu()
+env.SoundQueue:RemoveAllSoundsFromQueue()
+quests:Enqueue(H.Clip({ length = 30, pieces = "10 10 10", present = { header = "Grull", label = "Kept",
+    transcript = "The kobolds dig. They dig deeper. Every night.", portrait = { kind = "none" } } }))
+M:ToggleMenu()
+Expect("a line kept as pieces: Pause first in the header", Try(function()
+    return tostring(M.row[1] == M.pauseButton) .. " " .. tostring(M.pauseButton:IsShown()) end), "true true")
+Expect("...and first in the menu, Stop after it", Try(function()
+    return tostring(M.menuPause:IsShown()) .. " " .. RowAt(M.menuPause) .. " " .. RowAt(M.menuPlay) .. " "
+        .. M.menuPause.text:GetText() end), "true 1 2 " .. L.PAUSE)
+Expect("...the menu a row taller", Try(function() return M.menu:GetHeight() - closedUp end), 23)
+env.SoundQueue:TogglePauseQueue()
+Expect("...paused, the menu's Pause says Resume and Stop stays Stop", Try(function()
+    return M.menuPause.text:GetText() .. "|" .. M.menuPlay.text:GetText() end), L.RESUME .. "|" .. L.STOP)
+env.SoundQueue:StopQueue()
+Expect("...stopped, Stop says Replay", Try(function() return M.menuPlay.text:GetText() end), L.REPLAY)
+M:ToggleMenu()
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
 if Failures() > 0 then stub.print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 stub.print("\nAll small window tests passed")

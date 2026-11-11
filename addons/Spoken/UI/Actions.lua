@@ -170,11 +170,14 @@ end
 -- Stop and Replay are drawn in its gold, each in a 93-wide cell of a 128 canvas.
 local GLYPH_STOP = ART .. "GlyphStop"
 local GLYPH_REPLAY = ART .. "GlyphReplay"
+-- Cut from GlyphStop's square, so its gold, rim and shadow match.
+local GLYPH_PAUSE = ART .. "GlyphPause"
+local GLYPHS = { stop = GLYPH_STOP, replay = GLYPH_REPLAY, pause = GLYPH_PAUSE }
 local CELL = 93 / 128
 
 function Actions.Glyph(texture, state)
-    if state == "stop" or state == "replay" then
-        texture:SetTexture(state == "stop" and GLYPH_STOP or GLYPH_REPLAY)
+    if GLYPHS[state] then
+        texture:SetTexture(GLYPHS[state])
         texture:SetTexCoord(0, CELL, 0, CELL)
         return
     end
@@ -182,9 +185,14 @@ function Actions.Glyph(texture, state)
     texture:SetTexCoord(0, 93 / PORTRAIT_ATLAS_SIZE, 419 / PORTRAIT_ATLAS_SIZE, 512 / PORTRAIT_ATLAS_SIZE)
 end
 
---- Stop while the head plays, Replay once it is stopped.
+--- Stop while the head plays or is paused, Replay once it is stopped.
 function Actions.HeadState()
-    return SoundQueue:IsPaused() and "replay" or "stop"
+    return SoundQueue:HaltedBy() == "stop" and "replay" or "stop"
+end
+
+--- Pause while the head plays, Play (resume) once it is halted.
+function Actions.PauseState()
+    return SoundQueue:IsPaused() and "play" or "pause"
 end
 
 --- A round button's glyph for `state`, remembered on it for its tooltip.
@@ -240,16 +248,57 @@ function Actions.StopButton(parent, allowed, after)
     play:SetScript("OnClick", function()
         if (allowed and not allowed()) or not SoundQueue:CanBePaused() then return end
         SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
-        SoundQueue:TogglePauseQueue()
+        SoundQueue:ToggleStopQueue()
         if after then after() end
     end)
     play:SetScript("OnEnter", function()
         play.glyph:SetAlpha(1)
         GameTooltip:SetOwner(play, "ANCHOR_TOP")
-        GameTooltip:SetText(SoundQueue:IsPaused() and L.REPLAY or L.STOP)
+        GameTooltip:SetText(SoundQueue:HaltedBy() == "stop" and L.REPLAY or L.STOP)
         GameTooltip:Show()
     end)
     return play
+end
+
+--- Pause or Resume for the line at the head: Resume plays on from the sentence it was paused in.
+function Actions.PauseButton(parent, allowed, after)
+    local pause = Actions.RoundButton(parent, 12)
+    pause:SetScript("OnClick", function()
+        if (allowed and not allowed()) or not SoundQueue:CanBePaused() then return end
+        SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
+        SoundQueue:TogglePauseQueue()
+        if after then after() end
+    end)
+    pause:SetScript("OnEnter", function()
+        pause.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(pause, "ANCHOR_TOP")
+        GameTooltip:SetText(SoundQueue:IsPaused() and L.RESUME or L.PAUSE)
+        GameTooltip:Show()
+    end)
+    Actions.Glyph(pause.glyph, "pause")
+    return pause
+end
+
+--- `rest` with the Pause button before it where `clip` is kept as pieces. On a line kept whole Pause
+--- would only do what Stop does, so it is hidden.
+function Actions.WithPause(pause, rest, clip)
+    local shown = SoundQueue:Resumes(clip)
+    pause:SetShown(shown)
+    if not shown then return rest end
+    local row = { pause }
+    for _, button in ipairs(rest) do row[#row + 1] = button end
+    return row
+end
+
+function Actions.SetPauseGlyph(button)
+    local state = Actions.PauseState()
+    Actions.Glyph(button.glyph, state)
+    button.state = state
+end
+
+--- "Paused" or "Stopped", for a halted line's title.
+function Actions.HaltWord()
+    return SoundQueue:HaltedBy() == "pause" and L.SUBTITLE_PAUSED or L.SUBTITLE_STOPPED
 end
 
 --- A row of round buttons laid out left to right in `controls`, `gap` apart, which takes their size.
@@ -326,6 +375,14 @@ end
 --- Whether Stopped should show; Step fades it in or out.
 function Tail:SetStopped(stopped)
     self.want = stopped and true or false
+    -- Paused and stopped say which, since they resume differently. Kept while fading out.
+    if stopped then
+        local word = Actions.HaltWord()
+        if word ~= self.word then
+            self.word = word
+            self.stopped:SetText(format("· (%s)", word))
+        end
+    end
 end
 
 --- Why the line is held back, "· (in combat)", or nil once it may play. A held line with no

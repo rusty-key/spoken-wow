@@ -2,6 +2,15 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Pause picks up where you were.** Where a voice pack keeps its lines as sentences, a Pause
+  button sits beside Stop: Play after Pause starts the current sentence again, Play after Stop goes
+  back to the start of the text on screen, and Replay starts the line again. The captions pick up
+  at that sentence. `/sp pause` and a Pause or Resume key binding do the same. Lines kept whole
+  play, stop and replay as before, with no Pause button.
+  *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
+
 ## 3.8.6 — 2026-11-10
 
 - **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new

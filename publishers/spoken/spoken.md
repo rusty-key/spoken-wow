@@ -48,7 +48,7 @@ Voice packs in German, Spanish, French, Korean, Portuguese, Russian and Chinese 
 - **Places**: the story of each zone and area in a panel beside the world map, with a picture of the place. An area you discover for the first time is narrated once.
 - **Azeroth's Compendium**: every quest, place story and book in one window, to browse, search and play without going there.
 - **Readables**: open a book and it reads every page in order, following you as you turn them. Your mail is never read.
-- **One queue**: quest lines, place stories and books wait their turn; nothing talks over anything. Stop, Replay and Skip from the screen, the minimap button or a key binding.
+- **One queue**: quest lines, place stories and books wait their turn; nothing talks over anything. Pause, Stop, Replay and Skip from the screen, the minimap button or a key binding. Where a voice pack keeps its lines as sentences, Play after Pause starts the sentence again, and after Stop the text on screen.
 - **Your choice of display**: subtitles low on screen with the speaker's picture, a small window, a large window, a window in DialogueUI's art when that addon is installed, or voice only.
 - **The game makes room**: music, ambience and NPC voices are turned down while a line plays.
 - **Interface in nine languages**: English, German, Spanish, French, Korean, Portuguese, Russian and both Chinese scripts.
@@ -63,6 +63,7 @@ Game Menu → Options → AddOns → **Spoken**, or `/sp settings`.
 
 ```
 /sp            stop or replay the line
+/sp pause      pause or resume the line
 /sp skip       skip the current line
 /sp stopall    stop and clear the queue
 /sp compendium open Azeroth's Compendium

@@ -35,6 +35,7 @@ setfenv(1, SpokenEnv)
 ---@field continues? boolean  Its next part is put in as it ends (source:Continue). No pause or cue after it.
 ---@field span? table         { before, total }: seconds of its item before it, and in all (SoundQueue:Share).
 ---@field present table       See API.lua.
+---@field pieces? string|number[] Seconds of each sentence piece, "3.44 2.6 5.1", where the pack keeps the line as pieces.
 ---@field addedCallback? fun(clip)
 ---@field startCallback? fun(clip)
 ---@field stopCallback? fun(clip, finishedPlaying)
@@ -43,6 +44,7 @@ setfenv(1, SpokenEnv)
 ---@field handle number|nil
 ---@field source table
 ---@field nextSoundTimer any  Set ONLY while actually speaking. The liveness test.
+---@field piece? number       The piece speaking, or the one a stopped line plays on from.
 
 SoundQueue = {
     soundIdCounter = 0,
@@ -105,10 +107,25 @@ function SoundQueue:IsPaused()
     return Addon.db and Addon.db.char.IsPaused or false
 end
 
+-- How the head was halted: "pause" plays on from its sentence, "stop" from its start. Kept off
+-- the saved flag, since a reload never starts the queue halted.
+local haltedBy = nil
+
 function SoundQueue:SetPaused(value)
     if Addon.db then
         Addon.db.char.IsPaused = value
     end
+    if not value then
+        haltedBy = nil
+    end
+end
+
+--- "pause" or "stop" while the queue is halted, nil while it is not. A line kept whole cannot
+--- resume part-way, so its halt is always a stop: until a pack has pieces, Spoken is as it was.
+function SoundQueue:HaltedBy()
+    if not self:IsPaused() then return nil end
+    if not self:Resumes(self:GetCurrentSound()) then return "stop" end
+    return haltedBy or "pause"
 end
 
 function SoundQueue:CanBePaused()
@@ -128,6 +145,108 @@ end
 
 local function IsLow(clip)
     return clip.priority == "low"
+end
+
+--------------------------------------------------------------------------------
+-- Pieces
+--------------------------------------------------------------------------------
+
+-- A pack can keep a line as sentence pieces (a folder of 01.ogg, 02.ogg, ...; their lengths in
+-- clip.pieces), played back to back as one clip. The client cannot start a sound part-way, so a
+-- stopped line plays on from the start of the piece it was in.
+
+-- Stopped this close to a piece's end, the sentence was heard: play on from the next one.
+local PIECE_HEARD_MARGIN = 0.35
+
+--- The clip's piece lengths, or nil where it plays as one file.
+local function PieceLengths(clip)
+    local pieces = clip.pieces
+    if type(pieces) == "string" then
+        local list = {}
+        for length in pieces:gmatch("%S+") do
+            local seconds = tonumber(length)
+            -- A malformed row plays as no row: the line is lost rather than half-played.
+            if not seconds or seconds <= 0 then
+                list = nil
+                break
+            end
+            list[#list + 1] = seconds
+        end
+        pieces = list
+        clip.pieces = list
+    end
+    if type(pieces) ~= "table" or #pieces < 2 then
+        return nil
+    end
+    return pieces
+end
+
+local function PiecePath(clip, index)
+    local base, extension = clip.path:match("^(.*)%.(%w+)$")
+    return format("%s\\%02d.%s", base or clip.path, index, extension or "ogg")
+end
+
+local function PieceStart(pieces, index)
+    local start = 0
+    for i = 1, (index or 1) - 1 do
+        start = start + pieces[i]
+    end
+    return start
+end
+
+--- Where in its line `clip` speaks from: the start of its piece, or 0 for a line of one file.
+function SoundQueue:PieceOffset(clip)
+    local pieces = clip and PieceLengths(clip)
+    return pieces and PieceStart(pieces, clip.piece) or 0
+end
+
+--- Whether a stopped `clip` plays on from its sentence rather than from its start.
+function SoundQueue:Resumes(clip)
+    -- A line of words alone restarts from 0 whatever its data says.
+    return clip ~= nil and not clip.textOnly and PieceLengths(clip) ~= nil
+end
+
+local function KeepPlace(clip)
+    local pieces = PieceLengths(clip)
+    if pieces and clip.piece and clip.pieceEndsAt and clip.piece < #pieces
+        and clip.pieceEndsAt - GetTime() < PIECE_HEARD_MARGIN then
+        clip.piece = clip.piece + 1
+    end
+end
+
+-- Stop backs up further than Pause: to the start of the text on screen, a "section", which the
+-- captions know and the queue does not. Each finder is fn(clip, elapsed) and returns the seconds
+-- into the line where the section on screen at `elapsed` begins, or nil where it shows none.
+local sectionFinders = {}
+
+--- The first finder to answer wins.
+function SoundQueue:AddSectionFinder(fn)
+    table.insert(sectionFinders, fn)
+end
+
+-- A section's start is estimated from the text where the line has no word times, so it may fall
+-- a little after the sentence it begins with: this much slack still counts that sentence in.
+local SECTION_SLACK = 0.3
+
+-- The piece the section on screen at `elapsed` begins in, never later than the one speaking.
+-- With no section on screen, the sentence: Stop then backs up as far as Pause.
+local function SectionPiece(clip, elapsed)
+    local pieces = PieceLengths(clip)
+    local current = clip.piece or 1
+    local at
+    for _, finder in ipairs(sectionFinders) do
+        local ok, seconds = pcall(finder, clip, elapsed)
+        if ok and type(seconds) == "number" then
+            at = seconds
+            break
+        end
+    end
+    if not at then return current end
+    local index = 1
+    for i = 2, current do
+        if PieceStart(pieces, i) <= at + SECTION_SLACK then index = i end
+    end
+    return index
 end
 
 --------------------------------------------------------------------------------
@@ -183,9 +302,11 @@ local function CancelSpeakTimer(clip)
 end
 
 -- Silence the head but keep its place: it replays from the start when Advance next
--- reaches it, since the client has no seek. Shared by the two things allowed to cut a
--- clip off without ending it -- a human pressing Play, and a gate closing on it.
+-- reaches it, since the client has no seek, or from its sentence where it is kept as pieces.
+-- Shared by the two things allowed to cut a clip off without ending it -- a human pressing
+-- Play, and a gate closing on it.
 local function StopKeeping(head)
+    KeepPlace(head)
     SoundUtils:StopSound(head)
     CancelSpeakTimer(head)
     if head.stopCallback then
@@ -486,7 +607,8 @@ local function WatchForCut(clip)
     end
     local handle = clip.handle
     clip.cutWatch = Addon:ScheduleRepeatingTimer(function()
-        if not SoundQueue:IsPlaying(clip) or GetTime() >= clip.spokenAt - CUT_MARGIN then
+        -- A piece ends before its line does, and the next one has a new handle and watch.
+        if not SoundQueue:IsPlaying(clip) or GetTime() >= (clip.pieceEndsAt or clip.spokenAt) - CUT_MARGIN then
             StopWatching(clip)
             return
         end
@@ -499,11 +621,57 @@ local function WatchForCut(clip)
     end, CUT_POLL)
 end
 
+-- Starts piece `index` of `clip` and records its handle on the clip, so Stop and the cut watch
+-- act on the piece speaking. One refused leaves the last piece's, so Stop and Skip still work.
+local function PlayPiece(clip, index, channel)
+    local pieces = PieceLengths(clip)
+    local piece = { path = PiecePath(clip, index) }
+    local willPlay = SoundUtils:PlaySound(piece, channel)
+    if not willPlay then return willPlay end
+    -- The piece before has played its length; whatever of it is left is the pause it ends in.
+    SoundUtils:StopSound(clip)
+    clip.handle, clip.piece = piece.handle, index
+    clip.pieceEndsAt = GetTime() + pieces[index]
+    return willPlay
+end
+
+-- Each piece is timed from when the line started, so a timer's own rounding is not added up over
+-- a long line. A join a frame hitch made late pushes the rest back, so no piece talks over the last.
+local function ScheduleNextPiece(clip, channel, lineStartedAt)
+    local pieces = PieceLengths(clip)
+    local index = clip.piece
+    local nextAt = lineStartedAt + PieceStart(pieces, index + 1)
+    clip.nextSoundTimer = Addon:ScheduleTimer(function()
+        if index >= #pieces then
+            AfterSpoken(clip)
+            return
+        end
+        local late = math.max(0, GetTime() - nextAt)
+        if late > 0 then
+            lineStartedAt, clip.spokenAt = lineStartedAt + late, clip.spokenAt + late
+            -- The words keep their own clock; they wait as long as the voice did.
+            Callbacks:Fire("VOICE_DELAYED", clip, late)
+        end
+        if not PlayPiece(clip, index + 1, channel) then
+            -- A piece missing from the folder ends the line where it is, as the end of it would.
+            Developer:Log("player", format("piece %d of %s is missing", index + 1, tostring(clip.key)))
+            clip.spokenAt = GetTime()
+            AfterSpoken(clip)
+            return
+        end
+        ScheduleNextPiece(clip, channel, lineStartedAt)
+        WatchForCut(clip)
+    end, math.max(0, nextAt - GetTime()))
+end
+
 ---@param clip SpokenClip
 function SoundQueue:PlaySound(clip)
     local channel = SpeakingChannel(clip)
+    clip.haltedAt = nil
+    local pieces = not clip.textOnly and PieceLengths(clip)
     -- A text-only line has nothing to play and leaves the game's dialogue alone.
-    local willPlay = clip.textOnly or SoundUtils:PlaySound(clip, channel)
+    local willPlay = clip.textOnly or (pieces and PlayPiece(clip, clip.piece or 1, channel))
+        or (not pieces and SoundUtils:PlaySound(clip, channel))
     if not willPlay then
         Discard(clip, "missing")
         self:Advance()
@@ -525,10 +693,16 @@ function SoundQueue:PlaySound(clip)
 
     -- The client fires no event when a sound finishes, so the recorded duration is the
     -- only signal that the clip is over.
-    clip.spokenAt = GetTime() + clip.length
-    clip.nextSoundTimer = Addon:ScheduleTimer(function()
-        AfterSpoken(clip)
-    end, clip.length)
+    if pieces then
+        local lineStartedAt = GetTime() - PieceStart(pieces, clip.piece)
+        clip.spokenAt = lineStartedAt + clip.length
+        ScheduleNextPiece(clip, channel, lineStartedAt)
+    else
+        clip.spokenAt = GetTime() + clip.length
+        clip.nextSoundTimer = Addon:ScheduleTimer(function()
+            AfterSpoken(clip)
+        end, clip.length)
+    end
     WatchForCut(clip)
 end
 
@@ -694,8 +868,15 @@ function SoundQueue:Add(clip, source, front)
         end
     end
 
-    if source.testBeforeQueue and not SoundUtils:TestSound(clip, source:GetChannel()) then
+    -- A line kept as pieces has no file of its own: its first piece stands for it.
+    local pieces = not (clip.textOnly or source.textOnly) and PieceLengths(clip)
+    if source.testBeforeQueue
+        and not SoundUtils:TestSound(pieces and { path = PiecePath(clip, 1) } or clip, source:GetChannel()) then
         return nil, "missing"
+    end
+    if pieces then
+        -- The pieces' own sum, so the last one ends where the line's timer says it does.
+        clip.length = PieceStart(pieces, #pieces + 1)
     end
 
     if IsQueued(clip.key) then
@@ -711,6 +892,8 @@ function SoundQueue:Add(clip, source, front)
         DropOutrankedWaiting()
     end
 
+    -- Only once admitted: a refused add of a line already queued must not lose its place.
+    clip.piece, clip.pieceEndsAt = nil, nil
     self.soundIdCounter = self.soundIdCounter + 1
     clip.id = self.soundIdCounter
     clip.source = source
@@ -798,8 +981,9 @@ end
 --------------------------------------------------------------------------------
 
 -- There is no pause: the client cannot seek or report how far a sound has played. Stop ends the
--- voice and keeps the line at the head; Replay plays it from the start. The functions keep their
--- old names, which the public API carries.
+-- voice and keeps the line at the head; Replay plays it from the start, or from its sentence
+-- where the line is kept as pieces. The functions keep their old names, which the public API
+-- carries.
 local PAUSE_FADE_MS = 400
 
 function SoundQueue:PauseQueue()
@@ -807,6 +991,7 @@ function SoundQueue:PauseQueue()
         return false
     end
     self:SetPaused(true)
+    haltedBy = "pause"
 
     local head = self:GetCurrentSound()
     -- Stopped in the pause after a line has spoken to its end: that line is over, and it is the
@@ -820,6 +1005,11 @@ function SoundQueue:PauseQueue()
         head = self:GetCurrentSound()
     end
     if head and self:CanBePaused() then
+        if head.nextSoundTimer then
+            -- Where the voice was, for a Stop that follows: once stopped, VoiceElapsed runs on.
+            head.haltedAt = self:VoiceElapsed(head)
+            KeepPlace(head)
+        end
         -- Faded out, not cut: a pause is the player stepping away, not an interruption.
         SoundUtils:StopSound(head, PAUSE_FADE_MS)
         CancelSpeakTimer(head)
@@ -847,4 +1037,51 @@ function SoundQueue:TogglePauseQueue()
         return self:ResumeQueue()
     end
     return self:PauseQueue()
+end
+
+--- Stop: a longer halt than Pause. Play then goes back to the start of the section on screen, and
+--- Replay to the start of the line.
+function SoundQueue:StopQueue()
+    if self:HaltedBy() == "stop" then
+        return false
+    end
+    local before = self:GetCurrentSound()
+    local wasPaused = self:IsPaused()
+    if not wasPaused and not self:PauseQueue() then
+        return false
+    end
+    -- A line that had spoken to its end is gone, and the queue with it when it was the last.
+    if not self:IsPaused() then
+        return true
+    end
+    local head = self:GetCurrentSound()
+    if head then
+        -- The line stopped is the one shown; one that took its place after the last ended starts over.
+        local elapsed = head == before and head.haltedAt or nil
+        head.piece = PieceLengths(head) and elapsed and SectionPiece(head, elapsed) or nil
+        head.pieceEndsAt = nil
+    end
+    haltedBy = "stop"
+    Callbacks:Fire("AUDIO_CHANGED")
+    return true
+end
+
+--- Replay: the line at the head from its very start, whatever halted it.
+function SoundQueue:ReplayQueue()
+    local head = self:GetCurrentSound()
+    if head then
+        head.piece, head.pieceEndsAt = nil, nil
+    end
+    if self:IsPaused() then
+        return self:ResumeQueue()
+    end
+    return false
+end
+
+--- Stop, or Replay a stopped line from its start. A paused line is stopped rather than played.
+function SoundQueue:ToggleStopQueue()
+    if self:HaltedBy() == "stop" then
+        return self:ReplayQueue()
+    end
+    return self:StopQueue()
 end

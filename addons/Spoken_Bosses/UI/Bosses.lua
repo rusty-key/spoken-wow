@@ -409,6 +409,7 @@ function Bosses:StoryClip(map, key)
 	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
+		clip.pieces = recording.pieces
 		-- Timed to the recording's own words, so not under a story in another language.
 		if language == recording.language then clip.present.timings = recording.times end
 	else

@@ -120,10 +120,12 @@ function MinimalPlayer:Initialize(original)
     self.controls:SetHeight(1)
     self.controls:SetFrameLevel(content:GetFrameLevel() + 3)
     self.controls:SetPoint("RIGHT", content, "TOPRIGHT", 0, -(NAME_HEIGHT + TITLE_HEIGHT) / 2)
+    self.pauseButton = Actions.PauseButton(self.controls, function() return self:HasClip() end,
+        function() self:UpdateControls() end)
     self.play = Actions.StopButton(self.controls, function() return self:HasClip() end,
         function() self:UpdateControls() end)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.skip }
+    self.buttons = { self.pauseButton, self.play, self.skip }
 
     self.name = Font(self.header, 16, 1, .82, 0)
     self.name:SetHeight(NAME_HEIGHT)
@@ -210,7 +212,8 @@ function MinimalPlayer:BuildMenu()
         table.insert(self.menuButtons, button)
         return button
     end
-    self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
+    self.menuPause = Item(L.PAUSE, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
+    self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:ToggleStopQueue() end end)
     self.menuSkip = Item(L.MIN_SKIP, function() SoundQueue:Skip() end)
     self.menuStop = Item(L.MIN_STOP_ALL, function() SoundQueue:RemoveAllSoundsFromQueue() end)
     -- The minimap menu's rows too: the Compendium and the settings.
@@ -220,10 +223,15 @@ function MinimalPlayer:BuildMenu()
 end
 
 --- A row of the menu, `index` rows down; `fn(row)` runs on click while a clip plays.
-function MinimalPlayer:MenuItem(index, fn)
-    local button = CreateFrame("Button", nil, self.menu)
+local function PlaceMenuRow(button, index)
+    button:ClearAllPoints()
     button:SetPoint("TOPLEFT", 10, -8 - (index - 1) * 23)
     button:SetPoint("TOPRIGHT", -10, -8 - (index - 1) * 23)
+end
+
+function MinimalPlayer:MenuItem(index, fn)
+    local button = CreateFrame("Button", nil, self.menu)
+    PlaceMenuRow(button, index)
     button:SetHeight(23)
     button.text = Font(button, 12, 1, .82, 0)
     button.text:SetPoint("LEFT", 4, 0)
@@ -254,8 +262,10 @@ function MinimalPlayer:ActionRow(index)
 end
 
 function MinimalPlayer:ConfigureActions()
-    self.row = Actions:HeaderControls(self.frame, self.controls, self.buttons, self.clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls,
+        Actions.WithPause(self.pauseButton, { self.play, self.skip }, self.clip), self.clip)
     Actions.LayOutRow(self.controls, self.row, ROUND_GAP)
+    self.menuPause:SetShown(SoundQueue:Resumes(self.clip))
     local rows = 0
     for _, button in ipairs(self.frame.actions.buttons) do
         local action = button.action
@@ -269,7 +279,16 @@ function MinimalPlayer:ConfigureActions()
         end
     end
     for index = rows + 1, getn(self.actionRows) do self.actionRows[index]:Hide() end
-    self.menu:SetHeight(8 + (getn(self.menuButtons) + rows) * 23 + 9)
+    -- The rows close up over Pause where it is hidden.
+    local shown = 0
+    for _, button in ipairs(self.menuButtons) do
+        if button:IsShown() then
+            shown = shown + 1
+            PlaceMenuRow(button, shown)
+        end
+    end
+    for index = 1, rows do PlaceMenuRow(self.actionRows[index], shown + index) end
+    self.menu:SetHeight(8 + (shown + rows) * 23 + 9)
 end
 
 function MinimalPlayer:ToggleMenu()
@@ -364,14 +383,16 @@ function MinimalPlayer:UpdateControls()
     if not self.clip then return end
     local paused = SoundQueue:IsPaused()
     Actions.SetPlayGlyph(self.play, Actions.HeadState())
+    Actions.SetPauseGlyph(self.pauseButton)
     self.title.text:SetText(Label(self.clip))
     Addon:ClipFont(self.title.text, self.clip)
     self.tail:SetHeld(SoundQueue:GetHeldReason(self.clip))
     self.tail:SetStopped(paused)
     self:Count(Waiting())
     local pausable = Actions.SetPausable(self.buttons)
-    self.menuPlay.text:SetText(paused and L.REPLAY or L.STOP)
-    for _, button in ipairs({ self.menuPlay, self.menuSkip, self.menuStop }) do
+    self.menuPause.text:SetText(paused and L.RESUME or L.PAUSE)
+    self.menuPlay.text:SetText(SoundQueue:HaltedBy() == "stop" and L.REPLAY or L.STOP)
+    for _, button in ipairs({ self.menuPause, self.menuPlay, self.menuSkip, self.menuStop }) do
         if pausable then button:Enable(); button.text:SetAlpha(1)
         else button:Disable(); button.text:SetAlpha(.35) end
     end

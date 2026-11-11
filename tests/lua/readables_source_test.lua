@@ -74,6 +74,15 @@ B0:PlayTestLine()
 local queued = _G.Spoken:GetQueue()
 Expect("the test line skips a page nothing places and queues one that is placed",
     queued[1] and queued[1].key, "b:15")
+Expect("...a page kept whole has no pieces", queued[1] and queued[1].pieces, nil)
+_G.Spoken:StopAll()
+_G.SpokenReadablesAudioPacks.SpokenReadablesAudio_b.pages[15].pieces = "4 3.5"
+Expect("a page kept as sentence pieces carries them", B0:ClipFor(15).pieces, "4 3.5")
+stub.world.played = {}
+B0:PlayTestLine()
+Expect("...and plays from its first piece", stub.world.played[#stub.world.played],
+    [[Interface\AddOns\SpokenReadablesAudio_b\Sounds\15\01.mp3]])
+_G.Spoken:StopAll()
 _G.SpokenReadablesData, _G.SpokenReadablesAudioPacks = nil, nil
 
 -- Packs released as SpokenBooksAudio write SpokenBooksAudioPacks, and are read too, unless their

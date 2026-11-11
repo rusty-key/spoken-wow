@@ -4,8 +4,9 @@ local M = {}
 
 local PLACES = (debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or ".") .. "/../../addons/Spoken_Places/"
 
-function M.Fresh(stub, spokenDir)
-    stub.SetClient("11509")
+--- `client` is the stub's label for the client to load on, Classic Era's unless given.
+function M.Fresh(stub, spokenDir, client)
+    stub.SetClient(client or "11509")
     stub.ResetSound()
     stub.ResetTimers()
     local env = stub.LoadSpoken(spokenDir)

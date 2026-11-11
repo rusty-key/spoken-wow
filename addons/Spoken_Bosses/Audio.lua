@@ -60,7 +60,7 @@ function Bosses:PackNames()
 	return names
 end
 
---- The recording of the boss `key` of `map`: `{ path, len, times, language }`, from the voice
+--- The recording of the boss `key` of `map`: `{ path, len, times, pieces, language }`, from the voice
 --- language's packs, else the fallback language's, best first; nil where none has it. With Stay
 --- Silent, only the voice language's are tried.
 function Bosses:GetAudioClip(map, key)
@@ -77,6 +77,7 @@ function Bosses:GetAudioClip(map, key)
 				path = "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. entry.file .. ".mp3",
 				len = entry.len,
 				times = entry.times,
+				pieces = entry.pieces,
 				language = pack.language,
 			}
 		end

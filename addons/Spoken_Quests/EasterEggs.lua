@@ -36,6 +36,7 @@ function EasterEggs:Apply(soundData)
     soundData.filePath = format([[Interface\AddOns\%s\%s]], self.ADDON_NAME, alternate.path)
     soundData.length = alternate.length
     soundData.timings = nil
+    soundData.pieces = nil
     -- SoundQueue logs the addon a sound came from, so there is always a module to name even
     -- when no pack held the line.
     soundData.module = soundData.module or

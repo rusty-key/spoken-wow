@@ -5,6 +5,7 @@
         through the slash command, which is the public way in and already does each of these.
     -->
     <Binding name="SPOKEN_PLAYPAUSE" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("play")</Binding>
+    <Binding name="SPOKEN_PAUSE" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("pause")</Binding>
     <Binding name="SPOKEN_SKIP" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("skip")</Binding>
     <Binding name="SPOKEN_STOP" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("stop")</Binding>
     <Binding name="SPOKEN_COMPENDIUM" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("compendium")</Binding>

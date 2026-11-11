@@ -517,6 +517,7 @@ local function RegisterSlashCommand()
     local function Help()
         local lines = {
             { "/sp replay", L.BIND_PLAYPAUSE },
+            { "/sp pause", L.BIND_PAUSE },
             { "/sp skip", L.BIND_SKIP },
             { "/sp stopall", L.BIND_STOP },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
@@ -537,8 +538,13 @@ local function RegisterSlashCommand()
         local command = strlower(strtrim(input or ""))
         local _, _, verb, rest = string.find(command, "^(%S*)%s*(.-)$")
         -- play, pause and stop are the words Bindings.xml and players' macros send: kept.
-        if command == "replay" or command == "play" or command == "pause" or command == "" then
+        if command == "replay" or command == "play" or command == "" then
+            SoundQueue:ToggleStopQueue()
+        elseif command == "pause" then
+            -- On a line kept whole this is Stop, as "pause" always was.
             SoundQueue:TogglePauseQueue()
+        elseif command == "resume" then
+            SoundQueue:ResumeQueue()
         elseif command == "stopall" or command == "stop" then
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then

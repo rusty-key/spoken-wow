@@ -9,6 +9,18 @@ setfenv(1, SpokenEnv)
 -- restart, skip and Stop behave exactly as they do in the windows.
 Subtitle = {}
 
+-- Stop's section is the page of sentences the subtitle shows (Sentences at Once).
+SoundQueue:AddSectionFinder(function(clip, elapsed)
+    if Addon:DisplayStyle() ~= "subtitle" or Subtitle.clip ~= clip or Subtitle.sample or not Subtitle.pages then
+        return nil
+    end
+    local start
+    for _, page in ipairs(Subtitle.pages) do
+        if page.start <= elapsed + 1e-6 then start = page.start end
+    end
+    return start
+end)
+
 -- The widest a line runs, padding included. LoreTeller matched Plumber's talking head.
 local WIDTH = 512
 local PAD, TOP_PAD, TITLE_GAP, BOTTOM_PAD, LINE_GAP = 16, 12, 8, 12, 2
@@ -737,6 +749,25 @@ function Subtitle:Prepare(clip, text)
     end
 end
 
+--- `at`, moved inside the page that holds word `word` of the line: a line resumed there shows
+--- that page at once. The pages' times are estimated by characters and the words' by their own
+--- weights, so the two can disagree near a page's edge.
+function Subtitle:PageTimeFor(clip, word, at)
+    if not word or self.clip ~= clip or not self.pages then return at end
+    local first = 1
+    for index, page in ipairs(self.pages) do
+        local count = #Transcript:Split(page.text)
+        if word < first + count then
+            local following = self.pages[index + 1]
+            if at < page.start then return page.start end
+            if following and at >= following.start then return math.max(page.start, following.start - 0.05) end
+            return at
+        end
+        first = first + count
+    end
+    return at
+end
+
 --- With the clip's own word times, each page turns when the voice reaches its first word. A page
 --- cut inside a word counts that word twice; the totals then disagree and the estimate stays.
 function Subtitle:TimePages(words, duration)
@@ -757,6 +788,13 @@ end
 function Subtitle:Render()
     -- With no window there is no paused portrait to say so; the title says it instead.
     local paused = SoundQueue:IsPaused() and not self.sample
+    if paused then
+        local word = format("(%s)", Actions.HaltWord())
+        if self.pausedLabel:GetText() ~= word then
+            self.pausedLabel:SetText(word)
+            self.shownPaused = nil
+        end
+    end
     if paused ~= self.shownPaused then
         self.shownPaused = paused
         -- With Show Name off the row is there only while stopped, so the words move for it.
@@ -904,7 +942,7 @@ function Subtitle:Corner(clip)
         self.report = nil
     end
     -- As wide as the buttons it shows, so the row stays centred under the subtitle.
-    local count = action and 3 or 2
+    local count = (action and 3 or 2) + (SoundQueue:Resumes(clip) and 1 or 0)
     self.controls:SetWidth(CONTROL_SIZE * count + CONTROL_GAP * (count - 1))
 end
 
@@ -912,14 +950,18 @@ end
 function Subtitle:BuildControls()
     local frame = self.frame
     local controls = CreateFrame("Frame", nil, frame)
-    controls:SetSize(CONTROL_SIZE * 3 + CONTROL_GAP * 2, CONTROL_SIZE)
+    controls:SetSize(CONTROL_SIZE * 4 + CONTROL_GAP * 3, CONTROL_SIZE)
     controls:SetFrameLevel(frame:GetFrameLevel() + 2)
     controls:SetAlpha(0)
     controls:Hide()
     self.controls, self.controlsAlpha = controls, 0
 
+    -- self.pause is Stop/Replay; Pause/Resume is self.pauseButton, before it.
+    local hold = Actions.PauseButton(controls, nil, function() self:UpdatePause() end)
+    hold:SetPoint("LEFT", controls, "LEFT", 0, 0)
+    self.pauseButton = hold
     local pause = Actions.StopButton(controls, nil, function() self:UpdatePause() end)
-    pause:SetPoint("LEFT", controls, "LEFT", 0, 0)
+    pause:SetPoint("LEFT", hold, "RIGHT", CONTROL_GAP, 0)
     self.pause = pause
     self:UpdatePause()
 
@@ -955,8 +997,17 @@ function Subtitle:Wheel(delta)
 end
 
 function Subtitle:UpdatePause()
+    local resumes = SoundQueue:Resumes(self.clip)
+    self.pauseButton:SetShown(resumes)
+    self.pause:ClearAllPoints()
+    if resumes then
+        self.pause:SetPoint("LEFT", self.pauseButton, "RIGHT", CONTROL_GAP, 0)
+    else
+        self.pause:SetPoint("LEFT", self.controls, "LEFT", 0, 0)
+    end
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
-    Actions.SetPausable({ self.pause, self.skip })
+    Actions.SetPauseGlyph(self.pauseButton)
+    Actions.SetPausable({ self.pauseButton, self.pause, self.skip })
 end
 
 -- Locked, the subtitle lets clicks through to the world but still knows the pointer is over
