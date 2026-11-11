@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Spoken can mute itself while WoW Forever's Discord voice channel is active.** Lines wait in
+  the queue and an interrupted line replays when voice ends; the setting is on by default and can
+  be turned off under Sound. *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.6 — 2026-11-10
 
 - **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new

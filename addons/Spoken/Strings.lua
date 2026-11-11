@@ -219,10 +219,13 @@ L = {
     OPT_CHANNEL_DIALOG = "Dialog Volume",
     OPT_CHANNEL_DIALOG_WARN = "On Dialog Volume, NPC voices cannot be silenced or lowered while Spoken reads, and NPC Voice Before Reading cannot tell them from Spoken's.",
     OPT_MUTE_DIALOGUE = "Silence NPC Voices",
+    OPT_MUTE_DISCORD = "Mute while in Discord voice",
+    OPT_MUTE_DISCORD_TIP = "Pause Spoken while World of Warcraft's Discord voice channel is active.",
     OPT_READ_IN_BATTLEGROUNDS = "Read in Battlegrounds",
     OPT_LINE_GAP = "Pause Between Lines",
     -- Over the "+N" count: the lines waiting.
     WAITING_TITLE = "Up Next",
+    QUEUE_HELD_DISCORD = "Waiting for Discord voice to end.",
     DIALOGUE_REPORT_PROBLEM = "Report a Problem",
     OPT_CUE_BETWEEN = "Chime Between Lines",
     OPT_BACKGROUND_SOUND = "Keep Reading in Background",

@@ -579,12 +579,12 @@ end
 --- greeting did is talked over to its end. A clip a gate now holds is stopped and kept at
 --- the head; whatever no gate holds plays meanwhile, and it replays once its gate opens.
 ---
---- Scoped to the caller's own clip: a source knows its own gate just closed, not why
---- another source's clip is still speaking -- one that kept going into a pull, say.
+--- When `source` is omitted, this is a player-wide recheck: a player-wide gate can stop whatever
+--- source is speaking. That is used by DiscordVoice when the active provider changes.
 ---@return boolean stopped  whether a speaking clip was cut off
 function SoundQueue:RecheckGates(source)
     local head = self.sounds[1]
-    if not head or head.source ~= source or not head.nextSoundTimer or not self:GetHeldReason(head) then
+    if not head or (source and head.source ~= source) or not head.nextSoundTimer or not self:GetHeldReason(head) then
         return false
     end
     StopKeeping(head)

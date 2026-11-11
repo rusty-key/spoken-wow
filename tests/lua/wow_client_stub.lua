@@ -387,6 +387,15 @@ end
 
 local _G = _G
 
+-- The Forever voice-provider seam used by DiscordVoice.lua. Tests change these fields and fire
+-- the same client events the addon listens to; other client variants have no provider API.
+M.voice = { provider = nil, connected = false, channel = nil }
+M.voiceChatAPI = {
+    GetActiveVoiceProviderID = function() return M.voice.provider end,
+    IsVoiceChatConnected = function() return M.voice.connected end,
+    GetActiveChannelID = function() return M.voice.channel end,
+}
+
 -- The Forever client by default, the one Spoken is made on. SetClient() swaps in another.
 local CLIENTS = {
     ["20506"] = { "2.5.6", "60000", 20506, 5 },
@@ -401,6 +410,14 @@ function M.SetClient(label)
     _G.WOW_PROJECT_ID = c[4]
     _G.Settings = M.modernSettings
     _G.C_GossipInfo = M.gossipAPI
+    if label == "16001" then
+        _G.Enum = _G.Enum or {}
+        _G.Enum.VoiceProviderID = { Blizzard = 1, Discord = 2 }
+        _G.C_VoiceChat = M.voiceChatAPI
+    else
+        _G.C_VoiceChat = nil
+        if _G.Enum then _G.Enum.VoiceProviderID = nil end
+    end
     -- Model frames answer GetModelFileID; GetModel was removed.
     M.absentAPI.GetModel = true
     -- Back, after a test that took it away. Guarded: SetClient runs once as this file loads,
@@ -1215,7 +1232,7 @@ end
 function M.LoadSpoken(addonDirectory)
     for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
-        "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
+        "Locale/zhTW", "DiscordVoice", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
         "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
         -- Real LibDeflate, not a hand-faked stub library: Contribute:Encode's round trip through
         -- actual compression is the point of testing it at all.

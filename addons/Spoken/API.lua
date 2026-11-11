@@ -635,6 +635,12 @@ function Spoken:GetHeldReason(clip)
     return SoundQueue:GetHeldReason(clip)
 end
 
+--- Whether WoW Forever currently has an active voice channel using its Discord provider.
+--- This reports the client state even when the automatic Spoken mute is disabled.
+function Spoken:IsDiscordVoiceActive()
+    return DiscordVoice:IsActive()
+end
+
 --- Pause is stop, and resume replays from the start: the client has no seek.
 function Spoken:Pause()
     return SoundQueue:PauseQueue()

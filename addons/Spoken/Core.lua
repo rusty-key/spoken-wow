@@ -75,6 +75,9 @@ Defaults = {
             -- The game's Sound in Background turned on while a line speaks (BackgroundSound.lua).
             -- Off, as it plays the game's other sounds in the background too.
             KeepTalkingInBackground = false,
+            -- WoW Forever's native Discord voice integration is a player-wide reason to wait.
+            -- On by default; the setting is hidden on clients that do not expose the API.
+            MuteWhileDiscordVoice = true,
         },
         -- Parts of Spoken switched off in the settings, by source key, as false. Absent means on.
         -- See Sources:IsTurnedOff for why this is the player's switch and not the client's.
@@ -297,6 +300,7 @@ function Addon:ApplyProfile()
     if Minimap and Minimap.Refresh then Minimap:Refresh() end
     if OtherSounds and OtherSounds.IsAvailable and OtherSounds:IsAvailable() then OtherSounds:RefreshConfig() end
     if BackgroundSound and BackgroundSound.Sync then BackgroundSound:Sync() end
+    if DiscordVoice then DiscordVoice:Refresh() end
     -- Which modules are on is the profile's too: each puts its buttons back or takes them off,
     -- and what one now off had queued goes, as switching it off on Spoken's page does.
     for key in Sources:Iterate() do Sources:Apply(key) end

@@ -35,7 +35,7 @@ local METHODS = {
     "RegisterOptionalAction", "RegisterBullet", "RegisterPortraitRenderer",
     -- player-wide queue
     "GetCurrent", "GetNowPlaying", "GetQueue", "GetQueueSize", "GetWaitingCount",
-    "IsPlaying", "IsPaused", "GetHeldReason",
+    "IsPlaying", "IsPaused", "GetHeldReason", "IsDiscordVoiceActive",
     "Pause", "Resume", "TogglePause", "Skip", "StopAll", "AddGate", "MuteChannel", "MuteGameDialogueAhead",
     "EndMuteGameDialogueAhead",
     -- Read in Battlegrounds

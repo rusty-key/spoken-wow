@@ -18,6 +18,7 @@
     <Include file="Locale\koKR.lua"/>
     <Include file="Locale\zhCN.lua"/>
     <Include file="Locale\zhTW.lua"/>
+    <Include file="DiscordVoice.lua"/>
     <Include file="UI\Layout.lua"/>
     <Include file="UI\DialogueUITheme.lua"/>
     <Include file="UI\Portrait.lua"/>

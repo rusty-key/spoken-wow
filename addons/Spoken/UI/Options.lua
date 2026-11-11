@@ -589,6 +589,13 @@ local function Build()
     Requires(silence, function() return Sources:PlayerChannel() ~= "Dialog" end, L.REASON_DIALOG_CHANNEL)
     local lower = function() return audio().LowerOthers end
     local applyLower = function() OtherSounds:RefreshConfig(); Options:UpdateRows() end
+    local discordMute = layout:Checkbox(L.OPT_MUTE_DISCORD, L.OPT_MUTE_DISCORD_TIP,
+        function() return DiscordVoice:IsEnabled() end,
+        function(v)
+            audio().MuteWhileDiscordVoice = v
+            DiscordVoice:Refresh()
+        end, function() Options:UpdateRows() end)
+    Only(discordMute, function() return DiscordVoice:IsAvailable() end)
     -- What Spoken starts by itself waits outside a battleground.
     layout:Checkbox(L.OPT_READ_IN_BATTLEGROUNDS, nil,
         function() return audio().ReadInBattlegrounds ~= false end,
