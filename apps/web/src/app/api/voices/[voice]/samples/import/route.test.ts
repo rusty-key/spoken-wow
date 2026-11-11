@@ -11,7 +11,11 @@ const { mergeSamples, storeSample } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/voices/authz", () => ({
-  requireVoiceManager: async () => ({ session: { user: { id: "admin" } }, denied: null }),
+  requireVoiceManager: async (request: Request) => ({
+    session: { user: { id: "admin" } },
+    lang: new URL(request.url).searchParams.get("lang") ?? "enUS",
+    denied: null,
+  }),
 }));
 vi.mock("@/lib/activity/store", () => ({ recordActivities: async () => {} }));
 vi.mock("@/lib/voices/seedClips", () => ({
