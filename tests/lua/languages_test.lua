@@ -232,6 +232,34 @@ modernControl.layoutSync()
 Expect("modern: ...and gets its own font back", dropdown.Text.fontFile, OWN)
 _G.CreateFrame, _G.MenuUtil = realCreate, realMenu
 
+-- A clip's text is drawn in its language's pack font, unless the clip names a font itself.
+env = HebrewInstalled(HEBREW)
+local function ClipText()
+    local text = stub.Widget("FontString")
+    -- The stub's own GetFont always answers the same face; the client reports what was set.
+    function text:GetFont() return self.fontFile, self.fontSize, self.fontFlags end
+    text:SetFont(OWN, 12, "OUTLINE")
+    return text
+end
+local text = ClipText()
+env.Addon:ClipFont(text, { present = { lang = "heIL" } })
+Expect("clip: the pack's font draws its language", text.fontFile, FACE)
+Expect("clip: ...at the player's size", text.fontSize, 12)
+Expect("clip: ...and flags", text.fontFlags, "OUTLINE")
+env.Addon:ClipFont(text, { present = { lang = "deDE" } })
+Expect("clip: a language with no pack font goes back to the player's own", text.fontFile, OWN)
+text = ClipText()
+env.Addon:ClipFont(text, { present = { lang = "heIL", font = "Fonts\\ARIALN.TTF" } })
+Expect("clip: present.font beats the pack's", text.fontFile, "Fonts\\ARIALN.TTF")
+text = ClipText()
+env.Addon:ClipFont(text, { present = { lang = "xxXX" } })
+Expect("clip: a language nobody declared keeps the player's face", text.fontFile, OWN)
+text = ClipText()
+stub.refusedFonts = { [FACE] = true }
+env.Addon:ClipFont(text, { present = { lang = "heIL" } })
+Expect("clip: a pack font the client refuses leaves the player's face", text.fontFile, OWN)
+stub.refusedFonts = nil
+
 stub.ResetAddOns()
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll language registry tests passed")

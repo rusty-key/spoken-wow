@@ -314,15 +314,17 @@ function Addon:Profile(section)
 end
 
 --- Draws a clip's text in its `present.font`, for a script the game's font has no glyphs for
---- (Czech on a Western client), and any other clip's in the font string's own face. The size
---- and flags stay the player's.
+--- (Czech on a Western client), else in the font its `present.lang` pack declares (Hebrew), and
+--- any other clip's in the font string's own face. The size and flags stay the player's.
 function Addon:ClipFont(fontString, clip)
     local face, size, flags = fontString:GetFont()
     if not face then return end
     -- Anything but the face this set last is the player's own (a skin, a resize), so it is
     -- the one to go back to.
     if face ~= fontString.spokenClipFace then fontString.spokenOwnFace = face end
-    local want = clip and clip.present and clip.present.font or fontString.spokenOwnFace
+    local present = clip and clip.present
+    local language = present and not present.font and present.lang and Languages:Get(present.lang)
+    local want = present and present.font or language and language.font or fontString.spokenOwnFace
     -- Asked for last time and still on: done, also when that face failed and the player's
     -- own stands in, rather than trying it again on every update.
     if face == fontString.spokenClipFace and want == fontString.spokenClipWant then return end

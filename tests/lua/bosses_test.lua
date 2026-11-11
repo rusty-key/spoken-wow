@@ -538,6 +538,7 @@ Expect("with no pack, a boss's story is a line with no recording", tostring(clip
 Expect("...headed by its dungeon, named for the boss", clip.present.header .. "|" .. clip.present.label, "Deadmines|Edwin VanCleef")
 Expect("...with its story and its face", clip.present.transcript .. "|" .. tostring(clip.present.portrait.creatureID),
     "He led the Brotherhood.|639")
+Expect("...in the language of its words, for the font they are drawn in", clip.present.lang, "enUS")
 Expect("...with a Report action in the narrator", clip.present.actions and clip.present.actions[1].id, "report")
 local showReport, reported = Spoken.ShowReport, nil
 Spoken.ShowReport = function(_, url) reported = url end
