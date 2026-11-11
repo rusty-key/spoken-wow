@@ -37,6 +37,7 @@ Data/Creatures.lua
 Data/Stories.lua
 Audio.lua
 UI/Bosses.lua
+MapLore.lua
 Leatrix.lua
 OpenMap.lua
 UI/CopyLink.lua

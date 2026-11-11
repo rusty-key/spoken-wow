@@ -82,6 +82,7 @@ function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
 function Bosses:PlayStory() end
 Bosses.ReportAction = { has = function() return true end, open = function() end, title = "Report a Problem" }
+assert(loadfile(here .. "/../../addons/Spoken_Bosses/MapLore.lua"))("Spoken_Bosses", Bosses)
 local load = assert(loadfile(here .. "/../../addons/Spoken_Bosses/Leatrix.lua"))
 load("Spoken_Bosses", Bosses)
 

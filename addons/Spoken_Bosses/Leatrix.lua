@@ -2,14 +2,10 @@
 -- each pin carries the row that created it.
 
 local _, Bosses = ...
-
-local PLAY = {
-	has = function(target)
-		return Bosses.GetAudioClip ~= nil and Bosses:GetAudioClip(target[1], target[2]) ~= nil
-	end,
-	find = function(target) return Bosses:QueuedStory(target[1], target[2]) end,
-	start = function(target) Bosses:PlayStory(target[1], target[2]) end,
-}
+local M = Bosses.MapLore
+local BossName, BossNameKey, IsMapOrChild = M.BossName, M.BossNameKey, M.IsMapOrChild
+local DungeonInstance, DungeonInstanceByName, DungeonZone = M.DungeonInstance, M.DungeonInstanceByName, M.DungeonZone
+local CurrentMapID = M.CurrentMapID
 
 local byMapCreature
 local byCreature
@@ -17,33 +13,6 @@ local LEATRIX_CREATURE_ALIASES = {
 	-- Leatrix's Stratholme pin uses Balnazzar's phase creature, not the creature in Spoken's data.
 	[10813] = { map = 329, key = "balnazzar" },
 }
-
-local function BossName(boss)
-	return boss[GetLocale and GetLocale() or "enUS"] or boss[1]
-end
-
-local function BossNameKey(name)
-	if type(name) ~= "string" then return end
-	name = name:match("^(.-)%s*<") or name
-	return string.lower(name):gsub("%s+", " ")
-end
-
-local function IsMapOrChild(mapID, parentMapID)
-	if mapID == parentMapID or tostring(mapID) == tostring(parentMapID) then return true end
-	local mapAPI = _G.C_Map
-	if not mapAPI or not mapAPI.GetMapInfo then return false end
-	local seen, current = {}, mapID
-	for _ = 1, 10 do
-		if seen[current] then return false end
-		seen[current] = true
-		local ok, info = pcall(mapAPI.GetMapInfo, current)
-		if not ok or type(info) ~= "table" then return false end
-		current = info.parentMapID
-		if not current or current == 0 then return false end
-		if current == parentMapID or tostring(current) == tostring(parentMapID) then return true end
-	end
-	return false
-end
 
 local function BossFor(mapID, creatureID, bossName)
 	if not byMapCreature then
@@ -94,70 +63,6 @@ local function BossFor(mapID, creatureID, bossName)
 	return any
 end
 
-local function DungeonZone(mapID)
-	local function Find(map)
-		for zone, dungeons in pairs(_G.SpokenPlaces and SpokenPlaces.Dungeons or {}) do
-			for _, dungeon in ipairs(dungeons) do
-				if dungeon.dungeon == map or tostring(dungeon.dungeon) == tostring(map) then return zone end
-			end
-		end
-	end
-	local zone = Find(mapID)
-	if zone then return zone end
-	-- Some dungeon floors have their own map ID (Gnomeregan 226/228), so walk up to the instance.
-	if not C_Map or not C_Map.GetMapInfo then return end
-	local seen = {}
-	local current = mapID
-	for _ = 1, 10 do
-		if seen[current] then return end
-		seen[current] = true
-		local ok, info = pcall(C_Map.GetMapInfo, current)
-		if not ok or type(info) ~= "table" then return end
-		current = info.parentMapID
-		if not current or current == 0 then return end
-		zone = Find(current)
-		if zone then return zone end
-	end
-end
-
-local function DungeonInstance(mapID)
-	local function Find(map)
-		for _, dungeons in pairs(_G.SpokenPlaces and SpokenPlaces.Dungeons or {}) do
-			for _, dungeon in ipairs(dungeons) do
-				if dungeon.dungeon == map or tostring(dungeon.dungeon) == tostring(map) then
-					return dungeon.dungeon
-				end
-			end
-		end
-	end
-	local instanceID = Find(mapID)
-	if instanceID then return instanceID end
-	if not C_Map or not C_Map.GetMapInfo then return end
-	local seen = {}
-	local current = mapID
-	for _ = 1, 10 do
-		if seen[current] then return end
-		seen[current] = true
-		local ok, info = pcall(C_Map.GetMapInfo, current)
-		if not ok or type(info) ~= "table" then return end
-		current = info.parentMapID
-		if not current or current == 0 then return end
-		instanceID = Find(current)
-		if instanceID then return instanceID end
-	end
-end
-
-local function DungeonInstanceByName(name)
-	if type(name) ~= "string" or not _G.SpokenDungeons or type(SpokenDungeons.dungeons) ~= "table" then
-		return
-	end
-	local locale = GetLocale and GetLocale() or "enUS"
-	for instanceID, dungeon in pairs(SpokenDungeons.dungeons) do
-		local localized = dungeon[locale] or dungeon[1]
-		if localized == name then return instanceID end
-	end
-end
-
 -- Leatrix's zone-map dungeon icons are display-only: the map container gets their click, and the
 -- destination is readable only from the private tooltip's owner while the cursor is over it.
 local function DungeonPOIAtCursor()
@@ -174,26 +79,9 @@ local function DungeonPOIAtCursor()
 	return DungeonInstanceByName(info[4])
 end
 
-local function BossModel(map, key)
-	local entry = _G.SpokenBossCreatures and SpokenBossCreatures[map]
-	entry = entry and entry[key]
-	if entry and entry.display then
-		return { creatureID = entry.creature, displayID = entry.display }
-	end
-end
-
-local ShowLeatrixDungeon
+local ShowLeatrixDungeon = M.ShowDungeon
 local suppressPreviewFallback
 local activeDungeonID
-
-local function CurrentMapID()
-	if not WorldMapFrame then return end
-	if type(WorldMapFrame.GetMapID) == "function" then
-		local ok, mapID = pcall(WorldMapFrame.GetMapID, WorldMapFrame)
-		if ok and mapID then return mapID end
-	end
-	return WorldMapFrame.mapID
-end
 
 local function ShowLeatrixEntrance(mapID)
 	-- During a preview the world map stays on the entrance zone. The selected dungeon goes first:
@@ -230,73 +118,13 @@ local function ShowLeatrixEntrance(mapID)
 	return SpokenPlaces:ShowMapStory(mapID, entry)
 end
 
-local function DungeonStory(instanceID)
-	for _, dungeons in pairs(_G.SpokenPlaces and SpokenPlaces.Dungeons or {}) do
-		for _, dungeon in ipairs(dungeons) do
-			if dungeon.dungeon == instanceID or tostring(dungeon.dungeon) == tostring(instanceID) then
-				return dungeon.mapID, dungeon.key
-			end
-		end
-	end
-end
-
-ShowLeatrixDungeon = function(mapID, instanceID)
-	if not mapID or not instanceID or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then
-		return false
-	end
-	local storyMap, storyKey = DungeonStory(instanceID)
-	local story = storyMap and SpokenPlaces.Subzones and SpokenPlaces.Subzones[storyMap]
-	story = story and story[storyKey]
-	if not story then return false end
-
-	local title = SpokenCompendium and SpokenCompendium.DungeonName and SpokenCompendium.DungeonName(instanceID)
-		or SpokenPlaces:GetMapName(instanceID) or tostring(instanceID)
-	local entry = {
-		title = title,
-		subtitle = SpokenPlaces.PlaceLine and SpokenPlaces:PlaceLine(storyMap, storyKey) or "",
-	}
-	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(storyMap, storyKey) then
-		entry.text = SpokenPlaces.L and SpokenPlaces.L.NOT_DISCOVERED or "You have not discovered this place yet."
-	elseif SpokenPlaces.IsPending and SpokenPlaces:IsPending(story) then
-		entry.contribute = { storyMap, storyKey }
-		entry.lore = { storyMap, storyKey }
-	else
-		entry.text = story.full or story.short or ""
-		entry.audio = { storyMap, storyKey }
-		entry.report = { storyMap, storyKey }
-		entry.lore = { storyMap, storyKey }
-	end
-	return SpokenPlaces:ShowMapStory(mapID, entry)
-end
-
 function Bosses:ShowLeatrixBoss(mapID, creatureID, bossName)
 	-- A preview keeps the world map on the entrance zone while Leatrix draws the dungeon floor
 	-- itself. Use its instance ID to disambiguate bosses with the same name in different dungeons.
 	local found = BossFor(activeDungeonID or DungeonInstance(mapID) or mapID, creatureID, bossName)
-	if not found or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then
-		return false
-	end
-
-	local story = self:StoryClip(found.map, found.key)
-	local target = story and { found.map, found.key } or nil
-	local text = story and story.present.transcript or SpokenCompendium.NotWritten()
-	if not self:IsBossFound(found.map, found.key)
-		and not (SpokenBossesSettings and SpokenBossesSettings.unlockUnfound) then
-		text = self.L.BOSS_NOT_FOUND
-		target = nil
-	end
+	if not found then return false end
 	suppressPreviewFallback = true
-
-	return SpokenPlaces:ShowMapStory(mapID, {
-		title = BossName(found.boss),
-		subtitle = SpokenCompendium.DungeonName(found.map) or "",
-		panelTitle = SpokenPlaces.L and SpokenPlaces.L.BOSS_LORE_TITLE or "Boss lore",
-		model = BossModel(found.map, found.key),
-		text = text,
-		target = target,
-		play = PLAY,
-		reportAction = Bosses.ReportAction,
-	})
+	return M.ShowBoss(mapID, found)
 end
 
 local hooked = setmetatable({}, { __mode = "k" })
@@ -318,9 +146,7 @@ end
 
 local function ClearLeatrixDungeonStory()
 	activeDungeonID = nil
-	if _G.SpokenPlaces and SpokenPlaces.ClearMapStory then
-		SpokenPlaces:ClearMapStory(CurrentMapID())
-	end
+	M.ClearStory()
 end
 
 local function Watch(frame)

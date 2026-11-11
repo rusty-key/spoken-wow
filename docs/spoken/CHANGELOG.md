@@ -4,9 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **OpenMap dungeon bosses now open their lore when clicked.** With Spoken Bosses installed, clicking
-  a boss in OpenMap's Bosses panel opens its story and portrait beside the map. OpenMap remains an
-  optional integration, so players without it see no change. *([anon1231823](https://github.com/anon1231823))*
+- **OpenMap's dungeon maps open dungeon and boss lore.** With Spoken Bosses installed, opening a
+  dungeon in OpenMap shows its story beside the map, and clicking a boss in OpenMap's Bosses panel
+  opens the boss's story, portrait and Report button. OpenMap remains an optional integration, so
+  players without it see no change. *([anon1231823](https://github.com/anon1231823))*
 - **Place stories work on [OpenMap](https://github.com/openmap-world/openmap)'s world map.**
   Areas light up under the cursor again, in any zone on screen, and a click opens the story of
   the area you clicked rather than one in the zone at the centre of the view. Dragging the map no
