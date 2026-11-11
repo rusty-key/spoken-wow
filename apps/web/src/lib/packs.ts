@@ -286,12 +286,12 @@ export const PACKS: readonly Pack[] = [
   { section: "bosses", lang: "deDE", curseforge: "spoken-german-audio-bosses", release: "bosses-audio-deDE" },
   { section: "bosses", lang: "esES", curseforge: "spoken-spanish-eu-audio-bosses", release: "bosses-audio-esES" },
   { section: "bosses", lang: "esMX", curseforge: "spoken-spanish-al-audio-bosses", release: "bosses-audio-esMX" },
-  { section: "bosses", lang: "frFR", curseforge: null, release: "bosses-audio-frFR" },
+  { section: "bosses", lang: "frFR", curseforge: "spoken-french-audio-bosses", release: "bosses-audio-frFR" },
   { section: "bosses", lang: "ptBR", curseforge: "spoken-portuguese-audio-bosses", release: "bosses-audio-ptBR" },
-  { section: "bosses", lang: "ruRU", curseforge: null, release: "bosses-audio-ruRU" },
-  { section: "bosses", lang: "koKR", curseforge: null, release: "bosses-audio-koKR" },
-  { section: "bosses", lang: "zhCN", curseforge: null, release: "bosses-audio-zhCN" },
-  { section: "bosses", lang: "zhTW", curseforge: null, release: "bosses-audio-zhTW" },
+  { section: "bosses", lang: "ruRU", curseforge: "spoken-russian-audio-bosses", release: "bosses-audio-ruRU" },
+  { section: "bosses", lang: "koKR", curseforge: "spoken-korean-audio-bosses", release: "bosses-audio-koKR" },
+  { section: "bosses", lang: "zhCN", curseforge: "spoken-chinese-simplified-audio-bosses", release: "bosses-audio-zhCN" },
+  { section: "bosses", lang: "zhTW", curseforge: "spoken-chinese-traditional-audio-bosses", release: "bosses-audio-zhTW" },
 ];
 
 /** The pack for a section in a language, or undefined where none has been built. */
