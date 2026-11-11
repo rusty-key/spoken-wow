@@ -1168,13 +1168,7 @@ function C.NewList(panel, opts)
 	if opts.addScrollBar then
 		list.bar = opts.addScrollBar(scroll, child, inset)
 		local bar = list.bar
-		if type(bar) == "table" and bar.bar then
-			bar.bar:ClearAllPoints()
-			bar.bar:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", -BAR_SIDE, -BAR_HEAD)
-			bar.bar:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", -BAR_SIDE, BAR_FOOT)
-			bar.sideGap = BAR_ROOM
-			bar:UpdateScrollBar()
-		end
+		if type(bar) == "table" and bar.SetBarInsets then bar:SetBarInsets(BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM) end
 	end
 
 	-- The filter menu.

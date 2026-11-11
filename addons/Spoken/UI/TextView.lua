@@ -97,6 +97,21 @@ end
 -- Scrollbar
 --------------------------------------------------------------------------------
 
+--- Stands the scroll bar `side` in from the view's right, `head` down and `foot` up. The rows it
+--- scrolls end `room` short of it, and the edge fades 4 px short of it.
+function TextView:SetBarInsets(side, head, foot, room)
+	self.bar:ClearAllPoints()
+	self.bar:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -side, -head)
+	self.bar:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -side, foot)
+	self.sideGap = room
+	for _, solid in ipairs({ self.fadeTop, self.fadeBottom }) do
+		local edge = solid.fadeEdge
+		solid:SetPoint(edge .. "RIGHT", self.frame, edge .. "RIGHT", -(self.barWidth + side + 4),
+			(edge == "TOP" and 1 or -1) * EDGE_OUT)
+	end
+	self:UpdateScrollBar()
+end
+
 function TextView:UpdateScrollBar()
 	local viewHeight = self.frame:GetHeight() or 0
 	local contentHeight = self.child:GetHeight() or 0
