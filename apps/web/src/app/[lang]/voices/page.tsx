@@ -37,7 +37,7 @@ export default async function Page({
 
   // 404 rather than a redirect, matching /admin: a member has no business learning that
   // this page exists. Open to whoever spends in the language, because this is where they
-  // choose what they spend with; what the voices are made from stays an admin's, inside.
+  // choose what they spend with; what the voices are made from stays the language admin's, inside.
   const viewer = session ? await viewerOf(session) : null;
   if (!session || !canViewVoices(viewer, lang)) notFound();
   const userId = session.user.id;
@@ -116,7 +116,7 @@ export default async function Page({
           raceTags={settings.config.raceTags}
           existing={readable ? [...account.voiceIds.keys()] : null}
           accountError={account?.error ?? null}
-          manager={canManageVoices(session.user.role)}
+          manager={canManageVoices(viewer, lang)}
           directs={can(viewer, "configure", lang)}
         />
       </Contained>

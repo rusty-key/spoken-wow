@@ -318,7 +318,7 @@ make quests-release                       # upload every zip in dist/
 zip that goes out is the one you tested. Six projects, one per target: `spoken`
 ([spoken](https://www.curseforge.com/wow/addons/spoken), `1700375`), which is
 Spoken's zip; `audio-all`
-([spoken-quests-audio-all](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), `1660196`),
+([spoken-audio-quests-all](https://www.curseforge.com/wow/addons/spoken-audio-quests-all), `1660196`),
 and `audio-alliance` / `audio-horde` / `audio-shared` / `audio-gossip`. `spoken-all`, the
 English install-everything addon, is accepted by name and is never part of a bare run. A target
 with no id fails the run rather than uploading a Horde pack over the Alliance project — which
@@ -528,8 +528,9 @@ side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary a
 some lines) reads as the token. English quest text has nothing left for it to replace, its
 words having been written in at extraction; a book page in any language, English included,
 goes through the same table (`docs/readables/README.md`). A token glued to a following letter
-(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. German's
-genitive `s` is the one exception: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. Two glued
+`s` are exceptions. German's genitive: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+on the female variant. French's class plural: `$cs` reads as `aventuriers`, or `aventurières`
 on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
 in as a token instead of swallowing the text up to a later `;`.
 A Craftsman's Writ's `$2oa`, the item count the client fills in, reads as "an order of" in
@@ -1070,7 +1071,14 @@ and hashed on the template when it is gossip. Class and race are swapped whereve
 whole words, so a warrior's "a warrior's discipline" arrives as "a `$c`'s discipline"; that
 false positive is accepted over voicing one player's class at everyone, except on a quest only
 that class can take (the Compendium's `classes` is that one class), where the class is left as
-written. The contribution's id on its speaker row, or its note on the first
+written. A quest whose text names a class as a word of its own ("There's a priest out in the
+mountains") is marked from its row on the corrections tab, per language (`quest_class_word`,
+migration 0105). From then on that language's intake puts the word back wherever a `$c` (frFR's
+`$cs` too) lines up with one to three plain words in the corpus line, before the row is
+deduplicated, and marking does the same to the quest's rows in that language still waiting
+(`lib/contributions/class-words.ts`). A `$c` in a sentence the corpus lacks stays. On that tab a
+moderator can also edit the player's text in place before accepting it; `raw` keeps the paste as
+sent, and a refused accept puts the text back. The contribution's id on its speaker row, or its note on the first
 version of a line it wrote without one, is the mark, not the line's origin, because an edit
 puts an `edited` version on top. A contributed speaker is what `corpus_db.py`'s import leaves
 alone when it replaces every extracted speaker, and it numbers from 1,000,000 so a re-import

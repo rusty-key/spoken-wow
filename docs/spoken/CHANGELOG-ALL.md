@@ -9,6 +9,12 @@ from the player whose changelog is CHANGELOG.md beside this one.
   Spoken: English, in the AddOns list and on CurseForge.
   *([rusty-key](https://github.com/rusty-key))*
 
+## 3.1.0 — 2026-11-11
+
+- Installs the English boss stories too, which ship inside Spoken Audio: Places and Bosses.
+  Updating this addon makes sure everyone who installed it earlier gets them.
+- Called Spoken: English in the AddOns list and on CurseForge.
+
 ## 1.1.0 — spoken-all-deDE — 2026-11-04
 
 - Installs Spoken German Audio: Bosses too, now that it has a CurseForge project, so the German

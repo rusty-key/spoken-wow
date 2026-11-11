@@ -35,9 +35,11 @@ export function submissionFrom(envelope: Envelope, raw: string, description?: st
   const written = envelope.source === "places" ? description : envelope.text;
   const text = written ? normaliseText(written) : null;
 
-  const dedup = createHash("sha256")
-    .update([envelope.source, check.key, locale, text ?? ""].join("\u0000"))
-    .digest("hex");
-
+  const dedup = dedupOf(envelope.source, check.key, locale, text);
   return { source: envelope.source, key: check.key, locale, build, text, meta, raw, dedup };
+}
+
+/** What makes two pastes one row: the same text under the same key and language. */
+export function dedupOf(source: string, key: string, locale: string, text: string | null): string {
+  return createHash("sha256").update([source, key, locale, text ?? ""].join("\u0000")).digest("hex");
 }

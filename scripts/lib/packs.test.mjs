@@ -130,7 +130,7 @@ test("every language has the structure English has", () => {
 
 test("English's all is a bundle of the four split packs' folders, zipped clear of the meta addon's name", () => {
   const allEn = ["quests", "en.md", { section: "quests", lang: "enUS", pack: "all",
-    curseforge: "1660196", release: "quests-audio", slug: "spoken-quests-audio-all",
+    curseforge: "1660196", release: "quests-audio", slug: "spoken-audio-quests-all",
     name: "Spoken Quests Audio: All" }];
   const all = findPack("quests", "enUS", "all", loadPacks(tree([allEn])));
   assert.equal(all.folder, "SpokenQuestsAudioAll");

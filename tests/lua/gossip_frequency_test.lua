@@ -82,7 +82,7 @@ for _, client in ipairs({ "11509", "16001" }) do
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.OncePerNPC
 
     -- An NPC marked heard before greetings were told apart counts as never heard.
-    VO.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true
+    VO.Addon.db.char.hasSeenGossipForNPC[12345] = true
 
     Talk()
     Expect(client .. ": the first greeting plays", Played(played), "greeting-hash")
@@ -111,6 +111,13 @@ for _, client in ipairs({ "11509", "16001" }) do
     Talk()
     Expect(client .. ": ...and the first greeting is still held back", Played(played), "(nothing)")
     Leave()
+
+    local firstSpawn = world.npcGUID
+    world.npcGUID = "Creature-0-0-0-0-12345-1"
+    Talk()
+    Expect(client .. ": the same NPC spawned again does not greet a second time", Played(played), "(nothing)")
+    Leave()
+    world.npcGUID = firstSpawn
 
     -- DialogueUI picks an option by its index, not its id.
     if _G.C_GossipInfo then

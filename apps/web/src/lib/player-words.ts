@@ -21,18 +21,20 @@
  *
  * A token glued to a following letter ("$Nama", ruRU's broken "$nдруг:подруга") is left
  * alone, so the text gate still refuses the line: substituting would voice "adventurerama".
- * German's genitive s is the one exception ("Legion $Ns"), spoken as the word's own genitive.
+ * Two glued s are exceptions: German's genitive ("Legion $Ns"), spoken as the word's own
+ * genitive, and French's class plural ("les $cs"), spoken as the word's own plural.
  *
  * CLIENT-SAFE: the explorer asks the text gate, and the gate asks this.
  */
 import type { Lang } from "./lang";
 
-type Words = { name: string; race: string; nameGenitive?: string };
+type Words = { name: string; race: string; nameGenitive?: string; classPlural?: string };
 
 /**
  * `name` stands for $N and $C, `race` for $R, lowercase as they read mid-sentence.
  * `nameGenitive` is what a $N or $C with a glued "s" says, in a language whose templates write
- * one; the feminine German genitive takes no s.
+ * one; the feminine German genitive takes no s. `classPlural` is what a $C with a glued "s" says
+ * where that s is a plural, as frFR's "$cs" is: the game prints the class with the s on.
  *
  * The feminine form is what a line's female variant says: where the English line branches on
  * $G, the translation is imported twice, `playerGender` "m" and "f", and the addon plays the
@@ -48,7 +50,10 @@ const WORDS: Partial<Record<Lang, { m: Words; f: Words }>> = {
   },
   esES: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
   esMX: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
-  frFR: { m: { name: "aventurier", race: "voyageur" }, f: { name: "aventurière", race: "voyageuse" } },
+  frFR: {
+    m: { name: "aventurier", race: "voyageur", classPlural: "aventuriers" },
+    f: { name: "aventurière", race: "voyageuse", classPlural: "aventurières" },
+  },
   itIT: { m: { name: "avventuriero", race: "viaggiatore" }, f: { name: "avventuriera", race: "viaggiatrice" } },
   plPL: { m: { name: "wędrowcze", race: "wędrowiec" }, f: { name: "wędrowczyni", race: "wędrowczyni" } },
   ptBR: { m: { name: "aventureiro", race: "viajante" }, f: { name: "aventureira", race: "viajante" } },
@@ -62,10 +67,17 @@ const WORDS: Partial<Record<Lang, { m: Words; f: Words }>> = {
 /** German capitalises every noun; the rest only at the start of a sentence. */
 const ALWAYS_CAPITAL: ReadonlySet<Lang> = new Set(["deDE"]);
 
-// Not followed by a letter: see "glued" above.
-const TOKEN = /\$([NnCcRr])(?!\p{L})/gu;
+// A letter that glues to a token. Chinese and Japanese write no spaces at all, and Korean
+// attaches its particles ("$N님"), so a character of theirs after a token is the next word,
+// not the same one.
+const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakana}])\p{L}`;
+// Not followed by a glued letter: see "glued" above.
+const TOKEN = new RegExp(String.raw`\$([NnCcRr])(?!${GLUED})`, "gu");
 // Not $R: "des Reisenden" is no glued s, so "$Rs" stays refused.
 const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
+// Not $N or $R: the class is the only glued plural seen in frFR text. Not before an apostrophe
+// either: "$cs'il" is "$c s'il" with its space lost, not a plural.
+const TOKEN_CLASS_PLURAL = /\$[Cc]s(?![\p{L}'’])/gu;
 // $gmale:female; and ruRU's $gmale:female:c; whose third field names the token the
 // adjective agrees with. The import resolves the two-field form already; the three-field
 // form slips past its pattern and arrives here. No branch ends a sentence: one whose `;` was
@@ -84,7 +96,7 @@ const SWAPPED = new RegExp(String.raw`\$[Uu]\s*(${FIELD}+?)(?<=\p{L});(?=\p{L})(
 const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`, "u");
 // TBC Anniversary and Forever send some lines with the token's $ doubled ("$$N, …"), which the
 // client reads as the token itself. Left doubled, a genitive "$$Ns" would say "$Abenteurers".
-const DOUBLED = /\$\$(?=[NnCcRr](?!\p{L})|[NnCc]s(?!\p{L}))/gu;
+const DOUBLED = new RegExp(String.raw`\$\$(?=[NnCcRr](?!${GLUED})|[NnCc]s(?!\p{L}))`, "gu");
 // Whatever may stand between a sentence's end and its first word: space, a line break, an
 // opening quote or Spanish's inverted marks.
 const SENTENCE_START = new RegExp(String.raw`(?:^|[${ENDS}]|\n)[\s"'«„“¡¿]*$`, "u");
@@ -149,6 +161,10 @@ export function speakPlayerTokens(
     spoken = spoken.replace(TOKEN_GENITIVE, (_, _token: string, at: number, whole: string) =>
       cased(genitive, at, whole),
     );
+  }
+  const plural = words.classPlural;
+  if (plural) {
+    spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, at: number, whole: string) => cased(plural, at, whole));
   }
   return spoken.replace(TOKEN, (_, token: string, at: number, whole: string) =>
     cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole),

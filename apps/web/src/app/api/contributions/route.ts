@@ -17,6 +17,7 @@ import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
 import { COMPLAINT_MAX, descriptionFrom } from "@/lib/contributions/contributions";
 import { MAX_BYTES, parseEnvelope } from "@/lib/contributions/envelope";
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import {
   CONTRIBUTION_WINDOW_MS,
@@ -62,8 +63,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "describe" }, { status: 400 });
   }
 
-  const submission = submissionFrom(parsed.value, raw, description);
-  if (!submission) {
+  const sent = submissionFrom(parsed.value, raw, description);
+  if (!sent) {
     return Response.json({ error: "incomplete" }, { status: 400 });
   }
 
@@ -77,7 +78,10 @@ export async function POST(request: Request) {
   // Identity from the session when there is one, and the typed fields dropped rather than
   // merged -- the reports route's reasoning: signing in and typing someone else's name is a
   // way to put words in their mouth.
-  const session = await auth.api.getSession({ headers: await headers() });
+  const [session, [submission]] = await Promise.all([
+    auth.api.getSession({ headers: await headers() }),
+    keepClassWords([sent]),
+  ]);
 
   // A line the corpus already has is thanked for and dropped, the same answer as a stored one:
   // the player did nothing wrong, there is just nothing to triage. A complaint about it is
