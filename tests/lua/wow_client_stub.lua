@@ -233,7 +233,15 @@ local function Widget(kind, name)
         return true
     end
     function w:GetFont() return self.fontFile, self.fontSize, self.fontFlags end
-    function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
+    -- As on a client, a font object hands its face to the text, which GetFont then reports.
+    function w:SetFontObject(font)
+        self.font = type(font) == "table" and (font.name or font) or font
+        self.fontObject = font
+        if type(font) == "table" and font.fontFile then
+            self.fontFile, self.fontSize, self.fontFlags = font.fontFile, font.fontSize, font.fontFlags
+        end
+    end
+    function w:GetFontObject() return self.fontObject end
     function w:GetTop() return 100 end
     function w:GetBottom() return 0 end
     function w:GetLeft() return 0 end

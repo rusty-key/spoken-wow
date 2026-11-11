@@ -230,6 +230,8 @@ local modernControl = modern:Dropdown("Language", nil, { "deDE", "heIL" }, funct
     function(v) chosen = v end, nil, tostring, FaceOf)
 local button = { fontString = stub.Widget("FontString") }
 button.fontString:SetFont(OWN, 12, "")
+-- The game's menu forbids SetFont on its entries' text ("Use of function 'SetFont' is disallowed").
+function button.fontString:SetFont() error("Use of function 'SetFont' is disallowed.") end
 initializers.heIL(button)
 Expect("modern: an entry with a face draws in it", button.fontString.fontFile, FACE)
 initializers.deDE(button)

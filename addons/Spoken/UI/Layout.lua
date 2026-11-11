@@ -1154,26 +1154,35 @@ end
 
 local dropdowns = 0
 
--- One font object per file, for the classic menu, which takes an object and not a path.
+-- One font object per file, size and flags: the classic menu takes an object and not a path, and
+-- the game's menu forbids SetFont on its entries' text while it allows SetFontObject.
 local faces, faceCount = {}, 0
-local function FaceObject(path)
-    if not faces[path] then
+local function FaceObject(path, size, flags)
+    size, flags = size or 12, flags or ""
+    local key = path .. "\0" .. size .. "\0" .. flags
+    if not faces[key] then
         faceCount = faceCount + 1
-        faces[path] = CreateFont("SpokenLayoutFace" .. faceCount)
-        faces[path]:SetFont(path, 12, "")
+        faces[key] = CreateFont("SpokenLayoutFace" .. faceCount)
+        faces[key]:SetFont(path, size, flags)
     end
-    return faces[path]
+    return faces[key]
 end
 
--- Draw a text in `path`, or back in the font it had where `path` is nil.
+-- Draw a text in `path`, or back in the font it had where `path` is nil. Through font objects
+-- only, never SetFont, which the game's menu refuses on the text of its entries.
 local function Refont(fontString, path)
-    if not (fontString and fontString.GetFont and fontString.SetFont) then return end
-    if not fontString.layoutOwnFont then fontString.layoutOwnFont = { fontString:GetFont() } end
+    if not (fontString and fontString.GetFont and fontString.SetFontObject) then return end
+    if not fontString.layoutOwnFont then
+        fontString.layoutOwnFont = { fontString:GetFont() }
+        fontString.layoutOwnObject = fontString.GetFontObject and fontString:GetFontObject() or false
+    end
     local file, size, flags = unpack(fontString.layoutOwnFont)
     if path then
-        fontString:SetFont(path, size or 12, flags)
+        fontString:SetFontObject(FaceObject(path, size, flags))
+    elseif fontString.layoutOwnObject then
+        fontString:SetFontObject(fontString.layoutOwnObject)
     elseif file then
-        fontString:SetFont(file, size or 12, flags)
+        fontString:SetFontObject(FaceObject(file, size, flags))
     end
 end
 
