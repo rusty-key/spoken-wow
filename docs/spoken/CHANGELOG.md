@@ -20,7 +20,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   A boss on the map panel has its round portrait by the name and an Open in Compendium button, as the
   Compendium's page has. *([Nucabe](https://github.com/Nucabe))*
 - **A boss you have not met shows no 3D model on the Leatrix Maps boss panel**, as its page in the Compendium
-  shows none. With Unlock Unfound Bosses on, the model is drawn. *([Nucabe](https://github.com/Nucabe))*
+  shows none. Its round portrait is the boss's own, not the question mark. With Unlock Unfound Bosses on,
+  the model is drawn. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.8.6 — 2026-11-10
 
