@@ -318,7 +318,7 @@ make quests-release                       # upload every zip in dist/
 zip that goes out is the one you tested. Six projects, one per target: `spoken`
 ([spoken](https://www.curseforge.com/wow/addons/spoken), `1700375`), which is
 Spoken's zip; `audio-all`
-([spoken-quests-audio-all](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), `1660196`),
+([spoken-audio-quests-all](https://www.curseforge.com/wow/addons/spoken-audio-quests-all), `1660196`),
 and `audio-alliance` / `audio-horde` / `audio-shared` / `audio-gossip`. `spoken-all`, the
 English install-everything addon, is accepted by name and is never part of a bare run. A target
 with no id fails the run rather than uploading a Horde pack over the Alliance project — which

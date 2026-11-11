@@ -58,6 +58,15 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Olá, $Nama.", "ptBR")).toBe("Olá, $Nama.");
   });
 
+  it("speaks a token in Chinese or Korean text, which puts no space after it", () => {
+    expect(speakPlayerTokens("不过，你这$c似乎是正想找点什么事情做做呀。", "zhCN")).toBe(
+      "不过，你这冒险者似乎是正想找点什么事情做做呀。",
+    );
+    expect(speakPlayerTokens("$N們，快去吧。", "zhTW")).toBe("冒險者們，快去吧。");
+    expect(speakPlayerTokens("고맙네, $N님.", "koKR")).toBe("고맙네, 모험가님.");
+    expect(speakPlayerTokens("你好，$$N朋友。", "zhCN")).toBe("你好，冒险者朋友。");
+  });
+
   it("reads $u as the gender branch $g is, in every language", () => {
     // q:87288:accept and q:98321:accept, as the client sent them.
     expect(speakPlayerTokens("Seid gegrüßt, $uReisender:Reisende;.", "deDE")).toBe("Seid gegrüßt, Reisender.");
