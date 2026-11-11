@@ -37,7 +37,7 @@ end
 
 -- This is deliberately stricter than checking the selected provider. A linked Discord account
 -- or a provider selected in settings is not an active voice session until the client reports a
--- connected service and an activated channel.
+-- connected service and a joined or activated channel.
 function DiscordVoice:IsActive()
     if not self:IsAvailable() then
         return false
@@ -97,15 +97,28 @@ SoundQueue:AddGate(function()
     return DiscordVoice:HeldReason()
 end)
 
+local function JoinSucceeded(status)
+    if status == true then
+        -- Test clients may use a boolean success value.
+        return true
+    end
+    local statuses = Enum and Enum.VoiceChatStatusCode
+    return statuses ~= nil and status == statuses.Success or false
+end
+
 local frame = CreateFrame("Frame")
 for _, event in ipairs(EVENTS) do
     -- Some clients do not know the Forever-only event names.
     pcall(frame.RegisterEvent, frame, event)
 end
-frame:SetScript("OnEvent", function(_, event)
-    if event == "VOICE_CHAT_CHANNEL_ACTIVATED" then
+frame:SetScript("OnEvent", function(_, event, ...)
+    local status = ...
+    if event == "VOICE_CHAT_CHANNEL_JOINED" then
+        DiscordVoice.channelActive = JoinSucceeded(status)
+    elseif event == "VOICE_CHAT_CHANNEL_ACTIVATED" then
         DiscordVoice.channelActive = true
-    elseif event == "VOICE_CHAT_CHANNEL_DEACTIVATED" or event == "VOICE_CHAT_LOGOUT" then
+    elseif event == "VOICE_CHAT_CHANNEL_DEACTIVATED"
+        or event == "VOICE_CHAT_LOGOUT" then
         DiscordVoice.channelActive = false
     end
     DiscordVoice:Refresh()
