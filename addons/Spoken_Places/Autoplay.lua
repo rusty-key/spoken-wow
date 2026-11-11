@@ -695,7 +695,7 @@ function SpokenPlaces:SetupAutoplay()
 	frame:SetScript("OnEvent", function(_, event, ...)
 		if event == "PLAYER_DEAD" then
 			SpokenPlaces.playerDead = true
-		elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+		elseif event == "PLAYER_UNGHOST" then
 			SpokenPlaces.playerDead = false
 			if SpokenPlaces.RefreshFound then
 				SpokenPlaces:RefreshFound()
