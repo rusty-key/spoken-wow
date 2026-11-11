@@ -36,7 +36,7 @@ export const PACKS: readonly Pack[] = [
   {
     section: "quests",
     lang: "enUS",
-    curseforge: "spoken-quests-audio-all",
+    curseforge: "spoken-audio-quests-all",
     release: "quests-audio",
     split: [
       { label: "Alliance", slug: "spoken-audio-quests-alliance" },
