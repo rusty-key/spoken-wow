@@ -352,7 +352,7 @@ Expect("...with the line down the open zone's contents beside it", city.rails[1]
 _G.SpokenCompendium.treeLines = false
 Tab:Refresh()
 Expect("...and none of the lines drawn with them off, the rows as they were", RowFor("Stormwind City").rails[1]:IsShown() == false
-    and RowFor("Eastern Kingdoms").bannerRail == nil or not RowFor("Eastern Kingdoms").bannerRail:IsShown(), true)
+    and (RowFor("Eastern Kingdoms").bannerRail == nil or not RowFor("Eastern Kingdoms").bannerRail:IsShown()), true)
 _G.SpokenCompendium.treeLines = true
 Tab:Refresh()
 Expect("...not chosen or under the pointer, no light on it", city.wash:IsShown(), false)
