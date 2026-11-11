@@ -589,7 +589,7 @@ local function Build()
     Requires(silence, function() return Sources:PlayerChannel() ~= "Dialog" end, L.REASON_DIALOG_CHANNEL)
     local lower = function() return audio().LowerOthers end
     local applyLower = function() OtherSounds:RefreshConfig(); Options:UpdateRows() end
-    local discordMute = layout:Checkbox(L.OPT_MUTE_DISCORD, L.OPT_MUTE_DISCORD_TIP,
+    local discordMute = layout:Checkbox(L.OPT_MUTE_DISCORD, nil,
         function() return DiscordVoice:IsEnabled() end,
         function(v)
             audio().MuteWhileDiscordVoice = v
