@@ -14,19 +14,22 @@ import { REPO_URL, S, SITE_URL } from '../strings'
 
 type Section = 'games' | 'updates' | 'startup' | 'downloads' | 'sharing' | 'contributor' | 'about'
 
-const NAV: { id: Section; key: 'folders' | 'updates' | 'startup' | 'downloads' | 'sharing' | 'contributor' | 'about'; icon: ReactNode }[] = [
-  { id: 'games', key: 'folders', icon: <IconGames size={18} /> },
-  { id: 'updates', key: 'updates', icon: <IconRefresh size={18} /> },
-  { id: 'startup', key: 'startup', icon: <IconGear size={18} /> },
-  { id: 'downloads', key: 'downloads', icon: <IconDownload size={18} /> },
-  { id: 'sharing', key: 'sharing', icon: <IconHeart size={18} /> },
-  { id: 'contributor', key: 'contributor', icon: <IconUser size={18} /> },
-  { id: 'about', key: 'about', icon: <IconInfo size={18} /> }
-]
-
 export function SettingsPage(): ReactNode {
   const { state } = useStore()
   const [section, setSection] = useState<Section>('games')
+  /**
+   * Built here, not at module load: an entry made once would keep the language the window
+   * started in. The words stay written as `S.settings.x`, so a reader finds them by searching.
+   */
+  const nav: { id: Section; label: string; icon: ReactNode }[] = [
+    { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
+    { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
+    { id: 'startup', label: S.settings.startup, icon: <IconGear size={18} /> },
+    { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
+    { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
+    { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
+    { id: 'about', label: S.settings.about, icon: <IconInfo size={18} /> }
+  ]
   return (
     <div className="settings">
       <header className="settings-head">
@@ -34,10 +37,10 @@ export function SettingsPage(): ReactNode {
       </header>
       <div className="settings-body">
         <nav className="settings-nav" aria-label={S.settings.title}>
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <button key={n.id} type="button" className="nav-item" aria-current={section === n.id ? 'page' : undefined} onClick={() => setSection(n.id)}>
               {n.icon}
-              {S.settings[n.key]}
+              {n.label}
             </button>
           ))}
         </nav>
