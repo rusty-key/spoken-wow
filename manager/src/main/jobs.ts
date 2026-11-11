@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { JobProgress } from '../shared/types'
 import { isAbortError, plainMessage, PlainError } from './errors'
 import { log } from './state'
+import { t } from './i18n'
 
 export interface JobSpec {
   gameId: string
@@ -68,7 +69,7 @@ export class JobManager {
       this.jobs.delete(job.id)
       job.spec.onDropped?.()
       job.spec.onEnded?.('cancelled')
-      this.publish(job, 'cancelled', 'Cancelled.')
+      this.publish(job, 'cancelled', t('errors.cancelled'))
       this.settle()
       return true
     }
@@ -144,7 +145,7 @@ export class JobManager {
       // A plain error wins over a cancel: a cancelled install whose rollback failed must say so.
       if (!(err instanceof PlainError) && (isAbortError(err) || job.controller.signal.aborted)) {
         outcome = 'cancelled'
-        this.publish(job, 'cancelled', 'Cancelled.')
+        this.publish(job, 'cancelled', t('errors.cancelled'))
       } else {
         outcome = 'error'
         log(`Job ${job.spec.action} ${job.spec.productId} failed:`, err)

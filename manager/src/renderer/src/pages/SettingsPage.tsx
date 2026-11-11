@@ -2,25 +2,26 @@ import { useState, type ReactNode } from 'react'
 import { formatBytes, formatDate, formatTime } from '../format'
 import { api, errorText } from '../api'
 import { GameIcon } from '../components/Brand'
-import { Switch } from '../components/Controls'
+import { Select, Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
 import { RestartButton } from '../components/RestartButton'
 import { IconChevron, IconChevronRight, IconDownload, IconGames, IconGear, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
-import type { Settings } from '@shared/types'
+import type { Settings, UiLanguage } from '@shared/types'
+import { UI_LANGUAGES } from '@shared/types'
 import { useStore } from '../store'
 import { ContributorSection } from './ContributorSection'
 import { REPO_URL, S, SITE_URL } from '../strings'
 
 type Section = 'games' | 'updates' | 'startup' | 'downloads' | 'sharing' | 'contributor' | 'about'
 
-const NAV: { id: Section; label: string; icon: ReactNode }[] = [
-  { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
-  { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
-  { id: 'startup', label: S.settings.startup, icon: <IconGear size={18} /> },
-  { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
-  { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
-  { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
-  { id: 'about', label: S.settings.about, icon: <IconInfo size={18} /> }
+const NAV: { id: Section; key: 'folders' | 'updates' | 'startup' | 'downloads' | 'sharing' | 'contributor' | 'about'; icon: ReactNode }[] = [
+  { id: 'games', key: 'folders', icon: <IconGames size={18} /> },
+  { id: 'updates', key: 'updates', icon: <IconRefresh size={18} /> },
+  { id: 'startup', key: 'startup', icon: <IconGear size={18} /> },
+  { id: 'downloads', key: 'downloads', icon: <IconDownload size={18} /> },
+  { id: 'sharing', key: 'sharing', icon: <IconHeart size={18} /> },
+  { id: 'contributor', key: 'contributor', icon: <IconUser size={18} /> },
+  { id: 'about', key: 'about', icon: <IconInfo size={18} /> }
 ]
 
 export function SettingsPage(): ReactNode {
@@ -36,7 +37,7 @@ export function SettingsPage(): ReactNode {
           {NAV.map((n) => (
             <button key={n.id} type="button" className="nav-item" aria-current={section === n.id ? 'page' : undefined} onClick={() => setSection(n.id)}>
               {n.icon}
-              {n.label}
+              {S.settings[n.key]}
             </button>
           ))}
         </nav>
@@ -174,6 +175,15 @@ function StartupSection(): ReactNode {
         <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
         <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
       </div>
+      <h3 className="settings-h settings-h-sub">{S.settings.language}</h3>
+      <Select label={S.settings.languageName} value={settings.uiLanguage} onChange={(v) => set({ uiLanguage: v as UiLanguage })}>
+        {UI_LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code}>
+            {l.name}
+          </option>
+        ))}
+      </Select>
+      <p className="settings-text">{S.settings.languageText}</p>
     </section>
   )
 }

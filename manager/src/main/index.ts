@@ -15,6 +15,7 @@ import { HIDDEN_ARG, updateLinuxAutostart } from './startup'
 import { initLog, log } from './state'
 import { isOurPage as isOurPageUrl, type AppPage } from './trust'
 import { startUpdater } from './updater'
+import { t } from './i18n'
 
 app.setName('Spoken Manager')
 if (process.platform === 'win32') app.setAppUserModelId('one.rusty.spoken.manager')
@@ -132,15 +133,21 @@ function syncTray(enabled: boolean): void {
   tray.setToolTip('Spoken Manager')
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Show Spoken Manager', click: showWindow },
+      { label: t('tray.show'), click: showWindow },
       { type: 'separator' },
-      { label: 'Quit Spoken Manager', click: () => app.quit() }
+      { label: t('tray.quit'), click: () => app.quit() }
     ])
   )
   tray.on('click', showWindow)
 }
 
 function startupSettingsChanged(settings: Settings, previous: Settings): void {
+  // The tray menu's words follow the window's language, so it is rebuilt when that changes.
+  if (settings.uiLanguage !== previous.uiLanguage) {
+    tray?.destroy()
+    tray = null
+    syncTray(settings.minimizeToTray)
+  }
   if (settings.startAtLogin === previous.startAtLogin && settings.minimizeToTray === previous.minimizeToTray) return
   applyAutoStart(settings)
   syncTray(settings.minimizeToTray)

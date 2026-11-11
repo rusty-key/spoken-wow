@@ -163,7 +163,22 @@ export interface ProductStatus {
   blockedReason?: string
 }
 
+/**
+ * The languages the manager's own window is written in. Not the voice pack languages: a
+ * language here is what the buttons say, and one there is what the audio speaks.
+ */
+export const UI_LANGUAGES = [
+  { code: 'enUS', name: 'English' },
+  { code: 'zhCN', name: '中文' }
+] as const
+
+export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']
+
+export const UI_LANGUAGE_CODES: readonly UiLanguage[] = UI_LANGUAGES.map((l) => l.code)
+
 export interface Settings {
+  /** The language of the window. */
+  uiLanguage: UiLanguage
   includePrereleases: boolean
   checkOnStart: boolean
   /** The manager's own updates. */
@@ -198,6 +213,7 @@ export interface SharingStatus {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  uiLanguage: 'enUS',
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
@@ -213,6 +229,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** The settings that take only some values of their type; anything else is dropped on load. */
 export const SETTING_CHOICES: Partial<Record<keyof Settings, readonly unknown[]>> = {
+  uiLanguage: UI_LANGUAGE_CODES,
   sharing: SHARING_CHOICES
 }
 
