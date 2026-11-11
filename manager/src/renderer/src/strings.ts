@@ -27,11 +27,6 @@ let current: UiLanguage = DEFAULT_SETTINGS.uiLanguage
 /** Every word the window shows. Never read `Object.keys(S)`: it is a live view, not a snapshot. */
 export const S: Dict = { ...S_EN }
 
-/** What the system calls its file browser, for text that says where a folder opens. */
-export function fileManager(platform: Platform): string {
-  return platform === 'darwin' ? 'Finder' : platform === 'linux' ? 'File Manager' : 'Explorer'
-}
-
 /** The language the window is in. */
 export function uiLanguage(): UiLanguage {
   return current

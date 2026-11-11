@@ -3,10 +3,10 @@
 import { FLAVOR_FOLDER_LIST, type Section, type Snapshot } from '@shared/types'
 import { pluralForm } from './format'
 
-export type Platform = Snapshot['platform']
+type Platform = Snapshot['platform']
 
-/** What the system calls its file browser, for text that says where a folder opens. */
-export function fileManager(platform: Platform): string {
+/** What the system calls its file browser. Private: each language names it in its own words. */
+function fileManager(platform: Platform): string {
   return platform === 'darwin' ? 'Finder' : platform === 'linux' ? 'File Manager' : 'Explorer'
 }
 
@@ -16,10 +16,6 @@ function gameFolderExample(platform: Platform): string {
   if (platform === 'linux') return 'the World of Warcraft folder inside your Wine prefix or Lutris/Bottles game folder'
   return 'the game folder (for example C:\\Program Files (x86)\\World of Warcraft)'
 }
-
-export const REPO_URL = 'https://github.com/rusty-key/spoken-wow'
-export const SITE_URL = 'https://spoken.quest'
-export const COMMUNITY_README_URL = 'https://github.com/rusty-key/spoken-wow/blob/master/community/README.md'
 
 export const S_EN = {
   appName: 'Spoken Manager',
