@@ -121,10 +121,12 @@ the zone's icon as the face (Spoken's book without one), the place's picture and
 - Reading on discovery appends to the queue. A line with no clip in the installed pack is not
   queued, so it cannot take one of the three slots.
 - Before a clip starts, Places' gate (`Autoplay.lua`, `HoldReason`) holds what reading on discovery
-  queued while reading is off, in combat or during a cinematic. A held line waits and shows why.
+  queued while reading is off, in combat, during a cinematic or while dead or a ghost. A held line
+  waits and shows why. Nothing new is queued while dead or a ghost.
   Play and shift-click lines are never held.
 - A cinematic that starts after a clip has stops it, and it replays from the start when the
-  cinematic ends. Combat does the same with Stop When Combat Starts on; off, the default, a line
+  cinematic ends, and so does dying: the line waits until the character is alive again, not a
+  ghost. Combat does the same with Stop When Combat Starts on; off, the default, a line
   already speaking plays through the fight, and one not yet started still waits for it to end.
   Only a line reading on discovery queued is stopped: Play keeps speaking.
 - Reading on discovery queues nothing while the player is on a taxi or flying, and nothing for a

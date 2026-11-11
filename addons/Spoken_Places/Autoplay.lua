@@ -127,17 +127,10 @@ local function CinematicUp()
 end
 
 -- A ghost travelling back to the corpse should have the world's quiet soundscape. Keep this
--- guard in the autoplay path so manually requested lore still works while dead.
-SpokenPlaces.playerDead = false
-
+-- guard in the autoplay path so manually requested lore still works while dead. Asked of the
+-- client each time: a res taken before releasing fires PLAYER_ALIVE but never PLAYER_UNGHOST.
 function SpokenPlaces:IsPlayerDead()
-	if self.playerDead then
-		return true
-	end
-	if UnitIsDeadOrGhost then
-		return UnitIsDeadOrGhost("player") and true or false
-	end
-	return UnitIsDead and UnitIsDead("player") and true or false
+	return UnitIsDeadOrGhost("player") and true or false
 end
 
 -- Why a queued clip may not start yet. Registered onto the queue at setup, and
@@ -567,9 +560,6 @@ local function IsZoneDiscovery(areaName, mapID)
 end
 
 function SpokenPlaces:OnAreaDiscovered(areaName)
-	if self:IsPlayerDead() then
-		return
-	end
 	if not areaName or areaName == "" then
 		return
 	end
@@ -693,14 +683,6 @@ function SpokenPlaces:SetupAutoplay()
 	frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	frame:SetScript("OnEvent", function(_, event, ...)
-		if event == "PLAYER_DEAD" then
-			SpokenPlaces.playerDead = true
-		elseif event == "PLAYER_UNGHOST" then
-			SpokenPlaces.playerDead = false
-			if SpokenPlaces.RefreshFound then
-				SpokenPlaces:RefreshFound()
-			end
-		end
 		if HOLD_EVENTS[event] then
 			-- Off, a story already speaking plays through the fight. One not yet started still
 			-- waits for combat to end (HoldReason).

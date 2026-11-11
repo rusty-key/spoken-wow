@@ -137,17 +137,6 @@ Expect("...and explored on its entrance's map",
 OVERLAYS[1413], AREAS[5] = nil, nil
 Z:RefreshFound()
 
-OVERLAYS[1450] = { { hitRect = { left = 0, right = 1000, top = 0, bottom = 500 }, area = 6 } }
-AREAS[6] = "Moonglade"
-playerDead = true
-Z:RefreshFound()
-Expect("a dead player does not scan new map exploration", Z:IsFound(1450, "moonglade"), false)
-playerDead = false
-Z:RefreshFound()
-Expect("new map exploration is scanned once alive", Z:IsFound(1450, "moonglade"), true)
-OVERLAYS[1450], AREAS[6] = nil, nil
-Z:RefreshFound()
-
 Expect("undiscovered places hidden unless the setting says", Z:ShowsUndiscovered(), false)
 settings.showUndiscovered = true
 Expect("...shown when it does", Z:ShowsUndiscovered(), true)

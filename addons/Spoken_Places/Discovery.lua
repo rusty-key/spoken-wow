@@ -88,13 +88,7 @@ local function Scan(mapID)
 end
 
 local function Explored(mapID)
-	if explored[mapID] then
-		return explored[mapID]
-	end
-	if SpokenPlaces:IsPlayerDead() then
-		return { zone = false, keys = {}, why = {} }
-	end
-	return Scan(mapID)
+	return explored[mapID] or Scan(mapID)
 end
 
 -- Every zone's map read, for /spp found's list of every place. Once until RefreshFound.
@@ -111,9 +105,6 @@ end
 --- (a GM's .cheat explore too) shows. Called when the world map or Azeroth's Compendium opens and when
 --- the game reports something explored.
 function SpokenPlaces:RefreshFound()
-	if self:IsPlayerDead() then
-		return
-	end
 	explored, exploredNames, everyZone = {}, {}, false
 end
 
@@ -155,9 +146,7 @@ end
 --- An area a click on the map just resolved: only an explored one resolves, so it is found, even
 --- where the samples IsFound reads miss its shape (a road, a riverbank).
 function SpokenPlaces:MarkFound(mapID, areaKey)
-	if not self:IsPlayerDead() and mapID and areaKey then
-		CharDB().visited[VisitKey(mapID, areaKey)] = true
-	end
+	if mapID and areaKey then CharDB().visited[VisitKey(mapID, areaKey)] = true end
 end
 
 --- Every place counted found, and why, for /spp found.

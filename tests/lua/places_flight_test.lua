@@ -169,5 +169,18 @@ stub.FireEvent("PLAYER_UNGHOST")
 stub.Advance(1.1)
 Expect("autoplay resumes after becoming alive", Spoken:IsPlaying(), true)
 
+-- A res taken on the corpse, before releasing, fires PLAYER_ALIVE and never PLAYER_UNGHOST.
+Z = Boot("16001", false, false)
+Z:Set("autoplayExplored", true)
+stub.Advance(2)
+stub.FireEvent("ZONE_CHANGED")
+world.playerDead = true
+stub.FireEvent("PLAYER_DEAD")
+Expect("death holds autoplay", Spoken:IsPlaying(), false)
+world.playerDead = false
+stub.FireEvent("PLAYER_ALIVE")
+stub.Advance(1.1)
+Expect("a res before releasing resumes autoplay", Spoken:IsPlaying(), true)
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places flight tests passed")
