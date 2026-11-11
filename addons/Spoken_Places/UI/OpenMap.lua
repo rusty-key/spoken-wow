@@ -187,16 +187,16 @@ function SpokenPlaces:MapLeftToOpenMap()
 	return self:OpenMap() ~= nil and not self:IsMapPanelOpen()
 end
 
---- Calls `fn` as OpenMap's view moves or its map turns on or off. Asked once the addons have
---- loaded, as OpenMap may load after this.
-function SpokenPlaces:OnOpenMapView(fn)
+--- Calls `onView` as OpenMap's view moves and `onStitched` as its map turns on or off. Asked
+--- once the addons have loaded, as OpenMap may load after this.
+function SpokenPlaces:OnOpenMapView(onView, onStitched)
 	local om = API()
 	if not (om and om.RegisterCallback) then
 		return
 	end
 	local owner = {}
-	pcall(om.RegisterCallback, owner, "OpenMap_ViewChanged", function() fn() end)
-	pcall(om.RegisterCallback, owner, "OpenMap_StitchedChanged", function() fn() end)
+	pcall(om.RegisterCallback, owner, "OpenMap_ViewChanged", function() onView() end)
+	pcall(om.RegisterCallback, owner, "OpenMap_StitchedChanged", function() onStitched() end)
 end
 
 -- How much closer than the fit of the zone at the view's centre the view may be before a click
@@ -255,6 +255,10 @@ function SpokenPlaces:FitZone(zone)
 		return
 	end
 	local looked = ZoneAt(om, cu, cv)
+	-- An area of the zone looked at: the player chose how much of it to show.
+	if looked == zone then
+		return
+	end
 	local lu0, lv0, lu1, lv1
 	if looked then
 		lu0, lv0, lu1, lv1 = WorldRect(om, looked)

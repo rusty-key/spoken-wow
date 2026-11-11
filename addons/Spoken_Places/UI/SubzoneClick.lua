@@ -11,7 +11,7 @@ local _, SpokenPlaces = ...
 -- gesture counts as a map drag rather than a click. IsPanning() is unreliable by
 -- the time OnMouseUp fires, so compare positions instead.
 local DRAG_TOLERANCE = 0.01
--- The same on screen, in UI units. A map that pans by moving its canvas with the cursor
+-- The same on screen, in UI units, on OpenMap's map only. A map that pans by moving its canvas with the cursor
 -- (OpenMap's) keeps the cursor on the same map point all through a drag, so the normalised
 -- position alone reads every drag as a click.
 local DRAG_PIXELS = 8
@@ -132,7 +132,8 @@ function SpokenPlaces:SetupSubzoneClicks()
 			return -- the player was panning the map
 		end
 		local screenX, screenY = ScreenCursor()
-		if math.abs(screenX - startScreenX) + math.abs(screenY - startScreenY) > DRAG_PIXELS then
+		if SpokenPlaces:OpenMap()
+			and math.abs(screenX - startScreenX) + math.abs(screenY - startScreenY) > DRAG_PIXELS then
 			return
 		end
 

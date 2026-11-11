@@ -90,12 +90,11 @@ settings.mapPanelCollapsed = true
 Click()
 Expect("...and opens the panel when it is closed, as an area does", settings.mapPanelCollapsed, false)
 
--- A drag that kept the same map point under the cursor, as OpenMap pans: the screen says it moved.
+-- Blizzard's map moves its map point with the cursor, so a hand that drifts on screen still clicks.
 Z.AreaAt = function(_, mapID)
     if mapID == MULGORE then return "Bloodhoof Village", { name = "Bloodhoof Village" }, "bloodhoof village" end
 end
-Expect("a drag is not a click, though the map point under the cursor stayed", Click(nil, 200), nil)
-Expect("...while a click that barely moves still is", Click(nil, 2), MULGORE .. ":Bloodhoof Village")
+Expect("without OpenMap, a click that drifted on screen is still a click", Click(nil, 20), MULGORE .. ":Bloodhoof Village")
 
 -- OpenMap's stitched map: its map is the continent while the view already shows a whole zone.
 local DUROTAR = 1411
@@ -112,6 +111,10 @@ Z.AreaAt = function(_, mapID)
     if mapID == MULGORE then return "Bloodhoof Village", { name = "Bloodhoof Village" }, "bloodhoof village" end
     if mapID == DUROTAR then return "Razor Hill", { name = "Razor Hill" }, "razor hill" end
 end
+-- A drag that kept the same map point under the cursor, as OpenMap pans: the screen says it moved.
+WorldMapFrame.mapID = MULGORE
+Expect("stitched, a drag is not a click, though the map point under the cursor stayed", Click(nil, 200), nil)
+Expect("...while a click that barely moves still is", Click(nil, 2), MULGORE .. ":Bloodhoof Village")
 WorldMapFrame.mapID = KALIMDOR
 Expect("stitched, a click opens the area of the zone under the cursor on the continent's map",
     Click(), MULGORE .. ":Bloodhoof Village")

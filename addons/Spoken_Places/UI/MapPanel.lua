@@ -600,6 +600,10 @@ function SpokenPlaces:SetupMapPanel()
 		Refresh(SpokenPlaces:GetDisplayedMapID())
 	end)
 	WorldMapFrame:HookScript("OnHide", function()
+		-- On OpenMap's map a choice outlives map changes; it lasts until the map closes.
+		if SpokenPlaces:OpenMap() then
+			SpokenPlaces.selected = nil
+		end
 		panel:Hide()
 		toggle:Hide()
 	end)
@@ -613,9 +617,14 @@ function SpokenPlaces:SetupMapPanel()
 		Refresh(mapID)
 	end)
 	SpokenPlaces:OnOpenMapView(function()
-		if not SpokenPlaces.selected and SpokenPlaces:ViewMap(SpokenPlaces:GetDisplayedMapID()) ~= shownMap then
+		if not SpokenPlaces.selected and not SpokenPlaces:Get("mapPanelCollapsed")
+			and SpokenPlaces:ViewMap(SpokenPlaces:GetDisplayedMapID()) ~= shownMap then
 			Refresh(SpokenPlaces:GetDisplayedMapID())
 		end
+	end, function()
+		-- A choice made on OpenMap's map may belong to no map Blizzard's shows.
+		SpokenPlaces.selected = nil
+		Refresh(SpokenPlaces:GetDisplayedMapID())
 	end)
 
 	-- Toggling "Hide the Contribute buttons" in the Spoken settings fires no game event.
