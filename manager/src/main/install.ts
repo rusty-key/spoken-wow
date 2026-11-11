@@ -67,7 +67,6 @@ export interface JobContext {
   repair?: boolean
   /** Replaces the running-game check (tests). */
   isRunning?: () => Promise<boolean>
-  /** Recorded on the install: a version picked over the newest, which automatic updates leave. */
   pinned?: boolean
 }
 

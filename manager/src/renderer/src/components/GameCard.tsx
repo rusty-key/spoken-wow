@@ -23,7 +23,7 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
     )
   ]
   const updates = voice.filter((s) => s.state === 'update-available').length
-  // Update takes Spoken and every pack that can be updated; the job queue runs Spoken first.
+  // Spoken first: the queue runs a game's jobs in order.
   const toUpdate = [
     ...(spokenState === 'update-available' ? ['spoken'] : []),
     ...voice.filter((s) => s.state === 'update-available' && !s.blockedReason).map((s) => s.productId)

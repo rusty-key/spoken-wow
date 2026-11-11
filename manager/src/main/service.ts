@@ -72,7 +72,7 @@ export class ManagerService {
   readonly jobs: JobManager
   readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
-  /** Automatic updates (`gameId:productId`) cancelled or failed this session; left until the player checks by hand. */
+  /** `gameId:productId` of automatic updates cancelled or failed this session; skipped until a check by hand. */
   private autoSkip = new Set<string>()
   private refreshingChannel: Promise<void> | null = null
   /** When the server last gave a verified index; 0 until then. */
@@ -198,7 +198,6 @@ export class ManagerService {
       this.refreshing = null
     })
     if (!force) return this.refreshing
-    // A check by hand offers again the updates the player cancelled or that failed.
     this.autoSkip.clear()
     return this.refreshing.then(async (catalog) => {
       await this.autoUpdate()
@@ -240,10 +239,6 @@ export class ManagerService {
     return offered
   }
 
-  /**
-   * Queues updates of the installed official products, when the setting is on. Leaves what cannot be
-   * written, a version the player picked over the newest, and an update cancelled or failed this session.
-   */
   async autoUpdate(): Promise<void> {
     if (!this.settings.autoUpdateContent) return
     try {
