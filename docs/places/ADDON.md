@@ -85,8 +85,9 @@ a language pins it on every client.
 
 - A language is offered only when `Data/Languages.lua` marks it ready (every story translated, and
   an alias table where a client runs in it) and the client's fonts can draw it
-  (`CanRenderLanguage`). Besides the languages a client runs in, the lore menu offers a pack's
-  language where the pack's `.toc` says `X-SpokenPlaces-Lore: 1`, and the client's own. Interface strings are not required, because each key falls back to English.
+  (`CanRenderLanguage`). The lore menu lists the finished built-in languages, plus any pack
+  language whose `.toc` says `X-SpokenPlaces-Lore: 1`, each only where the fonts can draw it.
+  Interface strings are not required, because each key falls back to English.
   The fonts are asked by drawing the language's own name, and for the two Chinese the characters
   only that one has (a language's `sample` in Spoken's list, none of them in a Korean font's
   Hanja), measured against as many U+0378, a code point no font has; each Han or Hangul character
@@ -107,7 +108,9 @@ a language pins it on every client.
 - Spoken's registry (`addons/Spoken/Languages.lua`) lists the built-in client languages and every
   language an installed pack declares. A lore pack registers its text with
   `SpokenPlaces:RegisterLoreData(code, kind, data)`, and must set `X-Spoken-LanguageNative`: the
-  language is offered only once its name draws, and with no native name it is never offered. A
+  language is offered only once its name draws, and with no native name it is never offered. The
+  pack's `.toc` must also say `X-SpokenPlaces-Language: <code>`, even with no `Sounds.lua`, because
+  `ShouldLoadLanguage` reads that key before it accepts the text. A
   pack's `X-Spoken-LanguageFont` draws its name and lore pages, so a Vietnamese lore pack must set
   one. Right-to-left text is the pack's job: ship it in visual order.
   The built-in list must equal the client languages in `pipelines/lib/locales.mjs`; `validate.mjs`

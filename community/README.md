@@ -89,11 +89,16 @@ Spoken knows the names of the languages a game client runs in (`enUS`, `deDE`, `
 gives them.
 
 A places pack that ships lore text adds `X-SpokenPlaces-Lore: 1` and registers the text with
-`SpokenPlaces:RegisterLoreData(code, kind, data)`. Spoken offers the lore only after it has checked that
+`SpokenPlaces:RegisterLoreData(code, kind, data)`. A pack with lore and no voice clips (no
+`Sounds.lua`) still needs `X-SpokenPlaces-Language: <code>` in its `.toc`: Places accepts the text
+only for a language an installed pack declares with that key. Spoken offers the lore only after it has checked that
 the language's name draws, so a lore pack must set `X-Spoken-LanguageNative`, and one in a script the
 game's fonts lack, such as Vietnamese, must also set `X-Spoken-LanguageFont`.
 
 Right-to-left text is the pack's job: ship the text in visual order.
+
+The Manager's community list takes quests, places (`zones`) and readables (`books`) packs only, so a
+bosses pack cannot be listed there yet.
 
 A Hebrew places pack with lore, for example:
 
