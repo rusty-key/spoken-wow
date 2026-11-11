@@ -128,10 +128,10 @@ end
 
 -- A ghost travelling back to the corpse should have the world's quiet soundscape. Keep this
 -- guard in the autoplay path so manually requested lore still works while dead.
-local deadEvent = false
+SpokenPlaces.playerDead = false
 
-local function PlayerIsDead()
-	if deadEvent then
+function SpokenPlaces:IsPlayerDead()
+	if self.playerDead then
 		return true
 	end
 	if UnitIsDeadOrGhost then
@@ -157,7 +157,7 @@ local function HoldReason(item)
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
 		return SpokenPlaces.L.QUEUE_HELD_OFF
 	end
-	if PlayerIsDead() then
+	if SpokenPlaces:IsPlayerDead() then
 		return SpokenPlaces.L.QUEUE_HELD_DEAD
 	end
 	if UnitAffectingCombat("player") then
@@ -204,7 +204,7 @@ end
 -- Returns whether the entry was queued, which the login greeting needs: a greeting that
 -- resolved nothing must not count as having greeted.
 local function Enqueue(mapID, areaKey)
-	if PlayerIsDead() then
+	if SpokenPlaces:IsPlayerDead() then
 		return false
 	end
 
@@ -567,6 +567,9 @@ local function IsZoneDiscovery(areaName, mapID)
 end
 
 function SpokenPlaces:OnAreaDiscovered(areaName)
+	if self:IsPlayerDead() then
+		return
+	end
 	if not areaName or areaName == "" then
 		return
 	end
@@ -691,9 +694,12 @@ function SpokenPlaces:SetupAutoplay()
 
 	frame:SetScript("OnEvent", function(_, event, ...)
 		if event == "PLAYER_DEAD" then
-			deadEvent = true
+			SpokenPlaces.playerDead = true
 		elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
-			deadEvent = false
+			SpokenPlaces.playerDead = false
+			if SpokenPlaces.RefreshFound then
+				SpokenPlaces:RefreshFound()
+			end
 		end
 		if HOLD_EVENTS[event] then
 			-- Off, a story already speaking plays through the fight. One not yet started still

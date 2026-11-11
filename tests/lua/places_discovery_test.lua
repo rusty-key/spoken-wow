@@ -47,7 +47,9 @@ local Z = { Zones = { [1411] = {}, [1426] = {}, [1454] = {}, [1450] = {}, [1416]
     [1426] = { ["coldridge valley"] = {} } }, CityIn = { [1454] = 1411 } }
 local names = { [1411] = "Durotar", [1426] = "Dun Morogh", [1454] = "Orgrimmar", [1450] = "Moonglade" }
 local settings = {}
+local playerDead = false
 function Z:Get(key) return settings[key] end
+function Z:IsPlayerDead() return playerDead end
 function Z:GetMapName(mapID) return names[mapID] end
 function Z:ResolveAreaKey(name) return name and string.lower(name) end
 function Z:GetPlayerMapID() return where.map end
@@ -113,6 +115,14 @@ where.map = 1426
 onZone()
 Expect("...a zone's still does", SpokenPlacesCharacter.visited["1426"], true)
 
+where.map, where.subzone = 1450, ""
+playerDead = true
+onZone()
+Expect("a dead player does not record a new place", SpokenPlacesCharacter.visited["1450"], nil)
+playerDead = false
+onZone()
+Expect("the same place is recorded once alive", SpokenPlacesCharacter.visited["1450"], true)
+
 -- Razorfen Downs: its story kept under Thousand Needles, its entrance in The Barrens, where the
 -- game reports it (Spoken's Data/Dungeons.lua).
 function Z:FoundOn(mapID, key) if mapID == 1441 and key == "razorfen downs" then return { 1413 } end return {} end
@@ -125,6 +135,17 @@ Z:RefreshFound()
 Expect("...and explored on its entrance's map",
     tostring(Z:IsFound(1441, "razorfen downs")) .. "|" .. select(2, Z:IsFound(1441, "razorfen downs")), "true|explored on map 1413")
 OVERLAYS[1413], AREAS[5] = nil, nil
+Z:RefreshFound()
+
+OVERLAYS[1450] = { { hitRect = { left = 0, right = 1000, top = 0, bottom = 500 }, area = 6 } }
+AREAS[6] = "Moonglade"
+playerDead = true
+Z:RefreshFound()
+Expect("a dead player does not scan new map exploration", Z:IsFound(1450, "moonglade"), false)
+playerDead = false
+Z:RefreshFound()
+Expect("new map exploration is scanned once alive", Z:IsFound(1450, "moonglade"), true)
+OVERLAYS[1450], AREAS[6] = nil, nil
 Z:RefreshFound()
 
 Expect("undiscovered places hidden unless the setting says", Z:ShowsUndiscovered(), false)
