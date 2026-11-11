@@ -219,12 +219,8 @@ function SpokenPlaces:SetupOptions()
 	end
 	-- The built-in languages, then those an installed pack declares: a language is only ever
 	-- chosen once a pack of it is installed.
-	local codes = {}
-	for _, locale in ipairs(SpokenPlaces.LOCALES or {}) do table.insert(codes, locale.code) end
-	for _, locale in ipairs(Spoken:InstalledLanguages()) do
-		if not locale.builtin then table.insert(codes, locale.code) end
-	end
-	for _, code in ipairs(codes) do
+	for _, locale in ipairs(Spoken:KnownLanguages()) do
+		local code = locale.code
 		local folder, url = Spoken:VoicePack("places", code)
 		if folder then
 			layout:ShowWhen(PackRow(folder, LanguageName(code), url), function() return Wanted(code, folder) end)

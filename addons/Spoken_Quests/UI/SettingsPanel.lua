@@ -153,12 +153,8 @@ function SettingsPanel:Setup()
     end
     -- The built-in languages, then those an installed pack declares: a language is only ever
     -- chosen once a pack of it is installed, and Italian has official packs of its own.
-    local codes = {}
-    for _, locale in ipairs(Language.LOCALES) do table.insert(codes, locale.code) end
-    for _, locale in ipairs(Spoken:InstalledLanguages()) do
-        if not locale.builtin then table.insert(codes, locale.code) end
-    end
-    for _, code in ipairs(codes) do
+    for _, locale in ipairs(Spoken:KnownLanguages()) do
+        local code = locale.code
         for _, pack in ipairs(Spoken:QuestsVoicePacks(code) or {}) do
             local folder = pack.folder
             local side = pack.side == "gossip" and L.OPT_PACK_GOSSIP

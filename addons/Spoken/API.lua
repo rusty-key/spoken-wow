@@ -549,6 +549,12 @@ function Spoken:InstalledLanguages()
     return Languages:Installed()
 end
 
+--- The languages a list of packs names: the built-in ones, installed or not, then every other an
+--- installed pack declares.
+function Spoken:KnownLanguages()
+    return Languages:Known()
+end
+
 --- For a pack that cannot say so in its .toc: declare the language `code` for the addon `folder`.
 --- `meta` is `{ name, native, font, lore }`, `font` a full path.
 function Spoken:DeclareLanguage(code, folder, meta)

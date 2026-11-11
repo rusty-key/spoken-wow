@@ -1010,12 +1010,7 @@ local function CmdLanguage(arg)
 		-- request as "deDE" and nobody remembers Blizzard's capitalisation. The built-in
 		-- languages, then those of the installed packs.
 		if not locale then
-			local known = {}
-			for _, builtin in ipairs(SpokenPlaces.LOCALES) do table.insert(known, builtin) end
-			for _, installed in ipairs(Spoken and Spoken.InstalledLanguages and Spoken:InstalledLanguages() or {}) do
-				table.insert(known, installed)
-			end
-			for _, candidate in ipairs(known) do
+			for _, candidate in ipairs(Spoken:KnownLanguages()) do
 				if candidate.code:lower() == code:lower() then
 					locale = candidate
 					break

@@ -74,7 +74,7 @@ end
 --- A pack declares its language. `meta` is what its .toc says of it: `name`, `native`, `font` (a
 --- full path) and `lore`. The built-in entry's names stand and, for any other, the first pack to
 --- declare one is kept, so two packs of one language never fight over what it is called. A courtesy
---- name (see COURTESY) yields to any pack's.
+--- name (see COURTESY) is read only where no pack gave one.
 --- A code that is not shaped like one is English: a mistyped key must not mint a language.
 function Languages:Declare(code, folder, meta)
     if not self:IsCode(code) then return end
@@ -82,7 +82,8 @@ function Languages:Declare(code, folder, meta)
     if code == "enGB" then code = "enUS" end
     local entry = byCode[code]
     if not entry then
-        entry = { code = code, client = false, builtin = false, lore = false, folders = {} }
+        entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {} },
+            { __index = COURTESY[code] })
         byCode[code] = entry
     end
     for _, known in ipairs(entry.folders) do
@@ -90,27 +91,12 @@ function Languages:Declare(code, folder, meta)
     end
     table.insert(entry.folders, folder)
     if meta then
-        -- A name a courtesy supplied gives way to one a pack declares, whichever pack is first.
-        entry.supplied = entry.supplied or {}
-        for _, key in ipairs({ "name", "native" }) do
-            if meta[key] and (not entry[key] or entry.supplied[key]) then
-                entry[key], entry.supplied[key] = meta[key], nil
-            end
-        end
+        entry.name = rawget(entry, "name") or meta.name
+        entry.native = rawget(entry, "native") or meta.native
         -- A built-in language is drawn in the player's font, so a pack's font is not taken for it;
         -- a pack that needs its own face for a clip names it in the clip.
         if not entry.builtin then entry.font = entry.font or meta.font end
         entry.lore = entry.lore or meta.lore == true
-    end
-    local courtesy = COURTESY[code]
-    if courtesy and not entry.builtin then
-        for _, key in ipairs({ "name", "native" }) do
-            if not entry[key] then
-                entry[key] = courtesy[key]
-                entry.supplied = entry.supplied or {}
-                entry.supplied[key] = true
-            end
-        end
     end
 end
 
@@ -127,24 +113,17 @@ function Languages:Scan()
     local getInfo = api and api.GetAddOnInfo or GetAddOnInfo
     local getMeta = api and api.GetAddOnMetadata or GetAddOnMetadata
     for i = 1, getNum() do
-        local counted = false
-        local declared = {}
+        local declared, isPack = {}, false
         for _, key in ipairs(LANGUAGE_KEYS) do
             local value = Value(getMeta, i, key)
-            if value then
-                counted = true
-                table.insert(declared, value)
-            end
+            isPack = isPack or value ~= nil
+            if self:IsCode(value) then table.insert(declared, value) end
         end
-        if not counted then
-            for _, key in ipairs(QUESTS_KEYS) do
-                if Value(getMeta, i, key) then
-                    counted = true
-                    break
-                end
-            end
+        for _, key in ipairs(QUESTS_KEYS) do
+            if isPack then break end
+            isPack = Value(getMeta, i, key) ~= nil
         end
-        if counted and not SwitchedOff(i, getInfo) then
+        if isPack and not SwitchedOff(i, getInfo) then
             local folder = getInfo(i)
             local font = Value(getMeta, i, "X-Spoken-LanguageFont")
             local meta = {
@@ -154,14 +133,8 @@ function Languages:Scan()
                 lore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1",
             }
             -- A pack with no language, or only one that is no code, speaks English.
-            local any = false
-            for _, value in ipairs(declared) do
-                if self:IsCode(value) then
-                    any = true
-                    self:Declare(value, folder, meta)
-                end
-            end
-            if not any then self:Declare("enUS", folder, meta) end
+            if #declared == 0 then declared[1] = "enUS" end
+            for _, value in ipairs(declared) do self:Declare(value, folder, meta) end
         end
     end
 end
@@ -187,6 +160,17 @@ function Languages:Installed()
     end
     table.sort(rest, function(a, b) return a.code < b.code end)
     for _, entry in ipairs(rest) do table.insert(list, entry) end
+    return list
+end
+
+--- Every language a list of packs names: the built-in ones in their order, whether installed or
+--- not, then the installed rest by code.
+function Languages:Known()
+    local list = {}
+    for _, builtin in ipairs(Languages.BUILTIN) do table.insert(list, byCode[builtin.code]) end
+    for _, entry in ipairs(self:Installed()) do
+        if not entry.builtin then table.insert(list, entry) end
+    end
     return list
 end
 

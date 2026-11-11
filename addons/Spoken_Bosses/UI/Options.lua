@@ -69,17 +69,10 @@ function Bosses:SetupOptions()
 			Bosses:ShowCopyLink(url or AUDIO_URL, L.OPT_DOWNLOAD_ADDRESS)
 		end)
 	end
-	-- The built-in languages but English, then any other an installed pack declares: Spoken:VoicePack
-	-- says which have a pack to get.
-	local codes = {}
-	for _, builtin in ipairs(Spoken:BuiltinLanguages()) do
-		if builtin.code ~= "enUS" then table.insert(codes, builtin.code) end
-	end
-	for _, language in ipairs(Spoken:InstalledLanguages()) do
-		if not language.builtin then table.insert(codes, language.code) end
-	end
-	for _, code in ipairs(codes) do
-		local folder, url = Spoken:VoicePack("bosses", code)
+	-- English's own row follows; Spoken:VoicePack says which other language has a pack to get.
+	for _, language in ipairs(Spoken:KnownLanguages()) do
+		local code = language.code
+		local folder, url = code ~= "enUS" and Spoken:VoicePack("bosses", code)
 		if folder then
 			layout:ShowWhen(PackRow(folder, Spoken:LanguageName(code), url), function() return Wanted(code, folder) end)
 		end
