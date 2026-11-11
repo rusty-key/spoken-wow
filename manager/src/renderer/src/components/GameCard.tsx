@@ -13,8 +13,6 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
   const { state, actions } = useStore()
   const status = statusOf(state, game.id, 'spoken')
   const spokenState = status?.state ?? 'not-installed'
-  const job = state.jobs[jobKey(game.id, 'spoken')]
-  const busy = jobBusy(job)
 
   const voice = (state.statuses[game.id] ?? []).filter((s) => s.productId !== 'spoken' && s.state !== 'not-installed')
   const langs = [
@@ -22,11 +20,16 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
       voice.map((s) => state.products.find((p) => p.id === s.productId)?.lang).filter((l): l is string => !!l)
     )
   ]
-  const updates = voice.filter((s) => s.state === 'update-available').length
-  const updateProducts = [
-    ...(spokenState === 'update-available' ? ['spoken'] : []),
-    ...voice.filter((s) => s.state === 'update-available').map((s) => s.productId)
-  ]
+  const outdated = voice.filter((s) => s.state === 'update-available')
+  const updates = outdated.length
+  const updateProducts = [...(spokenState === 'update-available' ? ['spoken'] : []), ...outdated.map((s) => s.productId)]
+  // Update queues a job per product: follow whichever runs, then a failed one, so pack updates show here too.
+  const gameJobs = Object.values(state.jobs).filter((j) => j.gameId === game.id)
+  const job =
+    gameJobs.find(jobBusy) ??
+    gameJobs.find((j) => j.phase === 'error' && updateProducts.includes(j.productId)) ??
+    state.jobs[jobKey(game.id, 'spoken')]
+  const busy = jobBusy(job)
   const updateAll = async (): Promise<void> => {
     for (const productId of updateProducts) await actions.install(game.id, productId)
   }
@@ -37,9 +40,7 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
       : updateProducts.length > 0
         ? { text: S.home.update, run: () => void updateAll() }
         : { text: S.home.manage, run: () => actions.navigate('spoken', game.id) }
-  const canInstall =
-    game.writable &&
-    (primary.text === S.home.installSpoken ? !!status?.latest : updateProducts.every((id) => !!statusOf(state, game.id, id)?.latest))
+  const canInstall = game.writable && (spokenState !== 'not-installed' || !!status?.latest)
 
   return (
     <article className="card game-card">
@@ -61,7 +62,7 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
               <p className="status status-error" role="alert">
                 <IconAlert size={14} />
                 <span>{job.message ?? S.jobs.error}</span>
-                <button type="button" className="icon-btn icon-btn-sm" aria-label={S.common.dismiss} onClick={() => actions.dismissJob(jobKey(game.id, 'spoken'))}>
+                <button type="button" className="icon-btn icon-btn-sm" aria-label={S.common.dismiss} onClick={() => actions.dismissJob(jobKey(game.id, job.productId))}>
                   <IconX size={13} />
                 </button>
               </p>
