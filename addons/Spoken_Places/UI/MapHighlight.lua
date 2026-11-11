@@ -71,8 +71,7 @@ end
 
 -- The area an overlay is of: the one most points of a grid over its rectangle resolve to. False
 -- where none resolves. Asked once per overlay while the map stays the same.
-local function AreaOf(info, mapID, layer)
-	local areaOf = Known(mapID).areaOf
+local function AreaOf(info, mapID, layer, areaOf)
 	if areaOf[info] ~= nil then
 		return areaOf[info]
 	end
@@ -134,8 +133,9 @@ local function Target()
 	end
 	local px, py = x * layer.layerWidth, y * layer.layerHeight
 	local best
-	for _, info in ipairs(Known(mapID).overlays) do
-		if Holds(info, layer, px, py) and AreaOf(info, mapID, layer) == name
+	local known = Known(mapID)
+	for _, info in ipairs(known.overlays) do
+		if Holds(info, layer, px, py) and AreaOf(info, mapID, layer, known.areaOf) == name
 			and (not best or Area(info) < Area(best)) then
 			best = info
 		end

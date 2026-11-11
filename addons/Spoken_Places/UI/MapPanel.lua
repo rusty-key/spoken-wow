@@ -616,10 +616,14 @@ function SpokenPlaces:SetupMapPanel()
 	SpokenPlaces:OnMapChanged(function(mapID)
 		Refresh(mapID)
 	end)
+	-- Only while the panel shows: folded or unavailable, Refresh leaves shownMap as it was.
 	SpokenPlaces:OnOpenMapView(function()
-		if not SpokenPlaces.selected and not SpokenPlaces:Get("mapPanelCollapsed")
-			and SpokenPlaces:ViewMap(SpokenPlaces:GetDisplayedMapID()) ~= shownMap then
-			Refresh(SpokenPlaces:GetDisplayedMapID())
+		if SpokenPlaces.selected or not SpokenPlaces:IsMapPanelOpen() then
+			return
+		end
+		local mapID = SpokenPlaces:GetDisplayedMapID()
+		if SpokenPlaces:ViewMap(mapID) ~= shownMap then
+			Refresh(mapID)
 		end
 	end, function()
 		-- A choice made on OpenMap's map may belong to no map Blizzard's shows.

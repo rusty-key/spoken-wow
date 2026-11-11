@@ -117,20 +117,32 @@ function SpokenPlaces:OverArtLevel(level)
 	return level
 end
 
--- The rectangle of `zone`'s map on the map the canvas shows, in that map's 0..1.
+-- A map's rectangle on the stitched world, or nil where OpenMap cannot place it.
+local function WorldRect(om, mapID)
+	local ok1, u0, v0 = pcall(om.WorldFromMap, mapID, 0, 0)
+	local ok2, u1, v1 = pcall(om.WorldFromMap, mapID, 1, 1)
+	if ok1 and ok2 and u0 and u1 and u1 > u0 and v1 > v0 then
+		return u0, v0, u1, v1
+	end
+end
+
+-- The top left of `zone`'s map on the map the canvas shows, in that map's 0..1, and its right edge.
 local function ZoneRect(om, zone, host)
-	local ok1, u0, v0 = pcall(om.WorldFromMap, zone, 0, 0)
-	local ok2, u1, v1 = pcall(om.WorldFromMap, zone, 1, 1)
-	if not (ok1 and ok2 and u0 and u1) then
+	local u0, v0, u1, v1 = WorldRect(om, zone)
+	if not u0 then
 		return nil
 	end
 	local ok3, x0, y0 = pcall(om.MapFromWorld, host, u0, v0)
-	local ok4, x1, y1 = pcall(om.MapFromWorld, host, u1, v1)
+	local ok4, x1 = pcall(om.MapFromWorld, host, u1, v1)
 	if not (ok3 and ok4 and x0 and x1) then
 		return nil
 	end
-	return x0, y0, x1, y1
+	return x0, y0, x1
 end
+
+-- How each frame was last laid out by PlaceOverZone.
+local placed = setmetatable({}, { __mode = "k" })
+local FILL = {}
 
 --- Lays `frame` over `zone`'s map on the canvas, sized in that zone's art pixels (`layer`), so
 --- what is drawn on it in those pixels lands on the zone wherever OpenMap shows it. False where
@@ -139,9 +151,13 @@ function SpokenPlaces:PlaceOverZone(frame, canvas, zone, layer)
 	local om = self:OpenMap()
 	local host = WorldMapFrame and WorldMapFrame.mapID
 	if not om or not host or host == zone then
-		frame:ClearAllPoints()
-		frame:SetScale(1)
-		frame:SetAllPoints(canvas)
+		-- Laid out again only when it changes: this runs as the cursor moves.
+		if placed[frame] ~= FILL then
+			placed[frame] = FILL
+			frame:ClearAllPoints()
+			frame:SetScale(1)
+			frame:SetAllPoints(canvas)
+		end
 		return true
 	end
 	local x0, y0, x1 = ZoneRect(om, zone, host)
@@ -150,11 +166,17 @@ function SpokenPlaces:PlaceOverZone(frame, canvas, zone, layer)
 		return false
 	end
 	local scale = width / layer.layerWidth
-	frame:ClearAllPoints()
-	frame:SetScale(scale)
-	frame:SetSize(layer.layerWidth, layer.layerHeight)
 	-- Offsets are in the frame's own, scaled units.
-	frame:SetPoint("TOPLEFT", canvas, "TOPLEFT", x0 * canvas:GetWidth() / scale, -y0 * canvas:GetHeight() / scale)
+	local left, top = x0 * canvas:GetWidth() / scale, -y0 * canvas:GetHeight() / scale
+	local last = placed[frame]
+	if not last or last == FILL or last.scale ~= scale or last.left ~= left or last.top ~= top
+		or last.layer ~= layer then
+		placed[frame] = { scale = scale, left = left, top = top, layer = layer }
+		frame:ClearAllPoints()
+		frame:SetScale(scale)
+		frame:SetSize(layer.layerWidth, layer.layerHeight)
+		frame:SetPoint("TOPLEFT", canvas, "TOPLEFT", left, top)
+	end
 	return true
 end
 
@@ -195,22 +217,14 @@ function SpokenPlaces:OnOpenMapView(onView, onStitched)
 		return
 	end
 	local owner = {}
-	pcall(om.RegisterCallback, owner, "OpenMap_ViewChanged", function() onView() end)
-	pcall(om.RegisterCallback, owner, "OpenMap_StitchedChanged", function() onStitched() end)
+	pcall(om.RegisterCallback, owner, "OpenMap_ViewChanged", onView)
+	pcall(om.RegisterCallback, owner, "OpenMap_StitchedChanged", onStitched)
 end
 
 -- How much closer than the fit of the zone at the view's centre the view may be before a click
 -- no longer fits the zone clicked: a player zoomed in on part of a zone wants to stay there. The
 -- zone looked at, not the one clicked: from a small zone, a large neighbour fits much further out.
 local FIT_DEEPEST = 1.5
-
-local function WorldRect(om, mapID)
-	local ok1, u0, v0 = pcall(om.WorldFromMap, mapID, 0, 0)
-	local ok2, u1, v1 = pcall(om.WorldFromMap, mapID, 1, 1)
-	if ok1 and ok2 and u0 and u1 then
-		return u0, v0, u1, v1
-	end
-end
 
 -- The view's size on the stitched world: the scroll frame's share of the canvas, which is the
 -- map the view sits on.
@@ -241,17 +255,21 @@ function SpokenPlaces:FitZone(zone)
 	local okView, cu, cv, zoom = pcall(om.GetView)
 	local viewW, viewH = ViewSize(om)
 	local u0, v0, u1, v1 = WorldRect(om, zone)
-	if not (okView and zoom and viewW and u0) or u1 <= u0 or v1 <= v0 then
+	if not (okView and zoom and viewW and u0) then
 		return
 	end
-	-- Zoom scales the view's size down in step, so this is the zoom at which the zone just fits.
-	local function Fit(left, top, right, bottom)
-		return zoom * math.min(viewW / (right - left), viewH / (bottom - top))
+	-- Zoom scales the view's size down in step, so this is the zoom at which a map just fits.
+	local function Fit(mapID)
+		local left, top, right, bottom = WorldRect(om, mapID)
+		return left and zoom * math.min(viewW / (right - left), viewH / (bottom - top))
 	end
-	local fit = Fit(u0, v0, u1, v1)
 	-- OpenMap's click is already zooming in on the first map under it that fits closer than the
 	-- view (the zone, or a city inside it), and a second glide would fight it.
-	if fit > zoom * 1.05 then
+	local function OpenMapZooms(fit)
+		return fit and fit > zoom * 1.05
+	end
+	local fit = Fit(zone)
+	if OpenMapZooms(fit) then
 		return
 	end
 	local looked = ZoneAt(om, cu, cv)
@@ -259,12 +277,7 @@ function SpokenPlaces:FitZone(zone)
 	if looked == zone then
 		return
 	end
-	local lu0, lv0, lu1, lv1
-	if looked then
-		lu0, lv0, lu1, lv1 = WorldRect(om, looked)
-	end
-	local lookedFit = lu0 and lu1 > lu0 and lv1 > lv0 and Fit(lu0, lv0, lu1, lv1) or fit
-	if zoom > lookedFit * FIT_DEEPEST then
+	if zoom > ((looked and Fit(looked)) or fit) * FIT_DEEPEST then
 		return
 	end
 	local okCursor, u, v = pcall(om.CursorPosition)
@@ -272,11 +285,8 @@ function SpokenPlaces:FitZone(zone)
 	if okCursor and u then
 		okAt, under = pcall(om.MapAt, u, v)
 	end
-	if okAt and type(under) == "number" and under ~= zone then
-		local left, top, right, bottom = WorldRect(om, under)
-		if left and right > left and bottom > top and Fit(left, top, right, bottom) > zoom * 1.05 then
-			return
-		end
+	if okAt and type(under) == "number" and under ~= zone and OpenMapZooms(Fit(under)) then
+		return
 	end
 	local halfW, halfH = viewW / 2, viewH / 2
 	if u0 >= cu - halfW and u1 <= cu + halfW and v0 >= cv - halfH and v1 <= cv + halfH then
