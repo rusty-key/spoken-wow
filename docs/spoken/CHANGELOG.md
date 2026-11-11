@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map
+  reaches well past its walls, so a click in Dun Morogh's mountains, at Grizzled Den, opened
+  Ironforge's map. A city now opens only from inside its own map's outline on the zone.
+  *([tworekj](https://github.com/tworekj))*
 - **OpenMap's dungeon maps open dungeon and boss lore.** With Spoken Bosses installed, opening a
   dungeon in OpenMap shows its story beside the map, and clicking a boss in OpenMap's Bosses panel
   opens the boss's story, portrait and Report button. OpenMap remains an optional integration, so
