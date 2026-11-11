@@ -21,14 +21,13 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
     )
   ]
   const outdated = voice.filter((s) => s.state === 'update-available')
-  const updates = outdated.length
   const updateProducts = [...(spokenState === 'update-available' ? ['spoken'] : []), ...outdated.map((s) => s.productId)]
-  // Update queues a job per product: follow whichever runs, then a failed one, so pack updates show here too.
+  // Update queues one job per product, so show whichever runs, else one that failed.
   const gameJobs = Object.values(state.jobs).filter((j) => j.gameId === game.id)
   const job =
     gameJobs.find(jobBusy) ??
     gameJobs.find((j) => j.phase === 'error' && updateProducts.includes(j.productId)) ??
-    state.jobs[jobKey(game.id, 'spoken')]
+    gameJobs.find((j) => j.productId === 'spoken')
   const busy = jobBusy(job)
   const updateAll = async (): Promise<void> => {
     for (const productId of updateProducts) await actions.install(game.id, productId)
@@ -36,11 +35,10 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
 
   const primary =
     spokenState === 'not-installed'
-      ? { text: S.home.installSpoken, run: () => void actions.install(game.id, 'spoken') }
+      ? { text: S.home.installSpoken, disabled: !game.writable || !status?.latest, run: () => void actions.install(game.id, 'spoken') }
       : updateProducts.length > 0
-        ? { text: S.home.update, run: () => void updateAll() }
-        : { text: S.home.manage, run: () => actions.navigate('spoken', game.id) }
-  const canInstall = game.writable && (spokenState !== 'not-installed' || !!status?.latest)
+        ? { text: S.home.update, disabled: !game.writable, run: () => void updateAll() }
+        : { text: S.home.manage, disabled: false, run: () => actions.navigate('spoken', game.id) }
 
   return (
     <article className="card game-card">
@@ -85,12 +83,12 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
             <span className="flag flag-muted">{S.home.noVoice}</span>
           )}
         </div>
-        {updates > 0 && <p className="flag-line">{S.home.packUpdates(updates)}</p>}
+        {outdated.length > 0 && <p className="flag-line">{S.home.packUpdates(outdated.length)}</p>}
         {!game.writable && <p className="flag-line flag-line-red">{S.common.readOnly}</p>}
 
         <div className="game-actions">
           {!busy && (
-            <button type="button" className="btn btn-primary" disabled={primary.text !== S.home.manage && !canInstall} onClick={primary.run}>
+            <button type="button" className="btn btn-primary" disabled={primary.disabled} onClick={primary.run}>
               {primary.text}
             </button>
           )}
