@@ -82,7 +82,6 @@ function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
 function Bosses:PlayStory() end
 Bosses.ReportAction = { has = function() return true end, open = function() end, title = "Report a Problem" }
--- UI/Bosses.lua's, which MapLore.lua reuses.
 Bosses.Name = function(entry) return entry[GetLocale()] or entry[1] end
 Bosses.Model = function(map, key)
     local entry = SpokenBossCreatures[map] and SpokenBossCreatures[map][key]

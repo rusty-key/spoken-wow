@@ -185,11 +185,8 @@ local function BuildPanel()
 	end
 	page = SpokenPlaces:CreateLorePage(holder, "log")
 	panel.page = page
-	-- A boss's 3D model draws nothing while it is under the panel on the Forever client, in the map
-	-- or beside it, nor below HIGH strata, though the Compendium's shows; why is not known. It draws
-	-- on a stage of its own under UIParent, at HIGH as the Compendium is, laid over the page's text
-	-- and clipped to it as the text's scroll frame would. It follows the panel's scale and alpha
-	-- (FollowMap, its OnUpdate).
+	-- The Forever client draws no 3D model under the panel, in the map or beside it, nor below HIGH
+	-- strata; why is not known. The model draws on its own stage, clipped to the page's text.
 	local body = page.body
 	if body.model and body.frame then
 		local stage = CreateFrame("Frame", nil, UIParent)

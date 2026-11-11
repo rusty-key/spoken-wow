@@ -1,8 +1,6 @@
--- Optional dungeon and boss stories beside OpenMap's dungeon maps. Blizzard's own dungeon map
--- (OpenMap's stitched map off) comes through OpenMapAPI's DungeonMapShown callback. OpenMap's own
--- dungeon view and its boss rows have no public API: the view is the global OpenMapDungeonView,
--- holding the instance shown as `inst` ({ instanceID, name }), and each row keeps the item it was
--- drawn from (`item[1]`: "N.  Boss name").
+-- OpenMapAPI reports only Blizzard's own dungeon map (OpenMap's stitched map off). OpenMap's own
+-- dungeon view has no public API: it is the global OpenMapDungeonView, holding the instance shown
+-- as `inst` ({ instanceID, name }), and each boss row keeps its item (`item[1]`: "N.  Boss name").
 
 local _, Bosses = ...
 local M = Bosses.MapLore
@@ -34,9 +32,8 @@ local function InstanceListing(bossName)
 	end
 end
 
--- The boss of a row: in the dungeon shown, by name, else by its place in the list, as OpenMap
--- numbers its rows in the order Spoken lists them; with no dungeon known, a name no other
--- dungeon shares.
+-- In the dungeon shown, by name, else by position (OpenMap numbers rows in Spoken's order); with
+-- no dungeon known, only a name no other dungeon shares.
 local function BossFor(bossName, bossIndex)
 	local wanted = BossNameKey(bossName)
 	if not wanted then return end

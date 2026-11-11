@@ -26,7 +26,6 @@ local function SameID(a, b)
 	return a == b or tostring(a) == tostring(b)
 end
 
--- `mapID` and its parents, nearest first, up to ten levels.
 local function MapChain(mapID)
 	if not mapID then return {} end
 	local chain, seen, current = { mapID }, { [mapID] = true }, mapID
@@ -49,7 +48,6 @@ function M.IsMapOrChild(mapID, parentMapID)
 	return false
 end
 
--- The dungeon entry of SpokenPlaces.Dungeons for an instance, and the zone listing it.
 local function DungeonEntry(instanceID)
 	for zone, dungeons in pairs(_G.SpokenPlaces and SpokenPlaces.Dungeons or {}) do
 		for _, dungeon in ipairs(dungeons) do
@@ -59,8 +57,8 @@ local function DungeonEntry(instanceID)
 end
 
 --- The instance whose map `mapID` is, walking up from a floor with its own map ID (Gnomeregan
---- 226/228), and the zone listing it. Only for a map the client has open on that instance:
---- instance IDs and UI map IDs are separate numberings, so equal numbers elsewhere prove nothing.
+--- 226/228). Instance IDs and UI map IDs are separate numberings: pass only a map the client has
+--- open on that instance.
 function M.DungeonAt(mapID)
 	for _, map in ipairs(MapChain(mapID)) do
 		local dungeon, zone = DungeonEntry(map)
@@ -68,7 +66,6 @@ function M.DungeonAt(mapID)
 	end
 end
 
---- A boss as the adapters pass it around.
 function M.Found(map, boss)
 	return { map = map, key = boss.key, boss = boss }
 end
