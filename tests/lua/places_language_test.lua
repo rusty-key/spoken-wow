@@ -354,9 +354,11 @@ Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language", { ["X-SpokenPlaces-Lore
 Z = OnEnglish({})
 Expect("H. a pack's lore language is offered after the built-in ones",
     Codes(Z:GetSelectableLanguages()), "enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW heIL")
-Expect("H. ...named in its own words, which the pack's font draws where the game's does not",
-    Z:GetLanguageName("heIL"), "עברית")
-Expect("H. ...but in chat, where no font can change, in English", Z:GetLanguageName("heIL", true), "Hebrew")
+Expect("H. ...named in its own words only where the lore menu wears the pack's font",
+    Z:GetLanguageName("heIL", true), "עברית")
+Expect("H. ...but anywhere else, in the game's font, in English", Z:GetLanguageName("heIL"), "Hebrew")
+Expect("H. ...which is also the label of its audio pack",
+    Z:GetAudioPackLabel({ language = "heIL", addon = "SpokenPlacesAudio_heIL" }), "Hebrew")
 Expect("H. Spoken gives the face the menu draws it in", Spoken:LanguageFace("heIL"), HEBREW_FONT)
 Expect("H. ...but Auto still reads the client's", Z:GetLanguage(), "enUS")
 -- The lore menu names a pack's language in the pack's font: Layout:Dropdown's last argument.

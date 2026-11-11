@@ -67,6 +67,7 @@ end
 ---@param code string|nil
 ---@return string name
 function Language:GetNativeName(code)
+    if Spoken and Spoken.LanguageName and code then return Spoken:LanguageName(code) end
     local locale = Entry(code)
     return locale and (locale.native or locale.name) or tostring(code)
 end

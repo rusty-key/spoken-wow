@@ -129,7 +129,7 @@ function SpokenPlaces:OnSettingsBound()
 	-- The stories' language was settled at load: say when this profile wants another.
 	local wanted = self:ResolveLanguage()
 	if wanted ~= self:GetLanguage() then
-		self:Print("%s", string.format(self.L.OPT_LANG_PROFILE_FMT, self:GetLanguageName(wanted, true)))
+		self:Print("%s", string.format(self.L.OPT_LANG_PROFILE_FMT, self:GetLanguageName(wanted)))
 	end
 end
 
@@ -1049,13 +1049,13 @@ local function CmdLanguage(arg)
 			else
 				SpokenPlaces:Print(
 					"|cffffcc00%s is not finished yet|r -- /spp lang %s force to preview it anyway",
-					SpokenPlaces:GetLanguageName(locale.code, true), locale.code
+					SpokenPlaces:GetLanguageName(locale.code), locale.code
 				)
 			end
 			return
 		end
 
-		SpokenPlaces:Print("language set to %s -- |cffffcc00/reload to apply|r", SpokenPlaces:GetLanguageName(locale.code, true))
+		SpokenPlaces:Print("language set to %s -- |cffffcc00/reload to apply|r", SpokenPlaces:GetLanguageName(locale.code))
 		return
 	end
 
@@ -1066,7 +1066,7 @@ local function CmdLanguage(arg)
 		SpokenPlaces:Print(
 			"  %s %s -- %s",
 			locale.code == SpokenPlaces:GetLanguage() and "|cff66bbff*|r" or " ",
-			locale.code, SpokenPlaces:GetLanguageName(locale.code, true)
+			locale.code, SpokenPlaces:GetLanguageName(locale.code)
 		)
 	end
 	if SpokenPlaces:GetLanguagePreference() == nil then

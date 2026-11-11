@@ -26,6 +26,7 @@ local function Install(packs, locale)
     for _, pack in ipairs(packs) do
         local meta = { [KEY] = "1", Version = "1.0.0", Title = pack.folder }
         if pack.language then meta[LANG] = pack.language end
+        for key, value in pairs(pack.meta or {}) do meta[key] = value end
         if pack.priority then meta["X-SpokenQuests-DataModule-Priority"] = tostring(pack.priority) end
         table.insert(addons, { folder = pack.folder, meta = meta })
     end
@@ -330,6 +331,22 @@ Expect("M. Auto never lands on it", (function()
     VO.Addon.db.profile.Audio.VoiceLanguage = "auto"
     return VO.Language:GetVoiceLanguage()
 end)(), "enUS")
+
+-- The Language row of the options is drawn in the game's font, so a name only the pack's font can
+-- draw must not reach it.
+stub.TextWidth = function(fs)
+    local width = 0
+    for ch in tostring(fs.text or ""):gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+        width = width + (#ch > 1 and 10 or 7)
+    end
+    return width
+end
+VO = Install({ { folder = "HebrewPack", language = "heIL", lines = { ["1-accept"] = 5.5 }, meta = {
+    ["X-Spoken-LanguageName"] = "Hebrew", ["X-Spoken-LanguageNative"] = "עברית",
+    ["X-Spoken-LanguageFont"] = "Fonts/Hebrew.ttf" } } }, "enUS")
+Expect("M. a native name the game's font cannot draw is shown in English in the Language row",
+    VO.Language:GetNativeName("heIL"), "Hebrew")
+stub.TextWidth = nil
 
 -- A voice whose pack was removed: the choice is kept, the line plays in the fallback.
 VO = Install({ { folder = "EnglishPack", lines = EN_LINES } }, "enUS")

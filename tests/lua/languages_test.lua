@@ -58,9 +58,9 @@ Expect("heIL is not built in", he.builtin, false)
 Expect("heIL font is a full path", he.font, "Interface\\AddOns\\SpokenCommunity_ivrit\\Fonts\\Hebrew.ttf")
 Expect("heIL folders", table.concat(he.folders, ","), "SpokenCommunity_ivrit")
 
-env = Install({ Pack("SpokenCommunity_ivrit", { ["X-SpokenQuests-Language"] = "heIL" }) })
-Expect("heIL without a name has none", env.Languages:Get("heIL").name, nil)
-Expect("heIL without a name is still installed", Codes(env), "heIL")
+env = Install({ Pack("SpokenCommunity_swedish", { ["X-SpokenQuests-Language"] = "svSE" }) })
+Expect("svSE without a name has none", env.Languages:Get("svSE").name, nil)
+Expect("svSE without a name is still installed", Codes(env), "svSE")
 
 env = Install({ Pack("SpokenCommunity_deutsch", {
     ["X-SpokenQuests-Language"] = "deDE", ["X-Spoken-LanguageName"] = "Deutschish" }) })
@@ -138,8 +138,8 @@ Expect("voice choices", List(env.Options:VoiceChoices()), "auto,deDE,heIL")
 Expect("fallback choices", List(env.Options:FallbackChoices()), "none,deDE,heIL")
 env = Install({})
 Expect("no packs: only auto", List(env.Options:VoiceChoices()), "auto")
-env = HebrewInstalled()
-Expect("a pack without names shows its code", env.Options:LanguageName("heIL"), "heIL")
+env = Install({ Pack("SpokenCommunity_swedish", { ["X-SpokenQuests-Language"] = "svSE" }) })
+Expect("a pack without names shows its code", env.Options:LanguageName("svSE"), "svSE")
 Expect("an unknown language shows its code", env.Options:LanguageName("itIT"), "itIT")
 Expect("a built-in Latin language shows its native name", env.Options:LanguageName("deDE"), "Deutsch")
 Expect("a language the registry lacks draws nothing", env.Options:LanguageDraws("itIT"), false)
@@ -154,8 +154,16 @@ stub.TextWidth = function(fs)
     return width
 end
 env = HebrewInstalled(HEBREW)
-local drawn = env.Options:LanguageName("heIL")
-Expect("the pack's font draws the native name", drawn, "עברית")
+local drawn = env.Options:MenuLanguageName("heIL")
+Expect("the pack's font draws the native name in a menu that wears it", drawn, "עברית")
+Expect("...but text in the game's font gets the English name", env.Options:LanguageName("heIL"), "Hebrew")
+Expect("...as does a menu's Latin language its own", env.Options:MenuLanguageName("deDE"), "Deutsch")
+do
+    local language = env.Addon.db.profile.Language
+    language.Voice, language.Fallback = "heIL", "none"
+    Expect("a silent note is in the game's font too", Spoken:SilentNote("places"),
+        SpokenEnv.L.MODULE_NO_VOICE_FMT:format("Hebrew"))
+end
 Expect("...and is offered for the menu", env.Options:LanguageFace("heIL"),
     "Interface\\AddOns\\SpokenCommunity_ivrit\\Fonts\\Hebrew.ttf")
 Expect("a Latin language needs no face", env.Options:LanguageFace("deDE"), nil)
@@ -231,6 +239,24 @@ chosen = "deDE"
 modernControl.layoutSync()
 Expect("modern: ...and gets its own font back", dropdown.Text.fontFile, OWN)
 _G.CreateFrame, _G.MenuUtil = realCreate, realMenu
+
+-- A built-in language is the game's, so a pack's font does not take it over.
+env = Install({ Pack("SpokenCommunity_deutsch", { ["X-SpokenQuests-Language"] = "deDE",
+    ["X-Spoken-LanguageFont"] = "Fonts/Hebrew.ttf" }) })
+Expect("a built-in language takes no pack font", env.Languages:Get("deDE").font, nil)
+
+-- Courtesy names for languages whose shipped packs predate the name keys.
+env = Install({})
+Expect("a courtesy name is no language until a pack declares it", env.Languages:Get("plPL"), nil)
+Expect("...and is not listed", Codes(env), "")
+env = Install({ Pack("SpokenCommunity_pl", { ["X-SpokenQuests-Language"] = "plPL" }) })
+Expect("a pack without names gets the courtesy native name", env.Languages:Get("plPL").native, "Polski")
+Expect("...and English name", env.Languages:Get("plPL").name, "Polish")
+Expect("...yet is no built-in language", tostring(env.Languages:Get("plPL").builtin), "false")
+Expect("...nor a client's", tostring(env.Languages:Get("plPL").client), "false")
+env = Install({ Pack("SpokenCommunity_he", { ["X-SpokenQuests-Language"] = "heIL", ["X-Spoken-LanguageName"] = "Ivrit" }) })
+Expect("a pack's own name beats the courtesy one", env.Languages:Get("heIL").name, "Ivrit")
+Expect("...while the other key is filled in", env.Languages:Get("heIL").native, "עברית")
 
 -- A clip's text is drawn in its language's pack font, unless the clip names a font itself.
 env = HebrewInstalled(HEBREW)

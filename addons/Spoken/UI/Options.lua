@@ -201,18 +201,23 @@ function Options:LanguageDraws(code, path)
         and FontDraws(language.native .. (language.sample or ""), path)
 end
 
---- A language's name in the lists, one for every module: its own where this client can draw it,
---- in English where it cannot (Korean on a German client), and the code where a pack names it in
---- neither. A built-in Latin language needs no probe, and a pack's own font counts as well as the
---- settings' one.
+--- A language's name in text drawn in the game's font, one for every module: its own where the
+--- settings' font can draw it, in English where it cannot (Korean on a German client), and the code
+--- where a pack names it in neither. A built-in Latin language needs no probe. A name only a
+--- pack's font draws stays English here, because this text has no way to wear that font.
 function Options:LanguageName(code)
     local language = Languages:Get(code)
     if not language then return code end
     if language.builtin and language.script == "latin" then return language.native end
-    if self:LanguageDraws(code) or (language.font and self:LanguageDraws(code, language.font)) then
-        return language.native
-    end
+    if self:LanguageDraws(code) then return language.native end
     return language.name or code
+end
+
+--- The name a menu entry shows, for a menu that draws it in `LanguageFace`: its own where only the
+--- pack's font can draw it, else what `LanguageName` gives.
+function Options:MenuLanguageName(code)
+    if self:LanguageFace(code) then return Languages:Get(code).native end
+    return self:LanguageName(code)
 end
 
 --- The pack's font for a language's name in the lists, where the settings' font cannot draw it
@@ -545,12 +550,12 @@ local function Build()
         function(code) language().Voice = code end, function() Options:UpdateRows() end,
         function(code)
             if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
-            return Options:LanguageName(code)
+            return Options:MenuLanguageName(code)
         end, function(code) return Options:LanguageFace(code) end)
     layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, nil, function() return Options:FallbackChoices() end,
         function() return language().Fallback or "enUS" end,
         function(code) language().Fallback = code end, function() Options:UpdateRows() end,
-        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:LanguageName(code) end,
+        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:MenuLanguageName(code) end,
         function(code) return Options:LanguageFace(code) end)
 
     layout:Section(L.OPT_AUDIO_TITLE)

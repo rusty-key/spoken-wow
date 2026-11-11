@@ -165,7 +165,7 @@ function SpokenPlaces:SetupOptions()
 			if locale == AUTO then
 				return string.format(L.OPT_LANG_AUTO_FMT, SpokenPlaces:GetLanguageName(SpokenPlaces:GetAutoLanguage()))
 			end
-			return locale and SpokenPlaces:GetLanguageName(locale.code) or SpokenPlaces:GetLanguageName(nil)
+			return locale and SpokenPlaces:GetLanguageName(locale.code, true) or SpokenPlaces:GetLanguageName(nil)
 		end,
 		-- A pack's language is named in the pack's font; Auto only ever reads a built-in one.
 		function(locale)

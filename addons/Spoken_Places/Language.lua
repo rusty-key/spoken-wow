@@ -309,11 +309,12 @@ function SpokenPlaces:GetLocaleInfo(code)
 	return Entry(code)
 end
 
--- Display name of a language: its own endonym where a font draws it, else its English name or
--- its code. A menu can wear a pack's font for a name, so there the pack's font counts as well
--- as the game's; `chat` is for a line of chat, where no word can have a font of its own, so only
--- the game's does. The no-fonts warning uses the code, which is ASCII on every client.
-function SpokenPlaces:GetLanguageName(code, chat)
+-- Display name of a language: its own endonym where the game's font draws it, else its English
+-- name or its code. Only the lore menu wears a pack's font for a name, and passes `menu` to have
+-- the pack's font count too; text in the game's font, such as a label or a line of chat, must not
+-- get a name that font cannot draw. The no-fonts warning uses the code, which is ASCII on every
+-- client.
+function SpokenPlaces:GetLanguageName(code, menu)
 	local locale = Entry(code or BASE)
 	if not locale then
 		return tostring(code)
@@ -321,7 +322,7 @@ function SpokenPlaces:GetLanguageName(code, chat)
 	if builtin[locale.code] or (locale.native and Spoken:LanguageDraws(locale.code)) then
 		return locale.native or locale.name or locale.code
 	end
-	if not chat and locale.native and Spoken:LanguageFace(locale.code) then
+	if menu and locale.native and Spoken:LanguageFace(locale.code) then
 		return locale.native
 	end
 	return locale.name or locale.code

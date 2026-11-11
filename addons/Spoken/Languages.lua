@@ -23,6 +23,17 @@ Languages.BUILTIN = {
     { code = "zhTW", name = "Chinese (Traditional)", native = "繁體中文", script = "traditionalchinese", sample = "嗎妳麼為" },
 }
 
+-- Names for languages that shipped packs existed for before packs named their own language, so that
+-- an Italian or Polish pack without the name keys is not listed by its code. These are not built
+-- in: nothing lists one until a pack declares it, it is no client's language, and a pack's own
+-- names win. Kept apart from BUILTIN, whose literals pipelines/places/tools/validate.mjs reads.
+local COURTESY = {
+    itIT = { name = "Italian", native = "Italiano" },
+    plPL = { name = "Polish", native = "Polski" },
+    viVN = { name = "Vietnamese", native = "Tiếng Việt" },
+    heIL = { name = "Hebrew", native = "עברית" },
+}
+
 -- Each pack names its language under its own section's key. Quests and Readables share the shape
 -- of the others; the Quests pack that declares none is English (see Scan).
 local LANGUAGE_KEYS = {
@@ -62,7 +73,8 @@ end
 
 --- A pack declares its language. `meta` is what its .toc says of it: `name`, `native`, `font` (a
 --- full path) and `lore`. The built-in entry's names stand and, for any other, the first pack to
---- declare one is kept, so two packs of one language never fight over what it is called.
+--- declare one is kept, so two packs of one language never fight over what it is called. A courtesy
+--- name (see COURTESY) yields to any pack's.
 --- A code that is not shaped like one is English: a mistyped key must not mint a language.
 function Languages:Declare(code, folder, meta)
     if not self:IsCode(code) then return end
@@ -78,10 +90,27 @@ function Languages:Declare(code, folder, meta)
     end
     table.insert(entry.folders, folder)
     if meta then
-        entry.name = entry.name or meta.name
-        entry.native = entry.native or meta.native
-        entry.font = entry.font or meta.font
+        -- A name a courtesy supplied gives way to one a pack declares, whichever pack is first.
+        entry.supplied = entry.supplied or {}
+        for _, key in ipairs({ "name", "native" }) do
+            if meta[key] and (not entry[key] or entry.supplied[key]) then
+                entry[key], entry.supplied[key] = meta[key], nil
+            end
+        end
+        -- A built-in language is drawn in the player's font, so a pack's font is not taken for it;
+        -- a pack that needs its own face for a clip names it in the clip.
+        if not entry.builtin then entry.font = entry.font or meta.font end
         entry.lore = entry.lore or meta.lore == true
+    end
+    local courtesy = COURTESY[code]
+    if courtesy and not entry.builtin then
+        for _, key in ipairs({ "name", "native" }) do
+            if not entry[key] then
+                entry[key] = courtesy[key]
+                entry.supplied = entry.supplied or {}
+                entry.supplied[key] = true
+            end
+        end
     end
 end
 

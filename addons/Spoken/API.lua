@@ -520,6 +520,12 @@ function Spoken:LanguageName(code)
     return Options:LanguageName(code)
 end
 
+--- A language's name for a menu entry that is drawn in `Spoken:LanguageFace(code)`: its own where
+--- only the pack's font can draw it. Anywhere else, `Spoken:LanguageName`.
+function Spoken:MenuLanguageName(code)
+    return Options:MenuLanguageName(code)
+end
+
 --- The font a menu draws the language `code`'s name in, where the settings' font cannot draw it but
 --- the language's pack's can; else nil, and the menu keeps the game's own.
 function Spoken:LanguageFace(code)
