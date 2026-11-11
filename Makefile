@@ -123,6 +123,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_map_click_test.lua
 	@$(LUA) tests/lua/places_map_highlight_test.lua
 	@$(LUA) tests/lua/places_area_at_test.lua
+	@$(LUA) tests/lua/places_openmap_test.lua
 	@$(LUA) tests/lua/places_discovery_test.lua
 	@$(LUA) tests/lua/subtitle_pages_test.lua
 	@$(LUA) tests/lua/defaults_test.lua

@@ -28,7 +28,7 @@ Voiced dialogue for the quests only a Horde character can take.
 | Pack | Holds | |
 | --- | --- | --- |
 <!-- only:curseforge -->
-| [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all) | installs the four below | |
+| [All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all) | installs the four below | |
 <!-- /only -->
 | [Alliance](https://www.curseforge.com/wow/addons/spoken-audio-quests-alliance) | Alliance-only quests | |
 | **Horde** | Horde-only quests | **this pack** |
@@ -41,7 +41,7 @@ Gossip — the chatter NPCs give you when you talk to them without a quest — i
 This pack is not installable from Wago: at several hundred megabytes it is over the upload limit here. Take it from CurseForge, or take all four packs in one download, [All](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio), from GitHub; unzip it into `Interface/AddOns` and the addon finds them.
 <!-- /only -->
 <!-- only:curseforge -->
-If you would rather have one install and not think about it, take **[All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all)** instead. It holds no audio itself - it just tells your addon manager to fetch all four packs.
+If you would rather have one install and not think about it, take **[All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all)** instead. It holds no audio itself - it just tells your addon manager to fetch all four packs.
 <!-- /only -->
 
 ## Why the pack is split

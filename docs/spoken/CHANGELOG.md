@@ -4,6 +4,13 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Place stories work on [OpenMap](https://github.com/openmap-world/openmap)'s world map.**
+  Areas light up under the cursor again, in any zone on screen, and a click opens the story of
+  the area you clicked rather than one in the zone at the centre of the view. Dragging the map no
+  longer opens a city's map. Zoomed in on a zone, the panel tells that zone's story, a click
+  elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
+  full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
+  *([carcachi](https://github.com/carcachi))*
 - **Places can read a zone every time you arrive.** Turn on Read Every Visit under Places, When to
   Read, and choose how long to wait before the same place is read again: a day, a week or a
   month. Off by default, so places are still read once per character.

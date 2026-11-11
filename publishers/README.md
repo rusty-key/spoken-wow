@@ -37,7 +37,7 @@ which is why there is one file per project here and not two.
 | `spoken/all.md` | Spoken: English | 1721569 | — | `spoken-english` |
 | `spoken/all-<lang>.md` | `Spoken <Language>`, a language's meta addon: Spoken and that language's packs on CurseForge | each page's `curseforge:` | — | `spoken-<language>` |
 | `quests/player.md` | Spoken Quests (retired; was VoiceOver Redux) | 1655859 | aN0XPlNj | `spoken-quests` |
-| `quests/audio-all.md` | Spoken Quests Audio: All | 1660196 | ANzkpD64 | `spoken-quests-audio-all` |
+| `quests/audio-all.md` | Spoken Quests Audio: All | 1660196 | ANzkpD64 | `spoken-audio-quests-all` |
 | `quests/audio-alliance.md` | Spoken Audio: Quests - Alliance | 1660197 | 5NR8mJK3 | `spoken-audio-quests-alliance` |
 | `quests/audio-horde.md` | Spoken Audio: Quests - Horde | 1660198 | vNAg3OKo | `spoken-audio-quests-horde` |
 | `quests/audio-shared.md` | Spoken Audio: Quests - Shared | 1660199 | QNlz3YKe | `spoken-audio-quests-shared` |
@@ -87,7 +87,7 @@ as separate products.
 
 The slugs follow the projects' names: lowercased, with the colon, the dash and the brackets
 dropped, so `Spoken German Audio: Quests - Horde` is `spoken-german-audio-quests-horde`.
-`spoken-quests-audio-all` and the retired projects keep the slugs they were published under.
+The retired projects keep the slugs they were published under.
 
 **Gossip has no project of its own.** It is a part of Spoken Quests, in Spoken's zip, and its
 voices are the Gossip pack above, which every language's quests pack also holds.
