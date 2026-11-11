@@ -482,9 +482,9 @@ local function LiftMuteAhead()
     muteAheadTimer = nil
     -- A line speaking lifts the mute itself when the queue drains. One merely queued --
     -- held by a gate, or paused since -- may not speak for a long while, and must not
-    -- keep the game's dialogue silent until it does.
+    -- keep the game's dialogue silent until it does. A line of words alone never holds the mute.
     local head = SoundQueue:GetCurrentSound()
-    if not (head and head.nextSoundTimer) then
+    if not (head and head.nextSoundTimer and not head.textOnly) then
         SoundQueue:MuteGameDialogue(nil)
     end
 end

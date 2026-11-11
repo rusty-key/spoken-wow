@@ -346,6 +346,115 @@ Expect("a quest dialog keeps its greeting while Quests is switched off", world.c
 Expect("...and expects no line to hold the words back for", VO.Addon:ExpectedLine("QUEST_DETAIL"), nil)
 Spoken:SetPartOn("quests", true)
 
+---------------------------------------------------------------- muting at the click
+-- A first talk's greeting can be heard before the window's event arrives.
+local function ClickBoot()
+    local VO, env, Spoken = MuteBoot()
+    VO.Addon.db.char.hasSeenGossipForNPC = {}
+    VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerNPC
+    world.npcFriendly = true
+    return VO, env, Spoken
+end
+local function Dialog() return world.cvars.Sound_EnableDialog end
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("a right-click on a voiced NPC mutes it before any window", Dialog(), "0")
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+stub.Advance(0.6)
+Expect("...its line is read", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, GREETING_HASH)
+Expect("...under the same mute", Dialog(), "0")
+Spoken:StopAll()
+Expect("...and the empty queue restores it", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Advance(2)
+Expect("a right-click that opens no window gives the voice back at the deadline", Dialog(), "1")
+stub.Advance(0.1)
+world.questID = 101
+VO.Addon:QUEST_DETAIL()
+stub.Advance(0.6)
+Expect("...and leaves later lines able to mute", Dialog(), "0")
+Spoken:StopAll()
+
+lookup["101-accept"] = 10   -- outlasts the click's deadline
+VO, env, Spoken = ClickBoot()
+world.questID = 101
+VO.Addon:QUEST_DETAIL()
+stub.Advance(0.6)
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Advance(2)
+Expect("a right-click under a speaking line keeps the line's mute past the deadline", Spoken:IsPlaying() and Dialog(), "0")
+Spoken:StopAll()
+lookup["101-accept"] = 2
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("RightButton")
+VO.Addon:MarkGreetingHeard(world.npcGUID, "Greetings, traveller.")
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+Expect("a window with nothing to read gives the voice back as it opens", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("LeftButton")
+Expect("a left-click only targets, and mutes nothing", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MarkGreetingHeard(world.npcGUID, "Greetings, traveller.")
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("an NPC already heard keeps its greeting under a once-per setting", Dialog(), "1")
+VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("...and is muted when greetings always read", Dialog(), "0")
+
+VO, env, Spoken = ClickBoot()
+world.npcGUID = "Creature-0-0-0-0-9999-0"
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("an NPC no pack voices keeps its greeting at the click", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+world.npcFriendly = nil
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("a right-click on an enemy mutes nothing", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon.db.profile.Audio.GreetingFirst = true
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("with Game Greeting First on the click mutes nothing", Dialog(), "1")
+VO.Addon.db.profile.Audio.GreetingFirst = false
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:SetAutoplay(false)
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("with autoplay off the click mutes nothing", Dialog(), "1")
+VO.Addon:SetAutoplay(true)
+
+VO, env, Spoken = ClickBoot()
+stub.Secrets(world.npcGUID)
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Secrets()
+Expect("a GUID the client keeps secret mutes nothing and raises nothing", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+world.npcFriendly = nil
+stub.Secrets(true)
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Secrets()
+Expect("a secret answer to whether it can be attacked reads as no answer", Dialog(), "0")
+
+VO, env, Spoken = ClickBoot()
+Spoken:RegisterSource("words", { title = "Words", addon = "Spoken_Bosses", textOnly = true }):Enqueue(H.Clip({ length = 10 }))
+stub.Advance(0.1)
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("a right-click during a line of words alone still mutes ahead", Dialog(), "0")
+stub.Advance(2)
+Expect("...and the deadline gives the voice back, the line holding no mute", Spoken:IsPlaying() and Dialog(), "1")
+Spoken:StopAll()
+world.npcFriendly = nil
+VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerQuestNPC
+
 ---------------------------------------------------------------- disengage and abandon
 VO, env, Spoken = Boot()
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = true

@@ -16,6 +16,11 @@
  * and letter case never count: the corpus carries trailing and doubled spaces the client never
  * shows, and a line recapitalised between game versions sounds the same.
  *
+ * frFR writes a class plural as `$cs`, and the client prints the s onto the class: "paladins",
+ * one word, which the addon does not put back as a slot. So `$cs` is one slot whose run must end
+ * in an s. Only `$cs` is read this way: the corpus's other glued forms, `$rs` and `$Ns`, still
+ * split into a slot and a stray "s", and never match.
+ *
  * Node-free, so the corrections tab's client component can split a line the same way.
  */
 
@@ -24,7 +29,7 @@ export type Token = { kind: "word" | "mark" | "slot"; value: string };
 /** The most words a `$N`/`$C`/`$R` slot stands for. */
 const SLOT_WORDS = 3;
 
-const TOKEN = /\$[nNcCrR]|[\p{L}\p{N}\p{M}]+(?:['’\-][\p{L}\p{N}\p{M}]+)*|[^\s\p{L}\p{N}\p{M}]/gu;
+const TOKEN = /\$[cC][sS](?![\p{L}\p{N}\p{M}])|\$[nNcCrR]|[\p{L}\p{N}\p{M}]+(?:['’\-][\p{L}\p{N}\p{M}]+)*|[^\s\p{L}\p{N}\p{M}]/gu;
 
 const GENDER = /\$[gGuU]\s*([^:;]*?)\s*:\s*([^;]*?)\s*;/g;
 
@@ -49,6 +54,11 @@ export function genderForms(text: string): string[] {
   return [text.replace(GENDER, "$1"), text.replace(GENDER, "$2"), text];
 }
 
+/** A `$cs` run ends in an s after the class, or "Les s" would pass for "Les $cs". */
+function endsRun(word: string, slot: string): boolean {
+  return slot !== "$CS" || (word.length > 1 && /s$/i.test(word));
+}
+
 function matches(a: Token[], b: Token[]): boolean {
   const memo = new Map<number, boolean>();
   const go = (i: number, j: number): boolean => {
@@ -68,6 +78,7 @@ function matches(a: Token[], b: Token[]): boolean {
     ] as const) {
       if (result || slotSide.kind !== "slot") continue;
       for (let n = 1; n <= SLOT_WORDS && at + n <= words.length && words[at + n - 1].kind === "word"; n++) {
+        if (!endsRun(words[at + n - 1].value, slotSide.value)) continue;
         if (step(n)) {
           result = true;
           break;
@@ -108,6 +119,36 @@ export function readable(template: string): string {
   return template.replace(/\$[bB]/g, "\n");
 }
 
+/**
+ * Each of `a`'s items' index in `b` along their longest common sequence, or -1 where it has
+ * none. Letter case aside.
+ */
+function lcsPairs(a: readonly string[], b: readonly string[]): Int32Array {
+  const x = a.map((item) => item.toLocaleLowerCase());
+  const y = b.map((item) => item.toLocaleLowerCase());
+  // lcs[i][j]: the longest common sequence of x from i and y from j.
+  const lcs = Array.from({ length: x.length + 1 }, () => new Uint16Array(y.length + 1));
+  for (let i = x.length - 1; i >= 0; i--) {
+    for (let j = y.length - 1; j >= 0; j--) {
+      lcs[i][j] = x[i] === y[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const pair = new Int32Array(x.length).fill(-1);
+  for (let i = 0, j = 0; i < x.length && j < y.length; ) {
+    if (x[i] === y[j]) pair[i++] = j++;
+    else if (lcs[i + 1][j] >= lcs[i][j + 1]) i++;
+    else j++;
+  }
+  return pair;
+}
+
+/** Whether a text holds the addon's slot for the reader's class: `$c`, or frFR's plural `$cs`. */
+export function hasClassSlot(text: string): boolean {
+  // Nearly every line a gathered file holds has none, and tokenising each is the cost.
+  if (!/\$[cC]/.test(text)) return false;
+  return tokensOf(text).some((token) => token.value === "$C" || token.value === "$CS");
+}
+
 /** A run of one side's text, and whether the other side lacks it. */
 export type DiffPart = { text: string; changed: boolean };
 
@@ -120,24 +161,16 @@ export function wordDiff(before: string, after: string): { before: DiffPart[]; a
   const a = before.split(/(\s+)/);
   const b = after.split(/(\s+)/);
   // Case-blind, as sameLine is: `$n` against `$N` is not a difference worth marking.
-  const wordsA = a.filter((_, index) => index % 2 === 0).map((word) => word.toLocaleLowerCase());
-  const wordsB = b.filter((_, index) => index % 2 === 0).map((word) => word.toLocaleLowerCase());
-
-  // lcs[i][j]: the longest common sequence of wordsA from i and wordsB from j.
-  const lcs = Array.from({ length: wordsA.length + 1 }, () => new Uint16Array(wordsB.length + 1));
-  for (let i = wordsA.length - 1; i >= 0; i--) {
-    for (let j = wordsB.length - 1; j >= 0; j--) {
-      lcs[i][j] = wordsA[i] === wordsB[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
-    }
-  }
+  const pair = lcsPairs(
+    a.filter((_, index) => index % 2 === 0),
+    b.filter((_, index) => index % 2 === 0),
+  );
   const keptA = new Set<number>();
   const keptB = new Set<number>();
-  for (let i = 0, j = 0; i < wordsA.length && j < wordsB.length; ) {
-    if (wordsA[i] === wordsB[j]) {
-      keptA.add(i++);
-      keptB.add(j++);
-    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) i++;
-    else j++;
+  for (const [i, j] of pair.entries()) {
+    if (j === -1) continue;
+    keptA.add(i);
+    keptB.add(j);
   }
 
   const parts = (pieces: string[], kept: Set<number>): DiffPart[] => {
@@ -155,4 +188,39 @@ export function wordDiff(before: string, after: string): { before: DiffPart[]; a
     return out;
   };
   return { before: parts(a, keptA), after: parts(b, keptB) };
+}
+
+/**
+ * `contributed` with each `$c`/`$C` put back as the word the corpus line has in its place, for a
+ * quest whose class word is the quest's own (class-words.ts). The addon turns the reader's
+ * class into a slot wherever it appears, so a priest sends "a $c out in the mountains" for a
+ * line about a priest; the corpus line still says which word it was.
+ *
+ * A slot is put back only where the words on both sides of it line up with the corpus, and
+ * the corpus has one to three plain words between them. A slot the corpus also has, or one in
+ * a sentence the corpus lacks, stays a slot.
+ */
+export function restoreClassWords(contributed: string, corpus: string): string {
+  const theirs = Array.from(contributed.matchAll(TOKEN), (match) => ({ value: match[0], at: match.index }));
+  const ours = tokensOf(corpus);
+  const pair = lcsPairs(
+    theirs.map((token) => token.value),
+    ours.map((token) => token.value),
+  );
+
+  let out = contributed;
+  // From the end, so each splice leaves the earlier offsets as they were.
+  for (let i = theirs.length - 1; i >= 0; i--) {
+    const slot = theirs[i].value.toUpperCase();
+    if ((slot !== "$C" && slot !== "$CS") || pair[i] !== -1) continue;
+    const before = i === 0 ? -1 : pair[i - 1];
+    const after = i === theirs.length - 1 ? ours.length : pair[i + 1];
+    if ((i > 0 && before === -1) || after === -1) continue;
+    const gap = ours.slice(before + 1, after);
+    if (gap.length === 0 || gap.length > SLOT_WORDS || gap.some((token) => token.kind !== "word")) continue;
+    if (!endsRun(gap[gap.length - 1].value, slot)) continue;
+    const word = gap.map((token) => token.value).join(" ");
+    out = out.slice(0, theirs[i].at) + word + out.slice(theirs[i].at + theirs[i].value.length);
+  }
+  return out;
 }

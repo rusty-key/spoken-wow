@@ -15,6 +15,7 @@ local world = {
     npcName = "Innkeeper Test",
     npcGUID = "Creature-0-0-0-0-1234-0",
     npcFriendly = false,  -- UnitCanAttack: false for townsfolk the player cannot fight
+    playerDead = false,   -- UnitIsDeadOrGhost: dead or released as a ghost
     modelFileID = nil,    -- what a loaded PlayerModel answers for the unit on screen
     -- True between SetUnit and the model actually finishing loading: makes GetModelFileID
     -- answer nil even though the probe is shown, the way a real model does for however long
@@ -408,6 +409,7 @@ function M.SetClient(label)
     if M.SetMenuAPI then M.SetMenuAPI(true) end
 end
 _G.UIParent = MakeFrame("UIParent")
+_G.WorldFrame = MakeFrame("WorldFrame")
 _G.WOW_PROJECT_CLASSIC = 2
 _G.WOW_PROJECT_BURNING_CRUSADE_CLASSIC = 5
 _G.WOW_PROJECT_WRATH_CLASSIC = 11
@@ -431,6 +433,7 @@ function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
 function _G.UnitSex() return world.unitSex end
 function _G.UnitIsDead() return false end
+function _G.UnitIsDeadOrGhost() return world.playerDead end
 function _G.UnitIsUnit(a, b) return a == b end
 function _G.UnitCreatureType() return world.creatureType end
 -- The mouse UI unless a test turns the gamepad's on: read as "1", every popup an addon raises

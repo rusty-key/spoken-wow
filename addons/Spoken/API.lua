@@ -44,7 +44,7 @@ end
 -- breaks no copy already installed.
 Spoken.SITE_URL = "https://spoken.quest"
 
---- The page for reporting one line: `section` is "quests", "places" or "readables", `path` the
+--- The page for reporting one line: `section` is "quests", "places", "readables" or "bosses", `path` the
 --- line's address under it, `language` the language the line was read in. English goes
 --- unprefixed, the address the site serves it at; any other language keeps its prefix, so the
 --- report lands beside that language's line. tests/lua/report_url_contract_test.lua holds
