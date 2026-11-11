@@ -23,14 +23,19 @@ export function GameCard({ game }: { game: GameInstall }): ReactNode {
     )
   ]
   const updates = voice.filter((s) => s.state === 'update-available').length
+  // Update takes Spoken and every pack that can be updated; the job queue runs Spoken first.
+  const toUpdate = [
+    ...(spokenState === 'update-available' ? ['spoken'] : []),
+    ...voice.filter((s) => s.state === 'update-available' && !s.blockedReason).map((s) => s.productId)
+  ]
 
   const primary =
     spokenState === 'not-installed'
       ? { text: S.home.installSpoken, run: () => void actions.install(game.id, 'spoken') }
-      : spokenState === 'update-available'
-        ? { text: S.home.update, run: () => void actions.install(game.id, 'spoken') }
+      : toUpdate.length > 0
+        ? { text: S.home.update, run: () => toUpdate.forEach((id) => void actions.install(game.id, id)) }
         : { text: S.home.manage, run: () => actions.navigate('spoken', game.id) }
-  const canInstall = game.writable && !!status?.latest
+  const canInstall = game.writable && (spokenState === 'not-installed' ? !!status?.latest : true)
 
   return (
     <article className="card game-card">

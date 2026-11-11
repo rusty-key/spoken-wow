@@ -67,6 +67,8 @@ export interface JobContext {
   repair?: boolean
   /** Replaces the running-game check (tests). */
   isRunning?: () => Promise<boolean>
+  /** Recorded on the install: a version picked over the newest, which automatic updates leave. */
+  pinned?: boolean
 }
 
 export interface JobResult {
@@ -709,7 +711,8 @@ export async function installProduct(
         version: release.version,
         folders,
         installedAt: new Date().toISOString(),
-        tag: release.tag
+        tag: release.tag,
+        ...(ctx.pinned ? { pinned: true } : {})
       })
     )
     log(`Installed ${product.id} ${release.version} on ${game.label} (${folders.join(', ')}).`)

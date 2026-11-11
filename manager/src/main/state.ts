@@ -71,6 +71,8 @@ export interface InstallRecord {
   folders: string[]
   installedAt: string
   tag: string
+  /** Installed as a version the player picked over the newest; automatic updates leave it. */
+  pinned?: boolean
 }
 
 export interface StateFile {
@@ -117,7 +119,8 @@ export function sanitizeState(raw: unknown): StateFile {
           version: x.version,
           folders: strings(x.folders),
           installedAt: typeof x.installedAt === 'string' ? x.installedAt : '',
-          tag: typeof x.tag === 'string' ? x.tag : ''
+          tag: typeof x.tag === 'string' ? x.tag : '',
+          ...(x.pinned === true ? { pinned: true } : {})
         }
       }
       out.installs[gameId] = perGame

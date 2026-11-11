@@ -13,7 +13,7 @@ afterEach(async () => {
   server = null
 })
 
-async function setup() {
+async function setup(opts: { gate?: Promise<void> } = {}) {
   const base = tmpDir()
   const game = await makeGame(base)
   const zip = await yazlZip([
@@ -21,6 +21,7 @@ async function setup() {
     { name: 'Spoken/Spoken.lua', data: 'x' }
   ])
   server = await startServer((req, res) => serveBuffer(req, res, zip))
+  const downloads = server.url
   const releases = [
     {
       tag_name: 'spoken/v3.5.0',
@@ -47,6 +48,7 @@ async function setup() {
       githubCalls++
       return new Response(JSON.stringify(releases), { status: 200, headers: { etag: '"x"', 'content-type': 'application/json' } })
     }
+    if (opts.gate && String(url).startsWith(downloads)) await opts.gate
     return fetch(url, init)
   }) as unknown as typeof fetch
   const sent: { channel: string; payload: unknown }[] = []
@@ -132,19 +134,108 @@ describe('ManagerService', () => {
     expect(githubCalls()).toBe(2)
   })
 
-  it('automatically updates installed official content when enabled', async () => {
-    const { svc, game, sent } = await setup()
-    fs.mkdirSync(path.join(game.addOnsPath, 'Spoken'), { recursive: true })
-    fs.writeFileSync(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), toc('Spoken', '3.4.0'))
+  describe('automatic content updates', () => {
+    const spokenJobs = (sent: { channel: string; payload: unknown }[]) =>
+      sent.filter((s) => s.channel === CHANNELS.jobProgress && (s.payload as JobProgress).productId === 'spoken').map((s) => s.payload as JobProgress)
 
-    svc.setSettings({ autoUpdateContent: true })
-    await svc.refreshCatalog(true)
+    function oldSpoken(dir: string): void {
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(path.join(dir, 'Spoken.toc'), toc('Spoken', '3.4.0'))
+    }
 
-    const job = await waitForJob(sent, 'spoken')
-    expect((await waitFor(sent, job)).phase).toBe('done')
-    expect((await svc.statuses(game.id)).find((s) => s.productId === 'spoken')).toMatchObject({
-      state: 'up-to-date',
-      installedVersion: '3.5.0'
+    it('updates installed official content after a release check', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+
+      const job = await waitForJob(sent, 'spoken')
+      expect((await waitFor(sent, job)).phase).toBe('done')
+      expect((await svc.statuses(game.id)).find((s) => s.productId === 'spoken')).toMatchObject({
+        state: 'up-to-date',
+        installedVersion: '3.5.0'
+      })
+    })
+
+    it('updates when turned on with a catalog already loaded', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      await svc.refreshCatalog(true)
+      expect(spokenJobs(sent)).toHaveLength(0)
+
+      svc.setSettings({ autoUpdateContent: true })
+      expect((await waitFor(sent, await waitForJob(sent, 'spoken'))).phase).toBe('done')
+    })
+
+    it('does nothing while the setting is off', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      expect(spokenJobs(sent)).toHaveLength(0)
+    })
+
+    it('leaves a linked folder alone', async () => {
+      const { svc, game, sent } = await setup()
+      const checkout = path.join(tmpDir(), 'Spoken')
+      oldSpoken(checkout)
+      fs.symlinkSync(checkout, path.join(game.addOnsPath, 'Spoken'), 'dir')
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      expect(spokenJobs(sent)).toHaveLength(0)
+    })
+
+    it('leaves a version the player picked', async () => {
+      const { svc, game, sent, data } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      fs.writeFileSync(
+        path.join(data, 'state.json'),
+        JSON.stringify({
+          version: 1,
+          manualGames: [],
+          hiddenGames: [],
+          installs: { [game.id]: { spoken: { version: '3.4.0', folders: ['Spoken'], installedAt: '', tag: 'spoken/v3.4.0', pinned: true } } }
+        })
+      )
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      expect(spokenJobs(sent)).toHaveLength(0)
+    })
+
+    it('pins only a version older than the newest', async () => {
+      const { svc, game, sent, data } = await setup()
+      await svc.refreshCatalog(true)
+      expect((await waitFor(sent, svc.install(game.id, 'spoken', { version: '3.5.0' }))).phase).toBe('done')
+      const state = JSON.parse(fs.readFileSync(path.join(data, 'state.json'), 'utf8'))
+      expect(state.installs[game.id].spoken.pinned).toBeUndefined()
+    })
+
+    it('does not queue a cancelled update again until the player checks by hand', async () => {
+      let open!: () => void
+      const gate = new Promise<void>((resolve) => (open = resolve))
+      const { svc, game, sent } = await setup({ gate })
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      svc.setSettings({ autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+
+      const first = await waitForJob(sent, 'spoken')
+      svc.jobs.cancel(first)
+      open()
+      expect((await waitFor(sent, first)).phase).toBe('cancelled')
+
+      svc.setSettings({ lastGameId: game.id })
+      await svc.refreshCatalog(false)
+      await svc.autoUpdate()
+      expect(new Set(spokenJobs(sent).map((p) => p.jobId))).toEqual(new Set([first]))
+
+      await svc.refreshCatalog(true)
+      await svc.autoUpdate()
+      const again = spokenJobs(sent).find((p) => p.jobId !== first)
+      expect(again).toBeDefined()
+      expect((await waitFor(sent, again!.jobId)).phase).toBe('done')
     })
   })
 

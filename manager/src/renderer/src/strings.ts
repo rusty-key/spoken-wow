@@ -220,7 +220,7 @@ export const S = {
     checkOnStart: 'Check for Updates When the Manager Starts',
     checkOnStartText: 'Looks at GitHub for new releases each time you open the manager.',
     autoUpdateContent: 'Keep Spoken and Voice Packs Up to Date',
-    autoUpdateContentText: 'After checking for releases, automatically updates the installed official Spoken addon and voice packs. Community packs and linked folders are left alone.',
+    autoUpdateContentText: 'After checking for releases, automatically updates the installed official Spoken addon and voice packs. Community packs, linked folders and a version you picked yourself are left alone.',
     autoUpdate: 'Keep the Manager Up to Date',
     autoUpdateText: 'Downloads a new manager in the background and uses it after a restart.',
     downloads: 'Downloads',
