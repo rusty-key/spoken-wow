@@ -9,6 +9,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
+import FilterLink from "@/components/FilterLink";
 import Key from "@/components/Key";
 import Pagination from "@/components/Pagination";
 import { Loading, Refreshing } from "@/components/Loading";
@@ -651,10 +652,24 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             {loading && result && <Refreshing />}
           </div>
           {result && result.counts.missing > 0 && (
-            <span className="text-destructive text-sm">{result.counts.missing} missing</span>
+            <FilterLink
+              href={filtersHref({ state: "missing" })}
+              onApply={() => updateFilters({ state: "missing" })}
+              className="text-destructive text-sm underline-offset-2 hover:underline"
+              title="Show only lines without audio"
+            >
+              {result.counts.missing} missing
+            </FilterLink>
           )}
           {result && result.counts.stale > 0 && (
-            <span className="text-sm text-amber-300">{result.counts.stale} outdated</span>
+            <FilterLink
+              href={filtersHref({ state: "stale" })}
+              onApply={() => updateFilters({ state: "stale" })}
+              className="text-sm text-amber-300 underline-offset-2 hover:underline"
+              title="Show only lines whose audio is older than their text"
+            >
+              {result.counts.stale} outdated
+            </FilterLink>
           )}
           {/* Its own count, beside the states rather than among them: a line can be current
               and carry this at once. The button only for someone who could act on it. */}

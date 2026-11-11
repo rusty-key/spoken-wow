@@ -871,14 +871,14 @@ do
     body.frame:SetVerticalScroll(0)
 
     -- A page made with noFace has the round portrait only for an entry that asks for it, and a one-line
-    -- heading lets the name take two lines beside it.
+    -- heading stays one line beside it, cut short.
     local small = _G.SpokenCompendium.NewPage(CreateFrame("Frame"), B, nil, nil, { noFace = true, oneLine = true })
     small:Show({ title = "Warlord Kalithresh", text = "A boss's story." })
     Expect("a page made with noFace makes no portrait for an entry without one", small.headFace == nil and small.shift, 0)
     Expect("...its one-line heading cut short, not wrapped", small.title.wordWrap, false)
     small:Show({ title = "Warlord Kalithresh", text = "A boss's story.", face = true })
     Expect("...makes it for an entry that asks", small.headFace ~= nil and small.face == small.headFace and small.shift > 0, true)
-    Expect("...and the name may then wrap", small.title.wordWrap, true)
+    Expect("...the name still on one line, cut short beside it", small.title.wordWrap, false)
     small:Show({ title = "Hollow Vault", text = "Place lore." })
     Expect("...hidden again for an entry without", small.face == nil and small.headFace:IsShown() == false and small.shift == 0, true)
     Expect("...the heading on one line again", small.title.wordWrap, false)

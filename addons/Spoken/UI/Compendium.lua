@@ -2453,14 +2453,6 @@ function Page:Show(entry)
 	end
 	self.face = face
 	self.shift = face and ((face:GetWidth() or 0) + FACE_GAP) or 0
-	-- The portrait takes 60 of a one-line heading's width: on the map panel at its default width the
-	-- name has 146 px (a 348 wide page: 84 to the left of it; 28, three 24 buttons, two gaps of 4 and
-	-- 10 to the right), against 206 without it. With the portrait the name may take two lines, which
-	-- is about as tall as the portrait, rather than be cut short.
-	if self.oneLine then
-		if self.title.SetWordWrap then self.title:SetWordWrap(face ~= nil) end
-		if self.title.SetMaxLines then self.title:SetMaxLines(face and 2 or 1) end
-	end
 	self.title:SetText(entry.title or "")
 	self.sub.text:SetText(entry.subtitle or "")
 	-- No line under the title takes no room: the divider closes up under it.
