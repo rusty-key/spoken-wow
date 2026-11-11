@@ -40,8 +40,18 @@ local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 -- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
 -- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
 local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
--- A creature model fits the narrow map panel at this size, and stops here on the wider Compendium.
-local MODEL_MOST, MODEL_GAP = 150, 10
+-- A creature model above the words, MODEL_MOST high and MODEL_WIDE times as wide. The boss cameras are
+-- fitted to that shape, so a narrow page shrinks the whole frame rather than trimming its width.
+local MODEL_MOST, MODEL_GAP, MODEL_WIDE = 220, 10, 1.25
+-- The page's own parchment laid over the model's border, through one of Textures\ModelEdge1..4 (a
+-- frayed ring), so the square frame fades into the page. It reaches EDGE_OVER past the model, to cover
+-- the model's flat cut.
+local MODEL_EDGES, EDGE_OVER = 4, 6
+-- A brown (#66290A) at this opacity behind the model, so the figure stands out of the page. It is
+-- drawn only where the edge is, which is what frays its square corners away.
+local MODEL_SHADE = 0.20
+local MODEL_SHADE_RGB = { 0x66 / 255, 0x29 / 255, 0x0A / 255 }
+local EDGE_PATH = [[Interface\AddOns\Spoken\Textures\ModelEdge]]
 -- A clean picture, with straight edges, loses this share of each side: past it no pixel of
 -- any shipped picture is thinned toward the parchment by more than 1%, measured from the shipped
 -- masks (the worst, Mask14, needs 0.172: 44 of 256 rows). The same share off every side keeps it 2:1.
@@ -403,7 +413,31 @@ local function PaintStrip(strip, source)
 	return true
 end
 
+--- The model's edge: a copy of the page's picture under it, shown where the page has one. On a plain
+--- or dark page it stays off and the model shows square. It is held off with the rest of the page's
+--- fade layers (SetFadeShown), and the brown backing goes with it. It moves with the text, so it is
+--- cut again for each scroll position and size.
+function TextView:PaintModelEdge()
+	local edge = self.modelEdge
+	if not edge then return end
+	local source = self.fadeSource
+	local drawn = (self.modelDisplayID and self.modelEdgeMask and source and source.file
+		and not self.fadeHeld and self.modelEdgeFrame:IsShown()) and true or false
+	self.modelShade:SetShown(drawn)
+	self.edgeScroll = self.frame:GetVerticalScroll()
+	edge:SetShown(drawn and PaintStrip(edge, source) and true or false)
+end
+
+-- The scroll moves the model across the picture its edge is cut from. Cut again only for a new
+-- position, and not while the model is out of sight above the view.
+function TextView:ScrollModelEdge()
+	if not (self.modelDisplayID and self.modelBottom) then return end
+	local at = self.frame:GetVerticalScroll()
+	if at ~= self.edgeScroll and at <= self.modelBottom then self:PaintModelEdge() end
+end
+
 function TextView:PaintFade()
+	self:PaintModelEdge()
 	local source = self.fadeSource
 	if not (source and self.fadeTop) then
 		self:UpdateFade()
@@ -436,6 +470,7 @@ function TextView:SetFadeShown(shown)
 	if self.fadeHeld == held then return end
 	self.fadeHeld = held
 	self:UpdateFade()
+	self:PaintModelEdge()
 end
 
 --------------------------------------------------------------------------------
@@ -459,6 +494,7 @@ function SpokenTextView.Create(parent, owner)
 	end)
 	scroll:SetScript("OnVerticalScroll", function()
 		view:UpdateScrollBar()
+		view:ScrollModelEdge()
 	end)
 
 	local child = CreateFrame("Frame", nil, scroll)
@@ -468,6 +504,29 @@ function SpokenTextView.Create(parent, owner)
 	local model = CreateFrame("PlayerModel", nil, child)
 	model:Hide()
 	view.model = model
+	-- In the scroll child, so under the model.
+	local shade = child:CreateTexture(nil, "BACKGROUND")
+	shade:SetAllPoints(model)
+	shade:SetColorTexture(MODEL_SHADE_RGB[1], MODEL_SHADE_RGB[2], MODEL_SHADE_RGB[3], MODEL_SHADE)
+	shade:Hide()
+	view.modelShade = shade
+	-- A frame of its own above the model: a texture in the scroll child would draw under it.
+	local edgeFrame = CreateFrame("Frame", nil, child)
+	edgeFrame:SetFrameLevel(model:GetFrameLevel() + 2)
+	edgeFrame:Hide()
+	edgeFrame:SetPoint("TOPLEFT", model, "TOPLEFT", -EDGE_OVER, EDGE_OVER)
+	edgeFrame:SetPoint("BOTTOMRIGHT", model, "BOTTOMRIGHT", EDGE_OVER, -EDGE_OVER)
+	local edge = edgeFrame:CreateTexture(nil, "OVERLAY")
+	edge:SetAllPoints(edgeFrame)
+	SpokenTextView.Unsnap(edge)
+	edge:Hide()
+	view.modelEdgeFrame, view.modelEdge = edgeFrame, edge
+	if edgeFrame.CreateMaskTexture and edge.AddMaskTexture then
+		view.modelEdgeMask = edgeFrame:CreateMaskTexture()
+		view.modelEdgeMask:SetAllPoints(edge)
+		edge:AddMaskTexture(view.modelEdgeMask)
+	end
+	edgeFrame:SetScript("OnSizeChanged", function() view:PaintModelEdge() end)
 
 	local text = child:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
 	text:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -PAD_TOP)
@@ -539,14 +598,22 @@ function TextView:SetText(str)
 	local modelRoom = 0
 	self.text:ClearAllPoints()
 	if self.modelDisplayID and width > 0 then
-		local size = math.min(width, MODEL_MOST)
-		self.model:SetSize(size, size)
+		local wide = math.min(width, math.floor(MODEL_MOST * MODEL_WIDE))
+		local high = math.floor(wide / MODEL_WIDE)
+		self.model:SetSize(wide, high)
 		self.model:ClearAllPoints()
 		self.model:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT))
 		self.model:Show()
-		modelRoom = size + MODEL_GAP - PICTURE_LIFT
+		self.modelEdgeFrame:Show()
+		-- Where the model's bottom lies in the scroll child, for ScrollModelEdge.
+		self.modelBottom = PAD_TOP - PICTURE_LIFT + high + EDGE_OVER
+		self:PaintModelEdge()
+		modelRoom = high + MODEL_GAP - PICTURE_LIFT
 	else
 		self.model:Hide()
+		self.modelEdgeFrame:Hide()
+		self.modelShade:Hide()
+		self.modelBottom = nil
 	end
 	if self.pictureFile and width > 0 then
 		local w = math.min(width, PICTURE_MOST)
@@ -800,6 +867,9 @@ function TextView:SetModel(model)
 	if not self.modelDisplayID and not (model and model.creatureID) then
 		if self.model then
 			self.model:Hide()
+			self.modelEdgeFrame:Hide()
+			self.modelShade:Hide()
+			self.modelBottom = nil
 			if self.model.ClearModel then self.model:ClearModel() end
 		end
 		return
@@ -810,10 +880,16 @@ function TextView:SetModel(model)
 	elseif model.creatureID and self.model.SetCreature then
 		self.model:SetCreature(model.creatureID)
 	end
+	-- Each boss has the same edge every time, and neighbours in the list tend to differ.
+	if self.modelEdgeMask and self.modelDisplayID then
+		self.modelEdgeMask:SetTexture(EDGE_PATH .. (self.modelDisplayID % MODEL_EDGES + 1),
+			"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	end
 	if self.model.SetModelScale then self.model:SetModelScale(model.scale or 1) end
-	if self.model.SetPortraitZoom then self.model:SetPortraitZoom(model.zoom or 0.4) end
-	if self.model.SetRotation then self.model:SetRotation(model.rotation or 0) end
+	-- Zoom 0 is the whole body, which the frame is made large enough for.
+	if self.model.SetPortraitZoom then self.model:SetPortraitZoom(model.zoom or 0) end
 	if self.model.SetPosition then self.model:SetPosition(model.x or 0, model.y or 0, model.z or 0) end
+	if self.model.SetRotation then self.model:SetRotation(model.rotation or 0) end
 	if self.model.SetFacing then self.model:SetFacing(model.facing or 0) end
 	if self.model.SetSequence then self.model:SetSequence(model.sequence or 4) end
 end

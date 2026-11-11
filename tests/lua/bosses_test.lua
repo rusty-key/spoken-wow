@@ -290,6 +290,23 @@ Expect("...and on a closed one lists its bosses one level further in", Has(Shown
 Expect("...a boss is a line with no numbers", RowFor("Edwin VanCleef").row.leaf, true)
 Expect("a boss not met cannot be chosen: its row does nothing", RowFor("Edwin VanCleef").row.locked, true)
 
+-- A boss not met has no real portrait, and the line under its name stands for a map the client lacks.
+local unmetPortrait = Bosses:Portrait(36, "edwin vancleef")
+Expect("a boss not met has the unknown mark, not its creature's portrait",
+    tostring(unmetPortrait.creatureID) .. "|" .. tostring(unmetPortrait.displayID), "nil|nil")
+Expect("the line under a boss's name is its dungeon and where it is", Bosses:Where(36, "edwin vancleef"), "In Deadmines · Westfall")
+Expect("a boss on a map the client does not list has its dungeon's name alone",
+    Bosses:Where(2959, SpokenBosses.maps[2959][1].key), SpokenCompendium.DungeonName(2959))
+-- Found Only leaves the boss's row out, so there is no page to open on.
+SpokenBossesSettings.compendiumFoundOnly = true
+Bosses:ShowBoss(36, "edwin vancleef")
+Expect("Open in Compendium never lands on a boss Found Only leaves out", page.title.text ~= "Edwin VanCleef", true)
+SpokenBossesSettings.compendiumFoundOnly = false
+Bosses:ShowBoss(36, "edwin vancleef")
+Expect("...and with it off, opens the boss's own page", page.title.text, "Edwin VanCleef")
+Click("Deadmines")
+Click("Deadmines")
+
 -- Meeting the boss: its fight starts, whichever difficulty's encounter.
 local edwin
 for _, boss in ipairs(SpokenBosses.maps[36]) do if boss.key == "edwin vancleef" then edwin = boss end end

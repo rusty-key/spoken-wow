@@ -74,10 +74,16 @@ dungeonMenuRow.Text = dungeonMenuRow:CreateFontString()
 dungeonMenuRow.Text:SetText("Gnomeregan")
 
 local Bosses = { L = { BOSS_NOT_FOUND = "not found" } }
+local met, opened = true, nil
+local UNKNOWN = { unknown = true }
 function Bosses:StoryClip(map, key)
     return { present = { transcript = map .. ":" .. key .. " lore" } }
 end
-function Bosses:IsBossFound() return true end
+function Bosses:IsBossFound() return met end
+function Bosses:IsRevealed(map, key) return self:IsBossFound(map, key) end
+function Bosses:Portrait(map, key) return self:IsRevealed(map, key) and { creatureID = 639, displayID = 2029 } or UNKNOWN end
+function Bosses:Where(map) return "In " .. SpokenCompendium.DungeonName(map) .. " · Westfall" end
+function Bosses:ShowBoss(map, key) opened = map .. ":" .. key end
 function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
 function Bosses:PlayStory() end
@@ -102,7 +108,12 @@ Expect("...with the boss panel title", shown and shown.entry.panelTitle, "Boss S
 Expect("...with the boss story", shown and shown.entry.text, "36:edwin vancleef lore")
 Expect("...with the boss model creature", shown and shown.entry.model and shown.entry.model.creatureID, 639)
 Expect("...with the boss model display", shown and shown.entry.model and shown.entry.model.displayID, 2029)
-Expect("...without a boss header portrait", shown and shown.entry.icon, nil)
+Expect("...with the boss's round portrait", shown and shown.entry.icon and shown.entry.icon.displayID, 2029)
+Expect("...drawn on a page that has no face of its own", shown and shown.entry.face, true)
+Expect("...and where the boss is under its name", shown and shown.entry.subtitle, "In The Deadmines · Westfall")
+Expect("...with Open in Compendium", type(shown and shown.entry.open), "function")
+shown.entry.open()
+Expect("...which opens that boss's page", opened, "36:edwin vancleef")
 Expect("...with the boss report action", shown and shown.entry.reportAction, Bosses.ReportAction)
 
 -- Leatrix uses Balnazzar's alternate phase creature 10813, while Spoken stores 10812.
@@ -119,7 +130,20 @@ WorldMapFrame.mapID = 1420
 shown = nil
 pin:Click()
 Expect("Balnazzar opens from the parent map without a preview", shown ~= nil, true)
-Expect("...with Stratholme's Balnazzar lore without a preview", shown and shown.entry.subtitle, "Stratholme")
+Expect("...with Stratholme's Balnazzar lore without a preview", shown and shown.entry.subtitle, "In Stratholme · Westfall")
+
+-- A boss not met shows no real portrait and cannot be opened: its page has no row under Found Only.
+met = false
+WorldMapFrame.mapID = 36
+pin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
+shown = nil
+pin:Click()
+Expect("a boss not met shows the not-found text", shown and shown.entry.text, "not found")
+Expect("...with the unknown mark in place of its portrait", shown and shown.entry.icon, UNKNOWN)
+Expect("...no Open in Compendium", shown and shown.entry.open, nil)
+Expect("...and nothing to play", shown and shown.entry.target, nil)
+met = true
+WorldMapFrame.mapID = 1420
 
 shown = nil
 pin.row = { "boss", 0.5, 0.5, 999999, "Unknown" }

@@ -96,6 +96,11 @@ local function Unlocked()
 	return SpokenBossesSettings ~= nil and SpokenBossesSettings.unlockUnfound == true
 end
 
+-- Whether a boss's page and portrait are shown: met, or Unlock Unfound Bosses is on.
+function Bosses:IsRevealed(map, key)
+	return Found(map, key) or Unlocked()
+end
+
 local function OnlyFound()
 	return SpokenBossesSettings ~= nil and SpokenBossesSettings.compendiumFoundOnly == true and not Unlocked()
 end
@@ -438,12 +443,12 @@ local function Unknown(map)
 	return unknown[BossBullet(map)]
 end
 
--- A boss's portrait, at the left of its name on the page's header.
-local function Portrait(map, key)
+--- A boss's portrait, at the left of its name on the page's header.
+function Bosses:Portrait(map, key)
 	local model = Model(map, key)
 	-- A portrait only from a known appearance: asked of the client, a creature it has not met answers
-	-- with the player's own face.
-	if not model then return Unknown(map) end
+	-- with the player's own face. A boss not shown yet has the unknown mark.
+	if not model or not self:IsRevealed(map, key) then return Unknown(map) end
 	local id = map .. ":" .. key
 	local portrait = portraits[id]
 	if not (portrait and portrait.creatureID == model.creatureID and portrait.displayID == model.displayID) then
@@ -451,6 +456,15 @@ local function Portrait(map, key)
 		portraits[id] = portrait
 	end
 	return portrait
+end
+
+--- The line under a boss's name: the dungeon, and where it is. A map the client does not list has
+--- the dungeon's name alone.
+function Bosses:Where(map, key)
+	local zone = BossZone(map, key)
+	if not zone then return DungeonName(map) end
+	if Index().world[map] then return L.BOSS_IN_FMT:format(MapName(zone)) end
+	return L.BOSS_IN_FMT:format(DungeonName(map)) .. " · " .. MapName(zone)
 end
 
 local function ShowEntry()
@@ -463,14 +477,13 @@ local function ShowEntry()
 		local map, key = selection.map, selection.key
 		local boss = Boss(map, key)
 		if not boss then return end
-		local where = Index().world[map] and L.BOSS_IN_FMT:format(MapName(BossZone(map, key)))
-			or (L.BOSS_IN_FMT:format(DungeonName(map)) .. " · " .. MapName(Index().zoneOf[map]))
-		if not Found(map, key) and not Unlocked() then
+		local where = Bosses:Where(map, key)
+		if not Bosses:IsRevealed(map, key) then
 			page:Show({ title = Name(boss), subtitle = where, text = L.BOSS_NOT_FOUND, icon = Unknown(map) })
 			return
 		end
 		local story = Story(map, key)
-		page:Show({ title = Name(boss), subtitle = where, icon = Portrait(map, key), model = Model(map, key),
+		page:Show({ title = Name(boss), subtitle = where, icon = Bosses:Portrait(map, key), model = Model(map, key),
 			text = story or C.NotWritten(), unwritten = story == nil, target = story and { map, key } or nil })
 		return
 	end
@@ -583,10 +596,7 @@ local function Build(panel)
 	Bosses.bosses, Bosses.list = panel, list
 end
 
---- Open the bosses, on where the player stands now, unless they chose something here.
-function Bosses:ShowBosses()
-	if not SpokenCompendium then return end
-	if selection == landed then selection = nil end
+local function OpenTab()
 	if list then
 		list:ClearSearch()
 		filter = ""
@@ -594,6 +604,25 @@ function Bosses:ShowBosses()
 	SpokenCompendium:Open("bosses")
 	SpokenCompendium:Expand()
 	Bosses:RefreshBosses(true)
+end
+
+--- Open the bosses, on where the player stands now, unless they chose something here.
+function Bosses:ShowBosses()
+	if not SpokenCompendium then return end
+	if selection == landed then selection = nil end
+	OpenTab()
+end
+
+--- Open the Compendium on one boss's page, its dungeon and continent opened round it. A boss Found
+--- Only leaves out has no row: the bosses open where the player stands.
+function Bosses:ShowBoss(map, key)
+	if not (SpokenCompendium and Boss(map, key)) then return end
+	if OnlyFound() and not Found(map, key) then return Bosses:ShowBosses() end
+	selection = { boss = true, map = map, key = key }
+	if not Index().world[map] then dungeonOpen[map] = true end
+	local zone = BossZone(map, key)
+	if zone then OpenAround(zone) end
+	OpenTab()
 end
 
 function Bosses:SetupBosses()

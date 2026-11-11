@@ -11,6 +11,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
   full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
   *([carcachi](https://github.com/carcachi))*
+- A boss's 3D model on the map panel and in the Compendium now sits on a frayed edge cut from the page's
+  own parchment, over a faint brown backing, in a frame large enough for any boss.
+  A boss on the map panel has its round portrait by the name and an Open in Compendium button, as the
+  Compendium's page has. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.8.6 — 2026-11-10
 
