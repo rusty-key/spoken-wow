@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.8.7 — 2026-11-12
 
 - **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map
   reaches well past its walls, so a click in Dun Morogh's mountains, at Grizzled Den, opened
