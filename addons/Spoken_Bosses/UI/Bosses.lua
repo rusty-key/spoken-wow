@@ -96,7 +96,7 @@ local function Unlocked()
 	return SpokenBossesSettings ~= nil and SpokenBossesSettings.unlockUnfound == true
 end
 
--- Whether a boss's page and portrait are shown: met, or Unlock Unfound Bosses is on.
+-- Whether a boss's page and model are shown: met, or Unlock Unfound Bosses is on.
 function Bosses:IsRevealed(map, key)
 	return Found(map, key) or Unlocked()
 end
@@ -447,8 +447,8 @@ end
 function Bosses:Portrait(map, key)
 	local model = Model(map, key)
 	-- A portrait only from a known appearance: asked of the client, a creature it has not met answers
-	-- with the player's own face. A boss not shown yet has the unknown mark.
-	if not model or not self:IsRevealed(map, key) then return Unknown(map) end
+	-- with the player's own face.
+	if not model then return Unknown(map) end
 	local id = map .. ":" .. key
 	local portrait = portraits[id]
 	if not (portrait and portrait.creatureID == model.creatureID and portrait.displayID == model.displayID) then
@@ -479,7 +479,7 @@ local function ShowEntry()
 		if not boss then return end
 		local where = Bosses:Where(map, key)
 		if not Bosses:IsRevealed(map, key) then
-			page:Show({ title = Name(boss), subtitle = where, text = L.BOSS_NOT_FOUND, icon = Unknown(map) })
+			page:Show({ title = Name(boss), subtitle = where, text = L.BOSS_NOT_FOUND, icon = Bosses:Portrait(map, key) })
 			return
 		end
 		local story = Story(map, key)

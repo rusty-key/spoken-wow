@@ -290,10 +290,10 @@ Expect("...and on a closed one lists its bosses one level further in", Has(Shown
 Expect("...a boss is a line with no numbers", RowFor("Edwin VanCleef").row.leaf, true)
 Expect("a boss not met cannot be chosen: its row does nothing", RowFor("Edwin VanCleef").row.locked, true)
 
--- A boss not met has no real portrait, and the line under its name stands for a map the client lacks.
+-- A boss not met still has its own portrait, and the line under its name stands for a map the client lacks.
 local unmetPortrait = Bosses:Portrait(36, "edwin vancleef")
-Expect("a boss not met has the unknown mark, not its creature's portrait",
-    tostring(unmetPortrait.creatureID) .. "|" .. tostring(unmetPortrait.displayID), "nil|nil")
+Expect("a boss not met has its creature's portrait, not the unknown mark",
+    tostring(unmetPortrait.creatureID) .. "|" .. tostring(unmetPortrait.displayID), "639|2029")
 Expect("the line under a boss's name is its dungeon and where it is", Bosses:Where(36, "edwin vancleef"), "In Deadmines · Westfall")
 Expect("a boss on a map the client does not list has its dungeon's name alone",
     Bosses:Where(2959, SpokenBosses.maps[2959][1].key), SpokenCompendium.DungeonName(2959))
