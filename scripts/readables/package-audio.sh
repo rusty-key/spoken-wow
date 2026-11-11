@@ -38,6 +38,7 @@ rsync -a --exclude '.DS_Store' "$WORK/Sounds/" "$staging/$folder/Sounds/"
 sed -i.bak \
   -e "s~^## Title:.*~## Title: ${title/#Spoken/|cffb48cffSpoken|r}~" \
   -e "s|^## Version:.*|## Version: $version|" \
+  -e "s|^## X-SpokenReadables-Language:.*|## X-SpokenReadables-Language: $LOCALE|" \
   -e "s|^## IconTexture:.*|## IconTexture: Interface\\\\AddOns\\\\$folder\\\\Textures\\\\AddonIcon.tga|" \
   "$staging/$folder/$folder.toc"
 rm -f "$staging/$folder/$folder.toc.bak"

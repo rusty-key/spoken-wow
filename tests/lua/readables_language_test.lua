@@ -11,7 +11,9 @@ local Expect, Failures = H.Expecter(print)
 local PAGE, ONLY_ENGLISH = 15, 16
 
 --- Load the addon on a client in `locale`, with the given packs installed.
-local function Install(packs, locale)
+local function Install(packs, locale, alone)
+    -- Spoken's saved settings hold the module's, so they start empty with it.
+    _G.Spoken, _G.SpokenEnv, _G.SpokenSettings = nil, nil, nil
     stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
     stub.SetLocale(locale or "enUS")
     _G.SpokenReadablesSettings = nil
@@ -22,6 +24,9 @@ local function Install(packs, locale)
             extraIndex = pack.extraIndex, extraLoose = pack.extraLoose, places = pack.places,
             books = pack.books }
     end
+    -- Spoken's registry is loaded first, as it is in the game: Language.lua reads the built-in
+    -- list from it when it loads. `alone` is a hand install without it.
+    if not alone then stub.LoadSpoken(here .. "/../../addons/Spoken/") end
     _G.SpokenReadablesData = {
         version = 1,
         index = { ["Registry"] = { [1] = {} } },
@@ -162,7 +167,7 @@ local TWO = Install({ { addon = "SpokenReadablesAudio_a", pages = { [PAGE] = { f
     { addon = "SpokenReadablesAudio_b", pages = { [PAGE] = { file = "15", len = 2, text = "Words of pack b." } } } })
 Expect("E. the first pack of a language that has a page's words gives them",
     TWO:ClipFor(PAGE).present.transcript, "Words of pack b.")
-B = Install({ ENGLISH })
+B = Install({ ENGLISH }, "enUS", true)
 Expect("E. with no Spoken there is nothing to report to", B:ReportURL(PAGE), nil)
 -- The address is Spoken's to build (Spoken:ReportURL); this suite loads Readables alone.
 stub.LoadSpoken(here .. "/../../addons/Spoken/")
@@ -275,10 +280,68 @@ do
     Expect("G. a page both list is not repeated", #B:BookOf(PAGE).pages, 3)
 end
 
---------------------------------------------------------------- in step with SpokenPlaces
-local readablesCodes = {}
-for _, locale in ipairs(B.LOCALES) do table.insert(readablesCodes, locale.code) end
-Expect("the language list matches SpokenPlaces'", table.concat(readablesCodes, " "), H.PlacesLocaleCodes(here))
+--------------------------------------------------------------- the built-in list
+B = Install({ ENGLISH }, "enUS", true)
+local builtin = {}
+for _, locale in ipairs(B.LOCALES) do table.insert(builtin, locale.code) end
+Expect("the built-in list is English alone without Spoken", table.concat(builtin, " "), "enUS")
+B = Install({ ENGLISH })
+builtin = {}
+for _, locale in ipairs(B.LOCALES) do table.insert(builtin, locale.code) end
+Expect("the built-in list is the registry's", table.concat(builtin, " "),
+    "enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW")
+
+---------------------------------------------------------------- a language only a pack declares
+-- Hebrew is in no list of this addon: its pack names it, and Readables tells Spoken's registry.
+local HEBREW = { addon = "SpokenCommunity_Readables_heIL", language = "heIL", pages = {
+    [PAGE] = { file = "15", len = 2 } } }
+B = Install({ ENGLISH, HEBREW }, "enUS")
+B:GetAudioPacks()
+local codes = {}
+for _, locale in ipairs(Spoken:InstalledLanguages()) do table.insert(codes, locale.code) end
+Expect("a pack with no .toc key is declared to the registry when the packs are listed",
+    table.concat(codes, " "), "enUS heIL")
+Expect("...as heIL, with no names", Spoken:Language("heIL").folders[1], "SpokenCommunity_Readables_heIL")
+SpokenReadablesSettings.voiceLanguage = "heIL"
+Expect("a stored heIL is the voice", B:GetVoiceLanguage(), "heIL")
+local heClip = B:ClipFor(PAGE)
+Expect("a page plays from the heIL pack", heClip and heClip.path,
+    [[Interface\AddOns\SpokenCommunity_Readables_heIL\Sounds\15.mp3]])
+Expect("...in heIL", heClip and heClip.language, "heIL")
+Expect("...and the clip says so for its subtitle", heClip and heClip.present.lang, "heIL")
+Expect("heIL is no client language", B:IsClientLanguage("heIL"), false)
+Expect("heIL is shown by its code when its pack names nothing", B:GetLanguageName("heIL"), "heIL")
+Expect("a page the pack lacks falls back to English", B:ClipFor(ONLY_ENGLISH).language, "enUS")
+Expect("an English clip says so for its subtitle", B:ClipFor(ONLY_ENGLISH).present.lang, "enUS")
+SpokenReadablesSettings.voiceLanguage = "auto"
+Expect("Auto never lands on it", B:GetVoiceLanguage(), "enUS")
+
+-- A voice whose pack was removed: the choice is kept, the page is read in the fallback.
+B = Install({ ENGLISH }, "enUS")
+SpokenReadablesSettings.voiceLanguage = "heIL"
+SpokenReadablesSettings.fallbackLanguage = "enUS"
+Expect("a stored voice with no pack is still the voice", B:GetVoiceLanguage(), "heIL")
+Expect("...and the English pack reads", B:ClipFor(PAGE).language, "enUS")
+Expect("...without rewriting the choice", SpokenReadablesSettings.voiceLanguage, "heIL")
+SpokenReadablesSettings.fallbackLanguage = "none"
+Expect("with no fallback it is silent", B:ClipFor(PAGE), nil)
+SpokenReadablesSettings.fallbackLanguage = "hebrew"
+Expect("a stored fallback that is no code is none", B:GetFallbackLanguage(), nil)
+SpokenReadablesSettings.fallbackLanguage = "heIL"
+Expect("a stored fallback code is returned as is", B:GetFallbackLanguage(), "heIL")
+SpokenReadablesSettings.voiceLanguage = "hebrew"
+Expect("a stored voice that is no code follows the client", B:GetVoiceLanguage(), "enUS")
+
+-- Malformed and British codes, with and without the registry.
+for _, malformed in ipairs({ "hebrew", "he", "HEil" }) do
+    Expect("a malformed code (" .. malformed .. ") reads as English", B:NormalizeLanguage(malformed), "enUS")
+end
+Expect("enGB reads as English", B:NormalizeLanguage("enGB"), "enUS")
+Expect("a well-formed code is that language", B:NormalizeLanguage("xxXX"), "xxXX")
+B = Install({ ENGLISH }, "enUS", true)
+Expect("alone, a well-formed code is kept", B:NormalizeLanguage("heIL"), "heIL")
+Expect("alone, a word reads as English", B:NormalizeLanguage("hebrew"), "enUS")
+Expect("alone, a pack is listed without a registry", #B:GetAudioPacks(), 1)
 
 ---------------------------------------------------------------- what the page is on
 -- Read in the reading frame, a page shows what it is on: a book from the bags its own icon, a

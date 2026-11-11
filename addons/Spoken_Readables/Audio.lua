@@ -161,6 +161,11 @@ function SpokenReadables:BuildAudioPacks()
 			if Listable(pack)
 				and not (renamed and current[(name:gsub("^SpokenBooksAudio", "SpokenReadablesAudio"))]) then
 				pack.addon = pack.addon or name
+				-- A pack's Lua says its language too, for one whose .toc names none: Spoken's
+				-- registry learns it here, as it does from a .toc it scans.
+				if Spoken and Spoken.DeclareLanguage then
+					Spoken:DeclareLanguage(self:PackLanguage(pack), pack.addon)
+				end
 				table.insert(packs, pack)
 			end
 		end
@@ -285,6 +290,9 @@ function SpokenReadables:ClipFor(pageId)
 						material = self:PageMaterial(pageId),
 						portrait = self:PagePicture(pageId),
 						actions = ACTIONS,
+						-- The language the pack was recorded in, for a subtitle that must be
+						-- drawn in its font.
+						lang = language,
 					},
 					stopCallback = PageStopped,
 				}
