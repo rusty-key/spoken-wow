@@ -19,6 +19,6 @@ Spoken carries Spoken Quests (quest dialogue and NPC gossip) together with the o
 
 1. **Install [Spoken](https://www.curseforge.com/wow/addons/spoken).**
 2. **Uninstall this addon**, and delete the `SpokenQuests` folder from `Interface\AddOns` if it is still there. Its last update left a folder that never loads, listed greyed out as "Spoken Quests (now in Spoken)".
-3. **Keep your voice packs.** [Spoken Quests Audio](https://www.curseforge.com/wow/addons/spoken-quests-audio-all) and the language packs work with Spoken unchanged.
+3. **Keep your voice packs.** [Spoken Quests Audio](https://www.curseforge.com/wow/addons/spoken-audio-quests-all) and the language packs work with Spoken unchanged.
 
 If a full old copy is still installed, Spoken switches it off at login and offers **Reload Now**, so no line plays twice.
