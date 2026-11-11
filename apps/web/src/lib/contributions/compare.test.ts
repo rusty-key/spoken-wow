@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readable, sameLine, wordDiff } from "./compare";
+import { readable, restoreClassWords, sameLine, wordDiff } from "./compare";
 
 describe("sameLine", () => {
   it("ignores the corpus's $B breaks and spacing", () => {
@@ -104,5 +104,41 @@ describe("wordDiff", () => {
       { text: "left.", changed: true },
       { text: "  Go.", changed: false },
     ]);
+  });
+});
+
+describe("restoreClassWords", () => {
+  const corpus =
+    "There's a priest out in the mountains that belongs to an organization called the Argent Dawn.$B$BFather Gavin, $c, is a friend.";
+
+  it("puts back the word the corpus has where the player's class was made a slot", () => {
+    expect(
+      restoreClassWords(
+        "There's a $c out in the mountains that belongs to an organization called the Argent Dawn. Father Gavin, $c, is a friend of mine.",
+        corpus,
+      ),
+    ).toBe(
+      "There's a priest out in the mountains that belongs to an organization called the Argent Dawn. Father Gavin, $c, is a friend of mine.",
+    );
+  });
+
+  it("keeps the corpus's spelling of a capitalised slot and a two-word class", () => {
+    expect(restoreClassWords("$C of the Light, hear me.", "Priest of the Light, hear me.")).toBe(
+      "Priest of the Light, hear me.",
+    );
+    expect(restoreClassWords("Every $c knows it.", "Every demon hunter knows it.")).toBe("Every demon hunter knows it.");
+  });
+
+  it("puts back frFR's plural slot only where the corpus word ends in an s", () => {
+    expect(restoreClassWords("Les $cs de l'Alliance.", "Les paladins de l'Alliance.")).toBe("Les paladins de l'Alliance.");
+    expect(restoreClassWords("Les $cs de l'Alliance.", "Les paladin de l'Alliance.")).toBe("Les $cs de l'Alliance.");
+  });
+
+  it("leaves a slot whose neighbours the corpus does not have", () => {
+    expect(restoreClassWords("A new line for the $c alone.", corpus)).toBe("A new line for the $c alone.");
+  });
+
+  it("leaves a slot where the corpus has more than a class's words", () => {
+    expect(restoreClassWords("Go see the $c now.", "Go see the old man by the river now.")).toBe("Go see the $c now.");
   });
 });

@@ -408,6 +408,7 @@ function M.SetClient(label)
     if M.SetMenuAPI then M.SetMenuAPI(true) end
 end
 _G.UIParent = MakeFrame("UIParent")
+_G.WorldFrame = MakeFrame("WorldFrame")
 _G.WOW_PROJECT_CLASSIC = 2
 _G.WOW_PROJECT_BURNING_CRUSADE_CLASSIC = 5
 _G.WOW_PROJECT_WRATH_CLASSIC = 11

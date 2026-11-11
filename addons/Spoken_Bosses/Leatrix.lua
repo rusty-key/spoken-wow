@@ -295,7 +295,7 @@ function Bosses:ShowLeatrixBoss(mapID, creatureID, bossName)
 		text = text,
 		target = target,
 		play = PLAY,
-		reportAction = false,
+		reportAction = Bosses.ReportAction,
 	})
 end
 

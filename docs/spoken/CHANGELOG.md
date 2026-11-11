@@ -4,14 +4,40 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Place stories that started on their own stop when you enter combat.** A zone or area story that
-  was already playing when a fight began used to talk through the whole fight, in PvP too. It now
-  stops and plays again from the start once combat ends. A story you started with Play keeps going.
-  *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
 - **Hebrew is a voice language.** Choose עברית (Hebrew) under Voice Language in Settings to hear
   a voice pack made in Hebrew. No game client runs in Hebrew, so Spoken never picks it by itself.
   The game's fonts have no Hebrew letters, so Settings names it "Hebrew" where it cannot draw
   עברית. *([renanbazinin](https://github.com/renanbazinin))*
+
+## 3.8.6 — 2026-11-10
+
+- **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new
+  setting is under Read Automatically on the Places page. On, a story that started on its own
+  stops when a fight begins and plays again from the start once it ends, as in 3.8.5. A story
+  that has not started yet still waits for the fight to end either way.
+  *([rusty-key](https://github.com/rusty-key))*
+- **An NPC's own greeting no longer slips out before Spoken's line on a first talk.** Right-clicking
+  an NPC with a recorded greeting silences its voice before the window opens. If no window opens, or
+  there is nothing to read, the voice comes back. Reported by
+  *([banoliver](https://github.com/banoliver))*
+- **Boss stories have a Report button**, on a boss's page in the Compendium, on the narrator when a
+  story plays after a kill, and in the Leatrix Maps boss panel. It opens the story's report page in
+  the language you were reading, or, from the narrator, the language you heard it in.
+  *([anon1231823](https://github.com/anon1231823))*
+
+## 3.8.5 — 2026-11-10
+
+- **Place stories that started on their own stop when you enter combat.** A zone or area story that
+  was already playing when a fight began used to talk through the whole fight, in PvP too. It now
+  stops and plays again from the start once combat ends. A story you started with Play keeps going.
+  *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
+- **A greeting heard once stays heard after you log out.** With Read Greetings set to Once per
+  Greeting, an NPC such as a flight master or an innkeeper no longer greets you again after a relog
+  or a server restart, and neither does a quest giver under Once for Quest Givers. Voiced objects
+  stay quiet the same way. What you hear is now shared by every copy of an NPC: a greeting heard
+  from one city guard counts for the other guards of that kind. Greetings you have already heard
+  are kept.
+  *([Devilquest](https://github.com/Devilquest))*
 
 ## 3.8.4 — 2026-11-08
 
@@ -65,13 +91,6 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   *([anon1231823](https://github.com/anon1231823))*
 - **The Bosses page lists its voice pack in your language**, in every language but Italian, which
   has none yet. *([rusty-key](https://github.com/rusty-key))*
-- **A greeting heard once stays heard after you log out.** With Read Greetings set to Once per
-  Greeting, an NPC such as a flight master or an innkeeper no longer greets you again after a relog
-  or a server restart, and neither does a quest giver under Once for Quest Givers. Voiced objects
-  stay quiet the same way. What you hear is now shared by every copy of an NPC: a greeting heard
-  from one city guard counts for the other guards of that kind. Greetings you have already heard
-  are kept.
-  *([Devilquest](https://github.com/Devilquest))*
 
 ## 3.8.0 — 2026-11-02
 
