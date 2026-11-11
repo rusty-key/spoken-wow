@@ -17,12 +17,12 @@ local Spoken, DiscordVoice = env.Spoken, env.DiscordVoice
 local source = env.Sources:Register("discord-test", { title = "Discord test", addon = "Test", order = 1 })
 
 Expect("Forever exposes the Discord voice state", DiscordVoice:IsAvailable(), true)
-Expect("a linked provider without a channel is not an active voice session",
+Expect("a Discord provider that is not connected is not an active voice session",
     Spoken:IsDiscordVoiceActive(), false)
 
-stub.voice.provider, stub.voice.connected, stub.voice.channel = 2, true, 7
+stub.voice.provider, stub.voice.connected, stub.voice.channel = 2, true, nil
 stub.FireEvent("VOICE_CHAT_ACTIVE_VOICE_PROVIDER_CHANGED", 2)
-Expect("an active Discord channel is detected", Spoken:IsDiscordVoiceActive(), true)
+Expect("a connected Discord provider is detected without a channel ID", Spoken:IsDiscordVoiceActive(), true)
 
 local held = H.Clip()
 source:Enqueue(held)

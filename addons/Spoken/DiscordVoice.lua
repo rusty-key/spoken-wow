@@ -36,7 +36,7 @@ end
 
 -- This is deliberately stricter than checking the selected provider. A linked Discord account
 -- or a provider selected in settings is not an active voice session until the client reports a
--- connected active channel.
+-- connected voice service.
 function DiscordVoice:IsActive()
     if not self:IsAvailable() then
         return false
@@ -48,7 +48,8 @@ function DiscordVoice:IsActive()
     end
 
     local connected = C_VoiceChat.IsVoiceChatConnected
-    if type(connected) == "function" then
+    local hasConnectionState = type(connected) == "function"
+    if hasConnectionState then
         ok, connected = pcall(connected)
         if not ok or not connected then
             return false
@@ -57,11 +58,13 @@ function DiscordVoice:IsActive()
 
     local channel = C_VoiceChat.GetActiveChannelID
     if type(channel) == "function" then
-        ok, channel = pcall(channel)
-        if not ok or channel == nil then
+        -- Discord voice can report a connected provider without exposing a channel ID.
+        -- The connection state above is the authoritative live-session signal.
+        ok = pcall(channel)
+        if not ok then
             return false
         end
-    elseif type(C_VoiceChat.IsVoiceChatConnected) ~= "function" then
+    elseif not hasConnectionState then
         -- Without either signal there is no safe way to distinguish a configured provider
         -- from a live voice session.
         return false
