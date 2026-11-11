@@ -166,6 +166,11 @@ function SpokenPlaces:SetupOptions()
 				return string.format(L.OPT_LANG_AUTO_FMT, SpokenPlaces:GetLanguageName(SpokenPlaces:GetAutoLanguage()))
 			end
 			return locale and SpokenPlaces:GetLanguageName(locale.code) or SpokenPlaces:GetLanguageName(nil)
+		end,
+		-- A pack's language is named in the pack's font; Auto only ever reads a built-in one.
+		function(locale)
+			if locale == AUTO or not locale then return nil end
+			return Spoken:LanguageFace(locale.code)
 		end)
 	-- A switch takes effect on the next load, which the note says until then.
 	local langNote = layout:Note(L.OPT_LANG_RELOAD, 460, 16)

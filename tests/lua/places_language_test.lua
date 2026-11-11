@@ -354,9 +354,32 @@ Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language", { ["X-SpokenPlaces-Lore
 Z = OnEnglish({})
 Expect("H. a pack's lore language is offered after the built-in ones",
     Codes(Z:GetSelectableLanguages()), "enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW heIL")
-Expect("H. ...and named in English, which the game's font draws where its own words need the pack's",
-    Z:GetLanguageName("heIL"), "Hebrew")
+Expect("H. ...named in its own words, which the pack's font draws where the game's does not",
+    Z:GetLanguageName("heIL"), "עברית")
+Expect("H. ...but in chat, where no font can change, in English", Z:GetLanguageName("heIL", true), "Hebrew")
+Expect("H. Spoken gives the face the menu draws it in", Spoken:LanguageFace("heIL"), HEBREW_FONT)
 Expect("H. ...but Auto still reads the client's", Z:GetLanguage(), "enUS")
+-- The lore menu names a pack's language in the pack's font: Layout:Dropdown's last argument.
+do
+    local layoutEnv = _G.SpokenEnv
+    local realNew, fontOf = layoutEnv.SpokenLayout.New, nil
+    layoutEnv.SpokenLayout.New = function(...)
+        local layout = realNew(...)
+        local realDropdown = layout.Dropdown
+        layout.Dropdown = function(self, label, tip, values, read, write, apply, describe, face)
+            if label == Z.L.OPT_LANGUAGE then fontOf = face end
+            return realDropdown(self, label, tip, values, read, write, apply, describe, face)
+        end
+        return layout
+    end
+    assert(loadfile(PLACES .. "UI/Options.lua"))("Spoken_Places", Z)
+    Z:SetupOptions()
+    layoutEnv.SpokenLayout.New = realNew
+    Expect("H. the lore menu asks for a face per entry", type(fontOf), "function")
+    Expect("H. ...a pack's language is drawn in its pack's font", fontOf and fontOf({ code = "heIL" }), HEBREW_FONT)
+    Expect("H. ...a built-in one in the game's", fontOf and fontOf({ code = "deDE" }), nil)
+    Expect("H. ...and Auto, which is a sentinel and no language, in the game's", fontOf and fontOf({}), nil)
+end
 Z = OnEnglish({ language = "heIL" })
 Expect("H. picked, its lore is what loads", Z.language, "heIL")
 Expect("H. ...written in its pack's font", Font(_G.GameFontHighlight, "heIL"), HEBREW_FONT)
