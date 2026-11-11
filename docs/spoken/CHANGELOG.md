@@ -4,6 +4,13 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Place stories work on [OpenMap](https://github.com/openmap-world/openmap)'s world map.**
+  Areas light up under the cursor again, in any zone on screen, and a click opens the story of
+  the area you clicked rather than one in the zone at the centre of the view. Dragging the map no
+  longer opens a city's map. Zoomed in on a zone, the panel tells that zone's story, a click
+  elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
+  full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
+  *([carcachi](https://github.com/carcachi))*
 - A boss's 3D model on the map panel and in the Compendium now sits on a frayed edge cut from the page's
   own parchment, over a faint brown backing, in a frame large enough for any boss.
   A boss on the map panel has its round portrait by the name and an Open in Compendium button, as the

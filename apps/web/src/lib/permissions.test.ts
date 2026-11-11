@@ -25,10 +25,19 @@ describe("isAdmin", () => {
 });
 
 describe("canManageVoices", () => {
-  it("admits only admins", () => {
-    expect(canManageVoices("admin")).toBe(true);
-    expect(canManageVoices("member")).toBe(false);
-    expect(canManageVoices(null)).toBe(false);
+  it("admits a global admin anywhere, and a language's admin only there", () => {
+    expect(canManageVoices({ role: "admin", grants: [] }, "frFR")).toBe(true);
+    const frAdmin = { role: "member", grants: [{ lang: "frFR", capability: "admin" }] as Grant[] };
+    expect(canManageVoices(frAdmin, "frFR")).toBe(true);
+    expect(canManageVoices(frAdmin, "deDE")).toBe(false);
+  });
+
+  it("refuses every other capability, and nobody signed in", () => {
+    const grants: Grant[] = (["text", "edit", "regenerate", "configure", "ignore", "record"] as const).map(
+      (capability) => ({ lang: "frFR", capability }),
+    );
+    expect(canManageVoices({ role: "member", grants }, "frFR")).toBe(false);
+    expect(canManageVoices(null, "frFR")).toBe(false);
   });
 });
 
