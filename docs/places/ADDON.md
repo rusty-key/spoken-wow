@@ -85,7 +85,8 @@ a language pins it on every client.
 
 - A language is offered only when `Data/Languages.lua` marks it ready (every story translated, and
   an alias table where a client runs in it) and the client's fonts can draw it
-  (`CanRenderLanguage`). Interface strings are not required, because each key falls back to English.
+  (`CanRenderLanguage`). Besides the languages a client runs in, the lore menu offers a pack's
+  language where the pack's `.toc` says `X-SpokenPlaces-Lore: 1`, and the client's own. Interface strings are not required, because each key falls back to English.
   The fonts are asked by drawing the language's own name, and for the two Chinese the characters
   only that one has (a language's `sample` in Spoken's list, none of them in a Korean font's
   Hanja), measured against as many U+0378, a code point no font has; each Han or Hangul character
@@ -103,9 +104,14 @@ a language pins it on every client.
   pack first, then the fallback language's packs, unless If a Voice Is Missing is Stay Silent.
 - `/spp lang <code> force` and the Developer page's Offer Unfinished Translations show an
   unfinished language. Every login prints a warning while the override is on.
-- Italian and Vietnamese are in the list (`client = false`: no client runs in them) and have no
-  data yet. Vietnamese is offered only where a font draws its accents (`script = "vietnamese"`).
-  The list in `Language.lua` must equal `pipelines/lib/locales.mjs`; `validate.mjs` checks it.
+- Spoken's registry (`addons/Spoken/Languages.lua`) lists the built-in client languages and every
+  language an installed pack declares. A lore pack registers its text with
+  `SpokenPlaces:RegisterLoreData(code, kind, data)`, and must set `X-Spoken-LanguageNative`: the
+  language is offered only once its name draws, and with no native name it is never offered. A
+  pack's `X-Spoken-LanguageFont` draws its name and lore pages, so a Vietnamese lore pack must set
+  one. Right-to-left text is the pack's job: ship it in visual order.
+  The built-in list must equal the client languages in `pipelines/lib/locales.mjs`; `validate.mjs`
+  checks it.
 
 ## How a story is read
 
@@ -154,7 +160,9 @@ A pack is an addon folder with `Data/Sounds.lua`, which registers itself in
   nothing. Bump `PACK_FORMAT` only when the pack's data shape changes.
 - The pack reads its folder name, `X-SpokenPlaces-Quality`, `X-SpokenPlaces-Bitrate`,
   `X-SpokenPlaces-Language` and `Version` from its `.toc`, so one generated `Sounds.lua` serves
-  every pack. A pack with no language key is English.
+  every pack. A pack with no language key is English. The language is any code of the form
+  `xxYY`; `X-Spoken-LanguageName`, `X-Spoken-LanguageNative` and `X-Spoken-LanguageFont` are
+  optional and name the language in Spoken's menus.
 - The pack that reads is the best one in the voice language, else the best in the fallback
   language. Between two packs of one language, `/spp audio <folder>` chooses (stored per language
   as a folder name), else the higher bitrate.

@@ -35,7 +35,7 @@ Each entry is an object in the `packs` list. This is an example only. It is not 
 | `id` | Lower-case letters and digits, with single hyphens between words. At most 48 characters. Unique in the list. |
 | `title`, `author` | Plain text, up to 80 characters. |
 | `description` | Plain text, up to 400 characters. |
-| `lang` | One of `enUS`, `deDE`, `esES`, `esMX`, `frFR`, `itIT`, `plPL`, `ptBR`, `ruRU`, `koKR`, `zhCN`, `zhTW`. |
+| `lang` | A language code of the form `xxYY`: two lower-case letters, then two upper-case ones, such as `deDE`, `itIT` or `heIL`. |
 | `section` | `quests`, `zones` or `books`. |
 | `version` | A version such as `1.0.0` or `1.1.0-beta.1`. Raise it for every new zip, so installed copies show an update. |
 | `size` | The size of the zip in bytes, as a whole number. |
@@ -58,8 +58,55 @@ An entry that breaks a rule is ignored by the manager, so check the list above b
 The manager installs the folder into `Interface\AddOns` and never touches any other folder. It keeps
 the previous version in a backup folder until the next install.
 
-Spoken does not load these folders yet. Its pack discovery knows the official names only, so a pack
-plays once a newer Spoken learns about community folders.
+Spoken loads a pack by what its `.toc` and its Lua say, not by its folder name, so a community folder
+plays like an official one:
+
+- A quests pack is found by the `X-SpokenQuests-DataModule-Version` key in its `.toc`.
+- A places pack is one whose `Data/Sounds.lua` registers itself in `SpokenPlacesAudioPacks`, and a
+  bosses pack one that registers in `SpokenBossesAudioPacks`. Both read their language from the
+  `.toc` key below.
+- A readables pack registers itself in `SpokenReadablesAudioPacks`. It names its language with the
+  `.toc` key below or, in Lua, as `language` on its pack table.
+
+## Name the language
+
+A pack declares its language in its `.toc`. Spoken lists a language in its menus once a pack for it is
+installed, so a language needs no change to Spoken. Use the key of the pack's section:
+`X-SpokenQuests-Language`, `X-SpokenPlaces-Language`, `X-SpokenBosses-Language` or
+`X-SpokenReadables-Language`. The value is a code of the form `xxYY`. A pack with no key, or a value
+that is not a code, is English.
+
+These keys are shared by every section and are optional:
+
+| Key | What it is |
+| --- | --- |
+| `X-Spoken-LanguageName` | The language's name in English, for lists that cannot draw its own. |
+| `X-Spoken-LanguageNative` | The language's name in itself, as the menus show it. |
+| `X-Spoken-LanguageFont` | A font file inside your pack, as a path from the pack's folder. Spoken draws the language's name, its lore pages and its clip text with it, unless a clip sets its own font. |
+
+Spoken knows the names of the languages a game client runs in (`enUS`, `deDE`, `esES`, `esMX`, `frFR`,
+`ptBR`, `ruRU`, `koKR`, `zhCN`, `zhTW`); every other language takes its names from the first pack that
+gives them.
+
+A places pack that ships lore text adds `X-SpokenPlaces-Lore: 1` and registers the text with
+`SpokenPlaces:RegisterLoreData(code, kind, data)`. Spoken offers the lore only after it has checked that
+the language's name draws, so a lore pack must set `X-Spoken-LanguageNative`, and one in a script the
+game's fonts lack, such as Vietnamese, must also set `X-Spoken-LanguageFont`.
+
+Right-to-left text is the pack's job: ship the text in visual order.
+
+A Hebrew places pack with lore, for example:
+
+```
+## Title: Spoken Places Hebrew
+## Version: 1.0.0
+## Group: Spoken
+## X-SpokenPlaces-Language: heIL
+## X-SpokenPlaces-Lore: 1
+## X-Spoken-LanguageName: Hebrew
+## X-Spoken-LanguageNative: עברית
+## X-Spoken-LanguageFont: Fonts/NotoSansHebrew.ttf
+```
 
 ## Get the checksum
 

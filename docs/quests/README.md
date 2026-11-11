@@ -350,6 +350,11 @@ could quietly undo an edit made there.
 
 ### A language's packs
 
+A pack names its language in its `.toc` with `X-SpokenQuests-Language`, any code of the form `xxYY`;
+no key means English. `X-Spoken-LanguageName`, `X-Spoken-LanguageNative` and `X-Spoken-LanguageFont`
+are optional and give Spoken's menus the language's names and a font for its clip text
+(`present.font` still wins). Spoken lists a language once a pack in it is installed.
+
 A language other than English has English's four packs, each folder plus `_<lang>`. They exist
 because their pages do: `publishers/quests/audio-<pack>-<lang>.md` names the project, version,
 folder and title that `scripts/lib/packs.mjs` reads instead of a case added to a script per
