@@ -142,14 +142,17 @@ function syncTray(enabled: boolean): void {
 }
 
 function startupSettingsChanged(settings: Settings, previous: Settings): void {
-  // The tray menu's words follow the window's language, so it is rebuilt when that changes.
-  if (settings.uiLanguage !== previous.uiLanguage) {
+  const startupChanged = settings.startAtLogin !== previous.startAtLogin || settings.minimizeToTray !== previous.minimizeToTray
+  // The tray menu's words follow the window's language, so it is thrown away and built again. Done
+  // once, at the end, rather than in each branch: `syncTray` returns early when a tray exists, so
+  // a second call here would quietly keep the old words.
+  const languageChanged = settings.uiLanguage !== previous.uiLanguage
+  if (languageChanged) {
     tray?.destroy()
     tray = null
-    syncTray(settings.minimizeToTray)
   }
-  if (settings.startAtLogin === previous.startAtLogin && settings.minimizeToTray === previous.minimizeToTray) return
-  applyAutoStart(settings)
+  if (!startupChanged && !languageChanged) return
+  if (startupChanged) applyAutoStart(settings)
   syncTray(settings.minimizeToTray)
 }
 

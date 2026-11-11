@@ -9,7 +9,7 @@
 //
 // English is the source and the default, so a failure built before any setting was read -- and
 // every test that asserts a message -- reads as it always did.
-import { DEFAULT_SETTINGS, type UiLanguage } from '../shared/types'
+import { DEFAULT_SETTINGS, bcp47Of, type UiLanguage } from '../shared/types'
 
 type Params = Record<string, string | number>
 
@@ -22,6 +22,9 @@ const EN = {
   // errors.ts
   'errors.cancelled': 'Cancelled.',
   'errors.failed': 'Something went wrong: {text}',
+
+  // jobs.ts
+  'jobs.waiting': 'Waiting for another job on this game',
 
   // games.ts
   'games.chooseFirst': 'Choose a folder first.',
@@ -115,6 +118,10 @@ const EN = {
   'contributor.stepZip': 'zipping',
   'contributor.stepUpload': 'uploading',
 
+  // share.ts
+  'share.reachSite': 'The site could not be reached ({why}).',
+  'share.siteStatus': 'The site answered {status}.',
+
   // contributor-upload.ts
   'upload.reachStore': 'Could not reach {store}.',
   'upload.storeHttp': '{store} answered HTTP {status}{text}',
@@ -157,6 +164,8 @@ export type MessageKey = keyof typeof EN
 const ZH: Record<MessageKey, string> = {
   'errors.cancelled': '已取消。',
   'errors.failed': '出了点问题：{text}',
+
+  'jobs.waiting': '正在等待这台游戏上的另一个任务',
 
   'games.chooseFirst': '请先选择一个文件夹。',
   'games.notThere': '该文件夹不存在。',
@@ -235,6 +244,9 @@ const ZH: Record<MessageKey, string> = {
   'contributor.stepZip': '正在压缩',
   'contributor.stepUpload': '正在上传',
 
+  'share.reachSite': '无法连接网站（{why}）。',
+  'share.siteStatus': '网站返回 {status}。',
+
   'upload.reachStore': '无法连接 {store}。',
   'upload.storeHttp': '{store} 返回 HTTP {status}{text}',
   'upload.linkInPack': '{path} 是一个链接，语音包不能包含链接。',
@@ -269,9 +281,6 @@ const ZH: Record<MessageKey, string> = {
 
 const MESSAGES: Record<UiLanguage, Record<MessageKey, string>> = { enUS: EN as Record<MessageKey, string>, zhCN: ZH }
 
-/** The manager's codes are the game's (`zhCN`); `Intl` only knows tags like `zh-CN`. */
-const BCP47: Record<UiLanguage, string> = { enUS: 'en-US', zhCN: 'zh-CN' }
-
 let current: UiLanguage = DEFAULT_SETTINGS.uiLanguage
 
 /** Set when the settings load or change. A language with no dictionary leaves English in place. */
@@ -281,7 +290,7 @@ export function setMainLanguage(lang: UiLanguage): void {
 
 /** The tag `Intl` wants, for the numbers and dates this process writes into a message. */
 export function mainLocale(): string {
-  return BCP47[current]
+  return bcp47Of(current)
 }
 
 export function mainLanguage(): UiLanguage {

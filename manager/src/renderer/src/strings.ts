@@ -5,7 +5,7 @@
 // language. The swap happens in the store's reducer, before React redraws, so the render that
 // follows a language change already reads the new words.
 import type { Snapshot } from '@shared/types'
-import { DEFAULT_SETTINGS, type UiLanguage } from '@shared/types'
+import { DEFAULT_SETTINGS, bcp47Of, type UiLanguage } from '@shared/types'
 import { setLocale } from './locale'
 import { S_EN } from './strings.en'
 import { S_ZH } from './strings.zh'
@@ -38,6 +38,9 @@ export function setUiLanguage(lang: UiLanguage): void {
   if (DICTS[lang] === undefined || lang === current) return
   current = lang
   Object.assign(S, DICTS[lang])
+  // Screen readers pick a voice by this, and `:lang()` rules by it: an English `lang` on Chinese
+  // words reads them with an English voice.
+  if (typeof document !== 'undefined') document.documentElement.lang = bcp47Of(lang)
 }
 
 setUiLanguage(current)

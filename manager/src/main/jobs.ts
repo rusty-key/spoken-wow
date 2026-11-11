@@ -50,7 +50,7 @@ export class JobManager {
     const q = this.queues.get(spec.gameId) ?? []
     q.push(job)
     this.queues.set(spec.gameId, q)
-    this.publish(job, 'queued', q.length > 1 || this.running.has(spec.gameId) ? 'Waiting for another job on this game' : undefined)
+    this.publish(job, 'queued', q.length > 1 || this.running.has(spec.gameId) ? t('jobs.waiting') : undefined)
     void this.pump(spec.gameId)
     return job.id
   }

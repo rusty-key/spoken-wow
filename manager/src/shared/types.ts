@@ -166,15 +166,23 @@ export interface ProductStatus {
 /**
  * The languages the manager's own window is written in. Not the voice pack languages: a
  * language here is what the buttons say, and one there is what the audio speaks.
+ *
+ * `bcp47` is the same language as a tag `Intl` knows. The codes are the game's (`zhCN`), which
+ * `Intl` does not, so a date asked for with one would quietly fall back to the system's.
  */
 export const UI_LANGUAGES = [
-  { code: 'enUS', name: 'English' },
-  { code: 'zhCN', name: '中文' }
+  { code: 'enUS', name: 'English', bcp47: 'en-US' },
+  { code: 'zhCN', name: '中文', bcp47: 'zh-CN' }
 ] as const
 
 export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']
 
 export const UI_LANGUAGE_CODES: readonly UiLanguage[] = UI_LANGUAGES.map((l) => l.code)
+
+/** The `Intl` tag for a language, for dates and plural rules. One source for both processes. */
+export function bcp47Of(lang: UiLanguage): string {
+  return UI_LANGUAGES.find((l) => l.code === lang)?.bcp47 ?? 'en-US'
+}
 
 export interface Settings {
   /** The language of the window. */
