@@ -112,7 +112,9 @@ ScanView = function()
 		pending = nil
 		if not view:IsShown() then return end
 		Scan(view)
-		-- The side panel's tabs hang off the map, past the view's edge.
+		-- The side panel moves into the quest log while that is open, and its tabs hang off the
+		-- map, past the view's edge: neither is always under the view.
+		if type(view.side) == "table" then Scan(view.side) end
 		if type(view.sideTabs) == "table" then Scan(view.sideTabs) end
 	end)
 end

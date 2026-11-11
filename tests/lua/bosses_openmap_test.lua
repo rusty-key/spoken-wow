@@ -85,7 +85,8 @@ Expect("...and the story goes with the map", cleared, 1436)
 -- OpenMap's own dungeon view, built the first time a dungeon is opened.
 local view = CreateFrame("Frame", "OpenMapDungeonView", WorldMapFrame)
 view:Hide()
-view.side = CreateFrame("Frame", nil, view)
+-- Docked in the quest log, as OpenMap puts it while the log is open.
+view.side = CreateFrame("Frame", nil, CreateFrame("Frame", nil, WorldMapFrame))
 view.sideTabs = CreateFrame("Frame", nil, WorldMapFrame)
 local bossesTab = CreateFrame("Button", nil, view.sideTabs)
 local function Row(text)
