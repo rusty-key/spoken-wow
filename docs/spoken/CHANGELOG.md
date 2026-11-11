@@ -11,10 +11,17 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
   full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
   *([carcachi](https://github.com/carcachi))*
+- A boss's 3D model is now framed automatically once it has loaded, so the whole boss fits and fills
+  the frame, standing in its idle pose. Two bosses in overlapping windows no longer cut into each other: the
+  one in the window on top is drawn whole.
+  *([Nucabe](https://github.com/Nucabe))*
 - A boss's 3D model on the map panel and in the Compendium now sits on a frayed edge cut from the page's
   own parchment, over a faint brown backing, in a frame large enough for any boss.
   A boss on the map panel has its round portrait by the name and an Open in Compendium button, as the
   Compendium's page has. *([Nucabe](https://github.com/Nucabe))*
+- **A boss you have not met shows no 3D model on the Leatrix Maps boss panel**, as its page in the Compendium
+  shows none. Its round portrait is the boss's own, not the question mark. With Unlock Unfound Bosses on,
+  the model is drawn. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.8.6 — 2026-11-10
 

@@ -116,6 +116,60 @@ It reads `boss_instance`, `boss`, `boss_line` and `entity_name` and nothing else
   `/reports`. Bosses take no contributions.
 - With no boss rows the page says the intake has not been run.
 
+## Camera data
+
+A boss model in the Compendium and in a boss's story is framed by the game, not set by hand. The model is a
+`ModelScene` with one actor (the display ID, standing at the scene's origin, its front towards +x), and
+`TextView` frames it once the model has loaded: it waits for the actor's `IsLoaded()` and a bounding box
+(`GetActiveBoundingBox()`, six numbers), looking every frame from the shared watcher frame, and gives up after 3
+seconds of the page being shown with a plain box (person-sized). The scene is invisible until then, so a boss does not flash in the
+wrong place. The camera looks at the middle of the box from the +x side, as far back as it takes for the figure
+to fill `FIT` (0.85) of the frame's height, or of its width where that needs more (the frame is `ASPECT`, the
+page's `MODEL_WIDE`, 1.25 times as wide as tall), with the lens from the view below, and a light of its own.
+Scenes in overlapping windows share one depth buffer, so each window's scene gets a near clip plane from its
+stacking (the lowest 0.01, then 0.3, 0.5 and 0.7 of the camera's distance to the boss's nearest face, with
+any window above the fourth sharing the last): the window on top wins the depth test and no boss is cut into
+by another. The shared watcher frame runs only while two shown pages want a boss, or a shown one is still loading.
+
+`FIT` and `ASPECT` assume that the scene's field of view is the vertical one and that the frame is as wide as
+`MODEL_WIDE` says. The first look in the game decides them; they are two constants in `TextView.lua`.
+
+Two files under `addons/Spoken_Bosses/Data/` are generated:
+
+- `Cameras.lua`: `SpokenBossCameraView`, the lens (`fov`, degrees) and the animation `sequence` every boss is
+  drawn with, and `SpokenBossCameraGroups[display id]`, the model file the display is drawn from (bosses on
+  one file are moved together by hand, so a nudge is keyed by it). `TextView` frames with the lens and turns a
+  nudge in frame heights into scene units with it.
+- `CameraNudges.lua`: `SpokenBossCameraNudges[place][model file] = { right, up, zoom, turn }`, how far a boss
+  was moved, zoomed and turned by hand on top of its framed camera, for the places `compendium` and `story`.
+  The nudges come from the developer tool.
+
+Both say AUTO-GENERATED and are never edited by hand. The tools are in `pipelines/places/tools/bosses/`:
+`model_cameras.py` writes `Cameras.lua` from the Forever tables in `~/Documents/forever-db/csv` (nothing else
+is needed, and it runs in a second), and `import_edits.py` writes `CameraNudges.lua`.
+
+```sh
+make bosses-cameras   # write Cameras.lua: the lens, and the model file of every display in Creatures.lua
+/spokenbosscam              # in the game: move, turn and zoom bosses; /reload or log out to save
+make bosses-nudges    # merge the saved edits into CameraNudges.lua (FILE=<Spoken_Developer.lua> to name the file)
+```
+
+- **`make bosses-cameras` is the only writer of `Cameras.lua`.** It writes every display id in `Creatures.lua`
+  with a model file, or nothing.
+- **A change to the framing invalidates `CameraNudges.lua`.** A nudge is a change to the framed camera, so
+  changing `FIT`, `ASPECT` or the lens moves every boss that has one. The file's header records the framing its
+  rows were made with, and `import_edits.py` stops when `TextView` frames differently now (`--force` merges
+  anyway). After changing them, move the bosses again in the game and import those edits; do not import old
+  ones on top of a new framing.
+- `import_edits.py` reads `SpokenDeveloperDB.cameraEdits` in `WTF/Account/<account>/SavedVariables/Spoken_Developer.lua`
+  of the Forever client, or the file in `FILE=` or `SPOKEN_DEVELOPER_LUA`. A saved row that moves a boss
+  replaces or adds that model's row, a saved row that changes nothing (`reset`, or a drag back to the start)
+  takes the model's row out, and the run says how many rows it replaced, added, removed and kept. Test both tools with
+  `py -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"`.
+- The frame and the lens are shared with the addon: `ASPECT` is `TextView`'s `MODEL_WIDE`, the room the
+  developer tool's guide draws is `GUIDE_INSET` in Spoken_Developer's `Camera.lua`, and the lens and animation
+  travel in the view above.
+
 ## Voice and the pack
 
 A boss's story is read aloud from `SpokenBossesAudio`, a sound pack built as the places pack is

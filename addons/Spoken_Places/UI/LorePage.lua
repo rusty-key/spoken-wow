@@ -191,6 +191,7 @@ function SpokenPlaces:CreateLorePage(parent, style)
 		for key, value in pairs(LOG_LOOK) do look[key] = value end
 	end
 	look.art = { file = info.file, coords = { info.leftTexCoord, info.rightTexCoord, top, info.bottomTexCoord } }
+	look.place = "story"
 	local inner = SpokenCompendium.NewPage(parent, SpokenPlaces, PLAY, REPORT, look)
 	local page = setmetatable({ page = inner, style = style, parchment = parchment }, Page)
 	SpokenPlaces:OnAudioChanged(function() inner:RefreshPlay() end)
@@ -223,8 +224,7 @@ end
 --- What the page shows: entry = { title, subtitle, onSubtitle = fn?, text,
 --- audio = { mapID, key }?, report = { mapID, key }?, contribute = { mapID, subzone }?,
 --- lore = { mapID, key }?, open = fn? (Open in Compendium for something that is not a place), face = true?
---- (the round portrait `icon` by the title), model = { displayID, creatureID, scale, zoom, rotation, facing, sequence,
---- x, y, z }? }: Play for `audio`, Report for `report`, its model or picture above the words, a
+--- (the round portrait `icon` by the title), model = { displayID, scale, sequence }? }: Play for `audio`, Report for `report`, its model or picture above the words, a
 --- missing story's Contribute, and beside the map Open for `lore`.
 function Page:Show(entry)
 	local story = entry.audio or entry.report

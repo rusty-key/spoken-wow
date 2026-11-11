@@ -38,6 +38,7 @@ Log.lua
 Copy.lua
 Write.lua
 Screen.lua
+Camera.lua
 UI/Box.lua
 UI/Menu.lua
 UI/Options.lua

@@ -82,6 +82,13 @@ creature, a portrait or a story, and why, are in [MISSING.md](MISSING.md).
 `Data/Stories.lua` holds `SpokenBossStories[map][key]`, the words of a boss's story, from the `boss_line`
 table (`apply-boss-stories.mjs` records them). A boss with no entry says its story is not written yet.
 
+A boss's 3D model is framed by the game from its loaded model's bounding box, through a lens and pose that
+`Data/Cameras.lua` holds (`SpokenBossCameraView`, with `SpokenBossCameraGroups` for the display ids that share a
+model file), made by `pipelines/places/tools/bosses`. `Data/CameraNudges.lua` moves that camera by hand for a
+place, the Compendium's page or the boss's story on the map. The nudges are made with the
+`/spokenbosscam` editor in Spoken Developer (`addons/Spoken_Developer/README.md`), which a player does not have.
+How the framing works is in [BOSSES.md](../places/BOSSES.md).
+
 ## What the sources hold
 
 - The client's table has the 29 dungeons and raids of the Dungeons table and eight more maps Forever

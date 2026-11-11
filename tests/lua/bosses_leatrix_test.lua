@@ -75,13 +75,12 @@ dungeonMenuRow.Text:SetText("Gnomeregan")
 
 local Bosses = { L = { BOSS_NOT_FOUND = "not found" } }
 local met, opened = true, nil
-local UNKNOWN = { unknown = true }
 function Bosses:StoryClip(map, key)
     return { present = { transcript = map .. ":" .. key .. " lore" } }
 end
 function Bosses:IsBossFound() return met end
-function Bosses:IsRevealed(map, key) return self:IsBossFound(map, key) end
-function Bosses:Portrait(map, key) return self:IsRevealed(map, key) and { creatureID = 639, displayID = 2029 } or UNKNOWN end
+function Bosses:IsRevealed(map, key) return self:IsBossFound(map, key) or (_G.SpokenBossesSettings and _G.SpokenBossesSettings.unlockUnfound == true) end
+function Bosses:Portrait(map, key) return { creatureID = 639, displayID = 2029 } end
 function Bosses:Where(map) return "In " .. SpokenCompendium.DungeonName(map) .. " · Westfall" end
 function Bosses:ShowBoss(map, key) opened = map .. ":" .. key end
 function Bosses:GetAudioClip() return nil end
@@ -132,14 +131,14 @@ pin:Click()
 Expect("Balnazzar opens from the parent map without a preview", shown ~= nil, true)
 Expect("...with Stratholme's Balnazzar lore without a preview", shown and shown.entry.subtitle, "In Stratholme · Westfall")
 
--- A boss not met shows no real portrait and cannot be opened: its page has no row under Found Only.
+-- A boss not met shows its own portrait and cannot be opened: its page has no row under Found Only.
 met = false
 WorldMapFrame.mapID = 36
 pin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
 shown = nil
 pin:Click()
 Expect("a boss not met shows the not-found text", shown and shown.entry.text, "not found")
-Expect("...with the unknown mark in place of its portrait", shown and shown.entry.icon, UNKNOWN)
+Expect("...with its own portrait, not the unknown mark", shown and shown.entry.icon and shown.entry.icon.displayID, 2029)
 Expect("...no Open in Compendium", shown and shown.entry.open, nil)
 Expect("...and nothing to play", shown and shown.entry.target, nil)
 met = true
@@ -254,6 +253,22 @@ for _, hook in ipairs(WorldMapFrame.ScrollContainer.hooks.OnMouseUp or {}) do ho
 stub.Advance(0.01)
 Expect("a hidden tooltip's old owner opens no lore", shown, nil)
 _G.LeaMapsPOITooltip = nil
+
+-- A boss the player has not met: its words say so, and its model is not drawn.
+WorldMapFrame.mapID = 36
+pin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
+local found = Bosses.IsBossFound
+function Bosses:IsBossFound() return false end
+shown = nil
+pin:Click()
+Expect("a boss not met opens its panel saying so", shown and shown.entry.text, "not found")
+Expect("...with no 3D model", shown and shown.entry.model, nil)
+_G.SpokenBossesSettings = { unlockUnfound = true }
+shown = nil
+pin:Click()
+Expect("...with Unlock Unfound Bosses on, its model drawn", shown and shown.entry.model and shown.entry.model.displayID, 2029)
+_G.SpokenBossesSettings = nil
+Bosses.IsBossFound = found
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll Leatrix boss map tests passed")

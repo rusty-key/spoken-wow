@@ -40,8 +40,8 @@ local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 -- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
 -- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
 local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
--- A creature model above the words, MODEL_MOST high and MODEL_WIDE times as wide. The boss cameras are
--- fitted to that shape, so a narrow page shrinks the whole frame rather than trimming its width.
+-- A creature model above the words, MODEL_MOST high and MODEL_WIDE times as wide. A boss is framed for that
+-- shape, so a narrow page shrinks the whole frame rather than trimming its width.
 local MODEL_MOST, MODEL_GAP, MODEL_WIDE = 220, 10, 1.25
 -- The page's own parchment laid over the model's border, through one of Textures\ModelEdge1..4 (a
 -- frayed ring), so the square frame fades into the page. It reaches EDGE_OVER past the model, to cover
@@ -474,6 +474,111 @@ function TextView:SetFadeShown(shown)
 end
 
 --------------------------------------------------------------------------------
+-- Models under another window's model
+--------------------------------------------------------------------------------
+
+-- Models in different windows share one depth buffer, so figures whose frames overlap cut into each
+-- other whichever window is on top. A scene with a larger near clip plane stores its depth as nearer, so
+-- the model of the window on top wins cleanly when its scene has a large one and the ones under it a
+-- tiny one. Each model is ranked by its window's stacking (strata, then frame level, then who asked first),
+-- the lowest at 0, and takes the near clip of its rank as a share of the distance from its camera to the
+-- model's nearest face. Every share is below 1, so the model's nearest part is never clipped away. The
+-- shares are 0.2 apart, which keeps the depth values of neighbouring ranks from meeting; a fifth window
+-- over the others takes the last share with the fourth.
+local NEAR_BY_RANK = { 0.01, 0.3, 0.5, 0.7 }
+local FAR_CLIP = 500
+-- Windows are raised and dragged while shown, so a shared frame looks again, and only while two or more
+-- shown views want a model. The same frame looks at a shown model that is still loading every frame,
+-- until it has been framed.
+local WATCH_EVERY = 0.1
+local STRATA = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6,
+	FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+local wanting = setmetatable({}, { __mode = "k" })
+local framing = setmetatable({}, { __mode = "k" })
+local asked = 0
+local watcher
+local Refresh, FrameWaiting
+
+local function Watch(on)
+	if on and not watcher then
+		local waited = 0
+		watcher = CreateFrame("Frame")
+		watcher:SetScript("OnUpdate", function(_, elapsed)
+			if next(framing) then FrameWaiting(elapsed or 0) end
+			waited = waited + (elapsed or 0)
+			if waited < WATCH_EVERY then return end
+			waited = 0
+			Refresh()
+		end)
+	end
+	if watcher then watcher:SetShown(on) end
+end
+
+local function Window(view)
+	local window = view.frame
+	while true do
+		local parent = window:GetParent()
+		if not parent or parent == UIParent then return window end
+		window = parent
+	end
+end
+
+-- Whether a's window is underneath b's; on a tie the view that asked for its model earlier.
+local function Under(a, b)
+	local windowA, windowB = Window(a), Window(b)
+	local strataA = STRATA[windowA:GetFrameStrata() or ""] or STRATA.MEDIUM
+	local strataB = STRATA[windowB:GetFrameStrata() or ""] or STRATA.MEDIUM
+	if strataA ~= strataB then return strataA < strataB end
+	local levelA, levelB = windowA:GetFrameLevel() or 0, windowB:GetFrameLevel() or 0
+	if levelA ~= levelB then return levelA < levelB end
+	return a.modelAsked < b.modelAsked
+end
+
+local sceneFailureSaid = false
+
+-- What the client rejects while a boss is drawn is said once in chat, whichever call it was.
+local function SceneFailed(what, err)
+	if sceneFailureSaid then return end
+	sceneFailureSaid = true
+	print("Spoken: a boss's " .. what .. " could not be set: " .. tostring(err))
+end
+
+--- The near clip of this model's rank, from its camera's distance to the model's nearest face.
+function TextView:ApplyNearClip()
+	local scene, distance = self.model, self.modelDistance
+	if not (distance and scene and scene.SetCameraNearClip) then return end
+	local share = NEAR_BY_RANK[math.min(self.modelRank or 0, #NEAR_BY_RANK - 1) + 1]
+	local ok, err = pcall(scene.SetCameraNearClip, scene, distance * share)
+	if not ok then SceneFailed("near clip", err) end
+end
+
+function Refresh()
+	local live = {}
+	for view in pairs(wanting) do
+		if view.modelBottom and view.frame:IsVisible() then live[#live + 1] = view end
+	end
+	for _, view in ipairs(live) do
+		local rank = 0
+		for _, other in ipairs(live) do
+			if other ~= view and Under(other, view) then rank = rank + 1 end
+		end
+		if rank ~= (view.modelRank or 0) then
+			view.modelRank = rank
+			view:ApplyNearClip()
+		end
+	end
+	-- A hidden page is not waited on, so it does not keep the frame running.
+	local loading = false
+	for view in pairs(framing) do
+		if view.frame:IsVisible() then
+			loading = true
+			break
+		end
+	end
+	Watch(#live >= 2 or loading)
+end
+
+--------------------------------------------------------------------------------
 -- Construction
 --------------------------------------------------------------------------------
 
@@ -501,9 +606,21 @@ function SpokenTextView.Create(parent, owner)
 	child:SetSize(1, 1)
 	scroll:SetScrollChild(child)
 
-	local model = CreateFrame("PlayerModel", nil, child)
+	-- A ModelScene, not a PlayerModel: scenes of different windows can be told which one wins the depth
+	-- buffer (the near clip), which models cannot. Where the client has none, a plain frame stands in and a
+	-- boss is no model: the page has no room, frame or backing for one.
+	local made, model = pcall(CreateFrame, "ModelScene", nil, child)
+	if not made then
+		SceneFailed("model", model)
+		model = CreateFrame("Frame", nil, child)
+	end
+	view.hasScene = made and true or false
 	model:Hide()
+	-- The wheel and clicks belong to the page under it.
+	model:EnableMouse(false)
 	view.model = model
+	scroll:HookScript("OnShow", function() Refresh() end)
+	scroll:HookScript("OnHide", function() Refresh() end)
 	-- In the scroll child, so under the model.
 	local shade = child:CreateTexture(nil, "BACKGROUND")
 	shade:SetAllPoints(model)
@@ -569,6 +686,8 @@ function SpokenTextView.Create(parent, owner)
 		end
 	end)
 
+	-- A developer module sets this to take part in a view's model (Spoken_Developer's camera editor).
+	if SpokenTextView.onCreate then pcall(SpokenTextView.onCreate, view) end
 	return view
 end
 
@@ -608,6 +727,7 @@ function TextView:SetText(str)
 		-- Where the model's bottom lies in the scroll child, for ScrollModelEdge.
 		self.modelBottom = PAD_TOP - PICTURE_LIFT + high + EDGE_OVER
 		self:PaintModelEdge()
+		Refresh()
 		modelRoom = high + MODEL_GAP - PICTURE_LIFT
 	else
 		self.model:Hide()
@@ -854,44 +974,292 @@ function TextView:SetParts(parts)
 	self:UpdateFade()
 end
 
---- A creature model above the text from the next SetText on, nil for none. `creatureID` is the
---- fallback for clients that cannot draw `displayID` directly.
+-- Without a light of its own a boss can come up almost black. These are the values DialogueUI sets on its
+-- portrait scenes on this client.
+local function SetSceneLight(scene)
+	scene:SetLightVisible(true)
+	scene:SetLightType(0)
+	scene:SetLightDirection(-0.707, -0.309, -0.636)
+	scene:SetLightDiffuseColor(0.66, 0.66, 0.66)
+	scene:SetLightAmbientColor(0.8, 0.8, 0.8)
+end
+
+-- The lens (full vertical field of view, in degrees) and the pose (animation sequence) every boss is drawn
+-- with, written to Spoken_Bosses/Data/Cameras.lua as SpokenBossCameraView by the pipeline that makes it.
+-- These are what it holds today, for a data file that does not carry it.
+local DEFAULT_FOV, DEFAULT_SEQUENCE = 27.78, 0
+
+local function CameraView()
+	local view = _G.SpokenBossCameraView
+	local fov = type(view) == "table" and tonumber(view.fov) or nil
+	local sequence = type(view) == "table" and tonumber(view.sequence) or nil
+	if not (fov and fov > 0 and fov < 180) then fov = DEFAULT_FOV end
+	return fov, sequence or DEFAULT_SEQUENCE
+end
+
+--- A creature model above the text from the next SetText on: `displayID` is the client's model
+--- display ID, as DBM's boss model preview uses; `scale` and `sequence` (the animation) are optional.
+--- A model with no displayID is no model: a scene draws a display and nothing else. nil for none.
 function TextView:SetModel(model)
-	local displayID = model and model.displayID or nil
-	-- A page is shown again on every refresh, and reloading restarts the model's animation. A model
-	-- out of sight is reloaded, since the client can drop it while hidden.
-	if displayID and displayID == self.modelDisplayID and self.model.IsVisible and self.model:IsVisible() then
+	local displayID = self.hasScene and model and model.displayID or nil
+	local key = displayID and (displayID .. ":" .. (model.scale or 1) .. ":" .. (model.sequence or "")) or nil
+	-- The boss already drawn is not loaded and framed again: it would blink out and back in. It is asked for
+	-- again, so it counts as the later model of two in windows on the same level, and takes a nudge that
+	-- has changed.
+	if key and key == self.modelKey and wanting[self] then
+		asked = asked + 1
+		self.modelAsked = asked
+		if self.modelCamera then self:ApplyModelCamera() end
+		Refresh()
+		if self.onModel then pcall(self.onModel, self) end
 		return
 	end
 	self.modelDisplayID = displayID
-	if not self.modelDisplayID and not (model and model.creatureID) then
+	self.modelKey = key
+	if not self.modelDisplayID then
+		wanting[self] = nil
+		framing[self] = nil
+		self.modelRank = nil
 		if self.model then
 			self.model:Hide()
 			self.modelEdgeFrame:Hide()
 			self.modelShade:Hide()
 			self.modelBottom = nil
-			if self.model.ClearModel then self.model:ClearModel() end
+			local actor = self.modelActor
+			if actor and actor.ClearModel then pcall(actor.ClearModel, actor) end
 		end
+		self.model:SetAlpha(1)
+		Refresh()
+		self:SetModelCamera(nil)
+		if self.onModel then pcall(self.onModel, self) end
 		return
 	end
-	if self.model.ClearModel then self.model:ClearModel() end
-	if self.modelDisplayID and self.model.SetDisplayInfo then
-		self.model:SetDisplayInfo(self.modelDisplayID)
-	elseif model.creatureID and self.model.SetCreature then
-		self.model:SetCreature(model.creatureID)
-	end
+	asked = asked + 1
+	self.modelAsked = asked
+	self.modelRank = 0
+	wanting[self] = true
 	-- Each boss has the same edge every time, and neighbours in the list tend to differ.
-	if self.modelEdgeMask and self.modelDisplayID then
+	if self.modelEdgeMask then
 		self.modelEdgeMask:SetTexture(EDGE_PATH .. (self.modelDisplayID % MODEL_EDGES + 1),
 			"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	end
-	if self.model.SetModelScale then self.model:SetModelScale(model.scale or 1) end
-	-- Zoom 0 is the whole body, which the frame is made large enough for.
-	if self.model.SetPortraitZoom then self.model:SetPortraitZoom(model.zoom or 0) end
-	if self.model.SetPosition then self.model:SetPosition(model.x or 0, model.y or 0, model.z or 0) end
-	if self.model.SetRotation then self.model:SetRotation(model.rotation or 0) end
-	if self.model.SetFacing then self.model:SetFacing(model.facing or 0) end
-	if self.model.SetSequence then self.model:SetSequence(model.sequence or 4) end
+	-- The last boss's framing is not this one's.
+	self:SetModelCamera(nil)
+	local _, shown = CameraView()
+	self:DrawModel(model.scale or 1, model.sequence or shown)
+	-- Not drawn until it is framed, so it does not show in the wrong place first.
+	self.model:SetAlpha(0)
+	self.modelWaited = 0
+	framing[self] = true
+	Refresh()
+	if self.onModel then pcall(self.onModel, self) end
+end
+
+--- The scene's one actor, standing at the scene's origin facing the camera's side of it (yaw 0 is the
+--- model's front), drawn from the display in the pose `sequence`.
+function TextView:DrawModel(scale, sequence)
+	local scene = self.model
+	if not (scene and scene.CreateActor) then return end
+	local ok, err = pcall(function()
+		local actor = self.modelActor
+		if not actor then
+			-- The light is not worth losing the model over.
+			local lit, why = pcall(SetSceneLight, scene)
+			if not lit then SceneFailed("light", why) end
+			actor = scene:CreateActor()
+			actor:SetUseCenterForOrigin(false, false, false)
+			actor:SetPosition(0, 0, 0)
+			actor:SetYaw(0)
+			self.modelActor = actor
+		end
+		-- A reused actor answers for the boss before until the new model has loaded, which would be framed.
+		if actor.ClearModel then pcall(actor.ClearModel, actor) end
+		actor:SetModelByCreatureDisplayID(self.modelDisplayID)
+		-- The pose is not worth losing the model over.
+		pcall(actor.SetAnimation, actor, sequence)
+		if actor.SetScale then actor:SetScale(scale) end
+		actor:Show()
+	end)
+	if not ok then SceneFailed("model", err) end
+end
+
+local function Finite(v)
+	return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+
+--- The row if it is { right, up, zoom, turn }, four finite numbers with a zoom above 0; else nil.
+local function ValidNudge(row)
+	if type(row) ~= "table" then return nil end
+	for i = 1, 4 do
+		if not Finite(row[i]) then return nil end
+	end
+	return row[3] > 0 and row or nil
+end
+
+--- Moves a camera { x, y, z of the camera, x, y, z of what it looks at } so the boss is turned `yaw` radians about
+--- the upright through what the camera looks at (its front towards the right for a positive angle), shows `right`
+--- and `up` frame heights further right and up (measured at the camera's own distance) and `zoom` times larger.
+local function Nudged(cam, right, up, zoom, yaw)
+	local px, py, pz, tx, ty, tz = cam[1], cam[2], cam[3], cam[4], cam[5], cam[6]
+	if yaw and yaw ~= 0 then
+		-- Turning the boss one way is turning the camera round it the other way.
+		local c, s = math.cos(-yaw), math.sin(-yaw)
+		local dx, dy = px - tx, py - ty
+		px, py = tx + dx * c - dy * s, ty + dx * s + dy * c
+	end
+	local fx, fy, fz = tx - px, ty - py, tz - pz
+	local dist = math.sqrt(fx * fx + fy * fy + fz * fz)
+	if dist < 1e-6 then return cam end
+	fx, fy, fz = fx / dist, fy / dist, fz / dist
+	-- The camera's right and up, as the pipeline works them out: right = forward x (0, 0, 1), up = right x forward.
+	local rx, ry = fy, -fx
+	local rl = math.sqrt(rx * rx + ry * ry)
+	if rl < 1e-6 then rx, ry, rl = 0, 1, 1 end
+	rx, ry = rx / rl, ry / rl
+	local ux, uy, uz = ry * fz, -rx * fz, rx * fy - ry * fx
+	local move = dist * 2 * math.tan(math.rad((CameraView())) / 2)
+	tx = tx - (rx * right + ux * up) * move
+	ty = ty - (ry * right + uy * up) * move
+	tz = tz - uz * up * move
+	dist = dist / (zoom or 1)
+	return { tx - fx * dist, ty - fy * dist, tz - fz * dist, tx, ty, tz }
+end
+
+--- The key a change made by hand is kept under: bosses on the same model file share it.
+function TextView:CameraGroup()
+	local id = self.modelDisplayID
+	local groups = _G.SpokenBossCameraGroups
+	return id and ((groups and groups[id]) or id) or nil
+end
+
+--- Where a model is drawn: the Compendium's page and the boss's story on the map each have their own nudge.
+function TextView:CameraPlace()
+	return self.cameraPlace or "compendium"
+end
+
+--- The camera is moved for this model in this place by { right, up, zoom, turn }: what a developer module
+--- answers through SpokenTextView.cameraEdits(place, group) (nothing for a player), else what
+--- Spoken_Bosses/Data/CameraNudges.lua ships. The map's story page has the Compendium's row until a row is
+--- made for it. A row that is not four numbers is ignored.
+function TextView:CameraNudge()
+	local group, place = self:CameraGroup(), self:CameraPlace()
+	if not group then return nil end
+	local edits = SpokenTextView.cameraEdits
+	if type(edits) == "function" then
+		local ok, row = pcall(edits, place, group)
+		if ok and ValidNudge(row) then return row end
+	end
+	local kept = _G.SpokenBossCameraNudges
+	if not kept then return nil end
+	local row = ValidNudge(kept[place] and kept[place][group])
+	if not row and place ~= "compendium" then row = ValidNudge(kept.compendium and kept.compendium[group]) end
+	return row
+end
+
+--- The camera for this model: the one framed for it, moved by the nudge.
+function TextView:CurrentCamera()
+	local base, nudge = self.modelCamera, self:CameraNudge()
+	if base and nudge then return Nudged(base, nudge[1], nudge[2], nudge[3], nudge[4]) end
+	return base
+end
+
+--- Sets the camera framed for the model (nil for none, while it loads). It is applied by ApplyModelCamera.
+function TextView:SetModelCamera(camera)
+	self.modelCamera = camera
+end
+
+-- How much of the frame's height, and of its width, the figure fills. The scene's field of view is taken to
+-- be the vertical one, as a PlayerModel's is, and the frame as MODEL_WIDE wide: the first look in the game
+-- decides both, and these two numbers are all that changes if they are off.
+local FIT, ASPECT = 0.85, MODEL_WIDE
+-- A model that has not loaded by now is framed as this box, in scene units, so the boss is not left unseen.
+local FRAME_GIVE_UP = 3
+local PLAIN_BOX = { -0.5, -0.5, 0, 0.5, 0.5, 2 }
+local atan2 = math.atan2 or math.atan
+
+--- The actor's box, { x0, y0, z0, x1, y1, z1 }, once its model has loaded and the box has a height and a
+--- width; else nil. A model that has not loaded has no box, and may report an empty one just after it has.
+local function ModelBox(actor)
+	if not (actor and actor.GetActiveBoundingBox) then return nil end
+	if actor.IsLoaded then
+		local loaded, ready = pcall(actor.IsLoaded, actor)
+		if not (loaded and ready) then return nil end
+	end
+	local box = { pcall(actor.GetActiveBoundingBox, actor) }
+	if not table.remove(box, 1) or #box ~= 6 then return nil end
+	for i = 1, 6 do
+		if not Finite(box[i]) then return nil end
+	end
+	if not (box[6] > box[3] and box[5] > box[2] and box[4] >= box[1]) then return nil end
+	return box
+end
+
+--- Frames the whole of a box { x0, y0, z0, x1, y1, z1 } in the frame: the camera looks at its middle from the
+--- +x side, where a model at yaw 0 has its front, as far back as it takes for the figure to fill FIT of the
+--- frame's height or width, whichever is the larger.
+function TextView:FrameModel(box)
+	local x0, y0, z0, x1, y1, z1 = unpack(box)
+	local span = 2 * math.tan(math.rad((CameraView())) / 2)
+	local far = math.max((z1 - z0) / (FIT * span), (y1 - y0) / (FIT * ASPECT * span))
+	local cx, cy, cz = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
+	-- How far the figure reaches from the camera's target in any turn: half the diagonal of its footprint.
+	self.modelReach = math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2) / 2
+	self:SetModelCamera({ cx + far + (x1 - x0) / 2, cy, cz, cx, cy, cz })
+	self:ApplyModelCamera()
+	self.model:SetAlpha(1)
+	if self.onModel then pcall(self.onModel, self) end
+end
+
+--- Looks at every model waiting to be framed, `elapsed` seconds on: frames the ones that have loaded, and
+--- the ones that have waited FRAME_GIVE_UP while shown as the plain box.
+function FrameWaiting(elapsed)
+	for view in pairs(framing) do
+		-- A page that is hidden is not waited on: its model may only load once it is shown.
+		if view.frame:IsVisible() then view.modelWaited = (view.modelWaited or 0) + elapsed end
+		local box = ModelBox(view.modelActor)
+		if box or view.modelWaited >= FRAME_GIVE_UP then
+			framing[view] = nil
+			view:FrameModel(box or PLAIN_BOX)
+		end
+	end
+	if next(framing) == nil then Refresh() end
+end
+
+--- A camera { x, y, z of the camera, x, y, z of what it looks at } as a scene wants it: the position, the yaw
+--- and pitch of looking from it at the target, and its distance from the target.
+local function SceneCamera(cam)
+	local px, py, pz = cam[1], cam[2], cam[3]
+	local fx, fy, fz = cam[4] - px, cam[5] - py, cam[6] - pz
+	local length = math.sqrt(fx * fx + fy * fy + fz * fz)
+	return px, py, pz, atan2(fy, fx), length > 0 and math.asin(fz / length) or 0, length
+end
+
+local cameraFailureSaid = false
+
+--- The camera framed for this model, moved by its nudge; nothing while it has none. A call that fails is said
+--- once in chat.
+function TextView:ApplyModelCamera()
+	local scene = self.model
+	if not (self.modelDisplayID and scene and scene.SetCameraPosition and scene.SetCameraOrientationByYawPitchRoll) then
+		return
+	end
+	local ok, err = pcall(function()
+		local cam = self:CurrentCamera()
+		if not cam then return end
+		local px, py, pz, yaw, pitch, distance = SceneCamera(cam)
+		-- To the figure's nearest face, which a near clip must stay short of; a camera zoomed in among the
+		-- figure's reach keeps a tenth of its distance.
+		self.modelDistance = math.max(distance - (self.modelReach or 0), distance * 0.1)
+		scene:SetCameraPosition(px, py, pz)
+		scene:SetCameraOrientationByYawPitchRoll(yaw, pitch, 0)
+		scene:SetCameraFieldOfView(math.rad((CameraView())))
+		scene:SetCameraFarClip(FAR_CLIP)
+		self:ApplyNearClip()
+	end)
+	if not ok and not cameraFailureSaid then
+		cameraFailureSaid = true
+		print("Spoken: a boss's camera could not be set: " .. tostring(err))
+	end
 end
 
 --- A picture above the text from the next SetText on: `file` a texture, `mask` the one fraying its
