@@ -92,6 +92,8 @@ None of this is the project's to license, and the MIT grant does not reach it.
   apply to it.
 - **Map images, portrait frames and icons** derived from game assets
   (`PortraitFrameAtlas`, the continent maps) are Blizzard's.
+- **The Compendium's header bar and its plus and minus** (`addons/Spoken/Textures/HeaderBar.tga`,
+  `HeaderPlus.tga` and `HeaderMinus.tga`) are cut from the professions window's art and are Blizzard's.
 - **The older `.blp` textures** came with the AI VoiceOver fork, as it shipped them: in
   `addons/Spoken/Textures/` `BackgroundGradient`, `Book`, `MinimapButton`, `PortraitFrameAtlas`,
   `PortraitFrameBackground` and `SettingsButton` (`SettingsButtonSoft` is the same ring with its middle
