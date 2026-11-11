@@ -168,6 +168,8 @@ export interface Settings {
   checkOnStart: boolean
   /** The manager's own updates. */
   autoUpdateManager: boolean
+  /** Installed Spoken and official voice packs, after the catalog is checked. */
+  autoUpdateContent: boolean
   /** Start the manager when the user logs in. */
   startAtLogin: boolean
   /** Hide the window in the system tray when it is minimized. */
@@ -201,6 +203,7 @@ export const DEFAULT_SETTINGS: Settings = {
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
+  autoUpdateContent: false,
   startAtLogin: false,
   minimizeToTray: false,
   downloadsPath: '',

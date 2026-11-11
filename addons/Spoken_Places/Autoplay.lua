@@ -126,6 +126,10 @@ local function CinematicUp()
 		or false
 end
 
+function SpokenPlaces:IsPlayerDead()
+	return UnitIsDeadOrGhost("player") and true or false
+end
+
 -- Why a queued clip may not start yet. Registered onto the queue at setup, and
 -- consulted every time it tries to advance.
 --
@@ -187,6 +191,11 @@ end
 -- Returns whether the entry was queued, which the login greeting needs: a greeting that
 -- resolved nothing must not count as having greeted.
 local function Enqueue(mapID, areaKey)
+	-- A ghost's run back to the corpse discovers nothing.
+	if SpokenPlaces:IsPlayerDead() then
+		return false
+	end
+
 	-- Skip flyover lore so it cannot queue up for landing.
 	if (UnitOnTaxi and UnitOnTaxi("player")) or (IsFlying and IsFlying()) then
 		return false
@@ -667,7 +676,11 @@ function SpokenPlaces:SetupAutoplay()
 
 	frame:SetScript("OnEvent", function(_, event, ...)
 		if HOLD_EVENTS[event] then
-			OnHoldStart()
+			-- Off, a story already speaking plays through the fight. One not yet started still
+			-- waits for combat to end (HoldReason).
+			if event ~= "PLAYER_REGEN_DISABLED" or SpokenPlaces:Get("autoplayStopInCombat") then
+				OnHoldStart()
+			end
 			return
 		end
 		if event == "PLAYER_ENTERING_WORLD" then

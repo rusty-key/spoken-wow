@@ -95,7 +95,9 @@ function SpokenPlaces:SetupOptions()
 		Get("autoplaySubzones"), Set("autoplaySubzones"))
 	local before = layout:Checkbox(L.OPT_AUTOPLAY_EXPLORED, nil,
 		Get("autoplayExplored"), Set("autoplayExplored"))
-	for _, row in ipairs({ smaller, before }) do
+	local combat = layout:Checkbox(L.OPT_AUTOPLAY_COMBAT, nil,
+		Get("autoplayStopInCombat"), Set("autoplayStopInCombat"))
+	for _, row in ipairs({ smaller, before, combat }) do
 		layout:Requires(row, voiced, L.REASON_VOICE)
 		layout:Requires(row, discovering, L.REASON_DISCOVERY)
 	end

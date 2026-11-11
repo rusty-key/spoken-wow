@@ -36,7 +36,11 @@ pack calls into it.
    the window is read: a read that finds the text empty keeps the mute and reads the window again
    every 0.2 s, up to five times (`WaitsForGreetingText`). A read that finds text and no line, or
    a greeting already heard, gives the voice back at once. With the game's dialogue left alone or
-   the queue paused nothing is muted and the window is read once.
+   the queue paused nothing is muted and the window is read once. A greeting can start before the
+   window's event, so a right-click on an NPC a pack voices takes the same mute first
+   (`MuteGreetingOnClick`). The window that opens then decides: nothing to read lifts it at once,
+   and with no window it lifts at its 1.5 s deadline. Keyboard and controller interactions have
+   no click to hear and still mute at the window.
 3. `GetNPCGossipTextHash` finds the line from the speaker and the words. It looks in the
    tables written in the client's language first (`Gossip/<lang>.lua`, then the packs'), and only
    if no pack in that language knows the NPC does it try the others. The closest match by shared

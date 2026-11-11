@@ -47,6 +47,17 @@ function Bosses.Key(map, key)
 end
 local Key = Bosses.Key
 
+--- The report address for a boss's story in `language`: the site's /bosses/r/{map}/{slug}, the
+--- path of the boss's voice file. Boss keys are canonical, so the slug is naming.mjs's slugFor.
+function Bosses:ReportURL(map, key, language)
+	local slug = key:gsub("%s+", "-"):gsub("[^a-z0-9%-]", "")
+	return Spoken:ReportURL("bosses", ("%d/%s"):format(map, slug), language)
+end
+
+function Bosses:ShowReport(map, key, language)
+	Spoken:ShowReport(self:ReportURL(map, key, language))
+end
+
 -- [encounter id] = { { map, key }, ... }, from Data/Bosses.lua, built on first use. A fight against
 -- two bosses at once (the Weaver and Dreamscythe) is one encounter of both.
 local byEncounter

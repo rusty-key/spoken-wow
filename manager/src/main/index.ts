@@ -252,8 +252,13 @@ if (!app.requestSingleInstanceLock()) {
     const loginHidden = process.platform === 'darwin' && service.settings.startAtLogin && service.settings.minimizeToTray && app.getLoginItemSettings().wasOpenedAtLogin
     mainWindow = createWindow(startedHidden(process.argv) || loginHidden)
 
+    if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
+      void service.ready
+        .then(() => service?.refreshCatalog(false))
+        .then(() => service?.autoUpdate())
+        .catch((err) => log('Catalog refresh failed:', err))
+    }
     if (service.settings.checkOnStart) {
-      void service.ready.then(() => service?.refreshCatalog(false)).catch((err) => log('Catalog refresh failed:', err))
       void service.ready.then(() => service?.refreshCommunity(false)).catch((err) => log('Community refresh failed:', err))
     }
     const svc = service

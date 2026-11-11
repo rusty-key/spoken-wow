@@ -44,6 +44,7 @@ import {
   createContributions,
   recordContributionHit,
 } from "@/lib/contributions/store";
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import type { Submission } from "@/lib/contributions/contributions";
 
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     ip,
   };
 
-  const submissions: Submission[] = [];
+  const sent: Submission[] = [];
   const refused: Record<string, number> = {};
   const refuse = (reason: string) => {
     refused[reason] = (refused[reason] ?? 0) + 1;
@@ -112,8 +113,9 @@ export async function POST(request: Request) {
       refuse("incomplete");
       continue;
     }
-    submissions.push(submission);
+    sent.push(submission);
   }
+  const submissions = await keepClassWords(sent);
 
   // Lines the corpus already has are counted as accepted -- the player sent nothing wrong --
   // and not stored as contributions: known.ts's lineStates, asked once for the file. With an

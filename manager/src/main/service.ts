@@ -15,7 +15,7 @@ import type { SecretBox } from './contributor-store'
 import { addGame, notSupportedMessage, removeGame, scanGames } from './games'
 import { fetchReleases } from './github'
 import { installProduct, recoverInterrupted, uninstallProduct, type FsOps, type JobContext } from './install'
-import { JobManager } from './jobs'
+import { JobManager, type JobSpec } from './jobs'
 import { isChannelRelease } from '../shared/channel'
 import { channelRelease, withChannel } from './packs-catalog'
 import { PACKS_BASE_URL } from './packs-key'
@@ -24,7 +24,7 @@ import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type Ch
 import { dropPackState, loadPackState } from './packs-state'
 import { syncPacks } from './packs-sync'
 import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
-import { loadSettings, loadState, log, sanitizeSettings, saveSettings } from './state'
+import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings } from './state'
 import { computeStatuses } from './status'
 
 export interface ServiceOptions {
@@ -72,6 +72,8 @@ export class ManagerService {
   readonly jobs: JobManager
   readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
+  /** `gameId:productId` of automatic updates cancelled or failed this session; skipped until a check by hand. */
+  private autoSkip = new Set<string>()
   private refreshingChannel: Promise<void> | null = null
   /** When the server last gave a verified index; 0 until then. */
   private channelFetchedAt = 0
@@ -195,7 +197,12 @@ export class ManagerService {
     this.refreshing = this.doRefresh().finally(() => {
       this.refreshing = null
     })
-    return this.refreshing
+    if (!force) return this.refreshing
+    this.autoSkip.clear()
+    return this.refreshing.then(async (catalog) => {
+      await this.autoUpdate()
+      return catalog
+    })
   }
 
   private async doRefresh(): Promise<Catalog> {
@@ -230,6 +237,26 @@ export class ManagerService {
     this.opts.send(CHANNELS.catalogChanged, offered)
     await this.warmManifests(offered)
     return offered
+  }
+
+  async autoUpdate(): Promise<void> {
+    if (!this.settings.autoUpdateContent) return
+    try {
+      const state = loadState(this.opts.dataPath)
+      const catalog = this.effectiveCatalog()
+      for (const game of this.games.filter((g) => isSupportedFlavor(g.flavor))) {
+        for (const status of await computeStatuses(game, catalog, this.settings, state, this.allProducts())) {
+          const key = `${game.id}:${status.productId}`
+          if (status.state !== 'update-available' || status.blockedReason || isCommunityProductId(status.productId)) continue
+          if (getRecord(state, game.id, status.productId)?.pinned || this.autoSkip.has(key)) continue
+          this.install(game.id, status.productId, undefined, (phase) => {
+            if (phase !== 'done') this.autoSkip.add(key)
+          })
+        }
+      }
+    } catch (err) {
+      log('Automatic content update check failed:', err)
+    }
   }
 
   /**
@@ -474,7 +501,7 @@ export class ManagerService {
     return release
   }
 
-  install(gameId: string, productId: string, options?: InstallOptions): string {
+  install(gameId: string, productId: string, options?: InstallOptions, onEnded?: JobSpec['onEnded']): string {
     const game = this.requireGame(gameId)
     const product = this.findProduct(productId)
     if (!product) throw new Error('Unknown product')
@@ -483,9 +510,11 @@ export class ManagerService {
     const wanted = repair ? undefined : options?.version
     const release = repair ? undefined : this.pickRelease(productId, wanted)
     const channel = channelRelease(product, this.channel, this.packsBase())
+    const pinned = !!wanted && !!release && release.version !== this.pickRelease(productId)?.version
     return this.jobs.enqueue({
       gameId,
       productId,
+      ...(onEnded ? { onEnded } : {}),
       action: repair ? 'repair' : 'install',
       ...(release ? { version: release.version } : {}),
       run: async (ctx) => {
@@ -510,7 +539,7 @@ export class ManagerService {
           )
         }
         this.dropChannelState(game, product)
-        await installProduct(game, product, release, this.jobContext(ctx.jobId, ctx.signal, ctx.emit))
+        await installProduct(game, product, release, { ...this.jobContext(ctx.jobId, ctx.signal, ctx.emit), pinned })
       }
     })
   }
@@ -651,6 +680,7 @@ export class ManagerService {
       if (problem) throw new PlainError(problem)
     }
     const wasSharing = this.settings.sharing
+    const wasAutoUpdating = this.settings.autoUpdateContent
     this.settings = { ...this.settings, ...clean }
     try {
       saveSettings(this.opts.dataPath, this.settings)
@@ -658,6 +688,7 @@ export class ManagerService {
       log('Could not save the settings:', err)
     }
     this.sharingChanged(wasSharing)
+    if (!wasAutoUpdating && this.settings.autoUpdateContent) void this.ready.then(() => this.autoUpdate())
     return this.settings
   }
 }
