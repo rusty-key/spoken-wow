@@ -42,6 +42,11 @@ sed -i.bak \
   -e "s|^## IconTexture:.*|## IconTexture: Interface\\\\AddOns\\\\$folder\\\\Textures\\\\AddonIcon.tga|" \
   "$staging/$folder/$folder.toc"
 rm -f "$staging/$folder/$folder.toc.bak"
+# The sed above changes nothing in a .toc without the line, and the pack would then ship as English.
+if ! grep -q "^## X-SpokenReadables-Language: $LOCALE\$" "$staging/$folder/$folder.toc"; then
+  echo "error: the staged .toc does not carry '## X-SpokenReadables-Language: $LOCALE'" >&2
+  exit 1
+fi
 
 mkdir -p "$DIST"
 zip_path="$DIST/$folder-$version.zip"

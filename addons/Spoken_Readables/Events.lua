@@ -150,6 +150,10 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		-- Every addon's load fires this; only this addon's own restores SpokenReadablesSettings.
 		if payload == ADDON_NAME then
 			SpokenReadables:InitDB()
+			-- Listing the packs tells Spoken's registry the language of each one whose .toc names
+			-- none, which every pack released before that key is. Done here, the packs having loaded
+			-- first, so that no menu is built before they are known.
+			SpokenReadables:GetAudioPacks()
 			frame:UnregisterEvent("ADDON_LOADED")
 		end
 	elseif name == "PLAYER_ENTERING_WORLD" then

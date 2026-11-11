@@ -316,6 +316,17 @@ Expect("an English clip says so for its subtitle", B:ClipFor(ONLY_ENGLISH).prese
 SpokenReadablesSettings.voiceLanguage = "auto"
 Expect("Auto never lands on it", B:GetVoiceLanguage(), "enUS")
 
+-- A pack released before the .toc key has only its Lua to say so: the registry knows it from the
+-- addon's own load, before any menu lists the packs.
+B = Install({ ENGLISH, HEBREW }, "enUS")
+assert(loadfile(READABLES .. "Events.lua"))("Spoken_Readables", B)
+stub.FireEvent("ADDON_LOADED", "Spoken_Readables")
+codes = {}
+for _, locale in ipairs(Spoken:InstalledLanguages()) do table.insert(codes, locale.code) end
+Expect("a Lua-only pack's language is declared when the addon loads", table.concat(codes, " "), "enUS heIL")
+B:BuildAudioPacks()
+Expect("...and listing the packs again declares nothing twice", #Spoken:Language("heIL").folders, 1)
+
 -- A voice whose pack was removed: the choice is kept, the page is read in the fallback.
 B = Install({ ENGLISH }, "enUS")
 SpokenReadablesSettings.voiceLanguage = "heIL"
