@@ -3,13 +3,15 @@
 // Sharing on, the lines Spoken collected, sent to spoken.quest (share.ts), and, only for a
 // language admin who signs in, the site and that admin's stores (contributor.ts).
 import path from 'node:path'
-import { app, BrowserWindow, Menu, net, safeStorage, session, shell } from 'electron'
+import { app, BrowserWindow, Menu, nativeImage, net, safeStorage, session, shell, Tray, type NativeImage } from 'electron'
 import { CHANNELS, type UpdaterState } from '../shared/api'
+import type { Settings } from '../shared/types'
 import { windowChrome } from './chrome'
 import type { SecretBox } from './contributor-store'
 import { isAllowedExternalUrl } from './external'
 import { registerIpc } from './ipc'
 import { ManagerService } from './service'
+import { HIDDEN_ARG, updateLinuxAutostart } from './startup'
 import { initLog, log } from './state'
 import { isOurPage as isOurPageUrl, type AppPage } from './trust'
 import { startUpdater } from './updater'
@@ -22,6 +24,8 @@ const DEV_URL = process.env.ELECTRON_RENDERER_URL
 
 let service: ManagerService | null = null
 let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+const iconPath = (): string => path.join(app.getAppPath(), 'build', 'icon.png')
 // Each state is sent once, so a window opened later (macOS, from the Dock) reads it from the snapshot.
 let updaterState: UpdaterState = { state: 'idle' }
 
@@ -81,7 +85,68 @@ function setUpMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]))
 }
 
-function createWindow(): BrowserWindow {
+function applyAutoStart(settings: Settings): void {
+  // A dev run would register the bare Electron binary.
+  if (!app.isPackaged) return
+  try {
+    if (process.platform === 'linux') {
+      // Inside an AppImage, execPath is its temporary mount; APPIMAGE is the file itself.
+      updateLinuxAutostart(app.getPath('appData'), process.env.APPIMAGE ?? process.execPath, settings.startAtLogin, settings.minimizeToTray)
+    } else {
+      // macOS login items take no arguments, so the window always opens there.
+      app.setLoginItemSettings({
+        openAtLogin: settings.startAtLogin,
+        ...(process.platform === 'win32' ? { path: process.execPath, args: settings.minimizeToTray ? [HIDDEN_ARG] : [], name: 'Spoken Manager' } : {})
+      })
+    }
+  } catch (err) {
+    log('Could not update startup settings:', err)
+  }
+}
+
+function showWindow(): void {
+  if (!service) return
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    mainWindow = createWindow()
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function trayIcon(): NativeImage {
+  const icon = nativeImage.createFromPath(iconPath())
+  // The menu bar draws the image at its own size.
+  return process.platform === 'darwin' ? icon.resize({ width: 16, height: 16 }) : icon
+}
+
+function syncTray(enabled: boolean): void {
+  if (!enabled) {
+    tray?.destroy()
+    tray = null
+    return
+  }
+  if (tray) return
+  tray = new Tray(trayIcon())
+  tray.setToolTip('Spoken Manager')
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Show Spoken Manager', click: showWindow },
+      { type: 'separator' },
+      { label: 'Quit Spoken Manager', click: () => app.quit() }
+    ])
+  )
+  tray.on('click', showWindow)
+}
+
+function startupSettingsChanged(settings: Settings, previous: Settings): void {
+  if (settings.startAtLogin === previous.startAtLogin && settings.minimizeToTray === previous.minimizeToTray) return
+  applyAutoStart(settings)
+  syncTray(settings.minimizeToTray)
+}
+
+function createWindow(startHidden = false): BrowserWindow {
   const chrome = windowChrome(process.platform)
   const win = new BrowserWindow({
     width: 1180,
@@ -91,7 +156,7 @@ function createWindow(): BrowserWindow {
     backgroundColor: BACKGROUND,
     show: false,
     title: 'Spoken Manager',
-    icon: path.join(app.getAppPath(), 'build', 'icon.png'),
+    icon: iconPath(),
     autoHideMenuBar: true,
     titleBarStyle: chrome.titleBarStyle,
     ...(chrome.frame === false ? { frame: false } : {}),
@@ -108,13 +173,18 @@ function createWindow(): BrowserWindow {
     }
   })
   if (process.platform !== 'darwin') win.removeMenu()
+  win.on('minimize', () => {
+    if (service?.settings.minimizeToTray) win.hide()
+  })
   win.on('maximize', () => win.webContents.send(CHANNELS.windowMaximized, true))
   win.on('unmaximize', () => win.webContents.send(CHANNELS.windowMaximized, false))
 
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    if (!startHidden) win.show()
+  })
   win.webContents.on('did-fail-load', (_e, code, description) => {
     log(`Window failed to load (${code}): ${description}`)
-    if (!win.isDestroyed()) win.show()
+    if (!win.isDestroyed() && !startHidden) win.show()
   })
 
   // Links open in the browser, only when they are GitHub's; nothing opens a new window.
@@ -141,19 +211,14 @@ function createWindow(): BrowserWindow {
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
-  })
+  // Also the way back to a window hidden in the tray when the desktop shows no tray icons.
+  app.on('second-instance', showWindow)
 
   // macOS apps stay open without a window (Cmd+Q quits, a click on the Dock icon opens the window again).
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
-  app.on('activate', () => {
-    if (service && BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
-  })
+  app.on('activate', showWindow)
 
   // Quitting with a job running: stop it and wait for its rollback first, so the quit (and an
   // update installed on quit) never lands in the middle of swapping folders.
@@ -191,16 +256,25 @@ if (!app.requestSingleInstanceLock()) {
       contributorFetch: fetch,
       secretBox,
       ...(shareUrl ? { shareUrl } : {}),
-      ...(siteUrl ? { siteUrl } : {})
+      ...(siteUrl ? { siteUrl } : {}),
+      settingsChanged: startupSettingsChanged
     })
+    syncTray(service.settings.minimizeToTray)
+    // Refreshes the login item's path, which an update or reinstall can move.
+    if (service.settings.startAtLogin) applyAutoStart(service.settings)
     registerIpc(service, PAGE, () => updaterState)
     void service.init()
     service.startSharing()
 
-    mainWindow = createWindow()
+    mainWindow = createWindow(process.argv.includes(HIDDEN_ARG) && service.settings.minimizeToTray)
 
+    if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
+      void service.ready
+        .then(() => service?.refreshCatalog(false))
+        .then(() => service?.autoUpdate())
+        .catch((err) => log('Catalog refresh failed:', err))
+    }
     if (service.settings.checkOnStart) {
-      void service.ready.then(() => service?.refreshCatalog(false)).catch((err) => log('Catalog refresh failed:', err))
       void service.ready.then(() => service?.refreshCommunity(false)).catch((err) => log('Community refresh failed:', err))
     }
     const svc = service

@@ -569,9 +569,9 @@ function SpokenPlaces:CityAt(mapID, areaName)
 	return nil
 end
 
--- A city's area on its zone's map reaches far past its walls: Ironforge's took clicks across much
--- of Dun Morogh's mountains (#921). Its own map's rectangle on the zone bounds it. Where the client
--- gives no rectangle, the area alone decides.
+-- The game's area for a city reaches far past its walls (Ironforge's covers Grizzled Den on Dun
+-- Morogh), so the city's own map rectangle on the zone bounds it. Where the client gives no
+-- rectangle, the area alone decides.
 local function OnCity(city, mapID, x, y)
 	if not (C_Map and C_Map.GetMapRectOnMap) then
 		return true

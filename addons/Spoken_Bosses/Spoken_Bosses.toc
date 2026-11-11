@@ -13,7 +13,7 @@
 ## Version: 3.8.6
 ## Author: Nucabe
 ## Dependencies: Spoken
-## OptionalDeps: SpokenBossesAudio, Leatrix_Maps
+## OptionalDeps: SpokenBossesAudio, Leatrix_Maps, OpenMap
 ## SavedVariables: SpokenBossesSettings
 ## SavedVariablesPerCharacter: SpokenBossesCharacter
 # Spoken is what this module runs on, and ships in the same zip.
@@ -37,7 +37,9 @@ Data/Creatures.lua
 Data/Stories.lua
 Audio.lua
 UI/Bosses.lua
+MapLore.lua
 Leatrix.lua
+OpenMap.lua
 UI/CopyLink.lua
 UI/Options.lua
 Story.lua

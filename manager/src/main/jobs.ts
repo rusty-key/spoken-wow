@@ -13,6 +13,8 @@ export interface JobSpec {
   version?: string
   /** Called when the job is cancelled while queued, since `run` will then never be called. */
   onDropped?: () => void
+  /** Called once with how the job ended. */
+  onEnded?: (phase: 'done' | 'error' | 'cancelled') => void
 }
 
 interface Job {
@@ -65,6 +67,7 @@ export class JobManager {
       job.state = 'finished'
       this.jobs.delete(job.id)
       job.spec.onDropped?.()
+      job.spec.onEnded?.('cancelled')
       this.publish(job, 'cancelled', 'Cancelled.')
       this.settle()
       return true
@@ -121,6 +124,7 @@ export class JobManager {
     this.running.add(gameId)
     job.state = 'running'
     let ended = false
+    let outcome: 'done' | 'error' | 'cancelled' = 'done'
     try {
       await job.spec.run({
         jobId: job.id,
@@ -139,8 +143,10 @@ export class JobManager {
     } catch (err) {
       // A plain error wins over a cancel: a cancelled install whose rollback failed must say so.
       if (!(err instanceof PlainError) && (isAbortError(err) || job.controller.signal.aborted)) {
+        outcome = 'cancelled'
         this.publish(job, 'cancelled', 'Cancelled.')
       } else {
+        outcome = 'error'
         log(`Job ${job.spec.action} ${job.spec.productId} failed:`, err)
         this.publish(job, 'error', plainMessage(err))
       }
@@ -148,6 +154,7 @@ export class JobManager {
       job.state = 'finished'
       this.jobs.delete(job.id)
       this.running.delete(gameId)
+      job.spec.onEnded?.(outcome)
       this.settle()
       void this.pump(gameId)
     }

@@ -346,6 +346,7 @@ local REPORT = {
 	title = REPORT_LABEL,
 }
 Bosses.ReportAction = REPORT
+Bosses.Name, Bosses.Model, Bosses.Unlocked = Name, Model, Unlocked
 -- The narrator's Report is about what was heard, so it files under the clip's language.
 local NARRATOR_REPORT = {
 	id = "report",

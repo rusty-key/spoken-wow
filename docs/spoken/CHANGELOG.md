@@ -4,12 +4,24 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Dragging the world map no longer opens a city's map, and Ironforge only opens from Ironforge.**
-  With OpenMap, letting go of a drag over a city (Ironforge, on Dun Morogh) or the first click on
-  the map could jump to the city's map. A city now opens only from inside its own map's outline on
-  the zone, so Ironforge no longer takes clicks across Dun Morogh's mountains, with or without
-  OpenMap.
+- **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map
+  reaches well past its walls, so a click in Dun Morogh's mountains, at Grizzled Den, opened
+  Ironforge's map. A city now opens only from inside its own map's outline on the zone.
   *([tworekj](https://github.com/tworekj))*
+- **OpenMap's dungeon maps open dungeon and boss lore.** With Spoken Bosses installed, opening a
+  dungeon in OpenMap shows its story beside the map, and clicking a boss in OpenMap's Bosses panel
+  opens the boss's story, portrait and Report button. OpenMap remains an optional integration, so
+  players without it see no change. *([anon1231823](https://github.com/anon1231823))*
+- **Boss models show in the story panel beside the map on WoW Forever**, from Leatrix Maps too. The
+  Forever client left them blank there.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Place stories work on [OpenMap](https://github.com/openmap-world/openmap)'s world map.**
+  Areas light up under the cursor again, in any zone on screen, and a click opens the story of
+  the area you clicked rather than one in the zone at the centre of the view. Dragging the map no
+  longer opens a city's map. Zoomed in on a zone, the panel tells that zone's story, a click
+  elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
+  full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
+  *([carcachi](https://github.com/carcachi))*
 
 ## 3.8.6 — 2026-11-10
 
