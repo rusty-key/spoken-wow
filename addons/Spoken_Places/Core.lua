@@ -1007,11 +1007,18 @@ local function CmdLanguage(arg)
 	if code and code ~= "" then
 		local locale = SpokenPlaces:GetLocaleInfo(code)
 		-- Matched case-insensitively against the codes, since "dede" is the same
-		-- request as "deDE" and nobody remembers Blizzard's capitalisation.
+		-- request as "deDE" and nobody remembers Blizzard's capitalisation. The built-in
+		-- languages, then those of the installed packs.
 		if not locale then
-			for i = 1, #SpokenPlaces.LOCALES do
-				if SpokenPlaces.LOCALES[i].code:lower() == code:lower() then
-					locale = SpokenPlaces.LOCALES[i]
+			local known = {}
+			for _, builtin in ipairs(SpokenPlaces.LOCALES) do table.insert(known, builtin) end
+			for _, installed in ipairs(Spoken and Spoken.InstalledLanguages and Spoken:InstalledLanguages() or {}) do
+				table.insert(known, installed)
+			end
+			for _, candidate in ipairs(known) do
+				if candidate.code:lower() == code:lower() then
+					locale = candidate
+					break
 				end
 			end
 		end

@@ -358,8 +358,7 @@ function SpokenPlaces:GetAudioPackLabel(pack)
 	local language = pack.language
 	local label = language
 	if self:CanRenderLanguage(language) then
-		local info = self:GetLocaleInfo(language)
-		label = (info and info.native) or language
+		label = self:GetLanguageName(language)
 	end
 	if pack.bitrate and pack.bitrate > 0 then
 		for _, other in ipairs(self:GetAudioPacks(language)) do
@@ -523,6 +522,8 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 			-- Timed to the recording's own words, so not under another language's.
 			timings = entry and language == (pack.language or "enUS") and times or nil,
 			font = font,
+			-- The language the words are in, for a subtitle that must be drawn in its font.
+			lang = language,
 			bullet = "zone",
 			portrait = self:Portrait(mapID),
 			picture = picture and { file = picture, mask = mask } or nil,
