@@ -27,9 +27,17 @@ local function IsGamepadUI()
 	return GetCVar("InputDeviceInterfaceStyle") == "1"
 end
 
--- Inside the map, unless the gamepad UI is on (NewPanel).
+-- Whether the map is drawn as one picture (Forever's: frameBuffer in Blizzard_WorldMap.xml). A
+-- 3D model inside it draws nothing: a boss's model beside the map stayed blank.
+local function MapBuffered()
+	if not WorldMapFrame.IsFrameBuffer then return false end
+	local ok, buffered = pcall(WorldMapFrame.IsFrameBuffer, WorldMapFrame)
+	return ok and buffered == true
+end
+
+-- Inside the map, unless the gamepad UI is on (NewPanel) or the map is drawn as one picture.
 local function Host()
-	if IsGamepadUI() then return UIParent end
+	if IsGamepadUI() or MapBuffered() then return UIParent end
 	return WorldMapFrame
 end
 

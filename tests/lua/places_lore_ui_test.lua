@@ -630,6 +630,14 @@ SetCVar("InputDeviceInterfaceStyle", "0")
 Z:RefreshPanel()
 Expect("with the gamepad UI off again, the panel goes back into the map", panel.parent, WorldMapFrame)
 Expect("...and stops reading the map's alpha each frame", panel:GetScript("OnUpdate"), nil)
+-- Forever's map is drawn as one picture, where a boss's 3D model draws nothing: the panel stays out.
+WorldMapFrame.IsFrameBuffer = function() return true end
+Z:RefreshPanel()
+Expect("on a map drawn as one picture, the panel is not the map's", panel.parent, UIParent)
+Expect("...and follows the map's alpha itself", panel:GetScript("OnUpdate") ~= nil, true)
+WorldMapFrame.IsFrameBuffer = nil
+Z:RefreshPanel()
+Expect("...and goes back into a map that is not", panel.parent, WorldMapFrame)
 -- Side tabs hang down the quest log's right edge, the game's own and other addons' alike, with no
 -- name Spoken knows: here two unnamed ones, as Adventure Guide Forever hangs its own, the upper one
 -- reaching 60 past the map's edge and the lower one 50. The map is 300 wide and 100 high.
