@@ -526,6 +526,12 @@ function Spoken:Language(code)
     return Languages:Get(code)
 end
 
+--- The languages a game client runs in, in the order the lists show them, as the registry keeps
+--- them: `code`, `name`, `native`, `script` and for some `sample`. Read, never written.
+function Spoken:BuiltinLanguages()
+    return Languages.BUILTIN
+end
+
 --- The languages an installed pack declares, the client's own first, the rest by code.
 function Spoken:InstalledLanguages()
     return Languages:Installed()
