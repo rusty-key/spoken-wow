@@ -205,10 +205,9 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": the NPC dialog offers Mute", muteButton:IsShown(), true)
     Expect(client .. ": the dialog uses the speaker-with-X symbol", muteButton.glyph:GetTexture(),
         [[Interface\COMMON\VOICECHAT-MUTED]])
+    local popupsBeforeMute = #stub.popups
     muteButton:Click()
-    Expect(client .. ": Mute asks for confirmation", stub.popups[#stub.popups].key, "VOICEOVER_IGNORE_NPC")
-    VO.Addon:IgnoreNPC(muted.unitGUID, muted.name)
-    VO.DialogPlayButton:RefreshMute()
+    Expect(client .. ": Mute does not ask for confirmation", #stub.popups, popupsBeforeMute)
     Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
     Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), true)
     Expect(client .. ": the dialog keeps the toggle after muting", muteButton:IsShown(), true)
