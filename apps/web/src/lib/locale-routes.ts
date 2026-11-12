@@ -16,30 +16,32 @@
  * redirects are relative paths, which have no host to disagree about, and cost nothing per
  * request.
  *
- * MATCHED BY SHAPE, VALIDATED BY THE LAYOUT. Languages come from the database and can be
- * created after the build, so a prefix is recognised by what it looks like (LANG_SHAPE; it
- * needs caseSensitiveRoutes in next.config.ts), not by a list. Whether it is a language, and
- * switched on, is the layout's question (src/app/[lang]/layout.tsx, via pageLang): /xxYY/quests
- * passes through here untouched and the layout answers 404.
+ * A POSITIVE LIST, VALIDATED BY THE LAYOUT. Only the top-level pages under src/app/[lang]/ are
+ * rewritten; everything else -- the API, Next's assets, files, and any path with a language
+ * prefix, including one created after the build -- passes through untouched. Whether a prefix
+ * is a language, and switched on, is the layout's question (src/app/[lang]/layout.tsx, via
+ * pageLang): /xxYY/quests reaches it and is answered 404.
+ *
+ * NOT A NEGATIVE LOOKAHEAD on the language's shape: Next matches before-files rewrites
+ * case-insensitively whatever caseSensitiveRoutes says, so [a-z]{2}[A-Z]{2} would also match
+ * "npcs" and leave it unrewritten.
  */
 import { BASE_LANG } from "./lang";
 
-/** What a language code looks like: two lowercase letters, two uppercase (enUS). */
+/** What a language code looks like, for the redirects that keep a prefix: two lowercase letters, two uppercase (enUS). */
 export const LANG_SHAPE = "[a-z]{2}[A-Z]{2}";
-
-/**
- * What is never a page: the API, which takes its language as ?lang= (lib/lang.ts withLang);
- * Next's own assets; /downloads, which nginx serves from disk; anything shaped like a
- * language prefix; and a file -- /logo.png, /icons/... -- which a rewrite would send to /enUS/logo.png and a 404.
- */
-const BARE_PAGE = `(?!(?:api|_next|downloads|${LANG_SHAPE})(?:/|$))(?!.*\\.).+`;
 
 export const localeRedirects = [
   { source: `/${BASE_LANG}`, destination: "/", permanent: true },
   { source: `/${BASE_LANG}/:path*`, destination: "/:path*", permanent: true },
 ];
 
-export const localeRewrites = [
-  { source: "/", destination: `/${BASE_LANG}` },
-  { source: `/:path(${BARE_PAGE})`, destination: `/${BASE_LANG}/:path` },
-];
+/** The rewrites that serve a bare path as English, for the given top-level pages. */
+export function localeRewrites(sections: string[]) {
+  const pages = sections.join("|");
+  return [
+    { source: "/", destination: `/${BASE_LANG}` },
+    { source: `/:section(${pages})`, destination: `/${BASE_LANG}/:section` },
+    { source: `/:section(${pages})/:rest*`, destination: `/${BASE_LANG}/:section/:rest*` },
+  ];
+}

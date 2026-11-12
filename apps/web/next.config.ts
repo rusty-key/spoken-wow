@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { discordRedirects } from "./src/lib/discord";
 import { localeRedirects, localeRewrites } from "./src/lib/locale-routes";
+import { pageSections } from "./src/lib/page-sections";
 import { sectionRedirects } from "./src/lib/section-routes";
 
 // The monorepo root, two levels up from apps/web/.
@@ -88,16 +89,11 @@ const config: NextConfig = {
   // why this is config and not middleware.
   // The old section addresses first, so /enUS/zones/... lands on /places/... in two hops
   // rather than missing both. See src/lib/section-routes.ts.
-  //
-  // CASE-SENSITIVE, because LANG_SHAPE tells enUS from npcs by case, and Next matches rewrites
-  // and redirects case-insensitively unless told otherwise: every four-letter page would
-  // look like a language and be left unrewritten. Page routes themselves already are.
-  experimental: { caseSensitiveRoutes: true },
   async redirects() {
     return [...discordRedirects, ...sectionRedirects, ...localeRedirects];
   },
   async rewrites() {
-    return { beforeFiles: localeRewrites, afterFiles: [], fallback: [] };
+    return { beforeFiles: localeRewrites(pageSections()), afterFiles: [], fallback: [] };
   },
 
   outputFileTracingExcludes: {
