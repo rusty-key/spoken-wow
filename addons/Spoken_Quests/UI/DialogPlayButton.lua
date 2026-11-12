@@ -275,7 +275,7 @@ function DialogPlayButton:Setup()
         slash:SetSize(2, 17)
         slash:SetPoint("CENTER")
         if slash.SetColorTexture then
-            slash:SetColorTexture(1, 1, 1, 0.95)
+            slash:SetColorTexture(1, 0.1, 0.1, 0.95)
         end
         if slash.SetRotation then
             slash:SetRotation(math.rad(-45))
