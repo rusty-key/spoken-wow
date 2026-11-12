@@ -194,6 +194,57 @@ quests:Enqueue(first); quests:Enqueue(second)
 Q:PauseQueue()
 Q:Skip()
 Expect("Skip on a stopped queue plays the next line", Q:IsPaused() == false and world.played[2], second.path)
+
+---------------------------------------------------------------- previous line history
+Fresh()
+local previous, current = H.Clip(), H.Clip()
+quests:Enqueue(previous); quests:Enqueue(current)
+stub.Advance(1.6)
+Expect("a finished line is kept for Previous", Q:GetPrevious(), previous)
+Expect("Previous replays the line before the current one", Q:Previous(), true)
+Expect("...without losing the waiting current line", Q:GetQueue()[2], current)
+Expect("...and starts the replay immediately", world.played[3], previous.path)
+
+Fresh()
+local firstLine, middleLine, latestLine = H.Clip(), H.Clip(), H.Clip()
+quests:Enqueue(firstLine); quests:Enqueue(middleLine); quests:Enqueue(latestLine)
+stub.Advance(1.6); stub.Advance(1.6)
+Expect("Previous from the third line reaches the second", Q:Previous(), true)
+Expect("Previous remains available for the first line", Q:CanPrevious(), true)
+Expect("Previous from the second line reaches the first", Q:Previous(), true)
+Expect("Previous is unavailable on the first line", Q:CanPrevious(), false)
+
+Fresh()
+local last = H.Clip()
+quests:Enqueue(last)
+stub.Advance(1.1)
+Expect("a drained queue keeps its last line", Q:GetPrevious(), last)
+Expect("Previous also works after the queue drained", Q:Previous(), true)
+Expect("...replaying the last line", world.played[2], last.path)
+
+Fresh()
+local old = H.Clip()
+quests:Enqueue(old)
+stub.Advance(1.1)
+Expect("an older queue leaves a previous line", Q:CanPrevious(), true)
+local first = H.Clip()
+quests:Enqueue(first)
+Expect("a new queue starts on its oldest line", Q:CanPrevious(), false)
+
+Fresh()
+local history = {}
+for index = 1, 5 do
+    history[index] = H.Clip()
+    quests:Enqueue(history[index])
+end
+for _ = 1, 5 do stub.Advance(1.6) end
+for _ = 1, 5 do Q:Previous() end
+Expect("Previous walks back through five lines", Q:GetCurrentSound(), history[1])
+Expect("Previous is unavailable at the oldest line", Q:CanPrevious(), false)
+Q:Skip()
+Expect("skipping a replayed oldest line makes it the previous line", Q:GetPrevious(), history[1])
+Expect("Previous returns after skipping forward", Q:CanPrevious(), true)
+
 -- The last line skipped mid-word fades out, as Stop does, rather than cutting off.
 Fresh()
 quests:Enqueue(H.Clip({ length = 5 }))

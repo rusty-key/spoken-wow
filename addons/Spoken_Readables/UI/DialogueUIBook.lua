@@ -258,6 +258,7 @@ function Book:Place()
 		list[i] = nil
 	end
 	if row.report:IsShown() then table.insert(list, row.report) end
+	if row.previous:IsShown() then table.insert(list, row.previous) end
 	if row.skip:IsShown() then table.insert(list, row.skip) end
 	if row.play:IsShown() then table.insert(list, row.play) end
 	if row.open and row.open:IsShown() then table.insert(list, row.open) end
@@ -309,6 +310,7 @@ function Book:Draw()
 		row.play:SetState(state)
 	end
 	SetEnabled(row.skip, Spoken.GetCurrent ~= nil and Spoken:GetCurrent() ~= nil)
+	SetEnabled(row.previous, Spoken.CanPrevious ~= nil and Spoken:CanPrevious())
 	row.report:SetShown(voiced and not ReportsHidden())
 	if row.open then
 		local shown = SpokenReadables.CompendiumHas ~= nil and SpokenReadables:CompendiumHas(key) or false

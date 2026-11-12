@@ -904,7 +904,7 @@ function Subtitle:Corner(clip)
         self.report = nil
     end
     -- As wide as the buttons it shows, so the row stays centred under the subtitle.
-    local count = action and 3 or 2
+    local count = action and 4 or 3
     self.controls:SetWidth(CONTROL_SIZE * count + CONTROL_GAP * (count - 1))
 end
 
@@ -912,7 +912,7 @@ end
 function Subtitle:BuildControls()
     local frame = self.frame
     local controls = CreateFrame("Frame", nil, frame)
-    controls:SetSize(CONTROL_SIZE * 3 + CONTROL_GAP * 2, CONTROL_SIZE)
+    controls:SetSize(CONTROL_SIZE * 4 + CONTROL_GAP * 3, CONTROL_SIZE)
     controls:SetFrameLevel(frame:GetFrameLevel() + 2)
     controls:SetAlpha(0)
     controls:Hide()
@@ -921,11 +921,15 @@ function Subtitle:BuildControls()
     local pause = Actions.StopButton(controls, nil, function() self:UpdatePause() end)
     pause:SetPoint("LEFT", controls, "LEFT", 0, 0)
     self.pause = pause
-    self:UpdatePause()
+
+    local previous = Actions.PreviousButton(controls)
+    previous:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
+    self.previous = previous
 
     local skip = Actions.SkipButton(controls)
-    skip:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
+    skip:SetPoint("LEFT", previous, "RIGHT", CONTROL_GAP, 0)
     self.skip = skip
+    self:UpdatePause()
 
     -- Report, in the same ring, with the action's own bug icon: what the windows show in their
     -- corner, and what it does is the action's, as there.
@@ -956,7 +960,8 @@ end
 
 function Subtitle:UpdatePause()
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
-    Actions.SetPausable({ self.pause, self.skip })
+    Actions.SetPausable({ self.pause, self.previous, self.skip })
+    Actions.SetPreviousable(self.previous)
 end
 
 -- Locked, the subtitle lets clicks through to the world but still knows the pointer is over

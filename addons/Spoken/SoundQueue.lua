@@ -48,9 +48,12 @@ SoundQueue = {
     soundIdCounter = 0,
     ---@type SpokenClip[]
     sounds = {},
+    ---@type SpokenClip[]
+    history = {},
 }
 
 local RETRY_INTERVAL = 1
+local HISTORY_LIMIT = 10
 local gates = {}
 local retryTicker = nil
 
@@ -69,6 +72,37 @@ end
 --- The head: speaking, paused, or held. Queue rows read this.
 function SoundQueue:GetCurrentSound()
     return self.sounds[1]
+end
+
+--- The most recent line that left the queue by finishing or being skipped.
+function SoundQueue:GetPrevious()
+    return self.history[#self.history]
+end
+
+--- Whether Previous can act on the current queue state.
+function SoundQueue:CanPrevious()
+    local current = self:GetCurrentSound()
+    return self:GetPrevious() ~= nil and (not current or self:CanBePaused())
+end
+
+-- A previous replay is navigational rather than new playback, so it must not put the same line
+-- straight back on top of the history when it ends. The older entries remain available for another
+-- press of Previous.
+local function Remember(clip, finishedPlaying)
+    if not clip then return end
+    if clip.replayingPrevious then
+        clip.replayingPrevious = nil
+        if finishedPlaying then return end
+    end
+    for index = #SoundQueue.history, 1, -1 do
+        if SoundQueue.history[index] == clip then
+            table.remove(SoundQueue.history, index)
+        end
+    end
+    table.insert(SoundQueue.history, clip)
+    while #SoundQueue.history > HISTORY_LIMIT do
+        table.remove(SoundQueue.history, 1)
+    end
 end
 
 --- The head only if it is actually speaking or paused mid-clip. Controls read this: a
@@ -252,7 +286,8 @@ local REMOVE_FADE_MS = 400
 
 ---@param clip SpokenClip
 ---@param finishedPlaying? boolean
-function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying)
+---@param remember? boolean  Keep this completed or skipped clip for Previous.
+function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying, remember)
     if not clip then
         return false
     end
@@ -270,6 +305,10 @@ function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying)
     end
     if not removedIndex then
         return false
+    end
+
+    if remember then
+        Remember(clip, finishedPlaying)
     end
 
     local wasSpeaking = clip.nextSoundTimer ~= nil
@@ -330,7 +369,51 @@ function SoundQueue:Skip()
     local head = self:GetCurrentSound()
     if not head or not self:CanBePaused() then return false end
     self:SetPaused(false)
-    return self:RemoveSoundFromQueue(head)
+    return self:RemoveSoundFromQueue(head, false, true)
+end
+
+--- Replay the most recent line before the current one, or the last line after the queue drained.
+--- Waiting lines stay queued behind the replay. A replay is removed from history until the player
+--- moves farther back, so repeated presses walk through the short history instead of looping.
+function SoundQueue:Previous()
+    if not self:CanPrevious() then return false end
+    local previous = table.remove(self.history)
+    local wasPaused = self:IsPaused()
+    self:SetPaused(true)
+    local current = self:GetCurrentSound()
+    if current then
+        if not self:CanBePaused() or not self:RemoveSoundFromQueue(current) then
+            table.insert(self.history, previous)
+            self:SetPaused(wasPaused)
+            return false
+        end
+        -- Removing the only head makes the normal queue cleanup clear IsPaused. Keep the
+        -- temporary stop in place until both the restored current line and the replay are queued.
+        self:SetPaused(true)
+    end
+    -- The current line remains available after the replay, followed by whatever was waiting.
+    -- Add it first so the previous line can then be front-inserted ahead of it.
+    if current then
+        local restored = self:Add(current, current.source, true, true)
+        if not restored then
+            table.insert(self.history, previous)
+            self:SetPaused(wasPaused)
+            self:Advance()
+            return false
+        end
+    end
+    previous.replayingPrevious = true
+    local added, reason = self:Add(previous, previous.source, true)
+    if not added then
+        previous.replayingPrevious = nil
+        table.insert(self.history, previous)
+        self:SetPaused(wasPaused)
+        self:Advance()
+        return false, reason
+    end
+    self:SetPaused(false)
+    self:Advance()
+    return self:IsPlaying(previous)
 end
 
 --------------------------------------------------------------------------------
@@ -440,7 +523,7 @@ end
 -- followed by its own next part, which is not in the queue yet, so what waits now is not next.
 local function AfterSpoken(clip)
     local function Finish()
-        SoundQueue:RemoveSoundFromQueue(clip, true)
+        SoundQueue:RemoveSoundFromQueue(clip, true, true)
     end
     local _, nextClip = FirstPlayable(2)
     if not nextClip and not clip.continues then
@@ -676,7 +759,8 @@ end
 ---@param clip SpokenClip
 ---@param source table
 ---@param front boolean
-function SoundQueue:Add(clip, source, front)
+---@param preserveHistory boolean? Keep Previous history while restoring a navigated queue.
+function SoundQueue:Add(clip, source, front, preserveHistory)
     if not clip then
         return nil, "no clip"
     end
@@ -700,6 +784,12 @@ function SoundQueue:Add(clip, source, front)
 
     if IsQueued(clip.key) then
         return nil, "duplicate"
+    end
+
+    -- A new queue starts a new Previous trail. A navigational replay is the exception: it marks
+    -- itself so walking backward can keep the older entries available.
+    if self:IsEmpty() and not clip.replayingPrevious and not preserveHistory then
+        self.history = {}
     end
 
     if IsLow(clip) then
@@ -812,7 +902,7 @@ function SoundQueue:PauseQueue()
     -- Stopped in the pause after a line has spoken to its end: that line is over, and it is the
     -- next one Stop holds. Replay then plays the next line rather than the one already heard.
     if head and head.nextSoundTimer and head.spokenAt and GetTime() >= head.spokenAt then
-        self:RemoveSoundFromQueue(head, true)
+        self:RemoveSoundFromQueue(head, true, true)
         -- It was the last: there is nothing left to hold, and the removal took the stop off.
         if self:IsEmpty() then
             return true

@@ -171,6 +171,8 @@ end
 local GLYPH_STOP = ART .. "GlyphStop"
 local GLYPH_REPLAY = ART .. "GlyphReplay"
 local CELL = 93 / 128
+local PLAY_LEFT, PLAY_RIGHT = 0, 93 / PORTRAIT_ATLAS_SIZE
+local PLAY_TOP, PLAY_BOTTOM = 419 / PORTRAIT_ATLAS_SIZE, 1
 
 function Actions.Glyph(texture, state)
     if state == "stop" or state == "replay" then
@@ -179,7 +181,7 @@ function Actions.Glyph(texture, state)
         return
     end
     texture:SetTexture(PORTRAIT_ATLAS)
-    texture:SetTexCoord(0, 93 / PORTRAIT_ATLAS_SIZE, 419 / PORTRAIT_ATLAS_SIZE, 512 / PORTRAIT_ATLAS_SIZE)
+    texture:SetTexCoord(PLAY_LEFT, PLAY_RIGHT, PLAY_TOP, PLAY_BOTTOM)
 end
 
 --- Stop while the head plays, Replay once it is stopped.
@@ -203,11 +205,26 @@ function Actions.SetPausable(buttons)
     return pausable
 end
 
+--- Dims and disables the Previous button when the short playback history is empty or the head
+--- cannot be stopped. Returns whether it can act.
+function Actions.SetPreviousable(button)
+    local available = SoundQueue:CanPrevious()
+    button:SetAlpha(available and 1 or .4)
+    if available then button:Enable() else button:Disable() end
+    return available
+end
+
 --- Skip the line playing, with the click a window's Skip makes.
 function Actions.Skip()
     local skipped = SoundQueue:Skip()
     if skipped then SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON") end
     return skipped
+end
+
+function Actions.Previous()
+    local previous = SoundQueue:Previous()
+    if previous then SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON") end
+    return previous
 end
 
 --- Skip: the round button with the play glyph against a bar, the usual "next" mark.
@@ -231,6 +248,32 @@ function Actions.SkipButton(parent, name)
         GameTooltip:Show()
     end)
     return skip
+end
+
+--- Previous: the round button with the game's left-arrow glyph.
+function Actions.PreviousButton(parent, name)
+    -- Build the exact Skip control first, then mirror its triangle and bar.
+    local previous = Actions.SkipButton(parent, name)
+    previous.glyph:SetTexCoord(PLAY_RIGHT, PLAY_LEFT, PLAY_TOP, PLAY_BOTTOM)
+    previous.glyph:ClearAllPoints()
+    previous.glyph:SetPoint("CENTER", 2, 0)
+    previous.bar:ClearAllPoints()
+    previous.bar:SetPoint("RIGHT", previous.glyph, "LEFT", 0, 0)
+    previous:SetScript("OnClick", function()
+        local replayed = Actions.Previous()
+        -- The queue callback refreshes the narrator asynchronously on the real client; update
+        -- the clicked control immediately so the last available history entry cannot be clicked
+        -- again while the new line is being laid out.
+        Actions.SetPreviousable(previous)
+        return replayed
+    end)
+    previous:SetScript("OnEnter", function()
+        previous.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(previous, "ANCHOR_TOP")
+        GameTooltip:SetText(L.BIND_PREVIOUS)
+        GameTooltip:Show()
+    end)
+    return previous
 end
 
 --- Stop or Replay for the line at the head. `allowed()`, optional, says whether the window has
@@ -764,6 +807,11 @@ function Actions.NewRound(parent, kind, name, icon)
         Greys(button)
         return button
     end
+    if kind == "previous" then
+        local button = Actions.PreviousButton(parent, name)
+        Greys(button)
+        return button
+    end
     local button = Actions.RoundButton(parent, nil, name)
     if kind == "icon" and icon then
         Actions.RoundPicture(button, icon)
@@ -805,6 +853,8 @@ function Actions.DialogRow(dialog, tooltip, report)
     end
     row.play = Round("play")
     row.play:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row.previous = Round("previous")
+    row.tips[row.previous] = function(tip) tip:SetText(L.BIND_PREVIOUS) end
     row.skip = Round("skip")
     row.tips[row.skip] = function(tip) tip:SetText(L.BIND_SKIP) end
     if report then row.report = Round("report") end
@@ -833,7 +883,7 @@ function DialogRow:RefreshTip(button)
 end
 
 function DialogRow:HideTips()
-    for _, button in ipairs({ self.play, self.skip, self.report }) do
+    for _, button in ipairs({ self.play, self.previous, self.skip, self.report }) do
         if button.tooltip then button.tooltip:Hide() end
     end
 end

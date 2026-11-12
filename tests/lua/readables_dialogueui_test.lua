@@ -126,16 +126,17 @@ watch.scripts.OnShow(watch)
 local row = Book.row
 Expect("the book view opening shows Spoken's controls on it", row ~= nil and row.frame:IsShown()
     and row.frame:GetParent() == view, true)
-Expect("...Play, Skip and Report, the player's round buttons", row.play.ring ~= nil and row.skip.bar ~= nil
-    and row.report:IsShown(), true)
+Expect("...Play, Previous, Skip and Report, the player's round buttons", row.play.ring ~= nil
+    and row.previous.glyph ~= nil and row.skip.bar ~= nil and row.report:IsShown(), true)
 Expect("...left of the book's close button", row.frame.anchor.point .. " " .. tostring(row.frame.anchor.relativeTo
     == view.CloseButton) .. " " .. row.frame.anchor.relativePoint .. " " .. row.frame.anchor.x, "RIGHT true LEFT -4")
 local closeAt = view.CloseButton.anchor
 Expect("...the close button's middle halfway between the book's top and its title's, 26 in as DialogueUI has it",
     closeAt.point .. " " .. tostring(closeAt.relativeTo == view) .. " " .. closeAt.relativePoint .. " " .. closeAt.x
     .. " " .. closeAt.y, "RIGHT true TOPRIGHT " .. (-26 * 0.53333) .. " -24")
-Expect("...Report rightmost, then Skip, then Play", row.report.anchor.relativeTo == row.frame
-    and row.skip.anchor.relativeTo == row.report and row.play.anchor.relativeTo == row.skip, true)
+Expect("...Report rightmost, then Previous, Skip, then Play", row.report.anchor.relativeTo == row.frame
+    and row.previous.anchor.relativeTo == row.report and row.skip.anchor.relativeTo == row.previous
+    and row.play.anchor.relativeTo == row.skip, true)
 Expect("...as large on screen as Place Lore draws them, 24 at UIParent's scale",
     row.play:GetWidth() .. " " .. row.play:GetScale(), "24 " .. (UIParent:GetEffectiveScale() / 0.8))
 Expect("...in place of DialogueUI's own speaker", view.TTSButton:GetAlpha(), 0)
@@ -239,7 +240,7 @@ B.lastPage = 2810
 Book:Draw()
 Expect("a book no pack voices greys Play", row.play:IsEnabled(), false)
 Expect("...and has nothing to report", row.report:IsShown(), false)
-Expect("...Skip and Play moving up to the close button", row.skip.anchor.relativeTo, row.frame)
+Expect("...Previous, Skip and Play moving up to the close button", row.previous.anchor.relativeTo, row.frame)
 
 ---------------------------------------------------------------- a book only a pack has
 local MINTED = "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11"

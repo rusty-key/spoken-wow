@@ -537,6 +537,7 @@ local function PlaceRow(force)
     if report and report:IsShown() then
         table.insert(list, report)
     end
+    table.insert(list, row.previous)
     table.insert(list, row.skip)
     if row.play:IsShown() then
         table.insert(list, row.play)
@@ -625,6 +626,7 @@ function Bridge:DrawPlayButton()
         r.play:SetState(state)
     end
     SetEnabled(r.skip, Spoken.GetCurrent ~= nil and Spoken:GetCurrent() ~= nil)
+    SetEnabled(r.previous, Spoken.CanPrevious ~= nil and Spoken:CanPrevious())
     if r.open then
         local page = self:Page()
         local id = (page == "QUEST_DETAIL" or page == "QUEST_PROGRESS" or page == "QUEST_COMPLETE")

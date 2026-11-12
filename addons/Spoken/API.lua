@@ -169,9 +169,9 @@ function Spoken:PrimePortrait(creatureID)
     if style and style ~= "classic" and style ~= "none" and StaticPortrait then StaticPortrait:Prime(creatureID) end
 end
 
---- Play, Skip and, with `report`, Report in a row on one of DialogueUI's dialogs (`dialog`, its
+--- Play, Previous, Skip and, with `report`, Report in a row on one of DialogueUI's dialogs (`dialog`, its
 --- quest window or its book view), for a feature addon to put its line's controls there.
---- `tooltip()` returns the tooltip the dialog uses. The row has `frame`, `play`, `skip` and
+--- `tooltip()` returns the tooltip the dialog uses. The row has `frame`, `play`, `previous`, `skip` and
 --- `report`; `row:SetTip(button, fill)`, `row:ShowTip(button)`, `row:RefreshTip(button)`,
 --- `row:HideTips()`, and `row:Place(buttons, anchor, force)`, right to left from `anchor`. Additive:
 --- guard on the field.
@@ -600,6 +600,15 @@ function Spoken:GetNowPlaying()
     return SoundQueue:GetNowPlaying()
 end
 
+--- The most recent line available to Previous, or nil when its short history is empty.
+function Spoken:GetPrevious()
+    return SoundQueue:GetPrevious()
+end
+
+function Spoken:CanPrevious()
+    return SoundQueue:CanPrevious()
+end
+
 --- A shallow copy.
 function Spoken:GetQueue()
     return SoundQueue:GetQueue()
@@ -641,9 +650,10 @@ end
 
 --- The player's round button, the same one its subtitle shows, for a feature addon's own
 --- window: `kind` "play" (Play's glyph; `button:SetPlaying(on)` shows Stop while a line
---- speaks), "skip" (Skip's glyph; a click skips the line speaking, so it needs no OnClick),
+--- speaks), "previous" (Previous's glyph; a click replays from the short history), "skip"
+--- (Skip's glyph; a click skips the line speaking, so it needs no OnClick),
 --- "report" (the bug), or "icon" (the texture `icon`, cut round). Anchor it and give it OnClick
---- yourself. Play and Skip grey out while disabled.
+--- yourself. Play, Previous and Skip grey out while disabled.
 function Spoken:CreateRoundButton(parent, kind, name, icon)
     return Actions.NewRound(parent, kind, name, icon)
 end
@@ -657,6 +667,11 @@ end
 --- End the head; the backlog runs.
 function Spoken:Skip()
     return SoundQueue:Skip()
+end
+
+--- Replay the line before the current one, or the most recent line after the queue drained.
+function Spoken:Previous()
+    return SoundQueue:Previous()
 end
 
 --- Everything, every source, and the paused flag with it.

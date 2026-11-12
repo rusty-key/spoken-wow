@@ -6,6 +6,7 @@
     -->
     <Binding name="SPOKEN_PLAYPAUSE" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("play")</Binding>
     <Binding name="SPOKEN_SKIP" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("skip")</Binding>
+    <Binding name="SPOKEN_PREVIOUS" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("previous")</Binding>
     <Binding name="SPOKEN_STOP" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("stop")</Binding>
     <Binding name="SPOKEN_COMPENDIUM" category="BINDING_HEADER_SPOKEN">SlashCmdList.SPOKEN("compendium")</Binding>
 </Bindings>

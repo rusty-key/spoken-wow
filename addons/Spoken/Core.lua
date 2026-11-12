@@ -518,6 +518,7 @@ local function RegisterSlashCommand()
         local lines = {
             { "/sp replay", L.BIND_PLAYPAUSE },
             { "/sp skip", L.BIND_SKIP },
+            { "/sp previous", L.BIND_PREVIOUS },
             { "/sp stopall", L.BIND_STOP },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
             { "/sp narrator on | off", L.OPT_SHOW_NARRATOR },
@@ -543,6 +544,8 @@ local function RegisterSlashCommand()
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then
             SoundQueue:Skip()
+        elseif command == "previous" or command == "prev" then
+            SoundQueue:Previous()
         elseif command == "compendium" then
             Options:ToggleCompendium()
         elseif (verb == "narrator" or verb == "words" or verb == "transcript") and (rest == "" or rest == "on" or rest == "off") then

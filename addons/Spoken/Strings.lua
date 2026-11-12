@@ -122,6 +122,7 @@ L = {
     SUBTITLE_STOPPED = "Stopped",
     STOPPED_REMINDER = "Spoken is stopped, so new lines wait. Press Replay or Skip, or type /sp replay, to carry on.",
     BIND_SKIP = "Skip Line",
+    BIND_PREVIOUS = "Previous Line",
     BIND_STOP = "Stop All",
     BIND_COMPENDIUM = "Open Azeroth's Compendium",
     GATHER_OFF = "Not collecting",
