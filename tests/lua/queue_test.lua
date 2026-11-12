@@ -232,6 +232,9 @@ for _ = 1, 5 do stub.Advance(1.6) end
 for _ = 1, 5 do Q:Previous() end
 Expect("Previous walks back through five lines", Q:GetCurrentSound(), history[1])
 Expect("Previous is unavailable at the oldest line", Q:CanPrevious(), false)
+Q:Skip()
+Expect("skipping a replayed oldest line makes it the previous line", Q:GetPrevious(), history[1])
+Expect("Previous returns after skipping forward", Q:CanPrevious(), true)
 
 -- The last line skipped mid-word fades out, as Stop does, rather than cutting off.
 Fresh()

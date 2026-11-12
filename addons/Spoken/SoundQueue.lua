@@ -88,11 +88,11 @@ end
 -- A previous replay is navigational rather than new playback, so it must not put the same line
 -- straight back on top of the history when it ends. The older entries remain available for another
 -- press of Previous.
-local function Remember(clip)
+local function Remember(clip, finishedPlaying)
     if not clip then return end
     if clip.replayingPrevious then
         clip.replayingPrevious = nil
-        return
+        if finishedPlaying then return end
     end
     for index = #SoundQueue.history, 1, -1 do
         if SoundQueue.history[index] == clip then
@@ -308,7 +308,7 @@ function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying, remember)
     end
 
     if remember then
-        Remember(clip)
+        Remember(clip, finishedPlaying)
     end
 
     local wasSpeaking = clip.nextSoundTimer ~= nil
