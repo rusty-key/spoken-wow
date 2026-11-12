@@ -2,6 +2,14 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Mute an NPC's automatic greetings.** The narrator now offers a Mute NPC control for gossip
+  lines, confirms the choice, removes that NPC's greetings already waiting in the queue and keeps
+  the choice per character. Quest and manually requested lines remain available; Gossip settings
+  can forget the muted NPC list.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.7 — 2026-11-12
 
 - **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map
