@@ -194,8 +194,6 @@ for _, client in ipairs({ "11509", "16001" }) do
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 
-    -- A muted NPC's automatic greeting stays quiet; the toggle is on the NPC dialog, a speaker
-    -- glyph with a slash while muted.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     Talk()
     local muted = VO.Player:Current()
