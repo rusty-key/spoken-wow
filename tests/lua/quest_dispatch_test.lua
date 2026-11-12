@@ -162,6 +162,35 @@ lookup[string.format("%d-progress", full)] = 1
 lookup[string.format("%d-complete", full)] = 1
 lookup[string.format("%d-accept", followUp)] = 1
 
+-- A player who wants offers quiet until accepted can opt in. Manual Play remains an immediate
+-- read, while a declined offer is discarded instead of being replayed on close.
+local afterAccept = 106
+lookup[string.format("%d-accept", afterAccept)] = 1
+VO.Addon.db.profile.Audio.ReadAfterAccept = true
+StartScenario()
+world.questID = afterAccept
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(3)
+Expect("read-after-accept holds an offer open", "")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(3)
+Expect("read-after-accept leaves a declined offer quiet", "")
+StartScenario()
+world.questID = afterAccept
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(3)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_ACCEPTED", afterAccept)
+stub.Advance(3)
+Expect("read-after-accept plays after accepting", string.format("%d-accept", afterAccept))
+VO.Addon.db.profile.Audio.ReadAfterAccept = false
+
 -- A page whose event arrives with neither a quest ID nor a title names no quest, and nothing that
 -- comes later can tie it to one: a quest accepted within seconds, one nobody was shown (an escort a
 -- party member starts), is not read as if that page had been its offer.

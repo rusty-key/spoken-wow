@@ -459,6 +459,8 @@ local defaults = {
             OGThrall = false,
             -- On, an automatic read starts when the window closes instead of when it opens.
             ReadAfterClose = false,
+            -- On, an automatic quest offer waits for QUEST_ACCEPTED; declined offers stay quiet.
+            ReadAfterAccept = false,
             -- What NPCs say in chat after this player accepts or turns in a quest
             -- (Followup.lua). Autoplay off silences these too: they read themselves.
             FollowupLines = true,
@@ -735,12 +737,14 @@ function Addon:OnInitialize()
         end
         wipe(newest)
         for i, snapshot in ipairs(questSnapshots) do
-            if not snapshot.dispatched and not snapshot.passed then
+            if not snapshot.dispatched and not snapshot.passed
+                and not (self.db.profile.Audio.ReadAfterAccept and snapshot.event == "QUEST_DETAIL") then
                 newest[snapshot.event] = i
             end
         end
         for i, snapshot in ipairs(questSnapshots) do
-            if not snapshot.dispatched and not snapshot.passed then
+            if not snapshot.dispatched and not snapshot.passed
+                and not (self.db.profile.Audio.ReadAfterAccept and snapshot.event == "QUEST_DETAIL") then
                 -- Passed over, not spent: its own QUEST_ACCEPTED or QUEST_TURNED_IN still reads it.
                 if newest[snapshot.event] ~= i or IsStaleOffer(i) then
                     snapshot.passed = true
@@ -821,6 +825,12 @@ function Addon:OnInitialize()
         end
 
         if key ~= state.completedKey and state.candidateAge >= 0.4 and state.retryDelay <= 0 then
+            if self.db.profile.Audio.ReadAfterAccept and event == "QUEST_DETAIL" then
+                -- Keep the offer snapshot for QUEST_ACCEPTED, but do not read an offer that the
+                -- player closes or declines. Manual Play and /spq read still bypass this wait.
+                state.completedKey = key
+                return
+            end
             state.retryDelay = 0.5
             Debug:Record("auto-watcher-dispatch", format("Automatically reading %s quest %s", event,
                 tostring(questID)))
@@ -1421,6 +1431,11 @@ local function TakeGreetingMute(self, event)
     if quest and self.db.profile.Audio.ReadAfterClose then
         return
     end
+    -- An offer that waits for acceptance leaves the NPC's greeting alone as well: no quest line
+    -- will play while the offer is open.
+    if quest and self.db.profile.Audio.ReadAfterAccept and event == "QUEST_DETAIL" then
+        return
+    end
     -- Game Greeting First: nothing is cut, and the line waits for the greeting instead.
     if GreetingFirst:IsOn() then
         GreetingFirst:Open()
@@ -1528,7 +1543,8 @@ function Addon:ExpectedLine(event, textIsCurrent)
         end
         return speech.text() or ""
     elseif quest then
-        if self.db.profile.Audio.ReadAfterClose then
+        if self.db.profile.Audio.ReadAfterClose
+            or (self.db.profile.Audio.ReadAfterAccept and event == "QUEST_DETAIL") then
             return nil
         end
         -- The quest ID can still be the previous quest's this early; the worst that costs is
