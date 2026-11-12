@@ -1371,10 +1371,12 @@ function Addon:IsGossipNPCIgnored(guid, name)
     return key ~= nil and self.db.char.ignoredGossipNPCs[key] == true
 end
 
---- Whether a clip has an NPC whose automatic greeting can be ignored.
+--- Whether a clip has an NPC whose automatic greeting can be ignored: one a pack voices, so the
+--- toggle never sits on a window Spoken has nothing to read for.
 function Addon:CanIgnoreNPC(clip)
     return clip and Enums.SoundEvent:IsGossipEvent(clip.event)
         and IgnoredSpeakerKey(clip.unitGUID, clip.name) ~= nil
+        and DataModules:HasGossipFor(clip)
 end
 
 --- The NPC whose gossip or greeting dialog is currently open, as a real clip when one exists
@@ -1400,7 +1402,7 @@ function Addon:CurrentGossipClip()
         return currentGossipSoundData
     end
     return { event = Enums.SoundEvent[event == "QUEST_GREETING" and "QuestGreeting" or "Gossip"],
-        unitGUID = guid, name = name }
+        unitGUID = guid, name = name, unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }
 end
 
 --- Ignore an NPC's automatic greetings and remove its greetings already waiting in Spoken.
@@ -1536,13 +1538,14 @@ function Addon:MuteGreetingOnClick(button)
     if not guid or NotSecret(UnitCanAttack("player", unit)) or NotSecret(UnitIsDead(unit)) then
         return
     end
-    if self:IsGossipNPCIgnored(guid, NotSecret(UnitName("mouseover"))) then
+    local name = NotSecret(UnitName(unit))
+    if self:IsGossipNPCIgnored(guid, name) then
         return
     end
     if self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Always and self:HasHeardAnyGreeting(guid) then
         return
     end
-    if DataModules:HasGossipFor({ unitGUID = guid, name = NotSecret(UnitName(unit)), unitIsObjectOrItem = false }) then
+    if DataModules:HasGossipFor({ unitGUID = guid, name = name, unitIsObjectOrItem = false }) then
         clickTookMute = Spoken:MuteGameDialogueAhead(Player.gossipSource)
     end
 end

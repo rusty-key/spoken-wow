@@ -194,8 +194,8 @@ for _, client in ipairs({ "11509", "16001" }) do
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 
-    -- A muted NPC's automatic greeting stays quiet, while the control lives on the NPC dialog
-    -- rather than the player and uses the speaker glyph with a mute slash.
+    -- A muted NPC's automatic greeting stays quiet; the toggle is on the NPC dialog, a speaker
+    -- glyph with a slash while muted.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     Talk()
     local muted = VO.Player:Current()
@@ -214,6 +214,7 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
     Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), true)
     Expect(client .. ": the dialog keeps the toggle after muting", muteButton:IsShown(), true)
+    Expect(client .. ": a muted NPC's line can still be asked for", VO.DialogPlayButton.button:IsShown(), true)
     Expect(client .. ": muting keeps the speaker body", muteButton.glyph:GetTexture(),
         [[Interface\COMMON\VOICECHAT-SPEAKER]])
     Expect(client .. ": the silenced NPC shows a slash", muteButton.muteSlash:IsShown(), true)
@@ -222,11 +223,20 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": unmuting keeps the speaker body", muteButton.glyph:GetTexture(),
         [[Interface\COMMON\VOICECHAT-SPEAKER]])
     Expect(client .. ": unmuting removes the slash", muteButton.muteSlash:IsShown(), false)
+    Expect(client .. ": unmuting hands the line back to Read Automatically", VO.DialogPlayButton.button:IsShown(), false)
     Expect(client .. ": the NPC is no longer recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), false)
     Leave()
     Talk()
     Expect(client .. ": an unmuted NPC's automatic greeting plays again", Played(played), "greeting-hash")
     Leave()
+
+    -- No pack voices this NPC, so there is nothing for the toggle to mute.
+    local voicedName, voicedGUID = world.npcName, world.npcGUID
+    world.npcName, world.npcGUID = "Stranger", "Creature-0-0-0-0-99999-0"
+    Talk()
+    Expect(client .. ": an unvoiced NPC's dialog has no Mute toggle", muteButton:IsShown(), false)
+    Leave()
+    world.npcName, world.npcGUID = voicedName, voicedGUID
 end
 
 if Failures() > 0 then

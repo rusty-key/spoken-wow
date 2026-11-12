@@ -189,7 +189,9 @@ function DialogPlayButton:Refresh()
 
     local line, event = Addon:GetVisibleLine()
     -- Nothing reads itself with Read Automatically off, and no NPC window does at Never.
-    local held = not Addon:IsAutoplayOn() or (event and Addon:PartOfPage(event) == "gossip" and Addon:IsNever())
+    -- A muted NPC is held too, or its line could not be asked for at all.
+    local held = not Addon:IsAutoplayOn() or (event and Addon:PartOfPage(event) == "gossip"
+        and (Addon:IsNever() or Addon:IsGossipNPCIgnored(Utils:GetNPCGUID(), Utils:GetNPCName())))
     -- The panel itself, not merely the event: under DialogueUI the event arrives and the
     -- panel never shows. Switched off, the window's part puts no button on it.
     if not held or not line or not IsFrameVisible(_G[PANELS[event]]) then
@@ -293,14 +295,12 @@ function DialogPlayButton:Setup()
         mute.muteSlash = slash
         mute:SetScript("OnClick", function()
             DialogPlayButton:RefreshMute()
-            if DialogPlayButton.muteClip then
-                if DialogPlayButton.muteButton.muted then
-                    Addon:UnignoreNPC(DialogPlayButton.muteClip.unitGUID, DialogPlayButton.muteClip.name)
-                    DialogPlayButton:RefreshMute()
-                else
-                    Addon:IgnoreNPC(DialogPlayButton.muteClip.unitGUID, DialogPlayButton.muteClip.name)
-                    DialogPlayButton:RefreshMute()
-                end
+            local clip = DialogPlayButton.muteClip
+            if clip then
+                local toggle = DialogPlayButton.muteButton.muted and Addon.UnignoreNPC or Addon.IgnoreNPC
+                toggle(Addon, clip.unitGUID, clip.name)
+                -- Listen comes and goes with the mute, so the whole strip is redrawn.
+                DialogPlayButton:Refresh()
             end
         end)
         mute:HookScript("OnEnter", function(self)
