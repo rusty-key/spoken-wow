@@ -62,6 +62,7 @@ const WORDS: Partial<Record<Lang, { m: Words; f: Words }>> = {
   zhCN: { m: { name: "冒险者", race: "旅行者" }, f: { name: "冒险者", race: "旅行者" } },
   zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
   viVN: { m: { name: "nhà thám hiểm", race: "lữ khách" }, f: { name: "nhà thám hiểm", race: "lữ khách" } },
+  heIL: { m: { name: "הרפתקן", race: "נוסע" }, f: { name: "הרפתקנית", race: "נוסעת" } },
 };
 
 /** German capitalises every noun; the rest only at the start of a sentence. */

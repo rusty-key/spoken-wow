@@ -40,6 +40,12 @@ describe("the site's language list", () => {
     expect(clientLang("viVN")).toBeNull();
   });
 
+  it("knows Hebrew as a language no client runs in", () => {
+    expect(isLang("heIL")).toBe(true);
+    expect(isClientLang("heIL")).toBe(false);
+    expect(clientLang("heIL")).toBeNull();
+  });
+
   it("takes a contribution's language only from a client that exists", () => {
     expect(clientLang("enGB")).toBe("enUS");
     expect(clientLang("ptBR")).toBe("ptBR");

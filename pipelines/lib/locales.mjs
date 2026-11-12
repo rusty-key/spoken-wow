@@ -51,6 +51,7 @@ export const LOCALES = [
   { code: "zhCN", name: "Chinese (S)", script: "simplifiedchinese", elevenLabs: "zh", bcp47: "zh-CN", vmangos: 4 },
   { code: "zhTW", name: "Chinese (T)", script: "traditionalchinese", elevenLabs: "zh", bcp47: "zh-TW", vmangos: 5 },
   { code: "viVN", name: "Vietnamese", script: "vietnamese", elevenLabs: "vi", bcp47: "vi-VN", vmangos: null, client: false },
+  { code: "heIL", name: "Hebrew", script: "hebrew", elevenLabs: "he", bcp47: "he-IL", vmangos: null, client: false },
 ];
 
 export const CODES = LOCALES.map((l) => l.code);

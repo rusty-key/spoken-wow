@@ -22,6 +22,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
   full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
   *([carcachi](https://github.com/carcachi))*
+- **Hebrew is a voice language.** Choose עברית (Hebrew) under Voice Language in Settings to hear
+  a voice pack made in Hebrew. No game client runs in Hebrew, so Spoken never picks it by itself.
+  The game's fonts have no Hebrew letters, so Settings names it "Hebrew" where it cannot draw
+  עברית. *([renanbazinin](https://github.com/renanbazinin))*
 
 ## 3.8.6 — 2026-11-10
 

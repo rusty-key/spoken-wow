@@ -78,6 +78,7 @@ SpokenPlaces.LOCALES = {
 	{ code = "zhCN", name = "Chinese (S)", native = "简体中文", script = "simplifiedchinese" },
 	{ code = "zhTW", name = "Chinese (T)", native = "繁體中文", script = "traditionalchinese" },
 	{ code = "viVN", name = "Vietnamese", native = "Tiếng Việt", script = "vietnamese", client = false },
+	{ code = "heIL", name = "Hebrew", native = "עברית", script = "hebrew", client = false },
 }
 
 local BASE = "enUS"

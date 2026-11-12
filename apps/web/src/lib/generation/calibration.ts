@@ -54,13 +54,14 @@ export async function observedRate(modelId: string): Promise<Rate> {
  * Bytes per character of a language's text, at worst, for fish.audio's list price.
  *
  * fish.audio bills UTF-8 bytes and the corpus counts characters. English is one byte a
- * character; accented Latin a little over; Cyrillic two for letters and one for spaces and
- * punctuation; Hangul and Han three. Each figure is the script's letter width, so the
- * estimate is an upper bound until real takes calibrate it, which is the direction to err.
+ * character; accented Latin a little over; Cyrillic and Hebrew two for letters and one for
+ * spaces and punctuation; Hangul and Han three. Each figure is the script's letter width, so
+ * the estimate is an upper bound until real takes calibrate it, which is the direction to err.
  */
 const BYTES_PER_CHARACTER: Partial<Record<Lang, number>> = {
   enUS: 1,
   ruRU: 2,
+  heIL: 2,
   koKR: 3,
   zhCN: 3,
   zhTW: 3,
