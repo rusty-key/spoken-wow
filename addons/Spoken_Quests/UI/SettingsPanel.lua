@@ -75,6 +75,10 @@ function SettingsPanel:Setup()
         function() return audio().ReadAfterClose end,
         function(value) audio().ReadAfterClose = value end),
         function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(layout:Checkbox(L.OPT_PANEL_READ_AFTER_ACCEPT, nil,
+        function() return audio().ReadAfterAccept end,
+        function(value) audio().ReadAfterAccept = value end),
+        function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
 
     local function HasQuestLog()
         return _G.QuestLogFrame ~= nil or QuestLogQuests_Update ~= nil

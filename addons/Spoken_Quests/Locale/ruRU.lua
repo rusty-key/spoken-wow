@@ -47,6 +47,7 @@ L.OPT_CMD_OPTIONS_DESC = "Открывает страницу настроек �
 L.OPT_PANEL_AUTOPLAY = "Читать автоматически"
 L.OPT_PANEL_STOP_ON_CLOSE = "Остановка при закрытии"
 L.OPT_PANEL_READ_AFTER_CLOSE = "Читать после закрытия"
+L.OPT_PANEL_READ_AFTER_ACCEPT = "Читать после принятия"
 L.OPT_SECTION_TRACKER = "Показывать кнопку воспроизведения"
 L.OPT_TRACKER_QUEST_LOG = "Журнал заданий"
 L.OPT_TRACKER_OBJECTIVE = "Список целей"
