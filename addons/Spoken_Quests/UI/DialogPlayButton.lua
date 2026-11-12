@@ -25,8 +25,7 @@ local LABEL_PADDING = 24
 local GAP = 2
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
-local MUTE_ICON = [[Interface\COMMON\VOICECHAT-MUTED]]
-local UNMUTE_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
+local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
 
 -- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
@@ -170,7 +169,8 @@ function DialogPlayButton:RefreshMute()
     local muted = Addon:IsGossipNPCIgnored(clip.unitGUID, clip.name)
     self.muteClip = clip
     button.muted = muted
-    button.glyph:SetTexture(muted and UNMUTE_ICON or MUTE_ICON)
+    button.glyph:SetTexture(SPEAKER_ICON)
+    button.muteSlash:SetShown(not muted)
     self:PositionMute(frameName)
     button:Show()
 end
@@ -264,11 +264,21 @@ function DialogPlayButton:Setup()
     self.button = button
 
     if _G.Spoken and Spoken.CreateRoundButton then
-        local mute = Spoken:CreateRoundButton(UIParent, "icon", nil, MUTE_ICON)
+        local mute = Spoken:CreateRoundButton(UIParent, "icon", nil, SPEAKER_ICON)
         mute:SetSize(MUTE_SIZE, MUTE_SIZE)
         if mute.SetFrameStrata then
             mute:SetFrameStrata("DIALOG")
         end
+        local slash = mute:CreateTexture(nil, "OVERLAY")
+        slash:SetSize(2, 17)
+        slash:SetPoint("CENTER")
+        if slash.SetColorTexture then
+            slash:SetColorTexture(1, 1, 1, 0.95)
+        end
+        if slash.SetRotation then
+            slash:SetRotation(math.rad(-45))
+        end
+        mute.muteSlash = slash
         mute:SetScript("OnClick", function()
             DialogPlayButton:RefreshMute()
             if DialogPlayButton.muteClip then
