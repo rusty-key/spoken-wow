@@ -33,8 +33,8 @@ local function FileSize(n)
 end
 
 -- A zone map's explored overlays and the area each is of, asked for once per map and again
--- whenever the map opens. Kept for every zone the cursor crosses: on OpenMap's map it moves
--- between neighbours, and matching overlays to areas is the costly part.
+-- whenever the map opens. Kept for every zone the cursor crosses; OpenMap's stitched map is
+-- excluded because it already draws these same textures masked and graded.
 local function Known(mapID)
 	local known = state.known[mapID]
 	if not known then
@@ -99,9 +99,12 @@ local function AreaOf(info, mapID, layer, areaOf)
 end
 
 --- The overlay to light under the cursor, with its zone's art layer and the zone: only over an
---- area whose story a click would open.
+--- area whose story a click would open. OpenMap already draws this layer into its stitched map.
 local function Target()
 	if not SpokenPlaces:IsPartOn() or SpokenPlaces:MapLeftToOpenMap() then
+		return nil
+	end
+	if SpokenPlaces:OpenMap() then
 		return nil
 	end
 	local container = WorldMapFrame.ScrollContainer
@@ -194,7 +197,6 @@ local function OnUpdate()
 		info = nil
 	end
 	if info then
-		-- OpenMap's art, which this has to show over, is only built once its map first shows.
 		local level = SpokenPlaces:OverArtLevel(state.level)
 		if level ~= state.levelSet and pcall(state.frame.SetFrameLevel, state.frame, level) then
 			state.levelSet = level

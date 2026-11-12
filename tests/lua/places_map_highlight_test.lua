@@ -130,57 +130,15 @@ Z:RefreshMapHighlight()
 Run()
 Expect("raised again, it lights again", state.frame:IsShown() and state.frame:GetAlpha(), 0.35)
 
--- OpenMap's stitched map, its map Kalimdor while the view shows Durotar whole: Durotar's
--- rectangle on the stitched world, and Kalimdor's.
-local RECTS = { [1411] = { 0.6, 0.5, 0.7, 0.6 }, [1414] = { 0.4, 0.3, 0.9, 0.8 } }
-local under, zoom = { 0.6 + 0.1 * 250 / 1002, 0.5 + 0.1 * 140 / 668 }, 6
+-- OpenMap's stitched map already draws these same exploration pieces, masked and graded. Places
+-- must leave its raw highlight layer off rather than putting the unmasked Blizzard art back on top.
 OpenMapAPI = {
     major = 1, version = 4,
     IsStitched = function() return true end,
-    GetView = function() return 0.65, 0.55, zoom end,
-    CursorPosition = function() return under[1], under[2] end,
-    MapAt = function() return 1411 end,
-    ArtTopLevel = function() return 2083 end,
-    WorldFromMap = function(id, x, y)
-        local r = RECTS[id]
-        return r[1] + x * (r[3] - r[1]), r[2] + y * (r[4] - r[2])
-    end,
-    MapFromWorld = function(id, u, v)
-        local r = RECTS[id]
-        return (u - r[1]) / (r[3] - r[1]), (v - r[2]) / (r[4] - r[2])
-    end,
 }
-state.frame.SetFrameLevel = function(self, level) self.level = level end
 WorldMapFrame.mapID = 1414
 Run()
-lit = Shown()
-Expect("stitched, the area of the zone under the cursor lights on the continent's map",
-    state.frame:IsShown() and #lit == 1 and lit[1]:GetTexture(), 21)
-Expect("...over OpenMap's art, which covers the explored areas", state.frame.level, 2084)
-Expect("...drawn at the zone's scale on the continent's canvas", math.abs(state.frame:GetScale() - 0.2) < 1e-9, true)
-local _, _, _, ax, ay = state.frame:GetPoint(1)
-Expect("...over the zone's place on it", math.abs(ax - 0.4 * 1002 / 0.2) < 1e-6 and math.abs(ay + 0.4 * 668 / 0.2) < 1e-6, true)
-panelOpen = false
-under[2] = under[2] + 1e-6
-Run()
-Expect("stitched, with the panel folded away, nothing lights: the map is OpenMap's", state.frame:IsShown(), false)
-panelOpen = true
-under[2] = under[2] - 1e-6
-Run()
-Expect("...and it lights again once the panel is back", state.frame:IsShown(), true)
-
--- The view pans under a resting cursor: Blizzard's cursor on the canvas stays, the world point moves.
-under[1] = 0.6 + 0.1 * 120 / 1002
-under[2] = 0.5 + 0.1 * 60 / 668
-Run()
-Expect("the view moving under a resting cursor lights what is now under it", #Shown(), 2)
-zoom = 2
-Run()
-Expect("zoomed out to where OpenMap's click picks a zone, dark", state.frame:IsShown(), false)
-zoom = 6
-WorldMapFrame.mapID = 1411
-Run()
-Expect("on the zone's own map, laid over the whole canvas again", state.frame:GetScale(), 1)
+Expect("on OpenMap's stitched map, the raw exploration highlight stays off", state.frame:IsShown(), false)
 OpenMapAPI = nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
