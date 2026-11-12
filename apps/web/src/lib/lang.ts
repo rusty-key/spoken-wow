@@ -52,20 +52,28 @@ export const LOCALES = BUILTIN;
 export const CODES: readonly Lang[] = BUILTIN.map((locale) => locale.code);
 
 const builtinByCode = new Map<string, LanguageInfo>(BUILTIN.map((locale) => [locale.code, locale]));
-let extras = new Map<string, LanguageInfo>();
+
+/**
+ * On globalThis because Next loads this module once per bundle layer: the registry the server
+ * fills at boot (instrumentation.ts) must be the one a route handler or a page reads. In the
+ * browser it is the window's.
+ */
+const registryKey = Symbol.for("spoken.languages");
+type RegistryHolder = { [registryKey]?: { extras: Map<string, LanguageInfo> } };
+const registry = ((globalThis as RegistryHolder)[registryKey] ??= { extras: new Map() });
 
 /** Replaces the languages beyond the built-in ones. A built-in's code in the list is ignored. */
 export function registerLanguages(list: readonly LanguageInfo[]): void {
-  extras = new Map(list.filter((info) => !builtinByCode.has(info.code)).map((info) => [info.code, info]));
+  registry.extras = new Map(list.filter((info) => !builtinByCode.has(info.code)).map((info) => [info.code, info]));
 }
 
 /** Built-ins in their order, then the registered ones by code. */
 export function allLangs(): Lang[] {
-  return [...BUILTIN.map((locale) => locale.code), ...[...extras.keys()].sort()];
+  return [...BUILTIN.map((locale) => locale.code), ...[...registry.extras.keys()].sort()];
 }
 
 export function languageInfo(lang: string): LanguageInfo | null {
-  return builtinByCode.get(lang) ?? extras.get(lang) ?? null;
+  return builtinByCode.get(lang) ?? registry.extras.get(lang) ?? null;
 }
 
 /**
