@@ -46,18 +46,19 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
   if (lang === BASE_LANG) throw new Error("English cannot be switched off");
   // The CTE reads the row as it was before this statement, so "was" is the previous state:
-  // null for a language never switched, which languageStates treats as off.
+  // null for a language never switched, which languageStates treats as off. A row is
+  // described when it is made (migration 0106), so this only ever updates one.
   // One transaction, so a language is never enabled without a team for its work to land on.
   const row = await inTransaction(async (client) => {
     const { rows } = await client.query<{ was: boolean | null }>(
       `with "before" as (select "enabled" from "language" where "code" = $1)
-       insert into "language" ("code", "enabled", "updatedAt", "updatedBy")
-       values ($1, $2, now(), $3)
-       on conflict ("code") do update
-          set "enabled" = excluded."enabled", "updatedAt" = now(), "updatedBy" = excluded."updatedBy"
+       update "language"
+          set "enabled" = $2, "updatedAt" = now(), "updatedBy" = $3
+        where "code" = $1
        returning (select "enabled" from "before") as "was"`,
       [lang, enabled, userId],
     );
+    if (!rows[0]) throw new Error(`${lang} has no row in the language table`);
     await adoptEveryLang(client);
     return rows[0];
   });
