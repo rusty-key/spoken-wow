@@ -35,7 +35,8 @@ the admin's approval.
 
 - Next.js app router with better-auth sessions, Postgres and shadcn/Tailwind components.
 - Forms are client components that call `/api` route handlers. There are no server actions.
-- There are two global roles, member and admin. Per-language capabilities are grants.
+- There are three global roles: member, pack author (may submit community packs) and admin.
+  Per-language capabilities are grants.
 - A community pack is a single `SpokenCommunity_<id>` folder in a zip, hosted as a GitHub release
   asset. The Manager checks its sha256 and size before it installs anything.
 
