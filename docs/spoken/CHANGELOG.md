@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Spoken profiles can be exported and imported as copyable strings.** Export a profile from the
+  Profiles section, paste it into another install, and import it into the current profile.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.7 — 2026-11-12
 
 - **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map
