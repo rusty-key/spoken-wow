@@ -13,11 +13,12 @@ local panel
 
 -- The enum is stored as a number and read as a name. Ordered as the menu lists them: from
 -- reading the most to the least.
-local GOSSIP_ORDER = { "Always", "OncePerQuestNPC", "OncePerNPC", "Never" }
+local GOSSIP_ORDER = { "Always", "OncePerQuestNPC", "OncePerNPC", "OncePerSession", "Never" }
 local GOSSIP_LABELS = {
     Always = L.OPT_GREETING_LABEL_ALWAYS,
     OncePerQuestNPC = L.OPT_GREETING_LABEL_ONCE_QUEST,
     OncePerNPC = L.OPT_GREETING_LABEL_ONCE_NPC,
+    OncePerSession = L.OPT_GREETING_LABEL_ONCE_SESSION,
     Never = L.OPT_GREETING_LABEL_NEVER,
 }
 

@@ -33,7 +33,9 @@ Enums.GossipFrequency =
     Always = 1,
     OncePerQuestNPC = 2,
     OncePerNPC = 3,
+    -- Keep Never at 4: it is already stored in players' profiles.
     Never = 4,
+    OncePerSession = 5,
 }
 
 ---@enum GUID

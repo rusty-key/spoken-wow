@@ -76,10 +76,12 @@ Spoken's own page. Gossip adds no saved variable.
   Before Reading, on the same page: the NPC's own greeting plays first, for quest windows and
   gossip windows.
 - On Gossip's page, Read Greetings: Every Time, Once for Quest Givers (the default), Once per
-  Greeting (saved as `OncePerNPC`) or Never. The once-per settings remember each text an NPC greets
-  with, so an NPC with several greetings reads each new one once. Once for Quest Givers holds
-  back a repeat only where the NPC has quests. At Never nothing reads itself and the NPC windows
-  show a Listen button.
+  Greeting (saved as `OncePerNPC`), Once per Session or Never. Once per Greeting remembers each
+  text an NPC greets with, so an NPC with several greetings reads each new one once. Once for
+  Quest Givers holds back a repeat only where the NPC has quests. Once per Session uses the same
+  NPC-ID-and-text keying but forgets it when the addon reloads. It therefore does not distinguish
+  guards that share an NPC ID. At Never nothing reads itself and the NPC windows show a Listen
+  button.
 - Original Thrall Speech, and Forget Greetings Heard, which makes every
   NPC greet this character again. That matters only for the two once-per settings. Heard
   greetings are kept per character in `hasSeenGossipForNPC`: under each creature's ID, or `o` and
