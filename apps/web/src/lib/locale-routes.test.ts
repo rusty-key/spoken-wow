@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import { localeRedirects, localeRewrites } from "./locale-routes";
 
+/** As next.config.ts has it: caseSensitiveRoutes. The typings leave `sensitive` out. */
+const MATCH = { decode: decodeURIComponent, sensitive: true };
+
 /** Where Next would send `path`: the first rule whose source matches, filled in. */
 function route(rules: { source: string; destination: string }[], path: string): string | null {
   for (const rule of rules) {
-    const found = match<Record<string, string | string[]>>(rule.source, { decode: decodeURIComponent })(path);
+    const found = match<Record<string, string | string[]>>(rule.source, MATCH)(path);
     if (!found) continue;
     return rule.destination.replace(/:(\w+)\*?/g, (_, name: string) => {
       const value = found.params[name];
@@ -39,8 +42,17 @@ describe("the language in the URL", () => {
     expect(route(localeRedirects, "/ptBR/quests")).toBeNull();
   });
 
-  it("does not take something shaped like a language for one", () => {
-    expect(route(localeRewrites, "/xxYY/quests")).toBe("/enUS/xxYY/quests");
+  it("passes a language it has never heard of through too; the layout decides whether it exists", () => {
+    expect(route(localeRewrites, "/jaJP/quests")).toBeNull();
+    expect(route(localeRewrites, "/jaJP")).toBeNull();
+    expect(route(localeRewrites, "/xxYY/quests")).toBeNull();
+    expect(route(localeRedirects, "/jaJP/quests")).toBeNull();
+  });
+
+  it("still serves a bare path that only resembles a language prefix as English", () => {
+    expect(route(localeRewrites, "/quests/jaJP")).toBe("/enUS/quests/jaJP");
+    expect(route(localeRewrites, "/jajp/quests")).toBe("/enUS/jajp/quests");
+    expect(route(localeRewrites, "/jaJPX/quests")).toBe("/enUS/jaJPX/quests");
   });
 
   it("stays away from the API, Next's assets, downloads and files", () => {

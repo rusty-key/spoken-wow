@@ -16,22 +16,23 @@
  * redirects are relative paths, which have no host to disagree about, and cost nothing per
  * request.
  *
- * VALIDATED AGAINST THE LIST IN CODE, NOT THE DATABASE. Whether a language is switched on is
- * the layout's question (src/app/[lang]/layout.tsx). A path that merely looks like a language
- * -- /xxYY/quests -- is not one, and is rewritten like any other bare path, onto a page that
- * does not exist.
+ * MATCHED BY SHAPE, VALIDATED BY THE LAYOUT. Languages come from the database and can be
+ * created after the build, so a prefix is recognised by what it looks like (LANG_SHAPE; it
+ * needs caseSensitiveRoutes in next.config.ts), not by a list. Whether it is a language, and
+ * switched on, is the layout's question (src/app/[lang]/layout.tsx, via pageLang): /xxYY/quests
+ * passes through here untouched and the layout answers 404.
  */
-import { BASE_LANG, CODES } from "./lang";
+import { BASE_LANG } from "./lang";
 
-/** Every language's prefix, as a regex alternation. */
-const PREFIXES = CODES.join("|");
+/** What a language code looks like: two lowercase letters, two uppercase (enUS). */
+export const LANG_SHAPE = "[a-z]{2}[A-Z]{2}";
 
 /**
  * What is never a page: the API, which takes its language as ?lang= (lib/lang.ts withLang);
- * Next's own assets; /downloads, which nginx serves from disk; a language's own prefix; and a
- * file -- /logo.png, /icons/... -- which a rewrite would send to /enUS/logo.png and a 404.
+ * Next's own assets; /downloads, which nginx serves from disk; anything shaped like a
+ * language prefix; and a file -- /logo.png, /icons/... -- which a rewrite would send to /enUS/logo.png and a 404.
  */
-const BARE_PAGE = `(?!(?:api|_next|downloads|${PREFIXES})(?:/|$))(?!.*\\.).+`;
+const BARE_PAGE = `(?!(?:api|_next|downloads|${LANG_SHAPE})(?:/|$))(?!.*\\.).+`;
 
 export const localeRedirects = [
   { source: `/${BASE_LANG}`, destination: "/", permanent: true },
