@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { signOut, useSession } from "@/lib/auth-client";
-import { isAdmin, langsWhere } from "@/lib/permissions";
+import { canSubmitPacks, isAdmin, langsWhere } from "@/lib/permissions";
 import { triages } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
 
@@ -99,6 +99,8 @@ export default function UserMenu() {
         isAdmin(role) && { href: "/npcs", label: "NPCs" },
         // Who did what in this language: for whoever answers for the grants in it.
         may("admin") && { href: "/activity", label: "Activity" },
+        // Global like the role: a pack names its own language.
+        canSubmitPacks(role) && { href: "/packs", label: "My packs" },
         // Everyone signed in has one, and for somebody who may regenerate it is where their key
         // lives - which is the thing standing between them and the Regenerate button.
         { href: "/profile", label: "Profile" },
