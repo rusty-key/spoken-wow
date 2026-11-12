@@ -52,7 +52,7 @@ Expect("the header is the clip's", F.frame.container.name:GetText(), "Eagan Pelt
 ExpectOf("...and the line's name after it and a dot, as the other windows show both", function()
     local label = F.frame.container.label
     return tostring(label:IsShown()) .. "|" .. label:GetText() .. "|" .. tostring(label.anchor.relativeTo == F.frame.container.name)
-end, "true|• Wolves Across the Border|true")
+end, "true|· Wolves Across the Border|true")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 Expect("hidden again when the queue empties", F.frame:IsShown(), false)
 quests:Enqueue(H.Clip({ key = "b:1", present = { header = "A Letter Home", portrait = { kind = "none" } } }))
@@ -80,14 +80,14 @@ places:Enqueue(H.Clip({ key = "s:1436:moonbrook", present = { header = "Westfall
     portrait = { kind = "none" } } }))
 ExpectOf("a subzone's story names the zone, then the subzone", function()
     return F.frame.container.name:GetText() .. " " .. F.frame.container.label:GetText()
-end, "Westfall • Moonbrook")
+end, "Westfall · Moonbrook")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 -- A zone's own story is headed by its continent.
 places:Enqueue(H.Clip({ key = "z:1436", present = { header = "Eastern Kingdoms", label = "Westfall", bullet = "zone",
     portrait = { kind = "none" } } }))
 ExpectOf("a zone's own story names the continent, then the zone", function()
     return F.frame.container.name:GetText() .. " " .. F.frame.container.label:GetText()
-end, "Eastern Kingdoms • Westfall")
+end, "Eastern Kingdoms · Westfall")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 -- An area whose zone has no name is headed by its own name.
 places:Enqueue(H.Clip({ key = "s:1436:moonbrook", present = { header = "Moonbrook", label = "Moonbrook", bullet = "zone",
@@ -104,7 +104,7 @@ local long = string.rep("The Defias Brotherhood ", 6)
 Row("Gryan Stoutmantle", long)
 ExpectOf("a long line's name is cut to the room left, past the speaker's name in full", function()
     return tostring(name.width == #"Gryan Stoutmantle" * 7 + 1) .. " " .. tostring(title:GetAlpha())
-        .. " " .. tostring(title.width < #("• " .. long) * 7 + 1) .. " " .. tostring(title.anchor.x == name.width + 6)
+        .. " " .. tostring(title.width < #("· " .. long) * 7 + 1) .. " " .. tostring(title.anchor.x == name.width + 6)
 end, "true 1 true true")
 local room = name.width + 6 + title.width
 ExpectOf("...and pointing at it shows the whole of it", function()
@@ -127,10 +127,10 @@ ExpectOf("...nor where the speaker's name takes the whole row, which is cut to i
 end, "0 true")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 -- A short line's name is drawn where it fits whole, though less room is left than the least a cut one
--- takes ("• ...").
+-- takes ("· ...").
 Row(string.rep("W", math.floor((room - 6 - 1 - 40) / 7)), "A")
 ExpectOf("a line's name shorter than the least that is cut is drawn whole in the room it fits", function()
-    return tostring(title:GetAlpha()) .. " " .. tostring(title.width == #"• A" * 7 + 1)
+    return tostring(title:GetAlpha()) .. " " .. tostring(title.width == #"· A" * 7 + 1)
 end, "1 true")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 -- The count of lines waiting takes its room from the line's name, which is cut to what is left.
@@ -261,7 +261,7 @@ Expect("the speaking clip heads the window even if queued second", F.frame.conta
 ExpectOf("a waiting line gets no row: the header counts it after the name, as the DialogueUI window does", function()
     return tostring(F.frame.container.buttons) .. " " .. tostring(F.count:IsShown()) .. " " .. F.count:GetText()
         .. " " .. tostring(F.count.anchor.relativeTo == F.frame.container.name)
-end, "nil true • +1 true")
+end, "nil true · +1 true")
 ExpectOf("...past the line's name", function()
     local label = F.frame.container.label
     return F.count.anchor.x > label.anchor.x + label.width
@@ -284,7 +284,7 @@ places:AddGate(function() return "in combat" end)
 places:Enqueue(H.Clip({ present = { header = "Durotar", bullet = "zone", portrait = { kind = "none" } } }))
 ExpectOf("a held line says why after its name", function()
     return tostring(F.held:IsShown()) .. " " .. F.held:GetText()
-end, "true • (in combat)")
+end, "true · (in combat)")
 env.Addon.db.profile.Transcript.SubtitleProgress = false
 F:RefreshConfig()
 Expect("Show Progress off hides the large window's progress line", F.progress.track:IsShown(), false)
@@ -405,7 +405,7 @@ pcall(F.UpdateControls, F)
 ExpectOf("Stop stops the line, its glyph turning to Replay", function() return F.play.state end, "replay")
 ExpectOf("...and the header says it is stopped, after the name and a dot", function()
     return tostring(F.stopped:IsShown()) .. "|" .. F.stopped:GetText() .. "|" .. tostring(F.stopped.anchor.relativeTo == column.name)
-end, "true|• (" .. env.L.SUBTITLE_STOPPED .. ")|true")
+end, "true|· (" .. env.L.SUBTITLE_STOPPED .. ")|true")
 ExpectOf("...fading in", function() return F.stopped:GetAlpha() < 1 end, true)
 pcall(F.Tick, F, 0.3)
 ExpectOf("...all the way", function() return F.stopped:GetAlpha() end, 1)
@@ -953,7 +953,7 @@ env.PlayerFrame:Update()
 local report = table.concat(env.PlayerFrame:Describe(), "\n")
 Expect("it reports the header it drew", string.find(report, 'header="Gornek"', 1, true) ~= nil, true)
 Expect("...the line's name after it, and whether it is drawn",
-    string.find(report, 'label="• Cutting Teeth" shown=true alpha=1.00', 1, true) ~= nil, true)
+    string.find(report, 'label="· Cutting Teeth" shown=true alpha=1.00', 1, true) ~= nil, true)
 Expect("...which portrait renderer is in use", string.find(report, "portrait kind=none", 1, true) ~= nil, true)
 Expect("...and how much is queued", string.find(report, "queue=1", 1, true) ~= nil, true)
 

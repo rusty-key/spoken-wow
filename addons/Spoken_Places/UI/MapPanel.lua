@@ -15,6 +15,9 @@ local Art = SpokenPlaces.Art
 
 local panel, page, toggle
 
+-- A feature module's entry shown in place of the story, tied to the map displayed when it opened.
+local externalStory
+
 -- What the map's alpha is at when the player stands still. The fader's last step may stop a hair
 -- short of 1.
 local CLEAR = 0.99
@@ -148,6 +151,12 @@ local function NewPanel()
 	return frame
 end
 
+local function SetPanelTitle(title)
+	if panel and panel.SetTitle then
+		panel:SetTitle(title or L.LORE_PANEL_TITLE)
+	end
+end
+
 local function BuildPanel()
 	local width = SpokenPlaces:Get("panelWidth")
 
@@ -176,6 +185,23 @@ local function BuildPanel()
 	end
 	page = SpokenPlaces:CreateLorePage(holder, "log")
 	panel.page = page
+	-- The Forever client draws no 3D model under the panel, in the map or beside it, nor below HIGH
+	-- strata; why is not known. The model draws on its own stage, clipped to the page's text.
+	local body = page.body
+	if body.model and body.frame then
+		local stage = CreateFrame("Frame", nil, UIParent)
+		stage:SetFrameStrata("HIGH")
+		stage:SetAllPoints(body.frame)
+		if stage.SetClipsChildren then stage:SetClipsChildren(true) end
+		stage:SetShown(body.frame:IsVisible())
+		body.frame:HookScript("OnShow", function() stage:Show() end)
+		body.frame:HookScript("OnHide", function() stage:Hide() end)
+		body.model:SetParent(stage)
+		-- Not the map's child, so it fades with the map itself: the movement fader changes the map's
+		-- alpha every frame as the player walks.
+		stage:SetScript("OnUpdate", function(self) self:SetAlpha(WorldMapFrame:GetAlpha() or 1) end)
+		panel.stage = stage
+	end
 
 	-- The rim on a frame of its own above the page: drawn on the panel itself it would sit under
 	-- the page, which, being a child, is drawn over everything its parent draws.
@@ -319,6 +345,9 @@ local function FollowMap()
 			frame:SetScale(mapScale / uiScale)
 		end
 	end
+	if panel.stage and uiScale and uiScale > 0 then
+		panel.stage:SetScale(panel:GetEffectiveScale() / uiScale)
+	end
 	FollowAlpha()
 end
 
@@ -435,6 +464,10 @@ end
 -- Content
 --------------------------------------------------------------------------------
 
+-- The map the panel last told the story of, so OpenMap's view moving refreshes it only when
+-- that changes.
+local shownMap
+
 local function Refresh(mapID)
 	if not panel then
 		return
@@ -458,16 +491,42 @@ local function Refresh(mapID)
 		return
 	end
 
-	local zoneName = SpokenPlaces:GetMapName(mapID) or ("uiMapID " .. tostring(mapID))
+	-- ShowMapStory drops the selection, so one present here was made after the story opened. Keeping
+	-- the story would swallow that click on the map.
+	if externalStory and (externalStory.mapID ~= mapID or SpokenPlaces.selected) then
+		externalStory = nil
+	end
+	if externalStory then
+		SetPanelTitle(externalStory.entry.panelTitle)
+		page:Show(externalStory.entry)
+		return
+	end
+	SetPanelTitle()
 
 	-- A selection only applies to the map it was made on; navigating elsewhere drops it. Checking
 	-- here rather than on the map-changed callback keeps this independent of the order modules
-	-- register their callbacks.
+	-- register their callbacks. OpenMap changes the map as its view moves, and a click there
+	-- selects in whatever zone is under the cursor, so there the selection stays and is told
+	-- on the map it was made on.
 	local selected = SpokenPlaces.selected
 	if selected and selected.mapID ~= mapID then
-		SpokenPlaces.selected = nil
+		if SpokenPlaces:OpenMap() then
+			mapID = selected.mapID
+		else
+			SpokenPlaces.selected = nil
+			selected = nil
+		end
+	end
+	if not selected then
+		mapID = SpokenPlaces:ViewMap(mapID)
+	end
+	shownMap = mapID
+	-- A city or zone chosen on OpenMap's map is told as its own map is.
+	if selected and selected.map then
 		selected = nil
 	end
+
+	local zoneName = SpokenPlaces:GetMapName(mapID) or ("uiMapID " .. tostring(mapID))
 
 	if selected then
 		-- Prefer the name the client reported, which is what the player sees on the map ("The
@@ -483,7 +542,11 @@ local function Refresh(mapID)
 		local story = SpokenPlaces:StoryPlace(mapID, key)
 		local line = SpokenPlaces:PlaceLine(story, key or name)
 		-- The line under an area's name returns to its zone's story: nothing else on the panel does.
-		local back = function() SpokenPlaces:ClearSubzone() end
+		-- On OpenMap's map, to the zone the area is in, which may not be the one at the view's centre.
+		local zone = mapID
+		local back = function()
+			if SpokenPlaces:OpenMap() then SpokenPlaces:SelectMap(zone) else SpokenPlaces:ClearSubzone() end
+		end
 		-- Not found yet: named, and no more, as Azeroth's Compendium has it.
 		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(story, key) then
 			page:Show({ title = name, subtitle = line, onSubtitle = back, text = L.NOT_DISCOVERED })
@@ -533,8 +596,39 @@ local function Refresh(mapID)
 		audio = { foundOn, nil }, report = { foundOn, nil }, lore = { foundOn, nil } })
 end
 
+--- Whether the panel is on screen beside the map: not folded away, turned off, or hidden by the
+--- maximized map.
+function SpokenPlaces:IsMapPanelOpen()
+	return panel ~= nil and panel:IsShown()
+end
+
 function SpokenPlaces:RefreshPanel()
 	Refresh(SpokenPlaces:GetDisplayedMapID())
+end
+
+--- `entry` is what the map lore page takes, with `target`, `play` and `reportAction` for the
+--- module's own source. A map change or an area click clears it.
+function SpokenPlaces:ShowMapStory(mapID, entry)
+	if not mapID or type(entry) ~= "table" or not panel then
+		return false
+	end
+	externalStory = { mapID = mapID, entry = entry }
+	SpokenPlaces.selected = nil
+	if self:Get("showMapPanel") and self:Get("mapPanelCollapsed") then
+		self:SetMapPanelCollapsed(false)
+	else
+		Refresh(mapID)
+	end
+	return panel:IsShown()
+end
+
+function SpokenPlaces:ClearMapStory(mapID)
+	if not externalStory or (mapID and externalStory.mapID ~= mapID) then
+		return false
+	end
+	externalStory = nil
+	Refresh(mapID)
+	return true
 end
 
 function SpokenPlaces:SetMapPanelCollapsed(collapsed)
@@ -572,6 +666,10 @@ function SpokenPlaces:SetupMapPanel()
 		Refresh(SpokenPlaces:GetDisplayedMapID())
 	end)
 	WorldMapFrame:HookScript("OnHide", function()
+		-- On OpenMap's map a choice outlives map changes; it lasts until the map closes.
+		if SpokenPlaces:OpenMap() then
+			SpokenPlaces.selected = nil
+		end
 		panel:Hide()
 		toggle:Hide()
 	end)
@@ -583,6 +681,20 @@ function SpokenPlaces:SetupMapPanel()
 
 	SpokenPlaces:OnMapChanged(function(mapID)
 		Refresh(mapID)
+	end)
+	-- Only while the panel shows: folded or unavailable, Refresh leaves shownMap as it was.
+	SpokenPlaces:OnOpenMapView(function()
+		if SpokenPlaces.selected or not SpokenPlaces:IsMapPanelOpen() then
+			return
+		end
+		local mapID = SpokenPlaces:GetDisplayedMapID()
+		if SpokenPlaces:ViewMap(mapID) ~= shownMap then
+			Refresh(mapID)
+		end
+	end, function()
+		-- A choice made on OpenMap's map may belong to no map Blizzard's shows.
+		SpokenPlaces.selected = nil
+		Refresh(SpokenPlaces:GetDisplayedMapID())
 	end)
 
 	-- Toggling "Hide the Contribute buttons" in the Spoken settings fires no game event.

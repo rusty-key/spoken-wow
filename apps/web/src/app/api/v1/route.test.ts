@@ -52,7 +52,7 @@ describe("GET /api/v1", () => {
         places: { filters: ["zone"] },
         bosses: { filters: ["instance"] },
         readables: { filters: ["book"] },
-        quests: { filters: ["quest", "source"] },
+        quests: { filters: ["quest", "source", "minLevel", "maxLevel"] },
       },
     });
   });

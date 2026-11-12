@@ -20,6 +20,7 @@ export const LOCALES = [
   { code: "esMX", name: "Spanish (AL)", bcp47: "es-MX", elevenLabs: "es" },
   { code: "frFR", name: "French", bcp47: "fr-FR", elevenLabs: "fr" },
   { code: "itIT", name: "Italian", bcp47: "it-IT", elevenLabs: "it", client: false },
+  { code: "plPL", name: "Polish", bcp47: "pl-PL", elevenLabs: "pl", client: false },
   { code: "ptBR", name: "Portuguese", bcp47: "pt-BR", elevenLabs: "pt" },
   { code: "ruRU", name: "Russian", bcp47: "ru-RU", elevenLabs: "ru" },
   { code: "koKR", name: "Korean", bcp47: "ko-KR", elevenLabs: "ko" },

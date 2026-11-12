@@ -314,8 +314,9 @@ function Addon:Profile(section)
 end
 
 --- Draws a clip's text in its `present.font`, for a script the game's font has no glyphs for
---- (Czech on a Western client), and any other clip's in the font string's own face. The size
---- and flags stay the player's.
+--- (Czech on a Western client), and any other clip's in the font string's own face. The size and
+--- flags stay the player's. Not the font a pack declares for its language: the name and title
+--- this styles are the client's own text, which that font may not draw (Russian in a Hebrew face).
 function Addon:ClipFont(fontString, clip)
     local face, size, flags = fontString:GetFont()
     if not face then return end
@@ -691,7 +692,7 @@ function Addon:RetireOldFolders()
     for _, folder in ipairs(found) do
         if DisableAddOn then pcall(DisableAddOn, folder) end
     end
-    local text = format(L.OLD_FOLDERS_FMT, "• " .. table.concat(found, "\n• "))
+    local text = format(L.OLD_FOLDERS_FMT, "· " .. table.concat(found, "\n· "))
     print("|cff66bbffSpoken:|r " .. text)
     if StaticPopupDialogs and StaticPopup_Show and not self:IsGamepadUI() then
         -- Left-aligned while shown, for the list: the popup frames are shared by every addon and

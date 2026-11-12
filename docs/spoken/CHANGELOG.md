@@ -9,6 +9,93 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   the language you read; a German player with English voices keeps German text. In English, quest
   text now says "Adventurer" where the voice does, rather than your character's name.
   *([rusty-key](https://github.com/rusty-key))*
+- **A voice pack brings its own language.** A pack names its language in its `.toc`, and Spoken
+  lists it in the Voice and Fallback menus as soon as the pack is installed, whatever the language
+  is: Italian, Polish, Vietnamese, Hebrew. A pack can also give the language's name and a font, which
+  Spoken uses for the name and the lore pages. Places offers a pack's lore language
+  when the pack says it carries lore.
+  *([rusty-key](https://github.com/rusty-key))*
+- **A voice pack in a language Spoken did not list before is chosen under Voice Language.** If you
+  play a pack in such a language, such as Hebrew, pick it there. "Auto" follows your client and no
+  longer takes that pack for English.
+  *([rusty-key](https://github.com/rusty-key))*
+
+## 3.8.7 — 2026-11-12
+
+- **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map
+  reaches well past its walls, so a click in Dun Morogh's mountains, at Grizzled Den, opened
+  Ironforge's map. A city now opens only from inside its own map's outline on the zone.
+  *([tworekj](https://github.com/tworekj))*
+- **OpenMap's dungeon maps open dungeon and boss lore.** With Spoken Bosses installed, opening a
+  dungeon in OpenMap shows its story beside the map, and clicking a boss in OpenMap's Bosses panel
+  opens the boss's story, portrait and Report button. OpenMap remains an optional integration, so
+  players without it see no change. *([anon1231823](https://github.com/anon1231823))*
+- **Boss models show in the story panel beside the map on WoW Forever**, from Leatrix Maps too. The
+  Forever client left them blank there.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Place stories work on [OpenMap](https://github.com/openmap-world/openmap)'s world map.**
+  Areas light up under the cursor again, in any zone on screen, and a click opens the story of
+  the area you clicked rather than one in the zone at the centre of the view. Dragging the map no
+  longer opens a city's map. Zoomed in on a zone, the panel tells that zone's story, a click
+  elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
+  full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
+  *([carcachi](https://github.com/carcachi))*
+
+## 3.8.6 — 2026-11-10
+
+- **Place stories play through combat again, unless you turn on Stop When Combat Starts.** The new
+  setting is under Read Automatically on the Places page. On, a story that started on its own
+  stops when a fight begins and plays again from the start once it ends, as in 3.8.5. A story
+  that has not started yet still waits for the fight to end either way.
+  *([rusty-key](https://github.com/rusty-key))*
+- **An NPC's own greeting no longer slips out before Spoken's line on a first talk.** Right-clicking
+  an NPC with a recorded greeting silences its voice before the window opens. If no window opens, or
+  there is nothing to read, the voice comes back. Reported by
+  *([banoliver](https://github.com/banoliver))*
+- **Boss stories have a Report button**, on a boss's page in the Compendium, on the narrator when a
+  story plays after a kill, and in the Leatrix Maps boss panel. It opens the story's report page in
+  the language you were reading, or, from the narrator, the language you heard it in.
+  *([anon1231823](https://github.com/anon1231823))*
+
+## 3.8.5 — 2026-11-10
+
+- **Place stories that started on their own stop when you enter combat.** A zone or area story that
+  was already playing when a fight began used to talk through the whole fight, in PvP too. It now
+  stops and plays again from the start once combat ends. A story you started with Play keeps going.
+  *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
+- **A greeting heard once stays heard after you log out.** With Read Greetings set to Once per
+  Greeting, an NPC such as a flight master or an innkeeper no longer greets you again after a relog
+  or a server restart, and neither does a quest giver under Once for Quest Givers. Voiced objects
+  stay quiet the same way. What you hear is now shared by every copy of an NPC: a greeting heard
+  from one city guard counts for the other guards of that kind. Greetings you have already heard
+  are kept.
+  *([Devilquest](https://github.com/Devilquest))*
+
+## 3.8.4 — 2026-11-08
+
+- **Leatrix Maps dungeon maps now open Spoken's lore beside the map.** Choosing a dungeon or clicking
+  its entrance shows the dungeon's lore, clicking a boss shows that boss's story with its 3D model,
+  and right-clicking out returns to the zone's lore.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Boss lore in the Compendium shows the boss's 3D model** above the story.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Unlock Undiscovered Places and Unlock Unfound Bosses now show everything in the Compendium**, even
+  with Discovered Only or Found Only on.
+  *([anon1231823](https://github.com/anon1231823))*
+- Stratholme's Balnazzar and the Four Horsemen use corrected models, and Scarlet Enclave's Balnazzar
+  now has one.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Spoken's separators render on Chinese clients.** Visible separators now use the middle dot
+  (`·`), which the Chinese client renders where the previous bullet (`•`) could disappear.
+  *([anon1231823](https://github.com/anon1231823))*
+- **A quest's Play button in the objective tracker no longer covers the quest's item button.** The
+  item stays where the game puts it and Play sits below it. *([Nucabe](https://github.com/Nucabe))*
+
+## 3.8.3 — 2026-11-05
+
+- **Polish is a voice language.** Choose Polski under Voice Language in Settings to hear a voice
+  pack made in Polish, such as the community's Spoken Polski. No game client runs in Polish, so
+  Spoken never picks it by itself. *([zaxcer](https://github.com/zaxcer))*
 
 ## 3.8.2 — 2026-11-05
 

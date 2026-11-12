@@ -325,7 +325,7 @@ Expect("...then a banner each for the quests no zone holds: Classes, Professions
     and RowFor("Classes").row.style == "banner", true)
 local elwynn = RowFor("Elwynn Forest")
 Expect("a zone's line: its quests completed out of all and the share, on one line beside its name",
-    elwynn.count.text:match("^1/%d+ • %d+%%$") ~= nil, true)
+    elwynn.count.text:match("^1/%d+ · %d+%%$") ~= nil, true)
 Expect("...with no picture or bar of its own: its picture is on its page",
     elwynn.icon == nil and elwynn.track == nil and elwynn.fill == nil and elwynn.face == nil, true)
 Expect("...a plus or minus before its name", elwynn.toggle:IsShown(), true)
@@ -333,12 +333,12 @@ Expect("...a step in from the continent's banner", elwynn.indent, 20.4)
 Expect("...chosen, the list's own light full with its gold edge", elwynn.selected and elwynn.wash:IsShown()
     and elwynn.wash.alpha == 1 and elwynn.edge:IsShown(), true)
 local elwynnTotal = tonumber(elwynn.count.text:match("/(%d+)"))
-Expect("...the share completed after them", elwynn.count.text, "1/" .. elwynnTotal .. " • " .. math.floor(100 / elwynnTotal) .. "%")
+Expect("...the share completed after them", elwynn.count.text, "1/" .. elwynnTotal .. " · " .. math.floor(100 / elwynnTotal) .. "%")
 _G.BreakUpLargeNumbers = function(n) return "<" .. n .. ">" end
 Tab:Refresh()
 Expect("numbers written as the game writes them in the player's language, on banners and lines",
     RowFor("Eastern Kingdoms").count.text:match("^<1>/<%d+>$") ~= nil
-    and RowFor("Elwynn Forest").count.text:match("^<1>/<%d+> • %d+%%$") ~= nil, true)
+    and RowFor("Elwynn Forest").count.text:match("^<1>/<%d+> · %d+%%$") ~= nil, true)
 _G.BreakUpLargeNumbers = nil
 Tab:Refresh()
 elwynn = RowFor("Elwynn Forest")
@@ -537,7 +537,7 @@ Expect("...a completed one the quest log's gold tick", RowFor("Kobold Camp Clean
 Expect("...14 by 14, as every Era tick in the list is", RowFor("Kobold Camp Cleanup").status.width .. "x"
     .. RowFor("Kobold Camp Cleanup").status.height, "14x14")
 Expect("...and its zone's line counts it in progress, apart from the completed",
-    RowFor("Elwynn Forest").count.text:match("ActiveQuestIcon.-|t1 +1/%d+ • ") ~= nil, true)
+    RowFor("Elwynn Forest").count.text:match("ActiveQuestIcon.-|t1 +1/%d+ · ") ~= nil, true)
 RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
 Expect("its page: its title", page.title.text, "Kobold Candles")
 Expect("...where it is, then the quest mark and In progress", page.sub.text.text,
@@ -677,16 +677,16 @@ Expect("...its quests inside it, not beside it", RowOfQuest(NECKLACE) or Has(lis
 Expect("...a quest in no chain still a row of its own", Has(list, "Kobold Camp Cleanup"), true)
 Expect("...its plus or minus before its name, no picture", ChainRow("Lost Necklace").toggle:IsShown()
     and not (ChainRow("Lost Necklace").icon and ChainRow("Lost Necklace").icon:IsShown()), true)
-Expect("...its quests completed out of all and the share, beside its name", ChainRow("Lost Necklace").count.text, "0/4 • 0%")
+Expect("...its quests completed out of all and the share, beside its name", ChainRow("Lost Necklace").count.text, "0/4 · 0%")
 Expect("...none completed, none of the share", ChainRow("Lost Necklace").row.none
-    and ChainRow("Lost Necklace").count.text:match("• (%d+)%%$"), "0")
+    and ChainRow("Lost Necklace").count.text:match("· (%d+)%%$"), "0")
 local zoneRow = RowFor("Westfall")
 Expect("a zone with none completed: its line greyed", zoneRow ~= nil and zoneRow.row.none, true)
 completed[NECKLACE], completed[PIE] = true, true
 questLog = { BACK }
 Tab:Refresh()
 Expect("...how many are in progress before them, by the quest mark", ChainRow("Lost Necklace").count.text,
-    "|TInterface\\GossipFrame\\ActiveQuestIcon:12:12:0:0|t1   2/4 • 50%")
+    "|TInterface\\GossipFrame\\ActiveQuestIcon:12:12:0:0|t1   2/4 · 50%")
 Expect("...its plus counting what is under way as well as completed, so it opens as Started Only lists it",
     ChainRow("Lost Necklace").row.found == 3 and not ChainRow("Lost Necklace").toggle.desaturated, true)
 ClickChain("Lost Necklace")
@@ -1064,7 +1064,7 @@ Expect("...and keeps those it has, in what holds them", Has(list, "Kobold Camp C
 Expect("...leaving out a zone, a continent and a section with none", Has(list, "Westfall") or Has(list, "Kalimdor")
     or Has(list, "Classes"), false)
 Expect("...each card counting only the quests it lists", RowFor("Elwynn Forest").count.text:match("^1/2 ") ~= nil
-    and ChainRow("Lost Necklace").count.text, "0/1 • 0%")
+    and ChainRow("Lost Necklace").count.text, "0/1 · 0%")
 Expect("...and each banner", RowFor("Eastern Kingdoms").count.text, "1/2")
 Expect("...and is remembered", VO.Addon.db.global.Compendium.VoicedOnly, true)
 do

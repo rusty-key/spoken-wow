@@ -84,14 +84,22 @@ do
 end
 
 ---------------------------------------------------------------- A. the active pack, then English
+-- Spoken's registry reads every pack's .toc once, so a change to the AddOns list is a new session.
+local function Packs(list)
+    stub.SetAddOns(list)
+    _G.SpokenEnv.Languages:Reset()
+end
+
 local Z = Install({ ENGLISH, GERMAN, FRENCH })
-stub.SetAddOns({ { folder = "SpokenPlacesAudio_deDE", meta = { ["X-SpokenPlaces-Language"] = "deDE" } } })
+Packs({ { folder = "SpokenPlacesAudio_deDE", meta = { ["X-SpokenPlaces-Language"] = "deDE" } },
+    { folder = "SpokenQuestsAudio_frFR", meta = { ["X-SpokenQuests-Language"] = "frFR" } } })
 Z:RegisterLoreData("enUS", "zones", { [MAP] = { name = "Durotar", full = "English zone lore." } })
 Z:RegisterLoreData("enUS", "subzones", { [MAP] = {
     [BOTH] = { full = "English valley lore." }, [ONLY_ENGLISH] = { full = "English village lore." } } })
 Z:RegisterLoreData("deDE", "subzones", { [MAP] = { [BOTH] = { full = "Deutsche Geschichte." } } })
 Expect("A. installed voice metadata retains captions before that pack loads", Z:ShouldLoadLanguage("deDE"), true)
-Expect("A. unrelated languages do not allocate caption tables", Z:ShouldLoadLanguage("frFR"), false)
+Expect("A. unrelated languages do not allocate caption tables, a quests pack's included",
+    Z:ShouldLoadLanguage("frFR"), false)
 Expect("A. registering captions leaves the lore browser's language alone", Z:GetLore(MAP).full, "English zone lore.")
 Expect("A. zones carry their full text", Z:NewLoreSound(MAP, nil).present.transcript, "English zone lore.")
 Expect("A. ...timed by the take's word times",
@@ -198,32 +206,14 @@ Z:SetLanguage(nil)
 Z = InstallOn("frFR", saved)
 Expect("F. going back to Auto follows the client again", Z:GetLanguage(), "frFR")
 
----------------------------------------------------------------- G. a language no client runs in
--- Italian is ready on its lore alone (no client, so no aliases) and is read by choosing it.
--- Auto never lands on it, even on a client that claimed it.
-local WITH_ITALIAN = { { code = "enUS", ready = true }, { code = "itIT", ready = true } }
-local function InstallItalian(locale, db)
-    stub.SetLocale(locale)
-    Legacy(db)
-    _G.SpokenPlacesAudioPacks = {}
-    return H.LoadPlaces(PLACES, { Languages = WITH_ITALIAN })
-end
-Z = InstallItalian("enUS", {})
-Expect("G. Italian is offered once its lore is in", Z:IsLanguageSelectable("itIT"), true)
-Expect("G. ...but Auto on an English client reads English", Z:GetLanguage(), "enUS")
-Expect("G. Italian is not a client language", Z:IsClientLanguage("itIT"), false)
-Z = InstallItalian("enUS", { language = "itIT" })
-Expect("G. picked, an English client reads Italian", Z:GetLanguage(), "itIT")
-Z = InstallItalian("itIT", {})
-Expect("G. a client claiming Italian still reads English on Auto", Z:GetAutoLanguage(), "enUS")
-
----------------------------------------------------------------- H. what the client's font draws
+---------------------------------------------------------------- G. what the client's font draws
 -- Another script is offered where the page's font files draw it, or the client's own font for that
 -- script does.
 local HANGUL, HAN, CYRILLIC = { [234] = true, [235] = true, [236] = true, [237] = true },
     { [228] = true, [229] = true, [230] = true, [231] = true, [232] = true, [233] = true },
     { [208] = true, [209] = true }
 local VIETNAMESE = { [225] = true }   -- ế and ệ, U+1EBF and U+1EC7
+local HEBREW = { [215] = true }
 local function With(base, extra)
     local set = {}
     for key in pairs(base) do set[key] = true end
@@ -240,7 +230,6 @@ local fontHas = {   -- the lead bytes each file draws
     ["Fonts\\2002.TTF"] = HANGUL,
     ["Fonts\\ARKai_T.ttf"] = HAN,
     ["Fonts\\blei00d.TTF"] = HAN_AND_PRIVATE,
-    ["Fonts\\ARIALN.TTF"] = VIETNAMESE,
 }
 local realParent = _G.UIParent.CreateFontString
 local realHighlight, realQuest = _G.GameFontHighlight, _G.QuestFont
@@ -271,48 +260,63 @@ local function Reset() Z.drawable, Z.fonts = {}, {} end
 Faces("Fonts\\FRIZQT__.TTF", "Fonts\\QUEST.TTF")
 Z = InstallOn("deDE", nil)
 Z.drawable = {}
-Expect("H. a German client whose font has Cyrillic offers Russian", Z:CanRenderLanguage("ruRU"), true)
-Expect("H. ...written in that font", Font(_G.GameFontHighlight, "ruRU"), "Fonts\\FRIZQT__.TTF")
-Expect("H. it offers Korean, which its font cannot draw, in the client's Korean font",
+Expect("G. a German client whose font has Cyrillic offers Russian", Z:CanRenderLanguage("ruRU"), true)
+Expect("G. ...written in that font", Font(_G.GameFontHighlight, "ruRU"), "Fonts\\FRIZQT__.TTF")
+Expect("G. it offers Korean, which its font cannot draw, in the client's Korean font",
     tostring(Z:CanRenderLanguage("koKR")) .. " " .. Font(_G.GameFontHighlight, "koKR"),
     "true Fonts\\2002.TTF")
-Expect("H. ...and Chinese in its Chinese fonts", Font(_G.QuestFont, "zhCN") .. " "
+Expect("G. ...and Chinese in its Chinese fonts", Font(_G.QuestFont, "zhCN") .. " "
     .. Font(_G.QuestFont, "zhTW"), "Fonts\\ARKai_T.ttf Fonts\\blei00d.TTF")
-Expect("H. Traditional Chinese is offered though its font has private-use glyphs as wide as its Han",
+Expect("G. Traditional Chinese is offered though its font has private-use glyphs as wide as its Han",
     Z:CanRenderLanguage("zhTW"), true)
-Expect("H. ...by Spoken's own probe, which the Voice Language lists use too",
+Expect("G. ...by Spoken's own probe, which the Voice Language lists use too",
     tostring(Spoken:LanguageDraws("zhTW", "Fonts\\blei00d.TTF")) .. " "
     .. tostring(Spoken:LanguageDraws("zhTW", "Fonts\\FRIZQT__.TTF")), "true false")
 -- A font with some Hanja draws the name of Traditional Chinese and still lacks most of its characters.
 fontHas["Fonts\\2002.TTF"] = With(HANGUL, { "中", "文", "繁", "體", "這", "國" })
 Faces("Fonts\\2002.TTF", "Fonts\\2002.TTF")
 Reset()
-Expect("H. a Korean font with Hanja does not write Traditional Chinese, so the client's own font does",
+Expect("G. a Korean font with Hanja does not write Traditional Chinese, so the client's own font does",
     Font(_G.GameFontHighlight, "zhTW"), "Fonts\\blei00d.TTF")
 fontHas["Fonts\\2002.TTF"] = HANGUL
 Faces("Fonts\\FRIZQT__.TTF", "Fonts\\QUEST.TTF")
 Reset()
 -- A file the client cannot load keeps the object's own font in the probe, whose fallbacks draw.
-Expect("H. a font file the client cannot load draws nothing, whatever the fonts it falls back to",
+Expect("G. a font file the client cannot load draws nothing, whatever the fonts it falls back to",
     tostring(Spoken:LanguageDraws("ruRU", "Fonts\\MISSING.TTF")) .. " "
     .. tostring(Spoken:LanguageDraws("ruRU", "Fonts\\FRIZQT___CYR.TTF")), "false true")
 local blei = fontHas["Fonts\\blei00d.TTF"]
 fontHas["Fonts\\blei00d.TTF"] = nil
 fontHas["Fonts\\bKAI00M.TTF"] = HAN
 Reset()
-Expect("H. Traditional Chinese is written in bKAI00M.TTF where the client lacks blei00d.TTF, as on Forever",
+Expect("G. Traditional Chinese is written in bKAI00M.TTF where the client lacks blei00d.TTF, as on Forever",
     Font(_G.QuestFont, "zhTW"), "Fonts\\bKAI00M.TTF")
 fontHas["Fonts\\bKAI00M.TTF"] = nil
 Reset()
-Expect("H. ...and in no stock font where the client has neither",
+Expect("G. ...and in no stock font where the client has neither",
     Font(_G.QuestFont, "zhTW"), "nil")
 fontHas["Fonts\\blei00d.TTF"] = blei
 Reset()
-Expect("H. a Latin language needs no asking", Z:CanRenderLanguage("frFR"), true)
-Expect("H. ...and keeps the page's font", Font(_G.GameFontHighlight, "frFR"), "Fonts\\FRIZQT__.TTF")
-Expect("H. Vietnamese, which the page's font cannot draw, is written in Arial Narrow",
+Expect("G. a Latin language needs no asking", Z:CanRenderLanguage("frFR"), true)
+Expect("G. ...and keeps the page's font", Font(_G.GameFontHighlight, "frFR"), "Fonts\\FRIZQT__.TTF")
+-- Vietnamese is no built-in language: its pack declares it, its name and the font that draws it.
+local VIET_FONT = "Interface\\AddOns\\SpokenPlacesAudio_viVN\\Fonts\\Viet.ttf"
+fontHas[VIET_FONT] = VIETNAMESE
+Spoken:DeclareLanguage("viVN", "SpokenPlacesAudio_viVN",
+    { name = "Vietnamese", native = "Tiếng Việt", font = VIET_FONT })
+Expect("G. Vietnamese, which the page's font cannot draw, is written in its pack's font",
+    tostring(Z:CanRenderLanguage("viVN")) .. " " .. Font(_G.GameFontHighlight, "viVN"),
+    "true " .. VIET_FONT)
+-- A pack language whose pack names no font, or one the page cannot use, has Arial Narrow to try.
+fontHas[VIET_FONT] = {}
+fontHas["Fonts\\ARIALN.TTF"] = VIETNAMESE
+Reset()
+Expect("G. ...and without one, in the stock font most likely to draw its accents",
     tostring(Z:CanRenderLanguage("viVN")) .. " " .. Font(_G.GameFontHighlight, "viVN"),
     "true Fonts\\ARIALN.TTF")
+fontHas["Fonts\\ARIALN.TTF"] = nil
+fontHas[VIET_FONT] = VIETNAMESE
+Reset()
 
 -- The captions set a font file too: a clip of Korean lore on a German client names the one to use.
 local realNormal = _G.GameFontNormal
@@ -332,26 +336,127 @@ local function Lore(pack)
     return clip and clip.present
 end
 local korean = Lore(KOREAN)
-Expect("H. Korean lore on a German client is captioned in the client's Korean font",
+Expect("G. Korean lore on a German client is captioned in the client's Korean font",
     tostring(korean and korean.font), "Fonts\\2002.TTF")
 local german = Lore(GERMAN_ZONE)
-Expect("H. ...German lore names no font, so the window's own is kept",
+Expect("G. ...German lore names no font, so the window's own is kept",
     tostring(german ~= nil) .. " " .. tostring(german and german.font), "true nil")
 _G.GameFontNormal = realNormal
 Voice(nil)
 
 Faces("Fonts\\LATIN.TTF", "Fonts\\QUEST.TTF")
 Reset()
-Expect("H. a font file without Cyrillic writes Russian in the client's Cyrillic font",
+Expect("G. a font file without Cyrillic writes Russian in the client's Cyrillic font",
     tostring(Z:CanRenderLanguage("ruRU")) .. " " .. Font(_G.GameFontHighlight, "ruRU"),
     "true Fonts\\FRIZQT___CYR.TTF")
 fontHas["Fonts\\2002.TTF"] = {}
 Reset()
-Expect("H. a client whose Korean font cannot draw Korean does not offer it",
+Expect("G. a client whose Korean font cannot draw Korean does not offer it",
     Z:CanRenderLanguage("koKR"), false)
-fontHas["Fonts\\ARIALN.TTF"] = {}
+fontHas[VIET_FONT] = {}
 Reset()
-Expect("H. ...nor Vietnamese where no font draws its accents", Z:CanRenderLanguage("viVN"), false)
+Expect("G. ...nor Vietnamese where no font draws its accents", Z:CanRenderLanguage("viVN"), false)
+
+---------------------------------------------------------------- H. lore a pack brings
+-- A language Spoken does not build in has lore when its pack says so in its .toc, which the
+-- menu reads at login. The pack's Lua loads after Places and hands the tables over then.
+local HEBREW_FOLDER = "SpokenCommunity_Places_heIL"
+local HEBREW_FONT = "Interface\\AddOns\\" .. HEBREW_FOLDER .. "\\Fonts\\Hebrew.ttf"
+fontHas[HEBREW_FONT] = HEBREW
+local function Hebrew(folder, key, extra)
+    local meta = { [key] = "heIL", ["X-Spoken-LanguageName"] = "Hebrew",
+        ["X-Spoken-LanguageNative"] = "עברית", ["X-Spoken-LanguageFont"] = "Fonts/Hebrew.ttf" }
+    for name, value in pairs(extra or {}) do meta[name] = value end
+    return { folder = folder, meta = meta }
+end
+local function Codes(list)
+    local codes = {}
+    for _, locale in ipairs(list) do table.insert(codes, locale.code) end
+    return table.concat(codes, " ")
+end
+-- The coverage the addon ships with, so that the list without packs is the one players have now.
+local shipped = {}
+assert(loadfile(PLACES .. "Data/Languages.lua"))("Spoken_Places", shipped)
+local function OnEnglish(db)
+    stub.SetLocale("enUS")
+    Legacy(db)
+    _G.SpokenPlacesAudioPacks = {}
+    return H.LoadPlaces(PLACES, { Languages = shipped.Languages })
+end
+
+Packs({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
+Z = OnEnglish({})
+Expect("H. with no packs, an English client is offered the finished built-in lore it has today",
+    Codes(Z:GetSelectableLanguages()), "enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW")
+
+Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language", { ["X-SpokenPlaces-Lore"] = "1" }) })
+Z = OnEnglish({})
+Expect("H. a pack's lore language is offered after the built-in ones",
+    Codes(Z:GetSelectableLanguages()), "enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW heIL")
+Expect("H. ...named in its own words only where the lore menu wears the pack's font",
+    Z:GetLanguageName("heIL", true), "עברית")
+Expect("H. ...but anywhere else, in the game's font, in English", Z:GetLanguageName("heIL"), "Hebrew")
+Expect("H. ...which is also the label of its audio pack",
+    Z:GetAudioPackLabel({ language = "heIL", addon = "SpokenPlacesAudio_heIL" }), "Hebrew")
+Expect("H. Spoken gives the face the menu draws it in", Spoken:LanguageFace("heIL"), HEBREW_FONT)
+Expect("H. ...but Auto still reads the client's", Z:GetLanguage(), "enUS")
+-- The lore menu names a pack's language in the pack's font: Layout:Dropdown's last argument.
+do
+    local layoutEnv = _G.SpokenEnv
+    local realNew, fontOf = layoutEnv.SpokenLayout.New, nil
+    layoutEnv.SpokenLayout.New = function(...)
+        local layout = realNew(...)
+        local realDropdown = layout.Dropdown
+        layout.Dropdown = function(self, label, tip, values, read, write, apply, describe, face)
+            if label == Z.L.OPT_LANGUAGE then fontOf = face end
+            return realDropdown(self, label, tip, values, read, write, apply, describe, face)
+        end
+        return layout
+    end
+    assert(loadfile(PLACES .. "UI/Options.lua"))("Spoken_Places", Z)
+    Z:SetupOptions()
+    layoutEnv.SpokenLayout.New = realNew
+    Expect("H. the lore menu asks for a face per entry", type(fontOf), "function")
+    Expect("H. ...a pack's language is drawn in its pack's font", fontOf and fontOf({ code = "heIL" }), HEBREW_FONT)
+    Expect("H. ...a built-in one in the game's", fontOf and fontOf({ code = "deDE" }), nil)
+    Expect("H. ...and Auto, which is a sentinel and no language, in the game's", fontOf and fontOf({}), nil)
+end
+Z = OnEnglish({ language = "heIL" })
+Expect("H. picked, its lore is what loads", Z.language, "heIL")
+Expect("H. ...written in its pack's font", Font(_G.GameFontHighlight, "heIL"), HEBREW_FONT)
+local hebrewZones = { [MAP] = { name = "דורוטאר", full = "סיפור." } }
+Z:RegisterLoreData("heIL", "zones", hebrewZones)
+Expect("H. the pack's tables, handed over after Places loaded, are the lore read",
+    tostring(Z.Zones == hebrewZones), "true")
+SpokenPlacesSettings.language = nil
+SlashCmdList["SPOKENPLACES"]("lang heil")
+Expect("H. /spp lang finds it in whatever case it is typed", SpokenPlacesSettings.language, "heIL")
+stub.SetLocale("heIL")
+Expect("H. a client claiming the language still reads English on Auto", Z:GetAutoLanguage(), "enUS")
+stub.SetLocale("enUS")
+
+Packs({ Hebrew("SpokenCommunity_Quests_heIL", "X-SpokenQuests-Language") })
+Z = OnEnglish({ language = "heIL" })
+Expect("H. a quests pack brings no lore, so its language is not offered",
+    tostring(Z:IsLanguageSelectable("heIL")) .. " " .. Codes(Z:GetSelectableLanguages()),
+    "false enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW")
+Expect("H. ...and a stored pick of it reads the client's", Z.language, "enUS")
+Expect("H. ...without rewriting it", SpokenPlacesSettings.language, "heIL")
+Z:SetLanguagePreview(true)
+Expect("H. ...not even in preview, which would show empty pages", Z:IsLanguageSelectable("heIL"), false)
+Z:SetLanguagePreview(false)
+for i = #stub.chat, 1, -1 do stub.chat[i] = nil end
+SlashCmdList["SPOKENPLACES"]("lang heil force")
+Expect("H. /spp lang says it has no lore, rather than suggest a preview that cannot help",
+    tostring(stub.chat[#stub.chat]):find("no lore in", 1, true) ~= nil, true)
+Expect("H. ...and leaves preview off", Z:IsPreviewingLanguage(), false)
+
+Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language",
+    { ["X-SpokenPlaces-Lore"] = "1", ["X-Spoken-LanguageFont"] = "Fonts/Missing.ttf" }) })
+Z = OnEnglish({ language = "heIL" })
+Expect("H. a lore pack whose font cannot load is not offered", Z:IsLanguageSelectable("heIL"), false)
+Expect("H. ...and its lore does not load", Z.language, "enUS")
+Packs({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
 _G.UIParent.CreateFontString = realParent
 _G.GameFontHighlight, _G.QuestFont = realHighlight, realQuest
 

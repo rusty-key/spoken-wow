@@ -36,7 +36,11 @@ pack calls into it.
    the window is read: a read that finds the text empty keeps the mute and reads the window again
    every 0.2 s, up to five times (`WaitsForGreetingText`). A read that finds text and no line, or
    a greeting already heard, gives the voice back at once. With the game's dialogue left alone or
-   the queue paused nothing is muted and the window is read once.
+   the queue paused nothing is muted and the window is read once. A greeting can start before the
+   window's event, so a right-click on an NPC a pack voices takes the same mute first
+   (`MuteGreetingOnClick`). The window that opens then decides: nothing to read lifts it at once,
+   and with no window it lifts at its 1.5 s deadline. Keyboard and controller interactions have
+   no click to hear and still mute at the window.
 3. `GetNPCGossipTextHash` finds the line from the speaker and the words. It looks in the
    tables written in the client's language first (`Gossip/<lang>.lua`, then the packs'), and only
    if no pack in that language knows the NPC does it try the others. The closest match by shared
@@ -78,9 +82,14 @@ Spoken's own page. Gossip adds no saved variable.
   show a Listen button.
 - Original Thrall Speech, and Forget Greetings Heard, which makes every
   NPC greet this character again. That matters only for the two once-per settings. Heard
-  greetings are kept per character in `hasSeenGossipForNPC`: under each NPC's GUID, a short hash
-  of every text heard from it, marked when the line starts playing. A GUID marked `true` dates
-  from when only the NPC was kept, and counts as unheard.
+  greetings are kept per character in `hasSeenGossipForNPC`: under each creature's ID, or `o` and
+  the ID for a game object, whose IDs overlap creatures' (any other speaker keeps its GUID), a
+  short hash of every text heard from it, marked when the line starts playing. The ID and not the
+  GUID, because the GUID's last part is the spawn: it changes on a respawn or a server restart,
+  and Forever clients see one that holds only for the session. Every spawn of one ID therefore
+  shares what was heard.
+  Entries kept under a creature's or object's GUID, as they were before, move to that key as the
+  addon loads. A key marked `true` dates from when only the NPC was kept, and counts as unheard.
 - Stop When Window Closes is on the Quests page and covers the quest, gossip and greeting windows.
   Closing the quest frame also stops a greeting, but never a quest's own line.
 

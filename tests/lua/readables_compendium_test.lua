@@ -251,7 +251,7 @@ Expect("...a city inside the zone around it, not beside it", Has(list, "Stormwin
 Expect("...the readables after the continents, a banner each: those found across Azeroth and those of no known origin",
     RowFor(L.GROUP_WIDE).row.style == "banner" and RowFor(L.GROUP_UNKNOWN).row.style, "banner")
 Expect("...each zone's card counting what is found out of all, its city's included",
-    RowFor("Elwynn Forest").count.text:match("^1/%d+ • %d+%%$") ~= nil, true)
+    RowFor("Elwynn Forest").count.text:match("^1/%d+ · %d+%%$") ~= nil, true)
 Expect("...and the seasonal events' readables, in a group of their own before them",
     Has(list, L.GROUP_EVENTS) and list:find(L.GROUP_EVENTS, 1, true) < list:find(L.GROUP_WIDE, 1, true), true)
 Click(L.GROUP_EVENTS)
@@ -792,6 +792,20 @@ do
     local fresh = _G.SpokenCompendium.NewPage(CreateFrame("Frame"), B)
     SpokenTextView.Unsnap = unsnap
     Expect("a page's parchment drawn off the pixel grid, as the fade cut from it is", unsnapped ~= nil and unsnapped == fresh.bg, true)
+
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("a page can show a 3D model above its words",
+        fresh.body.model:IsShown() and fresh.body.model.frameType == "PlayerModel", true)
+    Expect("...at the compact model size", fresh.body.model.width .. "x" .. fresh.body.model.height, "150x150")
+    Expect("...with the same top spacing as a zone image", fresh.body.model.anchor.y, -8)
+    Expect("...using the model display ID", fresh.body.model.displayID, 2029)
+    Expect("...with DBM-like model settings", fresh.body.model.portraitZoom .. "|" .. fresh.body.model.sequence,
+        "0.4|4")
+    fresh.body.model.sequence = "still playing"
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("...left playing when the page is shown again", fresh.body.model.sequence, "still playing")
+    fresh:Show({ title = "A place", text = "Place lore." })
+    Expect("a page without a model hides the old one", fresh.body.model:IsShown(), false)
 
     -- The line under the title: plain words, or where the tab gives one, a way up a level.
     local sub, clicked, red = fresh.sub, 0, nil

@@ -130,7 +130,7 @@ DataModules =
             Title = "Spoken Quests Audio: All",
             ContentVersion = "2.2.0",
             RelevantAboveVersion = 0,
-            URL = "https://www.curseforge.com/wow/addons/spoken-quests-audio-all",
+            URL = "https://www.curseforge.com/wow/addons/spoken-audio-quests-all",
         },
         {
             AddonName = "SpokenQuestsAudioAlliance",

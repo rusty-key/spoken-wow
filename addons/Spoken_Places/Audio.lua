@@ -358,8 +358,7 @@ function SpokenPlaces:GetAudioPackLabel(pack)
 	local language = pack.language
 	local label = language
 	if self:CanRenderLanguage(language) then
-		local info = self:GetLocaleInfo(language)
-		label = (info and info.native) or language
+		label = self:GetLanguageName(language)
 	end
 	if pack.bitrate and pack.bitrate > 0 then
 		for _, other in ipairs(self:GetAudioPacks(language)) do

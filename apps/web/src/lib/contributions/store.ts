@@ -17,6 +17,7 @@ import type { NpcKind, NpcRowKind } from "@/lib/npc/npc";
 
 import type { ContributionStatus, Submission } from "./contributions";
 import type { EnvelopeSource } from "./envelope";
+import type { Identity } from "./intake";
 import { pageNotes } from "./notes";
 import { DEFAULT_SORT, type ContributionSort, type SortColumn } from "./query";
 
@@ -219,48 +220,97 @@ export async function fillContributionNpcs(
   return rows.map((row) => row.dedup);
 }
 
-export async function createContribution(
-  input: Submission & {
-    body: string | null;
-    name: string | null;
-    email: string | null;
-    userId: string | null;
-    ip: string | null;
-  },
-): Promise<void> {
-  // Returns nothing, as createReport does: the sender cannot read their submission back.
-  // A copy from somebody signed in or named is recorded beside the count (migration 0065).
-  await db().query(
-    `with "stored" as (
-       insert into "contribution"
-         ("source", "key", "locale", "build", "text", "meta", "raw", "dedup",
-          "body", "name", "email", "userId", "ip")
-       values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13)
-       on conflict ("dedup") do update
-         set "count" = "contribution"."count" + 1,
-             ${FILL_NPC_SET},
-             "updatedAt" = now()
-       returning "id"
-     )
-     insert into "contribution_sender" ("contributionId", "userId", "name")
-     select "id", $12::text, $10::text from "stored"
-      where $12::text is not null or $10::text is not null`,
-    [
-      input.source,
-      input.key,
-      input.locale,
-      input.build,
-      input.text,
-      JSON.stringify(input.meta),
-      input.raw,
-      input.dedup,
-      input.body,
-      input.name,
-      input.email,
-      input.userId,
-      input.ip,
-    ],
+export async function createContribution(input: Submission & Identity): Promise<void> {
+  await createContributions([input], input);
+}
+
+/**
+ * One statement per occurrence of a dedup, because an upsert may not touch the same row twice.
+ * A later copy still bumps the count or fills the NPC as a separate paste would. Sorted because
+ * two players' files hold the same lines in different orders, and would deadlock on their rows.
+ */
+function roundsByDedup(submissions: readonly Submission[]): Submission[][] {
+  const seen = new Map<string, number>();
+  const rounds: Submission[][] = [];
+  for (const submission of submissions) {
+    const round = seen.get(submission.dedup) ?? 0;
+    seen.set(submission.dedup, round + 1);
+    (rounds[round] ??= []).push(submission);
+  }
+  return rounds.map((round) => round.sort((a, b) => (a.dedup < b.dedup ? -1 : 1)));
+}
+
+/** A commit per line is most of what a full file costs on the droplet's disk. */
+export async function createContributions(submissions: readonly Submission[], sender: Identity): Promise<void> {
+  for (const round of roundsByDedup(submissions)) {
+    // A copy from somebody signed in or named is recorded beside the count.
+    await db().query(
+      `with "stored" as (
+         insert into "contribution"
+           ("source", "key", "locale", "build", "text", "meta", "raw", "dedup",
+            "body", "name", "email", "userId", "ip")
+         select i."source", i."key", i."locale", i."build", i."text", i."meta"::jsonb, i."raw", i."dedup",
+                $9::text, $10::text, $11::text, $12::text, $13::text
+           from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[])
+                as i ("source", "key", "locale", "build", "text", "meta", "raw", "dedup")
+         on conflict ("dedup") do update
+           set "count" = "contribution"."count" + 1,
+               ${FILL_NPC_SET},
+               "updatedAt" = now()
+         returning "id"
+       )
+       insert into "contribution_sender" ("contributionId", "userId", "name")
+       select "id", $12::text, $10::text from "stored"
+        where $12::text is not null or $10::text is not null`,
+      [
+        round.map((submission) => submission.source),
+        round.map((submission) => submission.key),
+        round.map((submission) => submission.locale),
+        round.map((submission) => submission.build),
+        round.map((submission) => submission.text),
+        round.map((submission) => JSON.stringify(submission.meta)),
+        round.map((submission) => submission.raw),
+        round.map((submission) => submission.dedup),
+        sender.body,
+        sender.name,
+        sender.email,
+        sender.userId,
+        sender.ip,
+      ],
+    );
+  }
+}
+
+/**
+ * New text for rows still waiting on triage, in one statement: a moderator's edit, or a class
+ * word put back (class-words.ts). `raw` keeps the paste as sent. The dedup changes only where
+ * one is given and no other row holds it; otherwise another copy of the paste as sent still
+ * counts on the row. Answers the rows it changed, with the text each had before.
+ */
+export async function rewriteWaitingTexts(
+  texts: readonly { id: number; text: string; dedup?: string }[],
+): Promise<(Pick<Contribution, "id" | "source" | "locale" | "text"> & { previous: string | null })[]> {
+  if (texts.length === 0) return [];
+  // One new dedup per value, or the statement would write it to two rows.
+  const claimed = new Set<string>();
+  const dedups = texts.map(({ dedup }) => {
+    if (!dedup || claimed.has(dedup)) return null;
+    claimed.add(dedup);
+    return dedup;
+  });
+  const { rows } = await db().query<Pick<Contribution, "id" | "source" | "locale" | "text"> & { previous: string | null }>(
+    `with "old" as (select "id", "text" from "contribution" where "id" = any($1::int[]) for update)
+     update "contribution" c
+        set "text" = v."text", "updatedAt" = now(),
+            "dedup" = case when v."dedup" is not null
+                            and not exists (select 1 from "contribution" o where o."dedup" = v."dedup")
+                           then v."dedup" else c."dedup" end
+       from unnest($1::int[], $2::text[], $3::text[]) as v ("id", "text", "dedup"), "old"
+      where c."id" = v."id" and "old"."id" = c."id" and c."status" = 'new' and c."text" is distinct from v."text"
+      returning c."id", c."source", c."locale", c."text", "old"."text" as "previous"`,
+    [texts.map((each) => each.id), texts.map((each) => each.text), dedups],
   );
+  return rows;
 }
 
 /** Signed-in senders appear under their account's name. Never an email. */

@@ -13,7 +13,7 @@ import { corpus } from "@/lib/quests/catalogue";
 import { searchContext } from "@/lib/quests/context";
 import { broadcastStatuses } from "@/lib/broadcast/store";
 import { recordingsFor } from "@/lib/recordings/store";
-import { filtersFromParams, needsStale, withoutMadeBy } from "@/lib/search-request";
+import { filtersFromParams, needsLevels, needsStale, withoutMadeBy } from "@/lib/search-request";
 import { batchPlan, matchingLines } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (!seesMadeBy) filters = withoutMadeBy(filters);
   const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([
     corpus(lang),
-    searchContext(needsStale(filters), false, lang, seesMadeBy),
+    searchContext(needsStale(filters), false, lang, seesMadeBy, needsLevels(filters)),
     // So "regenerate everything not yet recorded" means what the page showed. Only asked
     // when filtering on it; recordingsFor is undefined for anybody who may not see them, and
     // the filter then matches on nothing -- recordedMatches without the recordings.

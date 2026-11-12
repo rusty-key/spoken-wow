@@ -8,3 +8,5 @@ https://spoken.quest/esMX/places/r/1411/valley-of-trials
 https://spoken.quest/koKR/places/r/1413/razorfen-downs
 https://spoken.quest/readables/r/261
 https://spoken.quest/itIT/readables/r/261
+https://spoken.quest/bosses/r/36/edwin-vancleef
+https://spoken.quest/frFR/bosses/r/409/majordomo-executus

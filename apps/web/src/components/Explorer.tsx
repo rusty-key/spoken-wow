@@ -4,6 +4,7 @@ import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDi
 import { isTypingTarget } from "@/lib/keyboard";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
+import { clientFilterOf, DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -27,7 +28,7 @@ import RecordingDropZone from "@/components/RecordingDropZone";
 import { RECORDED, type Recorded } from "@/lib/recordings/live";
 import { BROADCAST_STATUSES } from "@/lib/broadcast/status";
 import type { Facets } from "@/lib/facets";
-import { sourcesFromParam } from "@/lib/line-fields";
+import { levelFromParam, sourcesFromParam } from "@/lib/line-fields";
 import { NARRATOR_VOICE } from "@/lib/generation/narration";
 import { PROVIDER_NAME } from "@/lib/generation/providers";
 import {
@@ -77,6 +78,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.source?.length) params.set("source", filters.source.join(","));
   if (filters.npcType) params.set("type", filters.npcType);
   if (filters.includeProgress) params.set("progress", "1");
+  if (filters.client && filters.client !== DEFAULT_CLIENT_FILTER) params.set("client", filters.client);
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
   if (filters.overridden) params.set("overridden", "1");
@@ -88,7 +90,10 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.model) params.set("model", filters.model);
   if (filters.author) params.set("author", filters.author);
   if (filters.recorded) params.set("rec", filters.recorded);
+  if (filters.minLevel !== undefined) params.set("minLevel", String(filters.minLevel));
+  if (filters.maxLevel !== undefined) params.set("maxLevel", String(filters.maxLevel));
   if (filters.broadcast) params.set("bt", filters.broadcast);
+  if (filters.playerGender) params.set("playerGender", filters.playerGender);
   return params;
 }
 
@@ -164,6 +169,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       source: sourcesFromParam(params.get("source")),
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
       includeProgress: params.get("progress") === "1",
+      client: clientFilterOf(params.get("client")),
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
       overridden: params.get("overridden") === "1",
@@ -176,6 +182,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
       author: params.get("author") ?? undefined,
       recorded: RECORDED.find((value) => value === params.get("rec")),
       broadcast: BROADCAST_STATUSES.find((value) => value === params.get("bt")),
+      minLevel: levelFromParam(params.get("minLevel")),
+      maxLevel: levelFromParam(params.get("maxLevel")),
+      playerGender: (["m", "f"] as const).find((value) => value === params.get("playerGender")),
     }),
     [params, urlQuery],
   );
@@ -286,8 +295,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
 
       for (const [key, value] of Object.entries(next)) {
         if (key === "page") continue;
-        if (value) search.set(key, String(value));
-        else search.delete(key);
+        if (value === undefined || value === "") search.delete(key);
+        else search.set(key, String(value));
       }
 
       if (next.page !== undefined && next.page > 1) search.set("page", String(next.page));
@@ -327,6 +336,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("includeProgress" in next
           ? { progress: next.includeProgress ? "1" : undefined }
           : {}),
+        ...("client" in next ? { client: next.client === DEFAULT_CLIENT_FILTER ? undefined : next.client } : {}),
         ...("line" in next ? { line: next.line } : {}),
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),
         ...("dirty" in next ? { dirty: next.dirty ? "1" : undefined } : {}),
@@ -338,6 +348,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("author" in next ? { author: next.author } : {}),
         ...("recorded" in next ? { rec: next.recorded } : {}),
         ...("broadcast" in next ? { bt: next.broadcast } : {}),
+        ...("minLevel" in next ? { minLevel: next.minLevel } : {}),
+        ...("maxLevel" in next ? { maxLevel: next.maxLevel } : {}),
+        ...("playerGender" in next ? { playerGender: next.playerGender } : {}),
       });
     },
     [updateUrl],

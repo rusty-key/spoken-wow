@@ -125,7 +125,9 @@ export interface ReleaseInfo {
   assetName: string
   assetSize: number
   assetUrl: string
-  /** `sha256:<hex>` from GitHub, when it gives one. */
+  /** Where the same zip can be fetched when `assetUrl` fails. */
+  fallbackUrl?: string
+  /** `sha256:<hex>` from GitHub or the signed channel index, when there is one. */
   digest?: string
   htmlUrl: string
 }
@@ -166,6 +168,10 @@ export interface Settings {
   checkOnStart: boolean
   /** The manager's own updates. */
   autoUpdateManager: boolean
+  /** Installed Spoken and official voice packs, after the catalog is checked. */
+  autoUpdateContent: boolean
+  startAtLogin: boolean
+  minimizeToTray: boolean
   /** Where downloads are kept; empty means the app's own folder. */
   downloadsPath: string
   keepDownloads: boolean
@@ -195,6 +201,9 @@ export const DEFAULT_SETTINGS: Settings = {
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
+  autoUpdateContent: false,
+  startAtLogin: false,
+  minimizeToTray: false,
   downloadsPath: '',
   keepDownloads: false,
   voiceLanguage: 'enUS',

@@ -145,29 +145,6 @@ local STYLE_TEXTS = {
     subtitle = L.OPT_STYLE_SUBTITLE_TEXT,
     none = L.OPT_STYLE_NONE_TEXT,
 }
--- The languages a voice pack can speak: the same list, in the same order, as each module's
--- (SpokenQuests' Language.LOCALES, SpokenReadables.LOCALES).
-LANGUAGES = {
-    { code = "enUS", native = "English", english = "English" },
-    { code = "deDE", native = "Deutsch", english = "German" },
-    { code = "esES", native = "Español (España)", english = "Spanish (Spain)" },
-    { code = "esMX", native = "Español (América Latina)", english = "Spanish (Latin America)" },
-    { code = "frFR", native = "Français", english = "French" },
-    -- No client runs in Italian, so "Auto" never lands on it; a player picks it by hand.
-    { code = "itIT", native = "Italiano", english = "Italian" },
-    { code = "ptBR", native = "Português", english = "Portuguese (Brazil)" },
-    { code = "ruRU", native = "Русский", english = "Russian", script = "cyrillic" },
-    { code = "koKR", native = "한국어", english = "Korean", script = "korean" },
-    -- `sample`: characters only that Chinese has, which a font must draw beside the name. A Korean
-    -- font with Hanja draws "繁體中文" and still lacks most of Traditional Chinese.
-    { code = "zhCN", native = "简体中文", english = "Chinese (Simplified)", script = "han", sample = "们这简国" },
-    { code = "zhTW", native = "繁體中文", english = "Chinese (Traditional)", script = "han", sample = "嗎妳麼為" },
-    -- No client runs in it either, and its stacked accents are glyphs a Latin font can lack.
-    -- `hidden` keeps it out of the menus until its pack is released: picked before then, every
-    -- line would play in the fallback language.
-    { code = "viVN", native = "Tiếng Việt", english = "Vietnamese", script = "vietnamese", hidden = true },
-}
-
 -- Whether a font draws `text`: the settings' font object, or the file `path`. A glyph the font
 -- lacks draws as nothing or as a box, so the text is measured against as many U+0378, a code point
 -- Unicode has never assigned and so no font has: the same width means none of it drew. Han and
@@ -216,36 +193,62 @@ local function FontDraws(text, path)
     return drew
 end
 
-local function Locale(code)
-    for _, locale in ipairs(LANGUAGES) do
-        if locale.code == code then return locale end
-    end
-end
-
--- Whether a font draws the language `code`: its own name, and the characters only it has.
+-- Whether a font draws the language `code`: its own name, and the characters only it has. A
+-- language the registry does not know, or that names itself in no script, draws nothing.
 function Options:LanguageDraws(code, path)
-    local locale = Locale(code)
-    return locale ~= nil and FontDraws(locale.native .. (locale.sample or ""), path)
+    local language = Languages:Get(code)
+    return language ~= nil and language.native ~= nil
+        and FontDraws(language.native .. (language.sample or ""), path)
 end
 
---- A language's name in the lists, one for every module: its own, and in English where this
---- client's font cannot draw its script (Korean on a German client).
+--- A language's name in text drawn in the game's font, one for every module: its own where the
+--- settings' font can draw it, in English where it cannot (Korean on a German client), and the code
+--- where a pack names it in neither. A built-in Latin language needs no probe. A name only a
+--- pack's font draws stays English here, because this text has no way to wear that font.
 function Options:LanguageName(code)
-    local locale = Locale(code)
-    if not locale then return code end
-    if not locale.script then return locale.native end
-    return self:LanguageDraws(code) and locale.native or locale.english
+    local language = Languages:Get(code)
+    if not language then return code end
+    if language.builtin and language.script == "latin" then return language.native end
+    if self:LanguageDraws(code) then return language.native end
+    return language.name or code
 end
 
---- The client's language, as "Auto" reads it: English where the client's is not one of ours.
+--- The name a menu entry shows, for a menu that draws it in `LanguageFace`: its own where only the
+--- pack's font can draw it, else what `LanguageName` gives.
+function Options:MenuLanguageName(code)
+    if self:LanguageFace(code) then return Languages:Get(code).native end
+    return self:LanguageName(code)
+end
+
+--- The pack's font for a language's name in the lists, where the settings' font cannot draw it
+--- but the pack's can; else nil, and the menu keeps the game's font.
+function Options:LanguageFace(code)
+    local language = Languages:Get(code)
+    if not (language and language.font) then return nil end
+    if language.builtin and language.script == "latin" then return nil end
+    if self:LanguageDraws(code) then return nil end
+    return self:LanguageDraws(code, language.font) and language.font or nil
+end
+
+--- The client's language, as "Auto" reads it: English where the client's is not a built-in one.
 function Options:ClientLanguage()
     local locale = GetLocale and GetLocale()
     if locale == "enGB" then return "enUS" end
-    for _, each in ipairs(LANGUAGES) do
-        if each.code == locale then return locale end
+    for _, builtin in ipairs(Languages.BUILTIN) do
+        if builtin.code == locale then return locale end
     end
     return "enUS"
 end
+
+--- "auto" and the codes of the installed languages, read when a menu opens so that a pack
+--- installed since is there.
+local function Choices(first)
+    local list = { first }
+    for _, language in ipairs(Languages:Installed()) do table.insert(list, language.code) end
+    return list
+end
+function Options:VoiceChoices() return Choices("auto") end
+function Options:FallbackChoices() return Choices("none") end
 
 --- Show `style` on screen with a sample line, or nil to stop.
 function Options:Preview(style)
@@ -287,7 +290,7 @@ local LINKS = {
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
         url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
-        url = "https://discord.gg/KgeQhjv9Rd" },
+        url = "https://spoken.quest/discord" },
     { name = "CurseForge", icon = [[Interface\AddOns\Spoken\Textures\LinkCurseForge]],
         url = CurseForgeURL() },
     { name = "Wago", icon = [[Interface\AddOns\Spoken\Textures\LinkWago]],
@@ -542,24 +545,18 @@ local function Build()
     -- player who picks Portuguese means it for quests and readables alike.
     layout:Section(L.OPT_LANGUAGE_TITLE)
     local language = function() return Addon.db.profile.Language end
-    local voices, fallbacks = { "auto" }, { "none" }
-    for _, locale in ipairs(LANGUAGES) do
-        if not locale.hidden then
-            table.insert(voices, locale.code)
-            table.insert(fallbacks, locale.code)
-        end
-    end
-    layout:Dropdown(L.OPT_VOICE_LANGUAGE, nil, voices,
+    layout:Dropdown(L.OPT_VOICE_LANGUAGE, nil, function() return Options:VoiceChoices() end,
         function() return language().Voice or "auto" end,
         function(code) language().Voice = code end, function() Options:UpdateRows() end,
         function(code)
             if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
-            return Options:LanguageName(code)
-        end)
-    layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, nil, fallbacks,
+            return Options:MenuLanguageName(code)
+        end, function(code) return Options:LanguageFace(code) end)
+    layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, nil, function() return Options:FallbackChoices() end,
         function() return language().Fallback or "enUS" end,
         function(code) language().Fallback = code end, function() Options:UpdateRows() end,
-        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:LanguageName(code) end)
+        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:MenuLanguageName(code) end,
+        function(code) return Options:LanguageFace(code) end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,

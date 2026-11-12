@@ -85,10 +85,11 @@ Expect("...and two of the Karazhan Crypts' Marylas", Faces(2875, { "kaigy maryla
 Expect("bosses have the model Forever draws them with: Sneed himself on his spawned Shredder, Grubbis uses Classic's display, Gandling, Sapphiron",
     Face(36, "sneed") .. "," .. Face(90, "grubbis") .. "," .. Face(289, "darkmaster gandling") .. "," .. Face(533, "sapphiron"),
     "642/7125,7361/6533,1853/11070,15989/16033")
+Expect("Stratholme's Balnazzar uses Leatrix's dreadlord model", Face(329, "balnazzar"), "10812/10691")
 Expect("...the City of Dalaran's Arcane Anomaly is Forever's, not Karazhan's", Face(2959, "arcane anomaly"), "245999/129891")
 Expect("a boss known only by a namesake has no creature, so the namesake's death does not tell its story",
     Face(2856, "balnazzar") .. "," .. Face(2959, "mana elemental") .. "," .. tostring(owner[10813]) .. "," .. tostring(owner[16488]),
-    "none,none,nil,nil")
+    "nil/10545,none,nil,nil")
 Expect("a boss whose model the client lacks has no portrait rather than an empty one", Face(329, "crimson hammersmith"), "11120/nil")
 local LACKED = { [40322] = true, [113690] = true, [34424] = true, [34497] = true, [16216] = true }
 local lacked = {}
@@ -246,9 +247,14 @@ Expect("a raid boss uses the elite skull badge", Spoken:GetBullet("boss-raid").t
 _G.SpokenBossStories[2856] = { balnazzar = "A raid story." }
 local raidClip = Bosses:StoryClip(2856, "balnazzar")
 Expect("a raid story uses the raid badge", raidClip and raidClip.present.bullet, "boss-raid")
-Expect("a raid story without a portrait uses the elite skull", raidClip and raidClip.present.portrait.texture,
-    [[Interface\Minimap\Minimap_skull_elite]])
+Expect("a raid story uses Balnazzar's DBM model", raidClip and raidClip.present.portrait.kind .. "|"
+    .. tostring(raidClip.present.portrait.displayID), "model|10545")
 _G.SpokenBossStories[2856] = nil
+_G.SpokenBossStories[533] = { ["the four horsemen"] = "A raid story." }
+local horsemenClip = Bosses:StoryClip(533, "the four horsemen")
+Expect("a Four Horsemen story uses DBM-Raids-Vanilla's model", horsemenClip and horsemenClip.present.portrait.kind .. "|"
+    .. tostring(horsemenClip.present.portrait.displayID), "model|10729")
+_G.SpokenBossStories[533] = nil
 _G.SpokenBossStories[2789] = { ["lord kazzak"] = "A world-boss story." }
 local worldBossClip = Bosses:StoryClip(2789, "lord kazzak")
 Expect("a world-boss story uses the elite badge", worldBossClip and worldBossClip.present.bullet, "boss-raid")
@@ -317,6 +323,12 @@ Expect("...and a greyed Play", page.play:IsShown() and not page.play:IsEnabled()
 _G.SpokenBossStories[36] = { ["edwin vancleef"] = "He led the Brotherhood.", _ = "Mines under Moonbrook." }
 Click("Edwin VanCleef")
 Expect("...or the story where there is one", page.body.text.text, "He led the Brotherhood.")
+Expect("...and a Report button", page.report:IsShown(), true)
+local showReport, reported = Spoken.ShowReport, nil
+Spoken.ShowReport = function(_, url) reported = url end
+page.report.scripts.OnClick(page.report)
+Expect("...Report opens the boss story address", reported, "https://spoken.quest/bosses/r/36/edwin-vancleef")
+Spoken.ShowReport = showReport
 Expect("...its row lit as chosen", RowFor("Edwin VanCleef").selected, true)
 _G.SpokenBossStories[36]["edwin vancleef"] = { "He led the Brotherhood.", deDE = "Er führte die Bruderschaft.", [2] = nil }
 Click("Edwin VanCleef")
@@ -331,6 +343,7 @@ Bosses:RefreshBosses()
 Shown()
 Click("Edwin VanCleef")
 Expect("a boss with a creature has its story as one block", page.body.text.text, "He led the Brotherhood.")
+Expect("...and its model above the story", page.body.model.displayID, 1305)
 Expect("...and its portrait at the left of its name, the title moved right of it", page.face:IsShown() and page.shift > 0, true)
 Expect("...the boss badge on it", page.headFace.speaker.bullet, "boss")
 local badge = page.headFace and page.headFace.badge
@@ -417,10 +430,14 @@ Expect("...and keeps the dungeon and its continent", Has(only, "Deadmines") and 
 Bosses:FoundEncounter(SpokenBosses.maps[36][1].ids[1])
 if not Has(Shown(), "Edwin VanCleef") then Click("Deadmines") end
 Expect("...a dungeon lists only the bosses met", Has(Shown(), "Edwin VanCleef") and not Has(Shown(), SpokenBosses.maps[36][2][1]), true)
-Bosses.list.opts.onlySet(false)
 tab.unlock.set(true)
 Shown()
 local second = SpokenBosses.maps[36][2][1]
+Expect("Unlock Unfound Bosses shows unfound bosses even with Found Only on", RowFor(second).row.locked, false)
+tab.unlock.set(false)
+Bosses.list.opts.onlySet(false)
+tab.unlock.set(true)
+Shown()
 Expect("Unlock Unfound Bosses opens every one", RowFor(second).row.locked, false)
 Expect("...and greys nothing for having none found: not the dungeon, nor the continent", tostring(RowFor("Deadmines").row.none) .. "|" .. tostring(RowFor("Eastern Kingdoms").row.none), "false|false")
 Click(second)
@@ -521,6 +538,19 @@ Expect("with no pack, a boss's story is a line with no recording", tostring(clip
 Expect("...headed by its dungeon, named for the boss", clip.present.header .. "|" .. clip.present.label, "Deadmines|Edwin VanCleef")
 Expect("...with its story and its face", clip.present.transcript .. "|" .. tostring(clip.present.portrait.creatureID),
     "He led the Brotherhood.|639")
+Expect("...with a Report action in the narrator", clip.present.actions and clip.present.actions[1].id, "report")
+local showReport, reported = Spoken.ShowReport, nil
+Spoken.ShowReport = function(_, url) reported = url end
+clip.present.actions[1].onClick(clip)
+Expect("...whose Report opens the boss story address", reported, "https://spoken.quest/bosses/r/36/edwin-vancleef")
+local getAudioClip = Bosses.GetAudioClip
+Bosses.GetAudioClip = function() return { path = "x.mp3", len = 41.2, language = "deDE" } end
+local voiced = Bosses:StoryClip(36, "edwin vancleef")
+voiced.present.actions[1].onClick(voiced)
+Expect("...filed under the language heard, not the one on screen", reported,
+    "https://spoken.quest/deDE/bosses/r/36/edwin-vancleef")
+Bosses.GetAudioClip = getAudioClip
+Spoken.ShowReport = showReport
 Expect("...shown for six seconds at least", clip.length, 6)
 Expect("a boss with no story has no line", Bosses:StoryClip(36, "no such boss"), nil)
 

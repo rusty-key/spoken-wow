@@ -324,7 +324,7 @@ make quests-release                       # upload every zip in dist/
 zip that goes out is the one you tested. Six projects, one per target: `spoken`
 ([spoken](https://www.curseforge.com/wow/addons/spoken), `1700375`), which is
 Spoken's zip; `audio-all`
-([spoken-quests-audio-all](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), `1660196`),
+([spoken-audio-quests-all](https://www.curseforge.com/wow/addons/spoken-audio-quests-all), `1660196`),
 and `audio-alliance` / `audio-horde` / `audio-shared` / `audio-gossip`. `spoken-all`, the
 English install-everything addon, is accepted by name and is never part of a bare run. A target
 with no id fails the run rather than uploading a Horde pack over the Alliance project — which
@@ -355,6 +355,11 @@ settings live in the web UI, and a script that rewrote them each release would b
 could quietly undo an edit made there.
 
 ### A language's packs
+
+A pack names its language in its `.toc` with `X-SpokenQuests-Language`, any code of the form `xxYY`;
+no key means English. `X-Spoken-LanguageName`, `X-Spoken-LanguageNative` and `X-Spoken-LanguageFont`
+are optional and give Spoken's menus the language's names and a font to draw them in. A line's text
+is drawn in the font its clip sets in `present.font`. Spoken lists a language once a pack in it is installed.
 
 A language other than English has English's four packs, each folder plus `_<lang>`. They exist
 because their pages do: `publishers/quests/audio-<pack>-<lang>.md` names the project, version,
@@ -481,7 +486,35 @@ act on. **Show progress text** brings them back, and `?progress=1` says the same
 URL; absence means hidden, so a bare link is the useful view. Ticking `progress` in the
 source filter also counts as asking for them, since otherwise that choice would return
 nothing. It is not counted as an active filter: it widens the results rather than narrowing
-them, and clearing filters returns it to hidden.
+them, and clearing filters returns it to hidden. The Missing audio ranking (`/missing-audio`
+and its dashboard tile) leaves progress text out too: the addon reports it as silent like any
+other line, but nothing will voice it, so it is not a gap to close.
+
+**The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
+`?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
+too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
+known level is in no range, so setting either bound hides gossip and quests the extract lacks.
+
+**The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
+that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
+from the page uses it too.
+
+**Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
+Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
+lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking
+(`/missing-audio` and its dashboard tile) leave them out unless the client filter asks for
+them. The filter takes the Contributions pages' bins (`?client=low-effort`, `?client=anniversary`,
+`?client=all`; absent is `focus`, Era + Forever). A lookup by `?line=` finds a line whatever its
+client. Nothing stores the client: `lib/quests/line-client.ts` derives it per row when the
+catalogue is built. A speaker the extract wrote has none and counts as focus, and so does every
+row of a quest the extract has, whoever sent its speaker. Any other speaker a contribution wrote
+has that contribution's `build`; one with no build counts as focus. A line keeps the client of
+whoever sent it first, since a later identical upload only counts on that row. A quest the
+Classic extract has no row for,
+with an id below 13000, is TBC Anniversary whatever sent it (the extract ends at 9665, Season of
+Discovery starts at 78000, Forever's own quests at 80000), which catches the Wowhead imports and
+their Forever build. Gossip has no quest id, so gossip scraped from Wowhead's TBC pages still
+reads as Forever.
 
 **Gossip is a source, not an explorer of its own.** The source filter takes several values,
 written `?source=accept,gossip`, so one view holds an NPC's greetings beside their quest text.
@@ -500,13 +533,17 @@ hashes, which go through one function (`sentText`) so they cannot disagree. Case
 position, not the token: lowercase mid-sentence, capitalised at a sentence's start and always
 in German. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
-German's own templates write, is read the same way in every language. English quest text has
-nothing left for it to replace, its words having been written in at extraction; a book page
-in any language, English included, goes through the same table (`docs/readables/README.md`). A
-token glued to a following letter (`$Nama`) is left in, so the line stays unvoiceable until a
-translator rewrites it. German's genitive `s` is the one exception: `$Ns` and `$Cs` read as
-`Abenteurers`, or `Abenteurerin` on the female variant. A branch never spans a sentence's end,
-so one whose `;` was lost stays in as a token instead of swallowing the text up to a later `;`.
+German's own templates write, is read the same way in every language, and so is Forever's deDE
+gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, a letter on either
+side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send
+some lines) reads as the token. English quest text has nothing left for it to replace, its
+words having been written in at extraction; a book page in any language, English included,
+goes through the same table (`docs/readables/README.md`). A token glued to a following letter
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. Two glued
+`s` are exceptions. German's genitive: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
+on the female variant. French's class plural: `$cs` reads as `aventuriers`, or `aventurières`
+on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
+in as a token instead of swallowing the text up to a later `;`.
 A Craftsman's Writ's `$2oa`, the item count the client fills in, reads as "an order of" in
 English, "algumas unidades de" in ptBR, and "несколько" plus the second of ruRU's two written
 forms (`порции:порций`); a language without words for it keeps the token and stays
@@ -1045,7 +1082,14 @@ and hashed on the template when it is gossip. Class and race are swapped whereve
 whole words, so a warrior's "a warrior's discipline" arrives as "a `$c`'s discipline"; that
 false positive is accepted over voicing one player's class at everyone, except on a quest only
 that class can take (the Compendium's `classes` is that one class), where the class is left as
-written. The contribution's id on its speaker row, or its note on the first
+written. A quest whose text names a class as a word of its own ("There's a priest out in the
+mountains") is marked from its row on the corrections tab, per language (`quest_class_word`,
+migration 0105). From then on that language's intake puts the word back wherever a `$c` (frFR's
+`$cs` too) lines up with one to three plain words in the corpus line, before the row is
+deduplicated, and marking does the same to the quest's rows in that language still waiting
+(`lib/contributions/class-words.ts`). A `$c` in a sentence the corpus lacks stays. On that tab a
+moderator can also edit the player's text in place before accepting it; `raw` keeps the paste as
+sent, and a refused accept puts the text back. The contribution's id on its speaker row, or its note on the first
 version of a line it wrote without one, is the mark, not the line's origin, because an edit
 puts an `edited` version on top. A contributed speaker is what `corpus_db.py`'s import leaves
 alone when it replaces every extracted speaker, and it numbers from 1,000,000 so a re-import
@@ -1953,7 +1997,8 @@ Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in two shap
 `QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
 switched and when the setting changes, and a profile change redraws the quest log and the trackers.
 Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
-each block keeps one square button at its title's right. Classic Era's tracker writes each title
+each block keeps one square button under the quest's item button, or under its find-group button
+when it has no item, or at the block's top right when it has neither. Classic Era's tracker writes each title
 into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
 watched quest's title text to a shown line and puts the round button left of it, so a title some
 other addon rewrites gets no button. A failing adapter is logged and never raises inside the

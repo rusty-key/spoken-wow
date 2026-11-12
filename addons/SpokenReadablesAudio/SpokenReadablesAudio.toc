@@ -7,6 +7,7 @@
 ## Group: Spoken
 ## X-Part-Of: Spoken
 ## X-Child-Of: Spoken_Readables
+## X-SpokenReadables-Language: enUS
 ## X-License: Audio generated with ElevenLabs from book text extracted from the game.
 
 Data/Sounds.lua

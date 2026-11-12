@@ -79,6 +79,29 @@ export type ClientSummary = {
   buildNumber: string | null;
 };
 
+/** The `build` query parameter: a build number, or undefined for anything else. */
+export function buildFilterOf(value: unknown): string | undefined {
+  return typeof value === "string" && /^\d{1,10}$/.test(value) ? value : undefined;
+}
+
+export function matchesBuild(client: ClientSummary, build: string | undefined): boolean {
+  return build === undefined || client.buildNumber === build;
+}
+
+/** The builds these rows came from, newest first: the latest build is the one safe to trust. */
+export function buildOptions(clients: readonly ClientSummary[]): { value: string; label: string }[] {
+  const builds = new Map<string, { label: string; count: number }>();
+  for (const { buildNumber, label } of clients) {
+    if (!buildNumber) continue;
+    const build = builds.get(buildNumber);
+    if (build) build.count++;
+    else builds.set(buildNumber, { label, count: 1 });
+  }
+  return [...builds]
+    .sort(([a], [b]) => Number(b) - Number(a))
+    .map(([value, { label, count }]) => ({ value, label: `${value} · ${label} (${count})` }));
+}
+
 const LEGACY_VERSIONS = new Set(["1.12.1", "2.4.3", "3.3.5"]);
 
 function familyOf(version: string): ClientFamily {

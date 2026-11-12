@@ -87,8 +87,9 @@ story.` under its name and line. `SpokenPlaces:IsLocked` decides, and `QueueLore
 place.
 
 Unlock Undiscovered Places (`showUndiscovered`) opens every area and tells every story. The counts
-and greyed zones still say what this character has found. Discovered Only, on by default, leaves out zones with
-nothing found and areas not found.
+and greyed zones still say what this character has found. It also shows the complete list even when
+Discovered Only is on. With Unlock Undiscovered Places off, Discovered Only, on by default, leaves out
+zones with nothing found and areas not found.
 
 ## Areas listed in another zone
 
@@ -178,6 +179,12 @@ folds it.
 - `UI/MapHighlight.lua` lights the area under the cursor when a click would open its story. The
   highlight is that area's explored overlay drawn again in additive blend, so only explored areas
   light. `SpokenPlaces:AreaAt` answers both the click and the highlight.
+- `UI/OpenMap.lua` covers [OpenMap](https://github.com/openmap-world/openmap)'s stitched map,
+  through its public `OpenMapAPI` (major 1) alone. There `WorldMapFrame.mapID` is the map the view
+  is centred on, the continent until well past a zone's zoom, so the click, the highlight and the
+  panel ask it for the zone under the cursor or at the view's centre instead. A click on a city
+  tells its story without opening its map, and a hidden panel leaves the map to OpenMap. Without
+  OpenMap nothing here runs.
 - A map with no story of its own shows its parent zone's, and says so on the line under the
   title. A place with no story yet says so and offers Contribute. The panel's page uses the Text
   Language, Text Size and Show Pictures settings.

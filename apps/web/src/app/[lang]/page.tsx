@@ -16,6 +16,7 @@ import NavMenu from "@/components/landing/NavMenu";
 import { NAV } from "@/components/landing/nav";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
+import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
 import { LOCALES, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { packFor, type Section } from "@/lib/packs";
@@ -36,7 +37,6 @@ const MANAGER_DOWNLOADS = {
   macIntel: `${MANAGER_FILES}-mac-x64.dmg`,
   linux: `${MANAGER_FILES}-linux.AppImage`,
 };
-const DISCORD = "https://discord.gg/KgeQhjv9Rd";
 
 /** CurseForge's one meta addon per language: Spoken, plus every voice pack in it. */
 const META: Partial<Record<Lang, string>> = {

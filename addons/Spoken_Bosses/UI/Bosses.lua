@@ -97,7 +97,7 @@ local function Unlocked()
 end
 
 local function OnlyFound()
-	return SpokenBossesSettings ~= nil and SpokenBossesSettings.compendiumFoundOnly == true
+	return SpokenBossesSettings ~= nil and SpokenBossesSettings.compendiumFoundOnly == true and not Unlocked()
 end
 
 -- Whether Found Only keeps what holds `found` bosses met.
@@ -184,6 +184,12 @@ end
 local function Creature(map, key)
 	local known = _G.SpokenBossCreatures
 	return known and known[map] and known[map][key]
+end
+
+-- The creature is the fallback for clients that cannot set a display directly.
+local function Model(map, key)
+	local entry = Creature(map, key)
+	return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
 end
 
 -- Whether a boss has a story and a known appearance.
@@ -339,8 +345,27 @@ local PLAY = {
 	find = function(target) return Bosses:QueuedStory(target[1], target[2]) end,
 	start = function(target) Bosses:PlayStory(target[1], target[2]) end,
 }
--- Nothing to report from the page yet.
-local REPORT = { has = function() return false end, open = function() end, title = "" }
+local REPORT_LABEL = SpokenEnv.L.DIALOGUE_REPORT_PROBLEM
+-- The page's Report is about the words on screen, so it files under their language.
+local REPORT = {
+	has = function() return true end,
+	open = function(target)
+		local _, language = Story(target[1], target[2])
+		Bosses:ShowReport(target[1], target[2], language)
+	end,
+	title = REPORT_LABEL,
+}
+Bosses.ReportAction = REPORT
+Bosses.Name, Bosses.Model, Bosses.Unlocked = Name, Model, Unlocked
+-- The narrator's Report is about what was heard, so it files under the clip's language.
+local NARRATOR_REPORT = {
+	id = "report",
+	icon = [[Interface\HelpFrame\HelpIcon-Bug]],
+	label = REPORT_LABEL,
+	anchor = "topright",
+	tooltip = function(tooltip) tooltip:SetText(REPORT_LABEL) end,
+	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language) end,
+}
 
 local function Boss(map, key)
 	return Index().byKey[map .. ":" .. key]
@@ -375,20 +400,24 @@ function Bosses:StoryClip(map, key)
 	local boss = Boss(map, key)
 	if not boss then return nil end
 	local _, words = story:gsub("%S+", "")
-	local entry = Creature(map, key)
+	local model = Model(map, key)
 	local clip = {
 		key = "boss:" .. map .. ":" .. key,
+		mapID = map,
+		bossKey = key,
 		length = math.max(LEAST_SECONDS, words / READING_SPEED),
 		present = {
 			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
 			label = Name(boss),
 			transcript = story,
 			bullet = BossBullet(map),
-			portrait = entry and entry.display and { kind = "model", creatureID = entry.creature, displayID = entry.display }
+			portrait = model and { kind = "model", creatureID = model.creatureID, displayID = model.displayID }
 				or { kind = "texture", texture = SKULLS[BossBullet(map)] },
+			actions = { NARRATOR_REPORT },
 		},
 	}
 	local recording = self.GetAudioClip and self:GetAudioClip(map, key)
+	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
 		-- Timed to the recording's own words, so not under a story in another language.
@@ -422,14 +451,14 @@ end
 
 -- A boss's portrait, at the left of its name on the page's header.
 local function Portrait(map, key)
-	local entry = Creature(map, key)
+	local model = Model(map, key)
 	-- A portrait only from a known appearance: asked of the client, a creature it has not met answers
 	-- with the player's own face.
-	if not (entry and entry.display) then return Unknown(map) end
+	if not model then return Unknown(map) end
 	local id = map .. ":" .. key
 	local portrait = portraits[id]
-	if not (portrait and portrait.creatureID == entry.creature and portrait.displayID == entry.display) then
-		portrait = { creatureID = entry.creature, displayID = entry.display, bullet = BossBullet(map) }
+	if not (portrait and portrait.creatureID == model.creatureID and portrait.displayID == model.displayID) then
+		portrait = { creatureID = model.creatureID, displayID = model.displayID, bullet = BossBullet(map) }
 		portraits[id] = portrait
 	end
 	return portrait
@@ -452,7 +481,7 @@ local function ShowEntry()
 			return
 		end
 		local story = Story(map, key)
-		page:Show({ title = Name(boss), subtitle = where, icon = Portrait(map, key),
+		page:Show({ title = Name(boss), subtitle = where, icon = Portrait(map, key), model = Model(map, key),
 			text = story or C.NotWritten(), unwritten = story == nil, target = story and { map, key } or nil })
 		return
 	end

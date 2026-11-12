@@ -16,7 +16,9 @@ What Places adds to Spoken:
 - A Report button on each line being read. There is no Read button of its own.
 - A global, `SpokenPlaces`, for other addons, as `SpokenBossesAddon` is: whether a place has a
   story (`GetLore`, `GetSubzoneLore`), whether it is found (`IsLocked`) and voiced (`HasAudio`),
-  and reading it (`PlayLore`, `StopLore`, `IsPlayingLore`) or showing it (`ShowLoreFor`).
+  and reading it (`PlayLore`, `StopLore`, `IsPlayingLore`) or showing it (`ShowLoreFor`). Feature
+  modules can also reuse the story panel beside the map with `ShowMapStory(mapID, entry)`, where
+  `entry` may provide its own `target`, `play` and `reportAction` actions.
   `PlayLore` and `ShowLoreFor` check neither the lock nor the part, so an addon checks
   `Spoken:IsPartOn("places")` and `IsLocked` before calling them.
 
@@ -32,6 +34,7 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | When to Read | Read Automatically | `autoplay` | on |
 | | Include Smaller Areas | `autoplaySubzones` | on |
 | | Include Places Found Before | `autoplayExplored` | on |
+| | Stop When Combat Starts | `autoplayStopInCombat` | off |
 | Stories | Show Story Beside Map | `showMapPanel` | on |
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
@@ -82,7 +85,9 @@ a language pins it on every client.
 
 - A language is offered only when `Data/Languages.lua` marks it ready (every story translated, and
   an alias table where a client runs in it) and the client's fonts can draw it
-  (`CanRenderLanguage`). Interface strings are not required, because each key falls back to English.
+  (`CanRenderLanguage`). The lore menu lists the finished built-in languages, plus any pack
+  language whose `.toc` says `X-SpokenPlaces-Lore: 1`, each only where the fonts can draw it.
+  Interface strings are not required, because each key falls back to English.
   The fonts are asked by drawing the language's own name, and for the two Chinese the characters
   only that one has (a language's `sample` in Spoken's list, none of them in a Korean font's
   Hanja), measured against as many U+0378, a code point no font has; each Han or Hangul character
@@ -100,9 +105,16 @@ a language pins it on every client.
   pack first, then the fallback language's packs, unless If a Voice Is Missing is Stay Silent.
 - `/spp lang <code> force` and the Developer page's Offer Unfinished Translations show an
   unfinished language. Every login prints a warning while the override is on.
-- Italian and Vietnamese are in the list (`client = false`: no client runs in them) and have no
-  data yet. Vietnamese is offered only where a font draws its accents (`script = "vietnamese"`).
-  The list in `Language.lua` must equal `pipelines/lib/locales.mjs`; `validate.mjs` checks it.
+- Spoken's registry (`addons/Spoken/Languages.lua`) lists the built-in client languages and every
+  language an installed pack declares. A lore pack registers its text with
+  `SpokenPlaces:RegisterLoreData(code, kind, data)`, and must set `X-Spoken-LanguageNative`: the
+  language is offered only once its name draws, and with no native name it is never offered. The
+  pack's `.toc` must also say `X-SpokenPlaces-Language: <code>`, even with no `Sounds.lua`, because
+  `ShouldLoadLanguage` reads that key before it accepts the text. A
+  pack's `X-Spoken-LanguageFont` draws its name and lore pages; without one, Places tries the
+  stock `ARIALN.TTF`, which draws Vietnamese on most clients but no script the game lacks. Right-to-left text is the pack's job: ship it in visual order.
+  The built-in list must equal the client languages in `pipelines/lib/locales.mjs`; `validate.mjs`
+  checks it.
 
 ## How a story is read
 
@@ -120,8 +132,12 @@ the zone's icon as the face (Spoken's book without one), the place's picture and
 - Before a clip starts, Places' gate (`Autoplay.lua`, `HoldReason`) holds what reading on discovery
   queued while reading is off, in combat or during a cinematic. A held line waits and shows why.
   Play and shift-click lines are never held.
+- While dead or a ghost nothing is discovered: no line is queued and no visit recorded. A line
+  already speaking plays on, and Play still works.
 - A cinematic that starts after a clip has stops it, and it replays from the start when the
-  cinematic ends.
+  cinematic ends. Combat does the same with Stop When Combat Starts on; off, the default, a line
+  already speaking plays through the fight, and one not yet started still waits for it to end.
+  Only a line reading on discovery queued is stopped: Play keeps speaking.
 - Reading on discovery queues nothing while the player is on a taxi or flying, and nothing for a
   continent.
 - The client can start and stop a sound file and nothing in between. Stop and Replay exist, Pause
@@ -147,7 +163,9 @@ A pack is an addon folder with `Data/Sounds.lua`, which registers itself in
   nothing. Bump `PACK_FORMAT` only when the pack's data shape changes.
 - The pack reads its folder name, `X-SpokenPlaces-Quality`, `X-SpokenPlaces-Bitrate`,
   `X-SpokenPlaces-Language` and `Version` from its `.toc`, so one generated `Sounds.lua` serves
-  every pack. A pack with no language key is English.
+  every pack. A pack with no language key is English. The language is any code of the form
+  `xxYY`; `X-Spoken-LanguageName`, `X-Spoken-LanguageNative` and `X-Spoken-LanguageFont` are
+  optional and name the language in Spoken's menus.
 - The pack that reads is the best one in the voice language, else the best in the fallback
   language. Between two packs of one language, `/spp audio <folder>` chooses (stored per language
   as a folder name), else the higher bitrate.
