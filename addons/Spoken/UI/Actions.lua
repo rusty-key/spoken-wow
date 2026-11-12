@@ -250,10 +250,18 @@ end
 
 --- Previous: the round button with the game's left-arrow glyph.
 function Actions.PreviousButton(parent, name)
-    -- The stock previous-page icon has more transparent padding than the play glyph used by
-    -- Skip, so give it a larger visible area while keeping the same 24px round button.
-    local previous = Actions.RoundButton(parent, 16, name, true)
-    previous.glyph:SetTexture([[Interface\Buttons\UI-SpellbookIcon-PrevPage-Up]])
+    -- Mirror Skip: the bar is on the left and the play triangle points left.
+    local previous = Actions.RoundButton(parent, 10, name, true)
+    Actions.Glyph(previous.glyph, "play")
+    previous.glyph:SetTexCoord(CELL, 0, 0, CELL)
+    previous.glyph:ClearAllPoints()
+    previous.glyph:SetPoint("CENTER", 2, 0)
+    previous.bar = previous:CreateTexture(nil, "ARTWORK")
+    local P = SpokenLayout and SpokenLayout.Pixels
+    previous.bar:SetSize(P and P(previous, 2) or 2, P and P(previous, 9) or 9)
+    previous.bar:SetPoint("RIGHT", previous.glyph, "LEFT", 0, 0)
+    if previous.bar.SetColorTexture then previous.bar:SetColorTexture(1, 0.82, 0, 0.85) end
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, previous) end) end
     previous:SetScript("OnClick", Actions.Previous)
     previous:SetScript("OnEnter", function()
         previous.glyph:SetAlpha(1)
