@@ -560,6 +560,9 @@ function Addon:OnInitialize()
             local data = dialog and dialog.data
             if data then
                 self:IgnoreNPC(data.guid, data.name)
+                if DialogPlayButton and DialogPlayButton.Refresh then
+                    DialogPlayButton:Refresh()
+                end
             end
         end,
     }
@@ -1391,6 +1394,32 @@ end
 function Addon:CanIgnoreNPC(clip)
     return clip and Enums.SoundEvent:IsGossipEvent(clip.event)
         and IgnoredSpeakerKey(clip.unitGUID, clip.name) ~= nil
+end
+
+--- The NPC whose gossip or greeting dialog is currently open, as a real clip when one exists
+--- or as the small clip-shaped record the dialog's Mute button needs before a line is queued.
+function Addon:CurrentGossipClip()
+    local event
+    if IsFrameVisible(QuestFrameGreetingPanel) then
+        event = "QUEST_GREETING"
+    elseif IsFrameVisible(GossipFrame) then
+        event = "GOSSIP_SHOW"
+    end
+    if not event then
+        return nil
+    end
+
+    local guid, name = Utils:GetNPCGUID(), Utils:GetNPCName()
+    if not guid and not name then
+        return nil
+    end
+    if currentGossipSoundData and Enums.SoundEvent:IsGossipEvent(currentGossipSoundData.event)
+        and (not guid or not currentGossipSoundData.unitGUID or currentGossipSoundData.unitGUID == guid)
+        and (not name or not currentGossipSoundData.name or currentGossipSoundData.name == name) then
+        return currentGossipSoundData
+    end
+    return { event = Enums.SoundEvent[event == "QUEST_GREETING" and "QuestGreeting" or "Gossip"],
+        unitGUID = guid, name = name }
 end
 
 --- Ask before muting this NPC's automatic greetings.

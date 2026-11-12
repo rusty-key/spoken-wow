@@ -194,21 +194,23 @@ for _, client in ipairs({ "11509", "16001" }) do
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 
-    -- A muted NPC's automatic greeting stays quiet, while the control uses the same action
-    -- path as the other narrator buttons and can be recovered from Gossip settings.
+    -- A muted NPC's automatic greeting stays quiet, while the control lives on the NPC dialog
+    -- rather than the player and uses WoW's speaker-with-X symbol.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     Talk()
     local muted = VO.Player:Current()
     Played(played)
-    local muteAction
-    for _, action in ipairs(muted.present.actions) do
-        if action.id == "muteNPC" then muteAction = action end
-    end
-    Expect(client .. ": the current NPC offers a Mute action", muteAction ~= nil and muteAction.visible(muted), true)
-    VO.Addon:ConfirmIgnoreNPC(muted)
+    local muteButton = VO.DialogPlayButton.muteButton
+    Expect(client .. ": the player has no Mute action", muted.present.actions[3], nil)
+    Expect(client .. ": the NPC dialog offers Mute", muteButton:IsShown(), true)
+    Expect(client .. ": the dialog uses the speaker-with-X symbol", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-MUTED]])
+    muteButton:Click()
     Expect(client .. ": Mute asks for confirmation", stub.popups[#stub.popups].key, "VOICEOVER_IGNORE_NPC")
     VO.Addon:IgnoreNPC(muted.unitGUID, muted.name)
+    VO.DialogPlayButton:RefreshMute()
     Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
+    Expect(client .. ": the dialog hides Mute after confirmation", muteButton:IsShown(), false)
     Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), true)
     Leave()
     Talk()

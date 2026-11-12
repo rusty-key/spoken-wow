@@ -220,21 +220,7 @@ local REPORT = {
     end,
 }
 
-local MUTE_NPC = {
-    id = "muteNPC",
-    icon = [[Interface\COMMON\VOICECHAT-MUTED]],
-    label = L.OPT_MUTE_NPC,
-    anchor = "topright",
-    visible = function(clip) return Addon.CanIgnoreNPC and Addon:CanIgnoreNPC(clip) end,
-    tooltip = function(tooltip)
-        tooltip:SetText(L.OPT_MUTE_NPC)
-    end,
-    onClick = function(clip)
-        Addon:ConfirmIgnoreNPC(clip)
-    end,
-}
-
-local ACTIONS = { REPORT, STOP_GOSSIP, MUTE_NPC }
+local ACTIONS = { REPORT, STOP_GOSSIP }
 
 --- Turn a prepared SoundData into a clip, in place.
 function Player:Prepare(soundData)

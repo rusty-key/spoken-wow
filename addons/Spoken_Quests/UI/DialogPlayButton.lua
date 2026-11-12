@@ -19,11 +19,13 @@ setfenv(1, VoiceOver)
 
 local BUTTON_HEIGHT = 20
 local BUTTON_WIDTH = 60
+local MUTE_SIZE = 24
 -- Room the button's end caps take either side of its label.
 local LABEL_PADDING = 24
 local GAP = 2
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
+local MUTE_ICON = [[Interface\COMMON\VOICECHAT-MUTED]]
 
 -- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
@@ -111,6 +113,64 @@ function DialogPlayButton:Position(frameName)
     end
 end
 
+local function StandardDialog()
+    if Utils:DialogueUIPage() then
+        return nil
+    elseif IsFrameVisible(QuestFrameGreetingPanel) then
+        return "QuestFrame", "QUEST_GREETING"
+    elseif IsFrameVisible(GossipFrame) then
+        return "GossipFrame", "GOSSIP_SHOW"
+    end
+end
+
+--- Put the NPC's Mute icon in the same strip as Listen and Contribute, keeping it to their left
+--- when either text button is present and under the close button otherwise.
+function DialogPlayButton:PositionMute(frameName)
+    local frame = _G[frameName]
+    local button = self.muteButton
+    if not frame or not button then
+        return
+    end
+    button:ClearAllPoints()
+    local beside = self.button and self.button:IsShown() and self.button
+    if not beside and ContributeButton and ContributeButton.button and ContributeButton.button:IsShown() then
+        beside = ContributeButton.button
+    end
+    if beside then
+        button:SetPoint("RIGHT", beside, "LEFT", -GAP, 0)
+        return
+    end
+
+    local close = CloseButtonOf(frame, frameName .. "CloseButton")
+    local frameTop, closeBottom = frame.GetTop and frame:GetTop(), close and close.GetBottom and close:GetBottom()
+    if type(frameTop) == "number" and type(closeBottom) == "number" then
+        button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PlayButtonInset(), -(frameTop - closeBottom + STRIP_OFFSET))
+    elseif close then
+        button:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", -GAP, -STRIP_OFFSET)
+    else
+        button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
+    end
+end
+
+--- Show the icon only while a gossip or quest-greeting dialog has an NPC that can be muted.
+function DialogPlayButton:RefreshMute()
+    local button = self.muteButton
+    if not button then
+        return
+    end
+    local frameName, event = StandardDialog()
+    local clip = Addon.CurrentGossipClip and Addon:CurrentGossipClip()
+    if not (frameName and event and Addon:IsPageOn(event) and clip and Addon:CanIgnoreNPC(clip))
+        or Addon:IsGossipNPCIgnored(clip.unitGUID, clip.name) then
+        button:Hide()
+        self.muteClip = nil
+        return
+    end
+    self.muteClip = clip
+    self:PositionMute(frameName)
+    button:Show()
+end
+
 --- Show, hide and label the button for whatever is on screen now. Hidden rather than
 --- disabled for a quest with no line, for ContributeButton.lua's reason: a greyed-out button
 --- invites the player to wonder what is broken.
@@ -128,6 +188,7 @@ function DialogPlayButton:Refresh()
     -- panel never shows. Switched off, the window's part puts no button on it.
     if not held or not line or not IsFrameVisible(_G[PANELS[event]]) then
         button:Hide()
+        self:RefreshMute()
         return
     end
 
@@ -135,6 +196,7 @@ function DialogPlayButton:Refresh()
     self.line = line
     self:Relabel()
     button:Show()
+    self:RefreshMute()
 end
 
 --- Listen or Stop, for the line already found. All a clip starting or stopping can change.
@@ -196,6 +258,35 @@ function DialogPlayButton:Setup()
         end
     end)
     self.button = button
+
+    if _G.Spoken and Spoken.CreateRoundButton then
+        local mute = Spoken:CreateRoundButton(UIParent, "icon", nil, MUTE_ICON)
+        mute:SetSize(MUTE_SIZE, MUTE_SIZE)
+        if mute.SetFrameStrata then
+            mute:SetFrameStrata("DIALOG")
+        end
+        mute:SetScript("OnClick", function()
+            DialogPlayButton:RefreshMute()
+            if DialogPlayButton.muteClip then
+                Addon:ConfirmIgnoreNPC(DialogPlayButton.muteClip)
+            end
+        end)
+        mute:HookScript("OnEnter", function(self)
+            if not GameTooltip then
+                return
+            end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L.OPT_MUTE_NPC)
+            GameTooltip:Show()
+        end)
+        mute:HookScript("OnLeave", function()
+            if GameTooltip then
+                GameTooltip:Hide()
+            end
+        end)
+        mute:Hide()
+        self.muteButton = mute
+    end
 
     local watcher = CreateFrame("Frame")
     for _, event in ipairs(REFRESH_EVENTS) do
