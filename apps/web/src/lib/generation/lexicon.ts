@@ -150,8 +150,8 @@ function text(raw: Record<string, unknown>, key: string, where: string): string 
  * reviewer matches against the corpus by eye, so "Kel'Thuzad" has to stay "Kel'Thuzad" -
  * case-insensitivity is a property of the rule ElevenLabs applies, not of the record here.
  */
-export function validateEntry(input: unknown, index: number): LexiconEntry {
-  const where = `entry ${index}`;
+export function validateEntry(input: unknown, index?: number): LexiconEntry {
+  const where = index === undefined ? "entry" : `entry ${index}`;
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new LexiconError(`${where} must be an object`);
   }

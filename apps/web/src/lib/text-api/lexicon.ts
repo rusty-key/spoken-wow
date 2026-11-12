@@ -5,7 +5,7 @@
  * replaced whole, so a note left out of an update is dropped. Matching ignores case, as the
  * rules do, and the grapheme sent becomes the stored spelling.
  */
-import { LexiconError, validateEntry, type LexiconEntry } from "@/lib/generation/lexicon";
+import type { LexiconEntry } from "@/lib/generation/lexicon";
 
 export type EntryStatus = "created" | "updated" | "unchanged";
 
@@ -24,23 +24,9 @@ function sameEntry(a: LexiconEntry, b: LexiconEntry): boolean {
 }
 
 /**
- * Check every item, or throw LexiconError naming the first bad one. The same grapheme twice is
- * refused: one of the two would be silently lost.
+ * The lexicon with `incoming` written into it: replaced in place, or appended when new. When
+ * nothing changes it is `current` itself, which editLexicon reads as nothing to write.
  */
-export function validateItems(items: unknown[]): LexiconEntry[] {
-  const entries = items.map(validateEntry);
-  const seen = new Map<string, number>();
-  entries.forEach((entry, index) => {
-    const first = seen.get(keyOf(entry.grapheme));
-    if (first !== undefined) {
-      throw new LexiconError(`entry ${index}: "${entry.grapheme}" repeats entry ${first}; matching ignores case`);
-    }
-    seen.set(keyOf(entry.grapheme), index);
-  });
-  return entries;
-}
-
-/** The lexicon with `incoming` written into it: replaced in place, or appended when new. */
 export function upsertEntries(
   current: LexiconEntry[],
   incoming: LexiconEntry[],
@@ -60,7 +46,8 @@ export function upsertEntries(
     return { grapheme: entry.grapheme, status: "updated" };
   });
 
-  return { entries, result };
+  const changed = result.some((r) => r.status !== "unchanged");
+  return { entries: changed ? entries : current, result };
 }
 
 export function findEntry(entries: LexiconEntry[], grapheme: string): LexiconEntry | undefined {
