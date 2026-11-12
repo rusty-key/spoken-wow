@@ -35,9 +35,8 @@ end
 function Ellesmere:Font()
     if not self.skin then return nil end
     local client = Options:ClientLanguage()
-    for _, language in ipairs(LANGUAGES) do
-        if language.code == client and language.script then return nil end
-    end
+    local language = Languages:Get(client)
+    if language and language.script ~= "latin" then return nil end
     return (self.skin.GetFont())
 end
 

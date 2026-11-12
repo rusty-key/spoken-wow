@@ -2,6 +2,7 @@
     <Include file="Environment.lua"/>
     <Include file="Version.lua"/>
     <Include file="Core.lua"/>
+    <Include file="Languages.lua"/>
     <Include file="SoundUtils.lua"/>
     <Include file="Callbacks.lua"/>
     <Include file="SoundQueue.lua"/>

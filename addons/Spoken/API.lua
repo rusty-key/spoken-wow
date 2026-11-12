@@ -511,6 +511,52 @@ function Spoken:LanguageName(code)
     return Options:LanguageName(code)
 end
 
+--- A language's name for a menu entry that is drawn in `Spoken:LanguageFace(code)`: its own where
+--- only the pack's font can draw it. Anywhere else, `Spoken:LanguageName`.
+function Spoken:MenuLanguageName(code)
+    return Options:MenuLanguageName(code)
+end
+
+--- The font a menu draws the language `code`'s name in, where the settings' font cannot draw it but
+--- the language's pack's can; else nil, and the menu keeps the game's own.
+function Spoken:LanguageFace(code)
+    return Options:LanguageFace(code)
+end
+
+--- The language `code` as a table (`code`, `name`, `native`, `font`, `client`, `lore`, `folders`),
+--- or nil where it is neither one a client runs in nor one an installed pack declares.
+function Spoken:Language(code)
+    return Languages:Get(code)
+end
+
+--- The languages a game client runs in, in the order the lists show them, as the registry keeps
+--- them: `code`, `name`, `native`, `script` and for some `sample`. Read, never written.
+function Spoken:BuiltinLanguages()
+    return Languages.BUILTIN
+end
+
+--- The languages an installed pack declares, the client's own first, the rest by code.
+function Spoken:InstalledLanguages()
+    return Languages:Installed()
+end
+
+--- The languages a list of packs names: the built-in ones, installed or not, then every other an
+--- installed pack declares.
+function Spoken:KnownLanguages()
+    return Languages:Known()
+end
+
+--- For a pack that cannot say so in its .toc: declare the language `code` for the addon `folder`.
+--- `meta` is `{ name, native, font, lore }`, `font` a full path.
+function Spoken:DeclareLanguage(code, folder, meta)
+    Languages:Declare(code, folder, meta)
+end
+
+--- Whether `value` is shaped like a language code, such as "deDE".
+function Spoken:IsLanguageCode(value)
+    return Languages:IsCode(value)
+end
+
 --- Whether a font draws the language `code`, as the lists test it before they name it natively:
 --- the settings' font object, or the font file `path`.
 function Spoken:LanguageDraws(code, path)

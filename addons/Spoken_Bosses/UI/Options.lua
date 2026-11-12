@@ -12,8 +12,6 @@ local INDENT = 25
 -- pack is in the Places and Bosses download.
 local AUDIO_ADDON = "SpokenBossesAudio"
 local AUDIO_URL = "https://www.curseforge.com/wow/addons/spoken-audio-places"
--- The languages a pack beside English's may be in: Spoken:VoicePack says which have one.
-local LANGUAGES = { "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }
 
 local panel
 
@@ -71,8 +69,10 @@ function Bosses:SetupOptions()
 			Bosses:ShowCopyLink(url or AUDIO_URL, L.OPT_DOWNLOAD_ADDRESS)
 		end)
 	end
-	for _, code in ipairs(LANGUAGES) do
-		local folder, url = Spoken:VoicePack("bosses", code)
+	-- English's own row follows; Spoken:VoicePack says which other language has a pack to get.
+	for _, language in ipairs(Spoken:KnownLanguages()) do
+		local code = language.code
+		local folder, url = code ~= "enUS" and Spoken:VoicePack("bosses", code)
 		if folder then
 			layout:ShowWhen(PackRow(folder, Spoken:LanguageName(code), url), function() return Wanted(code, folder) end)
 		end

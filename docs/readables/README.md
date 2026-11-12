@@ -446,6 +446,13 @@ the narration.
 
 ### A language's pack
 
+A pack names its language with `X-SpokenReadables-Language` in its `.toc` or `language` in its Lua
+pack table, any code of the form `xxYY`; with neither it is English. Spoken's registry learns it
+from the `.toc` at login and from the pack's table when the reader lists its packs.
+`X-Spoken-LanguageName`, `X-Spoken-LanguageNative` and `X-Spoken-LanguageFont` are optional and
+give Spoken's menus the language's names and a font to draw them in. A page's text is drawn in the font
+its clip sets in `present.font`.
+
 A page under `publishers/readables/`, `spoken-readables-audio-<lang>.md`, is what makes a language's
 pack exist — its `curseforge:`, `version:` and `slug:` are what `scripts/lib/packs.mjs` reads,
 rather than a case a script would grow per language. `LOCALE=` moves the whole chain to that
