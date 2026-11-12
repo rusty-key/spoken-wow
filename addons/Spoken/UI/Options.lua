@@ -993,17 +993,305 @@ function Options:NoVoicePacks()
     return known and total == 0
 end
 
+local PROFILE_FORMAT = "SPP1:"
+local PROFILE_MAX_DEPTH = 40
+local PROFILE_MAX_ITEMS = 10000
+local profileTransfer
+local ShowProfileTransfer
+
+local function ProfileKeys(value)
+    if type(value) ~= "table" then return {} end
+    local keys = {}
+    for key in pairs(value) do
+        local kind = type(key)
+        if kind ~= "string" and kind ~= "number" then error("profile has an unsupported key") end
+        table.insert(keys, key)
+    end
+    table.sort(keys, function(a, b)
+        local ak, bk = type(a), type(b)
+        if ak ~= bk then return ak < bk end
+        return tostring(a) < tostring(b)
+    end)
+    return keys
+end
+
+-- A small length-prefixed format keeps profile strings safe to paste even when a setting contains
+-- punctuation or a newline. It deliberately accepts only the types settings can store.
+local function SerializeProfile(value, out, depth, seen)
+    depth = depth or 0
+    if depth > PROFILE_MAX_DEPTH then error("profile is too deeply nested") end
+    out = out or {}
+    local kind = type(value)
+    if kind == "nil" then
+        out[#out + 1] = "n"
+    elseif kind == "boolean" then
+        out[#out + 1] = value and "b1" or "b0"
+    elseif kind == "number" then
+        if value ~= value or value == math.huge or value == -math.huge then error("profile has an invalid number") end
+        out[#out + 1] = "d" .. format("%.17g", value) .. ";"
+    elseif kind == "string" then
+        out[#out + 1] = "s" .. tostring(#value) .. ":" .. value
+    elseif kind == "table" then
+        seen = seen or {}
+        if seen[value] then error("profile contains a cycle") end
+        seen[value] = true
+        local keys = ProfileKeys(value)
+        if #keys > PROFILE_MAX_ITEMS then error("profile has too many entries") end
+        out[#out + 1] = "t" .. tostring(#keys) .. ":"
+        for _, key in ipairs(keys) do
+            SerializeProfile(key, out, depth + 1, seen)
+            SerializeProfile(value[key], out, depth + 1, seen)
+        end
+        seen[value] = nil
+    else
+        error("profile has an unsupported value")
+    end
+    return out
+end
+
+local function ReadNumber(text, position, separator)
+    local stop = string.find(text, separator, position, true)
+    if not stop then error("profile is truncated") end
+    local value = tonumber(string.sub(text, position, stop - 1))
+    if not value or value < 0 or value > PROFILE_MAX_ITEMS then error("profile has an invalid length") end
+    return value, stop + 1
+end
+
+local function DeserializeProfile(text, position, depth)
+    position, depth = position or 1, depth or 0
+    if depth > PROFILE_MAX_DEPTH then error("profile is too deeply nested") end
+    local tag = string.sub(text, position, position)
+    position = position + 1
+    if tag == "n" then
+        return nil, position
+    elseif tag == "b" then
+        local value = string.sub(text, position, position)
+        if value ~= "0" and value ~= "1" then error("profile has an invalid boolean") end
+        return value == "1", position + 1
+    elseif tag == "d" then
+        local stop = string.find(text, ";", position, true)
+        if not stop then error("profile is truncated") end
+        local value = tonumber(string.sub(text, position, stop - 1))
+        if not value or value ~= value or value == math.huge or value == -math.huge then error("profile has an invalid number") end
+        return value, stop + 1
+    elseif tag == "s" then
+        local length
+        length, position = ReadNumber(text, position, ":")
+        local value = string.sub(text, position, position + length - 1)
+        if #value ~= length then error("profile is truncated") end
+        return value, position + length
+    elseif tag == "t" then
+        local count
+        count, position = ReadNumber(text, position, ":")
+        local value = {}
+        for _ = 1, count do
+            local key
+            key, position = DeserializeProfile(text, position, depth + 1)
+            if key == nil or (type(key) ~= "string" and type(key) ~= "number") then error("profile has an invalid key") end
+            local item
+            item, position = DeserializeProfile(text, position, depth + 1)
+            value[key] = item
+        end
+        return value, position
+    end
+    error("profile has an unknown value type")
+end
+
+local function ProfileStores()
+    local stores = {}
+    if Addon.db then table.insert(stores, { key = "spoken", db = Addon.db }) end
+    for key, source in Sources:Iterate() do
+        if type(source.profiles) == "function" then
+            local ok, db = pcall(source.profiles)
+            if ok and type(db) == "table" and db.GetProfiles and db.profile then
+                table.insert(stores, { key = key, db = db })
+            end
+        end
+    end
+    return stores
+end
+
+local function EncodedProfile()
+    local stores = {}
+    for _, store in ipairs(ProfileStores()) do
+        stores[#stores + 1] = { key = store.key, values = store.db.profile }
+    end
+    local ok, parts = pcall(SerializeProfile, { version = 1, stores = stores })
+    if not ok then return nil end
+    local lib = LibStub and LibStub:GetLibrary("LibDeflate", true)
+    if not lib then return nil end
+    local compressed = lib:CompressDeflate(table.concat(parts), { level = 5 })
+    return compressed and PROFILE_FORMAT .. lib:EncodeForPrint(compressed) or nil
+end
+
+local function DecodedProfile(payload)
+    if type(payload) ~= "string" or not string.match(payload, "^" .. PROFILE_FORMAT) then return nil end
+    local lib = LibStub and LibStub:GetLibrary("LibDeflate", true)
+    if not lib then return nil end
+    local encoded = string.sub(payload, #PROFILE_FORMAT + 1):gsub("%s", "")
+    local ok, compressed = pcall(lib.DecodeForPrint, lib, encoded)
+    if not ok or not compressed then return nil end
+    local decompressed
+    ok, decompressed = pcall(lib.DecompressDeflate, lib, compressed)
+    if not ok or type(decompressed) ~= "string" then return nil end
+    local parsed, position
+    ok, parsed, position = pcall(DeserializeProfile, decompressed)
+    if not ok or position ~= #decompressed + 1 or type(parsed) ~= "table"
+        or parsed.version ~= 1 or type(parsed.stores) ~= "table" then return nil end
+    return parsed
+end
+
+local function CopyTable(destination, source)
+    for key in pairs(destination) do destination[key] = nil end
+    for key, value in pairs(source) do
+        if type(value) == "table" then
+            destination[key] = {}
+            CopyTable(destination[key], value)
+        else
+            destination[key] = value
+        end
+    end
+end
+
+function Options:ExportProfile()
+    local payload = EncodedProfile()
+    if not payload then
+        print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_EXPORT_FAILED)
+        return
+    end
+    ShowProfileTransfer("export", payload)
+end
+
+function Options:ImportProfile(payload)
+    local imported = DecodedProfile(payload)
+    if not imported then return false end
+    local stores, byKey = ProfileStores(), {}
+    for _, store in ipairs(stores) do byKey[store.key] = store.db end
+    local seen, updates = {}, {}
+    for _, entry in ipairs(imported.stores) do
+        if type(entry) ~= "table" or type(entry.key) ~= "string" or type(entry.values) ~= "table" or seen[entry.key] then return false end
+        seen[entry.key] = true
+        if byKey[entry.key] then updates[#updates + 1] = { db = byKey[entry.key], values = entry.values } end
+    end
+    if not seen.spoken then return false end
+    for _, update in ipairs(updates) do CopyTable(update.db.profile, update.values) end
+    local current = self:CurrentProfile()
+    if current then
+        for _, store in ipairs(ProfileStores()) do
+            local callbacks = store.db.callbacks
+            if callbacks and callbacks.Fire then pcall(callbacks.Fire, callbacks, "OnProfileChanged", store.db, current) end
+        end
+    end
+    Addon:ApplyProfile()
+    return true
+end
+
+local function BuildProfileTransfer()
+    local width, height = 650, 390
+    local frame = CreateFrame("Frame", "SpokenProfileTransfer", UIParent, "BackdropTemplate")
+    frame:SetSize(width, height)
+    frame:SetPoint("CENTER")
+    frame:SetFrameStrata("DIALOG")
+    frame:SetToplevel(true)
+    frame:EnableMouse(true)
+    frame:SetMovable(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetClampedToScreen(true)
+    if frame.SetBackdrop then
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32,
+            insets = { left = 11, right = 12, top = 12, bottom = 11 },
+        })
+    end
+    if UISpecialFrames then table.insert(UISpecialFrames, "SpokenProfileTransfer") end
+
+    local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    title:SetPoint("TOP", frame, "TOP", 0, -16)
+    local hint = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    hint:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -40)
+    hint:SetWidth(width - 36)
+    hint:SetJustifyH("LEFT")
+
+    local scroll = CreateFrame("ScrollFrame", nil, frame)
+    scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -70)
+    scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -34, 58)
+    local edit = CreateFrame("EditBox", nil, scroll)
+    edit:SetMultiLine(true)
+    edit:SetMaxBytes(0)
+    edit:SetAutoFocus(false)
+    edit:SetWidth(width - 52)
+    edit:SetHeight(height - 130)
+    if edit.SetFontObject then edit:SetFontObject(ChatFontNormal) end
+    scroll:SetScrollChild(edit)
+    edit:SetScript("OnEscapePressed", function(self) self:GetParent():GetParent():Hide() end)
+
+    local action = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    action:SetSize(150, 24)
+    action:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 18, 20)
+    action:SetText(L.OPT_PROFILE_IMPORT)
+    action:SetScript("OnClick", function()
+        local payload = edit:GetText()
+        if not DecodedProfile(payload) then
+            print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_IMPORT_FAILED)
+            return
+        end
+        Layout.Confirm(L.OPT_PROFILE_IMPORT_CONFIRM, L.OPT_PROFILE_IMPORT, L.CANCEL, function()
+            if Options:ImportProfile(payload) then
+                frame:Hide()
+                if Options.profileLayout then Options.profileLayout:Refresh() end
+                print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_IMPORTED)
+            else
+                print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_IMPORT_FAILED)
+            end
+        end)
+    end)
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
+    close:SetScript("OnClick", function() frame:Hide() end)
+    if Ellesmere and Ellesmere.When then
+        Ellesmere:When(function(skin)
+            skin.Shell(frame, { noTopBar = true })
+            skin.CloseButton(close)
+            skin.Button(action)
+            skin.WhiteButtonLabel(action)
+        end)
+    end
+    return { frame = frame, title = title, hint = hint, edit = edit, action = action }
+end
+
+ShowProfileTransfer = function(mode, payload)
+    profileTransfer = profileTransfer or BuildProfileTransfer()
+    local export = mode == "export"
+    profileTransfer.title:SetText(export and L.OPT_PROFILE_EXPORT or L.OPT_PROFILE_IMPORT)
+    profileTransfer.hint:SetText(export and L.OPT_PROFILE_EXPORT_HINT or L.OPT_PROFILE_IMPORT_HINT)
+    profileTransfer.action:SetShown(not export)
+    if export then
+        profileTransfer.locked = payload
+        profileTransfer.edit:SetScript("OnTextChanged", function(edit)
+            if profileTransfer.locked and edit:GetText() ~= profileTransfer.locked then
+                edit:SetText(profileTransfer.locked)
+                edit:HighlightText()
+            end
+        end)
+    else
+        profileTransfer.locked = nil
+        profileTransfer.edit:SetScript("OnTextChanged", nil)
+    end
+    profileTransfer.edit:SetText(export and payload or "")
+    profileTransfer.frame:Show()
+    profileTransfer.edit:SetFocus()
+    if export then profileTransfer.edit:HighlightText() end
+end
+
 --- Every AceDB object a profile choice applies to: the player's, then each installed part's
 --- that keeps its settings in profiles (a source's `profiles`).
 function Options:ProfileDBs()
     local dbs = {}
-    if Addon.db and Addon.db.GetProfiles then table.insert(dbs, Addon.db) end
-    for _, source in Sources:Iterate() do
-        if type(source.profiles) == "function" then
-            local ok, db = pcall(source.profiles)
-            if ok and type(db) == "table" and db.GetProfiles then table.insert(dbs, db) end
-        end
-    end
+    for _, store in ipairs(ProfileStores()) do table.insert(dbs, store.db) end
     return dbs
 end
 
@@ -1117,6 +1405,8 @@ function Options:AddProfiles(layout)
         }
         layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end)
     end
+    layout:Button(L.OPT_PROFILE_EXPORT, 200, function() self:ExportProfile() end)
+    layout:Button(L.OPT_PROFILE_IMPORT, 200, function() ShowProfileTransfer("import") end)
     if Addon.db then
         layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, L.OPT_NEW_CHARACTER_PROFILE_TIP,
             -- Only Spoken's saved profiles: it reads the choice before any other settings load.
