@@ -7,7 +7,7 @@ import { pageLang } from "@/lib/lang-server";
 import { listenForTeamChanges, stopListening } from "@/lib/teams/listen";
 import { asSystem } from "@/lib/teams/testing";
 
-import { forgetLanguages, loadLanguages } from "./catalogue";
+import { forgetLanguages, loadLanguages, reloadLanguages } from "./catalogue";
 
 const TEST_CODES = ["jaJP", "qaQA"];
 
@@ -37,6 +37,16 @@ describe("loadLanguages", () => {
     await loadLanguages();
     expect(isLang("jaJP")).toBe(true);
     expect(langName("jaJP")).toBe("Japanese");
+  });
+
+  it("registers a read forgotten in flight when nothing newer has registered", async () => {
+    await insertJapanese();
+    forgetLanguages();
+    registerLanguages([]);
+    const first = loadLanguages();
+    reloadLanguages();
+    await first;
+    expect(isLang("jaJP")).toBe(true);
   });
 
   it("fills a row an older release left undescribed", async () => {
