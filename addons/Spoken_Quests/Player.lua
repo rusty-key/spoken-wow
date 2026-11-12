@@ -222,7 +222,7 @@ local REPORT = {
 
 local MUTE_NPC = {
     id = "muteNPC",
-    icon = [[Interface\Buttons\UI-GroupLoot-Pass-Up]],
+    icon = [[Interface\COMMON\VOICECHAT-MUTED]],
     label = L.OPT_MUTE_NPC,
     anchor = "topright",
     visible = function(clip) return Addon.CanIgnoreNPC and Addon:CanIgnoreNPC(clip) end,
