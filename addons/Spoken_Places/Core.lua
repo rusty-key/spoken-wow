@@ -1020,17 +1020,26 @@ local function CmdLanguage(arg)
 	if code and code ~= "" then
 		local locale = SpokenPlaces:GetLocaleInfo(code)
 		-- Matched case-insensitively against the codes, since "dede" is the same
-		-- request as "deDE" and nobody remembers Blizzard's capitalisation.
+		-- request as "deDE" and nobody remembers Blizzard's capitalisation. The built-in
+		-- languages, then those of the installed packs.
 		if not locale then
-			for i = 1, #SpokenPlaces.LOCALES do
-				if SpokenPlaces.LOCALES[i].code:lower() == code:lower() then
-					locale = SpokenPlaces.LOCALES[i]
+			for _, candidate in ipairs(Spoken:KnownLanguages()) do
+				if candidate.code:lower() == code:lower() then
+					locale = candidate
+					break
 				end
 			end
 		end
 
 		if not locale then
 			SpokenPlaces:Print('|cffffcc00"%s" is not a WoW language code|r -- /spp lang to list', code)
+			return
+		end
+		-- An installed pack's language whose packs carry only voices: no preview can show lore
+		-- that does not exist, so say so rather than suggest one.
+		if not SpokenPlaces:HasLore(locale.code) then
+			SpokenPlaces:Print("|cffffcc00no lore in %s|r -- its installed packs carry only voices",
+				SpokenPlaces:GetLanguageName(locale.code))
 			return
 		end
 

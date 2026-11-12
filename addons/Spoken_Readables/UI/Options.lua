@@ -119,10 +119,12 @@ function SpokenReadables:SetupOptions()
 			SpokenReadables:ShowCopyLink(url or AUDIO_URL, L.OPT_DOWNLOAD_ADDRESS)
 		end)
 	end
-	for _, locale in ipairs(SpokenReadables.LOCALES or {}) do
-		local folder, url = Spoken:VoicePack("readables", locale.code)
+	-- The built-in languages, then those an installed pack declares: a language is only ever
+	-- chosen once a pack of it is installed.
+	for _, locale in ipairs(Spoken:KnownLanguages()) do
+		local code = locale.code
+		local folder, url = Spoken:VoicePack("readables", code)
 		if folder then
-			local code = locale.code
 			layout:ShowWhen(PackRow(folder, LanguageName(code), url), function() return Wanted(code, folder) end)
 		end
 	end

@@ -4,10 +4,20 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Mute an NPC's automatic greetings.** The NPC dialog now offers Mute and Unmute controls for
-  gossip lines, confirms the mute choice, removes that NPC's greetings already waiting in the queue
-  and keeps the choice per character. Quest and manually requested lines remain available; Gossip
-  settings can forget the muted NPC list.
+- **A voice pack brings its own language.** A pack names its language in its `.toc`, and Spoken
+  lists it in the Voice and Fallback menus as soon as the pack is installed, whatever the language
+  is: Italian, Polish, Vietnamese, Hebrew. A pack can also give the language's name and a font, which
+  Spoken uses for the name and the lore pages. Places offers a pack's lore language
+  when the pack says it carries lore.
+  *([rusty-key](https://github.com/rusty-key))*
+- **A voice pack in a language Spoken did not list before is chosen under Voice Language.** If you
+  play a pack in such a language, such as Hebrew, pick it there. "Auto" follows your client and no
+  longer takes that pack for English.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Mute one NPC's greetings.** A speaker button on the NPC's gossip or greeting window mutes that
+  NPC's automatic greetings for this character, and clicking it again unmutes them. Muting also drops
+  the NPC's greetings already waiting in the queue. The window's Listen button still plays a muted
+  NPC's line, and Gossip settings can forget the whole muted list.
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.8.7 — 2026-11-12

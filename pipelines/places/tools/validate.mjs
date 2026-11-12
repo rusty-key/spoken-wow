@@ -394,33 +394,24 @@ for (const lang of languages) {
 //------------------------------------------------------------------------------
 // Locale list parity
 //
-// Language.lua and lib/locales.mjs both enumerate the languages, one for the
-// addon and one for everything that generates files for it. A code in only one of
-// them is either a language nothing can be built for or a directory the addon
-// will never load.
+// Spoken's registry (addons/Spoken/Languages.lua) builds in the languages a game
+// client runs in, and lib/locales.mjs lists them for everything that generates
+// files for the addon. A client language in only one of them is either a language
+// nothing can be built for or a directory the addon will never load. The languages
+// no client runs in are not built in: a pack declares them.
 //------------------------------------------------------------------------------
 
 {
-  const languageLua = await readFile(join(ROOT, "addons/Spoken_Places/Language.lua"), "utf8");
-  const luaCodes = [...languageLua.matchAll(/\{ code = "(\w+)"/g)].map((m) => m[1]);
-  if (luaCodes.join(",") !== CODES.join(",")) {
+  const languagesLua = await readFile(join(ROOT, "addons/Spoken/Languages.lua"), "utf8");
+  // Only the table's own entries: the comments above it may quote the entry's shape.
+  const block = languagesLua.match(/^Languages\.BUILTIN = \{\n([\s\S]*?)^\}/m);
+  const luaCodes = block ? [...block[1].matchAll(/\{ code = "(\w+)"/g)].map((m) => m[1]) : [];
+  const clientCodes = LOCALES.filter((l) => l.client !== false).map((l) => l.code);
+  if (luaCodes.join(",") !== clientCodes.join(",")) {
     note(
-      `Language.lua LOCALES and lib/locales.mjs LOCALES have drifted:\n` +
-        `      Lua: ${luaCodes.join(" ")}\n` +
-        `      JS:  ${CODES.join(" ")}`
-    );
-  }
-
-  // Which languages no client runs in. The addon keeps Auto off them and the pipelines
-  // build nothing client-keyed for them; one side thinking a client exists and the other
-  // not is aliases built for nobody, or Auto landing on a language with none.
-  const luaNonClient = [...languageLua.matchAll(/\{ code = "(\w+)"[^}]*client = false/g)].map((m) => m[1]);
-  const jsNonClient = LOCALES.filter((l) => l.client === false).map((l) => l.code);
-  if (luaNonClient.join(",") !== jsNonClient.join(",")) {
-    note(
-      `Language.lua and lib/locales.mjs disagree on which languages no client runs in:\n` +
-        `      Lua: ${luaNonClient.join(" ") || "(none)"}\n` +
-        `      JS:  ${jsNonClient.join(" ") || "(none)"}`
+      `Spoken's Languages.BUILTIN and the client languages of lib/locales.mjs have drifted:\n` +
+        `      Lua: ${luaCodes.join(" ") || "(none found)"}\n` +
+        `      JS:  ${clientCodes.join(" ")}`
     );
   }
 

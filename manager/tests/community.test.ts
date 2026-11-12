@@ -50,6 +50,14 @@ describe('validatePack', () => {
     expect('pack' in validatePack({ ...rest, url: 'https://objects.githubusercontent.com/github-production-release-asset/1/2' })).toBe(true)
   })
 
+  it('accepts any language code of the form xxYY, one the Voice Packs page does not list', () => {
+    expect(validatePack(pack({ lang: 'heIL' }))).toMatchObject({ pack: { lang: 'heIL' } })
+  })
+
+  it('refuses a language that is no code as an unknown language', () => {
+    expect(validatePack(pack({ lang: 'hebrew' }))).toEqual({ reason: 'unknown language' })
+  })
+
   const bad: [string, Record<string, unknown>][] = [
     ['an id with capitals', { id: 'Elune' }],
     ['an id with an underscore', { id: 'a_b' }],
@@ -59,7 +67,7 @@ describe('validatePack', () => {
     ['an empty id', { id: '' }],
     ['an id over 48 characters', { id: 'a'.repeat(49) }],
     ['a numeric id', { id: 5 }],
-    ['an unknown language', { lang: 'xxXX' }],
+    ['a language that is no code', { lang: 'hebrew' }],
     ['a language in the wrong case', { lang: 'dede' }],
     ['an unknown section', { section: 'music' }],
     ['no title', { title: '' }],
