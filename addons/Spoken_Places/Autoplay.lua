@@ -290,7 +290,11 @@ end
 -- The waits the player can choose, in seconds; a month is 30 days. A day at the least: a shorter
 -- wait reads the same stories over and over to a player who only rides back and forth.
 SpokenPlaces.EVERY_VISIT_GAPS = { 24 * 3600, 7 * 24 * 3600, 30 * 24 * 3600 }
-local DEFAULT_GAP = 24 * 3600
+local DEFAULT_GAP = SpokenPlaces.EVERY_VISIT_GAPS[1]
+local OFFERED_GAP = {}
+for _, gap in ipairs(SpokenPlaces.EVERY_VISIT_GAPS) do
+	OFFERED_GAP[gap] = true
+end
 
 -- The client's time(); os.time where it has none, as under the luajit tests.
 local function Now()
@@ -299,12 +303,7 @@ end
 
 function SpokenPlaces:EveryVisitGap()
 	local chosen = self:Get("autoplayEveryVisitGap")
-	for _, gap in ipairs(self.EVERY_VISIT_GAPS) do
-		if gap == chosen then
-			return gap
-		end
-	end
-	return DEFAULT_GAP
+	return OFFERED_GAP[chosen] and chosen or DEFAULT_GAP
 end
 
 local function ReadAtSet()
@@ -322,6 +321,12 @@ function SpokenPlaces:ReadRecently(mapID, areaKey)
 	end
 	local now = Now()
 	return now >= at and now - at < SpokenPlaces:EveryVisitGap()
+end
+
+-- Whether arriving at a place the character knows can read it at all: Include Places Found Before
+-- reads it once, Read Every Visit again after the wait.
+local function ReadsKnownPlaces()
+	return SpokenPlaces:Get("autoplayExplored") or SpokenPlaces:Get("autoplayEveryVisit")
 end
 
 -- Whether a place is due to be read on arriving there. With Read Every Visit, any place not read
@@ -377,7 +382,7 @@ local function NarrateUnheard()
 	if not greetingSettled then
 		return
 	end
-	if not (SpokenPlaces:Get("autoplayExplored") or SpokenPlaces:Get("autoplayEveryVisit")) then
+	if not ReadsKnownPlaces() then
 		return
 	end
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
@@ -589,13 +594,7 @@ end
 -- Every Visit reads on the zone change that comes with a discovery, so a place it read moments ago
 -- is not read twice.
 local function HeardAlready(mapID, key, areaName)
-	local heard
-	if SpokenPlaces:Get("autoplayEveryVisit") then
-		heard = SpokenPlaces:ReadRecently(mapID, key)
-	else
-		heard = SpokenPlaces:Get("autoplayExplored") and SpokenPlaces:HasHeard(mapID, key)
-	end
-	if not heard then
+	if not ReadsKnownPlaces() or Due(mapID, key) then
 		return false
 	end
 	if SpokenPlaces:Get("debug") then
