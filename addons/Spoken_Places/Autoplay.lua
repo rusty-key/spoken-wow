@@ -827,7 +827,8 @@ function SpokenPlaces:DescribeAutoplay()
 			self:HeardCount())
 	end
 	if self:Get("autoplayEveryVisit") then
-		self:Print("every visit -- a place is read again %d days after it was last read",
-			self:EveryVisitGap() / (24 * 3600))
+		local days = self:EveryVisitGap() / (24 * 3600)
+		self:Print("every visit -- a place is read again %d %s after it was last read",
+			days, days == 1 and "day" or "days")
 	end
 end

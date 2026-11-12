@@ -198,7 +198,7 @@ The game announces a discovery once per character, and Places reads that message
   started reading, from any route, by the wall clock (`time()`): `GetTime()` starts from zero at
   every restart, and a month outlasts one. A time ahead of the clock counts as long ago. With it on,
   a discovery of a place read within the wait reads nothing, and Include Places Found Before makes
-  no difference. Forget Places Heard clears `readAt` too.
+  no difference, so the panel greys it out. Forget Places Heard clears `readAt` too.
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
   It was off by default, and every profile stored that off; loading a profile turns it on once

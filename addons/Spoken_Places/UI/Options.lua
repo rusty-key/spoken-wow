@@ -119,6 +119,10 @@ function SpokenPlaces:SetupOptions()
 		layout:Requires(row, voiced, L.REASON_VOICE)
 		layout:Requires(row, discovering, L.REASON_DISCOVERY)
 	end
+	-- Read Every Visit reads on every zone change, explored before or not, so this row would look
+	-- live and change nothing.
+	layout:Requires(before, function() return not SpokenPlaces:Get("autoplayEveryVisit") end,
+		L.REASON_EVERY_VISIT)
 	layout:Outdent()
 
 	-- The stories themselves: beside the map, with their pictures, read aloud, and in which
