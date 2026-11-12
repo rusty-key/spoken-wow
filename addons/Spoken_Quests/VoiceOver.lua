@@ -1361,20 +1361,17 @@ function Addon:MarkGreetingHeard(guid, text)
     HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
 end
 
---- Whether the player muted this NPC's automatic greetings. Keyed like hasSeenGossipForNPC, so
---- one choice covers every spawn of the creature.
+--- Keyed by creature ID, so one choice covers every spawn.
 function Addon:IsGossipNPCIgnored(guid)
     return guid ~= nil and self.db.char.ignoredGossipNPCs[SpeakerKey(guid)] == true
 end
 
---- Whether a clip has an NPC whose automatic greeting can be muted: one a pack voices, so the
---- toggle never sits on a window Spoken has nothing to read for.
+--- Only an NPC a pack voices, so the toggle never sits on a window Spoken has nothing to read for.
 function Addon:CanIgnoreNPC(clip)
     return clip.unitGUID ~= nil and Enums.SoundEvent:IsGossipEvent(clip.event) and DataModules:HasGossipFor(clip)
 end
 
---- The open gossip or greeting window's NPC, and its event: the clip already read for it, or a
---- clip-shaped record of the NPC when nothing has been queued yet.
+--- A clip-shaped record stands in when nothing has been queued for the NPC yet.
 function Addon:CurrentGossipClip()
     local event = GetVisibleDialogueEvent()
     local speech = SPEECH_EVENTS[event]
@@ -1390,8 +1387,6 @@ function Addon:CurrentGossipClip()
         unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }, event
 end
 
---- Mute or restore an NPC's automatic greetings for this character. Muting also drops its
---- greetings already waiting in the queue.
 function Addon:SetGossipNPCMuted(guid, name, muted)
     local key = SpeakerKey(guid)
     self.db.char.ignoredGossipNPCs[key] = muted or nil

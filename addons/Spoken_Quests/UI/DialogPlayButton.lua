@@ -117,7 +117,6 @@ function DialogPlayButton:Position(frameName)
     AnchorUnderClose(self.button, frameName)
 end
 
---- The Mute toggle sits left of Listen or Contribute when either shows, else under the close button.
 function DialogPlayButton:PositionMute(frameName)
     local button = self.muteButton
     local beside = self.button:IsShown() and self.button
@@ -132,8 +131,7 @@ function DialogPlayButton:PositionMute(frameName)
     end
 end
 
---- Show the toggle on a gossip or greeting window whose NPC a pack voices. DialogueUI hides
---- these windows, so it gets none.
+--- DialogueUI hides the gossip and greeting windows, so it gets no toggle.
 function DialogPlayButton:RefreshMute()
     local button = self.muteButton
     if not button then
