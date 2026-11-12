@@ -213,6 +213,17 @@ Expect("a drained queue keeps its last line", Q:GetPrevious(), last)
 Expect("Previous also works after the queue drained", Q:Previous(), true)
 Expect("...replaying the last line", world.played[2], last.path)
 
+Fresh()
+local history = {}
+for index = 1, 5 do
+    history[index] = H.Clip()
+    quests:Enqueue(history[index])
+end
+for _ = 1, 5 do stub.Advance(1.6) end
+for _ = 1, 5 do Q:Previous() end
+Expect("Previous walks back through five lines", Q:GetCurrentSound(), history[1])
+Expect("Previous is unavailable at the oldest line", Q:CanPrevious(), false)
+
 -- The last line skipped mid-word fades out, as Stop does, rather than cutting off.
 Fresh()
 quests:Enqueue(H.Clip({ length = 5 }))

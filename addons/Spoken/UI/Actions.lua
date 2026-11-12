@@ -259,7 +259,14 @@ function Actions.PreviousButton(parent, name)
     previous.glyph:SetPoint("CENTER", 2, 0)
     previous.bar:ClearAllPoints()
     previous.bar:SetPoint("RIGHT", previous.glyph, "LEFT", 0, 0)
-    previous:SetScript("OnClick", Actions.Previous)
+    previous:SetScript("OnClick", function()
+        local replayed = Actions.Previous()
+        -- The queue callback refreshes the narrator asynchronously on the real client; update
+        -- the clicked control immediately so the last available history entry cannot be clicked
+        -- again while the new line is being laid out.
+        Actions.SetPreviousable(previous)
+        return replayed
+    end)
     previous:SetScript("OnEnter", function()
         previous.glyph:SetAlpha(1)
         GameTooltip:SetOwner(previous, "ANCHOR_TOP")
