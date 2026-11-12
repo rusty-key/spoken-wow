@@ -126,6 +126,8 @@ M, T, L = env.MinimalPlayer, env.Transcript, env.L
 local frame = env.Addon.db.profile.Frame
 Expect("the small window is on parchment unless the player chooses otherwise", frame.MinimalBackground, "parchment")
 for _, part in ipairs({ M.paper, M.name, M.title.text, M.count, M.ring }) do Record(part) end
+Record(M.raceTint)
+Record(M.raceTrim.topLeft)
 quests:Enqueue(Line("One", "Grull"))
 env.PlayerFrame:RefreshConfig()
 Expect("...Spoken's own parchment, which every client draws: the retail atlases are listed without their art",
@@ -148,24 +150,51 @@ Expect("...back on its parchment from the rock, whole, not tiled", tostring(M.pa
     [[Interface\AddOns\Spoken\Textures\MinimalParchment nil]])
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
+frame.MinimalBackground = "warcraft3"
+env.PlayerFrame:RefreshConfig()
+local tauren = H.Clip({ npcBody = "tauren-male", text = "Los tauren hemos hecho un hogar.",
+    present = { header = "Valiente Pluma de Viento", portrait = { kind = "none" } } })
+quests:Enqueue(tauren)
+Expect("the small window gets the shared Tauren trim", M.raceBorderFrame:IsShown(), true)
+Expect("...and the shared Tauren background color", M.raceTint.colour, "0.20 0.14 0.07")
+Expect("...with the Tauren border texture", M.raceTrim.topLeft.texture,
+    [[Interface\AddOns\Spoken\Textures\RaceTrim/TaurenEdge]])
+Expect("...and the matching dark text treatment", M.name.colour .. " " .. tostring(M.paper.texture),
+    "1.00 0.82 0.00 Interface\\AddOns\\Spoken\\Textures\\MinimalBackground")
+Expect("...the Tauren portrait ring uses its warm bronze color", M.ring.colour, "0.95 0.68 0.35")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
 -- The setting, on Spoken's page, for the small window only.
 env.Options:UpdateRows()
 local main = _G.SpokenOptionsPanel.layout
 local function Row(label)
     for _, entry in ipairs(main.entries) do if entry.label == label then return entry.frame end end
 end
+local function Values(row)
+    local values = row and row.layoutValues
+    return type(values) == "function" and values() or values
+end
 main:Refresh()
--- Theme, the row the DialogueUI window's Theme shares its name with: the first of the two.
+-- Theme, the row whose choices depend on the selected narrator window.
 local row = Row(L.OPT_DUI_THEME)
 Expect("Theme is on Spoken's page with the small window chosen", row ~= nil and row:IsShown(), true)
-Expect("...offering Parchment and Dark", row and row.layoutValues and table.concat(row.layoutValues, ","), "parchment,dark")
+Expect("...offering Parchment, Dark and Warcraft III", Values(row) and table.concat(Values(row), ","),
+    "parchment,dark,warcraft3")
 pcall(function() row.layoutChoose("dark") end)
 Expect("...choosing Dark there draws the rock", tostring(frame.MinimalBackground) .. " " .. tostring(M.paper.texture),
     [[dark Interface\AddOns\Spoken\Textures\MinimalBackground]])
 pcall(function() row.layoutChoose("parchment") end)
 env.Addon:SetPlayerStyle("classic")
 main:Refresh()
-Expect("...and not with another style", row ~= nil and row:IsShown(), false)
+Expect("Theme stays on the page with the Large Window chosen", row ~= nil and row:IsShown(), true)
+Expect("...offering Dark and Warcraft III for the Large Window", Values(row) and table.concat(Values(row), ","),
+    "dark,warcraft3")
+pcall(function() row.layoutChoose("warcraft3") end)
+Expect("...choosing Warcraft III changes the Large Window theme", frame.ClassicBackground, "warcraft3")
+Expect("...and synchronizes the Small Window theme", frame.MinimalBackground, "warcraft3")
+pcall(function() row.layoutChoose("dark") end)
+Expect("...choosing Dark restores the Large Window default", frame.ClassicBackground, "dark")
+Expect("...without changing the Small Window theme", frame.MinimalBackground, "warcraft3")
 env.Addon:SetPlayerStyle("minimal")
 main:Refresh()
 Expect("Show Progress is offered for the small window, which has the progress line",

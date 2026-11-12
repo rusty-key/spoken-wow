@@ -30,7 +30,7 @@ Defaults = {
             Style = "subtitle",
             -- The windows' metal in the bronze the Forever client's frames wear.
             BronzeTint = true,
-            -- The small window's background: "parchment" or "dark" (the rock).
+            -- The small window's background: "parchment", "dark" (the rock), or "warcraft3".
             MinimalBackground = "parchment",
             -- Per action id, for the ones an addon declared optional. Absent means shown.
             HiddenActions = {},
@@ -164,6 +164,47 @@ local function MoveKeys(saved, renamed)
             if saved[new] == nil then saved[new] = saved[old] end
             saved[old] = nil
         end
+    end
+end
+
+local function ReforgedUIInstalled()
+    if IsAddOnLoaded and IsAddOnLoaded("ReforgedUI") then return true end
+    local count = (C_AddOns and C_AddOns.GetNumAddOns) or GetNumAddOns
+    local info = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
+    for index = 1, (count and info) and count() or 0 do
+        if info(index) == "ReforgedUI" then return true end
+    end
+    return false
+end
+
+function Addon:WindowTheme(window)
+    local frame = self:Profile("Frame")
+    local value, explicit, default
+    if window == "classic" then
+        value, explicit, default = frame.ClassicBackground, frame.ClassicBackgroundExplicit, "dark"
+    else
+        value, explicit, default = frame.MinimalBackground, frame.MinimalBackgroundExplicit, "parchment"
+    end
+    -- Profiles from before explicit theme choices were tracked have no marker. Treat a non-default
+    -- saved value as an intentional choice without rewriting the profile just to add a marker.
+    if explicit ~= true and value ~= nil and value ~= default then explicit = true end
+    if explicit ~= true and ReforgedUIInstalled() then return "warcraft3" end
+    return value or default
+end
+
+function Addon:SetWindowTheme(window, value)
+    local frame = self.db.profile.Frame
+    -- Warcraft III is the shared first choice: selecting it from either window makes both
+    -- windows use the Warcraft III art until one of them is deliberately changed later.
+    if value == "warcraft3" then
+        frame.MinimalBackground, frame.MinimalBackgroundExplicit = value, true
+        frame.ClassicBackground, frame.ClassicBackgroundExplicit = value, true
+        return
+    end
+    if window == "classic" then
+        frame.ClassicBackground, frame.ClassicBackgroundExplicit = value, true
+    else
+        frame.MinimalBackground, frame.MinimalBackgroundExplicit = value, true
     end
 end
 

@@ -103,6 +103,7 @@ L = {
     OPT_DUI_THEME_FOLLOW = "Same as DialogueUI",
     OPT_DUI_THEME_PARCHMENT = "Parchment",
     OPT_DUI_THEME_DARK = "Dark",
+    OPT_DUI_THEME_WARCRAFT3 = "Warcraft III",
     OPT_DUI_FIT_TEXT = "Fit Window to Words",
     WINDOW_WHEEL_HINT = "Over the window: Ctrl + wheel changes Window Size, Ctrl + Shift + wheel the Word Size.",
     SUBTITLE_WHEEL_HINT = "Over the subtitles: Ctrl + wheel changes Subtitle Size, Ctrl + Shift + wheel the Word Size.",

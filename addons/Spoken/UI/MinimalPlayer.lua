@@ -92,6 +92,21 @@ function MinimalPlayer:Initialize(original)
     self.paper = self.panel:CreateTexture(nil, "BACKGROUND")
     self.paper:SetPoint("TOPLEFT", 7, -7)
     self.paper:SetPoint("BOTTOMRIGHT", -7, 7)
+    self.raceTint = self.panel:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.raceTint:SetAllPoints(self.paper)
+    self.raceTint:Hide()
+    self.raceBorderFrame = CreateFrame("Frame", nil, self.frame)
+    self.raceBorderFrame:SetFrameLevel(self.panel:GetFrameLevel() + 2)
+    self.raceBorderFrame:SetAllPoints(self.panel)
+    self.raceBorderFrame:Hide()
+    self.raceTrim = {}
+    for _, name in ipairs({
+        "topLeft", "topRight", "bottomLeft", "bottomRight",
+        "leftTop", "leftBottom", "rightTop", "rightBottom",
+        "cornerTopLeft", "cornerTopRight", "cornerBottomLeft", "cornerBottomRight",
+    }) do
+        self.raceTrim[name] = self.raceBorderFrame:CreateTexture(nil, "OVERLAY")
+    end
     self.panel:SetScript("OnSizeChanged", function() self:TileRock() end)
 
     local content = CreateFrame("Frame", nil, frame)
@@ -326,6 +341,76 @@ function MinimalPlayer:ConfigurePortrait()
     Face.Show(self.portrait, self.clip)
 end
 
+function MinimalPlayer:ApplyRaceArt()
+    local isRaceClip = PlayerFrame.IsRaceClip and PlayerFrame.IsRaceClip(self.clip)
+    local modelFileID = PlayerFrame.ModelFileID and PlayerFrame.ModelFileID(self.viewport and self.viewport.model)
+    if not modelFileID then
+        local portrait = self.clip and self.clip.present and self.clip.present.portrait
+        local creature = portrait and portrait.creatureID
+        if creature and StaticPortrait and StaticPortrait.GetModelFileID then
+            modelFileID = StaticPortrait:GetModelFileID(creature)
+        end
+    end
+    local look = isRaceClip and PlayerFrame.RaceLook and PlayerFrame.RaceLook(self.clip, modelFileID) or nil
+    local themed = look ~= nil and self.panel.spokenEllesmere ~= true
+    if self.raceThemed ~= themed then
+        self.raceThemed = themed
+        self:Dress()
+    end
+    self.raceBorderFrame:SetShown(themed)
+    self.raceTint:SetShown(themed)
+    if not themed then
+        local bronze = Actions.Bronze()
+        if bronze then
+            self.panel:SetBackdropBorderColor(unpack(bronze))
+            self.ring:SetVertexColor(unpack(bronze))
+        else
+            self.panel:SetBackdropBorderColor(1, 1, 1, 1)
+            self.ring:SetVertexColor(1, 1, 1)
+        end
+        return
+    end
+    self.raceTint:SetColorTexture(unpack(look.tint))
+    self:PaintRaceTrim(look)
+    self.panel:SetBackdropBorderColor(1, 1, 1, 0)
+    -- Keep the race hue, but lift the dark window wash so the portrait ring remains visible.
+    self.ring:SetVertexColor(PlayerFrame.RaceRingColor(look))
+end
+
+function MinimalPlayer:PaintRaceTrim(look)
+    local frame, trim = self.panel, self.raceTrim
+    -- Keep the Warcraft III trim inside the same frame footprint as the parchment and dark looks.
+    local edge, out = 14, 0
+    local width = (frame:GetWidth() or 0) + 2 * out
+    local height = (frame:GetHeight() or 0) + 2 * out
+    local halfWidth = math.max(0, width / 2 - edge)
+    local u0, u1 = 1 / 8, 1 / 8 + halfWidth / (8 * edge)
+    local postPeriod = look.edgeVPeriod or 4
+    local halfHeight = math.max(0, height / 2 - edge)
+    local v0, v1 = 1 / postPeriod, 1 / postPeriod + halfHeight / (postPeriod * edge)
+
+    local function Half(texture, file, point, dx, dy, w, h, left, right, top, bottom)
+        texture:SetTexture(file, "REPEAT", "REPEAT")
+        texture:ClearAllPoints()
+        texture:SetPoint(point, frame, point, dx, dy)
+        texture:SetSize(w, h)
+        texture:SetTexCoord(left, right, top, bottom)
+    end
+
+    Half(trim.topLeft, look.edge, "TOPLEFT", -out + edge, out, halfWidth, edge, u0, u1, 0, 1)
+    Half(trim.topRight, look.edge, "TOPRIGHT", out - edge, out, halfWidth, edge, u1, u0, 0, 1)
+    Half(trim.bottomLeft, look.edge, "BOTTOMLEFT", -out + edge, -out, halfWidth, edge, u0, u1, 1, 0)
+    Half(trim.bottomRight, look.edge, "BOTTOMRIGHT", out - edge, -out, halfWidth, edge, u1, u0, 1, 0)
+    Half(trim.leftTop, look.edgeV, "TOPLEFT", -out, out - edge, edge, halfHeight, 0, 1, v0, v1)
+    Half(trim.leftBottom, look.edgeV, "BOTTOMLEFT", -out, -out + edge, edge, halfHeight, 0, 1, v1, v0)
+    Half(trim.rightTop, look.edgeV, "TOPRIGHT", out, out - edge, edge, halfHeight, 1, 0, v0, v1)
+    Half(trim.rightBottom, look.edgeV, "BOTTOMRIGHT", out, -out + edge, edge, halfHeight, 1, 0, v1, v0)
+    Half(trim.cornerTopLeft, look.join, "TOPLEFT", -out, out, edge, edge, 0, 1, 0, 1)
+    Half(trim.cornerTopRight, look.join, "TOPRIGHT", out, out, edge, edge, 1, 0, 0, 1)
+    Half(trim.cornerBottomLeft, look.join, "BOTTOMLEFT", -out, -out, edge, edge, 0, 1, 1, 0)
+    Half(trim.cornerBottomRight, look.join, "BOTTOMRIGHT", out, -out, edge, edge, 1, 0, 1, 0)
+end
+
 --- The rock repeats once per 256 units, inside the inset.
 function MinimalPlayer:TileRock()
     if not self.dark then return end
@@ -337,7 +422,7 @@ end
 function MinimalPlayer:Dress()
     -- EllesmereUI's shell is dark whichever background is chosen; a shell that failed left Spoken's.
     local shell = self.panel.spokenEllesmere == true
-    local dark = Config().MinimalBackground == "dark" or shell
+    local dark = Addon:WindowTheme("minimal") ~= "parchment" or shell or self.raceThemed
     local look = shell and LOOKS.ellesmere or dark and LOOKS.dark or LOOKS.parchment
     local paper = self.paper
     self.dark = dark
@@ -429,6 +514,7 @@ function MinimalPlayer:Tick(elapsed)
     -- Once "(Stopped)" has faded out, the title gets its room back.
     if self.tail:Step(elapsed) then self:Count(Waiting()) end
     if StaticPortrait:Resolved() then self:ConfigurePortrait() end
+    self:ApplyRaceArt()
     self:UpdateProgress()
     self.poll = (self.poll or 0) + elapsed
     if self.poll >= .2 then
@@ -508,6 +594,7 @@ function MinimalPlayer:Update()
     self:SetVisible(true)
     self.name:SetText(Actions.Speaker(clip))
     Addon:ClipFont(self.name, clip)
+    self:ApplyRaceArt()
     self:ConfigurePortrait()
     self:ConfigureActions()
     self:Layout()
@@ -529,6 +616,6 @@ end
 function MinimalPlayer:Describe()
     return format("minimal=%s visible=%s portrait=%s background=%s progress=%.1fs",
         tostring(self:IsEnabled()), tostring(self.frame and self.frame:IsShown()),
-        tostring(self.viewport and self.viewport.active), tostring(Config().MinimalBackground),
+        tostring(self.viewport and self.viewport.active), tostring(Addon:WindowTheme("minimal")),
         self.seconds or 0)
 end

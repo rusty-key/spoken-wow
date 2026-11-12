@@ -71,6 +71,447 @@ end
 
 local Label, Speaker, Waiting = Actions.Label, Actions.Speaker, Actions.Waiting
 
+-- Art for the large window: each classic race gets its own material language around the same
+-- transparent dialogue center, plus a matching color wash behind the text.
+local RACIAL_ART = {
+    NightElf = {
+        edge = TEXTURES .. "RaceTrim/NightElfEdge",
+        edgeV = TEXTURES .. "RaceTrim/NightElfEdgeV",
+        join = TEXTURES .. "RaceTrim/NightElfJoin",
+        -- Night Elf's muted violet restores the purple tone behind the leafy trim.
+        tint = { .16, .07, .24, .72 },
+        ring = { .75, .95, .25 },
+    },
+    Human = {
+        edge = TEXTURES .. "RaceTrim/HumanEdge",
+        edgeV = TEXTURES .. "RaceTrim/HumanEdgeV",
+        join = TEXTURES .. "RaceTrim/HumanJoin",
+        -- Keep the Human navy tone while letting the box's original fade remain visible.
+        tint = { .06, .11, .20, .72 },
+        -- Use the same neutral metal treatment as Orc; the Human texture supplies the silver tone.
+        ring = { 1.00, 1.00, 1.00 },
+        squareRing = { .42, .42, .42 },
+        desaturateSquare = true,
+    },
+    Dwarf = {
+        edge = TEXTURES .. "RaceTrim/DwarfEdge",
+        edgeV = TEXTURES .. "RaceTrim/DwarfEdgeV",
+        join = TEXTURES .. "RaceTrim/DwarfJoin",
+        -- Use the same neutral metal treatment as Human and Orc.
+        tint = { .18, .11, .05, .72 },
+        ring = { 1.00, 1.00, 1.00 },
+        -- The large portrait atlas is warmer; neutralize it to the same dark silver.
+        squareRing = { .42, .42, .42 },
+        desaturateSquare = true,
+    },
+    Gnome = {
+        edge = TEXTURES .. "RaceTrim/GnomeEdge",
+        edgeV = TEXTURES .. "RaceTrim/GnomeEdgeV",
+        join = TEXTURES .. "RaceTrim/GnomeJoin",
+        edgeVPeriod = 8,
+        -- Gnome's low-opacity copper-gray wash lets the original gradient control the fade.
+        tint = { .18, .14, .11, .72 },
+        ring = { 1.00, .80, .42 },
+        -- Lift the darker square atlas toward the small ring's bright copper.
+        squareRing = { .55, .45, .30 },
+    },
+    Orc = {
+        edge = TEXTURES .. "RaceTrim/OrcEdge",
+        edgeV = TEXTURES .. "RaceTrim/OrcEdgeV",
+        join = TEXTURES .. "RaceTrim/OrcJoin",
+        -- Orc's dark red wash reinforces the rugged metal trim without becoming too bright.
+        tint = { .16, .04, .03, .72 },
+        -- The ring texture already carries Orc's silver metal; keep its natural color.
+        ring = { 1.00, 1.00, 1.00 },
+        -- The large portrait atlas is warmer and greener; desaturate it so the square border is silver too.
+        squareRing = { .58, .58, .58 },
+        desaturateSquare = true,
+    },
+    Tauren = {
+        edge = TEXTURES .. "RaceTrim/TaurenEdge",
+        edgeV = TEXTURES .. "RaceTrim/TaurenEdgeV",
+        join = TEXTURES .. "RaceTrim/TaurenJoin",
+        -- A lighter ochre-brown keeps Tauren's earthy tone closer to the bright gold trim.
+        tint = { .20, .14, .07, .72 },
+        -- The ring texture is silver; the bronze palette restores Tauren's warm trim color.
+        ring = { .95, .68, .35 },
+    },
+    Troll = {
+        edge = TEXTURES .. "RaceTrim/TrollEdge",
+        edgeV = TEXTURES .. "RaceTrim/TrollEdgeV",
+        join = TEXTURES .. "RaceTrim/TrollJoin",
+        -- Troll's muted earthy burgundy blends with the red-and-brown trim.
+        tint = { .14, .07, .06, .72 },
+        ring = { .50, .30, .22 },
+    },
+    Undead = {
+        -- Scourge uses the same trim as Forsaken; only the wash remains distinct.
+        edge = TEXTURES .. "RaceTrim/ForsakenEdge",
+        edgeV = TEXTURES .. "RaceTrim/ForsakenEdgeV",
+        join = TEXTURES .. "RaceTrim/ForsakenJoin",
+        edgeVPeriod = 8,
+        -- Undead's muted plum-violet wash matches the shared Forsaken trim without overpowering it.
+        tint = { .13, .10, .16, .72 },
+        ring = { .68, .62, .54 },
+        -- Neutralize the large atlas's yellow cast before applying the muted bone palette.
+        squareRing = { .50, .47, .42 },
+        desaturateSquare = true,
+    },
+    Forsaken = {
+        edge = TEXTURES .. "RaceTrim/ForsakenEdge",
+        edgeV = TEXTURES .. "RaceTrim/ForsakenEdgeV",
+        join = TEXTURES .. "RaceTrim/ForsakenJoin",
+        tint = { .05, .03, .07, .72 },
+        ring = { .42, .36, .50 },
+    },
+    HighOrder = {
+        edge = TEXTURES .. "RaceTrim/HighOrderEdge",
+        edgeV = TEXTURES .. "RaceTrim/HighOrderEdgeV",
+        join = TEXTURES .. "RaceTrim/HighOrderJoin",
+        edgeVPeriod = 8,
+        tint = { .08, .05, .16, .72 },
+        ring = { .90, .65, 1.00 },
+        -- The large portrait atlas mutes this purple; compensate so it matches the small ring.
+        squareRing = { .64, .56, .95 },
+    },
+    Windshapers = {
+        edge = TEXTURES .. "RaceTrim/WindshapersEdge",
+        edgeV = TEXTURES .. "RaceTrim/WindshapersEdgeV",
+        join = TEXTURES .. "RaceTrim/WindshapersJoin",
+        edgeVPeriod = 8,
+        tint = { .03, .08, .11, .72 },
+        ring = { .24, .56, .72 },
+        -- The large portrait atlas is greener than the small ring texture; compensate to blue.
+        -- Suppress the atlas's strong green channel so the result is blue, not teal.
+        squareRing = { .02, .10, 1.00 },
+    },
+}
+
+local function RaceFromText(text, faction)
+    if type(text) ~= "string" then return end
+    local value = string.lower(text)
+    local compact = string.gsub(value, "[^%a]", "")
+    local function HasWord(word)
+        return string.find(value, "%f[%a]" .. word .. "%f[%A]") ~= nil
+    end
+    if string.find(compact, "nightelf", 1, true) or string.find(value, "night%s+elf") then
+        return "NightElf"
+    end
+    if HasWord("human") then return "Human" end
+    if HasWord("dwarf") then return "Dwarf" end
+    if HasWord("gnome") then return "Gnome" end
+    if HasWord("orc") then return "Orc" end
+    if HasWord("tauren") then return "Tauren" end
+    if HasWord("troll") then return "Troll" end
+    if HasWord("forsaken") then return "Forsaken" end
+    if string.find(compact, "windshaper", 1, true)
+        or string.find(compact, "shendorei", 1, true)
+        or string.find(compact, "formaviento", 1, true) then
+        return "Windshapers"
+    end
+    if string.find(compact, "highorder", 1, true)
+        or string.find(compact, "skyborne", 1, true)
+        or string.find(compact, "skybourne", 1, true)
+        or HasWord("skyborne")
+        or HasWord("skybourne") then
+        if faction == "Horde" and (string.find(compact, "skyborne", 1, true)
+            or string.find(compact, "skybourne", 1, true)) then
+            return "Windshapers"
+        end
+        return "HighOrder"
+    end
+    if HasWord("scourge") or HasWord("undead") then
+        return "Undead"
+    end
+    if string.find(compact, "sentinelkyra", 1, true)
+        or string.find(compact, "kyrastarsong", 1, true)
+        or string.find(compact, "cantoestelar", 1, true)
+        or string.find(compact, "iverron", 1, true) then
+        return "NightElf"
+    end
+end
+
+local function RaceFromCreature(creature, faction, clip)
+    if not creature then return end
+    local dataModules = VoiceOver and VoiceOver.DataModules
+    if not dataModules or not dataModules.GetModules then return end
+    local race
+    for _, module in dataModules:GetModules() do
+        local bodies = module.NPCBodiesByNPCID and module.NPCBodiesByNPCID[creature]
+        if bodies then
+            for body in pairs(bodies) do
+                race = RaceFromText(body, faction)
+                if race then return race end
+            end
+        end
+        local fileBodies = clip and clip.fileName and module.QuestFileLookupByNPCBody
+            and module.QuestFileLookupByNPCBody[clip.fileName]
+        local fileBodiesForCreature = fileBodies and fileBodies[creature]
+        if fileBodiesForCreature then
+            for body in pairs(fileBodiesForCreature) do
+                race = RaceFromText(body, faction)
+                if race then return race end
+            end
+        end
+        local gossipBodies = module.GossipFileLookupByNPCBody
+            and module.GossipFileLookupByNPCBody[creature]
+        if gossipBodies then
+            for body in pairs(gossipBodies) do
+                race = RaceFromText(body, faction)
+                if race then return race end
+            end
+        end
+        local followups = module.FollowupLookupByNPCBody
+            and module.FollowupLookupByNPCBody[creature]
+        if followups then
+            for _, filesByBody in pairs(followups) do
+                for body in pairs(filesByBody) do
+                    race = RaceFromText(body, faction)
+                    if race then return race end
+                end
+            end
+        end
+        -- A quest pack can have only the generic follow-up lookup. Its filename still carries
+        -- the speaker body (for example, 1211-nightelf-male-official), so it remains useful for
+        -- synthetic quest-log and tracker clips whose model never became a live unit.
+        local genericFollowups = module.FollowupLookup and module.FollowupLookup[creature]
+        if genericFollowups then
+            for _, file in pairs(genericFollowups) do
+                race = RaceFromText(file, faction)
+                if race then return race end
+            end
+        end
+    end
+end
+
+local function RaceFromModelFileID(modelFileID, faction)
+    if not modelFileID then return end
+    local dataModules = VoiceOver and VoiceOver.DataModules
+    if dataModules and dataModules.GetModules then
+        for _, module in dataModules:GetModules() do
+            local body = module.BodyByModelFileID and module.BodyByModelFileID[modelFileID]
+            local race = RaceFromText(body, faction)
+            if race then return race end
+        end
+    end
+
+    -- Classic quest portraits can expose the client's original creature-model ids instead of
+    -- the newer model-file ids exported by the voice packs. These are model families, not NPC
+    -- exceptions: a shipped display such as Willow's resolves to 58, which is the shared
+    -- Scourge model family. Keep ambiguous families out so a model cannot invent a race.
+    local legacyModelRaces = {
+        [50] = "Human", [51] = "Orc", [52] = "Orc", [53] = "Dwarf", [54] = "Dwarf",
+        [55] = "NightElf", [56] = "NightElf", [57] = "Undead", [58] = "Undead",
+        [59] = "Tauren", [60] = "Tauren", [79] = "Human", [80] = "Human",
+        [130] = "Undead", [144] = "Undead", [182] = "Gnome", [183] = "Gnome",
+        [185] = "Troll", [186] = "Troll",
+    }
+    return legacyModelRaces[modelFileID]
+end
+
+local function RaceFromDisplayID(displayID)
+    -- Some original model families are shared by more than one race. The display is the
+    -- appearance-level discriminator in those cases; this is still shared portrait metadata,
+    -- not a per-NPC fallback. Stoley's 7027 and Ignatz's 4684 are human appearances on model
+    -- family 49;
+    -- Willow's display 13909 is the Undead appearance, and Zureetha's 1875 plus Thazz'rill's
+    -- 12089 and Furl's 1275 are Orc appearances, while Lar's 4070, Vel'rin's 4074, and Vornal's
+    -- 4086 are Troll appearances; their hidden model probes are not reliable on every Classic client.
+    local legacyDisplayRaces = {
+        [4684] = "Human", [7027] = "Human", [13909] = "Undead", [1875] = "Orc", [12089] = "Orc",
+        [1275] = "Orc", [4070] = "Troll", [4074] = "Troll", [4086] = "Troll",
+    }
+    return legacyDisplayRaces[displayID]
+end
+
+local function UnitForGUID(guid)
+    if not guid or not UnitTokenFromGUID then return end
+    local ok, unit = pcall(UnitTokenFromGUID, guid)
+    return ok and NotSecret(unit)
+end
+
+local function UnitFaction(unit)
+    if not _G.UnitFactionGroup then return end
+    local ok, faction = pcall(_G.UnitFactionGroup, unit)
+    return ok and faction
+end
+
+local function UnitIdentity(unit)
+    local values = {}
+    local function Add(value)
+        if type(value) == "string" and value ~= "" then table.insert(values, value) end
+    end
+    if _G.UnitName then
+        local ok, name, realm = pcall(_G.UnitName, unit)
+        if ok then Add(name); Add(realm) end
+    end
+    if _G.UnitPVPName then
+        local ok, name = pcall(_G.UnitPVPName, unit)
+        if ok then Add(name) end
+    end
+    if _G.UnitTitle then
+        local ok, title = pcall(_G.UnitTitle, unit)
+        if ok then Add(title) end
+    end
+    if _G.GetGuildInfo then
+        local ok, guild, rank = pcall(_G.GetGuildInfo, unit)
+        if ok then Add(guild); Add(rank) end
+    end
+    return table.concat(values, " ")
+end
+
+local function ExplicitRaceFromUnitText(text)
+    if type(text) ~= "string" then return end
+    local compact = string.gsub(string.lower(text), "[^%a]", "")
+    if string.find(compact, "windshaper", 1, true)
+        or string.find(compact, "formaviento", 1, true) then
+        return "Windshapers"
+    end
+    if string.find(compact, "highorder", 1, true) then return "HighOrder" end
+end
+
+local function RaceFromUnitRace(name, file, raceID, faction)
+    -- The numeric IDs are authoritative when available. The text fallback covers clients and
+    -- NPC units that return only a localized name or an internal race file. A bare Skyborne name
+    -- is faction-specific in practice: Alliance is High Order, Horde is Windshapers.
+    if raceID == 96 then return "Windshapers" end
+    if raceID == 95 then return "HighOrder" end
+    local text = (name or "") .. " " .. (file or "")
+    return RaceFromText(text, faction)
+end
+
+local function SpeakerRace(clip, modelFileID)
+    local present = clip and clip.present
+    local portrait = present and present.portrait
+    -- Items and game objects use a texture portrait and must never inherit a race from their
+    -- quest text, the current target, or a previous NPC line.
+    if clip.unitIsObjectOrItem or (portrait and portrait.kind == "texture") then return end
+    local wanted = portrait and portrait.unitGUID or clip and clip.unitGUID
+    local units = {}
+    local exact = UnitForGUID(wanted)
+    if exact then table.insert(units, exact) end
+    for _, unit in ipairs({ "questnpc", "npc", "target", "mouseover", "focus", "softinteract", "softenemy" }) do
+        if unit ~= exact then table.insert(units, unit) end
+    end
+    local function RaceForUnit(unit)
+        if not UnitExists or not UnitExists(unit) then return end
+        local guid = UnitGUID and NotSecret(UnitGUID(unit))
+        local faction = UnitFaction(unit)
+        local explicit = ExplicitRaceFromUnitText(UnitIdentity(unit))
+        if explicit then return explicit end
+        if _G.UnitRace then
+            local ok, name, file, raceID = pcall(_G.UnitRace, unit)
+            local race = ok and RaceFromUnitRace(name, file, raceID, faction)
+            if race then return race end
+        end
+        if guid and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
+            local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, guid)
+            local race = ok and RaceFromText(body, faction)
+            if race then return race end
+        end
+        -- NPCs do not always expose UnitRace. Prime the existing model probe; its body becomes
+        -- available to GetBodyForGUID on a later frame update without a creature-ID table.
+        if guid and VoiceOver and VoiceOver.NPCModel and VoiceOver.NPCModel.Prime then
+            pcall(VoiceOver.NPCModel.Prime, VoiceOver.NPCModel, guid, unit)
+        end
+    end
+    local race
+    for _, unit in ipairs(units) do
+        local actual = UnitGUID and NotSecret(UnitGUID(unit))
+        if (not wanted or actual == wanted) then
+            race = RaceForUnit(unit)
+            if race then return race end
+        end
+    end
+    -- A synthetic/log GUID will not match the live unit. The interaction's questnpc/npc is still
+    -- the correct speaker in that case.
+    for _, unit in ipairs({ "questnpc", "npc" }) do
+        race = RaceForUnit(unit)
+        if race then return race end
+    end
+
+    -- The prepared NPC body is more reliable than the words being spoken, and survives after
+    -- the dialog's unit token has gone away.
+    local faction = UnitFaction("questnpc") or UnitFaction("npc")
+    local identity = UnitIdentity("questnpc") .. " " .. UnitIdentity("npc")
+    race = ExplicitRaceFromUnitText(identity)
+    if race then return race end
+    race = RaceFromText(clip and (clip.npcBody or clip.race), faction)
+        or RaceFromText(portrait and portrait.body, faction)
+    if race then return race end
+    if clip and clip.unitGUID and VoiceOver and VoiceOver.Utils and VoiceOver.Utils.GetBodyForGUID then
+        local ok, body = pcall(VoiceOver.Utils.GetBodyForGUID, VoiceOver.Utils, clip.unitGUID)
+        race = ok and RaceFromText(body, faction)
+        if race then return race end
+    end
+
+    local creature = portrait and portrait.creatureID
+    if not creature and clip and clip.unitGUID and VoiceOver and VoiceOver.Utils
+        and VoiceOver.Utils.GetCreatureIDFromGUID then
+        local ok, id = pcall(VoiceOver.Utils.GetCreatureIDFromGUID, VoiceOver.Utils, clip.unitGUID)
+        creature = ok and id
+    end
+    race = RaceFromCreature(creature, faction, clip)
+    if race then return race end
+
+    -- Quest-log and tracker buttons can carry a synthetic GUID with no live questnpc unit. Once
+    -- the portrait model has loaded, its file ID is a reliable body/race source in the voice pack.
+    race = RaceFromModelFileID(modelFileID, faction)
+    if race then return race end
+    race = RaceFromDisplayID(portrait and portrait.displayID)
+    if race then return race end
+
+    -- Gossip/quest text is the final fallback. This covers NPCs whose Classic unit token does
+    -- not expose a race and whose model has not been cached yet (for example this Tauren line).
+    -- It intentionally comes after the authoritative sources so mentioning another race does
+    -- not change the speaker's treatment when the client already knows the speaker.
+    return RaceFromText(clip and clip.text, faction)
+        or RaceFromText(present and present.transcript, faction)
+        or RaceFromText(clip and clip.name, faction)
+        or RaceFromText(present and present.header, faction)
+end
+
+local function RaceLook(clip, modelFileID)
+    local theme = Addon:WindowTheme(Addon:PlayerStyle() == "classic" and "classic" or "minimal")
+    if theme ~= "warcraft3" then return nil end
+    local race = SpeakerRace(clip, modelFileID)
+    return race and RACIAL_ART[race]
+end
+
+local function ModelFileID(model)
+    if not model or not model.GetModelFileID then return end
+    local ok, fileID = pcall(model.GetModelFileID, model)
+    return ok and fileID or nil
+end
+
+local function IsQuestClip(clip)
+    return clip and clip.source and clip.source.key == "quests"
+end
+
+-- Racial art belongs to NPC speech, not location or readable narration. Keep places and other
+-- non-NPC sources on their original art while allowing gossip lines such as Innkeeper Allison's
+-- to use the same race metadata as quest lines.
+local function IsRaceClip(clip)
+    local key = clip and clip.source and clip.source.key
+    return key == "quests" or key == "gossip" or key == "chatter"
+end
+
+local function RaceRingColor(look, square)
+    local ring = square and (look.squareRing or look.ring) or look.ring
+    if ring then return unpack(ring) end
+    local tint = look.tint
+    local brightest = math.max(tint[1], tint[2], tint[3])
+    local lift = math.min(4, .55 / math.max(.01, brightest))
+    return tint[1] * lift, tint[2] * lift, tint[3] * lift
+end
+
+-- The Small Window uses the same authoritative speaker lookup and race palette.
+PlayerFrame.RaceLook = RaceLook
+PlayerFrame.IsQuestClip = IsQuestClip
+PlayerFrame.IsRaceClip = IsRaceClip
+PlayerFrame.ModelFileID = ModelFileID
+PlayerFrame.RaceRingColor = RaceRingColor
+
 local function FirstAtlas(names)
     for _, name in ipairs(names) do
         if Actions.HasAtlas(name) then return name end
@@ -117,7 +558,24 @@ function PlayerFrame:InitDisplay()
     self.frame:Hide()
 
     self.frame.background = self.frame:CreateTexture(nil, "BACKGROUND")
+    -- Keep the default narrator's client/Spoken art exactly on the master frame. Warcraft III
+    -- trim is an overlay; it must not change the box's size or introduce a shell underneath it.
     self.frame.background:SetAllPoints()
+    self.frame.raceTint = self.frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.frame.raceTint:SetColorTexture(.28, .08, .45, .34)
+    self.frame.raceTint:Hide()
+    self.frame.raceBorderFrame = CreateFrame("Frame", nil, self.frame)
+    self.frame.raceBorderFrame:SetFrameLevel(self.frame:GetFrameLevel() + 2)
+    self.frame.raceBorderFrame:SetAllPoints(self.frame)
+    self.frame.raceBorderFrame:Hide()
+    self.frame.raceTrim = {}
+    for _, name in ipairs({
+        "topLeft", "topRight", "bottomLeft", "bottomRight",
+        "leftTop", "leftBottom", "rightTop", "rightBottom",
+        "cornerTopLeft", "cornerTopRight", "cornerBottomLeft", "cornerBottomRight",
+    }) do
+        self.frame.raceTrim[name] = self.frame.raceBorderFrame:CreateTexture(nil, "OVERLAY")
+    end
 
     self.frame.container = CreateFrame("Frame", nil, self.frame)
 
@@ -137,6 +595,8 @@ function PlayerFrame:InitPortrait()
     self.frame.portrait.border:SetFrameLevel(self.frame.portrait:GetFrameLevel() + 3)
     self.frame.portrait.border:SetAllPoints()
     self.frame.portrait.border.texture = self.frame.portrait.border:CreateTexture(nil, "OVERLAY")
+    self.frame.portrait.border.highlight = self.frame.portrait.border:CreateTexture(nil, "OVERLAY", nil, 1)
+    self.frame.portrait.border.highlight:Hide()
 end
 
 function PlayerFrame:InitHeader()
@@ -246,13 +706,18 @@ end
 local function DrawArt(frame, art)
     local portrait = frame.portrait
     local border = portrait.border.texture
+    local highlight = portrait.border.highlight
     border:ClearAllPoints()
+    highlight:ClearAllPoints()
     if art then
         frame.background:SetAtlas(art.box)
         portrait.background:SetAtlas(art.face)
         border:SetAtlas(art.ring)
         border:SetSize(RING_SIZE, RING_SIZE)
         border:SetPoint("TOPLEFT", portrait, "TOPLEFT", RING_X - PORTRAIT_X, RING_Y - PORTRAIT_Y)
+        highlight:SetAtlas(art.ring)
+        highlight:SetSize(RING_SIZE, RING_SIZE)
+        highlight:SetPoint("TOPLEFT", portrait, "TOPLEFT", RING_X - PORTRAIT_X, RING_Y - PORTRAIT_Y)
         return
     end
     frame.background:SetTexture(TEXTURES .. "BackgroundGradient")
@@ -263,6 +728,10 @@ local function DrawArt(frame, art)
     border:SetTexCoord(0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE, 0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE)
     border:SetPoint("TOPLEFT", portrait, "TOPLEFT", -PORTRAIT_BORDER_OUTSET, PORTRAIT_BORDER_OUTSET)
     border:SetPoint("BOTTOMRIGHT", portrait, "BOTTOMRIGHT", PORTRAIT_BORDER_OUTSET, -PORTRAIT_BORDER_OUTSET)
+    highlight:SetTexture(TEXTURES .. "PortraitFrameAtlas")
+    highlight:SetTexCoord(0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE, 0, PORTRAIT_ATLAS_BORDER_SIZE / PORTRAIT_ATLAS_SIZE)
+    highlight:SetPoint("TOPLEFT", portrait, "TOPLEFT", -PORTRAIT_BORDER_OUTSET, PORTRAIT_BORDER_OUTSET)
+    highlight:SetPoint("BOTTOMRIGHT", portrait, "BOTTOMRIGHT", PORTRAIT_BORDER_OUTSET, -PORTRAIT_BORDER_OUTSET)
 end
 
 --- The box and the portrait's art. Art that fails to draw leaves Spoken's own, and its error goes
@@ -278,6 +747,115 @@ function PlayerFrame:ApplyArt()
     end
     if not art then DrawArt(self.frame, nil) end
     self.art = art
+end
+
+function PlayerFrame:ApplyRaceArt(clip)
+    local model = self.frame.portrait.model
+    local modelFileID = ModelFileID(model)
+    if not modelFileID then
+        local portrait = clip and clip.present and clip.present.portrait
+        local creature = portrait and portrait.creatureID
+        if creature and StaticPortrait and StaticPortrait.GetModelFileID then
+            modelFileID = StaticPortrait:GetModelFileID(creature)
+        end
+    end
+    local frame, look = self.frame, IsRaceClip(clip) and RaceLook(clip, modelFileID) or nil
+    frame.raceBorderFrame:SetShown(look ~= nil)
+    frame.raceTint:SetShown(look ~= nil)
+    if not look then
+        -- Nothing in the default path is painted here. If a Warcraft III line just ended, restore
+        -- the portrait state that master leaves behind; otherwise leave the stock path untouched.
+        if self.raceArtApplied then
+            frame.portrait.border.texture:SetAlpha(1)
+            if frame.portrait.border.texture.SetBlendMode then
+                frame.portrait.border.texture:SetBlendMode("BLEND")
+            end
+            if frame.portrait.border.texture.SetDesaturated then
+                frame.portrait.border.texture:SetDesaturated(false)
+                frame.portrait.border.highlight:SetDesaturated(false)
+            end
+            if frame.portrait.background.SetDesaturated then
+                frame.portrait.background:SetDesaturated(false)
+            end
+            frame.portrait.border.highlight:Hide()
+            frame.portrait.border.texture:SetVertexColor(1, 1, 1)
+            frame.portrait.background:SetVertexColor(1, 1, 1)
+            frame.container:SetFrameLevel(frame:GetFrameLevel() + 1)
+            self.raceArtApplied = nil
+        end
+        return
+    end
+    -- The Warcraft III trim sits above the captions; the default narrator keeps the master's
+    -- implicit child level because the trim is hidden there.
+    frame.container:SetFrameLevel(frame.raceBorderFrame:GetFrameLevel() + 1)
+    frame.raceTint:ClearAllPoints()
+    frame.raceTint:SetPoint("TOPLEFT", frame, "TOPLEFT",
+        FrameConfig().HidePortrait and BARE_LEFT - 8 or NAME_X - 8, -8)
+    frame.raceTint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
+    frame.raceTint:SetColorTexture(unpack(look.tint))
+    self:PaintRaceTrim(look)
+    frame:SetBackdropBorderColor(1, 1, 1, 0)
+    -- The thin WC3 trim does not replace the portrait's own ring.
+    frame.portrait.border.texture:SetAlpha(1)
+    if frame.portrait.border.texture.SetBlendMode then
+        frame.portrait.border.texture:SetBlendMode(look.squareRing and "ADD" or "BLEND")
+    end
+    if frame.portrait.border.texture.SetDesaturated then
+        frame.portrait.border.texture:SetDesaturated(look.desaturateSquare == true)
+        frame.portrait.border.highlight:SetDesaturated(look.desaturateSquare == true)
+    end
+    if frame.portrait.background.SetDesaturated then
+        frame.portrait.background:SetDesaturated(look.desaturateSquare == true)
+    end
+    local r, g, b = RaceRingColor(look)
+    local squareR, squareG, squareB = RaceRingColor(look, true)
+    frame.portrait.border.texture:SetVertexColor(squareR, squareG, squareB)
+    if look.squareRing then
+        frame.portrait.border.highlight:SetVertexColor(squareR, squareG, squareB)
+        frame.portrait.border.highlight:SetBlendMode("ADD")
+        frame.portrait.border.highlight:Show()
+    else
+        frame.portrait.border.highlight:Hide()
+    end
+    frame.portrait.background:SetVertexColor(look.squareRing and squareR or r,
+        look.squareRing and squareG or g, look.squareRing and squareB or b)
+    self.raceArtApplied = true
+end
+
+function PlayerFrame:PaintRaceTrim(look)
+    local frame, trim = self.frame, self.frame.raceTrim
+    -- Keep the Warcraft III trim inside the same frame footprint as the parchment and dark looks.
+    local edge, out = 14, 0
+    local width = frame:GetWidth() + 2 * out
+    local height = frame:GetHeight() + 2 * out
+    local halfWidth = math.max(0, width / 2 - edge)
+    local u0, u1 = 1 / 8, 1 / 8 + halfWidth / (8 * edge)
+    local postPeriod = look.edgeVPeriod or 4
+    local halfHeight = math.max(0, height / 2 - edge)
+    local v0, v1 = 1 / postPeriod, 1 / postPeriod + halfHeight / (postPeriod * edge)
+
+    local function Half(texture, file, point, dx, dy, w, h, left, right, top, bottom)
+        texture:SetTexture(file, "REPEAT", "REPEAT")
+        texture:ClearAllPoints()
+        texture:SetPoint(point, frame, point, dx, dy)
+        texture:SetSize(w, h)
+        texture:SetTexCoord(left, right, top, bottom)
+    end
+
+    Half(trim.topLeft, look.edge, "TOPLEFT", -out + edge, out, halfWidth, edge, u0, u1, 0, 1)
+    Half(trim.topRight, look.edge, "TOPRIGHT", out - edge, out, halfWidth, edge, u1, u0, 0, 1)
+    Half(trim.bottomLeft, look.edge, "BOTTOMLEFT", -out + edge, -out, halfWidth, edge, u0, u1, 1, 0)
+    Half(trim.bottomRight, look.edge, "BOTTOMRIGHT", out - edge, -out, halfWidth, edge, u1, u0, 1, 0)
+
+    Half(trim.leftTop, look.edgeV, "TOPLEFT", -out, out - edge, edge, halfHeight, 0, 1, v0, v1)
+    Half(trim.leftBottom, look.edgeV, "BOTTOMLEFT", -out, -out + edge, edge, halfHeight, 0, 1, v1, v0)
+    Half(trim.rightTop, look.edgeV, "TOPRIGHT", out, out - edge, edge, halfHeight, 1, 0, v0, v1)
+    Half(trim.rightBottom, look.edgeV, "BOTTOMRIGHT", out, -out + edge, edge, halfHeight, 1, 0, v1, v0)
+
+    Half(trim.cornerTopLeft, look.join, "TOPLEFT", -out, out, edge, edge, 0, 1, 0, 1)
+    Half(trim.cornerTopRight, look.join, "TOPRIGHT", out, out, edge, edge, 1, 0, 0, 1)
+    Half(trim.cornerBottomLeft, look.join, "BOTTOMLEFT", -out, -out, edge, edge, 0, 1, 1, 0)
+    Half(trim.cornerBottomRight, look.join, "BOTTOMRIGHT", out, -out, edge, edge, 1, 0, 1, 0)
 end
 
 function PlayerFrame:RefreshConfig()
@@ -305,6 +883,7 @@ function PlayerFrame:RefreshConfig()
         self.frame.mover:SetPoint("CENTER", self.frame.portrait, "BOTTOMLEFT", 0, 0)
     end
     self:ApplyArt()
+    self:ApplyRaceArt(self:Current())
     Ellesmere:Dress(self.frame)
     -- Only once the shell is on, and a failure here said in chat: the window's scale, strata and
     -- host below must still be set.
@@ -440,6 +1019,7 @@ function PlayerFrame:Tick(elapsed)
     self.poll = (self.poll or 0) + elapsed
     if self.poll >= .2 then
         self.poll = 0
+        self:ApplyRaceArt(self.shown)
         self:UpdateControls()
     end
 end
@@ -495,6 +1075,7 @@ function PlayerFrame:Update()
     local classic = Addon:DisplayStyle() == "classic"
     local want = classic and head ~= nil and not Actions.DialogCovers()
     if not want then
+        self:ApplyRaceArt(nil)
         self.turning = nil
         self.fader:Set(false, not classic)
         return
@@ -509,6 +1090,7 @@ function PlayerFrame:Update()
         return
     end
     self.shown = head
+    self:ApplyRaceArt(head)
     self.fader:Set(true)
 
     -- The speaker, or the line's name where nobody speaks; then the line's name, said once.
@@ -549,6 +1131,10 @@ end
 --- In EllesmereUI's look the portrait round whatever it shows, but a 3D model, which no mask cuts.
 function PlayerFrame:FitPortrait()
     local portrait = self.frame and self.frame.portrait
+    if portrait and self.frame.spokenEllesmere == true then
+        portrait.border.texture:SetAlpha(0)
+        portrait.background:SetAlpha(0)
+    end
     if not (portrait and portrait.box) then return end
     local round = portrait.active ~= "model"
     Ellesmere.Shape(portrait.box, portrait.disc, round)

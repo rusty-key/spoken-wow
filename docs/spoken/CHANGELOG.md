@@ -2,6 +2,19 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Classic race borders in the player window.** Spoken uses the Warcraft III race trim for each
+  supported race and resolves the speaker from live unit and model data, including compact
+  Skyborne model names and faction-specific Skyborne variants, with localized text only as a last
+  resort. Gnome windows use a lighter, translucent steel-blue wash so their background fade stays
+  visible, Dwarf windows use a warmer bronze wash to match their metal trim, Gnome windows use a
+  low-opacity copper-gray wash, Night Elf windows retain their violet tone, Undead windows use a
+  muted plum-violet wash using the Forsaken trim, Tauren windows use a lighter ochre-brown against
+  their gold trim, Troll windows use a muted earthy burgundy, Orc windows use a restrained dark red,
+  and every race uses a translucent wash so the fade remains visible.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.7 — 2026-11-12
 
 - **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map

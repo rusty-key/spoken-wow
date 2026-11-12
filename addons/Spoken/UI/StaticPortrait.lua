@@ -63,7 +63,7 @@ end
 -- rather than waiting for a timer; one that never replies keeps the book. `asked` holds when
 -- a creature was first and last asked: the watcher below captures on every mouseover, and
 -- each of those must not become another SetCreature.
-local displays, asked = {}, {}
+local displays, asked, modelFileIDs = {}, {}, {}
 local RETRY_SECONDS = 0.05
 local GIVE_UP_SECONDS = 5
 
@@ -144,7 +144,10 @@ local function Release(model)
 end
 
 local function DisplayFor(creature)
-    if displays[creature] then return displays[creature] end
+    -- A shipped quest face can already have a display while its model file is still unknown.
+    -- Keep probing in that case: the display is enough to draw the face, but the model file is
+    -- what lets the player window identify its race without a creature-specific table.
+    if displays[creature] and modelFileIDs[creature] then return displays[creature] end
     if not (SetPortraitTextureFromCreatureDisplayID and CreateFrame) then return end
     local now = GetTime()
     local times = asked[creature]
@@ -157,6 +160,10 @@ local function DisplayFor(creature)
     local model = TakeModel(creature)
     if not model then return end
     local display = model:GetDisplayInfo()
+    if model.GetModelFileID then
+        local fileID = model:GetModelFileID()
+        if type(fileID) == "number" and fileID > 0 then modelFileIDs[creature] = fileID end
+    end
     local answered = type(display) == "number" and display > 0
     local own, blank
     if answered then own, blank = Defaults() end
@@ -182,6 +189,11 @@ function StaticPortrait:Prime(creature)
     return DisplayFor(creature)
 end
 
+--- The model file used for a creature's cached quest-log portrait, when the client exposed it.
+function StaticPortrait:GetModelFileID(creature)
+    return modelFileIDs[creature]
+end
+
 --- Whether the creature the viewport fell back to the book for has an appearance now. Asked
 --- every frame by the window or the subtitle showing the face, which repaints when it does.
 function StaticPortrait:Resolved()
@@ -201,6 +213,7 @@ function StaticPortrait:Keep(entry, key, creature)
 end
 
 function StaticPortrait:FromCreature(creature, known)
+    if known and not modelFileIDs[creature] then DisplayFor(creature) end
     local display = known or DisplayFor(creature)
     if not display then return end
     local key = "creature:" .. creature

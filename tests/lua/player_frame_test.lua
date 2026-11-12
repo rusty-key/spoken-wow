@@ -42,6 +42,44 @@ do
     Expect("a slider greys out where sliders have no SetEnabled", ok and slider.layoutSlider.enabled, false)
 end
 local F = env.PlayerFrame
+Expect("the default narrator frame keeps master's borderless shell", F.frame:GetBackdrop(), nil)
+Expect("quest clips use racial art", F.IsRaceClip({ source = { key = "quests" } }), true)
+Expect("gossip clips use racial art", F.IsRaceClip({ source = { key = "gossip" } }), true)
+Expect("place clips keep their original art", F.IsRaceClip({ source = { key = "places" } }), false)
+local savedRaceVoiceOver = _G.VoiceOver
+env.Addon.db.profile.Frame.ClassicBackground = "dark"
+F:RefreshConfig()
+Expect("Dark theme keeps the existing dark treatment", F.RaceLook({ source = { key = "gossip" },
+    present = { header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 } } }), nil)
+env.Addon.db.profile.Frame.ClassicBackground = "warcraft3"
+F:RefreshConfig()
+Expect("Warcraft III theme enables racial art", env.Addon.db.profile.Frame.ClassicBackground, "warcraft3")
+_G.VoiceOver = { DataModules = { GetModules = function()
+    return ipairs({ { NPCBodiesByNPCID = {
+        [15102] = { ["nightelf-female"] = true },
+    } } })
+end } }
+local silverwingLook = F.RaceLook({ source = { key = "gossip" }, present = {
+    header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 },
+} })
+Expect("Silverwing Emissary uses the Night Elf metadata", silverwingLook ~= nil, true)
+local savedStyle = env.Addon.db.profile.Frame.Style
+env.Addon:SetPlayerStyle("classic")
+env.Addon.db.profile.Frame.ClassicBackground = "dark"
+Expect("Dark is the default Large Window theme", F.RaceLook({ source = { key = "gossip" }, present = {
+    header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 },
+} }), nil)
+env.Addon.db.profile.Frame.ClassicBackground = "warcraft3"
+Expect("Warcraft III is the alternate Large Window theme", F.RaceLook({ source = { key = "gossip" }, present = {
+    header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 },
+} }) ~= nil, true)
+env.Addon:SetPlayerStyle(savedStyle)
+local itemLook = F.RaceLook({ source = { key = "quests" }, unitIsObjectOrItem = true,
+    text = "The Night Elves left a radiant shard.", present = {
+        header = "Radiant Shard", portrait = { kind = "texture", texture = "item" },
+    } })
+Expect("an item never receives racial art", itemLook, nil)
+_G.VoiceOver = savedRaceVoiceOver
 Expect("the frame exists after Enable", F.frame ~= nil, true)
 Expect("hidden while the queue is empty", F.frame:IsShown(), false)
 local a = H.Clip({ present = { header = "Eagan Peltskinner", label = "Wolves Across the Border",
@@ -60,6 +98,112 @@ Expect("a line with no label is named by its header, never by its key",
     F.frame.container.name:GetText(), "A Letter Home")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 ExpectOf("...said once: nothing after it", function() return F.frame.container.label:IsShown() end, false)
+
+-- Classic NPC unit tokens do not always expose a race while a gossip line is being played. The
+-- line text is the last-resort fallback, after live UnitRace/body data, so this still recognizes a
+-- Tauren greeting such as "Los tauren hemos hecho...".
+quests:Enqueue(H.Clip({ text = "Los tauren hemos hecho un hogar de esta tierra.",
+    present = { header = "Valiente Pluma de Viento", portrait = { kind = "model", creatureID = 9999 } } }))
+Expect("a Tauren line gets the Tauren racial treatment", F.frame.raceBorderFrame:IsShown(), true)
+local squareRing = F.frame.portrait.border.texture.vertexColor
+Expect("...and the square portrait ring follows its border color", string.format("%.3f %.3f %.3f",
+    squareRing[1], squareRing[2], squareRing[3]), "0.950 0.680 0.350")
+local squareBackground = F.frame.portrait.background.vertexColor
+Expect("...and its background uses the same color", string.format("%.3f %.3f %.3f",
+    squareBackground[1], squareBackground[2], squareBackground[3]), "0.950 0.680 0.350")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
+-- Skyborne model metadata is not always exposed through UnitRace. Its compact internal names
+-- still identify the matching Warcraft III-style trim without a creature-ID table.
+quests:Enqueue(H.Clip({ npcBody = "skybourneelf-female", text = "Una bienvenida desde Skywall.",
+    present = { header = "Ailee Corazón Lejano", portrait = { kind = "model", creatureID = 9998 } } }))
+Expect("a Skyborne model body gets the High Order racial treatment", F.frame.raceBorderFrame:IsShown(), true)
+squareRing = F.frame.portrait.border.texture.vertexColor
+Expect("...with a bright purple square portrait ring", string.format("%.3f %.3f %.3f",
+    squareRing[1], squareRing[2], squareRing[3]), "0.640 0.560 0.950")
+Expect("...with the brightening pass on the square ring", F.frame.portrait.border.highlight:IsShown(), true)
+env.SoundQueue:RemoveAllSoundsFromQueue()
+
+-- When the client exposes only the shared Skyborne name, the NPC's faction selects the variant.
+local unitRace, unitFaction, guildInfo = _G.UnitRace, _G.UnitFactionGroup, _G.GetGuildInfo
+_G.UnitRace = function() return "Skyborne", "Skyborne", 95 end
+_G.UnitFactionGroup = function() return "Horde" end
+_G.GetGuildInfo = function() return "Formavientos" end
+quests:Enqueue(H.Clip({ text = "Los vientos te acompañan.",
+    present = { header = "Ailee Corazón Lejano", portrait = { kind = "model", creatureID = 9998 } } }))
+Expect("a Horde Skyborne unit gets the Windshaper racial treatment", F.frame.raceBorderFrame:IsShown(), true)
+squareRing = F.frame.portrait.border.texture.vertexColor
+Expect("...with a blue square portrait ring", string.format("%.3f %.3f %.3f",
+    squareRing[1], squareRing[2], squareRing[3]), "0.020 0.100 1.000")
+Expect("...with the blue brightening pass on the square ring", F.frame.portrait.border.highlight:IsShown(), true)
+env.SoundQueue:RemoveAllSoundsFromQueue()
+_G.UnitRace, _G.UnitFactionGroup, _G.GetGuildInfo = unitRace, unitFaction, guildInfo
+
+-- Quest-log and tracker playback can have a synthetic creature GUID but no live questnpc unit.
+-- Once the portrait model loads, its file ID/body metadata must still identify the race.
+local oldVoiceOver = _G.VoiceOver
+local modelModules = { { BodyByModelFileID = { [12345] = "human-male" } } }
+_G.VoiceOver = { DataModules = { GetModules = function()
+    return ipairs(modelModules)
+end } }
+local modelLook = F.RaceLook({ present = { header = "Eagan Peltskinner" } }, 12345)
+Expect("a loaded quest portrait model supplies the speaker race", modelLook ~= nil, true)
+local legacyUndeadLook = F.RaceLook({ present = { header = "Willow" } }, 58)
+Expect("a legacy quest portrait model supplies the Undead race", legacyUndeadLook ~= nil, true)
+local legacyUndeadDisplayLook = F.RaceLook({ present = {
+    header = "Willow", portrait = { displayID = 13909 },
+} })
+Expect("Willow's shipped portrait display supplies the Undead race", legacyUndeadDisplayLook ~= nil, true)
+local legacyOrcDisplayLook = F.RaceLook({ present = {
+    header = "Zureetha Fargaze", portrait = { displayID = 1875 },
+} })
+Expect("Zureetha's shipped portrait display supplies the Orc race", legacyOrcDisplayLook ~= nil, true)
+local legacyForemanDisplayLook = F.RaceLook({ present = {
+    header = "Supervisor Thazz'rill", portrait = { displayID = 12089 },
+} })
+Expect("Thazz'rill's shipped portrait display supplies the Orc race", legacyForemanDisplayLook ~= nil, true)
+local legacyFurlDisplayLook = F.RaceLook({ present = {
+    header = "Furl Scornbrow", portrait = { displayID = 1275 },
+} })
+Expect("Furl's shipped portrait display supplies the Orc race", legacyFurlDisplayLook ~= nil, true)
+local legacyIgnatzDisplayLook = F.RaceLook({ present = {
+    header = "Ignatz", portrait = { displayID = 4684 },
+} })
+Expect("Ignatz's shipped portrait display supplies the Human race", legacyIgnatzDisplayLook ~= nil, true)
+local legacyLarDisplayLook = F.RaceLook({ present = {
+    header = "Lar Prowltusk", portrait = { displayID = 4070 },
+} })
+Expect("Lar's shipped portrait display supplies the Troll race", legacyLarDisplayLook ~= nil, true)
+local legacyVelrinDisplayLook = F.RaceLook({ present = {
+    header = "Vel'rin", portrait = { displayID = 4074 },
+} })
+Expect("Vel'rin's shipped portrait display supplies the Troll race", legacyVelrinDisplayLook ~= nil, true)
+local legacyVornalDisplayLook = F.RaceLook({ present = {
+    header = "Master Vornal", portrait = { displayID = 4086 },
+} })
+Expect("Vornal's shipped portrait display supplies the Troll race", legacyVornalDisplayLook ~= nil, true)
+local legacyHumanLook = F.RaceLook({ present = { header = "Stoley", portrait = { displayID = 7027 } } }, 49)
+Expect("an ambiguous legacy portrait display supplies the Human race", legacyHumanLook ~= nil, true)
+_G.VoiceOver = { DataModules = { GetModules = function()
+    return ipairs({ { FollowupLookupByNPCBody = {
+        [3583] = { [1211] = { nightelf = "1211-nightelf-male-official" } },
+    } } })
+end } }
+local bodyLook = F.RaceLook({ present = { portrait = { creatureID = 3583 } } })
+Expect("quest body metadata supplies a race without a generic NPC entry", bodyLook ~= nil, true)
+_G.VoiceOver = { DataModules = { GetModules = function()
+    return ipairs({ { FollowupLookup = {
+        [3583] = { [1211] = "1211-nightelf-male-official" },
+    } } })
+end } }
+local genericFollowupLook = F.RaceLook({ present = { portrait = { creatureID = 3583 } } })
+Expect("generic quest follow-up metadata supplies a race from its filename", genericFollowupLook ~= nil, true)
+_G.VoiceOver = oldVoiceOver
+env.Addon.db.profile.Frame.ClassicBackground = "dark"
+Expect("Dark theme disables Warcraft III racial art", F.RaceLook({ source = { key = "quests" },
+    present = { header = "Thrall" } }), nil)
+F:RefreshConfig()
+
 -- A quest event with no title, neither a greeting nor gossip, has an empty label.
 quests:Enqueue(H.Clip({ key = "q:1", present = { header = "Thrall", label = "", portrait = { kind = "none" } } }))
 ExpectOf("an empty label is no label: the speaker alone, no dot after him", function()
@@ -81,6 +225,11 @@ places:Enqueue(H.Clip({ key = "s:1436:moonbrook", present = { header = "Westfall
 ExpectOf("a subzone's story names the zone, then the subzone", function()
     return F.frame.container.name:GetText() .. " " .. F.frame.container.label:GetText()
 end, "Westfall · Moonbrook")
+env.SoundQueue:RemoveAllSoundsFromQueue()
+places:Enqueue(H.Clip({ text = "Los tauren hemos hecho un hogar de esta tierra.",
+    present = { header = "Valiente Pluma de Viento", bullet = "zone", portrait = { kind = "none" } } }))
+Expect("a zone story remains in the places source", F:Current().source.key, "places")
+Expect("a zone story keeps the original frame art", F.frame.raceBorderFrame:IsShown(), false)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 -- A zone's own story is headed by its continent.
 places:Enqueue(H.Clip({ key = "z:1436", present = { header = "Eastern Kingdoms", label = "Westfall", bullet = "zone",
@@ -467,9 +616,7 @@ ExpectOf("...the portrait frame 143 across, 5 in and 6 down from the window's co
     local ring = F.frame.portrait.border.texture
     return ring:GetWidth() .. " " .. (21 + ring.anchor.x) .. " " .. (-21 + ring.anchor.y)
 end, "143 5 -6")
-ExpectOf("...the box behind the whole window", function()
-    return tostring(F.frame.background.allPoints or F.frame.background.anchor == nil)
-end, "true")
+Expect("...the box keeps master's full-frame fade", F.frame.background:GetPoint(), nil)
 env.Addon.db.profile.Frame.BronzeTint = false
 F:RefreshConfig()
 Expect("Bronze Border off: the same art", ArtOf(F.frame),
@@ -1185,6 +1332,15 @@ end, 0)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 env.Addon:SetPlayerStyle("classic")
 _G.IsShiftKeyDown = hadShift
+
+stub.SetAddOns({ { folder = "ReforgedUI" } })
+env, quests, places = Boot(); F = env.PlayerFrame
+Expect("ReforgedUI defaults the Large Window to Warcraft III", env.Addon:WindowTheme("classic"), "warcraft3")
+Expect("ReforgedUI defaults the Small Window to Warcraft III", env.Addon:WindowTheme("minimal"), "warcraft3")
+env.Addon:SetWindowTheme("classic", "dark")
+Expect("an explicit Large Window Dark choice overrides ReforgedUI", env.Addon:WindowTheme("classic"), "dark")
+env.Addon:SetWindowTheme("minimal", "parchment")
+Expect("an explicit Small Window Parchment choice overrides ReforgedUI", env.Addon:WindowTheme("minimal"), "parchment")
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")
