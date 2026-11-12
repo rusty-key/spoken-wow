@@ -203,11 +203,26 @@ function Actions.SetPausable(buttons)
     return pausable
 end
 
+--- Dims and disables the Previous button when the short playback history is empty or the head
+--- cannot be stopped. Returns whether it can act.
+function Actions.SetPreviousable(button)
+    local available = SoundQueue:CanPrevious()
+    button:SetAlpha(available and 1 or .4)
+    if available then button:Enable() else button:Disable() end
+    return available
+end
+
 --- Skip the line playing, with the click a window's Skip makes.
 function Actions.Skip()
     local skipped = SoundQueue:Skip()
     if skipped then SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON") end
     return skipped
+end
+
+function Actions.Previous()
+    local previous = SoundQueue:Previous()
+    if previous then SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON") end
+    return previous
 end
 
 --- Skip: the round button with the play glyph against a bar, the usual "next" mark.
@@ -231,6 +246,20 @@ function Actions.SkipButton(parent, name)
         GameTooltip:Show()
     end)
     return skip
+end
+
+--- Previous: the round button with the game's left-arrow glyph.
+function Actions.PreviousButton(parent, name)
+    local previous = Actions.RoundButton(parent, 12, name, true)
+    previous.glyph:SetTexture([[Interface\Buttons\UI-SpellbookIcon-PrevPage-Up]])
+    previous:SetScript("OnClick", Actions.Previous)
+    previous:SetScript("OnEnter", function()
+        previous.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(previous, "ANCHOR_TOP")
+        GameTooltip:SetText(L.BIND_PREVIOUS)
+        GameTooltip:Show()
+    end)
+    return previous
 end
 
 --- Stop or Replay for the line at the head. `allowed()`, optional, says whether the window has
@@ -764,6 +793,11 @@ function Actions.NewRound(parent, kind, name, icon)
         Greys(button)
         return button
     end
+    if kind == "previous" then
+        local button = Actions.PreviousButton(parent, name)
+        Greys(button)
+        return button
+    end
     local button = Actions.RoundButton(parent, nil, name)
     if kind == "icon" and icon then
         Actions.RoundPicture(button, icon)
@@ -805,6 +839,8 @@ function Actions.DialogRow(dialog, tooltip, report)
     end
     row.play = Round("play")
     row.play:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row.previous = Round("previous")
+    row.tips[row.previous] = function(tip) tip:SetText(L.BIND_PREVIOUS) end
     row.skip = Round("skip")
     row.tips[row.skip] = function(tip) tip:SetText(L.BIND_SKIP) end
     if report then row.report = Round("report") end
@@ -833,7 +869,7 @@ function DialogRow:RefreshTip(button)
 end
 
 function DialogRow:HideTips()
-    for _, button in ipairs({ self.play, self.skip, self.report }) do
+    for _, button in ipairs({ self.play, self.previous, self.skip, self.report }) do
         if button.tooltip then button.tooltip:Hide() end
     end
 end

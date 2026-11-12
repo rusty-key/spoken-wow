@@ -291,7 +291,7 @@ local function CategoryTitle(cat)
     if type(loc) == "string" then return loc end
     return cat
 end
-for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_COMPENDIUM" }) do
+for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_PREVIOUS", "SPOKEN_STOP", "SPOKEN_COMPENDIUM" }) do
     local element
     for tag in bindings:gmatch("<Binding%s[^>]*>") do
         if tag:find('name="' .. name .. '"', 1, true) then element = tag end
@@ -313,7 +313,8 @@ do
     env.print = print_
     local help = table.concat(said, "\n")
     Expect("/sp help names each command by its setting", help:find("/sp style subtitles | small | large | dialogueui | voice: "
-        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp stopall: " .. L.BIND_STOP, 1, true) ~= nil, true)
+        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp previous: " .. L.BIND_PREVIOUS, 1, true) ~= nil
+        and help:find("/sp stopall: " .. L.BIND_STOP, 1, true) ~= nil, true)
     SlashCmdList.SPOKEN("style small")
     Expect("/sp style takes the styles' names", env.Addon:PlayerStyle(), "minimal")
     SlashCmdList.SPOKEN("player subtitle")

@@ -122,8 +122,9 @@ function MinimalPlayer:Initialize(original)
     self.controls:SetPoint("RIGHT", content, "TOPRIGHT", 0, -(NAME_HEIGHT + TITLE_HEIGHT) / 2)
     self.play = Actions.StopButton(self.controls, function() return self:HasClip() end,
         function() self:UpdateControls() end)
+    self.previous = Actions.PreviousButton(self.controls)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.skip }
+    self.buttons = { self.play, self.previous, self.skip }
 
     self.name = Font(self.header, 16, 1, .82, 0)
     self.name:SetHeight(NAME_HEIGHT)
@@ -211,6 +212,7 @@ function MinimalPlayer:BuildMenu()
         return button
     end
     self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
+    self.menuPrevious = Item(L.BIND_PREVIOUS, function() SoundQueue:Previous() end)
     self.menuSkip = Item(L.MIN_SKIP, function() SoundQueue:Skip() end)
     self.menuStop = Item(L.MIN_STOP_ALL, function() SoundQueue:RemoveAllSoundsFromQueue() end)
     -- The minimap menu's rows too: the Compendium and the settings.
@@ -375,6 +377,9 @@ function MinimalPlayer:UpdateControls()
         if pausable then button:Enable(); button.text:SetAlpha(1)
         else button:Disable(); button.text:SetAlpha(.35) end
     end
+    local previous = Actions.SetPreviousable(self.previous)
+    if previous then self.menuPrevious:Enable(); self.menuPrevious.text:SetAlpha(1)
+    else self.menuPrevious:Disable(); self.menuPrevious.text:SetAlpha(.35) end
 end
 
 --- Puts the tail after the title: the title is cut short, not it.

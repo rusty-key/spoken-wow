@@ -194,6 +194,25 @@ quests:Enqueue(first); quests:Enqueue(second)
 Q:PauseQueue()
 Q:Skip()
 Expect("Skip on a stopped queue plays the next line", Q:IsPaused() == false and world.played[2], second.path)
+
+---------------------------------------------------------------- previous line history
+Fresh()
+local previous, current = H.Clip(), H.Clip()
+quests:Enqueue(previous); quests:Enqueue(current)
+stub.Advance(1.6)
+Expect("a finished line is kept for Previous", Q:GetPrevious(), previous)
+Expect("Previous replays the line before the current one", Q:Previous(), true)
+Expect("...without losing the waiting current line", Q:GetQueue()[2], current)
+Expect("...and starts the replay immediately", world.played[3], previous.path)
+
+Fresh()
+local last = H.Clip()
+quests:Enqueue(last)
+stub.Advance(1.1)
+Expect("a drained queue keeps its last line", Q:GetPrevious(), last)
+Expect("Previous also works after the queue drained", Q:Previous(), true)
+Expect("...replaying the last line", world.played[2], last.path)
+
 -- The last line skipped mid-word fades out, as Stop does, rather than cutting off.
 Fresh()
 quests:Enqueue(H.Clip({ length = 5 }))

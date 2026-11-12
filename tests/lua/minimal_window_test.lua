@@ -40,9 +40,10 @@ local M, T, L = env.MinimalPlayer, env.Transcript, env.L
 quests:Enqueue(Line("One", "Grull", { REPORT }))
 quests:Enqueue(Line("Two"))
 Expect("the small window shows the line", M.wanted and M.clip ~= nil, true)
-Expect("it has the DialogueUI window's round controls, Stop or Replay then Skip", Try(function()
+Expect("it has the DialogueUI window's round controls, Stop or Replay, Previous then Skip", Try(function()
     return M.controls ~= nil and M.play:GetParent() == M.controls and M.skip:GetParent() == M.controls
-        and M.skip.bar ~= nil and M.row[1] == M.play and M.row[2] == M.skip end), true)
+        and M.previous:GetParent() == M.controls and M.skip.bar ~= nil
+        and M.row[1] == M.play and M.row[2] == M.previous and M.row[3] == M.skip end), true)
 Expect("...in its header, at the right", Try(function() return M.controls.anchor.point == "RIGHT"
     and M.controls.anchor.relativeTo == M.content and M.controls.anchor.relativePoint == "TOPRIGHT" end), true)
 Expect("...Report after Skip, in the header and as large", Try(function()

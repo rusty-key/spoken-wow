@@ -612,7 +612,7 @@ Expect("with the setting off Play is not there", play:IsShown(), false)
 Expect("...and DialogueUI's own button is given back", DUI.TTSButton:GetAlpha(), 0.6)
 Expect("...the row one button narrower, Open in Azeroth's Compendium moving up beside Skip",
     controls.frame:GetWidth() .. " " .. tostring(open and open.anchor and open.anchor.relativeTo == skip),
-    (2 * 24 + 4) * round .. " true")
+    "100 true")
 dui.PlayButton = true
 Bridge:Refresh()
 -- Spoken Quests off: DialogueUI's window as DialogueUI draws it.
@@ -747,8 +747,8 @@ Expect("a voiced quest shows the Report icon", icon ~= nil and icon:IsShown(), t
 Expect("...on DialogueUI's window, which UIParent's hiding leaves up", icon and icon:GetParent(), DUI)
 local _, _, controls = Bridge:PlayButtonState()
 controls = controls or { frame = stub.Widget("Frame"), play = stub.Widget("Button"), skip = stub.Widget("Button") }
-Expect("...at the top right, rightmost in Spoken's row after Play and Skip", icon.anchor and icon.anchor.point
-    .. " " .. tostring(icon.anchor.relativeTo == controls.frame) .. " " .. tostring(controls.skip.anchor ~= nil and controls.skip.anchor.relativeTo == icon),
+Expect("...at the top right, rightmost in Spoken's row after Play, Previous and Skip", icon.anchor and icon.anchor.point
+    .. " " .. tostring(icon.anchor.relativeTo == controls.frame) .. " " .. tostring(controls.previous.anchor ~= nil and controls.previous.anchor.relativeTo == icon),
     "RIGHT true true")
 Expect("...as large as they are", icon:GetWidth() .. " " .. icon:GetScale(),
     controls.play:GetWidth() .. " " .. controls.play:GetScale())

@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Previous Line replays recent playback.** The narrator keeps a short history after lines finish or
+  are skipped, adds Previous controls to the player styles and DialogueUI rows, and exposes the
+  action through `/sp previous` and a bindable key.
+
 ## 3.8.7 — 2026-11-12
 
 - **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map
