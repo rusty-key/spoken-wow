@@ -1266,7 +1266,7 @@ end
 ShowProfileTransfer = function(mode, payload)
     profileTransfer = profileTransfer or BuildProfileTransfer()
     local export = mode == "export"
-    profileTransfer.title:SetText(export and L.OPT_PROFILE_EXPORT_TITLE or L.OPT_PROFILE_IMPORT_TITLE)
+    profileTransfer.title:SetText(export and L.OPT_PROFILE_EXPORT or L.OPT_PROFILE_IMPORT)
     profileTransfer.hint:SetText(export and L.OPT_PROFILE_EXPORT_HINT or L.OPT_PROFILE_IMPORT_HINT)
     profileTransfer.action:SetShown(not export)
     if export then
