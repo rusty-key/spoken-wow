@@ -64,6 +64,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   play a pack in such a language, such as Hebrew, pick it there. "Auto" follows your client and no
   longer takes that pack for English.
   *([rusty-key](https://github.com/rusty-key))*
+- **Mute an NPC's automatic greetings.** The narrator now offers a Mute NPC control for gossip
+  lines, confirms the choice, removes that NPC's greetings already waiting in the queue and keeps
+  the choice per character. Quest and manually requested lines remain available; Gossip settings
+  can forget the muted NPC list.
+  *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.8.7 — 2026-11-12
 

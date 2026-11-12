@@ -52,7 +52,7 @@ end
 Expect("the sections are When to Read and Reading History", table.concat(headings, "|"),
     W.MODULE_WHEN .. "|" .. W.MODULE_HISTORY)
 -- Voice packs, the test line and Report a Problem are on the Quests page and Spoken's, for every part.
-Expect("no voice pack rows and no test line on this page", #buttons, 1)
+Expect("no voice pack rows and no test line on this page", #buttons, 2)
 
 ---------------------------------------------------------------- the part's own switch
 local switch = boxes[W.MODULE_SWITCH]
@@ -109,6 +109,13 @@ stub.PickDropdown(greetings, "Once per Greeting"); Panel.panel.layout:Refresh()
 Expect("...and live with a greeting read once", forget.layoutReason, nil)
 forget.scripts.OnClick(forget)
 Expect("...which clears this character's greetings heard", next(db.char.hasSeenGossipForNPC), nil)
+
+local forgetMuted
+for _, button in ipairs(buttons) do if button.text == L.OPT_FORGET_MUTED_NPCS then forgetMuted = button end end
+db.char.ignoredGossipNPCs = { [12345] = true }
+Expect("Forget Muted NPCs is a button", forgetMuted ~= nil, true)
+forgetMuted.scripts.OnClick(forgetMuted)
+Expect("...which clears this character's muted NPCs", next(db.char.ignoredGossipNPCs), nil)
 
 ---------------------------------------------------------------- the packs that hold gossip
 Expect("the part lists the packs that hold gossip, not Alliance's", table.concat(Spoken:GetSource("gossip").packs(), "|"),

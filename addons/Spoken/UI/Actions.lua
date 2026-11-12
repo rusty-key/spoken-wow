@@ -911,7 +911,7 @@ function Actions:CornerAction(clip)
     local hidden = Addon:Profile("Frame").HiddenActions or {}
     for _, action in ipairs(list) do
         if action.anchor == "topright" and action.icon and not hidden[action.id]
-            and (not action.visible or action.visible()) then
+            and (not action.visible or action.visible(clip)) then
             return action
         end
     end
@@ -934,7 +934,7 @@ function Actions:Configure(frame, clip)
 
     local hidden = Addon:Profile("Frame").HiddenActions or {}
     for _, action in ipairs(list) do
-        if not hidden[action.id] and (not action.visible or action.visible()) then
+        if not hidden[action.id] and (not action.visible or action.visible(clip)) then
             local id = owner .. ":" .. action.id
             local button = frame.actions.byId[id]
             if not button then

@@ -193,6 +193,27 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.Advance(10)
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+
+    -- A muted NPC's automatic greeting stays quiet, while the control uses the same action
+    -- path as the other narrator buttons and can be recovered from Gossip settings.
+    VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
+    Talk()
+    local muted = VO.Player:Current()
+    Played(played)
+    local muteAction
+    for _, action in ipairs(muted.present.actions) do
+        if action.id == "muteNPC" then muteAction = action end
+    end
+    Expect(client .. ": the current NPC offers a Mute NPC action", muteAction ~= nil and muteAction.visible(muted), true)
+    VO.Addon:ConfirmIgnoreNPC(muted)
+    Expect(client .. ": Mute NPC asks for confirmation", stub.popups[#stub.popups].key, "VOICEOVER_IGNORE_NPC")
+    VO.Addon:IgnoreNPC(muted.unitGUID, muted.name)
+    Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
+    Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), true)
+    Leave()
+    Talk()
+    Expect(client .. ": a muted NPC's automatic greeting stays quiet", Played(played), "(nothing)")
+    Leave()
 end
 
 if Failures() > 0 then
