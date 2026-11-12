@@ -1312,10 +1312,6 @@ local function SpeakerKey(guid)
     return LastingSpeakerKey(guid) or guid or "unknown"
 end
 
-local function IgnoredSpeakerKey(guid, name)
-    return LastingSpeakerKey(guid) or guid or (name and name ~= "" and "n:" .. name)
-end
-
 local function HeardTexts(seen, key)
     if type(seen[key]) ~= "table" then
         seen[key] = {}
@@ -1365,76 +1361,52 @@ function Addon:MarkGreetingHeard(guid, text)
     HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
 end
 
---- Whether automatic greetings from this NPC are muted by the player's choice.
-function Addon:IsGossipNPCIgnored(guid, name)
-    local key = IgnoredSpeakerKey(guid, name)
-    return key ~= nil and self.db.char.ignoredGossipNPCs[key] == true
+--- Whether the player muted this NPC's automatic greetings. Keyed like hasSeenGossipForNPC, so
+--- one choice covers every spawn of the creature.
+function Addon:IsGossipNPCIgnored(guid)
+    return guid ~= nil and self.db.char.ignoredGossipNPCs[SpeakerKey(guid)] == true
 end
 
---- Whether a clip has an NPC whose automatic greeting can be ignored: one a pack voices, so the
+--- Whether a clip has an NPC whose automatic greeting can be muted: one a pack voices, so the
 --- toggle never sits on a window Spoken has nothing to read for.
 function Addon:CanIgnoreNPC(clip)
-    return clip and Enums.SoundEvent:IsGossipEvent(clip.event)
-        and IgnoredSpeakerKey(clip.unitGUID, clip.name) ~= nil
-        and DataModules:HasGossipFor(clip)
+    return clip.unitGUID ~= nil and Enums.SoundEvent:IsGossipEvent(clip.event) and DataModules:HasGossipFor(clip)
 end
 
---- The NPC whose gossip or greeting dialog is currently open, as a real clip when one exists
---- or as the small clip-shaped record the dialog's Mute button needs before a line is queued.
+--- The open gossip or greeting window's NPC, and its event: the clip already read for it, or a
+--- clip-shaped record of the NPC when nothing has been queued yet.
 function Addon:CurrentGossipClip()
-    local event
-    if IsFrameVisible(QuestFrameGreetingPanel) then
-        event = "QUEST_GREETING"
-    elseif IsFrameVisible(GossipFrame) then
-        event = "GOSSIP_SHOW"
-    end
-    if not event then
+    local event = GetVisibleDialogueEvent()
+    local speech = SPEECH_EVENTS[event]
+    local guid = speech and Utils:GetNPCGUID()
+    if not guid then
         return nil
     end
-
-    local guid, name = Utils:GetNPCGUID(), Utils:GetNPCName()
-    if not guid and not name then
-        return nil
+    if currentGossipSoundData and currentGossipSoundData.unitGUID == guid
+        and Enums.SoundEvent:IsGossipEvent(currentGossipSoundData.event) then
+        return currentGossipSoundData, event
     end
-    if currentGossipSoundData and Enums.SoundEvent:IsGossipEvent(currentGossipSoundData.event)
-        and (not guid or not currentGossipSoundData.unitGUID or currentGossipSoundData.unitGUID == guid)
-        and (not name or not currentGossipSoundData.name or currentGossipSoundData.name == name) then
-        return currentGossipSoundData
-    end
-    return { event = Enums.SoundEvent[event == "QUEST_GREETING" and "QuestGreeting" or "Gossip"],
-        unitGUID = guid, name = name, unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }
+    return { event = speech.sound, unitGUID = guid, name = Utils:GetNPCName(),
+        unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }, event
 end
 
---- Ignore an NPC's automatic greetings and remove its greetings already waiting in Spoken.
-function Addon:IgnoreNPC(guid, name)
-    local key = IgnoredSpeakerKey(guid, name)
-    if not key then
-        return false
-    end
-    self.db.char.ignoredGossipNPCs[key] = true
-    for _, clip in ipairs(Player:Queued()) do
-        if Enums.SoundEvent:IsGossipEvent(clip.event)
-            and IgnoredSpeakerKey(clip.unitGUID, clip.name) == key then
-            Player:Remove(clip)
+--- Mute or restore an NPC's automatic greetings for this character. Muting also drops its
+--- greetings already waiting in the queue.
+function Addon:SetGossipNPCMuted(guid, name, muted)
+    local key = SpeakerKey(guid)
+    self.db.char.ignoredGossipNPCs[key] = muted or nil
+    if muted then
+        for _, clip in ipairs(Player:Queued()) do
+            if Enums.SoundEvent:IsGossipEvent(clip.event) and clip.unitGUID and SpeakerKey(clip.unitGUID) == key then
+                Player:Remove(clip)
+            end
         end
     end
-    print("|cFF00CCFFSpoken Gossip:|r " .. format(L.MUTE_NPC_DONE, name or "NPC"))
-    return true
-end
-
---- Restore an NPC's automatic greetings for this character.
-function Addon:UnignoreNPC(guid, name)
-    local key = IgnoredSpeakerKey(guid, name)
-    if not key or not self.db.char.ignoredGossipNPCs[key] then
-        return false
-    end
-    self.db.char.ignoredGossipNPCs[key] = nil
-    print("|cFF00CCFFSpoken Gossip:|r " .. format(L.UNMUTE_NPC_DONE, name or "NPC"))
-    return true
+    print("|cFF00CCFFSpoken Gossip:|r " .. format(muted and L.MUTE_NPC_DONE or L.UNMUTE_NPC_DONE, name or "NPC"))
 end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options
-function Addon:ShouldPlayGossip(guid, text, manual, followsOption, name)
+function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
     local npcKey = guid or "unknown"
 
     -- Asked for by name, so having heard it before does not stand in the way.
@@ -1442,7 +1414,7 @@ function Addon:ShouldPlayGossip(guid, text, manual, followsOption, name)
         return true
     end
 
-    if self:IsGossipNPCIgnored(guid, name) then
+    if self:IsGossipNPCIgnored(guid) then
         Debug:Note("gossip", npcKey .. ":ignored", "line from %s not read: this NPC is muted", npcKey)
         return
     end
@@ -1538,14 +1510,13 @@ function Addon:MuteGreetingOnClick(button)
     if not guid or NotSecret(UnitCanAttack("player", unit)) or NotSecret(UnitIsDead(unit)) then
         return
     end
-    local name = NotSecret(UnitName(unit))
-    if self:IsGossipNPCIgnored(guid, name) then
+    if self:IsGossipNPCIgnored(guid) then
         return
     end
     if self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Always and self:HasHeardAnyGreeting(guid) then
         return
     end
-    if DataModules:HasGossipFor({ unitGUID = guid, name = name, unitIsObjectOrItem = false }) then
+    if DataModules:HasGossipFor({ unitGUID = guid, name = NotSecret(UnitName(unit)), unitIsObjectOrItem = false }) then
         clickTookMute = Spoken:MuteGameDialogueAhead(Player.gossipSource)
     end
 end
@@ -1601,7 +1572,7 @@ function Addon:ExpectedLine(event, textIsCurrent)
         local followsOption = event == "GOSSIP_SHOW" and gossipOptionPicked
         -- Whether the greeting was heard goes by its text, so the text on screen is the best
         -- guess there is. A stale one costs only the NPC's own greeting being cut or not.
-        if not self:ShouldPlayGossip(guid, speech.text(), false, followsOption, speaker.name)
+        if not self:ShouldPlayGossip(guid, speech.text(), false, followsOption)
             or not DataModules:HasGossipFor(speaker) then
             return nil
         end
@@ -1645,7 +1616,7 @@ function Addon:QUEST_GREETING(event, manual)
         return
     end
 
-    if not self:ShouldPlayGossip(guid, greetingText, manual, nil, targetName) then
+    if not self:ShouldPlayGossip(guid, greetingText, manual) then
         GiveVoiceBack(event)
         return
     end
@@ -1714,7 +1685,7 @@ function Addon:GOSSIP_SHOW(event, manual)
         return
     end
 
-    if not self:ShouldPlayGossip(guid, gossipText, manual, gossipOptionPicked, targetName) then
+    if not self:ShouldPlayGossip(guid, gossipText, manual, gossipOptionPicked) then
         GiveVoiceBack(event)
         return
     end
