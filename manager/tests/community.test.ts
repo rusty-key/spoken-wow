@@ -192,14 +192,14 @@ describe('fetchCommunity', () => {
     expect(Object.keys(seen[0]!.headers).map((k) => k.toLowerCase())).not.toContain('authorization')
   })
 
-  it('keeps the cached packs and says offline when the network or GitHub fails', async () => {
+  it('keeps the cached packs and says offline when the network or spoken.quest fails', async () => {
     const data = tmpDir()
     await run(data, (async () => new Response(body, { status: 200, headers: { etag: '"v1"' } })) as unknown as typeof fetch)
     const down = await run(data, (async () => {
       throw new TypeError('fetch failed')
     }) as unknown as typeof fetch)
     expect(down).toMatchObject({ offline: true })
-    expect(down.error).toMatch(/Could not reach GitHub/)
+    expect(down.error).toMatch(/Could not reach spoken\.quest/)
     expect(down.packs).toHaveLength(1)
     const limited = await run(data, (async () => new Response('', { status: 429 })) as unknown as typeof fetch)
     expect(limited.offline).toBe(true)
@@ -219,9 +219,13 @@ describe('fetchCommunity', () => {
     expect(again.packs).toHaveLength(1)
   })
 
-  it('treats a missing registry file (404) as an empty list', async () => {
-    const res = await run(tmpDir(), (async () => new Response('Not Found', { status: 404 })) as unknown as typeof fetch)
-    expect(res).toMatchObject({ offline: false, packs: [] })
+  it('treats a 404 as offline and keeps the cached packs', async () => {
+    const data = tmpDir()
+    await run(data, (async () => new Response(body, { status: 200, headers: { etag: '"v1"' } })) as unknown as typeof fetch)
+    const res = await run(data, (async () => new Response('Not Found', { status: 404 })) as unknown as typeof fetch)
+    expect(res).toMatchObject({ offline: true })
+    expect(res.error).toMatch(/spoken\.quest answered with an error \(404\)/)
+    expect(res.packs).toHaveLength(1)
   })
 
   it('is offline with nothing when there is no cache and no network', async () => {
@@ -481,7 +485,7 @@ describe('community packs through the service', () => {
     expect(fs.existsSync(path.join(env.game.addOnsPath, FOLDER))).toBe(false)
   })
 
-  it('does not ask GitHub again within the cache window unless forced, and rejects unknown ids', async () => {
+  it('does not ask spoken.quest again within the cache window unless forced, and rejects unknown ids', async () => {
     const env = await serviceEnv()
     await env.svc.refreshCommunity(true)
     const first = env.svc.community

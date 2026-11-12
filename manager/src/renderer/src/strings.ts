@@ -179,7 +179,7 @@ export const S = {
     clear: 'Clear Filters',
     emptyTitle: 'No community packs yet.',
     emptyText: 'Be the first.',
-    offline: "Can't reach GitHub. Showing the last list we had.",
+    offline: "Can't reach spoken.quest. Showing the last list we had.",
     errorTitle: "Can't load the list of community packs.",
     errorText: 'Check your connection and try again.',
     unreadable: 'The list of community packs could not be read.',

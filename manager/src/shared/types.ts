@@ -71,8 +71,9 @@ export interface Product {
 }
 
 /**
- * One voice pack made by a player, as listed in `community/packs.json` of the repo. Added by
- * pull request, so a maintainer has looked at it. Installs as the folder `SpokenCommunity_<id>`.
+ * One voice pack made by a player, as spoken.quest lists it. Its author submits each version
+ * there and an admin approves it, so somebody has looked at it. Installs as the folder
+ * `SpokenCommunity_<id>`.
  */
 export interface CommunityPack {
   /** Lower-case letters, digits and hyphens: `elune-quests-deDE`. Unique in the registry. */
