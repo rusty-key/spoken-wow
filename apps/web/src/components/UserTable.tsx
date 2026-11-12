@@ -25,7 +25,9 @@ import { nextUserSort, usersQuery, type UserSort } from "@/lib/users/sort";
 import { cn } from "@/lib/utils";
 import {
   isAdmin,
+  isRole,
   ROLES,
+  ROLE_LABELS,
   type Capability,
   type Role,
 } from "@/lib/permissions";
@@ -333,7 +335,7 @@ function RoleCell({
     return (
       <span className="flex items-center gap-2">
         <Badge variant="outline" className="uppercase">
-          {role}
+          {isRole(role) ? ROLE_LABELS[role] : role}
         </Badge>
         <span className="text-muted-foreground text-xs">you</span>
       </span>
@@ -341,13 +343,13 @@ function RoleCell({
   }
   return (
     <Select value={role} disabled={busy} onValueChange={(value) => onChange(value as Role)}>
-      <SelectTrigger className="w-32" aria-label={`Role for ${user.email}`}>
+      <SelectTrigger className="w-36" aria-label={`Role for ${user.email}`}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {ROLES.map((option) => (
           <SelectItem key={option} value={option}>
-            {option}
+            {ROLE_LABELS[option]}
           </SelectItem>
         ))}
       </SelectContent>
