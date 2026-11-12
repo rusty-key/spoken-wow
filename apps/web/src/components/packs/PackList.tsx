@@ -19,6 +19,7 @@ function newest(pack: Pack): Submission | null {
 }
 
 const PENDING = "A version is already waiting for review. Withdraw it to submit another.";
+const UNLISTED = "An admin unlisted this pack, so it takes no new versions.";
 
 // "new" for the new-pack form, a pack for a version of it, null while the form is shut.
 type Editing = "new" | VersionOf | null;
@@ -107,11 +108,11 @@ function List({ packs }: { packs: Pack[] }) {
                     </Button>
                   )}
                   {/* The span carries the reason: a disabled button gets no hover of its own. */}
-                  <span title={pack.pending ? PENDING : undefined}>
+                  <span title={!pack.listed ? UNLISTED : pack.pending ? PENDING : undefined}>
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={Boolean(pack.pending) || busy === pack.id}
+                      disabled={!pack.listed || Boolean(pack.pending) || busy === pack.id}
                       onClick={() =>
                         setEditing({
                           id: pack.id,

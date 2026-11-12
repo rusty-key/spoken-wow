@@ -19,8 +19,8 @@ export default function PackStatus({ pack }: { pack: Pack }) {
         ) : (
           <span className="text-muted-foreground">Not live yet</span>
         )}
-        {/* An admin hid it, and the author would otherwise go looking for it in the Manager. */}
-        {pack.live && !pack.listed && <span className="text-muted-foreground"> · hidden from the Manager</span>}
+        {/* Else the author looks for it in the Manager, or wonders why it takes no version. */}
+        {!pack.listed && <span className="text-muted-foreground"> · Unlisted by an admin</span>}
       </li>
       {pack.pending && (
         <li>
