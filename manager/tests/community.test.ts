@@ -186,7 +186,7 @@ describe('fetchCommunity', () => {
     const second = await run(data, f)
     expect(second.offline).toBe(false)
     expect(second.packs).toEqual(first.packs)
-    expect(seen[0]!.url).toBe('https://raw.githubusercontent.com/rusty-key/spoken-wow/master/community/packs.json')
+    expect(seen[0]!.url).toBe('https://spoken.quest/api/community/packs')
     expect(seen[0]!.headers['User-Agent']).toBe('SpokenManager/0.1.0')
     expect(seen[1]!.headers['If-None-Match']).toBe('"v1"')
     expect(Object.keys(seen[0]!.headers).map((k) => k.toLowerCase())).not.toContain('authorization')
@@ -392,7 +392,7 @@ describe('community packs through the service', () => {
     server = await startServer((req, res) => serveBuffer(req, res, zip))
     let current = registry
     const fetchImpl = (async (url: string, init?: RequestInit) => {
-      if (url.startsWith('https://raw.githubusercontent.com/rusty-key/spoken-wow/master/community/')) return new Response(JSON.stringify(current), { status: 200 })
+      if (url === 'https://spoken.quest/api/community/packs') return new Response(JSON.stringify(current), { status: 200 })
       if (url.startsWith('https://api.github.com/')) return new Response('[]', { status: 200 })
       if (url.startsWith('https://github.com/')) return fetch(`${server!.url}/pack.zip`, init)
       return fetch(url, init)

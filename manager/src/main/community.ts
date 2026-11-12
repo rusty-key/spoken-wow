@@ -1,5 +1,5 @@
-// The community voice-pack registry: `community/packs.json` in the repo, fetched from raw.githubusercontent.com,
-// ETag-cached, kept offline. The file is untrusted input: every entry is validated and a bad one is dropped
+// The community voice-pack registry: the approved packs listed by spoken.quest (`GET /api/community/packs`),
+// ETag-cached, kept offline. The list is untrusted input: every entry is validated and a bad one is dropped
 // (and logged), never repaired. A valid entry becomes a Product and a ReleaseInfo, so the ordinary
 // download, install, status and uninstall code handles it.
 import path from 'node:path'
@@ -14,7 +14,7 @@ import {
 import { compareVersions } from '../shared/version'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
-const REGISTRY_URL = 'https://raw.githubusercontent.com/rusty-key/spoken-wow/master/community/packs.json'
+const REGISTRY_URL = 'https://spoken.quest/api/community/packs'
 export const COMMUNITY_PREFIX = 'community/'
 
 const MAX_PACKS = 500
