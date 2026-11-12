@@ -12,11 +12,13 @@
  */
 import "server-only";
 
+import type { ClientBase } from "pg";
+
 import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
-import { BASE_LANG, allLangs, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, BUILTIN, allLangs, isLang, type Lang } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { adoptEveryLang, forgetTeams } from "@/lib/teams/store";
+import { adoptEveryLang, adoptLang, forgetTeams } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
 
@@ -67,4 +69,31 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
   forgetTeams();
   if ((row?.was ?? false) === enabled) return;
   await recordActivity({ kind: "language.toggled", lang, actorId: userId, detail: { enabled } });
+}
+
+export class LanguageExistsError extends Error {
+  constructor(code: string) {
+    super(`${code} is already a language`);
+    this.name = "LanguageExistsError";
+  }
+}
+
+export type NewLanguage = { code: string; name: string; native: string; bcp47: string; provider: string };
+
+/**
+ * A language made, switched off, with a team of its own to hold its work. On the caller's
+ * client so an approval can wrap it in one transaction; the caller calls forgetLanguages() and
+ * forgetTeams() once that commits.
+ */
+export async function addLanguage(client: ClientBase, input: NewLanguage, userId: string): Promise<void> {
+  if (BUILTIN.some((language) => language.code === input.code)) throw new LanguageExistsError(input.code);
+  // The conflict clause, not a read first: two admins adding the same code cannot both succeed.
+  const { rowCount } = await client.query(
+    `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "updatedBy")
+     values ($1, $2, $3, $4, $5, false, false, $6)
+     on conflict ("code") do nothing`,
+    [input.code, input.name, input.native, input.bcp47, input.provider, userId],
+  );
+  if (!rowCount) throw new LanguageExistsError(input.code);
+  await adoptLang(client, input.code);
 }
