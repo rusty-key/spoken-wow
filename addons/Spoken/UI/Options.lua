@@ -715,10 +715,9 @@ local function Build()
     -- for the Large Window. DialogueUI has its own theme row, and EllesmereUI has its own shell.
     local theme = layout:Dropdown(L.OPT_DUI_THEME, nil,
         function() return Classic() and CLASSIC_THEMES or THEMES end,
-        function() return Classic() and cfg().ClassicBackground or cfg().MinimalBackground end,
-        function(v)
-            if Classic() then cfg().ClassicBackground = v else cfg().MinimalBackground = v end
-        end, refresh, function(v) return THEME_LABELS[v] end)
+        function() return Addon:WindowTheme(Classic() and "classic" or "minimal") end,
+        function(v) Addon:SetWindowTheme(Classic() and "classic" or "minimal", v) end,
+        refresh, function(v) return THEME_LABELS[v] end)
     Only(theme, function() return (Small() or Classic()) and not Ellesmere:On() end)
     DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
     local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,

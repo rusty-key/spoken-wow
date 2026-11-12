@@ -1333,5 +1333,14 @@ env.SoundQueue:RemoveAllSoundsFromQueue()
 env.Addon:SetPlayerStyle("classic")
 _G.IsShiftKeyDown = hadShift
 
+stub.SetAddOns({ { folder = "ReforgedUI" } })
+env, quests, places = Boot(); F = env.PlayerFrame
+Expect("ReforgedUI defaults the Large Window to Warcraft III", env.Addon:WindowTheme("classic"), "warcraft3")
+Expect("ReforgedUI defaults the Small Window to Warcraft III", env.Addon:WindowTheme("minimal"), "warcraft3")
+env.Addon:SetWindowTheme("classic", "dark")
+Expect("an explicit Large Window Dark choice overrides ReforgedUI", env.Addon:WindowTheme("classic"), "dark")
+env.Addon:SetWindowTheme("minimal", "parchment")
+Expect("an explicit Small Window Parchment choice overrides ReforgedUI", env.Addon:WindowTheme("minimal"), "parchment")
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")
