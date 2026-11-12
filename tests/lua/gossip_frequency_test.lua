@@ -205,6 +205,7 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": the NPC dialog offers Mute", muteButton:IsShown(), true)
     Expect(client .. ": the dialog uses the speaker glyph", muteButton.glyph:GetTexture(),
         [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    Expect(client .. ": the speaker texture keeps its waves", table.concat(muteButton.glyph.texCoord or {}, ","), "0,1,0,1")
     Expect(client .. ": an audible NPC has no mute slash", muteButton.muteSlash:IsShown(), false)
     local popupsBeforeMute = #stub.popups
     muteButton:Click()
