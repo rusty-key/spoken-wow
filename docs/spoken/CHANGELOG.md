@@ -19,6 +19,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   play a pack in such a language, such as Hebrew, pick it there. "Auto" follows your client and no
   longer takes that pack for English.
   *([rusty-key](https://github.com/rusty-key))*
+- **The settings pages take the d-pad as the game's own do.** With the controller UI on, each
+  checkbox, slider and dropdown is one stop: up and down move from row to row, left and right
+  step a slider or a dropdown, and A ticks the box or opens the list. The cursor no longer lands
+  on a checkbox apart from its row, on a slider's or a dropdown's arrows, or on the scroll bar.
+  *([nobbs](https://github.com/nobbs))*
 
 ## 3.8.7 — 2026-11-12
 
