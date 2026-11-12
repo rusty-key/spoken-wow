@@ -104,9 +104,6 @@ L.REASON_UNTYPED = "Desactiva «Ir escribiendo el texto» para usar esto con sub
 
 -- Display: narrator style
 L.OPT_PLAYER_STYLE = "Estilo del narrador"
-L.OPT_NARRATOR_SKIN = "Aspecto del narrador"
-L.OPT_SKIN_DEFAULT = "Predeterminado"
-L.OPT_SKIN_WARCRAFT3 = "Warcraft III"
 L.OPT_LOOK_TITLE = "Aspecto"
 L.OPT_STYLE_MINIMAL = "Ventana pequeña"
 L.OPT_STYLE_CLASSIC = "Ventana grande"
@@ -244,6 +241,7 @@ L.OPT_DUI_THEME = "Tema"
 L.OPT_DUI_THEME_FOLLOW = "Igual que DialogueUI"
 L.OPT_DUI_THEME_PARCHMENT = "Pergamino"
 L.OPT_DUI_THEME_DARK = "Oscuro"
+L.OPT_DUI_THEME_WARCRAFT3 = "Warcraft III"
 L.OPT_DUI_FIT_TEXT = "Ajustar ventana al texto"
 L.WINDOW_WHEEL_HINT = "Sobre la ventana: Ctrl + rueda cambia el tamaño de la ventana; Ctrl + Mayús + rueda, el tamaño de letra."
 L.SUBTITLE_WHEEL_HINT = "Sobre los subtítulos: Ctrl + rueda cambia el tamaño de los subtítulos; Ctrl + Mayús + rueda, el tamaño de letra."

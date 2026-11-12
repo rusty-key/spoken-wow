@@ -91,9 +91,6 @@ L.REASON_NOT_INSTALLED = "Non installé. Installez ce module de Spoken pour l'ut
 
 -- Narrator style
 L.OPT_PLAYER_STYLE = "Style du narrateur"
-L.OPT_NARRATOR_SKIN = "Apparence du narrateur"
-L.OPT_SKIN_DEFAULT = "Par défaut"
-L.OPT_SKIN_WARCRAFT3 = "Warcraft III"
 L.OPT_LOOK_TITLE = "Apparence"
 L.OPT_STYLE_MINIMAL = "Petite fenêtre"
 L.OPT_STYLE_CLASSIC = "Grande fenêtre"
@@ -241,6 +238,7 @@ L.OPT_DUI_THEME = "Thème"
 L.OPT_DUI_THEME_FOLLOW = "Comme DialogueUI"
 L.OPT_DUI_THEME_PARCHMENT = "Parchemin"
 L.OPT_DUI_THEME_DARK = "Sombre"
+L.OPT_DUI_THEME_WARCRAFT3 = "Warcraft III"
 L.OPT_DUI_FIT_TEXT = "Ajuster la fenêtre au texte"
 L.WINDOW_WHEEL_HINT = "Sur la fenêtre : Ctrl + molette change la taille de la fenêtre, Ctrl + Maj + molette la taille des caractères."
 L.SUBTITLE_WHEEL_HINT = "Sur les sous-titres : Ctrl + molette change la taille des sous-titres, Ctrl + Maj + molette la taille des caractères."

@@ -36,10 +36,11 @@ local STYLE_LABELS = {
     none = L.OPT_STYLE_NONE,
 }
 
-local NARRATOR_SKINS = { "default", "warcraft3" }
-local NARRATOR_SKIN_LABELS = {
-    default = L.OPT_SKIN_DEFAULT,
-    warcraft3 = L.OPT_SKIN_WARCRAFT3,
+local THEMES = { "parchment", "dark", "warcraft3" }
+local THEME_LABELS = {
+    parchment = L.OPT_DUI_THEME_PARCHMENT,
+    dark = L.OPT_DUI_THEME_DARK,
+    warcraft3 = L.OPT_DUI_THEME_WARCRAFT3,
 }
 
 -- The game's key bindings list these in a Spoken category (Bindings.xml). The category is
@@ -501,14 +502,6 @@ local function Build()
             Options:StyleChosen()
         end,
         { choose = L.STYLE_CHOOSE })
-    local narratorSkin = layout:Dropdown(L.OPT_NARRATOR_SKIN, nil, NARRATOR_SKINS,
-        function() return Addon:NarratorSkin() end,
-        function(v) Addon:SetNarratorSkin(v) end, refresh,
-        function(v) return NARRATOR_SKIN_LABELS[v] end)
-    Only(narratorSkin, function()
-        local style = Style()
-        return style == "minimal" or style == "classic"
-    end)
     layout:Section(nil)
     -- Search names these rows' section as the tiles' own.
     layout.section = L.OPT_PLAYER_STYLE
@@ -716,12 +709,12 @@ local function Build()
 
     -- How the window and the subtitles look.
     layout:Section(L.OPT_LOOK_TITLE)
-    -- Parchment or Dark, for each window that has a choice: the Small Window's own, and the
+    -- Parchment, Dark or Warcraft III, for the Small Window; DialogueUI's window can also
     -- DialogueUI window's, which can also follow DialogueUI's. None in EllesmereUI's look, which
     -- has its own.
-    Only(layout:Dropdown(L.OPT_DUI_THEME, nil, { "parchment", "dark" },
+    Only(layout:Dropdown(L.OPT_DUI_THEME, nil, THEMES,
         function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
-        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end),
+        function(v) return THEME_LABELS[v] end),
         function() return Small() and not Ellesmere:On() end)
     DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
     local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,

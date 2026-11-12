@@ -422,7 +422,7 @@ end
 function MinimalPlayer:Dress()
     -- EllesmereUI's shell is dark whichever background is chosen; a shell that failed left Spoken's.
     local shell = self.panel.spokenEllesmere == true
-    local dark = Config().MinimalBackground == "dark" or shell or self.raceThemed
+    local dark = Config().MinimalBackground ~= "parchment" or shell or self.raceThemed
     local look = shell and LOOKS.ellesmere or dark and LOOKS.dark or LOOKS.parchment
     local paper = self.paper
     self.dark = dark

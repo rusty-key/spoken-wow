@@ -150,7 +150,7 @@ Expect("...back on its parchment from the rock, whole, not tiled", tostring(M.pa
     [[Interface\AddOns\Spoken\Textures\MinimalParchment nil]])
 env.SoundQueue:RemoveAllSoundsFromQueue()
 
-env.Addon:SetNarratorSkin("warcraft3")
+frame.MinimalBackground = "warcraft3"
 env.PlayerFrame:RefreshConfig()
 local tauren = H.Clip({ npcBody = "tauren-male", text = "Los tauren hemos hecho un hogar.",
     present = { header = "Valiente Pluma de Viento", portrait = { kind = "none" } } })
@@ -174,11 +174,8 @@ main:Refresh()
 -- Theme, the row the DialogueUI window's Theme shares its name with: the first of the two.
 local row = Row(L.OPT_DUI_THEME)
 Expect("Theme is on Spoken's page with the small window chosen", row ~= nil and row:IsShown(), true)
-Expect("...offering Parchment and Dark", row and row.layoutValues and table.concat(row.layoutValues, ","), "parchment,dark")
-local skin = Row(L.OPT_NARRATOR_SKIN)
-Expect("Narrator Skin is on Spoken's page with the small window chosen", skin ~= nil and skin:IsShown(), true)
-Expect("...offering Default and Warcraft III", skin and skin.layoutValues and table.concat(skin.layoutValues, ","),
-    "default,warcraft3")
+Expect("...offering Parchment, Dark and Warcraft III", row and row.layoutValues and table.concat(row.layoutValues, ","),
+    "parchment,dark,warcraft3")
 pcall(function() row.layoutChoose("dark") end)
 Expect("...choosing Dark there draws the rock", tostring(frame.MinimalBackground) .. " " .. tostring(M.paper.texture),
     [[dark Interface\AddOns\Spoken\Textures\MinimalBackground]])

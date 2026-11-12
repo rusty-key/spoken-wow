@@ -42,15 +42,18 @@ do
     Expect("a slider greys out where sliders have no SetEnabled", ok and slider.layoutSlider.enabled, false)
 end
 local F = env.PlayerFrame
-Expect("the default narrator skin keeps the original art", env.Addon:NarratorSkin(), "default")
 Expect("the default narrator frame keeps master's borderless shell", F.frame:GetBackdrop(), nil)
 Expect("quest clips use racial art", F.IsRaceClip({ source = { key = "quests" } }), true)
 Expect("gossip clips use racial art", F.IsRaceClip({ source = { key = "gossip" } }), true)
 Expect("place clips keep their original art", F.IsRaceClip({ source = { key = "places" } }), false)
 local savedRaceVoiceOver = _G.VoiceOver
-env.Addon:SetNarratorSkin("warcraft3")
+env.Addon.db.profile.Frame.MinimalBackground = "dark"
 F:RefreshConfig()
-Expect("Warcraft III narrator skin enables racial art", env.Addon:NarratorSkin(), "warcraft3")
+Expect("Dark theme keeps the existing dark treatment", F.RaceLook({ source = { key = "gossip" },
+    present = { header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 } } }), nil)
+env.Addon.db.profile.Frame.MinimalBackground = "warcraft3"
+F:RefreshConfig()
+Expect("Warcraft III theme enables racial art", env.Addon.db.profile.Frame.MinimalBackground, "warcraft3")
 _G.VoiceOver = { DataModules = { GetModules = function()
     return ipairs({ { NPCBodiesByNPCID = {
         [15102] = { ["nightelf-female"] = true },
@@ -185,8 +188,8 @@ end } }
 local genericFollowupLook = F.RaceLook({ present = { portrait = { creatureID = 3583 } } })
 Expect("generic quest follow-up metadata supplies a race from its filename", genericFollowupLook ~= nil, true)
 _G.VoiceOver = oldVoiceOver
-env.Addon:SetNarratorSkin("default")
-Expect("Default narrator skin disables Warcraft III racial art", F.RaceLook({ source = { key = "quests" },
+env.Addon.db.profile.Frame.MinimalBackground = "parchment"
+Expect("Scroll theme disables Warcraft III racial art", F.RaceLook({ source = { key = "quests" },
     present = { header = "Thrall" } }), nil)
 F:RefreshConfig()
 
@@ -1318,12 +1321,6 @@ end, 0)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 env.Addon:SetPlayerStyle("classic")
 _G.IsShiftKeyDown = hadShift
-
-stub.SetAddOns({ { folder = "ReforgedUI" } })
-env, quests, places = Boot(); F = env.PlayerFrame
-Expect("Reforged UI makes Warcraft III the automatic narrator skin", env.Addon:NarratorSkin(), "warcraft3")
-env.Addon:SetNarratorSkin("default")
-Expect("Default remains available as an explicit narrator skin", env.Addon:NarratorSkin(), "default")
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")
