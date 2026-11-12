@@ -379,8 +379,8 @@ end
 
 function MinimalPlayer:PaintRaceTrim(look)
     local frame, trim = self.panel, self.raceTrim
-    local edge, inset = 14, 4
-    local out = edge - inset
+    -- Keep the Warcraft III trim inside the same frame footprint as the parchment and dark looks.
+    local edge, out = 14, 0
     local width = (frame:GetWidth() or 0) + 2 * out
     local height = (frame:GetHeight() or 0) + 2 * out
     local halfWidth = math.max(0, width / 2 - edge)
