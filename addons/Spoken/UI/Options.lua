@@ -288,7 +288,7 @@ local LINKS = {
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
         url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
-        url = "https://discord.gg/KgeQhjv9Rd" },
+        url = "https://spoken.quest/discord" },
     { name = "CurseForge", icon = [[Interface\AddOns\Spoken\Textures\LinkCurseForge]],
         url = CurseForgeURL() },
     { name = "Wago", icon = [[Interface\AddOns\Spoken\Textures\LinkWago]],
