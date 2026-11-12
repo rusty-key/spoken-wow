@@ -71,6 +71,14 @@ describe("GET /api/community/packs", () => {
     expect(await response.text()).toBe("");
   });
 
+  it("treats a weakened tag, a list of tags and * as matching too", async () => {
+    const etag = (await get()).headers.get("ETag")!;
+    for (const header of [`W/${etag}`, `"other", ${etag}`, `W/"other", W/${etag}`, "*"]) {
+      expect((await get({ "If-None-Match": header })).status, header).toBe(304);
+    }
+    expect((await get({ "If-None-Match": '"other"' })).status).toBe(200);
+  });
+
   it("gives every entry the shape the Manager validates", async () => {
     const { packs } = await (await get()).json();
     for (const entry of packs) {
