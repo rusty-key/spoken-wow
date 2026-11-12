@@ -1111,7 +1111,16 @@ function Options:AddProfiles(layout)
                 if popup and popup.button1 then popup.button1:Click() end
             end,
         }
-        layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end)
+        layout:Button(L.OPT_PROFILE_NEW, 200, function()
+            local asked = Layout.Ask(L.OPT_PROFILE_NEW_PROMPT, _G.ACCEPT or "Accept",
+                L.CANCEL, function(name)
+                    if name and name ~= "" then
+                        Options:SetProfile(name)
+                        if Options.profileLayout then Options.profileLayout:Refresh() end
+                    end
+                end)
+            if not asked then StaticPopup_Show("SPOKEN_NEW_PROFILE") end
+        end)
     end
     if Addon.db then
         layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, L.OPT_NEW_CHARACTER_PROFILE_TIP,

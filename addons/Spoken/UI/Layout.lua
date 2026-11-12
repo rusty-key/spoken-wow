@@ -962,6 +962,114 @@ function Layout:Highlight(row)
     glow:Show()
 end
 
+-- Under the controller UI an addon showing a StaticPopup taints the game's gamepad popup
+-- handling: once the popup closes, the d-pad no longer moves on the settings page. There the
+-- question goes to a dialog of Spoken's own instead.
+local function GamepadUI()
+    return InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled() or false
+end
+
+--- Let the controller drive `frame` while it is shown, with B pressing `close`. The controller
+--- moves only between windows the frame controls manager knows of, so the frame registers as a
+--- popup, as Blizzard's own (GuildInviteFrame, ReadyCheck) do: focus moves to it on show and back
+--- to the window under it on hide. The manager refuses addons in combat.
+function Layout.FollowController(frame, close)
+    frame.CloseButton = close
+    local function Focus()
+        return GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager and not CombatRestricted()
+    end
+    frame:HookScript("OnShow", function(self)
+        if Focus() then GamepadMode.FrameControlsManager:HandlePopupShown(self) end
+    end)
+    frame:HookScript("OnHide", function(self)
+        if Focus() then GamepadMode.FrameControlsManager:HandlePopupHide(self) end
+    end)
+end
+
+local prompt
+
+local function BuildPrompt()
+    -- Drawn as the game's own popup is (GameDialogBaseMixin:OnLoad, StaticPopupTemplate): the
+    -- dark dialog background under the diamond-cornered border, a tooltip-edged box to type in,
+    -- and the controller's glyphs on the buttons.
+    local frame = CreateFrame("Frame", "SpokenLayoutPrompt", UIParent)
+    frame:SetSize(320, 110)
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -135)
+    frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    frame:SetToplevel(true)
+    frame:EnableMouse(true)
+    local back = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+    back:SetAtlas("UI-DialogBox-Background-Dark")
+    back:SetPoint("TOPLEFT", 7, -7)
+    back:SetPoint("BOTTOMRIGHT", -7, 7)
+    local border = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
+    border:SetAtlas("UI-DiamondDialogBox-Border")
+    border:SetAllPoints(frame)
+    frame:Hide()
+    if UISpecialFrames then table.insert(UISpecialFrames, "SpokenLayoutPrompt") end
+
+    local text = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    text:SetPoint("TOP", frame, "TOP", 0, -18)
+    text:SetWidth(290)
+
+    local input = CreateFrame("EditBox", nil, frame, "TooltipBackdropTemplate")
+    input:SetFontObject(ChatFontNormal)
+    input:SetTextInsets(6, 6, 0, 0)
+    input:SetSize(150, 24)
+    input:SetPoint("TOP", text, "BOTTOM", 0, -10)
+    input:SetAutoFocus(false)
+
+    local accept = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    accept:SetSize(128, 21)
+    accept:SetPoint("BOTTOMRIGHT", frame, "BOTTOM", -6, 16)
+    local cancel = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    cancel:SetSize(128, 21)
+    cancel:SetPoint("BOTTOMLEFT", frame, "BOTTOM", 6, 16)
+    Layout.FollowController(frame, cancel)
+    -- A presses whichever button the cursor is on, and it starts on Accept unless there is a
+    -- name to type first; B always cancels.
+    local glyph
+    if GamepadMode and GamepadMode.AddGamepadIconToButton then
+        glyph = GamepadMode.AddGamepadIconToButton(accept, GAMEPAD_FACE_BOTTOM)
+        GamepadMode.AddGamepadIconToButton(cancel, GAMEPAD_FACE_RIGHT)
+    end
+
+    prompt = { frame = frame, text = text, input = input, accept = accept, cancel = cancel, glyph = glyph }
+    accept:SetScript("OnClick", function()
+        local run, typed = prompt.run, prompt.asking and input:GetText() or nil
+        frame:Hide()
+        if run then run(typed) end
+    end)
+    cancel:SetScript("OnClick", function() frame:Hide() end)
+    input:SetScript("OnEnterPressed", function() accept:Click() end)
+    input:SetScript("OnEscapePressed", function() frame:Hide() end)
+    frame:HookScript("OnHide", function() prompt.run = nil end)
+end
+
+local function ShowPrompt(question, acceptLabel, cancelLabel, run, asking)
+    if not prompt then BuildPrompt() end
+    prompt.text:SetText(question)
+    prompt.accept:SetText(acceptLabel)
+    prompt.cancel:SetText(cancelLabel)
+    prompt.asking = asking
+    prompt.input:SetText("")
+    prompt.input:SetShown(asking)
+    if prompt.glyph then prompt.glyph:SetShown(not asking) end
+    prompt.frame:SetHeight((prompt.text.GetStringHeight and prompt.text:GetStringHeight() or 14)
+        + (asking and 92 or 60))
+    prompt.run = run
+    prompt.frame:Show()
+end
+
+--- Ask for a line of text: under the controller UI only, in Spoken's own dialog, where it runs
+--- `accept(text)` on the first button and returns true. Elsewhere it returns false and the
+--- caller asks as before.
+function Layout.Ask(question, acceptLabel, cancelLabel, accept)
+    if not GamepadUI() then return false end
+    ShowPrompt(question, acceptLabel, cancelLabel, accept, true)
+    return true
+end
+
 -- One popup each for every panel that loads this file, so the names are the file's own.
 -- The callback lives here rather than on the dialog: how a dialog hands its data back to
 -- OnAccept differs across the clients this file loads on.
@@ -969,6 +1077,10 @@ local pendingAccept
 
 --- Ask before doing something that cannot be undone. `accept` runs on the first button.
 function Layout.Confirm(question, acceptLabel, cancelLabel, accept)
+    if GamepadUI() then
+        ShowPrompt(question, acceptLabel, cancelLabel, accept, false)
+        return
+    end
     if not (StaticPopupDialogs and StaticPopup_Show) then
         accept()
         return

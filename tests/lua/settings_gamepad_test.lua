@@ -226,4 +226,80 @@ do
         .. tostring(fought.view.thumb.nav), "nil nil nil")
 end
 
+---------------------------------------------------------------- questions under the controller UI
+-- A StaticPopup an addon shows taints the game's gamepad popup handling: once it closed the
+-- d-pad no longer moved on the settings page. Under the controller UI the question goes to
+-- Spoken's own dialog, which takes the controller's focus as Blizzard's popups do.
+do
+    local stubPopups = #stub.popups
+    local calls, restricted = {}, false
+    _G.InputUtil = { IsGamepadUIEnabled = function() return true end }
+    _G.GamepadMode = { FrameControlsManager = {
+        HandlePopupShown = function(_, frame) table.insert(calls, { "shown", frame }) end,
+        HandlePopupHide = function(_, frame) table.insert(calls, { "hide", frame }) end,
+    } }
+    _G.Enum = _G.Enum or {}
+    _G.Enum.AddOnRestrictionType = { Combat = 1 }
+    _G.C_RestrictedActions = { IsAddOnRestrictionActive = function() return restricted end }
+
+    local ran = 0
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() ran = ran + 1 end)
+    local frame = _G.SpokenLayoutPrompt
+    Expect("a confirmation is no StaticPopup", #stub.popups, stubPopups)
+    Expect("...but Spoken's own dialog", frame and frame:IsShown(), true)
+    -- The stub fires OnShow hooks but not OnHide ones; the client fires both.
+    local stubHide = frame.Hide
+    function frame:Hide()
+        local was = self:IsShown()
+        stubHide(self)
+        if was then for _, fn in ipairs(self.hooks.OnHide or {}) do fn(self) end end
+    end
+    Expect("...which takes the controller's focus as a popup", calls[1] and calls[1][1], "shown")
+    Expect("...for itself", calls[1] and calls[1][2], frame)
+    Expect("B presses Cancel", frame.CloseButton and frame.CloseButton.text, "Cancel")
+    frame.CloseButton.scripts.OnClick(frame.CloseButton)
+    Expect("cancelling runs nothing", ran, 0)
+    Expect("...closes the dialog", frame:IsShown(), false)
+    Expect("...and hands the focus back", calls[2] and calls[2][1], "hide")
+
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() ran = ran + 1 end)
+    local accept
+    for _, child in ipairs(frame.children or {}) do
+        if child.text == "Reset" then accept = child end
+    end
+    Expect("the dialog has the accept button", accept ~= nil, true)
+    accept.scripts.OnClick(accept)
+    Expect("accepting runs it once", ran, 1)
+    Expect("...and closes the dialog", frame:IsShown(), false)
+
+    local named
+    Expect("asking for a name is taken on", Layout.Ask("Name it:", "Accept", "Cancel",
+        function(name) named = name end), true)
+    Expect("...with no StaticPopup either", #stub.popups, stubPopups)
+    local input
+    for _, child in ipairs(frame.children or {}) do
+        if child.frameType == "EditBox" then input = child end
+    end
+    Expect("...and a box to type in", input and input:IsShown(), true)
+    input:SetText("Mine")
+    accept.scripts.OnClick(accept)
+    Expect("accepting hands over what was typed", named, "Mine")
+
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
+    Expect("a confirmation has no box to type in", input:IsShown(), false)
+    frame:Hide()
+
+    calls, restricted = {}, true
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
+    frame:Hide()
+    Expect("in combat the focus manager is left alone, as it refuses addons then", #calls, 0)
+
+    _G.InputUtil.IsGamepadUIEnabled = function() return false end
+    Expect("without the controller UI the caller asks as before", Layout.Ask("Name it:", "Accept", "Cancel",
+        function() end), false)
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
+    Expect("...and a confirmation is a StaticPopup", #stub.popups, stubPopups + 1)
+    _G.InputUtil, _G.GamepadMode, _G.C_RestrictedActions = nil, nil, nil
+end
+
 os.exit(Failures() == 0 and 0 or 1)

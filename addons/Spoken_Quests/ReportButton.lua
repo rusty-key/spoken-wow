@@ -117,10 +117,18 @@ function ReportButton:Link(target, language)
     return Spoken:ReportURL("quests", target, language)
 end
 
+-- The controller UI takes over a game popup inside the code that opened it, so opened from
+-- here it taints the gamepad's bindings and the next close is blocked (#165). A copy of
+-- VoiceOver.lua's local of the same name.
+local function IsGamepadUI()
+    return GetCVar("InputDeviceInterfaceStyle") == "1"
+end
+
 --- DialogueUI hides UIParent and the game's popups with it, so under its window the address
---- goes to Spoken's copy box, which shows over that window.
+--- goes to Spoken's copy box, which shows over that window. Under the controller UI it goes
+--- there too: never to the game's popup.
 local function ShowCopy(url)
-    if Utils:DialogueUIPage() and Spoken and Spoken.ShowContribution then
+    if (IsGamepadUI() or Utils:DialogueUIPage()) and Spoken and Spoken.ShowContribution then
         Spoken:ShowContribution(url, nil, true)
         return
     end
