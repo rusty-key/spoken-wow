@@ -85,6 +85,7 @@ function GossipSettingsPanel:Setup()
     layout:Button(L.OPT_FORGET_MUTED_NPCS, 200, function()
         local char = Addon.db and Addon.db.char
         if char then char.ignoredGossipNPCs = {} end
+        if DialogPlayButton then DialogPlayButton:Refresh() end
         print("|cFF00CCFFSpoken Gossip:|r " .. L.OPT_FORGET_MUTED_NPCS_DONE)
     end)
 
