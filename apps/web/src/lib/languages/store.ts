@@ -14,18 +14,20 @@ import "server-only";
 
 import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
-import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, allLangs, isLang, type Lang } from "@/lib/lang";
+import { loadLanguages } from "@/lib/languages/catalogue";
 import { adoptEveryLang, forgetTeams } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
 
 /** Every language the site knows of, in the list's order, with whether it is on. */
 export async function languageStates(): Promise<LanguageState[]> {
+  await loadLanguages();
   const rows = await query<{ code: string; enabled: boolean }>(
     `select "code", "enabled" from "language"`,
   );
   const enabled = new Set(rows.filter((row) => row.enabled).map((row) => row.code));
-  return CODES.map((code) => ({ code, enabled: code === BASE_LANG || enabled.has(code) }));
+  return allLangs().map((code) => ({ code, enabled: code === BASE_LANG || enabled.has(code) }));
 }
 
 export async function isEnabled(lang: Lang): Promise<boolean> {

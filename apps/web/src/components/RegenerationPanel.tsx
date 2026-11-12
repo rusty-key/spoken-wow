@@ -15,7 +15,7 @@ import {
 import { dismissQueue, pauseQueue, resumeQueue, type QueueSnapshot } from "@/lib/generation/client";
 import { usd } from "@/lib/generation/money";
 import { queueStatus } from "@/lib/generation/queue-line";
-import { LOCALES } from "@/lib/lang";
+import { languageInfo } from "@/lib/lang";
 
 import { Contained } from "./Width";
 
@@ -24,7 +24,7 @@ function n(value: number): string {
 }
 
 function languageName(code: string): string {
-  return LOCALES.find((locale) => locale.code === code)?.name ?? code;
+  return languageInfo(code)?.name ?? code;
 }
 
 /**

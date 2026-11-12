@@ -45,12 +45,6 @@ export type BuiltinLang = (typeof BUILTIN)[number]["code"];
 /** A built-in code gets completion; any other string is a language registered at runtime. */
 export type Lang = BuiltinLang | (string & {});
 
-/** @deprecated moved to allLangs()/BUILTIN in Task 5 */
-export const LOCALES = BUILTIN;
-
-/** @deprecated moved to allLangs()/BUILTIN in Task 5 */
-export const CODES: readonly Lang[] = BUILTIN.map((locale) => locale.code);
-
 const builtinByCode = new Map<string, LanguageInfo>(BUILTIN.map((locale) => [locale.code, locale]));
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CODES } from "./lang";
+import { allLangs } from "./lang";
 import {
   can,
   canGrant,
@@ -175,7 +175,7 @@ describe("per-language permissions", () => {
   });
 
   it("lists the languages somebody may act in", () => {
-    expect(langsWhere({ role: "admin", grants: [] }, "regenerate")).toHaveLength(CODES.length);
+    expect(langsWhere({ role: "admin", grants: [] }, "regenerate")).toHaveLength(allLangs().length);
     expect(langsWhere(member([{ lang: "enUS", capability: "regenerate" }]), "regenerate")).toEqual([
       "enUS",
     ]);
