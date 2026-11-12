@@ -250,8 +250,6 @@ function Player:Prepare(soundData)
         portrait = PortraitFor(soundData),
         actions = ACTIONS,
         timings = soundData.timings,
-        -- The language the pack was recorded in, for a subtitle that must be drawn in its font.
-        lang = soundData.module and soundData.module.METADATA.Language,
     }
     return soundData
 end

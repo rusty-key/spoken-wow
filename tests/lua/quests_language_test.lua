@@ -320,11 +320,9 @@ local HE_PACKS = {
 }
 VO = Install(HE_PACKS, "enUS")
 VO.Addon.db.profile.Audio.VoiceLanguage = "heIL"
-local heard, heSound = Resolve(VO, 1)
+local heard = Resolve(VO, 1)
 Expect("M. a pack declaring heIL answers the line", heard, "HebrewPack")
 Expect("M. ...as a pack in heIL", VO.DataModules:GetPresentModule("HebrewPack").Language, "heIL")
-VO.Player:Prepare(heSound)
-Expect("M. ...and the clip says so for the subtitle", heSound.present.lang, "heIL")
 Expect("M. a line it lacks falls back to English", (Resolve(VO, 2)), "EnglishPack")
 Expect("M. a stored code is no client language", VO.Language:IsClientLanguage("heIL"), false)
 Expect("M. Auto never lands on it", (function()

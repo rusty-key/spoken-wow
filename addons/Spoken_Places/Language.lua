@@ -90,6 +90,10 @@ local function HasLore(code)
 	return entry ~= nil and entry.lore == true
 end
 
+function SpokenPlaces:HasLore(code)
+	return HasLore(code)
+end
+
 SpokenPlaces.clientLocale = GetLocale()
 
 -- Whether a game client runs in this language: a built-in one.
@@ -155,6 +159,9 @@ local SCRIPT_FONTS = {
 	simplifiedchinese = { "Fonts\\ARKai_T.ttf" },
 	-- An English Forever client has no blei00d.TTF, which its font objects still name.
 	traditionalchinese = { "Fonts\\blei00d.TTF", "Fonts\\bKAI00M.TTF" },
+	-- A pack's language, which has no script: the stock font most likely to draw accents a Latin
+	-- font lacks, such as Vietnamese's ệ and ữ. A script it cannot draw fails the test like any.
+	[false] = { "Fonts\\ARIALN.TTF" },
 }
 
 --- The font file to write `code` (the lore's language by default) in where a page uses
@@ -177,7 +184,7 @@ function SpokenPlaces:FontFor(fontObject, code)
 		self.fonts[key] = false
 		local candidates = { path }
 		if locale.font then table.insert(candidates, locale.font) end
-		for _, font in ipairs(SCRIPT_FONTS[locale.script] or {}) do table.insert(candidates, font) end
+		for _, font in ipairs(SCRIPT_FONTS[locale.script or false] or {}) do table.insert(candidates, font) end
 		for _, font in ipairs(candidates) do
 			if self:LanguageDraws(locale.code, font) then
 				self.fonts[key] = font

@@ -73,7 +73,6 @@ Expect("A. registering captions leaves the lore browser's language alone", Z:Get
 Expect("A. zones carry their full text", Z:NewLoreSound(MAP, nil).present.transcript, "English zone lore.")
 Expect("A. ...timed by the take's word times",
     Z:NewLoreSound(MAP, nil).present.timings, "0 .5 1")
-Expect("A. ...and say which language the words are in", Z:NewLoreSound(MAP, nil).present.lang, "enUS")
 Voice("deDE")
 Expect("A. captions are in the Text Language, not the voice's: English words under a German voice",
     Z:NewLoreSound(MAP, BOTH).present.transcript, "English valley lore.")
@@ -84,7 +83,6 @@ local valley = Z.CaptionLore.enUS.subzones[MAP][BOTH]
 Z.CaptionLore.enUS.subzones[MAP][BOTH] = nil
 Expect("A. a place the Text Language has no words for is captioned in the voice's",
     Z:NewLoreSound(MAP, BOTH).present.transcript, "Deutsche Geschichte.")
-Expect("A. ...which the clip names for the subtitle's font", Z:NewLoreSound(MAP, BOTH).present.lang, "deDE")
 Expect("A. ...and timed by its take, those being the recording's words",
     Z:NewLoreSound(MAP, BOTH).present.timings, "0 1")
 Z.CaptionLore.enUS.subzones[MAP][BOTH] = valley
@@ -278,6 +276,16 @@ Spoken:DeclareLanguage("viVN", "SpokenPlacesAudio_viVN",
 Expect("G. Vietnamese, which the page's font cannot draw, is written in its pack's font",
     tostring(Z:CanRenderLanguage("viVN")) .. " " .. Font(_G.GameFontHighlight, "viVN"),
     "true " .. VIET_FONT)
+-- A pack language whose pack names no font, or one the page cannot use, has Arial Narrow to try.
+fontHas[VIET_FONT] = {}
+fontHas["Fonts\\ARIALN.TTF"] = VIETNAMESE
+Reset()
+Expect("G. ...and without one, in the stock font most likely to draw its accents",
+    tostring(Z:CanRenderLanguage("viVN")) .. " " .. Font(_G.GameFontHighlight, "viVN"),
+    "true Fonts\\ARIALN.TTF")
+fontHas["Fonts\\ARIALN.TTF"] = nil
+fontHas[VIET_FONT] = VIETNAMESE
+Reset()
 
 -- The captions set a font file too: a clip of Korean lore on a German client names the one to use.
 local realNormal = _G.GameFontNormal
@@ -406,6 +414,11 @@ Expect("H. ...without rewriting it", SpokenPlacesSettings.language, "heIL")
 Z:SetLanguagePreview(true)
 Expect("H. ...not even in preview, which would show empty pages", Z:IsLanguageSelectable("heIL"), false)
 Z:SetLanguagePreview(false)
+for i = #stub.chat, 1, -1 do stub.chat[i] = nil end
+SlashCmdList["SPOKENPLACES"]("lang heil force")
+Expect("H. /spp lang says it has no lore, rather than suggest a preview that cannot help",
+    tostring(stub.chat[#stub.chat]):find("no lore in", 1, true) ~= nil, true)
+Expect("H. ...and leaves preview off", Z:IsPreviewingLanguage(), false)
 
 Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language",
     { ["X-SpokenPlaces-Lore"] = "1", ["X-Spoken-LanguageFont"] = "Fonts/Missing.ttf" }) })

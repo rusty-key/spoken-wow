@@ -1230,11 +1230,15 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
             for _, value in ipairs(Resolve(values)) do
                 local element = root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
-                -- Menu buttons are pooled, so an entry with no face must put back the font a
-                -- previous entry's face replaced.
+                -- Menu buttons are pooled, also with other addons' and the game's menus, so an
+                -- entry with no face puts back the font a previous entry's face replaced, and each
+                -- entry puts it back when its button goes back to the pool.
                 if fontOf and element and element.AddInitializer then
                     local face = fontOf(value)
                     element:AddInitializer(function(button) Refont(button.fontString, face) end)
+                    if element.AddResetter then
+                        element:AddResetter(function(button) Refont(button.fontString, nil) end)
+                    end
                 end
             end
         end)

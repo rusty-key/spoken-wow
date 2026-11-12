@@ -7,7 +7,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **A voice pack brings its own language.** A pack names its language in its `.toc`, and Spoken
   lists it in the Voice and Fallback menus as soon as the pack is installed, whatever the language
   is: Italian, Polish, Vietnamese, Hebrew. A pack can also give the language's name and a font, which
-  Spoken uses for the name, the lore pages and the captions. Places offers a pack's lore language
+  Spoken uses for the name and the lore pages. Places offers a pack's lore language
   when the pack says it carries lore.
   *([rusty-key](https://github.com/rusty-key))*
 - **A voice pack in a language Spoken did not list before is chosen under Voice Language.** If you

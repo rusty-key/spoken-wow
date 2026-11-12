@@ -305,5 +305,21 @@ do
     _G.QuestLog_Update, _G.QuestLogFrame = nil, nil
 end
 
+-- A voice chosen before its packs went keeps a row to get them back: Italian has official packs,
+-- and no Italian pack is installed here to put the language in the list.
+do
+    VO = Boot()
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = "itIT"
+    local panel = stub.LoadQuestsPanel(QUESTS, VO)
+    panel:Setup()
+    local italian = false
+    for _, child in ipairs(panel.panel.content.children) do
+        local text = child.text
+        if type(text) == "string" and string.find(text, "itIT", 1, true) then italian = true end
+    end
+    Expect("a stored Italian voice with no Italian pack still offers the Italian packs", italian, true)
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
+end
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests options tests passed")

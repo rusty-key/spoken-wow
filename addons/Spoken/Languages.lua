@@ -43,6 +43,7 @@ local LANGUAGE_KEYS = {
     "X-SpokenBosses-Language",
     "X-SpokenReadables-Language",
 }
+local PLACES_KEYS = { ["X-SpokenPlaces-Language"] = true, ["X-SpokenZones-Language"] = true }
 local QUESTS_KEYS = { "X-SpokenQuests-DataModule-Version", "X-VoiceOver-DataModule-Version" }
 
 -- Built from BUILTIN and what the packs declare; nil until first asked for, so that every pack is
@@ -113,11 +114,13 @@ function Languages:Scan()
     local getInfo = api and api.GetAddOnInfo or GetAddOnInfo
     local getMeta = api and api.GetAddOnMetadata or GetAddOnMetadata
     for i = 1, getNum() do
-        local declared, isPack = {}, false
+        local declared, isPack, lore = {}, false, nil
         for _, key in ipairs(LANGUAGE_KEYS) do
             local value = Value(getMeta, i, key)
             isPack = isPack or value ~= nil
             if self:IsCode(value) then table.insert(declared, value) end
+            -- Lore is Places', so it is the language under Places' key that carries it.
+            if PLACES_KEYS[key] then lore = lore or value end
         end
         for _, key in ipairs(QUESTS_KEYS) do
             if isPack then break end
@@ -130,11 +133,14 @@ function Languages:Scan()
                 name = Value(getMeta, i, "X-Spoken-LanguageName"),
                 native = Value(getMeta, i, "X-Spoken-LanguageNative"),
                 font = font and ("Interface\\AddOns\\" .. folder .. "\\" .. font:gsub("/", "\\")),
-                lore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1",
             }
+            local carriesLore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1"
             -- A pack with no language, or only one that is no code, speaks English.
             if #declared == 0 then declared[1] = "enUS" end
-            for _, value in ipairs(declared) do self:Declare(value, folder, meta) end
+            for _, value in ipairs(declared) do
+                meta.lore = carriesLore and value == lore
+                self:Declare(value, folder, meta)
+            end
         end
     end
 end

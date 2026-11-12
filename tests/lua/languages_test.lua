@@ -96,6 +96,10 @@ env = Install({ Pack("SpokenPlacesAudio_ivrit", { ["X-SpokenPlaces-Language"] = 
 Expect("lore is carried", env.Languages:Get("heIL").lore, true)
 env = Install({ Pack("SpokenPlacesAudio_ivrit", { ["X-SpokenPlaces-Language"] = "heIL" }) })
 Expect("lore is off by default", env.Languages:Get("heIL").lore, false)
+env = Install({ Pack("SpokenCommunity_mixed", { ["X-SpokenQuests-Language"] = "itIT",
+    ["X-SpokenPlaces-Language"] = "enUS", ["X-SpokenPlaces-Lore"] = "1" }) })
+Expect("lore goes to the language under Places' key", env.Languages:Get("enUS").lore, true)
+Expect("...not to the pack's other language", env.Languages:Get("itIT").lore, false)
 
 env = Install({ Pack("SpokenQuestsAudio", { [QUESTS_KEY] = "1" }) })
 Expect("before the declaration", env.Languages:Get("itIT"), nil)
@@ -203,16 +207,17 @@ _G.SpokenLayoutDropdown1Text = nil
 -- The modern menu: a radio's initializer is added for every entry, and refonts its pooled button.
 local realCreate, realMenu = _G.CreateFrame, _G.MenuUtil
 _G.MenuUtil = {}
-local initializers = {}
+local initializers, resetters = {}, {}
 local dropdown = stub.Widget("Frame")
 dropdown.Text = stub.Widget("FontString")
 dropdown.Text:SetFont(OWN, 12, "")
 function dropdown:SetupMenu(generator) self.generator = generator end
 function dropdown:GenerateMenu()
-    initializers = {}
+    initializers, resetters = {}, {}
     self.generator(self, { CreateRadio = function(_, text)
         local element = { text = text }
         function element:AddInitializer(fn) initializers[text] = fn end
+        function element:AddResetter(fn) resetters[text] = fn end
         return element
     end })
 end
@@ -236,6 +241,9 @@ initializers.heIL(button)
 Expect("modern: an entry with a face draws in it", button.fontString.fontFile, FACE)
 initializers.deDE(button)
 Expect("modern: a pooled button reused for an entry without one gets its font back", button.fontString.fontFile, OWN)
+initializers.heIL(button)
+resetters.heIL(button)
+Expect("modern: a button going back to the pool gets its font back, for another menu", button.fontString.fontFile, OWN)
 Expect("modern: the closed text wears the chosen entry's face", dropdown.Text.fontFile, FACE)
 chosen = "deDE"
 modernControl.layoutSync()
@@ -260,7 +268,8 @@ env = Install({ Pack("SpokenCommunity_he", { ["X-SpokenQuests-Language"] = "heIL
 Expect("a pack's own name beats the courtesy one", env.Languages:Get("heIL").name, "Ivrit")
 Expect("...while the other key is filled in", env.Languages:Get("heIL").native, "עברית")
 
--- A clip's text is drawn in its language's pack font, unless the clip names a font itself.
+-- A clip's text keeps the player's face whatever its language's pack declares: the name and title
+-- it styles are the client's own text. A clip that names a font itself is drawn in it.
 env = HebrewInstalled(HEBREW)
 local function ClipText()
     local text = stub.Widget("FontString")
@@ -271,21 +280,17 @@ local function ClipText()
 end
 local text = ClipText()
 env.Addon:ClipFont(text, { present = { lang = "heIL" } })
-Expect("clip: the pack's font draws its language", text.fontFile, FACE)
+Expect("clip: a pack's language font is not put on the client's text", text.fontFile, OWN)
+env.Addon:ClipFont(text, { present = { lang = "heIL", font = FACE } })
+Expect("clip: present.font draws the clip", text.fontFile, FACE)
 Expect("clip: ...at the player's size", text.fontSize, 12)
 Expect("clip: ...and flags", text.fontFlags, "OUTLINE")
-env.Addon:ClipFont(text, { present = { lang = "deDE" } })
-Expect("clip: a language with no pack font goes back to the player's own", text.fontFile, OWN)
-text = ClipText()
-env.Addon:ClipFont(text, { present = { lang = "heIL", font = "Fonts\\ARIALN.TTF" } })
-Expect("clip: present.font beats the pack's", text.fontFile, "Fonts\\ARIALN.TTF")
-text = ClipText()
-env.Addon:ClipFont(text, { present = { lang = "xxXX" } })
-Expect("clip: a language nobody declared keeps the player's face", text.fontFile, OWN)
+env.Addon:ClipFont(text, { present = { lang = "heIL" } })
+Expect("clip: the next clip without one goes back to the player's own", text.fontFile, OWN)
 text = ClipText()
 stub.refusedFonts = { [FACE] = true }
-env.Addon:ClipFont(text, { present = { lang = "heIL" } })
-Expect("clip: a pack font the client refuses leaves the player's face", text.fontFile, OWN)
+env.Addon:ClipFont(text, { present = { font = FACE } })
+Expect("clip: a font the client refuses leaves the player's face", text.fontFile, OWN)
 stub.refusedFonts = nil
 
 stub.ResetAddOns()

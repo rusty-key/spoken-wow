@@ -522,8 +522,6 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 			-- Timed to the recording's own words, so not under another language's.
 			timings = entry and language == (pack.language or "enUS") and times or nil,
 			font = font,
-			-- The language the words are in, for a subtitle that must be drawn in its font.
-			lang = language,
 			bullet = "zone",
 			portrait = self:Portrait(mapID),
 			picture = picture and { file = picture, mask = mask } or nil,

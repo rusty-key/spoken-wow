@@ -308,11 +308,9 @@ local heClip = B:ClipFor(PAGE)
 Expect("a page plays from the heIL pack", heClip and heClip.path,
     [[Interface\AddOns\SpokenCommunity_Readables_heIL\Sounds\15.mp3]])
 Expect("...in heIL", heClip and heClip.language, "heIL")
-Expect("...and the clip says so for its subtitle", heClip and heClip.present.lang, "heIL")
 Expect("heIL is no client language", B:IsClientLanguage("heIL"), false)
 Expect("heIL is shown by its courtesy name when its pack names nothing", B:GetLanguageName("heIL"), "עברית")
 Expect("a page the pack lacks falls back to English", B:ClipFor(ONLY_ENGLISH).language, "enUS")
-Expect("an English clip says so for its subtitle", B:ClipFor(ONLY_ENGLISH).present.lang, "enUS")
 SpokenReadablesSettings.voiceLanguage = "auto"
 Expect("Auto never lands on it", B:GetVoiceLanguage(), "enUS")
 

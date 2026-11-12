@@ -82,7 +82,7 @@ These keys are shared by every section and are optional:
 | --- | --- |
 | `X-Spoken-LanguageName` | The language's name in English, for lists that cannot draw its own. |
 | `X-Spoken-LanguageNative` | The language's name in itself, as the menus show it. |
-| `X-Spoken-LanguageFont` | A font file inside your pack, as a path from the pack's folder. Spoken draws the language's name, its lore pages and its clip text with it, unless a clip sets its own font. |
+| `X-Spoken-LanguageFont` | A font file inside your pack, as a path from the pack's folder. Spoken draws the language's name in its menus and its lore pages with it. A clip's text uses the font the clip sets in `present.font`. |
 
 Spoken knows the names of the languages a game client runs in (`enUS`, `deDE`, `esES`, `esMX`, `frFR`,
 `ptBR`, `ruRU`, `koKR`, `zhCN`, `zhTW`); every other language takes its names from the first pack that
@@ -91,9 +91,9 @@ gives them.
 A places pack that ships lore text adds `X-SpokenPlaces-Lore: 1` and registers the text with
 `SpokenPlaces:RegisterLoreData(code, kind, data)`. A pack with lore and no voice clips (no
 `Sounds.lua`) still needs `X-SpokenPlaces-Language: <code>` in its `.toc`: Places accepts the text
-only for a language an installed pack declares with that key. Spoken offers the lore only after it has checked that
-the language's name draws, so a lore pack must set `X-Spoken-LanguageNative`, and one in a script the
-game's fonts lack, such as Vietnamese, must also set `X-Spoken-LanguageFont`.
+only for a language an installed pack declares with that key. Spoken offers the lore only after it
+has checked that the language's name draws, so a lore pack must set `X-Spoken-LanguageNative`, and
+one in a script the game's fonts lack, such as Hebrew, must also set `X-Spoken-LanguageFont`.
 
 Right-to-left text is the pack's job: ship the text in visual order.
 

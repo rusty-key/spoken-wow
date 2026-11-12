@@ -290,9 +290,6 @@ function SpokenReadables:ClipFor(pageId)
 						material = self:PageMaterial(pageId),
 						portrait = self:PagePicture(pageId),
 						actions = ACTIONS,
-						-- The language the pack was recorded in, for a subtitle that must be
-						-- drawn in its font.
-						lang = language,
 					},
 					stopCallback = PageStopped,
 				}

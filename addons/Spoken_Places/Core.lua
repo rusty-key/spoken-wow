@@ -1035,6 +1035,13 @@ local function CmdLanguage(arg)
 			SpokenPlaces:Print('|cffffcc00"%s" is not a WoW language code|r -- /spp lang to list', code)
 			return
 		end
+		-- An installed pack's language whose packs carry only voices: no preview can show lore
+		-- that does not exist, so say so rather than suggest one.
+		if not SpokenPlaces:HasLore(locale.code) then
+			SpokenPlaces:Print("|cffffcc00no lore in %s|r -- its installed packs carry only voices",
+				SpokenPlaces:GetLanguageName(locale.code))
+			return
+		end
 
 		-- Preview relaxes the readiness check inside SetLanguage, so it has to be
 		-- on before the attempt -- but it must not survive a refusal, or the one

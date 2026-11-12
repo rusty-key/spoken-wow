@@ -400,9 +400,6 @@ function Bosses:StoryClip(map, key)
 			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
 			label = Name(boss),
 			transcript = story,
-			-- The story's own language, which the recording's need not be: its words are drawn
-			-- in that language's font.
-			lang = language,
 			bullet = BossBullet(map),
 			portrait = model and { kind = "model", creatureID = model.creatureID, displayID = model.displayID }
 				or { kind = "texture", texture = SKULLS[BossBullet(map)] },
