@@ -89,7 +89,6 @@ L.REASON_FORGET_GREETINGS = "이 기능을 쓰려면 '인사말 읽기'를 '인�
 L.OPT_FORGET_GREETINGS_DONE = "이 캐릭터의 들은 인사말 목록을 지웠습니다."
 L.OPT_MUTE_NPC = "음소거"
 L.OPT_UNMUTE_NPC = "음소거 해제"
-L.CONFIRM_MUTE_NPC = "%s의 자동 인사말을 음소거하시겠습니까?"
 L.MUTE_NPC_DONE = "%s의 자동 인사말을 음소거했습니다."
 L.UNMUTE_NPC_DONE = "%s의 자동 인사말 음소거를 해제했습니다."
 L.OPT_FORGET_MUTED_NPCS = "음소거한 NPC 잊기"

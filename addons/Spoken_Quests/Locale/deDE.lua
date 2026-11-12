@@ -89,7 +89,6 @@ L.REASON_FORGET_GREETINGS = "Stelle „Begrüßungen vorlesen“ auf „Einmal p
 L.OPT_FORGET_GREETINGS_DONE = "Die Liste gehörter Begrüßungen dieses Charakters wurde gelöscht."
 L.OPT_MUTE_NPC = "Stummschalten"
 L.OPT_UNMUTE_NPC = "Stummschaltung aufheben"
-L.CONFIRM_MUTE_NPC = "Automatische Begrüßungen von %s stummschalten?"
 L.MUTE_NPC_DONE = "Automatische Begrüßungen von %s sind jetzt stummgeschaltet."
 L.UNMUTE_NPC_DONE = "Automatische Begrüßungen von %s sind nicht mehr stummgeschaltet."
 L.OPT_FORGET_MUTED_NPCS = "Stummgeschaltete NPCs vergessen"

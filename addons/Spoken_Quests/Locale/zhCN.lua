@@ -89,7 +89,6 @@ L.REASON_FORGET_GREETINGS = "将“朗读问候”设为“每段问候一次”
 L.OPT_FORGET_GREETINGS_DONE = "已清除此角色听过的问候列表。"
 L.OPT_MUTE_NPC = "屏蔽"
 L.OPT_UNMUTE_NPC = "取消屏蔽"
-L.CONFIRM_MUTE_NPC = "屏蔽 %s 的自动问候语？"
 L.MUTE_NPC_DONE = "已屏蔽 %s 的自动问候语。"
 L.UNMUTE_NPC_DONE = "已取消屏蔽 %s 的自动问候语。"
 L.OPT_FORGET_MUTED_NPCS = "忘记已屏蔽的 NPC"

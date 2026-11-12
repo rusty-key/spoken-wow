@@ -548,25 +548,6 @@ function Addon:OnInitialize()
         whileDead = 1,
     }
 
-    StaticPopupDialogs["VOICEOVER_IGNORE_NPC"] =
-    {
-        text = L.CONFIRM_MUTE_NPC,
-        button1 = L.OPT_MUTE_NPC,
-        button2 = L.OPT_CANCEL,
-        timeout = 0,
-        whileDead = 1,
-        hideOnEscape = 1,
-        OnAccept = function(dialog)
-            local data = dialog and dialog.data
-            if data then
-                self:IgnoreNPC(data.guid, data.name)
-                if DialogPlayButton and DialogPlayButton.Refresh then
-                    DialogPlayButton:Refresh()
-                end
-            end
-        end,
-    }
-
     Player:Setup()
     GreetingFirst:Setup()
     WorldFrame:HookScript("OnMouseDown", function(_, button) self:MuteGreetingOnClick(button) end)
@@ -1420,15 +1401,6 @@ function Addon:CurrentGossipClip()
     end
     return { event = Enums.SoundEvent[event == "QUEST_GREETING" and "QuestGreeting" or "Gossip"],
         unitGUID = guid, name = name }
-end
-
---- Ask before muting this NPC's automatic greetings.
-function Addon:ConfirmIgnoreNPC(clip)
-    if not self:CanIgnoreNPC(clip) then
-        return
-    end
-    StaticPopup_Show("VOICEOVER_IGNORE_NPC", clip.name or "NPC", nil,
-        { guid = clip.unitGUID, name = clip.name })
 end
 
 --- Ignore an NPC's automatic greetings and remove its greetings already waiting in Spoken.

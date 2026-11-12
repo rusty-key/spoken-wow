@@ -104,7 +104,6 @@ L.REASON_FORGET_GREETINGS = "Set Read Greetings to Once per Greeting or Once for
 L.OPT_FORGET_GREETINGS_DONE = "This character's list of greetings heard is cleared."
 L.OPT_MUTE_NPC = "Mute"
 L.OPT_UNMUTE_NPC = "Unmute"
-L.CONFIRM_MUTE_NPC = "Mute automatic greetings from %s?"
 L.MUTE_NPC_DONE = "Automatic greetings from %s are now muted."
 L.UNMUTE_NPC_DONE = "Automatic greetings from %s are no longer muted."
 L.OPT_FORGET_MUTED_NPCS = "Forget Muted NPCs"

@@ -89,7 +89,6 @@ L.REASON_FORGET_GREETINGS = "Ajuste Ler saudações para Uma vez por saudação 
 L.OPT_FORGET_GREETINGS_DONE = "A lista de saudações ouvidas deste personagem foi limpa."
 L.OPT_MUTE_NPC = "Silenciar"
 L.OPT_UNMUTE_NPC = "Ativar som"
-L.CONFIRM_MUTE_NPC = "Silenciar saudações automáticas de %s?"
 L.MUTE_NPC_DONE = "As saudações automáticas de %s estão silenciadas."
 L.UNMUTE_NPC_DONE = "As saudações automáticas de %s não estão mais silenciadas."
 L.OPT_FORGET_MUTED_NPCS = "Esquecer PNJs silenciados"

@@ -276,7 +276,8 @@ function DialogPlayButton:Setup()
                     Addon:UnignoreNPC(DialogPlayButton.muteClip.unitGUID, DialogPlayButton.muteClip.name)
                     DialogPlayButton:RefreshMute()
                 else
-                    Addon:ConfirmIgnoreNPC(DialogPlayButton.muteClip)
+                    Addon:IgnoreNPC(DialogPlayButton.muteClip.unitGUID, DialogPlayButton.muteClip.name)
+                    DialogPlayButton:RefreshMute()
                 end
             end
         end)
