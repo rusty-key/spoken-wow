@@ -25,7 +25,8 @@ local LABEL_PADDING = 24
 local GAP = 2
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
-local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-ON]]
+local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
+local WAVES_ICON = [[Interface\COMMON\VOICECHAT-ON]]
 
 -- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
@@ -170,6 +171,7 @@ function DialogPlayButton:RefreshMute()
     self.muteClip = clip
     button.muted = muted
     button.glyph:SetTexture(SPEAKER_ICON)
+    button.muteWaves:SetShown(true)
     button.muteSlash:SetShown(muted)
     self:PositionMute(frameName)
     button:Show()
@@ -272,6 +274,11 @@ function DialogPlayButton:Setup()
         if mute.SetFrameStrata then
             mute:SetFrameStrata("DIALOG")
         end
+        local waves = mute:CreateTexture(nil, "OVERLAY")
+        waves:SetAllPoints(mute.glyph)
+        waves:SetTexture(WAVES_ICON)
+        waves:SetTexCoord(0, 1, 0, 1)
+        mute.muteWaves = waves
         -- The slash describes the NPC's current state: shown means currently muted, hidden
         -- means currently audible. The action name in the tooltip is the inverse.
         local slash = mute:CreateTexture(nil, "OVERLAY")
