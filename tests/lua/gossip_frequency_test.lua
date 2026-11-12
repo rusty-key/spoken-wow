@@ -195,7 +195,7 @@ for _, client in ipairs({ "11509", "16001" }) do
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 
     -- A muted NPC's automatic greeting stays quiet, while the control lives on the NPC dialog
-    -- rather than the player and uses WoW's speaker-with-X symbol.
+    -- rather than the player and uses the speaker glyph with a mute slash.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     Talk()
     local muted = VO.Player:Current()
@@ -203,20 +203,23 @@ for _, client in ipairs({ "11509", "16001" }) do
     local muteButton = VO.DialogPlayButton.muteButton
     Expect(client .. ": the player has no Mute action", muted.present.actions[3], nil)
     Expect(client .. ": the NPC dialog offers Mute", muteButton:IsShown(), true)
-    Expect(client .. ": the dialog uses the speaker-with-X symbol", muteButton.glyph:GetTexture(),
-        [[Interface\COMMON\VOICECHAT-MUTED]])
+    Expect(client .. ": the dialog uses the speaker glyph", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    Expect(client .. ": the Mute state shows a slash", muteButton.muteSlash:IsShown(), true)
     local popupsBeforeMute = #stub.popups
     muteButton:Click()
     Expect(client .. ": Mute does not ask for confirmation", #stub.popups, popupsBeforeMute)
     Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
     Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), true)
     Expect(client .. ": the dialog keeps the toggle after muting", muteButton:IsShown(), true)
-    Expect(client .. ": muting changes the icon to speaker", muteButton.glyph:GetTexture(),
+    Expect(client .. ": muting keeps the speaker glyph", muteButton.glyph:GetTexture(),
         [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    Expect(client .. ": the Unmute state removes the slash", muteButton.muteSlash:IsShown(), false)
     muteButton:Click()
     Expect(client .. ": clicking the speaker unmutes the NPC", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), false)
-    Expect(client .. ": unmuting changes the icon back", muteButton.glyph:GetTexture(),
-        [[Interface\COMMON\VOICECHAT-MUTED]])
+    Expect(client .. ": unmuting keeps the speaker glyph", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    Expect(client .. ": the Mute state restores the slash", muteButton.muteSlash:IsShown(), true)
     Expect(client .. ": the NPC is no longer recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), false)
     Leave()
     Talk()
