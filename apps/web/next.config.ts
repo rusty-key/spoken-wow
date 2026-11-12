@@ -39,7 +39,9 @@ const spokenVersion = fs.existsSync(spokenToc)
   : "";
 
 const config: NextConfig = {
-  env: { NEXT_PUBLIC_SPOKEN_VERSION: spokenVersion },
+  // The page sections are baked in: the standalone bundle has no src/app/[lang] to read, and
+  // the languages route refuses a code that a case-insensitive rewrite would take for a section.
+  env: { NEXT_PUBLIC_SPOKEN_VERSION: spokenVersion, SPOKEN_PAGE_SECTIONS: pageSections().join(",") },
 
   // The corpus and the audio store are read at runtime through node:fs, never bundled,
   // so they need no asset config. See src/lib/paths.ts for how they are located.

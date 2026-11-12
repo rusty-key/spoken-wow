@@ -2,9 +2,11 @@
  * Which language a page, a query or a take is in.
  *
  * CLIENT-SAFE: the header's switcher and every URL builder need the list as a value, and
- * the URL rewrites validate a URL prefix against it without reaching the database. Whether a
- * language is switched ON is a different question with a different answer at runtime -- the
- * `language` table -- and is asked on the server.
+ * the layout hands it to the browser. The thirteen built-ins are code; any other language is a
+ * row of the `language` table, registered here at boot and on every change (languages/catalogue.ts).
+ * The URL rewrites do not use it: they match a build-time list of page sections, and the layout
+ * validates the prefix. Whether a language is switched ON is a different question with a different
+ * answer at runtime, and is asked on the server.
  *
  * THE SAME LIST AS pipelines/lib/locales.mjs, restated here as a literal so the type of a
  * built-in code is the thirteen codes rather than `string`. lang.test.ts fails if the two drift, the way
@@ -66,6 +68,11 @@ export function allLangs(): Lang[] {
   return [...BUILTIN.map((locale) => locale.code), ...[...registry.extras.keys()].sort()];
 }
 
+/** The registered languages beyond the built-in ones: all a client needs, since it has the rest. */
+export function registeredExtras(): LanguageInfo[] {
+  return [...registry.extras.values()].sort((a, b) => a.code.localeCompare(b.code));
+}
+
 export function languageInfo(lang: string): LanguageInfo | null {
   return builtinByCode.get(lang) ?? registry.extras.get(lang) ?? null;
 }
@@ -105,11 +112,12 @@ export function langName(lang: Lang): string {
   return languageInfo(lang)?.name ?? lang;
 }
 
-/** The ISO 639-1 code a synthesis request in this language sends as language_code. */
+/** The language's own name for itself. */
 export function nativeName(lang: Lang): string {
   return languageInfo(lang)?.native ?? lang;
 }
 
+/** The ISO 639-1 code a synthesis request in this language sends as language_code. */
 export function elevenLabsCode(lang: Lang): string {
   return languageInfo(lang)?.provider ?? "en";
 }
