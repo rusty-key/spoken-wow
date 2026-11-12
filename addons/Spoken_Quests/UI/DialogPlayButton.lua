@@ -25,7 +25,7 @@ local LABEL_PADDING = 24
 local GAP = 2
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
-local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
+local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-ON]]
 
 -- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
