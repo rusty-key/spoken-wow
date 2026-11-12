@@ -37,6 +37,7 @@ local STYLE_LABELS = {
 }
 
 local THEMES = { "parchment", "dark", "warcraft3" }
+local CLASSIC_THEMES = { "dark", "warcraft3" }
 local THEME_LABELS = {
     parchment = L.OPT_DUI_THEME_PARCHMENT,
     dark = L.OPT_DUI_THEME_DARK,
@@ -429,6 +430,7 @@ local function Build()
         return style == "minimal" or style == "classic" or style == "dialogueui"
     end
     local function Small() return Style() == "minimal" end
+    local function Classic() return Style() == "classic" end
     local function Subtitles() return Style() == "subtitle" end
     local function DUI() return Style() == "dialogueui" end
     local function Narrator() return transcript().Enabled end
@@ -709,13 +711,15 @@ local function Build()
 
     -- How the window and the subtitles look.
     layout:Section(L.OPT_LOOK_TITLE)
-    -- Parchment, Dark or Warcraft III, for the Small Window; DialogueUI's window can also
-    -- DialogueUI window's, which can also follow DialogueUI's. None in EllesmereUI's look, which
-    -- has its own.
-    Only(layout:Dropdown(L.OPT_DUI_THEME, nil, THEMES,
-        function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
-        function(v) return THEME_LABELS[v] end),
-        function() return Small() and not Ellesmere:On() end)
+    -- The same Theme row offers all three looks for the Small Window, and the two applicable looks
+    -- for the Large Window. DialogueUI has its own theme row, and EllesmereUI has its own shell.
+    local theme = layout:Dropdown(L.OPT_DUI_THEME, nil,
+        function() return Classic() and CLASSIC_THEMES or THEMES end,
+        function() return Classic() and cfg().ClassicBackground or cfg().MinimalBackground end,
+        function(v)
+            if Classic() then cfg().ClassicBackground = v else cfg().MinimalBackground = v end
+        end, refresh, function(v) return THEME_LABELS[v] end)
+    Only(theme, function() return (Small() or Classic()) and not Ellesmere:On() end)
     DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
     local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
         function() return transcript().SubtitleShadow end,

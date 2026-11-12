@@ -170,11 +170,15 @@ local main = _G.SpokenOptionsPanel.layout
 local function Row(label)
     for _, entry in ipairs(main.entries) do if entry.label == label then return entry.frame end end
 end
+local function Values(row)
+    local values = row and row.layoutValues
+    return type(values) == "function" and values() or values
+end
 main:Refresh()
--- Theme, the row the DialogueUI window's Theme shares its name with: the first of the two.
+-- Theme, the row whose choices depend on the selected narrator window.
 local row = Row(L.OPT_DUI_THEME)
 Expect("Theme is on Spoken's page with the small window chosen", row ~= nil and row:IsShown(), true)
-Expect("...offering Parchment, Dark and Warcraft III", row and row.layoutValues and table.concat(row.layoutValues, ","),
+Expect("...offering Parchment, Dark and Warcraft III", Values(row) and table.concat(Values(row), ","),
     "parchment,dark,warcraft3")
 pcall(function() row.layoutChoose("dark") end)
 Expect("...choosing Dark there draws the rock", tostring(frame.MinimalBackground) .. " " .. tostring(M.paper.texture),
@@ -182,7 +186,13 @@ Expect("...choosing Dark there draws the rock", tostring(frame.MinimalBackground
 pcall(function() row.layoutChoose("parchment") end)
 env.Addon:SetPlayerStyle("classic")
 main:Refresh()
-Expect("...and not with another style", row ~= nil and row:IsShown(), false)
+Expect("Theme stays on the page with the Large Window chosen", row ~= nil and row:IsShown(), true)
+Expect("...offering Dark and Warcraft III for the Large Window", Values(row) and table.concat(Values(row), ","),
+    "dark,warcraft3")
+pcall(function() row.layoutChoose("warcraft3") end)
+Expect("...choosing Warcraft III changes the Large Window theme", frame.ClassicBackground, "warcraft3")
+pcall(function() row.layoutChoose("dark") end)
+Expect("...choosing Dark restores the Large Window default", frame.ClassicBackground, "dark")
 env.Addon:SetPlayerStyle("minimal")
 main:Refresh()
 Expect("Show Progress is offered for the small window, which has the progress line",

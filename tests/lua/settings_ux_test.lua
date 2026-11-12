@@ -194,7 +194,7 @@ do
         minimal = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, wheel note, Theme, Hide Portrait, "
             .. "Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
         -- The large window's words fill the box, so no Rows at Once.
-        classic = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, Hide Portrait, Show Progress Bar, "
+        classic = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, Theme, Hide Portrait, Show Progress Bar, "
             .. "Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
         subtitle = "Subtitle Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, subtitles' wheel note, Shadow Behind Words, "
             .. "Show Name and Title, Hide Portrait, Show Progress Bar, Sentences at Once, Auto-Scroll (subtitles), "

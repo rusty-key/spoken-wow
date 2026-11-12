@@ -47,13 +47,13 @@ Expect("quest clips use racial art", F.IsRaceClip({ source = { key = "quests" } 
 Expect("gossip clips use racial art", F.IsRaceClip({ source = { key = "gossip" } }), true)
 Expect("place clips keep their original art", F.IsRaceClip({ source = { key = "places" } }), false)
 local savedRaceVoiceOver = _G.VoiceOver
-env.Addon.db.profile.Frame.MinimalBackground = "dark"
+env.Addon.db.profile.Frame.ClassicBackground = "dark"
 F:RefreshConfig()
 Expect("Dark theme keeps the existing dark treatment", F.RaceLook({ source = { key = "gossip" },
     present = { header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 } } }), nil)
-env.Addon.db.profile.Frame.MinimalBackground = "warcraft3"
+env.Addon.db.profile.Frame.ClassicBackground = "warcraft3"
 F:RefreshConfig()
-Expect("Warcraft III theme enables racial art", env.Addon.db.profile.Frame.MinimalBackground, "warcraft3")
+Expect("Warcraft III theme enables racial art", env.Addon.db.profile.Frame.ClassicBackground, "warcraft3")
 _G.VoiceOver = { DataModules = { GetModules = function()
     return ipairs({ { NPCBodiesByNPCID = {
         [15102] = { ["nightelf-female"] = true },
@@ -63,6 +63,17 @@ local silverwingLook = F.RaceLook({ source = { key = "gossip" }, present = {
     header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 },
 } })
 Expect("Silverwing Emissary uses the Night Elf metadata", silverwingLook ~= nil, true)
+local savedStyle = env.Addon.db.profile.Frame.Style
+env.Addon:SetPlayerStyle("classic")
+env.Addon.db.profile.Frame.ClassicBackground = "dark"
+Expect("Dark is the default Large Window theme", F.RaceLook({ source = { key = "gossip" }, present = {
+    header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 },
+} }), nil)
+env.Addon.db.profile.Frame.ClassicBackground = "warcraft3"
+Expect("Warcraft III is the alternate Large Window theme", F.RaceLook({ source = { key = "gossip" }, present = {
+    header = "Silverwing Emissary", portrait = { kind = "model", creatureID = 15102 },
+} }) ~= nil, true)
+env.Addon:SetPlayerStyle(savedStyle)
 local itemLook = F.RaceLook({ source = { key = "quests" }, unitIsObjectOrItem = true,
     text = "The Night Elves left a radiant shard.", present = {
         header = "Radiant Shard", portrait = { kind = "texture", texture = "item" },
@@ -188,8 +199,8 @@ end } }
 local genericFollowupLook = F.RaceLook({ present = { portrait = { creatureID = 3583 } } })
 Expect("generic quest follow-up metadata supplies a race from its filename", genericFollowupLook ~= nil, true)
 _G.VoiceOver = oldVoiceOver
-env.Addon.db.profile.Frame.MinimalBackground = "parchment"
-Expect("Scroll theme disables Warcraft III racial art", F.RaceLook({ source = { key = "quests" },
+env.Addon.db.profile.Frame.ClassicBackground = "dark"
+Expect("Dark theme disables Warcraft III racial art", F.RaceLook({ source = { key = "quests" },
     present = { header = "Thrall" } }), nil)
 F:RefreshConfig()
 

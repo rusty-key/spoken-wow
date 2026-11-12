@@ -32,6 +32,8 @@ Defaults = {
             BronzeTint = true,
             -- The small window's background: "parchment", "dark" (the rock), or "warcraft3".
             MinimalBackground = "parchment",
+            -- The large window's background: "dark" (the default) or "warcraft3".
+            ClassicBackground = "dark",
             -- Per action id, for the ones an addon declared optional. Absent means shown.
             HiddenActions = {},
             DialogueUI = {

@@ -472,7 +472,9 @@ local function SpeakerRace(clip, modelFileID)
 end
 
 local function RaceLook(clip, modelFileID)
-    if FrameConfig().MinimalBackground ~= "warcraft3" then return nil end
+    local frame = FrameConfig()
+    local theme = Addon:PlayerStyle() == "classic" and frame.ClassicBackground or frame.MinimalBackground
+    if theme ~= "warcraft3" then return nil end
     local race = SpeakerRace(clip, modelFileID)
     return race and RACIAL_ART[race]
 end
