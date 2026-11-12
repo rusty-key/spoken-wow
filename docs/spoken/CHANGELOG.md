@@ -33,6 +33,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   With the controller UI on, they opened the game's popup, and once it closed the d-pad no longer
   moved through the settings. They now ask in Spoken's own dialog, which takes the d-pad while it
   is open and closes with B. *([nobbs](https://github.com/nobbs))*
+- **Copy Settings From and Delete Profile ask first.** Picking a name acted at once, so a click
+  on a dropdown's arrow, or the d-pad's left or right on its row, could replace or delete a
+  profile. *([nobbs](https://github.com/nobbs))*
 
 ## 3.8.7 — 2026-11-12
 

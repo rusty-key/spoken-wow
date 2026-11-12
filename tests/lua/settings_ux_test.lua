@@ -589,6 +589,47 @@ do
         "SPOKEN_NEW_PROFILE")
 end
 
+---------------------------------------------------------------- delete and copy ask first
+-- Each acts on picking a name, and a dropdown's arrows (or the d-pad's left and right on its
+-- row) pick one: a stray press deleted a player's profile.
+do
+    local profiles = Options.profileLayout
+    local other
+    for _, name in ipairs(Options:ProfileNames()) do
+        if name ~= Options:CurrentProfile() then other = name end
+    end
+    local function Has(name)
+        for _, each in ipairs(Options:ProfileNames()) do if each == name then return true end end
+        return false
+    end
+    local copied = 0
+    local copy = Options.CopyProfile
+    Options.CopyProfile = function(self, name) copied = copied + 1; return copy(self, name) end
+
+    local popups = #stub.popups
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    Expect("copying a profile asks first", #stub.popups, popups + 1)
+    Expect("...naming the profile", tostring(stub.popups[#stub.popups].args[1]):find(other, 1, true) ~= nil, true)
+    Expect("...and copies nothing until answered", copied, 0)
+    stub.popups[#stub.popups].dialog.OnCancel()
+    Expect("cancelling copies nothing", copied, 0)
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting copies", copied, 1)
+    Options.CopyProfile = copy
+
+    popups = #stub.popups
+    stub.PickDropdown(Row(profiles, L.OPT_DELETE_PROFILE), other)
+    Expect("deleting a profile asks first", #stub.popups, popups + 1)
+    Expect("...naming the profile", tostring(stub.popups[#stub.popups].args[1]):find(other, 1, true) ~= nil, true)
+    Expect("...and keeps it until answered", Has(other), true)
+    stub.popups[#stub.popups].dialog.OnCancel()
+    Expect("cancelling keeps it", Has(other), true)
+    stub.PickDropdown(Row(profiles, L.OPT_DELETE_PROFILE), other)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting deletes it", Has(other), false)
+end
+
 ---------------------------------------------------------------- welcome
 -- Show Narrator, and each module's own row under it: every module's lines show unless turned off.
 do

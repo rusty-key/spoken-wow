@@ -1086,10 +1086,22 @@ function Options:AddProfiles(layout)
     layout:Dropdown(L.OPT_PROFILE, nil, function() return self:ProfileNames() end,
         function() return self:CurrentProfile() end,
         function(name) self:SetProfile(name); layout:Refresh() end)
+    -- Both act on picking a name, and a dropdown's arrows, or the d-pad's left and right on its
+    -- row, pick one: ask first, or a stray press replaces or deletes a profile.
     layout:Dropdown(L.OPT_COPY_PROFILE, nil, Others, function() return nil end,
-        function(name) self:CopyProfile(name); layout:Refresh() end, nil, Pick)
+        function(name)
+            Layout.Confirm(format(L.OPT_COPY_PROFILE_CONFIRM, name), _G.ACCEPT or "Accept", L.CANCEL, function()
+                self:CopyProfile(name); layout:Refresh()
+            end)
+            layout:Refresh()
+        end, nil, Pick)
     layout:Dropdown(L.OPT_DELETE_PROFILE, nil, Others, function() return nil end,
-        function(name) self:DeleteProfile(name); layout:Refresh() end, nil, Pick)
+        function(name)
+            Layout.Confirm(format(L.OPT_DELETE_PROFILE_CONFIRM, name), _G.DELETE or "Delete", L.CANCEL, function()
+                self:DeleteProfile(name); layout:Refresh()
+            end)
+            layout:Refresh()
+        end, nil, Pick)
     if StaticPopupDialogs and StaticPopup_Show then
         StaticPopupDialogs.SPOKEN_NEW_PROFILE = StaticPopupDialogs.SPOKEN_NEW_PROFILE or {
             text = L.OPT_PROFILE_NEW_PROMPT, button1 = _G.ACCEPT or "Accept", button2 = L.CANCEL,
