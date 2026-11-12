@@ -61,6 +61,9 @@ export interface ServiceOptions {
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
 const FRESH_MS = 5 * 60 * 1000
 
+/** How often the manager checks the release and community catalogs while it is running. */
+export const UPDATE_CHECK_MS = 30 * 60 * 1000
+
 /** How often the collected-lines files are looked at while sharing is on. */
 export const SHARE_POLL_MS = 5 * 60 * 1000
 /** The waits after the 1st, 2nd, 3rd and later failed sends in a row. */
@@ -89,6 +92,7 @@ export class ManagerService {
   private shareFailures = 0
   private shareRetryAt = 0
   private shareTimer: ReturnType<typeof setInterval> | null = null
+  private updateTimer: ReturnType<typeof setInterval> | null = null
   /** share.json, read once and kept: every poll would otherwise parse up to LEDGER_CAP hashes. */
   private ledger: ShareLedger
 
@@ -188,6 +192,22 @@ export class ManagerService {
   }
 
   // ---------------------------------------------------------------- catalog
+
+  /** Starts checking both catalogs in the background while the manager is running. */
+  startPeriodicRefresh(): void {
+    if (this.updateTimer) return
+    this.updateTimer = setInterval(() => {
+      void this.refreshCatalog(true).catch((err) => log('Periodic catalog refresh failed:', err))
+      void this.refreshCommunity(true).catch((err) => log('Periodic community refresh failed:', err))
+    }, UPDATE_CHECK_MS)
+    this.updateTimer.unref?.()
+  }
+
+  stopPeriodicRefresh(): void {
+    if (!this.updateTimer) return
+    clearInterval(this.updateTimer)
+    this.updateTimer = null
+  }
 
   refreshCatalog(force = false): Promise<Catalog> {
     if (this.refreshing) return this.refreshing

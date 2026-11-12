@@ -224,6 +224,7 @@ if (!app.requestSingleInstanceLock()) {
   // update installed on quit) never lands in the middle of swapping folders.
   let quitting = false
   app.on('before-quit', (event) => {
+    service?.stopPeriodicRefresh()
     if (quitting || !service || service.jobs.active().length === 0) return
     quitting = true
     event.preventDefault()
@@ -265,6 +266,7 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc(service, PAGE, () => updaterState)
     void service.init()
     service.startSharing()
+    service.startPeriodicRefresh()
 
     mainWindow = createWindow(process.argv.includes(HIDDEN_ARG) && service.settings.minimizeToTray)
 

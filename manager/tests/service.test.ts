@@ -3,7 +3,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { Catalog, JobProgress } from '../src/shared/types'
-import { ManagerService } from '../src/main/service'
+import { ManagerService, UPDATE_CHECK_MS } from '../src/main/service'
 import { loadSettings, saveState } from '../src/main/state'
 import { makeGame, makeGameFolders, serveBuffer, sha256, startServer, tmpDir, toc, write, yazlZip, type TestServer } from './helpers'
 
@@ -122,6 +122,30 @@ describe('ManagerService', () => {
     expect(githubCalls()).toBe(1)
     await svc.refreshCatalog(true)
     expect(githubCalls()).toBe(2)
+  })
+
+  it('refreshes the release and community catalogs every 30 minutes', async () => {
+    const { svc } = await setup()
+    const catalog = vi.spyOn(svc, 'refreshCatalog').mockResolvedValue(svc.catalog)
+    const community = vi.spyOn(svc, 'refreshCommunity').mockResolvedValue(svc.community)
+    vi.useFakeTimers()
+    try {
+      svc.startPeriodicRefresh()
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS)
+      expect(catalog).toHaveBeenCalledWith(true)
+      expect(community).toHaveBeenCalledWith(true)
+
+      svc.stopPeriodicRefresh()
+      catalog.mockClear()
+      community.mockClear()
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS)
+      expect(catalog).not.toHaveBeenCalled()
+      expect(community).not.toHaveBeenCalled()
+    } finally {
+      svc.stopPeriodicRefresh()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
   })
 
   describe('automatic content updates', () => {
