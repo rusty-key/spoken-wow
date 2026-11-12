@@ -250,7 +250,9 @@ end
 
 --- Previous: the round button with the game's left-arrow glyph.
 function Actions.PreviousButton(parent, name)
-    local previous = Actions.RoundButton(parent, 12, name, true)
+    -- The stock previous-page icon has more transparent padding than the play glyph used by
+    -- Skip, so give it a larger visible area while keeping the same 24px round button.
+    local previous = Actions.RoundButton(parent, 16, name, true)
     previous.glyph:SetTexture([[Interface\Buttons\UI-SpellbookIcon-PrevPage-Up]])
     previous:SetScript("OnClick", Actions.Previous)
     previous:SetScript("OnEnter", function()
