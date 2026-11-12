@@ -115,7 +115,7 @@ L.OPT_CMD_CHATTER_DESC = "Repite lo que dice un PNJ en voz alta, como si acabara
 
 -- Reading history
 L.OPT_FORGET_GREETINGS_DONE = "Se ha borrado la lista de saludos oídos de este personaje."
-L.OPT_MUTE_NPC = "Silenciar PNJ"
+L.OPT_MUTE_NPC = "Silenciar"
 L.CONFIRM_MUTE_NPC = "¿Silenciar los saludos automáticos de %s?"
 L.MUTE_NPC_DONE = "Los saludos automáticos de %s están ahora silenciados."
 L.OPT_FORGET_MUTED_NPCS = "Olvidar PNJ silenciados"
