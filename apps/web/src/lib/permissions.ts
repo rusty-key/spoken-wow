@@ -55,6 +55,12 @@ export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
 }
 
+/** What the UI calls a role. A role this build does not know shows as stored, not as nothing. */
+export function roleLabel(role: string | null | undefined): string {
+  const value = role ?? "member";
+  return isRole(value) ? ROLE_LABELS[value] : value;
+}
+
 /** The one definition of who may reach /admin. */
 export function isAdmin(role: string | null | undefined): boolean {
   return role === "admin";

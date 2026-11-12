@@ -25,9 +25,9 @@ import { nextUserSort, usersQuery, type UserSort } from "@/lib/users/sort";
 import { cn } from "@/lib/utils";
 import {
   isAdmin,
-  isRole,
   ROLES,
   ROLE_LABELS,
+  roleLabel,
   type Capability,
   type Role,
 } from "@/lib/permissions";
@@ -335,7 +335,7 @@ function RoleCell({
     return (
       <span className="flex items-center gap-2">
         <Badge variant="outline" className="uppercase">
-          {isRole(role) ? ROLE_LABELS[role] : role}
+          {roleLabel(role)}
         </Badge>
         <span className="text-muted-foreground text-xs">you</span>
       </span>

@@ -12,6 +12,7 @@ import {
   canSubmitPacks,
   isAdmin,
   isRole,
+  roleLabel,
   ROLES,
   roles,
   type Grant,
@@ -57,6 +58,15 @@ describe("isRole", () => {
     // Retired by 0045, which turned it into English grants.
     expect(isRole("collaborator")).toBe(false);
     expect(isRole(null)).toBe(false);
+  });
+});
+
+describe("roleLabel", () => {
+  it("names each role as the UI does, a missing one as member and an unknown one as stored", () => {
+    expect(roleLabel("pack_author")).toBe("Pack author");
+    expect(roleLabel("admin")).toBe("Admin");
+    expect(roleLabel(null)).toBe("Member");
+    expect(roleLabel("root")).toBe("root");
   });
 });
 
