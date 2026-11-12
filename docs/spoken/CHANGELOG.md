@@ -4,10 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Mute an NPC's automatic greetings.** The NPC dialog now offers a Mute control for gossip
-  lines, confirms the choice, removes that NPC's greetings already waiting in the queue and keeps
-  the choice per character. Quest and manually requested lines remain available; Gossip settings
-  can forget the muted NPC list.
+- **Mute an NPC's automatic greetings.** The NPC dialog now offers Mute and Unmute controls for
+  gossip lines, confirms the mute choice, removes that NPC's greetings already waiting in the queue
+  and keeps the choice per character. Quest and manually requested lines remain available; Gossip
+  settings can forget the muted NPC list.
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.8.7 — 2026-11-12

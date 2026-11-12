@@ -210,11 +210,18 @@ for _, client in ipairs({ "11509", "16001" }) do
     VO.Addon:IgnoreNPC(muted.unitGUID, muted.name)
     VO.DialogPlayButton:RefreshMute()
     Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
-    Expect(client .. ": the dialog hides Mute after confirmation", muteButton:IsShown(), false)
     Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), true)
+    Expect(client .. ": the dialog keeps the toggle after muting", muteButton:IsShown(), true)
+    Expect(client .. ": muting changes the icon to speaker", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    muteButton:Click()
+    Expect(client .. ": clicking the speaker unmutes the NPC", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), false)
+    Expect(client .. ": unmuting changes the icon back", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-MUTED]])
+    Expect(client .. ": the NPC is no longer recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), false)
     Leave()
     Talk()
-    Expect(client .. ": a muted NPC's automatic greeting stays quiet", Played(played), "(nothing)")
+    Expect(client .. ": an unmuted NPC's automatic greeting plays again", Played(played), "greeting-hash")
     Leave()
 end
 

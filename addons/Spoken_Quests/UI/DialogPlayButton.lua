@@ -26,6 +26,7 @@ local GAP = 2
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
 local MUTE_ICON = [[Interface\COMMON\VOICECHAT-MUTED]]
+local UNMUTE_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
 
 -- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
@@ -152,7 +153,8 @@ function DialogPlayButton:PositionMute(frameName)
     end
 end
 
---- Show the icon only while a gossip or quest-greeting dialog has an NPC that can be muted.
+--- Show the toggle while a gossip or quest-greeting dialog has an NPC whose greetings can be
+--- muted or restored.
 function DialogPlayButton:RefreshMute()
     local button = self.muteButton
     if not button then
@@ -160,13 +162,15 @@ function DialogPlayButton:RefreshMute()
     end
     local frameName, event = StandardDialog()
     local clip = Addon.CurrentGossipClip and Addon:CurrentGossipClip()
-    if not (frameName and event and Addon:IsPageOn(event) and clip and Addon:CanIgnoreNPC(clip))
-        or Addon:IsGossipNPCIgnored(clip.unitGUID, clip.name) then
+    if not (frameName and event and Addon:IsPageOn(event) and clip and Addon:CanIgnoreNPC(clip)) then
         button:Hide()
         self.muteClip = nil
         return
     end
+    local muted = Addon:IsGossipNPCIgnored(clip.unitGUID, clip.name)
     self.muteClip = clip
+    button.muted = muted
+    button.glyph:SetTexture(muted and UNMUTE_ICON or MUTE_ICON)
     self:PositionMute(frameName)
     button:Show()
 end
@@ -268,7 +272,12 @@ function DialogPlayButton:Setup()
         mute:SetScript("OnClick", function()
             DialogPlayButton:RefreshMute()
             if DialogPlayButton.muteClip then
-                Addon:ConfirmIgnoreNPC(DialogPlayButton.muteClip)
+                if DialogPlayButton.muteButton.muted then
+                    Addon:UnignoreNPC(DialogPlayButton.muteClip.unitGUID, DialogPlayButton.muteClip.name)
+                    DialogPlayButton:RefreshMute()
+                else
+                    Addon:ConfirmIgnoreNPC(DialogPlayButton.muteClip)
+                end
             end
         end)
         mute:HookScript("OnEnter", function(self)
@@ -276,7 +285,7 @@ function DialogPlayButton:Setup()
                 return
             end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(L.OPT_MUTE_NPC)
+            GameTooltip:SetText(self.muted and L.OPT_UNMUTE_NPC or L.OPT_MUTE_NPC)
             GameTooltip:Show()
         end)
         mute:HookScript("OnLeave", function()

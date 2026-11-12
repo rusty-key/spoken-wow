@@ -1448,6 +1448,17 @@ function Addon:IgnoreNPC(guid, name)
     return true
 end
 
+--- Restore an NPC's automatic greetings for this character.
+function Addon:UnignoreNPC(guid, name)
+    local key = IgnoredSpeakerKey(guid, name)
+    if not key or not self.db.char.ignoredGossipNPCs[key] then
+        return false
+    end
+    self.db.char.ignoredGossipNPCs[key] = nil
+    print("|cFF00CCFFSpoken Gossip:|r " .. format(L.UNMUTE_NPC_DONE, name or "NPC"))
+    return true
+end
+
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options
 function Addon:ShouldPlayGossip(guid, text, manual, followsOption, name)
     local npcKey = guid or "unknown"
