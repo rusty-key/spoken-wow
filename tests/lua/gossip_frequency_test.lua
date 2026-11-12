@@ -204,9 +204,9 @@ for _, client in ipairs({ "11509", "16001" }) do
     for _, action in ipairs(muted.present.actions) do
         if action.id == "muteNPC" then muteAction = action end
     end
-    Expect(client .. ": the current NPC offers a Mute NPC action", muteAction ~= nil and muteAction.visible(muted), true)
+    Expect(client .. ": the current NPC offers a Mute action", muteAction ~= nil and muteAction.visible(muted), true)
     VO.Addon:ConfirmIgnoreNPC(muted)
-    Expect(client .. ": Mute NPC asks for confirmation", stub.popups[#stub.popups].key, "VOICEOVER_IGNORE_NPC")
+    Expect(client .. ": Mute asks for confirmation", stub.popups[#stub.popups].key, "VOICEOVER_IGNORE_NPC")
     VO.Addon:IgnoreNPC(muted.unitGUID, muted.name)
     Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
     Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID, world.npcName), true)
