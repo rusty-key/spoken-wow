@@ -170,7 +170,7 @@ function DialogPlayButton:RefreshMute()
     self.muteClip = clip
     button.muted = muted
     button.glyph:SetTexture(SPEAKER_ICON)
-    button.muteSlash:SetShown(not muted)
+    button.muteSlash:SetShown(muted)
     self:PositionMute(frameName)
     button:Show()
 end
@@ -269,6 +269,8 @@ function DialogPlayButton:Setup()
         if mute.SetFrameStrata then
             mute:SetFrameStrata("DIALOG")
         end
+        -- The slash describes the NPC's current state: shown means currently muted, hidden
+        -- means currently audible. The action name in the tooltip is the inverse.
         local slash = mute:CreateTexture(nil, "OVERLAY")
         slash:SetSize(2, 17)
         slash:SetPoint("CENTER")
