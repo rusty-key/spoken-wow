@@ -18,8 +18,10 @@ type Memo = { at: number; langs: Promise<LanguageInfo[]> };
 
 /** On globalThis for the reason lib/lang.ts's registry is: the listener's forget must reach every layer. */
 const memoKey = Symbol.for("spoken.languages.catalogue");
-type MemoHolder = { [memoKey]?: { cached: Memo | null } };
-const memo = ((globalThis as MemoHolder)[memoKey] ??= { cached: null });
+/** `started` numbers each read; `registered` is the newest one registered, so an older never overwrites it. */
+type MemoState = { cached: Memo | null; started: number; registered: number };
+type MemoHolder = { [memoKey]?: MemoState };
+const memo = ((globalThis as MemoHolder)[memoKey] ??= { cached: null, started: 0, registered: 0 });
 
 type Row = {
   code: string;
@@ -55,12 +57,17 @@ export function loadLanguages(): Promise<LanguageInfo[]> {
   listenInServer();
   const cached = memo.cached;
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
+  const seq = ++memo.started;
   const langs: Promise<LanguageInfo[]> = query<Row>(
     `select "code", "name", "native", "bcp47", "provider", "client" from "language" order by "code"`,
   ).then((rows) => {
     const list = rows.map(describe);
-    // A read forgotten while in flight may predate the change that forgot it.
-    if (memo.cached?.langs === langs) registerLanguages(list);
+    // A read forgotten in flight still registers unless a newer one already has: at boot the
+    // listener's first reload forgets instrumentation's read, which must not leave nothing.
+    if (seq > memo.registered) {
+      registerLanguages(list);
+      memo.registered = seq;
+    }
     return list;
   });
   memo.cached = { at: Date.now(), langs };
