@@ -45,6 +45,11 @@ export function kindOf(entry: LexiconEntry): "ipa" | "alias" {
 
 export class LexiconError extends Error {}
 
+/** Two entries are the same rule when this matches: ElevenLabs matches graphemes ignoring case. */
+export function ruleKey(grapheme: string): string {
+  return grapheme.toLowerCase();
+}
+
 /**
  * A rule as the add-from-rules endpoint wants it.
  *
@@ -222,7 +227,7 @@ export function validateLexicon(input: unknown): LexiconEntry[] {
 
   const seen = new Map<string, string>();
   for (const entry of entries) {
-    const key = entry.grapheme.toLowerCase();
+    const key = ruleKey(entry.grapheme);
     const first = seen.get(key);
     if (first !== undefined) {
       throw new LexiconError(

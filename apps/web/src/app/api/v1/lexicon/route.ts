@@ -11,7 +11,8 @@ export async function GET(request: Request) {
   const { context, denied } = await requireToken(request);
   if (denied) return denied;
 
-  for (const name of new URL(request.url).searchParams.keys()) return invalid(`unknown parameter ${name}`);
+  const [unknown] = new URL(request.url).searchParams.keys();
+  if (unknown) return invalid(`unknown parameter ${unknown}`);
 
   const lexicon = await readLexicon(context.lang);
   return Response.json({ lang: context.lang, ...lexiconState(lexicon), entries: lexicon.entries });

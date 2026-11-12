@@ -156,6 +156,12 @@ describe("PATCH /api/v1/lexicon", () => {
     expect((await patch(auth, { items: [{ ...A, confidence: "check" }], expectedVersion: current })).status).toBe(200);
   });
 
+  it("409 when expectedVersion is null and someone saved first", async () => {
+    const auth = await token();
+    await patch(auth, { items: [A] });
+    expect((await patch(auth, { items: [B], expectedVersion: null })).status).toBe(409);
+  });
+
   it("needs configure, as the site does", async () => {
     viewer.grants = [{ lang: LANG, capability: "text" }];
     expect((await patch(await token(), { items: [A] })).status).toBe(403);

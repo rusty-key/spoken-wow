@@ -7,7 +7,7 @@
 import "server-only";
 
 import { readApiKey } from "@/lib/api-key";
-import { editLexicon, LexiconConflict, type EffectiveLexicon } from "@/lib/generation/dictionary";
+import { editLexicon, LexiconConflict, NO_KEY_TO_SYNC, type EffectiveLexicon } from "@/lib/generation/dictionary";
 import { LexiconError, type LexiconEntry } from "@/lib/generation/lexicon";
 
 import type { TokenContext } from "./guard";
@@ -18,14 +18,20 @@ export function lexiconState(lexicon: EffectiveLexicon) {
   return { version: lexicon.version, sync: lexicon.sync, updatedAt: lexicon.updatedAt };
 }
 
+/** Worded as the site's requireApiKey words it: SPOKEN_SECRET_KEY changed under the stored key. */
+const UNREADABLE_KEY = "saved, but not uploaded: your stored ElevenLabs key could not be read. Set it again in your profile.";
+
+type Write = { entries: LexiconEntry[]; expectedVersion: string | null | undefined };
+
 /**
- * A write's body: the JSON object, its expectedVersion, and the entries `toEntries` makes of
- * it. A 400 for anything malformed, including a LexiconError from `toEntries`.
+ * A write's body: the JSON object, its expectedVersion (null: the lexicon must still have no
+ * row), and the entries `toEntries` makes of it. A 400 for anything malformed, including a
+ * LexiconError from `toEntries`.
  */
 export async function readWrite(
   request: Request,
   toEntries: (body: Record<string, unknown>) => LexiconEntry[] | Response,
-): Promise<{ entries: LexiconEntry[]; expectedVersion: string | undefined } | Response> {
+): Promise<Write | Response> {
   const body: unknown = await request.json().catch(() => null);
   if (typeof body !== "object" || body === null || Array.isArray(body)) return invalid("send a JSON object");
   const fields = body as Record<string, unknown>;
@@ -38,7 +44,7 @@ export async function readWrite(
   try {
     const entries = toEntries(fields);
     if (entries instanceof Response) return entries;
-    return { entries, expectedVersion: expectedVersion ?? undefined };
+    return { entries, expectedVersion };
   } catch (error) {
     if (error instanceof LexiconError) return invalid(error.message);
     throw error;
@@ -47,10 +53,16 @@ export async function readWrite(
 
 export async function writeEntries(
   context: TokenContext,
-  { entries, expectedVersion }: { entries: LexiconEntry[]; expectedVersion: string | undefined },
+  { entries, expectedVersion }: Write,
 ) {
-  // A key that will not decrypt is no key: the save stays pending, as without one.
-  const apiKey = (await readApiKey(context.userId).catch(() => null)) ?? undefined;
+  // A key that will not decrypt saves as pending, as no key does, but says which it was.
+  let apiKey: string | undefined;
+  let unreadable = false;
+  try {
+    apiKey = (await readApiKey(context.userId)) ?? undefined;
+  } catch {
+    unreadable = true;
+  }
   try {
     const { lexicon, syncError, result } = await editLexicon(
       context.lang,
@@ -59,7 +71,12 @@ export async function writeEntries(
       { apiKey },
       expectedVersion,
     );
-    return { lang: context.lang, ...lexiconState(lexicon), syncError, results: result };
+    return {
+      lang: context.lang,
+      ...lexiconState(lexicon),
+      syncError: unreadable && syncError === NO_KEY_TO_SYNC ? UNREADABLE_KEY : syncError,
+      results: result,
+    };
   } catch (error) {
     if (!(error instanceof LexiconConflict)) throw error;
     return Response.json({ error: error.message, version: error.version }, { status: 409 });

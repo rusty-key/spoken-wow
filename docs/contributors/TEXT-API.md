@@ -176,11 +176,13 @@ Unlike text, a lexicon write is all or nothing: one invalid item refuses the who
 400 naming it. Each result is `created`, `updated` or `unchanged`. An entry is replaced whole, so a
 `note` you leave out is dropped. Entries you do not send stay as they are; this API cannot remove
 one. Send the `version` you read as `expectedVersion` to get a 409 instead of overwriting a newer
-save.
+save. A `null` version, from a language with no lexicon yet, guards too.
 
 A write uploads the lexicon to ElevenLabs with your own ElevenLabs key, as the site does. Without
-one, or if the upload fails, the entries are saved, `sync` reads `pending` and `syncError` says
-why. Generation goes on with the previous upload until someone uploads from the lexicon page.
+one, or if the upload fails, the entries are saved, `sync` reads `pending` (`never` for a
+language never uploaded) and `syncError` says why. Generation goes on with the previous upload
+until someone uploads from the lexicon page. Every write that changes something uploads the whole
+dictionary, so send several fixes as one bulk `PATCH` rather than one request per word.
 Changing an entry marks takes that say the word as outdated; nothing here regenerates them.
 
 ## Undoing a run

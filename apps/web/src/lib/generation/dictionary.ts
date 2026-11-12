@@ -498,7 +498,7 @@ export async function editLexicon<T>(
   edit: (entries: LexiconEntry[]) => { entries: LexiconEntry[]; result: T },
   updatedBy: string,
   options: ElevenLabsOptions = {},
-  expectedVersion?: string,
+  expectedVersion?: string | null,
 ): Promise<{ lexicon: EffectiveLexicon; syncError: string | null; result: T }> {
   let digest: string | null = null;
   for (let attempt = 0; attempt < EDIT_ATTEMPTS; attempt++) {

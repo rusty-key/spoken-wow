@@ -5,13 +5,11 @@
  * replaced whole, so a note left out of an update is dropped. Matching ignores case, as the
  * rules do, and the grapheme sent becomes the stored spelling.
  */
-import type { LexiconEntry } from "@/lib/generation/lexicon";
+import { ruleKey as keyOf, type LexiconEntry } from "@/lib/generation/lexicon";
 
 export type EntryStatus = "created" | "updated" | "unchanged";
 
 export type EntryResult = { grapheme: string; status: EntryStatus };
-
-const keyOf = (grapheme: string) => grapheme.toLowerCase();
 
 function sameEntry(a: LexiconEntry, b: LexiconEntry): boolean {
   return (
