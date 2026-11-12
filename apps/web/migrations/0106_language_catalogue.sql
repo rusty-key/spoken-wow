@@ -9,6 +9,11 @@
 -- `provider` is the language_code sent to the speech provider (ISO 639-1). `client` is
 -- false for a language no game client runs in.
 --
+-- name, native, bcp47 and provider stay NULLABLE for now: the previous release's setEnabled
+-- upserts (code, enabled) only, and Postgres checks NOT NULL before conflict detection, so
+-- after a rollback every toggle would fail. A later migration sets them NOT NULL once no
+-- pre-0106 release runs.
+--
 -- The notify trigger lets a running server learn of a language added or changed by another
 -- process without polling.
 
@@ -40,12 +45,6 @@ on conflict ("code") do update set
   "bcp47"    = excluded."bcp47",
   "provider" = excluded."provider",
   "client"   = excluded."client";
-
-alter table "language"
-  alter column "name"     set not null,
-  alter column "native"   set not null,
-  alter column "bcp47"    set not null,
-  alter column "provider" set not null;
 
 create function "language_notify"() returns trigger
 language plpgsql as $$
