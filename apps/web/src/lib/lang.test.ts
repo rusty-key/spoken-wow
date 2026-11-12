@@ -1,8 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { LOCALES as PIPELINE_LOCALES } from "@tools/lib/locales.mjs";
 
-import { BASE_LANG, CODES, clientLang, isClientLang, isLang, LOCALES, langTag } from "./lang";
+import {
+  allLangs,
+  BASE_LANG,
+  BUILTIN,
+  CODES,
+  clientLang,
+  elevenLabsCode,
+  isClientLang,
+  isLang,
+  langName,
+  langTag,
+  registerLanguages,
+} from "./lang";
 
 describe("the site's language list", () => {
   // The site restates the list as a literal to get a type out of it. A code added to the
@@ -10,11 +22,11 @@ describe("the site's language list", () => {
   // show; one added here and not there, a URL prefix with nothing behind it.
   it("is the pipeline's list, in the pipeline's order", () => {
     expect(
-      LOCALES.map((locale) => ({
+      BUILTIN.map((locale) => ({
         code: locale.code,
         name: locale.name,
         bcp47: locale.bcp47,
-        elevenLabs: locale.elevenLabs,
+        elevenLabs: locale.provider,
         client: isClientLang(locale.code),
       })),
     ).toEqual(
@@ -64,6 +76,36 @@ describe("the site's language list", () => {
 
   it("names the page's language for <html lang>", () => {
     expect(langTag("ptBR")).toBe("pt-BR");
+  });
+});
+
+describe("the language registry", () => {
+  afterEach(() => registerLanguages([]));
+
+  const japanese = { code: "jaJP", name: "Japanese", native: "日本語", bcp47: "ja-JP", provider: "ja", client: false };
+
+  it("accepts a language registered at runtime", () => {
+    registerLanguages([japanese]);
+    expect(isLang("jaJP")).toBe(true);
+    expect(langName("jaJP")).toBe("Japanese");
+    expect(langTag("jaJP")).toBe("ja-JP");
+    expect(elevenLabsCode("jaJP")).toBe("ja");
+    expect(isClientLang("jaJP")).toBe(false);
+    expect(clientLang("jaJP")).toBeNull();
+    expect(allLangs().at(-1)).toBe("jaJP");
+    expect(allLangs().slice(0, CODES.length)).toEqual([...CODES]);
+  });
+
+  it("never lets a registration overwrite a built-in", () => {
+    registerLanguages([{ ...japanese, code: "deDE", name: "Wrong" }]);
+    expect(langName("deDE")).toBe("German");
+    expect(allLangs()).toEqual([...CODES]);
+  });
+
+  it("replaces the registered languages on each call", () => {
+    registerLanguages([japanese]);
+    registerLanguages([]);
+    expect(isLang("jaJP")).toBe(false);
   });
 });
 

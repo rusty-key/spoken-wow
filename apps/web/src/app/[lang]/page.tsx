@@ -17,7 +17,7 @@ import { NAV } from "@/components/landing/nav";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
 import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
-import { LOCALES, type Lang } from "@/lib/lang";
+import { type BuiltinLang, LOCALES, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { packDownloads, packFor, type Section } from "@/lib/packs";
 import "@/components/landing/landing.css";
@@ -37,7 +37,7 @@ const MANAGER_DOWNLOADS = {
 };
 
 /** CurseForge's one meta addon per language: Spoken, plus every voice pack in it. */
-const META: Partial<Record<Lang, string>> = {
+const META: Partial<Record<BuiltinLang, string>> = {
   enUS: "spoken-english",
   deDE: "spoken-german",
   esES: "spoken-spanish-eu",
