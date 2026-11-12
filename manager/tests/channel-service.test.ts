@@ -142,6 +142,7 @@ describe('the channel through the service', () => {
       },
       fetchImpl: githubFetch(releases), autoPaths: [game.root], isRunning: async () => false, backoffMs: 1, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
     })
+    svc.setSettings({ autoUpdateContent: false })
     await svc.init()
     await svc.refreshCatalog(true)
     const jobId = svc.install(game.id, 'places-audio-deDE')
