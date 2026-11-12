@@ -522,6 +522,9 @@ local function GiveVoiceBack(event)
 end
 local currentQuestSoundData
 local currentGossipSoundData
+-- Unlike hasSeenGossipForNPC, this is deliberately not saved: it lasts only until the
+-- addon is reloaded, which is the behavior of the old session-only greeting tracking.
+local sessionGreetingsHeard = {}
 
 function Addon:OnInitialize()
     -- A character Spoken put on the profile chosen for new characters starts on it here too, so the
@@ -1332,6 +1335,18 @@ function Addon:HasHeardAnyGreeting(guid)
     return type(self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]) == "table"
 end
 
+function Addon:HasHeardGreetingThisSession(guid, text)
+    if not text then
+        return false
+    end
+    local heard = sessionGreetingsHeard[SpeakerKey(guid)]
+    return type(heard) == "table" and heard[TextKey(text)] == true
+end
+
+function Addon:HasHeardAnyGreetingThisSession(guid)
+    return type(sessionGreetingsHeard[SpeakerKey(guid)]) == "table"
+end
+
 --- Keeps greetings heard under GUIDs from playing again. A GUID marked `true` holds no text and
 --- counts as unheard anyway, so it goes.
 function Addon:FoldGreetingsHeardByGUID()
@@ -1357,7 +1372,11 @@ function Addon:FoldGreetingsHeardByGUID()
 end
 
 function Addon:MarkGreetingHeard(guid, text)
-    HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
+    local key = SpeakerKey(guid)
+    local textKey = TextKey(text)
+    HeardTexts(self.db.char.hasSeenGossipForNPC, key)[textKey] = true
+    sessionGreetingsHeard[key] = sessionGreetingsHeard[key] or {}
+    sessionGreetingsHeard[key][textKey] = true
 end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options
@@ -1378,10 +1397,16 @@ function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
         return true
     end
 
-    local heard = self:HasHeardGreeting(guid, text)
+    local frequency = self.db.profile.Audio.GossipFrequency
+    local heard
+    if frequency == Enums.GossipFrequency.OncePerSession then
+        heard = self:HasHeardGreetingThisSession(guid, text)
+    else
+        heard = self:HasHeardGreeting(guid, text)
+    end
 
     -- Asked again for the same NPC while its window stays open; the log says it once.
-    if self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerQuestNPC then
+    if frequency == Enums.GossipFrequency.OncePerQuestNPC then
         local numActiveQuests = GetNumGossipActiveQuests()
         local numAvailableQuests = GetNumGossipAvailableQuests()
         local npcHasQuests = (numActiveQuests > 0 or numAvailableQuests > 0)
@@ -1389,9 +1414,14 @@ function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
             Debug:Note("gossip", npcKey .. ":quest-npc", "greeting of %s not read: an NPC with quests, this greeting heard before (NPC Greetings: once for quest givers)", npcKey)
             return
         end
-    elseif self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerNPC then
+    elseif frequency == Enums.GossipFrequency.OncePerNPC then
         if heard then
             Debug:Note("gossip", npcKey .. ":once", "greeting of %s not read: this greeting heard before (NPC Greetings: once per greeting)", npcKey)
+            return
+        end
+    elseif frequency == Enums.GossipFrequency.OncePerSession then
+        if heard then
+            Debug:Note("gossip", npcKey .. ":session", "greeting of %s not read: this greeting heard earlier this session (NPC Greetings: once per session)", npcKey)
             return
         end
     end
@@ -1460,7 +1490,14 @@ function Addon:MuteGreetingOnClick(button)
     if not guid or NotSecret(UnitCanAttack("player", unit)) or NotSecret(UnitIsDead(unit)) then
         return
     end
-    if self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Always and self:HasHeardAnyGreeting(guid) then
+    local frequency = self.db.profile.Audio.GossipFrequency
+    local heardAny
+    if frequency == Enums.GossipFrequency.OncePerSession then
+        heardAny = self:HasHeardAnyGreetingThisSession(guid)
+    else
+        heardAny = self:HasHeardAnyGreeting(guid)
+    end
+    if frequency ~= Enums.GossipFrequency.Always and heardAny then
         return
     end
     if DataModules:HasGossipFor({ unitGUID = guid, name = NotSecret(UnitName(unit)), unitIsObjectOrItem = false }) then

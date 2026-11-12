@@ -2,6 +2,13 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Read Greetings has a Once per Session choice.** It brings back session-only greeting history
+  without changing the saved Once per Greeting behavior. Guards that share an NPC ID continue to
+  share the same greeting history because their IDs cannot be separated reliably.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.8.7 — 2026-11-12
 
 - **Ironforge opens only from Ironforge on Dun Morogh's map.** A city's area on its zone's map

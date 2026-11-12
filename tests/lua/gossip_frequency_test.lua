@@ -16,6 +16,7 @@ local GREETING = "Well met. How can I help?"
 local BANK = "Where is the bank?"
 local DIRECTIONS = "The bank is past the fountain."
 local OTHER = "Keep your blade sharp, friend."
+local SESSION = "This greeting lasts only for the session."
 -- The option picked to reach the page of the clip that started last.
 local lastTitle
 
@@ -27,10 +28,11 @@ local function Boot(client)
     local VO = stub.LoadQuests(QUESTS, SPOKEN)
     dofile(QUESTS .. "UI/DialogPlayButton.lua")
     VO.Addon:OnInitialize()
-    local gossip = { [GREETING] = "greeting-hash", [DIRECTIONS] = "directions-hash", [OTHER] = "other-hash" }
+    local gossip = { [GREETING] = "greeting-hash", [DIRECTIONS] = "directions-hash", [OTHER] = "other-hash",
+        [SESSION] = "session-hash" }
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = { ["greeting-hash"] = 1, ["directions-hash"] = 1, ["other-hash"] = 1,
-            ["101-accept"] = 1 },
+            ["session-hash"] = 1, ["101-accept"] = 1 },
         GossipLookupByNPCID = { [12345] = gossip },
         GossipLookupByNPCName = { Guard = gossip },
         GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
@@ -193,6 +195,23 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.Advance(10)
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+
+    -- Once per Session is the old in-memory behavior: it holds back a greeting until the
+    -- addon reloads, while keeping the same speaker/text keying as the saved once-per options.
+    local sessionVO, sessionPlayed = Boot(client)
+    sessionVO.Addon.db.profile.Audio.GossipFrequency = sessionVO.Enums.GossipFrequency.OncePerSession
+    Talk(SESSION)
+    Expect(client .. ": Once per Session plays a greeting the first time", Played(sessionPlayed), "session-hash")
+    Leave()
+    Talk(SESSION)
+    Expect(client .. ": ...holds that greeting back for this session", Played(sessionPlayed), "(nothing)")
+    Leave()
+
+    local reloadedVO, reloadedPlayed = Boot(client)
+    reloadedVO.Addon.db.profile.Audio.GossipFrequency = reloadedVO.Enums.GossipFrequency.OncePerSession
+    Talk(SESSION)
+    Expect(client .. ": ...allows it again after a reload", Played(reloadedPlayed), "session-hash")
+    Leave()
 end
 
 if Failures() > 0 then

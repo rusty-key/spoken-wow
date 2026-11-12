@@ -54,6 +54,7 @@ local GeneralTab =
                         [Enums.GossipFrequency.Always] = L.OPT_GREETING_LABEL_ALWAYS,
                         [Enums.GossipFrequency.OncePerQuestNPC] = L.OPT_GREETING_LABEL_ONCE_QUEST,
                         [Enums.GossipFrequency.OncePerNPC] = L.OPT_GREETING_LABEL_ONCE_NPC,
+                        [Enums.GossipFrequency.OncePerSession] = L.OPT_GREETING_LABEL_ONCE_SESSION,
                         [Enums.GossipFrequency.Never] = L.OPT_GREETING_LABEL_NEVER,
                     },
                     get = function(info) return Addon.db.profile.Audio.GossipFrequency end,
