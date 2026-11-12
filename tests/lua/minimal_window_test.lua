@@ -191,8 +191,10 @@ Expect("...offering Dark and Warcraft III for the Large Window", Values(row) and
     "dark,warcraft3")
 pcall(function() row.layoutChoose("warcraft3") end)
 Expect("...choosing Warcraft III changes the Large Window theme", frame.ClassicBackground, "warcraft3")
+Expect("...and synchronizes the Small Window theme", frame.MinimalBackground, "warcraft3")
 pcall(function() row.layoutChoose("dark") end)
 Expect("...choosing Dark restores the Large Window default", frame.ClassicBackground, "dark")
+Expect("...without changing the Small Window theme", frame.MinimalBackground, "warcraft3")
 env.Addon:SetPlayerStyle("minimal")
 main:Refresh()
 Expect("Show Progress is offered for the small window, which has the progress line",

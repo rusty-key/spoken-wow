@@ -194,6 +194,13 @@ end
 
 function Addon:SetWindowTheme(window, value)
     local frame = self.db.profile.Frame
+    -- Warcraft III is the shared first choice: selecting it from either window makes both
+    -- windows use the Warcraft III art until one of them is deliberately changed later.
+    if value == "warcraft3" then
+        frame.MinimalBackground, frame.MinimalBackgroundExplicit = value, true
+        frame.ClassicBackground, frame.ClassicBackgroundExplicit = value, true
+        return
+    end
     if window == "classic" then
         frame.ClassicBackground, frame.ClassicBackgroundExplicit = value, true
     else
