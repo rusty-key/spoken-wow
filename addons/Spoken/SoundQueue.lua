@@ -394,7 +394,7 @@ function SoundQueue:Previous()
     -- The current line remains available after the replay, followed by whatever was waiting.
     -- Add it first so the previous line can then be front-inserted ahead of it.
     if current then
-        local restored = self:Add(current, current.source, true)
+        local restored = self:Add(current, current.source, true, true)
         if not restored then
             table.insert(self.history, previous)
             self:SetPaused(wasPaused)
@@ -759,7 +759,8 @@ end
 ---@param clip SpokenClip
 ---@param source table
 ---@param front boolean
-function SoundQueue:Add(clip, source, front)
+---@param preserveHistory boolean? Keep Previous history while restoring a navigated queue.
+function SoundQueue:Add(clip, source, front, preserveHistory)
     if not clip then
         return nil, "no clip"
     end
@@ -787,7 +788,7 @@ function SoundQueue:Add(clip, source, front)
 
     -- A new queue starts a new Previous trail. A navigational replay is the exception: it marks
     -- itself so walking backward can keep the older entries available.
-    if self:IsEmpty() and not clip.replayingPrevious then
+    if self:IsEmpty() and not clip.replayingPrevious and not preserveHistory then
         self.history = {}
     end
 
