@@ -214,6 +214,15 @@ Expect("Previous also works after the queue drained", Q:Previous(), true)
 Expect("...replaying the last line", world.played[2], last.path)
 
 Fresh()
+local old = H.Clip()
+quests:Enqueue(old)
+stub.Advance(1.1)
+Expect("an older queue leaves a previous line", Q:CanPrevious(), true)
+local first = H.Clip()
+quests:Enqueue(first)
+Expect("a new queue starts on its oldest line", Q:CanPrevious(), false)
+
+Fresh()
 local history = {}
 for index = 1, 5 do
     history[index] = H.Clip()

@@ -785,6 +785,12 @@ function SoundQueue:Add(clip, source, front)
         return nil, "duplicate"
     end
 
+    -- A new queue starts a new Previous trail. A navigational replay is the exception: it marks
+    -- itself so walking backward can keep the older entries available.
+    if self:IsEmpty() and not clip.replayingPrevious then
+        self.history = {}
+    end
+
     if IsLow(clip) then
         if AnyNormalQueued() then
             Callbacks:Fire("CLIP_DROPPED", clip, "outranked")
