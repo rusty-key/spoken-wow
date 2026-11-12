@@ -201,7 +201,7 @@ export const DEFAULT_SETTINGS: Settings = {
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
-  autoUpdateContent: false,
+  autoUpdateContent: true,
   startAtLogin: false,
   minimizeToTray: false,
   downloadsPath: '',

@@ -170,6 +170,7 @@ describe('ManagerService', () => {
     it('updates when turned on with a catalog already loaded', async () => {
       const { svc, game, sent } = await setup()
       oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      svc.setSettings({ autoUpdateContent: false })
       await svc.refreshCatalog(true)
       expect(spokenJobs(sent)).toHaveLength(0)
 
@@ -181,6 +182,7 @@ describe('ManagerService', () => {
     it('does nothing while the setting is off', async () => {
       const { svc, game, sent } = await setup()
       oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      svc.setSettings({ autoUpdateContent: false })
       await svc.refreshCatalog(true)
       await svc.autoUpdate()
       expect(spokenJobs(sent)).toHaveLength(0)

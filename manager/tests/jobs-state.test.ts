@@ -124,6 +124,15 @@ describe('JobManager', () => {
 })
 
 describe('settings and state files', () => {
+  it('enables update checks and updates by default, but not pre-releases', () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({
+      includePrereleases: false,
+      checkOnStart: true,
+      autoUpdateManager: true,
+      autoUpdateContent: true
+    })
+  })
+
   it('merges defaults and ignores wrong types and unknown keys', () => {
     expect(sanitizeSettings({ includePrereleases: true, checkOnStart: 'yes', downloadsPath: 5, extra: 1 })).toEqual({
       ...DEFAULT_SETTINGS,
