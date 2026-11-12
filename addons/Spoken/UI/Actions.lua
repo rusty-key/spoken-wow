@@ -171,6 +171,8 @@ end
 local GLYPH_STOP = ART .. "GlyphStop"
 local GLYPH_REPLAY = ART .. "GlyphReplay"
 local CELL = 93 / 128
+local PLAY_LEFT, PLAY_RIGHT = 0, 93 / PORTRAIT_ATLAS_SIZE
+local PLAY_TOP, PLAY_BOTTOM = 419 / PORTRAIT_ATLAS_SIZE, 1
 
 function Actions.Glyph(texture, state)
     if state == "stop" or state == "replay" then
@@ -179,7 +181,7 @@ function Actions.Glyph(texture, state)
         return
     end
     texture:SetTexture(PORTRAIT_ATLAS)
-    texture:SetTexCoord(0, 93 / PORTRAIT_ATLAS_SIZE, 419 / PORTRAIT_ATLAS_SIZE, 512 / PORTRAIT_ATLAS_SIZE)
+    texture:SetTexCoord(PLAY_LEFT, PLAY_RIGHT, PLAY_TOP, PLAY_BOTTOM)
 end
 
 --- Stop while the head plays, Replay once it is stopped.
@@ -252,7 +254,7 @@ end
 function Actions.PreviousButton(parent, name)
     -- Build the exact Skip control first, then mirror its triangle and bar.
     local previous = Actions.SkipButton(parent, name)
-    previous.glyph:SetTexCoord(CELL, 0, 0, CELL)
+    previous.glyph:SetTexCoord(PLAY_RIGHT, PLAY_LEFT, PLAY_TOP, PLAY_BOTTOM)
     previous.glyph:ClearAllPoints()
     previous.glyph:SetPoint("CENTER", 2, 0)
     previous.bar:ClearAllPoints()
