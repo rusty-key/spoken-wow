@@ -77,6 +77,18 @@ do
     Expect("PackLoreText answers for a language", P:PackLoreText(MAP, BOTH, "deDE"), "Deutsche Packung.")
     Expect("...and nothing for a place no pack words", P:PackLoreText(MAP, "nowhere", "enUS"), nil)
     Voice("enUS")
+    local function Timed(addon, text)
+        return Pack(addon, "enUS", { [BOTH] = { file = addon, len = 3, text = text, times = "0 1" },
+            ["pack only"] = { file = addon, len = 3, text = "Only the pack.", times = "0 1 2" } })
+    end
+    local T = Install({ Timed("SpokenPlacesAudio_a", "Take A words."), Timed("SpokenPlacesAudio_b", "Take B words.") })
+    T:RegisterLoreData("enUS", "subzones", { [MAP] = { [BOTH] = { full = "English valley lore." } } })
+    T:SetActiveAudioPack("SpokenPlacesAudio_b")
+    Expect("the caption's words are the playing take's, beside another pack of the language",
+        T:NewLoreSound(MAP, BOTH).present.transcript, "Take B words.")
+    Expect("...timed by that take", T:NewLoreSound(MAP, BOTH).present.timings, "0 1")
+    Expect("an area only the pack has words for is timed by its take",
+        T:NewLoreSound(MAP, "pack only").present.timings, "0 1 2")
     local Q = Install({ Pack("SpokenPlacesAudio", "enUS", { [BOTH] = { file = "a", len = 3 } }) })
     Q:RegisterLoreData("enUS", "subzones", { [MAP] = { [BOTH] = { full = "English valley lore." } } })
     Expect("a pack from before it carried words leaves core's", Q:NewLoreSound(MAP, BOTH).present.transcript,

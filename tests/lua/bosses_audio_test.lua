@@ -71,6 +71,13 @@ do
     clip = Setup("deDE", "auto", "enUS", { SpokenBossesAudio_deDE = Pack("SpokenBossesAudio_deDE", "deDE", 128, WORDED) })
     Expect("a German pack on a German client captions its words, over an English-only story", clip.present.transcript, "Pack words.")
     Expect("...timed, those being the recording's", clip.present.timings, "0 1")
+    local function Take(words, times)
+        return { [36] = { ["edwin vancleef"] = { file = "36\\" .. words, len = 41.2, times = times, text = words } } }
+    end
+    clip = Setup("enUS", "auto", "enUS", { SpokenBossesAudio_low = Pack("SpokenBossesAudio_low", "enUS", 96, Take("Low take.", "0")),
+        SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128, Take("High take.", "0 1")) })
+    Expect("two packs of a language: the words are the playing take's", clip.present.transcript, "High take.")
+    Expect("...and so are the times", clip.present.timings, "0 1")
     Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128, WORDED) })
     _G.SpokenBossStories[36]["edwin vancleef"] = nil
     Expect("a boss with no story in core still has no clip: new content needs a core release",

@@ -980,11 +980,17 @@ local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.S
 
 -- One part's words, in the client's language where its window was seen, or nil. A pack's words
 -- first, so the page reads what Play says.
+-- The words matching reads: a moment with several wordings resolves by them, never by a pack's.
+local function SeenText(id, moment)
+    local stored = Stored(id, moment)
+    return stored and QuestsTab:Fill(stored)
+end
+
 local function PartText(id, moment)
-    local soundData = { event = EVENTS[moment], questID = id }
+    local soundData = { event = EVENTS[moment], questID = id, text = SeenText(id, moment) }
     VO.DataModules:PrepareSound(soundData)
-    local text = soundData.packText or Stored(id, moment)
-    return text and QuestsTab:Fill(text)
+    if soundData.packText then return QuestsTab:Fill(soundData.packText) end
+    return soundData.text
 end
 
 --- Keep what the open quest window shows, in this client's language.
@@ -1058,7 +1064,7 @@ local function SoundData(id, moment, origin)
     local name = SpeakerName(kind, speaker) or Title(id)
     local guid = speaker and Enums.GUID:CanHaveID(kind) and VO.Utils:MakeGUID(kind, speaker) or nil
     return { event = EVENTS[moment], questID = id, title = Title(id), name = name, unitGUID = guid,
-        unitIsObjectOrItem = speaker ~= nil and not Enums.GUID:IsCreature(kind), text = PartText(id, moment),
+        unitIsObjectOrItem = speaker ~= nil and not Enums.GUID:IsCreature(kind), text = SeenText(id, moment),
         origin = origin }
 end
 

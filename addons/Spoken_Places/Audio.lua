@@ -428,7 +428,7 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		local clip = ClipIn(pack, mapID, areaKey)
 		if clip and clip.file then
 			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. ".mp3",
-				clip.len, pack, clip.file, clip.times
+				clip.len, pack, clip.file, clip.times, clip.text
 		end
 	end
 
@@ -488,7 +488,7 @@ end
 -- s:{mapID}:{key} -- and it is frozen: it is what the player dedups on, what a report
 -- names, and what audio-history is keyed by.
 function SpokenPlaces:NewLoreSound(mapID, areaKey)
-	local path, length, pack, fileName, times = self:GetAudioClip(mapID, areaKey)
+	local path, length, pack, fileName, times, said = self:GetAudioClip(mapID, areaKey)
 	if not path then
 		return nil
 	end
@@ -511,6 +511,11 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 		end
 	end
 	language = language or pack.language or "enUS"
+	-- The playing take's own words where it is in the language read, as its times count them; else a
+	-- pack's of that language, untimed.
+	local voiced = language == (pack.language or "enUS")
+	local spoken = voiced and type(said) == "string" and said ~= "" and said or nil
+	local words = spoken or (not voiced and self:PackLoreText(mapID, areaKey, language)) or (entry and entry.full)
 	-- Captions set a font file, which has none of the font object's fallbacks: lore in a script
 	-- the client's file cannot draw names the file that can. Otherwise the window's own is kept.
 	local font = self.FontFor and self:FontFor(GameFontNormal, language)
@@ -531,9 +536,9 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 			-- An area under its zone; anything else under the place above it.
 			header = areaKey and (self:GetMapName(zone) or label) or self:GetMapName(self:PlaceAbove(mapID)),
 			label = label,
-			transcript = self:PackLoreText(mapID, areaKey, language) or (entry and entry.full),
+			transcript = words,
 			-- Timed to the recording's own words, so not under another language's.
-			timings = entry and language == (pack.language or "enUS") and times or nil,
+			timings = (spoken or entry) and voiced and times or nil,
 			font = font,
 			bullet = "zone",
 			portrait = self:Portrait(mapID),
