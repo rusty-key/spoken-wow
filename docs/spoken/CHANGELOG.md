@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.8.8-beta.1 — 2026-11-12
 
 - **A voice pack brings its own language.** A pack names its language in its `.toc`, and Spoken
   lists it in the Voice and Fallback menus as soon as the pack is installed, whatever the language
