@@ -73,6 +73,7 @@ describe("validateNewPack", () => {
     ["a version that is not a version", "version", { version: "latest" }],
     ["a version with a space", "version", { version: "1.0 beta" }],
     ["a numeric version", "version", { version: 1 }],
+    ["a control character in a version's build metadata", "version", { version: "1.0.0+a\u0000b" }],
     ["a zero size", "size", { size: 0 }],
     ["a negative size", "size", { size: -5 }],
     ["a fractional size", "size", { size: 1.5 }],

@@ -121,7 +121,14 @@ function fields(r: Record<string, unknown>, errors: Errors): Partial<PackFields>
   else errors.description = "Describe the pack in 1 to 400 characters.";
 
   const version = typeof r.version === "string" ? r.version.trim() : "";
-  if (version.length > 0 && version.length <= 40 && !/\s/.test(version) && compareVersions(version, version) !== null)
+  // compareVersions reads build metadata as anything, and a NUL there fails the insert as a 500.
+  if (
+    version.length > 0 &&
+    version.length <= 40 &&
+    !/\s/.test(version) &&
+    !CONTROL.test(version) &&
+    compareVersions(version, version) !== null
+  )
     out.version = version;
   else errors.version = "Use a version like 1.2.0, without spaces and at most 40 characters.";
 
