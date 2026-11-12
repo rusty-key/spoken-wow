@@ -12,8 +12,7 @@ import Link from "@/components/LocaleLink";
 import NavigationProgress from "@/components/NavigationProgress";
 import SiteHeader from "@/components/SiteHeader";
 import UserMenu from "@/components/UserMenu";
-import { BUILTIN, langTag } from "@/lib/lang";
-import { loadLanguages } from "@/lib/languages/catalogue";
+import { langTag, registeredExtras } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
 import { Contained } from "@/components/Width";
@@ -30,7 +29,8 @@ export const metadata: Metadata = {
  * The root layout, under the language: every page is in exactly one, and says so in
  * <html lang>.
  *
- * pageLang answers an English page without a query or a session read; only another language
+ * pageLang answers an English page without a query or a session read, and the language list for
+ * the browser comes from the in-memory registry; only another language
  * asks whether it is switched on, and whether the visitor is an admin who may see it early.
  *
  * NOTHING HERE IS PRERENDERED, including the four English pages that were (the landing page,
@@ -48,10 +48,10 @@ export default async function RootLayout({
   params: Promise<{ lang: string }>;
 }) {
   const lang = await pageLang(params);
-  // Memoised for a minute, so an English request costs no query. Only the languages beyond the
-  // built-in ones travel to the browser; it has the rest.
-  const builtin = new Set<string>(BUILTIN.map((locale) => locale.code));
-  const extras = (await loadLanguages()).filter((info) => !builtin.has(info.code));
+  // From the registry, never the database: it is filled at boot and on every change, and pageLang
+  // has already awaited a load for a non-English page. An English page therefore renders with the
+  // database down. Only the languages beyond the built-in ones travel to the browser.
+  const extras = registeredExtras();
   return (
     // Dark-only for now: this is a tool for listening to game dialog, and the light
     // palette is untested. The shadcn tokens make flipping it a one-line change.

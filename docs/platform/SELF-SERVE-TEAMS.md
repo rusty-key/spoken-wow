@@ -159,3 +159,9 @@ site. The rest of phase 2 is distribution and stays out.
   like places), and how it reports batch progress.
 - How the language cache is invalidated across pm2 workers (the team memo already uses `NOTIFY`).
 - Order of work and staging.
+
+## Follow-ups
+
+- A later migration sets language `name`, `native`, `bcp47` and `provider` NOT NULL once no pre-0106 release runs.
+- The CLI `apps/web/scripts/seed-voice-sources.mts` knows only the built-in languages; it does not load the registry.
+- Listener state is per module instance, so each process opens two LISTEN connections.

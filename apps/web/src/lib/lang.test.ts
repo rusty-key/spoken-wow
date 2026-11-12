@@ -13,6 +13,7 @@ import {
   langName,
   langTag,
   registerLanguages,
+  registeredExtras,
 } from "./lang";
 
 describe("the site's language list", () => {
@@ -99,6 +100,12 @@ describe("the language registry", () => {
     registerLanguages([{ ...japanese, code: "deDE", name: "Wrong" }]);
     expect(langName("deDE")).toBe("German");
     expect(allLangs()).toEqual(BUILTIN.map((l) => l.code));
+  });
+
+  it("lists the registered extras without the built-ins, from the registry alone", () => {
+    expect(registeredExtras()).toEqual([]);
+    registerLanguages([japanese]);
+    expect(registeredExtras()).toEqual([japanese]);
   });
 
   it("replaces the registered languages on each call", () => {

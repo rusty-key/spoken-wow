@@ -61,6 +61,12 @@ function described(value: unknown): string | null {
   return text && text.length <= MAX_NAME ? text : null;
 }
 
+/** The page sections, baked in by next.config.ts: the standalone bundle cannot read src/app/[lang]. */
+function isPageSection(code: string): boolean {
+  const sections = (process.env.SPOKEN_PAGE_SECTIONS ?? "").split(",");
+  return sections.some((section) => section.toLowerCase() === code.toLowerCase());
+}
+
 /** A new language, switched off. */
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -82,6 +88,10 @@ export async function POST(request: Request) {
       { error: "expected { code: xxXX, name, native, bcp47: xx-XX, provider: xx }" },
       { status: 400 },
     );
+  }
+
+  if (isPageSection(code)) {
+    return Response.json({ error: `${code} would shadow a page` }, { status: 400 });
   }
 
   try {

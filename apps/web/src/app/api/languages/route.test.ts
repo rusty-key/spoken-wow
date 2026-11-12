@@ -92,6 +92,16 @@ describe("POST /api/languages", () => {
     expect((await post({ ...JAPANESE, name: 5 })).status).toBe(400);
   });
 
+  it("refuses a code a case-insensitive rewrite would take for a page", async () => {
+    vi.stubEnv("SPOKEN_PAGE_SECTIONS", "quests,npcs,places");
+    try {
+      expect((await post({ ...JAPANESE, code: "npCS" })).status).toBe(400);
+      expect(await systemRows(`select 1 from "language" where "code" = 'npCS'`)).toHaveLength(0);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("is for site admins", async () => {
     who.role = null;
     expect((await post(JAPANESE)).status).toBe(403);
