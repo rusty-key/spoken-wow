@@ -117,16 +117,28 @@ Expect("the shared profile is as it was, the quests page's language not copied i
 Expect("...and its quests settings", Same(SpokenQuestsSettings.profiles.Shared, questsBefore.profiles.Shared), true)
 Expect("Alice's profile is as it was", Same(SpokenSettings.profiles["Alice - Realm"], spokenBefore.profiles["Alice - Realm"]), true)
 
----------------------------------------------------------------- none chosen
+---------------------------------------------------------------- default from the first character
 Seed(nil)
 spokenBefore = Copy(SpokenSettings)
 spoken, quests, fontSize = Play("Dave")
-Expect("with none chosen, a new character gets a profile of its own", spoken, "Dave - Realm")
+Expect("without a choice, the first character keeps its own profile", spoken, "Dave - Realm")
 Expect("...in the quests module too", quests, "Dave - Realm")
 Expect("...starting from the defaults", fontSize, 16)
+Expect("...and its profile is the default for new characters", SpokenSettings.global.NewCharacterProfile, "Dave - Realm")
 Expect("...and the shared profile is as it was", Same(SpokenSettings.profiles.Shared, spokenBefore.profiles.Shared), true)
 spoken = Play("Bob")
 Expect("...and a character on another profile keeps it", spoken, "Shared")
+
+spoken = Play("Gina")
+Expect("a later new character starts on the first character's profile", spoken, "Dave - Realm")
+Expect("...without making a profile of its own", SpokenSettings.profiles["Gina - Realm"], nil)
+
+---------------------------------------------------------------- profile of their own
+Seed(false)
+spoken, quests, fontSize = Play("Hana")
+Expect("an explicit own-profile choice gives a new character its own profile", spoken, "Hana - Realm")
+Expect("...in the quests module too", quests, "Hana - Realm")
+Expect("...starting from the defaults", fontSize, 16)
 
 ---------------------------------------------------------------- the chosen profile deleted
 Seed("Gone")
@@ -218,14 +230,14 @@ Expect("a character alone on its profile takes the voice language from the quest
 Seed(nil)
 Play("Alice")
 local Options, L = env.Options, env.L
-Expect("with none chosen, the page shows a profile of their own", Options:NewCharacterProfile(), false)
+Expect("the page shows the first character's profile for new characters", Options:NewCharacterProfile(), "Alice - Realm")
 Options:SetNewCharacterProfile("Shared")
 Expect("choosing a profile keeps it for every character", SpokenSettings.global.NewCharacterProfile, "Shared")
 Expect("...and the page shows it", Options:NewCharacterProfile(), "Shared")
 Expect("...and the character choosing stays on its own", env.Addon.db:GetCurrentProfile(), "Alice - Realm")
 Options:DeleteProfile("Shared")
 Expect("deleting the chosen profile shows a profile of their own", Options:NewCharacterProfile(), false)
-Expect("...and forgets the choice", SpokenSettings.global.NewCharacterProfile, nil)
+Expect("...and records the explicit own-profile choice", SpokenSettings.global.NewCharacterProfile, false)
 SpokenSettings.profiles.Shared = Profile(12)
 Expect("...so a profile made later under its name is not the one for new characters", Options:NewCharacterProfile(), false)
 spoken = Play("Gina")
@@ -233,7 +245,7 @@ Expect("...and gives the next new character one", spoken, "Gina - Realm")
 Options = env.Options
 Options:SetNewCharacterProfile("Alice - Realm")
 Options:SetNewCharacterProfile(false)
-Expect("choosing a profile of their own clears the choice", SpokenSettings.global.NewCharacterProfile, nil)
+Expect("choosing a profile of their own records the choice", SpokenSettings.global.NewCharacterProfile, false)
 
 -- The dropdown: Spoken's saved profiles, and each entry told apart from the others by what it is.
 Seed(nil)
@@ -252,7 +264,7 @@ end
 Expect("the dropdown offers a profile of their own and Spoken's saved profiles", table.concat(offered, ", "),
     table.concat({ env.L.OPT_PROFILE_OWN, "Alice - Realm", "Shared", env.L.OPT_PROFILE_OWN }, ", "))
 Expect("...with only one checked, though a profile has the same name as the first", checked, 1)
-Expect("...and that one the first", entries[1] and entries[1].checked, true)
+Expect("...and that one the saved current profile", entries[2] and entries[2].checked, true)
 
 -- A list of tables built afresh on each look is checked by what its entries say.
 local made = _G.SpokenOptionsPanel.layout:Dropdown("Tables", nil,

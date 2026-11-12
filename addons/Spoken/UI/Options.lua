@@ -1057,18 +1057,19 @@ function Options:DeleteProfile(name)
         end
     end
     if Addon.db and Addon.db.global.NewCharacterProfile == name and not Addon:SavedProfile(name) then
-        Addon.db.global.NewCharacterProfile = nil
+        Addon.db.global.NewCharacterProfile = false
     end
 end
 
 --- The profile a character logging in with Spoken for the first time starts on: one of Spoken's
---- saved profiles, or false for a profile of its own.
+--- saved profiles, or false for a profile of its own. The first login makes its current profile
+--- the default, so new characters keep the player's settings without another choice.
 function Options:NewCharacterProfile()
     return Addon:NewCharacterProfile() or false
 end
 
 function Options:SetNewCharacterProfile(name)
-    Addon.db.global.NewCharacterProfile = name or nil
+    Addon.db.global.NewCharacterProfile = name or false
 end
 
 function Options:AddProfiles(layout)
