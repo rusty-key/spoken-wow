@@ -68,6 +68,7 @@ local LOAD_ALL_MODULES = true
 ---@field ItemNameLookupByItemID table<number, string> Maps Item ID to Item name
 ---@field SoundLengthLookupByFileName table<string, number> Maps sound filenames to their duration in seconds
 ---@field WordTimesByFileName? table<string, string> Maps sound filenames to when each word of their line starts, packed as clip.present.timings takes them
+---@field TextByFileName? table<string, string> Maps sound filenames to the words their takes were voiced from
 ---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
 ---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 ---@field GossipFileLookupByNPCSex? table<number, table<number, table<string, string>>> Maps a split Creature ID, the sex it is drawn as (UnitSex) and a gossip line's hash to the file that sex hears
@@ -1154,8 +1155,12 @@ function DataModules:ResolveSoundFile(soundData, instead)
                         soundData.length = length
                         -- Timed to the recording's words, which the window shows only in the
                         -- client's own language.
-                        soundData.timings = language == Language:GetClientLanguage()
+                        local inClientLanguage = language == Language:GetClientLanguage()
+                        soundData.timings = inClientLanguage
                             and module.WordTimesByFileName and module.WordTimesByFileName[fileName] or nil
+                        -- soundData.text stays the window's: matching reads it.
+                        soundData.packText = inClientLanguage
+                            and module.TextByFileName and module.TextByFileName[fileName] or nil
                         soundData.module = module
                         soundData.language = language
                         EasterEggs:Apply(soundData)

@@ -1014,6 +1014,28 @@ do
     handInPlay.scripts.OnClick(handInPlay)
     Expect("...its Play playing it", Spoken:GetNowPlaying() and Spoken:GetNowPlaying().fileName, "7-complete")
     Spoken:StopAll()
+    testPack.TextByFileName = { ["7-complete"] = "Pack words." }
+    Click("Kobold Camp Cleanup")
+    Expect("a pack's words show on the part, in the client's language",
+        page.body.lastParts[#page.body.lastParts].text, "Pack words.")
+    Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
+    testPack.TextByFileName = nil
+    -- Two wordings of one moment: the page follows the one it shows, as Play does.
+    local acceptWords = SpokenQuestsText[KOBOLDS].accept
+    SpokenQuestsText[KOBOLDS].accept = "Back again."
+    testPack.SoundLengthLookupByFileName["7-accept-w1"] = 2
+    testPack.QuestWordingLookup = { ["7-accept"] = { [acceptWords] = "7-accept", ["Back again."] = "7-accept-w1" } }
+    testPack.TextByFileName = { ["7-accept"] = "First wording.", ["7-accept-w1"] = "Second wording." }
+    Click("Kobold Camp Cleanup")
+    Expect("a moment with two wordings shows the pack's words of the one it shows", PartOf(L.QUEST_PART_ACCEPT).text,
+        "Second wording.")
+    local acceptPlay = PartButton(L.QUEST_PART_ACCEPT, "play")
+    acceptPlay.scripts.OnClick(acceptPlay)
+    Expect("...and Play plays that wording", Spoken:GetNowPlaying() and Spoken:GetNowPlaying().fileName, "7-accept-w1")
+    Spoken:StopAll()
+    testPack.TextByFileName, testPack.QuestWordingLookup = nil, nil
+    testPack.SoundLengthLookupByFileName["7-accept-w1"] = nil
+    SpokenQuestsText[KOBOLDS].accept = acceptWords
     SpokenQuestsText[KOBOLDS].complete = words
     local handInWords = SpokenQuestsText[CANDLES].complete
     SpokenQuestsText[CANDLES].complete = nil

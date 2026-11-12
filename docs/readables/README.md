@@ -471,6 +471,10 @@ counted against the page's words as the captions show them: a first page's title
 its words, is left out. The captions follow them only where they show the recording's own
 words. A page without them is estimated, a first page starting its words after the title's share.
 
+Every language's entry, English's included, carries `text`: the take's `shownText`, else the page's
+current words, with paragraphs and tokens as the voice says them (`docs/spoken/CAPTIONS.md`). The
+index and checksums are built from the extracted words and never from it.
+
 The addon finds a page by its title and a checksum of its words, and a client in another
 locale shows neither in English. So a language's `Data/Sounds.lua` also carries that
 language's `index` and `loose`, in the shape of `Spoken_Readables/Data/Books.lua`'s: every page

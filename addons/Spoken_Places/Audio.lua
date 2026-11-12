@@ -378,6 +378,25 @@ function SpokenPlaces:IsVoiceEnabled()
 	return self:Get("voiceEnabled") and true or false
 end
 
+local function ClipIn(pack, mapID, areaKey)
+	if areaKey then
+		local zoneClips = pack.subzones and pack.subzones[mapID]
+		return zoneClips and zoneClips[areaKey]
+	end
+	return pack.zones and pack.zones[mapID]
+end
+
+--- Kept out of the lore tables, which the Text Language switch reads and packs may load after.
+function SpokenPlaces:PackLoreText(mapID, areaKey, language)
+	for _, pack in ipairs(self:GetAudioPacks(language)) do
+		local clip = ClipIn(pack, mapID, areaKey)
+		if clip and type(clip.text) == "string" and clip.text ~= "" then
+			return clip.text
+		end
+	end
+	return nil
+end
+
 -- Path and duration for a lore entry. `areaKey` is a canonical subzone key (see
 -- SpokenPlaces:NormaliseAreaKey), or nil for the zone itself.
 --
@@ -406,16 +425,10 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 	end
 
 	for _, pack in ipairs(candidates) do
-		local clip
-		if areaKey then
-			local zoneClips = pack.subzones and pack.subzones[mapID]
-			clip = zoneClips and zoneClips[areaKey]
-		else
-			clip = pack.zones and pack.zones[mapID]
-		end
+		local clip = ClipIn(pack, mapID, areaKey)
 		if clip and clip.file then
 			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. ".mp3",
-				clip.len, pack, clip.file, clip.times
+				clip.len, pack, clip.file, clip.times, clip.text
 		end
 	end
 
@@ -475,7 +488,7 @@ end
 -- s:{mapID}:{key} -- and it is frozen: it is what the player dedups on, what a report
 -- names, and what audio-history is keyed by.
 function SpokenPlaces:NewLoreSound(mapID, areaKey)
-	local path, length, pack, fileName, times = self:GetAudioClip(mapID, areaKey)
+	local path, length, pack, fileName, times, said = self:GetAudioClip(mapID, areaKey)
 	if not path then
 		return nil
 	end
@@ -498,6 +511,11 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 		end
 	end
 	language = language or pack.language or "enUS"
+	-- The playing take's own words where it is in the language read, as its times count them; else a
+	-- pack's of that language, untimed.
+	local voiced = language == (pack.language or "enUS")
+	local spoken = voiced and type(said) == "string" and said ~= "" and said or nil
+	local words = spoken or (not voiced and self:PackLoreText(mapID, areaKey, language)) or (entry and entry.full)
 	-- Captions set a font file, which has none of the font object's fallbacks: lore in a script
 	-- the client's file cannot draw names the file that can. Otherwise the window's own is kept.
 	local font = self.FontFor and self:FontFor(GameFontNormal, language)
@@ -518,9 +536,9 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 			-- An area under its zone; anything else under the place above it.
 			header = areaKey and (self:GetMapName(zone) or label) or self:GetMapName(self:PlaceAbove(mapID)),
 			label = label,
-			transcript = entry and entry.full,
+			transcript = words,
 			-- Timed to the recording's own words, so not under another language's.
-			timings = entry and language == (pack.language or "enUS") and times or nil,
+			timings = (spoken or entry) and voiced and times or nil,
 			font = font,
 			bullet = "zone",
 			portrait = self:Portrait(mapID),

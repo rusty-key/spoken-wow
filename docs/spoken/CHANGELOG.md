@@ -4,6 +4,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
+  lines it voices, so new audio no longer plays under old text. This applies when the pack is in
+  the language you read; a German player with English voices keeps German text. In English, quest
+  text now says "Adventurer" where the voice does, rather than your character's name.
+  *([rusty-key](https://github.com/rusty-key))*
 - **A voice pack brings its own language.** A pack names its language in its `.toc`, and Spoken
   lists it in the Voice and Fallback menus as soon as the pack is installed, whatever the language
   is: Italian, Polish, Vietnamese, Hebrew. A pack can also give the language's name and a font, which

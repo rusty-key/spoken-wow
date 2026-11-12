@@ -95,6 +95,18 @@ Other caption text follows the recording language.
 
 ## Timing and text
 
+A sound pack carries the words of the lines it voices, and they win over the module's own text and
+the game window's, on captions and Compendium pages, where the pack's language is the language the
+player reads. The words are what the take saved when it was cut (`take."shownText"`): the line's
+normal text with its tokens as the voice says them, never a pencil rewrite, which can hold
+respellings. A take from before that column ships the line's current text instead, which may have
+moved on since its take. A text edit with no new take therefore does not reach players on a line
+whose take saved its words, until the line is revoiced. A brand new place or boss still needs a core
+release, because the module has to know the entry.
+
+The words are for display only. Matching a game string to a line keeps reading the modules' own
+tables, and `clip.text` stays the window's string.
+
 A recording the site made with ElevenLabs after word times were kept carries them in its sound
 pack: one start per word of the text the take was cut from (`take."wordTimes"`), packed into one
 string per clip, which `clip.present.timings` takes as it is and the captions unpack when the clip plays. Quests, gossip, places and

@@ -174,6 +174,9 @@ A pack is an addon folder with `Data/Sounds.lua`, which registers itself in
 - An entry may carry `times`, its take's word times packed as `clip.present.timings` takes them. The captions
   follow them only where they show the recording's own words. The field is optional, so it did
   not change `PACK_FORMAT`.
+- An entry may carry `text`, the words its take was voiced from, else the line's current ones.
+  `PackLoreText` shows them over the lore where the pack is in the Text Language
+  (`docs/spoken/CAPTIONS.md`). The lore tables are not changed. It did not change `PACK_FORMAT` either.
 - No clip stands in for a missing one. A quest line used to, and players reported the lore as
   wrong.
 

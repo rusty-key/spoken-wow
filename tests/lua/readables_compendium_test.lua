@@ -552,6 +552,27 @@ do
     stub.world.playerName, stub.world.playerClass, stub.world.unitSex = nil, nil, 2
     B:ShowReadables(KURDRAN)
 end
+do
+    local first = SpokenReadablesData.books[KURDRAN].pages[1]
+    local packs, locale = _G.SpokenReadablesAudioPacks, _G.GetLocale
+    local corpus = SpokenReadablesData.pages[first].text
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio = { version = 1, language = "enUS",
+        pages = { [first] = { file = tostring(first), len = 2, text = "Newer pack words." } } } }
+    B:ShowReadables(KURDRAN)
+    Expect("an English pack's words show on an English client", page.body.text.text:sub(1, 17), "Newer pack words.")
+    Expect("...leaving the corpus's words, which matching reads", SpokenReadablesData.pages[first].text, corpus)
+    Expect("...and caption the recording", (B:CaptionText(first, "enUS", "Newer pack words.")), "Newer pack words.")
+    _G.GetLocale = function() return "esES" end
+    B:ShowReadables(KURDRAN)
+    Expect("...but not on a Spanish client", page.body.text.text:sub(1, 17) == "Newer pack words.", false)
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio_itIT = { version = 1, language = "itIT",
+        pages = { [first] = { file = tostring(first), len = 2, text = "Parole italiane." } } } }
+    _G.GetLocale = function() return "enUS" end
+    Expect("an Italian voice on an English client still captions Italian", (B:CaptionText(first, "itIT", "Parole italiane.")),
+        "Parole italiane.")
+    _G.SpokenReadablesAudioPacks, _G.GetLocale = packs, locale
+    B:ShowReadables(KURDRAN)
+end
 -- On a client in another language, a page is in that language where Spoken has its words: a pack in
 -- the client's language, or the page as the client showed it.
 do

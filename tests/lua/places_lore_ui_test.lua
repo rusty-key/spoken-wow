@@ -204,6 +204,12 @@ _G.SpokenCompendium:Hide()
 Z:ToggleLoreWindow()
 Expect("opening it lands on where the player stands", page.title.text, "Durotar")
 Expect("...the story in the spellbook's ink", page.body.ink and page.body.ink[1], 0.24)
+local noPackWords = Z.PackLoreText
+Z.PackLoreText = function(_, mapID, _, language) return mapID == 1411 and language == Z:GetLanguage() and "Pack words." or nil end
+Z:RefreshLoreWindow()
+Expect("a pack's words in the language read show on the page", page.body.text:GetText(), "Pack words.")
+Z.PackLoreText = noPackWords
+Z:RefreshLoreWindow()
 Expect("...with Play and Report for it", page.target[1] == 1411 and page.play:IsShown() and page.report:IsShown(), true)
 -- Hide Report Buttons is Spoken's; here, a Spoken that answers it, and the redraw its
 -- REPORT_SETTINGS_CHANGED runs.

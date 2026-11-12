@@ -696,7 +696,7 @@ local function ShowEntry()
 			-- Rows are keyed by the canonical form already, so this needs no normalising --
 			-- unlike the map panel, which starts from the name the client reports.
 			page:Show({ title = name, subtitle = line, icon = AreaIcon(mapID, key),
-				text = entry.full or entry.short or "", audio = { mapID, key }, report = { mapID, key } })
+				text = SpokenPlaces:LoreText(mapID, key, entry), audio = { mapID, key }, report = { mapID, key } })
 			return
 		end
 	end
@@ -709,7 +709,7 @@ local function ShowEntry()
 			contribute = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 		return
 	end
-	page:Show({ title = name, subtitle = subtitle, text = entry.full or entry.short or "",
+	page:Show({ title = name, subtitle = subtitle, text = SpokenPlaces:LoreText(mapID, nil, entry),
 		audio = { mapID, nil }, report = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 end
 

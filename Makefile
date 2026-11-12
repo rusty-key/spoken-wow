@@ -108,6 +108,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_greeting_test.lua
 	@$(LUA) tests/lua/places_pending_test.lua
 	@$(LUA) tests/lua/quests_source_test.lua
+	@$(LUA) tests/lua/quests_pack_text_test.lua
 	@$(LUA) tests/lua/quest_npc_silence_test.lua
 	@$(LUA) tests/lua/quest_greeting_first_test.lua
 	@$(LUA) tests/lua/data_modules_test.lua

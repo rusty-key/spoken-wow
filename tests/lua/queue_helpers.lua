@@ -101,6 +101,8 @@ function M.NewZoneLore()
         showMapPanel = true, panelSide = "RIGHT",
         panelWidth = 320, fontSize = 12, highlightOpacity = 0.35 }
     local Z = { printed = {}, heard = {}, zoneChanged = {}, clientLocale = "enUS" }
+    -- Audio.lua's, which is not loaded here: no pack carries words.
+    Z.PackLoreText = function() return nil end
     -- The addon's real English strings, so a label a file reads (a minimap entry, a button,
     -- a settings row) is the one the client would show rather than nil. Language.lua is what
     -- normally takes the table, and it is not loaded here.

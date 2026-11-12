@@ -52,6 +52,49 @@ ENGLISH.zones[MAP] = { file = "en-durotar", len = 5, times = "0 .5 1" }
 local GERMAN = Pack("SpokenPlacesAudio_deDE", "deDE", { [BOTH] = { file = "de-valley", len = 3, times = "0 1" } })
 local FRENCH = Pack("SpokenPlacesAudio_frFR", "frFR", { [ONLY_ENGLISH] = { file = "fr-senjin", len = 3 } })
 
+---------------------------------------------------------------- the words a pack carries
+do
+    local function Worded(addon, language, text)
+        local pack = Pack(addon, language, { [BOTH] = { file = addon, len = 3, text = text } })
+        pack.zones[MAP] = { file = addon, len = 5, text = text and (text .. " zone") }
+        return pack
+    end
+    local P = Install({ Worded("SpokenPlacesAudio_old", "enUS"), Worded("SpokenPlacesAudio", "enUS", "Pack words."),
+        Worded("SpokenPlacesAudio_deDE", "deDE", "Deutsche Packung.") })
+    stub.SetAddOns({ { folder = "SpokenPlacesAudio_deDE", meta = { ["X-SpokenPlaces-Language"] = "deDE" } } })
+    P:RegisterLoreData("enUS", "zones", { [MAP] = { name = "Durotar", full = "English zone lore." } })
+    P:RegisterLoreData("enUS", "subzones", { [MAP] = { [BOTH] = { full = "English valley lore." } } })
+    P:RegisterLoreData("deDE", "subzones", { [MAP] = { [BOTH] = { full = "Deutsche Geschichte." } } })
+    Voice("enUS")
+    Expect("a pack's words caption a zone in its language", P:NewLoreSound(MAP, nil).present.transcript, "Pack words. zone")
+    Expect("...and an area, from the pack that has them beside one that has not",
+        P:NewLoreSound(MAP, BOTH).present.transcript, "Pack words.")
+    Expect("...leaving the lore table alone, which the switch of language reads",
+        P:GetLore(MAP).full, "English zone lore.")
+    Voice("deDE")
+    Expect("the words stay the language the player reads, over a voice in another",
+        P:NewLoreSound(MAP, BOTH).present.transcript, "Pack words.")
+    Expect("PackLoreText answers for a language", P:PackLoreText(MAP, BOTH, "deDE"), "Deutsche Packung.")
+    Expect("...and nothing for a place no pack words", P:PackLoreText(MAP, "nowhere", "enUS"), nil)
+    Voice("enUS")
+    local function Timed(addon, text)
+        return Pack(addon, "enUS", { [BOTH] = { file = addon, len = 3, text = text, times = "0 1" },
+            ["pack only"] = { file = addon, len = 3, text = "Only the pack.", times = "0 1 2" } })
+    end
+    local T = Install({ Timed("SpokenPlacesAudio_a", "Take A words."), Timed("SpokenPlacesAudio_b", "Take B words.") })
+    T:RegisterLoreData("enUS", "subzones", { [MAP] = { [BOTH] = { full = "English valley lore." } } })
+    T:SetActiveAudioPack("SpokenPlacesAudio_b")
+    Expect("the caption's words are the playing take's, beside another pack of the language",
+        T:NewLoreSound(MAP, BOTH).present.transcript, "Take B words.")
+    Expect("...timed by that take", T:NewLoreSound(MAP, BOTH).present.timings, "0 1")
+    Expect("an area only the pack has words for is timed by its take",
+        T:NewLoreSound(MAP, "pack only").present.timings, "0 1 2")
+    local Q = Install({ Pack("SpokenPlacesAudio", "enUS", { [BOTH] = { file = "a", len = 3 } }) })
+    Q:RegisterLoreData("enUS", "subzones", { [MAP] = { [BOTH] = { full = "English valley lore." } } })
+    Expect("a pack from before it carried words leaves core's", Q:NewLoreSound(MAP, BOTH).present.transcript,
+        "English valley lore.")
+end
+
 ---------------------------------------------------------------- A. the active pack, then English
 -- Spoken's registry reads every pack's .toc once, so a change to the AddOns list is a new session.
 local function Packs(list)

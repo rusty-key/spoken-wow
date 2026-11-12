@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { normaliseText, spokenText, isGeneratable, spokenWithTitle } from "./text.mjs";
+import { normaliseText, shownPage, spokenText, isGeneratable, spokenWithTitle } from "./text.mjs";
 
 test("CRLF becomes a newline", () => {
   assert.equal(normaliseText("Ola Morgan,\r\n\r\nOs negocios"), "Ola Morgan,\n\nOs negocios");
@@ -103,4 +103,16 @@ test("the comparison is not limited to ASCII", () => {
 test("no title, just the spoken page", () => {
   assert.equal(spokenWithTitle("", "Dear sir,\n\nHello."), "Dear sir, Hello.");
   assert.equal(spokenWithTitle("   ", "Dear sir,"), "Dear sir,");
+});
+
+test("shownPage keeps a page's paragraphs and cleans what the narrator would not say", () => {
+  assert.equal(shownPage("First.$B$BSecond &amp; <nombre>last.", "enUS"), "First.\n\nSecond &  last.");
+});
+
+test("shownPage lays a signed page out as lines", () => {
+  assert.equal(shownPage("<HTML><BODY><P>One</P><BR/><P>Two</P></BODY></HTML>", "enUS").includes("<"), false);
+});
+
+test("shownPage says tokens as the voice does", () => {
+  assert.equal(shownPage("Hallo, $N.", "deDE"), "Hallo, Abenteurer.");
 });

@@ -260,6 +260,44 @@ def test_word_times_ship_for_the_clips_a_pack_carries(tmp_path):
     assert report["tableRows"]["word_times_table"] == 1
 
 
+def _text_table(tmp_path, take_text):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    with open(os.path.join(store, "take-text.json"), "w", encoding="utf-8") as f:
+        json.dump(take_text, f)
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    with open(tmp_path / "dist" / "Mod" / "generated" / "text_table.lua", encoding="utf-8") as f:
+        return f.read(), report
+
+
+def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
+    # The gossip clip is not in this store, so its text would be dead weight.
+    lua, report = _text_table(tmp_path, {"quests/5-accept": "Pack words.", "gossip/abc123": "No."})
+
+    assert "Mod.TextByFileName = " in lua
+    assert '["5-accept"] = "Pack words."' in lua
+    assert 'GetClientLanguage() ~= "enUS" then return end' in lua
+    assert "abc123" not in lua
+    assert "generated\\text_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["text_table"] == 1
+
+
+def test_text_survives_lua_quoting(tmp_path):
+    # A raw newline or an unescaped quote stops the whole pack from loading.
+    lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
+
+    assert '\\"hi\\"' in lua
+    assert "\\n" in lua
+    assert "\\\\x" in lua
+    assert "Привет" in lua
+    assert "hi\"\n" not in lua
+
+
+def test_a_store_without_text_ships_an_empty_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    assert report["tableRows"]["text_table"] == 0
+
+
 def test_a_store_without_word_times_ships_an_empty_table(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 
