@@ -17,7 +17,7 @@ import { NAV } from "@/components/landing/nav";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
 import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
-import { type BuiltinLang, LOCALES, type Lang } from "@/lib/lang";
+import { BUILTIN, type BuiltinLang, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { packDownloads, packFor, type Section } from "@/lib/packs";
 import "@/components/landing/landing.css";
@@ -80,7 +80,7 @@ function installRows(lang: Lang): InstallRow[] {
   return rows;
 }
 
-const LANGUAGES: InstallLanguage[] = LOCALES.map(({ code, name }) => ({
+const LANGUAGES: InstallLanguage[] = BUILTIN.map(({ code, name }) => ({
   code,
   name,
   curseforge: META[code] ?? null,

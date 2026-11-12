@@ -11,7 +11,7 @@
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
-import { CODES, type Lang } from "@/lib/lang";
+import { allLangs, type Lang } from "@/lib/lang";
 
 const statement = {
   ...defaultStatements,
@@ -163,7 +163,7 @@ export function can(viewer: Viewer | null, capability: Capability, lang: Lang): 
  * for somebody signed out.
  */
 export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[] {
-  return CODES.filter((lang) => can(viewer, capability, lang));
+  return allLangs().filter((lang) => can(viewer, capability, lang));
 }
 
 /**
@@ -172,7 +172,7 @@ export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[
  * every such action is paid for with the caller's own.
  */
 export function spendsCredits(viewer: Viewer | null): boolean {
-  return CODES.some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
+  return allLangs().some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
 }
 
 /**

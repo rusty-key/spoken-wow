@@ -6,7 +6,6 @@ import {
   allLangs,
   BASE_LANG,
   BUILTIN,
-  CODES,
   clientLang,
   elevenLabsCode,
   isClientLang,
@@ -62,7 +61,7 @@ describe("the site's language list", () => {
 
   it("starts from English", () => {
     expect(BASE_LANG).toBe("enUS");
-    expect(CODES[0]).toBe(BASE_LANG);
+    expect(BUILTIN[0].code).toBe(BASE_LANG);
   });
 
   it("accepts a code only in its exact spelling", () => {
@@ -93,13 +92,13 @@ describe("the language registry", () => {
     expect(isClientLang("jaJP")).toBe(false);
     expect(clientLang("jaJP")).toBeNull();
     expect(allLangs().at(-1)).toBe("jaJP");
-    expect(allLangs().slice(0, CODES.length)).toEqual([...CODES]);
+    expect(allLangs().slice(0, BUILTIN.length)).toEqual(BUILTIN.map((l) => l.code));
   });
 
   it("never lets a registration overwrite a built-in", () => {
     registerLanguages([{ ...japanese, code: "deDE", name: "Wrong" }]);
     expect(langName("deDE")).toBe("German");
-    expect(allLangs()).toEqual([...CODES]);
+    expect(allLangs()).toEqual(BUILTIN.map((l) => l.code));
   });
 
   it("replaces the registered languages on each call", () => {

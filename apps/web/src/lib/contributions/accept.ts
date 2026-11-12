@@ -40,7 +40,7 @@ import {
   type NpcRowKind,
   type NpcResolution,
 } from "@/lib/npc/store";
-import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, allLangs, isLang, type Lang } from "@/lib/lang";
 import type { CorpusLine } from "@/lib/corpus";
 import { isGeneratable, mintBookId, mintPageId } from "@/lib/readables/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
@@ -966,7 +966,7 @@ export async function resolveContribution(
   // Read before the client is held: a refresh of the memo needs a connection of its own. Every
   // language, since the contribution's is not known yet: one the other worker has just given a
   // team would otherwise be logged under none.
-  const owners = await freshOwners(CODES);
+  const owners = await freshOwners(allLangs());
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles

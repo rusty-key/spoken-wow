@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { GrantRow } from "@/lib/grants/store";
-import { CODES, isLang, langName, type Lang } from "@/lib/lang";
+import { allLangs, isLang, langName, type Lang } from "@/lib/lang";
 import { CAPABILITIES, capabilityLabel, type Capability } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
@@ -99,7 +99,7 @@ export default function GrantCell({
           ) : null}
         </div>
       ))}
-      {CODES.some((lang) => offer(lang).length > 0) ? (
+      {allLangs().some((lang) => offer(lang).length > 0) ? (
         <GrantPopover
           open={open === "new"}
           onOpenChange={(next) => setOpen(next ? "new" : null)}
@@ -166,7 +166,7 @@ function GrantPicker({
   busy: boolean;
   onPick: (lang: Lang, capabilities: Capability[]) => void;
 }) {
-  const langs = CODES.filter((code) => offer(code).length > 0);
+  const langs = allLangs().filter((code) => offer(code).length > 0);
   const [lang, setLang] = useState(fixed ?? langs[0]);
   const [picked, setPicked] = useState<ReadonlySet<Capability>>(new Set());
   const offered = lang ? offer(lang) : [];
