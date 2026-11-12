@@ -564,7 +564,7 @@ function Skin:ConfigurePortrait()
 end
 
 function Skin:ConfigureActions()
-    self.row = Actions:HeaderControls(self.frame, self.controls, { self.play, self.skip }, self.clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls, self.buttons, self.clip)
     self:LayoutControls()
 end
 

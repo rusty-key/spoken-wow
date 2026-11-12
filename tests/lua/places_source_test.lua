@@ -107,7 +107,7 @@ Z.GetMapName = GetMapName
 -- the minimap menu and /spz; a button on the player that opened a window over the thing being
 -- read was one way too many.
 Expect("...and Report its only action", #F.frame.actions.buttons, 1)
-Expect("...but Report in the header after Skip", F.row and F.row[3] == F.frame.actions.buttons[1]
+Expect("...but Report in the header after Skip", F.row and F.row[4] == F.frame.actions.buttons[1]
     and F.frame.actions.buttons[1]:GetParent() == F.controls, true)
 
 env, Z = Boot(); Spoken = _G.Spoken
