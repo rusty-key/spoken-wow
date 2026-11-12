@@ -266,6 +266,9 @@ function DialogPlayButton:Setup()
     if _G.Spoken and Spoken.CreateRoundButton then
         local mute = Spoken:CreateRoundButton(UIParent, "icon", nil, SPEAKER_ICON)
         mute:SetSize(MUTE_SIZE, MUTE_SIZE)
+        -- RoundPicture normally trims picture edges for portraits; the speaker's waves live
+        -- at the edge, so keep the complete texture here.
+        mute.glyph:SetTexCoord(0, 1, 0, 1)
         if mute.SetFrameStrata then
             mute:SetFrameStrata("DIALOG")
         end
