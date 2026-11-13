@@ -1,9 +1,9 @@
 /**
  * The role model, shared by the server and the browser so the list of roles is defined once.
  *
- * Three global roles: a `member` is anyone who registered, a `pack_author` may also submit
- * community voice packs for approval, and an `admin` may do anything, including manage users
- * and voices. Everything in between -- writing a language, cutting
+ * Two global roles: a `member` is anyone who registered, and an `admin` may do anything,
+ * including manage users and voices and approve community voice packs, which any member may
+ * submit. Everything in between -- writing a language, cutting
  * takes in it, looking after it -- is a grant for that language (see "Per language" below),
  * English included. Registration assigns `member`; the first `admin` is promoted with SQL
  * (see deploy/README.md), and every grant and promotion after that goes through /admin.
@@ -29,8 +29,6 @@ export const ac = createAccessControl(statement);
 
 export const roles = {
   member: ac.newRole({}),
-  // No statements: submitting a pack is gated by canSubmitPacks, not by the access-control plugin.
-  pack_author: ac.newRole({}),
   // Spreading adminAc keeps the admin plugin's own permissions (user: set-role, list, ...).
   // Declaring a custom `admin` role replaces the built-in one, so without this the admin
   // loses access to the very page that hands out roles.
@@ -41,14 +39,13 @@ export const roles = {
   }),
 };
 
-export const ROLES = ["member", "admin", "pack_author"] as const;
+export const ROLES = ["member", "admin"] as const;
 
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABELS: Record<Role, string> = {
   member: "Member",
   admin: "Admin",
-  pack_author: "Pack author",
 };
 
 export function isRole(value: unknown): value is Role {
@@ -64,11 +61,6 @@ export function roleLabel(role: string | null | undefined): string {
 /** The one definition of who may reach /admin. */
 export function isAdmin(role: string | null | undefined): boolean {
   return role === "admin";
-}
-
-/** The one definition of who may submit community voice packs. */
-export function canSubmitPacks(role: string | null | undefined): boolean {
-  return role === "pack_author" || role === "admin";
 }
 
 /** The one definition of who may change the global generation settings. */

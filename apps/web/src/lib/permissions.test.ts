@@ -9,7 +9,6 @@ import {
   worksIn,
   canConfigureGeneration,
   canManageVoices,
-  canSubmitPacks,
   isAdmin,
   isRole,
   roleLabel,
@@ -57,13 +56,15 @@ describe("isRole", () => {
     expect(isRole("root")).toBe(false);
     // Retired by 0045, which turned it into English grants.
     expect(isRole("collaborator")).toBe(false);
+    // Retired by 0107, when any member could submit packs.
+    expect(isRole("pack_author")).toBe(false);
     expect(isRole(null)).toBe(false);
   });
 });
 
 describe("roleLabel", () => {
   it("names each role as the UI does, a missing one as member and an unknown one as stored", () => {
-    expect(roleLabel("pack_author")).toBe("Pack author");
+    expect(roleLabel("member")).toBe("Member");
     expect(roleLabel("admin")).toBe("Admin");
     expect(roleLabel(null)).toBe("Member");
     expect(roleLabel("root")).toBe("root");
@@ -199,18 +200,3 @@ describe("per-language permissions", () => {
   });
 });
 
-describe("canSubmitPacks", () => {
-  it("admits pack authors and admins only", () => {
-    expect(canSubmitPacks("pack_author")).toBe(true);
-    expect(canSubmitPacks("admin")).toBe(true);
-    expect(canSubmitPacks("member")).toBe(false);
-    expect(canSubmitPacks(null)).toBe(false);
-    expect(canSubmitPacks(undefined)).toBe(false);
-  });
-
-  it("knows pack_author as a role", () => {
-    expect(isRole("pack_author")).toBe(true);
-    expect(ROLES).toContain("pack_author");
-    expect(roles.pack_author).toBeDefined();
-  });
-});
