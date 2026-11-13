@@ -138,6 +138,7 @@ Spoken:StopAll()
 ---------------------------------------------------------------- the combat gate
 env, Z = Boot(); Spoken = _G.Spoken
 world.inCombat = true
+Z:Set("autoplayStopInCombat", true)
 local held = Z:NewLoreSound(1411, nil)
 held.autoplay = true
 Expect("an autoplayed clip is admitted", Z:EnqueueLore(held), true)
@@ -182,7 +183,8 @@ Expect("with the setting off, combat leaves an autoplayed clip speaking", Spoken
 Spoken:StopAll()
 held = Z:NewLoreSound(1411, nil); held.autoplay = true
 Z:EnqueueLore(held)
-Expect("...but one not yet started still waits for the fight", Spoken:GetHeldReason(held), "Waiting for combat to end.")
+Expect("...with the setting off, one not yet started is not held", Spoken:GetHeldReason(held), nil)
+Expect("...and it continues playing in combat", Spoken:IsPlaying(held), true)
 Spoken:StopAll()
 world.inCombat = false
 
