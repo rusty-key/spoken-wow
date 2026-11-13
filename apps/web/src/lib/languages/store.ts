@@ -42,6 +42,12 @@ export async function isEnabled(lang: Lang): Promise<boolean> {
   return rows[0]?.enabled === true;
 }
 
+/** Whether a language's team admins appoint its text maintainers. False for a language with no row. */
+export async function textByTeam(lang: string): Promise<boolean> {
+  const rows = await query<{ textByTeam: boolean }>(`select "textByTeam" from "language" where "code" = $1`, [lang]);
+  return rows[0]?.textByTeam === true;
+}
+
 /**
  * Recorded in the activity log only when the state actually flips. The admin page sends the
  * whole switch's value, so a second click on a stale page, or a retry, would otherwise log a
