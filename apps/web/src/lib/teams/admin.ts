@@ -1,6 +1,8 @@
 /** Team writes. Nothing here checks the viewer; the caller has. */
 import "server-only";
 
+import type { ClientBase } from "pg";
+
 import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
 import { addGrants, userByEmail } from "@/lib/grants/store";
@@ -18,13 +20,14 @@ export type TeamSummary = {
 };
 
 /**
- * A refusal whose message is fit to show: 409 for a language with a running job, which would
- * commit under the old team, 400 for anything else.
+ * A refusal whose message is fit to show: 409 for a conflict with what exists (a language with a
+ * running job, which would commit under the old team; a taken name), 404 for something missing,
+ * 400 for anything else.
  */
 export class TeamError extends Error {
   constructor(
     message: string,
-    readonly status: 400 | 409 = 400,
+    readonly status: 400 | 404 | 409 = 400,
   ) {
     super(message);
     this.name = "TeamError";
@@ -32,7 +35,7 @@ export class TeamError extends Error {
 }
 
 /** The same shape the "team"."slug" check enforces. */
-const SLUG = /^[a-z][a-z0-9-]{1,40}$/;
+export const SLUG = /^[a-z][a-z0-9-]{1,40}$/;
 
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
@@ -129,24 +132,7 @@ export async function renameTeam(team: TeamId, name: string, actorId: string): P
 
 /** Hands `lang`, with every row of it, to `team`; returns the rows moved. */
 export async function handOver(lang: Lang, team: TeamId, actorId: string): Promise<number> {
-  let moved: { rows: number; from: string; to: string };
-  try {
-    moved = await withTeam(ALL_TEAMS, async (client) => {
-      const { rows: slugs } = await client.query<{ from: string | null; to: string | null }>(
-        `select (select "slug" from "team" where "id" = team_of_lang($1)) as "from",
-                (select "slug" from "team" where "id" = $2) as "to"`,
-        [lang, team],
-      );
-      const { rows } = await client.query<{ moved: number }>(`select move_team_lang($1, $2) as "moved"`, [lang, team]);
-      return { rows: rows[0].moved, from: slugs[0].from ?? "", to: slugs[0].to ?? "" };
-    });
-  } catch (error) {
-    // 55006 is a running job; P0001 is any other refusal of move_team_lang.
-    const code = (error as { code?: string }).code;
-    if (code === "55006") throw new TeamError((error as Error).message, 409);
-    if (code === "P0001") throw new TeamError((error as Error).message);
-    throw error;
-  }
+  const moved = await withTeam(ALL_TEAMS, (client) => moveLang(client, lang, team));
   // Before the log row, which takes its team from the memo: it belongs to the new owner.
   forgetTeams();
   await recordActivity({
@@ -156,7 +142,33 @@ export async function handOver(lang: Lang, team: TeamId, actorId: string): Promi
     subject: moved.to,
     detail: { from: moved.from, to: moved.to },
   });
-  return moved.rows;
+  return moved.moved;
+}
+
+/**
+ * move_team_lang on the caller's client, which must act as ALL_TEAMS, with the slugs it moved
+ * between; the caller forgets the memo once that commits.
+ */
+export async function moveLang(
+  client: ClientBase,
+  lang: string,
+  team: TeamId,
+): Promise<{ moved: number; from: string; to: string }> {
+  try {
+    const { rows: slugs } = await client.query<{ from: string | null; to: string | null }>(
+      `select (select "slug" from "team" where "id" = team_of_lang($1)) as "from",
+              (select "slug" from "team" where "id" = $2) as "to"`,
+      [lang, team],
+    );
+    const { rows } = await client.query<{ moved: number }>(`select move_team_lang($1, $2) as "moved"`, [lang, team]);
+    return { moved: rows[0].moved, from: slugs[0].from ?? "", to: slugs[0].to ?? "" };
+  } catch (error) {
+    // 55006 is a running job; P0001 is any other refusal of move_team_lang.
+    const code = (error as { code?: string }).code;
+    if (code === "55006") throw new TeamError((error as Error).message, 409);
+    if (code === "P0001") throw new TeamError((error as Error).message);
+    throw error;
+  }
 }
 
 /** Live takes per language, which a hand-over moves too. */
