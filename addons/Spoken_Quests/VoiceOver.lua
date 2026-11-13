@@ -483,6 +483,7 @@ local defaults = {
     },
     char = {
         hasSeenGossipForNPC = {},
+        ignoredGossipNPCs = {},
     }
 }
 
@@ -1360,6 +1361,45 @@ function Addon:MarkGreetingHeard(guid, text)
     HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
 end
 
+--- Keyed by creature ID, so one choice covers every spawn.
+function Addon:IsGossipNPCIgnored(guid)
+    return guid ~= nil and self.db.char.ignoredGossipNPCs[SpeakerKey(guid)] == true
+end
+
+--- Only an NPC a pack voices, so the toggle never sits on a window Spoken has nothing to read for.
+function Addon:CanIgnoreNPC(clip)
+    return clip.unitGUID ~= nil and Enums.SoundEvent:IsGossipEvent(clip.event) and DataModules:HasGossipFor(clip)
+end
+
+--- A clip-shaped record stands in when nothing has been queued for the NPC yet.
+function Addon:CurrentGossipClip()
+    local event = GetVisibleDialogueEvent()
+    local speech = SPEECH_EVENTS[event]
+    local guid = speech and Utils:GetNPCGUID()
+    if not guid then
+        return nil
+    end
+    if currentGossipSoundData and currentGossipSoundData.unitGUID == guid
+        and Enums.SoundEvent:IsGossipEvent(currentGossipSoundData.event) then
+        return currentGossipSoundData, event
+    end
+    return { event = speech.sound, unitGUID = guid, name = Utils:GetNPCName(),
+        unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }, event
+end
+
+function Addon:SetGossipNPCMuted(guid, name, muted)
+    local key = SpeakerKey(guid)
+    self.db.char.ignoredGossipNPCs[key] = muted or nil
+    if muted then
+        for _, clip in ipairs(Player:Queued()) do
+            if Enums.SoundEvent:IsGossipEvent(clip.event) and clip.unitGUID and SpeakerKey(clip.unitGUID) == key then
+                Player:Remove(clip)
+            end
+        end
+    end
+    print("|cFF00CCFFSpoken Gossip:|r " .. format(muted and L.MUTE_NPC_DONE or L.UNMUTE_NPC_DONE, name or "NPC"))
+end
+
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options
 function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
     local npcKey = guid or "unknown"
@@ -1367,6 +1407,11 @@ function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
     -- Asked for by name, so having heard it before does not stand in the way.
     if manual then
         return true
+    end
+
+    if self:IsGossipNPCIgnored(guid) then
+        Debug:Note("gossip", npcKey .. ":ignored", "line from %s not read: this NPC is muted", npcKey)
+        return
     end
 
     if self:IsNever() then
@@ -1458,6 +1503,9 @@ function Addon:MuteGreetingOnClick(button)
     local unit = "mouseover"
     local guid = NotSecret(UnitGUID(unit))
     if not guid or NotSecret(UnitCanAttack("player", unit)) or NotSecret(UnitIsDead(unit)) then
+        return
+    end
+    if self:IsGossipNPCIgnored(guid) then
         return
     end
     if self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Always and self:HasHeardAnyGreeting(guid) then

@@ -193,6 +193,48 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.Advance(10)
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+
+    VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
+    Talk()
+    local muted = VO.Player:Current()
+    Played(played)
+    local muteButton = VO.DialogPlayButton.muteButton
+    Expect(client .. ": the player has no Mute action", muted.present.actions[3], nil)
+    Expect(client .. ": the NPC dialog offers Mute", muteButton:IsShown(), true)
+    Expect(client .. ": the dialog uses the speaker body", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    Expect(client .. ": the speaker texture keeps its waves", muteButton.muteWaves:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-ON]])
+    Expect(client .. ": an audible NPC has no mute slash", muteButton.muteSlash:IsShown(), false)
+    local popupsBeforeMute = #stub.popups
+    muteButton:Click()
+    Expect(client .. ": Mute does not ask for confirmation", #stub.popups, popupsBeforeMute)
+    Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
+    Expect(client .. ": the NPC is recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID), true)
+    Expect(client .. ": the dialog keeps the toggle after muting", muteButton:IsShown(), true)
+    Expect(client .. ": a muted NPC's line can still be asked for", VO.DialogPlayButton.button:IsShown(), true)
+    Expect(client .. ": muting keeps the speaker body", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    Expect(client .. ": the silenced NPC shows a slash", muteButton.muteSlash:IsShown(), true)
+    muteButton:Click()
+    Expect(client .. ": clicking the speaker unmutes the NPC", VO.Addon:IsGossipNPCIgnored(world.npcGUID), false)
+    Expect(client .. ": unmuting keeps the speaker body", muteButton.glyph:GetTexture(),
+        [[Interface\COMMON\VOICECHAT-SPEAKER]])
+    Expect(client .. ": unmuting removes the slash", muteButton.muteSlash:IsShown(), false)
+    Expect(client .. ": unmuting hands the line back to Read Automatically", VO.DialogPlayButton.button:IsShown(), false)
+    Expect(client .. ": the NPC is no longer recorded as muted", VO.Addon:IsGossipNPCIgnored(world.npcGUID), false)
+    Leave()
+    Talk()
+    Expect(client .. ": an unmuted NPC's automatic greeting plays again", Played(played), "greeting-hash")
+    Leave()
+
+    -- No pack voices this NPC, so there is nothing for the toggle to mute.
+    local voicedName, voicedGUID = world.npcName, world.npcGUID
+    world.npcName, world.npcGUID = "Stranger", "Creature-0-0-0-0-99999-0"
+    Talk()
+    Expect(client .. ": an unvoiced NPC's dialog has no Mute toggle", muteButton:IsShown(), false)
+    Leave()
+    world.npcName, world.npcGUID = voicedName, voicedGUID
 end
 
 if Failures() > 0 then

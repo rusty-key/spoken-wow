@@ -19,11 +19,14 @@ setfenv(1, VoiceOver)
 
 local BUTTON_HEIGHT = 20
 local BUTTON_WIDTH = 60
+local MUTE_SIZE = 24
 -- Room the button's end caps take either side of its label.
 local LABEL_PADDING = 24
 local GAP = 2
 local STRIP_OFFSET = 12
 local CORNER_INSET = 32
+local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
+local WAVES_ICON = [[Interface\COMMON\VOICECHAT-ON]]
 
 -- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
@@ -96,10 +99,9 @@ local function PlayButtonInset()
     return 11
 end
 
-function DialogPlayButton:Position(frameName)
+local function AnchorUnderClose(button, frameName)
     local frame = _G[frameName]
     local close = CloseButtonOf(frame, frameName .. "CloseButton")
-    local button = self.button
     button:ClearAllPoints()
     local frameTop, closeBottom = frame.GetTop and frame:GetTop(), close and close.GetBottom and close:GetBottom()
     if type(frameTop) == "number" and type(closeBottom) == "number" then
@@ -109,6 +111,43 @@ function DialogPlayButton:Position(frameName)
     else
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
     end
+end
+
+function DialogPlayButton:Position(frameName)
+    AnchorUnderClose(self.button, frameName)
+end
+
+function DialogPlayButton:PositionMute(frameName)
+    local button = self.muteButton
+    local beside = self.button:IsShown() and self.button
+    if not beside and ContributeButton and ContributeButton.button and ContributeButton.button:IsShown() then
+        beside = ContributeButton.button
+    end
+    if beside then
+        button:ClearAllPoints()
+        button:SetPoint("RIGHT", beside, "LEFT", -GAP, 0)
+    else
+        AnchorUnderClose(button, frameName)
+    end
+end
+
+--- DialogueUI hides the gossip and greeting windows, so it gets no toggle.
+function DialogPlayButton:RefreshMute()
+    local button = self.muteButton
+    if not button then
+        return
+    end
+    local clip, event = Addon:CurrentGossipClip()
+    if not clip or Utils:DialogueUIPage() or not Addon:IsPageOn(event) or not Addon:CanIgnoreNPC(clip) then
+        button:Hide()
+        self.muteClip = nil
+        return
+    end
+    self.muteClip = clip
+    button.muted = Addon:IsGossipNPCIgnored(clip.unitGUID)
+    button.muteSlash:SetShown(button.muted)
+    self:PositionMute(event == "GOSSIP_SHOW" and "GossipFrame" or "QuestFrame")
+    button:Show()
 end
 
 --- Show, hide and label the button for whatever is on screen now. Hidden rather than
@@ -123,11 +162,14 @@ function DialogPlayButton:Refresh()
 
     local line, event = Addon:GetVisibleLine()
     -- Nothing reads itself with Read Automatically off, and no NPC window does at Never.
-    local held = not Addon:IsAutoplayOn() or (event and Addon:PartOfPage(event) == "gossip" and Addon:IsNever())
+    -- A muted NPC is held too, or its line could not be asked for at all.
+    local held = not Addon:IsAutoplayOn() or (event and Addon:PartOfPage(event) == "gossip"
+        and (Addon:IsNever() or Addon:IsGossipNPCIgnored(Utils:GetNPCGUID())))
     -- The panel itself, not merely the event: under DialogueUI the event arrives and the
     -- panel never shows. Switched off, the window's part puts no button on it.
     if not held or not line or not IsFrameVisible(_G[PANELS[event]]) then
         button:Hide()
+        self:RefreshMute()
         return
     end
 
@@ -135,6 +177,7 @@ function DialogPlayButton:Refresh()
     self.line = line
     self:Relabel()
     button:Show()
+    self:RefreshMute()
 end
 
 --- Listen or Stop, for the line already found. All a clip starting or stopping can change.
@@ -196,6 +239,42 @@ function DialogPlayButton:Setup()
         end
     end)
     self.button = button
+
+    if _G.Spoken and Spoken.CreateRoundButton then
+        local mute = Spoken:CreateRoundButton(UIParent, "icon", nil, SPEAKER_ICON)
+        mute:SetSize(MUTE_SIZE, MUTE_SIZE)
+        -- Untrimmed: RoundPicture crops a portrait's edges, and the speaker's waves are there.
+        mute.glyph:SetTexCoord(0, 1, 0, 1)
+        mute:SetFrameStrata("DIALOG")
+        local waves = mute:CreateTexture(nil, "OVERLAY")
+        waves:SetAllPoints(mute.glyph)
+        waves:SetTexture(WAVES_ICON)
+        mute.muteWaves = waves
+        local slash = mute:CreateTexture(nil, "OVERLAY")
+        slash:SetSize(2, 17)
+        slash:SetPoint("CENTER")
+        slash:SetColorTexture(1, 0.1, 0.1, 0.95)
+        slash:SetRotation(math.rad(-45))
+        mute.muteSlash = slash
+        mute:SetScript("OnClick", function(self)
+            local clip = DialogPlayButton.muteClip
+            if clip then
+                Addon:SetGossipNPCMuted(clip.unitGUID, clip.name, not self.muted)
+                -- Listen comes and goes with the mute, so the whole strip is redrawn.
+                DialogPlayButton:Refresh()
+            end
+        end)
+        mute:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.muted and L.OPT_UNMUTE_NPC or L.OPT_MUTE_NPC)
+            GameTooltip:Show()
+        end)
+        mute:HookScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        mute:Hide()
+        self.muteButton = mute
+    end
 
     local watcher = CreateFrame("Frame")
     for _, event in ipairs(REFRESH_EVENTS) do

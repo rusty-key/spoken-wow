@@ -82,6 +82,13 @@ function GossipSettingsPanel:Setup()
         return name == "OncePerNPC" or name == "OncePerQuestNPC"
     end, L.REASON_FORGET_GREETINGS)
 
+    layout:Button(L.OPT_FORGET_MUTED_NPCS, 200, function()
+        local char = Addon.db and Addon.db.char
+        if char then char.ignoredGossipNPCs = {} end
+        if DialogPlayButton then DialogPlayButton:Refresh() end
+        print("|cFF00CCFFSpoken Gossip:|r " .. L.OPT_FORGET_MUTED_NPCS_DONE)
+    end)
+
     -- Switched off, the part is off: everything on its page greys out but its own switch.
     layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch)
     content:SetScript("OnShow", function() layout:Refresh() end)

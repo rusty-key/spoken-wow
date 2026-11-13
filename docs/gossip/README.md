@@ -88,6 +88,10 @@ Spoken's own page. Gossip adds no saved variable.
   GUID, because the GUID's last part is the spawn: it changes on a respawn or a server restart,
   and Forever clients see one that holds only for the session. Every spawn of one ID therefore
   shares what was heard.
+- Forget Muted NPCs, which clears this character's `ignoredGossipNPCs`. The speaker toggle on a
+  gossip or greeting window, shown only for an NPC a pack voices, mutes or restores that NPC's
+  automatic greetings, under the same key as `hasSeenGossipForNPC`. A muted NPC's window shows
+  the Listen button, which still reads its line.
   Entries kept under a creature's or object's GUID, as they were before, move to that key as the
   addon loads. A key marked `true` dates from when only the NPC was kept, and counts as unheard.
 - Stop When Window Closes is on the Quests page and covers the quest, gossip and greeting windows.
