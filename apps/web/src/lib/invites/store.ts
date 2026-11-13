@@ -222,6 +222,27 @@ export async function revokeInvite(id: string, revokedBy: string): Promise<Invit
   });
 }
 
+/**
+ * Revoke the open invite for `email` in `lang`, if any, on the caller's transaction: the address
+ * has an account and was just granted directly, so the invite has nothing left to give.
+ */
+export async function revokeOpenFor(
+  client: ClientBase,
+  lang: Lang,
+  email: string,
+  actorId: string,
+): Promise<void> {
+  const { rows } = await client.query<{ id: string }>(
+    `update "invite" set "revokedAt" = now(), "revokedBy" = $3
+      where "lang" = $1 and "email" = $2 and "acceptedAt" is null and "revokedAt" is null
+      returning "id"`,
+    [lang, email, actorId],
+  );
+  for (const { id } of rows) {
+    await recordActivity({ kind: "invite.revoked", lang, subject: id, actorId, detail: { email } }, client);
+  }
+}
+
 export async function openInvite(id: string): Promise<InviteRow | null> {
   const rows = await query<Row>(
     `select ${COLUMNS} from "invite" i join "user" u on u."id" = i."invitedBy" where i."id" = $1 and ${OPEN}`,

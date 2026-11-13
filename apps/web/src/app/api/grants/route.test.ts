@@ -28,7 +28,7 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
 }));
 
 import { grantsOf } from "@/lib/grants/store";
-import { lookupInvite } from "@/lib/invites/store";
+import { createInvite, lookupInvite, openInvite } from "@/lib/invites/store";
 
 import { DELETE, PUT } from "./route";
 
@@ -157,6 +157,23 @@ describe("/api/grants", () => {
       expect((await response.json()).invited).toBe(false);
       expect(sent).toHaveLength(0);
       expect(await grantsOf(target.id)).toContainEqual({ lang: "deDE", capability: "edit" });
+    });
+
+    it("revokes an open invite for an address that has an account, as it grants", async () => {
+      const { invite } = await createInvite({
+        email: email(),
+        lang: "deDE",
+        capabilities: ["edit"],
+        invitedBy: granter.id,
+        limited: false,
+      });
+      expect((await putTo(email(), ["edit"])).status).toBe(200);
+      expect(await openInvite(invite.id)).toBeNull();
+      const log = await asSystem.query(
+        `select "actorId" from "activity" where "kind" = 'invite.revoked' and "subject" = $1`,
+        [invite.id],
+      );
+      expect(log.rows).toEqual([{ actorId: granter.id }]);
     });
 
     it("refuses what is not an address", async () => {
