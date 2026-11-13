@@ -455,7 +455,7 @@ local defaults = {
             -- The sound channel and the muting of the client's own NPC dialogue used to
             -- live here. They describe how anything is played rather than what this addon
             -- reads, so they are Spoken's settings now.
-            StopAudioOnDisengage = false,
+            StopAudioOnDisengage = true,
             -- On, the NPC's own greeting is heard and what Spoken reads waits for it
             -- (GreetingFirst.lua); off, Silence NPC Voices cuts it where a pack has one.
             GreetingFirst = false,
