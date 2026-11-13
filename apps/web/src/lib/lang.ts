@@ -42,6 +42,14 @@ export const BUILTIN = [
   { code: "viVN", name: "Vietnamese", native: "Tiếng Việt", bcp47: "vi-VN", provider: "vi", client: false },
 ] as const satisfies readonly LanguageInfo[];
 
+/** What a language code looks like: two lowercase letters, two uppercase (enUS). A regex source, for the redirects and the validators. */
+export const LANG_SHAPE = "[a-z]{2}[A-Z]{2}";
+
+/** The BCP 47 tag and provider code a language code implies: jaJP -> ja-JP, ja. */
+export function derivedTags(code: string): { bcp47: string; provider: string } {
+  return { bcp47: `${code.slice(0, 2)}-${code.slice(2)}`, provider: code.slice(0, 2) };
+}
+
 export type BuiltinLang = (typeof BUILTIN)[number]["code"];
 
 /** A built-in code gets completion; any other string is a language registered at runtime. */
@@ -55,22 +63,26 @@ const builtinByCode = new Map<string, LanguageInfo>(BUILTIN.map((locale) => [loc
  * browser it is the window's.
  */
 const registryKey = Symbol.for("spoken.languages");
-type RegistryHolder = { [registryKey]?: { extras: Map<string, LanguageInfo> } };
-const registry = ((globalThis as RegistryHolder)[registryKey] ??= { extras: new Map() });
+/** `langs` and `extrasList` are the sorted lists, built once per registration. */
+type Registry = { extras: Map<string, LanguageInfo>; langs?: readonly Lang[]; extrasList?: readonly LanguageInfo[] };
+type RegistryHolder = { [registryKey]?: Registry };
+const registry: Registry = ((globalThis as RegistryHolder)[registryKey] ??= { extras: new Map() });
 
 /** Replaces the languages beyond the built-in ones. A built-in's code in the list is ignored. */
 export function registerLanguages(list: readonly LanguageInfo[]): void {
   registry.extras = new Map(list.filter((info) => !builtinByCode.has(info.code)).map((info) => [info.code, info]));
-}
-
-/** Built-ins in their order, then the registered ones by code. */
-export function allLangs(): Lang[] {
-  return [...BUILTIN.map((locale) => locale.code), ...[...registry.extras.keys()].sort()];
+  registry.langs = undefined;
+  registry.extrasList = undefined;
 }
 
 /** The registered languages beyond the built-in ones: all a client needs, since it has the rest. */
-export function registeredExtras(): LanguageInfo[] {
-  return [...registry.extras.values()].sort((a, b) => a.code.localeCompare(b.code));
+export function registeredExtras(): readonly LanguageInfo[] {
+  return (registry.extrasList ??= [...registry.extras.values()].sort((a, b) => a.code.localeCompare(b.code)));
+}
+
+/** Built-ins in their order, then the registered ones by code. */
+export function allLangs(): readonly Lang[] {
+  return (registry.langs ??= [...BUILTIN.map((locale) => locale.code), ...[...registry.extras.keys()].sort()]);
 }
 
 export function languageInfo(lang: string): LanguageInfo | null {
@@ -110,11 +122,6 @@ export function clientLang(locale: string): Lang | null {
 
 export function langName(lang: Lang): string {
   return languageInfo(lang)?.name ?? lang;
-}
-
-/** The language's own name for itself. */
-export function nativeName(lang: Lang): string {
-  return languageInfo(lang)?.native ?? lang;
 }
 
 /** The ISO 639-1 code a synthesis request in this language sends as language_code. */

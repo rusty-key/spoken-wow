@@ -10,7 +10,7 @@ import { type LanguageInfo, registerLanguages } from "@/lib/lang";
  * Registers while rendering, not in an effect: a child rendered in the same pass, on the server
  * or in the browser, must already know a language's name.
  */
-export function LanguagesProvider({ languages, children }: { languages: LanguageInfo[]; children: ReactNode }) {
+export function LanguagesProvider({ languages, children }: { languages: readonly LanguageInfo[]; children: ReactNode }) {
   registerLanguages(languages);
   return children;
 }
