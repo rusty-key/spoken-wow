@@ -542,9 +542,20 @@ RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
 Expect("its page: its title", page.title.text, "Kobold Candles")
 Expect("...where it is, then the quest mark and In progress", page.sub.text.text,
     "In Elwynn Forest · |TInterface\\GossipFrame\\ActiveQuestIcon:0|t " .. L.QUEST_IN_PROGRESS)
-Expect("...and its offer alone: no part for its progress", #page.body.lastParts .. " "
-    .. page.body.lastParts[1].heading .. " "
-    .. tostring((PageWords() or ""):find("Did you gather those candles yet?", 1, true)), "1 " .. L.QUEST_PART_ACCEPT .. " nil")
+stub.world.questID = CANDLES
+stub.world.progressText = "Have you gathered those candles yet?"
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Expect("...its offer and the progress text, each under its heading", #page.body.lastParts .. " "
+    .. page.body.lastParts[1].heading .. " " .. page.body.lastParts[2].heading .. " "
+    .. tostring((PageWords() or ""):find("Have you gathered those candles yet?", 1, true) ~= nil),
+    "2 " .. L.QUEST_PART_ACCEPT .. " " .. L.QUEST_PART_PROGRESS .. " true")
+Expect("...and keeps that English progress text for the Compendium", VO.Addon.db.global.CompendiumText.enUS
+    and VO.Addon.db.global.CompendiumText.enUS[CANDLES]
+    and VO.Addon.db.global.CompendiumText.enUS[CANDLES].progress ~= nil, true)
+VO.Addon.db.global.CompendiumText.enUS = nil
+stub.world.progressText = ""
 Expect("...not the hand-in before it is completed: it tells how the quest ends",
     (PageWords() or ""):find("Thanks for the candles", 1, true) == nil
     and page.body.lastParts[#page.body.lastParts].heading ~= L.QUEST_PART_COMPLETE, true)
@@ -1107,25 +1118,30 @@ Expect("...on its page, the list keeping the filter and leaving its row out", pa
 _, choices = Menu()
 choices[2].func()
 Expect("...off, everything again", Has(Shown(), "Kobold Candles") and Has(Shown(), "Westfall") and Tab:Has(CANDLES), true)
--- The page has no progress part, so a quest a pack voices only in its progress counts as unvoiced.
+-- A quest a pack voices only in its progress is voiced in the Compendium too.
 do
     testPack.SoundLengthLookupByFileName["60-progress"] = 2
     testPack.NPCIDLookupByQuestID[CANDLES] = MCBRIDE
     Expect("(a pack voicing Kobold Candles' progress)",
         VO.DataModules:PrepareSound({ event = VO.Enums.SoundEvent.QuestProgress, questID = CANDLES }) and true, true)
+    local order = VO.Language.ResolutionOrder
+    VO.Language.ResolutionOrder = function() return { "enUS", "progress-test" } end
+    Tab:Refresh()
     _, choices = Menu()
     choices[2].func()
-    Expect("a quest a pack voices only in its progress is left out by Voiced Only", Has(Shown(), "Kobold Candles"), false)
+    Expect("a quest a pack voices only in its progress stays in Voiced Only", Has(Shown(), "Kobold Candles"), true)
     _, choices = Menu()
     choices[2].func()
     local shift = _G.IsShiftKeyDown
     _G.IsShiftKeyDown = function() return true end
     Spoken:StopAll()
     Click("Kobold Candles")
-    Expect("...and shift-click on its row plays nothing", Spoken:GetQueueSize(), 0)
+    Expect("...and shift-click on its row plays its progress", Spoken:GetQueueSize(), 1)
     _G.IsShiftKeyDown = shift
     testPack.SoundLengthLookupByFileName["60-progress"] = nil
     testPack.NPCIDLookupByQuestID[CANDLES] = nil
+    VO.Language.ResolutionOrder = order
+    Tab:Refresh()
 end
 -- A switch in the filter menu leaving out the chosen row tells the tab (onHidden), which says what
 -- the page shows in its place.

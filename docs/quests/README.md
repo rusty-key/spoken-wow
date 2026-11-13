@@ -1772,7 +1772,7 @@ are in progress. The list follows the log while it is open (`QUEST_LOG_UPDATE`,
 `QUEST_ACCEPTED`, `QUEST_REMOVED`, drawn again once a burst is over and only when the log's
 quests changed). The rest are locked unless Unlock Unstarted Quests is on, which Spoken's page
 shows in its Compendium section. The filter menu holds Started Only, on until it is turned off (`FoundOnly` unset reads as on; the setting is the account's), and Voiced Only, which leaves
-out the quests no voice pack has the offer or the hand-in of, with any line or banner left with nothing, and counts
+out the quests no voice pack has the offer, progress or hand-in of, with any line or banner left with nothing, and counts
 only what it lists. That switch and both filters are kept in
 `SpokenQuestsSettings.global.Compendium`.
 
@@ -1836,15 +1836,16 @@ to be chosen from the list; it has no Play. The client has no chain of its own, 
 in the data every quest is a row of its own.
 
 The page fills the placeholders for the player as the client does. A started quest's page shows
-its offer; its hand-in, with its Play and Report, shows only once the quest is completed, or with
-Unlock Unstarted Quests on, since it tells how the quest ends. The progress, said while the quest
-is under way, has no part on the page: it is not shown or played there, and Voiced Only counts
-only the offer and the hand-in, so a quest voiced only in its progress counts as unvoiced. Each
-part's Play plays that part. A part is named and pictured for who says it: the offer for the
+its offer and any progress text the client or a voice pack knows; its hand-in, with its Play and
+Report, shows only once the quest is completed, or with Unlock Unstarted Quests on, since it tells
+how the quest ends. Voiced Only counts all three parts, so a quest voiced only in its progress
+stays listed. Each part's Play plays that part. A part is named and pictured for who says it: the
+offer for the
 quest's giver, as the quest log's Play is, and the hand-in for the one it is handed in to
 (`ender` or `enderObject`, else the giver). The offer's part is named Description, by the
 client's own `QUEST_DESCRIPTION` (the heading of a quest's text in its quest window) where it has
-one, else `L.QUEST_PART_ACCEPT`; the hand-in's is Completion. Each part is headed as
+one, else `L.QUEST_PART_ACCEPT`; progress is `L.QUEST_PART_PROGRESS`; the hand-in's is Completion.
+Each part is headed as
 the Small Window heads a line, with DialogueUI installed or not: the speaker's round face
 (`Spoken:CreateSpeakerFace`, 44 across) with the part's badge, their name over the part's name
 beside it, the two centred on the face together, and the part's Report (every part, voiced or
@@ -1852,7 +1853,7 @@ not: the site's report page takes a line with no recording) and its Play (where 
 it) at the right on the face's middle. A creature the client has not cached
 shows the book until it has, one never cached or no one known keeps the book, and an object or
 an item shows the quest's item, else a posted notice. Shift-click on a quest's row hands its first part
-shown that a pack voices (its accept line, else its complete line) to `Player:Enqueue`, behind
+shown that a pack voices (its accept line, then progress, then complete) to `Player:Enqueue`, behind
 what the queue holds, and leaves the selection and the page as they were; a line already queued
 is not queued again. The page shown with no quest chosen says so.
 
@@ -1872,11 +1873,12 @@ view's Play, Report or Contribute; and in DialogueUI's window, at the left end o
 a quest page (`UI/DialogueUIBridge.lua`). DialogueUI hides the rest of the interface while it is
 up, so that one closes DialogueUI's window before the Compendium opens.
 
-On a client in another language, `QUEST_DETAIL` and `QUEST_COMPLETE` keep the window's title and
-words in `SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown over the English;
-`QUEST_PROGRESS` keeps the title alone. The player's name, class and race go back to `$N`, `$C` and `$R` where the
-English has them, so another character sees its own. A text kept by a character of the other sex
-is not shown where the English has a `$G`. An English client keeps nothing.
+On a client in another language, `QUEST_DETAIL`, `QUEST_PROGRESS` and `QUEST_COMPLETE` keep the
+window's title and words in `SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown
+over the English. An English client keeps progress text because the shipped corpus has no progress
+text; its accept and complete words are already included. The player's name, class and race go back
+to `$N`, `$C` and `$R` where the English has them, so another character sees its own. A text kept by
+a character of the other sex is not shown where the English has a `$G`.
 
 ## Tests
 

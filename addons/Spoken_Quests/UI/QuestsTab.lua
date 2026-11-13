@@ -89,10 +89,9 @@ local function SectionOf(sort)
 end
 local filter = ""
 
--- What a quest's page shows and plays: the offer and the hand-in. The progress, said while the
--- quest is under way, is left out.
-local MOMENTS = { "accept", "complete" }
-local HEADINGS = { accept = "QUEST_PART_ACCEPT", complete = "QUEST_PART_COMPLETE" }
+-- What a quest's page shows and plays: the offer, its progress page and the hand-in.
+local MOMENTS = { "accept", "progress", "complete" }
+local HEADINGS = { accept = "QUEST_PART_ACCEPT", progress = "QUEST_PART_PROGRESS", complete = "QUEST_PART_COMPLETE" }
 
 --------------------------------------------------------------------------------
 -- What there is
@@ -135,15 +134,21 @@ end
 -- Whether a voice pack has a part of a quest, as its page's Play finds one.
 local AnyVoiced
 
--- The words and titles kept in this client's language, by quest: { title, accept = { text, sex } ... }.
--- None on an English client: the English shipped is what it would keep.
-local function Kept()
-    if Locale() == "enUS" then return nil end
+-- The words and titles kept in this client's language, by quest: { title, accept/progress/complete = { text, sex } ... }.
+-- An English client keeps only progress, which has no shipped English text; its accept and complete
+-- words are already in the addon.
+local function Kept(moment, create)
+    if Locale() == "enUS" and moment ~= "progress" then return nil end
     local db = VO.Addon.db and VO.Addon.db.global
     if not db then return nil end
-    db.CompendiumText = db.CompendiumText or {}
-    db.CompendiumText[Locale()] = db.CompendiumText[Locale()] or {}
-    return db.CompendiumText[Locale()]
+    if not db.CompendiumText then
+        if not create then return nil end
+        db.CompendiumText = {}
+    end
+    local kept = db.CompendiumText[Locale()]
+    if not kept and not create then return nil end
+    if not kept then kept = {}; db.CompendiumText[Locale()] = kept end
+    return kept
 end
 
 -- The client's title once it has one, else the English; asked for once where it is not loaded,
@@ -965,7 +970,7 @@ end
 -- Kept words filled for the other sex are not used where the English has a word for each.
 local function Stored(id, moment)
     local english = English(id)
-    local kept = Kept()
+    local kept = Kept(moment)
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
@@ -996,7 +1001,8 @@ end
 --- Keep what the open quest window shows, in this client's language.
 function QuestsTab:Keep(moment, text, title)
     local id = GetQuestID and VO.NotSecret(GetQuestID())
-    local kept = Kept()
+    if moment == "progress" and (type(text) ~= "string" or text == "") then return end
+    local kept = Kept(moment, true)
     if not kept or not id or id == 0 or not Quests()[id] then return end
     kept[id] = kept[id] or {}
     if type(title) == "string" and title ~= "" then
@@ -1035,10 +1041,11 @@ local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
 end
 
--- Whether the page has words to show: the offer's, or the hand-in's where it shows. Looks at the
--- stored text only, so a row can ask it on every render.
+-- Whether the page has words to show: the offer's, progress's or hand-in's where it shows. Looks at
+-- the stored text only, so a row can ask it on every render.
 function QuestsTab:HasWords(id)
-    return Stored(id, "accept") ~= nil or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
+    return Stored(id, "accept") ~= nil or Stored(id, "progress") ~= nil
+        or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
 end
 
 -- Who says one moment of a quest: the hand-in is said by the one it is handed
@@ -1069,9 +1076,8 @@ local function SoundData(id, moment, origin)
 end
 
 -- Whether a voice pack has any of a quest (Voiced Only), and a quest played from its row
--- (shift-click): what is said when it is offered and handed in, as far as the voice packs have
--- it, named for who says it. A quest voiced only in its progress counts as unvoiced. The quest's
--- page plays each part from its own Play.
+-- (shift-click): the first part a voice pack has, named for who says it. The quest's page plays
+-- each part from its own Play.
 local PLAY = {
     has = function(id)
         for _, moment in ipairs(MOMENTS) do
@@ -1145,7 +1151,7 @@ end
 -- once, given the speaker of the quest shown. false where Spoken could not make one.
 local partFaces = {}
 local FACE_SIZE = 44
-local BULLETS = { accept = "quest-accept", complete = "quest-complete" }
+local BULLETS = { accept = "quest-accept", progress = "quest-progress", complete = "quest-complete" }
 
 local function PartFace(moment)
     if partFaces[moment] ~= nil then return partFaces[moment] or nil end
@@ -1183,7 +1189,7 @@ local function FaceSpeaker(id, moment)
     return { objectOrItem = true, icon = icon, bullet = bullet }
 end
 
--- A quest's words in parts, the offer and the hand-in, each headed by the face of who says it
+-- A quest's words in parts, the offer, progress and hand-in, each headed by the face of who says it
 -- beside their name over the part's name, with Report for every part and Play where a pack voices
 -- it; the hand-in only where it Shows. A part a pack voices whose words are not known says so,
 -- and is there to be played and reported. nil with no words and nothing voiced.
@@ -1737,8 +1743,8 @@ local function OnEvent(_, event, a)
     if event == "QUEST_DETAIL" then
         QuestsTab:Keep("accept", GetQuestText and VO.NotSecret(GetQuestText()), GetTitleText and VO.NotSecret(GetTitleText()))
     elseif event == "QUEST_PROGRESS" then
-        -- Its title alone: the page has no progress part to show its words.
-        QuestsTab:Keep("progress", nil, GetTitleText and VO.NotSecret(GetTitleText()))
+        QuestsTab:Keep("progress", GetProgressText and VO.NotSecret(GetProgressText()),
+            GetTitleText and VO.NotSecret(GetTitleText()))
     elseif event == "QUEST_COMPLETE" then
         QuestsTab:Keep("complete", GetRewardText and VO.NotSecret(GetRewardText()), GetTitleText and VO.NotSecret(GetTitleText()))
     elseif event == "QUEST_TURNED_IN" then
