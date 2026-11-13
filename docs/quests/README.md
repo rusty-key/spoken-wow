@@ -480,15 +480,10 @@ holds the corpus, accounts and roles, every take and which one is live, the pron
 lexicon, hand-written line overrides and the regeneration queue; the only thing on disk is
 each take's audio, in `audio-history/`. A line with no live take shows as a gap.
 
-**Progress text is hidden by default.** Those 3,093 lines are 17.7% of the corpus. They were
-hidden when nothing voiced them; they are generated like any other line now (migration 0108),
-and the default is kept only as a view choice. **Show progress text** brings them back, and
-`?progress=1` says the same thing in a URL; absence means hidden, so a bare link is the useful
-view. Ticking `progress` in the
-source filter also counts as asking for them, since otherwise that choice would return
-nothing. It is not counted as an active filter: it widens the results rather than narrowing
-them, and clearing filters returns it to hidden. The Missing audio ranking (`/missing-audio`
-and its dashboard tile) leaves progress text out too, since it follows the explorer's defaults.
+**Progress text is a line like any other.** It was once skipped everywhere: never generated,
+hidden from the explorer and left out of the Missing audio ranking. Migration 0108 made it
+voiceable, and the explorer, batches and the ranking treat it like the rest; `progress` in the
+source filter narrows to it.
 
 **The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
 `?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them

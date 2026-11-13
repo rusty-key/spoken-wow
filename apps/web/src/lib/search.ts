@@ -54,16 +54,6 @@ export type LineFilters = {
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
   narration?: boolean;
   /**
-   * Whether to include progress text, which is hidden unless asked for.
-   *
-   * 3,093 lines - 17.7% of the corpus. They were hidden when nothing voiced them; they are
-   * voiced now, and stay hidden by default only as a view choice. Absent means hidden and
-   * this is how you ask for them back.
-   *
-   * Widening rather than narrowing, which is why activeFilterCount ignores it.
-   */
-  includeProgress?: boolean;
-  /**
    * Which clients' lines (lib/quests/line-client.ts), in the Contributions pages' bins: Era +
    * Forever when absent, the clients the site voices. A lookup by `line` finds a line whatever
    * its client, so a report or a contribution's link still reaches it.
@@ -449,7 +439,6 @@ export function matchingLines(
     voice,
     source,
     npcType,
-    includeProgress = false,
     client = DEFAULT_CLIENT_FILTER,
     narration = false,
     line: lineId,
@@ -483,8 +472,8 @@ export function matchingLines(
   const query = q.trim();
 
   let lines = corpus.lines;
-  // One line by its id is a lookup, not a search: the defaults that hide progress text and
-  // ignored lines would make a report about such a line read as "the corpus dropped it".
+  // One line by its id is a lookup, not a search: the defaults that hide ignored
+  // lines would make a report about such a line read as "the corpus dropped it".
   const lookup = Boolean(lineId);
   // First, and whichever way round: a line nobody will voice is not an answer to any other
   // question either, so every count and every "regenerate everything matching" is computed
@@ -502,11 +491,6 @@ export function matchingLines(
   if (playerGender) lines = lines.filter((line) => line.playerGender === null || line.playerGender === playerGender);
   if (voice) lines = lines.filter((line) => line.voice === voice);
   if (source?.length) lines = lines.filter((line) => source.includes(line.source));
-  // After the source filter and not before it, so asking for progress explicitly still works:
-  // `source=progress` alone would otherwise return nothing at all.
-  if (!includeProgress && !lookup && !source?.includes("progress")) {
-    lines = lines.filter((line) => line.source !== "progress");
-  }
   if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
   // The *effective* text, matching the chip on the row and the text regeneration will send.

@@ -20,10 +20,9 @@ from tts_cli.naming import (BROADCAST_SOURCES, moment_of, subfolder_from_line_id
                             variant_line_id)
 from tts_cli.npc_bodies import body_name, sex_bodies
 
-#: The lines an NPC speaks in its own voice: all of them but progress text, which is never
-#: voiced. A quest moment's giver is found through QuestFileLookupBy*; a greeting's speaker and
+#: The lines an NPC speaks in its own voice: all of them. A quest moment's giver is found through QuestFileLookupBy*; a greeting's speaker and
 #: a follow-up's are looked up per NPC already, so their tables simply name its own file.
-OWN_VOICE_SOURCES = frozenset({"accept", "complete", "gossip"}) | BROADCAST_SOURCES
+OWN_VOICE_SOURCES = frozenset({"accept", "progress", "complete", "gossip"}) | BROADCAST_SOURCES
 
 
 def npc_voices(corpus: dict) -> dict:

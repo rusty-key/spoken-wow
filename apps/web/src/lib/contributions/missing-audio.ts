@@ -81,9 +81,8 @@ const hiddenKey = Symbol.for("spoken.quests-hidden-by-default.by-lang");
 
 /**
  * Every line id in `lang` none of whose rows the explorer's filters show by default, under its
- * own id and the id of the line it is a voice of: progress text, which the explorer hides as a
- * view default, and other clients' lines (TBC Anniversary, the legacy clients,
- * retail: lib/quests/line-client.ts). Read off the search itself, so the ranking cannot drift
+ * own id and the id of the line it is a voice of: other clients' lines (TBC Anniversary, the
+ * legacy clients, retail: lib/quests/line-client.ts). Read off the search itself, so the ranking cannot drift
  * from the explorer's defaults. Ignored lines stay in: the search drops those only when handed
  * the ignore list, which moves without the catalogue. Rebuilt with the catalogue.
  */

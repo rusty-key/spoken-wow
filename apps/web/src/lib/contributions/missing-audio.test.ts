@@ -102,7 +102,7 @@ describe("missingAudioRanking", () => {
     }
   });
 
-  it("leaves out progress text, which the explorer hides by default", async () => {
+  it("ranks progress text like any other line", async () => {
     // q:179:progress comes from the seeded corpus, which already lists it through its speakers.
     await db().query(
       `insert into "quest_line"
@@ -116,6 +116,6 @@ describe("missingAudioRanking", () => {
       { lineId: lineA, packLang: lang, packVersion: "1.0.0" },
     ]);
     await recordMissingAudio(installs[1]!, [{ lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" }]);
-    expect((await missingAudioRanking(lang)).map((row) => row.lineId)).toEqual([lineA]);
+    expect((await missingAudioRanking(lang)).map((row) => row.lineId)).toEqual(["q:179:progress", lineA]);
   });
 });
