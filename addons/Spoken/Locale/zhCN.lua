@@ -226,6 +226,9 @@ L.OPT_VOICE_LANGUAGE = "语音语言"
 L.OPT_LANG_AUTO_FMT = "自动（%1$s）"
 L.OPT_FALLBACK_LANGUAGE = "缺少语音时"
 L.OPT_FALLBACK_NONE = "保持静默"
+L.OPT_INTERFACE_LANGUAGE = "界面语言"
+L.OPT_INTERFACE_LANGUAGE_TIP = "Spoken 自身窗口和设置的语言。自动将跟随游戏。其他选项是游戏客户端不提供的语言。重新载入界面后生效。"
+L.OPT_INTERFACE_LANGUAGE_RELOAD = "Spoken 将在重新载入界面后切换语言。立即重新载入？"
 
 -- Azeroth's Compendium, on Spoken's page.
 L.OPT_COMPENDIUM_TITLE = "艾泽拉斯百科"

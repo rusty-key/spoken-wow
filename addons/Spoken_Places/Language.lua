@@ -96,6 +96,11 @@ end
 
 SpokenPlaces.clientLocale = GetLocale()
 
+-- The language the interface strings are in: the client's, unless the player chose in Spoken's
+-- settings one that no client runs in (Dutch). A Latin-script one, so every client draws it.
+SpokenPlaces.interfaceLocale = Spoken and Spoken.InterfaceLanguage and Spoken:InterfaceLanguage()
+	or SpokenPlaces.clientLocale
+
 -- Whether a game client runs in this language: a built-in one.
 function SpokenPlaces:IsClientLanguage(code)
 	return code ~= nil and builtin[code] ~= nil
@@ -375,10 +380,10 @@ local warnedMissing = {}
 
 SpokenPlaces.L = setmetatable({}, {
 	__index = function(_, key)
-		-- Interface strings follow the client, not the content language: the
-		-- locale file for any other code never loads on this client, so there
-		-- is nothing else it could fall back to before English.
-		local active = SpokenPlaces.Strings[SpokenPlaces.clientLocale]
+		-- Interface strings follow the client, or the interface language chosen in
+		-- Spoken, never the content language: the locale file for any other code
+		-- never loads, so there is nothing else it could fall back to before English.
+		local active = SpokenPlaces.Strings[SpokenPlaces.interfaceLocale]
 		local value = active and active[key]
 		if value ~= nil then
 			return value

@@ -31,6 +31,7 @@ Locale/ruRU.lua
 Locale/koKR.lua
 Locale/zhCN.lua
 Locale/zhTW.lua
+Locale/nlNL.lua
 Core.lua
 Data/Bosses.lua
 Data/Creatures.lua

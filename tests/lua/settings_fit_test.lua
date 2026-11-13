@@ -47,7 +47,11 @@ local PLACES = here .. "/../../addons/Spoken_Places/"
 _G.UISpecialFrames = _G.UISpecialFrames or {}
 
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
-stub.SetLocale(LANG)
+-- A language no client runs in (nlNL) is the player's Interface Language on an English client,
+-- saved before Spoken loads as the game hands it over.
+local INTERFACE_ONLY = { nlNL = true }
+stub.SetLocale(INTERFACE_ONLY[LANG] and "enUS" or LANG)
+if INTERFACE_ONLY[LANG] then _G.SpokenSettings = { global = { InterfaceLanguage = LANG } } end
 stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
 stub.world.questID = 0; stub.ShowPanel(nil)
 -- Waypoint's art, as on a client that can nine-slice with the player loaded.

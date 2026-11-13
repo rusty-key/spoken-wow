@@ -535,6 +535,13 @@ function Spoken:BuiltinLanguages()
     return Languages.BUILTIN
 end
 
+--- The language a module's interface strings load in: the client's, or the one from
+--- Languages.INTERFACE the player chose. Fixed for the session, so a locale file can ask it as it
+--- loads.
+function Spoken:InterfaceLanguage()
+    return Addon:InterfaceLanguage()
+end
+
 --- The languages an installed pack declares, the client's own first, the rest by code.
 function Spoken:InstalledLanguages()
     return Languages:Installed()

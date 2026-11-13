@@ -169,6 +169,9 @@ L.OPT_VOICE_LANGUAGE = "Langue de la voix"
 L.OPT_LANG_AUTO_FMT = "Auto (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "Si la voix manque"
 L.OPT_FALLBACK_NONE = "Rester silencieux"
+L.OPT_INTERFACE_LANGUAGE = "Langue de l'interface"
+L.OPT_INTERFACE_LANGUAGE_TIP = "La langue des fenêtres et des réglages de Spoken. Auto suit le jeu. Les autres sont des langues dans lesquelles aucun client du jeu ne tourne. S'applique après un rechargement de l'interface."
+L.OPT_INTERFACE_LANGUAGE_RELOAD = "Spoken change de langue au rechargement de l'interface. Recharger maintenant ?"
 
 -- Sound
 L.REASON_VOICE_CHANNEL = "Les voix de Spoken passent par ce son, il n'est donc jamais baissé. Changez Volume de référence pour utiliser ceci."

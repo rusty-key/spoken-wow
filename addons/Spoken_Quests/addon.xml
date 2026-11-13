@@ -15,6 +15,7 @@
     <Include file="Locale\koKR.lua"/>
     <Include file="Locale\zhCN.lua"/>
     <Include file="Locale\zhTW.lua"/>
+    <Include file="Locale\nlNL.lua"/>
     <Include file="Options.lua"/>
     <Include file="UI\SettingsPanel.lua"/>
     <Include file="UI\GossipSettingsPanel.lua"/>

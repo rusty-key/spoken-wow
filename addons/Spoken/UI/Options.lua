@@ -250,6 +250,22 @@ end
 function Options:VoiceChoices() return Choices("auto") end
 function Options:FallbackChoices() return Choices("none") end
 
+--- "auto" and the interface languages no client runs in (Languages.INTERFACE).
+function Options:InterfaceChoices()
+    local list = { "auto" }
+    for _, language in ipairs(Languages.INTERFACE) do table.insert(list, language.code) end
+    return list
+end
+
+--- An Interface Language entry's name: "Auto" with the client's language, or the language's own.
+function Options:InterfaceLanguageName(code)
+    if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, self:LanguageName(self:ClientLanguage())) end
+    for _, language in ipairs(Languages.INTERFACE) do
+        if language.code == code then return language.native end
+    end
+    return code
+end
+
 --- Show `style` on screen with a sample line, or nil to stop.
 function Options:Preview(style)
     Addon.previewStyle = style
@@ -557,6 +573,15 @@ local function Build()
         function(code) language().Fallback = code end, function() Options:UpdateRows() end,
         function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:MenuLanguageName(code) end,
         function(code) return Options:LanguageFace(code) end)
+    -- Account-wide, as the locale files read it before any profile is chosen.
+    layout:Dropdown(L.OPT_INTERFACE_LANGUAGE, L.OPT_INTERFACE_LANGUAGE_TIP, Options:InterfaceChoices(),
+        function() return Addon.db.global.InterfaceLanguage or "auto" end,
+        function(code) Addon.db.global.InterfaceLanguage = code ~= "auto" and code or nil end,
+        function()
+            if (Addon.db.global.InterfaceLanguage or GetLocale()) == Addon:InterfaceLanguage() then return end
+            Layout.AskReload(L.OPT_INTERFACE_LANGUAGE_RELOAD, L.OLD_FOLDERS_RELOAD, L.OLD_FOLDERS_LATER)
+        end,
+        function(code) return Options:InterfaceLanguageName(code) end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,
@@ -919,6 +944,7 @@ local function Build()
             -- to its default.
             Addon.db.profile.CompendiumFontSize = 12
             Addon.db.global.Layout = nil
+            Addon.db.global.InterfaceLanguage = nil
             ReloadUI()
         end)
     end, L.OPT_RESET_ALL_TIP)
