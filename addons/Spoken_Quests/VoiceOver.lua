@@ -159,6 +159,13 @@ local function CaptureQuestSnapshot(event)
         if not offer or offer.accepted or offer.questID ~= questID or offer.title ~= questTitle then
             Addon.openQuestOffer = { questID = questID, title = questTitle }
         end
+    elseif event == "QUEST_PROGRESS" or event == "QUEST_COMPLETE" then
+        local turnIn = Addon.openQuestTurnIn
+        local sameQuest = turnIn and turnIn.questID == questID
+            and (questID ~= 0 or turnIn.title == questTitle)
+        if not turnIn or turnIn.turnedIn or not sameQuest then
+            Addon.openQuestTurnIn = { questID = questID, title = questTitle, soundData = {} }
+        end
     end
     -- The same page shown again replaces its record, and keeps what was done with it, so a page
     -- read in the open window is not read again after it closes.
@@ -922,6 +929,8 @@ function Addon:OnInitialize()
             local questID = NotSecret(questIDArg)
             if event == "QUEST_ACCEPTED" then
                 self:MarkQuestOfferAccepted(questID)
+            elseif event == "QUEST_TURNED_IN" then
+                self:MarkQuestTurnedIn(questID)
             end
             if type(questID) ~= "number" or questID == 0 then
                 return
@@ -1172,6 +1181,12 @@ local function QuestSoundDataAdded(soundData)
     if offer and soundData.event == Enums.SoundEvent.QuestAccept and soundData.questID == offer.questID then
         offer.soundData = soundData
     end
+    local turnIn = Addon.openQuestTurnIn
+    if turnIn and (soundData.event == Enums.SoundEvent.QuestProgress
+            or soundData.event == Enums.SoundEvent.QuestComplete)
+            and soundData.questID == turnIn.questID then
+        table.insert(turnIn.soundData, soundData)
+    end
 end
 
 --- QUEST_FINISHED arrives just before QUEST_ACCEPTED on the normal click path. Keep the offer alive
@@ -1185,6 +1200,19 @@ function Addon:MarkQuestOfferAccepted(questID)
     if offer.closeTimer then
         self:CancelTimer(offer.closeTimer)
         offer.closeTimer = nil
+    end
+end
+
+--- QUEST_FINISHED can arrive before QUEST_TURNED_IN, just as it can before QUEST_ACCEPTED.
+--- Keep the turn-in pages alive briefly so the turn-in event can cancel their close stop.
+function Addon:MarkQuestTurnedIn(questID)
+    local turnIn = self.openQuestTurnIn
+    local turnedInID, recordID = tonumber(questID), tonumber(turnIn and turnIn.questID)
+    if not turnIn or turnedInID and turnedInID ~= 0 and recordID and recordID ~= turnedInID then return end
+    turnIn.turnedIn = true
+    if turnIn.closeTimer then
+        self:CancelTimer(turnIn.closeTimer)
+        turnIn.closeTimer = nil
     end
 end
 
@@ -1705,10 +1733,28 @@ function Addon:QUEST_FINISHED()
             end
         end, QUEST_ACCEPT_GRACE)
     end
+    local turnIn = self.openQuestTurnIn
+    if turnIn and not turnIn.turnedIn and not turnIn.closeTimer then
+        turnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
+        turnIn.closeTimer = self:ScheduleTimer(function()
+            turnIn.closeTimer = nil
+            if not turnIn.turnedIn and turnIn.stopOnClose then
+                for _, soundData in ipairs(turnIn.soundData) do
+                    Player:Remove(soundData)
+                end
+            end
+            if self.openQuestTurnIn == turnIn then
+                self.openQuestTurnIn = nil
+            end
+        end, QUEST_ACCEPT_GRACE)
+    end
     if Addon.db.profile.Audio.StopAudioOnDisengage then
         local deferOfferStop = offer
             and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
-        if currentQuestSoundData and not deferOfferStop then
+        local deferTurnInStop = turnIn and currentQuestSoundData
+            and (currentQuestSoundData.event == Enums.SoundEvent.QuestProgress
+                or currentQuestSoundData.event == Enums.SoundEvent.QuestComplete)
+        if currentQuestSoundData and not deferOfferStop and not deferTurnInStop then
             Player:Remove(currentQuestSoundData)
         end
         -- A quest giver's greeting is read in the quest frame, so it ends with the frame.

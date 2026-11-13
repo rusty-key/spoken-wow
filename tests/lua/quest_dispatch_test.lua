@@ -266,6 +266,48 @@ stub.FireEvent("QUEST_FINISHED")
 stub.Advance(0.6)
 ExpectCurrent("accepting before the window closes leaves its audio playing", "104-accept")
 
+-- Closing a turn-in window without handing in the quest stops its pages, but the turn-in event
+-- cancels that stop just as QUEST_ACCEPTED does for an offer. Test both event orders.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.1)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.2)
+ExpectCurrent("an unturned-in quest keeps completion audio during the turn-in grace period", "104-complete")
+stub.Advance(0.6)
+ExpectCurrent("closing an unturned-in quest stops its completion audio", "")
+
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(0.6)
+ExpectCurrent("turning in after the window closes leaves completion audio playing", "104-complete")
+
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("turning in before the window closes leaves completion audio playing", "104-complete")
+
 -- With Stop When Window Closes off, declining an offer leaves its audio playing.
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 StartScenario()
