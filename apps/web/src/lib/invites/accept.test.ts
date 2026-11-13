@@ -123,6 +123,14 @@ describe("acceptInvite", () => {
     expect(await kinds("invite.accepted", invite.id)).toHaveLength(1);
   });
 
+  it("does not accept a link that a resend replaced after the lookup", async () => {
+    const { invite, token, user } = await setup();
+    // Simulates the resend landing between the lookup and the claim: the hash no longer matches.
+    await asSystem.query(`update "invite" set "tokenHash" = 'replaced-' || "id" where "id" = $1`, [invite.id]);
+    expect(await acceptInvite(token, user)).toMatchObject({ ok: false, reason: "unknown" });
+    expect(await grantsOf(user.id)).toEqual([]);
+  });
+
   it("names an expired, revoked and unknown invite", async () => {
     const expired = await setup();
     await asSystem.query(`update "invite" set "expiresAt" = now() - interval '1 second' where "id" = $1`, [expired.invite.id]);

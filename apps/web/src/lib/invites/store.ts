@@ -297,11 +297,11 @@ export async function acceptInvite(token: string, user: { id: string; email: str
   if (refused) return { ok: false, reason: "inviter-cannot-grant", inviterName, capability: refused };
 
   const claim = async (client: ClientBase) => {
-    await actAs(client, ALL_TEAMS);
+    // By token as well, so a resend between the lookup and here kills the old link.
     const { rowCount } = await client.query(
       `update "invite" set "acceptedAt" = now(), "acceptedBy" = $2
-        where "id" = $1 and "acceptedAt" is null and "revokedAt" is null and "expiresAt" > now()`,
-      [invite.id, user.id],
+        where "id" = $1 and "tokenHash" = $3 and "acceptedAt" is null and "revokedAt" is null and "expiresAt" > now()`,
+      [invite.id, user.id, hashOf(token)],
     );
     if (!rowCount) throw new NotClaimed();
     await recordActivity(
@@ -315,7 +315,8 @@ export async function acceptInvite(token: string, user: { id: string; email: str
     if (!(error instanceof NotClaimed)) throw error;
     // Somebody else's press, a revoke or the clock got there first: say which.
     const state = (await lookupInvite(token))?.state;
-    return { ok: false, reason: state === "revoked" || state === "expired" ? state : "accepted" };
+    if (state === "accepted" || state === "revoked" || state === "expired") return { ok: false, reason: state };
+    return { ok: false, reason: "unknown" };
   }
   return { ok: true, lang, capabilities };
 }
