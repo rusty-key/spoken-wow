@@ -1,59 +1,55 @@
 # Community voice packs
 
-This folder lists voice packs that players made for Spoken. The Spoken Manager reads
-`community/packs.json` from the `master` branch and shows each entry on its Community page, where a
+Players make voice packs for Spoken and share them on [spoken.quest](https://spoken.quest/packs). The
+Spoken Manager reads the approved packs from the site and shows each one on its Community page, where a
 player can install, update and remove it. The authors of Spoken do not make these packs and do not
 check what is inside them. A pack carries Lua files, so install only packs from people you trust.
 
-To add your pack, open a pull request that adds one entry to `packs.json`. A maintainer looks at it
-before it is merged.
+## Share your pack
 
-## The entry
+1. Sign up at [spoken.quest](https://spoken.quest).
+2. Ask an admin for the Pack author role on [Discord](https://spoken.quest/discord).
+3. Upload the zip as an asset of a GitHub release in your own repository. Then open
+   [My packs](https://spoken.quest/packs), choose New pack and fill in the form: the asset's address,
+   the zip's size in bytes and its SHA-256 checksum (see below), and the other fields.
+4. Wait for review. An admin approves or rejects each new pack and each new version, and you get an
+   email with the decision. Players see the pack in the Manager once it is approved.
+5. To update the pack, upload the new zip as a new release asset and submit a new version on My packs.
+   Only one submission can wait per pack. You can withdraw it while it waits.
 
-Each entry is an object in the `packs` list. This is an example only. It is not in the json file.
+Until a new version is approved, players keep the last approved one. A rejected version does not
+replace it.
 
-```json
-{
-  "id": "elune-quests-de",
-  "title": "Elune Quests",
-  "author": "Elune",
-  "description": "Quest text read aloud in German by a team of friends.",
-  "lang": "deDE",
-  "section": "quests",
-  "version": "1.0.0",
-  "size": 734003200,
-  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  "url": "https://github.com/your-name/your-pack/releases/download/v1.0.0/SpokenCommunity_elune-quests-de.zip",
-  "homepage": "https://example.com/where-you-talk-about-it",
-  "license": "CC-BY-4.0",
-  "addedAt": "2026-10-18"
-}
-```
+## The form
 
 | Field | Rule |
 | --- | --- |
-| `id` | Lower-case letters and digits, with single hyphens between words. At most 48 characters. Unique in the list. |
-| `title`, `author` | Plain text, up to 80 characters. |
-| `description` | Plain text, up to 400 characters. |
-| `lang` | A language code of the form `xxYY`: two lower-case letters, then two upper-case ones, such as `deDE`, `itIT` or `heIL`. |
-| `section` | `quests`, `zones` or `books`. |
-| `version` | A version such as `1.0.0` or `1.1.0-beta.1`. Raise it for every new zip, so installed copies show an update. |
-| `size` | The size of the zip in bytes, as a whole number. |
-| `sha256` | The SHA-256 checksum of the zip, 64 hex digits. Required. The manager refuses a download that does not match. |
-| `url` | A GitHub release asset: `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>.zip`. |
-| `homepage` | Optional. An https link to a page about the pack. |
-| `license` | Optional. The license as you state it, up to 60 characters. |
-| `addedAt` | The date you added the entry, as `YYYY-MM-DD`. |
+| Pack id | Lower-case letters and digits, with single hyphens between words. At most 48 characters. It names the pack's folder and cannot change. |
+| Language | A language code of the form `xxYY`: two lower-case letters, then two upper-case ones, such as `deDE`, `itIT` or `heIL`. |
+| Section | `quests`, `places` or `readables`. |
+| Title, Author | Plain text, 1 to 80 characters. |
+| Description | Plain text, 1 to 400 characters. |
+| Version | A version such as `1.0.0` or `1.1.0-beta.1`, without spaces, at most 40 characters. Each new version must be higher than the live one, so installed copies show an update. |
+| Size in bytes | The size of the zip as a whole number, above 0 and at most 8 GiB. |
+| SHA-256 checksum | The SHA-256 checksum of the zip, 64 hex digits. The Manager refuses a download that does not match. |
+| Zip link | A GitHub release asset: `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>.zip`. At most 500 characters. Each new version needs a new link and a new checksum. |
+| Homepage | Optional. An https link to a page about the pack, at most 300 characters. |
+| License | Optional. The license as you state it, up to 60 characters. |
 
-An entry that breaks a rule is ignored by the manager, so check the list above before you submit.
+The pack id, language and section are fixed once the pack exists. A pack in another language is
+another pack with its own id. The Manager drops a pack that breaks a rule, so the form checks them
+before it accepts a submission.
+
+`community/packs.json` is frozen. It stays only for Managers up to 0.1.13, which still read it; new
+packs are not added there.
 
 ## What the zip must contain
 
-- One folder at the root of the zip, named `SpokenCommunity_<id>`. For the example it is
+- One folder at the root of the zip, named `SpokenCommunity_<id>`. For a pack with the id `elune-quests-de` it is
   `SpokenCommunity_elune-quests-de`. Nothing else may be in the zip: no other folder and no loose files.
 - A file `SpokenCommunity_<id>.toc` inside that folder, so the game can read it as an add-on.
 - Forward slashes in the paths, no `..` and no absolute paths. The manager refuses a zip that has them.
-- Your own work, or work you have the right to share. Say how it may be used in `license`.
+- Your own work, or work you have the right to share. Say how it may be used in the license field.
 
 The manager installs the folder into `Interface\AddOns` and never touches any other folder. It keeps
 the previous version in a backup folder until the next install.
@@ -97,7 +93,7 @@ one in a script the game's fonts lack, such as Hebrew, must also set `X-Spoken-L
 
 Right-to-left text is the pack's job: ship the text in visual order.
 
-The Manager's community list takes quests, places (`zones`) and readables (`books`) packs only, so a
+The Manager's community list takes quests, places and readables packs only, so a
 bosses pack cannot be listed there yet.
 
 A Hebrew places pack with lore, for example:
@@ -127,14 +123,5 @@ On macOS or Linux, run:
 sha256sum SpokenCommunity_elune-quests-de.zip
 ```
 
-Copy the 64 hex digits into `sha256`. The size in bytes is shown by `dir` on Windows and by
-`stat -c %s <file>` on Linux. Upload the zip as an asset of a GitHub release in your own repository
-before you send the pull request, and use that asset's address as `url`.
-
-## Send it
-
-1. Fork the repository and edit `community/packs.json`. Add your entry to the end of the `packs` list.
-2. Keep the file valid JSON: commas between entries, none after the last one.
-3. Open a pull request. Say in it what the pack covers (language, section, how much of it).
-4. To update your pack later, upload the new zip, then open a pull request that changes `version`,
-   `size`, `sha256` and `url` of your entry.
+Copy the 64 hex digits into the checksum field. The size in bytes is shown by `dir` on Windows and by
+`stat -c %s <file>` on Linux. Use the address of the release asset as the zip link.

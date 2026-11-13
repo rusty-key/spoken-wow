@@ -138,9 +138,19 @@ export type ActivityFilter = {
   to?: string;
   before?: Cursor;
   limit?: number;
-  /** Whether the viewer is a global admin, the only one who sees account events (user.*). */
+  /** Whether the viewer is a global admin, the only one who sees GLOBAL_ONLY_PREFIXES' events. */
   global?: boolean;
 };
+
+/**
+ * Kinds of every language's that only a global admin reads: account events, and community
+ * packs, whose moderation page a team admin cannot open. A team admin shown them would read
+ * rejection reasons and owner hand-overs that are not theirs, and follow links that 404.
+ */
+const GLOBAL_ONLY_PREFIXES = ["user.", "pack."];
+
+/** SQL true when alias `a`'s row is one a viewer who is not a global admin may see. */
+const NOT_GLOBAL_ONLY = GLOBAL_ONLY_PREFIXES.map((prefix) => `a."kind" not like '${prefix}%'`).join(" and ");
 
 const COLUMNS = `a."id"::text as "id", a."at", a."lang", a."kind", a."source", a."subject",
                  a."lineId", a."detail", a."actorId", u."name" as "actorName",
@@ -210,7 +220,7 @@ export async function listActivity(
   const where = [`not (${FOLDED})`];
   const { values, param } = params(filter.lang);
 
-  if (!filter.global) where.push(`a."kind" not like 'user.%'`);
+  if (!filter.global) where.push(NOT_GLOBAL_ONLY);
   if (filter.category) {
     where.push(`split_part(a."kind", '.', 1) = any(${param(prefixesOf(filter.category))}::text[])`);
   }
@@ -314,8 +324,8 @@ export async function groupRows(
 
 /**
  * Everybody who has done anything in a language, for the person filter. Without `global`,
- * not somebody whose only acts were on accounts: listing them would say an event exists
- * that this viewer is not shown.
+ * not somebody whose only acts were on accounts or packs: listing them would say an event
+ * exists that this viewer is not shown.
  */
 export async function activityActors(
   lang: Lang,
@@ -326,7 +336,7 @@ export async function activityActors(
     `select u."id", u."name" from "user" u
       where exists (select 1 from "activity" a
                      where a."actorId" = u."id" and (a."lang" = $1 or a."lang" is null)
-                       and ($2 or a."kind" not like 'user.%'))
+                       and ($2 or (${NOT_GLOBAL_ONLY})))
       order by u."name"`,
     [lang, global],
   );
