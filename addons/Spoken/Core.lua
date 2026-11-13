@@ -135,12 +135,11 @@ function Addon:SavedProfile(name)
     return nil
 end
 
---- The profile chosen for new characters, or nil where the player explicitly chose their own.
+--- The profile chosen for new characters, or nil where none is chosen or it is not saved.
 function Addon:NewCharacterProfile()
     local sv = rawget(_G, "SpokenSettings")
     local global = type(sv) == "table" and sv.global
-    if type(global) ~= "table" or global.NewCharacterProfile == false then return nil end
-    return self:SavedProfile(global.NewCharacterProfile)
+    return type(global) == "table" and self:SavedProfile(global.NewCharacterProfile) or nil
 end
 
 --- Whether a character missing from profileKeys has been here before: a deleted profile clears its
@@ -183,12 +182,6 @@ function Addon:InitDB()
         for key in pairs(rawget(_G, "SpokenSettings").profileKeys or {}) do known[key] = true end
     end
     self.db = LibStub("AceDB-3.0"):New("SpokenSettings", Defaults, newProfile)
-    -- Before this default existed, nil meant that every new character got its own profile. Keep
-    -- the profile this character is already using as the shared starting point instead of making
-    -- the player configure every new character. `false` is the explicit choice to keep own ones.
-    if self.db.global.NewCharacterProfile == nil and self.db.GetCurrentProfile then
-        self.db.global.NewCharacterProfile = self.db:GetCurrentProfile()
-    end
     local charKey = newProfile and self.db.keys.char
     if charKey and not known[charKey] then
         if SeenBefore(self.db.sv, charKey) then

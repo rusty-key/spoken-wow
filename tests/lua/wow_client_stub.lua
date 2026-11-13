@@ -1189,8 +1189,6 @@ libs["AceDB-3.0"] = {
         sv.char = sv.char or {}
         local charKey = next(sv.char) or "Tester - Realm"
         sv.char[charKey] = Merge(defaults.char, sv.char[charKey])
-        sv.profileKeys = sv.profileKeys or {}
-        sv.profileKeys[charKey] = startName
         sv.global = sv.global or {}
         local db = { profile = sv.profiles[startName], char = sv.char[charKey], global = sv.global, sv = sv,
             keys = { char = charKey } }
@@ -1210,7 +1208,7 @@ libs["AceDB-3.0"] = {
             return names
         end
         function db:SetProfile(name)
-            sv.profiles[name] = Merge(defaults.profile, sv.profiles[name])
+            sv.profiles[name] = sv.profiles[name] or Merge(defaults.profile, nil)
             current = name
             self.profile = sv.profiles[name]
         end
