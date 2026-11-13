@@ -9,6 +9,7 @@ import UserSearch from "@/components/UserSearch";
 import UserTable from "@/components/UserTable";
 import { userIdsWithApiKey } from "@/lib/api-key";
 import { listGrants, viewerOf } from "@/lib/grants/store";
+import { listInvites } from "@/lib/invites/store";
 import { isLang, langName } from "@/lib/lang";
 import { languageStates, textByTeam } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
@@ -68,6 +69,7 @@ export default async function Page({
             key={team}
             lang={team}
             grants={await listGrants([team])}
+            invites={await listInvites([team])}
             viewer={viewer}
             textByTeam={await textByTeam(team)}
             currentUserId={session.user.id}
