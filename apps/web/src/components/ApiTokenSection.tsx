@@ -31,19 +31,22 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
   const [label, setLabel] = useState("");
   const [lang, setLang] = useState<Lang>(langs[0].lang);
   const [access, setAccess] = useState<TokenAccess>(langs[0].text ? "read" : "none");
-  const [generate, setGenerate] = useState(false);
+  const [generate, setGenerate] = useState(!langs[0].text && langs[0].generate);
+  const [expires, setExpires] = useState(() => dateInDays(90));
+  const [created, setCreated] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const chosen = langs.find((entry) => entry.lang === lang) ?? langs[0];
 
-  // A language the owner cannot read or generate in drops the choice that does not apply.
+  // Switching language drops a choice the owner cannot make there and restores the one that
+  // was dropped: Read when text is back, generate on when it is all they can do.
   function chooseLang(code: Lang) {
     const next = langs.find((entry) => entry.lang === code) ?? langs[0];
     setLang(code);
     if (!next.text) setAccess("none");
+    else if (access === "none") setAccess("read");
     if (!next.generate) setGenerate(false);
+    else if (!next.text) setGenerate(true);
   }
-  const [expires, setExpires] = useState(() => dateInDays(90));
-  const [created, setCreated] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const create = () =>
     run(async () => {
