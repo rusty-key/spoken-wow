@@ -1,0 +1,95 @@
+local _, SpokenReadables = ...
+
+-- Dutch interface strings for Spoken Readables.
+--
+-- Keyed exactly as in Locale/enUS.lua; anything missing falls back to English.
+-- No game client runs in Dutch, so this file loads where the player chose it in
+-- Spoken's Interface Language, after the client's own file. Holiday names stay as
+-- the English client shows them, which is the client a Dutch player sees them in.
+
+local L = SpokenReadables.L
+
+if not (Spoken and Spoken.InterfaceLanguage and Spoken:InterfaceLanguage() == "nlNL") then
+	return
+end
+
+L.OPT_AUTOPLAY = "Automatisch voorlezen"
+L.OPT_WHOLE_BOOK = "Hele boek voorlezen"
+L.OPT_ONE_LINE = "Boek als één regel voorlezen"
+L.OPT_READ_ONCE = "Maar één keer voorlezen"
+L.OPT_STOP_ON_CLOSE = "Stoppen als het boek sluit"
+L.OPT_CLOSE_WHEN_READ = "Boek sluiten na het voorlezen"
+L.OPT_DOWNLOAD_ADDRESS = "Kopieer dit adres naar je webbrowser om het stempakket te downloaden."
+L.OPT_FORGET = "Gehoorde leesstof vergeten"
+L.OPT_FORGET_DONE_FMT = "Leesstof vergeten: %1$d. Die wordt opnieuw voorgelezen."
+L.PLAY = "Afspelen"
+L.STOP = "Stoppen"
+L.PLAY_TIP = "Dit hardop voorlezen"
+L.STOP_TIP = "Stoppen met voorlezen"
+L.DUI_ON = "Aan"
+L.DUI_OFF = "Uit"
+L.DUI_PLAY_RIGHT_CLICK = "Rechtsklik om ‘Automatisch voorlezen’ aan of uit te zetten."
+L.CONTRIBUTE = "Bijdragen"
+L.REPORT = "Melden"
+L.REPORT_PROBLEM = "Probleem melden"
+L.REPORT_LINE_ADDRESS = "Kopieer dit adres en open het in je browser om een probleem met deze pagina te melden."
+L.NO_LINE = "Geen regel voor deze pagina"
+L.NO_LINE_TIP = "Stuur de tekst uit je eigen client, zodat hij kan worden toegevoegd."
+L.MENU_BOOK_SETTINGS = "Instellingen van Leesstof"
+L.OPT_NO_PACK_AUDIO = "Het geïnstalleerde stempakket heeft nog geen vertelling voor deze pagina."
+L.OPT_NO_PACK_INSTALLED = "Er is geen stempakket voor Leesstof geïnstalleerd."
+L.OPT_PAGE_COUNT_FMT = "Pagina %1$d van %2$d"
+
+L.OPT_PAGE_TITLE = "Leesstof"
+L.OPT_DEV_DEBUG = "Debugberichten van Leesstof"
+
+L.REASON_AUTOPLAY = "Zet ‘Automatisch voorlezen’ aan om dit te gebruiken."
+L.REASON_READ_ONCE = "Zet ‘Maar één keer voorlezen’ aan om dit te gebruiken."
+L.REASON_WHOLE_BOOK = "Zet ‘Hele boek voorlezen’ aan om dit te gebruiken."
+L.OPT_RESET_PAGE_CONFIRM = "Elke instelling van Leesstof terugzetten naar de standaardwaarde?"
+
+L.COMPENDIUM_READABLES = "Leesstof"
+L.READABLES_SEARCH = "Leesstof zoeken"
+L.READABLES_NONE = "Geen resultaten."
+L.READABLES_FOUND_ONLY = "Alleen gevonden"
+L.READABLES_VOICED_ONLY = "Alleen ingesproken"
+L.TYPE_BOOK = "Boeken"
+L.TYPE_JOURNAL = "Dagboeken"
+L.TYPE_LETTER = "Brieven"
+L.TYPE_NOTE = "Notities"
+L.TYPE_SCROLL = "Perkamentrollen"
+L.TYPE_TABLET = "Tabletten en runen"
+L.TYPE_PLAQUE = "Plaquettes en borden"
+L.TYPE_GRAVE = "Grafstenen"
+L.TYPE_EXHIBIT = "Tentoonstellingen"
+L.TYPE_PICTURE = "Afbeeldingen en kaarten"
+L.TYPE_OTHER = "Overig"
+L.READABLE_BOOK = "Boek"
+L.READABLE_JOURNAL = "Dagboek"
+L.READABLE_LETTER = "Brief"
+L.READABLE_NOTE = "Notitie"
+L.READABLE_SCROLL = "Perkamentrol"
+L.READABLE_TABLET = "Tablet"
+L.READABLE_PLAQUE = "Plaquette"
+L.READABLE_GRAVE = "Grafsteen"
+L.READABLE_EXHIBIT = "Tentoonstelling"
+L.READABLE_PICTURE = "Afbeelding"
+L.READABLE_OTHER = "Overig"
+L.READABLES_BY_ZONE = "Per zone"
+L.READABLES_BY_TYPE = "Per soort"
+L.GROUP_EVENTS = "Feestdagen en evenementen"
+L.EVENT_WINTER_VEIL = "Feast of Winter Veil"
+L.EVENT_HARVEST_FESTIVAL = "Harvest Festival"
+L.EVENT_FISHING_EXTRAVAGANZA = "Stranglethorn Fishing Extravaganza"
+L.EVENT_SCOURGE_INVASION = "Scourge Invasion"
+L.GROUP_WIDE = "Overal in Azeroth"
+L.GROUP_UNKNOWN = "Plaats onbekend"
+L.GROUP_LANDS = "Andere landen"
+L.GROUP_BATTLEGROUNDS = "Slagvelden"
+L.GROUP_DUNGEONS = "Dungeons en raids"
+L.READABLE_NOT_FOUND = "Je hebt dit nog niet gevonden. Open het in de wereld om het hier te lezen."
+L.OPEN_IN_COMPENDIUM = "Openen in het Compendium van Azeroth"
+L.FOUND_FMT = "%1$d van %2$d gevonden"
+L.READABLES_IN_FMT = "In %1$s"
+L.READABLES_MORE_FMT = " en nog %1$d"
+L.BOOKS_TITLE_NTH_FMT = "%1$s (%2$d)"

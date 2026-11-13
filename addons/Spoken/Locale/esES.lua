@@ -184,6 +184,9 @@ L.OPT_VOICE_LANGUAGE = "Idioma de las voces"
 L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "Si falta la voz"
 L.OPT_FALLBACK_NONE = "Silencio"
+L.OPT_INTERFACE_LANGUAGE = "Idioma de la interfaz"
+L.OPT_INTERFACE_LANGUAGE_TIP = "El idioma de las ventanas y los ajustes de Spoken. Automático sigue al juego. Los demás son idiomas en los que no funciona ningún cliente del juego. Se aplica al recargar la interfaz."
+L.OPT_INTERFACE_LANGUAGE_RELOAD = "Spoken cambia de idioma al recargar la interfaz. ¿Recargar ahora?"
 
 -- Keys
 L.OPT_KEYS_TITLE = "Teclas"

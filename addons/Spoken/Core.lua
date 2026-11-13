@@ -142,6 +142,24 @@ function Addon:NewCharacterProfile()
     return type(global) == "table" and self:SavedProfile(global.NewCharacterProfile) or nil
 end
 
+local interfaceLanguage
+
+--- The language every module's interface strings load in: one from Languages.INTERFACE that the
+--- player chose, else the client's. Read from the saved table, since the locale files ask before
+--- AceDB loads it, and kept from the first answer: the strings loaded then are the ones the session
+--- has, so a choice made since applies at the next reload.
+function Addon:InterfaceLanguage()
+    if interfaceLanguage then return interfaceLanguage end
+    local sv = rawget(_G, "SpokenSettings")
+    local global = type(sv) == "table" and sv.global
+    local chosen = type(global) == "table" and global.InterfaceLanguage
+    interfaceLanguage = GetLocale()
+    for _, language in ipairs(Languages.INTERFACE) do
+        if language.code == chosen then interfaceLanguage = chosen end
+    end
+    return interfaceLanguage
+end
+
 --- Whether a character missing from profileKeys has been here before: a deleted profile clears its
 --- characters' keys but leaves their own settings, and the Forever client answers "Unknown" for any
 --- character on some logins. One with neither, whose empty char table AceDB dropped, looks new.

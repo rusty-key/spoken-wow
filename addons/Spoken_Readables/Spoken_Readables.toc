@@ -38,6 +38,7 @@ Locale/ruRU.lua
 Locale/koKR.lua
 Locale/zhCN.lua
 Locale/zhTW.lua
+Locale/nlNL.lua
 Core.lua
 Language.lua
 Opener.lua

@@ -226,6 +226,9 @@ L.OPT_VOICE_LANGUAGE = "음성 언어"
 L.OPT_LANG_AUTO_FMT = "자동 (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "음성이 없을 때"
 L.OPT_FALLBACK_NONE = "무음"
+L.OPT_INTERFACE_LANGUAGE = "인터페이스 언어"
+L.OPT_INTERFACE_LANGUAGE_TIP = "Spoken 자체 창과 설정의 언어입니다. 자동은 게임 언어를 따릅니다. 나머지는 게임 클라이언트가 지원하지 않는 언어입니다. UI를 다시 불러온 뒤 적용됩니다."
+L.OPT_INTERFACE_LANGUAGE_RELOAD = "Spoken의 언어는 UI를 다시 불러온 뒤 바뀝니다. 지금 다시 불러올까요?"
 
 -- Azeroth's Compendium, on Spoken's page.
 L.OPT_COMPENDIUM_TITLE = "아제로스 백과사전"

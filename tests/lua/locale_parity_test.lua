@@ -6,7 +6,7 @@ package.path = here .. "/?.lua;" .. package.path
 local H = require("queue_helpers")
 local Expect, Failures = H.Expecter(print)
 local ADDONS = here .. "/../../addons/"
-local CODES = { "deDE", "esES", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }
+local CODES = { "deDE", "esES", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "nlNL" }
 
 local function Read(path)
     local file = io.open(path, "rb")

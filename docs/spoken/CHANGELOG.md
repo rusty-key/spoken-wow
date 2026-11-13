@@ -2,6 +2,14 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Spoken in Dutch.** A new Interface Language setting, under Language on Spoken's page, puts
+  every module's windows and settings in Dutch. No game client runs in Dutch, so Spoken could
+  never show it on its own; Auto keeps following the game. The change applies after a reload.
+  Voices and quest text stay in the languages your packs bring.
+  *([murilopmachado](https://github.com/murilopmachado))*
+
 ## 3.9.0 — 2026-11-13
 
 - **Read Quest Progress Text.** A new Quests setting, on by default, under Read Automatically.

@@ -13,6 +13,9 @@
 ## Version: 3.9.0
 ## IconTexture: Interface\AddOns\Spoken\icon.tga
 ## SavedVariables: SpokenSettings
+## LoadSavedVariablesFirst: true
+# Locale/nlNL.lua asks Addon:InterfaceLanguage whether to load, which reads the player's choice
+# from SpokenSettings. Without this line the saved table is not loaded yet then, and Dutch never loads.
 ## OptionalDeps: DialogueUI
 # DialogueUI, when installed, loads first so the DialogueUI window can read its art and size: UI/DialogueUITheme.lua.
 ## Group: Spoken

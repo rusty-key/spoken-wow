@@ -226,6 +226,9 @@ L.OPT_VOICE_LANGUAGE = "Idioma da voz"
 L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "Se faltar a voz"
 L.OPT_FALLBACK_NONE = "Ficar em silêncio"
+L.OPT_INTERFACE_LANGUAGE = "Idioma da interface"
+L.OPT_INTERFACE_LANGUAGE_TIP = "O idioma das janelas e configurações do próprio Spoken. Automático segue o jogo. Os outros são idiomas em que nenhum cliente do jogo roda. Vale depois de recarregar a interface."
+L.OPT_INTERFACE_LANGUAGE_RELOAD = "O Spoken muda de idioma quando a interface é recarregada. Recarregar agora?"
 
 -- Azeroth's Compendium, on Spoken's page.
 L.OPT_COMPENDIUM_TITLE = "Compêndio de Azeroth"

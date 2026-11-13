@@ -32,6 +32,15 @@ local COURTESY = {
     plPL = { name = "Polish", native = "Polski" },
     viVN = { name = "Vietnamese", native = "Tiếng Việt" },
     heIL = { name = "Hebrew", native = "עברית" },
+    nlNL = { name = "Dutch", native = "Nederlands" },
+}
+
+-- Languages Spoken's interface is translated into that no game client runs in, so the client's
+-- locale can never choose them: the player does, under Interface Language. Each has a
+-- Locale/<code>.lua in every module, loaded after the client's own so its strings win. Latin
+-- script only, so that every client's font draws them.
+Languages.INTERFACE = {
+    { code = "nlNL", name = "Dutch", native = "Nederlands" },
 }
 
 -- Each pack names its language under its own section's key. Quests and Readables share the shape

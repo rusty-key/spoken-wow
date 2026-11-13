@@ -226,6 +226,9 @@ L.OPT_VOICE_LANGUAGE = "Язык озвучки"
 L.OPT_LANG_AUTO_FMT = "Авто (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "Если нет озвучки"
 L.OPT_FALLBACK_NONE = "Молчать"
+L.OPT_INTERFACE_LANGUAGE = "Язык интерфейса"
+L.OPT_INTERFACE_LANGUAGE_TIP = "Язык окон и настроек самого Spoken. «Авто» следует за игрой. Остальные — языки, на которых не работает ни один клиент игры. Применяется после перезагрузки интерфейса."
+L.OPT_INTERFACE_LANGUAGE_RELOAD = "Spoken сменит язык после перезагрузки интерфейса. Перезагрузить сейчас?"
 
 -- Azeroth's Compendium, on Spoken's page.
 L.OPT_COMPENDIUM_TITLE = "Компендиум Азерота"
