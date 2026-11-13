@@ -283,12 +283,8 @@ local function HeardSet()
 	return db.heard
 end
 
--- When each place last started reading, for Read Every Visit, by the wall clock: a wait can be a
--- month, longer than the computer stays on, and GetTime() starts again from zero at every restart.
--- A time ahead of now (the clock set back) counts as long ago, so the place is not silenced for good.
---
--- The waits the player can choose, in seconds; a month is 30 days. A day at the least: a shorter
--- wait reads the same stories over and over to a player who only rides back and forth.
+-- The wall clock, not GetTime(): a wait can be a month, and GetTime() restarts from zero with the
+-- client. A day at the least: a shorter wait repeats the stories to a player riding back and forth.
 SpokenPlaces.EVERY_VISIT_GAPS = { 24 * 3600, 7 * 24 * 3600, 30 * 24 * 3600 }
 local DEFAULT_GAP = SpokenPlaces.EVERY_VISIT_GAPS[1]
 local OFFERED_GAP = {}
@@ -296,7 +292,7 @@ for _, gap in ipairs(SpokenPlaces.EVERY_VISIT_GAPS) do
 	OFFERED_GAP[gap] = true
 end
 
--- The client's time(); os.time where it has none, as under the luajit tests.
+-- os.time under the luajit tests, which have no time().
 local function Now()
 	return (time or os.time)()
 end
@@ -320,17 +316,14 @@ function SpokenPlaces:ReadRecently(mapID, areaKey)
 		return false
 	end
 	local now = Now()
+	-- A time ahead of now is the clock set back: counting it as recent would silence the place.
 	return now >= at and now - at < SpokenPlaces:EveryVisitGap()
 end
 
--- Whether arriving at a place the character knows can read it at all: Include Places Found Before
--- reads it once, Read Every Visit again after the wait.
 local function ReadsKnownPlaces()
 	return SpokenPlaces:Get("autoplayExplored") or SpokenPlaces:Get("autoplayEveryVisit")
 end
 
--- Whether a place is due to be read on arriving there. With Read Every Visit, any place not read
--- within the chosen wait; without it, any place this character has not heard.
 local function Due(mapID, areaKey)
 	if SpokenPlaces:Get("autoplayEveryVisit") then
 		return not SpokenPlaces:ReadRecently(mapID, areaKey)

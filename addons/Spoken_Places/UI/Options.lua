@@ -99,7 +99,6 @@ function SpokenPlaces:SetupOptions()
 		Get("autoplayStopInCombat"), Set("autoplayStopInCombat"))
 	local again = layout:Checkbox(L.OPT_AUTOPLAY_EVERY_VISIT, nil,
 		Get("autoplayEveryVisit"), Set("autoplayEveryVisit"), refresh)
-	-- Shown only with Read Every Visit on: off, it is a setting for nothing.
 	local gaps = SpokenPlaces.EVERY_VISIT_GAPS
 	local GAP_LABELS = { [gaps[1]] = L.OPT_GAP_1D, [gaps[2]] = L.OPT_GAP_1W, [gaps[3]] = L.OPT_GAP_1MO }
 	local gapMenu = layout:Dropdown(L.OPT_AUTOPLAY_GAP, nil,

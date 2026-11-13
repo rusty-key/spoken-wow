@@ -1,6 +1,5 @@
 -- Read Every Visit: a place is read again on arrival once the chosen wait has passed since it was
--- last read, and not before; off, a place is read once per character as it always was.
--- Run with `make test-player`.
+-- last read, and not before; off, a place is read once per character.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -53,7 +52,6 @@ local function ZoneChanged(Z)
     for _, callback in ipairs(Z.zoneChangedCallbacks) do callback(Z:GetPlayerMapID()) end
 end
 
--- Login settles, the zone and the area are read, and both finish.
 local function ArriveAndListen(Z)
     stub.Advance(2)
     local queued = Spoken:GetQueueSize()
@@ -61,7 +59,7 @@ local function ArriveAndListen(Z)
     return queued
 end
 
--- Off: once per character, as before.
+-- Off: once per character.
 local Z = Boot({ autoplayExplored = true, autoplayEveryVisit = false })
 Expect("off, arriving reads the zone and the area", ArriveAndListen(Z), 2)
 clock = clock + 30 * DAY
@@ -99,8 +97,7 @@ clock = clock + 6 * DAY
 ZoneChanged(Z)
 Expect("...but eight days later", Spoken:GetQueueSize(), 2)
 
--- A saved wait that is not one of the choices reads as the default, as do 30 minutes and 12
--- hours, which early builds offered.
+-- A saved wait that is not one of the choices reads as the default.
 Z = Boot({ autoplayEveryVisit = true, autoplayEveryVisitGap = 5 })
 Expect("a wait that is not offered falls back to a day", Z:EveryVisitGap(), DAY)
 Z = Boot({ autoplayEveryVisit = true, autoplayEveryVisitGap = 30 * 60 })
