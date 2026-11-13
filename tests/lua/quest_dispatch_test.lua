@@ -279,6 +279,24 @@ stub.FireEvent("QUEST_FINISHED")
 stub.Advance(0.6)
 ExpectCurrent("closing an unaccepted offer leaves its audio playing when stopping is disabled", "104-accept")
 
+-- Reopening the same quest after closing it starts a new interaction instead of being suppressed
+-- as a duplicate of the dialog that just ended.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+ExpectCurrent("reopening a closed quest starts its offer audio again", "104-accept")
+
 -- A player who declines: no accept event comes, and nothing is read beyond what the open window read.
 StartScenario()
 world.questID = full

@@ -903,6 +903,15 @@ function Addon:OnInitialize()
     self.questEventRecorderFrame:SetScript("OnEvent", function(_, event, questIDArg, ...)
         if event == "QUEST_FINISHED" then
             lastQuestEvent = nil
+            local state = self.autoQuestState
+            if state then
+                state.lastHandledKey = nil
+                state.lastHandledAt = 0
+                state.candidateKey = nil
+                state.candidateAge = 0
+                state.retryDelay = 0
+                state.completedKey = nil
+            end
         elseif REPLAYED_ON[event] then
             -- QUEST_TURNED_IN carries the quest ID first and the rewards after it. QUEST_ACCEPTED
             -- carries the quest ID alone, except on Classic clients, where it follows the quest log
