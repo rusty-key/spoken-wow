@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { inviteTokenIn } from "@/lib/invites/cookie";
+import { capabilityLabel } from "@/lib/permissions";
 import { acceptInvite } from "@/lib/invites/store";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     revoked: "This invite was withdrawn.",
     accepted: "This invite was accepted already.",
     "wrong-email": `This invite is for ${outcome.email}; you are signed in as ${session.user.email}.`,
-    "inviter-cannot-grant": `${who} can no longer give ${outcome.capability}; ask a team admin to send a new invite.`,
+    "inviter-cannot-grant": `${who} can no longer give ${outcome.capability ? capabilityLabel(outcome.capability) : "that"}; ask a team admin to send a new invite.`,
   }[reason];
   return Response.json({ error, reason }, { status: STATUS[reason] });
 }
