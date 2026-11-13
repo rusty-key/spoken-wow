@@ -1699,7 +1699,6 @@ function Addon:QUEST_FINISHED()
     if Addon.db.profile.Audio.StopAudioOnDisengage then
         local deferOfferStop = offer
             and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
-            and (currentQuestSoundData == offer.soundData or currentQuestSoundData.questID == offer.questID)
         if currentQuestSoundData and not deferOfferStop then
             Player:Remove(currentQuestSoundData)
         end
