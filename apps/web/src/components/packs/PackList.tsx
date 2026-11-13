@@ -16,6 +16,7 @@ import PackStatus from "./PackStatus";
 
 const PENDING = "A version is already waiting for review. Withdraw it to submit another.";
 const UNLISTED = "An admin unlisted this pack, so it takes no new versions.";
+const GUIDE = "https://github.com/rusty-key/spoken-wow/blob/master/community/README.md";
 
 // A null pack for the new-pack form; the whole state is null while the form is shut.
 type Editing = { pack: Pack | null } | null;
@@ -68,8 +69,13 @@ function List({ packs }: { packs: Pack[] }) {
         <div className="mt-6 max-w-xl rounded-lg border border-dashed p-6 text-sm">
           <p className="font-medium">No packs yet</p>
           <p className="text-muted-foreground mt-1 mb-4">
-            Send your first pack for review. Once an admin approves it, players can install it from the
-            Spoken Manager, and you get an email either way.
+            A community pack is a voice pack you record or generate yourself and host on your own GitHub
+            releases. Send it for review: once an admin approves it, players can install it from the
+            Spoken Manager, and you get an email either way. What a pack must contain is in the{" "}
+            <a href={GUIDE} className="text-foreground underline underline-offset-2">
+              community pack guide
+            </a>
+            .
           </p>
           {newPack}
         </div>

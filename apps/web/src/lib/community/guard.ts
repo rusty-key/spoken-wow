@@ -1,5 +1,4 @@
 import { requireAdminSession } from "@/lib/generation/authz";
-import { canSubmitPacks } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 
 import { PackError } from "./store";
@@ -22,13 +21,10 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
   }
 }
 
-/**
- * For a signed-in pack author or admin; anybody else gets a 403. The role check only keeps
- * the routes closed to members: the store checks ownership itself.
- */
-export async function asAuthor(handle: (userId: string) => Promise<Response>): Promise<Response> {
+/** For anybody signed in; the store checks ownership itself. */
+export async function asMember(handle: (userId: string) => Promise<Response>): Promise<Response> {
   const session = await currentSession();
-  if (!session || !canSubmitPacks(session.user.role)) {
+  if (!session) {
     return Response.json({ error: "not allowed" }, { status: 403 });
   }
   return guarded(() => handle(session.user.id));

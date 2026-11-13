@@ -8,13 +8,12 @@ check what is inside them. A pack carries Lua files, so install only packs from 
 ## Share your pack
 
 1. Sign up at [spoken.quest](https://spoken.quest).
-2. Ask an admin for the Pack author role on [Discord](https://spoken.quest/discord).
-3. Upload the zip as an asset of a GitHub release in your own repository. Then open
+2. Upload the zip as an asset of a GitHub release in your own repository. Then open
    [My packs](https://spoken.quest/packs), choose New pack and fill in the form: the asset's address,
    the zip's size in bytes and its SHA-256 checksum (see below), and the other fields.
-4. Wait for review. An admin approves or rejects each new pack and each new version, and you get an
+3. Wait for review. An admin approves or rejects each new pack and each new version, and you get an
    email with the decision. Players see the pack in the Manager once it is approved.
-5. To update the pack, upload the new zip as a new release asset and submit a new version on My packs.
+4. To update the pack, upload the new zip as a new release asset and submit a new version on My packs.
    Only one submission can wait per pack. You can withdraw it while it waits.
 
 Until a new version is approved, players keep the last approved one. A rejected version does not

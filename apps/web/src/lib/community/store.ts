@@ -18,7 +18,7 @@ import type { ActivityDetail } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, query, withTeam } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { canSubmitPacks, isAdmin } from "@/lib/permissions";
+import { isAdmin } from "@/lib/permissions";
 
 import { compareVersions, validateFields, validateNewPack, type PackFields, type Section } from "./rules";
 
@@ -229,9 +229,6 @@ export async function createPack(actorId: string, input: unknown): Promise<Pack>
   const { id, lang, section, ...f } = checked.value;
 
   const { pack, submission, admins } = await act(async (client) => {
-    if (!canSubmitPacks(await roleOf(actorId, client))) {
-      throw new PackError("Your account cannot submit packs. Ask an admin for the Pack author role.", 403);
-    }
     const created = await client.query(
       `insert into "community_pack" ("id", "ownerId", "lang", "section") values ($1, $2, $3, $4)
        on conflict ("id") do nothing`,
@@ -268,7 +265,7 @@ export async function submitVersion(actorId: string, packId: string, input: unkn
     );
     const pack = rows[0];
     if (!pack || pack.unlistedAt) throw new PackError("No such pack.", 404);
-    if (!isAdmin(role) && (pack.ownerId !== actorId || !canSubmitPacks(role))) {
+    if (!isAdmin(role) && pack.ownerId !== actorId) {
       throw new PackError("You can only submit versions of your own packs.", 403);
     }
 
@@ -403,8 +400,6 @@ export async function setOwner(adminId: string, packId: string, ownerId: string 
     if (ownerId !== null) {
       const user = await client.query(`select 1 from "user" where "id" = $1`, [ownerId]);
       if (!user.rowCount) throw new PackError("No such user.", 404);
-      // An owner who cannot submit could not add versions to the pack they own.
-      if (!canSubmitPacks(await roleOf(ownerId, client))) throw new PackError("Give them the Pack author role first.", 400);
     }
     const updated = await client.query(`update "community_pack" set "ownerId" = $2 where "id" = $1`, [packId, ownerId]);
     if (!updated.rowCount) throw new PackError("No such pack.", 404);

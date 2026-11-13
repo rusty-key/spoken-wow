@@ -1,4 +1,4 @@
-/** The author routes against a real Postgres. Needs DATABASE_URL and migrations through 0106. */
+/** The author routes against a real Postgres. Needs DATABASE_URL and migrations through 0107. */
 import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -43,13 +43,11 @@ beforeAll(async () => {
   delete process.env.RESEND_FROM;
   info = vi.spyOn(console, "info").mockImplementation(() => {});
   user = await testUser("test-authorroute");
-  await asSystem.query(`update "user" set "role" = 'pack_author' where "id" = $1`, [user.id]);
   who.id = user.id;
 });
 
 beforeEach(() => {
   who.signedIn = true;
-  who.role = "pack_author";
 });
 
 afterAll(async () => {
@@ -61,13 +59,11 @@ afterAll(async () => {
 });
 
 describe("author routes", () => {
-  it("refuse a member and a signed-out visitor with 403", async () => {
-    who.role = "member";
+  it("refuse a signed-out visitor with 403", async () => {
+    who.signedIn = false;
     expect((await GET()).status).toBe(403);
     expect((await post(body())).status).toBe(403);
     expect((await withdraw(new Request("http://localhost"), ctx)).status).toBe(403);
-    who.signedIn = false;
-    expect((await GET()).status).toBe(403);
   });
 
   it("answer a broken form with 400 and an error per field", async () => {
@@ -84,7 +80,7 @@ describe("author routes", () => {
     expect((await response.json()).errors).toHaveProperty("form");
   });
 
-  it("let a pack author create, list, resubmit and withdraw", async () => {
+  it("let a member create, list, resubmit and withdraw", async () => {
     const created = await post(body());
     expect(created.status).toBe(200);
     expect(await created.json()).toMatchObject({ id: ID, ownerId: user.id, pending: { version: "1.0.0" } });

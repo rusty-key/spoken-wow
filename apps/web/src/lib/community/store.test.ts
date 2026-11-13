@@ -63,7 +63,6 @@ beforeAll(async () => {
   stranger = await testUser("test-pack-stranger");
   admin = await testUser("test-pack-admin");
   helper = await testUser("test-pack-helper");
-  await asSystem.query(`update "user" set "role" = 'pack_author' where "id" = any($1)`, [[author.id, stranger.id, helper.id]]);
   await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [admin.id]);
 });
 
@@ -140,15 +139,6 @@ describe("a new pack", () => {
     expect(error.status).toBe(400);
     expect(error.errors).toHaveProperty("sha256");
   });
-
-  it("refuses somebody who may not submit packs", async () => {
-    const member = await testUser("test-pack-member");
-    try {
-      await expect(createPack(member.id, newPack(nextId()))).rejects.toSatisfy(refused(403));
-    } finally {
-      await member.cleanup();
-    }
-  });
 });
 
 describe("a new version", () => {
@@ -205,22 +195,6 @@ describe("a new version", () => {
     expect(pack.live?.version).toBe("1.0.0");
     expect(pack.lastRejected).toMatchObject({ version: "1.1.0", rejectReason: "The zip does not open." });
     expect((await historyByPack()).get(id)!.map((s) => s.status)).toEqual(["rejected", "approved"]);
-  });
-});
-
-describe("an owner without the Pack author role", () => {
-  it("is refused until the role is granted", async () => {
-    const id = nextId();
-    await approved(id);
-    const plain = await testUser("test-pack-plain");
-    try {
-      await expect(setOwner(admin.id, id, plain.id)).rejects.toSatisfy(refused(400));
-      await asSystem.query(`update "user" set "role" = 'pack_author' where "id" = $1`, [plain.id]);
-      expect(await setOwner(admin.id, id, plain.id)).toMatchObject({ ownerId: plain.id });
-    } finally {
-      await asSystem.query(`update "community_pack" set "ownerId" = null where "id" = $1`, [id]);
-      await plain.cleanup();
-    }
   });
 });
 
@@ -293,7 +267,6 @@ describe("withdrawing", () => {
 describe("an owner whose account is deleted", () => {
   it("leaves the pack live and lets an admin hand it on", async () => {
     const leaving = await testUser("test-pack-leaving");
-    await asSystem.query(`update "user" set "role" = 'pack_author' where "id" = $1`, [leaving.id]);
     const id = nextId();
     const pack = await createPack(leaving.id, newPack(id));
     await decide(admin.id, pack.pending!.id, "approve");

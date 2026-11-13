@@ -26,7 +26,6 @@ beforeAll(async () => {
   info = vi.spyOn(console, "info").mockImplementation(() => {});
   author = await testUser("test-route-author");
   admin = await testUser("test-route-admin");
-  await asSystem.query(`update "user" set "role" = 'pack_author' where "id" = $1`, [author.id]);
   await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [admin.id]);
   const pack = await createPack(author.id, {
     id: ID,
