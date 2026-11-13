@@ -2,6 +2,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
+import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import { forgetTeams, teamOf } from "@/lib/teams/store";
 import { asSystem, dropTeam, runningJob, systemRows, testUser } from "@/lib/teams/testing";
 
@@ -56,6 +57,76 @@ async function post(body: unknown): Promise<Response> {
   if (response.ok) made.push(((await response.clone().json()) as { team: { id: string } }).team.id);
   return response;
 }
+
+const letters = () => String.fromCharCode(65 + Math.floor(Math.random() * 26));
+const freshCode = () => `xq${letters()}${letters()}`;
+
+async function dropLanguages(codes: string[]) {
+  const held = await systemRows<{ teamId: string }>(`select "teamId" from "team_language" where "lang" = any($1::text[])`, [codes]);
+  await asSystem.query(`delete from "activity" where "lang" = any($1::text[])`, [codes]);
+  await asSystem.query(`delete from "language_grant" where "lang" = any($1::text[])`, [codes]);
+  await asSystem.query(`delete from "language" where "code" = any($1::text[])`, [codes]);
+  for (const { teamId } of held) await dropTeam(teamId);
+  forgetLanguages();
+  await loadLanguages();
+  forgetTeams();
+}
+
+describe("new language", () => {
+  const codes: string[] = [];
+  const code = () => {
+    const fresh = freshCode();
+    codes.push(fresh);
+    return fresh;
+  };
+  const body = (extra: Record<string, unknown>, lang: string) => ({
+    name: "Testish",
+    newLanguage: { code: lang, name: "Testish", native: "Testisch" },
+    ...extra,
+  });
+  afterEach(async () => {
+    await dropLanguages(codes);
+    codes.length = 0;
+  });
+
+  it("founds the language and its team, with the named admin", async () => {
+    const lang = code();
+    const response = await POST(json("POST", body({ slug: `test-${lang.toLowerCase()}-${tag}`, adminEmail: `${who.id}@example.invalid` }, lang)));
+    expect(response.status).toBe(200);
+    const { team } = (await response.json()) as { team: { langs: string[] } };
+    expect(team.langs).toEqual([lang]);
+    const [row] = await systemRows<{ enabled: boolean; textByTeam: boolean }>(
+      `select "enabled", "textByTeam" from "language" where "code" = $1`,
+      [lang],
+    );
+    expect(row).toEqual({ enabled: true, textByTeam: true });
+    const grants = await systemRows<{ capability: string }>(
+      `select "capability" from "team_member" where "lang" = $1 and "userId" = $2 order by 1`,
+      [lang, who.id],
+    );
+    expect(grants.map((g) => g.capability)).toEqual(["admin"]);
+    expect(await systemRows(`select 1 from "language_grant" where "lang" = $1 and "userId" = $2 and "capability" = 'edit'`, [lang, who.id])).toHaveLength(1);
+    expect((await POST(json("POST", body({ slug: `again-${tag}` }, lang)))).status).toBe(409);
+  });
+
+  it("leaves nothing behind when the slug is taken", async () => {
+    const taken = await post({ slug: `taken-${tag}`, name: "T", langs: [] });
+    expect(taken.status).toBe(200);
+    const teams = await systemRows(`select 1 from "team"`);
+    const lang = code();
+    expect((await POST(json("POST", body({ slug: `taken-${tag}` }, lang)))).status).toBe(409);
+    expect(await systemRows(`select 1 from "language" where "code" = $1`, [lang])).toHaveLength(0);
+    expect(await systemRows(`select 1 from "team"`)).toHaveLength(teams.length);
+  });
+
+  it("answers 400 with langs beside newLanguage, and 403 to a member", async () => {
+    const lang = code();
+    expect((await POST(json("POST", body({ slug: `both-${tag}`, langs: ["deDE"] }, lang)))).status).toBe(400);
+    expect(await systemRows(`select 1 from "language" where "code" = $1`, [lang])).toHaveLength(0);
+    who.role = "member";
+    expect((await POST(json("POST", body({ slug: `mem-${tag}` }, lang)))).status).toBe(403);
+  });
+});
 
 describe("teams routes", () => {
   it("answers 403 to a member on all four", async () => {

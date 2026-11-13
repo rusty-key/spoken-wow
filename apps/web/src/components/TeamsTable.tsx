@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import NewLanguageFields, { type NewLanguage } from "@/components/NewLanguageFields";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BASE_LANG, type Lang } from "@/lib/lang";
@@ -38,6 +39,9 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
+/** The select's last choice: not a language, but a way to name one the site lacks. */
+const NEW_LANGUAGE = "new" as Lang;
+
 const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
 
 export default function TeamsTable({ initial, takes, languages }: Props) {
@@ -46,6 +50,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
+  const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
   const [moving, setMoving] = useState<{ lang: Lang; target: TeamSummary } | null>(null);
 
   async function run(action: () => ReturnType<typeof send>): Promise<boolean> {
@@ -75,16 +80,23 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     void run(() => send(`/api/teams/${target.id}/languages`, "PUT", { lang }));
   }
 
+  const newLanguage = form.langs.includes(NEW_LANGUAGE);
+
   async function create(event: React.FormEvent) {
     event.preventDefault();
     await run(async () => {
       const result = await send("/api/teams", "POST", {
         slug: form.slug.trim(),
         name: form.name,
-        langs: form.langs,
+        ...(newLanguage
+          ? { newLanguage: { code: fresh.code.trim(), name: fresh.name.trim(), native: fresh.native.trim() } }
+          : { langs: form.langs }),
         ...(form.adminEmail.trim() ? { adminEmail: form.adminEmail.trim() } : {}),
       });
-      if (result.ok) setForm({ slug: "", name: "", adminEmail: "", langs: [] });
+      if (result.ok) {
+        setForm({ slug: "", name: "", adminEmail: "", langs: [] });
+        setFresh({ code: "", name: "", native: "" });
+      }
       return result;
     });
   }
@@ -198,7 +210,9 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
               {language.name} ({language.code})
             </option>
           ))}
+          <option value={NEW_LANGUAGE}>New language…</option>
         </select>
+        {newLanguage && <NewLanguageFields value={fresh} onChange={setFresh} />}
         <Input
           aria-label="Admin email"
           type="email"
