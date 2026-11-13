@@ -1,11 +1,11 @@
 import type { Pack, Submission } from "@/lib/community/store";
 
-/** A user id to show: the name if it has one, and the id is null once the account is deleted. */
+/** The id is null once the account is deleted. */
 export function nameOf(id: string | null, name: string | null | undefined): string {
   return id ? (name ?? "an unnamed account") : "a deleted account";
 }
 
-/** The most recent of what the store returns, which is where a new version's fields start. */
+/** Where a new version's fields start. */
 export function newest(pack: Pack): Submission | null {
   const all = [pack.live, pack.pending, pack.lastRejected].filter((s): s is Submission => s !== null);
   return all.reduce<Submission | null>((best, s) => (!best || BigInt(s.id) > BigInt(best.id) ? s : best), null);

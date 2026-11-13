@@ -1,4 +1,3 @@
-/** Hand a pack to another owner, or take it off the Manager's list. Site admins only. */
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { asAdmin } from "@/lib/community/guard";
 import { setListed, setOwner } from "@/lib/community/store";

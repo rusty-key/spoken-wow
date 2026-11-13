@@ -1,4 +1,3 @@
-/** The admin's pack routes from the browser. */
 import { send } from "@/lib/send";
 
 export const decideSubmission = (id: string, decision: "approve" | "reject", reason?: string) =>

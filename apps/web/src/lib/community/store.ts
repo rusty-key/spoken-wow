@@ -1,5 +1,5 @@
 /**
- * Community voice packs (migration 0106): authors submit, admins review, the Manager reads the
+ * Community voice packs: authors submit, admins review, the Manager reads the
  * approved ones.
  *
  * THE STORE CHECKS WHO IS ASKING. Every act takes the actor's id and reads their role itself,
@@ -26,7 +26,6 @@ export class PackError extends Error {
   constructor(
     message: string,
     readonly status: 400 | 403 | 404 | 409,
-    /** Per field, for a submission that broke the rules. */
     readonly errors?: Record<string, string>,
   ) {
     super(message);
@@ -195,7 +194,6 @@ function rulesBroken(errors: Record<string, string>): PackError {
 
 type PackKind = Extract<keyof ActivityDetail, `pack.${string}`>;
 
-/** A pack act belongs to every language, and its subject is the pack. */
 function record<K extends PackKind>(
   client: Client,
   kind: K,
@@ -225,7 +223,6 @@ function emailAdmins(to: string[], s: Submission): void {
   for (const address of to) sendEmail(address, subject, text);
 }
 
-/** A first submission: the pack, owned by the actor, with its first version pending review. */
 export async function createPack(actorId: string, input: unknown): Promise<Pack> {
   const checked = validateNewPack(input);
   if (!checked.ok) throw rulesBroken(checked.errors);
@@ -296,7 +293,6 @@ export async function submitVersion(actorId: string, packId: string, input: unkn
   return submission;
 }
 
-/** Take back the version waiting for review, which frees the slot for another. */
 export async function withdrawPending(actorId: string, packId: string): Promise<void> {
   await act(async (client) => {
     const role = await roleOf(actorId, client);
@@ -401,7 +397,6 @@ export async function decide(
   return submission;
 }
 
-/** Hand a pack to another account, or to nobody. */
 export async function setOwner(adminId: string, packId: string, ownerId: string | null): Promise<Pack> {
   return act(async (client) => {
     await requireAdmin(client, adminId);
@@ -442,7 +437,6 @@ export function listAll(): Promise<Pack[]> {
   return packs(`true`, []);
 }
 
-/** The review queue, oldest first: the packs of `all` with a version waiting. */
 export function queueOf(all: Pack[]): (Submission & { pack: Pack })[] {
   return all
     .filter((pack) => pack.pending)
@@ -457,7 +451,6 @@ export async function pendingCount(): Promise<number> {
   return rows[0].n;
 }
 
-/** Every pack's submissions, newest first. */
 export async function historyByPack(): Promise<Map<string, Submission[]>> {
   const rows = await query<SubmissionRow>(
     `select ${SUBMISSION_COLUMNS} from "community_pack_submission" s order by s."id" desc`,
@@ -477,7 +470,6 @@ type EntryRow = Omit<ManagerEntry, "size" | "homepage" | "license"> & {
   license: string | null;
 };
 
-/** The Manager's registry: listed packs with an approved version, at their newest approved one. */
 export async function managerEntries(): Promise<ManagerEntry[]> {
   const rows = await query<EntryRow>(
     `select distinct on (p."id") p."id", s."title", s."author", s."description", p."lang", p."section",

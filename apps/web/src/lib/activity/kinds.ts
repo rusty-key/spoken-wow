@@ -155,7 +155,7 @@ export type ActivityDetail = {
   "release.started": { section: string };
   "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
 
-  // Community packs (migration 0106). Every language's; the subject is the pack id.
+  // Community packs: every language's, the subject is the pack id.
   "pack.submitted": PackSubmissionDetail;
   "pack.approved": PackSubmissionDetail;
   "pack.rejected": PackSubmissionDetail & { reason: string };

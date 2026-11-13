@@ -1,4 +1,3 @@
-/** The signed-in pack author's own packs, and a new pack for approval. */
 import { bodyOf } from "@/lib/api-body";
 import { asAuthor } from "@/lib/community/guard";
 import { createPack, listOwned } from "@/lib/community/store";

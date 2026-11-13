@@ -31,7 +31,6 @@ const link = (value: string) => (
   </a>
 );
 
-/** Bytes as typed, with the size a person reads beside them. */
 function sizeOf(bytes: number): string {
   const mib = bytes / 1024 ** 2;
   const readable = mib >= 1024 ? `${(mib / 1024).toFixed(2)} GiB` : `${mib.toFixed(1)} MiB`;

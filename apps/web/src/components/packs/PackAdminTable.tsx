@@ -34,10 +34,6 @@ function titleOf(pack: Row): string | null {
   return pack.live?.title ?? pack.history[0]?.title ?? null;
 }
 
-/**
- * Every community pack: who owns it, what players have, whether the Manager lists it, and what
- * was ever sent for it.
- */
 export default function PackAdminTable({ packs, names }: { packs: Row[]; names: Record<string, string> }) {
   const router = useRouter();
   const toast = useToast();
@@ -189,7 +185,6 @@ type Search =
   | { state: "error" }
   | { state: "done"; users: Found[] };
 
-/** Users whose name or email holds the query, through the admin plugin's own list. */
 async function findUsers(query: string): Promise<Found[]> {
   const ask = (searchField: "name" | "email") =>
     authClient.admin.listUsers({ query: { searchValue: query, searchField, searchOperator: "contains", limit: 8 } });
@@ -199,10 +194,7 @@ async function findUsers(query: string): Promise<Found[]> {
   return [...found.values()].slice(0, 8);
 }
 
-/**
- * Who owns a pack, and the way to hand it to somebody else or to nobody: a pack outlives its
- * author's account, and somebody has to be able to take it over.
- */
+/** A pack outlives its author's account, so an admin can hand it to somebody else or to nobody. */
 function OwnerPicker({
   pack,
   disabled,

@@ -3,7 +3,6 @@
 import { DAY, useLocalDates } from "@/components/useLocalDates";
 import type { Pack } from "@/lib/community/store";
 
-/** Where a pack stands with players and with review, one line per fact. */
 export default function PackStatus({ pack }: { pack: Pack }) {
   const when = useLocalDates();
 

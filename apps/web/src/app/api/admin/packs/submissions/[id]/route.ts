@@ -1,4 +1,3 @@
-/** Approve or reject a pending submission. Site admins only. */
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { asAdmin } from "@/lib/community/guard";
 import { decide } from "@/lib/community/store";

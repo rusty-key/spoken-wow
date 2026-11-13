@@ -1,18 +1,14 @@
--- Community voice packs submitted on spoken.quest, replacing the hand-edited community/packs.json
--- as the Manager's registry.
+-- Community voice packs: the Manager's registry.
 --
--- A pack is the stable identity an author owns; every upload of it is a submission, so the
--- history of what was approved and rejected stays and a rejected update never displaces the
--- last approved version (the public list reads the newest approved submission per pack).
+-- A pack is the identity an author owns; every upload of it is a submission, so a rejected
+-- update never displaces the last approved version (the public list reads the newest approved
+-- submission per pack).
 --
 -- "ownerId" and "submittedBy" go null when an account is deleted: the pack stays live and an
--- admin can hand it to somebody else. At most one submission per pack waits for review, so an
--- author edits their pending one rather than queueing a second.
+-- admin can hand it to somebody else. At most one submission per pack waits for review.
 --
--- The two packs that were in packs.json are seeded as approved, with no owner, so the registry
--- the Manager reads does not change on the day it moves here.
---
--- Additive and forward-only.
+-- The two packs of packs.json are seeded as approved with no owner, so the registry does not
+-- change on the day it moves here.
 
 create table if not exists "community_pack" (
   "id"         text primary key

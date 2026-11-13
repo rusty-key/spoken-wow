@@ -16,7 +16,6 @@ export const metadata: Metadata = { title: "Community packs · Spoken" };
 
 export const dynamic = "force-dynamic";
 
-/** The review queue for community packs, and every pack there is. Site admins only; a 404 for anyone else. */
 export default async function Page() {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();

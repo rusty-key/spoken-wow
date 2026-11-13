@@ -1,4 +1,3 @@
-/** What a refusing route answers: its reason, and per-field reasons for a form. */
 export type Refusal = { error?: string; errors?: Record<string, string> };
 
 /**

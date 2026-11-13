@@ -66,12 +66,7 @@ function Code({ children }: { children: ReactNode }) {
   return <code className="bg-muted rounded px-1 py-0.5 font-mono text-[0.8rem] [overflow-wrap:anywhere]">{children}</code>;
 }
 
-/**
- * A new pack, or a new version of one, sent for review.
- *
- * The rules run here first so a typo is caught without a round trip, and the server's per-field
- * errors land in the same places when it disagrees.
- */
+/** The rules run here first to save a round trip; the server's per-field errors land in the same places. */
 export default function PackForm({
   pack,
   onClose,

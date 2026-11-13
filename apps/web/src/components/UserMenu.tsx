@@ -36,7 +36,6 @@ type MenuLink = {
   href: string;
   label: string;
   admin?: boolean;
-  /** Something waiting there, drawn after the label. */
   count?: { value: number; title: string };
 };
 

@@ -1,4 +1,3 @@
-/** Withdraw the pack's pending version before an admin has decided it. */
 import { asAuthor } from "@/lib/community/guard";
 import { withdrawPending } from "@/lib/community/store";
 
