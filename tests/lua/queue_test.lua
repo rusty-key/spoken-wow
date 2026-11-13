@@ -168,6 +168,16 @@ Expect("...without stopping its timed line", Q:IsPlaying(speaking), true)
 stub.Advance(1)
 Expect("...then removes it normally", Q:IsEmpty(), true)
 
+Fresh()
+local silent = H.Clip({ length = 5 })
+Q:SetMuted(true)
+quests:Enqueue(silent)
+Expect("a line started muted is marked silent", silent.silent, true)
+Q:SetMuted(false)
+Expect("...and remains controllable after unmuting", Q:CanBePaused(), true)
+Expect("...so Skip can remove it", Q:Skip(), true)
+Expect("...without waiting for its original timer", Q:IsEmpty(), true)
+
 ---------------------------------------------------------------- per-source queue limit
 Fresh()
 local head = H.Clip()

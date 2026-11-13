@@ -117,7 +117,8 @@ end
 
 function SoundQueue:CanBePaused()
     local current = self:GetCurrentSound()
-    return not self:IsPlaying() or current.handle ~= nil or current.textOnly == true or self:IsMuted()
+    return not self:IsPlaying() or current.handle ~= nil or current.textOnly == true or current.silent == true
+        or self:IsMuted()
 end
 
 local function CountFor(source)
@@ -508,6 +509,7 @@ function SoundQueue:PlaySound(clip)
     local channel = SpeakingChannel(clip)
     -- A text-only line has nothing to play and leaves the game's dialogue alone.
     local muted = self:IsMuted()
+    clip.silent = muted or nil
     local willPlay = clip.textOnly or muted or SoundUtils:PlaySound(clip, channel)
     if not willPlay then
         Discard(clip, "missing")
@@ -866,6 +868,7 @@ function SoundQueue:SetMuted(value)
     if value then
         local head = self:GetCurrentSound()
         if head and head.nextSoundTimer then
+            head.silent = true
             SoundUtils:StopSound(head)
             StopWatching(head)
         end
