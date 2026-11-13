@@ -255,7 +255,18 @@ local function Widget(kind, name)
     function w:IsIgnoringParentAlpha() return self.ignoreParentAlpha or false end
     function w:SetID(v) self.id = v end
     function w:GetID() return self.id end
-    function w:SetParent(p) self.parent = p end
+    -- A frame moved under another is among its children from then on, as GetChildren reports.
+    function w:SetParent(p)
+        local old = self.parent
+        if old == p then return end
+        if old and old.children then
+            for i, child in ipairs(old.children) do
+                if child == self then table.remove(old.children, i); break end
+            end
+        end
+        self.parent = p
+        if p and p.children then table.insert(p.children, self) end
+    end
     function w:GetParent() return self.parent end
     -- A hosted player (Addon:ApplyHost) scales to keep its size on screen, and tests read the
     -- scale back. A test standing in for a host sets its own effective scale.
