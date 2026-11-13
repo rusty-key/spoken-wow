@@ -8,6 +8,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { FLAVOR_FOLDER_LIST, SUPPORTED_FLAVORS, type Flavor, type GameInstall } from '../shared/types'
 import { canWriteQuick, foldsCase, samePath } from './guard'
+import { t } from './i18n'
 import { loadState, log, updateState } from './state'
 
 // ---------------------------------------------------------------- tables
@@ -39,10 +40,8 @@ const FOREVER_BETA_FOLDER = '_classic_beta_'
 /** What to tell a player who picked a game Spoken does not run on. */
 export function notSupportedMessage(folder: string): string {
   // A player who knew _classic_beta_ as Forever would otherwise read this as a contradiction.
-  if (folder.toLowerCase() === FOREVER_BETA_FOLDER) {
-    return `${folder} is the WoW: Forever beta, which has ended. Spoken runs on the released game in _forever_.`
-  }
-  return `Spoken runs on WoW: Forever, Classic Era and Anniversary. ${folder} is not one of them.`
+  if (folder.toLowerCase() === FOREVER_BETA_FOLDER) return t('games.betaEnded', { folder })
+  return t('games.notSupported', { folder })
 }
 
 /** First 12 hex digits of sha1 of the root, lower-cased where the file system ignores case (Windows, macOS). */
@@ -171,7 +170,7 @@ export async function describeFlavorFolder(
 
 function notWowMessage(platform: NodeJS.Platform): string {
   const addOns = platform === 'win32' ? 'Interface\\AddOns' : 'Interface/AddOns'
-  return `This does not look like a World of Warcraft folder. Choose the game folder (the one that holds ${FLAVOR_FOLDER_LIST}), one of those folders, or its ${addOns} folder.`
+  return t('games.notWow', { flavors: FLAVOR_FOLDER_LIST, addOns })
 }
 
 /**
@@ -186,9 +185,9 @@ export async function resolveGamePath(
 ): Promise<{ games: GameInstall[]; error?: string }> {
   const NOT_WOW_MESSAGE = notWowMessage(platform)
   const cleaned = typeof input === 'string' ? input.trim().replace(/^"(.*)"$/, '$1') : ''
-  if (cleaned === '') return { games: [], error: 'Choose a folder first.' }
+  if (cleaned === '') return { games: [], error: t('games.chooseFirst') }
   const abs = path.resolve(cleaned)
-  if (!(await isDir(abs))) return { games: [], error: 'That folder does not exist.' }
+  if (!(await isDir(abs))) return { games: [], error: t('games.notThere') }
 
   const base = path.basename(abs)
   const parent = path.dirname(abs)
