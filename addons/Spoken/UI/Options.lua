@@ -1090,7 +1090,10 @@ function Options:AddProfiles(layout)
     -- row, pick one: ask first, or a stray press replaces or deletes a profile.
     layout:Dropdown(L.OPT_COPY_PROFILE, nil, Others, function() return nil end,
         function(name)
+            -- (the settings stay usable while it asks: copied only into the profile asked in)
+            local into = self:CurrentProfile()
             Layout.Confirm(format(L.OPT_COPY_PROFILE_CONFIRM, name), _G.ACCEPT or "Accept", L.CANCEL, function()
+                if self:CurrentProfile() ~= into then return end
                 self:CopyProfile(name); layout:Refresh()
             end)
             layout:Refresh()

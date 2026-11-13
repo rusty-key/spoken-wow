@@ -616,6 +616,14 @@ do
     stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
     stub.popups[#stub.popups].dialog.OnAccept()
     Expect("accepting copies", copied, 1)
+    -- The settings stay usable while it asks: a copy accepted after a switch would overwrite
+    -- the profile switched to, not the one the question was asked in.
+    local asked = Options:CurrentProfile()
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    Options:SetProfile("Elsewhere")
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting after a switch to another profile copies nothing", copied, 1)
+    Options:SetProfile(asked)
     Options.CopyProfile = copy
 
     popups = #stub.popups
