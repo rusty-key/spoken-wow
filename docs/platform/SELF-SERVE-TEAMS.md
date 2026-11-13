@@ -42,6 +42,10 @@ Takes never leave the site through the API. Nothing downloads audio, English or 
   requester the team's admin.
 - **Reject** closes the request; the requester can see it was rejected.
 - **Appoints text maintainers** for languages that already have them, as today.
+- **Creates a team for a new language directly** from the New team form on `/admin/teams`: a
+  "New language…" choice takes the code, English name and native name, and creating the team
+  adds the language and the team in one step (user, 2026-11-13). It runs the same step approval
+  runs.
 
 ## What approval does
 
