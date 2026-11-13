@@ -88,7 +88,7 @@ export default function ReportForm({
     }
     setError(
       response?.status === 429
-        ? "That is a lot of reports in one hour. Try again later."
+        ? "That is a lot of reports in a short time. Try again in a few minutes."
         : "The report was not accepted. Check the category and try again.",
     );
   }
