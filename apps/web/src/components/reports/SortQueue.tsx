@@ -21,6 +21,7 @@ import TakeSelector from "@/components/TakeSelector";
 import { PageTextDialog } from "@/components/readables/PageTextDialog";
 import { Player as ReadablesPlayer } from "@/components/readables/Player";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
+import ReportContribution from "@/components/reports/ReportContribution";
 import type { PackVersions } from "@/lib/reports/context";
 import { Button } from "@/components/ui/button";
 import { LoreDialog } from "@/components/places/LoreDialog";
@@ -90,6 +91,7 @@ export default function SortQueue({
   groups: initial,
   canRegenerate,
   canEditText,
+  canContribute,
   showNpcPage,
   latestPacks,
 }: {
@@ -98,6 +100,8 @@ export default function SortQueue({
   groups: ReportGroup[];
   canRegenerate: boolean;
   canEditText: boolean;
+  /** Whether a report's text from the game can be accepted as the line's (ReportContribution). */
+  canContribute: boolean;
   /** Whether the speaker's name opens the NPC page. See LineHeading. */
   showNpcPage: boolean;
   /** The section's released pack versions by language, to flag a report heard on an old pack. */
@@ -431,7 +435,18 @@ export default function SortQueue({
           {group.reports.length} {group.reports.length === 1 ? "report" : "reports"}
         </p>
         {reports.map((report) => (
-          <ReportPreview key={report.id} report={report} expanded={expanded} latestPacks={latestPacks} />
+          <ReportPreview
+            key={report.id}
+            report={report}
+            expanded={expanded}
+            latestPacks={latestPacks}
+            canContribute={canContribute}
+            onFixed={() => {
+              // The accept rewrote the line's text, not its take: it is voiced again only on Regenerate.
+              setNotice("Text updated from the report. Regenerate to voice it.");
+              if (lineId) void load(lineId);
+            }}
+          />
         ))}
         {!expanded && group.reports.length > PREVIEW ? (
           <button
@@ -551,10 +566,14 @@ function ReportPreview({
   report,
   expanded,
   latestPacks,
+  canContribute,
+  onFixed,
 }: {
   report: Report;
   expanded: boolean;
   latestPacks: PackVersions;
+  canContribute: boolean;
+  onFixed: () => void;
 }) {
   const [opened, setOpened] = useState(false);
   return (
@@ -574,7 +593,11 @@ function ReportPreview({
       >
         {report.body}
       </p>
-      <ReportContextNote context={report.context} latestPacks={latestPacks} />
+      <ReportContextNote context={report.context} latestPacks={latestPacks}>
+        {canContribute && report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
+          <ReportContribution report={report} onFixed={onFixed} />
+        ) : null}
+      </ReportContextNote>
     </article>
   );
 }
