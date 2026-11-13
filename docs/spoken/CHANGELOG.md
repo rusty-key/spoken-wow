@@ -24,7 +24,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   tabs. A opens a row or a group, B closes the window, the right stick scrolls the page, and moving
   down the list scrolls it. LB and RB switch tabs, View goes into the search box and Menu opens
   the filter, as in the game's own windows; any controller button leaves the search box again. The
-  filter opens as a small dialog of its own the cursor moves into: A ticks a row, B closes it.
+  filter opens as a menu like the game's own that the cursor moves into: A ticks a row, B closes it.
   Opened in combat, the window takes the d-pad once combat ends.
   *([nobbs](https://github.com/nobbs))*
 

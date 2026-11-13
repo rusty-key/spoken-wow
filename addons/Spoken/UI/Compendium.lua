@@ -664,7 +664,7 @@ local function LayOutTabs()
 			button:SetPoint("LEFT", tabButtons[i - 1], "RIGHT", gap, 0)
 		end
 		button:SetScript("OnClick", function(self)
-			Sound("igCharacterInfoTab")
+			Sound("IG_CHARACTER_INFO_TAB")
 			picked = true
 			C:Select(self.key)
 		end)
@@ -2067,7 +2067,7 @@ local function StepTab(step)
 		end
 	end
 	if #keys < 2 or not at then return end
-	Sound("igCharacterInfoTab")
+	Sound("IG_CHARACTER_INFO_TAB")
 	picked = true
 	C:Select(keys[(at - 1 + step) % #keys + 1])
 	-- The cursor would stay on a row of the tab just hidden.
@@ -2189,25 +2189,42 @@ do
 	end
 
 	-- The filter under the controller UI: the game's menu, opened by an addon, never takes the
-	-- controller, so a dialog of Spoken's own holds the same switches and orders, one row each, and
-	-- joins the frame controls manager as a popup, as the game's own dialogs do (ReadyCheck,
-	-- GuildInviteFrame): the cursor moves to it as it opens and back to the window as it closes. A
-	-- ticks a row, B closes it. With the mouse, or in combat, where the manager refuses addons, the
-	-- game's menu opens as before.
-	local ROW, ROWS_TOP, PAD_WIDTH = 24, 44, 260
+	-- controller, so a menu of Spoken's own holds the same switches and orders, one row each, drawn
+	-- as the game's is (Blizzard_Menu's MenuStyle1Mixin and MenuVariants), and joins the frame
+	-- controls manager as a popup, as the game's own dialogs do (ReadyCheck, GuildInviteFrame): the
+	-- cursor moves to it as it opens and back to the window as it closes. A ticks a row, B closes
+	-- it, as it closes the game's menus. With the mouse, or in combat, where the manager refuses
+	-- addons, the game's menu opens as before.
+	local ROW, DIVIDER, MIN_WIDTH = 20, 13, 120
+	local INSET = { left = 8, top = 8, right = 8, bottom = 15 }
+	-- The game's menu draws its background this far past its edges.
+	local BG_X, BG_Y = 10, 3
 	local filterPad
 
 	local function PaintRow(row)
 		local on = row.entry.get() and true or false
-		if row.entry.radio then
-			row.mark:SetTexture([[Interface\Buttons\UI-RadioButton]])
-			row.mark:SetTexCoord(on and 0.25 or 0, on and 0.5 or 0.25, 0, 1)
-			row.tick:Hide()
-		else
-			row.mark:SetTexture([[Interface\Buttons\UI-CheckBox-Up]])
-			row.mark:SetTexCoord(0, 1, 0, 1)
-			row.tick:SetShown(on)
+		local radio = row.entry.radio
+		if not (Atlas(row.mark, radio and "common-dropdown-tickradial" or "common-dropdown-ticksquare", true)
+			and Atlas(row.tick, radio and "common-dropdown-icon-radialtick-yellow"
+				or "common-dropdown-icon-checkmark-yellow", true)) then
+			row.mark:SetTexture(radio and [[Interface\Buttons\UI-RadioButton]] or [[Interface\Buttons\UI-CheckBox-Up]])
+			row.mark:SetTexCoord(0, radio and 0.25 or 1, 0, 1)
+			row.mark:SetSize(16, 16)
+			row.tick:SetTexture(radio and [[Interface\Buttons\UI-RadioButton]] or [[Interface\Buttons\UI-CheckBox-Check]])
+			row.tick:SetTexCoord(radio and 0.25 or 0, radio and 0.5 or 1, 0, 1)
+			row.tick:SetSize(16, 16)
 		end
+		row.mark:ClearAllPoints()
+		row.mark:SetPoint("LEFT", row, "LEFT", radio and -3 or 0, 0)
+		row.tick:ClearAllPoints()
+		if radio then
+			row.tick:SetPoint("TOPLEFT", row.mark, "TOPLEFT")
+		else
+			row.tick:SetPoint("CENTER", row.mark, "CENTER", 2, 1)
+		end
+		row.label:ClearAllPoints()
+		row.label:SetPoint("LEFT", row.mark, "RIGHT", radio and 1 or 7, radio and 0 or 1)
+		row.tick:SetShown(on)
 	end
 
 	local function BuildFilterPad()
@@ -2216,37 +2233,46 @@ do
 		frame:SetToplevel(true)
 		frame:EnableMouse(true)
 		frame:SetClampedToScreen(true)
-		-- Drawn as the game's popup is: the dark dialog background under the diamond-cornered border.
-		local back = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
-		if not Atlas(back, "UI-DialogBox-Background-Dark", false) then back:SetColorTexture(0, 0, 0, 0.85) end
-		back:SetPoint("TOPLEFT", 7, -7)
-		back:SetPoint("BOTTOMRIGHT", -7, 7)
-		local border = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
-		Atlas(border, "UI-DiamondDialogBox-Border", false)
-		border:SetAllPoints(frame)
-		local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-		title:SetPoint("TOP", frame, "TOP", 0, -18)
-		title:SetText(_G.FILTER or "Filter")
-		local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-		close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
-		close:SetScript("OnClick", function() frame:Hide() end)
-		frame.CloseButton = close
+		local back = frame:CreateTexture(nil, "BACKGROUND")
+		if Atlas(back, "common-dropdown-bg", false) then
+			back:SetAlpha(0.925)
+		else
+			back:SetColorTexture(0, 0, 0, 0.85)
+		end
+		back:SetPoint("TOPLEFT", -BG_X, BG_Y)
+		back:SetPoint("BOTTOMRIGHT", BG_X, -BG_Y)
+		frame.divider = frame:CreateTexture(nil, "ARTWORK")
+		frame.divider:SetTexture([[Interface\Common\UI-TooltipDivider-Transparent]])
+		frame.divider:SetHeight(DIVIDER)
 		frame.rows = {}
 		frame:Hide()
 		if UISpecialFrames then table.insert(UISpecialFrames, NAME .. "FilterPad") end
+		-- B, as the game's own menus take it (FrameControlsManager's MenuProxy.OnShow).
+		frame.SmartNavigationCloseHandler = function()
+			frame:Hide()
+			return true
+		end
 
 		frame:HookScript("OnShow", function(self)
+			self:RegisterEvent("GLOBAL_MOUSE_DOWN")
 			local manager = Manager()
 			if manager and GamepadUI() and not CombatRestricted() then
 				manager:HandlePopupShown(self)
 				self.joined = true
-		end
+			end
 		end)
 		frame:HookScript("OnHide", function(self)
+			self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
 			local manager = Manager()
 			if self.joined and manager and not CombatRestricted() then manager:HandlePopupHide(self) end
 			self.joined = nil
 			self.list = nil
+		end)
+		-- A click anywhere else closes it, as it closes the game's menus.
+		frame:SetScript("OnEvent", function(self, _, mouseButton)
+			if mouseButton ~= "LeftButton" and mouseButton ~= "RightButton" then return end
+			local button = self.list and self.list.filterButton
+			if not (self:IsMouseOver() or (button and button:IsMouseOver())) then self:Hide() end
 		end)
 		-- The cursor starts on the first row.
 		frame.FocusGamepad = function(self)
@@ -2254,7 +2280,7 @@ do
 			if first and first:IsShown() and SmartNavigation and SmartNavigation.SetTargetButtonForFrame
 				and not CombatRestricted() then
 				SmartNavigation:SetTargetButtonForFrame(self, first)
-		end
+			end
 		end
 		filterPad = frame
 		return frame
@@ -2264,31 +2290,30 @@ do
 		local row = frame.rows[index]
 		if row then return row end
 		row = CreateFrame("Button", nil, frame)
-		row:SetSize(PAD_WIDTH - 40, ROW - 2)
-		row:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -(ROWS_TOP + (index - 1) * ROW))
-		row:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
+		row:SetHeight(ROW)
+		local highlight = row:CreateTexture(nil, "BACKGROUND")
+		highlight:SetTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]])
+		highlight:SetBlendMode("ADD")
+		highlight:SetAllPoints(row)
+		row:SetHighlightTexture(highlight)
 		row.mark = row:CreateTexture(nil, "ARTWORK")
-		row.mark:SetSize(20, 20)
-		row.mark:SetPoint("LEFT", row, "LEFT", 2, 0)
-		row.tick = row:CreateTexture(nil, "OVERLAY")
-		row.tick:SetTexture([[Interface\Buttons\UI-CheckBox-Check]])
-		row.tick:SetAllPoints(row.mark)
+		row.tick = row:CreateTexture(nil, "ARTWORK", nil, 1)
 		row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-		row.label:SetPoint("LEFT", row.mark, "RIGHT", 6, 0)
-		row.label:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+		row.label:SetHeight(ROW)
 		row.label:SetJustifyH("LEFT")
 		row:SetScript("OnClick", function(self)
-			Sound("igMainMenuOptionCheckBoxOn")
+			local was = self.entry.get()
+			Sound((was and not self.entry.radio) and "IG_MAINMENU_OPTION_CHECKBOX_OFF" or "IG_MAINMENU_OPTION_CHECKBOX_ON")
 			self.entry.set()
 			for _, each in ipairs(frame.rows) do
 				if each.entry and each:IsShown() then PaintRow(each) end
-		end
+			end
 		end)
 		frame.rows[index] = row
 		return row
 	end
 
-	--- Open `list`'s filter as the controller's dialog, or close it when it is open on `list`.
+	--- Open `list`'s filter as the controller's menu, or close it when it is open on `list`.
 	--- Says whether it did: false where the game's menu is to open instead.
 	function Pad.OpenFilter(list)
 		local manager = Manager()
@@ -2302,20 +2327,36 @@ do
 			if same then return true end
 		end
 		local entries = list.filterEntries()
+		local y, widest = -INSET.top, MIN_WIDTH
+		frame.divider:Hide()
 		for i, entry in ipairs(entries) do
+			-- A line between the switches and the orders, as the game's menu has.
+			if entry.radio and i > 1 and not entries[i - 1].radio then
+				frame.divider:ClearAllPoints()
+				frame.divider:SetPoint("TOPLEFT", frame, "TOPLEFT", INSET.left, y)
+				frame.divider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET.right, y)
+				frame.divider:Show()
+				y = y - DIVIDER
+			end
 			local row = FilterRow(frame, i)
 			row.entry = entry
 			row.label:SetText(entry.label)
 			PaintRow(row)
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", frame, "TOPLEFT", INSET.left, y)
+			row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET.right, y)
 			row:Show()
+			local width = (row.mark:GetWidth() or 16) + 7 + (row.label:GetStringWidth() or 0) + 20
+			if width > widest then widest = width end
+			y = y - ROW
 		end
 		for i = #entries + 1, #frame.rows do
 			frame.rows[i]:Hide()
 			frame.rows[i].entry = nil
 		end
-		frame:SetSize(PAD_WIDTH, ROWS_TOP + #entries * ROW + 20)
+		frame:SetSize(INSET.left + widest + INSET.right, -y + INSET.bottom)
 		frame:ClearAllPoints()
-		frame:SetPoint("TOPLEFT", list.filterButton, "BOTTOMLEFT", 0, -4)
+		frame:SetPoint("TOPLEFT", list.filterButton, "BOTTOMLEFT", 0, -2)
 		frame.list = list
 		frame:Show()
 		return true

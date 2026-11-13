@@ -174,8 +174,12 @@ Expect("focused, the right shoulder is the window's, over the game's own binding
 Expect("...the left shoulder too", overrides.PADLSHOULDER ~= nil, true)
 Expect("...and View", overrides.PADBACK ~= nil, true)
 calls = {}
+local played = {}
+_G.SOUNDKIT = { IG_CHARACTER_INFO_TAB = 841, IG_MAINMENU_OPTION_CHECKBOX_ON = 856, IG_MAINMENU_OPTION_CHECKBOX_OFF = 857 }
+_G.PlaySound = function(kit) table.insert(played, kit) end
 Press("PADRSHOULDER")
 Expect("the right shoulder shows the next tab", C:Active(), "places")
+Expect("...with the tab's sound", played[#played], 841)
 Expect("...with the cursor on its first row, off the tab just hidden", Called("target window zone"), true)
 Press("PADRSHOULDER")
 Expect("...and from the last tab, round to the first", C:Active(), "quests")
@@ -204,15 +208,16 @@ Expect("...shown", pad ~= nil and pad:IsShown(), true)
 Expect("...as a popup, so the cursor moves into it", Called("popup shown filter"), true)
 Expect("...a row for each switch", pad.rows[1].label:GetText(), "Started Only")
 Expect("...unticked as the switch is", pad.rows[1].tick:IsShown(), false)
-Expect("B has a close button to press", pad.CloseButton ~= nil, true)
+Expect("B closes it as it closes the game's menus", type(rawget(pad, "SmartNavigationCloseHandler")), "function")
 calls = {}
 pad:FocusGamepad()
 Expect("the cursor starts on its first row", Called("target other Started Only"), true)
 pad.rows[1]:Click()
 Expect("A on a row flips its switch", onlyOn, true)
+Expect("...with the checkbox's sound", played[#played], 856)
 Expect("...and ticks the row", pad.rows[1].tick:IsShown(), true)
 calls = {}
-pad.CloseButton:Click()
+Expect("...saying it did", pad:SmartNavigationCloseHandler(), true)
 Run(pad, "OnHide")
 Expect("B closes it", pad:IsShown(), false)
 Expect("...and the cursor goes back to the window", Called("popup hidden filter"), true)
@@ -222,6 +227,12 @@ Expect("A on the filter arrow opens it too", pad:IsShown() and Called("popup sho
 Press("PADFORWARD")
 Run(pad, "OnHide")
 Expect("...and Menu again closes it", pad:IsShown(), false)
+Press("PADFORWARD")
+pad:GetScript("OnEvent")(pad, "GLOBAL_MOUSE_DOWN", "MiddleButton")
+Expect("a middle click leaves it, as it leaves the game's menus", pad:IsShown(), true)
+pad:GetScript("OnEvent")(pad, "GLOBAL_MOUSE_DOWN", "LeftButton")
+Run(pad, "OnHide")
+Expect("a click outside it closes it, as it closes the game's menus", pad:IsShown(), false)
 onlyOn = false
 gamepadUI = false
 filter:OnSmartNavClick()
