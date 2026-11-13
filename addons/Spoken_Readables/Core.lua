@@ -291,6 +291,26 @@ function SpokenReadables:Data()
 	return _G.SpokenReadablesData
 end
 
+--- The readable owned by an item, if the item is a text-bearing note or book.
+---
+--- The item table is generated with the corpus. Checking the page text here keeps an item
+--- with no readable text from appearing in the Compendium merely because it has an owner entry.
+function SpokenReadables:BookForItem(itemID)
+	if not itemID then return nil end
+	local data = self:Data()
+	local owners = data and data.owners and data.owners.item
+	local bookID = owners and owners[itemID]
+	local book = bookID and data.books and data.books[bookID]
+	if not book then return nil end
+	for _, pageID in ipairs(book.pages or {}) do
+		local page = data.pages and data.pages[pageID]
+		if page and type(page.text) == "string" and page.text ~= "" then
+			return bookID
+		end
+	end
+	return nil
+end
+
 --- Spoken's site, or nil when Spoken is not loaded: no page is read aloud without it, so there
 --- is no report to send.
 function SpokenReadables:SiteURL()

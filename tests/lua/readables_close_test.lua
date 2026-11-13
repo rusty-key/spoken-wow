@@ -44,6 +44,28 @@ B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 SpokenReadablesData.index["William's Shipment"][1][B:ChecksumOf(LETTER)] = 15
 
+---------------------------------------------------------------- readable items entering the bags
+local bagItems = {}
+_G.NUM_BAG_SLOTS = 4
+_G.GetContainerNumSlots = function(bag) return bag == 0 and 4 or 0 end
+_G.GetContainerItemID = function(bag, slot) return bag == 0 and bagItems[slot] or nil end
+SpokenReadablesCharacter.found = {}
+stub.FireEvent("PLAYER_LOGIN")
+Expect("items already in the bags are not mistaken for newly received notes",
+    B:IsBookFound(209), false)
+bagItems[1] = 745 -- Report: Kobolds, a text-bearing quest item in the corpus.
+stub.FireEvent("BAG_UPDATE", 0)
+Expect("receiving a text-bearing note adds it to the Compendium", B:IsBookFound(209), true)
+Expect("receiving a note does not start narration", #Spoken:GetQueue(), 0)
+
+local emptyBook = 990001
+SpokenReadablesData.owners.item[emptyBook] = emptyBook
+SpokenReadablesData.books[emptyBook] = { title = "Empty Note", pages = { emptyBook } }
+SpokenReadablesData.pages[emptyBook] = { book = emptyBook, number = 1, text = "" }
+bagItems[2] = emptyBook
+stub.FireEvent("BAG_UPDATE", 0)
+Expect("an item without note text is not added", B:IsBookFound(emptyBook), false)
+
 -- The client's CloseItemText: the window goes and ITEM_TEXT_CLOSED follows.
 local closed = 0
 _G.CloseItemText = function()
