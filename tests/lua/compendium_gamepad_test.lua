@@ -280,17 +280,15 @@ function search:EnableGamePadButton(on)
     caught = on
 end
 Open()
+Expect("not typing, the box has no script for the controller's buttons, which would take them all",
+    search.handlers and search.handlers.OnGamePadButtonDown, nil)
 search:OnSmartNavClick()
 Expect("...by focusing it", typing, true)
 Expect("typing, the box takes the controller's buttons: the game's bindings are dead there", caught, true)
 search.handlers.OnGamePadButtonDown(search, "PADDDOWN")
 Expect("any of them leaves the box", typing, false)
 Expect("...and gives the buttons back", caught, false)
-search:SetFocus()
-for _, hook in ipairs(search.hooks.OnKeyDown or {}) do hook(search, "a") end
-Expect("a key typed stays in the box", typing, true)
-for _, hook in ipairs(search.hooks.OnKeyDown or {}) do hook(search, "PADBACK") end
-Expect("a controller button sent as a key leaves it", typing, false)
+Expect("...script and all", search.handlers.OnGamePadButtonDown, nil)
 search:SetFocus()
 stub.FireEvent("PLAYER_REGEN_DISABLED")
 Expect("combat starting leaves the box while the buttons can still be given back", typing or caught, false)

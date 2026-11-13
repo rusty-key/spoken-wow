@@ -2160,9 +2160,14 @@ do
 		return InCombatLockdown and InCombatLockdown() or false
 	end
 
+	local function LeaveSearch(self) self:ClearFocus() end
+
+	-- A frame with a script for the controller's buttons takes them all while shown, focused or
+	-- not, so the box has one only while it has the keyboard.
 	local function CatchPad(box, on)
 		if not box.EnableGamePadButton or Locked() then return end
 		if on and not GamepadUI() then return end
+		box:SetScript("OnGamePadButtonDown", on and LeaveSearch or nil)
 		box:EnableGamePadButton(on)
 		box.padCaught = on or nil
 	end
@@ -2176,11 +2181,6 @@ do
 		box:HookScript("OnEditFocusLost", function(self)
 			if searching == self then searching = nil end
 			if self.padCaught then CatchPad(self, false) end
-		end)
-		box:SetScript("OnGamePadButtonDown", function(self) self:ClearFocus() end)
-		-- Where the controller's buttons reach the box as keys instead.
-		box:HookScript("OnKeyDown", function(self, key)
-			if type(key) == "string" and key:match("^PAD") then self:ClearFocus() end
 		end)
 	end
 
