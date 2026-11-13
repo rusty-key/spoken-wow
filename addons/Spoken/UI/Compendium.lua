@@ -2015,15 +2015,24 @@ function Pad.Settle()
 	if Pad.focused then Pad.Bind() else Pad.Unbind() end
 end
 
--- The shoulders and View while the window has the controller, as the game's own windows take
--- them (the professions' and the bags' search on View, the character sheet's tabs on the
--- shoulders). Override bindings of the window's own, over the game's: its binding stack is
+-- The shoulders, View and Menu while the window has the controller, as the game's own windows
+-- take them (the professions' and the bags' search on View and their filter on Menu, the
+-- character sheet's tabs on the shoulders). Override bindings of the window's own, over the game's: its binding stack is
 -- secure, and a write to it from an addon taints the d-pad. Bindings cannot change in combat, so
 -- they go as combat starts and come back after.
 local SHOULDER_LEFT = GAMEPAD_SHOULDER_LEFT or "PADLSHOULDER"
 local SHOULDER_RIGHT = GAMEPAD_SHOULDER_RIGHT or "PADRSHOULDER"
 local VIEW = GAMEPAD_MENU_LEFT or "PADBACK"
+local MENU = GAMEPAD_MENU_RIGHT or "PADFORWARD"
 local bound = false
+
+-- The shown tab's list.
+local function ShownList()
+	local tab = active and C.tabs[active]
+	for _, list in ipairs(lists) do
+		if tab and list.panel == tab.panel then return list end
+	end
+end
 
 -- The tab `step` along from the shown one, round from the last to the first.
 local function StepTab(step)
@@ -2047,13 +2056,23 @@ end
 
 -- Into the shown tab's search, or out of it again.
 local function Search()
-	local tab = active and C.tabs[active]
-	for _, list in ipairs(lists) do
-		if tab and list.panel == tab.panel then
-			local box = list.searchBox
-			if box:HasFocus() then box:ClearFocus() else box:SetFocus() end
-			return
-		end
+	local list = ShownList()
+	if not list then return end
+	local box = list.searchBox
+	if box:HasFocus() then box:ClearFocus() else box:SetFocus() end
+end
+
+-- The shown tab's filter menu opened, as Menu opens the professions' and the trainer's: the
+-- game's dropdown opens on the press, the older menu's arrow on its click.
+local function Filter()
+	local list = ShownList()
+	local button = list and list.filterButton
+	if not (button and button:IsShown()) then return end
+	if button.MouseDown and button.MouseUp and not list.filterMenu then
+		button:MouseDown()
+		button:MouseUp()
+	else
+		button:Click()
 	end
 end
 
@@ -2074,11 +2093,13 @@ function Pad.Bind()
 			KeyButton("PreviousTab", function() StepTab(-1) end),
 			KeyButton("NextTab", function() StepTab(1) end),
 			KeyButton("Search", Search),
+			KeyButton("Filter", Filter),
 		}
 	end
 	SetOverrideBindingClick(window, true, SHOULDER_LEFT, NAME .. "PreviousTab")
 	SetOverrideBindingClick(window, true, SHOULDER_RIGHT, NAME .. "NextTab")
 	SetOverrideBindingClick(window, true, VIEW, NAME .. "Search")
+	SetOverrideBindingClick(window, true, MENU, NAME .. "Filter")
 	bound = true
 end
 

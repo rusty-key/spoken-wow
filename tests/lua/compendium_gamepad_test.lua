@@ -33,6 +33,8 @@ _G.CreateFrame = function(kind, name, parent, template)
 end
 
 stub.LoadSpoken(SPOKEN)
+-- Forever's menus (Blizzard_Menu): the filter is the game's dropdown button.
+_G.MenuUtil = _G.MenuUtil or {}
 local C = _G.SpokenCompendium
 
 -- A tab as the parts lay theirs out: a list of a few rows, the first chosen, and a page beside it.
@@ -47,6 +49,7 @@ C:Register("quests", { label = "Quests", order = 1, build = function(panel)
         end,
         isSelected = function(item) return item.key == chosen end,
         onClick = function(item) chosen = item.key end,
+        only = "Started Only", onlyGet = function() return false end, onlySet = function() end,
         addScrollBar = function(scroll, child, inset) return SpokenTextView.AddScrollBar(scroll, child, inset) end,
     })
     page = C.NewPage(C.PageHolder(panel, list), "Spoken_Quests")
@@ -184,6 +187,18 @@ Press("PADBACK")
 Expect("View starts typing in the shown tab's search", hasFocus, true)
 Press("PADBACK")
 Expect("...and again leaves it", hasFocus, false)
+local filter, presses = list.filterButton, {}
+Expect("the quests' list has its filter menu", filter ~= nil, true)
+function filter:MouseDown() table.insert(presses, "down") end
+function filter:MouseUp() table.insert(presses, "up") end
+filter:Show()
+Press("PADFORWARD")
+Expect("Menu opens the filter menu, pressed as the cursor's A presses it", table.concat(presses, " "), "down up")
+presses = {}
+Press("PADRSHOULDER")
+Press("PADFORWARD")
+Expect("...and on a tab without one does nothing", #presses, 0)
+Press("PADLSHOULDER")
 C.window:UnfocusGamepad()
 Expect("the controller on another window, the keys are the game's again", next(overrides), nil)
 C.window:FocusGamepad()
