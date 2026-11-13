@@ -124,6 +124,7 @@ export async function regenerateNarrated(
           leadInSec: speech.leadInSec,
           createdBy,
           wordTimes: timesFor(line.shown, speech.words),
+          shownText: line.shown,
         },
         { lang, measure: durationOf, batchId: options.batchId },
       );

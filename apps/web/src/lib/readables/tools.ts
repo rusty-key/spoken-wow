@@ -18,6 +18,7 @@ import * as namingModule from "@readables-tools/lib/naming.mjs";
 
 /** What would be sent to a narrator: markup gone, paragraphs flattened. */
 export const spokenText = textModule.spokenText as (text: string) => string;
+export const shownPage = textModule.shownPage as (text: string, lang: string) => string;
 
 /**
  * A page in spoken form, its book's title ahead of it unless the page already opens with it.

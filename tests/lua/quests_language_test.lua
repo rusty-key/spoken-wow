@@ -26,6 +26,7 @@ local function Install(packs, locale)
     for _, pack in ipairs(packs) do
         local meta = { [KEY] = "1", Version = "1.0.0", Title = pack.folder }
         if pack.language then meta[LANG] = pack.language end
+        for key, value in pairs(pack.meta or {}) do meta[key] = value end
         if pack.priority then meta["X-SpokenQuests-DataModule-Priority"] = tostring(pack.priority) end
         table.insert(addons, { folder = pack.folder, meta = meta })
     end
@@ -291,8 +292,9 @@ do
 end
 
 ---------------------------------------------------------------- K. a language no client runs in
--- Italian: a pack may declare it and a player may choose it, but GetLocale() never says it,
--- so Auto never lands on it -- even on a (hypothetical) client that claimed it.
+-- Italian is no built-in language: a pack declares it, and then a player may choose it, but
+-- GetLocale() never says it, so Auto never lands on it -- even on a (hypothetical) client that
+-- claimed it.
 local IT_PACKS = {
     { folder = "EnglishPack", lines = EN_LINES },
     { folder = "ItalianPack", language = "itIT", lines = { ["1-accept"] = 5.5 } },
@@ -308,7 +310,67 @@ Expect("K. a client claiming Italian is not taken at its word", VO.Language:GetC
 Expect("K. ...so Auto stays English", Resolve(VO, 1), "EnglishPack")
 Expect("K. Italian is not a client language", VO.Language:IsClientLanguage("itIT"), false)
 Expect("K. Portuguese is", VO.Language:IsClientLanguage("ptBR"), true)
-Expect("K. nor is Vietnamese", VO.Language:IsClientLanguage("viVN"), false)
+Expect("K. nor is Vietnamese, though a pack declares it", VO.Language:IsClientLanguage("viVN"), false)
+
+---------------------------------------------------------------- M. a language only a pack declares
+-- Hebrew is in no list of this addon: its pack names it in the .toc and Spoken's scan registers it.
+local HE_PACKS = {
+    { folder = "EnglishPack", lines = EN_LINES },
+    { folder = "HebrewPack", language = "heIL", lines = { ["1-accept"] = 5.5 } },
+}
+VO = Install(HE_PACKS, "enUS")
+VO.Addon.db.profile.Audio.VoiceLanguage = "heIL"
+local heard = Resolve(VO, 1)
+Expect("M. a pack declaring heIL answers the line", heard, "HebrewPack")
+Expect("M. ...as a pack in heIL", VO.DataModules:GetPresentModule("HebrewPack").Language, "heIL")
+Expect("M. a line it lacks falls back to English", (Resolve(VO, 2)), "EnglishPack")
+Expect("M. a stored code is no client language", VO.Language:IsClientLanguage("heIL"), false)
+Expect("M. Auto never lands on it", (function()
+    VO.Addon.db.profile.Audio.VoiceLanguage = "auto"
+    return VO.Language:GetVoiceLanguage()
+end)(), "enUS")
+
+-- The Language row of the options is drawn in the game's font, so a name only the pack's font can
+-- draw must not reach it.
+stub.TextWidth = function(fs)
+    local width = 0
+    for ch in tostring(fs.text or ""):gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+        width = width + (#ch > 1 and 10 or 7)
+    end
+    return width
+end
+VO = Install({ { folder = "HebrewPack", language = "heIL", lines = { ["1-accept"] = 5.5 }, meta = {
+    ["X-Spoken-LanguageName"] = "Hebrew", ["X-Spoken-LanguageNative"] = "עברית",
+    ["X-Spoken-LanguageFont"] = "Fonts/Hebrew.ttf" } } }, "enUS")
+Expect("M. a native name the game's font cannot draw is shown in English in the Language row",
+    VO.Language:GetNativeName("heIL"), "Hebrew")
+stub.TextWidth = nil
+
+-- A voice whose pack was removed: the choice is kept, the line plays in the fallback.
+VO = Install({ { folder = "EnglishPack", lines = EN_LINES } }, "enUS")
+VO.Addon.db.profile.Audio.VoiceLanguage = "heIL"
+VO.Addon.db.profile.Audio.FallbackLanguage = "enUS"
+Expect("M. a stored uninstalled voice is still the voice", VO.Language:GetVoiceLanguage(), "heIL")
+Expect("M. ...and the fallback answers", (Resolve(VO, 1)), "EnglishPack")
+Expect("M. ...without rewriting the choice", VO.Addon.db.profile.Audio.VoiceLanguage, "heIL")
+VO.Addon.db.profile.Audio.FallbackLanguage = "none"
+Expect("M. with no fallback it is silent", Resolve(VO, 1), nil)
+Expect("M. ...and still not rewritten", VO.Addon.db.profile.Audio.VoiceLanguage, "heIL")
+Expect("M. a stored fallback that is no code is none", (function()
+    VO.Addon.db.profile.Audio.FallbackLanguage = "hebrew"
+    return VO.Language:GetFallbackLanguage()
+end)(), nil)
+Expect("M. a stored fallback code is returned as is", (function()
+    VO.Addon.db.profile.Audio.FallbackLanguage = "heIL"
+    return VO.Language:GetFallbackLanguage()
+end)(), "heIL")
+VO.Addon.db.profile.Audio.VoiceLanguage = "hebrew"
+Expect("M. a stored voice that is no code follows the client", VO.Language:GetVoiceLanguage(), "enUS")
+
+-- Without Spoken's registry (a hand install) the code pattern alone decides.
+VO = stub.LoadQuestsAlone(QUESTS)
+Expect("M. alone, a well-formed code is kept", VO.Language:Normalize("heIL"), "heIL")
+Expect("M. alone, a word reads as English", VO.Language:Normalize("hebrew"), "enUS")
 
 ---------------------------------------------------------------- L. the addon's own gossip text, and aliases
 -- Gossip/<locale>.lua gives every line's text in the client's locale, whatever the packs
@@ -374,12 +436,15 @@ Expect("L. without the alias the fallback answers", ResolveGossip(VO, GOSSIP_TEX
 VO = Install({ { folder = "Pack", language = "ptBR", lines = EN_LINES } })
 Expect("a declared language is read off the TOC", VO.DataModules:GetPresentModule("Pack").Language, "ptBR")
 VO = Install({ { folder = "Pack", language = "xxXX", lines = EN_LINES } })
-Expect("a language this addon does not know reads as English",
-    VO.DataModules:GetPresentModule("Pack").Language, "enUS")
+Expect("a well-formed code no list names is that language", VO.DataModules:GetPresentModule("Pack").Language, "xxXX")
+for _, malformed in ipairs({ "hebrew", "he", "HEil" }) do
+    VO = Install({ { folder = "Pack", language = malformed, lines = EN_LINES } })
+    Expect("a malformed code (" .. malformed .. ") reads as English",
+        VO.DataModules:GetPresentModule("Pack").Language, "enUS")
+end
+Expect("enGB reads as English", Install({ { folder = "Pack", language = "enGB", lines = EN_LINES } })
+    .DataModules:GetPresentModule("Pack").Language, "enUS")
 
---------------------------------------------------------------- in step with SpokenPlaces
--- The two addons sit side by side; a language one offers and the other does not is a
--- setting the player makes once and finds half-honoured.
 ------------------------------------------- a greeting's speaker of a voice only English has yet
 -- The English pack names the speaker's own voice's file; the German pack has only the line's.
 local HASH = "0123456789abcdef0123456789abcdef"
@@ -392,9 +457,10 @@ gossipPack, gossipSound = ResolveGossip(VO, GOSSIP_TEXT)
 Expect("a greeting's voice only another language has yields to the line in the player's", gossipPack, "GermanPack")
 Expect("...the line's own file", gossipSound.fileName, HASH)
 
-local questsCodes = {}
-for _, locale in ipairs(VO.Language.LOCALES) do table.insert(questsCodes, locale.code) end
-Expect("the language list matches SpokenPlaces'", table.concat(questsCodes, " "), H.PlacesLocaleCodes(here))
+local builtin = {}
+for _, locale in ipairs(VO.Language.LOCALES) do table.insert(builtin, locale.code) end
+Expect("the built-in list is the registry's", table.concat(builtin, " "),
+    "enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW")
 
 stub.SetLocale("enUS")
 stub.ResetAddOns()

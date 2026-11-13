@@ -5,16 +5,18 @@ import { GameIcon } from '../components/Brand'
 import { Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
 import { RestartButton } from '../components/RestartButton'
-import { IconChevron, IconChevronRight, IconDownload, IconGames, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
+import { IconChevron, IconChevronRight, IconDownload, IconGames, IconGear, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
+import type { Settings } from '@shared/types'
 import { useStore } from '../store'
 import { ContributorSection } from './ContributorSection'
 import { REPO_URL, S, SITE_URL } from '../strings'
 
-type Section = 'games' | 'updates' | 'downloads' | 'sharing' | 'contributor' | 'about'
+type Section = 'games' | 'updates' | 'startup' | 'downloads' | 'sharing' | 'contributor' | 'about'
 
 const NAV: { id: Section; label: string; icon: ReactNode }[] = [
   { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
   { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
+  { id: 'startup', label: S.settings.startup, icon: <IconGear size={18} /> },
   { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
   { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
   { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
@@ -42,6 +44,7 @@ export function SettingsPage(): ReactNode {
           <div className="settings-inner">
             {section === 'games' && <GamesSection />}
             {section === 'updates' && <UpdatesSection />}
+            {section === 'startup' && <StartupSection />}
             {section === 'downloads' && <DownloadsSection />}
             {section === 'sharing' && <SharingSection />}
             {section === 'contributor' && <ContributorSection />}
@@ -134,10 +137,15 @@ function GamesSection(): ReactNode {
   )
 }
 
+function useSetSettings(): (patch: Partial<Settings>) => void {
+  const { actions } = useStore()
+  return (patch) => void actions.setSettings(patch).catch(() => undefined)
+}
+
 function UpdatesSection(): ReactNode {
-  const { state, actions } = useStore()
+  const { state } = useStore()
   const { settings } = state
-  const set = (patch: Parameters<typeof actions.setSettings>[0]): void => void actions.setSettings(patch).catch(() => undefined)
+  const set = useSetSettings()
   return (
     <section aria-labelledby="set-updates">
       <h2 id="set-updates" className="settings-h">
@@ -153,6 +161,23 @@ function UpdatesSection(): ReactNode {
   )
 }
 
+function StartupSection(): ReactNode {
+  const { state } = useStore()
+  const { settings } = state
+  const set = useSetSettings()
+  return (
+    <section aria-labelledby="set-startup">
+      <h2 id="set-startup" className="settings-h">
+        {S.settings.startup}
+      </h2>
+      <div className="switches">
+        <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
+        <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
+      </div>
+    </section>
+  )
+}
+
 function DownloadsSection(): ReactNode {
   const { state, actions } = useStore()
   const { settings } = state
@@ -163,7 +188,7 @@ function DownloadsSection(): ReactNode {
     setDownloadError('')
     void actions.setSettings({ downloadsPath: '' }).catch((e) => setDownloadError(errorText(e)))
   }
-  const set = (patch: Parameters<typeof actions.setSettings>[0]): void => void actions.setSettings(patch).catch(() => undefined)
+  const set = useSetSettings()
   const clear = async (): Promise<void> => {
     setCleared('')
     setDownloadError('')

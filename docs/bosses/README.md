@@ -46,6 +46,9 @@ Where no pack has the clip, the story is words alone (`textOnly`), shown for its
 the sound off.
 Opened, the tab lands on the dungeon the player is in, else the continent.
 
+A pack entry may carry `text`, the words its take was voiced from, else the story's current ones.
+It wins over `Data/Stories.lua` on a client in the pack's language (`docs/spoken/CAPTIONS.md`).
+
 The Dungeons and Raids come from `addons/Spoken/Data/Dungeons.lua`, which every tab shares
 ([COMPENDIUM.md](../places/COMPENDIUM.md)).
 

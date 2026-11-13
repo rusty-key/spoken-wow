@@ -32,6 +32,10 @@ export async function GET(request: Request) {
       "PATCH /api/v1/{section}": "Change many: {items: [{id, variant?, text?, name?, short?, ...}], note?}. Returns batchId and one result per item, in order.",
       "GET /api/v1/batches": "This owner's recent mass updates in this language.",
       "POST /api/v1/batches/{batchId}/restore": "Undo a mass update, except lines edited since and gender splits.",
+      "GET /api/v1/lexicon": "The language's pronunciation lexicon: entries, version, sync.",
+      "GET /api/v1/lexicon/{grapheme}": "One entry, matched ignoring case.",
+      "PATCH /api/v1/lexicon/{grapheme}": "Replace or add one entry: {ipa | alias, confidence, note?, expectedVersion?}. Needs configure.",
+      "PATCH /api/v1/lexicon": "Replace or add many: {items: [{grapheme, ipa | alias, confidence, note?}], expectedVersion?}. All or nothing. Needs configure.",
     },
     notes: [
       "The language always comes from the token.",
@@ -43,6 +47,7 @@ export async function GET(request: Request) {
       "Places: sending text without short regenerates short.",
       "expectedVersion and expectedNameVersion guard an existing version only. A line with no text has nothing to compare, so they do not protect a first translation someone saved since you read it.",
       "A request over limits.requestBytes gets a 413 from the proxy, with no results: split it.",
+      "Lexicon writes replace an entry whole, so a note left out is dropped. They upload to ElevenLabs with the token owner's key; without one the save lands and sync reads pending, or never if the language was never uploaded. Each write uploads the whole dictionary, so send several fixes in one PATCH /api/v1/lexicon.",
     ],
     docs: "https://github.com/rusty-key/spoken-wow/blob/master/docs/contributors/TEXT-API.md",
   });

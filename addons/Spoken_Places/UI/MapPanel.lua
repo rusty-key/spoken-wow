@@ -185,6 +185,23 @@ local function BuildPanel()
 	end
 	page = SpokenPlaces:CreateLorePage(holder, "log")
 	panel.page = page
+	-- The Forever client draws no 3D model under the panel, in the map or beside it, nor below HIGH
+	-- strata; why is not known. The model draws on its own stage, clipped to the page's text.
+	local body = page.body
+	if body.model and body.frame then
+		local stage = CreateFrame("Frame", nil, UIParent)
+		stage:SetFrameStrata("HIGH")
+		stage:SetAllPoints(body.frame)
+		if stage.SetClipsChildren then stage:SetClipsChildren(true) end
+		stage:SetShown(body.frame:IsVisible())
+		body.frame:HookScript("OnShow", function() stage:Show() end)
+		body.frame:HookScript("OnHide", function() stage:Hide() end)
+		body.model:SetParent(stage)
+		-- Not the map's child, so it fades with the map itself: the movement fader changes the map's
+		-- alpha every frame as the player walks.
+		stage:SetScript("OnUpdate", function(self) self:SetAlpha(WorldMapFrame:GetAlpha() or 1) end)
+		panel.stage = stage
+	end
 
 	-- The rim on a frame of its own above the page: drawn on the panel itself it would sit under
 	-- the page, which, being a child, is drawn over everything its parent draws.
@@ -327,6 +344,9 @@ local function FollowMap()
 		elseif mapScale and uiScale and uiScale > 0 then
 			frame:SetScale(mapScale / uiScale)
 		end
+	end
+	if panel.stage and uiScale and uiScale > 0 then
+		panel.stage:SetScale(panel:GetEffectiveScale() / uiScale)
 	end
 	FollowAlpha()
 end
@@ -539,7 +559,7 @@ local function Refresh(mapID)
 				contribute = { story, name }, lore = { story, key } })
 			return
 		end
-		page:Show({ title = name, subtitle = line, onSubtitle = back, text = selected.entry.full or selected.entry.short or "",
+		page:Show({ title = name, subtitle = line, onSubtitle = back, text = SpokenPlaces:LoreText(story, key, selected.entry),
 			audio = { story, key }, report = { story, key }, lore = { story, key } })
 		return
 	end
@@ -572,7 +592,7 @@ local function Refresh(mapID)
 	end
 	-- foundOn, not mapID: a dungeon showing its parent zone's text should read that same parent
 	-- zone's narration, and a report on it belongs to the line the text actually came from.
-	page:Show({ title = zoneName, subtitle = caption, text = entry.full or entry.short or "",
+	page:Show({ title = zoneName, subtitle = caption, text = SpokenPlaces:LoreText(foundOn, nil, entry),
 		audio = { foundOn, nil }, report = { foundOn, nil }, lore = { foundOn, nil } })
 end
 

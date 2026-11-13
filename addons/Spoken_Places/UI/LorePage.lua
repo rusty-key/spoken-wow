@@ -237,3 +237,7 @@ function Page:Show(entry)
 		self.open:SetShown(lore ~= nil and lore[1] ~= nil)
 	end
 end
+
+function SpokenPlaces:LoreText(mapID, areaKey, entry)
+	return self:PackLoreText(mapID, areaKey, self:GetLanguage()) or entry.full or entry.short or ""
+end

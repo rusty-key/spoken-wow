@@ -11,7 +11,6 @@ import {
   type ReleaseInfo,
   type Section
 } from '../shared/types'
-import { LANGUAGES } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
@@ -24,6 +23,8 @@ const MAX_ZIP = 8 * 1024 ** 3
 const SECTIONS: Section[] = ['quests', 'places', 'readables']
 /** The keys the registry's format had before Places and Readables were renamed, still read. */
 const RENAMED_SECTIONS: Record<string, Section> = { zones: 'places', books: 'readables' }
+/** A language code as a pack's .toc writes it: two lower-case letters, two upper-case. */
+const LANGUAGE_CODE = /^[a-z]{2}[A-Z]{2}$/
 const ID = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
 // ---------------------------------------------------------------- validation
@@ -73,7 +74,7 @@ export function validatePack(raw: unknown): { pack: CommunityPack } | { reason: 
   if (!author) return { reason: 'bad author' }
   const description = text(r.description, 400)
   if (!description) return { reason: 'bad description' }
-  if (typeof r.lang !== 'string' || !LANGUAGES.some((l) => l.code === r.lang)) return { reason: 'unknown language' }
+  if (typeof r.lang !== 'string' || !LANGUAGE_CODE.test(r.lang)) return { reason: 'unknown language' }
   const section = typeof r.section === 'string' ? (RENAMED_SECTIONS[r.section] ?? r.section) : null
   if (!section || !SECTIONS.includes(section as Section)) return { reason: 'unknown section' }
   const version = r.version
