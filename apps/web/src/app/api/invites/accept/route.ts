@@ -3,10 +3,10 @@
  *
  * A button on /invite posts here, not the page load, so a link preview cannot use the invite up.
  */
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { inviteTokenIn } from "@/lib/invites/cookie";
+import { INVITE_COOKIE } from "@/lib/invites/cookie";
 import { capabilityLabel } from "@/lib/permissions";
 import { acceptInvite } from "@/lib/invites/store";
 
@@ -21,11 +21,11 @@ const STATUS = {
   "inviter-cannot-grant": 409,
 } as const;
 
-export async function POST(request: Request) {
+export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "sign in to accept the invite" }, { status: 401 });
 
-  const token = inviteTokenIn(request.headers.get("cookie"));
+  const token = (await cookies()).get(INVITE_COOKIE)?.value;
   if (!token) return Response.json({ error: "This invite link is not valid any more.", reason: "unknown" }, { status: 404 });
 
   const outcome = await acceptInvite(token, session.user);

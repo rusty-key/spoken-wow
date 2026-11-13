@@ -5,6 +5,12 @@
  * page with no token in its address, so it reaches no history entry, Referer, access log or
  * link preview beyond that one hop. httpOnly: nothing in the page needs to read it.
  */
+import "server-only";
+
+import { cookies } from "next/headers";
+
+import { lookupInvite, type InviteLookup } from "./store";
+
 export const INVITE_COOKIE = "spoken_invite";
 
 const HOUR_S = 60 * 60;
@@ -16,14 +22,8 @@ function serialize(value: string, maxAge: number): string {
 
 export const setInviteCookie = (token: string) => serialize(token, HOUR_S);
 
-/** The token in a request's Cookie header, or null. */
-export function inviteTokenIn(cookieHeader: string | null): string | null {
-  for (const part of (cookieHeader ?? "").split(";")) {
-    const [name, ...rest] = part.trim().split("=");
-    if (name === INVITE_COOKIE) {
-      const value = decodeURIComponent(rest.join("="));
-      return value || null;
-    }
-  }
-  return null;
+/** The invite this browser's cookie names, or null when it names none. */
+export async function currentInvite(): Promise<InviteLookup | null> {
+  const token = (await cookies()).get(INVITE_COOKIE)?.value;
+  return token ? lookupInvite(token) : null;
 }

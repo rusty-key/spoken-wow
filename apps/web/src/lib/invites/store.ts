@@ -6,16 +6,16 @@
  */
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
-
 import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
-import { actAs, ALL_TEAMS, inTransaction, query } from "@/lib/db";
-import { addGrants, viewerById } from "@/lib/grants/store";
-import { isLang, type Lang } from "@/lib/lang";
-import { textByTeam } from "@/lib/languages/store";
-import { canGrant, isCapability, type Capability } from "@/lib/permissions";
+import { actAs, ALL_TEAMS, db, inTransaction, query } from "@/lib/db";
+import { sendInviteEmail } from "@/lib/email";
+import { addGrants, refusedGrant, viewerById } from "@/lib/grants/store";
+import { isLang, langName, type Lang } from "@/lib/lang";
+import { capabilityLabel, isCapability, type Capability } from "@/lib/permissions";
+import { hashSecret as hashOf, mintSecret as newToken } from "@/lib/secret-token";
+import { SITE } from "@/lib/site";
 
 export const INVITE_DAYS = 14;
 export const INVITES_PER_DAY = 20;
@@ -72,18 +72,18 @@ export function normalEmail(raw: string): string | null {
   return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
-const SITE = (process.env.BETTER_AUTH_URL ?? "https://spoken.quest").replace(/\/$/, "");
-
 export function inviteUrl(token: string): string {
   return `${SITE}/api/invites/open?token=${token}`;
 }
 
-function hashOf(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-function newToken(): string {
-  return randomBytes(32).toString("base64url");
+/** Emails `invite`'s address its link. Never throws, like sendEmail. */
+export function emailInvite(invite: InviteRow, token: string): void {
+  sendInviteEmail(invite.email, {
+    inviterName: invite.invitedByName ?? "A Spoken team member",
+    langName: langName(invite.lang),
+    capabilities: invite.capabilities.map(capabilityLabel),
+    url: inviteUrl(token),
+  });
 }
 
 type Row = {
@@ -243,12 +243,8 @@ export async function revokeOpenFor(
   }
 }
 
-export async function openInvite(id: string): Promise<InviteRow | null> {
-  const rows = await query<Row>(
-    `select ${COLUMNS} from "invite" i join "user" u on u."id" = i."invitedBy" where i."id" = $1 and ${OPEN}`,
-    [id],
-  );
-  return rows[0] ? toInvite(rows[0]) : null;
+export function openInvite(id: string): Promise<InviteRow | null> {
+  return openRow(db(), id);
 }
 
 /** The open invites in `langs` (every language when omitted), newest first. */
@@ -263,6 +259,13 @@ export async function listInvites(langs?: string[]): Promise<InviteRow[]> {
 }
 
 type TokenRow = Row & { acceptedAt: Date | null; acceptedBy: string | null; revokedAt: Date | null };
+
+/** Accepted and revoked win over expired: an invite used or withdrawn in time stays so. */
+function stateOf(row: TokenRow): InviteLookup["state"] {
+  if (row.acceptedAt) return "accepted";
+  if (row.revokedAt) return "revoked";
+  return row.expiresAt.getTime() <= Date.now() ? "expired" : "pending";
+}
 
 async function byToken(token: string): Promise<TokenRow | null> {
   const rows = await query<TokenRow>(
@@ -283,7 +286,7 @@ export async function lookupInvite(token: string): Promise<InviteLookup | null> 
     capabilities: row.capabilities.filter(isCapability),
     inviterName: row.invitedByName,
     acceptedBy: row.acceptedBy,
-    state: row.acceptedAt ? "accepted" : row.revokedAt ? "revoked" : row.expiresAt.getTime() <= Date.now() ? "expired" : "pending",
+    state: stateOf(row),
   };
 }
 
@@ -309,16 +312,14 @@ export async function acceptInvite(token: string, user: { id: string; email: str
   const row = await byToken(token);
   if (!row) return { ok: false, reason: "unknown" };
   const invite = toInvite(row);
-  if (row.acceptedAt) return { ok: false, reason: "accepted" };
-  if (row.revokedAt) return { ok: false, reason: "revoked" };
-  if (invite.expired) return { ok: false, reason: "expired" };
+  const state = stateOf(row);
+  if (state !== "pending") return { ok: false, reason: state };
   if (normalEmail(user.email) !== invite.email) return { ok: false, reason: "wrong-email", email: invite.email };
 
   const { lang, capabilities } = invite;
   const inviterName = invite.invitedByName;
   const viewer = await viewerById(invite.invitedById);
-  const byTeam = isLang(lang) ? await textByTeam(lang) : false;
-  const refused = viewer && isLang(lang) ? capabilities.find((c) => !canGrant(viewer, c, lang, byTeam)) : capabilities[0];
+  const refused = isLang(lang) ? await refusedGrant(viewer, capabilities, lang) : capabilities[0];
   if (refused) return { ok: false, reason: "inviter-cannot-grant", inviterName, capability: refused };
 
   const claim = async (client: ClientBase) => {
@@ -339,9 +340,9 @@ export async function acceptInvite(token: string, user: { id: string; email: str
   } catch (error) {
     if (!(error instanceof NotClaimed)) throw error;
     // Somebody else's press, a revoke or the clock got there first: say which.
-    const state = (await lookupInvite(token))?.state;
-    if (state === "accepted" || state === "revoked" || state === "expired") return { ok: false, reason: state };
-    return { ok: false, reason: "unknown" };
+    const now = await byToken(token);
+    const state = now && stateOf(now);
+    return { ok: false, reason: state && state !== "pending" ? state : "unknown" };
   }
   return { ok: true, lang, capabilities };
 }
