@@ -7,23 +7,18 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Toaster, useToast } from "@/components/ui/toast";
-import type { Pack, Submission } from "@/lib/community/store";
+import type { Pack } from "@/lib/community/store";
 import { send } from "@/lib/send";
 
-import PackForm, { type VersionOf } from "./PackForm";
+import { newest } from "./common";
+import PackForm from "./PackForm";
 import PackStatus from "./PackStatus";
-
-/** The most recent of what the store returns, which is where a new version's fields start. */
-function newest(pack: Pack): Submission | null {
-  const all = [pack.live, pack.pending, pack.lastRejected].filter((s): s is Submission => s !== null);
-  return all.reduce<Submission | null>((best, s) => (!best || BigInt(s.id) > BigInt(best.id) ? s : best), null);
-}
 
 const PENDING = "A version is already waiting for review. Withdraw it to submit another.";
 const UNLISTED = "An admin unlisted this pack, so it takes no new versions.";
 
-// "new" for the new-pack form, a pack for a version of it, null while the form is shut.
-type Editing = "new" | VersionOf | null;
+// A null pack for the new-pack form; the whole state is null while the form is shut.
+type Editing = { pack: Pack | null } | null;
 
 // A shell, because useToast needs its provider above the component that raises the toasts.
 export default function PackList({ packs }: { packs: Pack[] }) {
@@ -56,7 +51,7 @@ function List({ packs }: { packs: Pack[] }) {
   }
 
   const newPack = (
-    <Button onClick={() => setEditing("new")}>
+    <Button onClick={() => setEditing({ pack: null })}>
       <Plus aria-hidden />
       New pack
     </Button>
@@ -111,15 +106,7 @@ function List({ packs }: { packs: Pack[] }) {
                       variant="outline"
                       size="sm"
                       disabled={!pack.listed || Boolean(pack.pending) || busy === pack.id}
-                      onClick={() =>
-                        setEditing({
-                          id: pack.id,
-                          lang: pack.lang,
-                          section: pack.section,
-                          from: latest,
-                          liveVersion: pack.live?.version ?? null,
-                        })
-                      }
+                      onClick={() => setEditing({ pack })}
                     >
                       Submit new version
                     </Button>
@@ -132,7 +119,7 @@ function List({ packs }: { packs: Pack[] }) {
       )}
 
       {editing && (
-        <PackForm pack={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSent={sent} />
+        <PackForm pack={editing.pack} onClose={() => setEditing(null)} onSent={sent} />
       )}
     </>
   );

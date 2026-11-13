@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-import { useLocalDates } from "@/components/useLocalDates";
+import { DAY_TIME, useLocalDates } from "@/components/useLocalDates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,23 +14,22 @@ import type { PackFields } from "@/lib/community/rules";
 import type { Pack, Submission } from "@/lib/community/store";
 import { cn } from "@/lib/utils";
 
+import { nameOf, TEXTAREA } from "./common";
+
 type Pending = Submission & { pack: Pack };
 
 const MAX_REASON = 500;
 
-const DAY_TIME: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-};
-
-const TEXTAREA =
-  "border-input w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-base outline-none md:text-sm " +
-  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
-
-const LINK = "text-foreground underline underline-offset-2 [overflow-wrap:anywhere] hover:text-primary-ink";
+const link = (value: string) => (
+  <a
+    href={value}
+    className="text-foreground underline underline-offset-2 [overflow-wrap:anywhere] hover:text-primary-ink"
+    target="_blank"
+    rel="noreferrer"
+  >
+    {value}
+  </a>
+);
 
 /** Bytes as typed, with the size a person reads beside them. */
 function sizeOf(bytes: number): string {
@@ -50,24 +49,8 @@ const FIELDS: { key: keyof PackFields; label: string; show?: (value: string) => 
     label: "SHA-256",
     show: (value) => <span className="font-mono text-xs [overflow-wrap:anywhere]">{value}</span>,
   },
-  {
-    key: "url",
-    label: "Zip link",
-    show: (value) => (
-      <a href={value} className={LINK} target="_blank" rel="noreferrer">
-        {value}
-      </a>
-    ),
-  },
-  {
-    key: "homepage",
-    label: "Homepage",
-    show: (value) => (
-      <a href={value} className={LINK} target="_blank" rel="noreferrer">
-        {value}
-      </a>
-    ),
-  },
+  { key: "url", label: "Zip link", show: link },
+  { key: "homepage", label: "Homepage", show: link },
   { key: "license", label: "License" },
 ];
 
@@ -115,9 +98,7 @@ function QueueItem({ submission, names }: { submission: Pending; names: Record<s
 
   const { pack } = submission;
   const live = pack.live;
-  const submitter = submission.submittedBy
-    ? (names[submission.submittedBy] ?? "an unnamed account")
-    : "a deleted account";
+  const submitter = nameOf(submission.submittedBy, submission.submittedBy && names[submission.submittedBy]);
   const name = `${submission.title} ${submission.version}`;
 
   async function decide(decision: "approve" | "reject") {

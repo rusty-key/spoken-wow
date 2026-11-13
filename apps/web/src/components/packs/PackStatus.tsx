@@ -1,9 +1,7 @@
 "use client";
 
-import { useLocalDates } from "@/components/useLocalDates";
+import { DAY, useLocalDates } from "@/components/useLocalDates";
 import type { Pack } from "@/lib/community/store";
-
-const DAY: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
 
 /** Where a pack stands with players and with review, one line per fact. */
 export default function PackStatus({ pack }: { pack: Pack }) {

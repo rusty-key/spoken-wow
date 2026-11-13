@@ -15,26 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SECTIONS, validateFields, validateNewPack, type Section } from "@/lib/community/rules";
-import type { Submission } from "@/lib/community/store";
+import type { Pack } from "@/lib/community/store";
 import { send } from "@/lib/send";
 import { cn } from "@/lib/utils";
 
-/** The pack a new version is for, and the submission its fields start from. */
-export type VersionOf = {
-  id: string;
-  lang: string;
-  section: Section;
-  from: Submission | null;
-  /** What players have now, which the new version has to be above to reach them as an update. */
-  liveVersion: string | null;
-};
+import { newest, TEXTAREA } from "./common";
 
-type Draft = Record<
-  "id" | "lang" | "section" | "title" | "author" | "description" | "version" | "size" | "sha256" | "url" | "homepage" | "license",
-  string
->;
-
-const EMPTY: Draft = {
+const EMPTY = {
   id: "",
   lang: "",
   section: "",
@@ -49,10 +36,12 @@ const EMPTY: Draft = {
   license: "",
 };
 
+type Draft = typeof EMPTY;
+
 // What describes the pack carries over; what describes one zip has to be new for the next one.
-function draftOf(pack: VersionOf | null): Draft {
+function draftOf(pack: Pack | null): Draft {
   if (!pack) return EMPTY;
-  const from = pack.from;
+  const from = newest(pack);
   return {
     ...EMPTY,
     id: pack.id,
@@ -66,16 +55,12 @@ function draftOf(pack: VersionOf | null): Draft {
   };
 }
 
-const TOC_KEY: Record<Section, string> = {
+// Keyed by any string: the draft's section is "" until one is chosen.
+const TOC_KEY: Record<string, string> = {
   quests: "X-SpokenQuests-Language",
   places: "X-SpokenPlaces-Language",
   readables: "X-SpokenReadables-Language",
-};
-
-const TEXTAREA =
-  "border-input w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-base outline-none md:text-sm " +
-  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 " +
-  "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20";
+} satisfies Record<Section, string>;
 
 function Code({ children }: { children: ReactNode }) {
   return <code className="bg-muted rounded px-1 py-0.5 font-mono text-[0.8rem] [overflow-wrap:anywhere]">{children}</code>;
@@ -93,7 +78,7 @@ export default function PackForm({
   onSent,
 }: {
   /** Null for a new pack. */
-  pack: VersionOf | null;
+  pack: Pack | null;
   onClose: () => void;
   onSent: () => void;
 }) {
@@ -154,9 +139,7 @@ export default function PackForm({
 
   const folder = `SpokenCommunity_${draft.id || "<id>"}`;
   const zip = `${folder}.zip`;
-  const tocKey = (SECTIONS as readonly string[]).includes(draft.section)
-    ? TOC_KEY[draft.section as Section]
-    : "X-SpokenQuests-Language";
+  const tocKey = TOC_KEY[draft.section] ?? TOC_KEY.quests;
 
   return (
     <Dialog open onOpenChange={(next) => !next && !busy && onClose()}>
@@ -231,7 +214,7 @@ export default function PackForm({
           <div className="grid gap-4 sm:grid-cols-2">
             {field("version", "Version", text("version", { placeholder: "1.0.0", autoComplete: "off" }), (
               <p>
-                {pack?.liveVersion ? `Higher than ${pack.liveVersion}` : "Raise it for every new zip"}, so installed copies
+                {pack?.live ? `Higher than ${pack.live.version}` : "Raise it for every new zip"}, so installed copies
                 see an update.
               </p>
             ))}

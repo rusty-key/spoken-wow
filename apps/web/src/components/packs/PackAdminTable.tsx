@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 
-import { useLocalDates } from "@/components/useLocalDates";
+import { DAY, useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,9 @@ import type { Pack, Submission } from "@/lib/community/store";
 import { roleLabel } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
-type Row = Pack & { history: Submission[] };
+import { nameOf } from "./common";
 
-const DAY: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
+type Row = Pack & { history: Submission[] };
 
 const STATUS: Record<Submission["status"], { label: string; className: string }> = {
   pending: { label: "Pending", className: "text-primary-ink" },
@@ -152,7 +152,7 @@ export default function PackAdminTable({ packs, names }: { packs: Row[]; names: 
 
 function History({ submissions, names }: { submissions: Submission[]; names: Record<string, string> }) {
   const when = useLocalDates();
-  const who = (id: string | null) => (id ? (names[id] ?? "an unnamed account") : "a deleted account");
+  const who = (id: string | null) => nameOf(id, id && names[id]);
   return (
     <ol className="bg-muted/40 divide-y rounded-md text-xs">
       {submissions.map((submission) => {
@@ -182,6 +182,13 @@ function History({ submissions, names }: { submissions: Submission[]; names: Rec
 
 type Found = { id: string; name: string; email: string; role?: string | null };
 
+// A search keeps the last answer on screen while the next one loads, so typing does not flicker.
+type Search =
+  | { state: "idle" }
+  | { state: "loading"; users: Found[] | null }
+  | { state: "error" }
+  | { state: "done"; users: Found[] };
+
 /** Users whose name or email holds the query, through the admin plugin's own list. */
 async function findUsers(query: string): Promise<Found[]> {
   const ask = (searchField: "name" | "email") =>
@@ -206,37 +213,32 @@ function OwnerPicker({
   onPick: (owner: Found | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [found, setFound] = useState<Found[] | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [search, setSearch] = useState<Search>({ state: "idle" });
   const [query, setQuery] = useSearchBox("", (next) => {
     const wanted = next.trim();
-    if (!wanted) return setFound(null);
-    setFailed(false);
-    setSearching(true);
+    if (!wanted) return setSearch({ state: "idle" });
+    setSearch((last) => ({ state: "loading", users: "users" in last ? last.users : null }));
     findUsers(wanted)
-      .then(setFound)
-      .catch(() => setFailed(true))
-      .finally(() => setSearching(false));
+      .then((users) => setSearch({ state: "done", users }))
+      .catch(() => setSearch({ state: "error" }));
   });
+  const users = "users" in search ? search.users : null;
+
+  const current = pack.ownerId ? nameOf(pack.ownerId, pack.ownerName) : null;
 
   function pick(owner: Found | null) {
     setOpen(false);
     setQuery("");
-    setFound(null);
+    setSearch({ state: "idle" });
     onPick(owner);
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled} aria-label={`Owner of ${pack.id}: ${pack.ownerId ? (pack.ownerName ?? "an unnamed account") : "none"}`}>
+        <Button variant="outline" size="sm" disabled={disabled} aria-label={`Owner of ${pack.id}: ${current ?? "none"}`}>
           <UserRound aria-hidden />
-          {pack.ownerId ? (
-            (pack.ownerName ?? "an unnamed account")
-          ) : (
-            <span className="text-muted-foreground">No owner</span>
-          )}
+          {current ?? <span className="text-muted-foreground">No owner</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-1.5">
@@ -250,14 +252,14 @@ function OwnerPicker({
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className="mt-1 max-h-64 overflow-y-auto">
-          {searching && !found ? (
-            <p className="text-muted-foreground px-2 py-1.5 text-xs">Searching…</p>
-          ) : failed ? (
+          {search.state === "error" ? (
             <p className="text-destructive px-2 py-1.5 text-xs">Could not search users. Try again.</p>
-          ) : found?.length === 0 ? (
+          ) : search.state === "loading" && !users ? (
+            <p className="text-muted-foreground px-2 py-1.5 text-xs">Searching…</p>
+          ) : users?.length === 0 ? (
             <p className="text-muted-foreground px-2 py-1.5 text-xs">Nobody matches.</p>
           ) : (
-            found?.map((user) => (
+            users?.map((user) => (
               <button
                 key={user.id}
                 type="button"
