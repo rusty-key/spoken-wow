@@ -30,6 +30,7 @@ end
 Addon = AceAddon:NewAddon("SpokenQuests", "AceEvent-3.0", "AceTimer-3.0")
 
 local AUTO_POLL_INTERVAL = 0.1
+local QUEST_ACCEPT_GRACE = 0.5
 
 -- Store original function before EQL3 (Extended Quest Log 3) overrides it and starts prepending quest level
 local GetTitleText = GetTitleText
@@ -910,11 +911,11 @@ function Addon:OnInitialize()
                 questIDArg = (...)
             end
             local questID = NotSecret(questIDArg)
-            if type(questID) ~= "number" or questID == 0 then
-                return
-            end
             if event == "QUEST_ACCEPTED" then
                 self:MarkQuestOfferAccepted(questID)
+            end
+            if type(questID) ~= "number" or questID == 0 then
+                return
             end
             if self.dataModulesPending then
                 return
@@ -1165,11 +1166,12 @@ local function QuestSoundDataAdded(soundData)
 end
 
 --- QUEST_FINISHED arrives just before QUEST_ACCEPTED on the normal click path. Keep an unaccepted
---- offer alive for one frame so the acceptance event can cancel its close stop; a declined offer
+--- offer alive briefly so the acceptance event can cancel its close stop; a declined offer
 --- is then removed even when Stop When Window Closes is off.
 function Addon:MarkQuestOfferAccepted(questID)
     local offer = self.openQuestOffer
-    if not offer or offer.questID ~= questID then return end
+    local acceptedID, offerID = tonumber(questID), tonumber(offer and offer.questID)
+    if not offer or acceptedID and acceptedID ~= 0 and offerID and offerID ~= acceptedID then return end
     offer.accepted = true
     if offer.closeTimer then
         self:CancelTimer(offer.closeTimer)
@@ -1691,7 +1693,7 @@ function Addon:QUEST_FINISHED()
             if self.openQuestOffer == offer then
                 self.openQuestOffer = nil
             end
-        end, AUTO_POLL_INTERVAL)
+        end, QUEST_ACCEPT_GRACE)
     end
     if Addon.db.profile.Audio.StopAudioOnDisengage then
         if currentQuestSoundData then

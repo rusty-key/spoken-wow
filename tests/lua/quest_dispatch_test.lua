@@ -235,7 +235,7 @@ stub.Advance(0.6)
 world.questID = 0
 stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
-stub.Advance(0.2)
+stub.Advance(0.6)
 ExpectCurrent("closing an unaccepted offer stops its audio", "")
 
 StartScenario()
