@@ -9,7 +9,8 @@
  * countRecent is the rate limiter's entire implementation. It counts in Postgres rather than
  * in process memory so the limit survives a pm2 restart, which is precisely the moment a
  * flood would otherwise get through. It does not filter by source, deliberately: the limit is
- * on a person, and filing ten from each page is filing twenty.
+ * on a person, and filing ten from each page is filing twenty. A signed-in person is counted by
+ * account, so others on their network cannot use up their allowance.
  *
  * Every read and write runs as the team that owns the report's language. The two that cannot
  * know it run across every team: the rate limit, which is on a person in any language, and
@@ -89,14 +90,18 @@ export async function createReport(input: {
   );
 }
 
-export async function countRecent(ip: string, withinMs: number): Promise<number> {
+/** Who a report counts against: a signed-in reporter by account, anyone else by address. */
+export type Reporter = { userId: string } | { ip: string };
+
+export async function countRecent(reporter: Reporter, withinMs: number): Promise<number> {
+  const [column, value] = "userId" in reporter ? ['"userId"', reporter.userId] : ['"ip"', reporter.ip];
   const rows = await queryIn<{ count: string }>(
     ALL_TEAMS,
     `select count(*)::text as count
        from "report"
-      where "ip" = $1
+      where ${column} = $1
         and "createdAt" > now() - ($2::bigint * interval '1 millisecond')`,
-    [ip, withinMs],
+    [value, withinMs],
   );
   return Number(rows[0]?.count ?? 0);
 }

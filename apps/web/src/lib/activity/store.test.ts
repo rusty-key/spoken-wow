@@ -281,6 +281,36 @@ describe("account events", () => {
   });
 });
 
+describe("pack events", () => {
+  beforeEach(async () => {
+    await recordActivity({
+      kind: "pack.rejected",
+      lang: null,
+      actorId: actor,
+      subject: "some-pack",
+      detail: { packId: "some-pack", version: "1.0.0", submissionId: "1", reason: "broken" },
+    });
+    await recordActivity({ kind: "ignore.set", lang: "deDE", actorId: actor, detail: {} });
+  });
+
+  it("are shown to a global admin", async () => {
+    const { rows } = await listActivity({ lang: "deDE", actorId: actor, global: true });
+    expect(rows.map((row) => row.kind).sort()).toEqual(["ignore.set", "pack.rejected"]);
+  });
+
+  it("are hidden from somebody who is admin in one language only", async () => {
+    const { rows } = await listActivity({ lang: "deDE", actorId: actor });
+    expect(rows.map((row) => row.kind)).toEqual(["ignore.set"]);
+  });
+
+  it("do not put their actor in a language admin's person filter", async () => {
+    await asSystem.query(`delete from "activity" where "actorId" = $1 and "kind" = 'ignore.set'`, [actor]);
+
+    expect((await activityActors("deDE")).map((person) => person.id)).not.toContain(actor);
+    expect((await activityActors("deDE", true)).map((person) => person.id)).toContain(actor);
+  });
+});
+
 describe("recordActivity", () => {
   it("rolls back with the transaction it was written in", async () => {
     const client = await db().connect();

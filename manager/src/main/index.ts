@@ -15,6 +15,7 @@ import { HIDDEN_ARG, updateLinuxAutostart } from './startup'
 import { initLog, log } from './state'
 import { isOurPage as isOurPageUrl, type AppPage } from './trust'
 import { startUpdater } from './updater'
+import { t } from './i18n'
 
 app.setName('Spoken Manager')
 if (process.platform === 'win32') app.setAppUserModelId('one.rusty.spoken.manager')
@@ -127,22 +128,26 @@ function syncTray(enabled: boolean): void {
     tray = null
     return
   }
-  if (tray) return
-  tray = new Tray(trayIcon())
-  tray.setToolTip('Spoken Manager')
+  if (!tray) {
+    tray = new Tray(trayIcon())
+    tray.setToolTip('Spoken Manager')
+    tray.on('click', showWindow)
+  }
+  // Built on every call, so a language change relabels the menu without replacing the icon.
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Show Spoken Manager', click: showWindow },
+      { label: t('tray.show'), click: showWindow },
       { type: 'separator' },
-      { label: 'Quit Spoken Manager', click: () => app.quit() }
+      { label: t('tray.quit'), click: () => app.quit() }
     ])
   )
-  tray.on('click', showWindow)
 }
 
 function startupSettingsChanged(settings: Settings, previous: Settings): void {
-  if (settings.startAtLogin === previous.startAtLogin && settings.minimizeToTray === previous.minimizeToTray) return
-  applyAutoStart(settings)
+  const startupChanged = settings.startAtLogin !== previous.startAtLogin || settings.minimizeToTray !== previous.minimizeToTray
+  const languageChanged = settings.uiLanguage !== previous.uiLanguage
+  if (!startupChanged && !languageChanged) return
+  if (startupChanged) applyAutoStart(settings)
   syncTray(settings.minimizeToTray)
 }
 

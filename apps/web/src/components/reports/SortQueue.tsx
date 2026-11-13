@@ -21,6 +21,7 @@ import TakeSelector from "@/components/TakeSelector";
 import { PageTextDialog } from "@/components/readables/PageTextDialog";
 import { Player as ReadablesPlayer } from "@/components/readables/Player";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
+import type { PackVersions } from "@/lib/reports/context";
 import { Button } from "@/components/ui/button";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player as PlacesPlayer } from "@/components/places/Player";
@@ -90,6 +91,7 @@ export default function SortQueue({
   canRegenerate,
   canEditText,
   showNpcPage,
+  latestPacks,
 }: {
   source: Source;
   /** The queue as the server sorted it, open reports only, skipped lines already left out. */
@@ -98,6 +100,8 @@ export default function SortQueue({
   canEditText: boolean;
   /** Whether the speaker's name opens the NPC page. See LineHeading. */
   showNpcPage: boolean;
+  /** The section's released pack versions by language, to flag a report heard on an old pack. */
+  latestPacks: PackVersions;
 }) {
   const lang = useLang();
   // Held from the first render: a refresh while sorting brings back a list without the lines
@@ -427,7 +431,7 @@ export default function SortQueue({
           {group.reports.length} {group.reports.length === 1 ? "report" : "reports"}
         </p>
         {reports.map((report) => (
-          <ReportPreview key={report.id} report={report} expanded={expanded} />
+          <ReportPreview key={report.id} report={report} expanded={expanded} latestPacks={latestPacks} />
         ))}
         {!expanded && group.reports.length > PREVIEW ? (
           <button
@@ -543,7 +547,15 @@ function Hint({ children }: { children: ReactNode }) {
 }
 
 /** Never shows the reporter's email or address: who they are is not what triage weighs. */
-function ReportPreview({ report, expanded }: { report: Report; expanded: boolean }) {
+function ReportPreview({
+  report,
+  expanded,
+  latestPacks,
+}: {
+  report: Report;
+  expanded: boolean;
+  latestPacks: PackVersions;
+}) {
   const [opened, setOpened] = useState(false);
   return (
     <article className="bg-card cursor-pointer rounded-lg border px-3 py-2.5" onClick={() => !endsSelection() && setOpened(!opened)}>
@@ -562,7 +574,7 @@ function ReportPreview({ report, expanded }: { report: Report; expanded: boolean
       >
         {report.body}
       </p>
-      <ReportContextNote context={report.context} />
+      <ReportContextNote context={report.context} latestPacks={latestPacks} />
     </article>
   );
 }

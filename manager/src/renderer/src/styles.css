@@ -42,7 +42,7 @@
   /* Shape and type */
   --radius-s: 4px;
   --radius-m: 8px;
-  --font: 'Noto Sans', 'Segoe UI', 'Malgun Gothic', 'Microsoft YaHei', sans-serif;
+  --font: 'Noto Sans', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Malgun Gothic', sans-serif;
   --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
   --fs-body: 14px;
   --fs-small: 13px;
@@ -1979,6 +1979,12 @@ svg.is-spinning {
 
 .settings-title-row .settings-h {
   margin-bottom: 4px;
+}
+
+/* A second heading inside one section. */
+.settings-h-sub {
+  margin-top: 24px;
+  font-size: 15px;
 }
 
 .settings-text {
