@@ -75,7 +75,6 @@ describe("/api/invites/[id]", () => {
   });
 
   it("resends with a new link, and the old one stops working", async () => {
-    // A site admin is not rate limited; a language admin is, below.
     expect((await resend()).status).toBe(200);
     expect(sent).toHaveLength(1);
     expect(sent[0].args.url).not.toContain(firstToken);
@@ -83,6 +82,21 @@ describe("/api/invites/[id]", () => {
     expect(await lookupInvite(sent[0].args.url.split("token=")[1])).toMatchObject({ state: "pending" });
     expect((await resend()).status).toBe(429);
     expect(sent).toHaveLength(1);
+  });
+
+  it("does not rate limit a site admin", async () => {
+    who.viewer = { role: "admin", grants: [] };
+    expect((await resend()).status).toBe(200);
+    expect((await resend()).status).toBe(200);
+    expect(sent).toHaveLength(2);
+  });
+
+  it("answers 404, not 500, to a malformed id", async () => {
+    const real = id;
+    id = "-".repeat(36);
+    expect((await resend()).status).toBe(404);
+    expect((await revoke()).status).toBe(404);
+    id = real;
   });
 
   it("revokes once, then answers 404", async () => {

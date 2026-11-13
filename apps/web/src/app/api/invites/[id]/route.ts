@@ -1,7 +1,6 @@
 /** Revoking an invite. Whoever may hand out what it names may take it back. */
 import { headers } from "next/headers";
 
-import { recordActivity } from "@/lib/activity/store";
 import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
 import { listingFor } from "@/lib/invites/listing";
@@ -18,7 +17,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (!session || !viewer) return Response.json({ error: "not allowed" }, { status: 403 });
 
   const { id } = await params;
-  const invite = /^[0-9a-f-]{36}$/i.test(id) ? await openInvite(id) : null;
+  const invite = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? await openInvite(id) : null;
   if (!invite || !isLang(invite.lang)) return Response.json({ error: "no such invite" }, { status: 404 });
   const lang = invite.lang;
   const byTeam = await textByTeam(lang);
@@ -28,12 +27,5 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const revoked = await revokeInvite(id, session.user.id);
   if (!revoked) return Response.json({ error: "no such invite" }, { status: 404 });
-  await recordActivity({
-    kind: "invite.revoked",
-    lang,
-    subject: id,
-    actorId: session.user.id,
-    detail: { email: invite.email },
-  });
   return listingFor(viewer);
 }

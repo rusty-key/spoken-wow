@@ -1,7 +1,6 @@
 /** Sending an invite again, with a new link: the old one stops working. */
 import { headers } from "next/headers";
 
-import { recordActivity } from "@/lib/activity/store";
 import { auth } from "@/lib/auth";
 import { sendInviteEmail } from "@/lib/email";
 import { viewerOf } from "@/lib/grants/store";
@@ -19,7 +18,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!session || !viewer) return Response.json({ error: "not allowed" }, { status: 403 });
 
   const { id } = await params;
-  const invite = /^[0-9a-f-]{36}$/i.test(id) ? await openInvite(id) : null;
+  const invite = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? await openInvite(id) : null;
   if (!invite || !isLang(invite.lang)) return Response.json({ error: "no such invite" }, { status: 404 });
   const lang = invite.lang;
   const byTeam = await textByTeam(lang);
@@ -28,14 +27,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   try {
-    const sent = await resendInvite(id, !isAdmin(viewer.role));
-    await recordActivity({
-      kind: "invite.resent",
-      lang,
-      subject: id,
-      actorId: session.user.id,
-      detail: { email: invite.email },
-    });
+    const sent = await resendInvite(id, !isAdmin(viewer.role), session.user.id);
     sendInviteEmail(invite.email, {
       inviterName: invite.invitedByName ?? "A Spoken team member",
       langName: langName(lang),

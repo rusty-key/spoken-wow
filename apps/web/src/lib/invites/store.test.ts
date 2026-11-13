@@ -29,6 +29,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [inviter.id]);
   // The app role may not delete invites; the user's cascade does.
   await inviter.cleanup();
   await closeDb();
@@ -52,6 +53,23 @@ describe("normalEmail", () => {
 });
 
 describe("invites", () => {
+  it("records each act in the activity log, and nothing when the act fails", async () => {
+    const to = `logged-${email()}`;
+    const kinds = async (subject: string) =>
+      (await asSystem.query(`select "kind" from "activity" where "subject" = $1 order by "id"`, [subject])).rows.map((r) => r.kind);
+    const { invite } = await createInvite(args({ email: to }));
+    await asSystem.query(`update "invite" set "sentAt" = now() - interval '1 hour' where "id" = $1`, [invite.id]);
+    await resendInvite(invite.id, true, inviter.id);
+    await revokeInvite(invite.id, inviter.id);
+    expect(await kinds(invite.id)).toEqual(["invite.sent", "invite.resent", "invite.revoked"]);
+
+    // A bad capability fails the insert, after which nothing may be logged.
+    const before = (await asSystem.query(`select count(*)::int as n from "activity" where "actorId" = $1`, [inviter.id])).rows[0].n;
+    await expect(createInvite(args({ email: `bad-${to}`, capabilities: ["nonsense" as never] }))).rejects.toThrow();
+    const after = (await asSystem.query(`select count(*)::int as n from "activity" where "actorId" = $1`, [inviter.id])).rows[0].n;
+    expect(after).toBe(before);
+  });
+
   it("stores only the hash, and looks the invite up by token", async () => {
     const { invite, token } = await createInvite(args());
     expect(token).toHaveLength(43);
@@ -70,7 +88,7 @@ describe("invites", () => {
   });
 
   it("refuses a second open invite, and replaces an expired one", async () => {
-    const [first] = (await asSystem.query(`select "id" from "invite" where "invitedBy" = $1`, [inviter.id])).rows;
+    const [first] = (await asSystem.query(`select "id" from "invite" where "invitedBy" = $1 and "email" = $2`, [inviter.id, email()])).rows;
     await expect(createInvite(args())).rejects.toBeInstanceOf(InviteExistsError);
     await asSystem.query(`update "invite" set "expiresAt" = now() - interval '1 second' where "id" = $1`, [first.id]);
     await createInvite(args());
@@ -80,19 +98,19 @@ describe("invites", () => {
 
   it("resends with a new token, and rate limits a resend", async () => {
     const { invite, token } = await createInvite(args({ email: `resend-${email()}` }));
-    const again = await resendInvite(invite.id, false);
+    const again = await resendInvite(invite.id, false, inviter.id);
     expect(await lookupInvite(token)).toBeNull();
     expect(await lookupInvite(again.token)).toMatchObject({ state: "pending" });
     const [row] = (await asSystem.query(`select "sendCount" from "invite" where "id" = $1`, [invite.id])).rows;
     expect(row.sendCount).toBe(2);
-    await expect(resendInvite(invite.id, true)).rejects.toBeInstanceOf(InviteRateError);
+    await expect(resendInvite(invite.id, true, inviter.id)).rejects.toBeInstanceOf(InviteRateError);
   });
 
   it("revokes once, then cannot resend, and lists no more", async () => {
     const { invite } = await createInvite(args({ email: `revoke-${email()}` }));
     expect((await revokeInvite(invite.id, inviter.id))?.id).toBe(invite.id);
     expect(await revokeInvite(invite.id, inviter.id)).toBeNull();
-    await expect(resendInvite(invite.id, false)).rejects.toBeInstanceOf(InviteGoneError);
+    await expect(resendInvite(invite.id, false, inviter.id)).rejects.toBeInstanceOf(InviteGoneError);
     expect((await listInvites(["deDE"])).map((row) => row.id)).not.toContain(invite.id);
   });
 
