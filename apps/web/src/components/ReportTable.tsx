@@ -28,7 +28,7 @@ import LineHeading from "@/components/reports/LineHeading";
 import ReportContribution from "@/components/reports/ReportContribution";
 import SortHeader from "@/components/SortHeader";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
-import type { PackReleases } from "@/lib/reports/context";
+import type { PackVersions } from "@/lib/reports/context";
 import { LinkTabs } from "@/components/StatusTabs";
 import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
@@ -106,7 +106,7 @@ export default function ReportTable({
   labelled,
   passTo,
   showNpcPage,
-  releases,
+  latestPacks,
 }: {
   /** This page's lines, each with its reports, in the order the server sorted them. */
   groups: ReportGroup[];
@@ -130,7 +130,7 @@ export default function ReportTable({
   /** The NPC page is the admins'; see LineHeading. */
   showNpcPage: boolean;
   /** The section's released pack versions by language, to flag a report heard on an old pack. */
-  releases: PackReleases;
+  latestPacks: PackVersions;
 }) {
   const when = useLocalDates();
   /**
@@ -403,7 +403,7 @@ export default function ReportTable({
             <span className="text-muted-foreground mr-2 text-xs">{CATEGORY_COLUMN[report.category]}</span>
             {report.body}
           </p>
-          <ReportContextNote context={report.context} releases={releases}>
+          <ReportContextNote context={report.context} latestPacks={latestPacks}>
             {/* The text the reporter's addon saw, as the contributions page would take it. */}
             {canContribute && report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
               <ReportContribution

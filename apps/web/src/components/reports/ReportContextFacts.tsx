@@ -15,7 +15,7 @@ import {
   outdatedPack,
   outdatedVersion,
   packVersion,
-  type PackReleases,
+  type PackVersions,
   type ReportContext,
 } from "@/lib/reports/context";
 import { cn } from "@/lib/utils";
@@ -55,26 +55,25 @@ export default function ReportContextFacts({
  * newer addon, as the pack holds the audio. Might, because the version says nothing about
  * whether the release touched this line.
  *
- * `releases` are the section's released pack versions by language; without them the pack is
- * shown and not weighed.
+ * `latestPacks` are the section's newest released pack versions by language.
  *
  * `children` follow the facts and are drawn only once the context is opened, so what they fetch
  * is fetched for the reports somebody reads rather than for every row on the page.
  */
 export function ReportContextNote({
   context,
-  releases,
+  latestPacks,
   children,
 }: {
   context: ReportContext | null;
-  releases?: PackReleases;
+  latestPacks: PackVersions;
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   if (!context) return null;
   const version = addonLabel(context) ?? "the game";
   const pack = packVersion(context);
-  const oldPack = outdatedPack(context, releases);
+  const oldPack = outdatedPack(context, latestPacks);
   const outdated = outdatedVersion(context);
   return (
     <details

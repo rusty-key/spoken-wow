@@ -51,8 +51,6 @@ const META: Partial<Record<Lang, string>> = {
   zhTW: "spoken-chinese-traditional",
 };
 
-const github = githubReleases;
-
 const SECTIONS: { section: Section; name: string; note: string }[] = [
   { section: "quests", name: "Quests and Gossip", note: "Quest dialogue and what NPCs say" },
   { section: "places", name: "Places", note: "Lore of each zone" },
@@ -68,7 +66,7 @@ function installRows(lang: Lang): InstallRow[] {
       links: [
         { label: "CurseForge", href: `${CURSEFORGE}/spoken-player` },
         { label: "Wago", href: `${WAGO}/spoken-quests` },
-        { label: "GitHub", href: github("spoken/") },
+        { label: "GitHub", href: githubReleases("spoken/") },
       ],
     },
   ];

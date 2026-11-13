@@ -55,6 +55,8 @@ export default async function ReportPage({
     );
   }
 
+  // Started before the corpus, which it does not wait on.
+  const releasing = packReleases("quests", lang);
   // A language with no lines yet resolves nothing, the same as an address naming nothing:
   // the reporter still gets the form.
   const lines = await corpus(lang).then(
@@ -77,7 +79,7 @@ export default async function ReportPage({
   // hears the browser's copy of the very clip they complained about, and reports it again.
   const [take, releases] = await Promise.all([
     line ? liveTake("quests", audioRelPath(line), lang) : null,
-    packReleases("quests"),
+    releasing,
   ]);
   const version = take?.version ?? null;
 
@@ -89,7 +91,7 @@ export default async function ReportPage({
           You came here from the game. Tell us what sounded wrong and someone will listen to it.
         </p>
 
-        {line && version !== null ? <ListenFirst className="mb-4" source="quests" recordedAt={take?.createdAt} releases={releases} /> : null}
+        {take ? <ListenFirst className="mb-4" source="quests" recordedAt={take.createdAt} releases={releases} /> : null}
 
         {line ? (
           <section className="mb-6 rounded border p-4">
