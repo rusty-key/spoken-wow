@@ -95,10 +95,13 @@ export default function SortQueue({
   canContribute,
   showNpcPage,
   latestPacks,
+  addressLines,
 }: {
   source: Source;
   /** The queue as the server sorted it, open reports only, skipped lines already left out. */
   groups: ReportGroup[];
+  /** By group key, every line the address of a group with no line picked means. */
+  addressLines: Record<string, string[]>;
   canRegenerate: boolean;
   canEditText: boolean;
   /** Whether a report's text from the game can be accepted as the line's (ReportContribution). */
@@ -132,21 +135,30 @@ export default function SortQueue({
   const playWhenReady = useRef(false);
 
   const group = groups[index] as ReportGroup | undefined;
-  const ids = group ? lineIdsOf(group) : [];
+  const ids = group ? lineIdsOf(group, addressLines) : [];
   /** Which of the card's lines the keys, the player and the editor act on. */
   const [picked, setPicked] = useState(0);
   const lineId = ids[picked] ?? null;
-  const { line, version, detail } = viewOf(lineId);
+  const { line, version, detail, canEdit, canRegenerateLine } = viewOf(lineId);
   const answer = answers[index];
 
-  function viewOf(id: string | null) {
+  function viewOf(id: string | null): View {
     const looked = id === null ? undefined : lines[id];
     const line = looked && looked !== "error" ? looked : null;
     // The take this session made or restored, else the live one: either way a cache buster,
     // since a new take keeps its path and the browser would replay the one it replaced.
     const version = line ? (versions[id!] ?? line.take?.version) : undefined;
     const detail = line ? detailOf(source, line, version, lang) : null;
-    return { looked, line, version, detail };
+    return {
+      looked,
+      line,
+      version,
+      detail,
+      // A quest line with no text in the language has nothing to override.
+      canEdit: canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text),
+      // An unwritten boss has nothing to voice, and the server would refuse it.
+      canRegenerateLine: canRegenerate && line !== null && detail?.text !== null,
+    };
   }
 
   const load = useCallback(
@@ -163,9 +175,9 @@ export default function SortQueue({
 
   useEffect(() => {
     for (const next of groups.slice(index, index + 2)) {
-      for (const id of lineIdsOf(next)) if (!requested.current.has(id)) void load(id);
+      for (const id of lineIdsOf(next, addressLines)) if (!requested.current.has(id)) void load(id);
     }
-  }, [groups, index, load]);
+  }, [groups, addressLines, index, load]);
 
   useEffect(() => {
     if (!playWhenReady.current || !detail?.audioSrc) return;
@@ -232,13 +244,9 @@ export default function SortQueue({
   }
 
   function playLine(at: number) {
-    const next = viewOf(ids[at] ?? null).detail?.audioSrc;
-    if (at === picked || next === detail?.audioSrc) {
-      setPicked(at);
-      return togglePlay();
-    }
-    audio.current?.pause();
     setPicked(at);
+    if (viewOf(ids[at] ?? null).detail?.audioSrc === detail?.audioSrc) return togglePlay();
+    audio.current?.pause();
     playWhenReady.current = true;
   }
 
@@ -253,15 +261,10 @@ export default function SortQueue({
     if (index > 0 && !busy) goTo(index - 1);
   }
 
-  // A quest line with no text in the language has nothing to override.
-  const canEdit = canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text);
-  // An unwritten boss has nothing to voice, and the server would refuse it.
-  const canRegenerateLine = canRegenerate && line !== null && detail?.text !== null;
-
   const keys: Record<string, () => void> = {
     " ": togglePlay,
     e: () => canEdit && !busy && setEditing(true),
-    r: () => canRegenerateLine && lineId !== null && void regenerate(lineId),
+    r: () => canRegenerateLine && void regenerate(lineId!),
     x: () => setExpanded((current) => !current),
     p: previous,
     ...Object.fromEntries(ANSWERS.map((each) => [each.key, () => void give(each.answer)])),
@@ -356,27 +359,21 @@ export default function SortQueue({
           {ids.length === 1 ? "One line answers to it:" : `All ${ids.length} lines that answer to it:`}
         </p>
       ) : null}
-      {ids.map((id, at) => {
-        const view = viewOf(id);
-        return (
+      {ids.map((id, at) => (
           <LineCard
             key={id}
             source={source}
             lineId={id}
-            looked={view.looked}
-            line={view.line}
-            version={view.version}
-            detail={view.detail}
-            active={ids.length > 1 && at === picked}
-            playing={playing && at === picked}
+            view={viewOf(id)}
+            picked={at === picked}
+            ringed={ids.length > 1 && at === picked}
+            playing={playing}
+            busy={busy}
+            notice={notice}
             expanded={expanded}
             onExpand={() => setExpanded(!expanded)}
             showNpcPage={showNpcPage}
-            busy={busy}
-            regenerating={busy === "regenerate" && at === picked}
-            canEditText={canEditText}
             canRegenerate={canRegenerate}
-            notice={at === picked ? notice : null}
             onPlay={() => playLine(at)}
             onEdit={() => {
               setPicked(at);
@@ -392,8 +389,7 @@ export default function SortQueue({
               void load(id);
             }}
           />
-        );
-      })}
+      ))}
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium">
@@ -524,20 +520,16 @@ function EditDialog({
 function LineCard({
   source,
   lineId,
-  looked,
-  line,
-  version,
-  detail,
-  active,
+  view: { looked, line, version, detail, canEdit, canRegenerateLine },
+  picked,
+  ringed,
   playing,
+  busy,
+  notice,
   expanded,
   onExpand,
   showNpcPage,
-  busy,
-  regenerating,
-  canEditText,
   canRegenerate,
-  notice,
   onPlay,
   onEdit,
   onRegenerate,
@@ -546,21 +538,18 @@ function LineCard({
 }: {
   source: Source;
   lineId: string;
-  looked: Looked | undefined;
-  line: SourceLine | null;
-  version: number | undefined;
-  detail: ReturnType<typeof detailOf> | null;
-  /** Ringed when the card holds several lines, to show which the keys act on. */
-  active: boolean;
+  view: View;
+  /** The line the keys, the player and the editor act on. */
+  picked: boolean;
+  /** Shows which line is picked when the card holds several. */
+  ringed: boolean;
   playing: boolean;
+  busy: Busy;
+  notice: string | null;
   expanded: boolean;
   onExpand: () => void;
   showNpcPage: boolean;
-  busy: Busy;
-  regenerating: boolean;
-  canEditText: boolean;
   canRegenerate: boolean;
-  notice: string | null;
   onPlay: () => void;
   onEdit: () => void;
   onRegenerate: () => void;
@@ -569,13 +558,10 @@ function LineCard({
 }) {
   const text = detail?.text ?? "";
   const unwritten = detail !== null && detail.text === null;
-  // A quest line with no text in the language has nothing to override.
-  const canEdit = canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text);
-  // An unwritten boss has nothing to voice, and the server would refuse it.
-  const canRegenerateLine = canRegenerate && line !== null && detail?.text !== null;
+  const regenerating = picked && busy === "regenerate";
 
   return (
-    <section className={cn("bg-card flex flex-col gap-2 rounded-xl border p-4", active && "ring-foreground/40 ring-2")}>
+    <section className={cn("bg-card flex flex-col gap-2 rounded-xl border p-4", ringed && "ring-foreground/40 ring-2")}>
       {looked === undefined ? (
         <p className="text-muted-foreground text-sm">Looking up the line…</p>
       ) : looked === "error" ? (
@@ -629,8 +615,8 @@ function LineCard({
 
       <div className="mt-1 grid grid-cols-3 gap-2">
         <Button variant="outline" className="h-11" disabled={!detail?.audioSrc} onClick={onPlay}>
-          {playing ? <Pause /> : <Play />}
-          {playing ? "Pause" : "Play"}
+          {picked && playing ? <Pause /> : <Play />}
+          {picked && playing ? "Pause" : "Play"}
           <Hint>[Space]</Hint>
         </Button>
         <Button variant="outline" className="h-11" disabled={!canEdit || busy !== null} onClick={onEdit}>
@@ -657,14 +643,23 @@ function LineCard({
         </Button>
       </div>
       {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">No audio on file.</p> : null}
-      {notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
+      {picked && notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
     </section>
   );
 }
 
-function lineIdsOf(group: ReportGroup): string[] {
+type View = {
+  looked: Looked | undefined;
+  line: SourceLine | null;
+  version: number | undefined;
+  detail: ReturnType<typeof detailOf> | null;
+  canEdit: boolean;
+  canRegenerateLine: boolean;
+};
+
+function lineIdsOf(group: ReportGroup, addressLines: Record<string, string[]>): string[] {
   const picked = group.reports[0].lineId;
-  return picked ? [picked] : (group.lineIds ?? []);
+  return picked ? [picked] : (addressLines[group.key] ?? []);
 }
 
 /** Only where there is a keyboard to press it with: a phone has no use for the hint. */

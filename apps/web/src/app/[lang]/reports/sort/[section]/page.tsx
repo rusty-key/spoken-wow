@@ -35,7 +35,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
     skippedIds(session.user.id, lang),
     latestPackVersions(section),
   ]);
-  const groups = section === "quests" ? await withAddressLines(sortQueue(reports, skipped), lang) : sortQueue(reports, skipped);
+  const groups = sortQueue(reports, skipped);
+  const addressLines = section === "quests" ? await linesOfAddresses(groups, lang) : {};
   const canRegenerate = can(viewer, "regenerate", lang);
 
   return (
@@ -47,25 +48,25 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
       canContribute={can(viewer, "text", lang)}
       showNpcPage={isAdmin(session.user.role)}
       latestPacks={latestPacks}
+      addressLines={addressLines}
     />
   );
 }
 
 /**
  * An unpicked report's address can mean several lines, or a line imported after it was filed,
- * so its card shows every line the address means now.
+ * so its card shows every line the address means now. By group key.
  */
-async function withAddressLines(groups: ReportGroup[], lang: Lang): Promise<ReportGroup[]> {
-  if (!groups.some((group) => !group.reports[0].lineId && group.reports[0].target)) return groups;
+async function linesOfAddresses(groups: ReportGroup[], lang: Lang): Promise<Record<string, string[]>> {
+  const unpicked = groups.filter((group) => !group.reports[0].lineId && group.reports[0].target);
+  if (unpicked.length === 0) return {};
   const lines = await corpus(lang).catch((error) => {
     if (isCorpusEmpty(error)) return null;
     throw error;
   });
-  if (!lines) return groups;
-  return Promise.all(
-    groups.map(async (group) => {
-      const { lineId, target } = group.reports[0];
-      return lineId || !target ? group : { ...group, lineIds: await lineIdsOfAddress(target, lines) };
-    }),
+  if (!lines) return {};
+  const entries = await Promise.all(
+    unpicked.map(async (group) => [group.key, await lineIdsOfAddress(group.reports[0].target!, lines)] as const),
   );
+  return Object.fromEntries(entries);
 }
