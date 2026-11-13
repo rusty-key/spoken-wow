@@ -40,6 +40,8 @@ export type InviteLookup = {
   lang: string;
   capabilities: Capability[];
   inviterName: string | null;
+  /** Who accepted it, once it is accepted. */
+  acceptedBy: string | null;
   state: "pending" | "expired" | "accepted" | "revoked";
 };
 
@@ -239,13 +241,19 @@ export async function listInvites(langs?: string[]): Promise<InviteRow[]> {
   return rows.map(toInvite);
 }
 
-export async function lookupInvite(token: string): Promise<InviteLookup | null> {
-  const rows = await query<Row & { acceptedAt: Date | null; revokedAt: Date | null }>(
-    `select ${COLUMNS}, i."acceptedAt", i."revokedAt"
+type TokenRow = Row & { acceptedAt: Date | null; acceptedBy: string | null; revokedAt: Date | null };
+
+async function byToken(token: string): Promise<TokenRow | null> {
+  const rows = await query<TokenRow>(
+    `select ${COLUMNS}, i."acceptedAt", i."acceptedBy", i."revokedAt"
        from "invite" i join "user" u on u."id" = i."invitedBy" where i."tokenHash" = $1`,
     [hashOf(token)],
   );
-  const row = rows[0];
+  return rows[0] ?? null;
+}
+
+export async function lookupInvite(token: string): Promise<InviteLookup | null> {
+  const row = await byToken(token);
   if (!row) return null;
   return {
     id: row.id,
@@ -253,6 +261,7 @@ export async function lookupInvite(token: string): Promise<InviteLookup | null> 
     lang: row.lang,
     capabilities: row.capabilities.filter(isCapability),
     inviterName: row.invitedByName,
+    acceptedBy: row.acceptedBy,
     state: row.acceptedAt ? "accepted" : row.revokedAt ? "revoked" : row.expiresAt.getTime() <= Date.now() ? "expired" : "pending",
   };
 }
@@ -276,12 +285,7 @@ class NotClaimed extends Error {}
  * so two presses give them once.
  */
 export async function acceptInvite(token: string, user: { id: string; email: string }): Promise<AcceptOutcome> {
-  const found = await query<Row & { acceptedAt: Date | null; revokedAt: Date | null }>(
-    `select ${COLUMNS}, i."acceptedAt", i."revokedAt"
-       from "invite" i join "user" u on u."id" = i."invitedBy" where i."tokenHash" = $1`,
-    [hashOf(token)],
-  );
-  const row = found[0];
+  const row = await byToken(token);
   if (!row) return { ok: false, reason: "unknown" };
   const invite = toInvite(row);
   if (row.acceptedAt) return { ok: false, reason: "accepted" };

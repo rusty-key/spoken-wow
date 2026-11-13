@@ -74,7 +74,7 @@ describe("acceptInvite", () => {
     expect(await kinds("invite.accepted", invite.id)).toEqual([{ actorId: user.id }]);
     const added = await kinds("grant.added", user.id);
     expect(added).toEqual([{ actorId: inviter.id }, { actorId: inviter.id }]);
-    expect((await lookupInvite(token))?.state).toBe("accepted");
+    expect(await lookupInvite(token)).toMatchObject({ state: "accepted", acceptedBy: user.id });
   });
 
   it("accepts when the account's address is in another case", async () => {

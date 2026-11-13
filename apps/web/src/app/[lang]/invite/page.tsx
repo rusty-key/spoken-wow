@@ -21,7 +21,7 @@ const ADVICE = "Ask whoever invited you to send it again.";
 export default async function Page({ searchParams }: { searchParams: Promise<{ token?: string | string[] }> }) {
   const { token } = await searchParams;
   const invite = typeof token === "string" && token ? await lookupInvite(token) : null;
-  const session = invite?.state === "pending" ? await currentSession() : null;
+  const session = invite?.state === "pending" || invite?.state === "accepted" ? await currentSession() : null;
 
   let body: React.ReactNode;
   if (!invite || !isLang(invite.lang)) {
@@ -30,6 +30,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     body = <p>This invite has expired. {ADVICE}</p>;
   } else if (invite.state === "revoked") {
     body = <p>This invite was withdrawn. {ADVICE}</p>;
+  } else if (invite.state === "accepted" && invite.acceptedBy === session?.user.id) {
+    // Refreshed after pressing Accept: the person who did it still sees that it worked.
+    body = (
+      <p>
+        You&apos;re in. You can now work on {langName(invite.lang)}.{" "}
+        <Link href={localeHref(invite.lang, "/")} className="underline underline-offset-4">
+          Go to {langName(invite.lang)}
+        </Link>
+      </p>
+    );
   } else if (invite.state === "accepted") {
     body = (
       <p>
