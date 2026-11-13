@@ -12,7 +12,8 @@ export async function GET(request: Request) {
   const token = url.searchParams.get("token");
   const invite = token ? await lookupInvite(token) : null;
   const path = localeHref(invite && isLang(invite.lang) ? invite.lang : "enUS", "/invite");
-  const headers = new Headers({ Location: new URL(path, url).toString() });
+  // Relative, so the redirect stays on the host the browser used, behind the proxy too.
+  const headers = new Headers({ Location: path });
   if (token) headers.append("Set-Cookie", setInviteCookie(token));
   return new Response(null, { status: 303, headers });
 }
