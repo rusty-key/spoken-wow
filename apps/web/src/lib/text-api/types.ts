@@ -22,6 +22,17 @@ export type TextItem = {
   group: Record<string, string | number | null>;
 };
 
+/** What English reads as: its text and name, with no versions and no English of its own to compare. */
+export type ReferenceItem = {
+  id: string;
+  variant?: number;
+  text: string | null;
+  override?: string | null;
+  short?: string | null;
+  name: string | null;
+  group: TextItem["group"];
+};
+
 export type Page = { items: TextItem[]; nextCursor: string | null };
 
 type SaveTextArgs = {
