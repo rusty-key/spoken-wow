@@ -537,6 +537,11 @@ end
 local currentQuestSoundData
 local currentGossipSoundData
 
+local function IsQuestTurnInSoundData(soundData)
+    return soundData and (soundData.event == Enums.SoundEvent.QuestProgress
+        or soundData.event == Enums.SoundEvent.QuestComplete)
+end
+
 function Addon:OnInitialize()
     -- A character Spoken put on the profile chosen for new characters starts on it here too, so the
     -- two stay one profile. AceDB uses it only where these settings have not seen the character.
@@ -1182,9 +1187,7 @@ local function QuestSoundDataAdded(soundData)
         offer.soundData = soundData
     end
     local turnIn = Addon.openQuestTurnIn
-    if turnIn and (soundData.event == Enums.SoundEvent.QuestProgress
-            or soundData.event == Enums.SoundEvent.QuestComplete)
-            and soundData.questID == turnIn.questID then
+    if turnIn and IsQuestTurnInSoundData(soundData) and soundData.questID == turnIn.questID then
         table.insert(turnIn.soundData, soundData)
     end
 end
@@ -1734,6 +1737,20 @@ function Addon:QUEST_FINISHED()
         end, QUEST_ACCEPT_GRACE)
     end
     local turnIn = self.openQuestTurnIn
+    -- If the client exposed the page to the handler before its event snapshot was captured,
+    -- use the queued line as the turn-in record so closing the window does not remove it at once.
+    if IsQuestTurnInSoundData(currentQuestSoundData) then
+        local currentQuestID = tonumber(currentQuestSoundData.questID)
+        local turnInID = tonumber(turnIn and turnIn.questID)
+        if not turnIn or turnInID ~= currentQuestID then
+            turnIn = {
+                questID = currentQuestSoundData.questID,
+                title = currentQuestSoundData.title,
+                soundData = { currentQuestSoundData },
+            }
+            self.openQuestTurnIn = turnIn
+        end
+    end
     if turnIn and not turnIn.turnedIn and not turnIn.closeTimer then
         turnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
         turnIn.closeTimer = self:ScheduleTimer(function()
@@ -1751,9 +1768,7 @@ function Addon:QUEST_FINISHED()
     if Addon.db.profile.Audio.StopAudioOnDisengage then
         local deferOfferStop = offer
             and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
-        local deferTurnInStop = turnIn and currentQuestSoundData
-            and (currentQuestSoundData.event == Enums.SoundEvent.QuestProgress
-                or currentQuestSoundData.event == Enums.SoundEvent.QuestComplete)
+        local deferTurnInStop = turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
         if currentQuestSoundData and not deferOfferStop and not deferTurnInStop then
             Player:Remove(currentQuestSoundData)
         end

@@ -308,6 +308,20 @@ stub.FireEvent("QUEST_FINISHED")
 stub.Advance(0.6)
 ExpectCurrent("turning in before the window closes leaves completion audio playing", "104-complete")
 
+-- A replacement dialog can dispatch the page before the recorder has a snapshot for it. The
+-- currently queued turn-in line must still get the same close grace period.
+StartScenario()
+world.questID = full
+VO.Addon:QUEST_COMPLETE()
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+VO.Addon:QUEST_FINISHED()
+stub.Advance(0.2)
+ExpectCurrent("a turn-in line without a snapshot keeps playing during close grace", "104-complete")
+stub.Advance(0.6)
+ExpectCurrent("a turn-in line without a snapshot stops after close grace", "")
+
 -- With Stop When Window Closes off, declining an offer leaves its audio playing.
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 StartScenario()
