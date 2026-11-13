@@ -52,7 +52,11 @@ export type Founded = {
   languageName: string | null;
 };
 
-const SLUG_MAX = 41;
+/**
+ * The slug check allows 41 characters, and free_team_slug appends `-N` to a taken slug without
+ * shortening it: 37 leaves room for `-999`.
+ */
+const SLUG_MAX = 37;
 
 /** Read on the caller's client when given, so it sees that transaction's writes. */
 async function rows<T extends Record<string, unknown>>(client: ClientBase | undefined, text: string, params: unknown[]) {
@@ -134,7 +138,7 @@ export async function foundLanguage(client: PoolClient, input: FoundInput, actor
   const base = slugFor(input.team.name, input.lang);
   const [team] = await named(
     client,
-    input.team.slug,
+    input.team.slug ?? base,
     `update "team"
         set "slug" = coalesce($1, case when "slug" = $2 then "slug" else free_team_slug($2) end), "name" = $3
       where "id" = team_of_lang($4)
