@@ -31,6 +31,8 @@ type Props = {
   /** This language's grants. */
   grants: GrantRow[];
   viewer: Viewer;
+  /** Whether this language's team admins appoint its text maintainers. */
+  textByTeam: boolean;
   currentUserId: string;
 };
 
@@ -59,7 +61,7 @@ function peopleOf(known: readonly Person[], grants: readonly GrantRow[]): Person
  * Somebody whose last grant was just removed keeps their row until the page reloads, so an
  * undo has a row to land on and the rows below do not jump under the pointer.
  */
-function Matrix({ lang, grants: initial, viewer, currentUserId }: Props) {
+function Matrix({ lang, grants: initial, viewer, textByTeam, currentUserId }: Props) {
   const toast = useToast();
   const [grants, setGrants] = useState(initial);
   const [people, setPeople] = useState(() => peopleOf([], initial));
@@ -82,7 +84,7 @@ function Matrix({ lang, grants: initial, viewer, currentUserId }: Props) {
 
   /** Why a cell cannot be changed here, or null when it can. The server holds the same rules. */
   function lockOf(person: Person, capability: Capability): string | null {
-    if (!canGrant(viewer, capability, lang)) return "Only a site admin appoints a text maintainer";
+    if (!canGrant(viewer, capability, lang, textByTeam)) return "Only a site admin appoints a text maintainer";
     if (implied(person.id, capability)) return "Included in their admin";
     if (removesOwnAdmin(viewer, currentUserId, person.id, capability)) {
       return "You cannot remove your own admin; another admin can";

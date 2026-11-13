@@ -10,7 +10,7 @@ import UserTable from "@/components/UserTable";
 import { userIdsWithApiKey } from "@/lib/api-key";
 import { listGrants, viewerOf } from "@/lib/grants/store";
 import { isLang, langName } from "@/lib/lang";
-import { languageStates } from "@/lib/languages/store";
+import { languageStates, textByTeam } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { listAllTokens } from "@/lib/tokens/store";
@@ -69,6 +69,7 @@ export default async function Page({
             lang={team}
             grants={await listGrants([team])}
             viewer={viewer}
+            textByTeam={await textByTeam(team)}
             currentUserId={session.user.id}
           />
         </Contained>

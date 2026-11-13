@@ -6,6 +6,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
+import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
 import { asSystem, testUser } from "@/lib/teams/testing";
 
@@ -32,6 +33,12 @@ beforeAll(async () => {
   target = await testUser("test-grants-route");
   granter = await testUser("test-grants-route-by");
   who.id = granter.id;
+  await asSystem.query(
+    `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+     values ('xqGR', 'Xq', 'Xq', 'xq-GR', 'xq', false, false, true) on conflict do nothing`,
+  );
+  forgetLanguages();
+  await loadLanguages();
 });
 
 beforeEach(() => {
@@ -42,23 +49,25 @@ afterAll(async () => {
   await asSystem.query(`delete from "activity" where "subject" = $1`, [target.id]);
   await asSystem.query(`delete from "language_grant" where "userId" = $1`, [target.id]);
   await asSystem.query(`delete from "team_member" where "userId" = $1`, [target.id]);
+  await asSystem.query(`delete from "language" where "code" = 'xqGR'`);
+  forgetLanguages();
   await target.cleanup();
   await granter.cleanup();
   await closeDb();
 });
 
-function put(capabilities: string[]): Promise<Response> {
+function put(capabilities: string[], lang = "deDE"): Promise<Response> {
   return PUT(
     new Request("https://example.com/api/grants", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: email(), lang: "deDE", capabilities }),
+      body: JSON.stringify({ email: email(), lang, capabilities }),
     }),
   );
 }
 
-function remove(capability: string, userId = target.id): Promise<Response> {
-  const params = new URLSearchParams({ userId, lang: "deDE", capability });
+function remove(capability: string, userId = target.id, lang = "deDE"): Promise<Response> {
+  const params = new URLSearchParams({ userId, lang, capability });
   return DELETE(new Request(`https://example.com/api/grants?${params}`, { method: "DELETE" }));
 }
 
@@ -86,5 +95,17 @@ describe("/api/grants", () => {
     expect((await remove("admin", granter.id)).status).toBe(403);
     who.viewer = { role: "admin", grants: [] };
     expect((await remove("admin", granter.id)).status).toBe(200);
+  });
+
+  it("lets the admin of a textByTeam language appoint and dismiss text there, not elsewhere", async () => {
+    who.viewer = {
+      role: null,
+      grants: [{ lang: "xqGR", capability: "admin" }, { lang: "deDE", capability: "admin" }],
+    };
+    expect((await put(["text"], "xqGR")).status).toBe(200);
+    const rows = await asSystem.query(`select 1 from "language_grant" where "userId" = $1 and "lang" = 'xqGR'`, [target.id]);
+    expect(rows.rowCount).toBe(1);
+    expect((await remove("text", target.id, "xqGR")).status).toBe(200);
+    expect((await put(["text"], "deDE")).status).toBe(403);
   });
 });
