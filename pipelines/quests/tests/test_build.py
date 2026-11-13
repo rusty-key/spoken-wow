@@ -1,7 +1,11 @@
 import os
+import shutil
+import subprocess
+
+import pytest
 
 from tts_cli.build import (MODULE_LUA, build_tables, escape_lua_string, module_toc,
-                           prune_quest_id_table, quest_search_text)
+                           prune_quest_id_table, quest_search_text, write_lua_table)
 
 CORPUS = {
     "lines": [
@@ -151,6 +155,40 @@ def test_prune_keeps_text_level_when_an_npc_is_ambiguous():
 
 def test_escaping_matches_what_the_addon_expects():
     assert escape_lua_string('say "hi"\r\nthere') == "say 'hi'  there"
+
+
+# A contributed text is a table key, so a backslash it ends in has to reach the file as a
+# Lua escape: left bare, it escapes the closing quote and the whole file fails to compile.
+HOSTILE = {
+    "creature": {68: {"Greetings, traveler\\": "31ab9c", "a\\]": "b", "it's \"ok\"": "c",
+                      "tab\t9here": "d"}},
+    "gameobject": {},
+}
+
+
+def test_a_backslash_in_a_key_is_written_as_a_lua_escape(tmp_path):
+    path = os.path.join(tmp_path, "generated", "t.lua")
+    write_lua_table(path, "M", "T", HOSTILE)
+    text = open(path, encoding="utf-8").read()
+    assert '["Greetings, traveler\\\\"] = "31ab9c"' in text
+    assert '["a\\\\]"] = "b"' in text
+    assert '["it\'s \\"ok\\""] = "c"' in text
+    assert '["tab\\0099here"] = "d"' in text
+
+
+@pytest.mark.skipif(shutil.which("luajit") is None, reason="needs luajit")
+def test_a_generated_table_with_hostile_keys_loads_in_lua(tmp_path):
+    path = os.path.join(tmp_path, "generated", "t.lua")
+    write_lua_table(path, "M", "T", HOSTILE)
+    probe = os.path.join(tmp_path, "probe.lua")
+    with open(probe, "w", encoding="utf-8") as f:
+        f.write(f'VoiceOver = {{DataModules = {{}}}}\nM = {{}}\ndofile([[{path}]])\n'
+                'assert(M.T.creature[68]["Greetings, traveler\\\\"] == "31ab9c")\n'
+                'assert(M.T.creature[68]["tab\\t9here"] == "d")\n'
+                'print("ok")\n')
+    run = subprocess.run(["luajit", probe], capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr
+    assert run.stdout.strip() == "ok"
 
 
 def test_quest_search_text_is_first_and_last_words():
