@@ -5,12 +5,9 @@ import { useState } from "react";
 
 import Link from "@/components/LocaleLink";
 import { Button } from "@/components/ui/button";
-import { langName } from "@/lib/lang";
 import { send } from "@/lib/send";
-import { branchText } from "@/lib/teams/branch-text";
+import { branchText, requestLangName as label } from "@/lib/teams/branch-text";
 import type { TeamRequest } from "@/lib/teams/requests";
-
-const label = (request: TeamRequest) => request.langName ?? langName(request.lang);
 
 export default function TeamRequestList({ initial }: { initial: TeamRequest[] }) {
   const router = useRouter();
@@ -42,7 +39,7 @@ export default function TeamRequestList({ initial }: { initial: TeamRequest[] })
               <span className="text-muted-foreground text-xs">{request.createdAt.slice(0, 10)}</span>
             </div>
             {request.reason && <p className="text-muted-foreground">Reason: {request.reason}</p>}
-            {request.state === "pending" && request.branch && (
+            {request.branch && (
               <p className="text-muted-foreground">{branchText(request.branch, label(request))}</p>
             )}
             {request.state === "pending" && (

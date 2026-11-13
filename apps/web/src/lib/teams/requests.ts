@@ -9,11 +9,14 @@ import "server-only";
 import type { PoolClient } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
-import { inTransaction, query } from "@/lib/db";
+import { db, inTransaction, query } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { langName } from "@/lib/lang";
+import { adminEmails, SITE } from "@/lib/site";
+import { isUuid } from "@/lib/uuid";
 
 import { TeamError } from "./admin";
+import { requestLangName as nameOf } from "./branch-text";
 import { afterFounded, foundTeam, languageBranch, type Branch } from "./found";
 import type { TeamId } from "./store";
 
@@ -44,8 +47,6 @@ export type NewRequest = {
   note: string | null;
 };
 
-const SITE = (process.env.BETTER_AUTH_URL ?? "https://spoken.quest").replace(/\/$/, "");
-
 const COLUMNS = `r."id", r."userId", u."email", r."lang", r."langName", r."langNative", r."teamName", r."note",
                  r."state", r."reason", r."approvedTeamId", r."createdAt"::text as "createdAt",
                  r."decidedAt"::text as "decidedAt"`;
@@ -59,20 +60,9 @@ async function withBranch(row: Row): Promise<TeamRequest> {
 }
 
 async function read(id: string, client?: Reader): Promise<Row | null> {
-  const text = `select ${COLUMNS} from ${FROM} where r."id" = $1`;
-  const rows = client ? (await client.query<Row>(text, [id])).rows : await query<Row>(text, [id]);
+  const { rows } = await (client ?? db()).query<Row>(`select ${COLUMNS} from ${FROM} where r."id" = $1`, [id]);
   return rows[0] ?? null;
 }
-
-/** What the email and the page call the language: the name the request carried, else the registry's. */
-const nameOf = (row: Pick<Row, "lang" | "langName">) => row.langName ?? langName(row.lang);
-
-async function adminEmails(): Promise<string[]> {
-  const rows = await query<{ email: string }>(`select "email" from "user" where "role" = 'admin'`);
-  return rows.map((row) => row.email);
-}
-
-const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 export async function createRequest(userId: string, input: NewRequest): Promise<TeamRequest> {
   let id: string;
@@ -116,7 +106,16 @@ export async function listRequests(filter: { userId?: string; state?: RequestSta
       order by r."createdAt" desc, r."id"`,
     [filter.userId ?? null, filter.state ?? null],
   );
-  return Promise.all(rows.map(withBranch));
+  // One branch per language, however many requests name it.
+  const branches = new Map<string, Promise<Branch>>();
+  const branchOf = (lang: string) => {
+    let branch = branches.get(lang);
+    if (!branch) branches.set(lang, (branch = languageBranch(lang)));
+    return branch;
+  };
+  return Promise.all(
+    rows.map(async (row) => ({ ...row, branch: row.state === "pending" ? await branchOf(row.lang) : null })),
+  );
 }
 
 export async function withdrawRequest(id: string, userId: string): Promise<TeamRequest> {
@@ -170,34 +169,23 @@ export async function approveRequest(id: string, actorId: string): Promise<TeamR
     );
     return { row, founded };
   });
-  // The approval is committed: a failing step is logged, and must not skip the next or fail the response.
-  const afterCommit = async (step: string, work: () => unknown) => {
-    try {
-      await work();
-    } catch (error) {
-      console.error(`approveRequest ${id}: ${step} failed`, error);
-    }
-  };
-  await afterCommit("afterFounded", () => afterFounded(founded, actorId));
-  await afterCommit("activity", () =>
-    recordActivity({
-      kind: "request.approved",
-      lang: null,
-      actorId,
-      subject: id,
-      detail: { requestId: id, lang: row.lang, slug: founded.slug, branch: founded.branch },
-    }),
-  );
-  await afterCommit("email", () =>
-    sendEmail(
-      row.email,
-      `Your team for ${nameOf(row)} is approved`,
-      [
-        `Your request for the team ${row.teamName} in ${nameOf(row)} was approved. You are its admin.`,
-        "",
-        `Start here: ${SITE}/admin?lang=${row.lang}`,
-      ].join("\n"),
-    ),
+  // The approval is committed; none of these throws, so none can fail the response.
+  await afterFounded(founded, actorId);
+  await recordActivity({
+    kind: "request.approved",
+    lang: null,
+    actorId,
+    subject: id,
+    detail: { requestId: id, lang: row.lang, slug: founded.slug, branch: founded.branch },
+  });
+  sendEmail(
+    row.email,
+    `Your team for ${nameOf(row)} is approved`,
+    [
+      `Your request for the team ${row.teamName} in ${nameOf(row)} was approved. You are its admin.`,
+      "",
+      `Start here: ${SITE}/admin?lang=${row.lang}`,
+    ].join("\n"),
   );
   return withBranch((await read(id))!);
 }

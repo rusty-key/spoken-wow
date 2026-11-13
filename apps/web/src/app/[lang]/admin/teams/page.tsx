@@ -5,7 +5,7 @@ import AdminHeader from "@/components/AdminHeader";
 import TeamRequests from "@/components/TeamRequests";
 import TeamsTable from "@/components/TeamsTable";
 import { Wide } from "@/components/Width";
-import { allLangs, BASE_LANG, langName } from "@/lib/lang";
+import { allLangs, languageOptions } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { listTeams, liveTakeCounts } from "@/lib/teams/admin";
@@ -41,7 +41,7 @@ export default async function Page() {
         <TeamsTable
           initial={teams}
           takes={Object.fromEntries(counts)}
-          languages={allLangs().filter((code) => code !== BASE_LANG).map((code) => ({ code, name: langName(code) }))}
+          languages={languageOptions()}
         />
       </Wide>
     </main>

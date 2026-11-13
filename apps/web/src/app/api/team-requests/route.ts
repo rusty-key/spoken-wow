@@ -1,11 +1,12 @@
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { BASE_LANG, isLang } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { describedName, LANG_CODE, newLanguageError } from "@/lib/languages/validate";
+import { checkNewLanguage, describedName, LANG_CODE } from "@/lib/languages/validate";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
-import { TeamError } from "@/lib/teams/admin";
 import { createRequest, listRequests, type RequestState } from "@/lib/teams/requests";
+
+import { refusal } from "../teams/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +45,9 @@ export async function POST(request: Request) {
     if (language !== undefined && language !== null) return bad(`${lang} is already a language; send no names.`);
   } else {
     const given = objectOf(language);
-    const problem = newLanguageError(lang, given?.name, given?.native);
-    if (problem) return bad(problem);
-    names = { name: describedName(given?.name)!, native: describedName(given?.native)! };
+    const checked = checkNewLanguage(lang, given?.name, given?.native);
+    if ("error" in checked) return bad(checked.error);
+    names = { name: checked.language.name, native: checked.language.native };
   }
 
   try {
@@ -58,7 +59,6 @@ export async function POST(request: Request) {
     });
     return Response.json({ request: made });
   } catch (error) {
-    if (error instanceof TeamError) return Response.json({ error: error.message }, { status: error.status });
-    throw error;
+    return refusal(error);
   }
 }

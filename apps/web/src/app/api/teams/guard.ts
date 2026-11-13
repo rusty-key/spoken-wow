@@ -11,7 +11,7 @@ type TeamHandler = (request: Request, actorId: string, team: TeamId) => Promise<
 type TeamContext = { params: Promise<{ id: string }> };
 
 /** Anything but a TeamError rethrows, so a real failure is not hidden as a refusal. */
-function refusal(error: unknown): Response {
+export function refusal(error: unknown): Response {
   if (error instanceof TeamError) return Response.json({ error: error.message }, { status: error.status });
   throw error;
 }

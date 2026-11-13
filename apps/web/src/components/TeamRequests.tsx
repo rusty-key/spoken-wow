@@ -5,9 +5,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { langName } from "@/lib/lang";
 import { send } from "@/lib/send";
-import { branchText } from "@/lib/teams/branch-text";
+import { branchText, requestLangName as nameOf } from "@/lib/teams/branch-text";
 import type { TeamRequest } from "@/lib/teams/requests";
 
 function age(createdAt: string): string {
@@ -16,8 +15,6 @@ function age(createdAt: string): string {
   const hours = Math.floor(minutes / 60);
   return hours < 48 ? `${hours} h` : `${Math.floor(hours / 24)} d`;
 }
-
-const nameOf = (request: TeamRequest) => request.langName ?? langName(request.lang);
 
 export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
   const router = useRouter();

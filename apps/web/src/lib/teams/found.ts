@@ -16,7 +16,7 @@ import "server-only";
 import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
-import { ALL_TEAMS, actAs, query } from "@/lib/db";
+import { ALL_TEAMS, actAs, db } from "@/lib/db";
 import { grantOn } from "@/lib/grants/store";
 import { BASE_LANG, langName } from "@/lib/lang";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
@@ -58,19 +58,14 @@ export type Founded = {
  */
 const SLUG_MAX = 37;
 
-/** Read on the caller's client when given, so it sees that transaction's writes. */
-async function rows<T extends Record<string, unknown>>(client: ClientBase | undefined, text: string, params: unknown[]) {
-  return client ? (await client.query<T>(text, params)).rows : query<T>(text, params);
-}
-
 /**
  * The language's privileged team when somebody looks after it: a member of that team in this
  * language, or a text maintainer, who is not a site owner. A site owner's grants do not count:
- * they hold them to keep a language running, not to keep it.
+ * they hold them to keep a language running, not to keep it. Read on the caller's client when
+ * given, so it sees that transaction's writes.
  */
-export async function activeTeamOf(lang: string, client?: ClientBase): Promise<TeamId | null> {
-  const found = await rows<{ teamId: TeamId }>(
-    client,
+async function activeTeamOf(lang: string, client?: ClientBase): Promise<TeamId | null> {
+  const { rows } = await (client ?? db()).query<{ teamId: TeamId }>(
     `select tl."teamId" from "team_language" tl
       where tl."lang" = $1 and tl."privileged"
         and (exists (select 1 from "team_member" m join "user" u on u."id" = m."userId"
@@ -79,12 +74,12 @@ export async function activeTeamOf(lang: string, client?: ClientBase): Promise<T
                       where g."lang" = $1 and u."role" is distinct from 'admin'))`,
     [lang],
   );
-  return found[0]?.teamId ?? null;
+  return rows[0]?.teamId ?? null;
 }
 
 export async function languageBranch(lang: string, client?: ClientBase): Promise<Branch> {
-  const known = await rows(client, `select 1 from "language" where "code" = $1`, [lang]);
-  if (!known.length) return "new-language";
+  const { rows } = await (client ?? db()).query(`select 1 from "language" where "code" = $1`, [lang]);
+  if (!rows.length) return "new-language";
   return (await activeTeamOf(lang, client)) ? "second-team" : "hand-over";
 }
 
@@ -126,7 +121,7 @@ export async function foundTeam(client: PoolClient, input: FoundInput, actorId: 
 }
 
 /** A new code: the language, switched on, and the team addLanguage made for it, renamed as asked. */
-export async function foundLanguage(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
+async function foundLanguage(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
   if (!input.language) throw new TeamError(`${input.lang} is a new language: it needs an English and a native name.`);
   try {
     await addLanguage(client, describeNew(input.lang, input.language.name, input.language.native), actorId);
@@ -158,7 +153,7 @@ export async function foundLanguage(client: PoolClient, input: FoundInput, actor
 }
 
 /** A known language nobody looks after: a new team, which the language moves to with its rows. */
-export async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
+async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
   const slug =
     input.team.slug ??
     (await client.query<{ slug: string }>(`select free_team_slug($1) as "slug"`, [slugFor(input.team.name, input.lang)]))

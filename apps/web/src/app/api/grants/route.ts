@@ -9,10 +9,9 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { addGrants, listGrants, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
+import { addGrants, listGrants, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
 import { knownLang } from "@/lib/languages/catalogue";
-import { textByTeam } from "@/lib/languages/store";
-import { canGrant, isAdmin, isCapability, langsWhere, removesOwnAdmin, type Viewer } from "@/lib/permissions";
+import { isAdmin, isCapability, langsWhere, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +55,7 @@ export async function PUT(request: Request) {
   ) {
     return Response.json({ error: "expected { email, lang, capabilities: [...] }" }, { status: 400 });
   }
-  const byTeam = await textByTeam(lang);
-  if (!capabilities.every((capability) => canGrant(who.viewer, capability, lang, byTeam))) return FORBIDDEN();
+  if (await refusedGrant(who.viewer, capabilities, lang)) return FORBIDDEN();
 
   // By email, not by id: a language admin cannot list the users, and an address is what
   // a translator gives somebody when asking to be let in.
@@ -79,7 +77,7 @@ export async function DELETE(request: Request) {
   if (!userId || !lang || !isCapability(capability)) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
-  if (!canGrant(who.viewer, capability, lang, await textByTeam(lang))) return FORBIDDEN();
+  if (await refusedGrant(who.viewer, [capability], lang)) return FORBIDDEN();
   if (removesOwnAdmin(who.viewer, who.userId, userId, capability)) {
     return Response.json({ error: "you cannot remove your own admin" }, { status: 403 });
   }

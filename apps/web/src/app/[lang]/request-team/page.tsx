@@ -5,7 +5,7 @@ import Link from "@/components/LocaleLink";
 import TeamRequestForm from "@/components/TeamRequestForm";
 import TeamRequestList from "@/components/TeamRequestList";
 import { Contained } from "@/components/Width";
-import { allLangs, BASE_LANG, langName, localeHref } from "@/lib/lang";
+import { languageOptions, localeHref } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { currentSession } from "@/lib/session";
 import { listRequests } from "@/lib/teams/requests";
@@ -21,9 +21,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   if (!session) redirect(localeHref(lang, "/login"));
 
   const requests = await listRequests({ userId: session.user.id });
-  const languages = allLangs()
-    .filter((code) => code !== BASE_LANG)
-    .map((code) => ({ code, name: langName(code) }));
+  const languages = languageOptions();
 
   return (
     <main className="pt-6 pb-36">

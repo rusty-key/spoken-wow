@@ -1,9 +1,8 @@
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { currentSession } from "@/lib/session";
-import { TeamError } from "@/lib/teams/admin";
 import { approveRequest, rejectRequest, withdrawRequest } from "@/lib/teams/requests";
 
-import { withAdmin } from "../../teams/guard";
+import { refusal, withAdmin } from "../../teams/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +15,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   try {
     return Response.json({ request: await withdrawRequest((await context.params).id, session.user.id) });
   } catch (error) {
-    if (error instanceof TeamError) return Response.json({ error: error.message }, { status: error.status });
-    throw error;
+    return refusal(error);
   }
 }
 
