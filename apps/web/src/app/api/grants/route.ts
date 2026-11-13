@@ -17,6 +17,7 @@ import {
   InviteExistsError,
   InviteRateError,
   inviteUrl,
+  revokeOpenFor,
   normalEmail,
 } from "@/lib/invites/store";
 import { langName } from "@/lib/lang";
@@ -66,7 +67,7 @@ export async function PUT(request: Request) {
   // a translator gives somebody when asking to be let in.
   const user = await userByEmail(address);
   if (user) {
-    await addGrants(user.id, lang, capabilities, who.userId);
+    await addGrants(user.id, lang, capabilities, who.userId, (client) => revokeOpenFor(client, lang, address, who.userId));
     return listingFor(who.viewer, { invited: false });
   }
 
