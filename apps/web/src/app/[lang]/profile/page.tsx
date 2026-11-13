@@ -55,6 +55,12 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
           </dd>
         </dl>
 
+        <p className="mb-8 text-sm">
+          <Link href="/request-team" className="text-foreground underline underline-offset-2">
+            Start a team for a language
+          </Link>
+        </p>
+
         {spends ? (
           <div className="space-y-10">
             {/* Which one is spent with, and how, is per language on Voices; only the keys,
