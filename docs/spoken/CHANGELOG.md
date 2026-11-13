@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## 3.8.8 — 2026-11-13
+## 3.9.0 — 2026-11-13
 
 - **Read Quest Progress Text.** A new Quests setting, on by default, under Read Automatically.
   Turned off, the "not done yet" page an NPC shows before you hand in a quest no longer reads
