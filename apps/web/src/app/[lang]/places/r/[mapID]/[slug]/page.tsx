@@ -68,7 +68,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
   // The current take is the only thing here that is not derivable from committed files,
   // and it answers one question: is there narration to listen to before complaining about
   // it.
-  const [context, releases] = await Promise.all([loadContext(lang), packReleases("places")]);
+  const [context, releases] = await Promise.all([loadContext(lang), packReleases("places", lang)]);
   const take = context.takes.get(entry.id);
 
   return (

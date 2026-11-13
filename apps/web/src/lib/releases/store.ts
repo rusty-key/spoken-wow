@@ -9,7 +9,7 @@ import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
 
-import type { PackReleases } from "@/lib/reports/context";
+import type { PackRelease, PackVersions } from "@/lib/reports/context";
 
 import { isSettled, type ReleaseSection, type ReleaseState } from "./sections";
 
@@ -142,22 +142,32 @@ export async function lastReleasedAt(lang: Lang): Promise<Map<string, Date>> {
 }
 
 /**
- * Per language, every release of `section` that gave its pack a version, newest first, with
- * when it started: what a report's pack version and its line's live take are weighed against.
- * A release builds from the takes live when it starts. Public, as every pack's .toc on the
- * channel says the same, so read across teams. Releases made before the site ran them have no
- * row.
+ * The releases of `section` in `lang` that gave its pack a version, newest first, with when each
+ * started: a release builds from the takes live when it starts. What a report page weighs the
+ * player's pack and the line's live take against. Public, as every pack's .toc on the channel
+ * says the same, so read across teams. Releases made before the site ran them have no row.
  */
-export async function packReleases(section: string): Promise<PackReleases> {
+export async function packReleases(section: string, lang: Lang): Promise<PackRelease[]> {
   return withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<{ lang: string; version: string; at: string }>(
-      `select "lang", "version", to_json("createdAt") #>> '{}' as "at" from "release_run"
-        where "section" = $1 and "state" = 'done' and "version" is not null
+    const { rows } = await client.query<{ version: string; createdAt: Date }>(
+      `select "version", "createdAt" from "release_run"
+        where "section" = $1 and "lang" = $2 and "state" = 'done' and "version" is not null
         order by "createdAt" desc`,
+      [section, lang],
+    );
+    return rows.map((row) => ({ version: row.version, at: row.createdAt.toISOString() }));
+  });
+}
+
+/** Per language, the version the newest release of `section` gave its pack: what triage flags against. */
+export async function latestPackVersions(section: string): Promise<PackVersions> {
+  return withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{ lang: string; version: string }>(
+      `select distinct on ("lang") "lang", "version" from "release_run"
+        where "section" = $1 and "state" = 'done' and "version" is not null
+        order by "lang", "createdAt" desc`,
       [section],
     );
-    const releases: PackReleases = {};
-    for (const { lang, version, at } of rows) (releases[lang] ??= []).push({ version, at });
-    return releases;
+    return Object.fromEntries(rows.map((row) => [row.lang, row.version]));
   });
 }

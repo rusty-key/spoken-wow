@@ -67,7 +67,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
 
   // The current take is the only thing here that is not derivable from the corpus row, and it
   // answers one question: is there narration to listen to before complaining about it.
-  const [context, releases] = await Promise.all([loadContext(lang), packReleases("readables")]);
+  const [context, releases] = await Promise.all([loadContext(lang), packReleases("readables", lang)]);
   const take = context.takes.get(page.id);
 
   return (

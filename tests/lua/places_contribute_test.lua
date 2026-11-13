@@ -46,15 +46,12 @@ Expect("with no pack installed, the pack version says none", envelope:match("\np
 
 do
     local active = Z.GetActiveAudioPack
-    Z.GetActiveAudioPack = function() return { addon = "SpokenPlacesAudio_deDE", language = "deDE" } end
-    stub.SetAddOns({
-        { folder = "Spoken_Places", meta = { Version = "9.9.9" } },
-        { folder = "SpokenPlacesAudio_deDE", meta = { Version = "1.4.2" } },
-    })
-    Expect("...and with one, the version in its .toc",
+    Z.GetActiveAudioPack = function()
+        return { addon = "SpokenPlacesAudio_deDE", language = "deDE", packVersion = "1.4.2" }
+    end
+    Expect("...and with one, the version it registered from its .toc",
         Z:CaptureContribution(1537, nil):match("\npackVersion=1%.4%.2\n") ~= nil, true)
     Z.GetActiveAudioPack = active
-    stub.SetAddOns({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
 end
 
 local zoneOnly = Z:CaptureContribution(1537, nil)

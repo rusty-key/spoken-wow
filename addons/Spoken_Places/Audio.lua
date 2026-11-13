@@ -442,13 +442,11 @@ function SpokenPlaces:GetPackLanguage()
 	return pack and pack.language or self:GetLanguage()
 end
 
---- The .toc Version of the pack narration plays from, or "none" with no pack: what a report
---- says the player was hearing, so the site can tell them a newer pack is out.
+--- The .toc Version of the pack narration plays from, as the pack registered it, or "none" with
+--- no pack: what a report says the player was hearing, so the site can tell them a newer pack is out.
 function SpokenPlaces:GetPackVersion()
 	local pack = self:GetActiveAudioPack()
-	local metadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-	local version = pack and pack.addon and metadata and metadata(pack.addon, "Version")
-	return type(version) == "string" and version ~= "" and version or "none"
+	return pack and pack.packVersion or "none"
 end
 
 -- The button the player shows under a lore clip: this addon's own Report, told which

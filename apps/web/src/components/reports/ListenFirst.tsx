@@ -11,24 +11,18 @@
  * Without it, or before the context is read, it only asks for a listen.
  */
 import { TriangleAlertIcon } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 
 import { MANAGER_URL } from "@/components/landing/links";
 import { useLang } from "@/components/LangProvider";
-import type { Lang } from "@/lib/lang";
-import { packDownloads, packFor } from "@/lib/packs";
 import { useGameContext } from "@/components/reports/useGameContext";
-import {
-  contextFrom,
-  lineNews,
-  packName,
-  questPart,
-  type LineNews,
-  type PackReleases,
-  type QuestPart,
-} from "@/lib/reports/context";
+import { useLocalDates } from "@/components/useLocalDates";
+import { packDownloads, packFor, partOf, type Pack, type PackPart } from "@/lib/packs";
+import { contextFrom, lineNews, type LineNews, type PackRelease } from "@/lib/reports/context";
 import type { Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
+
+const DAY: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", year: "numeric" };
 
 export default function ListenFirst({
   className,
@@ -41,16 +35,18 @@ export default function ListenFirst({
   source?: Source;
   /** When the live take was generated. */
   recordedAt?: string | null;
-  /** The section's releases by pack language. */
-  releases?: PackReleases;
+  /** The section's releases in this page's language, newest first. */
+  releases?: PackRelease[];
 }) {
   const lang = useLang();
+  const format = useLocalDates();
   const raw = useGameContext(source !== undefined);
   const context = useMemo(() => (source ? contextFrom(raw, source) : null), [raw, source]);
   // The take is this page's language's; a pack in another language says nothing about it.
-  const news = context?.fields.pack === lang ? lineNews(context, releases?.[lang], recordedAt) : null;
-  const part = questPart(context);
-  const message = news && source ? describe(news, packName(source, lang, part)) : null;
+  const news = context?.fields.pack === lang ? lineNews(context, releases, recordedAt) : null;
+  const pack = source ? packFor(source, lang) : undefined;
+  const part = partOf(pack, context?.fields.packFolder);
+  const message = news && describe(news, part?.name ?? pack?.name ?? "your pack", format(news.recordedAt, DAY));
 
   return (
     <aside
@@ -68,11 +64,10 @@ export default function ListenFirst({
         </p>
         {message ? (
           <>
-            {message.body.filter(Boolean).map((line, i) => (
-              <p key={i}>{line}</p>
-            ))}
+            {message.pack ? <p>{message.pack}</p> : null}
+            <p>{message.line}</p>
             <p>{message.ask}</p>
-            {news?.latest && source ? <Downloads source={source} lang={lang} part={part} /> : null}
+            {news?.latest ? <Downloads pack={pack} part={part} /> : null}
           </>
         ) : (
           <p>This line may have changed since your pack. Play the current version below before reporting.</p>
@@ -86,8 +81,7 @@ export default function ListenFirst({
  * Where the newer pack comes from: the Manager, which updates every pack, then by hand. Of a
  * quests pack split on CurseForge, only the part the line plays from, where the addon said which.
  */
-function Downloads({ source, lang, part }: { source: Source; lang: Lang; part: QuestPart | null }) {
-  const pack = packFor(source, lang);
+function Downloads({ pack, part }: { pack: Pack | undefined; part: PackPart | undefined }) {
   const links = [{ label: "Spoken Manager", href: MANAGER_URL }, ...(pack ? packDownloads(pack, part) : [])];
   return (
     <p className="flex flex-wrap gap-x-3 gap-y-1">
@@ -107,60 +101,47 @@ function Downloads({ source, lang, part }: { source: Source; lang: Lang; part: Q
   );
 }
 
-const day = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
-
-function describe(news: LineNews, name: string): { urgent: boolean; title: string; body: ReactNode[]; ask: ReactNode } {
+function describe(
+  news: LineNews,
+  name: string,
+  recorded: string,
+): { urgent: boolean; title: string; pack: string | null; line: string; ask: string } {
   const { version, latest, shipsIn, inYours } = news;
-  const recorded = day(news.recordedAt);
-  const pack = version
-    ? latest
+  const pack = !version
+    ? null
+    : latest
       ? `You are using ${name} ${version}, and ${latest} is available.`
       : news.exact
         ? `You are using ${name} ${version}.`
-        : `You are using ${name} ${version}, the latest.`
-    : null;
-  const title = latest ? "Your voice pack is out of date" : "Important: listen first";
+        : `You are using ${name} ${version}, the latest.`;
+  const said = { title: latest ? "Your voice pack is out of date" : "Important: listen first", pack };
 
-  if (inYours === false && shipsIn) {
-    return {
-      urgent: true,
-      title,
-      body: [pack, `This line was re-recorded on ${recorded}, after your pack. The new recording is in ${shipsIn} and later.`],
-      ask: (
-        <>
-          Play it below. If it sounds right, there is nothing to report: update your pack to hear it in the
-          game.
-        </>
-      ),
-    };
-  }
   if (inYours === false) {
     return {
+      ...said,
       urgent: true,
-      title,
-      body: [pack, `This line was re-recorded on ${recorded}, after the latest pack. The new recording comes with the next one.`],
-      ask: "Play it below. If it sounds right, there is nothing to report: the fix is on its way.",
+      line: shipsIn
+        ? `This line was re-recorded on ${recorded}, after your pack. The new recording is in ${shipsIn} and later.`
+        : `This line was re-recorded on ${recorded}, after the latest pack. The new recording comes with the next one.`,
+      ask: shipsIn
+        ? "Play it below. If it sounds right, there is nothing to report: update your pack to hear it in the game."
+        : "Play it below. If it sounds right, there is nothing to report: the fix is on its way.",
     };
   }
   if (inYours) {
     return {
+      ...said,
       urgent: false,
-      title,
-      body: [pack, `This line has not been re-recorded since your pack: it was last recorded on ${recorded}, so you heard the current recording.`],
+      line: `This line has not been re-recorded since your pack: it was last recorded on ${recorded}, so you heard the current recording.`,
       ask: "Play it below to check, and report it if it is wrong.",
     };
   }
   return {
+    ...said,
     urgent: latest !== null,
-    title,
-    body: [pack, `This line was last recorded on ${recorded}.`],
-    ask: latest ? (
-      <>
-        Play it below before reporting. If it sounds right, update your pack to hear it in the game.
-      </>
-    ) : (
-      "Play the current version below before reporting."
-    ),
+    line: `This line was last recorded on ${recorded}.`,
+    ask: latest
+      ? "Play it below before reporting. If it sounds right, update your pack to hear it in the game."
+      : "Play the current version below before reporting.",
   };
 }
