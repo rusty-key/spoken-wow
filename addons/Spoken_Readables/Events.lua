@@ -59,7 +59,7 @@ end
 
 -- Bump when the quest-to-readable lookup changes so characters that already ran an older
 -- backfill are rescanned automatically after an addon update.
-local QUEST_BACKFILL_VERSION = 3
+local QUEST_BACKFILL_VERSION = 4
 
 local function CompletedQuests()
 	local completed = {}

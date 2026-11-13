@@ -8,6 +8,8 @@ existing compatible sound pack unless the release notes say otherwise.
 - **Language packs carry pages English lacks.** A page that exists only in another language, such
   as one a player sent in, is in that language's pack with its place in its book, so Spoken finds
   and reads it. *([rusty-key](https://github.com/rusty-key))*
+- Existing characters now backfill the Fishing Tournament and Brazier of Invocation readables
+  from their completed direct-reward quests.
 
 ## 2.3.0 — Spoken Audio: Readables — 2026-10-31
 

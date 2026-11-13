@@ -71,10 +71,16 @@ Expect("a completed Forever source-item quest backfills its readable", B:IsBookF
 _G.C_QuestLog.GetAllCompletedQuestIDs = function() return {} end
 SpokenReadablesCharacter.found = {}
 SpokenReadablesCharacter.questReadableBackfill = nil
+bagItems[1] = 745
 stub.FireEvent("PLAYER_LOGIN")
-Expect("items already in the bags are not mistaken for newly received notes",
+Expect("an item already in the bags is not mistaken for newly received notes",
     B:IsBookFound(209), false)
+stub.FireEvent("BAG_UPDATE", 0)
+Expect("an unchanged bag update still leaves it unfound", B:IsBookFound(209), false)
 Expect("a readable item resolves to its inventory icon", B:ItemIcon(209), 123456)
+bagItems[1] = nil
+stub.FireEvent("BAG_UPDATE", 0)
+Expect("removing the item does not mark its readable found", B:IsBookFound(209), false)
 bagItems[1] = 745 -- Report: Kobolds, a text-bearing quest item in the corpus.
 stub.FireEvent("BAG_UPDATE", 0)
 Expect("receiving a text-bearing note adds it to the Compendium", B:IsBookFound(209), true)
