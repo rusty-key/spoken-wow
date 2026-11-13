@@ -224,9 +224,9 @@ stub.FireEvent("QUEST_ACCEPTED", full)
 stub.Advance(3)
 Expect("normal accept reads accept once", string.format("%d-accept", full))
 
--- Closing an offer stops it even when Stop When Window Closes is off; accepting it in the close
--- event's grace period leaves the line playing.
-VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+-- Closing an unaccepted offer stops it when Stop When Window Closes is on; accepting it in the
+-- close event's grace period leaves the line playing even with that setting enabled.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
 StartScenario()
 world.questID = full
 stub.ShowPanel("QuestFrameDetailPanel")
@@ -235,6 +235,8 @@ stub.Advance(0.6)
 world.questID = 0
 stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.2)
+ExpectCurrent("an unaccepted offer keeps playing during the acceptance grace period", "104-accept")
 stub.Advance(0.6)
 ExpectCurrent("closing an unaccepted offer stops its audio", "")
 
@@ -248,7 +250,20 @@ stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_ACCEPTED", full)
 stub.Advance(0.2)
-ExpectCurrent("accepting an offer leaves its audio playing", "104-accept")
+ExpectCurrent("accepting an offer leaves its audio playing when stopping is enabled", "104-accept")
+
+-- With Stop When Window Closes off, declining an offer leaves its audio playing.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("closing an unaccepted offer leaves its audio playing when stopping is disabled", "104-accept")
 
 -- A player who declines: no accept event comes, and nothing is read beyond what the open window read.
 StartScenario()

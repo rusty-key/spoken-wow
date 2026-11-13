@@ -1165,9 +1165,9 @@ local function QuestSoundDataAdded(soundData)
     end
 end
 
---- QUEST_FINISHED arrives just before QUEST_ACCEPTED on the normal click path. Keep an unaccepted
---- offer alive briefly so the acceptance event can cancel its close stop; a declined offer
---- is then removed even when Stop When Window Closes is off.
+--- QUEST_FINISHED arrives just before QUEST_ACCEPTED on the normal click path. Keep the offer alive
+--- briefly so the acceptance event can cancel its close stop; a declined offer is removed only
+--- when Stop When Window Closes is on.
 function Addon:MarkQuestOfferAccepted(questID)
     local offer = self.openQuestOffer
     local acceptedID, offerID = tonumber(questID), tonumber(offer and offer.questID)
@@ -1684,10 +1684,11 @@ end
 
 function Addon:QUEST_FINISHED()
     local offer = self.openQuestOffer
-    if offer and not offer.accepted and not Addon.db.profile.Audio.StopAudioOnDisengage and not offer.closeTimer then
+    if offer and not offer.accepted and not offer.closeTimer then
+        offer.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
         offer.closeTimer = self:ScheduleTimer(function()
             offer.closeTimer = nil
-            if not offer.accepted and offer.soundData then
+            if not offer.accepted and offer.stopOnClose and offer.soundData then
                 Player:Remove(offer.soundData)
             end
             if self.openQuestOffer == offer then
@@ -1696,7 +1697,10 @@ function Addon:QUEST_FINISHED()
         end, QUEST_ACCEPT_GRACE)
     end
     if Addon.db.profile.Audio.StopAudioOnDisengage then
-        if currentQuestSoundData then
+        local deferOfferStop = offer and not offer.accepted
+            and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
+            and currentQuestSoundData.questID == offer.questID
+        if currentQuestSoundData and not deferOfferStop then
             Player:Remove(currentQuestSoundData)
         end
         -- A quest giver's greeting is read in the quest frame, so it ends with the frame.
