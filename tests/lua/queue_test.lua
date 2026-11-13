@@ -178,6 +178,15 @@ Expect("...and remains controllable after unmuting", Q:CanBePaused(), true)
 Expect("...so Skip can remove it", Q:Skip(), true)
 Expect("...without waiting for its original timer", Q:IsEmpty(), true)
 
+Fresh()
+local pausableSilent = H.Clip({ length = 5 })
+Q:SetMuted(true)
+quests:Enqueue(pausableSilent)
+Q:SetMuted(false)
+Expect("a silent line can be paused after unmuting", Q:PauseQueue(), true)
+Expect("...and remains paused", Q:IsPaused(), true)
+Q:RemoveAllSoundsFromQueue()
+
 ---------------------------------------------------------------- per-source queue limit
 Fresh()
 local head = H.Clip()
