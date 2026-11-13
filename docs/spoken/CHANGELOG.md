@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Unaccepted quest offers now stop reading when their dialog closes.** Accepted offers continue
+  playing even when Stop When Window Closes is off. *([rusty-key](https://github.com/rusty-key))*
 - **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
   lines it voices, so new audio no longer plays under old text. This applies when the pack is in
   the language you read; a German player with English voices keeps German text. In English, quest

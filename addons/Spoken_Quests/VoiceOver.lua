@@ -153,6 +153,12 @@ local function CaptureQuestSnapshot(event)
         targetName = targetName,
         isObjectOrItem = Utils:IsNPCObjectOrItem(),
     }
+    if event == "QUEST_DETAIL" then
+        local offer = Addon.openQuestOffer
+        if not offer or offer.accepted or offer.questID ~= questID or offer.title ~= questTitle then
+            Addon.openQuestOffer = { questID = questID, title = questTitle }
+        end
+    end
     -- The same page shown again replaces its record, and keeps what was done with it, so a page
     -- read in the open window is not read again after it closes.
     for i = #questSnapshots, 1, -1 do
@@ -897,9 +903,6 @@ function Addon:OnInitialize()
         if event == "QUEST_FINISHED" then
             lastQuestEvent = nil
         elseif REPLAYED_ON[event] then
-            if self.dataModulesPending then
-                return
-            end
             -- QUEST_TURNED_IN carries the quest ID first and the rewards after it. QUEST_ACCEPTED
             -- carries the quest ID alone, except on Classic clients, where it follows the quest log
             -- index. A secret quest ID there is no ID, and the index is never taken for one.
@@ -908,6 +911,12 @@ function Addon:OnInitialize()
             end
             local questID = NotSecret(questIDArg)
             if type(questID) ~= "number" or questID == 0 then
+                return
+            end
+            if event == "QUEST_ACCEPTED" then
+                self:MarkQuestOfferAccepted(questID)
+            end
+            if self.dataModulesPending then
                 return
             end
             local succeeded, replayError = pcall(ReplayQuestSnapshots, event, questID, REPLAYED_ON[event])
@@ -1149,6 +1158,23 @@ end
 local function QuestSoundDataAdded(soundData)
     -- Save current quest sound data for dialog/frame sync option
     currentQuestSoundData = soundData
+    local offer = Addon.openQuestOffer
+    if offer and soundData.event == Enums.SoundEvent.QuestAccept and soundData.questID == offer.questID then
+        offer.soundData = soundData
+    end
+end
+
+--- QUEST_FINISHED arrives just before QUEST_ACCEPTED on the normal click path. Keep an unaccepted
+--- offer alive for one frame so the acceptance event can cancel its close stop; a declined offer
+--- is then removed even when Stop When Window Closes is off.
+function Addon:MarkQuestOfferAccepted(questID)
+    local offer = self.openQuestOffer
+    if not offer or offer.questID ~= questID then return end
+    offer.accepted = true
+    if offer.closeTimer then
+        self:CancelTimer(offer.closeTimer)
+        offer.closeTimer = nil
+    end
 end
 
 function ResolveQuestID(source, questID, questTitle, targetName, questText, quiet)
@@ -1655,6 +1681,18 @@ function Addon:GOSSIP_SHOW(event, manual)
 end
 
 function Addon:QUEST_FINISHED()
+    local offer = self.openQuestOffer
+    if offer and not offer.accepted and not Addon.db.profile.Audio.StopAudioOnDisengage and not offer.closeTimer then
+        offer.closeTimer = self:ScheduleTimer(function()
+            offer.closeTimer = nil
+            if not offer.accepted and offer.soundData then
+                Player:Remove(offer.soundData)
+            end
+            if self.openQuestOffer == offer then
+                self.openQuestOffer = nil
+            end
+        end, AUTO_POLL_INTERVAL)
+    end
     if Addon.db.profile.Audio.StopAudioOnDisengage then
         if currentQuestSoundData then
             Player:Remove(currentQuestSoundData)

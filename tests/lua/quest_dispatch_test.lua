@@ -34,6 +34,18 @@ local function Expect(scenario, expected)
     end
 end
 
+local function ExpectCurrent(scenario, expected)
+    local current = Spoken:GetCurrent()
+    local actual = current and current.fileName or ""
+    if actual == expected then
+        print(string.format("ok   %s\n     current: %s", scenario, actual ~= "" and actual or "(nothing)"))
+    else
+        failures = failures + 1
+        print(string.format("FAIL %s\n     expected: %s\n     actual:   %s", scenario,
+            expected ~= "" and expected or "(nothing)", actual ~= "" and actual or "(nothing)"))
+    end
+end
+
 local function StartScenario()
     Spoken:StopAll()
     world.questID = 0
@@ -211,6 +223,32 @@ stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_ACCEPTED", full)
 stub.Advance(3)
 Expect("normal accept reads accept once", string.format("%d-accept", full))
+
+-- Closing an offer stops it even when Stop When Window Closes is off; accepting it in the close
+-- event's grace period leaves the line playing.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.2)
+ExpectCurrent("closing an unaccepted offer stops its audio", "")
+
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_ACCEPTED", full)
+stub.Advance(0.2)
+ExpectCurrent("accepting an offer leaves its audio playing", "104-accept")
 
 -- A player who declines: no accept event comes, and nothing is read beyond what the open window read.
 StartScenario()
