@@ -1,0 +1,137 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit review settings. Repo rules live in AGENTS.md and the section guides; this file
+# points the reviewer at them and keeps it off generated exports.
+
+language: en-US
+tone_instructions: >-
+  Be brief and concrete. Report correctness bugs and broken repo rules first. Skip style nits,
+  praise and restating the diff.
+
+reviews:
+  profile: chill
+  high_level_summary: false
+  poem: false
+  sequence_diagrams: false
+  review_status: true
+  collapse_walkthrough: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    # Stacked PRs target each other's branches; review them too, not only PRs into master.
+    base_branches:
+      - ".*"
+
+  # Exports of the database or of a generator. Reviewing them costs quota and invites hand
+  # edits, which the next export overwrites (AGENTS.md).
+  path_filters:
+    - "!pnpm-lock.yaml"
+    - "!dist/**"
+    - "!build/**"
+    - "!pipelines/quests/corpus/corpus.json.gz"
+    - "!addons/Spoken_Places/Data/*/**"
+    - "!addons/Spoken_Places/Data/ForeverAreas.lua"
+    - "!addons/Spoken_Places/Data/Languages.lua"
+    - "!addons/Spoken_Places/Data/Pictures.lua"
+    - "!addons/Spoken_Quests/Data/**"
+    - "!addons/Spoken_Quests/Gossip/*.lua"
+    - "!addons/Spoken_Quests/Gossip/Gossip.xml"
+    - "!addons/Spoken_Readables/Data/**"
+    - "!addons/Spoken_Bosses/Data/**"
+    - "!addons/Spoken/Data/**"
+    - "!addons/*Audio/Data/**"
+    - "!addons/Spoken/README.md"
+    - "!addons/*Audio/README.md"
+
+  path_instructions:
+    - path: "apps/web/migrations/**"
+      instructions: >-
+        Migrations are forward-only and additive: deploy migrates before the symlink swap and a
+        rollback restores code without reverting the schema. Flag any DROP, RENAME, narrowing type
+        change or new NOT NULL without a default, and any edit to a migration already on master.
+    - path: "pipelines/quests/tts_cli/naming.py"
+      instructions: &naming >-
+        These derive the frozen line ids and file names (q:, g:, f:, z:, s:, b: and their paths).
+        Any change to an existing id's output re-ships packs players have and orphans take
+        history; flag it. naming.py and naming.ts mirror each other and must change together.
+    - path: "apps/web/src/lib/contributions/naming.ts"
+      instructions: *naming
+    - path: "pipelines/places/tools/voice/naming.mjs"
+      instructions: *naming
+    - path: "pipelines/readables/tools/lib/naming.mjs"
+      instructions: *naming
+    - path: "addons/**/*.lua"
+      instructions: >-
+        World of Warcraft addon Lua (Retail, Classic Era, TBC Anniversary). Undeclared globals are
+        normally WoW API, not bugs. Flag renamed saved variables, settings keys or the VoiceOver
+        global (players' saved data and installed packs depend on them), taint-prone writes to
+        Blizzard frames, and work done every frame or on every event that could be cached.
+    - path: "pipelines/**"
+      instructions: &tooling >-
+        Nothing in the repo may spend TTS credits (ElevenLabs or fish.audio): flag any new
+        generation call or CLI flag. The droplet's host, user or key must never be written into
+        the tree. `-sync` targets are destructive and must not run without a confirmation.
+        Long-running scripts must print per-item progress and a summary.
+    - path: "scripts/**"
+      instructions: *tooling
+    - path: "make/**"
+      instructions: *tooling
+
+  tools:
+    # No .luacheckrc: luacheck would flag every WoW API global.
+    luacheck:
+      enabled: false
+    # No eslint or biome config in the repo; their defaults clash with the code's style.
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    markdownlint:
+      enabled: false
+    shellcheck:
+      enabled: true
+    actionlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    ruff:
+      enabled: true
+
+  pre_merge_checks:
+    title:
+      mode: "off"
+    description:
+      mode: "off"
+    docstrings:
+      mode: "off"
+    issue_assessment:
+      mode: "off"
+    custom_checks:
+      - name: "Generated files"
+        mode: warning
+        instructions: >-
+          Fail if the PR hand-edits a file headed AUTO-GENERATED or "do not edit", or
+          corpus.json.gz, Books.lua, or the Places Zones.lua/Subzones.lua/Aliases.lua, without the
+          generator or export that produces it also being part of the PR. Pass otherwise.
+      - name: "Changelog and versions"
+        mode: warning
+        instructions: >-
+          Fail if the PR changes something players see in addons/ but adds no note under
+          "## Unreleased" in the section's changelog (docs/spoken/CHANGELOG.md for Spoken and its
+          modules). Fail if a PR that is not a release PR bumps a version in a .toc or
+          Environment.lua. Changes to the site, tooling, CI or docs need no note. Pass otherwise.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    # Guides apply by default only to files under their own folder; these sit in docs/, so map
+    # each to the code it governs. The root AGENTS.md already covers the whole repo.
+    filePatterns:
+      - files: "docs/quests/CLAUDE.md"
+        applyTo: "pipelines/quests/**,addons/Spoken_Quests/**,apps/web/**"
+      - files: "docs/gossip/AGENTS.md"
+        applyTo: "addons/Spoken_Quests/**"
+      - files: "docs/places/AGENTS.md"
+        applyTo: "pipelines/places/**,addons/Spoken_Places/**,addons/SpokenPlacesAudio/**,addons/Spoken_Bosses/**,addons/SpokenBossesAudio/**,apps/web/**"
+      - files: "docs/readables/AGENTS.md"
+        applyTo: "pipelines/readables/**,addons/Spoken_Readables/**,addons/SpokenReadablesAudio/**,apps/web/**"
