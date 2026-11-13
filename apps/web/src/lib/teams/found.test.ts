@@ -101,7 +101,7 @@ describe("slugFor", () => {
     expect(slugFor("日本語チーム", "jaJP")).toBe("jajp");
     expect(slugFor("  Équipe 2!! ", "frFR")).toBe("quipe-2");
     expect(slugFor("2 Fast", "frFR")).toBe("frfr");
-    expect(slugFor("a".repeat(60), "frFR")).toHaveLength(41);
+    expect(slugFor("a".repeat(60), "frFR")).toHaveLength(37);
   });
 });
 
@@ -151,7 +151,16 @@ describe("foundTeam, new language", () => {
     expect(second.slug).toBe("japan-crew-2");
   });
 
-  it("keeps the code's own slug when the name falls back to it", async () => {
+  it("leaves room for the suffix a taken long slug gets", async () => {
+    const name = `Long ${"x".repeat(50)}`;
+    const first = await found(input(code(), { team: { slug: null, name } }));
+    const second = await found(input(code(), { team: { slug: null, name } }));
+    expect(first.slug).toHaveLength(37);
+    expect(second.slug).toBe(`${first.slug}-2`);
+    expect(second.slug).toMatch(/^[a-z][a-z0-9-]{1,40}$/);
+  });
+
+    it("keeps the code's own slug when the name falls back to it", async () => {
     const lang = code();
     const founded = await found(input(lang, { team: { slug: null, name: "日本語チーム" } }));
     expect(founded.slug).toBe(lang.toLowerCase());
