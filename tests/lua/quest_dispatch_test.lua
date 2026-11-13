@@ -252,6 +252,20 @@ stub.FireEvent("QUEST_ACCEPTED", full)
 stub.Advance(0.2)
 ExpectCurrent("accepting an offer leaves its audio playing when stopping is enabled", "104-accept")
 
+-- Some clients report QUEST_ACCEPTED before QUEST_FINISHED. The accepted offer must still survive
+-- the later close event when Stop When Window Closes is enabled.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+stub.FireEvent("QUEST_ACCEPTED", full)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("accepting before the window closes leaves its audio playing", "104-accept")
+
 -- With Stop When Window Closes off, declining an offer leaves its audio playing.
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 StartScenario()
