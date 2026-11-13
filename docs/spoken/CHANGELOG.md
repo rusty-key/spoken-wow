@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Places no longer shows the combat hold message when Stop When Combat Starts is off.**
+  Autoplayed place audio continues normally during combat in that mode.
 - **A report says which pack you heard.** A Places report now carries the version of the Places
   sound pack you were listening to, and a Quests report names the pack the line played from
   (Alliance, Horde, Shared or Gossip) with its own version. The report page uses it to tell you

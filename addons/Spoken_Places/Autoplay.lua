@@ -147,7 +147,7 @@ local function HoldReason(item)
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
 		return SpokenPlaces.L.QUEUE_HELD_OFF
 	end
-	if UnitAffectingCombat("player") then
+	if SpokenPlaces:Get("autoplayStopInCombat") and UnitAffectingCombat("player") then
 		return SpokenPlaces.L.QUEUE_HELD_COMBAT
 	end
 	-- A starting-zone cinematic is the one moment a new character is guaranteed to
