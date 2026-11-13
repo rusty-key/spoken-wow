@@ -6,7 +6,7 @@ import PackAdminTable from "@/components/packs/PackAdminTable";
 import PackQueue from "@/components/packs/PackQueue";
 import { Toaster } from "@/components/ui/toast";
 import { Contained, Wide } from "@/components/Width";
-import { history, listAll, listPending } from "@/lib/community/store";
+import { historyByPack, listAll, queueOf } from "@/lib/community/store";
 import { CODES } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
@@ -21,12 +21,13 @@ export default async function Page() {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
 
-  const [pending, packs] = await Promise.all([listPending(), listAll()]);
-  const histories = await Promise.all(packs.map((pack) => history(pack.id)));
-  const names = await namesOf([
-    ...pending.map((submission) => submission.submittedBy),
-    ...histories.flat().flatMap((submission) => [submission.submittedBy, submission.reviewedBy]),
-  ]);
+  const [packs, histories] = await Promise.all([listAll(), historyByPack()]);
+  const pending = queueOf(packs);
+  const rows = packs.map((pack) => ({ ...pack, history: histories.get(pack.id) ?? [] }));
+  // The history holds every submission, the pending ones too.
+  const names = await namesOf(
+    rows.flatMap((pack) => pack.history.flatMap((submission) => [submission.submittedBy, submission.reviewedBy])),
+  );
   const byId = Object.fromEntries(names);
 
   return (
@@ -52,7 +53,7 @@ export default async function Page() {
           </p>
         </Contained>
         <Wide>
-          <PackAdminTable packs={packs.map((pack, index) => ({ ...pack, history: histories[index] }))} names={byId} />
+          <PackAdminTable packs={rows} names={byId} />
         </Wide>
       </Toaster>
     </main>

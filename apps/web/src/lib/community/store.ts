@@ -14,6 +14,7 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 
+import type { ActivityDetail } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, query, withTeam } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
@@ -80,10 +81,11 @@ const MAX_REASON = 500;
 
 type Client = Pick<PoolClient, "query">;
 
+/** A submission as a query or its to_jsonb returns it: to_jsonb gives the timestamps as text. */
 type SubmissionRow = Omit<Submission, "size" | "submittedAt" | "reviewedAt"> & {
   size: string;
-  submittedAt: Date;
-  reviewedAt: Date | null;
+  submittedAt: Date | string;
+  reviewedAt: Date | string | null;
 };
 
 const SUBMISSION_COLUMNS = `s."id"::text as "id", s."packId", s."status", s."submittedBy", s."submittedAt",
@@ -94,8 +96,8 @@ function submissionOf(row: SubmissionRow): Submission {
   return {
     ...row,
     size: Number(row.size),
-    submittedAt: row.submittedAt.toISOString(),
-    reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    submittedAt: new Date(row.submittedAt).toISOString(),
+    reviewedAt: row.reviewedAt ? new Date(row.reviewedAt).toISOString() : null,
   };
 }
 
@@ -138,21 +140,10 @@ async function packs(where: string, params: unknown[], client?: Client): Promise
     ownerName: row.ownerName,
     listed: row.listed,
     createdAt: row.createdAt.toISOString(),
-    live: fromJson(row.live),
-    pending: fromJson(row.pending),
-    lastRejected: fromJson(row.lastRejected),
+    live: row.live && submissionOf(row.live),
+    pending: row.pending && submissionOf(row.pending),
+    lastRejected: row.lastRejected && submissionOf(row.lastRejected),
   }));
-}
-
-/** A submission read through to_jsonb, whose timestamps are already text. */
-function fromJson(j: (Omit<Submission, "size"> & { size: string }) | null): Submission | null {
-  if (!j) return null;
-  return {
-    ...j,
-    size: Number(j.size),
-    submittedAt: new Date(j.submittedAt).toISOString(),
-    reviewedAt: j.reviewedAt ? new Date(j.reviewedAt).toISOString() : null,
-  };
 }
 
 async function packOf(id: string, client?: Client): Promise<Pack | null> {
@@ -202,17 +193,21 @@ function rulesBroken(errors: Record<string, string>): PackError {
   return new PackError("The submission breaks the pack rules.", 400, errors);
 }
 
-async function submitted(client: Client, actorId: string, s: Submission): Promise<void> {
-  await recordActivity(
-    {
-      kind: "pack.submitted",
-      lang: null,
-      actorId,
-      subject: s.packId,
-      detail: { packId: s.packId, version: s.version, submissionId: s.id },
-    },
-    client,
-  );
+type PackKind = Extract<keyof ActivityDetail, `pack.${string}`>;
+
+/** A pack act belongs to every language, and its subject is the pack. */
+function record<K extends PackKind>(
+  client: Client,
+  kind: K,
+  actorId: string,
+  packId: string,
+  detail: ActivityDetail[K],
+): Promise<void> {
+  return recordActivity({ kind, lang: null, actorId, subject: packId, detail }, client);
+}
+
+function submitted(client: Client, actorId: string, s: Submission): Promise<void> {
+  return record(client, "pack.submitted", actorId, s.packId, { packId: s.packId, version: s.version, submissionId: s.id });
 }
 
 async function adminEmails(client: Client): Promise<string[]> {
@@ -319,16 +314,11 @@ export async function withdrawPending(actorId: string, packId: string): Promise<
       [packId],
     );
     if (!withdrawn[0]) throw new PackError("No version of this pack is waiting for review.", 404);
-    await recordActivity(
-      {
-        kind: "pack.withdrawn",
-        lang: null,
-        actorId,
-        subject: packId,
-        detail: { packId, version: withdrawn[0].version, submissionId: withdrawn[0].id },
-      },
-      client,
-    );
+    await record(client, "pack.withdrawn", actorId, packId, {
+      packId,
+      version: withdrawn[0].version,
+      submissionId: withdrawn[0].id,
+    });
   });
 }
 
@@ -369,23 +359,13 @@ export async function decide(
     }
     const submission = submissionOf(rows[0]);
     const detail = { packId: submission.packId, version: submission.version, submissionId };
-    if (decision === "approve") {
-      await recordActivity(
-        { kind: "pack.approved", lang: null, actorId: adminId, subject: submission.packId, detail },
-        client,
-      );
-    } else {
-      await recordActivity(
-        {
-          kind: "pack.rejected",
-          lang: null,
-          actorId: adminId,
-          subject: submission.packId,
-          detail: { ...detail, reason: why },
-        },
-        client,
-      );
-    }
+    await record(
+      client,
+      decision === "approve" ? "pack.approved" : "pack.rejected",
+      adminId,
+      submission.packId,
+      decision === "approve" ? detail : { ...detail, reason: why },
+    );
     const { rows: submitter } = await client.query<{ email: string }>(`select "email" from "user" where "id" = $1`, [
       submission.submittedBy,
     ]);
@@ -394,29 +374,18 @@ export async function decide(
 
   if (to) {
     const name = `${submission.title} ${submission.version}`;
-    if (decision === "approve") {
-      sendEmail(
-        to,
-        `Your pack ${name} was approved`,
-        [
-          `${name} is approved and listed in Spoken Manager.`,
-          "",
-          `Your packs: ${SITE}/packs`,
-        ].join("\n"),
-      );
-    } else {
-      sendEmail(
-        to,
-        `Your pack ${name} was not approved`,
-        [
-          `${name} was not approved. The reviewer wrote:`,
-          "",
-          why,
-          "",
-          `Submit a corrected version here: ${SITE}/packs`,
-        ].join("\n"),
-      );
-    }
+    const [subject, ...lines] =
+      decision === "approve"
+        ? [`Your pack ${name} was approved`, `${name} is approved and listed in Spoken Manager.`, "", `Your packs: ${SITE}/packs`]
+        : [
+            `Your pack ${name} was not approved`,
+            `${name} was not approved. The reviewer wrote:`,
+            "",
+            why,
+            "",
+            `Submit a corrected version here: ${SITE}/packs`,
+          ];
+    sendEmail(to, subject, lines.join("\n"));
   }
   return submission;
 }
@@ -431,10 +400,7 @@ export async function setOwner(adminId: string, packId: string, ownerId: string 
     }
     const updated = await client.query(`update "community_pack" set "ownerId" = $2 where "id" = $1`, [packId, ownerId]);
     if (!updated.rowCount) throw new PackError("No such pack.", 404);
-    await recordActivity(
-      { kind: "pack.owner", lang: null, actorId: adminId, subject: packId, detail: { packId, ownerId } },
-      client,
-    );
+    await record(client, "pack.owner", adminId, packId, { packId, ownerId });
     return (await packOf(packId, client))!;
   });
 }
@@ -450,10 +416,7 @@ export async function setListed(adminId: string, packId: string, listed: boolean
       listed ? [packId] : [packId, adminId],
     );
     if (!updated.rowCount) throw new PackError("No such pack.", 404);
-    await recordActivity(
-      { kind: listed ? "pack.listed" : "pack.unlisted", lang: null, actorId: adminId, subject: packId, detail: { packId } },
-      client,
-    );
+    await record(client, listed ? "pack.listed" : "pack.unlisted", adminId, packId, { packId });
     return (await packOf(packId, client))!;
   });
 }
@@ -466,11 +429,10 @@ export function listAll(): Promise<Pack[]> {
   return packs(`true`, []);
 }
 
-/** The review queue, oldest first. */
-export async function listPending(): Promise<(Submission & { pack: Pack })[]> {
-  const pending = await packs(`exists (select 1 from "community_pack_submission" q
-                                       where q."packId" = p."id" and q."status" = 'pending')`, []);
-  return pending
+/** The review queue, oldest first: the packs of `all` with a version waiting. */
+export function queueOf(all: Pack[]): (Submission & { pack: Pack })[] {
+  return all
+    .filter((pack) => pack.pending)
     .map((pack) => ({ ...pack.pending!, pack }))
     .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt) || Number(a.id) - Number(b.id));
 }
@@ -482,44 +444,51 @@ export async function pendingCount(): Promise<number> {
   return rows[0].n;
 }
 
-/** Every submission of a pack, newest first. */
-export async function history(packId: string): Promise<Submission[]> {
+/** Every pack's submissions, newest first. */
+export async function historyByPack(): Promise<Map<string, Submission[]>> {
   const rows = await query<SubmissionRow>(
-    `select ${SUBMISSION_COLUMNS} from "community_pack_submission" s where s."packId" = $1 order by s."id" desc`,
-    [packId],
+    `select ${SUBMISSION_COLUMNS} from "community_pack_submission" s order by s."id" desc`,
   );
-  return rows.map(submissionOf);
+  const byPack = new Map<string, Submission[]>();
+  for (const row of rows) {
+    const list = byPack.get(row.packId) ?? [];
+    list.push(submissionOf(row));
+    byPack.set(row.packId, list);
+  }
+  return byPack;
 }
+
+type EntryRow = Omit<ManagerEntry, "size" | "homepage" | "license"> & {
+  size: string;
+  homepage: string | null;
+  license: string | null;
+};
 
 /** The Manager's registry: listed packs with an approved version, at their newest approved one. */
 export async function managerEntries(): Promise<ManagerEntry[]> {
-  const listed = await packs(`p."unlistedAt" is null`, []);
-  const live = listed.filter((pack) => pack.live);
-  if (!live.length) return [];
-  const first = await query<{ packId: string; day: string }>(
-    `select "packId", to_char(min("reviewedAt") at time zone 'UTC', 'YYYY-MM-DD') as "day"
-       from "community_pack_submission"
-      where "status" = 'approved' and "packId" = any($1)
-      group by "packId"`,
-    [live.map((pack) => pack.id)],
+  const rows = await query<EntryRow>(
+    `select distinct on (p."id") p."id", s."title", s."author", s."description", p."lang", p."section",
+            s."version", s."size"::text as "size", s."sha256", s."url", s."homepage", s."license",
+            to_char((min(s."reviewedAt") over (partition by p."id")) at time zone 'UTC', 'YYYY-MM-DD') as "addedAt"
+       from "community_pack" p
+       join "community_pack_submission" s on s."packId" = p."id" and s."status" = 'approved'
+      where p."unlistedAt" is null
+      order by p."id", s."reviewedAt" desc, s."id" desc`,
   );
-  const addedAt = new Map(first.map((row) => [row.packId, row.day]));
-  return live.map((pack) => {
-    const s = pack.live!;
-    return {
-      id: pack.id,
-      title: s.title,
-      author: s.author,
-      description: s.description,
-      lang: pack.lang,
-      section: pack.section,
-      version: s.version,
-      size: s.size,
-      sha256: s.sha256,
-      url: s.url,
-      ...(s.homepage ? { homepage: s.homepage } : {}),
-      ...(s.license ? { license: s.license } : {}),
-      addedAt: addedAt.get(pack.id)!,
-    };
-  });
+  // Built key by key: the order is the JSON's, and the route's ETag hashes that JSON.
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    author: row.author,
+    description: row.description,
+    lang: row.lang,
+    section: row.section,
+    version: row.version,
+    size: Number(row.size),
+    sha256: row.sha256,
+    url: row.url,
+    ...(row.homepage ? { homepage: row.homepage } : {}),
+    ...(row.license ? { license: row.license } : {}),
+    addedAt: row.addedAt,
+  }));
 }

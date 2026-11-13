@@ -14,13 +14,13 @@ import { asSystem, systemRows, testUser } from "@/lib/teams/testing";
 import {
   createPack,
   decide,
-  history,
+  historyByPack,
   listAll,
   listOwned,
-  listPending,
   managerEntries,
   PackError,
   pendingCount,
+  queueOf,
   setListed,
   setOwner,
   submitVersion,
@@ -104,7 +104,7 @@ describe("a new pack", () => {
     expect(pack).toMatchObject({ id, ownerId: author.id, ownerName: author.id, listed: true, live: null });
     expect(pack.pending).toMatchObject({ status: "pending", version: "1.0.0", submittedBy: author.id });
     expect((await managerEntries()).map((e) => e.id)).not.toContain(id);
-    expect((await listPending()).map((s) => s.packId)).toContain(id);
+    expect(queueOf(await listAll()).map((s) => s.packId)).toContain(id);
     expect(await pendingCount()).toBeGreaterThanOrEqual(1);
 
     const decided = await decide(admin.id, pack.pending!.id, "approve");
@@ -204,7 +204,7 @@ describe("a new version", () => {
     const pack = (await listOwned(author.id)).find((p) => p.id === id)!;
     expect(pack.live?.version).toBe("1.0.0");
     expect(pack.lastRejected).toMatchObject({ version: "1.1.0", rejectReason: "The zip does not open." });
-    expect((await history(id)).map((s) => s.status)).toEqual(["rejected", "approved"]);
+    expect((await historyByPack()).get(id)!.map((s) => s.status)).toEqual(["rejected", "approved"]);
   });
 });
 
