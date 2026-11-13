@@ -50,6 +50,9 @@ jobs:
     name: Package (${{ matrix.os }})
     needs: test
     runs-on: ${{ matrix.os }}
+    # The environment admits only master and manager/v* tags, and it would reject a job from any
+    # other ref. Naming none there lets a branch run build unsigned instead of failing.
+    environment: ${{ matrix.os == 'macos-latest' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/manager/v')) && 'manager-signing' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -104,7 +107,7 @@ jobs:
           fi
           xcodebuild -version
       # macOS is signed with the Developer ID certificate and notarized with an App Store Connect
-      # API key. A run without the secrets (a fork) builds it unsigned; a release tag never does.
+      # API key. A run without the secrets (a fork, a branch) builds it unsigned; a release tag never does.
       # When Apple refuses to notarize (an agreement it says is unsigned, an outage), the build is
       # made again signed only, with a warning: players get "could not verify" and Open Anyway
       # instead of no release.
