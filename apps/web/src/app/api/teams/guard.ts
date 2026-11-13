@@ -1,9 +1,10 @@
+import { bad, bodyOf as jsonOf, objectOf } from "@/lib/api-body";
 import { requireAdminSession } from "@/lib/generation/authz";
 import { TeamError } from "@/lib/teams/admin";
 import type { TeamId } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
-export const bad = (error: string) => Response.json({ error }, { status: 400 });
+export { bad };
 
 type Handler = (request: Request, actorId: string) => Promise<Response>;
 type TeamHandler = (request: Request, actorId: string, team: TeamId) => Promise<Response>;
@@ -39,6 +40,5 @@ export function withAdmin(handle: TeamHandler, by?: "id") {
 }
 
 export async function bodyOf(request: Request): Promise<Record<string, unknown>> {
-  const body: unknown = await request.json().catch(() => null);
-  return body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+  return objectOf(await jsonOf(request)) ?? {};
 }

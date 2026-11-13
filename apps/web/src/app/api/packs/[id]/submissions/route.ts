@@ -1,5 +1,6 @@
 /** A new version of one of the author's packs, for approval. */
-import { asAuthor, bodyOf } from "@/lib/community/guard";
+import { bodyOf } from "@/lib/api-body";
+import { asAuthor } from "@/lib/community/guard";
 import { submitVersion } from "@/lib/community/store";
 
 export const dynamic = "force-dynamic";

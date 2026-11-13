@@ -2,6 +2,8 @@
 // They mirror manager/src/main/community.ts validatePack, because the Manager drops any registry
 // entry that fails its own copy. Keep this in step with that file, not the other way round.
 
+import { objectOf } from "@/lib/api-body";
+
 export const SECTIONS = ["quests", "places", "readables"] as const;
 export type Section = (typeof SECTIONS)[number];
 
@@ -151,21 +153,20 @@ function fields(r: Record<string, unknown>, errors: Errors): Partial<PackFields>
   else errors.homepage = "The homepage must be an https link of at most 300 characters.";
 
   const license = typeof r.license === "string" ? r.license.trim() : r.license;
+  const licenseText = text(license, 60);
   if (license === undefined || license === null || license === "") out.license = null;
-  else if (text(license, 60)) out.license = text(license, 60);
+  else if (licenseText) out.license = licenseText;
   else errors.license = "The license must be at most 60 characters.";
 
   return out;
 }
 
-function asRecord(input: unknown): Record<string, unknown> | null {
-  return typeof input === "object" && input !== null && !Array.isArray(input) ? (input as Record<string, unknown>) : null;
-}
+const NOT_AN_OBJECT: Result<never> = { ok: false, errors: { form: "The submission is not in the expected shape." } };
 
 /** The fields an author may change on an existing pack. */
 export function validateFields(input: unknown): Result<PackFields> {
-  const r = asRecord(input);
-  if (!r) return { ok: false, errors: { form: "The submission is not in the expected shape." } };
+  const r = objectOf(input);
+  if (!r) return NOT_AN_OBJECT;
   const errors: Errors = {};
   const value = fields(r, errors);
   return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, value: value as PackFields };
@@ -173,8 +174,8 @@ export function validateFields(input: unknown): Result<PackFields> {
 
 /** A first submission: the fields plus the identity that never changes afterwards. */
 export function validateNewPack(input: unknown): Result<NewPack> {
-  const r = asRecord(input);
-  if (!r) return { ok: false, errors: { form: "The submission is not in the expected shape." } };
+  const r = objectOf(input);
+  if (!r) return NOT_AN_OBJECT;
   const errors: Errors = {};
 
   const id = typeof r.id === "string" ? r.id.trim() : "";
@@ -187,7 +188,8 @@ export function validateNewPack(input: unknown): Result<NewPack> {
   const section = typeof r.section === "string" ? r.section.trim() : "";
   if (!(SECTIONS as readonly string[]).includes(section)) errors.section = "Choose quests, places or readables.";
 
-  const value = fields(r, errors);
+  const checked = validateFields(r);
+  if (!checked.ok) return { ok: false, errors: { ...errors, ...checked.errors } };
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { ...(value as PackFields), id, lang, section: section as Section } };
+  return { ok: true, value: { ...checked.value, id, lang, section: section as Section } };
 }
