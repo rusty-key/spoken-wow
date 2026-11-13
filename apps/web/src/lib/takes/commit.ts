@@ -67,6 +67,8 @@ export type TakeFields = {
   createdBy?: string | null;
   /** One start per word the addon shows, in seconds (lib/generation/word-times.ts). */
   wordTimes?: number[] | null;
+  /** Never a rewrite or a pronunciation spelling: a pack shows these to players. */
+  shownText?: string | null;
 };
 
 export type Committed = {
@@ -175,9 +177,9 @@ async function insertLive(input: {
           "voice", "narratorVoice", "voiceId", "modelId", "seed", "outputFormat", "settings",
           "characters", "credits", "durationSec", "bytes", "spokenHash", "dictionaryId",
           "dictionaryVersion", "leadIn", "leadInSec", "createdBy", "archiveFile",
-          "provider", "costUsd", "wordTimes", "sha256")
+          "provider", "costUsd", "wordTimes", "sha256", "shownText")
        values ($1, $2, $3, $4, $5, true, 'generated', $6, $7, $8, $9, $10, $11, $12::jsonb,
-               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+               $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`,
       [
         source,
         lang,
@@ -208,6 +210,7 @@ async function insertLive(input: {
         fields.costUsd ?? null,
         fields.wordTimes ?? null,
         input.sha256,
+        fields.shownText ?? null,
       ],
     );
     await recordActivity(

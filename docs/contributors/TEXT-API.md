@@ -135,6 +135,56 @@ request is `invalid` the second time.
 - **Places: `short`.** Sending `text` without `short` regenerates `short`. Sending `short` alone
   keeps the text, and needs the place to have text already.
 
+## Pronunciation lexicon
+
+Each language has one lexicon: how names are said when lines are voiced. Reading it needs any
+token. Changing it also needs the **configure** grant in the token's language, as on the site.
+
+```sh
+curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/lexicon"
+curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/lexicon/Gnomeregan"
+```
+
+The list returns every entry at once, with no cursor, and a `version`:
+
+```json
+{
+  "lang": "deDE",
+  "version": "4f1c…",
+  "sync": "synced",
+  "updatedAt": "…",
+  "entries": [{ "grapheme": "Gnomeregan", "ipa": "ˈnoʊmɹəɡæn", "confidence": "high" }]
+}
+```
+
+An entry has exactly one of `ipa` (exact, without `/` or `[ ]`) and `alias` (a respelling), a
+`confidence` of `high` or `check`, and an optional `note`. A grapheme is one word with no spaces.
+Matching ignores case.
+
+Replace or add one entry, or up to 1,000:
+
+```sh
+curl -X PATCH -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"alias": "NO-mer-ah-gun", "confidence": "check"}' \
+  "https://spoken.quest/api/v1/lexicon/Gnomeregan"
+curl -X PATCH -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"items": [{"grapheme": "Gnomeregan", "ipa": "ˈnoʊmɹəɡæn", "confidence": "high"}]}' \
+  "https://spoken.quest/api/v1/lexicon"
+```
+
+Unlike text, a lexicon write is all or nothing: one invalid item refuses the whole request with a
+400 naming it. Each result is `created`, `updated` or `unchanged`. An entry is replaced whole, so a
+`note` you leave out is dropped. Entries you do not send stay as they are; this API cannot remove
+one. Send the `version` you read as `expectedVersion` to get a 409 instead of overwriting a newer
+save. A `null` version, from a language with no lexicon yet, guards too.
+
+A write uploads the lexicon to ElevenLabs with your own ElevenLabs key, as the site does. Without
+one, or if the upload fails, the entries are saved, `sync` reads `pending` (`never` for a
+language never uploaded) and `syncError` says why. Generation goes on with the previous upload
+until someone uploads from the lexicon page. Every write that changes something uploads the whole
+dictionary, so send several fixes as one bulk `PATCH` rather than one request per word.
+Changing an entry marks takes that say the word as outdated; nothing here regenerates them.
+
 ## Undoing a run
 
 ```sh

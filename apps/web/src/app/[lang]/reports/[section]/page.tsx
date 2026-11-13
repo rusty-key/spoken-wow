@@ -22,6 +22,7 @@ import {
   type StatusView,
 } from "@/lib/reports/query";
 import { npcDetails } from "@/lib/reports/npc";
+import { packReleases } from "@/lib/releases/store";
 import { listReports, queueHolders } from "@/lib/reports/store";
 import { queryOf } from "@/lib/contributions/query";
 import { localeHref } from "@/lib/lang";
@@ -63,9 +64,10 @@ export default async function Page({
 
   // Every report in the language, each status and section: both rows of tabs count what the
   // others leave, and a language's reports are few enough to read whole.
-  const [reports, holders] = await Promise.all([
+  const [reports, holders, releases] = await Promise.all([
     listReports("all", "all", category, null, lang, queues),
     queueHolders(lang),
+    packReleases(section),
   ]);
   const all = reports.filter((report) => matchesReportSearch(report, q));
   const inSection = all.filter((report) => report.source === section);
@@ -119,6 +121,7 @@ export default async function Page({
           labelled={labelled}
           passTo={passTo}
           showNpcPage={isAdmin(session.user.role)}
+          releases={releases}
         />
       </Wide>
     </main>

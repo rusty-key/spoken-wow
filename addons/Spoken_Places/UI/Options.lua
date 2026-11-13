@@ -165,7 +165,12 @@ function SpokenPlaces:SetupOptions()
 			if locale == AUTO then
 				return string.format(L.OPT_LANG_AUTO_FMT, SpokenPlaces:GetLanguageName(SpokenPlaces:GetAutoLanguage()))
 			end
-			return locale and SpokenPlaces:GetLanguageName(locale.code) or SpokenPlaces:GetLanguageName(nil)
+			return locale and SpokenPlaces:GetLanguageName(locale.code, true) or SpokenPlaces:GetLanguageName(nil)
+		end,
+		-- A pack's language is named in the pack's font; Auto only ever reads a built-in one.
+		function(locale)
+			if locale == AUTO or not locale then return nil end
+			return Spoken:LanguageFace(locale.code)
 		end)
 	-- A switch takes effect on the next load, which the note says until then.
 	local langNote = layout:Note(L.OPT_LANG_RELOAD, 460, 16)
@@ -212,10 +217,12 @@ function SpokenPlaces:SetupOptions()
 			SpokenPlaces:ShowCopyLink(url or AUDIO_URL, L.OPT_DOWNLOAD_ADDRESS)
 		end)
 	end
-	for _, locale in ipairs(SpokenPlaces.LOCALES or {}) do
-		local folder, url = Spoken:VoicePack("places", locale.code)
+	-- The built-in languages, then those an installed pack declares: a language is only ever
+	-- chosen once a pack of it is installed.
+	for _, locale in ipairs(Spoken:KnownLanguages()) do
+		local code = locale.code
+		local folder, url = Spoken:VoicePack("places", code)
 		if folder then
-			local code = locale.code
 			layout:ShowWhen(PackRow(folder, LanguageName(code), url), function() return Wanted(code, folder) end)
 		end
 	end

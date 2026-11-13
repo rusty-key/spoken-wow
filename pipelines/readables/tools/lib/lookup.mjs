@@ -23,7 +23,7 @@ import pg from "pg";
 import { isClientLocale } from "../../../lib/locales.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
-import { spokenText } from "./text.mjs";
+import { shownPage } from "./text.mjs";
 
 const ROOT = new URL("../../../../", import.meta.url).pathname;
 const LANG = "enUS";
@@ -81,7 +81,7 @@ export function localeEntries(pages, names) {
  * Data/Sounds.lua for a pack.
  *
  * @param lang the language the clips are recorded in
- * @param clips `{ pageId, file, durationSec, wordTimes }`, in page order
+ * @param clips `{ pageId, file, durationSec, wordTimes, text, shownText }`, in page order
  * @param entries a language's localeEntries, or null for a language with no index
  */
 export function packLua(lang, clips, entries = null) {
@@ -103,10 +103,9 @@ export function packLua(lang, clips, entries = null) {
     // Null only for a take imported from a store this app did not cut. Written as 0 so
     // the addon can tell "unknown" from "short" and fall back to its own timer.
     const len = row.durationSec === null ? 0 : row.durationSec;
-    // English's words for a page Books.lua has are Books.lua's, which the addon falls back to: a
-    // copy here was 440 KB more in every English pack. A minted page is not in Books.lua.
-    const inBooksLua = lang === LANG && typeof row.pageId === "number";
-    const text = row.text == null || inBooksLua ? "" : `, text = ${quote(spokenText(row.text))}`;
+    // English's too, about 440 KB more, or an English reader sees Books.lua over a newer voice.
+    const words = row.shownText ?? (row.text == null ? null : shownPage(row.text, lang));
+    const text = words ? `, text = ${quote(words)}` : "";
     // Absent for a take with no times: the captions then estimate.
     const times = row.wordTimes ? `, times = ${quote(packTimes(row.wordTimes))}` : "";
     lines.push(`\t\t[${luaId(row.pageId)}] = { file = ${quote(row.file)}, len = ${len}${text}${times} },`);
@@ -170,7 +169,7 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
        select distinct on (t."lineId")
               case when p."pageTextId" is not null then p."pageTextId"::text else substr(p."lineId", 3) end as "pageId",
               p."pageTextId" is not null as "numeric", p."pageTextId", p."lineId", p."bookId", b."title", b."text",
-              t."file", t."durationSec", t."wordTimes"
+              t."file", t."durationSec", t."wordTimes", t."shownText"
          from "take" t
          join "book_line" b on b."lineId" = t."lineId" and b."lang" = t."lang" and b."isCurrent"
          join "book_page" p on p."lineId" = t."lineId" and p."aliasOf" is null

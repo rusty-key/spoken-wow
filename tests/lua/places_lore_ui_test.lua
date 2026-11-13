@@ -204,6 +204,12 @@ _G.SpokenCompendium:Hide()
 Z:ToggleLoreWindow()
 Expect("opening it lands on where the player stands", page.title.text, "Durotar")
 Expect("...the story in the spellbook's ink", page.body.ink and page.body.ink[1], 0.24)
+local noPackWords = Z.PackLoreText
+Z.PackLoreText = function(_, mapID, _, language) return mapID == 1411 and language == Z:GetLanguage() and "Pack words." or nil end
+Z:RefreshLoreWindow()
+Expect("a pack's words in the language read show on the page", page.body.text:GetText(), "Pack words.")
+Z.PackLoreText = noPackWords
+Z:RefreshLoreWindow()
 Expect("...with Play and Report for it", page.target[1] == 1411 and page.play:IsShown() and page.report:IsShown(), true)
 -- Hide Report Buttons is Spoken's; here, a Spoken that answers it, and the redraw its
 -- REPORT_SETTINGS_CHANGED runs.
@@ -630,6 +636,10 @@ SetCVar("InputDeviceInterfaceStyle", "0")
 Z:RefreshPanel()
 Expect("with the gamepad UI off again, the panel goes back into the map", panel.parent, WorldMapFrame)
 Expect("...and stops reading the map's alpha each frame", panel:GetScript("OnUpdate"), nil)
+-- Under the panel the Forever client draws no 3D model at all, in the map or beside it.
+Expect("a boss's model draws on a stage of its own, not under the panel", panel.page.body.model:GetParent(),
+    panel.stage)
+Expect("...a stage under UIParent", panel.stage and panel.stage:GetParent(), UIParent)
 -- Side tabs hang down the quest log's right edge, the game's own and other addons' alike, with no
 -- name Spoken knows: here two unnamed ones, as Adventure Guide Forever hangs its own, the upper one
 -- reaching 60 past the map's edge and the lower one 50. The map is 300 wide and 100 high.

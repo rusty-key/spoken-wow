@@ -173,7 +173,7 @@ export const S_ZH = {
     clear: '清除筛选',
     emptyTitle: '还没有社区语音包。',
     emptyText: '来做第一个吧。',
-    offline: '连不上 GitHub，显示上次的列表。',
+    offline: '连不上 spoken.quest，显示上次的列表。',
     errorTitle: '无法加载社区语音包列表。',
     errorText: '请检查网络连接后重试。',
     unreadable: '无法读取社区语音包列表。',

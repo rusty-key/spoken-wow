@@ -5,6 +5,7 @@ import Link from "@/components/LocaleLink";
 import { notFound } from "next/navigation";
 
 import ReportForm from "@/components/ReportForm";
+import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/readables/audio";
 import { isCorpusEmpty, loadContext, pageById } from "@/lib/readables/catalogue";
@@ -66,7 +67,8 @@ export default async function Page({ params }: { params: Promise<Params> }) {
 
   // The current take is the only thing here that is not derivable from the corpus row, and it
   // answers one question: is there narration to listen to before complaining about it.
-  const take = (await loadContext(lang)).takes.get(page.id);
+  const [context, releases] = await Promise.all([loadContext(lang), packReleases("readables")]);
+  const take = context.takes.get(page.id);
 
   return (
     <main className="pt-8 pb-24">
@@ -79,7 +81,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
             {page.pageCount > 1 ? `Page ${page.pageNumber} of ${page.pageCount}` : "One page"}
           </p>
 
-          {take ? <ListenFirst className="mt-4" /> : null}
+          {take ? <ListenFirst className="mt-4" source="readables" recordedAt={take.generatedAt} releases={releases} /> : null}
 
           {take ? (
             // The native control rather than the explorer's Player: that one carries a rate

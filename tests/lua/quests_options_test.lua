@@ -229,15 +229,17 @@ local spoken = _G.SpokenOptionsPanel.content or _G.SpokenOptionsPanel
 local voice, fallback = Dropdown(spoken, "Voice Language"), Dropdown(spoken, "If a Voice Is Missing")
 Expect("the voice language is chosen on Spoken's page", voice ~= nil, true)
 Expect("...Auto by default, named with the client's language", voice and voice.dropdownText, "Auto (English)")
+-- The menu lists the languages an installed pack declares.
+for _, code in ipairs({ "deDE", "frFR" }) do _G.SpokenEnv.Languages:Declare(code, "SpokenQuestsAudio_" .. code) end
 VO.Addon.db.profile.Audio.VoiceLanguage = "frFR"
 Expect("...and until it is, Quests keeps the choice it had", VO.Language:GetVoiceLanguage(), "frFR")
 Expect("...a language can be picked", stub.PickDropdown(voice, "Deutsch"), true)
 Expect("...which Quests then speaks", VO.Language:GetVoiceLanguage(), "deDE")
 Expect("...and going back to Auto is possible", stub.PickDropdown(voice, "Auto (English)"), true)
 Expect("...which follows the client", VO.Language:GetVoiceLanguage(), "enUS")
-Expect("...but not Vietnamese, whose pack is not out", stub.PickDropdown(voice, "Tiếng Việt")
-    or stub.PickDropdown(voice, "Vietnamese") or stub.PickDropdown(fallback, "Tiếng Việt")
-    or stub.PickDropdown(fallback, "Vietnamese"), false)
+Expect("...but not a language no installed pack declares", stub.PickDropdown(voice, "Italiano")
+    or stub.PickDropdown(voice, "Italian") or stub.PickDropdown(fallback, "Italiano")
+    or stub.PickDropdown(fallback, "Italian"), false)
 Expect("the fallback language is chosen there too", fallback and fallback.dropdownText, "English")
 Expect("...and can be switched off", stub.PickDropdown(fallback, "Stay Silent"), true)
 Expect("...which Quests then honours", VO.Language:GetFallbackLanguage(), nil)
@@ -301,6 +303,22 @@ do
     Expect("unticking Quest Log turns its buttons off", VO.Addon.db.profile.QuestLogPlayButton, false)
     Expect("...and redraws Spoken's quest log buttons", updated, 1)
     _G.QuestLog_Update, _G.QuestLogFrame = nil, nil
+end
+
+-- A voice chosen before its packs went keeps a row to get them back: Italian has official packs,
+-- and no Italian pack is installed here to put the language in the list.
+do
+    VO = Boot()
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = "itIT"
+    local panel = stub.LoadQuestsPanel(QUESTS, VO)
+    panel:Setup()
+    local italian = false
+    for _, child in ipairs(panel.panel.content.children) do
+        local text = child.text
+        if type(text) == "string" and string.find(text, "itIT", 1, true) then italian = true end
+    end
+    Expect("a stored Italian voice with no Italian pack still offers the Italian packs", italian, true)
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

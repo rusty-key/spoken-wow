@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadPacks } from "../../../../scripts/lib/packs.mjs";
 
-import { PACKS } from "./packs";
+import { PACKS, packDownloads, packFor } from "./packs";
 
 type RegistryPack = {
   section: string;
@@ -45,5 +45,23 @@ describe("the landing page's pack list", () => {
       .sort();
     const english = PACKS.find((pack) => pack.section === "quests" && pack.lang === "enUS");
     expect(english?.split?.map((part) => part.slug).sort()).toEqual(split);
+  });
+});
+
+describe("packDownloads", () => {
+  const english = packFor("quests", "enUS")!;
+
+  it("links every CurseForge part of a split pack, or only the one named", () => {
+    expect(packDownloads(english).map((link) => link.label)).toEqual([
+      "CurseForge: Alliance",
+      "CurseForge: Horde",
+      "CurseForge: Shared",
+      "CurseForge: Gossip",
+      "GitHub: all",
+    ]);
+    expect(packDownloads(english, "Horde")).toEqual([
+      { label: "CurseForge", href: "https://www.curseforge.com/wow/addons/spoken-audio-quests-horde" },
+      { label: "GitHub: all", href: "https://github.com/rusty-key/spoken-wow/releases?q=quests-audio" },
+    ]);
   });
 });

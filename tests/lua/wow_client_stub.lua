@@ -225,7 +225,23 @@ local function Widget(kind, name)
         return (#text + boxes) * 7
     end
     function w:SetWordWrap(on) self.wordWrap = on and true or false end
-    function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
+    -- A font file the client cannot load is refused, as the real one does by returning false; a
+    -- suite lists such paths in M.refusedFonts. Every other file loads.
+    function w:SetFont(path, size, flags)
+        if M.refusedFonts and M.refusedFonts[path] then return false end
+        self.fontFile, self.fontSize, self.fontFlags = path, size, flags
+        return true
+    end
+    function w:GetFont() return self.fontFile, self.fontSize, self.fontFlags end
+    -- As on a client, a font object hands its face to the text, which GetFont then reports.
+    function w:SetFontObject(font)
+        self.font = type(font) == "table" and (font.name or font) or font
+        self.fontObject = font
+        if type(font) == "table" and font.fontFile then
+            self.fontFile, self.fontSize, self.fontFlags = font.fontFile, font.fontSize, font.fontFlags
+        end
+    end
+    function w:GetFontObject() return self.fontObject end
     function w:GetTop() return 100 end
     function w:GetBottom() return 0 end
     function w:GetLeft() return 0 end
@@ -1215,7 +1231,7 @@ end
 --- Loads exactly what its addon.xml and then Contribute.xml list, in order (a Blizzard-client
 --- .toc's order), then initialises the saved variables the way ADDON_LOADED would.
 function M.LoadSpoken(addonDirectory)
-    for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
+    for _, file in ipairs({ "Environment", "Version", "Core", "Languages", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
         "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
         "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",

@@ -60,6 +60,14 @@ function Bosses:PackNames()
 	return names
 end
 
+function Bosses:PackStoryText(map, key, language)
+	for _, pack in ipairs(self:GetAudioPacks(language)) do
+		local entry = pack.bosses and pack.bosses[map] and pack.bosses[map][key]
+		if entry and type(entry.text) == "string" and entry.text ~= "" then return entry.text end
+	end
+	return nil
+end
+
 --- The recording of the boss `key` of `map`: `{ path, len, times, language }`, from the voice
 --- language's packs, else the fallback language's, best first; nil where none has it. With Stay
 --- Silent, only the voice language's are tried.

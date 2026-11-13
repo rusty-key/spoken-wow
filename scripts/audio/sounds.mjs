@@ -42,7 +42,7 @@ import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
 import { eachParallel } from "../lib/download.mjs";
-import { NAMED_QUESTS_SQL, namedBy } from "./relevant.mjs";
+import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -98,7 +98,8 @@ function psql(sql) {
 // without it either way. Only quests takes have an Ogg.
 const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                              coalesce(array_to_json(t."wordTimes")::text, ''), coalesce(t."sha256", ''),
-                             coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, '')
+                             coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, ''),
+                             coalesce(to_json(t."shownText")::text, '')
                         from "take" t
                         left join "take_encoding" e
                           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
@@ -109,11 +110,11 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
 // A live take's archive path: its bucket object, or the take's own directory (its file without
 // the extension) holding the archive file. Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
-  const [file, name, times, sha256, encodedSha256, bytes, durationSec] = row.split("\t");
+  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
   return {
     file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times,
-    encodedSha256, bytes, durationSec,
+    encodedSha256, bytes, durationSec, shownText: shownText ? JSON.parse(shownText) : null,
   };
 });
 
@@ -170,6 +171,20 @@ async function writeWordTimes() {
   await writeFile(join(paths.out, "word-times.json"), `${JSON.stringify(times)}\n`);
 }
 
+async function writeTakeText() {
+  const rows = psql(CURRENT_TEXT_SQL).map((row) => {
+    const [stem, text, playerGender] = row.split("\t");
+    return { stem, text: JSON.parse(text), playerGender };
+  });
+  const textOf = currentTextFor(rows, lang);
+  const texts = {};
+  for (const take of live) {
+    const text = take.shownText ?? textOf(take.stem);
+    if (text) texts[take.stem] = text;
+  }
+  await writeFile(join(paths.out, "take-text.json"), `${JSON.stringify(texts)}\n`);
+}
+
 async function writeEncodingPointers(pointed) {
   // Encoding one here instead would make players download it again: oggenc's bytes differ every run.
   const lacking = pointed.filter((take) => !take.encodedSha256 || !take.durationSec);
@@ -203,6 +218,7 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
   if (section === "quests") {
     await writeEncodingPointers(pointed);
     await writeWordTimes();
+    await writeTakeText();
   } else absent = await writePointers(pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) })), process.env.SPOKEN_ARCHIVE_URL);
   console.log(`${section}: ${pointed.length - absent.length} pointers in ${paths.out.slice(ROOT.length + 1)}`);
   if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
@@ -240,7 +256,10 @@ for (const { file, stem, archived } of live) {
   }
 }
 
-if (section === "quests") await writeWordTimes();
+if (section === "quests") {
+  await writeWordTimes();
+  await writeTakeText();
+}
 
 console.log(`${section}: ${copied} clips in ${paths.out.slice(ROOT.length + 1)}`);
 if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);

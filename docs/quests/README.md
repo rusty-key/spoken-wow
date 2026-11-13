@@ -231,6 +231,12 @@ writes the live takes' `wordTimes` into `audio/word-times.json` when it assemble
 (`WordTimesByFileName`) for the clips the pack carries. A pack built without the file ships an
 empty table, and its captions are estimated.
 
+Each clip's words reach the build the same way, as `audio/take-text.json`: the take's `shownText`,
+else the current `quest_line` text of the line that names the file, its tokens as the voice says
+them. `build` writes `text_table.lua` (`TextByFileName`) for the clips the pack carries, and the addon
+shows it where the pack is in the client's language (`docs/spoken/CAPTIONS.md`). It does not reach
+the lookup tables, which match the window's words.
+
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 
 **Icons.** Every addon here carries an `icon.tga` and a `## IconTexture:` line naming
@@ -349,6 +355,11 @@ settings live in the web UI, and a script that rewrote them each release would b
 could quietly undo an edit made there.
 
 ### A language's packs
+
+A pack names its language in its `.toc` with `X-SpokenQuests-Language`, any code of the form `xxYY`;
+no key means English. `X-Spoken-LanguageName`, `X-Spoken-LanguageNative` and `X-Spoken-LanguageFont`
+are optional and give Spoken's menus the language's names and a font to draw them in. A line's text
+is drawn in the font its clip sets in `present.font`. Spoken lists a language once a pack in it is installed.
 
 A language other than English has English's four packs, each folder plus `_<lang>`. They exist
 because their pages do: `publishers/quests/audio-<pack>-<lang>.md` names the project, version,
@@ -990,9 +1001,11 @@ addon sending players to a page the corpus does not know about is itself a bug r
 
 `POST /api/reports` is the only unauthenticated write in the explorer. It is defended by a
 honeypot field answered with `200` rather than `400` (an error only teaches a script to stop
-sending the field), a limit of ten reports per hour per IP counted in Postgres so it survives a
-pm2 restart, and a category checked against a closed set. The IP is the rate limiter's key and
-nothing else: never displayed, never read back. Signing in replaces any typed name.
+sending the field), a limit of ten reports per ten minutes counted in Postgres so it survives a
+pm2 restart, and a category checked against a closed set. The limit counts a signed-in reporter
+by account and anyone else by IP, so a shared network cannot use up an account's allowance, and
+each refusal is logged with its key. The IP is the rate limiter's key and nothing else: never
+displayed, never read back. Signing in replaces any typed name.
 
 Collaborators and admins triage at `/reports`, marking each report fixed, not a problem or
 minor, or reopening it. Minor (migration 0079) sets a report aside: real, but not worth

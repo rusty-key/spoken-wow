@@ -93,16 +93,6 @@ function M.LoadPlaces(addonDirectory, seed)
     return SpokenPlaces
 end
 
---- The language codes SpokenPlaces.LOCALES lists, in order, read off its source. The other
---- addons each keep a copy of the list and are tested against this one.
-function M.PlacesLocaleCodes(here)
-    local codes = {}
-    local file = assert(io.open(here .. "/../../addons/Spoken_Places/Language.lua"))
-    for code in file:read("*a"):gmatch('{ code = "(%a+)"') do table.insert(codes, code) end
-    file:close()
-    return table.concat(codes, " ")
-end
-
 --- The parts of the Places addon's Core.lua that its playback files read, as a fake.
 function M.NewZoneLore()
     local cfg = { voiceEnabled = true, autoplay = true, autoplaySubzones = true,
@@ -111,6 +101,8 @@ function M.NewZoneLore()
         showMapPanel = true, panelSide = "RIGHT",
         panelWidth = 320, fontSize = 12, highlightOpacity = 0.35 }
     local Z = { printed = {}, heard = {}, zoneChanged = {}, clientLocale = "enUS" }
+    -- Audio.lua's, which is not loaded here: no pack carries words.
+    Z.PackLoreText = function() return nil end
     -- The addon's real English strings, so a label a file reads (a minimap entry, a button,
     -- a settings row) is the one the client would show rather than nil. Language.lua is what
     -- normally takes the table, and it is not loaded here.

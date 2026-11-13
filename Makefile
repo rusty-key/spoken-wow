@@ -53,6 +53,7 @@ readables-%:
 
 test-player: ## Run the addons' Lua tests (needs luajit)
 	@[ -n "$(LUA)" ] || { echo "No luajit found: brew install luajit"; exit 1; }
+	@$(LUA) tests/lua/languages_test.lua
 	@$(LUA) tests/lua/quest_dispatch_test.lua
 	@$(LUA) tests/lua/quest_autoplay_test.lua
 	@$(LUA) tests/lua/gossip_part_test.lua
@@ -107,6 +108,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_greeting_test.lua
 	@$(LUA) tests/lua/places_pending_test.lua
 	@$(LUA) tests/lua/quests_source_test.lua
+	@$(LUA) tests/lua/quests_pack_text_test.lua
 	@$(LUA) tests/lua/quest_npc_silence_test.lua
 	@$(LUA) tests/lua/quest_greeting_first_test.lua
 	@$(LUA) tests/lua/data_modules_test.lua
@@ -158,6 +160,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_dungeons_test.lua
 	@$(LUA) tests/lua/bosses_test.lua
 	@$(LUA) tests/lua/bosses_leatrix_test.lua
+	@$(LUA) tests/lua/bosses_openmap_test.lua
 	@$(LUA) tests/lua/bosses_audio_test.lua
 	@$(LUA) tests/lua/places_story_place_test.lua
 	@$(LUA) tests/lua/places_area_zones_test.lua

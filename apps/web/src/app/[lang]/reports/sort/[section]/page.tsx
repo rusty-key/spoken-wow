@@ -9,6 +9,7 @@ import { viewerOf } from "@/lib/grants/store";
 import { can, isAdmin } from "@/lib/permissions";
 import { queuesOf } from "@/lib/reports/reports";
 import { sortQueue } from "@/lib/reports/sort";
+import { packReleases } from "@/lib/releases/store";
 import { listReports, skippedIds } from "@/lib/reports/store";
 import { isSource } from "@/lib/sections";
 
@@ -25,9 +26,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
   const queues = queuesOf(viewer, lang);
   if (!session || !queues.length) notFound();
 
-  const [reports, skipped] = await Promise.all([
+  const [reports, skipped, releases] = await Promise.all([
     listReports("open", section, "all", null, lang, queues),
     skippedIds(session.user.id, lang),
+    packReleases(section),
   ]);
   const groups = sortQueue(reports, skipped);
   const canRegenerate = can(viewer, "regenerate", lang);
@@ -39,6 +41,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
       canRegenerate={canRegenerate}
       canEditText={can(viewer, section === "quests" ? "regenerate" : "text", lang)}
       showNpcPage={isAdmin(session.user.role)}
+      releases={releases}
     />
   );
 }

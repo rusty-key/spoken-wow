@@ -38,9 +38,15 @@ rsync -a --exclude '.DS_Store' "$WORK/Sounds/" "$staging/$folder/Sounds/"
 sed -i.bak \
   -e "s~^## Title:.*~## Title: ${title/#Spoken/|cffb48cffSpoken|r}~" \
   -e "s|^## Version:.*|## Version: $version|" \
+  -e "s|^## X-SpokenReadables-Language:.*|## X-SpokenReadables-Language: $LOCALE|" \
   -e "s|^## IconTexture:.*|## IconTexture: Interface\\\\AddOns\\\\$folder\\\\Textures\\\\AddonIcon.tga|" \
   "$staging/$folder/$folder.toc"
 rm -f "$staging/$folder/$folder.toc.bak"
+# The sed above changes nothing in a .toc without the line, and the pack would then ship as English.
+if ! grep -q "^## X-SpokenReadables-Language: $LOCALE\$" "$staging/$folder/$folder.toc"; then
+  echo "error: the staged .toc does not carry '## X-SpokenReadables-Language: $LOCALE'" >&2
+  exit 1
+fi
 
 mkdir -p "$DIST"
 zip_path="$DIST/$folder-$version.zip"

@@ -502,6 +502,23 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(result.characters).toBe("Say this instead.".length);
   });
 
+  it("saves the line's normal text on the take, because a rewrite can hold respellings", async () => {
+    const { options } = stub();
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Say this instead.", null);
+
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { rows } = await asSystem.query(
+      `select "shownText" from "take" where "file" = $1 order by "version" desc limit 1`,
+      [result.file],
+    );
+    const [line] = (await lineIndex()).get(SOLO)!;
+    expect(rows[0].shownText).toBe(line.text);
+    expect(rows[0].shownText).not.toBe("Say this instead.");
+  });
+
   it("voices a line the corpus had given up on, once the template token is gone", async () => {
     const { options } = stub();
 

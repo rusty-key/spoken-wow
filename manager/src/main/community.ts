@@ -1,5 +1,5 @@
-// The community voice-pack registry: `community/packs.json` in the repo, fetched from raw.githubusercontent.com,
-// ETag-cached, kept offline. The file is untrusted input: every entry is validated and a bad one is dropped
+// The community voice-pack registry: the approved packs listed by spoken.quest (`GET /api/community/packs`),
+// ETag-cached, kept offline. The list is untrusted input: every entry is validated and a bad one is dropped
 // (and logged), never repaired. A valid entry becomes a Product and a ReleaseInfo, so the ordinary
 // download, install, status and uninstall code handles it.
 import path from 'node:path'
@@ -11,11 +11,10 @@ import {
   type ReleaseInfo,
   type Section
 } from '../shared/types'
-import { LANGUAGES } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
-const REGISTRY_URL = 'https://raw.githubusercontent.com/rusty-key/spoken-wow/master/community/packs.json'
+const REGISTRY_URL = 'https://spoken.quest/api/community/packs'
 export const COMMUNITY_PREFIX = 'community/'
 
 const MAX_PACKS = 500
@@ -24,6 +23,8 @@ const MAX_ZIP = 8 * 1024 ** 3
 const SECTIONS: Section[] = ['quests', 'places', 'readables']
 /** The keys the registry's format had before Places and Readables were renamed, still read. */
 const RENAMED_SECTIONS: Record<string, Section> = { zones: 'places', books: 'readables' }
+/** A language code as a pack's .toc writes it: two lower-case letters, two upper-case. */
+const LANGUAGE_CODE = /^[a-z]{2}[A-Z]{2}$/
 const ID = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
 // ---------------------------------------------------------------- validation
@@ -73,7 +74,7 @@ export function validatePack(raw: unknown): { pack: CommunityPack } | { reason: 
   if (!author) return { reason: 'bad author' }
   const description = text(r.description, 400)
   if (!description) return { reason: 'bad description' }
-  if (typeof r.lang !== 'string' || !LANGUAGES.some((l) => l.code === r.lang)) return { reason: 'unknown language' }
+  if (typeof r.lang !== 'string' || !LANGUAGE_CODE.test(r.lang)) return { reason: 'unknown language' }
   const section = typeof r.section === 'string' ? (RENAMED_SECTIONS[r.section] ?? r.section) : null
   if (!section || !SECTIONS.includes(section as Section)) return { reason: 'unknown section' }
   const version = r.version
@@ -253,15 +254,15 @@ export async function fetchCommunity(opts: FetchCommunityOptions): Promise<Commu
   try {
     res = await (opts.fetchImpl ?? fetch)(opts.url ?? REGISTRY_URL, { headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 30000) })
   } catch (err) {
-    return offline(`Could not reach GitHub (${err instanceof Error ? err.message : String(err)}).`)
+    return offline(`Could not reach spoken.quest (${err instanceof Error ? err.message : String(err)}).`)
   }
 
   const now = new Date().toISOString()
   if (res.status === 304 && usable) return { fetchedAt: now, offline: false, packs: packsOf(usable.body) }
-  // Nothing published yet: an empty list, not a failure.
-  if (res.status === 404) return { fetchedAt: now, offline: false, packs: [] }
-  if (res.status === 429 || res.status === 403) return offline('GitHub is limiting how often this computer may ask. Try again in a little while.')
-  if (!res.ok) return offline(`GitHub answered with an error (${res.status}).`)
+  // The route always answers, with an empty list when nothing is published, so a 404 is a
+  // broken deploy or proxy: keep the packs we had rather than clear them.
+  if (res.status === 429 || res.status === 403) return offline('spoken.quest is limiting how often this computer may ask. Try again in a little while.')
+  if (!res.ok) return offline(`spoken.quest answered with an error (${res.status}).`)
 
   let body: unknown
   try {

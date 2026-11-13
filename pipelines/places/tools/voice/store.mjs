@@ -124,7 +124,7 @@ async function loadFromFile() {
 
 async function loadFromDatabase() {
   const { rows } = await db.query(
-    `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes"
+    `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes", "shownText"
        from "take"
       where "source" = '${SOURCE}' and "isCurrent" and "lang" = '${LANG}'
         and "teamId" = team_of_lang('${LANG}')`,
@@ -141,9 +141,19 @@ async function loadFromDatabase() {
     // Only where the take has them, so a manifest exported before any take was timed stays
     // as it was.
     if (row.wordTimes) record.wordTimes = row.wordTimes;
+    if (row.shownText) record.shownText = row.shownText;
     manifest[row.lineId] = record;
   }
   return manifest;
+}
+
+/** From the table, as the committed lore files can lag it. With no database those takes ship no words. */
+export async function loadCurrentLore() {
+  if (!db.isEnabled()) return new Map();
+  const { rows } = await db.query(
+    `select "lineId", "full" from "lore_line" where "isCurrent" and "lang" = '${LANG}'`,
+  );
+  return new Map(rows.map((row) => [row.lineId, row.full]));
 }
 
 /**

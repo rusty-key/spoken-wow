@@ -59,11 +59,11 @@ The service keeps a cheap refusal as a second check.
 
 ## Community voice packs
 
-A COMMUNITY page lists voice packs players made. The list is `community/packs.json` in the repo
-(`CommunityPack` in `src/shared/types.ts`), fetched from
-`https://raw.githubusercontent.com/rusty-key/spoken-wow/master/community/packs.json`, ETag-cached,
-and kept offline. A player shares a pack by opening a pull request that adds an entry, so a
-maintainer has looked at it; `community/README.md` says how.
+A COMMUNITY page lists voice packs players made. The list is the approved packs on spoken.quest
+(`CommunityPack` in `src/shared/types.ts`), fetched from `https://spoken.quest/api/community/packs`,
+ETag-cached, and kept offline. A pack author submits a pack on the site and the admin approves it, so
+a maintainer has looked at it; `community/README.md` says how. Managers up to 0.1.13 still read the
+frozen `community/packs.json`.
 
 - Product id `community/<pack id>`, installed as the one folder `SpokenCommunity_<pack id>`. It never
   replaces an official pack's folder.

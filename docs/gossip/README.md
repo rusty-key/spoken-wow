@@ -101,6 +101,9 @@ gossip, and `/sp settings` opens Spoken's page.
 
 ## Where the text and the packs come from
 
+- A pack's `TextByFileName` is what a gossip subtitle shows where the pack is in the client's
+  language, and it is for display only: the tables below still find the line
+  (`docs/spoken/CAPTIONS.md`).
 - Each client language but English has its gossip text in `Gossip/<lang>.lua`. Forever's `.toc`
   loads only the client's own with `[AllowLoadTextLocale]`.
 - `docs/quests/README.md` explains how the lines, their BroadcastText ids and the aliases are

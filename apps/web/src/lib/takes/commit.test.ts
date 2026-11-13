@@ -116,6 +116,17 @@ describe("the first take of a line", () => {
     );
     expect(rows.map((row) => row.wordTimes)).toEqual([[0, 0.31, 1.025], null]);
   });
+
+  it("keeps the text it was voiced from, and none when it was not told", async () => {
+    await take("worded", { shownText: "Hey there." });
+    await take("unworded");
+
+    const { rows } = await asSystem.query(
+      `select "shownText" from "take" where "file" = $1 order by "version"`,
+      [file],
+    );
+    expect(rows.map((row) => row.shownText)).toEqual(["Hey there.", null]);
+  });
 });
 
 describe("the activity log", () => {
