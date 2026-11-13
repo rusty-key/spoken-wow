@@ -147,7 +147,7 @@ export type ActivityFilter = {
  * packs, whose moderation page a team admin cannot open. A team admin shown them would read
  * rejection reasons and owner hand-overs that are not theirs, and follow links that 404.
  */
-const GLOBAL_ONLY_PREFIXES = ["user.", "pack."];
+const GLOBAL_ONLY_PREFIXES = ["user.", "pack.", "request."];
 
 /** SQL true when alias `a`'s row is one a viewer who is not a global admin may see. */
 const NOT_GLOBAL_ONLY = GLOBAL_ONLY_PREFIXES.map((prefix) => `a."kind" not like '${prefix}%'`).join(" and ");
