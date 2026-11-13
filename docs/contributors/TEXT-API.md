@@ -113,6 +113,15 @@ answers `batchId`, `queued`, `alreadyQueued` (files already waiting in the queue
 default view leaves out. `unknown` lists ids found nowhere. A line already done and asked for
 again is generated and paid for again.
 
+### Watching and stopping
+
+`GET /api/v1/generations` lists your recent batches in the token's language, whichever way they were
+queued, newest first; they are kept 30 days. `GET /api/v1/generations/{batchId}` gives one, with its
+job counts by state, credits, cost and up to 100 recent failures; `finished` means nothing is
+pending or running. `POST /api/v1/generations/{batchId}/stop` cancels what is still pending, so a
+script that queued the wrong set can stop paying for it. Another person's batch, or yours in another
+language, answers 404 as an unknown id does.
+
 ## Writing
 
 Change one item:
