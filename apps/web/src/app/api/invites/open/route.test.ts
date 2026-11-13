@@ -33,7 +33,7 @@ test("keeps the token in a cookie and redirects without it", async () => {
   const response = await GET(new Request(`https://example.com/api/invites/open?token=${token}`));
   expect(response.status).toBe(303);
   const location = response.headers.get("location")!;
-  expect(location).toBe("/deDE/invite");
+  expect(location).toBe("/invite");
   expect(location).not.toContain(token);
   const cookie = response.headers.get("set-cookie")!;
   expect(cookie).toContain(`spoken_invite=${token}`);
