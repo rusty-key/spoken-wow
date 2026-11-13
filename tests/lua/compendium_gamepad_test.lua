@@ -52,6 +52,15 @@ C:Register("quests", { label = "Quests", order = 1, build = function(panel)
     page = C.NewPage(C.PageHolder(panel, list), "Spoken_Quests")
     function panel:Refresh() list:Render() end
 end })
+-- A second tab, for the shoulders to move between: its list's rows chosen by none.
+local placesList
+C:Register("places", { label = "Places", order = 2, build = function(panel)
+    placesList = C.NewList(panel, {
+        build = function() return { { key = "zone", label = "Zone" }, { key = "town", label = "Town" } } end,
+        isSelected = function() return false end,
+    })
+    function panel:Refresh() placesList:Render() end
+end })
 
 -- Show and hide run the window's scripts as the client does.
 local function Run(frame, script)
@@ -95,6 +104,24 @@ _G.SmartNavigation = {
 }
 local ignored = {}
 _G.SmartNavigation_MarkFrameIgnored = function(frame) ignored[frame] = true end
+-- The window's own override bindings, as the client keeps them: key to button, by owner.
+local lockdown = false
+local overrides = {}
+_G.InCombatLockdown = function() return lockdown end
+_G.SetOverrideBindingClick = function(owner, priority, key, button)
+    assert(not lockdown, "override bindings cannot change in combat")
+    overrides[key] = { owner = owner, priority = priority, button = button }
+end
+_G.ClearOverrideBindings = function(owner)
+    assert(not lockdown, "override bindings cannot change in combat")
+    for key, binding in pairs(overrides) do if binding.owner == owner then overrides[key] = nil end end
+end
+local function Press(key)
+    local binding = overrides[key]
+    if not binding then return false end
+    _G[binding.button]:Click()
+    return true
+end
 
 ---------------------------------------------------------------- the controller UI switched off
 calls = {}
@@ -130,6 +157,55 @@ C.window:FocusGamepad()
 Expect("focused, the right stick scrolls the page's words", Called("stick window page"), true)
 Expect("...and the cursor starts on the chosen row", Called("target window first"), true)
 Close()
+
+---------------------------------------------------------------- the shoulders and View
+overrides = {}
+Open()
+Expect("shown but not yet focused, the window holds no keys", next(overrides), nil)
+C.window:FocusGamepad()
+Expect("focused, the right shoulder is the window's, over the game's own binding",
+    overrides.PADRSHOULDER and overrides.PADRSHOULDER.owner == C.window and overrides.PADRSHOULDER.priority, true)
+Expect("...the left shoulder too", overrides.PADLSHOULDER ~= nil, true)
+Expect("...and View", overrides.PADBACK ~= nil, true)
+calls = {}
+Press("PADRSHOULDER")
+Expect("the right shoulder shows the next tab", C:Active(), "places")
+Expect("...with the cursor on its first row, off the tab just hidden", Called("target window zone"), true)
+Press("PADRSHOULDER")
+Expect("...and from the last tab, round to the first", C:Active(), "quests")
+Press("PADLSHOULDER")
+Expect("the left shoulder goes back, round to the last", C:Active(), "places")
+Press("PADLSHOULDER")
+local box, hasFocus = list.searchBox, false
+function box:HasFocus() return hasFocus end
+function box:SetFocus() hasFocus = true end
+function box:ClearFocus() hasFocus = false end
+Press("PADBACK")
+Expect("View starts typing in the shown tab's search", hasFocus, true)
+Press("PADBACK")
+Expect("...and again leaves it", hasFocus, false)
+C.window:UnfocusGamepad()
+Expect("the controller on another window, the keys are the game's again", next(overrides), nil)
+C.window:FocusGamepad()
+Close()
+Expect("closed, the keys are the game's again", next(overrides), nil)
+
+-- Combat: the keys go as it starts, while the game still lets them, and come back after.
+Open()
+C.window:FocusGamepad()
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+lockdown, restricted = true, true
+Expect("as combat starts the keys are the game's again", next(overrides), nil)
+lockdown, restricted = false, false
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("...and the window's once combat ends, still focused", overrides.PADRSHOULDER ~= nil, true)
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+lockdown, restricted = true, true
+C.window:UnfocusGamepad()
+Close()
+lockdown, restricted = false, false
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("closed in combat, it takes no keys back after", next(overrides), nil)
 
 ---------------------------------------------------------------- what is no stop
 local resizer

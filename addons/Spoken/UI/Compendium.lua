@@ -1924,7 +1924,11 @@ local waiter
 local function AfterCombat()
 	if waiter then return end
 	waiter = CreateFrame("Frame")
-	waiter:SetScript("OnEvent", function() Pad.Settle() end)
+	waiter:SetScript("OnEvent", function(_, event)
+		if event == "PLAYER_REGEN_DISABLED" then Pad.Unbind() else Pad.Settle() end
+	end)
+	-- Combat's start comes before the game holds addons back: the last moment to let go of keys.
+	waiter:RegisterEvent("PLAYER_REGEN_DISABLED")
 	waiter:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 
@@ -1964,14 +1968,19 @@ local function ShownPage()
 	end
 end
 
--- The chosen row of the shown tab's list, where it is drawn.
-local function ChosenRow()
+-- The chosen row of the shown tab's list, where it is drawn; else, with `orFirst`, its first row.
+local function ChosenRow(orFirst)
 	local tab = active and C.tabs[active]
 	for _, list in ipairs(lists) do
 		if tab and list.panel == tab.panel then
+			local first
 			for _, row in ipairs(list.rows) do
-				if row.selected and row.row and row:IsVisible() then return row end
+				if row.row and row:IsVisible() then
+					if row.selected then return row end
+					first = first or row
+				end
 			end
+			return orFirst and first or nil
 		end
 	end
 end
@@ -1998,9 +2007,85 @@ function Pad.Settle()
 	local manager = Manager()
 	if not (manager and window) then return end
 	local want = window:IsShown() and GamepadUI()
-	if want == joined then return end
-	joined = want
-	if want then manager:FrameShown(window) else manager:FrameHidden(window) end
+	if not want then Pad.focused = false end
+	if want ~= joined then
+		joined = want
+		if want then manager:FrameShown(window) else manager:FrameHidden(window) end
+	end
+	if Pad.focused then Pad.Bind() else Pad.Unbind() end
+end
+
+-- The shoulders and View while the window has the controller, as the game's own windows take
+-- them (the professions' and the bags' search on View, the character sheet's tabs on the
+-- shoulders). Override bindings of the window's own, over the game's: its binding stack is
+-- secure, and a write to it from an addon taints the d-pad. Bindings cannot change in combat, so
+-- they go as combat starts and come back after.
+local SHOULDER_LEFT = GAMEPAD_SHOULDER_LEFT or "PADLSHOULDER"
+local SHOULDER_RIGHT = GAMEPAD_SHOULDER_RIGHT or "PADRSHOULDER"
+local VIEW = GAMEPAD_MENU_LEFT or "PADBACK"
+local bound = false
+
+-- The tab `step` along from the shown one, round from the last to the first.
+local function StepTab(step)
+	local keys, at = {}, nil
+	for _, button in ipairs(tabButtons or {}) do
+		if button.key and button:IsShown() then
+			table.insert(keys, button.key)
+			if button.key == active then at = #keys end
+		end
+	end
+	if #keys < 2 or not at then return end
+	Sound("igCharacterInfoTab")
+	picked = true
+	C:Select(keys[(at - 1 + step) % #keys + 1])
+	-- The cursor would stay on a row of the tab just hidden.
+	local row = ChosenRow(true)
+	if row and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
+		SmartNavigation:SetTargetButtonForFrame(window, row)
+	end
+end
+
+-- Into the shown tab's search, or out of it again.
+local function Search()
+	local tab = active and C.tabs[active]
+	for _, list in ipairs(lists) do
+		if tab and list.panel == tab.panel then
+			local box = list.searchBox
+			if box:HasFocus() then box:ClearFocus() else box:SetFocus() end
+			return
+		end
+	end
+end
+
+local function KeyButton(suffix, onClick)
+	local button = CreateFrame("Button", NAME .. suffix, nil)
+	button:Hide()
+	button:SetScript("OnClick", onClick)
+	return button
+end
+
+function Pad.Bind()
+	if bound or not (window and SetOverrideBindingClick) or not GamepadUI()
+		or (InCombatLockdown and InCombatLockdown()) or CombatRestricted() then
+		return
+	end
+	if not Pad.keys then
+		Pad.keys = {
+			KeyButton("PreviousTab", function() StepTab(-1) end),
+			KeyButton("NextTab", function() StepTab(1) end),
+			KeyButton("Search", Search),
+		}
+	end
+	SetOverrideBindingClick(window, true, SHOULDER_LEFT, NAME .. "PreviousTab")
+	SetOverrideBindingClick(window, true, SHOULDER_RIGHT, NAME .. "NextTab")
+	SetOverrideBindingClick(window, true, VIEW, NAME .. "Search")
+	bound = true
+end
+
+function Pad.Unbind()
+	if not bound or not ClearOverrideBindings or (InCombatLockdown and InCombatLockdown()) then return end
+	ClearOverrideBindings(window)
+	bound = false
 end
 
 --- Hook the window up: joining and leaving as it shows and hides, and what the manager calls
@@ -2010,11 +2095,18 @@ function Pad.Follow(frame)
 	frame:HookScript("OnHide", Pad.Settle)
 	-- The cursor starts on the chosen row, where the list shows one.
 	frame.FocusGamepad = function()
+		Pad.focused = true
+		AfterCombat()
 		Pad.Retarget()
+		Pad.Bind()
 		local row = ChosenRow()
 		if row and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
 			SmartNavigation:SetTargetButtonForFrame(frame, row)
 		end
+	end
+	frame.UnfocusGamepad = function()
+		Pad.focused = false
+		Pad.Unbind()
 	end
 end
 
