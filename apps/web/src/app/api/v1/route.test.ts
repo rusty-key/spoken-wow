@@ -27,6 +27,7 @@ beforeAll(async () => {
     userId: USER,
     lang: "koKR",
     access: "read",
+    generate: false,
     label: "agent",
     expiresAt: new Date(Date.now() + 86_400_000),
   }));
