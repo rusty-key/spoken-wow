@@ -3,7 +3,7 @@ import "server-only";
 import { isSource, type Source } from "@/lib/sections";
 
 import { sections } from "./index";
-import { BAD_VARIANT, isVariant, type SectionApi } from "./types";
+import { BAD_VARIANT, isVariant, type ReferenceItem, type SectionApi, type TextItem } from "./types";
 
 export const PAGE_SIZE = 500;
 
@@ -64,4 +64,12 @@ export function decodeId(id: string): string {
   } catch {
     return id;
   }
+}
+
+export function toReference(item: TextItem): ReferenceItem {
+  const out: ReferenceItem = { id: item.id, text: item.text, name: item.name, group: item.group };
+  if (item.variant !== undefined) out.variant = item.variant;
+  if (item.override !== undefined) out.override = item.override;
+  if (item.short !== undefined) out.short = item.short;
+  return out;
 }

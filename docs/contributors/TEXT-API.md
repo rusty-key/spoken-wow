@@ -4,8 +4,9 @@ For text maintainers who want a script or an AI agent to read and change their l
 on spoken.quest. Everything here does what the site's edit dialogs do: each change is a new
 version under your name, listed in the activity log.
 
-Writes go live at once, with no review. Nothing here makes audio or spends credits. An edited
-line reads as "audio outdated" until someone regenerates it.
+Writes go live at once, with no review. The text routes make no audio and spend no credits. An edited
+line reads as "audio outdated" until someone regenerates it, which a generate token can do (see
+*Generating audio*).
 
 ## Getting a token
 
@@ -71,6 +72,46 @@ single-item URL takes `?variant=`, default 0, and refuses a `variant` in its bod
 `override` is on quest lines only. When it is not null, it is what the line is spoken as in place of
 `text`: a rewrite made with the pencil on the site. This API only reads it. A `PATCH` changes `text`
 and leaves `override` in place, so the line keeps speaking the override.
+
+## Reference text
+
+`GET /api/v1/{section}/reference` gives the English text of a section, whatever language the token
+is for. It takes the same filters, `cursor` and `limit` as the list, and its items carry `id`,
+`variant` (quests), `text`, `override` (quests), `short` (places), `name` and `group`, with no
+versions. Any valid token can read it: one that reads or writes text, or one that generates.
+
+```sh
+curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/places/reference?zone=1411"
+```
+
+## Generating audio
+
+A generate token queues audio in its language, exactly as the Regenerate button does and on your
+own ElevenLabs or fish.audio key: the generator you chose for the language on Voices, the same
+limits, one job per audio file. It stops working when you lose the right to regenerate there.
+
+`POST /api/v1/{section}/generate` takes either `items`, up to 1000 of `{id, variant?}` as the text
+update takes them, or, for quests only, `filters`: the query string of an Explorer URL in the
+language, since "every stale line" is a filter and not seventeen thousand ids. A quest item covers
+every speaker's line of that id and variant. Add `label` (up to 100 characters) to name the batch
+and `"dryRun": true` to price it without queueing anything.
+
+```sh
+curl -X POST -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"items": [{"id": "z:1411"}], "dryRun": true}' https://spoken.quest/api/v1/places/generate
+
+curl -X POST -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"filters": "state=stale&source=accept", "label": "stale accepts"}' https://spoken.quest/api/v1/quests/generate
+```
+
+A dry run answers `provider`, `files`, `characters`, `matched`, `dropped`, `unknown`, an
+`estimate` per provider and `missingKeys`, the providers whose key you have not set. A real run
+answers `batchId`, `queued`, `alreadyQueued` (files already waiting in the queue), and the same
+`matched`, `dropped` and `unknown`. `dropped` counts matched lines that became no job, by reason:
+`progress`, `untranslated`, `no-voice`, `invalid-chars` and `shared-file` for quests, `no-text` and
+`not-generatable` for places, readables and bosses, and `hidden` for a quest item the Explorer's
+default view leaves out. `unknown` lists ids found nowhere. A line already done and asked for
+again is generated and paid for again.
 
 ## Writing
 

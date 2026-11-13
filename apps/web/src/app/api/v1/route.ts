@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   return Response.json({
-    token: { lang: context.lang, access: context.access },
+    token: { lang: context.lang, access: context.access, generate: context.generate },
     sections: Object.fromEntries(
       Object.entries(sections).map(([name, api]) => [name, { filters: Object.keys(api.filters) }]),
     ),
@@ -22,6 +22,7 @@ export async function GET(request: Request) {
       itemsPerUpdate: MAX_ITEMS,
       textLength: MAX_TEXT,
       nameLength: MAX_NAME,
+      itemsPerGeneration: MAX_ITEMS,
       // nginx enforces this one (nginx-spoken-api.conf), so it cannot be imported.
       requestBytes: 8 * 1024 * 1024,
     },
@@ -30,6 +31,8 @@ export async function GET(request: Request) {
       "GET /api/v1/{section}/{id}": "One item. Quest lines take ?variant=, default 0.",
       "PATCH /api/v1/{section}/{id}": "Change one item: {text?, name?, short?, note?, expectedVersion?, expectedNameVersion?}. Quest lines take ?variant=, not a body field.",
       "PATCH /api/v1/{section}": "Change many: {items: [{id, variant?, text?, name?, short?, ...}], note?}. Returns batchId and one result per item, in order.",
+      "GET /api/v1/{section}/reference": "The English text of a section, to translate from. Same filters and cursor as the list; no versions. Any valid token.",
+      "POST /api/v1/{section}/generate": "Queue audio on the token owner's own key: {items: [{id, variant?}]} or, for quests, {filters: \"<Explorer query string>\"}; optional label and dryRun. A dry run prices it and queues nothing. Needs a generate token.",
       "GET /api/v1/batches": "This owner's recent mass updates in this language.",
       "POST /api/v1/batches/{batchId}/restore": "Undo a mass update, except lines edited since and gender splits.",
       "GET /api/v1/lexicon": "The language's pronunciation lexicon: entries, version, sync.",
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
     },
     notes: [
       "The language always comes from the token.",
-      "Writes go live at once. Edited lines read as stale until someone regenerates them; nothing here makes audio.",
+      "Writes go live at once. Edited lines read as stale until someone regenerates them. Text routes make no audio: only generate does, on the token owner's key, and a line that is already done and asked for again is paid for again.",
       "A null text is an item with no translation yet. englishText is what to translate from.",
       "A quest line's override, when not null, is what gets spoken instead of its text. Writing text does not change it, and this API cannot write it.",
       "Text containing $G splits a quest line into :m and :f. Plain text to either side of an untranslated split is refused: send one text with a $G branch.",

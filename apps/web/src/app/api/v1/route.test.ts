@@ -58,9 +58,17 @@ describe("GET /api/v1", () => {
     });
   });
 
+  it("lists the reference and generate endpoints and the token's generate flag", async () => {
+    const body = (await (await get(token)).json()) as { token: unknown; endpoints: Record<string, string> };
+    expect(body.token).toMatchObject({ generate: false });
+    expect(Object.keys(body.endpoints)).toEqual(
+      expect.arrayContaining(["GET /api/v1/{section}/reference", "POST /api/v1/{section}/generate"]),
+    );
+  });
+
   it("states the limits", async () => {
     expect(await (await get(token)).json()).toMatchObject({
-      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, nameLength: 200, requestBytes: 8_388_608 },
+      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, nameLength: 200, itemsPerGeneration: 1000, requestBytes: 8_388_608 },
     });
   });
 
