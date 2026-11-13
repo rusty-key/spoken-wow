@@ -123,6 +123,7 @@ Defaults = {
     },
     char = {
         IsPaused = false,
+        IsMuted = false,
     },
 }
 

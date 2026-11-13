@@ -121,13 +121,13 @@ local DataModulesTab =
 ---@type AceConfigOptionsTable
 local function SetMute(rest)
     if rest == "on" then
-        Spoken:Pause()
+        Spoken:Mute()
     elseif rest == "off" then
-        Spoken:Resume()
+        Spoken:Unmute()
     else
-        Spoken:TogglePause()
+        Spoken:ToggleMute()
     end
-    print("Spoken Quests: " .. (Spoken:IsPaused() and L.AUDIO_MUTED or L.AUDIO_UNMUTED))
+    print("Spoken Quests: " .. (Spoken:IsMuted() and L.AUDIO_MUTED or L.AUDIO_UNMUTED))
 end
 
 local SlashCommands = {
