@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SECTIONS, validateFields, validateNewPack, type Section } from "@/lib/community/rules";
 import type { Submission } from "@/lib/community/store";
+import { send } from "@/lib/send";
 import { cn } from "@/lib/utils";
 
 /** The pack a new version is for, and the submission its fields start from. */
@@ -118,17 +119,12 @@ export default function PackForm({
 
     setBusy(true);
     setErrors({});
-    const response = await fetch(pack ? `/api/packs/${encodeURIComponent(pack.id)}/submissions` : "/api/packs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).catch(() => null);
+    const result = await send(pack ? `/api/packs/${encodeURIComponent(pack.id)}/submissions` : "/api/packs", "POST", body);
     setBusy(false);
 
-    if (!response) return setErrors({ form: "Could not reach the server. Try again." });
-    if (response.ok) return onSent();
-    const answer = (await response.json().catch(() => ({}))) as { error?: string; errors?: Record<string, string> };
-    setErrors(answer.errors ?? { form: answer.error ?? "Something went wrong." });
+    if (result.ok) return onSent();
+    if (!result.body) return setErrors({ form: "Could not reach the server. Try again." });
+    setErrors(result.body.errors ?? { form: result.error });
   }
 
   const field = (name: keyof Draft, label: string, input: ReactNode, help?: ReactNode) => (

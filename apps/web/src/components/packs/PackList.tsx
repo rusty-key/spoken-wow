@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Toaster, useToast } from "@/components/ui/toast";
 import type { Pack, Submission } from "@/lib/community/store";
+import { send } from "@/lib/send";
 
 import PackForm, { type VersionOf } from "./PackForm";
 import PackStatus from "./PackStatus";
@@ -47,14 +48,11 @@ function List({ packs }: { packs: Pack[] }) {
 
   async function withdraw(pack: Pack) {
     setBusy(pack.id);
-    const response = await fetch(`/api/packs/${encodeURIComponent(pack.id)}/submissions/pending`, {
-      method: "DELETE",
-    }).catch(() => null);
+    const result = await send(`/api/packs/${encodeURIComponent(pack.id)}/submissions/pending`, "DELETE");
     setBusy(null);
     router.refresh();
-    if (response?.ok) return toast({ tone: "info", title: `Withdrew v${pack.pending?.version}.` });
-    const { error } = ((await response?.json().catch(() => ({}))) ?? {}) as { error?: string };
-    toast({ tone: "error", title: "Could not withdraw it.", detail: error ?? "Could not reach the server." });
+    if (result.ok) return toast({ tone: "info", title: `Withdrew v${pack.pending?.version}.` });
+    toast({ tone: "error", title: "Could not withdraw it.", detail: result.body?.error ?? "Could not reach the server." });
   }
 
   const newPack = (
