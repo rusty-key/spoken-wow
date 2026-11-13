@@ -123,7 +123,10 @@ export default function SortQueue({
   const [versions, setVersions] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  /** For one line: a card holding several shows it on that line only. */
+  const [notice, setNotice] = useState<{ lineId: string | null; text: string } | null>(null);
+  /** The line a regeneration was asked for, which another card may be picked away from. */
+  const [regenerating, setRegenerating] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   /** Everything on the card unclamped: the line's whole text and every report in full. */
   const [expanded, setExpanded] = useState(false);
@@ -140,6 +143,9 @@ export default function SortQueue({
   const [picked, setPicked] = useState(0);
   const lineId = ids[picked] ?? null;
   const { line, version, detail, canEdit, canRegenerateLine } = viewOf(lineId);
+  /** The picked line as of the latest render, for a regeneration finishing after a pick. */
+  const pickedId = useRef(lineId);
+  pickedId.current = lineId;
   const answer = answers[index];
 
   function viewOf(id: string | null): View {
@@ -229,15 +235,17 @@ export default function SortQueue({
   async function regenerate(lineId: string) {
     if (busy) return;
     setBusy("regenerate");
+    setRegenerating(lineId);
     setError(null);
     setNotice(null);
     const result = await regenerateLine(source, lineId, lang);
     setBusy(null);
+    setRegenerating(null);
     if ("error" in result) return setError(`Regenerate failed: ${result.error}`);
 
     setVersions((current) => ({ ...current, [lineId]: result.version }));
-    setNotice("New take saved.");
-    playWhenReady.current = true;
+    setNotice({ lineId, text: "New take saved." });
+    if (pickedId.current === lineId) playWhenReady.current = true;
     // Refetched rather than patched: a line that had no take until now only gains its audio
     // path from the search.
     void load(lineId);
@@ -369,7 +377,8 @@ export default function SortQueue({
             ringed={ids.length > 1 && at === picked}
             playing={playing}
             busy={busy}
-            notice={notice}
+            regenerating={regenerating === id}
+            notice={notice?.lineId === id ? notice.text : null}
             expanded={expanded}
             onExpand={() => setExpanded(!expanded)}
             showNpcPage={showNpcPage}
@@ -404,7 +413,7 @@ export default function SortQueue({
             canContribute={canContribute}
             onFixed={() => {
               // The accept rewrote the line's text, not its take: it is voiced again only on Regenerate.
-              setNotice("Text updated from the report. Regenerate to voice it.");
+              setNotice({ lineId, text: "Text updated from the report. Regenerate to voice it." });
               if (lineId) void load(lineId);
             }}
           />
@@ -525,6 +534,7 @@ function LineCard({
   ringed,
   playing,
   busy,
+  regenerating,
   notice,
   expanded,
   onExpand,
@@ -545,6 +555,7 @@ function LineCard({
   ringed: boolean;
   playing: boolean;
   busy: Busy;
+  regenerating: boolean;
   notice: string | null;
   expanded: boolean;
   onExpand: () => void;
@@ -558,7 +569,6 @@ function LineCard({
 }) {
   const text = detail?.text ?? "";
   const unwritten = detail !== null && detail.text === null;
-  const regenerating = picked && busy === "regenerate";
 
   return (
     <section className={cn("bg-card flex flex-col gap-2 rounded-xl border p-4", ringed && "ring-foreground/40 ring-2")}>
@@ -643,7 +653,7 @@ function LineCard({
         </Button>
       </div>
       {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">No audio on file.</p> : null}
-      {picked && notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
+      {notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
     </section>
   );
 }
