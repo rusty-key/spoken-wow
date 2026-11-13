@@ -9,6 +9,7 @@ import {
   activeRun,
   lastDoneRuns,
   lastReleasedAt,
+  latestPackVersions,
   packReleases,
   recentRuns,
   startRun,
@@ -68,7 +69,7 @@ describe("release runs", () => {
     expect(runs.map((run) => [run.section, run.version])).toEqual([["bosses", "1.0.0"]]);
   });
 
-  it("lists each language's released pack versions newest first, across teams", async () => {
+  it("lists a language's released pack versions newest first, and each language's newest, across teams", async () => {
     const run = async (section: string, lang: "frFR" | "deDE", patch: Parameters<typeof updateRun>[1]) =>
       updateRun((await startRun(section, lang, user.id)).id, patch);
     await run("quests", "frFR", { state: "done", version: "1.2.0" });
@@ -77,13 +78,12 @@ describe("release runs", () => {
     await run("quests", "frFR", { state: "failed", error: "no" });
     await run("quests", "deDE", { state: "done", version: "2.0.1" });
     await run("places", "deDE", { state: "done", version: "9.0.0" });
-    const releases = await packReleases("quests");
-    expect(Object.fromEntries(Object.entries(releases).map(([lang, list]) => [lang, list.map((r) => r.version)]))).toEqual({
-      frFR: ["1.3.0", "1.2.0"],
-      deDE: ["2.0.1"],
-    });
-    expect(Date.parse(releases.frFR[0].at)).toBeGreaterThan(Date.parse(releases.frFR[1].at));
-    expect(await packReleases("readables")).toEqual({});
+    const releases = await packReleases("quests", "frFR");
+    expect(releases.map((r) => r.version)).toEqual(["1.3.0", "1.2.0"]);
+    expect(Date.parse(releases[0].at)).toBeGreaterThan(Date.parse(releases[1].at));
+    expect(await packReleases("quests", "deDE")).toMatchObject([{ version: "2.0.1" }]);
+    expect(await packReleases("readables", "frFR")).toEqual([]);
+    expect(await latestPackVersions("quests")).toEqual({ frFR: "1.3.0", deDE: "2.0.1" });
   });
 
   it("counts a section as released from a run that released or found nothing, not one that failed", async () => {

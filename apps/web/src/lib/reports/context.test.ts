@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { addonVersion, contextFacts, contextFrom, isOlder, lineNews, outdatedPack, packName, packVersion, questPart } from "./context";
+import { addonVersion, contextFacts, contextFrom, folderVersion, isOlder, lineNews, outdatedPack, packVersion } from "./context";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`../../../../../tests/fixtures/contributions/${name}`, import.meta.url), "utf8");
@@ -36,48 +36,30 @@ describe("outdatedPack", () => {
   });
 
   it("names the newer release of the pack language the player was hearing", () => {
-    expect(outdatedPack(heard("deDE", "1.2.0"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }, { version: "1.2.0", at: "2026-11-01T00:00:00Z" }], enUS: [{ version: "1.0.0", at: "2026-11-01T00:00:00Z" }] })).toEqual({
+    expect(outdatedPack(heard("deDE", "1.2.0"), { deDE: "1.10.0", enUS: "1.0.0" })).toEqual({
       version: "1.2.0",
       latest: "1.10.0",
     });
   });
 
   it("is nothing for a current pack, no pack, an older addon or a language never released", () => {
-    expect(outdatedPack(heard("deDE", "1.10.0"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
-    expect(outdatedPack(heard("deDE", "none"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
-    expect(outdatedPack(heard("deDE"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
-    expect(outdatedPack(heard("frFR", "1.0.0"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
-    expect(outdatedPack(heard("deDE", "1.0.0"), undefined)).toBeNull();
+    expect(outdatedPack(heard("deDE", "1.10.0"), { deDE: "1.10.0" })).toBeNull();
+    expect(outdatedPack(heard("deDE", "none"), { deDE: "1.10.0" })).toBeNull();
+    expect(outdatedPack(heard("deDE"), { deDE: "1.10.0" })).toBeNull();
+    expect(outdatedPack(heard("frFR", "1.0.0"), { deDE: "1.10.0" })).toBeNull();
+    // A folder the newest release left alone is behind it and still current: triage weighs the language's newest.
+    expect(outdatedPack({ fields: { pack: "deDE", packVersion: "1.10.0", packFolderVersion: "1.2.0" }, text: null }, { deDE: "1.10.0" })).toBeNull();
   });
 });
 
-describe("packName", () => {
-  it("names the pack as its store page does", () => {
-    expect(packName("quests", "enUS")).toBe("Spoken Audio: Quests");
-    expect(packName("places", "deDE")).toBe("Spoken German Audio: Places");
-    expect(packName("readables", "esMX")).toBe("Spoken Spanish (AL) Audio: Readables");
-  });
-});
-
-describe("the line's folder", () => {
+describe("the pack versions", () => {
   const sent = (fields: Record<string, string>) => ({ fields, text: null });
 
-  it("is the quests part its folder names, in any language, and none for the old single folder", () => {
-    expect(questPart(sent({ packFolder: "SpokenQuestsAudioHorde" }))).toBe("Horde");
-    expect(questPart(sent({ packFolder: "SpokenQuestsAudioGossip_deDE" }))).toBe("Gossip");
-    expect(questPart(sent({ packFolder: "SpokenQuestsAudio_deDE" }))).toBeNull();
-    expect(questPart(sent({}))).toBeNull();
-  });
-
-  it("gives its version before the language's newest", () => {
-    expect(packVersion(sent({ packVersion: "1.3.0", packFolderVersion: "1.1.0" }))).toBe("1.1.0");
-    expect(packVersion(sent({ packVersion: "1.3.0", packFolderVersion: "none" }))).toBe("1.3.0");
-  });
-
-  it("names the pack as its store page does", () => {
-    expect(packName("quests", "enUS", "Horde")).toBe("Spoken Audio: Quests - Horde");
-    expect(packName("quests", "deDE", "Gossip")).toBe("Spoken German Audio: Gossip");
-    expect(packName("places", "deDE", "Horde")).toBe("Spoken German Audio: Places");
+  it("keeps the language's newest apart from the line's folder", () => {
+    const both = sent({ packVersion: "1.3.0", packFolderVersion: "1.1.0" });
+    expect(packVersion(both)).toBe("1.3.0");
+    expect(folderVersion(both)).toBe("1.1.0");
+    expect(folderVersion(sent({ packVersion: "1.3.0", packFolderVersion: "none" }))).toBeNull();
   });
 });
 

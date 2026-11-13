@@ -483,20 +483,24 @@ local function SoundDataForCurrent()
     end
 end
 
+--- The line on screen resolved by DataModules:PrepareSound, or nil when no pack has it.
+local function PreparedForCurrent()
+    local soundData = SoundDataForCurrent()
+    return soundData and DataModules:PrepareSound(soundData) and soundData or nil
+end
+
 --- Whether this client's data module has a line for what is on screen.
 local function HasSoundForCurrent()
-    local soundData = SoundDataForCurrent()
-    if not soundData or not DataModules:PrepareSound(soundData) then
-        return false
-    end
+    local soundData = PreparedForCurrent()
     -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
-    return not (soundData.event == Enums.SoundEvent.Gossip and DataModules:IsOtherBody(soundData))
+    return soundData ~= nil
+        and not (soundData.event == Enums.SoundEvent.Gossip and DataModules:IsOtherBody(soundData))
 end
 
 --- The data module the line on screen plays from, or nil when no pack has it.
 function Contribute:ModuleForCurrent()
-    local soundData = SoundDataForCurrent()
-    return soundData and DataModules:PrepareSound(soundData) and soundData.module or nil
+    local soundData = PreparedForCurrent()
+    return soundData and soundData.module
 end
 
 --- Whether Capture would build an envelope, without paying to build one.

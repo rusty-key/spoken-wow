@@ -21,7 +21,7 @@ import TakeSelector from "@/components/TakeSelector";
 import { PageTextDialog } from "@/components/readables/PageTextDialog";
 import { Player as ReadablesPlayer } from "@/components/readables/Player";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
-import type { PackReleases } from "@/lib/reports/context";
+import type { PackVersions } from "@/lib/reports/context";
 import { Button } from "@/components/ui/button";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player as PlacesPlayer } from "@/components/places/Player";
@@ -91,7 +91,7 @@ export default function SortQueue({
   canRegenerate,
   canEditText,
   showNpcPage,
-  releases,
+  latestPacks,
 }: {
   source: Source;
   /** The queue as the server sorted it, open reports only, skipped lines already left out. */
@@ -101,7 +101,7 @@ export default function SortQueue({
   /** Whether the speaker's name opens the NPC page. See LineHeading. */
   showNpcPage: boolean;
   /** The section's released pack versions by language, to flag a report heard on an old pack. */
-  releases: PackReleases;
+  latestPacks: PackVersions;
 }) {
   const lang = useLang();
   // Held from the first render: a refresh while sorting brings back a list without the lines
@@ -431,7 +431,7 @@ export default function SortQueue({
           {group.reports.length} {group.reports.length === 1 ? "report" : "reports"}
         </p>
         {reports.map((report) => (
-          <ReportPreview key={report.id} report={report} expanded={expanded} releases={releases} />
+          <ReportPreview key={report.id} report={report} expanded={expanded} latestPacks={latestPacks} />
         ))}
         {!expanded && group.reports.length > PREVIEW ? (
           <button
@@ -550,11 +550,11 @@ function Hint({ children }: { children: ReactNode }) {
 function ReportPreview({
   report,
   expanded,
-  releases,
+  latestPacks,
 }: {
   report: Report;
   expanded: boolean;
-  releases: PackReleases;
+  latestPacks: PackVersions;
 }) {
   const [opened, setOpened] = useState(false);
   return (
@@ -574,7 +574,7 @@ function ReportPreview({
       >
         {report.body}
       </p>
-      <ReportContextNote context={report.context} releases={releases} />
+      <ReportContextNote context={report.context} latestPacks={latestPacks} />
     </article>
   );
 }
