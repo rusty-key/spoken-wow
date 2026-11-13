@@ -283,6 +283,54 @@ local function HeardSet()
 	return db.heard
 end
 
+-- The wall clock, not GetTime(): a wait can be a month, and GetTime() restarts from zero with the
+-- client. A day at the least: a shorter wait repeats the stories to a player riding back and forth.
+SpokenPlaces.EVERY_VISIT_GAPS = { 24 * 3600, 7 * 24 * 3600, 30 * 24 * 3600 }
+local DEFAULT_GAP = SpokenPlaces.EVERY_VISIT_GAPS[1]
+local OFFERED_GAP = {}
+for _, gap in ipairs(SpokenPlaces.EVERY_VISIT_GAPS) do
+	OFFERED_GAP[gap] = true
+end
+
+-- os.time under the luajit tests, which have no time().
+local function Now()
+	return (time or os.time)()
+end
+
+function SpokenPlaces:EveryVisitGap()
+	local chosen = self:Get("autoplayEveryVisitGap")
+	return OFFERED_GAP[chosen] and chosen or DEFAULT_GAP
+end
+
+local function ReadAtSet()
+	local db = CharDB()
+	if type(db.readAt) ~= "table" then
+		db.readAt = {}
+	end
+	return db.readAt
+end
+
+function SpokenPlaces:ReadRecently(mapID, areaKey)
+	local at = mapID and ReadAtSet()[HeardKey(mapID, areaKey)]
+	if type(at) ~= "number" then
+		return false
+	end
+	local now = Now()
+	-- A time ahead of now is the clock set back: counting it as recent would silence the place.
+	return now >= at and now - at < SpokenPlaces:EveryVisitGap()
+end
+
+local function ReadsKnownPlaces()
+	return SpokenPlaces:Get("autoplayExplored") or SpokenPlaces:Get("autoplayEveryVisit")
+end
+
+local function Due(mapID, areaKey)
+	if SpokenPlaces:Get("autoplayEveryVisit") then
+		return not SpokenPlaces:ReadRecently(mapID, areaKey)
+	end
+	return not SpokenPlaces:HasHeard(mapID, areaKey)
+end
+
 function SpokenPlaces:HasHeard(mapID, areaKey)
 	if not mapID then
 		return false
@@ -298,6 +346,7 @@ function SpokenPlaces:MarkHeard(mapID, areaKey)
 		return
 	end
 	HeardSet()[HeardKey(mapID, areaKey)] = true
+	ReadAtSet()[HeardKey(mapID, areaKey)] = Now()
 end
 
 function SpokenPlaces:HeardCount()
@@ -326,7 +375,7 @@ local function NarrateUnheard()
 	if not greetingSettled then
 		return
 	end
-	if not SpokenPlaces:Get("autoplayExplored") then
+	if not ReadsKnownPlaces() then
 		return
 	end
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
@@ -340,7 +389,7 @@ local function NarrateUnheard()
 
 	-- The zone first: entering a new zone at one of its subzones leaves both
 	-- unheard, and the wider piece is the one that sets up the other.
-	if not SpokenPlaces:HasHeard(mapID, nil) and SpokenPlaces:GetLore(mapID) then
+	if Due(mapID, nil) and SpokenPlaces:GetLore(mapID) then
 		Enqueue(mapID, nil)
 	end
 
@@ -354,7 +403,7 @@ local function NarrateUnheard()
 	end
 
 	local entry, key, storyMapID = SpokenPlaces:GetSubzoneLore(mapID, subZone)
-	if entry and key and not SpokenPlaces:HasHeard(storyMapID, key) then
+	if entry and key and Due(storyMapID, key) then
 		Enqueue(storyMapID, key)
 	end
 end
@@ -367,7 +416,8 @@ end
 -- UiMapAssignment row) and announces no discovery, so neither route above ever reaches one. The
 -- instance's own map is asked instead, and Spoken's Data/Dungeons.lua names the area whose story
 -- is its card. Once per character, by the heard record: an instance can be entered any number of
--- times, and its story may already have been read at an outdoor area of the same name.
+-- times, and its story may already have been read at an outdoor area of the same name. With Read
+-- Every Visit, again on any entry once the chosen wait has passed.
 
 -- The story { mapID, key } of the dungeon or raid the player is in, or nil.
 local function InstanceStory()
@@ -398,7 +448,7 @@ local function ReadInstance()
 		return
 	end
 	local entry = SpokenPlaces.Subzones[mapID] and SpokenPlaces.Subzones[mapID][key]
-	if not entry or SpokenPlaces:IsPending(entry) or SpokenPlaces:HasHeard(mapID, key) then
+	if not entry or SpokenPlaces:IsPending(entry) or not Due(mapID, key) then
 		return
 	end
 	if SpokenPlaces:Get("debug") then
@@ -525,6 +575,7 @@ function SpokenPlaces:ForgetAutoplayHistory()
 	local db = CharDB()
 	db.greeted = nil
 	db.heard = nil
+	db.readAt = nil
 end
 
 --------------------------------------------------------------------------------
@@ -532,9 +583,11 @@ end
 --------------------------------------------------------------------------------
 
 -- Include Places Found Before may have read a discovered place already: at login it reads a
--- new character's zone, which the game announces only when the character walks out into it.
+-- new character's zone, which the game announces only when the character walks out into it. Read
+-- Every Visit reads on the zone change that comes with a discovery, so a place it read moments ago
+-- is not read twice.
 local function HeardAlready(mapID, key, areaName)
-	if not (SpokenPlaces:Get("autoplayExplored") and SpokenPlaces:HasHeard(mapID, key)) then
+	if not ReadsKnownPlaces() or Due(mapID, key) then
 		return false
 	end
 	if SpokenPlaces:Get("debug") then
@@ -764,5 +817,10 @@ function SpokenPlaces:DescribeAutoplay()
 	if self:Get("autoplayExplored") then
 		self:Print("already-explored areas included -- %d narrated on this character so far",
 			self:HeardCount())
+	end
+	if self:Get("autoplayEveryVisit") then
+		local days = self:EveryVisitGap() / (24 * 3600)
+		self:Print("every visit -- a place is read again %d %s after it was last read",
+			days, days == 1 and "day" or "days")
 	end
 end
