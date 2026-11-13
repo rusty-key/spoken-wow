@@ -705,6 +705,61 @@ local function PlaceBand(layout, hit, top)
     Put(hit, layout.parent, layout.left, top)
 end
 
+-- The game refuses an addon's SmartNavigation calls while combat holds addons back
+-- (SecureHelper.lua), showing its "action blocked" error once for each.
+local function CombatRestricted()
+    return C_RestrictedActions and C_RestrictedActions.IsAddOnRestrictionActive and Enum
+        and Enum.AddOnRestrictionType
+        and C_RestrictedActions.IsAddOnRestrictionActive(Enum.AddOnRestrictionType.Combat) or false
+end
+
+-- Hide a frame from the controller UI's cursor (SmartNavigation, Forever's gamepad UI).
+local function NoStop(frame)
+    if SmartNavigation_MarkFrameIgnored and not CombatRestricted() then
+        SmartNavigation_MarkFrameIgnored(frame)
+    end
+end
+
+local function CanNavigate()
+    return SmartNavigation_MarkFrameIgnored and SMART_NAV_INPUT_DIRECTION and CreateAnchor
+        and not CombatRestricted()
+end
+
+-- Where the cursor counts a stop and draws itself: just left of `at`. It goes up or down only to
+-- a stop within 45 degrees of straight, nearest first, counting each where its anchor points
+-- (SmartNavigation.lua, GetButtonInfoInDirection). So every stop in a page's column is counted
+-- by the column's left, its label's or its own, or the rows and the buttons under them are two
+-- columns and up and down skip between them.
+local function CountAt(frame, at)
+    SmartNavigation_SetCustomCursorAnchorPointForFrame(frame, CreateAnchor("RIGHT", at, "LEFT", -7))
+end
+
+-- A stop in the page's column with no label, a button or a link: counted at its own left.
+local function ColumnStop(frame)
+    if CanNavigate() then CountAt(frame, frame) end
+end
+
+-- Make a row one stop for the controller UI's cursor, as the game's own settings rows are
+-- (Blizzard_SettingControls.lua): its band, with the cursor just left of its label, and nothing
+-- on the frames in `controls`. `step(forward)` is what left and right do, and the cursor stays;
+-- a row with none keeps right from leaving it, as the game's checkbox does. `open` is what A
+-- does, for a band whose click does nothing. The game reads a function override inside a secure
+-- call and only while combat does not hold addons back (SmartNavigation.lua,
+-- HandleNavigationInput).
+local function OneStop(hit, controls, caption, step, open)
+    if not CanNavigate() then return end
+    local dir = SMART_NAV_INPUT_DIRECTION
+    for _, frame in ipairs(controls) do SmartNavigation_MarkFrameIgnored(frame) end
+    CountAt(hit, caption)
+    if step then
+        SmartNavigation_AddJumpNavigationOverride(hit, dir.LEFT, function() step(false); return true end)
+        SmartNavigation_AddJumpNavigationOverride(hit, dir.RIGHT, function() step(true); return true end)
+    else
+        SmartNavigation_AddIgnoreInputNavigationOverride(hit, dir.RIGHT)
+    end
+    if open then hit.OnSmartNavClick = open end
+end
+
 -- A checkbox: the game's settings checkbox (SettingsCheckboxTemplate), 30 by 29 -- the minimal
 -- box and its tick, and the greyed tick for one switched off -- or the classic template where
 -- the client has not got the atlases. `size` is the classic one's.
@@ -907,6 +962,142 @@ function Layout:Highlight(row)
     glow:Show()
 end
 
+-- Under the controller UI an addon showing a StaticPopup taints the game's gamepad popup
+-- handling: once the popup closes, the d-pad no longer moves on the settings page. There the
+-- question goes to a dialog of Spoken's own instead.
+local function GamepadUI()
+    return InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled() or false
+end
+
+--- Let the controller drive `frame` while it is shown, with B pressing `close`. The controller
+--- moves only between windows the frame controls manager knows of, so the frame registers as a
+--- popup, as Blizzard's own (GuildInviteFrame, ReadyCheck) do: focus moves to it on show and back
+--- to the window under it on hide. The manager refuses addons in combat: a frame closed then is
+--- handed back once combat ends, or the manager keeps it listed as shown and does not move the
+--- focus to it when it opens again.
+local afterCombat, afterCombatFrame
+
+local function HandBack(frame)
+    local manager = GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager
+    if not manager then frame.followed = nil; return end
+    if CombatRestricted() then
+        if not afterCombatFrame then
+            afterCombat, afterCombatFrame = {}, CreateFrame("Frame")
+            afterCombatFrame:SetScript("OnEvent", function(self)
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                local waiting = afterCombat
+                afterCombat = {}
+                for each in pairs(waiting) do
+                    if each.followed and not each:IsShown() then HandBack(each) end
+                end
+            end)
+        end
+        afterCombat[frame] = true
+        afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    frame.followed = nil
+    manager:HandlePopupHide(frame)
+end
+
+function Layout.FollowController(frame, close)
+    frame.CloseButton = close
+    frame:HookScript("OnShow", function(self)
+        if self.followed then return end
+        if GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager and not CombatRestricted() then
+            self.followed = true
+            GamepadMode.FrameControlsManager:HandlePopupShown(self)
+        end
+    end)
+    frame:HookScript("OnHide", function(self)
+        if self.followed then HandBack(self) end
+    end)
+end
+
+local prompt
+
+local function BuildPrompt()
+    -- Drawn as the game's own popup is (GameDialogBaseMixin:OnLoad, StaticPopupTemplate): the
+    -- dark dialog background under the diamond-cornered border, a tooltip-edged box to type in,
+    -- and the controller's glyphs on the buttons.
+    local frame = CreateFrame("Frame", "SpokenLayoutPrompt", UIParent)
+    frame:SetSize(320, 110)
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -135)
+    frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    frame:SetToplevel(true)
+    frame:EnableMouse(true)
+    local back = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+    back:SetAtlas("UI-DialogBox-Background-Dark")
+    back:SetPoint("TOPLEFT", 7, -7)
+    back:SetPoint("BOTTOMRIGHT", -7, 7)
+    local border = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
+    border:SetAtlas("UI-DiamondDialogBox-Border")
+    border:SetAllPoints(frame)
+    frame:Hide()
+    if UISpecialFrames then table.insert(UISpecialFrames, "SpokenLayoutPrompt") end
+
+    local text = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    text:SetPoint("TOP", frame, "TOP", 0, -18)
+    text:SetWidth(290)
+
+    local input = CreateFrame("EditBox", nil, frame, "TooltipBackdropTemplate")
+    input:SetFontObject(ChatFontNormal)
+    input:SetTextInsets(6, 6, 0, 0)
+    input:SetSize(150, 24)
+    input:SetPoint("TOP", text, "BOTTOM", 0, -10)
+    input:SetAutoFocus(false)
+
+    local accept = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    accept:SetSize(128, 21)
+    accept:SetPoint("BOTTOMRIGHT", frame, "BOTTOM", -6, 16)
+    local cancel = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    cancel:SetSize(128, 21)
+    cancel:SetPoint("BOTTOMLEFT", frame, "BOTTOM", 6, 16)
+    Layout.FollowController(frame, cancel)
+    -- A presses whichever button the cursor is on, and it starts on Accept unless there is a
+    -- name to type first; B always cancels.
+    local glyph
+    if GamepadMode and GamepadMode.AddGamepadIconToButton then
+        glyph = GamepadMode.AddGamepadIconToButton(accept, GAMEPAD_FACE_BOTTOM)
+        GamepadMode.AddGamepadIconToButton(cancel, GAMEPAD_FACE_RIGHT)
+    end
+
+    prompt = { frame = frame, text = text, input = input, accept = accept, cancel = cancel, glyph = glyph }
+    accept:SetScript("OnClick", function()
+        local run, typed = prompt.run, prompt.asking and input:GetText() or nil
+        frame:Hide()
+        if run then run(typed) end
+    end)
+    cancel:SetScript("OnClick", function() frame:Hide() end)
+    input:SetScript("OnEnterPressed", function() accept:Click() end)
+    input:SetScript("OnEscapePressed", function() frame:Hide() end)
+    frame:HookScript("OnHide", function() prompt.run = nil end)
+end
+
+local function ShowPrompt(question, acceptLabel, cancelLabel, run, asking)
+    if not prompt then BuildPrompt() end
+    prompt.text:SetText(question)
+    prompt.accept:SetText(acceptLabel)
+    prompt.cancel:SetText(cancelLabel)
+    prompt.asking = asking
+    prompt.input:SetText("")
+    prompt.input:SetShown(asking)
+    if prompt.glyph then prompt.glyph:SetShown(not asking) end
+    prompt.frame:SetHeight((prompt.text.GetStringHeight and prompt.text:GetStringHeight() or 14)
+        + (asking and 92 or 60))
+    prompt.run = run
+    prompt.frame:Show()
+end
+
+--- Ask for a line of text: under the controller UI only, in Spoken's own dialog, where it runs
+--- `accept(text)` on the first button and returns true. Elsewhere it returns false and the
+--- caller asks as before.
+function Layout.Ask(question, acceptLabel, cancelLabel, accept)
+    if not GamepadUI() then return false end
+    ShowPrompt(question, acceptLabel, cancelLabel, accept, true)
+    return true
+end
+
 -- One popup each for every panel that loads this file, so the names are the file's own.
 -- The callback lives here rather than on the dialog: how a dialog hands its data back to
 -- OnAccept differs across the clients this file loads on.
@@ -914,6 +1105,10 @@ local pendingAccept
 
 --- Ask before doing something that cannot be undone. `accept` runs on the first button.
 function Layout.Confirm(question, acceptLabel, cancelLabel, accept)
+    if GamepadUI() then
+        ShowPrompt(question, acceptLabel, cancelLabel, accept, false)
+        return
+    end
     if not (StaticPopupDialogs and StaticPopup_Show) then
         accept()
         return
@@ -998,6 +1193,7 @@ function Layout:Checkbox(label, tooltip, read, write, apply)
         if box:IsEnabled() and box.Click then box:Click() end
     end)
     hit.layoutControl, box.layoutHit = box, hit
+    OneStop(hit, { box }, box.text)
     Tooltip(box, label, tooltip)
     Tooltip(hit, label, tooltip)
     self:Index(box, label, tooltip)
@@ -1086,6 +1282,12 @@ function Layout:Slider(label, minValue, maxValue, step, read, write, apply, show
     frame.layoutSetEnabled = setEnabled
     frame.layoutLabel, frame.layoutValue = caption, value
     hit.layoutControl, frame.layoutHit, slider.layoutHit = frame, hit, hit
+    OneStop(hit, { frame }, caption, function(forward)
+        if slider.IsEnabled and not slider:IsEnabled() then return end
+        local current = slider:GetValue() + (forward and step or -step)
+        slider:SetValue(math.max(minValue, math.min(maxValue, current)))
+        Sound(ON)
+    end)
     Tooltip(hit, label, tooltip)
     Tooltip(frame, label, tooltip)
     Tooltip(slider, label, tooltip)
@@ -1143,6 +1345,7 @@ function Layout:Cycle(label, tooltip, values, read, write, apply, describe)
     end)
     Script(button, "OnShow", Sync)
     button.layoutSync = Sync
+    ColumnStop(button)
     Tooltip(button, nil, tooltip)
     self:Index(button, label, tooltip)
     Sync()
@@ -1287,6 +1490,18 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
     control.layoutSetEnabled = setEnabled
     control.layoutLabel = caption
     hit.layoutControl, control.layoutHit = control, hit
+    -- The game's settings dropdown takes the same keys (SettingsDropdownControlMixin).
+    if dropdown then
+        OneStop(hit, { control }, caption, function(forward)
+            local arrow = forward and control.IncrementButton or control.DecrementButton
+            if arrow then arrow:Click() end
+        end, function()
+            if dropdown:IsEnabled() then
+                dropdown:MouseDown()
+                dropdown:MouseUp()
+            end
+        end)
+    end
     Tooltip(hit, label, tooltip)
     self:Index(control, label, tooltip)
     Sync()
@@ -1305,6 +1520,29 @@ end
 --- centred window too, where the title sits across the middle. Its text may change:
 --- Layout.FitButton sizes it again.
 local HEADING_LINE = 17      -- GameFontHighlightLarge's line
+
+-- A shown row's stop for the controller UI's cursor: its band, or its control where that is a
+-- button. Nil for a note, a link or a row out of sight.
+local function RowStop(row)
+    local control = row.control
+    local stop = control and (control.layoutHit or control)
+    if not (row.shown and stop and stop.IsVisible and stop:IsVisible()) then return nil end
+    local kind = stop.GetObjectType and stop:GetObjectType()
+    if stop == control.layoutHit or kind == "Button" or kind == "CheckButton" then return stop end
+end
+
+-- Down from a button at the page's right, Defaults or a section's, is the first of `rows()` with
+-- a stop: the rows are counted by their labels at the left, too far aside for straight down.
+local function DownToFirstRow(button, rows)
+    if not CanNavigate() then return end
+    SmartNavigation_AddJumpNavigationOverride(button, SMART_NAV_INPUT_DIRECTION.DOWN, function()
+        for _, row in ipairs(rows()) do
+            local stop = RowStop(row)
+            if stop then return stop end
+        end
+    end)
+end
+
 function Layout:HeadingButton(label, onClick, tooltip)
     local section = self.current
     local parent, layout = self.parent, self
@@ -1329,6 +1567,7 @@ function Layout:HeadingButton(label, onClick, tooltip)
         button:Hide()
     end
     section.button = button
+    DownToFirstRow(button, function() return section.rows end)
     return button
 end
 
@@ -1346,6 +1585,7 @@ function Layout:Button(label, width, onClick, tooltip)
     button.layoutNatural = button:GetWidth()
     Script(button, "OnClick", onClick)
     Above(button, parent)
+    ColumnStop(button)
     Tooltip(button, label, tooltip)
     self:Index(button, label, tooltip)
     local section = self.current
@@ -2111,6 +2351,9 @@ function Layout:Link(item)
     Tooltip(frame, item.title, item.tooltip)
     Tooltip(box, item.title, item.tooltip)
     frame.layoutLink, frame.icon, frame.box = item, icon, box
+    -- One stop: A on the icon selects the address, as a click does.
+    ColumnStop(frame)
+    NoStop(box)
     self:Index(frame, item.title, item.tooltip)
     self:AddRow(LINK_FRAME, frame, { frame, box }, function(top)
         local x = self.left + LABEL_X
@@ -2129,6 +2372,7 @@ function Layout:Status(read)
     local parent = self.parent
     local badge = NewBadge(parent)
     Updater(self, function() badge:Set(read()) end)
+    ColumnStop(badge)
     self:AddRow(STATUS_HEIGHT, badge, { badge }, function(top, x) Put(badge, parent, x + LABEL_X, top) end)
     return badge
 end
@@ -2149,6 +2393,7 @@ function Layout:Badge(label, read, tooltip, hug)
     Tooltip(hit, label, tooltip)
     Updater(self, function() badge:Set(read()) end)
     badge.layoutLabel = caption
+    OneStop(hit, { badge }, caption)
     self:AddRow(ROW_HEIGHT, badge, { hit, badge, caption }, function(top, x)
         PlaceBand(self, hit, top)
         PlaceLabel(self, caption, x, top)
@@ -2187,6 +2432,10 @@ function Layout:Download(label, read, buttonLabel, onClick, tooltip)
         field.layoutGet = get
     end
     Updater(self, Show)
+    -- A on the row is its Download button while the pack is missing.
+    OneStop(hit, { field, button }, caption, nil, function()
+        if field.layoutGet then button:Click() end
+    end)
     -- Found by search, so "voice pack" leads to the list.
     self:Index(field, label, tooltip)
     self:AddRow(ROW_HEIGHT, field, { hit, field, button, caption }, function(top, x)
@@ -2217,6 +2466,7 @@ function Layout:Key(label, read, set, tooltip, labels)
     local field = NewBadge(parent, true)
     Above(field, parent)
     hit.layoutControl, field.layoutHit, field.layoutLabel = field, hit, caption
+    OneStop(hit, { field }, caption)
     Tooltip(hit, label, tooltip)
     Tooltip(field, label, tooltip)
     local layout = self
@@ -2388,6 +2638,11 @@ function Layout:Defaults(onClick, label, tooltip)
     Script(button, "OnClick", onClick)
     Above(button, holder)
     Tooltip(button, label, tooltip)
+    DownToFirstRow(button, function()
+        local rows = {}
+        EachRow(self, function(row) table.insert(rows, row) end)
+        return rows
+    end)
     self.defaults = button
     self.dirty = true
     return button
@@ -2549,6 +2804,8 @@ local function BuildScrollBar(view, parent)
     end
 
     local thumb = CreateFrame("Button", nil, bar)
+    -- A drag the controller cannot make; its cursor scrolls the page to the row it is on.
+    NoStop(thumb)
     thumb:SetWidth(barWidth)
     thumb:SetHeight(MIN_THUMB)
     thumb:SetPoint("TOP", bar, "TOP", 0, 0)

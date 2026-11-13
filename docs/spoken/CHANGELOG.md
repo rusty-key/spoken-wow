@@ -31,6 +31,23 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   play a pack in such a language, such as Hebrew, pick it there. "Auto" follows your client and no
   longer takes that pack for English.
   *([rusty-key](https://github.com/rusty-key))*
+- **The settings pages take the d-pad as the game's own do.** With the controller UI on, each
+  checkbox, slider and dropdown is one stop: up and down move from row to row, left and right
+  step a slider or a dropdown, and A ticks the box or opens the list. The cursor no longer lands
+  on a checkbox apart from its row, on a slider's or a dropdown's arrows, or on the scroll bar.
+  *([nobbs](https://github.com/nobbs))*
+- **A voice pack's Download button no longer breaks the controller UI.** With the controller UI
+  on, it opened the game's popup, and closing that was blocked: "Spoken_Quests has been blocked
+  from an action", and the d-pad stopped moving through the settings. The address now shows in
+  Spoken's own copy box, which takes the d-pad while it is open and closes with B.
+  *([nobbs](https://github.com/nobbs))*
+- **Reset, New Profile and the other settings questions no longer break the controller UI.**
+  With the controller UI on, they opened the game's popup, and once it closed the d-pad no longer
+  moved through the settings. They now ask in Spoken's own dialog, which takes the d-pad while it
+  is open and closes with B. *([nobbs](https://github.com/nobbs))*
+- **Copy Settings From and Delete Profile ask first.** Picking a name acted at once, so a click
+  on a dropdown's arrow, or the d-pad's left or right on its row, could replace or delete a
+  profile. *([nobbs](https://github.com/nobbs))*
 
 ## 3.8.7 — 2026-11-12
 

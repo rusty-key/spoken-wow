@@ -556,6 +556,88 @@ Expect("...but not the profile for new characters, which is every character's", 
     env.Addon.db:GetCurrentProfile())
 Expect("...and reloads to finish", stub.reloads, reloads + 1)
 
+---------------------------------------------------------------- new profile under the controller UI
+-- The name is asked for in Spoken's own dialog there: a StaticPopup taints the game's gamepad
+-- popup handling, and the d-pad stopped moving on the page once it closed.
+do
+    local function Find(frame, text)
+        for _, child in ipairs(frame.children or {}) do
+            if child.text == text and child.scripts and child.scripts.OnClick then return child end
+            local found = Find(child, text)
+            if found then return found end
+        end
+    end
+    local newProfile = Options.profileLayout and Find(Options.profileLayout.parent, L.OPT_PROFILE_NEW)
+    Expect("the profiles have a New Profile button", newProfile ~= nil, true)
+    local popups = #stub.popups
+    _G.InputUtil = { IsGamepadUIEnabled = function() return true end }
+    newProfile.scripts.OnClick(newProfile)
+    Expect("under the controller UI it raises no StaticPopup", #stub.popups, popups)
+    local prompt = _G.SpokenLayoutPrompt
+    Expect("...but Spoken's own dialog", prompt and prompt:IsShown(), true)
+    local input, accept
+    for _, child in ipairs(prompt.children) do
+        if child.frameType == "EditBox" then input = child end
+        if child.text == (_G.ACCEPT or "Accept") then accept = child end
+    end
+    input:SetText("Pad")
+    accept.scripts.OnClick(accept)
+    Expect("accepting a name switches to that profile", Options:CurrentProfile(), "Pad")
+    _G.InputUtil = nil
+    newProfile.scripts.OnClick(newProfile)
+    Expect("without the controller UI it is the StaticPopup as before", stub.popups[#stub.popups].key,
+        "SPOKEN_NEW_PROFILE")
+end
+
+---------------------------------------------------------------- delete and copy ask first
+-- Each acts on picking a name, and a dropdown's arrows (or the d-pad's left and right on its
+-- row) pick one: a stray press deleted a player's profile.
+do
+    local profiles = Options.profileLayout
+    local other
+    for _, name in ipairs(Options:ProfileNames()) do
+        if name ~= Options:CurrentProfile() then other = name end
+    end
+    local function Has(name)
+        for _, each in ipairs(Options:ProfileNames()) do if each == name then return true end end
+        return false
+    end
+    local copied = 0
+    local copy = Options.CopyProfile
+    Options.CopyProfile = function(self, name) copied = copied + 1; return copy(self, name) end
+
+    local popups = #stub.popups
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    Expect("copying a profile asks first", #stub.popups, popups + 1)
+    Expect("...naming the profile", tostring(stub.popups[#stub.popups].args[1]):find(other, 1, true) ~= nil, true)
+    Expect("...and copies nothing until answered", copied, 0)
+    stub.popups[#stub.popups].dialog.OnCancel()
+    Expect("cancelling copies nothing", copied, 0)
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting copies", copied, 1)
+    -- The settings stay usable while it asks: a copy accepted after a switch would overwrite
+    -- the profile switched to, not the one the question was asked in.
+    local asked = Options:CurrentProfile()
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    Options:SetProfile("Elsewhere")
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting after a switch to another profile copies nothing", copied, 1)
+    Options:SetProfile(asked)
+    Options.CopyProfile = copy
+
+    popups = #stub.popups
+    stub.PickDropdown(Row(profiles, L.OPT_DELETE_PROFILE), other)
+    Expect("deleting a profile asks first", #stub.popups, popups + 1)
+    Expect("...naming the profile", tostring(stub.popups[#stub.popups].args[1]):find(other, 1, true) ~= nil, true)
+    Expect("...and keeps it until answered", Has(other), true)
+    stub.popups[#stub.popups].dialog.OnCancel()
+    Expect("cancelling keeps it", Has(other), true)
+    stub.PickDropdown(Row(profiles, L.OPT_DELETE_PROFILE), other)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting deletes it", Has(other), false)
+end
+
 ---------------------------------------------------------------- welcome
 -- Show Narrator, and each module's own row under it: every module's lines show unless turned off.
 do
