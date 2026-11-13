@@ -78,6 +78,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "Spielt die Folgezeilen der NPCs zu einer Quest erneut
 L.OPT_CMD_CHATTER = "Weltgeplauder"
 L.OPT_CMD_CHATTER_DESC = "Spielt ab, was ein NPC laut sagt, als hättest du es gerade gehört: /spq chatter [NPC-ID] (ohne Angabe die deines Ziels)"
 L.OPT_PANEL_FOLLOWUP = "NPC-Chat nach Quests vorlesen"
+L.OPT_PANEL_PROGRESS = "Quest-Fortschritt vorlesen"
 L.OPT_PANEL_GREETINGS = "Begrüßungen vorlesen"
 L.OPT_GREETING_LABEL_ALWAYS = "Jedes Mal"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Einmal bei Questgebern"

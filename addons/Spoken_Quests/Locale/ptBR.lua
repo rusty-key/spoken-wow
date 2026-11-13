@@ -78,6 +78,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "Repete as falas de PNJ após uma missão como se voc�
 L.OPT_CMD_CHATTER = "Conversas do mundo"
 L.OPT_CMD_CHATTER_DESC = "Repete o que um PNJ diz em voz alta, como se você tivesse acabado de ouvir: /spq chatter [id do PNJ] (o do seu alvo se omitido)"
 L.OPT_PANEL_FOLLOWUP = "Ler o chat de PNJs após missões"
+L.OPT_PANEL_PROGRESS = "Ler o progresso das missões"
 L.OPT_PANEL_GREETINGS = "Ler saudações"
 L.OPT_GREETING_LABEL_ALWAYS = "Toda vez"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Uma vez para quem dá missões"

@@ -483,7 +483,9 @@ each take's audio, in `audio-history/`. A line with no live take shows as a gap.
 **Progress text is a line like any other.** It was once skipped everywhere: never generated,
 hidden from the explorer and left out of the Missing audio ranking. Migration 0108 made it
 voiceable, and the explorer, batches and the ranking treat it like the rest; `progress` in the
-source filter narrows to it.
+source filter narrows to it. In the addon, **Read Quest Progress Text** (`Audio.ProgressText`,
+on by default, under Read Automatically) lets a player stop the progress page reading itself;
+its Play button and `/spq read` still play it.
 
 **The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
 `?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them

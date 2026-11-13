@@ -298,6 +298,10 @@ function Addon:InvokeQuestHandler(event, source, manual, snapshot)
         Debug:Record("autoplay-off", format("Not reading %s: autoplay is off", event))
         return false
     end
+    if not manual and not self:ReadsItself(event) then
+        Debug:Record("progress-off", format("Not reading %s: Read Progress Text is off", event))
+        return false
+    end
     -- Read while DialogueUI's window is still appearing, the voice would run ahead of the words
     -- it marks, so autoplay waits for the window.
     local bridge = not manual and not snapshot and rawget(VoiceOver, "DialogueUIBridge")
@@ -350,6 +354,12 @@ end
 
 function Addon:IsAutoplayOn()
     return self.db.profile.Audio.Autoplay ~= false
+end
+
+--- Whether autoplay reads this dialog: every one but the progress page, which Read Progress
+--- Text can leave to its Play button.
+function Addon:ReadsItself(event)
+    return event ~= "QUEST_PROGRESS" or self.db.profile.Audio.ProgressText ~= false
 end
 
 --- Read Greetings is at Never: no NPC window reads itself, whatever Read Automatically says.
@@ -462,6 +472,9 @@ local defaults = {
             -- What NPCs say in chat after this player accepts or turns in a quest
             -- (Followup.lua). Autoplay off silences these too: they read themselves.
             FollowupLines = true,
+            -- Off, the progress page (QUEST_PROGRESS) does not read itself; its Play button
+            -- and /spq read still play it.
+            ProgressText = true,
             -- Follow the client, and fall back on English. Every pack that exists today
             -- is English and declares no language, so an English-speaking player with the
             -- packs they already have resolves enUS on the first pass and hears exactly
@@ -796,6 +809,14 @@ function Addon:OnInitialize()
             state.completedKey = nil
             Debug:Record("auto-watcher-stabilizing", format("Waiting for %s quest %s to finish populating", event,
                 tostring(questID)))
+            return
+        end
+
+        -- A page autoplay leaves alone is done with, or the watcher would ask again every poll.
+        if not self:ReadsItself(event) then
+            state.completedKey = key
+            MarkHandled(state, key)
+            MarkQuestSnapshotRead(event, questID)
             return
         end
 
@@ -1409,8 +1430,8 @@ end
 ---@return boolean? muted
 local function TakeGreetingMute(self, event)
     EndGreetingTextWait()
-    if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:IsAutoplayOn() or self.dataModulesPending
-        or not Player.source then
+    if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:IsAutoplayOn()
+        or not self:ReadsItself(event) or self.dataModulesPending or not Player.source then
         return
     end
     local quest = QUEST_EVENTS[event]

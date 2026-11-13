@@ -78,6 +78,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "重播某个任务的 NPC 后续台词，就像你刚
 L.OPT_CMD_CHATTER = "世界闲谈"
 L.OPT_CMD_CHATTER_DESC = "重播某个 NPC 大声说的话，就像你刚听到一样：/spq chatter [NPC id]（省略则用目标的 id）"
 L.OPT_PANEL_FOLLOWUP = "任务后朗读 NPC 聊天"
+L.OPT_PANEL_PROGRESS = "朗读任务进行中文本"
 L.OPT_PANEL_GREETINGS = "朗读问候"
 L.OPT_GREETING_LABEL_ALWAYS = "每次"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "任务发布者一次"

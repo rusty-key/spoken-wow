@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Read Quest Progress Text.** A new Quests setting, on by default, under Read Automatically.
+  Turned off, the "not done yet" page an NPC shows before you hand in a quest no longer reads
+  itself; its Play button still plays it.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Places no longer shows the combat hold message when Stop When Combat Starts is off.**
   Autoplayed place audio continues normally during combat in that mode.
   *([anon1231823](https://github.com/anon1231823))*

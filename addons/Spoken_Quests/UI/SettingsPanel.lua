@@ -58,8 +58,13 @@ function SettingsPanel:Setup()
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP, nil,
         function() return audio().FollowupLines ~= false end,
         function(value) audio().FollowupLines = value end)
+    -- Only what reads itself: the progress page's Play button still plays it.
+    local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
+        function() return audio().ProgressText ~= false end,
+        function(value) audio().ProgressText = value end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end)

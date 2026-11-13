@@ -78,6 +78,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "퀘스트를 방금 완료한 것처럼 그 퀘스트
 L.OPT_CMD_CHATTER = "세상의 수다"
 L.OPT_CMD_CHATTER_DESC = "NPC가 소리 내어 하는 말을 방금 들은 것처럼 다시 재생합니다: /spq chatter [NPC id] (생략하면 대상의 id)"
 L.OPT_PANEL_FOLLOWUP = "퀘스트 후 NPC 채팅 읽기"
+L.OPT_PANEL_PROGRESS = "퀘스트 진행 중 대사 읽기"
 L.OPT_PANEL_GREETINGS = "인사말 읽기"
 L.OPT_GREETING_LABEL_ALWAYS = "매번"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "퀘스트 제공자는 한 번"

@@ -78,6 +78,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "Повторить реплики НИП после �
 L.OPT_CMD_CHATTER = "Разговоры в мире"
 L.OPT_CMD_CHATTER_DESC = "Повторить то, что НИП говорит вслух, как будто вы только что это услышали: /spq chatter [id НИП] (без значения берётся ваша цель)"
 L.OPT_PANEL_FOLLOWUP = "Читать чат НИП после заданий"
+L.OPT_PANEL_PROGRESS = "Читать текст хода задания"
 L.OPT_PANEL_GREETINGS = "Читать приветствия"
 L.OPT_GREETING_LABEL_ALWAYS = "Каждый раз"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Раз для дающих задания"
