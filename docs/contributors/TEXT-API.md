@@ -9,9 +9,11 @@ line reads as "audio outdated" until someone regenerates it.
 
 ## Getting a token
 
-Open your **Profile**. If you are a text maintainer in a language, there is an **API tokens**
-section. Choose a label, a language, read or read-and-write access, and an expiry. The token is
-shown once, so copy it then.
+Open your **Profile**. If you are a text maintainer, or hold regenerate, in a language, there is
+an **API tokens** section. Choose a label, a language, no text, read or read-and-write access (the
+last two need text in that language), and an expiry. Tick **Generate audio on my key** to let the
+token queue audio too; that needs regenerate, spends your own ElevenLabs or fish.audio key, and
+stops working when you lose regenerate. The token is shown once, so copy it then.
 
 A token stops working when it expires, when you revoke it, or when you stop being a text
 maintainer in its language. It covers one language. All requests send it as a header:

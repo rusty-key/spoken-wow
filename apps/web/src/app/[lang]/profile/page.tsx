@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import ApiKeySection from "@/components/ApiKeySection";
-import ApiTokenSection from "@/components/ApiTokenSection";
+import ApiTokenSection, { type TokenLang } from "@/components/ApiTokenSection";
 import Link from "@/components/LocaleLink";
 import { apiKeyStatus } from "@/lib/api-key";
 import { viewerOf } from "@/lib/grants/store";
@@ -34,7 +34,13 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const viewer = await viewerOf(session);
   const spends = spendsCredits(viewer);
   const textLangs = langsWhere(viewer, "text");
-  const tokens = textLangs.length ? await listTokens(session.user.id) : [];
+  const regenerateLangs = langsWhere(viewer, "regenerate");
+  const tokenLangs: TokenLang[] = [...new Set([...textLangs, ...regenerateLangs])].map((code) => ({
+    lang: code,
+    text: textLangs.includes(code),
+    generate: regenerateLangs.includes(code),
+  }));
+  const tokens = tokenLangs.length ? await listTokens(session.user.id) : [];
   // The status, never the key. Sent to a client component as props, so this is the shape
   // that decides what the browser can possibly learn.
   const [status, fishStatus] = spends
@@ -85,7 +91,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             your own.
           </p>
         )}
-        {textLangs.length > 0 && <ApiTokenSection langs={textLangs} initial={tokens} />}
+        {tokenLangs.length > 0 && <ApiTokenSection langs={tokenLangs} initial={tokens} />}
       </Contained>
     </main>
   );
