@@ -97,6 +97,21 @@ end
 -- Scrollbar
 --------------------------------------------------------------------------------
 
+--- Stands the scroll bar `side` in from the view's right, `head` down and `foot` up. The rows it
+--- scrolls end `room` short of it, and the edge fades 4 px short of it.
+function TextView:SetBarInsets(side, head, foot, room)
+	self.bar:ClearAllPoints()
+	self.bar:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -side, -head)
+	self.bar:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -side, foot)
+	self.sideGap = room
+	for _, solid in ipairs({ self.fadeTop, self.fadeBottom }) do
+		local edge = solid.fadeEdge
+		solid:SetPoint(edge .. "RIGHT", self.frame, edge .. "RIGHT", -(self.barWidth + side + 4),
+			(edge == "TOP" and 1 or -1) * EDGE_OUT)
+	end
+	self:UpdateScrollBar()
+end
+
 function TextView:UpdateScrollBar()
 	local viewHeight = self.frame:GetHeight() or 0
 	local contentHeight = self.child:GetHeight() or 0
@@ -114,7 +129,7 @@ function TextView:UpdateScrollBar()
 	-- A caller's scroll child (AddScrollBar) as wide as the frame, less the bar's room only while
 	-- there is something to scroll: rows reach the edge when the bar is not there.
 	if self.fitsChild then
-		local width = (self.frame:GetWidth() or 0) - (scrollable and (self.barWidth + 6) or 0)
+		local width = (self.frame:GetWidth() or 0) - (scrollable and (self.barWidth + (self.sideGap or 6)) or 0)
 		if width > 0 and math.abs((self.child:GetWidth() or 0) - width) > 0.5 then self.child:SetWidth(width) end
 	end
 

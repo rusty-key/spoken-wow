@@ -353,7 +353,7 @@ M.Widget = Widget
 -- them: each the whole of a file named after it, so a test reads which piece of which was drawn
 -- from a texture's file and tex coords.
 local LIST_ATLASES = {
-    ["Objective-Header-CampaignHorde"] = { 274, 42 }, ["Objective-Header-CampaignAlliance"] = { 274, 42 },
+    ["Professions-background-summarylist"] = { 512, 512 },
     ["glues-characterselect-card-singles-c60"] = { 321, 100 },
     ["glues-characterselect-card-singles-hover-c60"] = { 321, 100 },
     ["glues-characterselect-card-selected-c60"] = { 342, 122 },
@@ -479,11 +479,13 @@ local setUnitCount = 0
 local setCreatureCount = 0
 function M.SetUnitCount() return setUnitCount end
 function M.SetCreatureCount() return setCreatureCount end
-function _G.CreateFrame(kind, name, parent)
+function _G.CreateFrame(kind, name, parent, template)
     frameCount = frameCount + 1
     local f = name and Frame(name) or MakeFrame(nil)
     f.frameType = kind
     f.parent = parent
+    -- The game's inset has its background as a texture of its own.
+    if template == "InsetFrameTemplate" then f.Bg = f:CreateTexture(nil, "BACKGROUND") end
     if name then _G[name] = f end
     -- Recorded so a test can ask what a panel built, the way a player reads it: a row is
     -- a control with a label, and a panel that lost one is a setting nobody can reach.

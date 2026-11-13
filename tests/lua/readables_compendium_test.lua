@@ -175,6 +175,15 @@ Reopen(9004)
 Expect("...inside one with nothing to read, on the zone", panel.page.title.text, "Cragmoor")
 _G.GetInstanceInfo = nil
 Reopen(9003)
+Expect("the list sits on the professions list's background", panel.inset.Bg.atlas, "Professions-background-summarylist")
+do
+    local bar
+    for _, child in ipairs(panel.inset.children or {}) do
+        if child.frameType == "Frame" and (child:GetWidth() == 8 or child:GetWidth() == 6) then bar = child end
+    end
+    Expect("...its scroll bar in from the list's border by as much as the rows are, and up from its foot",
+        bar and (bar.anchor.point .. " " .. bar.anchor.x .. " " .. bar.anchor.y), "BOTTOMRIGHT -6 4")
+end
 -- Landing far down the list, from the window closed and never laid out: the client's scroll frame
 -- takes an offset only within the range it last measured, and has no height until the window is
 -- laid out, a frame after it is shown.
@@ -510,9 +519,6 @@ Click(L.TYPE_PLAQUE)
 Expect("...its page in the place that holds it", panel.page.sub.text.text:find(L.READABLES_IN_FMT:format("Stormwind City") .. " · ", 1, true), 1)
 Expect("...opened by a click on its writings", RowFor(L.TYPE_PLAQUE).row.open and Has(Shown(), "Kurdran Wildhammer"), true)
 Expect("...its writings rows inside that", RowFor("Kurdran Wildhammer").row.leaf and RowFor("Kurdran Wildhammer").row.nest, 3)
-Expect("...a line down each open card's contents beside them, a step in from the banner",
-    RowFor("Kurdran Wildhammer").rails[3] ~= nil
-    and RowFor("Kurdran Wildhammer").rails[3]:IsShown() and RowFor("Kurdran Wildhammer").rails[3].anchor.x, 64.4)
 Expect("...a readable not found greyed, with the padlock", RowFor("Ranger Captain Alleria Windrunner").row.locked, true)
 Expect("...one found open to read", RowFor("Kurdran Wildhammer").row.locked, false)
 do
