@@ -43,6 +43,8 @@ setfenv(1, SpokenEnv)
 ---@field handle number|nil
 ---@field source table
 ---@field nextSoundTimer any  Set ONLY while actually speaking. The liveness test.
+---@field silent? boolean  Set when this clip is playing without a voice file.
+---@field mutedWhilePlaying? boolean  Set when mute interrupted an audible clip.
 
 SoundQueue = {
     soundIdCounter = 0,
@@ -510,6 +512,7 @@ function SoundQueue:PlaySound(clip)
     -- A text-only line has nothing to play and leaves the game's dialogue alone.
     local muted = self:IsMuted()
     clip.silent = muted or nil
+    clip.mutedWhilePlaying = nil
     local willPlay = clip.textOnly or muted or SoundUtils:PlaySound(clip, channel)
     if not willPlay then
         Discard(clip, "missing")
@@ -869,11 +872,18 @@ function SoundQueue:SetMuted(value)
         local head = self:GetCurrentSound()
         if head and head.nextSoundTimer then
             head.silent = true
+            head.mutedWhilePlaying = true
             SoundUtils:StopSound(head)
             StopWatching(head)
         end
         self:MuteGameDialogue(nil)
     else
+        local head = self:GetCurrentSound()
+        if head and head.mutedWhilePlaying and head.nextSoundTimer
+            and (not head.spokenAt or GetTime() < head.spokenAt) then
+            CancelSpeakTimer(head)
+            head.silent, head.mutedWhilePlaying = nil, nil
+        end
         self:Advance()
     end
     Callbacks:Fire("AUDIO_CHANGED")
