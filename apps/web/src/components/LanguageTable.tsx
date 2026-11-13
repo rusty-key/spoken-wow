@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import { BASE_LANG, derivedTags, type Lang } from "@/lib/lang";
 
 type Row = { code: Lang; name: string; enabled: boolean };
 
@@ -44,11 +44,12 @@ export default function LanguageTable({ initial }: { initial: Row[] }) {
   const [adding, setAdding] = useState(false);
 
   function setCode(code: string) {
+    const derived = derivedTags(code);
     setForm((f) => ({
       ...f,
       code,
-      bcp47: touched.bcp47 ? f.bcp47 : code.length >= 4 ? `${code.slice(0, 2)}-${code.slice(2)}` : "",
-      provider: touched.provider ? f.provider : code.slice(0, 2),
+      bcp47: touched.bcp47 ? f.bcp47 : code.length >= 4 ? derived.bcp47 : "",
+      provider: touched.provider ? f.provider : derived.provider,
     }));
   }
 

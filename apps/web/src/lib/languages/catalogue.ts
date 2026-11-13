@@ -9,7 +9,7 @@
 import "server-only";
 
 import { query } from "@/lib/db";
-import { type LanguageInfo, registerLanguages } from "@/lib/lang";
+import { derivedTags, type LanguageInfo, registerLanguages } from "@/lib/lang";
 import { listenInServer } from "@/lib/teams/listen";
 
 const TTL_MS = 60_000;
@@ -38,12 +38,13 @@ type Row = {
  */
 function describe(row: Row): LanguageInfo {
   const name = row.name ?? row.code;
+  const derived = derivedTags(row.code);
   return {
     code: row.code,
     name,
     native: row.native ?? name,
-    bcp47: row.bcp47 ?? `${row.code.slice(0, 2)}-${row.code.slice(2)}`,
-    provider: row.provider ?? row.code.slice(0, 2),
+    bcp47: row.bcp47 ?? derived.bcp47,
+    provider: row.provider ?? derived.provider,
     client: row.client,
   };
 }

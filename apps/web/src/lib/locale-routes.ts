@@ -28,9 +28,6 @@
  */
 import { BASE_LANG } from "./lang";
 
-/** What a language code looks like, for the redirects that keep a prefix: two lowercase letters, two uppercase (enUS). */
-export const LANG_SHAPE = "[a-z]{2}[A-Z]{2}";
-
 export const localeRedirects = [
   { source: `/${BASE_LANG}`, destination: "/", permanent: true },
   { source: `/${BASE_LANG}/:path*`, destination: "/:path*", permanent: true },

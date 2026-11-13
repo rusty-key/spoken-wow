@@ -8,7 +8,7 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { langName } from "@/lib/lang";
+import { LANG_SHAPE, langName } from "@/lib/lang";
 import { forgetLanguages } from "@/lib/languages/catalogue";
 import { LanguageExistsError, addLanguage, languageStates, setEnabled } from "@/lib/languages/store";
 import { recordActivity } from "@/lib/activity/store";
@@ -50,7 +50,7 @@ export async function PUT(request: Request) {
   return GET();
 }
 
-const CODE = /^[a-z]{2}[A-Z]{2}$/;
+const CODE = new RegExp(`^${LANG_SHAPE}$`);
 const PROVIDER = /^[a-z]{2}$/;
 const BCP47 = /^[a-z]{2,3}-[A-Z]{2}$/;
 const MAX_NAME = 60;

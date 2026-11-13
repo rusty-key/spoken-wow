@@ -8,7 +8,7 @@
  * followed one. Each rule keeps the language prefix and everything after the section, and
  * Next carries the query string across. 308 keeps an API call's method and body.
  */
-import { LANG_SHAPE } from "./locale-routes";
+import { LANG_SHAPE } from "./lang";
 
 const RENAMED = { zones: "places", books: "readables" } as const;
 
