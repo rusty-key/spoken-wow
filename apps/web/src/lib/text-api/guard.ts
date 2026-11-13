@@ -2,7 +2,8 @@
  * The access boundary for /api/v1, which has a token where the site's routes have a session.
  *
  * The grant is asked for on every request rather than when the token was made, so taking `text`
- * away from somebody kills their tokens at once instead of at their expiry.
+ * (or `regenerate`, for a generate token) away from somebody kills their tokens at once instead
+ * of at their expiry.
  */
 import "server-only";
 

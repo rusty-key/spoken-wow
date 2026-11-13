@@ -16,8 +16,8 @@ last two need text in that language), and an expiry. Tick **Generate audio on my
 token queue audio too; that needs regenerate, spends your own ElevenLabs or fish.audio key, and
 stops working when you lose regenerate. The token is shown once, so copy it then.
 
-A token stops working when it expires, when you revoke it, or when you stop being a text
-maintainer in its language. It covers one language. All requests send it as a header:
+A token stops working when it expires, when you revoke it, or when you lose what it needs in its
+language: text for a read or write token, regenerate for a generate token. It covers one language. All requests send it as a header:
 
 ```sh
 curl -H "Authorization: Bearer $SPOKEN_TOKEN" https://spoken.quest/api/v1
@@ -92,7 +92,7 @@ limits, one job per audio file. It stops working when you lose the right to rege
 
 `POST /api/v1/{section}/generate` takes either `items`, up to 1000 of `{id, variant?}` as the text
 update takes them, or, for quests only, `filters`: the query string of an Explorer URL in the
-language, since "every stale line" is a filter and not seventeen thousand ids. A quest item covers
+language (only the keys the Explorer's filters use; `page` is ignored, and an unknown key, a bad value or a `lang` is refused, so a typo cannot widen the batch), since "every stale line" is a filter and not seventeen thousand ids. Neither generate nor the generations routes take a URL query string, and an item takes only `id` and `variant`. A quest item covers
 every speaker's line of that id and variant; give the base id (`q:5:accept`), not a voiced
 `~voice` id. Add `label` (up to 100 characters) to name the batch
 and `"dryRun": true` to price it without queueing anything.
@@ -110,14 +110,14 @@ A dry run answers `provider`, `files`, `characters`, `matched`, `dropped`, `unkn
 answers `batchId`, `queued`, `alreadyQueued` (files already waiting in the queue), and the same
 `matched`, `dropped` and `unknown`. `dropped` counts matched lines that became no job, by reason:
 `progress`, `untranslated`, `no-voice`, `invalid-chars` and `shared-file` for quests, `no-text` and
-`not-generatable` for places, readables and bosses, and `hidden` for a quest item the Explorer's
-default view leaves out. `unknown` lists ids found nowhere. A line already done and asked for
+`not-generatable` for places, readables and bosses, and `hidden` for a quest item marked
+ignored. `unknown` lists ids found nowhere. A line already done and asked for
 again is generated and paid for again.
 
 ### Watching and stopping
 
 `GET /api/v1/generations` lists your recent batches in the token's language, whichever way they were
-queued, newest first; they are kept 30 days. `GET /api/v1/generations/{batchId}` gives one, with its
+queued, newest first; they are kept at least 30 days (old ones are pruned when a new batch is queued). `GET /api/v1/generations/{batchId}` gives one, with its
 job counts by state, credits, cost and up to 100 recent failures; `finished` means nothing is
 pending or running. `POST /api/v1/generations/{batchId}/stop` cancels what is still pending, so a
 script that queued the wrong set can stop paying for it. Another person's batch, or yours in another
