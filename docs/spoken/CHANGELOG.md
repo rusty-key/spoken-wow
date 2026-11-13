@@ -4,7 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **`/sp mute [on | off]` silences Spoken audio without disabling its features.** Quest, lore and
+- **`/spq mute [on | off]` silences Spoken audio without disabling its features.** Quest, lore and
   readable text continues to work while audio is muted. *([Trusty565](https://github.com/Trusty565))*
 - **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
   lines it voices, so new audio no longer plays under old text. This applies when the pack is in

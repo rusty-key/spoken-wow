@@ -421,6 +421,29 @@ function Options:Initialize()
         -- and in what players tell each other.
         LibStub("AceConfig-3.0"):RegisterOptionsTable("SpokenQuests", self.table, { "spokenquests", "spq" })
     end)
+    RunOptionalStep("mute slash registration", function()
+        local function HandleMute(input, previous)
+            local command = strlower(strtrim(input or ""))
+            local _, _, verb, rest = string.find(command, "^(%S*)%s*(.-)$")
+            if verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
+                if rest == "on" then
+                    Spoken:Pause()
+                elseif rest == "off" then
+                    Spoken:Resume()
+                else
+                    Spoken:TogglePause()
+                end
+                return
+            end
+            if previous then return previous(input) end
+        end
+        for _, slashCommand in ipairs({ "ACECONSOLE_SPOKENQUESTS", "ACECONSOLE_SPQ" }) do
+            local previous = SlashCmdList[slashCommand]
+            SlashCmdList[slashCommand] = function(input)
+                return HandleMute(input, previous)
+            end
+        end
+    end)
     RunOptionalStep("settings panel", function()
         -- One canvas panel of sections rather than a Blizzard category per group. The
         -- table above still backs every /spq command and still fills the window below,

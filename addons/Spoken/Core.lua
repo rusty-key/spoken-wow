@@ -520,7 +520,6 @@ local function RegisterSlashCommand()
             { "/sp replay", L.BIND_PLAYPAUSE },
             { "/sp skip", L.BIND_SKIP },
             { "/sp stopall", L.BIND_STOP },
-            { "/sp mute [on | off]", L.MUTE_AUDIO },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
             { "/sp narrator on | off", L.OPT_SHOW_NARRATOR },
             { "/sp rows 1 | 2", L.TRANSCRIPT_LINES },
@@ -543,15 +542,6 @@ local function RegisterSlashCommand()
             SoundQueue:TogglePauseQueue()
         elseif command == "stopall" or command == "stop" then
             SoundQueue:RemoveAllSoundsFromQueue()
-        elseif verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
-            if rest == "on" then
-                SoundQueue:PauseQueue()
-            elseif rest == "off" then
-                SoundQueue:ResumeQueue()
-            else
-                SoundQueue:TogglePauseQueue()
-            end
-            print("Spoken: " .. (SoundQueue:IsPaused() and L.AUDIO_MUTED or L.AUDIO_UNMUTED))
         elseif command == "skip" then
             SoundQueue:Skip()
         elseif command == "compendium" then
