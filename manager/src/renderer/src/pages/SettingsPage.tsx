@@ -12,7 +12,7 @@ import { useStore } from '../store'
 import { ContributorSection } from './ContributorSection'
 import { REPO_URL, S, SITE_URL } from '../strings'
 
-type Section = 'games' | 'updates' | 'startup' | 'downloads' | 'sharing' | 'contributor' | 'about'
+type Section = 'games' | 'updates' | 'general' | 'downloads' | 'sharing' | 'contributor' | 'about'
 
 export function SettingsPage(): ReactNode {
   const { state } = useStore()
@@ -24,7 +24,7 @@ export function SettingsPage(): ReactNode {
   const nav: { id: Section; label: string; icon: ReactNode }[] = [
     { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
     { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
-    { id: 'startup', label: S.settings.startup, icon: <IconGear size={18} /> },
+    { id: 'general', label: S.settings.general, icon: <IconGear size={18} /> },
     { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
     { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
     { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
@@ -48,7 +48,7 @@ export function SettingsPage(): ReactNode {
           <div className="settings-inner">
             {section === 'games' && <GamesSection />}
             {section === 'updates' && <UpdatesSection />}
-            {section === 'startup' && <StartupSection />}
+            {section === 'general' && <GeneralSection />}
             {section === 'downloads' && <DownloadsSection />}
             {section === 'sharing' && <SharingSection />}
             {section === 'contributor' && <ContributorSection />}
@@ -165,20 +165,15 @@ function UpdatesSection(): ReactNode {
   )
 }
 
-function StartupSection(): ReactNode {
+function GeneralSection(): ReactNode {
   const { state } = useStore()
   const { settings } = state
   const set = useSetSettings()
   return (
-    <section aria-labelledby="set-startup">
-      <h2 id="set-startup" className="settings-h">
-        {S.settings.startup}
+    <section aria-labelledby="set-general">
+      <h2 id="set-general" className="settings-h">
+        {S.settings.general}
       </h2>
-      <div className="switches">
-        <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
-        <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
-      </div>
-      <h3 className="settings-h settings-h-sub">{S.settings.language}</h3>
       <Select label={S.settings.languageName} value={settings.uiLanguage} onChange={(v) => set({ uiLanguage: v as UiLanguage })}>
         {UI_LANGUAGES.map((l) => (
           <option key={l.code} value={l.code}>
@@ -187,6 +182,11 @@ function StartupSection(): ReactNode {
         ))}
       </Select>
       <p className="settings-text">{S.settings.languageText}</p>
+      <h3 className="settings-h settings-h-sub">{S.settings.startup}</h3>
+      <div className="switches">
+        <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
+        <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
+      </div>
     </section>
   )
 }
