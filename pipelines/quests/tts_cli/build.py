@@ -12,11 +12,11 @@ import os
 import re
 import shutil
 
-from slpp import slpp as lua
 from tqdm import tqdm
 
 from tts_cli.ignores import ignored_files, wordless
 from tts_cli.length_table import write_sound_length_table_lua
+from tts_cli.lua import lua_value
 from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossip_hash_from_line_id,
                             moment_of, quest_moment_stem, quest_stem_from_line_id,
                             several_wordings, split_voice, subfolder_from_line_id,
@@ -432,7 +432,7 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
             f.write("if not VoiceOver.Language or "
                     f'VoiceOver.Language:GetClientLanguage() ~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
-        f.write(lua.encode(data))
+        f.write(lua_value(data))
         f.write("\n")
 
 
