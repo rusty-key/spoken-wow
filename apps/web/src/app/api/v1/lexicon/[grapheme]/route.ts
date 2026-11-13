@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: Params) {
 
 /** Replace the entry, or add it. The URL's spelling becomes the stored one. */
 export async function PATCH(request: Request, { params }: Params) {
-  const { context, denied } = await requireToken(request, { write: true, also: "configure" });
+  const { context, denied } = await requireToken(request, { need: "write", also: "configure" });
   if (denied) return denied;
 
   const grapheme = decodeId((await params).grapheme);

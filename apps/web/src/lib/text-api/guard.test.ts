@@ -27,12 +27,12 @@ import { requireToken } from "./guard";
 
 const USER = `test-guard-${Math.random().toString(36).slice(2, 10)}`;
 
-function make(access: TokenAccess = "write", userId = USER) {
+function make(access: TokenAccess = "write", userId = USER, generate = false) {
   return createToken({
     userId,
     lang: "deDE",
     access,
-    generate: false,
+    generate,
     label: "agent",
     expiresAt: new Date(Date.now() + 86_400_000),
   });
@@ -101,7 +101,7 @@ describe("requireToken", () => {
 
   it("403 for a read token asking to write", async () => {
     const { token } = await make("read");
-    expect((await requireToken(request(`Bearer ${token}`), { write: true })).denied?.status).toBe(403);
+    expect((await requireToken(request(`Bearer ${token}`), { need: "write" })).denied?.status).toBe(403);
   });
 
   it("lets a read token read", async () => {
@@ -111,7 +111,7 @@ describe("requireToken", () => {
 
   it("lets a write token write", async () => {
     const { token } = await make("write");
-    expect((await requireToken(request(`Bearer ${token}`), { write: true })).denied).toBeNull();
+    expect((await requireToken(request(`Bearer ${token}`), { need: "write" })).denied).toBeNull();
   });
 
   it("passes a global admin's token with no language grant", async () => {
@@ -126,5 +126,58 @@ describe("requireToken", () => {
     const { token, row } = await make();
     const { context } = await requireToken(request(`Bearer ${token}`, "GET", "?lang=frFR"));
     expect(context).toMatchObject({ lang: "deDE", tokenId: row.id, userId: USER, access: "write" });
+  });
+
+  it("lets a generate-only token generate and pass any, but not read", async () => {
+    const { token } = await make("none", USER, true);
+    viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
+    expect((await requireToken(request(`Bearer ${token}`), { need: "generate" })).denied).toBeNull();
+    expect((await requireToken(request(`Bearer ${token}`), { need: "any" })).denied).toBeNull();
+    const read = await requireToken(request(`Bearer ${token}`));
+    expect(read.denied?.status).toBe(403);
+    expect(await read.denied?.json()).toEqual({ error: "this token has no text access" });
+  });
+
+  it("403 for any when a generate-only token's owner has no grants", async () => {
+    const { token } = await make("none", USER, true);
+    viewer.grants = [];
+    const result = await requireToken(request(`Bearer ${token}`), { need: "any" });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token's owner does not hold regenerate in deDE" });
+  });
+
+  it("403 for any when a read token's owner has no text", async () => {
+    const { token } = await make("read");
+    viewer.grants = [];
+    const result = await requireToken(request(`Bearer ${token}`), { need: "any" });
+    expect(result.denied?.status).toBe(403);
+  });
+
+  it("403 for a read token asking to generate", async () => {
+    const { token } = await make("read");
+    const result = await requireToken(request(`Bearer ${token}`), { need: "generate" });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token cannot generate" });
+  });
+
+  it("asks for regenerate on every generate, so losing it kills the scope", async () => {
+    const { token } = await make("write", USER, true);
+    viewer.grants = [
+      { lang: "deDE", capability: "text" },
+      { lang: "deDE", capability: "regenerate" },
+    ];
+    expect((await requireToken(request(`Bearer ${token}`), { need: "generate" })).denied).toBeNull();
+    viewer.grants = [{ lang: "deDE", capability: "text" }];
+    const result = await requireToken(request(`Bearer ${token}`), { need: "generate" });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token's owner does not hold regenerate in deDE" });
+    expect((await requireToken(request(`Bearer ${token}`))).denied).toBeNull();
+  });
+
+  it("reports generate in the context", async () => {
+    const { token } = await make("none", USER, true);
+    viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
+    const { context } = await requireToken(request(`Bearer ${token}`), { need: "generate" });
+    expect(context).toMatchObject({ access: "none", generate: true });
   });
 });

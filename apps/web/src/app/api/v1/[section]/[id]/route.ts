@@ -24,7 +24,7 @@ export async function GET(request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  const { context, denied } = await requireToken(request, { write: true });
+  const { context, denied } = await requireToken(request, { need: "write" });
   if (denied) return denied;
 
   const { section, id: raw } = await params;

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
 /** All or nothing: the lexicon is one document, so one bad item refuses the request. */
 export async function PATCH(request: Request) {
-  const { context, denied } = await requireToken(request, { write: true, also: "configure" });
+  const { context, denied } = await requireToken(request, { need: "write", also: "configure" });
   if (denied) return denied;
 
   const write = await readWrite(request, ({ items }) => {
