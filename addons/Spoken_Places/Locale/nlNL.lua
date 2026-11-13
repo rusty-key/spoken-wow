@@ -93,7 +93,7 @@ L.OPT_RELOAD_NOW = "Nu herladen"
 L.OPT_LATER = "Later"
 L.OPT_PAGE_TITLE = "Plaatsen"
 L.OPT_DEV_DEBUG = "Debugberichten van Plaatsen"
-L.OPT_DEV_PREVIEW = "Onvoltooide vertalingen aanbieden"
+L.OPT_DEV_PREVIEW = "Onvoltooide vertalingen tonen"
 
 L.OPEN_IN_COMPENDIUM = "Openen in het Compendium van Azeroth"
 
