@@ -110,18 +110,14 @@ end
 -- The address the popup is currently showing.
 local shownLink
 
---- A file name as a query value. Names are letters, digits and dashes today; anything else is
---- escaped rather than trusted to stay that way.
 local function QueryValue(value)
     return (string.gsub(value, "[^%w%-_%.~]", function(char)
         return format("%%%02X", string.byte(char))
     end))
 end
 
---- The report address for `target`, filed under `language`. `file` is the sound that played:
---- an address names a quest and an event, or an NPC, and several lines can answer to it (one
---- per giver's voice, every line of an NPC), so the file is what tells the site which one the
---- player heard.
+--- The report address for `target`, filed under `language`. `file`, the sound that played,
+--- tells the site which line the player heard when several answer to the address.
 ---@param target string
 ---@param language? string
 ---@param file? string

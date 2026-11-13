@@ -3,7 +3,7 @@
 /**
  * The sorting queue: one line with open reports at a time, everything needed to decide on
  * it, and the three answers pinned under the thumb. A report filed without a line picked shows
- * every line its address means, and the keys and the player act on the one last used.
+ * every line its address means.
  *
  * Walks the list the server sorted without navigating, so answering a card costs one
  * request and no page load, and the next card's line is fetched while this one is read.
@@ -231,7 +231,6 @@ export default function SortQueue({
     void load(lineId);
   }
 
-  /** Another of the card's lines becomes the one acted on, and plays once the player has it. */
   function playLine(at: number) {
     const next = viewOf(ids[at] ?? null).detail?.audioSrc;
     if (at === picked || next === detail?.audioSrc) {
@@ -522,7 +521,6 @@ function EditDialog({
   );
 }
 
-/** One line on the card: its text, its takes, and the three things to do about it. */
 function LineCard({
   source,
   lineId,
@@ -664,7 +662,6 @@ function LineCard({
   );
 }
 
-/** The lines a card shows: the one its reports picked, else every one their address means. */
 function lineIdsOf(group: ReportGroup): string[] {
   const picked = group.reports[0].lineId;
   return picked ? [picked] : (group.lineIds ?? []);

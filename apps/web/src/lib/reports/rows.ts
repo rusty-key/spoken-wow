@@ -17,10 +17,8 @@ export function applyResolutions(
 }
 
 /**
- * Every report about one line, newest first, under the key the table tracks it by.
- *
- * `lineIds` is filled in by the sorting page for a group keyed on an address: every line the
- * address means, since the reporter picked none.
+ * Every report about one line, newest first, under the key the table tracks it by. `lineIds`
+ * is set by the sorting page on an address-keyed group: every line the address means.
  */
 export type ReportGroup = { key: string; reports: Report[]; lineIds?: string[] };
 

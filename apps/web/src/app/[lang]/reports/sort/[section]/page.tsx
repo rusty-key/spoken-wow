@@ -52,9 +52,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
 }
 
 /**
- * A quests report filed without a line picked names an address several lines can answer to (a
- * quest given in two voices, every line of an NPC), or one the corpus had no line for until
- * later. Its card shows each line the address means now.
+ * An unpicked report's address can mean several lines, or a line imported after it was filed,
+ * so its card shows every line the address means now.
  */
 async function withAddressLines(groups: ReportGroup[], lang: Lang): Promise<ReportGroup[]> {
   if (!groups.some((group) => !group.reports[0].lineId && group.reports[0].target)) return groups;
