@@ -59,6 +59,10 @@ local defaults = {
 	autoplayExplored = true,
 	-- Off, so a story that started on its own plays through a fight. On, it stops and replays after.
 	autoplayStopInCombat = false,
+	-- Off, so players used to hearing a place once are not read it again unasked.
+	autoplayEveryVisit = false,
+	-- Seconds, one of EVERY_VISIT_GAPS.
+	autoplayEveryVisitGap = 24 * 3600,
 	-- Off, so a player cannot end up reading an unfinished translation without
 	-- having asked for one (Spoken > Developer). See Language.lua.
 	languagePreview = false,

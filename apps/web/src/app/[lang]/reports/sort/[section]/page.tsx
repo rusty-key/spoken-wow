@@ -40,6 +40,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
       groups={groups}
       canRegenerate={canRegenerate}
       canEditText={can(viewer, section === "quests" ? "regenerate" : "text", lang)}
+      canContribute={can(viewer, "text", lang)}
       showNpcPage={isAdmin(session.user.role)}
       latestPacks={latestPacks}
     />
