@@ -1,6 +1,6 @@
 # Self-serve teams
 
-Design, 2026-11-12. Not yet planned or built. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
+Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages; the second team for a maintained one is plan 5. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
 
 ## Why
 
@@ -55,8 +55,10 @@ Takes never leave the site through the API. Nothing downloads audio, English or 
 | Known, no active team (plPL, an empty itIT) | Hands the language over to the new team (`move_team_lang`), with its rows, roster and settings, and switches it on. | The requester's team, as above. |
 | Known, with an active team (deDE) | Creates a **second team** in the language, beside the existing privileged one. | Stays with the text maintainers the site owner appoints. The new team gets audio capabilities only. |
 
-"Active team" means a team holding the language with at least one member who is not a site owner.
-*(My call; the builder may refine it.)* Requests are open for every language, the official ones
+A language is maintained, and its privileged team "active", when that team has a `team_member`
+row in the language held by a user who is not a site owner, or the language has a text
+maintainer who is not a site owner. A site owner's own grants do not count: they hold them to keep
+a language running, not to keep it. Requests are open for every language, the official ones
 included (user).
 
 ## Decisions (user, 2026-11-12)
