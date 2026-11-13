@@ -299,24 +299,17 @@ export type BatchLine = {
   preview: string;
 };
 
+/** Why a matched line is not a job of its own: never voiced, or its file is already in. */
+export type BatchSkip = UnvoicedReason | "shared-file";
+
 /**
- * The lines a batch would actually generate.
+ * The lines a batch would actually generate, plus a count of the matched lines that did not
+ * become a job, by reason.
  *
  * Deduplicated by audio file, because 1,076 files in the corpus are spoken by more than one
  * NPC and generating a shared file twice would pay for it twice and leave the second take
  * live. Lines the generator never voices are dropped here rather than failed one by one.
  */
-export function batchJobs(
-  lines: CorpusLine[],
-  overrides: Map<string, LineOverride> = NO_CONTEXT.overrides,
-): BatchLine[] {
-  return batchPlan(lines, overrides).jobs;
-}
-
-/** Why a matched line is not a job of its own: never voiced, or its file is already in. */
-export type BatchSkip = UnvoicedReason | "shared-file";
-
-/** batchJobs, plus a count of the matched lines that did not become a job, by reason. */
 export function batchPlan(
   lines: CorpusLine[],
   overrides: Map<string, LineOverride> = NO_CONTEXT.overrides,

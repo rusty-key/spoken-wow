@@ -93,9 +93,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
   if (body.dryRun === true) {
     const provider = preference.provider;
     const plan = await derive(provider);
-    const used = new Set<Provider>(plan.jobs.map((job) => job.provider ?? provider));
+    const estimate = await estimatePlan(plan, userId, lang, provider);
     const missingKeys: Provider[] = [];
-    for (const key of used) {
+    for (const key of Object.keys(estimate) as Provider[]) {
       const stored = await readApiKey(userId, key).catch(() => null);
       if (!stored) missingKeys.push(key);
     }
@@ -107,7 +107,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
       matched: plan.matched,
       dropped: plan.dropped,
       unknown: plan.unknown,
-      estimate: await estimatePlan(plan, userId, lang, provider),
+      estimate,
       missingKeys,
     });
   }
