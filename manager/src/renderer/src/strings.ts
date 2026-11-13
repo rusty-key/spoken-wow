@@ -1,9 +1,5 @@
-// Which language the window speaks, and the one object every component reads.
-//
-// `S` keeps its identity and has its own properties swapped in place, because every importer
-// holds the object it imported: replacing the binding would leave each file on the first
-// language. The swap happens in the store's reducer, before React redraws, so the render that
-// follows a language change already reads the new words.
+// `S` is swapped in place rather than replaced: every importer holds the object it imported. The
+// store's reducer swaps it, so the render that follows a language change reads the new words.
 import type { Snapshot } from '@shared/types'
 import { bcp47Of, type UiLanguage } from '@shared/types'
 import { currentLanguage, setLocale } from './locale'

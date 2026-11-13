@@ -265,12 +265,10 @@ export function setMainLanguage(lang: UiLanguage): void {
   current = lang
 }
 
-/** The tag `Intl` wants, for the numbers this process writes into a message. */
 export function mainLocale(): string {
   return bcp47Of(current)
 }
 
-/** The words for `key`, with `{name}` filled from `params`. */
 export function t(key: MessageKey, params?: Params): string {
   return fill(MESSAGES[current][key], params)
 }

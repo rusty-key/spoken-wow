@@ -60,7 +60,7 @@ export async function isLinked(p: string): Promise<boolean> {
   }
 }
 
-/** Read when asked, not when the module loads: the window's language can change while it runs. */
+/** A function, not a constant, so it follows a language change. */
 export function linkedMessage(): string {
   return t('guard.linked')
 }

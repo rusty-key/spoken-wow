@@ -1,5 +1,4 @@
-// Every word the window shows, in English: the language the others are translated from.
-// `strings.ts` picks which one the window reads, so nothing else holds text a player reads.
+// Every word the window shows, in English, the language the others are translated from.
 import { FLAVOR_FOLDER_LIST, type Section, type Snapshot } from '@shared/types'
 import { pluralForm } from './format'
 

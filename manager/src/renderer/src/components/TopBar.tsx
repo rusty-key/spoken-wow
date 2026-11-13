@@ -12,10 +12,7 @@ import { GameIcon } from './Brand'
 import { RestartButton } from './RestartButton'
 import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
 
-/**
- * Built in the component, not at module load: the words must be read on every draw, or the tabs
- * keep the language the window started in.
- */
+/** The tabs are built per draw: a list built at load would keep the first language. */
 export function TopBar(): ReactNode {
   const { state, actions } = useStore()
   const { catalog } = state

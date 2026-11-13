@@ -19,7 +19,6 @@ describe('the main process speaks the chosen language', () => {
   })
 
   it('translates what is thrown at the moment it is thrown, not when the module loaded', () => {
-    // linkedMessage() and plainMessage() are the two that used to be frozen into a constant.
     expect(linkedMessage()).toContain('development checkout')
     setMainLanguage('zhCN')
     expect(linkedMessage()).toContain('链接到了开发用的检出目录')

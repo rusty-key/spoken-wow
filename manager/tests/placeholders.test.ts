@@ -3,13 +3,8 @@ import { S_EN } from '../src/renderer/src/strings.en'
 import { S_ZH } from '../src/renderer/src/strings.zh'
 
 /**
- * What a sentence fills in is read from its source. Calling it does not work: `pluralForm` hands
- * its argument to `Intl.PluralRules`, which throws on a stand-in value, and that throw hides every
- * name written after it.
- *
- * The comparison is of the *shape* of the interpolations, not the words between them: English
- * writes `${n} packs` and Chinese `${n} 个包`, and both fill the same one thing. A name missing on
- * one side is what leaves a literal `{folder}` on the screen.
+ * Read from the source, not called: `Intl.PluralRules` throws on a stand-in argument and would hide
+ * every name after it. Only the interpolated names are compared, not the words around them.
  */
 function shapes(fn: (...args: unknown[]) => unknown): string {
   const source = fn.toString()

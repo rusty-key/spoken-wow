@@ -7,9 +7,8 @@ import { DEFAULT_SETTINGS } from '../src/shared/types'
 afterEach(() => setUiLanguage('enUS'))
 
 /**
- * The window has no React test renderer here, so this checks the link the redraw hangs on: the
- * reducer swaps `S`'s words and returns a new state object, which is what makes React draw again.
- * If this link breaks, the language setting would appear to do nothing.
+ * No React test renderer here, so this checks what the redraw hangs on: the reducer swaps `S`'s
+ * words and returns a new state object.
  */
 describe('a settings change redraws the window in the new language', () => {
   it('the reducer swaps the words, not a copy of them', () => {

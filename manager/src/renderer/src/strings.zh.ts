@@ -1,16 +1,13 @@
-// Every word the window shows, in Simplified Chinese. Same shape as `strings.en.ts`; a key that
-// file has must be here too, or the window shows nothing where it should show words.
+// Every word the window shows, in Simplified Chinese.
 import { FLAVOR_FOLDER_LIST, type Section, type Snapshot } from '@shared/types'
 import type { Dict } from './strings'
 
 type Platform = Snapshot['platform']
 
-/** What the system calls its file browser, for text that says where a folder opens. */
 function fileManager(platform: Platform): string {
   return platform === 'darwin' ? '访达' : platform === 'linux' ? '文件管理器' : '资源管理器'
 }
 
-/** Where the game usually lives, for the help text of the empty state. */
 function gameFolderExample(platform: Platform): string {
   if (platform === 'darwin') return '/Applications/World of Warcraft'
   if (platform === 'linux') return 'Wine 前缀或 Lutris/Bottles 游戏目录里的 World of Warcraft 文件夹'

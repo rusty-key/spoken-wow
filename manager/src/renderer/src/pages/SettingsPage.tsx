@@ -18,10 +18,7 @@ type Section = 'games' | 'updates' | 'general' | 'downloads' | 'sharing' | 'cont
 export function SettingsPage(): ReactNode {
   const { state } = useStore()
   const [section, setSection] = useState<Section>('games')
-  /**
-   * Built here, not at module load: an entry made once would keep the language the window
-   * started in. The words stay written as `S.settings.x`, so a reader finds them by searching.
-   */
+  /** Built per draw: a list built at load would keep the first language. */
   const nav: { id: Section; label: string; icon: ReactNode }[] = [
     { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
     { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
