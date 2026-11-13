@@ -10,7 +10,8 @@ import { createHash, randomBytes } from "node:crypto";
 
 import type { PoolClient } from "pg";
 
-import { inTransaction, query } from "@/lib/db";
+import { recordActivity } from "@/lib/activity/store";
+import { actAs, ALL_TEAMS, inTransaction, query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { isCapability, type Capability } from "@/lib/permissions";
 
@@ -129,7 +130,10 @@ export async function createInvite(args: {
   const token = newToken();
   try {
     return await inTransaction(async (client) => {
+      await actAs(client, ALL_TEAMS);
       if (args.limited) {
+        // Two requests at once would each count under the limit.
+        await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [`invite:${args.invitedBy}`]);
         const { rows } = await client.query<{ n: number }>(
           `select count(*)::int as n from "invite" where "invitedBy" = $1 and "createdAt" > now() - interval '24 hours'`,
           [args.invitedBy],
@@ -150,6 +154,16 @@ export async function createInvite(args: {
          returning "id"`,
         [args.email, args.lang, args.capabilities, hashOf(token), args.invitedBy, INVITE_DAYS],
       );
+      await recordActivity(
+        {
+          kind: "invite.sent",
+          lang: args.lang,
+          subject: rows[0].id,
+          actorId: args.invitedBy,
+          detail: { email: args.email, capabilities: args.capabilities },
+        },
+        client,
+      );
       return { invite: (await openRow(client, rows[0].id))!, token };
     });
   } catch (error) {
@@ -158,11 +172,12 @@ export async function createInvite(args: {
   }
 }
 
-export async function resendInvite(id: string, limited: boolean): Promise<{ invite: InviteRow; token: string }> {
+export async function resendInvite(id: string, limited: boolean, actorId: string): Promise<{ invite: InviteRow; token: string }> {
   const token = newToken();
   return inTransaction(async (client) => {
-    const { rows } = await client.query<{ sentAt: Date; sendCount: number }>(
-      `select "sentAt", "sendCount" from "invite"
+    await actAs(client, ALL_TEAMS);
+    const { rows } = await client.query<{ lang: string; email: string; sentAt: Date; sendCount: number }>(
+      `select "lang", "email", "sentAt", "sendCount" from "invite"
         where "id" = $1 and "acceptedAt" is null and "revokedAt" is null for update`,
       [id],
     );
@@ -181,15 +196,24 @@ export async function resendInvite(id: string, limited: boolean): Promise<{ invi
         where "id" = $1`,
       [id, hashOf(token), INVITE_DAYS],
     );
+    await recordActivity(
+      { kind: "invite.resent", lang: rows[0].lang as Lang, subject: id, actorId, detail: { email: rows[0].email } },
+      client,
+    );
     return { invite: (await openRow(client, id))!, token };
   });
 }
 
 export async function revokeInvite(id: string, revokedBy: string): Promise<InviteRow | null> {
   return inTransaction(async (client) => {
+    await actAs(client, ALL_TEAMS);
     const invite = await openRow(client, id, true);
     if (!invite) return null;
     await client.query(`update "invite" set "revokedAt" = now(), "revokedBy" = $2 where "id" = $1`, [id, revokedBy]);
+    await recordActivity(
+      { kind: "invite.revoked", lang: invite.lang as Lang, subject: id, actorId: revokedBy, detail: { email: invite.email } },
+      client,
+    );
     return invite;
   });
 }

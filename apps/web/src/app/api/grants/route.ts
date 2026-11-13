@@ -9,7 +9,6 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { recordActivity } from "@/lib/activity/store";
 import { sendInviteEmail } from "@/lib/email";
 import { addGrants, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
 import { listingFor } from "@/lib/invites/listing";
@@ -77,13 +76,6 @@ export async function PUT(request: Request) {
       capabilities,
       invitedBy: who.userId,
       limited: !isAdmin(who.viewer.role),
-    });
-    await recordActivity({
-      kind: "invite.sent",
-      lang,
-      subject: invite.id,
-      actorId: who.userId,
-      detail: { email: address, capabilities },
     });
     sendInviteEmail(address, {
       inviterName: invite.invitedByName ?? "A Spoken team member",
