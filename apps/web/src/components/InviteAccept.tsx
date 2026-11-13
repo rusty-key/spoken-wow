@@ -8,13 +8,10 @@ import LocaleLink from "@/components/LocaleLink";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
 import { langName, localeHref, type Lang } from "@/lib/lang";
-import type { Capability } from "@/lib/permissions";
 
 type Props = {
-  token: string;
   email: string;
   lang: Lang;
-  capabilities: Capability[];
   /** The signed-in account's address, or null when signed out. */
   signedInAs: string | null;
 };
@@ -23,7 +20,7 @@ type Props = {
  * What to do with a pending invite: register or sign in with its address, sign out of the wrong
  * account, or press Accept. Accepting is a button, so a link preview cannot use the invite up.
  */
-export default function InviteAccept({ token, email, lang, capabilities, signedInAs }: Props) {
+export default function InviteAccept({ email, lang, signedInAs }: Props) {
   const router = useRouter();
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
@@ -34,8 +31,6 @@ export default function InviteAccept({ token, email, lang, capabilities, signedI
     setError(null);
     const response = await fetch("/api/invites/accept", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
     }).catch(() => null);
     const data = (await response?.json().catch(() => ({}))) as { error?: string; reason?: string } | undefined;
     setPending(false);
@@ -68,9 +63,9 @@ export default function InviteAccept({ token, email, lang, capabilities, signedI
     return (
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button asChild>
-          <LocaleLink href={`/register?invite=${encodeURIComponent(token)}`}>Register with {email}</LocaleLink>
+          <LocaleLink href={"/register"}>Register with {email}</LocaleLink>
         </Button>
-        <LocaleLink href={`/login?invite=${encodeURIComponent(token)}`} className="text-sm underline underline-offset-4">
+        <LocaleLink href={"/login"} className="text-sm underline underline-offset-4">
           I already have an account
         </LocaleLink>
       </div>
@@ -95,7 +90,6 @@ export default function InviteAccept({ token, email, lang, capabilities, signedI
       <Button onClick={() => void accept()} disabled={pending}>
         {pending ? "Working…" : "Accept"}
       </Button>
-      <p className="sr-only">{capabilities.join(", ")}</p>
       {error && (
         <p role="alert" className="text-destructive mt-3 text-sm">
           {error}

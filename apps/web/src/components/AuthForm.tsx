@@ -30,8 +30,8 @@ const COPY = {
   },
 } as const;
 
-/** `invite`: a pending invite the form answers; only its token is carried on, never a free path. */
-export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { token: string; email: string } }) {
+/** `invite`: a pending invite the form answers (its token is in a cookie); it sends back to /invite, never a free path. */
+export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { email: string } }) {
   const router = useRouter();
   const lang = useLang();
   const copy = COPY[mode];
@@ -60,7 +60,7 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { toke
 
     // refresh() re-runs the server components, so a page guarded on the server (/admin)
     // sees the new session immediately rather than on the next full load.
-    router.push(localeHref(lang, invite ? `/invite?token=${encodeURIComponent(invite.token)}` : "/"));
+    router.push(localeHref(lang, invite ? "/invite" : "/"));
     router.refresh();
   }
 
@@ -137,7 +137,7 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { toke
         <p className="text-muted-foreground text-sm">
           {copy.switchText}{" "}
           <Link
-            href={invite ? `${copy.switchHref}?invite=${encodeURIComponent(invite.token)}` : copy.switchHref}
+            href={copy.switchHref}
             className="text-foreground underline underline-offset-4"
           >
             {copy.switchLabel}

@@ -20,16 +20,12 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const props = { token: "tok", email: "ana@example.com", lang: "deDE" as const, capabilities: ["edit" as const] };
+const props = { email: "ana@example.com", lang: "deDE" as const };
 
-test("signed out, it offers to register or sign in with the token", () => {
+test("signed out, it offers to register or sign in, with no token in either address", () => {
   render(<InviteAccept {...props} signedInAs={null} />);
-  expect(screen.getByRole("link", { name: /Register with ana@example.com/ }).getAttribute("href")).toContain(
-    "/register?invite=tok",
-  );
-  expect(screen.getByRole("link", { name: /already have an account/ }).getAttribute("href")).toContain(
-    "/login?invite=tok",
-  );
+  expect(screen.getByRole("link", { name: /Register with ana@example.com/ }).getAttribute("href")).toBe("/register");
+  expect(screen.getByRole("link", { name: /already have an account/ }).getAttribute("href")).toBe("/login");
 });
 
 test("signed in as another address, it names both and offers Sign out, not Accept", async () => {
@@ -50,7 +46,7 @@ test("signed in as the address, Accept posts the token and shows success", async
   await user.click(screen.getByRole("button", { name: "Accept" }));
   expect(await screen.findByText(/You're in/)).toBeTruthy();
   expect(fetchMock.mock.calls[0][0]).toBe("/api/invites/accept");
-  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ token: "tok" });
+  expect(fetchMock.mock.calls[0][1].body).toBeUndefined();
   expect(refresh).toHaveBeenCalled();
 });
 

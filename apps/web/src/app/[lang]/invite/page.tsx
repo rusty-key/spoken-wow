@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import InviteAccept from "@/components/InviteAccept";
 import { Contained } from "@/components/Width";
+import { INVITE_COOKIE } from "@/lib/invites/cookie";
 import { lookupInvite } from "@/lib/invites/store";
 import { isLang, langName, localeHref } from "@/lib/lang";
 import { capabilityLabel } from "@/lib/permissions";
@@ -10,17 +12,15 @@ import { currentSession } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Invitation · Spoken",
-  // The address holds the invite token, which must not reach another site as a Referer.
-  referrer: "no-referrer",
 };
 
 export const dynamic = "force-dynamic";
 
 const ADVICE = "Ask whoever invited you to send it again.";
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ token?: string | string[] }> }) {
-  const { token } = await searchParams;
-  const invite = typeof token === "string" && token ? await lookupInvite(token) : null;
+export default async function Page() {
+  const token = (await cookies()).get(INVITE_COOKIE)?.value;
+  const invite = token ? await lookupInvite(token) : null;
   const session = invite?.state === "pending" || invite?.state === "accepted" ? await currentSession() : null;
 
   let body: React.ReactNode;
@@ -57,10 +57,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
           {invite.capabilities.map(capabilityLabel).join(", ")}.
         </p>
         <InviteAccept
-          token={token as string}
           email={invite.email}
           lang={invite.lang}
-          capabilities={invite.capabilities}
           signedInAs={session?.user.email ?? null}
         />
       </>

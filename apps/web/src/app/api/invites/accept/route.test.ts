@@ -21,8 +21,13 @@ let invitee: Awaited<ReturnType<typeof testUser>>;
 let other: Awaited<ReturnType<typeof testUser>>;
 let token = "";
 
-const post = (body: unknown = { token }) =>
-  POST(new Request("https://example.com/api/invites/accept", { method: "POST", body: JSON.stringify(body) }));
+const post = (cookie: string | null = `spoken_invite=${token}`) =>
+  POST(
+    new Request("https://example.com/api/invites/accept", {
+      method: "POST",
+      headers: cookie ? { cookie } : {},
+    }),
+  );
 const as = (user: { id: string }) => ({ user: { id: user.id, email: `${user.id}@example.invalid`, role: null } });
 
 beforeAll(async () => {
@@ -76,7 +81,8 @@ describe("POST /api/invites/accept", () => {
     expect((await again.json()).reason).toBe("accepted");
   });
 
-  it("answers 404 to a token nobody has", async () => {
-    expect((await post({ token: "nope" })).status).toBe(404);
+  it("answers 404 to a token nobody has, and to no cookie", async () => {
+    expect((await post("spoken_invite=nope")).status).toBe(404);
+    expect((await post(null)).status).toBe(404);
   });
 });
