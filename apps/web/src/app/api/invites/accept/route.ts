@@ -6,6 +6,7 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
+import { inviteTokenIn } from "@/lib/invites/cookie";
 import { acceptInvite } from "@/lib/invites/store";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +24,11 @@ export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "sign in to accept the invite" }, { status: 401 });
 
-  const { token } = (await request.json().catch(() => ({}))) as { token?: unknown };
-  if (typeof token !== "string" || !token) return Response.json({ error: "expected { token }" }, { status: 400 });
+  const token = inviteTokenIn(request.headers.get("cookie"));
+  if (!token) return Response.json({ error: "This invite link is not valid any more.", reason: "unknown" }, { status: 404 });
 
   const outcome = await acceptInvite(token, session.user);
+  // The cookie stays: the token is spent now, and the refreshed /invite needs it to say "You're in".
   if (outcome.ok) return Response.json({ lang: outcome.lang, capabilities: outcome.capabilities });
 
   const { reason } = outcome;

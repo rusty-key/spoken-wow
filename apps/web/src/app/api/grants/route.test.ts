@@ -138,7 +138,7 @@ describe("/api/grants", () => {
       );
       expect(sent).toHaveLength(1);
       expect(sent[0].to).toBe(stranger);
-      expect(sent[0].args.url).toContain("/invite?token=");
+      expect(sent[0].args.url).toContain("/api/invites/open?token=");
       await expect(lookupInvite(sent[0].args.url.split("token=")[1])).resolves.toMatchObject({ state: "pending" });
       const log = await asSystem.query(`select 1 from "activity" where "kind" = 'invite.sent' and "actorId" = $1`, [granter.id]);
       expect(log.rowCount).toBe(1);

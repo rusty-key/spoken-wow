@@ -75,7 +75,7 @@ export function normalEmail(raw: string): string | null {
 const SITE = (process.env.BETTER_AUTH_URL ?? "https://spoken.quest").replace(/\/$/, "");
 
 export function inviteUrl(token: string): string {
-  return `${SITE}/invite?token=${token}`;
+  return `${SITE}/api/invites/open?token=${token}`;
 }
 
 function hashOf(token: string): string {
