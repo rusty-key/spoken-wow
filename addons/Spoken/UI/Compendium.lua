@@ -1118,6 +1118,7 @@ function C.NewList(panel, opts)
 	list.searchBox = searchBox
 	-- The cursor stops on an edit box but has no press of its own for one.
 	searchBox.OnSmartNavClick = function(self) self:SetFocus() end
+	Pad.FollowSearch(searchBox)
 
 	local inset = NewInset(panel)
 	-- The game's dark marble under the list, at its own colour.
@@ -1251,6 +1252,23 @@ function C.NewList(panel, opts)
 			-- As close to the box, and as level with it, as the spellbook's arrow is to its search.
 			button:SetPoint("LEFT", searchBox, "RIGHT", 4, -3)
 			list.filterButton = button
+			-- What the menu holds, for the controller's own (Pad.OpenFilter): its checkboxes, then
+			-- the orders to choose one of.
+			list.filterEntries = function()
+				local entries = {}
+				for _, box in ipairs(boxes) do
+					table.insert(entries, { label = box.label, get = box.get, set = function() box.set(not box.get()) end })
+				end
+				if opts.arrange then
+					for _, value in ipairs(opts.arrange.values) do
+						table.insert(entries, { label = opts.arrange.describe(value), radio = true,
+							get = function() return opts.arrange.get() == value end,
+							set = function() Arrange(value) end })
+					end
+				end
+				return entries
+			end
+			button.OnSmartNavClick = function() Pad.Filter(list) end
 		end
 	end
 
@@ -1925,7 +1943,12 @@ local function AfterCombat()
 	if waiter then return end
 	waiter = CreateFrame("Frame")
 	waiter:SetScript("OnEvent", function(_, event)
-		if event == "PLAYER_REGEN_DISABLED" then Pad.Unbind() else Pad.Settle() end
+		if event == "PLAYER_REGEN_DISABLED" then
+			Pad.Unbind()
+			Pad.ReleaseSearch()
+		else
+			Pad.Settle()
+		end
 	end)
 	-- Combat's start comes before the game holds addons back: the last moment to let go of keys.
 	waiter:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -2066,14 +2089,7 @@ end
 -- game's dropdown opens on the press, the older menu's arrow on its click.
 local function Filter()
 	local list = ShownList()
-	local button = list and list.filterButton
-	if not (button and button:IsShown()) then return end
-	if button.MouseDown and button.MouseUp and not list.filterMenu then
-		button:MouseDown()
-		button:MouseUp()
-	else
-		button:Click()
-	end
+	if list then Pad.Filter(list) end
 end
 
 local function KeyButton(suffix, onClick)
@@ -2128,6 +2144,194 @@ function Pad.Follow(frame)
 	frame.UnfocusGamepad = function()
 		Pad.focused = false
 		Pad.Unbind()
+	end
+end
+
+do
+	-- The search box under the controller UI. While an edit box has the keyboard, the controller's
+	-- buttons go to it and none of the game's bindings run, so the cursor, B and View are all dead
+	-- there. The box takes the controller's buttons itself while it has the keyboard, and any of
+	-- them gives the keyboard back, as B leaves the game's bag search (ContainerFrame.lua). Typing
+	-- is the on-screen keyboard's, which sends keys. Taking the buttons is protected: never in
+	-- combat, and given back as combat starts, while the game still allows it.
+	local searching
+
+	local function Locked()
+		return InCombatLockdown and InCombatLockdown() or false
+	end
+
+	local function CatchPad(box, on)
+		if not box.EnableGamePadButton or Locked() then return end
+		if on and not GamepadUI() then return end
+		box:EnableGamePadButton(on)
+		box.padCaught = on or nil
+	end
+
+	function Pad.FollowSearch(box)
+		box:HookScript("OnEditFocusGained", function(self)
+			searching = self
+			AfterCombat()
+			CatchPad(self, true)
+		end)
+		box:HookScript("OnEditFocusLost", function(self)
+			if searching == self then searching = nil end
+			if self.padCaught then CatchPad(self, false) end
+		end)
+		box:SetScript("OnGamePadButtonDown", function(self) self:ClearFocus() end)
+		-- Where the controller's buttons reach the box as keys instead.
+		box:HookScript("OnKeyDown", function(self, key)
+			if type(key) == "string" and key:match("^PAD") then self:ClearFocus() end
+		end)
+	end
+
+	function Pad.ReleaseSearch()
+		if searching then searching:ClearFocus() end
+	end
+
+	-- The filter under the controller UI: the game's menu, opened by an addon, never takes the
+	-- controller, so a dialog of Spoken's own holds the same switches and orders, one row each, and
+	-- joins the frame controls manager as a popup, as the game's own dialogs do (ReadyCheck,
+	-- GuildInviteFrame): the cursor moves to it as it opens and back to the window as it closes. A
+	-- ticks a row, B closes it. With the mouse, or in combat, where the manager refuses addons, the
+	-- game's menu opens as before.
+	local ROW, ROWS_TOP, PAD_WIDTH = 24, 44, 260
+	local filterPad
+
+	local function PaintRow(row)
+		local on = row.entry.get() and true or false
+		if row.entry.radio then
+			row.mark:SetTexture([[Interface\Buttons\UI-RadioButton]])
+			row.mark:SetTexCoord(on and 0.25 or 0, on and 0.5 or 0.25, 0, 1)
+			row.tick:Hide()
+		else
+			row.mark:SetTexture([[Interface\Buttons\UI-CheckBox-Up]])
+			row.mark:SetTexCoord(0, 1, 0, 1)
+			row.tick:SetShown(on)
+		end
+	end
+
+	local function BuildFilterPad()
+		local frame = CreateFrame("Frame", NAME .. "FilterPad", UIParent)
+		frame:SetFrameStrata("FULLSCREEN_DIALOG")
+		frame:SetToplevel(true)
+		frame:EnableMouse(true)
+		frame:SetClampedToScreen(true)
+		-- Drawn as the game's popup is: the dark dialog background under the diamond-cornered border.
+		local back = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+		if not Atlas(back, "UI-DialogBox-Background-Dark", false) then back:SetColorTexture(0, 0, 0, 0.85) end
+		back:SetPoint("TOPLEFT", 7, -7)
+		back:SetPoint("BOTTOMRIGHT", -7, 7)
+		local border = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
+		Atlas(border, "UI-DiamondDialogBox-Border", false)
+		border:SetAllPoints(frame)
+		local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+		title:SetPoint("TOP", frame, "TOP", 0, -18)
+		title:SetText(_G.FILTER or "Filter")
+		local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+		close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+		close:SetScript("OnClick", function() frame:Hide() end)
+		frame.CloseButton = close
+		frame.rows = {}
+		frame:Hide()
+		if UISpecialFrames then table.insert(UISpecialFrames, NAME .. "FilterPad") end
+
+		frame:HookScript("OnShow", function(self)
+			local manager = Manager()
+			if manager and GamepadUI() and not CombatRestricted() then
+				manager:HandlePopupShown(self)
+				self.joined = true
+		end
+		end)
+		frame:HookScript("OnHide", function(self)
+			local manager = Manager()
+			if self.joined and manager and not CombatRestricted() then manager:HandlePopupHide(self) end
+			self.joined = nil
+			self.list = nil
+		end)
+		-- The cursor starts on the first row.
+		frame.FocusGamepad = function(self)
+			local first = self.rows[1]
+			if first and first:IsShown() and SmartNavigation and SmartNavigation.SetTargetButtonForFrame
+				and not CombatRestricted() then
+				SmartNavigation:SetTargetButtonForFrame(self, first)
+		end
+		end
+		filterPad = frame
+		return frame
+	end
+
+	local function FilterRow(frame, index)
+		local row = frame.rows[index]
+		if row then return row end
+		row = CreateFrame("Button", nil, frame)
+		row:SetSize(PAD_WIDTH - 40, ROW - 2)
+		row:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -(ROWS_TOP + (index - 1) * ROW))
+		row:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
+		row.mark = row:CreateTexture(nil, "ARTWORK")
+		row.mark:SetSize(20, 20)
+		row.mark:SetPoint("LEFT", row, "LEFT", 2, 0)
+		row.tick = row:CreateTexture(nil, "OVERLAY")
+		row.tick:SetTexture([[Interface\Buttons\UI-CheckBox-Check]])
+		row.tick:SetAllPoints(row.mark)
+		row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+		row.label:SetPoint("LEFT", row.mark, "RIGHT", 6, 0)
+		row.label:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+		row.label:SetJustifyH("LEFT")
+		row:SetScript("OnClick", function(self)
+			Sound("igMainMenuOptionCheckBoxOn")
+			self.entry.set()
+			for _, each in ipairs(frame.rows) do
+				if each.entry and each:IsShown() then PaintRow(each) end
+		end
+		end)
+		frame.rows[index] = row
+		return row
+	end
+
+	--- Open `list`'s filter as the controller's dialog, or close it when it is open on `list`.
+	--- Says whether it did: false where the game's menu is to open instead.
+	function Pad.OpenFilter(list)
+		local manager = Manager()
+		if not (GamepadUI() and manager and manager.HandlePopupShown) or CombatRestricted() or not list.filterEntries then
+			return false
+		end
+		local frame = filterPad or BuildFilterPad()
+		if frame:IsShown() then
+			local same = frame.list == list
+			frame:Hide()
+			if same then return true end
+		end
+		local entries = list.filterEntries()
+		for i, entry in ipairs(entries) do
+			local row = FilterRow(frame, i)
+			row.entry = entry
+			row.label:SetText(entry.label)
+			PaintRow(row)
+			row:Show()
+		end
+		for i = #entries + 1, #frame.rows do
+			frame.rows[i]:Hide()
+			frame.rows[i].entry = nil
+		end
+		frame:SetSize(PAD_WIDTH, ROWS_TOP + #entries * ROW + 20)
+		frame:ClearAllPoints()
+		frame:SetPoint("TOPLEFT", list.filterButton, "BOTTOMLEFT", 0, -4)
+		frame.list = list
+		frame:Show()
+		return true
+	end
+
+	--- The filter opened from the controller: its dialog, else the game's menu as the cursor's A
+	--- presses it (or the older menu's arrow, clicked).
+	function Pad.Filter(list)
+		local button = list.filterButton
+		if not (button and button:IsShown()) or Pad.OpenFilter(list) then return end
+		if button.MouseDown and button.MouseUp and not list.filterMenu then
+			button:MouseDown()
+			button:MouseUp()
+		else
+			button:Click()
+		end
 	end
 end
 

@@ -38,7 +38,7 @@ _G.MenuUtil = _G.MenuUtil or {}
 local C = _G.SpokenCompendium
 
 -- A tab as the parts lay theirs out: a list of a few rows, the first chosen, and a page beside it.
-local chosen = "first"
+local chosen, onlyOn = "first", false
 local list, page
 C:Register("quests", { label = "Quests", order = 1, build = function(panel)
     list = C.NewList(panel, {
@@ -49,7 +49,7 @@ C:Register("quests", { label = "Quests", order = 1, build = function(panel)
         end,
         isSelected = function(item) return item.key == chosen end,
         onClick = function(item) chosen = item.key end,
-        only = "Started Only", onlyGet = function() return false end, onlySet = function() end,
+        only = "Started Only", onlyGet = function() return onlyOn end, onlySet = function(on) onlyOn = on end,
         addScrollBar = function(scroll, child, inset) return SpokenTextView.AddScrollBar(scroll, child, inset) end,
     })
     page = C.NewPage(C.PageHolder(panel, list), "Spoken_Quests")
@@ -95,6 +95,8 @@ _G.C_RestrictedActions = { IsAddOnRestrictionActive = function() return restrict
 _G.GamepadMode = { FrameControlsManager = {
     FrameShown = function(_, frame) Record("shown", frame == C.window and "window" or "other") end,
     FrameHidden = function(_, frame) Record("hidden", frame == C.window and "window" or "other") end,
+    HandlePopupShown = function(_, frame) Record("popup shown", frame == _G.SpokenCompendiumWindowFilterPad and "filter" or "other") end,
+    HandlePopupHide = function(_, frame) Record("popup hidden", frame == _G.SpokenCompendiumWindowFilterPad and "filter" or "other") end,
 } }
 _G.SmartNavigation = {
     RefreshButtonGroups = function(_, frame) Record("refresh", frame == C.window and "window" or "other") end,
@@ -102,7 +104,8 @@ _G.SmartNavigation = {
         Record("stick", frame == C.window and "window" or "other", page and scroll == page.body.frame and "page" or tostring(scroll))
     end,
     SetTargetButtonForFrame = function(_, frame, button)
-        Record("target", frame == C.window and "window" or "other", button and button.row and button.row.key or "none")
+        local what = button and (button.row and button.row.key or button.label and button.label:GetText()) or "none"
+        Record("target", frame == C.window and "window" or "other", what)
     end,
 }
 local ignored = {}
@@ -192,12 +195,43 @@ Expect("the quests' list has its filter menu", filter ~= nil, true)
 function filter:MouseDown() table.insert(presses, "down") end
 function filter:MouseUp() table.insert(presses, "up") end
 filter:Show()
+calls = {}
 Press("PADFORWARD")
-Expect("Menu opens the filter menu, pressed as the cursor's A presses it", table.concat(presses, " "), "down up")
+local pad = _G.SpokenCompendiumWindowFilterPad
+Expect("Menu opens the controller's own filter, not the game's menu, which never takes the cursor",
+    #presses, 0)
+Expect("...shown", pad ~= nil and pad:IsShown(), true)
+Expect("...as a popup, so the cursor moves into it", Called("popup shown filter"), true)
+Expect("...a row for each switch", pad.rows[1].label:GetText(), "Started Only")
+Expect("...unticked as the switch is", pad.rows[1].tick:IsShown(), false)
+Expect("B has a close button to press", pad.CloseButton ~= nil, true)
+calls = {}
+pad:FocusGamepad()
+Expect("the cursor starts on its first row", Called("target other Started Only"), true)
+pad.rows[1]:Click()
+Expect("A on a row flips its switch", onlyOn, true)
+Expect("...and ticks the row", pad.rows[1].tick:IsShown(), true)
+calls = {}
+pad.CloseButton:Click()
+Run(pad, "OnHide")
+Expect("B closes it", pad:IsShown(), false)
+Expect("...and the cursor goes back to the window", Called("popup hidden filter"), true)
+calls = {}
+filter:OnSmartNavClick()
+Expect("A on the filter arrow opens it too", pad:IsShown() and Called("popup shown filter"), true)
+Press("PADFORWARD")
+Run(pad, "OnHide")
+Expect("...and Menu again closes it", pad:IsShown(), false)
+onlyOn = false
+gamepadUI = false
+filter:OnSmartNavClick()
+Expect("with the controller UI off, the game's menu opens as the mouse opens it", table.concat(presses, " "), "down up")
+Expect("...and not the controller's", pad:IsShown(), false)
+gamepadUI = true
 presses = {}
 Press("PADRSHOULDER")
 Press("PADFORWARD")
-Expect("...and on a tab without one does nothing", #presses, 0)
+Expect("...and on a tab without one does nothing", #presses + (pad:IsShown() and 1 or 0), 0)
 Press("PADLSHOULDER")
 C.window:UnfocusGamepad()
 Expect("the controller on another window, the keys are the game's again", next(overrides), nil)
@@ -238,10 +272,40 @@ Close()
 
 ---------------------------------------------------------------- the search box
 Expect("A on the search box starts typing in it", type(rawget(list.searchBox, "OnSmartNavClick")), "function")
-local focused
-function list.searchBox:SetFocus() focused = true end
-list.searchBox:OnSmartNavClick()
-Expect("...by focusing it", focused, true)
+local search, typing, caught = list.searchBox, false, false
+function search:SetFocus() typing = true; Run(self, "OnEditFocusGained") end
+function search:ClearFocus() if typing then typing = false; Run(self, "OnEditFocusLost") end end
+function search:EnableGamePadButton(on)
+    assert(not lockdown, "an edit box takes the controller's buttons only out of combat")
+    caught = on
+end
+Open()
+search:OnSmartNavClick()
+Expect("...by focusing it", typing, true)
+Expect("typing, the box takes the controller's buttons: the game's bindings are dead there", caught, true)
+search.handlers.OnGamePadButtonDown(search, "PADDDOWN")
+Expect("any of them leaves the box", typing, false)
+Expect("...and gives the buttons back", caught, false)
+search:SetFocus()
+for _, hook in ipairs(search.hooks.OnKeyDown or {}) do hook(search, "a") end
+Expect("a key typed stays in the box", typing, true)
+for _, hook in ipairs(search.hooks.OnKeyDown or {}) do hook(search, "PADBACK") end
+Expect("a controller button sent as a key leaves it", typing, false)
+search:SetFocus()
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("combat starting leaves the box while the buttons can still be given back", typing or caught, false)
+lockdown = true
+search:SetFocus()
+Expect("typing in combat, the box takes no buttons", caught, false)
+search:ClearFocus()
+lockdown = false
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+gamepadUI = false
+search:SetFocus()
+Expect("with the controller UI off, the box takes no buttons", caught, false)
+search:ClearFocus()
+gamepadUI = true
+Close()
 
 ---------------------------------------------------------------- rows built in sight of the cursor
 Open()
