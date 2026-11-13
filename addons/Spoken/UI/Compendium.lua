@@ -1944,9 +1944,12 @@ local function AfterCombat()
 	waiter = CreateFrame("Frame")
 	waiter:SetScript("OnEvent", function(_, event)
 		if event == "PLAYER_REGEN_DISABLED" then
+			Pad.fighting = true
 			Pad.Unbind()
 			Pad.ReleaseSearch()
+			if Pad.SettleFilter then Pad.SettleFilter() end
 		else
+			Pad.fighting = nil
 			Pad.Settle()
 		end
 	end)
@@ -1977,11 +1980,16 @@ function Pad.NoStop(frame)
 	SmartNavigation_MarkFrameIgnored(frame)
 end
 
---- The cursor's stops looked for again, for rows a redraw added.
+--- The cursor's stops looked for again, for rows a redraw added; in combat, once it ends.
 function Pad.Refind()
-	if joined and not CombatRestricted() and SmartNavigation and SmartNavigation.RefreshButtonGroups then
-		SmartNavigation:RefreshButtonGroups(window)
+	if not (joined and SmartNavigation and SmartNavigation.RefreshButtonGroups) then return end
+	if CombatRestricted() then
+		Pad.refindLater = true
+		AfterCombat()
+		return
 	end
+	Pad.refindLater = nil
+	SmartNavigation:RefreshButtonGroups(window)
 end
 
 -- The page in sight: the shown tab's, unless the window is folded down to its list.
@@ -2036,6 +2044,8 @@ function Pad.Settle()
 		if want then manager:FrameShown(window) else manager:FrameHidden(window) end
 	end
 	if Pad.focused then Pad.Bind() else Pad.Unbind() end
+	if Pad.refindLater then Pad.Refind() end
+	if Pad.SettleFilter then Pad.SettleFilter() end
 end
 
 -- The shoulders, View and Menu while the window has the controller, as the game's own windows
@@ -2263,10 +2273,8 @@ do
 		end)
 		frame:HookScript("OnHide", function(self)
 			self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
-			local manager = Manager()
-			if self.joined and manager and not CombatRestricted() then manager:HandlePopupHide(self) end
-			self.joined = nil
 			self.list = nil
+			Pad.SettleFilter()
 		end)
 		-- A click anywhere else closes it, as it closes the game's menus.
 		frame:SetScript("OnEvent", function(self, _, mouseButton)
@@ -2274,16 +2282,51 @@ do
 			local button = self.list and self.list.filterButton
 			if not (self:IsMouseOver() or (button and button:IsMouseOver())) then self:Hide() end
 		end)
-		-- The cursor starts on the first row.
+		-- The cursor starts on the first row. Taking the controller unfocuses the window, which
+		-- lets go of its keys, so the menu holds Menu itself while it has the controller.
 		frame.FocusGamepad = function(self)
+			self.focused = true
+			Pad.SettleFilter()
 			local first = self.rows[1]
 			if first and first:IsShown() and SmartNavigation and SmartNavigation.SetTargetButtonForFrame
 				and not CombatRestricted() then
 				SmartNavigation:SetTargetButtonForFrame(self, first)
 			end
 		end
+		frame.UnfocusGamepad = function(self)
+			self.focused = nil
+			Pad.SettleFilter()
+		end
 		filterPad = frame
 		return frame
+	end
+
+	-- Menu while the menu has the controller, and the manager told of it closing. Neither can
+	-- happen in combat: run again once it ends.
+	function Pad.SettleFilter()
+		local frame = filterPad
+		if not frame then return end
+		local locked = Locked() or CombatRestricted()
+		local wantKey = frame.focused and frame:IsShown() and not Pad.fighting and GamepadUI()
+			and SetOverrideBindingClick and true or false
+		if (frame.keyBound or false) ~= wantKey and not locked then
+			if wantKey then
+				SetOverrideBindingClick(frame, true, MENU, NAME .. "Filter")
+			else
+				ClearOverrideBindings(frame)
+			end
+			frame.keyBound = wantKey or nil
+		end
+		if frame.joined and not frame:IsShown() then
+			local manager = Manager()
+			if not manager then
+				frame.joined = nil
+			elseif not CombatRestricted() then
+				frame.joined = nil
+				manager:HandlePopupHide(frame)
+			end
+		end
+		if locked and (frame.joined or frame.keyBound) then AfterCombat() end
 	end
 
 	local function FilterRow(frame, index)

@@ -95,8 +95,18 @@ _G.C_RestrictedActions = { IsAddOnRestrictionActive = function() return restrict
 _G.GamepadMode = { FrameControlsManager = {
     FrameShown = function(_, frame) Record("shown", frame == C.window and "window" or "other") end,
     FrameHidden = function(_, frame) Record("hidden", frame == C.window and "window" or "other") end,
-    HandlePopupShown = function(_, frame) Record("popup shown", frame == _G.SpokenCompendiumWindowFilterPad and "filter" or "other") end,
-    HandlePopupHide = function(_, frame) Record("popup hidden", frame == _G.SpokenCompendiumWindowFilterPad and "filter" or "other") end,
+    -- The manager moves the controller to a popup and back (FrameControlsManager's FocusFrame):
+    -- the window is unfocused first, the popup focused, and the other way round on hide.
+    HandlePopupShown = function(_, frame)
+        Record("popup shown", frame == _G.SpokenCompendiumWindowFilterPad and "filter" or "other")
+        if rawget(C.window, "UnfocusGamepad") then C.window:UnfocusGamepad() end
+        if rawget(frame, "FocusGamepad") then frame:FocusGamepad() end
+    end,
+    HandlePopupHide = function(_, frame)
+        Record("popup hidden", frame == _G.SpokenCompendiumWindowFilterPad and "filter" or "other")
+        if rawget(frame, "UnfocusGamepad") then frame:UnfocusGamepad() end
+        if rawget(C.window, "FocusGamepad") then C.window:FocusGamepad() end
+    end,
 } }
 _G.SmartNavigation = {
     RefreshButtonGroups = function(_, frame) Record("refresh", frame == C.window and "window" or "other") end,
@@ -361,6 +371,45 @@ Close()
 restricted = false
 stub.FireEvent("PLAYER_REGEN_ENABLED")
 Expect("opened and closed within one fight, it never joins", Called("shown window") or Called("hidden window"), false)
+
+Open()
+C.window:FocusGamepad()
+restricted = true
+list.opts.build = function()
+    local items = {}
+    for i = 1, 9 do table.insert(items, { key = "row" .. i, label = "Row " .. i }) end
+    return items
+end
+calls = {}
+list:Render()
+Expect("rows added in combat: the cursor looks for them only after, the setter refused then",
+    Called("refresh window"), false)
+restricted = false
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("...and does once combat ends, with no tab change", Called("refresh window"), true)
+Close()
+
+-- The filter closed in combat stays with the manager until it can be told.
+Open()
+C.window:FocusGamepad()
+filter:Show()
+Press("PADFORWARD")
+Expect("the filter is open before the fight", pad:IsShown(), true)
+Expect("...holding Menu, which closes it", overrides.PADFORWARD and overrides.PADFORWARD.owner == pad, true)
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("as combat starts it lets go of Menu, while the game still allows it", overrides.PADFORWARD, nil)
+lockdown, restricted = true, true
+calls = {}
+pad:Hide()
+Run(pad, "OnHide")
+Expect("closed in combat, the manager is not told then", Called("popup hidden filter"), false)
+lockdown, restricted = false, false
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("...but once combat ends, so the cursor leaves it", Called("popup hidden filter"), true)
+calls = {}
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("...and only once", Called("popup hidden filter"), false)
+Close()
 
 local failures = Failures()
 if failures > 0 then
