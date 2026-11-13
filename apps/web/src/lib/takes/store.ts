@@ -149,6 +149,21 @@ export async function liveVersion(
   return rows[0]?.version ?? null;
 }
 
+/** The live take of one file, its version and when it was generated, or null when there is none. */
+export async function liveTake(
+  source: Source,
+  file: string,
+  lang: Lang = BASE_LANG,
+): Promise<{ version: number; createdAt: string } | null> {
+  const rows = await readAs<{ version: number; createdAt: string }>(
+    lang,
+    `select "version", to_json("createdAt") #>> '{}' as "createdAt" from "take"
+      where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"`,
+    [source, file, lang],
+  );
+  return rows[0] ?? null;
+}
+
 /**
  * Make one take the live one.
  *

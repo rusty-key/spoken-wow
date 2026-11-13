@@ -10,6 +10,7 @@
  * split packs' folders, and on CurseForge, where the All project is a meta addon, the page links
  * the four split packs themselves (`split`).
  */
+import { CURSEFORGE, githubReleases } from "@/components/landing/links";
 import type { Lang } from "@/lib/lang";
 
 export type Section = "quests" | "places" | "readables" | "bosses";
@@ -297,4 +298,22 @@ export const PACKS: readonly Pack[] = [
 /** The pack for a section in a language, or undefined where none has been built. */
 export function packFor(section: Section, lang: Lang): Pack | undefined {
   return PACKS.find((pack) => pack.section === section && pack.lang === lang);
+}
+
+/**
+ * Where a pack downloads by hand: its CurseForge projects (a split pack's parts, labelled, or only
+ * the part named `only`) and its GitHub releases.
+ */
+export function packDownloads(pack: Pack, only: string | null = null): { label: string; href: string }[] {
+  const links: { label: string; href: string }[] = [];
+  if (pack.split) {
+    const one = pack.split.find((part) => part.label === only);
+    for (const part of one ? [one] : pack.split) {
+      links.push({ label: one ? "CurseForge" : `CurseForge: ${part.label}`, href: `${CURSEFORGE}/${part.slug}` });
+    }
+  } else if (pack.curseforge) {
+    links.push({ label: "CurseForge", href: `${CURSEFORGE}/${pack.curseforge}` });
+  }
+  links.push({ label: pack.split ? "GitHub: all" : "GitHub", href: githubReleases(pack.release) });
+  return links;
 }

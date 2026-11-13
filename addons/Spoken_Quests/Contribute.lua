@@ -334,14 +334,29 @@ local function BaseFields()
     }
 end
 
+--- The pack folder that holds a line, and that folder's .toc version, onto `fields`. A language's
+--- quests ship as several folders and a release bumps only the ones it changed, so the folder's
+--- own version is what tells the site whether the player has the line's newest recording.
+---@param module table|nil the data module the line resolved to (soundData.module)
+local function FolderFields(fields, module)
+    local metadata = module and module.METADATA
+    if not (metadata and metadata.AddonName) then
+        return
+    end
+    fields[#fields + 1] = { "packFolder", metadata.AddonName }
+    fields[#fields + 1] = { "packFolderVersion", metadata.ContentVersion or "none" }
+end
+
 --- The envelope for what is on screen, or nil when there is nothing to send. `reworded` for a
---- line that plays in other words, which leaves out the displays.
-function Contribute:Capture(reworded)
+--- line that plays in other words, which leaves out the displays. `module` is the data module
+--- the line plays from, for a report.
+function Contribute:Capture(reworded, module)
     if not CoreIsCurrent() then
         return nil
     end
     local event, text = EventOnScreen()
     local fields = BaseFields()
+    FolderFields(fields, module)
 
     if event and text and text ~= "" then
         local questID = GetQuestID and NotSecret(GetQuestID()) or 0
@@ -409,13 +424,14 @@ function Contribute:ReportContext(clip)
         return self:CaptureFromLog(clip.questID, clip.title)
     end
     if not clip or ShowsClip(clip) then
-        local envelope = self:Capture()
+        local envelope = self:Capture(nil, clip and clip.module or self:ModuleForCurrent())
         if envelope or not clip then
             return envelope
         end
     end
 
     local fields = BaseFields()
+    FolderFields(fields, clip.module)
     local path = EVENT_PATHS[clip.event]
     if clip.questID and clip.questID > 0 and path then
         fields[#fields + 1] = { "quest", clip.questID }
@@ -432,19 +448,19 @@ function Contribute:ReportContext(clip)
     return Spoken.Contribute:Envelope("quests", fields, text)
 end
 
---- Whether this client's data module has a line for what is on screen.
+--- A throwaway soundData for what is on screen, for DataModules:PrepareSound to resolve, or nil.
 ---
 --- Neither VoiceOver.lua nor Player.lua expose a lookup by that name: what actually decides
 --- there is nothing to enqueue is DataModules:PrepareSound, called from Player:Enqueue. Run
 --- against a throwaway table rather than a soundData already headed for playback -- PrepareSound
 --- mutates whatever it is given (fileName, filePath, length, module), and a table built only to
 --- ask the question must not be mistaken afterwards for a clip that plays.
-local function HasSoundForCurrent()
+local function SoundDataForCurrent()
     local event, text = EventOnScreen()
     if event and text and text ~= "" then
         -- The text and giver too: a moment in several wordings is found by the words on screen.
-        return DataModules:PrepareSound({ event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
-            text = text, unitGUID = Utils:GetNPCGUID() })
+        return { event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
+            text = text, unitGUID = Utils:GetNPCGUID() }
     end
 
     local gossip = GossipOnScreen()
@@ -457,18 +473,30 @@ local function HasSoundForCurrent()
     -- GUID, and hands that name to string.gsub, so a nil one is an error thrown at a player
     -- who only walked away from a conversation.
     if gossip and gossip ~= "" and (guid or name) then
-        local soundData = {
+        return {
             event = Enums.SoundEvent.Gossip,
             unitGUID = guid,
             name = name,
             unitIsObjectOrItem = Utils:IsNPCObjectOrItem(),
             text = gossip,
         }
-        -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
-        return DataModules:PrepareSound(soundData) and not DataModules:IsOtherBody(soundData)
     end
+end
 
-    return false
+--- Whether this client's data module has a line for what is on screen.
+local function HasSoundForCurrent()
+    local soundData = SoundDataForCurrent()
+    if not soundData or not DataModules:PrepareSound(soundData) then
+        return false
+    end
+    -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
+    return not (soundData.event == Enums.SoundEvent.Gossip and DataModules:IsOtherBody(soundData))
+end
+
+--- The data module the line on screen plays from, or nil when no pack has it.
+function Contribute:ModuleForCurrent()
+    local soundData = SoundDataForCurrent()
+    return soundData and DataModules:PrepareSound(soundData) and soundData.module or nil
 end
 
 --- Whether Capture would build an envelope, without paying to build one.

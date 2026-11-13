@@ -12,7 +12,10 @@ import {
   LATEST_VERSION,
   addonLabel,
   contextFacts,
+  outdatedPack,
   outdatedVersion,
+  packVersion,
+  type PackReleases,
   type ReportContext,
 } from "@/lib/reports/context";
 import { cn } from "@/lib/utils";
@@ -47,17 +50,31 @@ export default function ReportContextFacts({
 }
 
 /**
- * The context folded under a report in triage: the addon version on the summary line, and
- * that the line might already be fixed when a newer release is out. Might, because the
- * version says nothing about whether the release touched this line.
+ * The context folded under a report in triage: the addon and pack versions on the summary line,
+ * and that the line might already be fixed when a newer release is out. A newer pack outranks a
+ * newer addon, as the pack holds the audio. Might, because the version says nothing about
+ * whether the release touched this line.
+ *
+ * `releases` are the section's released pack versions by language; without them the pack is
+ * shown and not weighed.
  *
  * `children` follow the facts and are drawn only once the context is opened, so what they fetch
  * is fetched for the reports somebody reads rather than for every row on the page.
  */
-export function ReportContextNote({ context, children }: { context: ReportContext | null; children?: ReactNode }) {
+export function ReportContextNote({
+  context,
+  releases,
+  children,
+}: {
+  context: ReportContext | null;
+  releases?: PackReleases;
+  children?: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   if (!context) return null;
   const version = addonLabel(context) ?? "the game";
+  const pack = packVersion(context);
+  const oldPack = outdatedPack(context, releases);
   const outdated = outdatedVersion(context);
   return (
     <details
@@ -67,7 +84,13 @@ export function ReportContextNote({ context, children }: { context: ReportContex
     >
       <summary className="text-muted-foreground cursor-pointer">
         From {version}
-        {outdated ? (
+        {pack ? `, pack ${pack}` : null}
+        {oldPack ? (
+          <span className="text-amber-600 dark:text-amber-400">
+            {" "}
+            · old pack, might already be fixed in {oldPack.latest}
+          </span>
+        ) : outdated ? (
           <span className="text-amber-600 dark:text-amber-400">
             {" "}
             · might already be fixed in {LATEST_VERSION}

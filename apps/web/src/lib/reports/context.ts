@@ -6,6 +6,7 @@
  * triage rows render it there.
  */
 import { parseEnvelope, type Envelope } from "@/lib/contributions/envelope";
+import { isLang, langName } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 
 export type ReportContext = { fields: Record<string, string>; text: string | null };
@@ -39,10 +40,134 @@ export function addonLabel(context: ReportContext): string | undefined {
   return context.fields.addon?.replace("/", " ");
 }
 
+const VERSION = /^\d+(\.\d+)*(-[\w.]+)?$/;
+
 /** "3.4.0" from "SpokenQuests/3.4.0", or null for a source checkout's "dev". */
 export function addonVersion(context: ReportContext | null): string | null {
   const version = context?.fields.addon?.split("/")[1];
-  return version && /^\d+(\.\d+)*(-[\w.]+)?$/.test(version) ? version : null;
+  return version && VERSION.test(version) ? version : null;
+}
+
+/**
+ * The version of the sound pack the player was hearing, or null: "none" when no pack speaks the
+ * language, and nothing at all from an addon older than the field. The version of the folder the
+ * line played from where the addon names it, else the newest of the language's folders.
+ */
+export function packVersion(context: ReportContext | null): string | null {
+  const folder = context?.fields.packFolderVersion;
+  if (folder && VERSION.test(folder)) return folder;
+  const version = context?.fields.packVersion;
+  return version && VERSION.test(version) ? version : null;
+}
+
+/** The quests packs a language ships as, by the suffix of their folders. */
+export const QUEST_PARTS = ["Alliance", "Horde", "Shared", "Gossip"] as const;
+export type QuestPart = (typeof QUEST_PARTS)[number];
+
+/**
+ * Which of a language's quests packs the line played from, from the folder the addon names:
+ * "Horde" from SpokenQuestsAudioHorde_deDE. Null for another section, an addon that names no
+ * folder, or the old single-folder pack.
+ */
+export function questPart(context: ReportContext | null): QuestPart | null {
+  const match = /^SpokenQuestsAudio([A-Za-z]+?)(?:_|$)/.exec(context?.fields.packFolder ?? "");
+  return QUEST_PARTS.find((part) => part === match?.[1]) ?? null;
+}
+
+const SECTION_TITLES: Record<Source, string> = {
+  quests: "Quests",
+  places: "Places",
+  readables: "Readables",
+  bosses: "Bosses",
+};
+
+/**
+ * The name a section's pack in `language` goes by in the AddOns list and on its store page:
+ * "Spoken Audio: Quests - Horde", "Spoken German Audio: Gossip", "Spoken German Audio: Places".
+ * Quests without a `part` is named as a whole.
+ */
+export function packName(source: Source, language: string, part: QuestPart | null = null): string {
+  const name = language === "enUS" ? "" : `${isLang(language) ? langName(language) : language} `;
+  const title =
+    source === "quests" && part ? (part === "Gossip" ? "Gossip" : `Quests - ${part}`) : SECTION_TITLES[source];
+  return `Spoken ${name}Audio: ${title}`;
+}
+
+/** A release that gave a pack a version, and when it started building from the live takes. */
+export type PackRelease = { version: string; at: string };
+
+/** Per pack language, one section's releases, newest first. */
+export type PackReleases = Record<string, PackRelease[]>;
+
+/**
+ * The player's pack version and the newer one released in its language, or null when the pack
+ * is current, unknown, or its language was never released from the site.
+ *
+ * Compared with the newest version among the player's folders of that language, while a release
+ * bumps only the folders it changed. A player without the folder a release touched is told of an
+ * update that brings them nothing; the triage flag says "might" for that reason.
+ */
+export function outdatedPack(
+  context: ReportContext | null,
+  releases: PackReleases | undefined,
+): { version: string; latest: string } | null {
+  const version = packVersion(context);
+  const newest = context?.fields.pack && releases?.[context.fields.pack]?.[0]?.version;
+  return version && newest && isOlder(version, newest) ? { version, latest: newest } : null;
+}
+
+/**
+ * What the report page can tell a player about the line before they report it: their pack
+ * against the newest, and where the live take stands against both.
+ *
+ * `shipsIn` is the first release that started after the take was recorded, null when none has
+ * yet. `inYours` is whether that release is no newer than the player's pack, null when that
+ * cannot be told: no pack version, or a take older than every release on record, which an
+ * earlier release outside the site may already have carried. The take's time is when it was
+ * generated; a take restored later counts from then.
+ */
+export type LineNews = {
+  version: string | null;
+  /**
+   * Whether `version` is the line's own folder's. A release bumps only the folders it changed, so
+   * then `latest` is the release that carries this line's newest recording, not the newest
+   * release, which may have left the folder alone.
+   */
+  exact: boolean;
+  latest: string | null;
+  recordedAt: string;
+  shipsIn: string | null;
+  inYours: boolean | null;
+};
+
+export function lineNews(
+  context: ReportContext | null,
+  releases: PackRelease[] | undefined,
+  recordedAt: string | null,
+): LineNews | null {
+  if (!context || !recordedAt) return null;
+  const version = packVersion(context);
+  const list = releases ?? [];
+  const recorded = Date.parse(recordedAt);
+  const after = list.filter((release) => Date.parse(release.at) > recorded);
+  const ships = after.at(-1) ?? null;
+  const known = list.length > 0 && after.length < list.length;
+  let inYours: boolean | null = null;
+  if (version && list.length) {
+    if (!ships) inYours = false;
+    else if (known) inYours = !isOlder(version, ships.version);
+    else if (!isOlder(version, ships.version)) inYours = true;
+  }
+  const exact = Boolean(context.fields.packFolderVersion && version === context.fields.packFolderVersion);
+  const newest = exact ? (inYours === false ? ships?.version : null) : list[0]?.version;
+  return {
+    version,
+    exact,
+    latest: version && newest && isOlder(version, newest) ? newest : null,
+    recordedAt,
+    shipsIn: ships?.version ?? null,
+    inYours,
+  };
 }
 
 /**
@@ -82,6 +207,12 @@ export function contextFacts(context: ReportContext): { label: string; value: st
   add("Addon", addonLabel(context));
   add("Client", f.build);
   add("Language", f.locale && f.pack && f.pack !== f.locale ? `${f.locale}, hearing ${f.pack}` : f.locale);
+  add(
+    "Pack",
+    f.packFolder
+      ? `${f.packFolder} ${f.packFolderVersion ?? ""}`.trim()
+      : f.packVersion && (f.packVersion === "none" ? "none installed" : f.packVersion),
+  );
   add("NPC", f.npc);
   add("Quest", f.quest && [f.quest, f.event, f.title].filter(Boolean).join(" "));
   add("Book", f.book && (f.number ? `${f.book}, page ${f.number}` : f.book));
