@@ -112,6 +112,11 @@ Expect("a non-code is ignored", env.Languages:Get("hebrew"), nil)
 env.Languages:Reset()
 Expect("Reset forgets declarations", env.Languages:Get("itIT"), nil)
 
+env = Install({ Pack("SpokenReadablesAudio_legacy", { [QUESTS_KEY] = "1" }) })
+Expect("a legacy pack is initially inferred as English", Codes(env), "enUS")
+env.Languages:Declare("esMX", "SpokenReadablesAudio_legacy")
+Expect("a runtime language declaration replaces a legacy English inference", Codes(env), "esMX")
+
 env = Install({
     Pack("SpokenCommunity_a", { ["X-SpokenQuests-Language"] = "heIL" }),
     Pack("SpokenCommunity_b", { ["X-SpokenQuests-Language"] = "deDE" }),

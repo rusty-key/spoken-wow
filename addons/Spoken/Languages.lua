@@ -49,9 +49,13 @@ local QUESTS_KEYS = { "X-SpokenQuests-DataModule-Version", "X-VoiceOver-DataModu
 -- Built from BUILTIN and what the packs declare; nil until first asked for, so that every pack is
 -- in the AddOns list by then.
 local byCode, scanned
+local inferredEnglish = {}
+local declaredByFolder = {}
 
 local function Reset()
     byCode, scanned = {}, false
+    inferredEnglish = {}
+    declaredByFolder = {}
     for _, builtin in ipairs(Languages.BUILTIN) do
         byCode[builtin.code] = {
             code = builtin.code, name = builtin.name, native = builtin.native, script = builtin.script,
@@ -81,6 +85,17 @@ function Languages:Declare(code, folder, meta)
     if not self:IsCode(code) then return end
     -- A game client in British English runs the English pack.
     if code == "enGB" then code = "enUS" end
+    declaredByFolder[folder] = declaredByFolder[folder] or {}
+    declaredByFolder[folder][code] = true
+    -- Legacy packs without a language key are initially assumed to be English. If their Lua
+    -- registry later declares another language, replace that inference rather than listing both.
+    if code ~= "enUS" and inferredEnglish[folder] then
+        local english = byCode.enUS
+        for i = #english.folders, 1, -1 do
+            if english.folders[i] == folder then table.remove(english.folders, i) end
+        end
+        inferredEnglish[folder] = nil
+    end
     local entry = byCode[code]
     if not entry then
         entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {} },
@@ -135,8 +150,16 @@ function Languages:Scan()
                 font = font and ("Interface\\AddOns\\" .. folder .. "\\" .. font:gsub("/", "\\")),
             }
             local carriesLore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1"
-            -- A pack with no language, or only one that is no code, speaks English.
-            if #declared == 0 then declared[1] = "enUS" end
+            -- A pack with no language, or only one that is no code, speaks English. Its Lua
+            -- registry may replace this inference later for legacy translated packs.
+            if #declared == 0 then
+                local runtimeLanguage
+                for code in pairs(declaredByFolder[folder] or {}) do
+                    if code ~= "enUS" then runtimeLanguage = code; break end
+                end
+                declared[1] = runtimeLanguage or "enUS"
+                if not runtimeLanguage then inferredEnglish[folder] = true end
+            end
             for _, value in ipairs(declared) do
                 meta.lore = carriesLore and value == lore
                 self:Declare(value, folder, meta)
