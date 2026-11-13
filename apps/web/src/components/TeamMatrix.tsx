@@ -7,8 +7,9 @@ import { CAPABILITY_COLOURS } from "@/components/GrantCell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster, useToast } from "@/components/ui/toast";
-import { giveGrants, takeGrant } from "@/lib/grants/client";
+import { giveGrants, resendInvite, revokeInvite, takeGrant } from "@/lib/grants/client";
 import type { GrantRow } from "@/lib/grants/store";
+import type { InviteRow } from "@/lib/invites/store";
 import { langName, type Lang } from "@/lib/lang";
 import {
   canGrant,
@@ -30,6 +31,8 @@ type Props = {
   lang: Lang;
   /** This language's grants. */
   grants: GrantRow[];
+  /** This language's open invites. */
+  invites: InviteRow[];
   viewer: Viewer;
   /** Whether this language's team admins appoint its text maintainers. */
   textByTeam: boolean;
@@ -61,14 +64,17 @@ function peopleOf(known: readonly Person[], grants: readonly GrantRow[]): Person
  * Somebody whose last grant was just removed keeps their row until the page reloads, so an
  * undo has a row to land on and the rows below do not jump under the pointer.
  */
-function Matrix({ lang, grants: initial, viewer, textByTeam, currentUserId }: Props) {
+function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textByTeam, currentUserId }: Props) {
   const toast = useToast();
   const [grants, setGrants] = useState(initial);
   const [people, setPeople] = useState(() => peopleOf([], initial));
   // The cell being saved, as `${userId}:${capability}`, or "new" for the add form.
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [invites, setInvites] = useState(initialInvites);
   const [email, setEmail] = useState("");
+  const offered = COLUMNS.filter((capability) => canGrant(viewer, capability, lang, textByTeam));
+  const [chosen, setChosen] = useState<Capability[]>(["edit"]);
   const global = isAdmin(viewer.role);
 
   // Saves one after another, an undo from a toast included: every save answers with the whole
@@ -98,6 +104,7 @@ function Matrix({ lang, grants: initial, viewer, textByTeam, currentUserId }: Pr
     // The route answers with every language the viewer administers; this table is one of them.
     const next = answer.grants.filter((grant) => grant.lang === lang);
     setGrants(next);
+    setInvites((answer.invites ?? []).filter((invite) => invite.lang === lang));
     setPeople((current) => peopleOf(current, next));
     return null;
   }
@@ -139,19 +146,35 @@ function Matrix({ lang, grants: initial, viewer, textByTeam, currentUserId }: Pr
     if (!address) return;
     setBusy("new");
     setError(null);
-    const failed = await give({ id: "", name: null, email: address }, ["edit"]);
+    const answer = await giveGrants(address, lang, chosen);
+    const failed = adopt(answer);
     setBusy(null);
     if (failed) {
       setError(failed);
       return;
     }
     setEmail("");
-    toast({ tone: "info", title: `Added ${address} to ${langName(lang)}`, detail: "With edit. Tick more in their row." });
+    toast({
+      tone: "info",
+      title: `${answer.invited ? "Invited" : "Added"} ${address} to ${langName(lang)}`,
+      detail: `With ${chosen.map(capabilityLabel).join(", ")}.`,
+    });
+  }
+
+  async function manage(invite: InviteRow, send: typeof resendInvite, done: string) {
+    setBusy(`invite:${invite.id}`);
+    const failed = adopt(await send(invite.id));
+    setBusy(null);
+    toast(
+      failed
+        ? { tone: "error", title: `Could not change the invite to ${invite.email}`, detail: failed }
+        : { tone: "info", title: `${done} ${invite.email}` },
+    );
   }
 
   return (
     <div>
-      <form onSubmit={add} className="mb-5 flex flex-wrap items-end gap-x-3 gap-y-2">
+      <form onSubmit={add} aria-label={`Add someone to ${langName(lang)}`} className="mb-5 flex flex-wrap items-end gap-x-3 gap-y-2">
         <div>
           <label htmlFor="team-add" className="mb-1.5 block text-xs font-medium">
             Add someone to {langName(lang)}
@@ -168,9 +191,26 @@ function Matrix({ lang, grants: initial, viewer, textByTeam, currentUserId }: Pr
             className="w-72 max-w-full"
           />
         </div>
-        <Button type="submit" disabled={busy === "new" || !email.trim()}>
+        <fieldset className="flex flex-wrap gap-x-3 gap-y-1 pb-2">
+          <legend className="sr-only">As</legend>
+          {offered.map((capability) => (
+            <label key={capability} className="inline-flex items-center gap-1.5 text-sm">
+              <input
+                type="checkbox"
+                checked={chosen.includes(capability)}
+                onChange={(event) =>
+                  setChosen((current) =>
+                    event.target.checked ? [...current, capability] : current.filter((c) => c !== capability),
+                  )
+                }
+              />
+              {capabilityLabel(capability)}
+            </label>
+          ))}
+        </fieldset>
+        <Button type="submit" disabled={busy === "new" || !email.trim() || chosen.length === 0}>
           <Plus className="size-4" aria-hidden />
-          Add with edit
+          Add
         </Button>
         {error ? (
           <p id="team-add-error" role="alert" className="text-destructive pb-2 text-sm">
@@ -178,10 +218,53 @@ function Matrix({ lang, grants: initial, viewer, textByTeam, currentUserId }: Pr
           </p>
         ) : (
           <p id="team-add-hint" className="text-muted-foreground pb-2 text-sm">
-            They need an account on the site first.
+            Somebody without an account gets an email invite.
           </p>
         )}
       </form>
+
+      {invites.length > 0 && (
+        <section className="mb-5" aria-labelledby="pending-invites">
+          <h2 id="pending-invites" className="mb-2 text-sm font-semibold">
+            Pending invites
+          </h2>
+          <ul className="bg-card divide-y rounded-lg border text-sm">
+            {invites.map((invite) => {
+              const allowed = invite.capabilities.every((capability) => canGrant(viewer, capability, lang, textByTeam));
+              return (
+                <li key={invite.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+                  <span className="font-semibold">{invite.email}</span>
+                  <span>{invite.capabilities.map(capabilityLabel).join(", ")}</span>
+                  <span className="text-muted-foreground text-xs">
+                    invited by {invite.invitedByName ?? "someone"}, sent {new Date(invite.sentAt).toLocaleDateString()},{" "}
+                    {invite.expired ? "expired" : `expires ${new Date(invite.expiresAt).toLocaleDateString()}`}
+                  </span>
+                  <span className="ml-auto flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!allowed || busy !== null}
+                      onClick={() => void manage(invite, resendInvite, "Sent again to")}
+                    >
+                      Resend
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!allowed || busy !== null}
+                      onClick={() => void manage(invite, revokeInvite, "Revoked the invite to")}
+                    >
+                      Revoke
+                    </Button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <div className="bg-card overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[46rem] border-collapse text-sm">
